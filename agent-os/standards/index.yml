@@ -2,4 +2,6 @@
 
 global:
   tech-stack:
-    description: Needs description - run /index-standards
+    description: Frontend/backend technology choices and rationale
+  code-quality:
+    description: TypeScript/ESLint error resolution, clean code principles, naming conventions, code organization

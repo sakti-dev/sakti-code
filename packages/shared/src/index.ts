@@ -1,3 +1,9 @@
-export const sharedVersion = "0.0.1";
+/**
+ * @ekacode/shared
+ *
+ * Shared types and utilities for ekacode packages
+ */
 
-// Shared types and utilities will be expanded as needed
+export * from "./types";
+
+export const sharedVersion = "0.0.1";

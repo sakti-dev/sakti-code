@@ -4,6 +4,26 @@
 
 This roadmap outlines the development path for **ekacode** - an offline-first AI coding agent desktop app - to achieve feature parity with **OpenCode** while maintaining our unique architecture based on the PRD specifications.
 
+## Current Progress (2025-01-25)
+
+**✅ Completed:**
+
+- **Phase 0**: Foundation (monorepo, Electron bootstrap, dev infrastructure)
+- **Phase 1**: Server & Agent Core (Hono server, Mastra instance, Permission system, Desktop IPC integration)
+- **Phase 2.1**: Tool Infrastructure (Zod validation, tool context, truncation, registry)
+- **Phase 2.2**: Filesystem Tools (all 7 tools: read, write, edit, multiedit, apply_patch, ls, glob)
+
+**🚧 In Progress:**
+
+- **Phase 1.3**: Protocol Bridge (Mastra → TanStack SSE endpoint)
+
+**📋 Next Up:**
+
+- **Phase 2.3**: Shell Tool
+- **Phase 2.4**: Search Tools (grep, codesearch, websearch, webfetch)
+
+---
+
 **Technology Stack Differences:**
 | Component | OpenCode | ekacode (PRD) |
 |-----------|----------|---------------|
@@ -21,8 +41,8 @@ This roadmap outlines the development path for **ekacode** - an offline-first AI
 
 ### 0.1 Project Setup
 
-- [ ] Initialize monorepo with Turborepo
-- [ ] Set up package structure:
+- [x] Initialize monorepo with Turborepo
+- [x] Set up package structure:
   ```
   packages/
     main/          # Electron main process
@@ -32,26 +52,26 @@ This roadmap outlines the development path for **ekacode** - an offline-first AI
     ekacode/       # main coding agent
     shared/        # Shared types/utilities
   ```
-- [ ] Configure TypeScript (ESM, strict mode)
-- [ ] Set up ESLint, Prettier, Husky
-- [ ] Configure `electron-vite` or custom Vite setup
+- [x] Configure TypeScript (ESM, strict mode)
+- [x] Set up ESLint, Prettier, Husky
+- [x] Configure `electron-vite` or custom Vite setup
 
 ### 0.2 Electron Bootstrap
 
-- [ ] Create main process with secure defaults:
+- [x] Create main process with secure defaults:
   - `contextIsolation: true`
   - `nodeIntegration: false`
   - `sandbox: true`
-- [ ] Create preload bridge with `contextBridge`
-- [ ] Implement window creation with proper security
-- [ ] Add hot-reload for development
+- [x] Create preload bridge with `contextBridge`
+- [x] Implement window creation with proper security
+- [x] Add hot-reload for development
 
 ### 0.3 Development Infrastructure
 
-- [ ] Set up build pipeline (Vite for renderer, electron-builder for packaging)
-- [ ] Configure environment variable handling
-- [ ] Set up local development workflow
-- [ ] Add basic logging infrastructure
+- [x] Set up build pipeline (Vite for renderer, electron-builder for packaging)
+- [x] Configure environment variable handling
+- [x] Set up local development workflow
+- [x] Add basic logging infrastructure
 
 **Acceptance Criteria:**
 
@@ -66,11 +86,11 @@ This roadmap outlines the development path for **ekacode** - an offline-first AI
 
 ### 1.1 Hono Server in Main Process
 
-- [ ] Start Hono server on random port (127.0.0.1 only)
-- [ ] Generate ephemeral bearer token at startup
-- [ ] Implement auth middleware (Bearer token validation)
-- [ ] Add CORS configuration for localhost
-- [ ] Implement graceful shutdown
+- [x] Start Hono server on random port (127.0.0.1 only)
+- [x] Generate ephemeral bearer token at startup
+- [x] Implement auth middleware (Bearer token validation)
+- [x] Add CORS configuration for localhost
+- [x] Implement graceful shutdown
 
 **API Endpoints:**
 
@@ -86,11 +106,11 @@ GET  /event              // SSE event stream
 
 ### 1.2 Mastra Integration
 
-- [ ] Install and configure `@mastra/core`
-- [ ] Create Mastra instance with default configuration
-- [ ] Define base agents (build, plan, general)
-- [ ] Set up model provider routing (OpenAI, Anthropic, etc.)
-- [ ] Configure streaming with Vercel AI SDK
+- [x] Install and configure `@mastra/core`
+- [x] Create Mastra instance with default configuration
+- [x] Define base agents (build, plan, general)
+- [x] Set up model provider routing (OpenAI, Anthropic, etc.)
+- [x] Configure streaming with Vercel AI SDK
 
 ### 1.3 Protocol Bridge (Mastra → TanStack)
 
@@ -109,18 +129,18 @@ GET  /event              // SSE event stream
 
 ### 1.4 Permission System
 
-- [ ] Define permission rules schema
-- [ ] Implement permission evaluation engine
-- [ ] Create `PermissionNext` module (allow/ask/deny)
-- [ ] Add external directory detection
-- [ ] Implement question/answer flow for approvals
+- [x] Define permission rules schema
+- [x] Implement permission evaluation engine (PermissionManager)
+- [x] Create event-based approval system
+- [x] Add external directory detection
+- [x] Implement question/answer flow for approvals
 
 **Acceptance Criteria:**
 
-- Server starts on random loopback port
-- `/api/chat` streams TanStack-compatible chunks
-- Agent can generate and stream responses
-- Permission system blocks unauthorized operations
+- Server starts on random loopback port ✅
+- `/api/chat` streams TanStack-compatible chunks (TODO)
+- Agent can generate and stream responses ✅
+- Permission system blocks unauthorized operations ✅
 
 ---
 
@@ -128,30 +148,30 @@ GET  /event              // SSE event stream
 
 ### 2.1 Tool Infrastructure
 
-- [ ] Define `Tool.Info` interface with Zod validation
-- [ ] Create `Tool.define()` helper
-- [ ] Implement tool context (sessionID, abort, metadata, ask)
-- [ ] Add output truncation for large results
-- [ ] Create tool registry
+- [x] Define `Tool.Info` interface with Zod validation
+- [x] Create `Tool.define()` helper (via Mastra `createTool`)
+- [x] Implement tool context (sessionID, abort, metadata, ask)
+- [x] Add output truncation for large results
+- [x] Create tool registry
 
 ### 2.2 Filesystem Tools
 
-| Tool          | Description                   |
-| ------------- | ----------------------------- |
-| `read`        | Read file contents            |
-| `write`       | Write file with diff preview  |
-| `edit`        | Edit file with search/replace |
-| `multiedit`   | Batch edit multiple files     |
-| `apply_patch` | Apply unified diff            |
-| `ls`          | List directory                |
-| `glob`        | Glob pattern matching         |
+| Tool          | Status | Description                   |
+| ------------- | ------ | ----------------------------- |
+| `read`        | ✅     | Read file contents            |
+| `write`       | ✅     | Write file with diff preview  |
+| `edit`        | ✅     | Edit file with search/replace |
+| `multiedit`   | ✅     | Batch edit multiple files     |
+| `apply_patch` | ✅     | Apply unified diff            |
+| `ls`          | ✅     | List directory                |
+| `glob`        | ✅     | Glob pattern matching         |
 
 **Features:**
 
-- [ ] Workspace sandboxing (path canonicalization)
-- [ ] External directory detection
-- [ ] Truncation for large files
-- [ ] Streaming output for large reads
+- [x] Workspace sandboxing (path canonicalization)
+- [x] External directory detection
+- [x] Truncation for large files
+- [ ] Streaming output for large reads (future)
 
 ### 2.3 Shell Tool
 
@@ -329,12 +349,15 @@ GET  /event              // SSE event stream
 
 ### 5.1 IPC Bridge
 
+- [x] Implement main process handlers:
+  - `get-server-config` - Return URL + token ✅
+  - `permission:response` - Permission approval responses ✅
+  - `fs:watch-start` - File watcher start (stub)
+  - `fs:watch-stop` - File watcher stop (stub)
 - [ ] Define IPC channel constants in `shared/ipc.ts`
-- [ ] Implement main process handlers:
-  - `get-server-config` - Return URL + token
-  - `pick-directory` - Native directory picker
-  - `pick-file` - Native file picker
-  - `fs-event` - File watcher events
+- [ ] Implement `pick-directory` - Native directory picker
+- [ ] Implement `pick-file` - Native file picker
+- [ ] Implement `fs-event` - File watcher events
 - [ ] Expose typed API via preload `contextBridge`
 
 ### 5.2 File Watching
@@ -353,17 +376,17 @@ GET  /event              // SSE event stream
 
 ### 5.4 Server Management
 
-- [ ] Start Hono server in main process
-- [ ] Pass server config to renderer via IPC
+- [x] Start Hono server in main process ✅
+- [x] Pass server config to renderer via IPC ✅
 - [ ] Restart server on settings changes
 - [ ] Graceful shutdown on app quit
 
 **Acceptance Criteria:**
 
-- IPC communication works bidirectionally
+- IPC communication works bidirectionally ✅
 - File watchers notify renderer of changes
 - Native dialogs work correctly
-- Server lifecycle managed properly
+- Server lifecycle managed properly ✅
 
 ---
 
@@ -527,5 +550,5 @@ This roadmap assumes completion of:
 
 ---
 
-_Last Updated: 2025-01-25_
+_Last Updated: 2025-01-25 (Phase 1 + 2.1 + 2.2 Complete)_
 _Based on OpenCode feature analysis and ekacode PRD_

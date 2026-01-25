@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .turbo
+*.tsbuildinfo
 
 # Editor directories and files
 .idea
@@ -27,3 +28,7 @@ dist-ssr
 .envrc.local
 result
 result-*
+
+
+# References
+opencode
