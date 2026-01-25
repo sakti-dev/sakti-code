@@ -15,7 +15,9 @@ This roadmap outlines the development path for **ekacode** - an offline-first AI
 
 **🚧 In Progress:**
 
-- **Phase 1.3**: Protocol Bridge (Mastra → TanStack SSE endpoint)
+- **Phase 1.3**: Protocol Bridge (Mastra → TanStack)
+  - 1.3.1: `@tanstack-ai-mastra` adapter package
+  - 1.3.2: `/api/chat` SSE endpoint
 
 **📋 Next Up:**
 
@@ -114,18 +116,71 @@ GET  /event              // SSE event stream
 
 ### 1.3 Protocol Bridge (Mastra → TanStack)
 
-- [ ] Create `/api/chat` SSE endpoint
-- [ ] Implement Mastra event → TanStack StreamChunk mapping:
+#### 1.3.1 TanStack AI Adapter Package
+
+**Create `@tanstack-ai-mastra` package** - Adapter bridging Mastra's gateway system with TanStack AI
+
+**Package Structure:**
+
+```
+packages/tanstack-ai-mastra/
+├── src/
+│   ├── index.ts              # Main exports
+│   ├── adapters/
+│   │   └── text.ts           # MastraTextAdapter implementation
+│   ├── types.ts              # Type definitions
+│   ├── stream.ts             # Stream transformation utilities
+│   ├── convert.ts            # Message/tool conversion
+│   └── structured-output.ts  # Structured output strategies
+├── package.json
+└── README.md
+```
+
+**Implementation Checklist:**
+
+- [ ] Create package with dependencies: `@mastra/core`, `@tanstack/ai`
+- [ ] Implement `MastraTextAdapter` extending `BaseTextAdapter`
+- [ ] Create `mastraText(modelId, config?)` factory function
+- [ ] Implement `convertToAISDKMessages()` for message transformation
+- [ ] Implement `convertToolsToAISDK()` for tool schema conversion
+- [ ] Create `transformMastraStreamToTanStack()` for stream mapping:
   ```
-  text-delta     → content
-  tool-call      → tool_call
-  tool-result    → tool_result
-  approval       → approval-requested
-  finish         → done
-  error          → error
+  text-delta        → content
+  reasoning-delta   → thinking
+  tool-call         → tool_call
+  tool-result       → tool_result
+  finish            → done
+  error             → error
   ```
+- [ ] Implement `ToolCallAccumulator` for streaming tool call buffering
+- [ ] Add `structuredOutput()` with provider detection:
+  - NATIVE_JSON_SCHEMA (OpenAI, Gemini)
+  - TOOL_BASED (Anthropic)
+  - CONSTRAINED_DECODING (Mistral)
+  - INSTRUCTION_ONLY (fallback)
+- [ ] Add comprehensive error handling and edge case management
+
+**Type Safety:**
+
+- [ ] Export `MastraTextModelId = ModelRouterModelId`
+- [ ] Export `MastraTextProviderOptions`
+- [ ] Export `MastraInputModalities` and metadata types
+
+**Testing:**
+
+- [ ] Unit tests for message/tool conversion
+- [ ] Stream transformation tests
+- [ ] Tool call accumulation tests
+- [ ] Structured output parsing tests
+- [ ] Multi-provider integration tests (openai, anthropic, google)
+
+#### 1.3.2 SSE Endpoint
+
+- [ ] Create `/api/chat` SSE endpoint using `MastraTextAdapter`
+- [ ] Implement TanStack `fetchServerSentEvents` compatibility
 - [ ] Handle AbortSignal for cancellation
-- [ ] Implement reconnection support
+- [ ] Implement reconnection support with backoff
+- [ ] Add auth middleware (Bearer token validation)
 
 ### 1.4 Permission System
 
@@ -138,7 +193,10 @@ GET  /event              // SSE event stream
 **Acceptance Criteria:**
 
 - Server starts on random loopback port ✅
-- `/api/chat` streams TanStack-compatible chunks (TODO)
+- `@tanstack-ai-mastra` adapter implements TanStack `BaseTextAdapter` interface
+- Adapter transforms Mastra streams to TanStack `StreamChunk` format
+- `/api/chat` SSE endpoint streams TanStack-compatible chunks
+- Structured output works across multiple providers (OpenAI, Anthropic, Gemini)
 - Agent can generate and stream responses ✅
 - Permission system blocks unauthorized operations ✅
 
@@ -294,11 +352,12 @@ GET  /event              // SSE event stream
 
 ### 4.1 TanStack AI Integration
 
-- [ ] Install `@ai-sdk/react` / `@tanstack-ai/react`
+- [ ] Install `@tanstack-ai/react` and `@tanstack-ai-mastra`
 - [ ] Set up `useChat` with `fetchServerSentEvents`
 - [ ] Configure auth headers from preload
-- [ ] Implement streaming message rendering
-- [ ] Add stop/cancel functionality
+- [ ] Implement streaming message rendering using `@tanstack-ai-mastra` adapter
+- [ ] Add stop/cancel functionality with AbortSignal
+- [ ] Connect to `/api/chat` SSE endpoint from Phase 1.3.2
 
 ### 4.2 Core UI Components
 
@@ -550,5 +609,5 @@ This roadmap assumes completion of:
 
 ---
 
-_Last Updated: 2025-01-25 (Phase 1 + 2.1 + 2.2 Complete)_
+_Last Updated: 2026-01-26 (Phase 1 + 2.1 + 2.2 Complete; Phase 1.3 In Progress - added @tanstack-ai-mastra adapter)_
 _Based on OpenCode feature analysis and ekacode PRD_

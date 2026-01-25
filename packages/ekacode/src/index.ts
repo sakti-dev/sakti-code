@@ -39,4 +39,22 @@ export { PermissionManager } from "./security/permission-manager";
 // Workspace
 export { WorkspaceInstance } from "./workspace/instance";
 
+// Mastra-TanStack Adapter
+export {
+  MastraLanguageModel,
+  MastraTextAdapter,
+  StructuredOutputSupport,
+  mastraText,
+  mastraTextWithModel,
+} from "./adapters/mastra-tanstack";
+export type {
+  MastraInputModalities,
+  MastraMessageMetadataByModality,
+  MastraModality,
+  MastraProviderOptions,
+  MastraTextModelId,
+  MastraTextProviderOptions,
+  ProviderCapabilities,
+} from "./adapters/mastra-tanstack";
+
 export const ekacodeVersion = "0.0.1";

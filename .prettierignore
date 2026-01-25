@@ -6,3 +6,6 @@ out
 coverage
 pnpm-lock.yaml
 package-lock.json
+opencode
+agent-os
+ai
