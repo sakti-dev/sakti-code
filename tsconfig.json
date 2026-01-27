@@ -4,7 +4,8 @@
     { "path": "./packages/desktop" },
     { "path": "./packages/server" },
     { "path": "./packages/ekacode" },
-    { "path": "./packages/shared" }
+    { "path": "./packages/shared" },
+    { "path": "./packages/zai" }
   ],
   "compilerOptions": {
     "strict": true,
