@@ -1,6 +1,6 @@
 import { safeParseJSON } from "@ai-sdk/provider-utils";
 import { describe, expect, it } from "vitest";
-import { zaiErrorDataSchema } from "./zai-error";
+import { zaiErrorDataSchema } from "../src/zai-error";
 
 describe("zaiErrorDataSchema", () => {
   it("should parse standard Z.ai error response", async () => {

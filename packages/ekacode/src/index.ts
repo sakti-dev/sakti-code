@@ -57,4 +57,21 @@ export type {
   ProviderCapabilities,
 } from "./adapters/mastra-tanstack";
 
+// Hybrid Agent
+export {
+  HybridAgent,
+  buildMcpPromptRegistry,
+  createPromptRegistry,
+  createZaiHybridAgent,
+} from "./agents/hybrid-agent";
+export type {
+  HybridAgentOptions,
+  Intent,
+  IntentId,
+  PromptHandler,
+  PromptRegistry,
+  VisionImage,
+  VisionRequest,
+} from "./agents/hybrid-agent";
+
 export const ekacodeVersion = "0.0.1";

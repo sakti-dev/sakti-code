@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createZai } from "./zai-provider";
+import { createZai } from "../src/zai-provider";
 
-vi.mock("./version", () => ({
+vi.mock("../src/version", () => ({
   VERSION: "0.0.0-test",
 }));
 

@@ -5,7 +5,7 @@ import {
   DEFAULT_CODING_BASE_URL,
   DEFAULT_GENERAL_BASE_URL,
   DEFAULT_SOURCE_CHANNEL,
-} from "./zai-constants";
+} from "../src/zai-constants";
 
 describe("zai constants", () => {
   describe("base URLs", () => {
