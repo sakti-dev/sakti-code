@@ -6,7 +6,7 @@
 
 import * as fs from "node:fs/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clearCache, getCommandPrefix, parseCommand } from "./parser";
+import { clearCache, getCommandPrefix, parseCommand } from "../../../src/tools/shell/parser";
 
 // Mock node:fs/promises
 vi.mock("node:fs/promises", () => ({

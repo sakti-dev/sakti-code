@@ -7,7 +7,7 @@
 import { eq } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { db, sessions } from "./index";
+import { db, sessions } from "../../db";
 
 // Mock uuidv7 for consistent testing
 vi.mock("uuidv7", () => ({
@@ -17,7 +17,7 @@ vi.mock("uuidv7", () => ({
 describe("sessions", () => {
   beforeAll(async () => {
     // Setup database schema
-    const { setupTestDatabase } = await import("./test-setup");
+    const { setupTestDatabase } = await import("../../db/test-setup");
     await setupTestDatabase();
   });
 
@@ -37,7 +37,7 @@ describe("sessions", () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
       vi.mocked(uuidv7).mockReturnValue(mockSessionId);
 
-      const { createSession } = await import("./sessions");
+      const { createSession } = await import("../../db/sessions");
       const session = await createSession("local");
 
       expect(session.sessionId).toBe(mockSessionId);
@@ -51,7 +51,7 @@ describe("sessions", () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
       vi.mocked(uuidv7).mockReturnValue(mockSessionId);
 
-      const { createSession } = await import("./sessions");
+      const { createSession } = await import("../../db/sessions");
       const session = await createSession("user-123");
 
       expect(session.resourceId).toBe("user-123");
@@ -61,7 +61,7 @@ describe("sessions", () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
       vi.mocked(uuidv7).mockReturnValue(mockSessionId);
 
-      const { createSession } = await import("./sessions");
+      const { createSession } = await import("../../db/sessions");
       const created = await createSession("local");
 
       // Verify it's in the database
@@ -82,7 +82,7 @@ describe("sessions", () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
       vi.mocked(uuidv7).mockReturnValue(mockSessionId);
 
-      const { createSession, getSession } = await import("./sessions");
+      const { createSession, getSession } = await import("../../db/sessions");
       await createSession("local");
       const retrieved = await getSession(mockSessionId);
 
@@ -92,7 +92,7 @@ describe("sessions", () => {
     });
 
     it("should return null for non-existent session", async () => {
-      const { getSession } = await import("./sessions");
+      const { getSession } = await import("../../db/sessions");
       const retrieved = await getSession("non-existent-id");
 
       expect(retrieved).toBeNull();
@@ -104,7 +104,7 @@ describe("sessions", () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
       vi.mocked(uuidv7).mockReturnValue(mockSessionId);
 
-      const { createSession, touchSession, getSession } = await import("./sessions");
+      const { createSession, touchSession, getSession } = await import("../../db/sessions");
       await createSession("local");
 
       // Get the session from DB first
@@ -127,7 +127,7 @@ describe("sessions", () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
       vi.mocked(uuidv7).mockReturnValue(mockSessionId);
 
-      const { createSession, touchSession, getSession } = await import("./sessions");
+      const { createSession, touchSession, getSession } = await import("../../db/sessions");
       await createSession("user-123");
 
       // Get the session from DB first to get the stored values
@@ -150,7 +150,7 @@ describe("sessions", () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
       vi.mocked(uuidv7).mockReturnValue(mockSessionId);
 
-      const { createSession, deleteSession, getSession } = await import("./sessions");
+      const { createSession, deleteSession, getSession } = await import("../../db/sessions");
       const session = await createSession("local");
 
       await deleteSession(session.sessionId);
@@ -160,7 +160,7 @@ describe("sessions", () => {
     });
 
     it("should handle deleting non-existent session gracefully", async () => {
-      const { deleteSession } = await import("./sessions");
+      const { deleteSession } = await import("../../db/sessions");
 
       // Should not throw
       await expect(deleteSession("non-existent")).resolves.not.toThrow();

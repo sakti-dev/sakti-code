@@ -4,7 +4,7 @@
 
 import { existsSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getAcceptableShell, getPreferredShell } from "./shell-selector";
+import { getAcceptableShell, getPreferredShell } from "../../../src/tools/shell/shell-selector";
 
 // Mock node:child_process
 vi.mock("node:child_process", () => ({

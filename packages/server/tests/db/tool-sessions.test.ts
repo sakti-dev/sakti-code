@@ -7,7 +7,7 @@
 import { eq } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { db, sessions, toolSessions } from "./index";
+import { db, sessions, toolSessions } from "../../db";
 
 // Mock uuidv7 for consistent session ID
 vi.mock("uuidv7", () => ({
@@ -20,7 +20,7 @@ describe("tool sessions", () => {
 
   beforeAll(async () => {
     // Setup database schema
-    const { setupTestDatabase } = await import("./test-setup");
+    const { setupTestDatabase } = await import("../../db/test-setup");
     await setupTestDatabase();
   });
 
@@ -42,7 +42,7 @@ describe("tool sessions", () => {
 
     // Create a parent session first
     mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
-    const { createSession } = await import("./sessions");
+    const { createSession } = await import("../../db/sessions");
     await createSession("local");
 
     // Clean up tool sessions before each test
@@ -57,7 +57,7 @@ describe("tool sessions", () => {
 
   describe("getToolSession", () => {
     it("should create new tool session if not exists", async () => {
-      const { getToolSession } = await import("./tool-sessions");
+      const { getToolSession } = await import("../../db/tool-sessions");
       const toolSession = await getToolSession(mockSessionId, "test-tool");
 
       expect(toolSession.toolSessionId).toBe("11111111-89ab-cdef-0123-456789abcdef");
@@ -70,7 +70,7 @@ describe("tool sessions", () => {
     });
 
     it("should retrieve existing tool session", async () => {
-      const { getToolSession } = await import("./tool-sessions");
+      const { getToolSession } = await import("../../db/tool-sessions");
       const first = await getToolSession(mockSessionId, "test-tool", "key1");
       const second = await getToolSession(mockSessionId, "test-tool", "key1");
 
@@ -78,7 +78,7 @@ describe("tool sessions", () => {
     });
 
     it("should create separate sessions for different tool keys", async () => {
-      const { getToolSession } = await import("./tool-sessions");
+      const { getToolSession } = await import("../../db/tool-sessions");
       const first = await getToolSession(mockSessionId, "test-tool", "key1");
       const second = await getToolSession(mockSessionId, "test-tool", "key2");
 
@@ -86,7 +86,7 @@ describe("tool sessions", () => {
     });
 
     it("should create separate sessions for different tool names", async () => {
-      const { getToolSession } = await import("./tool-sessions");
+      const { getToolSession } = await import("../../db/tool-sessions");
       const first = await getToolSession(mockSessionId, "tool-a");
       const second = await getToolSession(mockSessionId, "tool-b");
 
@@ -96,7 +96,7 @@ describe("tool sessions", () => {
 
   describe("updateToolSession", () => {
     it("should update tool session data", async () => {
-      const { getToolSession, updateToolSession } = await import("./tool-sessions");
+      const { getToolSession, updateToolSession } = await import("../../db/tool-sessions");
       const toolSession = await getToolSession(mockSessionId, "test-tool");
 
       const testData = { count: 42, name: "test" };
@@ -108,7 +108,7 @@ describe("tool sessions", () => {
     });
 
     it("should replace existing data", async () => {
-      const { getToolSession, updateToolSession } = await import("./tool-sessions");
+      const { getToolSession, updateToolSession } = await import("../../db/tool-sessions");
       const toolSession = await getToolSession(mockSessionId, "test-tool");
 
       await updateToolSession(toolSession.toolSessionId, { version: 1 });
@@ -121,7 +121,7 @@ describe("tool sessions", () => {
 
   describe("deleteToolSession", () => {
     it("should delete tool session", async () => {
-      const { getToolSession, deleteToolSession } = await import("./tool-sessions");
+      const { getToolSession, deleteToolSession } = await import("../../db/tool-sessions");
       const toolSession = await getToolSession(mockSessionId, "test-tool");
 
       await deleteToolSession(toolSession.toolSessionId);
@@ -132,7 +132,7 @@ describe("tool sessions", () => {
     });
 
     it("should handle deleting non-existent session gracefully", async () => {
-      const { deleteToolSession } = await import("./tool-sessions");
+      const { deleteToolSession } = await import("../../db/tool-sessions");
 
       // Should not throw
       await expect(deleteToolSession("non-existent")).resolves.not.toThrow();
@@ -141,11 +141,11 @@ describe("tool sessions", () => {
 
   describe("cascading deletes", () => {
     it("should delete tool sessions when parent session is deleted", async () => {
-      const { getToolSession } = await import("./tool-sessions");
+      const { getToolSession } = await import("../../db/tool-sessions");
       const toolSession = await getToolSession(mockSessionId, "test-tool");
 
       // Delete parent session
-      const { deleteSession } = await import("./sessions");
+      const { deleteSession } = await import("../../db/sessions");
       await deleteSession(mockSessionId);
 
       // Tool session should be deleted due to CASCADE

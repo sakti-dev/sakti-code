@@ -47,7 +47,7 @@ describe("getRipgrepPath", () => {
     vi.mocked(existsSync).mockReturnValue(true);
     vi.mocked(execSync).mockReturnValue("/usr/bin/rg");
 
-    const { getRipgrepPath } = await import("./ripgrep");
+    const { getRipgrepPath } = await import("../../../src/tools/search/ripgrep");
     const path = await getRipgrepPath();
 
     expect(path).toBe("/usr/bin/rg");
@@ -59,7 +59,7 @@ describe("getRipgrepPath", () => {
       throw new Error("not found");
     });
 
-    const { getRipgrepPath } = await import("./ripgrep");
+    const { getRipgrepPath } = await import("../../../src/tools/search/ripgrep");
     const path = await getRipgrepPath();
 
     expect(path).toContain("rg");
@@ -69,7 +69,7 @@ describe("getRipgrepPath", () => {
     vi.mocked(existsSync).mockReturnValue(true);
     vi.mocked(execSync).mockReturnValue("/usr/bin/rg");
 
-    const { getRipgrepPath, clearCache } = await import("./ripgrep");
+    const { getRipgrepPath, clearCache } = await import("../../../src/tools/search/ripgrep");
 
     // Clear cache to ensure clean state
     clearCache();
@@ -90,7 +90,7 @@ describe("getRipgrepPath", () => {
     const _platform = process.platform;
     const _arch = process.arch;
 
-    const { getRipgrepPath } = await import("./ripgrep");
+    const { getRipgrepPath } = await import("../../../src/tools/search/ripgrep");
     const path = await getRipgrepPath();
 
     expect(path).toBeDefined();
@@ -111,7 +111,7 @@ describe("downloadRipgrep internals", () => {
     vi.mocked(existsSync).mockReturnValue(true);
     vi.mocked(execSync).mockReturnValue("/usr/bin/rg");
 
-    const { getRipgrepPath, clearCache } = await import("./ripgrep");
+    const { getRipgrepPath, clearCache } = await import("../../../src/tools/search/ripgrep");
 
     const path1 = await getRipgrepPath();
     clearCache();
@@ -127,7 +127,7 @@ describe("downloadRipgrep internals", () => {
 
 describe("PLATFORM_CONFIG", () => {
   it("should have config for common platforms", async () => {
-    const { PLATFORM_CONFIG } = await import("./ripgrep");
+    const { PLATFORM_CONFIG } = await import("../../../src/tools/search/ripgrep");
 
     expect(PLATFORM_CONFIG).toBeDefined();
     expect(PLATFORM_CONFIG["x64-linux"]).toBeDefined();
@@ -137,7 +137,7 @@ describe("PLATFORM_CONFIG", () => {
   });
 
   it("should have correct platform values", async () => {
-    const { PLATFORM_CONFIG } = await import("./ripgrep");
+    const { PLATFORM_CONFIG } = await import("../../../src/tools/search/ripgrep");
 
     expect(PLATFORM_CONFIG["x64-linux"].platform).toBe("x86_64-unknown-linux-musl");
     expect(PLATFORM_CONFIG["arm64-darwin"].platform).toBe("aarch64-apple-darwin");

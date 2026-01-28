@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mockRequestApproval = vi.fn().mockResolvedValue(true);
 const mockGetRipgrepPath = vi.fn().mockResolvedValue("/usr/bin/rg");
 
-vi.mock("../../security/permission-manager", () => ({
+vi.mock("../../../src/security/permission-manager", () => ({
   PermissionManager: {
     getInstance: vi.fn(() => ({
       requestApproval: (args: any) => mockRequestApproval(args),
@@ -19,7 +19,7 @@ vi.mock("../../security/permission-manager", () => ({
   },
 }));
 
-vi.mock("../../workspace/instance", () => ({
+vi.mock("../../../src/workspace/instance", () => ({
   WorkspaceInstance: {
     getInstance: vi.fn(() => ({
       root: "/workspace",
@@ -30,7 +30,7 @@ vi.mock("../../workspace/instance", () => ({
   },
 }));
 
-vi.mock("./ripgrep", () => ({
+vi.mock("../../../src/tools/search/ripgrep", () => ({
   getRipgrepPath: () => mockGetRipgrepPath(),
 }));
 
@@ -71,7 +71,7 @@ describe("grepTool", () => {
     mockSpawn.mockReturnValue(mockProc);
 
     // Import the tool after mocks are set up
-    const module = await import("./grep.tool");
+    const module = await import("../../../src/tools/search/grep.tool");
     grepTool = module.grepTool;
   });
 
@@ -274,7 +274,7 @@ describe("grepTool", () => {
   });
 
   it("should request external directory permission for paths outside workspace", async () => {
-    const { WorkspaceInstance } = await import("../../workspace/instance");
+    const { WorkspaceInstance } = await import("../../../src/workspace/instance");
     const mockWorkspace = WorkspaceInstance.getInstance();
 
     vi.mocked(mockWorkspace.containsPath).mockReturnValue(false);

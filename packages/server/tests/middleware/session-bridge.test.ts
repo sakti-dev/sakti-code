@@ -9,7 +9,7 @@
 import { Hono } from "hono";
 import { uuidv7 } from "uuidv7";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Env } from "../index";
+import type { Env } from "../../src/index";
 
 // Mock uuidv7 for consistent testing
 vi.mock("uuidv7", () => ({
@@ -41,7 +41,7 @@ describe("session bridge middleware", () => {
     mockApp = new Hono<Env>();
 
     // Import and use the session bridge middleware
-    const { sessionBridge } = await import("./session-bridge");
+    const { sessionBridge } = await import("../../src/middleware/session-bridge");
     mockApp.use("*", sessionBridge);
 
     // Add a test endpoint

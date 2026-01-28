@@ -6,7 +6,7 @@
 
 import { spawn } from "node:child_process";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { killTree } from "./kill-tree";
+import { killTree } from "../../../src/tools/shell/kill-tree";
 
 // Mock child_process spawn
 vi.mock("node:child_process", () => ({

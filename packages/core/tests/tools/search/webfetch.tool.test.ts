@@ -41,7 +41,7 @@ describe("webfetchTool", () => {
     mockHttpGet.mockReset();
 
     // Import the tool after mocks are set up
-    const module = await import("./webfetch.tool");
+    const module = await import("../../../src/tools/search/webfetch.tool");
     webfetchTool = module.webfetchTool;
   });
 
