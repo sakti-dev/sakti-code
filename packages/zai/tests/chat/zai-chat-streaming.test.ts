@@ -239,11 +239,19 @@ describe("zai-chat-streaming - Phase 2 Edge Cases", () => {
 
       // First tool
       expect(parts[0].type).toBe("tool-input-start");
-      expect(parts[0].toolName).toBe("get_weather");
+      if (parts[0].type === "tool-input-start") {
+        expect(parts[0].toolName).toBe("get_weather");
+      } else {
+        throw new Error("Expected tool-input-start for first tool");
+      }
 
       // Second tool
       expect(parts[4].type).toBe("tool-input-start");
-      expect(parts[4].toolName).toBe("get_time");
+      if (parts[4].type === "tool-input-start") {
+        expect(parts[4].toolName).toBe("get_time");
+      } else {
+        throw new Error("Expected tool-input-start for second tool");
+      }
     });
   });
 

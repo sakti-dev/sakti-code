@@ -28,7 +28,7 @@ import { zaiFailedResponseHandler } from "./zai-error";
 export interface ZaiChatConfig {
   provider: string;
   url: ({ path }: { path: string }) => string;
-  headers: () => Record<string, string | undefined>;
+  headers: () => Promise<Record<string, string | undefined>>;
   fetch?: FetchFunction;
 }
 
@@ -58,7 +58,7 @@ export class ZaiChatLanguageModel implements LanguageModelV3 {
       url: this.config.url({
         path: "/chat/completions",
       }),
-      headers: combineHeaders(this.config.headers(), options.headers),
+      headers: combineHeaders(await this.config.headers(), options.headers),
       body: args,
       failedResponseHandler: zaiFailedResponseHandler,
       successfulResponseHandler: createJsonResponseHandler(zaiChatResponseSchema),
@@ -96,7 +96,7 @@ export class ZaiChatLanguageModel implements LanguageModelV3 {
       url: this.config.url({
         path: "/chat/completions",
       }),
-      headers: combineHeaders(this.config.headers(), options.headers),
+      headers: combineHeaders(await this.config.headers(), options.headers),
       body,
       failedResponseHandler: zaiFailedResponseHandler,
       successfulResponseHandler: createEventSourceResponseHandler(zaiChatChunkSchema),

@@ -272,13 +272,13 @@ export interface ZaiUsage {
 
 // Web search result
 export interface ZaiWebSearchResult {
-  title: string;
-  content: string;
-  link: string;
-  media: string;
-  icon: string;
-  refer: string;
-  publish_date: string;
+  title?: string | null;
+  content?: string | null;
+  link?: string | null;
+  media?: string | null;
+  icon?: string | null;
+  refer?: string | null;
+  publish_date?: string | null;
 }
 
 // Chat message in response
@@ -303,7 +303,7 @@ export interface ZaiChatResponse {
   model: string;
   choices: ZaiChoice[];
   usage: ZaiUsage;
-  web_search?: ZaiWebSearchResult[];
+  web_search?: ZaiWebSearchResult[] | null;
 }
 
 // Zai chat response schema
@@ -341,16 +341,16 @@ export const zaiChatResponseSchema: z.ZodType<ZaiChatResponse> = z.object({
   web_search: z
     .array(
       z.object({
-        title: z.string(),
-        content: z.string(),
-        link: z.string(),
-        media: z.string(),
-        icon: z.string(),
-        refer: z.string(),
-        publish_date: z.string(),
+        title: z.string().nullish(),
+        content: z.string().nullish(),
+        link: z.string().nullish(),
+        media: z.string().nullish(),
+        icon: z.string().nullish(),
+        refer: z.string().nullish(),
+        publish_date: z.string().nullish(),
       })
     )
-    .optional(),
+    .nullish(),
 });
 
 // Delta in streaming chunk

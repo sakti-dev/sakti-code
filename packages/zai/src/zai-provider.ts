@@ -15,6 +15,7 @@ import {
   DEFAULT_GENERAL_BASE_URL,
   DEFAULT_SOURCE_CHANNEL,
 } from "./zai-constants";
+import { getZaiAuthorizationHeader } from "./zai-jwt";
 
 export interface ZaiProvider extends ProviderV3 {
   (modelId: ZaiChatModelId): LanguageModelV3;
@@ -54,20 +55,23 @@ export function createZai(options: ZaiProviderSettings = {}): ZaiProvider {
       endpointBaseURL
   );
 
-  const getHeaders = () =>
-    withUserAgentSuffix(
+  const getHeaders = async () => {
+    const apiKey = loadApiKey({
+      apiKey: options.apiKey,
+      environmentVariableName: "ZAI_API_KEY",
+      description: "Z.ai",
+    });
+
+    return withUserAgentSuffix(
       {
-        Authorization: `Bearer ${loadApiKey({
-          apiKey: options.apiKey,
-          environmentVariableName: "ZAI_API_KEY",
-          description: "Z.ai",
-        })}`,
+        Authorization: await getZaiAuthorizationHeader(apiKey),
         "x-source-channel": options.sourceChannel ?? DEFAULT_SOURCE_CHANNEL,
         "Accept-Language": DEFAULT_ACCEPT_LANGUAGE,
         ...options.headers,
       },
       `ai-sdk/zai/${VERSION}`
     );
+  };
 
   const createChatModel = (modelId: ZaiChatModelId) =>
     new ZaiChatLanguageModel(modelId, {

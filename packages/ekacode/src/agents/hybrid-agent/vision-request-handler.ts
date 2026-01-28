@@ -84,12 +84,12 @@ export class VisionRequestHandler {
    * Execute multiple vision requests for per-image strategy
    */
   async executePerImage(requests: VisionRequest[], concurrency: number = 3): Promise<string[]> {
-    const results: string[] = [];
+    const results: Array<string | undefined> = new Array(requests.length);
     const executing: Promise<void>[] = [];
 
-    for (const request of requests) {
+    for (const [index, request] of requests.entries()) {
       const promise = this.execute(request).then(result => {
-        results.push(result);
+        results[index] = result;
       });
 
       executing.push(promise);
@@ -106,6 +106,6 @@ export class VisionRequestHandler {
     await Promise.all(executing);
 
     // Label results by image index
-    return results.map((result, index) => `Image ${index + 1}:\n${result}`);
+    return results.map((result, index) => `Image ${index + 1}:\n${result ?? ""}`);
   }
 }

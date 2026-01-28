@@ -40,12 +40,15 @@ export function mapZaiChatResponse({
 
   // Add web search results as sources
   for (const searchResult of response.web_search ?? []) {
+    if (!searchResult.link) {
+      continue;
+    }
     content.push({
       type: "source",
       sourceType: "url",
       id: generateId(),
       url: searchResult.link,
-      title: searchResult.title,
+      title: searchResult.title ?? searchResult.link,
     });
   }
 

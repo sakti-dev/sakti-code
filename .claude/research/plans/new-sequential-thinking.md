@@ -1,4 +1,4 @@
-# Sequential Thinking Tool - Native TanStack AI Implementation
+# Sequential Thinking Tool - Native AI SDK v6 Implementation (Z.ai-first)
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@
 
 ## Overview
 
-The Sequential Thinking tool provides a **multi-turn reasoning capability** for AI agents. It enables agents to break down complex problems into structured thoughts, with support for revision, branching, and iterative refinement.
+The Sequential Thinking tool provides a **multi-turn reasoning capability** for AI agents built on Vercel AI SDK v6. Z.ai is the default provider (while keeping the tool provider-agnostic). It enables agents to break down complex problems into structured thoughts, with support for revision, branching, and iterative refinement.
 
 ### Key Features
 
@@ -84,7 +84,7 @@ The Sequential Thinking tool provides a **multi-turn reasoning capability** for 
 ```typescript
 // tools/sequential-thinking.ts
 import { z } from "zod";
-import { toolDefinition } from "@tanstack/ai";
+import { tool } from "ai";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -128,10 +128,28 @@ setInterval(() => {
 // ============================================================================
 // TOOL DEFINITION
 // ============================================================================
-export const sequentialThinking = toolDefinition({
-  name: "sequentialthinking",
+const sequentialThinkingOutputSchema = z.object({
+  sessionId: z.string().describe("Session ID for next call"),
+  thoughtNumber: z.number(),
+  totalThoughts: z.number(),
+  nextThoughtNeeded: z.boolean(),
+  thoughtHistory: z
+    .array(
+      z.object({
+        thoughtNumber: z.number(),
+        thought: z.string(),
+        isRevision: z.boolean().optional(),
+      })
+    )
+    .describe("Full thought history for context"),
+  branches: z.array(z.string()).describe("Active branch IDs"),
+  thoughtHistoryLength: z.number().describe("Total thoughts in session"),
+  summary: z.string().optional().describe("Optional summary of thinking so far"),
+});
 
-  description: `A detailed tool for dynamic and reflective problem-solving through thoughts.
+export const createSequentialThinkingTool = (options: { sessionId?: string } = {}) =>
+  tool({
+    description: `A detailed tool for dynamic and reflective problem-solving through thoughts.
 This tool helps analyze problems through a flexible thinking process that can adapt and evolve.
 Each thought can build on, question, or revise previous insights as understanding deepens.
 
@@ -169,120 +187,107 @@ You should:
 6. Ignore information that is irrelevant to the current step
 7. Only set nextThoughtNeeded to false when truly done`,
 
-  inputSchema: z.object({
-    thought: z.string().describe("Your current thinking step"),
-    nextThoughtNeeded: z.boolean().describe("Whether another thought step is needed"),
-    thoughtNumber: z.number().int().min(1).describe("Current thought number (e.g., 1, 2, 3)"),
-    totalThoughts: z
-      .number()
-      .int()
-      .min(1)
-      .describe("Estimated total thoughts needed (e.g., 5, 10)"),
-    sessionId: z
-      .string()
-      .optional()
-      .describe("Pass existing session ID to continue, or omit for new session"),
-    isRevision: z.boolean().optional().describe("Whether this revises previous thinking"),
-    revisesThought: z
-      .number()
-      .int()
-      .min(1)
-      .optional()
-      .describe("Which thought number is being reconsidered"),
-    branchFromThought: z
-      .number()
-      .int()
-      .min(1)
-      .optional()
-      .describe("Branching point thought number"),
-    branchId: z.string().optional().describe("Branch identifier"),
-    needsMoreThoughts: z.boolean().optional().describe("If more thoughts are needed"),
-    clearSession: z.boolean().optional().describe("Set true to reset and start fresh"),
-  }),
+    parameters: z.object({
+      thought: z.string().describe("Your current thinking step"),
+      nextThoughtNeeded: z.boolean().describe("Whether another thought step is needed"),
+      thoughtNumber: z.number().int().min(1).describe("Current thought number (e.g., 1, 2, 3)"),
+      totalThoughts: z
+        .number()
+        .int()
+        .min(1)
+        .describe("Estimated total thoughts needed (e.g., 5, 10)"),
+      sessionId: z
+        .string()
+        .optional()
+        .describe("Pass existing session ID to continue, or omit for new session"),
+      isRevision: z.boolean().optional().describe("Whether this revises previous thinking"),
+      revisesThought: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe("Which thought number is being reconsidered"),
+      branchFromThought: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe("Branching point thought number"),
+      branchId: z.string().optional().describe("Branch identifier"),
+      needsMoreThoughts: z.boolean().optional().describe("If more thoughts are needed"),
+      clearSession: z.boolean().optional().describe("Set true to reset and start fresh"),
+    }),
 
-  outputSchema: z.object({
-    sessionId: z.string().describe("Session ID for next call"),
-    thoughtNumber: z.number(),
-    totalThoughts: z.number(),
-    nextThoughtNeeded: z.boolean(),
-    thoughtHistory: z
-      .array(
-        z.object({
-          thoughtNumber: z.number(),
-          thought: z.string(),
-          isRevision: z.boolean().optional(),
-        })
-      )
-      .describe("Full thought history for context"),
-    branches: z.array(z.string()).describe("Active branch IDs"),
-    thoughtHistoryLength: z.number().describe("Total thoughts in session"),
-    summary: z.string().optional().describe("Optional summary of thinking so far"),
-  }),
-}).server(async args => {
-  // Clear session if requested
-  if (args.clearSession && args.sessionId) {
-    sessions.delete(args.sessionId);
-  }
+    execute: async args => {
+      const requestedSessionId = options.sessionId ?? args.sessionId;
 
-  // Get or create session
-  let sessionId = args.sessionId;
-  let session: Session;
+      // Clear session if requested
+      if (args.clearSession && requestedSessionId) {
+        sessions.delete(requestedSessionId);
+      }
 
-  if (sessionId && sessions.has(sessionId)) {
-    session = sessions.get(sessionId)!;
-  } else {
-    sessionId = crypto.randomUUID();
-    session = {
-      id: sessionId,
-      createdAt: Date.now(),
-      thoughts: [],
-      branches: new Set(),
-    };
-    sessions.set(sessionId, session);
-  }
+      // Get or create session
+      let sessionId = requestedSessionId;
+      let session: Session;
 
-  // Track branches
-  if (args.branchId && !session.branches.has(args.branchId)) {
-    session.branches.add(args.branchId);
-  }
+      if (sessionId && sessions.has(sessionId)) {
+        session = sessions.get(sessionId)!;
+      } else {
+        sessionId = crypto.randomUUID();
+        session = {
+          id: sessionId,
+          createdAt: Date.now(),
+          thoughts: [],
+          branches: new Set(),
+        };
+        sessions.set(sessionId, session);
+      }
 
-  // Add thought to history
-  const thoughtEntry: ThoughtEntry = {
-    thoughtNumber: args.thoughtNumber,
-    thought: args.thought,
-    totalThoughts: args.totalThoughts,
-    nextThoughtNeeded: args.nextThoughtNeeded,
-    isRevision: args.isRevision,
-    revisesThought: args.revisesThought,
-    branchFromThought: args.branchFromThought,
-    branchId: args.branchId,
-    needsMoreThoughts: args.needsMoreThoughts,
-    timestamp: Date.now(),
-  };
-  session.thoughts.push(thoughtEntry);
+      // Track branches
+      if (args.branchId && !session.branches.has(args.branchId)) {
+        session.branches.add(args.branchId);
+      }
 
-  // Generate summary if session is complete
-  let summary: string | undefined;
-  if (!args.nextThoughtNeeded) {
-    summary = `Sequential thinking complete: ${session.thoughts.length} thoughts processed across ${session.branches.size} branches.`;
-  }
+      // Add thought to history
+      const thoughtEntry: ThoughtEntry = {
+        thoughtNumber: args.thoughtNumber,
+        thought: args.thought,
+        totalThoughts: args.totalThoughts,
+        nextThoughtNeeded: args.nextThoughtNeeded,
+        isRevision: args.isRevision,
+        revisesThought: args.revisesThought,
+        branchFromThought: args.branchFromThought,
+        branchId: args.branchId,
+        needsMoreThoughts: args.needsMoreThoughts,
+        timestamp: Date.now(),
+      };
+      session.thoughts.push(thoughtEntry);
 
-  // Return session state + history for LLM context
-  return {
-    sessionId,
-    thoughtNumber: args.thoughtNumber,
-    totalThoughts: args.totalThoughts,
-    nextThoughtNeeded: args.nextThoughtNeeded,
-    thoughtHistory: session.thoughts.map(t => ({
-      thoughtNumber: t.thoughtNumber,
-      thought: t.thought,
-      isRevision: t.isRevision,
-    })),
-    branches: Array.from(session.branches),
-    thoughtHistoryLength: session.thoughts.length,
-    summary,
-  };
-});
+      // Generate summary if session is complete
+      let summary: string | undefined;
+      if (!args.nextThoughtNeeded) {
+        summary = `Sequential thinking complete: ${session.thoughts.length} thoughts processed across ${session.branches.size} branches.`;
+      }
+
+      // Return session state + history for LLM context
+      return sequentialThinkingOutputSchema.parse({
+        sessionId,
+        thoughtNumber: args.thoughtNumber,
+        totalThoughts: args.totalThoughts,
+        nextThoughtNeeded: args.nextThoughtNeeded,
+        thoughtHistory: session.thoughts.map(t => ({
+          thoughtNumber: t.thoughtNumber,
+          thought: t.thought,
+          isRevision: t.isRevision,
+        })),
+        branches: Array.from(session.branches),
+        thoughtHistoryLength: session.thoughts.length,
+        summary,
+      });
+    },
+  });
+
+export const sequentialThinking = createSequentialThinkingTool();
 
 // ============================================================================
 // CLEANUP UTILITIES
@@ -311,72 +316,68 @@ export function getAllSessions(): Map<string, Session> {
 ### Example 1: XState Plan Agent (Design Phase)
 
 ```typescript
-import { sequentialThinking } from "./tools/sequential-thinking";
-import { chat } from "@tanstack/ai";
-import { openaiText } from "@tanstack/ai-openai";
+import { generateText } from "ai";
+import type { CoreMessage } from "ai";
+import type { CoreMessage } from "ai";
+import { createZai } from "@ai-sdk/zai";
+import { createToolLoopAgent } from "./agents/tool-loop-agent";
+import { createSequentialThinkingTool } from "./tools/sequential-thinking";
+
+const zai = createZai({ apiKey: process.env.ZAI_API_KEY });
+const sequentialThinking = createSequentialThinkingTool();
 
 // XState context
 interface PlanAgentContext {
   sessionId?: string;
-  messages: ModelMessage[];
+  messages: CoreMessage[];
   phase: "analyze_code" | "research" | "design";
 }
 
 // Design phase state
 const designPhase = {
   invoke: {
-    src: (ctx: PlanAgentContext) =>
-      chat({
-        model: openaiText({ model: "claude-sonnet-4" }),
-        tools: [sequentialThinking /* ...other tools */],
+    src: async (ctx: PlanAgentContext) => {
+      const result = await generateText({
+        model: zai("glm-4.7"),
+        tools: { sequentialthinking: sequentialThinking /* ...other tools */ },
         messages: ctx.messages,
-        agentLoopStrategy: designStrategy, // 20 iterations max
+        maxSteps: 20,
+      });
 
-        // Capture sessionId from first tool result
-        onToolResult: ({ toolCall, result }) => {
-          if (toolCall.function.name === "sequentialthinking") {
-            ctx.sessionId = result.sessionId;
-          }
-        },
-      }),
+      const toolSessionId = result.toolResults?.find(
+        item => item.toolName === "sequentialthinking"
+      )?.result?.sessionId;
+      ctx.sessionId = toolSessionId ?? ctx.sessionId;
+
+      return result;
+    },
     onDone: "transition_to_build",
     onError: "handle_error",
   },
-};
-
-// Design strategy - 20 iterations for sequential thinking
-const designStrategy: AgentLoopStrategy = ({ iterationCount, messages, finishReason }) => {
-  if (iterationCount >= 20) return false;
-
-  const lastMessage = messages[messages.length - 1];
-  const hasSequentialThinking = lastMessage?.toolCalls?.some(
-    call => call.function.name === "sequentialthinking"
-  );
-
-  // Continue if agent is using sequential thinking
-  if (hasSequentialThinking) {
-    return finishReason === "tool_calls" || finishReason === null;
-  }
-
-  return iterationCount < 1;
 };
 ```
 
 ### Example 2: Explore Sub-Agent (Independent Session)
 
 ```typescript
+import { generateText } from "ai";
+import { createZai } from "@ai-sdk/zai";
+import { createSequentialThinkingTool } from "./tools/sequential-thinking";
+
+const zai = createZai({ apiKey: process.env.ZAI_API_KEY });
+
 // Sub-agent creates its own session, no parent context needed
 const exploreAgent = async (query: string) => {
-  return await chat({
-    model: openaiText({ model: "claude-sonnet-4" }),
-    tools: [
-      sequentialThinking, // Gets its own sessionId
-      codeSearch,
+  return await generateText({
+    model: zai("glm-4.7"),
+    tools: {
+      sequentialthinking: createSequentialThinkingTool(), // Gets its own sessionId
+      code_search: codeSearch,
       grep,
-      readFile,
-    ],
+      file_read: readFile,
+    },
     messages: [{ role: "user", content: `Analyze: ${query}` }],
-    agentLoopStrategy: singleShot, // Or custom strategy
+    maxSteps: 5,
   });
 
   // No sessionId tracking needed - agent owns it
@@ -386,31 +387,50 @@ const exploreAgent = async (query: string) => {
 ### Example 3: External Agent (Non-XState)
 
 ```typescript
+import { generateText } from "ai";
+import { createZai } from "@ai-sdk/zai";
+import { createSequentialThinkingTool } from "./tools/sequential-thinking";
+
+const zai = createZai({ apiKey: process.env.ZAI_API_KEY });
+
 // Works with ANY agent system, no XState dependency
 class MyCustomAgent {
   private sessionId?: string;
 
   async think(problem: string) {
-    const result = await this.chat({
-      tools: [sequentialThinking],
+    const result = await generateText({
+      model: zai("glm-4.7"),
+      tools: {
+        sequentialthinking: createSequentialThinkingTool({ sessionId: this.sessionId }),
+      },
       messages: [{ role: "user", content: problem }],
+      maxSteps: 10,
     });
 
-    // Track sessionId across calls
-    if (result.sessionId) {
-      this.sessionId = result.sessionId;
-    }
+    const toolSessionId = result.toolResults?.find(
+      item => item.toolName === "sequentialthinking"
+    )?.result?.sessionId;
+    this.sessionId = toolSessionId ?? this.sessionId;
 
-    return result;
+    return result.text;
   }
 
   async continueThinking(thought: string) {
-    return await this.chat({
-      tools: [sequentialThinking],
+    const result = await generateText({
+      model: zai("glm-4.7"),
+      tools: {
+        sequentialthinking: createSequentialThinkingTool({ sessionId: this.sessionId }),
+      },
       messages: [{ role: "user", content: thought }],
-      // Pass sessionId to continue session
-      toolContext: { sessionId: this.sessionId },
+      maxSteps: 10,
     });
+
+    const toolSessionId = result.toolResults?.find(
+      item => item.toolName === "sequentialthinking"
+    )?.result?.sessionId;
+    this.sessionId = toolSessionId ?? this.sessionId;
+
+    return result.text;
   }
 }
 ```
@@ -418,20 +438,40 @@ class MyCustomAgent {
 ### Example 4: Multi-Agent System
 
 ```typescript
+import { createZai } from "@ai-sdk/zai";
+import { createSequentialThinkingTool } from "./tools/sequential-thinking";
+
+const zai = createZai({ apiKey: process.env.ZAI_API_KEY });
+
 // Multiple agents, each with own session
 const agents = {
-  architect: createAgent("architect"), // Own sessionId
-  planner: createAgent("planner"), // Own sessionId
-  validator: createAgent("validator"), // Own sessionId
+  architect: createToolLoopAgent({
+    name: "architect",
+    model: zai("glm-4.7"),
+    tools: { sequentialthinking: createSequentialThinkingTool() },
+    maxSteps: 10,
+  }),
+  planner: createToolLoopAgent({
+    name: "planner",
+    model: zai("glm-4.7"),
+    tools: { sequentialthinking: createSequentialThinkingTool() },
+    maxSteps: 10,
+  }),
+  validator: createToolLoopAgent({
+    name: "validator",
+    model: zai("glm-4.7"),
+    tools: { sequentialthinking: createSequentialThinkingTool() },
+    maxSteps: 10,
+  }),
 
   // Sessions don't interfere - complete isolation
 };
 
 // Each agent uses sequentialThinking independently
 await Promise.all([
-  agents.architect.run("Design API..."),
-  agents.planner.run("Plan tasks..."),
-  agents.validator.run("Review PR..."),
+  agents.architect.run({ messages: [{ role: "user", content: "Design API..." }] }),
+  agents.planner.run({ messages: [{ role: "user", content: "Plan tasks..." }] }),
+  agents.validator.run({ messages: [{ role: "user", content: "Review PR..." }] }),
 ]);
 ```
 
@@ -439,53 +479,40 @@ await Promise.all([
 
 ## Integration with Agent Loops
 
-### Phase-Specific Loop Strategies
+### Phase-Specific Loop Settings (AI SDK v6)
 
 ```typescript
-// Design phase: 20 iterations for sequential thinking
-const designStrategy: AgentLoopStrategy = ({ iterationCount, messages, finishReason }) => {
-  if (iterationCount >= 20) return false;
+// Design phase: allow up to 20 tool steps
+const designPhase = { maxSteps: 20 };
 
-  const lastMessage = messages[messages.length - 1];
-  const hasSequentialThinking = lastMessage?.toolCalls?.some(
-    call => call.function.name === "sequentialthinking"
-  );
+// Research phase: allow up to 15 tool steps
+const researchPhase = { maxSteps: 15 };
 
-  if (hasSequentialThinking) {
-    return finishReason === "tool_calls" || finishReason === null;
-  }
+// Analyze code: single-shot
+const singleShot = { maxSteps: 1 };
 
-  return iterationCount < 1;
-};
-
-// Research phase: 15 iterations (webSearch, docsLookup, sequentialThinking)
-const researchStrategy: AgentLoopStrategy = ({ iterationCount, messages, finishReason }) => {
-  if (iterationCount >= 15) return false;
-
-  const lastMessage = messages[messages.length - 1];
-  const hasResearchTools = lastMessage?.toolCalls?.some(call =>
-    ["webSearch", "docsLookup", "gitLog", "sequentialthinking"].includes(call.function.name)
-  );
-
-  if (hasResearchTools) {
-    return finishReason === "tool_calls" || finishReason === null;
-  }
-
-  return iterationCount < 1;
-};
-
-// Analyze code: Single shot (just spawns explore agent)
-const singleShot: AgentLoopStrategy = () => false;
+await generateText({
+  model: zai("glm-4.7"),
+  tools: { sequentialthinking: sequentialThinking },
+  messages,
+  maxSteps: designPhase.maxSteps,
+});
 ```
 
 ### XState Integration Pattern
 
 ```typescript
+import { generateText } from "ai";
+import type { CoreMessage } from "ai";
+import { createZai } from "@ai-sdk/zai";
+
+const zai = createZai({ apiKey: process.env.ZAI_API_KEY });
+
 const planAgentMachine = setup({
   types: {
     context: {} as {
       sessionId?: string;
-      messages: ModelMessage[];
+      messages: CoreMessage[];
       phase: PlanPhase;
     },
     events: {} as
@@ -494,11 +521,11 @@ const planAgentMachine = setup({
       | { type: "analyze.complete" },
   },
   actors: {
-    runDesignPhase: fromPromise(async () => {
-      return await chat({
-        model: openaiText({ model: "claude-sonnet-4" }),
-        tools: [sequentialThinking],
-        agentLoopStrategy: designStrategy,
+    runDesignPhase: fromPromise(async ({ input: ctx }) => {
+      return await generateText({
+        model: zai("glm-4.7"),
+        tools: { sequentialthinking: sequentialThinking },
+        maxSteps: 20,
         messages: ctx.messages,
       });
     }),
@@ -694,39 +721,30 @@ describe("sequentialThinking tool", () => {
 
 ```typescript
 import { describe, it, expect } from "vitest";
-import { chat } from "@tanstack/ai";
-import { openaiText } from "@tanstack/ai-openai";
+import { generateText } from "ai";
+import { createZai } from "@ai-sdk/zai";
 import { sequentialThinking } from "./sequential-thinking";
 
 describe("sequentialThinking in agent loop", () => {
   it("completes multi-turn reasoning", async () => {
-    const messages: ModelMessage[] = [
+    const zai = createZai({ apiKey: process.env.ZAI_API_KEY });
+    const messages: CoreMessage[] = [
       {
         role: "user",
         content: "Design a REST API for user management",
       },
     ];
 
-    const stream = chat({
-      model: openaiText({ model: "claude-sonnet-4" }),
-      tools: [sequentialThinking],
+    const result = await generateText({
+      model: zai("glm-4.7"),
+      tools: { sequentialthinking: sequentialThinking },
       messages,
-      agentLoopStrategy: designStrategy, // 20 iterations max
+      maxSteps: 20,
     });
 
-    let sessionId: string | undefined;
-    for await (const chunk of stream) {
-      if (chunk.type === "tool_result" && chunk.toolName === "sequentialthinking") {
-        if (!sessionId) {
-          sessionId = chunk.result.sessionId;
-        } else {
-          expect(chunk.result.sessionId).toBe(sessionId);
-        }
-      }
-      if (chunk.type === "done") {
-        expect(chunk.finishReason).toBe("stop");
-      }
-    }
+    const sessionId = result.toolResults?.find(
+      item => item.toolName === "sequentialthinking"
+    )?.result?.sessionId;
 
     expect(sessionId).toBeDefined();
   });
@@ -737,13 +755,13 @@ describe("sequentialThinking in agent loop", () => {
 
 ## Migration from MCP
 
-### MCP vs Native TanStack AI
+### MCP vs Native AI SDK v6
 
 | Aspect           | MCP Server                     | Native Tool                 |
 | ---------------- | ------------------------------ | --------------------------- |
 | **Transport**    | stdio (separate process)       | Direct function call        |
 | **State**        | SequentialThinkingServer class | Session store Map           |
-| **Registration** | `server.registerTool()`        | `toolDefinition().server()` |
+| **Registration** | `server.registerTool()`        | `tool({ description, parameters, execute })` |
 | **Response**     | `CallToolResult` + JSON parse  | Plain typed return          |
 | **Pluggability** | MCP client required            | Works anywhere              |
 
@@ -778,23 +796,21 @@ server.registerTool(
 ### Native Tool (After)
 
 ```typescript
-// Native TanStack AI tool - in-process
-import { toolDefinition } from "@tanstack/ai";
+// Native AI SDK v6 tool - in-process
+import { tool } from "ai";
 import { z } from "zod";
 
-export const sequentialThinking = toolDefinition({
-  name: "sequentialthinking",
-  inputSchema: z.object({
+export const sequentialThinking = tool({
+  description: "Sequential thinking tool",
+  parameters: z.object({
     /* ... */
   }),
-  outputSchema: z.object({
-    /* ... */
-  }),
-}).server(async args => {
+  execute: async args => {
   // Session-based state management
   const sessionId = args.sessionId ?? crypto.randomUUID();
   // ... process thought
   return { sessionId, thoughtHistory /* ... */ };
+  },
 });
 ```
 

@@ -296,6 +296,7 @@ describe("convert-to-zai-chat-messages", () => {
             {
               type: "tool-result",
               toolCallId: "call_123",
+              toolName: "get_weather",
               output: { type: "text", value: "Temperature: 25°C" },
             },
           ],
@@ -320,6 +321,7 @@ describe("convert-to-zai-chat-messages", () => {
             {
               type: "tool-result",
               toolCallId: "call_123",
+              toolName: "get_weather",
               output: { type: "json", value: { temp: 25, city: "Beijing" } },
             },
           ],
@@ -340,6 +342,7 @@ describe("convert-to-zai-chat-messages", () => {
             {
               type: "tool-result",
               toolCallId: "call_123",
+              toolName: "get_weather",
               output: { type: "error-text", value: "API error occurred" },
             },
           ],
@@ -360,6 +363,7 @@ describe("convert-to-zai-chat-messages", () => {
             {
               type: "tool-result",
               toolCallId: "call_123",
+              toolName: "get_weather",
               output: { type: "error-json", value: { error: "Not found" } },
             },
           ],
@@ -380,6 +384,7 @@ describe("convert-to-zai-chat-messages", () => {
             {
               type: "tool-result",
               toolCallId: "call_123",
+              toolName: "get_weather",
               output: {
                 type: "execution-denied",
                 reason: "User denied tool execution",
@@ -403,6 +408,7 @@ describe("convert-to-zai-chat-messages", () => {
             {
               type: "tool-result",
               toolCallId: "call_123",
+              toolName: "get_weather",
               output: {
                 type: "content",
                 value: [{ type: "text", text: "Mixed content" }],
@@ -423,10 +429,11 @@ describe("convert-to-zai-chat-messages", () => {
         {
           role: "tool",
           content: [
-            { type: "tool-approval-response", toolCallId: "call_123", result: "yes" },
+            { type: "tool-approval-response", approvalId: "approval_123", approved: true },
             {
               type: "tool-result",
               toolCallId: "call_123",
+              toolName: "get_weather",
               output: { type: "text", value: "Success" },
             },
           ],
@@ -448,11 +455,13 @@ describe("convert-to-zai-chat-messages", () => {
             {
               type: "tool-result",
               toolCallId: "call_123",
+              toolName: "get_weather",
               output: { type: "text", value: "Result 1" },
             },
             {
               type: "tool-result",
               toolCallId: "call_456",
+              toolName: "get_time",
               output: { type: "json", value: { data: "Result 2" } },
             },
           ],
@@ -507,6 +516,7 @@ describe("convert-to-zai-chat-messages", () => {
             {
               type: "tool-result",
               toolCallId: "call_123",
+              toolName: "get_weather",
               output: { type: "text", value: "25°C, sunny" },
             },
           ],

@@ -267,6 +267,38 @@ describe("zai-chat-api", () => {
     });
   });
 
+  describe("ZaiChatResponse web_search tolerance", () => {
+    it("should accept web_search results with missing fields", () => {
+      const response = {
+        id: "chatcmpl-123",
+        created: 1234567890,
+        model: "glm-4.7",
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: "Done",
+            },
+            finish_reason: "stop",
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 5,
+          total_tokens: 15,
+        },
+        web_search: [
+          {
+            link: "https://example.com",
+          },
+        ],
+      };
+
+      expect(() => zaiChatResponseSchema.parse(response)).not.toThrow();
+    });
+  });
+
   describe("Schema Validation", () => {
     it("should validate ZaiChatRequest schema", () => {
       const request = {

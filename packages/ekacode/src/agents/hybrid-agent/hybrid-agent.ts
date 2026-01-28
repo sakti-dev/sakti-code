@@ -76,11 +76,12 @@ export class HybridAgent implements LanguageModelV3 {
     }
 
     // Classify intent
-    const intent = await this.intentClassifier.classify(options.prompt);
+    const { intent, promptParams } = await this.intentClassifier.classifyWithParams(options.prompt);
+    const resolvedIntent = { ...intent, promptParams };
 
     // Run vision analysis (non-streaming)
     const visionText = await this.runVisionNonStreaming({
-      intent,
+      intent: resolvedIntent,
       images,
       userText,
     });
@@ -113,12 +114,13 @@ export class HybridAgent implements LanguageModelV3 {
     }
 
     // Classify intent
-    const intent = await this.intentClassifier.classify(options.prompt);
+    const { intent, promptParams } = await this.intentClassifier.classifyWithParams(options.prompt);
+    const resolvedIntent = { ...intent, promptParams };
 
     // Stream with vision analysis
     return this.streamHybrid({
       options,
-      intent,
+      intent: resolvedIntent,
       images,
       userText,
     });
@@ -144,15 +146,12 @@ export class HybridAgent implements LanguageModelV3 {
       return extractTextFromContent(result.content);
     } else {
       // Per-image: separate calls
-      const results: string[] = [];
-      for (let i = 0; i < images.length; i++) {
-        const result = await this.visionRequestHandler.execute({
-          intent,
-          images: [images[i]],
-          userText,
-        });
-        results.push(`Image ${i + 1}:\n${result}`);
-      }
+      const requests = images.map(image => ({
+        intent,
+        images: [image],
+        userText,
+      }));
+      const results = await this.visionRequestHandler.executePerImage(requests, 3);
       return results.join("\n\n---\n\n");
     }
   }
@@ -166,12 +165,14 @@ export class HybridAgent implements LanguageModelV3 {
     images: { id: string; data: string | Uint8Array; mediaType: string }[];
     userText: string;
   }): Promise<LanguageModelV3StreamResult> {
-    const { options, images, userText } = request;
+    const { options, images, userText, intent } = request;
 
     // Capture instance variables for use in stream callback
     const visionModel = this.visionModel;
     const textModel = this.textModel;
     const promptRegistry = this.promptRegistry;
+    const visionRequestHandler = this.visionRequestHandler;
+    const runVisionNonStreaming = this.runVisionNonStreaming.bind(this);
 
     // Create a transform stream for the hybrid response
     const stream = new ReadableStream<LanguageModelV3StreamPart>({
@@ -179,37 +180,64 @@ export class HybridAgent implements LanguageModelV3 {
         try {
           const visionBuffer: string[] = [];
           let isFirstVisionChunk = true;
+          let shouldEmitVisionComplete = false;
 
-          // 1) Stream vision analysis
-          const visionStreamResult = await visionModel.doStream({
-            prompt: buildMultiImageVisionPrompt(images, userText, promptRegistry),
-          });
+          const emitVisionDelta = (text: string) => {
+            const prefix = isFirstVisionChunk ? "[Vision] " : "";
+            isFirstVisionChunk = false;
+            visionBuffer.push(text);
+            controller.enqueue({
+              type: "text-delta",
+              id: "0",
+              delta: prefix + text,
+            });
+          };
 
-          // Emit vision analysis with prefix
-          controller.enqueue({
-            type: "text-delta",
-            id: "0",
-            delta: "\n\n[🔍 Vision Analysis]\n\n",
-          });
+          const strategy = selectVisionStrategy(intent, userText);
 
-          for await (const part of visionStreamResult.stream) {
-            if (part.type === "text-delta") {
-              const prefix = isFirstVisionChunk ? "" : "";
-              isFirstVisionChunk = false;
-              visionBuffer.push(part.delta);
-              controller.enqueue({
-                type: "text-delta",
-                id: "0",
-                delta: prefix + part.delta,
+          try {
+            if (strategy === "multi" && images.length > 1) {
+              // 1) Stream vision analysis (single call with all images)
+              const visionStreamResult = await visionModel.doStream({
+                prompt: buildMultiImageVisionPrompt(images, userText, promptRegistry),
               });
+
+              for await (const part of visionStreamResult.stream) {
+                if (part.type === "text-delta") {
+                  emitVisionDelta(part.delta);
+                }
+              }
+            } else {
+              // 1) Stream vision analysis per image
+              for (let i = 0; i < images.length; i++) {
+                emitVisionDelta(`Image ${i + 1}:\n`);
+                for await (const delta of visionRequestHandler.executeStream({
+                  intent,
+                  images: [images[i]],
+                  userText,
+                })) {
+                  emitVisionDelta(delta);
+                }
+                if (i < images.length - 1) {
+                  emitVisionDelta("\n\n---\n\n");
+                }
+              }
             }
+            shouldEmitVisionComplete = true;
+          } catch (_error) {
+            // Fall back to non-streaming vision analysis
+            const analysis = await runVisionNonStreaming({ intent, images, userText });
+            visionBuffer.length = 0;
+            visionBuffer.push(analysis);
           }
 
-          controller.enqueue({
-            type: "text-delta",
-            id: "0",
-            delta: "\n\n[✓ Vision Complete]\n\n",
-          });
+          if (shouldEmitVisionComplete) {
+            controller.enqueue({
+              type: "text-delta",
+              id: "0",
+              delta: "\n\n[Vision complete]\n\n",
+            });
+          }
 
           // 2) Inject full vision analysis and stream text model response
           const analysis = visionBuffer.join("");

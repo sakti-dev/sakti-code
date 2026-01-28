@@ -364,6 +364,42 @@ describe("map-zai-chat-response", () => {
       });
     });
 
+    it("should skip web_search entries without link", () => {
+      const response: ZaiChatResponse = {
+        id: "chatcmpl-123",
+        created: 1234567890,
+        model: "glm-4.7",
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: "Based on search results...",
+            },
+            finish_reason: "stop",
+          },
+        ],
+        usage: {
+          prompt_tokens: 100,
+          completion_tokens: 50,
+          total_tokens: 150,
+        },
+        web_search: [
+          {
+            title: "Missing link",
+          },
+        ],
+      };
+
+      const result = mapZaiChatResponse({ response, warnings: [] });
+
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0]).toEqual({
+        type: "text",
+        text: "Based on search results...",
+      });
+    });
+
     it("should map response with web_search and tool calls", () => {
       const response: ZaiChatResponse = {
         id: "chatcmpl-123",

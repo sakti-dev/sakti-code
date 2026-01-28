@@ -1,4 +1,4 @@
-# Z.ai Provider Implementation Plan
+# Z.ai Provider Implementation Plan (DONE)
 
 > Comprehensive implementation plan for `@ai-sdk/zai` - A Vercel AI SDK provider for Z.ai's GLM models
 

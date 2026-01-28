@@ -1,8 +1,8 @@
-# Better Context: Native TanStack AI Tool Implementation Plan
+# Better Context: Native AI SDK v6 Tool Implementation Plan (Z.ai-first)
 
 ## Overview
 
-**Goal**: Replicate btca's code search capabilities as a native TanStack AI tool that works with any LLM provider (not just OpenCode), enabling agents to search and understand library source code during execution.
+**Goal**: Replicate btca's code search capabilities as a native Vercel AI SDK v6 tool with Z.ai as the default provider (still provider-agnostic), enabling agents to search and understand library source code during execution.
 
 **Reference**: btca (https://btca.dev) - CLI tool that clones git repos and uses AI to answer questions about source code.
 
@@ -74,7 +74,7 @@
 | Aspect            | btca Approach       | Native Tool Approach           | Rationale                                 |
 | ----------------- | ------------------- | ------------------------------ | ----------------------------------------- |
 | **Sandboxing**    | Daytona SDK         | **None** (local fs only)       | Not needed; we control code execution     |
-| **AI Provider**   | OpenCode SDK only   | Any LLM adapter                | TanStack AI is provider-agnostic          |
+| **AI Provider**   | OpenCode SDK only   | Z.ai via AI SDK v6 (default)   | AI SDK v6 is provider-agnostic            |
 | **Instance Mgmt** | Port-based registry | **Session-based sub-agent**    | Simpler, supports follow-up questions     |
 | **Code Search**   | OpenCode tools      | **ts-morph AST + grep**        | Type-aware parsing for btca-style queries |
 | **Caching**       | Filesystem          | In-memory LRU + TTL            | Faster, automatic cleanup                 |
@@ -154,12 +154,12 @@ User: "What about error handling?"
 
 **Your use case**: btca-style code research where users want to understand **how to use** APIs.
 
-**Example Question**: "How do I use the `chat()` function?"
+**Example Question**: "How do I use `generateText()` in AI SDK v6?"
 
 | Parser Type                          | Can Answer  | Output                                                                                                                                                       |
 | ------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **typescript-estree** (parsing only) | ❌ Partial  | "Function `chat` takes parameter `adapter` of type `TextAdapter`"                                                                                            |
-| **ts-morph** (type-aware)            | ✅ Complete | "Function `chat` takes `adapter: TextAdapter` (use `openaiText()`), `model: string` (e.g., 'gpt-4o'), `messages: Message[]`. Returns `Promise<ChatResult>`." |
+| **typescript-estree** (parsing only) | ❌ Partial  | "Function `generateText` takes parameter `model` of type `LanguageModel`"                                                                                   |
+| **ts-morph** (type-aware)            | ✅ Complete | "Function `generateText` takes `model` (e.g., `zai('glm-4.7')`), `messages: Message[]`, and `tools`. Returns `Promise<GenerateTextResult>`."                 |
 
 ### Parser Comparison
 
@@ -248,17 +248,51 @@ pnpm add ts-morph
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+**AI SDK v6 note**: Tools are created with `tool({ description, parameters, execute })` and registered by name in the `tools` object (e.g., `tools: { ast_query: astQuery }`). We keep output validation inside `execute` when needed.
+
 ### Tool 1: ast_query (Universal AST Tool)
 
 **Key Design**: One flexible tool with `queryType` parameter instead of 10 separate tools.
 
 ```typescript
-export const astQuery = toolDefinition({
-  name: "ast_query",
+const astQueryOutputSchema = z.object({
+  results: z.array(
+    z.object({
+      name: z.string(),
+      kind: z.enum(["function", "class", "interface", "type", "variable"]),
+      location: z.object({ file: z.string(), line: z.number() }),
+
+      // For functions
+      signature: z.string().optional(),
+      parameters: z
+        .array(
+          z.object({
+            name: z.string(),
+            type: z.string(),
+            optional: z.boolean(),
+          })
+        )
+        .optional(),
+      returnType: z.string().optional(),
+
+      // For resolve_type
+      properties: z
+        .array(
+          z.object({
+            name: z.string(),
+            type: z.string(),
+          })
+        )
+        .optional(),
+    })
+  ),
+});
+
+export const astQuery = tool({
   description: `Query TypeScript AST to find and understand code structures.
   This single tool handles all AST operations through the queryType parameter.`,
 
-  inputSchema: z.object({
+  parameters: z.object({
     queryType: z.enum([
       "find_functions", // Find all functions
       "find_classes", // Find all classes
@@ -284,57 +318,33 @@ export const astQuery = toolDefinition({
     `),
   }),
 
-  outputSchema: z.object({
-    results: z.array(
-      z.object({
-        name: z.string(),
-        kind: z.enum(["function", "class", "interface", "type", "variable"]),
-        location: z.object({ file: z.string(), line: z.number() }),
+  execute: async args => {
+    const project = getOrCreateProject();
+    const repoPath = getRepoPath(); // From session context
 
-        // For functions
-        signature: z.string().optional(),
-        parameters: z
-          .array(
-            z.object({
-              name: z.string(),
-              type: z.string(),
-              optional: z.boolean(),
-            })
-          )
-          .optional(),
-        returnType: z.string().optional(),
+    let result;
+    switch (args.queryType) {
+      case "find_functions":
+        result = await findFunctions(project, repoPath, args.file);
+        break;
 
-        // For resolve_type
-        properties: z
-          .array(
-            z.object({
-              name: z.string(),
-              type: z.string(),
-            })
-          )
-          .optional(),
-      })
-    ),
-  }),
-}).server(async args => {
-  const project = getOrCreateProject();
-  const repoPath = getRepoPath(); // From session context
+      case "get_signature":
+        result = await getSignature(project, repoPath, args.target);
+        break;
 
-  switch (args.queryType) {
-    case "find_functions":
-      return await findFunctions(project, repoPath, args.file);
+      case "resolve_type":
+        result = await resolveType(project, repoPath, args.target);
+        break;
 
-    case "get_signature":
-      return await getSignature(project, repoPath, args.target);
+      case "get_references":
+        result = await getReferences(project, repoPath, args.target);
+        break;
 
-    case "resolve_type":
-      return await resolveType(project, repoPath, args.target);
+      // ... other cases
+    }
 
-    case "get_references":
-      return await getReferences(project, repoPath, args.target);
-
-    // ... other cases
-  }
+    return astQueryOutputSchema.parse(result);
+  },
 });
 ```
 
@@ -546,14 +556,23 @@ async function getReferences(project: Project, repoPath: string, symbolName: str
 ### Tool 2: grep_search (Fast Text Search)
 
 ```typescript
-export const grepSearch = toolDefinition({
-  name: "grep_search",
+const grepSearchOutputSchema = z.object({
+  matches: z.array(
+    z.object({
+      file: z.string(),
+      line: z.number(),
+      snippet: z.string(),
+    })
+  ),
+});
+
+export const grepSearch = tool({
   description: `Fast text search using ripgrep. Use this for:
   - Quick pattern matching (faster than AST for simple searches)
   - Searching many files at once
   - Finding text/regex patterns in code`,
 
-  inputSchema: z.object({
+  parameters: z.object({
     pattern: z.string().describe("Search pattern (supports regex)"),
     path: z.string().default(".").describe("Directory to search in"),
     filePattern: z.string().optional().describe('File filter (e.g., "*.ts")'),
@@ -561,75 +580,68 @@ export const grepSearch = toolDefinition({
     contextLines: z.number().default(2).describe("Lines of context"),
   }),
 
-  outputSchema: z.object({
-    matches: z.array(
-      z.object({
-        file: z.string(),
-        line: z.number(),
-        snippet: z.string(),
-      })
-    ),
-  }),
-}).server(async args => {
-  const repoPath = getRepoPath();
-  const searchPath = path.join(repoPath, args.path);
+  execute: async args => {
+    const repoPath = getRepoPath();
+    const searchPath = path.join(repoPath, args.path);
 
-  // Use ripgrep
-  const rgArgs = ["rg", "--json", "--no-config", "-C", String(args.contextLines)];
+    // Use ripgrep
+    const rgArgs = ["rg", "--json", "--no-config", "-C", String(args.contextLines)];
 
-  if (args.filePattern) {
-    rgArgs.push("-g", args.filePattern);
-  }
-  if (args.excludePattern) {
-    rgArgs.push("-g", `!${args.excludePattern}`);
-  }
+    if (args.filePattern) {
+      rgArgs.push("-g", args.filePattern);
+    }
+    if (args.excludePattern) {
+      rgArgs.push("-g", `!${args.excludePattern}`);
+    }
 
-  rgArgs.push(args.pattern, searchPath);
+    rgArgs.push(args.pattern, searchPath);
 
-  const results = await execRipgrep(rgArgs);
+    const results = await execRipgrep(rgArgs);
 
-  return { matches: results };
+    return grepSearchOutputSchema.parse({ matches: results });
+  },
 });
 ```
 
 ### Tool 3: file_read (Read File Contents)
 
 ```typescript
-export const fileRead = toolDefinition({
-  name: "file_read",
+const fileReadOutputSchema = z.object({
+  content: z.string(),
+  lineCount: z.number(),
+});
+
+export const fileRead = tool({
   description: `Read file contents. Use this to:
   - See full implementation of a function/class
   - Understand context around AST query results
   - Read specific files for detailed analysis`,
 
-  inputSchema: z.object({
+  parameters: z.object({
     path: z.string().describe("File path to read"),
     startLine: z.number().optional().describe("Start at line"),
     endLine: z.number().optional().describe("End at line"),
   }),
 
-  outputSchema: z.object({
-    content: z.string(),
-    lineCount: z.number(),
-  }),
-}).server(async args => {
-  const repoPath = getRepoPath();
-  const fullPath = path.join(repoPath, args.path);
+  execute: async args => {
+    const repoPath = getRepoPath();
+    const fullPath = path.join(repoPath, args.path);
 
-  let content = await fs.readFile(fullPath, "utf-8");
+    let content = await fs.readFile(fullPath, "utf-8");
 
-  // Handle line ranges
-  if (args.startLine || args.endLine) {
-    const lines = content.split("\n");
-    const start = args.startLine || 1;
-    const end = args.endLine || lines.length;
-    content = lines.slice(start - 1, end).join("\n");
-  }
+    // Handle line ranges
+    if (args.startLine || args.endLine) {
+      const lines = content.split("\n");
+      const start = args.startLine || 1;
+      const end = args.endLine || lines.length;
+      content = lines.slice(start - 1, end).join("\n");
+    }
 
-  return {
-    content,
-    lineCount: content.split("\n").length,
-  };
+    return fileReadOutputSchema.parse({
+      content,
+      lineCount: content.split("\n").length,
+    });
+  },
 });
 ```
 
@@ -687,11 +699,11 @@ const docSessions = new Map<string, DocSession>();
 ```json
 {
   "repos": {
-    "https://github.com/tanstack/tanstack#main::packages/ai": {
-      "url": "https://github.com/tanstack/tanstack",
+    "https://github.com/vercel/ai#main::packages/ai": {
+      "url": "https://github.com/vercel/ai",
       "ref": "main",
       "searchPath": "packages/ai",
-      "localPath": "/Users/me/.cache/search-docs/tanstack-ai-main",
+      "localPath": "/Users/me/.cache/search-docs/ai-sdk-main",
       "clonedAt": 1710000000000,
       "lastUpdated": 1710000000000,
       "commit": "abc123"
@@ -722,133 +734,138 @@ saveRepoCache(cache);
 ### 5.3 search_docs Tool Definition (REVISED)
 
 ```typescript
-export const searchDocs = toolDefinition({
-  name: "search_docs",
-  description: `Search and understand code from git repositories.
-  This tool clones a repository (if not cached) and provides a conversational
-  agent that can answer questions about the codebase using AST queries.
-
-  Use this when you need to:
-  - Understand how to use an API/function
-  - Find implementation details
-  - See type information and usage examples
-  - Research library internals`,
-
-  inputSchema: z.object({
-    // Session management
-    sessionId: z.string().optional().describe(`
-      Session ID for persisting cloned repos and conversation context.
-      Reuse the same sessionId for follow-up questions without re-cloning.
-    `),
-
-    // Resource selection
-    resource: z
-      .enum(["tanstack_ai", "react", "vue", "svelte", "custom"])
-      .describe('Pre-configured resource or "custom"'),
-
-    // Custom resource
-    customUrl: z.string().optional().describe('Git URL when resource="custom"'),
-    customBranch: z.string().default("main"),
-    searchPath: z.string().optional().describe("Subdirectory for sparse checkout"),
-
-    // The question/query
-    query: z.string().describe("Your question about the codebase"),
-
-    // Lifecycle
-    clearSession: z.boolean().default(false),
+const searchDocsOutputSchema = z.object({
+  sessionId: z.string(),
+  findings: z.string().describe("AI-generated answer to your question"),
+  evidence: z
+    .array(
+      z.object({
+        file: z.string(),
+        excerpt: z.string(),
+        relevance: z.string(),
+      })
+    )
+    .describe("Supporting code excerpts"),
+  cached: z.boolean(),
+  metadata: z.object({
+    repository: z.string(),
+    branch: z.string(),
+    commit: z.string().optional(),
   }),
+});
 
-  outputSchema: z.object({
-    sessionId: z.string(),
-    findings: z.string().describe("AI-generated answer to your question"),
-    evidence: z
-      .array(
-        z.object({
-          file: z.string(),
-          excerpt: z.string(),
-          relevance: z.string(),
-        })
-      )
-      .describe("Supporting code excerpts"),
-    cached: z.boolean(),
-    metadata: z.object({
-      repository: z.string(),
-      branch: z.string(),
-      commit: z.string().optional(),
+export const createSearchDocsTool = (options: { sessionId?: string } = {}) =>
+  tool({
+    description: `Search and understand code from git repositories.
+    This tool clones a repository (if not cached) and provides a conversational
+    agent that can answer questions about the codebase using AST queries.
+
+    Use this when you need to:
+    - Understand how to use an API/function
+    - Find implementation details
+    - See type information and usage examples
+    - Research library internals`,
+
+    parameters: z.object({
+      // Session management
+      sessionId: z.string().optional().describe(`
+        Session ID for persisting cloned repos and conversation context.
+        Reuse the same sessionId for follow-up questions without re-cloning.
+      `),
+
+      // Resource selection
+      resource: z
+        .enum(["ai_sdk", "zai_provider", "react", "vue", "svelte", "custom"])
+        .describe('Pre-configured resource or "custom"'),
+
+      // Custom resource
+      customUrl: z.string().optional().describe('Git URL when resource="custom"'),
+      customBranch: z.string().default("main"),
+      searchPath: z.string().optional().describe("Subdirectory for sparse checkout"),
+
+      // The question/query
+      query: z.string().describe("Your question about the codebase"),
+
+      // Lifecycle
+      clearSession: z.boolean().default(false),
     }),
-  }),
-}).server(async args => {
-  // Opportunistic cleanup to enforce TTL/LRU
-  cleanupSessions();
 
-  // 1. Get or create session
-  let sessionId = args.sessionId || crypto.randomUUID();
+    execute: async args => {
+      // Opportunistic cleanup to enforce TTL/LRU
+      cleanupSessions();
 
-  if (args.clearSession && docSessions.has(sessionId)) {
-    await clearSession(sessionId);
-    sessionId = crypto.randomUUID();
-  }
+      // 1. Get or create session
+      const requestedSessionId = options.sessionId ?? args.sessionId;
+      let sessionId = requestedSessionId || crypto.randomUUID();
 
-  const session = getSession(sessionId);
-  touchSession(sessionId);
+      if (args.clearSession && docSessions.has(sessionId)) {
+        await clearSession(sessionId);
+        sessionId = crypto.randomUUID();
+      }
 
-  // 2. Clone/update repo
-  const resourceConfig = resolveResource(args);
-  const resourceKey = buildResourceKey({
-    url: resourceConfig.url,
-    ref: resourceConfig.branch, // resolved branch/tag/commit
-    searchPath: resourceConfig.searchPath,
+      const session = getSession(sessionId);
+      touchSession(sessionId);
+
+      // 2. Clone/update repo
+      const resourceConfig = resolveResource(args);
+      const resourceKey = buildResourceKey({
+        url: resourceConfig.url,
+        ref: resourceConfig.branch, // resolved branch/tag/commit
+        searchPath: resourceConfig.searchPath,
+      });
+
+      let repo = session.repos.get(resourceKey);
+      if (!repo) {
+        const gitResult = await gitManager.clone({
+          url: resourceConfig.url,
+          branch: resourceConfig.branch,
+          searchPaths: resourceConfig.searchPath ? [resourceConfig.searchPath] : [],
+          depth: 1,
+          quiet: true,
+        });
+
+        if (!gitResult.success) {
+          throw new Error(
+            `Failed to clone: ${gitResult.error?.message}\nHint: ${gitResult.error?.hint}`
+          );
+        }
+
+        repo = {
+          resourceKey,
+          url: resourceConfig.url,
+          branch: resourceConfig.branch,
+          localPath: gitResult.path,
+          clonedAt: Date.now(),
+          lastUpdated: Date.now(),
+          searchPaths: resourceConfig.searchPath ? [resourceConfig.searchPath] : [],
+          metadata: { commit: gitResult.commit },
+        };
+
+        session.repos.set(resourceKey, repo);
+      }
+
+      // 3. Create or resume sub-agent
+      const subAgent = await getOrCreateSubAgent(session, repo);
+
+      // 4. Run query with sub-agent
+      const result = await subAgent.run(args.query);
+
+      // 5. Return structured findings
+      return searchDocsOutputSchema.parse({
+        sessionId,
+        findings: result.summary,
+        evidence: result.evidence,
+        cached: Date.now() - repo.clonedAt > 5000,
+        metadata: {
+          repository: resourceConfig.url,
+          branch: resourceConfig.branch,
+          commit: repo.metadata.commit,
+        },
+      });
+    },
   });
 
-  let repo = session.repos.get(resourceKey);
-  if (!repo) {
-    const gitResult = await gitManager.clone({
-      url: resourceConfig.url,
-      branch: resourceConfig.branch,
-      searchPaths: resourceConfig.searchPath ? [resourceConfig.searchPath] : [],
-      depth: 1,
-      quiet: true,
-    });
-
-    if (!gitResult.success) {
-      throw new Error(
-        `Failed to clone: ${gitResult.error?.message}\nHint: ${gitResult.error?.hint}`
-      );
-    }
-
-    repo = {
-      resourceKey,
-      url: resourceConfig.url,
-      branch: resourceConfig.branch,
-      localPath: gitResult.path,
-      clonedAt: Date.now(),
-      lastUpdated: Date.now(),
-      searchPaths: resourceConfig.searchPath ? [resourceConfig.searchPath] : [],
-      metadata: { commit: gitResult.commit },
-    };
-
-    session.repos.set(resourceKey, repo);
-  }
-
-  // 3. Create or resume sub-agent
-  const subAgent = await getOrCreateSubAgent(session, repo);
-
-  // 4. Run query with sub-agent
-  const result = await subAgent.run(args.query);
-
-  // 5. Return structured findings
-  return {
-    sessionId,
-    findings: result.summary,
-    evidence: result.evidence,
-    cached: Date.now() - repo.clonedAt > 5000,
-    metadata: {
-      repository: resourceConfig.url,
-      branch: resourceConfig.branch,
-      commit: repo.metadata.commit,
-    },
-  };
-});
+export const searchDocs = createSearchDocsTool();
 ```
 
 ```typescript
@@ -869,7 +886,7 @@ function buildResourceKey(input: {
 interface SubAgentSession {
   id: string;
   repo: ClonedRepo;
-  agent: any; // TanStack AI agent
+  agent: any; // AI SDK v6 tool-loop runner
   context: Message[];
 }
 
@@ -885,10 +902,16 @@ async function getOrCreateSubAgent(session: DocSession, repo: ClonedRepo): Promi
   // Create new sub-agent
   const agentId = crypto.randomUUID();
 
-  const agent = createAgent({
+  // createToolLoopAgent is a thin wrapper around generateText/streamText + maxSteps
+  const agent = createToolLoopAgent({
     name: "code_researcher",
-    tools: [astQuery, grepSearch, fileRead],
-    maxTurns: 10,
+    model: zai("glm-4.7"),
+    tools: {
+      ast_query: astQuery,
+      grep_search: grepSearch,
+      file_read: fileRead,
+    },
+    maxSteps: 10,
     system: `You are a code research specialist helping developers understand
     the TypeScript codebase at: ${repo.url} (branch: ${repo.branch})
 
@@ -940,29 +963,32 @@ async function getOrCreateSubAgent(session: DocSession, repo: ClonedRepo): Promi
 ### 6.1 Direct Usage
 
 ```typescript
-import { chat } from "@tanstack/ai";
-import { openaiText } from "@tanstack/ai-openai/adapters";
-import { searchDocs } from "./tools/search-docs";
+import { generateText } from "ai";
+import { createZai } from "@ai-sdk/zai";
+import { createSearchDocsTool } from "./tools/search-docs";
 
-const result = await chat({
-  adapter: openaiText(),
-  model: "gpt-4o",
+const zai = createZai({ apiKey: process.env.ZAI_API_KEY });
+
+const searchDocs = createSearchDocsTool();
+
+const result = await generateText({
+  model: zai("glm-4.7"),
   messages: [
     {
       role: "user",
-      content: "How do I implement a custom tool in TanStack AI?",
+      content: "How do I implement a custom tool in AI SDK v6?",
     },
   ],
-  tools: [searchDocs],
+  tools: { search_docs: searchDocs },
 });
 
 // First call clones repo, spawns sub-agent
-console.log(result); // "To implement a custom tool, use toolDefinition()..."
+console.log(result.text); // "To implement a tool, use tool(...)..."
 
 // Follow-up question (same session - no re-clone!)
-const followup = await chat({
-  adapter: openaiText(),
-  model: "gpt-4o",
+const searchDocsSessionId = result.toolResults?.[0]?.result?.sessionId;
+const followup = await generateText({
+  model: zai("glm-4.7"),
   messages: [
     ...result.messages,
     {
@@ -970,13 +996,12 @@ const followup = await chat({
       content: "What about the input schema?",
     },
   ],
-  tools: [searchDocs],
-  toolConfig: {
-    search_docs: { sessionId: result.sessionId }, // Reuse session
+  tools: {
+    search_docs: createSearchDocsTool({ sessionId: searchDocsSessionId }),
   },
 });
 
-console.log(followup); // "The inputSchema uses Zod..."
+console.log(followup.text); // "The input schema uses Zod..."
 ```
 
 ### 6.2 With XState Machine
@@ -992,7 +1017,7 @@ research: {
       invoke: {
         src: 'searchDocs',
         input: ({ context }) => ({
-          resource: 'tanstack_ai',
+          resource: 'ai_sdk',
           query: context.researchQuestion,
           sessionId: context.docSessionId,
         }),
@@ -1018,9 +1043,14 @@ research: {
 
 ```typescript
 // Main agent can delegate to search_docs
-const mainAgent = createAgent({
+const mainAgent = createToolLoopAgent({
   name: "assistant",
-  tools: [searchDocs, webSearch, filesystem],
+  model: zai("glm-4.7"),
+  tools: {
+    search_docs: searchDocs,
+    web_search: webSearch,
+    filesystem,
+  },
   system: `You are a helpful assistant. When asked questions about
   external libraries or frameworks, use search_docs to research them.`,
 });
@@ -1042,9 +1072,9 @@ const mainAgent = createAgent({
 describe("search_docs tool", () => {
   describe("session management", () => {
     it("should create new session when sessionId not provided", async () => {
-      const result = await searchDocs.server({
-        resource: "tanstack_ai",
-        query: "What is toolDefinition?",
+      const result = await searchDocs.execute({
+        resource: "ai_sdk",
+        query: "What is tool()?",
       });
 
       expect(result.sessionId).toBeDefined();
@@ -1052,16 +1082,16 @@ describe("search_docs tool", () => {
     });
 
     it("should support follow-up questions", async () => {
-      const first = await searchDocs.server({
-        resource: "tanstack_ai",
-        query: "What is toolDefinition?",
+      const first = await searchDocs.execute({
+        resource: "ai_sdk",
+        query: "What is tool()?",
       });
 
       const sessionId = first.sessionId;
 
-      const second = await searchDocs.server({
+      const second = await searchDocs.execute({
         sessionId,
-        resource: "tanstack_ai",
+        resource: "ai_sdk",
         query: "What about the output schema?",
       });
 
@@ -1072,7 +1102,7 @@ describe("search_docs tool", () => {
 
   describe("sub-agent tools", () => {
     it("should use ast_query for type-aware queries", async () => {
-      const result = await astQuery.server({
+      const result = await astQuery.execute({
         queryType: "resolve_type",
         target: "Tool",
       });
@@ -1082,7 +1112,7 @@ describe("search_docs tool", () => {
     });
 
     it("should use grep_search for quick pattern matching", async () => {
-      const result = await grepSearch.server({
+      const result = await grepSearch.execute({
         pattern: "export function",
         filePattern: "*.ts",
       });
@@ -1098,16 +1128,17 @@ describe("search_docs tool", () => {
 ```typescript
 describe("search_docs integration", () => {
   it("should answer practical questions about code", async () => {
-    const result = await chat({
-      adapter: openaiText(),
-      model: "gpt-4o",
+    const zai = createZai({ apiKey: process.env.ZAI_API_KEY });
+
+    const result = await generateText({
+      model: zai("glm-4.7"),
       messages: [
         {
           role: "user",
-          content: "How do I use the chat() function in TanStack AI? Show me the parameters.",
+          content: "How do I use generateText in AI SDK v6? Show me the parameters.",
         },
       ],
-      tools: [searchDocs],
+      tools: { search_docs: searchDocs },
     });
 
     // Should return structured answer with:
@@ -1340,58 +1371,43 @@ Instead of hard-coding discovery logic, we spawn a **Discovery & Research Agent 
 ### Tool Interface (Simplified)
 
 ```typescript
-export const searchDocs = toolDefinition({
-  name: "search_docs",
-  description: `Search and understand code from git repositories.
-  Provide a natural language description of what you want to know about which library.
+export const createSearchDocsTool = (options: { sessionId?: string } = {}) =>
+  tool({
+    description: `Search and understand code from git repositories.
+    Provide a natural language description of what you want to know about which library.
 
-  Examples:
-  - "How to use actor correctly in xstate version 4.38.3"
-  - "Explain React useEffect with TypeScript types"
-  - "Show me createMachine from XState v4"
-  - "What are the tool execution parameters in TanStack AI?"`,
+    Examples:
+    - "How to use actor correctly in xstate version 4.38.3"
+    - "How do I use @ai-sdk/zai with glm-4.7?"
+    - "Show me createMachine from XState v4"
+    - "What are the tool execution parameters in AI SDK v6?"`,
 
-  inputSchema: z.object({
-    query: z.string().describe(`
-      Natural language description including:
-      - Which library/package
-      - Which version (optional, defaults to latest)
-      - What you want to know
-    `),
+    parameters: z.object({
+      query: z.string().describe(`
+        Natural language description including:
+        - Which library/package
+        - Which version (optional, defaults to latest)
+        - What you want to know
+      `),
 
-    sessionId: z.string().optional().describe(`
-      Session ID for follow-up questions.
-      Reuse same sessionId to continue researching the same repository.
-    `),
+      sessionId: z.string().optional().describe(`
+        Session ID for follow-up questions.
+        Reuse same sessionId to continue researching the same repository.
+      `),
 
-    clearSession: z.boolean().default(false),
-  }),
-
-  outputSchema: z.object({
-    sessionId: z.string(),
-    findings: z.string(),
-    evidence: z.array(
-      z.object({
-        file: z.string(),
-        excerpt: z.string(),
-        relevance: z.string(),
-      })
-    ),
-    repository: z.object({
-      name: z.string(),
-      url: z.string(),
-      version: z.string(),
+      clearSession: z.boolean().default(false),
     }),
-  }),
-}).server(async args => {
-  // Spawn Discovery & Research Agent
-  const dra = await spawnDRA(args.sessionId);
 
-  // Agent follows workflow, returns findings
-  const result = await dra.run(args.query);
+    execute: async args => {
+      const sessionId = options.sessionId ?? args.sessionId;
 
-  return result;
-});
+      // Spawn Discovery & Research Agent
+      const dra = await spawnDRA(sessionId);
+
+      // Agent follows workflow, returns findings
+      return await dra.run(args.query);
+    },
+  });
 ```
 
 ### Discovery & Research Agent System Prompt
@@ -1408,7 +1424,7 @@ const DRASystemPrompt = `You are a Code Discovery and Research Agent. Your goal 
 
 ### Step 1: PARSE the user's request
 Extract:
-- Package/library name (handle: "xstate", "@tanstack/router", "React")
+- Package/library name (handle: "xstate", "@ai-sdk/zai", "React")
 - Version requirement (handle: "v4", "^4.0.0", "4.38.3", "latest", "main")
 - Research question (what they want to know)
 
@@ -1489,86 +1505,63 @@ Your workflow:
 
 ```typescript
 // Tool 1: Registry lookup
-export const registryLookup = toolDefinition({
-  name: "registry_lookup",
-  inputSchema: z.object({
+export const registryLookup = tool({
+  description: "Lookup a package in the local registry index.",
+  parameters: z.object({
     packageName: z.string(),
   }),
-  outputSchema: z.object({
-    found: z.boolean(),
-    url: z.string().optional(),
-    searchPath: z.string().optional(),
-    tagPrefix: z.string().optional(),
-  }),
-}).server(async ({ packageName }) => {
-  const result = db.query("SELECT url, search_path, tag_prefix FROM packages WHERE name = ?", [
-    packageName,
-  ]);
-  return result || { found: false };
+  execute: async ({ packageName }) => {
+    const result = db.query("SELECT url, search_path, tag_prefix FROM packages WHERE name = ?", [
+      packageName,
+    ]);
+    return result || { found: false };
+  },
 });
 
 // Tool 2: Git probe (validate URL, fetch tags)
-export const gitProbe = toolDefinition({
-  name: "git_probe",
-  inputSchema: z.object({
+export const gitProbe = tool({
+  description: "Validate a git URL and fetch tags/branches.",
+  parameters: z.object({
     url: z.string(),
   }),
-  outputSchema: z.object({
-    valid: z.boolean(),
-    tags: z.array(z.string()),
-    branches: z.array(z.string()),
-  }),
-}).server(async ({ url }) => {
-  try {
-    const tags = await execGit(["ls-remote", "--tags", "--sort=-v:refname", url]);
-    const branches = await execGit(["ls-remote", "--heads", url]);
-    return {
-      valid: true,
-      tags: parseRefs(tags),
-      branches: parseRefs(branches),
-    };
-  } catch {
-    return { valid: true, tags: [], branches: [] };
-  }
+  execute: async ({ url }) => {
+    try {
+      const tags = await execGit(["ls-remote", "--tags", "--sort=-v:refname", url]);
+      const branches = await execGit(["ls-remote", "--heads", url]);
+      return {
+        valid: true,
+        tags: parseRefs(tags),
+        branches: parseRefs(branches),
+      };
+    } catch {
+      return { valid: true, tags: [], branches: [] };
+    }
+  },
 });
 
 // Tool 3: Git clone (with version)
-export const gitClone = toolDefinition({
-  name: "git_clone",
-  inputSchema: z.object({
+export const gitClone = tool({
+  description: "Clone a repository at a specific version (tag/branch/commit).",
+  parameters: z.object({
     url: z.string(),
     version: z.string().default("main"),
     searchPath: z.string().optional(),
   }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    path: z.string(),
-    tag: z.string(),
-  }),
-}).server(async ({ url, version, searchPath }) => {
-  // Clone logic with sparse checkout support
-  // Returns local path for agent to research
+  execute: async ({ url, version, searchPath }) => {
+    // Clone logic with sparse checkout support
+    // Returns local path for agent to research
+  },
 });
 
 // Tool 4: Import map lookup
-export const importMapLookup = toolDefinition({
-  name: "import_map_lookup",
-  inputSchema: z.object({
+export const importMapLookup = tool({
+  description: "Lookup a package in the user's import map config.",
+  parameters: z.object({
     packageName: z.string(),
   }),
-  outputSchema: z.object({
-    found: z.boolean(),
-    config: z
-      .object({
-        url: z.string(),
-        branch: z.string().optional(),
-        tag: z.string().optional(),
-        searchPath: z.string().optional(),
-      })
-      .optional(),
-  }),
-}).server(async ({ packageName }) => {
-  // Load and check import map
+  execute: async ({ packageName }) => {
+    // Load and check import map
+  },
 });
 ```
 
@@ -1638,7 +1631,7 @@ CREATE TABLE packages (
   url TEXT NOT NULL,
   -- Monorepo support
   search_path TEXT,  -- e.g., "packages/react" for facebook/react
-  tag_prefix TEXT,   -- e.g., "packages/router@" for @tanstack/router
+  tag_prefix TEXT,   -- e.g., "packages/zai@" for @ai-sdk/zai
   -- Metadata
   language TEXT,     -- "typescript", "javascript", etc.
   is_monorepo BOOLEAN
@@ -1648,7 +1641,7 @@ CREATE TABLE packages (
 INSERT INTO packages VALUES
   ('xstate', 'https://github.com/statelyai/xstate', NULL, NULL, 'typescript', false),
   ('react', 'https://github.com/facebook/react', 'packages/react', NULL, 'typescript', true),
-  ('@tanstack/router', 'https://github.com/TanStack/router', 'packages/router', 'packages/router@', 'typescript', true);
+  ('@ai-sdk/zai', 'https://github.com/vercel/ai', 'packages/zai', 'packages/zai@', 'typescript', true);
 ```
 
 **Usage**:
@@ -1825,12 +1818,12 @@ function resolveMonorepoTag(
   return null;
 }
 
-// Example: @tanstack/router
-// tags: ["packages/router@1.0.0", "packages/router@1.1.0", "packages/query@5.0.0", ...]
-// tagPrefix: "packages/router@"
+// Example: @ai-sdk/zai
+// tags: ["packages/zai@0.1.0", "packages/zai@0.2.0", "packages/openai@0.3.0", ...]
+// tagPrefix: "packages/zai@"
 
-resolveMonorepoTag("@tanstack/router", "1.0", "packages/router@", tags);
-// → "packages/router@1.0.0"
+resolveMonorepoTag("@ai-sdk/zai", "0.2", "packages/zai@", tags);
+// → "packages/zai@0.2.0"
 ```
 
 ### 11.5 Tier 3: Import Map Configuration
@@ -2145,7 +2138,7 @@ pnpm add better-sqlite3
 
 - [ ] registry_lookup tool
   - [ ] SQLite/JSON storage
-  - [ ] Seed data (top packages: xstate, react, vue, @tanstack/\*)
+  - [ ] Seed data (top packages: xstate, react, vue, @ai-sdk/\*)
   - [ ] Query by package name
 - [ ] git_probe tool
   - [ ] git ls-remote wrapper
@@ -2249,7 +2242,7 @@ Main Agent receives answer with code examples
 The agent parses natural language and handles:
 
 - `"XState v4"` → pkg: xstate, version: v4.\*
-- `"that router thing"` → pkg: @tanstack/router (context inference)
+- `"that provider thing"` → pkg: @ai-sdk/zai (context inference)
 - `"React 18 hooks"` → pkg: react, version: 18, topic: hooks API
 
 ### Benefits Over Original Plan
@@ -2265,5 +2258,5 @@ The agent parses natural language and handles:
 
 1. Implement Phase 1 (Core Infrastructure)
 2. Implement Phase 2 (AST Query Tool with ts-morph)
-3. Test with TanStack AI repo
+3. Test with AI SDK repo (vercel/ai)
 4. Integrate into research phase of agent machine
