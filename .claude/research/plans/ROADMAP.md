@@ -10,7 +10,7 @@ Ordered by most applicable tasks. Each task includes a reference to the exact pl
 2) ✅ Build core Instance context system (AsyncLocalStorage context, Instance.provide, bootstrap, state, workspace detection).
    Ref: `new-architecture-plan.md:L185-L560`
 
-3) ⏳ Update core tools to respect Instance.directory (filesystem + shell + registry).
+3) ✅ Update core tools to respect Instance.directory (filesystem + shell + registry).
    Ref: `new-architecture-plan.md:L1389-L1715`
 
 4) ✅ Add server middleware + core routes (directory context, auth, error handling, chat + health + workspace endpoints, server wiring).
@@ -87,7 +87,7 @@ The implementation deviates from the original plan in the following ways:
 |-------|------|--------|
 | 1 | Storage + Session Bridge | ✅ Complete |
 | 2 | Core Instance Context | ✅ Complete |
-| 3 | Tools respect Instance.directory | ⏳ Pending |
+| 3 | Tools respect Instance.directory | ✅ Complete |
 | 4 | Server middleware + routes | ✅ Complete |
 | 5 | XState loop control | ✅ Complete |
 | 6 | XState actors | ✅ Complete |

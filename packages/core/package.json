@@ -29,6 +29,7 @@
     "jsdom": "^27.4.0",
     "tree-sitter": "^0.25.0",
     "tree-sitter-bash": "^0.25.1",
+    "ts-morph": "^27.0.2",
     "turndown": "^7.2.2",
     "uuid": "^13.0.0",
     "xstate": "^5.18.0",
