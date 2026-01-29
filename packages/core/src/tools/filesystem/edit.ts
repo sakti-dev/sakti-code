@@ -5,12 +5,10 @@
 import { createLogger } from "@ekacode/shared/logger";
 import { tool, zodSchema } from "ai";
 import fs from "node:fs/promises";
-import path from "node:path";
-import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
-import { Instance } from "../../instance";
 import { PermissionManager } from "../../security/permission-manager";
-import { assertExternalDirectory } from "../base/filesystem";
+import { getContextOrThrow } from "../base/context";
+import { validatePathOperation } from "../base/safety";
 
 const logger = createLogger("ekacode");
 
@@ -41,33 +39,19 @@ export const editTool = tool({
   ),
 
   execute: async ({ filePath, oldString, newString, replaceAll = false }, _options) => {
-    // Get context from Instance instead of experimental_context
-    const { directory, sessionID } = Instance.context;
+    // Get context with enhanced error message
+    const { directory, sessionID } = getContextOrThrow();
     const permissionMgr = PermissionManager.getInstance();
     const toolLogger = logger.child({ module: "tool:edit", tool: "edit", sessionID });
 
-    // Resolve path
-    const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(directory, filePath);
-    const relativePath = path.relative(directory, absolutePath);
-
-    await assertExternalDirectory(absolutePath, directory, async (perm, patterns) => {
-      return permissionMgr.requestApproval({
-        id: uuidv7(),
-        permission: perm,
-        patterns,
-        always: [],
-        sessionID,
-      });
-    });
-
-    // Check edit permission
-    await permissionMgr.requestApproval({
-      id: uuidv7(),
-      permission: "edit",
-      patterns: [relativePath],
-      always: [],
-      sessionID,
-    });
+    // Validate path operation and get safe paths
+    const { absolutePath, relativePath } = await validatePathOperation(
+      filePath,
+      directory,
+      "edit",
+      permissionMgr,
+      sessionID
+    );
 
     let content = await fs.readFile(absolutePath, "utf-8");
 

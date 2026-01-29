@@ -5,14 +5,13 @@
  */
 
 import { createLogger } from "@ekacode/shared/logger";
-import { createTool } from "@mastra/core/tools";
+import { tool, zodSchema } from "ai";
 import { spawn, type ChildProcess } from "node:child_process";
-import path from "node:path";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
-import { Instance } from "../../instance";
 import { PermissionManager } from "../../security/permission-manager";
-import { assertExternalDirectory } from "../base/filesystem";
+import { getContextOrThrow } from "../base/context";
+import { validatePathOperation } from "../base/safety";
 import { truncateOutput } from "../base/truncation";
 import { parseCommand } from "./parser";
 import { getAcceptableShell } from "./shell-selector";
@@ -20,10 +19,8 @@ import { getAcceptableShell } from "./shell-selector";
 const logger = createLogger("ekacode");
 
 const DEFAULT_TIMEOUT = 120000; // 2 minutes
-const MAX_METADATA_LENGTH = 30000;
 
-export const bashTool = createTool({
-  id: "bash",
+export const bashTool = tool({
   description: `Execute bash shell commands in the workspace.
 
 Supports common operations like git, npm, ls, cat, etc.
@@ -34,32 +31,48 @@ Supports common operations like git, npm, ls, cat, etc.
 - Output is truncated to 2000 lines / 50KB
 - Exit code 0 = success, non-zero = failure`,
 
-  inputSchema: z.object({
-    command: z.string().describe("The bash command to execute"),
-    timeout: z.number().optional().describe("Timeout in milliseconds (default: 120000)"),
-    workdir: z.string().optional().describe("Working directory (defaults to workspace root)"),
-    description: z
-      .string()
-      .describe("Clear, concise description of what this command does (5-10 words)"),
-  }),
+  inputSchema: zodSchema(
+    z.object({
+      command: z.string().describe("The bash command to execute"),
+      timeout: z.number().optional().describe("Timeout in milliseconds (default: 120000)"),
+      workdir: z.string().optional().describe("Working directory (defaults to workspace root)"),
+      description: z
+        .string()
+        .describe("Clear, concise description of what this command does (5-10 words)"),
+    })
+  ),
 
-  outputSchema: z.object({
-    content: z.string(),
-    metadata: z.object({
-      exitCode: z.number(),
-      truncated: z.boolean().optional(),
-      lineCount: z.number().optional(),
-      description: z.string(),
-    }),
-  }),
+  outputSchema: zodSchema(
+    z.object({
+      content: z.string(),
+      metadata: z.object({
+        exitCode: z.number(),
+        truncated: z.boolean().optional(),
+        lineCount: z.number().optional(),
+        description: z.string(),
+      }),
+    })
+  ),
 
-  execute: async ({ command, timeout = DEFAULT_TIMEOUT, workdir, description }, context) => {
-    const { directory, sessionID } = Instance.context;
+  execute: async ({ command, timeout = DEFAULT_TIMEOUT, workdir, description }, _options) => {
+    // Get context with enhanced error message
+    const { directory, sessionID } = getContextOrThrow();
     const permissionMgr = PermissionManager.getInstance();
     const toolLogger = logger.child({ module: "tool:bash", sessionID });
 
     // Resolve working directory
-    const cwd = workdir || directory;
+    let cwd = workdir || directory;
+    if (workdir) {
+      const { absolutePath } = await validatePathOperation(
+        workdir,
+        directory,
+        "read",
+        permissionMgr,
+        sessionID,
+        { always: ["*"] }
+      );
+      cwd = absolutePath;
+    }
 
     // Validate timeout
     if (timeout < 0) {
@@ -68,7 +81,7 @@ Supports common operations like git, npm, ls, cat, etc.
 
     toolLogger.debug("Executing bash command", {
       command,
-      cwd: path.relative(directory, cwd),
+      cwd,
       timeout,
     });
 
@@ -77,14 +90,8 @@ Supports common operations like git, npm, ls, cat, etc.
 
     // Request external directory permission if needed
     for (const dir of directories) {
-      await assertExternalDirectory(dir, directory, async (perm, patterns) => {
-        return permissionMgr.requestApproval({
-          id: uuidv7(),
-          permission: perm,
-          patterns,
-          always: [],
-          sessionID,
-        });
+      await validatePathOperation(dir, directory, "read", permissionMgr, sessionID, {
+        always: ["*"],
       });
     }
 
@@ -120,29 +127,9 @@ Supports common operations like git, npm, ls, cat, etc.
 
     let output = "";
 
-    // Stream metadata updates
-    const streamMetadata = async (partialOutput: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const writer = (context as any)?.writer;
-      if (writer?.write) {
-        await writer.write({
-          type: "custom-event",
-          status: "executing",
-          output:
-            partialOutput.length > MAX_METADATA_LENGTH
-              ? partialOutput.slice(0, MAX_METADATA_LENGTH) + "\n\n..."
-              : partialOutput,
-          description,
-        });
-      }
-    };
-
-    await streamMetadata("");
-
     const append = (chunk: Buffer) => {
       const text = chunk.toString();
       output += text;
-      streamMetadata(output);
     };
 
     proc.stdout?.on("data", append);
@@ -198,18 +185,6 @@ Supports common operations like git, npm, ls, cat, etc.
 
     // Truncate output if needed
     const { content: finalContent, truncated, lineCount } = await truncateOutput(output);
-
-    // Stream completion metadata
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const writer = (context as any)?.writer;
-    if (writer?.write) {
-      await writer.write({
-        type: "custom-event",
-        status: "completed",
-        exitCode: proc.exitCode,
-        description,
-      });
-    }
 
     toolLogger.info("Bash command completed", {
       command,

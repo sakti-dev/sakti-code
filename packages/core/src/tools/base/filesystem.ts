@@ -5,8 +5,23 @@
 import path from "node:path";
 
 export function containsPath(parent: string, child: string): boolean {
-  const relative = path.relative(parent, child);
-  return !relative.startsWith("..");
+  let parentResolved = path.resolve(parent);
+  let childResolved = path.resolve(child);
+
+  // Normalize case on Windows for reliable comparisons
+  if (process.platform === "win32") {
+    parentResolved = parentResolved.toLowerCase();
+    childResolved = childResolved.toLowerCase();
+  }
+
+  const relative = path.relative(parentResolved, childResolved);
+
+  if (relative === "") return true;
+  if (relative === ".." || relative.startsWith(`..${path.sep}`)) return false;
+  // On Windows, different drives yield an absolute relative path
+  if (path.isAbsolute(relative)) return false;
+
+  return true;
 }
 
 export async function normalizePath(p: string): Promise<string> {

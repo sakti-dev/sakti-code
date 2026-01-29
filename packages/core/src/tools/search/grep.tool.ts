@@ -5,14 +5,13 @@
  */
 
 import { createLogger } from "@ekacode/shared/logger";
-import { createTool } from "@mastra/core/tools";
+import { tool, zodSchema } from "ai";
 import { spawn } from "node:child_process";
-import path from "node:path";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
-import { Instance } from "../../instance";
 import { PermissionManager } from "../../security/permission-manager";
-import { assertExternalDirectory } from "../base/filesystem";
+import { getContextOrThrow } from "../base/context";
+import { validatePathOperation } from "../base/safety";
 import { getRipgrepPath } from "./ripgrep";
 
 const logger = createLogger("ekacode");
@@ -20,8 +19,7 @@ const logger = createLogger("ekacode");
 const MAX_MATCHES = 100;
 const MAX_LINE_LENGTH = 2000;
 
-export const grepTool = createTool({
-  id: "grep",
+export const grepTool = tool({
   description: `Search file contents using regex patterns with ripgrep.
 
 Features:
@@ -30,45 +28,45 @@ Features:
 - Limits results to 100 matches
 - Shows line numbers and file paths`,
 
-  inputSchema: z.object({
-    pattern: z.string().describe("The regex pattern to search for"),
-    path: z.string().optional().describe("Directory to search (defaults to workspace)"),
-    include: z.string().optional().describe('File pattern filter (e.g., "*.ts", "*.{js,tsx}")'),
-  }),
+  inputSchema: zodSchema(
+    z.object({
+      pattern: z.string().describe("The regex pattern to search for"),
+      path: z.string().optional().describe("Directory to search (defaults to workspace)"),
+      include: z.string().optional().describe('File pattern filter (e.g., "*.ts", "*.{js,tsx}")'),
+    })
+  ),
 
-  outputSchema: z.object({
-    content: z.string(),
-    metadata: z.object({
-      matches: z.number(),
-      truncated: z.boolean().optional(),
-    }),
-  }),
+  outputSchema: zodSchema(
+    z.object({
+      content: z.string(),
+      metadata: z.object({
+        matches: z.number(),
+        truncated: z.boolean().optional(),
+      }),
+    })
+  ),
 
   execute: async ({ pattern, path: searchPath, include }) => {
-    const { directory, sessionID } = Instance.context;
+    // Get context with enhanced error message
+    const { directory, sessionID } = getContextOrThrow();
     const permissionMgr = PermissionManager.getInstance();
     const toolLogger = logger.child({ module: "tool:grep", sessionID });
 
-    // Resolve search path
-    let targetPath = searchPath || directory;
-    targetPath = path.isAbsolute(targetPath) ? targetPath : path.resolve(directory, targetPath);
-    const relativePath = path.relative(directory, targetPath);
+    // Use safe path resolution
+    const targetPath = searchPath || directory;
+    const { absolutePath, relativePath } = await validatePathOperation(
+      targetPath,
+      directory,
+      "read",
+      permissionMgr,
+      sessionID,
+      { always: ["*"] }
+    );
 
     toolLogger.debug("Searching files", {
       pattern,
       path: relativePath,
       include,
-    });
-
-    // Check external directory permission
-    await assertExternalDirectory(targetPath, directory, async (perm, patterns) => {
-      return permissionMgr.requestApproval({
-        id: uuidv7(),
-        permission: perm,
-        patterns,
-        always: [],
-        sessionID,
-      });
     });
 
     // Request grep permission (use bash permission since grep is a shell command)
@@ -103,11 +101,11 @@ Features:
       args.push("--glob", include);
     }
 
-    args.push(targetPath);
+    args.push(absolutePath);
 
     // Spawn ripgrep
     const proc = spawn(rgPath, args, {
-      cwd: targetPath,
+      cwd: absolutePath,
       stdio: ["ignore", "pipe", "pipe"],
     });
 
@@ -126,7 +124,6 @@ Features:
     });
 
     output = Buffer.concat(stdoutChunks).toString("utf-8");
-    // Reserved: _errorOutput = Buffer.concat(stderrChunks).toString("utf-8");
 
     // Exit codes: 0 = matches, 1 = no matches, 2 = errors
     if (exitCode === 1 || (exitCode === 2 && !output.trim())) {

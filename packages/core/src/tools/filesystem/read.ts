@@ -5,12 +5,11 @@
 import { createLogger } from "@ekacode/shared/logger";
 import { tool, zodSchema } from "ai";
 import fs from "node:fs/promises";
-import path from "node:path";
-import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
-import { Instance } from "../../instance";
 import { PermissionManager } from "../../security/permission-manager";
-import { assertExternalDirectory, detectBinaryFile } from "../base/filesystem";
+import { getContextOrThrow } from "../base/context";
+import { detectBinaryFile } from "../base/filesystem";
+import { validatePathOperation } from "../base/safety";
 import { truncateOutput } from "../base/truncation";
 
 const logger = createLogger("ekacode");
@@ -44,51 +43,26 @@ export const readTool = tool({
   ),
 
   execute: async ({ filePath, offset = 0, limit }, _options) => {
-    // Get context from Instance instead of experimental_context
-    const { directory, sessionID } = Instance.context;
+    // Get context with enhanced error message
+    const { directory, sessionID } = getContextOrThrow();
     const permissionMgr = PermissionManager.getInstance();
     const toolLogger = logger.child({ module: "tool:read", tool: "read", sessionID });
 
-    // Resolve path
-    let absolutePath = filePath;
-    if (!path.isAbsolute(filePath)) {
-      absolutePath = path.join(directory, filePath);
-    }
-
-    const relativePath = path.relative(directory, absolutePath);
+    // Validate path operation and get safe paths
+    const { absolutePath, relativePath } = await validatePathOperation(
+      filePath,
+      directory,
+      "read",
+      permissionMgr,
+      sessionID,
+      { always: ["*"] }
+    );
 
     toolLogger.debug("Reading file", {
       path: relativePath,
       offset,
       limit,
     });
-
-    // Check external directory permission
-    await assertExternalDirectory(absolutePath, directory, async (permission, patterns) => {
-      return permissionMgr.requestApproval({
-        id: uuidv7(),
-        permission,
-        patterns,
-        always: [],
-        sessionID,
-      });
-    });
-
-    // Check read permission
-    const readApproved = await permissionMgr.requestApproval({
-      id: uuidv7(),
-      permission: "read",
-      patterns: [absolutePath],
-      always: ["*"],
-      sessionID,
-    });
-
-    if (!readApproved) {
-      toolLogger.warn("Read permission denied", {
-        path: relativePath,
-      });
-      throw new Error(`Permission denied: Cannot read ${filePath}`);
-    }
 
     // Read file
     const buffer = await fs.readFile(absolutePath);

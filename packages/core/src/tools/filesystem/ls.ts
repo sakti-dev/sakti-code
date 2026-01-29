@@ -6,7 +6,9 @@ import { tool, zodSchema } from "ai";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { Instance } from "../../instance";
+import { PermissionManager } from "../../security/permission-manager";
+import { getContextOrThrow } from "../base/context";
+import { validatePathOperation } from "../base/safety";
 
 export const lsTool = tool({
   description: `List directory contents.
@@ -36,8 +38,19 @@ export const lsTool = tool({
   ),
 
   execute: async ({ dirPath, recursive = false }) => {
-    const { directory } = Instance.context;
-    const absolutePath = path.isAbsolute(dirPath) ? dirPath : path.join(directory, dirPath);
+    // Get context with enhanced error message
+    const { directory, sessionID } = getContextOrThrow();
+    const permissionMgr = PermissionManager.getInstance();
+
+    // Validate path operation and get safe paths
+    const { absolutePath } = await validatePathOperation(
+      dirPath,
+      directory,
+      "read",
+      permissionMgr,
+      sessionID,
+      { always: ["*"] }
+    );
 
     const entries: Array<{
       name: string;

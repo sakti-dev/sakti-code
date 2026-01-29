@@ -7,11 +7,10 @@ import { tool, zodSchema } from "ai";
 import { createTwoFilesPatch } from "diff";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
-import { Instance } from "../../instance";
 import { PermissionManager } from "../../security/permission-manager";
-import { assertExternalDirectory } from "../base/filesystem";
+import { getContextOrThrow } from "../base/context";
+import { validatePathOperation } from "../base/safety";
 
 const logger = createLogger("ekacode");
 
@@ -40,25 +39,19 @@ export const writeTool = tool({
   ),
 
   execute: async ({ content, filePath }, _options) => {
-    // Get context from Instance instead of experimental_context
-    const { directory, sessionID } = Instance.context;
+    // Get context with enhanced error message
+    const { directory, sessionID } = getContextOrThrow();
     const permissionMgr = PermissionManager.getInstance();
     const toolLogger = logger.child({ module: "tool:write", tool: "write", sessionID });
 
-    // Resolve path
-    const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(directory, filePath);
-    const relativePath = path.relative(directory, absolutePath);
-
-    // Check external directory permission
-    await assertExternalDirectory(absolutePath, directory, async (permission, patterns) => {
-      return permissionMgr.requestApproval({
-        id: uuidv7(),
-        permission,
-        patterns,
-        always: [],
-        sessionID,
-      });
-    });
+    // Validate path operation and get safe paths
+    const { absolutePath, relativePath } = await validatePathOperation(
+      filePath,
+      directory,
+      "edit",
+      permissionMgr,
+      sessionID
+    );
 
     // Check if file exists
     const exists = await fs
@@ -69,28 +62,6 @@ export const writeTool = tool({
 
     // Generate diff
     const diff = createTwoFilesPatch(absolutePath, absolutePath, oldContent, content);
-
-    toolLogger.debug("Requesting write permission", {
-      path: relativePath,
-      created: !exists,
-    });
-
-    // Check edit permission
-    const editApproved = await permissionMgr.requestApproval({
-      id: uuidv7(),
-      permission: "edit",
-      patterns: [relativePath],
-      always: [],
-      sessionID,
-      metadata: { diff, filepath: absolutePath },
-    });
-
-    if (!editApproved) {
-      toolLogger.warn("Write permission denied", {
-        path: relativePath,
-      });
-      throw new Error(`Permission denied: Cannot write to ${filePath}`);
-    }
 
     // Create parent directories
     await fs.mkdir(path.dirname(absolutePath), { recursive: true });

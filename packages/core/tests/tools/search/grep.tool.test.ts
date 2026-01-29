@@ -25,9 +25,13 @@ vi.mock("../../../src/tools/search/ripgrep", () => ({
 }));
 
 const mockSpawn = vi.fn();
-vi.mock("node:child_process", () => ({
-  spawn: (...args: any[]) => mockSpawn(...args),
-}));
+vi.mock("node:child_process", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:child_process")>();
+  return {
+    ...actual,
+    spawn: (...args: any[]) => mockSpawn(...args),
+  };
+});
 
 describe("grepTool", () => {
   let grepTool: any;
