@@ -17,6 +17,7 @@ import eventsRouter from "./routes/events";
 import healthRouter from "./routes/health";
 import permissionsRouter from "./routes/permissions";
 import rulesRouter from "./routes/rules";
+import workspaceRouter from "./routes/workspace";
 
 export type Env = {
   Variables: {
@@ -96,6 +97,9 @@ app.route("/", eventsRouter);
 
 // Mount rules routes
 app.route("/", rulesRouter);
+
+// Mount workspace routes
+app.route("/", workspaceRouter);
 
 let currentPort = SERVER_PORT;
 
