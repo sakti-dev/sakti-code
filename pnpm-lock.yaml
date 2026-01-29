@@ -87,6 +87,9 @@ importers:
       '@ai-sdk/provider':
         specifier: ^3.0.5
         version: 3.0.5
+      '@ekacode/server':
+        specifier: workspace:*
+        version: link:../server
       '@ekacode/shared':
         specifier: workspace:*
         version: link:../shared

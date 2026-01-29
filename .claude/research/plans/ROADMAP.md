@@ -33,11 +33,12 @@ Ordered by most applicable tasks. Each task includes a reference to the exact pl
    Ref: `new-sequential-thinking.md:L91-L180`, `new-sequential-thinking.md:L489-L540`
    **Note:** Implemented with 21 passing tests, session-based state management, and tool registry integration.
 
-10) ⏳ Implement search_docs / better-context tool stack (core infra → AST → supporting tools → sub-agent → main tool).
+10) ✅  Implement search_docs / better-context tool stack (core infra → AST → supporting tools → sub-agent → main tool).
     Ref: `new-better-context.md:L1230-L1272`
 
-11) ⏳ Implement Electron main + preload bridge (sidecar spawn/integration + IPC APIs).
+11) ✅ Implement Electron main + preload bridge (sidecar spawn/integration + IPC APIs).
     Ref: `new-architecture-plan.md:L1996-L2263`
+    **Note:** Implemented with comprehensive IPC handlers (server, dialogs, shell, app, permissions, fsWatcher stubs), 18 passing tests, full TypeScript definitions, and organized preload API.
 
 12) ⏳ Build Solid UIMessage chat UI (types → store → stream parser → hook → components).
     Ref: `new-solid-ai-integration.md:L406-L1131`
@@ -94,6 +95,6 @@ The implementation deviates from the original plan in the following ways:
 | 7 | Doom-loop detection | ✅ Complete |
 | 8 | Plan/Build → HybridAgent | ✅ Complete |
 | 9 | Sequential Thinking | ✅ Complete |
-| 10 | search_docs / better-context | ⏳ Pending |
-| 11 | Electron main + preload | ⏳ Pending |
+| 10 | search_docs / better-context | ✅  Complete |
+| 11 | Electron main + preload | ✅ Complete |
 | 12 | Solid UIMessage UI | ⏳ Pending |

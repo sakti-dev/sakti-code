@@ -143,3 +143,11 @@ export async function startServer() {
 }
 
 export default app;
+
+// Re-export database-backed sequential thinking tool for production use
+export {
+  clearSession as clearSessionDb,
+  createSequentialThinkingToolDb,
+  getSession as getSessionDb,
+  sequentialThinkingDb,
+} from "../db/sequential-thinking";

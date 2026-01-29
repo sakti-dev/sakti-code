@@ -1,15 +1,27 @@
-import { PermissionManager } from "@ekacode/core";
+/**
+ * Electron Main Process
+ *
+ * Entry point for the Ekacode desktop application.
+ * Manages the main window, server initialization, and IPC handlers.
+ */
+
 import { startServer } from "@ekacode/server";
 import { createLogger } from "@ekacode/shared/logger";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, shell } from "electron";
 import { join } from "node:path";
+
+// Import IPC handlers module
+import { setupIPCHandlers } from "./ipc";
 
 const logger = createLogger("desktop");
 
 let mainWindow: BrowserWindow | null = null;
 let serverConfig: { port: number; token: string } | null = null;
 
+/**
+ * Create the main application window
+ */
 function createWindow(): void {
   logger.info("Creating main window", { module: "desktop:lifecycle" });
 
@@ -20,7 +32,7 @@ function createWindow(): void {
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
-      sandbox: false,
+      sandbox: true,
       nodeIntegration: false,
       contextIsolation: true,
     },
@@ -40,6 +52,7 @@ function createWindow(): void {
     return { action: "deny" };
   });
 
+  // Load renderer
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
     mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
     mainWindow.webContents.openDevTools();
@@ -55,23 +68,16 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(async () => {
-  logger.info("Application ready", { module: "desktop:lifecycle" });
+/**
+ * Initialize the ekacode server
+ */
+async function initServer(): Promise<void> {
+  logger.info("Starting ekacode server", { module: "desktop:server" });
 
-  electronApp.setAppUserModelId("com.ekacode.app");
-
-  app.on("browser-window-created", (_, window) => {
-    optimizer.watchWindowShortcuts(window);
-    logger.debug("Browser window created", {
-      module: "desktop:lifecycle",
-    });
-  });
-
-  // Initialize ekacode server
   try {
-    logger.info("Starting ekacode server", { module: "desktop:server" });
     const server = await startServer();
     serverConfig = { port: server.port, token: server.token };
+
     logger.info(`Server started on port ${server.port}`, {
       module: "desktop:server",
       port: server.port,
@@ -80,79 +86,61 @@ app.whenReady().then(async () => {
     logger.error("Failed to start server", error instanceof Error ? error : undefined, {
       module: "desktop:server",
     });
+    throw error;
+  }
+}
+
+/**
+ * Application ready handler
+ */
+app.whenReady().then(async () => {
+  logger.info("Application ready", { module: "desktop:lifecycle" });
+
+  // Set app user model ID for Windows
+  electronApp.setAppUserModelId("com.ekacode.app");
+
+  // Watch for keyboard shortcuts
+  app.on("browser-window-created", (_, window) => {
+    optimizer.watchWindowShortcuts(window);
+    logger.debug("Browser window created", {
+      module: "desktop:lifecycle",
+    });
+  });
+
+  // Initialize server
+  await initServer();
+
+  // Setup IPC handlers with server config
+  if (serverConfig) {
+    setupIPCHandlers(serverConfig);
   }
 
-  // IPC handlers
-
-  // Get server configuration for renderer
-  ipcMain.handle("get-server-config", async _event => {
-    logger.debug("Server config requested", {
-      module: "desktop:ipc",
-      channel: "get-server-config",
-    });
-
-    if (!serverConfig) {
-      logger.warn("Server config requested but not initialized", {
-        module: "desktop:ipc",
-        channel: "get-server-config",
-      });
-      throw new Error("Server not initialized");
-    }
-
-    return {
-      baseUrl: `http://127.0.0.1:${serverConfig.port}`,
-      token: serverConfig.token,
-    };
-  });
-
-  // Permission responses from renderer
-  ipcMain.on("permission:response", (_event, response) => {
-    logger.debug("Permission response received", {
-      module: "desktop:ipc",
-      channel: "permission:response",
-      id: response.id,
-      approved: response.approved,
-    });
-
-    const permissionMgr = PermissionManager.getInstance();
-    permissionMgr.handleResponse(response);
-  });
-
-  // File watcher stubs (Phase 5)
-  ipcMain.on("fs:watch-start", (_event, workspacePath) => {
-    logger.info("File watch requested", {
-      module: "desktop:ipc",
-      channel: "fs:watch-start",
-      workspacePath,
-    });
-    // TODO: Implement chokidar watch in Phase 5
-  });
-
-  ipcMain.on("fs:watch-stop", _event => {
-    logger.info("File watch stop requested", {
-      module: "desktop:ipc",
-      channel: "fs:watch-stop",
-    });
-    // TODO: Implement chokidar stop in Phase 5
-  });
-
-  // Legacy ping handler
-  ipcMain.on("ping", () => {
-    logger.debug("Ping received", { module: "desktop:ipc", channel: "ping" });
-  });
-
+  // Create main window
   createWindow();
 
+  // Handle activation (macOS)
   app.on("activate", function () {
     logger.debug("Activate event", { module: "desktop:lifecycle" });
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
   });
 });
 
+/**
+ * All windows closed handler
+ */
 app.on("window-all-closed", () => {
   logger.info("All windows closed", { module: "desktop:lifecycle" });
   if (process.platform !== "darwin") {
     logger.info("Quitting application", { module: "desktop:lifecycle" });
     app.quit();
   }
+});
+
+/**
+ * Before quit handler
+ */
+app.on("before-quit", () => {
+  logger.info("Application quitting", { module: "desktop:lifecycle" });
 });

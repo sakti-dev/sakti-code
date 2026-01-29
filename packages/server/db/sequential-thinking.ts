@@ -1,28 +1,33 @@
 /**
- * Sequential Thinking Tool - Native AI SDK v6 Implementation
+ * Sequential Thinking Tool - Database-Backed Session Persistence
  *
- * Provides multi-turn reasoning capability for AI agents with support for
- * revision, branching, and iterative refinement.
+ * Provides Drizzle-based persistence for sequential thinking sessions.
+ * This file is in the server package to avoid circular dependencies with @ekacode/core.
  *
- * **IMPORTANT:** This file contains the IN-MEMORY version of the tool.
- * For production use with database persistence (survives server restarts),
- * import from `./sequential-thinking-db` instead:
+ * **IMPORTANT:** To use the database-backed version in your agents:
  *
  * ```ts
- * // For development/testing (in-memory, lost on restart)
- * import { sequentialThinking } from "@ekacode/core/tools";
+ * // Import from server package instead of core
+ * import { sequentialThinkingDb } from "@ekacode/server/db/sequential-thinking";
  *
- * // For production (database-backed, persists across restarts)
- * import { sequentialThinkingDb } from "@ekacode/core/tools/sequential-thinking-db";
+ * // Use it like the regular tool
+ * const tools = {
+ *   sequentialThinking: sequentialThinkingDb
+ * };
  * ```
+ *
+ * **Migration from in-memory to database:**
+ * 1. The API is identical - just change the import
+ * 2. Sessions now persist across server restarts
+ * 3. You must provide sessionId from your agent/orchestration layer
  *
  * Session Pattern: Agent owns sessionId, tool is stateless between calls.
  * This makes the tool pluggable to any orchestration layer (XState, sub-agents, etc).
  */
 
 import { tool, zodSchema } from "ai";
-import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
+import { deleteToolSession, getToolSession, updateToolSession } from "./tool-sessions";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -45,66 +50,21 @@ type ThoughtEntry = {
 };
 
 /**
- * A sequential thinking session
+ * A sequential thinking session stored in database
  */
-export type Session = {
-  id: string;
-  createdAt: number;
+type DbSession = {
   thoughts: ThoughtEntry[];
   branches: Set<string>;
+  createdAt: number;
 };
 
 // ============================================================================
-// SESSION STORE (In-memory, replaceable with Redis/DB/etc)
+// CONSTANTS
 // ============================================================================
-
-// NOTE: This is the in-memory version for development/testing.
-// For production use with database persistence, import from:
-// `./sequential-thinking-db` which uses Drizzle and the tool_sessions table.
-//
-// The database version:
-// - Persists sessions across server restarts
-// - Scales across multiple instances
-// - Uses the tool_sessions table in libsql
-// - Is fully compatible with the in-memory API
-//
-// To migrate to the database version:
-// 1. Import: import { sequentialThinkingDb } from "./sequential-thinking-db";
-// 2. Use: sequentialThinkingDb instead of sequentialThinking
-// 3. Ensure sessionId is provided by the agent/orchestration layer
-
-const sessions = new Map<string, Session>();
-
-// Auto-cleanup old sessions (30 minute TTL)
-const SESSION_TTL_MS = 30 * 60 * 1000;
 
 // Session limits for defensive programming
 const MAX_THOUGHTS_PER_SESSION = 1000;
 const MAX_THOUGHT_LENGTH = 50000;
-
-// Use Node.js timer for cleanup
-let cleanupTimer: ReturnType<typeof setInterval> | null = null;
-
-if (typeof clearInterval !== "undefined" && typeof setInterval !== "undefined") {
-  cleanupTimer = setInterval(() => {
-    const now = Date.now();
-    for (const [id, session] of sessions.entries()) {
-      if (now - session.createdAt > SESSION_TTL_MS) {
-        sessions.delete(id);
-      }
-    }
-  }, SESSION_TTL_MS);
-
-  // Register cleanup handlers for graceful shutdown
-  if (typeof process !== "undefined") {
-    const shutdownHandler = () => {
-      stopCleanupTimer();
-    };
-    process.on("beforeExit", shutdownHandler);
-    process.on("SIGINT", shutdownHandler);
-    process.on("SIGTERM", shutdownHandler);
-  }
-}
 
 // ============================================================================
 // OUTPUT SCHEMA
@@ -130,17 +90,103 @@ const sequentialThinkingOutputSchema = z.object({
 });
 
 // ============================================================================
+// DATABASE ADAPTER FUNCTIONS
+// ============================================================================
+
+/**
+ * Load session from database
+ *
+ * @param sessionId - The parent session ID
+ * @param toolKey - Optional sub-key (defaults to empty string)
+ * @returns The session data or null if not found
+ */
+async function loadSession(sessionId: string, toolKey: string = ""): Promise<DbSession | null> {
+  try {
+    const toolSession = await getToolSession(sessionId, "sequential-thinking", toolKey);
+
+    if (!toolSession?.data) {
+      return null;
+    }
+
+    // Parse the JSON data from the database
+    const data = toolSession.data as {
+      thoughts?: ThoughtEntry[];
+      branches?: string[];
+      createdAt?: number;
+    } | null;
+
+    if (!data) {
+      return null;
+    }
+
+    return {
+      thoughts: data.thoughts || [],
+      branches: new Set(data.branches || []),
+      createdAt: data.createdAt || Date.now(),
+    };
+  } catch (_error) {
+    // If session doesn't exist or there's an error, return null
+    return null;
+  }
+}
+
+/**
+ * Save session to database
+ *
+ * @param sessionId - The parent session ID
+ * @param session - The session data to save
+ * @param toolKey - Optional sub-key (defaults to empty string)
+ */
+async function saveSession(
+  sessionId: string,
+  session: DbSession,
+  toolKey: string = ""
+): Promise<void> {
+  // Get the tool session to retrieve its ID
+  const toolSession = await getToolSession(sessionId, "sequential-thinking", toolKey);
+
+  const data = {
+    thoughts: session.thoughts,
+    branches: Array.from(session.branches),
+    createdAt: session.createdAt,
+  };
+
+  await updateToolSession(toolSession.toolSessionId, data);
+}
+
+/**
+ * Create a new empty session in database
+ *
+ * @param sessionId - The parent session ID
+ * @param toolKey - Optional sub-key (defaults to empty string)
+ * @returns The new session data
+ */
+async function createSession(sessionId: string, toolKey: string = ""): Promise<DbSession> {
+  const session: DbSession = {
+    thoughts: [],
+    branches: new Set(),
+    createdAt: Date.now(),
+  };
+
+  await saveSession(sessionId, session, toolKey);
+  return session;
+}
+
+// ============================================================================
 // TOOL DEFINITION
 // ============================================================================
 
 /**
- * Creates a sequential thinking tool instance
+ * Creates a sequential thinking tool instance with database persistence
  *
  * @param options - Optional configuration
  * @param options.sessionId - Initial session ID for continuation
+ * @param options.toolKey - Optional sub-key for multiple sessions per parent
  * @returns AI SDK tool definition
  */
-export const createSequentialThinkingTool = (options: { sessionId?: string } = {}) =>
+export const createSequentialThinkingToolDb = (
+  options: { sessionId?: string; toolKey?: string } = {}
+) =>
   tool({
     description: `A detailed tool for dynamic and reflective problem-solving through thoughts.
 This tool helps analyze problems through a flexible thinking process that can adapt and evolve.
@@ -178,7 +224,8 @@ You should:
 4. Express uncertainty when present
 5. Mark thoughts that revise previous thinking or branch into new paths
 6. Ignore information that is irrelevant to the current step
-7. Only set nextThoughtNeeded to false when truly done`,
+7. Only set nextThoughtNeeded to false when truly done
+8. **All sessions are persisted to the database and survive server restarts**`,
 
     inputSchema: zodSchema(
       z.object({
@@ -216,30 +263,40 @@ You should:
     outputSchema: zodSchema(sequentialThinkingOutputSchema),
 
     execute: async args => {
+      const toolKey = options.toolKey || "";
       const requestedSessionId = options.sessionId ?? args.sessionId;
 
       // Clear session if requested
       if (args.clearSession && requestedSessionId) {
-        sessions.delete(requestedSessionId);
+        try {
+          const toolSession = await getToolSession(
+            requestedSessionId,
+            "sequential-thinking",
+            toolKey
+          );
+          await deleteToolSession(toolSession.toolSessionId);
+        } catch {
+          // Session might not exist, ignore error
+        }
       }
 
-      // Get or create session
+      // Get or create session from database
       let sessionId = requestedSessionId;
-      let session: Session;
+      let session: DbSession;
 
-      if (sessionId && sessions.has(sessionId)) {
-        session = sessions.get(sessionId)!;
+      const existingSession = await loadSession(sessionId || "", toolKey);
+
+      if (sessionId && existingSession) {
+        session = existingSession;
       } else {
-        // Generate UUIDv7 for time-ordered, sortable session IDs
-        sessionId = uuidv7();
+        // Create new session
+        // Note: In a real scenario, sessionId would be provided by the agent/orchestration layer
+        // For now, we use a placeholder if not provided
+        if (!sessionId) {
+          throw new Error("sessionId must be provided for database-backed sessions");
+        }
 
-        session = {
-          id: sessionId,
-          createdAt: Date.now(),
-          thoughts: [],
-          branches: new Set(),
-        };
-        sessions.set(sessionId, session);
+        session = await createSession(sessionId, toolKey);
       }
 
       // Validate session limits (defensive programming)
@@ -270,10 +327,13 @@ You should:
       };
       session.thoughts.push(thoughtEntry);
 
+      // Save session to database
+      await saveSession(sessionId, session, toolKey);
+
       // Generate summary if session is complete
       let summary: string | undefined;
       if (!args.nextThoughtNeeded) {
-        summary = `Sequential thinking complete: ${session.thoughts.length} thoughts processed across ${session.branches.size} branches.`;
+        summary = `Sequential thinking complete: ${session.thoughts.length} thoughts processed across ${session.branches.size} branches. Session persisted to database.`;
       }
 
       // Return session state + history for LLM context
@@ -295,55 +355,39 @@ You should:
   });
 
 /**
- * Default sequential thinking tool instance
+ * Default database-backed sequential thinking tool instance
  */
-export const sequentialThinking = createSequentialThinkingTool();
+export const sequentialThinkingDb = createSequentialThinkingToolDb();
 
 // ============================================================================
 // CLEANUP UTILITIES
 // ============================================================================
 
 /**
- * Clear a specific session
+ * Clear a specific session from database
  *
  * @param sessionId - Session ID to clear
+ * @param toolKey - Optional sub-key (defaults to empty string)
  */
-export function clearSession(sessionId: string): void {
-  sessions.delete(sessionId);
+export async function clearSession(sessionId: string, toolKey: string = ""): Promise<void> {
+  try {
+    const toolSession = await getToolSession(sessionId, "sequential-thinking", toolKey);
+    await deleteToolSession(toolSession.toolSessionId);
+  } catch {
+    // Session might not exist, ignore error
+  }
 }
 
 /**
- * Clear all sessions (useful for testing)
- */
-export function clearAllSessions(): void {
-  sessions.clear();
-}
-
-/**
- * Get a session by ID
+ * Get a session by ID from database
  *
  * @param sessionId - Session ID to retrieve
+ * @param toolKey - Optional sub-key (defaults to empty string)
  * @returns Session if found, undefined otherwise
  */
-export function getSession(sessionId: string): Session | undefined {
-  return sessions.get(sessionId);
-}
-
-/**
- * Get all sessions (returns a copy)
- *
- * @returns Map of all sessions
- */
-export function getAllSessions(): Map<string, Session> {
-  return new Map(sessions);
-}
-
-/**
- * Stop the cleanup timer (useful for clean shutdown)
- */
-export function stopCleanupTimer(): void {
-  if (cleanupTimer !== null) {
-    clearInterval(cleanupTimer);
-    cleanupTimer = null;
-  }
+export async function getSession(
+  sessionId: string,
+  toolKey: string = ""
+): Promise<DbSession | undefined> {
+  return (await loadSession(sessionId, toolKey)) || undefined;
 }
