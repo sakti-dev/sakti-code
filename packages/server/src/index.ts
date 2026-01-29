@@ -9,6 +9,7 @@ import { createLogger } from "@ekacode/shared/logger";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { nanoid } from "nanoid";
+import { v7 as uuidv7 } from "uuid";
 import chatRouter from "./routes/chat";
 import eventsRouter from "./routes/events";
 import permissionsRouter from "./routes/permissions";
@@ -44,7 +45,7 @@ app.use("*", async (c, next) => {
 // Request logging middleware
 app.use("*", async (c, next) => {
   const start = Date.now();
-  const requestId = nanoid(8);
+  const requestId = uuidv7();
 
   c.set("requestId", requestId);
   c.set("startTime", start);

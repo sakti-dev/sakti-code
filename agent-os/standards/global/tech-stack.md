@@ -16,7 +16,7 @@
 
 ### Tailwind CSS (Styling)
 
-- **Version**: ^3.x
+- **Version**: ^4.x
 - **Rationale**: Utility-first CSS, rapid UI development, consistent design system; easy to maintain with components.
 - **Alternatives considered**: CSS Modules — Tailwind offers faster iteration for complex layouts.
 
@@ -41,25 +41,31 @@
 
 ### Vercel AI SDK v6 (Headless Chat + Streaming Consumer)
 
-- **Version**: ^0.4.x (v6 stable)
-- **Rationale**: `useChat` hook with native streaming support; direct Mastra integration via tool passing; streaming message rendering, stop/cancel support, auth headers; built-in tool UI helpers.
+- **Version**: ^6.x
+- **Rationale**: UIMessage stream protocol, `streamText` pipeline, tool streaming, custom `data-*` parts; used with Solid renderer and Hono server.
 - **Alternatives considered**: TanStack AI — rejected in favor of direct AI SDK v6 for better Mastra compatibility and simpler streaming patterns.
 
 ### Mastra (Agent Orchestration)
 
 - **Version**: Latest (vNext workflow engine)
-- **Rationale**: TypeScript-first framework for building production-grade agents; structured tools with Zod, streaming via `.stream()`, vNext workflows with `.dountil()` loops, `.parallel()`, branching; processors (ToolCallFilter, TokenLimiter) for context rot.
+- **Rationale**: TypeScript-first framework; **Mastra Memory** used for semantic recall + working memory, while orchestration is handled by custom XState Plan/Build agents.
 - **Alternatives considered**: LangChain (Python) — TypeScript ecosystem, Mastra’s workflow primitives are more deterministic for engineering.
 
 ## Database
 
-### libSQL (Primary Memory Store)
+### libSQL (Storage + Memory)
 
 - **Version**: Latest (`@libsql/client`)
-- **Rationale**: Local-first SQLite-compatible DB with HTTP mode; schema-backed memory (memories, tags, embeddings tables); supports confidence, decay, audits; no external server needed.
+- **Rationale**: Local-first SQLite-compatible DB with HTTP mode; used by Drizzle for app tables and by Mastra Memory for recall + embeddings.
 - **Alternatives considered**:
   - Chroma (vector DB) — pure vector store, lacks structured queries; rejected in favor of SQL + embeddings.
   - PostgreSQL — heavier for local desktop app; libSQL is embedded.
+
+### Drizzle ORM (App Tables)
+
+- **Version**: Latest (`drizzle-orm`, `drizzle-kit`)
+- **Rationale**: Type-safe schema + migrations for sessions/tool_sessions/repo_cache; runs against libSQL.
+- **Alternatives considered**: Prisma — heavier for local-first SQLite.
 
 ### JSON (Per-Project Plans)
 
@@ -86,6 +92,11 @@
 - **Rationale**: Local embeddings model (BAAI/bge-small or e5-small); no external API calls; low latency for semantic search.
 - **Alternatives considered**: OpenAI embeddings — requires network, adds cost; local models align with offline-first.
 
+### XState (Agent Orchestration)
+
+- **Version**: Latest
+- **Rationale**: Primary Plan/Build orchestration; deterministic loops, explicit phases, and tool routing; integrates with HybridAgent for multimodal prompts.
+
 ### Chokidar (File Watching)
 
 - **Version**: ^3.x
@@ -106,12 +117,6 @@
 
 ### Zod (Validation)
 
-- **Version**: ^3.x
+- **Version**: ^4.x
 - **Rationale**: Runtime schema validation for tool inputs, IPC payloads, and API contracts; integrates with Mastra tools and TypeScript types.
 - **Alternatives considered**: Joi — similar; Zod has better TS inference.
-
-### @modelcontextprotocol/sdk (MCP Integration)
-
-- **Version**: ^0.5.x
-- **Rationale**: Standard for AI model context connections; stdio transport for external servers; Chrome DevTools MCP, filesystem MCP.
-- **Alternatives considered**: Custom stdio — MCP provides standard tool schema and discovery.

@@ -5,14 +5,16 @@
  */
 
 import { eq } from "drizzle-orm";
-import { uuidv7 } from "uuidv7";
+import { v7 as uuidv7 } from "uuid";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db, sessions } from "../../db";
 
 // Mock uuidv7 for consistent testing
-vi.mock("uuidv7", () => ({
-  uuidv7: vi.fn(),
+vi.mock("uuid", () => ({
+  v7: vi.fn(),
 }));
+
+const uuidv7Mock = vi.mocked(uuidv7) as unknown as ReturnType<typeof vi.fn>;
 
 describe("sessions", () => {
   beforeAll(async () => {
@@ -35,7 +37,7 @@ describe("sessions", () => {
   describe("createSession", () => {
     it("should create session with UUIDv7", async () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
-      vi.mocked(uuidv7).mockReturnValue(mockSessionId);
+      uuidv7Mock.mockReturnValue(mockSessionId);
 
       const { createSession } = await import("../../db/sessions");
       const session = await createSession("local");
@@ -49,7 +51,7 @@ describe("sessions", () => {
 
     it("should create session with custom resourceId", async () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
-      vi.mocked(uuidv7).mockReturnValue(mockSessionId);
+      uuidv7Mock.mockReturnValue(mockSessionId);
 
       const { createSession } = await import("../../db/sessions");
       const session = await createSession("user-123");
@@ -59,7 +61,7 @@ describe("sessions", () => {
 
     it("should persist session to database", async () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
-      vi.mocked(uuidv7).mockReturnValue(mockSessionId);
+      uuidv7Mock.mockReturnValue(mockSessionId);
 
       const { createSession } = await import("../../db/sessions");
       const created = await createSession("local");
@@ -80,7 +82,7 @@ describe("sessions", () => {
   describe("getSession", () => {
     it("should retrieve existing session", async () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
-      vi.mocked(uuidv7).mockReturnValue(mockSessionId);
+      uuidv7Mock.mockReturnValue(mockSessionId);
 
       const { createSession, getSession } = await import("../../db/sessions");
       await createSession("local");
@@ -102,7 +104,7 @@ describe("sessions", () => {
   describe("touchSession", () => {
     it("should update lastAccessed timestamp", async () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
-      vi.mocked(uuidv7).mockReturnValue(mockSessionId);
+      uuidv7Mock.mockReturnValue(mockSessionId);
 
       const { createSession, touchSession, getSession } = await import("../../db/sessions");
       await createSession("local");
@@ -125,7 +127,7 @@ describe("sessions", () => {
 
     it("should not modify other fields", async () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
-      vi.mocked(uuidv7).mockReturnValue(mockSessionId);
+      uuidv7Mock.mockReturnValue(mockSessionId);
 
       const { createSession, touchSession, getSession } = await import("../../db/sessions");
       await createSession("user-123");
@@ -148,7 +150,7 @@ describe("sessions", () => {
   describe("deleteSession", () => {
     it("should delete session from database", async () => {
       const mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
-      vi.mocked(uuidv7).mockReturnValue(mockSessionId);
+      uuidv7Mock.mockReturnValue(mockSessionId);
 
       const { createSession, deleteSession, getSession } = await import("../../db/sessions");
       const session = await createSession("local");

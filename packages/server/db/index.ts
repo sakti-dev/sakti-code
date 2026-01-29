@@ -8,6 +8,9 @@
 import { resolveAppPaths } from "@ekacode/shared/paths";
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import * as schema from "./schema";
 
 /**
@@ -34,10 +37,21 @@ let client: ReturnType<typeof createClient> | null = null;
 let drizzleInstance: ReturnType<typeof drizzle> | null = null;
 let initPromise: Promise<void> | null = null;
 
+function ensureDbDirectory(url: string): void {
+  if (!url.startsWith("file:")) {
+    return;
+  }
+  const filePath = fileURLToPath(url);
+  const dir = path.dirname(filePath);
+  fs.mkdirSync(dir, { recursive: true });
+}
+
 export async function getDb() {
   if (!client) {
     const url = getDatabaseUrl();
     const authToken = getDatabaseAuthToken();
+
+    ensureDbDirectory(url);
 
     client = createClient({
       url,

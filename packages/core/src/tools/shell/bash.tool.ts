@@ -6,8 +6,8 @@
 
 import { createLogger } from "@ekacode/shared/logger";
 import { createTool } from "@mastra/core/tools";
-import { nanoid } from "nanoid";
 import { spawn, type ChildProcess } from "node:child_process";
+import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
 import { PermissionManager } from "../../security/permission-manager";
 import { WorkspaceInstance } from "../../workspace/instance";
@@ -55,7 +55,7 @@ Supports common operations like git, npm, ls, cat, etc.
   execute: async ({ command, timeout = DEFAULT_TIMEOUT, workdir, description }, context) => {
     const workspace = WorkspaceInstance.getInstance();
     const permissionMgr = PermissionManager.getInstance();
-    const sessionID = (context as { sessionID?: string })?.sessionID || nanoid();
+    const sessionID = (context as { sessionID?: string })?.sessionID || uuidv7();
     const toolLogger = logger.child({ module: "tool:bash", sessionID });
 
     // Resolve working directory
@@ -79,7 +79,7 @@ Supports common operations like git, npm, ls, cat, etc.
     for (const dir of directories) {
       await assertExternalDirectory(dir, workspace.root, async (perm, patterns) => {
         return permissionMgr.requestApproval({
-          id: nanoid(),
+          id: uuidv7(),
           permission: perm,
           patterns,
           always: [],
@@ -91,7 +91,7 @@ Supports common operations like git, npm, ls, cat, etc.
     // Request bash permission
     if (patterns.size > 0) {
       const bashApproved = await permissionMgr.requestApproval({
-        id: nanoid(),
+        id: uuidv7(),
         permission: "bash",
         patterns: Array.from(patterns),
         always: Array.from(always),

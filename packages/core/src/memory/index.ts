@@ -10,7 +10,7 @@ import { fastembed } from "@mastra/fastembed";
 import { LibSQLStore, LibSQLVector } from "@mastra/libsql";
 import { Memory } from "@mastra/memory";
 import type { UIDataTypes, UIMessagePart, UITools } from "ai";
-import { uuidv7 } from "uuidv7";
+import { v7 as uuidv7 } from "uuid";
 
 /**
  * Ekacode memory wrapper

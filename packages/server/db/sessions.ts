@@ -6,7 +6,7 @@
  */
 
 import { eq } from "drizzle-orm";
-import { uuidv7 } from "uuidv7";
+import { v7 as uuidv7 } from "uuid";
 import { db, sessions } from "./index";
 
 /**

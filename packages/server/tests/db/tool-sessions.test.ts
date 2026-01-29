@@ -5,14 +5,16 @@
  */
 
 import { eq } from "drizzle-orm";
-import { uuidv7 } from "uuidv7";
+import { v7 as uuidv7 } from "uuid";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db, sessions, toolSessions } from "../../db";
 
 // Mock uuidv7 for consistent session ID
-vi.mock("uuidv7", () => ({
-  uuidv7: vi.fn(),
+vi.mock("uuid", () => ({
+  v7: vi.fn(),
 }));
+
+const uuidv7Mock = vi.mocked(uuidv7) as unknown as ReturnType<typeof vi.fn>;
 
 describe("tool sessions", () => {
   let mockSessionId: string;
@@ -29,7 +31,7 @@ describe("tool sessions", () => {
     vi.clearAllMocks();
 
     // Mock uuidv7 to return sequential IDs
-    vi.mocked(uuidv7).mockImplementation(() => {
+    uuidv7Mock.mockImplementation(() => {
       const ids = [
         "01234567-89ab-cdef-0123-456789abcdef", // session ID
         "11111111-89ab-cdef-0123-456789abcdef", // tool session 1

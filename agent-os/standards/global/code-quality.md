@@ -144,6 +144,67 @@ pnpm run typecheck
 pnpm run lint
 ```
 
+### Lint Script Requirement
+
+Every package must expose a `lint` script (runs `eslint .`). If a package lacks it, add one before shipping changes.
+
+---
+
+## Test Layout and Import Hygiene
+
+### Rule
+
+**All test files live under `packages/*/tests`**, not alongside source files.
+
+### Rationale
+
+- Keeps source tree focused on runtime code.
+- Prevents accidental production bundling of tests.
+- Makes test discovery consistent across packages.
+
+### Required Layout
+
+```
+packages/<pkg>/tests/**
+```
+
+When moving tests, update all imports to point to `packages/<pkg>/src/**` or other correct roots.
+
+---
+
+## App Path Resolution (Absolute Paths Only)
+
+### Rule
+
+**All app storage paths must be resolved via the shared path resolver and stored as absolute file URLs.**
+
+### Rationale
+
+Relative DB paths (`file:./...`) can split data if cwd differs between processes (server vs core).
+
+### Required Pattern
+
+- Use the shared `resolveAppPaths()` helper.
+- Always use `file:/abs/path/...` URLs (or remote libsql URLs).
+- Server + core **must** use the same resolver output.
+
+---
+
+## UIMessage Stream Compliance
+
+### Rule
+
+**All streaming responses must use AI SDK UIMessage stream protocol** (JSON parts).
+
+### Rationale
+
+Custom SSE text blobs (`data-session:...`) break the UIMessage parser and will not update the client state.
+
+### Required Pattern
+
+- Emit JSON parts like `text-delta`, `tool-call`, `tool-result`, `data-*`, `finish`.
+- Set response header `x-vercel-ai-ui-message-stream: v1`.
+
 ### Git Hooks (Recommended)
 
 Add pre-commit hook to enforce:
@@ -370,24 +431,6 @@ src/
 - Group related files in folders
 - Keep folder depth ≤ 3 levels
 - Use `index.ts` for public exports
-
-#### Import Order
-
-```typescript
-// 1. Node built-ins
-import path from "node:path";
-
-// 2. External packages
-import { z } from "zod";
-import { createTool } from "@mastra/core/tools";
-
-// 3. Internal packages (monorepo)
-import { createLogger } from "@ekacode/logger";
-
-// 4. Parent/relative imports
-import { WorkspaceInstance } from "../../workspace";
-import { truncateOutput } from "../truncation";
-```
 
 ### Comments
 

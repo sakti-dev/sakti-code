@@ -4,9 +4,9 @@
 
 import { createLogger } from "@ekacode/shared/logger";
 import { tool, zodSchema } from "ai";
-import { nanoid } from "nanoid";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
 import { PermissionManager } from "../../security/permission-manager";
 import { WorkspaceInstance } from "../../workspace/instance";
@@ -44,7 +44,7 @@ export const editTool = tool({
     const workspace = WorkspaceInstance.getInstance();
     const permissionMgr = PermissionManager.getInstance();
     const sessionID =
-      (options.experimental_context as { sessionID?: string })?.sessionID || nanoid();
+      (options.experimental_context as { sessionID?: string })?.sessionID || uuidv7();
     const toolLogger = logger.child({ module: "tool:edit", tool: "edit", sessionID });
 
     // Resolve path
@@ -52,7 +52,7 @@ export const editTool = tool({
 
     await assertExternalDirectory(absolutePath, workspace.root, async (perm, patterns) => {
       return permissionMgr.requestApproval({
-        id: nanoid(),
+        id: uuidv7(),
         permission: perm,
         patterns,
         always: [],
@@ -62,7 +62,7 @@ export const editTool = tool({
 
     // Check edit permission
     await permissionMgr.requestApproval({
-      id: nanoid(),
+      id: uuidv7(),
       permission: "edit",
       patterns: [workspace.getRelativePath(absolutePath)],
       always: [],

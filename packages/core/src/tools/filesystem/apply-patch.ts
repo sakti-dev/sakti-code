@@ -3,9 +3,9 @@
  */
 
 import { tool, zodSchema } from "ai";
-import { nanoid } from "nanoid";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
 import { PermissionManager } from "../../security/permission-manager";
 import { WorkspaceInstance } from "../../workspace/instance";
@@ -41,7 +41,7 @@ export const applyPatchTool = tool({
     const workspace = WorkspaceInstance.getInstance();
     const permissionMgr = PermissionManager.getInstance();
     const sessionID =
-      (options.experimental_context as { sessionID?: string })?.sessionID || nanoid();
+      (options.experimental_context as { sessionID?: string })?.sessionID || uuidv7();
 
     // Parse patch (simplified - use proper diff parser in production)
     const lines = patchText.split("\n");
@@ -72,7 +72,7 @@ export const applyPatchTool = tool({
 
     // Check permissions
     await permissionMgr.requestApproval({
-      id: nanoid(),
+      id: uuidv7(),
       permission: "edit",
       patterns: [workspace.getRelativePath(filePath)],
       always: [],

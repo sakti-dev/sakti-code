@@ -7,7 +7,7 @@
 import { createLogger } from "@ekacode/shared/logger";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { uuidv7 } from "uuidv7";
+import { v7 as uuidv7 } from "uuid";
 import type { Env } from "../index";
 import { createSessionMessage, sessionBridge } from "../middleware/session-bridge";
 

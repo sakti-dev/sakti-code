@@ -53,7 +53,7 @@ export async function setupTestDatabase(): Promise<void> {
       ref TEXT NOT NULL,
       search_path TEXT NOT NULL,
       local_path TEXT NOT NULL,
-      commit TEXT,
+      commit_hash TEXT,
       cloned_at INTEGER NOT NULL,
       last_updated INTEGER NOT NULL
     )

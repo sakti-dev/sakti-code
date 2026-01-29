@@ -61,7 +61,7 @@ export const toolSessions = sqliteTable(
  * - resource_key: Primary key (e.g., "repo:owner/name")
  * - url/ref/search_path: Source metadata
  * - local_path: Local filesystem path
- * - commit: Current commit hash
+ * - commit_hash: Current commit hash
  * - cloned_at/last_updated: Unix timestamps in milliseconds
  */
 export const repoCache = sqliteTable("repo_cache", {
@@ -70,7 +70,7 @@ export const repoCache = sqliteTable("repo_cache", {
   ref: text("ref").notNull(),
   search_path: text("search_path").notNull(),
   local_path: text("local_path").notNull(),
-  commit: text("commit"),
+  commit_hash: text("commit_hash"),
   cloned_at: integer("cloned_at", { mode: "timestamp" }).notNull(),
   last_updated: integer("last_updated", { mode: "timestamp" }).notNull(),
 });

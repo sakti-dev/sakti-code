@@ -6,9 +6,9 @@
 
 import { createLogger } from "@ekacode/shared/logger";
 import { createTool } from "@mastra/core/tools";
-import { nanoid } from "nanoid";
 import { spawn } from "node:child_process";
 import path from "node:path";
+import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
 import { PermissionManager } from "../../security/permission-manager";
 import { WorkspaceInstance } from "../../workspace/instance";
@@ -47,7 +47,7 @@ Features:
   execute: async ({ pattern, path: searchPath, include }, context) => {
     const workspace = WorkspaceInstance.getInstance();
     const permissionMgr = PermissionManager.getInstance();
-    const sessionID = (context as { sessionID?: string })?.sessionID || nanoid();
+    const sessionID = (context as { sessionID?: string })?.sessionID || uuidv7();
     const toolLogger = logger.child({ module: "tool:grep", sessionID });
 
     // Resolve search path
@@ -65,7 +65,7 @@ Features:
     // Check external directory permission
     await assertExternalDirectory(targetPath, workspace.root, async (perm, patterns) => {
       return permissionMgr.requestApproval({
-        id: nanoid(),
+        id: uuidv7(),
         permission: perm,
         patterns,
         always: [],
@@ -75,7 +75,7 @@ Features:
 
     // Request grep permission (use bash permission since grep is a shell command)
     const grepApproved = await permissionMgr.requestApproval({
-      id: nanoid(),
+      id: uuidv7(),
       permission: "bash",
       patterns: [pattern],
       always: ["*"],

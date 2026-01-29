@@ -30,6 +30,9 @@ out
 result
 result-*
 
+# Local
+*.db
+
 
 # References
 opencode
