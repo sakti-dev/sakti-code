@@ -9,6 +9,7 @@
  */
 
 import type { LanguageModelV3Message } from "@ai-sdk/provider";
+import { createLogger } from "@ekacode/shared/logger";
 import { streamText } from "ai";
 import { fromPromise } from "xstate";
 import { exploreModel } from "../integration/model-provider";
@@ -16,6 +17,8 @@ import { getExploreToolMap } from "../tools/phase-tools";
 import type { AgentRuntime, Message, MessageRole } from "../types";
 import { PHASE_SAFETY_LIMITS, toCoreMessages } from "../types";
 import { isTestMode, throwIfAborted } from "./runtime";
+
+const logger = createLogger("core:explore-agent");
 
 /**
  * Input interface for explore agent
@@ -157,7 +160,7 @@ CONSTRAINTS:
 
     // Check if we should continue
     if (finishReason === "stop") {
-      console.log(`[Explore Agent] Complete (${iterationCount} iterations)`);
+      logger.info(`Complete (${iterationCount} iterations)`);
       break;
     }
     if (finishReason === "tool-calls") {
@@ -165,7 +168,7 @@ CONSTRAINTS:
       continue;
     }
     if (iterationCount >= safetyLimit) {
-      console.warn(`[Explore Agent] Safety limit reached (${safetyLimit} iterations)`);
+      logger.warn(`Safety limit reached (${safetyLimit} iterations)`);
       break;
     }
   }

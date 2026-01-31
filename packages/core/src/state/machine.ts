@@ -5,12 +5,15 @@
  * state machine using XState v5.
  */
 
+import { createLogger } from "@ekacode/shared/logger";
 import type { DoneActorEvent } from "xstate";
 import { assign, setup } from "xstate";
 import type { BuildAgentOutput, ExploreAgentOutput, PlanAgentOutput } from "./actors";
 import { runBuildAgent, runPlanAgent, spawnExploreAgent } from "./actors";
 import { hasValidationErrors as checkValidationErrors, doomLoopGuard } from "./guards/doom-loop";
 import type { Message, RLMMachineContext, RLMMachineEvent } from "./types";
+
+const logger = createLogger("core:rlm");
 
 /**
  * XState machine setup with types, actions, actors, and guards
@@ -26,7 +29,7 @@ const machineSetup = setup({
       lastState: (context, params: { state: string }) => {
         const ctx = context as unknown as RLMMachineContext;
         if (!ctx.runtime?.testMode) {
-          console.log(`State: ${params.state}`);
+          logger.info(`State: ${params.state}`, { module: "machine" });
         }
         return params.state;
       },
@@ -41,7 +44,7 @@ const machineSetup = setup({
       messages: (context, params: { content: string }) => {
         const ctx = context as unknown as RLMMachineContext;
         if (!ctx.runtime?.testMode) {
-          console.log(`System: ${params.content}`);
+          logger.info(`System: ${params.content}`, { module: "machine" });
         }
         return [
           ...((ctx.messages ?? []) as Message[]),
@@ -53,7 +56,7 @@ const machineSetup = setup({
       messages: (context, params: { content: string }) => {
         const ctx = context as unknown as RLMMachineContext;
         if (!ctx.runtime?.testMode) {
-          console.log(`Assistant: ${params.content}`);
+          logger.info(`Assistant: ${params.content}`, { module: "machine" });
         }
         return [
           ...((ctx.messages ?? []) as Message[]),
@@ -72,7 +75,7 @@ const machineSetup = setup({
       spawnExploreAgentResult: (context, params: { result: string }) => {
         const ctx = context as unknown as RLMMachineContext;
         if (!ctx.runtime?.testMode) {
-          console.log(`Explore result: ${params.result}`);
+          logger.info(`Explore result: ${params.result}`, { module: "machine" });
         }
         return params.result;
       },
@@ -81,7 +84,7 @@ const machineSetup = setup({
       iterationCount: context => {
         const ctx = context as unknown as RLMMachineContext;
         if (!ctx.runtime?.testMode) {
-          console.log("Iteration incremented");
+          logger.debug("Iteration incremented", { module: "machine" });
         }
         return ctx.iterationCount + 1;
       },
@@ -90,7 +93,7 @@ const machineSetup = setup({
       toolExecutionCount: context => {
         const ctx = context as unknown as RLMMachineContext;
         if (!ctx.runtime?.testMode) {
-          console.log("Tool execution incremented");
+          logger.debug("Tool execution incremented", { module: "machine" });
         }
         return ctx.toolExecutionCount + 1;
       },
@@ -99,7 +102,7 @@ const machineSetup = setup({
       startTime: () => {
         const now = Date.now();
         if (!process.env.NODE_ENV?.includes("test")) {
-          console.log(`Build timer started: ${new Date(now).toISOString()}`);
+          logger.info(`Build timer started: ${new Date(now).toISOString()}`, { module: "machine" });
         }
         return now;
       },
@@ -109,7 +112,7 @@ const machineSetup = setup({
         const ctx = context as unknown as RLMMachineContext;
         const newCount = ctx.buildOscillationCount + 1;
         if (!ctx.runtime?.testMode) {
-          console.log(`Build oscillation: ${newCount}`);
+          logger.debug(`Build oscillation: ${newCount}`, { module: "machine" });
         }
         return newCount;
       },
@@ -152,7 +155,7 @@ const machineSetup = setup({
       }
       const result = doomLoopGuard(ctx);
       if (result.isDoomLoop && !ctx.runtime?.testMode) {
-        console.error(`🚨 Doom loop detected: ${result.reason}`);
+        logger.error(`🚨 Doom loop detected: ${result.reason}`, undefined, { module: "machine" });
       }
       return result.isDoomLoop;
     },
@@ -449,7 +452,7 @@ export const rlmMachine = machineSetup.createMachine({
       entry: ({ context }) => {
         const ctx = context as unknown as RLMMachineContext;
         if (!ctx.runtime?.testMode) {
-          console.log("✅ RLM workflow completed successfully");
+          logger.info("✅ RLM workflow completed successfully", { module: "machine" });
         }
       },
       type: "final",
@@ -458,7 +461,7 @@ export const rlmMachine = machineSetup.createMachine({
       entry: ({ context }) => {
         const ctx = context as unknown as RLMMachineContext;
         if (!ctx.runtime?.testMode) {
-          console.error("❌ RLM workflow failed");
+          logger.error("❌ RLM workflow failed", undefined, { module: "machine" });
         }
       },
       type: "final",

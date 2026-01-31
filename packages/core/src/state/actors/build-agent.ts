@@ -9,6 +9,7 @@
  */
 
 import type { LanguageModelV3Message } from "@ai-sdk/provider";
+import { createLogger } from "@ekacode/shared/logger";
 import { streamText } from "ai";
 import { fromPromise } from "xstate";
 import { buildModel } from "../integration/model-provider";
@@ -17,6 +18,8 @@ import { getImplementToolMap, getValidateToolMap } from "../tools/phase-tools";
 import type { AgentRuntime, BuildPhase, Message, MessageRole } from "../types";
 import { PHASE_SAFETY_LIMITS, toCoreMessages } from "../types";
 import { isTestMode, throwIfAborted } from "./runtime";
+
+const logger = createLogger("core:build-agent");
 
 /**
  * Input interface for build agent
@@ -159,7 +162,7 @@ export const runBuildAgent = fromPromise(async ({ input }: { input: BuildAgentIn
 
     // Check if we should continue (intent-based)
     if (finishReason === "stop") {
-      console.log(`[Build Agent: ${phase}] Complete (${iterationCount} iterations)`);
+      logger.info(`${phase} phase complete (${iterationCount} iterations)`, { phase });
       break;
     }
     if (finishReason === "tool-calls") {
@@ -167,7 +170,7 @@ export const runBuildAgent = fromPromise(async ({ input }: { input: BuildAgentIn
       continue;
     }
     if (iterationCount >= safetyLimit) {
-      console.warn(`[Build Agent: ${phase}] Safety limit reached (${safetyLimit} iterations)`);
+      logger.warn(`${phase} phase safety limit reached (${safetyLimit} iterations)`, { phase });
       break;
     }
   }

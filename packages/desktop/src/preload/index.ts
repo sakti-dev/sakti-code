@@ -7,8 +7,11 @@
  * renderer via contextBridge.
  */
 
+import { createLogger } from "@ekacode/shared/logger";
 import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge, ipcRenderer } from "electron";
+
+const logger = createLogger("desktop:preload");
 
 /**
  * Ekacode API exposed to renderer process
@@ -181,11 +184,11 @@ if (process.contextIsolated) {
     // Expose Ekacode APIs
     contextBridge.exposeInMainWorld("ekacodeAPI", ekacodeAPI);
   } catch (error) {
-    console.error("Failed to expose APIs to renderer:", error);
+    logger.error("Failed to expose APIs to renderer", error as Error);
   }
 } else {
   // Fallback for when context isolation is disabled (not recommended)
-  console.warn(
+  logger.warn(
     "Context isolation is disabled. This is not secure and should only be used for development."
   );
   window.electron = electronAPI;

@@ -6,8 +6,11 @@
  * used as doom loop protection.
  */
 
+import { createLogger } from "@ekacode/shared/logger";
 import type { BuildPhase, LoopControlResult, PlanPhase } from "./types";
 import { PHASE_SAFETY_LIMITS } from "./types";
+
+const logger = createLogger("core:loop-control");
 
 // Re-export safety limits for convenience
 export { PHASE_SAFETY_LIMITS };
@@ -47,7 +50,11 @@ export function checkLoopControl(params: {
   // Safety: Doom loop protection (should rarely hit this)
   // Check this before the "still streaming" case to catch doom loops
   if (iterationCount >= safetyLimit) {
-    console.warn(`⚠️ ${phaseName} hit safety limit (${safetyLimit}), possible doom loop`);
+    logger.warn(`⚠️ ${phaseName} hit safety limit (${safetyLimit}), possible doom loop`, {
+      phase: phaseName,
+      iterationCount,
+      safetyLimit,
+    });
     return { shouldContinue: false, reason: "Safety limit reached" };
   }
 

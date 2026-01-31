@@ -9,6 +9,7 @@
  */
 
 import type { LanguageModelV3Message } from "@ai-sdk/provider";
+import { createLogger } from "@ekacode/shared/logger";
 import { streamText } from "ai";
 import { fromPromise } from "xstate";
 import { planModel, visionModel } from "../integration/model-provider";
@@ -17,6 +18,8 @@ import { getAnalyzeCodeToolMap, getDesignToolMap, getResearchToolMap } from "../
 import type { AgentRuntime, Message, MessageRole, PlanPhase } from "../types";
 import { hasImageContent, PHASE_SAFETY_LIMITS, toCoreMessages } from "../types";
 import { isTestMode, throwIfAborted } from "./runtime";
+
+const logger = createLogger("core:plan-agent");
 
 /**
  * Input interface for plan agent
@@ -136,7 +139,7 @@ export const runPlanAgent = fromPromise(async ({ input }: { input: PlanAgentInpu
   const model = hasImages ? visionModel : planModel;
 
   if (hasImages) {
-    console.log("[Plan Agent] Using vision model for image-containing messages");
+    logger.info("Using vision model for image-containing messages");
   }
 
   let currentMessages = [...messages, { role: "system" as const, content: systemPrompt }];
@@ -174,7 +177,7 @@ export const runPlanAgent = fromPromise(async ({ input }: { input: PlanAgentInpu
 
     // Check if we should continue (intent-based)
     if (finishReason === "stop") {
-      console.log(`[Plan Agent: ${phase}] Complete (${iterationCount} iterations)`);
+      logger.info(`${phase} phase complete (${iterationCount} iterations)`, { phase });
       break;
     }
     if (finishReason === "tool-calls") {
@@ -182,7 +185,7 @@ export const runPlanAgent = fromPromise(async ({ input }: { input: PlanAgentInpu
       continue;
     }
     if (iterationCount >= safetyLimit) {
-      console.warn(`[Plan Agent: ${phase}] Safety limit reached (${safetyLimit} iterations)`);
+      logger.warn(`${phase} phase safety limit reached (${safetyLimit} iterations)`, { phase });
       break;
     }
   }
