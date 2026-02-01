@@ -1,9 +1,9 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/desktop" },
-    { "path": "./packages/server" },
+    { "path": "./apps/desktop" },
     { "path": "./packages/core" },
+    { "path": "./packages/server" },
     { "path": "./packages/shared" },
     { "path": "./packages/zai" }
   ],
