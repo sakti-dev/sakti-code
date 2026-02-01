@@ -5,8 +5,8 @@
  * the server only needs Instance/permissions utilities.
  */
 
-export { Instance } from "./instance";
 export type { InstanceContext } from "./instance/context";
+export { Instance } from "./instance/index.ts";
 
 export {
   PermissionDeniedError,

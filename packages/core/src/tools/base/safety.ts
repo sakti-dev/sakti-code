@@ -10,7 +10,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import { Instance } from "../../instance";
+import { Instance } from "../../instance/index.ts";
 import type { PermissionManager } from "../../security/permission-manager";
 import { containsPath } from "./filesystem";
 

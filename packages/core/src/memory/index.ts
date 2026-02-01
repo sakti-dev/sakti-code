@@ -10,6 +10,7 @@ import { fastembed } from "@mastra/fastembed";
 import { LibSQLStore, LibSQLVector } from "@mastra/libsql";
 import { Memory } from "@mastra/memory";
 import type { UIDataTypes, UIMessagePart, UITools } from "ai";
+import fs from "node:fs";
 import { v7 as uuidv7 } from "uuid";
 
 /**
@@ -27,6 +28,9 @@ export class EkacodeMemory {
   constructor() {
     const paths = resolveAppPaths();
     const authToken = process.env.EKACODE_MASTRA_DB_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN;
+
+    // Ensure the database directory exists before initializing LibSQLStore
+    fs.mkdirSync(paths.db, { recursive: true });
 
     const storage = new LibSQLStore({
       id: "ekacode-store",

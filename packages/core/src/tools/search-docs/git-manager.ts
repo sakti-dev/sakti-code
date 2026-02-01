@@ -7,7 +7,7 @@
 import { execSync } from "node:child_process";
 import { mkdirSync, rmSync } from "node:fs";
 import path from "node:path";
-import { Instance } from "../../instance";
+import { Instance } from "../../instance/index.ts";
 
 // ============================================================================
 // TYPE DEFINITIONS

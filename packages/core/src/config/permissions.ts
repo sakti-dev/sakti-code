@@ -7,6 +7,7 @@
 import { createLogger } from "@ekacode/shared/logger";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
+import { PermissionManager } from "../security/permission-manager";
 import type { PermissionConfig } from "../security/permission-rules";
 import { createDefaultRules, parseConfigRules } from "../security/permission-rules";
 
@@ -162,8 +163,6 @@ export function loadPermissionConfig(): PermissionConfig {
  * This should be called on server startup
  */
 export function initializePermissionRules(): void {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PermissionManager } = require("../security/permission-manager");
   const permissionMgr = PermissionManager.getInstance();
 
   const config = loadPermissionConfig();

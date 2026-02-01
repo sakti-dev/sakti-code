@@ -133,8 +133,8 @@ export {
 export { WorkspaceInstance } from "./workspace/instance";
 
 // Instance context system
-export { Instance } from "./instance";
 export type { InstanceContext, ProjectInfo, VCSInfo } from "./instance/context";
+export { Instance } from "./instance/index.ts";
 
 // Config
 export { initializePermissionRules, loadPermissionConfig } from "./config/permissions";

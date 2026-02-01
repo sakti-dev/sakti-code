@@ -9,10 +9,15 @@ import { startServer } from "@ekacode/server";
 import { createLogger } from "@ekacode/shared/logger";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import { app, BrowserWindow, shell } from "electron";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Import IPC handlers module
 import { setupIPCHandlers } from "./ipc";
+
+// ESM equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const logger = createLogger("desktop");
 

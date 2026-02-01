@@ -12,6 +12,7 @@
     "module": "ESNext",
     "target": "ES2022",
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
