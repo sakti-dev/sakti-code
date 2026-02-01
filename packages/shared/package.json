@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./logger": "./src/logger/index.ts",
-    "./paths": "./src/paths.ts"
+    "./paths": "./src/paths.ts",
+    "./shutdown": "./src/shutdown.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

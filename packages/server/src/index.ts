@@ -6,6 +6,7 @@
 
 import { initializePermissionRules } from "@ekacode/core/server";
 import { createLogger } from "@ekacode/shared/logger";
+import { shutdown } from "@ekacode/shared/shutdown";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { randomBytes } from "node:crypto";
@@ -20,6 +21,11 @@ import healthRouter from "./routes/health";
 import permissionsRouter from "./routes/permissions";
 import rulesRouter from "./routes/rules";
 import workspaceRouter from "./routes/workspace";
+
+// Generic server type with close method
+interface CloseableServer {
+  close(cb?: () => void): void;
+}
 
 export type Env = {
   Variables: {
@@ -111,6 +117,7 @@ app.route("/", rulesRouter);
 app.route("/", workspaceRouter);
 
 let currentPort = SERVER_PORT;
+let serverInstance: CloseableServer | null = null;
 
 // Server config endpoint (for renderer - protected by auth)
 app.get("/api/config", c => {
@@ -135,6 +142,9 @@ export async function startServer() {
     port: SERVER_PORT,
   });
 
+  // Store server instance for cleanup
+  serverInstance = server;
+
   // Get the actual port from the server's address
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : SERVER_PORT;
@@ -147,6 +157,21 @@ export async function startServer() {
   logger.debug(`Server auth: Basic Auth (username: ${process.env.EKACODE_USERNAME || "admin"})`, {
     module: "server:lifecycle",
   });
+
+  // Register cleanup with centralized shutdown manager
+  shutdown.register(
+    "hono-server",
+    async () => {
+      if (serverInstance) {
+        await new Promise<void>(resolve => {
+          serverInstance!.close(() => resolve());
+        });
+        serverInstance = null;
+        logger.info("Hono server closed", { module: "server:lifecycle" });
+      }
+    },
+    10
+  ); // Very high priority (run first)
 
   return { server, port, token: SERVER_TOKEN };
 }

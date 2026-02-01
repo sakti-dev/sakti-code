@@ -1,0 +1,28 @@
+{
+  "name": "@ekacode/electron-preload",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ekacode/shared": "workspace:*",
+    "@electron-toolkit/preload": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.1",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:"
+  }
+}

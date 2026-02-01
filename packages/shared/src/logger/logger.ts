@@ -7,23 +7,32 @@ import { createPrefix } from "./formatters";
 import type { Logger, LoggerConfig, LoggerContext } from "./types";
 
 /**
- * Create a new logger instance
+ * Shared transport instance to prevent multiple exit listeners
+ *
+ * Pino's pino.transport() registers a process.on('exit') listener for each
+ * instance. By sharing a single transport across all loggers, we prevent
+ * MaxListenersExceededWarning.
  */
-export function createLogger(packageName: string, config?: Partial<LoggerConfig>): Logger {
-  const finalConfig = {
-    level: config?.level || "info",
-    prettyPrint: config?.prettyPrint ?? false,
-    fileOutput: config?.fileOutput ?? false,
-    filePath: config?.filePath,
-    redact: config?.redact || [],
-  };
+let sharedTransport: ReturnType<typeof pino.transport> | null = null;
 
-  const transports = pino.transport({
+/**
+ * Get or create the shared transport
+ */
+function getSharedTransport(
+  prettyPrint: boolean,
+  level: string,
+  filePath?: string
+): ReturnType<typeof pino.transport> {
+  if (sharedTransport) {
+    return sharedTransport;
+  }
+
+  sharedTransport = pino.transport({
     targets: [
-      finalConfig.prettyPrint
+      prettyPrint
         ? {
             target: "pino-pretty",
-            level: finalConfig.level,
+            level,
             options: {
               colorize: true,
               translateTime: "HH:MM:ss",
@@ -38,14 +47,35 @@ export function createLogger(packageName: string, config?: Partial<LoggerConfig>
           }
         : {
             target: "pino/file",
-            level: finalConfig.level,
+            level,
             options: {
-              destination: finalConfig.filePath || 1, // 1 = stdout
+              destination: filePath || 1, // 1 = stdout
               mkdir: true,
             },
           },
     ],
   });
+
+  return sharedTransport;
+}
+
+/**
+ * Create a new logger instance
+ */
+export function createLogger(packageName: string, config?: Partial<LoggerConfig>): Logger {
+  const finalConfig = {
+    level: config?.level || "info",
+    prettyPrint: config?.prettyPrint ?? false,
+    fileOutput: config?.fileOutput ?? false,
+    filePath: config?.filePath,
+    redact: config?.redact || [],
+  };
+
+  const transports = getSharedTransport(
+    finalConfig.prettyPrint,
+    finalConfig.level,
+    finalConfig.filePath
+  );
 
   const pinoLogger = pino(
     {

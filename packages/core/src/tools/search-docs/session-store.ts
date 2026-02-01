@@ -4,6 +4,7 @@
  * Manages cloned repositories AND sub-agent sessions with LRU + TTL cleanup.
  */
 
+import { shutdown } from "@ekacode/shared/shutdown";
 import { v7 as uuidv7 } from "uuid";
 
 // ============================================================================
@@ -228,15 +229,8 @@ export class SessionStore {
         this.cleanupExpired();
       }, this.sessionTTL);
 
-      // Register cleanup handlers for graceful shutdown
-      if (typeof process !== "undefined") {
-        const shutdownHandler = () => {
-          this.stopCleanup();
-        };
-        process.on("beforeExit", shutdownHandler);
-        process.on("SIGINT", shutdownHandler);
-        process.on("SIGTERM", shutdownHandler);
-      }
+      // Register cleanup handler with centralized shutdown manager
+      shutdown.register("session-store", () => this.stopCleanup());
     }
   }
 

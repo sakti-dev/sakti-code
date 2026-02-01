@@ -1,0 +1,35 @@
+{
+  "name": "@ekacode/electron-main",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anush008/tokenizers": "^0.0.0",
+    "@ekacode/core": "workspace:*",
+    "@ekacode/server": "workspace:*",
+    "@ekacode/shared": "workspace:*",
+    "@ekacode/zai": "workspace:*",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@libsql/client": "^0.17.0",
+    "@mastra/fastembed": "^1.0.0",
+    "better-sqlite3": "^12.6.2",
+    "electron": "catalog:",
+    "pino": "^9.14.0",
+    "pino-pretty": "^11.3.0",
+    "ts-morph": "^25.0.1",
+    "typescript": "^5.9.3",
+    "tree-sitter": "^0.25.0",
+    "tree-sitter-bash": "^0.25.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.1",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

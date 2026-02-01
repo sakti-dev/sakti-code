@@ -23,7 +23,7 @@ export default function App() {
       <div class="mt-8 text-sm text-gray-500">
         <button
           class="text-blue-400 hover:text-blue-300"
-          onClick={() => window.electron.ipcRenderer.send("ping")}
+          onClick={() => window.electron.ipcRenderer?.send("ping")}
         >
           Send IPC
         </button>

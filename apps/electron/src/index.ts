@@ -7,6 +7,7 @@
 
 import { startServer } from "@ekacode/server";
 import { createLogger } from "@ekacode/shared/logger";
+import { shutdown } from "@ekacode/shared/shutdown";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import { app, BrowserWindow, shell } from "electron";
 import { dirname, join } from "node:path";
@@ -23,6 +24,7 @@ const logger = createLogger("desktop");
 
 let mainWindow: BrowserWindow | null = null;
 let serverConfig: { port: number; token: string } | null = null;
+let isShuttingDown = false;
 
 /**
  * Create the main application window
@@ -36,7 +38,7 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
+      preload: join(__dirname, "../../preload/dist/index.cjs"),
       sandbox: true,
       nodeIntegration: false,
       contextIsolation: true,
@@ -66,7 +68,7 @@ function createWindow(): void {
       url: process.env["ELECTRON_RENDERER_URL"],
     });
   } else {
-    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+    mainWindow.loadFile(join(__dirname, "../../desktop/index.html"));
     logger.debug("Loaded production renderer", {
       module: "desktop:lifecycle",
     });
@@ -82,6 +84,16 @@ async function initServer(): Promise<void> {
   try {
     const server = await startServer();
     serverConfig = { port: server.port, token: server.token };
+
+    // Register cleanup with centralized shutdown manager
+    shutdown.register(
+      "electron-server",
+      async () => {
+        // Server will be cleaned up by @ekacode/server shutdown
+        logger.info("Electron server shutdown complete", { module: "desktop:lifecycle" });
+      },
+      20
+    );
 
     logger.info(`Server started on port ${server.port}`, {
       module: "desktop:server",
@@ -146,6 +158,12 @@ app.on("window-all-closed", () => {
 /**
  * Before quit handler
  */
-app.on("before-quit", () => {
-  logger.info("Application quitting", { module: "desktop:lifecycle" });
+app.on("before-quit", async event => {
+  if (!isShuttingDown) {
+    event.preventDefault();
+    isShuttingDown = true;
+    logger.info("Application quitting gracefully", { module: "desktop:lifecycle" });
+    await shutdown.shutdown();
+    app.quit();
+  }
 });

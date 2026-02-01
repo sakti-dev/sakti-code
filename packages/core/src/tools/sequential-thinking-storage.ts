@@ -8,6 +8,7 @@
  * while enabling persistent storage in production.
  */
 
+import { shutdown } from "@ekacode/shared/shutdown";
 import { v7 as uuidv7 } from "uuid";
 
 // ============================================================================
@@ -145,13 +146,8 @@ export class MemoryStorage implements SequentialThinkingStorage {
       }
     }, this.ttlMs);
 
-    // Register cleanup handlers for graceful shutdown
-    if (typeof process !== "undefined") {
-      const shutdownHandler = () => this.stopCleanup();
-      process.on("beforeExit", shutdownHandler);
-      process.on("SIGINT", shutdownHandler);
-      process.on("SIGTERM", shutdownHandler);
-    }
+    // Register cleanup handler with centralized shutdown manager
+    shutdown.register("sequential-thinking-storage", () => this.stopCleanup());
   }
 
   stopCleanup(): void {
