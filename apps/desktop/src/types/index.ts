@@ -6,6 +6,7 @@ export interface RecentProject {
 }
 
 export type ProjectAction = "open" | "clone" | "remove";
+export type AgentMode = "plan" | "build";
 
 export interface WorkspaceState {
   projectId: string;

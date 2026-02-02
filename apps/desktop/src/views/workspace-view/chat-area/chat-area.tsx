@@ -1,10 +1,10 @@
 import Resizable from "@corvu/resizable";
 import { Component, createSignal, mergeProps } from "solid-js";
-import { ChatHeader } from ".//chat-header";
+import { ChatHeader } from "./chat-header";
 import { ChatInput } from "./chat-input";
 import { MessageList } from "./message-list";
 import { cn } from "/@/lib/utils";
-import type { Message, Session } from "/@/types";
+import type { AgentMode, Message, Session } from "/@/types";
 
 interface ChatPanelProps {
   /** Current active session */
@@ -21,10 +21,14 @@ interface ChatPanelProps {
   onAttachment?: () => void;
   /** Mention handler */
   onMention?: () => void;
+  /** Mode change handler */
+  onModeChange?: (mode: AgentMode) => void;
   /** Model change handler */
   onModelChange?: (modelId: string) => void;
   /** Selected model ID */
   selectedModel?: string;
+  /** Initial mode */
+  initialMode?: AgentMode;
   /** Additional CSS classes */
   class?: string;
 }
@@ -35,7 +39,7 @@ interface ChatPanelProps {
  * Design Features:
  * - Breadcrumb navigation in header
  * - Scrollable message area with auto-scroll
- * - Floating input with glass-morphic design
+ * - Clean card-style input with mode selector
  * - Smooth transitions between states
  */
 export const ChatPanel: Component<ChatPanelProps> = props => {
@@ -44,11 +48,13 @@ export const ChatPanel: Component<ChatPanelProps> = props => {
       messages: [],
       isGenerating: false,
       selectedModel: "claude-sonnet",
+      initialMode: "plan" as AgentMode,
     },
     props
   );
 
   const [inputValue, setInputValue] = createSignal("");
+  const [agentMode, setAgentMode] = createSignal<AgentMode>(merged.initialMode);
 
   const handleSend = () => {
     const content = inputValue().trim();
@@ -56,6 +62,11 @@ export const ChatPanel: Component<ChatPanelProps> = props => {
       merged.onSend?.(content);
       setInputValue("");
     }
+  };
+
+  const handleModeChange = (mode: AgentMode) => {
+    setAgentMode(mode);
+    merged.onModeChange?.(mode);
   };
 
   // Generate breadcrumbs from session/project path
@@ -68,38 +79,46 @@ export const ChatPanel: Component<ChatPanelProps> = props => {
   };
 
   return (
-    <Resizable.Panel initialSize={0.5} minSize={0.3} class="overflow-visible">
-      <div class={cn("bg-background animate-fade-in-up flex h-full flex-col", props.class)}>
-        {/* Header */}
-        <ChatHeader
-          breadcrumbs={breadcrumbs()}
-          projectName={props.session?.projectId}
-          selectedModel={merged.selectedModel}
-          onModelChange={props.onModelChange}
-        />
+    <Resizable.Panel
+      initialSize={0.5}
+      minSize={0.3}
+      class={cn(
+        "bg-background animate-fade-in-up flex h-full flex-1 flex-col overflow-visible",
+        props.class
+      )}
+    >
+      {/* Header */}
+      <ChatHeader
+        breadcrumbs={breadcrumbs()}
+        projectName={props.session?.projectId}
+        selectedModel={merged.selectedModel}
+        onModelChange={props.onModelChange}
+      />
 
-        {/* Message list */}
-        <MessageList
-          messages={merged.messages}
-          isGenerating={merged.isGenerating}
-          thinkingContent={props.thinkingContent}
-        />
+      {/* Message list */}
+      <MessageList
+        messages={merged.messages}
+        isGenerating={merged.isGenerating}
+        thinkingContent={props.thinkingContent}
+      />
 
-        {/* Input area */}
-        <ChatInput
-          value={inputValue()}
-          onValueChange={setInputValue}
-          onSend={handleSend}
-          onAttachment={props.onAttachment}
-          onMention={props.onMention}
-          isSending={merged.isGenerating}
-          placeholder={
-            props.session?.messages.length === 0
-              ? "Start a conversation about your project..."
-              : "Continue the conversation..."
-          }
-        />
-      </div>
+      {/* Input area */}
+      <ChatInput
+        value={inputValue()}
+        onValueChange={setInputValue}
+        onSend={handleSend}
+        onAttachment={props.onAttachment}
+        onMention={props.onMention}
+        mode={agentMode()}
+        onModeChange={handleModeChange}
+        selectedModel={merged.selectedModel}
+        isSending={merged.isGenerating}
+        placeholder={
+          props.session?.messages.length === 0
+            ? "Start a conversation about your project..."
+            : "Reply to Agent..."
+        }
+      />
     </Resizable.Panel>
   );
 };

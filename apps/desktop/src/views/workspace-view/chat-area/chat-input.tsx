@@ -1,5 +1,6 @@
 import { Component, createEffect, createSignal, mergeProps, onMount } from "solid-js";
 import { cn } from "/@/lib/utils";
+import type { AgentMode } from "/@/types";
 
 interface ChatInputProps {
   /** Current input value */
@@ -12,6 +13,12 @@ interface ChatInputProps {
   onAttachment?: () => void;
   /** Mention handler */
   onMention?: () => void;
+  /** Current agent mode */
+  mode?: AgentMode;
+  /** Mode change handler */
+  onModeChange?: (mode: AgentMode) => void;
+  /** Selected model ID */
+  selectedModel?: string;
   /** Whether currently sending */
   isSending?: boolean;
   /** Placeholder text */
@@ -28,6 +35,8 @@ interface ChatInputProps {
  * - Auto-resize with max height
  * - @ mention button for file/symbol reference
  * - Attachment button for images/files
+ * - Mode selector pill (Plan/Build)
+ * - Model name display
  * - Send button with keyboard shortcut (Cmd+Enter)
  * - Focus ring animation
  */
@@ -36,6 +45,8 @@ export const ChatInput: Component<ChatInputProps> = props => {
     {
       value: "",
       isSending: false,
+      mode: "plan" as AgentMode,
+      selectedModel: "claude-sonnet",
       placeholder: "Type your message...",
     },
     props
@@ -85,6 +96,30 @@ export const ChatInput: Component<ChatInputProps> = props => {
     textareaRef?.focus();
   });
 
+  // Mode display with icon
+  const modeDisplay = () =>
+    merged.mode === "plan" ? { label: "Plan", icon: "📋" } : { label: "Build", icon: "🔨" };
+
+  // Handle mode toggle
+  const handleModeToggle = () => {
+    const newMode: AgentMode = merged.mode === "plan" ? "build" : "plan";
+    merged.onModeChange?.(newMode);
+  };
+
+  // Model name display
+  const modelDisplay = () => {
+    switch (merged.selectedModel) {
+      case "claude-opus":
+        return "Opus 4.5";
+      case "claude-sonnet":
+        return "Sonnet 4.5";
+      case "gpt-4":
+        return "GPT-4";
+      default:
+        return "Sonnet 4.5";
+    }
+  };
+
   const canSend = () => inputValue().trim().length > 0 && !merged.isSending;
 
   return (
@@ -100,9 +135,28 @@ export const ChatInput: Component<ChatInputProps> = props => {
         merged.class
       )}
     >
-      {/* Input container */}
-      <div class="flex items-end gap-2">
-        {/* Left action buttons */}
+      {/* Textarea - full width */}
+      <textarea
+        ref={textareaRef}
+        value={inputValue()}
+        onInput={handleInput}
+        onKeyDown={handleKeyDown}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        placeholder={merged.placeholder}
+        class={cn(
+          "w-full resize-none bg-transparent",
+          "text-foreground placeholder:text-muted-foreground/60",
+          "outline-none",
+          "max-h-50 min-h-6 py-2",
+          "scrollbar-thin"
+        )}
+        rows={1}
+      />
+
+      {/* Footer with actions */}
+      <div class="mt-2 flex items-center justify-between">
+        {/* Left group: attachment + mention + mode selector */}
         <div class="flex items-center gap-1">
           {/* @ mention button */}
           <button
@@ -143,72 +197,79 @@ export const ChatInput: Component<ChatInputProps> = props => {
               />
             </svg>
           </button>
+
+          {/* Mode selector pill */}
+          <button
+            onClick={handleModeToggle}
+            class={cn(
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5",
+              "border-border/30 hover:border-primary/40 border",
+              "text-xs font-medium",
+              "transition-all duration-150",
+              "hover:bg-card/30 hover:scale-105",
+              "text-muted-foreground/70 hover:text-primary"
+            )}
+            title={`Click to switch to ${merged.mode === "plan" ? "Build" : "Plan"} mode`}
+          >
+            <span>{modeDisplay().icon}</span>
+            <span>{modeDisplay().label}</span>
+          </button>
         </div>
 
-        {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          value={inputValue()}
-          onInput={handleInput}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          placeholder={merged.placeholder}
-          class={cn(
-            "flex-1 resize-none bg-transparent",
-            "text-foreground placeholder:text-muted-foreground/60",
-            "outline-none",
-            "max-h-[200px] min-h-[24px] py-2",
-            "scrollbar-thin"
-          )}
-          rows={1}
-        />
+        {/* Right group: model name + send button */}
+        <div class="flex items-center gap-2">
+          {/* Model name - display only */}
+          <span class={cn("text-muted-foreground/60 select-none text-xs")}>{modelDisplay()}</span>
 
-        {/* Send button */}
-        <button
-          onClick={() => canSend() && merged.onSend?.()}
-          disabled={!canSend()}
-          class={cn(
-            "rounded-lg p-2 transition-all duration-200",
-            "flex items-center justify-center",
-            // Disabled state
-            !canSend() && ["cursor-not-allowed opacity-40", "bg-muted/20 text-muted-foreground/50"],
-            // Enabled state
-            canSend() && [
-              "bg-primary text-primary-foreground",
-              "hover:bg-primary/90 hover:scale-105",
-              "hover:shadow-[0_0_20px_-5px_rgba(var(--primary),0.4)]",
-            ]
-          )}
-          title="Send message (Cmd+Enter)"
-        >
-          {merged.isSending ? (
-            <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              />
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-          ) : (
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width={2}
-                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-              />
-            </svg>
-          )}
-        </button>
+          {/* Send button */}
+          <button
+            onClick={() => canSend() && merged.onSend?.()}
+            disabled={!canSend()}
+            class={cn(
+              "rounded-lg p-2 transition-all duration-200",
+              "flex items-center justify-center",
+              // Disabled state
+              !canSend() && [
+                "cursor-not-allowed opacity-40",
+                "bg-muted/20 text-muted-foreground/50",
+              ],
+              // Enabled state
+              canSend() && [
+                "bg-primary text-primary-foreground",
+                "hover:bg-primary/90 hover:scale-105",
+                "hover:shadow-[0_0_20px_-5px_rgba(var(--primary),0.4)]",
+              ]
+            )}
+            title="Send message (Cmd+Enter)"
+          >
+            {merged.isSending ? (
+              <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                />
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            ) : (
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Footer hint */}

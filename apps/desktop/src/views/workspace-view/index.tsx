@@ -6,7 +6,7 @@ import type { DiffChange, FileTab, Message, Session, TerminalOutput } from "/@/t
 // Import workspace components
 import Resizable from "@corvu/resizable";
 import { ResizeableHandle } from "@renderer/components/resizeable-handle";
-import { ChatPanel } from "./chat-area/chat-panel";
+import { ChatPanel } from "./chat-area/chat-area";
 import { LeftSide } from "./left-side/left-side";
 import { ContextPanel } from "./right-side/right-side";
 
@@ -171,7 +171,7 @@ export default function WorkspaceView() {
   };
 
   return (
-    <div class="bg-background flex h-screen flex-col overflow-hidden">
+    <div class="bg-background h-screen flex-col overflow-hidden">
       {/* Loading state */}
       <Show when={isLoading()}>
         <div class="flex h-full items-center justify-center">
