@@ -120,3 +120,22 @@ export async function touchSession(sessionId: string): Promise<void> {
 export async function deleteSession(sessionId: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.session_id, sessionId));
 }
+
+/**
+ * Get all sessions
+ *
+ * @returns All sessions ordered by last accessed (most recent first)
+ */
+export async function getAllSessions(): Promise<Session[]> {
+  const results = await db.select().from(sessions).orderBy(sessions.last_accessed).all();
+
+  return results
+    .map(row => ({
+      sessionId: row.session_id,
+      resourceId: row.resource_id,
+      threadId: row.thread_id,
+      createdAt: row.created_at,
+      lastAccessed: row.last_accessed,
+    }))
+    .reverse(); // Most recent first
+}

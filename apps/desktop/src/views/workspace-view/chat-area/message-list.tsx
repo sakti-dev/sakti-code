@@ -2,11 +2,25 @@ import { Component, createEffect, createSignal, For, onMount, Show } from "solid
 import { MessageBubble, ThinkingBubble } from "./message-bubble";
 import { ToolCallBlock } from "./tool-call-block";
 import { cn } from "/@/lib/utils";
-import type { Message } from "/@/types";
+import type { Message, ToolCall } from "/@/types";
+
+/**
+ * Base message interface compatible with both old and new formats
+ */
+interface BaseMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content?: string;
+  parts?: unknown[];
+  timestamp?: Date;
+  toolCalls?: ToolCall[];
+  status?: "sending" | "sent" | "error";
+  thinking?: string;
+}
 
 interface MessageListProps {
   /** Messages to display */
-  messages: Message[];
+  messages: BaseMessage[];
   /** Whether AI is currently generating */
   isGenerating?: boolean;
   /** Current thinking content (if any) */
@@ -75,7 +89,10 @@ export const MessageList: Component<MessageListProps> = props => {
         <For each={props.messages}>
           {(message, index) => (
             <div class="group">
-              <MessageBubble message={message} delay={Math.min(index() * 50, 300)} />
+              <MessageBubble
+                message={message as unknown as Message}
+                delay={Math.min(index() * 50, 300)}
+              />
 
               {/* Tool calls */}
               <Show when={message.toolCalls && message.toolCalls.length > 0}>

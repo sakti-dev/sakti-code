@@ -1,7 +1,6 @@
-import { useParams } from "@solidjs/router";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { cn } from "/@/lib/utils";
-import type { DiffChange, FileTab, Message, Session, TerminalOutput } from "/@/types";
+import type { DiffChange, FileTab, TerminalOutput } from "/@/types";
 
 // Import workspace components
 import Resizable from "@corvu/resizable";
@@ -9,35 +8,19 @@ import { ResizeableHandle } from "@renderer/components/resizeable-handle";
 import { ChatPanel } from "./chat-area/chat-area";
 import { LeftSide } from "./left-side/left-side";
 import { ContextPanel } from "./right-side/right-side";
+import { PermissionDialog } from "/@/components/permission-dialog";
+import { useWorkspace, WorkspaceProvider } from "/@/providers/workspace-provider";
 
 /**
- * WorkspaceView - Main 3-column AI-native workspace interface
- *
- * Architecture (Luminous Workspace Design):
- * - Left Panel (~20%): Session Manager
- * - Center (~50%): Agent Chat Interface
- * - Right (~30%): Context & Terminal split vertically
+ * WorkspaceViewContent - The actual content wrapped by provider
  */
-export default function WorkspaceView() {
-  const params = useParams();
+function WorkspaceViewContent() {
+  const ctx = useWorkspace();
 
-  // State
-  const [isLoading, setIsLoading] = createSignal(true);
-  const [sessions, setSessions] = createSignal<Session[]>([
-    {
-      id: "session-1",
-      title: "Initial setup and configuration",
-      messages: [],
-      projectId: params.id,
-      lastUpdated: new Date(),
-      status: "active",
-    },
-  ]);
-  const [activeSessionId, setActiveSessionId] = createSignal<string>("session-1");
-  const [messages, setMessages] = createSignal<Message[]>([]);
-  const [isGenerating, setIsGenerating] = createSignal(false);
-  const [selectedModel, setSelectedModel] = createSignal<string>("claude-sonnet");
+  // Panel sizes
   const [panelSizes, setPanelSizes] = createSignal<number[]>([0.2, 0.5, 0.3]);
+
+  // Right panel state (still local for now)
   const [activeTopTab, setActiveTopTab] = createSignal<"files" | "diff">("files");
   const [openFiles, setOpenFiles] = createSignal<FileTab[]>([
     {
@@ -57,7 +40,8 @@ export default function WorkspaceView() {
     },
   ]);
 
-  const activeSession = () => sessions().find(s => s.id === activeSessionId());
+  // Loading state
+  const [isLoading, setIsLoading] = createSignal(true);
 
   onMount(() => {
     const storedSizes = localStorage.getItem("ekacode-panel-sizes");
@@ -75,54 +59,36 @@ export default function WorkspaceView() {
     localStorage.setItem("ekacode-panel-sizes", JSON.stringify(panelSizes()));
   });
 
-  const handleNewSession = () => {
-    const newSession: Session = {
-      id: `session-${Date.now()}`,
-      title: "New conversation",
-      messages: [],
-      projectId: params.id,
-      lastUpdated: new Date(),
-      status: "active",
-    };
-    setSessions(prev => [newSession, ...prev]);
-    setActiveSessionId(newSession.id);
-    setMessages([]);
+  // Session handlers
+  const handleNewSession = async () => {
+    await ctx.createSession();
   };
 
-  const handleSessionClick = (session: Session) => {
-    setActiveSessionId(session.id);
-    setMessages(session.messages);
+  const handleSessionClick = (session: { sessionId?: string }) => {
+    if (session.sessionId) {
+      ctx.setActiveSessionId(session.sessionId);
+    }
   };
 
-  const handleTogglePin = (session: Session) => {
-    setSessions(prev => prev.map(s => (s.id === session.id ? { ...s, isPinned: !s.isPinned } : s)));
+  const handleTogglePin = () => {
+    // TODO: Implement pin toggle with server
+    console.log("Toggle pin not implemented yet");
   };
 
-  const handleSendMessage = (content: string) => {
-    const newMessage: Message = {
-      id: `msg-${Date.now()}`,
-      role: "user",
-      content,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, newMessage]);
-    setIsGenerating(true);
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: `msg-${Date.now()}`,
-        role: "assistant",
-        content: "I understand. Let me help you with that...",
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-      setIsGenerating(false);
-    }, 1000);
+  // Chat handlers - delegate to context
+  const handleSendMessage = async (content: string) => {
+    const chat = ctx.chat();
+    if (chat) {
+      await chat.sendMessage(content);
+    }
   };
 
   const handleModelChange = (modelId: string) => {
-    setSelectedModel(modelId);
+    // TODO: Store model preference
+    console.log("Model changed to:", modelId);
   };
 
+  // File/diff handlers
   const handleTabClick = (tab: FileTab) => {
     setOpenFiles(prev =>
       prev.map(t => ({
@@ -170,6 +136,23 @@ export default function WorkspaceView() {
     setTerminalOutput([]);
   };
 
+  // Get chat data for rendering
+  const messages = () => ctx.chat()?.messages ?? [];
+  const isGenerating = () => ctx.chat()?.isLoading() ?? false;
+  const activeSession = () => {
+    const id = ctx.activeSessionId();
+    return ctx.sessions().find(s => s.sessionId === id);
+  };
+
+  // Permission dialog
+  const currentPermission = () => ctx.permissions()?.currentRequest() ?? null;
+  const handleApprovePermission = (id: string) => {
+    ctx.permissions()?.approve(id);
+  };
+  const handleDenyPermission = (id: string) => {
+    ctx.permissions()?.deny(id);
+  };
+
   return (
     <div class="bg-background h-screen flex-col overflow-hidden">
       {/* Loading state */}
@@ -204,11 +187,12 @@ export default function WorkspaceView() {
           class="flex h-full w-full overflow-hidden"
         >
           <LeftSide
-            sessions={sessions()}
-            activeSessionId={activeSessionId()}
+            sessions={ctx.sessions()}
+            activeSessionId={ctx.activeSessionId() ?? undefined}
             onSessionClick={handleSessionClick}
             onNewSession={handleNewSession}
             onTogglePin={handleTogglePin}
+            isLoading={ctx.isLoadingSessions()}
           />
 
           {/* Resize Handle 1 */}
@@ -222,7 +206,7 @@ export default function WorkspaceView() {
             thinkingContent={""}
             onSend={handleSendMessage}
             onModelChange={handleModelChange}
-            selectedModel={selectedModel()}
+            selectedModel="claude-sonnet"
           />
 
           {/* Resize Handle 2 */}
@@ -245,6 +229,29 @@ export default function WorkspaceView() {
           />
         </Resizable>
       </Show>
+
+      {/* Permission Dialog */}
+      <PermissionDialog
+        request={currentPermission()}
+        onApprove={handleApprovePermission}
+        onDeny={handleDenyPermission}
+      />
     </div>
+  );
+}
+
+/**
+ * WorkspaceView - Main 3-column AI-native workspace interface
+ *
+ * Architecture (Luminous Workspace Design):
+ * - Left Panel (~20%): Session Manager
+ * - Center (~50%): Agent Chat Interface
+ * - Right (~30%): Context & Terminal split vertically
+ */
+export default function WorkspaceView() {
+  return (
+    <WorkspaceProvider>
+      <WorkspaceViewContent />
+    </WorkspaceProvider>
   );
 }

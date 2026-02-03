@@ -1,25 +1,37 @@
 import { Component, For, Show, createSignal } from "solid-js";
 import { SessionCard } from "./session-card";
 import { cn } from "/@/lib/utils";
-import type { Session } from "/@/types";
+
+/**
+ * Base session interface compatible with both old and new formats
+ */
+interface BaseSession {
+  id?: string;
+  sessionId?: string;
+  title: string;
+  lastUpdated?: Date;
+  lastAccessed?: string;
+  status: "active" | "archived";
+  isPinned?: boolean;
+}
 
 interface SessionGroup {
   title: string;
-  sessions: Session[];
+  sessions: BaseSession[];
   isCollapsed?: boolean;
 }
 
 interface SessionListProps {
   /** All sessions to display */
-  sessions: Session[];
+  sessions: BaseSession[];
   /** Currently active session ID */
   activeSessionId?: string;
   /** Session click handler */
-  onSessionClick?: (session: Session) => void;
+  onSessionClick?: (session: BaseSession) => void;
   /** Session context menu handler */
-  onSessionContextMenu?: (session: Session, e: MouseEvent) => void;
+  onSessionContextMenu?: (session: BaseSession, e: MouseEvent) => void;
   /** Pin toggle handler */
-  onTogglePin?: (session: Session) => void;
+  onTogglePin?: (session: BaseSession) => void;
   /** Additional CSS classes */
   class?: string;
 }
@@ -51,6 +63,13 @@ export const SessionList: Component<SessionListProps> = props => {
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
 
+    // Helper to get date from session (handles both formats)
+    const getSessionDate = (s: BaseSession): Date => {
+      if (s.lastUpdated) return new Date(s.lastUpdated);
+      if (s.lastAccessed) return new Date(s.lastAccessed);
+      return new Date(0); // Fallback to epoch
+    };
+
     const groups: SessionGroup[] = [];
 
     // Pinned sessions
@@ -60,16 +79,14 @@ export const SessionList: Component<SessionListProps> = props => {
     }
 
     // Today
-    const todaySessions = props.sessions.filter(
-      s => !s.isPinned && new Date(s.lastUpdated) >= today
-    );
+    const todaySessions = props.sessions.filter(s => !s.isPinned && getSessionDate(s) >= today);
     if (todaySessions.length > 0) {
       groups.push({ title: "Today", sessions: todaySessions });
     }
 
     // Yesterday
     const yesterdaySessions = props.sessions.filter(
-      s => !s.isPinned && new Date(s.lastUpdated) >= yesterday && new Date(s.lastUpdated) < today
+      s => !s.isPinned && getSessionDate(s) >= yesterday && getSessionDate(s) < today
     );
     if (yesterdaySessions.length > 0) {
       groups.push({ title: "Yesterday", sessions: yesterdaySessions });
@@ -77,16 +94,14 @@ export const SessionList: Component<SessionListProps> = props => {
 
     // This Week
     const weekSessions = props.sessions.filter(
-      s => !s.isPinned && new Date(s.lastUpdated) >= weekAgo && new Date(s.lastUpdated) < yesterday
+      s => !s.isPinned && getSessionDate(s) >= weekAgo && getSessionDate(s) < yesterday
     );
     if (weekSessions.length > 0) {
       groups.push({ title: "This Week", sessions: weekSessions });
     }
 
     // Older
-    const olderSessions = props.sessions.filter(
-      s => !s.isPinned && new Date(s.lastUpdated) < weekAgo
-    );
+    const olderSessions = props.sessions.filter(s => !s.isPinned && getSessionDate(s) < weekAgo);
     if (olderSessions.length > 0) {
       groups.push({ title: "Older", sessions: olderSessions });
     }

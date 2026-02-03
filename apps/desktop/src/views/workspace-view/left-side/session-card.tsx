@@ -1,10 +1,23 @@
 import { Component, Show, mergeProps } from "solid-js";
 import { cn } from "/@/lib/utils";
-import type { Session } from "/@/types";
+
+/**
+ * Base session interface compatible with both old and new formats
+ */
+interface BaseSession {
+  id?: string;
+  sessionId?: string;
+  title: string;
+  lastUpdated?: Date;
+  lastAccessed?: string;
+  status: "active" | "archived";
+  isPinned?: boolean;
+  messages?: unknown[];
+}
 
 interface SessionCardProps {
   /** Session data */
-  session: Session;
+  session: BaseSession;
   /** Whether this session is currently selected */
   isActive?: boolean;
   /** Click handler */
@@ -38,6 +51,13 @@ export const SessionCard: Component<SessionCardProps> = props => {
     props
   );
 
+  // Get session date from either format
+  const getSessionDate = (): Date => {
+    if (props.session.lastUpdated) return new Date(props.session.lastUpdated);
+    if (props.session.lastAccessed) return new Date(props.session.lastAccessed);
+    return new Date();
+  };
+
   // Format relative timestamp
   const formatRelativeTime = (date: Date): string => {
     const now = new Date();
@@ -64,6 +84,9 @@ export const SessionCard: Component<SessionCardProps> = props => {
     };
     return delays[merged.delay] || "";
   };
+
+  // Get message count
+  const messageCount = () => props.session.messages?.length ?? 0;
 
   return (
     <div
@@ -139,14 +162,12 @@ export const SessionCard: Component<SessionCardProps> = props => {
       {/* Session metadata */}
       <div class="mt-1.5 flex items-center gap-2">
         {/* Timestamp */}
-        <span class="text-muted-foreground/70 text-xs">
-          {formatRelativeTime(props.session.lastUpdated)}
-        </span>
+        <span class="text-muted-foreground/70 text-xs">{formatRelativeTime(getSessionDate())}</span>
 
-        {/* Message count */}
-        <span class="text-muted-foreground/50 text-xs">
-          · {props.session.messages.length} messages
-        </span>
+        {/* Message count - only show if available */}
+        <Show when={messageCount() > 0}>
+          <span class="text-muted-foreground/50 text-xs">· {messageCount()} messages</span>
+        </Show>
 
         {/* Status indicator */}
         <Show when={props.session.status === "active"}>

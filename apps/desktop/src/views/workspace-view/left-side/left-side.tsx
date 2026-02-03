@@ -2,21 +2,35 @@ import Resizable from "@corvu/resizable";
 import { Component, mergeProps } from "solid-js";
 import { SessionList } from "./session-list";
 import { cn } from "/@/lib/utils";
-import type { Session } from "/@/types";
+
+/**
+ * Base session interface that both types implement
+ */
+interface BaseSession {
+  id?: string;
+  sessionId?: string;
+  title: string;
+  lastUpdated?: Date;
+  lastAccessed?: string;
+  status: "active" | "archived";
+  isPinned?: boolean;
+}
 
 interface SessionSidebarProps {
   /** All sessions to display */
-  sessions: Session[];
+  sessions: BaseSession[];
   /** Currently active session ID */
   activeSessionId?: string;
   /** Session click handler */
-  onSessionClick?: (session: Session) => void;
+  onSessionClick?: (session: BaseSession) => void;
   /** New session handler */
   onNewSession?: () => void;
   /** Session context menu handler */
-  onSessionContextMenu?: (session: Session, e: MouseEvent) => void;
+  onSessionContextMenu?: (session: BaseSession, e: MouseEvent) => void;
   /** Pin toggle handler */
-  onTogglePin?: (session: Session) => void;
+  onTogglePin?: (session: BaseSession) => void;
+  /** Loading state */
+  isLoading?: boolean;
   /** Additional CSS classes */
   class?: string;
 }

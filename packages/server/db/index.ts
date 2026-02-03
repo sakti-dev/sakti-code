@@ -3,14 +3,17 @@
  *
  * Provides singleton database client for Drizzle ORM with libsql/SQLite.
  * Uses either remote libsql (Turso) or local SQLite file via @libsql/client.
+ *
+ * Includes automatic migration on first connection to ensure tables exist.
  */
 
 import { resolveAppPaths } from "@ekacode/shared/paths";
 import { createClient } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { runMigrations } from "./migrate";
 import * as schema from "./schema";
 
 /**
@@ -32,9 +35,11 @@ export function getDatabaseAuthToken(): string | undefined {
  *
  * Supports both local file-based SQLite and remote libsql (Turso).
  * @libsql/client uses WASM for local files, avoiding native build issues.
+ *
+ * On first connection, runs Drizzle migrations to ensure schema is up to date.
  */
 let client: ReturnType<typeof createClient> | null = null;
-let drizzleInstance: ReturnType<typeof drizzle> | null = null;
+let drizzleInstance: LibSQLDatabase<typeof schema> | null = null;
 let initPromise: Promise<void> | null = null;
 
 function ensureDbDirectory(url: string): void {
@@ -46,7 +51,7 @@ function ensureDbDirectory(url: string): void {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-export async function getDb() {
+export async function getDb(): Promise<LibSQLDatabase<typeof schema>> {
   if (!client) {
     const url = getDatabaseUrl();
     const authToken = getDatabaseAuthToken();
@@ -58,10 +63,14 @@ export async function getDb() {
       authToken: authToken || undefined,
     });
 
-    // Enable foreign keys for this connection
-    initPromise = client.execute("PRAGMA foreign_keys = ON").then(() => undefined);
-
     drizzleInstance = drizzle(client, { schema });
+
+    // Initialize: enable foreign keys and run migrations
+    initPromise = (async () => {
+      await client!.execute("PRAGMA foreign_keys = ON");
+      // Run Drizzle migrations to ensure schema is up to date
+      await runMigrations(drizzleInstance!);
+    })();
   }
 
   if (initPromise) {

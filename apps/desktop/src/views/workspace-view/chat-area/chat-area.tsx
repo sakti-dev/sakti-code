@@ -4,13 +4,24 @@ import { ChatHeader } from "./chat-header";
 import { ChatInput } from "./chat-input";
 import { MessageList } from "./message-list";
 import { cn } from "/@/lib/utils";
-import type { AgentMode, Message, Session } from "/@/types";
+import type { AgentMode, Session } from "/@/types";
+import type { ChatUIMessage } from "/@/types/ui-message";
+
+/**
+ * Base message interface for compatibility
+ */
+interface BaseMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content?: string;
+  parts?: unknown[];
+}
 
 interface ChatPanelProps {
   /** Current active session */
-  session?: Session;
+  session?: Session | { sessionId: string; title: string };
   /** All messages for current session */
-  messages?: Message[];
+  messages?: BaseMessage[] | ChatUIMessage[];
   /** Whether AI is currently generating */
   isGenerating?: boolean;
   /** Current thinking content */
@@ -69,13 +80,27 @@ export const ChatPanel: Component<ChatPanelProps> = props => {
     merged.onModeChange?.(mode);
   };
 
+  // Get project name from session (handle both formats)
+  const getProjectName = (): string => {
+    const session = props.session;
+    if (!session) return "Project";
+    if ("projectId" in session) return session.projectId ?? "Project";
+    return session.title ?? "Project";
+  };
+
   // Generate breadcrumbs from session/project path
   const breadcrumbs = () => {
-    const path = props.session?.projectId || "~/ekacode";
-    return path.split("/").map((segment, index, array) => ({
+    const path = getProjectName();
+    return path.split("/").map((segment: string, index: number, array: string[]) => ({
       label: segment || "~",
       path: array.slice(0, index + 1).join("/"),
     }));
+  };
+
+  // Get placeholder text
+  const getPlaceholder = (): string => {
+    const messageCount = merged.messages?.length ?? 0;
+    return messageCount === 0 ? "Start a conversation about your project..." : "Reply to Agent...";
   };
 
   return (
@@ -90,14 +115,14 @@ export const ChatPanel: Component<ChatPanelProps> = props => {
       {/* Header */}
       <ChatHeader
         breadcrumbs={breadcrumbs()}
-        projectName={props.session?.projectId}
+        projectName={getProjectName()}
         selectedModel={merged.selectedModel}
         onModelChange={props.onModelChange}
       />
 
       {/* Message list */}
       <MessageList
-        messages={merged.messages}
+        messages={merged.messages as BaseMessage[]}
         isGenerating={merged.isGenerating}
         thinkingContent={props.thinkingContent}
       />
@@ -113,11 +138,7 @@ export const ChatPanel: Component<ChatPanelProps> = props => {
         onModeChange={handleModeChange}
         selectedModel={merged.selectedModel}
         isSending={merged.isGenerating}
-        placeholder={
-          props.session?.messages.length === 0
-            ? "Start a conversation about your project..."
-            : "Reply to Agent..."
-        }
+        placeholder={getPlaceholder()}
       />
     </Resizable.Panel>
   );

@@ -1,4 +1,5 @@
 import { join } from "path";
+import copy from "rollup-plugin-copy";
 import type { UserConfig } from "vite";
 
 const PACKAGE_ROOT = __dirname;
@@ -24,6 +25,12 @@ const config: UserConfig = {
       formats: ["es"],
     },
     rollupOptions: {
+      plugins: [
+        copy({
+          targets: [{ src: "../../packages/server/drizzle", dest: "dist" }],
+          hook: "writeBundle",
+        }),
+      ],
       // External only truly native modules + Electron
       external: [
         "electron",

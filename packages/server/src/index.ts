@@ -23,6 +23,7 @@ import eventsRouter from "./routes/events";
 import healthRouter from "./routes/health";
 import permissionsRouter from "./routes/permissions";
 import rulesRouter from "./routes/rules";
+import sessionsRouter from "./routes/sessions";
 import workspaceRouter from "./routes/workspace";
 
 /**
@@ -168,6 +169,9 @@ app.route("/", eventsRouter);
 
 // Mount rules routes
 app.route("/", rulesRouter);
+
+// Mount sessions routes
+app.route("/", sessionsRouter);
 
 // Mount workspace routes
 app.route("/", workspaceRouter);
