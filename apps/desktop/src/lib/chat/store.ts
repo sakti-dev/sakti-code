@@ -2,12 +2,29 @@
  * Chat Store
  *
  * High-performance state management using Solid stores.
- * Uses createStore + produce for O(1) streaming updates instead of O(N) array reconciliation.
+ * Uses normalized data structure (order + byId) for true O(1) streaming updates.
  *
  * Critical for handling 50-100 tokens/sec streaming without UI lag.
+ *
+ * Data Structure:
+ * - messages.order: string[] - ordered list of message IDs for rendering
+ * - messages.byId: Record<string, ChatUIMessage> - hash map for O(1) lookups
+ *
+ * This is the "Antigravity-level" optimization that eliminates the O(N) scan
+ * that would occur with setStore("messages", m => m.id === id, ...) on a flat array.
  */
-import { createStore, produce, reconcile, unwrap } from "solid-js/store";
-import type { ChatState, ChatStatus, ChatUIMessage, RLMStateData } from "../../types/ui-message";
+import { createStore, produce, unwrap } from "solid-js/store";
+import type {
+  AgentEvent,
+  ChatEventsState,
+  ChatMessagesState,
+  ChatReasoningState,
+  ChatState,
+  ChatStatus,
+  ChatUIMessage,
+  ReasoningPart,
+  RLMStateData,
+} from "../../types/ui-message";
 import { createLogger } from "../logger";
 
 const logger = createLogger("desktop:store");
@@ -25,19 +42,42 @@ const logger = createLogger("desktop:store");
  * // Add user message
  * chatStore.addMessage({ id: "1", role: "user", parts: [{ type: "text", text: "Hello" }] });
  *
- * // Stream text delta (O(1) operation)
+ * // Stream text delta (O(1) operation via byId lookup)
  * chatStore.appendTextDelta("msg_2", "token ");
+ *
+ * // Add event (O(1) operation)
+ * chatStore.addEvent({ id: "evt_1", ts: Date.now(), kind: "analyzed", title: "Read file.ts" });
  * ```
  */
 export function createChatStore(initialMessages: ChatUIMessage[] = []) {
   logger.debug("Creating chat store", { initialMessageCount: initialMessages.length });
 
+  // Convert initial messages to normalized structure
+  const initialMessagesState: ChatMessagesState = {
+    order: initialMessages.map(m => m.id),
+    byId: Object.fromEntries(initialMessages.map(m => [m.id, m])),
+  };
+
+  // Initialize empty events store
+  const initialEventsState: ChatEventsState = {
+    order: [],
+    byId: {},
+  };
+
+  // Initialize empty reasoning store
+  const initialReasoningState: ChatReasoningState = {
+    byId: {},
+  };
+
   const [store, setStore] = createStore<ChatState>({
-    messages: initialMessages,
+    messages: initialMessagesState,
+    events: initialEventsState,
+    reasoning: initialReasoningState,
     status: "idle",
     error: null,
     rlmState: null,
     sessionId: null,
+    currentMetadata: null,
   });
 
   return {
@@ -45,6 +85,21 @@ export function createChatStore(initialMessages: ChatUIMessage[] = []) {
      * Get the current store state (reactive)
      */
     get: () => store,
+
+    /**
+     * Get messages as an ordered array (for rendering)
+     * Use this for iteration: order.map(id => byId[id])
+     */
+    getMessagesArray(): ChatUIMessage[] {
+      return store.messages.order.map(id => store.messages.byId[id]);
+    },
+
+    /**
+     * Get a single message by ID (O(1) lookup)
+     */
+    getMessage(messageId: string): ChatUIMessage | undefined {
+      return store.messages.byId[messageId];
+    },
 
     /**
      * Add a new message to the store
@@ -57,27 +112,31 @@ export function createChatStore(initialMessages: ChatUIMessage[] = []) {
         messageId: clonedMessage.id,
         role: clonedMessage.role,
         partsCount: clonedMessage.parts?.length || 0,
-        currentMessageCount: store.messages.length,
+        currentMessageCount: store.messages.order.length,
       });
-      setStore("messages", messages => [...messages, clonedMessage]);
+
+      // Add to byId and append to order in a single batch
+      setStore("messages", "byId", clonedMessage.id, clonedMessage);
+      setStore("messages", "order", order => [...order, clonedMessage.id]);
+
       logger.info("[STORE] Message added successfully", {
         messageId: clonedMessage.id,
-        newMessageCount: store.messages.length,
+        newMessageCount: store.messages.order.length,
       });
     },
 
     /**
      * Update a specific message using produce for O(1) updates
-     * Critical for streaming - doesn't trigger list reconciliation
+     * True O(1) - direct byId lookup, no array scanning
      */
     updateMessage(messageId: string, updater: (message: ChatUIMessage) => void) {
-      setStore("messages", m => m.id === messageId, produce(updater));
+      setStore("messages", "byId", messageId, produce(updater));
       logger.debug("Message updated", { messageId });
     },
 
     /**
      * Append text delta to a message's text part
-     * O(1) operation - only updates the specific text part
+     * TRUE O(1) operation - direct byId lookup + produce
      *
      * This is the most frequently called method during streaming.
      * At 50-100 tokens/sec, this must be extremely efficient.
@@ -85,7 +144,8 @@ export function createChatStore(initialMessages: ChatUIMessage[] = []) {
     appendTextDelta(messageId: string, delta: string) {
       setStore(
         "messages",
-        m => m.id === messageId,
+        "byId",
+        messageId,
         produce(message => {
           // Find the text part (should be the first one for assistant messages)
           const textPart = message.parts.find(p => p.type === "text");
@@ -107,7 +167,8 @@ export function createChatStore(initialMessages: ChatUIMessage[] = []) {
     ) {
       setStore(
         "messages",
-        m => m.id === messageId,
+        "byId",
+        messageId,
         produce(message => {
           message.parts.push({
             type: "tool-call",
@@ -130,7 +191,8 @@ export function createChatStore(initialMessages: ChatUIMessage[] = []) {
     updateToolCall(messageId: string, toolCallId: string, args: unknown) {
       setStore(
         "messages",
-        m => m.id === messageId,
+        "byId",
+        messageId,
         produce(message => {
           const part = message.parts.find(
             p => p.type === "tool-call" && (p as { toolCallId?: string }).toolCallId === toolCallId
@@ -149,7 +211,8 @@ export function createChatStore(initialMessages: ChatUIMessage[] = []) {
     addToolResult(messageId: string, toolResult: { toolCallId: string; result: unknown }) {
       setStore(
         "messages",
-        m => m.id === messageId,
+        "byId",
+        messageId,
         produce(message => {
           message.parts.push({
             type: "tool-result",
@@ -176,7 +239,8 @@ export function createChatStore(initialMessages: ChatUIMessage[] = []) {
     ) {
       setStore(
         "messages",
-        m => m.id === messageId,
+        "byId",
+        messageId,
         produce(message => {
           // Find existing part with same type and ID
           const existingIndex = message.parts.findIndex(
@@ -204,10 +268,14 @@ export function createChatStore(initialMessages: ChatUIMessage[] = []) {
 
     /**
      * Replace all messages (for history load/regenerate)
-     * Uses reconcile for efficient diff-based update by ID
+     * Converts array to normalized structure
      */
     setMessages(messages: ChatUIMessage[]) {
-      setStore("messages", reconcile(messages, { key: "id" }));
+      const normalizedMessages: ChatMessagesState = {
+        order: messages.map(m => m.id),
+        byId: Object.fromEntries(messages.map(m => [m.id, m])),
+      };
+      setStore("messages", normalizedMessages);
       logger.info("Messages replaced", { count: messages.length });
     },
 
@@ -257,15 +325,136 @@ export function createChatStore(initialMessages: ChatUIMessage[] = []) {
       }
     },
 
+    // =========================================================================
+    // Event Store Methods (O(1) operations for activity feed)
+    // =========================================================================
+
+    /**
+     * Add an event to the store (O(1))
+     */
+    addEvent(event: AgentEvent) {
+      setStore("events", "byId", event.id, event);
+      setStore("events", "order", order => [...order, event.id]);
+      logger.debug("Event added", { eventId: event.id, kind: event.kind });
+    },
+
+    /**
+     * Update an existing event (O(1))
+     */
+    updateEvent(eventId: string, updater: (event: AgentEvent) => void) {
+      setStore("events", "byId", eventId, produce(updater));
+    },
+
+    /**
+     * Get events as an ordered array (for rendering)
+     */
+    getEventsArray(): AgentEvent[] {
+      return store.events.order.map(id => store.events.byId[id]);
+    },
+
+    /**
+     * Get a single event by ID (O(1))
+     */
+    getEvent(eventId: string): AgentEvent | undefined {
+      return store.events.byId[eventId];
+    },
+
+    /**
+     * Clear all events (called at start of new message)
+     */
+    clearEvents() {
+      setStore("events", { order: [], byId: {} });
+      logger.debug("Events cleared");
+    },
+
+    // =========================================================================
+    // Reasoning Store Methods (O(1) operations for thinking display)
+    // =========================================================================
+
+    /**
+     * Start a reasoning part (O(1))
+     */
+    startReasoning(id: string) {
+      const part: ReasoningPart = {
+        id,
+        text: "",
+        time: { start: Date.now() },
+      };
+      setStore("reasoning", "byId", id, part);
+      logger.debug("Reasoning started", { reasoningId: id });
+    },
+
+    /**
+     * Append reasoning delta (O(1))
+     */
+    appendReasoningDelta(id: string, delta: string) {
+      setStore(
+        "reasoning",
+        "byId",
+        id,
+        produce(part => {
+          if (part) {
+            part.text += delta;
+          }
+        })
+      );
+    },
+
+    /**
+     * End reasoning part (O(1))
+     */
+    endReasoning(id: string) {
+      setStore(
+        "reasoning",
+        "byId",
+        id,
+        produce(part => {
+          if (part) {
+            part.time.end = Date.now();
+          }
+        })
+      );
+      logger.debug("Reasoning ended", {
+        reasoningId: id,
+        durationMs: store.reasoning.byId[id]?.time.end
+          ? store.reasoning.byId[id].time.end! - store.reasoning.byId[id].time.start
+          : 0,
+      });
+    },
+
+    /**
+     * Get a reasoning part by ID (O(1))
+     */
+    getReasoning(id: string): ReasoningPart | undefined {
+      return store.reasoning.byId[id];
+    },
+
+    /**
+     * Get all active reasoning parts
+     */
+    getActiveReasoningParts(): ReasoningPart[] {
+      return Object.values(store.reasoning.byId).filter(p => !p.time.end);
+    },
+
+    /**
+     * Clear all reasoning parts
+     */
+    clearReasoning() {
+      setStore("reasoning", { byId: {} });
+    },
+
     /**
      * Clear all messages and reset state
      */
     clear() {
       setStore({
-        messages: [],
+        messages: { order: [], byId: {} },
+        events: { order: [], byId: {} },
+        reasoning: { byId: {} },
         status: "idle",
         error: null,
         rlmState: null,
+        currentMetadata: null,
         // Keep sessionId for continuity
       });
       logger.info("Chat store cleared");
@@ -273,12 +462,13 @@ export function createChatStore(initialMessages: ChatUIMessage[] = []) {
 
     /**
      * Get messages ready for network transmission
-     * Removes Solid proxies using unwrap
+     * Converts normalized structure back to array and removes Solid proxies
      *
      * Call this only when sending to server, not on every update.
      */
     getMessagesForNetwork(): ChatUIMessage[] {
-      const messages = unwrap(store.messages);
+      const { order, byId } = unwrap(store.messages);
+      const messages = order.map(id => byId[id]);
       logger.debug("Preparing messages for network", { count: messages.length });
       return messages;
     },
@@ -287,8 +477,17 @@ export function createChatStore(initialMessages: ChatUIMessage[] = []) {
      * Get the last message (for finish callbacks)
      */
     getLastMessage(): ChatUIMessage | undefined {
-      const messages = store.messages;
-      return messages[messages.length - 1];
+      const { order, byId } = store.messages;
+      if (order.length === 0) return undefined;
+      const lastId = order[order.length - 1];
+      return byId[lastId];
+    },
+
+    /**
+     * Get message count
+     */
+    getMessageCount(): number {
+      return store.messages.order.length;
     },
   };
 }

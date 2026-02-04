@@ -55,6 +55,9 @@ export type AgentInput = z.infer<typeof AgentInput>;
 
 /**
  * Event types for streaming
+ *
+ * Includes reasoning events for AI SDK extended thinking support
+ * (used by models like Claude 3.5 with thinking, GPT-o1, etc.)
  */
 export const AgentEvent = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string(), agentId: z.string() }),
@@ -74,5 +77,23 @@ export const AgentEvent = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("finish"), finishReason: z.string(), agentId: z.string() }),
   z.object({ type: z.literal("error"), error: z.string(), agentId: z.string() }),
+  // Reasoning events (from AI SDK fullStream for extended thinking models)
+  z.object({
+    type: z.literal("reasoning-start"),
+    reasoningId: z.string(),
+    agentId: z.string(),
+  }),
+  z.object({
+    type: z.literal("reasoning-delta"),
+    reasoningId: z.string(),
+    text: z.string(),
+    agentId: z.string(),
+  }),
+  z.object({
+    type: z.literal("reasoning-end"),
+    reasoningId: z.string(),
+    durationMs: z.number(),
+    agentId: z.string(),
+  }),
 ]);
 export type AgentEvent = z.infer<typeof AgentEvent>;

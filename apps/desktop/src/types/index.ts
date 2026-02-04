@@ -29,6 +29,7 @@ export interface ToolCall {
   arguments: Record<string, unknown>;
   status: "pending" | "running" | "completed" | "failed";
   result?: unknown;
+  error?: string;
   timestamp: Date;
 }
 

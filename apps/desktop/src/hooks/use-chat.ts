@@ -6,11 +6,15 @@
  *
  * Features:
  * - Streaming chat with AbortController
- * - O(1) message updates via createStore + produce
+ * - TRUE O(1) message updates via normalized store (order + byId)
  * - Session ID management
  * - RLM state tracking
  * - Cleanup on unmount
  * - Comprehensive logging
+ *
+ * Architecture:
+ * Messages are stored in a normalized structure { order: string[], byId: Record<string, Message> }
+ * This allows direct key lookup instead of O(N) array scanning, critical for 50-100 tokens/sec streams.
  */
 import { createMemo, onCleanup, type Accessor } from "solid-js";
 import { EkacodeApiClient } from "../lib/api-client";
@@ -97,6 +101,9 @@ export interface UseChatResult {
 /**
  * Main chat hook for desktop-agent integration
  *
+ * Uses a normalized message store internally for true O(1) streaming updates.
+ * At 50-100 tokens/sec, this prevents UI lag from O(N) message lookups.
+ *
  * @example
  * ```tsx
  * function Chat() {
@@ -105,7 +112,7 @@ export interface UseChatResult {
  *
  *   return (
  *     <div>
- *       <For each={chat.messages}>
+ *       <For each={chat.messages()}>
  *         {(msg) => <Message message={msg} />}
  *       </For>
  *       <input
@@ -182,7 +189,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
     logger.info("[USE-CHAT] Adding user message", { messageId: userMessage.id });
     chatStore.addMessage(userMessage);
     logger.info("[USE-CHAT] User message added, current count", {
-      count: chatStore.get().messages.length,
+      count: chatStore.getMessageCount(),
     });
 
     // Create assistant message placeholder for streaming
@@ -338,7 +345,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
 
   return {
     store: chatStore.get(),
-    messages: () => chatStore.get().messages,
+    messages: () => chatStore.getMessagesArray(),
     status,
     error,
     isLoading,

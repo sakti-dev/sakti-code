@@ -65,9 +65,9 @@
   --border: oklch(0.923 0.003 48.717);
   --input: oklch(0.923 0.003 48.717);
   --ring: oklch(0.709 0.01 56.259);
-  --chart-1: oklch(0.90 0.18 127);
+  --chart-1: oklch(0.9 0.18 127);
   --chart-2: oklch(0.85 0.21 129);
-  --chart-3: oklch(0.77 0.20 131);
+  --chart-3: oklch(0.77 0.2 131);
   --chart-4: oklch(0.65 0.18 132);
   --chart-5: oklch(0.53 0.14 132);
   --radius: 0;
@@ -88,28 +88,28 @@
   --card-foreground: oklch(0.985 0.001 106.423);
   --popover: oklch(0.216 0.006 56.043);
   --popover-foreground: oklch(0.985 0.001 106.423);
-  --primary: oklch(0.77 0.20 131);
+  --primary: oklch(0.77 0.2 131);
   --primary-foreground: oklch(0.27 0.07 132);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.268 0.007 34.298);
   --muted-foreground: oklch(0.709 0.01 56.259);
-  --accent: oklch(0.77 0.20 131);
+  --accent: oklch(0.77 0.2 131);
   --accent-foreground: oklch(0.27 0.07 132);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.553 0.013 58.071);
-  --chart-1: oklch(0.90 0.18 127);
+  --chart-1: oklch(0.9 0.18 127);
   --chart-2: oklch(0.85 0.21 129);
-  --chart-3: oklch(0.77 0.20 131);
+  --chart-3: oklch(0.77 0.2 131);
   --chart-4: oklch(0.65 0.18 132);
   --chart-5: oklch(0.53 0.14 132);
   --sidebar: oklch(0.216 0.006 56.043);
   --sidebar-foreground: oklch(0.985 0.001 106.423);
   --sidebar-primary: oklch(0.85 0.21 129);
   --sidebar-primary-foreground: oklch(0.27 0.07 132);
-  --sidebar-accent: oklch(0.77 0.20 131);
+  --sidebar-accent: oklch(0.77 0.2 131);
   --sidebar-accent-foreground: oklch(0.27 0.07 132);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.553 0.013 58.071);
@@ -130,7 +130,8 @@
 
 /* Breathing glow animation for active sessions */
 @keyframes breathe {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 20px -5px oklch(from var(--primary) l c h / 0.1);
   }
   50% {
@@ -191,12 +192,24 @@
 }
 
 /* Stagger delays for sequential animations */
-.delay-100 { animation-delay: 100ms; }
-.delay-150 { animation-delay: 150ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
-.delay-400 { animation-delay: 400ms; }
-.delay-500 { animation-delay: 500ms; }
+.delay-100 {
+  animation-delay: 100ms;
+}
+.delay-150 {
+  animation-delay: 150ms;
+}
+.delay-200 {
+  animation-delay: 200ms;
+}
+.delay-300 {
+  animation-delay: 300ms;
+}
+.delay-400 {
+  animation-delay: 400ms;
+}
+.delay-500 {
+  animation-delay: 500ms;
+}
 
 /* Smooth panel resize */
 .resize-smooth {
@@ -221,8 +234,13 @@
 
 /* Subtle pulse for loading states */
 @keyframes subtlePulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .animate-pulse-subtle {
@@ -231,15 +249,25 @@
 
 /* Typing indicator dots */
 @keyframes typingBounce {
-  0%, 60%, 100% { transform: translateY(0); }
-  30% { transform: translateY(-4px); }
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
 }
 
 .typing-dot {
   animation: typingBounce 1.4s ease-in-out infinite;
 }
-.typing-dot:nth-child(2) { animation-delay: 0.2s; }
-.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
 /* Slide up animation for terminal panel */
 @keyframes slideUp {
@@ -290,4 +318,540 @@
 ::selection {
   background: oklch(from var(--primary) l c h / 0.2);
   color: var(--foreground);
+}
+
+/* ============================================================
+   MARKDOWN & CODE BLOCK STYLES
+   ============================================================ */
+
+/* Markdown prose styles - Tailwind typography */
+[data-component="markdown"] {
+  /* Base prose styles */
+  line-height: 1.75;
+}
+
+[data-component="markdown"] h1,
+[data-component="markdown"] h2,
+[data-component="markdown"] h3,
+[data-component="markdown"] h4,
+[data-component="markdown"] h5,
+[data-component="markdown"] h6 {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+[data-component="markdown"] h1 {
+  font-size: 1.25rem;
+}
+
+[data-component="markdown"] h2 {
+  font-size: 1.125rem;
+}
+
+[data-component="markdown"] h3 {
+  font-size: 1rem;
+}
+
+[data-component="markdown"] p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  color: oklch(from var(--foreground) l c h / 0.9);
+}
+
+[data-component="markdown"] a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+[data-component="markdown"] a:hover {
+  text-decoration: underline;
+}
+
+[data-component="markdown"] code {
+  border-radius: calc(var(--radius) - 2px);
+  background-color: var(--muted);
+  padding: 0.125rem 0.25rem;
+  font-size: 0.875rem;
+  font-family: var(--font-mono);
+}
+
+[data-component="markdown"] pre {
+  background-color: var(--muted);
+  border: 1px solid oklch(from var(--border) l c h / 0.4);
+  border-radius: calc(var(--radius) - 2px);
+  padding: 0.75rem;
+  overflow-x: auto;
+}
+
+[data-component="markdown"] pre code {
+  background-color: transparent;
+  padding: 0;
+  font-size: 0.75rem;
+}
+
+[data-component="markdown"] blockquote {
+  border-left: 2px solid var(--primary);
+  padding-left: 1rem;
+  font-style: italic;
+  color: oklch(from var(--foreground) l c h / 0.8);
+}
+
+[data-component="markdown"] ul,
+[data-component="markdown"] ol {
+  padding-left: 1.5rem;
+}
+
+[data-component="markdown"] li {
+  color: oklch(from var(--foreground) l c h / 0.9);
+}
+
+[data-component="markdown"] li::marker {
+  color: var(--muted-foreground);
+}
+
+[data-component="markdown"] hr {
+  border-color: var(--border);
+  margin: 1.5rem 0;
+}
+
+/* Code blocks with copy button */
+[data-component="markdown-code"] {
+  position: relative;
+  margin: 1rem 0;
+}
+
+[data-slot="markdown-copy-button"] {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+[data-component="markdown-code"]:hover [data-slot="markdown-copy-button"] {
+  opacity: 1;
+}
+
+[data-slot="markdown-copy-button"] {
+  background-color: oklch(from var(--card) l c h / 0.8);
+  border: 1px solid oklch(from var(--border) l c h / 0.4);
+  border-radius: calc(var(--radius) - 4px);
+  padding: 0.375rem;
+}
+
+[data-slot="markdown-copy-button"]:hover {
+  background-color: var(--card);
+  border-color: oklch(from var(--primary) l c h / 0.3);
+}
+
+/* Syntax highlighting - dark theme compatible */
+.shiki {
+  background-color: transparent !important;
+}
+
+.shiki code {
+  color: inherit;
+  font-family: var(--font-mono);
+}
+
+/* Tool call status indicators */
+.tool-status-pending {
+  color: var(--muted-foreground);
+}
+
+.tool-status-running {
+  color: var(--primary);
+}
+
+.tool-status-completed {
+  color: oklch(0.6 0.15 145);
+}
+
+.tool-status-failed {
+  color: var(--destructive);
+}
+
+/* Collapsible transitions */
+[data-component="collapsible-content"] {
+  overflow: hidden;
+  transition: all 200ms ease-out;
+}
+
+/* Inline markdown for user messages */
+.prose-p\:m-0 p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.prose-p\:inline p {
+  display: inline;
+}
+
+/* Invert mode for user messages (light text on dark bg) */
+.prose-invert {
+  color: oklch(from var(--primary-foreground) l c h / 0.9);
+}
+
+.prose-invert a {
+  color: oklch(from var(--primary-foreground) l c h / 0.9);
+}
+
+.prose-invert code {
+  background-color: oklch(from var(--primary) l c h / 0.2);
+  color: inherit;
+}
+
+/* ============================================================
+   ANTIGRAVITY UI - Design Tokens & Component Styles
+   ============================================================ */
+
+:root {
+  /* Antigravity semantic colors */
+  --ag-thought: oklch(0.75 0.15 280); /* Purple for thinking */
+  --ag-success: oklch(0.65 0.18 145); /* Green for success */
+  --ag-warning: oklch(0.75 0.18 85); /* Amber for warning */
+  --ag-info: oklch(0.7 0.15 230); /* Blue for info */
+
+  /* Event kind colors */
+  --ag-analyzed: var(--muted-foreground);
+  --ag-created: var(--ag-success);
+  --ag-edited: var(--primary);
+  --ag-deleted: var(--destructive);
+  --ag-terminal: oklch(0.7 0.1 200);
+
+  /* Run card */
+  --ag-runcard-bg: var(--card);
+  --ag-runcard-border: var(--border);
+  --ag-runcard-header-bg: oklch(from var(--card) l c h / 0.8);
+}
+
+.dark {
+  /* Dark mode adjustments */
+  --ag-thought: oklch(0.7 0.18 280);
+  --ag-success: oklch(0.7 0.2 145);
+  --ag-warning: oklch(0.72 0.18 85);
+  --ag-info: oklch(0.68 0.18 230);
+  --ag-terminal: oklch(0.65 0.12 200);
+}
+
+/* Run Card Component */
+.ag-run-card {
+  background: var(--ag-runcard-bg);
+  border: 1px solid var(--ag-runcard-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.ag-run-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--ag-runcard-header-bg);
+  border-bottom: 1px solid oklch(from var(--border) l c h / 0.5);
+}
+
+.ag-run-card-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.ag-run-card-subtitle {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+/* Status Chip */
+.ag-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.ag-status-chip--planning {
+  background: oklch(from var(--ag-info) l c h / 0.15);
+  color: var(--ag-info);
+}
+
+.ag-status-chip--executing {
+  background: oklch(from var(--primary) l c h / 0.15);
+  color: var(--primary);
+}
+
+.ag-status-chip--done {
+  background: oklch(from var(--ag-success) l c h / 0.15);
+  color: var(--ag-success);
+}
+
+.ag-status-chip--error {
+  background: oklch(from var(--destructive) l c h / 0.15);
+  color: var(--destructive);
+}
+
+/* Files Section */
+.ag-files-section {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid oklch(from var(--border) l c h / 0.5);
+}
+
+.ag-file-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0;
+  font-size: 0.8125rem;
+}
+
+.ag-file-row:hover {
+  background: oklch(from var(--muted) l c h / 0.5);
+  margin: 0 -0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.ag-file-icon {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  color: var(--muted-foreground);
+}
+
+.ag-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--foreground);
+}
+
+.ag-file-tag {
+  font-size: 0.6875rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.ag-file-diff {
+  display: flex;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  font-family: var(--font-mono);
+}
+
+.ag-file-diff-plus {
+  color: var(--ag-success);
+}
+
+.ag-file-diff-minus {
+  color: var(--destructive);
+}
+
+/* Progress Section / Activity Feed */
+.ag-progress-section {
+  padding: 0.5rem 1rem 1rem;
+}
+
+.ag-progress-group {
+  margin-bottom: 0.75rem;
+}
+
+.ag-progress-group:last-child {
+  margin-bottom: 0;
+}
+
+.ag-progress-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  user-select: none;
+}
+
+.ag-progress-group-header:hover {
+  color: var(--foreground);
+}
+
+.ag-progress-group-chevron {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 150ms ease;
+}
+
+.ag-progress-group-chevron--collapsed {
+  transform: rotate(-90deg);
+}
+
+/* Action Row (Activity Feed Item) */
+.ag-action-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.375rem 0;
+  padding-left: 1.5rem;
+  font-size: 0.8125rem;
+}
+
+.ag-action-row:hover {
+  background: oklch(from var(--muted) l c h / 0.3);
+  margin: 0 -0.5rem;
+  padding-left: 2rem;
+  padding-right: 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.ag-action-icon {
+  flex-shrink: 0;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 0.125rem;
+}
+
+.ag-action-icon--thought {
+  color: var(--ag-thought);
+}
+.ag-action-icon--analyzed {
+  color: var(--ag-analyzed);
+}
+.ag-action-icon--created {
+  color: var(--ag-created);
+}
+.ag-action-icon--edited {
+  color: var(--ag-edited);
+}
+.ag-action-icon--deleted {
+  color: var(--ag-deleted);
+}
+.ag-action-icon--terminal {
+  color: var(--ag-terminal);
+}
+.ag-action-icon--error {
+  color: var(--destructive);
+}
+
+.ag-action-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ag-action-title {
+  color: var(--foreground);
+}
+
+.ag-action-subtitle {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ag-action-timestamp {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  color: var(--muted-foreground);
+}
+
+/* Thought Indicator */
+.ag-thought-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: oklch(from var(--ag-thought) l c h / 0.1);
+  color: var(--ag-thought);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.ag-thought-indicator--thinking {
+  animation: subtlePulse 2s ease-in-out infinite;
+}
+
+.ag-thought-spinner {
+  width: 0.875rem;
+  height: 0.875rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Terminal Card */
+.ag-terminal-card {
+  background: oklch(0.12 0.01 240);
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: var(--radius-md);
+  margin: 0.5rem 0;
+  overflow: hidden;
+}
+
+.ag-terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: oklch(0.1 0.01 240);
+  border-bottom: 1px solid oklch(1 0 0 / 0.08);
+}
+
+.ag-terminal-title {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: oklch(0.85 0.02 200);
+}
+
+.ag-terminal-output {
+  padding: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: oklch(0.85 0.02 120);
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Glass Card Effect */
+.ag-glass-card {
+  background: oklch(from var(--card) l c h / 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid oklch(from var(--border) l c h / 0.5);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 24px -8px oklch(0 0 0 / 0.1);
+}
+
+/* Collapsible Animation for Run Card sections */
+.ag-collapsible {
+  overflow: hidden;
+  transition:
+    max-height 200ms ease-out,
+    opacity 200ms ease-out;
+}
+
+.ag-collapsible--collapsed {
+  max-height: 0;
+  opacity: 0;
 }

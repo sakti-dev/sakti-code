@@ -335,6 +335,9 @@ export class AgentProcessor {
       { toolName: string; input?: Record<string, unknown> }
     >();
 
+    // Track reasoning start times for duration calculation
+    const reasoningStartTimes = new Map<string, number>();
+
     for await (const chunk of stream.fullStream) {
       switch (chunk.type) {
         case "text-delta":
@@ -462,6 +465,49 @@ export class AgentProcessor {
             toolName: chunk.toolName,
             result: { error: chunk.error },
             agentId: this.config.id,
+          });
+          break;
+        }
+
+        // AI SDK Reasoning Events (for extended thinking models)
+        case "reasoning-start":
+          reasoningStartTimes.set(chunk.id, Date.now());
+          this.emitEvent({
+            type: "reasoning-start",
+            reasoningId: chunk.id,
+            agentId: this.config.id,
+          });
+          logger.debug("Reasoning started", {
+            module: "agent:processor",
+            agent: this.config.id,
+            reasoningId: chunk.id,
+          });
+          break;
+
+        case "reasoning-delta":
+          this.emitEvent({
+            type: "reasoning-delta",
+            reasoningId: chunk.id,
+            text: chunk.text,
+            agentId: this.config.id,
+          });
+          break;
+
+        case "reasoning-end": {
+          const startTime = reasoningStartTimes.get(chunk.id) || Date.now();
+          const durationMs = Date.now() - startTime;
+          reasoningStartTimes.delete(chunk.id);
+          this.emitEvent({
+            type: "reasoning-end",
+            reasoningId: chunk.id,
+            durationMs,
+            agentId: this.config.id,
+          });
+          logger.debug("Reasoning ended", {
+            module: "agent:processor",
+            agent: this.config.id,
+            reasoningId: chunk.id,
+            durationMs,
           });
           break;
         }

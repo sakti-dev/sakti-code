@@ -4,11 +4,34 @@
  * Main exports for the desktop-agent chat integration.
  */
 
-// Types
+// Types - Core UI Message
 export type {
+  ChatEventsState,
+  ChatMessageMetadata,
+  ChatMessagesState,
+  ChatReasoningState,
   ChatState,
   ChatStatus,
   ChatUIMessage,
+} from "./types/ui-message";
+
+// Types - Antigravity UI
+export type {
+  ActionData,
+  AgentEvent,
+  AgentEventAction,
+  AgentEventKind,
+  AgentMode,
+  ReasoningPart,
+  RunCardData,
+  RunFileData,
+  RunGroupData,
+  TerminalData,
+  ThoughtData,
+} from "./types/ui-message";
+
+// Types - Data Parts
+export type {
   PermissionRequestData,
   ProgressData,
   RLMStateData,

@@ -1,4 +1,5 @@
 import { Component, For, Match, mergeProps, Show, Switch } from "solid-js";
+import { Markdown } from "/@/components/markdown";
 import { cn } from "/@/lib/utils";
 import type { ChatUIMessage } from "/@/types/ui-message";
 
@@ -66,12 +67,19 @@ export const MessageBubble: Component<MessageBubbleProps> = props => {
         )}
       >
         {/* Message content - render parts */}
-        <div class="whitespace-pre-wrap break-words text-sm leading-relaxed">
+        <div class="break-words text-sm leading-relaxed">
           <For each={props.message.parts}>
             {part => (
               <Switch>
                 <Match when={part.type === "text"}>
-                  <span>{(part as { text: string }).text}</span>
+                  <Markdown
+                    text={(part as { text: string }).text}
+                    class={cn(
+                      isUser()
+                        ? "text-primary-foreground/90 prose-p:m-0 prose-invert"
+                        : "prose-p:m-0"
+                    )}
+                  />
                 </Match>
                 <Match when={part.type === "tool-call"}>
                   <span class="text-muted-foreground italic">
