@@ -1,25 +1,29 @@
-import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from "solid-js";
-import { cn } from "/@/lib/utils";
-import type { DiffChange, FileTab, TerminalOutput } from "/@/types";
+import { cn } from "@renderer/lib/utils";
+import type { DiffChange, FileTab, TerminalOutput } from "@renderer/types";
+import { createEffect, createMemo, createSignal, onMount, Show } from "solid-js";
 
 // Import workspace components
 import Resizable from "@corvu/resizable";
+import { PermissionDialog } from "@renderer/components/permission-dialog";
 import { ResizeableHandle } from "@renderer/components/resizeable-handle";
+import { usePermissions } from "@renderer/hooks/use-permissions";
+import { ChatProvider, useChatContext } from "@renderer/presentation/providers";
+import { useWorkspace, WorkspaceProvider } from "@renderer/providers/workspace-provider";
 import { ChatPanel } from "./chat-area/chat-area";
 import { LeftSide } from "./left-side/left-side";
 import { ContextPanel } from "./right-side/right-side";
-import { PermissionDialog } from "/@/components/permission-dialog";
-import { useChat } from "/@/hooks/use-chat";
-import { usePermissions } from "/@/hooks/use-permissions";
-import type { EkacodeApiClient } from "/@/lib/api-client";
-import { SyncProvider } from "/@/providers/sync-provider";
-import { useWorkspace, WorkspaceProvider } from "/@/providers/workspace-provider";
 
 /**
  * WorkspaceViewContent - The actual content wrapped by provider
  */
 function WorkspaceViewContent() {
   const ctx = useWorkspace();
+  const { chat } = useChatContext();
+  const permissions = usePermissions({
+    client: ctx.client()!,
+    workspace: () => ctx.workspace(),
+    sessionId: ctx.activeSessionId,
+  });
 
   // Panel sizes
   const [panelSizes, setPanelSizes] = createSignal<number[]>([0.2, 0.5, 0.3]);
@@ -79,12 +83,25 @@ function WorkspaceViewContent() {
     console.log("Toggle pin not implemented yet");
   };
 
-  // Chat handlers - delegate to context
+  // Chat handlers - use chat from ChatProvider
   const handleSendMessage = async (content: string) => {
-    const chat = ctx.chat();
-    if (chat) {
-      await chat.sendMessage(content);
-    }
+    await chat.sendMessage(content);
+  };
+
+  const _handleStop = () => {
+    chat.stop();
+  };
+
+  const _handleRetry = async (messageId: string) => {
+    await chat.retry(messageId);
+  };
+
+  const _handleDelete = (messageId: string) => {
+    chat.delete(messageId);
+  };
+
+  const _handleCopy = async (messageId: string) => {
+    await chat.copy(messageId);
   };
 
   const handleModelChange = (modelId: string) => {
@@ -140,20 +157,22 @@ function WorkspaceViewContent() {
     setTerminalOutput([]);
   };
 
-  const isGenerating = () => ctx.chat()?.isLoading() ?? false;
-  const chatError = () => ctx.chat()?.error() ?? null;
+  const isGenerating = () =>
+    chat.streaming.status() === "connecting" || chat.streaming.status() === "streaming";
+  const chatError = () => chat.streaming.error();
+  const effectiveSessionId = createMemo(() => chat.sessionId() ?? ctx.activeSessionId());
   const activeSession = () => {
-    const id = ctx.activeSessionId();
+    const id = effectiveSessionId();
     return ctx.sessions().find(s => s.sessionId === id);
   };
 
   // Permission dialog
-  const currentPermission = () => ctx.permissions()?.currentRequest() ?? null;
+  const currentPermission = () => permissions.currentRequest() ?? null;
   const handleApprovePermission = (id: string) => {
-    ctx.permissions()?.approve(id);
+    permissions.approve(id);
   };
   const handleDenyPermission = (id: string) => {
-    ctx.permissions()?.deny(id);
+    permissions.deny(id);
   };
 
   return (
@@ -204,14 +223,14 @@ function WorkspaceViewContent() {
           {/* CENTER PANEL - Chat Interface */}
           <ChatPanel
             session={activeSession()}
-            sessionId={ctx.activeSessionId() ?? undefined}
+            sessionId={effectiveSessionId() ?? undefined}
             isGenerating={isGenerating()}
             thinkingContent={""}
             error={chatError()}
             onSend={handleSendMessage}
             onModelChange={handleModelChange}
             selectedModel="claude-sonnet"
-            streamDebugger={ctx.chat()?.streamDebugger}
+            streamDebugger={undefined} // Removed old streamDebugger
           />
 
           {/* Resize Handle 2 */}
@@ -253,71 +272,47 @@ function WorkspaceViewContent() {
  * - Center (~50%): Agent Chat Interface
  * - Right (~30%): Context & Terminal split vertically
  *
- * Provider Nesting:
- * GlobalSDKProvider → GlobalSyncProvider → App → WorkspaceView
- *   → WorkspaceProvider → SyncProvider → WorkspaceViewContent
+ * Provider Nesting (NEW Architecture):
+ * WorkspaceProvider → ChatProvider → WorkspaceViewContent
+ *
+ * ChatProvider uses the new presentation layer:
+ * - useChat hook (from presentation/hooks/use-chat.ts)
+ * - Domain stores via StoreProvider (in AppProvider)
+ * - SSE events routed by AppProvider
  */
 export default function WorkspaceView() {
   return (
     <WorkspaceProvider>
-      {/* SyncProvider needs directory from workspace context */}
-      <WorkspaceViewWithSync />
+      <WorkspaceViewWithProviders />
     </WorkspaceProvider>
   );
 }
 
 /**
  * Inner component that has access to workspace context
+ * Wraps ChatProvider with the new presentation layer
  */
-function WorkspaceViewWithSync() {
+function WorkspaceViewWithProviders() {
   const ctx = useWorkspace();
-  const directory = createMemo(() => ctx.workspace());
+  const chatClient = createMemo(() => ctx.client());
+  const hasWorkspace = createMemo(() => ctx.workspace().length > 0);
+  const canRenderChat = createMemo(() => Boolean(chatClient()) && hasWorkspace());
 
   return (
-    <Show when={directory()} keyed>
-      {currentDirectory => (
-        <SyncProvider directory={currentDirectory}>
-          <Show when={ctx.client()} keyed>
-            {client => <WorkspaceHooksBridge client={client} workspace={currentDirectory} />}
-          </Show>
-          <WorkspaceViewContent />
-        </SyncProvider>
-      )}
+    <Show when={canRenderChat()}>
+      <ChatProvider
+        client={chatClient()!}
+        workspace={() => ctx.workspace()}
+        sessionId={ctx.activeSessionId}
+        onSessionIdReceived={id => {
+          if (id !== ctx.activeSessionId()) {
+            ctx.setActiveSessionId(id);
+            void ctx.refreshSessions();
+          }
+        }}
+      >
+        <WorkspaceViewContent />
+      </ChatProvider>
     </Show>
   );
-}
-
-function WorkspaceHooksBridge(props: { client: EkacodeApiClient; workspace: string }) {
-  const ctx = useWorkspace();
-
-  const chat = useChat({
-    client: props.client,
-    workspace: () => props.workspace,
-    initialSessionId: ctx.activeSessionId() ?? undefined,
-    sessionId: ctx.activeSessionId,
-    onSessionIdReceived: (id: string) => {
-      if (id !== ctx.activeSessionId()) {
-        ctx.setActiveSessionId(id);
-        void ctx.refreshSessions();
-      }
-    },
-  });
-
-  const permissions = usePermissions({
-    client: props.client,
-    workspace: () => props.workspace,
-    sessionId: ctx.activeSessionId,
-  });
-
-  createEffect(() => {
-    ctx.setChat(chat);
-    ctx.setPermissions(permissions);
-  });
-
-  onCleanup(() => {
-    ctx.setChat(null);
-    ctx.setPermissions(null);
-  });
-
-  return null;
 }

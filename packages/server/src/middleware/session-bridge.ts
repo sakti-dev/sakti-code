@@ -5,6 +5,8 @@
  * Generates UUIDv7 session IDs server-side and persists sessions to the database.
  *
  * Integrates Instance.provide() for automatic context propagation to tools.
+ *
+ * Updated for Batch 2: Data Integrity - Added session ID validation
  */
 
 import { Instance } from "@ekacode/core/server";
@@ -13,6 +15,27 @@ import { v7 as uuidv7 } from "uuid";
 import type { Session } from "../../db/sessions";
 import { createSession, createSessionWithId, getSession, touchSession } from "../../db/sessions";
 import type { Env } from "../index";
+
+const logger = {
+  info: (msg: string, meta?: Record<string, unknown>) =>
+    console.log(`[session-bridge] ${msg}`, meta),
+  warn: (msg: string, meta?: Record<string, unknown>) =>
+    console.warn(`[session-bridge] ${msg}`, meta),
+  error: (msg: string, error?: Error, meta?: Record<string, unknown>) =>
+    console.error(`[session-bridge] ${msg}`, error, meta),
+};
+
+/**
+ * UUIDv7 regex pattern for validation
+ */
+const UUIDV7_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Validates session ID format (must be UUIDv7)
+ */
+function isValidSessionId(sessionId: string): boolean {
+  return UUIDV7_REGEX.test(sessionId);
+}
 
 /**
  * Session bridge middleware
@@ -24,12 +47,15 @@ import type { Env } from "../index";
  * The session is available to request handlers via `c.get("session")`.
  *
  * Establishes Instance.provide() context for automatic workspace propagation to tools.
+ *
+ * Batch 2: Data Integrity - Added session ID validation
  */
 export async function sessionBridge(c: Context<Env>, next: Next): Promise<Response | void> {
   const sessionId = c.req.header("X-Session-ID");
 
   if (!sessionId) {
     // No session ID provided - create new session
+    logger.info("No session ID provided, creating new session");
     const session = await createSession("local");
 
     // Make session available to handlers
@@ -57,11 +83,25 @@ export async function sessionBridge(c: Context<Env>, next: Next): Promise<Respon
 
     await next();
   } else {
+    // Session ID provided - validate format first (Batch 2: Data Integrity)
+    if (!isValidSessionId(sessionId)) {
+      logger.warn("Invalid session ID format received", { sessionId });
+      return c.json(
+        {
+          error: "Invalid session ID format",
+          message: "Session ID must be a valid UUIDv7",
+          code: "INVALID_SESSION_ID",
+        },
+        400
+      );
+    }
+
     // Session ID provided - validate and retrieve
     let session = await getSession(sessionId);
 
     let sessionIsNew = false;
     if (!session) {
+      logger.info("Session not found, creating new session with provided ID", { sessionId });
       session = await createSessionWithId("local", sessionId);
       sessionIsNew = true;
     }

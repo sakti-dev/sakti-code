@@ -12,10 +12,22 @@ const config: UserConfig = {
   base: "./", // Use relative paths for Electron file:// protocol
   envDir: PROJECT_ROOT,
   resolve: {
-    alias: {
-      "@renderer": join(PACKAGE_ROOT, "src"),
-      "/@/": join(PACKAGE_ROOT, "src") + "/",
-    },
+    dedupe: ["solid-js", "@solidjs/router"],
+    alias: [
+      { find: "@renderer", replacement: join(PACKAGE_ROOT, "src") },
+      { find: "/@/", replacement: join(PACKAGE_ROOT, "src") + "/" },
+      { find: "@/presentation/hooks", replacement: join(PACKAGE_ROOT, "src/presentation/hooks") },
+      {
+        find: "@/presentation/contexts",
+        replacement: join(PACKAGE_ROOT, "src/presentation/contexts"),
+      },
+      {
+        find: "@/presentation/providers",
+        replacement: join(PACKAGE_ROOT, "src/presentation/providers"),
+      },
+      { find: "@ekacode/desktop", replacement: join(PACKAGE_ROOT, "src") },
+      { find: /^@ekacode\/desktop\/(.*)$/, replacement: join(PACKAGE_ROOT, "src/$1") },
+    ],
   },
   build: {
     outDir: "dist",

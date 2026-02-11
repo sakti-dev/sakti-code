@@ -1,7 +1,7 @@
+import HomeView from "@renderer/views/home-view/home-view";
+import SettingsView from "@renderer/views/settings-view";
+import WorkspaceView from "@renderer/views/workspace-view";
 import { Route, Router } from "@solidjs/router";
-import HomeView from "./views/home-view/home-view";
-import SettingsView from "./views/settings-view";
-import WorkspaceView from "./views/workspace-view";
 
 export default function Routes() {
   return (

@@ -1,10 +1,9 @@
 /* @refresh reload */
+import { registerDefaultPartComponents } from "@renderer/components/parts/register";
+import { AppProvider } from "@renderer/presentation/providers";
+import App from "@renderer/routes";
 import { render } from "solid-js/web";
 import "./assets/main.css";
-import { registerDefaultPartComponents } from "./components/parts/register";
-import { GlobalSDKProvider } from "./providers/global-sdk-provider";
-import { GlobalSyncProvider } from "./providers/global-sync-provider";
-import App from "./routes";
 
 // Enable dark mode by default
 document.documentElement.classList.add("dark");
@@ -23,15 +22,13 @@ const getServerConfig = async () => {
 
 const root = document.getElementById("root");
 
-// Initialize app with server config
+// Initialize app with server config and new AppProvider
 getServerConfig().then(config => {
   render(
     () => (
-      <GlobalSDKProvider baseUrl={config.baseUrl} token={config.token}>
-        <GlobalSyncProvider>
-          <App />
-        </GlobalSyncProvider>
-      </GlobalSDKProvider>
+      <AppProvider config={config}>
+        <App />
+      </AppProvider>
     ),
     root!
   );

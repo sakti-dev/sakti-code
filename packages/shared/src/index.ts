@@ -5,6 +5,10 @@
  */
 
 export * from "./binary";
+export * from "./event-deduplication";
+export * from "./event-guards";
+export * from "./event-ordering";
+export * from "./event-types";
 export * from "./paths";
 export * from "./persist";
 export * from "./retry";

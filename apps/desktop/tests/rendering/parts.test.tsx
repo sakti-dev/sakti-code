@@ -2,9 +2,18 @@
 
 import type { Part as CorePart, Message } from "@ekacode/core/chat";
 import { render } from "solid-js/web";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { Part } from "../../src/components/message-part";
 import { registerDefaultPartComponents } from "../../src/components/parts/register";
+
+// Mock environment to be in test mode for throttling bypass
+vi.mock("../../src/components/parts/text-part", async importOriginal => {
+  const mod = await importOriginal<typeof import("../../src/components/parts/text-part")>();
+  return {
+    ...mod,
+    TEXT_RENDER_THROTTLE_MS: 0,
+  };
+});
 
 type RenderHandle = {
   container: HTMLDivElement;
@@ -49,7 +58,7 @@ function renderPart(part: CorePart): RenderHandle {
 }
 
 describe("Part Rendering", () => {
-  it("renders text part content", () => {
+  it("renders text part content", async () => {
     const { container } = renderPart({
       id: "part-text",
       sessionID: "session-1",
@@ -59,7 +68,12 @@ describe("Part Rendering", () => {
     });
 
     expect(container.querySelector('[data-component="text-part"]')).not.toBeNull();
-    expect(container.querySelector('[data-slot="text-content"]')?.textContent).toBe("Hello world");
+    // Wait for Markdown async resource to load and DOM to update
+    await new Promise(resolve => setTimeout(resolve, 150));
+    // The markdown component renders a p tag inside, check for that
+    const markdownDiv = container.querySelector('[data-component="markdown"]');
+    expect(markdownDiv).not.toBeNull();
+    expect(markdownDiv?.textContent?.trim()).toBe("Hello world");
   });
 
   it("renders tool part pending state", () => {

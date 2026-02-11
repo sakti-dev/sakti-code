@@ -1,21 +1,141 @@
+import type { ServerEvent } from "@ekacode/shared/event-types";
 import { describe, expect, it } from "vitest";
-import type { ServerEvent } from "../../src/providers/global-sdk-provider";
 import {
   applyDirectoryEvent,
   createInitialDirectoryStore,
   type DirectoryStore,
-  type StoreUpdater,
-} from "../../src/providers/global-sync-provider";
+} from "../helpers/event-handlers";
+
+type StoreUpdaterFunction = (
+  ...args:
+    | [Partial<DirectoryStore>]
+    | [string, unknown]
+    | [string, number, unknown]
+    | [string, string, unknown]
+    | [string, number, number, unknown]
+    | [string, string, number, unknown]
+    | [string, (current: unknown) => unknown]
+    | [string, string, (current: unknown) => unknown]
+    | [(store: DirectoryStore) => DirectoryStore]
+) => void;
+
+type EventFixture = {
+  type: ServerEvent["type"];
+  properties: ServerEvent["properties"];
+  directory?: ServerEvent["directory"];
+  sessionID?: ServerEvent["sessionID"];
+  eventId?: ServerEvent["eventId"];
+  sequence?: ServerEvent["sequence"];
+  timestamp?: ServerEvent["timestamp"];
+};
 
 function createHarness(initial?: DirectoryStore) {
   let store = initial ? structuredClone(initial) : createInitialDirectoryStore();
-  const setStore: StoreUpdater<DirectoryStore> = updater => {
-    store = updater(store);
+  let nextSequence = 1;
+
+  const normalizeEvent = (event: EventFixture): ServerEvent => {
+    const sequence = typeof event.sequence === "number" ? event.sequence : nextSequence++;
+    nextSequence = Math.max(nextSequence, sequence + 1);
+    return {
+      eventId: event.eventId ?? `test-event-${sequence}`,
+      sequence,
+      timestamp: event.timestamp ?? Date.now(),
+      sessionID: event.sessionID,
+      directory: event.directory,
+      type: event.type,
+      properties: event.properties,
+    };
+  };
+
+  const setStore: StoreUpdaterFunction = (...args) => {
+    const storeRecord = store as unknown as Record<string, unknown>;
+
+    // Handle function argument (produce or reconcile)
+    if (typeof args[0] === "function") {
+      store = args[0](store);
+      return;
+    }
+
+    if (typeof args[0] === "string") {
+      const key = args[0];
+      if (args.length === 2) {
+        const value = args[1];
+        if (typeof value === "function") {
+          // setStore("key", produce(...) or reconcile(...))
+          const current = storeRecord[key];
+          storeRecord[key] = value(current);
+        } else {
+          // setStore("key", value)
+          storeRecord[key] = value;
+        }
+      } else if (args.length === 3) {
+        const second = args[1];
+        const value = args[2];
+
+        // Check if second arg is a number (array index) or string (object key)
+        if (typeof second === "number") {
+          // setStore("key", index, value) - array index update
+          const arr = storeRecord[key] as unknown[];
+          const index = second;
+          if (Array.isArray(arr)) {
+            if (typeof value === "function") {
+              arr[index] = value(arr[index]);
+            } else {
+              arr[index] = value;
+            }
+          }
+        } else {
+          // setStore("key", messageID, value) - nested object update
+          const topLevel = storeRecord[key];
+          if (typeof second === "string") {
+            if (!topLevel) {
+              // Create the nested object with the value
+              storeRecord[key] = { [second]: value };
+            } else if (Array.isArray(topLevel)) {
+              // topLevel is an array (e.g., store.session), second is index
+              const index = second as unknown as number;
+              if (typeof value === "function") {
+                topLevel[index] = value(topLevel[index]);
+              } else {
+                topLevel[index] = value;
+              }
+            } else if (typeof topLevel === "object" && topLevel !== null) {
+              // topLevel is an object (e.g., store.part, store.permission)
+              // value might be a function (produce/reconcile) or a direct value
+              const current = (topLevel as Record<string, unknown>)[second];
+              if (typeof value === "function") {
+                (topLevel as Record<string, unknown>)[second] = value(current);
+              } else {
+                (topLevel as Record<string, unknown>)[second] = value;
+              }
+            }
+          }
+        }
+      } else if (args.length === 4) {
+        // setStore("key", sessionID, index, value)
+        const nested = storeRecord[key] as Record<string, unknown>;
+        const sessionID = args[1] as string;
+        const index = args[2] as number;
+        const value = args[3];
+        const arr = nested[sessionID] as unknown[];
+        if (Array.isArray(arr)) {
+          if (typeof value === "function") {
+            arr[index] = value(arr[index]);
+          } else {
+            arr[index] = value;
+          }
+        }
+      }
+    } else {
+      // Partial update (object with multiple keys)
+      const partial = args[0] as Partial<DirectoryStore>;
+      Object.assign(store, partial);
+    }
   };
 
   return {
-    apply(event: ServerEvent) {
-      applyDirectoryEvent({ event, store, setStore });
+    apply(event: EventFixture) {
+      applyDirectoryEvent({ event: normalizeEvent(event), store, setStore });
     },
     snapshot(): DirectoryStore {
       return structuredClone(store);
@@ -186,7 +306,7 @@ describe("Parity Event Flows", () => {
 
   it("Scenario D: Reconnect/reload", () => {
     const h = createHarness();
-    const event: ServerEvent = {
+    const event: EventFixture = {
       type: "message.part.updated",
       properties: {
         part: textPart("part-d", "msg-d", "s-d", "Persistent text"),

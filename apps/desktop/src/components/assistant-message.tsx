@@ -1,7 +1,7 @@
 import type { Part as CorePart, ToolPart } from "@ekacode/core/chat";
+import { usePart } from "@renderer/presentation/contexts/part-context";
 import { createMemo, For, Show, type Component, type JSX } from "solid-js";
-import type { Part } from "../providers/global-sync-provider";
-import { useSync } from "../providers/sync-provider";
+import type { Part } from "../types/sync";
 import { Markdown } from "./markdown";
 import { Part as PartComponent } from "./message-part";
 
@@ -21,11 +21,11 @@ export interface AssistantMessageProps {
 const INTERNAL_TOOLS = new Set(["todoread"]);
 
 export const AssistantMessage: Component<AssistantMessageProps> = props => {
-  const sync = useSync();
+  const part = usePart();
 
   // Fetch parts from store, falling back to embedded parts from message
   const parts = createMemo(() => {
-    const storeParts = sync.data.part[props.messageID];
+    const storeParts = part.getByMessage(props.messageID);
     if (storeParts && storeParts.length > 0) {
       return storeParts as unknown as CorePart[];
     }

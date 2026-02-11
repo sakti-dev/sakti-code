@@ -6,6 +6,10 @@
   "exports": {
     ".": "./src/index.ts",
     "./binary": "./src/binary.ts",
+    "./event-deduplication": "./src/event-deduplication.ts",
+    "./event-guards": "./src/event-guards.ts",
+    "./event-ordering": "./src/event-ordering.ts",
+    "./event-types": "./src/event-types.ts",
     "./logger": "./src/logger/index.ts",
     "./persist": "./src/persist.ts",
     "./paths": "./src/paths.ts",
@@ -13,6 +17,7 @@
     "./shutdown": "./src/shutdown.ts"
   },
   "scripts": {
+    "build": "tsc --emitDeclarationOnly --declaration",
     "typecheck": "tsc --noEmit",
     "lint": "eslint ."
   },

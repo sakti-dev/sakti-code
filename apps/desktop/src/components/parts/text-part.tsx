@@ -13,8 +13,9 @@ import type { MessagePartProps, PartComponent } from "../message-part";
 /**
  * Text rendering throttle in milliseconds
  * Updates faster than 100ms are debounced to prevent excessive re-renders
+ * Disabled in test environment for immediate rendering
  */
-const TEXT_RENDER_THROTTLE_MS = 100;
+const TEXT_RENDER_THROTTLE_MS = import.meta.env.TEST ? 0 : 100;
 
 /**
  * Create a throttled signal value
@@ -80,7 +81,7 @@ export const TextPartDisplay: PartComponent = (props: MessagePartProps): JSX.Ele
   return (
     <Show when={throttledText()}>
       <div data-component="text-part">
-        <div data-slot="text-part-body">
+        <div data-slot="text-content">
           <Markdown text={throttledText()} />
         </div>
       </div>

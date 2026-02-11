@@ -1,5 +1,10 @@
 import type { Part as CorePart } from "@ekacode/core/chat";
-import { Binary } from "@ekacode/shared/binary";
+import { AssistantMessage } from "@renderer/components/assistant-message";
+import { Markdown } from "@renderer/components/markdown";
+import { cn } from "@renderer/lib/utils";
+import type { ChatMessage } from "@renderer/presentation/hooks/use-messages";
+import { useMessages } from "@renderer/presentation/hooks/use-messages";
+import type { Message as SyncMessage } from "@renderer/types/sync";
 import {
   createEffect,
   createMemo,
@@ -12,11 +17,6 @@ import {
   type Component,
 } from "solid-js";
 import { MessageBubble } from "./message-bubble";
-import { AssistantMessage } from "/@/components/assistant-message";
-import { Markdown } from "/@/components/markdown";
-import { cn } from "/@/lib/utils";
-import type { Message, Part } from "/@/providers/global-sync-provider";
-import { useSync } from "/@/providers/sync-provider";
 
 interface SessionTurnProps {
   sessionID?: string;
@@ -24,27 +24,10 @@ interface SessionTurnProps {
   messageID: string;
   /** Whether this turn is the last (for expanded state) */
   isLast?: boolean;
+  isGenerating?: boolean;
   expanded: boolean;
   onToggleExpanded: () => void;
   class?: string;
-}
-
-// Stable empty arrays to prevent re-renders from new array references
-const EMPTY_MESSAGES: Message[] = [];
-
-// Custom equality function to prevent re-renders when array content is unchanged
-function arraysEqual<T extends { info?: { id?: string }; id?: string }>(
-  a: readonly T[],
-  b: readonly T[]
-): boolean {
-  if (a === b) return true;
-  if (a.length !== b.length) return false;
-  return a.every((x, i) => {
-    const other = b[i];
-    const xId = x.info?.id ?? x.id;
-    const otherId = other?.info?.id ?? other?.id;
-    return xId === otherId;
-  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -91,10 +74,6 @@ function unwrapError(input: string): string {
   return text;
 }
 
-function truncate(value: string, max = 60): string {
-  return value.length > max ? `${value.slice(0, max)}...` : value;
-}
-
 function computeStatusFromPart(part: CorePart | undefined): string | undefined {
   if (!part) return undefined;
   if (part.type === "tool") {
@@ -134,47 +113,6 @@ function computeStatusFromPart(part: CorePart | undefined): string | undefined {
   return undefined;
 }
 
-// Helper to get parts - prefers store parts, falls back to message.parts
-function getParts(msg: Message, partStore: Record<string, Part[] | undefined>): Part[] {
-  const storeParts = partStore[msg.info.id];
-  if (storeParts && storeParts.length > 0) return storeParts;
-  return msg.parts ?? [];
-}
-
-function runningTaskSessionID(
-  messages: Message[],
-  partStore: Record<string, Part[] | undefined>
-): string | undefined {
-  for (let mi = messages.length - 1; mi >= 0; mi -= 1) {
-    const msg = messages[mi];
-    const parts = getParts(msg, partStore);
-    for (let pi = parts.length - 1; pi >= 0; pi -= 1) {
-      const part = parts[pi] as unknown as CorePart;
-      if (part.type !== "tool" || part.tool !== "task") continue;
-      if (part.state.status !== "running") continue;
-      const metadata = isRecord(part.state.metadata) ? part.state.metadata : undefined;
-      const sessionID = metadata?.sessionId;
-      if (typeof sessionID === "string" && sessionID.length > 0) {
-        return sessionID;
-      }
-    }
-  }
-  return undefined;
-}
-
-function hasSteps(messages: Message[], partStore: Record<string, Part[] | undefined>): boolean {
-  return messages.some(message => {
-    const parts = getParts(message, partStore);
-    return parts.some(part => part.type === "tool");
-  });
-}
-
-function readTime(meta: unknown, key: "startedAt" | "finishedAt"): number | undefined {
-  if (!isRecord(meta)) return undefined;
-  const value = meta[key];
-  return typeof value === "number" ? value : undefined;
-}
-
 function formatDuration(input: { from?: number; to?: number }): string {
   const from = input.from ?? Date.now();
   const to = input.to ?? Date.now();
@@ -185,15 +123,11 @@ function formatDuration(input: { from?: number; to?: number }): string {
   return `${mins}m ${secs}s`;
 }
 
-function lastTextPart(
-  messages: Message[],
-  partStore: Record<string, Part[] | undefined>
-): { id?: string; text: string } {
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
+function lastTextPart(messages: ChatMessage[]): { id?: string; text: string } {
+  for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
-    const parts = getParts(msg, partStore);
-    for (let p = parts.length - 1; p >= 0; p -= 1) {
-      const part = parts[p] as unknown as CorePart;
+    for (let p = msg.parts.length - 1; p >= 0; p--) {
+      const part = msg.parts[p] as unknown as CorePart;
       if (part.type !== "text") continue;
       const text = typeof part.text === "string" ? part.text.trim() : "";
       if (text) {
@@ -207,9 +141,44 @@ function lastTextPart(
   return { text: "" };
 }
 
+function hasToolSteps(messages: ChatMessage[]): boolean {
+  return messages.some(message => {
+    return message.parts.some(part => part.type === "tool");
+  });
+}
+
+function nextUserMessageIndex(messages: ChatMessage[], fromIndex: number): number {
+  for (let i = fromIndex + 1; i < messages.length; i++) {
+    if (messages[i]?.role === "user") return i;
+  }
+  return -1;
+}
+
+export function selectAssistantMessagesForTurn(
+  allMessages: ChatMessage[],
+  userMessageID: string
+): ChatMessage[] {
+  const userIndex = allMessages.findIndex(msg => msg.id === userMessageID && msg.role === "user");
+  if (userIndex === -1) return [];
+
+  // Prefer explicit parent linkage when available.
+  const linked = allMessages.filter(
+    msg => msg.role === "assistant" && msg.parentId === userMessageID
+  );
+  if (linked.length > 0) return linked;
+
+  // Fallback: assistants between this user turn and the next user turn.
+  const nextUserIndex = nextUserMessageIndex(allMessages, userIndex);
+  const window =
+    nextUserIndex === -1
+      ? allMessages.slice(userIndex + 1)
+      : allMessages.slice(userIndex + 1, nextUserIndex);
+  return window.filter(msg => msg.role === "assistant");
+}
+
 export const SessionTurn: Component<SessionTurnProps> = props => {
-  const sync = useSync();
-  const [retrySeconds, setRetrySeconds] = createSignal(0);
+  const messages = useMessages(() => props.sessionID ?? null);
+
   const [statusText, setStatusText] = createSignal("Considering next steps");
   const [durationText, setDurationText] = createSignal("0s");
   const [copied, setCopied] = createSignal(false);
@@ -217,152 +186,76 @@ export const SessionTurn: Component<SessionTurnProps> = props => {
   let lastStatusAt = Date.now();
   let statusTimer: ReturnType<typeof setTimeout> | undefined;
 
-  // ============================================================
-  // Fetch user message and assistant messages from store
-  // ============================================================
+  // Get user message for this turn - convert to SyncMessage format for MessageBubble
+  const userMessage = createMemo((): SyncMessage | undefined => {
+    const msg = messages.get(props.messageID);
+    if (!msg) return undefined;
 
-  const userMessage = createMemo(() => {
-    const sessionID = props.sessionID;
-    if (!sessionID) return undefined;
-    const messages = sync.data.message[sessionID] ?? EMPTY_MESSAGES;
-    const result = Binary(messages, props.messageID, (m: Message) => m.info.id);
-    if (result.found) return messages[result.index];
-    return undefined;
+    // Convert ChatMessage to SyncMessage format for MessageBubble
+    return {
+      info: {
+        role: msg.role,
+        id: msg.id,
+        sessionID: msg.sessionId,
+        time: { created: msg.createdAt ?? Date.now() },
+      },
+      parts: msg.parts as SyncMessage["parts"],
+      createdAt: msg.createdAt,
+      updatedAt: msg.completedAt,
+    };
   });
 
-  const assistantMessages = createMemo(
-    () => {
-      const sessionID = props.sessionID;
-      if (!sessionID) return EMPTY_MESSAGES;
-      const messages = sync.data.message[sessionID] ?? EMPTY_MESSAGES;
-
-      // Find all assistant messages with parentID matching this user message
-      const result: Message[] = [];
-      for (const msg of messages) {
-        if (msg.info.role !== "assistant") continue;
-        const info = msg.info as { parentID?: string };
-        if (info.parentID === props.messageID) {
-          result.push(msg);
-        }
-      }
-      return result.length > 0 ? result : EMPTY_MESSAGES;
-    },
-    EMPTY_MESSAGES,
-    { equals: arraysEqual }
-  );
-
-  // Parts accessor from store
-  const partStore = createMemo(() => sync.data.part);
-
-  // Compute session status for working/retry state
-  const sessionStatus = createMemo(() => {
-    const id = props.sessionID;
-    if (!id) return { type: "idle" } as const;
-    return sync.data.sessionStatus[id]?.status ?? ({ type: "idle" } as const);
+  // Get assistant messages that respond to this user message
+  const assistantMessages = createMemo(() => {
+    return selectAssistantMessagesForTurn(messages.list(), props.messageID);
   });
 
-  const working = createMemo(() => {
-    if (!props.isLast) return false;
-    const status = sessionStatus();
-    return status.type !== "idle";
-  });
-
-  const retry = createMemo(() => {
-    if (!props.isLast) return undefined;
-    const status = sessionStatus();
-    if (status.type === "retry") return status;
-    return undefined;
-  });
-
-  // ============================================================
-  // Derived state from messages
-  // ============================================================
-
-  const responsePart = createMemo(() => lastTextPart(assistantMessages(), partStore()));
+  // Compute derived state
+  const responsePart = createMemo(() => lastTextPart(assistantMessages()));
   const responseText = createMemo(() => responsePart().text);
   const responsePartID = createMemo(() => responsePart().id);
-  const hasToolSteps = createMemo(() => hasSteps(assistantMessages(), partStore()));
-  const showTrigger = createMemo(() => working() || hasToolSteps());
-  const lastAssistantID = createMemo(() => assistantMessages().at(-1)?.info.id);
-  const hideResponsePart = createMemo(() => !working() && !!responsePartID());
-
-  const permissions = createMemo(() => {
-    if (!props.sessionID) return [];
-    return sync.data.permission[props.sessionID] ?? [];
-  });
-
-  const questions = createMemo(() => {
-    if (!props.sessionID) return [];
-    return sync.data.question[props.sessionID] ?? [];
-  });
-
-  const hidden = createMemo(() => {
-    const out: Array<{ messageID: string; callID: string }> = [];
-    const permission = permissions()[0];
-    if (permission?.tool) out.push(permission.tool);
-    const question = questions()[0];
-    if (question?.tool) out.push(question.tool);
-    return out;
-  });
-
-  const rawStatus = createMemo(() => {
-    const taskSessionID = runningTaskSessionID(assistantMessages(), partStore());
-    if (taskSessionID) {
-      const taskMessages = sync.data.message[taskSessionID] ?? [];
-      for (let mi = taskMessages.length - 1; mi >= 0; mi -= 1) {
-        const taskMessage = taskMessages[mi];
-        if (taskMessage?.info.role !== "assistant") continue;
-        const taskParts = sync.data.part[taskMessage.info.id] ?? [];
-        for (let pi = taskParts.length - 1; pi >= 0; pi -= 1) {
-          const status = computeStatusFromPart(taskParts[pi] as unknown as CorePart);
-          if (status) return status;
-        }
-      }
-    }
-
-    const msgs = assistantMessages();
-    const parts = partStore();
-    for (let mi = msgs.length - 1; mi >= 0; mi -= 1) {
-      const msgParts = parts[msgs[mi].info.id] ?? [];
-      for (let pi = msgParts.length - 1; pi >= 0; pi -= 1) {
-        const status = computeStatusFromPart(msgParts[pi] as unknown as CorePart);
-        if (status) return status;
-      }
-    }
-    return "Considering next steps";
-  });
+  const hasToolStepsVal = createMemo(() => hasToolSteps(assistantMessages()));
+  const showTrigger = createMemo(() => (props.isLast && props.isGenerating) || hasToolStepsVal());
+  const lastAssistantID = createMemo(() => assistantMessages().at(-1)?.id);
+  const hideResponsePart = createMemo(
+    () => !props.isLast && !props.isGenerating && !!responsePartID()
+  );
 
   const durationRange = createMemo(() => {
     const user = userMessage();
     const lastAssistant = assistantMessages().at(-1);
-    const from = readTime(user?.createdAt, "startedAt") ?? user?.createdAt;
-    const to = readTime(lastAssistant?.updatedAt, "finishedAt") ?? lastAssistant?.updatedAt;
+    const from = user?.createdAt;
+    const to = lastAssistant?.completedAt;
     return { from, to };
+  });
+
+  // Find the last part with status information
+  const rawStatus = createMemo(() => {
+    for (const message of assistantMessages().slice().reverse()) {
+      for (const p of message.parts.slice().reverse()) {
+        const status = computeStatusFromPart(p as unknown as CorePart);
+        if (status) return status;
+      }
+    }
+
+    // Fall back to parsing final response text for surfaced error messages.
+    const text = responseText().trim();
+    if (text.toLowerCase().startsWith("error:")) {
+      return unwrapError(text);
+    }
+
+    return "Considering next steps";
   });
 
   createEffect(() => {
     const update = () => {
       const range = durationRange();
-      const to = working() ? Date.now() : range.to;
+      const to = props.isLast && props.isGenerating ? Date.now() : range.to;
       setDurationText(formatDuration({ from: range.from, to }));
     };
     update();
-    if (!working()) return;
+    if (!props.isLast || !props.isGenerating) return;
     const timer = setInterval(update, 1000);
-    onCleanup(() => clearInterval(timer));
-  });
-
-  createEffect(() => {
-    const r = retry();
-    if (!r) {
-      setRetrySeconds(0);
-      return;
-    }
-    const updateSeconds = () => {
-      setRetrySeconds(Math.max(0, Math.round((r.next - Date.now()) / 1000)));
-    };
-    updateSeconds();
-    const timer = setInterval(updateSeconds, 1000);
     onCleanup(() => clearInterval(timer));
   });
 
@@ -381,7 +274,7 @@ export const SessionTurn: Component<SessionTurnProps> = props => {
     }
     if (statusTimer) clearTimeout(statusTimer);
     statusTimer = setTimeout(() => {
-      setStatusText(rawStatus());
+      setStatusText(nextStatus);
       lastStatusAt = Date.now();
       statusTimer = undefined;
     }, 2500 - elapsed);
@@ -416,7 +309,7 @@ export const SessionTurn: Component<SessionTurnProps> = props => {
                 aria-expanded={props.expanded}
               >
                 <Switch>
-                  <Match when={working()}>
+                  <Match when={props.isLast && props.isGenerating}>
                     <span class="bg-primary/70 inline-block h-2 w-2 animate-pulse rounded-full" />
                   </Match>
                   <Match when={!props.expanded}>
@@ -428,17 +321,7 @@ export const SessionTurn: Component<SessionTurnProps> = props => {
                 </Switch>
 
                 <Switch>
-                  <Match when={retry()}>
-                    {r => (
-                      <span>
-                        {truncate(unwrapError(r().message))}
-                        {" · retrying"}
-                        <Show when={retrySeconds() > 0}> in {retrySeconds()}s</Show> (#{r().attempt}
-                        )
-                      </span>
-                    )}
-                  </Match>
-                  <Match when={working()}>
+                  <Match when={props.isLast && props.isGenerating}>
                     <span>{statusText()}</span>
                   </Match>
                   <Match when={props.expanded}>
@@ -456,19 +339,20 @@ export const SessionTurn: Component<SessionTurnProps> = props => {
           </Show>
 
           <Show when={props.expanded && assistantMessages().length > 0}>
-            <div class="mt-3 space-y-3" aria-hidden={working()}>
+            <div class="mt-3 space-y-3" aria-hidden={props.isLast && props.isGenerating}>
               <For each={assistantMessages()}>
                 {assistant => (
                   <AssistantMessage
-                    messageID={assistant.info.id}
+                    messageID={assistant.id}
                     sessionID={props.sessionID}
-                    fallbackParts={assistant.parts}
+                    fallbackParts={assistant.parts as import("@renderer/types/sync").Part[]}
                     hideSummary
-                    hideReasoning={!working()}
+                    hideReasoning={!props.isLast || !props.isGenerating}
                     hideFinalTextPart={
-                      hideResponsePart() && !working() && assistant.info.id === lastAssistantID()
+                      hideResponsePart() &&
+                      !props.isGenerating &&
+                      assistant.id === lastAssistantID()
                     }
-                    hidden={hidden()}
                   />
                 )}
               </For>
@@ -476,9 +360,9 @@ export const SessionTurn: Component<SessionTurnProps> = props => {
           </Show>
 
           <div class="sr-only" aria-live="polite">
-            {!working() && responseText() ? responseText() : ""}
+            {!props.isGenerating && responseText() ? responseText() : ""}
           </div>
-          <Show when={!working() && responseText()}>
+          <Show when={!props.isGenerating && responseText()}>
             <div class="border-border/30 bg-card/30 mt-3 rounded-xl border px-4 py-3">
               <div class="mb-2 flex items-center justify-between">
                 <div class="text-muted-foreground text-xs font-medium">Response</div>

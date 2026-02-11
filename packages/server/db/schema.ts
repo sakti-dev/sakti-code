@@ -99,6 +99,38 @@ export const repoCache = sqliteTable("repo_cache", {
 });
 
 /**
+ * Events table - persists server events for catch-up and replay
+ *
+ * - event_id: UUIDv7 primary key
+ * - session_id: Foreign key to sessions (cascades on delete)
+ * - sequence: Monotonic sequence number within the session
+ * - event_type: Event type (e.g., "message.updated")
+ * - properties: JSON-encoded event payload
+ * - directory: Optional workspace directory
+ * - created_at: Unix timestamp in milliseconds
+ *
+ * Batch 2: Data Integrity - Added for event persistence and catch-up
+ */
+export const events = sqliteTable(
+  "events",
+  {
+    event_id: text("event_id").primaryKey(),
+    session_id: text("session_id")
+      .notNull()
+      .references(() => sessions.session_id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull(),
+    event_type: text("event_type").notNull(),
+    properties: text("properties", { mode: "json" }).notNull().$type<Record<string, unknown>>(),
+    directory: text("directory"),
+    created_at: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  table => ({
+    sessionSequence: uniqueIndex("events_session_sequence").on(table.session_id, table.sequence),
+    sessionCreated: uniqueIndex("events_session_created").on(table.session_id, table.created_at),
+  })
+);
+
+/**
  * Type definitions for TypeScript
  */
 export type Session = typeof sessions.$inferSelect;
@@ -107,3 +139,5 @@ export type ToolSession = typeof toolSessions.$inferSelect;
 export type NewToolSession = typeof toolSessions.$inferInsert;
 export type RepoCache = typeof repoCache.$inferSelect;
 export type NewRepoCache = typeof repoCache.$inferInsert;
+export type Event = typeof events.$inferSelect;
+export type NewEvent = typeof events.$inferInsert;

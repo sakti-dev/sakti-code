@@ -1,12 +1,13 @@
-import { Component, createEffect, createMemo, For, Show } from "solid-js";
+import { Icon } from "@renderer/components/icon";
+import { createAutoScroll } from "@renderer/hooks/create-auto-scroll";
+import { createLogger } from "@renderer/lib/logger";
+import { cn } from "@renderer/lib/utils";
+import { useMessages } from "@renderer/presentation/hooks/use-messages";
+import { VirtualList } from "@solid-primitives/virtual";
+import { Component, createEffect, createMemo, Show } from "solid-js";
 import { createStore } from "solid-js/store";
 import { ThinkingBubble } from "./message-bubble";
 import { SessionTurn } from "./session-turn";
-import { Icon } from "/@/components/icon";
-import { createAutoScroll } from "/@/hooks/create-auto-scroll";
-import { cn } from "/@/lib/utils";
-import type { Message } from "/@/providers/global-sync-provider";
-import { useSync } from "/@/providers/sync-provider";
 
 interface MessageListProps {
   /** Current session ID */
@@ -21,10 +22,7 @@ interface MessageListProps {
   onScrollToBottom?: () => void;
 }
 
-// Stable empty constants to prevent re-renders
-const EMPTY_MESSAGES: Message[] = [];
-const EMPTY_IDS: string[] = [];
-const IDLE_STATUS = { type: "idle" } as const;
+const logger = createLogger("desktop:views:message-list");
 
 // Custom equality for string ID arrays
 function idsEqual(a: readonly string[], b: readonly string[]): boolean {
@@ -46,7 +44,6 @@ function idsEqual(a: readonly string[], b: readonly string[]): boolean {
  * - Visual indicator when auto-scroll is paused
  */
 export const MessageList: Component<MessageListProps> = props => {
-  const sync = useSync();
   const [expanded, setExpanded] = createStore<Record<string, boolean>>({});
 
   const autoScroll = createAutoScroll({
@@ -55,36 +52,19 @@ export const MessageList: Component<MessageListProps> = props => {
     settlingPeriod: 300,
   });
 
-  // Get messages for current session from store
-  const sessionMessages = createMemo(() => {
-    const sessionID = props.sessionId;
-    if (!sessionID) return EMPTY_MESSAGES;
-    return sync.data.message[sessionID] ?? EMPTY_MESSAGES;
-  }, EMPTY_MESSAGES);
+  // Get messages for current session using new useMessages hook
+  const messages = useMessages(() => props.sessionId ?? null);
 
   // Compute timeline as array of user message IDs only
   // Each user message ID represents a turn - SessionTurn will fetch its own data
   const userMessageIDs = createMemo(
     () => {
-      const messages = sessionMessages();
-      if (messages.length === 0) return EMPTY_IDS;
-      const ids: string[] = [];
-      for (const msg of messages) {
-        if (msg.info.role === "user") {
-          ids.push(msg.info.id);
-        }
-      }
-      return ids.length > 0 ? ids : EMPTY_IDS;
+      const userMsgs = messages.userMessages();
+      if (userMsgs.length === 0) return [];
+      return userMsgs.map(m => m.id);
     },
-    EMPTY_IDS,
     { equals: idsEqual }
   );
-
-  const sessionStatus = createMemo(() => {
-    const id = props.sessionId;
-    if (!id) return IDLE_STATUS;
-    return sync.data.sessionStatus[id]?.status ?? IDLE_STATUS;
-  });
 
   // Determine last user message ID for "isLast" prop
   const lastUserMessageID = createMemo(() => {
@@ -95,9 +75,17 @@ export const MessageList: Component<MessageListProps> = props => {
   createEffect(() => {
     const lastID = lastUserMessageID();
     if (!lastID) return;
-    const status = sessionStatus();
-    const isWorking = (props.isGenerating ?? false) || status.type !== "idle";
+    const isWorking = props.isGenerating ?? false;
     setExpanded(lastID, isWorking);
+  });
+
+  createEffect(() => {
+    logger.debug("Message list projection updated", {
+      sessionId: props.sessionId,
+      userTurnCount: userMessageIDs().length,
+      isGenerating: props.isGenerating ?? false,
+      lastUserMessageId: lastUserMessageID(),
+    });
   });
 
   return (
@@ -108,19 +96,25 @@ export const MessageList: Component<MessageListProps> = props => {
     >
       {/* Messages */}
       <div class="mx-auto max-w-3xl">
-        <For each={userMessageIDs()}>
-          {messageID => (
+        <VirtualList
+          each={userMessageIDs()}
+          fallback={null}
+          rowHeight={300}
+          rootHeight={800}
+          overscanCount={3}
+          children={messageID => (
             <div class="group mb-5">
               <SessionTurn
                 sessionID={props.sessionId}
                 messageID={messageID}
                 isLast={messageID === lastUserMessageID()}
+                isGenerating={props.isGenerating}
                 expanded={expanded[messageID] ?? false}
                 onToggleExpanded={() => setExpanded(messageID, value => !value)}
               />
             </div>
           )}
-        </For>
+        />
 
         {/* Current thinking (while generating) */}
         <Show when={props.isGenerating && props.thinkingContent}>

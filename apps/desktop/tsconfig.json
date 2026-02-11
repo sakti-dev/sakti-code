@@ -20,7 +20,21 @@
       "@ekacode/core/chat": ["../../packages/core/src/chat"],
       "@ekacode/core/server": ["../../packages/core/src/server"],
       "@ekacode/core/tools": ["../../packages/core/src/tools"],
-      "@ekacode/*": ["../../packages/*/src"]
+      "@ekacode/desktop": ["src"],
+      "@ekacode/desktop/*": ["src/*"],
+      "@ekacode/*": ["../../packages/*/src"],
+      "@ekacode/desktop/core": ["src/core"],
+      "@ekacode/desktop/core/stores": ["src/core/stores"],
+      "@ekacode/desktop/core/domain": ["src/core/domain"],
+      "@ekacode/desktop/infrastructure": ["src/infrastructure"],
+      "@ekacode/desktop/infrastructure/events": ["src/infrastructure/events"],
+      "@ekacode/desktop/infrastructure/api": ["src/infrastructure/api"],
+      "@ekacode/desktop/presentation": ["src/presentation"],
+      "@ekacode/desktop/presentation/state": ["src/presentation/state"],
+      "@/*": ["src/*"],
+      "@/presentation/hooks": ["src/presentation/hooks"],
+      "@/presentation/contexts": ["src/presentation/contexts"],
+      "@/presentation/providers": ["src/presentation/providers"]
     },
     "moduleResolution": "bundler"
   },

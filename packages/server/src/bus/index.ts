@@ -3,19 +3,63 @@
  *
  * Opencode-style event bus for publish-subscribe messaging.
  * Supports typed events, wildcard subscriptions, and global emission.
+ * Updated for Batch 2: Data Integrity - includes event IDs and sequence numbers
  */
 
 import { MessageInfo as ChatMessageInfo, Part as ChatPart } from "@ekacode/core/chat";
 import { Instance } from "@ekacode/core/server";
 import { createLogger } from "@ekacode/shared/logger";
+import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
 import { removePart, upsertMessage, upsertPart } from "../state/session-message-store";
 import { defineBusEvent, type BusEventDefinition } from "./bus-event";
 
 const logger = createLogger("bus");
 
-type EventPayload = { type: string; properties: unknown; directory?: string };
+/**
+ * Event payload with integrity fields (Batch 2: Data Integrity)
+ */
+interface EventPayload {
+  type: string;
+  properties: unknown;
+  directory?: string;
+  eventId: string;
+  sequence: number;
+  timestamp: number;
+  sessionID?: string;
+}
+
 type Subscription = (event: EventPayload) => void | Promise<void>;
+
+/**
+ * Per-session sequence number tracking
+ */
+const sessionSequences = new Map<string, number>();
+
+/**
+ * Get next sequence number for a session
+ */
+function getNextSequence(sessionID?: string): number {
+  if (!sessionID) return 0;
+  const current = sessionSequences.get(sessionID) || 0;
+  const next = current + 1;
+  sessionSequences.set(sessionID, next);
+  return next;
+}
+
+/**
+ * Reset sequence counter for a session (useful for testing)
+ */
+export function resetSessionSequence(sessionID: string): void {
+  sessionSequences.delete(sessionID);
+}
+
+/**
+ * Get current sequence number for a session (for testing)
+ */
+export function getSessionSequence(sessionID: string): number {
+  return sessionSequences.get(sessionID) || 0;
+}
 
 function resolveDirectory(properties: unknown): string | undefined {
   if (properties && typeof properties === "object") {
@@ -174,13 +218,26 @@ export async function publish<Definition extends BusEventDefinition>(
   }
 
   const directory = resolveDirectory(properties);
+
+  // Extract sessionID from properties if available
+  const sessionID = (properties as { sessionID?: string }).sessionID;
+
+  // Generate integrity fields (Batch 2: Data Integrity)
+  const eventId = uuidv7();
+  const sequence = getNextSequence(sessionID);
+  const timestamp = Date.now();
+
   const payload: EventPayload = {
     type: def.type,
     properties,
     directory,
+    eventId,
+    sequence,
+    timestamp,
+    sessionID,
   };
 
-  logger.info("publishing", { type: def.type });
+  logger.info("publishing", { type: def.type, eventId, sequence, sessionID });
 
   const pending: Array<void | Promise<void>> = [];
 
@@ -195,7 +252,7 @@ export async function publish<Definition extends BusEventDefinition>(
   }
 
   // Emit to global bus (for cross-process communication if needed)
-  GlobalBus.emit("event", payload as Record<string, unknown>);
+  GlobalBus.emit("event", payload as unknown as Record<string, unknown>);
 
   await Promise.all(pending);
 }

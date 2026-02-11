@@ -5,10 +5,11 @@
  * - Workspace path and project info
  * - API client instance
  * - Session list management
- * - Chat integration via useChat hook
- * - Permission handling
  *
  * This provider should wrap the entire workspace view.
+ *
+ * Part of Phase 5: Hooks Refactor - Chat and permissions are now
+ * provided by ChatProvider instead of WorkspaceProvider.
  */
 import { useParams } from "@solidjs/router";
 import {
@@ -22,8 +23,6 @@ import {
   type JSX,
   type ParentComponent,
 } from "solid-js";
-import type { UseChatResult } from "../hooks/use-chat";
-import type { UsePermissionsResult } from "../hooks/use-permissions";
 import { useSession } from "../hooks/use-session";
 import { EkacodeApiClient, type SessionInfo } from "../lib/api-client";
 import type { WorkspaceState } from "../types";
@@ -66,13 +65,8 @@ export interface WorkspaceContextValue {
   refreshSessions: () => Promise<void>;
   isLoadingSessions: Accessor<boolean>;
 
-  // Chat (active session)
-  chat: Accessor<UseChatResult | null>;
-  setChat: (chat: UseChatResult | null) => void;
-
-  // Permissions
-  permissions: Accessor<UsePermissionsResult | null>;
-  setPermissions: (permissions: UsePermissionsResult | null) => void;
+  // Note: Chat functionality is now provided by ChatProvider
+  // Note: Permissions functionality is now provided by separate context
 }
 
 // ============================================================
@@ -132,12 +126,15 @@ export const WorkspaceProvider: ParentComponent<WorkspaceProviderProps> = props 
   const isClientReady = createMemo(() => client() !== null);
 
   onMount(async () => {
+    let config: Awaited<ReturnType<typeof window.ekacodeAPI.server.getConfig>>;
     try {
-      const config = await window.ekacodeAPI.server.getConfig();
-      setClient(new EkacodeApiClient(config));
+      config = await window.ekacodeAPI.server.getConfig();
     } catch (error) {
-      console.error("Failed to initialize API client:", error);
+      console.error("Failed to load API config:", error);
+      return;
     }
+
+    setClient(new EkacodeApiClient(config));
   });
 
   // ---- Sessions ----
@@ -220,10 +217,6 @@ export const WorkspaceProvider: ParentComponent<WorkspaceProviderProps> = props 
     }
   };
 
-  // ---- Chat & Permissions Hooks ----
-  const [chatResult, setChatResult] = createSignal<UseChatResult | null>(null);
-  const [permissionsResult, setPermissionsResult] = createSignal<UsePermissionsResult | null>(null);
-
   // ---- Context Value ----
   const contextValue: WorkspaceContextValue = {
     // Workspace
@@ -243,14 +236,6 @@ export const WorkspaceProvider: ParentComponent<WorkspaceProviderProps> = props 
     deleteSession,
     refreshSessions,
     isLoadingSessions,
-
-    // Chat
-    chat: chatResult,
-    setChat: setChatResult,
-
-    // Permissions
-    permissions: permissionsResult,
-    setPermissions: setPermissionsResult,
   };
 
   return (
