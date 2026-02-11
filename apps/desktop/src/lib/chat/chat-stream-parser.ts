@@ -372,61 +372,70 @@ export async function parseChatStream(
     },
   };
 
-  // Set up timeout if specified
+  type LoopEvent =
+    | { type: "read"; result: ReadableStreamReadResult<Uint8Array> }
+    | { type: "read-error"; error: unknown }
+    | { type: "timeout" }
+    | { type: "abort" };
+
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  if (timeoutMs && timeoutMs > 0) {
-    timeoutId = setTimeout(() => {
-      timedOut = true;
-      try {
-        void reader.cancel();
-      } catch {
-        // Ignore cancel errors
-      }
-    }, timeoutMs);
-  }
+  const timeoutPromise: Promise<LoopEvent> | null =
+    timeoutMs && timeoutMs > 0
+      ? new Promise(resolve => {
+          timeoutId = setTimeout(() => resolve({ type: "timeout" }), timeoutMs);
+        })
+      : null;
 
-  // Set up abort signal handler
-  const onAbort = () => {
-    try {
-      void reader.cancel();
-    } catch {
-      // Ignore cancel errors
-    }
-  };
-
-  if (signal) {
-    if (signal.aborted) {
-      onAbort();
-      if (timeoutId) clearTimeout(timeoutId);
-      return;
-    }
-    signal.addEventListener("abort", onAbort, { once: true });
-  }
+  let onAbort: (() => void) | null = null;
+  const abortPromise: Promise<LoopEvent> | null = signal
+    ? signal.aborted
+      ? Promise.resolve({ type: "abort" as const })
+      : new Promise(resolve => {
+          onAbort = () => resolve({ type: "abort" });
+          signal.addEventListener("abort", onAbort, { once: true });
+        })
+    : null;
 
   const decoder = new TextDecoder();
 
   try {
     while (true) {
-      // Check for abort
-      if (signal?.aborted) {
+      const readPromise: Promise<LoopEvent> = reader
+        .read()
+        .then(result => ({ type: "read", result }) as LoopEvent)
+        .catch(error => ({ type: "read-error", error }) as LoopEvent);
+
+      const events: Promise<LoopEvent>[] = [readPromise];
+      if (timeoutPromise) events.push(timeoutPromise);
+      if (abortPromise) events.push(abortPromise);
+      const next = await Promise.race(events);
+
+      if (next.type === "timeout") {
+        timedOut = true;
+        logger.warn("Stream read timed out");
+        try {
+          await reader.cancel();
+        } catch {
+          // Ignore cancel errors
+        }
+        parserCallbacks.onComplete?.("timeout");
         break;
       }
 
-      let result: ReadableStreamReadResult<Uint8Array>;
-      try {
-        result = await reader.read();
-      } catch (error) {
-        if (timedOut) {
-          logger.warn("Stream read timed out");
-          if (!completed) {
-            parserCallbacks.onComplete?.("timeout");
-          }
-          break;
+      if (next.type === "abort") {
+        try {
+          await reader.cancel();
+        } catch {
+          // Ignore cancel errors
         }
-        throw error;
+        break;
       }
 
-      const { done, value } = result;
+      if (next.type === "read-error") {
+        throw next.error;
+      }
+
+      const { done, value } = next.result;
 
       if (done) {
         // Process any remaining data in buffer
@@ -451,17 +460,13 @@ export async function parseChatStream(
         currentMessageId = processBufferLine(line, parserCallbacks, currentMessageId);
       }
     }
-
-    if (timedOut && !completed) {
-      parserCallbacks.onComplete?.("timeout");
-    }
   } catch (error) {
     if (!completed) {
       parserCallbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
     }
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
-    if (signal) {
+    if (signal && onAbort) {
       signal.removeEventListener("abort", onAbort);
     }
     try {

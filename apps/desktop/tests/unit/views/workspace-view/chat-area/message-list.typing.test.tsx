@@ -53,16 +53,15 @@ describe("MessageList content-priority typing", () => {
     ));
 
     // Typing indicator should be visible
-    const typingDots = app.container.querySelectorAll(".typing-dot");
+    const typingDots = app.container.querySelectorAll(
+      '[data-testid="message-list-typing-indicator"] .typing-dot'
+    );
     expect(typingDots.length).toBe(3);
 
     app.dispose();
   });
 
-  it.skip("should hide typing indicator when thinking content exists", async () => {
-    // TODO: This test needs proper SolidJS signal/prop update handling
-    // The implementation is correct (checks !props.thinkingContent)
-    // but the test mock setup needs refinement
+  it("should hide typing indicator when thinking content exists", async () => {
     const app = mount(() => (
       <MessageList
         sessionId="test-session"
@@ -74,9 +73,14 @@ describe("MessageList content-priority typing", () => {
     // Wait for SolidJS to finish rendering
     await new Promise(resolve => setTimeout(resolve, 10));
 
-    // Typing indicator should NOT be visible when thinking content exists
-    const typingDots = app.container.querySelectorAll(".typing-dot");
+    // Typing indicator should NOT be visible when thinking content exists.
+    const typingDots = app.container.querySelectorAll(
+      '[data-testid="message-list-typing-indicator"] .typing-dot'
+    );
     expect(typingDots.length).toBe(0);
+    expect(
+      app.container.querySelector('[data-testid="message-list-thinking-bubble"]')
+    ).toBeTruthy();
 
     app.dispose();
   });
@@ -87,7 +91,9 @@ describe("MessageList content-priority typing", () => {
     ));
 
     // Typing indicator should not be visible
-    const typingDots = app.container.querySelectorAll(".typing-dot");
+    const typingDots = app.container.querySelectorAll(
+      '[data-testid="message-list-typing-indicator"] .typing-dot'
+    );
     expect(typingDots.length).toBe(0);
 
     app.dispose();
@@ -112,7 +118,9 @@ describe("MessageList typing indicator requirements", () => {
       <MessageList sessionId="test-session" isGenerating={true} thinkingContent="" />
     ));
 
-    const typingDots = app.container.querySelectorAll(".typing-dot");
+    const typingDots = app.container.querySelectorAll(
+      '[data-testid="message-list-typing-indicator"] .typing-dot'
+    );
     expect(typingDots.length).toBe(3);
 
     app.dispose();

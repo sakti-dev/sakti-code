@@ -16,7 +16,7 @@ import {
   reasoningFixture,
   simpleTextFixture,
   toolCallFixture,
-} from "@ekacode/shared/fixtures/chat-streams";
+} from "@ekacode/shared";
 import { describe, expect, it, vi } from "vitest";
 import { createStreamParser, parseChatStream } from "../../../../src/lib/chat/chat-stream-parser";
 
@@ -150,7 +150,7 @@ describe("chat-stream-parser", () => {
       expect(onComplete).toHaveBeenCalledWith("stop");
     });
 
-    it.skip("should handle timeout", async () => {
+    it("should handle timeout", async () => {
       // TODO: Fix timeout handling - reader.cancel() doesn't interrupt pending read()
       const onComplete = vi.fn();
       const onError = vi.fn();
