@@ -1,5 +1,5 @@
 import type { RecentProject } from "@/core/chat/types";
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import { For, Show, createSignal, onMount } from "solid-js";
 
 export default function SettingsView() {

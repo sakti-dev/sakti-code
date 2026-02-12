@@ -1,6 +1,6 @@
 import type { UseStreamDebuggerResult } from "@/core/chat/hooks/use-stream-debugger";
 import type { AgentMode, Session } from "@/core/chat/types";
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import Resizable from "@corvu/resizable";
 import { Component, createMemo, createSignal, mergeProps, Show } from "solid-js";
 import { ChatHeader } from "./chat-header";

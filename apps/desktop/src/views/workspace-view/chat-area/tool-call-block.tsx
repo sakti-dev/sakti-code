@@ -15,7 +15,7 @@
 import { Collapsible } from "@/components/shared/collapsible";
 import { Icon } from "@/components/shared/icon";
 import type { ToolCall } from "@/core/chat/types";
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import { Component, Show, createSignal } from "solid-js";
 
 interface ToolCallBlockProps {

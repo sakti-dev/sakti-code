@@ -10,7 +10,7 @@
  * - Custom Shiki theme matching ekacode colors
  */
 
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import markedShiki from "marked-shiki";

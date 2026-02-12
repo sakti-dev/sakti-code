@@ -1,4 +1,4 @@
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import Resizable from "@corvu/resizable";
 import { Component, mergeProps } from "solid-js";
 import { SessionList } from "./session-list";

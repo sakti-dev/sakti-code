@@ -1,4 +1,4 @@
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import { Component, For, Show, createSignal } from "solid-js";
 import { SessionCard } from "./session-card";
 

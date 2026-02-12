@@ -1,5 +1,5 @@
 import type { DiffChange, FileTab, TerminalOutput } from "@/core/chat/types";
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import { createEffect, createMemo, createSignal, onMount, Show } from "solid-js";
 
 // Import workspace components

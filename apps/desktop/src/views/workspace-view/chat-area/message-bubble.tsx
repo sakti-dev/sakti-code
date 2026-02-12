@@ -1,6 +1,6 @@
 import { Markdown } from "@/components/shared/markdown";
 import type { Message } from "@/core/chat/types/sync";
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import { Component, For, Match, mergeProps, Show, Switch } from "solid-js";
 
 interface MessageBubbleProps {

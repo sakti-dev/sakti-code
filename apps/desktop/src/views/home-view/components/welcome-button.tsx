@@ -1,4 +1,4 @@
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import type { JSX } from "solid-js";
 
 interface WelcomeButtonProps {

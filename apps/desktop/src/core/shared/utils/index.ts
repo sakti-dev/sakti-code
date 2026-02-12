@@ -1,12 +1,16 @@
 /**
- * Utilities Barrel Export
+ * Chat Utilities Barrel Export
  *
- * Exports all utility functions and helpers.
- * Part of Phase 6: Cleanup & Optimization
+ * Exports chat-specific utility functions.
+ * These utilities are used within the chat context including:
+ * - Auto-scroll behavior
+ * - Message eviction
+ * - SSE catchup
+ * - Performance monitoring
+ *
+ * Part of Phase 6: Utility Organization
  */
 
-export { cn } from "./lib-utils";
-export type { ClassValue } from "./lib-utils";
 export { createPerformanceMonitor } from "./performance";
 export type { PerformanceMetrics, PerformanceMonitor } from "./performance";
 export {
@@ -15,3 +19,5 @@ export {
   useRenderMonitor,
 } from "./reactive-performance";
 export type { OperationMonitorResult, RenderMonitorState } from "./reactive-performance";
+
+// Note: cn (classnames utility) moved to @/utils

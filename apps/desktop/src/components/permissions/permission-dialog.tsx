@@ -5,7 +5,7 @@
  * Shows tool name, arguments, and allow/deny buttons.
  */
 import type { PermissionRequestData } from "@/core/chat/types/ui-message";
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import { Component, Show } from "solid-js";
 
 interface PermissionDialogProps {

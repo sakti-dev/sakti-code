@@ -16,7 +16,7 @@ import type {
   ToolCallPartData,
   ToolResultPartData,
 } from "@/core/chat/types/ui-message";
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import { Component, For, Match, Show, Switch, createSignal } from "solid-js";
 
 /**

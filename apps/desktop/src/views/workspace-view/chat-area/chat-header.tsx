@@ -1,4 +1,4 @@
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import { Component, For, Show, mergeProps } from "solid-js";
 
 interface ModelOption {

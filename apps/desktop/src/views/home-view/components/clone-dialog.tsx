@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/shared/dialog";
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import { For, Show, createSignal } from "solid-js";
 
 interface CloneDialogProps {

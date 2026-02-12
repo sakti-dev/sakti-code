@@ -1,5 +1,5 @@
 import type { DiffChange } from "@/core/chat/types";
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import { Component, For, mergeProps, Show } from "solid-js";
 
 interface DiffViewProps {

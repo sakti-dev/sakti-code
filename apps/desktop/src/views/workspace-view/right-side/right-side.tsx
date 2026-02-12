@@ -1,5 +1,5 @@
 import type { DiffChange, FileTab as FileTabType, TerminalOutput } from "@/core/chat/types";
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import Resizable from "@corvu/resizable";
 import { Accessor, Component, mergeProps, Show } from "solid-js";
 import { DiffView } from "./diff-view";

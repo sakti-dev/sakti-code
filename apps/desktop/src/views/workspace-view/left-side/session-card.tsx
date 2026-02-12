@@ -1,4 +1,4 @@
-import { cn } from "@/core/shared/utils";
+import { cn } from "@/utils";
 import { Component, Show, mergeProps } from "solid-js";
 
 /**

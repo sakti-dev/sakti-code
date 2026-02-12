@@ -31,7 +31,9 @@
       "@/services": ["src/core/services"],
       "@/services/*": ["src/core/services/*"],
       "@/shared": ["src/core/shared"],
-      "@/shared/*": ["src/core/shared/*"]
+      "@/shared/*": ["src/core/shared/*"],
+      "@/utils": ["src/utils"],
+      "@/utils/*": ["src/utils/*"]
     },
     "moduleResolution": "bundler"
   },

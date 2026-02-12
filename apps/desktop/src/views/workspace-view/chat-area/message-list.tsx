@@ -1,9 +1,9 @@
 import { Icon } from "@/components/shared/icon";
 import { useMessages } from "@/core/chat/hooks/use-messages";
 import type { Message, Part } from "@/core/chat/types/sync";
-import { cn } from "@/core/shared/utils";
 import { createAutoScroll } from "@/core/shared/utils/create-auto-scroll";
 import { createLogger } from "@/shared/logger";
+import { cn } from "@/utils";
 import type { Part as SharedPart } from "@ekacode/shared/event-types";
 import { Component, createEffect, For, Show } from "solid-js";
 import AssistantMessage from "../../../components/assistant-message";
