@@ -6,13 +6,17 @@
  */
 
 import type { MessageWithId } from "@/core/state/stores/message-store";
-import type { Part } from "@ekacode/shared/event-types";
+import type { PermissionRequest } from "@/core/state/stores/permission-store";
+import type { QuestionRequest } from "@/core/state/stores/question-store";
+import type { Part, SessionStatusPayload } from "@ekacode/shared/event-types";
 
 export interface TurnProjectionOptions {
   sessionId: string;
   messages: MessageWithId[];
   partsByMessage: Record<string, Part[]>;
-  sessionStatus: "idle" | "busy";
+  permissionRequests?: PermissionRequest[];
+  questionRequests?: QuestionRequest[];
+  sessionStatus?: SessionStatusPayload["status"];
   lastUserMessageId: string | undefined;
 }
 
@@ -24,8 +28,17 @@ export interface ChatTurn {
   finalTextPart: Part | undefined;
   reasoningParts: Part[];
   toolParts: Part[];
+  permissionParts: Part[];
+  questionParts: Part[];
   isActiveTurn: boolean;
   working: boolean;
+  retry:
+    | {
+        attempt: number;
+        message: string;
+        next: number;
+      }
+    | undefined;
   error: string | undefined;
   durationMs: number;
   statusLabel: string | undefined;
@@ -64,6 +77,10 @@ export function computeDuration(startMs: number | undefined, endMs: number | und
 export function deriveStatusFromPart(part: Part | undefined): string | undefined {
   if (!part) return undefined;
 
+  if (part.type === "question" || part.type === "permission") {
+    return "Waiting for input";
+  }
+
   if (part.type === "reasoning") {
     return "Thinking";
   }
@@ -72,14 +89,26 @@ export function deriveStatusFromPart(part: Part | undefined): string | undefined
     const toolName = (part as Record<string, unknown>).tool as string | undefined;
     switch (toolName) {
       case "read":
+        return "Gathering context";
+      case "ls":
       case "list":
       case "grep":
       case "glob":
-        return "Gathering context";
+        return "Searching codebase";
+      case "webfetch":
+        return "Searching web";
+      case "task":
+        return "Delegating work";
+      case "todowrite":
+      case "todoread":
+        return "Planning next steps";
       case "edit":
       case "write":
+      case "apply_patch":
+      case "multiedit":
         return "Making edits";
       case "bash":
+      case "shell":
         return "Running commands";
       case "question":
       case "permission":
@@ -111,8 +140,23 @@ function getReasoningParts(parts: Part[]): Part[] {
   return parts.filter(p => p.type === "reasoning");
 }
 
+function getPermissionParts(parts: Part[]): Part[] {
+  return parts.filter(p => p.type === "permission");
+}
+
+function getQuestionParts(parts: Part[]): Part[] {
+  return parts.filter(p => p.type === "question");
+}
+
 export function buildChatTurns(options: TurnProjectionOptions): ChatTurn[] {
-  const { messages, partsByMessage, sessionStatus, lastUserMessageId } = options;
+  const {
+    messages,
+    partsByMessage,
+    permissionRequests = [],
+    questionRequests = [],
+    sessionStatus,
+    lastUserMessageId,
+  } = options;
 
   if (messages.length === 0) return [];
 
@@ -122,7 +166,15 @@ export function buildChatTurns(options: TurnProjectionOptions): ChatTurn[] {
   for (const userMessage of userMessages) {
     const userParts = partsByMessage[userMessage.id] ?? [];
     const isActiveTurn = userMessage.id === lastUserMessageId;
-    const working = isActiveTurn && sessionStatus === "busy";
+    const working = isActiveTurn && sessionStatus?.type !== "idle";
+    const retry =
+      isActiveTurn && sessionStatus?.type === "retry"
+        ? {
+            attempt: sessionStatus.attempt,
+            message: sessionStatus.message,
+            next: sessionStatus.next,
+          }
+        : undefined;
 
     const assistantMessages: MessageWithId[] = [];
     const assistantPartsByMessageId: Record<string, Part[]> = {};
@@ -143,6 +195,47 @@ export function buildChatTurns(options: TurnProjectionOptions): ChatTurn[] {
     const finalTextPart = findLastPartByType(allAssistantParts, "text");
     const reasoningParts = getReasoningParts(allAssistantParts);
     const toolParts = getToolParts(allAssistantParts);
+    const partPermissionParts = getPermissionParts(allAssistantParts);
+    const partQuestionParts = getQuestionParts(allAssistantParts);
+    const assistantMessageIds = new Set(assistantMessages.map(message => message.id));
+
+    const storePermissionParts = permissionRequests
+      .filter(request => assistantMessageIds.has(request.messageID))
+      .map(
+        request =>
+          ({
+            id: `permission:${request.id}`,
+            type: "permission",
+            messageID: request.messageID,
+            request,
+          }) as Part
+      );
+
+    const storeQuestionParts = questionRequests
+      .filter(request => assistantMessageIds.has(request.messageID))
+      .map(
+        request =>
+          ({
+            id: `question:${request.id}`,
+            type: "question",
+            messageID: request.messageID,
+            request,
+          }) as Part
+      );
+
+    const permissionParts = [...partPermissionParts];
+    for (const storePart of storePermissionParts) {
+      if (!permissionParts.some(part => part.id === storePart.id)) {
+        permissionParts.push(storePart);
+      }
+    }
+
+    const questionParts = [...partQuestionParts];
+    for (const storePart of storeQuestionParts) {
+      if (!questionParts.some(part => part.id === storePart.id)) {
+        questionParts.push(storePart);
+      }
+    }
 
     const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
     const error = lastAssistantMessage ? getErrorMessage(lastAssistantMessage) : undefined;
@@ -153,7 +246,13 @@ export function buildChatTurns(options: TurnProjectionOptions): ChatTurn[] {
       : undefined;
     const durationMs = computeDuration(userCreated, assistantCompleted);
 
-    const lastMeaningfulPart = allAssistantParts[allAssistantParts.length - 1];
+    const pendingPermission = permissionRequests.some(
+      request => assistantMessageIds.has(request.messageID) && request.status === "pending"
+    );
+    const pendingQuestion = questionRequests.some(
+      request => assistantMessageIds.has(request.messageID) && request.status === "pending"
+    );
+    const lastMeaningfulPart = [...allAssistantParts, ...permissionParts, ...questionParts].at(-1);
     const statusLabel = working ? deriveStatusFromPart(lastMeaningfulPart) : undefined;
 
     turns.push({
@@ -164,11 +263,15 @@ export function buildChatTurns(options: TurnProjectionOptions): ChatTurn[] {
       finalTextPart,
       reasoningParts,
       toolParts,
+      permissionParts,
+      questionParts,
       isActiveTurn,
       working,
+      retry,
       error,
       durationMs,
-      statusLabel,
+      statusLabel:
+        working && (pendingPermission || pendingQuestion) ? "Waiting for input" : statusLabel,
     });
   }
 

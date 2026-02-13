@@ -6,6 +6,7 @@
  *
  * Phase 2: SSE & Data Flow Integration
  * Updated for Batch 2: Data Integrity - includes event ordering and deduplication
+ * Updated for Phase 3: Streaming Reconciliation Hardening - optimistic entity cleanup
  */
 
 import { createLogger } from "@/core/shared/logger";
@@ -21,6 +22,18 @@ import { EventDeduplicator } from "@ekacode/shared/event-deduplication";
 import { validateEventComprehensive } from "@ekacode/shared/event-guards";
 import { EventOrderingBuffer } from "@ekacode/shared/event-ordering";
 import type { Part, ServerEvent } from "@ekacode/shared/event-types";
+import { type OptimisticMetadata } from "./correlation";
+import {
+  findOrphanedOptimisticEntities,
+  reconcileMessages,
+  reconcileParts,
+} from "./reconciliation";
+
+/** Helper to check if an entity has optimistic metadata */
+function hasOptimisticMetadata(entity: { metadata?: unknown }): boolean {
+  const metadata = entity.metadata as OptimisticMetadata | undefined;
+  return metadata?.optimistic === true;
+}
 
 const logger = createLogger("event-router-adapter");
 
@@ -245,7 +258,58 @@ function processEvent(
         provider: info.provider,
       };
 
-      messageActions.upsert(messageWithId);
+      // Get optimistic messages for this session for reconciliation
+      const existingMessages = messageActions.getBySession(sessionID);
+      const optimisticMessages = existingMessages.filter(m =>
+        hasOptimisticMetadata(m as { metadata?: unknown })
+      );
+
+      // Reconcile canonical message with optimistic messages
+      const result = reconcileMessages([messageWithId], optimisticMessages);
+
+      // Upsert canonical message first so part re-association passes FK validation.
+      const canonicalMessage = result.toUpsert[0];
+      if (canonicalMessage) {
+        messageActions.upsert(canonicalMessage);
+      }
+
+      // Remove matched optimistic messages.
+      // Exact-ID matches must not be removed because remove() cascades parts.
+      for (const id of result.toRemove) {
+        if (id === info.id) {
+          logger.debug("Skipping remove for exact-ID message reconciliation", {
+            messageId: id,
+          });
+          continue;
+        }
+
+        // Preserve streamed parts by moving them from optimistic message ID to canonical ID.
+        const optimisticParts = partActions.getByMessage(id);
+        for (const optimisticPart of optimisticParts) {
+          if (!optimisticPart.id) continue;
+          partActions.remove(optimisticPart.id, id);
+          partActions.upsert({
+            ...optimisticPart,
+            messageID: info.id,
+          });
+        }
+
+        logger.debug("Removing matched optimistic message", {
+          optimisticId: id,
+          canonicalId: info.id,
+        });
+        messageActions.remove(id);
+      }
+
+      // Log diagnostics
+      if (result.stats.matched > 0 || result.stats.stale > 0) {
+        logger.debug("Message reconciliation completed", {
+          canonicalId: info.id,
+          sessionID,
+          removedOptimistic: result.toRemove,
+          stats: result.stats,
+        });
+      }
 
       const pendingParts = pendingPartsByMessage.get(info.id);
       if (pendingParts && pendingParts.length > 0) {
@@ -288,7 +352,39 @@ function processEvent(
         break;
       }
 
-      partActions.upsert(part);
+      // Get optimistic parts for this message for reconciliation
+      const existingParts = partActions.getByMessage(part.messageID);
+      const optimisticParts = existingParts.filter(p =>
+        hasOptimisticMetadata(p as { metadata?: unknown })
+      );
+
+      // Reconcile canonical part with optimistic parts
+      const result = reconcileParts([part], optimisticParts);
+
+      // Remove matched optimistic parts
+      for (const id of result.toRemove) {
+        logger.debug("Removing matched optimistic part", {
+          optimisticId: id,
+          canonicalId: part.id,
+        });
+        partActions.remove(id, part.messageID);
+      }
+
+      // Upsert canonical part (without optimistic metadata)
+      const canonicalPart = result.toUpsert[0];
+      if (canonicalPart) {
+        partActions.upsert(canonicalPart);
+      }
+
+      // Log diagnostics
+      if (result.stats.matched > 0 || result.stats.stale > 0) {
+        logger.debug("Part reconciliation completed", {
+          canonicalId: part.id,
+          messageID: part.messageID,
+          removedOptimistic: result.toRemove,
+          stats: result.stats,
+        });
+      }
       break;
     }
 
@@ -321,6 +417,7 @@ function processEvent(
               typeof tool.messageID === "string" ? tool.messageID : `permission:${requestId}`,
             toolName: permission,
             args: metadata,
+            patterns,
             description:
               patterns.length > 0 ? `Requires permission for: ${patterns.join(", ")}` : undefined,
             status: "pending",
@@ -351,17 +448,49 @@ function processEvent(
         const sessionID = typeof props.sessionID === "string" ? props.sessionID : undefined;
         const tool = isRecord(props.tool) ? props.tool : {};
         const questions = Array.isArray(props.questions) ? props.questions : [];
-        const primaryQuestion = questions[0];
-        const questionText =
-          typeof primaryQuestion === "string"
-            ? primaryQuestion
-            : isRecord(primaryQuestion) && typeof primaryQuestion.question === "string"
-              ? primaryQuestion.question
-              : "Question";
-        const options =
-          isRecord(primaryQuestion) && Array.isArray(primaryQuestion.options)
-            ? primaryQuestion.options.filter(option => typeof option === "string")
+
+        const normalizedQuestions: {
+          header?: string;
+          question: string;
+          options?: { label: string; description?: string }[];
+          multiple?: boolean;
+        }[] = [];
+        for (const question of questions) {
+          if (typeof question === "string") {
+            normalizedQuestions.push({ question });
+            continue;
+          }
+          if (!isRecord(question) || typeof question.question !== "string") {
+            continue;
+          }
+
+          const options = Array.isArray(question.options)
+            ? question.options
+                .map(option => {
+                  if (typeof option === "string") return { label: option };
+                  if (!isRecord(option) || typeof option.label !== "string") return undefined;
+                  return {
+                    label: option.label,
+                    description:
+                      typeof option.description === "string" ? option.description : undefined,
+                  };
+                })
+                .filter((option): option is { label: string; description?: string } =>
+                  Boolean(option)
+                )
             : undefined;
+
+          normalizedQuestions.push({
+            header: typeof question.header === "string" ? question.header : undefined,
+            question: question.question,
+            options,
+            multiple: question.multiple === true,
+          });
+        }
+
+        const primaryQuestion = normalizedQuestions[0];
+        const questionText = primaryQuestion?.question ?? "Question";
+        const options = primaryQuestion?.options?.map(option => option.label);
 
         if (requestId && sessionID) {
           questionActions.add({
@@ -369,6 +498,10 @@ function processEvent(
             sessionID,
             messageID:
               typeof tool.messageID === "string" ? tool.messageID : `question:${requestId}`,
+            questions:
+              normalizedQuestions.length > 0
+                ? normalizedQuestions
+                : [{ question: questionText, options: options?.map(label => ({ label })) }],
             question: questionText,
             options,
             status: "pending",
@@ -422,6 +555,48 @@ function processEvent(
           });
         }
         sessionActions.setStatus(sessionID, status);
+
+        // Clean up orphaned optimistic entities when session goes idle
+        if (status.type === "idle") {
+          const messages = messageActions.getBySession(sessionID);
+          const parts = messages.flatMap(message => partActions.getByMessage(message.id));
+
+          const orphanedPartIds = findOrphanedOptimisticEntities(
+            parts
+              .filter(part => typeof part.id === "string")
+              .map(part => ({
+                id: part.id as string,
+                metadata: (part as { metadata?: unknown }).metadata,
+              }))
+          );
+          for (const partId of orphanedPartIds) {
+            const part = partActions.getById(partId);
+            if (!part?.messageID) continue;
+            logger.info("Removing orphaned optimistic part", {
+              partId,
+              messageID: part.messageID,
+              sessionID,
+            });
+            partActions.remove(partId, part.messageID);
+          }
+
+          const orphanedIds = findOrphanedOptimisticEntities(
+            messages.map(m => ({ id: m.id, metadata: (m as { metadata?: unknown }).metadata }))
+          );
+
+          for (const messageId of orphanedIds) {
+            logger.info("Removing orphaned optimistic message", { messageId, sessionID });
+
+            // Remove parts first (cascade)
+            const parts = partActions.getByMessage(messageId);
+            for (const part of parts) {
+              partActions.remove(part.id!, messageId);
+            }
+
+            // Remove message
+            messageActions.remove(messageId);
+          }
+        }
       }
       break;
     }

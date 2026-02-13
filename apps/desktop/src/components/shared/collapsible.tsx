@@ -27,7 +27,7 @@ export const Collapsible = Object.assign(KobalteCollapsible, {
   Arrow: () => (
     <Icon
       name="chevron-down"
-      class="text-muted-foreground h-4 w-4 transition-transform duration-200 data-[expanded]:rotate-180"
+      class="text-muted-foreground data-expanded:rotate-180 h-4 w-4 transition-transform duration-200"
     />
   ),
 });

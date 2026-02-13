@@ -81,7 +81,14 @@ export default defineConfig({
     fileParallelism: false,
     server: {
       deps: {
-        inline: ["@solidjs/router"],
+        inline: [
+          "@solidjs/router",
+          "@kobalte/core",
+          "@kobalte/core/collapsible",
+          "solid-presence",
+          "@corvu/utils",
+          "@corvu/resizable",
+        ],
       },
     },
   },

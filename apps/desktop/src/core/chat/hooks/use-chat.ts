@@ -29,6 +29,14 @@
  * ```
  */
 
+import {
+  CORRELATION_TIME_WINDOW_MS,
+  createOptimisticMetadata,
+  generateMessageCorrelationKey,
+  generatePartCorrelationKey,
+  type OptimisticMetadata,
+} from "@/core/chat/domain/correlation";
+import { findOrphanedOptimisticEntities } from "@/core/chat/domain/reconciliation";
 import { parseChatStream } from "@/core/chat/services/chat-stream-parser";
 import type { ChatUIMessage } from "@/core/chat/types/ui-message";
 import type { EkacodeApiClient } from "@/core/services/api/api-client";
@@ -183,6 +191,63 @@ export function useChat(options: UseChatOptions): UseChatResult {
       .map(part => extractTextFromPart(part as Record<string, unknown>))
       .filter(Boolean)
       .join("");
+  };
+
+  /**
+   * Clean up orphaned optimistic entities for a session
+   *
+   * Removes messages and parts that have optimistic metadata but are
+   * no longer being updated (e.g., after abort or error).
+   */
+  const cleanupOptimisticArtifacts = (
+    sessionId: string | null,
+    maxAgeMs: number = CORRELATION_TIME_WINDOW_MS
+  ): void => {
+    if (!sessionId) return;
+
+    const messages = messageActions.getBySession(sessionId);
+    const parts = messages.flatMap(message => partActions.getByMessage(message.id));
+
+    const orphanedPartIds = findOrphanedOptimisticEntities(
+      parts
+        .filter(part => typeof part.id === "string")
+        .map(part => ({
+          id: part.id as string,
+          metadata: (part as { metadata?: OptimisticMetadata }).metadata,
+        })),
+      maxAgeMs
+    );
+    for (const partId of orphanedPartIds) {
+      const part = partActions.getById(partId);
+      if (!part?.messageID) continue;
+      logger.info("Cleaning up optimistic part", {
+        partId,
+        messageId: part.messageID,
+        sessionId,
+      });
+      partActions.remove(partId, part.messageID);
+    }
+
+    const orphanedIds = findOrphanedOptimisticEntities(
+      messages.map(m => ({
+        id: m.id,
+        metadata: (m as { metadata?: OptimisticMetadata }).metadata,
+      })),
+      maxAgeMs
+    );
+
+    for (const messageId of orphanedIds) {
+      logger.info("Cleaning up optimistic message", { messageId, sessionId });
+
+      // Remove parts first (cascade)
+      const parts = partActions.getByMessage(messageId);
+      for (const part of parts) {
+        partActions.remove(part.id!, messageId);
+      }
+
+      // Remove message
+      messageActions.remove(messageId);
+    }
   };
 
   /**
@@ -369,6 +434,13 @@ export function useChat(options: UseChatOptions): UseChatResult {
           role: "user",
           sessionID: optimisticSessionId,
           time: { created: now },
+          metadata: createOptimisticMetadata(
+            "userAction",
+            generateMessageCorrelationKey({
+              role: "user",
+              createdAt: now,
+            })
+          ),
         });
         messageUpserts += 1;
         userMessagePersisted = true;
@@ -379,6 +451,13 @@ export function useChat(options: UseChatOptions): UseChatResult {
           sessionID: optimisticSessionId,
           text: trimmed,
           time: { start: now, end: now },
+          metadata: createOptimisticMetadata(
+            "useChat",
+            generatePartCorrelationKey({
+              messageID: userMessageId,
+              partType: "text",
+            })
+          ),
         });
         partUpserts += 1;
       } else {
@@ -402,6 +481,13 @@ export function useChat(options: UseChatOptions): UseChatResult {
           role: "user",
           sessionID: activeSessionId,
           time: { created: now },
+          metadata: createOptimisticMetadata(
+            "userAction",
+            generateMessageCorrelationKey({
+              role: "user",
+              createdAt: now,
+            })
+          ),
         });
         messageUpserts += 1;
         partActions.upsert({
@@ -411,6 +497,13 @@ export function useChat(options: UseChatOptions): UseChatResult {
           sessionID: activeSessionId,
           text: trimmed,
           time: { start: now, end: now },
+          metadata: createOptimisticMetadata(
+            "useChat",
+            generatePartCorrelationKey({
+              messageID: userMessageId,
+              partType: "text",
+            })
+          ),
         });
         partUpserts += 1;
         userMessagePersisted = true;
@@ -426,13 +519,22 @@ export function useChat(options: UseChatOptions): UseChatResult {
       ): void => {
         if (assistantMessagePersisted) return;
         const existing = messageActions.getById(assistantId);
+        const assistantCreated = Date.now();
         if (!existing) {
           messageActions.upsert({
             id: assistantId,
             role: "assistant",
             sessionID: activeSessionId,
             parentID: userMessageId,
-            time: { created: Date.now() },
+            time: { created: assistantCreated },
+            metadata: createOptimisticMetadata(
+              "useChat",
+              generateMessageCorrelationKey({
+                role: "assistant",
+                createdAt: assistantCreated,
+                parentID: userMessageId,
+              })
+            ),
           });
           messageUpserts += 1;
         }
@@ -489,6 +591,13 @@ export function useChat(options: UseChatOptions): UseChatResult {
                     start: Date.now(),
                     end: Date.now(),
                   },
+                  metadata: createOptimisticMetadata(
+                    "useChat",
+                    generatePartCorrelationKey({
+                      messageID: assistantMessageId,
+                      partType: "text",
+                    })
+                  ),
                 });
                 partUpserts += 1;
               },
@@ -514,6 +623,14 @@ export function useChat(options: UseChatOptions): UseChatResult {
                     status: "running",
                     input: toolCall.args && typeof toolCall.args === "object" ? toolCall.args : {},
                   },
+                  metadata: createOptimisticMetadata(
+                    "useChat",
+                    generatePartCorrelationKey({
+                      messageID: assistantMessageId,
+                      partType: "tool",
+                      callID: toolCall.toolCallId,
+                    })
+                  ),
                 });
                 partUpserts += 1;
               },
@@ -542,6 +659,14 @@ export function useChat(options: UseChatOptions): UseChatResult {
                         ? result.result
                         : JSON.stringify(result.result),
                   },
+                  metadata: createOptimisticMetadata(
+                    "useChat",
+                    generatePartCorrelationKey({
+                      messageID: assistantMessageId,
+                      partType: "tool",
+                      callID: result.toolCallId,
+                    })
+                  ),
                 });
                 partUpserts += 1;
               },
@@ -583,10 +708,19 @@ export function useChat(options: UseChatOptions): UseChatResult {
                     messageID: assistantMessageId,
                     sessionID: activeSessionId,
                     text: thoughtText,
+                    reasoningId: id,
                     time: {
                       start: Date.now(),
                       end: Date.now(),
                     },
+                    metadata: createOptimisticMetadata(
+                      "useChat",
+                      generatePartCorrelationKey({
+                        messageID: assistantMessageId,
+                        partType: "reasoning",
+                        reasoningId: id,
+                      })
+                    ),
                   });
                   partUpserts += 1;
                 } else if (type === "data-tool-call") {
@@ -610,6 +744,14 @@ export function useChat(options: UseChatOptions): UseChatResult {
                       status: "running",
                       input: payload?.args && typeof payload.args === "object" ? payload.args : {},
                     },
+                    metadata: createOptimisticMetadata(
+                      "useChat",
+                      generatePartCorrelationKey({
+                        messageID: assistantMessageId,
+                        partType: "tool",
+                        callID: toolCallId,
+                      })
+                    ),
                   });
                   partUpserts += 1;
                 } else if (type === "data-tool-result") {
@@ -633,6 +775,14 @@ export function useChat(options: UseChatOptions): UseChatResult {
                           ? payload.result
                           : JSON.stringify(payload?.result),
                     },
+                    metadata: createOptimisticMetadata(
+                      "useChat",
+                      generatePartCorrelationKey({
+                        messageID: assistantMessageId,
+                        partType: "tool",
+                        callID: toolCallId,
+                      })
+                    ),
                   });
                   partUpserts += 1;
                 }
@@ -661,6 +811,8 @@ export function useChat(options: UseChatOptions): UseChatResult {
               },
               onError: error => {
                 logger.error("Stream error", error);
+                const errorSessionId = ensureResolvedSessionId(assistantMessageId ?? undefined);
+                cleanupOptimisticArtifacts(errorSessionId, 0);
                 streaming.setStatus("error");
                 streaming.setError(error);
                 onError?.(error);
@@ -673,6 +825,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
           );
         } catch (error) {
           logger.error("Failed to parse stream", error as Error);
+          cleanupOptimisticArtifacts(ensureResolvedSessionId(assistantMessageId ?? undefined), 0);
           streaming.setStatus("error");
           streaming.setError(error as Error);
           onError?.(error as Error);
@@ -714,6 +867,9 @@ export function useChat(options: UseChatOptions): UseChatResult {
       activeRequest.abortController.abort();
       activeRequest = null;
     }
+
+    // Clean up optimistic artifacts
+    cleanupOptimisticArtifacts(effectiveSessionId(), 0);
 
     if (activeId || streaming.status() !== "idle") {
       logger.info("Stopping message", { messageId: activeId });

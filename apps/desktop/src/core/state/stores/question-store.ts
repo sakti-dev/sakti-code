@@ -9,6 +9,20 @@ import { createStore, produce } from "solid-js/store";
 /** Question request status */
 export type QuestionStatus = "pending" | "answered";
 
+/** Question option shape (OpenCode-compatible) */
+export interface QuestionOption {
+  label: string;
+  description?: string;
+}
+
+/** Single question prompt item (OpenCode-compatible) */
+export interface QuestionPrompt {
+  header?: string;
+  question: string;
+  options?: QuestionOption[];
+  multiple?: boolean;
+}
+
 /** Question request data */
 export interface QuestionRequest {
   /** Unique question request ID */
@@ -17,9 +31,11 @@ export interface QuestionRequest {
   sessionID: string;
   /** Message ID this request is associated with */
   messageID: string;
-  /** The question text */
+  /** Structured questions payload */
+  questions: QuestionPrompt[];
+  /** Backward-compatible primary question text */
   question: string;
-  /** Optional answer options */
+  /** Backward-compatible primary options */
   options?: string[];
   /** Current status */
   status: QuestionStatus;
@@ -59,6 +75,23 @@ export interface QuestionActions {
   clearAnswered: (sessionID: string) => void;
 }
 
+function normalizeQuestionRequest(request: QuestionRequest): QuestionRequest {
+  if (request.questions.length > 0) {
+    return request;
+  }
+
+  const options = request.options?.map(label => ({ label })) ?? undefined;
+  return {
+    ...request,
+    questions: [
+      {
+        question: request.question,
+        options,
+      },
+    ],
+  };
+}
+
 /** Create empty question state */
 export function createEmptyQuestionState(): QuestionState {
   return {
@@ -76,38 +109,39 @@ export function createQuestionStore(
 
   const actions: QuestionActions = {
     add: (request: QuestionRequest) => {
+      const normalized = normalizeQuestionRequest(request);
       setState(
         produce((draft: QuestionState) => {
-          const existing = draft.byId[request.id];
+          const existing = draft.byId[normalized.id];
           if (existing) {
             const previousSessionIds = draft.bySession[existing.sessionID];
             if (previousSessionIds) {
-              const existingIndex = previousSessionIds.indexOf(request.id);
+              const existingIndex = previousSessionIds.indexOf(normalized.id);
               if (existingIndex > -1) {
                 previousSessionIds.splice(existingIndex, 1);
               }
             }
 
-            const pendingIndex = draft.pendingOrder.indexOf(request.id);
+            const pendingIndex = draft.pendingOrder.indexOf(normalized.id);
             if (pendingIndex > -1) {
               draft.pendingOrder.splice(pendingIndex, 1);
             }
           }
 
           // Upsert byId
-          draft.byId[request.id] = request;
+          draft.byId[normalized.id] = normalized;
 
           // Upsert session grouping
-          if (!draft.bySession[request.sessionID]) {
-            draft.bySession[request.sessionID] = [];
+          if (!draft.bySession[normalized.sessionID]) {
+            draft.bySession[normalized.sessionID] = [];
           }
-          if (!draft.bySession[request.sessionID].includes(request.id)) {
-            draft.bySession[request.sessionID].push(request.id);
+          if (!draft.bySession[normalized.sessionID].includes(normalized.id)) {
+            draft.bySession[normalized.sessionID].push(normalized.id);
           }
 
           // Add to pending order if pending
-          if (request.status === "pending" && !draft.pendingOrder.includes(request.id)) {
-            draft.pendingOrder.push(request.id);
+          if (normalized.status === "pending" && !draft.pendingOrder.includes(normalized.id)) {
+            draft.pendingOrder.push(normalized.id);
           }
         })
       );

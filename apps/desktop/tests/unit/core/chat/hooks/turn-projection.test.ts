@@ -17,6 +17,7 @@ import {
   createErrorTurnFixture,
   createMultiTurnFixture,
   createSingleTurnFixture,
+  createSingleTurnWithPromptsFixture,
   createStreamingTurnFixture,
   createUserOnlyFixture,
 } from "../../../../fixtures/turn-fixtures";
@@ -58,6 +59,15 @@ describe("turn-projection", () => {
       expect(turnWithSteps).toBeDefined();
     });
 
+    it("projects permission/question requests into turn steps", () => {
+      const fixture = createSingleTurnWithPromptsFixture();
+
+      const turns = buildChatTurns(fixture);
+
+      expect(turns[0].permissionParts).toHaveLength(1);
+      expect(turns[0].questionParts).toHaveLength(1);
+    });
+
     it("marks active turn when user message is latest", () => {
       const fixture = createSingleTurnFixture();
       const turns = buildChatTurns(fixture);
@@ -85,6 +95,22 @@ describe("turn-projection", () => {
       const idleTurns = buildChatTurns(idleFixture);
 
       expect(idleTurns[0].working).toBe(false);
+    });
+
+    it("projects retry metadata from session status", () => {
+      const fixture = createStreamingTurnFixture();
+      fixture.sessionStatus = {
+        type: "retry",
+        attempt: 2,
+        message: "rate limited",
+        next: Date.now() + 5000,
+      };
+
+      const turns = buildChatTurns(fixture);
+      expect(turns[0].working).toBe(true);
+      expect(turns[0].retry).toBeDefined();
+      expect(turns[0].retry?.attempt).toBe(2);
+      expect(turns[0].retry?.message).toBe("rate limited");
     });
 
     it("computes duration from created to completed/now", () => {
@@ -150,19 +176,39 @@ describe("turn-projection", () => {
       expect(deriveStatusFromPart(part)).toBe("Gathering context");
     });
 
-    it('returns "Gathering context" for list tool', () => {
+    it('returns "Searching codebase" for list tool', () => {
       const part = { type: "tool", tool: "list" } as Part;
-      expect(deriveStatusFromPart(part)).toBe("Gathering context");
+      expect(deriveStatusFromPart(part)).toBe("Searching codebase");
     });
 
-    it('returns "Gathering context" for grep tool', () => {
+    it('returns "Searching codebase" for grep tool', () => {
       const part = { type: "tool", tool: "grep" } as Part;
-      expect(deriveStatusFromPart(part)).toBe("Gathering context");
+      expect(deriveStatusFromPart(part)).toBe("Searching codebase");
     });
 
-    it('returns "Gathering context" for glob tool', () => {
+    it('returns "Searching codebase" for glob tool', () => {
       const part = { type: "tool", tool: "glob" } as Part;
-      expect(deriveStatusFromPart(part)).toBe("Gathering context");
+      expect(deriveStatusFromPart(part)).toBe("Searching codebase");
+    });
+
+    it('returns "Searching codebase" for ls tool', () => {
+      const part = { type: "tool", tool: "ls" } as Part;
+      expect(deriveStatusFromPart(part)).toBe("Searching codebase");
+    });
+
+    it('returns "Searching web" for webfetch tool', () => {
+      const part = { type: "tool", tool: "webfetch" } as Part;
+      expect(deriveStatusFromPart(part)).toBe("Searching web");
+    });
+
+    it('returns "Delegating work" for task tool', () => {
+      const part = { type: "tool", tool: "task" } as Part;
+      expect(deriveStatusFromPart(part)).toBe("Delegating work");
+    });
+
+    it('returns "Planning next steps" for todoread tool', () => {
+      const part = { type: "tool", tool: "todoread" } as Part;
+      expect(deriveStatusFromPart(part)).toBe("Planning next steps");
     });
 
     it('returns "Making edits" for edit tool', () => {

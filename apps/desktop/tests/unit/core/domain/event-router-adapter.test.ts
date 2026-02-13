@@ -205,4 +205,130 @@ describe("event-router-adapter", () => {
       })
     );
   });
+
+  it("keeps existing parts when message reconciliation is an exact-ID match", async () => {
+    const { messageActions, partActions, sessionActions } = createActions();
+    const messageId = "019c4da0-fc0b-713c-984e-b2aca339c97e";
+    const partId = `${messageId}-text`;
+
+    sessionActions.upsert({ sessionID: SESSION_ID_1, directory: "/repo" });
+    messageActions.upsert({
+      id: messageId,
+      role: "assistant",
+      sessionID: SESSION_ID_1,
+      metadata: {
+        optimistic: true,
+        optimisticSource: "useChat",
+        correlationKey: "msg:assistant:no-parent:0",
+        timestamp: Date.now(),
+      },
+    });
+    partActions.upsert({
+      id: partId,
+      type: "text",
+      messageID: messageId,
+      sessionID: SESSION_ID_1,
+      text: "streaming",
+      metadata: {
+        optimistic: true,
+        optimisticSource: "useChat",
+        correlationKey: `part:${messageId}:text:default`,
+        timestamp: Date.now(),
+      },
+    });
+
+    await applyEventToStores(
+      {
+        type: "message.updated",
+        properties: {
+          sessionID: SESSION_ID_1,
+          info: {
+            id: messageId,
+            role: "assistant",
+            sessionID: SESSION_ID_1,
+          },
+        },
+        eventId: uuidv7(),
+        sequence: 1,
+        timestamp: Date.now(),
+      } as ServerEvent,
+      messageActions,
+      partActions,
+      sessionActions
+    );
+
+    expect(messageActions.getById(messageId)).toBeTruthy();
+    expect(partActions.getByMessage(messageId)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: partId })])
+    );
+  });
+
+  it("re-associates parts when canonical message replaces optimistic message by correlation", async () => {
+    const { messageActions, partActions, sessionActions } = createActions();
+    const userMessageId = "019c4da0-fc0b-713c-984e-b2aca339c97f";
+    const optimisticAssistantId = "019c4da0-fc0b-713c-984e-b2aca339c981";
+    const canonicalAssistantId = "019c4da0-fc0b-713c-984e-b2aca339c982";
+    const partId = `${optimisticAssistantId}-text`;
+
+    sessionActions.upsert({ sessionID: SESSION_ID_1, directory: "/repo" });
+    messageActions.upsert({
+      id: userMessageId,
+      role: "user",
+      sessionID: SESSION_ID_1,
+    });
+    messageActions.upsert({
+      id: optimisticAssistantId,
+      role: "assistant",
+      sessionID: SESSION_ID_1,
+      parentID: userMessageId,
+      metadata: {
+        optimistic: true,
+        optimisticSource: "useChat",
+        correlationKey: `msg:assistant:${userMessageId}:${Date.now()}`,
+        timestamp: Date.now(),
+      },
+    });
+    partActions.upsert({
+      id: partId,
+      type: "text",
+      messageID: optimisticAssistantId,
+      sessionID: SESSION_ID_1,
+      text: "streaming",
+      metadata: {
+        optimistic: true,
+        optimisticSource: "useChat",
+        correlationKey: `part:${optimisticAssistantId}:text:default`,
+        timestamp: Date.now(),
+      },
+    });
+
+    await applyEventToStores(
+      {
+        type: "message.updated",
+        properties: {
+          sessionID: SESSION_ID_1,
+          info: {
+            id: canonicalAssistantId,
+            role: "assistant",
+            sessionID: SESSION_ID_1,
+            parentID: userMessageId,
+            time: { created: Date.now() },
+          },
+        },
+        eventId: uuidv7(),
+        sequence: 1,
+        timestamp: Date.now(),
+      } as ServerEvent,
+      messageActions,
+      partActions,
+      sessionActions
+    );
+
+    expect(messageActions.getById(optimisticAssistantId)).toBeUndefined();
+    expect(messageActions.getById(canonicalAssistantId)).toBeTruthy();
+    expect(partActions.getByMessage(optimisticAssistantId)).toHaveLength(0);
+    expect(partActions.getByMessage(canonicalAssistantId)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: partId })])
+    );
+  });
 });

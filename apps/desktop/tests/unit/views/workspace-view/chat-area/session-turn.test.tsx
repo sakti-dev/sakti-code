@@ -1,50 +1,27 @@
-import type { ChatTurn } from "@/core/chat/hooks/turn-projection";
-import type { MessageWithId } from "@/core/state/stores/message-store";
+import { buildChatTurns, type ChatTurn } from "@/core/chat/hooks/turn-projection";
 import { SessionTurn } from "@/views/workspace-view/chat-area";
-import type { Part } from "@ekacode/shared/event-types";
+import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  createErrorTurnFixture,
+  createSingleTurnFixture,
+  createSingleTurnWithPromptsFixture,
+  createStreamingTurnFixture,
+} from "../../../../fixtures/turn-fixtures";
 
-function createBaseTurn(overrides?: Partial<ChatTurn>): ChatTurn {
-  const userMessage: MessageWithId = {
-    id: "user-1",
-    role: "user",
-    sessionID: "session-1",
-    time: { created: Date.now() },
-  } as MessageWithId;
-
-  const assistantMessage: MessageWithId = {
-    id: "assistant-1",
-    role: "assistant",
-    parentID: "user-1",
-    sessionID: "session-1",
-    time: { created: Date.now() + 10 },
-  } as MessageWithId;
-
-  const finalTextPart = {
-    id: "assistant-1-text",
-    type: "text",
-    messageID: "assistant-1",
-    text: "Working on your request...",
-  } as Part;
-
-  return {
-    userMessage,
-    userParts: [{ id: "user-1-text", type: "text", messageID: "user-1", text: "Hi" } as Part],
-    assistantMessages: [assistantMessage],
-    assistantPartsByMessageId: {
-      "assistant-1": [finalTextPart],
-    },
-    finalTextPart,
-    reasoningParts: [],
-    toolParts: [],
-    isActiveTurn: true,
-    working: false,
-    error: undefined,
-    durationMs: 1200,
-    statusLabel: "Gathering thoughts",
-    ...overrides,
-  };
+function projectSingleTurn(
+  fixture:
+    | ReturnType<typeof createSingleTurnFixture>
+    | ReturnType<typeof createStreamingTurnFixture>
+    | ReturnType<typeof createSingleTurnWithPromptsFixture>
+    | ReturnType<typeof createErrorTurnFixture>
+): ChatTurn {
+  const turns = buildChatTurns(fixture);
+  if (turns.length === 0) {
+    throw new Error("Expected at least one turn in fixture");
+  }
+  return turns[0];
 }
 
 describe("SessionTurn", () => {
@@ -59,52 +36,95 @@ describe("SessionTurn", () => {
   afterEach(() => {
     dispose?.();
     document.body.removeChild(container);
+    vi.useRealTimers();
   });
 
-  it("renders assistant text while the turn is still working", () => {
-    const turn = createBaseTurn({ working: true });
+  it("renders fixture-derived assistant summary text", async () => {
+    const turn = projectSingleTurn(createSingleTurnFixture());
+
+    dispose = render(() => <SessionTurn turn={() => turn} isStreaming={() => false} />, container);
+
+    await vi.waitFor(() => {
+      expect(container.textContent).toContain("I'd be happy to help");
+    });
+  });
+
+  it("shows steps trigger for prompt parts from fixtures", () => {
+    const turn = projectSingleTurn(createSingleTurnWithPromptsFixture());
 
     dispose = render(() => <SessionTurn turn={() => turn} isStreaming={() => true} />, container);
 
-    expect(container.textContent).toContain("Working on your request...");
-    expect(container.textContent).toContain("Gathering thoughts");
+    const stepsTrigger = container.querySelector('[data-slot="steps-trigger"]');
+    expect(stepsTrigger).not.toBeNull();
   });
 
-  it("invokes retry, copy, and delete handlers from action buttons", () => {
-    const onRetry = vi.fn();
-    const onCopy = vi.fn();
-    const onDelete = vi.fn();
-    const turn = createBaseTurn({ working: false });
+  it("toggles steps expanded state and aria-expanded", () => {
+    const turn = projectSingleTurn(createStreamingTurnFixture());
+
+    dispose = render(() => <SessionTurn turn={() => turn} isStreaming={() => true} />, container);
+
+    const stepsTrigger = container.querySelector(
+      '[data-slot="steps-trigger"]'
+    ) as HTMLButtonElement;
+    expect(stepsTrigger.getAttribute("aria-expanded")).toBe("false");
+
+    stepsTrigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(stepsTrigger.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("supports keyboard interaction for steps trigger", () => {
+    const turn = projectSingleTurn(createStreamingTurnFixture());
+
+    dispose = render(() => <SessionTurn turn={() => turn} isStreaming={() => true} />, container);
+
+    const stepsTrigger = container.querySelector(
+      '[data-slot="steps-trigger"]'
+    ) as HTMLButtonElement;
+    stepsTrigger.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(stepsTrigger.getAttribute("aria-expanded")).toBe("true");
+
+    stepsTrigger.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+    expect(stepsTrigger.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("throttles status label transitions for active streaming turns", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-02-13T00:00:00.000Z"));
+
+    const baseTurn = projectSingleTurn(createStreamingTurnFixture());
+    const [turn, setTurn] = createSignal({ ...baseTurn, statusLabel: "Thinking", working: true });
+
+    dispose = render(() => <SessionTurn turn={turn} isStreaming={() => true} />, container);
+
+    expect(container.textContent).toContain("Thinking");
+
+    setTurn(prev => ({ ...prev, statusLabel: "Running commands" }));
+    vi.advanceTimersByTime(1000);
+    expect(container.textContent).toContain("Thinking");
+
+    vi.advanceTimersByTime(1500);
+    expect(container.textContent).toContain("Running commands");
+  });
+
+  it("uses non-noisy live region behavior", () => {
+    const streamingTurn = projectSingleTurn(createStreamingTurnFixture());
 
     dispose = render(
-      () => (
-        <SessionTurn
-          turn={() => turn}
-          isStreaming={() => false}
-          onRetry={onRetry}
-          onCopy={onCopy}
-          onDelete={onDelete}
-        />
-      ),
+      () => <SessionTurn turn={() => streamingTurn} isStreaming={() => true} />,
       container
     );
 
-    const retryButton = Array.from(container.querySelectorAll("button")).find(
-      button => button.textContent === "Retry"
+    const visibleSummaryLive = container.querySelector(
+      '[data-slot="session-turn-visible-summary-live"]'
     );
-    const copyButton = Array.from(container.querySelectorAll("button")).find(
-      button => button.textContent === "Copy"
-    );
-    const deleteButton = Array.from(container.querySelectorAll("button")).find(
-      button => button.textContent === "Delete"
-    );
+    expect(visibleSummaryLive?.getAttribute("aria-live")).toBe("off");
+  });
 
-    retryButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    copyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    deleteButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  it("renders error state from fixture", () => {
+    const turn = projectSingleTurn(createErrorTurnFixture());
 
-    expect(onRetry).toHaveBeenCalledWith("user-1");
-    expect(onCopy).toHaveBeenCalledWith("assistant-1");
-    expect(onDelete).toHaveBeenCalledWith("user-1");
+    dispose = render(() => <SessionTurn turn={() => turn} isStreaming={() => false} />, container);
+
+    expect(container.textContent).toContain("Something went wrong");
   });
 });

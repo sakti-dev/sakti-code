@@ -4,36 +4,19 @@
  * Tests for the turn-based chat timeline component.
  */
 
-import type { ChatTurn } from "@/core/chat/hooks/turn-projection";
-import type { MessageWithId } from "@/core/state/stores/message-store";
+import { buildChatTurns, type ChatTurn } from "@/core/chat/hooks/turn-projection";
 import { MessageTimeline } from "@/views/workspace-view/chat-area";
-import type { Part } from "@ekacode/shared/event-types";
 import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  createMultiTurnFixture,
+  createSingleTurnFixture,
+} from "../../../../fixtures/turn-fixtures";
 
-function createMockTurn(id: string, options?: Partial<ChatTurn>): ChatTurn {
-  const userMessage: MessageWithId = {
-    id,
-    role: "user",
-    sessionID: "test-session",
-    time: { created: Date.now() },
-  } as MessageWithId;
-
-  return {
-    userMessage,
-    userParts: [{ id: `${id}-part`, type: "text", messageID: id, text: "Hello" } as Part],
-    assistantMessages: [],
-    assistantPartsByMessageId: {},
-    finalTextPart: undefined,
-    reasoningParts: [],
-    toolParts: [],
-    isActiveTurn: false,
-    working: false,
-    error: undefined,
-    durationMs: 0,
-    statusLabel: undefined,
-    ...options,
-  };
+function createFixtureTurn(): ChatTurn {
+  const turns = buildChatTurns(createSingleTurnFixture());
+  if (turns.length === 0) throw new Error("Expected fixture to produce a turn");
+  return turns[0];
 }
 
 describe("MessageTimeline", () => {
@@ -51,7 +34,7 @@ describe("MessageTimeline", () => {
   });
 
   it("renders turns in chronological order", () => {
-    const turns = [createMockTurn("turn-1"), createMockTurn("turn-2")];
+    const turns = buildChatTurns(createMultiTurnFixture(undefined, 2));
 
     dispose = render(
       () => <MessageTimeline turns={() => turns} isStreaming={() => false} />,
@@ -63,14 +46,14 @@ describe("MessageTimeline", () => {
   });
 
   it("uses stable keys by userMessage.id", () => {
-    const turns = [createMockTurn("unique-turn-id")];
+    const turn = createFixtureTurn();
 
     dispose = render(
-      () => <MessageTimeline turns={() => turns} isStreaming={() => false} />,
+      () => <MessageTimeline turns={() => [turn]} isStreaming={() => false} />,
       container
     );
 
-    const item = container.querySelector('[data-testid="turn-unique-turn-id"]');
+    const item = container.querySelector(`[data-testid="turn-${turn.userMessage.id}"]`);
     expect(item).toBeDefined();
   });
 
@@ -84,10 +67,10 @@ describe("MessageTimeline", () => {
   });
 
   it("renders scroll container with role=log", () => {
-    const turns = [createMockTurn("turn-1")];
+    const turn = createFixtureTurn();
 
     dispose = render(
-      () => <MessageTimeline turns={() => turns} isStreaming={() => false} />,
+      () => <MessageTimeline turns={() => [turn]} isStreaming={() => false} />,
       container
     );
 

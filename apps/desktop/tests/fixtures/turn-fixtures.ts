@@ -6,14 +6,22 @@
  */
 
 import type { MessageWithId } from "@/core/state/stores/message-store";
-import type { Part } from "@ekacode/shared/event-types";
+import type { PermissionRequest } from "@/core/state/stores/permission-store";
+import type { QuestionRequest } from "@/core/state/stores/question-store";
+import type { Part, SessionStatusPayload } from "@ekacode/shared/event-types";
 import { v7 as uuidv7 } from "uuid";
+import {
+  createPendingPermissionRequest,
+  createPendingQuestionRequest,
+} from "./permission-question-fixtures";
 
 export interface TurnProjectionOptions {
   sessionId: string;
   messages: MessageWithId[];
   partsByMessage: Record<string, Part[]>;
-  sessionStatus: "idle" | "busy";
+  permissionRequests?: PermissionRequest[];
+  questionRequests?: QuestionRequest[];
+  sessionStatus: SessionStatusPayload["status"];
   lastUserMessageId: string | undefined;
 }
 
@@ -132,7 +140,7 @@ export function createSingleTurnFixture(
     sessionId: sid,
     messages,
     partsByMessage,
-    sessionStatus: "idle",
+    sessionStatus: { type: "idle" },
     lastUserMessageId: user.message.id,
     expectedUserMessageId: user.message.id,
     expectedAssistantMessageId: assistant.message.id,
@@ -164,7 +172,7 @@ export function createMultiTurnFixture(sessionId?: string, turnCount = 2): TurnP
     sessionId: sid,
     messages,
     partsByMessage,
-    sessionStatus: "idle",
+    sessionStatus: { type: "idle" },
     lastUserMessageId: lastUserId,
   };
 }
@@ -189,7 +197,7 @@ export function createStreamingTurnFixture(sessionId?: string): TurnProjectionOp
     sessionId: sid,
     messages,
     partsByMessage,
-    sessionStatus: "busy",
+    sessionStatus: { type: "busy" },
     lastUserMessageId: user.message.id,
   };
 }
@@ -212,7 +220,7 @@ export function createErrorTurnFixture(sessionId?: string): TurnProjectionOption
     sessionId: sid,
     messages,
     partsByMessage,
-    sessionStatus: "idle",
+    sessionStatus: { type: "idle" },
     lastUserMessageId: user.message.id,
   };
 }
@@ -223,7 +231,7 @@ export function createEmptySessionFixture(sessionId?: string): TurnProjectionOpt
     sessionId: sid,
     messages: [],
     partsByMessage: {},
-    sessionStatus: "idle",
+    sessionStatus: { type: "idle" },
     lastUserMessageId: undefined,
   };
 }
@@ -236,7 +244,38 @@ export function createUserOnlyFixture(sessionId?: string): TurnProjectionOptions
     sessionId: sid,
     messages: [user.message],
     partsByMessage: { [user.message.id]: user.parts },
-    sessionStatus: "busy", // Waiting for assistant
+    sessionStatus: { type: "busy" }, // Waiting for assistant
     lastUserMessageId: user.message.id,
+  };
+}
+
+export function createSingleTurnWithPromptsFixture(sessionId?: string): TurnProjectionOptions & {
+  expectedUserMessageId: string;
+  expectedAssistantMessageId: string;
+  permission: PermissionRequest;
+  question: QuestionRequest;
+} {
+  const base = createSingleTurnFixture(sessionId);
+  const permission = createPendingPermissionRequest({
+    id: "perm-1",
+    sessionID: base.sessionId,
+    messageID: base.expectedAssistantMessageId,
+    toolName: "bash",
+    args: { command: "npm run build" },
+  });
+  const question = createPendingQuestionRequest({
+    id: "question-1",
+    sessionID: base.sessionId,
+    messageID: base.expectedAssistantMessageId,
+    question: "Use strict mode?",
+    options: ["yes", "no"],
+  });
+
+  return {
+    ...base,
+    permissionRequests: [permission],
+    questionRequests: [question],
+    permission,
+    question,
   };
 }

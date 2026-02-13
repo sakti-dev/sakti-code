@@ -1,1 +1,0 @@
-export const TEXT_RENDER_THROTTLE_MS = 16;

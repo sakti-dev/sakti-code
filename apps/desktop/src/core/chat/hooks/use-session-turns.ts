@@ -9,6 +9,8 @@ import { createLogger } from "@/core/shared/logger";
 import {
   useMessageStore,
   usePartStore,
+  usePermissionStore,
+  useQuestionStore,
   useSessionStore,
 } from "@/core/state/providers/store-provider";
 import { createMemo, onCleanup, type Accessor } from "solid-js";
@@ -20,6 +22,8 @@ export function useSessionTurns(sessionId: Accessor<string | null>): Accessor<Ch
   const [, messageActions] = useMessageStore();
   const [, partActions] = usePartStore();
   const [, sessionActions] = useSessionStore();
+  const [, permissionActions] = usePermissionStore();
+  const [, questionActions] = useQuestionStore();
 
   const turns = createMemo<ChatTurn[]>(() => {
     const sid = sessionId();
@@ -40,7 +44,8 @@ export function useSessionTurns(sessionId: Accessor<string | null>): Accessor<Ch
     }
 
     const status = sessionActions.getStatus(sid);
-    const statusType = status?.type;
+    const permissionRequests = permissionActions.getBySession(sid);
+    const questionRequests = questionActions.getBySession(sid);
 
     const lastUserMessage = [...messages].reverse().find(m => m.role === "user");
     const lastUserMessageId = lastUserMessage?.id;
@@ -49,7 +54,9 @@ export function useSessionTurns(sessionId: Accessor<string | null>): Accessor<Ch
       sessionId: sid,
       messages,
       partsByMessage,
-      sessionStatus: statusType === "busy" ? "busy" : "idle",
+      permissionRequests,
+      questionRequests,
+      sessionStatus: status,
       lastUserMessageId,
     };
 

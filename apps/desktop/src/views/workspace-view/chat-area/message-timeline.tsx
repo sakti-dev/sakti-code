@@ -14,6 +14,10 @@ export interface MessageTimelineProps {
   onRetry?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
   onCopy?: (messageId: string) => void;
+  onPermissionApprove?: (id: string, patterns?: string[]) => void | Promise<void>;
+  onPermissionDeny?: (id: string) => void | Promise<void>;
+  onQuestionAnswer?: (id: string, answer: unknown) => void | Promise<void>;
+  onQuestionReject?: (id: string) => void | Promise<void>;
   class?: string;
 }
 
@@ -23,7 +27,7 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
       data-component="message-timeline"
       class={props.class}
       classList={{
-        "flex flex-col h-full overflow-y-auto": true,
+        "flex flex-col h-full overflow-y-auto [scrollbar-gutter:stable]": true,
       }}
       role="log"
       aria-label="Conversation"
@@ -36,7 +40,11 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
           </div>
         }
       >
-        <ul class="flex flex-col gap-4 p-4" role="list">
+        <ul
+          data-slot="timeline-list"
+          class="flex flex-col gap-5 p-4 pb-[calc(var(--prompt-height,10rem)+5rem)]"
+          role="list"
+        >
           <For each={props.turns()}>
             {turn => (
               <li data-testid={`turn-${turn.userMessage.id}`} role="listitem">
@@ -46,6 +54,10 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
                   onRetry={props.onRetry}
                   onDelete={props.onDelete}
                   onCopy={props.onCopy}
+                  onPermissionApprove={props.onPermissionApprove}
+                  onPermissionDeny={props.onPermissionDeny}
+                  onQuestionAnswer={props.onQuestionAnswer}
+                  onQuestionReject={props.onQuestionReject}
                 />
               </li>
             )}

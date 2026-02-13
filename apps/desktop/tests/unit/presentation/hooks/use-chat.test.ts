@@ -15,12 +15,14 @@ type MockSessionInfo = {
 };
 
 const mockRemove = vi.fn();
+const mockPartRemove = vi.fn();
 const mockGetBySession = vi.fn(() => []);
 const mockGetById = vi.fn();
 const mockGetByMessage = vi.fn((messageId: string): MockTextPart[] => {
   void messageId;
   return [];
 });
+const mockPartGetById = vi.fn();
 const mockSessionUpsert = vi.fn();
 const mockSessionGetByDirectory = vi.fn<(directory: string) => MockSessionInfo[]>(() => []);
 const mockSessionGetById = vi.fn();
@@ -42,8 +44,8 @@ vi.mock("@/core/state/providers/store-provider", () => ({
     {},
     {
       getByMessage: mockGetByMessage,
-      getById: vi.fn(),
-      remove: vi.fn(),
+      getById: mockPartGetById,
+      remove: mockPartRemove,
       upsert: mockPartUpsert,
     },
   ],
@@ -140,6 +142,8 @@ describe("useChat", () => {
     mockSessionGetById.mockReturnValue(undefined);
     mockMessageUpsert.mockReset();
     mockPartUpsert.mockReset();
+    mockPartRemove.mockReset();
+    mockPartGetById.mockReset();
   });
 
   it("sends messages with expected payload and completes streaming", async () => {
@@ -430,6 +434,64 @@ describe("useChat", () => {
       );
       expect(userMessageCall).toBeTruthy();
       expect(chat.sessionId()).toBe(lateSessionId);
+      dispose();
+    });
+  });
+
+  it("cleans optimistic artifacts immediately when stop is called", async () => {
+    const { useChat } = await import("@/core/chat/hooks");
+    const sessionId = "019c4da0-fc0b-713c-984e-b2aca339c9ae";
+    const optimisticMessageId = "019c4da0-fc0b-713c-984e-b2aca339c9af";
+    const optimisticPartId = `${optimisticMessageId}-text`;
+    const staleTimestamp = Date.now() - 50;
+
+    mockGetBySession.mockReturnValue([
+      {
+        id: optimisticMessageId,
+        role: "assistant",
+        sessionID: sessionId,
+        metadata: {
+          optimistic: true,
+          optimisticSource: "useChat",
+          correlationKey: "msg:assistant:no-parent:1",
+          timestamp: staleTimestamp,
+        },
+      },
+    ]);
+    mockGetByMessage.mockImplementation((messageId: string) =>
+      messageId === optimisticMessageId
+        ? [
+            {
+              id: optimisticPartId,
+              type: "text",
+              messageID: optimisticMessageId,
+              text: "optimistic text",
+              metadata: {
+                optimistic: true,
+                optimisticSource: "useChat",
+                correlationKey: `part:${optimisticMessageId}:text:default`,
+                timestamp: staleTimestamp,
+              },
+            } as MockTextPart,
+          ]
+        : []
+    );
+    mockPartGetById.mockReturnValue({
+      id: optimisticPartId,
+      messageID: optimisticMessageId,
+    });
+
+    await createRoot(async dispose => {
+      const chat = useChat({
+        sessionId: () => sessionId,
+        workspace: () => "/repo",
+        client: mockClient,
+      });
+
+      chat.stop();
+
+      expect(mockPartRemove).toHaveBeenCalledWith(optimisticPartId, optimisticMessageId);
+      expect(mockRemove).toHaveBeenCalledWith(optimisticMessageId);
       dispose();
     });
   });

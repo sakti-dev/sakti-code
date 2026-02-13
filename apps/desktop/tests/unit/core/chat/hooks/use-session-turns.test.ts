@@ -5,13 +5,21 @@
  */
 
 import type { MessageWithId } from "@/core/state/stores/message-store";
+import type { PermissionRequest } from "@/core/state/stores/permission-store";
+import type { QuestionRequest } from "@/core/state/stores/question-store";
 import type { Part } from "@ekacode/shared/event-types";
 import { createRoot, createSignal } from "solid-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  createPendingPermissionRequest,
+  createPendingQuestionRequest,
+} from "../../../../fixtures/permission-question-fixtures";
 
 let messagesBySession: Record<string, MessageWithId[]> = {};
 let messagesById: Record<string, MessageWithId> = {};
 let partsByMessage: Record<string, Part[]> = {};
+let permissionsBySession: Record<string, PermissionRequest[]> = {};
+let questionsBySession: Record<string, QuestionRequest[]> = {};
 let sessionStatus: Record<string, { type: "idle" } | { type: "busy" }> = {};
 
 vi.mock("@/core/state/providers/store-provider", () => ({
@@ -40,6 +48,32 @@ vi.mock("@/core/state/providers/store-provider", () => ({
       upsert: () => {},
     },
   ],
+  usePermissionStore: () => [
+    {},
+    {
+      getBySession: (sessionId: string) => permissionsBySession[sessionId] ?? [],
+      add: () => {},
+      resolve: () => {},
+      approve: () => {},
+      deny: () => {},
+      getById: () => undefined,
+      getPending: () => [],
+      remove: () => {},
+      clearResolved: () => {},
+    },
+  ],
+  useQuestionStore: () => [
+    {},
+    {
+      getBySession: (sessionId: string) => questionsBySession[sessionId] ?? [],
+      add: () => {},
+      answer: () => {},
+      getById: () => undefined,
+      getPending: () => [],
+      remove: () => {},
+      clearAnswered: () => {},
+    },
+  ],
 }));
 
 describe("useSessionTurns", () => {
@@ -47,6 +81,8 @@ describe("useSessionTurns", () => {
     messagesBySession = {};
     messagesById = {};
     partsByMessage = {};
+    permissionsBySession = {};
+    questionsBySession = {};
     sessionStatus = {};
   });
 
@@ -223,6 +259,58 @@ describe("useSessionTurns", () => {
 
       expect(turns()[0].toolParts).toHaveLength(1);
       expect(turns()[0].toolParts[0].type).toBe("tool");
+
+      dispose();
+    });
+  });
+
+  it("includes permission and question requests from unified stores", async () => {
+    const { useSessionTurns } = await import("@/core/chat/hooks/use-session-turns");
+
+    const userMessage: MessageWithId = {
+      id: "u1",
+      role: "user",
+      sessionID: "s1",
+      time: { created: Date.now() },
+    } as MessageWithId;
+
+    const assistantMessage: MessageWithId = {
+      id: "a1",
+      role: "assistant",
+      parentID: "u1",
+      sessionID: "s1",
+      time: { created: Date.now() + 100 },
+    } as MessageWithId;
+
+    messagesBySession["s1"] = [userMessage, assistantMessage];
+    messagesById["u1"] = userMessage;
+    messagesById["a1"] = assistantMessage;
+    sessionStatus["s1"] = { type: "busy" };
+    permissionsBySession["s1"] = [
+      createPendingPermissionRequest({
+        id: "perm-1",
+        sessionID: "s1",
+        messageID: "a1",
+        toolName: "bash",
+        args: { command: "npm run build" },
+      }),
+    ];
+    questionsBySession["s1"] = [
+      createPendingQuestionRequest({
+        id: "question-1",
+        sessionID: "s1",
+        messageID: "a1",
+        question: "Continue?",
+      }),
+    ];
+
+    createRoot(dispose => {
+      const turns = useSessionTurns(() => "s1");
+
+      expect(turns()).toHaveLength(1);
+      expect(turns()[0].permissionParts).toHaveLength(1);
+      expect(turns()[0].questionParts).toHaveLength(1);
+      expect(turns()[0].statusLabel).toBe("Waiting for input");
 
       dispose();
     });

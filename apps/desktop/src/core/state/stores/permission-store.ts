@@ -22,6 +22,8 @@ export interface PermissionRequest {
   toolName: string;
   /** Tool arguments */
   args: Record<string, unknown>;
+  /** Optional allowed patterns (for allow-always behavior) */
+  patterns?: string[];
   /** Human-readable description of the operation */
   description?: string;
   /** Current status */

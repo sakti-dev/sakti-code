@@ -19,3 +19,5 @@ export type { ChatTurn } from "./use-session-turns";
 
 export { buildChatTurns, computeDuration, deriveStatusFromPart } from "./turn-projection";
 export type { TurnProjectionOptions } from "./turn-projection";
+
+export { useStatusThrottledValue } from "./use-status-throttled-value";

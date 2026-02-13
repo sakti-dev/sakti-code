@@ -2,15 +2,18 @@ import type { DiffChange, FileTab, TerminalOutput } from "@/core/chat/types";
 import { cn } from "@/utils";
 import { createEffect, createMemo, createSignal, onMount, Show } from "solid-js";
 
-// Import workspace components
-import { PermissionDialog } from "@/components/permissions/permission-dialog";
 import { ResizeableHandle } from "@/components/shared/resizeable-handle";
 import { useSessionTurns } from "@/core/chat/hooks";
 import { usePermissions } from "@/core/permissions/hooks/use-permissions";
 import { ChatProvider, useChatContext } from "@/state/contexts/chat-provider";
-import { useWorkspace, WorkspaceProvider } from "@/state/providers";
+import {
+  usePermissionStore,
+  useQuestionStore,
+  useWorkspace,
+  WorkspaceProvider,
+} from "@/state/providers";
 import Resizable from "@corvu/resizable";
-import { MessageTimeline } from "./chat-area";
+import { MessageTimeline, SessionPromptDock } from "./chat-area";
 import { LeftSide } from "./left-side/left-side";
 import { ContextPanel } from "./right-side/right-side";
 
@@ -25,6 +28,8 @@ function WorkspaceViewContent() {
     workspace: () => ctx.workspace(),
     sessionId: ctx.activeSessionId,
   });
+  const [permissionState] = usePermissionStore();
+  const [questionState, questionActions] = useQuestionStore();
 
   // Panel sizes
   const [panelSizes, setPanelSizes] = createSignal<number[]>([0.2, 0.5, 0.3]);
@@ -166,13 +171,36 @@ function WorkspaceViewContent() {
     return ctx.sessions().find(s => s.sessionId === id);
   };
 
-  // Permission dialog
-  const currentPermission = () => permissions.currentRequest() ?? null;
-  const handleApprovePermission = (id: string) => {
-    permissions.approve(id);
+  const currentPendingPermission = createMemo(() => {
+    const sessionId = effectiveSessionId();
+    if (!sessionId) return undefined;
+
+    const nextId = permissionState.pendingOrder.find(
+      id => permissionState.byId[id]?.sessionID === sessionId
+    );
+    return nextId ? permissionState.byId[nextId] : undefined;
+  });
+  const currentPendingQuestion = createMemo(() => {
+    const sessionId = effectiveSessionId();
+    if (!sessionId) return undefined;
+
+    const nextId = questionState.pendingOrder.find(
+      id => questionState.byId[id]?.sessionID === sessionId
+    );
+    return nextId ? questionState.byId[nextId] : undefined;
+  });
+
+  const handleApprovePermission = (id: string, patterns?: string[]) => {
+    void permissions.approve(id, patterns);
   };
   const handleDenyPermission = (id: string) => {
-    permissions.deny(id);
+    void permissions.deny(id);
+  };
+  const handleAnswerQuestion = (id: string, answer: unknown) => {
+    questionActions.answer(id, answer);
+  };
+  const handleRejectQuestion = (id: string) => {
+    questionActions.answer(id, { rejected: true });
   };
 
   return (
@@ -221,13 +249,25 @@ function WorkspaceViewContent() {
           <ResizeableHandle />
 
           {/* CENTER PANEL - Chat Interface */}
-          <div class="bg-muted/10 border-border/30 flex h-full flex-col border-x">
+          <div class="bg-muted/10 border-border/30 relative flex h-full flex-col border-x">
             <MessageTimeline
               turns={useSessionTurns(effectiveSessionId)}
               isStreaming={isGenerating}
               onRetry={messageId => void _handleRetry(messageId)}
               onDelete={_handleDelete}
               onCopy={messageId => void _handleCopy(messageId)}
+              onPermissionApprove={handleApprovePermission}
+              onPermissionDeny={handleDenyPermission}
+              onQuestionAnswer={handleAnswerQuestion}
+              onQuestionReject={handleRejectQuestion}
+            />
+            <SessionPromptDock
+              pendingPermission={currentPendingPermission()}
+              pendingQuestion={currentPendingQuestion()}
+              onPermissionApprove={handleApprovePermission}
+              onPermissionDeny={handleDenyPermission}
+              onQuestionAnswer={handleAnswerQuestion}
+              onQuestionReject={handleRejectQuestion}
             />
           </div>
 
@@ -251,13 +291,6 @@ function WorkspaceViewContent() {
           />
         </Resizable>
       </Show>
-
-      {/* Permission Dialog */}
-      <PermissionDialog
-        request={currentPermission()}
-        onApprove={handleApprovePermission}
-        onDeny={handleDenyPermission}
-      />
     </div>
   );
 }
