@@ -73,6 +73,15 @@ function WorkspaceViewContent() {
     localStorage.setItem("ekacode-panel-sizes", JSON.stringify(panelSizes()));
   });
 
+  // Ensure chat timeline has a concrete session context once sessions load.
+  createEffect(() => {
+    if (ctx.activeSessionId()) return;
+    const firstSessionId = ctx.sessions()[0]?.sessionId;
+    if (firstSessionId) {
+      ctx.setActiveSessionId(firstSessionId);
+    }
+  });
+
   // Session handlers
   const handleNewSession = async () => {
     await ctx.createSession();
@@ -113,6 +122,8 @@ function WorkspaceViewContent() {
   const _handleModelChange = (modelId: string) => {
     console.log("Model changed to:", modelId);
   };
+
+  const [draftMessage, setDraftMessage] = createSignal("");
 
   // File/diff handlers
   const handleTabClick = (tab: FileTab) => {
@@ -190,6 +201,10 @@ function WorkspaceViewContent() {
     return nextId ? questionState.byId[nextId] : undefined;
   });
 
+  const isPromptBlocked = createMemo(
+    () => Boolean(currentPendingPermission()) || Boolean(currentPendingQuestion())
+  );
+
   const handleApprovePermission = (id: string, patterns?: string[]) => {
     void permissions.approve(id, patterns);
   };
@@ -201,6 +216,13 @@ function WorkspaceViewContent() {
   };
   const handleRejectQuestion = (id: string) => {
     questionActions.answer(id, { rejected: true });
+  };
+
+  const handleSubmitDraft = async () => {
+    const content = draftMessage().trim();
+    if (!content || isGenerating() || isPromptBlocked()) return;
+    await _handleSendMessage(content);
+    setDraftMessage("");
   };
 
   return (
@@ -249,27 +271,68 @@ function WorkspaceViewContent() {
           <ResizeableHandle />
 
           {/* CENTER PANEL - Chat Interface */}
-          <div class="bg-muted/10 border-border/30 relative flex h-full flex-col border-x">
-            <MessageTimeline
-              turns={useSessionTurns(effectiveSessionId)}
-              isStreaming={isGenerating}
-              onRetry={messageId => void _handleRetry(messageId)}
-              onDelete={_handleDelete}
-              onCopy={messageId => void _handleCopy(messageId)}
-              onPermissionApprove={handleApprovePermission}
-              onPermissionDeny={handleDenyPermission}
-              onQuestionAnswer={handleAnswerQuestion}
-              onQuestionReject={handleRejectQuestion}
-            />
-            <SessionPromptDock
-              pendingPermission={currentPendingPermission()}
-              pendingQuestion={currentPendingQuestion()}
-              onPermissionApprove={handleApprovePermission}
-              onPermissionDeny={handleDenyPermission}
-              onQuestionAnswer={handleAnswerQuestion}
-              onQuestionReject={handleRejectQuestion}
-            />
-          </div>
+          <Resizable.Panel initialSize={0.5} minSize={0.2} class="overflow-visible">
+            <div class="bg-muted/10 border-border/30 relative flex h-full flex-col border-x">
+              <MessageTimeline
+                turns={useSessionTurns(effectiveSessionId)}
+                isStreaming={isGenerating}
+                onRetry={messageId => void _handleRetry(messageId)}
+                onDelete={_handleDelete}
+                onCopy={messageId => void _handleCopy(messageId)}
+                onPermissionApprove={handleApprovePermission}
+                onPermissionDeny={handleDenyPermission}
+                onQuestionAnswer={handleAnswerQuestion}
+                onQuestionReject={handleRejectQuestion}
+              />
+
+              <div class="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-4 pb-4">
+                <div class="pointer-events-auto mx-auto w-full max-w-4xl">
+                  <Show when={!isPromptBlocked()}>
+                    <div class="border-border/50 bg-background/95 rounded-xl border p-3 shadow-lg backdrop-blur">
+                      <textarea
+                        value={draftMessage()}
+                        rows={3}
+                        class="bg-background text-foreground placeholder:text-muted-foreground/70 border-border/40 focus:ring-primary/30 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
+                        placeholder="Send a message..."
+                        onInput={event => setDraftMessage(event.currentTarget.value)}
+                        onKeyDown={event => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            void handleSubmitDraft();
+                          }
+                        }}
+                      />
+                      <div class="mt-2 flex items-center justify-end gap-2">
+                        <button
+                          class="bg-muted text-muted-foreground hover:bg-muted/80 rounded px-3 py-1.5 text-sm"
+                          onClick={() => setDraftMessage("")}
+                          disabled={isGenerating() || draftMessage().length === 0}
+                        >
+                          Clear
+                        </button>
+                        <button
+                          class="bg-primary text-primary-foreground hover:bg-primary/90 rounded px-3 py-1.5 text-sm"
+                          onClick={() => void handleSubmitDraft()}
+                          disabled={isGenerating() || draftMessage().trim().length === 0}
+                        >
+                          Send
+                        </button>
+                      </div>
+                    </div>
+                  </Show>
+                </div>
+              </div>
+
+              <SessionPromptDock
+                pendingPermission={currentPendingPermission()}
+                pendingQuestion={currentPendingQuestion()}
+                onPermissionApprove={handleApprovePermission}
+                onPermissionDeny={handleDenyPermission}
+                onQuestionAnswer={handleAnswerQuestion}
+                onQuestionReject={handleRejectQuestion}
+              />
+            </div>
+          </Resizable.Panel>
 
           {/* Resize Handle 2 */}
           <ResizeableHandle />
