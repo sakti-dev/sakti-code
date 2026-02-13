@@ -124,6 +124,15 @@ export const ChatPerfPanel: Component<{ class?: string }> = props => {
 
             <span class="text-muted-foreground">Skipped dup</span>
             <span class="text-right">{counters().skippedOptimisticUpdates}</span>
+
+            <span class="text-muted-foreground">Retry attempts</span>
+            <span class="text-right">{counters().retryAttempts}</span>
+
+            <span class="text-muted-foreground">Retry recovered</span>
+            <span class="text-right">{counters().retryRecovered}</span>
+
+            <span class="text-muted-foreground">Retry exhausted</span>
+            <span class="text-right">{counters().retryExhausted}</span>
           </div>
         </div>
       </Show>

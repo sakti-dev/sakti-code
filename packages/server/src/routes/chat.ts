@@ -17,6 +17,7 @@ import { MessagePartUpdated, MessageUpdated, publish, SessionStatus } from "../b
 import type { Env } from "../index";
 import { createSessionMessage, sessionBridge } from "../middleware/session-bridge";
 import { getSessionManager } from "../runtime";
+import { getSessionMessages } from "../state/session-message-store";
 
 const app = new Hono<Env>();
 const logger = createLogger("server");
@@ -278,6 +279,7 @@ const chatMessageSchema = z.object({
     }),
   ]),
   messageId: z.string().optional(),
+  retryOfAssistantMessageId: z.string().optional(),
   stream: z.boolean().optional().default(true),
 });
 
@@ -333,7 +335,7 @@ interface AssistantInfoPayload {
   };
 }
 
-function createPartPublishState(): PartPublishState {
+export function createPartPublishState(): PartPublishState {
   return {
     reasoning: new Map(),
     tools: new Map(),
@@ -359,7 +361,7 @@ function cloneAssistantInfo(info: AssistantInfoPayload): AssistantInfoPayload {
  * Converts agent events to Part format and publishes to Bus for SSE streaming.
  * This enables the new /event endpoint while maintaining backward compatibility.
  */
-async function publishPartEvent(
+export async function publishPartEvent(
   sessionId: string,
   messageId: string,
   state: PartPublishState,
@@ -684,6 +686,37 @@ async function publishPartEvent(
       break;
     }
 
+    case "retry": {
+      await finalizeTextPart();
+      const attempt =
+        typeof event.attempt === "number" && Number.isFinite(event.attempt) ? event.attempt : 1;
+      const message =
+        typeof event.message === "string" && event.message.length > 0
+          ? event.message
+          : "Retrying after transient error";
+      const errorKind = typeof event.errorKind === "string" ? event.errorKind : undefined;
+      const next = typeof event.next === "number" && Number.isFinite(event.next) ? event.next : 0;
+      const createdAt = Date.now();
+
+      await publish(MessagePartUpdated, {
+        part: {
+          id: uuidv7(),
+          sessionID: sessionId,
+          messageID: messageId,
+          type: "retry",
+          attempt,
+          next,
+          error: {
+            message,
+            isRetryable: true,
+            ...(errorKind ? { metadata: { kind: errorKind } } : {}),
+          },
+          time: { created: createdAt },
+        },
+      });
+      break;
+    }
+
     case "finish": {
       await finalizeTextPart();
 
@@ -792,6 +825,10 @@ app.post("/api/chat", async c => {
   const rawMessage = body.message;
   const clientMessageId =
     typeof body.messageId === "string" && body.messageId.length > 0 ? body.messageId : undefined;
+  const retryOfAssistantMessageId =
+    typeof body.retryOfAssistantMessageId === "string" && body.retryOfAssistantMessageId.length > 0
+      ? body.retryOfAssistantMessageId
+      : undefined;
   const shouldStream = body.stream !== false;
 
   // Parse message - support both simple string and multimodal formats
@@ -815,6 +852,61 @@ app.post("/api/chat", async c => {
     }
   } else {
     messageText = String(rawMessage ?? "");
+  }
+
+  let retryUserMessageId: string | undefined;
+  if (retryOfAssistantMessageId) {
+    const sessionMessages = getSessionMessages(session.sessionId);
+    const retryAssistant = sessionMessages.find(
+      message => message.info.id === retryOfAssistantMessageId
+    );
+    if (!retryAssistant || retryAssistant.info.role !== "assistant") {
+      return c.json(
+        { error: `Retry target assistant message not found: ${retryOfAssistantMessageId}` },
+        400
+      );
+    }
+
+    const parentID =
+      "parentID" in retryAssistant.info &&
+      typeof (retryAssistant.info as { parentID?: unknown }).parentID === "string"
+        ? ((retryAssistant.info as { parentID?: string }).parentID ?? undefined)
+        : undefined;
+    if (!parentID) {
+      return c.json(
+        {
+          error: `Retry target assistant has no parent user message: ${retryOfAssistantMessageId}`,
+        },
+        400
+      );
+    }
+
+    const parentUser = sessionMessages.find(message => message.info.id === parentID);
+    if (!parentUser || parentUser.info.role !== "user") {
+      return c.json(
+        { error: `Retry target parent user message not found: ${retryOfAssistantMessageId}` },
+        400
+      );
+    }
+
+    retryUserMessageId = parentID;
+    const userText = parentUser.parts
+      .filter(part => part.type === "text")
+      .map(part => {
+        const candidate = part as { text?: unknown };
+        return typeof candidate.text === "string" ? candidate.text : "";
+      })
+      .join("")
+      .trim();
+    if (!messageText.trim() && userText) {
+      messageText = userText;
+    }
+    if (!messageText.trim()) {
+      return c.json(
+        { error: `Retry target has no retryable user text: ${retryOfAssistantMessageId}` },
+        400
+      );
+    }
   }
 
   logger.info("Chat request received", {
@@ -917,7 +1009,7 @@ app.post("/api/chat", async c => {
         }
 
         const messageId = uuidv7();
-        const userMessageId = clientMessageId ?? uuidv7();
+        const userMessageId = retryUserMessageId ?? clientMessageId ?? uuidv7();
         let hasTextDeltas = false;
         const partPublishState = createPartPublishState();
         const userCreatedAt = Date.now();
@@ -944,29 +1036,31 @@ app.post("/api/chat", async c => {
         };
 
         // Publish canonical user message/part first (opencode parity)
-        await publish(MessageUpdated, {
-          info: {
-            role: "user",
-            id: userMessageId,
-            sessionID: session.sessionId,
-            time: {
-              created: userCreatedAt,
+        if (!retryOfAssistantMessageId) {
+          await publish(MessageUpdated, {
+            info: {
+              role: "user",
+              id: userMessageId,
+              sessionID: session.sessionId,
+              time: {
+                created: userCreatedAt,
+              },
             },
-          },
-        });
-        await publish(MessagePartUpdated, {
-          part: {
-            id: `${userMessageId}-text`,
-            sessionID: session.sessionId,
-            messageID: userMessageId,
-            type: "text",
-            text: messageText,
-            time: {
-              start: userCreatedAt,
-              end: userCreatedAt,
+          });
+          await publish(MessagePartUpdated, {
+            part: {
+              id: `${userMessageId}-text`,
+              sessionID: session.sessionId,
+              messageID: userMessageId,
+              type: "text",
+              text: messageText,
+              time: {
+                start: userCreatedAt,
+                end: userCreatedAt,
+              },
             },
-          },
-        });
+          });
+        }
         await publish(MessageUpdated, {
           info: cloneAssistantInfo(assistantInfo),
         });
@@ -1359,6 +1453,31 @@ app.post("/api/chat", async c => {
                   },
                 } as unknown as Parameters<typeof writer.write>[0]);
                 modeState.toolCallTimestamps.delete(event.toolCallId as string);
+              }
+
+              // Handle finish events
+              if (event.type === "retry") {
+                const attempt =
+                  typeof event.attempt === "number" && Number.isFinite(event.attempt)
+                    ? event.attempt
+                    : 1;
+                const message =
+                  typeof event.message === "string" && event.message.length > 0
+                    ? event.message
+                    : "Retrying";
+                const next =
+                  typeof event.next === "number" && Number.isFinite(event.next)
+                    ? event.next
+                    : Date.now();
+                void publish(SessionStatus, {
+                  sessionID: session.sessionId,
+                  status: {
+                    type: "retry",
+                    attempt,
+                    message,
+                    next,
+                  },
+                });
               }
 
               // Handle finish events

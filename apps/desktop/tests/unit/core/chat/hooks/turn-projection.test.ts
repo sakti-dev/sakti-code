@@ -16,6 +16,7 @@ import {
   createEmptySessionFixture,
   createErrorTurnFixture,
   createInterleavedAssistantPartsFixture,
+  createInterleavedAssistantPartsWithRetryFixture,
   createMultiTurnFixture,
   createSequenceOrderedPartsFixture,
   createSingleTurnFixture,
@@ -67,6 +68,18 @@ describe("turn-projection", () => {
 
       expect(turns).toHaveLength(1);
       expect(turns[0].orderedParts.map(part => part.id)).toEqual(fixture.expectedOrderIds);
+    });
+
+    it("orders retry parts chronologically using retry next-aware fixture", () => {
+      const fixture = createInterleavedAssistantPartsWithRetryFixture();
+      const turns = buildChatTurns(fixture);
+
+      expect(turns).toHaveLength(1);
+      expect(turns[0].orderedParts.map(part => part.id)).toEqual(fixture.expectedOrderIds);
+
+      const retryPart = turns[0].orderedParts.find(part => part.type === "retry");
+      expect(retryPart).toBeDefined();
+      expect(retryPart?.next).toBeTypeOf("number");
     });
 
     it("reuses orderedParts array reference for identical turn inputs", () => {

@@ -10,13 +10,25 @@
  * - Custom Shiki theme matching ekacode colors
  */
 
+import { finalizeMarkdownInChunks } from "@/components/shared/markdown-finalizer";
+import { sanitizeMarkdownHtml } from "@/components/shared/markdown-sanitizer";
+import {
+  recordMarkdownCommit,
+  recordMarkdownDroppedFrames,
+  recordMarkdownFinalizationStats,
+  recordMarkdownForcedFlush,
+  recordMarkdownFullCommit,
+  recordMarkdownLiteCommit,
+  recordMarkdownLongTask,
+  recordMarkdownRafSkippedApply,
+  recordMarkdownStageMs,
+} from "@/core/chat/services/markdown-perf-telemetry";
 import { cn } from "@/utils";
-import DOMPurify from "dompurify";
 import { marked } from "marked";
 import markedShiki from "marked-shiki";
 import morphdom from "morphdom";
 import { createHighlighter, type Highlighter } from "shiki";
-import { createEffect, createResource, createSignal } from "solid-js";
+import { createEffect, createResource, createSignal, onCleanup } from "solid-js";
 // Icon import removed - not used in this component
 
 // LRU Cache for rendered HTML
@@ -82,9 +94,19 @@ let highlighterInstance: Highlighter | null = null;
 let highlighterPromise: Promise<Highlighter> | null = null;
 let markedConfigured = false;
 let markedConfigurePromise: Promise<void> | null = null;
+let longTaskObserverAttached = false;
 
-function shouldUseShiki(text: string): boolean {
-  return text.includes("```");
+export const MARKDOWN_STREAM_CADENCE_MS = 180;
+export const MARKDOWN_SCROLL_CADENCE_MS = 280;
+export const MARKDOWN_MAX_STALE_MS = 900;
+export const MARKDOWN_FINALIZE_CHUNK_SIZE = 2;
+export const MARKDOWN_FINALIZE_FRAME_BUDGET_MS = 4;
+
+function nowMs(): number {
+  if (typeof performance === "undefined") {
+    return Date.now();
+  }
+  return performance.now();
 }
 
 async function getHighlighter() {
@@ -156,12 +178,99 @@ async function ensureMarkedConfigured() {
 }
 
 const markdownCache = new LRUCache(200, 5 * 60 * 1000);
+const markdownNormalizedCache = new LRUCache(200, 5 * 60 * 1000);
 
 interface MarkdownProps {
   /** Markdown text to render */
   text: string;
   /** Additional CSS classes */
   class?: string;
+  /** Whether this content is still streaming */
+  isStreaming?: boolean;
+  /** Cadence for markdown recompute while streaming */
+  streamCadenceMs?: number;
+  /** Enable light streaming mode to avoid full parse on each update */
+  streamLiteEnabled?: boolean;
+  /** Adaptive cadence while user is scrolling */
+  scrollCadenceMs?: number;
+  /** Adaptive cadence while streaming and idle */
+  idleCadenceMs?: number;
+  /** Maximum stale duration before forcing a streaming flush */
+  maxStaleMs?: number;
+  /** Number of markdown blocks processed per finalization step */
+  finalizeChunkSize?: number;
+  /** Per-frame processing budget for chunked finalization */
+  finalizeFrameBudgetMs?: number;
+  /** Defer shiki highlighting until stream completion */
+  deferHighlightUntilComplete?: boolean;
+  /** Pause markdown recompute while user is actively scrolling */
+  pauseWhileScrolling?: boolean;
+  /** Whether the user is currently scrolling */
+  isScrollActive?: boolean;
+}
+
+type RenderMode = "lite" | "full";
+type RenderPayload = { html: string; mode: RenderMode; text: string };
+
+function shouldUseShiki(
+  text: string,
+  isStreaming: boolean | undefined,
+  deferHighlightUntilComplete: boolean
+): boolean {
+  if (!text.includes("```")) return false;
+  if (!isStreaming) return true;
+  return !deferHighlightUntilComplete;
+}
+
+function hasUnclosedCodeFence(text: string): boolean {
+  const fenceCount = text.match(/```/g)?.length ?? 0;
+  return fenceCount % 2 === 1;
+}
+
+function hasUnstableTableTail(text: string): boolean {
+  if (text.endsWith("\n\n")) return false;
+  const lines = text.split("\n");
+  const tail = (lines[lines.length - 1] ?? "").trim();
+  if (!tail.includes("|")) return false;
+  return !tail.endsWith("|");
+}
+
+function shouldDeferStreamingParse(text: string): boolean {
+  return hasUnclosedCodeFence(text) || hasUnstableTableTail(text);
+}
+
+function shouldRunStructuredParse(text: string): boolean {
+  if (!text) return false;
+  if (shouldDeferStreamingParse(text)) return false;
+  if (text.endsWith("```")) return true;
+  const last = text[text.length - 1] ?? "";
+  if (last === "\n" || last === "|" || last === "." || last === "!" || last === "?") return true;
+  return false;
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function renderStreamingLite(text: string): string {
+  const escaped = escapeHtml(text);
+  return `<p>${escaped.replaceAll("\n", "<br/>")}</p>`;
+}
+
+function normalizeForCache(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+async function waitForIdle(): Promise<void> {
+  if (typeof requestIdleCallback !== "function") return;
+  await new Promise<void>(resolve => {
+    requestIdleCallback(() => resolve(), { timeout: 120 });
+  });
 }
 
 /**
@@ -175,75 +284,347 @@ interface MarkdownProps {
 export function Markdown(props: MarkdownProps) {
   const [root, setRoot] = createSignal<HTMLDivElement>();
   const [_copied, setCopied] = createSignal<string | null>(null);
+  const [renderText, setRenderText] = createSignal(props.text);
+  let pendingText: string | null = null;
+  let lastRenderedHtml = "";
+  let cadenceTimeout: ReturnType<typeof setTimeout> | undefined;
+  let staleTimeout: ReturnType<typeof setTimeout> | undefined;
+  let rafId: number | undefined;
+  let domApplyRafId: number | undefined;
+  let copySetupIdleId: number | undefined;
+  let copySetupTimeout: ReturnType<typeof setTimeout> | undefined;
+  let lastRafTs = 0;
+  let queuedRender: RenderPayload | null = null;
+  let queuedRenderScheduled = false;
+  let lastRenderedText = "";
+  let lastRenderMode: RenderMode | null = null;
+
+  const getCadence = () => {
+    if (props.streamCadenceMs !== undefined) return props.streamCadenceMs;
+    if (props.isScrollActive) return props.scrollCadenceMs ?? MARKDOWN_SCROLL_CADENCE_MS;
+    return props.idleCadenceMs ?? MARKDOWN_STREAM_CADENCE_MS;
+  };
+  const shouldPauseForScroll = () =>
+    Boolean(props.pauseWhileScrolling ?? true) && !!props.isScrollActive;
+  const getMaxStaleMs = () => props.maxStaleMs ?? MARKDOWN_MAX_STALE_MS;
+  const getFinalizeChunkSize = () => props.finalizeChunkSize ?? MARKDOWN_FINALIZE_CHUNK_SIZE;
+  const getFinalizeFrameBudgetMs = () =>
+    props.finalizeFrameBudgetMs ?? MARKDOWN_FINALIZE_FRAME_BUDGET_MS;
+
+  const clearCadenceTimer = () => {
+    if (!cadenceTimeout) return;
+    clearTimeout(cadenceTimeout);
+    cadenceTimeout = undefined;
+  };
+
+  const clearStaleTimer = () => {
+    if (!staleTimeout) return;
+    clearTimeout(staleTimeout);
+    staleTimeout = undefined;
+  };
+
+  const commitText = (text: string) => {
+    setRenderText(current => (current === text ? current : text));
+  };
+
+  const flushPendingText = (force = false, bypassStructure = false) => {
+    if (pendingText === null) return;
+    const nextText = pendingText;
+    if (!force && !bypassStructure && props.isStreaming && shouldDeferStreamingParse(nextText)) {
+      return;
+    }
+    pendingText = null;
+    commitText(nextText);
+  };
+
+  const scheduleCadencedFlush = () => {
+    if (cadenceTimeout) return;
+    cadenceTimeout = setTimeout(() => {
+      cadenceTimeout = undefined;
+      flushPendingText(false);
+    }, getCadence());
+  };
+
+  const scheduleMaxStaleFlush = () => {
+    if (!props.isStreaming) return;
+    if (staleTimeout) return;
+    staleTimeout = setTimeout(() => {
+      staleTimeout = undefined;
+      if (pendingText === null) return;
+      recordMarkdownForcedFlush();
+      flushPendingText(false, true);
+    }, getMaxStaleMs());
+  };
+
+  createEffect(() => {
+    const nextText = props.text;
+    const streaming = props.isStreaming ?? false;
+    const pauseForScroll = shouldPauseForScroll();
+
+    if (!streaming) {
+      clearCadenceTimer();
+      clearStaleTimer();
+      pendingText = null;
+      commitText(nextText);
+      return;
+    }
+
+    pendingText = nextText;
+    scheduleMaxStaleFlush();
+    if (pauseForScroll) return;
+    scheduleCadencedFlush();
+  });
+
+  createEffect(() => {
+    const streaming = props.isStreaming ?? false;
+    if (streaming) return;
+    clearCadenceTimer();
+    clearStaleTimer();
+    flushPendingText(true);
+  });
+
+  createEffect(() => {
+    const streaming = props.isStreaming ?? false;
+    if (!streaming) return;
+    const pauseForScroll = shouldPauseForScroll();
+    if (pauseForScroll) return;
+    if (pendingText === null) return;
+    scheduleCadencedFlush();
+    scheduleMaxStaleFlush();
+  });
+
+  onCleanup(() => {
+    clearCadenceTimer();
+    clearStaleTimer();
+    if (rafId !== undefined && typeof cancelAnimationFrame === "function") {
+      cancelAnimationFrame(rafId);
+    }
+    if (domApplyRafId !== undefined && typeof cancelAnimationFrame === "function") {
+      cancelAnimationFrame(domApplyRafId);
+    }
+    if (copySetupIdleId !== undefined && typeof cancelIdleCallback === "function") {
+      cancelIdleCallback(copySetupIdleId);
+    }
+    if (copySetupTimeout) {
+      clearTimeout(copySetupTimeout);
+    }
+  });
+
+  createEffect(() => {
+    if (typeof window === "undefined") return;
+    if (typeof window.requestAnimationFrame !== "function") return;
+    if (rafId !== undefined) return;
+
+    const tick = (ts: number) => {
+      if (lastRafTs > 0) {
+        const delta = ts - lastRafTs;
+        const dropped = Math.max(0, Math.floor(delta / 16.7) - 1);
+        if (dropped > 0) {
+          recordMarkdownDroppedFrames(dropped);
+        }
+      }
+      lastRafTs = ts;
+      rafId = window.requestAnimationFrame(tick);
+    };
+
+    rafId = window.requestAnimationFrame(tick);
+  });
+
+  createEffect(() => {
+    if (longTaskObserverAttached) return;
+    if (typeof PerformanceObserver === "undefined") return;
+
+    try {
+      const observer = new PerformanceObserver(list => {
+        const entries = list.getEntries();
+        if (entries.length === 0) return;
+        for (const entry of entries) {
+          if (entry.duration >= 50) {
+            recordMarkdownLongTask();
+          }
+        }
+      });
+      observer.observe({ entryTypes: ["longtask"] });
+      longTaskObserverAttached = true;
+    } catch {
+      // Longtask observer is optional and browser-dependent.
+    }
+  });
 
   const [html] = createResource(
-    () => props.text,
-    async text => {
-      if (!text) return "";
-      if (shouldUseShiki(text)) {
+    () => {
+      const text = renderText();
+      const deferHighlightUntilComplete = props.deferHighlightUntilComplete ?? true;
+      const streamLiteEnabled = props.streamLiteEnabled ?? true;
+      const isStreaming = props.isStreaming ?? false;
+      const renderMode: RenderMode =
+        isStreaming && streamLiteEnabled && !shouldRunStructuredParse(text) ? "lite" : "full";
+      return {
+        text,
+        isStreaming,
+        renderMode,
+        useShiki: shouldUseShiki(text, props.isStreaming, deferHighlightUntilComplete),
+      };
+    },
+    async payload => {
+      const { text, useShiki, renderMode, isStreaming } = payload;
+      if (!text) return { html: "", mode: renderMode, text };
+      const totalStart = nowMs();
+      if (renderMode === "full" && useShiki) {
         await ensureMarkedConfigured();
       }
+      const runChunkedFinalization = renderMode === "full" && !isStreaming;
+      if (runChunkedFinalization) await waitForIdle();
 
-      const hash = checksum(text);
+      const hash = checksum(`${renderMode}:${useShiki ? "shiki" : "plain"}:${text}`);
       const cached = markdownCache.get(hash);
-      if (cached) return cached;
+      if (cached) {
+        return { html: cached, mode: renderMode, text };
+      }
+      if (renderMode === "full") {
+        const normalizedHash = checksum(
+          `${renderMode}:${useShiki ? "shiki" : "plain"}:${normalizeForCache(text)}`
+        );
+        const normalizedCached = markdownNormalizedCache.get(normalizedHash);
+        if (normalizedCached) {
+          markdownCache.set(hash, normalizedCached);
+          return { html: normalizedCached, mode: renderMode, text };
+        }
+      }
 
       try {
-        const parsed = await marked.parse(text);
-        const sanitized = DOMPurify.sanitize(parsed, {
-          ALLOWED_TAGS: [
-            "p",
-            "br",
-            "strong",
-            "em",
-            "u",
-            "s",
-            "code",
-            "pre",
-            "a",
-            "ul",
-            "ol",
-            "li",
-            "blockquote",
-            "h1",
-            "h2",
-            "h3",
-            "h4",
-            "h5",
-            "h6",
-            "hr",
-            "table",
-            "thead",
-            "tbody",
-            "tr",
-            "th",
-            "td",
-            "span",
-            "div",
-          ],
-          ALLOWED_ATTR: ["href", "class", "data-component", "data-language", "data-slot", "style"],
+        let parsed = "";
+        if (renderMode === "lite") {
+          parsed = renderStreamingLite(text);
+        } else {
+          if (runChunkedFinalization) {
+            const result = await finalizeMarkdownInChunks(
+              text,
+              async block => {
+                const parseStart = nowMs();
+                const output = await marked.parse(block);
+                recordMarkdownStageMs("parse", nowMs() - parseStart);
+                return output;
+              },
+              async html => {
+                const sanitizeStart = nowMs();
+                const output = await sanitizeMarkdownHtml(html, { mode: "full" });
+                recordMarkdownStageMs("sanitize", nowMs() - sanitizeStart);
+                return output;
+              },
+              {
+                chunkSize: getFinalizeChunkSize(),
+                frameBudgetMs: getFinalizeFrameBudgetMs(),
+              }
+            );
+            recordMarkdownFinalizationStats(result);
+            recordMarkdownStageMs("total", result.totalMs);
+            const output = result.html;
+            markdownCache.set(hash, output);
+            const normalizedHash = checksum(
+              `${renderMode}:${useShiki ? "shiki" : "plain"}:${normalizeForCache(text)}`
+            );
+            markdownNormalizedCache.set(normalizedHash, output);
+            return { html: output, mode: renderMode, text };
+          }
+          const parseStart = nowMs();
+          parsed = isStreaming
+            ? await marked.parse(text, { gfm: false, breaks: true })
+            : await marked.parse(text);
+          recordMarkdownStageMs("parse", nowMs() - parseStart);
+        }
+
+        const sanitizeStart = nowMs();
+        const sanitized = await sanitizeMarkdownHtml(parsed, {
+          mode: renderMode === "lite" ? "stream-lite" : "full",
         });
+        recordMarkdownStageMs("sanitize", nowMs() - sanitizeStart);
+        recordMarkdownStageMs("total", nowMs() - totalStart);
         markdownCache.set(hash, sanitized);
-        return sanitized;
+        if (renderMode === "full") {
+          const normalizedHash = checksum(
+            `${renderMode}:${useShiki ? "shiki" : "plain"}:${normalizeForCache(text)}`
+          );
+          markdownNormalizedCache.set(normalizedHash, sanitized);
+        }
+        return { html: sanitized, mode: renderMode, text };
       } catch {
-        return "";
+        return { html: "", mode: renderMode, text };
       }
     }
   );
 
-  createEffect(() => {
-    const container = root();
-    const content = html();
-    if (!container || !content) return;
+  const scheduleCopySetup = (container: HTMLElement) => {
+    if (copySetupIdleId !== undefined && typeof cancelIdleCallback === "function") {
+      cancelIdleCallback(copySetupIdleId);
+      copySetupIdleId = undefined;
+    }
+    if (copySetupTimeout) {
+      clearTimeout(copySetupTimeout);
+      copySetupTimeout = undefined;
+    }
 
-    // Parse HTML string to DOM for morphdom
+    const run = () => {
+      const copyStart = nowMs();
+      setupCodeCopy(container);
+      recordMarkdownStageMs("copyButtons", nowMs() - copyStart);
+    };
+
+    if (typeof requestIdleCallback === "function") {
+      copySetupIdleId = requestIdleCallback(
+        () => {
+          copySetupIdleId = undefined;
+          run();
+        },
+        { timeout: 120 }
+      );
+      return;
+    }
+    copySetupTimeout = setTimeout(() => {
+      copySetupTimeout = undefined;
+      run();
+    }, 0);
+  };
+
+  const tryAppendLiteDelta = (container: HTMLElement, text: string): boolean => {
+    if (lastRenderMode !== "lite") return false;
+    if (!text.startsWith(lastRenderedText)) return false;
+    const delta = text.slice(lastRenderedText.length);
+    if (!delta) return true;
+    const rootChild = container.firstElementChild;
+    if (!(rootChild instanceof HTMLElement) || rootChild.tagName !== "P") return false;
+    rootChild.insertAdjacentHTML("beforeend", escapeHtml(delta).replaceAll("\n", "<br/>"));
+    return true;
+  };
+
+  const applyDomRender = (container: HTMLElement, payload: RenderPayload) => {
+    const { html: content, mode, text } = payload;
+    if (!content) {
+      lastRenderedHtml = "";
+      lastRenderedText = "";
+      lastRenderMode = null;
+      container.innerHTML = "";
+      return;
+    }
+    if (mode === "lite" && tryAppendLiteDelta(container, text)) {
+      recordMarkdownLiteCommit();
+      recordMarkdownCommit();
+      lastRenderedText = text;
+      lastRenderMode = mode;
+      return;
+    }
+    if (content === lastRenderedHtml) return;
+    lastRenderedHtml = content;
+    lastRenderedText = text;
+    lastRenderMode = mode;
+    const morphStart = nowMs();
+
     const template = document.createElement("template");
     template.innerHTML = `<div class="markdown-content">${content}</div>`;
 
     morphdom(container, template.content.firstChild as HTMLElement, {
       childrenOnly: true,
       onBeforeElUpdated: (fromEl, _toEl) => {
-        // Don't update code blocks if user is selecting text
         if (
           fromEl instanceof HTMLElement &&
           fromEl.tagName === "PRE" &&
@@ -253,21 +634,61 @@ export function Markdown(props: MarkdownProps) {
           if (selection && selection.rangeCount > 0) {
             const range = selection.getRangeAt(0);
             if (fromEl.contains(range.commonAncestorContainer)) {
-              return false; // Skip update
+              return false;
             }
           }
         }
         return true;
       },
     });
+    recordMarkdownStageMs("morph", nowMs() - morphStart);
 
-    // Setup copy buttons on code blocks
-    setupCodeCopy(container);
+    if (mode === "full") {
+      scheduleCopySetup(container);
+      recordMarkdownFullCommit();
+    } else {
+      recordMarkdownLiteCommit();
+    }
+    recordMarkdownCommit();
+  };
+
+  const scheduleDomApply = (container: HTMLElement, next: RenderPayload) => {
+    queuedRender = next;
+    if (typeof requestAnimationFrame !== "function") {
+      const immediate = queuedRender;
+      queuedRender = null;
+      queuedRenderScheduled = false;
+      if (immediate) {
+        applyDomRender(container, immediate);
+      }
+      return;
+    }
+    if (queuedRenderScheduled) {
+      recordMarkdownRafSkippedApply();
+      return;
+    }
+    queuedRenderScheduled = true;
+    domApplyRafId = requestAnimationFrame(() => {
+      domApplyRafId = undefined;
+      queuedRenderScheduled = false;
+      const payload = queuedRender;
+      queuedRender = null;
+      if (!payload) return;
+      applyDomRender(container, payload);
+    });
+  };
+
+  createEffect(() => {
+    const container = root();
+    const payload = html();
+    if (!container) return;
+    if (!payload) return;
+    scheduleDomApply(container, payload);
   });
 
   const setupCodeCopy = (container: HTMLElement) => {
     const codeBlocks = container.querySelectorAll<HTMLDivElement>(
-      '[data-component="markdown-code"]'
+      '[data-component="markdown-code"]:not([data-copy-initialized="1"])'
     );
 
     codeBlocks.forEach(block => {
@@ -306,6 +727,7 @@ export function Markdown(props: MarkdownProps) {
       // Add group class to parent for hover effect
       block.classList.add("group");
       block.style.position = "relative";
+      block.dataset.copyInitialized = "1";
 
       // Insert button
       block.appendChild(button);

@@ -9,6 +9,7 @@ import { registerPartComponent } from "./part-registry";
 import { PermissionPart } from "./parts/permission-part";
 import { QuestionPart } from "./parts/question-part";
 import { ReasoningPart } from "./parts/reasoning-part";
+import { RetryPart } from "./parts/retry-part";
 import { TextPart } from "./parts/text-part";
 import { ToolPart } from "./parts/tool-part";
 
@@ -26,6 +27,7 @@ export function registerDefaultPartComponents(): void {
   registerPartComponent("tool", ToolPart);
   registerPartComponent("permission", PermissionPart);
   registerPartComponent("question", QuestionPart);
+  registerPartComponent("retry", RetryPart);
 
   registered = true;
 }

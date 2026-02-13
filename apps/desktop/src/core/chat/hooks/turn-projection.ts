@@ -154,6 +154,8 @@ function getPartTimestamp(part: Part): number {
     if (!value || typeof value !== "object") return undefined;
     const start = (value as { start?: unknown }).start;
     if (typeof start === "number") return start;
+    const created = (value as { created?: unknown }).created;
+    if (typeof created === "number") return created;
     const end = (value as { end?: unknown }).end;
     if (typeof end === "number") return end;
     return undefined;

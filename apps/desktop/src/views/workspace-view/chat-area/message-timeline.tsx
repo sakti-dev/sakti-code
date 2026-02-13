@@ -8,7 +8,7 @@
 import type { ChatTurn } from "@/core/chat/hooks/turn-projection";
 import { createAutoScroll } from "@/core/shared/utils/create-auto-scroll";
 import { cn } from "@/utils";
-import { For, Show, type Accessor, type JSX } from "solid-js";
+import { For, Show, createSignal, onCleanup, type Accessor, type JSX } from "solid-js";
 import { SessionTurn } from "./session-turn";
 
 export interface MessageTimelineProps {
@@ -25,16 +25,36 @@ export interface MessageTimelineProps {
 }
 
 export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
+  const [isScrollActive, setIsScrollActive] = createSignal(false);
   const autoScroll = createAutoScroll({
     working: () => props.isStreaming(),
     nearBottomDistance: 100,
     settlingPeriod: 300,
   });
+  let scrollPauseTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  const markScrollActive = () => {
+    setIsScrollActive(true);
+    if (scrollPauseTimeout) {
+      clearTimeout(scrollPauseTimeout);
+    }
+    scrollPauseTimeout = setTimeout(() => {
+      setIsScrollActive(false);
+      scrollPauseTimeout = undefined;
+    }, 180);
+  };
+
+  onCleanup(() => {
+    if (scrollPauseTimeout) clearTimeout(scrollPauseTimeout);
+  });
 
   return (
     <div
       ref={autoScroll.scrollRef}
-      onScroll={e => autoScroll.handleScroll(e.currentTarget)}
+      onScroll={e => {
+        autoScroll.handleScroll(e.currentTarget);
+        markScrollActive();
+      }}
       role="log"
       aria-live="polite"
       class={cn("scrollbar-thin min-h-0 flex-1 overflow-y-auto", "px-4 py-4", props.class)}
@@ -55,6 +75,7 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
                   <SessionTurn
                     turn={() => turn}
                     isStreaming={props.isStreaming}
+                    isScrollActive={isScrollActive}
                     onRetry={props.onRetry}
                     onDelete={props.onDelete}
                     onCopy={props.onCopy}

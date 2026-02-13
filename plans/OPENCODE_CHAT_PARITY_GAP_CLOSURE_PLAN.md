@@ -343,3 +343,23 @@ This gap-closure plan is complete when:
 2. Recorded fixture integration suite passes.
 3. Typecheck and lint pass cleanly.
 4. Side-by-side comparison with OpenCode chat behavior shows no major parity gaps in prompt flow, turn behavior, and rendering cadence.
+
+---
+
+## 13. Retry/Resilience Update (2026-02-13)
+
+Implemented updates:
+
+1. Retry timeline is fully inline and chronological (no collapsible "Show steps" surface).
+2. Retry parts include countdown metadata (`next`) and render deterministic fallback states:
+   - `retrying in Xm Ys`
+   - `retrying now`
+   - `retrying shortly` when countdown metadata is missing.
+3. Agent retry policy is exponential with compounding timeout:
+   - `3s, 6s, 12s, ...`
+   - up to `10` retries for transient upstream failures.
+4. Replay coverage now includes retry timeline rendering against recorded-style fixtures.
+5. Runtime telemetry now tracks:
+   - `retryAttempts`
+   - `retryRecovered`
+   - `retryExhausted`

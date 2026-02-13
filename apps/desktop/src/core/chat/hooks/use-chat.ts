@@ -275,6 +275,17 @@ export function useChat(options: UseChatOptions): UseChatResult {
    * - Creates optimistic message only after receiving valid session ID
    */
   const sendMessage = async (text: string): Promise<void> => {
+    return sendMessageInternal(text);
+  };
+
+  const sendMessageInternal = async (
+    text: string,
+    retryOptions?: {
+      retryOfAssistantMessageId?: string;
+      existingUserMessageId?: string;
+      skipUserPersistence?: boolean;
+    }
+  ): Promise<void> => {
     const trimmed = text.trim();
     if (!trimmed) {
       logger.debug("Empty message, skipping");
@@ -325,7 +336,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
       textLength: trimmed.length,
     });
 
-    const userMessageId = uuidv7();
+    const userMessageId = retryOptions?.existingUserMessageId ?? uuidv7();
     const now = Date.now();
     const abortController = new AbortController();
     activeRequest = { messageId: userMessageId, abortController };
@@ -430,6 +441,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
       const response = await client.chat(messages, {
         sessionId: currentSessionId ?? undefined, // undefined if creating new session
         messageId: userMessageId,
+        retryOfAssistantMessageId: retryOptions?.retryOfAssistantMessageId,
         workspace: ws,
         signal: abortController.signal,
       });
@@ -517,7 +529,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
 
       // Create optimistic user message only when session is known.
       const optimisticSessionId = ensureResolvedSessionId();
-      if (optimisticSessionId) {
+      if (optimisticSessionId && !retryOptions?.skipUserPersistence) {
         const optimisticTextPartId = `${userMessageId}-text`;
         messageActions.upsert({
           id: userMessageId,
@@ -558,6 +570,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
       }
 
       const persistUserMessageIfNeeded = (activeSessionId: string): void => {
+        if (retryOptions?.skipUserPersistence) return;
         if (userMessagePersisted) {
           flushDeferredPartUpdatesForMessage(userMessageId);
           return;
@@ -1028,7 +1041,21 @@ export function useChat(options: UseChatOptions): UseChatResult {
       return;
     }
 
-    await sendMessage(text);
+    const sourceRole =
+      source && typeof source === "object" && "role" in source
+        ? String((source as { role?: unknown }).role)
+        : "";
+    const assistantMessageId = sourceRole === "assistant" ? messageId : undefined;
+    const existingUserMessageId =
+      sourceRole === "assistant"
+        ? ((source as { parentID?: string }).parentID ?? undefined)
+        : messageId;
+
+    await sendMessageInternal(text, {
+      retryOfAssistantMessageId: assistantMessageId,
+      existingUserMessageId,
+      skipUserPersistence: Boolean(assistantMessageId && existingUserMessageId),
+    });
   };
 
   /**

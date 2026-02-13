@@ -60,3 +60,25 @@ export function createErrorToolPart(tool: string, error: string, overrides?: Par
     ...overrides,
   } as Part;
 }
+
+/**
+ * Create a retry part for testing
+ */
+export function createRetryPart(overrides?: Partial<Part>): Part {
+  const now = Date.now();
+  return {
+    id: "retry-part-1",
+    type: "retry",
+    messageID: "message-1",
+    sessionID: "session-1",
+    attempt: 1,
+    next: now + 3000,
+    error: {
+      message: "Cannot connect to API: other side closed",
+      isRetryable: true,
+      metadata: { kind: "socket_closed" },
+    },
+    time: { created: now, start: now, end: now },
+    ...overrides,
+  } as Part;
+}

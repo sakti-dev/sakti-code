@@ -244,7 +244,10 @@ describe("useChat", () => {
             parts: [{ type: "text", text: "retry content" }],
           },
         ],
-        expect.objectContaining({ sessionId: "session-1" })
+        expect.objectContaining({
+          sessionId: "session-1",
+          retryOfAssistantMessageId: undefined,
+        })
       );
       dispose();
     });
@@ -275,6 +278,20 @@ describe("useChat", () => {
       await chat.retry("msg-assistant");
 
       expect(mockGetByMessage).toHaveBeenCalledWith("msg-user-parent");
+      expect(mockChatFn).toHaveBeenCalledWith(
+        [
+          {
+            id: "msg-user-parent",
+            role: "user",
+            parts: [{ type: "text", text: "parent content" }],
+          },
+        ],
+        expect.objectContaining({
+          sessionId: "session-1",
+          messageId: "msg-user-parent",
+          retryOfAssistantMessageId: "msg-assistant",
+        })
+      );
       expect(chat.streaming.status()).toBe("done");
       dispose();
     });

@@ -11,6 +11,8 @@
  * Part of Phase 6: Utility Organization
  */
 
+export { runWithFrameBudget } from "./frame-budget-scheduler";
+export type { FrameBudgetRunResult, FrameBudgetSchedulerOptions } from "./frame-budget-scheduler";
 export { createPerformanceMonitor } from "./performance";
 export type { PerformanceMetrics, PerformanceMonitor } from "./performance";
 export {

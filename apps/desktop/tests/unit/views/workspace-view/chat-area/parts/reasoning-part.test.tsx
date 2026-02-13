@@ -77,8 +77,8 @@ describe("ReasoningPart", () => {
     setPart({ type: "reasoning", text: "Updated thought 2" });
     setPart({ type: "reasoning", text: "Final thought" });
 
-    // After throttle period
-    vi.advanceTimersByTime(120);
+    // After throttle + markdown cadence period
+    await vi.advanceTimersByTimeAsync(360);
 
     vi.useRealTimers();
 
@@ -88,7 +88,7 @@ describe("ReasoningPart", () => {
     });
   });
 
-  it("uses lightweight streaming renderer while streaming", async () => {
+  it("renders markdown while streaming without plain-text fallback node", async () => {
     const part = {
       type: "reasoning",
       text: "Streaming thought",
@@ -97,10 +97,13 @@ describe("ReasoningPart", () => {
     dispose = render(() => <ReasoningPart part={part} isStreaming={true} />, container);
 
     await vi.waitFor(() => {
-      const streamingNode = container.querySelector('[data-slot="reasoning-part-streaming"]');
-      expect(streamingNode).not.toBeNull();
-      expect(streamingNode?.textContent).toContain("Streaming thought");
+      expect(container.textContent).toContain("Streaming thought");
+      const markdownNode = container.querySelector('[data-component="markdown"]');
+      expect(markdownNode).not.toBeNull();
     });
+
+    const streamingNode = container.querySelector('[data-slot="reasoning-part-streaming"]');
+    expect(streamingNode).toBeNull();
   });
 
   it("applies subtle/italic styling on content", async () => {

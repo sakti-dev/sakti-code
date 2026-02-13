@@ -131,5 +131,13 @@ export const AgentEvent = z.discriminatedUnion("type", [
     durationMs: z.number(),
     agentId: z.string(),
   }),
+  z.object({
+    type: z.literal("retry"),
+    attempt: z.number(),
+    message: z.string(),
+    next: z.number(),
+    errorKind: z.string().optional(),
+    agentId: z.string(),
+  }),
 ]);
 export type AgentEvent = z.infer<typeof AgentEvent>;

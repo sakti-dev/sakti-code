@@ -1,5 +1,9 @@
 import { applyEventToStores } from "@/core/chat/domain/event-router-adapter";
 import {
+  getChatPerfSnapshot,
+  resetChatPerfTelemetry,
+} from "@/core/chat/services/chat-perf-telemetry";
+import {
   createMessageStore,
   createPartStore,
   createPermissionStore,
@@ -24,6 +28,48 @@ function createActions() {
 }
 
 describe("event-router-adapter", () => {
+  it("tracks retry attempt and recovery counters from session.status transitions", async () => {
+    resetChatPerfTelemetry();
+    const { messageActions, partActions, sessionActions } = createActions();
+
+    await applyEventToStores(
+      {
+        type: "session.status",
+        properties: {
+          sessionID: SESSION_ID_1,
+          status: { type: "retry", attempt: 1, message: "retry", next: Date.now() + 3000 },
+        },
+        eventId: uuidv7(),
+        sequence: 1,
+        timestamp: Date.now(),
+      } as ServerEvent,
+      messageActions,
+      partActions,
+      sessionActions
+    );
+
+    await applyEventToStores(
+      {
+        type: "session.status",
+        properties: {
+          sessionID: SESSION_ID_1,
+          status: { type: "idle" },
+        },
+        eventId: uuidv7(),
+        sequence: 2,
+        timestamp: Date.now(),
+      } as ServerEvent,
+      messageActions,
+      partActions,
+      sessionActions
+    );
+
+    const snapshot = getChatPerfSnapshot();
+    expect(snapshot.counters.retryAttempts).toBe(1);
+    expect(snapshot.counters.retryRecovered).toBe(1);
+    expect(snapshot.counters.retryExhausted).toBe(0);
+  });
+
   it("updates session status from session.status events", async () => {
     const { messageActions, partActions, sessionActions } = createActions();
 

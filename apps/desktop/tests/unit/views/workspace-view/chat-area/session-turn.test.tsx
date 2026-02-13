@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createErrorTurnFixture,
   createInterleavedAssistantPartsFixture,
+  createInterleavedAssistantPartsWithRetryFixture,
   createSingleTurnFixture,
   createSingleTurnWithPromptsFixture,
   createStreamingTurnFixture,
@@ -96,6 +97,38 @@ describe("SessionTurn", () => {
       "reasoning-part",
       "tool-part-wrapper",
       "permission-part",
+      "reasoning-part",
+      "question-part",
+      "text-part",
+    ]);
+  });
+
+  it("renders retry parts inline in chronological order", async () => {
+    const turn = projectSingleTurn(createInterleavedAssistantPartsWithRetryFixture());
+
+    dispose = render(() => <SessionTurn turn={() => turn} isStreaming={() => true} />, container);
+
+    await vi.waitFor(() => {
+      const stream = container.querySelector('[data-slot="session-turn-stream"]');
+      expect(stream).not.toBeNull();
+    });
+
+    const stream = container.querySelector('[data-slot="session-turn-stream"]') as HTMLElement;
+    const renderedSequence = Array.from(
+      stream.querySelectorAll(
+        '[data-component="text-part"], [data-component="tool-part-wrapper"], [data-component="reasoning-part"], [data-component="permission-part"], [data-component="retry-part"], [data-component="question-part"]'
+      )
+    )
+      .map(element => element.getAttribute("data-component"))
+      .filter((value): value is string => Boolean(value));
+
+    expect(renderedSequence).toEqual([
+      "text-part",
+      "tool-part-wrapper",
+      "reasoning-part",
+      "tool-part-wrapper",
+      "permission-part",
+      "retry-part",
       "reasoning-part",
       "question-part",
       "text-part",

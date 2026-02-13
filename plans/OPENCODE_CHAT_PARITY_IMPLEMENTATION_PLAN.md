@@ -764,3 +764,18 @@ Day 5:
 - per-turn grouping
 
 Once this is merged, iterate to full parity via phases 2-5.
+
+---
+
+## 18. Changelog Note (2026-02-13)
+
+Post-phase parity updates landed:
+
+1. Retry events now emit and render as first-class timeline parts (`type: "retry"`).
+2. Retry countdown rendering is deterministic and throttled to 1Hz.
+3. Retry countdown formatting is compact (`1m 36s`).
+4. Streaming retry policy moved to uncapped exponential series (`3s, 6s, 12s, ...`) with a hard stop at 10 retries.
+5. Added retry-focused coverage:
+   - core retry policy tests,
+   - server retry part publication tests,
+   - desktop chronological replay tests.

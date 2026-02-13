@@ -82,8 +82,8 @@ describe("TextPart", () => {
     setPart({ type: "text", text: "Updated 2" });
     setPart({ type: "text", text: "Final update" });
 
-    // After throttle period - should show final value
-    vi.advanceTimersByTime(120);
+    // After throttle + markdown cadence period - should show final value
+    await vi.advanceTimersByTimeAsync(360);
 
     vi.useRealTimers();
 

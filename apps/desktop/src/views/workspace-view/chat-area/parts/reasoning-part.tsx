@@ -15,6 +15,8 @@ export interface ReasoningPartProps {
   part: Record<string, unknown>;
   /** Whether the content is currently streaming */
   isStreaming?: boolean;
+  /** Whether the user is actively scrolling the timeline */
+  isScrollActive?: boolean;
   /** Maintained for compatibility with part renderer contract */
   defaultOpen?: boolean;
   /** Throttle duration in ms (default: 100ms during streaming) */
@@ -66,16 +68,14 @@ export const ReasoningPart: Component<ReasoningPartProps> = props => {
           data-slot="reasoning-content"
           class="border-border/30 border-t-0 px-3 py-2 text-sm italic"
         >
-          <Show
-            when={!props.isStreaming}
-            fallback={
-              <div data-slot="reasoning-part-streaming" class="whitespace-pre-wrap">
-                {throttledText()}
-              </div>
-            }
-          >
-            <Markdown text={throttledText()} class="prose-p:m-0" />
-          </Show>
+          <Markdown
+            text={throttledText()}
+            class="prose-p:m-0"
+            isStreaming={props.isStreaming}
+            isScrollActive={props.isScrollActive}
+            deferHighlightUntilComplete={true}
+            pauseWhileScrolling={true}
+          />
         </div>
       </div>
     </Show>

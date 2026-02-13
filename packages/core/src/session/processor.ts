@@ -13,9 +13,13 @@ import { v7 as uuidv7 } from "uuid";
 import { getBuildModel, getExploreModel, getPlanModel } from "../agent/workflow/model-provider";
 import { AgentConfig, AgentEvent, AgentInput, AgentResult } from "../agent/workflow/types";
 import { Instance } from "../instance";
+import { classifyAgentError } from "./error-classification";
 
 const logger = createLogger("ekacode");
 const DOOM_LOOP_THRESHOLD = 3;
+const RETRY_INITIAL_DELAY_MS = 3000;
+const RETRY_BACKOFF_FACTOR = 2;
+const RETRY_MAX_RETRIES = 10;
 const MAX_STEPS_PROMPT = `CRITICAL - MAXIMUM STEPS REACHED
 
 The maximum number of steps allowed for this task has been reached. Tools are disabled until next user input. Respond with text only.
@@ -45,6 +49,74 @@ interface ToolCallResult {
 
 function safeNumber(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function toErrorObject(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
+}
+
+function parseRetryAfterMs(value: string): number | undefined {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isNaN(parsed) && parsed >= 0) return Math.ceil(parsed);
+  const dateMs = Date.parse(value) - Date.now();
+  if (!Number.isNaN(dateMs) && dateMs > 0) return Math.ceil(dateMs);
+  return undefined;
+}
+
+export function retryDelayMs(attempt: number, error: unknown): number {
+  const asObject = toErrorObject(error);
+  const headers =
+    asObject && typeof asObject.responseHeaders === "object" && asObject.responseHeaders
+      ? (asObject.responseHeaders as Record<string, unknown>)
+      : undefined;
+
+  if (headers) {
+    const retryAfterMsValue = headers["retry-after-ms"];
+    if (typeof retryAfterMsValue === "string") {
+      const parsed = parseRetryAfterMs(retryAfterMsValue);
+      if (typeof parsed === "number") return parsed;
+    }
+
+    const retryAfterValue = headers["retry-after"];
+    if (typeof retryAfterValue === "string") {
+      const parsed = parseRetryAfterMs(retryAfterValue);
+      if (typeof parsed === "number") {
+        const fromSeconds = Number.parseFloat(retryAfterValue);
+        if (!Number.isNaN(fromSeconds) && fromSeconds >= 0) {
+          return Math.ceil(fromSeconds * 1000);
+        }
+        return parsed;
+      }
+    }
+  }
+
+  return RETRY_INITIAL_DELAY_MS * Math.pow(RETRY_BACKOFF_FACTOR, Math.max(0, attempt - 1));
+}
+
+export function canRetryStreamAttempt(streamAttempt: number, retryable: boolean): boolean {
+  return retryable && streamAttempt < RETRY_MAX_RETRIES;
+}
+
+async function sleepWithAbort(ms: number, signal: AbortSignal): Promise<void> {
+  if (signal.aborted) return;
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timeout);
+      signal.removeEventListener("abort", onAbort);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  }).catch(error => {
+    const name =
+      error && typeof error === "object" && "name" in error
+        ? String((error as { name?: unknown }).name)
+        : "";
+    if (name !== "AbortError") throw error;
+  });
 }
 
 function normalizeUsage(usage: unknown): {
@@ -161,11 +233,46 @@ export class AgentProcessor {
           return this.createResult("stopped", startTime);
         }
 
-        // Stream from LLM
-        const stream = await this.streamIteration();
+        let iterationResult: { finished: boolean };
+        let streamAttempt = 0;
+        while (true) {
+          try {
+            // Stream from LLM
+            const stream = await this.streamIteration();
+            // Process stream events
+            iterationResult = await this.processStream(stream);
+            break;
+          } catch (error) {
+            const classified = classifyAgentError(error);
+            const retryable = canRetryStreamAttempt(streamAttempt, classified.retryable);
 
-        // Process stream events
-        const iterationResult = await this.processStream(stream);
+            if (!retryable || this.abortController.signal.aborted) {
+              throw error;
+            }
+
+            streamAttempt += 1;
+            const delay = retryDelayMs(streamAttempt, error);
+            const next = Date.now() + delay;
+            this.emitEvent({
+              type: "retry",
+              attempt: streamAttempt,
+              message: classified.userMessage,
+              next,
+              errorKind: classified.kind,
+              agentId: this.config.id,
+            });
+            logger.warn("Retrying stream iteration after transient error", {
+              module: "agent:processor",
+              agent: this.config.id,
+              attempt: streamAttempt,
+              next,
+              delay,
+              errorKind: classified.kind,
+              message: classified.rawMessage,
+            });
+            await sleepWithAbort(delay, this.abortController.signal);
+          }
+        }
 
         if (iterationResult.finished) {
           return this.createResult("completed", startTime);
@@ -243,7 +350,8 @@ export class AgentProcessor {
       });
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const classified = classifyAgentError(error);
+      const errorMessage = classified.userMessage;
       logger.error(
         `Agent execution failed: ${this.config.id}`,
         error instanceof Error ? error : undefined,
@@ -251,6 +359,9 @@ export class AgentProcessor {
           module: "agent:processor",
           agent: this.config.id,
           error: errorMessage,
+          errorKind: classified.kind,
+          retryable: classified.retryable,
+          rawError: classified.rawMessage,
           iterations: this.iterationCount,
         }
       );
@@ -859,7 +970,7 @@ export class AgentProcessor {
   }
 
   /**
-   * Get the model for this agent based on agent type
+   * Get the model for this agent based on agent type.
    */
   private getModel(): LanguageModelV3 {
     switch (this.config.type) {

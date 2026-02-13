@@ -488,3 +488,54 @@ export function createSequenceOrderedPartsFixture(
     expectedOrderIds: ["part-tool-1", "part-reasoning", "part-summary"],
   };
 }
+
+export function createInterleavedAssistantPartsWithRetryFixture(
+  sessionId?: string
+): TurnProjectionOptions & {
+  expectedOrderIds: string[];
+  expectedUserMessageId: string;
+  expectedAssistantMessageId: string;
+} {
+  const base = createInterleavedAssistantPartsFixture(sessionId);
+  const parts = base.partsByMessage[base.expectedAssistantMessageId] ?? [];
+  const retryPart: Part = {
+    id: "a-retry-1",
+    type: "retry",
+    messageID: base.expectedAssistantMessageId,
+    sessionID: base.sessionId,
+    attempt: 1,
+    next: Date.now() + 3_000,
+    error: {
+      message: "Cannot connect to API: other side closed",
+      isRetryable: true,
+      metadata: { kind: "socket_closed" },
+    },
+    time: { created: Date.now() + 600, start: Date.now() + 600, end: Date.now() + 600 },
+  };
+
+  const retryIndex = parts.findIndex(part => part.id === "a-reasoning-2");
+  if (retryIndex >= 0) {
+    parts.splice(retryIndex, 0, retryPart);
+  } else {
+    parts.push(retryPart);
+  }
+
+  return {
+    ...base,
+    partsByMessage: {
+      ...base.partsByMessage,
+      [base.expectedAssistantMessageId]: parts,
+    },
+    expectedOrderIds: [
+      "a-text-1",
+      "a-tool-1",
+      "a-reasoning-1",
+      "a-tool-2",
+      "permission:perm-interleaved",
+      "a-retry-1",
+      "a-reasoning-2",
+      "question:question-interleaved",
+      "a-text-2",
+    ],
+  };
+}

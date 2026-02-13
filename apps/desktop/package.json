@@ -8,6 +8,7 @@
     "build": "vite build",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:perf": "PERF_BENCH=1 vitest run tests/integration/markdown-stream-stress.test.tsx tests/integration/markdown-benchmark.report.test.tsx",
     "typecheck": "tsc --noEmit",
     "lint": "eslint ."
   },

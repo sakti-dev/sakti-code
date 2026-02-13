@@ -350,6 +350,7 @@ export type SubtaskPart = z.infer<typeof SubtaskPart>;
 export const RetryPart = PartBase.extend({
   type: z.literal("retry"),
   attempt: z.number(),
+  next: z.number().optional(),
   error: z.object({
     message: z.string(),
     statusCode: z.number().optional(),

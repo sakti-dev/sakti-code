@@ -7,7 +7,10 @@ export type ChatPerfCounterName =
   | "partUpserts"
   | "coalescedFlushes"
   | "coalescedUpdates"
-  | "skippedOptimisticUpdates";
+  | "skippedOptimisticUpdates"
+  | "retryAttempts"
+  | "retryRecovered"
+  | "retryExhausted";
 
 export interface ChatPerfSnapshot {
   counters: Record<ChatPerfCounterName, number>;
@@ -26,6 +29,9 @@ const COUNTER_NAMES: ChatPerfCounterName[] = [
   "coalescedFlushes",
   "coalescedUpdates",
   "skippedOptimisticUpdates",
+  "retryAttempts",
+  "retryRecovered",
+  "retryExhausted",
 ];
 
 const counters: Record<ChatPerfCounterName, number> = {
@@ -38,6 +44,9 @@ const counters: Record<ChatPerfCounterName, number> = {
   coalescedFlushes: 0,
   coalescedUpdates: 0,
   skippedOptimisticUpdates: 0,
+  retryAttempts: 0,
+  retryRecovered: 0,
+  retryExhausted: 0,
 };
 
 let updatedAt = Date.now();
@@ -59,6 +68,9 @@ export function getChatPerfSnapshot(): ChatPerfSnapshot {
     coalescedFlushes: 0,
     coalescedUpdates: 0,
     skippedOptimisticUpdates: 0,
+    retryAttempts: 0,
+    retryRecovered: 0,
+    retryExhausted: 0,
   };
 
   for (const name of COUNTER_NAMES) {

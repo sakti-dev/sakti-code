@@ -22,6 +22,7 @@ import { EventDeduplicator } from "@ekacode/shared/event-deduplication";
 import { validateEventComprehensive } from "@ekacode/shared/event-guards";
 import { EventOrderingBuffer } from "@ekacode/shared/event-ordering";
 import type { Part, ServerEvent } from "@ekacode/shared/event-types";
+import { recordChatPerfCounter } from "../services/chat-perf-telemetry";
 import { type OptimisticMetadata } from "./correlation";
 import {
   findOrphanedOptimisticEntities,
@@ -235,6 +236,7 @@ const deduplicator = new EventDeduplicator({
  * These are replayed once the message is created.
  */
 const pendingPartsByMessage = new Map<string, Part[]>();
+const retryStateBySession = new Map<string, { seenRetry: boolean; lastSignature?: string }>();
 
 /**
  * Process a single event after validation, ordering, and deduplication
@@ -627,6 +629,36 @@ function processEvent(
           });
         }
         sessionActions.setStatus(sessionID, status);
+
+        const retryState = retryStateBySession.get(sessionID) ?? { seenRetry: false };
+        if (status.type === "retry") {
+          const signature = `${status.attempt}:${status.next}:${status.message}`;
+          if (retryState.lastSignature !== signature) {
+            recordChatPerfCounter("retryAttempts");
+          }
+          retryState.seenRetry = true;
+          retryState.lastSignature = signature;
+          retryStateBySession.set(sessionID, retryState);
+        } else if (status.type === "idle" && retryState.seenRetry) {
+          const messages = messageActions.getBySession(sessionID);
+          const latestAssistant = [...messages]
+            .reverse()
+            .find(message => message.role === "assistant");
+          const latestAssistantParts = latestAssistant
+            ? partActions.getByMessage(latestAssistant.id)
+            : [];
+          const hasErrorPart = latestAssistantParts.some(part => part.type === "error");
+          const messageError =
+            latestAssistant && "error" in latestAssistant ? latestAssistant.error : undefined;
+          const hasMessageError =
+            typeof messageError === "string" || typeof messageError === "object";
+          if (hasErrorPart || hasMessageError) {
+            recordChatPerfCounter("retryExhausted");
+          } else {
+            recordChatPerfCounter("retryRecovered");
+          }
+          retryStateBySession.set(sessionID, { seenRetry: false, lastSignature: undefined });
+        }
 
         // Clean up orphaned optimistic entities when session goes idle
         if (status.type === "idle") {

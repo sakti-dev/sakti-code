@@ -258,6 +258,61 @@ describe("Chat route integration", () => {
       expect(response.status).toBeGreaterThanOrEqual(400);
     });
 
+    it("should return 400 when retry target assistant message does not exist", async () => {
+      const chatRouter = (await import("../../src/routes/chat")).default;
+
+      const response = await chatRouter.request("http://localhost/api/chat?directory=/tmp/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: "",
+          retryOfAssistantMessageId: "missing-assistant-message",
+          stream: true,
+        }),
+      });
+
+      expect(response.status).toBe(400);
+      const payload = await response.json();
+      expect(String(payload?.error ?? "")).toContain("Retry target assistant message not found");
+    });
+
+    it("publishes retry part payload with attempt and next", async () => {
+      const sessionId = "019c0000-0000-7000-8000-000000000001";
+      const messageId = "019c0000-0000-7000-8000-000000000002";
+      const { createPartPublishState, publishPartEvent } = await import("../../src/routes/chat");
+      const { getSessionMessages } = await import("../../src/state/session-message-store");
+
+      const partState = createPartPublishState();
+      const assistantInfo = {
+        role: "assistant",
+        id: messageId,
+        sessionID: sessionId,
+        parentID: "019c0000-0000-7000-8000-000000000003",
+        time: { created: Date.now() },
+      };
+
+      await publishPartEvent(sessionId, messageId, partState, assistantInfo as never, {
+        type: "retry",
+        attempt: 3,
+        message: "Temporary upstream disconnect",
+        next: Date.now() + 6000,
+        errorKind: "network_socket_closed",
+      });
+
+      const sessionMessages = getSessionMessages(sessionId);
+      const assistant = sessionMessages.find(message => message.info.id === messageId);
+      const retryPart = assistant?.parts.find(part => part.type === "retry");
+
+      expect(retryPart).toBeDefined();
+      expect(retryPart?.attempt).toBe(3);
+      expect(retryPart?.next).toBeTypeOf("number");
+      const retryError = retryPart?.error as { message?: string; metadata?: { kind?: string } };
+      expect(retryError.message).toContain("Temporary upstream disconnect");
+      expect(retryError.metadata?.kind).toBe("network_socket_closed");
+    });
+
     it("should handle empty message gracefully", async () => {
       const chatRouter = (await import("../../src/routes/chat")).default;
 

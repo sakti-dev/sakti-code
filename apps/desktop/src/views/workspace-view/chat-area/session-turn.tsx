@@ -10,6 +10,10 @@ import { useStatusThrottledValue } from "@/core/chat/hooks/use-status-throttled-
 import { cn } from "@/utils";
 import { Part } from "@/views/workspace-view/chat-area/message-part";
 import {
+  formatRetryCountdown,
+  readRetrySecondsLeft,
+} from "@/views/workspace-view/chat-area/retry-timing";
+import {
   For,
   Show,
   createEffect,
@@ -22,6 +26,7 @@ import {
 export interface SessionTurnProps {
   turn: Accessor<ChatTurn>;
   isStreaming: Accessor<boolean>;
+  isScrollActive?: Accessor<boolean>;
   onRetry?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
   onCopy?: (messageId: string) => void;
@@ -81,7 +86,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
     }
 
     const updateSeconds = () => {
-      setRetrySeconds(Math.max(0, Math.round((retry.next - Date.now()) / 1000)));
+      setRetrySeconds(readRetrySecondsLeft(retry.next) ?? 0);
     };
     updateSeconds();
     const timer = setInterval(updateSeconds, 1000);
@@ -116,6 +121,13 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
     return message.length > 60 ? `${message.slice(0, 60)}...` : message;
   };
 
+  const retryStatusText = () => {
+    const retry = turn().retry;
+    if (!retry || typeof retry.next !== "number") return "retrying shortly";
+    if (retrySeconds() <= 0) return "retrying now";
+    return `retrying in ${formatRetryCountdown(retrySeconds())}`;
+  };
+
   return (
     <div
       data-component="session-turn"
@@ -145,7 +157,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
           <div class="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
           <Show when={turn().retry} fallback={<span>{statusLabel() ?? "Working"}</span>}>
             <span>{retryMessage()}</span>
-            <span>· retrying{retrySeconds() > 0 ? ` in ${retrySeconds()}s` : ""}</span>
+            <span>· {retryStatusText()}</span>
             <span>· #{turn().retry?.attempt}</span>
           </Show>
           <span>·</span>
@@ -168,6 +180,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
                 <Part
                   part={part as Record<string, unknown>}
                   isStreaming={props.isStreaming()}
+                  isScrollActive={props.isScrollActive?.()}
                   onPermissionApprove={props.onPermissionApprove}
                   onPermissionDeny={props.onPermissionDeny}
                   onQuestionAnswer={props.onQuestionAnswer}
@@ -188,6 +201,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               <Part
                 part={{ type: "text", text: getAssistantText(turn()) }}
                 isStreaming={props.isStreaming()}
+                isScrollActive={props.isScrollActive?.()}
               />
             </div>
           </Show>
@@ -197,7 +211,9 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               <button
                 type="button"
                 class="rounded border px-2 py-1 text-xs transition-colors"
-                onClick={() => props.onRetry?.(turn().userMessage.id)}
+                onClick={() =>
+                  props.onRetry?.(getLastAssistantMessageId(turn()) ?? turn().userMessage.id)
+                }
               >
                 Retry
               </button>

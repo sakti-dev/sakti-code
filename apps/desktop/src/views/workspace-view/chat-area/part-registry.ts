@@ -13,6 +13,7 @@ export interface PartProps {
   hideDetails?: boolean;
   defaultOpen?: boolean;
   isStreaming?: boolean;
+  isScrollActive?: boolean;
   onPermissionApprove?: (id: string, patterns?: string[]) => void | Promise<void>;
   onPermissionDeny?: (id: string) => void | Promise<void>;
   onQuestionAnswer?: (id: string, answer: unknown) => void | Promise<void>;

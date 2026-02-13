@@ -15,6 +15,8 @@ export interface TextPartProps {
   part: Record<string, unknown>;
   /** Whether the text is currently streaming */
   isStreaming?: boolean;
+  /** Whether the user is actively scrolling the timeline */
+  isScrollActive?: boolean;
   /** Throttle duration in ms (default: 100ms during streaming) */
   throttleMs?: number;
   /** Additional CSS classes */
@@ -81,7 +83,13 @@ export const TextPart: Component<TextPartProps> = props => {
         data-component="text-part"
         class={cn("group relative w-full min-w-0", props.class)}
       >
-        <Markdown text={throttledText()} />
+        <Markdown
+          text={throttledText()}
+          isStreaming={props.isStreaming}
+          isScrollActive={props.isScrollActive}
+          deferHighlightUntilComplete={true}
+          pauseWhileScrolling={true}
+        />
         <Show when={!props.isStreaming}>
           <button
             type="button"

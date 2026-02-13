@@ -15,6 +15,7 @@ import {
   DEFAULT_GENERAL_BASE_URL,
   DEFAULT_SOURCE_CHANNEL,
 } from "./zai-constants";
+import { createResilientZaiFetch, type ZaiTransportSettings } from "./zai-fetch";
 import { getZaiAuthorizationHeader } from "./zai-jwt";
 
 export interface ZaiProvider extends ProviderV3 {
@@ -40,6 +41,7 @@ export interface ZaiProviderSettings {
    */
   sourceChannel?: string;
   fetch?: FetchFunction;
+  transport?: ZaiTransportSettings;
 }
 
 export function createZai(options: ZaiProviderSettings = {}): ZaiProvider {
@@ -78,7 +80,7 @@ export function createZai(options: ZaiProviderSettings = {}): ZaiProvider {
       provider: "zai.chat",
       url: ({ path }: { path: string }) => `${baseURL}${path}`,
       headers: getHeaders,
-      fetch: options.fetch,
+      fetch: options.fetch ?? createResilientZaiFetch(options.transport),
     });
 
   const provider = function (modelId: ZaiChatModelId): LanguageModelV3 {

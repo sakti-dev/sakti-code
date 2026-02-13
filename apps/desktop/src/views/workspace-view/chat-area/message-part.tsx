@@ -8,6 +8,7 @@ export interface MessagePartProps {
   hideDetails?: boolean;
   defaultOpen?: boolean;
   isStreaming?: boolean;
+  isScrollActive?: boolean;
   onPermissionApprove?: (id: string, patterns?: string[]) => void | Promise<void>;
   onPermissionDeny?: (id: string) => void | Promise<void>;
   onQuestionAnswer?: (id: string, answer: unknown) => void | Promise<void>;
@@ -35,6 +36,7 @@ export const Part: Component<MessagePartProps> = props => {
             hideDetails={props.hideDetails}
             defaultOpen={props.defaultOpen}
             isStreaming={props.isStreaming}
+            isScrollActive={props.isScrollActive}
             onPermissionApprove={props.onPermissionApprove}
             onPermissionDeny={props.onPermissionDeny}
             onQuestionAnswer={props.onQuestionAnswer}

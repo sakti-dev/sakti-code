@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-02-13T20:27:03.477Z",
+  "fixture": "chat-stream.from-log.json",
+  "snapshot": {
+    "counters": {
+      "commits": 18,
+      "liteCommits": 17,
+      "fullCommits": 1,
+      "droppedFrames": 8,
+      "longTasks": 0,
+      "rafSkippedApplies": 0,
+      "forcedFlushes": 0,
+      "finalizationBatches": 6,
+      "finalizationYieldCount": 4,
+      "finalizationTotalMs": 179.11956999999984,
+      "finalizationMaxBatchMs": 55.715490000000045
+    },
+    "stages": {
+      "parse": {
+        "count": 18,
+        "avgMs": 3.198552222222285,
+        "p50Ms": 0.25315900000032343,
+        "p95Ms": 23.606860000000324,
+        "maxMs": 23.606860000000324
+      },
+      "sanitize": {
+        "count": 35,
+        "avgMs": 3.4956183714286064,
+        "p50Ms": 2.9812650000001213,
+        "p95Ms": 10.040668000000096,
+        "maxMs": 28.576744000000417
+      },
+      "morph": {
+        "count": 2,
+        "avgMs": 4.9439800000000105,
+        "p50Ms": 7.458528000000115,
+        "p95Ms": 7.458528000000115,
+        "maxMs": 7.458528000000115
+      },
+      "copyButtons": {
+        "count": 0,
+        "avgMs": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "maxMs": 0
+      },
+      "total": {
+        "count": 19,
+        "avgMs": 12.983141421052634,
+        "p50Ms": 3.7585540000000037,
+        "p95Ms": 101.29429900000014,
+        "maxMs": 101.29429900000014
+      }
+    },
+    "updatedAt": 1771014423477
+  }
+}

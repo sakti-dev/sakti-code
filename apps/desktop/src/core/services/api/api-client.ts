@@ -35,6 +35,8 @@ export interface ChatOptions {
   sessionId?: string;
   /** User message ID (used as assistant parentID on server) */
   messageId?: string;
+  /** Retry an existing failed assistant message without creating a new user turn */
+  retryOfAssistantMessageId?: string;
   /** Workspace directory path */
   workspace: string;
   /** Abort signal for request cancellation */
@@ -176,6 +178,7 @@ export class EkacodeApiClient {
         body: JSON.stringify({
           message: messageText,
           messageId: options.messageId,
+          retryOfAssistantMessageId: options.retryOfAssistantMessageId,
           stream: true,
         }),
         signal: options.signal,
