@@ -14,7 +14,8 @@
     "test:coverage": "vitest run --coverage",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:migrate": "drizzle-kit migrate",
-    "drizzle:studio": "drizzle-kit studio"
+    "drizzle:studio": "drizzle-kit studio",
+    "schema:provider": "node src/schema/generate-provider-schema.mjs"
   },
   "dependencies": {
     "@ekacode/core": "workspace:*",
