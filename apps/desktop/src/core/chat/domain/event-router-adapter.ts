@@ -480,7 +480,9 @@ function processEvent(
         const tool = isRecord(props.tool) ? props.tool : {};
         const metadata = isRecord(props.metadata) ? props.metadata : {};
         const patterns = Array.isArray(props.patterns)
-          ? props.patterns.filter(pattern => typeof pattern === "string")
+          ? props.patterns.filter(
+              (pattern: unknown): pattern is string => typeof pattern === "string"
+            )
           : [];
 
         if (requestId && sessionID) {
