@@ -2,6 +2,7 @@ import { resolveAppPaths } from "@ekacode/shared/paths";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { createProviderAuthService } from "./auth/service";
+import { ensureCredentialProfileBootstrapSync } from "./bootstrap";
 import { createModelCatalogService } from "./models/catalog";
 import { createProviderRegistry } from "./registry";
 import { createProviderCredentialStorage } from "./storage";
@@ -77,7 +78,8 @@ export function getProviderRuntime(): ProviderRuntime {
   });
 
   const credentialBaseDir = join(appPaths.state, "provider-credentials");
-  mkdirSync(credentialBaseDir, { recursive: true });
+  mkdirSync(credentialBaseDir, { recursive: true, mode: 0o700 });
+  ensureCredentialProfileBootstrapSync(credentialBaseDir, "default");
 
   const registry = createProviderRegistry();
   const storage = createProviderCredentialStorage({
