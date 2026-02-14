@@ -1,4 +1,5 @@
 import type { ProviderAdapter } from "./adapters/base";
+import { OpenAIProviderAdapter } from "./adapters/openai";
 import { ZaiProviderAdapter } from "./adapters/zai";
 import type { ProviderDescriptor } from "./types";
 
@@ -11,7 +12,9 @@ let defaultRegistry: ProviderRegistry | null = null;
 export function createProviderRegistry(): ProviderRegistry {
   const adapters = new Map<string, ProviderAdapter>();
   const zai = new ZaiProviderAdapter();
+  const openai = new OpenAIProviderAdapter();
   adapters.set(zai.id, zai);
+  adapters.set(openai.id, openai);
 
   return { adapters };
 }
