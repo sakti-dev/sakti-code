@@ -1,10 +1,23 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { resolveChatSelection } from "../../src/provider/runtime";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetProviderRuntimeForTests, resolveChatSelection } from "../../src/provider/runtime";
 
 describe("chat provider selection", () => {
-  beforeEach(() => {
+  let testHome = "";
+
+  beforeEach(async () => {
+    testHome = await mkdtemp(join(tmpdir(), "ekacode-chat-provider-selection-"));
+    process.env.EKACODE_HOME = testHome;
     delete process.env.ZAI_API_KEY;
     delete process.env.OPENAI_API_KEY;
+    vi.resetModules();
+    resetProviderRuntimeForTests();
+  });
+
+  afterEach(async () => {
+    await rm(testHome, { recursive: true, force: true });
   });
 
   it("resolves defaults when provider/model not provided", () => {

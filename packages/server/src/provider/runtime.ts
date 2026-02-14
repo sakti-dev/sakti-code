@@ -99,3 +99,7 @@ export function getProviderRuntime(): ProviderRuntime {
 
   return runtime;
 }
+
+export function resetProviderRuntimeForTests() {
+  runtime = null;
+}
