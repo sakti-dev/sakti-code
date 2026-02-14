@@ -16,6 +16,7 @@ import { z } from "zod";
 import { MessagePartUpdated, MessageUpdated, publish, SessionStatus } from "../bus";
 import type { Env } from "../index";
 import { createSessionMessage, sessionBridge } from "../middleware/session-bridge";
+import { normalizeProviderError } from "../provider/errors";
 import {
   getProviderRuntime,
   hasProviderEnvironmentCredential,
@@ -949,13 +950,19 @@ app.post("/api/chat", async c => {
     const providerRuntime = getProviderRuntime();
     const provider = providerRuntime.registry.adapters.get(selection.providerId);
     if (!provider) {
-      return c.json({ error: `Unknown provider: ${selection.providerId}` }, 400);
+      const normalized = normalizeProviderError(
+        new Error(`Unknown provider: ${selection.providerId}`)
+      );
+      return c.json(normalized, normalized.status);
     }
 
     const authState = await providerRuntime.authService.getState(selection.providerId);
     const hasEnvCredential = hasProviderEnvironmentCredential(selection.providerId);
     if (authState.status !== "connected" && !hasEnvCredential) {
-      return c.json({ error: `Provider ${selection.providerId} is not authenticated` }, 401);
+      const normalized = normalizeProviderError(
+        new Error(`Provider ${selection.providerId} is not authenticated`)
+      );
+      return c.json(normalized, normalized.status);
     }
   }
 

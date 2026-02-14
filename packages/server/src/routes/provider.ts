@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Env } from "../index";
 import { completeOAuth, startOAuth } from "../provider/auth/oauth";
+import { normalizeProviderError } from "../provider/errors";
 import { listProviderDescriptors, resolveProviderAdapter } from "../provider/registry";
 import { getProviderRuntime } from "../provider/runtime";
 import { providerAuthStateSchema, providerDescriptorSchema } from "../provider/schema";
@@ -56,12 +57,14 @@ providerRouter.post("/api/providers/:providerId/auth/token", async c => {
   const providerId = c.req.param("providerId");
   const adapter = resolveProviderAdapter(providerId);
   if (!adapter) {
-    return c.json({ error: "Provider not found" }, 404);
+    const normalized = normalizeProviderError(new Error("Provider not found"));
+    return c.json(normalized, normalized.status);
   }
 
   const body = setTokenBodySchema.safeParse(await c.req.json().catch(() => ({})));
   if (!body.success) {
-    return c.json({ error: "Invalid token payload" }, 400);
+    const normalized = normalizeProviderError(new Error("Invalid token payload"));
+    return c.json(normalized, normalized.status);
   }
 
   await providerRuntime.authService.setToken({
@@ -76,7 +79,8 @@ providerRouter.delete("/api/providers/:providerId/auth/token", async c => {
   const providerId = c.req.param("providerId");
   const adapter = resolveProviderAdapter(providerId);
   if (!adapter) {
-    return c.json({ error: "Provider not found" }, 404);
+    const normalized = normalizeProviderError(new Error("Provider not found"));
+    return c.json(normalized, normalized.status);
   }
 
   await providerRuntime.authService.clear(providerId);
@@ -88,7 +92,8 @@ providerRouter.post("/api/providers/:providerId/oauth/authorize", async c => {
   const providerId = c.req.param("providerId");
   const adapter = resolveProviderAdapter(providerId);
   if (!adapter) {
-    return c.json({ error: "Provider not found" }, 404);
+    const normalized = normalizeProviderError(new Error("Provider not found"));
+    return c.json(normalized, normalized.status);
   }
 
   return c.json(startOAuth(providerId));
@@ -98,7 +103,8 @@ providerRouter.post("/api/providers/:providerId/oauth/callback", async c => {
   const providerId = c.req.param("providerId");
   const adapter = resolveProviderAdapter(providerId);
   if (!adapter) {
-    return c.json({ error: "Provider not found" }, 404);
+    const normalized = normalizeProviderError(new Error("Provider not found"));
+    return c.json(normalized, normalized.status);
   }
 
   completeOAuth(providerId);

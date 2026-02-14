@@ -41,6 +41,7 @@ describe("chat provider selection", () => {
 
     expect(response.status).toBe(401);
     const payload = await response.json();
-    expect(String(payload.error)).toContain("not authenticated");
+    expect(payload.error?.code).toBe("PROVIDER_UNAUTHENTICATED");
+    expect(String(payload.error?.message)).toContain("not authenticated");
   });
 });
