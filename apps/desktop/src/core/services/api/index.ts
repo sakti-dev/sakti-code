@@ -5,6 +5,14 @@
  * Part of Phase 6: Cleanup & Optimization
  */
 
+export { createProviderClient } from "./provider-client";
+export type {
+  CreateProviderClientOptions,
+  ProviderAuthState,
+  ProviderClient,
+  ProviderDescriptor,
+  ProviderModel,
+} from "./provider-client";
 export { createSDKClient } from "./sdk-client";
 export type {
   CreateSDKClientOptions,

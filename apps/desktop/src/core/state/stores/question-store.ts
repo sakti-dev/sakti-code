@@ -76,7 +76,8 @@ export interface QuestionActions {
 }
 
 function normalizeQuestionRequest(request: QuestionRequest): QuestionRequest {
-  if (request.questions.length > 0) {
+  const structuredQuestions = Array.isArray(request.questions) ? request.questions : [];
+  if (structuredQuestions.length > 0) {
     return request;
   }
 

@@ -9,6 +9,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionController } from "../../src/session/controller";
 import { SessionConfig } from "../../src/session/types";
 
+vi.mock("../../src/agent/workflow/factory", () => ({
+  createAgent: vi.fn(() => ({
+    id: "test-agent",
+    type: "build",
+    model: "test-model",
+    systemPrompt: "test",
+    tools: {},
+    maxIterations: 1,
+  })),
+}));
+
 vi.mock("../../src/session/processor", () => ({
   AgentProcessor: class MockAgentProcessor {
     async run() {

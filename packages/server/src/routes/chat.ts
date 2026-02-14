@@ -16,6 +16,14 @@ import { z } from "zod";
 import { MessagePartUpdated, MessageUpdated, publish, SessionStatus } from "../bus";
 import type { Env } from "../index";
 import { createSessionMessage, sessionBridge } from "../middleware/session-bridge";
+import { resolveOAuthAccessToken } from "../provider/auth/oauth";
+import { normalizeProviderError } from "../provider/errors";
+import {
+  getProviderRuntime,
+  hasProviderEnvironmentCredential,
+  providerCredentialEnvVar,
+  resolveChatSelection,
+} from "../provider/runtime";
 import { getSessionManager } from "../runtime";
 import { getSessionMessages } from "../state/session-message-store";
 
@@ -280,6 +288,8 @@ const chatMessageSchema = z.object({
   ]),
   messageId: z.string().optional(),
   retryOfAssistantMessageId: z.string().optional(),
+  providerId: z.string().optional(),
+  modelId: z.string().optional(),
   stream: z.boolean().optional().default(true),
 });
 
@@ -841,6 +851,10 @@ app.post("/api/chat", async c => {
       ? body.retryOfAssistantMessageId
       : undefined;
   const shouldStream = body.stream !== false;
+  const selection = resolveChatSelection({
+    providerId: body.providerId,
+    modelId: body.modelId,
+  });
 
   // Parse message - support both simple string and multimodal formats
   let messageText = "";
@@ -932,6 +946,30 @@ app.post("/api/chat", async c => {
   const directory = instanceContext?.directory;
   if (!directory) {
     return c.json({ error: "No workspace directory" }, 400);
+  }
+
+  const providerRuntime = getProviderRuntime();
+  const provider = providerRuntime.registry.adapters.get(selection.providerId);
+  if (!provider) {
+    const normalized = normalizeProviderError(
+      new Error(`Unknown provider: ${selection.providerId}`)
+    );
+    return c.json(normalized, normalized.status);
+  }
+
+  const authState = await providerRuntime.authService.getState(selection.providerId);
+  const hasEnvCredential = hasProviderEnvironmentCredential(selection.providerId);
+  const storedCredential = await providerRuntime.authService.getCredential(selection.providerId);
+  if (
+    selection.explicit &&
+    authState.status !== "connected" &&
+    !hasEnvCredential &&
+    !storedCredential
+  ) {
+    const normalized = normalizeProviderError(
+      new Error(`Provider ${selection.providerId} is not authenticated`)
+    );
+    return c.json(normalized, normalized.status);
   }
 
   logger.debug("Getting or creating session controller", {
@@ -1029,8 +1067,8 @@ app.post("/api/chat", async c => {
           id: messageId,
           sessionID: session.sessionId,
           parentID: userMessageId,
-          modelID: "unknown",
-          providerID: "unknown",
+          modelID: selection.modelId,
+          providerID: selection.providerId,
           time: {
             created: Date.now(),
           },
@@ -1076,16 +1114,15 @@ app.post("/api/chat", async c => {
           info: cloneAssistantInfo(assistantInfo),
         });
 
-        // Check if AI provider is configured
-        if (!process.env.ZAI_API_KEY && !process.env.OPENAI_API_KEY) {
+        // Check if selected provider is configured
+        if (!hasEnvCredential && !storedCredential) {
           logger.error("No AI provider configured", undefined, {
             module: "chat",
             sessionId: session.sessionId,
           });
           writeStreamEvent({
             type: "error",
-            errorText:
-              "No AI provider configured. Please set ZAI_API_KEY or OPENAI_API_KEY environment variable.",
+            errorText: `Provider ${selection.providerId} is not configured. Connect it in Settings or set environment credentials.`,
           });
           writeStreamEvent({
             type: "finish",
@@ -1213,308 +1250,334 @@ app.post("/api/chat", async c => {
             status: { type: "busy" },
           });
 
-          // Process the message with agent and stream events
-          const result = await controller.processMessage(messageText, {
-            onEvent: event => {
-              // Publish Opencode-style part event to Bus (for SSE streaming)
-              queuePartEvent(event);
+          const processAgentMessage = () =>
+            controller.processMessage(messageText, {
+              onEvent: event => {
+                // Publish Opencode-style part event to Bus (for SSE streaming)
+                queuePartEvent(event);
 
-              // Forward agent events to the stream
-              logger.debug("Agent event received", {
-                module: "chat",
-                sessionId: session.sessionId,
-                eventType: event.type,
-              });
-
-              // Update mode detection
-              const newMode = detectMode(modeState, event.type);
-              if (newMode !== modeState.mode) {
-                const previousMode = modeState.mode;
-                modeState.mode = newMode;
-                logger.info(`Mode transition: ${previousMode} → ${newMode}`, {
+                // Forward agent events to the stream
+                logger.debug("Agent event received", {
                   module: "chat",
                   sessionId: session.sessionId,
+                  eventType: event.type,
                 });
 
-                // Initialize run card if entering planning mode
-                if (newMode === "planning" && !modeState.runId) {
-                  modeState.runId = uuidv7();
-                  const groupId = `${modeState.runId}-group-1`;
-                  modeState.runCardData = {
-                    runId: modeState.runId,
-                    title: "Planning Session",
-                    status: "planning",
-                    subtitle: messageText.slice(0, 100),
-                    filesEditedOrder: [],
-                    groupsOrder: [groupId],
-                    startedAt: Date.now(),
-                  };
-                  modeState.runGroupData = {
-                    id: groupId,
-                    index: 1,
-                    title: "Progress Updates",
-                    collapsed: false,
-                    itemsOrder: [],
-                  };
+                // Update mode detection
+                const newMode = detectMode(modeState, event.type);
+                if (newMode !== modeState.mode) {
+                  const previousMode = modeState.mode;
+                  modeState.mode = newMode;
+                  logger.info(`Mode transition: ${previousMode} → ${newMode}`, {
+                    module: "chat",
+                    sessionId: session.sessionId,
+                  });
 
-                  writeStreamEvent({
-                    type: "data-run",
-                    id: modeState.runId,
-                    data: modeState.runCardData,
-                  } as unknown as Parameters<typeof writer.write>[0]);
+                  // Initialize run card if entering planning mode
+                  if (newMode === "planning" && !modeState.runId) {
+                    modeState.runId = uuidv7();
+                    const groupId = `${modeState.runId}-group-1`;
+                    modeState.runCardData = {
+                      runId: modeState.runId,
+                      title: "Planning Session",
+                      status: "planning",
+                      subtitle: messageText.slice(0, 100),
+                      filesEditedOrder: [],
+                      groupsOrder: [groupId],
+                      startedAt: Date.now(),
+                    };
+                    modeState.runGroupData = {
+                      id: groupId,
+                      index: 1,
+                      title: "Progress Updates",
+                      collapsed: false,
+                      itemsOrder: [],
+                    };
 
+                    writeStreamEvent({
+                      type: "data-run",
+                      id: modeState.runId,
+                      data: modeState.runCardData,
+                    } as unknown as Parameters<typeof writer.write>[0]);
+
+                    writeStreamEvent({
+                      type: "data-run-group",
+                      id: groupId,
+                      data: modeState.runGroupData,
+                    } as unknown as Parameters<typeof writer.write>[0]);
+                  }
+
+                  // Send mode change metadata (after runId init when planning)
                   writeStreamEvent({
-                    type: "data-run-group",
-                    id: groupId,
-                    data: modeState.runGroupData,
+                    type: "data-mode-metadata",
+                    id: messageId,
+                    data: {
+                      mode: newMode,
+                      runId: modeState.runId,
+                      startedAt: Date.now(),
+                    },
                   } as unknown as Parameters<typeof writer.write>[0]);
                 }
 
-                // Send mode change metadata (after runId init when planning)
-                writeStreamEvent({
-                  type: "data-mode-metadata",
-                  id: messageId,
-                  data: {
-                    mode: newMode,
-                    runId: modeState.runId,
-                    startedAt: Date.now(),
-                  },
-                } as unknown as Parameters<typeof writer.write>[0]);
-              }
-
-              // Handle text content from agent
-              if (event.type === "text") {
-                hasTextDeltas = true;
-                writeStreamEvent({
-                  type: "text-delta",
-                  id: messageId,
-                  delta: event.text,
-                } as TextDeltaEvent);
-              }
-
-              // Handle reasoning events → data-thought
-              if (event.type === "reasoning-start") {
-                modeState.hasReasoning = true;
-                const reasoningId = event.reasoningId as string;
-                modeState.reasoningTexts.set(reasoningId, "");
-
-                writeStreamEvent({
-                  type: "data-thought",
-                  id: reasoningId,
-                  data: {
-                    id: reasoningId,
-                    status: "thinking",
-                    text: "",
-                    agentId: event.agentId as string | undefined,
-                  },
-                } as unknown as Parameters<typeof writer.write>[0]);
-              }
-
-              if (event.type === "reasoning-delta") {
-                const reasoningId = event.reasoningId as string;
-                const currentText = modeState.reasoningTexts.get(reasoningId) || "";
-                const newText = currentText + (event.text as string);
-                modeState.reasoningTexts.set(reasoningId, newText);
-
-                writeStreamEvent({
-                  type: "data-thought",
-                  id: reasoningId,
-                  data: {
-                    id: reasoningId,
-                    status: "thinking",
-                    text: newText,
-                    agentId: event.agentId as string | undefined,
-                  },
-                } as unknown as Parameters<typeof writer.write>[0]);
-              }
-
-              if (event.type === "reasoning-end") {
-                const reasoningId = event.reasoningId as string;
-                modeState.reasoningTexts.delete(reasoningId);
-
-                writeStreamEvent({
-                  type: "data-thought",
-                  id: reasoningId,
-                  data: {
-                    id: reasoningId,
-                    status: "complete",
-                    durationMs: event.durationMs as number,
-                    agentId: event.agentId,
-                  },
-                } as unknown as Parameters<typeof writer.write>[0]);
-              }
-
-              // Handle tool-call events → data-action (build mode)
-              if (event.type === "tool-call") {
-                modeState.hasToolCalls = true;
-
-                logger.info(`Tool call: ${event.toolName}`, {
-                  module: "chat",
-                  sessionId: session.sessionId,
-                  toolName: event.toolName,
-                  toolCallId: event.toolCallId,
-                });
-
-                // Send tool call as data-tool-call event
-                writeStreamEvent({
-                  type: "data-tool-call",
-                  id: event.toolCallId as string,
-                  data: {
-                    toolCallId: event.toolCallId as string,
-                    toolName: event.toolName as string,
-                    args: event.args,
-                  },
-                } as unknown as Parameters<typeof writer.write>[0]);
-
-                // Create and send AgentEvent as data-action
-                const agentEvent = createAgentEvent(
-                  {
-                    toolCallId: event.toolCallId as string,
-                    toolName: event.toolName as string,
-                    args: event.args,
-                  },
-                  event.agentId as string | undefined
-                );
-                modeState.toolCallTimestamps.set(agentEvent.id, agentEvent.ts);
-                writeStreamEvent({
-                  type: "data-action",
-                  id: agentEvent.id,
-                  data: agentEvent,
-                } as unknown as Parameters<typeof writer.write>[0]);
-
-                // Also emit as data-run-item for planning mode
-                if (modeState.mode === "planning" && modeState.runId) {
+                // Handle text content from agent
+                if (event.type === "text") {
+                  hasTextDeltas = true;
                   writeStreamEvent({
-                    type: "data-run-item",
+                    type: "text-delta",
+                    id: messageId,
+                    delta: event.text,
+                  } as TextDeltaEvent);
+                }
+
+                // Handle reasoning events → data-thought
+                if (event.type === "reasoning-start") {
+                  modeState.hasReasoning = true;
+                  const reasoningId = event.reasoningId as string;
+                  modeState.reasoningTexts.set(reasoningId, "");
+
+                  writeStreamEvent({
+                    type: "data-thought",
+                    id: reasoningId,
+                    data: {
+                      id: reasoningId,
+                      status: "thinking",
+                      text: "",
+                      agentId: event.agentId as string | undefined,
+                    },
+                  } as unknown as Parameters<typeof writer.write>[0]);
+                }
+
+                if (event.type === "reasoning-delta") {
+                  const reasoningId = event.reasoningId as string;
+                  const currentText = modeState.reasoningTexts.get(reasoningId) || "";
+                  const newText = currentText + (event.text as string);
+                  modeState.reasoningTexts.set(reasoningId, newText);
+
+                  writeStreamEvent({
+                    type: "data-thought",
+                    id: reasoningId,
+                    data: {
+                      id: reasoningId,
+                      status: "thinking",
+                      text: newText,
+                      agentId: event.agentId as string | undefined,
+                    },
+                  } as unknown as Parameters<typeof writer.write>[0]);
+                }
+
+                if (event.type === "reasoning-end") {
+                  const reasoningId = event.reasoningId as string;
+                  modeState.reasoningTexts.delete(reasoningId);
+
+                  writeStreamEvent({
+                    type: "data-thought",
+                    id: reasoningId,
+                    data: {
+                      id: reasoningId,
+                      status: "complete",
+                      durationMs: event.durationMs as number,
+                      agentId: event.agentId,
+                    },
+                  } as unknown as Parameters<typeof writer.write>[0]);
+                }
+
+                // Handle tool-call events → data-action (build mode)
+                if (event.type === "tool-call") {
+                  modeState.hasToolCalls = true;
+
+                  logger.info(`Tool call: ${event.toolName}`, {
+                    module: "chat",
+                    sessionId: session.sessionId,
+                    toolName: event.toolName,
+                    toolCallId: event.toolCallId,
+                  });
+
+                  // Send tool call as data-tool-call event
+                  writeStreamEvent({
+                    type: "data-tool-call",
+                    id: event.toolCallId as string,
+                    data: {
+                      toolCallId: event.toolCallId as string,
+                      toolName: event.toolName as string,
+                      args: event.args,
+                    },
+                  } as unknown as Parameters<typeof writer.write>[0]);
+
+                  // Create and send AgentEvent as data-action
+                  const agentEvent = createAgentEvent(
+                    {
+                      toolCallId: event.toolCallId as string,
+                      toolName: event.toolName as string,
+                      args: event.args,
+                    },
+                    event.agentId as string | undefined
+                  );
+                  modeState.toolCallTimestamps.set(agentEvent.id, agentEvent.ts);
+                  writeStreamEvent({
+                    type: "data-action",
                     id: agentEvent.id,
                     data: agentEvent,
                   } as unknown as Parameters<typeof writer.write>[0]);
 
-                  // Update run card with file info if applicable
-                  if (agentEvent.file?.path && modeState.runCardData) {
-                    if (!modeState.runCardData.filesEditedOrder.includes(agentEvent.file.path)) {
-                      modeState.runCardData.filesEditedOrder.push(agentEvent.file.path);
-                      writeStreamEvent({
-                        type: "data-run",
-                        id: modeState.runId,
-                        data: modeState.runCardData,
-                      } as unknown as Parameters<typeof writer.write>[0]);
+                  // Also emit as data-run-item for planning mode
+                  if (modeState.mode === "planning" && modeState.runId) {
+                    writeStreamEvent({
+                      type: "data-run-item",
+                      id: agentEvent.id,
+                      data: agentEvent,
+                    } as unknown as Parameters<typeof writer.write>[0]);
 
-                      const runFile: RunFileData = {
-                        path: agentEvent.file.path,
-                        cta: agentEvent.diff ? "open-diff" : "open",
-                        diff: agentEvent.diff,
-                      };
-                      writeStreamEvent({
-                        type: "data-run-file",
-                        id: agentEvent.file.path,
-                        data: runFile,
-                      } as unknown as Parameters<typeof writer.write>[0]);
+                    // Update run card with file info if applicable
+                    if (agentEvent.file?.path && modeState.runCardData) {
+                      if (!modeState.runCardData.filesEditedOrder.includes(agentEvent.file.path)) {
+                        modeState.runCardData.filesEditedOrder.push(agentEvent.file.path);
+                        writeStreamEvent({
+                          type: "data-run",
+                          id: modeState.runId,
+                          data: modeState.runCardData,
+                        } as unknown as Parameters<typeof writer.write>[0]);
+
+                        const runFile: RunFileData = {
+                          path: agentEvent.file.path,
+                          cta: agentEvent.diff ? "open-diff" : "open",
+                          diff: agentEvent.diff,
+                        };
+                        writeStreamEvent({
+                          type: "data-run-file",
+                          id: agentEvent.file.path,
+                          data: runFile,
+                        } as unknown as Parameters<typeof writer.write>[0]);
+                      }
                     }
-                  }
 
-                  if (modeState.runGroupData) {
-                    if (!modeState.runGroupData.itemsOrder.includes(agentEvent.id)) {
-                      modeState.runGroupData.itemsOrder.push(agentEvent.id);
-                      writeStreamEvent({
-                        type: "data-run-group",
-                        id: modeState.runGroupData.id,
-                        data: modeState.runGroupData,
-                      } as unknown as Parameters<typeof writer.write>[0]);
+                    if (modeState.runGroupData) {
+                      if (!modeState.runGroupData.itemsOrder.includes(agentEvent.id)) {
+                        modeState.runGroupData.itemsOrder.push(agentEvent.id);
+                        writeStreamEvent({
+                          type: "data-run-group",
+                          id: modeState.runGroupData.id,
+                          data: modeState.runGroupData,
+                        } as unknown as Parameters<typeof writer.write>[0]);
+                      }
                     }
                   }
                 }
-              }
 
-              // Handle tool-result events → update action
-              if (event.type === "tool-result") {
-                logger.info(`Tool result: ${event.toolName}`, {
-                  module: "chat",
-                  sessionId: session.sessionId,
-                  toolName: event.toolName,
-                  toolCallId: event.toolCallId,
-                });
+                // Handle tool-result events → update action
+                if (event.type === "tool-result") {
+                  logger.info(`Tool result: ${event.toolName}`, {
+                    module: "chat",
+                    sessionId: session.sessionId,
+                    toolName: event.toolName,
+                    toolCallId: event.toolCallId,
+                  });
 
-                // Send tool result as data-tool-result event
-                writeStreamEvent({
-                  type: "data-tool-result",
-                  id: event.toolCallId as string,
-                  data: {
-                    toolCallId: event.toolCallId as string,
-                    result: event.result,
-                  },
-                } as unknown as Parameters<typeof writer.write>[0]);
-
-                // Update action with result info
-                const resultText =
-                  typeof event.result === "string" ? event.result : JSON.stringify(event.result);
-                const originalTs =
-                  modeState.toolCallTimestamps.get(event.toolCallId as string) ?? Date.now();
-                writeStreamEvent({
-                  type: "data-action",
-                  id: event.toolCallId as string,
-                  data: {
-                    id: event.toolCallId as string,
-                    ts: originalTs,
-                    kind: "tool",
-                    title: `${event.toolName as string} completed`,
-                    subtitle: resultText.slice(0, 100),
-                    toolCallId: event.toolCallId as string,
-                    agentId: event.agentId as string | undefined,
-                  },
-                } as unknown as Parameters<typeof writer.write>[0]);
-                modeState.toolCallTimestamps.delete(event.toolCallId as string);
-              }
-
-              // Handle finish events
-              if (event.type === "retry") {
-                const attempt =
-                  typeof event.attempt === "number" && Number.isFinite(event.attempt)
-                    ? event.attempt
-                    : 1;
-                const message =
-                  typeof event.message === "string" && event.message.length > 0
-                    ? event.message
-                    : "Retrying";
-                const next =
-                  typeof event.next === "number" && Number.isFinite(event.next)
-                    ? event.next
-                    : Date.now();
-                void publish(SessionStatus, {
-                  sessionID: session.sessionId,
-                  status: {
-                    type: "retry",
-                    attempt,
-                    message,
-                    next,
-                  },
-                });
-              }
-
-              // Handle finish events
-              if (event.type === "finish") {
-                logger.debug(`Agent finish: ${event.finishReason}`, {
-                  module: "chat",
-                  sessionId: session.sessionId,
-                  finishReason: event.finishReason,
-                });
-
-                // Update run card status if in planning mode
-                if (modeState.mode === "planning" && modeState.runCardData) {
-                  modeState.runCardData.status = "done";
-                  modeState.runCardData.finishedAt = Date.now();
-                  if (modeState.runCardData.startedAt) {
-                    modeState.runCardData.elapsedMs = Date.now() - modeState.runCardData.startedAt;
-                  }
+                  // Send tool result as data-tool-result event
                   writeStreamEvent({
-                    type: "data-run",
-                    id: modeState.runId,
-                    data: modeState.runCardData,
+                    type: "data-tool-result",
+                    id: event.toolCallId as string,
+                    data: {
+                      toolCallId: event.toolCallId as string,
+                      result: event.result,
+                    },
                   } as unknown as Parameters<typeof writer.write>[0]);
+
+                  // Update action with result info
+                  const resultText =
+                    typeof event.result === "string" ? event.result : JSON.stringify(event.result);
+                  const originalTs =
+                    modeState.toolCallTimestamps.get(event.toolCallId as string) ?? Date.now();
+                  writeStreamEvent({
+                    type: "data-action",
+                    id: event.toolCallId as string,
+                    data: {
+                      id: event.toolCallId as string,
+                      ts: originalTs,
+                      kind: "tool",
+                      title: `${event.toolName as string} completed`,
+                      subtitle: resultText.slice(0, 100),
+                      toolCallId: event.toolCallId as string,
+                      agentId: event.agentId as string | undefined,
+                    },
+                  } as unknown as Parameters<typeof writer.write>[0]);
+                  modeState.toolCallTimestamps.delete(event.toolCallId as string);
                 }
-              }
-            },
-          });
+
+                // Handle finish events
+                if (event.type === "retry") {
+                  const attempt =
+                    typeof event.attempt === "number" && Number.isFinite(event.attempt)
+                      ? event.attempt
+                      : 1;
+                  const message =
+                    typeof event.message === "string" && event.message.length > 0
+                      ? event.message
+                      : "Retrying";
+                  const next =
+                    typeof event.next === "number" && Number.isFinite(event.next)
+                      ? event.next
+                      : Date.now();
+                  void publish(SessionStatus, {
+                    sessionID: session.sessionId,
+                    status: {
+                      type: "retry",
+                      attempt,
+                      message,
+                      next,
+                    },
+                  });
+                }
+
+                // Handle finish events
+                if (event.type === "finish") {
+                  logger.debug(`Agent finish: ${event.finishReason}`, {
+                    module: "chat",
+                    sessionId: session.sessionId,
+                    finishReason: event.finishReason,
+                  });
+
+                  // Update run card status if in planning mode
+                  if (modeState.mode === "planning" && modeState.runCardData) {
+                    modeState.runCardData.status = "done";
+                    modeState.runCardData.finishedAt = Date.now();
+                    if (modeState.runCardData.startedAt) {
+                      modeState.runCardData.elapsedMs =
+                        Date.now() - modeState.runCardData.startedAt;
+                    }
+                    writeStreamEvent({
+                      type: "data-run",
+                      id: modeState.runId,
+                      data: modeState.runCardData,
+                    } as unknown as Parameters<typeof writer.write>[0]);
+                  }
+                }
+              },
+            });
+
+          // Process the message with agent and stream events
+          const result = await (async () => {
+            if (hasEnvCredential || !storedCredential) {
+              return processAgentMessage();
+            }
+
+            const envVar = providerCredentialEnvVar(selection.providerId);
+            const token =
+              storedCredential.kind === "oauth"
+                ? await resolveOAuthAccessToken(selection.providerId, providerRuntime.authService)
+                : storedCredential.token;
+            if (!envVar || !token) {
+              return processAgentMessage();
+            }
+
+            const previous = process.env[envVar];
+            process.env[envVar] = token;
+            try {
+              return await processAgentMessage();
+            } finally {
+              if (previous === undefined) delete process.env[envVar];
+              else process.env[envVar] = previous;
+            }
+          })();
           await partPublishQueue;
 
           if (result.status === "failed") {

@@ -19,3 +19,8 @@ Electron + SolidJS + ai sdk + Hono
 pnpm install
 pnpm dev
 ```
+
+## Provider Docs
+
+- docs/providers/README.md
+- docs/providers/credential-storage.md

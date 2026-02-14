@@ -14,6 +14,7 @@
 
 import type { ChatUIMessage } from "@/core/chat/types/ui-message";
 import { createLogger } from "@/core/shared/logger";
+import { createProviderClient, type ProviderClient } from "./provider-client";
 
 const logger = createLogger("desktop:api");
 
@@ -92,6 +93,7 @@ export interface SessionInfo {
  */
 export class EkacodeApiClient {
   private config: ApiClientConfig;
+  private providerClient?: ProviderClient;
 
   constructor(config: ApiClientConfig) {
     this.config = config;
@@ -114,6 +116,23 @@ export class EkacodeApiClient {
       "Content-Type": "application/json",
       Authorization: this.authHeader(),
     };
+  }
+
+  getProviderClient(): ProviderClient {
+    if (!this.providerClient) {
+      this.providerClient = createProviderClient({
+        fetcher: (path, init) =>
+          fetch(`${this.config.baseUrl}${path}`, {
+            ...init,
+            headers: {
+              ...this.commonHeaders(),
+              ...(init?.headers ? Object.fromEntries(new Headers(init.headers).entries()) : {}),
+            },
+          }),
+      });
+    }
+
+    return this.providerClient;
   }
 
   // ============================================================
@@ -179,6 +198,8 @@ export class EkacodeApiClient {
           message: messageText,
           messageId: options.messageId,
           retryOfAssistantMessageId: options.retryOfAssistantMessageId,
+          providerId: localStorage.getItem("ekacode:selected-provider") || undefined,
+          modelId: localStorage.getItem("ekacode:selected-model") || undefined,
           stream: true,
         }),
         signal: options.signal,

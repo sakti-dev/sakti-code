@@ -7,7 +7,55 @@
  * Updated for simplified single-agent architecture using processMessage API.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../../src/runtime", () => {
+  const controllers = new Map<
+    string,
+    {
+      sessionId: string;
+      processMessage: () => Promise<{ status: "completed"; finalContent: string }>;
+      getStatus: () => { sessionId: string; phase: "completed" };
+      hasIncompleteWork: () => boolean;
+    }
+  >();
+  let lastRequestedSessionId: string | null = null;
+
+  const ensureController = (sessionId: string) => {
+    const existing = controllers.get(sessionId);
+    if (existing) return existing;
+    const controller = {
+      sessionId,
+      async processMessage() {
+        return {
+          status: "completed" as const,
+          finalContent: "mock-response",
+        };
+      },
+      getStatus: () => ({
+        sessionId,
+        phase: "completed" as const,
+      }),
+      hasIncompleteWork: () => false,
+    };
+    controllers.set(sessionId, controller);
+    return controller;
+  };
+
+  return {
+    getSessionManager: () => ({
+      async getSession(sessionId: string) {
+        lastRequestedSessionId = sessionId;
+        return controllers.get(sessionId);
+      },
+      async createSession() {
+        if (lastRequestedSessionId) {
+          ensureController(lastRequestedSessionId);
+        }
+      },
+    }),
+  };
+});
 
 describe("Chat route integration", () => {
   beforeEach(async () => {
@@ -183,7 +231,7 @@ describe("Chat route integration", () => {
     it("should use existing session when provided", async () => {
       const chatRouter = (await import("../../src/routes/chat")).default;
 
-      const sessionId = "test-session-123";
+      const sessionId = "019c0000-0000-7000-8000-000000000121";
 
       const response = await chatRouter.request(`http://localhost/api/chat?directory=/tmp/chat`, {
         method: "POST",
@@ -206,7 +254,7 @@ describe("Chat route integration", () => {
     it("should process multiple messages in the same session", async () => {
       const chatRouter = (await import("../../src/routes/chat")).default;
 
-      const sessionId = "test-session-multi-123";
+      const sessionId = "019c0000-0000-7000-8000-000000000122";
 
       // First message
       const response1 = await chatRouter.request(`http://localhost/api/chat?directory=/tmp/chat`, {

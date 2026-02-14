@@ -1,5 +1,8 @@
 import type { RecentProject } from "@/core/chat/types";
+import { createApiClient } from "@/core/services/api/api-client";
+import type { ProviderClient } from "@/core/services/api/provider-client";
 import { cn } from "@/utils";
+import { ProviderSettings } from "@/views/components/provider-settings";
 import { For, Show, createSignal, onMount } from "solid-js";
 
 export default function SettingsView() {
@@ -7,6 +10,7 @@ export default function SettingsView() {
   const [recentProjects, setRecentProjects] = createSignal<RecentProject[]>([]);
   const [appVersion, setAppVersion] = createSignal<string>("");
   const [platform, setPlatform] = createSignal<string>("");
+  const [providerClient, setProviderClient] = createSignal<ProviderClient | null>(null);
 
   onMount(async () => {
     // Load theme
@@ -40,6 +44,9 @@ export default function SettingsView() {
 
     const plat = await window.ekacodeAPI.app.getPlatform();
     setPlatform(plat);
+
+    const apiClient = await createApiClient();
+    setProviderClient(apiClient.getProviderClient());
   });
 
   const toggleTheme = () => {
@@ -204,6 +211,8 @@ export default function SettingsView() {
             </div>
           </div>
         </section>
+
+        <Show when={providerClient()}>{client => <ProviderSettings client={client()} />}</Show>
 
         {/* About Section */}
         <section>

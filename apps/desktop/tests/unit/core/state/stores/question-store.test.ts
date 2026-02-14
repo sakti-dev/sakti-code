@@ -37,7 +37,17 @@ describe("Question Store", () => {
 
       actions.add(question);
 
-      expect(state.byId["q-1"]).toEqual(question);
+      expect(state.byId["q-1"]).toEqual(
+        expect.objectContaining({
+          ...question,
+          questions: [
+            {
+              question: question.question,
+              options: question.options?.map(label => ({ label })),
+            },
+          ],
+        })
+      );
     });
 
     it("adds question to session grouping", () => {
@@ -142,7 +152,17 @@ describe("Question Store", () => {
       const question = createSampleQuestion();
       actions.add(question);
 
-      expect(actions.getById("q-1")).toEqual(question);
+      expect(actions.getById("q-1")).toEqual(
+        expect.objectContaining({
+          ...question,
+          questions: [
+            {
+              question: question.question,
+              options: question.options?.map(label => ({ label })),
+            },
+          ],
+        })
+      );
     });
 
     it("returns undefined for non-existent ID", () => {

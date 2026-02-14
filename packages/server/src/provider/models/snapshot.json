@@ -1,0 +1,9 @@
+{
+  "zai": {
+    "name": "Z.AI",
+    "models": {
+      "glm-4.7": { "id": "glm-4.7", "name": "GLM-4.7" },
+      "glm-4.6v": { "id": "glm-4.6v", "name": "GLM-4.6V" }
+    }
+  }
+}

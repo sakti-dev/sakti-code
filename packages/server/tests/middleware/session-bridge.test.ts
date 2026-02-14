@@ -35,8 +35,8 @@ describe("session bridge middleware", () => {
     // Mock uuidv7 to return sequential IDs
     uuidv7Mock.mockImplementation(() => {
       const ids = [
-        "01234567-89ab-cdef-0123-456789abcdef", // session ID
-        "11111111-89ab-cdef-0123-456789abcdef", // tool session 1
+        "01234567-89ab-7123-8123-456789abcdef", // session ID
+        "11111111-89ab-7123-8123-456789abcdef", // tool session 1
       ];
       return ids[callCount++] || `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`;
     });
@@ -72,14 +72,14 @@ describe("session bridge middleware", () => {
       const data = await response.json();
 
       expect(data.hasSession).toBe(true);
-      expect(data.sessionId).toBe("01234567-89ab-cdef-0123-456789abcdef");
+      expect(data.sessionId).toBe("01234567-89ab-7123-8123-456789abcdef");
     });
 
     it("should persist session to database", async () => {
       await mockApp.request("/test");
 
       const { getSession } = await import("../../db/sessions");
-      const session = await getSession("01234567-89ab-cdef-0123-456789abcdef");
+      const session = await getSession("01234567-89ab-7123-8123-456789abcdef");
 
       expect(session).toBeDefined();
       expect(session?.resourceId).toBe("local");
@@ -157,16 +157,17 @@ describe("session bridge middleware", () => {
     });
 
     it("should create new session when provided sessionId does not exist", async () => {
+      const sessionId = "22222222-89ab-7123-8123-456789abcdef";
       const response = await mockApp.request("/test", {
         headers: {
-          "X-Session-ID": "new-session-id",
+          "X-Session-ID": sessionId,
         },
       });
 
       const data = await response.json();
       expect(response.status).toBe(200);
       expect(data.hasSession).toBe(true);
-      expect(data.sessionId).toBe("new-session-id");
+      expect(data.sessionId).toBe(sessionId);
     });
   });
 

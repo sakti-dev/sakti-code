@@ -4,6 +4,7 @@ import path from "node:path";
 
 const testHome = path.resolve(process.cwd(), ".ekacode-test");
 process.env.EKACODE_HOME = testHome;
+process.env.EKACODE_CREDENTIAL_KEY = Buffer.alloc(32, 7).toString("base64");
 
 const paths = resolveAppPaths({
   mode: "dev",

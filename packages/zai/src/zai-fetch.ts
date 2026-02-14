@@ -67,18 +67,19 @@ export function createResilientZaiFetch(
   baseFetch: typeof fetch = globalThis.fetch
 ): FetchFunction {
   return async (input, init = {}) => {
+    const requestInit = init as RequestInit & { keepalive?: boolean };
     const maxSocketRetries = Math.max(0, settings.maxSocketRetries ?? 1);
     const retryDelayMs = Math.max(0, settings.retryDelayMs ?? 200);
 
     for (let attempt = 0; attempt <= maxSocketRetries; attempt++) {
       const { signal, cleanup } = withTimeoutSignal(
-        init.signal,
+        requestInit.signal,
         settings.requestTimeoutMs ?? DEFAULT_TIMEOUT_MS
       );
       try {
         return await baseFetch(input, {
-          ...init,
-          keepalive: init.keepalive ?? true,
+          ...requestInit,
+          keepalive: requestInit.keepalive ?? true,
           signal,
         });
       } catch (error) {
