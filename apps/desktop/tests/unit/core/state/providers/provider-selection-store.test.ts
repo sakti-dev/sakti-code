@@ -112,6 +112,225 @@ describe("provider-selection-store", () => {
     });
   });
 
+  it("updates selected model optimistically before persistence resolves", async () => {
+    const { createProviderSelectionStore } =
+      await import("@/core/state/providers/provider-selection-store");
+
+    let resolveUpdate: (() => void) | null = null;
+    const updatePreferences = vi.fn().mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveUpdate = () =>
+            resolve({
+              selectedProviderId: "openai",
+              selectedModelId: "openai/gpt-4o-mini",
+              updatedAt: "2026-02-14T00:00:01.000Z",
+            });
+        })
+    );
+
+    const client: ProviderClient = {
+      listProviders: vi.fn().mockResolvedValue([
+        { id: "zai", name: "Z.AI" },
+        { id: "openai", name: "OpenAI" },
+      ]),
+      listAuthStates: vi.fn().mockResolvedValue({
+        zai: {
+          providerId: "zai",
+          status: "connected",
+          method: "token",
+          accountLabel: null,
+          updatedAt: "2026-02-14T00:00:00.000Z",
+        },
+        openai: {
+          providerId: "openai",
+          status: "connected",
+          method: "token",
+          accountLabel: null,
+          updatedAt: "2026-02-14T00:00:00.000Z",
+        },
+      }),
+      listAuthMethods: vi.fn().mockResolvedValue({}),
+      listModels: vi.fn().mockResolvedValue([
+        { id: "zai/glm-4.7", providerId: "zai", name: "GLM 4.7" },
+        { id: "openai/gpt-4o-mini", providerId: "openai", name: "GPT-4o mini" },
+      ]),
+      getPreferences: vi
+        .fn()
+        .mockResolvedValueOnce({
+          selectedProviderId: "zai",
+          selectedModelId: "zai/glm-4.7",
+          updatedAt: "2026-02-14T00:00:00.000Z",
+        })
+        .mockResolvedValue({
+          selectedProviderId: "openai",
+          selectedModelId: "openai/gpt-4o-mini",
+          updatedAt: "2026-02-14T00:00:01.000Z",
+        }),
+      updatePreferences,
+      setToken: vi.fn().mockResolvedValue(undefined),
+      clearToken: vi.fn().mockResolvedValue(undefined),
+      oauthAuthorize: vi.fn(),
+      oauthCallback: vi.fn(),
+    };
+
+    await new Promise<void>((resolve, reject) => {
+      createRoot(dispose => {
+        const store = createProviderSelectionStore(client);
+        setTimeout(async () => {
+          try {
+            const pending = store.setSelectedModel("openai/gpt-4o-mini");
+            expect(store.data()?.preferences.selectedModelId).toBe("openai/gpt-4o-mini");
+            expect(store.data()?.preferences.selectedProviderId).toBe("openai");
+            resolveUpdate?.();
+            await pending;
+            dispose();
+            resolve();
+          } catch (error) {
+            dispose();
+            reject(error);
+          }
+        }, 0);
+      });
+    });
+  });
+
+  it("rolls back optimistic selected model when persistence fails", async () => {
+    const { createProviderSelectionStore } =
+      await import("@/core/state/providers/provider-selection-store");
+
+    const client: ProviderClient = {
+      listProviders: vi.fn().mockResolvedValue([
+        { id: "zai", name: "Z.AI" },
+        { id: "openai", name: "OpenAI" },
+      ]),
+      listAuthStates: vi.fn().mockResolvedValue({
+        zai: {
+          providerId: "zai",
+          status: "connected",
+          method: "token",
+          accountLabel: null,
+          updatedAt: "2026-02-14T00:00:00.000Z",
+        },
+        openai: {
+          providerId: "openai",
+          status: "connected",
+          method: "token",
+          accountLabel: null,
+          updatedAt: "2026-02-14T00:00:00.000Z",
+        },
+      }),
+      listAuthMethods: vi.fn().mockResolvedValue({}),
+      listModels: vi.fn().mockResolvedValue([
+        { id: "zai/glm-4.7", providerId: "zai", name: "GLM 4.7" },
+        { id: "openai/gpt-4o-mini", providerId: "openai", name: "GPT-4o mini" },
+      ]),
+      getPreferences: vi.fn().mockResolvedValue({
+        selectedProviderId: "zai",
+        selectedModelId: "zai/glm-4.7",
+        updatedAt: "2026-02-14T00:00:00.000Z",
+      }),
+      updatePreferences: vi.fn().mockRejectedValue(new Error("failed to persist")),
+      setToken: vi.fn().mockResolvedValue(undefined),
+      clearToken: vi.fn().mockResolvedValue(undefined),
+      oauthAuthorize: vi.fn(),
+      oauthCallback: vi.fn(),
+    };
+
+    await new Promise<void>((resolve, reject) => {
+      createRoot(dispose => {
+        const store = createProviderSelectionStore(client);
+        setTimeout(async () => {
+          try {
+            await expect(store.setSelectedModel("openai/gpt-4o-mini")).rejects.toThrow(
+              "failed to persist"
+            );
+            expect(store.data()?.preferences.selectedModelId).toBe("zai/glm-4.7");
+            expect(store.data()?.preferences.selectedProviderId).toBe("zai");
+            dispose();
+            resolve();
+          } catch (error) {
+            dispose();
+            reject(error);
+          }
+        }, 0);
+      });
+    });
+  });
+
+  it("keeps persisted model when a subsequent preferences fetch is stale", async () => {
+    const { createProviderSelectionStore } =
+      await import("@/core/state/providers/provider-selection-store");
+
+    const client: ProviderClient = {
+      listProviders: vi.fn().mockResolvedValue([
+        { id: "opencode", name: "OpenCode Zen" },
+        { id: "openai", name: "OpenAI" },
+      ]),
+      listAuthStates: vi.fn().mockResolvedValue({
+        opencode: {
+          providerId: "opencode",
+          status: "connected",
+          method: "token",
+          accountLabel: null,
+          updatedAt: "2026-02-14T00:00:00.000Z",
+        },
+        openai: {
+          providerId: "openai",
+          status: "connected",
+          method: "token",
+          accountLabel: null,
+          updatedAt: "2026-02-14T00:00:00.000Z",
+        },
+      }),
+      listAuthMethods: vi.fn().mockResolvedValue({}),
+      listModels: vi.fn().mockResolvedValue([
+        { id: "opencode/glm-4.7-free", providerId: "opencode", name: "GLM 4.7 Free" },
+        { id: "opencode/minimax-m2.5-free", providerId: "opencode", name: "MiniMax M2.5 Free" },
+      ]),
+      getPreferences: vi
+        .fn()
+        .mockResolvedValueOnce({
+          selectedProviderId: "opencode",
+          selectedModelId: "opencode/glm-4.7-free",
+          updatedAt: "2026-02-14T00:00:00.000Z",
+        })
+        .mockResolvedValue({
+          // Stale value returned by immediate read-after-write
+          selectedProviderId: "opencode",
+          selectedModelId: "opencode/glm-4.7-free",
+          updatedAt: "2026-02-14T00:00:00.000Z",
+        }),
+      updatePreferences: vi.fn().mockResolvedValue({
+        selectedProviderId: "opencode",
+        selectedModelId: "opencode/minimax-m2.5-free",
+        updatedAt: "2026-02-14T00:00:02.000Z",
+      }),
+      setToken: vi.fn().mockResolvedValue(undefined),
+      clearToken: vi.fn().mockResolvedValue(undefined),
+      oauthAuthorize: vi.fn(),
+      oauthCallback: vi.fn(),
+    };
+
+    await new Promise<void>((resolve, reject) => {
+      createRoot(dispose => {
+        const store = createProviderSelectionStore(client);
+        setTimeout(async () => {
+          try {
+            await store.setSelectedModel("opencode/minimax-m2.5-free");
+            expect(store.data()?.preferences.selectedModelId).toBe("opencode/minimax-m2.5-free");
+            expect(store.data()?.preferences.selectedProviderId).toBe("opencode");
+            dispose();
+            resolve();
+          } catch (error) {
+            dispose();
+            reject(error);
+          }
+        }, 0);
+      });
+    });
+  });
+
   it("groups model search results by provider name", async () => {
     const { createProviderSelectionStore } =
       await import("@/core/state/providers/provider-selection-store");

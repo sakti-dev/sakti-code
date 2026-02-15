@@ -44,6 +44,7 @@ export interface ChatInputProps {
 }
 
 export const ChatInput: Component<ChatInputProps> = props => {
+  const DEBUG_PREFIX = "[model-selector-debug]";
   const merged = mergeProps(
     {
       value: "",
@@ -184,6 +185,10 @@ export const ChatInput: Component<ChatInputProps> = props => {
   };
 
   const handleModelPick = (modelId: string) => {
+    console.log(`${DEBUG_PREFIX} chat-input:onModelPick`, {
+      modelId,
+      selectedModel: merged.selectedModel,
+    });
     merged.onModelChange?.(modelId);
     setIsModelSelectorOpen(false);
     setModelSearch("");

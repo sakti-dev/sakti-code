@@ -142,7 +142,8 @@ function rankModels(
 }
 
 export function createProviderSelectionStore(client: ProviderClient) {
-  const [data, { refetch }] = createResource<ProviderSelectionData>(async () => {
+  const DEBUG_PREFIX = "[model-selector-debug]";
+  const [data, { refetch, mutate }] = createResource<ProviderSelectionData>(async () => {
     const [providers, auth, models, preferences] = await Promise.all([
       client.listProviders(),
       client.listAuthStates(),
@@ -422,11 +423,56 @@ export function createProviderSelectionStore(client: ProviderClient) {
 
   const setSelectedModel = async (modelId: string) => {
     const selected = docs().find(model => model.id === modelId);
-    await client.updatePreferences({
-      selectedModelId: modelId,
+    console.log(`${DEBUG_PREFIX} store:setSelectedModel:start`, {
+      modelId,
       selectedProviderId: selected?.providerId ?? null,
+      previousSelectedModelId: data()?.preferences.selectedModelId ?? null,
     });
-    await refetch();
+    const previous = data();
+    if (previous) {
+      const optimistic = {
+        ...previous,
+        preferences: {
+          ...previous.preferences,
+          selectedModelId: modelId,
+          selectedProviderId: selected?.providerId ?? null,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+      console.log(`${DEBUG_PREFIX} store:setSelectedModel:optimistic`, {
+        selectedModelId: optimistic.preferences.selectedModelId,
+        selectedProviderId: optimistic.preferences.selectedProviderId,
+      });
+      mutate({
+        ...optimistic,
+      });
+    }
+
+    try {
+      const persisted = await client.updatePreferences({
+        selectedModelId: modelId,
+        selectedProviderId: selected?.providerId ?? null,
+      });
+      console.log(`${DEBUG_PREFIX} store:setSelectedModel:updatePreferences:ok`, { modelId });
+      const current = data();
+      if (current) {
+        mutate({
+          ...current,
+          preferences: persisted,
+        });
+      }
+      console.log(`${DEBUG_PREFIX} store:setSelectedModel:persisted`, {
+        selectedModelId: persisted.selectedModelId,
+        selectedProviderId: persisted.selectedProviderId,
+      });
+    } catch (error) {
+      if (previous) mutate(previous);
+      console.error(`${DEBUG_PREFIX} store:setSelectedModel:error`, error, {
+        rollbackSelectedModelId: previous?.preferences.selectedModelId ?? null,
+        rollbackSelectedProviderId: previous?.preferences.selectedProviderId ?? null,
+      });
+      throw error;
+    }
   };
 
   return {

@@ -24,6 +24,7 @@ import { ContextPanel } from "./right-side/right-side";
  * WorkspaceViewContent - The actual content wrapped by provider
  */
 function WorkspaceViewContent() {
+  const DEBUG_PREFIX = "[model-selector-debug]";
   const ctx = useWorkspace();
   const providerSelection = useProviderSelectionStore();
   const { chat } = useChatContext();
@@ -71,6 +72,12 @@ function WorkspaceViewContent() {
   const selectedModel = createMemo(
     () => providerSelection.data()?.preferences.selectedModelId ?? ""
   );
+  createEffect(() => {
+    console.log(`${DEBUG_PREFIX} workspace:selectedModel:changed`, {
+      selectedModel: selectedModel(),
+      selectedProviderId: providerSelection.data()?.preferences.selectedProviderId ?? null,
+    });
+  });
   const mapDocToOption = (model: {
     id: string;
     providerId: string;
@@ -148,6 +155,11 @@ function WorkspaceViewContent() {
 
   const handleModelChange = (modelId: string) => {
     const selected = modelOptions().find(model => model.id === modelId);
+    console.log(`${DEBUG_PREFIX} workspace:handleModelChange`, {
+      modelId,
+      found: Boolean(selected),
+      currentSelectedModel: selectedModel(),
+    });
     if (!selected) return;
     void providerSelection.setSelectedModel(selected.id).catch(error => {
       console.error("Failed to persist provider preferences:", error);

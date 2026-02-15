@@ -99,6 +99,7 @@ const MODE_PILLS: Array<{ mode: CommandCenterMode; label: string }> = [
 ];
 
 export function ModelSelector(props: ModelSelectorProps) {
+  const DEBUG_PREFIX = "[model-selector-debug]";
   const [query, setQuery] = createSignal("");
   const [activeIndex, setActiveIndex] = createSignal(0);
   const [modelScrollTop, setModelScrollTop] = createSignal(0);
@@ -235,6 +236,10 @@ export function ModelSelector(props: ModelSelectorProps) {
 
   const handlePick = (modelId: string) => {
     if (props.mode !== "model") return;
+    console.log(`${DEBUG_PREFIX} model-selector:pick`, {
+      modelId,
+      selectedModelId: props.selectedModelId,
+    });
     props.onSelect(modelId);
     setQuery("");
     props.onOpenChange(false);

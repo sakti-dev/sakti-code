@@ -224,6 +224,63 @@ describe("ChatInput", () => {
     expect(onModelChange).toHaveBeenCalledWith("zai/glm-4.6");
   });
 
+  it("picks a model via mouse click", () => {
+    const onModelChange = vi.fn();
+
+    dispose = render(
+      () => (
+        <ChatInput
+          selectedModel="zai/glm-4.7"
+          onModelChange={onModelChange}
+          getModelSections={() => [
+            {
+              providerId: "zai",
+              providerName: "Z.AI",
+              connected: true,
+              models: [{ id: "zai/glm-4.7", providerId: "zai", name: "GLM 4.7", connected: true }],
+            },
+            {
+              providerId: "openai",
+              providerName: "OpenAI",
+              connected: true,
+              models: [
+                {
+                  id: "openai/gpt-4o-mini",
+                  providerId: "openai",
+                  name: "GPT-4o mini",
+                  connected: true,
+                },
+              ],
+            },
+          ]}
+          modelOptions={[
+            { id: "zai/glm-4.7", providerId: "zai", name: "GLM 4.7", connected: true },
+            {
+              id: "openai/gpt-4o-mini",
+              providerId: "openai",
+              name: "GPT-4o mini",
+              connected: true,
+            },
+          ]}
+        />
+      ),
+      container
+    );
+
+    const modelButton = container.querySelector(
+      'button[aria-label="Open model selector"]'
+    ) as HTMLButtonElement;
+    modelButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    const option = Array.from(document.body.querySelectorAll('[role="option"]')).find(node =>
+      (node.textContent ?? "").includes("GPT-4o mini")
+    ) as HTMLButtonElement | undefined;
+    expect(option).toBeTruthy();
+
+    option?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onModelChange).toHaveBeenCalledWith("openai/gpt-4o-mini");
+  });
+
   it("does not compute model sections until selector is opened", () => {
     const getModelSections = vi.fn(() => [
       {
