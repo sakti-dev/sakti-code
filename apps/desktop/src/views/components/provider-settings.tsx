@@ -18,6 +18,8 @@ interface ProviderStateData {
   auth: Record<string, ProviderAuthState>;
 }
 
+const PROVIDER_SETTINGS_DEBUG_PREFIX = "[provider-settings]";
+
 function fallbackCatalogFromProviders(input: {
   providers: Array<{ id: string; name: string }>;
   authMethods: Record<string, ProviderAuthMethodDescriptor[]>;
@@ -52,8 +54,13 @@ export function ProviderSettings(props: ProviderSettingsProps) {
   const [selectedProviderId, setSelectedProviderId] = createSignal<string | null>(null);
   const [providerSearchQuery, setProviderSearchQuery] = createSignal("");
   const [activeIndex, setActiveIndex] = createSignal(0);
+  const [authStatusOverrideByProvider, setAuthStatusOverrideByProvider] = createSignal<
+    Record<string, "connected" | "disconnected">
+  >({});
 
   const loadProviderState = async (): Promise<ProviderStateData> => {
+    console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} loadProviderState:start`);
+    const statusOverrides = authStatusOverrideByProvider();
     const [providers, authMethods, auth, catalog] = await Promise.all([
       props.client.listProviders(),
       props.client.listAuthMethods(),
@@ -108,14 +115,65 @@ export function ProviderSettings(props: ProviderSettingsProps) {
       }
     }
 
-    return {
-      catalog: mergedCatalog,
+    for (const [providerId, forcedStatus] of Object.entries(statusOverrides)) {
+      const existing = mergedAuth[providerId];
+      if (existing) {
+        mergedAuth[providerId] = {
+          ...existing,
+          status: forcedStatus,
+        };
+      } else {
+        mergedAuth[providerId] = {
+          providerId,
+          status: forcedStatus,
+          method: forcedStatus === "connected" ? "token" : "none",
+          accountLabel: null,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+    }
+
+    const catalogWithResolvedStatus = mergedCatalog.map(item => ({
+      ...item,
+      connected: mergedAuth[item.id]?.status === "connected",
+    }));
+
+    const result = {
+      catalog: catalogWithResolvedStatus,
       authMethods: mergedAuthMethods,
       auth: mergedAuth,
     };
+
+    if (Object.keys(statusOverrides).length > 0) {
+      const nextOverrides = { ...statusOverrides };
+      let changed = false;
+      for (const [providerId, forcedStatus] of Object.entries(statusOverrides)) {
+        const observedStatus = auth[providerId]?.status ?? "disconnected";
+        if (observedStatus === forcedStatus) {
+          delete nextOverrides[providerId];
+          changed = true;
+        }
+      }
+      if (changed) {
+        setAuthStatusOverrideByProvider(nextOverrides);
+      }
+    }
+
+    console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} loadProviderState:done`, {
+      providers: providers.length,
+      catalog: result.catalog.length,
+      connectedProviders: Object.values(result.auth).filter(item => item.status === "connected")
+        .length,
+      connectedProviderIds: Object.entries(result.auth)
+        .filter(([, state]) => state.status === "connected")
+        .map(([id]) => id),
+      activeOverrides: authStatusOverrideByProvider(),
+    });
+    return result;
   };
 
-  const [providerState, { refetch: refetchProviderState }] = createResource(loadProviderState);
+  const [providerState, { refetch: refetchProviderState, mutate: mutateProviderState }] =
+    createResource(loadProviderState);
   const [models] = createResource(() => props.client.listModels());
   const [preferences, { mutate: setPreferences }] = createResource(() =>
     props.client.getPreferences()
@@ -126,6 +184,7 @@ export function ProviderSettings(props: ProviderSettingsProps) {
     () => providerState()?.authMethods ?? {}
   );
   const auth = createMemo<Record<string, ProviderAuthState>>(() => providerState()?.auth ?? {});
+  const hasLoadedProviderState = createMemo(() => providerState() !== undefined);
 
   const searchIndex = createMemo(() => createProviderCatalogSearchIndex(catalogProviders()));
   const providerGroups = createMemo(() => searchIndex().groups(providerSearchQuery()));
@@ -169,7 +228,18 @@ export function ProviderSettings(props: ProviderSettingsProps) {
     if (providers.length === 0) return;
     if (!selectedProviderId()) {
       setSelectedProviderId(providers[0]!.id);
+      console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} selectedProvider:auto`, {
+        providerId: providers[0]!.id,
+      });
     }
+  });
+
+  createEffect(() => {
+    const selectedId = selectedProviderId();
+    if (!selectedId) return;
+    console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} selectedProvider:changed`, {
+      providerId: selectedId,
+    });
   });
 
   createEffect(() => {
@@ -205,14 +275,75 @@ export function ProviderSettings(props: ProviderSettingsProps) {
   const connectToken = async (providerId: string) => {
     const token = tokenByProvider()[providerId]?.trim();
     if (!token) return;
+    console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} connectToken:start`, {
+      providerId,
+      tokenLength: token.length,
+    });
 
     try {
       await props.client.setToken(providerId, token);
+      console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} connectToken:setToken:ok`, { providerId });
+      setAuthStatusOverrideByProvider(prev => ({ ...prev, [providerId]: "connected" }));
+      mutateProviderState(prev => {
+        if (!prev) return prev;
+        const currentAuth = prev.auth[providerId];
+        return {
+          ...prev,
+          catalog: prev.catalog.map(item =>
+            item.id === providerId ? { ...item, connected: true } : item
+          ),
+          auth: {
+            ...prev.auth,
+            [providerId]: {
+              providerId,
+              status: "connected",
+              method: "token",
+              accountLabel: currentAuth?.accountLabel ?? null,
+              updatedAt: new Date().toISOString(),
+            },
+          },
+        };
+      });
       setTokenDraft(providerId, "");
       setOauthErrorByProvider(prev => ({ ...prev, [providerId]: "" }));
       await refetchProviderState();
+      const connectedState = providerState()?.auth?.[providerId]?.status;
+      if (connectedState !== "connected") {
+        console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} connectToken:refetch:not-connected`, {
+          providerId,
+          status: connectedState ?? "missing",
+        });
+        mutateProviderState(prev => {
+          if (!prev) return prev;
+          const currentAuth = prev.auth[providerId];
+          return {
+            ...prev,
+            catalog: prev.catalog.map(item =>
+              item.id === providerId ? { ...item, connected: true } : item
+            ),
+            auth: {
+              ...prev.auth,
+              [providerId]: {
+                providerId,
+                status: "connected",
+                method: "token",
+                accountLabel: currentAuth?.accountLabel ?? null,
+                updatedAt: new Date().toISOString(),
+              },
+            },
+          };
+        });
+      }
+      console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} connectToken:refetch:done`, {
+        providerId,
+        status: connectedState ?? "missing",
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} connectToken:error`, {
+        providerId,
+        message,
+      });
       setOauthErrorByProvider(prev => ({ ...prev, [providerId]: message }));
     }
   };
@@ -299,8 +430,74 @@ export function ProviderSettings(props: ProviderSettingsProps) {
   };
 
   const disconnect = async (providerId: string) => {
-    await props.client.clearToken(providerId);
-    await refetchProviderState();
+    console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} disconnect:start`, { providerId });
+    const previous = providerState()?.auth?.[providerId];
+    setAuthStatusOverrideByProvider(prev => ({ ...prev, [providerId]: "disconnected" }));
+    mutateProviderState(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        catalog: prev.catalog.map(item =>
+          item.id === providerId ? { ...item, connected: false } : item
+        ),
+        auth: {
+          ...prev.auth,
+          [providerId]: {
+            providerId,
+            status: "disconnected",
+            method: "token",
+            accountLabel: null,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      };
+    });
+
+    try {
+      await props.client.clearToken(providerId);
+      await refetchProviderState();
+      const disconnectedState = providerState()?.auth?.[providerId]?.status;
+      if (disconnectedState === "connected") {
+        console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} disconnect:refetch:still-connected`, {
+          providerId,
+        });
+      }
+      console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} disconnect:done`, {
+        providerId,
+        status: disconnectedState ?? "missing",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} disconnect:error`, {
+        providerId,
+        message,
+      });
+      setAuthStatusOverrideByProvider(prevOverrides => {
+        const next = { ...prevOverrides };
+        delete next[providerId];
+        return next;
+      });
+      mutateProviderState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          catalog: prev.catalog.map(item =>
+            item.id === providerId ? { ...item, connected: previous?.status === "connected" } : item
+          ),
+          auth: {
+            ...prev.auth,
+            [providerId]: {
+              providerId,
+              status: previous?.status ?? "disconnected",
+              method: previous?.method ?? "token",
+              accountLabel: previous?.accountLabel ?? null,
+              updatedAt: previous?.updatedAt ?? new Date().toISOString(),
+            },
+          },
+        };
+      });
+      setOauthErrorByProvider(prevErrors => ({ ...prevErrors, [providerId]: message }));
+    }
   };
   const updateHybridPreference = async (
     input: Partial<{
@@ -314,8 +511,14 @@ export function ProviderSettings(props: ProviderSettingsProps) {
   };
 
   const openModal = (providerId?: string) => {
+    const resolvedProviderId =
+      providerId ?? selectedProviderId() ?? catalogProviders()[0]?.id ?? null;
+    console.log(`${PROVIDER_SETTINGS_DEBUG_PREFIX} modal:open`, {
+      requestedProviderId: providerId ?? null,
+      resolvedProviderId,
+    });
     setProviderSearchQuery("");
-    setSelectedProviderId(providerId ?? selectedProviderId() ?? catalogProviders()[0]?.id ?? null);
+    setSelectedProviderId(resolvedProviderId);
     setActiveIndex(0);
     setIsModalOpen(true);
   };
@@ -368,7 +571,10 @@ export function ProviderSettings(props: ProviderSettingsProps) {
       </div>
 
       <div class="bg-card border-border rounded-lg border p-4">
-        <Show when={!providerState.loading} fallback={<p class="text-sm">Loading providers...</p>}>
+        <Show
+          when={hasLoadedProviderState()}
+          fallback={<p class="text-sm">Loading providers...</p>}
+        >
           <Show
             when={connectedProviders().length > 0}
             fallback={
@@ -474,7 +680,7 @@ export function ProviderSettings(props: ProviderSettingsProps) {
           when={
             (preferences()?.hybridEnabled ?? true) &&
             !preferences()?.hybridVisionModelId &&
-            !providerState.loading
+            hasLoadedProviderState()
           }
         >
           <p class="mt-2 text-xs text-amber-600 dark:text-amber-300">
@@ -577,7 +783,16 @@ export function ProviderSettings(props: ProviderSettingsProps) {
                                         ? "border-zinc-600 bg-zinc-800/85 shadow-[0_0_0_1px_rgba(59,130,246,0.25),0_10px_22px_rgba(15,23,42,0.45)]"
                                         : "border-transparent hover:border-zinc-700/70 hover:bg-zinc-900/80"
                                     )}
-                                    onClick={() => setSelectedProviderId(provider.id)}
+                                    onClick={() => {
+                                      console.log(
+                                        `${PROVIDER_SETTINGS_DEBUG_PREFIX} providerOption:click`,
+                                        {
+                                          providerId: provider.id,
+                                          previousSelectedProviderId: selectedProviderId(),
+                                        }
+                                      );
+                                      setSelectedProviderId(provider.id);
+                                    }}
                                     data-testid={`provider-option-${provider.id}`}
                                   >
                                     <div class="flex items-center justify-between gap-2">
@@ -628,10 +843,11 @@ export function ProviderSettings(props: ProviderSettingsProps) {
                   fallback={<p class="text-sm text-zinc-500">Select a provider.</p>}
                 >
                   {provider => {
-                    const providerId = provider().id;
-                    const pending = () => oauthPendingByProvider()[providerId];
-                    const busy = () => oauthBusyByProvider()[providerId] === true;
-                    const oauthError = () => oauthErrorByProvider()[providerId];
+                    const providerId = () => provider().id;
+                    const pending = () => oauthPendingByProvider()[providerId()];
+                    const busy = () => oauthBusyByProvider()[providerId()] === true;
+                    const oauthError = () => oauthErrorByProvider()[providerId()];
+                    const isConnected = () => auth()[providerId()]?.status === "connected";
 
                     return (
                       <div class="space-y-4">
@@ -659,77 +875,122 @@ export function ProviderSettings(props: ProviderSettingsProps) {
                           </Show>
                         </div>
 
-                        <For each={methodsForSelected()}>
-                          {(method, index) => (
-                            <Show
-                              when={provider().supported !== false}
-                              fallback={
-                                <div class="rounded-lg border border-amber-300/25 bg-amber-500/5 p-3 text-xs text-amber-200">
-                                  This provider is listed from the catalog but is not yet
-                                  configurable in this build.
-                                </div>
-                              }
-                            >
-                              <div class="rounded-lg border border-zinc-800/80 bg-zinc-900/60 p-3">
-                                <div class="mb-3 flex items-center justify-between gap-2">
-                                  <p class="text-xs font-semibold tracking-wide text-zinc-300">
-                                    {method.label}
-                                  </p>
-                                  <span class="rounded-full border border-zinc-700 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-zinc-400">
-                                    {method.type}
-                                  </span>
-                                </div>
-
-                                <Show when={method.type === "token" || method.type === "api"}>
-                                  <div class="space-y-2">
-                                    <Show when={providerId === "opencode"}>
-                                      <p class="text-xs text-zinc-400">
-                                        Create an api key at https://opencode.ai/auth
+                        <Show
+                          when={provider().supported !== false}
+                          fallback={
+                            <div class="rounded-lg border border-amber-300/25 bg-amber-500/5 p-3 text-xs text-amber-200">
+                              This provider is listed from the catalog but is not yet configurable
+                              in this build.
+                            </div>
+                          }
+                        >
+                          <Show
+                            when={isConnected()}
+                            fallback={
+                              <For each={methodsForSelected()}>
+                                {(method, index) => (
+                                  <div class="rounded-lg border border-zinc-800/80 bg-zinc-900/60 p-3">
+                                    <div class="mb-3 flex items-center justify-between gap-2">
+                                      <p class="text-xs font-semibold tracking-wide text-zinc-300">
+                                        {method.label}
                                       </p>
-                                    </Show>
-                                    <div class="flex flex-wrap items-center gap-2">
-                                      <input
-                                        type="password"
-                                        class="w-full min-w-[220px] flex-1 rounded-md border border-zinc-700 bg-zinc-950 px-2.5 py-2 text-xs text-zinc-100 outline-none transition-colors placeholder:text-zinc-500 focus:border-zinc-500"
-                                        placeholder="API key"
-                                        value={tokenByProvider()[providerId] || ""}
-                                        onInput={event =>
-                                          setTokenDraft(providerId, event.currentTarget.value)
-                                        }
-                                      />
-                                      <button
-                                        class="rounded-md border border-zinc-600 bg-zinc-800 px-2.5 py-2 text-xs font-medium text-zinc-100 transition-colors hover:bg-zinc-700"
-                                        onClick={() => void connectToken(providerId)}
-                                      >
-                                        Connect
-                                      </button>
+                                      <span class="rounded-full border border-zinc-700 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-zinc-400">
+                                        {method.type}
+                                      </span>
                                     </div>
-                                  </div>
-                                </Show>
 
-                                <Show when={method.type === "oauth"}>
-                                  <div class="flex flex-wrap items-center gap-2">
-                                    <button
-                                      class="rounded-md border border-zinc-600 bg-zinc-800 px-2.5 py-2 text-xs font-medium text-zinc-100 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                      disabled={busy()}
-                                      onClick={() => void connectOAuth(providerId, index())}
-                                    >
-                                      {method.label}
-                                    </button>
-                                    <Show when={busy()}>
-                                      <button
-                                        class="rounded-md border border-zinc-700 px-2.5 py-2 text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
-                                        onClick={() => cancelOAuth(providerId)}
-                                      >
-                                        Cancel OAuth
-                                      </button>
+                                    <Show when={method.type === "token" || method.type === "api"}>
+                                      <div class="space-y-2">
+                                        <Show when={providerId() === "opencode"}>
+                                          <p class="text-xs text-zinc-400">
+                                            Create an api key at https://opencode.ai/auth
+                                          </p>
+                                        </Show>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                          <input
+                                            type="password"
+                                            class="w-full min-w-[220px] flex-1 rounded-md border border-zinc-700 bg-zinc-950 px-2.5 py-2 text-xs text-zinc-100 outline-none transition-colors placeholder:text-zinc-500 focus:border-zinc-500"
+                                            placeholder="API key"
+                                            value={tokenByProvider()[providerId()] || ""}
+                                            onInput={event => {
+                                              const value = event.currentTarget.value;
+                                              console.log(
+                                                `${PROVIDER_SETTINGS_DEBUG_PREFIX} tokenInput:change`,
+                                                {
+                                                  providerId: providerId(),
+                                                  selectedProviderId: selectedProviderId(),
+                                                  tokenLength: value.length,
+                                                }
+                                              );
+                                              setTokenDraft(providerId(), value);
+                                            }}
+                                          />
+                                          <button
+                                            class="rounded-md border border-zinc-600 bg-zinc-800 px-2.5 py-2 text-xs font-medium text-zinc-100 transition-colors hover:bg-zinc-700"
+                                            onClick={() => {
+                                              console.log(
+                                                `${PROVIDER_SETTINGS_DEBUG_PREFIX} tokenConnect:click`,
+                                                {
+                                                  providerId: providerId(),
+                                                  selectedProviderId: selectedProviderId(),
+                                                }
+                                              );
+                                              void connectToken(providerId());
+                                            }}
+                                          >
+                                            Connect
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </Show>
+
+                                    <Show when={method.type === "oauth"}>
+                                      <div class="flex flex-wrap items-center gap-2">
+                                        <button
+                                          class="rounded-md border border-zinc-600 bg-zinc-800 px-2.5 py-2 text-xs font-medium text-zinc-100 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                          disabled={busy()}
+                                          onClick={() => void connectOAuth(providerId(), index())}
+                                        >
+                                          {method.label}
+                                        </button>
+                                        <Show when={busy()}>
+                                          <button
+                                            class="rounded-md border border-zinc-700 px-2.5 py-2 text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
+                                            onClick={() => cancelOAuth(providerId())}
+                                          >
+                                            Cancel OAuth
+                                          </button>
+                                        </Show>
+                                      </div>
                                     </Show>
                                   </div>
-                                </Show>
+                                )}
+                              </For>
+                            }
+                          >
+                            <div class="rounded-lg border border-emerald-300/30 bg-emerald-500/5 p-3">
+                              <div class="flex items-center justify-between gap-2">
+                                <p class="text-xs font-semibold tracking-wide text-emerald-300">
+                                  Connected
+                                </p>
+                                <span class="rounded-full border border-emerald-300/35 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-emerald-300">
+                                  Active
+                                </span>
                               </div>
-                            </Show>
-                          )}
-                        </For>
+                              <p class="mt-1 text-xs text-zinc-400">
+                                This provider is connected. You can disconnect it from here.
+                              </p>
+                              <div class="mt-3">
+                                <button
+                                  class="rounded-md border border-zinc-600 bg-zinc-800 px-2.5 py-2 text-xs font-medium text-zinc-100 transition-colors hover:bg-zinc-700"
+                                  onClick={() => void disconnect(providerId())}
+                                >
+                                  Disconnect
+                                </button>
+                              </div>
+                            </div>
+                          </Show>
+                        </Show>
 
                         <Show when={pending()}>
                           <div class="rounded-lg border border-zinc-800/80 bg-zinc-900/60 p-3">
@@ -741,14 +1002,14 @@ export function ProviderSettings(props: ProviderSettingsProps) {
                                 type="text"
                                 class="w-full min-w-[220px] flex-1 rounded-md border border-zinc-700 bg-zinc-950 px-2.5 py-2 text-xs text-zinc-100 outline-none transition-colors placeholder:text-zinc-500 focus:border-zinc-500"
                                 placeholder="Paste OAuth code"
-                                value={oauthCodeByProvider()[providerId] || ""}
+                                value={oauthCodeByProvider()[providerId()] || ""}
                                 onInput={event =>
-                                  setOauthCodeDraft(providerId, event.currentTarget.value)
+                                  setOauthCodeDraft(providerId(), event.currentTarget.value)
                                 }
                               />
                               <button
                                 class="rounded-md border border-zinc-600 bg-zinc-800 px-2.5 py-2 text-xs font-medium text-zinc-100 transition-colors hover:bg-zinc-700"
-                                onClick={() => void submitOAuthCode(providerId)}
+                                onClick={() => void submitOAuthCode(providerId())}
                               >
                                 Submit Code
                               </button>
