@@ -1,6 +1,7 @@
 import { Component, Show, mergeProps } from "solid-js";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/utils";
 
 /**
@@ -91,14 +92,11 @@ export const SessionCard: Component<SessionCardProps> = props => {
   const messageCount = () => props.session.messages?.length ?? 0;
 
   return (
-    <div
+    <Card
+      variant="interactive"
       class={cn(
-        "group relative cursor-pointer rounded-lg p-3",
+        "group relative cursor-pointer p-3",
         "transition-all duration-200",
-        // Base state
-        "bg-card/10 hover:bg-card/20",
-        "border-border/30 hover:border-primary/30 border",
-        "hover:scale-[1.01] hover:shadow-sm",
         // Animation
         "animate-fade-in-up opacity-0",
         getDelayClass(),
@@ -186,6 +184,6 @@ export const SessionCard: Component<SessionCardProps> = props => {
       <Show when={merged.isActive}>
         <div class="via-primary/40 absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-gradient-to-r from-transparent to-transparent" />
       </Show>
-    </div>
+    </Card>
   );
 };

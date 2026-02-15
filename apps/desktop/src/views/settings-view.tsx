@@ -3,6 +3,13 @@ import { createApiClient } from "@/core/services/api/api-client";
 import type { ProviderClient } from "@/core/services/api/provider-client";
 
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardItem,
+  CardItemContent,
+  CardItemDescription,
+  CardItemLabel,
+} from "@/components/ui/card";
 
 import { cn } from "@/utils";
 import { ProviderSettings } from "@/views/components/provider-settings";
@@ -171,36 +178,36 @@ export default function SettingsView() {
         {/* Server Section */}
         <section class="mb-8">
           <h2 class="text-foreground mb-4 text-lg font-medium">Server</h2>
-          <div class="bg-card border-border divide-border divide-y rounded-lg border">
-            <div class="flex items-center justify-between p-4">
-              <div>
-                <h3 class="text-foreground text-sm font-medium">Server URL</h3>
-                <p class="text-muted-foreground mt-0.5 text-xs">Local API endpoint</p>
-              </div>
+          <Card class="divide-y divide-zinc-200 dark:divide-zinc-800">
+            <CardItem>
+              <CardItemContent>
+                <CardItemLabel>Server URL</CardItemLabel>
+                <CardItemDescription>Local API endpoint</CardItemDescription>
+              </CardItemContent>
               <code class="text-muted-foreground bg-muted rounded px-2 py-1 font-mono text-xs">
                 127.0.0.1:*
               </code>
-            </div>
-            <div class="flex items-center justify-between p-4">
-              <div>
-                <h3 class="text-foreground text-sm font-medium">API Token</h3>
-                <p class="text-muted-foreground mt-0.5 text-xs">Authentication token</p>
-              </div>
+            </CardItem>
+            <CardItem>
+              <CardItemContent>
+                <CardItemLabel>API Token</CardItemLabel>
+                <CardItemDescription>Authentication token</CardItemDescription>
+              </CardItemContent>
               <code class="text-muted-foreground bg-muted rounded px-2 py-1 font-mono text-xs">
                 ••••••••
               </code>
-            </div>
-            <div class="flex items-center justify-between p-4">
-              <div>
-                <h3 class="text-foreground text-sm font-medium">Connection</h3>
-                <p class="text-muted-foreground mt-0.5 text-xs">Server status</p>
-              </div>
+            </CardItem>
+            <CardItem>
+              <CardItemContent>
+                <CardItemLabel>Connection</CardItemLabel>
+                <CardItemDescription>Server status</CardItemDescription>
+              </CardItemContent>
               <span class="inline-flex items-center gap-1.5 text-xs font-medium text-green-600 dark:text-green-400">
                 <span class="h-2 w-2 animate-pulse rounded-full bg-current" />
                 Connected
               </span>
-            </div>
-          </div>
+            </CardItem>
+          </Card>
         </section>
 
         <Show when={providerClient()}>{client => <ProviderSettings client={client()} />}</Show>
@@ -208,16 +215,16 @@ export default function SettingsView() {
         {/* About Section */}
         <section>
           <h2 class="text-foreground mb-4 text-lg font-medium">About</h2>
-          <div class="bg-card border-border divide-border divide-y rounded-lg border">
-            <div class="flex items-center justify-between p-4">
+          <Card class="divide-y divide-zinc-200 dark:divide-zinc-800">
+            <CardItem>
               <span class="text-muted-foreground text-sm">Version</span>
               <span class="text-foreground text-sm font-medium">{appVersion() || "0.0.1"}</span>
-            </div>
-            <div class="flex items-center justify-between p-4">
+            </CardItem>
+            <CardItem>
               <span class="text-muted-foreground text-sm">Platform</span>
               <span class="text-foreground text-sm font-medium">{platform() || "Unknown"}</span>
-            </div>
-            <div class="p-4">
+            </CardItem>
+            <CardItem class="flex justify-center">
               <div class="flex items-center gap-3">
                 <a
                   href="https://github.com"
@@ -245,8 +252,8 @@ export default function SettingsView() {
                   Documentation
                 </a>
               </div>
-            </div>
-          </div>
+            </CardItem>
+          </Card>
         </section>
       </div>
     </div>

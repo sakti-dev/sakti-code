@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import type {
   ProviderAuthMethodDescriptor,
   ProviderAuthState,
@@ -570,7 +572,7 @@ export function ProviderSettings(props: ProviderSettingsProps) {
         </button>
       </div>
 
-      <div class="bg-card border-border rounded-lg border p-4">
+      <Card class="p-4">
         <Show
           when={hasLoadedProviderState()}
           fallback={<p class="text-sm">Loading providers...</p>}
@@ -580,20 +582,18 @@ export function ProviderSettings(props: ProviderSettingsProps) {
             fallback={
               <div class="text-center">
                 <p class="text-muted-foreground text-sm">No provider connected yet.</p>
-                <button
-                  class="bg-primary text-primary-foreground mt-3 rounded px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-90"
-                  onClick={() => openModal()}
-                >
+                <Button variant="primary" size="sm" class="mt-3" onClick={() => openModal()}>
                   Select provider
-                </button>
+                </Button>
               </div>
             }
           >
             <div class="space-y-3">
               <For each={connectedProviders()}>
                 {provider => (
-                  <div
-                    class="border-border bg-background/70 rounded border p-3"
+                  <Card
+                    variant="default"
+                    class="border-border bg-background/70 p-3"
                     data-testid={`provider-${provider.id}`}
                   >
                     <div class="flex items-center justify-between gap-3">
@@ -611,28 +611,26 @@ export function ProviderSettings(props: ProviderSettingsProps) {
                       </div>
                     </div>
                     <div class="mt-3 flex items-center gap-2">
-                      <button
-                        class="border-border hover:bg-muted rounded border px-2 py-1 text-xs transition-colors"
-                        onClick={() => openModal(provider.id)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => openModal(provider.id)}>
                         Manage
-                      </button>
-                      <button
-                        class="border-border hover:bg-muted rounded border px-2 py-1 text-xs transition-colors"
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => void disconnect(provider.id)}
                       >
                         Disconnect
-                      </button>
+                      </Button>
                     </div>
-                  </div>
+                  </Card>
                 )}
               </For>
             </div>
           </Show>
         </Show>
-      </div>
+      </Card>
 
-      <div class="bg-card border-border mt-4 rounded-lg border p-4">
+      <Card class="mt-4 p-4">
         <div class="mb-3 flex items-center justify-between gap-3">
           <div>
             <h3 class="text-sm font-medium">Hybrid Vision Fallback</h3>
@@ -693,7 +691,7 @@ export function ProviderSettings(props: ProviderSettingsProps) {
             Selected: {selectedHybridVisionModel()?.name ?? selectedHybridVisionModel()?.id}
           </p>
         </Show>
-      </div>
+      </Card>
 
       <Show when={isModalOpen()}>
         <div

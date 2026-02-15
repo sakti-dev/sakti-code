@@ -83,5 +83,48 @@ const CardAction: Component<ComponentProps<"div">> = props => {
   );
 };
 
-export { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };
+const CardItem: Component<ComponentProps<"div">> = props => {
+  const [local, others] = splitProps(props, ["class"]);
+  return <div class={cn("flex items-center justify-between gap-4 p-4", local.class)} {...others} />;
+};
+
+const CardItemContent: Component<ComponentProps<"div">> = props => {
+  const [local, others] = splitProps(props, ["class"]);
+  return <div class={cn("flex flex-col", local.class)} {...others} />;
+};
+
+const CardItemLabel: Component<ComponentProps<"span">> = props => {
+  const [local, others] = splitProps(props, ["class"]);
+  return (
+    <span
+      class={cn("text-sm font-medium text-zinc-900 dark:text-zinc-100", local.class)}
+      {...others}
+    />
+  );
+};
+
+const CardItemDescription: Component<ComponentProps<"p">> = props => {
+  const [local, others] = splitProps(props, ["class"]);
+  return <p class={cn("text-xs text-zinc-500 dark:text-zinc-400", local.class)} {...others} />;
+};
+
+const CardItemAction: Component<ComponentProps<"div">> = props => {
+  const [local, others] = splitProps(props, ["class"]);
+  return <div class={cn("flex items-center gap-2", local.class)} {...others} />;
+};
+
+export {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardItem,
+  CardItemAction,
+  CardItemContent,
+  CardItemDescription,
+  CardItemLabel,
+  CardTitle,
+};
 export type { CardProps, CardVariant };

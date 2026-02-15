@@ -1,6 +1,7 @@
 import type { RecentProject } from "@/core/chat/types";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 import { cn } from "@/utils";
 import dayjs from "dayjs";
@@ -18,15 +19,10 @@ interface RecentProjectCardProps {
 
 function RecentProjectCard(props: RecentProjectCardProps) {
   return (
-    <button
+    <Card
+      variant="interactive"
+      class={cn("group w-full p-4 text-left", props.class)}
       onClick={() => props.onOpen(props.project)}
-      class={cn(
-        "group w-full rounded-lg p-4 text-left",
-        "bg-card/50 hover:bg-card border-border hover:border-primary/50 border",
-        "transition-all duration-200",
-        "focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2",
-        props.class
-      )}
     >
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0 flex-1">
@@ -67,7 +63,7 @@ function RecentProjectCard(props: RecentProjectCardProps) {
         )}
       </div>
       <p class="text-muted-foreground mt-2 text-xs">{dayjs(props.project.lastOpened).fromNow()}</p>
-    </button>
+    </Card>
   );
 }
 
