@@ -73,7 +73,7 @@ export default function SettingsView() {
   };
 
   return (
-    <div class="bg-background min-h-screen p-8">
+    <div class="bg-background h-screen min-h-0 overflow-y-auto p-8 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-700/60 hover:[&::-webkit-scrollbar-thumb]:bg-zinc-600/80 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2">
       <div class="mx-auto max-w-3xl">
         {/* Header */}
         <div class="mb-8">

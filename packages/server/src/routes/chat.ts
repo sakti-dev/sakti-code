@@ -975,6 +975,7 @@ app.post("/api/chat", async c => {
     );
     return c.json(normalized, normalized.status);
   }
+  const selectedProviderId = selectedModel.providerId || selection.providerId;
 
   const hasImageInput = requestHasImageContent(rawMessage);
   const selectedSupportsImage = Boolean(
@@ -1015,13 +1016,13 @@ app.post("/api/chat", async c => {
     );
   }
 
-  const authState = await providerRuntime.authService.getState(selection.providerId);
+  const authState = await providerRuntime.authService.getState(selectedProviderId);
   const envTokenFromProvider =
     selectedModel.providerEnvVars
       ?.map(envName => process.env[envName])
       .find((value): value is string => typeof value === "string" && value.trim().length > 0) ??
     null;
-  const storedCredential = await providerRuntime.authService.getCredential(selection.providerId);
+  const storedCredential = await providerRuntime.authService.getCredential(selectedProviderId);
   if (
     selection.explicit &&
     authState.status !== "connected" &&
@@ -1029,7 +1030,7 @@ app.post("/api/chat", async c => {
     !storedCredential
   ) {
     const normalized = normalizeProviderError(
-      new Error(`Provider ${selection.providerId} is not authenticated`)
+      new Error(`Provider ${selectedProviderId} is not authenticated`)
     );
     return c.json(normalized, normalized.status);
   }
@@ -1157,7 +1158,7 @@ app.post("/api/chat", async c => {
           sessionID: session.sessionId,
           parentID: userMessageId,
           modelID: selection.modelId,
-          providerID: selection.providerId,
+          providerID: selectedProviderId,
           time: {
             created: Date.now(),
           },
@@ -1211,7 +1212,7 @@ app.post("/api/chat", async c => {
           });
           writeStreamEvent({
             type: "error",
-            errorText: `Provider ${selection.providerId} is not configured. Connect it in Settings or set environment credentials.`,
+            errorText: `Provider ${selectedProviderId} is not configured. Connect it in Settings or set environment credentials.`,
           });
           writeStreamEvent({
             type: "finish",
@@ -1647,7 +1648,7 @@ app.post("/api/chat", async c => {
           const result = await (async () => {
             const token = storedCredential
               ? storedCredential.kind === "oauth"
-                ? await resolveOAuthAccessToken(selection.providerId, providerRuntime.authService)
+                ? await resolveOAuthAccessToken(selectedProviderId, providerRuntime.authService)
                 : storedCredential.token
               : envTokenFromProvider;
             const hybridVisionToken = hybridVisionCredential
@@ -1661,14 +1662,16 @@ app.post("/api/chat", async c => {
 
             const previousRuntime = Instance.context.providerRuntime;
             Instance.context.providerRuntime = {
-              providerId: selection.providerId,
+              providerId: selectedProviderId,
               modelId: selectedModel.id,
               providerApiUrl: selectedModel.providerApiUrl,
+              providerNpmPackage: selectedModel.providerNpmPackage,
               apiKey: token ?? undefined,
               hybridVisionEnabled: shouldUseHybridFallback,
               hybridVisionProviderId,
               hybridVisionModelId: hybridVisionModel?.id,
               hybridVisionProviderApiUrl: hybridVisionModel?.providerApiUrl,
+              hybridVisionProviderNpmPackage: hybridVisionModel?.providerNpmPackage,
               hybridVisionApiKey: hybridVisionToken ?? undefined,
             };
 

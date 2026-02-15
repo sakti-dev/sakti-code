@@ -122,4 +122,57 @@ describe("chat provider selection", () => {
     const payload = await response.json();
     expect(String(payload.error)).toContain("Configure Hybrid Vision Fallback");
   }, 15000);
+
+  it("uses model provider auth when providerId is omitted but modelId is fully qualified", async () => {
+    const { getProviderRuntime } = await import("../../src/provider/runtime");
+    const runtime = getProviderRuntime();
+    await runtime.authService.setToken({
+      providerId: "opencode",
+      token: "opencode-token",
+    });
+
+    const chatRouter = (await import("../../src/routes/chat")).default;
+    const response = await chatRouter.request("http://localhost/api/chat?directory=/tmp/chat", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        message: "hello",
+        modelId: "opencode/glm-5",
+        stream: false,
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.message).toContain("Streaming is required");
+  }, 15000);
+
+  it("uses model provider auth when providerId is stale and mismatched", async () => {
+    const { getProviderRuntime } = await import("../../src/provider/runtime");
+    const runtime = getProviderRuntime();
+    await runtime.authService.setToken({
+      providerId: "opencode",
+      token: "opencode-token",
+    });
+
+    const chatRouter = (await import("../../src/routes/chat")).default;
+    const response = await chatRouter.request("http://localhost/api/chat?directory=/tmp/chat", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        message: "hello",
+        providerId: "zai",
+        modelId: "opencode/glm-5",
+        stream: false,
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.message).toContain("Streaming is required");
+  }, 15000);
 });

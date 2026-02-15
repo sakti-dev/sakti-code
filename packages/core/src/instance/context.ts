@@ -34,6 +34,7 @@ export interface InstanceContext {
     providerId: string;
     modelId: string;
     providerApiUrl?: string;
+    providerNpmPackage?: string;
     apiKey?: string;
     providerCredentialEnvVar?: string;
     headers?: Record<string, string>;
@@ -41,6 +42,7 @@ export interface InstanceContext {
     hybridVisionProviderId?: string;
     hybridVisionModelId?: string;
     hybridVisionProviderApiUrl?: string;
+    hybridVisionProviderNpmPackage?: string;
     hybridVisionApiKey?: string;
   };
 }

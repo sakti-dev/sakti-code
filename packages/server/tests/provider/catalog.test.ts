@@ -110,4 +110,39 @@ describe("model catalog service", () => {
     expect(normalizeProviderAlias("kimi")).toBe("moonshot");
     expect(normalizeProviderAlias("z.ai coding plan")).toBe("zai");
   });
+
+  it("preserves model-level npm overrides over provider-level npm", async () => {
+    const service = createModelCatalogService({
+      adapters: [],
+      modelsDevSource: async () => ({
+        opencode: {
+          name: "OpenCode Zen",
+          api: "https://opencode.ai/zen/v1",
+          npm: "@ai-sdk/openai-compatible",
+          env: ["OPENCODE_API_KEY"],
+          models: {
+            "kimi-k2.5": {
+              id: "kimi-k2.5",
+              name: "Kimi K2.5",
+            },
+            "gpt-5.2": {
+              id: "gpt-5.2",
+              name: "GPT-5.2",
+              provider: {
+                npm: "@ai-sdk/openai",
+              },
+            },
+          },
+        },
+      }),
+      snapshotSource: async () => ({}),
+    });
+
+    const catalog = await service.list();
+    const kimi = catalog.find(model => model.id === "opencode/kimi-k2.5");
+    const gpt = catalog.find(model => model.id === "opencode/gpt-5.2");
+
+    expect(kimi?.providerNpmPackage).toBe("@ai-sdk/openai-compatible");
+    expect(gpt?.providerNpmPackage).toBe("@ai-sdk/openai");
+  });
 });

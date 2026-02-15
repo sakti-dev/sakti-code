@@ -1,13 +1,87 @@
 import { describe, expect, it, vi } from "vitest";
 import { Instance } from "../../../src/instance";
 
-const createOpenAIMock = vi.fn(
-  (options: { apiKey?: string; baseURL?: string; headers?: Record<string, string> }) =>
+function createProviderMock(providerName: string) {
+  return vi.fn((options: { apiKey?: string; baseURL?: string; headers?: Record<string, string> }) =>
     vi.fn((modelId: string) => ({
-      provider: "openai",
+      provider: providerName,
       modelId,
       options,
     }))
+  );
+}
+
+const createOpenAIMock = vi.fn(
+  (options: { apiKey?: string; baseURL?: string; headers?: Record<string, string> }) => {
+    const provider = vi.fn((modelId: string) => ({
+      provider: "openai",
+      modelId,
+      options,
+    }));
+    provider.chat = vi.fn((modelId: string) => ({
+      provider: "openai-compatible",
+      modelId,
+      options,
+    }));
+    provider.responses = vi.fn((modelId: string) => ({
+      provider: "openai-responses",
+      modelId,
+      options,
+    }));
+    return provider;
+  }
+);
+
+const createOpenAICompatibleMock = vi.fn(
+  (options: { apiKey?: string; baseURL?: string; headers?: Record<string, string> }) => {
+    const provider = vi.fn((modelId: string) => ({
+      provider: "openai-compatible-sdk",
+      modelId,
+      options,
+    }));
+    if (!options.headers?.["x-no-chat"]) {
+      provider.chat = vi.fn((modelId: string) => ({
+        provider: "openai-compatible-sdk-chat",
+        modelId,
+        options,
+      }));
+    }
+    return provider;
+  }
+);
+
+const createAnthropicMock = createProviderMock("anthropic");
+const createAzureMock = vi.fn(
+  (options: { apiKey?: string; baseURL?: string; headers?: Record<string, string> }) => {
+    const provider = vi.fn((modelId: string) => ({
+      provider: "azure",
+      modelId,
+      options,
+    }));
+    provider.responses = vi.fn((modelId: string) => ({
+      provider: "openai-responses",
+      modelId,
+      options,
+    }));
+    return provider;
+  }
+);
+const createGoogleMock = createProviderMock("google");
+const createOpenRouterMock = createProviderMock("openrouter");
+const createGitLabMock = vi.fn(
+  (options: { apiKey?: string; instanceUrl?: string; headers?: Record<string, string> }) => {
+    const provider = vi.fn((modelId: string) => ({
+      provider: "gitlab-default",
+      modelId,
+      options,
+    }));
+    provider.agenticChat = vi.fn((modelId: string) => ({
+      provider: "gitlab-agentic-chat",
+      modelId,
+      options,
+    }));
+    return provider;
+  }
 );
 
 const createZaiMock = vi.fn(
@@ -21,6 +95,30 @@ const createZaiMock = vi.fn(
 
 vi.mock("@ai-sdk/openai", () => ({
   createOpenAI: createOpenAIMock,
+}));
+
+vi.mock("@ai-sdk/openai-compatible", () => ({
+  createOpenAICompatible: createOpenAICompatibleMock,
+}));
+
+vi.mock("@ai-sdk/anthropic", () => ({
+  createAnthropic: createAnthropicMock,
+}));
+
+vi.mock("@ai-sdk/azure", () => ({
+  createAzure: createAzureMock,
+}));
+
+vi.mock("@ai-sdk/google", () => ({
+  createGoogleGenerativeAI: createGoogleMock,
+}));
+
+vi.mock("@openrouter/ai-sdk-provider", () => ({
+  createOpenRouter: createOpenRouterMock,
+}));
+
+vi.mock("@gitlab/gitlab-ai-provider", () => ({
+  createGitLab: createGitLabMock,
 }));
 
 vi.mock("@ekacode/zai", () => ({
@@ -47,14 +145,14 @@ describe("agent/workflow/model-provider", () => {
     expect(model).toEqual({
       provider: "openai",
       modelId: "deepseek/chat",
-      options: {
+      options: expect.objectContaining({
         apiKey: "context-key",
         baseURL: "https://openrouter.example/v1",
         headers: {
           "HTTP-Referer": "https://opencode.ai/",
           "X-Title": "opencode",
         },
-      },
+      }),
     });
   });
 
@@ -103,11 +201,11 @@ describe("agent/workflow/model-provider", () => {
     expect(model).toEqual({
       provider: "openai",
       modelId: "gpt-4o-mini",
-      options: {
+      options: expect.objectContaining({
         apiKey: "context-openai-key",
         baseURL: "https://api.context.test/v1",
         headers: {},
-      },
+      }),
     });
   });
 
@@ -147,20 +245,20 @@ describe("agent/workflow/model-provider", () => {
     expect(a).toEqual({
       provider: "openai",
       modelId: "gpt-4o",
-      options: {
+      options: expect.objectContaining({
         apiKey: "key-a",
         baseURL: "https://a.example/v1",
         headers: {},
-      },
+      }),
     });
     expect(b).toEqual({
       provider: "openai",
       modelId: "gpt-4o-mini",
-      options: {
+      options: expect.objectContaining({
         apiKey: "key-b",
         baseURL: "https://b.example/v1",
         headers: {},
-      },
+      }),
     });
   });
 
@@ -186,5 +284,289 @@ describe("agent/workflow/model-provider", () => {
     });
 
     expect(model).toBeInstanceOf(HybridAgent);
+  });
+
+  it("uses openai-compatible provider for chat-completions style providers", async () => {
+    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+
+    const model = await Instance.provide({
+      directory: process.cwd(),
+      async fn() {
+        Instance.context.providerRuntime = {
+          providerId: "opencode",
+          modelId: "opencode/kimi-k2.5",
+          providerApiUrl: "https://opencode.ai/zen/v1",
+          providerNpmPackage: "@ai-sdk/openai-compatible",
+          apiKey: "zen-key",
+        };
+        return getBuildModel();
+      },
+    });
+
+    expect(model).toEqual({
+      provider: "openai-compatible-sdk-chat",
+      modelId: "kimi-k2.5",
+      options: expect.objectContaining({
+        apiKey: "zen-key",
+        baseURL: "https://opencode.ai/zen/v1",
+        headers: {},
+      }),
+    });
+  });
+
+  it("does not force responses transport for non-openai providers using @ai-sdk/openai", async () => {
+    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+
+    const model = await Instance.provide({
+      directory: process.cwd(),
+      async fn() {
+        Instance.context.providerRuntime = {
+          providerId: "opencode",
+          modelId: "opencode/gpt-5.2",
+          providerApiUrl: "https://opencode.ai/zen/v1",
+          providerNpmPackage: "@ai-sdk/openai",
+          apiKey: "zen-key",
+        };
+        return getBuildModel();
+      },
+    });
+
+    expect(model).toEqual({
+      provider: "openai",
+      modelId: "gpt-5.2",
+      options: expect.objectContaining({
+        apiKey: "zen-key",
+        baseURL: "https://opencode.ai/zen/v1",
+        headers: {},
+      }),
+    });
+  });
+
+  it("uses openai responses transport for the openai provider", async () => {
+    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+
+    const model = await Instance.provide({
+      directory: process.cwd(),
+      async fn() {
+        Instance.context.providerRuntime = {
+          providerId: "openai",
+          modelId: "openai/gpt-5.2",
+          providerApiUrl: "https://api.openai.com/v1",
+          providerNpmPackage: "@ai-sdk/openai",
+          apiKey: "openai-key",
+        };
+        return getBuildModel();
+      },
+    });
+
+    expect(model).toEqual({
+      provider: "openai-responses",
+      modelId: "gpt-5.2",
+      options: expect.objectContaining({
+        apiKey: "openai-key",
+        baseURL: "https://api.openai.com/v1",
+        headers: {},
+      }),
+    });
+  });
+
+  it("uses anthropic sdk for anthropic npm package", async () => {
+    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+
+    const model = await Instance.provide({
+      directory: process.cwd(),
+      async fn() {
+        Instance.context.providerRuntime = {
+          providerId: "opencode",
+          modelId: "opencode/claude-haiku-4-5",
+          providerApiUrl: "https://opencode.ai/zen/v1",
+          providerNpmPackage: "@ai-sdk/anthropic",
+          apiKey: "zen-key",
+        };
+        return getBuildModel();
+      },
+    });
+
+    expect(model).toEqual({
+      provider: "anthropic",
+      modelId: "claude-haiku-4-5",
+      options: expect.objectContaining({
+        apiKey: "zen-key",
+        baseURL: "https://opencode.ai/zen/v1",
+        headers: {},
+      }),
+    });
+  });
+
+  it("uses google sdk for google npm package", async () => {
+    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+
+    const model = await Instance.provide({
+      directory: process.cwd(),
+      async fn() {
+        Instance.context.providerRuntime = {
+          providerId: "opencode",
+          modelId: "opencode/gemini-3-flash",
+          providerApiUrl: "https://opencode.ai/zen/v1",
+          providerNpmPackage: "@ai-sdk/google",
+          apiKey: "zen-key",
+        };
+        return getBuildModel();
+      },
+    });
+
+    expect(model).toEqual({
+      provider: "google",
+      modelId: "gemini-3-flash",
+      options: expect.objectContaining({
+        apiKey: "zen-key",
+        baseURL: "https://opencode.ai/zen/v1",
+        headers: {},
+      }),
+    });
+  });
+
+  it("uses azure sdk for azure npm package", async () => {
+    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+
+    const model = await Instance.provide({
+      directory: process.cwd(),
+      async fn() {
+        Instance.context.providerRuntime = {
+          providerId: "azure",
+          modelId: "azure/gpt-5.1",
+          providerApiUrl: "https://azure.example/openai",
+          providerNpmPackage: "@ai-sdk/azure",
+          apiKey: "azure-key",
+        };
+        return getBuildModel();
+      },
+    });
+
+    expect(model).toEqual({
+      provider: "openai-responses",
+      modelId: "gpt-5.1",
+      options: expect.objectContaining({
+        apiKey: "azure-key",
+        baseURL: "https://azure.example/openai",
+        headers: {},
+      }),
+    });
+  });
+
+  it("uses openrouter sdk for openrouter npm package", async () => {
+    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+
+    const model = await Instance.provide({
+      directory: process.cwd(),
+      async fn() {
+        Instance.context.providerRuntime = {
+          providerId: "openrouter",
+          modelId: "openrouter/openai/gpt-5.2",
+          providerApiUrl: "https://openrouter.ai/api/v1",
+          providerNpmPackage: "@openrouter/ai-sdk-provider",
+          apiKey: "openrouter-key",
+        };
+        return getBuildModel();
+      },
+    });
+
+    expect(model).toEqual({
+      provider: "openrouter",
+      modelId: "openai/gpt-5.2",
+      options: expect.objectContaining({
+        apiKey: "openrouter-key",
+        baseURL: "https://openrouter.ai/api/v1",
+      }),
+    });
+  });
+
+  it("uses gitlab agentic chat for gitlab npm package", async () => {
+    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+
+    const model = await Instance.provide({
+      directory: process.cwd(),
+      async fn() {
+        Instance.context.providerRuntime = {
+          providerId: "gitlab",
+          modelId: "gitlab/openai/gpt-5.2",
+          providerNpmPackage: "@gitlab/gitlab-ai-provider",
+          apiKey: "gitlab-key",
+        };
+        return getBuildModel();
+      },
+    });
+
+    expect(model).toEqual({
+      provider: "gitlab-agentic-chat",
+      modelId: "openai/gpt-5.2",
+      options: expect.objectContaining({
+        apiKey: "gitlab-key",
+        instanceUrl: "https://gitlab.com",
+      }),
+    });
+  });
+
+  it("uses v6-compatible fallback sdk routing for remaining models.dev provider npm packages", async () => {
+    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const cases = [
+      "@jerome-benoit/sap-ai-provider-v2",
+      "venice-ai-sdk-provider",
+      "ai-gateway-provider",
+    ] as const;
+
+    for (const npmPackage of cases) {
+      const model = await Instance.provide({
+        directory: process.cwd(),
+        async fn() {
+          Instance.context.providerRuntime = {
+            providerId: "provider-under-test",
+            modelId: "provider-under-test/model-x",
+            providerApiUrl: "https://api.example.com/v1",
+            providerNpmPackage: npmPackage,
+            apiKey: "provider-key",
+          };
+          return getBuildModel();
+        },
+      });
+
+      expect(model).toEqual({
+        provider: "openai-compatible-sdk",
+        modelId: "model-x",
+        options: expect.objectContaining({
+          apiKey: "provider-key",
+          baseURL: "https://api.example.com/v1",
+          headers: {},
+        }),
+      });
+    }
+  });
+
+  it("falls back when openai-compatible sdk does not expose chat()", async () => {
+    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+
+    const model = await Instance.provide({
+      directory: process.cwd(),
+      async fn() {
+        Instance.context.providerRuntime = {
+          providerId: "opencode",
+          modelId: "opencode/kimi-k2.5",
+          providerApiUrl: "https://opencode.ai/zen/v1",
+          providerNpmPackage: "@ai-sdk/openai-compatible",
+          apiKey: "zen-key",
+          headers: { "x-no-chat": "1" },
+        };
+        return getBuildModel();
+      },
+    });
+
+    expect(model).toEqual({
+      provider: "openai-compatible-sdk",
+      modelId: "kimi-k2.5",
+      options: expect.objectContaining({
+        apiKey: "zen-key",
+        baseURL: "https://opencode.ai/zen/v1",
+      }),
+    });
   });
 });

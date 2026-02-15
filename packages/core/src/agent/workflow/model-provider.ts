@@ -19,6 +19,7 @@ import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { createZai } from "@ekacode/zai";
 import { Instance } from "../../instance";
 import { HybridAgent, createDefaultPromptRegistry } from "../hybrid-agent";
+import { resolveProviderSdkFactory } from "./provider-sdk-registry";
 
 // ============================================================================
 // ZAI PROVIDER (Primary) - Using "coding" endpoint for better code generation
@@ -78,6 +79,7 @@ interface RuntimeSelection {
   providerId: string;
   modelId: string;
   providerApiUrl?: string;
+  providerNpmPackage?: string;
   apiKey?: string;
   headers?: Record<string, string>;
 }
@@ -100,6 +102,7 @@ function getHybridVisionSelectionFromContext(): RuntimeSelection | null {
     providerId: runtime.hybridVisionProviderId,
     modelId,
     providerApiUrl: runtime.hybridVisionProviderApiUrl?.trim(),
+    providerNpmPackage: runtime.hybridVisionProviderNpmPackage?.trim(),
     apiKey: runtime.hybridVisionApiKey?.trim(),
   };
 }
@@ -132,6 +135,7 @@ function getRuntimeSelectionFromEnv(): RuntimeSelection | null {
     providerId,
     modelId,
     providerApiUrl: process.env.EKACODE_ACTIVE_PROVIDER_API_URL?.trim(),
+    providerNpmPackage: process.env.EKACODE_ACTIVE_PROVIDER_NPM?.trim(),
     apiKey: process.env.EKACODE_PROVIDER_API_KEY?.trim(),
   };
 }
@@ -153,6 +157,7 @@ function getRuntimeSelectionFromContext(): RuntimeSelection | null {
     providerId: runtime.providerId,
     modelId,
     providerApiUrl: runtime.providerApiUrl?.trim(),
+    providerNpmPackage: runtime.providerNpmPackage?.trim(),
     apiKey: runtime.apiKey?.trim(),
     headers: runtime.headers,
   };
@@ -201,7 +206,7 @@ function resolveModelFromSelection(selection: RuntimeSelection): LanguageModelV3
     })(selection.modelId as any); // eslint-disable-line @typescript-eslint/no-explicit-any
   }
 
-  const cacheKey = `${selection.providerId}|${selection.providerApiUrl ?? ""}|${selection.apiKey ?? ""}`;
+  const cacheKey = `${selection.providerId}|${selection.providerApiUrl ?? ""}|${selection.apiKey ?? ""}|${selection.providerNpmPackage ?? ""}`;
   const headers = {
     ...(defaultProviderHeaders(selection.providerId) ?? {}),
     ...(selection.headers ?? {}),
@@ -210,13 +215,54 @@ function resolveModelFromSelection(selection: RuntimeSelection): LanguageModelV3
   const finalCacheKey = `${cacheKey}|${headersKey}`;
   let provider = providerCache.get(finalCacheKey);
   if (!provider) {
-    provider = createOpenAI({
-      apiKey: selection.apiKey || process.env.OPENAI_API_KEY || "",
+    provider = resolveProviderSdkFactory({
+      providerId: selection.providerId,
+      providerNpmPackage: selection.providerNpmPackage,
+      apiKey: selection.apiKey,
       baseURL: selection.providerApiUrl,
       headers,
     });
     providerCache.set(finalCacheKey, provider);
   }
+
+  // OpenAI-compatible providers (eg: OpenCode Zen Kimi/GLM models) stream chat.completion chunks.
+  // Routing them through `chat()` keeps parsing aligned with upstream payload format.
+  if (selection.providerNpmPackage === "@ai-sdk/openai-compatible") {
+    if (typeof (provider as any).chat === "function") {
+      // eslint-disable-line @typescript-eslint/no-explicit-any
+      return (provider as any).chat(selection.modelId as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+    }
+    if (typeof provider.languageModel === "function") {
+      return provider.languageModel(selection.modelId as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+    }
+    return provider(selection.modelId);
+  }
+
+  if (selection.providerNpmPackage === "@ai-sdk/openai") {
+    if (selection.providerId === "openai" && typeof provider.responses === "function") {
+      return provider.responses(selection.modelId as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+    }
+    return provider(selection.modelId);
+  }
+
+  if (
+    selection.providerNpmPackage === "@ai-sdk/azure" &&
+    typeof provider.responses === "function"
+  ) {
+    return provider.responses(selection.modelId as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+  }
+
+  if (
+    selection.providerNpmPackage === "@gitlab/gitlab-ai-provider" &&
+    typeof (provider as any).agenticChat === "function" // eslint-disable-line @typescript-eslint/no-explicit-any
+  ) {
+    return (provider as any).agenticChat(selection.modelId as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+  }
+
+  if (typeof provider.languageModel === "function") {
+    return provider.languageModel(selection.modelId as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+  }
+
   return provider(selection.modelId);
 }
 
@@ -229,6 +275,7 @@ export function getModelByReference(modelReference: string): LanguageModelV3 {
         providerId: parsed.providerId,
         modelId: parsed.modelId,
         providerApiUrl: contextSelection.providerApiUrl,
+        providerNpmPackage: contextSelection.providerNpmPackage,
         apiKey: contextSelection.apiKey,
         headers: contextSelection.headers,
       });
@@ -242,6 +289,7 @@ export function getModelByReference(modelReference: string): LanguageModelV3 {
       providerId: parsed.providerId,
       modelId: parsed.modelId,
       providerApiUrl: process.env.EKACODE_ACTIVE_PROVIDER_API_URL?.trim(),
+      providerNpmPackage: process.env.EKACODE_ACTIVE_PROVIDER_NPM?.trim(),
       apiKey: process.env.EKACODE_PROVIDER_API_KEY?.trim(),
     });
   }
