@@ -160,6 +160,43 @@ describe("event-router-adapter", () => {
         sessionID: SESSION_ID_1,
         status: "pending",
         toolName: "write",
+        messageID: "permission:perm-1",
+      })
+    );
+  });
+
+  it("uses tool messageID for permission request when provided", async () => {
+    const { messageActions, partActions, sessionActions, permissionActions } = createActions();
+
+    await applyEventToStores(
+      {
+        type: "permission.asked",
+        properties: {
+          id: "perm-with-tool",
+          sessionID: SESSION_ID_1,
+          permission: "write",
+          patterns: ["*.ts"],
+          always: [],
+          tool: {
+            messageID: "assistant-msg-123",
+            callID: "call-abc",
+          },
+        },
+        eventId: uuidv7(),
+        sequence: 1,
+        timestamp: Date.now(),
+      } as ServerEvent,
+      messageActions,
+      partActions,
+      sessionActions,
+      permissionActions
+    );
+
+    expect(permissionActions.getById("perm-with-tool")).toEqual(
+      expect.objectContaining({
+        id: "perm-with-tool",
+        messageID: "assistant-msg-123",
+        callID: "call-abc",
       })
     );
   });

@@ -23,6 +23,13 @@ export interface ChatInputModelOption {
   connected: boolean;
 }
 
+export interface PendingPermissionBannerData {
+  id: string;
+  toolName: string;
+  description?: string;
+  patterns?: string[];
+}
+
 export interface ChatInputProps {
   value?: string;
   onValueChange?: (value: string) => void;
@@ -39,6 +46,11 @@ export interface ChatInputProps {
   onModelChange?: (modelId: string) => void;
   isSending?: boolean;
   disabled?: boolean;
+  pendingPermission?: PendingPermissionBannerData | null;
+  onPermissionApproveOnce?: (id: string) => void;
+  onPermissionApproveAlways?: (id: string, patterns?: string[]) => void;
+  onPermissionDeny?: (id: string) => void;
+  isResolvingPermission?: boolean;
   placeholder?: string;
   class?: string;
 }
@@ -50,6 +62,8 @@ export const ChatInput: Component<ChatInputProps> = props => {
       value: "",
       isSending: false,
       disabled: false,
+      pendingPermission: null as PendingPermissionBannerData | null,
+      isResolvingPermission: false,
       mode: "plan" as AgentMode,
       selectedModel: "",
       modelOptions: [] as ChatInputModelOption[],
@@ -205,6 +219,81 @@ export const ChatInput: Component<ChatInputProps> = props => {
         merged.class
       )}
     >
+      <Show when={merged.pendingPermission}>
+        {permission => (
+          <div
+            data-component="permission-input-strip"
+            class={cn(
+              "mb-3 rounded-lg border p-3",
+              "border-amber-500/30 bg-amber-500/10 text-amber-100"
+            )}
+          >
+            <div class="mb-1 flex items-center justify-between gap-2">
+              <div class="text-xs font-semibold uppercase tracking-wide">Permission required</div>
+              <div class="rounded bg-amber-500/20 px-2 py-0.5 font-mono text-xs">
+                {permission().toolName}
+              </div>
+            </div>
+
+            <Show when={permission().description}>
+              <p class="mb-2 text-xs">{permission().description}</p>
+            </Show>
+
+            <Show when={(permission().patterns?.length ?? 0) > 0}>
+              <div class="mb-2 flex flex-wrap gap-1">
+                {(permission().patterns ?? []).map(pattern => (
+                  <code class="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px]">{pattern}</code>
+                ))}
+              </div>
+            </Show>
+
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                data-action="permission-deny"
+                disabled={merged.isResolvingPermission}
+                onClick={() => merged.onPermissionDeny?.(permission().id)}
+                class={cn(
+                  "rounded border border-amber-500/40 px-2 py-1 text-xs",
+                  "hover:bg-amber-500/20",
+                  "disabled:cursor-not-allowed disabled:opacity-50"
+                )}
+              >
+                Deny
+              </button>
+              <button
+                type="button"
+                data-action="permission-approve-always"
+                disabled={merged.isResolvingPermission}
+                onClick={() =>
+                  merged.onPermissionApproveAlways?.(permission().id, permission().patterns)
+                }
+                class={cn(
+                  "rounded border border-amber-500/40 px-2 py-1 text-xs",
+                  "hover:bg-amber-500/20",
+                  "disabled:cursor-not-allowed disabled:opacity-50"
+                )}
+              >
+                Allow Always
+              </button>
+              <button
+                type="button"
+                data-action="permission-approve-once"
+                disabled={merged.isResolvingPermission}
+                onClick={() => merged.onPermissionApproveOnce?.(permission().id)}
+                class={cn(
+                  "rounded bg-amber-500/30 px-2 py-1 text-xs font-medium",
+                  "hover:bg-amber-500/40",
+                  "disabled:cursor-not-allowed disabled:opacity-50"
+                )}
+              >
+                Allow Once
+              </button>
+            </div>
+          </div>
+        )}
+      </Show>
+
       <textarea
         ref={textareaRef}
         value={inputValue()}

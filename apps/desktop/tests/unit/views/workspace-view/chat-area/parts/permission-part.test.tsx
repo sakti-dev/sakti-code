@@ -3,7 +3,7 @@ import {
   type PermissionPartData,
 } from "@/views/workspace-view/chat-area/parts/permission-part";
 import { render } from "solid-js/web";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createApprovedPermissionRequest,
   createCanonicalPermissionPart,
@@ -70,7 +70,7 @@ describe("PermissionPart", () => {
     expect(basicTool?.getAttribute("data-status")).toBe("pending");
   });
 
-  it("shows Approve and Deny buttons when pending", () => {
+  it("does not show action buttons when pending", () => {
     const request = createPendingPermissionRequest();
     const part = createPermissionPartData(request);
 
@@ -80,59 +80,10 @@ describe("PermissionPart", () => {
     const approveAlwaysBtn = container.querySelector('[data-action="approve-always"]');
     const denyBtn = container.querySelector('[data-action="deny"]');
 
-    expect(approveBtn).not.toBeNull();
-    expect(approveAlwaysBtn).not.toBeNull();
-    expect(denyBtn).not.toBeNull();
-  });
-
-  it("calls onApprove with id when approve clicked", () => {
-    const request = createPendingPermissionRequest({ id: "perm-123" });
-    const part = createPermissionPartData(request);
-    const onApprove = vi.fn();
-
-    dispose = render(
-      () => <PermissionPartWithCallbacks part={part} onApprove={onApprove} />,
-      container
-    );
-
-    const approveBtn = container.querySelector('[data-action="approve-once"]') as HTMLButtonElement;
-    approveBtn.click();
-
-    expect(onApprove).toHaveBeenCalledWith("perm-123");
-  });
-
-  it("calls onApprove with patterns when allow always clicked", () => {
-    const request = createPendingPermissionRequest({
-      id: "perm-allow-always",
-      patterns: ["src/**", "packages/**"],
-    });
-    const part = createPermissionPartData(request);
-    const onApprove = vi.fn();
-
-    dispose = render(
-      () => <PermissionPartWithCallbacks part={part} onApprove={onApprove} />,
-      container
-    );
-
-    const approveBtn = container.querySelector(
-      '[data-action="approve-always"]'
-    ) as HTMLButtonElement;
-    approveBtn.click();
-
-    expect(onApprove).toHaveBeenCalledWith("perm-allow-always", ["src/**", "packages/**"]);
-  });
-
-  it("calls onDeny with id when deny clicked", () => {
-    const request = createPendingPermissionRequest({ id: "perm-456" });
-    const part = createPermissionPartData(request);
-    const onDeny = vi.fn();
-
-    dispose = render(() => <PermissionPartWithCallbacks part={part} onDeny={onDeny} />, container);
-
-    const denyBtn = container.querySelector('[data-action="deny"]') as HTMLButtonElement;
-    denyBtn.click();
-
-    expect(onDeny).toHaveBeenCalledWith("perm-456");
+    expect(approveBtn).toBeNull();
+    expect(approveAlwaysBtn).toBeNull();
+    expect(denyBtn).toBeNull();
+    expect(container.textContent).toContain("Respond using the approval strip above input");
   });
 
   it("shows approved status with checkmark text", () => {
@@ -255,6 +206,7 @@ describe("PermissionPart", () => {
     dispose = render(() => <PermissionPartWithCallbacks part={canonicalPart} />, container);
 
     expect(container.textContent).toContain("Permission: bash");
-    expect(container.querySelector('[data-action="approve-once"]')).not.toBeNull();
+    expect(container.querySelector('[data-action="approve-once"]')).toBeNull();
+    expect(container.textContent).toContain("Respond using the approval strip above input");
   });
 });

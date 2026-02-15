@@ -249,6 +249,16 @@ function WorkspaceViewContent() {
   const isPromptBlocked = createMemo(
     () => Boolean(currentPendingPermission()) || Boolean(currentPendingQuestion())
   );
+  const pendingPermissionBanner = createMemo(() => {
+    const pending = currentPendingPermission();
+    if (!pending) return null;
+    return {
+      id: pending.id,
+      toolName: pending.toolName,
+      description: pending.description,
+      patterns: pending.patterns,
+    };
+  });
 
   const handleApprovePermission = (id: string, patterns?: string[]) => {
     void permissions.approve(id, patterns);
@@ -336,24 +346,26 @@ function WorkspaceViewContent() {
 
             {/* Chat input - sibling to MessageTimeline */}
             <div class="border-border/30 shrink-0 border-x border-t p-4">
-              <Show when={!isPromptBlocked()}>
-                <ChatInput
-                  value={draftMessage()}
-                  onValueChange={setDraftMessage}
-                  onSend={() => void handleSubmitDraft()}
-                  mode={agentMode()}
-                  onModeChange={setAgentMode}
-                  selectedModel={selectedModel()}
-                  modelOptions={modelOptions()}
-                  getModelSections={modelSections}
-                  getConnectedModelOptions={connectedModelOptions}
-                  getNotConnectedModelOptions={notConnectedModelOptions}
-                  onModelChange={handleModelChange}
-                  isSending={isGenerating()}
-                  disabled={isPromptBlocked()}
-                  placeholder="Send a message..."
-                />
-              </Show>
+              <ChatInput
+                value={draftMessage()}
+                onValueChange={setDraftMessage}
+                onSend={() => void handleSubmitDraft()}
+                mode={agentMode()}
+                onModeChange={setAgentMode}
+                selectedModel={selectedModel()}
+                modelOptions={modelOptions()}
+                getModelSections={modelSections}
+                getConnectedModelOptions={connectedModelOptions}
+                getNotConnectedModelOptions={notConnectedModelOptions}
+                onModelChange={handleModelChange}
+                isSending={isGenerating()}
+                disabled={isPromptBlocked()}
+                pendingPermission={pendingPermissionBanner()}
+                onPermissionApproveOnce={id => handleApprovePermission(id)}
+                onPermissionApproveAlways={(id, patterns) => handleApprovePermission(id, patterns)}
+                onPermissionDeny={handleDenyPermission}
+                placeholder="Send a message..."
+              />
             </div>
           </Resizable.Panel>
 

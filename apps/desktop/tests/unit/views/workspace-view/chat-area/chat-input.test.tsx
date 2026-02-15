@@ -72,6 +72,104 @@ describe("ChatInput", () => {
     expect(onSend).not.toHaveBeenCalled();
   });
 
+  it("renders pending permission strip above input", () => {
+    dispose = render(
+      () => (
+        <ChatInput
+          pendingPermission={{
+            id: "perm-1",
+            toolName: "write",
+            description: "Needs file write access",
+            patterns: ["src/**"],
+          }}
+        />
+      ),
+      container
+    );
+
+    const strip = container.querySelector('[data-component="permission-input-strip"]');
+    expect(strip).not.toBeNull();
+    expect(container.textContent).toContain("Permission required");
+    expect(container.textContent).toContain("write");
+    expect(container.textContent).toContain("Needs file write access");
+    expect(container.textContent).toContain("src/**");
+  });
+
+  it("calls permission callbacks from strip actions", () => {
+    const onApproveOnce = vi.fn();
+    const onApproveAlways = vi.fn();
+    const onDeny = vi.fn();
+
+    dispose = render(
+      () => (
+        <ChatInput
+          pendingPermission={{
+            id: "perm-2",
+            toolName: "bash",
+            patterns: ["packages/**", "apps/**"],
+          }}
+          onPermissionApproveOnce={onApproveOnce}
+          onPermissionApproveAlways={onApproveAlways}
+          onPermissionDeny={onDeny}
+        />
+      ),
+      container
+    );
+
+    const approveOnce = container.querySelector(
+      'button[data-action="permission-approve-once"]'
+    ) as HTMLButtonElement;
+    const approveAlways = container.querySelector(
+      'button[data-action="permission-approve-always"]'
+    ) as HTMLButtonElement;
+    const deny = container.querySelector(
+      'button[data-action="permission-deny"]'
+    ) as HTMLButtonElement;
+
+    approveOnce.click();
+    approveAlways.click();
+    deny.click();
+
+    expect(onApproveOnce).toHaveBeenCalledWith("perm-2");
+    expect(onApproveAlways).toHaveBeenCalledWith("perm-2", ["packages/**", "apps/**"]);
+    expect(onDeny).toHaveBeenCalledWith("perm-2");
+  });
+
+  it("disables permission actions while resolving", () => {
+    const onApproveOnce = vi.fn();
+
+    dispose = render(
+      () => (
+        <ChatInput
+          pendingPermission={{
+            id: "perm-3",
+            toolName: "write",
+            patterns: [],
+          }}
+          onPermissionApproveOnce={onApproveOnce}
+          isResolvingPermission={true}
+        />
+      ),
+      container
+    );
+
+    const approveOnce = container.querySelector(
+      'button[data-action="permission-approve-once"]'
+    ) as HTMLButtonElement;
+    const approveAlways = container.querySelector(
+      'button[data-action="permission-approve-always"]'
+    ) as HTMLButtonElement;
+    const deny = container.querySelector(
+      'button[data-action="permission-deny"]'
+    ) as HTMLButtonElement;
+
+    expect(approveOnce.disabled).toBe(true);
+    expect(approveAlways.disabled).toBe(true);
+    expect(deny.disabled).toBe(true);
+    approveOnce.click();
+    expect(onApproveOnce).not.toHaveBeenCalled();
+  });
+
   it("calls onModeChange when toggling mode", () => {
     const onModeChange = vi.fn();
     const [mode, setMode] = createSignal<"plan" | "build">("plan");

@@ -99,24 +99,6 @@ export const PermissionPart: Component<PartProps> = props => {
     return null;
   }
 
-  const handleApproveOnce = () => {
-    const id = request()?.id;
-    if (!id) return;
-    void props.onPermissionApprove?.(id);
-  };
-
-  const handleApproveAlways = () => {
-    const permission = request();
-    if (!permission?.id) return;
-    void props.onPermissionApprove?.(permission.id, permission.patterns);
-  };
-
-  const handleDeny = () => {
-    const id = request()?.id;
-    if (!id) return;
-    void props.onPermissionDeny?.(id);
-  };
-
   return (
     <div
       data-component="permission-part"
@@ -145,28 +127,8 @@ export const PermissionPart: Component<PartProps> = props => {
             </div>
           </Show>
 
-          <div data-slot="permission-actions" class="flex gap-2">
-            <button
-              data-action="deny"
-              class="bg-muted text-muted-foreground hover:bg-muted/80 rounded px-3 py-1 text-sm"
-              onClick={handleDeny}
-            >
-              Deny
-            </button>
-            <button
-              data-action="approve-always"
-              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 rounded px-3 py-1 text-sm"
-              onClick={handleApproveAlways}
-            >
-              Allow Always
-            </button>
-            <button
-              data-action="approve-once"
-              class="bg-primary text-primary-foreground hover:bg-primary/90 rounded px-3 py-1 text-sm"
-              onClick={handleApproveOnce}
-            >
-              Allow Once
-            </button>
+          <div data-slot="permission-pending-info" class="text-muted-foreground text-sm">
+            Respond using the approval strip above input
           </div>
         </Show>
         <Show when={!isPending()}>
