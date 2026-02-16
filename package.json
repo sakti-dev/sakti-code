@@ -8,6 +8,7 @@
     "dev:p": "turbo run dev --parallel",
     "fixtures:extract-real": "tsx scripts/extract-real-stream-fixtures.ts",
     "models:refresh:snapshot": "pnpm --filter @ekacode/server models:refresh:snapshot",
+    "migrations:check:server": "pnpm --filter @ekacode/server drizzle:check && node scripts/check-server-migration-policy.mjs",
     "build": "turbo run build",
     "test": "pnpm -r --if-present test",
     "lint": "turbo run lint",

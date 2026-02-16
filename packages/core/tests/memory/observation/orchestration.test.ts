@@ -326,7 +326,6 @@ describe("Observational Memory Orchestration", () => {
 
       const result = calculateObservationThresholds(
         messages,
-        messages,
         500, // pendingTokens
         300, // otherThreadTokens
         200, // currentObservationTokens
@@ -354,15 +353,7 @@ describe("Observational Memory Orchestration", () => {
         config: null,
       };
 
-      const result = calculateObservationThresholds(
-        messages,
-        messages,
-        0,
-        0,
-        0,
-        record,
-        tokenCounter
-      );
+      const result = calculateObservationThresholds(messages, 0, 0, 0, record, tokenCounter);
 
       // Threshold should use default 30000
       expect(result.threshold).toBe(30000);

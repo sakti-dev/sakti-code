@@ -295,7 +295,6 @@ export async function processInputStep(args: ProcessInputStepArgs): Promise<{
 
     const { totalPendingTokens, threshold } = calculateObservationThresholds(
       messages,
-      unobservedMessages,
       pendingTokens,
       otherThreadTokens,
       currentObservationTokens,

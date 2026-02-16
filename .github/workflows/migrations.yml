@@ -1,0 +1,40 @@
+name: Migration Checks
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  check-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Drizzle schema drift check
+        run: pnpm --filter @ekacode/server drizzle:check
+
+      - name: Migration policy check
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            node scripts/check-server-migration-policy.mjs --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.sha }}"
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]]; then
+            node scripts/check-server-migration-policy.mjs --from "${{ github.event.before }}" --to "${{ github.sha }}"
+          else
+            node scripts/check-server-migration-policy.mjs
+          fi

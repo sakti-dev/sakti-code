@@ -91,7 +91,6 @@ export interface ThresholdResult {
  * Calculate observation thresholds
  *
  * @param allMessages - All messages in the conversation
- * @param unobservedMessages - Messages not yet observed
  * @param pendingTokens - Pending tokens from storage
  * @param otherThreadTokens - Tokens from other threads (resource scope)
  * @param currentObservationTokens - Tokens in current observations
@@ -100,7 +99,6 @@ export interface ThresholdResult {
  */
 export function calculateObservationThresholds(
   allMessages: ObservationMessage[],
-  unobservedMessages: ObservationMessage[],
   pendingTokens: number,
   otherThreadTokens: number,
   currentObservationTokens: number,

@@ -19,34 +19,121 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/**
- * Get the migrations folder path based on environment
- *
- * Development: relative to server package source
- * Production: bundled with electron app
- */
-function getMigrationsFolder(): string {
-  // Try multiple possible locations
-  const possiblePaths = [
-    // Development: relative to db folder
-    path.resolve(__dirname, "../drizzle"),
-    // Development (Monorepo): relative from dist/index.js to packages/server/drizzle
-    path.resolve(__dirname, "../../../packages/server/drizzle"),
-    // Production: bundled alongside the main index.js
-    path.resolve(__dirname, "./drizzle"),
-    // Alternative production path
-    path.resolve(process.cwd(), "drizzle"),
-  ];
+export type MigrationsSource = "env" | "bundled" | "dev";
 
-  for (const p of possiblePaths) {
-    if (fs.existsSync(p) && fs.existsSync(path.join(p, "meta/_journal.json"))) {
-      return p;
-    }
+interface MigrationsCandidate {
+  path: string;
+  source: MigrationsSource;
+}
+
+export interface ResolvedMigrationsFolder {
+  path: string;
+  source: MigrationsSource;
+  attemptedPaths: string[];
+}
+
+function toAbsolutePath(value: string): string {
+  return path.isAbsolute(value) ? value : path.resolve(process.cwd(), value);
+}
+
+function getCandidates(): MigrationsCandidate[] {
+  const envPath = process.env.EKACODE_MIGRATIONS_DIR;
+  if (envPath) {
+    return [{ path: toAbsolutePath(envPath), source: "env" }];
   }
 
-  // Default to first path (will error if not found)
-  console.warn("[db:migration] No migrations folder found, using default path");
-  return possiblePaths[0];
+  return [
+    // Bundled path adjacent to compiled server output
+    { path: path.resolve(__dirname, "../drizzle"), source: "bundled" },
+    // Bundled path fallback (when db files are flattened in build output)
+    { path: path.resolve(__dirname, "./drizzle"), source: "bundled" },
+    // Development source path
+    { path: path.resolve(process.cwd(), "packages/server/drizzle"), source: "dev" },
+  ];
+}
+
+function hasJournal(migrationsFolder: string): boolean {
+  return fs.existsSync(path.join(migrationsFolder, "meta/_journal.json"));
+}
+
+function journalPathFor(folder: string): string {
+  return path.join(folder, "meta/_journal.json");
+}
+
+function formatAttemptedPaths(attemptedPaths: string[]): string {
+  return attemptedPaths.map(p => `  - ${p}`).join("\n");
+}
+
+export function resolveMigrationsFolder(): ResolvedMigrationsFolder {
+  const candidates = getCandidates();
+  const attemptedPaths = candidates.map(candidate => candidate.path);
+
+  const envPath = process.env.EKACODE_MIGRATIONS_DIR;
+  if (envPath) {
+    const onlyCandidate = candidates[0];
+    if (!fs.existsSync(onlyCandidate.path)) {
+      throw new Error(
+        `[db:migration] EKACODE_MIGRATIONS_DIR does not exist: ${onlyCandidate.path}`
+      );
+    }
+    if (!hasJournal(onlyCandidate.path)) {
+      throw new Error(
+        `[db:migration] EKACODE_MIGRATIONS_DIR is missing meta/_journal.json: ${journalPathFor(onlyCandidate.path)}`
+      );
+    }
+    return {
+      path: onlyCandidate.path,
+      source: onlyCandidate.source,
+      attemptedPaths,
+    };
+  }
+
+  const resolved = candidates.find(
+    candidate => fs.existsSync(candidate.path) && hasJournal(candidate.path)
+  );
+  if (!resolved) {
+    throw new Error(
+      `[db:migration] No valid migrations folder found. Expected meta/_journal.json in one of:\n${formatAttemptedPaths(attemptedPaths)}`
+    );
+  }
+
+  return {
+    path: resolved.path,
+    source: resolved.source,
+    attemptedPaths,
+  };
+}
+
+export function validateMigrationsFolder(migrationsFolder: string): void {
+  const journalPath = journalPathFor(migrationsFolder);
+  if (!fs.existsSync(journalPath)) {
+    throw new Error(`[db:migration] Missing migration journal: ${journalPath}`);
+  }
+
+  let journal: { entries?: Array<{ tag?: string }> };
+  try {
+    journal = JSON.parse(fs.readFileSync(journalPath, "utf-8")) as {
+      entries?: Array<{ tag?: string }>;
+    };
+  } catch (error) {
+    throw new Error(
+      `[db:migration] Invalid migration journal JSON at ${journalPath}: ${String(error)}`
+    );
+  }
+
+  if (!Array.isArray(journal.entries)) {
+    throw new Error(`[db:migration] Invalid migration journal entries at ${journalPath}`);
+  }
+
+  for (const entry of journal.entries) {
+    if (!entry?.tag) {
+      throw new Error(`[db:migration] Migration journal entry missing tag in ${journalPath}`);
+    }
+    const sqlPath = path.join(migrationsFolder, `${entry.tag}.sql`);
+    if (!fs.existsSync(sqlPath)) {
+      throw new Error(`[db:migration] Migration journal references missing SQL file: ${sqlPath}`);
+    }
+  }
 }
 
 /**
@@ -64,11 +151,12 @@ function getMigrationsFolder(): string {
 export async function runMigrations<T extends Record<string, unknown>>(
   db: LibSQLDatabase<T>
 ): Promise<void> {
-  const migrationsFolder = getMigrationsFolder();
-  console.log(`[db:migration] Running migrations from: ${migrationsFolder}`);
+  const resolved = resolveMigrationsFolder();
+  validateMigrationsFolder(resolved.path);
+  console.log(`[db:migration] Running migrations from (${resolved.source}): ${resolved.path}`);
 
   try {
-    await migrate(db, { migrationsFolder });
+    await migrate(db, { migrationsFolder: resolved.path });
     console.log("[db:migration] Migrations complete");
   } catch (error) {
     console.error("[db:migration] Migration failed:", error);
@@ -80,10 +168,17 @@ export async function runMigrations<T extends Record<string, unknown>>(
  * Check if migrations folder exists and is valid
  */
 export function checkMigrationsFolder(): { exists: boolean; path: string } {
-  const migrationsFolder = getMigrationsFolder();
-  const journalPath = path.join(migrationsFolder, "meta/_journal.json");
-  return {
-    exists: fs.existsSync(journalPath),
-    path: migrationsFolder,
-  };
+  try {
+    const resolved = resolveMigrationsFolder();
+    validateMigrationsFolder(resolved.path);
+    return {
+      exists: true,
+      path: resolved.path,
+    };
+  } catch {
+    return {
+      exists: false,
+      path: "",
+    };
+  }
 }
