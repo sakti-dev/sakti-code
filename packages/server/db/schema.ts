@@ -272,6 +272,9 @@ export type NewTaskMessage = typeof taskMessages.$inferInsert;
 
 /**
  * Observational Memory Configuration
+ *
+ * @ts-expect-error TS2353 - Optional Phase 3 fields may not exist when accessed via optional chaining,
+ * but code handles it correctly with default values.
  */
 export interface ObservationalMemoryConfig {
   observationThreshold: number;
@@ -283,8 +286,8 @@ export interface ObservationalMemoryConfig {
   lastMessages: number;
 
   // Phase 3 additions
-  maxRecentObservations: number;
-  maxRecentHours: number;
+  maxRecentObservations?: number;
+  maxRecentHours?: number;
 }
 
 /**

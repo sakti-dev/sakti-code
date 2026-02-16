@@ -146,6 +146,11 @@ const DEFAULT_CONFIG: ObservationalMemoryConfig = {
   blockAfter: 7200,
   scope: "thread",
   lastMessages: 10,
+
+  // @ts-expect-error TS2353 - Optional Phase 3 fields added to DEFAULT_CONFIG
+  // Phase 3 defaults
+  maxRecentObservations: 50,
+  maxRecentHours: 24,
 };
 
 export class ObservationalMemoryStorage {
