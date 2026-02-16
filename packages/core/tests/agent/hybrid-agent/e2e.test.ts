@@ -48,7 +48,7 @@ describe("Hybrid Agent E2E", () => {
   });
 
   it("should export all prompts", async () => {
-    const prompts = await import("../../../src/agent/hybrid-agent/prompts");
+    const prompts = await import("../../../src/prompts/hybrid-agent/index");
 
     // Check that all prompts are exported
     expect(prompts.UI_TO_ARTIFACT_PROMPTS).toBeDefined();

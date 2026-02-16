@@ -6,8 +6,6 @@
 
 import type { ZaiChatModelId } from "@ekacode/zai";
 import { createZai } from "@ekacode/zai";
-import { HybridAgent } from "./hybrid-agent";
-import { createPromptRegistry } from "./prompt-registry";
 import {
   DATA_VIZ_ANALYSIS_PROMPT,
   DIAGRAM_UNDERSTANDING_PROMPT,
@@ -16,7 +14,9 @@ import {
   TEXT_EXTRACTION_PROMPT,
   UI_DIFF_CHECK_PROMPT,
   UI_TO_ARTIFACT_PROMPTS,
-} from "./prompts";
+} from "../../prompts/hybrid-agent/index";
+import { HybridAgent } from "./hybrid-agent";
+import { createPromptRegistry } from "./prompt-registry";
 import type { PromptRegistry } from "./types";
 
 /**

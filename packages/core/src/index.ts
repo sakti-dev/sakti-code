@@ -190,7 +190,6 @@ export {
   planModel,
   visionModel,
 } from "./agent/workflow/model-provider";
-export { PHASE_PROMPTS } from "./agent/workflow/prompts";
 export {
   AgentConfig,
   AgentEvent,
@@ -198,6 +197,7 @@ export {
   AgentResult,
   AgentType,
 } from "./agent/workflow/types";
+export { PHASE_PROMPTS } from "./prompts";
 export { AgentProcessor } from "./session/processor";
 
 // Session Management (new architecture)

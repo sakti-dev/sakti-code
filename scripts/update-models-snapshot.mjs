@@ -4,7 +4,8 @@ import { join } from "node:path";
 const sourcePath = process.env.MODELS_DEV_API_JSON;
 const sourceUrl = process.env.MODELS_DEV_URL || "https://models.dev/api.json";
 const outputPath =
-  process.env.MODELS_SNAPSHOT_OUTPUT_PATH || join(process.cwd(), "src", "provider", "models", "snapshot.json");
+  process.env.MODELS_SNAPSHOT_OUTPUT_PATH ||
+  join(process.cwd(), "src", "provider", "models", "snapshot.json");
 
 async function loadModelsPayload() {
   if (sourcePath) {

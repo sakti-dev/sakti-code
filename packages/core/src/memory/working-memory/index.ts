@@ -15,4 +15,4 @@ export {
   WORKING_MEMORY_TEMPLATE,
   parseWorkingMemoryContent,
   type WorkingMemoryData,
-} from "./template";
+} from "../../prompts/working-memory";

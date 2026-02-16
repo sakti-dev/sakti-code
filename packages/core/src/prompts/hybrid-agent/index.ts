@@ -1,5 +1,5 @@
 /**
- * Prompts Index
+ * Hybrid Agent Prompts Index
  *
  * Export all prompt definitions for the hybrid agent.
  */

@@ -6,6 +6,7 @@
 
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { generateText } from "ai";
+import { COMPRESSION_GUIDANCE, REFLECTOR_SYSTEM_PROMPT } from "../../prompts/reflector";
 
 export interface ReflectorInput {
   activeObservations: string;
@@ -18,44 +19,6 @@ export interface ReflectorOutput {
   suggestedResponse?: string;
   tokenCount: number;
 }
-
-const REFLECTOR_SYSTEM_PROMPT =
-  "You are memory consciousness of an AI coding assistant. Your task is to reflect on observations and create a more compact summary.\n\n" +
-  "IMPORTANT: Your reflections will be THE ENTIRETY of the assistant's memory. Any information you do not add will be immediately forgotten. Make sure you do not leave out anything. Your reflections must assume the assistant knows nothing - your reflections are the ENTIRE memory system.\n\n" +
-  "When consolidating:\n" +
-  "- Preserve dates/timestamps\n" +
-  "- Group related items by feature\n" +
-  "- Combine similar work\n" +
-  "- Keep key identifiers (file paths, function names, etc.)\n" +
-  "- Prioritize active work over questions\n\n" +
-  "Your output should be in this format:\n\n" +
-  "<observations>\n" +
-  "Date: YYYY-MM-DD\n\n" +
-  "High Priority (Active/Critical)\n" +
-  "* Feature 1: Implementation details...\n\n" +
-  "Medium Priority (In Progress/Pending)\n" +
-  "* Feature 2: Implementation details...\n\n" +
-  "Low Priority (Completed/Background)\n" +
-  "* Feature 3: Implementation details...\n" +
-  "</observations>\n\n" +
-  "<current-task>Current task: [Description]</current-task>\n\n" +
-  "<suggested-response>What the assistant should do next.</suggested-response>";
-
-const COMPRESSION_GUIDANCE: Record<number, string> = {
-  0: "",
-  1:
-    "COMPRESSION REQUIRED\n\n" +
-    "Your previous reflection was the same size or larger than the original observations.\n\n" +
-    "Please re-process with slightly more compression:\n" +
-    "- Condense more observations into high-level summaries\n" +
-    "- Keep only key details for recent work",
-  2:
-    "AGGRESSIVE COMPRESSION REQUIRED\n\n" +
-    "Your previous reflection was still too large after compression guidance.\n\n" +
-    "Please re-process with much more aggressive compression:\n" +
-    "- Heavily condense everything into feature summaries\n" +
-    "- Keep minimal details - only feature names and major decisions",
-};
 
 export async function callReflectorAgent(
   input: ReflectorInput,

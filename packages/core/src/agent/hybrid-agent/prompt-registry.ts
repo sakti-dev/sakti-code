@@ -4,7 +4,7 @@
  * Manages prompt handlers and resolves prompts based on intent.
  */
 
-import { GENERAL_IMAGE_ANALYSIS_PROMPT } from "./prompts";
+import { GENERAL_IMAGE_ANALYSIS_PROMPT } from "../../prompts/hybrid-agent/general-image";
 import type { PromptContext, PromptHandler, PromptRegistry, PromptResolution } from "./types";
 
 /**

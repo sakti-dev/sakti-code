@@ -63,4 +63,4 @@ export {
 } from "./prompt-injector";
 
 // Prompts
-export * from "./prompts";
+export * from "../../prompts/hybrid-agent/index";

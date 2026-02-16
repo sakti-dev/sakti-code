@@ -5,7 +5,7 @@
  * and objectives.
  */
 
-import { AgentType } from "./types";
+import { AgentType } from "../agent/workflow/types";
 
 /**
  * System prompts for each agent phase
