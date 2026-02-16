@@ -104,6 +104,7 @@ export class SessionController {
         task: message,
         context: {
           sessionId: this.sessionId,
+          resourceId: this.config.resourceId,
           workspace: this.config.workspace,
         },
       });

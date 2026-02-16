@@ -184,6 +184,7 @@ export {
   exploreModel,
   getBuildModel,
   getExploreModel,
+  getModelByReference,
   getPlanModel,
   getVisionModel,
   planModel,

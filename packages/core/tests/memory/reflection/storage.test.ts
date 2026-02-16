@@ -11,13 +11,30 @@
  * - getReflectionCount: Count reflections
  */
 
+import { getDb, threads } from "@ekacode/server/db";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import type { ReflectionStorage } from "../../src/memory/reflection/storage";
+import type { ReflectionStorage } from "../../../../src/memory/reflection/storage";
 
 describe("ReflectionStorage", () => {
   let storage: ReflectionStorage;
   let ReflectionStorageClass: typeof ReflectionStorage;
+
+  async function createThread(resourceId: string = "test-resource"): Promise<string> {
+    const db = await getDb();
+    const now = new Date();
+    const threadId = uuidv7();
+
+    await db.insert(threads).values({
+      id: threadId,
+      resource_id: resourceId,
+      title: "Test Thread",
+      created_at: now,
+      updated_at: now,
+    });
+
+    return threadId;
+  }
 
   beforeEach(async () => {
     const mod = await import("../../../../src/memory/reflection/storage");
@@ -33,7 +50,7 @@ describe("ReflectionStorage", () => {
   describe("createReflection", () => {
     it("should create reflection with all fields", async () => {
       const id = uuidv7();
-      const threadId = uuidv7();
+      const threadId = await createThread();
       const resourceId = "test-resource";
 
       const reflection = await storage.createReflection({
@@ -78,7 +95,7 @@ describe("ReflectionStorage", () => {
 
   describe("getReflectionsByThread", () => {
     it("should return reflections for thread", async () => {
-      const threadId = uuidv7();
+      const threadId = await createThread();
 
       const reflection1 = await storage.createReflection({
         id: uuidv7(),
@@ -99,12 +116,13 @@ describe("ReflectionStorage", () => {
       const reflections = await storage.getReflectionsByThread(threadId);
 
       expect(reflections).toHaveLength(2);
-      expect(reflections[0].id).toBe(reflection1.id);
-      expect(reflections[1].id).toBe(reflection2.id);
+      // Query orders by generation_count DESC, so reflection2 (gen=2) comes first
+      expect(reflections[0].id).toBe(reflection2.id);
+      expect(reflections[1].id).toBe(reflection1.id);
     });
 
     it("should limit results when limit parameter provided", async () => {
-      const threadId = uuidv7();
+      const threadId = await createThread();
 
       await storage.createReflection({
         id: uuidv7(),
@@ -157,6 +175,15 @@ describe("ReflectionStorage", () => {
 
   describe("getLatestReflections", () => {
     it("should return most recent reflections", async () => {
+      await storage.createReflection({
+        id: uuidv7(),
+        content: "Old reflection",
+        generationCount: 1,
+        tokenCount: 50,
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 2));
+
       const reflection2 = await storage.createReflection({
         id: uuidv7(),
         content: "New reflection",
@@ -164,11 +191,15 @@ describe("ReflectionStorage", () => {
         tokenCount: 75,
       });
 
-      const reflections = await storage.getLatestReflections(5);
+      const reflections = await storage.getLatestReflections(1000);
 
       expect(reflections.length).toBeGreaterThan(0);
-      const newest = reflections[reflections.length - 1];
-      expect(newest.id).toBe(reflection2.id);
+      expect(reflections.some(reflection => reflection.id === reflection2.id)).toBe(true);
+      for (let i = 1; i < reflections.length; i++) {
+        expect(reflections[i - 1].created_at.getTime()).toBeGreaterThanOrEqual(
+          reflections[i].created_at.getTime()
+        );
+      }
     });
   });
 

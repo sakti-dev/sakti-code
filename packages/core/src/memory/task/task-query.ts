@@ -14,6 +14,18 @@ import { tool } from "ai";
 import { z } from "zod";
 import { taskStorage } from "./storage";
 
+interface TaskQueryDispatchInput {
+  action: "ready" | "show" | "list" | "search";
+  id?: string;
+  status?: "open" | "in_progress" | "closed";
+  query?: string;
+  limit?: number;
+}
+
+async function executeTaskQueryTool(input: TaskQueryDispatchInput) {
+  return executeTaskQuery(input as unknown as Parameters<typeof executeTaskQuery>[0]);
+}
+
 export const taskQueryTool = tool({
   description: `Query tasks for work management.
 
@@ -35,6 +47,7 @@ Examples:
     query: z.string().optional(),
     limit: z.number().default(5),
   }),
+  execute: async input => executeTaskQueryTool(input),
 });
 
 export async function executeTaskQuery(

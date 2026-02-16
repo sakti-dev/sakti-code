@@ -8,12 +8,14 @@
  * Publishes Opencode-style part events to the Bus for SSE streaming.
  */
 
+import { getModelByReference } from "@ekacode/core";
 import { Instance } from "@ekacode/core/server";
 import { createLogger } from "@ekacode/shared/logger";
-import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import { createUIMessageStream, createUIMessageStreamResponse, generateText } from "ai";
 import { Hono } from "hono";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
+import { updateSessionTitle } from "../../db/sessions";
 import { MessagePartUpdated, MessageUpdated, publish, SessionStatus } from "../bus";
 import type { Env } from "../index";
 import { createSessionMessage, sessionBridge } from "../middleware/session-bridge";
@@ -25,6 +27,83 @@ import { getSessionMessages } from "../state/session-message-store";
 
 const app = new Hono<Env>();
 const logger = createLogger("server");
+const SESSION_TITLE_TOKEN_LIMIT = 24;
+
+function normalizeGeneratedTitle(text: string): string | null {
+  const stripped = text
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/[\r\n]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!stripped) return null;
+  return stripped.length > 80 ? stripped.slice(0, 80).trimEnd() : stripped;
+}
+
+function deriveFallbackTitle(messageText: string): string {
+  const compact = messageText.replace(/\s+/g, " ").trim();
+  if (!compact) return "New Chat";
+  return compact.length > 60 ? `${compact.slice(0, 60).trimEnd()}...` : compact;
+}
+
+async function maybeAssignAutoSessionTitle(args: {
+  sessionId: string;
+  modelReference: string;
+  userMessage: string;
+  assistantMessage: string;
+}): Promise<void> {
+  const { sessionId, modelReference, userMessage, assistantMessage } = args;
+
+  try {
+    const model = getModelByReference(modelReference);
+    const titlePrompt = `Generate a short chat title (max 8 words) for this conversation.
+Return only the title text, with no quotes or punctuation suffix.
+
+User message:
+${userMessage}
+
+Assistant summary:
+${assistantMessage}`;
+
+    const { text } = await generateText({
+      model,
+      temperature: 0.2,
+      maxOutputTokens: SESSION_TITLE_TOKEN_LIMIT,
+      prompt: titlePrompt,
+    });
+
+    const candidate = normalizeGeneratedTitle(text) ?? deriveFallbackTitle(userMessage);
+    const updated = await updateSessionTitle(sessionId, candidate, {
+      source: "auto",
+      onlyIfProvisional: true,
+    });
+
+    if (updated) {
+      logger.info("Auto-updated session title", {
+        module: "chat",
+        sessionId,
+        title: candidate,
+      });
+    }
+  } catch (error) {
+    const fallback = deriveFallbackTitle(userMessage);
+    const updated = await updateSessionTitle(sessionId, fallback, {
+      source: "auto",
+      onlyIfProvisional: true,
+    });
+    if (updated) {
+      logger.warn("Auto-title generation failed, used fallback title", {
+        module: "chat",
+        sessionId,
+      });
+      return;
+    }
+    logger.warn("Auto-title generation skipped", {
+      module: "chat",
+      sessionId,
+      reason: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
 
 // Apply session bridge middleware
 app.use("*", sessionBridge);
@@ -1676,7 +1755,22 @@ app.post("/api/chat", async c => {
             };
 
             try {
-              return await processAgentMessage();
+              const processResult = await processAgentMessage();
+
+              if (processResult.status === "completed") {
+                const assistantMessage =
+                  typeof processResult.finalContent === "string" ? processResult.finalContent : "";
+                // Start auto-title generation while provider runtime context is still active.
+                // This keeps runtime credentials/model resolution available for generateText.
+                void maybeAssignAutoSessionTitle({
+                  sessionId: session.sessionId,
+                  modelReference: selectedModel.id,
+                  userMessage: messageText,
+                  assistantMessage,
+                });
+              }
+
+              return processResult;
             } finally {
               Instance.context.providerRuntime = previousRuntime;
             }
@@ -1804,6 +1898,7 @@ app.get("/api/chat/session", c => {
     sessionId: session.sessionId,
     resourceId: session.resourceId,
     threadId: session.threadId,
+    title: session.title,
     createdAt: session.createdAt.toISOString(),
     lastAccessed: session.lastAccessed.toISOString(),
   });

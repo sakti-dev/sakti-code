@@ -196,6 +196,7 @@ export function createSessionMessage(session: Session): {
     sessionId: string;
     resourceId: string;
     threadId: string;
+    title: string | null;
     createdAt: string;
     lastAccessed: string;
   };
@@ -207,6 +208,7 @@ export function createSessionMessage(session: Session): {
       sessionId: session.sessionId,
       resourceId: session.resourceId,
       threadId: session.threadId,
+      title: session.title,
       createdAt: session.createdAt.toISOString(),
       lastAccessed: session.lastAccessed.toISOString(),
     },

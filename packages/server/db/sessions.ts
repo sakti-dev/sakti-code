@@ -7,7 +7,16 @@
 
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import { db, sessions } from "./index";
+import { db, sessions, threads } from "./index";
+
+export const DEFAULT_SESSION_TITLE = "New Chat";
+
+type TitleSource = "auto" | "manual";
+
+interface ThreadTitleMetadata {
+  titleSource?: TitleSource;
+  provisionalTitle?: boolean;
+}
 
 /**
  * Session data structure
@@ -16,8 +25,38 @@ export interface Session {
   sessionId: string; // UUIDv7
   resourceId: string; // userId or "local"
   threadId: string; // == sessionId
+  title: string | null;
   createdAt: Date; // unix timestamp ms
   lastAccessed: Date; // unix timestamp ms
+}
+
+function getThreadMetadata(metadata: unknown): Record<string, unknown> {
+  if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
+    return metadata as Record<string, unknown>;
+  }
+  return {};
+}
+
+async function ensureThreadRecord(
+  threadId: string,
+  resourceId: string,
+  title: string = DEFAULT_SESSION_TITLE
+): Promise<void> {
+  const now = new Date();
+  await db
+    .insert(threads)
+    .values({
+      id: threadId,
+      resource_id: resourceId,
+      title,
+      metadata: {
+        titleSource: "auto",
+        provisionalTitle: true,
+      },
+      created_at: now,
+      updated_at: now,
+    })
+    .onConflictDoNothing();
 }
 
 /**
@@ -34,16 +73,19 @@ export async function createSession(resourceId: string): Promise<Session> {
     session_id: sessionId,
     resource_id: resourceId,
     thread_id: sessionId, // threadId == sessionId for memory integration
+    title: DEFAULT_SESSION_TITLE,
     created_at: now,
     last_accessed: now,
   };
 
   await db.insert(sessions).values(session);
+  await ensureThreadRecord(session.thread_id, resourceId, DEFAULT_SESSION_TITLE);
 
   return {
     sessionId: session.session_id,
     resourceId: session.resource_id,
     threadId: session.thread_id,
+    title: session.title,
     createdAt: session.created_at,
     lastAccessed: session.last_accessed,
   };
@@ -63,16 +105,19 @@ export async function createSessionWithId(resourceId: string, sessionId: string)
     session_id: sessionId,
     resource_id: resourceId,
     thread_id: sessionId,
+    title: DEFAULT_SESSION_TITLE,
     created_at: now,
     last_accessed: now,
   };
 
   await db.insert(sessions).values(session);
+  await ensureThreadRecord(session.thread_id, resourceId, DEFAULT_SESSION_TITLE);
 
   return {
     sessionId: session.session_id,
     resourceId: session.resource_id,
     threadId: session.thread_id,
+    title: session.title,
     createdAt: session.created_at,
     lastAccessed: session.last_accessed,
   };
@@ -91,10 +136,17 @@ export async function getSession(sessionId: string): Promise<Session | null> {
     return null;
   }
 
+  await ensureThreadRecord(
+    result.thread_id,
+    result.resource_id,
+    result.title ?? DEFAULT_SESSION_TITLE
+  );
+
   return {
     sessionId: result.session_id,
     resourceId: result.resource_id,
     threadId: result.thread_id,
+    title: result.title,
     createdAt: result.created_at,
     lastAccessed: result.last_accessed,
   };
@@ -134,8 +186,78 @@ export async function getAllSessions(): Promise<Session[]> {
       sessionId: row.session_id,
       resourceId: row.resource_id,
       threadId: row.thread_id,
+      title: row.title,
       createdAt: row.created_at,
       lastAccessed: row.last_accessed,
     }))
     .reverse(); // Most recent first
+}
+
+function normalizeTitle(raw: string): string | null {
+  const compact = raw.replace(/\s+/g, " ").trim();
+  if (!compact) return null;
+  const max = 80;
+  return compact.length > max ? compact.slice(0, max).trimEnd() : compact;
+}
+
+export async function updateSessionTitle(
+  sessionId: string,
+  title: string,
+  options: {
+    source?: TitleSource;
+    onlyIfProvisional?: boolean;
+  } = {}
+): Promise<boolean> {
+  const normalizedTitle = normalizeTitle(title);
+  if (!normalizedTitle) return false;
+
+  const session = await db.select().from(sessions).where(eq(sessions.session_id, sessionId)).get();
+  if (!session) return false;
+
+  const thread = await db.select().from(threads).where(eq(threads.id, session.thread_id)).get();
+  const metadata = getThreadMetadata(thread?.metadata);
+  const titleMeta = metadata as ThreadTitleMetadata;
+  const inferredProvisional =
+    typeof thread?.title === "string" ? thread.title === DEFAULT_SESSION_TITLE : true;
+  const isProvisional = titleMeta.provisionalTitle ?? inferredProvisional;
+  const existingSource = titleMeta.titleSource ?? "auto";
+
+  if (options.onlyIfProvisional && (!isProvisional || existingSource === "manual")) {
+    return false;
+  }
+
+  const source: TitleSource = options.source ?? "auto";
+  await db
+    .update(sessions)
+    .set({ title: normalizedTitle })
+    .where(eq(sessions.session_id, sessionId));
+
+  if (thread) {
+    await db
+      .update(threads)
+      .set({
+        title: normalizedTitle,
+        metadata: {
+          ...metadata,
+          titleSource: source,
+          provisionalTitle: false,
+        },
+        updated_at: new Date(),
+      })
+      .where(eq(threads.id, session.thread_id));
+  } else {
+    await ensureThreadRecord(session.thread_id, session.resource_id, normalizedTitle);
+    await db
+      .update(threads)
+      .set({
+        metadata: {
+          titleSource: source,
+          provisionalTitle: false,
+        },
+        updated_at: new Date(),
+      })
+      .where(eq(threads.id, session.thread_id));
+  }
+
+  return true;
 }

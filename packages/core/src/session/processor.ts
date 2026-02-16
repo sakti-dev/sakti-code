@@ -18,6 +18,7 @@ import {
 } from "../agent/workflow/model-provider";
 import { AgentConfig, AgentEvent, AgentInput, AgentResult } from "../agent/workflow/types";
 import { Instance } from "../instance";
+import { memoryProcessor } from "../memory/processors";
 import {
   applyToolDefinitionHook,
   resolveHookModel,
@@ -56,6 +57,11 @@ interface ToolCallResult {
   signature: string;
   success: boolean;
   timestamp: number;
+}
+
+interface MemoryContext {
+  threadId: string;
+  resourceId: string;
 }
 
 function safeNumber(value: unknown): number {
@@ -233,17 +239,44 @@ export class AgentProcessor {
       task: input.task?.slice(0, 100),
     });
 
-    // Initialize with system prompt and user input
-    this.messages = [
-      { role: "system", content: this.config.systemPrompt },
-      { role: "user", content: this.buildInputMessage(input) },
-    ];
+    const resolvedMemoryContext = this.resolveMemoryContext(input);
+    const inputMessage = this.buildInputMessage(input);
+
+    if (resolvedMemoryContext) {
+      try {
+        const memoryInput = await memoryProcessor.input({
+          message: inputMessage,
+          threadId: resolvedMemoryContext.threadId,
+          resourceId: resolvedMemoryContext.resourceId,
+        });
+        this.messages = memoryProcessor.formatForAgentInput(
+          memoryInput,
+          this.config.systemPrompt
+        ) as ModelMessage[];
+      } catch (error) {
+        logger.warn("Failed to load memory context, falling back to default initialization", {
+          module: "agent:processor",
+          agent: this.config.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        this.messages = [
+          { role: "system", content: this.config.systemPrompt },
+          { role: "user", content: inputMessage },
+        ];
+      }
+    } else {
+      // Initialize with system prompt and user input
+      this.messages = [
+        { role: "system", content: this.config.systemPrompt },
+        { role: "user", content: inputMessage },
+      ];
+    }
 
     try {
       while (this.iterationCount < this.config.maxIterations) {
         // Check for abort
         if (this.abortController.signal.aborted) {
-          return this.createResult("stopped", startTime);
+          return await this.finalizeResult(this.createResult("stopped", startTime), input);
         }
 
         let iterationResult: { finished: boolean };
@@ -288,7 +321,7 @@ export class AgentProcessor {
         }
 
         if (iterationResult.finished) {
-          return this.createResult("completed", startTime);
+          return await this.finalizeResult(this.createResult("completed", startTime), input);
         }
 
         // Doom loop detection
@@ -312,7 +345,10 @@ export class AgentProcessor {
                 repeatingSignatures,
                 failureCount: recentFailures.length,
               });
-              return this.createResult("failed", startTime, errorMessage);
+              return await this.finalizeResult(
+                this.createResult("failed", startTime, errorMessage),
+                input
+              );
             }
           }
 
@@ -332,7 +368,10 @@ export class AgentProcessor {
                 lastSixSignatures: lastSix,
                 toolName: toolNames[0],
               });
-              return this.createResult("failed", startTime, errorMessage);
+              return await this.finalizeResult(
+                this.createResult("failed", startTime, errorMessage),
+                input
+              );
             }
           }
 
@@ -347,7 +386,10 @@ export class AgentProcessor {
             iteration: this.iterationCount,
             repeatingSignatures: lastFive,
           });
-          return this.createResult("failed", startTime, errorMessage);
+          return await this.finalizeResult(
+            this.createResult("failed", startTime, errorMessage),
+            input
+          );
         }
 
         this.iterationCount++;
@@ -361,7 +403,7 @@ export class AgentProcessor {
         iterations: result.iterations,
         duration: result.duration,
       });
-      return result;
+      return await this.finalizeResult(result, input);
     } catch (error) {
       const classified = classifyAgentError(error);
       const errorMessage = classified.userMessage;
@@ -378,7 +420,7 @@ export class AgentProcessor {
           iterations: this.iterationCount,
         }
       );
-      return this.createResult("failed", startTime, errorMessage);
+      return await this.finalizeResult(this.createResult("failed", startTime, errorMessage), input);
     }
   }
 
@@ -961,6 +1003,64 @@ export class AgentProcessor {
     }
 
     return false;
+  }
+
+  private resolveMemoryContext(input: AgentInput): MemoryContext | null {
+    const context = input.context ?? {};
+    const threadIdCandidate =
+      this.getString(context.threadId) ??
+      this.getString(context.sessionId) ??
+      (Instance.inContext ? this.getString(Instance.context.sessionID) : undefined);
+    if (!threadIdCandidate) return null;
+
+    const resourceIdCandidate = this.getString(context.resourceId) ?? "local";
+    return {
+      threadId: threadIdCandidate,
+      resourceId: resourceIdCandidate,
+    };
+  }
+
+  private getString(value: unknown): string | undefined {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  private async finalizeResult(result: AgentResult, input: AgentInput): Promise<AgentResult> {
+    await this.persistMemoryOutput(input, result);
+    return result;
+  }
+
+  private async persistMemoryOutput(input: AgentInput, result: AgentResult): Promise<void> {
+    const memoryContext = this.resolveMemoryContext(input);
+    if (!memoryContext) return;
+
+    const userContent = this.getString(input.task);
+    const assistantContent =
+      typeof result.finalContent === "string" ? this.getString(result.finalContent) : undefined;
+
+    const messagesToPersist: Array<{ role: "user" | "assistant" | "system"; content: string }> = [];
+    if (userContent) {
+      messagesToPersist.push({ role: "user", content: userContent });
+    }
+    if (assistantContent) {
+      messagesToPersist.push({ role: "assistant", content: assistantContent });
+    }
+    if (messagesToPersist.length === 0) return;
+
+    try {
+      await memoryProcessor.output({
+        messages: messagesToPersist,
+        threadId: memoryContext.threadId,
+        resourceId: memoryContext.resourceId,
+      });
+    } catch (error) {
+      logger.warn("Failed to persist output messages to memory storage", {
+        module: "agent:processor",
+        agent: this.config.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   /**

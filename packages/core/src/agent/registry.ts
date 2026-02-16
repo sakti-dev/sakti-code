@@ -87,6 +87,9 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
       "ast-query",
       "grep-search",
       "file-read-docs",
+      "task-query",
+      "task-mutate",
+      "memory-search",
     ],
     systemPrompt: `You are an expert software developer and AI coding agent.
 

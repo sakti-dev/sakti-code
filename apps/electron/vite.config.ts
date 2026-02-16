@@ -27,7 +27,12 @@ const config: UserConfig = {
     rollupOptions: {
       plugins: [
         copy({
-          targets: [{ src: "../../packages/server/drizzle", dest: "dist" }],
+          targets: [
+            {
+              src: join(PACKAGE_ROOT, "../../packages/server/drizzle/*"),
+              dest: join(PACKAGE_ROOT, "dist/drizzle"),
+            },
+          ],
           hook: "writeBundle",
         }),
       ],

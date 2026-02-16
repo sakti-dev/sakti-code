@@ -8,6 +8,7 @@
  */
 
 import { getDb, reflections, threads } from "@ekacode/server/db";
+import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -35,12 +36,21 @@ describe("reflections table schema", () => {
       const db = await getDb();
 
       const now = new Date();
+      const threadId = uuidv7();
+      await db.insert(threads).values({
+        id: threadId,
+        resource_id: "test-resource-id",
+        title: "Test Thread",
+        created_at: now,
+        updated_at: now,
+      });
+
       const [result] = await db
         .insert(reflections)
         .values({
           id: "test-reflection-id",
           resource_id: "test-resource-id",
-          thread_id: "test-thread-id",
+          thread_id: threadId,
           content: "Test reflection content",
           merged_from: ["obs-1", "obs-2"],
           origin_type: "reflection",

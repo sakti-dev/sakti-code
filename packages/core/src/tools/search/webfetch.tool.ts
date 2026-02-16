@@ -2,6 +2,8 @@
  * WebFetch tool
  *
  * Fetches web content and converts to markdown, text, or HTML
+ *
+ * NOTE: Uses Mastra createTool for compatibility. Can be migrated to AI SDK in future.
  */
 
 import { createLogger } from "@ekacode/shared/logger";
@@ -49,8 +51,8 @@ Features:
     }),
   }),
 
-  execute: async ({ url, format = "markdown", timeout }, context) => {
-    const sessionID = (context as { sessionID?: string })?.sessionID || "unknown";
+  execute: async ({ url, format = "markdown", timeout }, _context) => {
+    const sessionID = "unknown";
 
     logger.debug("Fetching URL", { module: "tool:webfetch", sessionID, url, format });
 

@@ -35,6 +35,9 @@ describe("agent/registry", () => {
       expect(buildAgent.tools).toContain("read");
       expect(buildAgent.tools).toContain("write");
       expect(buildAgent.tools).toContain("bash");
+      expect(buildAgent.tools).toContain("task-query");
+      expect(buildAgent.tools).toContain("task-mutate");
+      expect(buildAgent.tools).toContain("memory-search");
       expect(buildAgent.systemPrompt).toBeTruthy();
       expect(buildAgent.systemPrompt.length).toBeGreaterThan(0);
     });

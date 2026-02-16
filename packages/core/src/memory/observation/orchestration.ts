@@ -6,15 +6,22 @@
  * - Async observation triggering
  * - Buffered observation activation
  * - Context injection into messages
+ * - Reflection triggering (Phase 3)
  */
+
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 
 import type { ObservationalMemory } from "@ekacode/server/db";
 import {
-  type ObservationMessage,
-  type TokenCounter,
   calculateObservationThresholds,
   observationalMemoryStorage,
+  type ObservationalMemoryConfig,
+  type ObservationMessage,
+  type TokenCounter,
 } from "./storage";
+
+import { callReflectorAgent, type ReflectorInput } from "../reflection/reflector";
+import { reflectionStorage } from "../reflection/storage";
 
 /**
  * Thread context information
@@ -35,6 +42,7 @@ export interface ProcessInputStepArgs {
   readOnly?: boolean;
   tokenCounter: TokenCounter;
   observerAgent: (activeObservations: string, messages: ObservationMessage[]) => Promise<string>;
+  reflectorModel?: LanguageModelV3;
 }
 
 /**
@@ -216,7 +224,15 @@ export async function processInputStep(args: ProcessInputStepArgs): Promise<{
   observationsInjected: boolean;
   didObserve: boolean;
 }> {
-  const { messages, context, stepNumber, readOnly = false, tokenCounter, observerAgent } = args;
+  const {
+    messages,
+    context,
+    stepNumber,
+    readOnly = false,
+    tokenCounter,
+    observerAgent,
+    reflectorModel,
+  } = args;
   const { threadId, resourceId, scope } = context;
 
   // 1. Get or create record
@@ -336,6 +352,17 @@ export async function processInputStep(args: ProcessInputStepArgs): Promise<{
     }
   }
 
+  // 7b. Check for reflection (Phase 3)
+  if (!readOnly && reflectorModel) {
+    const currentObservationTokens = record.active_observations
+      ? tokenCounter.countString(record.active_observations)
+      : 0;
+
+    if (shouldReflect(currentObservationTokens, record)) {
+      record = await triggerReflection(record, reflectorModel);
+    }
+  }
+
   // 8. Filter already observed messages for return
   const filteredMessages = filterAlreadyObservedMessages(messages, record);
 
@@ -348,7 +375,33 @@ export async function processInputStep(args: ProcessInputStepArgs): Promise<{
 }
 
 /**
+ * Check if there are pending buffered observations
+ *
+ * @param record - Observational memory record
+ * @returns true if there are buffered observations
+ */
+export function hasBufferedObservations(record: ObservationalMemory): boolean {
+  return (record.buffered_observation_chunks?.length ?? 0) > 0;
+}
+
+/**
+ * Context injection levels for Phase 3
+ *
+ * Level 1: Reflections (most condensed, from reflector agent)
+ * Level 2: Recent observations raw (within sliding window)
+ * Level 3: Recent messages (full detail)
+ * Level 4: On-demand (via BM25 search - handled by memory-search tool)
+ */
+export interface ContextLevel {
+  level: number;
+  name: string;
+  content: string;
+  tokenCount: number;
+}
+
+/**
  * Get observations formatted for LLM context injection
+ * Simple version - returns active observations as-is
  *
  * @param record - Observational memory record
  * @returns Formatted observations string
@@ -362,11 +415,173 @@ export function getObservationsForContext(record: ObservationalMemory): string {
 }
 
 /**
- * Check if there are pending buffered observations
+ * Get full 4-level context stack for LLM
  *
  * @param record - Observational memory record
- * @returns true if there are buffered observations
+ * @param recentMessages - Recent messages to include
+ * @param tokenCounter - Token counter
+ * @returns Array of context levels
  */
-export function hasBufferedObservations(record: ObservationalMemory): boolean {
-  return (record.buffered_observation_chunks?.length ?? 0) > 0;
+export async function getContextStack(
+  record: ObservationalMemory,
+  recentMessages: ObservationMessage[],
+  tokenCounter: TokenCounter
+): Promise<ContextLevel[]> {
+  const levels: ContextLevel[] = [];
+
+  // Level 1: Reflections (most condensed)
+  const reflections = await reflectionStorage.getReflectionsByThread(record.thread_id ?? "", 5);
+
+  if (reflections.length > 0) {
+    const reflectionContent = reflections.map(r => r.content).join("\n\n---\n\n");
+    levels.push({
+      level: 1,
+      name: "Reflections",
+      content: reflectionContent,
+      tokenCount: tokenCounter.countString(reflectionContent),
+    });
+  }
+
+  // Level 2: Recent observations raw (sliding window)
+  const activeObs = record.active_observations;
+  if (activeObs) {
+    const config = (record.config ?? {}) as ObservationalMemoryConfig;
+    const maxRecentObs = config.maxRecentObservations ?? 50;
+
+    // Keep recent observations raw - extract last N observations
+    const observationLines = activeObs.split("\n").filter(l => l.trim());
+    const recentObservations = observationLines.slice(-maxRecentObs).join("\n");
+
+    levels.push({
+      level: 2,
+      name: "Recent Observations",
+      content: recentObservations,
+      tokenCount: tokenCounter.countString(recentObservations),
+    });
+  }
+
+  // Level 3: Recent messages (full detail)
+  const config = (record.config ?? {}) as ObservationalMemoryConfig;
+  const lastMessages = config.lastMessages ?? 10;
+  const recentMsgs = recentMessages.slice(-lastMessages);
+
+  if (recentMsgs.length > 0) {
+    const messagesContent = recentMsgs.map(m => `${m.role}: ${m.content}`).join("\n");
+
+    levels.push({
+      level: 3,
+      name: "Recent Messages",
+      content: messagesContent,
+      tokenCount: tokenCounter.countString(messagesContent),
+    });
+  }
+
+  // Level 4: On-demand via BM25 search (not included here - handled by memory-search tool)
+
+  return levels;
+}
+
+/**
+ * Format context stack for injection
+ *
+ * @param levels - Context levels
+ * @returns Formatted string for LLM context
+ */
+export function formatContextStack(levels: ContextLevel[]): string {
+  if (levels.length === 0) {
+    return "";
+  }
+
+  const parts: string[] = [];
+
+  for (const level of levels) {
+    parts.push(`\n<!-- LEVEL ${level.level}: ${level.name} -->\n${level.content}\n`);
+  }
+
+  return parts.join("\n");
+}
+
+/**
+ * Determine if reflection should be triggered based on observation tokens
+ *
+ * @param observationTokens - Current observation tokens
+ * @param record - Observational memory record
+ * @returns true if reflection should be triggered
+ */
+export function shouldReflect(observationTokens: number, record: ObservationalMemory): boolean {
+  const config = (record.config ?? {}) as ObservationalMemoryConfig;
+  const reflectionThreshold = config.reflectionThreshold ?? 40000;
+  return observationTokens >= reflectionThreshold;
+}
+
+/**
+ * Trigger reflection to condense observations
+ *
+ * @param record - Observational memory record
+ * @param model - Language model for reflection
+ * @returns Updated record with reflection
+ */
+export async function triggerReflection(
+  record: ObservationalMemory,
+  model: LanguageModelV3
+): Promise<ObservationalMemory> {
+  const ownerId = process.env.INSTANCE_ID || "default-instance";
+
+  // Acquire lock for reflection
+  const lockResult = await observationalMemoryStorage.acquireLock(record.id, ownerId);
+
+  if (!lockResult.success) {
+    // Another instance is reflecting, skip
+    return record;
+  }
+
+  try {
+    // Set reflecting flag
+    await observationalMemoryStorage.updateObservationalMemory(record.id, {
+      isReflecting: true,
+    });
+
+    const input: ReflectorInput = {
+      activeObservations: record.active_observations ?? "",
+    };
+
+    const result = await callReflectorAgent(input, model);
+
+    // Create reflection record
+    await reflectionStorage.createReflection({
+      id: crypto.randomUUID(),
+      threadId: record.thread_id ?? undefined,
+      resourceId: record.resource_id ?? undefined,
+      content: result.observations,
+      mergedFrom: [],
+      originType: "reflection",
+      generationCount: (record.generation_count ?? 0) + 1,
+      tokenCount: result.tokenCount,
+    });
+
+    // Update observational memory with new generation
+    const updatedRecord = await observationalMemoryStorage.updateObservationalMemory(record.id, {
+      activeObservations: result.observations,
+      isReflecting: false,
+      generationCount: (record.generation_count ?? 0) + 1,
+    });
+
+    // Update thread metadata with current-task and suggested-response
+    if (result.currentTask || result.suggestedResponse) {
+      // This would require thread storage update - placeholder for now
+    }
+
+    return updatedRecord ?? record;
+  } catch (error) {
+    // Clear flag on error
+    await observationalMemoryStorage.updateObservationalMemory(record.id, {
+      isReflecting: false,
+    });
+    throw error;
+  } finally {
+    // Release lock
+    if (lockResult.operationId) {
+      await observationalMemoryStorage.releaseLock(record.id, ownerId, lockResult.operationId);
+    }
+  }
 }

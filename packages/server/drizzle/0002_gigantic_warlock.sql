@@ -1,0 +1,1 @@
+ALTER TABLE `working_memory` ADD `updated_at` integer NOT NULL;

@@ -388,5 +388,52 @@ describe("Memory System Schema", () => {
       await db.run(sql`DELETE FROM messages WHERE id IN (${messageId1}, ${messageId2})`);
       await db.run(sql`DELETE FROM threads WHERE id = ${threadId}`);
     });
+
+    it("should keep FTS index in sync on update and delete", async () => {
+      const db = await getDb();
+      const now = Date.now();
+      const threadId = `test-fts-sync-thread-${Date.now()}`;
+      const messageId = `test-fts-sync-msg-${Date.now()}`;
+      const initialText = `fts_sync_initial_${Date.now()}`;
+      const updatedText = `fts_sync_updated_${Date.now()}`;
+
+      await db.run(sql`
+        INSERT INTO threads (id, resource_id, title, created_at, updated_at)
+        VALUES (${threadId}, 'test-resource', 'FTS Sync Thread', ${now}, ${now})
+      `);
+
+      await db.run(sql`
+        INSERT INTO messages (id, thread_id, resource_id, role, raw_content, search_text, injection_text, created_at, message_index)
+        VALUES (${messageId}, ${threadId}, 'test-resource', 'user', 'raw', ${initialText}, 'inj', ${now}, 0)
+      `);
+
+      const initialMatch = await db.all(sql`
+        SELECT rowid FROM messages_fts WHERE messages_fts MATCH ${initialText}
+      `);
+      expect(initialMatch.length).toBeGreaterThan(0);
+
+      await db.run(sql`
+        UPDATE messages
+        SET search_text = ${updatedText}
+        WHERE id = ${messageId}
+      `);
+
+      const oldMatchAfterUpdate = await db.all(sql`
+        SELECT rowid FROM messages_fts WHERE messages_fts MATCH ${initialText}
+      `);
+      const newMatchAfterUpdate = await db.all(sql`
+        SELECT rowid FROM messages_fts WHERE messages_fts MATCH ${updatedText}
+      `);
+      expect(oldMatchAfterUpdate.length).toBe(0);
+      expect(newMatchAfterUpdate.length).toBeGreaterThan(0);
+
+      await db.run(sql`DELETE FROM messages WHERE id = ${messageId}`);
+      const matchAfterDelete = await db.all(sql`
+        SELECT rowid FROM messages_fts WHERE messages_fts MATCH ${updatedText}
+      `);
+      expect(matchAfterDelete.length).toBe(0);
+
+      await db.run(sql`DELETE FROM threads WHERE id = ${threadId}`);
+    });
   });
 });

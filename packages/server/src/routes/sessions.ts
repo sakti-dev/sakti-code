@@ -32,6 +32,7 @@ app.get("/api/sessions", async c => {
       sessionId: session.sessionId,
       resourceId: session.resourceId,
       threadId: session.threadId,
+      title: session.title,
       createdAt: session.createdAt.toISOString(),
       lastAccessed: session.lastAccessed.toISOString(),
     }));
@@ -64,6 +65,7 @@ app.get("/api/sessions/:sessionId", async c => {
       sessionId: session.sessionId,
       resourceId: session.resourceId,
       threadId: session.threadId,
+      title: session.title,
       createdAt: session.createdAt.toISOString(),
       lastAccessed: session.lastAccessed.toISOString(),
     });

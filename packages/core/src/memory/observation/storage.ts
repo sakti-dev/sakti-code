@@ -20,6 +20,8 @@ export interface ObservationalMemoryConfig {
   blockAfter: number;
   scope: "thread" | "resource";
   lastMessages: number;
+  maxRecentObservations: number;
+  maxRecentHours: number;
 }
 
 export interface BufferedObservationChunk {
@@ -147,7 +149,6 @@ const DEFAULT_CONFIG: ObservationalMemoryConfig = {
   scope: "thread",
   lastMessages: 10,
 
-  // @ts-expect-error TS2353 - Optional Phase 3 fields added to DEFAULT_CONFIG
   // Phase 3 defaults
   maxRecentObservations: 50,
   maxRecentHours: 24,

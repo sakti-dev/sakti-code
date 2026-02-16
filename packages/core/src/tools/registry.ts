@@ -21,6 +21,9 @@ import { taskTool } from "./task";
 // Code research tools (search-docs)
 import { astQuery, fileRead, grepSearch, searchDocs } from "./search-docs";
 
+// Memory tools
+import { memorySearchTool, taskMutateTool, taskQueryTool } from "../memory";
+
 // Tool name type (union of all available tool names)
 export type ToolName =
   | "read"
@@ -39,7 +42,10 @@ export type ToolName =
   | "search-docs"
   | "ast-query"
   | "grep-search"
-  | "file-read-docs";
+  | "file-read-docs"
+  | "memory-search"
+  | "task-query"
+  | "task-mutate";
 
 export const toolRegistry = {
   // Filesystem tools
@@ -68,6 +74,11 @@ export const toolRegistry = {
   "ast-query": astQuery,
   "grep-search": grepSearch,
   "file-read-docs": fileRead, // Use distinct name to avoid conflict with filesystem read
+
+  // Memory tools
+  "memory-search": memorySearchTool,
+  "task-query": taskQueryTool,
+  "task-mutate": taskMutateTool,
 
   getAll(): Record<string, unknown> {
     const { getAll: _getAll, getToolNames: _getToolNames, ...tools } = this;

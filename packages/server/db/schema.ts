@@ -385,3 +385,27 @@ export type NewObservationalMemory = typeof observationalMemory.$inferInsert;
  */
 export type Reflection = typeof reflections.$inferSelect;
 export type NewReflection = typeof reflections.$inferInsert;
+
+/**
+ * Working Memory table - persistent structured data for project context
+ *
+ * Phase 4: Working Memory - template-based structured memory for:
+ * - Tech stack information
+ * - Project structure
+ * - User preferences
+ * - Current work context
+ */
+export const workingMemory = sqliteTable("working_memory", {
+  id: text("id").primaryKey(),
+  resource_id: text("resource_id").notNull(),
+  scope: text("scope").notNull().default("resource"),
+  content: text("content").notNull(),
+  created_at: integer("created_at", { mode: "timestamp" }).notNull(),
+  updated_at: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * Type definitions for working memory
+ */
+export type WorkingMemory = typeof workingMemory.$inferSelect;
+export type NewWorkingMemory = typeof workingMemory.$inferInsert;

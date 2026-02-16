@@ -214,6 +214,16 @@ export class MessageStorage {
     const results = await db.all(query);
 
     return (results as Record<string, unknown>[]).map(row => ({
+      // LibSQL can return timestamps as Date or number depending on query path.
+      // Normalize to Date so downstream serializers are stable.
+      created_at:
+        row.created_at instanceof Date
+          ? row.created_at
+          : new Date(
+              typeof row.created_at === "number"
+                ? row.created_at
+                : Number(row.created_at ?? Date.now())
+            ),
       id: row.id as string,
       thread_id: row.thread_id as string,
       resource_id: row.resource_id as string | null,
@@ -224,7 +234,6 @@ export class MessageStorage {
       task_id: row.task_id as string | null,
       summary: row.summary as string | null,
       compaction_level: row.compaction_level as number,
-      created_at: row.created_at as Date,
       message_index: row.message_index as number,
       token_count: row.token_count as number | null,
       matchScore: row.match_score as number,

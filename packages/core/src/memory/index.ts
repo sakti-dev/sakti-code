@@ -1,8 +1,10 @@
 /**
  * Memory System Index
  *
- * Phase 1 Memory System exports.
- * Phase 2: Observational Memory with async buffering & crash recovery.
+ * Phase 1: Task Memory + Message Memory with FTS5 search
+ * Phase 2: Observational Memory with async buffering & crash recovery
+ * Phase 3: Reflector & Multi-Level Compaction with 4-level context stack
+ * Phase 4: Working Memory + Memory Processors Architecture
  */
 
 export {
@@ -52,12 +54,17 @@ export {
 
 export {
   filterAlreadyObservedMessages,
+  formatContextStack,
+  getContextStack,
   getObservationsForContext,
   getOrCreateObservationalMemory,
   hasBufferedObservations,
   isAsyncObservationEnabled,
   processInputStep,
+  shouldReflect,
   shouldTriggerAsyncObservation,
+  triggerReflection,
+  type ContextLevel,
   type ProcessInputStepArgs,
   type ThreadContext,
 } from "./observation/orchestration";
@@ -67,3 +74,32 @@ export {
   type CreateReflectionInput,
   type ReflectionType,
 } from "./reflection/storage";
+
+export {
+  COMPRESSION_GUIDANCE,
+  callReflectorAgent,
+  type ReflectorInput,
+  type ReflectorOutput,
+} from "./reflection/reflector";
+
+// Phase 4: Working Memory
+export {
+  WORKING_MEMORY_TEMPLATE,
+  parseWorkingMemoryContent,
+  workingMemoryStorage,
+  type CreateWorkingMemoryInput,
+  type UpdateWorkingMemoryInput,
+  type WorkingMemoryData,
+  type WorkingMemoryScope,
+} from "./working-memory";
+
+// Phase 4: Memory Processors
+export {
+  MemoryProcessor,
+  memoryProcessor,
+  type MemoryProcessorInputArgs,
+  type MemoryProcessorInputResult,
+  type MemoryProcessorOutputArgs,
+  type MemoryProcessorOutputResult,
+  type SemanticRecallConfig,
+} from "./processors";

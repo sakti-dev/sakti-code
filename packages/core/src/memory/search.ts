@@ -39,6 +39,7 @@ Examples:
     threadId: z.string().optional().describe("Optional: limit search to specific thread"),
     limit: z.number().default(5).describe("Maximum number of results (default: 5)"),
   }),
+  execute: async input => executeMemorySearch(input),
 });
 
 export interface SearchResult {

@@ -16,7 +16,31 @@ import { getDb, taskMessages } from "@ekacode/server/db";
 import { tool } from "ai";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
+import { Instance } from "../../instance";
+import { workingMemoryStorage } from "../working-memory/storage";
 import { taskStorage } from "./storage";
+
+interface TaskMutateDispatchInput {
+  action: "create" | "claim" | "close" | "dep" | "link" | "update_context";
+  id?: string;
+  title?: string;
+  description?: string;
+  reason?: "completed" | "wontfix" | "duplicate";
+  summary?: string;
+  taskId?: string;
+  dependsOn?: string;
+  messageId?: string;
+  relationType?: "output" | "reference";
+  content?: string;
+  scope?: "resource" | "thread";
+  resourceId?: string;
+  threadId?: string;
+  add?: boolean;
+}
+
+async function executeTaskMutateTool(input: TaskMutateDispatchInput) {
+  return executeTaskMutate(input as unknown as Parameters<typeof executeTaskMutate>[0]);
+}
 
 export const taskMutateTool = tool({
   description: `Modify tasks, link messages, and update working memory.
@@ -50,8 +74,11 @@ Examples:
     relationType: z.enum(["output", "reference"]).default("output"),
     content: z.string().optional(),
     scope: z.enum(["resource", "thread"]).default("resource"),
+    resourceId: z.string().optional(),
+    threadId: z.string().optional(),
     add: z.boolean().default(true),
   }),
+  execute: async input => executeTaskMutateTool(input),
 });
 
 export async function executeTaskMutate(input: {
@@ -85,6 +112,8 @@ export async function executeTaskMutate(input: {
   action: "update_context";
   content: string;
   scope?: "resource" | "thread";
+  resourceId?: string;
+  threadId?: string;
 }): Promise<{ success: true } | { success: false; error: string }>;
 export async function executeTaskMutate(input: {
   action: string;
@@ -99,6 +128,8 @@ export async function executeTaskMutate(input: {
   relationType?: "output" | "reference";
   content?: string;
   scope?: "resource" | "thread";
+  resourceId?: string;
+  threadId?: string;
   add?: boolean;
 }): Promise<unknown> {
   try {
@@ -215,6 +246,34 @@ export async function executeTaskMutate(input: {
       }
 
       case "update_context": {
+        if (!input.content) {
+          return { success: false, error: "content is required for 'update_context' action" };
+        }
+
+        const scope = input.scope ?? "resource";
+        const contextThreadId =
+          Instance.inContext && Instance.context.sessionID ? Instance.context.sessionID : undefined;
+        const memoryResourceId =
+          scope === "thread" ? (input.threadId ?? contextThreadId) : (input.resourceId ?? "local");
+
+        if (!memoryResourceId) {
+          return {
+            success: false,
+            error:
+              "Unable to resolve memory target for update_context. Provide threadId for thread scope.",
+          };
+        }
+
+        await workingMemoryStorage.upsertWorkingMemory(
+          memoryResourceId,
+          {
+            resourceId: memoryResourceId,
+            scope,
+            content: input.content,
+          },
+          scope
+        );
+
         return { success: true };
       }
 
