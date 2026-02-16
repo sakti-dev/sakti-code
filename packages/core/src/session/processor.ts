@@ -18,7 +18,15 @@ import {
 } from "../agent/workflow/model-provider";
 import { AgentConfig, AgentEvent, AgentInput, AgentResult } from "../agent/workflow/types";
 import { Instance } from "../instance";
-import { memoryProcessor } from "../memory/processors";
+import {
+  SimpleTokenCounter,
+  createObserverAgent,
+  formatObservationsForInjection,
+  getAgentMode,
+  memoryProcessor,
+  messageStorage,
+  processInputStep,
+} from "../memory";
 import {
   applyToolDefinitionHook,
   resolveHookModel,
@@ -230,15 +238,88 @@ export class AgentProcessor {
 
     if (resolvedMemoryContext) {
       try {
+        // First, get basic memory context (working memory + recent messages)
         const memoryInput = await memoryProcessor.input({
           message: inputMessage,
           threadId: resolvedMemoryContext.threadId,
           resourceId: resolvedMemoryContext.resourceId,
         });
-        this.messages = memoryProcessor.formatForAgentInput(
-          memoryInput,
-          this.config.systemPrompt
-        ) as ModelMessage[];
+
+        // Then, enhance with observational memory (observations from Observer Agent)
+        const tokenCounter = new SimpleTokenCounter();
+        const observerModel = this.getModel();
+        const agentMode = getAgentMode(this.config.type);
+        const observerAgent = createObserverAgent(observerModel, agentMode, 30000);
+
+        // Get messages from storage for observation
+        const messagesForObservation = await messageStorage.listMessages({
+          threadId: resolvedMemoryContext.threadId,
+          limit: 50,
+        });
+
+        const observationMessages = messagesForObservation.map(msg => ({
+          id: msg.id,
+          role: msg.role as "user" | "assistant" | "system",
+          content: msg.raw_content ?? "",
+          createdAt: msg.created_at.getTime(),
+        }));
+
+        // Process through observational memory orchestration
+        const observationResult = await processInputStep({
+          messages: observationMessages,
+          context: {
+            threadId: resolvedMemoryContext.threadId,
+            resourceId: resolvedMemoryContext.resourceId,
+            scope: "thread",
+          },
+          stepNumber: 0,
+          tokenCounter,
+          observerAgent,
+        });
+
+        // Build message list with system prompt, working memory, observations, then user message
+        const messages: Array<{ role: "user" | "assistant" | "system"; content: string }> = [
+          { role: "system", content: this.config.systemPrompt },
+        ];
+
+        // Add working memory if available
+        if (memoryInput.workingMemory) {
+          messages.push({
+            role: "system",
+            content: `<working-memory>\n${memoryInput.workingMemory}\n</working-memory>`,
+          });
+        }
+
+        // Add observations as system message if available
+        if (observationResult.record.active_observations) {
+          const formattedObservations = formatObservationsForInjection(
+            observationResult.record.active_observations
+          );
+          if (formattedObservations) {
+            messages.push({
+              role: "system",
+              content: formattedObservations,
+            });
+          }
+        }
+
+        // Add recent messages (filtered by observation system)
+        for (const msg of memoryInput.recentMessages.slice(-5)) {
+          if (msg.role !== "tool") {
+            messages.push({
+              role: msg.role as "user" | "assistant" | "system",
+              content: msg.injectionText ?? msg.rawContent,
+            });
+          }
+        }
+
+        // Add user message last
+        messages.push({
+          role: "user",
+          content: inputMessage,
+        });
+
+        this.messages = messages as ModelMessage[];
       } catch (error) {
         logger.warn("Failed to load memory context, falling back to default initialization", {
           module: "agent:processor",

@@ -23,6 +23,107 @@ import {
 import { callReflectorAgent, type ReflectorInput } from "../reflection/reflector";
 import { reflectionStorage } from "../reflection/storage";
 
+import type { AgentType } from "../../agent/workflow/types";
+import { buildObserverSystemPrompt, type AgentMode } from "../../prompts/memory/observer/modes";
+import { callObserverAgent, type ObserverInput, type ObserverOutput } from "./observer";
+
+/**
+ * Map agent types to observation modes for automatic mode detection
+ */
+const AGENT_TYPE_TO_MODE: Record<string, AgentMode> = {
+  explore: "explore",
+  build: "default",
+  plan: "default",
+  bug_fixing: "bug_fixing",
+  refactoring: "refactoring",
+  testing: "testing",
+  debugging: "debugging",
+  research: "research",
+};
+
+/**
+ * Get the observation mode for a given agent type
+ * Used for automatic mode detection in agent loop integration
+ *
+ * @param agentType - The agent type (e.g., "explore", "build", "plan")
+ * @returns The corresponding observation mode
+ */
+export function getAgentMode(agentType: string): AgentMode {
+  return AGENT_TYPE_TO_MODE[agentType] ?? "default";
+}
+
+/**
+ * Build observer system prompt for a specific mode
+ *
+ * @param mode - The observation mode
+ * @returns The full observer system prompt with mode-specific instructions
+ */
+export function buildObserverPromptForMode(mode: AgentMode): string {
+  return buildObserverSystemPrompt(mode);
+}
+
+/**
+ * Create an observer agent function for a specific mode
+ *
+ * @param model - Language model to use for observation
+ * @param mode - Observation mode (defaults to "default")
+ * @param timeoutMs - Timeout in milliseconds (default 30000)
+ * @returns Observer agent function
+ */
+export function createObserverAgent(
+  model: LanguageModelV3,
+  mode: AgentMode = "default",
+  timeoutMs: number = 30000
+): (existingObservations: string, messages: ObservationMessage[]) => Promise<string> {
+  buildObserverPromptForMode(mode);
+
+  return async (existingObservations: string, messages: ObservationMessage[]): Promise<string> => {
+    const input: ObserverInput = {
+      existingObservations,
+      messages,
+    };
+
+    const result: ObserverOutput = await callObserverAgent(input, model, timeoutMs);
+    return result.observations;
+  };
+}
+
+/**
+ * Create an observer agent from AgentConfig
+ * Automatically detects mode from agent type
+ *
+ * @param model - Language model to use for observation
+ * @param config - Agent configuration
+ * @param timeoutMs - Timeout in milliseconds
+ * @returns Observer agent function
+ */
+export function createObserverAgentFromConfig(
+  model: LanguageModelV3,
+  config: { type: AgentType; id: string },
+  timeoutMs: number = 30000
+): (existingObservations: string, messages: ObservationMessage[]) => Promise<string> {
+  const mode = getAgentMode(config.type);
+  return createObserverAgent(model, mode, timeoutMs);
+}
+
+/**
+ * Format observations for injection into LLM context
+ *
+ * @param observations - Raw observations string
+ * @returns Formatted observations with XML tags
+ */
+export function formatObservationsForInjection(observations: string): string {
+  if (!observations || !observations.trim()) {
+    return "";
+  }
+
+  return `
+<observations>
+${observations.trim()}
+</observations>
+`;
+}
+
 /**
  * Thread context information
  */

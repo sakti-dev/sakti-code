@@ -53,8 +53,13 @@ export {
 } from "./observation/sealing";
 
 export {
+  buildObserverPromptForMode,
+  createObserverAgent,
+  createObserverAgentFromConfig,
   filterAlreadyObservedMessages,
   formatContextStack,
+  formatObservationsForInjection,
+  getAgentMode,
   getContextStack,
   getObservationsForContext,
   getOrCreateObservationalMemory,
