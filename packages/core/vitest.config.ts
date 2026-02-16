@@ -19,5 +19,7 @@ export default defineConfig({
       exclude: ["node_modules/", "dist/", "**/*.test.ts", "**/*.spec.ts", "**/types/"],
     },
     exclude: ["node_modules", "dist"],
+    // Use single thread for tests that share SQLite database to avoid lock contention
+    fileParallelism: false,
   },
 });

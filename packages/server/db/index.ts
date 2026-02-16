@@ -67,7 +67,22 @@ export async function getDb(): Promise<LibSQLDatabase<typeof schema>> {
 
     // Initialize: enable foreign keys and run migrations
     initPromise = (async () => {
+      // Set busy timeout FIRST - before any other operations
+      await client!.execute("PRAGMA busy_timeout = 10000");
+
+      // Enable WAL mode for better concurrency (critical for parallel tests)
+      try {
+        await client!.execute("PRAGMA journal_mode = WAL");
+      } catch {
+        // WAL mode may fail if already in WAL - ignore
+      }
+
+      // Use NORMAL synchronous for better performance with WAL
+      await client!.execute("PRAGMA synchronous = NORMAL");
+
+      // Enable foreign keys
       await client!.execute("PRAGMA foreign_keys = ON");
+
       // Run Drizzle migrations to ensure schema is up to date
       await runMigrations(drizzleInstance!);
     })();

@@ -269,3 +269,116 @@ export type TaskDependency = typeof taskDependencies.$inferSelect;
 export type NewTaskDependency = typeof taskDependencies.$inferInsert;
 export type TaskMessage = typeof taskMessages.$inferSelect;
 export type NewTaskMessage = typeof taskMessages.$inferInsert;
+
+/**
+ * Observational Memory Configuration
+ */
+export interface ObservationalMemoryConfig {
+  observationThreshold: number;
+  reflectionThreshold: number;
+  bufferTokens: number;
+  bufferActivation: number;
+  blockAfter: number;
+  scope: "thread" | "resource";
+  lastMessages: number;
+
+  // Phase 3 additions
+  maxRecentObservations: number;
+  maxRecentHours: number;
+}
+
+/**
+ * Buffered Observation Chunk
+ */
+export interface BufferedObservationChunk {
+  content: string;
+  messageIds: string[];
+  messageTokens: number;
+  createdAt: Date;
+}
+
+/**
+ * Observational Memory table - stores observation state with async buffering support
+ *
+ * Phase 2 Memory System - Async Buffering & Crash Recovery
+ */
+export const observationalMemory = sqliteTable("observational_memory", {
+  id: text("id").primaryKey(),
+  thread_id: text("thread_id"),
+  resource_id: text("resource_id"),
+  scope: text("scope").notNull().default("thread"),
+  lookup_key: text("lookup_key").notNull().unique(),
+
+  // Active observations (narrative)
+  active_observations: text("active_observations"),
+
+  // Buffered observations (async)
+  buffered_observation_chunks: text("buffered_observation_chunks", { mode: "json" }).$type<
+    BufferedObservationChunk[]
+  >(),
+
+  // State flags
+  is_observing: integer("is_observing").default(0),
+  is_reflecting: integer("is_reflecting").default(0),
+  is_buffering_observation: integer("is_buffering_observation").default(0),
+  is_buffering_reflection: integer("is_buffering_reflection").default(0),
+
+  // Async buffering tracking
+  last_buffered_at_tokens: integer("last_buffered_at_tokens"),
+  last_buffered_at_time: integer("last_buffered_at_time", { mode: "timestamp" }),
+
+  // Observed message tracking
+  observed_message_ids: text("observed_message_ids", { mode: "json" }).$type<string[]>(),
+
+  // Lease-based locking
+  lock_owner_id: text("lock_owner_id"),
+  lock_expires_at: integer("lock_expires_at", { mode: "timestamp" }),
+  lock_operation_id: text("lock_operation_id"),
+  last_heartbeat_at: integer("last_heartbeat_at", { mode: "timestamp" }),
+
+  // Configuration (JSON)
+  config: text("config", { mode: "json" }).$type<ObservationalMemoryConfig>(),
+
+  // Timestamps
+  created_at: integer("created_at", { mode: "timestamp" }).notNull(),
+  updated_at: integer("updated_at", { mode: "timestamp" }).notNull(),
+  last_observed_at: integer("last_observed_at", { mode: "timestamp" }),
+
+  // Generation tracking for reflections
+  generation_count: integer("generation_count").default(0),
+});
+
+/**
+ * Reflections table - condensed observations from reflector agent
+ *
+ * Phase 3 Memory System - Reflector & Multi-Level Compaction
+ */
+export const reflections = sqliteTable("reflections", {
+  id: text("id").primaryKey(),
+  resource_id: text("resource_id"),
+  thread_id: text("thread_id").references(() => threads.id, { onDelete: "cascade" }),
+
+  // Content
+  content: text("content").notNull(),
+  merged_from: text("merged_from", { mode: "json" }).$type<string[]>(),
+
+  // Generation tracking
+  origin_type: text("origin_type").default("reflection"),
+  generation_count: integer("generation_count").notNull(),
+  token_count: integer("token_count"),
+
+  created_at: integer("created_at", { mode: "timestamp" }).notNull(),
+  updated_at: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * Type definitions for observational memory
+ */
+export type ObservationalMemory = typeof observationalMemory.$inferSelect;
+export type NewObservationalMemory = typeof observationalMemory.$inferInsert;
+
+/**
+ * Type definitions for reflections
+ */
+export type Reflection = typeof reflections.$inferSelect;
+export type NewReflection = typeof reflections.$inferInsert;
