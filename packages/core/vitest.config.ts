@@ -12,6 +12,7 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 export default defineConfig({
   test: {
+    setupFiles: ["./tests/vitest.setup.ts"],
     globals: true,
     coverage: {
       provider: "v8",

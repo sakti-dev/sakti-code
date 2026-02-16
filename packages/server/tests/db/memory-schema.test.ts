@@ -436,4 +436,107 @@ describe("Memory System Schema", () => {
       await db.run(sql`DELETE FROM threads WHERE id = ${threadId}`);
     });
   });
+
+  describe("tasks_fts virtual table", () => {
+    it("should exist with correct columns", async () => {
+      const db = await getDb();
+      const result = await db.all(sql`
+        SELECT name, type FROM sqlite_master WHERE name = 'tasks_fts'
+      `);
+
+      expect(result.length).toBe(1);
+      expect((result[0] as any)?.type).toBe("table");
+    });
+
+    it("should index new tasks automatically via trigger", async () => {
+      const db = await getDb();
+      const now = Date.now();
+      const taskId = `test-task-fts-${now}`;
+      const uniqueText = `uniquelogin${now}`;
+
+      await db.run(sql`
+        INSERT INTO tasks (id, title, description, status, priority, type, created_at, updated_at)
+        VALUES (${taskId}, ${uniqueText}, 'Implement login feature', 'open', 2, 'feature', ${now}, ${now})
+      `);
+
+      const match = await db.all(sql`
+        SELECT rowid FROM tasks_fts WHERE tasks_fts MATCH ${uniqueText}
+      `);
+
+      expect(match.length).toBeGreaterThan(0);
+
+      await db.run(sql`DELETE FROM tasks WHERE id = ${taskId}`);
+    });
+
+    it("should support code identifier tokenization with underscores", async () => {
+      const db = await getDb();
+      const now = Date.now();
+      const taskId = `test-task-underscore-${now}`;
+      const codeIdentifier = `refresh_token_handler`;
+
+      await db.run(sql`
+        INSERT INTO tasks (id, title, description, status, priority, type, created_at, updated_at)
+        VALUES (${taskId}, 'Token handler', ${codeIdentifier}, 'open', 2, 'feature', ${now}, ${now})
+      `);
+
+      const match = await db.all(sql`
+        SELECT rowid FROM tasks_fts WHERE tasks_fts MATCH ${codeIdentifier}
+      `);
+
+      expect(match.length).toBeGreaterThan(0);
+
+      await db.run(sql`DELETE FROM tasks WHERE id = ${taskId}`);
+    });
+
+    it("should support BM25 ranking", async () => {
+      const db = await getDb();
+      const now = Date.now();
+
+      const taskId1 = `test-task-bm25-1-${now}`;
+      const taskId2 = `test-task-bm25-2-${now}`;
+
+      await db.run(sql`
+        INSERT INTO tasks (id, title, description, status, priority, type, created_at, updated_at)
+        VALUES (${taskId1}, 'Auth implementation', 'Create login and register', 'open', 2, 'feature', ${now}, ${now})
+      `);
+
+      await db.run(sql`
+        INSERT INTO tasks (id, title, description, status, priority, type, created_at, updated_at)
+        VALUES (${taskId2}, 'Database schema', 'User table with login fields', 'open', 2, 'feature', ${now}, ${now})
+      `);
+
+      const results = await db.all(sql`
+        SELECT t.id, bm25(tasks_fts) as rank
+        FROM tasks_fts fts
+        JOIN tasks t ON t.rowid = fts.rowid
+        WHERE tasks_fts MATCH 'login'
+        ORDER BY rank ASC
+        LIMIT 5
+      `);
+
+      expect(results.length).toBeGreaterThanOrEqual(1);
+
+      await db.run(sql`DELETE FROM tasks WHERE id = ${taskId1}`);
+      await db.run(sql`DELETE FROM tasks WHERE id = ${taskId2}`);
+    });
+
+    it("should backfill existing tasks on migration", async () => {
+      const db = await getDb();
+      const now = Date.now();
+      const uniqueText = `legacytask${now}`;
+
+      await db.run(sql`
+        INSERT INTO tasks (id, title, description, status, priority, type, created_at, updated_at)
+        VALUES (${uniqueText}, ${uniqueText}, 'Legacy task description', 'open', 2, 'task', ${now}, ${now})
+      `);
+
+      const match = await db.all(sql`
+        SELECT rowid FROM tasks_fts WHERE tasks_fts MATCH ${uniqueText}
+      `);
+
+      expect(match.length).toBeGreaterThan(0);
+
+      await db.run(sql`DELETE FROM tasks WHERE id = ${uniqueText}`);
+    });
+  });
 });

@@ -15,6 +15,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 describe("reflections table schema", () => {
   beforeEach(async () => {
     const db = await getDb();
+    // Ensure foreign keys are enabled for cascade delete tests
+    await db.run("PRAGMA foreign_keys = ON");
     try {
       await db.delete(reflections);
     } catch {

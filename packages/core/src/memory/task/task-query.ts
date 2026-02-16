@@ -78,14 +78,18 @@ export async function executeTaskQuery(input: {
   try {
     switch (input.action) {
       case "ready": {
-        const tasks = await taskStorage.getReadyTasks();
+        const allOpenTasks = await taskStorage.listTasks({ status: "open" });
+        const readyTasks = await taskStorage.getReadyTasks();
         const limit = input.limit ?? 5;
-        const limitedTasks = tasks.slice(0, limit);
+        const limitedTasks = readyTasks.slice(0, limit);
+
+        const blockedCount = allOpenTasks.length - readyTasks.length;
+
         return {
           success: true,
           tasks: limitedTasks,
-          readyCount: tasks.length,
-          blockedCount: 0,
+          readyCount: readyTasks.length,
+          blockedCount,
         };
       }
 
@@ -118,14 +122,8 @@ export async function executeTaskQuery(input: {
         if (!input.query) {
           return { success: false, error: "Query is required for 'search' action" };
         }
-        const tasks = await taskStorage.listTasks({ limit: input.limit ?? 10 });
-        const queryLower = input.query.toLowerCase();
-        const matchingTasks = tasks.filter(
-          t =>
-            t.title.toLowerCase().includes(queryLower) ||
-            (t.description && t.description.toLowerCase().includes(queryLower))
-        );
-        return { success: true, tasks: matchingTasks };
+        const tasks = await taskStorage.searchTasks(input.query, input.limit ?? 10);
+        return { success: true, tasks };
       }
 
       default:

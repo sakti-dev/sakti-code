@@ -249,6 +249,19 @@ export class TaskStorage {
 
     return openTasks.filter(t => !blockedByOpen.has(t.id));
   }
+
+  async searchTasks(searchQuery: string, limit: number = 10): Promise<Task[]> {
+    const db = await getDb();
+
+    const results = await db.all(sql`
+      SELECT t.* FROM tasks_fts fts
+      JOIN tasks t ON t.rowid = fts.rowid
+      WHERE tasks_fts MATCH ${searchQuery}
+      LIMIT ${limit}
+    `);
+
+    return results as Task[];
+  }
 }
 
 export const taskStorage = new TaskStorage();

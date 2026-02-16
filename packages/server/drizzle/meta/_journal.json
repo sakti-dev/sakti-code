@@ -29,6 +29,13 @@
       "when": 1771253200000,
       "tag": "0003_sturdy_messages_fts",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1771266068000,
+      "tag": "0004_nimble_tasks_fts",
+      "breakpoints": true
     }
   ]
 }
