@@ -4,7 +4,7 @@
  * Phase 1 Memory System - Message storage with three-storage model for non-destructive compaction.
  */
 
-import { getDb, messages, type Message } from "@ekacode/server/db";
+import { getDb, messages, threads, type Message } from "@ekacode/server/db";
 import { and, eq, sql } from "drizzle-orm";
 
 export interface CreateMessageInput {
@@ -16,6 +16,7 @@ export interface CreateMessageInput {
   searchText?: string;
   injectionText?: string;
   taskId?: string;
+  sessionId?: string;
   createdAt: number;
   messageIndex: number;
 }
@@ -32,6 +33,25 @@ export class MessageStorage {
     const searchText = input.searchText ?? input.rawContent;
     const injectionText = input.injectionText ?? input.rawContent;
 
+    let taskIdToUse = input.taskId ?? null;
+
+    if (!taskIdToUse) {
+      const thread = await db.select().from(threads).where(eq(threads.id, input.threadId)).get();
+
+      const activeTaskId = thread?.metadata?.activeTaskId as string | undefined;
+      if (activeTaskId) {
+        if (!input.sessionId) {
+          taskIdToUse = activeTaskId;
+        } else {
+          const { taskStorage } = await import("../task/storage");
+          const task = await taskStorage.getTask(activeTaskId);
+          if (task && task.session_id === input.sessionId) {
+            taskIdToUse = activeTaskId;
+          }
+        }
+      }
+    }
+
     const [message] = await db
       .insert(messages)
       .values({
@@ -42,7 +62,7 @@ export class MessageStorage {
         raw_content: input.rawContent,
         search_text: searchText,
         injection_text: injectionText,
-        task_id: input.taskId ?? null,
+        task_id: taskIdToUse,
         created_at: new Date(input.createdAt),
         message_index: input.messageIndex,
       })

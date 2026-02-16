@@ -12,8 +12,9 @@
  * - update_context: Update working memory (project context, tech stack, preferences)
  */
 
-import { getDb, taskMessages } from "@ekacode/server/db";
+import { getDb, taskMessages, threads } from "@ekacode/server/db";
 import { tool } from "ai";
+import { eq, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
 import { Instance } from "../../instance";
@@ -35,6 +36,7 @@ interface TaskMutateDispatchInput {
   scope?: "resource" | "thread";
   resourceId?: string;
   threadId?: string;
+  sessionId?: string;
   add?: boolean;
 }
 
@@ -55,7 +57,7 @@ Actions:
 
 Examples:
 - Create task: { "action": "create", "title": "Fix auth bug" }
-- Claim task: { "action": "claim", "id": "task-1" }
+- Claim task: { "action": "claim", "id": "task-1", "threadId": "thread-123" }
 - Close with summary: { "action": "close", "id": "task-1", reason: "completed", summary: "Added JWT auth" }
 - Add dependency: { "action": "dep", taskId: "task-2", dependsOn: "task-1" }
 - Link message: { "action": "link", taskId: "task-1", messageId: "msg-123" }
@@ -76,6 +78,7 @@ Examples:
     scope: z.enum(["resource", "thread"]).default("resource"),
     resourceId: z.string().optional(),
     threadId: z.string().optional(),
+    sessionId: z.string().optional(),
     add: z.boolean().default(true),
   }),
   execute: async input => executeTaskMutateTool(input),
@@ -89,12 +92,15 @@ export async function executeTaskMutate(input: {
 export async function executeTaskMutate(input: {
   action: "claim";
   id: string;
+  threadId?: string;
+  sessionId?: string;
 }): Promise<{ success: true; task: Task } | { success: false; error: string }>;
 export async function executeTaskMutate(input: {
   action: "close";
   id: string;
   reason: "completed" | "wontfix" | "duplicate";
   summary: string;
+  threadId?: string;
 }): Promise<{ success: true; task: Task } | { success: false; error: string }>;
 export async function executeTaskMutate(input: {
   action: "dep";
@@ -130,6 +136,7 @@ export async function executeTaskMutate(input: {
   scope?: "resource" | "thread";
   resourceId?: string;
   threadId?: string;
+  sessionId?: string;
   add?: boolean;
 }): Promise<unknown> {
   try {
@@ -166,10 +173,36 @@ export async function executeTaskMutate(input: {
         if (blockedStatus.isBlocked) {
           return { success: false, error: "Task is blocked by open dependencies" };
         }
+
+        // Update task status and session
         const updated = await taskStorage.updateTask(input.id, {
           status: "in_progress",
+          sessionId: input.sessionId,
           updatedAt: now,
         });
+
+        // Store activeTaskId in thread metadata for auto-linking
+        if (input.threadId) {
+          const db = await getDb();
+          const thread = await db
+            .select()
+            .from(threads)
+            .where(eq(threads.id, input.threadId))
+            .get();
+          if (thread) {
+            await db
+              .update(threads)
+              .set({
+                metadata: {
+                  ...thread.metadata,
+                  activeTaskId: input.id,
+                },
+                updated_at: new Date(now),
+              })
+              .where(eq(threads.id, input.threadId));
+          }
+        }
+
         return { success: true, task: updated };
       }
 
@@ -187,6 +220,7 @@ export async function executeTaskMutate(input: {
         if (!task) {
           return { success: false, error: `Task not found: ${input.id}` };
         }
+
         const updated = await taskStorage.updateTask(input.id, {
           status: "closed",
           closeReason: input.reason,
@@ -194,6 +228,44 @@ export async function executeTaskMutate(input: {
           closedAt: now,
           updatedAt: now,
         });
+
+        const db = await getDb();
+
+        if (input.threadId) {
+          const thread = await db
+            .select()
+            .from(threads)
+            .where(eq(threads.id, input.threadId))
+            .get();
+          if (thread && thread.metadata?.activeTaskId === input.id) {
+            const { activeTaskId: _, ...restMetadata } = thread.metadata as Record<string, unknown>;
+            await db
+              .update(threads)
+              .set({
+                metadata: restMetadata,
+                updated_at: new Date(now),
+              })
+              .where(eq(threads.id, input.threadId));
+          }
+        } else {
+          const threadsWithActiveTask = await db
+            .select()
+            .from(threads)
+            .where(sql`json_extract(metadata, '$.activeTaskId') = ${input.id}`)
+            .all();
+
+          for (const thread of threadsWithActiveTask) {
+            const { activeTaskId: _, ...restMetadata } = thread.metadata as Record<string, unknown>;
+            await db
+              .update(threads)
+              .set({
+                metadata: restMetadata,
+                updated_at: new Date(now),
+              })
+              .where(eq(threads.id, thread.id));
+          }
+        }
+
         return { success: true, task: updated };
       }
 
