@@ -16,6 +16,149 @@ describe("ModelSelector command center", () => {
     document.body.removeChild(container);
   });
 
+  it("renders command mode with slash commands", () => {
+    const slashCommands: SlashCommand[] = [
+      { id: "session.new", trigger: "new", title: "New Session", type: "builtin" },
+      { id: "session.undo", trigger: "undo", title: "Undo", type: "builtin" },
+    ];
+
+    dispose = render(
+      () => (
+        <ModelSelector
+          open={true}
+          onOpenChange={vi.fn()}
+          mode="command"
+          onModeChange={vi.fn()}
+          modelSections={[]}
+          onSearchChange={vi.fn()}
+          onSelect={vi.fn()}
+          slashCommands={slashCommands}
+          onSlashCommand={vi.fn()}
+        />
+      ),
+      container
+    );
+
+    expect(document.body.textContent).toContain("Commands");
+    expect(document.body.textContent).toContain("New Session");
+    expect(document.body.textContent).toContain("Undo");
+  });
+
+  it("filters slash commands by search query", () => {
+    const slashCommands: SlashCommand[] = [
+      { id: "session.new", trigger: "new", title: "New Session", type: "builtin" },
+      { id: "session.undo", trigger: "undo", title: "Undo", type: "builtin" },
+      { id: "session.redo", trigger: "redo", title: "Redo", type: "builtin" },
+    ];
+
+    dispose = render(
+      () => (
+        <ModelSelector
+          open={true}
+          onOpenChange={vi.fn()}
+          mode="command"
+          onModeChange={vi.fn()}
+          modelSections={[]}
+          onSearchChange={vi.fn()}
+          onSelect={vi.fn()}
+          slashCommands={slashCommands}
+          onSlashCommand={vi.fn()}
+          searchQuery="undo"
+        />
+      ),
+      container
+    );
+
+    expect(document.body.textContent).toContain("Undo");
+    expect(document.body.textContent).not.toContain("New Session");
+    expect(document.body.textContent).not.toContain("Redo");
+  });
+
+  it("calls onSlashCommand when selecting a command", () => {
+    const onSlashCommand = vi.fn();
+    const slashCommands: SlashCommand[] = [
+      { id: "session.new", trigger: "new", title: "New Session", type: "builtin" },
+    ];
+
+    dispose = render(
+      () => (
+        <ModelSelector
+          open={true}
+          onOpenChange={vi.fn()}
+          mode="command"
+          onModeChange={vi.fn()}
+          modelSections={[]}
+          onSearchChange={vi.fn()}
+          onSelect={vi.fn()}
+          slashCommands={slashCommands}
+          onSlashCommand={onSlashCommand}
+        />
+      ),
+      container
+    );
+
+    const input = document.body.querySelector('input[aria-label="Search models"]');
+    input?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+    expect(onSlashCommand).toHaveBeenCalledWith(expect.objectContaining({ id: "session.new" }));
+  });
+
+  it("displays keybind for commands", () => {
+    const slashCommands: SlashCommand[] = [
+      {
+        id: "session.new",
+        trigger: "new",
+        title: "New Session",
+        keybind: "mod+shift+s",
+        type: "builtin",
+      },
+    ];
+
+    dispose = render(
+      () => (
+        <ModelSelector
+          open={true}
+          onOpenChange={vi.fn()}
+          mode="command"
+          onModeChange={vi.fn()}
+          modelSections={[]}
+          onSearchChange={vi.fn()}
+          onSelect={vi.fn()}
+          slashCommands={slashCommands}
+          onSlashCommand={vi.fn()}
+        />
+      ),
+      container
+    );
+
+    expect(document.body.textContent).toContain("mod+shift+s");
+  });
+
+  it("shows / trigger prefix for commands", () => {
+    const slashCommands: SlashCommand[] = [
+      { id: "session.new", trigger: "new", title: "New Session", type: "builtin" },
+    ];
+
+    dispose = render(
+      () => (
+        <ModelSelector
+          open={true}
+          onOpenChange={vi.fn()}
+          mode="command"
+          onModeChange={vi.fn()}
+          modelSections={[]}
+          onSearchChange={vi.fn()}
+          onSelect={vi.fn()}
+          slashCommands={slashCommands}
+          onSlashCommand={vi.fn()}
+        />
+      ),
+      container
+    );
+
+    expect(document.body.textContent).toContain("/new");
+  });
+
   it("virtualizes model rows in the selector", () => {
     const sections: ModelSelectorSection[] = [
       {

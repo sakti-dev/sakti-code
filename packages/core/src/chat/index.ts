@@ -5,5 +5,7 @@
  * for the part-based message model.
  */
 
+export * from "./commands";
+export * from "./commands-builtin";
 export * from "./message-v2";
 export * from "./processor";

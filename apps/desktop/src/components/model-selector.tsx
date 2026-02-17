@@ -7,9 +7,11 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/utils";
+import { SlashCommand } from "@ekacode/core/chat";
 import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+export type { SlashCommand } from "@ekacode/core/chat";
 
-export type CommandCenterMode = "model" | "mcp" | "skills" | "context";
+export type CommandCenterMode = "model" | "mcp" | "skills" | "context" | "command";
 
 export interface ModelSelectorOption {
   id: string;
@@ -49,6 +51,8 @@ interface ModelSelectorProps {
     score: number;
     type: "file" | "directory";
   }) => void;
+  slashCommands?: SlashCommand[];
+  onSlashCommand?: (command: SlashCommand) => void;
 }
 
 interface CommandEntry {
@@ -94,6 +98,7 @@ const MCP_ENTRIES: CommandEntry[] = [
 
 const MODE_PILLS: Array<{ mode: CommandCenterMode; label: string }> = [
   { mode: "model", label: "/model" },
+  { mode: "command", label: "/command" },
   { mode: "mcp", label: "/mcp" },
   { mode: "skills", label: "/skills" },
   { mode: "context", label: "@context" },
@@ -204,6 +209,17 @@ export function ModelSelector(props: ModelSelectorProps) {
 
   const commandEntries = createMemo(() => {
     switch (props.mode) {
+      case "command": {
+        const commands = props.slashCommands ?? [];
+        const searchTerm = (props.searchQuery ?? "").toLowerCase();
+        if (!searchTerm) return commands;
+        return commands.filter(
+          cmd =>
+            cmd.title.toLowerCase().includes(searchTerm) ||
+            cmd.trigger.toLowerCase().includes(searchTerm) ||
+            cmd.description?.toLowerCase().includes(searchTerm)
+        );
+      }
       case "mcp":
         return MCP_ENTRIES;
       case "skills":
@@ -305,6 +321,13 @@ export function ModelSelector(props: ModelSelectorProps) {
   };
 
   const handleCommandPick = () => {
+    const id = visibleEntryIds()[activeIndex()];
+    if (props.mode === "command" && id) {
+      const cmd = commandEntries().find(c => c.id === id);
+      if (cmd && "trigger" in cmd) {
+        props.onSlashCommand?.(cmd as SlashCommand);
+      }
+    }
     props.onOpenChange(false);
     setQuery("");
   };
@@ -371,10 +394,18 @@ export function ModelSelector(props: ModelSelectorProps) {
         <div class="mb-1.5 flex items-center justify-between">
           <div>
             <p class="text-popover-foreground text-[13px] font-semibold tracking-tight">
-              {props.mode === "context" ? "Adding context" : "Selecting model"}
+              {props.mode === "context"
+                ? "Adding context"
+                : props.mode === "command"
+                  ? "Commands"
+                  : "Selecting model"}
             </p>
             <p class="text-muted-foreground text-[10px]">
-              {props.mode === "context" ? "Search files to add context" : "Command Center"}
+              {props.mode === "context"
+                ? "Search files to add context"
+                : props.mode === "command"
+                  ? "Search commands..."
+                  : "Command Center"}
             </p>
           </div>
         </div>
@@ -412,7 +443,9 @@ export function ModelSelector(props: ModelSelectorProps) {
                 ? "Search MCP commands..."
                 : props.mode === "skills"
                   ? "Search skills..."
-                  : "Search files and directories to add context..."
+                  : props.mode === "command"
+                    ? "Search commands..."
+                    : "Search files and directories to add context..."
           }
           class="text-popover-foreground"
         />
@@ -508,7 +541,13 @@ export function ModelSelector(props: ModelSelectorProps) {
           <Show when={props.mode !== "model"}>
             <CommandGroup
               heading={
-                props.mode === "mcp" ? "MCP" : props.mode === "skills" ? "Skills" : "Context"
+                props.mode === "mcp"
+                  ? "MCP"
+                  : props.mode === "skills"
+                    ? "Skills"
+                    : props.mode === "command"
+                      ? "Commands"
+                      : "Context"
               }
               class="[&_[cmdk-group-heading]]:border-border/80 [&_[cmdk-group-heading]]:bg-muted/60 [&_[cmdk-group-heading]]:text-foreground [&_[cmdk-group-heading]]:rounded-md [&_[cmdk-group-heading]]:border"
             >
@@ -551,23 +590,43 @@ export function ModelSelector(props: ModelSelectorProps) {
               </Show>
               <Show when={props.mode !== "context"}>
                 <For each={commandEntries()}>
-                  {entry => (
-                    <CommandItem
-                      ref={setOptionRef(entry.id)}
-                      value={entry.id}
-                      class={cn(
-                        "text-popover-foreground hover:border-border/90 hover:bg-muted/70 h-9 rounded-md border border-transparent px-2.5 transition-all duration-200",
-                        isActive(entry.id) &&
-                          "border-primary/45 bg-accent/70 shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-primary)_45%,transparent),0_8px_24px_color-mix(in_oklch,var(--color-primary)_18%,transparent)]"
-                      )}
-                      onPick={handleCommandPick}
-                    >
-                      <span class="truncate">{entry.label}</span>
-                      <span class="text-muted-foreground ml-auto text-[11px]">
-                        {entry.description}
-                      </span>
-                    </CommandItem>
-                  )}
+                  {entry => {
+                    const isSlashCommand = "trigger" in entry;
+                    return (
+                      <CommandItem
+                        ref={setOptionRef(entry.id)}
+                        value={entry.id}
+                        class={cn(
+                          "text-popover-foreground hover:border-border/90 hover:bg-muted/70 h-9 rounded-md border border-transparent px-2.5 transition-all duration-200",
+                          isActive(entry.id) &&
+                            "border-primary/45 bg-accent/70 shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-primary)_45%,transparent),0_8px_24px_color-mix(in_oklch,var(--color-primary)_18%,transparent)]"
+                        )}
+                        onPick={() => {
+                          if (props.mode === "command" && isSlashCommand) {
+                            props.onSlashCommand?.(entry as SlashCommand);
+                            props.onOpenChange(false);
+                            setQuery("");
+                          } else {
+                            handleCommandPick();
+                          }
+                        }}
+                      >
+                        <span class="truncate">
+                          {isSlashCommand
+                            ? (entry as SlashCommand).title
+                            : (entry as CommandEntry).label}
+                        </span>
+                        <span class="text-muted-foreground ml-auto text-[11px]">
+                          {isSlashCommand
+                            ? `/${(entry as SlashCommand).trigger}`
+                            : (entry as CommandEntry).description}
+                        </span>
+                        <Show when={isSlashCommand && (entry as SlashCommand).keybind}>
+                          <kbd class="ml-2 text-[10px]">{(entry as SlashCommand).keybind}</kbd>
+                        </Show>
+                      </CommandItem>
+                    );
+                  }}
                 </For>
               </Show>
             </CommandGroup>
