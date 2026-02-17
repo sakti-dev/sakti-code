@@ -10,11 +10,14 @@ import { promises as fs } from "fs";
 import path from "path";
 import { z } from "zod";
 import { Instance } from "../instance";
+import { requestModeSwitchApproval } from "../session/mode-approval";
+import { transitionSessionMode } from "../session/mode-transition";
 import { compileSpecToDb, type SpecMetadata } from "../spec/compiler";
 import {
   getActiveSpec,
   getReadyTasks,
   updateCurrentTask,
+  updateSessionRuntimeMode,
   updateSessionSpec,
 } from "../spec/helpers";
 import { parseTasksMd, validateTaskDagFromParsed } from "../spec/parser";
@@ -65,6 +68,7 @@ The plan will be saved to .kiro/specs/<slug>/`,
     await writeSpecTemplate(specDir, spec_slug, description);
 
     await updateSessionSpec(instanceContext.sessionID, spec_slug);
+    await updateSessionRuntimeMode(instanceContext.sessionID, "plan");
 
     return {
       spec_slug,
@@ -95,7 +99,7 @@ This will:
   }),
 
   execute: async params => {
-    const { summary: _summary } = params;
+    const { summary } = params;
 
     const instanceContext = Instance.context;
     if (!instanceContext) {
@@ -137,6 +141,20 @@ This will:
       );
     }
 
+    const approved = await requestModeSwitchApproval({
+      sessionId: instanceContext.sessionID,
+      fromMode: "plan",
+      toMode: "build",
+      reason: summary,
+    });
+
+    if (!approved) {
+      return {
+        status: "planning_continued",
+        message: "User denied mode switch. Planning can continue.",
+      };
+    }
+
     const compiled = await compileSpecToDb(specDir, specSlug);
     if (compiled.errors.length > 0) {
       throw new Error(`Compilation failed: ${compiled.errors.join("; ")}`);
@@ -150,6 +168,12 @@ This will:
     if (firstReadyTaskId) {
       await updateCurrentTask(instanceContext.sessionID, firstReadyTaskId);
     }
+
+    await transitionSessionMode({
+      sessionId: instanceContext.sessionID,
+      from: "plan",
+      to: "build",
+    });
 
     return {
       status: "Plan compiled to database",

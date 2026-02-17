@@ -18,6 +18,7 @@ import type { AgentConfig, AgentEvent, AgentInput, AgentResult } from "../agent/
 import { Instance } from "../instance";
 import type { AgentMode } from "../prompts/memory/observer/modes";
 import { AgentProcessor } from "../session/processor";
+import { getSessionRuntimeMode } from "../spec/helpers";
 
 /**
  * Subagent types available for spawning
@@ -279,6 +280,12 @@ Examples:
     const instanceContext = Instance.context;
     if (!instanceContext) {
       throw new Error("Task tool must be run within an Instance.provide() context");
+    }
+
+    // Enforce runtime-mode subagent policy
+    const runtimeMode = (await getSessionRuntimeMode(instanceContext.sessionID)) ?? "build";
+    if (runtimeMode === "plan" && subagent_type !== "explore") {
+      throw new Error("Plan mode can only spawn explore subagents");
     }
 
     // Get subagent configuration

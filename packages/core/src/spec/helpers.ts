@@ -15,6 +15,13 @@ import { v7 as uuidv7 } from "uuid";
 const SPEC_TOOL_NAME = "spec";
 const SPEC_TOOL_KEY = "activeSpec";
 const CURRENT_TASK_KEY = "currentTask";
+const SESSION_MODE_KEY = "runtimeMode";
+
+export type RuntimeMode = "plan" | "build";
+
+function asRuntimeMode(value: unknown): "plan" | "build" | null {
+  return value === "plan" || value === "build" ? value : null;
+}
 
 export interface SpecData {
   slug: string;
@@ -150,6 +157,75 @@ export async function updateCurrentTask(sessionId: string, taskId: string): Prom
       tool_name: SPEC_TOOL_NAME,
       tool_key: CURRENT_TASK_KEY,
       data: { taskId },
+      created_at: now,
+      last_accessed: now,
+    });
+  }
+}
+
+/**
+ * Get the runtime mode for a session (plan | build)
+ */
+export async function getSessionRuntimeMode(sessionId: string): Promise<RuntimeMode | null> {
+  const db = await getDb();
+
+  const result = await db
+    .select()
+    .from(toolSessions)
+    .where(
+      and(
+        eq(toolSessions.session_id, sessionId),
+        eq(toolSessions.tool_name, SPEC_TOOL_NAME),
+        eq(toolSessions.tool_key, SESSION_MODE_KEY)
+      )
+    )
+    .get();
+
+  if (!result || !result.data || typeof result.data !== "object") {
+    return null;
+  }
+
+  const modeData = result.data as { mode?: unknown };
+  return asRuntimeMode(modeData?.mode);
+}
+
+/**
+ * Update the runtime mode for a session (upsert)
+ */
+export async function updateSessionRuntimeMode(
+  sessionId: string,
+  mode: RuntimeMode
+): Promise<void> {
+  const db = await getDb();
+  const now = new Date();
+
+  const existing = await db
+    .select()
+    .from(toolSessions)
+    .where(
+      and(
+        eq(toolSessions.session_id, sessionId),
+        eq(toolSessions.tool_name, SPEC_TOOL_NAME),
+        eq(toolSessions.tool_key, SESSION_MODE_KEY)
+      )
+    )
+    .get();
+
+  if (existing) {
+    await db
+      .update(toolSessions)
+      .set({
+        data: { mode },
+        last_accessed: now,
+      })
+      .where(eq(toolSessions.tool_session_id, existing.tool_session_id));
+  } else {
+    await db.insert(toolSessions).values({
+      tool_session_id: uuidv7(),
+      session_id: sessionId,
+      tool_name: SPEC_TOOL_NAME,
+      tool_key: SESSION_MODE_KEY,
+      data: { mode },
       created_at: now,
       last_accessed: now,
     });

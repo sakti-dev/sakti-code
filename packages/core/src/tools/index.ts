@@ -49,3 +49,9 @@ export * from "./base";
 
 // Task tool (subagent spawning)
 export { SUBAGENT_TYPES, taskTool, type SubagentResult, type SubagentType } from "./task";
+export {
+  taskParallelTool,
+  type ParallelTaskExecuteResult,
+  type ParallelTaskInput,
+  type ParallelTaskResult,
+} from "./task-parallel";

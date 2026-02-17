@@ -83,6 +83,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
       "webfetch",
       "sequentialthinking",
       "task",
+      "task-parallel",
       "search-docs",
       "ast-query",
       "grep-search",
@@ -186,6 +187,9 @@ You have read-only access. Focus on understanding rather than modifying.`,
       "ast-query",
       "grep-search",
       "file-read-docs",
+      "task",
+      "task-parallel",
+      "plan-exit",
     ],
     systemPrompt: `You are an expert software architect. Your task is to create detailed implementation plans.
 

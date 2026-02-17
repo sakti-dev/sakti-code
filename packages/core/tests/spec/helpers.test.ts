@@ -458,4 +458,153 @@ describe("Spec Helpers", () => {
       expect(result).toBe("T-003");
     });
   });
+
+  describe("getSessionRuntimeMode", () => {
+    it("should return null when no runtime mode is set", async () => {
+      const { getSessionRuntimeMode } = await import("../../../src/spec/helpers");
+      const result = await getSessionRuntimeMode("nonexistent-session");
+      expect(result).toBeNull();
+    });
+
+    it("should return null when runtime mode is not set but tool_session exists", async () => {
+      const sessionId = uuidv7();
+      const { getDb, sessions, toolSessions } = await import("@ekacode/server/db");
+      const db = await getDb();
+
+      await db.insert(sessions).values({
+        session_id: sessionId,
+        resource_id: "test",
+        thread_id: sessionId,
+        title: "Test Session",
+        created_at: new Date(),
+        last_accessed: new Date(),
+      });
+
+      await db.insert(toolSessions).values({
+        tool_session_id: uuidv7(),
+        session_id: sessionId,
+        tool_name: "spec",
+        tool_key: "runtimeMode",
+        data: null,
+        created_at: new Date(),
+        last_accessed: new Date(),
+      });
+
+      const { getSessionRuntimeMode } = await import("../../../src/spec/helpers");
+      const result = await getSessionRuntimeMode(sessionId);
+      expect(result).toBeNull();
+    });
+
+    it("should return null for legacy/invalid stored value like 'explore'", async () => {
+      const sessionId = uuidv7();
+      const { getDb, sessions, toolSessions } = await import("@ekacode/server/db");
+      const db = await getDb();
+
+      await db.insert(sessions).values({
+        session_id: sessionId,
+        resource_id: "test",
+        thread_id: sessionId,
+        title: "Test Session",
+        created_at: new Date(),
+        last_accessed: new Date(),
+      });
+
+      await db.insert(toolSessions).values({
+        tool_session_id: uuidv7(),
+        session_id: sessionId,
+        tool_name: "spec",
+        tool_key: "runtimeMode",
+        data: { mode: "explore" },
+        created_at: new Date(),
+        last_accessed: new Date(),
+      });
+
+      const { getSessionRuntimeMode } = await import("../../../src/spec/helpers");
+      const result = await getSessionRuntimeMode(sessionId);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("updateSessionRuntimeMode", () => {
+    it("should set runtime mode to 'plan'", async () => {
+      const { updateSessionRuntimeMode, getSessionRuntimeMode } =
+        await import("../../../src/spec/helpers");
+      const sessionId = uuidv7();
+
+      const { getDb, sessions } = await import("@ekacode/server/db");
+      const db = await getDb();
+      await db.insert(sessions).values({
+        session_id: sessionId,
+        resource_id: "test",
+        thread_id: sessionId,
+        title: "Test Session",
+        created_at: new Date(),
+        last_accessed: new Date(),
+      });
+
+      await updateSessionRuntimeMode(sessionId, "plan");
+
+      const result = await getSessionRuntimeMode(sessionId);
+      expect(result).toBe("plan");
+    });
+
+    it("should update runtime mode from 'plan' to 'build'", async () => {
+      const { updateSessionRuntimeMode, getSessionRuntimeMode } =
+        await import("../../../src/spec/helpers");
+      const sessionId = uuidv7();
+
+      const { getDb, sessions } = await import("@ekacode/server/db");
+      const db = await getDb();
+      await db.insert(sessions).values({
+        session_id: sessionId,
+        resource_id: "test",
+        thread_id: sessionId,
+        title: "Test Session",
+        created_at: new Date(),
+        last_accessed: new Date(),
+      });
+
+      await updateSessionRuntimeMode(sessionId, "plan");
+      await updateSessionRuntimeMode(sessionId, "build");
+
+      const result = await getSessionRuntimeMode(sessionId);
+      expect(result).toBe("build");
+    });
+
+    it("should update in place (upsert behavior) - only one row per session", async () => {
+      const { updateSessionRuntimeMode, getSessionRuntimeMode } =
+        await import("../../../src/spec/helpers");
+      const sessionId = uuidv7();
+
+      const { getDb, sessions, toolSessions } = await import("@ekacode/server/db");
+      const { eq, and } = await import("drizzle-orm");
+      const db = await getDb();
+      await db.insert(sessions).values({
+        session_id: sessionId,
+        resource_id: "test",
+        thread_id: sessionId,
+        title: "Test Session",
+        created_at: new Date(),
+        last_accessed: new Date(),
+      });
+
+      await updateSessionRuntimeMode(sessionId, "plan");
+      await updateSessionRuntimeMode(sessionId, "build");
+
+      const countResult = await db
+        .select()
+        .from(toolSessions)
+        .where(
+          and(
+            eq(toolSessions.session_id, sessionId),
+            eq(toolSessions.tool_name, "spec"),
+            eq(toolSessions.tool_key, "runtimeMode")
+          )
+        )
+        .all();
+
+      expect(countResult).toHaveLength(1);
+      expect(await getSessionRuntimeMode(sessionId)).toBe("build");
+    });
+  });
 });

@@ -162,6 +162,9 @@ export function createDefaultRules(): PermissionRule[] {
 
     // External directory access - always require approval
     { permission: "external_directory", pattern: "*", action: "ask" },
+
+    // Mode switching - always require approval
+    { permission: "mode_switch", pattern: "*", action: "ask" },
   ];
 }
 

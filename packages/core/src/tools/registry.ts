@@ -26,6 +26,7 @@ import { memorySearchTool, taskMutateTool, taskQueryTool } from "../memory";
 
 // Plan tools
 import { planEnterTool, planExitTool } from "./plan";
+import { taskParallelTool } from "./task-parallel";
 
 // Tool name type (union of all available tool names)
 export type ToolName =
@@ -42,6 +43,7 @@ export type ToolName =
   | "webfetch"
   | "sequentialthinking"
   | "task"
+  | "task-parallel"
   | "search-docs"
   | "ast-query"
   | "grep-search"
@@ -73,6 +75,7 @@ export const toolRegistry = {
   // AI Agent tools
   sequentialthinking: sequentialThinking,
   task: taskTool,
+  "task-parallel": taskParallelTool,
 
   // Code research tools (search-docs)
   "search-docs": searchDocs,

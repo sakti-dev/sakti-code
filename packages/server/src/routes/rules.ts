@@ -25,7 +25,7 @@ const logger = createLogger("server");
 
 // Validation schemas
 const ruleSchema = z.object({
-  permission: z.enum(["read", "edit", "bash", "external_directory"]),
+  permission: z.enum(["read", "edit", "bash", "external_directory", "mode_switch"]),
   pattern: z.string(),
   action: z.enum(["allow", "deny", "ask"]),
 });
@@ -248,7 +248,7 @@ app.post("/api/permissions/rules/evaluate", async c => {
     const body = await c.req.json();
     const { permission, pattern } = z
       .object({
-        permission: z.enum(["read", "edit", "bash", "external_directory"]),
+        permission: z.enum(["read", "edit", "bash", "external_directory", "mode_switch"]),
         pattern: z.string(),
       })
       .parse(body);

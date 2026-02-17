@@ -9,6 +9,7 @@ import { EventEmitter } from "events";
 import { access, mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { createAgent } from "../agent/workflow/factory";
+import { getSessionRuntimeMode } from "../spec/helpers";
 import { AgentProcessor } from "./processor";
 import { Checkpoint, SessionConfig, SessionPhase, SessionStatus } from "./types";
 
@@ -77,10 +78,13 @@ export class SessionController {
     });
 
     try {
-      // Create build agent configuration
+      // Resolve runtime mode from persisted storage, default to "build"
+      const runtimeMode = (await getSessionRuntimeMode(this.sessionId)) ?? "build";
+
+      // Create agent configuration based on resolved runtime mode
       const activeModelId = process.env.EKACODE_ACTIVE_MODEL_ID?.trim();
       const agentConfig = createAgent(
-        "build",
+        runtimeMode,
         this.sessionId,
         activeModelId ? { model: activeModelId } : undefined
       );
