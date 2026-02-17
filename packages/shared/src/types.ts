@@ -17,7 +17,13 @@ export interface SessionContext {
 }
 
 // Permission types
-export type PermissionType = "read" | "edit" | "external_directory" | "bash" | "mode_switch";
+export type PermissionType =
+  | "read"
+  | "edit"
+  | "external_directory"
+  | "bash"
+  | "mode_switch"
+  | "skill";
 
 export type PermissionAction = "allow" | "deny" | "ask";
 

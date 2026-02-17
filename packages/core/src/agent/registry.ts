@@ -93,6 +93,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
       "memory-search",
       "plan-enter",
       "plan-exit",
+      "skill",
     ],
     systemPrompt: `You are an expert software developer and AI coding agent.
 

@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 import { createDefaultRules, evaluatePatterns } from "../../src/security/permission-rules";
 
 describe("skill permissions", () => {
-  it("should default to ask when no pattern matches", () => {
+  it("should allow read access with wildcard pattern", () => {
     const defaultRules = createDefaultRules();
 
     const readRules = defaultRules.filter(r => r.permission === "read");
     const result = evaluatePatterns("read" as PermissionType, ["some/path"], readRules);
-    expect(result.action).toBe("ask");
+    expect(result.action).toBe("allow");
   });
 
   it("should handle ask action for skills", () => {

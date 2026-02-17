@@ -25,12 +25,30 @@ export async function fetchRemoteSkills(baseUrl: string): Promise<SkillInfo[]> {
     const data = await response.json();
     const parsed = RemoteSkillIndex.parse(data);
 
-    return parsed.skills.map(skill => ({
-      name: skill.name,
-      description: skill.description,
-      location: new URL(skill.files?.[0] || "SKILL.md", baseUrl).href,
-      content: "",
-    }));
+    const skillsWithContent = await Promise.all(
+      parsed.skills.map(async skill => {
+        const location = new URL(skill.files?.[0] || "SKILL.md", baseUrl).href;
+        let content = "";
+
+        try {
+          const contentResponse = await fetch(location);
+          if (contentResponse.ok) {
+            content = await contentResponse.text();
+          }
+        } catch {
+          // Failed to fetch content, leave empty
+        }
+
+        return {
+          name: skill.name,
+          description: skill.description,
+          location,
+          content,
+        };
+      })
+    );
+
+    return skillsWithContent;
   } catch {
     return [];
   }

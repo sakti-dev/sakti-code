@@ -1,7 +1,14 @@
 export { discoverLocalSkills, SkillDiscovery } from "./discovery";
 export { fetchRemoteSkills } from "./remote";
 export { SkillManager } from "./skill";
-export { skillTool, skillToolSchema } from "./tool";
+export {
+  getSkillManager,
+  initializeSkills,
+  setSkillManager,
+  setSkillPermissionRules,
+  skillTool,
+  skillToolSchema,
+} from "./tool";
 export { parseSkillInfo, SkillInfo } from "./types";
 import type { SkillInfo } from "./types";
 

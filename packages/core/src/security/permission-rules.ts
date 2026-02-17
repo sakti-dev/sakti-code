@@ -16,16 +16,16 @@ export function globToRegex(glob: string): RegExp {
   const regexString =
     "^" +
     glob
-      // Replace ** with .*
-      .replace(/\*\*/g, ".*")
-      // Replace * with [^/]* (non-greedy path segment)
-      .replace(/(?<!\.)\*/g, "[^/]*")
-      // Replace ? with .
-      .replace(/\?/g, ".")
-      // Escape special regex chars except *, ?, [, ]
+      // Escape special regex chars first (except *, ?, [, ])
       .replace(/[.+^${}()|\\]/g, "\\$&")
       // Handle character classes [abc]
-      .replace(/\[([^\]]+)\]/g, "[$1]") +
+      .replace(/\[([^\]]+)\]/g, "[$1]")
+      // Replace ** with .* (matches anything including /)
+      .replace(/\*\*/g, ".*")
+      // Replace * with .* (matches anything) - must be after escaping!
+      .replace(/\*/g, ".*")
+      // Replace ? with .
+      .replace(/\?/g, ".") +
     "$";
   return new RegExp(regexString);
 }
@@ -165,6 +165,9 @@ export function createDefaultRules(): PermissionRule[] {
 
     // Mode switching - always require approval
     { permission: "mode_switch", pattern: "*", action: "ask" },
+
+    // Skill loading - generally safe but can be scoped
+    { permission: "skill", pattern: "*", action: "allow" },
   ];
 }
 
