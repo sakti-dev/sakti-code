@@ -28,6 +28,9 @@ import { memorySearchTool, taskMutateTool, taskQueryTool } from "../memory";
 import { planEnterTool, planExitTool } from "./plan";
 import { taskParallelTool } from "./task-parallel";
 
+// Skill tools
+import { skillTool } from "../skill/tool";
+
 // Tool name type (union of all available tool names)
 export type ToolName =
   | "read"
@@ -52,7 +55,8 @@ export type ToolName =
   | "task-query"
   | "task-mutate"
   | "plan-enter"
-  | "plan-exit";
+  | "plan-exit"
+  | "skill";
 
 export const toolRegistry = {
   // Filesystem tools
@@ -91,6 +95,9 @@ export const toolRegistry = {
   // Plan tools
   "plan-enter": planEnterTool,
   "plan-exit": planExitTool,
+
+  // Skill tools
+  skill: skillTool,
 
   getAll(): Record<string, unknown> {
     const { getAll: _getAll, getToolNames: _getToolNames, ...tools } = this;
