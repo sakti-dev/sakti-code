@@ -7,6 +7,13 @@ type SessionState = {
 
 const sessionStore = new Map<string, SessionState>();
 
+/**
+ * Clear all session data (useful for testing)
+ */
+export function clearSessionStore(): void {
+  sessionStore.clear();
+}
+
 function ensureSession(sessionID: string): SessionState {
   let state = sessionStore.get(sessionID);
   if (!state) {

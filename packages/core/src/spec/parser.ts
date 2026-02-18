@@ -19,11 +19,20 @@ export interface ParsedTask {
   subtasks: string[];
 }
 
+export type ParsedTaskInput = Omit<ParsedTask, "dependencies"> & {
+  dependencies?: string[];
+};
+
 /**
  * Parse tasks.md file
  */
 export async function parseTasksMd(tasksFilePath: string): Promise<ParsedTask[]> {
-  const content = await fs.readFile(tasksFilePath, "utf-8");
+  let content: string;
+  try {
+    content = await fs.readFile(tasksFilePath, "utf-8");
+  } catch {
+    return [];
+  }
 
   const taskBlocks = content.split(/^#{2,3}\s+(T-\d+)\s*[—–-]\s+(.+)$/m);
 
@@ -92,7 +101,7 @@ function parseIdList(text: string, prefix: string): string[] {
 /**
  * Validate DAG from parsed tasks.md (BEFORE DB compilation)
  */
-export function validateTaskDagFromParsed(tasks: ParsedTask[]): {
+export function validateTaskDagFromParsed(tasks: ParsedTaskInput[]): {
   valid: boolean;
   cycles: string[][];
   ready: string[];

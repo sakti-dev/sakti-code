@@ -27,11 +27,16 @@ export async function getVCSInfo(directory: string): Promise<VCSInfo> {
 
   // Check git
   if (await hasGitDirectory(root)) {
+    const [branch, commit, remote] = await Promise.all([
+      getGitBranch(root),
+      getGitCommit(root),
+      getGitRemote(root),
+    ]);
     return {
       type: "git",
-      branch: await getGitBranch(root),
-      commit: await getGitCommit(root),
-      remote: await getGitRemote(root),
+      branch,
+      commit,
+      remote,
     };
   }
 

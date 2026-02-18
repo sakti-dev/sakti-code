@@ -5,37 +5,44 @@
  * GET /api/projects - List all projects
  */
 
-import { detectProjectFromPath } from "@ekacode/core/server";
+import { Instance } from "@ekacode/core/server";
 import { Hono } from "hono";
 import type { Env } from "../index";
-import { resolveDirectory } from "./_shared/directory-resolver";
+import { sessionBridge } from "../middleware/session-bridge";
 
 const projectRouter = new Hono<Env>();
+
+projectRouter.use("*", sessionBridge);
 
 /**
  * Get current project info for a directory
  */
 projectRouter.get("/api/project", async c => {
-  const directory = c.req.query("directory")?.trim();
+  const queryDir = c.req.query("directory")?.trim();
 
-  if (directory === "") {
+  const buildResponse = () => ({
+    id: Instance.project?.root,
+    name: Instance.project?.name,
+    path: Instance.project?.root,
+    detectedBy: Instance.project?.packageJson ? "packageJson" : "directory",
+    packageJson: Instance.project?.packageJson,
+  });
+
+  if (Instance.inContext) {
+    await Instance.bootstrap();
+    return c.json(buildResponse());
+  }
+
+  if (!queryDir) {
     return c.json({ error: "Directory parameter required" }, 400);
   }
 
-  const resolution = resolveDirectory(c, { allowFallbackCwd: true });
-
-  if (!resolution.ok) {
-    return c.json({ error: resolution.reason }, 400);
-  }
-
-  const project = await detectProjectFromPath(resolution.directory);
-
-  return c.json({
-    id: project.root,
-    name: project.name,
-    path: project.root,
-    detectedBy: project.packageJson ? "packageJson" : "directory",
-    packageJson: project.packageJson,
+  return await Instance.provide({
+    directory: queryDir,
+    async fn() {
+      await Instance.bootstrap();
+      return c.json(buildResponse());
+    },
   });
 });
 
@@ -45,18 +52,29 @@ projectRouter.get("/api/project", async c => {
 projectRouter.get("/api/projects", async c => {
   const cwd = process.cwd();
 
-  const project = await detectProjectFromPath(cwd);
-
-  return c.json({
+  const buildResponse = () => ({
     projects: [
       {
-        id: project.root,
-        name: project.name,
-        path: project.root,
+        id: Instance.project?.root,
+        name: Instance.project?.name,
+        path: Instance.project?.root,
         source: "current",
         lastSeen: Date.now(),
       },
     ],
+  });
+
+  if (Instance.inContext) {
+    await Instance.bootstrap();
+    return c.json(buildResponse());
+  }
+
+  return await Instance.provide({
+    directory: cwd,
+    async fn() {
+      await Instance.bootstrap();
+      return c.json(buildResponse());
+    },
   });
 });
 

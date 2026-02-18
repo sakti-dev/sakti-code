@@ -59,11 +59,15 @@ app.get("/api/workspace", async c => {
     });
 
     const workspace = Instance.inContext
-      ? buildWorkspace()
+      ? await (async () => {
+          await Instance.bootstrap();
+          return buildWorkspace();
+        })()
       : await Instance.provide({
           directory: process.cwd(),
           sessionID: session?.sessionId,
           async fn() {
+            await Instance.bootstrap();
             return buildWorkspace();
           },
         });

@@ -338,8 +338,8 @@ export function once<Definition extends BusEventDefinition>(
     properties: z.infer<Definition["properties"]>;
   }) => "done" | undefined | Promise<"done" | undefined>
 ): () => void {
-  let unsub: () => void = () => {};
-  unsub = raw(def.type, async event => {
+  const unsubscribeRef: { current: () => void } = { current: () => {} };
+  unsubscribeRef.current = raw(def.type, async event => {
     const result = await callback(
       event as {
         type: Definition["type"];
@@ -347,10 +347,10 @@ export function once<Definition extends BusEventDefinition>(
       }
     );
     if (result === "done") {
-      unsub();
+      unsubscribeRef.current();
     }
   });
-  return unsub;
+  return unsubscribeRef.current;
 }
 
 /**

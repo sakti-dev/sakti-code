@@ -183,8 +183,8 @@ describe("Spec Parser", () => {
       expect(tasks[0].outcome).toContain("Feature is implemented");
     });
 
-    it("should throw error when file doesn't exist", async () => {
-      await expect(parseTasksMd("/nonexistent/tasks.md")).rejects.toThrow("ENOENT");
+    it("should return empty array when file doesn't exist", async () => {
+      await expect(parseTasksMd("/nonexistent/tasks.md")).resolves.toEqual([]);
     });
 
     it("should handle tasks without explicit dependencies", async () => {
