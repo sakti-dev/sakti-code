@@ -15,29 +15,32 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 type TestMessage = unknown;
 
 describe("Spec Injector", () => {
-  let injectSpecContext: typeof import("../../../src/agent/spec-injector").injectSpecContext;
-  let updateSessionSpec: typeof import("../../../src/spec/helpers").updateSessionSpec;
-  let updateCurrentTask: typeof import("../../../src/spec/helpers").updateCurrentTask;
-  let Instance: typeof import("../../../src/instance").Instance;
-  let taskStorage: import("../../../src/memory/task/storage").TaskStorage;
+  let injectSpecContext: typeof import("../../src/agent/spec-injector").injectSpecContext;
+  let updateSessionSpec: typeof import("../../src/spec/helpers").updateSessionSpec;
+  let updateCurrentTask: typeof import("../../src/spec/helpers").updateCurrentTask;
+  let Instance: typeof import("../../src/instance").Instance;
+  let taskStorage: import("../../src/memory/task/storage").TaskStorage;
 
   const testSessionId = `test-injector-session-${uuidv7()}`;
   const testWorkspaceDir = `/tmp/ekacode-test-injector-${uuidv7()}`;
+  const testHomeDir = `/tmp/ekacode-test-home-${uuidv7()}`;
+  const previousEkacodeHome = process.env.EKACODE_HOME;
 
   beforeEach(async () => {
     vi.resetModules();
+    process.env.EKACODE_HOME = testHomeDir;
 
-    const injector = await import("../../../src/agent/spec-injector");
+    const injector = await import("../../src/agent/spec-injector");
     injectSpecContext = injector.injectSpecContext;
 
-    const helpers = await import("../../../src/spec/helpers");
+    const helpers = await import("../../src/spec/helpers");
     updateSessionSpec = helpers.updateSessionSpec;
     updateCurrentTask = helpers.updateCurrentTask;
 
-    const instanceModule = await import("../../../src/instance");
+    const instanceModule = await import("../../src/instance");
     Instance = instanceModule.Instance;
 
-    const { TaskStorage } = await import("../../../src/memory/task/storage");
+    const { TaskStorage } = await import("../../src/memory/task/storage");
     taskStorage = new TaskStorage();
 
     const { getDb, sessions } = await import("@ekacode/server/db");
@@ -62,6 +65,11 @@ describe("Spec Injector", () => {
   });
 
   afterAll(async () => {
+    if (previousEkacodeHome === undefined) {
+      delete process.env.EKACODE_HOME;
+    } else {
+      process.env.EKACODE_HOME = previousEkacodeHome;
+    }
     const { closeDb } = await import("@ekacode/server/db");
     closeDb();
   });
@@ -196,6 +204,47 @@ describe("Spec Injector", () => {
           );
           expect((result[0] as { parts: Array<{ text: string }> }).parts[0].text).toContain(
             "○ T-003"
+          );
+        },
+      });
+    });
+
+    it("should only treat memory-continuation metadata as continuation hint", async () => {
+      await Instance.provide({
+        directory: testWorkspaceDir,
+        sessionID: testSessionId,
+        messageID: "msg-1",
+        async fn() {
+          await updateSessionSpec(testSessionId, "user-auth");
+
+          const now = Date.now();
+          await taskStorage.createTask({
+            id: "spec-user-auth_T-001",
+            title: "Task 1",
+            status: "open",
+            createdAt: now,
+            updatedAt: now,
+            metadata: { spec: { slug: "user-auth", taskId: "T-001" } },
+          });
+
+          await updateCurrentTask(testSessionId, "T-001");
+
+          const nonContinuationMessage = createMessage("user", "Not continuation", {
+            metadata: { type: "custom-tag" },
+          });
+
+          const messages = [
+            createMessage("system", "System"),
+            nonContinuationMessage,
+            createMessage("user", "Hello"),
+          ];
+
+          const result = await injectSpecContext(messages as TestMessage, testSessionId);
+
+          expect(result.length).toBe(4);
+          expect((result[1] as { info: { role: string } }).info.role).toBe("system");
+          expect((result[1] as { parts: Array<{ text: string }> }).parts[0].text).toContain(
+            "Current Task"
           );
         },
       });

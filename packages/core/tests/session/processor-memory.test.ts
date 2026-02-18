@@ -10,6 +10,8 @@ const memoryInputMock = vi.fn();
 const memoryOutputMock = vi.fn();
 const memoryFormatMock = vi.fn();
 const injectSpecContextMock = vi.fn();
+const processInputStepMock = vi.fn();
+const listMessagesMock = vi.fn();
 
 type TestableProcessor = {
   streamIteration: (...args: unknown[]) => Promise<unknown>;
@@ -22,16 +24,32 @@ vi.mock("ai", () => ({
   tool: vi.fn(definition => definition),
 }));
 
-vi.mock("../../src/memory/processors", () => ({
+vi.mock("../../src/memory", () => ({
+  SimpleTokenCounter: class MockTokenCounter {},
+  createObserverAgent: vi.fn(() => vi.fn()),
+  formatObservationsForInjection: vi.fn(() => ""),
+  getAgentMode: vi.fn(() => "default"),
+  getMemoryConfig: vi.fn(() => ({})),
   memoryProcessor: {
     input: memoryInputMock,
     output: memoryOutputMock,
     formatForAgentInput: memoryFormatMock,
   },
+  messageStorage: {
+    listMessages: listMessagesMock,
+  },
+  processInputStep: processInputStepMock,
 }));
 
 vi.mock("../../src/agent/spec-injector", () => ({
   injectSpecContextForModelMessages: injectSpecContextMock,
+}));
+
+vi.mock("../../src/agent/workflow/model-provider", () => ({
+  getBuildModel: vi.fn(() => ({ model: "mock-build" })),
+  getExploreModel: vi.fn(() => ({ model: "mock-explore" })),
+  getPlanModel: vi.fn(() => ({ model: "mock-plan" })),
+  getModelByReference: vi.fn(() => ({ model: "mock-ref" })),
 }));
 
 describe("session/processor memory integration", () => {
@@ -54,6 +72,8 @@ describe("session/processor memory integration", () => {
       messagesPersisted: 2,
     });
     injectSpecContextMock.mockImplementation(async messages => messages);
+    listMessagesMock.mockResolvedValue([]);
+    processInputStepMock.mockResolvedValue({ record: { active_observations: "" } });
   });
 
   it("uses memory input processor when thread context is present", async () => {

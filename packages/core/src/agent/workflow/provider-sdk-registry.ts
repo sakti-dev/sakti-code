@@ -97,14 +97,60 @@ const SDK_CREATORS: Record<string, (options: Record<string, unknown>) => Provide
   ) => ProviderSdkFactory,
 };
 
+export function inferProviderNpmPackage(providerId: string): string | undefined {
+  switch (providerId) {
+    case "openai":
+      return "@ai-sdk/openai";
+    case "anthropic":
+      return "@ai-sdk/anthropic";
+    case "azure":
+      return "@ai-sdk/azure";
+    case "amazon-bedrock":
+      return "@ai-sdk/amazon-bedrock";
+    case "cerebras":
+      return "@ai-sdk/cerebras";
+    case "cohere":
+      return "@ai-sdk/cohere";
+    case "deepinfra":
+      return "@ai-sdk/deepinfra";
+    case "gateway":
+      return "@ai-sdk/gateway";
+    case "google":
+      return "@ai-sdk/google";
+    case "google-vertex":
+      return "@ai-sdk/google-vertex";
+    case "groq":
+      return "@ai-sdk/groq";
+    case "mistral":
+      return "@ai-sdk/mistral";
+    case "perplexity":
+      return "@ai-sdk/perplexity";
+    case "togetherai":
+      return "@ai-sdk/togetherai";
+    case "vercel":
+      return "@ai-sdk/vercel";
+    case "xai":
+      return "@ai-sdk/xai";
+    case "openrouter":
+      return "@openrouter/ai-sdk-provider";
+    case "gitlab":
+      return "@gitlab/gitlab-ai-provider";
+    default:
+      return undefined;
+  }
+}
+
 export function resolveProviderSdkFactory(input: ProviderSdkOptions): ProviderSdkFactory {
   const npmPackage = input.providerNpmPackage?.trim();
   const creator = npmPackage ? SDK_CREATORS[npmPackage] : undefined;
   const effectiveCreator = creator ?? createOpenAI;
+  const shouldUseOpenAiEnvFallback =
+    input.providerId === "openai" || npmPackage === "@ai-sdk/openai";
 
   const options: Record<string, unknown> = {
     name: input.providerId,
-    apiKey: input.apiKey || process.env.OPENAI_API_KEY || "",
+    apiKey:
+      input.apiKey ?? (shouldUseOpenAiEnvFallback ? process.env.OPENAI_API_KEY : undefined) ?? "",
     baseURL: input.baseURL,
     headers: input.headers,
   };

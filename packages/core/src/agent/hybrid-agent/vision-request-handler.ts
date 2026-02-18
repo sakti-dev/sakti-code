@@ -85,21 +85,21 @@ export class VisionRequestHandler {
    */
   async executePerImage(requests: VisionRequest[], concurrency: number = 3): Promise<string[]> {
     const results: Array<string | undefined> = new Array(requests.length);
-    const executing: Promise<void>[] = [];
+    const executing = new Set<Promise<void>>();
 
     for (const [index, request] of requests.entries()) {
       const promise = this.execute(request).then(result => {
         results[index] = result;
       });
+      let tracked!: Promise<void>;
+      tracked = promise.finally(() => {
+        executing.delete(tracked);
+      });
 
-      executing.push(promise);
+      executing.add(tracked);
 
-      if (executing.length >= concurrency) {
+      if (executing.size >= concurrency) {
         await Promise.race(executing);
-        executing.splice(
-          executing.findIndex(p => p === promise),
-          1
-        );
       }
     }
 

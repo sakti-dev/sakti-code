@@ -4,6 +4,7 @@
  * GET /api/agents - List available agents
  */
 
+import { listAgents } from "@ekacode/core";
 import { Hono } from "hono";
 import type { Env } from "../index";
 
@@ -13,14 +14,17 @@ const agentRouter = new Hono<Env>();
  * List available agents
  */
 agentRouter.get("/api/agents", async c => {
-  // TODO: Implement actual agent discovery
-  // For now, return standard agents
+  const nameMap: Record<string, string> = {
+    build: "Build Agent",
+    explore: "Explore Agent",
+    plan: "Plan Agent",
+  };
+
   return c.json({
-    agents: [
-      { id: "hybrid", name: "Hybrid Agent" },
-      { id: "coder", name: "Coder Agent" },
-      { id: "planner", name: "Planner Agent" },
-    ],
+    agents: listAgents().map(agent => ({
+      id: agent.name,
+      name: nameMap[agent.name] ?? agent.name,
+    })),
   });
 });
 

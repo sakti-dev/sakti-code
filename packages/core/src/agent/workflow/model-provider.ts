@@ -19,7 +19,7 @@ import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { createZai } from "@ekacode/zai";
 import { Instance } from "../../instance";
 import { HybridAgent, createDefaultPromptRegistry } from "../hybrid-agent";
-import { resolveProviderSdkFactory } from "./provider-sdk-registry";
+import { inferProviderNpmPackage, resolveProviderSdkFactory } from "./provider-sdk-registry";
 
 // ============================================================================
 // ZAI PROVIDER (Primary) - Using "coding" endpoint for better code generation
@@ -190,6 +190,9 @@ function defaultProviderHeaders(providerId: string): Record<string, string> | un
 }
 
 function resolveModelFromSelection(selection: RuntimeSelection): LanguageModelV3 {
+  const providerNpmPackage =
+    selection.providerNpmPackage?.trim() || inferProviderNpmPackage(selection.providerId);
+
   if (selection.providerId === "zai") {
     return createZai({
       apiKey: selection.apiKey || process.env.ZAI_API_KEY,
@@ -206,7 +209,7 @@ function resolveModelFromSelection(selection: RuntimeSelection): LanguageModelV3
     })(selection.modelId as any); // eslint-disable-line @typescript-eslint/no-explicit-any
   }
 
-  const cacheKey = `${selection.providerId}|${selection.providerApiUrl ?? ""}|${selection.apiKey ?? ""}|${selection.providerNpmPackage ?? ""}`;
+  const cacheKey = `${selection.providerId}|${selection.providerApiUrl ?? ""}|${selection.apiKey ?? ""}|${providerNpmPackage ?? ""}`;
   const headers = {
     ...(defaultProviderHeaders(selection.providerId) ?? {}),
     ...(selection.headers ?? {}),
@@ -217,7 +220,7 @@ function resolveModelFromSelection(selection: RuntimeSelection): LanguageModelV3
   if (!provider) {
     provider = resolveProviderSdkFactory({
       providerId: selection.providerId,
-      providerNpmPackage: selection.providerNpmPackage,
+      providerNpmPackage,
       apiKey: selection.apiKey,
       baseURL: selection.providerApiUrl,
       headers,
@@ -227,7 +230,7 @@ function resolveModelFromSelection(selection: RuntimeSelection): LanguageModelV3
 
   // OpenAI-compatible providers (eg: OpenCode Zen Kimi/GLM models) stream chat.completion chunks.
   // Routing them through `chat()` keeps parsing aligned with upstream payload format.
-  if (selection.providerNpmPackage === "@ai-sdk/openai-compatible") {
+  if (providerNpmPackage === "@ai-sdk/openai-compatible") {
     const typedProvider = provider as unknown as {
       chat?: (id: string) => LanguageModelV3;
       languageModel?: (id: string) => LanguageModelV3;
@@ -241,7 +244,7 @@ function resolveModelFromSelection(selection: RuntimeSelection): LanguageModelV3
     return provider(selection.modelId);
   }
 
-  if (selection.providerNpmPackage === "@ai-sdk/openai") {
+  if (providerNpmPackage === "@ai-sdk/openai") {
     const typedProvider = provider as unknown as { responses?: (id: string) => LanguageModelV3 };
     if (selection.providerId === "openai" && typeof typedProvider.responses === "function") {
       return typedProvider.responses(selection.modelId);
@@ -249,15 +252,12 @@ function resolveModelFromSelection(selection: RuntimeSelection): LanguageModelV3
     return provider(selection.modelId);
   }
 
-  if (
-    selection.providerNpmPackage === "@ai-sdk/azure" &&
-    typeof provider.responses === "function"
-  ) {
+  if (providerNpmPackage === "@ai-sdk/azure" && typeof provider.responses === "function") {
     const typedProvider = provider as unknown as { responses?: (id: string) => LanguageModelV3 };
     return typedProvider.responses!(selection.modelId);
   }
 
-  if (selection.providerNpmPackage === "@gitlab/gitlab-ai-provider") {
+  if (providerNpmPackage === "@gitlab/gitlab-ai-provider") {
     const typedProvider = provider as unknown as { agenticChat?: (id: string) => LanguageModelV3 };
     if (typeof typedProvider.agenticChat === "function") {
       return typedProvider.agenticChat(selection.modelId);
@@ -277,6 +277,12 @@ export function getModelByReference(modelReference: string): LanguageModelV3 {
   if (contextSelection) {
     const parsed = parseModelReference(modelReference);
     if (parsed) {
+      if (parsed.providerId !== contextSelection.providerId) {
+        return resolveModelFromSelection({
+          providerId: parsed.providerId,
+          modelId: parsed.modelId,
+        });
+      }
       return resolveModelFromSelection({
         providerId: parsed.providerId,
         modelId: parsed.modelId,
@@ -421,11 +427,12 @@ export function messageHasImage(
     if (msg.role === "user") {
       const content = msg.content;
       if (typeof content === "string") {
+        const trimmedContent = content.trim();
+        const urlMatches = trimmedContent.match(/https?:\/\/\S+/gi) ?? [];
         // Check for image URLs in text content
         return (
-          /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(content) ||
-          content.startsWith("data:image/") ||
-          content.startsWith("http")
+          /\bdata:image\//i.test(trimmedContent) ||
+          urlMatches.some(url => /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url))
         );
       }
       // Check for image content parts in array format

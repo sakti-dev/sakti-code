@@ -28,6 +28,10 @@ interface SpecContextData {
   text: string;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
  * Get full requirement text from requirements.md
  */
@@ -42,14 +46,15 @@ async function getRequirementText(specSlug: string, reqId: string): Promise<stri
 
   try {
     const content = await fs.readFile(reqFile, "utf-8");
+    const escapedReqId = escapeRegExp(reqId);
     const reqMatch = content.match(
-      new RegExp(`- ${reqId}\\s*\\n?\\s*WHEN.*?THEN.*?(?=\\n- R-|\\n##|$)`, "is")
+      new RegExp(`- ${escapedReqId}\\s*\\n?\\s*WHEN.*?THEN.*?(?=\\n- R-|\\n##|$)`, "is")
     );
     if (reqMatch) {
       return reqMatch[0].replace(/\n/g, " ").trim();
     }
     const simpleMatch = content.match(
-      new RegExp(`### ${reqId}\\s*\\n?\\s*(.+?)(?=\\n###|\\n##|$)`, "is")
+      new RegExp(`### ${escapedReqId}\\s*\\n?\\s*(.+?)(?=\\n###|\\n##|$)`, "is")
     );
     if (simpleMatch) {
       return simpleMatch[1].trim();
@@ -144,7 +149,8 @@ export async function injectSpecContext(
 
   const continuationHintIndex = messages.findIndex(
     m =>
-      m.info.role === "user" && !!(m as unknown as { metadata?: { type?: string } }).metadata?.type
+      m.info.role === "user" &&
+      (m as unknown as { metadata?: { type?: string } }).metadata?.type === "memory-continuation"
   );
 
   if (continuationHintIndex >= 0) {

@@ -28,6 +28,7 @@ export { buildAgentModel, createRoleAgent } from "./agent";
 export type { AgentModels, AgentProfile, RoleAgentOverrides } from "./agent";
 export { createCoderAgent } from "./agent/coder";
 export { createPlannerAgent } from "./agent/planner";
+export { listAgents } from "./agent/registry";
 
 // Tools
 export {

@@ -143,7 +143,7 @@ describe("agent/workflow/model-provider", () => {
     });
 
     expect(model).toEqual({
-      provider: "openai",
+      provider: "openrouter",
       modelId: "deepseek/chat",
       options: expect.objectContaining({
         apiKey: "context-key",
@@ -226,7 +226,7 @@ describe("agent/workflow/model-provider", () => {
     });
 
     expect(model).toEqual({
-      provider: "openai",
+      provider: "openai-responses",
       modelId: "gpt-4o-mini",
       options: expect.objectContaining({
         apiKey: "context-openai-key",
@@ -270,7 +270,7 @@ describe("agent/workflow/model-provider", () => {
     ]);
 
     expect(a).toEqual({
-      provider: "openai",
+      provider: "openai-responses",
       modelId: "gpt-4o",
       options: expect.objectContaining({
         apiKey: "key-a",
@@ -279,7 +279,7 @@ describe("agent/workflow/model-provider", () => {
       }),
     });
     expect(b).toEqual({
-      provider: "openai",
+      provider: "openai-responses",
       modelId: "gpt-4o-mini",
       options: expect.objectContaining({
         apiKey: "key-b",
@@ -595,5 +595,83 @@ describe("agent/workflow/model-provider", () => {
         baseURL: "https://opencode.ai/zen/v1",
       }),
     });
+  });
+
+  it("does not leak OPENAI_API_KEY to non-openai providers when provider credentials are missing", async () => {
+    const previousOpenAiKey = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = "openai-secret";
+    try {
+      const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+
+      const model = await Instance.provide({
+        directory: process.cwd(),
+        async fn() {
+          Instance.context.providerRuntime = {
+            providerId: "openrouter",
+            modelId: "openrouter/deepseek/chat",
+            providerApiUrl: "https://openrouter.example/v1",
+            providerNpmPackage: "@openrouter/ai-sdk-provider",
+          };
+          return getBuildModel();
+        },
+      });
+
+      expect(model).toEqual({
+        provider: "openrouter",
+        modelId: "deepseek/chat",
+        options: expect.objectContaining({
+          apiKey: "",
+          baseURL: "https://openrouter.example/v1",
+        }),
+      });
+    } finally {
+      if (previousOpenAiKey === undefined) {
+        delete process.env.OPENAI_API_KEY;
+      } else {
+        process.env.OPENAI_API_KEY = previousOpenAiKey;
+      }
+    }
+  });
+
+  it("does not reuse active context metadata when model reference targets a different provider", async () => {
+    const { getModelByReference } = await import("../../../src/agent/workflow/model-provider");
+
+    const model = await Instance.provide({
+      directory: process.cwd(),
+      async fn() {
+        Instance.context.providerRuntime = {
+          providerId: "openai",
+          modelId: "openai/gpt-4o",
+          providerApiUrl: "https://api.context.test/v1",
+          apiKey: "context-openai-key",
+        };
+        return getModelByReference("anthropic/claude-haiku-4-5");
+      },
+    });
+
+    expect(model).toEqual({
+      provider: "anthropic",
+      modelId: "claude-haiku-4-5",
+      options: expect.objectContaining({
+        apiKey: "",
+      }),
+    });
+  });
+
+  it("messageHasImage only flags actual image content", async () => {
+    const { messageHasImage } = await import("../../../src/agent/workflow/model-provider");
+
+    expect(messageHasImage([{ role: "user", content: "https://example.com/some-page" }])).toBe(
+      false
+    );
+    expect(
+      messageHasImage([{ role: "user", content: "https://example.com/image.png?raw=1" }])
+    ).toBe(true);
+    expect(
+      messageHasImage([
+        { role: "user", content: "Here is the screenshot: https://example.com/a.webp" },
+      ])
+    ).toBe(true);
+    expect(messageHasImage([{ role: "user", content: "data:image/png;base64,abc123" }])).toBe(true);
   });
 });

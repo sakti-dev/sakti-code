@@ -8,9 +8,14 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { AGENT_REGISTRY, resolveTools } from "../../src/agent/registry";
 
+const testHomeDir = `/tmp/ekacode-test-build-memory-${Date.now()}`;
+const previousEkacodeHome = process.env.EKACODE_HOME;
+
 describe("build memory tools integration", () => {
   beforeEach(async () => {
-    const { getDb } = await import("@ekacode/server/db");
+    process.env.EKACODE_HOME = testHomeDir;
+    const { closeDb, getDb } = await import("@ekacode/server/db");
+    closeDb();
     const db = await getDb();
 
     await db.run(sql`DELETE FROM task_messages`);
@@ -22,6 +27,11 @@ describe("build memory tools integration", () => {
   });
 
   afterAll(async () => {
+    if (previousEkacodeHome === undefined) {
+      delete process.env.EKACODE_HOME;
+    } else {
+      process.env.EKACODE_HOME = previousEkacodeHome;
+    }
     const { closeDb } = await import("@ekacode/server/db");
     closeDb();
   });
