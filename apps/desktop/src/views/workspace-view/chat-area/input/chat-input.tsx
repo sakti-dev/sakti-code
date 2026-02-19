@@ -1,41 +1,26 @@
-import {
-  ModelSelector,
-  type CommandCenterMode,
-  type ModelSelectorSection,
-} from "@/components/model-selector";
-import type { AgentMode } from "@/core/chat/types";
+import { type CommandCenterMode, type ModelSelectorSection } from "@/components/model-selector";
+import { type AgentMode } from "@/core/chat/types";
 import { cn } from "@/utils";
-import {
-  Show,
-  createEffect,
-  createMemo,
-  createSignal,
-  mergeProps,
-  onMount,
-  type Component,
-} from "solid-js";
+import { Show, createEffect, createSignal, onMount, type Component } from "solid-js";
+import { InputFooter } from "./input-footer";
+import { InputToolbar } from "./input-toolbar";
+import { ModelSelectorButton, type ChatInputModelOption } from "./model-selector-button";
+import { PermissionBanner, type PendingPermissionBannerData } from "./permission-banner";
+import { SendButton } from "./send-button";
+import { useChatInput } from "./use-chat-input";
 
-export interface ChatInputModelOption {
-  id: string;
-  providerId: string;
-  providerName?: string;
-  name?: string;
-  connected: boolean;
-}
-
-export interface PendingPermissionBannerData {
-  id: string;
-  toolName: string;
-  description?: string;
-  patterns?: string[];
-}
+export { InputFooter } from "./input-footer";
+export { InputToolbar } from "./input-toolbar";
+export { ModelSelectorButton } from "./model-selector-button";
+export type { ChatInputModelOption } from "./model-selector-button";
+export { PermissionBanner } from "./permission-banner";
+export type { PendingPermissionBannerData } from "./permission-banner";
+export { SendButton } from "./send-button";
 
 export interface ChatInputProps {
   value?: string;
   onValueChange?: (value: string) => void;
   onSend?: () => void;
-  onAttachment?: () => void;
-  onMention?: () => void;
   mode?: AgentMode;
   onModeChange?: (mode: AgentMode) => void;
   selectedModel?: string;
@@ -59,23 +44,68 @@ export interface ChatInputProps {
   ) => Promise<Array<{ path: string; name: string; score: number; type: "file" | "directory" }>>;
 }
 
-export const ChatInput: Component<ChatInputProps> = props => {
-  const merged = mergeProps(
-    {
-      value: "",
-      isSending: false,
-      disabled: false,
-      pendingPermission: null as PendingPermissionBannerData | null,
-      isResolvingPermission: false,
-      mode: "plan" as AgentMode,
-      selectedModel: "",
-      modelOptions: [] as ChatInputModelOption[],
-      placeholder: "Type your message...",
-    },
-    props
-  );
+const defaultChatInput = {
+  draftMessage: () => "",
+  setDraftMessage: ((_v: string) => {}) as (v: string) => void,
+  handleSendMessage: () => {},
+  agentMode: () => "plan" as AgentMode,
+  setAgentMode: ((_v: AgentMode) => {}) as (v: AgentMode) => void,
+  modelOptions: () => [] as ChatInputModelOption[],
+  selectedModel: () => "",
+  connectedModelOptions: ((_q: string) => []) as (q: string) => ChatInputModelOption[],
+  notConnectedModelOptions: ((_q: string) => []) as (q: string) => ChatInputModelOption[],
+  modelSections: ((_q: string) => []) as (q: string) => ModelSelectorSection[],
+  handleModelChange: (_m: string) => {},
+  isGenerating: () => false,
+  isPromptBlocked: () => false,
+  pendingPermissionBanner: () => null as PendingPermissionBannerData | null,
+  handleApprovePermission: ((_id: string, _p?: string[]) => {}) as (
+    id: string,
+    patterns?: string[]
+  ) => void,
+  handleDenyPermission: ((_id: string) => {}) as (id: string) => void,
+  handleAnswerQuestion: ((_id: string, _a: unknown) => {}) as (id: string, answer: unknown) => void,
+  handleRejectQuestion: ((_id: string) => {}) as (id: string) => void,
+  workspace: () => undefined as string | undefined,
+  getFileSearchResults: ((_q: string) => Promise.resolve([])) as (
+    query: string
+  ) => Promise<Array<{ path: string; name: string; score: number; type: "file" | "directory" }>>,
+};
 
-  const [inputValue, setInputValue] = createSignal(merged.value);
+export const ChatInput: Component<ChatInputProps> = props => {
+  let chatInput = defaultChatInput;
+
+  try {
+    chatInput = useChatInput() ?? defaultChatInput;
+  } catch {
+    // Context not available - use defaults
+  }
+
+  const value = () => props.value ?? chatInput.draftMessage();
+  const onValueChange = () => props.onValueChange ?? chatInput.setDraftMessage;
+  const onSend = () => props.onSend ?? chatInput.handleSendMessage;
+  const mode = () => props.mode ?? chatInput.agentMode();
+  const onModeChange = () => props.onModeChange ?? chatInput.setAgentMode;
+  const selectedModel = () => props.selectedModel ?? chatInput.selectedModel();
+  const modelOptions = () => props.modelOptions ?? chatInput.modelOptions();
+  const modelSections = props.getModelSections ?? chatInput.modelSections;
+  const connectedModelOptions = props.getConnectedModelOptions ?? chatInput.connectedModelOptions;
+  const notConnectedModelOptions =
+    props.getNotConnectedModelOptions ?? chatInput.notConnectedModelOptions;
+  const onModelChange = () => props.onModelChange ?? chatInput.handleModelChange;
+  const isSending = () => props.isSending ?? chatInput.isGenerating();
+  const disabled = () => props.disabled ?? chatInput.isPromptBlocked();
+  const pendingPermission = () => props.pendingPermission ?? chatInput.pendingPermissionBanner();
+  const onPermissionApproveOnce = () =>
+    props.onPermissionApproveOnce ?? chatInput.handleApprovePermission;
+  const onPermissionApproveAlways = () =>
+    props.onPermissionApproveAlways ?? chatInput.handleApprovePermission;
+  const onPermissionDeny = () => props.onPermissionDeny ?? chatInput.handleDenyPermission;
+  const isResolvingPermission = () => props.isResolvingPermission ?? false;
+  const placeholder = () => props.placeholder ?? "Send a message...";
+  const workspace = () => props.workspace ?? chatInput.workspace();
+  const fileSearchResultsFn = props.getFileSearchResults ?? chatInput.getFileSearchResults;
+
   const [isFocused, setIsFocused] = createSignal(false);
   const [isModelSelectorOpen, setIsModelSelectorOpen] = createSignal(false);
   const [commandMode, setCommandMode] = createSignal<CommandCenterMode>("model");
@@ -85,52 +115,21 @@ export const ChatInput: Component<ChatInputProps> = props => {
   >([]);
   let fileSearchRequestSeq = 0;
   let textareaRef: HTMLTextAreaElement | undefined;
-  const fallbackFilteredModels = createMemo(() => {
-    const query = modelSearch().trim().toLowerCase();
-    if (!query) return merged.modelOptions;
-    return merged.modelOptions.filter(model => {
-      const haystack = `${model.id} ${model.name ?? ""} ${model.providerId}`.toLowerCase();
-      return haystack.includes(query);
-    });
-  });
-  const connectedModels = createMemo(() =>
-    merged.getConnectedModelOptions
-      ? merged.getConnectedModelOptions(modelSearch())
-      : fallbackFilteredModels().filter(model => model.connected)
-  );
-  const notConnectedModels = createMemo(() =>
-    merged.getNotConnectedModelOptions
-      ? merged.getNotConnectedModelOptions(modelSearch())
-      : fallbackFilteredModels().filter(model => !model.connected)
-  );
-  const fallbackModelSections = createMemo<ModelSelectorSection[]>(() => {
-    const map = new Map<string, ModelSelectorSection>();
-    for (const model of [...connectedModels(), ...notConnectedModels()]) {
-      const providerName = model.providerName ?? model.providerId;
-      const existing = map.get(model.providerId);
-      if (existing) {
-        existing.models.push(model);
-        existing.connected = existing.connected || model.connected;
-        continue;
-      }
-      map.set(model.providerId, {
-        providerId: model.providerId,
-        providerName,
-        connected: model.connected,
-        models: [model],
-      });
-    }
-    return Array.from(map.values());
-  });
-  const modelSections = createMemo(() => {
-    if (!isModelSelectorOpen()) return [] as ModelSelectorSection[];
-    return merged.getModelSections
-      ? merged.getModelSections(modelSearch())
-      : fallbackModelSections();
+
+  const autoResize = () => {
+    if (!textareaRef) return;
+    textareaRef.style.height = "24px";
+    const nextHeight = Math.min(textareaRef.scrollHeight, 200);
+    textareaRef.style.height = `${nextHeight}px`;
+  };
+
+  createEffect(() => {
+    const v = value();
+    if (v === "") autoResize();
   });
 
   createEffect(() => {
-    if (commandMode() !== "context" || !isModelSelectorOpen() || !merged.getFileSearchResults) {
+    if (commandMode() !== "context" || !isModelSelectorOpen()) {
       setFileSearchResults([]);
       return;
     }
@@ -138,8 +137,7 @@ export const ChatInput: Component<ChatInputProps> = props => {
     const searchQuery = modelSearch();
     const requestId = ++fileSearchRequestSeq;
 
-    merged
-      .getFileSearchResults(searchQuery)
+    fileSearchResultsFn(searchQuery)
       .then(results => {
         if (requestId === fileSearchRequestSeq) {
           setFileSearchResults(results);
@@ -152,33 +150,19 @@ export const ChatInput: Component<ChatInputProps> = props => {
       });
   });
 
-  const autoResize = () => {
-    if (!textareaRef) return;
-    textareaRef.style.height = "24px";
-    const nextHeight = Math.min(textareaRef.scrollHeight, 200);
-    textareaRef.style.height = `${nextHeight}px`;
-  };
-
-  createEffect(() => {
-    const value = merged.value;
-    setInputValue(value);
-    if (value === "") autoResize();
-  });
-
-  const canSend = () => inputValue().trim().length > 0 && !merged.isSending && !merged.disabled;
+  const canSend = () => value().trim().length > 0 && !isSending() && !disabled();
 
   const handleSend = () => {
     if (!canSend()) return;
-    merged.onSend?.();
+    onSend()();
   };
 
   const handleInput = (e: InputEvent & { currentTarget: HTMLTextAreaElement }) => {
-    const value = e.currentTarget.value;
-    setInputValue(value);
-    merged.onValueChange?.(value);
+    const v = e.currentTarget.value;
+    onValueChange()(v);
     autoResize();
 
-    const trimmed = value.trimStart();
+    const trimmed = v.trimStart();
     if (trimmed.startsWith("/model")) {
       setCommandMode("model");
       setModelSearch(trimmed.slice("/model".length).trim());
@@ -197,9 +181,9 @@ export const ChatInput: Component<ChatInputProps> = props => {
       setIsModelSelectorOpen(true);
       return;
     }
-    if (/(^|\s)@([^\s]*)$/.test(value)) {
+    if (/(^|\s)@([^\s]*)$/.test(v)) {
       setCommandMode("context");
-      const searchQuery = value.split("@").pop()?.trim() ?? "";
+      const searchQuery = v.split("@").pop()?.trim() ?? "";
       setModelSearch(searchQuery);
       setIsModelSelectorOpen(true);
     }
@@ -216,23 +200,16 @@ export const ChatInput: Component<ChatInputProps> = props => {
     autoResize();
   });
 
-  const modeLabel = () => (merged.mode === "plan" ? "Plan" : "Build");
+  const handleModeChange = (m: AgentMode) => {
+    onModeChange()(m);
+  };
+
   const modelLabel = () => {
-    if (!merged.selectedModel) return "Select model";
-    const selected = merged.modelOptions.find(model => model.id === merged.selectedModel);
-    if (!selected) return merged.selectedModel;
+    const selectedModelId = selectedModel();
+    if (!selectedModelId) return "Select model";
+    const selected = modelOptions().find(model => model.id === selectedModelId);
+    if (!selected) return selectedModelId;
     return selected.name ?? selected.id;
-  };
-
-  const toggleMode = () => {
-    const nextMode: AgentMode = merged.mode === "plan" ? "build" : "plan";
-    merged.onModeChange?.(nextMode);
-  };
-
-  const handleModelPick = (modelId: string) => {
-    merged.onModelChange?.(modelId);
-    setIsModelSelectorOpen(false);
-    setModelSearch("");
   };
 
   return (
@@ -243,90 +220,23 @@ export const ChatInput: Component<ChatInputProps> = props => {
         "bg-background/95 border-border/50 glass-effect backdrop-blur",
         "focus-within:ring-primary/20 focus-within:ring-2",
         isFocused() && "border-primary/40 shadow-xl",
-        merged.class
+        props.class
       )}
     >
-      <Show when={merged.pendingPermission}>
-        {permission => (
-          <div
-            data-component="permission-input-strip"
-            class={cn(
-              "mb-3 rounded-lg border p-3",
-              "border-amber-500/30 bg-amber-500/10 text-amber-100"
-            )}
-          >
-            <div class="mb-1 flex items-center justify-between gap-2">
-              <div class="text-xs font-semibold uppercase tracking-wide">Permission required</div>
-              <div class="rounded bg-amber-500/20 px-2 py-0.5 font-mono text-xs">
-                {permission().toolName}
-              </div>
-            </div>
-
-            <Show when={permission().description}>
-              <p class="mb-2 text-xs">{permission().description}</p>
-            </Show>
-
-            <Show when={(permission().patterns?.length ?? 0) > 0}>
-              <div class="mb-2 flex flex-wrap gap-1">
-                {(permission().patterns ?? []).map(pattern => (
-                  <code class="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px]">{pattern}</code>
-                ))}
-              </div>
-            </Show>
-
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                data-action="permission-deny"
-                disabled={merged.isResolvingPermission}
-                onClick={() => merged.onPermissionDeny?.(permission().id)}
-                class={cn(
-                  "rounded border border-amber-500/40 px-2 py-1 text-xs",
-                  "hover:bg-amber-500/20",
-                  "disabled:cursor-not-allowed disabled:opacity-50"
-                )}
-              >
-                Deny
-              </button>
-              <button
-                type="button"
-                data-action="permission-approve-always"
-                disabled={merged.isResolvingPermission}
-                onClick={() =>
-                  merged.onPermissionApproveAlways?.(permission().id, permission().patterns)
-                }
-                class={cn(
-                  "rounded border border-amber-500/40 px-2 py-1 text-xs",
-                  "hover:bg-amber-500/20",
-                  "disabled:cursor-not-allowed disabled:opacity-50"
-                )}
-              >
-                Allow Always
-              </button>
-              <button
-                type="button"
-                data-action="permission-approve-once"
-                disabled={merged.isResolvingPermission}
-                onClick={() => merged.onPermissionApproveOnce?.(permission().id)}
-                class={cn(
-                  "rounded bg-amber-500/30 px-2 py-1 text-xs font-medium",
-                  "hover:bg-amber-500/40",
-                  "disabled:cursor-not-allowed disabled:opacity-50"
-                )}
-              >
-                Allow Once
-              </button>
-            </div>
-          </div>
-        )}
-      </Show>
+      <PermissionBanner
+        permission={pendingPermission()}
+        isResolvingPermission={isResolvingPermission()}
+        onApproveOnce={onPermissionApproveOnce()}
+        onApproveAlways={onPermissionApproveAlways()}
+        onDeny={onPermissionDeny()}
+      />
 
       <textarea
         ref={textareaRef}
-        value={inputValue()}
+        value={value()}
         rows={1}
-        disabled={merged.disabled}
-        placeholder={merged.placeholder}
+        disabled={disabled()}
+        placeholder={placeholder()}
         onInput={handleInput}
         onKeyDown={handleKeyDown}
         onFocus={() => setIsFocused(true)}
@@ -335,149 +245,50 @@ export const ChatInput: Component<ChatInputProps> = props => {
           "scrollbar-thin w-full resize-none bg-transparent px-1 py-2 outline-none",
           "text-foreground placeholder:text-muted-foreground/60",
           "max-h-[200px] min-h-6",
-          merged.disabled && "cursor-not-allowed opacity-60"
+          disabled() && "cursor-not-allowed opacity-60"
         )}
       />
 
       <div class="mt-2 flex items-center justify-between">
-        <div class="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={merged.onMention}
-            disabled={merged.disabled}
-            class="text-muted-foreground/70 hover:text-primary hover:bg-muted/40 rounded-lg p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-            title="@ mention files or symbols"
-            aria-label="Mention"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width={2}
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={merged.onAttachment}
-            disabled={merged.disabled}
-            class="text-muted-foreground/70 hover:text-primary hover:bg-muted/40 rounded-lg p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-            title="Attach file or image"
-            aria-label="Attach"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width={2}
-                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={toggleMode}
-            disabled={merged.disabled}
-            class="text-muted-foreground/80 hover:text-primary hover:border-primary/40 border-border/40 hover:bg-muted/40 flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-            title={`Switch to ${merged.mode === "plan" ? "Build" : "Plan"} mode`}
-          >
-            {modeLabel()}
-          </button>
-        </div>
+        <InputToolbar
+          mode={mode()}
+          disabled={disabled()}
+          onMention={() => {}}
+          onAttachment={() => {}}
+          onModeChange={handleModeChange}
+        />
 
         <div class="flex items-center gap-2">
-          <Show when={merged.modelOptions.length > 0}>
-            <div class="flex flex-col items-end gap-0.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setCommandMode("model");
-                  setModelSearch("");
-                  setFileSearchResults([]);
-                  setIsModelSelectorOpen(open => !open);
-                }}
-                class="bg-background border-border hover:bg-muted rounded border px-2 py-1 text-xs"
-                aria-label="Open model selector"
-              >
-                {modelLabel()}
-              </button>
-              <p class="text-muted-foreground/60 text-[10px]">Connected / Not Connected</p>
-              <ModelSelector
-                open={isModelSelectorOpen()}
-                onOpenChange={setIsModelSelectorOpen}
-                mode={commandMode()}
-                onModeChange={setCommandMode}
-                workspaceRoot={merged.workspace}
-                searchQuery={modelSearch()}
-                selectedModelId={merged.selectedModel}
-                modelSections={modelSections()}
-                onSearchChange={setModelSearch}
-                onSelect={handleModelPick}
-                fileSearchResults={fileSearchResults()}
-                onFileSelect={file => {
-                  const value = inputValue();
-                  const atIndex = value.lastIndexOf("@");
-                  const newValue = value.slice(0, atIndex) + `@${file.path} `;
-                  setInputValue(newValue);
-                  merged.onValueChange?.(newValue);
-                  setIsModelSelectorOpen(false);
-                  setModelSearch("");
-                  setFileSearchResults([]);
-                }}
-              />
-            </div>
+          <Show when={modelOptions().length > 0}>
+            <ModelSelectorButton
+              modelOptions={modelOptions()}
+              selectedModel={selectedModel()}
+              workspaceRoot={workspace()}
+              isOpen={isModelSelectorOpen}
+              setIsOpen={setIsModelSelectorOpen}
+              commandMode={commandMode}
+              setCommandMode={setCommandMode}
+              searchQuery={modelSearch}
+              setSearchQuery={setModelSearch}
+              fileSearchResults={fileSearchResults}
+              setFileSearchResults={setFileSearchResults}
+              onModelChange={onModelChange()}
+              getModelSections={modelSections}
+              getConnectedModelOptions={connectedModelOptions}
+              getNotConnectedModelOptions={notConnectedModelOptions}
+              getFileSearchResults={fileSearchResultsFn}
+              onValueChange={onValueChange()}
+              inputValue={value}
+            />
           </Show>
-          <Show when={merged.modelOptions.length === 0}>
+          <Show when={modelOptions().length === 0}>
             <span class="text-muted-foreground/60 select-none text-xs">{modelLabel()}</span>
           </Show>
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={!canSend()}
-            class={cn(
-              "rounded-lg p-2 transition-all duration-200",
-              "flex items-center justify-center",
-              !canSend() && "bg-muted/20 text-muted-foreground/50 cursor-not-allowed opacity-50",
-              canSend() && "bg-primary text-primary-foreground hover:bg-primary/90"
-            )}
-            title="Send message"
-            aria-label="Send"
-          >
-            {merged.isSending ? (
-              <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                />
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-            ) : (
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width={2}
-                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                />
-              </svg>
-            )}
-          </button>
+          <SendButton canSend={canSend} isSending={isSending()} onClick={handleSend} />
         </div>
       </div>
 
-      <div class="text-muted-foreground/50 mt-2 flex items-center justify-between text-[10px]">
-        <span>Enter to send, Shift+Enter for a new line</span>
-        <span>{inputValue().length} chars</span>
-      </div>
+      <InputFooter charCount={() => value().length} />
     </div>
   );
 };

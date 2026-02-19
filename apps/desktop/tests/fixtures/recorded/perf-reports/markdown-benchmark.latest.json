@@ -1,57 +1,57 @@
 {
-  "generatedAt": "2026-02-19T04:16:33.806Z",
+  "generatedAt": "2026-02-19T06:18:47.260Z",
   "fixture": "chat-stream.from-log.json",
   "snapshot": {
     "counters": {
-      "commits": 20,
-      "liteCommits": 18,
-      "fullCommits": 2,
-      "droppedFrames": 10,
+      "commits": 18,
+      "liteCommits": 17,
+      "fullCommits": 1,
+      "droppedFrames": 8,
       "longTasks": 0,
       "rafSkippedApplies": 0,
-      "forcedFlushes": 1,
-      "finalizationBatches": 4,
-      "finalizationYieldCount": 3,
-      "finalizationTotalMs": 101.80525500000022,
-      "finalizationMaxBatchMs": 54.27208799999971
+      "forcedFlushes": 0,
+      "finalizationBatches": 6,
+      "finalizationYieldCount": 4,
+      "finalizationTotalMs": 227.99886600000173,
+      "finalizationMaxBatchMs": 50.6843630000003
     },
     "stages": {
       "parse": {
-        "count": 11,
-        "avgMs": 4.71332209090906,
-        "p50Ms": 0.6370649999998932,
-        "p95Ms": 23.490286000000197,
-        "maxMs": 23.490286000000197
+        "count": 18,
+        "avgMs": 3.2741053333331567,
+        "p50Ms": 0.3930129999989731,
+        "p95Ms": 22.748171000001093,
+        "maxMs": 22.748171000001093
       },
       "sanitize": {
-        "count": 29,
-        "avgMs": 4.044508379310361,
-        "p50Ms": 3.108146999999917,
-        "p95Ms": 9.450187999999798,
-        "maxMs": 28.506750999999895
+        "count": 35,
+        "avgMs": 3.2732871714284038,
+        "p50Ms": 2.7599089999985154,
+        "p95Ms": 8.674855999999636,
+        "maxMs": 25.75144999999975
       },
       "morph": {
-        "count": 3,
-        "avgMs": 7.438150999999682,
-        "p50Ms": 6.711990999999216,
-        "p95Ms": 13.48994700000003,
-        "maxMs": 13.48994700000003
+        "count": 2,
+        "avgMs": 4.227875999999924,
+        "p50Ms": 6.480445999999574,
+        "p95Ms": 6.480445999999574,
+        "maxMs": 6.480445999999574
       },
       "copyButtons": {
-        "count": 1,
-        "avgMs": 8.079948000000513,
-        "p50Ms": 8.079948000000513,
-        "p95Ms": 8.079948000000513,
-        "maxMs": 8.079948000000513
+        "count": 0,
+        "avgMs": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "maxMs": 0
       },
       "total": {
-        "count": 20,
-        "avgMs": 9.826181549999955,
-        "p50Ms": 3.415998999999829,
-        "p95Ms": 101.80525500000022,
-        "maxMs": 101.80525500000022
+        "count": 19,
+        "avgMs": 15.215964526315906,
+        "p50Ms": 3.4413779999995313,
+        "p95Ms": 155.05826200000047,
+        "maxMs": 155.05826200000047
       }
     },
-    "updatedAt": 1771474593806
+    "updatedAt": 1771481927259
   }
 }
