@@ -51,6 +51,7 @@ interface WorkspaceDashboardProps {
   onRestoreWorkspace: (workspace: ArchivedWorkspace) => void;
   onNewWorkspace: () => void;
   onSearch: () => void;
+  onSettingsOpen?: () => void;
   isLoading?: boolean;
 }
 
@@ -173,6 +174,7 @@ export function WorkspaceDashboard(props: WorkspaceDashboardProps) {
         <button
           class="text-muted-foreground hover:bg-muted rounded-lg p-2 transition-colors"
           aria-label="Settings"
+          onClick={() => props.onSettingsOpen?.()}
         >
           <SettingsIcon />
         </button>

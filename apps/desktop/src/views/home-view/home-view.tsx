@@ -1,3 +1,4 @@
+import { SettingsDialog } from "@/components/settings-dialog/settings-dialog";
 import type { ArchivedWorkspace, RecentProject } from "@/core/chat/types";
 import { createApiClient, EkacodeApiClient, type Workspace } from "@/core/services/api/api-client";
 import { useNavigate } from "@solidjs/router";
@@ -32,6 +33,7 @@ export default function HomeView() {
   const [archivedProjects, setArchivedProjects] = createSignal<ArchivedWorkspace[]>([]);
   const [_isDark, _setIsDark] = createSignal(false);
   const [isNewWorkspaceOpen, setIsNewWorkspaceOpen] = createSignal(false);
+  const [isSettingsOpen, setIsSettingsOpen] = createSignal(false);
   const [isLoading, setIsLoading] = createSignal(true);
   const [apiClient, setApiClient] = createSignal<EkacodeApiClient | null>(null);
 
@@ -156,6 +158,10 @@ export default function HomeView() {
     setIsNewWorkspaceOpen(true);
   };
 
+  const handleOpenSettings = () => {
+    setIsSettingsOpen(true);
+  };
+
   return (
     <>
       <WorkspaceDashboard
@@ -166,6 +172,7 @@ export default function HomeView() {
         onRestoreWorkspace={handleRestoreWorkspace}
         onNewWorkspace={handleNewWorkspace}
         onSearch={handleSearch}
+        onSettingsOpen={handleOpenSettings}
         isLoading={isLoading()}
       />
       <NewWorkspaceDialog
@@ -173,6 +180,7 @@ export default function HomeView() {
         onClose={() => setIsNewWorkspaceOpen(false)}
         onCreate={handleCreateWorkspace}
       />
+      <SettingsDialog open={isSettingsOpen()} onOpenChange={setIsSettingsOpen} />
     </>
   );
 }

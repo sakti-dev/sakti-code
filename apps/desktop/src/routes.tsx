@@ -1,6 +1,5 @@
 import { AppProvider } from "@/state/providers";
 import HomeView from "@/views/home-view/home-view";
-import SettingsView from "@/views/settings-view";
 import WorkspaceView from "@/views/workspace-view";
 import { Route, Router } from "@solidjs/router";
 
@@ -18,7 +17,6 @@ export default function Routes(props: RoutesProps) {
     >
       <Route path="/" component={HomeView} />
       <Route path="/workspace/:id" component={WorkspaceView} />
-      <Route path="/settings" component={SettingsView} />
     </Router>
   );
 }
