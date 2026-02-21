@@ -1,6 +1,16 @@
 import { ModelSelector, type ModelSelectorSection } from "@/components/model-selector";
+import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+interface SlashCommand {
+  id: string;
+  trigger: string;
+  title: string;
+  description?: string;
+  keybind?: string;
+  type: "builtin" | "custom";
+}
 
 describe("ModelSelector command center", () => {
   let container: HTMLDivElement;
@@ -293,5 +303,86 @@ describe("ModelSelector command center", () => {
     expect(scrollIntoView).toHaveBeenCalled();
 
     Element.prototype.scrollIntoView = originalScrollIntoView;
+  });
+
+  it("allows typing in search input when searchQuery prop is controlled externally with signal", async () => {
+    const sections: ModelSelectorSection[] = [
+      {
+        providerId: "zai",
+        providerName: "Z.AI",
+        connected: true,
+        models: [{ id: "zai/glm-4.7", providerId: "zai", name: "GLM 4.7", connected: true }],
+      },
+    ];
+
+    const [searchQuery, setSearchQuery] = createSignal("");
+
+    dispose = render(
+      () => (
+        <ModelSelector
+          open={true}
+          onOpenChange={vi.fn()}
+          mode="model"
+          onModeChange={vi.fn()}
+          modelSections={sections}
+          searchQuery={searchQuery()}
+          onSearchChange={setSearchQuery}
+          onSelect={vi.fn()}
+        />
+      ),
+      container
+    );
+
+    const input = document.body.querySelector(
+      'input[aria-label="Search models"]'
+    ) as HTMLInputElement;
+    expect(input).toBeTruthy();
+
+    input.value = "glm";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    expect(input.value).toBe("glm");
+    expect(searchQuery()).toBe("glm");
+  });
+
+  it("resets search input when searchQuery prop is undefined", async () => {
+    const onSearchChange = vi.fn();
+    const sections: ModelSelectorSection[] = [
+      {
+        providerId: "zai",
+        providerName: "Z.AI",
+        connected: true,
+        models: [{ id: "zai/glm-4.7", providerId: "zai", name: "GLM 4.7", connected: true }],
+      },
+    ];
+
+    dispose = render(
+      () => (
+        <ModelSelector
+          open={true}
+          onOpenChange={vi.fn()}
+          mode="model"
+          onModeChange={vi.fn()}
+          modelSections={sections}
+          onSearchChange={onSearchChange}
+          onSelect={vi.fn()}
+        />
+      ),
+      container
+    );
+
+    const input = document.body.querySelector(
+      'input[aria-label="Search models"]'
+    ) as HTMLInputElement;
+    expect(input).toBeTruthy();
+
+    input.value = "glm";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    expect(input.value).toBe("glm");
   });
 });

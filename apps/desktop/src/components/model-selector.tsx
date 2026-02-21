@@ -238,7 +238,8 @@ export function ModelSelector(props: ModelSelectorProps) {
   );
 
   createEffect(() => {
-    const externalQuery = props.searchQuery ?? "";
+    if (props.searchQuery === undefined) return;
+    const externalQuery = props.searchQuery;
     if (externalQuery !== query()) {
       setQuery(externalQuery);
     }
