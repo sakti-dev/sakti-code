@@ -4,16 +4,14 @@
  * TDD: Test plugin hook system
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AgentType } from "../../../core/src/agent/workflow/types";
+import { applyToolDefinitionHook, resolveHookModel, type AgentType } from "@ekacode/core";
 import {
-  applyToolDefinitionHook,
   clearCorePluginHooks,
-  resolveHookModel,
   setCorePluginHooks,
   triggerChatHeadersHook,
   triggerChatParamsHook,
-} from "../../../core/src/plugin/hooks";
+} from "@ekacode/core/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("Plugin Hooks", () => {
   beforeEach(() => {

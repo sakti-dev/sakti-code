@@ -7,10 +7,39 @@ import {
 } from "@/components/ui/dialog";
 import { createApiClient } from "@/core/services/api/api-client";
 import { cn } from "@/utils";
-import { generate } from "memorable-name";
+import { generateMany } from "memorable-name";
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
 const LAST_CLONE_TARGET_KEY = "sakti:lastCloneTarget";
+
+function extractProjectName(urlOrPath: string, isUrl: boolean): string {
+  if (isUrl) {
+    const match = urlOrPath.match(/(?:github\.com|gitlab\.com|bitbucket\.org)[\/:]([^\/]+)/);
+    return match ? match[1].toLowerCase() : "";
+  }
+  const parts = urlOrPath.split("/");
+  return parts[parts.length - 1]?.toLowerCase() || "";
+}
+
+async function findUniqueWorktreeName(
+  apiClient: Awaited<ReturnType<typeof createApiClient>>,
+  workspacesDir: string,
+  projectName: string,
+  _baseBranch: string
+): Promise<string> {
+  const projectDir = `${workspacesDir}/${projectName}`;
+  const candidates = generateMany(10, { words: 2 });
+
+  for (const candidate of candidates) {
+    // Check if the directory (just the memorable name) already exists
+    const exists = await apiClient.checkWorktreeExists(candidate.dashed, projectDir);
+    if (!exists) {
+      return candidate.dashed; // Return just the memorable name
+    }
+  }
+
+  return candidates[0].dashed;
+}
 
 export interface NewWorkspaceDialogProps {
   isOpen: boolean;
@@ -32,6 +61,7 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
   const [remoteBranches, setRemoteBranches] = createSignal<string[]>([]);
   const [isValidating, setIsValidating] = createSignal(false);
   const [isValidated, setIsValidated] = createSignal(false);
+  const [projectName, setProjectName] = createSignal("");
 
   // Shared
   const [branch, setBranch] = createSignal("");
@@ -60,8 +90,11 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
   createEffect(() => {
     const name = worktreeName();
     const wsDir = workspacesDir();
+    const projName = projectName();
 
-    if (!name || !wsDir) return;
+    if (!name || !wsDir || !projName) return;
+
+    const projectDir = `${wsDir}/${projName}`;
 
     if (nameValidationTimeout) {
       clearTimeout(nameValidationTimeout);
@@ -70,7 +103,7 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
     nameValidationTimeout = setTimeout(async () => {
       if (!apiClient || !name) return;
       try {
-        const exists = await apiClient.checkWorktreeExists(name, wsDir);
+        const exists = await apiClient.checkWorktreeExists(name, projectDir);
         setWorktreeNameError(exists ? "This name is already taken" : "");
       } catch {
         // Ignore validation errors
@@ -85,11 +118,13 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
   });
 
   // Update worktree name when branch changes (for memorable name)
-  createEffect(() => {
+  createEffect(async () => {
     const b = branch();
-    if (b && !worktreeName()) {
-      const generated = generate({ words: 2, number: true });
-      setWorktreeName(generated.dashed);
+    const projName = projectName();
+    const wsDir = workspacesDir();
+    if (b && projName && wsDir && !worktreeName() && apiClient) {
+      const uniqueName = await findUniqueWorktreeName(apiClient, wsDir, projName, b);
+      setWorktreeName(uniqueName);
     }
   });
 
@@ -110,16 +145,27 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
   const suggestions = createMemo(() => {
     const name = worktreeName();
     if (name) return [];
+    return ["feature", "bugfix", "hotfix"];
+  });
+
+  const fullBranchName = createMemo(() => {
     const b = branch();
-    if (!b) return [];
-    return [`${b}-feature`, `${b}-bugfix`];
+    const name = worktreeName();
+    if (!b || !name) return "";
+    return `${b}-${name}`;
   });
 
   const worktreeFullPath = createMemo(() => {
     const name = worktreeName();
-    const dir = workspacesDir();
-    if (!name || !dir) return "";
-    return `${dir}/${name}`;
+    const projName = projectName();
+    const wsDir = workspacesDir();
+    if (!name || !projName || !wsDir) return "";
+    const fullPath = `${wsDir}/${projName}/${name}`;
+    const home = homeDir();
+    if (home && fullPath.startsWith(home)) {
+      return fullPath.replace(home, "~");
+    }
+    return fullPath;
   });
 
   // Folder mode handlers
@@ -139,6 +185,7 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
     try {
       const branches = await apiClient.listLocalBranches(path);
       setFolderBranches(branches);
+      setProjectName(extractProjectName(path, false));
       if (branches.length > 0) {
         const defaultBranch =
           branches.find(b => b === "main") || branches.find(b => b === "master") || branches[0];
@@ -172,6 +219,7 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
     try {
       const branches = await apiClient.listRemoteBranches(url);
       setRemoteBranches(branches);
+      setProjectName(extractProjectName(url, true));
       if (branches.length > 0) {
         const defaultBranch =
           branches.find(b => b === "main") || branches.find(b => b === "master") || branches[0];
@@ -186,12 +234,14 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
     }
   };
 
-  // Create worktree (with optional clone for clone mode)
+  // Create workspace - creates worktree with new branch in both modes
   const handleCreate = async () => {
-    const name = worktreeName();
-    const b = branch();
     const wsDir = workspacesDir();
-    if (!name || !b || !wsDir || !apiClient) return;
+    const projName = projectName();
+    const dirName = worktreeName(); // Just the memorable name
+    const branchFullName = fullBranchName(); // Full branch name (base/name)
+    const b = branch(); // Base branch
+    if (!wsDir || !projName || !dirName || !branchFullName || !b || !apiClient) return;
 
     if (worktreeNameError()) return;
 
@@ -204,7 +254,6 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
       if (mode() === "clone") {
         const url = cloneUrl();
         const target = cloneTarget();
-        // Clone first
         repoPathValue = await apiClient.clone({
           url,
           targetDir: target || homeDir(),
@@ -214,15 +263,16 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
         repoPathValue = selectedFolder();
       }
 
-      // Then create worktree
+      const projectDir = `${wsDir}/${projName}`;
       const worktreePath = await apiClient.createWorktree({
         repoPath: repoPathValue,
-        worktreeName: name,
-        branch: b,
-        worktreesDir: wsDir,
+        worktreeName: dirName, // Directory name
+        branch: branchFullName, // Full branch name (base/name)
+        worktreesDir: projectDir,
+        createBranch: true,
       });
 
-      await props.onCreate(worktreePath, name);
+      await props.onCreate(worktreePath, dirName);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create workspace");
     } finally {
@@ -240,6 +290,7 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
     setWorktreeName("");
     setWorktreeNameError("");
     setError("");
+    setProjectName("");
     setMode("folder");
     props.onClose();
   };
@@ -254,10 +305,14 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
     setWorktreeName("");
     setWorktreeNameError("");
     setError("");
+    setProjectName("");
   };
 
   const canShowWorkspaceSetup = () => {
-    return repoPath() && availableBranches().length > 0;
+    if (mode() === "clone") {
+      return isValidated() && availableBranches().length > 0 && projectName();
+    }
+    return repoPath() && availableBranches().length > 0 && projectName();
   };
 
   const canCreate = () => {
@@ -452,10 +507,13 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
 
             {/* Branch Selection */}
             <div>
-              <label class="mb-2 block text-sm font-medium">Worktree Branch</label>
+              <label class="mb-2 block text-sm font-medium">Base Branch</label>
               <select
                 value={branch()}
-                onChange={e => setBranch(e.currentTarget.value)}
+                onChange={e => {
+                  setBranch(e.currentTarget.value);
+                  setWorktreeName(""); // Reset worktree name to regenerate with new base
+                }}
                 disabled={isCreating()}
                 class={cn(
                   "border-input bg-background w-full rounded-md border px-3 py-2",
@@ -465,7 +523,7 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
                 <For each={availableBranches()}>{b => <option value={b}>{b}</option>}</For>
               </select>
               <p class="text-muted-foreground mt-1 text-xs">
-                A new branch will be created in the worktree
+                New branch will be created as: {branch()}-your-workspace-name
               </p>
             </div>
 
@@ -484,10 +542,13 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
                   "disabled:cursor-not-allowed disabled:opacity-50",
                   worktreeNameError() && "border-red-500"
                 )}
-                placeholder="my-workspace"
+                placeholder="my-feature"
               />
               <Show when={worktreeNameError()}>
                 <p class="mt-1 text-xs text-red-500">{worktreeNameError()}</p>
+              </Show>
+              <Show when={fullBranchName()}>
+                <p class="text-muted-foreground mt-1 text-xs">Branch: {fullBranchName()}</p>
               </Show>
             </div>
 

@@ -51,6 +51,7 @@ interface WorkspaceDashboardProps {
   onRestoreWorkspace: (workspace: ArchivedWorkspace) => void;
   onNewWorkspace: () => void;
   onSearch: () => void;
+  isLoading?: boolean;
 }
 
 function filterWorkspaces<T extends { name: string; path: string }>(

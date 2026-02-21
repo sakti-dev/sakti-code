@@ -17,12 +17,16 @@ vi.mock("../../../../src/core/services/api/api-client", () => ({
 }));
 
 // Mock memorable-name
-vi.mock("@ekacode/memorable-name", () => ({
+vi.mock("memorable-name", () => ({
   generate: vi.fn(() => ({
-    dashed: "spiffy-waterfall-42",
-    raw: ["spiffy", "waterfall", 42],
-    spaced: "spiffy waterfall 42",
+    dashed: "spiffy-waterfall",
+    raw: ["spiffy", "waterfall"],
+    spaced: "spiffy waterfall",
   })),
+  generateMany: vi.fn(() => [
+    { dashed: "spiffy-waterfall", raw: ["spiffy", "waterfall"], spaced: "spiffy waterfall" },
+    { dashed: "happy-mountain", raw: ["happy", "mountain"], spaced: "happy mountain" },
+  ]),
 }));
 
 describe("NewWorkspaceDialog", () => {
@@ -223,9 +227,9 @@ describe("NewWorkspaceDialog", () => {
 
     // Should show workspace setup with generated name
     const nameInput = document.body.querySelector(
-      "input[placeholder*='workspace']"
+      "input[placeholder='my-feature']"
     ) as HTMLInputElement;
-    expect(nameInput?.value).toBe("spiffy-waterfall-42");
+    expect(nameInput?.value).toBe("spiffy-waterfall");
   });
 
   it("should use API client for clone and worktree operations", async () => {

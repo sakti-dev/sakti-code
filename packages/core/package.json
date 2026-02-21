@@ -8,7 +8,8 @@
     "./chat": "./src/chat/index.ts",
     "./server": "./src/server.ts",
     "./tools": "./src/tools/index.ts",
-    "./memory/task/storage": "./src/memory/task/storage.ts"
+    "./memory/task/storage": "./src/memory/task/storage.ts",
+    "./spec/parser": "./src/spec/parser.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

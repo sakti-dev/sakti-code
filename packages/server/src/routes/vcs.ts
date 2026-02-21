@@ -162,6 +162,7 @@ const CreateWorktreeSchema = z.object({
   worktreeName: z.string().min(1, "Worktree name is required"),
   branch: z.string().min(1, "Branch is required"),
   worktreesDir: z.string().min(1, "Worktrees directory is required"),
+  createBranch: z.boolean().optional(),
 });
 
 vcsRouter.post("/api/vcs/worktree", async c => {
@@ -173,8 +174,14 @@ vcsRouter.post("/api/vcs/worktree", async c => {
       return c.json({ error: "Invalid request", details: parsed.error.issues }, 400);
     }
 
-    const { repoPath, worktreeName, branch, worktreesDir } = parsed.data;
-    const worktreePath = await createWorktree({ repoPath, worktreeName, branch, worktreesDir });
+    const { repoPath, worktreeName, branch, worktreesDir, createBranch } = parsed.data;
+    const worktreePath = await createWorktree({
+      repoPath,
+      worktreeName,
+      branch,
+      worktreesDir,
+      createBranch,
+    });
 
     return c.json({ worktreePath });
   } catch (error) {

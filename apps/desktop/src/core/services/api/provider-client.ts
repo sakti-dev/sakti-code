@@ -147,8 +147,17 @@ export function createProviderClient(options: CreateProviderClientOptions): Prov
     },
 
     async listAuthStates() {
-      const response = await options.fetcher("/api/providers/auth", { method: "GET" });
-      return parseJsonOrThrow<Record<string, ProviderAuthState>>(response);
+      try {
+        const response = await options.fetcher("/api/providers/auth", { method: "GET" });
+        if (!response.ok) {
+          console.warn("[provider-client] listAuthStates failed, returning empty states");
+          return {};
+        }
+        return parseJsonOrThrow<Record<string, ProviderAuthState>>(response);
+      } catch (error) {
+        console.warn("[provider-client] listAuthStates error, returning empty states:", error);
+        return {};
+      }
     },
 
     async listAuthMethods() {

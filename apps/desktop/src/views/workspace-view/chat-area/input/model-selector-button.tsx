@@ -3,7 +3,7 @@ import {
   type CommandCenterMode,
   type ModelSelectorSection,
 } from "@/components/model-selector";
-import { Show, type Accessor, type Component, type Setter } from "solid-js";
+import { Show, createMemo, type Accessor, type Component, type Setter } from "solid-js";
 
 export interface ChatInputModelOption {
   id: string;
@@ -80,12 +80,12 @@ export const ModelSelectorButton: Component<ModelSelectorButtonProps> = props =>
     return Array.from(map.values());
   };
 
-  const modelSections = () => {
+  const modelSections = createMemo(() => {
     if (!props.isOpen()) return [] as ModelSelectorSection[];
     return props.getModelSections
       ? props.getModelSections(props.searchQuery())
       : fallbackModelSections();
-  };
+  });
 
   const modelLabel = () => {
     if (!props.selectedModel) return "Select model";

@@ -6,8 +6,9 @@
 
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db, sessions, threads } from "../../db";
+import { workspaces } from "../../db/schema";
 
 // Mock uuidv7 for consistent testing
 vi.mock("uuid", () => ({
@@ -25,15 +26,23 @@ describe("sessions", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    // Setup uuid mock with counter to ensure unique IDs
+    let counter = 0;
+    uuidv7Mock.mockImplementation(() => {
+      counter++;
+      return `01234567-89ab-cdef-0123-${String(counter).padStart(12, "0")}`;
+    });
     // Clean up database before each test
     await db.delete(sessions);
     await db.delete(threads);
+    await db.delete(workspaces);
   });
 
   afterEach(async () => {
     // Clean up after each test
     await db.delete(sessions);
     await db.delete(threads);
+    await db.delete(workspaces);
   });
 
   describe("createSession", () => {
@@ -261,6 +270,58 @@ describe("sessions", () => {
 
       // Should not throw
       await expect(deleteSession("non-existent")).resolves.not.toThrow();
+    });
+  });
+
+  describe("workspace integration", () => {
+    beforeEach(async () => {
+      // Import and setup workspace
+      const { createWorkspace } = await import("../../db/workspaces");
+      await createWorkspace({ path: "/tmp/test-workspace", name: "test-workspace" });
+    });
+
+    it("should create session linked to workspace", async () => {
+      const { createSession, getSession } = await import("../../db/sessions");
+      const { getWorkspaceByPath } = await import("../../db/workspaces");
+
+      const ws = await getWorkspaceByPath("/tmp/test-workspace");
+      expect(ws).not.toBeNull();
+
+      const session = await createSession("local", ws!.id);
+      expect(session.workspaceId).toBe(ws!.id);
+
+      // Verify it's stored in DB
+      const stored = await getSession(session.sessionId);
+      expect(stored?.workspaceId).toBe(ws!.id);
+    });
+
+    it("should return latest session for workspace", async () => {
+      const { createSession, getLatestSessionByWorkspace } = await import("../../db/sessions");
+      const { getWorkspaceByPath } = await import("../../db/workspaces");
+
+      const ws = await getWorkspaceByPath("/tmp/test-workspace");
+
+      // Create first session
+      await createSession("local", ws!.id);
+      // Wait long enough to get different timestamp
+      await new Promise(r => setTimeout(r, 1100));
+
+      // Create second session (more recent)
+      const session2 = await createSession("local", ws!.id);
+
+      const latest = await getLatestSessionByWorkspace(ws!.id);
+      // session2 should have a later last_accessed
+      expect(latest?.sessionId).toBe(session2.sessionId);
+    });
+
+    it("should return null for workspace with no sessions", async () => {
+      const { getLatestSessionByWorkspace } = await import("../../db/sessions");
+      const { getWorkspaceByPath } = await import("../../db/workspaces");
+
+      const ws = await getWorkspaceByPath("/tmp/test-workspace");
+      const latest = await getLatestSessionByWorkspace(ws!.id);
+
+      expect(latest).toBeNull();
     });
   });
 });

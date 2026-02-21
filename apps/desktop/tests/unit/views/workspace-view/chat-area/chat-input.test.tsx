@@ -247,21 +247,48 @@ describe("ChatInput", () => {
     expect(container.textContent).toContain("Connected / Not Connected");
   });
 
-  it("filters model results by search query", () => {
+  it("filters model results by search query", async () => {
+    const modelOptions = [
+      { id: "zai/glm-4.7", providerId: "zai", name: "GLM 4.7", connected: true },
+      { id: "zai/glm-4.6", providerId: "zai", name: "GLM 4.6", connected: true },
+      {
+        id: "openai/gpt-4o-mini",
+        providerId: "openai",
+        name: "GPT-4o mini",
+        connected: false,
+      },
+    ];
+
+    const getModelSections = vi.fn((query: string) => {
+      const filtered = query
+        ? modelOptions.filter(m =>
+            `${m.id} ${m.name ?? ""} ${m.providerId}`.toLowerCase().includes(query.toLowerCase())
+          )
+        : modelOptions;
+
+      const map = new Map();
+      for (const model of filtered) {
+        const existing = map.get(model.providerId);
+        if (existing) {
+          existing.models.push(model);
+        } else {
+          map.set(model.providerId, {
+            providerId: model.providerId,
+            providerName: model.providerId,
+            connected: model.connected,
+            models: [model],
+          });
+        }
+      }
+      return Array.from(map.values());
+    });
+
     dispose = render(
       () => (
         <ChatInput
           selectedModel="zai/glm-4.7"
-          modelOptions={[
-            { id: "zai/glm-4.7", providerId: "zai", name: "GLM 4.7", connected: true },
-            { id: "zai/glm-4.6", providerId: "zai", name: "GLM 4.6", connected: true },
-            {
-              id: "openai/gpt-4o-mini",
-              providerId: "openai",
-              name: "GPT-4o mini",
-              connected: false,
-            },
-          ]}
+          modelOptions={modelOptions}
+          getModelSections={getModelSections}
         />
       ),
       container
@@ -272,11 +299,20 @@ describe("ChatInput", () => {
     ) as HTMLButtonElement;
     modelButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
+    // Wait for dialog to open and render
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     const searchInput = document.body.querySelector(
       'input[aria-label="Search models"]'
     ) as HTMLInputElement;
+
+    // Properly trigger input change
+    searchInput.focus();
     searchInput.value = "gpt";
-    searchInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    // Wait for reactive updates to flush
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     const options = Array.from(document.body.querySelectorAll('[role="option"]')).map(
       option => option.textContent ?? ""
@@ -285,24 +321,44 @@ describe("ChatInput", () => {
     expect(options.some(option => option.includes("GPT-4o mini"))).toBe(true);
   });
 
-  it("supports keyboard navigation and enter to pick model", () => {
+  it("supports keyboard navigation and enter to pick model", async () => {
     const onModelChange = vi.fn();
+    const modelOptions = [
+      { id: "zai/glm-4.7", providerId: "zai", name: "GLM 4.7", connected: true },
+      { id: "zai/glm-4.6", providerId: "zai", name: "GLM 4.6", connected: true },
+      {
+        id: "openai/gpt-4o-mini",
+        providerId: "openai",
+        name: "GPT-4o mini",
+        connected: false,
+      },
+    ];
+
+    const getModelSections = vi.fn(() => {
+      const map = new Map();
+      for (const model of modelOptions) {
+        const existing = map.get(model.providerId);
+        if (existing) {
+          existing.models.push(model);
+        } else {
+          map.set(model.providerId, {
+            providerId: model.providerId,
+            providerName: model.providerId,
+            connected: model.connected,
+            models: [model],
+          });
+        }
+      }
+      return Array.from(map.values());
+    });
 
     dispose = render(
       () => (
         <ChatInput
           selectedModel="zai/glm-4.7"
           onModelChange={onModelChange}
-          modelOptions={[
-            { id: "zai/glm-4.7", providerId: "zai", name: "GLM 4.7", connected: true },
-            { id: "zai/glm-4.6", providerId: "zai", name: "GLM 4.6", connected: true },
-            {
-              id: "openai/gpt-4o-mini",
-              providerId: "openai",
-              name: "GPT-4o mini",
-              connected: false,
-            },
-          ]}
+          modelOptions={modelOptions}
+          getModelSections={getModelSections}
         />
       ),
       container
@@ -313,11 +369,22 @@ describe("ChatInput", () => {
     ) as HTMLButtonElement;
     modelButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
+    // Wait for dialog to open and render
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     const searchInput = document.body.querySelector(
       'input[aria-label="Search models"]'
     ) as HTMLInputElement;
+
+    // Focus the input and dispatch keyboard events
+    searchInput.focus();
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     searchInput.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     searchInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     expect(onModelChange).toHaveBeenCalledWith("zai/glm-4.6");
   });

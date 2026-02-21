@@ -106,6 +106,9 @@ describe("createWorktree", () => {
     await fs.writeFile(path.join(repoDir, "README.md"), "# Test");
     await git.add(".");
     await git.commit("Initial commit");
+    // Create additional branches for testing (but stay on default branch)
+    await git.branch(["test-branch"]);
+    await git.branch(["dev-branch"]);
   });
 
   afterEach(async () => {
@@ -126,22 +129,45 @@ describe("createWorktree", () => {
     expect(stat.isDirectory()).toBe(true);
   });
 
+  it("creates a worktree with new branch when createBranch is true", async () => {
+    const worktreePath = await createWorktree({
+      repoPath: repoDir,
+      worktreeName: "feature-branch",
+      branch: "feature/feature-branch",
+      worktreesDir: workspacesDir,
+      createBranch: true,
+    });
+
+    expect(worktreePath).toBe(path.join(workspacesDir, "feature-branch"));
+
+    const stat = await fs.stat(worktreePath);
+    expect(stat.isDirectory()).toBe(true);
+
+    const { default: simpleGit } = await import("simple-git");
+    const worktreeGit = simpleGit(worktreePath);
+    const branchSummary = await worktreeGit.branchLocal();
+    expect(branchSummary.current).toBe("feature/feature-branch");
+  });
+
   it("throws error if worktree name already exists", async () => {
     await createWorktree({
       repoPath: repoDir,
       worktreeName: "existing-workspace",
-      branch: "branch-1",
+      branch: "test-branch",
       worktreesDir: workspacesDir,
     });
 
+    // Try to create another worktree with same name but different branch
+    // Should fail because worktree path already exists
     await expect(
       createWorktree({
         repoPath: repoDir,
         worktreeName: "existing-workspace",
-        branch: "branch-2",
+        branch: "dev/another-branch",
         worktreesDir: workspacesDir,
+        createBranch: true,
       })
-    ).rejects.toThrow();
+    ).rejects.toThrow("already exists");
   });
 
   it("throws error for non-git repository", async () => {

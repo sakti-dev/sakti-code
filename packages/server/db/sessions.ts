@@ -25,6 +25,7 @@ export interface Session {
   sessionId: string; // UUIDv7
   resourceId: string; // userId or "local"
   threadId: string; // == sessionId
+  workspaceId: string | null; // Optional workspace reference
   title: string | null;
   createdAt: Date; // unix timestamp ms
   lastAccessed: Date; // unix timestamp ms
@@ -63,9 +64,10 @@ async function ensureThreadRecord(
  * Create a new session with a UUIDv7 identifier
  *
  * @param resourceId - User ID or "local" for single-user desktop
+ * @param workspaceId - Optional workspace ID to link session to
  * @returns The created session
  */
-export async function createSession(resourceId: string): Promise<Session> {
+export async function createSession(resourceId: string, workspaceId?: string): Promise<Session> {
   const sessionId = uuidv7();
   const now = new Date();
 
@@ -73,6 +75,7 @@ export async function createSession(resourceId: string): Promise<Session> {
     session_id: sessionId,
     resource_id: resourceId,
     thread_id: sessionId, // threadId == sessionId for memory integration
+    workspace_id: workspaceId ?? null,
     title: DEFAULT_SESSION_TITLE,
     created_at: now,
     last_accessed: now,
@@ -85,6 +88,7 @@ export async function createSession(resourceId: string): Promise<Session> {
     sessionId: session.session_id,
     resourceId: session.resource_id,
     threadId: session.thread_id,
+    workspaceId: session.workspace_id,
     title: session.title,
     createdAt: session.created_at,
     lastAccessed: session.last_accessed,
@@ -96,15 +100,21 @@ export async function createSession(resourceId: string): Promise<Session> {
  *
  * @param resourceId - User ID or "local" for single-user desktop
  * @param sessionId - Explicit session ID to use
+ * @param workspaceId - Optional workspace ID to link session to
  * @returns The created session
  */
-export async function createSessionWithId(resourceId: string, sessionId: string): Promise<Session> {
+export async function createSessionWithId(
+  resourceId: string,
+  sessionId: string,
+  workspaceId?: string
+): Promise<Session> {
   const now = new Date();
 
   const session = {
     session_id: sessionId,
     resource_id: resourceId,
     thread_id: sessionId,
+    workspace_id: workspaceId ?? null,
     title: DEFAULT_SESSION_TITLE,
     created_at: now,
     last_accessed: now,
@@ -117,6 +127,7 @@ export async function createSessionWithId(resourceId: string, sessionId: string)
     sessionId: session.session_id,
     resourceId: session.resource_id,
     threadId: session.thread_id,
+    workspaceId: session.workspace_id,
     title: session.title,
     createdAt: session.created_at,
     lastAccessed: session.last_accessed,
@@ -146,6 +157,7 @@ export async function getSession(sessionId: string): Promise<Session | null> {
     sessionId: result.session_id,
     resourceId: result.resource_id,
     threadId: result.thread_id,
+    workspaceId: result.workspace_id,
     title: result.title,
     createdAt: result.created_at,
     lastAccessed: result.last_accessed,
@@ -186,11 +198,44 @@ export async function getAllSessions(): Promise<Session[]> {
       sessionId: row.session_id,
       resourceId: row.resource_id,
       threadId: row.thread_id,
+      workspaceId: row.workspace_id,
       title: row.title,
       createdAt: row.created_at,
       lastAccessed: row.last_accessed,
     }))
     .reverse(); // Most recent first
+}
+
+/**
+ * Get the most recent session for a workspace
+ *
+ * @param workspaceId - The workspace ID
+ * @returns The most recent session or null if not found
+ */
+export async function getLatestSessionByWorkspace(workspaceId: string): Promise<Session | null> {
+  const results = await db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.workspace_id, workspaceId))
+    .orderBy(sessions.last_accessed)
+    .all();
+
+  if (results.length === 0) {
+    return null;
+  }
+
+  // Get the last one (most recent due to ascending order)
+  const result = results[results.length - 1];
+
+  return {
+    sessionId: result.session_id,
+    resourceId: result.resource_id,
+    threadId: result.thread_id,
+    workspaceId: result.workspace_id,
+    title: result.title,
+    createdAt: result.created_at,
+    lastAccessed: result.last_accessed,
+  };
 }
 
 function normalizeTitle(raw: string): string | null {

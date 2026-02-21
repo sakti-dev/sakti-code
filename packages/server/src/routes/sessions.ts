@@ -5,42 +5,80 @@
  */
 
 import { Hono } from "hono";
-import { deleteSession, getAllSessions } from "../../db/sessions";
+import { deleteSession, getAllSessions, getLatestSessionByWorkspace } from "../../db/sessions";
 import type { Env } from "../index";
 
 const app = new Hono<Env>();
 
+function serializeSession(session: Awaited<ReturnType<typeof getAllSessions>>[number]) {
+  return {
+    sessionId: session.sessionId,
+    resourceId: session.resourceId,
+    threadId: session.threadId,
+    workspaceId: session.workspaceId,
+    title: session.title,
+    createdAt: session.createdAt.toISOString(),
+    lastAccessed: session.lastAccessed.toISOString(),
+  };
+}
+
 /**
- * List all sessions
+ * List all sessions, optionally filtered by workspace
  *
  * Usage:
  * GET /api/sessions
+ * GET /api/sessions?workspaceId=xxx
  *
  * Returns:
  * {
  *   sessions: [
- *     { sessionId, resourceId, threadId, createdAt, lastAccessed }
+ *     { sessionId, resourceId, threadId, workspaceId, title, createdAt, lastAccessed }
  *   ]
  * }
  */
 app.get("/api/sessions", async c => {
   try {
-    const sessions = await getAllSessions();
+    const workspaceId = c.req.query("workspaceId");
+    let sessions = await getAllSessions();
 
-    // Transform dates to ISO strings for JSON serialization
-    const serialized = sessions.map(session => ({
-      sessionId: session.sessionId,
-      resourceId: session.resourceId,
-      threadId: session.threadId,
-      title: session.title,
-      createdAt: session.createdAt.toISOString(),
-      lastAccessed: session.lastAccessed.toISOString(),
-    }));
+    // Filter by workspace if provided
+    if (workspaceId) {
+      sessions = sessions.filter(s => s.workspaceId === workspaceId);
+    }
+
+    const serialized = sessions.map(serializeSession);
 
     return c.json({ sessions: serialized });
   } catch (error) {
     console.error("Failed to list sessions:", error);
     return c.json({ error: "Failed to list sessions" }, 500);
+  }
+});
+
+/**
+ * Get latest session for a workspace
+ *
+ * Usage:
+ * GET /api/sessions/latest?workspaceId=xxx
+ */
+app.get("/api/sessions/latest", async c => {
+  const workspaceId = c.req.query("workspaceId");
+
+  if (!workspaceId) {
+    return c.json({ error: "workspaceId query parameter required" }, 400);
+  }
+
+  try {
+    const session = await getLatestSessionByWorkspace(workspaceId);
+
+    if (!session) {
+      return c.json({ error: "No session found for workspace" }, 404);
+    }
+
+    return c.json({ session: serializeSession(session) });
+  } catch (error) {
+    console.error("Failed to get latest session:", error);
+    return c.json({ error: "Failed to get latest session" }, 500);
   }
 });
 
@@ -61,14 +99,7 @@ app.get("/api/sessions/:sessionId", async c => {
       return c.json({ error: "Session not found" }, 404);
     }
 
-    return c.json({
-      sessionId: session.sessionId,
-      resourceId: session.resourceId,
-      threadId: session.threadId,
-      title: session.title,
-      createdAt: session.createdAt.toISOString(),
-      lastAccessed: session.lastAccessed.toISOString(),
-    });
+    return c.json(serializeSession(session));
   } catch (error) {
     console.error("Failed to get session:", error);
     return c.json({ error: "Failed to get session" }, 500);

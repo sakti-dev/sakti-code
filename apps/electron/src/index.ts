@@ -15,7 +15,6 @@ import { fileURLToPath } from "node:url";
 
 // Import IPC handlers module
 import { setupIPCHandlers } from "./ipc";
-import { getOrCreateCredentialEncryptionKey } from "./modules/credential-key";
 import { setupLogHandler } from "./modules/log";
 
 // ESM equivalent of __dirname
@@ -85,7 +84,6 @@ async function initServer(): Promise<void> {
 
   try {
     process.env.EKACODE_MIGRATIONS_DIR ||= join(__dirname, "drizzle");
-    process.env.EKACODE_CREDENTIAL_KEY = await getOrCreateCredentialEncryptionKey();
     const server = await startServer();
     serverConfig = { port: server.port, token: server.token };
 

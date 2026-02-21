@@ -4,15 +4,15 @@
  * TDD: Test tasks.md parsing
  */
 
-import { promises as fs } from "fs";
-import os from "os";
-import path from "path";
-import { describe, expect, it } from "vitest";
 import {
   parseTasksMd,
   validateTaskDagFromParsed,
   type ParsedTaskInput,
-} from "../../../core/src/spec/parser";
+} from "@ekacode/core/spec/parser";
+import { promises as fs } from "fs";
+import os from "os";
+import path from "path";
+import { describe, expect, it } from "vitest";
 
 describe("Spec Parser", () => {
   describe("parseTasksMd", () => {

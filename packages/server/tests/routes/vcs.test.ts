@@ -192,6 +192,9 @@ describe("POST /api/vcs/worktree", () => {
     await fs.writeFile(path.join(repoDir, "README.md"), "# Test");
     execSync("git add .", { cwd: repoDir });
     execSync('git commit -m "Initial commit"', { cwd: repoDir });
+    // Create additional branches for testing
+    execSync("git branch test-branch", { cwd: repoDir });
+    execSync("git branch dev-branch", { cwd: repoDir });
   });
 
   afterEach(async () => {
@@ -215,6 +218,33 @@ describe("POST /api/vcs/worktree", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.worktreePath).toBe(path.join(workspacesDir, "test-workspace"));
+  });
+
+  it("creates worktree with new branch when createBranch is true", async () => {
+    const vcsRouter = (await import("../../src/routes/vcs")).default;
+
+    const response = await vcsRouter.request("http://localhost/api/vcs/worktree", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        repoPath: repoDir,
+        worktreeName: "feature-workspace",
+        branch: "feature/new-branch",
+        worktreesDir: workspacesDir,
+        createBranch: true,
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.worktreePath).toBe(path.join(workspacesDir, "feature-workspace"));
+
+    // Verify the branch was created
+    const branchOutput = execSync("git branch", {
+      cwd: path.join(workspacesDir, "feature-workspace"),
+      encoding: "utf-8",
+    });
+    expect(branchOutput).toContain("feature/new-branch");
   });
 
   it("returns 400 for missing fields", async () => {

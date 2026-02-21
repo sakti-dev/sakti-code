@@ -1,5 +1,5 @@
 import type { RecentProject } from "@/core/chat/types";
-import { createApiClient } from "@/core/services/api/api-client";
+import { createApiClient, EkacodeApiClient } from "@/core/services/api/api-client";
 import type { ProviderClient } from "@/core/services/api/provider-client";
 
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
 
 import { cn } from "@/utils";
 import { ProviderSettings } from "@/views/components/provider-settings";
-import { For, Show, createSignal, onMount } from "solid-js";
+import { createSignal, For, onMount, Show } from "solid-js";
 
 export default function SettingsView() {
   const [theme, setTheme] = createSignal<"light" | "dark">("light");
@@ -21,31 +21,30 @@ export default function SettingsView() {
   const [appVersion, setAppVersion] = createSignal<string>("");
   const [platform, setPlatform] = createSignal<string>("");
   const [providerClient, setProviderClient] = createSignal<ProviderClient | null>(null);
+  const [apiClient, setApiClient] = createSignal<EkacodeApiClient | null>(null);
 
   onMount(async () => {
     // Load theme
     const storedTheme = localStorage.getItem("ekacode:theme");
     setTheme(storedTheme === "dark" ? "dark" : "light");
 
-    // Load recent projects
-    const stored = localStorage.getItem("ekacode:recent-projects");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as Array<{
-          id: string;
-          name: string;
-          path: string;
-          lastOpened: string;
-        }>;
-        setRecentProjects(
-          parsed.map(p => ({
-            ...p,
-            lastOpened: new Date(p.lastOpened),
-          }))
-        );
-      } catch {
-        setRecentProjects([]);
-      }
+    // Initialize API client
+    const client = await createApiClient();
+    setApiClient(client);
+
+    // Load recent projects from API
+    try {
+      const workspaces = await client.getWorkspaces();
+      setRecentProjects(
+        workspaces.map(ws => ({
+          id: ws.id,
+          name: ws.name,
+          path: ws.path,
+          lastOpened: new Date(ws.lastOpenedAt),
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to load workspaces:", error);
     }
 
     // Get app info
@@ -55,8 +54,7 @@ export default function SettingsView() {
     const plat = await window.ekacodeAPI.app.getPlatform();
     setPlatform(plat);
 
-    const apiClient = await createApiClient();
-    setProviderClient(apiClient.getProviderClient());
+    setProviderClient(client.getProviderClient());
   });
 
   const toggleTheme = () => {
@@ -71,15 +69,31 @@ export default function SettingsView() {
     }
   };
 
-  const handleRemoveProject = (project: RecentProject) => {
-    const updated = recentProjects().filter(p => p.id !== project.id);
-    setRecentProjects(updated);
-    localStorage.setItem("ekacode:recent-projects", JSON.stringify(updated));
+  const handleRemoveProject = async (project: RecentProject) => {
+    const client = apiClient();
+    if (!client) return;
+
+    try {
+      await client.deleteWorkspace(project.id);
+      const updated = recentProjects().filter(p => p.id !== project.id);
+      setRecentProjects(updated);
+    } catch (error) {
+      console.error("Failed to delete workspace:", error);
+    }
   };
 
-  const handleClearAllProjects = () => {
-    setRecentProjects([]);
-    localStorage.removeItem("ekacode:recent-projects");
+  const handleClearAllProjects = async () => {
+    const client = apiClient();
+    if (!client) return;
+
+    try {
+      // Delete all workspaces
+      const workspaces = await client.getWorkspaces();
+      await Promise.all(workspaces.map(ws => client.deleteWorkspace(ws.id)));
+      setRecentProjects([]);
+    } catch (error) {
+      console.error("Failed to delete workspaces:", error);
+    }
   };
 
   return (

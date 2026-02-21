@@ -13,8 +13,9 @@
  */
 import type { WorkspaceState } from "@/core/chat/types";
 import { EkacodeApiClient, type SessionInfo } from "@/core/services/api/api-client";
-import { useSession } from "@/state/hooks/use-session";
-import { useParams } from "@solidjs/router";
+import { createLogger } from "@/core/shared/logger";
+import { useSession } from "@/core/state/hooks/use-session";
+import { useNavigate, useParams } from "@solidjs/router";
 import {
   createContext,
   createEffect,
@@ -100,21 +101,54 @@ interface WorkspaceProviderProps {
  * WorkspaceProvider - Provides workspace state to children
  */
 export const WorkspaceProvider: ParentComponent<WorkspaceProviderProps> = props => {
+  const logger = createLogger("desktop:workspace-provider");
   const params = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   // ---- Workspace State ----
   const [workspaceState, setWorkspaceState] = createSignal<WorkspaceState | null>(null);
+  const [_isLoadingWorkspace, setIsLoadingWorkspace] = createSignal(true);
+  const [_workspaceError, setWorkspaceError] = createSignal<string | null>(null);
 
-  // Load workspace state from sessionStorage
-  onMount(() => {
-    const stored = sessionStorage.getItem(`workspace:${params.id}`);
-    if (stored) {
-      try {
-        setWorkspaceState(JSON.parse(stored));
-      } catch {
-        console.error("Failed to parse workspace state");
-      }
+  // Fetch workspace from API on mount
+  onMount(async () => {
+    // Get client first
+    let client: EkacodeApiClient | null = null;
+    let config: Awaited<ReturnType<typeof window.ekacodeAPI.server.getConfig>>;
+    try {
+      config = await window.ekacodeAPI.server.getConfig();
+      client = new EkacodeApiClient(config);
+    } catch (error) {
+      console.error("Failed to load API config:", error);
+      setWorkspaceError("Failed to initialize API");
+      setIsLoadingWorkspace(false);
+      return;
     }
+
+    // Fetch workspace details
+    try {
+      const workspace = await client.getWorkspace(params.id);
+      if (workspace) {
+        setWorkspaceState({
+          path: workspace.path,
+          projectId: workspace.id,
+          name: workspace.name,
+        });
+      } else {
+        navigate("/");
+      }
+    } catch (error: unknown) {
+      console.error("Failed to load workspace:", error);
+      if (error instanceof Response && error.status === 404) {
+        navigate("/");
+      } else {
+        setWorkspaceError("Failed to load workspace");
+      }
+    } finally {
+      setIsLoadingWorkspace(false);
+    }
+
+    setClient(client);
   });
 
   const workspace = createMemo(() => workspaceState()?.path ?? "");
@@ -124,18 +158,6 @@ export const WorkspaceProvider: ParentComponent<WorkspaceProviderProps> = props 
   // ---- API Client ----
   const [client, setClient] = createSignal<EkacodeApiClient | null>(null);
   const isClientReady = createMemo(() => client() !== null);
-
-  onMount(async () => {
-    let config: Awaited<ReturnType<typeof window.ekacodeAPI.server.getConfig>>;
-    try {
-      config = await window.ekacodeAPI.server.getConfig();
-    } catch (error) {
-      console.error("Failed to load API config:", error);
-      return;
-    }
-
-    setClient(new EkacodeApiClient(config));
-  });
 
   // ---- Sessions ----
   const [serverSessions, setServerSessions] = createSignal<SessionInfo[]>([]);
@@ -167,8 +189,15 @@ export const WorkspaceProvider: ParentComponent<WorkspaceProviderProps> = props 
 
     setIsLoadingSessions(true);
     try {
-      const list = await c.listSessions();
+      const list = await c.listSessions(params.id);
       setServerSessions(list);
+
+      // Auto-restore latest session if no active session
+      if (list.length > 0 && !activeSessionId()) {
+        const latestSession = list[0]; // Sessions are sorted by most recent
+        setActiveSessionId(latestSession.sessionId);
+        logger.info("Auto-restored latest session", { sessionId: latestSession.sessionId });
+      }
     } catch (error) {
       console.error("Failed to fetch sessions:", error);
     } finally {

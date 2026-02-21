@@ -85,8 +85,35 @@ export interface SessionInfo {
   sessionId: string;
   resourceId: string;
   threadId: string;
+  workspaceId: string | null;
+  title: string | null;
   createdAt: string;
   lastAccessed: string;
+}
+
+/**
+ * Workspace info from server
+ */
+export interface Workspace {
+  id: string;
+  path: string;
+  name: string;
+  status: "active" | "archived";
+  baseBranch: string | null;
+  repoPath: string | null;
+  isMerged: boolean;
+  archivedAt: string | null;
+  createdAt: string;
+  lastOpenedAt: string;
+}
+
+/**
+ * Archive workspace options
+ */
+export interface ArchiveWorkspaceOptions {
+  baseBranch?: string;
+  repoPath?: string;
+  isMerged?: boolean;
 }
 
 /**
@@ -278,11 +305,16 @@ export class EkacodeApiClient {
    *
    * @returns Array of session info objects
    */
-  async listSessions(): Promise<SessionInfo[]> {
-    logger.debug("Listing all sessions");
+  async listSessions(workspaceId?: string): Promise<SessionInfo[]> {
+    logger.debug("Listing sessions", { workspaceId });
 
     try {
-      const response = await fetch(`${this.config.baseUrl}/api/sessions`, {
+      const url = new URL(`${this.config.baseUrl}/api/sessions`);
+      if (workspaceId) {
+        url.searchParams.set("workspaceId", workspaceId);
+      }
+
+      const response = await fetch(url.toString(), {
         method: "GET",
         headers: this.commonHeaders(),
       });
@@ -354,6 +386,306 @@ export class EkacodeApiClient {
       logger.info("Session deleted", { sessionId });
     } catch (error) {
       logger.error("Failed to delete session", error as Error, { sessionId });
+      throw error;
+    }
+  }
+
+  // ============================================================
+  // Workspaces API
+  // ============================================================
+
+  /**
+   * List active workspaces
+   *
+   * @returns Array of workspace objects
+   */
+  async getWorkspaces(): Promise<Workspace[]> {
+    logger.debug("Listing active workspaces");
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/workspaces`, {
+        method: "GET",
+        headers: this.commonHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to list workspaces: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const workspaces = data.workspaces || [];
+      logger.debug("Workspaces retrieved", { count: workspaces.length });
+      return workspaces;
+    } catch (error) {
+      logger.error("Failed to list workspaces", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * List archived workspaces
+   *
+   * @returns Array of archived workspace objects
+   */
+  async getArchivedWorkspaces(): Promise<Workspace[]> {
+    logger.debug("Listing archived workspaces");
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/workspaces/archived`, {
+        method: "GET",
+        headers: this.commonHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to list archived workspaces: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const workspaces = data.workspaces || [];
+      logger.debug("Archived workspaces retrieved", { count: workspaces.length });
+      return workspaces;
+    } catch (error) {
+      logger.error("Failed to list archived workspaces", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get workspace by ID
+   *
+   * @param id - Workspace ID
+   * @returns Workspace or null if not found
+   */
+  async getWorkspace(id: string): Promise<Workspace | null> {
+    logger.debug("Fetching workspace", { id });
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/workspaces/${id}`, {
+        method: "GET",
+        headers: this.commonHeaders(),
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          logger.debug("Workspace not found", { id });
+          return null;
+        }
+        throw new Error(`Failed to get workspace: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.debug("Workspace retrieved", { id });
+      return data.workspace;
+    } catch (error) {
+      logger.error("Failed to get workspace", error as Error, { id });
+      throw error;
+    }
+  }
+
+  /**
+   * Get workspace by path
+   *
+   * @param path - Workspace path
+   * @returns Workspace or null if not found
+   */
+  async getWorkspaceByPath(path: string): Promise<Workspace | null> {
+    logger.debug("Fetching workspace by path", { path });
+
+    try {
+      const response = await fetch(
+        `${this.config.baseUrl}/api/workspaces/by-path?path=${encodeURIComponent(path)}`,
+        {
+          method: "GET",
+          headers: this.commonHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          logger.debug("Workspace not found by path", { path });
+          return null;
+        }
+        throw new Error(`Failed to get workspace by path: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.debug("Workspace retrieved by path", { path });
+      return data.workspace;
+    } catch (error) {
+      logger.error("Failed to get workspace by path", error as Error, { path });
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new workspace
+   *
+   * @param path - Workspace path
+   * @param name - Optional workspace name
+   * @returns Created workspace
+   */
+  async createWorkspace(path: string, name?: string): Promise<Workspace> {
+    logger.info("Creating workspace", { path, name });
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/workspaces`, {
+        method: "POST",
+        headers: { ...this.commonHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ path, name }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create workspace: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.info("Workspace created", { id: data.workspace.id });
+      return data.workspace;
+    } catch (error) {
+      logger.error("Failed to create workspace", error as Error, { path });
+      throw error;
+    }
+  }
+
+  /**
+   * Archive a workspace
+   *
+   * @param id - Workspace ID
+   * @param options - Optional archive metadata
+   */
+  async archiveWorkspace(id: string, options?: ArchiveWorkspaceOptions): Promise<Workspace> {
+    logger.info("Archiving workspace", { id });
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/workspaces/${id}/archive`, {
+        method: "PUT",
+        headers: { ...this.commonHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(options || {}),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to archive workspace: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.info("Workspace archived", { id });
+      return data.workspace;
+    } catch (error) {
+      logger.error("Failed to archive workspace", error as Error, { id });
+      throw error;
+    }
+  }
+
+  /**
+   * Restore an archived workspace
+   *
+   * @param id - Workspace ID
+   */
+  async restoreWorkspace(id: string): Promise<Workspace> {
+    logger.info("Restoring workspace", { id });
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/workspaces/${id}/restore`, {
+        method: "PUT",
+        headers: this.commonHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to restore workspace: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.info("Workspace restored", { id });
+      return data.workspace;
+    } catch (error) {
+      logger.error("Failed to restore workspace", error as Error, { id });
+      throw error;
+    }
+  }
+
+  /**
+   * Touch a workspace (update last_opened_at)
+   *
+   * @param id - Workspace ID
+   */
+  async touchWorkspace(id: string): Promise<Workspace> {
+    logger.debug("Touching workspace", { id });
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/workspaces/${id}/touch`, {
+        method: "PUT",
+        headers: this.commonHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to touch workspace: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.debug("Workspace touched", { id });
+      return data.workspace;
+    } catch (error) {
+      logger.error("Failed to touch workspace", error as Error, { id });
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a workspace
+   *
+   * @param id - Workspace ID
+   */
+  async deleteWorkspace(id: string): Promise<void> {
+    logger.info("Deleting workspace", { id });
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/workspaces/${id}`, {
+        method: "DELETE",
+        headers: this.commonHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete workspace: ${response.statusText}`);
+      }
+
+      logger.info("Workspace deleted", { id });
+    } catch (error) {
+      logger.error("Failed to delete workspace", error as Error, { id });
+      throw error;
+    }
+  }
+
+  /**
+   * Get latest session for workspace
+   *
+   * @param workspaceId - Workspace ID
+   * @returns Session or null if not found
+   */
+  async getLatestSession(workspaceId: string): Promise<SessionInfo | null> {
+    logger.debug("Fetching latest session for workspace", { workspaceId });
+
+    try {
+      const response = await fetch(
+        `${this.config.baseUrl}/api/sessions/latest?workspaceId=${workspaceId}`,
+        {
+          method: "GET",
+          headers: this.commonHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          logger.debug("No session found for workspace", { workspaceId });
+          return null;
+        }
+        throw new Error(`Failed to get latest session: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.debug("Latest session retrieved", { workspaceId });
+      return data.session;
+    } catch (error) {
+      logger.error("Failed to get latest session", error as Error, { workspaceId });
       throw error;
     }
   }
@@ -716,6 +1048,7 @@ export class EkacodeApiClient {
     worktreeName: string;
     branch: string;
     worktreesDir: string;
+    createBranch?: boolean;
   }): Promise<string> {
     logger.debug("Creating worktree", { worktreeName: options.worktreeName });
 

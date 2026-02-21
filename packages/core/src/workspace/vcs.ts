@@ -261,8 +261,9 @@ export async function clone(options: {
  * @param options - Worktree options
  * @param options.repoPath - Path to the main repository
  * @param options.worktreeName - Name for the worktree (used as directory name)
- * @param options.branch - Branch name to create in the worktree
+ * @param options.branch - Branch name to create/checkout in the worktree
  * @param options.worktreesDir - Directory where worktrees are stored
+ * @param options.createBranch - If true, create a new branch with the given name
  * @returns Path to the created worktree
  * @throws Error if not a git repository or worktree creation fails
  */
@@ -271,8 +272,9 @@ export async function createWorktree(options: {
   worktreeName: string;
   branch: string;
   worktreesDir: string;
+  createBranch?: boolean;
 }): Promise<string> {
-  const { repoPath, worktreeName, branch, worktreesDir } = options;
+  const { repoPath, worktreeName, branch, worktreesDir, createBranch } = options;
 
   if (!(await hasGitDirectory(repoPath))) {
     throw new Error("Not a git repository");
@@ -290,7 +292,13 @@ export async function createWorktree(options: {
 
   // Create worktree with simple-git
   const git = simpleGit(repoPath);
-  await git.raw(["worktree", "add", worktreePath, "-b", branch]);
+  if (createBranch) {
+    // Create new branch AND worktree
+    await git.raw(["worktree", "add", "-b", branch, worktreePath]);
+  } else {
+    // Use existing branch
+    await git.raw(["worktree", "add", worktreePath, branch]);
+  }
 
   return worktreePath;
 }

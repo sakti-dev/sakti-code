@@ -6,6 +6,7 @@
 
 import {
   foreignKey,
+  index,
   integer,
   primaryKey,
   sqliteTable,
@@ -14,12 +15,48 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 /**
+ * Workspaces table - stores workspace/project information
+ *
+ * A workspace represents a git worktree directory in the app.
+ * - id: UUIDv7 primary key
+ * - path: Absolute filesystem path (unique)
+ * - name: Display name
+ * - status: "active" or "archived"
+ * - base_branch: Base branch for the worktree
+ * - repo_path: Path to the main repo (for worktrees)
+ * - is_merged: Whether the worktree has been merged
+ * - archived_at: When the workspace was archived
+ * - created_at: When the workspace was created
+ * - last_opened_at: When the workspace was last opened
+ */
+export const workspaces = sqliteTable(
+  "workspaces",
+  {
+    id: text("id").primaryKey(),
+    path: text("path").notNull().unique(),
+    name: text("name").notNull(),
+    status: text("status").notNull().default("active"),
+    base_branch: text("base_branch"),
+    repo_path: text("repo_path"),
+    is_merged: integer("is_merged", { mode: "boolean" }).default(false),
+    archived_at: integer("archived_at", { mode: "timestamp" }),
+    created_at: integer("created_at", { mode: "timestamp" }).notNull(),
+    last_opened_at: integer("last_opened_at", { mode: "timestamp" }).notNull(),
+  },
+  table => ({
+    statusIndex: index("workspaces_status_idx").on(table.status),
+    lastOpenedIndex: index("workspaces_last_opened_idx").on(table.last_opened_at),
+  })
+);
+
+/**
  * Sessions table - stores core session data with UUIDv7 identifiers
  *
  * - session_id: UUIDv7 primary key
  * - resource_id: User ID or "local" for single-user desktop
  * - thread_id: Equal to session_id (for Mastra Memory integration)
  * - parent_id: Parent session ID for hierarchy support
+ * - workspace_id: Foreign key to workspaces (optional)
  * - title: Display title for the session
  * - summary: JSON-encoded session summary (additions, deletions, files, diffs)
  * - share_url: Optional URL for shared sessions
@@ -33,6 +70,7 @@ export const sessions = sqliteTable(
     resource_id: text("resource_id").notNull(),
     thread_id: text("thread_id").notNull(),
     parent_id: text("parent_id"),
+    workspace_id: text("workspace_id"),
     title: text("title"),
     summary: text("summary", { mode: "json" }).$type<{
       additions?: number;
@@ -49,6 +87,11 @@ export const sessions = sqliteTable(
       columns: [table.parent_id],
       foreignColumns: [table.session_id],
       name: "sessions_parent_id_fkey",
+    }).onDelete("set null"),
+    workspace: foreignKey({
+      columns: [table.workspace_id],
+      foreignColumns: [workspaces.id],
+      name: "sessions_workspace_id_fkey",
     }).onDelete("set null"),
   })
 );
@@ -409,3 +452,9 @@ export const workingMemory = sqliteTable("working_memory", {
  */
 export type WorkingMemory = typeof workingMemory.$inferSelect;
 export type NewWorkingMemory = typeof workingMemory.$inferInsert;
+
+/**
+ * Type definitions for workspaces
+ */
+export type Workspace = typeof workspaces.$inferSelect;
+export type NewWorkspace = typeof workspaces.$inferInsert;

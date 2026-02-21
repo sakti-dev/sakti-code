@@ -5,7 +5,7 @@ describe("LSP Routes", () => {
   describe("GET /api/lsp/status", () => {
     it("should return server status", async () => {
       const app = new Hono();
-      const { default: lspRouter } = await import("../../../src/routes/lsp");
+      const { default: lspRouter } = await import("@/routes/lsp");
       app.route("/", lspRouter);
 
       const res = await app.request("/api/lsp/status?directory=/test");

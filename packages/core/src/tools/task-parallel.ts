@@ -10,6 +10,8 @@ import { z } from "zod";
 import { loadModel } from "../agent/registry";
 import type { AgentConfig, AgentEvent, AgentInput } from "../agent/workflow/types";
 import { Instance } from "../instance";
+import { AgentProcessor } from "../session/processor";
+import { getToolsForPhase } from "./phase-tools";
 import type { ExplorationResult } from "./task";
 
 /**
@@ -138,7 +140,6 @@ This tool:
       try {
         loadModel("glm-4.7-flashx");
 
-        const { getToolsForPhase } = await import("../tools/phase-tools");
         const tools = await getToolsForPhase("explore");
 
         const agentConfig: AgentConfig = {
@@ -161,7 +162,6 @@ This tool:
           }
         };
 
-        const { AgentProcessor } = await import("../session/processor");
         const processor = new AgentProcessor(agentConfig, eventCallback);
 
         const input: AgentInput = {

@@ -1,4 +1,7 @@
-import type { AgentType } from "../agent/workflow/types";
+/**
+ * Agent type - inlined to avoid circular dependency in server exports
+ */
+export type AgentType = "explore" | "plan" | "build";
 
 export interface ChatHookInput {
   sessionID: string;

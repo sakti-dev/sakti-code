@@ -2537,56 +2537,6 @@ git commit -m "docs(plan): append final validation and benchmark evidence"
 
 ---
 
-## Suggested Commit Order (Canonical)
-
-1. `feat(core): add feature flags for dynamic tools and recoverable compression`
-2. `feat(core): add typed tool mask normalization and conversion`
-3. `feat(server): accept toolMask in chat request schema`
-4. `feat(chat): pass toolMask from route into session controller`
-5. `feat(session): support toolMask in processMessage options`
-6. `feat(core): resolve active tools from request toolMask`
-7. `feat(core): pass request-scoped activeTools to streamText`
-8. `test(core): validate mask fallback and empty activeTools behavior`
-9. `feat(core): add cache-stable prompt ordering utility`
-10. `feat(core): add optional hook bypass for tool definition stability`
-11. `feat(core): expose cache token telemetry on step-finish events`
-12. `test(core): verify stable tool definitions under dynamic activeTools`
-13. `docs: add dynamic tools cache stability guide`
-14. `feat(core): log dynamic tool mask resolution per iteration`
-15. `test(server): e2e coverage for toolMask request behavior`
-16. `feat(core): define tool output store contracts`
-17. `feat(core): implement filesystem store for compressed tool outputs`
-18. `feat(core): add policy for recoverable tool-output compression`
-19. `feat(core): compress oversized tool outputs into recoverable locators`
-20. `feat(core): add restore_tool_output tool for recoverable compression`
-21. `feat(core): add restore-tool-output to build agent toolset`
-22. `docs(prompt): guide agent on locator-based restore behavior`
-23. `feat(server): stream compressed tool-result locator metadata`
-24. `test(core): validate end-to-end compressed output restore flow`
-25. `feat(core): add ttl cleanup for stored compressed tool outputs`
-26. `feat(core): normalize tool errors into stable envelopes`
-27. `feat(core): emit normalized error envelopes in tool-result`
-28. `feat(core): improve repair fallback payload for invalid tool routing`
-29. `feat(core): classify tool failures by retryability`
-30. `feat(core): add reminder injection for repeated tool failures`
-31. `feat(core): category-aware doom loop thresholds`
-32. `test(core): validate self-correction after tool errors`
-33. `feat(server): preserve normalized retry/tool error metadata in stream`
-34. `feat(core): add provider capability matrix for dynamic tool control`
-35. `feat(core): formalize provider request adapter hook contract`
-36. `feat(core): add experimental openai allowed-tools adapter utility`
-37. `feat(core): add anthropic fallback strategy for dynamic tool masking`
-38. `feat(core): add provider-aware warnings for masking strategy fallback`
-39. `chore: add dynamic tools benchmark script and smoke test`
-40. `feat(server): gate dynamic tool mask behavior behind rollout flag`
-41. `feat: add hard-disable kill switch for dynamic tool system`
-42. `docs(api): document chat toolMask request field and behavior`
-43. `docs: add dynamic tools runbook and operator guidance`
-44. `test(core): add dynamic tools integration matrix coverage`
-45. `docs(plan): append final validation and benchmark evidence`
-
----
-
 ## Command Appendix
 
 ### Core test commands

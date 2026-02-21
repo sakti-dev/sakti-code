@@ -61,6 +61,7 @@ import sessionsRouter from "./routes/sessions";
 import tasksRouter from "./routes/tasks";
 import vcsRouter from "./routes/vcs";
 import workspaceRouter from "./routes/workspace";
+import workspacesRouter from "./routes/workspaces";
 import { getServerToken, getSessionManager } from "./runtime";
 export { getServerToken, getSessionManager } from "./runtime";
 export { app };
@@ -174,6 +175,9 @@ app.route("/", sessionDataRouter);
 
 // Mount workspace routes
 app.route("/", workspaceRouter);
+
+// Mount workspaces CRUD API routes
+app.route("/", workspacesRouter);
 
 // Mount bootstrap API routes
 app.route("/", projectRouter);
