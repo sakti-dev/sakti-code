@@ -57,7 +57,6 @@
 - Hono 4.11.7 - Web framework
 - drizzle-orm 0.45.1 - SQL ORM
 - @libsql/client 0.17.0 - LibSQL/Turso database client
-- @mastra/libsql 1.0.0 - Mastra LibSQL integration
 
 **Desktop App:**
 

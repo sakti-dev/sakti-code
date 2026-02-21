@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "read": {
+      "/home/eekrain/CODE/ekacode/.opencode/get-shit-done/*": "allow"
+    },
+    "external_directory": {
+      "/home/eekrain/CODE/ekacode/.opencode/get-shit-done/*": "allow"
+    }
+  }
+}

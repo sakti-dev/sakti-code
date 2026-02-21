@@ -25,12 +25,6 @@
   - SDK: @ai-sdk/\* packages
   - Auth: Provider-specific API keys
 
-**Mastra Integration:**
-
-- @mastra/core 1.0.4 - AI agent orchestration framework
-- @mastra/libsql 1.0.0 - Database integration
-- @mastra/memory 1.0.0 - Memory/persistence layer
-
 ## Data Storage
 
 **Database:**
