@@ -62,24 +62,24 @@
 
 ## Traceability
 
-| Requirement | Phase | Status |
-| ----------- | ----- | ------ |
-| UI-01       | 1     | —      |
-| UI-02       | 1     | —      |
-| UI-03       | 1     | —      |
-| UI-04       | 1     | —      |
-| DIALOG-01   | 1     | —      |
-| DIALOG-02   | 1     | —      |
-| DIALOG-03   | 2     | —      |
-| DIALOG-04   | 2     | —      |
-| GENERAL-01  | 2     | —      |
-| GENERAL-02  | 2     | —      |
-| GENERAL-03  | 2     | —      |
-| GENERAL-04  | 2     | —      |
-| GENERAL-05  | 2     | —      |
-| GENERAL-06  | 2     | —      |
-| GENERAL-07  | 2     | —      |
-| GENERAL-08  | 2     | —      |
-| INT-01      | 3     | —      |
-| INT-02      | 3     | —      |
-| INT-03      | 3     | —      |
+| Requirement | Phase | Status   |
+| ----------- | ----- | -------- |
+| UI-01       | 1     | Complete |
+| UI-02       | 1     | Complete |
+| UI-03       | 1     | Complete |
+| UI-04       | 1     | Complete |
+| DIALOG-01   | 1     | Complete |
+| DIALOG-02   | 1     | Complete |
+| DIALOG-03   | 2     | —        |
+| DIALOG-04   | 2     | —        |
+| GENERAL-01  | 2     | —        |
+| GENERAL-02  | 2     | —        |
+| GENERAL-03  | 2     | —        |
+| GENERAL-04  | 2     | —        |
+| GENERAL-05  | 2     | —        |
+| GENERAL-06  | 2     | —        |
+| GENERAL-07  | 2     | —        |
+| GENERAL-08  | 2     | —        |
+| INT-01      | 3     | —        |
+| INT-02      | 3     | —        |
+| INT-03      | 3     | —        |
