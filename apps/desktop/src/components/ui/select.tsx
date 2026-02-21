@@ -7,8 +7,8 @@ import * as SelectPrimitive from "@kobalte/core/select";
 import { cn } from "@/utils";
 
 const Select = SelectPrimitive.Root;
-const SelectValue = SelectPrimitive.Value;
 const SelectHiddenSelect = SelectPrimitive.HiddenSelect;
+const SelectValue = SelectPrimitive.Value;
 
 type SelectTriggerProps<T extends ValidComponent = "button"> =
   SelectPrimitive.SelectTriggerProps<T> & {
@@ -23,7 +23,7 @@ const SelectTrigger = <T extends ValidComponent = "button">(
   return (
     <SelectPrimitive.Trigger
       class={cn(
-        "border-border/80 bg-background/70 hover:bg-muted/60 focus:ring-primary/40 focus:ring-offset-background flex h-9 w-full items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        "border-border/80 bg-background/70 hover:bg-muted/60 focus:ring-primary/45 focus:ring-offset-background flex h-9 w-full items-center justify-between rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         local.class
       )}
       {...others}
@@ -38,10 +38,9 @@ const SelectTrigger = <T extends ValidComponent = "button">(
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
-        class="text-muted-foreground size-4"
+        class="text-muted-foreground size-4 transition-transform duration-200 data-[expanded]:rotate-180"
       >
-        <path d="M8 9l4 -4l4 4" />
-        <path d="M16 15l-4 4l-4 -4" />
+        <path d="M6 9l6 6l6 -6" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
@@ -58,12 +57,12 @@ const SelectContent = <T extends ValidComponent = "div">(
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
         class={cn(
-          "border-border/80 bg-popover/95 text-popover-foreground animate-in fade-in-80 relative z-50 min-w-[180px] overflow-hidden rounded-md border shadow-lg backdrop-blur-xl",
+          "border-border/80 bg-popover text-popover-foreground animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[closed]:zoom-out-95 data-[closed]:slide-out-to-top-2 relative z-50 max-h-[320px] min-w-[200px] overflow-hidden rounded-xl border shadow-[0_20px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl duration-200",
           local.class
         )}
         {...others}
       >
-        <SelectPrimitive.Listbox class="scrollbar-thin m-0 max-h-[300px] overflow-y-auto p-1" />
+        <SelectPrimitive.Listbox class="scrollbar-thin m-0 overflow-y-auto p-1.5" />
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
   );
@@ -81,27 +80,31 @@ const SelectItem = <T extends ValidComponent = "li">(
   return (
     <SelectPrimitive.Item
       class={cn(
-        "text-popover-foreground hover:bg-accent/70 focus:bg-accent/50 relative mt-0 flex w-full cursor-default select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "text-popover-foreground group relative flex w-full cursor-default select-none items-center rounded-lg py-2.5 pl-3 pr-10 text-sm outline-none transition-all duration-150 data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
+        "hover:bg-accent/70 hover:border-primary/20 hover:shadow-[0_2px_8px_color-mix(in_oklch,var(--color-foreground)_8%,transparent)]",
+        "focus-visible:bg-accent/70 focus-visible:border-primary/20 focus-visible:shadow-[0_2px_8px_color-mix(in_oklch,var(--color-foreground)_8%,transparent)]",
+        "data-[selected]:bg-primary/12 data-[selected]:text-primary data-[selected]:font-medium",
+        "data-[selected]:border-primary/30 data-[selected]:shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-primary)_30%,transparent)]",
         local.class
       )}
       {...others}
     >
-      <SelectPrimitive.ItemIndicator class="absolute left-2 flex size-3.5 items-center justify-center">
+      <SelectPrimitive.ItemIndicator class="absolute right-3 flex size-4 items-center justify-center transition-transform duration-200">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2"
+          stroke-width="2.5"
           stroke-linecap="round"
           stroke-linejoin="round"
-          class="size-4"
+          class="size-3.5"
         >
           <path stroke="none" d="M0 0h24v24H0z" fill="none" />
           <path d="M5 12l5 5l10 -10" />
         </svg>
       </SelectPrimitive.ItemIndicator>
-      <SelectPrimitive.ItemLabel>{local.children}</SelectPrimitive.ItemLabel>
+      <SelectPrimitive.ItemLabel class="flex-1">{local.children}</SelectPrimitive.ItemLabel>
     </SelectPrimitive.Item>
   );
 };
@@ -117,7 +120,7 @@ const SelectLabel = <T extends ValidComponent = "label">(
   return (
     <SelectPrimitive.Label
       class={cn(
-        "text-muted-foreground px-2 py-1.5 text-xs font-semibold uppercase tracking-wider",
+        "text-muted-foreground mb-1.5 px-1 text-xs font-semibold uppercase tracking-wider transition-colors",
         local.class
       )}
       {...others}

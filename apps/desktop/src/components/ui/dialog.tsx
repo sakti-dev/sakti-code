@@ -30,7 +30,7 @@ const DialogOverlay = <T extends ValidComponent = "div">(
   return (
     <DialogPrimitive.Overlay
       class={cn(
-        "bg-background/80 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 fixed inset-0 z-50 backdrop-blur-sm",
+        "data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 fixed inset-0 z-50 bg-black/80 backdrop-blur-sm",
         props.class
       )}
       {...rest}
@@ -53,13 +53,18 @@ const DialogContent = <T extends ValidComponent = "div">(
       <DialogOverlay />
       <DialogPrimitive.Content
         class={cn(
-          "border-border bg-background data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 data-[closed]:slide-out-to-bottom data-[expanded]:slide-in-from-bottom fixed left-1/2 top-1/2 z-50 grid max-h-screen w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto border p-6 shadow-lg duration-200 sm:rounded-lg",
+          "model-selector-shell border-border/70 bg-popover text-popover-foreground data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 relative z-50 w-full max-w-4xl overflow-hidden rounded-xl border shadow-[0_28px_80px_rgba(0,0,0,0.6)] duration-200",
           props.class
         )}
         {...rest}
       >
+        <div class="model-selector-aurora pointer-events-none">
+          <div class="model-selector-aurora-glow" />
+          <div class="model-selector-aurora-vignette" />
+        </div>
+        <div class="model-selector-grain pointer-events-none absolute inset-0" />
         {props.children}
-        <DialogPrimitive.CloseButton class="ring-offset-background focus:ring-ring data-[expanded]:bg-accent data-[expanded]:text-muted-foreground absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none">
+        <DialogPrimitive.CloseButton class="ring-offset-background focus:ring-ring data-[expanded]:bg-accent data-[expanded]:text-muted-foreground absolute right-4 top-4 z-20 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -83,7 +88,13 @@ const DialogContent = <T extends ValidComponent = "div">(
 const DialogHeader: Component<ComponentProps<"div">> = props => {
   const [, rest] = splitProps(props, ["class"]);
   return (
-    <div class={cn("flex flex-col space-y-1.5 text-center sm:text-left", props.class)} {...rest} />
+    <div
+      class={cn(
+        "border-border/80 bg-muted/45 relative border-b px-4 pb-2.5 pt-4 backdrop-blur-xl",
+        props.class
+      )}
+      {...rest}
+    />
   );
 };
 
@@ -91,7 +102,10 @@ const DialogFooter: Component<ComponentProps<"div">> = props => {
   const [, rest] = splitProps(props, ["class"]);
   return (
     <div
-      class={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", props.class)}
+      class={cn(
+        "text-muted-foreground border-border/80 bg-muted/55 flex items-center justify-end gap-2 border-t px-3 py-1.5 text-[10px] backdrop-blur-xl",
+        props.class
+      )}
       {...rest}
     />
   );
@@ -107,7 +121,7 @@ const DialogTitle = <T extends ValidComponent = "h2">(
   const [, rest] = splitProps(props as DialogTitleProps, ["class"]);
   return (
     <DialogPrimitive.Title
-      class={cn("text-lg font-semibold leading-none tracking-tight", props.class)}
+      class={cn("text-popover-foreground text-[13px] font-semibold tracking-tight", props.class)}
       {...rest}
     />
   );
@@ -124,7 +138,7 @@ const DialogDescription = <T extends ValidComponent = "p">(
   const [, rest] = splitProps(props as DialogDescriptionProps, ["class"]);
   return (
     <DialogPrimitive.Description
-      class={cn("text-muted-foreground text-sm", props.class)}
+      class={cn("text-muted-foreground text-[10px]", props.class)}
       {...rest}
     />
   );

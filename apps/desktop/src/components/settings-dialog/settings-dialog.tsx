@@ -1,3 +1,10 @@
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/utils";
 import {
   Book,
@@ -11,11 +18,9 @@ import {
   Slash,
   Terminal,
   User,
-  UserCircle,
-  X,
 } from "lucide-solid";
 import type { Component } from "solid-js";
-import { createSignal, For, Show } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 
 const ZapIcon = () => (
   <svg
@@ -43,7 +48,6 @@ export interface SettingsTab {
 
 export const SETTINGS_TABS: SettingsTab[] = [
   { id: "general", label: "General", icon: User },
-  { id: "account", label: "Account", icon: UserCircle },
   { id: "git", label: "Git", icon: GitBranch },
   { id: "terminal", label: "Terminal", icon: Terminal },
   { id: "mcp", label: "MCP", icon: Hammer },
@@ -65,7 +69,7 @@ interface DialogSidebarProps {
 
 export function DialogSidebar(props: DialogSidebarProps) {
   return (
-    <nav class="flex flex-col gap-1 py-2">
+    <div class="flex flex-col gap-1 px-2 py-2">
       <For each={props.tabs}>
         {tab => {
           const isActive = () => props.activeTab === tab.id;
@@ -75,10 +79,10 @@ export function DialogSidebar(props: DialogSidebarProps) {
             <button
               type="button"
               class={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-150",
+                "duration-120 group w-full rounded-md border px-2.5 py-2 text-left transition-all",
                 isActive()
-                  ? "bg-muted/80 text-foreground"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  ? "border-primary/45 bg-accent/70 shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-primary)_45%,transparent),0_8px_24px_color-mix(in_oklch,var(--color-primary)_18%,transparent)]"
+                  : "hover:border-border/90 hover:bg-muted/70 border-transparent"
               )}
               onClick={() => {
                 if (tab.external && tab.href) {
@@ -88,20 +92,26 @@ export function DialogSidebar(props: DialogSidebarProps) {
                 }
               }}
             >
-              <Icon class="size-4 shrink-0" />
-              <span class="flex-1 text-left">{tab.label}</span>
+              <div class="flex items-center gap-3">
+                <Icon
+                  class={cn(
+                    "size-4 shrink-0",
+                    isActive() ? "text-foreground" : "text-muted-foreground"
+                  )}
+                />
+                <span class="truncate text-sm font-medium">{tab.label}</span>
+              </div>
               <Show when={tab.external}>
-                <ExternalLink class="size-3.5 opacity-50" />
+                <ExternalLink class="size-3.5 shrink-0 opacity-50" />
               </Show>
             </button>
           );
         }}
       </For>
-    </nav>
+    </div>
   );
 }
 
-import { AccountSettings } from "./account-settings";
 import { AgentsSettings } from "./agents-settings";
 import { CommandsSettings } from "./commands-settings";
 import { ExperimentalSettings } from "./experimental-settings";
@@ -125,8 +135,6 @@ export function SettingsDialog(props: SettingsDialogProps) {
     switch (activeTab()) {
       case "general":
         return <GeneralSettings />;
-      case "account":
-        return <AccountSettings />;
       case "git":
         return <GitSettings />;
       case "terminal":
@@ -162,49 +170,35 @@ export function SettingsDialog(props: SettingsDialogProps) {
   };
 
   return (
-    <Show when={props.open}>
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div
-          class="fixed inset-0 bg-black/80 backdrop-blur-sm"
-          onClick={() => props.onOpenChange(false)}
-        />
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogContent class="flex h-[600px] w-full max-w-4xl flex-col overflow-hidden p-0">
+        <DialogHeader class="border-border/80 flex items-center justify-between border-b px-4 pb-4 pt-4">
+          <div class="flex flex-col">
+            <DialogTitle>{SETTINGS_TABS.find(t => t.id === activeTab())?.label}</DialogTitle>
+            <DialogDescription>
+              {activeTab() === "general"
+                ? "Configure your Conductor preferences"
+                : `Configure ${activeTab()} settings`}
+            </DialogDescription>
+          </div>
+        </DialogHeader>
 
-        <div class="dialog-overlay-motion border-border/80 bg-popover/95 relative z-10 flex h-[600px] w-full max-w-4xl overflow-hidden rounded-xl border shadow-2xl">
-          <div class="border-border/80 bg-muted/30 w-56 shrink-0 border-r">
-            <DialogSidebar
-              tabs={SETTINGS_TABS}
-              activeTab={activeTab()}
-              onTabChange={setActiveTab}
-            />
+        <div class="flex flex-1 overflow-hidden">
+          <div class="border-border/80 bg-background/35 w-56 shrink-0 border-r">
+            <div class="[&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50 h-full min-h-0 overflow-y-auto overscroll-contain [scrollbar-color:var(--color-border)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2">
+              <DialogSidebar
+                tabs={SETTINGS_TABS}
+                activeTab={activeTab()}
+                onTabChange={setActiveTab}
+              />
+            </div>
           </div>
 
-          <div class="flex flex-1 flex-col overflow-hidden">
-            <div class="border-border/80 flex items-center justify-between border-b px-6 py-4">
-              <div>
-                <h2 class="text-lg font-semibold tracking-tight">
-                  {SETTINGS_TABS.find(t => t.id === activeTab())?.label}
-                </h2>
-                <p class="text-muted-foreground text-sm">
-                  {activeTab() === "general"
-                    ? "Configure your Conductor preferences"
-                    : `Configure ${activeTab()} settings`}
-                </p>
-              </div>
-              <button
-                type="button"
-                class="text-muted-foreground hover:text-foreground rounded-md p-1.5 transition-colors"
-                onClick={() => props.onOpenChange(false)}
-              >
-                <X class="size-4" />
-              </button>
-            </div>
-
-            <div class="flex-1 overflow-y-auto p-6">
-              <div class="scrollbar-thin max-h-full overflow-y-auto pr-2">{activeTabContent()}</div>
-            </div>
+          <div class="flex-1 overflow-y-auto px-4 pb-0">
+            <div class="scrollbar-thin max-h-full overflow-y-auto pr-2">{activeTabContent()}</div>
           </div>
         </div>
-      </div>
-    </Show>
+      </DialogContent>
+    </Dialog>
   );
 }
