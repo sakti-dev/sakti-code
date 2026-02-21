@@ -195,6 +195,7 @@ export {
   SelectContent,
   SelectItem,
   SelectLabel,
+  SelectPortal,
   SelectSection,
   SelectTrigger,
   SelectValue,
