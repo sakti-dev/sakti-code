@@ -1,11 +1,7 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { OpenAIProviderAdapter } from "../../src/provider/adapters/openai";
 
 describe("OpenAIProviderAdapter", () => {
-  afterEach(() => {
-    delete process.env.OPENAI_API_KEY;
-  });
-
   it("describes provider metadata", () => {
     const adapter = new OpenAIProviderAdapter();
 
@@ -20,14 +16,6 @@ describe("OpenAIProviderAdapter", () => {
     const state = await adapter.getAuthState();
 
     expect(state.status).toBe("disconnected");
-  });
-
-  it("returns connected auth state with env token", async () => {
-    process.env.OPENAI_API_KEY = "env-token";
-    const adapter = new OpenAIProviderAdapter();
-    const state = await adapter.getAuthState();
-
-    expect(state.status).toBe("connected");
   });
 
   it("lists canonical openai models", async () => {

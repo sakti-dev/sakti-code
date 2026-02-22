@@ -21,11 +21,7 @@ import type { Env } from "../index";
 import { createSessionMessage, sessionBridge } from "../middleware/session-bridge";
 import { resolveOAuthAccessToken } from "../provider/auth/oauth";
 import { normalizeProviderError } from "../provider/errors";
-import {
-  getProviderRuntime,
-  providerCredentialEnvVar,
-  resolveChatSelection,
-} from "../provider/runtime";
+import { getProviderRuntime, resolveChatSelection } from "../provider/runtime";
 import { getSessionManager } from "../runtime";
 import { getSessionMessages } from "../state/session-message-store";
 
@@ -1100,23 +1096,8 @@ app.post("/api/chat", async c => {
   }
 
   const authState = await providerRuntime.authService.getState(selectedProviderId);
-  const providerEnvVarName = providerCredentialEnvVar(selectedProviderId);
-  const providerEnvToken =
-    providerEnvVarName && typeof process.env[providerEnvVarName] === "string"
-      ? process.env[providerEnvVarName]!.trim()
-      : "";
-  const envTokenFromProvider =
-    selectedModel.providerEnvVars
-      ?.map(envName => process.env[envName])
-      .find((value): value is string => typeof value === "string" && value.trim().length > 0) ??
-    (providerEnvToken.length > 0 ? providerEnvToken : null);
   const storedCredential = await providerRuntime.authService.getCredential(selectedProviderId);
-  if (
-    selection.explicit &&
-    authState.status !== "connected" &&
-    !envTokenFromProvider &&
-    !storedCredential
-  ) {
+  if (selection.explicit && authState.status !== "connected" && !storedCredential) {
     const normalized = normalizeProviderError(
       new Error(`Provider ${selectedProviderId} is not authenticated`)
     );
@@ -1124,21 +1105,9 @@ app.post("/api/chat", async c => {
   }
 
   const hybridVisionProviderId = hybridVisionModel?.providerId;
-  const hybridProviderEnvVarName = hybridVisionProviderId
-    ? providerCredentialEnvVar(hybridVisionProviderId)
-    : null;
-  const hybridProviderEnvToken =
-    hybridProviderEnvVarName && typeof process.env[hybridProviderEnvVarName] === "string"
-      ? process.env[hybridProviderEnvVarName]!.trim()
-      : "";
   const hybridVisionAuthState = hybridVisionProviderId
     ? await providerRuntime.authService.getState(hybridVisionProviderId)
     : null;
-  const hybridVisionEnvToken =
-    hybridVisionModel?.providerEnvVars
-      ?.map(envName => process.env[envName])
-      .find((value): value is string => typeof value === "string" && value.trim().length > 0) ??
-    (hybridProviderEnvToken.length > 0 ? hybridProviderEnvToken : undefined);
   const hybridVisionCredential = hybridVisionProviderId
     ? await providerRuntime.authService.getCredential(hybridVisionProviderId)
     : null;
@@ -1147,7 +1116,6 @@ app.post("/api/chat", async c => {
     shouldUseHybridFallback &&
     hybridVisionProviderId &&
     hybridVisionAuthState?.status !== "connected" &&
-    !hybridVisionEnvToken &&
     !hybridVisionCredential
   ) {
     return c.json(
@@ -1302,14 +1270,14 @@ app.post("/api/chat", async c => {
         });
 
         // Check if selected provider is configured
-        if (!envTokenFromProvider && !storedCredential) {
+        if (!storedCredential) {
           logger.error("No AI provider configured", undefined, {
             module: "chat",
             sessionId: session.sessionId,
           });
           writeStreamEvent({
             type: "error",
-            errorText: `Provider ${selectedProviderId} is not configured. Connect it in Settings or set environment credentials.`,
+            errorText: `Provider ${selectedProviderId} is not configured. Connect it in Settings.`,
           });
           writeStreamEvent({
             type: "finish",
@@ -1747,7 +1715,7 @@ app.post("/api/chat", async c => {
               ? storedCredential.kind === "oauth"
                 ? await resolveOAuthAccessToken(selectedProviderId, providerRuntime.authService)
                 : storedCredential.token
-              : envTokenFromProvider;
+              : null;
             const hybridVisionToken = hybridVisionCredential
               ? hybridVisionCredential.kind === "oauth"
                 ? await resolveOAuthAccessToken(
@@ -1755,7 +1723,7 @@ app.post("/api/chat", async c => {
                     providerRuntime.authService
                   )
                 : hybridVisionCredential.token
-              : hybridVisionEnvToken;
+              : null;
 
             const previousRuntime = Instance.context.providerRuntime;
             Instance.context.providerRuntime = {

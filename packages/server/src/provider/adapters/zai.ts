@@ -70,7 +70,7 @@ export class ZaiProviderAdapter implements ProviderAdapter {
   }
 
   async getAuthState(): Promise<ProviderAuthState> {
-    const hasToken = Boolean(this.inMemoryToken || process.env.ZAI_API_KEY);
+    const hasToken = Boolean(this.inMemoryToken);
 
     return {
       providerId: "zai",

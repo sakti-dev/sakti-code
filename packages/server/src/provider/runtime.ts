@@ -55,24 +55,6 @@ export function resolveChatSelection(input: {
   };
 }
 
-export function hasProviderEnvironmentCredential(providerId: string): boolean {
-  const envName = providerCredentialEnvVar(providerId);
-  return envName ? Boolean(process.env[envName]) : false;
-}
-
-export function providerCredentialEnvVar(providerId: string): string | null {
-  switch (providerId) {
-    case "zai":
-      return "ZAI_API_KEY";
-    case "openai":
-      return "OPENAI_API_KEY";
-    case "anthropic":
-      return "ANTHROPIC_API_KEY";
-    default:
-      return null;
-  }
-}
-
 export function getProviderRuntime(): ProviderRuntime {
   if (runtime) {
     return runtime;

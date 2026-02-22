@@ -55,7 +55,7 @@ export class OpenAIProviderAdapter implements ProviderAdapter {
   }
 
   async getAuthState(): Promise<ProviderAuthState> {
-    const hasToken = Boolean(this.inMemoryToken || process.env.OPENAI_API_KEY);
+    const hasToken = Boolean(this.inMemoryToken);
 
     return {
       providerId: "openai",

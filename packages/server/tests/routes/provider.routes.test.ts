@@ -249,38 +249,4 @@ describe("provider routes", () => {
     const body = await callback.json();
     expect(body.error?.code).toBe("PROVIDER_UNKNOWN");
   });
-
-  it("marks provider as connected in auth state when environment credential is present", async () => {
-    process.env.OPENAI_API_KEY = "env-openai-token";
-    const providerRouter = (await import("../../src/routes/provider")).default;
-
-    const response = await providerRouter.request("http://localhost/api/providers/auth");
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body.openai.status).toBe("connected");
-  });
-
-  it("marks catalog-only provider as connected in auth state when model env credential is present", async () => {
-    process.env.OPENCODE_API_KEY = "env-opencode-token";
-    const providerRouter = (await import("../../src/routes/provider")).default;
-
-    const response = await providerRouter.request("http://localhost/api/providers/auth");
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body.opencode.status).toBe("connected");
-  });
-
-  it("marks provider as connected in catalog when environment credential is present", async () => {
-    process.env.OPENAI_API_KEY = "env-openai-token";
-    const providerRouter = (await import("../../src/routes/provider")).default;
-
-    const response = await providerRouter.request("http://localhost/api/providers/catalog");
-    const body = await response.json();
-
-    const openai = body.providers.find((provider: { id: string }) => provider.id === "openai");
-    expect(response.status).toBe(200);
-    expect(openai?.connected).toBe(true);
-  });
 });

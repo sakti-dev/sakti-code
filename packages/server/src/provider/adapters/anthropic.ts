@@ -55,7 +55,7 @@ export class AnthropicProviderAdapter implements ProviderAdapter {
   }
 
   async getAuthState(): Promise<ProviderAuthState> {
-    const hasToken = Boolean(this.inMemoryToken || process.env.ANTHROPIC_API_KEY);
+    const hasToken = Boolean(this.inMemoryToken);
 
     return {
       providerId: "anthropic",

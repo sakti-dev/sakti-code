@@ -139,12 +139,7 @@ export async function buildProviderCatalog(input: {
   const catalog = providerIds.map(providerId => {
     const meta = providerMeta.get(providerId)!;
     const methods = authMethodsByProvider[providerId] ?? meta.authMethods;
-    const hasEnvironmentCredential = Array.from(meta.envVars).some(envName => {
-      const value = process.env[envName];
-      return typeof value === "string" && value.trim().length > 0;
-    });
-    const connected =
-      authStateByProvider.get(providerId)?.status === "connected" || hasEnvironmentCredential;
+    const connected = authStateByProvider.get(providerId)?.status === "connected";
     return {
       id: providerId,
       name: meta.name,
