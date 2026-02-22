@@ -36,27 +36,6 @@ interface ProviderStateData {
 
 const DEBUG_PREFIX = "[models-settings]";
 
-function fallbackCatalogFromProviders(input: {
-  providers: Array<{ id: string; name: string }>;
-  authMethods: Record<string, ProviderAuthMethodDescriptor[]>;
-  auth: Record<string, ProviderAuthState>;
-}): ProviderCatalogItem[] {
-  return input.providers.map(provider => ({
-    id: provider.id,
-    name: provider.name,
-    aliases: [provider.id, provider.name.toLowerCase()],
-    authMethods: input.authMethods[provider.id] ?? [{ type: "api", label: "API Key" }],
-    connected: input.auth[provider.id]?.status === "connected",
-    modelCount: 0,
-    popular:
-      provider.id === "opencode" ||
-      provider.id === "zai" ||
-      provider.id === "openai" ||
-      provider.id === "anthropic",
-    supported: true,
-  }));
-}
-
 export function ModelsSettings(props: ModelsSettingsProps) {
   const [tokenByProvider, setTokenByProvider] = createSignal<Record<string, string>>({});
   const [oauthCodeByProvider, setOauthCodeByProvider] = createSignal<Record<string, string>>({});
@@ -84,41 +63,28 @@ export function ModelsSettings(props: ModelsSettingsProps) {
 
     console.log(`${DEBUG_PREFIX} loadProviderState:start`);
     const statusOverrides = authStatusOverrideByProvider();
-    const [providers, authMethods, auth, catalog] = await Promise.all([
-      props.client.listProviders(),
+    const [catalog, authMethods, auth] = await Promise.all([
+      props.client.listProviderCatalog ? props.client.listProviderCatalog() : Promise.resolve([]),
       props.client.listAuthMethods(),
       props.client.listAuthStates(),
-      props.client.listProviderCatalog ? props.client.listProviderCatalog() : Promise.resolve([]),
     ]);
 
-    const fallbackCatalog = fallbackCatalogFromProviders({ providers, authMethods, auth });
-    const supportedProviderIds = new Set(providers.map(provider => provider.id));
-    const mergedCatalog = (catalog.length > 0 ? catalog : fallbackCatalog).map(provider => {
-      const isSupported = supportedProviderIds.has(provider.id);
+    const mergedCatalog = catalog.map(provider => {
       const serverMethods = authMethods[provider.id];
-      const resolvedMethods =
-        serverMethods ??
-        (isSupported
-          ? [{ type: "api" as const, label: "API Key" }]
-          : provider.authMethods.length > 0
-            ? provider.authMethods
-            : [{ type: "api" as const, label: "API Key" }]);
+      const resolvedMethods = serverMethods ??
+        provider.authMethods ?? [{ type: "api" as const, label: "API Key" }];
 
       return {
         ...provider,
         authMethods: resolvedMethods,
-        connected: auth[provider.id]?.status === "connected" || provider.connected,
-        supported: typeof provider.supported === "boolean" ? provider.supported : isSupported,
+        connected: auth[provider.id]?.status === "connected",
       };
     });
 
     const mergedAuthMethods: Record<string, ProviderAuthMethodDescriptor[]> = { ...authMethods };
     for (const provider of mergedCatalog) {
       if (!mergedAuthMethods[provider.id]) {
-        mergedAuthMethods[provider.id] =
-          supportedProviderIds.has(provider.id) && authMethods[provider.id]
-            ? authMethods[provider.id]
-            : provider.authMethods;
+        mergedAuthMethods[provider.id] = provider.authMethods;
       }
     }
 
@@ -183,7 +149,7 @@ export function ModelsSettings(props: ModelsSettingsProps) {
     }
 
     console.log(`${DEBUG_PREFIX} loadProviderState:done`, {
-      providers: providers.length,
+      providers: result.catalog.length,
       catalog: result.catalog.length,
       connectedProviders: Object.values(result.auth).filter(item => item.status === "connected")
         .length,

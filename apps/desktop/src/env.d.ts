@@ -19,43 +19,9 @@ declare global {
       };
       dialog: {
         openDirectory: () => Promise<string | null>;
-        openFile: () => Promise<string | null>;
-        saveFile: (options?: { defaultPath?: string }) => Promise<string | null>;
       };
       shell: {
         openExternal: (url: string) => Promise<void>;
-        showItemInFolder: (fullPath: string) => Promise<void>;
-      };
-      workspace: {
-        clone: (options: { url: string; branch: string; targetDir: string }) => Promise<string>;
-        listBranches: (repoPath: string) => Promise<string[]>;
-        createWorktree: (options: {
-          repoPath: string;
-          worktreeName: string;
-          branch: string;
-        }) => Promise<string>;
-        getWorkspacesDir: () => Promise<string>;
-      };
-      app: {
-        getVersion: () => Promise<string>;
-        getPlatform: () => Promise<string>;
-      };
-      permissions: {
-        sendResponse: (response: { id: string; approved: boolean }) => void;
-        onRequest: (
-          callback: (request: {
-            id: string;
-            toolName: string;
-            args: Record<string, unknown>;
-          }) => void
-        ) => () => void;
-      };
-      fsWatcher: {
-        startWatch: (workspacePath: string) => void;
-        stopWatch: () => void;
-        onEvent: (
-          callback: (event: { type: "add" | "change" | "unlink"; path: string }) => void
-        ) => () => void;
       };
     };
   }

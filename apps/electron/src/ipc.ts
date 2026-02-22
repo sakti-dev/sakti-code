@@ -4,14 +4,10 @@
  *
  * Provides:
  * - Server configuration
- * - File dialogs (open directory, open file, save file)
- * - Shell operations (open external, show in folder)
- * - App information (version, platform)
- * - Permission responses
- * - File watcher stubs (Phase 5)
+ * - File dialogs (open directory)
+ * - Shell operations (open external)
  */
 
-import { PermissionManager } from "@ekacode/core";
 import { createLogger } from "@ekacode/shared/logger";
 import { dialog, ipcMain, shell } from "electron";
 
@@ -131,72 +127,6 @@ export function setupIPCHandlers(serverConfig: ServerConfig): void {
   });
 
   /**
-   * Open file dialog
-   * Allows user to select a file
-   */
-  ipcMain.handle("dialog:openFile", async () => {
-    logger.debug("Open file dialog requested", {
-      module: "desktop:ipc",
-      channel: "dialog:openFile",
-    });
-
-    const result = await dialog.showOpenDialog({
-      properties: ["openFile"],
-      title: "Select File",
-    });
-
-    if (result.canceled || result.filePaths.length === 0) {
-      logger.debug("File dialog canceled", {
-        module: "desktop:ipc",
-        channel: "dialog:openFile",
-      });
-      return null;
-    }
-
-    const selectedPath = result.filePaths[0];
-    logger.debug("File selected", {
-      module: "desktop:ipc",
-      channel: "dialog:openFile",
-      path: selectedPath,
-    });
-
-    return selectedPath;
-  });
-
-  /**
-   * Save file dialog
-   * Allows user to specify where to save a file
-   */
-  ipcMain.handle("dialog:saveFile", async (_event, options?: { defaultPath?: string }) => {
-    logger.debug("Save file dialog requested", {
-      module: "desktop:ipc",
-      channel: "dialog:saveFile",
-      defaultPath: options?.defaultPath,
-    });
-
-    const result = await dialog.showSaveDialog({
-      title: "Save File",
-      defaultPath: options?.defaultPath,
-    });
-
-    if (result.canceled || !result.filePath) {
-      logger.debug("Save file dialog canceled", {
-        module: "desktop:ipc",
-        channel: "dialog:saveFile",
-      });
-      return null;
-    }
-
-    logger.debug("Save file path selected", {
-      module: "desktop:ipc",
-      channel: "dialog:saveFile",
-      path: result.filePath,
-    });
-
-    return result.filePath;
-  });
-
-  /**
    * Open external URL
    * Opens a URL in the system's default browser
    *
@@ -230,94 +160,6 @@ export function setupIPCHandlers(serverConfig: ServerConfig): void {
       channel: "shell:openExternal",
       url,
     });
-  });
-
-  /**
-   * Show item in folder
-   * Shows a file in the system's file manager
-   */
-  ipcMain.handle("shell:showItemInFolder", async (_event, fullPath: string) => {
-    logger.debug("Show item in folder requested", {
-      module: "desktop:ipc",
-      channel: "shell:showItemInFolder",
-      path: fullPath,
-    });
-
-    shell.showItemInFolder(fullPath);
-
-    logger.debug("Item shown in folder", {
-      module: "desktop:ipc",
-      channel: "shell:showItemInFolder",
-      path: fullPath,
-    });
-  });
-
-  /**
-   * Get app version
-   * Returns the version from package.json
-   */
-  ipcMain.handle("app:getVersion", async () => {
-    logger.debug("App version requested", {
-      module: "desktop:ipc",
-      channel: "app:getVersion",
-    });
-
-    // Version is injected by electron-vite build process
-    return process.env.npm_package_version ?? "0.0.1";
-  });
-
-  /**
-   * Get app platform
-   * Returns the current platform (darwin, linux, win32)
-   */
-  ipcMain.handle("app:getPlatform", async () => {
-    logger.debug("App platform requested", {
-      module: "desktop:ipc",
-      channel: "app:getPlatform",
-    });
-
-    return process.platform;
-  });
-
-  /**
-   * Permission response from renderer
-   * Handles user's decision on permission requests
-   */
-  ipcMain.on("permission:response", (_event, response) => {
-    logger.debug("Permission response received", {
-      module: "desktop:ipc",
-      channel: "permission:response",
-      id: response.id,
-      approved: response.approved,
-    });
-
-    const permissionMgr = PermissionManager.getInstance();
-    permissionMgr.handleResponse(response);
-  });
-
-  /**
-   * File watch start (stub for Phase 5)
-   * TODO: Implement chokidar watch in Phase 5
-   */
-  ipcMain.on("fs:watch-start", (_event, workspacePath: string) => {
-    logger.info("File watch requested", {
-      module: "desktop:ipc",
-      channel: "fs:watch-start",
-      workspacePath,
-    });
-    // TODO: Implement chokidar watch in Phase 5
-  });
-
-  /**
-   * File watch stop (stub for Phase 5)
-   * TODO: Implement chokidar stop in Phase 5
-   */
-  ipcMain.on("fs:watch-stop", _event => {
-    logger.info("File watch stop requested", {
-      module: "desktop:ipc",
-      channel: "fs:watch-stop",
-    });
-    // TODO: Implement chokidar stop in Phase 5
   });
 
   logger.info("IPC handlers registered", { module: "desktop:ipc" });
