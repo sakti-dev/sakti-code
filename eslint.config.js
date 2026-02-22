@@ -88,7 +88,7 @@ module.exports = [
     },
   },
   {
-    files: ["packages/core/tests/**/*.ts", "packages/core/tests/**/*.tsx"],
+    files: ["packages/core/src/**/__tests__/**/*.ts", "packages/core/src/**/__tests__/**/*.tsx"],
     rules: {
       "no-restricted-imports": [
         "error",
