@@ -7,11 +7,11 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Test files use any for simplicity */
 
+import { Instance } from "@/instance";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Instance } from "../../../src/instance";
 
 // Set up mock before importing the module
 const mockExecSync = vi.fn();
@@ -103,7 +103,7 @@ jkl012\trefs/tags/v3.0.0
     });
 
     // Import the module after mocks are set up
-    const module = await import("../../../src/tools/search-docs/git-manager");
+    const module = await import("@/tools/search-docs/git-manager");
     gitManager = module.gitManager;
   });
 

@@ -4,13 +4,13 @@
  * TDD: Tests written first to define expected behavior of applyPatchTool with safety features
  */
 
+import { Instance } from "@/instance";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Instance } from "../../../src/instance";
 
 // Mock PermissionManager
 const mockRequestApproval = vi.fn();
 
-vi.mock("../../../src/security/permission-manager", () => ({
+vi.mock("@/security/permission-manager", () => ({
   PermissionManager: {
     getInstance: vi.fn(() => ({
       requestApproval: (args: {
@@ -35,7 +35,7 @@ describe("applyPatchTool", () => {
     mockRequestApproval.mockResolvedValue(true);
 
     // Import the tool after mocks are set up
-    const module = await import("../../../src/tools/filesystem/apply-patch");
+    const module = await import("@/tools/filesystem/apply-patch");
     applyPatchTool = module.applyPatchTool;
   });
 

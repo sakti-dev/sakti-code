@@ -10,11 +10,11 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Test files use any for simplicity */
 
+import { Instance } from "@/instance";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Instance } from "../../../src/instance";
 
 // Set up mocks before importing the module
 const mockExecSync = vi.fn();
@@ -96,7 +96,7 @@ def456\trefs/heads/master
     });
 
     // Import the module after mocks are set up
-    const module = await import("../../../src/tools/search-docs/discovery-tools");
+    const module = await import("@/tools/search-docs/discovery-tools");
     discoveryTools = module.discoveryTools;
     resetDiscoveryTools = module.resetDiscoveryTools;
   });

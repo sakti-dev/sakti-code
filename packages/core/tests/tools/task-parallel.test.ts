@@ -4,14 +4,14 @@
  * TDD: Tests written first to define expected behavior of parallel explore spawning
  */
 
+import { taskParallelTool } from "@/tools/task-parallel";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { taskParallelTool } from "../../src/tools/task-parallel";
 
 const { mockRequestApproval } = vi.hoisted(() => ({
   mockRequestApproval: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock("../../src/security/permission-manager", () => ({
+vi.mock("@/security/permission-manager", () => ({
   PermissionManager: {
     getInstance: vi.fn(() => ({
       requestApproval: (...args: unknown[]) => mockRequestApproval(...args),
@@ -20,13 +20,13 @@ vi.mock("../../src/security/permission-manager", () => ({
   },
 }));
 
-vi.mock("../../src/security/permission-rules", () => ({
+vi.mock("@/security/permission-rules", () => ({
   evaluatePermission: vi.fn(() => "allow"),
   createDefaultRules: vi.fn(() => []),
 }));
 
 describe("taskParallelTool", () => {
-  let Instance: typeof import("../../src/instance").Instance;
+  let Instance: typeof import("@/instance").Instance;
 
   const testSessionId = "test-parallel-session";
   const testWorkspaceDir = "/tmp/sakti-code-test-parallel";
@@ -34,7 +34,7 @@ describe("taskParallelTool", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    const instanceModule = await import("../../src/instance");
+    const instanceModule = await import("@/instance");
     Instance = instanceModule.Instance;
   });
 

@@ -1,6 +1,6 @@
+import { skillTool, skillToolSchema } from "@/skill/tool";
+import type { SkillInfo } from "@/skill/types";
 import { describe, expect, it } from "vitest";
-import { skillTool, skillToolSchema } from "../../src/skill/tool";
-import type { SkillInfo } from "../../src/skill/types";
 
 describe("skill tool", () => {
   describe("schema", () => {

@@ -21,7 +21,7 @@ vi.mock("uuid", () => ({
 // Mock the sub-agent manager
 const mockSubAgentRun = vi.fn();
 
-vi.mock("../../../src/tools/search-docs/sub-agent", () => ({
+vi.mock("@/tools/search-docs/sub-agent", () => ({
   getSubAgentManager: vi.fn(() => ({
     getOrCreate: vi.fn(async () => ({
       run: mockSubAgentRun,
@@ -36,7 +36,7 @@ const mockCloneResult = {
   commit: "abc123def456",
 };
 
-vi.mock("../../../src/tools/search-docs/git-manager", () => ({
+vi.mock("@/tools/search-docs/git-manager", () => ({
   getGitManager: vi.fn(() => ({
     buildResourceKey: vi.fn(() => "test-resource-key"),
     clone: vi.fn(async () => mockCloneResult),
@@ -54,7 +54,7 @@ const mockSessionStore = {
   addRepo: vi.fn(),
 };
 
-vi.mock("../../../src/tools/search-docs/session-store", () => ({
+vi.mock("@/tools/search-docs/session-store", () => ({
   getSessionStore: vi.fn(() => mockSessionStore),
 }));
 
@@ -99,7 +99,7 @@ describe("search-docs", () => {
     });
 
     // Import the module after mocks are set up
-    const module = await import("../../../src/tools/search-docs/search-docs");
+    const module = await import("@/tools/search-docs/search-docs");
     createSearchDocsTool = module.createSearchDocsTool;
     searchDocs = module.searchDocs;
   });
