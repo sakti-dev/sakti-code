@@ -88,6 +88,22 @@ module.exports = [
     },
   },
   {
+    files: ["packages/core/tests/**/*.ts", "packages/core/tests/**/*.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../src/*", "../../src/*", "../../../src/*", "../../../../src/*"],
+              message: "Use @/* imports instead of deep relative paths to src.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["packages/core/tests/vitest.setup.ts", "packages/core/tests/helpers/core-db.ts"],
     rules: {
       "no-restricted-imports": "off",
