@@ -180,7 +180,11 @@ export default function HomeView() {
         onClose={() => setIsNewWorkspaceOpen(false)}
         onCreate={handleCreateWorkspace}
       />
-      <SettingsDialog open={isSettingsOpen()} onOpenChange={setIsSettingsOpen} />
+      <SettingsDialog
+        open={isSettingsOpen()}
+        onOpenChange={setIsSettingsOpen}
+        providerClient={apiClient()?.getProviderClient()}
+      />
     </>
   );
 }

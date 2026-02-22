@@ -8,11 +8,11 @@ import {
 import { cn } from "@/utils";
 import {
   Book,
+  Boxes,
   Brain,
   Cloud,
   ExternalLink,
   FileText,
-  FlaskConical,
   GitBranch,
   Hammer,
   Slash,
@@ -55,7 +55,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
   { id: "agents", label: "Agents", icon: Brain },
   { id: "memory", label: "Memory", icon: ZapIcon },
   { id: "hooks", label: "Hooks", icon: Cloud },
-  { id: "providers", label: "Providers", icon: FlaskConical },
+  { id: "models", label: "Models", icon: Boxes },
   { id: "experimental", label: "Experimental", icon: FileText },
   { id: "changelog", label: "Changelog", icon: Book, external: true, href: "https://github.com" },
   { id: "docs", label: "Docs", icon: Book, external: true, href: "https://docs.ekacode.dev" },
@@ -112,6 +112,7 @@ export function DialogSidebar(props: DialogSidebarProps) {
   );
 }
 
+import type { ProviderClient } from "@/core/services/api/provider-client";
 import { AgentsSettings } from "./agents-settings";
 import { CommandsSettings } from "./commands-settings";
 import { ExperimentalSettings } from "./experimental-settings";
@@ -120,12 +121,13 @@ import { GitSettings } from "./git-settings";
 import { HooksSettings } from "./hooks-settings";
 import { McpSettings } from "./mcp-settings";
 import { MemorySettings } from "./memory-settings";
-import { ProvidersSettings } from "./providers-settings";
+import { ModelsSettings } from "./models-settings";
 import { TerminalSettings } from "./terminal-settings";
 
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  providerClient?: ProviderClient;
 }
 
 export function SettingsDialog(props: SettingsDialogProps) {
@@ -149,8 +151,8 @@ export function SettingsDialog(props: SettingsDialogProps) {
         return <MemorySettings />;
       case "hooks":
         return <HooksSettings />;
-      case "providers":
-        return <ProvidersSettings />;
+      case "models":
+        return <ModelsSettings client={props.providerClient} />;
       case "experimental":
         return <ExperimentalSettings />;
       case "changelog":
