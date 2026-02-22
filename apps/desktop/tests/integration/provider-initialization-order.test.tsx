@@ -7,13 +7,13 @@
  * @package @sakti-code/desktop/tests
  */
 
+import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
 import { ChatProvider, useChatContext } from "@/core/state/contexts/chat-provider";
 import {
   useMessageStore,
   usePartStore,
   useSessionStore,
 } from "@/core/state/providers/store-provider";
-import type { SaktiCodeApiClient } from "@renderer/lib/api-client";
 import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
