@@ -5,14 +5,14 @@
  * agent architecture, replacing the XState-based actors.
  */
 
-import { describe, expect, it } from "vitest";
 import {
   AgentConfig,
   AgentEvent,
   AgentInput,
   AgentResult,
   AgentType,
-} from "../../../src/agent/workflow/types";
+} from "@/agent/workflow/types";
+import { describe, expect, it } from "vitest";
 
 describe("agent/types", () => {
   describe("AgentType", () => {

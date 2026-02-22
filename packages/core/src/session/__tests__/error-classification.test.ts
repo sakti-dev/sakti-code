@@ -1,5 +1,5 @@
+import { classifyAgentError } from "@/session/error-classification";
 import { describe, expect, it } from "vitest";
-import { classifyAgentError } from "../../src/session/error-classification";
 
 describe("classifyAgentError", () => {
   it("classifies UND_ERR_SOCKET as network_socket_closed", () => {

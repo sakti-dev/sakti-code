@@ -5,7 +5,6 @@
  * Validates agent lookup, defaults, and tool resolution.
  */
 
-import { describe, expect, it, vi } from "vitest";
 import {
   AGENT_REGISTRY,
   getAgent,
@@ -13,10 +12,11 @@ import {
   listAgents,
   loadModel,
   resolveTools,
-} from "../../src/agent/registry";
+} from "@/agent/registry";
+import { describe, expect, it, vi } from "vitest";
 
 // Mock model provider functions
-vi.mock("../../src/agent/workflow/model-provider", () => ({
+vi.mock("@/agent/workflow/model-provider", () => ({
   getBuildModel: vi.fn(() => ({ model: "glm-4.7" })),
   getExploreModel: vi.fn(() => ({ model: "glm-4.7-flashx" })),
   getPlanModel: vi.fn(() => ({ model: "glm-4.7" })),

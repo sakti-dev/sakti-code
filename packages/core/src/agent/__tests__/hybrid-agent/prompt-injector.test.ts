@@ -4,13 +4,13 @@
  * TDD tests for prompt injection functionality.
  */
 
-import type { LanguageModelV3Prompt } from "@ai-sdk/provider";
-import { describe, expect, it } from "vitest";
 import {
   createHybridPrompt,
   injectVisionAnalysis,
   injectVisionAnalysisInUserMessage,
-} from "../../../src/agent/hybrid-agent/prompt-injector.js";
+} from "@/agent/hybrid-agent/prompt-injector.js";
+import type { LanguageModelV3Prompt } from "@ai-sdk/provider";
+import { describe, expect, it } from "vitest";
 
 describe("Prompt Injector", () => {
   const basePrompt: LanguageModelV3Prompt = [

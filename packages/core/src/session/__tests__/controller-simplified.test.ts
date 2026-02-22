@@ -5,12 +5,12 @@
  * manages a single agent without complex workflow orchestration.
  */
 
+import { SessionController } from "@/session/controller";
+import { SessionConfig } from "@/session/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SessionController } from "../../src/session/controller";
-import { SessionConfig } from "../../src/session/types";
 
 // Mock the agent factory
-vi.mock("../../src/agent/workflow/factory", () => ({
+vi.mock("@/agent/workflow/factory", () => ({
   createAgent: vi.fn((name: string, id: string) => ({
     id,
     type: name,
@@ -22,7 +22,7 @@ vi.mock("../../src/agent/workflow/factory", () => ({
   runAgent: vi.fn(),
 }));
 
-vi.mock("../../src/session/processor", () => ({
+vi.mock("@/session/processor", () => ({
   AgentProcessor: class MockAgentProcessor {
     async run() {
       return {

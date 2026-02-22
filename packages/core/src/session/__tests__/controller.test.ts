@@ -5,11 +5,11 @@
  * workflow execution and user message processing.
  */
 
+import { SessionController } from "@/session/controller";
+import { SessionConfig } from "@/session/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SessionController } from "../../src/session/controller";
-import { SessionConfig } from "../../src/session/types";
 
-vi.mock("../../src/agent/workflow/factory", () => ({
+vi.mock("@/agent/workflow/factory", () => ({
   createAgent: vi.fn(() => ({
     id: "test-agent",
     type: "build",
@@ -20,7 +20,7 @@ vi.mock("../../src/agent/workflow/factory", () => ({
   })),
 }));
 
-vi.mock("../../src/session/processor", () => ({
+vi.mock("@/session/processor", () => ({
   AgentProcessor: class MockAgentProcessor {
     async run() {
       return {

@@ -1,5 +1,5 @@
+import { canRetryStreamAttempt, retryDelayMs } from "@/session/processor";
 import { describe, expect, it } from "vitest";
-import { canRetryStreamAttempt, retryDelayMs } from "../../src/session/processor";
 
 describe("retry policy", () => {
   it("computes uncapped exponential backoff delays with 3s base", () => {

@@ -5,8 +5,8 @@
  * in the new opencode-style agent architecture.
  */
 
+import { Checkpoint, SessionConfig, SessionPhase, SessionStatus } from "@/session/types";
 import { describe, expect, it } from "vitest";
-import { Checkpoint, SessionConfig, SessionPhase, SessionStatus } from "../../src/session/types";
 
 describe("session/types", () => {
   describe("SessionPhase", () => {

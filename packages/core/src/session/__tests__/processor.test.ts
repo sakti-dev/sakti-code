@@ -5,9 +5,9 @@
  * streaming LLM responses and tool execution.
  */
 
+import { AgentConfig, AgentInput } from "@/agent/workflow/types";
+import { AgentProcessor } from "@/session/processor";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AgentConfig, AgentInput } from "../../src/agent/workflow/types";
-import { AgentProcessor } from "../../src/session/processor";
 
 // Mock the streamText from AI SDK
 vi.mock("ai", () => ({

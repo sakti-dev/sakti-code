@@ -1,7 +1,7 @@
+import type { PromptRegistry, VisionRequest } from "@/agent/hybrid-agent/types";
+import { VisionRequestHandler } from "@/agent/hybrid-agent/vision-request-handler";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { describe, expect, it } from "vitest";
-import type { PromptRegistry, VisionRequest } from "../../../src/agent/hybrid-agent/types";
-import { VisionRequestHandler } from "../../../src/agent/hybrid-agent/vision-request-handler";
 
 function createPromptRegistry(): PromptRegistry {
   return {

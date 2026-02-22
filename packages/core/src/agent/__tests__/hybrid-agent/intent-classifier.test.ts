@@ -4,15 +4,15 @@
  * TDD tests for intent classification functionality.
  */
 
-import type { LanguageModelV3, LanguageModelV3Prompt } from "@ai-sdk/provider";
-import { describe, expect, it } from "vitest";
 import {
   IntentClassifier,
   classifyByKeywords,
   getAvailableIntents,
   getIntentKeywords,
-} from "../../../src/agent/hybrid-agent/intent-classifier.js";
-import { createPromptRegistry } from "../../../src/agent/hybrid-agent/prompt-registry.js";
+} from "@/agent/hybrid-agent/intent-classifier.js";
+import { createPromptRegistry } from "@/agent/hybrid-agent/prompt-registry.js";
+import type { LanguageModelV3, LanguageModelV3Prompt } from "@ai-sdk/provider";
+import { describe, expect, it } from "vitest";
 
 // Mock text model for testing
 class MockTextModel {

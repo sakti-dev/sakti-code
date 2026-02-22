@@ -5,17 +5,17 @@
  * for creating different agent types using the new registry system.
  */
 
-import { describe, expect, it, vi } from "vitest";
 import {
   createAgent,
   createBuildAgent,
   createExploreAgent,
   createPlanAgent,
   runAgent,
-} from "../../../src/agent/workflow/factory";
+} from "@/agent/workflow/factory";
+import { describe, expect, it, vi } from "vitest";
 
 // Mock the registry
-vi.mock("../../../src/agent/registry", () => ({
+vi.mock("@/agent/registry", () => ({
   getAgent: vi.fn((name: string) => ({
     name,
     mode: name === "build" ? "primary" : "subagent",
@@ -41,7 +41,7 @@ vi.mock("../../../src/agent/registry", () => ({
 }));
 
 // Mock AgentProcessor
-vi.mock("../../../src/session/processor", () => ({
+vi.mock("@/session/processor", () => ({
   AgentProcessor: class MockAgentProcessor {
     config;
     eventCallback;

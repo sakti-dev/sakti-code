@@ -4,8 +4,8 @@
  * These tests validate graceful shutdown handling with checkpoint saving.
  */
 
+import { ShutdownHandler } from "@/session/shutdown";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ShutdownHandler } from "../../src/session/shutdown";
 
 // Mock process methods
 const originalProcess = global.process;

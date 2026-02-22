@@ -5,9 +5,9 @@
  * persistence and lifecycle handling.
  */
 
+import { SessionManager } from "@/session/manager";
+import { SessionConfig } from "@/session/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SessionManager } from "../../src/session/manager";
-import { SessionConfig } from "../../src/session/types";
 
 describe("session/manager", () => {
   let mockManager: SessionManager;

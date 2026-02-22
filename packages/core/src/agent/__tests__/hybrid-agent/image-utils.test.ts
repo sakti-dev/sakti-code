@@ -4,14 +4,14 @@
  * TDD tests for image extraction and manipulation.
  */
 
-import type { LanguageModelV3Prompt } from "@ai-sdk/provider";
-import { describe, expect, it } from "vitest";
 import {
   extractImagesAndText,
   hasImageParts,
   selectVisionStrategy,
   stripImageParts,
-} from "../../../src/agent/hybrid-agent/image-utils.js";
+} from "@/agent/hybrid-agent/image-utils.js";
+import type { LanguageModelV3Prompt } from "@ai-sdk/provider";
+import { describe, expect, it } from "vitest";
 
 describe("Image Utilities", () => {
   describe("extractImagesAndText", () => {

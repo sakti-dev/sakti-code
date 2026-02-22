@@ -129,6 +129,34 @@ function rewriteImports(filePath, domain) {
     }
   );
 
+  content = content.replace(
+    /vi\.mock\(["']\.\.\/src\/([^"']+)["']/g,
+    (match, importPath) => {
+      return `vi.mock("@/${importPath}"`;
+    }
+  );
+
+  content = content.replace(
+    /vi\.mock\(["']\.\.\/\.\.\/src\/([^"']+)["']/g,
+    (match, importPath) => {
+      return `vi.mock("@/${importPath}"`;
+    }
+  );
+
+  content = content.replace(
+    /vi\.mock\(["']\.\.\/\.\.\/\.\.\/src\/([^"']+)["']/g,
+    (match, importPath) => {
+      return `vi.mock("@/${importPath}"`;
+    }
+  );
+
+  content = content.replace(
+    /vi\.mock\(["']\.\.\/\.\.\/\.\.\/\.\.\/src\/([^"']+)["']/g,
+    (match, importPath) => {
+      return `vi.mock("@/${importPath}"`;
+    }
+  );
+
   return content === originalContent ? null : content;
 }
 

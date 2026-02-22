@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 // These tests verify the agent structure without requiring API calls
 describe("Hybrid Agent E2E", () => {
   it("should export all public APIs", async () => {
-    const hybridAgent = await import("../../../src/agent/hybrid-agent");
+    const hybridAgent = await import("@/agent/hybrid-agent");
 
     // Check that all exports exist
     expect(hybridAgent.HybridAgent).toBeDefined();
@@ -24,7 +24,7 @@ describe("Hybrid Agent E2E", () => {
   it("should export all types", async () => {
     // TypeScript types are not runtime values, so we can't test them directly
     // This test verifies the module can be imported without type errors
-    const hybridAgent = await import("../../../src/agent/hybrid-agent");
+    const hybridAgent = await import("@/agent/hybrid-agent");
 
     // Verify that runtime values needed for type usage are available
     expect(hybridAgent.HybridAgent).toBeDefined();
@@ -33,7 +33,7 @@ describe("Hybrid Agent E2E", () => {
   });
 
   it("should export utility functions", async () => {
-    const hybridAgent = await import("../../../src/agent/hybrid-agent");
+    const hybridAgent = await import("@/agent/hybrid-agent");
 
     // Check that all utilities are exported
     expect(hybridAgent.extractImagesAndText).toBeDefined();
@@ -48,7 +48,7 @@ describe("Hybrid Agent E2E", () => {
   });
 
   it("should export all prompts", async () => {
-    const prompts = await import("../../../src/prompts/hybrid-agent/index");
+    const prompts = await import("@/prompts/hybrid-agent/index");
 
     // Check that all prompts are exported
     expect(prompts.UI_TO_ARTIFACT_PROMPTS).toBeDefined();
@@ -61,16 +61,14 @@ describe("Hybrid Agent E2E", () => {
   });
 
   it("should create Zai hybrid agent factory", async () => {
-    const { createZaiHybridAgent } =
-      await import("../../../src/agent/hybrid-agent/zai-hybrid-agent");
+    const { createZaiHybridAgent } = await import("@/agent/hybrid-agent/zai-hybrid-agent");
 
     // The factory should be a function
     expect(typeof createZaiHybridAgent).toBe("function");
   });
 
   it("should build MCP prompt registry with all intents", async () => {
-    const { buildMcpPromptRegistry } =
-      await import("../../../src/agent/hybrid-agent/zai-hybrid-agent");
+    const { buildMcpPromptRegistry } = await import("@/agent/hybrid-agent/zai-hybrid-agent");
 
     const registry = buildMcpPromptRegistry();
     const intents = registry.list();
@@ -91,7 +89,7 @@ describe("Hybrid Agent E2E", () => {
 
 describe("HybridAgent class", () => {
   it("should be instantiable with correct properties", async () => {
-    const { HybridAgent } = await import("../../../src/agent/hybrid-agent/hybrid-agent");
+    const { HybridAgent } = await import("@/agent/hybrid-agent/hybrid-agent");
 
     // Mock models
     const mockModel = {
@@ -120,9 +118,7 @@ describe("HybridAgent class", () => {
       },
     };
 
-    const registry = (
-      await import("../../../src/agent/hybrid-agent/prompt-registry")
-    ).createPromptRegistry();
+    const registry = (await import("@/agent/hybrid-agent/prompt-registry")).createPromptRegistry();
 
     const agent = new HybridAgent({
       textModel: mockModel as unknown as LanguageModelV3,

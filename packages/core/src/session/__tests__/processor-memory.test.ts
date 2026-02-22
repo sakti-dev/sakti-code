@@ -24,7 +24,7 @@ vi.mock("ai", () => ({
   tool: vi.fn(definition => definition),
 }));
 
-vi.mock("../../src/memory", () => ({
+vi.mock("@/memory", () => ({
   SimpleTokenCounter: class MockTokenCounter {},
   createObserverAgent: vi.fn(() => vi.fn()),
   formatObservationsForInjection: vi.fn(() => ""),
@@ -41,11 +41,11 @@ vi.mock("../../src/memory", () => ({
   processInputStep: processInputStepMock,
 }));
 
-vi.mock("../../src/agent/spec-injector", () => ({
+vi.mock("@/agent/spec-injector", () => ({
   injectSpecContextForModelMessages: injectSpecContextMock,
 }));
 
-vi.mock("../../src/agent/workflow/model-provider", () => ({
+vi.mock("@/agent/workflow/model-provider", () => ({
   getBuildModel: vi.fn(() => ({ model: "mock-build" })),
   getExploreModel: vi.fn(() => ({ model: "mock-explore" })),
   getPlanModel: vi.fn(() => ({ model: "mock-plan" })),
@@ -77,7 +77,7 @@ describe("session/processor memory integration", () => {
   });
 
   it("uses memory input processor when thread context is present", async () => {
-    const { AgentProcessor } = await import("../../src/session/processor");
+    const { AgentProcessor } = await import("@/session/processor");
 
     const processor = new AgentProcessor(
       {
@@ -117,7 +117,7 @@ describe("session/processor memory integration", () => {
   });
 
   it("persists final user/assistant messages through memory output processor", async () => {
-    const { AgentProcessor } = await import("../../src/session/processor");
+    const { AgentProcessor } = await import("@/session/processor");
 
     const processor = new AgentProcessor(
       {
@@ -158,7 +158,7 @@ describe("session/processor memory integration", () => {
   });
 
   it("injects spec context into model messages when thread context is present", async () => {
-    const { AgentProcessor } = await import("../../src/session/processor");
+    const { AgentProcessor } = await import("@/session/processor");
 
     const processor = new AgentProcessor(
       {
@@ -189,7 +189,7 @@ describe("session/processor memory integration", () => {
   });
 
   it("passes reflector model into processInputStep for reflection integration", async () => {
-    const { AgentProcessor } = await import("../../src/session/processor");
+    const { AgentProcessor } = await import("@/session/processor");
 
     const processor = new AgentProcessor(
       {
@@ -224,7 +224,7 @@ describe("session/processor memory integration", () => {
   });
 
   it("supports resource-scope observation integration when memoryScope is resource", async () => {
-    const { AgentProcessor } = await import("../../src/session/processor");
+    const { AgentProcessor } = await import("@/session/processor");
 
     const processor = new AgentProcessor(
       {
@@ -269,7 +269,7 @@ describe("session/processor memory integration", () => {
   });
 
   it("does not reorder result messages when deriving final assistant content", async () => {
-    const { AgentProcessor } = await import("../../src/session/processor");
+    const { AgentProcessor } = await import("@/session/processor");
 
     const processor = new AgentProcessor(
       {

@@ -1,5 +1,5 @@
+import { Instance } from "@/instance";
 import { describe, expect, it, vi } from "vitest";
-import { Instance } from "../../../src/instance";
 
 function createProviderMock(providerName: string) {
   return vi.fn((options: { apiKey?: string; baseURL?: string; headers?: Record<string, string> }) =>
@@ -127,7 +127,7 @@ vi.mock("@sakti-code/zai", () => ({
 
 describe("agent/workflow/model-provider", () => {
   it("uses request-scoped context for non-zai provider selection", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -157,7 +157,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("keeps zai-coding-plan on the custom zai sdk path", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -183,7 +183,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("keeps zai-coding-plan on custom zai sdk even when npm metadata is openai-compatible", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -210,7 +210,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("prefers context-scoped credentials when resolving model references", async () => {
-    const { getModelByReference } = await import("../../../src/agent/workflow/model-provider");
+    const { getModelByReference } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -237,7 +237,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("isolates provider runtime selection across concurrent async contexts", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const [a, b] = await Promise.all([
@@ -290,8 +290,8 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("builds a hybrid model when request context includes hybrid vision runtime", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
-    const { HybridAgent } = await import("../../../src/agent/hybrid-agent");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
+    const { HybridAgent } = await import("@/agent/hybrid-agent");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -314,7 +314,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("uses openai-compatible provider for chat-completions style providers", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -342,7 +342,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("does not force responses transport for non-openai providers using @ai-sdk/openai", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -370,7 +370,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("uses openai responses transport for the openai provider", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -398,7 +398,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("uses anthropic sdk for anthropic npm package", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -426,7 +426,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("uses google sdk for google npm package", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -454,7 +454,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("uses azure sdk for azure npm package", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -482,7 +482,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("uses openrouter sdk for openrouter npm package", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -509,7 +509,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("uses gitlab agentic chat for gitlab npm package", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -535,7 +535,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("uses v6-compatible fallback sdk routing for remaining models.dev provider npm packages", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
     const cases = [
       "@jerome-benoit/sap-ai-provider-v2",
       "venice-ai-sdk-provider",
@@ -570,7 +570,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("falls back when openai-compatible sdk does not expose chat()", async () => {
-    const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+    const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -601,7 +601,7 @@ describe("agent/workflow/model-provider", () => {
     const previousOpenAiKey = process.env.OPENAI_API_KEY;
     process.env.OPENAI_API_KEY = "openai-secret";
     try {
-      const { getBuildModel } = await import("../../../src/agent/workflow/model-provider");
+      const { getBuildModel } = await import("@/agent/workflow/model-provider");
 
       const model = await Instance.provide({
         directory: process.cwd(),
@@ -634,7 +634,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("does not reuse active context metadata when model reference targets a different provider", async () => {
-    const { getModelByReference } = await import("../../../src/agent/workflow/model-provider");
+    const { getModelByReference } = await import("@/agent/workflow/model-provider");
 
     const model = await Instance.provide({
       directory: process.cwd(),
@@ -659,7 +659,7 @@ describe("agent/workflow/model-provider", () => {
   });
 
   it("messageHasImage only flags actual image content", async () => {
-    const { messageHasImage } = await import("../../../src/agent/workflow/model-provider");
+    const { messageHasImage } = await import("@/agent/workflow/model-provider");
 
     expect(messageHasImage([{ role: "user", content: "https://example.com/some-page" }])).toBe(
       false

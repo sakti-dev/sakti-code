@@ -2,17 +2,17 @@
  * VCS functions tests
  */
 
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   clone,
   createWorktree,
   getWorkspacesDir,
   listLocalBranches,
   worktreeExists,
-} from "../../src/workspace/vcs";
+} from "@/workspace/vcs";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("listLocalBranches", () => {
   let tempDir: string;

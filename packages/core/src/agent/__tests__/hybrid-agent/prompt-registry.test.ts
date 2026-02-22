@@ -4,12 +4,12 @@
  * TDD tests for prompt registry functionality.
  */
 
-import { describe, expect, it } from "vitest";
 import {
   createEmptyPromptRegistry,
   createPromptRegistry,
-} from "../../../src/agent/hybrid-agent/prompt-registry";
-import type { PromptContext, PromptHandler } from "../../../src/agent/hybrid-agent/types";
+} from "@/agent/hybrid-agent/prompt-registry";
+import type { PromptContext, PromptHandler } from "@/agent/hybrid-agent/types";
+import { describe, expect, it } from "vitest";
 
 describe("Prompt Registry", () => {
   describe("createPromptRegistry", () => {

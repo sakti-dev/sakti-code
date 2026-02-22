@@ -1,7 +1,7 @@
+import { Instance } from "@/instance";
+import { clearCorePluginHooks, setCorePluginHooks } from "@/plugin/hooks";
+import { AgentProcessor } from "@/session/processor";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Instance } from "../../src/instance";
-import { clearCorePluginHooks, setCorePluginHooks } from "../../src/plugin/hooks";
-import { AgentProcessor } from "../../src/session/processor";
 
 const testState = vi.hoisted(() => ({
   captured: {
@@ -15,7 +15,7 @@ vi.mock("ai", () => ({
   tool: vi.fn(definition => definition),
 }));
 
-vi.mock("../../src/agent/workflow/model-provider", () => ({
+vi.mock("@/agent/workflow/model-provider", () => ({
   getBuildModel: vi.fn(() => ({ id: "build-model" })),
   getExploreModel: vi.fn(() => ({ id: "explore-model" })),
   getPlanModel: vi.fn(() => ({ id: "plan-model" })),
