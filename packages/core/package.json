@@ -18,7 +18,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:typecheck": "tsc -p tsconfig.spec.json --noEmit",
-    "test:unit": "vitest run src tests --exclude '**/tests/integration/**'",
+    "test:unit": "vitest run --exclude '**/tests/integration/**'",
     "test:integration": "vitest run tests/integration",
     "test:all": "pnpm test:typecheck && pnpm lint && pnpm test:unit && pnpm test:integration"
   },
