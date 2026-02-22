@@ -30,13 +30,13 @@ const mockDetectServer = vi.fn(async () => mockServer);
 const mockFindRoot = vi.fn(async () => "/repo");
 const mockGetServer = vi.fn(() => mockServer);
 
-vi.mock("../../src/lsp/client", () => ({
+vi.mock("@/lsp/client", () => ({
   LSPClient: {
     create: mockCreateClient,
   },
 }));
 
-vi.mock("../../src/lsp/server", () => ({
+vi.mock("@/lsp/server", () => ({
   LSPServerRegistry: {
     detectServer: mockDetectServer,
     findRoot: mockFindRoot,
@@ -44,7 +44,7 @@ vi.mock("../../src/lsp/server", () => ({
   },
 }));
 
-const { LSP } = await import("../../src/lsp");
+const { LSP } = await import("@/lsp");
 
 describe("LSP integration", () => {
   beforeEach(async () => {

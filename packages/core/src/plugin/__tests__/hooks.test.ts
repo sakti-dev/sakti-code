@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   applyToolDefinitionHook,
   clearCorePluginHooks,
@@ -6,7 +5,8 @@ import {
   setCorePluginHooks,
   triggerChatHeadersHook,
   triggerChatParamsHook,
-} from "../../src/plugin/hooks";
+} from "@/plugin/hooks";
+import { describe, expect, it } from "vitest";
 
 describe("plugin/hooks", () => {
   it("resolves model/provider using runtime values when available", () => {

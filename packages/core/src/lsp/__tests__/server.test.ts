@@ -1,5 +1,5 @@
+import { LSPServerRegistry } from "@/lsp/server";
 import { describe, expect, it } from "vitest";
-import { LSPServerRegistry } from "../../src/lsp/server";
 
 describe("LSPServerRegistry", () => {
   describe("detectServer", () => {

@@ -37,7 +37,7 @@ vi.mock("vscode-jsonrpc/node", () => ({
   })),
 }));
 
-const { LSPClient } = await import("../../src/lsp/client");
+const { LSPClient } = await import("@/lsp/client");
 
 describe("LSPClient", () => {
   beforeEach(() => {

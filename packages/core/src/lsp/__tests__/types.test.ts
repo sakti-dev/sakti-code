@@ -1,5 +1,5 @@
+import type { LSPDiagnostic } from "@/lsp/types";
 import { describe, expect, it } from "vitest";
-import type { LSPDiagnostic } from "../../src/lsp/types";
 
 describe("LSP Types", () => {
   describe("LSPDiagnostic", () => {
