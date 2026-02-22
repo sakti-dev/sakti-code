@@ -3,6 +3,14 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     setupFiles: ["./src/test/setup.ts", "./tests/vitest.setup.ts"],
+    deps: {
+      optimizer: {
+        web: {
+          include: ["solid-js", "solid-js/web", "@solidjs/router", "lucide-solid"],
+        },
+      },
+      interopDefault: true,
+    },
     server: {
       deps: {
         inline: [
@@ -17,12 +25,8 @@ export default defineConfig({
         ],
       },
     },
-    deps: {
-      optimizer: {
-        web: {
-          include: ["solid-js", "solid-js/web", "@solidjs/router", "lucide-solid"],
-        },
-      },
-    },
+  },
+  ssr: {
+    noExternal: ["lucide-solid"],
   },
 });
