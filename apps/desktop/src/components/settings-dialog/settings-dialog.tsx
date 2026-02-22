@@ -48,6 +48,7 @@ export interface SettingsTab {
 
 export const SETTINGS_TABS: SettingsTab[] = [
   { id: "general", label: "General", icon: User },
+  { id: "models", label: "Models", icon: Boxes },
   { id: "git", label: "Git", icon: GitBranch },
   { id: "terminal", label: "Terminal", icon: Terminal },
   { id: "mcp", label: "MCP", icon: Hammer },
@@ -55,7 +56,6 @@ export const SETTINGS_TABS: SettingsTab[] = [
   { id: "agents", label: "Agents", icon: Brain },
   { id: "memory", label: "Memory", icon: ZapIcon },
   { id: "hooks", label: "Hooks", icon: Cloud },
-  { id: "models", label: "Models", icon: Boxes },
   { id: "experimental", label: "Experimental", icon: FileText },
   { id: "changelog", label: "Changelog", icon: Book, external: true, href: "https://github.com" },
   { id: "docs", label: "Docs", icon: Book, external: true, href: "https://docs.ekacode.dev" },
