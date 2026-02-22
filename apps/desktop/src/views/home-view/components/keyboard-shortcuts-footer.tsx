@@ -1,4 +1,4 @@
-import { ArrowUpDown, CornerDownLeft, Search } from "lucide-solid";
+import { ArrowUpDown, CornerDownLeft } from "lucide-solid";
 
 export function KeyboardShortcutsFooter() {
   return (
@@ -21,14 +21,14 @@ export function KeyboardShortcutsFooter() {
       </span>
       <span class="opacity-50">•</span>
       <span class="flex items-center gap-1">
-        <kbd class="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">
-          <Search class="h-3 w-3" />
-        </kbd>
+        <kbd class="bg-muted-foreground/20 rounded px-1.5 py-0.5 font-sans">⌘</kbd>
+        <kbd class="bg-muted-foreground/20 rounded px-1.5 py-0.5 font-sans">F</kbd>
         <span>to search</span>
       </span>
       <span class="opacity-50">•</span>
       <span class="flex items-center gap-1">
-        <kbd class="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">⌘N</kbd>
+        <kbd class="bg-muted-foreground/20 rounded px-1.5 py-0.5 font-sans">⌘</kbd>
+        <kbd class="bg-muted-foreground/20 rounded px-1.5 py-0.5 font-sans">N</kbd>
         <span>new workspace</span>
       </span>
     </div>
