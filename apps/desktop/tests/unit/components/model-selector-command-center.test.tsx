@@ -1,7 +1,9 @@
 import { ModelSelector, type ModelSelectorSection } from "@/components/model-selector";
+import { cleanup, render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+afterEach(cleanup);
 
 interface SlashCommand {
   id: string;
