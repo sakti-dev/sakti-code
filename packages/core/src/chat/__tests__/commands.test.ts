@@ -4,8 +4,8 @@
  * Validates command types, built-in commands, and command execution.
  */
 
+import { CommandCatalogItem, SlashCommand, builtinCommands } from "@/chat/commands-builtin";
 import { describe, expect, it } from "vitest";
-import { CommandCatalogItem, SlashCommand, builtinCommands } from "../../src/chat/commands-builtin";
 
 describe("chat/commands", () => {
   describe("SlashCommand", () => {

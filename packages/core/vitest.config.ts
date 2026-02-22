@@ -23,4 +23,9 @@ export default defineConfig({
     exclude: ["node_modules", "dist"],
     fileParallelism: false,
   },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
 });

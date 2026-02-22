@@ -12,12 +12,12 @@ import path from "path";
 import { beforeAll, describe, expect, it } from "vitest";
 
 describe("Spec Parser", () => {
-  let parseTasksMd: typeof import("../../src/spec/parser").parseTasksMd;
-  let validateTaskDagFromParsed: typeof import("../../src/spec/parser").validateTaskDagFromParsed;
+  let parseTasksMd: typeof import("@/spec/parser").parseTasksMd;
+  let validateTaskDagFromParsed: typeof import("@/spec/parser").validateTaskDagFromParsed;
   let tempDir: string;
 
   beforeAll(async () => {
-    const parser = await import("../../src/spec/parser");
+    const parser = await import("@/spec/parser");
     parseTasksMd = parser.parseTasksMd;
     validateTaskDagFromParsed = parser.validateTaskDagFromParsed;
 

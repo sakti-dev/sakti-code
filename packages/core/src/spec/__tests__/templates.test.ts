@@ -11,11 +11,11 @@ import path from "path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 describe("Spec Templates", () => {
-  let writeSpecTemplate: typeof import("../../src/spec/templates").writeSpecTemplate;
+  let writeSpecTemplate: typeof import("@/spec/templates").writeSpecTemplate;
   let tempDir: string;
 
   beforeEach(async () => {
-    const templates = await import("../../src/spec/templates");
+    const templates = await import("@/spec/templates");
     writeSpecTemplate = templates.writeSpecTemplate;
 
     // Create temp directory for each test

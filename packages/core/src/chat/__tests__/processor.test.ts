@@ -1,6 +1,6 @@
+import type { Part } from "@/chat/message-v2";
+import { createProcessorContext, processStream } from "@/chat/processor";
 import { describe, expect, it } from "vitest";
-import type { Part } from "../../src/chat/message-v2";
-import { createProcessorContext, processStream } from "../../src/chat/processor";
 
 function asStream(events: Array<Record<string, unknown>>): AsyncIterable<Record<string, unknown>> {
   return {
