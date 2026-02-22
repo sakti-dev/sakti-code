@@ -9,8 +9,8 @@
  * - Stale flag detection for crash recovery
  */
 
-import { getDb, observationalMemory, type ObservationalMemory } from "@ekacode/server/db";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
+import { getDb, observationalMemory, type ObservationalMemory } from "../../server-bridge";
 
 export interface ObservationalMemoryConfig {
   observationThreshold: number;
@@ -212,7 +212,7 @@ export function calculateObservationThresholds(
     allMessageTokens + otherThreadTokens + pendingTokens + currentObservationTokens;
 
   // Threshold = observationThreshold - current observations (leaves room for new content)
-  const config = record.config ?? DEFAULT_CONFIG;
+  const config = (record.config as Partial<ObservationalMemoryConfig> | null) ?? DEFAULT_CONFIG;
   const threshold = (config.observationThreshold ?? 30000) - currentObservationTokens;
 
   return { totalPendingTokens, threshold };
@@ -683,7 +683,7 @@ export class ObservationalMemoryStorage {
       return false;
     }
 
-    const config = record.config ?? DEFAULT_CONFIG;
+    const config = (record.config as Partial<ObservationalMemoryConfig> | null) ?? DEFAULT_CONFIG;
     const threshold = config.observationThreshold ?? 30000;
     const activationThreshold = threshold * (config.bufferActivation ?? 0.8);
 

@@ -2,7 +2,7 @@
  * Drizzle Kit configuration
  */
 
-import { resolveAppPaths } from "@ekacode/shared/paths";
+import { resolveAppPaths } from "@sakti-code/shared/paths";
 import type { Config } from "drizzle-kit";
 
 const paths = resolveAppPaths();
@@ -12,6 +12,6 @@ export default {
   out: "./drizzle",
   dialect: "sqlite",
   dbCredentials: {
-    url: paths.ekacodeDbUrl,
+    url: paths.saktiCodeDbUrl,
   },
 } satisfies Config;

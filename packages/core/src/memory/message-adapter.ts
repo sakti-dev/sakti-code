@@ -6,8 +6,8 @@
  * - Memory: CreateMessageInput (threadId, createdAt, rawContent)
  */
 
-import type { Message as DBMessage } from "@ekacode/server/db";
 import type { Message, MessageInfo, Part } from "../chat";
+import type { Message as DBMessage } from "../server-bridge";
 import type { CreateMessageInput } from "./message/storage";
 
 export class MessageAdapter {

@@ -1,4 +1,4 @@
-import type { ServerEvent } from "@ekacode/shared/event-types";
+import type { ServerEvent } from "@sakti-code/shared/event-types";
 import { describe, expect, it } from "vitest";
 import {
   applyDirectoryEvent,

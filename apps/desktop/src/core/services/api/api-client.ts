@@ -1,8 +1,8 @@
 /**
- * Ekacode API Client
+ * SaktiCode API Client
  *
  * Typed API client for communicating with the Hono server from the desktop renderer.
- * Uses the server config from preload (window.ekacodeAPI.server.getConfig())
+ * Uses the server config from preload (window.saktiCodeAPI.server.getConfig())
  *
  * Features:
  * - Type-safe methods for all API endpoints
@@ -117,12 +117,12 @@ export interface ArchiveWorkspaceOptions {
 }
 
 /**
- * API Client for Ekacode Desktop
+ * API Client for SaktiCode Desktop
  *
  * Provides typed methods for all Hono server endpoints.
  * Handles authentication and streaming responses.
  */
-export class EkacodeApiClient {
+export class SaktiCodeApiClient {
   private config: ApiClientConfig;
   private providerClient?: ProviderClient;
 
@@ -1174,13 +1174,13 @@ export class EkacodeApiClient {
  * const response = await client.chat(messages, options);
  * ```
  */
-export async function createApiClient(): Promise<EkacodeApiClient> {
+export async function createApiClient(): Promise<SaktiCodeApiClient> {
   logger.debug("Creating API client from preload config");
 
   try {
     // Get config from preload script
-    const config = await window.ekacodeAPI.server.getConfig();
-    const client = new EkacodeApiClient(config);
+    const config = await window.saktiCodeAPI.server.getConfig();
+    const client = new SaktiCodeApiClient(config);
     logger.info("API client created successfully");
     return client;
   } catch (error) {

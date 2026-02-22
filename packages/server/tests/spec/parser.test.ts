@@ -8,7 +8,7 @@ import {
   parseTasksMd,
   validateTaskDagFromParsed,
   type ParsedTaskInput,
-} from "@ekacode/core/spec/parser";
+} from "@sakti-code/core/spec/parser";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";

@@ -4,7 +4,7 @@
  * Validates strict provider architecture without global fallbacks.
  * Part of Batch 5: WS7 Testing Overhaul (WS1)
  *
- * @package @ekacode/desktop/tests
+ * @package @sakti-code/desktop/tests
  */
 
 import { ChatProvider, useChatContext } from "@/core/state/contexts/chat-provider";
@@ -13,7 +13,7 @@ import {
   usePartStore,
   useSessionStore,
 } from "@/core/state/providers/store-provider";
-import type { EkacodeApiClient } from "@renderer/lib/api-client";
+import type { SaktiCodeApiClient } from "@renderer/lib/api-client";
 import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -88,7 +88,7 @@ describe("Integration: Provider Initialization Order", () => {
     it("full provider tree mounts without errors", () => {
       const mockClient = {
         chat: vi.fn(),
-      } as unknown as EkacodeApiClient;
+      } as unknown as SaktiCodeApiClient;
 
       function TestComponent() {
         const [messageState] = useMessageStore();
@@ -129,7 +129,7 @@ describe("Integration: Provider Initialization Order", () => {
     it("nested providers maintain correct context hierarchy", () => {
       const mockClient = {
         chat: vi.fn(),
-      } as unknown as EkacodeApiClient;
+      } as unknown as SaktiCodeApiClient;
 
       function TestComponent() {
         const [messageState] = useMessageStore();

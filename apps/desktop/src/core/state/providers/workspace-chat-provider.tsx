@@ -1,10 +1,10 @@
-import type { EkacodeApiClient } from "@/core/services/api/api-client";
+import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
 import { ChatProvider } from "@/core/state/contexts/chat-provider";
 import { ProviderSelectionProvider, useProviderSelectionStore } from "@/core/state/providers";
 import { createMemo, type Accessor, type JSX, type ParentComponent } from "solid-js";
 
 interface WorkspaceChatProviderProps {
-  client: EkacodeApiClient;
+  client: SaktiCodeApiClient;
   workspace: Accessor<string>;
   sessionId: Accessor<string | null>;
   onSessionIdReceived?: (sessionId: string) => void;

@@ -1,14 +1,14 @@
 /**
  * Electron Main Process
  *
- * Entry point for the Ekacode desktop application.
+ * Entry point for the SaktiCode desktop application.
  * Manages the main window, server initialization, and IPC handlers.
  */
 
-import { startServer } from "@ekacode/server";
-import { createLogger } from "@ekacode/shared/logger";
-import { shutdown } from "@ekacode/shared/shutdown";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
+import { startServer } from "@sakti-code/server";
+import { createLogger } from "@sakti-code/shared/logger";
+import { shutdown } from "@sakti-code/shared/shutdown";
 import { app, BrowserWindow, shell } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -77,13 +77,13 @@ function createWindow(): void {
 }
 
 /**
- * Initialize the ekacode server
+ * Initialize the sakti-code server
  */
 async function initServer(): Promise<void> {
-  logger.info("Starting ekacode server", { module: "desktop:server" });
+  logger.info("Starting sakti-code server", { module: "desktop:server" });
 
   try {
-    process.env.EKACODE_MIGRATIONS_DIR ||= join(__dirname, "drizzle");
+    process.env.SAKTI_CODE_MIGRATIONS_DIR ||= join(__dirname, "drizzle");
     const server = await startServer();
     serverConfig = { port: server.port, token: server.token };
 
@@ -91,7 +91,7 @@ async function initServer(): Promise<void> {
     shutdown.register(
       "electron-server",
       async () => {
-        // Server will be cleaned up by @ekacode/server shutdown
+        // Server will be cleaned up by @sakti-code/server shutdown
         logger.info("Electron server shutdown complete", { module: "desktop:lifecycle" });
       },
       20
@@ -116,7 +116,7 @@ app.whenReady().then(async () => {
   logger.info("Application ready", { module: "desktop:lifecycle" });
 
   // Set app user model ID for Windows
-  electronApp.setAppUserModelId("com.ekacode.app");
+  electronApp.setAppUserModelId("com.sakti-code.app");
 
   // Watch for keyboard shortcuts
   app.on("browser-window-created", (_, window) => {

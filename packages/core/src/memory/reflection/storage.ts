@@ -4,8 +4,8 @@
  * Provides CRUD operations for reflections table.
  */
 
-import { getDb, reflections, type Reflection } from "@ekacode/server/db";
 import { and, eq, sql } from "drizzle-orm";
+import { getDb, reflections, type Reflection } from "../../server-bridge";
 
 const drizzleOrm = await import("drizzle-orm");
 const { desc: descDesc } = drizzleOrm;

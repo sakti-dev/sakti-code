@@ -46,8 +46,8 @@ module.exports = [
           patterns: [
             {
               group: [
-                "@ekacode/desktop/presentation/providers",
-                "@ekacode/desktop/presentation/providers/*",
+                "@sakti-code/desktop/presentation/providers",
+                "@sakti-code/desktop/presentation/providers/*",
               ],
               message: "Use @renderer/presentation/providers/* imports in runtime desktop code.",
             },
@@ -63,6 +63,34 @@ module.exports = [
           ],
         },
       ],
+    },
+  },
+  {
+    files: ["packages/core/**/*.ts", "packages/core/**/*.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@sakti-code/server", "@sakti-code/server/*"],
+              message:
+                "Core must not import server modules directly. Use core server-bridge contracts instead.",
+            },
+            {
+              group: ["../server/*", "../../server/*", "../../../server/*", "../../../../server/*"],
+              message:
+                "Core must not reach into server via relative imports. Use core server-bridge contracts instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["packages/core/tests/vitest.setup.ts", "packages/core/tests/helpers/core-db.ts"],
+    rules: {
+      "no-restricted-imports": "off",
     },
   },
 ];

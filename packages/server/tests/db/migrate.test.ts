@@ -36,23 +36,23 @@ async function createMigrationDir(baseDir: string, opts?: { withSql?: boolean })
 }
 
 describe("db/migrate", () => {
-  const oldEnv = process.env.EKACODE_MIGRATIONS_DIR;
+  const oldEnv = process.env.SAKTI_CODE_MIGRATIONS_DIR;
   const cleanupDirs: string[] = [];
 
   beforeEach(() => {
-    delete process.env.EKACODE_MIGRATIONS_DIR;
+    delete process.env.SAKTI_CODE_MIGRATIONS_DIR;
   });
 
   afterAll(async () => {
-    process.env.EKACODE_MIGRATIONS_DIR = oldEnv;
+    process.env.SAKTI_CODE_MIGRATIONS_DIR = oldEnv;
     await Promise.all(cleanupDirs.map(dir => rm(dir, { recursive: true, force: true })));
   });
 
-  it("prefers EKACODE_MIGRATIONS_DIR when valid", async () => {
-    const tempRoot = await mkdtemp(path.join(tmpdir(), "ekacode-migrate-test-"));
+  it("prefers SAKTI_CODE_MIGRATIONS_DIR when valid", async () => {
+    const tempRoot = await mkdtemp(path.join(tmpdir(), "sakti-code-migrate-test-"));
     cleanupDirs.push(tempRoot);
     const migrationsDir = await createMigrationDir(tempRoot);
-    process.env.EKACODE_MIGRATIONS_DIR = migrationsDir;
+    process.env.SAKTI_CODE_MIGRATIONS_DIR = migrationsDir;
 
     const { resolveMigrationsFolder } = await import("../../db/migrate");
     const resolved = resolveMigrationsFolder();
@@ -63,18 +63,18 @@ describe("db/migrate", () => {
   });
 
   it("throws clear error when env override is missing journal", async () => {
-    const tempRoot = await mkdtemp(path.join(tmpdir(), "ekacode-migrate-test-"));
+    const tempRoot = await mkdtemp(path.join(tmpdir(), "sakti-code-migrate-test-"));
     cleanupDirs.push(tempRoot);
     const invalidDir = path.join(tempRoot, "invalid-migrations");
     await mkdir(invalidDir, { recursive: true });
-    process.env.EKACODE_MIGRATIONS_DIR = invalidDir;
+    process.env.SAKTI_CODE_MIGRATIONS_DIR = invalidDir;
 
     const { resolveMigrationsFolder } = await import("../../db/migrate");
     expect(() => resolveMigrationsFolder()).toThrowError(/meta\/_journal\.json/);
   });
 
   it("throws clear error when journal references missing SQL file", async () => {
-    const tempRoot = await mkdtemp(path.join(tmpdir(), "ekacode-migrate-test-"));
+    const tempRoot = await mkdtemp(path.join(tmpdir(), "sakti-code-migrate-test-"));
     cleanupDirs.push(tempRoot);
     const migrationsDir = await createMigrationDir(tempRoot, { withSql: false });
 

@@ -12,12 +12,12 @@ import path from "path";
 import { beforeAll, describe, expect, it } from "vitest";
 
 describe("Spec Parser", () => {
-  let parseTasksMd: typeof import("../../../src/spec/parser").parseTasksMd;
-  let validateTaskDagFromParsed: typeof import("../../../src/spec/parser").validateTaskDagFromParsed;
+  let parseTasksMd: typeof import("../../src/spec/parser").parseTasksMd;
+  let validateTaskDagFromParsed: typeof import("../../src/spec/parser").validateTaskDagFromParsed;
   let tempDir: string;
 
   beforeAll(async () => {
-    const parser = await import("../../../src/spec/parser");
+    const parser = await import("../../src/spec/parser");
     parseTasksMd = parser.parseTasksMd;
     validateTaskDagFromParsed = parser.validateTaskDagFromParsed;
 
@@ -183,8 +183,8 @@ describe("Spec Parser", () => {
       expect(tasks[0].outcome).toContain("Feature is implemented");
     });
 
-    it("should throw error when file doesn't exist", async () => {
-      await expect(parseTasksMd("/nonexistent/tasks.md")).rejects.toThrow();
+    it("should return empty array when file doesn't exist", async () => {
+      await expect(parseTasksMd("/nonexistent/tasks.md")).resolves.toEqual([]);
     });
 
     it("should handle tasks without explicit dependencies", async () => {

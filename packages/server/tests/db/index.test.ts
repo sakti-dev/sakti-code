@@ -4,7 +4,7 @@
  * TDD approach: Tests written first to define expected behavior
  */
 
-import { resolveAppPaths } from "@ekacode/shared/paths";
+import { resolveAppPaths } from "@sakti-code/shared/paths";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";

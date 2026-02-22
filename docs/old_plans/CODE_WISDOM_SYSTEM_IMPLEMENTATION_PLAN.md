@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-Current memory systems in ekacode focus on:
+Current memory systems in sakti-code focus on:
 
 - **Observational memory**: Capturing agent observations during work
 - **Task memory**: Tracking tasks and their dependencies
@@ -170,8 +170,8 @@ export interface WisdomQuery {
 // packages/core/src/memory/wisdom.ts
 
 import { v4 as uuidv7 } from "uuid";
-import { db } from "@ekacode/server/db";
-import { wisdomEntries, wisdomTags, wisdomEntryTags } from "@ekacode/server/db/schema/wisdom";
+import { db } from "@sakti-code/server/db";
+import { wisdomEntries, wisdomTags, wisdomEntryTags } from "@sakti-code/server/db/schema/wisdom";
 
 export async function createWisdomEntry(params: {
   content: string;
@@ -851,7 +851,7 @@ export async function getTagSuggestions(partial: string): Promise<string[]> {
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { parseLearnInput, executeLearnAction } from "@ekacode/core/memory/wisdom";
+import { parseLearnInput, executeLearnAction } from "@sakti-code/core/memory/wisdom";
 
 const wisdom = new Hono();
 

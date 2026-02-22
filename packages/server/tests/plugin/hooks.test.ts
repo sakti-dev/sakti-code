@@ -4,13 +4,13 @@
  * TDD: Test plugin hook system
  */
 
-import { applyToolDefinitionHook, resolveHookModel, type AgentType } from "@ekacode/core";
+import { applyToolDefinitionHook, resolveHookModel, type AgentType } from "@sakti-code/core";
 import {
   clearCorePluginHooks,
   setCorePluginHooks,
   triggerChatHeadersHook,
   triggerChatParamsHook,
-} from "@ekacode/core/server";
+} from "@sakti-code/core/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("Plugin Hooks", () => {

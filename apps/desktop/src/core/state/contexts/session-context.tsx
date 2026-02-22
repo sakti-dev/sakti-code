@@ -15,7 +15,7 @@ import {
 } from "@/core/chat/domain/session-queries";
 import { useSessionStore } from "@/state/providers";
 import type { SessionInfo } from "@/state/stores/session-store";
-import type { SessionStatusPayload } from "@ekacode/shared/event-types";
+import type { SessionStatusPayload } from "@sakti-code/shared/event-types";
 import { Component, createContext, JSX, useContext } from "solid-js";
 
 interface SessionContextValue {

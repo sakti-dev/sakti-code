@@ -74,14 +74,14 @@ function createRendererLogger(packageName: string, baseContext: Record<string, u
 }
 
 /**
- * Ekacode API exposed to renderer process
+ * SaktiCode API exposed to renderer process
  *
  * Provides:
  * - Server configuration
  * - File dialogs (open directory)
  * - Shell operations (open external)
  */
-const ekacodeAPI = {
+const saktiCodeAPI = {
   // ============================================================
   // Electron Toolkit APIs
   // ============================================================
@@ -140,8 +140,8 @@ if (process.contextIsolated) {
     // Expose Electron Toolkit APIs
     contextBridge.exposeInMainWorld("electron", electronAPI);
 
-    // Expose Ekacode APIs
-    contextBridge.exposeInMainWorld("ekacodeAPI", ekacodeAPI);
+    // Expose SaktiCode APIs
+    contextBridge.exposeInMainWorld("saktiCodeAPI", saktiCodeAPI);
   } catch (error) {
     logger.error("Failed to expose APIs to renderer", error);
   }
@@ -151,16 +151,16 @@ if (process.contextIsolated) {
     "Context isolation is disabled. This is not secure and should only be used for development."
   );
   window.electron = electronAPI;
-  window.ekacodeAPI = ekacodeAPI;
+  window.saktiCodeAPI = saktiCodeAPI;
 }
 
 // Type definitions for TypeScript
-export type EkacodeAPI = typeof ekacodeAPI;
+export type SaktiCodeAPI = typeof saktiCodeAPI;
 
 // Extend Window interface for TypeScript
 declare global {
   interface Window {
     electron: typeof electronAPI;
-    ekacodeAPI: EkacodeAPI;
+    saktiCodeAPI: SaktiCodeAPI;
   }
 }

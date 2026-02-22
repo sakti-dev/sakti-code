@@ -4,7 +4,7 @@
  * Executes bash commands with proper permission handling and output streaming
  */
 
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import { tool, zodSchema } from "ai";
 import { spawn, type ChildProcess } from "node:child_process";
 import { v7 as uuidv7 } from "uuid";
@@ -16,7 +16,7 @@ import { truncateOutput } from "../base/truncation";
 import { parseCommand } from "./parser";
 import { getAcceptableShell } from "./shell-selector";
 
-const logger = createLogger("ekacode");
+const logger = createLogger("sakti-code");
 
 const DEFAULT_TIMEOUT = 120000; // 2 minutes
 

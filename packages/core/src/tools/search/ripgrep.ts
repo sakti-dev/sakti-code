@@ -5,14 +5,14 @@
  * Uses system ripgrep if available, otherwise downloads to XDG data directory
  */
 
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import * as fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-const logger = createLogger("ekacode");
+const logger = createLogger("sakti-code");
 
 const RIPGREP_VERSION = "14.1.1";
 
@@ -94,7 +94,7 @@ async function getBundledRipgrep(): Promise<string> {
     throw new Error(`Unsupported platform: ${platformKey}`);
   }
 
-  const binDir = path.join(getXDGDataHome(), "ekacode", "bin");
+  const binDir = path.join(getXDGDataHome(), "sakti-code", "bin");
   const ext = process.platform === "win32" ? ".exe" : "";
   const binaryPath = path.join(binDir, `rg${ext}`);
 

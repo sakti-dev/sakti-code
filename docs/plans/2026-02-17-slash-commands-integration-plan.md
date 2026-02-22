@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines a comprehensive plan to integrate slash commands functionality into the ekacode desktop application. The implementation is modeled after the OpenCode slash command system but adapted to work with the existing **ModelSelector** component as a unified "Command Center".
+This document outlines a comprehensive plan to integrate slash commands functionality into the sakti-code desktop application. The implementation is modeled after the OpenCode slash command system but adapted to work with the existing **ModelSelector** component as a unified "Command Center".
 
 ## Architecture Overview
 

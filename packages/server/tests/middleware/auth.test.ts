@@ -17,8 +17,8 @@ describe("auth middleware", () => {
     vi.clearAllMocks();
 
     // Set test environment variables
-    process.env.EKACODE_USERNAME = "testuser";
-    process.env.EKACODE_PASSWORD = "testpass";
+    process.env.SAKTI_CODE_USERNAME = "testuser";
+    process.env.SAKTI_CODE_PASSWORD = "testpass";
 
     // Clear module cache to reload with new env vars
     vi.resetModules();
@@ -123,8 +123,8 @@ describe("auth middleware", () => {
 
     it("should accept request with password containing special characters", async () => {
       // Edge case: password contains special characters
-      process.env.EKACODE_USERNAME = "testuser";
-      process.env.EKACODE_PASSWORD = "p@ss!w0rd#123";
+      process.env.SAKTI_CODE_USERNAME = "testuser";
+      process.env.SAKTI_CODE_PASSWORD = "p@ss!w0rd#123";
 
       const credentials = btoa("testuser:p@ss!w0rd#123");
       const response = await mockApp.request("/protected", {

@@ -11,7 +11,7 @@
 
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 
-import type { ObservationalMemory } from "@ekacode/server/db";
+import type { ObservationalMemory } from "../../server-bridge";
 import {
   calculateObservationThresholds,
   observationalMemoryStorage,
@@ -435,7 +435,7 @@ export async function processInputStep(args: ProcessInputStepArgs): Promise<{
       totalPendingTokens < threshold &&
       unobservedMessages.length > 0
     ) {
-      const config = record.config ?? {
+      const config = (record.config as Partial<ObservationalMemoryConfig> | null) ?? {
         observationThreshold: 30000,
         bufferTokens: 6000,
       };

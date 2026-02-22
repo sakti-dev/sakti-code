@@ -8,7 +8,7 @@
  * Automatically cleans up expired entries to prevent memory leaks.
  */
 
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import type { Context, Next } from "hono";
 import type { Env } from "../index";
 

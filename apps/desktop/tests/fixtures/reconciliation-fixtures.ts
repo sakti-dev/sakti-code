@@ -11,7 +11,7 @@ import {
   type OptimisticMetadata,
 } from "@/core/chat/domain/correlation";
 import type { MessageWithId } from "@/core/state/stores/message-store";
-import type { Part } from "@ekacode/shared/event-types";
+import type { Part } from "@sakti-code/shared/event-types";
 import { v7 as uuidv7 } from "uuid";
 
 // ============================================================================

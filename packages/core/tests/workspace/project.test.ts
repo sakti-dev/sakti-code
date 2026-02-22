@@ -12,7 +12,7 @@ describe("detectProject", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ekacode-project-"));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sakti-code-project-"));
   });
 
   afterEach(async () => {
@@ -70,7 +70,7 @@ describe("findProjectRootFromPath", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ekacode-project-"));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sakti-code-project-"));
   });
 
   afterEach(async () => {

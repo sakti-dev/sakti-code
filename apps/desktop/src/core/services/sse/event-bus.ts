@@ -5,7 +5,7 @@
  * Wraps @solid-primitives/event-bus with type safety.
  */
 
-import type { ServerEvent } from "@ekacode/shared/event-types";
+import type { ServerEvent } from "@sakti-code/shared/event-types";
 import { createGlobalEmitter } from "@solid-primitives/event-bus";
 
 type TypedEvent = ServerEvent;

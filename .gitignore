@@ -14,8 +14,8 @@ dist-ssr
 out
 *.local
 .turbo
-.ekacode-test/
-packages/server/.ekacode-test/
+.sakti-code-test/
+packages/server/.sakti-code-test/
 *.tsbuildinfo
 
 # Editor directories and files
@@ -36,7 +36,7 @@ result-*
 
 # Local
 *.db
-.ekacode
+.sakti-code
 
 
 # References
@@ -47,7 +47,7 @@ ai
 better-context
 mcp-server-0.1.2
 checkpoints
-ekacode-old-desktop
+sakti-code-old-desktop
 .worktrees/
 kilocode
 openskills

@@ -34,13 +34,13 @@ function env(name: string, fallback: string): string {
 }
 
 function openAIOAuthConfig() {
-  const issuer = env("EKACODE_OPENAI_OAUTH_ISSUER", ISSUER);
-  const callbackPort = Number.parseInt(env("EKACODE_OPENAI_OAUTH_CALLBACK_PORT", "1455"), 10);
+  const issuer = env("SAKTI_CODE_OPENAI_OAUTH_ISSUER", ISSUER);
+  const callbackPort = Number.parseInt(env("SAKTI_CODE_OPENAI_OAUTH_CALLBACK_PORT", "1455"), 10);
   return {
     issuer,
-    clientId: env("EKACODE_OPENAI_OAUTH_CLIENT_ID", CLIENT_ID),
+    clientId: env("SAKTI_CODE_OPENAI_OAUTH_CLIENT_ID", CLIENT_ID),
     redirectUri: env(
-      "EKACODE_OPENAI_OAUTH_REDIRECT_URI",
+      "SAKTI_CODE_OPENAI_OAUTH_REDIRECT_URI",
       `http://127.0.0.1:${Number.isFinite(callbackPort) ? callbackPort : 1455}${CALLBACK_PATH}`
     ),
     callbackPort: Number.isFinite(callbackPort) ? callbackPort : 1455,
@@ -165,7 +165,7 @@ export function createOpenAIProviderAuthDefinition(): ProviderAuthDefinition {
           const pkce = generatePKCE();
           const state = generateState();
           browserOAuthState.set(state, {});
-          const disableServer = env("EKACODE_OPENAI_OAUTH_DISABLE_LOCAL_SERVER", "0") === "1";
+          const disableServer = env("SAKTI_CODE_OPENAI_OAUTH_DISABLE_LOCAL_SERVER", "0") === "1";
           if (!disableServer) {
             await ensureBrowserOAuthServer(config.callbackPort);
           }

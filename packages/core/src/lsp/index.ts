@@ -3,13 +3,13 @@ export * from "./language";
 export * from "./server";
 export * from "./types";
 
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import path from "node:path";
 import { LSPClient, type LSPClientInstance } from "./client";
 import { LSPServerRegistry, type LSPServerDefinition } from "./server";
 import type { LSPDiagnostic } from "./types";
 
-const logger = createLogger("ekacode:lsp");
+const logger = createLogger("sakti-code:lsp");
 
 export interface LSPStatus {
   id: string;

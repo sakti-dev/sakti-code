@@ -5,7 +5,7 @@ import { startServer } from "./src/index.ts";
 const workspace = process.cwd();
 const prompt = "Read README.md and then answer in one sentence.";
 
-process.env.EKACODE_PERMISSIONS = JSON.stringify({
+process.env.SAKTI_CODE_PERMISSIONS = JSON.stringify({
   read: "allow",
   edit: "allow",
   bash: "allow",

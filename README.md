@@ -1,4 +1,4 @@
-# ekacode
+# sakti-code
 
 Offline-first AI coding agent. Your code stays on your machine.
 

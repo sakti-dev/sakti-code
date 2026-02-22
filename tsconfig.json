@@ -18,11 +18,11 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@ekacode/core/chat": ["./packages/core/src/chat"],
-      "@ekacode/core/server": ["./packages/core/src/server"],
-      "@ekacode/core/tools": ["./packages/core/src/tools"],
-      "@ekacode/server/bus": ["./packages/server/src/bus"],
-      "@ekacode/server/db": ["./packages/server/db"]
+      "@sakti-code/core/chat": ["./packages/core/src/chat"],
+      "@sakti-code/core/server": ["./packages/core/src/server"],
+      "@sakti-code/core/tools": ["./packages/core/src/tools"],
+      "@sakti-code/server/bus": ["./packages/server/src/bus"],
+      "@sakti-code/server/db": ["./packages/server/db"]
     }
   }
 }

@@ -6,7 +6,7 @@
  */
 
 import type { LanguageModelV3 } from "@ai-sdk/provider";
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import { streamText, type ModelMessage, type ToolResultPart, type UserModelMessage } from "ai";
 import { createHash } from "node:crypto";
 import { v7 as uuidv7 } from "uuid";
@@ -39,7 +39,7 @@ import { classifyAgentError } from "./error-classification";
 import { injectSpecContextForModelMessages } from "../agent/spec-injector";
 import { MAX_STEPS_PROMPT } from "../prompts/auto-compaction";
 
-const logger = createLogger("ekacode");
+const logger = createLogger("sakti-code");
 const DOOM_LOOP_THRESHOLD = 3;
 const RETRY_INITIAL_DELAY_MS = 3000;
 const RETRY_BACKOFF_FACTOR = 2;

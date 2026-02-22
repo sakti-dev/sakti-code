@@ -4,7 +4,7 @@
  * Manages SSE connection with error boundaries and enhanced reconnection.
  */
 
-import type { EventMap, EventType, ServerEvent } from "@ekacode/shared/event-types";
+import type { EventMap, EventType, ServerEvent } from "@sakti-code/shared/event-types";
 
 export interface EventSourceConfig {
   baseUrl: string;

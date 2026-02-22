@@ -14,7 +14,7 @@ afterEach(async () => {
 
 describe("provider auth service", () => {
   it("stores token and returns connected auth state", async () => {
-    const base = await mkdtemp(join(tmpdir(), "ekacode-provider-auth-"));
+    const base = await mkdtemp(join(tmpdir(), "sakti-code-provider-auth-"));
     tempDirs.push(base);
 
     const auth = createProviderAuthService({
@@ -32,7 +32,7 @@ describe("provider auth service", () => {
   });
 
   it("clears token and returns disconnected auth state", async () => {
-    const base = await mkdtemp(join(tmpdir(), "ekacode-provider-auth-"));
+    const base = await mkdtemp(join(tmpdir(), "sakti-code-provider-auth-"));
     tempDirs.push(base);
 
     const auth = createProviderAuthService({
@@ -49,7 +49,7 @@ describe("provider auth service", () => {
   });
 
   it("does not expose secret in auth state payload", async () => {
-    const base = await mkdtemp(join(tmpdir(), "ekacode-provider-auth-"));
+    const base = await mkdtemp(join(tmpdir(), "sakti-code-provider-auth-"));
     tempDirs.push(base);
 
     const auth = createProviderAuthService({
@@ -65,7 +65,7 @@ describe("provider auth service", () => {
   });
 
   it("stores oauth credential and reports oauth method", async () => {
-    const base = await mkdtemp(join(tmpdir(), "ekacode-provider-auth-"));
+    const base = await mkdtemp(join(tmpdir(), "sakti-code-provider-auth-"));
     tempDirs.push(base);
 
     const auth = createProviderAuthService({
@@ -95,7 +95,7 @@ describe("provider auth service", () => {
   });
 
   it("loads persisted oauth credential after service recreation", async () => {
-    const base = await mkdtemp(join(tmpdir(), "ekacode-provider-auth-"));
+    const base = await mkdtemp(join(tmpdir(), "sakti-code-provider-auth-"));
     tempDirs.push(base);
 
     const storage = createProviderCredentialStorage({ baseDir: base });
@@ -127,7 +127,7 @@ describe("provider auth service", () => {
   });
 
   it("reports error state when persisted oauth payload is malformed", async () => {
-    const base = await mkdtemp(join(tmpdir(), "ekacode-provider-auth-"));
+    const base = await mkdtemp(join(tmpdir(), "sakti-code-provider-auth-"));
     tempDirs.push(base);
 
     const storage = createProviderCredentialStorage({ baseDir: base });

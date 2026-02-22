@@ -1,4 +1,4 @@
-# @ekacode/zai
+# @sakti-code/zai
 
 [Z.ai](https://z.ai) provider for [Vercel AI SDK](https://sdk.vercel.ai) v3.
 
@@ -17,18 +17,18 @@
 ## Installation
 
 ```bash
-npm install @ekacode/zai
+npm install @sakti-code/zai
 # or
-pnpm add @ekacode/zai
+pnpm add @sakti-code/zai
 # or
-yarn add @ekacode/zai
+yarn add @sakti-code/zai
 ```
 
 ## Quick Start
 
 ```typescript
 import { generateText } from "ai";
-import { createZai } from "@ekacode/zai";
+import { createZai } from "@sakti-code/zai";
 
 // Initialize the provider
 const zai = createZai({
@@ -49,7 +49,7 @@ console.log(text);
 ### Provider Settings
 
 ```typescript
-import { createZai } from "@ekacode/zai";
+import { createZai } from "@sakti-code/zai";
 
 const zai = createZai({
   // API key (falls back to ZAI_API_KEY env var)
@@ -97,7 +97,7 @@ const zai = createZai({
 
 ```typescript
 import { streamText } from "ai";
-import { zai } from "@ekacode/zai";
+import { zai } from "@sakti-code/zai";
 
 const { textStream } = await streamText({
   model: zai("glm-4.7"),
@@ -113,7 +113,7 @@ for await (const text of textStream) {
 
 ```typescript
 import { generateText } from "ai";
-import { zai } from "@ekacode/zai";
+import { zai } from "@sakti-code/zai";
 import { z } from "zod";
 
 const { text, toolCalls } = await generateText({
@@ -141,7 +141,7 @@ if (toolCalls) {
 
 ```typescript
 import { streamText } from "ai";
-import { zai } from "@ekacode/zai";
+import { zai } from "@sakti-code/zai";
 import { z } from "zod";
 
 const { toolStream } = await streamText({
@@ -173,7 +173,7 @@ for await (const { type, delta, toolCallId } of toolStream) {
 
 ```typescript
 import { generateText } from "ai";
-import { zai } from "@ekacode/zai";
+import { zai } from "@sakti-code/zai";
 
 const { text, reasoning } = await generateText({
   model: zai("glm-4.7"),
@@ -194,7 +194,7 @@ console.log("Answer:", text);
 
 ```typescript
 import { generateText } from "ai";
-import { zai } from "@ekacode/zai";
+import { zai } from "@sakti-code/zai";
 
 const { text, sources } = await generateText({
   model: zai("glm-4.7"),
@@ -221,7 +221,7 @@ for (const source of sources ?? []) {
 
 ```typescript
 import { generateText } from "ai";
-import { zai } from "@ekacode/zai";
+import { zai } from "@sakti-code/zai";
 
 const { text } = await generateText({
   model: zai("glm-4.7"),
@@ -239,7 +239,7 @@ const { text } = await generateText({
 
 ```typescript
 import { generateText } from "ai";
-import { zai } from "@ekacode/zai";
+import { zai } from "@sakti-code/zai";
 
 const { text } = await generateText({
   model: zai("glm-4.6v"),
@@ -263,7 +263,7 @@ const { text } = await generateText({
 
 ```typescript
 import { generateObject } from "ai";
-import { zai } from "@ekacode/zai";
+import { zai } from "@sakti-code/zai";
 import { z } from "zod";
 
 const { object } = await generateObject({
@@ -281,7 +281,7 @@ const { object } = await generateObject({
 
 ```typescript
 import { generateText } from "ai";
-import { zai } from "@ekacode/zai";
+import { zai } from "@sakti-code/zai";
 
 const chatHistory = [
   { role: "user", content: "Hello!" },
@@ -371,7 +371,7 @@ chatHistory.push(
 
 ```typescript
 import { generateText } from "ai";
-import { zai } from "@ekacode/zai";
+import { zai } from "@sakti-code/zai";
 
 try {
   const { text } = await generateText({

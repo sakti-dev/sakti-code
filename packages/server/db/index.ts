@@ -7,8 +7,9 @@
  * Includes automatic migration on first connection to ensure tables exist.
  */
 
-import { resolveAppPaths } from "@ekacode/shared/paths";
 import { createClient } from "@libsql/client";
+import { registerCoreDbBindings } from "@sakti-code/shared/core-server-bridge";
+import { resolveAppPaths } from "@sakti-code/shared/paths";
 import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import fs from "node:fs";
 import path from "node:path";
@@ -43,7 +44,7 @@ export function getDatabaseUrl(): string {
  * Get database auth token for remote libsql (Turso)
  */
 export function getDatabaseAuthToken(): string | undefined {
-  return process.env.EKACODE_DB_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN;
+  return process.env.SAKTI_CODE_DB_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN;
 }
 
 /**
@@ -132,3 +133,18 @@ export function closeDb(): void {
  * Export schema for use in queries
  */
 export * from "./schema";
+
+registerCoreDbBindings({
+  getDb,
+  closeDb,
+  sessions: schema.sessions,
+  tasks: schema.tasks,
+  taskDependencies: schema.taskDependencies,
+  taskMessages: schema.taskMessages,
+  threads: schema.threads,
+  messages: schema.messages,
+  workingMemory: schema.workingMemory,
+  reflections: schema.reflections,
+  observationalMemory: schema.observationalMemory,
+  toolSessions: schema.toolSessions,
+});

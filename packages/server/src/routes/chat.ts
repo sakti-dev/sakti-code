@@ -8,9 +8,9 @@
  * Publishes Opencode-style part events to the Bus for SSE streaming.
  */
 
-import { getModelByReference } from "@ekacode/core";
-import { Instance } from "@ekacode/core/server";
-import { createLogger } from "@ekacode/shared/logger";
+import { getModelByReference } from "@sakti-code/core";
+import { Instance } from "@sakti-code/core/server";
+import { createLogger } from "@sakti-code/shared/logger";
 import { createUIMessageStream, createUIMessageStreamResponse, generateText } from "ai";
 import { Hono } from "hono";
 import { v7 as uuidv7 } from "uuid";
@@ -1173,7 +1173,7 @@ app.post("/api/chat", async c => {
           module: "chat",
           sessionId: session.sessionId,
         });
-        const logChatStreamEvents = process.env.EKACODE_LOG_CHAT_STREAM_EVENTS === "true";
+        const logChatStreamEvents = process.env.SAKTI_CODE_LOG_CHAT_STREAM_EVENTS === "true";
         const writeStreamEvent = (event: Parameters<typeof writer.write>[0]) => {
           writer.write(event);
 

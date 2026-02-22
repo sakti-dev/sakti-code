@@ -1,15 +1,15 @@
-import { EkacodeApiClient } from "@/core/services/api/api-client";
+import { SaktiCodeApiClient } from "@/core/services/api/api-client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("EkacodeApiClient provider/model payload", () => {
+describe("SaktiCodeApiClient provider/model payload", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
   });
 
   it("includes selected provider and model from chat options in request", async () => {
-    localStorage.setItem("ekacode:selected-provider", "zai");
-    localStorage.setItem("ekacode:selected-model", "zai/glm-4.7");
+    localStorage.setItem("sakti-code:selected-provider", "zai");
+    localStorage.setItem("sakti-code:selected-model", "zai/glm-4.7");
 
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
@@ -17,7 +17,7 @@ describe("EkacodeApiClient provider/model payload", () => {
       headers: new Headers(),
     } as unknown as Response);
 
-    const client = new EkacodeApiClient({
+    const client = new SaktiCodeApiClient({
       baseUrl: "http://127.0.0.1:3000",
       token: "test-token",
     });

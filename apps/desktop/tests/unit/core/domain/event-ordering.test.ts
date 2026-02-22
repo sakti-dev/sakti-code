@@ -1,4 +1,4 @@
-import { EventOrderingBuffer } from "@ekacode/shared/event-ordering";
+import { EventOrderingBuffer } from "@sakti-code/shared/event-ordering";
 import { describe, expect, it } from "vitest";
 import {
   createMessageUpdatedEvent,

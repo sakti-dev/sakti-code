@@ -3,12 +3,12 @@
  * Based on OpenCode's permission system with enhancements
  */
 
-import type { PermissionRequest, PermissionResponse, PermissionRule } from "@ekacode/shared";
-import { createLogger } from "@ekacode/shared/logger";
+import type { PermissionRequest, PermissionResponse, PermissionRule } from "@sakti-code/shared";
+import { createLogger } from "@sakti-code/shared/logger";
 import { EventEmitter } from "events";
 import { evaluatePatterns, matchesGlob } from "./permission-rules";
 
-const logger = createLogger("ekacode");
+const logger = createLogger("sakti-code");
 
 /**
  * Error types for permission rejection

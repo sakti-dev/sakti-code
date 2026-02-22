@@ -8,8 +8,8 @@ describe("chat provider selection", () => {
   let testHome = "";
 
   beforeEach(async () => {
-    testHome = await mkdtemp(join(tmpdir(), "ekacode-chat-provider-selection-"));
-    process.env.EKACODE_HOME = testHome;
+    testHome = await mkdtemp(join(tmpdir(), "sakti-code-chat-provider-selection-"));
+    process.env.SAKTI_CODE_HOME = testHome;
     delete process.env.ZAI_API_KEY;
     delete process.env.OPENAI_API_KEY;
     vi.resetModules();

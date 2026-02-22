@@ -134,5 +134,5 @@
  * - Context: Additional key=value pairs
  */
 
-export type { LogLevel, Logger, LoggerConfig, LoggerContext } from "@ekacode/shared/logger";
+export type { LogLevel, Logger, LoggerConfig, LoggerContext } from "@sakti-code/shared/logger";
 export { createConsoleLogger as createLogger, getDefaultLogLevel } from "./console-logger";

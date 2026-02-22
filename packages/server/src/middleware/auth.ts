@@ -5,7 +5,7 @@
  * Skips auth for /api/health endpoint.
  */
 
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import type { Context, Next } from "hono";
 import type { Env } from "../index";
 import { getServerToken } from "../server-token";
@@ -91,8 +91,8 @@ export async function authMiddleware(c: Context<Env>, next: Next): Promise<Respo
   const queryToken = c.req.query("token");
 
   // Validate against configured credentials when provided, otherwise use runtime token.
-  const expectedUsername = process.env.EKACODE_USERNAME || "admin";
-  const expectedPassword = process.env.EKACODE_PASSWORD;
+  const expectedUsername = process.env.SAKTI_CODE_USERNAME || "admin";
+  const expectedPassword = process.env.SAKTI_CODE_PASSWORD;
   const serverToken = getServerToken();
 
   // Case 1: Authorization Header (Standard)

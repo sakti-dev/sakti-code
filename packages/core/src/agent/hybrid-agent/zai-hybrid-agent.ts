@@ -4,8 +4,8 @@
  * Convenience factory for creating hybrid agents with Z.ai models.
  */
 
-import type { ZaiChatModelId } from "@ekacode/zai";
-import { createZai } from "@ekacode/zai";
+import type { ZaiChatModelId } from "@sakti-code/zai";
+import { createZai } from "@sakti-code/zai";
 import {
   DATA_VIZ_ANALYSIS_PROMPT,
   DIAGRAM_UNDERSTANDING_PROMPT,

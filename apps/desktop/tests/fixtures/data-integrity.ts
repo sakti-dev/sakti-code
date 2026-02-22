@@ -4,7 +4,7 @@
  * Shared test data and utilities for consistent testing across all data integrity tests.
  */
 
-import type { ServerEvent } from "@ekacode/shared/event-types";
+import type { ServerEvent } from "@sakti-code/shared/event-types";
 import { v7 as uuidv7 } from "uuid";
 
 // ============================================================================

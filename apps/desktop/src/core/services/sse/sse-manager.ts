@@ -7,8 +7,8 @@
  * Part of Phase 6: Cleanup & Optimization
  */
 
-import { isKnownEventType } from "@ekacode/shared/event-guards";
-import type { ServerEvent } from "@ekacode/shared/event-types";
+import { isKnownEventType } from "@sakti-code/shared/event-guards";
+import type { ServerEvent } from "@sakti-code/shared/event-types";
 import { batch } from "solid-js";
 import { createTypedEventBus, type TypedEventBus } from "./event-bus";
 import { createEventCoalescer, type CoalescerConfig } from "./event-coalescer";

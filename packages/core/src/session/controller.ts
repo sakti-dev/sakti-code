@@ -82,7 +82,7 @@ export class SessionController {
       const runtimeMode = (await getSessionRuntimeMode(this.sessionId)) ?? "build";
 
       // Create agent configuration based on resolved runtime mode
-      const activeModelId = process.env.EKACODE_ACTIVE_MODEL_ID?.trim();
+      const activeModelId = process.env.SAKTI_CODE_ACTIVE_MODEL_ID?.trim();
       const agentConfig = createAgent(
         runtimeMode,
         this.sessionId,

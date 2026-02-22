@@ -5,7 +5,7 @@
  * Provides git operations: clone, worktree, branch listing.
  */
 
-import { resolveAppPaths } from "@ekacode/shared/paths";
+import { resolveAppPaths } from "@sakti-code/shared/paths";
 import fs from "node:fs/promises";
 import path from "node:path";
 import simpleGit from "simple-git";
@@ -227,11 +227,15 @@ export async function clone(options: {
   // Validate URL host
   try {
     const parsedUrl = new URL(url);
-    const hostname = parsedUrl.hostname.replace(/^www\./, "");
-    if (!ALLOWED_HOSTS.includes(hostname)) {
-      throw new Error(
-        `URL hostname not allowed: ${hostname}. Only ${ALLOWED_HOSTS.join(", ")} are supported.`
-      );
+    if (parsedUrl.protocol === "file:") {
+      // Local file URLs are allowed for offline/local workflows (including tests).
+    } else {
+      const hostname = parsedUrl.hostname.replace(/^www\./, "");
+      if (!ALLOWED_HOSTS.includes(hostname)) {
+        throw new Error(
+          `URL hostname not allowed: ${hostname}. Only ${ALLOWED_HOSTS.join(", ")} are supported.`
+        );
+      }
     }
   } catch (error) {
     if (error instanceof Error && error.message.includes("not allowed")) {

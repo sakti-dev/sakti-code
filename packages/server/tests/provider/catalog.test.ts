@@ -97,7 +97,7 @@ describe("model catalog service", () => {
 
     const modelWithProviderMeta = catalog.find(model => model.id === "zai/glm-4.6v");
     expect(modelWithProviderMeta?.providerApiUrl).toBe("https://api.z.ai/api/paas/v4");
-    expect(modelWithProviderMeta?.providerNpmPackage).toBe("@ekacode/zai");
+    expect(modelWithProviderMeta?.providerNpmPackage).toBe("@sakti-code/zai");
     expect(modelWithProviderMeta?.providerEnvVars).toEqual(["ZHIPU_API_KEY"]);
     expect(modelWithProviderMeta?.modalities?.input).toContain("image");
     expect(modelWithProviderMeta?.capabilities.vision).toBe(true);
@@ -171,6 +171,6 @@ describe("model catalog service", () => {
 
     const catalog = await service.list();
     const model = catalog.find(item => item.id === "zai-coding-plan/glm-4.7");
-    expect(model?.providerNpmPackage).toBe("@ekacode/zai");
+    expect(model?.providerNpmPackage).toBe("@sakti-code/zai");
   });
 });

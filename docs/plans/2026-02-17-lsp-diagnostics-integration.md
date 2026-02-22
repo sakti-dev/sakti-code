@@ -2,14 +2,14 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Integrate Language Server Protocol (LSP) diagnostics into @ekacode/core tools so agents can receive code error/warning feedback after file modifications, similar to opencode's implementation.
+**Goal:** Integrate Language Server Protocol (LSP) diagnostics into @sakti-code/core tools so agents can receive code error/warning feedback after file modifications, similar to opencode's implementation.
 
 **Architecture:**
 
-- LSP client library in @ekacode/core using vscode-jsonrpc for LSP communication
+- LSP client library in @sakti-code/core using vscode-jsonrpc for LSP communication
 - LSP server management with auto-detection for TypeScript/JavaScript, Python, Go, Rust, and other common languages
 - Diagnostics returned in tool output after edit/write operations
-- Server-side route in @ekacode/server for LSP status endpoints
+- Server-side route in @sakti-code/server for LSP status endpoints
 
 **Tech Stack:** vscode-jsonrpc, vscode-languageserver-types, spawn for process management
 
@@ -516,7 +516,7 @@ git commit -m "feat(write): integrate LSP diagnostics into write tool"
 
 ---
 
-## Task 6: Add LSP Server Route to @ekacode/server
+## Task 6: Add LSP Server Route to @sakti-code/server
 
 **Files:**
 
@@ -568,7 +568,7 @@ const lspRouter = new Hono<Env>();
 lspRouter.get("/api/lsp/status", async c => {
   const directory = c.req.query("directory") || c.get("instanceContext")?.directory;
 
-  // TODO: Integrate with @ekacode/core LSP to get actual server status
+  // TODO: Integrate with @sakti-code/core LSP to get actual server status
   // For now, return empty servers array
   return c.json({
     servers: [],

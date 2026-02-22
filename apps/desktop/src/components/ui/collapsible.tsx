@@ -1,7 +1,7 @@
 /**
  * Collapsible - Wrapper around @kobalte/core's collapsible component
  *
- * Provides an ekacode-styled collapsible with arrow indicator.
+ * Provides an sakti-code-styled collapsible with arrow indicator.
  * Used for tool call expansions, thinking sections, etc.
  */
 
@@ -9,7 +9,7 @@ import { Collapsible as KobalteCollapsible } from "@kobalte/core/collapsible";
 import { ChevronDown } from "lucide-solid";
 
 /**
- * Collapsible component with ekacode styling
+ * Collapsible component with sakti-code styling
  *
  * @example
  * ```tsx

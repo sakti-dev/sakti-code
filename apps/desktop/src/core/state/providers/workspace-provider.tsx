@@ -12,7 +12,7 @@
  * provided by ChatProvider instead of WorkspaceProvider.
  */
 import type { WorkspaceState } from "@/core/chat/types";
-import { EkacodeApiClient, type SessionInfo } from "@/core/services/api/api-client";
+import { SaktiCodeApiClient, type SessionInfo } from "@/core/services/api/api-client";
 import { createLogger } from "@/core/shared/logger";
 import { useSession } from "@/core/state/hooks/use-session";
 import { useNavigate, useParams } from "@solidjs/router";
@@ -54,7 +54,7 @@ export interface WorkspaceContextValue {
   projectName: Accessor<string>;
 
   // API client
-  client: Accessor<EkacodeApiClient | null>;
+  client: Accessor<SaktiCodeApiClient | null>;
   isClientReady: Accessor<boolean>;
 
   // Sessions
@@ -113,11 +113,11 @@ export const WorkspaceProvider: ParentComponent<WorkspaceProviderProps> = props 
   // Fetch workspace from API on mount
   onMount(async () => {
     // Get client first
-    let client: EkacodeApiClient | null = null;
-    let config: Awaited<ReturnType<typeof window.ekacodeAPI.server.getConfig>>;
+    let client: SaktiCodeApiClient | null = null;
+    let config: Awaited<ReturnType<typeof window.saktiCodeAPI.server.getConfig>>;
     try {
-      config = await window.ekacodeAPI.server.getConfig();
-      client = new EkacodeApiClient(config);
+      config = await window.saktiCodeAPI.server.getConfig();
+      client = new SaktiCodeApiClient(config);
     } catch (error) {
       console.error("Failed to load API config:", error);
       setWorkspaceError("Failed to initialize API");
@@ -156,7 +156,7 @@ export const WorkspaceProvider: ParentComponent<WorkspaceProviderProps> = props 
   const projectName = createMemo(() => workspaceState()?.name ?? "Project");
 
   // ---- API Client ----
-  const [client, setClient] = createSignal<EkacodeApiClient | null>(null);
+  const [client, setClient] = createSignal<SaktiCodeApiClient | null>(null);
   const isClientReady = createMemo(() => client() !== null);
 
   // ---- Sessions ----

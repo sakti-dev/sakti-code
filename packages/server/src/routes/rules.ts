@@ -8,8 +8,8 @@ import {
   createDefaultRules,
   formatConfigRules,
   parseConfigRules,
-} from "@ekacode/core/server";
-import { createLogger } from "@ekacode/shared/logger";
+} from "@sakti-code/core/server";
+import { createLogger } from "@sakti-code/shared/logger";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -257,7 +257,7 @@ app.post("/api/permissions/rules/evaluate", async c => {
     const rules = permissionMgr.getRules();
 
     // Import the evaluation function
-    const { evaluatePermission } = await import("@ekacode/core/server");
+    const { evaluatePermission } = await import("@sakti-code/core/server");
     const action = evaluatePermission(permission, pattern, rules);
 
     logger.debug("Permission rule evaluated", {

@@ -8,7 +8,7 @@
  * - Output processor: persists and triggers reflections after agent execution
  */
 
-import type { Message as DBMessage } from "@ekacode/server/db";
+import type { Message as DBMessage } from "../server-bridge";
 import {
   messageStorage,
   type CreateMessageInput,

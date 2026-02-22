@@ -1,5 +1,5 @@
 import type { PermissionRequestData } from "@/core/chat/types/ui-message";
-import type { EkacodeApiClient } from "@/core/services/api/api-client";
+import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
 import { createLogger } from "@/core/shared/logger";
 import { usePermissionStore } from "@/state/providers";
 import { createMemo, createSignal, type Accessor } from "solid-js";
@@ -7,7 +7,7 @@ import { createMemo, createSignal, type Accessor } from "solid-js";
 const logger = createLogger("desktop:permissions");
 
 export interface UsePermissionsOptions {
-  client: EkacodeApiClient;
+  client: SaktiCodeApiClient;
   workspace: Accessor<string>;
   sessionId: Accessor<string | null>;
   onRequest?: (request: PermissionRequestData) => void;

@@ -8,7 +8,7 @@
  * - Part matching by ID, then message+type+callID/reasoningId
  */
 
-import type { MessageInfo, Part } from "@ekacode/shared/event-types";
+import type { MessageInfo, Part } from "@sakti-code/shared/event-types";
 
 /** Extended message with ID */
 export type MessageWithId = MessageInfo & { id: string; sessionID?: string; parentID?: string };

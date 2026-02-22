@@ -5,7 +5,7 @@ Author: Codex session notes
 
 ## Goal
 
-Capture everything learned from scanning `./supertools`, especially the sandbox + relay + programmatic tool execution model, and map it to `ekacode`.
+Capture everything learned from scanning `./supertools`, especially the sandbox + relay + programmatic tool execution model, and map it to `sakti-code`.
 
 ## Scope
 
@@ -16,7 +16,7 @@ This document is based on code and docs in:
 - `supertools/e2b-templates/*`
 - `supertools/examples/*`
 
-And compared against relevant `ekacode` runtime files:
+And compared against relevant `sakti-code` runtime files:
 
 - `packages/core/src/session/controller.ts`
 - `packages/core/src/session/processor.ts`
@@ -40,7 +40,7 @@ Main caveat:
 
 Direction update from `sandboxing.md`:
 
-- For `ekacode`, prefer a **local sandbox worker** (`child_process` + `isolated-vm`) over remote endpoint-style execution.
+- For `sakti-code`, prefer a **local sandbox worker** (`child_process` + `isolated-vm`) over remote endpoint-style execution.
 - Feed programmatic execution through a normal **AI SDK tool call** (e.g. `sandbox_execute`) so the approach remains provider/model agnostic.
 
 ## Core Architecture
@@ -272,9 +272,9 @@ Reference:
 
 - `supertools/README.md:330`
 
-## Mapping to ekacode Runtime
+## Mapping to sakti-code Runtime
 
-### Current ekacode architecture highlights
+### Current sakti-code architecture highlights
 
 - Agent loop: `streamText(...)` in `packages/core/src/session/processor.ts:515`
 - Tool events/results wired in loop: `packages/core/src/session/processor.ts:736`
@@ -284,7 +284,7 @@ Reference:
 
 ### Compatibility observation
 
-ekacode already has:
+sakti-code already has:
 
 - Strong tool registry
 - Context + permission model
@@ -304,9 +304,9 @@ The `sandboxing.md` guidance aligns with a local execution model:
 
 Key takeaway:
 
-- The best fit for `ekacode` is to expose sandbox orchestration as an internal AI SDK tool, not as a separate agent endpoint protocol.
+- The best fit for `sakti-code` is to expose sandbox orchestration as an internal AI SDK tool, not as a separate agent endpoint protocol.
 
-## Recommended ekacode Design Direction (Model-Agnostic)
+## Recommended sakti-code Design Direction (Model-Agnostic)
 
 ### Keep existing agent loop, add one optional super-executor tool
 
@@ -336,7 +336,7 @@ This avoids adding a separate public `/agent/run` style orchestration API as the
 
 1. Sandbox manager abstraction.
 2. Worker bridge (IPC-first; websocket optional) for sandbox <-> host tool calls.
-3. Tool exposure adapter from ekacode tools -> MCP-callable interface.
+3. Tool exposure adapter from sakti-code tools -> MCP-callable interface.
 4. Codegen adapter interface for provider-specific request shape.
 5. Policy layer for:
    - tool allowlist
@@ -487,7 +487,7 @@ Sandbox does **not** get direct project filesystem access.
 - Writes happen via whitelisted mutators only (prefer `apply_patch`).
 - This keeps source access auditable and policy-controlled while still enabling multi-step discovery/editing.
 
-## Subagent-Orchestrator Behavior (Current ekacode)
+## Subagent-Orchestrator Behavior (Current sakti-code)
 
 If the "orchestrator" is itself a subagent, behavior depends on how that subagent was created.
 
@@ -546,7 +546,7 @@ Without these controls, recursion risk and token/tool-call blowups are high.
 
 ## Quick Difference Table
 
-| Area                       | Supertools                           | ekacode today                         |
+| Area                       | Supertools                           | sakti-code today                      |
 | -------------------------- | ------------------------------------ | ------------------------------------- |
 | Main mode                  | Generate code and execute externally | Iterative model tool-calling loop     |
 | Tool transport             | WebSocket relay (protobuf)           | Direct AI SDK tool execution          |
@@ -563,7 +563,7 @@ Your proposed architecture is feasible and validated by supertools:
 - It can reduce token and latency costs for tool-heavy workflows.
 - It needs strong policy/validation to be production-safe.
 
-For ekacode, best path is hybrid:
+For sakti-code, best path is hybrid:
 
 - Keep current normal agent loop.
 - Add `sandbox_execute` tool for heavy orchestration tasks.

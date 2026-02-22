@@ -13,28 +13,39 @@
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
+interface SpecTaskMeta {
+  taskId?: string;
+}
+
+function getSpecMeta(metadata: unknown): SpecTaskMeta | undefined {
+  if (!metadata || typeof metadata !== "object") return undefined;
+  const spec = (metadata as { spec?: unknown }).spec;
+  if (!spec || typeof spec !== "object") return undefined;
+  return spec as SpecTaskMeta;
+}
+
 describe("Spec Helpers", () => {
-  let getActiveSpec: typeof import("../../../src/spec/helpers").getActiveSpec;
-  let updateSessionSpec: typeof import("../../../src/spec/helpers").updateSessionSpec;
-  let getTaskBySpecAndId: typeof import("../../../src/spec/helpers").getTaskBySpecAndId;
-  let listTasksBySpec: typeof import("../../../src/spec/helpers").listTasksBySpec;
-  let getReadyTasks: typeof import("../../../src/spec/helpers").getReadyTasks;
-  let taskStorage: import("../../../src/memory/task/storage").TaskStorage;
+  let getActiveSpec: typeof import("../../src/spec/helpers").getActiveSpec;
+  let updateSessionSpec: typeof import("../../src/spec/helpers").updateSessionSpec;
+  let getTaskBySpecAndId: typeof import("../../src/spec/helpers").getTaskBySpecAndId;
+  let listTasksBySpec: typeof import("../../src/spec/helpers").listTasksBySpec;
+  let getReadyTasks: typeof import("../../src/spec/helpers").getReadyTasks;
+  let taskStorage: import("../../src/memory/task/storage").TaskStorage;
 
   beforeEach(async () => {
     // Import helpers - these will fail until implemented
-    const helpers = await import("../../../src/spec/helpers");
+    const helpers = await import("../../src/spec/helpers");
     getActiveSpec = helpers.getActiveSpec;
     updateSessionSpec = helpers.updateSessionSpec;
     getTaskBySpecAndId = helpers.getTaskBySpecAndId;
     listTasksBySpec = helpers.listTasksBySpec;
     getReadyTasks = helpers.getReadyTasks;
 
-    const { TaskStorage } = await import("../../../src/memory/task/storage");
+    const { TaskStorage } = await import("../../src/memory/task/storage");
     taskStorage = new TaskStorage();
 
     // Clean up tasks and tool_sessions from previous test runs
-    const { getDb, sessions } = await import("@ekacode/server/db");
+    const { getDb, sessions } = await import("@sakti-code/core/testing/db");
     const { sql } = await import("drizzle-orm");
     const db = await getDb();
 
@@ -57,7 +68,7 @@ describe("Spec Helpers", () => {
   });
 
   afterAll(async () => {
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 
@@ -69,9 +80,9 @@ describe("Spec Helpers", () => {
 
     it("should return null when spec tool session exists but has no data", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
-      const { toolSessions } = await import("@ekacode/server/db");
+      const { toolSessions } = await import("@sakti-code/core/testing/db");
 
       // Create session first (FK constraint)
       await db.insert(sessions).values({
@@ -103,7 +114,7 @@ describe("Spec Helpers", () => {
       const sessionId = uuidv7();
 
       // Create session first (FK constraint)
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
       await db.insert(sessions).values({
         session_id: sessionId,
@@ -116,7 +127,7 @@ describe("Spec Helpers", () => {
 
       await updateSessionSpec(sessionId, "user-auth");
 
-      const { toolSessions } = await import("@ekacode/server/db");
+      const { toolSessions } = await import("@sakti-code/core/testing/db");
       const { eq, and } = await import("drizzle-orm");
 
       const result = await db
@@ -139,7 +150,7 @@ describe("Spec Helpers", () => {
       const sessionId = uuidv7();
 
       // Create session first (FK constraint)
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
       await db.insert(sessions).values({
         session_id: sessionId,
@@ -163,7 +174,7 @@ describe("Spec Helpers", () => {
       const sessionId = uuidv7();
 
       // Create session first (FK constraint)
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
       await db.insert(sessions).values({
         session_id: sessionId,
@@ -273,7 +284,7 @@ describe("Spec Helpers", () => {
 
       const tasks = await listTasksBySpec("user-auth");
       expect(tasks).toHaveLength(2);
-      expect(tasks.map(t => t.metadata?.spec?.taskId).sort()).toEqual(["T-001", "T-002"]);
+      expect(tasks.map(t => getSpecMeta(t.metadata)?.taskId).sort()).toEqual(["T-001", "T-002"]);
     });
   });
 
@@ -314,7 +325,7 @@ describe("Spec Helpers", () => {
 
       const ready = await getReadyTasks("user-auth");
       expect(ready).toHaveLength(1);
-      expect(ready[0].metadata?.spec?.taskId).toBe("T-001");
+      expect(getSpecMeta(ready[0].metadata)?.taskId).toBe("T-001");
     });
 
     it("should not return tasks blocked by open dependencies", async () => {
@@ -378,16 +389,16 @@ describe("Spec Helpers", () => {
 
   describe("getCurrentTask", () => {
     it("should return null when no current task is set", async () => {
-      const { getCurrentTask } = await import("../../../src/spec/helpers");
+      const { getCurrentTask } = await import("../../src/spec/helpers");
       const result = await getCurrentTask("nonexistent-session");
       expect(result).toBeNull();
     });
 
     it("should return current task ID when set", async () => {
-      const { updateCurrentTask, getCurrentTask } = await import("../../../src/spec/helpers");
+      const { updateCurrentTask, getCurrentTask } = await import("../../src/spec/helpers");
       const sessionId = uuidv7();
 
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
       await db
         .insert(sessions)
@@ -410,10 +421,10 @@ describe("Spec Helpers", () => {
 
   describe("updateCurrentTask", () => {
     it("should set current task for a session", async () => {
-      const { updateCurrentTask, getCurrentTask } = await import("../../../src/spec/helpers");
+      const { updateCurrentTask, getCurrentTask } = await import("../../src/spec/helpers");
       const sessionId = uuidv7();
 
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
       await db
         .insert(sessions)
@@ -434,10 +445,10 @@ describe("Spec Helpers", () => {
     });
 
     it("should update existing current task", async () => {
-      const { updateCurrentTask, getCurrentTask } = await import("../../../src/spec/helpers");
+      const { updateCurrentTask, getCurrentTask } = await import("../../src/spec/helpers");
       const sessionId = uuidv7();
 
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
       await db
         .insert(sessions)
@@ -461,14 +472,14 @@ describe("Spec Helpers", () => {
 
   describe("getSessionRuntimeMode", () => {
     it("should return null when no runtime mode is set", async () => {
-      const { getSessionRuntimeMode } = await import("../../../src/spec/helpers");
+      const { getSessionRuntimeMode } = await import("../../src/spec/helpers");
       const result = await getSessionRuntimeMode("nonexistent-session");
       expect(result).toBeNull();
     });
 
     it("should return null when runtime mode is not set but tool_session exists", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions, toolSessions } = await import("@ekacode/server/db");
+      const { getDb, sessions, toolSessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
 
       await db.insert(sessions).values({
@@ -490,14 +501,14 @@ describe("Spec Helpers", () => {
         last_accessed: new Date(),
       });
 
-      const { getSessionRuntimeMode } = await import("../../../src/spec/helpers");
+      const { getSessionRuntimeMode } = await import("../../src/spec/helpers");
       const result = await getSessionRuntimeMode(sessionId);
       expect(result).toBeNull();
     });
 
     it("should return null for legacy/invalid stored value like 'explore'", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions, toolSessions } = await import("@ekacode/server/db");
+      const { getDb, sessions, toolSessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
 
       await db.insert(sessions).values({
@@ -519,7 +530,7 @@ describe("Spec Helpers", () => {
         last_accessed: new Date(),
       });
 
-      const { getSessionRuntimeMode } = await import("../../../src/spec/helpers");
+      const { getSessionRuntimeMode } = await import("../../src/spec/helpers");
       const result = await getSessionRuntimeMode(sessionId);
       expect(result).toBeNull();
     });
@@ -528,10 +539,10 @@ describe("Spec Helpers", () => {
   describe("updateSessionRuntimeMode", () => {
     it("should set runtime mode to 'plan'", async () => {
       const { updateSessionRuntimeMode, getSessionRuntimeMode } =
-        await import("../../../src/spec/helpers");
+        await import("../../src/spec/helpers");
       const sessionId = uuidv7();
 
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
       await db.insert(sessions).values({
         session_id: sessionId,
@@ -550,10 +561,10 @@ describe("Spec Helpers", () => {
 
     it("should update runtime mode from 'plan' to 'build'", async () => {
       const { updateSessionRuntimeMode, getSessionRuntimeMode } =
-        await import("../../../src/spec/helpers");
+        await import("../../src/spec/helpers");
       const sessionId = uuidv7();
 
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
       await db.insert(sessions).values({
         session_id: sessionId,
@@ -573,10 +584,10 @@ describe("Spec Helpers", () => {
 
     it("should update in place (upsert behavior) - only one row per session", async () => {
       const { updateSessionRuntimeMode, getSessionRuntimeMode } =
-        await import("../../../src/spec/helpers");
+        await import("../../src/spec/helpers");
       const sessionId = uuidv7();
 
-      const { getDb, sessions, toolSessions } = await import("@ekacode/server/db");
+      const { getDb, sessions, toolSessions } = await import("@sakti-code/core/testing/db");
       const { eq, and } = await import("drizzle-orm");
       const db = await getDb();
       await db.insert(sessions).values({

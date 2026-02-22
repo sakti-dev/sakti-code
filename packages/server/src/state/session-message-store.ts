@@ -1,4 +1,4 @@
-import type { Message, MessageInfo, Part } from "@ekacode/core/chat";
+import type { Message, MessageInfo, Part } from "@sakti-code/core/chat";
 
 type SessionState = {
   messages: Map<string, MessageInfo>;

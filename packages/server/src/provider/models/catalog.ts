@@ -38,7 +38,7 @@ function buildModelDescriptor(
 ): ModelDescriptor {
   const providerNpmPackage =
     providerId === "zai" || providerId === "zai-coding-plan"
-      ? "@ekacode/zai"
+      ? "@sakti-code/zai"
       : model.provider?.npm || providerMeta.npm;
 
   return {

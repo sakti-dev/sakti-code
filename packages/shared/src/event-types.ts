@@ -7,7 +7,7 @@
  */
 
 // ============================================================================
-// Simplified Chat Types (to avoid dependency on @ekacode/core)
+// Simplified Chat Types (to avoid dependency on @sakti-code/core)
 // ============================================================================
 
 /**

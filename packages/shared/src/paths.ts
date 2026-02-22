@@ -1,5 +1,5 @@
 /**
- * @ekacode/shared
+ * @sakti-code/shared
  *
  * App path resolution for sakti.
  * Simple: always use $HOME/.sakti for all data
@@ -26,13 +26,13 @@ function fileUrlForPath(filePath: string): string {
 
 /**
  * Resolve sakti paths.
- * Uses EKACODE_HOME environment variable if set, otherwise defaults to $HOME/.sakti
+ * Uses SAKTI_CODE_HOME environment variable if set, otherwise defaults to $HOME/.sakti
  */
 export function resolveAppPaths(): ResolvedAppPaths {
   const homedir = os.homedir();
-  const ekacodeHome = process.env.EKACODE_HOME;
+  const saktiCodeHome = process.env.SAKTI_CODE_HOME;
   const baseDir =
-    ekacodeHome && path.isAbsolute(ekacodeHome) ? ekacodeHome : path.join(homedir, ".sakti");
+    saktiCodeHome && path.isAbsolute(saktiCodeHome) ? saktiCodeHome : path.join(homedir, ".sakti");
 
   const home = baseDir;
   const config = path.join(home, "config");

@@ -6,7 +6,7 @@
  * and handles session ID mismatches correctly.
  */
 
-import type { EkacodeApiClient } from "@/core/services/api/api-client";
+import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
 import { createRoot } from "solid-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -89,12 +89,12 @@ function createMockResponse(overrides?: Partial<Response> & { sessionId?: string
 
 describe("useChat - Session Identity", () => {
   let mockChatFn: ReturnType<typeof vi.fn>;
-  let mockClient: EkacodeApiClient;
+  let mockClient: SaktiCodeApiClient;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockChatFn = vi.fn();
-    mockClient = { chat: mockChatFn } as unknown as EkacodeApiClient;
+    mockClient = { chat: mockChatFn } as unknown as SaktiCodeApiClient;
     mockGetBySession.mockReturnValue([]);
     mockGetById.mockReturnValue(undefined);
     mockGetByMessage.mockReturnValue([]);

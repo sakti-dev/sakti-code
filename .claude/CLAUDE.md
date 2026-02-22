@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ekacode is a privacy-focused, offline-first AI coding agent that runs locally as an Electron application. It uses a monorepo architecture with **apps/** (Electron tiers) and **packages/** (business logic) coordinated by pnpm workspaces and Turbo for build orchestration.
+sakti-code is a privacy-focused, offline-first AI coding agent that runs locally as an Electron application. It uses a monorepo architecture with **apps/** (Electron tiers) and **packages/** (business logic) coordinated by pnpm workspaces and Turbo for build orchestration.
 
 **Architecture:** Migrated from `electron-vite` to **plain Vite** with custom watch orchestration (`scripts/watch.ts`). Packages build to `dist/` and are consumed by apps via `workspace:*` protocol.
 
@@ -27,39 +27,39 @@ pnpm format:check     # Check formatting
 **Desktop (Renderer - SolidJS):**
 
 ```bash
-pnpm --filter @ekacode/desktop dev      # Vite dev server (HMR on port 5173)
-pnpm --filter @ekacode/desktop build    # Build renderer only
-pnpm --filter @ekacode/desktop typecheck
+pnpm --filter @sakti-code/desktop dev      # Vite dev server (HMR on port 5173)
+pnpm --filter @sakti-code/desktop build    # Build renderer only
+pnpm --filter @sakti-code/desktop typecheck
 ```
 
 **Electron (Main Process):**
 
 ```bash
-pnpm --filter @ekacode/electron build   # Build main process
+pnpm --filter @sakti-code/electron build   # Build main process
 ```
 
 **Preload (Context Bridge):**
 
 ```bash
-pnpm --filter @ekacode/preload build    # Build preload scripts
+pnpm --filter @sakti-code/preload build    # Build preload scripts
 ```
 
 **Server (Hono API):**
 
 ```bash
-pnpm --filter @ekacode/server test              # Run tests
-pnpm --filter @ekacode/server test:run          # CI mode
-pnpm --filter @ekacode/server test:coverage     # Coverage report
-pnpm --filter @ekacode/server drizzle:generate  # Generate migrations
-pnpm --filter @ekacode/server drizzle:push      # Push schema to DB
+pnpm --filter @sakti-code/server test              # Run tests
+pnpm --filter @sakti-code/server test:run          # CI mode
+pnpm --filter @sakti-code/server test:coverage     # Coverage report
+pnpm --filter @sakti-code/server drizzle:generate  # Generate migrations
+pnpm --filter @sakti-code/server drizzle:push      # Push schema to DB
 ```
 
 **Core (Agents, Tools, Security):**
 
 ```bash
-pnpm --filter @ekacode/core test
-pnpm --filter @ekacode/core test:run
-pnpm --filter @ekacode/core test:coverage
+pnpm --filter @sakti-code/core test
+pnpm --filter @sakti-code/core test:run
+pnpm --filter @sakti-code/core test:coverage
 ```
 
 ### Single Test Execution
@@ -68,10 +68,10 @@ Use Vitest's `--testNamePattern` or `--testNamePattern` flag:
 
 ```bash
 # Run a specific test file
-pnpm --filter @ekacode/core test tests/agents/hybrid-agent/e2e.test.ts
+pnpm --filter @sakti-code/core test tests/agents/hybrid-agent/e2e.test.ts
 
 # Run tests matching a pattern
-pnpm --filter @ekacode/core test --testNamePattern "permission"
+pnpm --filter @sakti-code/core test --testNamePattern "permission"
 ```
 
 ## Architecture
@@ -79,7 +79,7 @@ pnpm --filter @ekacode/core test --testNamePattern "permission"
 ### Directory Structure (Post-Migration)
 
 ```
-ekacode/
+sakti-code/
 ├── apps/                    # Electron application tier
 │   ├── electron/           # Main process (Node.js)
 │   ├── preload/            # Preload scripts (context bridge)
@@ -158,7 +158,7 @@ ekacode/
 **5. Permission System**
 
 - Rule-based: `allow` > `deny` > `ask` (default)
-- Configuration sources (priority order): env vars → `ekacode.config.json` → `package.json` → defaults
+- Configuration sources (priority order): env vars → `sakti-code.config.json` → `package.json` → defaults
 - Glob pattern matching for file paths
 - Event-driven approval flow with 30s timeout
 - Git tools are auto-allowed, all others require permission
@@ -269,7 +269,7 @@ apps/
 │   └── vite.config.ts    # SSR build config
 ├── preload/              # Preload scripts
 │   ├── src/
-│   │   └── index.ts      # Context bridge (ekacodeAPI)
+│   │   └── index.ts      # Context bridge (saktiCodeAPI)
 │   └── vite.config.ts    # CJS build config
 └── desktop/              # Renderer (UI)
     ├── src/              # SolidJS components
@@ -335,7 +335,7 @@ packages/
 
 ### Naming Conventions
 
-- Packages: `@ekacode/<name>` (scoped npm packages)
+- Packages: `@sakti-code/<name>` (scoped npm packages)
 - Files: kebab-case (`bash.tool.ts`, `session-bridge.ts`)
 - Test files: `<name>.test.ts` or `<name>.spec.ts`
 - Tests located in `tests/` directory within each package
@@ -388,8 +388,8 @@ Example: `import { useChat } from "@/chat/hooks"` instead of relative imports
 
 **Mastra Storage:**
 
-- `ekacode-store` - Message storage
-- `ekacode-vector` - Vector embeddings for semantic search
+- `sakti-code-store` - Message storage
+- `sakti-code-vector` - Vector embeddings for semantic search
 
 ## Important Notes
 

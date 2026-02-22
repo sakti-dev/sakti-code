@@ -3,10 +3,10 @@
  * Based on OpenCode's permission/next.ts pattern
  */
 
-import type { PermissionAction, PermissionRule, PermissionType } from "@ekacode/shared";
-import { createLogger } from "@ekacode/shared/logger";
+import type { PermissionAction, PermissionRule, PermissionType } from "@sakti-code/shared";
+import { createLogger } from "@sakti-code/shared/logger";
 
-const logger = createLogger("ekacode");
+const logger = createLogger("sakti-code");
 
 /**
  * Convert glob pattern to regex

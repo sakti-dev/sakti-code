@@ -37,7 +37,7 @@ function toAbsolutePath(value: string): string {
 }
 
 function getCandidates(): MigrationsCandidate[] {
-  const envPath = process.env.EKACODE_MIGRATIONS_DIR;
+  const envPath = process.env.SAKTI_CODE_MIGRATIONS_DIR;
   if (envPath) {
     return [{ path: toAbsolutePath(envPath), source: "env" }];
   }
@@ -68,17 +68,17 @@ export function resolveMigrationsFolder(): ResolvedMigrationsFolder {
   const candidates = getCandidates();
   const attemptedPaths = candidates.map(candidate => candidate.path);
 
-  const envPath = process.env.EKACODE_MIGRATIONS_DIR;
+  const envPath = process.env.SAKTI_CODE_MIGRATIONS_DIR;
   if (envPath) {
     const onlyCandidate = candidates[0];
     if (!fs.existsSync(onlyCandidate.path)) {
       throw new Error(
-        `[db:migration] EKACODE_MIGRATIONS_DIR does not exist: ${onlyCandidate.path}`
+        `[db:migration] SAKTI_CODE_MIGRATIONS_DIR does not exist: ${onlyCandidate.path}`
       );
     }
     if (!hasJournal(onlyCandidate.path)) {
       throw new Error(
-        `[db:migration] EKACODE_MIGRATIONS_DIR is missing meta/_journal.json: ${journalPathFor(onlyCandidate.path)}`
+        `[db:migration] SAKTI_CODE_MIGRATIONS_DIR is missing meta/_journal.json: ${journalPathFor(onlyCandidate.path)}`
       );
     }
     return {

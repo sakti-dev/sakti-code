@@ -132,10 +132,10 @@ importers:
       '@corvu/resizable':
         specifier: ^0.2.5
         version: 0.2.5(solid-js@1.9.11)
-      '@ekacode/electron-preload':
+      '@sakti-code/electron-preload':
         specifier: workspace:*
         version: link:../preload
-      '@ekacode/shared':
+      '@sakti-code/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@kobalte/core':
@@ -235,16 +235,16 @@ importers:
       '@anush008/tokenizers':
         specifier: ^0.0.0
         version: 0.0.0
-      '@ekacode/core':
+      '@sakti-code/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@ekacode/server':
+      '@sakti-code/server':
         specifier: workspace:*
         version: link:../../packages/server
-      '@ekacode/shared':
+      '@sakti-code/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@ekacode/zai':
+      '@sakti-code/zai':
         specifier: workspace:*
         version: link:../../packages/zai
       '@electron-toolkit/utils':
@@ -369,10 +369,10 @@ importers:
       '@ai-sdk/xai':
         specifier: ^3.0.57
         version: 3.0.57(zod@4.3.6)
-      '@ekacode/shared':
+      '@sakti-code/shared':
         specifier: workspace:*
         version: link:../shared
-      '@ekacode/zai':
+      '@sakti-code/zai':
         specifier: workspace:*
         version: link:../zai
       '@gitlab/gitlab-ai-provider':
@@ -445,10 +445,10 @@ importers:
 
   packages/server:
     dependencies:
-      '@ekacode/core':
+      '@sakti-code/core':
         specifier: workspace:*
         version: link:../core
-      '@ekacode/shared':
+      '@sakti-code/shared':
         specifier: workspace:*
         version: link:../shared
       '@hono/node-server':

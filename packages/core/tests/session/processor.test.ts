@@ -6,7 +6,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AgentConfig, AgentInput } from "../../src/agent/types";
+import { AgentConfig, AgentInput } from "../../src/agent/workflow/types";
 import { AgentProcessor } from "../../src/session/processor";
 
 // Mock the streamText from AI SDK

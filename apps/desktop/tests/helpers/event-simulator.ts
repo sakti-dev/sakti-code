@@ -4,10 +4,10 @@
  * Simulates SSE events and EventSource for integration testing.
  * Part of Batch 5: WS7 Testing Overhaul
  *
- * @package @ekacode/desktop/tests
+ * @package @sakti-code/desktop/tests
  */
 
-import type { AllServerEvents } from "@ekacode/shared/event-types";
+import type { AllServerEvents } from "@sakti-code/shared/event-types";
 
 /**
  * Mock EventSource for testing reconnect/catch-up scenarios

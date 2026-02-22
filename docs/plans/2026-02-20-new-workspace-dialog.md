@@ -228,7 +228,7 @@ it("should open folder dialog when Browse is clicked", async () => {
 
 ```typescript
 const handleBrowse = async () => {
-  const path = await window.ekacodeAPI.dialog.openDirectory();
+  const path = (await window.sakti) - codeAPI.dialog.openDirectory();
   if (path) {
     setSelectedPath(path);
     // Auto-suggest worktree name from folder
@@ -262,10 +262,12 @@ it("should clone repository when Clone is clicked", async () => {
 ```typescript
 const handleClone = async () => {
   try {
-    const clonedPath = await window.ekacodeAPI.workspace.clone({
-      url: selectedPath(), // Using path field for URL
-      branch: branch(),
-    });
+    const clonedPath =
+      (await window.sakti) -
+      codeAPI.workspace.clone({
+        url: selectedPath(), // Using path field for URL
+        branch: branch(),
+      });
     setSelectedPath(clonedPath);
     // Auto-suggest worktree name
     const repoName = clonedPath.split("/").pop() || "workspace";

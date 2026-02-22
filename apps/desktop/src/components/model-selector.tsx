@@ -7,9 +7,9 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/utils";
-import { SlashCommand } from "@ekacode/core/chat";
+import { SlashCommand } from "@sakti-code/core/chat";
 import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
-export type { SlashCommand } from "@ekacode/core/chat";
+export type { SlashCommand } from "@sakti-code/core/chat";
 
 export type CommandCenterMode = "model" | "mcp" | "skills" | "context" | "command";
 

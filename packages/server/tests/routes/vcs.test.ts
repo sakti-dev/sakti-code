@@ -15,7 +15,7 @@ describe("GET /api/vcs", () => {
     const vcsRouter = (await import("../../src/routes/vcs")).default;
 
     const response = await vcsRouter.request(
-      "http://localhost/api/vcs?directory=/home/eekrain/CODE/ekacode",
+      "http://localhost/api/vcs?directory=/home/eekrain/CODE/sakti-code",
       { method: "GET" }
     );
 
@@ -54,7 +54,7 @@ describe("GET /api/vcs", () => {
     const vcsRouter = (await import("../../src/routes/vcs")).default;
 
     const response = await vcsRouter.request(
-      "http://localhost/api/vcs?directory=/home/eekrain/CODE/ekacode",
+      "http://localhost/api/vcs?directory=/home/eekrain/CODE/sakti-code",
       { method: "GET" }
     );
 
@@ -74,7 +74,7 @@ describe("POST /api/vcs/branches", () => {
     const response = await vcsRouter.request("http://localhost/api/vcs/branches", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: "/home/eekrain/CODE/ekacode" }),
+      body: JSON.stringify({ path: "/home/eekrain/CODE/sakti-code" }),
     });
 
     expect(response.status).toBe(200);
@@ -115,7 +115,7 @@ describe("POST /api/vcs/clone", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ekacode-clone-test-"));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sakti-code-clone-test-"));
   });
 
   afterEach(async () => {
@@ -179,7 +179,7 @@ describe("POST /api/vcs/worktree", () => {
   let workspacesDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ekacode-worktree-test-"));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sakti-code-worktree-test-"));
     repoDir = path.join(tempDir, "repo");
     workspacesDir = path.join(tempDir, "workspaces");
 
@@ -289,7 +289,7 @@ describe("GET /api/vcs/worktree/exists", () => {
   let workspacesDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ekacode-exists-test-"));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sakti-code-exists-test-"));
     workspacesDir = path.join(tempDir, "workspaces");
     await fs.mkdir(workspacesDir, { recursive: true });
   });

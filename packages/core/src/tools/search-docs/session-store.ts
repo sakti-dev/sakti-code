@@ -4,7 +4,7 @@
  * Manages cloned repositories AND sub-agent sessions with LRU + TTL cleanup.
  */
 
-import { shutdown } from "@ekacode/shared/shutdown";
+import { shutdown } from "@sakti-code/shared/shutdown";
 import { v7 as uuidv7 } from "uuid";
 
 // ============================================================================

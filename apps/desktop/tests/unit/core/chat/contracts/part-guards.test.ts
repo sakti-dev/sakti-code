@@ -20,7 +20,7 @@ import {
   validateTextPart,
   validateToolPart,
 } from "@/core/chat/domain/part-guards";
-import type { Part } from "@ekacode/shared/event-types";
+import type { Part } from "@sakti-code/shared/event-types";
 import { describe, expect, it } from "vitest";
 
 describe("Part Guards", () => {

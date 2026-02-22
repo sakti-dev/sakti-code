@@ -40,8 +40,8 @@
 
 ## Mandatory Verification Gate
 
-1. `pnpm --filter @ekacode/server test`
-2. `pnpm --filter @ekacode/core test`
-3. `pnpm --filter @ekacode/desktop test:run`
+1. `pnpm --filter @sakti-code/server test`
+2. `pnpm --filter @sakti-code/core test`
+3. `pnpm --filter @sakti-code/desktop test:run`
 4. `pnpm typecheck`
 5. `pnpm lint`

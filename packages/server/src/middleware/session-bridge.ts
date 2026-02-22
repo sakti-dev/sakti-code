@@ -9,7 +9,7 @@
  * Updated for Batch 2: Data Integrity - Added session ID validation
  */
 
-import { Instance } from "@ekacode/core/server";
+import { Instance } from "@sakti-code/core/server";
 import type { Context, Next } from "hono";
 import { v7 as uuidv7 } from "uuid";
 import type { Session } from "../../db/sessions";

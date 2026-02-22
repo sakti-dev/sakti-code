@@ -1,5 +1,5 @@
 /**
- * Vision/multimodal examples for @ekacode/zai
+ * Vision/multimodal examples for @sakti-code/zai
  *
  * Run with:
  *   tsx examples/images.ts

@@ -1,10 +1,10 @@
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { LSPServerInfo } from "./types";
 
-const logger = createLogger("ekacode:lsp:server");
+const logger = createLogger("sakti-code:lsp:server");
 
 export interface LSPServerDefinition extends LSPServerInfo {
   rootPatterns: string[];

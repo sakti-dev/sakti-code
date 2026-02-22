@@ -1,6 +1,10 @@
 import { SettingsDialog } from "@/components/settings-dialog/settings-dialog";
 import type { ArchivedWorkspace, RecentProject } from "@/core/chat/types";
-import { createApiClient, EkacodeApiClient, type Workspace } from "@/core/services/api/api-client";
+import {
+  createApiClient,
+  SaktiCodeApiClient,
+  type Workspace,
+} from "@/core/services/api/api-client";
 import { useNavigate } from "@solidjs/router";
 import { createSignal, onMount } from "solid-js";
 import { NewWorkspaceDialog } from "./components/new-workspace-dialog";
@@ -35,11 +39,11 @@ export default function HomeView() {
   const [isNewWorkspaceOpen, setIsNewWorkspaceOpen] = createSignal(false);
   const [isSettingsOpen, setIsSettingsOpen] = createSignal(false);
   const [isLoading, setIsLoading] = createSignal(true);
-  const [apiClient, setApiClient] = createSignal<EkacodeApiClient | null>(null);
+  const [apiClient, setApiClient] = createSignal<SaktiCodeApiClient | null>(null);
 
   onMount(async () => {
     // Check dark mode preference
-    const darkMode = localStorage.getItem("ekacode:theme") === "dark";
+    const darkMode = localStorage.getItem("sakti-code:theme") === "dark";
     _setIsDark(darkMode);
     if (darkMode) {
       document.documentElement.classList.add("dark");

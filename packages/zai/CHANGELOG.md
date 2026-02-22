@@ -1,4 +1,4 @@
-# @ekacode/zai Changelog
+# @sakti-code/zai Changelog
 
 ## 0.0.1
 

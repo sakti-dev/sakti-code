@@ -288,8 +288,8 @@ export function ModelsSettings(props: ModelsSettingsProps) {
   });
 
   const openExternal = async (url: string) => {
-    if (window.ekacodeAPI?.shell?.openExternal) {
-      await window.ekacodeAPI.shell.openExternal(url);
+    if (window.saktiCodeAPI?.shell?.openExternal) {
+      await window.saktiCodeAPI.shell.openExternal(url);
       return;
     }
     window.open(url, "_blank", "noopener,noreferrer");

@@ -170,7 +170,7 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
 
   // Folder mode handlers
   const handleBrowseFolder = async () => {
-    const path = await window.ekacodeAPI.dialog.openDirectory();
+    const path = await window.saktiCodeAPI.dialog.openDirectory();
     if (path) {
       setSelectedFolder(path);
       setError("");
@@ -201,7 +201,7 @@ export function NewWorkspaceDialog(props: NewWorkspaceDialogProps) {
 
   // Clone mode handlers
   const handleBrowseCloneTarget = async () => {
-    const path = await window.ekacodeAPI.dialog.openDirectory();
+    const path = await window.saktiCodeAPI.dialog.openDirectory();
     if (path) {
       setCloneTarget(path);
       localStorage.setItem(LAST_CLONE_TARGET_KEY, path);

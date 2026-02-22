@@ -12,7 +12,7 @@ import type {
   SessionCreatedPayload,
   SessionStatusPayload,
   SessionUpdatedPayload,
-} from "@ekacode/shared/event-types";
+} from "@sakti-code/shared/event-types";
 
 export interface SessionHandlerDependencies {
   sessionActions: SessionActions;

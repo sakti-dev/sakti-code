@@ -1,5 +1,5 @@
 /**
- * Logger type definitions for @ekacode/shared/logger
+ * Logger type definitions for @sakti-code/shared/logger
  */
 
 export enum LogLevels {
@@ -13,7 +13,7 @@ export enum LogLevels {
 export type LogLevel = "debug" | "info" | "warn" | "error" | "silent";
 
 export interface LoggerContext {
-  package: string; // 'ekacode', 'server', 'desktop'
+  package: string; // 'sakti-code', 'server', 'desktop'
   module?: string; // 'tool:read', 'api:permissions', 'ipc:bridge'
   sessionId?: string; // Request/session ID for tracing
   agent?: string; // Agent name when applicable

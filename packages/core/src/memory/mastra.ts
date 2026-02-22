@@ -1,5 +1,5 @@
 /**
- * @ekacode/core
+ * @sakti-code/core
  *
  * Memory system - Phase 1 implementation
  */

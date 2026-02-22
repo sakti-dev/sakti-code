@@ -13,7 +13,7 @@ afterEach(async () => {
 
 describe("provider credential profile bootstrap", () => {
   it("creates default profile seed metadata idempotently", async () => {
-    const base = await mkdtemp(join(tmpdir(), "ekacode-provider-bootstrap-"));
+    const base = await mkdtemp(join(tmpdir(), "sakti-code-provider-bootstrap-"));
     tempDirs.push(base);
 
     await ensureCredentialProfileBootstrap(base, "default");

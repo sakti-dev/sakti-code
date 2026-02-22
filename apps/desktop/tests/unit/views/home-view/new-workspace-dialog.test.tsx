@@ -38,9 +38,9 @@ describe("NewWorkspaceDialog", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
 
-    // Mock window.ekacodeAPI - minimal IPC (only dialogs)
+    // Mock window.saktiCodeAPI - minimal IPC (only dialogs)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).ekacodeAPI = {
+    (window as any).saktiCodeAPI = {
       dialog: {
         openDirectory: vi.fn(() => Promise.resolve(null)),
       },
@@ -218,7 +218,7 @@ describe("NewWorkspaceDialog", () => {
 
     // Simulate folder selection by triggering the IPC mock
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((window as any).ekacodeAPI.dialog.openDirectory as ReturnType<typeof vi.fn>).mockReturnValue(
+    ((window as any).saktiCodeAPI.dialog.openDirectory as ReturnType<typeof vi.fn>).mockReturnValue(
       Promise.resolve("/home/user/projects/repo")
     );
 

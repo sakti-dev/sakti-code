@@ -5,8 +5,8 @@
  * project detection results and VCS information.
  */
 
-import { Instance } from "@ekacode/core/server";
-import { createLogger } from "@ekacode/shared/logger";
+import { Instance } from "@sakti-code/core/server";
+import { createLogger } from "@sakti-code/shared/logger";
 import { Hono } from "hono";
 import type { Env } from "../index";
 import { sessionBridge } from "../middleware/session-bridge";

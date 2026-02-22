@@ -14,12 +14,12 @@
  * **Usage:**
  * ```ts
  * // In-memory storage (default)
- * import { sequentialThinking } from "@ekacode/core/tools";
+ * import { sequentialThinking } from "@sakti-code/core/tools";
  *
  * // Database-backed storage (production)
- * import { sequentialThinking } from "@ekacode/core/tools";
- * import { createDatabaseStorage } from "@ekacode/core/tools/sequential-thinking-storage";
- * import { db, toolSessions } from "@ekacode/server/db";
+ * import { sequentialThinking } from "@sakti-code/core/tools";
+ * import { createDatabaseStorage } from "@sakti-code/core/tools/sequential-thinking-storage";
+ * import { getDb, toolSessions } from "../server-bridge";
  *
  * const storage = createDatabaseStorage({
  *   getToolSession: async (sessionId) => { ... },
@@ -295,8 +295,8 @@ export const sequentialThinking = createSequentialThinkingTool();
  *
  * @example
  * ```ts
- * import { createSequentialThinkingToolWithDb } from "@ekacode/core/tools";
- * import { db, toolSessions } from "@ekacode/server/db";
+ * import { createSequentialThinkingToolWithDb } from "@sakti-code/core/tools";
+ * import { getDb, toolSessions } from "../server-bridge";
  * import { eq, and } from "drizzle-orm";
  * import { v7 as uuidv7 } from "uuid";
  *

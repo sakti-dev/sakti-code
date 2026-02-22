@@ -8,7 +8,7 @@
  * Without the API key, tests are skipped.
  */
 
-import { createZai } from "@ekacode/zai";
+import { createZai } from "@sakti-code/zai";
 import { generateText } from "ai";
 import { describe, expect, it } from "vitest";
 import { createTools } from "../../src/tools/registry";

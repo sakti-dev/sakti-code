@@ -74,7 +74,7 @@ describe("memory migration upgrade", () => {
   });
 
   it("upgrades legacy DB to add messages_fts, backfill rows, and maintain triggers", async () => {
-    const tempRoot = await mkdtemp(path.join(tmpdir(), "ekacode-migrate-"));
+    const tempRoot = await mkdtemp(path.join(tmpdir(), "sakti-code-migrate-"));
     cleanupDirs.push(tempRoot);
 
     const dbFile = path.join(tempRoot, "upgrade.db");

@@ -1,5 +1,5 @@
 {
-  "name": "@ekacode/electron-main",
+  "name": "@sakti-code/electron-main",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "@anush008/tokenizers": "^0.0.0",
-    "@ekacode/core": "workspace:*",
-    "@ekacode/server": "workspace:*",
-    "@ekacode/shared": "workspace:*",
-    "@ekacode/zai": "workspace:*",
+    "@sakti-code/core": "workspace:*",
+    "@sakti-code/server": "workspace:*",
+    "@sakti-code/shared": "workspace:*",
+    "@sakti-code/zai": "workspace:*",
     "@electron-toolkit/utils": "^4.0.0",
     "@libsql/client": "^0.17.0",
     "@mastra/fastembed": "^1.0.0",

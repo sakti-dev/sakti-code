@@ -1,10 +1,11 @@
 /**
- * @ekacode/shared
+ * @sakti-code/shared
  *
- * Shared types and utilities for ekacode packages
+ * Shared types and utilities for sakti-code packages
  */
 
 export * from "./binary";
+export * from "./core-server-bridge";
 export * from "./event-deduplication";
 export * from "./event-guards";
 export * from "./event-ordering";

@@ -49,8 +49,8 @@ interface StoreContextValue {
   question: [get: QuestionState, actions: QuestionActions];
 }
 
-const STORE_CONTEXT_KEY = Symbol.for("ekacode.desktop.store-context");
-const ACTIVE_STORES_KEY = Symbol.for("ekacode.desktop.active-stores");
+const STORE_CONTEXT_KEY = Symbol.for("sakti-code.desktop.store-context");
+const ACTIVE_STORES_KEY = Symbol.for("sakti-code.desktop.active-stores");
 
 /**
  * Store context for provider-scoped stores

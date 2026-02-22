@@ -8,7 +8,7 @@
  * - Shell operations (open external)
  */
 
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import { dialog, ipcMain, shell } from "electron";
 
 const logger = createLogger("desktop:ipc");

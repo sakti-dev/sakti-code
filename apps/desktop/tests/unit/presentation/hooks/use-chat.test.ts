@@ -1,4 +1,4 @@
-import type { EkacodeApiClient } from "@/core/services/api/api-client";
+import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
 import { createRoot } from "solid-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -125,7 +125,7 @@ function streamResponse(
 
 describe("useChat", () => {
   let mockChatFn: ReturnType<typeof vi.fn>;
-  let mockClient: EkacodeApiClient;
+  let mockClient: SaktiCodeApiClient;
   let messagesById: Map<string, { id: string; role?: string; sessionID?: string }>;
 
   beforeEach(() => {
@@ -136,7 +136,7 @@ describe("useChat", () => {
       configurable: true,
     });
     mockChatFn = vi.fn();
-    mockClient = { chat: mockChatFn } as unknown as EkacodeApiClient;
+    mockClient = { chat: mockChatFn } as unknown as SaktiCodeApiClient;
     mockGetBySession.mockReturnValue([]);
     mockGetById.mockImplementation((id: string) => messagesById.get(id));
     mockGetByMessage.mockReturnValue([]);

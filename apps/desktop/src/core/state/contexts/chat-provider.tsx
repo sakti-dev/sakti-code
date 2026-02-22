@@ -29,7 +29,7 @@
  */
 
 import { useChat } from "@/core/chat/hooks/use-chat";
-import type { EkacodeApiClient } from "@/core/services/api/api-client";
+import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
 import { createContext, useContext, type Accessor, type JSX, type ParentComponent } from "solid-js";
 
 /**
@@ -50,7 +50,7 @@ const ChatContext = createContext<ChatContextValue | null>(null);
  */
 interface ChatProviderProps {
   /** API client for making chat requests */
-  client: EkacodeApiClient;
+  client: SaktiCodeApiClient;
 
   /** Workspace directory accessor */
   workspace: Accessor<string>;

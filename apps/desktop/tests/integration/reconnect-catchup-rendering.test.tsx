@@ -4,7 +4,7 @@
  * End-to-end tests for SSE reconnect and catch-up behavior with real providers.
  * Part of Batch 6: WS8 Closeout - WS5 completion
  *
- * @package @ekacode/desktop/tests
+ * @package @sakti-code/desktop/tests
  */
 
 import {

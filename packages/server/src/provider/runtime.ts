@@ -1,4 +1,4 @@
-import { resolveAppPaths } from "@ekacode/shared/paths";
+import { resolveAppPaths } from "@sakti-code/shared/paths";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { createProviderAuthService } from "./auth/service";

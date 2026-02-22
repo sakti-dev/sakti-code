@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const listAgentsMock = vi.fn();
 
-vi.mock("@ekacode/core", () => ({
+vi.mock("@sakti-code/core", () => ({
   listAgents: listAgentsMock,
 }));
 

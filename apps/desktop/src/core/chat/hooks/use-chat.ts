@@ -3,7 +3,7 @@
  *
  * Refactored chat hook using Phase 4 domain contexts.
  * Uses provider-scoped stores for retry/delete/copy operations.
- * Uses EkacodeApiClient for sendMessage.
+ * Uses SaktiCodeApiClient for sendMessage.
  *
  * Updated for Batch 2: Data Integrity - Server-authoritative session creation
  *
@@ -41,7 +41,7 @@ import { recordChatPerfCounter } from "@/core/chat/services/chat-perf-telemetry"
 import { parseChatStream } from "@/core/chat/services/chat-stream-parser";
 import { createStreamUpdateCoalescer } from "@/core/chat/services/stream-update-coalescer";
 import type { ChatUIMessage } from "@/core/chat/types/ui-message";
-import type { EkacodeApiClient } from "@/core/services/api/api-client";
+import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
 import { createLogger } from "@/core/shared/logger";
 import { useMessageStore, usePartStore, useSessionStore } from "@/state/providers";
 import { batch, createEffect, createSignal, onCleanup, type Accessor } from "solid-js";
@@ -101,7 +101,7 @@ export interface UseChatOptions {
   workspace: Accessor<string>;
 
   /** API client for making chat requests (optional for testing) */
-  client?: EkacodeApiClient;
+  client?: SaktiCodeApiClient;
   /** Selected provider id accessor */
   providerId?: Accessor<string | null | undefined>;
   /** Selected model id accessor */
@@ -157,7 +157,7 @@ export interface UseChatResult {
  *
  * Features:
  * - Uses provider-scoped message/part stores for operations
- * - Uses EkacodeApiClient for sendMessage
+ * - Uses SaktiCodeApiClient for sendMessage
  * - Uses useStreaming for state management
  * - Uses useMessages for message projection
  * - Server-authoritative session creation (Batch 2: Data Integrity)

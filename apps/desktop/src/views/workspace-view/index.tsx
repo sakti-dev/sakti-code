@@ -18,7 +18,7 @@ function WorkspaceLayout() {
   const { startListening } = useTasks(ctx.activeSessionId);
 
   onMount(async () => {
-    const storedSizes = localStorage.getItem("ekacode-panel-sizes");
+    const storedSizes = localStorage.getItem("sakti-code-panel-sizes");
     if (storedSizes) {
       try {
         setPanelSizes(JSON.parse(storedSizes));
@@ -31,7 +31,7 @@ function WorkspaceLayout() {
   });
 
   createEffect(() => {
-    localStorage.setItem("ekacode-panel-sizes", JSON.stringify(panelSizes()));
+    localStorage.setItem("sakti-code-panel-sizes", JSON.stringify(panelSizes()));
   });
 
   createEffect(() => {

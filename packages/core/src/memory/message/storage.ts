@@ -4,8 +4,8 @@
  * Phase 1 Memory System - Message storage with three-storage model for non-destructive compaction.
  */
 
-import { getDb, messages, threads, type Message } from "@ekacode/server/db";
 import { and, eq, sql } from "drizzle-orm";
+import { getDb, messages, threads, type Message } from "../../server-bridge";
 
 export interface CreateMessageInput {
   id: string;

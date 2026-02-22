@@ -8,7 +8,7 @@
  * while enabling persistent storage in production.
  */
 
-import { shutdown } from "@ekacode/shared/shutdown";
+import { shutdown } from "@sakti-code/shared/shutdown";
 import { v7 as uuidv7 } from "uuid";
 
 // ============================================================================
@@ -228,8 +228,8 @@ export interface DatabaseStorageConfig {
  *
  * Usage in server package:
  * ```ts
- * import { createDatabaseStorage } from "@ekacode/core/tools/sequential-thinking-storage";
- * import { db, toolSessions } from "@ekacode/server/db";
+ * import { createDatabaseStorage } from "@sakti-code/core/tools/sequential-thinking-storage";
+ * import { getDb, toolSessions } from "../server-bridge";
  * import { eq, and } from "drizzle-orm";
  *
  * const storage = createDatabaseStorage({

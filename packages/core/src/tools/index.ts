@@ -1,7 +1,7 @@
 /**
- * @ekacode/core tools
+ * @sakti-code/core tools
  *
- * Filesystem and agent tools for ekacode
+ * Filesystem and agent tools for sakti-code
  */
 
 export { applyPatchTool } from "./filesystem/apply-patch";

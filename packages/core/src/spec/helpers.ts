@@ -8,9 +8,16 @@
  * - Getting ready tasks for a spec
  */
 
-import { getDb, taskDependencies, tasks, toolSessions, type Task } from "@ekacode/server/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
+import {
+  getDb,
+  taskDependencies,
+  tasks,
+  toolSessions,
+  type Task,
+  type TaskDependency,
+} from "../server-bridge";
 
 const SPEC_TOOL_NAME = "spec";
 const SPEC_TOOL_KEY = "activeSpec";
@@ -244,7 +251,7 @@ export function generateTaskId(specSlug: string, taskId: string): string {
  */
 export async function getTaskBySpecAndId(specSlug: string, taskId: string): Promise<Task | null> {
   const db = await getDb();
-  const allTasks = await db.select().from(tasks).all();
+  const allTasks: Task[] = await db.select().from(tasks).all();
 
   const task = allTasks.find(t => {
     const specMeta = t.metadata as Record<string, unknown> | null;
@@ -261,7 +268,7 @@ export async function getTaskBySpecAndId(specSlug: string, taskId: string): Prom
  */
 export async function listTasksBySpec(specSlug: string): Promise<Task[]> {
   const db = await getDb();
-  const allTasks = await db.select().from(tasks).all();
+  const allTasks: Task[] = await db.select().from(tasks).all();
 
   return allTasks.filter(t => {
     const specMeta = t.metadata as Record<string, unknown> | null;
@@ -277,7 +284,7 @@ export async function listTasksBySpec(specSlug: string): Promise<Task[]> {
 export async function getReadyTasks(specSlug: string): Promise<Task[]> {
   const db = await getDb();
 
-  const allTasks = await db.select().from(tasks).all();
+  const allTasks: Task[] = await db.select().from(tasks).all();
   const specTasks = allTasks.filter(t => {
     const specMeta = t.metadata as Record<string, unknown> | null;
     if (!specMeta || typeof specMeta !== "object") return false;
@@ -292,7 +299,7 @@ export async function getReadyTasks(specSlug: string): Promise<Task[]> {
 
   const taskIds = openTasks.map(t => t.id);
 
-  const deps = await db
+  const deps: TaskDependency[] = await db
     .select()
     .from(taskDependencies)
     .where(and(inArray(taskDependencies.task_id, taskIds), eq(taskDependencies.type, "blocks")));

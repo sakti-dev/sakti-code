@@ -17,42 +17,42 @@ import { describe, expect, it } from "vitest";
 describe("Message Sealing System", () => {
   describe("ObservationMarkers", () => {
     it("should have START marker constant", async () => {
-      const { ObservationMarkers } = await import("../../../../src/memory/observation/sealing");
+      const { ObservationMarkers } = await import("../../../src/memory/observation/sealing");
       expect(ObservationMarkers.START).toBe("data-om-observation-start");
     });
 
     it("should have END marker constant", async () => {
-      const { ObservationMarkers } = await import("../../../../src/memory/observation/sealing");
+      const { ObservationMarkers } = await import("../../../src/memory/observation/sealing");
       expect(ObservationMarkers.END).toBe("data-om-observation-end");
     });
 
     it("should have FAILED marker constant", async () => {
-      const { ObservationMarkers } = await import("../../../../src/memory/observation/sealing");
+      const { ObservationMarkers } = await import("../../../src/memory/observation/sealing");
       expect(ObservationMarkers.FAILED).toBe("data-om-observation-failed");
     });
   });
 
   describe("isObservationMarker", () => {
     it("should return true for START marker", async () => {
-      const { isObservationMarker } = await import("../../../../src/memory/observation/sealing");
+      const { isObservationMarker } = await import("../../../src/memory/observation/sealing");
       const part = { type: "data-om-observation-start" };
       expect(isObservationMarker(part)).toBe(true);
     });
 
     it("should return true for END marker", async () => {
-      const { isObservationMarker } = await import("../../../../src/memory/observation/sealing");
+      const { isObservationMarker } = await import("../../../src/memory/observation/sealing");
       const part = { type: "data-om-observation-end" };
       expect(isObservationMarker(part)).toBe(true);
     });
 
     it("should return true for FAILED marker", async () => {
-      const { isObservationMarker } = await import("../../../../src/memory/observation/sealing");
+      const { isObservationMarker } = await import("../../../src/memory/observation/sealing");
       const part = { type: "data-om-observation-failed" };
       expect(isObservationMarker(part)).toBe(true);
     });
 
     it("should return false for regular text part", async () => {
-      const { isObservationMarker } = await import("../../../../src/memory/observation/sealing");
+      const { isObservationMarker } = await import("../../../src/memory/observation/sealing");
       const part = { type: "text", text: "Hello" };
       expect(isObservationMarker(part)).toBe(false);
     });
@@ -60,7 +60,7 @@ describe("Message Sealing System", () => {
 
   describe("sealMessage", () => {
     it("should mark message as sealed", async () => {
-      const { sealMessage } = await import("../../../../src/memory/observation/sealing");
+      const { sealMessage } = await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -75,7 +75,7 @@ describe("Message Sealing System", () => {
     });
 
     it("should add sealedAt timestamp to last part", async () => {
-      const { sealMessage } = await import("../../../../src/memory/observation/sealing");
+      const { sealMessage } = await import("../../../src/memory/observation/sealing");
       const before = Date.now();
       const message = {
         id: "msg-1",
@@ -95,7 +95,7 @@ describe("Message Sealing System", () => {
     });
 
     it("should handle messages without metadata", async () => {
-      const { sealMessage } = await import("../../../../src/memory/observation/sealing");
+      const { sealMessage } = await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -114,7 +114,7 @@ describe("Message Sealing System", () => {
   describe("insertObservationMarker", () => {
     it("should insert START marker", async () => {
       const { insertObservationMarker, ObservationMarkers } =
-        await import("../../../../src/memory/observation/sealing");
+        await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -131,7 +131,7 @@ describe("Message Sealing System", () => {
 
     it("should insert END marker", async () => {
       const { insertObservationMarker, ObservationMarkers } =
-        await import("../../../../src/memory/observation/sealing");
+        await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -147,8 +147,7 @@ describe("Message Sealing System", () => {
     });
 
     it("should add timestamp to marker", async () => {
-      const { insertObservationMarker } =
-        await import("../../../../src/memory/observation/sealing");
+      const { insertObservationMarker } = await import("../../../src/memory/observation/sealing");
       const before = Date.now();
       const message = {
         id: "msg-1",
@@ -171,7 +170,7 @@ describe("Message Sealing System", () => {
   describe("findLastCompletedObservationBoundary", () => {
     it("should return -1 when no end marker exists", async () => {
       const { findLastCompletedObservationBoundary } =
-        await import("../../../../src/memory/observation/sealing");
+        await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -189,7 +188,7 @@ describe("Message Sealing System", () => {
 
     it("should find index of last END marker", async () => {
       const { findLastCompletedObservationBoundary, ObservationMarkers } =
-        await import("../../../../src/memory/observation/sealing");
+        await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -208,7 +207,7 @@ describe("Message Sealing System", () => {
 
     it("should return index of last END when multiple exist", async () => {
       const { findLastCompletedObservationBoundary, ObservationMarkers } =
-        await import("../../../../src/memory/observation/sealing");
+        await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -228,7 +227,7 @@ describe("Message Sealing System", () => {
 
   describe("getUnobservedParts", () => {
     it("should return all parts when no end marker", async () => {
-      const { getUnobservedParts } = await import("../../../../src/memory/observation/sealing");
+      const { getUnobservedParts } = await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -248,7 +247,7 @@ describe("Message Sealing System", () => {
 
     it("should return only parts after last END marker", async () => {
       const { getUnobservedParts, ObservationMarkers } =
-        await import("../../../../src/memory/observation/sealing");
+        await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -268,7 +267,7 @@ describe("Message Sealing System", () => {
 
     it("should filter out marker parts", async () => {
       const { getUnobservedParts, ObservationMarkers } =
-        await import("../../../../src/memory/observation/sealing");
+        await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -287,7 +286,7 @@ describe("Message Sealing System", () => {
     });
 
     it("should return empty array for empty parts", async () => {
-      const { getUnobservedParts } = await import("../../../../src/memory/observation/sealing");
+      const { getUnobservedParts } = await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -304,7 +303,7 @@ describe("Message Sealing System", () => {
   describe("isMessageSealed", () => {
     it("should return true for sealed message", async () => {
       const { isMessageSealed, sealMessage } =
-        await import("../../../../src/memory/observation/sealing");
+        await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -319,7 +318,7 @@ describe("Message Sealing System", () => {
     });
 
     it("should return false for unsealed message", async () => {
-      const { isMessageSealed } = await import("../../../../src/memory/observation/sealing");
+      const { isMessageSealed } = await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -335,7 +334,7 @@ describe("Message Sealing System", () => {
   describe("getMessageSealedAt", () => {
     it("should return timestamp for sealed message", async () => {
       const { getMessageSealedAt, sealMessage } =
-        await import("../../../../src/memory/observation/sealing");
+        await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,
@@ -355,7 +354,7 @@ describe("Message Sealing System", () => {
     });
 
     it("should return undefined for unsealed message", async () => {
-      const { getMessageSealedAt } = await import("../../../../src/memory/observation/sealing");
+      const { getMessageSealedAt } = await import("../../../src/memory/observation/sealing");
       const message = {
         id: "msg-1",
         role: "user" as const,

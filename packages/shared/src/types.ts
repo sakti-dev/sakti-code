@@ -1,5 +1,5 @@
 /**
- * Shared types for ekacode packages
+ * Shared types for sakti-code packages
  */
 
 // Workspace types

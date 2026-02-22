@@ -7,7 +7,7 @@
  * Updated for Batch 2: Data Integrity - Added foreign key validation
  */
 
-import type { MessageInfo } from "@ekacode/shared/event-types";
+import type { MessageInfo } from "@sakti-code/shared/event-types";
 import { createStore, produce } from "solid-js/store";
 
 /**

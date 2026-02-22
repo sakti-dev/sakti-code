@@ -2,8 +2,8 @@
  * Permission API routes
  */
 
-import { PermissionManager } from "@ekacode/core/server";
-import { createLogger } from "@ekacode/shared/logger";
+import { PermissionManager } from "@sakti-code/core/server";
+import { createLogger } from "@sakti-code/shared/logger";
 import { Hono } from "hono";
 import { z } from "zod";
 import { PermissionReplied, publish } from "../bus";

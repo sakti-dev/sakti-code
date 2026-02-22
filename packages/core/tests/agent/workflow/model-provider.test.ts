@@ -121,7 +121,7 @@ vi.mock("@gitlab/gitlab-ai-provider", () => ({
   createGitLab: createGitLabMock,
 }));
 
-vi.mock("@ekacode/zai", () => ({
+vi.mock("@sakti-code/zai", () => ({
   createZai: createZaiMock,
 }));
 

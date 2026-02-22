@@ -1,5 +1,5 @@
 {
-  "name": "ekacode",
+  "name": "sakti-code",
   "version": "0.0.1",
   "private": true,
   "packageManager": "pnpm@10.28.0",
@@ -7,8 +7,8 @@
     "dev": "tsx scripts/watch.ts",
     "dev:p": "turbo run dev --parallel",
     "fixtures:extract-real": "tsx scripts/extract-real-stream-fixtures.ts",
-    "models:refresh:snapshot": "pnpm --filter @ekacode/server models:refresh:snapshot",
-    "migrations:check:server": "pnpm --filter @ekacode/server drizzle:check && node scripts/check-server-migration-policy.mjs",
+    "models:refresh:snapshot": "pnpm --filter @sakti-code/server models:refresh:snapshot",
+    "migrations:check:server": "pnpm --filter @sakti-code/server drizzle:check && node scripts/check-server-migration-policy.mjs",
     "build": "turbo run build",
     "test": "pnpm -r --if-present test",
     "lint": "turbo run lint",

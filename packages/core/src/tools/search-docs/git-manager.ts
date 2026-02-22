@@ -103,7 +103,7 @@ class GitManager {
     if (!this._cacheDir) {
       // Use workspace directory for cache
       const workspaceDir = Instance.directory;
-      this._cacheDir = path.join(workspaceDir, ".ekacode", "search-docs-cache");
+      this._cacheDir = path.join(workspaceDir, ".sakti-code", "search-docs-cache");
       this.ensureCacheDir();
     }
     return this._cacheDir;

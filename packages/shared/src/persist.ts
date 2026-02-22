@@ -114,7 +114,7 @@ export const Persist = {
    * Global cache key (app-wide settings)
    */
   global(key: string): PersistTarget {
-    return { key: `ekacode.global.${key}` };
+    return { key: `sakti-code.global.${key}` };
   },
 
   /**
@@ -123,7 +123,7 @@ export const Persist = {
   workspace(directory: string, key: string): PersistTarget {
     const head = directory.slice(0, 12) || "workspace";
     const sum = checksum(directory) ?? "0";
-    return { key: `ekacode.workspace.${head}.${sum}.${key}` };
+    return { key: `sakti-code.workspace.${head}.${sum}.${key}` };
   },
 
   /**
@@ -132,7 +132,7 @@ export const Persist = {
   session(directory: string, sessionId: string, key: string): PersistTarget {
     const head = directory.slice(0, 12) || "workspace";
     const sum = checksum(directory) ?? "0";
-    return { key: `ekacode.session.${head}.${sum}.${sessionId}.${key}` };
+    return { key: `sakti-code.session.${head}.${sum}.${sessionId}.${key}` };
   },
 
   /**
@@ -193,11 +193,11 @@ export function persistWrite(target: PersistTarget, value: unknown): boolean {
     if (!isQuotaError(error)) throw error;
   }
 
-  // Try evicting other ekacode keys
+  // Try evicting other sakti-code keys
   const keysToEvict: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key?.startsWith("ekacode.") && key !== target.key) {
+    if (key?.startsWith("sakti-code.") && key !== target.key) {
       keysToEvict.push(key);
     }
   }

@@ -4,7 +4,7 @@
  * Tests for strict typed payload guarantees between server and desktop.
  * Part of Batch 6: WS8 Closeout - WS6 completion
  *
- * @package @ekacode/desktop/tests
+ * @package @sakti-code/desktop/tests
  */
 
 import {
@@ -12,7 +12,7 @@ import {
   parseServerEvent,
   validateEventComprehensive,
   validateIntegrityFields,
-} from "@ekacode/shared/event-guards";
+} from "@sakti-code/shared/event-guards";
 import { describe, expect, it } from "vitest";
 
 describe("Strict SSE Payload Guards", () => {

@@ -6,7 +6,7 @@
  *
  */
 
-import { createZai } from "@ekacode/zai";
+import { createZai } from "@sakti-code/zai";
 import { generateText, stepCountIs } from "ai";
 import { DRA_SYSTEM_PROMPT } from "../../prompts/search-docs";
 import { createAstQueryTool } from "./ast-query";

@@ -217,12 +217,12 @@ function main() {
   );
   if (eventFixtures.length === 0) {
     console.log(
-      "No bus payload fixtures were extracted. Start dev with EKACODE_LOG_BUS_EVENT_PAYLOADS=true and re-run."
+      "No bus payload fixtures were extracted. Start dev with SAKTI_CODE_LOG_BUS_EVENT_PAYLOADS=true and re-run."
     );
   }
   if (streamFixtures.length === 0) {
     console.log(
-      "No chat stream fixtures were extracted. Start dev with EKACODE_LOG_CHAT_STREAM_EVENTS=true and re-run."
+      "No chat stream fixtures were extracted. Start dev with SAKTI_CODE_LOG_CHAT_STREAM_EVENTS=true and re-run."
     );
   }
 }

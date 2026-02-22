@@ -16,7 +16,7 @@ const { mockRequestApproval } = vi.hoisted(() => ({
   mockRequestApproval: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock("../../../src/security/permission-manager", () => ({
+vi.mock("../../src/security/permission-manager", () => ({
   PermissionManager: {
     getInstance: vi.fn(() => ({
       requestApproval: (...args: unknown[]) => mockRequestApproval(...args),
@@ -25,35 +25,35 @@ vi.mock("../../../src/security/permission-manager", () => ({
   },
 }));
 
-vi.mock("../../../src/security/permission-rules", () => ({
+vi.mock("../../src/security/permission-rules", () => ({
   evaluatePermission: vi.fn(() => "allow"),
 }));
 
 describe("Plan Tools", () => {
-  let planEnterTool: ReturnType<typeof import("../../../src/tools/plan").planEnterTool>;
-  let planExitTool: ReturnType<typeof import("../../../src/tools/plan").planExitTool>;
-  let updateSessionSpec: typeof import("../../../src/spec/helpers").updateSessionSpec;
-  let getCurrentTask: typeof import("../../../src/spec/helpers").getCurrentTask;
-  let Instance: typeof import("../../../src/instance").Instance;
+  let planEnterTool: ReturnType<typeof import("../../src/tools/plan").planEnterTool>;
+  let planExitTool: ReturnType<typeof import("../../src/tools/plan").planExitTool>;
+  let updateSessionSpec: typeof import("../../src/spec/helpers").updateSessionSpec;
+  let getCurrentTask: typeof import("../../src/spec/helpers").getCurrentTask;
+  let Instance: typeof import("../../src/instance").Instance;
 
   const testSessionId = `test-plan-session-${uuidv7()}`;
-  const testWorkspaceDir = path.join("/tmp", "ekacode-test-plan", uuidv7());
+  const testWorkspaceDir = path.join("/tmp", "sakti-code-test-plan", uuidv7());
 
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    const plan = await import("../../../src/tools/plan");
+    const plan = await import("../../src/tools/plan");
     planEnterTool = plan.planEnterTool;
     planExitTool = plan.planExitTool;
 
-    const helpers = await import("../../../src/spec/helpers");
+    const helpers = await import("../../src/spec/helpers");
     updateSessionSpec = helpers.updateSessionSpec;
     getCurrentTask = helpers.getCurrentTask;
 
-    const instanceModule = await import("../../../src/instance");
+    const instanceModule = await import("../../src/instance");
     Instance = instanceModule.Instance;
 
-    const { getDb, sessions } = await import("@ekacode/server/db");
+    const { getDb, sessions } = await import("@sakti-code/core/testing/db");
     const { sql } = await import("drizzle-orm");
     const db = await getDb();
 
@@ -80,7 +80,7 @@ describe("Plan Tools", () => {
     try {
       await fs.rm(path.dirname(testWorkspaceDir), { recursive: true, force: true });
     } catch {}
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 
@@ -189,7 +189,7 @@ describe("Plan Tools", () => {
             {}
           );
 
-          const { getActiveSpec } = await import("../../../src/spec/helpers");
+          const { getActiveSpec } = await import("../../src/spec/helpers");
           const activeSpec = await getActiveSpec(testSessionId);
           expect(activeSpec).toBe("user-auth");
         },
@@ -238,7 +238,7 @@ describe("Plan Tools", () => {
           await updateSessionSpec(testSessionId, "nonexistent-spec");
 
           await expect(planExitTool.execute({ summary: "Test plan" }, {})).rejects.toThrow(
-            "tasks.md not found"
+            /(tasks\.md not found|No tasks found in tasks\.md)/
           );
         },
       });
@@ -328,7 +328,7 @@ describe("Plan Tools", () => {
       });
     });
 
-    it.skip("should throw error when compilation reports spec validation errors", async () => {
+    it("should throw error when compilation reports spec validation errors", async () => {
       await Instance.provide({
         directory: testWorkspaceDir,
         sessionID: testSessionId,
@@ -367,7 +367,7 @@ describe("Plan Tools", () => {
       });
     });
 
-    it.skip("should set the current task to the first ready task after compile", async () => {
+    it("should set the current task to the first ready task after compile", async () => {
       await Instance.provide({
         directory: testWorkspaceDir,
         sessionID: testSessionId,

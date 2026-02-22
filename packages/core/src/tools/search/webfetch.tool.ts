@@ -6,13 +6,13 @@
  * NOTE: Uses Mastra createTool for compatibility. Can be migrated to AI SDK in future.
  */
 
-import { createLogger } from "@ekacode/shared/logger";
 import { createTool } from "@mastra/core/tools";
+import { createLogger } from "@sakti-code/shared/logger";
 import type { IncomingMessage } from "node:http";
 import { URL } from "node:url";
 import { z } from "zod";
 
-const logger = createLogger("ekacode");
+const logger = createLogger("sakti-code");
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -135,7 +135,7 @@ async function fetchWithTimeout(
 
     const options = {
       headers: {
-        "User-Agent": "ekacode",
+        "User-Agent": "sakti-code",
         Accept: acceptHeader,
       },
       timeout: timeoutMs,
@@ -216,7 +216,7 @@ async function fetchWithRetry(
 
     const options = {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; ekacode/1.0)",
+        "User-Agent": "Mozilla/5.0 (compatible; sakti-code/1.0)",
         Accept: acceptHeader,
       },
       timeout: timeoutMs,

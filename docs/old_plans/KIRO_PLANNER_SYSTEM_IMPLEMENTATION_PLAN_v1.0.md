@@ -24,7 +24,7 @@
 
 ## Executive Summary
 
-This document specifies the implementation of a production-ready Planner System for ekacode that combines:
+This document specifies the implementation of a production-ready Planner System for sakti-code that combines:
 
 1. **Kiro Spec Design** - Structured specs with R-###, T-###, P-### traceability
 2. **OpenCode Patterns** - plan_enter/exit tools, 5-phase workflow

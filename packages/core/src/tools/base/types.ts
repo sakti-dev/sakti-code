@@ -2,7 +2,7 @@
  * Tool execution context and types
  */
 
-import type { SessionContext } from "@ekacode/shared";
+import type { SessionContext } from "@sakti-code/shared";
 
 export interface ToolExecutionContext extends SessionContext {
   workspaceRoot: string;

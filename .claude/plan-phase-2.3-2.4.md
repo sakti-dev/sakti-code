@@ -8,13 +8,13 @@
 
 ## Executive Summary
 
-This plan adapts OpenCode's production-tested shell and search tools to ekacode's Mastra-based architecture. The adaptation maintains OpenCode's security patterns, permission flows, and output handling while leveraging ekacode's existing infrastructure (PermissionManager, WorkspaceInstance, Mastra tools).
+This plan adapts OpenCode's production-tested shell and search tools to sakti-code's Mastra-based architecture. The adaptation maintains OpenCode's security patterns, permission flows, and output handling while leveraging sakti-code's existing infrastructure (PermissionManager, WorkspaceInstance, Mastra tools).
 
 ---
 
 ## Tech Stack Adaptation Matrix
 
-| Component             | OpenCode                  | ekacode                            | Adaptation Strategy                                 |
+| Component             | OpenCode                  | sakti-code                            | Adaptation Strategy                                 |
 | --------------------- | ------------------------- | ---------------------------------- | --------------------------------------------------- |
 | **Tool Factory**      | `Tool.define()` (custom)  | `createTool()` (Mastra)            | Use Mastra's tool factory                           |
 | **Shell Runtime**     | Bun shell                 | Node.js `child_process`            | Replace `$.sync()` with `spawn()`                   |
@@ -31,7 +31,7 @@ This plan adapts OpenCode's production-tested shell and search tools to ekacode'
 ## File Structure
 
 ```
-packages/ekacode/src/
+packages/sakti-code/src/
 ├── tools/
 │   ├── shell/
 │   │   ├── bash.tool.ts          # Main shell tool (Mastra)
@@ -77,7 +77,7 @@ outputSchema: z.object({
 
 #### 2. Key Features from OpenCode
 
-| Feature              | OpenCode Implementation       | ekacode Adaptation                          |
+| Feature              | OpenCode Implementation       | sakti-code Adaptation                          |
 | -------------------- | ----------------------------- | ------------------------------------------- |
 | **Command parsing**  | web-tree-sitter WASM          | `tree-sitter` npm + `tree-sitter-bash`      |
 | **Path resolution**  | Bun `$.sync()` for `realpath` | Node `child_process.spawn()` for `realpath` |
@@ -129,7 +129,7 @@ outputSchema: z.object({
 
 #### Key Features
 
-| Feature                | OpenCode                           | ekacode        |
+| Feature                | OpenCode                           | sakti-code        |
 | ---------------------- | ---------------------------------- | -------------- |
 | **Binary**             | Bundled ripgrep (auto-download)    | Same approach  |
 | **Exit code handling** | 0=found, 1=no matches, 2=errors    | Same semantics |
@@ -198,7 +198,7 @@ outputSchema: z.object({
 
 #### Key Features
 
-| Feature               | OpenCode         | ekacode          |
+| Feature               | OpenCode         | sakti-code          |
 | --------------------- | ---------------- | ---------------- |
 | **HTML→Markdown**     | TurndownService  | Same             |
 | **Text extraction**   | HTMLRewriter     | jsdom or similar |
@@ -269,7 +269,7 @@ await ctx.ask({
   metadata: {},
 });
 
-// ekacode adaptation:
+// sakti-code adaptation:
 await permissionMgr.requestApproval({
   id: nanoid(),
   permission: "bash",
@@ -290,7 +290,7 @@ ctx.metadata({
   },
 });
 
-// ekacode: Use Mastra's tool streaming
+// sakti-code: Use Mastra's tool streaming
 // (research Mastra's streaming API)
 ```
 
@@ -302,7 +302,7 @@ if (truncated) {
   output += `\n\n... (${remaining} more lines truncated)`;
 }
 
-// ekacode: Same pattern in truncateOutput()
+// sakti-code: Same pattern in truncateOutput()
 ```
 
 ### 4. Exit Code Semantics
@@ -313,7 +313,7 @@ if (truncated) {
 // 1 = no matches (acceptable)
 // 2 = errors (but may have matches)
 
-// ekacode: Implement same semantics
+// sakti-code: Implement same semantics
 ```
 
 ---
@@ -371,7 +371,7 @@ if (truncated) {
 
 ## Open Questions
 
-1. **Mastra Tool Streaming:** How does ekacode's Mastra setup handle streaming output during tool execution? Need to verify if `createTool` supports streaming metadata updates.
+1. **Mastra Tool Streaming:** How does sakti-code's Mastra setup handle streaming output during tool execution? Need to verify if `createTool` supports streaming metadata updates.
 
 2. **Ripgrep Distribution:** Should we bundle ripgrep binary or require system installation? OpenCode bundles it; we should likely do the same.
 
@@ -404,8 +404,8 @@ if (truncated) {
 
 ## References
 
-- OpenCode bash tool: `/home/eekrain/CODE/ekacode/opencode/packages/opencode/src/tool/bash.ts`
-- OpenCode grep tool: `/home/eekrain/CODE/ekacode/opencode/packages/opencode/src/tool/grep.ts`
-- OpenCode webfetch: `/home/eekrain/CODE/ekacode/opencode/packages/opencode/src/tool/webfetch.ts`
-- ekacode read tool: `/home/eekrain/CODE/ekacode/packages/ekacode/src/tools/filesystem/read.ts`
-- ekacode PermissionManager: `/home/eekrain/CODE/ekacode/packages/ekacode/src/security/permission-manager.ts`
+- OpenCode bash tool: `/home/eekrain/CODE/sakti-code/opencode/packages/opencode/src/tool/bash.ts`
+- OpenCode grep tool: `/home/eekrain/CODE/sakti-code/opencode/packages/opencode/src/tool/grep.ts`
+- OpenCode webfetch: `/home/eekrain/CODE/sakti-code/opencode/packages/opencode/src/tool/webfetch.ts`
+- sakti-code read tool: `/home/eekrain/CODE/sakti-code/packages/sakti-code/src/tools/filesystem/read.ts`
+- sakti-code PermissionManager: `/home/eekrain/CODE/sakti-code/packages/sakti-code/src/security/permission-manager.ts`

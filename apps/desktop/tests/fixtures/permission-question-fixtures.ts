@@ -6,7 +6,7 @@
 
 import type { PermissionRequest, PermissionStatus } from "@/core/state/stores/permission-store";
 import type { QuestionRequest, QuestionStatus } from "@/core/state/stores/question-store";
-import type { Part } from "@ekacode/shared/event-types";
+import type { Part } from "@sakti-code/shared/event-types";
 
 // ============================================================================
 // Permission Fixtures

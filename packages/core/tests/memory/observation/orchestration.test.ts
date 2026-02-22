@@ -14,29 +14,28 @@ import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("Observational Memory Orchestration", () => {
-  let storage: import("../../../../src/memory/observation/storage").ObservationalMemoryStorage;
+  let storage: import("../../../src/memory/observation/storage").ObservationalMemoryStorage;
 
   beforeEach(async () => {
-    const { ObservationalMemoryStorage } =
-      await import("../../../../src/memory/observation/storage");
+    const { ObservationalMemoryStorage } = await import("../../../src/memory/observation/storage");
     storage = new ObservationalMemoryStorage();
 
     // Clean up observational memory from previous test runs
-    const { getDb } = await import("@ekacode/server/db");
+    const { getDb } = await import("@sakti-code/core/testing/db");
     const { sql } = await import("drizzle-orm");
     const db = await getDb();
     await db.run(sql`DELETE FROM observational_memory`);
   });
 
   afterAll(async () => {
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 
   describe("getOrCreateObservationalMemory", () => {
     it("should create new record when none exists", async () => {
       const { getOrCreateObservationalMemory } =
-        await import("../../../../src/memory/observation/orchestration");
+        await import("../../../src/memory/observation/orchestration");
       const threadId = uuidv7();
 
       const record = await getOrCreateObservationalMemory({
@@ -51,7 +50,7 @@ describe("Observational Memory Orchestration", () => {
 
     it("should return existing record when one exists", async () => {
       const { getOrCreateObservationalMemory } =
-        await import("../../../../src/memory/observation/orchestration");
+        await import("../../../src/memory/observation/orchestration");
       const threadId = uuidv7();
 
       // Create first
@@ -71,7 +70,7 @@ describe("Observational Memory Orchestration", () => {
 
     it("should create record with resource scope", async () => {
       const { getOrCreateObservationalMemory } =
-        await import("../../../../src/memory/observation/orchestration");
+        await import("../../../src/memory/observation/orchestration");
       const resourceId = "resource-1";
 
       const record = await getOrCreateObservationalMemory({
@@ -88,13 +87,13 @@ describe("Observational Memory Orchestration", () => {
   describe("isAsyncObservationEnabled", () => {
     it("should return true by default", async () => {
       const { isAsyncObservationEnabled } =
-        await import("../../../../src/memory/observation/orchestration");
+        await import("../../../src/memory/observation/orchestration");
       expect(isAsyncObservationEnabled()).toBe(true);
     });
 
     it("should return false when DISABLE_ASYNC_OBSERVATION is true", async () => {
       const { isAsyncObservationEnabled } =
-        await import("../../../../src/memory/observation/orchestration");
+        await import("../../../src/memory/observation/orchestration");
       const originalValue = process.env.DISABLE_ASYNC_OBSERVATION;
       process.env.DISABLE_ASYNC_OBSERVATION = "true";
 
@@ -108,21 +107,21 @@ describe("Observational Memory Orchestration", () => {
   describe("shouldTriggerAsyncObservation", () => {
     it("should return false when above threshold", async () => {
       const { shouldTriggerAsyncObservation } =
-        await import("../../../../src/memory/observation/orchestration");
+        await import("../../../src/memory/observation/orchestration");
       const result = shouldTriggerAsyncObservation(35000, 30000, 6000, null);
       expect(result).toBe(false);
     });
 
     it("should return true when bufferTokens interval reached", async () => {
       const { shouldTriggerAsyncObservation } =
-        await import("../../../../src/memory/observation/orchestration");
+        await import("../../../src/memory/observation/orchestration");
       const result = shouldTriggerAsyncObservation(6000, 30000, 6000, null);
       expect(result).toBe(true);
     });
 
     it("should return true when tokens since last buffer exceeds interval", async () => {
       const { shouldTriggerAsyncObservation } =
-        await import("../../../../src/memory/observation/orchestration");
+        await import("../../../src/memory/observation/orchestration");
       // 12000 tokens total, last buffered at 5000, buffer interval 6000
       const result = shouldTriggerAsyncObservation(12000, 30000, 6000, 5000);
       expect(result).toBe(true);
@@ -130,7 +129,7 @@ describe("Observational Memory Orchestration", () => {
 
     it("should return false when below buffer interval", async () => {
       const { shouldTriggerAsyncObservation } =
-        await import("../../../../src/memory/observation/orchestration");
+        await import("../../../src/memory/observation/orchestration");
       // 8000 tokens total, last buffered at 3000, buffer interval 6000
       const result = shouldTriggerAsyncObservation(8000, 30000, 6000, 3000);
       expect(result).toBe(false);
@@ -140,7 +139,7 @@ describe("Observational Memory Orchestration", () => {
   describe("filterAlreadyObservedMessages", () => {
     it("should filter out observed messages", async () => {
       const { filterAlreadyObservedMessages } =
-        await import("../../../../src/memory/observation/orchestration");
+        await import("../../../src/memory/observation/orchestration");
       const record: Partial<ObservationalMemory> = {
         id: "record-1",
         observed_message_ids: ["msg-1", "msg-2"],
@@ -160,7 +159,7 @@ describe("Observational Memory Orchestration", () => {
 
     it("should return all messages when none observed", async () => {
       const { filterAlreadyObservedMessages } =
-        await import("../../../../src/memory/observation/orchestration");
+        await import("../../../src/memory/observation/orchestration");
       const record: Partial<ObservationalMemory> = {
         id: "record-1",
         observed_message_ids: [],
@@ -178,7 +177,7 @@ describe("Observational Memory Orchestration", () => {
 
     it("should handle null observed_message_ids", async () => {
       const { filterAlreadyObservedMessages } =
-        await import("../../../../src/memory/observation/orchestration");
+        await import("../../../src/memory/observation/orchestration");
       const record: Partial<ObservationalMemory> = {
         id: "record-1",
         observed_message_ids: null,
@@ -194,7 +193,7 @@ describe("Observational Memory Orchestration", () => {
 
   describe("processInputStep", () => {
     it("should create new record for new thread", async () => {
-      const { processInputStep } = await import("../../../../src/memory/observation/orchestration");
+      const { processInputStep } = await import("../../../src/memory/observation/orchestration");
       const threadId = uuidv7();
       const messages = [{ id: "msg-1", role: "user" as const, content: "Hello" }];
       const tokenCounter = { countMessages: () => 100, countString: () => 100 };
@@ -214,7 +213,7 @@ describe("Observational Memory Orchestration", () => {
     });
 
     it("should filter already observed messages", async () => {
-      const { processInputStep } = await import("../../../../src/memory/observation/orchestration");
+      const { processInputStep } = await import("../../../src/memory/observation/orchestration");
       const threadId = uuidv7();
 
       // Create record with observed messages
@@ -250,7 +249,7 @@ describe("Observational Memory Orchestration", () => {
     });
 
     it("should trigger async observation at bufferTokens interval", async () => {
-      const { processInputStep } = await import("../../../../src/memory/observation/orchestration");
+      const { processInputStep } = await import("../../../src/memory/observation/orchestration");
       const threadId = uuidv7();
       const messages = [{ id: "msg-1", role: "user" as const, content: "A".repeat(1000) }];
 
@@ -278,7 +277,7 @@ describe("Observational Memory Orchestration", () => {
     });
 
     it("should not observe in readOnly mode", async () => {
-      const { processInputStep } = await import("../../../../src/memory/observation/orchestration");
+      const { processInputStep } = await import("../../../src/memory/observation/orchestration");
       const threadId = uuidv7();
       const messages = [{ id: "msg-1", role: "user" as const, content: "Hello" }];
       const tokenCounter = { countMessages: () => 100, countString: () => 100 };
@@ -298,7 +297,7 @@ describe("Observational Memory Orchestration", () => {
     });
 
     it("should activate buffered observations on step 0 when pending tokens exceed activation threshold", async () => {
-      const { processInputStep } = await import("../../../../src/memory/observation/orchestration");
+      const { processInputStep } = await import("../../../src/memory/observation/orchestration");
       const threadId = uuidv7();
 
       const created = await storage.createObservationalMemory({
@@ -349,7 +348,7 @@ describe("Observational Memory Orchestration", () => {
     });
 
     it("should run synchronous observation at step 0 when threshold is exceeded", async () => {
-      const { processInputStep } = await import("../../../../src/memory/observation/orchestration");
+      const { processInputStep } = await import("../../../src/memory/observation/orchestration");
       const threadId = uuidv7();
       const messages = [{ id: "msg-sync-1", role: "user" as const, content: "A".repeat(1000) }];
       const tokenCounter = {
@@ -387,7 +386,7 @@ describe("Observational Memory Orchestration", () => {
   describe("calculateObservationThresholds", () => {
     it("should calculate total pending tokens correctly", async () => {
       const { calculateObservationThresholds } =
-        await import("../../../../src/memory/observation/storage");
+        await import("../../../src/memory/observation/storage");
       const messages = [
         { id: "msg-1", role: "user" as const, content: "Hello" },
         { id: "msg-2", role: "assistant" as const, content: "Hi" },
@@ -427,7 +426,7 @@ describe("Observational Memory Orchestration", () => {
 
     it("should use defaults when config is missing", async () => {
       const { calculateObservationThresholds } =
-        await import("../../../../src/memory/observation/storage");
+        await import("../../../src/memory/observation/storage");
       const messages = [{ id: "msg-1", role: "user" as const, content: "Hello" }];
       const tokenCounter = {
         countMessages: () => 100,

@@ -1,5 +1,5 @@
 {
-  "name": "@ekacode/core",
+  "name": "@sakti-code/core",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./chat": "./src/chat/index.ts",
     "./server": "./src/server.ts",
+    "./testing/db": "./tests/helpers/core-db.ts",
     "./tools": "./src/tools/index.ts",
     "./memory/task/storage": "./src/memory/task/storage.ts",
     "./spec/parser": "./src/spec/parser.ts"
@@ -36,8 +37,8 @@
     "@ai-sdk/togetherai": "^2.0.33",
     "@ai-sdk/vercel": "^2.0.32",
     "@ai-sdk/xai": "^3.0.57",
-    "@ekacode/shared": "workspace:*",
-    "@ekacode/zai": "workspace:*",
+    "@sakti-code/shared": "workspace:*",
+    "@sakti-code/zai": "workspace:*",
     "@gitlab/gitlab-ai-provider": "^3.5.0",
     "@mastra/core": "^1.0.4",
     "@openrouter/ai-sdk-provider": "^2.2.3",

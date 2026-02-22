@@ -1,5 +1,5 @@
 {
-  "name": "@ekacode/server",
+  "name": "@sakti-code/server",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -21,8 +21,8 @@
     "models:refresh:snapshot": "node ../../scripts/update-models-snapshot.mjs"
   },
   "dependencies": {
-    "@ekacode/core": "workspace:*",
-    "@ekacode/shared": "workspace:*",
+    "@sakti-code/core": "workspace:*",
+    "@sakti-code/shared": "workspace:*",
     "@hono/node-server": "^1.19.9",
     "@libsql/client": "^0.17.0",
     "ai": "^6.0.58",

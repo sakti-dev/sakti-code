@@ -4,14 +4,14 @@
  * Phase 4: Working Memory - persistent structured data for project context.
  */
 
+import { and, eq } from "drizzle-orm";
+import { v7 as uuidv7 } from "uuid";
 import {
   getDb,
   workingMemory,
   type NewWorkingMemory,
   type WorkingMemory as WorkingMemoryType,
-} from "@ekacode/server/db";
-import { and, eq } from "drizzle-orm";
-import { v7 as uuidv7 } from "uuid";
+} from "../../server-bridge";
 
 export type WorkingMemoryScope = "resource" | "thread";
 

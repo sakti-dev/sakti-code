@@ -5,7 +5,7 @@
  * Ensures parts have required fields before rendering.
  */
 
-import type { Part } from "@ekacode/shared/event-types";
+import type { Part } from "@sakti-code/shared/event-types";
 
 /** Valid part types for rendering */
 export type ValidPartType = "text" | "reasoning" | "tool" | "tool-call" | "permission" | "question";

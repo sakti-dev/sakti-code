@@ -4,7 +4,7 @@
  * Fixtures for testing event ordering edge cases in the render pipeline.
  * These represent scenarios that can cause "typing dots only" or missing content.
  *
- * @package @ekacode/shared
+ * @package @sakti-code/shared
  */
 
 import type { AllServerEvents } from "../../event-types";

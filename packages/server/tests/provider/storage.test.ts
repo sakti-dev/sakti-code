@@ -16,7 +16,7 @@ afterEach(async () => {
 
 describe("provider credential storage", () => {
   it("stores and retrieves credential by profile and provider", async () => {
-    const base = await mkdtemp(join(tmpdir(), "ekacode-provider-storage-"));
+    const base = await mkdtemp(join(tmpdir(), "sakti-code-provider-storage-"));
     tempDirs.push(base);
 
     const storage = createProviderCredentialStorage({ baseDir: base });
@@ -36,7 +36,7 @@ describe("provider credential storage", () => {
   });
 
   it("isolates credentials by provider", async () => {
-    const base = await mkdtemp(join(tmpdir(), "ekacode-provider-storage-"));
+    const base = await mkdtemp(join(tmpdir(), "sakti-code-provider-storage-"));
     tempDirs.push(base);
 
     const storage = createProviderCredentialStorage({ baseDir: base });
@@ -55,7 +55,7 @@ describe("provider credential storage", () => {
   });
 
   it("deletes credentials", async () => {
-    const base = await mkdtemp(join(tmpdir(), "ekacode-provider-storage-"));
+    const base = await mkdtemp(join(tmpdir(), "sakti-code-provider-storage-"));
     tempDirs.push(base);
 
     const storage = createProviderCredentialStorage({ baseDir: base });

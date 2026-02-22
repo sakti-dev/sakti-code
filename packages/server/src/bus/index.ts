@@ -6,9 +6,10 @@
  * Updated for Batch 2: Data Integrity - includes event IDs and sequence numbers
  */
 
-import { MessageInfo as ChatMessageInfo, Part as ChatPart } from "@ekacode/core/chat";
-import { Instance } from "@ekacode/core/server";
-import { createLogger } from "@ekacode/shared/logger";
+import { MessageInfo as ChatMessageInfo, Part as ChatPart } from "@sakti-code/core/chat";
+import { Instance } from "@sakti-code/core/server";
+import { registerCoreBusBindings } from "@sakti-code/shared/core-server-bridge";
+import { createLogger } from "@sakti-code/shared/logger";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
 import { removePart, upsertMessage, upsertPart } from "../state/session-message-store";
@@ -223,6 +224,15 @@ export const PermissionReplied = defineBusEvent(
   })
 );
 
+registerCoreBusBindings({
+  publishTaskUpdated: async (sessionId, tasks) => {
+    await publish(TaskUpdated, {
+      sessionId,
+      tasks,
+    });
+  },
+});
+
 /**
  * In-memory subscription state
  * In production, this could be backed by Redis or similar
@@ -280,7 +290,7 @@ export async function publish<Definition extends BusEventDefinition>(
   };
 
   logger.info("publishing", { type: def.type, eventId, sequence, sessionID });
-  if (process.env.EKACODE_LOG_BUS_EVENT_PAYLOADS === "true") {
+  if (process.env.SAKTI_CODE_LOG_BUS_EVENT_PAYLOADS === "true") {
     logger.debug("publishing payload", {
       type: def.type,
       eventId,

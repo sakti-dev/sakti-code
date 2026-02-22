@@ -6,7 +6,7 @@
  * Updated for Batch 2: Data Integrity - Added cascade delete support
  */
 
-import type { SessionStatusPayload } from "@ekacode/shared/event-types";
+import type { SessionStatusPayload } from "@sakti-code/shared/event-types";
 import { createStore, produce } from "solid-js/store";
 
 export interface SessionInfo {

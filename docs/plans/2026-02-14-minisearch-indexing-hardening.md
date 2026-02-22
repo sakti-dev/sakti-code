@@ -169,7 +169,7 @@ it("preserves minisearch order inside provider sections", async () => {
 Run:
 
 ```bash
-pnpm --filter @ekacode/desktop test -- --run tests/unit/core/state/providers/provider-selection-store.test.ts tests/unit/components/model-selector-command-center.test.tsx
+pnpm --filter @sakti-code/desktop test -- --run tests/unit/core/state/providers/provider-selection-store.test.ts tests/unit/components/model-selector-command-center.test.tsx
 ```
 
 Expected: FAIL on new assertions.
@@ -218,7 +218,7 @@ it("refresh updates cache and subsequent list includes new models", async () => 
 Run:
 
 ```bash
-pnpm --filter @ekacode/server test -- --run tests/provider/catalog.test.ts tests/provider/model-cache.test.ts
+pnpm --filter @sakti-code/server test -- --run tests/provider/catalog.test.ts tests/provider/model-cache.test.ts
 ```
 
 Expected: FAIL.
@@ -235,7 +235,7 @@ Expected: FAIL.
 Run:
 
 ```bash
-pnpm --filter @ekacode/server test -- --run tests/provider/catalog.test.ts tests/provider/model-cache.test.ts
+pnpm --filter @sakti-code/server test -- --run tests/provider/catalog.test.ts tests/provider/model-cache.test.ts
 ```
 
 Expected: PASS.
@@ -276,7 +276,7 @@ it("matches provider display names and ids consistently", async () => {});
 Run:
 
 ```bash
-pnpm --filter @ekacode/desktop test -- --run tests/unit/core/state/providers/provider-selection-store.test.ts
+pnpm --filter @sakti-code/desktop test -- --run tests/unit/core/state/providers/provider-selection-store.test.ts
 ```
 
 Expected: FAIL.
@@ -325,7 +325,7 @@ it("prefers connected models when relevance is close", async () => {});
 Run:
 
 ```bash
-pnpm --filter @ekacode/desktop test -- --run tests/unit/core/state/providers/provider-selection-store.test.ts
+pnpm --filter @sakti-code/desktop test -- --run tests/unit/core/state/providers/provider-selection-store.test.ts
 ```
 
 Expected: FAIL.
@@ -408,7 +408,7 @@ it("keeps visible rows rendered when filter reduces total rows", () => {});
 Run:
 
 ```bash
-pnpm --filter @ekacode/desktop test -- --run tests/unit/components/model-selector-command-center.test.tsx
+pnpm --filter @sakti-code/desktop test -- --run tests/unit/components/model-selector-command-center.test.tsx
 ```
 
 **Step 3: Implement clamp/reset logic**
@@ -447,27 +447,27 @@ git commit -m "fix(desktop): stabilize virtualized model list on query narrowing
 **Step 1: Desktop tests**
 
 ```bash
-pnpm --filter @ekacode/desktop test
+pnpm --filter @sakti-code/desktop test
 ```
 
 **Step 2: Server tests**
 
 ```bash
-pnpm --filter @ekacode/server test
+pnpm --filter @sakti-code/server test
 ```
 
 **Step 3: Typecheck**
 
 ```bash
-pnpm --filter @ekacode/desktop typecheck
-pnpm --filter @ekacode/server typecheck
+pnpm --filter @sakti-code/desktop typecheck
+pnpm --filter @sakti-code/server typecheck
 ```
 
 **Step 4: Lint**
 
 ```bash
-pnpm --filter @ekacode/desktop lint
-pnpm --filter @ekacode/server lint
+pnpm --filter @sakti-code/desktop lint
+pnpm --filter @sakti-code/server lint
 ```
 
 **Step 5: Final integration sanity**

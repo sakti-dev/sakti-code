@@ -1,7 +1,7 @@
 /**
- * @ekacode/core
+ * @sakti-code/core
  *
- * Core ekacode package - Mastra agents, tools, and utilities
+ * Core sakti-code package - Mastra agents, tools, and utilities
  */
 
 // Memory System (Phase 1)
@@ -123,7 +123,7 @@ export { TRUNCATION_LIMITS } from "./tools/base/types";
 export type { ToolExecutionContext, TruncationResult } from "./tools/base/types";
 
 // Security
-export type { PermissionAction, PermissionRule, PermissionType } from "@ekacode/shared";
+export type { PermissionAction, PermissionRule, PermissionType } from "@sakti-code/shared";
 export {
   PermissionDeniedError,
   PermissionManager,
@@ -245,4 +245,4 @@ export {
 export { LSP, LSPServerRegistry } from "./lsp";
 export type { LSPDiagnostic, LSPRange, LSPServerInfo, LSPStatus } from "./lsp";
 
-export const ekacodeVersion = "0.0.1";
+export const saktiCodeVersion = "0.0.1";

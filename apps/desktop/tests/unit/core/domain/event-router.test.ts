@@ -6,7 +6,7 @@ import { createEventRouter } from "@/core/chat/domain/event-router";
 import type { MessageActions } from "@/core/state/stores/message-store";
 import type { PartActions } from "@/core/state/stores/part-store";
 import type { SessionActions } from "@/core/state/stores/session-store";
-import type { AllServerEvents } from "@ekacode/shared/event-types";
+import type { AllServerEvents } from "@sakti-code/shared/event-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("Event Router", () => {

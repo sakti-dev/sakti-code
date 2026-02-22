@@ -11,7 +11,7 @@ registerDefaultPartComponents();
 // Get server config from preload
 const getServerConfig = async () => {
   try {
-    const config = await window.ekacodeAPI.server.getConfig();
+    const config = await window.saktiCodeAPI.server.getConfig();
     return config;
   } catch (error) {
     console.error("Failed to get server config:", error);

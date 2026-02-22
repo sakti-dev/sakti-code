@@ -1,4 +1,4 @@
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import { type ChildProcessWithoutNullStreams } from "child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -17,7 +17,7 @@ const DIAGNOSTICS_DEBOUNCE_MS = 150;
 const INITIALIZE_TIMEOUT_MS = 45_000;
 const DIAGNOSTICS_WAIT_MS = 3_000;
 
-const logger = createLogger("ekacode:lsp:client");
+const logger = createLogger("sakti-code:lsp:client");
 
 export interface LSPHandle {
   process: ChildProcessWithoutNullStreams;

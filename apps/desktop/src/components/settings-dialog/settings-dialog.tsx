@@ -43,7 +43,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
   { id: "hooks", label: "Hooks", icon: Cloud },
   { id: "experimental", label: "Experimental", icon: FileText },
   { id: "changelog", label: "Changelog", icon: Book, external: true, href: "https://github.com" },
-  { id: "docs", label: "Docs", icon: Book, external: true, href: "https://docs.ekacode.dev" },
+  { id: "docs", label: "Docs", icon: Book, external: true, href: "https://docs.sakti-code.dev" },
 ];
 
 interface DialogSidebarProps {

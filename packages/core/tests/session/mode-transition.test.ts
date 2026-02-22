@@ -13,19 +13,19 @@ import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("Mode Transition Orchestrator", () => {
-  let transitionSessionMode: typeof import("../../../src/session/mode-transition").transitionSessionMode;
-  let getSessionRuntimeMode: typeof import("../../../src/spec/helpers").getSessionRuntimeMode;
-  let updateSessionRuntimeMode: typeof import("../../../src/spec/helpers").updateSessionRuntimeMode;
+  let transitionSessionMode: typeof import("../../src/session/mode-transition").transitionSessionMode;
+  let getSessionRuntimeMode: typeof import("../../src/spec/helpers").getSessionRuntimeMode;
+  let updateSessionRuntimeMode: typeof import("../../src/spec/helpers").updateSessionRuntimeMode;
 
   beforeEach(async () => {
-    const modeTransition = await import("../../../src/session/mode-transition");
+    const modeTransition = await import("../../src/session/mode-transition");
     transitionSessionMode = modeTransition.transitionSessionMode;
 
-    const helpers = await import("../../../src/spec/helpers");
+    const helpers = await import("../../src/spec/helpers");
     getSessionRuntimeMode = helpers.getSessionRuntimeMode;
     updateSessionRuntimeMode = helpers.updateSessionRuntimeMode;
 
-    const { getDb, sessions: _sessions } = await import("@ekacode/server/db");
+    const { getDb, sessions: _sessions } = await import("@sakti-code/core/testing/db");
     const { sql } = await import("drizzle-orm");
     const db = await getDb();
 
@@ -36,14 +36,14 @@ describe("Mode Transition Orchestrator", () => {
   });
 
   afterAll(async () => {
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 
   describe("transitionSessionMode", () => {
     it("should return noop for build -> build (same mode)", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
 
       await db.insert(sessions).values({
@@ -68,7 +68,7 @@ describe("Mode Transition Orchestrator", () => {
 
     it("should return noop for plan -> plan (same mode)", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
 
       await db.insert(sessions).values({
@@ -93,7 +93,7 @@ describe("Mode Transition Orchestrator", () => {
 
     it("should return invalid for to = 'explore'", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
 
       await db.insert(sessions).values({
@@ -117,7 +117,7 @@ describe("Mode Transition Orchestrator", () => {
 
     it("should return denied when approval callback rejects", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
 
       await db.insert(sessions).values({
@@ -145,7 +145,7 @@ describe("Mode Transition Orchestrator", () => {
 
     it("should return approved and write mode when approved", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
 
       await db.insert(sessions).values({
@@ -172,7 +172,7 @@ describe("Mode Transition Orchestrator", () => {
 
     it("should serialize concurrent transitions for same session", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@ekacode/server/db");
+      const { getDb, sessions } = await import("@sakti-code/core/testing/db");
       const db = await getDb();
 
       await db.insert(sessions).values({

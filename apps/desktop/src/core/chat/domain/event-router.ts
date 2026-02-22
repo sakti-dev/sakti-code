@@ -8,7 +8,7 @@
 import type { MessageActions } from "@/state/stores/message-store";
 import type { PartActions } from "@/state/stores/part-store";
 import type { SessionActions } from "@/state/stores/session-store";
-import type { AllServerEvents, EventType } from "@ekacode/shared/event-types";
+import type { AllServerEvents, EventType } from "@sakti-code/shared/event-types";
 import { batch } from "solid-js";
 
 export interface EventRouterDependencies {

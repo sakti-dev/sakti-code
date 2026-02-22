@@ -6,7 +6,7 @@
  * Batch 3: Stream Processing - WS5 Catch-up/Reconnect
  */
 
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import { and, asc, eq, gt } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";

@@ -72,7 +72,7 @@ describe("dynamic tool mask feature flag", () => {
   });
 
   it("returns true when env flag is true", () => {
-    expect(isDynamicToolMaskEnabled({ EKACODE_DYNAMIC_TOOL_MASK: "true" })).toBe(true);
+    expect(isDynamicToolMaskEnabled({ SAKTI_CODE_DYNAMIC_TOOL_MASK: "true" })).toBe(true);
   });
 });
 ```
@@ -86,11 +86,11 @@ Expected: FAIL with module-not-found for `session/feature-flags`.
 
 ```ts
 export function isDynamicToolMaskEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return String(env.EKACODE_DYNAMIC_TOOL_MASK ?? "false").toLowerCase() === "true";
+  return String(env.SAKTI_CODE_DYNAMIC_TOOL_MASK ?? "false").toLowerCase() === "true";
 }
 
 export function isRecoverableCompressionEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return String(env.EKACODE_RECOVERABLE_COMPRESSION ?? "false").toLowerCase() === "true";
+  return String(env.SAKTI_CODE_RECOVERABLE_COMPRESSION ?? "false").toLowerCase() === "true";
 }
 ```
 
@@ -972,7 +972,7 @@ import { createFsToolOutputStore } from "../../src/session/tool-output-store/fs-
 
 describe("fs tool output store", () => {
   it("stores and retrieves JSON payload", async () => {
-    const store = createFsToolOutputStore({ baseDir: "/tmp/ekacode-tool-store-test" });
+    const store = createFsToolOutputStore({ baseDir: "/tmp/sakti-code-tool-store-test" });
     const key = await store.put({
       sessionId: "s1",
       messageId: "m1",
@@ -2204,9 +2204,9 @@ import { isDynamicToolsHardDisabled } from "../../src/session/feature-flags";
 
 describe("kill switch", () => {
   it("forces old behavior when hard disable is true", () => {
-    expect(isDynamicToolsHardDisabled({ EKACODE_DYNAMIC_TOOLS_HARD_DISABLE: "true" } as any)).toBe(
-      true
-    );
+    expect(
+      isDynamicToolsHardDisabled({ SAKTI_CODE_DYNAMIC_TOOLS_HARD_DISABLE: "true" } as any)
+    ).toBe(true);
   });
 });
 ```
@@ -2220,7 +2220,7 @@ Expected: FAIL.
 
 ```ts
 export function isDynamicToolsHardDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return String(env.EKACODE_DYNAMIC_TOOLS_HARD_DISABLE ?? "false").toLowerCase() === "true";
+  return String(env.SAKTI_CODE_DYNAMIC_TOOLS_HARD_DISABLE ?? "false").toLowerCase() === "true";
 }
 ```
 
@@ -2607,8 +2607,8 @@ node --import tsx scripts/benchmark-dynamic-tools.ts --provider=zai --runs=5
 
 If production regressions occur:
 
-1. Set `EKACODE_DYNAMIC_TOOLS_HARD_DISABLE=true`.
-2. Set `EKACODE_RECOVERABLE_COMPRESSION=false`.
+1. Set `SAKTI_CODE_DYNAMIC_TOOLS_HARD_DISABLE=true`.
+2. Set `SAKTI_CODE_RECOVERABLE_COMPRESSION=false`.
 3. Redeploy server and core runtime.
 4. Validate chat route behavior with legacy requests.
 5. Verify no `toolMask`-dependent path is active.

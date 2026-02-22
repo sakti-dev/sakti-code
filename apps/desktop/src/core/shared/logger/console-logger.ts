@@ -2,7 +2,7 @@
  * Frontend console logger for desktop (SolidJS renderer)
  *
  * Browser-compatible logger using console methods.
- * Matches the backend Logger interface from @ekacode/shared/logger.
+ * Matches the backend Logger interface from @sakti-code/shared/logger.
  *
  * ## Environment Best Practices
  *
@@ -18,7 +18,7 @@
  * ```
  */
 
-import type { Logger, LoggerContext } from "@ekacode/shared/logger";
+import type { Logger, LoggerContext } from "@sakti-code/shared/logger";
 
 type LogLevelInternal = "debug" | "info" | "warn" | "error";
 

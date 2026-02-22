@@ -12,7 +12,7 @@ describe("project routes", () => {
       const projectRouter = (await import("../../src/routes/project")).default;
 
       const response = await projectRouter.request(
-        "http://localhost/api/project?directory=/home/eekrain/CODE/ekacode",
+        "http://localhost/api/project?directory=/home/eekrain/CODE/sakti-code",
         { method: "GET" }
       );
 
@@ -40,7 +40,7 @@ describe("project routes", () => {
       const projectRouter = (await import("../../src/routes/project")).default;
 
       const response = await projectRouter.request(
-        "http://localhost/api/project?directory=/home/eekrain/CODE/ekacode",
+        "http://localhost/api/project?directory=/home/eekrain/CODE/sakti-code",
         { method: "GET" }
       );
 

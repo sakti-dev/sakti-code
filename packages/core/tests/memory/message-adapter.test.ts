@@ -2,13 +2,13 @@
  * Tests for MessageAdapter conversions between chat and memory formats.
  */
 
-import type { Message as DBMessage } from "@ekacode/server/db";
+import type { Message as DBMessage } from "@sakti-code/core/testing/db";
 import { describe, expect, it } from "vitest";
-import type { Message } from "../../../src/chat";
+import type { Message } from "../../src/chat";
 
 describe("MessageAdapter", () => {
   it("converts chat message to memory format", async () => {
-    const { MessageAdapter } = await import("../../../src/memory/message-adapter");
+    const { MessageAdapter } = await import("../../src/memory/message-adapter");
 
     const chatMessage = {
       info: {
@@ -49,7 +49,7 @@ describe("MessageAdapter", () => {
   });
 
   it("extracts text from multiple parts in order", async () => {
-    const { MessageAdapter } = await import("../../../src/memory/message-adapter");
+    const { MessageAdapter } = await import("../../src/memory/message-adapter");
 
     const chatMessage = {
       info: {
@@ -87,7 +87,7 @@ describe("MessageAdapter", () => {
   });
 
   it("handles messages without parts", async () => {
-    const { MessageAdapter } = await import("../../../src/memory/message-adapter");
+    const { MessageAdapter } = await import("../../src/memory/message-adapter");
 
     const chatMessage = {
       info: {
@@ -110,7 +110,7 @@ describe("MessageAdapter", () => {
   });
 
   it("uses Date.now when createdAt is missing", async () => {
-    const { MessageAdapter } = await import("../../../src/memory/message-adapter");
+    const { MessageAdapter } = await import("../../src/memory/message-adapter");
 
     const chatMessage = {
       info: {
@@ -134,7 +134,7 @@ describe("MessageAdapter", () => {
   });
 
   it("converts DB message to frontend message info", async () => {
-    const { MessageAdapter } = await import("../../../src/memory/message-adapter");
+    const { MessageAdapter } = await import("../../src/memory/message-adapter");
 
     const dbMessage = {
       id: "db-1",

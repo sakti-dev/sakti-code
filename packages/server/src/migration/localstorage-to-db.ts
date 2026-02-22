@@ -6,8 +6,8 @@
  *
  * Migration strategy:
  * 1. Check if migration already completed (localStorage flag)
- * 2. Read ekacode:recent-projects → create workspaces (status=active)
- * 3. Read ekacode:archived-projects → create workspaces (status=archived)
+ * 2. Read sakti-code:recent-projects → create workspaces (status=active)
+ * 3. Read sakti-code:archived-projects → create workspaces (status=archived)
  * 4. Set migration completed flag
  * 5. Clear old localStorage keys
  */
@@ -29,9 +29,9 @@ interface MigrationResult {
   errors: string[];
 }
 
-const MIGRATION_FLAG = "ekacode:migration-completed";
-const RECENT_PROJECTS_KEY = "ekacode:recent-projects";
-const ARCHIVED_PROJECTS_KEY = "ekacode:archived-projects";
+const MIGRATION_FLAG = "sakti-code:migration-completed";
+const RECENT_PROJECTS_KEY = "sakti-code:recent-projects";
+const ARCHIVED_PROJECTS_KEY = "sakti-code:archived-projects";
 
 /**
  * Check if migration has already been completed

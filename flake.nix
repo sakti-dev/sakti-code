@@ -1,5 +1,5 @@
 {
-  description = "ekacode - Electron + SolidJS + pnpm dev environment";
+  description = "sakti-code - Electron + SolidJS + pnpm dev environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -93,7 +93,7 @@
             export NIX_LD=${pkgs.glibc}/lib64/ld-linux-x86-64.so.2
 
             echo ""
-            echo "🚀 ekacode development environment"
+            echo "🚀 sakti-code development environment"
             echo "   Node: $(node --version)"
             echo "   pnpm: $(pnpm --version)"
             echo "   Electron: ${pkgs.electron.version}"

@@ -4,32 +4,23 @@
  * Phase 1 Memory System - Task storage implementation.
  */
 
+import { and, eq, inArray, not, sql } from "drizzle-orm";
 import {
   getDb,
+  publishTaskUpdated,
   taskDependencies,
   tasks,
   type NewTask,
   type Task,
   type TaskDependency,
-} from "@ekacode/server/db";
-import { and, eq, inArray, not, sql } from "drizzle-orm";
+} from "../../server-bridge";
 
 async function publishTaskUpdate(sessionId: string | null) {
   if (!sessionId) return;
 
   try {
-    const { publish, TaskUpdated } = await import("@ekacode/server/bus");
     const sessionTasks = await taskStorage.listTasksBySession(sessionId);
-
-    await publish(TaskUpdated, {
-      sessionId,
-      tasks: sessionTasks.map(t => ({
-        id: t.id,
-        title: t.title,
-        status: t.status,
-        priority: t.priority,
-      })),
-    });
+    await publishTaskUpdated(sessionId, sessionTasks);
   } catch {
     // Bus may not be available in all contexts (e.g., tests without bus setup)
   }
@@ -309,7 +300,7 @@ export class TaskStorage {
 
   async getReadyTasks(): Promise<Task[]> {
     const db = await getDb();
-    const openTasks = await db.select().from(tasks).where(eq(tasks.status, "open"));
+    const openTasks: Task[] = await db.select().from(tasks).where(eq(tasks.status, "open"));
 
     if (openTasks.length === 0) {
       return [];
@@ -317,7 +308,7 @@ export class TaskStorage {
 
     const taskIds = openTasks.map(t => t.id);
 
-    const deps = await db
+    const deps: TaskDependency[] = await db
       .select()
       .from(taskDependencies)
       .where(and(inArray(taskDependencies.task_id, taskIds), eq(taskDependencies.type, "blocks")));

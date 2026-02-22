@@ -118,7 +118,7 @@ export const LeftSide: Component<SessionSidebarProps> = props => {
               "border-primary/30 border"
             )}
           />
-          <span class="text-muted-foreground/80 text-xs">ekacode</span>
+          <span class="text-muted-foreground/80 text-xs">sakti-code</span>
         </div>
         <button
           class={cn("hover:bg-card/20 rounded-md p-1.5", "transition-colors duration-150")}

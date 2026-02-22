@@ -6,10 +6,10 @@
  * - compileSpecToDb: Idempotent compilation of spec to DB
  */
 
-import { getDb, taskDependencies, tasks } from "@ekacode/server/db";
 import { eq } from "drizzle-orm";
 import { promises as fs } from "fs";
 import path from "path";
+import { getDb, taskDependencies, tasks } from "../server-bridge";
 import { generateTaskId, getTaskBySpecAndId, listTasksBySpec } from "./helpers";
 import { parseTasksMd } from "./parser";
 
@@ -170,7 +170,7 @@ export async function validateTaskDependenciesFromDb(specSlug: string): Promise<
   const tasksList = await listTasksBySpec(specSlug);
 
   const db = await getDb();
-  const depsFromDb = await db
+  const depsFromDb: Array<{ taskId: string; dependsOnId: string; type: string }> = await db
     .select({
       taskId: taskDependencies.task_id,
       dependsOnId: taskDependencies.depends_on_id,

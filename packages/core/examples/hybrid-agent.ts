@@ -7,7 +7,7 @@
  *   tsx examples/hybrid-agent.ts
  */
 
-import { createZaiHybridAgent } from "@ekacode/core";
+import { createZaiHybridAgent } from "@sakti-code/core";
 import { generateText, streamText } from "ai";
 
 // Create the hybrid agent with Z.ai models

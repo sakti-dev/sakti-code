@@ -1,5 +1,5 @@
 {
-  "name": "@ekacode/electron-preload",
+  "name": "@sakti-code/electron-preload",
   "version": "0.0.1",
   "private": true,
   "type": "commonjs",

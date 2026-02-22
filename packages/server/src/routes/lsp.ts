@@ -18,7 +18,7 @@ lspRouter.get("/api/lsp/status", async c => {
   let servers: Array<{ id: string; name: string; root: string; status: string }> = [];
 
   try {
-    const { LSP } = await import("@ekacode/core");
+    const { LSP } = await import("@sakti-code/core");
     const status = LSP.getStatus();
     servers = status.map((s: { id: string; name: string; root: string; status: string }) => ({
       id: s.id,

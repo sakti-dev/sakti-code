@@ -5,7 +5,7 @@
  * Uses event ordering fixtures to validate rendering behavior.
  * Part of Batch 5: WS7 Testing Overhaul
  *
- * @package @ekacode/desktop/tests
+ * @package @sakti-code/desktop/tests
  */
 
 import {
@@ -13,8 +13,8 @@ import {
   usePartStore,
   useSessionStore,
 } from "@/core/state/providers/store-provider";
-import { allEventOrderingFixtures } from "@ekacode/shared";
-import type { Part } from "@ekacode/shared/event-types";
+import { allEventOrderingFixtures } from "@sakti-code/shared";
+import type { Part } from "@sakti-code/shared/event-types";
 import { createMemo, createSignal, For } from "solid-js";
 import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, it } from "vitest";

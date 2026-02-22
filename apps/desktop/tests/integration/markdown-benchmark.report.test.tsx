@@ -22,7 +22,7 @@ function buildScenario(): string {
 \n\n${streamHeavy}
 \n### Example
 \n\`\`\`bash
-pnpm --filter @ekacode/desktop test:run
+pnpm --filter @sakti-code/desktop test:run
 \`\`\`
 `;
 }

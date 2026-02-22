@@ -15,7 +15,7 @@ afterEach(async () => {
 
 describe("update-models-snapshot script", () => {
   it("writes snapshot.json from MODELS_DEV_API_JSON input", async () => {
-    workDir = await mkdtemp(join(tmpdir(), "ekacode-model-snapshot-"));
+    workDir = await mkdtemp(join(tmpdir(), "sakti-code-model-snapshot-"));
 
     const sourcePath = join(workDir, "models-api.json");
     const outputPath = join(workDir, "snapshot.json");

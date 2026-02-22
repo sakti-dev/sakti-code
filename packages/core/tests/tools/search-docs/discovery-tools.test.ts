@@ -42,7 +42,7 @@ describe("discovery-tools", () => {
     vi.clearAllMocks();
 
     // Create temporary workspace directory
-    testWorkspaceDir = path.join(os.tmpdir(), `ekacode-discovery-test-${Date.now()}`);
+    testWorkspaceDir = path.join(os.tmpdir(), `sakti-code-discovery-test-${Date.now()}`);
     await fs.mkdir(testWorkspaceDir, { recursive: true });
 
     // Set up default mock behavior for git operations

@@ -4,7 +4,7 @@
  * Provides helper to request mode switch approval via the permission system.
  */
 
-import type { PermissionRequest } from "@ekacode/shared";
+import type { PermissionRequest } from "@sakti-code/shared";
 import { v7 as uuidv7 } from "uuid";
 import { PermissionManager } from "../security/permission-manager";
 import { evaluatePermission } from "../security/permission-rules";

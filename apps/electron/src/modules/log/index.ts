@@ -5,7 +5,7 @@
  * Uses console in renderer/preload (sandbox-safe) and pino in main process.
  */
 
-import { createLogger as createPinoLogger } from "@ekacode/shared/logger";
+import { createLogger as createPinoLogger } from "@sakti-code/shared/logger";
 import { ipcMain } from "electron";
 
 // Main process logger uses pino
@@ -28,7 +28,7 @@ interface LogContext {
 }
 
 /**
- * Logger interface matching @ekacode/shared/logger
+ * Logger interface matching @sakti-code/shared/logger
  */
 export interface Logger {
   debug(msg: string, context?: Partial<LogContext>): void;

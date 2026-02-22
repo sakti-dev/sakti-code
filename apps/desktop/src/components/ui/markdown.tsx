@@ -7,7 +7,7 @@
  * - morphdom for efficient updates
  * - LRU cache (200 entries)
  * - Copy button on code blocks
- * - Custom Shiki theme matching ekacode colors
+ * - Custom Shiki theme matching sakti-code colors
  */
 
 import { finalizeMarkdownInChunks } from "@/components/ui/markdown-finalizer";

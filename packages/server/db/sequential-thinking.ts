@@ -2,13 +2,13 @@
  * Sequential Thinking Tool - Database-Backed Session Persistence
  *
  * Provides Drizzle-based persistence for sequential thinking sessions.
- * This file is in the server package to avoid circular dependencies with @ekacode/core.
+ * This file is in the server package to avoid circular dependencies with @sakti-code/core.
  *
  * **IMPORTANT:** To use the database-backed version in your agents:
  *
  * ```ts
  * // Import from server package instead of core
- * import { sequentialThinkingDb } from "@ekacode/server/db/sequential-thinking";
+ * import { sequentialThinkingDb } from "@sakti-code/server/db/sequential-thinking";
  *
  * // Use it like the regular tool
  * const tools = {

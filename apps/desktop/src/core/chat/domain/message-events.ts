@@ -8,7 +8,7 @@
 import type { MessageActions } from "@/state/stores/message-store";
 import type { PartActions } from "@/state/stores/part-store";
 import type { SessionActions } from "@/state/stores/session-store";
-import type { MessageUpdatedPayload } from "@ekacode/shared/event-types";
+import type { MessageUpdatedPayload } from "@sakti-code/shared/event-types";
 
 export interface MessageHandlerDependencies {
   messageActions: MessageActions;

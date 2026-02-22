@@ -1,5 +1,5 @@
-import { taskStorage } from "@ekacode/core/memory/task/storage";
-import { getDb, sessions, tasks } from "@ekacode/server/db";
+import { taskStorage } from "@sakti-code/core/memory/task/storage";
+import { getDb, sessions, tasks } from "@sakti-code/server/db";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -10,8 +10,8 @@ describe("Tasks API", () => {
   const testCredentials = btoa("testuser:testpass");
 
   beforeEach(async () => {
-    process.env.EKACODE_USERNAME = "testuser";
-    process.env.EKACODE_PASSWORD = "testpass";
+    process.env.SAKTI_CODE_USERNAME = "testuser";
+    process.env.SAKTI_CODE_PASSWORD = "testpass";
     const db = await getDb();
     const sessionId = "test-session-tasks-" + Date.now();
     await db

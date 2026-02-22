@@ -10,7 +10,7 @@ import {
   computeDuration,
   deriveStatusFromPart,
 } from "@/core/chat/hooks/turn-projection";
-import type { Part } from "@ekacode/shared/event-types";
+import type { Part } from "@sakti-code/shared/event-types";
 import { describe, expect, it } from "vitest";
 import {
   createEmptySessionFixture,

@@ -4,7 +4,7 @@
  * GET /api/agents - List available agents
  */
 
-import { listAgents } from "@ekacode/core";
+import { listAgents } from "@sakti-code/core";
 import { Hono } from "hono";
 import type { Env } from "../index";
 

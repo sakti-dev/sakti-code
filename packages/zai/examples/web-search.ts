@@ -1,5 +1,5 @@
 /**
- * Web search and retrieval examples for @ekacode/zai
+ * Web search and retrieval examples for @sakti-code/zai
  *
  * Run with:
  *   tsx examples/web-search.ts

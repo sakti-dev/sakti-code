@@ -2,7 +2,7 @@
  * Read file tool
  */
 
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import { tool, zodSchema } from "ai";
 import fs from "node:fs/promises";
 import { z } from "zod";
@@ -12,7 +12,7 @@ import { detectBinaryFile } from "../base/filesystem";
 import { validatePathOperation } from "../base/safety";
 import { truncateOutput } from "../base/truncation";
 
-const logger = createLogger("ekacode");
+const logger = createLogger("sakti-code");
 
 export const readTool = tool({
   description: `Read a file from the local filesystem.

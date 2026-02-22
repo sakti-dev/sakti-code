@@ -1,5 +1,5 @@
 /**
- * @ekacode/shared/logger
+ * @sakti-code/shared/logger
  *
  * Centralized logging infrastructure using Pino
  */

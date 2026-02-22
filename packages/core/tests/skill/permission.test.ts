@@ -1,4 +1,4 @@
-import type { PermissionAction, PermissionRule, PermissionType } from "@ekacode/shared";
+import type { PermissionAction, PermissionRule, PermissionType } from "@sakti-code/shared";
 import { describe, expect, it } from "vitest";
 import { createDefaultRules, evaluatePatterns } from "../../src/security/permission-rules";
 

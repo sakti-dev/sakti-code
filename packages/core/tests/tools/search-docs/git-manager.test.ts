@@ -38,7 +38,7 @@ describe("git-manager", () => {
     vi.clearAllMocks();
 
     // Create temporary workspace directory
-    testWorkspaceDir = path.join(os.tmpdir(), `ekacode-git-test-${Date.now()}`);
+    testWorkspaceDir = path.join(os.tmpdir(), `sakti-code-git-test-${Date.now()}`);
     await fs.mkdir(testWorkspaceDir, { recursive: true });
 
     // Set up default mock behavior for execSync

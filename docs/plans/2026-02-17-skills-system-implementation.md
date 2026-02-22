@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Implement a complete skills system for @ekacode/core that allows dynamic loading of domain-specific instructions, compatible with Claude Code's SKILL.md format.
+**Goal:** Implement a complete skills system for @sakti-code/core that allows dynamic loading of domain-specific instructions, compatible with Claude Code's SKILL.md format.
 
 **Architecture:** Skills are discovered from multiple locations (`.claude/skills/`, `.agents/skills/`, `.opencode/skills/`, custom paths, remote URLs). Skills are registered as a tool and integrate with the permission system.
 

@@ -2,7 +2,7 @@
  * Test Server Fixture for Desktop Integration Tests
  *
  * Creates a real Hono server with all routes for end-to-end testing.
- * Uses the actual server implementation from @ekacode/server.
+ * Uses the actual server implementation from @sakti-code/server.
  */
 
 import { serve } from "@hono/node-server";
@@ -46,8 +46,8 @@ export interface TestServer {
  */
 export async function createTestServer(): Promise<TestServer> {
   // Import server components dynamically to avoid loading issues
-  const { default: app } = await import("@ekacode/server");
-  const { getServerToken } = await import("@ekacode/server/runtime");
+  const { default: app } = await import("@sakti-code/server");
+  const { getServerToken } = await import("@sakti-code/server/runtime");
 
   // Start server on random port
   const server = await serve({

@@ -11,10 +11,10 @@
  * - getReflectionCount: Count reflections
  */
 
-import { getDb, threads } from "@ekacode/server/db";
+import { getDb, threads } from "@sakti-code/core/testing/db";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import type { ReflectionStorage } from "../../../../src/memory/reflection/storage";
+import type { ReflectionStorage } from "../../../src/memory/reflection/storage";
 
 describe("ReflectionStorage", () => {
   let storage: ReflectionStorage;
@@ -37,13 +37,13 @@ describe("ReflectionStorage", () => {
   }
 
   beforeEach(async () => {
-    const mod = await import("../../../../src/memory/reflection/storage");
+    const mod = await import("../../../src/memory/reflection/storage");
     ReflectionStorageClass = mod.ReflectionStorage;
     storage = new ReflectionStorageClass();
   });
 
   afterAll(async () => {
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 

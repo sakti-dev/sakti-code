@@ -1,5 +1,5 @@
 /**
- * @ekacode/server
+ * @sakti-code/server
  *
  * Hono server with authentication and permission API
  */
@@ -30,11 +30,11 @@ if (process.env.NODE_ENV !== "production") {
   console.log(`[server] Environment loaded - ZAI: ${hasZai}, OpenAI: ${hasOpenAI}`);
 }
 
-import { ShutdownHandler } from "@ekacode/core";
-import { initializePermissionRules, PermissionManager } from "@ekacode/core/server";
-import { createLogger } from "@ekacode/shared/logger";
-import { shutdown } from "@ekacode/shared/shutdown";
 import { serve } from "@hono/node-server";
+import { ShutdownHandler } from "@sakti-code/core";
+import { initializePermissionRules, PermissionManager } from "@sakti-code/core/server";
+import { createLogger } from "@sakti-code/shared/logger";
+import { shutdown } from "@sakti-code/shared/shutdown";
 import { Hono } from "hono";
 import { v7 as uuidv7 } from "uuid";
 import { PermissionAsked, publish } from "./bus";
@@ -79,7 +79,7 @@ export type Env = {
     startTime: number;
     session?: import("../db/sessions").Session;
     sessionIsNew?: boolean;
-    instanceContext?: import("@ekacode/core/server").InstanceContext;
+    instanceContext?: import("@sakti-code/core/server").InstanceContext;
     parsedBody?: { workspace?: string };
   };
 };
@@ -207,7 +207,7 @@ app.get("/api/config", c => {
 
 // Root endpoint
 app.get("/", c => {
-  return c.text("ekacode server running");
+  return c.text("sakti-code server running");
 });
 
 // Start server
@@ -255,9 +255,12 @@ export async function startServer() {
     module: "server:lifecycle",
     port,
   });
-  logger.debug(`Server auth: Basic Auth (username: ${process.env.EKACODE_USERNAME || "admin"})`, {
-    module: "server:lifecycle",
-  });
+  logger.debug(
+    `Server auth: Basic Auth (username: ${process.env.SAKTI_CODE_USERNAME || "admin"})`,
+    {
+      module: "server:lifecycle",
+    }
+  );
 
   // Register cleanup with centralized shutdown manager
   shutdown.register(

@@ -82,7 +82,7 @@ describe("useTasks", () => {
       await flushMicrotasks();
 
       window.dispatchEvent(
-        new CustomEvent("ekacode:task.updated", {
+        new CustomEvent("sakti-code:task.updated", {
           detail: {
             sessionId: "other-session",
             tasks: [{ id: "ignore", title: "Ignore", status: "open", priority: 2 }],
@@ -92,7 +92,7 @@ describe("useTasks", () => {
       expect(hook.tasks()).toEqual([]);
 
       window.dispatchEvent(
-        new CustomEvent("ekacode:task.updated", {
+        new CustomEvent("sakti-code:task.updated", {
           detail: {
             sessionId: "session-live",
             tasks: [{ id: "apply", title: "Apply", status: "in_progress", priority: 1 }],

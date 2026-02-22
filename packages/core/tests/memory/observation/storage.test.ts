@@ -14,23 +14,23 @@ import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 describe("ObservationalMemoryStorage", () => {
-  let storage: import("../../../../src/memory/observation/storage").ObservationalMemoryStorage;
-  let ObservationalMemoryStorageClass: typeof import("../../../../src/memory/observation/storage").ObservationalMemoryStorage;
+  let storage: import("../../../src/memory/observation/storage").ObservationalMemoryStorage;
+  let ObservationalMemoryStorageClass: typeof import("../../../src/memory/observation/storage").ObservationalMemoryStorage;
 
   beforeEach(async () => {
-    const mod = await import("../../../../src/memory/observation/storage");
+    const mod = await import("../../../src/memory/observation/storage");
     ObservationalMemoryStorageClass = mod.ObservationalMemoryStorage;
     storage = new ObservationalMemoryStorageClass();
 
     // Clean up observational memory from previous test runs
-    const { getDb } = await import("@ekacode/server/db");
+    const { getDb } = await import("@sakti-code/core/testing/db");
     const { sql } = await import("drizzle-orm");
     const db = await getDb();
     await db.run(sql`DELETE FROM observational_memory`);
   });
 
   afterAll(async () => {
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 
@@ -375,7 +375,7 @@ describe("ObservationalMemoryStorage", () => {
         createdAt: now,
       });
 
-      const { getDb, observationalMemory } = await import("@ekacode/server/db");
+      const { getDb, observationalMemory } = await import("@sakti-code/core/testing/db");
       const { eq } = await import("drizzle-orm");
       const db = await getDb();
 

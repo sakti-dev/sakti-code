@@ -9,7 +9,7 @@ import type { PartActions } from "@/state/stores/part-store";
 import type {
   MessagePartRemovedPayload,
   MessagePartUpdatedPayload,
-} from "@ekacode/shared/event-types";
+} from "@sakti-code/shared/event-types";
 
 export interface PartHandlerDependencies {
   partActions: PartActions;

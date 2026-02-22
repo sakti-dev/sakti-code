@@ -1,5 +1,5 @@
 /**
- * Pino formatters for @ekacode/shared/logger
+ * Pino formatters for @sakti-code/shared/logger
  */
 
 import type { LoggerContext } from "./types";

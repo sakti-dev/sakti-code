@@ -8,7 +8,7 @@
 import type { MessageWithId } from "@/core/state/stores/message-store";
 import type { PermissionRequest } from "@/core/state/stores/permission-store";
 import type { QuestionRequest } from "@/core/state/stores/question-store";
-import type { Part, SessionStatusPayload } from "@ekacode/shared/event-types";
+import type { Part, SessionStatusPayload } from "@sakti-code/shared/event-types";
 
 export interface TurnProjectionOptions {
   sessionId: string;

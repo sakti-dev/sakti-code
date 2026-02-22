@@ -24,7 +24,7 @@ describe("TaskStorage", () => {
     taskStorage = new TaskStorage();
 
     // Clean up tasks from previous test runs
-    const { getDb } = await import("@ekacode/server/db");
+    const { getDb } = await import("@sakti-code/core/testing/db");
     const { sql } = await import("drizzle-orm");
     const db = await getDb();
 
@@ -35,7 +35,7 @@ describe("TaskStorage", () => {
   });
 
   afterAll(async () => {
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 

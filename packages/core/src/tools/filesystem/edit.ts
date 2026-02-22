@@ -2,7 +2,7 @@
  * Edit file tool
  */
 
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import { tool, zodSchema } from "ai";
 import fs from "node:fs/promises";
 import { z } from "zod";
@@ -11,7 +11,7 @@ import { PermissionManager } from "../../security/permission-manager";
 import { getContextOrThrow } from "../base/context";
 import { validatePathOperation } from "../base/safety";
 
-const logger = createLogger("ekacode");
+const logger = createLogger("sakti-code");
 
 export const editTool = tool({
   description: `Edit a file by replacing text.

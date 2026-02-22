@@ -1,5 +1,5 @@
 /**
- * @ekacode/core server-safe exports
+ * @sakti-code/core server-safe exports
  *
  * Avoids loading heavyweight agent/memory modules (e.g., onnxruntime) when
  * the server only needs Instance/permissions utilities.

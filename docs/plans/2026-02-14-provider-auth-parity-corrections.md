@@ -91,8 +91,8 @@ it("does not register zai, zai-coding-plan, or opencode in builtins", () => {
 **Step 2: Run and verify tests pass**
 
 ```bash
-pnpm --filter @ekacode/server test -- packages/server/tests/provider/auth.registry.test.ts
-pnpm --filter @ekacode/server test -- packages/server/tests/provider/auth.providers.test.ts
+pnpm --filter @sakti-code/server test -- packages/server/tests/provider/auth.registry.test.ts
+pnpm --filter @sakti-code/server test -- packages/server/tests/provider/auth.providers.test.ts
 ```
 
 Expected: PASS (registry already correct)
@@ -139,7 +139,7 @@ it("rejects oauth authorize for api-only providers", async () => {
 **Step 2: Verify test fails (RED)**
 
 ```bash
-pnpm --filter @ekacode/server test -- packages/server/tests/provider/oauth.openai.test.ts
+pnpm --filter @sakti-code/server test -- packages/server/tests/provider/oauth.openai.test.ts
 ```
 
 Expected: Test should PASS (gate already exists) - this is verification, not new implementation.
@@ -172,7 +172,7 @@ Change mock from `zai` to `openai`:
 // Lines 166-236
 it("runs oauth auto flow from provider modal", async () => {
   const openExternal = vi.fn().mockResolvedValue(undefined);
-  Object.defineProperty(window, "ekacodeAPI", {
+  Object.defineProperty(window, "saktiCodeAPI", {
     configurable: true,
     value: { shell: { openExternal } },
   });
@@ -327,7 +327,7 @@ it("renders only API key input for api-only providers without oauth button", asy
 **Step 4: Run desktop tests**
 
 ```bash
-pnpm --filter @ekacode/desktop test:run -- apps/desktop/tests/unit/views/provider-settings.test.tsx
+pnpm --filter @sakti-code/desktop test:run -- apps/desktop/tests/unit/views/provider-settings.test.tsx
 ```
 
 **Step 5: Commit**
@@ -373,7 +373,7 @@ it("does not expose oauth methods for opencode, zai, and zai-coding-plan", async
 **Step 2: Run route tests**
 
 ```bash
-pnpm --filter @ekacode/server test -- packages/server/tests/routes/provider.routes.test.ts
+pnpm --filter @sakti-code/server test -- packages/server/tests/routes/provider.routes.test.ts
 ```
 
 **Step 3: Commit**
@@ -393,8 +393,8 @@ git commit -m "test(provider-auth): add zai-coding-plan to oauth method rejectio
 **Step 1: Run all server provider/auth tests**
 
 ```bash
-pnpm --filter @ekacode/server test -- packages/server/tests/provider
-pnpm --filter @ekacode/server test -- packages/server/tests/routes/provider.routes.test.ts
+pnpm --filter @sakti-code/server test -- packages/server/tests/provider
+pnpm --filter @sakti-code/server test -- packages/server/tests/routes/provider.routes.test.ts
 ```
 
 Expected: all pass.
@@ -402,7 +402,7 @@ Expected: all pass.
 **Step 2: Run all desktop targeted tests**
 
 ```bash
-pnpm --filter @ekacode/desktop test:run -- apps/desktop/tests/unit/views/provider-settings.test.tsx
+pnpm --filter @sakti-code/desktop test:run -- apps/desktop/tests/unit/views/provider-settings.test.tsx
 ```
 
 Expected: all pass.

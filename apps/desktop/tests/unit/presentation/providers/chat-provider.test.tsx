@@ -2,7 +2,7 @@
  * ChatProvider Tests
  */
 
-import type { EkacodeApiClient } from "@/core/services/api/api-client";
+import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
 import { createRoot } from "solid-js";
 import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -48,7 +48,7 @@ vi.mock("@/core/shared/logger", () => ({
 }));
 
 describe("ChatProvider", () => {
-  let mockClient: EkacodeApiClient;
+  let mockClient: SaktiCodeApiClient;
   let mockChatFn: ReturnType<typeof vi.fn>;
   let container: HTMLDivElement;
 
@@ -60,7 +60,7 @@ describe("ChatProvider", () => {
     mockChatFn = vi.fn();
     mockClient = {
       chat: mockChatFn,
-    } as unknown as EkacodeApiClient;
+    } as unknown as SaktiCodeApiClient;
   });
 
   afterEach(() => {

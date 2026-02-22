@@ -18,10 +18,10 @@ import type {
   SessionInfo as DomainSessionInfo,
   SessionActions,
 } from "@/state/stores/session-store";
-import { EventDeduplicator } from "@ekacode/shared/event-deduplication";
-import { validateEventComprehensive } from "@ekacode/shared/event-guards";
-import { EventOrderingBuffer } from "@ekacode/shared/event-ordering";
-import type { Part, ServerEvent } from "@ekacode/shared/event-types";
+import { EventDeduplicator } from "@sakti-code/shared/event-deduplication";
+import { validateEventComprehensive } from "@sakti-code/shared/event-guards";
+import { EventOrderingBuffer } from "@sakti-code/shared/event-ordering";
+import type { Part, ServerEvent } from "@sakti-code/shared/event-types";
 import { recordChatPerfCounter } from "../services/chat-perf-telemetry";
 import { type OptimisticMetadata } from "./correlation";
 import {
@@ -145,8 +145,8 @@ function toSessionStatus(
 
 function forwardAuxiliaryEvent(event: ServerEvent): void {
   if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") return;
-  window.dispatchEvent(new CustomEvent("ekacode:sse-event", { detail: event }));
-  window.dispatchEvent(new CustomEvent(`ekacode:${event.type}`, { detail: event.properties }));
+  window.dispatchEvent(new CustomEvent("sakti-code:sse-event", { detail: event }));
+  window.dispatchEvent(new CustomEvent(`sakti-code:${event.type}`, { detail: event.properties }));
 }
 
 function parseMessageInfo(input: unknown):

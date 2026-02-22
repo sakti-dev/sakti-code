@@ -295,7 +295,7 @@ describe("ProviderSettings", () => {
 
   it("runs oauth auto flow from provider modal", async () => {
     const openExternal = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(window, "ekacodeAPI", {
+    Object.defineProperty(window, "saktiCodeAPI", {
       configurable: true,
       value: {
         shell: {

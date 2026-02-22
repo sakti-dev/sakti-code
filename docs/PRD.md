@@ -1,8 +1,8 @@
-# ekacode Product Requirements Document (PRD)
+# sakti-code Product Requirements Document (PRD)
 
 ## 1. Overview
 
-- **Product**: ekacode — an offline-first AI coding agent desktop app.
+- **Product**: sakti-code — an offline-first AI coding agent desktop app.
 - **Platform**: Electron shell with SolidJS renderer, Mastra orchestration, TanStack AI chat client, Hono (main process) HTTP/SSE bridge.
 - **Value**: Fast, secure, local-first agent that can read/write code, run tools/tests, and stream results with human-in-the-loop approvals.
 

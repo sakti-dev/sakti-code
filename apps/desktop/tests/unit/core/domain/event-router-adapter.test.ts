@@ -10,7 +10,7 @@ import {
   createQuestionStore,
   createSessionStore,
 } from "@/core/state/stores";
-import type { ServerEvent } from "@ekacode/shared/event-types";
+import type { ServerEvent } from "@sakti-code/shared/event-types";
 import { v7 as uuidv7 } from "uuid";
 import { describe, expect, it, vi } from "vitest";
 
@@ -124,8 +124,8 @@ describe("event-router-adapter", () => {
     const specificListener = vi.fn();
     const globalListener = vi.fn();
 
-    window.addEventListener("ekacode:permission.asked", specificListener as EventListener);
-    window.addEventListener("ekacode:sse-event", globalListener as EventListener);
+    window.addEventListener("sakti-code:permission.asked", specificListener as EventListener);
+    window.addEventListener("sakti-code:sse-event", globalListener as EventListener);
 
     try {
       await applyEventToStores(
@@ -148,8 +148,8 @@ describe("event-router-adapter", () => {
         permissionActions
       );
     } finally {
-      window.removeEventListener("ekacode:permission.asked", specificListener as EventListener);
-      window.removeEventListener("ekacode:sse-event", globalListener as EventListener);
+      window.removeEventListener("sakti-code:permission.asked", specificListener as EventListener);
+      window.removeEventListener("sakti-code:sse-event", globalListener as EventListener);
     }
 
     expect(specificListener).toHaveBeenCalledTimes(1);

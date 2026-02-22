@@ -5,8 +5,8 @@
  * Provides error handling and recovery for malformed events.
  */
 
-import { isKnownEventType, isRecord, isString } from "@ekacode/shared/event-guards";
-import type { EventMap, EventType } from "@ekacode/shared/event-types";
+import { isKnownEventType, isRecord, isString } from "@sakti-code/shared/event-guards";
+import type { EventMap, EventType } from "@sakti-code/shared/event-types";
 
 // Re-export the type to avoid circular dependency
 export type TypedSSEEvent = {

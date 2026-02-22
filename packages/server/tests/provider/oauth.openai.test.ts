@@ -18,8 +18,8 @@ describe("openai oauth", () => {
 
   it("authorizes and completes browser oauth code flow", async () => {
     __openAIOAuthTest.resetBrowserOAuthStateForTest();
-    process.env.EKACODE_OPENAI_OAUTH_DISABLE_LOCAL_SERVER = "1";
-    process.env.EKACODE_OPENAI_OAUTH_CALLBACK_PORT = "16555";
+    process.env.SAKTI_CODE_OPENAI_OAUTH_DISABLE_LOCAL_SERVER = "1";
+    process.env.SAKTI_CODE_OPENAI_OAUTH_CALLBACK_PORT = "16555";
 
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
@@ -82,8 +82,8 @@ describe("openai oauth", () => {
     );
 
     fetchMock.mockRestore();
-    delete process.env.EKACODE_OPENAI_OAUTH_DISABLE_LOCAL_SERVER;
-    delete process.env.EKACODE_OPENAI_OAUTH_CALLBACK_PORT;
+    delete process.env.SAKTI_CODE_OPENAI_OAUTH_DISABLE_LOCAL_SERVER;
+    delete process.env.SAKTI_CODE_OPENAI_OAUTH_CALLBACK_PORT;
   });
 
   it("authorizes and completes headless oauth flow", async () => {

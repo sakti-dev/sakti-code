@@ -72,13 +72,13 @@ export function useTasks(sessionId: Accessor<string | null | undefined>) {
     isListening = true;
 
     refresh();
-    window.addEventListener("ekacode:task.updated", handleTaskUpdated as EventListener);
+    window.addEventListener("sakti-code:task.updated", handleTaskUpdated as EventListener);
   }
 
   function stopListening() {
     if (typeof window === "undefined" || !isListening) return;
     isListening = false;
-    window.removeEventListener("ekacode:task.updated", handleTaskUpdated as EventListener);
+    window.removeEventListener("sakti-code:task.updated", handleTaskUpdated as EventListener);
   }
 
   createEffect(

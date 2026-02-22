@@ -130,7 +130,7 @@ const [query, setQuery] = createSignal("");
 
 2. Run failing test:
 
-- `pnpm --filter @ekacode/desktop test:run apps/desktop/tests/unit/components/command.test.tsx`
+- `pnpm --filter @sakti-code/desktop test:run apps/desktop/tests/unit/components/command.test.tsx`
 
 3. Implement minimal controlled primitives.
 
@@ -163,7 +163,7 @@ git commit -m "feat(desktop): add controlled command primitives for model select
 
 2. Run failing test:
 
-- `pnpm --filter @ekacode/desktop test:run apps/desktop/tests/unit/core/state/providers/provider-selection-store.test.ts`
+- `pnpm --filter @sakti-code/desktop test:run apps/desktop/tests/unit/core/state/providers/provider-selection-store.test.ts`
 
 3. Implement with `MiniSearch`:
 
@@ -200,7 +200,7 @@ git commit -m "feat(desktop): add global model selector store with minisearch"
 
 2. Run failing tests:
 
-- `pnpm --filter @ekacode/desktop test:run apps/desktop/tests/unit/views/workspace-view/chat-area/chat-input.test.tsx apps/desktop/tests/unit/views/model-selector.test.tsx`
+- `pnpm --filter @sakti-code/desktop test:run apps/desktop/tests/unit/views/workspace-view/chat-area/chat-input.test.tsx apps/desktop/tests/unit/views/model-selector.test.tsx`
 
 3. Implement chat-input integration with command components + store selectors.
 
@@ -229,7 +229,7 @@ git add apps/desktop/src/views/workspace-view/chat-area/chat-input.tsx apps/desk
 
 2. Run failing test:
 
-- `pnpm --filter @ekacode/desktop test:run apps/desktop/tests/integration/provider-model-selector-flow.test.tsx`
+- `pnpm --filter @sakti-code/desktop test:run apps/desktop/tests/integration/provider-model-selector-flow.test.tsx`
 
 3. Implement minimal glue updates if needed.
 
@@ -248,21 +248,21 @@ git add apps/desktop/tests/integration/provider-model-selector-flow.test.tsx app
 
 1. Targeted desktop tests:
 
-- `pnpm --filter @ekacode/desktop test:run apps/desktop/tests/unit/components/command.test.tsx`
-- `pnpm --filter @ekacode/desktop test:run apps/desktop/tests/unit/core/state/providers/provider-selection-store.test.ts`
-- `pnpm --filter @ekacode/desktop test:run apps/desktop/tests/unit/views/workspace-view/chat-area/chat-input.test.tsx`
-- `pnpm --filter @ekacode/desktop test:run apps/desktop/tests/unit/views/model-selector.test.tsx`
+- `pnpm --filter @sakti-code/desktop test:run apps/desktop/tests/unit/components/command.test.tsx`
+- `pnpm --filter @sakti-code/desktop test:run apps/desktop/tests/unit/core/state/providers/provider-selection-store.test.ts`
+- `pnpm --filter @sakti-code/desktop test:run apps/desktop/tests/unit/views/workspace-view/chat-area/chat-input.test.tsx`
+- `pnpm --filter @sakti-code/desktop test:run apps/desktop/tests/unit/views/model-selector.test.tsx`
 
 2. Integration test:
 
-- `pnpm --filter @ekacode/desktop test:run apps/desktop/tests/integration/provider-model-selector-flow.test.tsx`
+- `pnpm --filter @sakti-code/desktop test:run apps/desktop/tests/integration/provider-model-selector-flow.test.tsx`
 
 3. Typecheck and lint:
 
-- `pnpm --filter @ekacode/desktop typecheck`
-- `pnpm --filter @ekacode/server typecheck`
-- `pnpm --filter @ekacode/desktop lint`
-- `pnpm --filter @ekacode/server lint`
+- `pnpm --filter @sakti-code/desktop typecheck`
+- `pnpm --filter @sakti-code/server typecheck`
+- `pnpm --filter @sakti-code/desktop lint`
+- `pnpm --filter @sakti-code/server lint`
 
 4. Manual smoke:
 

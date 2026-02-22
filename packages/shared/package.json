@@ -1,5 +1,5 @@
 {
-  "name": "@ekacode/shared",
+  "name": "@sakti-code/shared",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -14,7 +14,8 @@
     "./persist": "./src/persist.ts",
     "./paths": "./src/paths.ts",
     "./retry": "./src/retry.ts",
-    "./shutdown": "./src/shutdown.ts"
+    "./shutdown": "./src/shutdown.ts",
+    "./core-server-bridge": "./src/core-server-bridge.ts"
   },
   "scripts": {
     "build": "tsc --emitDeclarationOnly --declaration",

@@ -14,7 +14,7 @@ import {
   getToolCallParts,
 } from "@/core/chat/domain/part-queries";
 import { usePartStore } from "@/state/providers";
-import type { Part } from "@ekacode/shared/event-types";
+import type { Part } from "@sakti-code/shared/event-types";
 import { Component, createContext, JSX, useContext } from "solid-js";
 
 interface PartContextValue {

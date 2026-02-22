@@ -16,7 +16,7 @@
 
 import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
-import { createZai } from "@ekacode/zai";
+import { createZai } from "@sakti-code/zai";
 import { Instance } from "../../instance";
 import { HybridAgent, createDefaultPromptRegistry } from "../hybrid-agent";
 import { inferProviderNpmPackage, resolveProviderSdkFactory } from "./provider-sdk-registry";
@@ -119,8 +119,8 @@ function getRuntimeSelectionFromEnv(): RuntimeSelection | null {
   const contextSelection = getRuntimeSelectionFromContext();
   if (contextSelection) return contextSelection;
 
-  const providerId = process.env.EKACODE_ACTIVE_PROVIDER_ID?.trim();
-  const modelRef = process.env.EKACODE_ACTIVE_MODEL_ID?.trim();
+  const providerId = process.env.SAKTI_CODE_ACTIVE_PROVIDER_ID?.trim();
+  const modelRef = process.env.SAKTI_CODE_ACTIVE_MODEL_ID?.trim();
   if (!providerId || !modelRef) return null;
 
   const parsed = parseModelReference(modelRef);
@@ -134,9 +134,9 @@ function getRuntimeSelectionFromEnv(): RuntimeSelection | null {
   return {
     providerId,
     modelId,
-    providerApiUrl: process.env.EKACODE_ACTIVE_PROVIDER_API_URL?.trim(),
-    providerNpmPackage: process.env.EKACODE_ACTIVE_PROVIDER_NPM?.trim(),
-    apiKey: process.env.EKACODE_PROVIDER_API_KEY?.trim(),
+    providerApiUrl: process.env.SAKTI_CODE_ACTIVE_PROVIDER_API_URL?.trim(),
+    providerNpmPackage: process.env.SAKTI_CODE_ACTIVE_PROVIDER_NPM?.trim(),
+    apiKey: process.env.SAKTI_CODE_PROVIDER_API_KEY?.trim(),
   };
 }
 
@@ -300,9 +300,9 @@ export function getModelByReference(modelReference: string): LanguageModelV3 {
     return resolveModelFromSelection({
       providerId: parsed.providerId,
       modelId: parsed.modelId,
-      providerApiUrl: process.env.EKACODE_ACTIVE_PROVIDER_API_URL?.trim(),
-      providerNpmPackage: process.env.EKACODE_ACTIVE_PROVIDER_NPM?.trim(),
-      apiKey: process.env.EKACODE_PROVIDER_API_KEY?.trim(),
+      providerApiUrl: process.env.SAKTI_CODE_ACTIVE_PROVIDER_API_URL?.trim(),
+      providerNpmPackage: process.env.SAKTI_CODE_ACTIVE_PROVIDER_NPM?.trim(),
+      apiKey: process.env.SAKTI_CODE_PROVIDER_API_KEY?.trim(),
     });
   }
 

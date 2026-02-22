@@ -4,38 +4,38 @@
  * Based on OpenCode's config system
  */
 
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { PermissionManager } from "../security/permission-manager";
 import type { PermissionConfig } from "../security/permission-rules";
 import { createDefaultRules, parseConfigRules } from "../security/permission-rules";
 
-const logger = createLogger("ekacode");
+const logger = createLogger("sakti-code");
 
 /**
  * Config file locations to check (in order of priority)
  */
 const CONFIG_PATHS = [
   // Current directory
-  "./ekacode.config.json",
-  "./.ekacoderc",
-  "./.ekacoderc.json",
+  "./sakti-code.config.json",
+  "./.sakti-coderc",
+  "./.sakti-coderc.json",
 
   // Home directory
-  join(process.env.HOME || "~", ".ekacoderc"),
-  join(process.env.HOME || "~", ".config", "ekacode", "config.json"),
+  join(process.env.HOME || "~", ".sakti-coderc"),
+  join(process.env.HOME || "~", ".config", "sakti-code", "config.json"),
 
   // Project root (if in a git repo)
-  join(process.cwd(), ".ekacode", "config.json"),
+  join(process.cwd(), ".sakti-code", "config.json"),
 ];
 
 /**
  * Load permission config from environment variable
- * Format: EKACODE_PERMISSIONS='{"bash": "ask", "read": "allow"}'
+ * Format: SAKTI_CODE_PERMISSIONS='{"bash": "ask", "read": "allow"}'
  */
 function loadFromEnv(): PermissionConfig | null {
-  const envConfig = process.env.EKACODE_PERMISSIONS;
+  const envConfig = process.env.SAKTI_CODE_PERMISSIONS;
   if (!envConfig) {
     return null;
   }
@@ -47,7 +47,7 @@ function loadFromEnv(): PermissionConfig | null {
     });
     return config;
   } catch (error) {
-    logger.warn("Failed to parse EKACODE_PERMISSIONS environment variable", {
+    logger.warn("Failed to parse SAKTI_CODE_PERMISSIONS environment variable", {
       module: "config",
       error: error instanceof Error ? error.message : String(error),
     });
@@ -112,16 +112,16 @@ function loadFromPackageJson(): PermissionConfig | null {
 
     const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
 
-    if (packageJson.ekacode?.permissions) {
+    if (packageJson["sakti-code"]?.permissions) {
       logger.debug("Loaded permission config from package.json", {
         module: "config",
       });
-      return packageJson.ekacode.permissions;
+      return packageJson["sakti-code"].permissions;
     }
 
     return null;
   } catch {
-    logger.debug("No ekacode permissions found in package.json", {
+    logger.debug("No sakti-code permissions found in package.json", {
       module: "config",
     });
     return null;
@@ -197,7 +197,7 @@ export function initializePermissionRules(): void {
 /**
  * Example config file format:
  *
- * ekacode.config.json:
+ * sakti-code.config.json:
  * {
  *   "permissions": {
  *     "read": "allow",
@@ -213,7 +213,7 @@ export function initializePermissionRules(): void {
  *
  * Or in package.json:
  * {
- *   "ekacode": {
+ *   "sakti-code": {
  *     "permissions": {
  *       "read": "allow",
  *       "edit": "ask"

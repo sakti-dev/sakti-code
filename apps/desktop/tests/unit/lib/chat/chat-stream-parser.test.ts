@@ -17,7 +17,7 @@ import {
   simpleTextFixture,
   type StreamFixture,
   toolCallFixture,
-} from "@ekacode/shared";
+} from "@sakti-code/shared";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";

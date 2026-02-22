@@ -15,7 +15,7 @@
  * New: path.relative(Instance.directory, filePath);
  */
 
-import type { WorkspaceConfig } from "@ekacode/shared";
+import type { WorkspaceConfig } from "@sakti-code/shared";
 import path from "node:path";
 
 /**

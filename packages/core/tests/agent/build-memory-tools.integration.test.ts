@@ -8,13 +8,13 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { AGENT_REGISTRY, resolveTools } from "../../src/agent/registry";
 
-const testHomeDir = `/tmp/ekacode-test-build-memory-${Date.now()}`;
-const previousEkacodeHome = process.env.EKACODE_HOME;
+const testHomeDir = `/tmp/sakti-code-test-build-memory-${Date.now()}`;
+const previousSaktiCodeHome = process.env.SAKTI_CODE_HOME;
 
 describe("build memory tools integration", () => {
   beforeEach(async () => {
-    process.env.EKACODE_HOME = testHomeDir;
-    const { closeDb, getDb } = await import("@ekacode/server/db");
+    process.env.SAKTI_CODE_HOME = testHomeDir;
+    const { closeDb, getDb } = await import("@sakti-code/core/testing/db");
     closeDb();
     const db = await getDb();
 
@@ -27,17 +27,17 @@ describe("build memory tools integration", () => {
   });
 
   afterAll(async () => {
-    if (previousEkacodeHome === undefined) {
-      delete process.env.EKACODE_HOME;
+    if (previousSaktiCodeHome === undefined) {
+      delete process.env.SAKTI_CODE_HOME;
     } else {
-      process.env.EKACODE_HOME = previousEkacodeHome;
+      process.env.SAKTI_CODE_HOME = previousSaktiCodeHome;
     }
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 
   it("resolves and executes task-query, task-mutate, and memory-search from build toolset", async () => {
-    const { getDb, threads } = await import("@ekacode/server/db");
+    const { getDb, threads } = await import("@sakti-code/core/testing/db");
     const db = await getDb();
     const tools = resolveTools(AGENT_REGISTRY.build.tools) as Record<
       string,

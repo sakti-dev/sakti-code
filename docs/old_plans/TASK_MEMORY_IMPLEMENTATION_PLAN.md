@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document specifies the implementation of a **unified Memory System** for ekacode agents - achieving the "Memory Upgrade" through integration of **Task Memory** and **Message Memory**.
+This document specifies the implementation of a **unified Memory System** for sakti-code agents - achieving the "Memory Upgrade" through integration of **Task Memory** and **Message Memory**.
 
 Based on industry research showing tool-use reliability degrades sharply as tool registries grow (SOP-Bench reports agents invoke incorrect tools "nearly 100% of the time" with large registries), we consolidate into **3 tools** that balance simplicity with functionality.
 
@@ -3080,7 +3080,7 @@ The codebase currently uses Mastra Memory in the following locations:
 | `memory/index.ts`  | `Memory`, `LibSQLStore`, `LibSQLVector`, `fastembed`, `MastraDBMessage` | Our own memory implementation               |
 | `memory/mastra.ts` | Empty `Mastra` instance                                                 | Remove entirely                             |
 | `webfetch.tool.ts` | `createTool` from `@mastra/core/tools`                                  | Use `tool` from `ai` (like all other tools) |
-| `index.ts` exports | `mastra`, `memory`, `EkacodeMemory`                                     | Update to new memory system                 |
+| `index.ts` exports | `mastra`, `memory`, `SaktiCodeMemory`                                   | Update to new memory system                 |
 
 ### Files to Modify/Remove
 
@@ -3120,7 +3120,7 @@ Implement the memory system as described in this document:
 // export { mastra, memory } from "./memory/mastra";
 
 // Replace with our implementation:
-// export { getMemory, type EkacodeMemory } from "./memory";
+// export { getMemory, type SaktiCodeMemory } from "./memory";
 ```
 
 ### Step 4: Remove mastra dependencies from package.json

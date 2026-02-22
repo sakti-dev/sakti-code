@@ -4,14 +4,14 @@
  * Loads and applies event ordering fixtures to real stores for integration testing.
  * Part of Batch 5: WS7 Testing Overhaul
  *
- * @package @ekacode/desktop/tests
+ * @package @sakti-code/desktop/tests
  */
 
 import type { MessageActions, MessageWithId } from "@/core/state/stores/message-store";
 import type { PartActions } from "@/core/state/stores/part-store";
 import type { SessionActions } from "@/core/state/stores/session-store";
-import type { EventOrderingFixture } from "@ekacode/shared";
-import type { AllServerEvents, TypedServerEvent } from "@ekacode/shared/event-types";
+import type { EventOrderingFixture } from "@sakti-code/shared";
+import type { AllServerEvents, TypedServerEvent } from "@sakti-code/shared/event-types";
 import { applyEventToStores } from "../../src/core/chat/domain/event-router-adapter";
 
 /**

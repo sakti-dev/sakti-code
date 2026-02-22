@@ -12,7 +12,7 @@ import { createLogger } from "@/core/shared/logger";
 const logger = createLogger("desktop:chat-stream-parser");
 
 /**
- * Stream event types from AI SDK and custom ekacode extensions
+ * Stream event types from AI SDK and custom sakti-code extensions
  */
 export interface TextDeltaEvent {
   type: "text-delta";

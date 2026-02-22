@@ -5,7 +5,7 @@ This repo uses Drizzle migrations under `packages/server/drizzle`.
 ## Generate a migration
 
 ```bash
-pnpm --filter @ekacode/server drizzle:generate
+pnpm --filter @sakti-code/server drizzle:generate
 ```
 
 ## Verify migration state
@@ -13,7 +13,7 @@ pnpm --filter @ekacode/server drizzle:generate
 Run both checks:
 
 ```bash
-pnpm --filter @ekacode/server drizzle:check
+pnpm --filter @sakti-code/server drizzle:check
 node scripts/check-server-migration-policy.mjs
 ```
 
@@ -41,7 +41,7 @@ Disallowed changes:
 
 Migration folder resolution uses this order:
 
-1. `EKACODE_MIGRATIONS_DIR` (explicit override)
+1. `SAKTI_CODE_MIGRATIONS_DIR` (explicit override)
 2. Bundled migration paths near server build output
 3. Development source path (`packages/server/drizzle`)
 

@@ -1,4 +1,4 @@
-import type { EkacodeApiClient } from "@/core/services/api/api-client";
+import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
 import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -46,7 +46,7 @@ describe("WorkspaceChatProvider", () => {
     const { WorkspaceChatProvider } =
       await import("@/core/state/providers/workspace-chat-provider");
 
-    const mockClient = {} as EkacodeApiClient;
+    const mockClient = {} as SaktiCodeApiClient;
     dispose = render(
       () => (
         <WorkspaceChatProvider

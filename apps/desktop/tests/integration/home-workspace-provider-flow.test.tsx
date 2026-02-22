@@ -77,7 +77,7 @@ describe("Integration: Home + Workspace Provider Flow", () => {
     document.body.appendChild(container);
 
     localStorage.setItem(
-      "ekacode:recent-projects",
+      "sakti-code:recent-projects",
       JSON.stringify([
         {
           id: "project-123",
@@ -88,7 +88,7 @@ describe("Integration: Home + Workspace Provider Flow", () => {
       ])
     );
 
-    Object.defineProperty(window, "ekacodeAPI", {
+    Object.defineProperty(window, "saktiCodeAPI", {
       configurable: true,
       writable: true,
       value: {

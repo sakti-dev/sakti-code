@@ -11,7 +11,7 @@
  */
 
 import type { MessageWithId } from "@/state/stores/message-store";
-import type { Part } from "@ekacode/shared/event-types";
+import type { Part } from "@sakti-code/shared/event-types";
 import {
   CORRELATION_TIME_WINDOW_MS,
   filterStaleOptimisticEntities,

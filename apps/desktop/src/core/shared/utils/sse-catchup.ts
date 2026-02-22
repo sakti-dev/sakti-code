@@ -7,10 +7,10 @@
  * Updated for Batch 2: Data Integrity - Completed implementation with event processing
  */
 
-import { EventDeduplicator } from "@ekacode/shared/event-deduplication";
-import { validateEventComprehensive } from "@ekacode/shared/event-guards";
-import { EventOrderingBuffer } from "@ekacode/shared/event-ordering";
-import type { ServerEvent } from "@ekacode/shared/event-types";
+import { EventDeduplicator } from "@sakti-code/shared/event-deduplication";
+import { validateEventComprehensive } from "@sakti-code/shared/event-guards";
+import { EventOrderingBuffer } from "@sakti-code/shared/event-ordering";
+import type { ServerEvent } from "@sakti-code/shared/event-types";
 
 export interface CatchupConfig {
   /** Maximum number of events to fetch in catch-up */

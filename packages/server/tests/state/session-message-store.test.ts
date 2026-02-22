@@ -7,7 +7,7 @@
  * Tests must use unique sessionIDs to avoid state pollution.
  */
 
-import type { MessageInfo, Part } from "@ekacode/core/chat";
+import type { MessageInfo, Part } from "@sakti-code/core/chat";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   clearSessionStore,

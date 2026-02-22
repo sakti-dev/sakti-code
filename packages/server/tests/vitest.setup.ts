@@ -1,9 +1,9 @@
-import { resolveAppPaths } from "@ekacode/shared/paths";
+import { resolveAppPaths } from "@sakti-code/shared/paths";
 import fs from "node:fs";
 import path from "node:path";
 
-const testHome = path.resolve(process.cwd(), ".ekacode-test");
-process.env.EKACODE_HOME = testHome;
+const testHome = path.resolve(process.cwd(), ".sakti-code-test");
+process.env.SAKTI_CODE_HOME = testHome;
 
 const paths = resolveAppPaths();
 

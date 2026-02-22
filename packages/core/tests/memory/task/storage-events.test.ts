@@ -1,18 +1,21 @@
-import { getDb, tasks } from "@ekacode/server/db";
+import { getDb, tasks } from "@sakti-code/core/testing/db";
+import { registerCoreBusBindings } from "@sakti-code/shared/core-server-bridge";
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CreateTaskInput, taskStorage } from "../../../src/memory/task/storage";
 
-vi.mock("@ekacode/server/bus", () => ({
-  publish: vi.fn(),
-  TaskUpdated: { type: "task.updated" },
-}));
-
-import { publish, TaskUpdated } from "@ekacode/server/bus";
-
 describe("TaskStorage Event Emission", () => {
+  const publish = vi.fn();
+  const TaskUpdated = { type: "task.updated" } as const;
+
   beforeEach(async () => {
     vi.clearAllMocks();
+    registerCoreBusBindings({
+      publishTaskUpdated: async (sessionId, tasks) => {
+        publish(TaskUpdated, { sessionId, tasks });
+      },
+    });
+
     const db = await getDb();
     await db.delete(tasks).where(eq(tasks.id, "task-123")).execute();
     await db.delete(tasks).where(eq(tasks.id, "task-456")).execute();

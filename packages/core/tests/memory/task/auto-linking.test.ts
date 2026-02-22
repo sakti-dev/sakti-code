@@ -10,7 +10,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 describe("auto task-linking", () => {
   beforeEach(async () => {
-    const { getDb } = await import("@ekacode/server/db");
+    const { getDb } = await import("@sakti-code/core/testing/db");
     const db = await getDb();
 
     await db.run(sql`DELETE FROM task_messages`);
@@ -21,15 +21,15 @@ describe("auto task-linking", () => {
   });
 
   afterAll(async () => {
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 
   describe("claim action", () => {
     it("stores activeTaskId in thread metadata when claiming a task", async () => {
-      const { getDb, threads } = await import("@ekacode/server/db");
-      const { executeTaskMutate } = await import("../../../../src/memory/task/task-mutate");
-      const { taskStorage } = await import("../../../../src/memory/task/storage");
+      const { getDb, threads } = await import("@sakti-code/core/testing/db");
+      const { executeTaskMutate } = await import("../../../src/memory/task/task-mutate");
+      const { taskStorage } = await import("../../../src/memory/task/storage");
       const db = await getDb();
 
       // Setup: Create a thread and a task
@@ -75,9 +75,9 @@ describe("auto task-linking", () => {
     });
 
     it("updates task session_id when claiming", async () => {
-      const { getDb, threads } = await import("@ekacode/server/db");
-      const { executeTaskMutate } = await import("../../../../src/memory/task/task-mutate");
-      const { taskStorage } = await import("../../../../src/memory/task/storage");
+      const { getDb, threads } = await import("@sakti-code/core/testing/db");
+      const { executeTaskMutate } = await import("../../../src/memory/task/task-mutate");
+      const { taskStorage } = await import("../../../src/memory/task/storage");
       const db = await getDb();
 
       const threadId = uuidv7();
@@ -118,10 +118,10 @@ describe("auto task-linking", () => {
 
   describe("message creation", () => {
     it("auto-injects taskId when creating message in thread with active task", async () => {
-      const { getDb, threads } = await import("@ekacode/server/db");
-      const { executeTaskMutate } = await import("../../../../src/memory/task/task-mutate");
-      const { taskStorage } = await import("../../../../src/memory/task/storage");
-      const { messageStorage } = await import("../../../../src/memory/message/storage");
+      const { getDb, threads } = await import("@sakti-code/core/testing/db");
+      const { executeTaskMutate } = await import("../../../src/memory/task/task-mutate");
+      const { taskStorage } = await import("../../../src/memory/task/storage");
+      const { messageStorage } = await import("../../../src/memory/message/storage");
       const db = await getDb();
 
       const threadId = uuidv7();
@@ -171,8 +171,8 @@ describe("auto task-linking", () => {
     });
 
     it("does not auto-link message when no active task in thread", async () => {
-      const { getDb, threads } = await import("@ekacode/server/db");
-      const { messageStorage } = await import("../../../../src/memory/message/storage");
+      const { getDb, threads } = await import("@sakti-code/core/testing/db");
+      const { messageStorage } = await import("../../../src/memory/message/storage");
       const db = await getDb();
 
       const threadId = uuidv7();
@@ -205,10 +205,10 @@ describe("auto task-linking", () => {
     });
 
     it("does not auto-link when session_id mismatch", async () => {
-      const { getDb, threads } = await import("@ekacode/server/db");
-      const { executeTaskMutate } = await import("../../../../src/memory/task/task-mutate");
-      const { taskStorage } = await import("../../../../src/memory/task/storage");
-      const { messageStorage } = await import("../../../../src/memory/message/storage");
+      const { getDb, threads } = await import("@sakti-code/core/testing/db");
+      const { executeTaskMutate } = await import("../../../src/memory/task/task-mutate");
+      const { taskStorage } = await import("../../../src/memory/task/storage");
+      const { messageStorage } = await import("../../../src/memory/message/storage");
       const db = await getDb();
 
       const threadId = uuidv7();
@@ -262,9 +262,9 @@ describe("auto task-linking", () => {
 
   describe("close action", () => {
     it("clears activeTaskId from thread metadata when closing task", async () => {
-      const { getDb, threads } = await import("@ekacode/server/db");
-      const { executeTaskMutate } = await import("../../../../src/memory/task/task-mutate");
-      const { taskStorage } = await import("../../../../src/memory/task/storage");
+      const { getDb, threads } = await import("@sakti-code/core/testing/db");
+      const { executeTaskMutate } = await import("../../../src/memory/task/task-mutate");
+      const { taskStorage } = await import("../../../src/memory/task/storage");
       const db = await getDb();
 
       const threadId = uuidv7();
@@ -314,9 +314,9 @@ describe("auto task-linking", () => {
     });
 
     it("does not clear activeTaskId when closing different task", async () => {
-      const { getDb, threads } = await import("@ekacode/server/db");
-      const { executeTaskMutate } = await import("../../../../src/memory/task/task-mutate");
-      const { taskStorage } = await import("../../../../src/memory/task/storage");
+      const { getDb, threads } = await import("@sakti-code/core/testing/db");
+      const { executeTaskMutate } = await import("../../../src/memory/task/task-mutate");
+      const { taskStorage } = await import("../../../src/memory/task/storage");
       const db = await getDb();
 
       const threadId = uuidv7();
@@ -372,9 +372,9 @@ describe("auto task-linking", () => {
 
   describe("edge cases", () => {
     it("switching tasks updates activeTaskId to new task", async () => {
-      const { getDb, threads } = await import("@ekacode/server/db");
-      const { executeTaskMutate } = await import("../../../../src/memory/task/task-mutate");
-      const { taskStorage } = await import("../../../../src/memory/task/storage");
+      const { getDb, threads } = await import("@sakti-code/core/testing/db");
+      const { executeTaskMutate } = await import("../../../src/memory/task/task-mutate");
+      const { taskStorage } = await import("../../../src/memory/task/storage");
       const db = await getDb();
 
       const threadId = uuidv7();
@@ -430,9 +430,9 @@ describe("auto task-linking", () => {
     });
 
     it("claim fails if task is blocked by dependencies", async () => {
-      const { getDb, threads } = await import("@ekacode/server/db");
-      const { executeTaskMutate } = await import("../../../../src/memory/task/task-mutate");
-      const { taskStorage } = await import("../../../../src/memory/task/storage");
+      const { getDb, threads } = await import("@sakti-code/core/testing/db");
+      const { executeTaskMutate } = await import("../../../src/memory/task/task-mutate");
+      const { taskStorage } = await import("../../../src/memory/task/storage");
       const db = await getDb();
 
       const threadId = uuidv7();

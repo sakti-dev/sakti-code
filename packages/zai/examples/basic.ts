@@ -1,5 +1,5 @@
 /**
- * Basic usage examples for @ekacode/zai
+ * Basic usage examples for @sakti-code/zai
  *
  * Run with:
  *   tsx examples/basic.ts

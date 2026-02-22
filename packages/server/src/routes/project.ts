@@ -5,7 +5,7 @@
  * GET /api/projects - List all projects
  */
 
-import { Instance } from "@ekacode/core/server";
+import { Instance } from "@sakti-code/core/server";
 import { Hono } from "hono";
 import type { Env } from "../index";
 import { sessionBridge } from "../middleware/session-bridge";

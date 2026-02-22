@@ -22,13 +22,13 @@ describe("Spec Injector", () => {
   let taskStorage: import("../../src/memory/task/storage").TaskStorage;
 
   const testSessionId = `test-injector-session-${uuidv7()}`;
-  const testWorkspaceDir = `/tmp/ekacode-test-injector-${uuidv7()}`;
-  const testHomeDir = `/tmp/ekacode-test-home-${uuidv7()}`;
-  const previousEkacodeHome = process.env.EKACODE_HOME;
+  const testWorkspaceDir = `/tmp/sakti-code-test-injector-${uuidv7()}`;
+  const testHomeDir = `/tmp/sakti-code-test-home-${uuidv7()}`;
+  const previousSaktiCodeHome = process.env.SAKTI_CODE_HOME;
 
   beforeEach(async () => {
     vi.resetModules();
-    process.env.EKACODE_HOME = testHomeDir;
+    process.env.SAKTI_CODE_HOME = testHomeDir;
 
     const injector = await import("../../src/agent/spec-injector");
     injectSpecContext = injector.injectSpecContext;
@@ -43,7 +43,7 @@ describe("Spec Injector", () => {
     const { TaskStorage } = await import("../../src/memory/task/storage");
     taskStorage = new TaskStorage();
 
-    const { getDb, sessions } = await import("@ekacode/server/db");
+    const { getDb, sessions } = await import("@sakti-code/core/testing/db");
     const { sql } = await import("drizzle-orm");
     const db = await getDb();
 
@@ -65,12 +65,12 @@ describe("Spec Injector", () => {
   });
 
   afterAll(async () => {
-    if (previousEkacodeHome === undefined) {
-      delete process.env.EKACODE_HOME;
+    if (previousSaktiCodeHome === undefined) {
+      delete process.env.SAKTI_CODE_HOME;
     } else {
-      process.env.EKACODE_HOME = previousEkacodeHome;
+      process.env.SAKTI_CODE_HOME = previousSaktiCodeHome;
     }
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 

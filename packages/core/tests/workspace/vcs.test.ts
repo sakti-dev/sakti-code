@@ -16,9 +16,22 @@ import {
 
 describe("listLocalBranches", () => {
   let tempDir: string;
+  let repoDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ekacode-vcs-"));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sakti-code-vcs-"));
+    repoDir = path.join(tempDir, "repo");
+    await fs.mkdir(repoDir, { recursive: true });
+
+    const { default: simpleGit } = await import("simple-git");
+    const git = simpleGit(repoDir);
+    await git.init();
+    await git.addConfig("user.email", "test@test.com");
+    await git.addConfig("user.name", "Test");
+    await fs.writeFile(path.join(repoDir, "README.md"), "# Test");
+    await git.add(".");
+    await git.commit("Initial commit");
+    await git.branch(["feature/test"]);
   });
 
   afterEach(async () => {
@@ -26,8 +39,8 @@ describe("listLocalBranches", () => {
   });
 
   it("lists local branches from a git repository", async () => {
-    const result = await listLocalBranches("/home/eekrain/CODE/ekacode");
-    expect(result).toContain("main");
+    const result = await listLocalBranches(repoDir);
+    expect(result).toEqual(expect.arrayContaining(["feature/test"]));
   });
 
   it("returns empty array for non-git directory", async () => {
@@ -41,9 +54,24 @@ describe("listLocalBranches", () => {
 
 describe("clone", () => {
   let tempDir: string;
+  let sourceRepoDir: string;
+  let sourceDefaultBranch: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ekacode-clone-"));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sakti-code-clone-"));
+    sourceRepoDir = path.join(tempDir, "source-repo");
+    await fs.mkdir(sourceRepoDir, { recursive: true });
+
+    const { default: simpleGit } = await import("simple-git");
+    const git = simpleGit(sourceRepoDir);
+    await git.init();
+    await git.addConfig("user.email", "test@test.com");
+    await git.addConfig("user.name", "Test");
+    await fs.writeFile(path.join(sourceRepoDir, "README.md"), "# Local Source");
+    await git.add(".");
+    await git.commit("Initial commit");
+    const branchSummary = await git.branchLocal();
+    sourceDefaultBranch = branchSummary.current;
   });
 
   afterEach(async () => {
@@ -51,17 +79,17 @@ describe("clone", () => {
   });
 
   it("clones a repository to target directory", async () => {
+    const cloneTargetDir = path.join(tempDir, "clones");
     const clonePath = await clone({
-      url: "https://github.com/octocat/Hello-World",
-      targetDir: tempDir,
-      branch: "master",
+      url: `file://${sourceRepoDir}`,
+      targetDir: cloneTargetDir,
+      branch: sourceDefaultBranch,
     });
 
-    expect(clonePath).toBe(path.join(tempDir, "Hello-World"));
+    expect(clonePath).toBe(path.join(cloneTargetDir, "source-repo"));
 
-    const gitDir = path.join(clonePath, ".git");
-    const stat = await fs.stat(gitDir);
-    expect(stat.isDirectory() || stat.isFile()).toBe(true);
+    const readme = await fs.readFile(path.join(clonePath, "README.md"), "utf-8");
+    expect(readme).toContain("Local Source");
   });
 
   it("throws error for disallowed host", async () => {
@@ -91,7 +119,7 @@ describe("createWorktree", () => {
   let workspacesDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ekacode-worktree-"));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sakti-code-worktree-"));
     repoDir = path.join(tempDir, "repo");
     workspacesDir = path.join(tempDir, "workspaces");
 
@@ -190,7 +218,7 @@ describe("worktreeExists", () => {
   let workspacesDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ekacode-exists-"));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sakti-code-exists-"));
     workspacesDir = path.join(tempDir, "workspaces");
     await fs.mkdir(workspacesDir, { recursive: true });
   });
@@ -215,7 +243,7 @@ describe("worktreeExists", () => {
 describe("getWorkspacesDir", () => {
   it("returns the workspaces directory path", () => {
     const dir = getWorkspacesDir();
-    expect(dir).toMatch(/\.sakti[\/\\]workspaces$/);
+    expect(dir).toMatch(/[\/\\]workspaces$/);
   });
 
   it("returns an absolute path", () => {

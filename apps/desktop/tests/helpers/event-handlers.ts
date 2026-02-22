@@ -5,7 +5,7 @@
  * to support E2E parity testing without requiring the old provider code.
  */
 
-import type { ServerEvent } from "@ekacode/shared/event-types";
+import type { ServerEvent } from "@sakti-code/shared/event-types";
 import { produce, reconcile } from "solid-js/store";
 import type { Part } from "../../src/types/sync";
 

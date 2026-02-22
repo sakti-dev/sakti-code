@@ -1,5 +1,5 @@
 /**
- * Logger configuration for @ekacode/shared/logger
+ * Logger configuration for @sakti-code/shared/logger
  */
 
 import type { LoggerConfig } from "./types";

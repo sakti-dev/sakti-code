@@ -1,5 +1,5 @@
 /**
- * Shared type definitions for @ekacode/server
+ * Shared type definitions for @sakti-code/server
  */
 
 /**

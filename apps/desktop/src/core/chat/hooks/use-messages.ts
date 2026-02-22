@@ -23,7 +23,7 @@
 
 import { useMessageStore, usePartStore } from "@/state/providers";
 import type { MessageWithId } from "@/state/stores/message-store";
-import type { Part } from "@ekacode/shared/event-types";
+import type { Part } from "@sakti-code/shared/event-types";
 import { createMemo, type Accessor } from "solid-js";
 import { toTimeline, type ChatTimelineItem } from "./timeline-projection";
 

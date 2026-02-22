@@ -26,7 +26,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Drizzle schema drift check
-        run: pnpm --filter @ekacode/server drizzle:check
+        run: pnpm --filter @sakti-code/server drizzle:check
 
       - name: Migration policy check
         shell: bash

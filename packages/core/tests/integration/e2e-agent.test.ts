@@ -8,7 +8,7 @@
  * Without the API key, tests are skipped.
  */
 
-import { createZai } from "@ekacode/zai";
+import { createZai } from "@sakti-code/zai";
 import { generateText } from "ai";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -42,7 +42,7 @@ describe("E2E: Agent with tools", () => {
       "should complete a simple file writing task",
       async () => {
         // Create a temporary workspace for this test
-        const testWorkspaceDir = path.join(os.tmpdir(), `ekacode-e2e-test-${Date.now()}`);
+        const testWorkspaceDir = path.join(os.tmpdir(), `sakti-code-e2e-test-${Date.now()}`);
         await fs.mkdir(testWorkspaceDir, { recursive: true });
         testWorkspaceDirs.push(testWorkspaceDir);
 
@@ -101,7 +101,7 @@ describe("E2E: Agent with tools", () => {
     itWithApiKey(
       "should read and report file contents",
       async () => {
-        const testWorkspaceDir = path.join(os.tmpdir(), `ekacode-e2e-test-${Date.now()}`);
+        const testWorkspaceDir = path.join(os.tmpdir(), `sakti-code-e2e-test-${Date.now()}`);
         await fs.mkdir(testWorkspaceDir, { recursive: true });
         testWorkspaceDirs.push(testWorkspaceDir);
 
@@ -149,7 +149,7 @@ describe("E2E: Agent with tools", () => {
     itWithApiKey(
       "should use bash tool for file operations",
       async () => {
-        const testWorkspaceDir = path.join(os.tmpdir(), `ekacode-e2e-test-${Date.now()}`);
+        const testWorkspaceDir = path.join(os.tmpdir(), `sakti-code-e2e-test-${Date.now()}`);
         await fs.mkdir(testWorkspaceDir, { recursive: true });
         testWorkspaceDirs.push(testWorkspaceDir);
 
@@ -200,7 +200,7 @@ describe("E2E: Agent with tools", () => {
     itWithApiKey(
       "should coordinate multiple tools to complete a task",
       async () => {
-        const testWorkspaceDir = path.join(os.tmpdir(), `ekacode-e2e-test-${Date.now()}`);
+        const testWorkspaceDir = path.join(os.tmpdir(), `sakti-code-e2e-test-${Date.now()}`);
         await fs.mkdir(testWorkspaceDir, { recursive: true });
         testWorkspaceDirs.push(testWorkspaceDir);
 
@@ -251,7 +251,7 @@ describe("E2E: Agent with tools", () => {
     itWithApiKey(
       "should handle non-existent file read gracefully",
       async () => {
-        const testWorkspaceDir = path.join(os.tmpdir(), `ekacode-e2e-test-${Date.now()}`);
+        const testWorkspaceDir = path.join(os.tmpdir(), `sakti-code-e2e-test-${Date.now()}`);
         await fs.mkdir(testWorkspaceDir, { recursive: true });
         testWorkspaceDirs.push(testWorkspaceDir);
 

@@ -12,12 +12,12 @@
  * - update_context: Update working memory (project context, tech stack, preferences)
  */
 
-import { getDb, taskMessages, threads } from "@ekacode/server/db";
 import { tool } from "ai";
 import { eq, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
 import { Instance } from "../../instance";
+import { getDb, taskMessages, threads } from "../../server-bridge";
 import { workingMemoryStorage } from "../working-memory/storage";
 import { taskStorage } from "./storage";
 

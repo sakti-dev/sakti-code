@@ -10,12 +10,25 @@ import { promises as fs } from "fs";
 import path from "path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
+interface SpecTaskMeta {
+  taskId?: string;
+  slug?: string;
+  requirements?: string[];
+}
+
+function getSpecMeta(metadata: unknown): SpecTaskMeta | undefined {
+  if (!metadata || typeof metadata !== "object") return undefined;
+  const spec = (metadata as { spec?: unknown }).spec;
+  if (!spec || typeof spec !== "object") return undefined;
+  return spec as SpecTaskMeta;
+}
+
 describe("Spec Compiler", () => {
-  let compileSpecToDb: typeof import("../../../src/spec/compiler").compileSpecToDb;
+  let compileSpecToDb: typeof import("../../src/spec/compiler").compileSpecToDb;
   let tempDir: string;
 
   beforeEach(async () => {
-    const compiler = await import("../../../src/spec/compiler");
+    const compiler = await import("../../src/spec/compiler");
     compileSpecToDb = compiler.compileSpecToDb;
 
     tempDir = path.join(
@@ -25,7 +38,7 @@ describe("Spec Compiler", () => {
     await fs.mkdir(tempDir, { recursive: true });
 
     // Clean up tasks and tool_sessions from previous test runs
-    const { getDb } = await import("@ekacode/server/db");
+    const { getDb } = await import("@sakti-code/core/testing/db");
     const { sql } = await import("drizzle-orm");
     const db = await getDb();
 
@@ -36,7 +49,7 @@ describe("Spec Compiler", () => {
   });
 
   afterAll(async () => {
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 
@@ -83,16 +96,17 @@ describe("Spec Compiler", () => {
       expect(result.errors).toHaveLength(0);
 
       // Verify tasks in DB
-      const { listTasksBySpec } = await import("../../../src/spec/helpers");
+      const { listTasksBySpec } = await import("../../src/spec/helpers");
       const tasks = await listTasksBySpec("user-auth");
 
       expect(tasks).toHaveLength(2);
-      const t1 = tasks.find(t => t.metadata?.spec?.taskId === "T-001");
+      const t1 = tasks.find(t => getSpecMeta(t.metadata)?.taskId === "T-001");
+      const t1Spec = getSpecMeta(t1?.metadata);
       expect(t1).toBeDefined();
       expect(t1?.title).toBe("Implement login page");
       expect(t1?.status).toBe("open");
-      expect(t1?.metadata?.spec?.slug).toBe("user-auth");
-      expect(t1?.metadata?.spec?.requirements).toEqual(["R-001"]);
+      expect(t1Spec?.slug).toBe("user-auth");
+      expect(t1Spec?.requirements).toEqual(["R-001"]);
     });
 
     it("should update existing tasks on re-compilation", async () => {
@@ -139,7 +153,7 @@ describe("Spec Compiler", () => {
       expect(result.created).toBe(0);
       expect(result.updated).toBe(1);
 
-      const { listTasksBySpec } = await import("../../../src/spec/helpers");
+      const { listTasksBySpec } = await import("../../src/spec/helpers");
       const tasks = await listTasksBySpec("user-auth");
 
       expect(tasks[0].title).toBe("Updated title");
@@ -250,11 +264,11 @@ describe("Spec Compiler", () => {
       await compileSpecToDb(tempDir, "user-auth");
 
       // Verify dependencies in DB
-      const { getTaskBySpecAndId } = await import("../../../src/spec/helpers");
+      const { getTaskBySpecAndId } = await import("../../src/spec/helpers");
       const t2 = await getTaskBySpecAndId("user-auth", "T-002");
 
-      const { getDb } = await import("@ekacode/server/db");
-      const { taskDependencies } = await import("@ekacode/server/db");
+      const { getDb } = await import("@sakti-code/core/testing/db");
+      const { taskDependencies } = await import("@sakti-code/core/testing/db");
       const { eq } = await import("drizzle-orm");
       const db = await getDb();
 

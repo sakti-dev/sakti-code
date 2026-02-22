@@ -4,7 +4,7 @@
  * Provides test data for part component testing.
  */
 
-import type { Part } from "@ekacode/shared/event-types";
+import type { Part } from "@sakti-code/shared/event-types";
 
 /**
  * Create a text part for testing

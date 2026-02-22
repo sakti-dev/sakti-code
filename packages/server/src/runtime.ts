@@ -1,4 +1,4 @@
-import { SessionManager } from "@ekacode/core";
+import { SessionManager } from "@sakti-code/core";
 import { desc, eq } from "drizzle-orm";
 import { db, sessions } from "../db";
 import { getServerToken } from "./server-token";

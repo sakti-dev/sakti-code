@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 let testHome = "";
 
 beforeEach(async () => {
-  testHome = await mkdtemp(join(tmpdir(), "ekacode-provider-routes-"));
-  process.env.EKACODE_HOME = testHome;
+  testHome = await mkdtemp(join(tmpdir(), "sakti-code-provider-routes-"));
+  process.env.SAKTI_CODE_HOME = testHome;
   vi.resetModules();
   vi.restoreAllMocks();
 });

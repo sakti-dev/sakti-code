@@ -2,7 +2,7 @@
  * Write file tool
  */
 
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import { tool, zodSchema } from "ai";
 import { createTwoFilesPatch } from "diff";
 import fs from "node:fs/promises";
@@ -13,7 +13,7 @@ import { PermissionManager } from "../../security/permission-manager";
 import { getContextOrThrow } from "../base/context";
 import { validatePathOperation } from "../base/safety";
 
-const logger = createLogger("ekacode");
+const logger = createLogger("sakti-code");
 
 export const writeTool = tool({
   description: `Write content to a file.

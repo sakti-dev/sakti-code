@@ -6,7 +6,7 @@
 
 **Architecture:** This plan upgrades placeholder HTTP endpoints into functional integrations backed by existing core/runtime modules and server state stores. The implementation proceeds route-by-route using strict TDD, with explicit integration contracts between middleware, route handlers, provider/session/runtime services, and persistence layers. All behavior changes are guarded by targeted tests first, then validated by a full Batch 6 suite.
 
-**Tech Stack:** TypeScript, Hono, Vitest, Zod, Drizzle, existing `@ekacode/core` runtime/session/instance APIs, server bus/events/state modules.
+**Tech Stack:** TypeScript, Hono, Vitest, Zod, Drizzle, existing `@sakti-code/core` runtime/session/instance APIs, server bus/events/state modules.
 
 ---
 

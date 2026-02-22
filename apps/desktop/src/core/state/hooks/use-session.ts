@@ -23,7 +23,7 @@ export interface UseSessionOptions {
   /** Workspace directory path (reactive accessor) */
   workspace: Accessor<string>;
 
-  /** Storage key prefix (default: "ekacode-session") */
+  /** Storage key prefix (default: "sakti-code-session") */
   storageKeyPrefix?: string;
 }
 
@@ -74,7 +74,7 @@ export interface UseSessionResult {
  * ```
  */
 export function useSession(options: UseSessionOptions): UseSessionResult {
-  const { workspace, storageKeyPrefix = "ekacode-session" } = options;
+  const { workspace, storageKeyPrefix = "sakti-code-session" } = options;
 
   logger.debug("useSession hook initialized", { storageKeyPrefix });
 

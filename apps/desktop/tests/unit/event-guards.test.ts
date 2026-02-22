@@ -14,7 +14,7 @@ import {
   isServerEvent,
   isString,
   parseServerEvent,
-} from "@ekacode/shared/event-guards";
+} from "@sakti-code/shared/event-guards";
 import { describe, expect, it } from "vitest";
 
 describe("event-guards", () => {

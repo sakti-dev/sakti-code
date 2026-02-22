@@ -49,7 +49,7 @@ Add tests for:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @ekacode/core test -- spec/helpers.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- spec/helpers.test.ts`
 Expected: FAIL due missing helper functions.
 
 **Step 3: Write minimal implementation**
@@ -73,7 +73,7 @@ function asRuntimeMode(value: unknown): "plan" | "build" | null {
 
 **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter @ekacode/core test -- spec/helpers.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- spec/helpers.test.ts`
 Expected: PASS.
 
 **Step 5: Commit**
@@ -104,7 +104,7 @@ Cover:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @ekacode/core test -- session/mode-transition.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- session/mode-transition.test.ts`
 Expected: FAIL (module missing).
 
 **Step 3: Write minimal implementation**
@@ -135,7 +135,7 @@ const sessionLocks = new Map<string, Promise<void>>();
 
 **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter @ekacode/core test -- session/mode-transition.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- session/mode-transition.test.ts`
 Expected: PASS.
 
 **Step 5: Commit**
@@ -176,8 +176,8 @@ Cover:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- session/mode-approval.test.ts`
-- `pnpm --filter @ekacode/core test -- security/permission-rules.test.ts`
+- `pnpm --filter @sakti-code/core test -- session/mode-approval.test.ts`
+- `pnpm --filter @sakti-code/core test -- security/permission-rules.test.ts`
   Expected: FAIL.
 
 **Step 3: Write minimal implementation**
@@ -199,8 +199,8 @@ export type PermissionType = "read" | "edit" | "external_directory" | "bash" | "
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- session/mode-approval.test.ts`
-- `pnpm --filter @ekacode/core test -- security/permission-rules.test.ts`
+- `pnpm --filter @sakti-code/core test -- session/mode-approval.test.ts`
+- `pnpm --filter @sakti-code/core test -- security/permission-rules.test.ts`
   Expected: PASS.
 
 **Step 5: Commit**
@@ -230,7 +230,7 @@ Add tests:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @ekacode/core test -- spec/plan.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- spec/plan.test.ts`
 Expected: FAIL.
 
 **Step 3: Write minimal implementation**
@@ -249,7 +249,7 @@ In `packages/core/src/tools/plan.ts`:
 
 **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter @ekacode/core test -- spec/plan.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- spec/plan.test.ts`
 Expected: PASS.
 
 **Step 5: Commit**
@@ -282,7 +282,7 @@ Add assertions:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @ekacode/core test -- session/controller-simplified.test.ts session/controller.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- session/controller-simplified.test.ts session/controller.test.ts`
 Expected: FAIL with current hardcoded build behavior.
 
 **Step 3: Write minimal implementation**
@@ -299,7 +299,7 @@ In `packages/core/src/session/types.ts`:
 
 **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter @ekacode/core test -- session/controller-simplified.test.ts session/controller.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- session/controller-simplified.test.ts session/controller.test.ts`
 Expected: PASS.
 
 **Step 5: Commit**
@@ -332,7 +332,7 @@ Also keep assertions:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @ekacode/core test -- agent/registry.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- agent/registry.test.ts`
 Expected: FAIL.
 
 **Step 3: Write minimal implementation**
@@ -344,7 +344,7 @@ In `packages/core/src/agent/registry.ts`:
 
 **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter @ekacode/core test -- agent/registry.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- agent/registry.test.ts`
 Expected: PASS.
 
 **Step 5: Commit**
@@ -374,7 +374,7 @@ Cover policy matrix:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @ekacode/core test -- tools/task.test.ts tools/task-runtime-policy.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- tools/task.test.ts tools/task-runtime-policy.test.ts`
 Expected: FAIL.
 
 **Step 3: Write minimal implementation**
@@ -394,7 +394,7 @@ if (mode === "plan" && subagent_type !== "explore") {
 
 **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter @ekacode/core test -- tools/task.test.ts tools/task-runtime-policy.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- tools/task.test.ts tools/task-runtime-policy.test.ts`
 Expected: PASS.
 
 **Step 5: Commit**
@@ -428,7 +428,7 @@ Cover:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @ekacode/core test -- tools/task-parallel.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- tools/task-parallel.test.ts`
 Expected: FAIL (tool missing).
 
 **Step 3: Write minimal implementation**
@@ -457,7 +457,7 @@ Wire tool into:
 
 **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter @ekacode/core test -- tools/task-parallel.test.ts`
+Run: `pnpm --filter @sakti-code/core test -- tools/task-parallel.test.ts`
 Expected: PASS.
 
 **Step 5: Commit**
@@ -486,7 +486,7 @@ Add assertions:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @ekacode/desktop test -- event-router-adapter.test.ts`
+Run: `pnpm --filter @sakti-code/desktop test -- event-router-adapter.test.ts`
 Expected: FAIL.
 
 **Step 3: Write minimal implementation**
@@ -503,7 +503,7 @@ In dialog (`permission-dialog.tsx`):
 
 **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter @ekacode/desktop test -- event-router-adapter.test.ts`
+Run: `pnpm --filter @sakti-code/desktop test -- event-router-adapter.test.ts`
 Expected: PASS.
 
 **Step 5: Commit**
@@ -537,9 +537,9 @@ Add end-to-end scenarios:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- session/mode-switching.integration.test.ts`
-- `pnpm --filter @ekacode/core test -- spec/plan.test.ts`
-- `pnpm --filter @ekacode/core test -- tools/task-parallel.test.ts`
+- `pnpm --filter @sakti-code/core test -- session/mode-switching.integration.test.ts`
+- `pnpm --filter @sakti-code/core test -- spec/plan.test.ts`
+- `pnpm --filter @sakti-code/core test -- tools/task-parallel.test.ts`
   Expected: FAIL.
 
 **Step 3: Write minimal implementation fixes**
@@ -552,7 +552,7 @@ Run:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- session/mode-switching.integration.test.ts spec/plan.test.ts tools/task-parallel.test.ts`
+- `pnpm --filter @sakti-code/core test -- session/mode-switching.integration.test.ts spec/plan.test.ts tools/task-parallel.test.ts`
   Expected: PASS.
 
 **Step 5: Commit**
@@ -568,11 +568,11 @@ git commit -m "test(core): harden mode transitions and parallel explore behavior
 
 Run in order:
 
-1. `pnpm --filter @ekacode/core lint`
-2. `pnpm --filter @ekacode/core typecheck`
-3. `pnpm --filter @ekacode/core test`
-4. `pnpm --filter @ekacode/server test`
-5. `pnpm --filter @ekacode/desktop test`
+1. `pnpm --filter @sakti-code/core lint`
+2. `pnpm --filter @sakti-code/core typecheck`
+3. `pnpm --filter @sakti-code/core test`
+4. `pnpm --filter @sakti-code/server test`
+5. `pnpm --filter @sakti-code/desktop test`
 
 Expected:
 
@@ -609,7 +609,7 @@ Expected:
 ## Rollout Notes
 
 - Keep fallback default to `build` when runtime mode is unset or invalid.
-- Optional feature flag for staged rollout: `EKACODE_ENABLE_RUNTIME_MODE_SWITCHING=true`.
+- Optional feature flag for staged rollout: `SAKTI_CODE_ENABLE_RUNTIME_MODE_SWITCHING=true`.
 - Log transition audit records (`sessionId`, `from`, `to`, `approved`, `reason`).
 - Add one-week production monitor for transition-denied and transition-failed counts.
 
@@ -691,7 +691,7 @@ Add tests that verify the prompt used by observer runtime is actually mode-speci
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- memory/observation/observer-runtime-prompt.test.ts`
+- `pnpm --filter @sakti-code/core test -- memory/observation/observer-runtime-prompt.test.ts`
 
 Expected:
 
@@ -734,7 +734,7 @@ const modePrompt = buildObserverPromptForMode(mode);
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- memory/observation/observer-runtime-prompt.test.ts memory/observation/agent-loop.test.ts`
+- `pnpm --filter @sakti-code/core test -- memory/observation/observer-runtime-prompt.test.ts memory/observation/agent-loop.test.ts`
 
 Expected:
 
@@ -770,7 +770,7 @@ Add tests that prove memory isolation:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- tools/task-memory-isolation.test.ts session/processor-memory.test.ts`
+- `pnpm --filter @sakti-code/core test -- tools/task-memory-isolation.test.ts session/processor-memory.test.ts`
 
 Expected:
 
@@ -801,7 +801,7 @@ In `packages/core/src/session/processor.ts`:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- tools/task-memory-isolation.test.ts session/processor-memory.test.ts`
+- `pnpm --filter @sakti-code/core test -- tools/task-memory-isolation.test.ts session/processor-memory.test.ts`
 
 Expected:
 
@@ -836,7 +836,7 @@ Define explicit behavior:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- tools/task-resume-semantics.test.ts tools/task.test.ts`
+- `pnpm --filter @sakti-code/core test -- tools/task-resume-semantics.test.ts tools/task.test.ts`
 
 Expected:
 
@@ -866,7 +866,7 @@ function resolveSubagentSessionId(input?: string): string {
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- tools/task-resume-semantics.test.ts tools/task.test.ts`
+- `pnpm --filter @sakti-code/core test -- tools/task-resume-semantics.test.ts tools/task.test.ts`
 
 Expected:
 
@@ -902,7 +902,7 @@ Add tests:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- tools/task-exploration-goal.test.ts memory/observation/explore-prompts.test.ts`
+- `pnpm --filter @sakti-code/core test -- tools/task-exploration-goal.test.ts memory/observation/explore-prompts.test.ts`
 
 Expected:
 
@@ -936,7 +936,7 @@ export function resolveModeTaskContext(mode: AgentMode, vars?: Record<string, st
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- tools/task-exploration-goal.test.ts memory/observation/explore-prompts.test.ts`
+- `pnpm --filter @sakti-code/core test -- tools/task-exploration-goal.test.ts memory/observation/explore-prompts.test.ts`
 
 Expected:
 
@@ -971,7 +971,7 @@ Cover parsing robustness:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- tools/task-result-parsing.test.ts`
+- `pnpm --filter @sakti-code/core test -- tools/task-result-parsing.test.ts`
 
 Expected:
 
@@ -1004,7 +1004,7 @@ interface ExplorationResult {
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- tools/task-result-parsing.test.ts`
+- `pnpm --filter @sakti-code/core test -- tools/task-result-parsing.test.ts`
 
 Expected:
 
@@ -1042,7 +1042,7 @@ Add tests for parent handoff contract:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- session/processor-exploration-handoff.test.ts`
+- `pnpm --filter @sakti-code/core test -- session/processor-exploration-handoff.test.ts`
 
 Expected:
 
@@ -1063,7 +1063,7 @@ In `packages/core/src/session/processor.ts`:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- session/processor-exploration-handoff.test.ts`
+- `pnpm --filter @sakti-code/core test -- session/processor-exploration-handoff.test.ts`
 
 Expected:
 
@@ -1099,7 +1099,7 @@ Add scenarios:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- integration/explore-memory-isolation.integration.test.ts integration/explore-observer-prompt.integration.test.ts`
+- `pnpm --filter @sakti-code/core test -- integration/explore-memory-isolation.integration.test.ts integration/explore-observer-prompt.integration.test.ts`
 
 Expected:
 
@@ -1114,7 +1114,7 @@ Expected:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- integration/explore-memory-isolation.integration.test.ts integration/explore-observer-prompt.integration.test.ts memory/observation/phase5-end-to-end.test.ts`
+- `pnpm --filter @sakti-code/core test -- integration/explore-memory-isolation.integration.test.ts integration/explore-observer-prompt.integration.test.ts memory/observation/phase5-end-to-end.test.ts`
 
 Expected:
 
@@ -1150,7 +1150,7 @@ Add telemetry assertions:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- tools/task-telemetry.test.ts`
+- `pnpm --filter @sakti-code/core test -- tools/task-telemetry.test.ts`
 
 Expected:
 
@@ -1168,7 +1168,7 @@ Add structured logging fields:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- tools/task-telemetry.test.ts`
+- `pnpm --filter @sakti-code/core test -- tools/task-telemetry.test.ts`
 
 Expected:
 
@@ -1203,7 +1203,7 @@ Add tests:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- session/runtime-mode-legacy.test.ts`
+- `pnpm --filter @sakti-code/core test -- session/runtime-mode-legacy.test.ts`
 
 Expected:
 
@@ -1218,7 +1218,7 @@ Expected:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- session/runtime-mode-legacy.test.ts`
+- `pnpm --filter @sakti-code/core test -- session/runtime-mode-legacy.test.ts`
 
 Expected:
 
@@ -1252,7 +1252,7 @@ Add soak scenarios:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- integration/explore-soak.integration.test.ts session/mode-switching.integration.test.ts`
+- `pnpm --filter @sakti-code/core test -- integration/explore-soak.integration.test.ts session/mode-switching.integration.test.ts`
 
 Expected:
 
@@ -1267,7 +1267,7 @@ Expected:
 
 Run:
 
-- `pnpm --filter @ekacode/core test -- integration/explore-soak.integration.test.ts session/mode-switching.integration.test.ts`
+- `pnpm --filter @sakti-code/core test -- integration/explore-soak.integration.test.ts session/mode-switching.integration.test.ts`
 
 Expected:
 
@@ -1286,15 +1286,15 @@ git commit -m "test(core): add soak coverage for explore reliability under load"
 
 Run in order:
 
-1. `pnpm --filter @ekacode/core lint`
-2. `pnpm --filter @ekacode/core typecheck`
-3. `pnpm --filter @ekacode/core test -- memory/observation/**`
-4. `pnpm --filter @ekacode/core test -- tools/task*.test.ts`
-5. `pnpm --filter @ekacode/core test -- session/**`
-6. `pnpm --filter @ekacode/core test -- integration/explore*.test.ts`
-7. `pnpm --filter @ekacode/core test`
-8. `pnpm --filter @ekacode/server test`
-9. `pnpm --filter @ekacode/desktop test`
+1. `pnpm --filter @sakti-code/core lint`
+2. `pnpm --filter @sakti-code/core typecheck`
+3. `pnpm --filter @sakti-code/core test -- memory/observation/**`
+4. `pnpm --filter @sakti-code/core test -- tools/task*.test.ts`
+5. `pnpm --filter @sakti-code/core test -- session/**`
+6. `pnpm --filter @sakti-code/core test -- integration/explore*.test.ts`
+7. `pnpm --filter @sakti-code/core test`
+8. `pnpm --filter @sakti-code/server test`
+9. `pnpm --filter @sakti-code/desktop test`
 
 Expected:
 
@@ -1639,29 +1639,29 @@ function parseExplorationResult(content: string): ExplorationResult {
 
 ### Focused test runs
 
-1. `pnpm --filter @ekacode/core test -- memory/observation/observer-runtime-prompt.test.ts`
-2. `pnpm --filter @ekacode/core test -- tools/task-memory-isolation.test.ts`
-3. `pnpm --filter @ekacode/core test -- tools/task-resume-semantics.test.ts`
-4. `pnpm --filter @ekacode/core test -- tools/task-exploration-goal.test.ts`
-5. `pnpm --filter @ekacode/core test -- tools/task-result-parsing.test.ts`
-6. `pnpm --filter @ekacode/core test -- session/processor-exploration-handoff.test.ts`
-7. `pnpm --filter @ekacode/core test -- integration/explore-memory-isolation.integration.test.ts`
-8. `pnpm --filter @ekacode/core test -- integration/explore-observer-prompt.integration.test.ts`
-9. `pnpm --filter @ekacode/core test -- integration/explore-soak.integration.test.ts`
-10. `pnpm --filter @ekacode/core test -- session/mode-switching.integration.test.ts`
+1. `pnpm --filter @sakti-code/core test -- memory/observation/observer-runtime-prompt.test.ts`
+2. `pnpm --filter @sakti-code/core test -- tools/task-memory-isolation.test.ts`
+3. `pnpm --filter @sakti-code/core test -- tools/task-resume-semantics.test.ts`
+4. `pnpm --filter @sakti-code/core test -- tools/task-exploration-goal.test.ts`
+5. `pnpm --filter @sakti-code/core test -- tools/task-result-parsing.test.ts`
+6. `pnpm --filter @sakti-code/core test -- session/processor-exploration-handoff.test.ts`
+7. `pnpm --filter @sakti-code/core test -- integration/explore-memory-isolation.integration.test.ts`
+8. `pnpm --filter @sakti-code/core test -- integration/explore-observer-prompt.integration.test.ts`
+9. `pnpm --filter @sakti-code/core test -- integration/explore-soak.integration.test.ts`
+10. `pnpm --filter @sakti-code/core test -- session/mode-switching.integration.test.ts`
 
 ### Repeatability runs
 
-1. `pnpm --filter @ekacode/core test -- integration/explore-memory-isolation.integration.test.ts && pnpm --filter @ekacode/core test -- integration/explore-memory-isolation.integration.test.ts && pnpm --filter @ekacode/core test -- integration/explore-memory-isolation.integration.test.ts`
-2. `pnpm --filter @ekacode/core test -- integration/explore-observer-prompt.integration.test.ts && pnpm --filter @ekacode/core test -- integration/explore-observer-prompt.integration.test.ts && pnpm --filter @ekacode/core test -- integration/explore-observer-prompt.integration.test.ts`
+1. `pnpm --filter @sakti-code/core test -- integration/explore-memory-isolation.integration.test.ts && pnpm --filter @sakti-code/core test -- integration/explore-memory-isolation.integration.test.ts && pnpm --filter @sakti-code/core test -- integration/explore-memory-isolation.integration.test.ts`
+2. `pnpm --filter @sakti-code/core test -- integration/explore-observer-prompt.integration.test.ts && pnpm --filter @sakti-code/core test -- integration/explore-observer-prompt.integration.test.ts && pnpm --filter @sakti-code/core test -- integration/explore-observer-prompt.integration.test.ts`
 
 ### Full verification runs
 
-1. `pnpm --filter @ekacode/core lint`
-2. `pnpm --filter @ekacode/core typecheck`
-3. `pnpm --filter @ekacode/core test`
-4. `pnpm --filter @ekacode/server test`
-5. `pnpm --filter @ekacode/desktop test`
+1. `pnpm --filter @sakti-code/core lint`
+2. `pnpm --filter @sakti-code/core typecheck`
+3. `pnpm --filter @sakti-code/core test`
+4. `pnpm --filter @sakti-code/server test`
+5. `pnpm --filter @sakti-code/desktop test`
 
 ---
 

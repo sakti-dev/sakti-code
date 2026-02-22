@@ -4,7 +4,7 @@
  * Searches file contents using regex patterns
  */
 
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 import { tool, zodSchema } from "ai";
 import { spawn } from "node:child_process";
 import { v7 as uuidv7 } from "uuid";
@@ -14,7 +14,7 @@ import { getContextOrThrow } from "../base/context";
 import { validatePathOperation } from "../base/safety";
 import { getRipgrepPath } from "./ripgrep";
 
-const logger = createLogger("ekacode");
+const logger = createLogger("sakti-code");
 
 const MAX_MATCHES = 100;
 const MAX_LINE_LENGTH = 2000;

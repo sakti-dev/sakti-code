@@ -1,5 +1,5 @@
 /**
- * Tool calling examples for @ekacode/zai
+ * Tool calling examples for @sakti-code/zai
  *
  * Run with:
  *   tsx examples/tools.ts

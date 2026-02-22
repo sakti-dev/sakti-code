@@ -4,10 +4,10 @@
  * Custom assertions for testing visible DOM behavior in integration tests.
  * Part of Batch 5: WS7 Testing Overhaul
  *
- * @package @ekacode/desktop/tests
+ * @package @sakti-code/desktop/tests
  */
 
-import type { EventOrderingFixture } from "@ekacode/shared";
+import type { EventOrderingFixture } from "@sakti-code/shared";
 
 /**
  * Assert that a user message is visible in the DOM

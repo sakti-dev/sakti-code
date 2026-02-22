@@ -13,7 +13,7 @@ declare global {
         send: (channel: string, ...args: unknown[]) => void;
       };
     };
-    ekacodeAPI: {
+    saktiCodeAPI: {
       server: {
         getConfig: () => Promise<{ baseUrl: string; token: string }>;
       };

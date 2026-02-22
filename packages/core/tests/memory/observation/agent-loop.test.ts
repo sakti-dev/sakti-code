@@ -10,18 +10,18 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-const testHomeDir = `/tmp/ekacode-test-agent-loop-${Date.now()}`;
-const previousEkacodeHome = process.env.EKACODE_HOME;
+const testHomeDir = `/tmp/sakti-code-test-agent-loop-${Date.now()}`;
+const previousSaktiCodeHome = process.env.SAKTI_CODE_HOME;
 
 beforeEach(() => {
-  process.env.EKACODE_HOME = testHomeDir;
+  process.env.SAKTI_CODE_HOME = testHomeDir;
 });
 
 afterEach(async () => {
-  if (previousEkacodeHome === undefined) {
-    delete process.env.EKACODE_HOME;
+  if (previousSaktiCodeHome === undefined) {
+    delete process.env.SAKTI_CODE_HOME;
   } else {
-    process.env.EKACODE_HOME = previousEkacodeHome;
+    process.env.SAKTI_CODE_HOME = previousSaktiCodeHome;
   }
 });
 
@@ -107,7 +107,7 @@ describe("Agent Loop Integration - Mode Detection", () => {
 
 describe("Agent Loop Integration - Process Input Step", () => {
   beforeEach(async () => {
-    const { closeDb, getDb } = await import("@ekacode/server/db");
+    const { closeDb, getDb } = await import("@sakti-code/core/testing/db");
     closeDb();
     const { sql } = await import("drizzle-orm");
     const db = await getDb();
@@ -115,7 +115,7 @@ describe("Agent Loop Integration - Process Input Step", () => {
   });
 
   afterEach(async () => {
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 
@@ -151,7 +151,7 @@ describe("Agent Loop Integration - Process Input Step", () => {
 
 describe("Agent Loop Integration - Observation Injection", () => {
   beforeEach(async () => {
-    const { closeDb, getDb } = await import("@ekacode/server/db");
+    const { closeDb, getDb } = await import("@sakti-code/core/testing/db");
     closeDb();
     const { sql } = await import("drizzle-orm");
     const db = await getDb();
@@ -159,7 +159,7 @@ describe("Agent Loop Integration - Observation Injection", () => {
   });
 
   afterEach(async () => {
-    const { closeDb } = await import("@ekacode/server/db");
+    const { closeDb } = await import("@sakti-code/core/testing/db");
     closeDb();
   });
 

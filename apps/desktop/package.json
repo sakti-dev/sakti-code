@@ -1,5 +1,5 @@
 {
-  "name": "@ekacode/desktop",
+  "name": "@sakti-code/desktop",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -9,13 +9,13 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:perf": "PERF_BENCH=1 vitest run tests/integration/markdown-stream-stress.test.tsx tests/integration/markdown-benchmark.report.test.tsx",
-    "typecheck": "pnpm --filter @ekacode/shared build && tsc --noEmit",
+    "typecheck": "pnpm --filter @sakti-code/shared build && tsc --noEmit",
     "lint": "eslint ."
   },
   "dependencies": {
     "@corvu/resizable": "^0.2.5",
-    "@ekacode/electron-preload": "workspace:*",
-    "@ekacode/shared": "workspace:*",
+    "@sakti-code/electron-preload": "workspace:*",
+    "@sakti-code/shared": "workspace:*",
     "memorable-name": "workspace:*",
     "@kobalte/core": "^0.13.11",
     "@solid-primitives/event-bus": "^1.1.2",

@@ -235,7 +235,7 @@ Expected: FAIL
 // packages/server/src/services/file-watcher.ts
 import chokidar, { FSWatcher } from "chokidar";
 import { fileIndex, FileEntry } from "./file-index";
-import { createLogger } from "@ekacode/shared/logger";
+import { createLogger } from "@sakti-code/shared/logger";
 
 const logger = createLogger("file-watcher");
 

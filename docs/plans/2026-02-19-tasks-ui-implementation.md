@@ -123,12 +123,12 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { taskStorage, CreateTaskInput } from "../../../src/memory/task/storage";
 
 // Mock the bus publish function
-vi.mock("@ekacode/server/bus", () => ({
+vi.mock("@sakti-code/server/bus", () => ({
   publish: vi.fn(),
   TaskUpdated: { type: "task.updated" },
 }));
 
-import { publish, TaskUpdated } from "@ekacode/server/bus";
+import { publish, TaskUpdated } from "@sakti-code/server/bus";
 
 describe("TaskStorage Event Emission", () => {
   beforeEach(() => {
@@ -230,7 +230,7 @@ Expected: FAIL with "publish is not called" or similar
 Modify `packages/core/src/memory/task/storage.ts`:
 
 ```typescript
-import { publish, TaskUpdated } from "@ekacode/server/bus";
+import { publish, TaskUpdated } from "@sakti-code/server/bus";
 
 // Helper to publish task updated event
 async function publishTaskUpdate(sessionId: string | null) {
@@ -359,9 +359,9 @@ git commit -m "feat: remove legacy todo placeholder endpoint"
 // packages/server/tests/routes/tasks.test.ts
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { app } from "../../src/index";
-import { taskStorage } from "@ekacode/core/memory/task/storage";
-import { sessions, insertSession } from "@ekacode/server/db";
-import { getDb } from "@ekacode/server/db";
+import { taskStorage } from "@sakti-code/core/memory/task/storage";
+import { sessions, insertSession } from "@sakti-code/server/db";
+import { getDb } from "@sakti-code/server/db";
 
 describe("Tasks API", () => {
   let testSessionId: string;
@@ -470,7 +470,7 @@ Create `packages/server/src/routes/tasks.ts`:
 
 import { Hono } from "hono";
 import type { Env } from "../index";
-import { taskStorage } from "@ekacode/core/memory/task/storage";
+import { taskStorage } from "@sakti-code/core/memory/task/storage";
 
 const tasksRouter = new Hono<Env>();
 

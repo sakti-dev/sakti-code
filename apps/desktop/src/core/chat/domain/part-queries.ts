@@ -5,7 +5,7 @@
  */
 
 import type { PartState } from "@/state/stores/part-store";
-import type { Part } from "@ekacode/shared/event-types";
+import type { Part } from "@sakti-code/shared/event-types";
 
 /**
  * Get parts by message ID

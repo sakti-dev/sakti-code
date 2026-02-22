@@ -1,5 +1,5 @@
 /**
- * Vitest configuration for @ekacode/server
+ * Vitest configuration for @sakti-code/server
  */
 
 import { defineConfig } from "vitest/config";
