@@ -1,7 +1,7 @@
 import { buildChatTurns, type ChatTurn } from "@/core/chat/hooks/turn-projection";
 import { SessionTurn } from "@/views/workspace-view/chat-area/timeline/session-turn";
+import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createErrorTurnFixture,
@@ -44,7 +44,10 @@ describe("SessionTurn", () => {
   it("renders fixture-derived assistant summary text", async () => {
     const turn = projectSingleTurn(createSingleTurnFixture());
 
-    dispose = render(() => <SessionTurn turn={() => turn} isStreaming={() => false} />, container);
+    ({ unmount: dispose } = render(
+      () => <SessionTurn turn={() => turn} isStreaming={() => false} />,
+      { container }
+    ));
 
     await vi.waitFor(() => {
       expect(container.textContent).toContain("I'd be happy to help");
@@ -54,7 +57,10 @@ describe("SessionTurn", () => {
   it("does not render a steps trigger/collapsible label", () => {
     const turn = projectSingleTurn(createSingleTurnWithPromptsFixture());
 
-    dispose = render(() => <SessionTurn turn={() => turn} isStreaming={() => true} />, container);
+    ({ unmount: dispose } = render(
+      () => <SessionTurn turn={() => turn} isStreaming={() => true} />,
+      { container }
+    ));
 
     expect(container.textContent).not.toContain("Show steps");
     expect(container.textContent).not.toContain("Hide steps");
@@ -64,7 +70,10 @@ describe("SessionTurn", () => {
   it("renders reasoning inline without a reasoning collapsible trigger", async () => {
     const turn = projectSingleTurn(createInterleavedAssistantPartsFixture());
 
-    dispose = render(() => <SessionTurn turn={() => turn} isStreaming={() => true} />, container);
+    ({ unmount: dispose } = render(
+      () => <SessionTurn turn={() => turn} isStreaming={() => true} />,
+      { container }
+    ));
 
     await vi.waitFor(() => {
       expect(container.textContent).toContain("The read result suggests checking related files.");
@@ -75,7 +84,10 @@ describe("SessionTurn", () => {
   it("renders assistant parts chronologically in a single inline stream", async () => {
     const turn = projectSingleTurn(createInterleavedAssistantPartsFixture());
 
-    dispose = render(() => <SessionTurn turn={() => turn} isStreaming={() => true} />, container);
+    ({ unmount: dispose } = render(
+      () => <SessionTurn turn={() => turn} isStreaming={() => true} />,
+      { container }
+    ));
 
     await vi.waitFor(() => {
       const stream = container.querySelector('[data-slot="session-turn-stream"]');
@@ -106,7 +118,10 @@ describe("SessionTurn", () => {
   it("renders retry parts inline in chronological order", async () => {
     const turn = projectSingleTurn(createInterleavedAssistantPartsWithRetryFixture());
 
-    dispose = render(() => <SessionTurn turn={() => turn} isStreaming={() => true} />, container);
+    ({ unmount: dispose } = render(
+      () => <SessionTurn turn={() => turn} isStreaming={() => true} />,
+      { container }
+    ));
 
     await vi.waitFor(() => {
       const stream = container.querySelector('[data-slot="session-turn-stream"]');
@@ -142,7 +157,9 @@ describe("SessionTurn", () => {
     const baseTurn = projectSingleTurn(createStreamingTurnFixture());
     const [turn, setTurn] = createSignal({ ...baseTurn, statusLabel: "Thinking", working: true });
 
-    dispose = render(() => <SessionTurn turn={turn} isStreaming={() => true} />, container);
+    ({ unmount: dispose } = render(() => <SessionTurn turn={turn} isStreaming={() => true} />, {
+      container,
+    }));
 
     expect(container.textContent).toContain("Thinking");
 
@@ -157,10 +174,10 @@ describe("SessionTurn", () => {
   it("uses non-noisy live region behavior", () => {
     const streamingTurn = projectSingleTurn(createStreamingTurnFixture());
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <SessionTurn turn={() => streamingTurn} isStreaming={() => true} />,
-      container
-    );
+      { container }
+    ));
 
     const visibleSummaryLive = container.querySelector(
       '[data-slot="session-turn-visible-stream-live"]'
@@ -171,7 +188,10 @@ describe("SessionTurn", () => {
   it("renders error state from fixture", () => {
     const turn = projectSingleTurn(createErrorTurnFixture());
 
-    dispose = render(() => <SessionTurn turn={() => turn} isStreaming={() => false} />, container);
+    ({ unmount: dispose } = render(
+      () => <SessionTurn turn={() => turn} isStreaming={() => false} />,
+      { container }
+    ));
 
     expect(container.textContent).toContain("Something went wrong");
   });

@@ -4,20 +4,8 @@ import {
   applyDirectoryEvent,
   createInitialDirectoryStore,
   type DirectoryStore,
+  type StoreUpdaterFunction,
 } from "../helpers/event-handlers";
-
-type StoreUpdaterFunction = (
-  ...args:
-    | [Partial<DirectoryStore>]
-    | [string, unknown]
-    | [string, number, unknown]
-    | [string, string, unknown]
-    | [string, number, number, unknown]
-    | [string, string, number, unknown]
-    | [string, (current: unknown) => unknown]
-    | [string, string, (current: unknown) => unknown]
-    | [(store: DirectoryStore) => DirectoryStore]
-) => void;
 
 type EventFixture = {
   type: ServerEvent["type"];
@@ -48,7 +36,7 @@ function createHarness(initial?: DirectoryStore) {
   };
 
   const setStore: StoreUpdaterFunction = (...args) => {
-    const storeRecord = store as unknown as Record<string, unknown>;
+    const storeRecord = store as DirectoryStore & Record<string, unknown>;
 
     // Handle function argument (produce or reconcile)
     if (typeof args[0] === "function") {
@@ -93,11 +81,13 @@ function createHarness(initial?: DirectoryStore) {
               storeRecord[key] = { [second]: value };
             } else if (Array.isArray(topLevel)) {
               // topLevel is an array (e.g., store.session), second is index
-              const index = second as unknown as number;
-              if (typeof value === "function") {
-                topLevel[index] = value(topLevel[index]);
-              } else {
-                topLevel[index] = value;
+              const index = Number.parseInt(second, 10);
+              if (Number.isInteger(index) && index >= 0) {
+                if (typeof value === "function") {
+                  topLevel[index] = value(topLevel[index]);
+                } else {
+                  topLevel[index] = value;
+                }
               }
             } else if (typeof topLevel === "object" && topLevel !== null) {
               // topLevel is an object (e.g., store.part, store.permission)

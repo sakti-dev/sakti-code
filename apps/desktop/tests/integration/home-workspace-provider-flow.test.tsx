@@ -2,9 +2,11 @@ import { ChatProvider, useChatContext } from "@/core/state/contexts/chat-provide
 import { AppProvider } from "@/core/state/providers/app-provider";
 import { useWorkspace, WorkspaceProvider } from "@/core/state/providers/workspace-provider";
 import HomeView from "@/views/home-view/home-view";
+import { cleanup, render } from "@solidjs/testing-library";
 import { createMemo, Show } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+afterEach(cleanup);
 
 const { mockedNavigate, mockedParams } = vi.hoisted(() => {
   return {
@@ -20,7 +22,7 @@ vi.mock("@solidjs/router", () => {
   };
 });
 
-vi.mock("../../src/core/services/sse/sse-manager", () => {
+vi.mock("@/core/services/sse/sse-manager", () => {
   return {
     createSSEManager: () => ({
       connect: vi.fn(),
@@ -50,9 +52,14 @@ vi.mock("../../src/core/services/sse/sse-manager", () => {
   };
 });
 
-vi.mock("../../src/views/home-view/components/clone-dialog", () => {
+vi.mock("@/views/home-view/components/clone-dialog", () => {
   return {
     CloneDialog: () => null,
+  };
+});
+vi.mock("@/views/home-view/components/new-workspace-dialog", () => {
+  return {
+    NewWorkspaceDialog: () => null,
   };
 });
 
@@ -75,18 +82,6 @@ describe("Integration: Home + Workspace Provider Flow", () => {
 
     container = document.createElement("div");
     document.body.appendChild(container);
-
-    localStorage.setItem(
-      "sakti-code:recent-projects",
-      JSON.stringify([
-        {
-          id: "project-123",
-          name: "Project Alpha",
-          path: "/tmp/project-alpha",
-          lastOpened: new Date("2026-02-12T00:00:00.000Z").toISOString(),
-        },
-      ])
-    );
 
     Object.defineProperty(window, "saktiCodeAPI", {
       configurable: true,
@@ -114,7 +109,74 @@ describe("Integration: Home + Workspace Provider Flow", () => {
     global.fetch = vi.fn(async input => {
       const url = typeof input === "string" ? input : input.toString();
 
-      if (url.endsWith("/api/sessions")) {
+      if (url.endsWith("/api/workspaces")) {
+        return new Response(
+          JSON.stringify({
+            workspaces: [
+              {
+                id: "project-123",
+                name: "Project Alpha",
+                path: "/tmp/project-alpha",
+                lastOpenedAt: new Date("2026-02-12T00:00:00.000Z").toISOString(),
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      if (url.endsWith("/api/workspaces/archived")) {
+        return new Response(JSON.stringify({ workspaces: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (url.endsWith("/api/workspaces/project-123")) {
+        return new Response(
+          JSON.stringify({
+            workspace: {
+              id: "project-123",
+              name: "Project Alpha",
+              path: "/tmp/project-alpha",
+              lastOpenedAt: new Date("2026-02-12T00:00:00.000Z").toISOString(),
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      if (url.endsWith("/api/workspaces/project-123/touch")) {
+        return new Response(
+          JSON.stringify({
+            workspace: {
+              id: "project-123",
+              name: "Project Alpha",
+              path: "/tmp/project-alpha",
+              lastOpenedAt: new Date("2026-02-12T00:00:00.000Z").toISOString(),
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      if (url.includes("/api/vcs/workspaces-dir")) {
+        return new Response(JSON.stringify({ path: "/tmp/workspaces/project-alpha/worktrees" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (url.includes("/api/sessions")) {
         return new Response(JSON.stringify({ sessions: [] }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
@@ -163,23 +225,19 @@ describe("Integration: Home + Workspace Provider Flow", () => {
     );
   }
 
-  it("clicking recent project updates sessionStorage and navigates to workspace", async () => {
-    const dispose = render(() => <HomeView />, container);
+  it("clicking recent project navigates to workspace", async () => {
+    const view = render(() => <HomeView />, { container });
     await flushAll();
 
-    const projectCard = Array.from(container.querySelectorAll("div.cursor-pointer")).find(
-      el =>
-        el.textContent?.includes("Project Alpha") && el.textContent?.includes("/tmp/project-alpha")
-    );
+    const projectCard = container.querySelector('[data-test="workspace-card"]');
     expect(projectCard).toBeTruthy();
 
     projectCard!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     await flushAll();
 
     expect(mockedNavigate).toHaveBeenCalledWith("/workspace/project-123");
-    expect(sessionStorage.getItem("workspace:project-123")).toContain("/tmp/project-alpha");
 
-    dispose();
+    view.unmount();
   });
 
   it("mounts workspace with app/store/chat providers without useStores runtime error", async () => {
@@ -200,7 +258,7 @@ describe("Integration: Home + Workspace Provider Flow", () => {
       consoleErrors.push(serialized);
     });
 
-    const dispose = render(
+    const view = render(
       () => (
         <AppProvider config={{ baseUrl: "http://127.0.0.1:40523", token: "" }}>
           <WorkspaceProvider>
@@ -208,7 +266,7 @@ describe("Integration: Home + Workspace Provider Flow", () => {
           </WorkspaceProvider>
         </AppProvider>
       ),
-      container
+      { container }
     );
 
     await flushAll();
@@ -220,6 +278,6 @@ describe("Integration: Home + Workspace Provider Flow", () => {
     ).toBe(false);
 
     consoleErrorSpy.mockRestore();
-    dispose();
+    view.unmount();
   });
 });

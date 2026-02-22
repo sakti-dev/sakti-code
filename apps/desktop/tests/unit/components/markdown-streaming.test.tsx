@@ -1,5 +1,5 @@
+import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const createHighlighterMock = vi.fn(async () => ({
@@ -7,7 +7,7 @@ const createHighlighterMock = vi.fn(async () => ({
 }));
 
 vi.mock("shiki", () => ({
-  createHighlighter: (...args: unknown[]) => createHighlighterMock(...args),
+  createHighlighter: createHighlighterMock,
 }));
 
 describe("Markdown streaming behavior", () => {
@@ -34,11 +34,10 @@ describe("Markdown streaming behavior", () => {
     const { Markdown } = await import("@/components/ui/markdown");
     const [text, setText] = createSignal("start");
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <Markdown text={text()} isStreaming={true} streamCadenceMs={120} />,
-      container
-    );
-
+      { container }
+    ));
     for (let i = 0; i < 20; i++) {
       setText(`delta-${i}`);
     }
@@ -61,7 +60,9 @@ describe("Markdown streaming behavior", () => {
     const [streaming, setStreaming] = createSignal(true);
     const codeMd = "```ts\nconst answer = 42\n```";
 
-    dispose = render(() => <Markdown text={codeMd} isStreaming={streaming()} />, container);
+    ({ unmount: dispose } = render(() => <Markdown text={codeMd} isStreaming={streaming()} />, {
+      container,
+    }));
 
     await vi.advanceTimersByTimeAsync(220);
     expect(createHighlighterMock).toHaveBeenCalledTimes(0);
@@ -77,7 +78,7 @@ describe("Markdown streaming behavior", () => {
     const [text, setText] = createSignal("a");
     const [scrollActive, setScrollActive] = createSignal(true);
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <Markdown
           text={text()}
@@ -87,9 +88,8 @@ describe("Markdown streaming behavior", () => {
           pauseWhileScrolling={true}
         />
       ),
-      container
-    );
-
+      { container }
+    ));
     setText("b");
     setText("c");
     await vi.advanceTimersByTimeAsync(200);
@@ -109,11 +109,9 @@ describe("Markdown streaming behavior", () => {
     const [text, setText] = createSignal("Hello");
     const [streaming, setStreaming] = createSignal(true);
 
-    dispose = render(
-      () => <Markdown text={text()} isStreaming={streaming()} streamCadenceMs={80} />,
-      container
-    );
-
+    ({ unmount: dispose } = render(() => (
+      <Markdown text={text()} isStreaming={streaming()} streamCadenceMs={80} />
+    )));
     await vi.advanceTimersByTimeAsync(100);
     const baselineCalls = parseSpy.mock.calls.length;
 
@@ -136,7 +134,7 @@ describe("Markdown streaming behavior", () => {
     const [text, setText] = createSignal("x".repeat(260));
     const [streaming, setStreaming] = createSignal(true);
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <Markdown
           text={text()}
@@ -145,9 +143,8 @@ describe("Markdown streaming behavior", () => {
           streamCadenceMs={60}
         />
       ),
-      container
-    );
-
+      { container }
+    ));
     setText("x".repeat(340));
     await vi.advanceTimersByTimeAsync(120);
     await vi.waitFor(() => {
@@ -168,7 +165,7 @@ describe("Markdown streaming behavior", () => {
     const [streaming] = createSignal(true);
     const [scrolling, setScrolling] = createSignal(true);
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <Markdown
           text={text()}
@@ -179,9 +176,8 @@ describe("Markdown streaming behavior", () => {
           idleCadenceMs={70}
         />
       ),
-      container
-    );
-
+      { container }
+    ));
     setText("scrolling-phase");
     await vi.advanceTimersByTimeAsync(120);
     expect(container.textContent).not.toContain("scrolling-phase");

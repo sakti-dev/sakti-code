@@ -15,6 +15,7 @@ describe("Question Store", () => {
     sessionID: "session-1",
     messageID: "msg-1",
     question: "What is your name?",
+    questions: [],
     options: ["Alice", "Bob", "Charlie"],
     status: "pending",
     timestamp: Date.now(),

@@ -19,6 +19,7 @@ import { createMemo, createSignal, For, Show, type Component } from "solid-js";
  * Question part data structure
  */
 export interface QuestionPartData {
+  [key: string]: unknown;
   type: "question";
   request: QuestionRequest;
 }

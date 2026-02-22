@@ -7,15 +7,15 @@
  * @package @sakti-code/desktop/tests
  */
 
+import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
 import { ChatProvider, useChatContext } from "@/core/state/contexts/chat-provider";
 import {
   useMessageStore,
   usePartStore,
   useSessionStore,
 } from "@/core/state/providers/store-provider";
-import type { SaktiCodeApiClient } from "@renderer/lib/api-client";
+import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TestProviders } from "../helpers/test-providers";
 
@@ -39,7 +39,7 @@ describe("Integration: Provider Initialization Order", () => {
       }
 
       expect(() => {
-        render(() => <ComponentUsingStore />, container);
+        render(() => <ComponentUsingStore />, { container });
       }).toThrow("useStores must be used within StoreProvider");
     });
 
@@ -50,7 +50,7 @@ describe("Integration: Provider Initialization Order", () => {
       }
 
       expect(() => {
-        render(() => <ComponentUsingStore />, container);
+        render(() => <ComponentUsingStore />, { container });
       }).toThrow("useStores must be used within StoreProvider");
     });
 
@@ -61,7 +61,7 @@ describe("Integration: Provider Initialization Order", () => {
       }
 
       expect(() => {
-        render(() => <ComponentUsingStore />, container);
+        render(() => <ComponentUsingStore />, { container });
       }).toThrow("useStores must be used within StoreProvider");
     });
 
@@ -78,7 +78,7 @@ describe("Integration: Provider Initialization Order", () => {
               <ComponentUsingChat />
             </TestProviders>
           ),
-          container
+          { container }
         );
       }).toThrow("useChatContext must be used within ChatProvider");
     });
@@ -107,7 +107,7 @@ describe("Integration: Provider Initialization Order", () => {
       const [sessionId] = createSignal<string | null>("test-session");
       const [workspace] = createSignal("/test/workspace");
 
-      const dispose = render(
+      const { unmount: dispose } = render(
         () => (
           <TestProviders>
             <ChatProvider client={mockClient} workspace={workspace} sessionId={sessionId}>
@@ -115,7 +115,7 @@ describe("Integration: Provider Initialization Order", () => {
             </ChatProvider>
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       // Should render without errors
@@ -146,7 +146,7 @@ describe("Integration: Provider Initialization Order", () => {
       const [sessionId] = createSignal<string | null>("test-session");
       const [workspace] = createSignal("/test/workspace");
 
-      const dispose = render(
+      const { unmount: dispose } = render(
         () => (
           <TestProviders>
             <ChatProvider client={mockClient} workspace={workspace} sessionId={sessionId}>
@@ -154,7 +154,7 @@ describe("Integration: Provider Initialization Order", () => {
             </ChatProvider>
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       const hasMessageStore = container.querySelector('[data-testid="has-message-store"]');
@@ -199,22 +199,22 @@ describe("Integration: Provider Initialization Order", () => {
       document.body.appendChild(container1);
       document.body.appendChild(container2);
 
-      const dispose1 = render(
+      const { unmount: dispose1 } = render(
         () => (
           <TestProviders>
             <TestComponent prefix="tree1" />
           </TestProviders>
         ),
-        container1
+        { container: container1 }
       );
 
-      const dispose2 = render(
+      const { unmount: dispose2 } = render(
         () => (
           <TestProviders>
             <TestComponent prefix="tree2" />
           </TestProviders>
         ),
-        container2
+        { container: container2 }
       );
 
       // Each tree should only have its own messages
@@ -237,7 +237,7 @@ describe("Integration: Provider Initialization Order", () => {
 
       let errorMessage = "";
       try {
-        render(() => <ComponentUsingStore />, container);
+        render(() => <ComponentUsingStore />, { container });
       } catch (error) {
         errorMessage = (error as Error).message;
       }
@@ -260,7 +260,7 @@ describe("Integration: Provider Initialization Order", () => {
               <ComponentUsingChat />
             </TestProviders>
           ),
-          container
+          { container }
         );
       } catch (error) {
         errorMessage = (error as Error).message;

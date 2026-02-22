@@ -1,5 +1,5 @@
+import type { Task } from "@/core/chat/types/task";
 import { describe, expect, it } from "vitest";
-import type { Task } from "../src/core/chat/types/task";
 
 describe("Task Types", () => {
   it("should have correct shape for Task", () => {

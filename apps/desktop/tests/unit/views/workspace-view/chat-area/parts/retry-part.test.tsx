@@ -1,5 +1,5 @@
 import { RetryPart } from "@/views/workspace-view/chat-area/parts/retry-part";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRetryPart } from "../../../../../fixtures/part-fixtures";
 
@@ -27,7 +27,7 @@ describe("RetryPart", () => {
       },
     });
 
-    dispose = render(() => <RetryPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <RetryPart part={part} />, { container }));
 
     expect(container.querySelector('[data-component="retry-part"]')).not.toBeNull();
     expect(container.querySelector('[data-slot="retry-attempt"]')?.textContent).toContain("#2");
@@ -45,7 +45,7 @@ describe("RetryPart", () => {
       },
     });
 
-    dispose = render(() => <RetryPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <RetryPart part={part} />, { container }));
 
     expect(container.querySelector('[data-slot="retry-kind"]')?.textContent).toContain(
       "socket_closed"
@@ -55,7 +55,7 @@ describe("RetryPart", () => {
   it("falls back to default message for malformed payload", () => {
     const part = createRetryPart({ error: undefined, message: undefined, next: undefined });
 
-    dispose = render(() => <RetryPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <RetryPart part={part} />, { container }));
 
     expect(container.querySelector('[data-slot="retry-message"]')?.textContent).toContain(
       "Retrying after transient upstream issue"
@@ -72,12 +72,11 @@ describe("RetryPart", () => {
       next: Date.now() + 3100,
     });
 
-    dispose = render(() => <RetryPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <RetryPart part={part} />, { container }));
 
     expect(container.querySelector('[data-slot="retry-countdown"]')?.textContent).toContain(
       "in 4s"
     );
-
     vi.advanceTimersByTime(1100);
     expect(container.querySelector('[data-slot="retry-countdown"]')?.textContent).toContain(
       "in 3s"
@@ -96,7 +95,7 @@ describe("RetryPart", () => {
       next: Date.now() + 96_000,
     });
 
-    dispose = render(() => <RetryPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <RetryPart part={part} />, { container }));
 
     expect(container.querySelector('[data-slot="retry-countdown"]')?.textContent).toContain(
       "retrying in 1m 36s"
@@ -110,7 +109,7 @@ describe("RetryPart", () => {
       next: Date.now() - 1_000,
     });
 
-    dispose = render(() => <RetryPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <RetryPart part={part} />, { container }));
 
     expect(container.querySelector('[data-slot="retry-countdown"]')?.textContent).toContain(
       "retrying now"

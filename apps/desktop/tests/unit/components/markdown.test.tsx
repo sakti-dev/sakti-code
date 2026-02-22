@@ -1,4 +1,4 @@
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const createHighlighterMock = vi.fn(async () => ({
@@ -6,7 +6,7 @@ const createHighlighterMock = vi.fn(async () => ({
 }));
 
 vi.mock("shiki", () => ({
-  createHighlighter: (...args: unknown[]) => createHighlighterMock(...args),
+  createHighlighter: createHighlighterMock,
 }));
 
 describe("Markdown singleton/highlighter behavior", () => {
@@ -28,7 +28,7 @@ describe("Markdown singleton/highlighter behavior", () => {
   it("does not initialize shiki for plain text markdown", async () => {
     const { Markdown } = await import("@/components/ui/markdown");
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <>
           <Markdown text="hello world" />
@@ -36,9 +36,8 @@ describe("Markdown singleton/highlighter behavior", () => {
           <Markdown text="**bold** _text_" />
         </>
       ),
-      container
-    );
-
+      { container }
+    ));
     await vi.waitFor(() => {
       expect(container.textContent).toContain("hello world");
       expect(container.textContent).toContain("plain content");
@@ -51,7 +50,7 @@ describe("Markdown singleton/highlighter behavior", () => {
     const { Markdown } = await import("@/components/ui/markdown");
     const code = "```ts\nconst a = 1;\n```";
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <>
           <Markdown text={code} />
@@ -59,9 +58,8 @@ describe("Markdown singleton/highlighter behavior", () => {
           <Markdown text={code} />
         </>
       ),
-      container
-    );
-
+      { container }
+    ));
     await vi.waitFor(() => {
       expect(createHighlighterMock).toHaveBeenCalledTimes(1);
     });

@@ -3,10 +3,10 @@ import {
   getMarkdownPerfSnapshot,
   resetMarkdownPerfTelemetry,
 } from "@/core/chat/services/markdown-perf-telemetry";
+import { render } from "@solidjs/testing-library";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createRecordedTextDeltaSequence } from "../fixtures/performance-fixtures";
 
@@ -48,19 +48,15 @@ describe("Benchmark: markdown renderer report", () => {
     const [text, setText] = createSignal("");
     const [isStreaming, setIsStreaming] = createSignal(true);
 
-    dispose = render(
-      () => (
-        <Markdown
-          text={text()}
-          isStreaming={isStreaming()}
-          streamCadenceMs={35}
-          deferHighlightUntilComplete={true}
-          streamLiteEnabled={true}
-        />
-      ),
-      container
-    );
-
+    ({ unmount: dispose } = render(() => (
+      <Markdown
+        text={text()}
+        isStreaming={isStreaming()}
+        streamCadenceMs={35}
+        deferHighlightUntilComplete={true}
+        streamLiteEnabled={true}
+      />
+    )));
     const chunk = 42;
     for (let i = 0; i < markdown.length; i += chunk) {
       setText(markdown.slice(0, i + chunk));

@@ -4,9 +4,9 @@ import {
   usePartStore,
   useSessionStore,
 } from "@/core/state/providers/store-provider";
-import type { MessageWithId } from "@renderer/core/stores/message-store";
+import type { MessageWithId } from "@/core/state/stores/message-store";
+import { render } from "@solidjs/testing-library";
 import { createRoot } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("StoreProvider - Strict Provider Hierarchy", () => {
@@ -72,20 +72,16 @@ describe("StoreProvider - Strict Provider Hierarchy", () => {
       };
 
       // Create two separate provider trees
-      dispose = render(
-        () => (
-          <div>
-            <StoreProvider>
-              <TestComponent1 />
-            </StoreProvider>
-            <StoreProvider>
-              <TestComponent2 />
-            </StoreProvider>
-          </div>
-        ),
-        container
-      );
-
+      ({ unmount: dispose } = render(() => (
+        <div>
+          <StoreProvider>
+            <TestComponent1 />
+          </StoreProvider>
+          <StoreProvider>
+            <TestComponent2 />
+          </StoreProvider>
+        </div>
+      )));
       // Verify stores are accessible
       expect(store1).toBeDefined();
       expect(store2).toBeDefined();
@@ -128,20 +124,16 @@ describe("StoreProvider - Strict Provider Hierarchy", () => {
         return <div>B</div>;
       };
 
-      dispose = render(
-        () => (
-          <div>
-            <StoreProvider>
-              <ComponentA />
-            </StoreProvider>
-            <StoreProvider>
-              <ComponentB />
-            </StoreProvider>
-          </div>
-        ),
-        container
-      );
-
+      ({ unmount: dispose } = render(() => (
+        <div>
+          <StoreProvider>
+            <ComponentA />
+          </StoreProvider>
+          <StoreProvider>
+            <ComponentB />
+          </StoreProvider>
+        </div>
+      )));
       expect(storeA).toBeDefined();
       expect(storeB).toBeDefined();
 
@@ -192,15 +184,11 @@ describe("StoreProvider - Strict Provider Hierarchy", () => {
         return <div>test</div>;
       };
 
-      dispose = render(
-        () => (
-          <StoreProvider>
-            <TestComponent />
-          </StoreProvider>
-        ),
-        container
-      );
-
+      ({ unmount: dispose } = render(() => (
+        <StoreProvider>
+          <TestComponent />
+        </StoreProvider>
+      )));
       expect(messageStore).toBeDefined();
 
       const [state, actions] = messageStore!;
@@ -245,15 +233,11 @@ describe("StoreProvider - Strict Provider Hierarchy", () => {
         return <div>test</div>;
       };
 
-      dispose = render(
-        () => (
-          <StoreProvider>
-            <TestComponent />
-          </StoreProvider>
-        ),
-        container
-      );
-
+      ({ unmount: dispose } = render(() => (
+        <StoreProvider>
+          <TestComponent />
+        </StoreProvider>
+      )));
       expect(partStore).toBeDefined();
 
       const [state, actions] = partStore!;
@@ -293,15 +277,11 @@ describe("StoreProvider - Strict Provider Hierarchy", () => {
         return <div>test</div>;
       };
 
-      dispose = render(
-        () => (
-          <StoreProvider>
-            <TestComponent />
-          </StoreProvider>
-        ),
-        container
-      );
-
+      ({ unmount: dispose } = render(() => (
+        <StoreProvider>
+          <TestComponent />
+        </StoreProvider>
+      )));
       expect(sessionStore).toBeDefined();
 
       const [state, actions] = sessionStore!;
@@ -321,11 +301,11 @@ describe("StoreProvider - Strict Provider Hierarchy", () => {
       expect(sessions[0].sessionID).toBe("session-1");
 
       // Test setStatus
-      actions.setStatus("session-1", "busy");
-      expect(state.status["session-1"]).toBe("busy");
+      actions.setStatus("session-1", { type: "busy" });
+      expect(state.status["session-1"]?.type).toBe("busy");
 
       // Test getStatus
-      expect(actions.getStatus("session-1")).toBe("busy");
+      expect(actions.getStatus("session-1")).toEqual({ type: "busy" });
     });
   });
 
@@ -342,15 +322,11 @@ describe("StoreProvider - Strict Provider Hierarchy", () => {
         return <div>test</div>;
       };
 
-      dispose = render(
-        () => (
-          <StoreProvider>
-            <TestComponent />
-          </StoreProvider>
-        ),
-        container
-      );
-
+      ({ unmount: dispose } = render(() => (
+        <StoreProvider>
+          <TestComponent />
+        </StoreProvider>
+      )));
       expect(msgStore).toBeDefined();
       expect(partStore).toBeDefined();
       expect(sessStore).toBeDefined();
@@ -411,14 +387,11 @@ describe("StoreProvider - Strict Provider Hierarchy", () => {
       };
 
       // Create first provider and add data
-      const dispose1 = render(
-        () => (
-          <StoreProvider>
-            <TestComponent1 />
-          </StoreProvider>
-        ),
-        container
-      );
+      const { unmount: dispose1 } = render(() => (
+        <StoreProvider>
+          <TestComponent1 />
+        </StoreProvider>
+      ));
 
       const [, actions1] = store1!;
       const [, sessionActions1] = sessionStore1!;
@@ -432,14 +405,11 @@ describe("StoreProvider - Strict Provider Hierarchy", () => {
       });
 
       // Create second provider in same container
-      const dispose2 = render(
-        () => (
-          <StoreProvider>
-            <TestComponent2 />
-          </StoreProvider>
-        ),
-        container
-      );
+      const { unmount: dispose2 } = render(() => (
+        <StoreProvider>
+          <TestComponent2 />
+        </StoreProvider>
+      ));
 
       // If global context sharing exists, store2 would see store1's data
       const [state2] = store2!;

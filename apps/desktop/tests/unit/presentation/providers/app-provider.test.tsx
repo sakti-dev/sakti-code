@@ -1,4 +1,4 @@
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mockState = vi.hoisted(() => ({
@@ -10,7 +10,7 @@ const mockState = vi.hoisted(() => ({
     | null,
 }));
 
-vi.mock("../../../../src/core/services/sse/sse-manager", () => ({
+vi.mock("@/core/services/sse/sse-manager", () => ({
   createSSEManager: () => ({
     connect: mockState.connect,
     disconnect: mockState.disconnect,
@@ -28,23 +28,20 @@ vi.mock("../../../../src/core/services/sse/sse-manager", () => ({
   }),
 }));
 
-vi.mock("../../../../src/core/chat/domain/event-router-adapter", () => ({
+vi.mock("@/core/chat/domain/event-router-adapter", () => ({
   applyEventToStores: mockState.applyEventToStores,
 }));
 
-import { AppProvider } from "../../../../src/core/state/providers/app-provider";
+import { AppProvider } from "@/core/state/providers/app-provider";
 
 function mountApp() {
   const container = document.createElement("div");
   document.body.appendChild(container);
-  const dispose = render(
-    () => (
-      <AppProvider config={{ baseUrl: "http://localhost:3000", token: "" }}>
-        <div>child</div>
-      </AppProvider>
-    ),
-    container
-  );
+  const { unmount: dispose } = render(() => (
+    <AppProvider config={{ baseUrl: "http://localhost:3000", token: "" }}>
+      <div>child</div>
+    </AppProvider>
+  ));
 
   return {
     dispose: () => {

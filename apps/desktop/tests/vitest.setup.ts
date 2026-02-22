@@ -4,29 +4,51 @@
  * Provides global mocks for browser APIs not available in test environment
  */
 
-// Mock Web Speech API
-global.SpeechRecognition = class SpeechRecognition {
+// Mock Web Speech API with explicit types
+class MockSpeechRecognition implements SpeechRecognition {
   continuous = true;
   interimResults = true;
   lang = "en-US";
   maxAlternatives = 1;
-  onresult: ((event: unknown) => void) | null = null;
-  onerror: ((event: unknown) => void) | null = null;
-  onend: ((event: unknown) => void) | null = null;
-  onstart: ((event: unknown) => void) | null = null;
+  onresult: ((event: Event) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+  onend: ((event: Event) => void) | null = null;
+  onstart: ((event: Event) => void) | null = null;
 
   start() {}
   stop() {}
   abort() {}
-} as never;
 
-global.SpeechGrammarList = class SpeechGrammarList {
+  addEventListener() {}
+  removeEventListener() {}
+  dispatchEvent() {
+    return false;
+  }
+}
+
+Object.defineProperty(global, "SpeechRecognition", {
+  value: MockSpeechRecognition,
+  writable: true,
+  configurable: true,
+});
+
+class MockSpeechGrammarList implements SpeechGrammarList {
   grammars: unknown[] = [];
   addFromString() {}
   addFromURI() {}
-} as never;
+}
 
-global.SpeechRecognitionEvent = class SpeechRecognitionEvent {
+Object.defineProperty(global, "SpeechGrammarList", {
+  value: MockSpeechGrammarList,
+  writable: true,
+  configurable: true,
+});
+
+class MockSpeechRecognitionEvent implements SpeechRecognitionEvent {
+  readonly type: string;
+  readonly resultIndex: number;
+  readonly results: unknown[];
+
   constructor(
     type: string,
     eventInitDict: {
@@ -38,7 +60,34 @@ global.SpeechRecognitionEvent = class SpeechRecognitionEvent {
     this.resultIndex = eventInitDict.resultIndex;
     this.results = eventInitDict.results;
   }
-  type: string;
-  resultIndex: number;
-  results: unknown[];
-} as unknown as typeof globalThis.SpeechRecognitionEvent;
+
+  bubbles = false;
+  cancelBubble = false;
+  cancelable = false;
+  composed = false;
+  currentTarget = null;
+  defaultPrevented = false;
+  eventPhase = 0;
+  isTrusted = false;
+  target = null;
+  timeStamp = 0;
+  srcElement = null;
+  returnValue = true;
+  readonly NONE = 0;
+  readonly CAPTURING_PHASE = 1;
+  readonly AT_TARGET = 2;
+  readonly BUBBLING_PHASE = 3;
+  composedPath() {
+    return [];
+  }
+  initEvent() {}
+  preventDefault() {}
+  stopImmediatePropagation() {}
+  stopPropagation() {}
+}
+
+Object.defineProperty(global, "SpeechRecognitionEvent", {
+  value: MockSpeechRecognitionEvent,
+  writable: true,
+  configurable: true,
+});

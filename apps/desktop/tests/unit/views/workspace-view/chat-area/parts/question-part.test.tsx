@@ -2,7 +2,7 @@ import {
   QuestionPartWithCallbacks,
   type QuestionPartData,
 } from "@/views/workspace-view/chat-area/parts/question-part";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createAnsweredQuestionRequest,
@@ -44,7 +44,7 @@ describe("QuestionPart", () => {
     });
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <QuestionPartWithCallbacks part={part} />, { container }));
 
     expect(container.textContent).toContain("Which file should I read?");
   });
@@ -53,7 +53,7 @@ describe("QuestionPart", () => {
     const request = createPendingQuestionRequest();
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <QuestionPartWithCallbacks part={part} />, { container }));
 
     const questionPart = container.querySelector('[data-component="question-part"]');
     expect(questionPart?.getAttribute("data-status")).toBe("pending");
@@ -66,7 +66,7 @@ describe("QuestionPart", () => {
     const request = createPendingQuestionRequest();
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <QuestionPartWithCallbacks part={part} />, { container }));
 
     const input = container.querySelector('[data-slot="question-input"]');
     expect(input).not.toBeNull();
@@ -77,7 +77,7 @@ describe("QuestionPart", () => {
     const request = createMultipleChoiceQuestionRequest(["Option A", "Option B", "Option C"]);
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <QuestionPartWithCallbacks part={part} />, { container }));
 
     const options = container.querySelectorAll('[data-action="option"]');
     expect(options.length).toBe(3);
@@ -91,10 +91,10 @@ describe("QuestionPart", () => {
     const part = createQuestionPartData(request);
     const onAnswer = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <QuestionPartWithCallbacks part={part} onAnswer={onAnswer} />,
-      container
-    );
+      { container }
+    ));
 
     const input = container.querySelector('[data-slot="question-input"]') as HTMLInputElement;
     input.value = "src/main.ts";
@@ -113,10 +113,10 @@ describe("QuestionPart", () => {
     const part = createQuestionPartData(request);
     const onAnswer = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <QuestionPartWithCallbacks part={part} onAnswer={onAnswer} />,
-      container
-    );
+      { container }
+    ));
 
     const optionBtn = container.querySelector('[data-option="Option B"]') as HTMLButtonElement;
     optionBtn.click();
@@ -129,10 +129,10 @@ describe("QuestionPart", () => {
     const part = createQuestionPartData(request);
     const onReject = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <QuestionPartWithCallbacks part={part} onReject={onReject} />,
-      container
-    );
+      { container }
+    ));
 
     const rejectBtn = container.querySelector('[data-action="reject"]') as HTMLButtonElement;
     rejectBtn.click();
@@ -144,7 +144,10 @@ describe("QuestionPart", () => {
     const request = createAnsweredQuestionRequest("src/index.ts");
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} defaultOpen={true} />, container);
+    ({ unmount: dispose } = render(
+      () => <QuestionPartWithCallbacks part={part} defaultOpen={true} />,
+      { container }
+    ));
 
     const questionPart = container.querySelector('[data-component="question-part"]');
     expect(questionPart?.getAttribute("data-status")).toBe("answered");
@@ -158,7 +161,7 @@ describe("QuestionPart", () => {
     const request = createAnsweredQuestionRequest("Some answer");
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <QuestionPartWithCallbacks part={part} />, { container }));
 
     const input = container.querySelector('[data-slot="question-input"]');
     const options = container.querySelector('[data-slot="question-options"]');
@@ -171,7 +174,7 @@ describe("QuestionPart", () => {
     const request = createPendingQuestionRequest();
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <QuestionPartWithCallbacks part={part} />, { container }));
 
     const questionPart = container.querySelector('[data-component="question-part"]');
     expect(questionPart).not.toBeNull();
@@ -181,7 +184,7 @@ describe("QuestionPart", () => {
     const request = createAnsweredQuestionRequest("test");
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <QuestionPartWithCallbacks part={part} />, { container }));
 
     const questionPart = container.querySelector('[data-component="question-part"]');
     expect(questionPart?.getAttribute("data-status")).toBe("answered");
@@ -191,10 +194,10 @@ describe("QuestionPart", () => {
     const request = createPendingQuestionRequest();
     const part = createQuestionPartData(request);
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <QuestionPartWithCallbacks part={part} class="custom-question" />,
-      container
-    );
+      { container }
+    ));
 
     const questionPart = container.querySelector('[data-component="question-part"]');
     expect(questionPart?.classList.contains("custom-question")).toBe(true);
@@ -204,7 +207,10 @@ describe("QuestionPart", () => {
     const request = createRejectedQuestionRequest("Not needed");
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} defaultOpen={true} />, container);
+    ({ unmount: dispose } = render(
+      () => <QuestionPartWithCallbacks part={part} defaultOpen={true} />,
+      { container }
+    ));
 
     // Status should be "answered"
     const questionPart = container.querySelector('[data-component="question-part"]');
@@ -215,7 +221,7 @@ describe("QuestionPart", () => {
     const request = createMultipleChoiceQuestionRequest(["A", "B"]);
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <QuestionPartWithCallbacks part={part} />, { container }));
 
     const rejectBtn = container.querySelector('[data-action="reject"]');
     expect(rejectBtn).not.toBeNull();
@@ -243,7 +249,7 @@ describe("QuestionPart", () => {
     });
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <QuestionPartWithCallbacks part={part} />, { container }));
 
     expect(container.querySelector('[data-slot="question-tabs"]')).not.toBeNull();
     expect(container.textContent).toContain("Which scope?");
@@ -254,10 +260,10 @@ describe("QuestionPart", () => {
     const part = createQuestionPartData(request);
     const onAnswer = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <QuestionPartWithCallbacks part={part} onAnswer={onAnswer} />,
-      container
-    );
+      { container }
+    ));
 
     const input = container.querySelector('[data-slot="question-input"]') as HTMLInputElement;
     input.value = "test answer";
@@ -272,10 +278,10 @@ describe("QuestionPart", () => {
     const part = createQuestionPartData(request);
     const onAnswer = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <QuestionPartWithCallbacks part={part} onAnswer={onAnswer} />,
-      container
-    );
+      { container }
+    ));
 
     const input = container.querySelector('[data-slot="question-input"]') as HTMLInputElement;
     input.value = "test answer";
@@ -283,7 +289,6 @@ describe("QuestionPart", () => {
     input.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Enter", shiftKey: true, bubbles: true })
     );
-
     expect(onAnswer).not.toHaveBeenCalled();
   });
 
@@ -291,7 +296,10 @@ describe("QuestionPart", () => {
     const request = createAnsweredQuestionRequest(undefined);
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} defaultOpen={true} />, container);
+    ({ unmount: dispose } = render(
+      () => <QuestionPartWithCallbacks part={part} defaultOpen={true} />,
+      { container }
+    ));
 
     // Status should still be "answered"
     const questionPart = container.querySelector('[data-component="question-part"]');
@@ -302,7 +310,10 @@ describe("QuestionPart", () => {
     const request = createAnsweredQuestionRequest({ value: 42, name: "test" });
     const part = createQuestionPartData(request);
 
-    dispose = render(() => <QuestionPartWithCallbacks part={part} defaultOpen={true} />, container);
+    ({ unmount: dispose } = render(
+      () => <QuestionPartWithCallbacks part={part} defaultOpen={true} />,
+      { container }
+    ));
 
     // Status should be "answered"
     const questionPart = container.querySelector('[data-component="question-part"]');
@@ -312,7 +323,9 @@ describe("QuestionPart", () => {
   it("returns null for invalid part type", () => {
     const invalidPart = { type: "invalid" };
 
-    dispose = render(() => <QuestionPartWithCallbacks part={invalidPart} />, container);
+    ({ unmount: dispose } = render(() => <QuestionPartWithCallbacks part={invalidPart} />, {
+      container,
+    }));
 
     const questionPart = container.querySelector('[data-component="question-part"]');
     expect(questionPart).toBeNull();
@@ -327,7 +340,9 @@ describe("QuestionPart", () => {
     });
     const canonicalPart = createCanonicalQuestionPart(request, { id: "part-q-1" });
 
-    dispose = render(() => <QuestionPartWithCallbacks part={canonicalPart} />, container);
+    ({ unmount: dispose } = render(() => <QuestionPartWithCallbacks part={canonicalPart} />, {
+      container,
+    }));
 
     expect(container.textContent).toContain("Proceed with edits?");
     expect(container.querySelectorAll('[data-action="option"]').length).toBe(2);

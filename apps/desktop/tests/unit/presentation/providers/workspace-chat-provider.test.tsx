@@ -1,5 +1,5 @@
 import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const chatProviderSpy = vi.hoisted(() => vi.fn());
@@ -47,19 +47,15 @@ describe("WorkspaceChatProvider", () => {
       await import("@/core/state/providers/workspace-chat-provider");
 
     const mockClient = {} as SaktiCodeApiClient;
-    dispose = render(
-      () => (
-        <WorkspaceChatProvider
-          client={mockClient}
-          workspace={() => "/repo"}
-          sessionId={() => "session-1"}
-        >
-          <div>child</div>
-        </WorkspaceChatProvider>
-      ),
-      container
-    );
-
+    ({ unmount: dispose } = render(() => (
+      <WorkspaceChatProvider
+        client={mockClient}
+        workspace={() => "/repo"}
+        sessionId={() => "session-1"}
+      >
+        <div>child</div>
+      </WorkspaceChatProvider>
+    )));
     expect(chatProviderSpy).toHaveBeenCalledTimes(1);
     const call = chatProviderSpy.mock.calls[0]?.[0] as {
       providerId?: () => string | undefined;

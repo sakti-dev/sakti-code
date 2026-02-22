@@ -1,5 +1,5 @@
 import type { RecentProject } from "@/core/chat/types";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("WorkspaceCard", () => {
@@ -24,15 +24,14 @@ describe("WorkspaceCard", () => {
       lastOpened: new Date(),
     };
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <div data-test="container">
           {workspace.name} - {workspace.path}
         </div>
       ),
-      container
-    );
-
+      { container }
+    ));
     expect(container.textContent).toContain("Test Project");
     expect(container.textContent).toContain("/home/user/projects/test");
   });
@@ -52,11 +51,10 @@ describe("WorkspaceCard", () => {
       },
     };
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <div data-test="git-status">{workspace.gitStatus?.branch}</div>,
-      container
-    );
-
+      { container }
+    ));
     expect(container.textContent).toContain("feature-branch");
   });
 });

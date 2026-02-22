@@ -6,15 +6,16 @@
  */
 
 import { serve } from "@hono/node-server";
-import { Hono } from "hono";
-import type { Server } from "node:http";
+import type serverApp from "@sakti-code/server";
 import type { AddressInfo } from "node:net";
+
+type ServerApp = typeof serverApp;
 
 export interface TestServer {
   /** Hono app instance */
-  app: Hono;
+  app: ServerApp;
   /** HTTP server instance */
-  server: Server;
+  server: Awaited<ReturnType<typeof serve>>;
   /** Server port number */
   port: number;
   /** Full server URL */
@@ -47,7 +48,7 @@ export interface TestServer {
 export async function createTestServer(): Promise<TestServer> {
   // Import server components dynamically to avoid loading issues
   const { default: app } = await import("@sakti-code/server");
-  const { getServerToken } = await import("@sakti-code/server/runtime");
+  const { getServerToken } = await import("@sakti-code/server");
 
   // Start server on random port
   const server = await serve({

@@ -6,7 +6,7 @@
 
 import { buildChatTurns, type ChatTurn } from "@/core/chat/hooks/turn-projection";
 import { MessageTimeline } from "@/views/workspace-view/chat-area/timeline/message-timeline";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createMultiTurnFixture,
@@ -36,10 +36,10 @@ describe("MessageTimeline", () => {
   it("renders turns in chronological order", () => {
     const turns = buildChatTurns(createMultiTurnFixture(undefined, 2));
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <MessageTimeline turns={() => turns} isStreaming={() => false} />,
-      container
-    );
+      { container }
+    ));
 
     const items = container.querySelectorAll('[role="listitem"]');
     expect(items.length).toBe(2);
@@ -48,20 +48,20 @@ describe("MessageTimeline", () => {
   it("uses stable keys by userMessage.id", () => {
     const turn = createFixtureTurn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <MessageTimeline turns={() => [turn]} isStreaming={() => false} />,
-      container
-    );
+      { container }
+    ));
 
     const item = container.querySelector(`[data-testid="turn-${turn.userMessage.id}"]`);
     expect(item).toBeDefined();
   });
 
   it("shows empty state when no turns", () => {
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <MessageTimeline turns={() => []} isStreaming={() => false} />,
-      container
-    );
+      { container }
+    ));
 
     expect(container.textContent).toContain("No messages");
   });
@@ -69,10 +69,10 @@ describe("MessageTimeline", () => {
   it("renders scroll container with role=log", () => {
     const turn = createFixtureTurn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <MessageTimeline turns={() => [turn]} isStreaming={() => false} />,
-      container
-    );
+      { container }
+    ));
 
     const logContainer = container.querySelector('[role="log"]');
     expect(logContainer).toBeDefined();

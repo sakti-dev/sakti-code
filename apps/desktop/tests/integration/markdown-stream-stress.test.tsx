@@ -3,8 +3,8 @@ import {
   getMarkdownPerfSnapshot,
   resetMarkdownPerfTelemetry,
 } from "@/core/chat/services/markdown-perf-telemetry";
+import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createRecordedTextDeltaSequence } from "../fixtures/performance-fixtures";
 
@@ -53,7 +53,7 @@ describe("Integration: markdown stream stress", () => {
     const [streaming, setStreaming] = createSignal(true);
     const [scrollActive, setScrollActive] = createSignal(false);
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <Markdown
           text={text()}
@@ -63,9 +63,8 @@ describe("Integration: markdown stream stress", () => {
           deferHighlightUntilComplete={true}
         />
       ),
-      container
-    );
-
+      { container }
+    ));
     const lagSamples: number[] = [];
     let intervalActive = true;
     let prevTick = performance.now();

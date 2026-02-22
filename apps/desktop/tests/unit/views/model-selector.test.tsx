@@ -1,10 +1,10 @@
-import { ModelSelector } from "@/views/components/model-selector";
-import { render } from "solid-js/web";
+import { ModelSelector } from "@/components/model-selector";
+import { cleanup, render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("ModelSelector", () => {
   let container: HTMLDivElement;
-  let dispose: () => void;
+  let unmount: (() => void) | undefined;
 
   beforeEach(() => {
     container = document.createElement("div");
@@ -12,47 +12,52 @@ describe("ModelSelector", () => {
   });
 
   afterEach(() => {
-    dispose?.();
-    document.body.removeChild(container);
+    unmount?.();
+    cleanup();
+    if (container.parentNode === document.body) {
+      document.body.removeChild(container);
+    }
   });
 
-  it("disables models without text capability", () => {
-    dispose = render(
+  it("renders models from sections and selects a model", async () => {
+    const onSelect = vi.fn();
+
+    const view = render(
       () => (
         <ModelSelector
-          models={[
+          open={true}
+          onOpenChange={vi.fn()}
+          mode="model"
+          onModeChange={vi.fn()}
+          modelSections={[
             {
-              id: "zai/glm-4.7",
               providerId: "zai",
-              capabilities: {
-                text: true,
-                vision: false,
-                tools: true,
-                reasoning: true,
-                plan: false,
-              },
-            },
-            {
-              id: "zai/image-only",
-              providerId: "zai",
-              capabilities: {
-                text: false,
-                vision: true,
-                tools: false,
-                reasoning: false,
-                plan: false,
-              },
+              providerName: "Z.AI",
+              connected: true,
+              models: [
+                { id: "zai/glm-4.7", providerId: "zai", connected: true, name: "GLM 4.7" },
+                { id: "zai/glm-4.6", providerId: "zai", connected: true, name: "GLM 4.6" },
+              ],
             },
           ]}
           selectedModelId="zai/glm-4.7"
-          onChange={vi.fn()}
+          onSearchChange={vi.fn()}
+          onSelect={onSelect}
         />
       ),
-      container
+      { container }
     );
+    unmount = () => view.unmount();
 
-    const options = container.querySelectorAll("option");
-    expect(options[0]?.disabled).toBe(false);
-    expect(options[1]?.disabled).toBe(true);
+    await Promise.resolve();
+
+    expect(document.body.textContent).toContain("Z.AI");
+    expect(document.body.textContent).toContain("GLM 4.7");
+    expect(document.body.textContent).toContain("GLM 4.6");
+
+    const options = document.body.querySelectorAll('[role="option"]');
+    expect(options.length).toBeGreaterThan(0);
+    options[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onSelect).toHaveBeenCalledWith("zai/glm-4.6");
   });
 });

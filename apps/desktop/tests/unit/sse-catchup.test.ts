@@ -9,13 +9,14 @@ import {
   CatchupController,
   catchupSession,
   getCatchupBackoff,
+  type SDKClientForCatchup,
   shouldCatchup,
 } from "@/core/shared/utils/sse-catchup";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock SDK client
 function createMockClient(shouldFail = false, messageCount = 10) {
-  return {
+  const client: SDKClientForCatchup = {
     session: {
       messages: vi.fn(
         async (_opts: {
@@ -34,6 +35,7 @@ function createMockClient(shouldFail = false, messageCount = 10) {
       ),
     },
   };
+  return client;
 }
 
 describe("sse-catchup", () => {
@@ -110,21 +112,10 @@ describe("sse-catchup", () => {
 
     it("respects custom timeout config", async () => {
       const client = createMockClient(false, 5);
-      const timeoutSpy = vi.fn();
-      const originalSetTimeout = global.setTimeout;
-
-      vi.spyOn(global, "setTimeout").mockImplementation((fn, delay) => {
-        if (delay === 100) {
-          timeoutSpy();
-        }
-        return originalSetTimeout(fn as unknown as () => void, delay as number);
-      });
+      const setTimeoutSpy = vi.spyOn(global, "setTimeout");
 
       await catchupSession(client, "session-123", { timeout: 100 });
-      await new Promise(resolve => setTimeout(resolve, 150));
-
-      expect(timeoutSpy).toHaveBeenCalled();
-      vi.restoreAllMocks();
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 100);
     });
 
     it("handles AbortError on timeout", async () => {
@@ -139,11 +130,7 @@ describe("sse-catchup", () => {
       };
 
       // Use very short timeout
-      const result = await catchupSession(
-        client as unknown as ReturnType<typeof createMockClient>,
-        "session-123",
-        { timeout: 1 }
-      );
+      const result = await catchupSession(client, "session-123", { timeout: 1 });
 
       // The abort signal will be set but the call might complete before abort
       expect(result).toBeDefined();
@@ -165,7 +152,7 @@ describe("sse-catchup", () => {
         },
       };
 
-      await catchupSession(client as unknown as ReturnType<typeof createMockClient>, "session-123");
+      await catchupSession(client, "session-123");
 
       expect(signalSpy).toHaveBeenCalled();
     });
@@ -179,10 +166,7 @@ describe("sse-catchup", () => {
         },
       };
 
-      const result = await catchupSession(
-        client as unknown as ReturnType<typeof createMockClient>,
-        "session-123"
-      );
+      const result = await catchupSession(client, "session-123");
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("Unexpected error");
@@ -275,8 +259,10 @@ describe("sse-catchup", () => {
 
       controller.cancelAll();
 
-      // Should not throw
-      expect(controller.active.size).toBe(0);
+      // Should not throw and no stale results should remain
+      expect(controller.getResult("session-1")).toBeUndefined();
+      expect(controller.getResult("session-2")).toBeUndefined();
+      expect(controller.getResult("session-3")).toBeUndefined();
     });
 
     it("handles multiple sessions independently", async () => {

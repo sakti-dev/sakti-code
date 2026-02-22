@@ -1,5 +1,5 @@
+import { render } from "@solidjs/testing-library";
 import { createSignal, type JSX } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { VirtualizedList } from "@/components/ui/virtualized-list";
@@ -7,7 +7,7 @@ import { VirtualizedList } from "@/components/ui/virtualized-list";
 function mount(ui: () => JSX.Element) {
   const container = document.createElement("div");
   document.body.appendChild(container);
-  const dispose = render(ui, container);
+  const { unmount: dispose } = render(ui, { container });
   return {
     container,
     dispose: () => {

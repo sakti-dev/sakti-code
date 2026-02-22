@@ -1,6 +1,6 @@
-import { render } from "solid-js/web";
+import { NewWorkspaceDialog } from "@/views/home-view/components/new-workspace-dialog";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { NewWorkspaceDialog } from "../../../../src/views/home-view/components/new-workspace-dialog";
 
 const mockApiClient = {
   listRemoteBranches: vi.fn(() => Promise.resolve(["main", "develop", "feature/test"])),
@@ -12,7 +12,7 @@ const mockApiClient = {
 };
 
 // Mock the API client
-vi.mock("../../../../src/core/services/api/api-client", () => ({
+vi.mock("@/core/services/api/api-client", () => ({
   createApiClient: vi.fn(() => Promise.resolve(mockApiClient)),
 }));
 
@@ -69,14 +69,14 @@ describe("NewWorkspaceDialog", () => {
     const onClose = vi.fn();
     const onCreate = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <div data-test="test-container">
           <NewWorkspaceDialog isOpen={true} onClose={onClose} onCreate={onCreate} />
         </div>
       ),
-      container
-    );
+      { container }
+    ));
 
     expect(document.body.textContent).toContain("New Workspace");
     expect(document.body.textContent).toContain("Open Folder");
@@ -87,14 +87,14 @@ describe("NewWorkspaceDialog", () => {
     const onClose = vi.fn();
     const onCreate = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <div data-test="test-container">
           <NewWorkspaceDialog isOpen={false} onClose={onClose} onCreate={onCreate} />
         </div>
       ),
-      container
-    );
+      { container }
+    ));
 
     expect(document.body.querySelector("[data-test='new-workspace-dialog']")).toBeNull();
   });
@@ -103,10 +103,10 @@ describe("NewWorkspaceDialog", () => {
     const onClose = vi.fn();
     const onCreate = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <NewWorkspaceDialog isOpen={true} onClose={onClose} onCreate={onCreate} />,
-      container
-    );
+      { container }
+    ));
 
     expect(document.body.textContent).toContain("Open Folder");
     expect(document.body.textContent).toContain("Clone Repository");
@@ -116,10 +116,10 @@ describe("NewWorkspaceDialog", () => {
     const onClose = vi.fn();
     const onCreate = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <NewWorkspaceDialog isOpen={true} onClose={onClose} onCreate={onCreate} />,
-      container
-    );
+      { container }
+    ));
 
     expect(document.body.textContent).toContain("Folder Path");
     expect(document.body.textContent).toContain("Browse");
@@ -129,10 +129,10 @@ describe("NewWorkspaceDialog", () => {
     const onClose = vi.fn();
     const onCreate = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <NewWorkspaceDialog isOpen={true} onClose={onClose} onCreate={onCreate} />,
-      container
-    );
+      { container }
+    ));
 
     // Click Clone Repository tab
     const cloneTab = Array.from(document.body.querySelectorAll("button")).find(btn =>
@@ -151,10 +151,10 @@ describe("NewWorkspaceDialog", () => {
     const onClose = vi.fn();
     const onCreate = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <NewWorkspaceDialog isOpen={true} onClose={onClose} onCreate={onCreate} />,
-      container
-    );
+      { container }
+    ));
 
     // Click Clone Repository tab
     const cloneTab = Array.from(document.body.querySelectorAll("button")).find(btn =>
@@ -191,10 +191,10 @@ describe("NewWorkspaceDialog", () => {
     const onClose = vi.fn();
     const onCreate = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <NewWorkspaceDialog isOpen={true} onClose={onClose} onCreate={onCreate} />,
-      container
-    );
+      { container }
+    ));
 
     // Workspace setup shows after path is selected (folder mode)
     // Initially not visible since no path selected
@@ -205,17 +205,16 @@ describe("NewWorkspaceDialog", () => {
     const onClose = vi.fn();
     const onCreate = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <NewWorkspaceDialog isOpen={true} onClose={onClose} onCreate={onCreate} />,
-      container
-    );
+      { container }
+    ));
 
     // Select a folder to trigger workspace setup
 
     const browseBtn = Array.from(document.body.querySelectorAll("button")).find(btn =>
       btn.textContent?.includes("Browse")
     );
-
     // Simulate folder selection by triggering the IPC mock
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ((window as any).saktiCodeAPI.dialog.openDirectory as ReturnType<typeof vi.fn>).mockReturnValue(
@@ -236,10 +235,10 @@ describe("NewWorkspaceDialog", () => {
     const onClose = vi.fn();
     const onCreate = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <NewWorkspaceDialog isOpen={true} onClose={onClose} onCreate={onCreate} />,
-      container
-    );
+      { container }
+    ));
 
     // Switch to clone mode
     const cloneTab = Array.from(document.body.querySelectorAll("button")).find(btn =>

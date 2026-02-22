@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("SearchBar Component", () => {
   let container: HTMLDivElement;
-  let dispose: () => void | undefined;
+  let dispose: (() => void) | undefined;
 
   beforeEach(() => {
     container = document.createElement("div");

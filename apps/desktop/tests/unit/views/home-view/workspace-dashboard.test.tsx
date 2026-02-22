@@ -1,5 +1,5 @@
 import type { ArchivedWorkspace, RecentProject } from "@/core/chat/types";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("WorkspaceDashboard", () => {
@@ -51,7 +51,7 @@ describe("WorkspaceDashboard", () => {
   });
 
   it("should render recent workspaces column", () => {
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <div>
           <div class="column-header">
@@ -62,16 +62,15 @@ describe("WorkspaceDashboard", () => {
           ))}
         </div>
       ),
-      container
-    );
-
+      { container }
+    ));
     expect(container.textContent).toContain("Recent Workspaces");
     expect(container.textContent).toContain("Project One");
     expect(container.textContent).toContain("Project Two");
   });
 
   it("should render archived workspaces column", () => {
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <div>
           <div class="column-header">
@@ -82,9 +81,8 @@ describe("WorkspaceDashboard", () => {
           ))}
         </div>
       ),
-      container
-    );
-
+      { container }
+    ));
     expect(container.textContent).toContain("Archived");
     expect(container.textContent).toContain("Archived Project");
   });

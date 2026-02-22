@@ -1,4 +1,4 @@
-import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
+import { SaktiCodeApiClient } from "@/core/services/api/api-client";
 import { createRoot } from "solid-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,9 +14,21 @@ type MockSessionInfo = {
   directory: string;
 };
 
+type MockMessageEntry = {
+  id: string;
+  role: "user" | "assistant" | "system";
+  sessionID?: string;
+  metadata?: {
+    optimistic?: boolean;
+    optimisticSource?: string;
+    correlationKey?: string;
+    timestamp?: number;
+  };
+};
+
 const mockRemove = vi.fn();
 const mockPartRemove = vi.fn();
-const mockGetBySession = vi.fn(() => []);
+const mockGetBySession = vi.fn<(sessionId: string) => MockMessageEntry[]>(() => []);
 const mockGetById = vi.fn();
 const mockGetByMessage = vi.fn((messageId: string): MockTextPart[] => {
   void messageId;
@@ -75,22 +87,18 @@ vi.mock("@/core/shared/logger", () => ({
 function okResponse(): Response {
   const headers = new Headers();
   headers.set("X-Session-ID", "019c4da0-fc0b-713c-984e-b2aca339c9aa");
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new Uint8Array([1]));
+      controller.close();
+    },
+  });
 
-  return {
-    ok: true,
+  return new Response(body, {
     status: 200,
     statusText: "OK",
     headers,
-    body: {
-      getReader: () => ({
-        read: vi
-          .fn()
-          .mockResolvedValueOnce({ done: false, value: new Uint8Array([1]) })
-          .mockResolvedValueOnce({ done: true }),
-        releaseLock: vi.fn(),
-      }),
-    },
-  } as unknown as Response;
+  });
 }
 
 function streamResponse(
@@ -101,26 +109,18 @@ function streamResponse(
   headers.set("X-Session-ID", sessionId);
   const bodyText = lines.join("\n");
   const encoded = new TextEncoder().encode(bodyText);
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoded);
+      controller.close();
+    },
+  });
 
-  return {
-    ok: true,
+  return new Response(body, {
     status: 200,
     statusText: "OK",
     headers,
-    body: {
-      getReader: () => {
-        let consumed = false;
-        return {
-          read: vi.fn(async () => {
-            if (consumed) return { done: true, value: undefined };
-            consumed = true;
-            return { done: false, value: encoded };
-          }),
-          releaseLock: vi.fn(),
-        };
-      },
-    },
-  } as unknown as Response;
+  });
 }
 
 describe("useChat", () => {
@@ -135,8 +135,8 @@ describe("useChat", () => {
       value: { writeText: mockWriteText },
       configurable: true,
     });
-    mockChatFn = vi.fn();
-    mockClient = { chat: mockChatFn } as unknown as SaktiCodeApiClient;
+    mockClient = new SaktiCodeApiClient({ baseUrl: "http://localhost:3000", token: "test-token" });
+    mockChatFn = vi.spyOn(mockClient, "chat");
     mockGetBySession.mockReturnValue([]);
     mockGetById.mockImplementation((id: string) => messagesById.get(id));
     mockGetByMessage.mockReturnValue([]);
@@ -349,13 +349,9 @@ describe("useChat", () => {
   it("does not fail when server omits X-Session-ID for new session", async () => {
     const { useChat } = await import("@/core/chat/hooks");
     const responseWithoutHeader = {
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      headers: new Headers(),
-      body: null,
-    } as unknown as Response;
-    mockChatFn.mockResolvedValue(responseWithoutHeader);
+      response: new Response(null, { status: 200, headers: new Headers() }),
+    };
+    mockChatFn.mockResolvedValue(responseWithoutHeader.response);
 
     await createRoot(async dispose => {
       const onError = vi.fn();
@@ -380,13 +376,7 @@ describe("useChat", () => {
     mockSessionGetByDirectory.mockReturnValue([
       { sessionID: discoveredSessionId, directory: "/repo" },
     ]);
-    mockChatFn.mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      headers: new Headers(),
-      body: null,
-    } as unknown as Response);
+    mockChatFn.mockResolvedValue(new Response(null, { status: 200, headers: new Headers() }));
 
     await createRoot(async dispose => {
       const onSessionIdReceived = vi.fn();

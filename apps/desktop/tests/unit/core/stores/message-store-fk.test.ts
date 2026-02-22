@@ -4,14 +4,23 @@
  * Tests for referential integrity between sessions, messages, and parts.
  */
 
+import { createMessageStore, type MessageWithId } from "@/core/state/stores/message-store";
+import { createPartStore } from "@/core/state/stores/part-store";
+import { createSessionStore } from "@/core/state/stores/session-store";
 import { describe, expect, it } from "vitest";
-import {
-  createMessageStore,
-  type MessageWithId,
-} from "../../../../src/core/state/stores/message-store";
-import { createPartStore } from "../../../../src/core/state/stores/part-store";
-import { createSessionStore } from "../../../../src/core/state/stores/session-store";
 import { validateStoreIntegrity } from "../../../fixtures/data-integrity";
+
+function toIntegrityMessageState(messageState: ReturnType<typeof createMessageStore>[0]) {
+  const byId: Record<string, { sessionID?: string }> = {};
+  for (const [id, message] of Object.entries(messageState.byId)) {
+    const candidate = (message as { sessionID?: unknown }).sessionID;
+    byId[id] = { sessionID: typeof candidate === "string" ? candidate : undefined };
+  }
+  return {
+    byId,
+    bySession: messageState.bySession,
+  };
+}
 
 describe("MessageStore - Foreign Key Validation", () => {
   describe("Session Validation", () => {
@@ -28,9 +37,10 @@ describe("MessageStore - Foreign Key Validation", () => {
 
       // Should throw error
       expect(() => {
+        const sessionId = message.sessionID as string;
         // This will be implemented with FK validation
-        if (!sessionActions.getById(message.sessionID!)) {
-          throw new Error(`Cannot add message: session ${message.sessionID} not found`);
+        if (!sessionActions.getById(sessionId)) {
+          throw new Error(`Cannot add message: session ${sessionId} not found`);
         }
         messageActions.upsert(message);
       }).toThrow("session non-existent-session not found");
@@ -120,7 +130,7 @@ describe("MessageStore - Foreign Key Validation", () => {
       // Messages should be removed
       const report = validateStoreIntegrity({
         session: sessionState,
-        message: messageState,
+        message: toIntegrityMessageState(messageState),
         part: { byId: {}, byMessage: {} },
       });
 
@@ -142,7 +152,7 @@ describe("MessageStore - Foreign Key Validation", () => {
       // Validate should detect orphan
       const report = validateStoreIntegrity({
         session: sessionState,
-        message: messageState,
+        message: toIntegrityMessageState(messageState),
         part: { byId: {}, byMessage: {} },
       });
 
@@ -169,7 +179,7 @@ describe("MessageStore - Foreign Key Validation", () => {
       // Validate - should be no orphans
       const report = validateStoreIntegrity({
         session: sessionState,
-        message: messageState,
+        message: toIntegrityMessageState(messageState),
         part: { byId: {}, byMessage: {} },
       });
 
@@ -320,7 +330,7 @@ describe("MessageStore - Foreign Key Validation", () => {
       // Verify parts removed
       const report = validateStoreIntegrity({
         session: sessionState,
-        message: messageState,
+        message: toIntegrityMessageState(messageState),
         part: partState,
       });
 
@@ -372,7 +382,7 @@ describe("MessageStore - Foreign Key Validation", () => {
       // Validate
       const report = validateStoreIntegrity({
         session: sessionState,
-        message: messageState,
+        message: toIntegrityMessageState(messageState),
         part: partState,
       });
 

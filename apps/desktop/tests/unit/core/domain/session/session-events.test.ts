@@ -8,9 +8,10 @@ import {
   handleSessionStatus,
   handleSessionUpdated,
 } from "@/core/chat/domain/session-events";
-import type { MessageActions } from "@/core/state/stores/message-store";
+import type { MessageActions, MessageWithId } from "@/core/state/stores/message-store";
 import type { PartActions } from "@/core/state/stores/part-store";
-import type { SessionActions } from "@/core/state/stores/session-store";
+import type { SessionActions, SessionInfo } from "@/core/state/stores/session-store";
+import type { Part } from "@sakti-code/shared/event-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("Session Event Handlers", () => {
@@ -21,25 +22,30 @@ describe("Session Event Handlers", () => {
   beforeEach(() => {
     mockSessionActions = {
       upsert: vi.fn(),
+      remove: vi.fn(),
       setStatus: vi.fn(),
       getByDirectory: vi.fn(),
       getById: vi.fn(),
       getStatus: vi.fn(),
-    } as unknown as SessionActions;
+      _setOnDelete: vi.fn(),
+    };
 
     mockMessageActions = {
       upsert: vi.fn(),
       remove: vi.fn(),
       getBySession: vi.fn(),
       getById: vi.fn(),
-    } as unknown as MessageActions;
+      _setSessionValidator: vi.fn(),
+      _setOnDelete: vi.fn(),
+    };
 
     mockPartActions = {
       upsert: vi.fn(),
       remove: vi.fn(),
       getByMessage: vi.fn(),
       getById: vi.fn(),
-    } as unknown as PartActions;
+      _setMessageValidator: vi.fn(),
+    };
   });
 
   describe("handleSessionCreated", () => {
@@ -71,7 +77,7 @@ describe("Session Event Handlers", () => {
         type: "session.updated" as const,
         properties: {
           sessionID: "sess-1",
-          status: "running",
+          status: "running" as const,
         },
       };
 
@@ -91,7 +97,7 @@ describe("Session Event Handlers", () => {
         type: "session.status" as const,
         properties: {
           sessionID: "sess-1",
-          status: { type: "busy" },
+          status: { type: "busy" as const },
         },
       };
 
@@ -112,7 +118,7 @@ describe("Session Event Handlers", () => {
         properties: {
           sessionID: "sess-1",
           status: {
-            type: "retry",
+            type: "retry" as const,
             attempt: 3,
             message: "Retrying...",
             next: 5000,
@@ -137,26 +143,26 @@ describe("Session Event Handlers", () => {
 
   describe("handleServerInstanceDisposed", () => {
     it("removes all messages and parts for directory sessions", () => {
-      const mockSessions = [
+      const mockSessions: SessionInfo[] = [
         { sessionID: "sess-1", directory: "/path" },
         { sessionID: "sess-2", directory: "/path" },
       ];
-      const mockMessages1 = [{ id: "msg-1", sessionID: "sess-1" }];
-      const mockMessages2 = [{ id: "msg-2", sessionID: "sess-2" }];
-      const mockParts1 = [{ id: "part-1" }];
-      const mockParts2 = [{ id: "part-2" }];
+      const mockMessages1: MessageWithId[] = [
+        { id: "msg-1", sessionID: "sess-1", role: "assistant" },
+      ];
+      const mockMessages2: MessageWithId[] = [
+        { id: "msg-2", sessionID: "sess-2", role: "assistant" },
+      ];
+      const mockParts1: Part[] = [{ id: "part-1", messageID: "msg-1", type: "text" }];
+      const mockParts2: Part[] = [{ id: "part-2", messageID: "msg-2", type: "text" }];
 
       vi.mocked(mockSessionActions.getByDirectory).mockReturnValue(mockSessions);
       vi.mocked(mockMessageActions.getBySession)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .mockReturnValueOnce(mockMessages1 as any)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .mockReturnValueOnce(mockMessages2 as any);
+        .mockReturnValueOnce(mockMessages1)
+        .mockReturnValueOnce(mockMessages2);
       vi.mocked(mockPartActions.getByMessage)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .mockReturnValueOnce(mockParts1 as any)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .mockReturnValueOnce(mockParts2 as any);
+        .mockReturnValueOnce(mockParts1)
+        .mockReturnValueOnce(mockParts2);
 
       const event = {
         type: "server.instance.disposed" as const,

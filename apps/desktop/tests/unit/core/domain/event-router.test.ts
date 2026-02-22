@@ -6,8 +6,21 @@ import { createEventRouter } from "@/core/chat/domain/event-router";
 import type { MessageActions } from "@/core/state/stores/message-store";
 import type { PartActions } from "@/core/state/stores/part-store";
 import type { SessionActions } from "@/core/state/stores/session-store";
-import type { AllServerEvents } from "@sakti-code/shared/event-types";
+import type { AllServerEvents, EventType } from "@sakti-code/shared/event-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+function mkEvent<T extends EventType>(
+  type: T,
+  properties: Extract<AllServerEvents, { type: T }>["properties"]
+): Extract<AllServerEvents, { type: T }> {
+  return {
+    type,
+    properties,
+    eventId: `evt-${type}-${Date.now()}`,
+    sequence: 1,
+    timestamp: Date.now(),
+  } as Extract<AllServerEvents, { type: T }>;
+}
 
 describe("Event Router", () => {
   let mockMessageActions: MessageActions;
@@ -21,14 +34,17 @@ describe("Event Router", () => {
       remove: vi.fn(),
       getBySession: vi.fn(),
       getById: vi.fn(),
-    } as unknown as MessageActions;
+      _setSessionValidator: vi.fn(),
+      _setOnDelete: vi.fn(),
+    };
 
     mockPartActions = {
       upsert: vi.fn(),
       remove: vi.fn(),
       getByMessage: vi.fn(),
       getById: vi.fn(),
-    } as unknown as PartActions;
+      _setMessageValidator: vi.fn(),
+    };
 
     mockSessionActions = {
       upsert: vi.fn(),
@@ -36,7 +52,9 @@ describe("Event Router", () => {
       getByDirectory: vi.fn(),
       getById: vi.fn(),
       getStatus: vi.fn(),
-    } as unknown as SessionActions;
+      remove: vi.fn(),
+      _setOnDelete: vi.fn(),
+    };
 
     router = createEventRouter({
       messageActions: mockMessageActions,
@@ -47,12 +65,9 @@ describe("Event Router", () => {
 
   describe("handle", () => {
     it("routes message.updated to message handler", () => {
-      const event: AllServerEvents = {
-        type: "message.updated",
-        properties: {
-          info: { id: "msg-1", role: "assistant", sessionID: "sess-1" },
-        },
-      };
+      const event = mkEvent("message.updated", {
+        info: { id: "msg-1", role: "assistant", sessionID: "sess-1" },
+      });
 
       router.handle(event);
 
@@ -64,12 +79,9 @@ describe("Event Router", () => {
     });
 
     it("routes message.part.updated to part handler", () => {
-      const event: AllServerEvents = {
-        type: "message.part.updated",
-        properties: {
-          part: { type: "text", id: "part-1", messageID: "msg-1" },
-        },
-      };
+      const event = mkEvent("message.part.updated", {
+        part: { type: "text", id: "part-1", messageID: "msg-1" },
+      });
 
       router.handle(event);
 
@@ -81,13 +93,10 @@ describe("Event Router", () => {
     });
 
     it("routes session.created to session handler", () => {
-      const event: AllServerEvents = {
-        type: "session.created",
-        properties: {
-          sessionID: "sess-1",
-          directory: "/path",
-        },
-      };
+      const event = mkEvent("session.created", {
+        sessionID: "sess-1",
+        directory: "/path",
+      });
 
       router.handle(event);
 
@@ -98,10 +107,7 @@ describe("Event Router", () => {
     });
 
     it("ignores server.connected event", () => {
-      const event: AllServerEvents = {
-        type: "server.connected",
-        properties: {},
-      };
+      const event = mkEvent("server.connected", {});
 
       router.handle(event);
 
@@ -112,12 +118,9 @@ describe("Event Router", () => {
 
     it("handles errors gracefully", () => {
       const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-      const event: AllServerEvents = {
-        type: "message.updated",
-        properties: {
-          info: { id: "msg-1", role: "assistant" },
-        },
-      };
+      const event = mkEvent("message.updated", {
+        info: { id: "msg-1", role: "assistant" },
+      });
 
       // Make upsert throw an error
       vi.mocked(mockMessageActions.upsert).mockImplementationOnce(() => {
@@ -138,22 +141,13 @@ describe("Event Router", () => {
   describe("handleBatch", () => {
     it("handles multiple events with batching", () => {
       const events: AllServerEvents[] = [
-        {
-          type: "session.created",
-          properties: { sessionID: "sess-1", directory: "/path" },
-        },
-        {
-          type: "message.updated",
-          properties: {
-            info: { id: "msg-1", role: "assistant", sessionID: "sess-1" },
-          },
-        },
-        {
-          type: "message.part.updated",
-          properties: {
-            part: { type: "text", id: "part-1", messageID: "msg-1" },
-          },
-        },
+        mkEvent("session.created", { sessionID: "sess-1", directory: "/path" }),
+        mkEvent("message.updated", {
+          info: { id: "msg-1", role: "assistant", sessionID: "sess-1" },
+        }),
+        mkEvent("message.part.updated", {
+          part: { type: "text", id: "part-1", messageID: "msg-1" },
+        }),
       ];
 
       router.handleBatch(events);

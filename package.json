@@ -13,6 +13,7 @@
     "test": "pnpm -r --if-present test",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "typecheck:test": "turbo run typecheck:test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"

@@ -7,8 +7,8 @@ import {
 } from "@/core/state/providers/store-provider";
 import { MessageTimeline } from "@/views/workspace-view/chat-area/timeline/message-timeline";
 import type { EventOrderingFixture } from "@sakti-code/shared";
+import { render } from "@solidjs/testing-library";
 import { Show, createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import recordedFixtures from "../fixtures/recorded/event-ordering.from-log.json";
 import { applyFixture, extractStoreActions } from "../helpers/fixture-loader";
@@ -54,13 +54,13 @@ describe("Integration: Chat Area Parity (Recorded Fixture)", () => {
       );
     }
 
-    const dispose = render(
+    const { unmount: dispose } = render(
       () => (
         <TestProviders>
           <TestApp />
         </TestProviders>
       ),
-      container
+      { container }
     );
 
     await applyFixture(fixture, extractStoreActions(storeContext!));
@@ -104,13 +104,13 @@ describe("Integration: Chat Area Parity (Recorded Fixture)", () => {
       );
     }
 
-    const dispose = render(
+    const { unmount: dispose } = render(
       () => (
         <TestProviders>
           <TestApp />
         </TestProviders>
       ),
-      container
+      { container }
     );
 
     const actions = extractStoreActions(storeContext!);
@@ -157,13 +157,13 @@ describe("Integration: Chat Area Parity (Recorded Fixture)", () => {
       );
     }
 
-    const dispose = render(
+    const { unmount: dispose } = render(
       () => (
         <TestProviders>
           <TestApp />
         </TestProviders>
       ),
-      container
+      { container }
     );
 
     const actions = extractStoreActions(storeContext!);

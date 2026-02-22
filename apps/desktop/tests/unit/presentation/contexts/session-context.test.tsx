@@ -1,6 +1,6 @@
 import { SessionProvider, useSession } from "@/core/state/contexts";
 import { StoreProvider, useSessionStore } from "@/core/state/providers/store-provider";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 let sessionContext: ReturnType<typeof useSession> | null = null;
@@ -16,16 +16,13 @@ function Probe() {
 function mountProviders() {
   const container = document.createElement("div");
   document.body.appendChild(container);
-  const dispose = render(
-    () => (
-      <StoreProvider>
-        <SessionProvider>
-          <Probe />
-        </SessionProvider>
-      </StoreProvider>
-    ),
-    container
-  );
+  const { unmount: dispose } = render(() => (
+    <StoreProvider>
+      <SessionProvider>
+        <Probe />
+      </SessionProvider>
+    </StoreProvider>
+  ));
   cleanup = () => {
     dispose();
     container.remove();

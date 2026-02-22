@@ -2,7 +2,7 @@ import {
   PermissionPartWithCallbacks,
   type PermissionPartData,
 } from "@/views/workspace-view/chat-area/parts/permission-part";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createApprovedPermissionRequest,
@@ -41,7 +41,9 @@ describe("PermissionPart", () => {
     const request = createPendingPermissionRequest({ toolName: "bash" });
     const part = createPermissionPartData(request);
 
-    dispose = render(() => <PermissionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <PermissionPartWithCallbacks part={part} />, {
+      container,
+    }));
 
     expect(container.textContent).toContain("Permission: bash");
   });
@@ -52,7 +54,9 @@ describe("PermissionPart", () => {
     });
     const part = createPermissionPartData(request);
 
-    dispose = render(() => <PermissionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <PermissionPartWithCallbacks part={part} />, {
+      container,
+    }));
 
     expect(container.textContent).toContain("Run build command");
   });
@@ -61,7 +65,9 @@ describe("PermissionPart", () => {
     const request = createPendingPermissionRequest();
     const part = createPermissionPartData(request);
 
-    dispose = render(() => <PermissionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <PermissionPartWithCallbacks part={part} />, {
+      container,
+    }));
 
     const permPart = container.querySelector('[data-component="permission-part"]');
     expect(permPart?.getAttribute("data-status")).toBe("pending");
@@ -74,7 +80,9 @@ describe("PermissionPart", () => {
     const request = createPendingPermissionRequest();
     const part = createPermissionPartData(request);
 
-    dispose = render(() => <PermissionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <PermissionPartWithCallbacks part={part} />, {
+      container,
+    }));
 
     const approveBtn = container.querySelector('[data-action="approve-once"]');
     const approveAlwaysBtn = container.querySelector('[data-action="approve-always"]');
@@ -90,10 +98,10 @@ describe("PermissionPart", () => {
     const request = createApprovedPermissionRequest();
     const part = createPermissionPartData(request);
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <PermissionPartWithCallbacks part={part} defaultOpen={true} />,
-      container
-    );
+      { container }
+    ));
 
     const permPart = container.querySelector('[data-component="permission-part"]');
     expect(permPart?.getAttribute("data-status")).toBe("approved");
@@ -107,10 +115,10 @@ describe("PermissionPart", () => {
     const request = createDeniedPermissionRequest();
     const part = createPermissionPartData(request);
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <PermissionPartWithCallbacks part={part} defaultOpen={true} />,
-      container
-    );
+      { container }
+    ));
 
     const permPart = container.querySelector('[data-component="permission-part"]');
     expect(permPart?.getAttribute("data-status")).toBe("denied");
@@ -124,7 +132,9 @@ describe("PermissionPart", () => {
     const request = createApprovedPermissionRequest();
     const part = createPermissionPartData(request);
 
-    dispose = render(() => <PermissionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <PermissionPartWithCallbacks part={part} />, {
+      container,
+    }));
 
     const actions = container.querySelector('[data-slot="permission-actions"]');
     expect(actions).toBeNull();
@@ -134,7 +144,9 @@ describe("PermissionPart", () => {
     const request = createPendingPermissionRequest();
     const part = createPermissionPartData(request);
 
-    dispose = render(() => <PermissionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <PermissionPartWithCallbacks part={part} />, {
+      container,
+    }));
 
     const permPart = container.querySelector('[data-component="permission-part"]');
     expect(permPart).not.toBeNull();
@@ -144,7 +156,9 @@ describe("PermissionPart", () => {
     const request = createDeniedPermissionRequest();
     const part = createPermissionPartData(request);
 
-    dispose = render(() => <PermissionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <PermissionPartWithCallbacks part={part} />, {
+      container,
+    }));
 
     const permPart = container.querySelector('[data-component="permission-part"]');
     expect(permPart?.getAttribute("data-status")).toBe("denied");
@@ -154,10 +168,10 @@ describe("PermissionPart", () => {
     const request = createPendingPermissionRequest();
     const part = createPermissionPartData(request);
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => <PermissionPartWithCallbacks part={part} class="custom-permission" />,
-      container
-    );
+      { container }
+    ));
 
     const permPart = container.querySelector('[data-component="permission-part"]');
     expect(permPart?.classList.contains("custom-permission")).toBe(true);
@@ -167,7 +181,9 @@ describe("PermissionPart", () => {
     const request = createApprovedPermissionRequest();
     const part = createPermissionPartData(request);
 
-    dispose = render(() => <PermissionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <PermissionPartWithCallbacks part={part} />, {
+      container,
+    }));
 
     const basicTool = container.querySelector('[data-component="basic-tool"]');
     expect(basicTool?.getAttribute("data-status")).toBe("completed");
@@ -177,7 +193,9 @@ describe("PermissionPart", () => {
     const request = createDeniedPermissionRequest();
     const part = createPermissionPartData(request);
 
-    dispose = render(() => <PermissionPartWithCallbacks part={part} />, container);
+    ({ unmount: dispose } = render(() => <PermissionPartWithCallbacks part={part} />, {
+      container,
+    }));
 
     const basicTool = container.querySelector('[data-component="basic-tool"]');
     expect(basicTool?.getAttribute("data-status")).toBe("error");
@@ -186,7 +204,9 @@ describe("PermissionPart", () => {
   it("returns null for invalid part type", () => {
     const invalidPart = { type: "invalid" };
 
-    dispose = render(() => <PermissionPartWithCallbacks part={invalidPart} />, container);
+    ({ unmount: dispose } = render(() => <PermissionPartWithCallbacks part={invalidPart} />, {
+      container,
+    }));
 
     const permPart = container.querySelector('[data-component="permission-part"]');
     expect(permPart).toBeNull();
@@ -203,7 +223,9 @@ describe("PermissionPart", () => {
     });
     const canonicalPart = createCanonicalPermissionPart(request, { id: "part-1" });
 
-    dispose = render(() => <PermissionPartWithCallbacks part={canonicalPart} />, container);
+    ({ unmount: dispose } = render(() => <PermissionPartWithCallbacks part={canonicalPart} />, {
+      container,
+    }));
 
     expect(container.textContent).toContain("Permission: bash");
     expect(container.querySelector('[data-action="approve-once"]')).toBeNull();

@@ -19,14 +19,17 @@ describe("Message Event Handlers", () => {
       remove: vi.fn(),
       getBySession: vi.fn(),
       getById: vi.fn(),
-    } as unknown as MessageActions;
+      _setSessionValidator: vi.fn(),
+      _setOnDelete: vi.fn(),
+    };
 
     mockPartActions = {
       upsert: vi.fn(),
       remove: vi.fn(),
       getByMessage: vi.fn(),
       getById: vi.fn(),
-    } as unknown as PartActions;
+      _setMessageValidator: vi.fn(),
+    };
 
     mockSessionActions = {
       upsert: vi.fn(),
@@ -34,7 +37,9 @@ describe("Message Event Handlers", () => {
       getByDirectory: vi.fn(),
       getById: vi.fn(),
       getStatus: vi.fn(),
-    } as unknown as SessionActions;
+      remove: vi.fn(),
+      _setOnDelete: vi.fn(),
+    };
   });
 
   describe("handleMessageUpdated", () => {
@@ -44,7 +49,7 @@ describe("Message Event Handlers", () => {
         properties: {
           info: {
             id: "msg-1",
-            role: "assistant",
+            role: "assistant" as const,
             sessionID: "sess-1",
           },
         },
@@ -69,7 +74,7 @@ describe("Message Event Handlers", () => {
         type: "message.updated" as const,
         properties: {
           info: {
-            role: "assistant",
+            role: "assistant" as const,
           },
         },
       };

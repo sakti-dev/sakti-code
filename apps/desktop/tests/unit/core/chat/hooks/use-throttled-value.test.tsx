@@ -1,6 +1,6 @@
 import { useThrottledValue } from "@/core/chat/hooks/use-throttled-value";
+import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("useThrottledValue", () => {
@@ -27,7 +27,7 @@ describe("useThrottledValue", () => {
       return <span data-testid="value">{throttled()}</span>;
     };
 
-    dispose = render(() => <TestComponent />, container);
+    ({ unmount: dispose } = render(() => <TestComponent />, { container }));
 
     expect(container.textContent).toBe("initial");
   });
@@ -40,7 +40,7 @@ describe("useThrottledValue", () => {
       return <span data-testid="value">{throttled()}</span>;
     };
 
-    dispose = render(() => <TestComponent />, container);
+    ({ unmount: dispose } = render(() => <TestComponent />, { container }));
 
     expect(container.textContent).toBe("initial");
 
@@ -69,7 +69,7 @@ describe("useThrottledValue", () => {
       return <span data-testid="value">{throttled()}</span>;
     };
 
-    dispose = render(() => <TestComponent />, container);
+    ({ unmount: dispose } = render(() => <TestComponent />, { container }));
 
     expect(container.textContent).toBe("initial");
 
@@ -92,7 +92,7 @@ describe("useThrottledValue", () => {
       return <span data-testid="value">{throttled()}</span>;
     };
 
-    dispose = render(() => <TestComponent />, container);
+    ({ unmount: dispose } = render(() => <TestComponent />, { container }));
 
     expect(container.textContent).toBe("initial");
     setValue("updated");
@@ -107,7 +107,7 @@ describe("useThrottledValue", () => {
       return <span data-testid="value">{throttled()}</span>;
     };
 
-    dispose = render(() => <TestComponent />, container);
+    ({ unmount: dispose } = render(() => <TestComponent />, { container }));
 
     expect(container.textContent).toBe("0");
 
@@ -125,7 +125,7 @@ describe("useThrottledValue", () => {
       return <span data-testid="value">{throttled()}</span>;
     };
 
-    dispose = render(() => <TestComponent />, container);
+    ({ unmount: dispose } = render(() => <TestComponent />, { container }));
     setValue("updated");
 
     // Dispose before timeout fires

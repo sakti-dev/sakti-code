@@ -7,8 +7,8 @@ import {
 } from "@/core/state/providers/store-provider";
 import { MessageTimeline } from "@/views/workspace-view/chat-area/timeline/message-timeline";
 import type { EventOrderingFixture } from "@sakti-code/shared";
+import { render } from "@solidjs/testing-library";
 import { Show, createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyFixture, extractStoreActions } from "../helpers/fixture-loader";
 import { TestProviders } from "../helpers/test-providers";
@@ -225,13 +225,13 @@ describe("Integration: Chat Retry Replay", () => {
       );
     }
 
-    const dispose = render(
+    const { unmount: dispose } = render(
       () => (
         <TestProviders>
           <TestApp />
         </TestProviders>
       ),
-      container
+      { container }
     );
 
     await applyFixture(fixture, extractStoreActions(storeContext!));

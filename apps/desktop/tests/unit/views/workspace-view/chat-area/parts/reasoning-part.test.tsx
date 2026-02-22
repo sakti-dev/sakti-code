@@ -1,6 +1,6 @@
 import { ReasoningPart } from "@/views/workspace-view/chat-area/parts/reasoning-part";
+import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("ReasoningPart", () => {
@@ -23,7 +23,7 @@ describe("ReasoningPart", () => {
       text: "Let me think about this step by step...",
     };
 
-    dispose = render(() => <ReasoningPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ReasoningPart part={part} />, { container }));
 
     // Wait for async rendering
     await vi.waitFor(() => {
@@ -38,7 +38,7 @@ describe("ReasoningPart", () => {
       text: "",
     };
 
-    dispose = render(() => <ReasoningPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ReasoningPart part={part} />, { container }));
 
     const reasoningPart = container.querySelector('[data-component="reasoning-part"]');
     expect(reasoningPart).toBeNull();
@@ -50,7 +50,7 @@ describe("ReasoningPart", () => {
       text: "   ",
     };
 
-    dispose = render(() => <ReasoningPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ReasoningPart part={part} />, { container }));
 
     const reasoningPart = container.querySelector('[data-component="reasoning-part"]');
     expect(reasoningPart).toBeNull();
@@ -64,7 +64,9 @@ describe("ReasoningPart", () => {
       text: "Initial thought",
     });
 
-    dispose = render(() => <ReasoningPart part={part()} isStreaming={true} />, container);
+    ({ unmount: dispose } = render(() => <ReasoningPart part={part()} isStreaming={true} />, {
+      container,
+    }));
 
     // Wait for initial render
     await vi.waitFor(() => {
@@ -94,7 +96,9 @@ describe("ReasoningPart", () => {
       text: "Streaming thought",
     };
 
-    dispose = render(() => <ReasoningPart part={part} isStreaming={true} />, container);
+    ({ unmount: dispose } = render(() => <ReasoningPart part={part} isStreaming={true} />, {
+      container,
+    }));
 
     await vi.waitFor(() => {
       expect(container.textContent).toContain("Streaming thought");
@@ -112,7 +116,7 @@ describe("ReasoningPart", () => {
       text: "Thinking out loud",
     };
 
-    dispose = render(() => <ReasoningPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ReasoningPart part={part} />, { container }));
 
     // Wait for render
     await vi.waitFor(() => {
@@ -130,7 +134,7 @@ describe("ReasoningPart", () => {
       text: "Some reasoning",
     };
 
-    dispose = render(() => <ReasoningPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ReasoningPart part={part} />, { container }));
 
     await vi.waitFor(() => {
       const reasoningPart = container.querySelector('[data-component="reasoning-part"]');
@@ -144,7 +148,9 @@ describe("ReasoningPart", () => {
       text: "Some reasoning",
     };
 
-    dispose = render(() => <ReasoningPart part={part} class="custom-class" />, container);
+    ({ unmount: dispose } = render(() => <ReasoningPart part={part} class="custom-class" />, {
+      container,
+    }));
 
     await vi.waitFor(() => {
       const reasoningPart = container.querySelector('[data-component="reasoning-part"]');
@@ -158,7 +164,7 @@ describe("ReasoningPart", () => {
       text: "Some reasoning",
     };
 
-    dispose = render(() => <ReasoningPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ReasoningPart part={part} />, { container }));
 
     expect(container.querySelector('[data-slot="reasoning-trigger"]')).toBeNull();
     expect(container.textContent).not.toContain("Thinking");

@@ -1,4 +1,4 @@
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("KeyboardShortcutsFooter", () => {
@@ -16,15 +16,14 @@ describe("KeyboardShortcutsFooter", () => {
   });
 
   it("should render keyboard shortcuts text", () => {
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <div class="keyboard-shortcuts-footer">
           <span>⌘1-9 to open workspaces • ⌘K to search • ⌘N for new workspace</span>
         </div>
       ),
-      container
-    );
-
+      { container }
+    ));
     expect(container.textContent).toContain("⌘1-9");
     expect(container.textContent).toContain("⌘K");
     expect(container.textContent).toContain("⌘N");

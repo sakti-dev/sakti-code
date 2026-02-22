@@ -1,6 +1,6 @@
 import { ChatInput } from "@/views/workspace-view/chat-area/input/chat-input";
+import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("ChatInput", () => {
@@ -18,7 +18,9 @@ describe("ChatInput", () => {
   });
 
   it("renders with placeholder and character count", () => {
-    dispose = render(() => <ChatInput placeholder="Custom placeholder" />, container);
+    ({ unmount: dispose } = render(() => <ChatInput placeholder="Custom placeholder" />, {
+      container,
+    }));
 
     const textarea = container.querySelector("textarea");
     expect(textarea?.getAttribute("placeholder")).toBe("Custom placeholder");
@@ -28,7 +30,9 @@ describe("ChatInput", () => {
   it("calls onValueChange when user types", () => {
     const onValueChange = vi.fn();
 
-    dispose = render(() => <ChatInput onValueChange={onValueChange} />, container);
+    ({ unmount: dispose } = render(() => <ChatInput onValueChange={onValueChange} />, {
+      container,
+    }));
 
     const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
     textarea.value = "Hello";
@@ -40,7 +44,9 @@ describe("ChatInput", () => {
   it("submits on Enter without Shift", () => {
     const onSend = vi.fn();
 
-    dispose = render(() => <ChatInput value="Hello" onSend={onSend} />, container);
+    ({ unmount: dispose } = render(() => <ChatInput value="Hello" onSend={onSend} />, {
+      container,
+    }));
 
     const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
     textarea.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
@@ -51,20 +57,24 @@ describe("ChatInput", () => {
   it("does not submit on Shift+Enter", () => {
     const onSend = vi.fn();
 
-    dispose = render(() => <ChatInput value="Hello" onSend={onSend} />, container);
+    ({ unmount: dispose } = render(() => <ChatInput value="Hello" onSend={onSend} />, {
+      container,
+    }));
 
     const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
     textarea.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Enter", shiftKey: true, bubbles: true })
     );
-
     expect(onSend).not.toHaveBeenCalled();
   });
 
   it("disables send action while isSending is true", () => {
     const onSend = vi.fn();
 
-    dispose = render(() => <ChatInput value="Hello" onSend={onSend} isSending={true} />, container);
+    ({ unmount: dispose } = render(
+      () => <ChatInput value="Hello" onSend={onSend} isSending={true} />,
+      { container }
+    ));
 
     const send = container.querySelector('button[aria-label="Send"]') as HTMLButtonElement;
     expect(send.disabled).toBe(true);
@@ -73,7 +83,7 @@ describe("ChatInput", () => {
   });
 
   it("renders pending permission strip above input", () => {
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <ChatInput
           pendingPermission={{
@@ -84,8 +94,8 @@ describe("ChatInput", () => {
           }}
         />
       ),
-      container
-    );
+      { container }
+    ));
 
     const strip = container.querySelector('[data-component="permission-input-strip"]');
     expect(strip).not.toBeNull();
@@ -100,7 +110,7 @@ describe("ChatInput", () => {
     const onApproveAlways = vi.fn();
     const onDeny = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <ChatInput
           pendingPermission={{
@@ -113,8 +123,8 @@ describe("ChatInput", () => {
           onPermissionDeny={onDeny}
         />
       ),
-      container
-    );
+      { container }
+    ));
 
     const approveOnce = container.querySelector(
       'button[data-action="permission-approve-once"]'
@@ -138,7 +148,7 @@ describe("ChatInput", () => {
   it("disables permission actions while resolving", () => {
     const onApproveOnce = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <ChatInput
           pendingPermission={{
@@ -150,8 +160,8 @@ describe("ChatInput", () => {
           isResolvingPermission={true}
         />
       ),
-      container
-    );
+      { container }
+    ));
 
     const approveOnce = container.querySelector(
       'button[data-action="permission-approve-once"]'
@@ -174,7 +184,7 @@ describe("ChatInput", () => {
     const onModeChange = vi.fn();
     const [mode, setMode] = createSignal<"plan" | "build">("plan");
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <ChatInput
           mode={mode()}
@@ -184,8 +194,8 @@ describe("ChatInput", () => {
           }}
         />
       ),
-      container
-    );
+      { container }
+    ));
 
     const toggle = container.querySelector('button[title^="Switch to"]') as HTMLButtonElement;
     toggle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -194,7 +204,7 @@ describe("ChatInput", () => {
   });
 
   it("shows provider-grouped model command center with header and hints", () => {
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <ChatInput
           selectedModel="zai/glm-4.7"
@@ -230,8 +240,8 @@ describe("ChatInput", () => {
           ]}
         />
       ),
-      container
-    );
+      { container }
+    ));
 
     const modelButton = container.querySelector(
       'button[aria-label="Open model selector"]'
@@ -283,7 +293,7 @@ describe("ChatInput", () => {
       return Array.from(map.values());
     });
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <ChatInput
           selectedModel="zai/glm-4.7"
@@ -291,8 +301,8 @@ describe("ChatInput", () => {
           getModelSections={getModelSections}
         />
       ),
-      container
-    );
+      { container }
+    ));
 
     const modelButton = container.querySelector(
       'button[aria-label="Open model selector"]'
@@ -352,7 +362,7 @@ describe("ChatInput", () => {
       return Array.from(map.values());
     });
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <ChatInput
           selectedModel="zai/glm-4.7"
@@ -361,8 +371,8 @@ describe("ChatInput", () => {
           getModelSections={getModelSections}
         />
       ),
-      container
-    );
+      { container }
+    ));
 
     const modelButton = container.querySelector(
       'button[aria-label="Open model selector"]'
@@ -392,7 +402,7 @@ describe("ChatInput", () => {
   it("picks a model via mouse click", () => {
     const onModelChange = vi.fn();
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <ChatInput
           selectedModel="zai/glm-4.7"
@@ -429,8 +439,8 @@ describe("ChatInput", () => {
           ]}
         />
       ),
-      container
-    );
+      { container }
+    ));
 
     const modelButton = container.querySelector(
       'button[aria-label="Open model selector"]'
@@ -456,7 +466,7 @@ describe("ChatInput", () => {
       },
     ]);
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <ChatInput
           selectedModel="zai/glm-4.7"
@@ -466,8 +476,8 @@ describe("ChatInput", () => {
           ]}
         />
       ),
-      container
-    );
+      { container }
+    ));
 
     expect(getModelSections).not.toHaveBeenCalled();
 
@@ -492,7 +502,7 @@ describe("ChatInput", () => {
       ];
     });
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <ChatInput
           getFileSearchResults={getFileSearchResults}
@@ -501,8 +511,8 @@ describe("ChatInput", () => {
           ]}
         />
       ),
-      container
-    );
+      { container }
+    ));
 
     const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
     textarea.value = "@observer";
@@ -536,7 +546,7 @@ describe("ChatInput", () => {
       },
     ]);
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <ChatInput
           onValueChange={onValueChange}
@@ -546,8 +556,8 @@ describe("ChatInput", () => {
           ]}
         />
       ),
-      container
-    );
+      { container }
+    ));
 
     const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
     textarea.value = "@comp";

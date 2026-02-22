@@ -8,6 +8,7 @@
  * @package @sakti-code/desktop/tests
  */
 
+import { clearEventProcessingState } from "@/core/chat/domain/event-router-adapter";
 import {
   useMessageStore,
   usePartStore,
@@ -15,10 +16,9 @@ import {
 } from "@/core/state/providers/store-provider";
 import { allEventOrderingFixtures } from "@sakti-code/shared";
 import type { Part } from "@sakti-code/shared/event-types";
+import { cleanup, render } from "@solidjs/testing-library";
 import { createMemo, createSignal, For } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { clearEventProcessingState } from "../../src/core/chat/domain/event-router-adapter";
 import {
   expectAssistantContentVisible,
   expectTypingIndicatorHidden,
@@ -28,6 +28,8 @@ import {
 } from "../helpers/dom-assertions";
 import { applyFixture, extractStoreActions } from "../helpers/fixture-loader";
 import { TestProviders } from "../helpers/test-providers";
+
+afterEach(cleanup);
 
 describe("Integration: Chat Stream Rendering", () => {
   let container: HTMLDivElement;
@@ -87,7 +89,7 @@ describe("Integration: Chat Stream Rendering", () => {
           <For each={messages()}>
             {msg => (
               <div data-role={msg.role} data-message-id={msg.id} data-testid={`message-${msg.id}`}>
-                <span data-testid="message-content">{msg.content ?? ""}</span>
+                <span data-testid="message-content">{String(msg.content ?? "")}</span>
                 {msg.role === "assistant" && (
                   <div data-testid="assistant-parts">
                     <For each={partActions.getByMessage(msg.id)}>
@@ -139,13 +141,13 @@ describe("Integration: Chat Stream Rendering", () => {
         return <ChatMessageList sessionId={sessionId} />;
       }
 
-      const dispose = render(
+      const view = render(
         () => (
           <TestProviders>
             <TestApp />
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       // Apply fixture events to stores
@@ -160,7 +162,7 @@ describe("Integration: Chat Stream Rendering", () => {
         expectUserMessageVisible(container);
       }
 
-      dispose();
+      view.unmount();
     });
 
     it("renders assistant content when expected", async () => {
@@ -181,13 +183,13 @@ describe("Integration: Chat Stream Rendering", () => {
         return <ChatMessageList sessionId={sessionId} />;
       }
 
-      const dispose = render(
+      const view = render(
         () => (
           <TestProviders>
             <TestApp />
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       const actions = extractStoreActions(storeContext!);
@@ -198,7 +200,7 @@ describe("Integration: Chat Stream Rendering", () => {
         expectAssistantContentVisible(container);
       }
 
-      dispose();
+      view.unmount();
     });
 
     it("typing indicator respects content-priority rule", async () => {
@@ -219,13 +221,13 @@ describe("Integration: Chat Stream Rendering", () => {
         return <ChatMessageList sessionId={sessionId} />;
       }
 
-      const dispose = render(
+      const view = render(
         () => (
           <TestProviders>
             <TestApp />
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       const actions = extractStoreActions(storeContext!);
@@ -238,7 +240,7 @@ describe("Integration: Chat Stream Rendering", () => {
         expectTypingIndicatorHidden(container);
       }
 
-      dispose();
+      view.unmount();
     });
   });
 
@@ -266,13 +268,13 @@ describe("Integration: Chat Stream Rendering", () => {
         return <ChatMessageList sessionId={sessionId} />;
       }
 
-      const dispose = render(
+      const view = render(
         () => (
           <TestProviders>
             <TestApp />
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       const actions = extractStoreActions(storeContext!);
@@ -320,7 +322,7 @@ describe("Integration: Chat Stream Rendering", () => {
       // Should hide typing (content exists)
       expectTypingIndicatorHidden(container);
 
-      dispose();
+      view.unmount();
     });
 
     it("hides typing when tool call content arrives", async () => {
@@ -346,13 +348,13 @@ describe("Integration: Chat Stream Rendering", () => {
         return <ChatMessageList sessionId={sessionId} />;
       }
 
-      const dispose = render(
+      const view = render(
         () => (
           <TestProviders>
             <TestApp />
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       const actions = extractStoreActions(storeContext!);
@@ -402,7 +404,7 @@ describe("Integration: Chat Stream Rendering", () => {
       // Should hide typing (tool call counts as content)
       expectTypingIndicatorHidden(container);
 
-      dispose();
+      view.unmount();
     });
   });
 });

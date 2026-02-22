@@ -66,6 +66,29 @@ module.exports = [
     },
   },
   {
+    files: ["apps/desktop/tests/**/*.ts", "apps/desktop/tests/**/*.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../src/*", "../../src/*", "../../../src/*", "../../../../src/*"],
+              message: "Use @/* aliases in desktop tests; never deep-relative into src.",
+            },
+          ],
+          paths: [
+            {
+              name: "solid-js/web",
+              importNames: ["render"],
+              message: "Use @solidjs/testing-library render for component tests.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["packages/core/**/*.ts", "packages/core/**/*.tsx"],
     rules: {
       "no-restricted-imports": [

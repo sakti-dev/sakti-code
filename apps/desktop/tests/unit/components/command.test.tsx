@@ -8,8 +8,8 @@ import {
   CommandRoot,
   CommandSeparator,
 } from "@/components/ui/command";
+import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("Command primitives", () => {
@@ -30,7 +30,7 @@ describe("Command primitives", () => {
     const onSelect = vi.fn();
     const [query, setQuery] = createSignal("");
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <CommandRoot>
           <CommandInput value={query()} onValueChange={setQuery} />
@@ -45,8 +45,8 @@ describe("Command primitives", () => {
           </CommandList>
         </CommandRoot>
       ),
-      container
-    );
+      { container }
+    ));
 
     const input = container.querySelector('input[role="combobox"]');
     const list = container.querySelector('[role="listbox"]');
@@ -60,14 +60,14 @@ describe("Command primitives", () => {
   });
 
   it("renders command dialog in a fixed overlay portal", () => {
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <CommandDialog open={true}>
           <div>Dialog content</div>
         </CommandDialog>
       ),
-      container
-    );
+      { container }
+    ));
 
     expect(container.querySelector('[data-component="command-dialog-overlay"]')).toBeNull();
     const overlay = document.body.querySelector(
@@ -82,14 +82,14 @@ describe("Command primitives", () => {
     vi.useFakeTimers();
     const [open, setOpen] = createSignal(true);
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <CommandDialog open={open()}>
           <div data-testid="command-dialog-payload">Dialog content</div>
         </CommandDialog>
       ),
-      container
-    );
+      { container }
+    ));
 
     expect(document.body.querySelector('[data-testid="command-dialog-payload"]')).toBeTruthy();
 

@@ -4,7 +4,7 @@ import {
   registerToolRenderer,
   type ToolRendererProps,
 } from "@/views/workspace-view/chat-area/tools/tool-registry";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("ToolPart", () => {
@@ -29,7 +29,7 @@ describe("ToolPart", () => {
       state: { status: "completed" },
     };
 
-    dispose = render(() => <ToolPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ToolPart part={part} />, { container }));
 
     expect(container.textContent).toContain("Read");
   });
@@ -41,7 +41,7 @@ describe("ToolPart", () => {
       state: { status: "running" },
     };
 
-    dispose = render(() => <ToolPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ToolPart part={part} />, { container }));
 
     const basicTool = container.querySelector('[data-component="basic-tool"]');
     expect(basicTool?.getAttribute("data-status")).toBe("running");
@@ -54,7 +54,7 @@ describe("ToolPart", () => {
       state: { status: "error", error: "File not found" },
     };
 
-    dispose = render(() => <ToolPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ToolPart part={part} />, { container }));
 
     const basicTool = container.querySelector('[data-component="basic-tool"]');
     expect(basicTool?.getAttribute("data-status")).toBe("error");
@@ -68,7 +68,9 @@ describe("ToolPart", () => {
       output: "File contents here",
     };
 
-    dispose = render(() => <ToolPart part={part} defaultOpen={true} />, container);
+    ({ unmount: dispose } = render(() => <ToolPart part={part} defaultOpen={true} />, {
+      container,
+    }));
 
     // Wait for content
     const content = container.querySelector('[data-slot="basic-tool-content"]');
@@ -87,7 +89,7 @@ describe("ToolPart", () => {
       state: { status: "completed" },
     };
 
-    dispose = render(() => <ToolPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ToolPart part={part} />, { container }));
 
     const custom = container.querySelector('[data-testid="custom-renderer"]');
     expect(custom).not.toBeNull();
@@ -101,7 +103,7 @@ describe("ToolPart", () => {
       state: { status: "completed" },
     };
 
-    dispose = render(() => <ToolPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ToolPart part={part} />, { container }));
 
     const basicTool = container.querySelector('[data-component="basic-tool"]');
     expect(basicTool).not.toBeNull();
@@ -115,7 +117,7 @@ describe("ToolPart", () => {
       state: { status: "completed" },
     };
 
-    dispose = render(() => <ToolPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ToolPart part={part} />, { container }));
 
     const basicTool = container.querySelector('[data-component="basic-tool"]');
     expect(basicTool?.getAttribute("data-status")).toBe("completed");
@@ -129,7 +131,9 @@ describe("ToolPart", () => {
       output: "command output",
     };
 
-    dispose = render(() => <ToolPart part={part} defaultOpen={true} />, container);
+    ({ unmount: dispose } = render(() => <ToolPart part={part} defaultOpen={true} />, {
+      container,
+    }));
 
     const content = container.querySelector('[data-slot="basic-tool-content"]');
     expect(content?.textContent).toContain("command output");
@@ -143,7 +147,7 @@ describe("ToolPart", () => {
       state: { status: "running" },
     };
 
-    dispose = render(() => <ToolPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ToolPart part={part} />, { container }));
 
     expect(container.textContent).toContain("npm run build");
   });
@@ -155,7 +159,7 @@ describe("ToolPart", () => {
       state: { status: "completed" },
     };
 
-    dispose = render(() => <ToolPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <ToolPart part={part} />, { container }));
 
     const toolPart = container.querySelector('[data-component="tool-part-wrapper"]');
     expect(toolPart).not.toBeNull();
@@ -168,7 +172,9 @@ describe("ToolPart", () => {
       state: { status: "completed" },
     };
 
-    dispose = render(() => <ToolPart part={part} class="custom-class" />, container);
+    ({ unmount: dispose } = render(() => <ToolPart part={part} class="custom-class" />, {
+      container,
+    }));
 
     const toolPart = container.querySelector('[data-component="tool-part-wrapper"]');
     expect(toolPart?.classList.contains("custom-class")).toBe(true);
@@ -181,7 +187,9 @@ describe("ToolPart", () => {
       state: { status: "pending" },
     };
 
-    dispose = render(() => <ToolPart part={part} defaultOpen={true} />, container);
+    ({ unmount: dispose } = render(() => <ToolPart part={part} defaultOpen={true} />, {
+      container,
+    }));
 
     // Content should be locked open
     const basicTool = container.querySelector('[data-component="basic-tool"]');

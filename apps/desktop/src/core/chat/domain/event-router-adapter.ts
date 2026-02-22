@@ -719,13 +719,13 @@ function processEvent(
  * @returns Array of events that were processed (may be empty if queued)
  */
 export async function applyEventToStores(
-  event: ServerEvent,
+  event: ServerEvent<string, Record<string, unknown>>,
   messageActions: MessageActions,
   partActions: PartActions,
   sessionActions: SessionActions,
   permissionActions?: PermissionActions,
   questionActions?: QuestionActions
-): Promise<ServerEvent[]> {
+): Promise<ServerEvent<string, Record<string, unknown>>[]> {
   // Step 1: Comprehensive validation
   const validation = validateEventComprehensive(event);
   if (!validation.valid) {

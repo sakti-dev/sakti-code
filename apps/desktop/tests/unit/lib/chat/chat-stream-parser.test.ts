@@ -6,6 +6,7 @@
  * Batch 3: Stream Processing - WS2 Protocol Ingestion
  */
 
+import { createStreamParser, parseChatStream } from "@/core/chat/services/chat-stream-parser";
 import {
   createMockStreamReader,
   errorFinishFixture,
@@ -21,10 +22,6 @@ import {
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import {
-  createStreamParser,
-  parseChatStream,
-} from "../../../../src/core/chat/services/chat-stream-parser";
 
 const recordedFixtureCandidates = [
   path.resolve(process.cwd(), "tests/fixtures/recorded/chat-stream.from-log.json"),

@@ -1,4 +1,4 @@
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("EmptyState", () => {
@@ -16,7 +16,7 @@ describe("EmptyState", () => {
   });
 
   it("should render title and subtitle", () => {
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <div>
           <div class="empty-state">
@@ -26,15 +26,14 @@ describe("EmptyState", () => {
           </div>
         </div>
       ),
-      container
-    );
-
+      { container }
+    ));
     expect(container.textContent).toContain("No results found");
     expect(container.textContent).toContain("Try a different search term");
   });
 
   it("should show icon when provided", () => {
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <div>
           <div class="empty-state">
@@ -43,9 +42,8 @@ describe("EmptyState", () => {
           </div>
         </div>
       ),
-      container
-    );
-
+      { container }
+    ));
     expect(container.querySelector(".empty-icon")).toBeTruthy();
   });
 });

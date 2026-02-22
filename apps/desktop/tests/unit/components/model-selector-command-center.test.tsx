@@ -1,7 +1,9 @@
 import { ModelSelector, type ModelSelectorSection } from "@/components/model-selector";
+import { cleanup, render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+afterEach(cleanup);
 
 interface SlashCommand {
   id: string;
@@ -14,7 +16,7 @@ interface SlashCommand {
 
 describe("ModelSelector command center", () => {
   let container: HTMLDivElement;
-  let dispose: () => void;
+  let unmount: (() => void) | undefined;
 
   beforeEach(() => {
     container = document.createElement("div");
@@ -22,7 +24,7 @@ describe("ModelSelector command center", () => {
   });
 
   afterEach(() => {
-    dispose?.();
+    unmount?.();
     document.body.removeChild(container);
   });
 
@@ -32,7 +34,7 @@ describe("ModelSelector command center", () => {
       { id: "session.undo", trigger: "undo", title: "Undo", type: "builtin" },
     ];
 
-    dispose = render(
+    const view = render(
       () => (
         <ModelSelector
           open={true}
@@ -46,8 +48,9 @@ describe("ModelSelector command center", () => {
           onSlashCommand={vi.fn()}
         />
       ),
-      container
+      { container }
     );
+    unmount = () => view.unmount();
 
     expect(document.body.textContent).toContain("Commands");
     expect(document.body.textContent).toContain("New Session");
@@ -61,7 +64,7 @@ describe("ModelSelector command center", () => {
       { id: "session.redo", trigger: "redo", title: "Redo", type: "builtin" },
     ];
 
-    dispose = render(
+    const view = render(
       () => (
         <ModelSelector
           open={true}
@@ -76,8 +79,9 @@ describe("ModelSelector command center", () => {
           searchQuery="undo"
         />
       ),
-      container
+      { container }
     );
+    unmount = () => view.unmount();
 
     expect(document.body.textContent).toContain("Undo");
     expect(document.body.textContent).not.toContain("New Session");
@@ -90,7 +94,7 @@ describe("ModelSelector command center", () => {
       { id: "session.new", trigger: "new", title: "New Session", type: "builtin" },
     ];
 
-    dispose = render(
+    const view = render(
       () => (
         <ModelSelector
           open={true}
@@ -104,8 +108,9 @@ describe("ModelSelector command center", () => {
           onSlashCommand={onSlashCommand}
         />
       ),
-      container
+      { container }
     );
+    unmount = () => view.unmount();
 
     const input = document.body.querySelector('input[aria-label="Search models"]');
     input?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
@@ -124,7 +129,7 @@ describe("ModelSelector command center", () => {
       },
     ];
 
-    dispose = render(
+    const view = render(
       () => (
         <ModelSelector
           open={true}
@@ -138,8 +143,9 @@ describe("ModelSelector command center", () => {
           onSlashCommand={vi.fn()}
         />
       ),
-      container
+      { container }
     );
+    unmount = () => view.unmount();
 
     expect(document.body.textContent).toContain("mod+shift+s");
   });
@@ -149,7 +155,7 @@ describe("ModelSelector command center", () => {
       { id: "session.new", trigger: "new", title: "New Session", type: "builtin" },
     ];
 
-    dispose = render(
+    const view = render(
       () => (
         <ModelSelector
           open={true}
@@ -163,8 +169,9 @@ describe("ModelSelector command center", () => {
           onSlashCommand={vi.fn()}
         />
       ),
-      container
+      { container }
     );
+    unmount = () => view.unmount();
 
     expect(document.body.textContent).toContain("/new");
   });
@@ -184,7 +191,7 @@ describe("ModelSelector command center", () => {
       },
     ];
 
-    dispose = render(
+    const view = render(
       () => (
         <ModelSelector
           open={true}
@@ -197,8 +204,9 @@ describe("ModelSelector command center", () => {
           onSelect={vi.fn()}
         />
       ),
-      container
+      { container }
     );
+    unmount = () => view.unmount();
 
     const options = document.body.querySelectorAll('[role="option"]');
     expect(options.length).toBeGreaterThan(0);
@@ -221,7 +229,7 @@ describe("ModelSelector command center", () => {
       },
     ];
 
-    dispose = render(
+    const view = render(
       () => (
         <ModelSelector
           open={true}
@@ -234,8 +242,9 @@ describe("ModelSelector command center", () => {
           onSelect={vi.fn()}
         />
       ),
-      container
+      { container }
     );
+    unmount = () => view.unmount();
 
     expect(document.body.textContent).toContain("Z.AI");
   });
@@ -243,7 +252,7 @@ describe("ModelSelector command center", () => {
   it("renders directory context results with trailing slash", () => {
     const onFileSelect = vi.fn();
 
-    dispose = render(
+    const view = render(
       () => (
         <ModelSelector
           open={true}
@@ -261,8 +270,9 @@ describe("ModelSelector command center", () => {
           onFileSelect={onFileSelect}
         />
       ),
-      container
+      { container }
     );
+    unmount = () => view.unmount();
 
     expect(document.body.textContent).toContain("src/");
     const options = document.body.querySelectorAll('[role="option"]');
@@ -274,7 +284,7 @@ describe("ModelSelector command center", () => {
     const originalScrollIntoView = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = scrollIntoView;
 
-    dispose = render(
+    const view = render(
       () => (
         <ModelSelector
           open={true}
@@ -294,8 +304,9 @@ describe("ModelSelector command center", () => {
           onFileSelect={vi.fn()}
         />
       ),
-      container
+      { container }
     );
+    unmount = () => view.unmount();
 
     const input = document.body.querySelector('input[aria-label="Search models"]');
     expect(input).toBeTruthy();
@@ -317,7 +328,7 @@ describe("ModelSelector command center", () => {
 
     const [searchQuery, setSearchQuery] = createSignal("");
 
-    dispose = render(
+    const view = render(
       () => (
         <ModelSelector
           open={true}
@@ -330,8 +341,9 @@ describe("ModelSelector command center", () => {
           onSelect={vi.fn()}
         />
       ),
-      container
+      { container }
     );
+    unmount = () => view.unmount();
 
     const input = document.body.querySelector(
       'input[aria-label="Search models"]'
@@ -358,7 +370,7 @@ describe("ModelSelector command center", () => {
       },
     ];
 
-    dispose = render(
+    const view = render(
       () => (
         <ModelSelector
           open={true}
@@ -370,8 +382,9 @@ describe("ModelSelector command center", () => {
           onSelect={vi.fn()}
         />
       ),
-      container
+      { container }
     );
+    unmount = () => view.unmount();
 
     const input = document.body.querySelector(
       'input[aria-label="Search models"]'

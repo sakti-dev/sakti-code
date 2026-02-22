@@ -3,8 +3,8 @@
  */
 
 import type { SaktiCodeApiClient } from "@/core/services/api/api-client";
+import { render } from "@solidjs/testing-library";
 import { createRoot } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/core/state/providers/store-provider", () => ({
@@ -117,14 +117,11 @@ describe("ChatProvider", () => {
       return null;
     }
 
-    const dispose = render(
-      () => (
-        <ChatProvider client={mockClient} workspace={() => "/test"} sessionId={() => "session-123"}>
-          <TestChild />
-        </ChatProvider>
-      ),
-      container
-    );
+    const { unmount: dispose } = render(() => (
+      <ChatProvider client={mockClient} workspace={() => "/test"} sessionId={() => "session-123"}>
+        <TestChild />
+      </ChatProvider>
+    ));
 
     expect(capturedChat).not.toBeNull();
     await capturedChat!.sendMessage("test");
@@ -149,21 +146,18 @@ describe("ChatProvider", () => {
       return null;
     }
 
-    const dispose = render(
-      () => (
-        <ChatProvider
-          client={mockClient}
-          workspace={() => "/test"}
-          sessionId={() => "session-123"}
-          onError={onError}
-          onFinish={onFinish}
-          onSessionIdReceived={onSessionIdReceived}
-        >
-          <TestChild />
-        </ChatProvider>
-      ),
-      container
-    );
+    const { unmount: dispose } = render(() => (
+      <ChatProvider
+        client={mockClient}
+        workspace={() => "/test"}
+        sessionId={() => "session-123"}
+        onError={onError}
+        onFinish={onFinish}
+        onSessionIdReceived={onSessionIdReceived}
+      >
+        <TestChild />
+      </ChatProvider>
+    ));
 
     await capturedChat!.sendMessage("test");
 

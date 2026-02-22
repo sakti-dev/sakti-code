@@ -1,0 +1,29 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "baseUrl": ".",
+    "paths": {
+      "@sakti-code/core/chat": ["../../packages/core/src/chat"],
+      "@sakti-code/core/server": ["../../packages/core/src/server"],
+      "@sakti-code/core/tools": ["../../packages/core/src/tools"],
+      "@sakti-code/server/*": ["../../packages/server/src/*"],
+      "memorable-name": ["../../packages/memorable-name/src/index.ts"],
+      "@renderer/*": ["src/*"],
+      "@/*": ["src/*"],
+      "@/components/*": ["src/components/*"],
+      "@/views/*": ["src/views/*"],
+      "@/core/*": ["src/core/*"],
+      "@/state/*": ["src/core/state/*"],
+      "@/services/*": ["src/core/services/*"],
+      "@/infrastructure/*": ["src/core/services/*"],
+      "@/shared/*": ["src/core/shared/*"],
+      "@/utils/*": ["src/utils/*"]
+    }
+  },
+  "include": ["src/**/*", "vite.config.ts", "vitest.config.ts"]
+}

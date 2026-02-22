@@ -1,6 +1,6 @@
 import { TextPart } from "@/views/workspace-view/chat-area/parts/text-part";
+import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   accumulateDeltas,
@@ -27,7 +27,7 @@ describe("TextPart", () => {
       text: "Hello **world**",
     };
 
-    dispose = render(() => <TextPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <TextPart part={part} />, { container }));
 
     // Wait for Markdown async rendering
     await vi.waitFor(() => {
@@ -42,7 +42,7 @@ describe("TextPart", () => {
       text: "",
     };
 
-    dispose = render(() => <TextPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <TextPart part={part} />, { container }));
 
     // TextPart should render nothing when empty - component not rendered at all
     const textPart = container.querySelector('[data-component="text-part"]');
@@ -55,7 +55,7 @@ describe("TextPart", () => {
       text: "   ",
     };
 
-    dispose = render(() => <TextPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <TextPart part={part} />, { container }));
 
     // TextPart should render nothing when whitespace only
     const textPart = container.querySelector('[data-component="text-part"]');
@@ -70,7 +70,9 @@ describe("TextPart", () => {
       text: "Initial text",
     });
 
-    dispose = render(() => <TextPart part={part()} isStreaming={true} />, container);
+    ({ unmount: dispose } = render(() => <TextPart part={part()} isStreaming={true} />, {
+      container,
+    }));
 
     // Wait for initial render
     await vi.waitFor(() => {
@@ -98,7 +100,9 @@ describe("TextPart", () => {
       text: "Streaming plain text",
     };
 
-    dispose = render(() => <TextPart part={part} isStreaming={true} />, container);
+    ({ unmount: dispose } = render(() => <TextPart part={part} isStreaming={true} />, {
+      container,
+    }));
 
     await vi.waitFor(() => {
       expect(container.textContent).toContain("Streaming plain text");
@@ -119,7 +123,9 @@ describe("TextPart", () => {
       text: "",
     });
 
-    dispose = render(() => <TextPart part={part()} isStreaming={true} />, container);
+    ({ unmount: dispose } = render(() => <TextPart part={part()} isStreaming={true} />, {
+      container,
+    }));
 
     setPart({ type: "text", text: deltas[0] ?? "" });
     for (let i = 1; i < deltas.length; i++) {
@@ -144,7 +150,7 @@ describe("TextPart", () => {
       text: "Copyable text",
     };
 
-    dispose = render(() => <TextPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <TextPart part={part} />, { container }));
 
     // Copy button should be present (with opacity-0 for hover effect)
     const copyButton = container.querySelector('[data-slot="text-part-copy"]');
@@ -165,7 +171,7 @@ describe("TextPart", () => {
       text: "Copyable text",
     };
 
-    dispose = render(() => <TextPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <TextPart part={part} />, { container }));
 
     // Wait for render
     await vi.waitFor(() => {
@@ -194,7 +200,7 @@ describe("TextPart", () => {
       text: "Test content",
     };
 
-    dispose = render(() => <TextPart part={part} />, container);
+    ({ unmount: dispose } = render(() => <TextPart part={part} />, { container }));
 
     // Wait for render
     await vi.waitFor(() => {
@@ -209,7 +215,9 @@ describe("TextPart", () => {
       text: "Test content",
     };
 
-    dispose = render(() => <TextPart part={part} class="custom-class" />, container);
+    ({ unmount: dispose } = render(() => <TextPart part={part} class="custom-class" />, {
+      container,
+    }));
 
     // Wait for render
     await vi.waitFor(() => {

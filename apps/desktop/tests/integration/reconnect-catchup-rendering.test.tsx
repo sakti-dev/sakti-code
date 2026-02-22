@@ -12,8 +12,8 @@ import {
   usePartStore,
   useSessionStore,
 } from "@/core/state/providers/store-provider";
+import { render } from "@solidjs/testing-library";
 import { createSignal, For } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   expectAssistantContentVisible,
@@ -215,13 +215,13 @@ describe("Integration: Reconnect and Catch-up Rendering", () => {
         return <ChatMessageList sessionId={sessionId} />;
       }
 
-      const dispose = render(
+      const { unmount: dispose } = render(
         () => (
           <TestProviders>
             <TestApp />
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       const actions = extractStoreActions(storeContext!);
@@ -297,13 +297,13 @@ describe("Integration: Reconnect and Catch-up Rendering", () => {
         return <ChatMessageList sessionId={sessionId} />;
       }
 
-      const dispose = render(
+      const { unmount: dispose } = render(
         () => (
           <TestProviders>
             <TestApp />
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       const actions = extractStoreActions(storeContext!);
@@ -369,13 +369,13 @@ describe("Integration: Reconnect and Catch-up Rendering", () => {
         return <ChatMessageList sessionId={sessionId} />;
       }
 
-      const dispose = render(
+      const { unmount: dispose } = render(
         () => (
           <TestProviders>
             <TestApp />
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       const actions = extractStoreActions(storeContext!);
@@ -455,13 +455,13 @@ describe("Integration: Reconnect and Catch-up Rendering", () => {
         return <ChatMessageList sessionId={sessionId} />;
       }
 
-      const dispose = render(
+      const { unmount: dispose } = render(
         () => (
           <TestProviders>
             <TestApp />
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       const actions = extractStoreActions(storeContext!);
@@ -543,13 +543,13 @@ describe("Integration: Reconnect and Catch-up Rendering", () => {
         return <ChatMessageList sessionId={sessionId} />;
       }
 
-      const dispose = render(
+      const { unmount: dispose } = render(
         () => (
           <TestProviders>
             <TestApp />
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       const actions = extractStoreActions(storeContext!);
@@ -630,13 +630,13 @@ describe("Integration: Reconnect and Catch-up Rendering", () => {
         return <ChatMessageList sessionId={sessionId} />;
       }
 
-      const dispose = render(
+      const { unmount: dispose } = render(
         () => (
           <TestProviders>
             <TestApp />
           </TestProviders>
         ),
-        container
+        { container }
       );
 
       const actions = extractStoreActions(storeContext!);

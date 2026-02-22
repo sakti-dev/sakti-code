@@ -1,5 +1,5 @@
 import { BasicTool, type BasicToolProps } from "@/views/workspace-view/chat-area/tools/basic-tool";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("BasicTool", () => {
@@ -22,7 +22,7 @@ describe("BasicTool", () => {
       icon: "file",
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     expect(container.textContent).toContain("Read File");
     const trigger = container.querySelector('[data-slot="basic-tool-trigger"]');
@@ -35,7 +35,7 @@ describe("BasicTool", () => {
       icon: "file",
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     expect(container.textContent).toContain("Read File");
     expect(container.textContent).toContain("src/index.ts");
@@ -47,7 +47,7 @@ describe("BasicTool", () => {
       icon: "terminal",
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     expect(container.textContent).toContain("Bash");
     expect(container.textContent).toContain("npm run build");
@@ -60,7 +60,7 @@ describe("BasicTool", () => {
       children: <div data-testid="content">Output content</div>,
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     const arrow = container.querySelector('[data-slot="basic-tool-arrow"]');
     expect(arrow).not.toBeNull();
@@ -74,7 +74,7 @@ describe("BasicTool", () => {
       children: <div data-testid="content">Output content</div>,
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     const arrow = container.querySelector('[data-slot="basic-tool-arrow"]');
     expect(arrow).toBeNull();
@@ -87,7 +87,7 @@ describe("BasicTool", () => {
       children: <div data-testid="content">Output content</div>,
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     // Initially collapsed - content should not be visible
     let content = container.querySelector('[data-slot="basic-tool-content"]');
@@ -109,7 +109,7 @@ describe("BasicTool", () => {
       children: <div>Output content</div>,
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     const trigger = container.querySelector(
       '[data-slot="basic-tool-trigger"]'
@@ -131,7 +131,7 @@ describe("BasicTool", () => {
       children: <div data-testid="content">Output content</div>,
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     // Should start expanded
     const content = container.querySelector('[data-slot="basic-tool-content"]');
@@ -146,7 +146,7 @@ describe("BasicTool", () => {
       children: <div data-testid="content">Output content</div>,
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     // Should start expanded
     let content = container.querySelector('[data-slot="basic-tool-content"]');
@@ -169,7 +169,7 @@ describe("BasicTool", () => {
       children: <div data-testid="content">Output content</div>,
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     // Should start expanded
     let content = container.querySelector('[data-slot="basic-tool-content"]');
@@ -190,7 +190,7 @@ describe("BasicTool", () => {
       status: "running",
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     const spinner = container.querySelector('[data-slot="basic-tool-status-icon"]');
     expect(spinner).not.toBeNull();
@@ -204,7 +204,7 @@ describe("BasicTool", () => {
       status: "error",
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     const root = container.querySelector('[data-component="basic-tool"]');
     expect(root?.getAttribute("data-status")).toBe("error");
@@ -217,7 +217,7 @@ describe("BasicTool", () => {
       status: "completed",
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     const root = container.querySelector('[data-component="basic-tool"]');
     expect(root?.getAttribute("data-status")).toBe("completed");
@@ -230,7 +230,7 @@ describe("BasicTool", () => {
       class: "custom-class",
     };
 
-    dispose = render(() => <BasicTool {...props} />, container);
+    ({ unmount: dispose } = render(() => <BasicTool {...props} />, { container }));
 
     const root = container.querySelector('[data-component="basic-tool"]');
     expect(root?.classList.contains("custom-class")).toBe(true);

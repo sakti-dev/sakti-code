@@ -1,43 +1,4 @@
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "useDefineForClassFields": true,
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
-    "baseUrl": ".",
-    "paths": {
-      "@sakti-code/core/chat": ["../../packages/core/src/chat"],
-      "@sakti-code/core/server": ["../../packages/core/src/server"],
-      "@sakti-code/core/tools": ["../../packages/core/src/tools"],
-      "@sakti-code/*": ["../../packages/*/src"],
-      "@/*": ["src/*"],
-      "@/components": ["src/components"],
-      "@/components/*": ["src/components/*"],
-      "@/components/parts": ["src/components/parts"],
-      "@/views": ["src/views"],
-      "@/core": ["src/core"],
-      "@/core/*": ["src/core/*"],
-      "@/state": ["src/core/state"],
-      "@/state/*": ["src/core/state/*"],
-      "@/services": ["src/core/services"],
-      "@/services/*": ["src/core/services/*"],
-      "@/shared": ["src/core/shared"],
-      "@/shared/*": ["src/core/shared/*"],
-      "@/utils": ["src/utils"],
-      "@/utils/*": ["src/utils/*"]
-    },
-    "moduleResolution": "bundler"
-  },
-  "include": ["src/**/*", "vite.config.ts"],
-  "exclude": ["src/views/workspace-view-old/**/*", "src/components/reference/**/*"],
-  "references": [{ "path": "../../packages/shared" }]
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.spec.json" }]
 }

@@ -15,6 +15,7 @@ import { For, Show, type Component } from "solid-js";
  * Permission part data structure
  */
 export interface PermissionPartData {
+  [key: string]: unknown;
   type: "permission";
   request: PermissionRequest;
 }

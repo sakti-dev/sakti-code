@@ -5,9 +5,9 @@
  * to support E2E parity testing without requiring the old provider code.
  */
 
+import type { Part } from "@/core/chat/types/sync";
 import type { ServerEvent } from "@sakti-code/shared/event-types";
-import { produce, reconcile } from "solid-js/store";
-import type { Part } from "../../src/types/sync";
+import { produce } from "solid-js/store";
 
 /**
  * Directory store type for testing
@@ -78,7 +78,7 @@ export function createInitialDirectoryStore(): DirectoryStore {
   };
 }
 
-type StoreUpdaterFunction = (
+export type StoreUpdaterFunction = (
   ...args:
     | [Partial<DirectoryStore>]
     | [string, unknown]
@@ -96,7 +96,7 @@ type StoreUpdaterFunction = (
  * Extracted from global-sync-provider for testing parity
  */
 export function applyDirectoryEvent(input: {
-  event: ServerEvent;
+  event: ServerEvent<string, Record<string, unknown>>;
   store: DirectoryStore;
   setStore: StoreUpdaterFunction;
 }): void {
@@ -253,7 +253,7 @@ export function applyDirectoryEvent(input: {
 
   switch (event.type) {
     case "session.created": {
-      const props = isRecord(event.properties) ? event.properties : {};
+      const props: Record<string, unknown> = isRecord(event.properties) ? event.properties : {};
       const parsed = parseSession(props.info);
       const sessionID = typeof props.sessionID === "string" ? props.sessionID : undefined;
       const session =
@@ -270,48 +270,42 @@ export function applyDirectoryEvent(input: {
 
       const result = Binary(store.session, session.sessionId, (s: Session) => s.sessionId);
       if (result.found) {
-        setStore("session", result.index, reconcile(session));
+        setStore("session", result.index, session);
       } else {
-        setStore(
-          "session",
-          produce(draft => {
-            draft.splice(result.index, 0, session);
-          })
-        );
+        const next = [...store.session];
+        next.splice(result.index, 0, session);
+        setStore("session", next);
       }
       break;
     }
 
     case "session.updated": {
-      const props = isRecord(event.properties) ? event.properties : {};
+      const props: Record<string, unknown> = isRecord(event.properties) ? event.properties : {};
       const parsed = parseSession(props.info);
       if (!parsed) break;
 
       const result = Binary(store.session, parsed.sessionId, (s: Session) => s.sessionId);
       if (result.found) {
-        setStore("session", result.index, reconcile(parsed));
+        setStore("session", result.index, parsed);
       } else {
-        setStore(
-          "session",
-          produce(draft => {
-            draft.splice(result.index, 0, parsed);
-          })
-        );
+        const next = [...store.session];
+        next.splice(result.index, 0, parsed);
+        setStore("session", next);
       }
       break;
     }
 
     case "session.status": {
-      const props = isRecord(event.properties) ? event.properties : {};
+      const props: Record<string, unknown> = isRecord(event.properties) ? event.properties : {};
       const sessionID = typeof props.sessionID === "string" ? props.sessionID : undefined;
       const status = isRecord(props.status) ? (props.status as SessionStatus["status"]) : undefined;
       if (!sessionID || !status) break;
-      setStore("sessionStatus", sessionID, reconcile({ status }));
+      setStore("sessionStatus", sessionID, { status });
       break;
     }
 
     case "message.updated": {
-      const props = isRecord(event.properties) ? event.properties : {};
+      const props: Record<string, unknown> = isRecord(event.properties) ? event.properties : {};
       const info = parseMessageInfo(props.info);
       if (!info) break;
       const sessionID = info.sessionID;
@@ -340,21 +334,17 @@ export function applyDirectoryEvent(input: {
       };
 
       if (result.found) {
-        setStore("message", sessionID, result.index, reconcile(newMessage));
+        setStore("message", sessionID, result.index, newMessage);
       } else {
-        setStore(
-          "message",
-          sessionID,
-          produce(draft => {
-            draft.splice(result.index, 0, newMessage);
-          })
-        );
+        const next = [...messages];
+        next.splice(result.index, 0, newMessage);
+        setStore("message", sessionID, next);
       }
       break;
     }
 
     case "message.part.updated": {
-      const props = isRecord(event.properties) ? event.properties : {};
+      const props: Record<string, unknown> = isRecord(event.properties) ? event.properties : {};
       const part = isRecord(props.part) ? (props.part as Part) : undefined;
       if (
         !part ||
@@ -373,21 +363,17 @@ export function applyDirectoryEvent(input: {
 
       const result = Binary(parts, part.id, (p: Part) => p.id);
       if (result.found) {
-        setStore("part", part.messageID, result.index, reconcile(part));
+        setStore("part", part.messageID, result.index, part);
       } else {
-        setStore(
-          "part",
-          part.messageID,
-          produce(draft => {
-            draft.splice(result.index, 0, part);
-          })
-        );
+        const next = [...parts];
+        next.splice(result.index, 0, part);
+        setStore("part", part.messageID, next);
       }
       break;
     }
 
     case "message.part.removed": {
-      const props = isRecord(event.properties) ? event.properties : {};
+      const props: Record<string, unknown> = isRecord(event.properties) ? event.properties : {};
       const messageID = typeof props.messageID === "string" ? props.messageID : undefined;
       const partID = typeof props.partID === "string" ? props.partID : undefined;
       if (!messageID || !partID) break;
@@ -412,7 +398,7 @@ export function applyDirectoryEvent(input: {
     }
 
     case "permission.asked": {
-      const props = isRecord(event.properties) ? event.properties : {};
+      const props: Record<string, unknown> = isRecord(event.properties) ? event.properties : {};
       const tool =
         isRecord(props.tool) &&
         typeof props.tool.messageID === "string" &&
@@ -447,21 +433,17 @@ export function applyDirectoryEvent(input: {
 
       const result = Binary(permissions, permission.id, (p: PermissionRequest) => p.id);
       if (result.found) {
-        setStore("permission", permission.sessionID, result.index, reconcile(permission));
+        setStore("permission", permission.sessionID, result.index, permission);
       } else {
-        setStore(
-          "permission",
-          permission.sessionID,
-          produce(draft => {
-            draft.splice(result.index, 0, permission);
-          })
-        );
+        const next = [...permissions];
+        next.splice(result.index, 0, permission);
+        setStore("permission", permission.sessionID, next);
       }
       break;
     }
 
     case "permission.replied": {
-      const props = isRecord(event.properties) ? event.properties : {};
+      const props: Record<string, unknown> = isRecord(event.properties) ? event.properties : {};
       const sessionID = typeof props.sessionID === "string" ? props.sessionID : undefined;
       const requestID = typeof props.requestID === "string" ? props.requestID : undefined;
       if (!sessionID || !requestID) break;
@@ -472,18 +454,14 @@ export function applyDirectoryEvent(input: {
       const result = Binary(permissions, requestID, (p: PermissionRequest) => p.id);
       if (!result.found) break;
 
-      setStore(
-        "permission",
-        sessionID,
-        produce(draft => {
-          draft.splice(result.index, 1);
-        })
-      );
+      const next = [...permissions];
+      next.splice(result.index, 1);
+      setStore("permission", sessionID, next);
       break;
     }
 
     case "question.asked": {
-      const props = isRecord(event.properties) ? event.properties : {};
+      const props: Record<string, unknown> = isRecord(event.properties) ? event.properties : {};
       const tool =
         isRecord(props.tool) &&
         typeof props.tool.messageID === "string" &&
@@ -514,22 +492,18 @@ export function applyDirectoryEvent(input: {
 
       const result = Binary(questions, question.id, (q: QuestionRequest) => q.id);
       if (result.found) {
-        setStore("question", question.sessionID, result.index, reconcile(question));
+        setStore("question", question.sessionID, result.index, question);
       } else {
-        setStore(
-          "question",
-          question.sessionID,
-          produce(draft => {
-            draft.splice(result.index, 0, question);
-          })
-        );
+        const next = [...questions];
+        next.splice(result.index, 0, question);
+        setStore("question", question.sessionID, next);
       }
       break;
     }
 
     case "question.replied":
     case "question.rejected": {
-      const props = isRecord(event.properties) ? event.properties : {};
+      const props: Record<string, unknown> = isRecord(event.properties) ? event.properties : {};
       const sessionID = typeof props.sessionID === "string" ? props.sessionID : undefined;
       const requestID = typeof props.requestID === "string" ? props.requestID : undefined;
       if (!sessionID || !requestID) break;
@@ -540,13 +514,9 @@ export function applyDirectoryEvent(input: {
       const result = Binary(questions, requestID, (q: QuestionRequest) => q.id);
       if (!result.found) break;
 
-      setStore(
-        "question",
-        sessionID,
-        produce(draft => {
-          draft.splice(result.index, 1);
-        })
-      );
+      const next = [...questions];
+      next.splice(result.index, 1);
+      setStore("question", sessionID, next);
       break;
     }
   }

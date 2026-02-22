@@ -3,7 +3,7 @@ import {
   resetChatPerfTelemetry,
 } from "@/core/chat/services/chat-perf-telemetry";
 import { ChatPerfPanel } from "@/views/workspace-view/chat-area/perf/chat-perf-panel";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("ChatPerfPanel", () => {
@@ -24,7 +24,7 @@ describe("ChatPerfPanel", () => {
   });
 
   it("renders telemetry values", async () => {
-    dispose = render(() => <ChatPerfPanel />, container);
+    ({ unmount: dispose } = render(() => <ChatPerfPanel />, { container }));
 
     recordChatPerfCounter("sseEvents", 10);
     recordChatPerfCounter("coalescedUpdates", 5);

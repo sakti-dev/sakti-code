@@ -1,5 +1,5 @@
 import type { ArchivedWorkspace } from "@/core/chat/types";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("ArchivedWorkspaceItem", () => {
@@ -27,16 +27,15 @@ describe("ArchivedWorkspaceItem", () => {
       repoPath: "/repo",
     };
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <div data-test="container">
           <span>{workspace.name}</span>
           <span>{workspace.archivedAt.toLocaleDateString()}</span>
         </div>
       ),
-      container
-    );
-
+      { container }
+    ));
     expect(container.textContent).toContain("Archived Project");
     expect(container.textContent).toContain("1/15/2024");
   });
@@ -52,13 +51,12 @@ describe("ArchivedWorkspaceItem", () => {
       repoPath: "/repo",
     };
 
-    dispose = render(
+    ({ unmount: dispose } = render(
       () => (
         <div data-test="container">{mergedWorkspace.isMerged ? "✓ Merged" : "✗ Not Merged"}</div>
       ),
-      container
-    );
-
+      { container }
+    ));
     expect(container.textContent).toContain("✓ Merged");
   });
 });

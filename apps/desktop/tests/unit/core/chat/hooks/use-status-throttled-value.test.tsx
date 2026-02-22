@@ -1,6 +1,6 @@
 import { useStatusThrottledValue } from "@/core/chat/hooks/use-status-throttled-value";
+import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("useStatusThrottledValue", () => {
@@ -28,7 +28,7 @@ describe("useStatusThrottledValue", () => {
       return <span>{throttled()}</span>;
     };
 
-    dispose = render(() => <TestComponent />, container);
+    ({ unmount: dispose } = render(() => <TestComponent />, { container }));
 
     expect(container.textContent).toBe("Thinking");
   });
@@ -41,7 +41,7 @@ describe("useStatusThrottledValue", () => {
       return <span>{throttled()}</span>;
     };
 
-    dispose = render(() => <TestComponent />, container);
+    ({ unmount: dispose } = render(() => <TestComponent />, { container }));
 
     setValue("Gathering context");
     vi.advanceTimersByTime(1000);
@@ -60,7 +60,7 @@ describe("useStatusThrottledValue", () => {
       return <span>{throttled()}</span>;
     };
 
-    dispose = render(() => <TestComponent />, container);
+    ({ unmount: dispose } = render(() => <TestComponent />, { container }));
 
     setValue("Gathering context");
     vi.advanceTimersByTime(300);

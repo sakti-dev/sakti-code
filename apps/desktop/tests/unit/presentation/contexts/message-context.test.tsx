@@ -5,7 +5,7 @@ import {
   usePartStore,
   useSessionStore,
 } from "@/core/state/providers/store-provider";
-import { render } from "solid-js/web";
+import { render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let messageContext: ReturnType<typeof useMessage> | null = null;
@@ -18,16 +18,13 @@ function mountProviders() {
   const container = document.createElement("div");
   document.body.appendChild(container);
 
-  const dispose = render(
-    () => (
-      <StoreProvider>
-        <MessageProvider>
-          <Probe />
-        </MessageProvider>
-      </StoreProvider>
-    ),
-    container
-  );
+  const { unmount: dispose } = render(() => (
+    <StoreProvider>
+      <MessageProvider>
+        <Probe />
+      </MessageProvider>
+    </StoreProvider>
+  ));
 
   cleanup = () => {
     dispose();
@@ -67,20 +64,15 @@ describe("MessageContext", () => {
   it("computes status from message time metadata", () => {
     messageActions!.upsert({
       id: "m-pending",
-      role: "assistant",
+      role: "assistant" as const,
       sessionID: "s1",
       time: { created: Date.now() - 60_000 },
-    } as { id: string; role: string; sessionID: string; time: { created: number } });
+    });
     messageActions!.upsert({
       id: "m-complete",
-      role: "assistant",
+      role: "assistant" as const,
       sessionID: "s1",
       time: { created: Date.now() - 1_000, completed: Date.now() },
-    } as {
-      id: string;
-      role: string;
-      sessionID: string;
-      time: { created: number; completed: number };
     });
 
     expect(messageContext!.getStatus("does-not-exist")).toBe("unknown");
@@ -91,10 +83,10 @@ describe("MessageContext", () => {
   it("extracts and copies message text from text parts", async () => {
     messageActions!.upsert({
       id: "m1",
-      role: "user",
+      role: "user" as const,
       sessionID: "s1",
       time: { created: Date.now() },
-    } as { id: string; role: string; sessionID: string; time: { created: number } });
+    });
     partActions!.upsert({
       id: "p1",
       type: "text",
@@ -124,10 +116,10 @@ describe("MessageContext", () => {
   it("deletes message entries from store", () => {
     messageActions!.upsert({
       id: "m-delete",
-      role: "user",
+      role: "user" as const,
       sessionID: "s1",
       time: { created: Date.now() },
-    } as { id: string; role: string; sessionID: string; time: { created: number } });
+    });
     expect(messageContext!.getMessage("m-delete")).toBeDefined();
     messageContext!.delete("m-delete");
     expect(messageContext!.getMessage("m-delete")).toBeUndefined();

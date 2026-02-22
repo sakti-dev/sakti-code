@@ -61,7 +61,7 @@ describe("provider client", () => {
     );
 
     const client = createProviderClient({ fetcher });
-    const providers = await client.listProviderCatalog();
+    const providers = await client.listProviderCatalog!();
 
     expect(providers).toHaveLength(1);
     expect(providers[0]?.id).toBe("zai");

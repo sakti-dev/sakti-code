@@ -3,7 +3,24 @@
  */
 
 import { createEventCoalescer } from "@/core/services/sse/event-coalescer";
+import type { AllServerEvents, EventType } from "@sakti-code/shared/event-types";
 import { describe, expect, it, vi } from "vitest";
+
+let nextSequence = 1;
+function mkEvent<T extends EventType>(
+  type: T,
+  properties: Extract<AllServerEvents, { type: T }>["properties"],
+  directory?: string
+): Extract<AllServerEvents, { type: T }> {
+  return {
+    type,
+    properties,
+    directory,
+    eventId: `evt-${nextSequence}`,
+    sequence: nextSequence++,
+    timestamp: Date.now(),
+  } as Extract<AllServerEvents, { type: T }>;
+}
 
 describe("EventCoalescer", () => {
   describe("batching", () => {
@@ -11,12 +28,8 @@ describe("EventCoalescer", () => {
       const onEvents = vi.fn();
       const coalescer = createEventCoalescer(onEvents, { batchWindowMs: 50 });
 
-      coalescer.add({
-        type: "session.created",
-        properties: { sessionID: "s1", directory: "/path" },
-        directory: "/path",
-      });
-      coalescer.add({ type: "message.updated", properties: { info: { role: "user" } } });
+      coalescer.add(mkEvent("session.created", { sessionID: "s1", directory: "/path" }, "/path"));
+      coalescer.add(mkEvent("message.updated", { info: { role: "user" } }));
 
       // Wait for batch window
       await new Promise(resolve => setTimeout(resolve, 60));
@@ -34,12 +47,8 @@ describe("EventCoalescer", () => {
       const onEvents = vi.fn();
       const coalescer = createEventCoalescer(onEvents, { batchWindowMs: 1000 });
 
-      coalescer.add({
-        type: "session.created",
-        properties: { sessionID: "s1", directory: "/path" },
-        directory: "/path",
-      });
-      coalescer.add({ type: "message.updated", properties: { info: { role: "user" } } });
+      coalescer.add(mkEvent("session.created", { sessionID: "s1", directory: "/path" }, "/path"));
+      coalescer.add(mkEvent("message.updated", { info: { role: "user" } }));
 
       coalescer.drain();
 
@@ -56,12 +65,8 @@ describe("EventCoalescer", () => {
       const onEvents = vi.fn();
       const coalescer = createEventCoalescer(onEvents, { batchWindowMs: 1000 });
 
-      coalescer.add({
-        type: "session.created",
-        properties: { sessionID: "s1", directory: "/path" },
-        directory: "/path",
-      });
-      coalescer.add({ type: "message.updated", properties: { info: { role: "user" } } });
+      coalescer.add(mkEvent("session.created", { sessionID: "s1", directory: "/path" }, "/path"));
+      coalescer.add(mkEvent("message.updated", { info: { role: "user" } }));
 
       const flushed = coalescer.flush();
 
@@ -84,11 +89,9 @@ describe("EventCoalescer", () => {
 
       // Add 10 events to a queue of max 5
       for (let i = 0; i < 10; i++) {
-        coalescer.add({
-          type: "session.created",
-          properties: { sessionID: `s${i}`, directory: "/path" },
-          directory: "/path",
-        });
+        coalescer.add(
+          mkEvent("session.created", { sessionID: `s${i}`, directory: "/path" }, "/path")
+        );
       }
 
       expect(coalescer.getQueueSize()).toBeLessThanOrEqual(5);
@@ -100,11 +103,9 @@ describe("EventCoalescer", () => {
       const coalescer = createEventCoalescer(onEvents, { maxQueueSize: 3 });
 
       for (let i = 0; i < 10; i++) {
-        coalescer.add({
-          type: "session.created",
-          properties: { sessionID: `s${i}`, directory: "/path" },
-          directory: "/path",
-        });
+        coalescer.add(
+          mkEvent("session.created", { sessionID: `s${i}`, directory: "/path" }, "/path")
+        );
       }
 
       const metrics = coalescer.getMetrics();
@@ -118,12 +119,8 @@ describe("EventCoalescer", () => {
       const onEvents = vi.fn();
       const coalescer = createEventCoalescer(onEvents);
 
-      coalescer.add({
-        type: "session.created",
-        properties: { sessionID: "s1", directory: "/path" },
-        directory: "/path",
-      });
-      coalescer.add({ type: "message.updated", properties: { info: { role: "user" } } });
+      coalescer.add(mkEvent("session.created", { sessionID: "s1", directory: "/path" }, "/path"));
+      coalescer.add(mkEvent("message.updated", { info: { role: "user" } }));
 
       const metrics = coalescer.getMetrics();
       expect(metrics.totalEventsProcessed).toBe(2);
@@ -133,14 +130,10 @@ describe("EventCoalescer", () => {
       const onEvents = vi.fn();
       const coalescer = createEventCoalescer(onEvents, { batchWindowMs: 50 });
 
-      coalescer.add({
-        type: "session.created",
-        properties: { sessionID: "s1", directory: "/path" },
-        directory: "/path",
-      });
+      coalescer.add(mkEvent("session.created", { sessionID: "s1", directory: "/path" }, "/path"));
       await new Promise(resolve => setTimeout(resolve, 60));
 
-      coalescer.add({ type: "message.updated", properties: { info: { role: "user" } } });
+      coalescer.add(mkEvent("message.updated", { info: { role: "user" } }));
       await new Promise(resolve => setTimeout(resolve, 60));
 
       const metrics = coalescer.getMetrics();
@@ -153,14 +146,10 @@ describe("EventCoalescer", () => {
 
       expect(coalescer.getMetrics().currentQueueSize).toBe(0);
 
-      coalescer.add({
-        type: "session.created",
-        properties: { sessionID: "s1", directory: "/path" },
-        directory: "/path",
-      });
+      coalescer.add(mkEvent("session.created", { sessionID: "s1", directory: "/path" }, "/path"));
       expect(coalescer.getMetrics().currentQueueSize).toBe(1);
 
-      coalescer.add({ type: "message.updated", properties: { info: { role: "user" } } });
+      coalescer.add(mkEvent("message.updated", { info: { role: "user" } }));
       expect(coalescer.getMetrics().currentQueueSize).toBe(2);
 
       coalescer.drain();
@@ -173,12 +162,8 @@ describe("EventCoalescer", () => {
       const onEvents = vi.fn();
       const coalescer = createEventCoalescer(onEvents, { batchWindowMs: 50 });
 
-      coalescer.add({
-        type: "session.created",
-        properties: { sessionID: "s1", directory: "/path" },
-        directory: "/path",
-      });
-      coalescer.add({ type: "message.updated", properties: { info: { role: "user" } } });
+      coalescer.add(mkEvent("session.created", { sessionID: "s1", directory: "/path" }, "/path"));
+      coalescer.add(mkEvent("message.updated", { info: { role: "user" } }));
 
       await new Promise(resolve => setTimeout(resolve, 60));
 

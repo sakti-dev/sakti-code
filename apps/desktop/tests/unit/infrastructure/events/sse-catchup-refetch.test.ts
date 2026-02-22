@@ -4,11 +4,8 @@
  * Validates reconnect catch-up behavior against the real EventSource implementation.
  */
 
+import { createEventSource, type EventSourceError } from "@/core/services/sse/event-source";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  createEventSource,
-  type EventSourceError,
-} from "../../../../src/core/services/sse/event-source";
 
 class MockEventSource {
   static CONNECTING = 0;
@@ -67,15 +64,23 @@ describe("SSE Catch-up Refetch Flow", () => {
     originalFetch = global.fetch;
     originalEventSource = global.EventSource;
     fetchMock = vi.fn();
-    global.fetch = fetchMock;
-    global.EventSource = MockEventSource as unknown as typeof EventSource;
+    global.fetch = fetchMock as typeof fetch;
+    Object.defineProperty(globalThis, "EventSource", {
+      value: MockEventSource,
+      configurable: true,
+      writable: true,
+    });
     MockEventSource.instances = [];
   });
 
   afterEach(() => {
     vi.useRealTimers();
     global.fetch = originalFetch;
-    global.EventSource = originalEventSource;
+    Object.defineProperty(globalThis, "EventSource", {
+      value: originalEventSource,
+      configurable: true,
+      writable: true,
+    });
     vi.restoreAllMocks();
   });
 
