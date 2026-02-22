@@ -199,6 +199,9 @@ importers:
       '@electron-toolkit/tsconfig':
         specifier: ^2.0.0
         version: 2.0.0(@types/node@22.19.7)
+      '@hono/node-server':
+        specifier: ^1.19.9
+        version: 1.19.9(hono@4.11.7)
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(@solidjs/router@0.15.4(solid-js@1.9.11))(solid-js@1.9.11)
@@ -220,6 +223,9 @@ importers:
       electron:
         specifier: 'catalog:'
         version: 39.2.6
+      hono:
+        specifier: ^4.11.7
+        version: 4.11.7
       tailwindcss:
         specifier: 'catalog:'
         version: 4.1.18
