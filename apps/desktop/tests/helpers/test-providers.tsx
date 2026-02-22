@@ -7,14 +7,16 @@
  * Phase 0: Setup & Test Infrastructure
  */
 
+import { MessageProvider } from "@/core/state/contexts/message-context";
+import { PartProvider } from "@/core/state/contexts/part-context";
+import { SessionProvider } from "@/core/state/contexts/session-context";
+import { UIProvider } from "@/core/state/contexts/ui-context";
 import { StoreProvider } from "@/core/state/providers/store-provider";
+import { cleanup, render } from "@solidjs/testing-library";
 import type { JSX } from "solid-js";
-import { render } from "solid-js/web";
 import { vi } from "vitest";
-import { MessageProvider } from "../../src/core/state/contexts/message-context";
-import { PartProvider } from "../../src/core/state/contexts/part-context";
-import { SessionProvider } from "../../src/core/state/contexts/session-context";
-import { UIProvider } from "../../src/core/state/contexts/ui-context";
+
+afterEach(cleanup);
 
 /**
  * TestProviders - Wraps components with all necessary providers
@@ -50,18 +52,7 @@ export function TestProviders(props: { children: JSX.Element }) {
  * Render helper with providers
  */
 export function renderWithProviders(ui: () => JSX.Element) {
-  const container = document.createElement("div");
-  document.body.appendChild(container);
-
-  const dispose = render(() => <TestProviders>{ui()}</TestProviders>, container);
-
-  return {
-    container,
-    dispose: () => {
-      dispose();
-      document.body.removeChild(container);
-    },
-  };
+  return render(() => <TestProviders>{ui()}</TestProviders>);
 }
 
 /**

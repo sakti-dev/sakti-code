@@ -8,6 +8,7 @@
  * @package @sakti-code/desktop/tests
  */
 
+import { clearEventProcessingState } from "@/core/chat/domain/event-router-adapter";
 import {
   useMessageStore,
   usePartStore,
@@ -15,10 +16,9 @@ import {
 } from "@/core/state/providers/store-provider";
 import { allEventOrderingFixtures } from "@sakti-code/shared";
 import type { Part } from "@sakti-code/shared/event-types";
+import { cleanup, render } from "@solidjs/testing-library";
 import { createMemo, createSignal, For } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { clearEventProcessingState } from "../../src/core/chat/domain/event-router-adapter";
 import {
   expectAssistantContentVisible,
   expectTypingIndicatorHidden,
@@ -28,6 +28,8 @@ import {
 } from "../helpers/dom-assertions";
 import { applyFixture, extractStoreActions } from "../helpers/fixture-loader";
 import { TestProviders } from "../helpers/test-providers";
+
+afterEach(cleanup);
 
 describe("Integration: Chat Stream Rendering", () => {
   let container: HTMLDivElement;

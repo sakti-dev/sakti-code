@@ -2,9 +2,11 @@ import { ChatProvider, useChatContext } from "@/core/state/contexts/chat-provide
 import { AppProvider } from "@/core/state/providers/app-provider";
 import { useWorkspace, WorkspaceProvider } from "@/core/state/providers/workspace-provider";
 import HomeView from "@/views/home-view/home-view";
+import { cleanup, render } from "@solidjs/testing-library";
 import { createMemo, Show } from "solid-js";
-import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+afterEach(cleanup);
 
 const { mockedNavigate, mockedParams } = vi.hoisted(() => {
   return {
@@ -20,7 +22,7 @@ vi.mock("@solidjs/router", () => {
   };
 });
 
-vi.mock("../../src/core/services/sse/sse-manager", () => {
+vi.mock("@/core/services/sse/sse-manager", () => {
   return {
     createSSEManager: () => ({
       connect: vi.fn(),
@@ -50,7 +52,7 @@ vi.mock("../../src/core/services/sse/sse-manager", () => {
   };
 });
 
-vi.mock("../../src/views/home-view/components/clone-dialog", () => {
+vi.mock("@/views/home-view/components/clone-dialog", () => {
   return {
     CloneDialog: () => null,
   };
