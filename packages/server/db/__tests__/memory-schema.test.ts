@@ -13,7 +13,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { closeDb, getDb } from "../../db/index";
+import { closeDb, getDb } from "../index";
 
 describe("Memory System Schema", () => {
   beforeAll(async () => {

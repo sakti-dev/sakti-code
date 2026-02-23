@@ -8,7 +8,7 @@ import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db, sessions, threads } from "../../db";
-import { workspaces } from "../../db/schema";
+import { workspaces } from "../schema";
 
 // Mock uuidv7 for consistent testing
 vi.mock("uuid", () => ({
