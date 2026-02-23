@@ -1,10 +1,18 @@
 import { createChunkSequence } from "@/../tests/helpers/markdown-stream-fixtures";
+import {
+  getMarkdownPerfSnapshot,
+  resetMarkdownPerfTelemetry,
+} from "@/core/chat/services/markdown-perf-telemetry";
 import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const createHighlighterMock = vi.fn(async () => ({
   codeToHtml: (code: string) => `<pre><code>${code}</code></pre>`,
+  codeToTokens: () => ({
+    tokens: [[{ content: "", offset: 0 }]],
+    grammarState: undefined,
+  }),
 }));
 
 vi.mock("shiki", () => ({
@@ -17,8 +25,8 @@ describe("Markdown streaming behavior", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.resetModules();
     createHighlighterMock.mockClear();
+    resetMarkdownPerfTelemetry();
     container = document.createElement("div");
     document.body.appendChild(container);
   });
@@ -26,12 +34,11 @@ describe("Markdown streaming behavior", () => {
   afterEach(() => {
     dispose?.();
     document.body.removeChild(container);
+    resetMarkdownPerfTelemetry();
     vi.useRealTimers();
   });
 
   it("coalesces frequent streaming updates by cadence", async () => {
-    const markedModule = await import("marked");
-    const parseSpy = vi.spyOn(markedModule.marked, "parse");
     const { Markdown } = await import("@/components/ui/markdown");
     const [text, setText] = createSignal("start");
 
@@ -39,21 +46,24 @@ describe("Markdown streaming behavior", () => {
       () => <Markdown text={text()} isStreaming={true} streamCadenceMs={120} />,
       { container }
     ));
+    let next = "start";
     for (let i = 0; i < 20; i++) {
-      setText(`delta-${i}`);
+      next += ` delta-${i}`;
+      setText(next);
     }
 
     await vi.advanceTimersByTimeAsync(20);
-    const parseCallsBeforeFlush = parseSpy.mock.calls.length;
+    const snapshotBeforeFlush = getMarkdownPerfSnapshot();
 
     await vi.advanceTimersByTimeAsync(140);
     await vi.waitFor(() => {
       expect(container.textContent).toContain("delta-19");
     });
 
-    const totalCalls = parseSpy.mock.calls.length;
-    expect(totalCalls - parseCallsBeforeFlush).toBeLessThanOrEqual(2);
-    parseSpy.mockRestore();
+    const snapshotAfterFlush = getMarkdownPerfSnapshot();
+    expect(
+      snapshotAfterFlush.counters.commits - snapshotBeforeFlush.counters.commits
+    ).toBeLessThanOrEqual(2);
   });
 
   it("defers shiki while streaming and enables on completion", async () => {
@@ -69,9 +79,8 @@ describe("Markdown streaming behavior", () => {
     expect(createHighlighterMock).toHaveBeenCalledTimes(0);
 
     setStreaming(false);
-    await vi.waitFor(() => {
-      expect(createHighlighterMock).toHaveBeenCalledTimes(1);
-    });
+    await vi.advanceTimersByTimeAsync(120);
+    expect(createHighlighterMock).toHaveBeenCalledTimes(1);
   });
 
   it("pauses updates while scrolling and flushes when scrolling stops", async () => {
@@ -91,21 +100,19 @@ describe("Markdown streaming behavior", () => {
       ),
       { container }
     ));
-    setText("b");
-    setText("c");
+    setText("ab");
+    setText("abc");
     await vi.advanceTimersByTimeAsync(200);
-    expect(container.textContent).not.toContain("c");
+    expect(container.textContent).not.toContain("abc");
 
     setScrollActive(false);
     await vi.advanceTimersByTimeAsync(100);
     await vi.waitFor(() => {
-      expect(container.textContent).toContain("c");
+      expect(container.textContent).toContain("abc");
     });
   });
 
-  it("defers unstable code fence parsing until completion", async () => {
-    const markedModule = await import("marked");
-    const parseSpy = vi.spyOn(markedModule.marked, "parse");
+  it("defers unstable code fence highlighting until completion", async () => {
     const { Markdown } = await import("@/components/ui/markdown");
     const [text, setText] = createSignal("Hello");
     const [streaming, setStreaming] = createSignal(true);
@@ -114,23 +121,18 @@ describe("Markdown streaming behavior", () => {
       <Markdown text={text()} isStreaming={streaming()} streamCadenceMs={80} />
     )));
     await vi.advanceTimersByTimeAsync(100);
-    const baselineCalls = parseSpy.mock.calls.length;
 
     setText("Hello\n```ts\nconst x = 1");
     await vi.advanceTimersByTimeAsync(200);
 
-    expect(parseSpy.mock.calls.length).toBe(baselineCalls);
+    expect(createHighlighterMock).toHaveBeenCalledTimes(0);
 
     setStreaming(false);
-    await vi.waitFor(() => {
-      expect(parseSpy.mock.calls.length).toBeGreaterThan(baselineCalls);
-    });
-    parseSpy.mockRestore();
+    await vi.advanceTimersByTimeAsync(120);
+    expect(createHighlighterMock).toHaveBeenCalledTimes(0);
   });
 
-  it("uses streaming lite mode for large unstable text and full parse on completion", async () => {
-    const markedModule = await import("marked");
-    const parseSpy = vi.spyOn(markedModule.marked, "parse");
+  it("uses streaming lite mode and full finalization on completion", async () => {
     const { Markdown } = await import("@/components/ui/markdown");
     const [text, setText] = createSignal("x".repeat(260));
     const [streaming, setStreaming] = createSignal(true);
@@ -151,13 +153,14 @@ describe("Markdown streaming behavior", () => {
     await vi.waitFor(() => {
       expect(container.textContent).toContain("x");
     });
-    expect(parseSpy).toHaveBeenCalledTimes(0);
 
     setStreaming(false);
-    await vi.waitFor(() => {
-      expect(parseSpy.mock.calls.length).toBeGreaterThan(0);
-    });
-    parseSpy.mockRestore();
+    await vi.advanceTimersByTimeAsync(120);
+
+    const completed = getMarkdownPerfSnapshot();
+    expect(completed.counters.commits).toBeGreaterThan(0);
+    expect(completed.counters.fullCommits).toBeGreaterThan(0);
+    expect(completed.counters.finalizationBatches).toBeGreaterThan(0);
   });
 
   it("applies slower cadence while scrolling and faster cadence when idle", async () => {
@@ -179,9 +182,9 @@ describe("Markdown streaming behavior", () => {
       ),
       { container }
     ));
-    setText("scrolling-phase");
+    setText("start scrolling-phase");
     await vi.advanceTimersByTimeAsync(120);
-    expect(container.textContent).not.toContain("scrolling-phase");
+    expect(container.textContent).not.toContain("start scrolling-phase");
 
     await vi.advanceTimersByTimeAsync(130);
     await vi.waitFor(() => {
@@ -189,11 +192,27 @@ describe("Markdown streaming behavior", () => {
     });
 
     setScrolling(false);
-    setText("idle-phase");
+    setText("start scrolling-phase idle-phase");
     await vi.advanceTimersByTimeAsync(80);
     await vi.waitFor(() => {
       expect(container.textContent).toContain("idle-phase");
     });
+  });
+
+  it("cleans up stream adapter on unmount during active streaming", async () => {
+    const { Markdown } = await import("@/components/ui/markdown");
+    const [text, setText] = createSignal("x");
+
+    ({ unmount: dispose } = render(
+      () => <Markdown text={text()} isStreaming={true} streamCadenceMs={80} />,
+      { container }
+    ));
+    setText("xy");
+    await vi.advanceTimersByTimeAsync(90);
+    expect(container.textContent).toContain("xy");
+
+    expect(() => dispose?.()).not.toThrow();
+    dispose = undefined;
   });
 });
 

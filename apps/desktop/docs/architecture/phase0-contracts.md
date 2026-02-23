@@ -221,6 +221,27 @@ _Record any intentional deviations from OpenCode patterns here:_
 | ---- | --------- | --------- |
 |      |           |           |
 
+## 8. Markdown Renderer Migration Notes
+
+Desktop markdown rendering has migrated to Incremark stream mode. Canonical architecture notes:
+
+- `apps/desktop/docs/architecture/markdown-rendering-incremark.md`
+
+Migration guardrails:
+
+- Stream renderer only in chat markdown surfaces (no marked fallback path).
+- `incremarkOptions.htmlTree = false` by default.
+- Do not reintroduce `marked`, `marked-shiki`, `dompurify`, `morphdom` runtime paths.
+
+Verification commands:
+
+```bash
+pnpm --filter @sakti-code/desktop test:ui
+pnpm --filter @sakti-code/desktop typecheck
+pnpm --filter @sakti-code/desktop lint
+pnpm --filter @sakti-code/desktop markdown:migration:health
+```
+
 ---
 
 **Document Version:** 1.0

@@ -9,6 +9,8 @@ export default defineConfig({
           include: [
             "solid-js",
             "solid-js/web",
+            "@incremark/solid",
+            "@incremark/core",
             "@solidjs/router",
             "@kobalte/core",
             "solid-presence",
@@ -20,6 +22,9 @@ export default defineConfig({
     server: {
       deps: {
         inline: [
+          "@incremark/solid",
+          "@incremark/core",
+          "@incremark/theme",
           "@solidjs/router",
           "@kobalte/core",
           "@kobalte/core/collapsible",
@@ -35,6 +40,6 @@ export default defineConfig({
     },
   },
   ssr: {
-    noExternal: [/^@kobalte\/core/, "solid-presence", "lucide-solid"],
+    noExternal: [/^@kobalte\/core/, /^@incremark\//, "solid-presence", "lucide-solid"],
   },
 });

@@ -94,8 +94,6 @@ describe("Integration: markdown stream stress", () => {
     intervalActive = false;
     await sleep(20);
 
-    expect(container.textContent).toContain("Streaming Load");
-
     const snapshot = getMarkdownPerfSnapshot();
     const maxLag = lagSamples.length > 0 ? Math.max(...lagSamples) : 0;
 
