@@ -16,8 +16,8 @@ vi.mock("@/core/services/api/api-client", () => ({
   createApiClient: vi.fn(() => Promise.resolve(mockApiClient)),
 }));
 
-// Mock memorable-name
-vi.mock("memorable-name", () => ({
+// Mock @sakti-code/memorable-name
+vi.mock("@sakti-code/memorable-name", () => ({
   generate: vi.fn(() => ({
     dashed: "spiffy-waterfall",
     raw: ["spiffy", "waterfall"],

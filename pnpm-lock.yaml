@@ -141,6 +141,9 @@ importers:
       '@sakti-code/electron-preload':
         specifier: workspace:*
         version: link:../preload
+      '@sakti-code/memorable-name':
+        specifier: workspace:*
+        version: link:../../packages/memorable-name
       '@sakti-code/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -171,9 +174,6 @@ importers:
       lucide-solid:
         specifier: ^0.575.0
         version: 0.575.0(solid-js@1.9.11)
-      memorable-name:
-        specifier: workspace:*
-        version: link:../../packages/memorable-name
       minisearch:
         specifier: ^7.2.0
         version: 7.2.0

@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { createApiClient } from "@/core/services/api/api-client";
 import { cn } from "@/utils";
-import { generateMany } from "memorable-name";
+import { generateMany } from "@sakti-code/memorable-name";
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
 const LAST_CLONE_TARGET_KEY = "sakti:lastCloneTarget";

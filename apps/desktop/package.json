@@ -37,7 +37,7 @@
     "clsx": "^2.1.1",
     "dayjs": "^1.11.19",
     "lucide-solid": "^0.575.0",
-    "memorable-name": "workspace:*",
+    "@sakti-code/memorable-name": "workspace:*",
     "minisearch": "^7.2.0",
     "tailwind-merge": "^3.4.0"
   },

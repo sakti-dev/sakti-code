@@ -58,7 +58,7 @@ export default mergeConfig(
         { find: "@sakti-code/core/server", replacement: CORE_SRC + "/server" },
         { find: "@sakti-code/core/tools", replacement: CORE_SRC + "/tools" },
         { find: "@sakti-code/core", replacement: CORE_SRC },
-        { find: "memorable-name", replacement: MEMORABLE_NAME_SRC },
+        { find: "@sakti-code/memorable-name", replacement: MEMORABLE_NAME_SRC },
 
         // Legacy aliases used by tests
         {

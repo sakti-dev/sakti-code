@@ -13,7 +13,7 @@
       "@sakti-code/core/server": ["../../packages/core/src/server"],
       "@sakti-code/core/tools": ["../../packages/core/src/tools"],
       "@sakti-code/server/*": ["../../packages/server/src/*"],
-      "memorable-name": ["../../packages/memorable-name/src/index.ts"],
+      "@sakti-code/memorable-name": ["../../packages/memorable-name/src/index.ts"],
       "@renderer/*": ["src/*"],
       "@/*": ["src/*"],
       "@/components/*": ["src/components/*"],
