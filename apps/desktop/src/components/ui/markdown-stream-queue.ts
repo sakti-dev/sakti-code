@@ -9,9 +9,11 @@ export function createMarkdownStreamQueue(): MarkdownStreamQueue {
   const pending: string[] = [];
   let done = false;
   let notify: (() => void) | null = null;
+  let generation = 0;
 
   async function* stream(): AsyncGenerator<string> {
-    while (true) {
+    const localGeneration = generation;
+    while (localGeneration === generation) {
       while (pending.length > 0) {
         const next = pending.shift();
         if (next !== undefined) yield next;
@@ -36,6 +38,7 @@ export function createMarkdownStreamQueue(): MarkdownStreamQueue {
       notify?.();
     },
     reset: () => {
+      generation += 1;
       pending.length = 0;
       done = false;
       notify?.();
