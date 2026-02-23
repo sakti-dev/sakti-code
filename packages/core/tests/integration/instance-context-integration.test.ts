@@ -4,11 +4,11 @@
  * Comprehensive integration tests for tool behavior with Instance context
  */
 
+import { Instance } from "@/instance";
+import { readTool } from "@/tools/filesystem/read";
+import { writeTool } from "@/tools/filesystem/write";
+import { bashTool } from "@/tools/shell/bash.tool";
 import { describe, expect, it } from "vitest";
-import { Instance } from "../../../src/instance";
-import { readTool } from "../../../src/tools/filesystem/read";
-import { writeTool } from "../../../src/tools/filesystem/write";
-import { bashTool } from "../../../src/tools/shell/bash.tool";
 
 describe("Instance Context Integration", () => {
   describe("context validation", () => {

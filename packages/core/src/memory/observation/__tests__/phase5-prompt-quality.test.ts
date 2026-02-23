@@ -5,7 +5,6 @@
  * TDD approach - tests verify existing implementation.
  */
 
-import { describe, expect, it } from "vitest";
 import {
   BUGFIXING_COMPRESSION_GUIDANCE,
   DEBUGGING_COMPRESSION_GUIDANCE,
@@ -15,7 +14,8 @@ import {
   RESEARCH_COMPRESSION_GUIDANCE,
   TESTING_COMPRESSION_GUIDANCE,
   type AgentMode,
-} from "../../../src/prompts/memory/observer/modes";
+} from "@/prompts/memory/observer/modes";
+import { describe, expect, it } from "vitest";
 
 describe("Phase 5: Prompt Quality - All Modes", () => {
   const allModes: AgentMode[] = [

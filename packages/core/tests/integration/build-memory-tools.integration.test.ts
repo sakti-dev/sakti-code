@@ -4,9 +4,9 @@
  * Verifies build toolset resolves memory tools and can execute them.
  */
 
+import { AGENT_REGISTRY, resolveTools } from "@/agent/registry";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { AGENT_REGISTRY, resolveTools } from "../../src/agent/registry";
 
 const testHomeDir = `/tmp/sakti-code-test-build-memory-${Date.now()}`;
 const previousSaktiCodeHome = process.env.SAKTI_CODE_HOME;

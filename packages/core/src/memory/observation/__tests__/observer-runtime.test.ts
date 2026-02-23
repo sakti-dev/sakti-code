@@ -17,7 +17,7 @@ describe("Observer runtime integration", () => {
       usage: { totalTokens: 10 },
     });
 
-    const { createObserverAgent } = await import("../../../src/memory/observation/orchestration");
+    const { createObserverAgent } = await import("@/memory/observation/orchestration");
     const model = { provider: "mock" } as unknown;
     const observer = createObserverAgent(model as never, "explore");
 
@@ -33,7 +33,7 @@ describe("Observer runtime integration", () => {
       usage: { totalTokens: 123 },
     });
 
-    const { callObserverAgent } = await import("../../../src/memory/observation/observer");
+    const { callObserverAgent } = await import("@/memory/observation/observer");
     const result = await callObserverAgent(
       { existingObservations: "", messages: [{ id: "m1", role: "user", content: "hi" }] },
       { provider: "mock" } as never

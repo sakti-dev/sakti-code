@@ -8,15 +8,10 @@
  * - Mode-specific observer agent creation
  */
 
+import { getAgentMode } from "@/memory/observation/orchestration";
+import { getMemoryConfig, MODE_CONFIGS } from "@/memory/observation/storage";
+import { ExplorationResult, SUBAGENT_CONFIGS, SubagentResult, taskTool } from "@/tools/task";
 import { describe, expect, it } from "vitest";
-import { getAgentMode } from "../../../src/memory/observation/orchestration";
-import { getMemoryConfig, MODE_CONFIGS } from "../../../src/memory/observation/storage";
-import {
-  ExplorationResult,
-  SUBAGENT_CONFIGS,
-  SubagentResult,
-  taskTool,
-} from "../../../src/tools/task";
 
 describe("Phase 5: Integration Flow", () => {
   describe("SUBAGENT_CONFIGS mode configuration", () => {

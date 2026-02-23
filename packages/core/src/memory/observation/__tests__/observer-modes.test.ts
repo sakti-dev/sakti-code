@@ -7,13 +7,13 @@
  * - Each mode has its own extraction instructions
  */
 
-import { describe, expect, it } from "vitest";
 import {
   AgentMode,
   MODE_EXTRACTION_INSTRUCTIONS,
   buildObserverSystemPrompt,
   getModeExtractionInstructions,
-} from "../../../src/prompts/memory/observer/modes";
+} from "@/prompts/memory/observer/modes";
+import { describe, expect, it } from "vitest";
 
 describe("Mode-Specific Observer", () => {
   describe("AgentMode type", () => {

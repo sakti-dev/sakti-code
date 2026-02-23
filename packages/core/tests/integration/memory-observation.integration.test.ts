@@ -4,8 +4,8 @@
  * Tests for wiring observational memory mode system into agent spawning flow.
  */
 
+import { SUBAGENT_CONFIGS, taskTool } from "@/tools/task";
 import { describe, expect, it } from "vitest";
-import { SUBAGENT_CONFIGS, taskTool } from "../../../src/tools/task";
 
 describe("Phase 4: Integration", () => {
   describe("Mode-specific prompt injection in SUBAGENT_CONFIGS", () => {

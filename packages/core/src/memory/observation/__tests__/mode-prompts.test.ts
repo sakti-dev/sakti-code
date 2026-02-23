@@ -9,7 +9,6 @@
  * - research: sources, findings, recommendations
  */
 
-import { describe, expect, it } from "vitest";
 import {
   BUGFIXING_COMPRESSION_GUIDANCE,
   BUGFIXING_CONTEXT_INSTRUCTIONS,
@@ -36,7 +35,8 @@ import {
   TESTING_GUIDELINES,
   TESTING_OUTPUT_FORMAT,
   TESTING_TASK_CONTEXT,
-} from "../../../src/prompts/memory/observer/modes";
+} from "@/prompts/memory/observer/modes";
+import { describe, expect, it } from "vitest";
 
 describe("Bug Fixing Mode Prompts", () => {
   describe("BUGFIXING_TASK_CONTEXT", () => {

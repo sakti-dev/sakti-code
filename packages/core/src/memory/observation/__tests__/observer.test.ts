@@ -6,8 +6,8 @@
  * - Handle various output formats including fallback to raw text
  */
 
+import { parseObserverOutput } from "@/memory/observation/observer";
 import { describe, expect, it } from "vitest";
-import { parseObserverOutput } from "../../../src/memory/observation/observer";
 
 describe("Observer Agent", () => {
   describe("parseObserverOutput", () => {

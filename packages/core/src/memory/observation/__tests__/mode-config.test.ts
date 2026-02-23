@@ -7,12 +7,12 @@
  * - Threshold values match the plan spec (explore: 60k, bug_fixing: 40k, etc.)
  */
 
-import { describe, expect, it } from "vitest";
 import {
   MODE_CONFIGS,
   getMemoryConfig,
   type ObservationalMemoryModeConfig,
-} from "../../../src/memory/observation/storage";
+} from "@/memory/observation/storage";
+import { describe, expect, it } from "vitest";
 
 describe("Mode-Specific Memory Config", () => {
   describe("MODE_CONFIGS", () => {

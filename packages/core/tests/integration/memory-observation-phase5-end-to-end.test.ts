@@ -9,9 +9,8 @@
  * - Phase 5: Testing - Complete verification
  */
 
-import { describe, expect, it } from "vitest";
-import { getAgentMode } from "../../../src/memory/observation/orchestration";
-import { MODE_CONFIGS, getMemoryConfig } from "../../../src/memory/observation/storage";
+import { getAgentMode } from "@/memory/observation/orchestration";
+import { MODE_CONFIGS, getMemoryConfig } from "@/memory/observation/storage";
 import {
   BUGFIXING_COMPRESSION_GUIDANCE,
   DEBUGGING_COMPRESSION_GUIDANCE,
@@ -22,8 +21,9 @@ import {
   RESEARCH_COMPRESSION_GUIDANCE,
   TESTING_COMPRESSION_GUIDANCE,
   type AgentMode,
-} from "../../../src/prompts/memory/observer/modes";
-import { SUBAGENT_CONFIGS } from "../../../src/tools/task";
+} from "@/prompts/memory/observer/modes";
+import { SUBAGENT_CONFIGS } from "@/tools/task";
+import { describe, expect, it } from "vitest";
 
 describe("Phase 5: End-to-End Verification", () => {
   describe("Complete Mode System Coverage", () => {

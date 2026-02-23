@@ -8,14 +8,14 @@
  * - EXPLORER_COMPRESSION_GUIDANCE minimal compression
  */
 
-import { describe, expect, it } from "vitest";
 import {
   EXPLORER_COMPRESSION_GUIDANCE,
   EXPLORER_CONTEXT_INSTRUCTIONS,
   EXPLORER_GUIDELINES,
   EXPLORER_OUTPUT_FORMAT,
   EXPLORER_TASK_CONTEXT,
-} from "../../../src/prompts/memory/observer/modes";
+} from "@/prompts/memory/observer/modes";
+import { describe, expect, it } from "vitest";
 
 describe("Explore Mode Prompts", () => {
   describe("EXPLORER_TASK_CONTEXT", () => {
