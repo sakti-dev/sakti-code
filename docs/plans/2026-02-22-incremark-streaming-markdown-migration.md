@@ -4,7 +4,7 @@
 
 **Goal:** Replace `apps/desktop` markdown rendering from `marked + marked-shiki` to `@incremark/solid` stream-mode rendering everywhere in chat message surfaces, eliminating freeze-prone full reparse behavior.
 
-**Architecture:** Keep the public `Markdown` component API stable for call sites, but rewrite internals to use Incremark stream mode with a local async chunk queue and snapshot-diff adapter. Preserve existing `TextPart` and `ReasoningPart` behavior while removing legacy parser/sanitizer/finalizer/telemetry infrastructure tied to marked. Keep security posture strict by default with `htmlTree: false` and no raw HTML rendering from model output.
+**Architecture:** Keep the public `Markdown` component API stable for call sites, but rewrite internals to use Incremark stream mode with a local async chunk queue and snapshot-diff adapter. Preserve existing `TextPart` and `ReasoningPart` behavior while removing legacy parser/sanitizer/finalizer/telemetry infrastructure tied to marked. Lock parser behavior to Incremark's default marked engine path (no Micromark override in desktop chat), keep security posture strict by default with `htmlTree: false`, and never render raw HTML from model output.
 
 **Tech Stack:** Solid.js, `@incremark/solid`, `@incremark/theme`, Vite, Vitest, existing chat state stores/hooks (`useChat`, `useSessionTurns`), Electron desktop runtime.
 
@@ -14,9 +14,12 @@
 
 - No feature flag rollout for this migration. This is a direct cutover.
 - Stream mode is required. Do not implement `IncremarkContent` content mode as the primary path.
+- In desktop chat renderer, lock Incremark to default marked-engine behavior; do not add runtime engine switching.
 - `htmlTree` must default to `false` for untrusted model output.
 - Existing high-level `Markdown` API stays compatible for call sites during migration.
 - Existing timeline auto-scroll (`createAutoScroll`) remains authoritative; do not replace with `AutoScrollContainer` unless a specific defect forces it.
+- Do not ship `Simulate AI Output` or equivalent synthetic-stream controls in production chat UI.
+- Performance SLOs are part of done criteria: `p95 visual staleness <= 100ms`, `p99 visual staleness <= 150ms`, with renderer work budget target `<= 6ms/frame` (`<= 4ms` preferred).
 
 ---
 
@@ -33,6 +36,9 @@
   - Refactoring `useChat` stream parser protocol.
   - Introducing server-side markdown sanitization pipeline.
   - Reworking non-chat markdown surfaces outside `apps/desktop`.
+  - Shipping parser-engine toggles (`marked`/`micromark`) in desktop chat UI.
+  - Shipping simulate-stream controls/buttons in desktop chat UI.
+  - Implementing `MicromarkAstBuilder` path for production desktop chat markdown rendering.
 
 ---
 
@@ -43,8 +49,19 @@
 - Risk 3: test flakiness from async generator lifecycle and cleanup timing.
 - Risk 4: import/runtime bundling issues for `@incremark/*` in Vitest.
 - Risk 5: hidden dependency on removed markdown telemetry files.
+- Risk 6: very high token throughput may create queue backpressure and exceed the `p95 <= 100ms` staleness SLO.
 
 Use `@systematic-debugging` whenever observed behavior deviates from expected outcomes.
+
+---
+
+## Performance SLO And Throughput Contract
+
+- `60fps` target means frame budget is `16.7ms`; markdown renderer should consume `<= 6ms/frame` (`<= 4ms` preferred) to avoid crowding layout/paint.
+- Stream adapter must use append-delta semantics for monotonic snapshots and hard reset semantics for non-monotonic snapshots.
+- Update delivery should be coalesced to roughly frame cadence (`~16ms`) and force-flushed when staleness approaches `100ms`.
+- Stream lifecycle must finalize promptly on `isStreaming=false`, abort, or dispose to avoid stuck async generators.
+- Verification must include percentile staleness checks (`p95 <= 100ms`, `p99 <= 150ms`) in integration stress reporting.
 
 ---
 
@@ -854,7 +871,7 @@ git commit -m "feat(desktop): import incremark theme styles globally"
 
 ---
 
-### Task 13: Add Failing Tests For New Markdown Component Static Rendering
+### Task 13: Add Failing Tests For Stream-Mode Markdown Baseline Rendering
 
 **Files:**
 
@@ -891,18 +908,38 @@ Expected: FAIL because component is still marked-based.
 **Step 3: Write minimal implementation**
 
 ```tsx
-// replace markdown.tsx with Incremark wrapper skeleton
+// replace markdown.tsx with Incremark stream-mode skeleton (no content-mode bootstrap)
+import { createMarkdownStreamAdapter } from "@/components/ui/markdown-stream-adapter";
 import { IncremarkContent } from "@incremark/solid";
 import { cn } from "@/utils";
+import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 
 export function Markdown(props: { text: string; class?: string; isStreaming?: boolean }) {
+  const adapter = createMarkdownStreamAdapter();
+  const [runId, setRunId] = createSignal(0);
+  const streamFn = createMemo(() => () => adapter.stream());
+
+  createEffect(() => {
+    adapter.update(props.text ?? "", props.isStreaming ?? false);
+    setRunId(adapter.getRunId());
+  });
+
+  onCleanup(() => adapter.dispose());
+
   return (
-    <div data-component="markdown" class={cn("prose prose-sm max-w-none", props.class)}>
-      <IncremarkContent
-        content={props.text}
-        isFinished={!props.isStreaming}
-        incremarkOptions={{ htmlTree: false, gfm: true, containers: true, math: true }}
-      />
+    <div
+      data-component="markdown"
+      data-run-id={runId()}
+      class={cn("prose prose-sm max-w-none", props.class)}
+    >
+      <Show when={streamFn()} keyed>
+        {fn => (
+          <IncremarkContent
+            stream={fn}
+            incremarkOptions={{ htmlTree: false, gfm: true, containers: true, math: true }}
+          />
+        )}
+      </Show>
     </div>
   );
 }
@@ -917,12 +954,12 @@ Expected: PASS for static rendering + attribute checks.
 
 ```bash
 git add apps/desktop/src/components/ui/markdown.tsx apps/desktop/tests/unit/components/markdown.test.tsx
-git commit -m "feat(desktop): replace markdown static rendering with incremark"
+git commit -m "feat(desktop): initialize markdown renderer directly in incremark stream mode"
 ```
 
 ---
 
-### Task 14: Switch Markdown Component To Stream Mode API (No Content Mode Primary Path)
+### Task 14: Harden Stream-Mode Lifecycle Wiring In Markdown Component
 
 **Files:**
 
@@ -951,35 +988,30 @@ it("uses stream mode and updates rendered output while streaming", async () => {
 **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @sakti-code/desktop exec vitest run tests/unit/components/markdown-streaming.test.tsx -t "uses stream mode and updates rendered output while streaming"`
-Expected: FAIL because component still uses content-mode props.
+Expected: FAIL because stream lifecycle wiring is incomplete (stream factory/run key/finalization behavior not yet stable).
 
 **Step 3: Write minimal implementation**
 
 ```tsx
-// apps/desktop/src/components/ui/markdown.tsx
-import { createMarkdownStreamAdapter } from "@/components/ui/markdown-stream-adapter";
-import { IncremarkContent } from "@incremark/solid";
-import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
-
-const [runId, setRunId] = createSignal(0);
-const adapter = createMarkdownStreamAdapter();
+// markdown.tsx lifecycle refinements
+const runKey = createMemo(() => runId());
+const streamFactory = createMemo(() => {
+  runKey(); // rebuild factory when adapter generation changes
+  return () => adapter.stream();
+});
 
 createEffect(() => {
-  adapter.update(props.text ?? "", props.isStreaming ?? false);
+  const text = props.text ?? "";
+  const isStreaming = props.isStreaming ?? false;
+  adapter.update(text, isStreaming);
   setRunId(adapter.getRunId());
+  if (!isStreaming) adapter.finish();
 });
 
 onCleanup(() => adapter.dispose());
 
-const streamFn = createMemo(() => () => adapter.stream());
-
-<Show when={streamFn()} keyed>
-  {fn => (
-    <IncremarkContent
-      stream={fn}
-      incremarkOptions={{ htmlTree: false, gfm: true, containers: true, math: true }}
-    />
-  )}
+<Show when={streamFactory()} keyed>
+  {fn => <IncremarkContent stream={fn} incremarkOptions={INCREMARK_OPTIONS} />}
 </Show>;
 ```
 
@@ -992,7 +1024,7 @@ Expected: PASS and visible streaming updates.
 
 ```bash
 git add apps/desktop/src/components/ui/markdown.tsx apps/desktop/tests/unit/components/markdown-streaming.test.tsx
-git commit -m "feat(desktop): move markdown renderer to incremark stream mode"
+git commit -m "fix(desktop): harden markdown stream-mode lifecycle wiring"
 ```
 
 ---
@@ -1503,8 +1535,9 @@ git commit -m "test(desktop): migrate markdown unit tests to incremark behavior 
 // remove imports from markdown-perf-telemetry
 // use direct lag sampling + DOM outcome assertions instead
 it("streams long markdown without event-loop spikes", async () => {
-  // existing lagSamples pattern retained
-  expect(maxLag).toBeLessThan(400);
+  // existing lagSamples pattern retained + percentile SLO checks
+  expect(p95Lag).toBeLessThanOrEqual(100);
+  expect(p99Lag).toBeLessThanOrEqual(150);
   expect(container.textContent).toContain("Streaming Load");
 });
 ```
@@ -1520,7 +1553,8 @@ Expected: FAIL due stale telemetry import references.
 // in both integration tests:
 // - remove getMarkdownPerfSnapshot/resetMarkdownPerfTelemetry
 // - keep stream replay + lag probe
-// - benchmark report persists raw lag + duration metrics computed in-test
+// - compute and assert lag percentiles (p95 <= 100ms, p99 <= 150ms)
+// - benchmark report persists raw lag + percentile + duration metrics computed in-test
 ```
 
 Update script:
@@ -1868,6 +1902,7 @@ pnpm --filter @sakti-code/desktop exec vitest run tests/unit/views/workspace-vie
 pnpm --filter @sakti-code/desktop exec vitest run tests/integration/markdown-stream-stress.test.tsx
 pnpm --filter @sakti-code/desktop exec vitest run tests/integration/markdown-benchmark.report.test.tsx
 pnpm --filter @sakti-code/desktop test:perf
+rg -n "MicromarkAstBuilder|astBuilder|engineType|simulateAI|Simulate AI Output" apps/desktop/src/components/ui/markdown.tsx apps/desktop/src/views/workspace-view/chat-area
 
 # Repo quality
 pnpm --filter @sakti-code/desktop typecheck
@@ -1881,9 +1916,11 @@ pnpm --filter @sakti-code/desktop markdown:migration:health
 
 - No runtime imports of `marked`, `marked-shiki`, `shiki`, `dompurify`, `morphdom` in `apps/desktop/src/**`.
 - `Markdown` renderer uses Incremark stream mode for live updates.
+- Desktop chat markdown renderer stays on Incremark default marked-engine path (no `MicromarkAstBuilder`, no runtime parser selector).
 - `htmlTree` is disabled (`false`) in default renderer options.
 - `TextPart` and `ReasoningPart` continue to render streaming output and pass existing behavior tests.
-- Integration stream stress test passes and max event-loop lag threshold remains under agreed cap.
+- No `Simulate AI Output`/synthetic-stream control is shipped in production chat surfaces.
+- Integration stream stress test passes with `p95 visual staleness <= 100ms` and `p99 visual staleness <= 150ms`.
 - `pnpm --filter @sakti-code/desktop markdown:migration:health` passes in clean workspace.
 - Architecture docs explain the new renderer and migration rationale.
 
@@ -1927,6 +1964,7 @@ At each gate, request code review using `@requesting-code-review` before continu
 - [ ] All 30 tasks completed with committed checkpoints.
 - [ ] No skipped failing-test step.
 - [ ] No stale imports from removed modules.
+- [ ] No `MicromarkAstBuilder`/engine-toggle/simulate-stream UI path in desktop chat markdown surfaces.
 - [ ] Updated lockfile committed.
 - [ ] Updated perf report artifact committed if benchmark test regenerates fixture.
 - [ ] Architecture docs committed.
