@@ -1,3 +1,4 @@
+import { createChunkSequence } from "@/../tests/helpers/markdown-stream-fixtures";
 import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -193,5 +194,12 @@ describe("Markdown streaming behavior", () => {
     await vi.waitFor(() => {
       expect(container.textContent).toContain("idle-phase");
     });
+  });
+});
+
+describe("markdown-stream-fixtures", () => {
+  it("builds deterministic chunk sequences", () => {
+    const chunks = createChunkSequence("abcdef", 2);
+    expect(chunks).toEqual(["ab", "cd", "ef"]);
   });
 });
