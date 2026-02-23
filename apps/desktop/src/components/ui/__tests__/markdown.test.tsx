@@ -69,4 +69,12 @@ describe("Markdown singleton/highlighter behavior", () => {
     const themeModule = await import("@incremark/theme/styles.css");
     expect(themeModule).toBeDefined();
   });
+
+  it("renders markdown with incremark base theme classes applied", async () => {
+    const { Markdown } = await import("@/components/ui/markdown");
+    ({ unmount: dispose } = render(() => <Markdown text="x" />, { container }));
+    await vi.waitFor(() => {
+      expect(container.querySelector('[data-component="markdown"]')).not.toBeNull();
+    });
+  });
 });

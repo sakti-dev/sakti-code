@@ -1,6 +1,7 @@
 /* @refresh reload */
 import App from "@/routes";
 import { registerDefaultPartComponents } from "@/views/workspace-view/chat-area/parts/register-parts";
+import "@incremark/theme/styles.css";
 import { render } from "solid-js/web";
 import "./assets/main.css";
 
