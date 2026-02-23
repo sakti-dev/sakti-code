@@ -3,8 +3,10 @@ export type StreamDeltaResult =
   | { type: "reset"; snapshot: string };
 
 export function computeStreamDelta(prev: string, next: string): StreamDeltaResult {
-  if (next.startsWith(prev)) {
-    return { type: "append", chunk: next.slice(prev.length) };
+  const safePrev = prev ?? "";
+  const safeNext = next ?? "";
+  if (safeNext.startsWith(safePrev)) {
+    return { type: "append", chunk: safeNext.slice(safePrev.length) };
   }
-  return { type: "reset", snapshot: next };
+  return { type: "reset", snapshot: safeNext };
 }
