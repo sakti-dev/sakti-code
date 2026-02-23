@@ -7,7 +7,7 @@
     ".": "./src/index.ts",
     "./chat": "./src/chat/index.ts",
     "./server": "./src/server.ts",
-    "./testing/db": "./src/testing/db.ts",
+     "./testing/db": "./tests/helpers/testing-db.ts",
     "./tools": "./src/tools/index.ts",
     "./memory/task/storage": "./src/memory/task/storage.ts",
     "./spec/parser": "./src/spec/parser.ts"

@@ -30,6 +30,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@/testing/db": path.resolve(__dirname, "./tests/helpers/testing-db.ts"),
     },
   },
 });

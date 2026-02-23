@@ -3,19 +3,11 @@
  *
  * Core-owned adapter for DB test helpers.
  * Provides a thin abstraction over the shared server DB,
- * allowing core tests to use @/testing/db instead of external dependencies.
+ * allowing core tests to use @sakti-code/core/testing/db instead of external dependencies.
+ *
+ * Located in tests/helpers to be exempt from no-restricted-imports ESLint rule.
  */
 
-import type {
-  Message,
-  NewTask,
-  NewWorkingMemory,
-  ObservationalMemory,
-  Reflection,
-  Task,
-  TaskDependency,
-  WorkingMemory,
-} from "@sakti-code/shared/core-server-bridge";
 import * as dbModule from "../../../server/db/index.ts";
 
 function ensureBridgeBindings(): void {
