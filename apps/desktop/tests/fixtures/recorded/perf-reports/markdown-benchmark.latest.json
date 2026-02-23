@@ -1,57 +1,57 @@
 {
-  "generatedAt": "2026-02-22T22:50:56.156Z",
+  "generatedAt": "2026-02-23T08:16:57.617Z",
   "fixture": "chat-stream.from-log.json",
   "snapshot": {
     "counters": {
       "commits": 18,
       "liteCommits": 17,
       "fullCommits": 1,
-      "droppedFrames": 7,
+      "droppedFrames": 6,
       "longTasks": 0,
       "rafSkippedApplies": 0,
       "forcedFlushes": 0,
-      "finalizationBatches": 6,
-      "finalizationYieldCount": 4,
-      "finalizationTotalMs": 210.179200999999,
-      "finalizationMaxBatchMs": 44.26411700000244
+      "finalizationBatches": 8,
+      "finalizationYieldCount": 6,
+      "finalizationTotalMs": 220.8789420000012,
+      "finalizationMaxBatchMs": 41.31368199999997
     },
     "stages": {
       "parse": {
         "count": 18,
-        "avgMs": 2.8395612222223767,
-        "p50Ms": 0.3495309999998426,
-        "p95Ms": 19.01186400000006,
-        "maxMs": 19.01186400000006
+        "avgMs": 2.6241020555554417,
+        "p50Ms": 0.3621149999999034,
+        "p95Ms": 18.290451000000758,
+        "maxMs": 18.290451000000758
       },
       "sanitize": {
         "count": 35,
-        "avgMs": 3.271742114285735,
-        "p50Ms": 2.8565510000007635,
-        "p95Ms": 8.482597000001988,
-        "maxMs": 22.897170000000187
+        "avgMs": 3.428225200000088,
+        "p50Ms": 3.230960999999297,
+        "p95Ms": 10.380191000000195,
+        "maxMs": 20.672866000000795
       },
       "morph": {
         "count": 2,
-        "avgMs": 4.030881000000591,
-        "p50Ms": 5.977662000001146,
-        "p95Ms": 5.977662000001146,
-        "maxMs": 5.977662000001146
+        "avgMs": 3.862184000000525,
+        "p50Ms": 5.53693100000055,
+        "p95Ms": 5.53693100000055,
+        "maxMs": 5.53693100000055
       },
       "copyButtons": {
         "count": 1,
-        "avgMs": 6.4232540000011795,
-        "p50Ms": 6.4232540000011795,
-        "p95Ms": 6.4232540000011795,
-        "maxMs": 6.4232540000011795
+        "avgMs": 5.896179999999731,
+        "p50Ms": 5.896179999999731,
+        "p95Ms": 5.896179999999731,
+        "maxMs": 5.896179999999731
       },
       "total": {
         "count": 19,
-        "avgMs": 14.414381842105382,
-        "p50Ms": 3.5751899999995658,
-        "p95Ms": 143.33073499999955,
-        "maxMs": 143.33073499999955
+        "avgMs": 15.468067578947355,
+        "p50Ms": 4.135330999999496,
+        "p95Ms": 141.00258100000065,
+        "maxMs": 141.00258100000065
       }
     },
-    "updatedAt": 1771800656146
+    "updatedAt": 1771834617605
   }
 }
