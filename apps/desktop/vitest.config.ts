@@ -95,7 +95,11 @@ export default mergeConfig(
           extends: true,
           test: {
             name: "desktop-unit-node",
-            include: ["src/**/*.test.ts", "tests/unit/**/*.test.ts"],
+            include: [
+              "src/**/*.test.ts",
+              "src/**/__tests__/**/*.test.ts",
+              "tests/unit/**/*.test.ts",
+            ],
             exclude: [
               "tests/unit/presentation/**/*.test.ts",
               "tests/unit/components/markdown-sanitizer.test.ts",
@@ -115,6 +119,7 @@ export default mergeConfig(
             name: "desktop-ui-jsdom",
             include: [
               "src/**/*.test.tsx",
+              "src/**/__tests__/**/*.test.tsx",
               "tests/unit/**/*.test.tsx",
               "tests/unit/presentation/**/*.test.ts",
               "tests/unit/components/markdown-sanitizer.test.ts",
