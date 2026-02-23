@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { completeOAuth, startOAuth } from "../../src/provider/auth/oauth";
-import type { ProviderAuthService } from "../../src/provider/auth/service";
+import { completeOAuth, startOAuth } from "../../auth/oauth";
+import type { ProviderAuthService } from "../../auth/service";
 
 describe("github-copilot oauth", () => {
   it("authorizes and completes device oauth flow", async () => {

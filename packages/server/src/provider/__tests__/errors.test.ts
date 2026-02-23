@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeProviderError } from "../../src/provider/errors";
+import { normalizeProviderError } from "../errors";
 
 describe("normalizeProviderError", () => {
   it("maps unauthenticated provider to stable code", () => {

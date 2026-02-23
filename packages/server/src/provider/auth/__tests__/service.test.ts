@@ -2,8 +2,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createProviderAuthService } from "../../src/provider/auth/service";
-import { createProviderCredentialStorage } from "../../src/provider/storage";
+import { createProviderAuthService } from "../../auth/service";
+import { createProviderCredentialStorage } from "../../storage";
 
 const tempDirs: string[] = [];
 

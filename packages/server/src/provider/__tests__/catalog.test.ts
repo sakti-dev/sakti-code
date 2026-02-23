@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ProviderAdapter } from "../../src/provider/adapters/base";
-import {
-  createModelCatalogService,
-  normalizeProviderAlias,
-} from "../../src/provider/models/catalog";
+import type { ProviderAdapter } from "../adapters/base";
+import { createModelCatalogService, normalizeProviderAlias } from "../models/catalog";
 
 function createAdapter(id: string, models: Array<{ id: string; name: string }>): ProviderAdapter {
   return {

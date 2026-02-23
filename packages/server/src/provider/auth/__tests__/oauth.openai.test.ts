@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { completeOAuth, resolveOAuthAccessToken, startOAuth } from "../../src/provider/auth/oauth";
-import { __openAIOAuthTest } from "../../src/provider/auth/providers/openai";
-import type { ProviderAuthService } from "../../src/provider/auth/service";
+import { completeOAuth, resolveOAuthAccessToken, startOAuth } from "../../auth/oauth";
+import { __openAIOAuthTest } from "../../auth/providers/openai";
+import type { ProviderAuthService } from "../../auth/service";
 
 describe("openai oauth", () => {
   it("rejects oauth authorize for api-only providers", async () => {

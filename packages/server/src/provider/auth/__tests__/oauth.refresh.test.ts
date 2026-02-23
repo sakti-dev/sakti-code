@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { resolveOAuthAccessToken } from "../../src/provider/auth/oauth";
-import type { ProviderAuthService } from "../../src/provider/auth/service";
+import { resolveOAuthAccessToken } from "../../auth/oauth";
+import type { ProviderAuthService } from "../../auth/service";
 
 describe("oauth refresh", () => {
   it("returns existing access token when oauth credential is not expired", async () => {

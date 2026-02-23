@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OpenAIProviderAdapter } from "../../src/provider/adapters/openai";
+import { OpenAIProviderAdapter } from "../../adapters/openai";
 
 describe("OpenAIProviderAdapter", () => {
   it("describes provider metadata", () => {

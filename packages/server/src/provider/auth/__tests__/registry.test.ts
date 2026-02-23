@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { listProviderAuthMethods } from "../../src/provider/auth/registry";
+import { listProviderAuthMethods } from "../../auth/registry";
 
 describe("provider auth registry", () => {
   it("exposes oauth methods for openai and github-copilot", () => {

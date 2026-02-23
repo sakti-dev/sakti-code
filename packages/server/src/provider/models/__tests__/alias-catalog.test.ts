@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createModelCatalogService,
-  normalizeProviderAlias,
-} from "../../src/provider/models/catalog";
+import { createModelCatalogService, normalizeProviderAlias } from "../catalog";
 
 describe("alias catalog coverage", () => {
   it("normalizes known provider aliases", () => {

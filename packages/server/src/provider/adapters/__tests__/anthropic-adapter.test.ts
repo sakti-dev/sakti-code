@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AnthropicProviderAdapter } from "../../src/provider/adapters/anthropic";
+import { AnthropicProviderAdapter } from "../../adapters/anthropic";
 
 describe("AnthropicProviderAdapter", () => {
   it("describes provider metadata", () => {

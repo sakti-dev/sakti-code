@@ -6,7 +6,7 @@ import {
   providerConfigPayloadSchema,
   providerDescriptorSchema,
   providerPreferencesSchema,
-} from "../../src/provider/schema";
+} from "../schema";
 
 describe("provider domain schemas", () => {
   it("parses ProviderDescriptor with opencode-style fields", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inferModelCapabilities } from "../../src/provider/capabilities";
+import { inferModelCapabilities } from "../capabilities";
 
 describe("inferModelCapabilities", () => {
   it("detects vision model ids", () => {

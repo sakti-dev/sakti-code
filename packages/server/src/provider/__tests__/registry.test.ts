@@ -3,7 +3,7 @@ import {
   createProviderRegistry,
   listProviderDescriptors,
   resolveProviderAdapter,
-} from "../../src/provider/registry";
+} from "../registry";
 
 describe("provider registry", () => {
   it("includes zai provider descriptor by default", () => {

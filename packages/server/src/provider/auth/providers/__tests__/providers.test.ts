@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createBuiltinProviderAuthDefinitions } from "../../src/provider/auth/providers";
+import { createBuiltinProviderAuthDefinitions } from "../../providers";
 
 describe("provider auth definitions", () => {
   it("does not register zai, zai-coding-plan, or opencode in builtins", () => {
