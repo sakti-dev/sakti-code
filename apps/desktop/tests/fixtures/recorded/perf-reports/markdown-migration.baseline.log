@@ -1,0 +1,7 @@
+2026-02-23T09:27:10Z
+COMMAND: tests/unit/components/markdown.test.tsx
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/home/eekrain/CODE/ekacode/.worktrees/markdown-migration/apps/desktop[39m
+
+undefined
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run tests/unit/components/markdown.test.tsx
