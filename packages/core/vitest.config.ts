@@ -14,7 +14,11 @@ export default defineConfig({
   test: {
     setupFiles: ["./tests/vitest.setup.ts"],
     globals: true,
-    include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
+    include: [
+      "src/**/__tests__/**/*.test.ts",
+      "tests/integration/**/*.test.ts",
+      "tests/e2e/**/*.test.ts",
+    ],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
@@ -26,6 +30,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@/testing/db": path.resolve(__dirname, "./src/testing/db.ts"),
     },
   },
 });

@@ -7,8 +7,9 @@
     "types": ["vitest/globals", "node"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@/testing/db": ["src/testing/db.ts"]
     }
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/__tests__/**/*.ts", "tests/**/*.ts", "../server/**/*.ts"]
 }

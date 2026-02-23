@@ -7,7 +7,7 @@
     ".": "./src/index.ts",
     "./chat": "./src/chat/index.ts",
     "./server": "./src/server.ts",
-    "./testing/db": "./tests/helpers/core-db.ts",
+    "./testing/db": "./src/testing/db.ts",
     "./tools": "./src/tools/index.ts",
     "./memory/task/storage": "./src/memory/task/storage.ts",
     "./spec/parser": "./src/spec/parser.ts"
@@ -20,6 +20,7 @@
     "test:typecheck": "tsc -p tsconfig.spec.json --noEmit",
     "test:unit": "vitest run --exclude '**/tests/integration/**'",
     "test:integration": "vitest run tests/integration",
+    "test:layout": "bash ./scripts/check-no-legacy-domain-tests.sh",
     "test:imports": "bash tests/.migration/check-import-regressions.sh",
     "test:all": "pnpm test:typecheck && pnpm lint && pnpm test:unit && pnpm test:integration"
   },

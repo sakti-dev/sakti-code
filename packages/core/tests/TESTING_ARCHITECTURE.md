@@ -1,61 +1,68 @@
 # Core Testing Architecture
 
-This document describes the testing architecture for `packages/core`, including test placement rules, import patterns, and verification commands.
+This document describes testing architecture for `packages/core`, including test placement rules, import patterns, and verification commands.
 
 ## Test Placement
 
-### Unit Tests
+### Unit/Domain Tests
 
 **Location:** `src/**/__tests__/`
 
-Unit tests are colocated with the source code they test. These tests should:
+Unit and domain tests are colocated with source code they test. These tests should:
 
-- Test isolated units of functionality
-- Have no external dependencies (DB, APIs, file system, etc.)
-- Use mocks for external services
-- Run quickly (< 5 seconds per test file)
+- Test isolated units of functionality or specific domain components
+- May use database connections via `@/testing/db` bridge
+- Use `@/` alias for all internal imports
+- Run efficiently (integration-level tests colocated with domain code)
 
 **Examples:**
 
-- `src/agent/__tests__/create.test.ts`
-- `src/tools/search/__tests__/search-docs.test.ts`
-- `src/lsp/__tests__/client.test.ts`
+- `src/agent/workflow/__tests__/model-provider.test.ts` - Unit test for model provider
+- `src/session/__tests__/manager.integration.test.ts` - Domain test with DB
+- `src/memory/observation/__tests__/storage.integration.test.ts` - Domain test with DB
+- `src/tools/__tests__/task.integration.test.ts` - Domain test for tools
 
 ### Integration Tests
 
 **Location:** `tests/integration/`
 
-Integration tests test how multiple components work together. These tests may:
+Integration tests test system-level workflows and cross-component interactions. These tests may:
 
 - Use real database connections
 - Call external APIs (opt-in, requires API keys)
-- Test end-to-end workflows
-- Take longer to run
+- Test end-to-end workflows across multiple domains
+- Test integration points between packages
 
 **Current integration suites:**
 
+- `build-memory-tools.integration.test.ts` - Memory tools integration
 - `e2e-agent.test.ts` - Agent with tools (requires `ZAI_API_KEY`)
+- `instance-context-integration.test.ts` - Instance context integration
+- `memory-observation.integration.test.ts` - Memory observation integration
+- `memory-observation-phase5-*.test.ts` - Phase 5 end-to-end tests
 - `search-docs-integration.test.ts` - Code research (requires `ZAI_API_KEY`)
 
-### DB-Dependent Tests
+### Centralized Test Infrastructure
 
-**Location:** `tests/<domain>/`
+**Location:** `tests/`
 
-Tests that require database connections but are not full integration tests live in the legacy `tests/` directory. This is intentional to avoid `test:typecheck` cross-package import issues with `@sakti-code/server`.
+The following centralized directories are retained for shared test infrastructure:
 
-**Examples:**
+- `tests/helpers/` - Shared test helpers and utilities
+- `tests/fixtures/` - Test fixtures and mock data
+- `tests/integration/` - System-level integration tests
+- `tests/e2e/` - End-to-end tests (if any)
 
-- `tests/spec/compiler.test.ts` - Spec compiler with DB
-- `tests/memory/` - All memory domain tests (DB-dependent)
-- `tests/agent/workflow/model-provider.test.ts` - Type errors with DB imports
+**Forbidden:** No domain-specific tests under `tests/{agent,memory,session,spec,tools}/`. All domain tests must be colocated in `src/**/__tests__/`.
 
 ## Import Patterns
 
 ### Allowed Patterns
 
-**In unit tests (`src/**/**tests**/`):\*\*
+**In colocated tests (`src/**/**tests**/`):\*\*
 
 - `@/<domain>/...` for importing from core internals
+- `@/testing/db` for database access (core-owned bridge)
 - External package imports (e.g., `vitest`, `@types/node`)
 - Mock imports for external services
 
@@ -64,23 +71,15 @@ Tests that require database connections but are not full integration tests live 
 - `@/*` for core internals (path alias configured in vitest)
 - External package imports
 - Server bridge imports (via `@sakti-code/shared/core-server-bridge`)
-
-**In DB-dependent tests (`tests/<domain>/`):**
-
-- `@/*` for core internals (when not importing from server)
-- `../../server/db/index.ts` or similar for DB access (intentionally excluded from unit test colocated structure)
+- `@/testing/db` for database access
 
 ### Forbidden Patterns
 
 **In ALL tests:**
 
-- Direct imports from `@sakti-code/server` or `@sakti-code/server/*` (use core server-bridge contracts instead)
+- Direct imports from `@sakti-code/server` or `@sakti-code/server/*` (use `@/testing/db` instead)
 - Deep relative imports to `../src/*`, `../../src/*`, etc. in unit tests (use `@/*` instead)
-- Reintroducing stale test directories under `packages/core/tests/`
-
-**Specifically in unit tests (`src/**/**tests**/`):\*\*
-
-- `../../server/*` relative imports to server package (blocked by ESLint rule)
+- Adding new test files under `tests/{agent,memory,session,spec,tools}/`
 
 ## Verification Commands
 
@@ -93,10 +92,13 @@ pnpm --filter @sakti-code/core test:typecheck
 # Lint (enforces import patterns)
 pnpm --filter @sakti-code/core lint
 
-# Unit tests (colocated tests + DB-dependent tests)
+# Layout check (enforces nearest __tests__ colocation)
+pnpm --filter @sakti-code/core test:layout
+
+# Unit tests (colocated tests)
 pnpm --filter @sakti-code/core test:unit
 
-# Integration tests (requires opt-in via RUN_ONLINE_TESTS=1)
+# Integration tests
 pnpm --filter @sakti-code/core test:integration
 
 # All tests
@@ -112,7 +114,7 @@ pnpm --filter @sakti-code/core run test:imports
 
 Add tests to `src/<domain>/__tests__/` when:
 
-- The test has no external dependencies
+- The test has no external dependencies (pure unit test)
 - The test runs quickly
 - The test only tests a single function/class/module
 
@@ -131,13 +133,48 @@ describe("createAgent", () => {
 });
 ```
 
-### When to Add an Integration Test
+### When to Add a Domain Integration Test
+
+Add tests to `src/<domain>/__tests__/` (named `*.integration.test.ts`) when:
+
+- The test requires database access
+- The test tests domain-specific workflows
+- The test is faster than system-level integration tests
+- The test benefits from being close to the code it tests
+
+**Example:**
+
+```typescript
+// src/memory/observation/__tests__/storage.integration.test.ts
+import { describe, expect, it } from "vitest";
+import { ObservationalMemoryStorage } from "../storage";
+import { getDb, closeDb } from "@/testing/db";
+
+describe("ObservationalMemoryStorage", () => {
+  let storage: ObservationalMemoryStorage;
+
+  beforeEach(async () => {
+    storage = new ObservationalMemoryStorage(await getDb());
+  });
+
+  afterEach(async () => {
+    closeDb();
+  });
+
+  it("should create observational memory", async () => {
+    // ... integration test with DB
+  });
+});
+```
+
+### When to Add a System Integration Test
 
 Add tests to `tests/integration/` when:
 
 - The test requires multiple components to interact
-- The test needs real database or external API connections
 - The test is an end-to-end workflow
+- The test is significantly slower than domain tests
+- The test cross-cuts multiple domains
 
 **Example:**
 
@@ -154,16 +191,6 @@ describe("E2E: Agent with tools", () => {
 });
 ```
 
-### When to Keep Tests in Legacy Location
-
-Keep tests in `tests/<domain>/` when:
-
-- The test imports from `@sakti-code/server` DB layer
-- The test has type errors that prevent colocation
-- The test depends on server bridge contracts
-
-**Note:** These tests should eventually be refactored to avoid direct DB imports, but this is a larger effort.
-
 ## Troubleshooting
 
 ### Test Type Check Errors
@@ -171,8 +198,8 @@ Keep tests in `tests/<domain>/` when:
 If `test:typecheck` fails:
 
 1. Check for incorrect import paths (use `@/*` for core internals)
-2. Verify DB-dependent tests are not in `src/**/__tests__/`
-3. Check for missing type imports from server bridge contracts
+2. Use `@/testing/db` for database access instead of server imports
+3. Check for missing type imports
 
 ### Lint Errors
 
@@ -180,22 +207,31 @@ If lint fails with import errors:
 
 1. Unit tests: Use `@/*` instead of relative paths like `../../src/`
 2. All tests: Avoid direct `@sakti-code/server` imports
-3. DB-dependent tests: They are exempt from the `no-restricted-imports` rule
+3. Use `@/testing/db` for database access
+
+### Layout Check Errors
+
+If `test:layout` fails:
+
+1. Check for new test files under `tests/{agent,memory,session,spec,tools}/`
+2. Move tests to nearest `src/<domain>/__tests__/` directory
+3. Ensure filename is `*.test.ts` or `*.integration.test.ts`
 
 ### Test Discovery Issues
 
 If tests aren't being discovered:
 
-1. Check the file is named `*.test.ts` or `*.spec.ts`
-2. Verify the file is in `src/**/__tests__/`, `tests/integration/`, or `tests/<domain>/`
+1. Check file is named `*.test.ts` or `*.spec.ts`
+2. Verify file is in `src/**/__tests__/`, `tests/integration/`, or `tests/e2e/`
 3. Check vitest.config.ts include patterns
 
 ## Migration Notes
 
-This architecture is the result of a migration from a legacy domain-based structure to a hybrid model with colocation. See `tests/.migration/baseline.md` and `tests/.migration/final-verification.md` for migration details.
+This architecture is the result of a migration from a legacy domain-based structure (`tests/<domain>/*.test.ts`) to a nearest-`__tests__` colocation model.
 
-Key migration outcomes:
+Migration outcomes:
 
-- 126 test files colocated in `src/**/__tests__/`
-- 62 test files remain in `tests/` (DB-dependent or type errors)
-- All verification gates passing (typecheck, lint, unit, integration)
+- All unit/domain tests colocated in `src/**/__tests__/`
+- Only system-level integration tests remain in `tests/integration/`
+- Centralized test infrastructure retained in `tests/helpers/` and `tests/fixtures/`
+- Guardrail script (`scripts/check-no-legacy-domain-tests.sh`) prevents reintroduction of legacy domain test directories

@@ -12,6 +12,6 @@ export default {
   out: "./drizzle",
   dialect: "sqlite",
   dbCredentials: {
-    url: paths.saktiCodeDbUrl,
+    url: paths.sakticodeDbUrl,
   },
 } satisfies Config;
