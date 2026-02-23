@@ -11,6 +11,7 @@ export default defineConfig({
     pool: "threads",
     maxConcurrency: 1,
     fileParallelism: false,
+    include: ["src/**/__tests__/**/*.test.ts", "db/__tests__/**/*.test.ts", "tests/**/*.test.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
