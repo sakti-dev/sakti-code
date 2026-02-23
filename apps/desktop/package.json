@@ -18,7 +18,8 @@
     "test:all": "pnpm run typecheck:test && vitest run",
     "typecheck": "pnpm --filter @sakti-code/shared build && tsc --noEmit",
     "lint": "eslint .",
-    "markdown:migration:baseline": "bash ./scripts/markdown-migration-baseline.sh"
+    "markdown:migration:baseline": "bash ./scripts/markdown-migration-baseline.sh",
+    "markdown:migration:health": "bash ./scripts/markdown-migration-health.sh"
   },
   "dependencies": {
     "@corvu/resizable": "^0.2.5",
