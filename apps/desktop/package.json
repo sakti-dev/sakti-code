@@ -8,6 +8,7 @@
     "build": "vite build",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:layout": "bash ./scripts/check-no-tests-unit.sh",
     "test:perf": "PERF_BENCH=1 vitest run tests/integration/markdown-stream-stress.test.tsx tests/integration/markdown-benchmark.report.test.tsx",
     "test:health": "bash ./scripts/test-health.sh",
     "test:unit": "vitest run --project desktop-unit-node",

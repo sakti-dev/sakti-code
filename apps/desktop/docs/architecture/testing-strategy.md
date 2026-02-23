@@ -7,6 +7,7 @@ This document defines the testing strategy, standards, and conventions for the S
 ## Layout Policy
 
 - **Unit/Component Tests**: Place test files in `src/**/__tests__/` directories adjacent to the code they test
+- **Legacy `tests/unit`**: Forbidden. All unit tests must be colocated under `src/**/__tests__/`.
 - **Integration Tests**: Keep in `tests/integration/` directory for end-to-end scenarios
 - **E2E Tests**: Keep in `tests/e2e/` directory for full-stack validation
 - **Helper Modules**: Place in `tests/helpers/` and `tests/fixtures/` directories
@@ -91,6 +92,9 @@ pnpm --filter @sakti-code/desktop run typecheck:test
 
 # Run all tests
 pnpm --filter @sakti-code/desktop run test:all
+
+# Enforce test layout (no tests/unit)
+pnpm --filter @sakti-code/desktop run test:layout
 
 # Health check
 pnpm --filter @sakti-code/desktop run test:health
