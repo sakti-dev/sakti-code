@@ -2,35 +2,42 @@
  * Core Test DB Bridge
  *
  * Core-owned adapter for DB test helpers.
- * Provides a thin abstraction over the shared server DB,
- * allowing core tests to use @/testing/db without external dependencies.
+ * Uses shared core-server-bridge bindings registered at startup (vitest.setup.ts).
  */
 
-import * as dbModule from "../../../server/db/index.ts";
+import { getCoreDbBindings } from "@sakti-code/shared/core-server-bridge";
 
-function ensureBridgeBindings(): void {
-  dbModule.getDb();
-}
+const coreDbBindings = await (async () => {
+  try {
+    return getCoreDbBindings();
+  } catch (error) {
+    try {
+      await import("../../tests/vitest.setup.ts");
+      return getCoreDbBindings();
+    } catch {
+      throw error;
+    }
+  }
+})();
 
 export async function getDb() {
-  ensureBridgeBindings();
-  return dbModule.getDb();
+  return coreDbBindings.getDb();
 }
 
 export function closeDb(): void {
-  dbModule.closeDb();
+  coreDbBindings.closeDb?.();
 }
 
-export const sessions = dbModule.sessions;
-export const tasks = dbModule.tasks;
-export const taskDependencies = dbModule.taskDependencies;
-export const taskMessages = dbModule.taskMessages;
-export const threads = dbModule.threads;
-export const messages = dbModule.messages;
-export const workingMemory = dbModule.workingMemory;
-export const reflections = dbModule.reflections;
-export const observationalMemory = dbModule.observationalMemory;
-export const toolSessions = dbModule.toolSessions;
+export const sessions = coreDbBindings.sessions;
+export const tasks = coreDbBindings.tasks;
+export const taskDependencies = coreDbBindings.taskDependencies;
+export const taskMessages = coreDbBindings.taskMessages;
+export const threads = coreDbBindings.threads;
+export const messages = coreDbBindings.messages;
+export const workingMemory = coreDbBindings.workingMemory;
+export const reflections = coreDbBindings.reflections;
+export const observationalMemory = coreDbBindings.observationalMemory;
+export const toolSessions = coreDbBindings.toolSessions;
 
 export type {
   Message,

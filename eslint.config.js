@@ -127,7 +127,7 @@ module.exports = [
     },
   },
   {
-    files: ["packages/core/tests/vitest.setup.ts", "packages/core/tests/helpers/core-db.ts", "packages/core/tests/helpers/testing-db.ts"],
+    files: ["packages/core/tests/vitest.setup.ts", "packages/core/tests/helpers/core-db.ts"],
     rules: {
       "no-restricted-imports": "off",
     },

@@ -8,7 +8,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@/testing/db": ["tests/helpers/testing-db.ts"]
+      "@/testing/db": ["src/testing/db.ts"]
     }
   },
   "include": ["src/**/*.ts", "src/**/__tests__/**/*.ts", "tests/**/*.ts", "../server/**/*.ts"]
