@@ -9,7 +9,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/runtime", () => {
+vi.mock("../../runtime", () => {
   const controllers = new Map<
     string,
     {
