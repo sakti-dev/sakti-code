@@ -6,6 +6,8 @@ import shared from "./vitest.shared";
 
 const PACKAGE_ROOT = __dirname;
 const PROJECT_ROOT = join(PACKAGE_ROOT, "../..");
+const INCREMARK_ROOT = resolve(PACKAGE_ROOT, "../../../../incremark");
+const PNPM_ROOT = resolve(PACKAGE_ROOT, "../../node_modules/.pnpm");
 
 // Define explicit paths
 const SHARED_SRC = resolve(PACKAGE_ROOT, "../../packages/shared/src");
@@ -67,7 +69,54 @@ export default mergeConfig(
           find: "@renderer/providers/workspace-provider",
           replacement: DESKTOP_SRC + "/core/state/providers/workspace-provider.tsx",
         },
+        { find: "@incremark/solid", replacement: resolve(INCREMARK_ROOT, "packages/solid/src") },
+        {
+          find: "@incremark/core",
+          replacement: resolve(PNPM_ROOT, "@incremark+core@0.3.10/node_modules/@incremark/core"),
+        },
+        {
+          find: "@incremark/shared",
+          replacement: resolve(
+            PNPM_ROOT,
+            "@incremark+shared@0.3.10_@incremark+core@0.3.10/node_modules/@incremark/shared"
+          ),
+        },
+        {
+          find: "@incremark/theme/styles.css",
+          replacement: resolve(
+            PNPM_ROOT,
+            "@incremark+theme@0.3.10/node_modules/@incremark/theme/dist/styles.css"
+          ),
+        },
+        {
+          find: "@incremark/theme",
+          replacement: resolve(PNPM_ROOT, "@incremark+theme@0.3.10/node_modules/@incremark/theme"),
+        },
+        {
+          find: "@incremark/icons",
+          replacement: resolve(PNPM_ROOT, "@incremark+icons@0.3.10/node_modules/@incremark/icons"),
+        },
+        { find: "shiki", replacement: resolve(PNPM_ROOT, "shiki@3.22.0/node_modules/shiki") },
+        {
+          find: "shiki-stream",
+          replacement: resolve(
+            PNPM_ROOT,
+            "shiki-stream@0.1.4_solid-js@1.9.11/node_modules/shiki-stream"
+          ),
+        },
+        {
+          find: "@shikijs/core",
+          replacement: resolve(PNPM_ROOT, "@shikijs+core@3.22.0/node_modules/@shikijs/core"),
+        },
+        {
+          find: "@antfu/utils",
+          replacement: resolve(PNPM_ROOT, "@antfu+utils@9.3.0/node_modules/@antfu/utils"),
+        },
       ],
+    },
+    esbuild: {
+      jsxImportSource: "solid-js",
+      jsx: "automatic",
     },
     build: {
       outDir: "dist",

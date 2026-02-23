@@ -57,6 +57,22 @@ Use `@systematic-debugging` whenever observed behavior deviates from expected ou
 - Batch E: Legacy removal + dependency cleanup (Tasks 25-28)
 - Batch F: Verification hardening + docs + handoff (Tasks 29-30)
 
+## Implementation Status Update (2026-02-23)
+
+- Completed:
+  - `Markdown` now uses `@incremark/solid` stream mode (`stream={adapter.stream}`) with snapshot-diff adapter lifecycle.
+  - `TextPart` and `ReasoningPart` are integrated and passing with preserved throttling behavior.
+  - Stream-focused verification suites (`markdown-streaming`, stress, benchmark) are green.
+  - Legacy sanitizer helper (`markdown-sanitizer.ts`) and its unit tests were removed.
+  - Legacy finalizer helper (`markdown-finalizer.ts`) and its unit tests were removed.
+  - Legacy dependencies removed from desktop package: `marked`, `marked-shiki`, `dompurify`, `morphdom`, direct `shiki`.
+  - Migration health and baseline scripts now target the current test layout (`src/**/__tests__` + `tests/integration/**`).
+  - Explicit security/code-fence/unmount lifecycle assertions were added to markdown test suites.
+
+- Intentional deviation:
+  - Keep `markdown-perf-telemetry` for migration SLO checks and benchmark reporting instead of removing it in Task 26.
+  - Rationale: it is still used by `markdown-stream-stress` and `markdown-benchmark.report` integration tests and the perf panel.
+
 ---
 
 ### Task 1: Add Repeatable Baseline Script For Markdown Migration

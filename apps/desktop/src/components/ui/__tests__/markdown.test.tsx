@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const createHighlighterMock = vi.fn(async () => ({
   codeToHtml: (code: string) => `<pre><code>${code}</code></pre>`,
+  codeToTokens: () => ({
+    tokens: [[{ content: "", offset: 0 }]],
+    grammarState: undefined,
+  }),
 }));
 
 vi.mock("shiki", () => ({
@@ -14,7 +18,6 @@ describe("Markdown singleton/highlighter behavior", () => {
   let dispose: (() => void) | undefined;
 
   beforeEach(() => {
-    vi.resetModules();
     createHighlighterMock.mockClear();
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -62,6 +65,66 @@ describe("Markdown singleton/highlighter behavior", () => {
     ));
     await vi.waitFor(() => {
       expect(createHighlighterMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("loads incremark theme css", async () => {
+    const themeModule = await import("@incremark/theme/styles.css");
+    expect(themeModule).toBeDefined();
+  });
+
+  it("renders markdown with incremark base theme classes applied", async () => {
+    const { Markdown } = await import("@/components/ui/markdown");
+    ({ unmount: dispose } = render(() => <Markdown text="x" />, { container }));
+    await vi.waitFor(() => {
+      expect(container.querySelector('[data-component="markdown"]')).not.toBeNull();
+    });
+  });
+
+  it("renders plain markdown through incremark", async () => {
+    const { Markdown } = await import("@/components/ui/markdown");
+    ({ unmount: dispose } = render(() => <Markdown text="Hello **world**" isStreaming={false} />, {
+      container,
+    }));
+    await vi.waitFor(() => {
+      expect(container.textContent).toContain("Hello");
+      expect(container.textContent).toContain("world");
+    });
+  });
+
+  it("blocks raw html node rendering by default", async () => {
+    const { Markdown } = await import("@/components/ui/markdown");
+    ({ unmount: dispose } = render(
+      () => <Markdown text={'safe\n<div data-xss="1">unsafe</div>'} isStreaming={false} />,
+      {
+        container,
+      }
+    ));
+    await vi.waitFor(() => {
+      expect(container.textContent).toContain("safe");
+    });
+    expect(container.querySelector('[data-xss="1"]')).toBeNull();
+  });
+
+  it("renders fenced code blocks with pre and code nodes", async () => {
+    const { Markdown } = await import("@/components/ui/markdown");
+    ({ unmount: dispose } = render(
+      () => <Markdown text={"```ts\nconst answer = 42\n```"} isStreaming={false} />,
+      {
+        container,
+      }
+    ));
+    await vi.waitFor(() => {
+      expect(container.querySelector("pre")).not.toBeNull();
+      expect(container.querySelector("code")).not.toBeNull();
+    });
+  });
+
+  it("preserves data-component attribute for selectors", async () => {
+    const { Markdown } = await import("@/components/ui/markdown");
+    ({ unmount: dispose } = render(() => <Markdown text="x" />, { container }));
+    await vi.waitFor(() => {
+      expect(container.querySelector('[data-component="markdown"]')).not.toBeNull();
     });
   });
 });

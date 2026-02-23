@@ -87,6 +87,7 @@ export const TextPart: Component<TextPartProps> = props => {
           text={throttledText()}
           isStreaming={props.isStreaming}
           isScrollActive={props.isScrollActive}
+          streamCadenceMs={0}
           deferHighlightUntilComplete={true}
           pauseWhileScrolling={true}
         />

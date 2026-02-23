@@ -73,6 +73,7 @@ export const ReasoningPart: Component<ReasoningPartProps> = props => {
             class="prose-p:m-0"
             isStreaming={props.isStreaming}
             isScrollActive={props.isScrollActive}
+            streamCadenceMs={0}
             deferHighlightUntilComplete={true}
             pauseWhileScrolling={true}
           />

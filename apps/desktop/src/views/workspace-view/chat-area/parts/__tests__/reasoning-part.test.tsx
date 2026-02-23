@@ -75,9 +75,12 @@ describe("ReasoningPart", () => {
     });
 
     // Rapid updates
-    setPart({ type: "reasoning", text: "Updated thought 1" });
-    setPart({ type: "reasoning", text: "Updated thought 2" });
-    setPart({ type: "reasoning", text: "Final thought" });
+    setPart({ type: "reasoning", text: "Initial thought Updated thought 1" });
+    setPart({ type: "reasoning", text: "Initial thought Updated thought 1 Updated thought 2" });
+    setPart({
+      type: "reasoning",
+      text: "Initial thought Updated thought 1 Updated thought 2 Final thought",
+    });
 
     // After throttle + markdown cadence period
     await vi.advanceTimersByTimeAsync(360);

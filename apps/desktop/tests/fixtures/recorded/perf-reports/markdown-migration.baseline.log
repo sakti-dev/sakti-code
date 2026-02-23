@@ -1,0 +1,39 @@
+2026-02-23T14:05:43Z
+COMMAND: src/components/ui/__tests__/markdown.test.tsx
+
+ RUN  v4.0.18 /home/eekrain/CODE/ekacode/.worktrees/markdown-migration/apps/desktop
+
+ ✓ |desktop-ui-jsdom| src/components/ui/__tests__/markdown.test.tsx (8 tests) 1464ms
+     ✓ does not initialize shiki for plain text markdown  1044ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  21:05:44
+   Duration  2.71s (transform 1.05s, setup 139ms, import 266ms, tests 1.46s, environment 657ms)
+
+COMMAND: src/components/ui/__tests__/markdown-streaming.test.tsx
+
+ RUN  v4.0.18 /home/eekrain/CODE/ekacode/.worktrees/markdown-migration/apps/desktop
+
+ ✓ |desktop-ui-jsdom| src/components/ui/__tests__/markdown-streaming.test.tsx (8 tests) 1165ms
+     ✓ coalesces frequent streaming updates by cadence  917ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  21:05:49
+   Duration  2.46s (transform 1.00s, setup 143ms, import 313ms, tests 1.16s, environment 662ms)
+
+COMMAND: tests/integration/markdown-stream-stress.test.tsx
+
+ RUN  v4.0.18 /home/eekrain/CODE/ekacode/.worktrees/markdown-migration/apps/desktop
+
+ ✓ |desktop-contract| tests/integration/markdown-stream-stress.test.tsx (1 test) 415ms
+     ✓ stays responsive and records measurable renderer metrics under streaming load  414ms
+ ✓ |desktop-ui-jsdom| tests/integration/markdown-stream-stress.test.tsx (1 test) 415ms
+     ✓ stays responsive and records measurable renderer metrics under streaming load  414ms
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  21:05:52
+   Duration  3.89s (transform 1.32s, setup 176ms, import 1.63s, tests 830ms, environment 978ms)
+

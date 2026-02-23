@@ -77,9 +77,9 @@ describe("TextPart", () => {
     });
 
     // Rapid updates
-    setPart({ type: "text", text: "Updated 1" });
-    setPart({ type: "text", text: "Updated 2" });
-    setPart({ type: "text", text: "Final update" });
+    setPart({ type: "text", text: "Initial text Updated 1" });
+    setPart({ type: "text", text: "Initial text Updated 1 Updated 2" });
+    setPart({ type: "text", text: "Initial text Updated 1 Updated 2 Final update" });
 
     // After throttle + markdown cadence period - should show final value
     await vi.advanceTimersByTimeAsync(360);
