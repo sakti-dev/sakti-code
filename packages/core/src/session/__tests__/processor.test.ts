@@ -100,6 +100,21 @@ describe("session/processor", () => {
       // This will be tested through integration tests
       expect(true).toBe(true);
     });
+
+    it("should not treat repeated question tool calls as doom loop", () => {
+      const processor = new AgentProcessor(testConfig, () => {});
+      (processor as unknown as { toolCallHistory: string[] }).toolCallHistory = [
+        'question:{"questions":[{"question":"A?"}]}',
+        'question:{"questions":[{"question":"B?"}]}',
+        'question:{"questions":[{"question":"C?"}]}',
+        'question:{"questions":[{"question":"D?"}]}',
+        'question:{"questions":[{"question":"E?"}]}',
+        'question:{"questions":[{"question":"F?"}]}',
+      ];
+      expect((processor as unknown as { detectDoomLoop: () => boolean }).detectDoomLoop()).toBe(
+        false
+      );
+    });
   });
 
   describe("abort", () => {

@@ -16,6 +16,7 @@ const READ_ONLY_TOOLS: ToolName[] = [
   "read",
   "ls",
   "glob",
+  "question",
   "grep",
   "webfetch",
   "search-docs",

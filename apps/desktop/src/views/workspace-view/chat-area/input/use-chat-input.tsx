@@ -74,11 +74,24 @@ export const useChatInput = () => {
   };
 
   const handleAnswerQuestion = (id: string, answer: unknown) => {
-    questionActions.answer(id, answer);
+    const client = ctx.client();
+    if (!client) return;
+
+    void client.replyQuestion(id, answer).then(result => {
+      if (!result.success) return;
+      questionActions.answer(id, answer);
+    });
   };
 
   const handleRejectQuestion = (id: string) => {
-    questionActions.answer(id, { rejected: true });
+    const client = ctx.client();
+    if (!client) return;
+
+    const payload = { rejected: true };
+    void client.rejectQuestion(id).then(result => {
+      if (!result.success) return;
+      questionActions.answer(id, payload);
+    });
   };
 
   const [agentMode, setAgentMode] = createSignal<AgentMode>("plan");

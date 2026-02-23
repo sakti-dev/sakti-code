@@ -12,6 +12,7 @@ export { multieditTool } from "./filesystem/multiedit";
 export { readTool } from "./filesystem/read";
 export { writeTool } from "./filesystem/write";
 export { invalidTool } from "./invalid";
+export { questionTool } from "./question";
 
 // Shell tools
 export { bashTool } from "./shell/bash.tool";

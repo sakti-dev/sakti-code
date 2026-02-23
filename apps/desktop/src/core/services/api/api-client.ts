@@ -57,6 +57,14 @@ export interface PermissionResponse {
 }
 
 /**
+ * Question reply response
+ */
+export interface QuestionResponse {
+  success: boolean;
+  error?: string;
+}
+
+/**
  * Pending permission request from server
  */
 export interface PendingPermission {
@@ -65,6 +73,16 @@ export interface PendingPermission {
   args: Record<string, unknown>;
   sessionID: string;
   timestamp: string;
+}
+
+/**
+ * Pending question request from server
+ */
+export interface PendingQuestion {
+  id: string;
+  sessionID: string;
+  questions: unknown[];
+  tool?: { messageID: string; callID: string };
 }
 
 /**
@@ -774,6 +792,90 @@ export class SaktiCodeApiClient {
       logger.info("Session approvals cleared", { sessionId });
     } catch (error) {
       logger.error("Failed to clear session approvals", error as Error, { sessionId });
+      throw error;
+    }
+  }
+
+  // ============================================================
+  // Questions API
+  // ============================================================
+
+  /**
+   * Reply to a pending question request
+   */
+  async replyQuestion(id: string, reply: unknown): Promise<QuestionResponse> {
+    logger.info("Submitting question reply", { id });
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/questions/reply`, {
+        method: "POST",
+        headers: this.commonHeaders(),
+        body: JSON.stringify({ id, reply }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        logger.warn("Question reply failed", { id, error });
+        return { success: false, error };
+      }
+
+      logger.info("Question reply recorded", { id });
+      return { success: true };
+    } catch (error) {
+      logger.error("Failed to submit question reply", error as Error, { id });
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  /**
+   * Reject a pending question request
+   */
+  async rejectQuestion(id: string, reason?: string): Promise<QuestionResponse> {
+    logger.info("Submitting question rejection", { id, reason });
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/questions/reject`, {
+        method: "POST",
+        headers: this.commonHeaders(),
+        body: JSON.stringify({ id, reason }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        logger.warn("Question rejection failed", { id, error });
+        return { success: false, error };
+      }
+
+      logger.info("Question rejection recorded", { id });
+      return { success: true };
+    } catch (error) {
+      logger.error("Failed to submit question rejection", error as Error, { id });
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  /**
+   * Get pending question requests
+   */
+  async getPendingQuestions(): Promise<PendingQuestion[]> {
+    logger.debug("Fetching pending questions");
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/questions/pending`, {
+        method: "GET",
+        headers: this.commonHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get pending questions: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const pending = (data.pending || []) as PendingQuestion[];
+      logger.debug("Pending questions retrieved", { count: pending.length });
+      return pending;
+    } catch (error) {
+      logger.error("Failed to fetch pending questions", error as Error);
       throw error;
     }
   }

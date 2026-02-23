@@ -5,6 +5,7 @@ import { cn } from "@/utils";
 import Resizable from "@corvu/resizable";
 import { Component, Show, createMemo } from "solid-js";
 import { ChatInput } from "./input/chat-input";
+import { useChatInput } from "./input/use-chat-input";
 import { ChatPerfPanel } from "./perf/chat-perf-panel";
 import { MessageTimeline } from "./timeline/message-timeline";
 
@@ -15,6 +16,7 @@ export interface ChatAreaProps {
 export const ChatArea: Component<ChatAreaProps> = props => {
   const ctx = useWorkspace();
   const { chat } = useChatContext();
+  const chatInput = useChatInput();
 
   const effectiveSessionId = createMemo(() => chat.sessionId() ?? ctx.activeSessionId());
   const turns = useSessionTurns(effectiveSessionId);
@@ -33,7 +35,14 @@ export const ChatArea: Component<ChatAreaProps> = props => {
           <ChatPerfPanel />
         </Show>
 
-        <MessageTimeline turns={turns} isStreaming={isStreaming} />
+        <MessageTimeline
+          turns={turns}
+          isStreaming={isStreaming}
+          onPermissionApprove={chatInput.handleApprovePermission}
+          onPermissionDeny={chatInput.handleDenyPermission}
+          onQuestionAnswer={chatInput.handleAnswerQuestion}
+          onQuestionReject={chatInput.handleRejectQuestion}
+        />
 
         <ChatInput class="mx-3 mb-3" />
       </div>

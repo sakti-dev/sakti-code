@@ -40,6 +40,7 @@ export {
   globTool,
   lsTool,
   multieditTool,
+  questionTool,
   readTool,
   writeTool,
 } from "./tools";
@@ -207,6 +208,7 @@ export { AgentProcessor } from "./session/processor";
 // Session Management (new architecture)
 export { SessionController } from "./session/controller";
 export { SessionManager } from "./session/manager";
+export { QuestionManager, QuestionRejectedError } from "./session/question-manager";
 export { ShutdownHandler } from "./session/shutdown";
 export { Checkpoint, SessionConfig, SessionPhase, SessionStatus } from "./session/types";
 

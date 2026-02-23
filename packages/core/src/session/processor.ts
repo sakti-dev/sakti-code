@@ -41,6 +41,7 @@ import { MAX_STEPS_PROMPT } from "../prompts/auto-compaction";
 
 const logger = createLogger("sakti-code");
 const DOOM_LOOP_THRESHOLD = 3;
+const INTERACTIVE_TOOL_NAMES = new Set(["question"]);
 const RETRY_INITIAL_DELAY_MS = 3000;
 const RETRY_BACKOFF_FACTOR = 2;
 const RETRY_MAX_RETRIES = 10;
@@ -58,6 +59,16 @@ interface ToolCallResult {
 interface MemoryContext {
   threadId: string;
   resourceId: string;
+}
+
+function extractToolName(signature: string): string {
+  const separator = signature.indexOf(":");
+  if (separator === -1) return signature;
+  return signature.slice(0, separator);
+}
+
+function isInteractiveToolSignature(signature: string): boolean {
+  return INTERACTIVE_TOOL_NAMES.has(extractToolName(signature));
 }
 
 function safeNumber(value: unknown): number {
@@ -1021,6 +1032,9 @@ export class AgentProcessor {
         r => r.signature === lastThreeFailures[0].signature
       );
       if (allSameSignature) {
+        if (isInteractiveToolSignature(lastThreeFailures[0].signature)) {
+          return false;
+        }
         return true; // Agent keeps making the same failed call
       }
     }
@@ -1030,6 +1044,9 @@ export class AgentProcessor {
       const lastFive = this.toolCallHistory.slice(-5);
       const allSameSignature = lastFive.every(sig => sig === lastFive[0]);
       if (allSameSignature) {
+        if (isInteractiveToolSignature(lastFive[0]!)) {
+          return false;
+        }
         return true; // Agent is stuck making the same call
       }
     }
@@ -1038,9 +1055,12 @@ export class AgentProcessor {
     // This catches cases like ls with {"recursive":true} vs {"recursive":false}
     if (this.toolCallHistory.length >= 6) {
       const lastSix = this.toolCallHistory.slice(-6);
-      const toolNames = lastSix.map(sig => sig.split(":")[0]);
+      const toolNames = lastSix.map(sig => extractToolName(sig));
       const allSameTool = toolNames.every(name => name === toolNames[0]);
       if (allSameTool) {
+        if (INTERACTIVE_TOOL_NAMES.has(toolNames[0]!)) {
+          return false;
+        }
         logger.error(
           `Doom loop detected: Agent called ${toolNames[0]} 6+ times with varying parameters`,
           undefined,

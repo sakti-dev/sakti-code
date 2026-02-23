@@ -12,6 +12,9 @@ import {
   MessageUpdated,
   PermissionAsked,
   PermissionReplied,
+  QuestionAsked,
+  QuestionRejected,
+  QuestionReplied,
   ServerConnected,
   ServerHeartbeat,
   ServerInstanceDisposed,
@@ -104,6 +107,27 @@ describe("Event Contract Tests", () => {
         requestID: "perm-123",
         reply: "once",
       },
+      "question.asked": {
+        id: "question-123",
+        sessionID: "session-123",
+        questions: [
+          {
+            header: "Scope",
+            question: "Which scope should we target?",
+            options: [{ label: "UI only" }, { label: "Core + UI" }],
+          },
+        ],
+      },
+      "question.replied": {
+        sessionID: "session-123",
+        requestID: "question-123",
+        reply: "UI only",
+      },
+      "question.rejected": {
+        sessionID: "session-123",
+        requestID: "question-123",
+        reason: "skip",
+      },
     };
     return fixtures[eventType] ?? {};
   }
@@ -151,6 +175,20 @@ describe("Event Contract Tests", () => {
         sessionID: "session-123",
         requestID: "perm-123",
         reply: "invalid", // should be "once" | "always" | "reject"
+      },
+      "question.asked": {
+        id: 123, // should be string
+        sessionID: "session-123",
+        questions: "not-array", // should be array
+      },
+      "question.replied": {
+        sessionID: "session-123",
+        requestID: "question-123",
+        // missing reply
+      },
+      "question.rejected": {
+        sessionID: "session-123",
+        // missing requestID
       },
     };
     return fixtures[eventType] ?? { invalid: true };
@@ -313,6 +351,38 @@ describe("Event Contract Tests", () => {
     it("PermissionReplied rejects invalid payload", () => {
       const invalid = getInvalidFixture("permission.replied");
       expect(() => PermissionReplied.properties.parse(invalid)).toThrow();
+    });
+  });
+
+  describe("Question Events", () => {
+    it("QuestionAsked validates correct payload", () => {
+      const valid = getValidFixture("question.asked");
+      expect(() => QuestionAsked.properties.parse(valid)).not.toThrow();
+    });
+
+    it("QuestionAsked rejects invalid payload", () => {
+      const invalid = getInvalidFixture("question.asked");
+      expect(() => QuestionAsked.properties.parse(invalid)).toThrow();
+    });
+
+    it("QuestionReplied validates correct payload", () => {
+      const valid = getValidFixture("question.replied");
+      expect(() => QuestionReplied.properties.parse(valid)).not.toThrow();
+    });
+
+    it("QuestionReplied rejects invalid payload", () => {
+      const invalid = getInvalidFixture("question.replied");
+      expect(() => QuestionReplied.properties.parse(invalid)).toThrow();
+    });
+
+    it("QuestionRejected validates correct payload", () => {
+      const valid = getValidFixture("question.rejected");
+      expect(() => QuestionRejected.properties.parse(valid)).not.toThrow();
+    });
+
+    it("QuestionRejected rejects invalid payload", () => {
+      const invalid = getInvalidFixture("question.rejected");
+      expect(() => QuestionRejected.properties.parse(invalid)).toThrow();
     });
   });
 });

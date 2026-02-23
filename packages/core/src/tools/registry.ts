@@ -9,6 +9,7 @@ import {
   invalidTool,
   lsTool,
   multieditTool,
+  questionTool,
   readTool,
   writeTool,
 } from "./index";
@@ -41,6 +42,7 @@ export type ToolName =
   | "invalid"
   | "ls"
   | "glob"
+  | "question"
   | "bash"
   | "grep"
   | "webfetch"
@@ -68,6 +70,7 @@ export const toolRegistry = {
   invalid: invalidTool,
   ls: lsTool,
   glob: globTool,
+  question: questionTool,
 
   // Shell tools
   bash: bashTool,

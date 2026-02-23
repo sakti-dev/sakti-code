@@ -38,6 +38,7 @@ describe("agent/registry", () => {
       expect(buildAgent.tools).toContain("task-query");
       expect(buildAgent.tools).toContain("task-mutate");
       expect(buildAgent.tools).toContain("memory-search");
+      expect(buildAgent.tools).toContain("question");
       expect(buildAgent.tools).toContain("plan-enter");
       expect(buildAgent.tools).toContain("plan-exit");
       expect(buildAgent.systemPrompt).toBeTruthy();
@@ -71,6 +72,7 @@ describe("agent/registry", () => {
       expect(planAgent.maxIterations).toBe(100);
       expect(planAgent.tools).toContain("read");
       expect(planAgent.tools).toContain("grep");
+      expect(planAgent.tools).toContain("question");
       // Plan agent should NOT have write tools
       expect(planAgent.tools).not.toContain("write");
       expect(planAgent.tools).not.toContain("bash");

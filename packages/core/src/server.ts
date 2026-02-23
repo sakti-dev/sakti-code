@@ -24,6 +24,7 @@ export {
   PermissionRejectedError,
   PermissionTimeoutError,
 } from "./security/permission-manager";
+export { QuestionManager, QuestionRejectedError } from "./session/question-manager";
 
 export {
   createDefaultRules,

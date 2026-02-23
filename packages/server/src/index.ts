@@ -32,12 +32,16 @@ if (process.env.NODE_ENV !== "production") {
 
 import { serve } from "@hono/node-server";
 import { ShutdownHandler } from "@sakti-code/core";
-import { initializePermissionRules, PermissionManager } from "@sakti-code/core/server";
+import {
+  initializePermissionRules,
+  PermissionManager,
+  QuestionManager,
+} from "@sakti-code/core/server";
 import { createLogger } from "@sakti-code/shared/logger";
 import { shutdown } from "@sakti-code/shared/shutdown";
 import { Hono } from "hono";
 import { v7 as uuidv7 } from "uuid";
-import { PermissionAsked, publish } from "./bus";
+import { PermissionAsked, publish, QuestionAsked } from "./bus";
 import { authMiddleware } from "./middleware/auth";
 import { cacheMiddleware } from "./middleware/cache";
 import { errorHandler } from "./middleware/error-handler";
@@ -55,6 +59,7 @@ import mcpRouter from "./routes/mcp";
 import permissionsRouter from "./routes/permissions";
 import projectRouter from "./routes/project";
 import providerRouter from "./routes/provider";
+import questionsRouter from "./routes/questions";
 import rulesRouter from "./routes/rules";
 import sessionDataRouter from "./routes/session-data";
 import sessionsRouter from "./routes/sessions";
@@ -67,6 +72,7 @@ export { getServerToken, getSessionManager } from "./runtime";
 export { app };
 
 let permissionBusBound = false;
+let questionBusBound = false;
 
 // Generic server type with close method
 interface CloseableServer {
@@ -152,6 +158,7 @@ app.route("/", healthRouter);
 
 // Mount permission routes (protected by auth)
 app.route("/api/permissions", permissionsRouter);
+app.route("/api/questions", questionsRouter);
 
 // Mount chat routes (protected by auth)
 // Note: chatRouter uses full paths like "/api/chat", so mount at "/"
@@ -227,6 +234,20 @@ export async function startServer() {
       });
     });
     permissionBusBound = true;
+  }
+
+  if (!questionBusBound) {
+    const questionMgr = QuestionManager.getInstance();
+    questionMgr.on("question:request", request => {
+      publish(QuestionAsked, request).catch(error => {
+        logger.error("Failed to publish question.asked event", error as Error, {
+          module: "questions",
+          requestId: request.id,
+          sessionId: request.sessionID,
+        });
+      });
+    });
+    questionBusBound = true;
   }
 
   // Initialize SessionManager

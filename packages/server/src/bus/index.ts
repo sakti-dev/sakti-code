@@ -224,6 +224,39 @@ export const PermissionReplied = defineBusEvent(
   })
 );
 
+export const QuestionAsked = defineBusEvent(
+  "question.asked",
+  z.object({
+    id: z.string(),
+    sessionID: z.string(),
+    questions: z.array(z.unknown()),
+    tool: z
+      .object({
+        messageID: z.string(),
+        callID: z.string(),
+      })
+      .optional(),
+  })
+);
+
+export const QuestionReplied = defineBusEvent(
+  "question.replied",
+  z.object({
+    sessionID: z.string(),
+    requestID: z.string(),
+    reply: z.unknown().refine(value => value !== undefined, "reply is required"),
+  })
+);
+
+export const QuestionRejected = defineBusEvent(
+  "question.rejected",
+  z.object({
+    sessionID: z.string(),
+    requestID: z.string(),
+    reason: z.string().optional(),
+  })
+);
+
 registerCoreBusBindings({
   publishTaskUpdated: async (sessionId, tasks) => {
     await publish(TaskUpdated, {

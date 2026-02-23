@@ -21,6 +21,7 @@ describe("tools/phase-tools", () => {
       // Should have search tools
       expect(tools).toHaveProperty("grep");
       expect(tools).toHaveProperty("glob");
+      expect(tools).toHaveProperty("question");
 
       // Should NOT have write tools
       expect(tools).not.toHaveProperty("write");
@@ -40,6 +41,7 @@ describe("tools/phase-tools", () => {
       // Should have search tools
       expect(tools).toHaveProperty("grep");
       expect(tools).toHaveProperty("glob");
+      expect(tools).toHaveProperty("question");
 
       // Should NOT have write tools
       expect(tools).not.toHaveProperty("write");
@@ -64,6 +66,7 @@ describe("tools/phase-tools", () => {
       // Should have search tools
       expect(tools).toHaveProperty("grep");
       expect(tools).toHaveProperty("glob");
+      expect(tools).toHaveProperty("question");
     });
 
     it("should include code research tools for all phases", () => {

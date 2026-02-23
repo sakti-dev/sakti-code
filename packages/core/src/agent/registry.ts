@@ -78,6 +78,7 @@ export const AGENT_REGISTRY: Record<string, AgentConfig> = {
       "invalid",
       "ls",
       "glob",
+      "question",
       "bash",
       "grep",
       "webfetch",
@@ -120,6 +121,8 @@ When working on tasks:
 
 For complex exploration or planning tasks, use the Task tool to spawn specialized subagents.
 
+When user decisions are needed, use the question tool with concise option-based prompts.
+
 Always maintain code quality and follow existing patterns in the codebase.`,
   },
 
@@ -140,6 +143,7 @@ Always maintain code quality and follow existing patterns in the codebase.`,
       "invalid",
       "ls",
       "glob",
+      "question",
       "grep",
       "webfetch",
       "search-docs",
@@ -162,6 +166,8 @@ Always maintain code quality and follow existing patterns in the codebase.`,
 
 Use the available tools to explore the codebase thoroughly. Be methodical and document your findings.
 
+If blocked by ambiguity, use the question tool for concise clarification.
+
 You have read-only access. Focus on understanding rather than modifying.`,
   },
 
@@ -182,6 +188,7 @@ You have read-only access. Focus on understanding rather than modifying.`,
       "invalid",
       "ls",
       "glob",
+      "question",
       "grep",
       "webfetch",
       "search-docs",
@@ -209,6 +216,8 @@ Review the task and exploration results, then create a step-by-step plan that in
 - Each tool call provides complete information - avoid redundant calls
 
 Think through this carefully before presenting your plan. Consider edge cases and alternatives.
+
+When requirements are ambiguous, use the question tool with concise option-based prompts.
 
 You have read-only access. Focus on planning rather than implementing.`,
   },
