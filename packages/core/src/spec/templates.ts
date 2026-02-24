@@ -3,6 +3,7 @@
  *
  * Phase 1 - Spec System
  * Creates template files for new specs:
+ * - spec.json - Spec metadata and state
  * - requirements.md - Acceptance criteria (R-###)
  * - design.md - Architecture decisions
  * - tasks.md - Implementation tasks (T-###)
@@ -11,6 +12,7 @@
 
 import { promises as fs } from "fs";
 import path from "path";
+import { writeSpecState } from "./state";
 
 const REQUIREMENTS_TEMPLATE = `# Requirements: {{slug}}
 
@@ -142,6 +144,19 @@ export async function writeSpecTemplate(
       .replace(/\{\{slug\}\}/g, replacements.slug)
       .replace(/\{\{description\}\}/g, replacements.description);
   }
+
+  const specJsonPath = path.join(specDir, "spec.json");
+  await writeSpecState(specJsonPath, {
+    feature_name: slug,
+    phase: "init",
+    approvals: {
+      requirements: { generated: false, approved: false },
+      design: { generated: false, approved: false },
+      tasks: { generated: false, approved: false },
+    },
+    ready_for_implementation: false,
+    language: "en",
+  });
 
   await fs.writeFile(path.join(specDir, "requirements.md"), replace(REQUIREMENTS_TEMPLATE));
   await fs.writeFile(path.join(specDir, "design.md"), replace(DESIGN_TEMPLATE));

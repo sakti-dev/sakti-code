@@ -10,8 +10,8 @@ Implement parity-plus spec generation quality and the added conversational workf
 
 **Outcome:** `spec.json` mirror helper API exists with safe read/write semantics.
 
-- [ ] Add `packages/core/src/spec/state.ts` with `SpecStateMirror`, `readSpecState`, `writeSpecState`
-- [ ] Add tests for read/write and missing file behavior
+- [x] Add `packages/core/src/spec/state.ts` with `SpecStateMirror`, `readSpecState`, `writeSpecState`
+- [x] Add tests for read/write and missing file behavior
 - [ ] Add warning path coverage for mirror write failures
 
 **Dependencies:**
@@ -22,8 +22,8 @@ Implement parity-plus spec generation quality and the added conversational workf
 
 **Outcome:** mirror state initializes and updates during lifecycle bootstrap.
 
-- [ ] Update plan/init flow to write initial `spec.json` values
-- [ ] Ensure phase/approval fields are initialized consistently
+- [x] Update plan/init flow to write initial `spec.json` values
+- [x] Ensure phase/approval fields are initialized consistently
 - [ ] Add/adjust tests in plan tool test suite
 
 **Dependencies:** T-001
@@ -34,9 +34,9 @@ Implement parity-plus spec generation quality and the added conversational workf
 
 **Outcome:** parser supports strict and safe missing-file behavior with explicit contracts.
 
-- [ ] Implement `parseTasksMdStrict` and `parseTasksMdSafe`
-- [ ] Keep backward-compatible `parseTasksMd` aliasing safe behavior
-- [ ] Add parser tests for strict throw and safe empty result
+- [x] Implement `parseTasksMdStrict` and `parseTasksMdSafe`
+- [x] Keep backward-compatible `parseTasksMd` aliasing safe behavior
+- [x] Add parser tests for strict throw and safe empty result
 
 **Dependencies:**
 
@@ -46,9 +46,9 @@ Implement parity-plus spec generation quality and the added conversational workf
 
 **Outcome:** parsed task model includes parallel/optional-test metadata.
 
-- [ ] Extend title parser to detect and strip `(P)` suffix
-- [ ] Extend subtask parser to support `- [ ]` and `- [ ]*`
-- [ ] Populate `parallel`, `hasOptionalTestSubtasks`, and `subtasksDetailed`
+- [x] Extend title parser to detect and strip `(P)` suffix
+- [x] Extend subtask parser to support `- [ ]` and `- [ ]*`
+- [x] Populate `parallel`, `hasOptionalTestSubtasks`, and `subtasksDetailed`
 - [ ]\* Add fixtures for edge formatting around marker parsing
 
 **Dependencies:** T-003
@@ -59,8 +59,8 @@ Implement parity-plus spec generation quality and the added conversational workf
 
 **Outcome:** compiled tasks carry new metadata fields in DB.
 
-- [ ] Extend compiler metadata type for parallel and optional-test fields
-- [ ] Persist `subtasksDetailed` under `metadata.spec.subtasks`
+- [x] Extend compiler metadata type for parallel and optional-test fields
+- [x] Persist `subtasksDetailed` under `metadata.spec.subtasks`
 - [ ] Add compiler tests for defaults and metadata persistence
 
 **Dependencies:** T-004
@@ -71,9 +71,9 @@ Implement parity-plus spec generation quality and the added conversational workf
 
 **Outcome:** plan-exit fails loudly when `tasks.md` is absent.
 
-- [ ] Switch plan-exit parser path to strict variant
-- [ ] Emit required actionable error message
-- [ ] Add regression test preventing silent fallback
+- [x] Switch plan-exit parser path to strict variant
+- [x] Emit required actionable error message
+- [x] Add regression test preventing silent fallback
 
 **Dependencies:** T-003
 
@@ -83,11 +83,11 @@ Implement parity-plus spec generation quality and the added conversational workf
 
 **Outcome:** core validators enforce requirement IDs, traceability, task format, and dependency graph integrity.
 
-- [ ] Add `packages/core/src/spec/validators.ts` with required validator APIs
-- [ ] Implement requirement ID extraction/normalization helpers
-- [ ] Implement tasks coverage and design traceability checks
-- [ ] Implement dependency validation (unknown references + DAG cycle detection)
-- [ ] Add validator tests with stable error codes and locations
+- [x] Add `packages/core/src/spec/validators.ts` with required validator APIs
+- [x] Implement requirement ID extraction/normalization helpers
+- [x] Implement tasks coverage and design traceability checks
+- [x] Implement dependency validation (unknown references + DAG cycle detection)
+- [x] Add validator tests with stable error codes and locations
 
 **Dependencies:** T-003, T-004
 
@@ -97,10 +97,10 @@ Implement parity-plus spec generation quality and the added conversational workf
 
 **Outcome:** `spec-validate-*` tools are registered and return stable contract payloads.
 
-- [ ] Add `spec-validate-gap`, `spec-validate-design`, `spec-validate-impl` tool implementations
-- [ ] Return `{ ok, phase, errors, warnings, summary, nextSteps }`
-- [ ] Wire tools into registry and `ToolName` union
-- [ ] Update phase tool visibility for plan/explore/build contexts
+- [x] Add `spec-validate-gap`, `spec-validate-design`, `spec-validate-impl` tool implementations
+- [x] Return `{ ok, phase, errors, warnings, summary, nextSteps }`
+- [x] Wire tools into registry and `ToolName` union
+- [x] Update phase tool visibility for plan/explore/build contexts
 
 **Dependencies:** T-007
 
@@ -110,9 +110,9 @@ Implement parity-plus spec generation quality and the added conversational workf
 
 **Outcome:** full prompt suite is centrally defined and composable.
 
-- [ ] Create `packages/core/src/prompts/spec/*` constants for shared policies and phase prompts
-- [ ] Export prompt modules via prompts index
-- [ ] Ensure prompt constants include required section markers and policy references
+- [x] Create `packages/core/src/prompts/spec/*` constants for shared policies and phase prompts
+- [x] Export prompt modules via prompts index
+- [x] Ensure prompt constants include required section markers and policy references
 
 **Dependencies:**
 
@@ -122,9 +122,9 @@ Implement parity-plus spec generation quality and the added conversational workf
 
 **Outcome:** agents/tools consume centralized prompt constants.
 
-- [ ] Replace inline/generic prompt assembly in planner/spec flows
-- [ ] Inject shared policy blocks into phase prompts
-- [ ] Add integration assertions for expected prompt composition
+- [x] Replace inline/generic prompt assembly in planner/spec flows
+- [x] Inject shared policy blocks into phase prompts
+- [x] Add integration assertions for expected prompt composition
 
 **Dependencies:** T-009
 
@@ -134,11 +134,11 @@ Implement parity-plus spec generation quality and the added conversational workf
 
 **Outcome:** lifecycle tools generate/update artifacts with gating and status outputs.
 
-- [ ] Implement/extend `spec-init`, `spec-requirements`, `spec-design`, `spec-tasks`, `spec-status`, `spec-quick`
-- [ ] Add discovery mode classification and persisted mode output
-- [ ] Ensure `research.md` is generated/updated in lifecycle
-- [ ] Update mirror phase and approvals map during transitions
-- [ ] Provide blockers and exact next action in status output
+- [x] Implement/extend `spec-init`, `spec-requirements`, `spec-design`, `spec-tasks`, `spec-status`, `spec-quick`
+- [x] Add discovery mode classification and persisted mode output
+- [x] Ensure `research.md` is generated/updated in lifecycle
+- [x] Update mirror phase and approvals map during transitions
+- [x] Provide blockers and exact next action in status output
 
 **Dependencies:** T-001, T-007, T-010
 
@@ -290,9 +290,39 @@ Implement parity-plus spec generation quality and the added conversational workf
 
 **Dependencies:** T-022
 
-### T-024 - Final documentation and parity validation report
+### T-024 - Implement structured clarification loop lifecycle
 
-**Maps to requirements:** R-015, R-018, R-019, R-020, R-021
+**Maps to requirements:** R-021, R-022, R-025
+
+**Outcome:** option-based questioning works end-to-end (tool -> events -> UX -> reply/reject) and can be repeated safely.
+
+- [ ] Add core question lifecycle manager with pending/request/reply/reject behavior
+- [ ] Add `question` tool schema and execution behavior with structured prompts/options
+- [ ] Register `question` tool in agent/phase tool maps used by spec-generation flows
+- [ ] Add server question routes and bus events for asked/replied/rejected lifecycle
+- [ ] Wire desktop API + timeline handlers for option selection, free-form input, and skip/reject
+- [ ] Ensure repeated `question` calls are exempt from doom-loop detection heuristics
+
+**Dependencies:** T-018, T-021
+
+### T-025 - Add clarification-loop validation and integration tests (P)
+
+**Maps to requirements:** R-023, R-025
+
+**Outcome:** iterative question loops are regression-tested and phase-gating behavior is deterministic.
+
+- [ ] Add unit tests for question lifecycle manager (pending, reply, reject, unknown-id safety)
+- [ ] Add tool tests asserting question metadata and reply propagation
+- [ ] Add agent/session tests proving repeated question loops are not flagged as doom loops
+- [ ] Add server contract/route tests for question event payloads and API behavior
+- [ ] Add desktop tests for question endpoint client calls and timeline interaction path
+- [ ] Add integration tests ensuring required clarifications block phase transitions until answered/rejected
+
+**Dependencies:** T-024, T-023
+
+### T-026 - Final documentation and parity validation report
+
+**Maps to requirements:** R-015, R-018, R-019, R-020, R-021, R-025
 
 **Outcome:** implementation status and parity claims are documented and auditable.
 
@@ -300,4 +330,4 @@ Implement parity-plus spec generation quality and the added conversational workf
 - [ ] Add parity and parity-plus validation report
 - [ ] Record verification commands/results for CI and local runs
 
-**Dependencies:** T-015, T-016, T-017, T-023
+**Dependencies:** T-015, T-016, T-017, T-023, T-025

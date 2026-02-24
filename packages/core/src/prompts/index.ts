@@ -17,3 +17,6 @@ export * from "./hybrid-agent/general-image";
 export * from "./hybrid-agent/text-extraction";
 export * from "./hybrid-agent/ui-diff";
 export * from "./hybrid-agent/ui-to-artifact";
+
+// Spec workflow prompts
+export * from "./spec";

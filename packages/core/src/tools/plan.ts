@@ -20,7 +20,7 @@ import {
   updateSessionRuntimeMode,
   updateSessionSpec,
 } from "../spec/helpers";
-import { parseTasksMd, validateTaskDagFromParsed } from "../spec/parser";
+import { parseTasksMdStrict, validateTaskDagFromParsed } from "../spec/parser";
 import { writeSpecTemplate } from "../spec/templates";
 
 const SLUG_REGEX = /^[a-z0-9-]+$/;
@@ -116,7 +116,7 @@ This will:
 
     let tasks;
     try {
-      tasks = await parseTasksMd(tasksFile);
+      tasks = await parseTasksMdStrict(tasksFile);
     } catch (err) {
       const nodeErr = err as NodeJS.ErrnoException;
       if (nodeErr.code === "ENOENT") {

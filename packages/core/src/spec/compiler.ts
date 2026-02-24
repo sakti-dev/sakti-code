@@ -18,6 +18,8 @@ export interface SpecMetadata {
     slug: string;
     taskId: string;
     requirements: string[];
+    parallel?: boolean;
+    subtasks?: Array<{ text: string; optional: boolean }>;
   };
 }
 
@@ -124,6 +126,8 @@ export async function compileSpecToDb(
                 slug: specSlug,
                 taskId: task.id,
                 requirements: task.requirements,
+                parallel: task.parallel,
+                subtasks: task.subtasksDetailed,
               },
             },
             updated_at: new Date(now),
@@ -145,6 +149,8 @@ export async function compileSpecToDb(
             slug: specSlug,
             taskId: task.id,
             requirements: task.requirements,
+            parallel: task.parallel,
+            subtasks: task.subtasksDetailed,
           },
         },
         created_at: new Date(now),

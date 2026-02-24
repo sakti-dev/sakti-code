@@ -186,7 +186,78 @@ describe("Spec Parser", () => {
     it("should return empty array when file doesn't exist", async () => {
       await expect(parseTasksMd("/nonexistent/tasks.md")).resolves.toEqual([]);
     });
+  });
 
+  describe("parseTasksMdStrict", () => {
+    let parseTasksMdStrict: typeof import("@/spec/parser").parseTasksMdStrict;
+
+    beforeAll(async () => {
+      const parser = await import("@/spec/parser");
+      parseTasksMdStrict = parser.parseTasksMdStrict;
+    });
+
+    it("should parse a valid tasks.md file", async () => {
+      const content = `# Tasks: test
+
+## Implementation Tasks
+
+### T-001 — Test task
+**Maps to requirements:** R-001
+
+**Outcome:** Test done
+`;
+      const tasksFile = path.join(tempDir, "strict-tasks.md");
+      await fs.writeFile(tasksFile, content);
+
+      const tasks = await parseTasksMdStrict(tasksFile);
+
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].id).toBe("T-001");
+    });
+
+    it("should throw when file doesn't exist", async () => {
+      await expect(parseTasksMdStrict("/nonexistent/tasks.md")).rejects.toThrow();
+    });
+
+    it("should throw SpecParseError with correct code", async () => {
+      await expect(parseTasksMdStrict("/nonexistent/tasks.md")).rejects.toMatchObject({
+        code: "MISSING_TASKS_FILE",
+      });
+    });
+  });
+
+  describe("parseTasksMdSafe", () => {
+    let parseTasksMdSafe: typeof import("@/spec/parser").parseTasksMdSafe;
+
+    beforeAll(async () => {
+      const parser = await import("@/spec/parser");
+      parseTasksMdSafe = parser.parseTasksMdSafe;
+    });
+
+    it("should parse a valid tasks.md file", async () => {
+      const content = `# Tasks: test
+
+## Implementation Tasks
+
+### T-001 — Test task
+**Maps to requirements:** R-001
+
+**Outcome:** Test done
+`;
+      const tasksFile = path.join(tempDir, "safe-tasks.md");
+      await fs.writeFile(tasksFile, content);
+
+      const tasks = await parseTasksMdSafe(tasksFile);
+
+      expect(tasks).toHaveLength(1);
+    });
+
+    it("should return empty array when file doesn't exist", async () => {
+      await expect(parseTasksMdSafe("/nonexistent/tasks.md")).resolves.toEqual([]);
+    });
+  });
+
+  describe("parseTasksMd", () => {
     it("should handle tasks without explicit dependencies", async () => {
       const content = `# Tasks: simple
 
@@ -204,6 +275,63 @@ describe("Spec Parser", () => {
       const tasks = await parseTasksMd(tasksFile);
 
       expect(tasks[0].dependencies).toEqual([]);
+    });
+
+    it("should parse (P) suffix as parallel flag", async () => {
+      const content = `# Tasks: parallel-test
+
+## Implementation Tasks
+
+### T-001 — Parallel task (P)
+**Maps to requirements:** R-001
+
+**Outcome:** Done
+
+**Dependencies:**
+`;
+      const tasksFile = path.join(tempDir, "parallel-tasks.md");
+      await fs.writeFile(tasksFile, content);
+
+      const tasks = await parseTasksMd(tasksFile);
+
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].title).toBe("Parallel task");
+      expect(tasks[0].parallel).toBe(true);
+    });
+
+    it("should parse optional subtasks with * marker", async () => {
+      const content = `# Tasks: optional-test
+
+## Implementation Tasks
+
+### T-001 — Task with optional subtasks
+**Maps to requirements:** R-001
+
+**Outcome:** Done
+
+- [ ] Required subtask
+- [ ]* Optional subtask 1
+- [ ]* Optional subtask 2
+
+**Dependencies:**
+`;
+      const tasksFile = path.join(tempDir, "optional-tasks.md");
+      await fs.writeFile(tasksFile, content);
+
+      const tasks = await parseTasksMd(tasksFile);
+
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].subtasks).toEqual([
+        "Required subtask",
+        "Optional subtask 1",
+        "Optional subtask 2",
+      ]);
+      expect(tasks[0].subtasksDetailed).toEqual([
+        { text: "Required subtask", optional: false },
+        { text: "Optional subtask 1", optional: true },
+        { text: "Optional subtask 2", optional: true },
+      ]);
+      expect(tasks[0].hasOptionalTestSubtasks).toBe(true);
     });
   });
 

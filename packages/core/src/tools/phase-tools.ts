@@ -24,6 +24,17 @@ const READ_ONLY_TOOLS: ToolName[] = [
   "grep-search",
   "file-read-docs",
   "sequentialthinking",
+  // Spec phase tools (read-only for plan mode)
+  "spec-init",
+  "spec-requirements",
+  "spec-design",
+  "spec-tasks",
+  "spec-status",
+  "spec-quick",
+  // Spec validation tools (read-only)
+  "spec-validate-gap",
+  "spec-validate-design",
+  "spec-validate-impl",
 ];
 
 /**

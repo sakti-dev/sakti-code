@@ -29,6 +29,23 @@ import { memorySearchTool, taskMutateTool, taskQueryTool } from "../memory";
 import { planEnterTool, planExitTool } from "./plan";
 import { taskParallelTool } from "./task-parallel";
 
+// Spec validation tools
+import {
+  specValidateDesignTool,
+  specValidateGapTool,
+  specValidateImplTool,
+} from "./spec-validation";
+
+// Spec phase tools
+import {
+  specDesignTool,
+  specInitTool,
+  specQuickTool,
+  specRequirementsTool,
+  specStatusTool,
+  specTasksTool,
+} from "./spec-phase";
+
 // Skill tools
 import { skillTool } from "../skill/tool";
 
@@ -58,6 +75,15 @@ export type ToolName =
   | "task-mutate"
   | "plan-enter"
   | "plan-exit"
+  | "spec-init"
+  | "spec-requirements"
+  | "spec-design"
+  | "spec-tasks"
+  | "spec-status"
+  | "spec-quick"
+  | "spec-validate-gap"
+  | "spec-validate-design"
+  | "spec-validate-impl"
   | "skill";
 
 export const toolRegistry = {
@@ -98,6 +124,19 @@ export const toolRegistry = {
   // Plan tools
   "plan-enter": planEnterTool,
   "plan-exit": planExitTool,
+
+  // Spec phase tools
+  "spec-init": specInitTool,
+  "spec-requirements": specRequirementsTool,
+  "spec-design": specDesignTool,
+  "spec-tasks": specTasksTool,
+  "spec-status": specStatusTool,
+  "spec-quick": specQuickTool,
+
+  // Spec validation tools
+  "spec-validate-gap": specValidateGapTool,
+  "spec-validate-design": specValidateDesignTool,
+  "spec-validate-impl": specValidateImplTool,
 
   // Skill tools
   skill: skillTool,

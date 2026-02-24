@@ -3,11 +3,24 @@
  *
  * Phase 2 - Spec System
  * Provides:
- * - parseTasksMd: Parse tasks.md file into structured data
+ * - parseTasksMd: Parse tasks.md file into structured data (safe mode - returns [] on missing file)
+ * - parseTasksMdStrict: Parse tasks.md file (throws on missing file)
+ * - parseTasksMdSafe: Parse tasks.md file (returns [] on missing file)
  * - validateTaskDagFromParsed: Detect cycles in task dependencies
  */
 
 import { promises as fs } from "fs";
+
+export class SpecParseError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public readonly path?: string
+  ) {
+    super(message);
+    this.name = "SpecParseError";
+  }
+}
 
 export interface ParsedTask {
   id: string;
@@ -17,6 +30,9 @@ export interface ParsedTask {
   outcome: string;
   notes: string;
   subtasks: string[];
+  parallel: boolean;
+  hasOptionalTestSubtasks: boolean;
+  subtasksDetailed: Array<{ text: string; optional: boolean }>;
 }
 
 export type ParsedTaskInput = Omit<ParsedTask, "dependencies"> & {
@@ -52,15 +68,62 @@ export async function parseTasksMd(tasksFilePath: string): Promise<ParsedTask[]>
   return tasks;
 }
 
+/**
+ * Parse tasks.md file - throws if file doesn't exist
+ */
+export async function parseTasksMdStrict(tasksFilePath: string): Promise<ParsedTask[]> {
+  let content: string;
+  try {
+    content = await fs.readFile(tasksFilePath, "utf-8");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new SpecParseError(`tasks.md not found: ${message}`, "MISSING_TASKS_FILE", tasksFilePath);
+  }
+
+  const taskBlocks = content.split(/^#{2,3}\s+(T-\d+)\s*[—–-]\s+(.+)$/m);
+
+  const tasks: ParsedTask[] = [];
+
+  for (let i = 1; i < taskBlocks.length; i += 3) {
+    const id = taskBlocks[i];
+    const title = taskBlocks[i + 1]?.trim();
+    const body = taskBlocks[i + 2] || "";
+
+    if (!id || !title) continue;
+
+    const task = parseTaskBlock(id, title, body);
+    tasks.push(task);
+  }
+
+  return tasks;
+}
+
+/**
+ * Parse tasks.md file - returns empty array if file doesn't exist (safe mode)
+ */
+export async function parseTasksMdSafe(tasksFilePath: string): Promise<ParsedTask[]> {
+  try {
+    return await parseTasksMdStrict(tasksFilePath);
+  } catch {
+    return [];
+  }
+}
+
 function parseTaskBlock(id: string, title: string, body: string): ParsedTask {
+  const parallelMatch = title.match(/^(.+?)\s*\(P\)\s*$/);
+  const cleanTitle = parallelMatch ? parallelMatch[1].trim() : title;
+
   const task: ParsedTask = {
     id,
-    title,
+    title: cleanTitle,
     requirements: [],
     dependencies: [],
     outcome: "",
     notes: "",
     subtasks: [],
+    parallel: !!parallelMatch,
+    hasOptionalTestSubtasks: false,
+    subtasksDetailed: [],
   };
 
   const reqMatch = body.match(/\*\*Maps to requirements:\*\*\s*([\d,\sR\-]+)/i);
@@ -78,9 +141,15 @@ function parseTaskBlock(id: string, title: string, body: string): ParsedTask {
     task.outcome = outcomeMatch[1].trim();
   }
 
-  const subtaskMatches = body.matchAll(/^-\s*\[\s*\]\s+(.+)$/gm);
+  const subtaskMatches = body.matchAll(/^-\s*\[\s*\]\s*\*?\s*(.+)$/gm);
   for (const match of subtaskMatches) {
-    task.subtasks.push(match[1].trim());
+    const text = match[1].trim();
+    const optional = match[0].includes("*");
+    task.subtasks.push(text);
+    task.subtasksDetailed.push({ text, optional });
+    if (optional) {
+      task.hasOptionalTestSubtasks = true;
+    }
   }
 
   return task;

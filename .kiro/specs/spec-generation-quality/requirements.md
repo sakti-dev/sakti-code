@@ -283,6 +283,27 @@ The canonical runtime state remains database-backed. `.kiro/specs/<slug>/spec.js
 3. Wizard shall not be offered on clear non-feature intents (question/exploration/bug report).
 4. System shall support feedback capture for false positives/negatives.
 
+### Requirement 25 (R-025): Structured Clarification Loop for Spec Generation
+
+**Objective:** As a user, I want the agent to ask iterative, option-based clarification questions until spec-generation decisions are clear enough.
+
+#### Acceptance Criteria
+
+1. The system shall expose a `question` tool that supports one or more prompts with:
+   - `header`
+   - `question`
+   - `options` (label/description)
+   - optional `multiple` selection mode
+2. For ambiguous requirements/design/tasks decisions, spec-generation flows shall use the `question` tool before phase transition attempts.
+3. Clarification prompts shall prefer option-based choices; if a recommendation exists, the recommended option shall appear first and include `(Recommended)` in the label.
+4. The clarification loop may repeat multiple times in one session and shall not be treated as a doom loop failure condition.
+5. A clarification response lifecycle shall be available end-to-end:
+   - pending question request emission
+   - explicit reply
+   - explicit reject/skip
+6. Spec phase transitions that depend on unresolved clarifications shall be blocked until required clarifications are answered or explicitly rejected.
+7. Question interactions shall be available through the same chat UX surface used for wizard interactions, including selectable options and manual answer input fallback.
+
 ## Non-Goals
 
 1. Replacing canonical DB state with markdown-only state.
