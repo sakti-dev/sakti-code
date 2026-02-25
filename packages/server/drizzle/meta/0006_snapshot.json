@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "cbef2443-bee2-49dc-a24f-221b339dff53",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "8db18678-26d5-4869-b514-455005f90114",
+  "prevId": "becd9cb3-881a-49f1-bfd3-69755f65f16e",
   "tables": {
     "events": {
       "name": "events",
@@ -60,18 +60,12 @@
       "indexes": {
         "events_session_sequence": {
           "name": "events_session_sequence",
-          "columns": [
-            "session_id",
-            "sequence"
-          ],
+          "columns": ["session_id", "sequence"],
           "isUnique": true
         },
         "events_session_created": {
           "name": "events_session_created",
-          "columns": [
-            "session_id",
-            "created_at"
-          ],
+          "columns": ["session_id", "created_at"],
           "isUnique": true
         }
       },
@@ -80,12 +74,8 @@
           "name": "events_session_id_sessions_session_id_fk",
           "tableFrom": "events",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "session_id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["session_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -196,12 +186,8 @@
           "name": "messages_thread_id_threads_id_fk",
           "tableFrom": "messages",
           "tableTo": "threads",
-          "columnsFrom": [
-            "thread_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["thread_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -209,12 +195,8 @@
           "name": "messages_task_id_tasks_id_fk",
           "tableFrom": "messages",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -397,9 +379,7 @@
       "indexes": {
         "observational_memory_lookup_key_unique": {
           "name": "observational_memory_lookup_key_unique",
-          "columns": [
-            "lookup_key"
-          ],
+          "columns": ["lookup_key"],
           "isUnique": true
         }
       },
@@ -489,12 +469,8 @@
           "name": "reflections_thread_id_threads_id_fk",
           "tableFrom": "reflections",
           "tableTo": "threads",
-          "columnsFrom": [
-            "thread_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["thread_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -608,12 +584,8 @@
           "name": "task_dependencies_task_id_tasks_id_fk",
           "tableFrom": "task_dependencies",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -621,23 +593,15 @@
           "name": "task_dependencies_depends_on_id_tasks_id_fk",
           "tableFrom": "task_dependencies",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "depends_on_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["depends_on_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "task_dependencies_task_id_depends_on_id_type_pk": {
-          "columns": [
-            "task_id",
-            "depends_on_id",
-            "type"
-          ],
+          "columns": ["task_id", "depends_on_id", "type"],
           "name": "task_dependencies_task_id_depends_on_id_type_pk"
         }
       },
@@ -683,12 +647,8 @@
           "name": "task_messages_task_id_tasks_id_fk",
           "tableFrom": "task_messages",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -696,22 +656,15 @@
           "name": "task_messages_message_id_messages_id_fk",
           "tableFrom": "task_messages",
           "tableTo": "messages",
-          "columnsFrom": [
-            "message_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["message_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "task_messages_task_id_message_id_pk": {
-          "columns": [
-            "task_id",
-            "message_id"
-          ],
+          "columns": ["task_id", "message_id"],
           "name": "task_messages_task_id_message_id_pk"
         }
       },
@@ -959,11 +912,7 @@
       "indexes": {
         "tool_sessions_session_tool_key": {
           "name": "tool_sessions_session_tool_key",
-          "columns": [
-            "session_id",
-            "tool_name",
-            "tool_key"
-          ],
+          "columns": ["session_id", "tool_name", "tool_key"],
           "isUnique": true
         }
       },
@@ -972,12 +921,8 @@
           "name": "tool_sessions_session_id_sessions_session_id_fk",
           "tableFrom": "tool_sessions",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "session_id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["session_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1094,33 +1039,22 @@
       "indexes": {
         "task_sessions_status_idx": {
           "name": "task_sessions_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "task_sessions_kind_idx": {
           "name": "task_sessions_kind_idx",
-          "columns": [
-            "session_kind"
-          ],
+          "columns": ["session_kind"],
           "isUnique": false
         },
         "task_sessions_workspace_activity_idx": {
           "name": "task_sessions_workspace_activity_idx",
-          "columns": [
-            "workspace_id",
-            "last_activity_at"
-          ],
+          "columns": ["workspace_id", "last_activity_at"],
           "isUnique": false
         },
         "task_sessions_workspace_kind_activity_idx": {
           "name": "task_sessions_workspace_kind_activity_idx",
-          "columns": [
-            "workspace_id",
-            "session_kind",
-            "last_activity_at"
-          ],
+          "columns": ["workspace_id", "session_kind", "last_activity_at"],
           "isUnique": false
         }
       },
@@ -1129,12 +1063,8 @@
           "name": "sessions_parent_id_fkey",
           "tableFrom": "sessions",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "session_id"
-          ],
+          "columnsFrom": ["parent_id"],
+          "columnsTo": ["session_id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1142,12 +1072,8 @@
           "name": "events_session_id_task_sessions_session_id_fk",
           "tableFrom": "events",
           "tableTo": "task_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "session_id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["session_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1155,12 +1081,8 @@
           "name": "tool_sessions_session_id_task_sessions_session_id_fk",
           "tableFrom": "tool_sessions",
           "tableTo": "task_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "session_id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["session_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1239,18 +1161,12 @@
       "indexes": {
         "project_keypoints_workspace_completed_idx": {
           "name": "project_keypoints_workspace_completed_idx",
-          "columns": [
-            "workspace_id",
-            "completed_at"
-          ],
+          "columns": ["workspace_id", "completed_at"],
           "isUnique": false
         },
         "project_keypoints_task_milestone_idx": {
           "name": "project_keypoints_task_milestone_idx",
-          "columns": [
-            "task_session_id",
-            "milestone"
-          ],
+          "columns": ["task_session_id", "milestone"],
           "isUnique": false
         }
       },
@@ -1259,12 +1175,8 @@
           "name": "project_keypoints_workspace_id_workspaces_id_fk",
           "tableFrom": "project_keypoints",
           "tableTo": "workspaces",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1272,12 +1184,8 @@
           "name": "project_keypoints_task_session_id_task_sessions_session_id_fk",
           "tableFrom": "project_keypoints",
           "tableTo": "task_sessions",
-          "columnsFrom": [
-            "task_session_id"
-          ],
-          "columnsTo": [
-            "session_id"
-          ],
+          "columnsFrom": ["task_session_id"],
+          "columnsTo": ["session_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1296,21 +1204,5 @@
   },
   "internal": {
     "indexes": {}
-  },
-  "events": {
-    "foreignKeys": {
-      "events_session_id_task_sessions_session_id_fk": {
-        "tableTo": "task_sessions",
-        "name": "events_session_id_task_sessions_session_id_fk"
-      }
-    }
-  },
-  "tool_sessions": {
-    "foreignKeys": {
-      "tool_sessions_session_id_task_sessions_session_id_fk": {
-        "tableTo": "task_sessions",
-        "name": "tool_sessions_session_id_task_sessions_session_id_fk"
-      }
-    }
   }
 }
