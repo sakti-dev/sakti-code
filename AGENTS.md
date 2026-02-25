@@ -117,3 +117,133 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 - Load entire `.kiro/steering/` as project memory
 - Default files: `product.md`, `tech.md`, `structure.md`
 - Custom files are supported (managed via `/kiro-steering-custom`)
+
+---
+
+## Task-Session Workflow Architecture
+
+### Overview
+
+The codebase uses a **task-first workflow** that replaces traditional session-first workspace UX with a homepage-driven approach supporting research, spec selection, and parallel task session execution.
+
+**Key Architectural Patterns:**
+
+- **Server Database:** `task_sessions` table (renamed from `sessions`) with workflow-aware fields (`status`, `spec_type`, `session_kind`, `last_activity_at`)
+- **Server API:** `/api/task-sessions` endpoints replace legacy `/api/sessions`
+- **Header Requirement:** All session-bridged routes require `X-Task-Session-ID` header (not `X-Session-ID`)
+- **Desktop State:** `activeTaskSessionId` / `setActiveTaskSessionId` in `workspace-chat-provider` (not `activeSessionId`)
+- **Runtime Control:** Single source of truth: `runtimeMode` (`intake` | `plan` | `build`)
+
+### Core Concepts
+
+**Task Sessions:**
+
+- Primary conversation units with workflow state
+- Two kinds: `intake` (homepage scratch sessions) and `task` (user-visible sessions)
+- Status lifecycle: `researching` → `specifying` → `implementing` → `completed`/`failed`
+
+**Runtime Modes:**
+
+- `intake`: Homepage research and decisioning (read/research tools only)
+- `plan`: Spec refinement and planning (spec/planning tools enabled, no implementation writes)
+- `build`: Implementation and delivery (full toolset)
+
+**Keypoints:**
+
+- Milestone tracking for task sessions (`started` | `completed`)
+- Auto-created when task status changes to `implementing` or `completed`/`failed`
+- Stored in `project_keypoints` table with artifact tracking
+
+### Common Patterns
+
+**Creating a Task Session:**
+
+```typescript
+const { taskSessionId } = await sdkClient.createTaskSession({
+  workspaceId,
+  title: "My Task",
+  status: "researching",
+  specType: "comprehensive",
+  sessionKind: "task",
+});
+```
+
+**Setting Active Task Session:**
+
+```typescript
+const { setActiveTaskSessionId, setActiveTaskRuntimeMode } = useWorkspaceChat();
+setActiveTaskSessionId(newTaskSessionId);
+setActiveTaskRuntimeMode("plan");
+```
+
+**Fetching Task Sessions:**
+
+```typescript
+const { sessions } = await sdkClient.listTaskSessions({
+  workspaceId,
+  kind: "task", // Use "intake" for homepage scratch sessions
+});
+```
+
+**Creating a Keypoint:**
+
+```typescript
+await sdkClient.createKeypoint({
+  workspaceId,
+  taskSessionId,
+  taskTitle: "Implement feature X",
+  milestone: "started", // or "completed"
+  summary: "Key milestone achievement",
+  artifacts: ["file1.ts", "file2.ts"],
+});
+```
+
+### Critical Header Requirements
+
+All requests to session-bridged routes (`/api/chat`, `/api/workspace`, `/api/project`, `/api/task-sessions`) must include:
+
+```typescript
+headers: {
+  "X-Task-Session-ID": taskSessionId,
+}
+```
+
+The `session-bridge` middleware auto-creates task sessions if the header is missing, but explicit headers are recommended.
+
+### Event Contracts
+
+Task sessions publish `task-session.updated` events:
+
+```typescript
+interface TaskSessionUpdatedEvent {
+  type: "task-session.updated";
+  data: {
+    taskSessionId: string;
+    status: string;
+    specType: string | null;
+    sessionKind: "intake" | "task";
+    lastActivityAt: number;
+  };
+}
+```
+
+Desktop listeners update task session list without full refetch:
+
+```typescript
+useEffect(() => {
+  const unsubscribe = bus.subscribe("task-session.updated", event => {
+    updateTaskSessionInList(event.data.taskSessionId, event.data);
+  });
+  return unsubscribe;
+}, []);
+```
+
+### Migration Notes
+
+This implementation used a **hard-cut migration** strategy:
+
+- No temporary compatibility layers
+- Direct renames: `/api/sessions` → `/api/task-sessions`, `X-Session-ID` → `X-Task-Session-ID`
+- Direct context renames: `activeSessionId` → `activeTaskSessionId`
+
+**Documentation:** See `docs/TASK_FIRST_WORKFLOW.md` for comprehensive documentation including database schema, API contracts, and architectural patterns.
