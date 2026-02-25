@@ -24,10 +24,10 @@ const SPEC_TOOL_KEY = "activeSpec";
 const CURRENT_TASK_KEY = "currentTask";
 const SESSION_MODE_KEY = "runtimeMode";
 
-export type RuntimeMode = "plan" | "build";
+export type RuntimeMode = "intake" | "plan" | "build";
 
-function asRuntimeMode(value: unknown): "plan" | "build" | null {
-  return value === "plan" || value === "build" ? value : null;
+function asRuntimeMode(value: unknown): RuntimeMode | null {
+  return value === "intake" || value === "plan" || value === "build" ? value : null;
 }
 
 export interface SpecData {

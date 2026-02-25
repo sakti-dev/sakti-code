@@ -18,14 +18,14 @@ interface SessionSidebarProps {
 export const LeftSide: Component<SessionSidebarProps> = props => {
   const ctx = useWorkspace();
 
-  const handleSessionClick = (session: { sessionId?: string }) => {
-    if (session.sessionId) {
-      ctx.setActiveSessionId(session.sessionId);
+  const handleSessionClick = (session: { taskSessionId?: string }) => {
+    if (session.taskSessionId) {
+      ctx.setActiveTaskSessionId(session.taskSessionId);
     }
   };
 
   const handleNewSession = async () => {
-    await ctx.createSession();
+    await ctx.createTaskSession("task");
   };
 
   return (
@@ -43,7 +43,7 @@ export const LeftSide: Component<SessionSidebarProps> = props => {
           "border-border/30 border-b"
         )}
       >
-        <h2 class="text-foreground truncate text-sm font-semibold">Sessions</h2>
+        <h2 class="text-foreground truncate text-sm font-semibold">Tasks</h2>
         <button
           onClick={handleNewSession}
           class={cn(
@@ -53,7 +53,7 @@ export const LeftSide: Component<SessionSidebarProps> = props => {
             "hover:scale-105 hover:shadow-sm",
             "group"
           )}
-          aria-label="New session"
+          aria-label="New task"
         >
           <Plus
             class={cn(
@@ -93,11 +93,11 @@ export const LeftSide: Component<SessionSidebarProps> = props => {
         </div>
       </div>
 
-      {/* Session List */}
+      {/* Task List */}
       <div class="scrollbar-default min-h-0 flex-1 overflow-y-auto px-2 py-2">
         <SessionList
-          sessions={ctx.sessions()}
-          activeSessionId={ctx.activeSessionId() ?? ""}
+          sessions={ctx.taskSessions()}
+          activeSessionId={ctx.activeTaskSessionId() ?? ""}
           onSessionClick={handleSessionClick}
         />
       </div>

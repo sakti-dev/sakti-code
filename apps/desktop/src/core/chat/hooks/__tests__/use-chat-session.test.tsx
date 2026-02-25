@@ -66,7 +66,7 @@ vi.mock("@/core/shared/logger", () => ({
 function createMockResponse(overrides?: Partial<Response> & { sessionId?: string }): Response {
   const headers = new Headers(overrides?.headers);
   if (overrides?.sessionId) {
-    headers.set("X-Session-ID", overrides.sessionId);
+    headers.set("X-Task-Session-ID", overrides.sessionId);
   }
 
   // Create a proper ReadableStream for the body
@@ -134,7 +134,7 @@ describe("useChat - Session Identity", () => {
       });
     });
 
-    it("sends request without X-Session-ID when no session exists", async () => {
+    it("sends request without X-Task-Session-ID when no session exists", async () => {
       const { useChat } = await import("@/core/chat/hooks");
 
       mockChatFn.mockResolvedValue(
@@ -315,7 +315,7 @@ describe("useChat - Session Identity", () => {
       });
     });
 
-    it("continues without error when X-Session-ID is missing for new session", async () => {
+    it("continues without error when X-Task-Session-ID is missing for new session", async () => {
       const { useChat } = await import("@/core/chat/hooks");
       const onError = vi.fn();
 

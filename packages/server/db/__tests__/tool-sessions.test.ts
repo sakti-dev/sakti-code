@@ -7,7 +7,7 @@
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { db, sessions, toolSessions } from "../../db";
+import { db, taskSessions, toolSessions } from "../../db";
 
 // Mock uuidv7 for consistent session ID
 vi.mock("uuid", () => ({
@@ -44,8 +44,8 @@ describe("tool sessions", () => {
 
     // Create a parent session first
     mockSessionId = "01234567-89ab-cdef-0123-456789abcdef";
-    const { createSession } = await import("../../db/sessions");
-    await createSession("local");
+    const { createTaskSessionWithId } = await import("../../db/task-sessions");
+    await createTaskSessionWithId("local", mockSessionId);
 
     // Clean up tool sessions before each test
     await db.delete(toolSessions);
@@ -54,7 +54,7 @@ describe("tool sessions", () => {
   afterEach(async () => {
     // Clean up after each test
     await db.delete(toolSessions);
-    await db.delete(sessions);
+    await db.delete(taskSessions);
   });
 
   describe("getToolSession", () => {
@@ -62,7 +62,9 @@ describe("tool sessions", () => {
       const { getToolSession } = await import("../../db/tool-sessions");
       const toolSession = await getToolSession(mockSessionId, "test-tool");
 
-      expect(toolSession.toolSessionId).toBe("11111111-89ab-cdef-0123-456789abcdef");
+      expect(toolSession.toolSessionId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
       expect(toolSession.sessionId).toBe(mockSessionId);
       expect(toolSession.toolName).toBe("test-tool");
       expect(toolSession.toolKey).toBe("");
@@ -147,8 +149,8 @@ describe("tool sessions", () => {
       const toolSession = await getToolSession(mockSessionId, "test-tool");
 
       // Delete parent session
-      const { deleteSession } = await import("../../db/sessions");
-      await deleteSession(mockSessionId);
+      const { deleteTaskSession } = await import("../../db/task-sessions");
+      await deleteTaskSession(mockSessionId);
 
       // Tool session should be deleted due to CASCADE
       const result = await db

@@ -26,7 +26,7 @@ app.use("*", sessionBridge);
  * Usage:
  * GET /api/workspace?directory=/path/to/project
  * Headers:
- *   - X-Session-ID: <session-id> (optional)
+ *   - X-Task-Session-ID: <session-id> (optional)
  *
  * Response:
  * {
@@ -55,7 +55,7 @@ app.get("/api/workspace", async c => {
       project: Instance.project,
       vcs: Instance.vcs,
       inContext: Instance.inContext,
-      sessionId: session?.sessionId,
+      sessionId: session?.taskSessionId,
     });
 
     const workspace = Instance.inContext
@@ -65,7 +65,7 @@ app.get("/api/workspace", async c => {
         })()
       : await Instance.provide({
           directory: process.cwd(),
-          sessionID: session?.sessionId,
+          sessionID: session?.taskSessionId,
           async fn() {
             await Instance.bootstrap();
             return buildWorkspace();

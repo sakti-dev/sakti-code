@@ -24,7 +24,7 @@ export const useChatInput = () => {
   const isGenerating = () =>
     chat.streaming.status() === "connecting" || chat.streaming.status() === "streaming";
 
-  const effectiveSessionId = createMemo(() => chat.sessionId() ?? ctx.activeSessionId());
+  const effectiveSessionId = createMemo(() => chat.sessionId() ?? ctx.activeTaskSessionId());
 
   const permissions = usePermissions({
     client: ctx.client()!,

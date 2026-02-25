@@ -4,8 +4,8 @@ describe("provider e2e flow", () => {
   beforeEach(async () => {
     const { setupTestDatabase } = await import("../../db/test-setup");
     await setupTestDatabase();
-    const { db, sessions } = await import("../../db");
-    await db.delete(sessions);
+    const { db, taskSessions } = await import("../../db");
+    await db.delete(taskSessions);
 
     delete process.env.ZAI_API_KEY;
     delete process.env.OPENAI_API_KEY;

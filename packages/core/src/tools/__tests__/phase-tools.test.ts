@@ -9,10 +9,10 @@ import { describe, expect, it } from "vitest";
 
 describe("tools/phase-tools", () => {
   describe("getToolsForPhase", () => {
-    it("should return read-only tools for explore phase", () => {
+    it("should return intake tools (read-only) for explore phase", () => {
       const tools = getToolsForPhase("explore");
 
-      // Explore agents should only have read-only tools
+      // Explore agents (intake mode) should only have read-only tools
       expect(tools).toBeDefined();
 
       // Should have read tools
@@ -27,6 +27,12 @@ describe("tools/phase-tools", () => {
       expect(tools).not.toHaveProperty("write");
       expect(tools).not.toHaveProperty("edit");
       expect(tools).not.toHaveProperty("bash");
+
+      // Should NOT have spec tools (only plan mode has these)
+      expect(tools).not.toHaveProperty("spec-init");
+      expect(tools).not.toHaveProperty("spec-requirements");
+      expect(tools).not.toHaveProperty("spec-design");
+      expect(tools).not.toHaveProperty("spec-tasks");
     });
 
     it("should return read-only tools for plan phase", () => {

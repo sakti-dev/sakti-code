@@ -30,12 +30,12 @@ export interface TransitionInput {
   reason?: string;
 }
 
-const ALLOWED = new Set(["build->plan", "plan->build"]);
+const ALLOWED = new Set(["intake->plan", "plan->build", "build->plan"]);
 
 const sessionLocks = new Map<string, { resolve: () => void; promise: Promise<void> }>();
 
 function isValidMode(mode: string): mode is RuntimeMode {
-  return mode === "plan" || mode === "build";
+  return mode === "intake" || mode === "plan" || mode === "build";
 }
 
 function isAllowedTransition(from: RuntimeMode, to: RuntimeMode): boolean {
@@ -78,11 +78,11 @@ export async function transitionSessionMode(input: TransitionInput): Promise<Mod
   if (!isValidMode(to)) {
     return {
       outcome: "invalid",
-      error: `invalid target mode: ${to}. Allowed: plan, build`,
+      error: `invalid target mode: ${to}. Allowed: intake, plan, build`,
     };
   }
 
-  const resolvedFrom = from ?? (await getSessionRuntimeMode(sessionId)) ?? "build";
+  const resolvedFrom = from ?? (await getSessionRuntimeMode(sessionId)) ?? "intake";
 
   if (resolvedFrom === to) {
     return {
@@ -97,7 +97,7 @@ export async function transitionSessionMode(input: TransitionInput): Promise<Mod
       outcome: "invalid",
       fromMode: resolvedFrom,
       toMode: to,
-      error: `invalid transition: ${resolvedFrom} -> ${to}. Allowed: build->plan, plan->build`,
+      error: `invalid transition: ${resolvedFrom} -> ${to}. Allowed: intake->plan, plan->build, build->plan`,
     };
   }
 

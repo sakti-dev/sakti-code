@@ -8,6 +8,9 @@
 import { serve } from "@hono/node-server";
 import type serverApp from "@sakti-code/server";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 type ServerApp = typeof serverApp;
 
@@ -15,7 +18,7 @@ export interface TestServer {
   /** Hono app instance */
   app: ServerApp;
   /** HTTP server instance */
-  server: Awaited<ReturnType<typeof serve>>;
+  server: Awaited<ReturnType<typeof serve>> | null;
   /** Server port number */
   port: number;
   /** Full server URL */
@@ -46,19 +49,42 @@ export interface TestServer {
  * ```
  */
 export async function createTestServer(): Promise<TestServer> {
+  // Ensure server db is writable in sandbox/test environments.
+  const testDbPath = path.join(tmpdir(), `sakti-desktop-contract-${process.pid}.db`);
+  process.env.DATABASE_URL = pathToFileURL(testDbPath).href;
+
   // Import server components dynamically to avoid loading issues
   const { default: app } = await import("@sakti-code/server");
   const { getServerToken } = await import("@sakti-code/server");
 
-  // Start server on random port
-  const server = await serve({
-    fetch: app.fetch,
-    port: 0, // Random available port
-  });
+  // Start server on random localhost port; fallback to in-memory request mode if sandbox blocks listening.
+  let server: Awaited<ReturnType<typeof serve>> | null = null;
+  let port = 0;
+  let url = "http://127.0.0.1";
 
-  const address = server.address() as AddressInfo;
-  const port = address.port;
-  const url = `http://127.0.0.1:${port}`;
+  try {
+    server = await serve({
+      fetch: app.fetch,
+      hostname: "127.0.0.1",
+      port: 0, // Random available port
+    });
+
+    const address = server.address() as AddressInfo | null;
+    if (address) {
+      port = address.port;
+      url = `http://127.0.0.1:${port}`;
+    } else {
+      server.close();
+      server = null;
+    }
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    // CI/sandbox environments may disallow binding ports.
+    if (err.code !== "EPERM" && err.code !== "EACCES") {
+      throw error;
+    }
+  }
+
   const token = getServerToken();
 
   // Return server interface
@@ -70,8 +96,12 @@ export async function createTestServer(): Promise<TestServer> {
     token,
 
     cleanup: async () => {
+      if (!server) {
+        return;
+      }
+
       return new Promise<void>(resolve => {
-        server.close(() => {
+        server!.close(() => {
           resolve();
         });
       });
@@ -81,10 +111,19 @@ export async function createTestServer(): Promise<TestServer> {
       const headers = new Headers(init?.headers);
       headers.set("Authorization", `Basic ${Buffer.from(`admin:${token}`).toString("base64")}`);
 
-      return fetch(`${url}${path}`, {
-        ...init,
-        headers,
-      });
+      if (server) {
+        return fetch(`${url}${path}`, {
+          ...init,
+          headers,
+        });
+      }
+
+      return app.request(
+        new Request(`${url}${path}`, {
+          ...init,
+          headers,
+        })
+      );
     },
   };
 }

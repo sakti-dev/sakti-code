@@ -64,6 +64,8 @@ interface ChatProviderProps {
   providerId?: Accessor<string | null | undefined>;
   /** Selected model id accessor */
   modelId?: Accessor<string | null | undefined>;
+  /** Optional runtime mode accessor for chat behavior */
+  runtimeMode?: Accessor<"intake" | "plan" | "build" | undefined>;
 
   /** Called on error */
   onError?: (error: Error) => void;
@@ -89,6 +91,7 @@ export const ChatProvider: ParentComponent<ChatProviderProps> = props => {
     onSessionIdReceived: props.onSessionIdReceived,
     providerId: props.providerId,
     modelId: props.modelId,
+    runtimeMode: props.runtimeMode,
     onError: props.onError,
     onFinish: props.onFinish,
   });

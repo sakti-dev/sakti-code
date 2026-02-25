@@ -101,34 +101,34 @@ describe("spec phase tools in build phase", () => {
 });
 
 describe("spec phase tools in explore phase", () => {
-  it("should include spec-init in explore phase tools", () => {
+  it("should not include spec-init in explore phase tools", () => {
     const exploreTools = getToolsForPhase("explore");
-    expect(exploreTools).toHaveProperty("spec-init");
+    expect(exploreTools).not.toHaveProperty("spec-init");
   });
 
-  it("should include spec-requirements in explore phase tools", () => {
+  it("should not include spec-requirements in explore phase tools", () => {
     const exploreTools = getToolsForPhase("explore");
-    expect(exploreTools).toHaveProperty("spec-requirements");
+    expect(exploreTools).not.toHaveProperty("spec-requirements");
   });
 
-  it("should include spec-design in explore phase tools", () => {
+  it("should not include spec-design in explore phase tools", () => {
     const exploreTools = getToolsForPhase("explore");
-    expect(exploreTools).toHaveProperty("spec-design");
+    expect(exploreTools).not.toHaveProperty("spec-design");
   });
 
-  it("should include spec-tasks in explore phase tools", () => {
+  it("should not include spec-tasks in explore phase tools", () => {
     const exploreTools = getToolsForPhase("explore");
-    expect(exploreTools).toHaveProperty("spec-tasks");
+    expect(exploreTools).not.toHaveProperty("spec-tasks");
   });
 
-  it("should include spec-status in explore phase tools", () => {
+  it("should not include spec-status in explore phase tools", () => {
     const exploreTools = getToolsForPhase("explore");
-    expect(exploreTools).toHaveProperty("spec-status");
+    expect(exploreTools).not.toHaveProperty("spec-status");
   });
 
-  it("should include spec-quick in explore phase tools", () => {
+  it("should not include spec-quick in explore phase tools", () => {
     const exploreTools = getToolsForPhase("explore");
-    expect(exploreTools).toHaveProperty("spec-quick");
+    expect(exploreTools).not.toHaveProperty("spec-quick");
   });
 });
 

@@ -41,14 +41,14 @@ describe("database client", () => {
   });
 
   describe("schema", () => {
-    it("should export sessions table schema", async () => {
-      const { sessions } = await import("../../db/schema");
-      expect(sessions).toBeDefined();
-      expect(sessions.session_id).toBeDefined();
-      expect(sessions.resource_id).toBeDefined();
-      expect(sessions.thread_id).toBeDefined();
-      expect(sessions.created_at).toBeDefined();
-      expect(sessions.last_accessed).toBeDefined();
+    it("should export taskSessions table schema", async () => {
+      const { taskSessions } = await import("../../db/schema");
+      expect(taskSessions).toBeDefined();
+      expect(taskSessions.session_id).toBeDefined();
+      expect(taskSessions.resource_id).toBeDefined();
+      expect(taskSessions.thread_id).toBeDefined();
+      expect(taskSessions.created_at).toBeDefined();
+      expect(taskSessions.last_accessed).toBeDefined();
     });
 
     it("should export toolSessions table schema", async () => {
@@ -63,11 +63,11 @@ describe("database client", () => {
       expect(toolSessions.last_accessed).toBeDefined();
     });
 
-    it("should have foreign key constraint from tool_sessions to sessions", async () => {
-      const { toolSessions, sessions } = await import("../../db/schema");
+    it("should have foreign key constraint from tool_sessions to taskSessions", async () => {
+      const { toolSessions, taskSessions } = await import("../../db/schema");
       // The foreign key is defined in the schema - just verify the relationship exists
       expect(toolSessions.session_id).toBeDefined();
-      expect(sessions.session_id).toBeDefined();
+      expect(taskSessions.session_id).toBeDefined();
     });
   });
 });

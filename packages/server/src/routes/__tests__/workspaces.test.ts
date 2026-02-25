@@ -8,7 +8,7 @@
 
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { db, sessions, threads, workspaces } from "../../../db";
+import { db, taskSessions, threads, workspaces } from "../../../db";
 
 describe("workspace API endpoints", () => {
   let mockApp: Hono<any>;
@@ -17,7 +17,7 @@ describe("workspace API endpoints", () => {
     vi.clearAllMocks();
 
     // Clean up database
-    await db.delete(sessions);
+    await db.delete(taskSessions);
     await db.delete(threads);
     await db.delete(workspaces);
 
@@ -30,7 +30,7 @@ describe("workspace API endpoints", () => {
   });
 
   afterEach(async () => {
-    await db.delete(sessions);
+    await db.delete(taskSessions);
     await db.delete(threads);
     await db.delete(workspaces);
   });

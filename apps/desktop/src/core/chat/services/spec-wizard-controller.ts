@@ -8,6 +8,7 @@ import type { IntentResult } from "@/core/chat/services/intent-analyzer";
 import type { SpecWorkflowState, WorkflowPhase } from "@/state/stores/workflow-state-store";
 import {
   getWorkflowState,
+  initializeWorkflowFromHomepage,
   updateWorkflowPhase,
   upsertWorkflowState,
 } from "@/state/stores/workflow-state-store";
@@ -446,4 +447,14 @@ export function createSpecWizardController(): SpecWizardController {
       return state?.phase ?? null;
     },
   };
+}
+
+/**
+ * Initialize wizard workflow state from homepage spec selection.
+ */
+export function initializeWizardWorkflowFromHomepage(
+  sessionId: string,
+  specType: "comprehensive" | "quick"
+): void {
+  initializeWorkflowFromHomepage(sessionId, specType);
 }

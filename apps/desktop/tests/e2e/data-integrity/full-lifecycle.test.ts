@@ -64,10 +64,10 @@ describe("E2E: Full Data Integrity Lifecycle", () => {
       });
 
       expect(chatResponse.ok).toBe(true);
-      const sessionId = chatResponse.headers.get("X-Session-ID")!;
+      const taskSessionId = chatResponse.headers.get("X-Task-Session-ID")!;
 
       // 2. Connect to SSE stream
-      const eventSource = new EventSource(`${server.url}/api/events?sessionId=${sessionId}`);
+      const eventSource = new EventSource(`${server.url}/api/events?sessionId=${taskSessionId}`);
 
       const events: LifecycleEvent[] = [];
       eventSource.onmessage = event => {
@@ -107,15 +107,15 @@ describe("E2E: Full Data Integrity Lifecycle", () => {
       }
 
       // 4. Verify session persistence
-      const sessionDataResponse = await server.request(`/api/sessions/${sessionId}`);
+      const sessionDataResponse = await server.request(`/api/task-sessions/${taskSessionId}`);
       expect(sessionDataResponse.ok).toBe(true);
 
       const sessionData = await sessionDataResponse.json();
-      expect(sessionData.sessionId).toBe(sessionId);
+      expect(sessionData.taskSessionId).toBe(taskSessionId);
       expect(sessionData.workspace).toBe("/test/project");
 
       // 5. Verify messages persisted
-      const messagesResponse = await server.request(`/api/sessions/${sessionId}/messages`);
+      const messagesResponse = await server.request(`/api/task-sessions/${taskSessionId}/messages`);
       expect(messagesResponse.ok).toBe(true);
 
       const messagesData = await messagesResponse.json();
@@ -133,14 +133,14 @@ describe("E2E: Full Data Integrity Lifecycle", () => {
         }),
       });
 
-      const sessionId = response1.headers.get("X-Session-ID")!;
+      const taskSessionId = response1.headers.get("X-Task-Session-ID")!;
 
       // Second message (same session)
       const response2 = await server.request("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Session-ID": sessionId,
+          "X-Task-Session-ID": taskSessionId,
         },
         body: JSON.stringify({
           messages: [
@@ -159,7 +159,7 @@ describe("E2E: Full Data Integrity Lifecycle", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Session-ID": sessionId,
+          "X-Task-Session-ID": taskSessionId,
         },
         body: JSON.stringify({
           messages: [
@@ -176,7 +176,7 @@ describe("E2E: Full Data Integrity Lifecycle", () => {
       expect(response3.ok).toBe(true);
 
       // Verify all messages persisted
-      const messagesResponse = await server.request(`/api/sessions/${sessionId}/messages`);
+      const messagesResponse = await server.request(`/api/task-sessions/${taskSessionId}/messages`);
       const messagesData = await messagesResponse.json();
 
       // Should have user + assistant messages
@@ -209,7 +209,7 @@ describe("E2E: Full Data Integrity Lifecycle", () => {
       });
 
       // All should have unique session IDs
-      const sessionIds = responses.map(r => r.headers.get("X-Session-ID"));
+      const sessionIds = responses.map(r => r.headers.get("X-Task-Session-ID"));
       const uniqueSessionIds = new Set(sessionIds);
       expect(uniqueSessionIds.size).toBe(10);
     });
@@ -225,7 +225,7 @@ describe("E2E: Full Data Integrity Lifecycle", () => {
         }),
       });
 
-      const sessionId = response.headers.get("X-Session-ID")!;
+      const taskSessionId = response.headers.get("X-Task-Session-ID")!;
 
       // Send 10 messages rapidly
       const messagePromises = [];
@@ -235,7 +235,7 @@ describe("E2E: Full Data Integrity Lifecycle", () => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-Session-ID": sessionId,
+              "X-Task-Session-ID": taskSessionId,
             },
             body: JSON.stringify({
               messages: [{ role: "user", content: `Rapid message ${i}` }],
@@ -253,7 +253,7 @@ describe("E2E: Full Data Integrity Lifecycle", () => {
       });
 
       // Verify all messages persisted
-      const messagesResponse = await server.request(`/api/sessions/${sessionId}/messages`);
+      const messagesResponse = await server.request(`/api/task-sessions/${taskSessionId}/messages`);
       const messagesData = await messagesResponse.json();
 
       // Should have 11 messages (initial + 10 rapid)
@@ -290,10 +290,10 @@ describe("E2E: Full Data Integrity Lifecycle", () => {
 
       expect(response.ok).toBe(true);
 
-      const sessionId = response.headers.get("X-Session-ID")!;
+      const taskSessionId = response.headers.get("X-Task-Session-ID")!;
 
       // Verify message persisted with full content
-      const messagesResponse = await server.request(`/api/sessions/${sessionId}/messages`);
+      const messagesResponse = await server.request(`/api/task-sessions/${taskSessionId}/messages`);
       const messagesData = await messagesResponse.json();
 
       const userMessage = messagesData.messages.find((m: { role: string }) => m.role === "user");
@@ -334,20 +334,20 @@ describe("E2E: Full Data Integrity Lifecycle", () => {
         }),
       });
 
-      const sessionId = chatResponse.headers.get("X-Session-ID")!;
+      const taskSessionId = chatResponse.headers.get("X-Task-Session-ID")!;
 
       // Get session from different endpoints
       const [sessionResponse, messagesResponse] = await Promise.all([
-        server.request(`/api/sessions/${sessionId}`),
-        server.request(`/api/sessions/${sessionId}/messages`),
+        server.request(`/api/task-sessions/${taskSessionId}`),
+        server.request(`/api/task-sessions/${taskSessionId}/messages`),
       ]);
 
       const sessionData = await sessionResponse.json();
       const messagesData = await messagesResponse.json();
 
       // All should reference same session
-      expect(sessionData.sessionId).toBe(sessionId);
-      expect(messagesData.sessionID).toBe(sessionId);
+      expect(sessionData.taskSessionId).toBe(taskSessionId);
+      expect(messagesData.sessionID).toBe(taskSessionId);
 
       // Session should have correct message count
       expect(sessionData.messageCount || messagesData.messages.length).toBeGreaterThan(0);
@@ -364,17 +364,17 @@ describe("E2E: Full Data Integrity Lifecycle", () => {
         }),
       });
 
-      const sessionId = chatResponse.headers.get("X-Session-ID")!;
+      const taskSessionId = chatResponse.headers.get("X-Task-Session-ID")!;
 
       // Get initial state
-      const initialMessages = await server.request(`/api/sessions/${sessionId}/messages`);
+      const initialMessages = await server.request(`/api/task-sessions/${taskSessionId}/messages`);
       const initialData = await initialMessages.json();
       expect(initialData.messages.length).toBeGreaterThan(0);
 
       // Session and messages should be properly linked
-      const sessionResponse = await server.request(`/api/sessions/${sessionId}`);
+      const sessionResponse = await server.request(`/api/task-sessions/${taskSessionId}`);
       const sessionData = await sessionResponse.json();
-      expect(sessionData.sessionId).toBe(sessionId);
+      expect(sessionData.taskSessionId).toBe(taskSessionId);
     });
   });
 });

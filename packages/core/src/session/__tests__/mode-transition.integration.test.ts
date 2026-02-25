@@ -2,15 +2,24 @@
  * Tests for Mode Transition Orchestrator
  *
  * Tests verify:
- * - no-op transitions return 'noop' (build -> build, plan -> plan)
+ * - no-op transitions return 'noop' (intake -> intake, build -> build, plan -> plan)
  * - invalid target (to = "explore") returns 'invalid' and no writes
  * - denied approval returns 'denied' and no writes
  * - approved transition writes mode and returns 'approved'
  * - concurrent transitions for same session serialize deterministically
+ * - intake -> plan and plan -> build are allowed
+ * - intake -> build is not allowed
  */
 
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+async function insertTestSession(db: any, sessionId: string) {
+  const { sql } = await import("drizzle-orm");
+  await db.run(
+    sql`INSERT INTO task_sessions (session_id, resource_id, thread_id, title, created_at, last_accessed, status, session_kind) VALUES (${sessionId}, 'test', ${sessionId}, 'Test Session', ${new Date()}, ${new Date()}, 'researching', 'task')`
+  );
+}
 
 describe("Mode Transition Orchestrator", () => {
   let transitionSessionMode: typeof import("@/session/mode-transition").transitionSessionMode;
@@ -25,14 +34,14 @@ describe("Mode Transition Orchestrator", () => {
     getSessionRuntimeMode = helpers.getSessionRuntimeMode;
     updateSessionRuntimeMode = helpers.updateSessionRuntimeMode;
 
-    const { getDb, sessions: _sessions } = await import("@/testing/db");
+    const { getDb } = await import("@/testing/db");
     const { sql } = await import("drizzle-orm");
     const db = await getDb();
 
     await db.run(
       sql`DELETE FROM tool_sessions WHERE tool_name = 'spec' AND tool_key = 'runtimeMode'`
     );
-    await db.run(sql`DELETE FROM sessions`);
+    await db.run(sql`DELETE FROM task_sessions`);
   });
 
   afterAll(async () => {
@@ -41,20 +50,29 @@ describe("Mode Transition Orchestrator", () => {
   });
 
   describe("transitionSessionMode", () => {
-    it("should return noop for build -> build (same mode)", async () => {
+    it("should return noop for intake -> intake (same mode)", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@/testing/db");
+      const { getDb } = await import("@/testing/db");
       const db = await getDb();
 
-      await db.insert(sessions).values({
-        session_id: sessionId,
-        resource_id: "test",
-        thread_id: sessionId,
-        title: "Test Session",
-        created_at: new Date(),
-        last_accessed: new Date(),
+      await insertTestSession(db, sessionId);
+      await updateSessionRuntimeMode(sessionId, "intake");
+
+      const result = await transitionSessionMode({
+        sessionId,
+        from: "intake",
+        to: "intake",
       });
 
+      expect(result.outcome).toBe("noop");
+    });
+
+    it("should return noop for build -> build (same mode)", async () => {
+      const sessionId = uuidv7();
+      const { getDb } = await import("@/testing/db");
+      const db = await getDb();
+
+      await insertTestSession(db, sessionId);
       await updateSessionRuntimeMode(sessionId, "build");
 
       const result = await transitionSessionMode({
@@ -68,18 +86,10 @@ describe("Mode Transition Orchestrator", () => {
 
     it("should return noop for plan -> plan (same mode)", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@/testing/db");
+      const { getDb } = await import("@/testing/db");
       const db = await getDb();
 
-      await db.insert(sessions).values({
-        session_id: sessionId,
-        resource_id: "test",
-        thread_id: sessionId,
-        title: "Test Session",
-        created_at: new Date(),
-        last_accessed: new Date(),
-      });
-
+      await insertTestSession(db, sessionId);
       await updateSessionRuntimeMode(sessionId, "plan");
 
       const result = await transitionSessionMode({
@@ -93,41 +103,66 @@ describe("Mode Transition Orchestrator", () => {
 
     it("should return invalid for to = 'explore'", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@/testing/db");
+      const { getDb } = await import("@/testing/db");
       const db = await getDb();
 
-      await db.insert(sessions).values({
-        session_id: sessionId,
-        resource_id: "test",
-        thread_id: sessionId,
-        title: "Test Session",
-        created_at: new Date(),
-        last_accessed: new Date(),
-      });
+      await insertTestSession(db, sessionId);
 
       const result = await transitionSessionMode({
         sessionId,
         from: "build",
-        to: "explore" as "plan" | "build",
+        to: "explore" as "intake" | "plan" | "build",
       });
 
       expect(result.outcome).toBe("invalid");
       expect(result.error).toContain("invalid target mode");
     });
 
-    it("should return denied when approval callback rejects", async () => {
+    it("should return invalid for intake -> build (direct transition not allowed)", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@/testing/db");
+      const { getDb } = await import("@/testing/db");
       const db = await getDb();
 
-      await db.insert(sessions).values({
-        session_id: sessionId,
-        resource_id: "test",
-        thread_id: sessionId,
-        title: "Test Session",
-        created_at: new Date(),
-        last_accessed: new Date(),
+      await insertTestSession(db, sessionId);
+      await updateSessionRuntimeMode(sessionId, "intake");
+
+      const result = await transitionSessionMode({
+        sessionId,
+        from: "intake",
+        to: "build",
       });
+
+      expect(result.outcome).toBe("invalid");
+      expect(result.error).toContain("invalid transition");
+    });
+
+    it("should approve intake -> plan transition", async () => {
+      const sessionId = uuidv7();
+      const { getDb } = await import("@/testing/db");
+      const db = await getDb();
+
+      await insertTestSession(db, sessionId);
+      await updateSessionRuntimeMode(sessionId, "intake");
+
+      const mockApprove = vi.fn().mockResolvedValue(true);
+
+      const result = await transitionSessionMode({
+        sessionId,
+        from: "intake",
+        to: "plan",
+        approvalCallback: mockApprove,
+      });
+
+      expect(result.outcome).toBe("approved");
+      expect(await getSessionRuntimeMode(sessionId)).toBe("plan");
+    });
+
+    it("should return denied when approval callback rejects", async () => {
+      const sessionId = uuidv7();
+      const { getDb } = await import("@/testing/db");
+      const db = await getDb();
+
+      await insertTestSession(db, sessionId);
 
       const mockApprove = vi.fn().mockResolvedValue(false);
 
@@ -145,17 +180,10 @@ describe("Mode Transition Orchestrator", () => {
 
     it("should return approved and write mode when approved", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@/testing/db");
+      const { getDb } = await import("@/testing/db");
       const db = await getDb();
 
-      await db.insert(sessions).values({
-        session_id: sessionId,
-        resource_id: "test",
-        thread_id: sessionId,
-        title: "Test Session",
-        created_at: new Date(),
-        last_accessed: new Date(),
-      });
+      await insertTestSession(db, sessionId);
 
       const mockApprove = vi.fn().mockResolvedValue(true);
 
@@ -172,17 +200,10 @@ describe("Mode Transition Orchestrator", () => {
 
     it("should serialize concurrent transitions for same session", async () => {
       const sessionId = uuidv7();
-      const { getDb, sessions } = await import("@/testing/db");
+      const { getDb } = await import("@/testing/db");
       const db = await getDb();
 
-      await db.insert(sessions).values({
-        session_id: sessionId,
-        resource_id: "test",
-        thread_id: sessionId,
-        title: "Test Session",
-        created_at: new Date(),
-        last_accessed: new Date(),
-      });
+      await insertTestSession(db, sessionId);
 
       let approvalCallCount = 0;
       const approvalResults: boolean[] = [];

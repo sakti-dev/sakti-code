@@ -283,9 +283,14 @@ Examples:
     }
 
     // Enforce runtime-mode subagent policy
-    const runtimeMode = (await getSessionRuntimeMode(instanceContext.sessionID)) ?? "build";
-    if (runtimeMode === "plan" && subagent_type !== "explore") {
-      throw new Error("Plan mode can only spawn explore subagents");
+    // intake: allow only explore subagents (conservative)
+    // plan: allow only explore subagents
+    // build: allow all subagent types
+    const runtimeMode = (await getSessionRuntimeMode(instanceContext.sessionID)) ?? "intake";
+    if ((runtimeMode === "intake" || runtimeMode === "plan") && subagent_type !== "explore") {
+      throw new Error(
+        `${runtimeMode} mode can only spawn explore subagents`
+      );
     }
 
     // Get subagent configuration

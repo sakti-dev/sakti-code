@@ -4,13 +4,14 @@ import { Component, For, Show, createSignal } from "solid-js";
 import { SessionCard } from "./session-card";
 
 /**
- * Base session interface compatible with both old and new formats
+ * Task session summary used by the left sidebar
  */
-interface BaseSession {
+interface TaskSessionSummary {
   id?: string;
-  sessionId?: string;
+  taskSessionId?: string;
   title: string;
   lastUpdated?: Date;
+  lastActivityAt?: string;
   lastAccessed?: string;
   status: "active" | "archived";
   isPinned?: boolean;
@@ -18,27 +19,27 @@ interface BaseSession {
 
 interface SessionGroup {
   title: string;
-  sessions: BaseSession[];
+  sessions: TaskSessionSummary[];
   isCollapsed?: boolean;
 }
 
 interface SessionListProps {
   /** All sessions to display */
-  sessions: BaseSession[];
+  sessions: TaskSessionSummary[];
   /** Currently active session ID */
   activeSessionId?: string;
   /** Session click handler */
-  onSessionClick?: (session: BaseSession) => void;
+  onSessionClick?: (session: TaskSessionSummary) => void;
   /** Session context menu handler */
-  onSessionContextMenu?: (session: BaseSession, e: MouseEvent) => void;
+  onSessionContextMenu?: (session: TaskSessionSummary, e: MouseEvent) => void;
   /** Pin toggle handler */
-  onTogglePin?: (session: BaseSession) => void;
+  onTogglePin?: (session: TaskSessionSummary) => void;
   /** Additional CSS classes */
   class?: string;
 }
 
 /**
- * SessionList - Grouped session list with collapsible sections
+ * SessionList - Grouped task session list with collapsible sections
  *
  * Groups sessions by:
  * - Pinned (always first)
@@ -55,7 +56,7 @@ interface SessionListProps {
 export const SessionList: Component<SessionListProps> = props => {
   const [collapsedGroups, setCollapsedGroups] = createSignal<Set<string>>(new Set());
 
-  // Group sessions by time period
+  // Group task sessions by time period
   const groupSessions = (): SessionGroup[] => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -65,8 +66,9 @@ export const SessionList: Component<SessionListProps> = props => {
     weekAgo.setDate(weekAgo.getDate() - 7);
 
     // Helper to get date from session (handles both formats)
-    const getSessionDate = (s: BaseSession): Date => {
+    const getSessionDate = (s: TaskSessionSummary): Date => {
       if (s.lastUpdated) return new Date(s.lastUpdated);
+      if (s.lastActivityAt) return new Date(s.lastActivityAt);
       if (s.lastAccessed) return new Date(s.lastAccessed);
       return new Date(0); // Fallback to epoch
     };
@@ -162,7 +164,10 @@ export const SessionList: Component<SessionListProps> = props => {
                   {(session, sessionIndex) => (
                     <SessionCard
                       session={session}
-                      isActive={session.id === props.activeSessionId}
+                      isActive={
+                        session.taskSessionId === props.activeSessionId ||
+                        session.id === props.activeSessionId
+                      }
                       onClick={() => props.onSessionClick?.(session)}
                       onContextMenu={e => props.onSessionContextMenu?.(session, e)}
                       onTogglePin={() => props.onTogglePin?.(session)}
@@ -188,9 +193,9 @@ export const SessionList: Component<SessionListProps> = props => {
           >
             <MessageCircle class="text-muted-foreground/40 h-6 w-6" />
           </div>
-          <p class="text-muted-foreground/70 text-sm">No sessions yet</p>
+          <p class="text-muted-foreground/70 text-sm">No tasks yet</p>
           <p class="text-muted-foreground/50 mt-1 text-xs">
-            Start a conversation to create your first session
+            Start planning to create your first task
           </p>
         </div>
       </Show>

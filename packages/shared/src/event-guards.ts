@@ -42,6 +42,7 @@ const KNOWN_EVENT_TYPES: ReadonlyArray<EventType> = [
   "question.replied",
   "question.rejected",
   "task.updated",
+  "task-session.updated",
 ];
 
 /**

@@ -15,7 +15,7 @@ describe("useTasks", () => {
   it("refreshes tasks when the active session changes", async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.endsWith("/api/tasks/session-1")) {
+      if (url.endsWith("/api/agent-tasks/session-1")) {
         return Promise.resolve(
           new Response(
             JSON.stringify({
@@ -27,7 +27,7 @@ describe("useTasks", () => {
           )
         );
       }
-      if (url.endsWith("/api/tasks/session-2")) {
+      if (url.endsWith("/api/agent-tasks/session-2")) {
         return Promise.resolve(
           new Response(
             JSON.stringify({
@@ -59,8 +59,8 @@ describe("useTasks", () => {
       expect(hook.tasks()).toEqual([
         { id: "t2", title: "S2 Task", status: "in_progress", priority: 1 },
       ]);
-      expect(fetchMock).toHaveBeenCalledWith("/api/tasks/session-1");
-      expect(fetchMock).toHaveBeenCalledWith("/api/tasks/session-2");
+      expect(fetchMock).toHaveBeenCalledWith("/api/agent-tasks/session-1");
+      expect(fetchMock).toHaveBeenCalledWith("/api/agent-tasks/session-2");
       dispose();
     });
   });

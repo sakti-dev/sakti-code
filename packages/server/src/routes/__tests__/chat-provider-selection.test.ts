@@ -25,7 +25,7 @@ describe("chat provider selection", () => {
     registerCoreDbBindings({
       getDb: dbModule.getDb,
       closeDb: dbModule.closeDb,
-      sessions: dbModule.sessions,
+      sessions: dbModule.taskSessions,
       tasks: dbModule.tasks,
       taskDependencies: dbModule.taskDependencies,
       taskMessages: dbModule.taskMessages,

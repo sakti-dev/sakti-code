@@ -69,7 +69,7 @@ describe("ChatProvider", () => {
 
   function successResponse(): Response {
     const headers = new Headers();
-    headers.set("X-Session-ID", "019c4da0-fc0b-713c-984e-b2aca339c9bb");
+    headers.set("X-Task-Session-ID", "019c4da0-fc0b-713c-984e-b2aca339c9bb");
 
     return {
       ok: true,

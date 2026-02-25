@@ -10,23 +10,28 @@ describe("workspace endpoint", () => {
   beforeEach(async () => {
     const { setupTestDatabase } = await import("../../../db/test-setup");
     await setupTestDatabase();
-    const { db, sessions } = await import("../../../db");
-    await db.delete(sessions);
+    const { db, taskSessions } = await import("../../../db");
+    await db.delete(taskSessions);
   });
 
   afterEach(async () => {
-    const { db, sessions } = await import("../../../db");
-    await db.delete(sessions);
+    const { db, taskSessions } = await import("../../../db");
+    await db.delete(taskSessions);
   });
 
   describe("GET /api/workspace", () => {
     it("should return 200 with workspace data", async () => {
+      const { createTaskSession } = await import("../../../db/task-sessions");
+      const session = await createTaskSession("local");
       const workspaceRouter = (await import("../workspace")).default;
 
       const response = await workspaceRouter.request(
         "http://localhost/api/workspace?directory=/tmp/workspace-test",
         {
           method: "GET",
+          headers: {
+            "X-Task-Session-ID": session.taskSessionId,
+          },
         }
       );
 
@@ -38,6 +43,8 @@ describe("workspace endpoint", () => {
     });
 
     it("should return current directory path from query parameter", async () => {
+      const { createTaskSession } = await import("../../../db/task-sessions");
+      const session = await createTaskSession("local");
       const workspaceRouter = (await import("../workspace")).default;
 
       const testDir = "/tmp/workspace-query-test";
@@ -45,6 +52,9 @@ describe("workspace endpoint", () => {
         `http://localhost/api/workspace?directory=${encodeURIComponent(testDir)}`,
         {
           method: "GET",
+          headers: {
+            "X-Task-Session-ID": session.taskSessionId,
+          },
         }
       );
 
@@ -55,12 +65,17 @@ describe("workspace endpoint", () => {
     });
 
     it("should return inContext as true when sessionBridge establishes context", async () => {
+      const { createTaskSession } = await import("../../../db/task-sessions");
+      const session = await createTaskSession("local");
       const workspaceRouter = (await import("../workspace")).default;
 
       const response = await workspaceRouter.request(
         "http://localhost/api/workspace?directory=/tmp/workspace-context",
         {
           method: "GET",
+          headers: {
+            "X-Task-Session-ID": session.taskSessionId,
+          },
         }
       );
 
@@ -71,12 +86,17 @@ describe("workspace endpoint", () => {
     });
 
     it("should have content-type application/json", async () => {
+      const { createTaskSession } = await import("../../../db/task-sessions");
+      const session = await createTaskSession("local");
       const workspaceRouter = (await import("../workspace")).default;
 
       const response = await workspaceRouter.request(
         "http://localhost/api/workspace?directory=/tmp/workspace-headers",
         {
           method: "GET",
+          headers: {
+            "X-Task-Session-ID": session.taskSessionId,
+          },
         }
       );
 
@@ -84,12 +104,17 @@ describe("workspace endpoint", () => {
     });
 
     it("should include sessionId when session is created", async () => {
+      const { createTaskSession } = await import("../../../db/task-sessions");
+      const session = await createTaskSession("local");
       const workspaceRouter = (await import("../workspace")).default;
 
       const response = await workspaceRouter.request(
         "http://localhost/api/workspace?directory=/tmp/workspace-session",
         {
           method: "GET",
+          headers: {
+            "X-Task-Session-ID": session.taskSessionId,
+          },
         }
       );
 
@@ -103,43 +128,53 @@ describe("workspace endpoint", () => {
     });
 
     it("should return same sessionId for subsequent requests with same session header", async () => {
+      const { createTaskSession } = await import("../../../db/task-sessions");
+      const session = await createTaskSession("local");
       const workspaceRouter = (await import("../workspace")).default;
 
       const testDir = "/tmp/workspace-same-session";
 
-      // First request - creates session
+      // First request - use created session
       const response1 = await workspaceRouter.request(
         `http://localhost/api/workspace?directory=${encodeURIComponent(testDir)}`,
         {
           method: "GET",
+          headers: {
+            "X-Task-Session-ID": session.taskSessionId,
+          },
         }
       );
 
       const data1 = await response1.json();
-      const firstSessionId = data1.sessionId;
+      expect(data1.sessionId).toBe(session.taskSessionId);
 
-      // Second request - reuse session
+      // Second request - reuse same session
       const response2 = await workspaceRouter.request(
         `http://localhost/api/workspace?directory=${encodeURIComponent(testDir)}`,
         {
           method: "GET",
           headers: {
-            "X-Session-ID": firstSessionId,
+            "X-Task-Session-ID": session.taskSessionId,
           },
         }
       );
 
       const data2 = await response2.json();
-      expect(data2.sessionId).toBe(firstSessionId);
+      expect(data2.sessionId).toBe(session.taskSessionId);
     });
 
     it("should return required workspace fields", async () => {
+      const { createTaskSession } = await import("../../../db/task-sessions");
+      const session = await createTaskSession("local");
       const workspaceRouter = (await import("../workspace")).default;
 
       const response = await workspaceRouter.request(
         "http://localhost/api/workspace?directory=/tmp/workspace-fields",
         {
           method: "GET",
+          headers: {
+            "X-Task-Session-ID": session.taskSessionId,
+          },
         }
       );
 
@@ -156,10 +191,15 @@ describe("workspace endpoint", () => {
 
   describe("directory parameter handling", () => {
     it("should fall back to process cwd when directory is not provided", async () => {
+      const { createTaskSession } = await import("../../../db/task-sessions");
+      const session = await createTaskSession("local");
       const workspaceRouter = (await import("../workspace")).default;
 
       const response = await workspaceRouter.request("http://localhost/api/workspace", {
         method: "GET",
+        headers: {
+          "X-Task-Session-ID": session.taskSessionId,
+        },
       });
 
       expect(response.status).toBe(200);
@@ -169,6 +209,8 @@ describe("workspace endpoint", () => {
     });
 
     it("should decode URL-encoded directory paths", async () => {
+      const { createTaskSession } = await import("../../../db/task-sessions");
+      const session = await createTaskSession("local");
       const workspaceRouter = (await import("../workspace")).default;
 
       const testDir = "/tmp/workspace with spaces";
@@ -178,6 +220,9 @@ describe("workspace endpoint", () => {
         `http://localhost/api/workspace?directory=${encodedDir}`,
         {
           method: "GET",
+          headers: {
+            "X-Task-Session-ID": session.taskSessionId,
+          },
         }
       );
 
@@ -188,6 +233,8 @@ describe("workspace endpoint", () => {
     });
 
     it("should handle absolute paths", async () => {
+      const { createTaskSession } = await import("../../../db/task-sessions");
+      const session = await createTaskSession("local");
       const workspaceRouter = (await import("../workspace")).default;
 
       const absolutePath = "/tmp/absolute/workspace/path";
@@ -196,6 +243,9 @@ describe("workspace endpoint", () => {
         `http://localhost/api/workspace?directory=${encodeURIComponent(absolutePath)}`,
         {
           method: "GET",
+          headers: {
+            "X-Task-Session-ID": session.taskSessionId,
+          },
         }
       );
 

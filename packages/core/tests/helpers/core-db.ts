@@ -5,7 +5,7 @@ function ensureBridgeBindings(): void {
   registerCoreDbBindings({
     getDb: dbModule.getDb,
     closeDb: dbModule.closeDb,
-    sessions: dbModule.sessions,
+    sessions: dbModule.taskSessions,
     tasks: dbModule.tasks,
     taskDependencies: dbModule.taskDependencies,
     taskMessages: dbModule.taskMessages,
@@ -27,7 +27,7 @@ export function closeDb(): void {
   dbModule.closeDb();
 }
 
-export const sessions = dbModule.sessions;
+export const sessions = dbModule.taskSessions;
 export const tasks = dbModule.tasks;
 export const taskDependencies = dbModule.taskDependencies;
 export const taskMessages = dbModule.taskMessages;

@@ -4,6 +4,7 @@
  * Defines tables for sessions, tool_sessions, and repo_cache using Drizzle ORM.
  */
 
+import { sql } from "drizzle-orm";
 import {
   foreignKey,
   index,
@@ -50,7 +51,7 @@ export const workspaces = sqliteTable(
 );
 
 /**
- * Sessions table - stores core session data with UUIDv7 identifiers
+ * Task Sessions table - stores task session data with UUIDv7 identifiers
  *
  * - session_id: UUIDv7 primary key
  * - resource_id: User ID or "local" for single-user desktop
@@ -62,9 +63,13 @@ export const workspaces = sqliteTable(
  * - share_url: Optional URL for shared sessions
  * - created_at: Unix timestamp in milliseconds
  * - last_accessed: Unix timestamp in milliseconds
+ * - status: Task session status (researching | specifying | implementing | completed | failed)
+ * - spec_type: Spec type (comprehensive | quick | null)
+ * - session_kind: Session kind (intake | task) - intake scratch vs user-visible task sessions
+ * - last_activity_at: Last activity timestamp in milliseconds
  */
-export const sessions = sqliteTable(
-  "sessions",
+export const taskSessions = sqliteTable(
+  "task_sessions",
   {
     session_id: text("session_id").primaryKey(),
     resource_id: text("resource_id").notNull(),
@@ -81,6 +86,12 @@ export const sessions = sqliteTable(
     share_url: text("share_url"),
     created_at: integer("created_at", { mode: "timestamp" }).notNull(),
     last_accessed: integer("last_accessed", { mode: "timestamp" }).notNull(),
+    status: text("status").notNull().default("researching"),
+    spec_type: text("spec_type"),
+    session_kind: text("session_kind").notNull().default("task"),
+    last_activity_at: integer("last_activity_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
   },
   table => ({
     parentSession: foreignKey({
@@ -93,6 +104,17 @@ export const sessions = sqliteTable(
       foreignColumns: [workspaces.id],
       name: "sessions_workspace_id_fkey",
     }).onDelete("set null"),
+    statusIndex: index("task_sessions_status_idx").on(table.status),
+    kindIndex: index("task_sessions_kind_idx").on(table.session_kind),
+    workspaceActivityIndex: index("task_sessions_workspace_activity_idx").on(
+      table.workspace_id,
+      table.last_activity_at
+    ),
+    workspaceKindActivityIndex: index("task_sessions_workspace_kind_activity_idx").on(
+      table.workspace_id,
+      table.session_kind,
+      table.last_activity_at
+    ),
   })
 );
 
@@ -112,7 +134,7 @@ export const toolSessions = sqliteTable(
     tool_session_id: text("tool_session_id").primaryKey(),
     session_id: text("session_id")
       .notNull()
-      .references(() => sessions.session_id, { onDelete: "cascade" }),
+      .references(() => taskSessions.session_id, { onDelete: "cascade" }),
     tool_name: text("tool_name").notNull(),
     tool_key: text("tool_key").notNull(),
     data: text("data", { mode: "json" }).$type<unknown>(),
@@ -167,7 +189,7 @@ export const events = sqliteTable(
     event_id: text("event_id").primaryKey(),
     session_id: text("session_id")
       .notNull()
-      .references(() => sessions.session_id, { onDelete: "cascade" }),
+      .references(() => taskSessions.session_id, { onDelete: "cascade" }),
     sequence: integer("sequence").notNull(),
     event_type: text("event_type").notNull(),
     properties: text("properties", { mode: "json" }).notNull().$type<Record<string, unknown>>(),
@@ -183,8 +205,8 @@ export const events = sqliteTable(
 /**
  * Type definitions for TypeScript
  */
-export type Session = typeof sessions.$inferSelect;
-export type NewSession = typeof sessions.$inferInsert;
+export type TaskSession = typeof taskSessions.$inferSelect;
+export type NewTaskSession = typeof taskSessions.$inferInsert;
 export type ToolSession = typeof toolSessions.$inferSelect;
 export type NewToolSession = typeof toolSessions.$inferInsert;
 export type RepoCache = typeof repoCache.$inferSelect;
@@ -452,6 +474,56 @@ export const workingMemory = sqliteTable("working_memory", {
  */
 export type WorkingMemory = typeof workingMemory.$inferSelect;
 export type NewWorkingMemory = typeof workingMemory.$inferInsert;
+
+/**
+ * Project Keypoints table - stores project milestones and highlights
+ *
+ * Tracks important milestones and achievements across task sessions:
+ * - task_session_id: Reference to the task session
+ * - task_title: Title of the associated task
+ * - milestone: "started" or "completed" - milestone type
+ * - completed_at: When this milestone was reached
+ * - summary: Narrative summary of the milestone
+ * - artifacts: List of relevant artifacts (files, commits, docs)
+ * - created_at: When the keypoint was created
+ *
+ * Dedupe semantics: Latest keypoint per (task_session_id, milestone) wins.
+ * Multiple writes to the same milestone will replace previous entries.
+ */
+export const projectKeypoints = sqliteTable(
+  "project_keypoints",
+  {
+    id: text("id").primaryKey(),
+    workspace_id: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    task_session_id: text("task_session_id")
+      .notNull()
+      .references(() => taskSessions.session_id, { onDelete: "cascade" }),
+    task_title: text("task_title").notNull(),
+    milestone: text("milestone").notNull(),
+    completed_at: integer("completed_at", { mode: "timestamp" }).notNull(),
+    summary: text("summary").notNull(),
+    artifacts: text("artifacts", { mode: "json" }).$type<string[]>().notNull(),
+    created_at: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  table => ({
+    workspaceCompletedIdx: index("project_keypoints_workspace_completed_idx").on(
+      table.workspace_id,
+      table.completed_at
+    ),
+    taskMilestoneIdx: index("project_keypoints_task_milestone_idx").on(
+      table.task_session_id,
+      table.milestone
+    ),
+  })
+);
+
+/**
+ * Type definitions for project keypoints
+ */
+export type ProjectKeypoint = typeof projectKeypoints.$inferSelect;
+export type NewProjectKeypoint = typeof projectKeypoints.$inferInsert;
 
 /**
  * Type definitions for workspaces

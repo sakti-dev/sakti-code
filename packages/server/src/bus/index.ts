@@ -197,6 +197,20 @@ export const TaskUpdated = defineBusEvent(
   })
 );
 
+export const TaskSessionUpdated = defineBusEvent(
+  "task-session.updated",
+  z.object({
+    taskSessionId: z.string(),
+    workspaceId: z.string().nullable(),
+    status: z.enum(["researching", "specifying", "implementing", "completed", "failed"]),
+    specType: z.enum(["comprehensive", "quick"]).nullable(),
+    sessionKind: z.enum(["intake", "task"]),
+    title: z.string().nullable(),
+    lastActivityAt: z.string(),
+    mutation: z.enum(["created", "updated", "deleted"]),
+  })
+);
+
 export const PermissionAsked = defineBusEvent(
   "permission.asked",
   z.object({

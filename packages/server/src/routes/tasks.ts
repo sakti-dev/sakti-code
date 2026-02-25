@@ -1,8 +1,8 @@
 /**
  * Tasks API Routes
  *
- * GET /api/tasks - List all tasks (with optional filters)
- * GET /api/tasks/:sessionId - Get tasks for a specific session
+ * GET /api/agent-tasks - List all tasks (with optional filters)
+ * GET /api/agent-tasks/:sessionId - Get tasks for a specific session
  */
 
 import { taskStorage } from "@sakti-code/core/memory/task/storage";
@@ -14,7 +14,7 @@ const tasksRouter = new Hono<Env>();
 /**
  * Get tasks for a specific session
  */
-tasksRouter.get("/api/tasks/:sessionId", async c => {
+tasksRouter.get("/api/agent-tasks/:sessionId", async c => {
   const sessionId = c.req.param("sessionId");
 
   const sessionTasks = await taskStorage.listTasksBySession(sessionId);
@@ -41,7 +41,7 @@ tasksRouter.get("/api/tasks/:sessionId", async c => {
 /**
  * List all tasks with optional filters
  */
-tasksRouter.get("/api/tasks", async c => {
+tasksRouter.get("/api/agent-tasks", async c => {
   const status = c.req.query("status") as "open" | "in_progress" | "closed" | undefined;
   const limit = parseInt(c.req.query("limit") || "100");
 

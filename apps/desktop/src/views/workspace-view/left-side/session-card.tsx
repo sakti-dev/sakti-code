@@ -6,13 +6,14 @@ import { cn } from "@/utils";
 import { Bookmark } from "lucide-solid";
 
 /**
- * Base session interface compatible with both old and new formats
+ * Task session summary used in sidebar cards
  */
 interface BaseSession {
   id?: string;
-  sessionId?: string;
+  taskSessionId?: string;
   title: string;
   lastUpdated?: Date;
+  lastActivityAt?: string;
   lastAccessed?: string;
   status: "active" | "archived";
   isPinned?: boolean;
@@ -58,6 +59,7 @@ export const SessionCard: Component<SessionCardProps> = props => {
   // Get session date from either format
   const getSessionDate = (): Date => {
     if (props.session.lastUpdated) return new Date(props.session.lastUpdated);
+    if (props.session.lastActivityAt) return new Date(props.session.lastActivityAt);
     if (props.session.lastAccessed) return new Date(props.session.lastAccessed);
     return new Date();
   };
@@ -94,6 +96,7 @@ export const SessionCard: Component<SessionCardProps> = props => {
 
   return (
     <Card
+      data-component="task-session-card"
       variant="interactive"
       class={cn(
         "group relative cursor-pointer p-3",

@@ -111,6 +111,8 @@ export interface UseChatOptions {
   providerId?: Accessor<string | null | undefined>;
   /** Selected model id accessor */
   modelId?: Accessor<string | null | undefined>;
+  /** Optional runtime mode accessor for chat behavior */
+  runtimeMode?: Accessor<"intake" | "plan" | "build" | undefined>;
 
   /** Called when session ID is received/updated */
   onSessionIdReceived?: (sessionId: string) => void;
@@ -462,6 +464,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
         workspace: ws,
         providerId: options.providerId?.() ?? undefined,
         modelId: options.modelId?.() ?? undefined,
+        runtimeMode: options.runtimeMode?.(),
         signal: abortController.signal,
       });
 
@@ -509,7 +512,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
       // Resolve session ID for this request lifecycle.
       // Prefer server response header when present. If missing, keep current session
       // or defer to SSE/session store synchronization instead of failing hard.
-      const serverSessionId = response.headers.get("X-Session-ID");
+      const serverSessionId = response.headers.get("X-Task-Session-ID");
       let resolvedSessionId = currentSessionId;
 
       if (serverSessionId) {
@@ -547,7 +550,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
         });
       } else {
         logger.warn(
-          "Server did not return X-Session-ID; continuing with SSE-authoritative session sync"
+          "Server did not return X-Task-Session-ID; continuing with SSE-authoritative session sync"
         );
       }
 

@@ -13,6 +13,10 @@ export interface SessionInfo {
   sessionId: string;
   resourceId: string;
   threadId?: string;
+  workspaceId?: string | null;
+  status?: "researching" | "specifying" | "implementing" | "completed" | "failed";
+  specType?: "comprehensive" | "quick" | null;
+  sessionKind?: "intake" | "task";
   createdAt: string;
   lastAccessed: string;
 }
@@ -137,12 +141,57 @@ export function createSDKClient(
     baseUrl,
     session: {
       async list(): Promise<SessionInfo[]> {
-        const result = await request<{ sessions: SessionInfo[] }>("/api/sessions");
-        return result.sessions || [];
+        const result = await request<{
+          taskSessions: Array<{
+            taskSessionId: string;
+            resourceId: string;
+            threadId: string;
+            workspaceId: string | null;
+            status: "researching" | "specifying" | "implementing" | "completed" | "failed";
+            specType: "comprehensive" | "quick" | null;
+            sessionKind: "intake" | "task";
+            createdAt: string;
+            lastAccessed: string;
+          }>;
+        }>("/api/task-sessions?kind=task");
+
+        return (result.taskSessions || []).map(session => ({
+          sessionId: session.taskSessionId,
+          resourceId: session.resourceId,
+          threadId: session.threadId,
+          workspaceId: session.workspaceId,
+          status: session.status,
+          specType: session.specType,
+          sessionKind: session.sessionKind,
+          createdAt: session.createdAt,
+          lastAccessed: session.lastAccessed,
+        }));
       },
 
       async get(sessionID: string): Promise<SessionInfo> {
-        return request<SessionInfo>(`/api/sessions/${sessionID}`);
+        const taskSession = await request<{
+          taskSessionId: string;
+          resourceId: string;
+          threadId: string;
+          workspaceId: string | null;
+          status: "researching" | "specifying" | "implementing" | "completed" | "failed";
+          specType: "comprehensive" | "quick" | null;
+          sessionKind: "intake" | "task";
+          createdAt: string;
+          lastAccessed: string;
+        }>(`/api/task-sessions/${sessionID}`);
+
+        return {
+          sessionId: taskSession.taskSessionId,
+          resourceId: taskSession.resourceId,
+          threadId: taskSession.threadId,
+          workspaceId: taskSession.workspaceId,
+          status: taskSession.status,
+          specType: taskSession.specType,
+          sessionKind: taskSession.sessionKind,
+          createdAt: taskSession.createdAt,
+          lastAccessed: taskSession.lastAccessed,
+        };
       },
 
       async messages(options: SessionMessagesOptions): Promise<SessionMessagesResponse> {

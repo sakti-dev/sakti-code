@@ -44,6 +44,8 @@ export interface ChatOptions {
   providerId?: string;
   /** Selected model id from app state */
   modelId?: string;
+  /** Runtime mode for chat/tool behavior */
+  runtimeMode?: "intake" | "plan" | "build";
   /** Abort signal for request cancellation */
   signal?: AbortSignal;
 }
@@ -96,17 +98,62 @@ export interface SessionStatus {
   hasIncompleteWork?: boolean;
 }
 
-/**
- * Session info from server list endpoint
- */
-export interface SessionInfo {
-  sessionId: string;
+export type TaskSessionStatus =
+  | "researching"
+  | "specifying"
+  | "implementing"
+  | "completed"
+  | "failed";
+
+export type TaskSessionSpecType = "comprehensive" | "quick" | null;
+export type TaskSessionKind = "intake" | "task";
+
+export interface TaskSessionInfo {
+  taskSessionId: string;
   resourceId: string;
   threadId: string;
   workspaceId: string | null;
   title: string | null;
+  status: TaskSessionStatus;
+  specType: TaskSessionSpecType;
+  sessionKind: TaskSessionKind;
+  runtimeMode?: "intake" | "plan" | "build" | null;
   createdAt: string;
   lastAccessed: string;
+  lastActivityAt: string;
+}
+
+export interface CreateTaskSessionPayload {
+  resourceId: string;
+  workspaceId?: string;
+  sessionKind?: TaskSessionKind;
+}
+
+export interface UpdateTaskSessionPayload {
+  status?: TaskSessionStatus;
+  specType?: TaskSessionSpecType;
+  title?: string;
+}
+
+export interface ProjectKeypointInfo {
+  id: string;
+  workspaceId: string;
+  taskSessionId: string;
+  taskTitle: string;
+  milestone: "started" | "completed";
+  completedAt: string;
+  summary: string;
+  artifacts: string[];
+  createdAt: string;
+}
+
+export interface CreateProjectKeypointPayload {
+  workspaceId: string;
+  taskSessionId: string;
+  taskTitle: string;
+  milestone: "started" | "completed";
+  summary: string;
+  artifacts?: string[];
 }
 
 /**
@@ -212,7 +259,7 @@ export class SaktiCodeApiClient {
 
     // Include session ID for conversation continuity
     if (options.sessionId) {
-      headers["X-Session-ID"] = options.sessionId;
+      headers["X-Task-Session-ID"] = options.sessionId;
     }
 
     // Build URL with workspace as query param
@@ -249,6 +296,7 @@ export class SaktiCodeApiClient {
           retryOfAssistantMessageId: options.retryOfAssistantMessageId,
           providerId: options.providerId,
           modelId: options.modelId,
+          runtimeMode: options.runtimeMode,
           stream: true,
         }),
         signal: options.signal,
@@ -257,7 +305,7 @@ export class SaktiCodeApiClient {
       logger.debug("Chat response received", {
         status: response.status,
         ok: response.ok,
-        sessionId: response.headers.get("X-Session-ID") ?? undefined,
+        sessionId: response.headers.get("X-Task-Session-ID") ?? undefined,
       });
 
       return response;
@@ -312,25 +360,26 @@ export class SaktiCodeApiClient {
   }
 
   // ============================================================
-  // Sessions API
+  // Task Sessions API
   // ============================================================
 
   /**
-   * Session info from server
-   */
-  /**
-   * List all sessions
+   * List all task sessions
    *
-   * @returns Array of session info objects
+   * @returns Array of task session info objects
    */
-  async listSessions(workspaceId?: string): Promise<SessionInfo[]> {
-    logger.debug("Listing sessions", { workspaceId });
+  async listTaskSessions(
+    workspaceId?: string,
+    kind: TaskSessionKind = "task"
+  ): Promise<TaskSessionInfo[]> {
+    logger.debug("Listing task sessions", { workspaceId, kind });
 
     try {
-      const url = new URL(`${this.config.baseUrl}/api/sessions`);
+      const url = new URL(`${this.config.baseUrl}/api/task-sessions`);
       if (workspaceId) {
         url.searchParams.set("workspaceId", workspaceId);
       }
+      url.searchParams.set("kind", kind);
 
       const response = await fetch(url.toString(), {
         method: "GET",
@@ -338,72 +387,234 @@ export class SaktiCodeApiClient {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to list sessions: ${response.statusText}`);
+        throw new Error(`Failed to list task sessions: ${response.statusText}`);
       }
 
       const data = await response.json();
-      const sessions = data.sessions || [];
-      logger.debug("Sessions retrieved", { count: sessions.length });
-      return sessions;
+      const taskSessions = data.taskSessions || [];
+      logger.debug("Task sessions retrieved", { count: taskSessions.length, kind });
+      return taskSessions;
     } catch (error) {
-      logger.error("Failed to list sessions", error as Error);
+      logger.error("Failed to list task sessions", error as Error, { workspaceId, kind });
       throw error;
     }
   }
 
   /**
-   * Get a specific session
+   * Get a specific task session
    *
-   * @param sessionId - Session ID to retrieve
-   * @returns Session info or null if not found
+   * @param taskSessionId - Task session ID to retrieve
+   * @returns Task session info or null if not found
    */
-  async getSession(sessionId: string): Promise<SessionInfo | null> {
-    logger.debug("Fetching session", { sessionId });
+  async getTaskSession(taskSessionId: string): Promise<TaskSessionInfo | null> {
+    logger.debug("Fetching task session", { taskSessionId });
 
     try {
-      const response = await fetch(`${this.config.baseUrl}/api/sessions/${sessionId}`, {
+      const response = await fetch(`${this.config.baseUrl}/api/task-sessions/${taskSessionId}`, {
         method: "GET",
         headers: this.commonHeaders(),
       });
 
       if (!response.ok) {
         if (response.status === 404) {
-          logger.debug("Session not found", { sessionId });
+          logger.debug("Task session not found", { taskSessionId });
           return null;
         }
-        throw new Error(`Failed to get session: ${response.statusText}`);
+        throw new Error(`Failed to get task session: ${response.statusText}`);
       }
 
-      const session = await response.json();
-      logger.debug("Session retrieved", { sessionId });
-      return session;
+      const taskSession = await response.json();
+      logger.debug("Task session retrieved", { taskSessionId });
+      return taskSession;
     } catch (error) {
-      logger.error("Failed to get session", error as Error, { sessionId });
+      logger.error("Failed to get task session", error as Error, { taskSessionId });
       throw error;
     }
   }
 
   /**
-   * Delete a session
+   * Create a task session
    *
-   * @param sessionId - Session ID to delete
+   * @param payload - Task session creation payload
+   * @returns Created task session
    */
-  async deleteSession(sessionId: string): Promise<void> {
-    logger.info("Deleting session", { sessionId });
+  async createTaskSession(payload: CreateTaskSessionPayload): Promise<TaskSessionInfo> {
+    logger.info("Creating task session", {
+      resourceId: payload.resourceId,
+      workspaceId: payload.workspaceId,
+      sessionKind: payload.sessionKind,
+    });
 
     try {
-      const response = await fetch(`${this.config.baseUrl}/api/sessions/${sessionId}`, {
+      const response = await fetch(`${this.config.baseUrl}/api/task-sessions`, {
+        method: "POST",
+        headers: this.commonHeaders(),
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create task session: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.info("Task session created", { taskSessionId: data.taskSession?.taskSessionId });
+      return data.taskSession;
+    } catch (error) {
+      logger.error("Failed to create task session", error as Error, {
+        resourceId: payload.resourceId,
+        workspaceId: payload.workspaceId,
+        sessionKind: payload.sessionKind,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Update a task session
+   *
+   * @param taskSessionId - Task session ID to update
+   * @param patch - Partial task session fields to update
+   * @returns Updated task session
+   */
+  async updateTaskSession(
+    taskSessionId: string,
+    patch: UpdateTaskSessionPayload
+  ): Promise<TaskSessionInfo> {
+    logger.info("Updating task session", { taskSessionId, patch });
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/task-sessions/${taskSessionId}`, {
+        method: "PATCH",
+        headers: this.commonHeaders(),
+        body: JSON.stringify(patch),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update task session: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.info("Task session updated", { taskSessionId });
+      return data.taskSession;
+    } catch (error) {
+      logger.error("Failed to update task session", error as Error, { taskSessionId, patch });
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a task session
+   *
+   * @param taskSessionId - Task session ID to delete
+   */
+  async deleteTaskSession(taskSessionId: string): Promise<void> {
+    logger.info("Deleting task session", { taskSessionId });
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/task-sessions/${taskSessionId}`, {
         method: "DELETE",
         headers: this.commonHeaders(),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to delete session: ${response.statusText}`);
+        throw new Error(`Failed to delete task session: ${response.statusText}`);
       }
 
-      logger.info("Session deleted", { sessionId });
+      logger.info("Task session deleted", { taskSessionId });
     } catch (error) {
-      logger.error("Failed to delete session", error as Error, { sessionId });
+      logger.error("Failed to delete task session", error as Error, { taskSessionId });
+      throw error;
+    }
+  }
+
+  /**
+   * Get latest task session for workspace
+   *
+   * @param workspaceId - Workspace ID
+   * @returns Task session or null if not found
+   */
+  async getLatestTaskSession(
+    workspaceId: string,
+    kind: TaskSessionKind = "task"
+  ): Promise<TaskSessionInfo | null> {
+    logger.debug("Fetching latest task session for workspace", { workspaceId, kind });
+
+    try {
+      const response = await fetch(
+        `${this.config.baseUrl}/api/task-sessions/latest?workspaceId=${workspaceId}&kind=${kind}`,
+        {
+          method: "GET",
+          headers: this.commonHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          logger.debug("No task session found for workspace", { workspaceId, kind });
+          return null;
+        }
+        throw new Error(`Failed to get latest task session: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.debug("Latest task session retrieved", { workspaceId, kind });
+      return data.taskSession;
+    } catch (error) {
+      logger.error("Failed to get latest task session", error as Error, { workspaceId, kind });
+      throw error;
+    }
+  }
+
+  // ============================================================
+  // Project Keypoints API
+  // ============================================================
+
+  async listProjectKeypoints(workspaceId: string): Promise<ProjectKeypointInfo[]> {
+    logger.debug("Listing project keypoints", { workspaceId });
+
+    try {
+      const response = await fetch(
+        `${this.config.baseUrl}/api/project-keypoints?workspaceId=${workspaceId}`,
+        {
+          method: "GET",
+          headers: this.commonHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to list project keypoints: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.keypoints ?? [];
+    } catch (error) {
+      logger.error("Failed to list project keypoints", error as Error, { workspaceId });
+      throw error;
+    }
+  }
+
+  async createProjectKeypoint(payload: CreateProjectKeypointPayload): Promise<ProjectKeypointInfo> {
+    logger.info("Creating project keypoint", {
+      workspaceId: payload.workspaceId,
+      taskSessionId: payload.taskSessionId,
+      milestone: payload.milestone,
+    });
+
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/project-keypoints`, {
+        method: "POST",
+        headers: this.commonHeaders(),
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create project keypoint: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.keypoint;
+    } catch (error) {
+      logger.error("Failed to create project keypoint", error as Error, payload);
       throw error;
     }
   }
@@ -669,41 +880,6 @@ export class SaktiCodeApiClient {
       logger.info("Workspace deleted", { id });
     } catch (error) {
       logger.error("Failed to delete workspace", error as Error, { id });
-      throw error;
-    }
-  }
-
-  /**
-   * Get latest session for workspace
-   *
-   * @param workspaceId - Workspace ID
-   * @returns Session or null if not found
-   */
-  async getLatestSession(workspaceId: string): Promise<SessionInfo | null> {
-    logger.debug("Fetching latest session for workspace", { workspaceId });
-
-    try {
-      const response = await fetch(
-        `${this.config.baseUrl}/api/sessions/latest?workspaceId=${workspaceId}`,
-        {
-          method: "GET",
-          headers: this.commonHeaders(),
-        }
-      );
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          logger.debug("No session found for workspace", { workspaceId });
-          return null;
-        }
-        throw new Error(`Failed to get latest session: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      logger.debug("Latest session retrieved", { workspaceId });
-      return data.session;
-    } catch (error) {
-      logger.error("Failed to get latest session", error as Error, { workspaceId });
       throw error;
     }
   }

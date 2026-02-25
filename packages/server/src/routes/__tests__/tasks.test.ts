@@ -1,6 +1,7 @@
 import { taskStorage } from "@sakti-code/core/memory/task/storage";
-import { getDb, sessions, tasks } from "@sakti-code/server/db";
+import { getDb, taskSessions, tasks } from "@sakti-code/server/db";
 import { eq, sql } from "drizzle-orm";
+import { v7 as uuidv7 } from "uuid";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const testApp = (await import("../../index")).app;
@@ -13,9 +14,9 @@ describe("Tasks API", () => {
     process.env.SAKTI_CODE_USERNAME = "testuser";
     process.env.SAKTI_CODE_PASSWORD = "testpass";
     const db = await getDb();
-    const sessionId = "test-session-tasks-" + Date.now();
+    const sessionId = uuidv7();
     await db
-      .insert(sessions)
+      .insert(taskSessions)
       .values({
         session_id: sessionId,
         thread_id: sessionId,
@@ -38,10 +39,10 @@ describe("Tasks API", () => {
       .delete(tasks)
       .where(sql`${tasks.id} LIKE 'task-noise-%'`)
       .execute();
-    await db.delete(sessions).where(eq(sessions.session_id, testSessionId)).execute();
+    await db.delete(taskSessions).where(eq(taskSessions.session_id, testSessionId)).execute();
   });
 
-  it("GET /api/tasks/:sessionId should return tasks for session", async () => {
+  it("GET /api/agent-tasks/:sessionId should return tasks for session", async () => {
     await taskStorage.createTask({
       id: "task-api-1",
       title: "API Test Task",
@@ -50,8 +51,11 @@ describe("Tasks API", () => {
       updatedAt: Date.now(),
     });
 
-    const res = await testApp.request(`/api/tasks/${testSessionId}`, {
-      headers: { Authorization: `Basic ${testCredentials}` },
+    const res = await testApp.request(`/api/agent-tasks/${testSessionId}`, {
+      headers: {
+        Authorization: `Basic ${testCredentials}`,
+        "X-Task-Session-ID": testSessionId,
+      },
     });
 
     expect(res.status).toBe(200);
@@ -60,9 +64,12 @@ describe("Tasks API", () => {
     expect(body.tasks[0].title).toBe("API Test Task");
   });
 
-  it("GET /api/tasks/:sessionId should return empty array when no tasks", async () => {
-    const res = await testApp.request(`/api/tasks/${testSessionId}`, {
-      headers: { Authorization: `Basic ${testCredentials}` },
+  it("GET /api/agent-tasks/:sessionId should return empty array when no tasks", async () => {
+    const res = await testApp.request(`/api/agent-tasks/${testSessionId}`, {
+      headers: {
+        Authorization: `Basic ${testCredentials}`,
+        "X-Task-Session-ID": testSessionId,
+      },
     });
 
     expect(res.status).toBe(200);
@@ -70,7 +77,7 @@ describe("Tasks API", () => {
     expect(body.tasks).toHaveLength(0);
   });
 
-  it("GET /api/tasks should list all tasks with filters", async () => {
+  it("GET /api/agent-tasks should list all tasks with filters", async () => {
     await taskStorage.createTask({
       id: "task-all-1",
       title: "Open Task",
@@ -89,8 +96,11 @@ describe("Tasks API", () => {
       updatedAt: Date.now(),
     });
 
-    const res = await testApp.request("/api/tasks?status=open", {
-      headers: { Authorization: `Basic ${testCredentials}` },
+    const res = await testApp.request("/api/agent-tasks?status=open", {
+      headers: {
+        Authorization: `Basic ${testCredentials}`,
+        "X-Task-Session-ID": testSessionId,
+      },
     });
 
     expect(res.status).toBe(200);
@@ -99,7 +109,9 @@ describe("Tasks API", () => {
     expect(body.tasks[0].status).toBe("open");
   });
 
-  it("GET /api/tasks/:sessionId should not be clipped by unrelated global tasks", async () => {
+  it(
+    "GET /api/agent-tasks/:sessionId should not be clipped by unrelated global tasks",
+    async () => {
     const now = Date.now();
     for (let i = 0; i < 120; i++) {
       await taskStorage.createTask({
@@ -118,8 +130,11 @@ describe("Tasks API", () => {
       updatedAt: now + 500,
     });
 
-    const res = await testApp.request(`/api/tasks/${testSessionId}`, {
-      headers: { Authorization: `Basic ${testCredentials}` },
+    const res = await testApp.request(`/api/agent-tasks/${testSessionId}`, {
+      headers: {
+        Authorization: `Basic ${testCredentials}`,
+        "X-Task-Session-ID": testSessionId,
+      },
     });
 
     expect(res.status).toBe(200);
@@ -127,5 +142,6 @@ describe("Tasks API", () => {
     expect(body.tasks).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: "task-session-target" })])
     );
-  });
+    }
+  );
 });

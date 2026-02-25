@@ -44,12 +44,12 @@ describe("chat route publish ordering", () => {
     });
 
     expect(publishMock).toHaveBeenCalledTimes(2);
-    expect(publishMock.mock.calls[0]?.[0]).toMatchObject({ type: "message.updated" });
-    expect(publishMock.mock.calls[0]?.[1]).toMatchObject({
+    expect((publishMock.mock.calls[0] as unknown[])[0]).toMatchObject({ type: "message.updated" });
+    expect((publishMock.mock.calls[0] as unknown[])[1]).toMatchObject({
       info: { id: messageId, finish: "stop" },
     });
-    expect(publishMock.mock.calls[1]?.[0]).toMatchObject({ type: "session.status" });
-    expect(publishMock.mock.calls[1]?.[1]).toMatchObject({
+    expect((publishMock.mock.calls[1] as unknown[])[0]).toMatchObject({ type: "session.status" });
+    expect((publishMock.mock.calls[1] as unknown[])[1]).toMatchObject({
       sessionID: sessionId,
       status: { type: "idle" },
     });

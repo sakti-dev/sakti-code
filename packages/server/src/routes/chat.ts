@@ -12,10 +12,12 @@ import { getModelByReference } from "@sakti-code/core";
 import { Instance } from "@sakti-code/core/server";
 import { createLogger } from "@sakti-code/shared/logger";
 import { createUIMessageStream, createUIMessageStreamResponse, generateText } from "ai";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
-import { updateSessionTitle } from "../../db/sessions";
+import { db, toolSessions } from "../../db";
+import { updateTaskSessionTitle as updateSessionTitle } from "../../db/task-sessions";
 import { MessagePartUpdated, MessageUpdated, publish, SessionStatus } from "../bus";
 import type { Env } from "../index";
 import { createSessionMessage, sessionBridge } from "../middleware/session-bridge";
@@ -28,6 +30,50 @@ import { getSessionMessages } from "../state/session-message-store";
 const app = new Hono<Env>();
 const logger = createLogger("server");
 const SESSION_TITLE_TOKEN_LIMIT = 24;
+const SPEC_TOOL_NAME = "spec";
+const SESSION_MODE_KEY = "runtimeMode";
+
+type RuntimeMode = "intake" | "plan" | "build";
+
+function isRuntimeMode(value: unknown): value is RuntimeMode {
+  return value === "intake" || value === "plan" || value === "build";
+}
+
+async function persistRuntimeMode(sessionId: string, mode: RuntimeMode): Promise<void> {
+  const now = new Date();
+  const existing = await db
+    .select()
+    .from(toolSessions)
+    .where(
+      and(
+        eq(toolSessions.session_id, sessionId),
+        eq(toolSessions.tool_name, SPEC_TOOL_NAME),
+        eq(toolSessions.tool_key, SESSION_MODE_KEY)
+      )
+    )
+    .get();
+
+  if (existing) {
+    await db
+      .update(toolSessions)
+      .set({
+        data: { mode },
+        last_accessed: now,
+      })
+      .where(eq(toolSessions.tool_session_id, existing.tool_session_id));
+    return;
+  }
+
+  await db.insert(toolSessions).values({
+    tool_session_id: uuidv7(),
+    session_id: sessionId,
+    tool_name: SPEC_TOOL_NAME,
+    tool_key: SESSION_MODE_KEY,
+    data: { mode },
+    created_at: now,
+    last_accessed: now,
+  });
+}
 
 function normalizeGeneratedTitle(text: string): string | null {
   const stripped = text
@@ -105,8 +151,9 @@ ${assistantMessage}`;
   }
 }
 
-// Apply session bridge middleware
-app.use("*", sessionBridge);
+// Apply session bridge middleware only to chat endpoints.
+app.use("/api/chat", sessionBridge);
+app.use("/api/chat/*", sessionBridge);
 
 /**
  * Custom stream event types for agent communication
@@ -365,6 +412,7 @@ const chatMessageSchema = z.object({
   retryOfAssistantMessageId: z.string().optional(),
   providerId: z.string().optional(),
   modelId: z.string().optional(),
+  runtimeMode: z.enum(["intake", "plan", "build"]).optional(),
   stream: z.boolean().optional().default(true),
 });
 
@@ -897,7 +945,7 @@ export async function publishPartEvent(
  * Usage:
  * POST /api/chat
  * Headers:
- *   - X-Session-ID: <session-id> (optional, will be created if missing)
+ *   - X-Task-Session-ID: <session-id> (optional, will be created if missing)
  * Query:
  *   - directory: <absolute path> (preferred workspace selector)
  *   - Content-Type: application/json
@@ -945,6 +993,10 @@ app.post("/api/chat", async c => {
       ? body.retryOfAssistantMessageId
       : undefined;
   const shouldStream = body.stream !== false;
+  const runtimeMode = body.runtimeMode;
+  if (runtimeMode !== undefined && !isRuntimeMode(runtimeMode)) {
+    return c.json({ error: "Invalid runtimeMode. Expected intake | plan | build" }, 400);
+  }
   const selection = resolveChatSelection({
     providerId: body.providerId,
     modelId: body.modelId,
@@ -975,7 +1027,7 @@ app.post("/api/chat", async c => {
 
   let retryUserMessageId: string | undefined;
   if (retryOfAssistantMessageId) {
-    const sessionMessages = getSessionMessages(session.sessionId);
+    const sessionMessages = getSessionMessages(session.taskSessionId);
     const retryAssistant = sessionMessages.find(
       message => message.info.id === retryOfAssistantMessageId
     );
@@ -1031,7 +1083,7 @@ app.post("/api/chat", async c => {
   logger.info("Chat request received", {
     module: "chat",
     requestId,
-    sessionId: session.sessionId,
+    sessionId: session.taskSessionId,
     messageLength: messageText.length,
     hasMultimodal: typeof rawMessage === "object" && "content" in rawMessage,
   });
@@ -1130,12 +1182,16 @@ app.post("/api/chat", async c => {
   logger.debug("Getting or creating session controller", {
     module: "chat",
     directory,
-    sessionId: session.sessionId,
+    sessionId: session.taskSessionId,
   });
+
+  if (runtimeMode) {
+    await persistRuntimeMode(session.taskSessionId, runtimeMode);
+  }
 
   // Get SessionManager and retrieve or create SessionController
   const sessionManager = getSessionManager();
-  let controller = await sessionManager.getSession(session.sessionId);
+  let controller = await sessionManager.getSession(session.taskSessionId);
 
   if (!controller) {
     // Create new SessionController for this session
@@ -1146,7 +1202,7 @@ app.post("/api/chat", async c => {
     });
 
     // Get the newly created controller
-    controller = await sessionManager.getSession(session.sessionId);
+    controller = await sessionManager.getSession(session.taskSessionId);
 
     if (!controller) {
       return c.json({ error: "Failed to create session controller" }, 500);
@@ -1154,7 +1210,7 @@ app.post("/api/chat", async c => {
 
     logger.debug("Created new session controller", {
       module: "chat",
-      sessionId: session.sessionId,
+      sessionId: session.taskSessionId,
       controllerId: controller.sessionId,
     });
   }
@@ -1163,15 +1219,15 @@ app.post("/api/chat", async c => {
   if (shouldStream) {
     logger.info("Creating UIMessage stream", {
       module: "chat",
-      sessionId: session.sessionId,
-      messageId: session.sessionId,
+      sessionId: session.taskSessionId,
+      messageId: session.taskSessionId,
     });
 
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
         logger.info("Stream execute started", {
           module: "chat",
-          sessionId: session.sessionId,
+          sessionId: session.taskSessionId,
         });
         const logChatStreamEvents = process.env.SAKTI_CODE_LOG_CHAT_STREAM_EVENTS === "true";
         const writeStreamEvent = (event: Parameters<typeof writer.write>[0]) => {
@@ -1196,7 +1252,7 @@ app.post("/api/chat", async c => {
 
           logger.debug("stream event", {
             module: "chat",
-            sessionId: session.sessionId,
+            sessionId: session.taskSessionId,
             streamEventType,
             streamEventId,
             finishReason,
@@ -1208,7 +1264,7 @@ app.post("/api/chat", async c => {
 
         // Send session message if new session
         if (sessionIsNew) {
-          logger.info("Sending session message", { module: "chat", sessionId: session.sessionId });
+          logger.info("Sending session message", { module: "chat", sessionId: session.taskSessionId });
           writeStreamEvent(createSessionMessage(session));
         }
 
@@ -1220,7 +1276,7 @@ app.post("/api/chat", async c => {
         const assistantInfo: AssistantInfoPayload = {
           role: "assistant",
           id: messageId,
-          sessionID: session.sessionId,
+          sessionID: session.taskSessionId,
           parentID: userMessageId,
           modelID: selection.modelId,
           providerID: selectedProviderId,
@@ -1245,7 +1301,7 @@ app.post("/api/chat", async c => {
             info: {
               role: "user",
               id: userMessageId,
-              sessionID: session.sessionId,
+              sessionID: session.taskSessionId,
               time: {
                 created: userCreatedAt,
               },
@@ -1254,7 +1310,7 @@ app.post("/api/chat", async c => {
           await publish(MessagePartUpdated, {
             part: {
               id: `${userMessageId}-text`,
-              sessionID: session.sessionId,
+              sessionID: session.taskSessionId,
               messageID: userMessageId,
               type: "text",
               text: messageText,
@@ -1273,7 +1329,7 @@ app.post("/api/chat", async c => {
         if (!storedCredential) {
           logger.error("No AI provider configured", undefined, {
             module: "chat",
-            sessionId: session.sessionId,
+            sessionId: session.taskSessionId,
           });
           writeStreamEvent({
             type: "error",
@@ -1288,7 +1344,7 @@ app.post("/api/chat", async c => {
 
         logger.info("Starting agent execution", {
           module: "chat",
-          sessionId: session.sessionId,
+          sessionId: session.taskSessionId,
           messageId,
           task: messageText,
         });
@@ -1310,7 +1366,7 @@ app.post("/api/chat", async c => {
             partPublishQueue = partPublishQueue
               .then(() =>
                 publishPartEvent(
-                  session.sessionId,
+                  session.taskSessionId,
                   messageId,
                   partPublishState,
                   assistantInfo,
@@ -1320,7 +1376,7 @@ app.post("/api/chat", async c => {
               .catch(error => {
                 logger.error("Failed to publish part event", error as Error, {
                   module: "chat",
-                  sessionId: session.sessionId,
+                  sessionId: session.taskSessionId,
                   eventType: event.type,
                 });
               });
@@ -1401,7 +1457,7 @@ app.post("/api/chat", async c => {
 
           // Publish session busy status
           await publish(SessionStatus, {
-            sessionID: session.sessionId,
+            sessionID: session.taskSessionId,
             status: { type: "busy" },
           });
 
@@ -1414,7 +1470,7 @@ app.post("/api/chat", async c => {
                 // Forward agent events to the stream
                 logger.debug("Agent event received", {
                   module: "chat",
-                  sessionId: session.sessionId,
+                  sessionId: session.taskSessionId,
                   eventType: event.type,
                 });
 
@@ -1425,7 +1481,7 @@ app.post("/api/chat", async c => {
                   modeState.mode = newMode;
                   logger.info(`Mode transition: ${previousMode} → ${newMode}`, {
                     module: "chat",
-                    sessionId: session.sessionId,
+                    sessionId: session.taskSessionId,
                   });
 
                   // Initialize run card if entering planning mode
@@ -1542,7 +1598,7 @@ app.post("/api/chat", async c => {
 
                   logger.info(`Tool call: ${event.toolName}`, {
                     module: "chat",
-                    sessionId: session.sessionId,
+                    sessionId: session.taskSessionId,
                     toolName: event.toolName,
                     toolCallId: event.toolCallId,
                   });
@@ -1622,7 +1678,7 @@ app.post("/api/chat", async c => {
                 if (event.type === "tool-result") {
                   logger.info(`Tool result: ${event.toolName}`, {
                     module: "chat",
-                    sessionId: session.sessionId,
+                    sessionId: session.taskSessionId,
                     toolName: event.toolName,
                     toolCallId: event.toolCallId,
                   });
@@ -1673,7 +1729,7 @@ app.post("/api/chat", async c => {
                       ? event.next
                       : Date.now();
                   void publish(SessionStatus, {
-                    sessionID: session.sessionId,
+                    sessionID: session.taskSessionId,
                     status: {
                       type: "retry",
                       attempt,
@@ -1687,7 +1743,7 @@ app.post("/api/chat", async c => {
                 if (event.type === "finish") {
                   logger.debug(`Agent finish: ${event.finishReason}`, {
                     module: "chat",
-                    sessionId: session.sessionId,
+                    sessionId: session.taskSessionId,
                     finishReason: event.finishReason,
                   });
 
@@ -1749,7 +1805,7 @@ app.post("/api/chat", async c => {
                 // Start auto-title generation while provider runtime context is still active.
                 // This keeps runtime credentials/model resolution available for generateText.
                 void maybeAssignAutoSessionTitle({
-                  sessionId: session.sessionId,
+                  sessionId: session.taskSessionId,
                   modelReference: selectedModel.id,
                   userMessage: messageText,
                   assistantMessage,
@@ -1766,7 +1822,7 @@ app.post("/api/chat", async c => {
           if (result.status === "failed") {
             logger.error("Agent execution failed", undefined, {
               module: "chat",
-              sessionId: session.sessionId,
+              sessionId: session.taskSessionId,
               messageId,
               error: result.error,
               hasContent: !!result.finalContent,
@@ -1774,7 +1830,7 @@ app.post("/api/chat", async c => {
           } else {
             logger.info("Agent execution completed", {
               module: "chat",
-              sessionId: session.sessionId,
+              sessionId: session.taskSessionId,
               status: result.status,
               hasContent: !!result.finalContent,
             });
@@ -1809,7 +1865,7 @@ app.post("/api/chat", async c => {
           const errorMessage = error instanceof Error ? error.message : String(error);
 
           logger.error("Agent execution error", error instanceof Error ? error : undefined, {
-            sessionId: session.sessionId,
+            sessionId: session.taskSessionId,
             error: errorMessage,
           });
 
@@ -1822,14 +1878,14 @@ app.post("/api/chat", async c => {
           await publish(MessagePartUpdated, {
             part: {
               id: errorPartID,
-              sessionID: session.sessionId,
+              sessionID: session.taskSessionId,
               messageID: messageId,
               type: "error",
               message: errorMessage,
             },
           });
 
-          await publishPartEvent(session.sessionId, messageId, partPublishState, assistantInfo, {
+          await publishPartEvent(session.taskSessionId, messageId, partPublishState, assistantInfo, {
             type: "finish",
             finishReason: "error",
           });
@@ -1853,13 +1909,15 @@ app.post("/api/chat", async c => {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
         "Access-Control-Allow-Headers":
-          "Content-Type, Authorization, X-Session-ID, X-Workspace, X-Directory",
+          "Content-Type, Authorization, X-Task-Session-ID, X-Workspace, X-Directory",
+        "X-Task-Session-ID": session.taskSessionId,
       },
     });
   } else {
     // Non-streaming mode (for simple requests)
+    c.header("X-Task-Session-ID", session.taskSessionId);
     return c.json({
-      sessionId: session.sessionId,
+      sessionId: session.taskSessionId,
       message: "Streaming is required for agent responses",
     });
   }
@@ -1881,7 +1939,7 @@ app.get("/api/chat/session", c => {
   }
 
   return c.json({
-    sessionId: session.sessionId,
+    sessionId: session.taskSessionId,
     resourceId: session.resourceId,
     threadId: session.threadId,
     title: session.title,

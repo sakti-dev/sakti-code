@@ -22,6 +22,10 @@ export default defineConfig({
     server: {
       deps: {
         inline: [
+          "@libsql/client",
+          "@libsql/hrana-client",
+          "@libsql/isomorphic-ws",
+          "ws",
           "@incremark/solid",
           "@incremark/core",
           "@incremark/theme",
@@ -40,6 +44,13 @@ export default defineConfig({
     },
   },
   ssr: {
-    noExternal: [/^@kobalte\/core/, /^@incremark\//, "solid-presence", "lucide-solid"],
+    noExternal: [
+      /^@kobalte\/core/,
+      /^@incremark\//,
+      /^@libsql\//,
+      /^ws$/,
+      "solid-presence",
+      "lucide-solid",
+    ],
   },
 });

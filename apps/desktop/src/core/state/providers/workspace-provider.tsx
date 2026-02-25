@@ -12,8 +12,12 @@
  * provided by ChatProvider instead of WorkspaceProvider.
  */
 import type { WorkspaceState } from "@/core/chat/types";
-import { SaktiCodeApiClient, type SessionInfo } from "@/core/services/api/api-client";
-import { createLogger } from "@/core/shared/logger";
+import {
+  SaktiCodeApiClient,
+  type TaskSessionInfo,
+  type TaskSessionKind,
+  type TaskSessionStatus,
+} from "@/core/services/api/api-client";
 import { useSession } from "@/core/state/hooks/use-session";
 import { useNavigate, useParams } from "@solidjs/router";
 import {
@@ -21,6 +25,7 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  onCleanup,
   onMount,
   useContext,
   type Accessor,
@@ -35,13 +40,36 @@ import {
 /**
  * Session with UI-specific properties
  */
-export interface UISession extends SessionInfo {
+export interface UISession {
+  /** Stable id used by existing list/card components */
+  id: string;
+  taskSessionId: string;
+  resourceId: string;
+  threadId: string;
+  workspaceId: string | null;
   /** Display title (derived from first message or default) */
   title: string;
+  taskStatus: TaskSessionStatus;
+  specType: TaskSessionInfo["specType"];
+  sessionKind: TaskSessionInfo["sessionKind"];
+  createdAt: string;
+  lastAccessed: string;
+  lastActivityAt: string;
   /** Whether session is pinned */
   isPinned?: boolean;
   /** Status for UI rendering */
   status: "active" | "archived";
+}
+
+interface TaskSessionUpdatedEventPayload {
+  taskSessionId: string;
+  workspaceId: string | null;
+  status: TaskSessionStatus;
+  specType: TaskSessionInfo["specType"];
+  sessionKind: TaskSessionInfo["sessionKind"];
+  title: string | null;
+  lastActivityAt: string;
+  mutation: "created" | "updated" | "deleted";
 }
 
 /**
@@ -57,14 +85,14 @@ export interface WorkspaceContextValue {
   client: Accessor<SaktiCodeApiClient | null>;
   isClientReady: Accessor<boolean>;
 
-  // Sessions
-  sessions: Accessor<UISession[]>;
-  activeSessionId: Accessor<string | null>;
-  setActiveSessionId: (id: string | null) => void;
-  createSession: () => Promise<string>;
-  deleteSession: (id: string) => Promise<void>;
-  refreshSessions: () => Promise<void>;
-  isLoadingSessions: Accessor<boolean>;
+  // Task sessions
+  taskSessions: Accessor<UISession[]>;
+  activeTaskSessionId: Accessor<string | null>;
+  setActiveTaskSessionId: (id: string | null) => void;
+  createTaskSession: (kind?: TaskSessionKind) => Promise<string>;
+  deleteTaskSession: (id: string) => Promise<void>;
+  refreshTaskSessions: () => Promise<void>;
+  isLoadingTaskSessions: Accessor<boolean>;
 
   // Note: Chat functionality is now provided by ChatProvider
   // Note: Permissions functionality is now provided by separate context
@@ -101,7 +129,6 @@ interface WorkspaceProviderProps {
  * WorkspaceProvider - Provides workspace state to children
  */
 export const WorkspaceProvider: ParentComponent<WorkspaceProviderProps> = props => {
-  const logger = createLogger("desktop:workspace-provider");
   const params = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -159,15 +186,17 @@ export const WorkspaceProvider: ParentComponent<WorkspaceProviderProps> = props 
   const [client, setClient] = createSignal<SaktiCodeApiClient | null>(null);
   const isClientReady = createMemo(() => client() !== null);
 
-  // ---- Sessions ----
-  const [serverSessions, setServerSessions] = createSignal<SessionInfo[]>([]);
-  const [isLoadingSessions, setIsLoadingSessions] = createSignal(false);
+  // ---- Task Sessions ----
+  const [serverTaskSessions, setServerTaskSessions] = createSignal<TaskSessionInfo[]>([]);
+  const [isLoadingTaskSessions, setIsLoadingTaskSessions] = createSignal(false);
 
-  // Transform server sessions to UI sessions
-  const sessions = createMemo<UISession[]>(() => {
-    return serverSessions().map((session, index) => ({
+  // Transform server task sessions to UI sessions
+  const taskSessions = createMemo<UISession[]>(() => {
+    return serverTaskSessions().map((session, index) => ({
       ...session,
-      title: `Session ${index + 1}`, // TODO: Store/fetch title from first message
+      id: session.taskSessionId,
+      title: session.title ?? `Task Session ${index + 1}`,
+      taskStatus: session.status,
       status: "active" as const,
     }));
   });
@@ -175,74 +204,127 @@ export const WorkspaceProvider: ParentComponent<WorkspaceProviderProps> = props 
   // Session management via useSession hook
   const sessionHook = useSession({
     workspace,
+    storageKeyPrefix: "sakti-code-task-session",
   });
 
-  const activeSessionId = sessionHook.sessionId;
-  const setActiveSessionId = sessionHook.setSessionId;
+  const activeTaskSessionId = sessionHook.sessionId;
+  const setActiveTaskSessionId = sessionHook.setSessionId;
 
   /**
-   * Fetch sessions from server
+   * Fetch task sessions from server
    */
-  const refreshSessions = async () => {
+  const refreshTaskSessions = async () => {
     const c = client();
     if (!c) return;
 
-    setIsLoadingSessions(true);
+    setIsLoadingTaskSessions(true);
     try {
-      const list = await c.listSessions(params.id);
-      setServerSessions(list);
-
-      // Auto-restore latest session if no active session
-      if (list.length > 0 && !activeSessionId()) {
-        const latestSession = list[0]; // Sessions are sorted by most recent
-        setActiveSessionId(latestSession.sessionId);
-        logger.info("Auto-restored latest session", { sessionId: latestSession.sessionId });
-      }
+      const list = await c.listTaskSessions(params.id, "task");
+      setServerTaskSessions(list);
     } catch (error) {
-      console.error("Failed to fetch sessions:", error);
+      console.error("Failed to fetch task sessions:", error);
     } finally {
-      setIsLoadingSessions(false);
+      setIsLoadingTaskSessions(false);
     }
   };
 
-  // Load sessions when client is ready
+  // Load task sessions when client is ready
   createEffect(() => {
     if (isClientReady()) {
-      refreshSessions();
+      refreshTaskSessions();
     }
   });
 
-  /**
-   * Create a new session
-   * Returns the new session ID
-   */
-  const createSession = async (): Promise<string> => {
-    // Clear the current session to force server to create new one
-    setActiveSessionId(null);
+  onMount(() => {
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<TaskSessionUpdatedEventPayload>;
+      const payload = customEvent.detail;
+      if (!payload || payload.workspaceId !== params.id || payload.sessionKind !== "task") {
+        return;
+      }
 
-    // The next chat message will create a new session
-    // For now, just return a temporary ID
-    const tempId = `temp-${Date.now()}`;
-    return tempId;
+      if (payload.mutation === "deleted") {
+        setServerTaskSessions(prev =>
+          prev.filter(session => session.taskSessionId !== payload.taskSessionId)
+        );
+        if (activeTaskSessionId() === payload.taskSessionId) {
+          setActiveTaskSessionId(null);
+        }
+        return;
+      }
+
+      setServerTaskSessions(prev => {
+        const existing = prev.find(session => session.taskSessionId === payload.taskSessionId);
+        const nowIso = new Date().toISOString();
+        const candidate: TaskSessionInfo = {
+          taskSessionId: payload.taskSessionId,
+          resourceId: existing?.resourceId ?? "",
+          threadId: existing?.threadId ?? payload.taskSessionId,
+          workspaceId: payload.workspaceId,
+          title: payload.title,
+          status: payload.status,
+          specType: payload.specType,
+          sessionKind: payload.sessionKind,
+          runtimeMode: existing?.runtimeMode ?? null,
+          createdAt: existing?.createdAt ?? nowIso,
+          lastAccessed: existing?.lastAccessed ?? nowIso,
+          lastActivityAt: payload.lastActivityAt,
+        };
+
+        const merged = existing
+          ? prev.map(session =>
+              session.taskSessionId === payload.taskSessionId ? candidate : session
+            )
+          : [candidate, ...prev];
+
+        return merged.sort(
+          (a, b) => new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime()
+        );
+      });
+    };
+
+    window.addEventListener("sakti-code:task-session.updated", handler as EventListener);
+    onCleanup(() => {
+      window.removeEventListener("sakti-code:task-session.updated", handler as EventListener);
+    });
+  });
+
+  /**
+   * Create a new task session
+   * Returns the new task session ID
+   */
+  const createTaskSession = async (kind: TaskSessionKind = "task"): Promise<string> => {
+    const c = client();
+    if (!c) return "";
+
+    const created = await c.createTaskSession({
+      resourceId: workspace() || params.id,
+      workspaceId: params.id,
+      sessionKind: kind,
+    });
+
+    setActiveTaskSessionId(created.taskSessionId);
+    await refreshTaskSessions();
+    return created.taskSessionId;
   };
 
   /**
-   * Delete a session
+   * Delete a task session
    */
-  const deleteSession = async (id: string): Promise<void> => {
+  const deleteTaskSession = async (id: string): Promise<void> => {
     const c = client();
     if (!c) return;
 
     try {
-      await c.deleteSession(id);
+      await c.deleteTaskSession(id);
       // Refresh the list
-      await refreshSessions();
-      // If deleted session was active, clear it
-      if (activeSessionId() === id) {
-        setActiveSessionId(null);
+      await refreshTaskSessions();
+      // If deleted task session was active, clear it
+      if (activeTaskSessionId() === id) {
+        setActiveTaskSessionId(null);
       }
     } catch (error) {
-      console.error("Failed to delete session:", error);
+      console.error("Failed to delete task session:", error);
     }
   };
 
@@ -257,14 +339,14 @@ export const WorkspaceProvider: ParentComponent<WorkspaceProviderProps> = props 
     client,
     isClientReady,
 
-    // Sessions
-    sessions,
-    activeSessionId,
-    setActiveSessionId,
-    createSession,
-    deleteSession,
-    refreshSessions,
-    isLoadingSessions,
+    // Task sessions
+    taskSessions,
+    activeTaskSessionId,
+    setActiveTaskSessionId,
+    createTaskSession,
+    deleteTaskSession,
+    refreshTaskSessions,
+    isLoadingTaskSessions,
   };
 
   return (

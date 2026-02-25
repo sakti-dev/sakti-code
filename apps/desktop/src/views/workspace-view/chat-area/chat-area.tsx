@@ -18,7 +18,7 @@ export const ChatArea: Component<ChatAreaProps> = props => {
   const { chat } = useChatContext();
   const chatInput = useChatInput();
 
-  const effectiveSessionId = createMemo(() => chat.sessionId() ?? ctx.activeSessionId());
+  const effectiveSessionId = createMemo(() => chat.sessionId() ?? ctx.activeTaskSessionId());
   const turns = useSessionTurns(effectiveSessionId);
 
   const isStreaming = () =>

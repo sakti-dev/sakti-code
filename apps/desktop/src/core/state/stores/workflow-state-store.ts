@@ -47,6 +47,22 @@ export function upsertWorkflowState(state: SpecWorkflowState): void {
 }
 
 /**
+ * Initialize workflow state after homepage spec selection.
+ */
+export function initializeWorkflowFromHomepage(
+  sessionId: string,
+  specType: "comprehensive" | "quick"
+): void {
+  upsertWorkflowState({
+    sessionId,
+    phase: specType === "quick" ? "tasks" : "requirements",
+    specType,
+    responses: [],
+    updatedAt: Date.now(),
+  });
+}
+
+/**
  * Add a response to workflow state
  * @param sessionId - Session ID
  * @param phase - Phase for the response

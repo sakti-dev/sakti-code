@@ -58,11 +58,12 @@ import lspRouter from "./routes/lsp";
 import mcpRouter from "./routes/mcp";
 import permissionsRouter from "./routes/permissions";
 import projectRouter from "./routes/project";
+import projectKeypointsRouter from "./routes/project-keypoints";
 import providerRouter from "./routes/provider";
 import questionsRouter from "./routes/questions";
 import rulesRouter from "./routes/rules";
 import sessionDataRouter from "./routes/session-data";
-import sessionsRouter from "./routes/sessions";
+import taskSessionsRouter from "./routes/task-sessions";
 import tasksRouter from "./routes/tasks";
 import vcsRouter from "./routes/vcs";
 import workspaceRouter from "./routes/workspace";
@@ -83,7 +84,7 @@ export type Env = {
   Variables: {
     requestId: string;
     startTime: number;
-    session?: import("../db/sessions").Session;
+    session?: import("../db/task-sessions").TaskSessionRecord;
     sessionIsNew?: boolean;
     instanceContext?: import("@sakti-code/core/server").InstanceContext;
     parsedBody?: { workspace?: string };
@@ -107,7 +108,7 @@ app.use("*", async (c, next) => {
   c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   c.header(
     "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Session-ID, X-Workspace, X-Directory"
+    "Content-Type, Authorization, X-Task-Session-ID, X-Workspace, X-Directory"
   );
   if (c.req.method === "OPTIONS") {
     return c.newResponse(null, 204);
@@ -173,8 +174,8 @@ app.route("/", eventsRouter);
 // Mount rules routes
 app.route("/", rulesRouter);
 
-// Mount sessions routes
-app.route("/", sessionsRouter);
+// Mount task sessions routes
+app.route("/", taskSessionsRouter);
 app.route("/", tasksRouter);
 
 // Mount session data routes (historical messages)
@@ -188,6 +189,7 @@ app.route("/", workspacesRouter);
 
 // Mount bootstrap API routes
 app.route("/", projectRouter);
+app.route("/", projectKeypointsRouter);
 app.route("/", providerRouter);
 app.route("/", agentRouter);
 app.route("/", commandRouter);

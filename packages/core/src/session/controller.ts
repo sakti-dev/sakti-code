@@ -78,13 +78,19 @@ export class SessionController {
     });
 
     try {
-      // Resolve runtime mode from persisted storage, default to "build"
-      const runtimeMode = (await getSessionRuntimeMode(this.sessionId)) ?? "build";
+      // Resolve runtime mode from persisted storage, default to "intake"
+      const runtimeMode = (await getSessionRuntimeMode(this.sessionId)) ?? "intake";
+
+      // Map runtime mode to agent type
+      // intake → explore (homepage research and decisioning)
+      // plan → plan (task-session spec refinement and planning)
+      // build → build (implementation and delivery)
+      const agentTypeForRuntimeMode = runtimeMode === "intake" ? "explore" : runtimeMode;
 
       // Create agent configuration based on resolved runtime mode
       const activeModelId = process.env.SAKTI_CODE_ACTIVE_MODEL_ID?.trim();
       const agentConfig = createAgent(
-        runtimeMode,
+        agentTypeForRuntimeMode,
         this.sessionId,
         activeModelId ? { model: activeModelId } : undefined
       );

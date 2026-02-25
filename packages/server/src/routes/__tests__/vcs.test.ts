@@ -250,6 +250,14 @@ describeGit("POST /api/vcs/clone", () => {
     if (gitUnavailable) return;
     const vcsRouter = (await import("../vcs")).default;
 
+    // Clean up any existing clone directory from previous runs
+    const cloneTargetPath = path.join(tempDir, "source-repo");
+    try {
+      await fsPromises.rm(cloneTargetPath, { recursive: true, force: true });
+    } catch {
+      // Ignore if directory doesn't exist
+    }
+
     const response = await vcsRouter.request("http://localhost/api/vcs/clone", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -260,6 +268,11 @@ describeGit("POST /api/vcs/clone", () => {
       }),
     });
 
+    if (response.status !== 200) {
+      const body = await response.json();
+      console.log("Clone response error:", JSON.stringify(body, null, 2));
+    }
+    
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.path).toBe(path.join(tempDir, "source-repo"));

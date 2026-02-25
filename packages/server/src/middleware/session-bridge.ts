@@ -12,8 +12,8 @@
 import { Instance } from "@sakti-code/core/server";
 import type { Context, Next } from "hono";
 import { v7 as uuidv7 } from "uuid";
-import type { Session } from "../../db/sessions";
-import { createSession, createSessionWithId, getSession, touchSession } from "../../db/sessions";
+import { createTaskSession, createTaskSessionWithId, getTaskSession, touchTaskSession } from "../../db/task-sessions";
+import type { TaskSessionRecord } from "../../db/task-sessions";
 import type { Env } from "../index";
 
 const logger = {
@@ -40,7 +40,7 @@ function isValidSessionId(sessionId: string): boolean {
 /**
  * Session bridge middleware
  *
- * Checks for X-Session-ID header:
+ * Checks for X-Task-Session-ID header:
  * - If missing: generates UUIDv7, creates session, makes it available via context
  * - If present: validates session exists, touches lastAccessed, makes it available via context
  *
@@ -51,29 +51,44 @@ function isValidSessionId(sessionId: string): boolean {
  * Batch 2: Data Integrity - Added session ID validation
  */
 export async function sessionBridge(c: Context<Env>, next: Next): Promise<Response | void> {
-  const sessionId = c.req.header("X-Session-ID");
+  const sessionId = c.req.header("X-Task-Session-ID");
+  const legacySessionId = c.req.header("X-Session-ID");
+
+  if (!sessionId && legacySessionId) {
+    logger.warn("Legacy X-Session-ID header received without X-Task-Session-ID", {
+      legacySessionId,
+    });
+    return c.json(
+      {
+        error: "Legacy session header is not supported",
+        message: "Use X-Task-Session-ID instead of X-Session-ID",
+        code: "LEGACY_SESSION_HEADER_NOT_SUPPORTED",
+      },
+      400
+    );
+  }
 
   if (!sessionId) {
-    // No session ID provided - create new session
-    logger.info("No session ID provided, creating new session");
-    const session = await createSession("local");
+    const workspace = await detectWorkspaceFromRequest(c);
+    const runtimeMode = await detectRuntimeModeFromRequest(c);
+    const sessionKind = runtimeMode === "intake" ? "intake" : "task";
+    const created = await createTaskSession(
+      workspace ?? "local",
+      undefined,
+      sessionKind
+    );
 
-    // Make session available to handlers
-    c.set("session", session);
+    c.set("session", created);
     c.set("sessionIsNew", true);
+    c.header("X-Task-Session-ID", created.taskSessionId);
 
-    // Detect workspace directory from request
-    const workspace = await detectWorkspaceFromRequest(c);
     const messageId = uuidv7();
-
     if (workspace) {
-      // Establish Instance context for all downstream operations
       await Instance.provide({
         directory: workspace,
-        sessionID: session.sessionId,
+        sessionID: created.taskSessionId,
         messageID: messageId,
         async fn() {
-          // Set instance context in Hono context for reference
           c.set("instanceContext", Instance.context);
           await next();
         },
@@ -82,58 +97,91 @@ export async function sessionBridge(c: Context<Env>, next: Next): Promise<Respon
     }
 
     await next();
-  } else {
-    // Session ID provided - validate format first (Batch 2: Data Integrity)
-    if (!isValidSessionId(sessionId)) {
-      logger.warn("Invalid session ID format received", { sessionId });
-      return c.json(
-        {
-          error: "Invalid session ID format",
-          message: "Session ID must be a valid UUIDv7",
-          code: "INVALID_SESSION_ID",
-        },
-        400
-      );
-    }
-
-    // Session ID provided - validate and retrieve
-    let session = await getSession(sessionId);
-
-    let sessionIsNew = false;
-    if (!session) {
-      logger.info("Session not found, creating new session with provided ID", { sessionId });
-      session = await createSessionWithId("local", sessionId);
-      sessionIsNew = true;
-    }
-
-    // Update lastAccessed timestamp
-    await touchSession(sessionId);
-
-    // Make session available to handlers
-    c.set("session", session);
-    c.set("sessionIsNew", sessionIsNew);
-
-    // Detect workspace directory from request
-    const workspace = await detectWorkspaceFromRequest(c);
-    const messageId = uuidv7();
-
-    if (workspace) {
-      // Establish Instance context for all downstream operations
-      await Instance.provide({
-        directory: workspace,
-        sessionID: session.sessionId,
-        messageID: messageId,
-        async fn() {
-          // Set instance context in Hono context for reference
-          c.set("instanceContext", Instance.context);
-          await next();
-        },
-      });
-      return;
-    }
-
-    await next();
+    return;
   }
+
+  if (!isValidSessionId(sessionId)) {
+    logger.warn("Invalid task session ID format received", { sessionId });
+    return c.json(
+      {
+        error: "Invalid task session ID format",
+        message: "Task session ID must be a valid UUIDv7",
+        code: "INVALID_TASK_SESSION_ID",
+      },
+      400
+    );
+  }
+
+  const session = await getTaskSession(sessionId);
+
+  if (!session) {
+    const workspace = await detectWorkspaceFromRequest(c);
+    const runtimeMode = await detectRuntimeModeFromRequest(c);
+    const sessionKind = runtimeMode === "intake" ? "intake" : "task";
+    const created = await createTaskSessionWithId(
+      workspace ?? "local",
+      sessionId,
+      undefined,
+      sessionKind
+    );
+
+    c.set("session", created);
+    c.set("sessionIsNew", true);
+    c.header("X-Task-Session-ID", created.taskSessionId);
+
+    const messageId = uuidv7();
+    if (workspace) {
+      await Instance.provide({
+        directory: workspace,
+        sessionID: created.taskSessionId,
+        messageID: messageId,
+        async fn() {
+          c.set("instanceContext", Instance.context);
+          await next();
+        },
+      });
+      return;
+    }
+
+    await next();
+    return;
+  }
+
+  await touchTaskSession(sessionId);
+
+  c.set("session", session);
+  c.set("sessionIsNew", false);
+  c.header("X-Task-Session-ID", session.taskSessionId);
+
+  const workspace = await detectWorkspaceFromRequest(c);
+  const messageId = uuidv7();
+
+  if (workspace) {
+    await Instance.provide({
+      directory: workspace,
+      sessionID: session.taskSessionId,
+      messageID: messageId,
+      async fn() {
+        c.set("instanceContext", Instance.context);
+        await next();
+      },
+    });
+    return;
+  }
+
+  await next();
+}
+
+async function detectRuntimeModeFromRequest(
+  c: Context<Env>
+): Promise<"intake" | "plan" | "build" | null> {
+  await parseJsonBodyIfAvailable(c);
+  const cachedBody = c.get("parsedBody") as { runtimeMode?: unknown } | undefined;
+  const mode = cachedBody?.runtimeMode;
+  if (mode === "intake" || mode === "plan" || mode === "build") {
+    return mode;
+  }
+  return null;
 }
 
 /**
@@ -143,6 +191,8 @@ export async function sessionBridge(c: Context<Env>, next: Next): Promise<Respon
  * Falls back to current working directory if not specified.
  */
 async function detectWorkspaceFromRequest(c: Context<Env>): Promise<string | undefined> {
+  await parseJsonBodyIfAvailable(c);
+
   // Try query string (preferred for GET/streaming requests)
   const queryWorkspace = c.req.query("directory") || c.req.query("workspace");
   if (queryWorkspace) {
@@ -155,23 +205,6 @@ async function detectWorkspaceFromRequest(c: Context<Env>): Promise<string | und
     return cachedBody.workspace;
   }
 
-  // Attempt to parse JSON body without consuming the original stream
-  const contentType = c.req.header("content-type") || "";
-  if (contentType.includes("application/json")) {
-    try {
-      const clone = c.req.raw.clone();
-      const parsed = (await clone.json()) as { workspace?: string } | undefined;
-      if (parsed && typeof parsed === "object") {
-        c.set("parsedBody", parsed);
-        if (parsed.workspace) {
-          return parsed.workspace;
-        }
-      }
-    } catch {
-      // Ignore body parsing failures
-    }
-  }
-
   // Try X-Workspace header
   const headerWorkspace = c.req.header("X-Workspace") || c.req.header("X-Directory");
   if (headerWorkspace) {
@@ -179,6 +212,28 @@ async function detectWorkspaceFromRequest(c: Context<Env>): Promise<string | und
   }
 
   return undefined;
+}
+
+async function parseJsonBodyIfAvailable(c: Context<Env>): Promise<void> {
+  const existing = c.get("parsedBody") as unknown;
+  if (existing && typeof existing === "object") {
+    return;
+  }
+
+  const contentType = c.req.header("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    return;
+  }
+
+  try {
+    const clone = c.req.raw.clone();
+    const parsed = (await clone.json()) as Record<string, unknown> | undefined;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      c.set("parsedBody", parsed);
+    }
+  } catch {
+    // Ignore body parsing failures
+  }
 }
 
 /**
@@ -189,7 +244,7 @@ async function detectWorkspaceFromRequest(c: Context<Env>): Promise<string | und
  * @param session - The session to emit
  * @returns A UIMessage part containing the session data
  */
-export function createSessionMessage(session: Session): {
+export function createSessionMessage(session: TaskSessionRecord): {
   type: "data-session";
   id: "session";
   data: {
@@ -205,7 +260,7 @@ export function createSessionMessage(session: Session): {
     type: "data-session",
     id: "session",
     data: {
-      sessionId: session.sessionId,
+      sessionId: session.taskSessionId,
       resourceId: session.resourceId,
       threadId: session.threadId,
       title: session.title,

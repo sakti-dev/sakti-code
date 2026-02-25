@@ -64,13 +64,13 @@ describe("Chat route integration", () => {
 
     const { setupTestDatabase } = await import("../../../db/test-setup");
     await setupTestDatabase();
-    const { db, sessions } = await import("../../../db");
-    await db.delete(sessions);
+    const { db, taskSessions } = await import("../../../db");
+    await db.delete(taskSessions);
   });
 
   afterEach(async () => {
-    const { db, sessions } = await import("../../../db");
-    await db.delete(sessions);
+    const { db, taskSessions } = await import("../../../db");
+    await db.delete(taskSessions);
   });
 
   describe("UIMessage streaming", () => {
@@ -237,7 +237,7 @@ describe("Chat route integration", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Session-ID": sessionId,
+          "X-Task-Session-ID": sessionId,
         },
         body: JSON.stringify({
           message: "Hello",
@@ -261,7 +261,7 @@ describe("Chat route integration", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Session-ID": sessionId,
+          "X-Task-Session-ID": sessionId,
         },
         body: JSON.stringify({
           message: "First message",
@@ -276,7 +276,7 @@ describe("Chat route integration", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Session-ID": sessionId,
+          "X-Task-Session-ID": sessionId,
         },
         body: JSON.stringify({
           message: "Second message",

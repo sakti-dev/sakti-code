@@ -63,13 +63,13 @@ describe("event SSE stream", () => {
   beforeEach(async () => {
     const { setupTestDatabase } = await import("../../../db/test-setup");
     await setupTestDatabase();
-    const { db, sessions } = await import("../../../db");
-    await db.delete(sessions);
+    const { db, taskSessions } = await import("../../../db");
+    await db.delete(taskSessions);
   });
 
   afterEach(async () => {
-    const { db, sessions } = await import("../../../db");
-    await db.delete(sessions);
+    const { db, taskSessions } = await import("../../../db");
+    await db.delete(taskSessions);
     // Clear bus subscriptions
     const { clearAll } = await import("../../bus");
     clearAll();
@@ -77,12 +77,12 @@ describe("event SSE stream", () => {
 
   it("sends server.connected event on connection", async () => {
     const eventRouter = (await import("../event")).default;
-    const { createSession } = await import("../../../db/sessions");
-    const session = await createSession("local");
+    const { createTaskSession } = await import("../../../db/task-sessions");
+    const session = await createTaskSession("local");
 
     const response = await eventRouter.request(`http://localhost/event?directory=/tmp/events`, {
       headers: {
-        "X-Session-ID": session.sessionId,
+        "X-Task-Session-ID": session.taskSessionId,
       },
     });
 
@@ -102,12 +102,12 @@ describe("event SSE stream", () => {
 
   it("streams bus events via SSE", async () => {
     const eventRouter = (await import("../event")).default;
-    const { createSession } = await import("../../../db/sessions");
-    const session = await createSession("local");
+    const { createTaskSession } = await import("../../../db/task-sessions");
+    const session = await createTaskSession("local");
 
     const response = await eventRouter.request("http://localhost/event", {
       headers: {
-        "X-Session-ID": session.sessionId,
+        "X-Task-Session-ID": session.taskSessionId,
       },
     });
 
@@ -123,7 +123,7 @@ describe("event SSE stream", () => {
     // Publish a test event via bus
     await publish(PermissionAsked, {
       id: "perm-test-1",
-      sessionID: session.sessionId,
+      sessionID: session.taskSessionId,
       permission: "read",
       patterns: ["/tmp/file.txt"],
       always: [],
@@ -142,12 +142,12 @@ describe("event SSE stream", () => {
   it.skip("sends server.heartbeat every 30 seconds", async () => {
     vi.useFakeTimers();
     const eventRouter = (await import("../event")).default;
-    const { createSession } = await import("../../../db/sessions");
-    const session = await createSession("local");
+    const { createTaskSession } = await import("../../../db/task-sessions");
+    const session = await createTaskSession("local");
 
     const response = await eventRouter.request("http://localhost/event", {
       headers: {
-        "X-Session-ID": session.sessionId,
+        "X-Task-Session-ID": session.taskSessionId,
       },
     });
 

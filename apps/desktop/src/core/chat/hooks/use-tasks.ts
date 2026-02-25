@@ -35,7 +35,7 @@ export function useTasks(sessionId: Accessor<string | null | undefined>) {
     setError(null);
 
     try {
-      const response = await fetch(`/api/tasks/${targetSessionId}`);
+      const response = await fetch(`/api/agent-tasks/${targetSessionId}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch tasks: ${response.status}`);
       }

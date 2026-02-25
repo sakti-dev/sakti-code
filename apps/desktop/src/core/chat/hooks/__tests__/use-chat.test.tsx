@@ -93,7 +93,7 @@ vi.mock("@/core/shared/logger", () => ({
 
 function okResponse(): Response {
   const headers = new Headers();
-  headers.set("X-Session-ID", "019c4da0-fc0b-713c-984e-b2aca339c9aa");
+  headers.set("X-Task-Session-ID", "019c4da0-fc0b-713c-984e-b2aca339c9aa");
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
       controller.enqueue(new Uint8Array([1]));
@@ -113,7 +113,7 @@ function streamResponse(
   sessionId = "019c4da0-fc0b-713c-984e-b2aca339c9aa"
 ): Response {
   const headers = new Headers();
-  headers.set("X-Session-ID", sessionId);
+  headers.set("X-Task-Session-ID", sessionId);
   const bodyText = lines.join("\n");
   const encoded = new TextEncoder().encode(bodyText);
   const body = new ReadableStream<Uint8Array>({
@@ -361,7 +361,7 @@ describe("useChat", () => {
     });
   });
 
-  it("does not fail when server omits X-Session-ID for new session", async () => {
+  it("does not fail when server omits X-Task-Session-ID for new session", async () => {
     const { useChat } = await import("@/core/chat/hooks");
     const responseWithoutHeader = {
       response: new Response(null, { status: 200, headers: new Headers() }),

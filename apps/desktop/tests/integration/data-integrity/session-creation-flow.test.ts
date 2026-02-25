@@ -35,25 +35,25 @@ describe("Integration: Session Creation Flow", () => {
       expect(response.ok).toBe(true);
 
       // 2. Verify server returns session ID in header
-      const sessionId = response.headers.get("X-Session-ID");
-      expect(sessionId).toBeDefined();
-      expect(sessionId).toMatch(
+      const taskSessionId = response.headers.get("X-Task-Session-ID");
+      expect(taskSessionId).toBeDefined();
+      expect(taskSessionId).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
       ); // UUIDv7 format
 
       // 3. Connect to SSE and verify events
-      const eventSource = new EventSource(`${server.url}/api/events?sessionId=${sessionId}`);
+      const eventSource = new EventSource(`${server.url}/api/events?sessionId=${taskSessionId}`);
 
       try {
         // Wait for session.created event
         const sessionEvent = await waitForEvent(eventSource, "session.created", 5000);
         const sessionData = JSON.parse(sessionEvent.data);
-        expect(sessionData.sessionID).toBe(sessionId);
+        expect(sessionData.sessionID).toBe(taskSessionId);
 
         // Wait for message.updated event
         const messageEvent = await waitForEvent(eventSource, "message.updated", 5000);
         const messageData = JSON.parse(messageEvent.data);
-        expect(messageData.info.sessionID).toBe(sessionId);
+        expect(messageData.info.sessionID).toBe(taskSessionId);
 
         // Verify sequence numbers are present and in order
         expect(sessionData.sequence).toBe(1);
@@ -73,10 +73,10 @@ describe("Integration: Session Creation Flow", () => {
         }),
       });
 
-      const sessionId = response.headers.get("X-Session-ID");
-      expect(sessionId).toBeDefined();
-      expect(sessionId).not.toBeNull();
-      expect(sessionId?.length).toBeGreaterThan(0);
+      const taskSessionId = response.headers.get("X-Task-Session-ID");
+      expect(taskSessionId).toBeDefined();
+      expect(taskSessionId).not.toBeNull();
+      expect(taskSessionId?.length).toBeGreaterThan(0);
     });
 
     it("session is persisted and can be retrieved", async () => {
@@ -90,14 +90,14 @@ describe("Integration: Session Creation Flow", () => {
         }),
       });
 
-      const sessionId = chatResponse.headers.get("X-Session-ID")!;
+      const taskSessionId = chatResponse.headers.get("X-Task-Session-ID")!;
 
       // Retrieve session data
-      const sessionResponse = await server.request(`/api/sessions/${sessionId}`);
+      const sessionResponse = await server.request(`/api/task-sessions/${taskSessionId}`);
       expect(sessionResponse.ok).toBe(true);
 
       const sessionData = await sessionResponse.json();
-      expect(sessionData.sessionId).toBe(sessionId);
+      expect(sessionData.taskSessionId).toBe(taskSessionId);
       expect(sessionData.workspace).toBe("/test/workspace");
     });
   });
@@ -125,7 +125,7 @@ describe("Integration: Session Creation Flow", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Session-ID": "invalid-session-id",
+          "X-Task-Session-ID": "invalid-session-id",
         },
         body: JSON.stringify({
           messages: [{ role: "user", content: "Hello" }],
@@ -163,7 +163,7 @@ describe("Integration: Session Creation Flow", () => {
         }),
       });
 
-      const sessionId = firstResponse.headers.get("X-Session-ID")!;
+      const taskSessionId = firstResponse.headers.get("X-Task-Session-ID")!;
 
       // Send multiple messages rapidly using same session
       const promises = [];
@@ -173,7 +173,7 @@ describe("Integration: Session Creation Flow", () => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-Session-ID": sessionId,
+              "X-Task-Session-ID": taskSessionId,
             },
             body: JSON.stringify({
               messages: [{ role: "user", content: `Message ${i}` }],
@@ -189,7 +189,7 @@ describe("Integration: Session Creation Flow", () => {
       responses.forEach(response => {
         expect(response.ok).toBe(true);
         // All should return same session ID
-        expect(response.headers.get("X-Session-ID")).toBe(sessionId);
+        expect(response.headers.get("X-Task-Session-ID")).toBe(taskSessionId);
       });
     });
 
@@ -230,7 +230,7 @@ describe("Integration: Session Creation Flow", () => {
       });
 
       // Each should have different session ID
-      const sessionIds = responses.map(r => r.headers.get("X-Session-ID"));
+      const sessionIds = responses.map(r => r.headers.get("X-Task-Session-ID"));
       const uniqueSessionIds = new Set(sessionIds);
       expect(uniqueSessionIds.size).toBe(3);
     });
@@ -248,14 +248,14 @@ describe("Integration: Session Creation Flow", () => {
         }),
       });
 
-      const sessionId = response1.headers.get("X-Session-ID")!;
+      const taskSessionId = response1.headers.get("X-Task-Session-ID")!;
 
       // Second request - use same session
       const response2 = await server.request("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Session-ID": sessionId,
+          "X-Task-Session-ID": taskSessionId,
         },
         body: JSON.stringify({
           messages: [{ role: "user", content: "Second" }],
@@ -264,10 +264,10 @@ describe("Integration: Session Creation Flow", () => {
       });
 
       expect(response2.ok).toBe(true);
-      expect(response2.headers.get("X-Session-ID")).toBe(sessionId);
+      expect(response2.headers.get("X-Task-Session-ID")).toBe(taskSessionId);
 
       // Verify session has both messages
-      const messagesResponse = await server.request(`/api/sessions/${sessionId}/messages`);
+      const messagesResponse = await server.request(`/api/task-sessions/${taskSessionId}/messages`);
       expect(messagesResponse.ok).toBe(true);
 
       const messagesData = await messagesResponse.json();
@@ -284,10 +284,10 @@ describe("Integration: Session Creation Flow", () => {
         }),
       });
 
-      const sessionId = response1.headers.get("X-Session-ID")!;
+      const taskSessionId = response1.headers.get("X-Task-Session-ID")!;
 
       // Get initial session data
-      const sessionResponse1 = await server.request(`/api/sessions/${sessionId}`);
+      const sessionResponse1 = await server.request(`/api/task-sessions/${taskSessionId}`);
       const sessionData1 = await sessionResponse1.json();
       const firstAccessed = sessionData1.lastAccessed;
 
@@ -299,7 +299,7 @@ describe("Integration: Session Creation Flow", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Session-ID": sessionId,
+          "X-Task-Session-ID": taskSessionId,
         },
         body: JSON.stringify({
           messages: [{ role: "user", content: "Second" }],
@@ -308,7 +308,7 @@ describe("Integration: Session Creation Flow", () => {
       });
 
       // Get updated session data
-      const sessionResponse2 = await server.request(`/api/sessions/${sessionId}`);
+      const sessionResponse2 = await server.request(`/api/task-sessions/${taskSessionId}`);
       const sessionData2 = await sessionResponse2.json();
 
       // lastAccessed should be updated

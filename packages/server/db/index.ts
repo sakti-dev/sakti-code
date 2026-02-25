@@ -2,15 +2,15 @@
  * Database client setup
  *
  * Provides singleton database client for Drizzle ORM with libsql/SQLite.
- * Uses either remote libsql (Turso) or local SQLite file via @libsql/client.
+ * Uses either remote libsql (Turso) or local SQLite file client at runtime.
  *
  * Includes automatic migration on first connection to ensure tables exist.
  */
 
-import { createClient } from "@libsql/client";
 import { registerCoreDbBindings } from "@sakti-code/shared/core-server-bridge";
 import { resolveAppPaths } from "@sakti-code/shared/paths";
-import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
+import type { Client as LibsqlClient } from "@libsql/client";
+import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -51,11 +51,11 @@ export function getDatabaseAuthToken(): string | undefined {
  * Create libsql client connection
  *
  * Supports both local file-based SQLite and remote libsql (Turso).
- * @libsql/client uses WASM for local files, avoiding native build issues.
+ * @libsql/client/node supports Node runtime transports consistently in tests.
  *
  * On first connection, runs Drizzle migrations to ensure schema is up to date.
  */
-let client: ReturnType<typeof createClient> | null = null;
+let client: LibsqlClient | null = null;
 let drizzleInstance: LibSQLDatabase<typeof schema> | null = null;
 let initPromise: Promise<void> | null = null;
 
@@ -72,15 +72,33 @@ export async function getDb(): Promise<LibSQLDatabase<typeof schema>> {
   if (!client) {
     const url = getDatabaseUrl();
     const authToken = getDatabaseAuthToken();
+    const isLocalFileUrl = url.startsWith("file:");
 
     ensureDbDirectory(url);
 
-    client = createClient({
-      url,
-      authToken: authToken || undefined,
-    });
+    if (isLocalFileUrl) {
+      const [{ createClient }, { drizzle }] = await Promise.all([
+        import("@libsql/client/sqlite3"),
+        import("drizzle-orm/libsql/sqlite3"),
+      ]);
 
-    drizzleInstance = drizzle(client, { schema });
+      client = createClient({
+        url,
+        authToken: authToken || undefined,
+      }) as LibsqlClient;
+      drizzleInstance = drizzle(client, { schema });
+    } else {
+      const [{ createClient }, { drizzle }] = await Promise.all([
+        import("@libsql/client/node"),
+        import("drizzle-orm/libsql/node"),
+      ]);
+
+      client = createClient({
+        url,
+        authToken: authToken || undefined,
+      }) as LibsqlClient;
+      drizzleInstance = drizzle(client, { schema });
+    }
 
     // Initialize: enable foreign keys and run migrations
     initPromise = (async () => {
@@ -137,7 +155,7 @@ export * from "./schema";
 registerCoreDbBindings({
   getDb,
   closeDb,
-  sessions: schema.sessions,
+  sessions: schema.taskSessions,
   tasks: schema.tasks,
   taskDependencies: schema.taskDependencies,
   taskMessages: schema.taskMessages,

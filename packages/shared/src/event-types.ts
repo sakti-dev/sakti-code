@@ -165,6 +165,17 @@ export interface TaskUpdatedPayload {
   }>;
 }
 
+export interface TaskSessionUpdatedPayload {
+  taskSessionId: string;
+  workspaceId: string | null;
+  status: "researching" | "specifying" | "implementing" | "completed" | "failed";
+  specType: "comprehensive" | "quick" | null;
+  sessionKind: "intake" | "task";
+  title: string | null;
+  lastActivityAt: string;
+  mutation: "created" | "updated" | "deleted";
+}
+
 // ============================================================================
 // EventMap Type
 // ============================================================================
@@ -193,6 +204,7 @@ export type EventMap = {
   "question.rejected": QuestionRejectedPayload;
 
   "task.updated": TaskUpdatedPayload;
+  "task-session.updated": TaskSessionUpdatedPayload;
 };
 
 /**

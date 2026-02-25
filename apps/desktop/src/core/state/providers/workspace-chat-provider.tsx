@@ -7,6 +7,7 @@ interface WorkspaceChatProviderProps {
   client: SaktiCodeApiClient;
   workspace: Accessor<string>;
   sessionId: Accessor<string | null>;
+  runtimeMode?: Accessor<"intake" | "plan" | "build" | undefined>;
   onSessionIdReceived?: (sessionId: string) => void;
   onError?: (error: Error) => void;
   onFinish?: (messageId: string) => void;
@@ -29,6 +30,7 @@ function WorkspaceChatProviderInner(props: WorkspaceChatProviderProps) {
       sessionId={props.sessionId}
       providerId={selectedProviderId}
       modelId={selectedModelId}
+      runtimeMode={props.runtimeMode}
       onSessionIdReceived={props.onSessionIdReceived}
       onError={props.onError}
       onFinish={props.onFinish}

@@ -6,7 +6,7 @@
 
 import { v7 as uuidv7 } from "uuid";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { db, sessions, threads, workspaces } from "../../db";
+import { db, taskSessions, threads, workspaces } from "../../db";
 
 // Mock uuidv7 for consistent testing
 vi.mock("uuid", () => ({
@@ -28,13 +28,13 @@ describe("workspaces", () => {
       counter++;
       return `01234567-89ab-cdef-0123-${String(counter).padStart(12, "0")}`;
     });
-    await db.delete(sessions);
+    await db.delete(taskSessions);
     await db.delete(threads);
     await db.delete(workspaces);
   });
 
   afterEach(async () => {
-    await db.delete(sessions);
+    await db.delete(taskSessions);
     await db.delete(threads);
     await db.delete(workspaces);
   });

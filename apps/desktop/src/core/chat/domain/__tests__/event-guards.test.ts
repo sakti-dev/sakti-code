@@ -93,6 +93,7 @@ describe("event-guards", () => {
       expect(isKnownEventType("permission.asked")).toBe(true);
       expect(isKnownEventType("session.status")).toBe(true);
       expect(isKnownEventType("task.updated")).toBe(true);
+      expect(isKnownEventType("task-session.updated")).toBe(true);
     });
 
     it("returns false for unknown event types", () => {
@@ -114,6 +115,7 @@ describe("event-guards", () => {
       expect(types).toContain("message.updated");
       expect(types).toContain("permission.asked");
       expect(types).toContain("task.updated");
+      expect(types).toContain("task-session.updated");
       expect(types.length).toBeGreaterThan(0);
     });
 

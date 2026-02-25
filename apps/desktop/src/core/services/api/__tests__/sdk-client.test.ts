@@ -39,14 +39,24 @@ describe("createSDKClient", () => {
     it("should list sessions", async () => {
       const mockSessions = [
         {
-          sessionId: "session-1",
+          taskSessionId: "session-1",
           resourceId: "resource-1",
+          threadId: "session-1",
+          workspaceId: "ws-1",
+          status: "researching",
+          specType: null,
+          sessionKind: "task",
           createdAt: "2024-01-01",
           lastAccessed: "2024-01-01",
         },
         {
-          sessionId: "session-2",
+          taskSessionId: "session-2",
           resourceId: "resource-2",
+          threadId: "session-2",
+          workspaceId: "ws-1",
+          status: "specifying",
+          specType: "quick",
+          sessionKind: "task",
           createdAt: "2024-01-02",
           lastAccessed: "2024-01-02",
         },
@@ -54,13 +64,13 @@ describe("createSDKClient", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ sessions: mockSessions }),
+        json: async () => ({ taskSessions: mockSessions }),
       } as Response);
 
       const sessions = await client.session.list();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/sessions",
+        "http://localhost:3000/api/task-sessions?kind=task",
         expect.objectContaining({
           headers: expect.objectContaining({
             "Content-Type": "application/json",
@@ -68,13 +78,21 @@ describe("createSDKClient", () => {
           }),
         })
       );
-      expect(sessions).toEqual(mockSessions);
+      expect(sessions).toEqual([
+        expect.objectContaining({ sessionId: "session-1", resourceId: "resource-1" }),
+        expect.objectContaining({ sessionId: "session-2", resourceId: "resource-2" }),
+      ]);
     });
 
     it("should get specific session", async () => {
       const mockSession = {
-        sessionId: "session-1",
+        taskSessionId: "session-1",
         resourceId: "resource-1",
+        threadId: "session-1",
+        workspaceId: "ws-1",
+        status: "researching",
+        specType: null,
+        sessionKind: "task",
         createdAt: "2024-01-01",
         lastAccessed: "2024-01-01",
       };
@@ -87,14 +105,14 @@ describe("createSDKClient", () => {
       const session = await client.session.get("session-1");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/sessions/session-1",
+        "http://localhost:3000/api/task-sessions/session-1",
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: "Basic YWRtaW46dGVzdC10b2tlbg==",
           }),
         })
       );
-      expect(session).toEqual(mockSession);
+      expect(session).toEqual(expect.objectContaining({ sessionId: "session-1" }));
     });
 
     it("should get session messages with pagination", async () => {
@@ -243,7 +261,7 @@ describe("createSDKClient", () => {
       // First request with token-1
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ sessions: [] }),
+        json: async () => ({ taskSessions: [] }),
       } as Response);
 
       await client.session.list();
@@ -263,7 +281,7 @@ describe("createSDKClient", () => {
       // Second request with token-2
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ sessions: [] }),
+        json: async () => ({ taskSessions: [] }),
       } as Response);
 
       await client.session.list();

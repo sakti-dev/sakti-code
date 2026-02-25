@@ -45,7 +45,7 @@ describe("Spec Compiler", () => {
     await db.run(sql`DELETE FROM task_dependencies`);
     await db.run(sql`DELETE FROM tasks`);
     await db.run(sql`DELETE FROM tool_sessions WHERE tool_name = 'spec'`);
-    await db.run(sql`DELETE FROM sessions`);
+    await db.run(sql`DELETE FROM task_sessions`);
   });
 
   afterAll(async () => {

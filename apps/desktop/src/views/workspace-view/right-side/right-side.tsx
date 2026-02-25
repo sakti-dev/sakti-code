@@ -15,7 +15,7 @@ interface ContextPanelProps {
 export const ContextPanel: Component<ContextPanelProps> = props => {
   const [activeTopTab, setActiveTopTab] = createSignal<"files" | "diff" | "tasks">("files");
   const ctx = useWorkspace();
-  const { tasks } = useTasks(ctx.activeSessionId);
+  const { tasks } = useTasks(ctx.activeTaskSessionId);
 
   return (
     <Resizable.Panel

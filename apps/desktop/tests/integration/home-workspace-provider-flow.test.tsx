@@ -212,10 +212,10 @@ describe("Integration: Home + Workspace Provider Flow", () => {
         <ChatProvider
           client={chatClient()!}
           workspace={() => ctx.workspace()}
-          sessionId={ctx.activeSessionId}
+          sessionId={ctx.activeTaskSessionId}
           onSessionIdReceived={id => {
-            if (id !== ctx.activeSessionId()) {
-              ctx.setActiveSessionId(id);
+            if (id !== ctx.activeTaskSessionId()) {
+              ctx.setActiveTaskSessionId(id);
             }
           }}
         >
