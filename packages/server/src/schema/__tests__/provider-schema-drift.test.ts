@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { providerSchemaArtifact } from "../../routes/provider.openapi";
+import { providerSchemaArtifact } from "../../modules/provider/controller/schemas/provider-schema-artifact";
 
 describe("provider schema drift", () => {
   it("matches committed provider schema artifact", async () => {

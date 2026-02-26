@@ -10,7 +10,7 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Env } from "../../../../index.js";
-import { resolveDirectory } from "../../../../routes/_shared/directory-resolver.js";
+import { resolveDirectory } from "../../../../shared/controller/http/directory-resolver.js";
 import { zValidator } from "../../../../shared/controller/http/validators.js";
 
 const vcsRouter = new Hono<Env>();

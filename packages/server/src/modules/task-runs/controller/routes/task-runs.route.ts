@@ -63,7 +63,7 @@ app.post(
         maxAttempts: parsed.maxAttempts,
       });
 
-      return c.json({ run: result.run }, 201);
+      return c.json({ run: result.run }, result.created ? 201 : 200);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       if (message.includes("Active run already exists")) {

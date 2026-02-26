@@ -47,5 +47,5 @@ export const ListTaskSessionsQuerySchema = z.object({
 });
 
 export const TaskSessionParamsSchema = z.object({
-  taskSessionId: z.string().uuid(),
+  taskSessionId: z.string().min(1),
 });

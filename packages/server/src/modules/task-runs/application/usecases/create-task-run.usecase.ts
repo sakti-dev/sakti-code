@@ -16,6 +16,7 @@ export interface CreateTaskRunInput {
 
 export interface CreateTaskRunOutput {
   run: TaskSessionRun;
+  created: boolean;
 }
 
 export async function createTaskRunUsecase(
@@ -26,7 +27,7 @@ export async function createTaskRunUsecase(
     : null;
 
   if (existingWithKey) {
-    return { run: existingWithKey };
+    return { run: existingWithKey, created: false };
   }
 
   const activeRuns = await taskRunRepository.listByTaskSession(input.taskSessionId);
@@ -63,5 +64,5 @@ export async function createTaskRunUsecase(
     dedupeKey: `queued:${run.runId}`,
   });
 
-  return { run };
+  return { run, created: true };
 }

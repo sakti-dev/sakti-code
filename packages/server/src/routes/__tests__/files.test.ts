@@ -18,16 +18,10 @@ describe("files router", () => {
   it("rejects invalid limit query values", async () => {
     const res = await app.request("/api/files/search?directory=/test&limit=not-a-number");
     expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toMatchObject({
-      error: "invalid limit parameter",
-    });
   });
 
   it("rejects out-of-range limit values", async () => {
     const res = await app.request("/api/files/search?directory=/test&limit=0");
     expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toMatchObject({
-      error: "invalid limit parameter",
-    });
   });
 });

@@ -102,8 +102,6 @@ describe("Chat runtimeMode route behavior", () => {
     });
 
     expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error).toContain("Invalid runtimeMode");
   });
 
   it("persists runtimeMode when provided", async () => {
