@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { getTaskSession } from "../../../../../db/task-sessions.js";
 import type { Env } from "../../../../index.js";
+import { getTaskSessionUsecase } from "../../../task-sessions/application/usecases/update-task-session.usecase.js";
 import {
   cancelTaskRunUsecase,
   getTaskRunByIdUsecase,
@@ -13,7 +13,7 @@ const app = new Hono<Env>();
 
 app.get("/api/task-sessions/:taskSessionId/runs", async c => {
   const taskSessionId = c.req.param("taskSessionId");
-  const session = await getTaskSession(taskSessionId);
+  const session = await getTaskSessionUsecase(taskSessionId);
   if (!session) {
     return c.json({ error: "Task session not found" }, 404);
   }
@@ -33,7 +33,7 @@ app.get("/api/runs/:runId", async c => {
 
 app.post("/api/task-sessions/:taskSessionId/runs", async c => {
   const taskSessionId = c.req.param("taskSessionId");
-  const session = await getTaskSession(taskSessionId);
+  const session = await getTaskSessionUsecase(taskSessionId);
   if (!session) {
     return c.json({ error: "Task session not found" }, 404);
   }

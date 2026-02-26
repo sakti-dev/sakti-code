@@ -26,6 +26,9 @@ describe("task-sessions routes", () => {
       .where(eq(taskSessions.session_id, "test-task-session-2"))
       .execute();
     await db.delete(taskSessions).where(sql`${taskSessions.session_id} LIKE 'test-%'`);
+    await db
+      .delete(taskSessions)
+      .where(sql`${taskSessions.session_id} LIKE 'test-task-session-kind-%'`);
   }
 
   describe("GET /api/task-sessions", () => {

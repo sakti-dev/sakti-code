@@ -72,6 +72,7 @@ import workspaceRouter from "./routes/workspace";
 import workspacesRouter from "./routes/workspaces";
 import { getServerToken, getSessionManager } from "./runtime";
 import { createChatTaskRunExecutor, TaskRunWorker } from "./services/task-run-worker";
+export type { AppType } from "./app/types.js";
 export { getServerToken, getSessionManager } from "./runtime";
 export { app };
 
