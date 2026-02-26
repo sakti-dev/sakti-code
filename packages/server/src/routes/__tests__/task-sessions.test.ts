@@ -2,11 +2,10 @@
  * Tests for task sessions API routes
  */
 
+import { app } from "@/app/app";
 import { getDb, taskSessions } from "@sakti-code/server/db";
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
-
-const testApp = (await import("../../index")).app;
 
 describe("task-sessions routes", () => {
   const testCredentials = btoa("testuser:testpass");
@@ -18,15 +17,21 @@ describe("task-sessions routes", () => {
 
   async function cleanupTaskSessions() {
     const db = await getDb();
-    await db.delete(taskSessions).where(eq(taskSessions.session_id, "test-task-session-1")).execute();
-    await db.delete(taskSessions).where(eq(taskSessions.session_id, "test-task-session-2")).execute();
+    await db
+      .delete(taskSessions)
+      .where(eq(taskSessions.session_id, "test-task-session-1"))
+      .execute();
+    await db
+      .delete(taskSessions)
+      .where(eq(taskSessions.session_id, "test-task-session-2"))
+      .execute();
     await db.delete(taskSessions).where(sql`${taskSessions.session_id} LIKE 'test-%'`);
   }
 
   describe("GET /api/task-sessions", () => {
     it("should list task sessions filtered by kind", async () => {
       await cleanupTaskSessions();
-      
+
       const db = await getDb();
       const now = new Date();
       await db.insert(taskSessions).values([
@@ -54,7 +59,7 @@ describe("task-sessions routes", () => {
         },
       ]);
 
-      const res = await testApp.request("/api/task-sessions", {
+      const res = await app.request("/api/task-sessions", {
         headers: { Authorization: `Basic ${testCredentials}` },
       });
 
@@ -67,7 +72,7 @@ describe("task-sessions routes", () => {
     });
 
     it("should reject invalid kind filter", async () => {
-      const res = await testApp.request("/api/task-sessions?kind=invalid", {
+      const res = await app.request("/api/task-sessions?kind=invalid", {
         headers: { Authorization: `Basic ${testCredentials}` },
       });
 
@@ -79,7 +84,7 @@ describe("task-sessions routes", () => {
 
   describe("GET /api/task-sessions/latest", () => {
     it("should require workspaceId", async () => {
-      const res = await testApp.request("/api/task-sessions/latest", {
+      const res = await app.request("/api/task-sessions/latest", {
         headers: { Authorization: `Basic ${testCredentials}` },
       });
 
@@ -89,7 +94,7 @@ describe("task-sessions routes", () => {
 
   describe("GET /api/task-sessions/:taskSessionId", () => {
     it("should return 404 for non-existent session", async () => {
-      const res = await testApp.request("/api/task-sessions/non-existent-id", {
+      const res = await app.request("/api/task-sessions/non-existent-id", {
         headers: { Authorization: `Basic ${testCredentials}` },
       });
 
@@ -100,12 +105,12 @@ describe("task-sessions routes", () => {
   describe("POST /api/task-sessions", () => {
     it("should create new task session", async () => {
       await cleanupTaskSessions();
-      
-      const res = await testApp.request("/api/task-sessions", {
+
+      const res = await app.request("/api/task-sessions", {
         method: "POST",
-        headers: { 
+        headers: {
           Authorization: `Basic ${testCredentials}`,
-          "Content-Type": "application/json" 
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ resourceId: "local", sessionKind: "task" }),
       });
@@ -119,11 +124,11 @@ describe("task-sessions routes", () => {
     });
 
     it("should require resourceId", async () => {
-      const res = await testApp.request("/api/task-sessions", {
+      const res = await app.request("/api/task-sessions", {
         method: "POST",
-        headers: { 
+        headers: {
           Authorization: `Basic ${testCredentials}`,
-          "Content-Type": "application/json" 
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({}),
       });
@@ -135,7 +140,7 @@ describe("task-sessions routes", () => {
   describe("DELETE /api/task-sessions/:taskSessionId", () => {
     it("should delete task session", async () => {
       await cleanupTaskSessions();
-      
+
       const db = await getDb();
       const now = new Date();
       await db.insert(taskSessions).values({
@@ -150,7 +155,7 @@ describe("task-sessions routes", () => {
         last_activity_at: now,
       });
 
-      const res = await testApp.request("/api/task-sessions/test-task-session-delete", {
+      const res = await app.request("/api/task-sessions/test-task-session-delete", {
         method: "DELETE",
         headers: { Authorization: `Basic ${testCredentials}` },
       });
@@ -165,7 +170,7 @@ describe("task-sessions routes", () => {
       const { createTaskSessionWithId } = await import("../../../db/task-sessions");
       await createTaskSessionWithId("local", sessionId);
 
-      const res = await testApp.request(`/api/task-sessions/${sessionId}`, {
+      const res = await app.request(`/api/task-sessions/${sessionId}`, {
         method: "PATCH",
         headers: {
           Authorization: `Basic ${testCredentials}`,
@@ -186,7 +191,7 @@ describe("task-sessions routes", () => {
       const { createTaskSessionWithId } = await import("../../../db/task-sessions");
       await createTaskSessionWithId("local", sessionId);
 
-      const res = await testApp.request(`/api/task-sessions/${sessionId}`, {
+      const res = await app.request(`/api/task-sessions/${sessionId}`, {
         method: "PATCH",
         headers: {
           Authorization: `Basic ${testCredentials}`,
