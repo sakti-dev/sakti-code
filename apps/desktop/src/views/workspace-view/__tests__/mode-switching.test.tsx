@@ -20,9 +20,11 @@ vi.mock("@corvu/resizable", () => {
     <div data-testid="resizable">{props.children}</div>
   );
 
-  (Resizable as unknown as {
-    Panel: (props: { children: unknown }) => JSX.Element;
-  }).Panel = (props: { children: unknown }) => (
+  (
+    Resizable as unknown as {
+      Panel: (props: { children: unknown }) => JSX.Element;
+    }
+  ).Panel = (props: { children: unknown }) => (
     <div data-testid="resizable-panel">{props.children}</div>
   );
 

@@ -159,8 +159,3 @@ export class DrizzleTaskSessionRepository implements ITaskSessionRepository {
 }
 
 export const taskSessionRepository = new DrizzleTaskSessionRepository();
-
-export const migrationCheckpoint = {
-  task: "Create task-session drizzle repository",
-  status: "implemented-minimally",
-} as const;

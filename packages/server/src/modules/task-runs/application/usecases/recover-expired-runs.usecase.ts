@@ -7,8 +7,3 @@ export async function recoverExpiredRunsUsecase(
 ): Promise<number> {
   return 0;
 }
-
-export const migrationCheckpoint = {
-  task: "Move recovery to application usecase",
-  status: "implemented-minimally",
-} as const;

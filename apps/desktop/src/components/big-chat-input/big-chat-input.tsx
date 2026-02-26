@@ -52,7 +52,7 @@ export const BigChatInput: Component<BigChatInputProps> = props => {
   });
 
   return (
-    <div class={cn("rounded-xl border border-border/40 bg-card/20 p-3", props.class)}>
+    <div class={cn("border-border/40 bg-card/20 rounded-xl border p-3", props.class)}>
       <textarea
         ref={textareaRef}
         rows={1}

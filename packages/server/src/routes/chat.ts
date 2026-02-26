@@ -25,6 +25,7 @@ import { resolveOAuthAccessToken } from "../provider/auth/oauth";
 import { normalizeProviderError } from "../provider/errors";
 import { getProviderRuntime, resolveChatSelection } from "../provider/runtime";
 import { getSessionManager } from "../runtime";
+import { zValidator } from "../shared/controller/http/validators.js";
 import { getSessionMessages } from "../state/session-message-store";
 
 const app = new Hono<Env>();
@@ -34,10 +35,6 @@ const SPEC_TOOL_NAME = "spec";
 const SESSION_MODE_KEY = "runtimeMode";
 
 type RuntimeMode = "intake" | "plan" | "build";
-
-function isRuntimeMode(value: unknown): value is RuntimeMode {
-  return value === "intake" || value === "plan" || value === "build";
-}
 
 async function persistRuntimeMode(sessionId: string, mode: RuntimeMode): Promise<void> {
   const now = new Date();
@@ -974,7 +971,11 @@ export async function publishPartEvent(
  *     }
  *   }
  */
-app.post("/api/chat", async c => {
+const sessionStatusParamsSchema = z.object({
+  sessionId: z.string().min(1),
+});
+
+app.post("/api/chat", zValidator("json", chatMessageSchema), async c => {
   const requestId = c.get("requestId");
   const session = c.get("session");
   const sessionIsNew = c.get("sessionIsNew") ?? false;
@@ -984,7 +985,7 @@ app.post("/api/chat", async c => {
     return c.json({ error: "Session not available" }, 500);
   }
 
-  const body = await c.req.json();
+  const body = c.req.valid("json");
   const rawMessage = body.message;
   const clientMessageId =
     typeof body.messageId === "string" && body.messageId.length > 0 ? body.messageId : undefined;
@@ -994,9 +995,6 @@ app.post("/api/chat", async c => {
       : undefined;
   const shouldStream = body.stream !== false;
   const runtimeMode = body.runtimeMode;
-  if (runtimeMode !== undefined && !isRuntimeMode(runtimeMode)) {
-    return c.json({ error: "Invalid runtimeMode. Expected intake | plan | build" }, 400);
-  }
   const selection = resolveChatSelection({
     providerId: body.providerId,
     modelId: body.modelId,
@@ -1264,7 +1262,10 @@ app.post("/api/chat", async c => {
 
         // Send session message if new session
         if (sessionIsNew) {
-          logger.info("Sending session message", { module: "chat", sessionId: session.taskSessionId });
+          logger.info("Sending session message", {
+            module: "chat",
+            sessionId: session.taskSessionId,
+          });
           writeStreamEvent(createSessionMessage(session));
         }
 
@@ -1885,10 +1886,16 @@ app.post("/api/chat", async c => {
             },
           });
 
-          await publishPartEvent(session.taskSessionId, messageId, partPublishState, assistantInfo, {
-            type: "finish",
-            finishReason: "error",
-          });
+          await publishPartEvent(
+            session.taskSessionId,
+            messageId,
+            partPublishState,
+            assistantInfo,
+            {
+              type: "finish",
+              finishReason: "error",
+            }
+          );
 
           writeStreamEvent({
             type: "finish",
@@ -1957,27 +1964,31 @@ app.get("/api/chat/session", c => {
  * Usage:
  * GET /api/session/:sessionId/status
  */
-app.get("/api/session/:sessionId/status", async c => {
-  const sessionId = c.req.param("sessionId");
-  const sessionManager = getSessionManager();
+app.get(
+  "/api/session/:sessionId/status",
+  zValidator("param", sessionStatusParamsSchema),
+  async c => {
+    const { sessionId } = c.req.valid("param");
+    const sessionManager = getSessionManager();
 
-  const controller = await sessionManager.getSession(sessionId);
+    const controller = await sessionManager.getSession(sessionId);
 
-  if (!controller) {
-    return c.json({ error: "Session not found" }, 404);
+    if (!controller) {
+      return c.json({ error: "Session not found" }, 404);
+    }
+
+    const status = controller.getStatus();
+
+    return c.json({
+      sessionId: status.sessionId,
+      phase: status.phase,
+      progress: status.progress,
+      hasIncompleteWork: controller.hasIncompleteWork(),
+      summary: status.summary,
+      lastActivity: status.lastActivity,
+      activeAgents: status.activeAgents,
+    });
   }
-
-  const status = controller.getStatus();
-
-  return c.json({
-    sessionId: status.sessionId,
-    phase: status.phase,
-    progress: status.progress,
-    hasIncompleteWork: controller.hasIncompleteWork(),
-    summary: status.summary,
-    lastActivity: status.lastActivity,
-    activeAgents: status.activeAgents,
-  });
-});
+);
 
 export default app;

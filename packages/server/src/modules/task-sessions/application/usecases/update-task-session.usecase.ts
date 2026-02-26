@@ -44,8 +44,3 @@ export async function getLatestTaskSessionByWorkspaceUsecase(
 ): Promise<TaskSession | null> {
   return taskSessionRepository.getLatestByWorkspace(workspaceId, kind);
 }
-
-export const migrationCheckpoint = {
-  task: "Create patch task-session usecase",
-  status: "implemented-minimally",
-} as const;

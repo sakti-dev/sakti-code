@@ -11,8 +11,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Test files use any for simplicity */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClonedRepo } from "@/tools/search-docs/session-store";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock uuid
 vi.mock("uuid", () => ({

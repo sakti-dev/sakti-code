@@ -7,18 +7,23 @@
 
 import { Instance } from "@sakti-code/core/server";
 import { Hono } from "hono";
+import { z } from "zod";
 import type { Env } from "../index";
 import { sessionBridge } from "../middleware/session-bridge";
+import { zValidator } from "../shared/controller/http/validators.js";
 
 const projectRouter = new Hono<Env>();
+const projectQuerySchema = z.object({
+  directory: z.string().trim().min(1).optional(),
+});
 
 projectRouter.use("*", sessionBridge);
 
 /**
  * Get current project info for a directory
  */
-projectRouter.get("/api/project", async c => {
-  const queryDir = c.req.query("directory")?.trim();
+projectRouter.get("/api/project", zValidator("query", projectQuerySchema), async c => {
+  const queryDir = c.req.valid("query").directory?.trim();
 
   const buildResponse = () => ({
     id: Instance.project?.root,

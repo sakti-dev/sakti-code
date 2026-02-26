@@ -63,7 +63,7 @@ describe("tool sessions", () => {
       const toolSession = await getToolSession(mockSessionId, "test-tool");
 
       expect(toolSession.toolSessionId).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
       );
       expect(toolSession.sessionId).toBe(mockSessionId);
       expect(toolSession.toolName).toBe("test-tool");

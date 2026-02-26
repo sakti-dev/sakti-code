@@ -1,7 +1,7 @@
 import { BigChatInput } from "@/components/big-chat-input/big-chat-input";
 import { ResearchOutput } from "@/components/research-output/research-output";
-import { TaskList } from "@/components/task-list/task-list";
 import type { TaskCardData } from "@/components/task-card/task-card";
+import { TaskList } from "@/components/task-list/task-list";
 import { TopToolbar } from "@/components/top-toolbar/top-toolbar";
 import { WelcomePanel, type WelcomeKeypoint } from "@/components/welcome-panel/welcome-panel";
 import { cn } from "@/utils";
@@ -33,7 +33,11 @@ export const HomepageView: Component<HomepageViewProps> = props => {
         />
       </Resizable.Panel>
 
-      <Resizable.Panel minSize={0.4} initialSize={0.7} class="flex min-h-0 flex-1 flex-col gap-3 p-4">
+      <Resizable.Panel
+        minSize={0.4}
+        initialSize={0.7}
+        class="flex min-h-0 flex-1 flex-col gap-3 p-4"
+      >
         <TopToolbar view="homepage" />
 
         <WelcomePanel keypoints={props.keypoints} />

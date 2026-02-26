@@ -12,6 +12,7 @@ import {
 import { createLogger } from "@sakti-code/shared/logger";
 import { Hono } from "hono";
 import { z } from "zod";
+import { zValidator } from "../shared/controller/http/validators.js";
 
 type Env = {
   Variables: {
@@ -31,6 +32,9 @@ const ruleSchema = z.object({
 });
 
 const rulesArraySchema = z.array(ruleSchema);
+const rulesPayloadSchema = z.object({
+  rules: rulesArraySchema,
+});
 
 const configSchema = z.record(
   z.string(),
@@ -39,6 +43,14 @@ const configSchema = z.record(
     z.record(z.string(), z.enum(["allow", "deny", "ask"])),
   ])
 );
+const configPayloadSchema = z.object({
+  config: configSchema,
+});
+
+const evaluateSchema = z.object({
+  permission: z.enum(["read", "edit", "bash", "external_directory", "mode_switch"]),
+  pattern: z.string(),
+});
 
 /**
  * GET /api/permissions/rules
@@ -100,12 +112,11 @@ app.get("/api/permissions/rules/default", c => {
  *
  * Replace all permission rules with new set
  */
-app.put("/api/permissions/rules", async c => {
+app.put("/api/permissions/rules", zValidator("json", rulesPayloadSchema), async c => {
   const requestId = c.get("requestId");
 
   try {
-    const body = await c.req.json();
-    const rules = rulesArraySchema.parse(body.rules);
+    const { rules } = c.req.valid("json");
 
     const permissionMgr = PermissionManager.getInstance();
     permissionMgr.setRules(rules);
@@ -132,12 +143,11 @@ app.put("/api/permissions/rules", async c => {
  *
  * Add a new permission rule (appends to existing rules)
  */
-app.post("/api/permissions/rules", async c => {
+app.post("/api/permissions/rules", zValidator("json", ruleSchema), async c => {
   const requestId = c.get("requestId");
 
   try {
-    const body = await c.req.json();
-    const rule = ruleSchema.parse(body);
+    const rule = c.req.valid("json");
 
     const permissionMgr = PermissionManager.getInstance();
     permissionMgr.addRule(rule);
@@ -164,12 +174,11 @@ app.post("/api/permissions/rules", async c => {
  *
  * Set rules from config format (more user-friendly)
  */
-app.post("/api/permissions/rules/config", async c => {
+app.post("/api/permissions/rules/config", zValidator("json", configPayloadSchema), async c => {
   const requestId = c.get("requestId");
 
   try {
-    const body = await c.req.json();
-    const config = configSchema.parse(body.config);
+    const { config } = c.req.valid("json");
     const rules = parseConfigRules(config);
 
     const permissionMgr = PermissionManager.getInstance();
@@ -241,17 +250,11 @@ app.delete("/api/permissions/rules", c => {
  * Test what action would be taken for a given permission/pattern
  * Useful for UI to show users what will happen before they submit
  */
-app.post("/api/permissions/rules/evaluate", async c => {
+app.post("/api/permissions/rules/evaluate", zValidator("json", evaluateSchema), async c => {
   const requestId = c.get("requestId");
 
   try {
-    const body = await c.req.json();
-    const { permission, pattern } = z
-      .object({
-        permission: z.enum(["read", "edit", "bash", "external_directory", "mode_switch"]),
-        pattern: z.string(),
-      })
-      .parse(body);
+    const { permission, pattern } = c.req.valid("json");
 
     const permissionMgr = PermissionManager.getInstance();
     const rules = permissionMgr.getRules();

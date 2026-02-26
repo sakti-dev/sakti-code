@@ -64,8 +64,3 @@ export async function createProjectKeypoint(
 export async function deleteProjectKeypoint(id: string): Promise<void> {
   await dbDeleteProjectKeypoint(id);
 }
-
-export const migrationCheckpoint = {
-  task: "Create project keypoint usecases",
-  status: "implemented-minimally",
-} as const;

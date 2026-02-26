@@ -51,8 +51,3 @@ export interface ITaskSessionRepository {
   update(id: string, input: UpdateTaskSessionInput): Promise<void>;
   delete(id: string): Promise<void>;
 }
-
-export const migrationCheckpoint = {
-  task: "Create task-session repository port",
-  status: "implemented-minimally",
-} as const;

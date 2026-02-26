@@ -1,5 +1,7 @@
 import type { Context } from "hono";
 import { Hono } from "hono";
+import { z } from "zod";
+import { zValidator } from "../../../../shared/controller/http/validators.js";
 
 type Env = {
   Variables: {
@@ -10,6 +12,9 @@ type Env = {
 };
 
 const app = new Hono<Env>();
+const mcpQuerySchema = z.object({
+  directory: z.string().optional(),
+});
 
 interface DirectoryResolutionResult {
   ok: true;
@@ -47,8 +52,8 @@ function resolveDirectory(
   return { ok: true, directory: raw };
 }
 
-app.get("/api/mcp/status", async c => {
-  const directory = c.req.query("directory")?.trim();
+app.get("/api/mcp/status", zValidator("query", mcpQuerySchema), async c => {
+  const directory = c.req.valid("query").directory?.trim();
 
   if (directory === "") {
     return c.json({ error: "Directory parameter required" }, 400);

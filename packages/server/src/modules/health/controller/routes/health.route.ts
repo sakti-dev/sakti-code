@@ -21,8 +21,3 @@ app.get("/api/health", c => {
 });
 
 export const healthRoutes = app;
-
-export const migrationCheckpoint = {
-  task: "Create health module route",
-  status: "implemented-minimally",
-} as const;

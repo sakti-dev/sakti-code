@@ -6,7 +6,7 @@
  */
 
 import { Hono } from "hono";
-import { publish, TaskSessionUpdated } from "../bus";
+import { z } from "zod";
 import {
   createTaskSession,
   deleteTaskSession,
@@ -15,18 +15,46 @@ import {
   listTaskSessions,
   updateTaskSession,
 } from "../../db/task-sessions";
+import { publish, TaskSessionUpdated } from "../bus";
 import type { Env } from "../index";
+import { zValidator } from "../shared/controller/http/validators.js";
 
 const app = new Hono<Env>();
-const VALID_KINDS = new Set(["intake", "task"]);
-const VALID_STATUSES = new Set([
+const taskSessionKindSchema = z.enum(["intake", "task"]);
+const taskSessionStatusSchema = z.enum([
   "researching",
   "specifying",
   "implementing",
   "completed",
   "failed",
 ]);
-const VALID_SPEC_TYPES = new Set(["comprehensive", "quick", null]);
+const taskSpecTypeSchema = z.enum(["comprehensive", "quick"]).nullable();
+
+const listTaskSessionsQuerySchema = z.object({
+  workspaceId: z.string().uuid().optional(),
+  kind: taskSessionKindSchema.optional(),
+});
+
+const latestTaskSessionQuerySchema = z.object({
+  workspaceId: z.string().uuid(),
+  kind: taskSessionKindSchema.optional(),
+});
+
+const taskSessionParamsSchema = z.object({
+  taskSessionId: z.string().uuid(),
+});
+
+const createTaskSessionSchema = z.object({
+  resourceId: z.string().min(1),
+  workspaceId: z.string().uuid().optional(),
+  sessionKind: taskSessionKindSchema.optional().default("task"),
+});
+
+const updateTaskSessionSchema = z.object({
+  status: taskSessionStatusSchema.optional(),
+  specType: taskSpecTypeSchema.optional(),
+  title: z.string().optional(),
+});
 
 function serializeTaskSession(session: Awaited<ReturnType<typeof getTaskSession>>) {
   if (!session) return null;
@@ -61,14 +89,9 @@ function serializeTaskSession(session: Awaited<ReturnType<typeof getTaskSession>
  *   ]
  * }
  */
-app.get("/api/task-sessions", async c => {
+app.get("/api/task-sessions", zValidator("query", listTaskSessionsQuerySchema), async c => {
   try {
-    const workspaceId = c.req.query("workspaceId");
-    const kindRaw = c.req.query("kind");
-    if (kindRaw !== undefined && !VALID_KINDS.has(kindRaw)) {
-      return c.json({ error: "Invalid kind. Expected intake | task" }, 400);
-    }
-    const kind = kindRaw as "intake" | "task" | undefined;
+    const { workspaceId, kind } = c.req.valid("query");
 
     const sessions = await listTaskSessions({
       workspaceId: workspaceId ?? undefined,
@@ -91,20 +114,11 @@ app.get("/api/task-sessions", async c => {
  * GET /api/task-sessions/latest?workspaceId=xxx
  * GET /api/task-sessions/latest?workspaceId=xxx&kind=task
  */
-app.get("/api/task-sessions/latest", async c => {
-  const workspaceId = c.req.query("workspaceId");
-  const kindRaw = c.req.query("kind");
-  if (kindRaw !== undefined && !VALID_KINDS.has(kindRaw)) {
-    return c.json({ error: "Invalid kind. Expected intake | task" }, 400);
-  }
-  const kind = (kindRaw as "intake" | "task" | undefined) ?? "task";
-
-  if (!workspaceId) {
-    return c.json({ error: "workspaceId query parameter required" }, 400);
-  }
+app.get("/api/task-sessions/latest", zValidator("query", latestTaskSessionQuerySchema), async c => {
+  const { workspaceId, kind } = c.req.valid("query");
 
   try {
-    const session = await getLatestTaskSessionByWorkspace(workspaceId, kind);
+    const session = await getLatestTaskSessionByWorkspace(workspaceId, kind ?? "task");
 
     if (!session) {
       return c.json({ error: "No task session found for workspace" }, 404);
@@ -123,22 +137,25 @@ app.get("/api/task-sessions/latest", async c => {
  * Usage:
  * GET /api/task-sessions/:taskSessionId
  */
-app.get("/api/task-sessions/:taskSessionId", async c => {
-  const { taskSessionId } = c.req.param();
+app.get(
+  "/api/task-sessions/:taskSessionId",
+  zValidator("param", taskSessionParamsSchema),
+  async c => {
+    const { taskSessionId } = c.req.valid("param");
+    try {
+      const session = await getTaskSession(taskSessionId);
 
-  try {
-    const session = await getTaskSession(taskSessionId);
+      if (!session) {
+        return c.json({ error: "Task session not found" }, 404);
+      }
 
-    if (!session) {
-      return c.json({ error: "Task session not found" }, 404);
+      return c.json(serializeTaskSession(session));
+    } catch (error) {
+      console.error("Failed to get task session:", error);
+      return c.json({ error: "Failed to get task session" }, 500);
     }
-
-    return c.json(serializeTaskSession(session));
-  } catch (error) {
-    console.error("Failed to get task session:", error);
-    return c.json({ error: "Failed to get task session" }, 500);
   }
-});
+);
 
 /**
  * Create a new task session
@@ -152,23 +169,11 @@ app.get("/api/task-sessions/:taskSessionId", async c => {
  *   taskSession: { taskSessionId, resourceId, threadId, workspaceId, title, status, specType, sessionKind, createdAt, lastAccessed, lastActivityAt }
  * }
  */
-app.post("/api/task-sessions", async c => {
+app.post("/api/task-sessions", zValidator("json", createTaskSessionSchema), async c => {
   try {
-    const body = await c.req.json();
-    const { resourceId, workspaceId, sessionKind } = body;
+    const { resourceId, workspaceId, sessionKind } = c.req.valid("json");
 
-    if (!resourceId) {
-      return c.json({ error: "resourceId is required" }, 400);
-    }
-    if (sessionKind !== undefined && !VALID_KINDS.has(sessionKind)) {
-      return c.json({ error: "Invalid sessionKind. Expected intake | task" }, 400);
-    }
-
-    const session = await createTaskSession(
-      resourceId,
-      workspaceId,
-      sessionKind ?? "task"
-    );
+    const session = await createTaskSession(resourceId, workspaceId, sessionKind ?? "task");
 
     await publish(TaskSessionUpdated, {
       taskSessionId: session.taskSessionId,
@@ -195,60 +200,40 @@ app.post("/api/task-sessions", async c => {
  * PATCH /api/task-sessions/:taskSessionId
  * Body: { status?: string, specType?: string, title?: string }
  */
-app.patch("/api/task-sessions/:taskSessionId", async c => {
-  const { taskSessionId } = c.req.param();
+app.patch(
+  "/api/task-sessions/:taskSessionId",
+  zValidator("param", taskSessionParamsSchema),
+  zValidator("json", updateTaskSessionSchema),
+  async c => {
+    const { taskSessionId } = c.req.valid("param");
+    const updates = c.req.valid("json");
 
-  try {
-    const body = await c.req.json();
-    const { status, specType, title } = body;
+    try {
+      await updateTaskSession(taskSessionId, updates);
 
-    const updates: Partial<{
-      status: "researching" | "specifying" | "implementing" | "completed" | "failed";
-      specType: "comprehensive" | "quick" | null;
-      title: string;
-    }> = {};
-
-    if (status !== undefined) {
-      if (!VALID_STATUSES.has(status)) {
-        return c.json(
-          { error: "Invalid status. Expected researching | specifying | implementing | completed | failed" },
-          400
-        );
+      const session = await getTaskSession(taskSessionId);
+      if (!session) {
+        return c.json({ error: "Task session not found" }, 404);
       }
-      updates.status = status;
+
+      await publish(TaskSessionUpdated, {
+        taskSessionId: session.taskSessionId,
+        workspaceId: session.workspaceId,
+        status: session.status,
+        specType: session.specType,
+        sessionKind: session.sessionKind,
+        title: session.title,
+        lastActivityAt: session.lastActivityAt.toISOString(),
+        mutation: "updated",
+      });
+
+      return c.json({ taskSession: serializeTaskSession(session) });
+    } catch (error) {
+      console.error("Failed to update task session:", error);
+      return c.json({ error: "Failed to update task session" }, 500);
     }
-    if (specType !== undefined) {
-      if (!VALID_SPEC_TYPES.has(specType)) {
-        return c.json({ error: "Invalid specType. Expected comprehensive | quick | null" }, 400);
-      }
-      updates.specType = specType;
-    }
-    if (title !== undefined) updates.title = title;
-
-    await updateTaskSession(taskSessionId, updates);
-
-    const session = await getTaskSession(taskSessionId);
-    if (!session) {
-      return c.json({ error: "Task session not found" }, 404);
-    }
-
-    await publish(TaskSessionUpdated, {
-      taskSessionId: session.taskSessionId,
-      workspaceId: session.workspaceId,
-      status: session.status,
-      specType: session.specType,
-      sessionKind: session.sessionKind,
-      title: session.title,
-      lastActivityAt: session.lastActivityAt.toISOString(),
-      mutation: "updated",
-    });
-
-    return c.json({ taskSession: serializeTaskSession(session) });
-  } catch (error) {
-    console.error("Failed to update task session:", error);
-    return c.json({ error: "Failed to update task session" }, 500);
   }
-});
+);
 
 /**
  * Delete a task session
@@ -256,33 +241,37 @@ app.patch("/api/task-sessions/:taskSessionId", async c => {
  * Usage:
  * DELETE /api/task-sessions/:taskSessionId
  */
-app.delete("/api/task-sessions/:taskSessionId", async c => {
-  const { taskSessionId } = c.req.param();
+app.delete(
+  "/api/task-sessions/:taskSessionId",
+  zValidator("param", taskSessionParamsSchema),
+  async c => {
+    const { taskSessionId } = c.req.valid("param");
 
-  try {
-    const existing = await getTaskSession(taskSessionId);
-    if (!existing) {
-      return c.json({ error: "Task session not found" }, 404);
+    try {
+      const existing = await getTaskSession(taskSessionId);
+      if (!existing) {
+        return c.json({ error: "Task session not found" }, 404);
+      }
+
+      await deleteTaskSession(taskSessionId);
+
+      await publish(TaskSessionUpdated, {
+        taskSessionId: existing.taskSessionId,
+        workspaceId: existing.workspaceId,
+        status: existing.status,
+        specType: existing.specType,
+        sessionKind: existing.sessionKind,
+        title: existing.title,
+        lastActivityAt: new Date().toISOString(),
+        mutation: "deleted",
+      });
+
+      return c.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete task session:", error);
+      return c.json({ error: "Failed to delete task session" }, 500);
     }
-
-    await deleteTaskSession(taskSessionId);
-
-    await publish(TaskSessionUpdated, {
-      taskSessionId: existing.taskSessionId,
-      workspaceId: existing.workspaceId,
-      status: existing.status,
-      specType: existing.specType,
-      sessionKind: existing.sessionKind,
-      title: existing.title,
-      lastActivityAt: new Date().toISOString(),
-      mutation: "deleted",
-    });
-
-    return c.json({ success: true });
-  } catch (error) {
-    console.error("Failed to delete task session:", error);
-    return c.json({ error: "Failed to delete task session" }, 500);
   }
-});
+);
 
 export default app;

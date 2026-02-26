@@ -19,8 +19,3 @@ export const healthResponseSchema = z.object({
 });
 
 export type HealthResponseSchema = z.infer<typeof healthResponseSchema>;
-
-export const migrationCheckpoint = {
-  task: "Create common zod schemas",
-  status: "implemented-minimally",
-} as const;

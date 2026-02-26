@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { z } from "zod";
+import { zValidator } from "../../../../shared/controller/http/validators.js";
 
 type Env = {
   Variables: {
@@ -8,6 +10,10 @@ type Env = {
 };
 
 const app = new Hono<Env>();
+const commandQuerySchema = z.object({
+  category: z.string().optional(),
+  enabled: z.enum(["true", "false"]).optional(),
+});
 
 const defaultCommands = [
   {
@@ -108,9 +114,8 @@ const defaultCommands = [
   },
 ];
 
-app.get("/api/commands", async c => {
-  const category = c.req.query("category");
-  const enabled = c.req.query("enabled");
+app.get("/api/commands", zValidator("query", commandQuerySchema), async c => {
+  const { category, enabled } = c.req.valid("query");
 
   let commands = [...defaultCommands];
 

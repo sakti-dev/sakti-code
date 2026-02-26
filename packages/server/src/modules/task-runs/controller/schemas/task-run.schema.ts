@@ -39,8 +39,3 @@ export const TaskRunEventSchema = z.object({
   payload: z.record(z.string(), z.unknown()),
   createdAt: z.string().datetime(),
 });
-
-export const migrationCheckpoint = {
-  task: "Create task-run schemas",
-  status: "implemented-minimally",
-} as const;

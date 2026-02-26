@@ -20,61 +20,55 @@ function createProviderMock(providerName: string) {
   });
 }
 
-const createOpenAIMock = vi.fn(
-  (options: ProviderOptions) => {
-    const provider = vi.fn((modelId: string) => ({
-      provider: "openai",
-      modelId,
-      options,
-    })) as ProviderFn;
-    provider.chat = vi.fn((modelId: string) => ({
-      provider: "openai-compatible",
-      modelId,
-      options,
-    }));
-    provider.responses = vi.fn((modelId: string) => ({
-      provider: "openai-responses",
-      modelId,
-      options,
-    }));
-    return provider;
-  }
-);
+const createOpenAIMock = vi.fn((options: ProviderOptions) => {
+  const provider = vi.fn((modelId: string) => ({
+    provider: "openai",
+    modelId,
+    options,
+  })) as ProviderFn;
+  provider.chat = vi.fn((modelId: string) => ({
+    provider: "openai-compatible",
+    modelId,
+    options,
+  }));
+  provider.responses = vi.fn((modelId: string) => ({
+    provider: "openai-responses",
+    modelId,
+    options,
+  }));
+  return provider;
+});
 
-const createOpenAICompatibleMock = vi.fn(
-  (options: ProviderOptions) => {
-    const provider = vi.fn((modelId: string) => ({
-      provider: "openai-compatible-sdk",
+const createOpenAICompatibleMock = vi.fn((options: ProviderOptions) => {
+  const provider = vi.fn((modelId: string) => ({
+    provider: "openai-compatible-sdk",
+    modelId,
+    options,
+  })) as ProviderFn;
+  if (!options.headers?.["x-no-chat"]) {
+    provider.chat = vi.fn((modelId: string) => ({
+      provider: "openai-compatible-sdk-chat",
       modelId,
       options,
-    })) as ProviderFn;
-    if (!options.headers?.["x-no-chat"]) {
-      provider.chat = vi.fn((modelId: string) => ({
-        provider: "openai-compatible-sdk-chat",
-        modelId,
-        options,
-      }));
-    }
-    return provider;
+    }));
   }
-);
+  return provider;
+});
 
 const createAnthropicMock = createProviderMock("anthropic");
-const createAzureMock = vi.fn(
-  (options: ProviderOptions) => {
-    const provider = vi.fn((modelId: string) => ({
-      provider: "azure",
-      modelId,
-      options,
-    })) as ProviderFn;
-    provider.responses = vi.fn((modelId: string) => ({
-      provider: "openai-responses",
-      modelId,
-      options,
-    }));
-    return provider;
-  }
-);
+const createAzureMock = vi.fn((options: ProviderOptions) => {
+  const provider = vi.fn((modelId: string) => ({
+    provider: "azure",
+    modelId,
+    options,
+  })) as ProviderFn;
+  provider.responses = vi.fn((modelId: string) => ({
+    provider: "openai-responses",
+    modelId,
+    options,
+  }));
+  return provider;
+});
 const createGoogleMock = createProviderMock("google");
 const createOpenRouterMock = createProviderMock("openrouter");
 const createGitLabMock = vi.fn(

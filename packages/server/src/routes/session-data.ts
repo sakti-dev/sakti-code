@@ -13,6 +13,7 @@ import { join } from "path";
 import { z } from "zod";
 import type { Env } from "../index";
 import { getSessionManager } from "../runtime";
+import { zValidator } from "../shared/controller/http/validators.js";
 import { getSessionMessages } from "../state/session-message-store";
 import { normalizeCheckpointMessages } from "./session-data-normalize";
 
@@ -25,6 +26,10 @@ const app = new Hono<Env>();
 const sessionMessagesSchema = z.object({
   limit: z.coerce.number().min(1).max(1000).default(100),
   offset: z.coerce.number().min(0).default(0),
+});
+
+const sessionMessagesParamsSchema = z.object({
+  sessionId: z.string().min(1),
 });
 
 /**
@@ -62,76 +67,75 @@ interface Checkpoint {
  * Opencode SDK equivalent:
  * client.session.messages({ sessionID, limit })
  */
-app.get("/api/chat/:sessionId/messages", async c => {
-  const sessionId = c.req.param("sessionId");
+app.get(
+  "/api/chat/:sessionId/messages",
+  zValidator("param", sessionMessagesParamsSchema),
+  zValidator("query", sessionMessagesSchema),
+  async c => {
+    const { sessionId } = c.req.valid("param");
+    const { limit, offset } = c.req.valid("query");
 
-  try {
-    // Parse query parameters
-    const query = sessionMessagesSchema.safeParse(c.req.query());
-    if (!query.success) {
-      return c.json({ error: "Invalid query parameters", issues: query.error.issues }, 400);
-    }
-    const { limit, offset } = query.data;
+    try {
+      // Prefer live bus-backed messages (SSE parity with opencode store semantics)
+      const liveMessages = getSessionMessages(sessionId);
+      if (liveMessages.length > 0) {
+        const messages = liveMessages.slice(offset, offset + limit);
+        const hasMore = offset + limit < liveMessages.length;
+        return c.json({
+          sessionID: sessionId,
+          messages,
+          hasMore,
+          total: liveMessages.length,
+        });
+      }
 
-    // Prefer live bus-backed messages (SSE parity with opencode store semantics)
-    const liveMessages = getSessionMessages(sessionId);
-    if (liveMessages.length > 0) {
-      const messages = liveMessages.slice(offset, offset + limit);
-      const hasMore = offset + limit < liveMessages.length;
+      // Fallback to checkpoint normalization for older sessions
+      // (kept only for compatibility with existing local checkpoint files)
+      // Get session manager and controller
+      const sessionManager = getSessionManager();
+      const controller = await sessionManager.getSession(sessionId);
+
+      if (!controller) {
+        return c.json({ error: "Session not found" }, 404);
+      }
+
+      // Check if checkpoint exists
+      const hasCheckpoint = await controller.hasCheckpoint();
+      if (!hasCheckpoint) {
+        return c.json({
+          sessionID: sessionId,
+          messages: [],
+          hasMore: false,
+        });
+      }
+
+      // Read checkpoint file
+      const checkpointPath = join("./checkpoints", sessionId, "checkpoint.json");
+      const checkpointData = await readFile(checkpointPath, "utf-8");
+      const checkpoint = JSON.parse(checkpointData) as Checkpoint;
+
+      // Extract messages from checkpoint
+      const rawMessages = checkpoint.result?.messages || [];
+
+      const normalizedMessages = normalizeCheckpointMessages({
+        sessionID: sessionId,
+        rawMessages,
+      });
+      const messages = normalizedMessages.slice(offset, offset + limit);
+
+      const hasMore = offset + limit < normalizedMessages.length;
+
       return c.json({
         sessionID: sessionId,
         messages,
         hasMore,
-        total: liveMessages.length,
+        total: normalizedMessages.length,
       });
+    } catch (error) {
+      console.error("Failed to fetch session messages:", error);
+      return c.json({ error: "Failed to fetch session messages" }, 500);
     }
-
-    // Fallback to checkpoint normalization for older sessions
-    // (kept only for compatibility with existing local checkpoint files)
-    // Get session manager and controller
-    const sessionManager = getSessionManager();
-    const controller = await sessionManager.getSession(sessionId);
-
-    if (!controller) {
-      return c.json({ error: "Session not found" }, 404);
-    }
-
-    // Check if checkpoint exists
-    const hasCheckpoint = await controller.hasCheckpoint();
-    if (!hasCheckpoint) {
-      return c.json({
-        sessionID: sessionId,
-        messages: [],
-        hasMore: false,
-      });
-    }
-
-    // Read checkpoint file
-    const checkpointPath = join("./checkpoints", sessionId, "checkpoint.json");
-    const checkpointData = await readFile(checkpointPath, "utf-8");
-    const checkpoint = JSON.parse(checkpointData) as Checkpoint;
-
-    // Extract messages from checkpoint
-    const rawMessages = checkpoint.result?.messages || [];
-
-    const normalizedMessages = normalizeCheckpointMessages({
-      sessionID: sessionId,
-      rawMessages,
-    });
-    const messages = normalizedMessages.slice(offset, offset + limit);
-
-    const hasMore = offset + limit < normalizedMessages.length;
-
-    return c.json({
-      sessionID: sessionId,
-      messages,
-      hasMore,
-      total: normalizedMessages.length,
-    });
-  } catch (error) {
-    console.error("Failed to fetch session messages:", error);
-    return c.json({ error: "Failed to fetch session messages" }, 500);
   }
-});
+);
 
 export default app;

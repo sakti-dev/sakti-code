@@ -53,8 +53,3 @@ export function getStatusCode(error: unknown): number {
   }
   return 500;
 }
-
-export const migrationCheckpoint = {
-  task: "Create shared HTTP error mapper",
-  status: "implemented-minimally",
-} as const;

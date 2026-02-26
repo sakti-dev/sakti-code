@@ -6,16 +6,37 @@
  */
 
 import { Hono } from "hono";
+import { z } from "zod";
 import {
   createProjectKeypoint,
   deleteProjectKeypoint,
   listProjectKeypointsByWorkspace,
 } from "../../db/project-keypoints";
 import type { Env } from "../index";
+import { zValidator } from "../shared/controller/http/validators.js";
 
 const app = new Hono<Env>();
 
-function serializeKeypoint(keypoint: Awaited<ReturnType<typeof listProjectKeypointsByWorkspace>>[number]) {
+const keypointQuerySchema = z.object({
+  workspaceId: z.string().min(1),
+});
+
+const createKeypointSchema = z.object({
+  workspaceId: z.string().min(1),
+  taskSessionId: z.string().min(1),
+  taskTitle: z.string().min(1),
+  milestone: z.enum(["started", "completed"]),
+  summary: z.string().min(1),
+  artifacts: z.array(z.string()).optional(),
+});
+
+const keypointIdParamSchema = z.object({
+  id: z.string().min(1),
+});
+
+function serializeKeypoint(
+  keypoint: Awaited<ReturnType<typeof listProjectKeypointsByWorkspace>>[number]
+) {
   return {
     id: keypoint.id,
     workspaceId: keypoint.workspaceId,
@@ -42,12 +63,8 @@ function serializeKeypoint(keypoint: Awaited<ReturnType<typeof listProjectKeypoi
  *   ]
  * }
  */
-app.get("/api/project-keypoints", async c => {
-  const workspaceId = c.req.query("workspaceId");
-
-  if (!workspaceId) {
-    return c.json({ error: "workspaceId query parameter required" }, 400);
-  }
+app.get("/api/project-keypoints", zValidator("query", keypointQuerySchema), async c => {
+  const { workspaceId } = c.req.valid("query");
 
   try {
     const keypoints = await listProjectKeypointsByWorkspace(workspaceId);
@@ -76,26 +93,10 @@ app.get("/api/project-keypoints", async c => {
  *
  * Note: Creating a keypoint with the same (taskSessionId, milestone) replaces the previous one.
  */
-app.post("/api/project-keypoints", async c => {
+app.post("/api/project-keypoints", zValidator("json", createKeypointSchema), async c => {
   try {
-    const body = await c.req.json();
-    const { workspaceId, taskSessionId, taskTitle, milestone, summary, artifacts } = body;
-
-    if (!workspaceId) {
-      return c.json({ error: "workspaceId is required" }, 400);
-    }
-    if (!taskSessionId) {
-      return c.json({ error: "taskSessionId is required" }, 400);
-    }
-    if (!taskTitle) {
-      return c.json({ error: "taskTitle is required" }, 400);
-    }
-    if (!milestone || !["started", "completed"].includes(milestone)) {
-      return c.json({ error: "milestone must be 'started' or 'completed'" }, 400);
-    }
-    if (!summary) {
-      return c.json({ error: "summary is required" }, 400);
-    }
+    const { workspaceId, taskSessionId, taskTitle, milestone, summary, artifacts } =
+      c.req.valid("json");
 
     const keypoint = await createProjectKeypoint({
       workspaceId,
@@ -119,8 +120,8 @@ app.post("/api/project-keypoints", async c => {
  * Usage:
  * DELETE /api/project-keypoints/:id
  */
-app.delete("/api/project-keypoints/:id", async c => {
-  const { id } = c.req.param();
+app.delete("/api/project-keypoints/:id", zValidator("param", keypointIdParamSchema), async c => {
+  const { id } = c.req.valid("param");
 
   try {
     await deleteProjectKeypoint(id);

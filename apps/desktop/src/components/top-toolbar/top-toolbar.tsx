@@ -14,7 +14,7 @@ export const TopToolbar: Component<TopToolbarProps> = props => {
   return (
     <header
       class={cn(
-        "flex items-center justify-between rounded-xl border border-border/40 bg-card/20 px-4 py-2.5",
+        "border-border/40 bg-card/20 flex items-center justify-between rounded-xl border px-4 py-2.5",
         props.class
       )}
     >
@@ -23,7 +23,7 @@ export const TopToolbar: Component<TopToolbarProps> = props => {
           <button
             type="button"
             onClick={() => props.onGoHome?.()}
-            class="rounded-md border border-border/40 bg-background/70 p-1.5 hover:bg-background"
+            class="border-border/40 bg-background/70 hover:bg-background rounded-md border p-1.5"
             aria-label="Go home"
           >
             <Home class="h-4 w-4" />
@@ -31,7 +31,7 @@ export const TopToolbar: Component<TopToolbarProps> = props => {
         </Show>
 
         <p class="text-foreground text-sm font-medium">
-          {props.view === "homepage" ? "Homepage" : props.title ?? "Task session"}
+          {props.view === "homepage" ? "Homepage" : (props.title ?? "Task session")}
         </p>
       </div>
 

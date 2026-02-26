@@ -43,8 +43,3 @@ export interface IWorkspaceRepository {
   touch(id: string): Promise<void>;
   delete(id: string): Promise<void>;
 }
-
-export const migrationCheckpoint = {
-  task: "Create workspace repository port",
-  status: "implemented-minimally",
-} as const;

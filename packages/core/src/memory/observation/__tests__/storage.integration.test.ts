@@ -10,9 +10,9 @@
  * - Lookup key pattern: getObservationalMemory by thread or resource scope
  */
 
+import type { ObservationalMemoryConfig } from "@/memory/observation/storage";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import type { ObservationalMemoryConfig } from "@/memory/observation/storage";
 
 describe("ObservationalMemoryStorage", () => {
   let storage: import("@/memory/observation/storage").ObservationalMemoryStorage;

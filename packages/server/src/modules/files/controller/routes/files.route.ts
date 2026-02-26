@@ -7,27 +7,18 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Env } from "../../../../index.js";
+import { zValidator } from "../../../../shared/controller/http/validators.js";
 
 const filesRouter = new Hono<Env>();
 
-filesRouter.get("/api/files/search", async c => {
-  const directory = c.req.query("directory");
-  const query = c.req.query("query") || "";
-  const rawLimit = c.req.query("limit");
-  const normalizedLimit = rawLimit?.trim();
+const searchQuerySchema = z.object({
+  directory: z.string().min(1),
+  query: z.string().optional().default(""),
+  limit: z.coerce.number().int().min(1).max(1000).optional().default(20),
+});
 
-  if (!directory) {
-    return c.json({ error: "directory parameter required" }, 400);
-  }
-
-  const limit = normalizedLimit === undefined ? 20 : Number.parseInt(normalizedLimit, 10);
-
-  if (
-    normalizedLimit !== undefined &&
-    (!/^\d+$/.test(normalizedLimit) || !Number.isFinite(limit) || limit < 1 || limit > 1000)
-  ) {
-    return c.json({ error: "invalid limit parameter" }, 400);
-  }
+filesRouter.get("/api/files/search", zValidator("query", searchQuerySchema), async c => {
+  const { directory, query, limit } = c.req.valid("query");
 
   try {
     const result = await searchFiles({ directory, query, limit });
@@ -43,8 +34,12 @@ filesRouter.get("/api/files/search", async c => {
   }
 });
 
-filesRouter.get("/api/files/status", async c => {
-  const directory = c.req.query("directory");
+const statusQuerySchema = z.object({
+  directory: z.string().optional(),
+});
+
+filesRouter.get("/api/files/status", zValidator("query", statusQuerySchema), async c => {
+  const { directory } = c.req.valid("query");
 
   if (!directory) {
     return c.json({
@@ -60,16 +55,10 @@ const WatchBodySchema = z.object({
   directory: z.string(),
 });
 
-filesRouter.post("/api/files/watch", async c => {
+filesRouter.post("/api/files/watch", zValidator("json", WatchBodySchema), async c => {
   try {
-    const body = await c.req.json();
-    const parsed = WatchBodySchema.safeParse(body);
-
-    if (!parsed.success) {
-      return c.json({ error: "Invalid request", details: parsed.error.issues }, 400);
-    }
-
-    const result = await watchDirectory(parsed.data);
+    const body = c.req.valid("json");
+    const result = await watchDirectory(body);
     return c.json(result);
   } catch (error) {
     return c.json(
@@ -82,16 +71,10 @@ filesRouter.post("/api/files/watch", async c => {
   }
 });
 
-filesRouter.delete("/api/files/watch", async c => {
+filesRouter.delete("/api/files/watch", zValidator("json", WatchBodySchema), async c => {
   try {
-    const body = await c.req.json();
-    const parsed = WatchBodySchema.safeParse(body);
-
-    if (!parsed.success) {
-      return c.json({ error: "Invalid request", details: parsed.error.issues }, 400);
-    }
-
-    const result = await unwatchDirectory(parsed.data);
+    const body = c.req.valid("json");
+    const result = await unwatchDirectory(body);
     return c.json(result);
   } catch (error) {
     return c.json(

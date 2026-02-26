@@ -25,8 +25,3 @@ export async function createTaskSessionUsecase(
 
   return { taskSession };
 }
-
-export const migrationCheckpoint = {
-  task: "Create create task-session usecase",
-  status: "implemented-minimally",
-} as const;

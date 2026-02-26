@@ -109,9 +109,7 @@ describe("Tasks API", () => {
     expect(body.tasks[0].status).toBe("open");
   });
 
-  it(
-    "GET /api/agent-tasks/:sessionId should not be clipped by unrelated global tasks",
-    async () => {
+  it("GET /api/agent-tasks/:sessionId should not be clipped by unrelated global tasks", async () => {
     const now = Date.now();
     for (let i = 0; i < 120; i++) {
       await taskStorage.createTask({
@@ -142,6 +140,5 @@ describe("Tasks API", () => {
     expect(body.tasks).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: "task-session-target" })])
     );
-    }
-  );
+  });
 });

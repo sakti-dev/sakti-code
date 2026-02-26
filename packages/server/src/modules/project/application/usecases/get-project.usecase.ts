@@ -75,8 +75,3 @@ export async function listProjects(): Promise<ProjectListResult> {
     },
   }) as Promise<ProjectListResult>;
 }
-
-export const migrationCheckpoint = {
-  task: "Create project module usecases",
-  status: "implemented-minimally",
-} as const;

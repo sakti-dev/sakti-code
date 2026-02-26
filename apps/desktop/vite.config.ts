@@ -10,7 +10,8 @@ const PNPM_ROOT_CANDIDATES = [
   resolve(PACKAGE_ROOT, "../../node_modules/.pnpm"),
   resolve(PACKAGE_ROOT, "../../../../../node_modules/.pnpm"),
 ];
-const PNPM_ROOT = PNPM_ROOT_CANDIDATES.find(candidate => existsSync(candidate)) ?? PNPM_ROOT_CANDIDATES[0];
+const PNPM_ROOT =
+  PNPM_ROOT_CANDIDATES.find(candidate => existsSync(candidate)) ?? PNPM_ROOT_CANDIDATES[0];
 const resolveFirstExisting = (candidates: string[]): string =>
   candidates.find(candidate => existsSync(candidate)) ?? candidates[0];
 const INCREMARK_PACKAGES_ROOT_CANDIDATES = [
@@ -27,20 +28,20 @@ const INCREMARK_THEME_STYLES_CANDIDATES = [
 const INCREMARK_THEME_STYLES = resolveFirstExisting(INCREMARK_THEME_STYLES_CANDIDATES);
 const SHIKI_STREAM_PATH = resolveFirstExisting([
   ...PNPM_ROOT_CANDIDATES.map(root =>
-    resolve(root, "shiki-stream@0.1.4_solid-js@1.9.11/node_modules/shiki-stream"),
+    resolve(root, "shiki-stream@0.1.4_solid-js@1.9.11/node_modules/shiki-stream")
   ),
   ...PNPM_ROOT_CANDIDATES.map(root =>
     resolve(
       root,
-      "shiki-stream@0.1.4_react@19.2.4_solid-js@1.9.11_vue@3.5.29_typescript@5.9.3_/node_modules/shiki-stream",
-    ),
+      "shiki-stream@0.1.4_react@19.2.4_solid-js@1.9.11_vue@3.5.29_typescript@5.9.3_/node_modules/shiki-stream"
+    )
   ),
 ]);
 const SHIKIJS_CORE_PATH = resolveFirstExisting(
-  PNPM_ROOT_CANDIDATES.map(root => resolve(root, "@shikijs+core@3.22.0/node_modules/@shikijs/core")),
+  PNPM_ROOT_CANDIDATES.map(root => resolve(root, "@shikijs+core@3.22.0/node_modules/@shikijs/core"))
 );
 const ANTFU_UTILS_PATH = resolveFirstExisting(
-  PNPM_ROOT_CANDIDATES.map(root => resolve(root, "@antfu+utils@9.3.0/node_modules/@antfu/utils")),
+  PNPM_ROOT_CANDIDATES.map(root => resolve(root, "@antfu+utils@9.3.0/node_modules/@antfu/utils"))
 );
 
 const config: UserConfig = {

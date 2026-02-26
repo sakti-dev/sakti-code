@@ -4,8 +4,8 @@
  * These tests validate graceful shutdown handling with checkpoint saving.
  */
 
-import { ShutdownHandler } from "@/session/shutdown";
 import type { SessionManager } from "@/session/manager";
+import { ShutdownHandler } from "@/session/shutdown";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock process methods

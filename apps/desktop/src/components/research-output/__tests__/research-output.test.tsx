@@ -31,7 +31,9 @@ describe("ResearchOutput", () => {
     ));
 
     expect(container.textContent).toContain("I found two implementation paths.");
-    const button = container.querySelector('button[data-action="wizard:start:comprehensive"]') as HTMLButtonElement;
+    const button = container.querySelector(
+      'button[data-action="wizard:start:comprehensive"]'
+    ) as HTMLButtonElement;
     expect(button).not.toBeNull();
 
     button.click();

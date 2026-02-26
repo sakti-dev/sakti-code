@@ -21,10 +21,15 @@ import {
   providerOAuthCallbackRequestSchema,
   providerPreferencesUpdateSchema,
 } from "../provider/schema";
+import { zValidator } from "../shared/controller/http/validators.js";
 
 const providerRouter = new Hono<Env>();
 const setTokenBodySchema = z.object({
   token: z.string().min(1),
+});
+
+const providerIdParamSchema = z.object({
+  providerId: z.string().min(1),
 });
 
 const providerRuntime = getProviderRuntime();
@@ -117,114 +122,120 @@ providerRouter.get("/api/providers/preferences", async c => {
   return c.json(preferences);
 });
 
-providerRouter.put("/api/providers/preferences", async c => {
-  const body = providerPreferencesUpdateSchema.safeParse(await c.req.json().catch(() => ({})));
-  if (!body.success) {
-    const normalized = normalizeProviderError(new Error("Invalid provider preferences payload"));
-    return c.json(normalized, normalized.status);
-  }
-
-  const preferences = await providerRuntime.preferenceService.set({
-    selectedProviderId: body.data.selectedProviderId,
-    selectedModelId: body.data.selectedModelId,
-    hybridEnabled: body.data.hybridEnabled,
-    hybridVisionProviderId: body.data.hybridVisionProviderId,
-    hybridVisionModelId: body.data.hybridVisionModelId,
-  });
-  return c.json(preferences);
-});
-
-providerRouter.post("/api/providers/:providerId/auth/token", async c => {
-  const providerId = c.req.param("providerId");
-  const exists = await providerExists(providerId);
-  if (!exists) {
-    const normalized = normalizeProviderError(new Error("Provider not found"));
-    return c.json(normalized, normalized.status);
-  }
-
-  const body = setTokenBodySchema.safeParse(await c.req.json().catch(() => ({})));
-  if (!body.success) {
-    const normalized = normalizeProviderError(new Error("Invalid token payload"));
-    return c.json(normalized, normalized.status);
-  }
-
-  await providerRuntime.authService.setToken({
-    providerId,
-    token: body.data.token,
-  });
-
-  return c.json({ ok: true });
-});
-
-providerRouter.delete("/api/providers/:providerId/auth/token", async c => {
-  const providerId = c.req.param("providerId");
-  const exists = await providerExists(providerId);
-  if (!exists) {
-    const normalized = normalizeProviderError(new Error("Provider not found"));
-    return c.json(normalized, normalized.status);
-  }
-
-  await providerRuntime.authService.clear(providerId);
-
-  return c.json({ ok: true });
-});
-
-providerRouter.post("/api/providers/:providerId/oauth/authorize", async c => {
-  const providerId = c.req.param("providerId");
-  const exists = await providerExists(providerId);
-  if (!exists) {
-    const normalized = normalizeProviderError(new Error("Provider not found"));
-    return c.json(normalized, normalized.status);
-  }
-
-  const body = providerOAuthAuthorizeRequestSchema.safeParse(await c.req.json().catch(() => ({})));
-  if (!body.success) {
-    const normalized = normalizeProviderError(new Error("Invalid oauth authorize payload"));
-    return c.json(normalized, normalized.status);
-  }
-
-  try {
-    const result = await startOAuth({
-      providerId,
-      method: body.data.method,
-      inputs: body.data.inputs,
+providerRouter.put(
+  "/api/providers/preferences",
+  zValidator("json", providerPreferencesUpdateSchema),
+  async c => {
+    const body = c.req.valid("json");
+    const preferences = await providerRuntime.preferenceService.set({
+      selectedProviderId: body.selectedProviderId,
+      selectedModelId: body.selectedModelId,
+      hybridEnabled: body.hybridEnabled,
+      hybridVisionProviderId: body.hybridVisionProviderId,
+      hybridVisionModelId: body.hybridVisionModelId,
     });
-    return c.json(result);
-  } catch (error) {
-    const normalized = normalizeProviderError(error);
-    return c.json(normalized, normalized.status);
+    return c.json(preferences);
   }
-});
+);
 
-providerRouter.post("/api/providers/:providerId/oauth/callback", async c => {
-  const providerId = c.req.param("providerId");
-  const exists = await providerExists(providerId);
-  if (!exists) {
-    const normalized = normalizeProviderError(new Error("Provider not found"));
-    return c.json(normalized, normalized.status);
+providerRouter.post(
+  "/api/providers/:providerId/auth/token",
+  zValidator("param", providerIdParamSchema),
+  zValidator("json", setTokenBodySchema),
+  async c => {
+    const { providerId } = c.req.valid("param");
+    const exists = await providerExists(providerId);
+    if (!exists) {
+      const normalized = normalizeProviderError(new Error("Provider not found"));
+      return c.json(normalized, normalized.status);
+    }
+
+    const body = c.req.valid("json");
+
+    await providerRuntime.authService.setToken({
+      providerId,
+      token: body.token,
+    });
+
+    return c.json({ ok: true });
   }
+);
 
-  const body = providerOAuthCallbackRequestSchema.safeParse(await c.req.json().catch(() => ({})));
-  if (!body.success) {
-    const normalized = normalizeProviderError(new Error("Invalid oauth callback payload"));
-    return c.json(normalized, normalized.status);
+providerRouter.delete(
+  "/api/providers/:providerId/auth/token",
+  zValidator("param", providerIdParamSchema),
+  async c => {
+    const { providerId } = c.req.valid("param");
+    const exists = await providerExists(providerId);
+    if (!exists) {
+      const normalized = normalizeProviderError(new Error("Provider not found"));
+      return c.json(normalized, normalized.status);
+    }
+
+    await providerRuntime.authService.clear(providerId);
+
+    return c.json({ ok: true });
   }
+);
 
-  try {
-    const result = await completeOAuth(
-      {
+providerRouter.post(
+  "/api/providers/:providerId/oauth/authorize",
+  zValidator("param", providerIdParamSchema),
+  zValidator("json", providerOAuthAuthorizeRequestSchema),
+  async c => {
+    const { providerId } = c.req.valid("param");
+    const exists = await providerExists(providerId);
+    if (!exists) {
+      const normalized = normalizeProviderError(new Error("Provider not found"));
+      return c.json(normalized, normalized.status);
+    }
+
+    const body = c.req.valid("json");
+
+    try {
+      const result = await startOAuth({
         providerId,
-        method: body.data.method,
-        authorizationId: body.data.authorizationId,
-        code: body.data.code,
-      },
-      providerRuntime.authService
-    );
-    return c.json(result);
-  } catch (error) {
-    const normalized = normalizeProviderError(error);
-    return c.json(normalized, normalized.status);
+        method: body.method,
+        inputs: body.inputs,
+      });
+      return c.json(result);
+    } catch (error) {
+      const normalized = normalizeProviderError(error);
+      return c.json(normalized, normalized.status);
+    }
   }
-});
+);
+
+providerRouter.post(
+  "/api/providers/:providerId/oauth/callback",
+  zValidator("param", providerIdParamSchema),
+  zValidator("json", providerOAuthCallbackRequestSchema),
+  async c => {
+    const { providerId } = c.req.valid("param");
+    const exists = await providerExists(providerId);
+    if (!exists) {
+      const normalized = normalizeProviderError(new Error("Provider not found"));
+      return c.json(normalized, normalized.status);
+    }
+
+    const body = c.req.valid("json");
+
+    try {
+      const result = await completeOAuth(
+        {
+          providerId,
+          method: body.method,
+          authorizationId: body.authorizationId,
+          code: body.code,
+        },
+        providerRuntime.authService
+      );
+      return c.json(result);
+    } catch (error) {
+      const normalized = normalizeProviderError(error);
+      return c.json(normalized, normalized.status);
+    }
+  }
+);
 
 export default providerRouter;

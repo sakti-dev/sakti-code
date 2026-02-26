@@ -73,19 +73,13 @@ function rewriteImports(filePath, domain) {
   let content = fs.readFileSync(filePath, "utf-8");
   const originalContent = content;
 
-  content = content.replace(
-    /from\s+["']\.\.\/src\/([^"']+)["']/g,
-    (match, importPath) => {
-      return `from "@/${importPath}"`;
-    }
-  );
+  content = content.replace(/from\s+["']\.\.\/src\/([^"']+)["']/g, (match, importPath) => {
+    return `from "@/${importPath}"`;
+  });
 
-  content = content.replace(
-    /from\s+["']\.\.\/\.\.\/src\/([^"']+)["']/g,
-    (match, importPath) => {
-      return `from "@/${importPath}"`;
-    }
-  );
+  content = content.replace(/from\s+["']\.\.\/\.\.\/src\/([^"']+)["']/g, (match, importPath) => {
+    return `from "@/${importPath}"`;
+  });
 
   content = content.replace(
     /from\s+["']\.\.\/\.\.\/\.\.\/src\/([^"']+)["']/g,
@@ -101,19 +95,13 @@ function rewriteImports(filePath, domain) {
     }
   );
 
-  content = content.replace(
-    /import\(["']\.\.\/src\/([^"']+)["']\)/g,
-    (match, importPath) => {
-      return `import("@/${importPath}")`;
-    }
-  );
+  content = content.replace(/import\(["']\.\.\/src\/([^"']+)["']\)/g, (match, importPath) => {
+    return `import("@/${importPath}")`;
+  });
 
-  content = content.replace(
-    /import\(["']\.\.\/\.\.\/src\/([^"']+)["']\)/g,
-    (match, importPath) => {
-      return `import("@/${importPath}")`;
-    }
-  );
+  content = content.replace(/import\(["']\.\.\/\.\.\/src\/([^"']+)["']\)/g, (match, importPath) => {
+    return `import("@/${importPath}")`;
+  });
 
   content = content.replace(
     /import\(["']\.\.\/\.\.\/\.\.\/src\/([^"']+)["']\)/g,
@@ -129,19 +117,13 @@ function rewriteImports(filePath, domain) {
     }
   );
 
-  content = content.replace(
-    /vi\.mock\(["']\.\.\/src\/([^"']+)["']/g,
-    (match, importPath) => {
-      return `vi.mock("@/${importPath}"`;
-    }
-  );
+  content = content.replace(/vi\.mock\(["']\.\.\/src\/([^"']+)["']/g, (match, importPath) => {
+    return `vi.mock("@/${importPath}"`;
+  });
 
-  content = content.replace(
-    /vi\.mock\(["']\.\.\/\.\.\/src\/([^"']+)["']/g,
-    (match, importPath) => {
-      return `vi.mock("@/${importPath}"`;
-    }
-  );
+  content = content.replace(/vi\.mock\(["']\.\.\/\.\.\/src\/([^"']+)["']/g, (match, importPath) => {
+    return `vi.mock("@/${importPath}"`;
+  });
 
   content = content.replace(
     /vi\.mock\(["']\.\.\/\.\.\/\.\.\/src\/([^"']+)["']/g,

@@ -5,33 +5,33 @@
  */
 
 import { Hono } from "hono";
+import { z } from "zod";
 import type { Env } from "../index";
-import { parseLimitOffset } from "./_shared/pagination";
+import { paginationSchema, zValidator } from "../shared/controller/http/validators.js";
 
 const diffRouter = new Hono<Env>();
+
+const diffParamsSchema = z.object({
+  sessionId: z.string().min(1),
+});
 
 /**
  * Get file diffs for a session
  */
-diffRouter.get("/api/chat/:sessionId/diff", async c => {
-  const sessionId = c.req.param("sessionId");
+diffRouter.get(
+  "/api/chat/:sessionId/diff",
+  zValidator("param", diffParamsSchema),
+  zValidator("query", paginationSchema),
+  async c => {
+    const { sessionId } = c.req.valid("param");
 
-  if (!sessionId) {
-    return c.json({ error: "Session ID required" }, 400);
+    return c.json({
+      sessionID: sessionId,
+      diffs: [],
+      hasMore: false,
+      total: 0,
+    });
   }
-
-  const pagination = parseLimitOffset(c.req.query());
-
-  if (!pagination.ok) {
-    return c.json({ error: pagination.reason }, 400);
-  }
-
-  return c.json({
-    sessionID: sessionId,
-    diffs: [],
-    hasMore: false,
-    total: 0,
-  });
-});
+);
 
 export default diffRouter;

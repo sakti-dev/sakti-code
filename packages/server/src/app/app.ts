@@ -1,18 +1,27 @@
 import { Hono } from "hono";
 import type { Env } from "../index.js";
+import { errorHandler } from "../middleware/error-handler.js";
+import { composeMiddleware } from "./middleware.js";
 import { registerRoutes } from "./register-routes.js";
+import { getRuntimeBaseUrl } from "./runtime-config.js";
 
 export const app = new Hono<Env>();
 
+composeMiddleware(app);
+
 registerRoutes(app);
 
-export type App = typeof app;
+app.onError(errorHandler);
 
-app.get("/__plan_probe__", c => {
-  return c.text("ok");
+// Server config endpoint (for renderer - protected by auth)
+app.get("/api/config", c => {
+  return c.json({
+    authType: "basic",
+    baseUrl: getRuntimeBaseUrl(),
+  });
 });
 
-export const migrationCheckpoint = {
-  task: "Create app composition root",
-  status: "implemented-minimally",
-} as const;
+// Root endpoint
+app.get("/", c => {
+  return c.text("sakti-code server running");
+});

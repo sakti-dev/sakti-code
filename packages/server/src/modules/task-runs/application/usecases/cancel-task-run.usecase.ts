@@ -48,8 +48,3 @@ export async function listTaskRunsBySessionUsecase(
 ): Promise<TaskSessionRun[]> {
   return taskRunRepository.listByTaskSession(taskSessionId);
 }
-
-export const migrationCheckpoint = {
-  task: "Create cancel task-run usecase",
-  status: "implemented-minimally",
-} as const;

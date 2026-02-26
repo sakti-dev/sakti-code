@@ -24,8 +24,3 @@ export interface ITaskRunEventRepository {
   getLatestByRunId(runId: string): Promise<TaskRunEvent | null>;
   listAfter(runId: string, afterEventSeq: number, limit: number): Promise<TaskRunEvent[]>;
 }
-
-export const migrationCheckpoint = {
-  task: "Create task-run events repository",
-  status: "implemented-minimally",
-} as const;

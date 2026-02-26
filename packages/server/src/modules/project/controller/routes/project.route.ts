@@ -1,14 +1,20 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import type { Env } from "../../../../index.js";
 import { sessionBridge } from "../../../../middleware/session-bridge.js";
+import { zValidator } from "../../../../shared/controller/http/validators.js";
 import { getProjectInfo, listProjects } from "../../application/usecases/get-project.usecase.js";
 
 const projectApp = new Hono<Env>();
 
 projectApp.use("*", sessionBridge);
 
-projectApp.get("/api/project", async c => {
-  const queryDir = c.req.query("directory")?.trim();
+const projectQuerySchema = z.object({
+  directory: z.string().trim().min(1).optional(),
+});
+
+projectApp.get("/api/project", zValidator("query", projectQuerySchema), async c => {
+  const queryDir = c.req.valid("query").directory;
 
   try {
     const projectInfo = await getProjectInfo(queryDir);

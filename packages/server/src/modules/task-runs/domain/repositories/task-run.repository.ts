@@ -58,8 +58,3 @@ export interface ITaskRunRepository {
     additionalFields?: Partial<TaskSessionRun>
   ): Promise<void>;
 }
-
-export const migrationCheckpoint = {
-  task: "Create task-run repository port",
-  status: "implemented-minimally",
-} as const;

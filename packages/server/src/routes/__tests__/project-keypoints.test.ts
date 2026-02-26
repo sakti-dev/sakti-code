@@ -42,7 +42,10 @@ describe("project-keypoints routes", () => {
       .delete(taskSessions)
       .where(sql`${taskSessions.session_id} LIKE 'test-%'`)
       .execute();
-    await db.delete(workspaces).where(sql`${workspaces.id} LIKE 'test-%'`).execute();
+    await db
+      .delete(workspaces)
+      .where(sql`${workspaces.id} LIKE 'test-%'`)
+      .execute();
   }
 
   describe("GET /api/project-keypoints", () => {
@@ -59,7 +62,7 @@ describe("project-keypoints routes", () => {
 
     it("should list empty keypoints for new workspace", async () => {
       await cleanup();
-      
+
       const db = await getDb();
       const now = new Date();
       const wsId = "test-ws-" + Date.now();
@@ -90,12 +93,12 @@ describe("project-keypoints routes", () => {
   describe("POST /api/project-keypoints", () => {
     it("should create a project keypoint", async () => {
       await cleanup();
-      
+
       const db = await getDb();
       const now = new Date();
       const wsId = "test-ws-" + Date.now();
       const tsId = uuidv7();
-      
+
       await db.insert(workspaces).values({
         id: wsId,
         path: "/tmp/test-ws",
@@ -104,7 +107,7 @@ describe("project-keypoints routes", () => {
         created_at: now,
         last_opened_at: now,
       });
-      
+
       await db.insert(taskSessions).values({
         session_id: tsId,
         resource_id: "local",
@@ -119,7 +122,7 @@ describe("project-keypoints routes", () => {
 
       const res = await testApp.request("/api/project-keypoints", {
         method: "POST",
-        headers: { 
+        headers: {
           Authorization: `Basic ${testCredentials}`,
           "Content-Type": "application/json",
           "X-Task-Session-ID": headerSessionId,
@@ -146,7 +149,7 @@ describe("project-keypoints routes", () => {
     it("should require workspaceId", async () => {
       const res = await testApp.request("/api/project-keypoints", {
         method: "POST",
-        headers: { 
+        headers: {
           Authorization: `Basic ${testCredentials}`,
           "Content-Type": "application/json",
           "X-Task-Session-ID": headerSessionId,
@@ -164,12 +167,12 @@ describe("project-keypoints routes", () => {
 
     it("should require valid milestone", async () => {
       await cleanup();
-      
+
       const db = await getDb();
       const now = new Date();
       const wsId = "test-ws-" + Date.now();
       const tsId = uuidv7();
-      
+
       await db.insert(workspaces).values({
         id: wsId,
         path: "/tmp/test-ws",
@@ -178,7 +181,7 @@ describe("project-keypoints routes", () => {
         created_at: now,
         last_opened_at: now,
       });
-      
+
       await db.insert(taskSessions).values({
         session_id: tsId,
         resource_id: "local",
@@ -193,7 +196,7 @@ describe("project-keypoints routes", () => {
 
       const res = await testApp.request("/api/project-keypoints", {
         method: "POST",
-        headers: { 
+        headers: {
           Authorization: `Basic ${testCredentials}`,
           "Content-Type": "application/json",
           "X-Task-Session-ID": headerSessionId,
@@ -352,13 +355,13 @@ describe("project-keypoints routes", () => {
   describe("DELETE /api/project-keypoints/:id", () => {
     it("should delete a project keypoint", async () => {
       await cleanup();
-      
+
       const db = await getDb();
       const now = new Date();
       const wsId = "test-ws-" + Date.now();
       const tsId = uuidv7();
       const kpId = "test-kp-" + Date.now();
-      
+
       await db.insert(workspaces).values({
         id: wsId,
         path: "/tmp/test-ws",
@@ -367,7 +370,7 @@ describe("project-keypoints routes", () => {
         created_at: now,
         last_opened_at: now,
       });
-      
+
       await db.insert(taskSessions).values({
         session_id: tsId,
         resource_id: "local",

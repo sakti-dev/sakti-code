@@ -22,15 +22,20 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Env } from "../index";
+import { zValidator } from "../shared/controller/http/validators.js";
 import { resolveDirectory } from "./_shared/directory-resolver";
 
 const vcsRouter = new Hono<Env>();
 
+const vcsQuerySchema = z.object({
+  directory: z.string().optional(),
+});
+
 /**
  * Get VCS state
  */
-vcsRouter.get("/api/vcs", async c => {
-  const directory = c.req.query("directory")?.trim();
+vcsRouter.get("/api/vcs", zValidator("query", vcsQuerySchema), async c => {
+  const directory = c.req.valid("query").directory?.trim();
 
   if (directory === "") {
     return c.json({ error: "Directory parameter required" }, 400);
@@ -63,42 +68,39 @@ const ListRemoteBranchesSchema = z.object({
   url: z.string().url("Invalid repository URL"),
 });
 
-vcsRouter.post("/api/vcs/remote-branches", async c => {
-  try {
-    const body = await c.req.json();
-    const parsed = ListRemoteBranchesSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return c.json({ error: "Invalid request", details: parsed.error.issues }, 400);
-    }
-
-    const { url } = parsed.data;
-
-    // Validate allowed hosts
-    const allowedHosts = ["github.com", "gitlab.com", "bitbucket.org"];
+vcsRouter.post(
+  "/api/vcs/remote-branches",
+  zValidator("json", ListRemoteBranchesSchema),
+  async c => {
     try {
-      const parsedUrl = new URL(url);
-      const hostname = parsedUrl.hostname.replace(/^www\./, "");
-      if (!allowedHosts.includes(hostname)) {
-        return c.json(
-          {
-            error: `URL hostname not allowed: ${hostname}. Only ${allowedHosts.join(", ")} are supported.`,
-          },
-          400
-        );
+      const { url } = c.req.valid("json");
+
+      // Validate allowed hosts
+      const allowedHosts = ["github.com", "gitlab.com", "bitbucket.org"];
+      try {
+        const parsedUrl = new URL(url);
+        const hostname = parsedUrl.hostname.replace(/^www\./, "");
+        if (!allowedHosts.includes(hostname)) {
+          return c.json(
+            {
+              error: `URL hostname not allowed: ${hostname}. Only ${allowedHosts.join(", ")} are supported.`,
+            },
+            400
+          );
+        }
+      } catch {
+        return c.json({ error: "Invalid URL format" }, 400);
       }
-    } catch {
-      return c.json({ error: "Invalid URL format" }, 400);
+
+      const branches = await listRemoteBranches(url);
+
+      return c.json({ branches });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to list remote branches";
+      return c.json({ error: message }, 500);
     }
-
-    const branches = await listRemoteBranches(url);
-
-    return c.json({ branches });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to list remote branches";
-    return c.json({ error: message }, 500);
   }
-});
+);
 
 /**
  * List local branches from a repo path
@@ -107,16 +109,9 @@ const ListLocalBranchesSchema = z.object({
   path: z.string().min(1, "Path is required"),
 });
 
-vcsRouter.post("/api/vcs/branches", async c => {
+vcsRouter.post("/api/vcs/branches", zValidator("json", ListLocalBranchesSchema), async c => {
   try {
-    const body = await c.req.json();
-    const parsed = ListLocalBranchesSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return c.json({ error: "Invalid request", details: parsed.error.issues }, 400);
-    }
-
-    const { path } = parsed.data;
+    const { path } = c.req.valid("json");
     const branches = await listLocalBranches(path);
 
     return c.json({ branches });
@@ -135,16 +130,9 @@ const CloneSchema = z.object({
   branch: z.string().min(1, "Branch is required"),
 });
 
-vcsRouter.post("/api/vcs/clone", async c => {
+vcsRouter.post("/api/vcs/clone", zValidator("json", CloneSchema), async c => {
   try {
-    const body = await c.req.json();
-    const parsed = CloneSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return c.json({ error: "Invalid request", details: parsed.error.issues }, 400);
-    }
-
-    const { url, targetDir, branch } = parsed.data;
+    const { url, targetDir, branch } = c.req.valid("json");
     const clonePath = await clone({ url, targetDir, branch });
 
     return c.json({ path: clonePath });
@@ -165,16 +153,9 @@ const CreateWorktreeSchema = z.object({
   createBranch: z.boolean().optional(),
 });
 
-vcsRouter.post("/api/vcs/worktree", async c => {
+vcsRouter.post("/api/vcs/worktree", zValidator("json", CreateWorktreeSchema), async c => {
   try {
-    const body = await c.req.json();
-    const parsed = CreateWorktreeSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return c.json({ error: "Invalid request", details: parsed.error.issues }, 400);
-    }
-
-    const { repoPath, worktreeName, branch, worktreesDir, createBranch } = parsed.data;
+    const { repoPath, worktreeName, branch, worktreesDir, createBranch } = c.req.valid("json");
     const worktreePath = await createWorktree({
       repoPath,
       worktreeName,
@@ -193,22 +174,22 @@ vcsRouter.post("/api/vcs/worktree", async c => {
 /**
  * Check if worktree name exists
  */
-vcsRouter.get("/api/vcs/worktree/exists", async c => {
-  const name = c.req.query("name");
-  const worktreesDir = c.req.query("worktreesDir");
-
-  if (!name) {
-    return c.json({ error: "Name parameter is required" }, 400);
-  }
-
-  if (!worktreesDir) {
-    return c.json({ error: "Worktrees directory parameter is required" }, 400);
-  }
-
-  const exists = await worktreeExists(name, worktreesDir);
-
-  return c.json({ exists });
+const worktreeExistsQuerySchema = z.object({
+  name: z.string().min(1),
+  worktreesDir: z.string().min(1),
 });
+
+vcsRouter.get(
+  "/api/vcs/worktree/exists",
+  zValidator("query", worktreeExistsQuerySchema),
+  async c => {
+    const { name, worktreesDir } = c.req.valid("query");
+
+    const exists = await worktreeExists(name, worktreesDir);
+
+    return c.json({ exists });
+  }
+);
 
 /**
  * Get workspaces directory path

@@ -34,7 +34,9 @@ describe("Task session sidebar list", () => {
   it("applies active styling for selected task", () => {
     const { container } = render(() => <SessionList sessions={tasks} activeSessionId="ts-1" />);
 
-    const activeCard = container.querySelector('[data-component="task-session-card"].animate-breathe');
+    const activeCard = container.querySelector(
+      '[data-component="task-session-card"].animate-breathe'
+    );
     expect(activeCard).not.toBeNull();
     expect(activeCard?.textContent).toContain("Research architecture");
   });

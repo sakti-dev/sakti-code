@@ -128,8 +128,3 @@ ${assistantMessage}`;
     });
   }
 }
-
-export const migrationCheckpoint = {
-  task: "Create chat application service",
-  status: "implemented-minimally",
-} as const;

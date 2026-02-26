@@ -39,37 +39,10 @@ import {
 } from "@sakti-code/core/server";
 import { createLogger } from "@sakti-code/shared/logger";
 import { shutdown } from "@sakti-code/shared/shutdown";
-import { Hono } from "hono";
-import { v7 as uuidv7 } from "uuid";
+import { app } from "./app/app.js";
+import "./app/logging-env.js";
+import { setRuntimePort } from "./app/runtime-config.js";
 import { PermissionAsked, publish, QuestionAsked } from "./bus";
-import { authMiddleware } from "./middleware/auth";
-import { cacheMiddleware } from "./middleware/cache";
-import { errorHandler } from "./middleware/error-handler";
-import { rateLimitMiddleware } from "./middleware/rate-limit";
-import agentRouter from "./routes/agent";
-import chatRouter from "./routes/chat";
-import commandRouter from "./routes/command";
-import diffRouter from "./routes/diff";
-import eventRouter from "./routes/event";
-import eventsRouter from "./routes/events";
-import filesRouter from "./routes/files";
-import healthRouter from "./routes/health";
-import lspRouter from "./routes/lsp";
-import mcpRouter from "./routes/mcp";
-import permissionsRouter from "./routes/permissions";
-import projectRouter from "./routes/project";
-import projectKeypointsRouter from "./routes/project-keypoints";
-import providerRouter from "./routes/provider";
-import questionsRouter from "./routes/questions";
-import rulesRouter from "./routes/rules";
-import runEventsRouter from "./routes/run-events";
-import sessionDataRouter from "./routes/session-data";
-import taskRunsRouter from "./routes/task-runs";
-import taskSessionsRouter from "./routes/task-sessions";
-import tasksRouter from "./routes/tasks";
-import vcsRouter from "./routes/vcs";
-import workspaceRouter from "./routes/workspace";
-import workspacesRouter from "./routes/workspaces";
 import { getServerToken, getSessionManager } from "./runtime";
 import { createChatTaskRunExecutor, TaskRunWorker } from "./services/task-run-worker";
 export type { AppType } from "./app/types.js";
@@ -95,136 +68,11 @@ export type Env = {
   };
 };
 
-const app = new Hono<Env>();
-
-if (process.env.NODE_ENV !== "production") {
-  process.env.LOG_FILE_PATH ||= resolve(process.cwd(), "logs/server-dev.log");
-  process.env.LOG_FILE_OUTPUT ||= "true";
-}
-
 const logger = createLogger("server");
 
 const SERVER_PORT = parseInt(process.env.PORT || "0") || 0; // Random port
-
-// CORS for localhost
-app.use("*", async (c, next) => {
-  c.header("Access-Control-Allow-Origin", "*");
-  c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  c.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Task-Session-ID, X-Workspace, X-Directory"
-  );
-  if (c.req.method === "OPTIONS") {
-    return c.newResponse(null, 204);
-  }
-  return next();
-});
-
-// Request logging middleware
-app.use("*", async (c, next) => {
-  const start = Date.now();
-  const requestId = uuidv7();
-
-  c.set("requestId", requestId);
-  c.set("startTime", start);
-
-  logger.debug(`${c.req.method} ${c.req.url}`, {
-    module: "api",
-    requestId,
-  });
-
-  await next();
-
-  const duration = Date.now() - start;
-  logger.info(`${c.req.method} ${c.req.url} ${c.res.status}`, {
-    module: "api",
-    requestId,
-    duration,
-    status: c.res.status,
-  });
-});
-
-// Rate limiting middleware (before auth to avoid wasting resources)
-app.use("*", rateLimitMiddleware);
-
-// Cache middleware (after rate limit, before auth)
-// Only caches GET requests, skips excluded paths
-app.use("*", cacheMiddleware);
-
-// Auth middleware (Basic Auth)
-// Uses app.onError() for error handling
-app.use("*", authMiddleware);
-
-// Error handler (must be after routes are defined)
-app.onError(errorHandler);
-
-// Mount health check route (public - auth middleware skips /api/health)
-app.route("/", healthRouter);
-
-// Mount permission routes (protected by auth)
-app.route("/api/permissions", permissionsRouter);
-app.route("/api/questions", questionsRouter);
-
-// Mount chat routes (protected by auth)
-// Note: chatRouter uses full paths like "/api/chat", so mount at "/"
-app.route("/", chatRouter);
-
-// Mount unified event SSE endpoint (Opencode-style)
-app.route("/", eventRouter);
-
-// Mount events catch-up endpoint (Batch 3: WS5)
-app.route("/", eventsRouter);
-
-// Mount rules routes
-app.route("/", rulesRouter);
-
-// Mount task sessions routes
-app.route("/", taskSessionsRouter);
-app.route("/", taskRunsRouter);
-app.route("/", tasksRouter);
-app.route("/", runEventsRouter);
-
-// Mount session data routes (historical messages)
-app.route("/", sessionDataRouter);
-
-// Mount workspace routes
-app.route("/", workspaceRouter);
-
-// Mount workspaces CRUD API routes
-app.route("/", workspacesRouter);
-
-// Mount bootstrap API routes
-app.route("/", projectRouter);
-app.route("/", projectKeypointsRouter);
-app.route("/", providerRouter);
-app.route("/", agentRouter);
-app.route("/", commandRouter);
-app.route("/", mcpRouter);
-app.route("/", lspRouter);
-app.route("/", vcsRouter);
-
-// Mount diff routes
-app.route("/", diffRouter);
-
-// Mount files routes
-app.route("/", filesRouter);
-
-let currentPort = SERVER_PORT;
 let serverInstance: CloseableServer | null = null;
 let taskRunWorker: TaskRunWorker | null = null;
-
-// Server config endpoint (for renderer - protected by auth)
-app.get("/api/config", c => {
-  return c.json({
-    authType: "basic",
-    baseUrl: `http://127.0.0.1:${currentPort}`,
-  });
-});
-
-// Root endpoint
-app.get("/", c => {
-  return c.text("sakti-code server running");
-});
 
 // Start server
 export async function startServer() {
@@ -280,7 +128,7 @@ export async function startServer() {
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : SERVER_PORT;
 
-  currentPort = port;
+  setRuntimePort(port);
   logger.info(`Server started on http://127.0.0.1:${port}`, {
     module: "server:lifecycle",
     port,

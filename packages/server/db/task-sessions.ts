@@ -43,9 +43,7 @@ export interface TaskSessionRecord {
 const SPEC_TOOL_NAME = "spec";
 const SESSION_MODE_KEY = "runtimeMode";
 
-async function getRuntimeMode(
-  sessionId: string
-): Promise<"intake" | "plan" | "build" | null> {
+async function getRuntimeMode(sessionId: string): Promise<"intake" | "plan" | "build" | null> {
   const result = await db
     .select()
     .from(toolSessions)
@@ -242,12 +240,7 @@ export async function listTaskSessions(options?: {
         .where(and(...conditions))
         .orderBy(desc(taskSessions.last_activity_at))
         .all()
-    : db
-        .select()
-        .from(taskSessions)
-        .orderBy(desc(taskSessions.last_activity_at))
-        .all()
-  );
+    : db.select().from(taskSessions).orderBy(desc(taskSessions.last_activity_at)).all());
 
   return Promise.all(
     results.map(async row => ({

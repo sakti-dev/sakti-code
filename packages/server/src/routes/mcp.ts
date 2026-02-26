@@ -5,16 +5,21 @@
  */
 
 import { Hono } from "hono";
+import { z } from "zod";
 import type { Env } from "../index";
+import { zValidator } from "../shared/controller/http/validators.js";
 import { resolveDirectory } from "./_shared/directory-resolver";
 
 const mcpRouter = new Hono<Env>();
+const mcpQuerySchema = z.object({
+  directory: z.string().optional(),
+});
 
 /**
  * Get MCP server status
  */
-mcpRouter.get("/api/mcp/status", async c => {
-  const directory = c.req.query("directory")?.trim();
+mcpRouter.get("/api/mcp/status", zValidator("query", mcpQuerySchema), async c => {
+  const directory = c.req.valid("query").directory?.trim();
 
   if (directory === "") {
     return c.json({ error: "Directory parameter required" }, 400);

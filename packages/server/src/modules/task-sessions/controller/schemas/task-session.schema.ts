@@ -49,8 +49,3 @@ export const ListTaskSessionsQuerySchema = z.object({
 export const TaskSessionParamsSchema = z.object({
   taskSessionId: z.string().uuid(),
 });
-
-export const migrationCheckpoint = {
-  task: "Create task-session schemas",
-  status: "implemented-minimally",
-} as const;

@@ -8,28 +8,29 @@
  */
 
 import { Hono } from "hono";
+import { z } from "zod";
 import { fileIndex } from "../services/file-index";
 import { fileWatcher } from "../services/file-watcher";
+import { zValidator } from "../shared/controller/http/validators.js";
 
 const filesRouter = new Hono();
 
-filesRouter.get("/api/files/search", async c => {
-  const directory = c.req.query("directory");
-  const query = c.req.query("query") || "";
-  const rawLimit = c.req.query("limit");
-  const normalizedLimit = rawLimit?.trim();
-  const limit = normalizedLimit === undefined ? 20 : Number.parseInt(normalizedLimit, 10);
+const searchQuerySchema = z.object({
+  directory: z.string().min(1),
+  query: z.string().optional().default(""),
+  limit: z.coerce.number().int().min(1).max(1000).optional().default(20),
+});
 
-  if (!directory) {
-    return c.json({ error: "directory parameter required" }, 400);
-  }
+const statusQuerySchema = z.object({
+  directory: z.string().optional(),
+});
 
-  if (
-    normalizedLimit !== undefined &&
-    (!/^\d+$/.test(normalizedLimit) || !Number.isFinite(limit) || limit < 1 || limit > 1000)
-  ) {
-    return c.json({ error: "invalid limit parameter" }, 400);
-  }
+const watchBodySchema = z.object({
+  directory: z.string().min(1),
+});
+
+filesRouter.get("/api/files/search", zValidator("query", searchQuerySchema), async c => {
+  const { directory, query, limit } = c.req.valid("query");
 
   // Lazily bootstrap file indexing on first search for this directory.
   // This ensures context search works after app restart without a separate watch call.
@@ -57,9 +58,8 @@ filesRouter.get("/api/files/search", async c => {
   });
 });
 
-filesRouter.get("/api/files/status", async c => {
-  const directory = c.req.query("directory");
-
+filesRouter.get("/api/files/status", zValidator("query", statusQuerySchema), async c => {
+  const { directory } = c.req.valid("query");
   if (!directory) {
     return c.json({
       watchers: [],
@@ -73,12 +73,8 @@ filesRouter.get("/api/files/status", async c => {
   });
 });
 
-filesRouter.post("/api/files/watch", async c => {
-  const { directory } = await c.req.json().catch(() => ({}));
-
-  if (!directory) {
-    return c.json({ error: "directory required in body" }, 400);
-  }
+filesRouter.post("/api/files/watch", zValidator("json", watchBodySchema), async c => {
+  const { directory } = c.req.valid("json");
 
   try {
     await fileWatcher.watch(directory);
@@ -98,12 +94,8 @@ filesRouter.post("/api/files/watch", async c => {
   }
 });
 
-filesRouter.delete("/api/files/watch", async c => {
-  const { directory } = await c.req.json().catch(() => ({}));
-
-  if (!directory) {
-    return c.json({ error: "directory required in body" }, 400);
-  }
+filesRouter.delete("/api/files/watch", zValidator("json", watchBodySchema), async c => {
+  const { directory } = c.req.valid("json");
 
   try {
     await fileWatcher.unwatch(directory);

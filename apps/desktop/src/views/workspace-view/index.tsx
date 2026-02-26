@@ -1,20 +1,20 @@
 import { cn } from "@/utils";
+import { transitionSessionMode } from "@sakti-code/core/session/mode-transition";
 import { MessageSquare } from "lucide-solid";
 import { createEffect, createMemo, createSignal, onMount, Show } from "solid-js";
-import { transitionSessionMode } from "@sakti-code/core/session/mode-transition";
 
-import { HomepageView } from "@/views/homepage-view/homepage-view";
 import { TopToolbar } from "@/components/top-toolbar/top-toolbar";
 import { ResizeableHandle } from "@/components/ui/resizeable-handle";
+import type { WelcomeKeypoint } from "@/components/welcome-panel/welcome-panel";
 import { useTasks } from "@/core/chat/hooks";
-import { initializeWizardWorkflowFromHomepage } from "@/core/chat/services/spec-wizard-controller";
 import { parseChatStream } from "@/core/chat/services/chat-stream-parser";
+import { initializeWizardWorkflowFromHomepage } from "@/core/chat/services/spec-wizard-controller";
 import { useWorkspace, WorkspaceChatProvider, WorkspaceProvider } from "@/state/providers";
+import { HomepageView } from "@/views/homepage-view/homepage-view";
 import Resizable from "@corvu/resizable";
 import { ChatArea } from "./chat-area/chat-area";
 import { LeftSide } from "./left-side/left-side";
 import { ContextPanel } from "./right-side/right-side";
-import type { WelcomeKeypoint } from "@/components/welcome-panel/welcome-panel";
 
 function WorkspaceLayout() {
   const ctx = useWorkspace();
@@ -121,20 +121,20 @@ function WorkspaceViewInner() {
 
   const validateHandoff = (
     value: unknown
-  ):
-    | {
-        title: string;
-        specType: "comprehensive" | "quick";
-        initialSummary: string;
-        handoffContext: string;
-      }
-    | null => {
+  ): {
+    title: string;
+    specType: "comprehensive" | "quick";
+    initialSummary: string;
+    handoffContext: string;
+  } | null => {
     if (!value || typeof value !== "object") return null;
     const candidate = value as Record<string, unknown>;
     if (typeof candidate.title !== "string" || !candidate.title.trim()) return null;
     if (candidate.specType !== "comprehensive" && candidate.specType !== "quick") return null;
-    if (typeof candidate.initialSummary !== "string" || !candidate.initialSummary.trim()) return null;
-    if (typeof candidate.handoffContext !== "string" || !candidate.handoffContext.trim()) return null;
+    if (typeof candidate.initialSummary !== "string" || !candidate.initialSummary.trim())
+      return null;
+    if (typeof candidate.handoffContext !== "string" || !candidate.handoffContext.trim())
+      return null;
     return {
       title: candidate.title,
       specType: candidate.specType,
@@ -250,7 +250,7 @@ function WorkspaceViewInner() {
         "Produce a strict JSON handoff for task session bootstrap.",
         `Spec type: ${specType}`,
         `Research summary: ${researchSummary()}`,
-        'Return JSON with keys: title, specType, initialSummary, handoffContext.',
+        "Return JSON with keys: title, specType, initialSummary, handoffContext.",
       ].join("\n");
 
       const handoffResponse = await client.chat(

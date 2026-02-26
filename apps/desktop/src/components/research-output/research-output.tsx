@@ -15,13 +15,13 @@ export interface ResearchOutputProps {
 
 export const ResearchOutput: Component<ResearchOutputProps> = props => {
   return (
-    <section class={cn("rounded-xl border border-border/40 bg-card/20 p-4", props.class)}>
+    <section class={cn("border-border/40 bg-card/20 rounded-xl border p-4", props.class)}>
       <Show when={props.loading} fallback={<SummaryBlock summary={props.summary} />}>
         <p class="text-muted-foreground text-sm">Researching your request...</p>
       </Show>
 
       <Show when={!props.loading && (props.buttons?.length ?? 0) > 0}>
-        <div class="mt-3 border-t border-border/30 pt-3">
+        <div class="border-border/30 mt-3 border-t pt-3">
           <ActionButtonPart
             part={{ type: "action_buttons", buttons: props.buttons ?? [] }}
             onAction={(action, button) => props.onAction?.(action, button)}

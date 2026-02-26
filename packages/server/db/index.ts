@@ -7,9 +7,9 @@
  * Includes automatic migration on first connection to ensure tables exist.
  */
 
+import type { Client as LibsqlClient } from "@libsql/client";
 import { registerCoreDbBindings } from "@sakti-code/shared/core-server-bridge";
 import { resolveAppPaths } from "@sakti-code/shared/paths";
-import type { Client as LibsqlClient } from "@libsql/client";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import fs from "node:fs";
 import path from "node:path";

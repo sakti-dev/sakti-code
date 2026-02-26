@@ -10,9 +10,9 @@
  * - calculateObservationThresholds: Token calculations
  */
 
+import type { ObservationalMemory } from "@/server-bridge";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ObservationalMemory } from "@/server-bridge";
 
 describe("Observational Memory Orchestration", () => {
   let storage: import("@/memory/observation/storage").ObservationalMemoryStorage;

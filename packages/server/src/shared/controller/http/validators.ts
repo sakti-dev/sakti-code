@@ -1,3 +1,6 @@
+import { zValidator as baseZValidator } from "@hono/zod-validator";
+import type { ValidationTargets } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 
 export const paginationSchema = z.object({
@@ -15,7 +18,12 @@ export const uuidParamSchema = z.object({
 
 export type UuidParamInput = z.infer<typeof uuidParamSchema>;
 
-export const migrationCheckpoint = {
-  task: "Create shared validator helpers",
-  status: "implemented-minimally",
-} as const;
+export const zValidator = <TSchema extends z.ZodSchema, TTarget extends keyof ValidationTargets>(
+  target: TTarget,
+  schema: TSchema
+) =>
+  baseZValidator(target, schema, (result, _c) => {
+    if (!result.success) {
+      throw new HTTPException(400, { cause: result.error });
+    }
+  });

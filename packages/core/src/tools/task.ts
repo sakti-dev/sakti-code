@@ -288,9 +288,7 @@ Examples:
     // build: allow all subagent types
     const runtimeMode = (await getSessionRuntimeMode(instanceContext.sessionID)) ?? "intake";
     if ((runtimeMode === "intake" || runtimeMode === "plan") && subagent_type !== "explore") {
-      throw new Error(
-        `${runtimeMode} mode can only spawn explore subagents`
-      );
+      throw new Error(`${runtimeMode} mode can only spawn explore subagents`);
     }
 
     // Get subagent configuration

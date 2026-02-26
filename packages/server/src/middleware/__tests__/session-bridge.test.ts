@@ -29,10 +29,7 @@ describe("session bridge middleware", () => {
     await db.delete(taskSessions);
 
     uuidv7Mock.mockImplementation(() => {
-      const ids = [
-        "01234567-89ab-7123-8123-456789abcdef",
-        "11111111-89ab-7123-8123-456789abcdef",
-      ];
+      const ids = ["01234567-89ab-7123-8123-456789abcdef", "11111111-89ab-7123-8123-456789abcdef"];
       return ids[callCount++] || `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`;
     });
 

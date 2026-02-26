@@ -13,6 +13,7 @@ import { z } from "zod";
 import { db } from "../../db";
 import { events } from "../../db/schema";
 import type { Env } from "../index";
+import { zValidator } from "../shared/controller/http/validators.js";
 
 const app = new Hono<Env>();
 const logger = createLogger("server:events");
@@ -67,25 +68,8 @@ interface EventsListResponse {
  * @example
  * GET /api/events?sessionId=abc123&afterSequence=42&limit=50
  */
-app.get("/api/events", async c => {
-  // Parse and validate query parameters
-  const queryResult = eventsQuerySchema.safeParse({
-    sessionId: c.req.query("sessionId"),
-    afterSequence: c.req.query("afterSequence"),
-    afterEventId: c.req.query("afterEventId"),
-    limit: c.req.query("limit"),
-  });
-
-  if (!queryResult.success) {
-    const formattedErrors = queryResult.error.issues.map(issue => ({
-      path: issue.path.join("."),
-      message: issue.message,
-    }));
-    logger.warn("Invalid events query", { errors: formattedErrors });
-    return c.json({ error: "Invalid query parameters", details: formattedErrors }, 400);
-  }
-
-  const { sessionId, afterSequence, afterEventId, limit } = queryResult.data;
+app.get("/api/events", zValidator("query", eventsQuerySchema), async c => {
+  const { sessionId, afterSequence, afterEventId, limit } = c.req.valid("query");
 
   logger.debug("Fetching events", { sessionId, afterSequence, afterEventId, limit });
 

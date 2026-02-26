@@ -75,8 +75,3 @@ export async function touchWorkspace(id: string): Promise<Workspace | null> {
 export async function deleteWorkspace(id: string): Promise<void> {
   await workspaceRepository.delete(id);
 }
-
-export const migrationCheckpoint = {
-  task: "Create workspace usecases",
-  status: "implemented-minimally",
-} as const;

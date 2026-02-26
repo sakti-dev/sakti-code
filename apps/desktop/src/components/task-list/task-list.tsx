@@ -32,7 +32,7 @@ export const TaskList: Component<TaskListProps> = props => {
         value={query()}
         onInput={event => setQuery(event.currentTarget.value)}
         placeholder="Search tasks"
-        class="mb-3 w-full rounded-lg border border-border/40 bg-background/60 px-3 py-2 text-sm outline-none"
+        class="border-border/40 bg-background/60 mb-3 w-full rounded-lg border px-3 py-2 text-sm outline-none"
         aria-label="Search tasks"
       />
 
@@ -54,7 +54,7 @@ export const TaskList: Component<TaskListProps> = props => {
 };
 
 const EmptyState: Component = () => (
-  <div class="text-muted-foreground rounded-lg border border-dashed border-border/40 px-4 py-8 text-center text-sm">
+  <div class="text-muted-foreground border-border/40 rounded-lg border border-dashed px-4 py-8 text-center text-sm">
     No task sessions found
   </div>
 );

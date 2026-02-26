@@ -7,6 +7,7 @@ import { createLogger } from "@sakti-code/shared/logger";
 import { Hono } from "hono";
 import { z } from "zod";
 import { QuestionRejected, QuestionReplied, publish } from "../bus";
+import { zValidator } from "../shared/controller/http/validators.js";
 
 type Env = {
   Variables: {
@@ -34,11 +35,10 @@ app.get("/pending", c => {
   return c.json({ pending });
 });
 
-app.post("/reply", async c => {
+app.post("/reply", zValidator("json", replySchema), async c => {
   const requestId = c.get("requestId");
   try {
-    const body = await c.req.json();
-    const { id, reply } = replySchema.parse(body);
+    const { id, reply } = c.req.valid("json");
 
     const questionMgr = QuestionManager.getInstance();
     const pending = questionMgr.getPendingRequests().find(request => request.id === id);
@@ -71,11 +71,10 @@ app.post("/reply", async c => {
   }
 });
 
-app.post("/reject", async c => {
+app.post("/reject", zValidator("json", rejectSchema), async c => {
   const requestId = c.get("requestId");
   try {
-    const body = await c.req.json();
-    const { id, reason } = rejectSchema.parse(body);
+    const { id, reason } = c.req.valid("json");
 
     const questionMgr = QuestionManager.getInstance();
     const pending = questionMgr.getPendingRequests().find(request => request.id === id);

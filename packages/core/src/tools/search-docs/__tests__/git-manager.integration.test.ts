@@ -109,7 +109,7 @@ jkl012\trefs/tags/v3.0.0
 
   describe("clone", () => {
     it("clones a repository to a local path", async () => {
-      const result = await withInstance(() =>
+      const result = (await withInstance(() =>
         gitManager.clone({
           url: "https://github.com/vercel/ai",
           branch: "main",
@@ -117,7 +117,12 @@ jkl012\trefs/tags/v3.0.0
           depth: 1,
           quiet: true,
         })
-      ) as { success: boolean; path?: string; commit?: string; error?: { code: string; message: string } | undefined };
+      )) as {
+        success: boolean;
+        path?: string;
+        commit?: string;
+        error?: { code: string; message: string } | undefined;
+      };
 
       expect(result.success).toBe(true);
       expect(result.path).toBeDefined();
@@ -126,7 +131,7 @@ jkl012\trefs/tags/v3.0.0
     });
 
     it("supports sparse checkout for monorepos", async () => {
-      const result = await withInstance(() =>
+      const result = (await withInstance(() =>
         gitManager.clone({
           url: "https://github.com/vercel/ai",
           branch: "main",
@@ -134,14 +139,19 @@ jkl012\trefs/tags/v3.0.0
           depth: 1,
           quiet: true,
         })
-      ) as { success: boolean; path?: string; commit?: string; error?: { code: string; message: string } | undefined };
+      )) as {
+        success: boolean;
+        path?: string;
+        commit?: string;
+        error?: { code: string; message: string } | undefined;
+      };
 
       expect(result.success).toBe(true);
       expect(result.path).toBeDefined();
     });
 
     it("handles invalid URLs gracefully", async () => {
-      const result = await withInstance(() =>
+      const result = (await withInstance(() =>
         gitManager.clone({
           url: "https://github.com/nonexistent/repo-xyz-123",
           branch: "main",
@@ -149,7 +159,12 @@ jkl012\trefs/tags/v3.0.0
           depth: 1,
           quiet: true,
         })
-      ) as { success: boolean; path?: string; commit?: string; error?: { code: string; message: string; hint?: string } | undefined };
+      )) as {
+        success: boolean;
+        path?: string;
+        commit?: string;
+        error?: { code: string; message: string; hint?: string } | undefined;
+      };
 
       expect(result.success).toBe(false);
       expect(result.path).toBeUndefined();
@@ -230,9 +245,9 @@ jkl012\trefs/tags/v3.0.0
     });
 
     it("handles invalid repository URLs gracefully", async () => {
-      const tags = await withInstance(() =>
+      const tags = (await withInstance(() =>
         gitManager.fetchTags("https://github.com/nonexistent-repo-xyz-123")
-      ) as string[];
+      )) as string[];
 
       expect(Array.isArray(tags)).toBe(true);
       expect(tags.length).toBe(0);

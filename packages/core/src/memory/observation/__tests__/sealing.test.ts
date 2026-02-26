@@ -12,8 +12,8 @@
  * - getMessageSealedAt: Gets seal timestamp
  */
 
-import { describe, expect, it } from "vitest";
 import type { SealedMessage } from "@/memory/observation/sealing";
+import { describe, expect, it } from "vitest";
 
 describe("Message Sealing System", () => {
   describe("ObservationMarkers", () => {
@@ -170,8 +170,7 @@ describe("Message Sealing System", () => {
 
   describe("findLastCompletedObservationBoundary", () => {
     it("should return -1 when no end marker exists", async () => {
-      const { findLastCompletedObservationBoundary } =
-        await import("@/memory/observation/sealing");
+      const { findLastCompletedObservationBoundary } = await import("@/memory/observation/sealing");
       const message: SealedMessage = {
         id: "msg-1",
         role: "user" as const,
@@ -303,8 +302,7 @@ describe("Message Sealing System", () => {
 
   describe("isMessageSealed", () => {
     it("should return true for sealed message", async () => {
-      const { isMessageSealed, sealMessage } =
-        await import("@/memory/observation/sealing");
+      const { isMessageSealed, sealMessage } = await import("@/memory/observation/sealing");
       const message: SealedMessage = {
         id: "msg-1",
         role: "user" as const,
@@ -334,8 +332,7 @@ describe("Message Sealing System", () => {
 
   describe("getMessageSealedAt", () => {
     it("should return timestamp for sealed message", async () => {
-      const { getMessageSealedAt, sealMessage } =
-        await import("@/memory/observation/sealing");
+      const { getMessageSealedAt, sealMessage } = await import("@/memory/observation/sealing");
       const message: SealedMessage = {
         id: "msg-1",
         role: "user" as const,

@@ -7,8 +7,3 @@ const app = new Hono<Env>();
 app.route("/", sessionDataRoutes);
 
 export { app as sessionDataRoutes };
-
-export const migrationCheckpoint = {
-  task: "Create session data route module",
-  status: "implemented-minimally",
-} as const;

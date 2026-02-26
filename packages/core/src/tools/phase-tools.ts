@@ -10,8 +10,8 @@ import { AgentType } from "../agent/workflow/types";
 import { createTools, ToolName } from "./registry";
 
 /**
-  * Tool names for read-only operations (intake mode)
-  */
+ * Tool names for read-only operations (intake mode)
+ */
 const INTAKE_TOOLS: ToolName[] = [
   "read",
   "ls",
@@ -27,8 +27,8 @@ const INTAKE_TOOLS: ToolName[] = [
 ];
 
 /**
-  * Tool names for read-only operations (plan mode)
-  */
+ * Tool names for read-only operations (plan mode)
+ */
 const READ_ONLY_TOOLS: ToolName[] = [
   ...INTAKE_TOOLS,
   // Spec phase tools (read-only for plan mode)
@@ -58,15 +58,15 @@ const READ_WRITE_TOOLS: ToolName[] = [
 ];
 
 /**
-  * Get tools for a specific agent phase
-  *
-  * - explore: Read-only tools for codebase exploration (used by intake runtime mode)
-  * - plan: Read-only tools for planning and research
-  * - build: Full tool access for implementation
-  *
-  * @param type - The agent type/phase
-  * @returns Object containing tools for the phase
-  */
+ * Get tools for a specific agent phase
+ *
+ * - explore: Read-only tools for codebase exploration (used by intake runtime mode)
+ * - plan: Read-only tools for planning and research
+ * - build: Full tool access for implementation
+ *
+ * @param type - The agent type/phase
+ * @returns Object containing tools for the phase
+ */
 export function getToolsForPhase(type: AgentType): Record<string, unknown> {
   switch (type) {
     case "explore":
@@ -81,8 +81,8 @@ export function getToolsForPhase(type: AgentType): Record<string, unknown> {
 }
 
 /**
-  * Export tool name lists for testing
-  */
+ * Export tool name lists for testing
+ */
 export const INTAKE_TOOLS_EXPORT = INTAKE_TOOLS;
 export const EXPLORE_TOOLS = INTAKE_TOOLS;
 export const BUILD_TOOLS = READ_WRITE_TOOLS;

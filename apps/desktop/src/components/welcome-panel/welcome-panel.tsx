@@ -33,17 +33,17 @@ function formatRelativeTime(isoDate: string): string {
 
 export const WelcomePanel: Component<WelcomePanelProps> = props => {
   const heading = () => props.title ?? "Welcome back";
-  const subheading =
-    () => props.subtitle ?? "Start a new task from the homepage or continue a recent one.";
+  const subheading = () =>
+    props.subtitle ?? "Start a new task from the homepage or continue a recent one.";
   const keypoints = () => props.keypoints ?? [];
 
   return (
-    <section class={cn("rounded-2xl border border-border/40 bg-card/20 p-5", props.class)}>
+    <section class={cn("border-border/40 bg-card/20 rounded-2xl border p-5", props.class)}>
       <h1 class="text-foreground text-xl font-semibold">{heading()}</h1>
       <p class="text-muted-foreground mt-1 text-sm">{subheading()}</p>
 
       <Show when={keypoints().length > 0}>
-        <div class="mt-4 border-t border-border/30 pt-4" data-section="progress">
+        <div class="border-border/30 mt-4 border-t pt-4" data-section="progress">
           <p class="text-muted-foreground mb-3 text-xs font-medium uppercase tracking-wide">
             Recent progress
           </p>
@@ -51,7 +51,7 @@ export const WelcomePanel: Component<WelcomePanelProps> = props => {
           <div class="flex flex-col gap-2">
             <For each={keypoints()}>
               {keypoint => (
-                <article class="rounded-lg border border-border/30 bg-background/60 p-3">
+                <article class="border-border/30 bg-background/60 rounded-lg border p-3">
                   <div class="flex items-center justify-between gap-3">
                     <p class="text-foreground text-sm font-medium">{keypoint.taskTitle}</p>
                     <span class="text-muted-foreground text-xs">

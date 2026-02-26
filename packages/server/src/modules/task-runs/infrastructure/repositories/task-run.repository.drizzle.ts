@@ -147,8 +147,3 @@ export class DrizzleTaskRunRepository implements ITaskRunRepository {
 }
 
 export const taskRunRepository = new DrizzleTaskRunRepository();
-
-export const migrationCheckpoint = {
-  task: "Create task-run drizzle repository",
-  status: "implemented-minimally",
-} as const;

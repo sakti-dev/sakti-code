@@ -14,7 +14,10 @@ const sessionDbAdapter = {
   query: {
     sessions: {
       findMany: async (_opts?: {
-        orderBy?: (taskSessions: unknown, { desc }: { desc: (col: unknown) => unknown }) => unknown[];
+        orderBy?: (
+          taskSessions: unknown,
+          { desc }: { desc: (col: unknown) => unknown }
+        ) => unknown[];
       }) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const results = await (db as any)

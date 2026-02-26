@@ -30,34 +30,37 @@ describe("WorkspaceProvider task-session state", () => {
     mockNavigate.mockReset();
     localStorage.clear();
 
-    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
-      const url = String(input);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
 
-      if (url.includes("/api/workspaces/ws-1")) {
-        return Promise.resolve(
-          mockJsonResponse({
-            workspace: {
-              id: "ws-1",
-              path: "/repo",
-              name: "Repo",
-              status: "active",
-              baseBranch: null,
-              repoPath: null,
-              isMerged: false,
-              archivedAt: null,
-              createdAt: new Date().toISOString(),
-              lastOpenedAt: new Date().toISOString(),
-            },
-          })
-        );
-      }
+        if (url.includes("/api/workspaces/ws-1")) {
+          return Promise.resolve(
+            mockJsonResponse({
+              workspace: {
+                id: "ws-1",
+                path: "/repo",
+                name: "Repo",
+                status: "active",
+                baseBranch: null,
+                repoPath: null,
+                isMerged: false,
+                archivedAt: null,
+                createdAt: new Date().toISOString(),
+                lastOpenedAt: new Date().toISOString(),
+              },
+            })
+          );
+        }
 
-      if (url.includes("/api/task-sessions")) {
-        return Promise.resolve(mockJsonResponse({ taskSessions: [] }));
-      }
+        if (url.includes("/api/task-sessions")) {
+          return Promise.resolve(mockJsonResponse({ taskSessions: [] }));
+        }
 
-      throw new Error(`Unhandled fetch URL in test: ${url}`);
-    }));
+        throw new Error(`Unhandled fetch URL in test: ${url}`);
+      })
+    );
 
     (window as Window & typeof globalThis & { saktiCodeAPI: unknown }).saktiCodeAPI = {
       server: {
@@ -118,52 +121,55 @@ describe("WorkspaceProvider task-session state", () => {
   });
 
   it("does not auto-select first task session", async () => {
-    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
-      const url = String(input);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
 
-      if (url.includes("/api/workspaces/ws-1")) {
-        return Promise.resolve(
-          mockJsonResponse({
-            workspace: {
-              id: "ws-1",
-              path: "/repo",
-              name: "Repo",
-              status: "active",
-              baseBranch: null,
-              repoPath: null,
-              isMerged: false,
-              archivedAt: null,
-              createdAt: new Date().toISOString(),
-              lastOpenedAt: new Date().toISOString(),
-            },
-          })
-        );
-      }
-
-      if (url.includes("/api/task-sessions")) {
-        return Promise.resolve(
-          mockJsonResponse({
-            taskSessions: [
-              {
-                taskSessionId: "ts-1",
-                resourceId: "res-1",
-                threadId: "thread-1",
-                workspaceId: "ws-1",
-                title: "Task Session 1",
-                status: "researching",
-                specType: null,
-                sessionKind: "task",
+        if (url.includes("/api/workspaces/ws-1")) {
+          return Promise.resolve(
+            mockJsonResponse({
+              workspace: {
+                id: "ws-1",
+                path: "/repo",
+                name: "Repo",
+                status: "active",
+                baseBranch: null,
+                repoPath: null,
+                isMerged: false,
+                archivedAt: null,
                 createdAt: new Date().toISOString(),
-                lastAccessed: new Date().toISOString(),
-                lastActivityAt: new Date().toISOString(),
+                lastOpenedAt: new Date().toISOString(),
               },
-            ],
-          })
-        );
-      }
+            })
+          );
+        }
 
-      throw new Error(`Unhandled fetch URL in test: ${url}`);
-    }));
+        if (url.includes("/api/task-sessions")) {
+          return Promise.resolve(
+            mockJsonResponse({
+              taskSessions: [
+                {
+                  taskSessionId: "ts-1",
+                  resourceId: "res-1",
+                  threadId: "thread-1",
+                  workspaceId: "ws-1",
+                  title: "Task Session 1",
+                  status: "researching",
+                  specType: null,
+                  sessionKind: "task",
+                  createdAt: new Date().toISOString(),
+                  lastAccessed: new Date().toISOString(),
+                  lastActivityAt: new Date().toISOString(),
+                },
+              ],
+            })
+          );
+        }
+
+        throw new Error(`Unhandled fetch URL in test: ${url}`);
+      })
+    );
 
     mount();
 
@@ -176,51 +182,54 @@ describe("WorkspaceProvider task-session state", () => {
   });
 
   it("applies task-session.updated SSE payload without full refetch", async () => {
-    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.includes("/api/workspaces/ws-1")) {
-        return Promise.resolve(
-          mockJsonResponse({
-            workspace: {
-              id: "ws-1",
-              path: "/repo",
-              name: "Repo",
-              status: "active",
-              baseBranch: null,
-              repoPath: null,
-              isMerged: false,
-              archivedAt: null,
-              createdAt: new Date().toISOString(),
-              lastOpenedAt: new Date().toISOString(),
-            },
-          })
-        );
-      }
-
-      if (url.includes("/api/task-sessions")) {
-        return Promise.resolve(
-          mockJsonResponse({
-            taskSessions: [
-              {
-                taskSessionId: "ts-1",
-                resourceId: "res-1",
-                threadId: "thread-1",
-                workspaceId: "ws-1",
-                title: "Original title",
-                status: "researching",
-                specType: null,
-                sessionKind: "task",
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/workspaces/ws-1")) {
+          return Promise.resolve(
+            mockJsonResponse({
+              workspace: {
+                id: "ws-1",
+                path: "/repo",
+                name: "Repo",
+                status: "active",
+                baseBranch: null,
+                repoPath: null,
+                isMerged: false,
+                archivedAt: null,
                 createdAt: new Date().toISOString(),
-                lastAccessed: new Date().toISOString(),
-                lastActivityAt: "2025-02-25T00:00:00.000Z",
+                lastOpenedAt: new Date().toISOString(),
               },
-            ],
-          })
-        );
-      }
+            })
+          );
+        }
 
-      throw new Error(`Unhandled fetch URL in test: ${url}`);
-    }));
+        if (url.includes("/api/task-sessions")) {
+          return Promise.resolve(
+            mockJsonResponse({
+              taskSessions: [
+                {
+                  taskSessionId: "ts-1",
+                  resourceId: "res-1",
+                  threadId: "thread-1",
+                  workspaceId: "ws-1",
+                  title: "Original title",
+                  status: "researching",
+                  specType: null,
+                  sessionKind: "task",
+                  createdAt: new Date().toISOString(),
+                  lastAccessed: new Date().toISOString(),
+                  lastActivityAt: "2025-02-25T00:00:00.000Z",
+                },
+              ],
+            })
+          );
+        }
+
+        throw new Error(`Unhandled fetch URL in test: ${url}`);
+      })
+    );
 
     mount();
 

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Env } from "../../../../index.js";
+import { zValidator } from "../../../../shared/controller/http/validators.js";
 import {
   archiveWorkspace as archiveWorkspaceUseCase,
   createWorkspace as createWorkspaceUseCase,
@@ -46,20 +47,28 @@ const archiveWorkspaceSchema = z.object({
   isMerged: z.boolean().optional(),
 });
 
-workspacesApp.get("/api/workspaces/by-path", async c => {
-  const path = c.req.query("path");
-
-  if (!path) {
-    return c.json({ error: "Path parameter required" }, 400);
-  }
-
-  const workspace = await getWorkspaceByPathUseCase(path);
-  if (!workspace) {
-    return c.json({ error: "Workspace not found" }, 404);
-  }
-
-  return c.json({ workspace: serializeWorkspace(workspace) });
+const workspaceIdParamSchema = z.object({
+  id: z.string().min(1),
 });
+
+const workspacePathQuerySchema = z.object({
+  path: z.string().min(1),
+});
+
+workspacesApp.get(
+  "/api/workspaces/by-path",
+  zValidator("query", workspacePathQuerySchema),
+  async c => {
+    const { path } = c.req.valid("query");
+
+    const workspace = await getWorkspaceByPathUseCase(path);
+    if (!workspace) {
+      return c.json({ error: "Workspace not found" }, 404);
+    }
+
+    return c.json({ workspace: serializeWorkspace(workspace) });
+  }
+);
 
 workspacesApp.get("/api/workspaces", async c => {
   const activeWorkspaces = await listWorkspacesUseCase({ status: "active" });
@@ -71,8 +80,8 @@ workspacesApp.get("/api/workspaces/archived", async c => {
   return c.json({ workspaces: archivedWorkspaces.map(serializeWorkspace) });
 });
 
-workspacesApp.get("/api/workspaces/:id", async c => {
-  const { id } = c.req.param();
+workspacesApp.get("/api/workspaces/:id", zValidator("param", workspaceIdParamSchema), async c => {
+  const { id } = c.req.valid("param");
 
   const workspace = await getWorkspaceByIdUseCase(id);
   if (!workspace) {
@@ -82,15 +91,8 @@ workspacesApp.get("/api/workspaces/:id", async c => {
   return c.json({ workspace: serializeWorkspace(workspace) });
 });
 
-workspacesApp.post("/api/workspaces", async c => {
-  const body = await c.req.json().catch(() => ({}));
-  const parsed = createWorkspaceSchema.safeParse(body);
-
-  if (!parsed.success) {
-    return c.json({ error: "Invalid request body", details: parsed.error }, 400);
-  }
-
-  const { path, name } = parsed.data;
+workspacesApp.post("/api/workspaces", zValidator("json", createWorkspaceSchema), async c => {
+  const { path, name } = c.req.valid("json");
 
   const result = await createWorkspaceUseCase({ path, name });
   return c.json(
@@ -99,82 +101,98 @@ workspacesApp.post("/api/workspaces", async c => {
   );
 });
 
-workspacesApp.put("/api/workspaces/:id", async c => {
-  const { id } = c.req.param();
-  const body = await c.req.json().catch(() => ({}));
-  const parsed = updateWorkspaceSchema.safeParse(body);
+workspacesApp.put(
+  "/api/workspaces/:id",
+  zValidator("param", workspaceIdParamSchema),
+  zValidator("json", updateWorkspaceSchema),
+  async c => {
+    const { id } = c.req.valid("param");
+    const parsed = c.req.valid("json");
 
-  if (!parsed.success) {
-    return c.json({ error: "Invalid request body" }, 400);
+    const existing = await getWorkspaceByIdUseCase(id);
+    if (!existing) {
+      return c.json({ error: "Workspace not found" }, 404);
+    }
+
+    const updateData: { name?: string } = {};
+    if (parsed.name) {
+      updateData.name = parsed.name;
+    }
+
+    const updated = await updateWorkspaceUseCase(id, updateData);
+
+    return c.json({ workspace: serializeWorkspace(updated) });
   }
+);
 
-  const existing = await getWorkspaceByIdUseCase(id);
-  if (!existing) {
-    return c.json({ error: "Workspace not found" }, 404);
+workspacesApp.put(
+  "/api/workspaces/:id/archive",
+  zValidator("param", workspaceIdParamSchema),
+  zValidator("json", archiveWorkspaceSchema),
+  async c => {
+    const { id } = c.req.valid("param");
+    const parsed = c.req.valid("json");
+
+    const existing = await getWorkspaceByIdUseCase(id);
+    if (!existing) {
+      return c.json({ error: "Workspace not found" }, 404);
+    }
+
+    const updated = await archiveWorkspaceUseCase(id, parsed);
+
+    return c.json({ workspace: serializeWorkspace(updated) });
   }
+);
 
-  const updateData: { name?: string } = {};
-  if (parsed.data.name) {
-    updateData.name = parsed.data.name;
+workspacesApp.put(
+  "/api/workspaces/:id/restore",
+  zValidator("param", workspaceIdParamSchema),
+  async c => {
+    const { id } = c.req.valid("param");
+
+    const existing = await getWorkspaceByIdUseCase(id);
+    if (!existing) {
+      return c.json({ error: "Workspace not found" }, 404);
+    }
+
+    const updated = await restoreWorkspaceUseCase(id);
+
+    return c.json({ workspace: serializeWorkspace(updated) });
   }
+);
 
-  const updated = await updateWorkspaceUseCase(id, updateData);
+workspacesApp.put(
+  "/api/workspaces/:id/touch",
+  zValidator("param", workspaceIdParamSchema),
+  async c => {
+    const { id } = c.req.valid("param");
 
-  return c.json({ workspace: serializeWorkspace(updated) });
-});
+    const existing = await getWorkspaceByIdUseCase(id);
+    if (!existing) {
+      return c.json({ error: "Workspace not found" }, 404);
+    }
 
-workspacesApp.put("/api/workspaces/:id/archive", async c => {
-  const { id } = c.req.param();
-  const body = await c.req.json().catch(() => ({}));
-  const parsed = archiveWorkspaceSchema.safeParse(body);
+    const updated = await touchWorkspaceUseCase(id);
 
-  const existing = await getWorkspaceByIdUseCase(id);
-  if (!existing) {
-    return c.json({ error: "Workspace not found" }, 404);
+    return c.json({ workspace: serializeWorkspace(updated) });
   }
+);
 
-  const updated = await archiveWorkspaceUseCase(id, parsed.success ? parsed.data : undefined);
+workspacesApp.delete(
+  "/api/workspaces/:id",
+  zValidator("param", workspaceIdParamSchema),
+  async c => {
+    const { id } = c.req.valid("param");
 
-  return c.json({ workspace: serializeWorkspace(updated) });
-});
+    const existing = await getWorkspaceByIdUseCase(id);
+    if (!existing) {
+      return c.json({ error: "Workspace not found" }, 404);
+    }
 
-workspacesApp.put("/api/workspaces/:id/restore", async c => {
-  const { id } = c.req.param();
+    await deleteWorkspaceUseCase(id);
 
-  const existing = await getWorkspaceByIdUseCase(id);
-  if (!existing) {
-    return c.json({ error: "Workspace not found" }, 404);
+    return c.json({ success: true });
   }
-
-  const updated = await restoreWorkspaceUseCase(id);
-
-  return c.json({ workspace: serializeWorkspace(updated) });
-});
-
-workspacesApp.put("/api/workspaces/:id/touch", async c => {
-  const { id } = c.req.param();
-
-  const existing = await getWorkspaceByIdUseCase(id);
-  if (!existing) {
-    return c.json({ error: "Workspace not found" }, 404);
-  }
-
-  const updated = await touchWorkspaceUseCase(id);
-
-  return c.json({ workspace: serializeWorkspace(updated) });
-});
-
-workspacesApp.delete("/api/workspaces/:id", async c => {
-  const { id } = c.req.param();
-
-  const existing = await getWorkspaceByIdUseCase(id);
-  if (!existing) {
-    return c.json({ error: "Workspace not found" }, 404);
-  }
-
-  await deleteWorkspaceUseCase(id);
-
-  return c.json({ success: true });
-});
+);
 
 export { workspacesApp };

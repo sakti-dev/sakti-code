@@ -12,8 +12,13 @@
 import { Instance } from "@sakti-code/core/server";
 import type { Context, Next } from "hono";
 import { v7 as uuidv7 } from "uuid";
-import { createTaskSession, createTaskSessionWithId, getTaskSession, touchTaskSession } from "../../db/task-sessions";
 import type { TaskSessionRecord } from "../../db/task-sessions";
+import {
+  createTaskSession,
+  createTaskSessionWithId,
+  getTaskSession,
+  touchTaskSession,
+} from "../../db/task-sessions";
 import type { Env } from "../index";
 
 const logger = {
@@ -72,11 +77,7 @@ export async function sessionBridge(c: Context<Env>, next: Next): Promise<Respon
     const workspace = await detectWorkspaceFromRequest(c);
     const runtimeMode = await detectRuntimeModeFromRequest(c);
     const sessionKind = runtimeMode === "intake" ? "intake" : "task";
-    const created = await createTaskSession(
-      workspace ?? "local",
-      undefined,
-      sessionKind
-    );
+    const created = await createTaskSession(workspace ?? "local", undefined, sessionKind);
 
     c.set("session", created);
     c.set("sessionIsNew", true);

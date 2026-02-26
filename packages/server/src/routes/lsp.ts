@@ -5,15 +5,20 @@
  */
 
 import { Hono } from "hono";
+import { z } from "zod";
 import type { Env } from "../index";
+import { zValidator } from "../shared/controller/http/validators.js";
 
 const lspRouter = new Hono<Env>();
+const lspQuerySchema = z.object({
+  directory: z.string().optional(),
+});
 
 /**
  * Get LSP server status
  */
-lspRouter.get("/api/lsp/status", async c => {
-  const directory = c.req.query("directory") || c.get("instanceContext")?.directory;
+lspRouter.get("/api/lsp/status", zValidator("query", lspQuerySchema), async c => {
+  const directory = c.req.valid("query").directory || c.get("instanceContext")?.directory;
 
   let servers: Array<{ id: string; name: string; root: string; status: string }> = [];
 

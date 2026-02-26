@@ -65,8 +65,3 @@ export async function createTaskRunUsecase(
 
   return { run };
 }
-
-export const migrationCheckpoint = {
-  task: "Create create task-run usecase",
-  status: "implemented-minimally",
-} as const;

@@ -102,8 +102,3 @@ export class DrizzleTaskRunEventRepository implements ITaskRunEventRepository {
 }
 
 export const taskRunEventRepository = new DrizzleTaskRunEventRepository();
-
-export const migrationCheckpoint = {
-  task: "Create task-run events repository",
-  status: "implemented-minimally",
-} as const;

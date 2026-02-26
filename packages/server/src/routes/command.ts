@@ -5,9 +5,15 @@
  */
 
 import { Hono } from "hono";
+import { z } from "zod";
 import type { Env } from "../index";
+import { zValidator } from "../shared/controller/http/validators.js";
 
 const commandRouter = new Hono<Env>();
+const commandQuerySchema = z.object({
+  category: z.string().optional(),
+  enabled: z.enum(["true", "false"]).optional(),
+});
 
 const defaultCommands = [
   {
@@ -111,9 +117,8 @@ const defaultCommands = [
 /**
  * List available commands
  */
-commandRouter.get("/api/commands", async c => {
-  const category = c.req.query("category");
-  const enabled = c.req.query("enabled");
+commandRouter.get("/api/commands", zValidator("query", commandQuerySchema), async c => {
+  const { category, enabled } = c.req.valid("query");
 
   let commands = [...defaultCommands];
 

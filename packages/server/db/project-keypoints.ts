@@ -119,14 +119,8 @@ export async function listProjectKeypointsByWorkspace(
 /**
  * Get a project keypoint by ID
  */
-export async function getProjectKeypoint(
-  id: string
-): Promise<ProjectKeypointRecord | null> {
-  const result = await db
-    .select()
-    .from(projectKeypoints)
-    .where(eq(projectKeypoints.id, id))
-    .get();
+export async function getProjectKeypoint(id: string): Promise<ProjectKeypointRecord | null> {
+  const result = await db.select().from(projectKeypoints).where(eq(projectKeypoints.id, id)).get();
 
   if (!result) {
     return null;
