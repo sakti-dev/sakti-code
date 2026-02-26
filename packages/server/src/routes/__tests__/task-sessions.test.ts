@@ -13,6 +13,8 @@ describe("task-sessions routes", () => {
   beforeEach(async () => {
     process.env.SAKTI_CODE_USERNAME = "testuser";
     process.env.SAKTI_CODE_PASSWORD = "testpass";
+    const db = await getDb();
+    await db.delete(taskSessions);
   });
 
   async function cleanupTaskSessions() {
@@ -33,8 +35,6 @@ describe("task-sessions routes", () => {
 
   describe("GET /api/task-sessions", () => {
     it("should list task sessions filtered by kind", async () => {
-      await cleanupTaskSessions();
-
       const db = await getDb();
       const now = new Date();
       await db.insert(taskSessions).values([
@@ -62,7 +62,7 @@ describe("task-sessions routes", () => {
         },
       ]);
 
-      const res = await app.request("/api/task-sessions", {
+      const res = await app.request("/api/task-sessions?kind=task", {
         headers: { Authorization: `Basic ${testCredentials}` },
       });
 
@@ -70,8 +70,6 @@ describe("task-sessions routes", () => {
       const json = await res.json();
       expect(json.taskSessions).toHaveLength(1);
       expect(json.taskSessions[0].sessionKind).toBe("task");
-
-      await cleanupTaskSessions();
     });
 
     it("should reject invalid kind filter", async () => {
