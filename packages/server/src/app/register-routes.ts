@@ -1,9 +1,9 @@
 import type { Hono } from "hono";
 import type { Env } from "../index.js";
+import { healthRoutes } from "../modules/health/controller/routes/index.js";
 
-export function registerRoutes(_app: Hono<Env>): void {
-  // Routes will be registered here as modules are migrated
-  // This file serves as the central route registration point
+export function registerRoutes(app: Hono<Env>): void {
+  app.route("/", healthRoutes);
 }
 
 export const migrationCheckpoint = {
