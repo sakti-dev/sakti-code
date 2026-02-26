@@ -253,6 +253,143 @@ describe("useChat", () => {
     });
   });
 
+  it("uses background task runs for non-intake runtime modes", async () => {
+    const { useChat } = await import("@/core/chat/hooks");
+    const createTaskRunSpy = vi.spyOn(mockClient, "createTaskRun").mockResolvedValue({
+      runId: "run-1",
+      taskSessionId: "session-1",
+      runtimeMode: "plan",
+      state: "queued",
+      clientRequestKey: "k1",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      queuedAt: new Date().toISOString(),
+      startedAt: null,
+      finishedAt: null,
+      cancelRequestedAt: null,
+    });
+    const listTaskRunEventsSpy = vi.spyOn(mockClient, "listTaskRunEvents").mockResolvedValue({
+      runId: "run-1",
+      events: [
+        {
+          eventId: "evt-1",
+          eventSeq: 1,
+          eventType: "run.completed",
+          payload: {},
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      lastEventSeq: 1,
+      hasMore: false,
+    });
+    const getTaskRunSpy = vi.spyOn(mockClient, "getTaskRun");
+    const cancelTaskRunSpy = vi.spyOn(mockClient, "cancelTaskRun").mockResolvedValue({
+      runId: "run-1",
+      taskSessionId: "session-1",
+      runtimeMode: "plan",
+      state: "canceled",
+      clientRequestKey: "k1",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      queuedAt: new Date().toISOString(),
+      startedAt: null,
+      finishedAt: null,
+      cancelRequestedAt: new Date().toISOString(),
+    });
+
+    await createRoot(async dispose => {
+      const chat = useChat({
+        sessionId: () => "session-1",
+        workspace: () => "/repo",
+        client: mockClient,
+        runtimeMode: () => "plan",
+      });
+
+      await chat.sendMessage("background");
+
+      expect(createTaskRunSpy).toHaveBeenCalledWith(
+        "session-1",
+        expect.objectContaining({
+          runtimeMode: "plan",
+          input: expect.objectContaining({
+            message: "background",
+            workspace: "/repo",
+          }),
+        })
+      );
+      expect(listTaskRunEventsSpy).toHaveBeenCalledWith("run-1", {
+        afterEventSeq: 0,
+        limit: 100,
+      });
+      expect(getTaskRunSpy).not.toHaveBeenCalled();
+      expect(mockChatFn).not.toHaveBeenCalled();
+
+      chat.stop();
+      expect(cancelTaskRunSpy).not.toHaveBeenCalled();
+      dispose();
+    });
+  });
+
+  it("cancels active background run when stop is called", async () => {
+    const { useChat } = await import("@/core/chat/hooks");
+    vi.spyOn(mockClient, "createTaskRun").mockResolvedValue({
+      runId: "run-2",
+      taskSessionId: "session-1",
+      runtimeMode: "build",
+      state: "queued",
+      clientRequestKey: "k2",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      queuedAt: new Date().toISOString(),
+      startedAt: null,
+      finishedAt: null,
+      cancelRequestedAt: null,
+    });
+    vi.spyOn(mockClient, "getTaskRun").mockResolvedValue({
+      runId: "run-2",
+      taskSessionId: "session-1",
+      runtimeMode: "build",
+      state: "running",
+      clientRequestKey: "k2",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      queuedAt: new Date().toISOString(),
+      startedAt: null,
+      finishedAt: null,
+      cancelRequestedAt: null,
+    });
+    const cancelTaskRunSpy = vi.spyOn(mockClient, "cancelTaskRun").mockResolvedValue({
+      runId: "run-2",
+      taskSessionId: "session-1",
+      runtimeMode: "build",
+      state: "cancel_requested",
+      clientRequestKey: "k2",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      queuedAt: new Date().toISOString(),
+      startedAt: null,
+      finishedAt: null,
+      cancelRequestedAt: new Date().toISOString(),
+    });
+
+    await createRoot(async dispose => {
+      const chat = useChat({
+        sessionId: () => "session-1",
+        workspace: () => "/repo",
+        client: mockClient,
+        runtimeMode: () => "build",
+      });
+
+      const pending = chat.sendMessage("background cancel");
+      await Promise.resolve();
+      chat.stop();
+      await pending;
+
+      expect(cancelTaskRunSpy).toHaveBeenCalledWith("run-2");
+      dispose();
+    });
+  });
+
   it("retries a user message by re-sending extracted text", async () => {
     const { useChat } = await import("@/core/chat/hooks");
     mockGetById.mockReturnValue({

@@ -62,13 +62,16 @@ import projectKeypointsRouter from "./routes/project-keypoints";
 import providerRouter from "./routes/provider";
 import questionsRouter from "./routes/questions";
 import rulesRouter from "./routes/rules";
+import runEventsRouter from "./routes/run-events";
 import sessionDataRouter from "./routes/session-data";
+import taskRunsRouter from "./routes/task-runs";
 import taskSessionsRouter from "./routes/task-sessions";
 import tasksRouter from "./routes/tasks";
 import vcsRouter from "./routes/vcs";
 import workspaceRouter from "./routes/workspace";
 import workspacesRouter from "./routes/workspaces";
 import { getServerToken, getSessionManager } from "./runtime";
+import { createChatTaskRunExecutor, TaskRunWorker } from "./services/task-run-worker";
 export { getServerToken, getSessionManager } from "./runtime";
 export { app };
 
@@ -176,7 +179,9 @@ app.route("/", rulesRouter);
 
 // Mount task sessions routes
 app.route("/", taskSessionsRouter);
+app.route("/", taskRunsRouter);
 app.route("/", tasksRouter);
+app.route("/", runEventsRouter);
 
 // Mount session data routes (historical messages)
 app.route("/", sessionDataRouter);
@@ -205,6 +210,7 @@ app.route("/", filesRouter);
 
 let currentPort = SERVER_PORT;
 let serverInstance: CloseableServer | null = null;
+let taskRunWorker: TaskRunWorker | null = null;
 
 // Server config endpoint (for renderer - protected by auth)
 app.get("/api/config", c => {
@@ -285,6 +291,18 @@ export async function startServer() {
     }
   );
 
+  if (process.env.SAKTI_CODE_BACKGROUND_RUNS_ENABLED === "true") {
+    taskRunWorker = new TaskRunWorker({
+      workerId: `worker-${process.pid}`,
+      executor: createChatTaskRunExecutor({
+        baseUrl: `http://127.0.0.1:${port}`,
+        token: getServerToken(),
+      }),
+    });
+    taskRunWorker.start();
+    logger.info("Background task run worker started", { module: "server:task-runs" });
+  }
+
   // Register cleanup with centralized shutdown manager
   shutdown.register(
     "hono-server",
@@ -295,6 +313,12 @@ export async function startServer() {
         });
         serverInstance = null;
         logger.info("Hono server closed", { module: "server:lifecycle" });
+      }
+
+      if (taskRunWorker) {
+        taskRunWorker.stop();
+        taskRunWorker = null;
+        logger.info("Background task run worker stopped", { module: "server:task-runs" });
       }
     },
     10

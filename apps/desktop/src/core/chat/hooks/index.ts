@@ -25,4 +25,5 @@ export type { TurnProjectionOptions } from "./turn-projection";
 
 export { useStatusThrottledValue } from "./use-status-throttled-value";
 
+export { monitorTaskRun } from "./use-run-events";
 export { useTasks } from "./use-tasks";

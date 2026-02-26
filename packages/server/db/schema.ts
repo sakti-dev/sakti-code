@@ -203,6 +203,103 @@ export const events = sqliteTable(
 );
 
 /**
+ * Task session runs table - durable background execution records per task session.
+ *
+ * - run_id: UUIDv7 primary key
+ * - task_session_id: parent task session (cascade delete)
+ * - runtime_mode: intake | plan | build
+ * - state: queued | running | cancel_requested | completed | failed | canceled | stale | dead
+ * - client_request_key: idempotency key scoped to task_session_id
+ * - input/metadata: JSON payload for queued execution and diagnostics
+ * - lease fields: ownership and expiry for worker heartbeats/recovery
+ */
+export const taskSessionRuns = sqliteTable(
+  "task_session_runs",
+  {
+    run_id: text("run_id").primaryKey(),
+    task_session_id: text("task_session_id")
+      .notNull()
+      .references(() => taskSessions.session_id, { onDelete: "cascade" }),
+    runtime_mode: text("runtime_mode").notNull(),
+    state: text("state").notNull().default("queued"),
+    client_request_key: text("client_request_key"),
+    input: text("input", { mode: "json" }).$type<Record<string, unknown>>(),
+    metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+    created_at: integer("created_at", { mode: "timestamp" }).notNull(),
+    updated_at: integer("updated_at", { mode: "timestamp" }).notNull(),
+    queued_at: integer("queued_at", { mode: "timestamp" }).notNull(),
+    started_at: integer("started_at", { mode: "timestamp" }),
+    finished_at: integer("finished_at", { mode: "timestamp" }),
+    attempt: integer("attempt").notNull().default(0),
+    max_attempts: integer("max_attempts").notNull().default(3),
+    lease_owner: text("lease_owner"),
+    lease_expires_at: integer("lease_expires_at", { mode: "timestamp" }),
+    last_heartbeat_at: integer("last_heartbeat_at", { mode: "timestamp" }),
+    cancel_requested_at: integer("cancel_requested_at", { mode: "timestamp" }),
+    canceled_at: integer("canceled_at", { mode: "timestamp" }),
+    error_code: text("error_code"),
+    error_message: text("error_message"),
+  },
+  table => ({
+    sessionCreatedIdx: index("task_session_runs_session_created_idx").on(
+      table.task_session_id,
+      table.created_at
+    ),
+    sessionStateIdx: index("task_session_runs_session_state_idx").on(
+      table.task_session_id,
+      table.state
+    ),
+    stateLeaseIdx: index("task_session_runs_state_lease_idx").on(
+      table.state,
+      table.lease_expires_at
+    ),
+    sessionRequestKeyIdx: uniqueIndex("task_session_runs_session_request_key").on(
+      table.task_session_id,
+      table.client_request_key
+    ),
+  })
+);
+
+/**
+ * Task run events table - append-only run-specific stream for replay/catch-up.
+ *
+ * - event_seq is monotonic per run_id
+ * - event_id is globally unique for dedupe
+ */
+export const taskRunEvents = sqliteTable(
+  "task_run_events",
+  {
+    event_id: text("event_id").primaryKey(),
+    run_id: text("run_id")
+      .notNull()
+      .references(() => taskSessionRuns.run_id, { onDelete: "cascade" }),
+    task_session_id: text("task_session_id")
+      .notNull()
+      .references(() => taskSessions.session_id, { onDelete: "cascade" }),
+    event_seq: integer("event_seq").notNull(),
+    event_type: text("event_type").notNull(),
+    dedupe_key: text("dedupe_key"),
+    payload: text("payload", { mode: "json" }).notNull().$type<Record<string, unknown>>(),
+    created_at: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  table => ({
+    runEventSeqUnique: uniqueIndex("task_run_events_run_seq_unique").on(
+      table.run_id,
+      table.event_seq
+    ),
+    runDedupeUnique: uniqueIndex("task_run_events_run_dedupe_unique").on(
+      table.run_id,
+      table.dedupe_key
+    ),
+    runEventSeqIdx: index("task_run_events_run_event_seq_idx").on(table.run_id, table.event_seq),
+    sessionEventSeqIdx: index("task_run_events_session_event_seq_idx").on(
+      table.task_session_id,
+      table.event_seq
+    ),
+  })
+);
+
+/**
  * Type definitions for TypeScript
  */
 export type TaskSession = typeof taskSessions.$inferSelect;
@@ -213,6 +310,10 @@ export type RepoCache = typeof repoCache.$inferSelect;
 export type NewRepoCache = typeof repoCache.$inferInsert;
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
+export type TaskSessionRun = typeof taskSessionRuns.$inferSelect;
+export type NewTaskSessionRun = typeof taskSessionRuns.$inferInsert;
+export type TaskRunEvent = typeof taskRunEvents.$inferSelect;
+export type NewTaskRunEvent = typeof taskRunEvents.$inferInsert;
 
 /**
  * Threads table - conversation threads for memory system

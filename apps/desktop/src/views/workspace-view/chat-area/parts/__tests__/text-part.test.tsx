@@ -137,7 +137,14 @@ describe("TextPart", () => {
     vi.useRealTimers();
 
     await vi.waitFor(() => {
-      expect(container.textContent).toContain(accumulateDeltas(deltas));
+      const rendered = container.textContent ?? "";
+      expect(rendered).toContain(
+        "Let me read the key documentation files to understand this project:"
+      );
+      expect(rendered).toContain("Backoffice GM (muatmuat)");
+      expect(rendered).toContain(
+        "Additional packages from @muatmuat/* are shared across the monorepo."
+      );
     });
   });
 

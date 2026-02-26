@@ -135,6 +135,46 @@ export interface UpdateTaskSessionPayload {
   title?: string;
 }
 
+export type TaskRunState =
+  | "queued"
+  | "running"
+  | "cancel_requested"
+  | "completed"
+  | "failed"
+  | "canceled"
+  | "stale"
+  | "dead";
+
+export interface TaskRunInfo {
+  runId: string;
+  taskSessionId: string;
+  runtimeMode: "intake" | "plan" | "build";
+  state: TaskRunState;
+  clientRequestKey: string | null;
+  createdAt: string;
+  updatedAt: string;
+  queuedAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  cancelRequestedAt: string | null;
+}
+
+export interface CreateTaskRunPayload {
+  runtimeMode: "intake" | "plan" | "build";
+  input?: Record<string, unknown>;
+  clientRequestKey?: string;
+  metadata?: Record<string, unknown>;
+  maxAttempts?: number;
+}
+
+export interface TaskRunEventInfo {
+  eventId: string;
+  eventSeq: number;
+  eventType: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface ProjectKeypointInfo {
   id: string;
   workspaceId: string;
@@ -563,6 +603,110 @@ export class SaktiCodeApiClient {
       logger.error("Failed to get latest task session", error as Error, { workspaceId, kind });
       throw error;
     }
+  }
+
+  // ============================================================
+  // Task Runs API
+  // ============================================================
+
+  async createTaskRun(taskSessionId: string, payload: CreateTaskRunPayload): Promise<TaskRunInfo> {
+    logger.info("Creating task run", {
+      taskSessionId,
+      runtimeMode: payload.runtimeMode,
+    });
+
+    const response = await fetch(`${this.config.baseUrl}/api/task-sessions/${taskSessionId}/runs`, {
+      method: "POST",
+      headers: this.commonHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to create task run: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.run as TaskRunInfo;
+  }
+
+  async listTaskRuns(taskSessionId: string): Promise<TaskRunInfo[]> {
+    const response = await fetch(`${this.config.baseUrl}/api/task-sessions/${taskSessionId}/runs`, {
+      method: "GET",
+      headers: this.commonHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to list task runs: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return (data.runs ?? []) as TaskRunInfo[];
+  }
+
+  async getTaskRun(runId: string): Promise<TaskRunInfo | null> {
+    const response = await fetch(`${this.config.baseUrl}/api/runs/${runId}`, {
+      method: "GET",
+      headers: this.commonHeaders(),
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+    if (!response.ok) {
+      throw new Error(`Failed to get task run: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.run as TaskRunInfo;
+  }
+
+  async cancelTaskRun(runId: string): Promise<TaskRunInfo> {
+    const response = await fetch(`${this.config.baseUrl}/api/runs/${runId}/cancel`, {
+      method: "POST",
+      headers: this.commonHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to cancel task run: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.run as TaskRunInfo;
+  }
+
+  async listTaskRunEvents(
+    runId: string,
+    options?: { afterEventSeq?: number; limit?: number }
+  ): Promise<{
+    runId: string;
+    events: TaskRunEventInfo[];
+    lastEventSeq: number;
+    hasMore: boolean;
+  }> {
+    const url = new URL(`${this.config.baseUrl}/api/runs/${runId}/events`);
+    if (options?.afterEventSeq !== undefined) {
+      url.searchParams.set("afterEventSeq", String(options.afterEventSeq));
+    }
+    if (options?.limit !== undefined) {
+      url.searchParams.set("limit", String(options.limit));
+    }
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: this.commonHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to list task run events: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return {
+      runId: data.runId as string,
+      events: (data.events ?? []) as TaskRunEventInfo[],
+      lastEventSeq: data.lastEventSeq as number,
+      hasMore: Boolean(data.hasMore),
+    };
   }
 
   // ============================================================

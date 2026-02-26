@@ -47,6 +47,7 @@ import { useMessageStore, usePartStore, useSessionStore } from "@/state/provider
 import { batch, createEffect, createSignal, onCleanup, type Accessor } from "solid-js";
 import { v7 as uuidv7 } from "uuid";
 import { useMessages } from "./use-messages";
+import { monitorTaskRun } from "./use-run-events";
 import { useStreaming } from "./use-streaming";
 
 const logger = createLogger("desktop:hooks:use-chat");
@@ -182,7 +183,11 @@ export function useChat(options: UseChatOptions): UseChatResult {
     options.sessionId()
   );
   const [isCreatingSession, setIsCreatingSession] = createSignal<boolean>(false);
-  let activeRequest: { messageId: string; abortController: AbortController } | null = null;
+  let activeRequest: {
+    messageId: string;
+    abortController: AbortController;
+    runId?: string;
+  } | null = null;
 
   // Streaming state management
   const streaming = useStreaming();
@@ -343,6 +348,10 @@ export function useChat(options: UseChatOptions): UseChatResult {
     // Get current session ID (may be null if creating new session)
     let currentSessionId = effectiveSessionId();
 
+    const runtimeMode = options.runtimeMode?.();
+    const shouldUseBackgroundRun =
+      runtimeMode !== undefined && runtimeMode !== "intake" && Boolean(currentSessionId);
+
     // If no session exists, we'll let the server create one
     // We don't generate an optimistic session ID anymore (Batch 2: Data Integrity)
     if (!currentSessionId) {
@@ -442,6 +451,111 @@ export function useChat(options: UseChatOptions): UseChatResult {
 
     // Start streaming with active message id
     streaming.start(userMessageId);
+
+    if (shouldUseBackgroundRun && currentSessionId) {
+      const runMode = runtimeMode === "plan" || runtimeMode === "build" ? runtimeMode : null;
+      if (!runMode) {
+        logger.warn("Background run mode unresolved; falling back to request stream path", {
+          runtimeMode,
+        });
+      }
+      if (!runMode) {
+        // Continue to request-stream fallback below.
+      } else {
+        try {
+          sessionActions.upsert({
+            sessionID: currentSessionId,
+            directory: ws,
+          });
+
+          if (!retryOptions?.skipUserPersistence && !messageActions.getById(userMessageId)) {
+            messageActions.upsert({
+              id: userMessageId,
+              role: "user",
+              sessionID: currentSessionId,
+              time: { created: now },
+              metadata: createOptimisticMetadata(
+                "userAction",
+                generateMessageCorrelationKey({
+                  role: "user",
+                  createdAt: now,
+                })
+              ),
+            });
+            partActions.upsert({
+              id: `${userMessageId}-text`,
+              type: "text",
+              messageID: userMessageId,
+              sessionID: currentSessionId,
+              text: trimmed,
+              time: { start: now, end: now },
+              metadata: createOptimisticMetadata(
+                "useChat",
+                generatePartCorrelationKey({
+                  messageID: userMessageId,
+                  partType: "text",
+                })
+              ),
+            });
+            userMessagePersisted = true;
+          }
+
+          const run = await client.createTaskRun(currentSessionId, {
+            runtimeMode: runMode,
+            clientRequestKey: uuidv7(),
+            input: {
+              message: trimmed,
+              workspace: ws,
+              providerId: options.providerId?.() ?? undefined,
+              modelId: options.modelId?.() ?? undefined,
+              messageId: userMessageId,
+              retryOfAssistantMessageId: retryOptions?.retryOfAssistantMessageId,
+            },
+          });
+
+          activeRequest = { messageId: userMessageId, abortController, runId: run.runId };
+          streaming.setStatus("streaming");
+
+          const runResult = await monitorTaskRun({
+            client,
+            runId: run.runId,
+            signal: abortController.signal,
+          });
+
+          if (runResult.terminalState === "completed") {
+            streaming.complete(userMessageId);
+            onFinish?.(userMessageId);
+            return;
+          }
+
+          if (runResult.terminalState === "failed" || runResult.terminalState === "dead") {
+            throw new Error(runResult.errorMessage ?? "Background run failed");
+          }
+
+          streaming.stop();
+          return;
+        } catch (error) {
+          const errorName =
+            error && typeof error === "object" && "name" in error
+              ? String((error as { name?: unknown }).name)
+              : "";
+          if (errorName === "AbortError") {
+            streaming.stop();
+            return;
+          }
+          logger.error("Failed to execute background run", error as Error);
+          streaming.setStatus("error");
+          streaming.setError(error as Error);
+          onError?.(error as Error);
+          return;
+        } finally {
+          if (activeRequest?.messageId === userMessageId) {
+            activeRequest = null;
+          }
+          setIsCreatingSession(false);
+        }
+      }
+    }
 
     try {
       logger.debug("Sending user message", { messageId: userMessageId });
@@ -1061,9 +1175,19 @@ export function useChat(options: UseChatOptions): UseChatResult {
    */
   const stop = (): void => {
     const activeId = activeRequest?.messageId ?? streaming.activeMessageId();
+    const activeRunId = activeRequest?.runId;
     if (activeRequest) {
       activeRequest.abortController.abort();
       activeRequest = null;
+    }
+
+    if (activeRunId && client) {
+      void client.cancelTaskRun(activeRunId).catch(error => {
+        logger.warn("Failed to cancel background task run", {
+          runId: activeRunId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }
 
     // Clean up optimistic artifacts

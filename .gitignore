@@ -52,3 +52,6 @@ sakti-code-old-desktop
 kilocode
 openskills.worktrees/
 cc-sdd/
+
+# Generated benchmark artifact
+apps/desktop/tests/fixtures/recorded/perf-reports/markdown-benchmark.latest.json
