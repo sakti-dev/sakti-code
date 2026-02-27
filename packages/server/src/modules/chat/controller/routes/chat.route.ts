@@ -11,12 +11,12 @@
 import { MessagePartUpdated, MessageUpdated, publish, SessionStatus } from "@/bus";
 import type { Env } from "@/index";
 import { createSessionMessage, sessionBridge } from "@/middleware/session-bridge";
+import { getSessionMessages } from "@/modules/chat/infrastructure/session-message-store";
 import { resolveOAuthAccessToken } from "@/provider/auth/oauth";
 import { normalizeProviderError } from "@/provider/errors";
 import { getProviderRuntime, resolveChatSelection } from "@/provider/runtime";
 import { getSessionManager } from "@/runtime";
 import { zValidator } from "@/shared/controller/http/validators.js";
-import { getSessionMessages } from "@/state/session-message-store";
 import { Instance } from "@sakti-code/core/server";
 import { createLogger } from "@sakti-code/shared/logger";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";

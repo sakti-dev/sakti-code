@@ -12,7 +12,11 @@ import { registerCoreBusBindings } from "@sakti-code/shared/core-server-bridge";
 import { createLogger } from "@sakti-code/shared/logger";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
-import { removePart, upsertMessage, upsertPart } from "../state/session-message-store";
+import {
+  removePart,
+  upsertMessage,
+  upsertPart,
+} from "../modules/chat/infrastructure/session-message-store";
 import { defineBusEvent, type BusEventDefinition } from "./bus-event";
 
 const logger = createLogger("bus");

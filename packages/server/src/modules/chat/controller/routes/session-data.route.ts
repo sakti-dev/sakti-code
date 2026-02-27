@@ -14,7 +14,7 @@ import { z } from "zod";
 import type { Env } from "../../../../index.js";
 import { getSessionManager } from "../../../../runtime.js";
 import { zValidator } from "../../../../shared/controller/http/validators.js";
-import { getSessionMessages } from "../../../../state/session-message-store.js";
+import { getSessionMessages } from "../../infrastructure/session-message-store.js";
 import { normalizeCheckpointMessages } from "./session-data-normalize.js";
 
 const app = new Hono<Env>();
