@@ -1,9 +1,8 @@
-import { PermissionManager } from "@sakti-code/core/server";
 import { createLogger } from "@sakti-code/shared/logger";
 import { Hono } from "hono";
 import { z } from "zod";
-import { PermissionReplied, publish } from "../../../../bus/index.js";
 import { zValidator } from "../../../../shared/controller/http/validators.js";
+import { buildPermissionUsecases } from "../factory/permissions.factory.js";
 
 type Env = {
   Variables: {
@@ -14,6 +13,8 @@ type Env = {
 
 const app = new Hono<Env>();
 const logger = createLogger("server");
+const { approvePermissionUsecase, clearSessionPermissionsUsecase, listPendingPermissionsUsecase } =
+  buildPermissionUsecases();
 
 const approvalSchema = z.object({
   id: z.string(),
@@ -34,19 +35,7 @@ app.post("/approve", zValidator("json", approvalSchema), async c => {
       patterns,
     });
 
-    const permissionMgr = PermissionManager.getInstance();
-    const pending = permissionMgr.getPendingRequests();
-    const match = pending.find(request => request.id === id);
-
-    permissionMgr.handleResponse({ id, approved, patterns });
-
-    if (match) {
-      await publish(PermissionReplied, {
-        sessionID: match.sessionID,
-        requestID: id,
-        reply: approved ? (patterns && patterns.length > 0 ? "always" : "once") : "reject",
-      });
-    }
+    await approvePermissionUsecase({ id, approved, patterns });
 
     return c.json({ success: true });
   } catch (error: unknown) {
@@ -61,8 +50,7 @@ app.post("/approve", zValidator("json", approvalSchema), async c => {
 
 app.get("/pending", c => {
   const requestId = c.get("requestId");
-  const permissionMgr = PermissionManager.getInstance();
-  const pending = permissionMgr.getPendingRequests();
+  const pending = listPendingPermissionsUsecase();
 
   logger.debug("Pending requests fetched", {
     module: "permissions",
@@ -87,8 +75,7 @@ app.post("/session/:sessionID/clear", zValidator("param", sessionParamSchema), c
     sessionID,
   });
 
-  const permissionMgr = PermissionManager.getInstance();
-  permissionMgr.clearSession(sessionID);
+  clearSessionPermissionsUsecase(sessionID);
 
   return c.json({ success: true });
 });

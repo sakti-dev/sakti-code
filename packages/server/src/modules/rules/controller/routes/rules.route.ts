@@ -1,13 +1,8 @@
-import {
-  PermissionManager,
-  createDefaultRules,
-  formatConfigRules,
-  parseConfigRules,
-} from "@sakti-code/core/server";
 import { createLogger } from "@sakti-code/shared/logger";
 import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "../../../../shared/controller/http/validators.js";
+import { buildRuleUsecases } from "../factory/rules.factory.js";
 
 type Env = {
   Variables: {
@@ -18,6 +13,17 @@ type Env = {
 
 const app = new Hono<Env>();
 const logger = createLogger("server");
+const {
+  addRuleUsecase,
+  clearRulesUsecase,
+  evaluateRuleUsecase,
+  getDefaultRulesUsecase,
+  getRulesConfigUsecase,
+  listRulesUsecase,
+  replaceRulesFromConfigUsecase,
+  replaceRulesUsecase,
+  resetRulesUsecase,
+} = buildRuleUsecases();
 
 const ruleSchema = z.object({
   permission: z.enum(["read", "edit", "bash", "external_directory", "mode_switch"]),
@@ -48,8 +54,7 @@ const evaluateSchema = z.object({
 
 app.get("/api/permissions/rules", c => {
   const requestId = c.get("requestId");
-  const permissionMgr = PermissionManager.getInstance();
-  const rules = permissionMgr.getRules();
+  const rules = listRulesUsecase();
 
   logger.debug("Permission rules fetched", {
     module: "permissions",
@@ -62,9 +67,7 @@ app.get("/api/permissions/rules", c => {
 
 app.get("/api/permissions/rules/config", c => {
   const requestId = c.get("requestId");
-  const permissionMgr = PermissionManager.getInstance();
-  const rules = permissionMgr.getRules();
-  const config = formatConfigRules(rules);
+  const config = getRulesConfigUsecase();
 
   logger.debug("Permission rules config fetched", {
     module: "permissions",
@@ -76,7 +79,7 @@ app.get("/api/permissions/rules/config", c => {
 
 app.get("/api/permissions/rules/default", c => {
   const requestId = c.get("requestId");
-  const defaultRules = createDefaultRules();
+  const defaultRules = getDefaultRulesUsecase();
 
   logger.debug("Default permission rules fetched", {
     module: "permissions",
@@ -91,9 +94,7 @@ app.put("/api/permissions/rules", zValidator("json", rulesPayloadSchema), async 
 
   try {
     const { rules } = c.req.valid("json");
-
-    const permissionMgr = PermissionManager.getInstance();
-    permissionMgr.setRules(rules);
+    replaceRulesUsecase(rules);
 
     logger.info("Permission rules replaced", {
       module: "permissions",
@@ -117,9 +118,7 @@ app.post("/api/permissions/rules", zValidator("json", ruleSchema), async c => {
 
   try {
     const rule = c.req.valid("json");
-
-    const permissionMgr = PermissionManager.getInstance();
-    permissionMgr.addRule(rule);
+    addRuleUsecase(rule);
 
     logger.info("Permission rule added", {
       module: "permissions",
@@ -143,10 +142,7 @@ app.post("/api/permissions/rules/config", zValidator("json", configPayloadSchema
 
   try {
     const { config } = c.req.valid("json");
-    const rules = parseConfigRules(config);
-
-    const permissionMgr = PermissionManager.getInstance();
-    permissionMgr.setRules(rules);
+    const rules = replaceRulesFromConfigUsecase(config);
 
     logger.info("Permission rules updated from config", {
       module: "permissions",
@@ -171,10 +167,7 @@ app.post("/api/permissions/rules/config", zValidator("json", configPayloadSchema
 
 app.post("/api/permissions/rules/reset", c => {
   const requestId = c.get("requestId");
-  const defaultRules = createDefaultRules();
-
-  const permissionMgr = PermissionManager.getInstance();
-  permissionMgr.setRules(defaultRules);
+  const defaultRules = resetRulesUsecase();
 
   logger.info("Permission rules reset to defaults", {
     module: "permissions",
@@ -186,16 +179,14 @@ app.post("/api/permissions/rules/reset", c => {
 
 app.delete("/api/permissions/rules", c => {
   const requestId = c.get("requestId");
-
-  const permissionMgr = PermissionManager.getInstance();
-  permissionMgr.clearRules();
+  const rules = clearRulesUsecase();
 
   logger.info("Permission rules cleared", {
     module: "permissions",
     requestId,
   });
 
-  return c.json({ success: true, rules: [] });
+  return c.json({ success: true, rules });
 });
 
 app.post("/api/permissions/rules/evaluate", zValidator("json", evaluateSchema), async c => {
@@ -203,12 +194,7 @@ app.post("/api/permissions/rules/evaluate", zValidator("json", evaluateSchema), 
 
   try {
     const { permission, pattern } = c.req.valid("json");
-
-    const permissionMgr = PermissionManager.getInstance();
-    const rules = permissionMgr.getRules();
-
-    const { evaluatePermission } = await import("@sakti-code/core/server");
-    const action = evaluatePermission(permission, pattern, rules);
+    const action = evaluateRuleUsecase({ permission, pattern });
 
     logger.debug("Permission rule evaluated", {
       module: "permissions",

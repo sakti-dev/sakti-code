@@ -1,23 +1,12 @@
 import { Hono } from "hono";
 import type { Env } from "../../../../index.js";
-import type { HealthResponse } from "../../../../types.js";
+import { buildHealthUsecases } from "../factory/health.factory.js";
 
 const app = new Hono<Env>();
-
-function buildHealthResponse(): HealthResponse {
-  const uptime = process.uptime();
-  const timestamp = new Date().toISOString();
-
-  return {
-    status: "ok",
-    uptime,
-    timestamp,
-    version: "0.0.1",
-  };
-}
+const { getHealthUsecase } = buildHealthUsecases();
 
 app.get("/api/health", c => {
-  return c.json(buildHealthResponse());
+  return c.json(getHealthUsecase());
 });
 
 export const healthRoutes = app;

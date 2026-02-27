@@ -1,5 +1,5 @@
-import { listAgents } from "@sakti-code/core";
 import { Hono } from "hono";
+import { buildAgentUsecases } from "../factory/agent.factory.js";
 
 type Env = {
   Variables: {
@@ -9,19 +9,11 @@ type Env = {
 };
 
 const app = new Hono<Env>();
+const { listAgentsUsecase } = buildAgentUsecases();
 
 app.get("/api/agents", async c => {
-  const nameMap: Record<string, string> = {
-    build: "Build Agent",
-    explore: "Explore Agent",
-    plan: "Plan Agent",
-  };
-
   return c.json({
-    agents: listAgents().map(agent => ({
-      id: agent.name,
-      name: nameMap[agent.name] ?? agent.name,
-    })),
+    agents: listAgentsUsecase(),
   });
 });
 

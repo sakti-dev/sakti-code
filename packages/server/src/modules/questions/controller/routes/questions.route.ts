@@ -1,9 +1,8 @@
-import { QuestionManager } from "@sakti-code/core/server";
 import { createLogger } from "@sakti-code/shared/logger";
 import { Hono } from "hono";
 import { z } from "zod";
-import { QuestionRejected, QuestionReplied, publish } from "../../../../bus/index.js";
 import { zValidator } from "../../../../shared/controller/http/validators.js";
+import { buildQuestionUsecases } from "../factory/questions.factory.js";
 
 type Env = {
   Variables: {
@@ -14,6 +13,8 @@ type Env = {
 
 const app = new Hono<Env>();
 const logger = createLogger("server");
+const { listPendingQuestionsUsecase, rejectQuestionUsecase, replyQuestionUsecase } =
+  buildQuestionUsecases();
 
 const replySchema = z.object({
   id: z.string(),
@@ -26,8 +27,7 @@ const rejectSchema = z.object({
 });
 
 app.get("/pending", c => {
-  const questionMgr = QuestionManager.getInstance();
-  const pending = questionMgr.getPendingRequests();
+  const pending = listPendingQuestionsUsecase();
   return c.json({ pending });
 });
 
@@ -35,29 +35,20 @@ app.post("/reply", zValidator("json", replySchema), async c => {
   const requestId = c.get("requestId");
   try {
     const { id, reply } = c.req.valid("json");
-
-    const questionMgr = QuestionManager.getInstance();
-    const pending = questionMgr.getPendingRequests().find(request => request.id === id);
-    const handled = questionMgr.reply({ id, reply });
-    if (!handled || !pending) {
-      return c.json({ error: `Question request not found: ${id}` }, 404);
-    }
-
-    await publish(QuestionReplied, {
-      sessionID: pending.sessionID,
-      requestID: id,
-      reply,
-    });
+    const sessionId = await replyQuestionUsecase({ id, reply });
 
     logger.info("Question replied", {
       module: "questions",
       requestId,
       questionId: id,
-      sessionId: pending.sessionID,
+      sessionId,
     });
 
     return c.json({ success: true });
   } catch (error: unknown) {
+    if (error instanceof Error && error.message.startsWith("Question request not found:")) {
+      return c.json({ error: error.message }, 404);
+    }
     const message = error instanceof Error ? error.message : "Unknown error";
     logger.error("Question reply failed", error instanceof Error ? error : undefined, {
       module: "questions",
@@ -71,30 +62,21 @@ app.post("/reject", zValidator("json", rejectSchema), async c => {
   const requestId = c.get("requestId");
   try {
     const { id, reason } = c.req.valid("json");
-
-    const questionMgr = QuestionManager.getInstance();
-    const pending = questionMgr.getPendingRequests().find(request => request.id === id);
-    const handled = questionMgr.reject({ id, reason });
-    if (!handled || !pending) {
-      return c.json({ error: `Question request not found: ${id}` }, 404);
-    }
-
-    await publish(QuestionRejected, {
-      sessionID: pending.sessionID,
-      requestID: id,
-      reason,
-    });
+    const sessionId = await rejectQuestionUsecase({ id, reason });
 
     logger.info("Question rejected", {
       module: "questions",
       requestId,
       questionId: id,
-      sessionId: pending.sessionID,
+      sessionId,
       reason,
     });
 
     return c.json({ success: true });
   } catch (error: unknown) {
+    if (error instanceof Error && error.message.startsWith("Question request not found:")) {
+      return c.json({ error: error.message }, 404);
+    }
     const message = error instanceof Error ? error.message : "Unknown error";
     logger.error("Question reject failed", error instanceof Error ? error : undefined, {
       module: "questions",
