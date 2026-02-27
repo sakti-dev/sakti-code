@@ -10,7 +10,10 @@
     "./testing/db": "./src/testing/db.ts",
     "./tools": "./src/tools/index.ts",
     "./memory/task/storage": "./src/memory/task/storage.ts",
-    "./spec/parser": "./src/spec/parser.ts"
+    "./spec/parser": "./src/spec/parser.ts",
+    "./spec/state": "./src/spec/state.ts",
+    "./spec/helpers": "./src/spec/helpers.ts",
+    "./session/mode-transition": "./src/session/mode-transition.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

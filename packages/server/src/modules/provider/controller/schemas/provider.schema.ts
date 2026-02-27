@@ -15,4 +15,4 @@ export {
   providerOAuthFlowMethodSchema,
   providerPreferencesSchema,
   providerPreferencesUpdateSchema,
-} from "@/modules/provider/infrastructure/provider/schema.js";
+} from "../../infrastructure/provider/schema.js";

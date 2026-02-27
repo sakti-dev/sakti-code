@@ -330,8 +330,7 @@ describe("Chat route integration", () => {
       const sessionId = "019c0000-0000-7000-8000-000000000001";
       const messageId = "019c0000-0000-7000-8000-000000000002";
       const { createPartPublishState, publishPartEvent } = await import("../chat.route");
-      const { getSessionMessages } =
-        await import("@/modules/chat/infrastructure/session-message-store");
+      const { getSessionMessages } = await import("../../../infrastructure/session-message-store");
 
       const partState = createPartPublishState();
       const assistantInfo = {
@@ -366,8 +365,7 @@ describe("Chat route integration", () => {
       const sessionId = "019c0000-0000-7000-8000-000000000011";
       const messageId = "019c0000-0000-7000-8000-000000000012";
       const { createPartPublishState, publishPartEvent } = await import("../chat.route");
-      const { getSessionMessages } =
-        await import("@/modules/chat/infrastructure/session-message-store");
+      const { getSessionMessages } = await import("../../../infrastructure/session-message-store");
 
       const partState = createPartPublishState();
       const assistantInfo = {

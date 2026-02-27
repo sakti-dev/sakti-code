@@ -1,13 +1,13 @@
+import { Hono } from "hono";
+import { z } from "zod";
+import type { Env } from "../../../../index.js";
+import { zValidator } from "../../../../shared/controller/http/validators.js";
 import {
   getFileStatus,
   searchFiles,
   unwatchDirectory,
   watchDirectory,
-} from "@/modules/files/application/usecases/search-files.usecase.js";
-import { Hono } from "hono";
-import { z } from "zod";
-import type { Env } from "../../../../index.js";
-import { zValidator } from "../../../../shared/controller/http/validators.js";
+} from "../../application/usecases/search-files.usecase.js";
 
 const filesRouter = new Hono<Env>();
 

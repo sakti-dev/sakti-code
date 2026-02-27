@@ -1,8 +1,8 @@
-import { resolveChatSelection } from "@/modules/provider/infrastructure/provider/runtime";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resolveChatSelection } from "../../../../provider/infrastructure/provider/runtime";
 
 describe("chat provider selection", () => {
   let testHome = "";
@@ -43,7 +43,7 @@ describe("chat provider selection", () => {
       },
     });
     const { getProviderRuntime, resetProviderRuntimeForTests } =
-      await import("@/modules/provider/infrastructure/provider/runtime");
+      await import("../../../../provider/infrastructure/provider/runtime");
     resetProviderRuntimeForTests();
     getProviderRuntime();
   });
@@ -95,7 +95,7 @@ describe("chat provider selection", () => {
 
   it("accepts explicit provider when persisted oauth credential exists after runtime reset", async () => {
     const { getProviderRuntime, resetProviderRuntimeForTests } =
-      await import("@/modules/provider/infrastructure/provider/runtime");
+      await import("../../../../provider/infrastructure/provider/runtime");
     const runtimeA = getProviderRuntime();
     await runtimeA.authService.setOAuth({
       providerId: "zai",
@@ -129,7 +129,7 @@ describe("chat provider selection", () => {
 
   it("returns actionable error when image prompt uses text-only model without hybrid fallback", async () => {
     const { getProviderRuntime } =
-      await import("@/modules/provider/infrastructure/provider/runtime");
+      await import("../../../../provider/infrastructure/provider/runtime");
     const runtime = getProviderRuntime();
     await runtime.authService.setToken({
       providerId: "zai",
@@ -163,7 +163,7 @@ describe("chat provider selection", () => {
 
   it("uses model provider auth when providerId is omitted but modelId is fully qualified", async () => {
     const { getProviderRuntime } =
-      await import("@/modules/provider/infrastructure/provider/runtime");
+      await import("../../../../provider/infrastructure/provider/runtime");
     const runtime = getProviderRuntime();
     await runtime.authService.setToken({
       providerId: "opencode",
@@ -190,7 +190,7 @@ describe("chat provider selection", () => {
 
   it("uses model provider auth when providerId is stale and mismatched", async () => {
     const { getProviderRuntime } =
-      await import("@/modules/provider/infrastructure/provider/runtime");
+      await import("../../../../provider/infrastructure/provider/runtime");
     const runtime = getProviderRuntime();
     await runtime.authService.setToken({
       providerId: "opencode",
@@ -218,7 +218,7 @@ describe("chat provider selection", () => {
 
   it("accepts explicit openai selection when only explicit token is configured", async () => {
     const { getProviderRuntime } =
-      await import("@/modules/provider/infrastructure/provider/runtime");
+      await import("../../../../provider/infrastructure/provider/runtime");
     const runtime = getProviderRuntime();
     await runtime.authService.setToken({
       providerId: "openai",

@@ -1,10 +1,3 @@
-import {
-  completeOAuth,
-  listProviderAuthMethods,
-  startOAuth,
-} from "@/modules/provider/infrastructure/provider/auth/oauth.js";
-import { listProviderDescriptors } from "@/modules/provider/infrastructure/provider/registry.js";
-import { getProviderRuntime } from "@/modules/provider/infrastructure/provider/runtime.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Env } from "../../../../index.js";
@@ -14,6 +7,13 @@ import {
   collectKnownProviderIds,
 } from "../../application/usecases/list-provider-catalog.usecase.js";
 import { normalizeProviderError } from "../../domain/errors/provider.error.js";
+import {
+  completeOAuth,
+  listProviderAuthMethods,
+  startOAuth,
+} from "../../infrastructure/provider/auth/oauth.js";
+import { listProviderDescriptors } from "../../infrastructure/provider/registry.js";
+import { getProviderRuntime } from "../../infrastructure/provider/runtime.js";
 import {
   providerAuthStateSchema,
   providerCatalogItemSchema,

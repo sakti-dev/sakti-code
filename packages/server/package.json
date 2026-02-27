@@ -11,7 +11,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test:typecheck": "tsc -p tsconfig.spec.json --noEmit",
-    "test:layout": "bash ./scripts/check-no-legacy-domain-tests.sh",
+    "test:layout": "bash ./scripts/check-no-legacy-domain-tests.sh && bash ./scripts/check-no-module-alias-imports.sh",
     "lint": "eslint .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

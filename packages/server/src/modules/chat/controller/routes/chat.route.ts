@@ -12,13 +12,6 @@ import { getSessionManager } from "@/app/runtime/session-manager";
 import { MessagePartUpdated, MessageUpdated, publish, SessionStatus } from "@/bus";
 import type { Env } from "@/index";
 import { createSessionMessage, sessionBridge } from "@/middleware/session-bridge";
-import { getSessionMessages } from "@/modules/chat/infrastructure/session-message-store";
-import { resolveOAuthAccessToken } from "@/modules/provider/infrastructure/provider/auth/oauth";
-import { normalizeProviderError } from "@/modules/provider/infrastructure/provider/errors";
-import {
-  getProviderRuntime,
-  resolveChatSelection,
-} from "@/modules/provider/infrastructure/provider/runtime";
 import { zValidator } from "@/shared/controller/http/validators.js";
 import { Instance } from "@sakti-code/core/server";
 import { createLogger } from "@sakti-code/shared/logger";
@@ -26,6 +19,13 @@ import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { Hono } from "hono";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
+import { resolveOAuthAccessToken } from "../../../provider/infrastructure/provider/auth/oauth";
+import { normalizeProviderError } from "../../../provider/infrastructure/provider/errors";
+import {
+  getProviderRuntime,
+  resolveChatSelection,
+} from "../../../provider/infrastructure/provider/runtime";
+import { getSessionMessages } from "../../infrastructure/session-message-store";
 import { buildChatService } from "../factory/chat.factory.js";
 
 const app = new Hono<Env>();

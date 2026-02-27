@@ -3,4 +3,4 @@ export {
   type ProviderPreferenceService,
   type ProviderPreferenceServiceOptions,
   type ProviderPreferences,
-} from "@/modules/provider/infrastructure/provider/preferences.js";
+} from "../../infrastructure/provider/preferences.js";
