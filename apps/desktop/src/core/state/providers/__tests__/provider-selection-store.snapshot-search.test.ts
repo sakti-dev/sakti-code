@@ -30,6 +30,9 @@ function loadSnapshotFixture(): {
     "packages",
     "server",
     "src",
+    "modules",
+    "provider",
+    "infrastructure",
     "provider",
     "models",
     "snapshot.json"

@@ -4,7 +4,6 @@
  * Defines tables for sessions, tool_sessions, and repo_cache using Drizzle ORM.
  */
 
-import { sql } from "drizzle-orm";
 import {
   foreignKey,
   index,
@@ -91,7 +90,7 @@ export const taskSessions = sqliteTable(
     session_kind: text("session_kind").notNull().default("task"),
     last_activity_at: integer("last_activity_at", { mode: "timestamp" })
       .notNull()
-      .default(sql`(unixepoch() * 1000)`),
+      .$defaultFn(() => new Date()),
   },
   table => ({
     parentSession: foreignKey({

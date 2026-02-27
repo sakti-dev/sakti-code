@@ -1026,7 +1026,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(unixepoch() * 1000)"
+          "default": 0
         },
         "workspace_id": {
           "name": "workspace_id",

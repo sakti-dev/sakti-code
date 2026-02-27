@@ -8,7 +8,9 @@ ALTER TABLE `task_sessions` ADD `spec_type` text;
 --> statement-breakpoint
 ALTER TABLE `task_sessions` ADD `session_kind` text DEFAULT 'task' NOT NULL;
 --> statement-breakpoint
-ALTER TABLE `task_sessions` ADD `last_activity_at` integer NOT NULL DEFAULT (unixepoch() * 1000);
+ALTER TABLE `task_sessions` ADD `last_activity_at` integer NOT NULL DEFAULT 0;
+--> statement-breakpoint
+UPDATE `task_sessions` SET `last_activity_at` = (unixepoch() * 1000) WHERE `last_activity_at` = 0;
 --> statement-breakpoint
 -- Create indexes for task_sessions
 CREATE INDEX `task_sessions_status_idx` ON `task_sessions` (`status`);

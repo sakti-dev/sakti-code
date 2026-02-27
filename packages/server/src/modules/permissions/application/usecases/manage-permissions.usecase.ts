@@ -1,5 +1,5 @@
-import { PermissionReplied, publish } from "@/bus";
 import { PermissionManager } from "@sakti-code/core/server";
+import { PermissionReplied, publish } from "../../../../bus";
 
 export interface ApprovePermissionInput {
   id: string;

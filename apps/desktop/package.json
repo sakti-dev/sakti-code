@@ -27,6 +27,7 @@
     "@incremark/solid": "workspace:*",
     "@incremark/theme": "workspace:*",
     "@kobalte/core": "^0.13.11",
+    "@sakti-code/core": "workspace:*",
     "@sakti-code/electron-preload": "workspace:*",
     "@sakti-code/shared": "workspace:*",
     "@solid-primitives/event-bus": "^1.1.2",

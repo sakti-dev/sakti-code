@@ -1,5 +1,4 @@
 import { cn } from "@/utils";
-import { transitionSessionMode } from "@sakti-code/core/session/mode-transition";
 import { MessageSquare } from "lucide-solid";
 import { createEffect, createMemo, createSignal, onMount, Show } from "solid-js";
 
@@ -281,17 +280,6 @@ function WorkspaceViewInner() {
         specType,
         title: handoff.title,
       });
-
-      try {
-        await transitionSessionMode({
-          sessionId: createdTask.taskSessionId,
-          from: "intake",
-          to: "plan",
-          reason: "Homepage spec selection",
-        });
-      } catch (error) {
-        console.warn("Failed to transition runtime mode to plan:", error);
-      }
 
       initializeWizardWorkflowFromHomepage(createdTask.taskSessionId, specType);
 

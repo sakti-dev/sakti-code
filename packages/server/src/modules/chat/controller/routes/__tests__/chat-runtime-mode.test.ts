@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/app/runtime/session-manager", () => {
+vi.mock("../../../../../app/runtime/session-manager.js", () => {
   const controllers = new Map<
     string,
     {

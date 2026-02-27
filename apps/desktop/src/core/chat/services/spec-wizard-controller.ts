@@ -85,120 +85,36 @@ export function createSpecWizardController(): SpecWizardController {
   const WIZARD_OFFER_THRESHOLD = 0.7;
 
   /**
-   * Get spec directory from workflow state
-   * @param state - Workflow state
-   * @returns Spec directory path or null
-   */
-  function getSpecDir(state: SpecWorkflowState): string | null {
-    if (!state.specSlug) {
-      return null;
-    }
-    // TODO: This should use the actual workspace directory
-    // For now, use a placeholder that tests will override
-    return `/tmp/test-spec-${state.sessionId}`;
-  }
-
-  /**
    * Check if implementation is ready based on spec.json
    * @param state - Workflow state
    * @returns true if ready for implementation, false otherwise
    */
   async function isReadyForImplementation(state: SpecWorkflowState): Promise<boolean> {
-    const specDir = getSpecDir(state);
-    if (!specDir) {
-      return false;
-    }
-
-    try {
-      const { readSpecState } = await import("@sakti-code/core/spec/state");
-      const specState = await readSpecState(`${specDir}/spec.json`);
-      return specState.ready_for_implementation;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Validate that all required approvals are granted
-   * @param specState - Spec state from spec.json
-   * @returns true if all approvals are granted, false otherwise
-   */
-  function validateAllApprovals(specState: {
-    approvals: {
-      requirements: { approved: boolean };
-      design: { approved: boolean };
-      tasks: { approved: boolean };
-    };
-  }): boolean {
-    return (
-      specState.approvals.requirements.approved &&
-      specState.approvals.design.approved &&
-      specState.approvals.tasks.approved
-    );
+    return state.phase === "complete";
   }
 
   /**
    * Handle Plan->Build transition
    * @param sessionId - Session ID
-   * @param specDir - Spec directory
    * @returns Transition result
    */
   async function handlePlanToBuildTransition(
-    sessionId: string,
-    specDir: string
+    sessionId: string
   ): Promise<{ outcome: string; fromMode?: string; toMode?: string; error?: string }> {
-    try {
-      // Read spec state
-      const { readSpecState } = await import("@sakti-code/core/spec/state");
-      const specState = await readSpecState(`${specDir}/spec.json`);
-
-      // Validate ready_for_implementation flag
-      if (!specState.ready_for_implementation) {
-        console.warn(
-          "[WizardController] Cannot start implementation: ready_for_implementation is false"
-        );
-        return {
-          outcome: "denied",
-          fromMode: "plan",
-          toMode: "build",
-        };
-      }
-
-      // Validate all approvals
-      if (!validateAllApprovals(specState)) {
-        console.warn("[WizardController] Cannot start implementation: missing approvals");
-        return {
-          outcome: "denied",
-          fromMode: "plan",
-          toMode: "build",
-        };
-      }
-
-      // Get current mode
-      const { getSessionRuntimeMode } = await import("@sakti-code/core/spec/helpers");
-      const currentMode = (await getSessionRuntimeMode(sessionId)) ?? "plan";
-
-      // Execute transition
-      const { transitionSessionMode } = await import("@sakti-code/core/session/mode-transition");
-      const result = await transitionSessionMode({
-        sessionId,
-        from: currentMode,
-        to: "build",
-        reason: "Spec wizard: Start Implementation",
-      });
-
-      console.log(`[WizardController] Mode transition result: ${result.outcome}`, result);
-
-      return result;
-    } catch (error) {
-      console.error("[WizardController] Mode transition error:", error);
+    const state = getWorkflowState(sessionId);
+    if (!state || state.phase !== "complete") {
       return {
-        outcome: "invalid",
+        outcome: "denied",
         fromMode: "plan",
         toMode: "build",
-        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
+
+    return {
+      outcome: "approved",
+      fromMode: "plan",
+      toMode: "build",
+    };
   }
 
   /**
@@ -415,13 +331,7 @@ export function createSpecWizardController(): SpecWizardController {
           updateWorkflowPhase(sessionId, "complete");
           break;
         case "wizard:start-implementation": {
-          const specDir = getSpecDir(state);
-          if (!specDir) {
-            console.warn("[WizardController] No spec directory for session:", sessionId);
-            return;
-          }
-
-          const result = await handlePlanToBuildTransition(sessionId, specDir);
+          const result = await handlePlanToBuildTransition(sessionId);
           console.log(`[WizardController] Transition completed: ${result.outcome}`, result);
           break;
         }

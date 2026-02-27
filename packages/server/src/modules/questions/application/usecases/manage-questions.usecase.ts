@@ -1,5 +1,5 @@
-import { QuestionRejected, QuestionReplied, publish } from "@/bus";
 import { QuestionManager } from "@sakti-code/core/server";
+import { QuestionRejected, QuestionReplied, publish } from "../../../../bus";
 
 export interface ReplyQuestionInput {
   id: string;

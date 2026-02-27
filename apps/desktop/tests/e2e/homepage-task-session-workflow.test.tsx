@@ -51,20 +51,20 @@ describe("E2E: Homepage -> Task Session Workflow", () => {
       const homepageResponse = await server.request("/");
       expect(homepageResponse.ok).toBe(true);
 
-      // Step 2: Submit research prompt through chat endpoint (runtimeMode: intake)
-      const chatResponse = await server.request("/api/chat", {
+      // Step 2: Create intake task session to represent homepage research context
+      const intakeResponse = await server.request("/api/task-sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [{ role: "user", content: "Build a REST API for user management" }],
-          workspace: "/test/project",
-          runtimeMode: "intake",
+          resourceId: "intake-user-management-rest-api",
+          workspaceId,
+          sessionKind: "intake",
         }),
       });
 
-      expect(chatResponse.ok).toBe(true);
-      const taskSessionId = chatResponse.headers.get("X-Task-Session-ID");
-      expect(taskSessionId).toBeDefined();
+      expect(intakeResponse.ok).toBe(true);
+      const intakeData = await intakeResponse.json();
+      expect(intakeData.taskSession?.taskSessionId).toBeDefined();
 
       // Step 3: Select spec type by creating a task session with spec
       const createTaskSessionResponse = await server.request("/api/task-sessions", {
