@@ -2,4 +2,4 @@ export {
   buildProviderCatalog,
   collectKnownProviderIds,
   type ProviderCatalogItem,
-} from "../../../../provider/catalog.js";
+} from "@/modules/provider/infrastructure/provider/catalog.js";

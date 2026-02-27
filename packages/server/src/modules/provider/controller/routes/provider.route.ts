@@ -1,13 +1,13 @@
-import { Hono } from "hono";
-import { z } from "zod";
-import type { Env } from "../../../../index.js";
 import {
   completeOAuth,
   listProviderAuthMethods,
   startOAuth,
-} from "../../../../provider/auth/oauth.js";
-import { listProviderDescriptors } from "../../../../provider/registry.js";
-import { getProviderRuntime } from "../../../../provider/runtime.js";
+} from "@/modules/provider/infrastructure/provider/auth/oauth.js";
+import { listProviderDescriptors } from "@/modules/provider/infrastructure/provider/registry.js";
+import { getProviderRuntime } from "@/modules/provider/infrastructure/provider/runtime.js";
+import { Hono } from "hono";
+import { z } from "zod";
+import type { Env } from "../../../../index.js";
 import { zValidator } from "../../../../shared/controller/http/validators.js";
 import {
   buildProviderCatalog,

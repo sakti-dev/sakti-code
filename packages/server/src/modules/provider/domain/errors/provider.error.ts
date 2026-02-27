@@ -2,4 +2,4 @@ export {
   normalizeProviderError,
   type ProviderErrorCode,
   type ProviderErrorPayload,
-} from "../../../../provider/errors.js";
+} from "@/modules/provider/infrastructure/provider/errors.js";

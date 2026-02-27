@@ -5,7 +5,16 @@ import { describe, expect, it } from "vitest";
 describe("models snapshot", () => {
   it("includes GLM-5 fallback entries for zai", async () => {
     const raw = await readFile(
-      join(process.cwd(), "src", "provider", "models", "snapshot.json"),
+      join(
+        process.cwd(),
+        "src",
+        "modules",
+        "provider",
+        "infrastructure",
+        "provider",
+        "models",
+        "snapshot.json"
+      ),
       "utf-8"
     );
     const snapshot = JSON.parse(raw) as {

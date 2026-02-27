@@ -6,4 +6,4 @@ export {
   type ProviderCredentialValue,
   type SetProviderOAuthInput,
   type SetProviderTokenInput,
-} from "../../../../provider/auth/service.js";
+} from "@/modules/provider/infrastructure/provider/auth/service.js";
