@@ -139,6 +139,7 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
       // ── Execute tools ──
       const toolMap = new Map(tools.map((t) => [t.name, t]));
       const toolResultMessages: Extract<AgentMessage, { role: "tool" }>[] = [];
+      let shouldTerminate = false;
 
       for (const tc of toolCalls) {
         const tool = toolMap.get(tc.name);
@@ -164,12 +165,14 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
         messages.push(toolMsg);
         toolResultMessages.push(toolMsg);
         await store.appendMessage(sessionId, messages[messages.length - 1]!);
+
+        if (result.terminate) shouldTerminate = true;
       }
 
       yield evt("turn_end", { turnIndex, message: finalAssistant, toolResults: toolResultMessages });
       turnIndex++;
 
-      if (signal?.aborted) break;
+      if (shouldTerminate || signal?.aborted) break;
     }
 
     yield evt("agent_end", { sessionId });

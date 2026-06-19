@@ -320,6 +320,52 @@ describe("Tool Argument Validation", () => {
   });
 });
 
+describe("Tool Safety", () => {
+  it("detects image by magic bytes regardless of extension", async () => {
+    const minimalPng = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+      "base64",
+    );
+    writeFileSync(join(tmpDir, "image.dat"), minimalPng);
+    const tool = createReadTool(tmpDir);
+    const result = await tool.execute("tc_1", { path: "image.dat" });
+    expect(result.isError).toBeFalsy();
+    expect(result.content).toContain("data:image/png;base64,");
+  });
+
+  it("grep pattern cannot inject flags", async () => {
+    writeFileSync(join(tmpDir, "secret.txt"), "password123\n-i hello\n");
+    const tool = createGrepTool(tmpDir);
+    // Malicious pattern that tries to inject -i flag
+    const result = await tool.execute("tc_1", { pattern: "-i password" });
+    // Should not match case-insensitively due to flag injection
+    expect(result.isError).toBeTruthy();
+  });
+
+  it("edit is atomic: if 2nd edit fails, file is unchanged", async () => {
+    writeFileSync(join(tmpDir, "atomic.txt"), "alpha\nbeta\ngamma\n");
+    const tool = createEditTool(tmpDir);
+    const original = readFileSync(join(tmpDir, "atomic.txt"), "utf-8");
+    const result = await tool.execute("tc_1", {
+      path: "atomic.txt",
+      edits: [
+        { oldText: "alpha", newText: "ALPHA" },
+        { oldText: "nonexistent", newText: "fail" },
+      ],
+    });
+    expect(result.isError).toBe(true);
+    // File must be unchanged — first edit was NOT applied
+    expect(readFileSync(join(tmpDir, "atomic.txt"), "utf-8")).toBe(original);
+  });
+
+  it("bash captures stderr output", async () => {
+    const tool = createBashTool(tmpDir);
+    const result = await tool.execute("tc_1", { command: "echo stdout-msg; echo stderr-msg 1>&2" });
+    expect(result.content).toContain("stdout-msg");
+    expect(result.content).toContain("stderr-msg");
+  });
+});
+
 function readFileSync(path: string, encoding: string) {
   const { readFileSync: rf } = require("node:fs");
   return rf(path, encoding);

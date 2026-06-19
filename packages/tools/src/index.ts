@@ -35,6 +35,20 @@ function detectImageMime(path: string): string | undefined {
   return ext ? IMAGE_EXTENSIONS.get(ext) : undefined;
 }
 
+function sniffImageMime(buf: Buffer): string | undefined {
+  if (buf.length < 4) return undefined;
+  // PNG: \x89PNG\r\n\x1a\n
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "image/png";
+  // JPEG: \xff\xd8\xff
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
+  // GIF: GIF8
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38) return "image/gif";
+  // WebP: RIFF....WEBP
+  if (buf.length >= 12 && buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46
+    && buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) return "image/webp";
+  return undefined;
+}
+
 interface ArgDef {
   type: "string" | "number" | "boolean" | "array" | "object";
   required?: boolean;
@@ -248,7 +262,12 @@ export function createReadTool(cwd: string): ToolDefinition {
         return { content: `File not found: ${path}`, terminate: false, isError: true };
       }
 
-      const mime = detectImageMime(path);
+      let mime = detectImageMime(path);
+      if (!mime) {
+        // Sniff by magic bytes (first 12 bytes)
+        const head = await readFile(filePath).then((b) => b.subarray(0, 12));
+        mime = sniffImageMime(head);
+      }
       if (mime) {
         const buf = await readFile(filePath);
         const dataUrl = `data:${mime};base64,${buf.toString("base64")}`;
