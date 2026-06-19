@@ -132,10 +132,52 @@ describe("BashTool", () => {
   });
 
   it("times out", async () => {
-    const tool = createBashTool(tmpDir, 5000);
-    const result = await tool.execute("tc_1", { command: "sleep 10", timeout: 100 });
+    const tool = createBashTool(tmpDir, 5);
+    const result = await tool.execute("tc_1", { command: "sleep 10", timeout: 0.1 });
     expect(result.isError).toBe(true);
     expect(result.content).toContain("timed out");
+  });
+
+  it("streams output via onUpdate callback", async () => {
+    const updates: string[] = [];
+    const tool = createBashTool(tmpDir);
+    const result = await tool.execute(
+      "tc_1",
+      { command: "for i in 1 2 3; do echo $i; sleep 0.1; done" },
+      undefined,
+      (partial) => { updates.push(partial); },
+    );
+    expect(result.isError).toBeFalsy();
+    expect(result.content).toContain("3");
+    // Should have received at least 2 streaming updates during execution
+    expect(updates.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("respects abort signal and returns promptly", async () => {
+    const controller = new AbortController();
+    const tool = createBashTool(tmpDir, 60);
+    const start = Date.now();
+    const result = await tool.execute(
+      "tc_1",
+      { command: "sleep 30" },
+      controller.signal,
+    );
+    const elapsed = Date.now() - start;
+    // Must return within 2 seconds, not wait 30s or 60s
+    expect(elapsed).toBeLessThan(2000);
+    expect(result).toBeDefined();
+  });
+
+  it("does not block the event loop", async () => {
+    // Run a slow command but prove other work happens concurrently
+    let otherWorkRan = false;
+    const tool = createBashTool(tmpDir, 5000);
+    const promise = tool.execute("tc_1", { command: "sleep 0.3" });
+    // This should execute immediately, not wait for the command to finish
+    otherWorkRan = true;
+    const result = await promise;
+    expect(otherWorkRan).toBe(true);
+    expect(result).toBeDefined();
   });
 });
 

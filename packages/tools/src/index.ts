@@ -1,7 +1,7 @@
 import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import { join, resolve, relative } from "node:path";
 import { existsSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 
 function shellQuote(s: string): string {
   return "'" + s.replace(/'/g, "'\\''") + "'";
@@ -39,6 +39,100 @@ function runCommand(cmd: string, cwd: string, timeout = 30000): string {
     timeout,
     maxBuffer: 1024 * 1024,
     shell: "/bin/sh",
+  });
+}
+
+/** Accumulates process output with byte and line limits. */
+class OutputAccumulator {
+  private chunks: Buffer[] = [];
+  private totalBytes = 0;
+  private readonly maxBytes: number;
+  private lineCount = 0;
+
+  constructor(maxBytes = 100 * 1024) {
+    this.maxBytes = maxBytes;
+  }
+
+  append(data: Buffer): void {
+    if (this.totalBytes >= this.maxBytes) return;
+    const remaining = this.maxBytes - this.totalBytes;
+    const chunk = data.length > remaining ? data.subarray(0, remaining) : data;
+    this.chunks.push(chunk);
+    this.totalBytes += chunk.length;
+    this.lineCount += chunk.toString("utf-8").split("\n").length - 1;
+  }
+
+  get content(): string {
+    return Buffer.concat(this.chunks).toString("utf-8");
+  }
+
+  get truncated(): boolean {
+    return this.totalBytes >= this.maxBytes;
+  }
+}
+
+function spawnCommand(
+  command: string,
+  cwd: string,
+  options: {
+    timeout?: number;
+    signal?: AbortSignal;
+    onUpdate?: (text: string) => void;
+    env?: Record<string, string>;
+  } = {},
+): Promise<{ output: string; exitCode: number | null; truncated: boolean; timedOut: boolean }> {
+  return new Promise((resolve) => {
+    const accum = new OutputAccumulator();
+    const ms = options.timeout ?? 30_000;
+    let finished = false;
+
+    const child = spawn("/bin/sh", ["-c", command], {
+      cwd,
+      env: { ...process.env, ...options.env } as Record<string, string>,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let lastUpdateLen = 0;
+    const updateTimer = options.onUpdate
+      ? setInterval(() => {
+          const snapshot = accum.content;
+          if (snapshot.length > lastUpdateLen) {
+            lastUpdateLen = snapshot.length;
+            options.onUpdate!(snapshot);
+          }
+        }, 50)
+      : null;
+
+    const finish = (exitCode: number | null, timedOutFlag: boolean) => {
+      if (finished) return;
+      finished = true;
+      if (updateTimer) clearInterval(updateTimer);
+      if (options.onUpdate && accum.content.length > lastUpdateLen) {
+        options.onUpdate(accum.content);
+      }
+      resolve({ output: accum.content, exitCode, truncated: accum.truncated, timedOut: timedOutFlag });
+    };
+
+    child.stdout?.on("data", (data: Buffer) => accum.append(data));
+    child.stderr?.on("data", (data: Buffer) => accum.append(data));
+
+    if (ms > 0) {
+      const timer = setTimeout(() => {
+        child.kill("SIGKILL");
+        finish(null, true);
+      }, ms);
+      child.on("close", (code) => { clearTimeout(timer); finish(code, false); });
+      child.on("error", () => { clearTimeout(timer); finish(null, false); });
+    } else {
+      child.on("close", (code) => finish(code, false));
+      child.on("error", () => finish(null, false));
+    }
+
+    if (options.signal) {
+      const onAbort = () => { child.kill("SIGKILL"); finish(null, false); };
+      if (options.signal.aborted) onAbort();
+      else options.signal.addEventListener("abort", onAbort, { once: true });
+    }
   });
 }
 
@@ -191,31 +285,40 @@ export function createEditTool(cwd: string): ToolDefinition {
 
 // ── Bash Tool ──
 
-export function createBashTool(cwd: string, defaultTimeout = 30000): ToolDefinition {
+export function createBashTool(cwd: string, defaultTimeout = 30_000): ToolDefinition {
   return {
     name: "bash",
-    description: "Execute a shell command in the project directory.",
+    description: "Execute a shell command. Returns stdout+stderr. Output truncated to 100KB. Optional timeout in seconds.",
     parameters: {
       type: "object",
       properties: {
         command: { type: "string", description: "Shell command to execute" },
-        timeout: { type: "number", description: "Timeout in milliseconds" },
+        timeout: { type: "number", description: "Timeout in seconds" },
       },
       required: ["command"],
     },
-    execute: async (_id, args) => {
+    execute: async (_id, args, signal, onUpdate) => {
       const { command, timeout } = args as { command: string; timeout?: number };
-      const ms = timeout ?? defaultTimeout;
-
+      const ms = timeout ? timeout * 1000 : defaultTimeout;
       try {
-        const output = runCommand(command, cwd, ms);
-        return { content: output || "(no output)", terminate: false };
-      } catch (err: any) {
-        const msg = err.message || String(err);
-        if (msg.includes("TIMEDOUT") || msg.includes("timed out")) {
-          return { content: `Command timed out after ${ms}ms`, terminate: false, isError: true };
+        const result = await spawnCommand(command, cwd, {
+          timeout: ms,
+          signal,
+          onUpdate,
+        });
+        let text = result.output || "(no output)";
+        if (result.truncated) {
+          text += "\n\n[Output truncated. Use grep/head/tail to read specific parts.]";
         }
-        return { content: msg, terminate: false, isError: true };
+        if (result.timedOut) {
+          return { content: `${text}\n\n[Command timed out after ${timeout ?? Math.round(ms / 1000)}s]`, terminate: false, isError: true };
+        }
+        if (result.exitCode !== null && result.exitCode !== 0) {
+          return { content: text, terminate: false, isError: true };
+        }
+        return { content: text, terminate: false };
+      } catch (err: any) {
+        return { content: err.message || String(err), terminate: false, isError: true };
       }
     },
   };
