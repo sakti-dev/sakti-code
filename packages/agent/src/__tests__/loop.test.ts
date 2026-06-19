@@ -6,13 +6,28 @@ vi.mock("@earendil-works/pi-ai", async () => {
   const actual = await vi.importActual("@earendil-works/pi-ai");
   return {
     ...actual,
-    streamSimple: vi.fn(),
+    streamSimple: vi.fn() as any,
   };
 });
 
-const { streamSimple } = await import("@earendil-works/pi-ai");
-const { AssistantMessageEventStream } = await import("@earendil-works/pi-ai");
+const { streamSimple: _streamSimple } = await import("@earendil-works/pi-ai");
+const streamSimple = _streamSimple as any;
 const { createAgentLoop } = await import("../loop");
+
+/** Minimal async iterable + push stream that mimics MockEventStream. */
+class MockEventStream<T> implements AsyncIterable<T> {
+  private events: T[] = [];
+  private _result?: any;
+
+  push(event: T) { this.events.push(event); }
+  setResult(r: any) { this._result = r; }
+  result() { return this._result; }
+  end() { /* no-op */ }
+
+  async *[Symbol.asyncIterator]() {
+    for (const e of this.events) yield e;
+  }
+}
 
 function createMockStore(): SessionStore {
   const messages: Map<string, AgentMessage[]> = new Map();
@@ -37,7 +52,7 @@ function createTestModel() {
     provider: "openai",
     baseUrl: "https://api.openai.com",
     reasoning: false,
-    input: ["text"] as const,
+    input: ["text"] as ["text"],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 200000,
     maxTokens: 4096,
@@ -45,7 +60,7 @@ function createTestModel() {
 }
 
 function createTextStream(text: string) {
-  const stream = new AssistantMessageEventStream();
+  const stream = new MockEventStream();
   const now = Date.now();
   stream.push({ type: "start", partial: { role: "assistant", content: [], usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", api: "openai-completions", provider: "openai", model: "test", timestamp: now } as any });
   stream.push({ type: "text_start", contentIndex: 0, partial: {} as any });
@@ -56,7 +71,7 @@ function createTextStream(text: string) {
 }
 
 function createToolCallStream(toolCall: { id: string; name: string; args: Record<string, unknown> }) {
-  const stream = new AssistantMessageEventStream();
+  const stream = new MockEventStream();
   const now = Date.now();
   stream.push({ type: "start", partial: { role: "assistant", content: [], usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "toolUse", api: "openai-completions", provider: "openai", model: "test", timestamp: now } as any });
   stream.push({ type: "toolcall_start", contentIndex: 0, partial: {} as any });

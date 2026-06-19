@@ -1,5 +1,4 @@
 import { streamSimple } from "@earendil-works/pi-ai";
-import type { AssistantMessageEvent } from "@earendil-works/pi-ai";
 import { createAgentConfig } from "./types.ts";
 import type {
   AgentConfigInput,
@@ -65,7 +64,7 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
           const stream = streamSimple(model, {
             messages: toPiMessages(messages),
             tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
-          }, { signal });
+          }, { signal: signal as AbortSignal });
 
           for await (const event of stream) {
             if (signal?.aborted) break;

@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["bun"],
+    "paths": {
+      "@sakti-code/agent": ["./packages/agent/src/index.ts"],
+      "@sakti-code/db": ["./packages/db/src/index.ts"],
+      "@sakti-code/tools": ["./packages/tools/src/index.ts"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*.ts"
+  ],
+  "exclude": [
+    "packages/**/__tests__/**"
+  ]
+}

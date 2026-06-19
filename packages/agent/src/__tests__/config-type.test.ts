@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { AgentConfig, AgentConfigInput } from "../types";
 import { createAgentConfig } from "../types";
 
 describe("AgentConfig type", () => {

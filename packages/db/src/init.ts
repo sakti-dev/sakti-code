@@ -9,17 +9,15 @@ export async function initDatabase(sqlite: Database): Promise<DrizzleDB> {
   sqlite.exec("PRAGMA journal_mode = WAL");
   sqlite.exec("PRAGMA foreign_keys = ON");
 
-  const db = drizzle(sqlite);
+  const db = drizzle(sqlite, { schema });
 
-  // Create all tables using drizzle's SQL migration helper
-  // For init, we use raw SQL since drizzle-kit generate is for production migrations
-  const createTableSQL = getCreateTableSQL(schema);
-  sqlite.exec(createTableSQL);
+  // Create tables with raw SQL
+  sqlite.exec(getCreateTableSQL(schema));
 
   return db;
 }
 
-function getCreateTableSQL(s: typeof schema): string {
+function getCreateTableSQL(_s: typeof schema): string {
   return `
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,

@@ -38,7 +38,7 @@ function runCommand(cmd: string, cwd: string, timeout = 30000): string {
     cwd,
     timeout,
     maxBuffer: 1024 * 1024,
-    shell: true,
+    shell: "/bin/sh",
   });
 }
 

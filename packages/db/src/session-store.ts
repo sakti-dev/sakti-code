@@ -34,7 +34,7 @@ function mapRowToAgentMessage(row: { role: string; content: string; toolCalls?: 
   }
 
   if (row.role === "assistant") {
-    const content: AgentMessage & { role: "assistant" }["content"] = [];
+    const content: Extract<AgentMessage, { role: "assistant" }>["content"] = [];
     // Parse text from content field
     content.push({ type: "text", text: row.content });
     // Parse tool calls if present
@@ -45,7 +45,7 @@ function mapRowToAgentMessage(row: { role: string; content: string; toolCalls?: 
       } catch { /* ignore parse errors */ }
     }
 
-    let usage: AgentMessage & { role: "assistant" }["usage"];
+    let usage: Extract<AgentMessage, { role: "assistant" }>["usage"];
     if (row.usage) {
       try {
         usage = JSON.parse(row.usage);
@@ -85,27 +85,34 @@ function agentMessageToRow(msg: AgentMessage): {
   }
 
   if (msg.role === "assistant") {
+    const aMsg = msg as AgentMessage & { role: "assistant" };
     // Extract text content
-    const textParts = msg.content
+    const textParts = aMsg.content
       .filter((c): c is { type: "text"; text: string } => c.type === "text")
-      .map((c) => c.text);
+      .map((c: { type: string; text: string }) => c.text);
     const content = textParts.join("");
 
     // Extract tool calls
-    const toolCallParts = msg.content.filter((c): c is { type: "toolCall"; id: string; name: string; arguments: Record<string, unknown> } => c.type === "toolCall");
+    const toolCallParts = aMsg.content.filter((c): c is { type: "toolCall"; id: string; name: string; arguments: Record<string, unknown> } => c.type === "toolCall");
     const toolCalls = toolCallParts.length > 0 ? JSON.stringify(toolCallParts) : undefined;
 
-    const usage = msg.usage ? JSON.stringify(msg.usage) : undefined;
+    const usage = aMsg.usage ? JSON.stringify(aMsg.usage) : undefined;
 
-    return { role: "assistant", content, toolCalls, usage };
+    return {
+      role: "assistant",
+      content,
+      ...(usage !== undefined ? { usage } : {}),
+      ...(toolCalls !== undefined ? { toolCalls } : {}),
+    };
   }
 
   // role === "tool"
+  const tMsg = msg as AgentMessage & { role: "tool" };
   return {
     role: "tool",
-    content: msg.content.map((c) => c.text).join(""),
-    toolCallId: msg.toolCallId,
-    toolName: msg.toolName,
-    isError: msg.isError ? 1 : 0,
+    content: tMsg.content.map((c: { type: string; text: string }) => c.text).join(""),
+    toolCallId: tMsg.toolCallId,
+    toolName: tMsg.toolName,
+    isError: tMsg.isError ? 1 : 0,
   };
 }

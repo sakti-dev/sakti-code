@@ -141,8 +141,8 @@ export function isAgentEvent(v: unknown): v is AgentEvent {
 // ── Config ──
 
 import type { Model } from "@earendil-works/pi-ai";
-
 export type { Model };
+export type AnyModel = Model<any>;
 
 // ── SessionStore interface ──
 
@@ -154,7 +154,7 @@ export interface SessionStore {
 
 export interface AgentConfig {
   sessionId: string;
-  model: Model;
+  model: AnyModel;
   tools: AgentTool[];
   store: SessionStore;
   toolExecutionMode: "sequential" | "parallel";
@@ -166,7 +166,7 @@ export interface AgentConfig {
 
 export interface AgentConfigInput {
   sessionId: string;
-  model: Model;
+  model: AnyModel;
   tools: AgentTool[];
   store: SessionStore;
   toolExecutionMode?: "sequential" | "parallel";

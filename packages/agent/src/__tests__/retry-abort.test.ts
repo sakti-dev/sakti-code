@@ -3,12 +3,24 @@ import type { AgentEvent, AgentMessage, SessionStore } from "../types";
 
 vi.mock("@earendil-works/pi-ai", async () => {
   const actual = await vi.importActual("@earendil-works/pi-ai");
-  return { ...actual, streamSimple: vi.fn() };
+  return { ...actual, streamSimple: vi.fn() as any };
 });
 
-const { streamSimple } = await import("@earendil-works/pi-ai");
-const { AssistantMessageEventStream } = await import("@earendil-works/pi-ai");
+const { streamSimple: _streamSimple } = await import("@earendil-works/pi-ai");
+const streamSimple = _streamSimple as any;
 const { createAgentLoop } = await import("../loop");
+
+class MockEventStream<T> implements AsyncIterable<T> {
+  private events: T[] = [];
+  private _result?: any;
+  push(event: T) { this.events.push(event); }
+  setResult(r: any) { this._result = r; }
+  result() { return this._result; }
+  end() { /* no-op for mock */ }
+  async *[Symbol.asyncIterator]() {
+    for (const e of this.events) yield e;
+  }
+}
 
 function createMockStore(): SessionStore {
   const messages: Map<string, AgentMessage[]> = new Map();
@@ -19,13 +31,13 @@ function createMockStore(): SessionStore {
       list.push(msg);
       messages.set(id, list);
     }),
-    replaceMessages: vi.fn(async (id, msgs) => messages.set(id, [...msgs])),
+    replaceMessages: vi.fn(async (id, msgs) => { messages.set(id, [...msgs]); }),
   };
 }
 
 const testModel = {
   id: "test", name: "Test", api: "openai-completions" as const, provider: "openai",
-  baseUrl: "", reasoning: false, input: ["text"] as const,
+  baseUrl: "", reasoning: false, input: ["text"] as ["text"],
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   contextWindow: 200000, maxTokens: 4096,
 };
@@ -37,21 +49,13 @@ const basePartial: any = {
 };
 
 function textStream(text: string) {
-  const s = new AssistantMessageEventStream();
+  const s = new MockEventStream();
   const now = Date.now();
   s.push({ type: "start", partial: { ...basePartial, stopReason: "stop", timestamp: now } });
   s.push({ type: "text_start", contentIndex: 0, partial: {} as any });
   s.push({ type: "text_delta", contentIndex: 0, delta: text, partial: {} as any });
   s.push({ type: "text_end", contentIndex: 0, content: text, partial: {} as any });
   s.push({ type: "done", reason: "stop", message: { ...basePartial, content: [{ type: "text", text }], stopReason: "stop", timestamp: now } });
-  return s;
-}
-
-function errorStream(message: string) {
-  const s = new AssistantMessageEventStream();
-  const now = Date.now();
-  s.push({ type: "start", partial: { ...basePartial, stopReason: "error", timestamp: now } });
-  s.push({ type: "error", reason: "error", error: { ...basePartial, stopReason: "error", errorMessage: message, timestamp: now } });
   return s;
 }
 
@@ -101,7 +105,7 @@ describe("Agent retry", () => {
 describe("Agent abort", () => {
   it("abort during LLM streaming → agent stops and yields agent_end", async () => {
     const store = createMockStore();
-    const stream = new AssistantMessageEventStream();
+    const stream = new MockEventStream();
     const now = Date.now();
     stream.push({ type: "start", partial: { ...basePartial, stopReason: "stop", timestamp: now } });
 
