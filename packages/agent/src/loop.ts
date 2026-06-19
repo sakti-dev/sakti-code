@@ -132,12 +132,13 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
       await store.appendMessage(sessionId, finalAssistant);
 
       if (toolCalls.length === 0) {
-        yield evt("turn_end", { turnIndex });
+        yield evt("turn_end", { turnIndex, message: finalAssistant, toolResults: [] });
         break;
       }
 
       // ── Execute tools ──
       const toolMap = new Map(tools.map((t) => [t.name, t]));
+      const toolResultMessages: Extract<AgentMessage, { role: "tool" }>[] = [];
 
       for (const tc of toolCalls) {
         const tool = toolMap.get(tc.name);
@@ -151,19 +152,21 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
           let accumulated = "";
           try {
             result = await tool.execute(tc.id, tc.arguments, signal, (partial) => { accumulated += partial; });
-            yield evt("tool_execution_update", { toolCallId: tc.id, accumulated });
+            yield evt("tool_execution_update", { toolCallId: tc.id, toolName: tc.name, accumulated });
           } catch (err: any) {
             result = { content: err.message ?? "Tool execution error", terminate: false, isError: true };
           }
         }
 
-        yield evt("tool_execution_end", { toolCallId: tc.id, result });
+        yield evt("tool_execution_end", { toolCallId: tc.id, toolName: tc.name, result });
 
-        messages.push({ role: "tool", toolCallId: tc.id, toolName: tc.name, content: [{ type: "text", text: result.content }], isError: result.isError ?? false, timestamp: Date.now() });
+        const toolMsg: Extract<AgentMessage, { role: "tool" }> = { role: "tool", toolCallId: tc.id, toolName: tc.name, content: [{ type: "text", text: result.content }], isError: result.isError ?? false, timestamp: Date.now() };
+        messages.push(toolMsg);
+        toolResultMessages.push(toolMsg);
         await store.appendMessage(sessionId, messages[messages.length - 1]!);
       }
 
-      yield evt("turn_end", { turnIndex });
+      yield evt("turn_end", { turnIndex, message: finalAssistant, toolResults: toolResultMessages });
       turnIndex++;
 
       if (signal?.aborted) break;

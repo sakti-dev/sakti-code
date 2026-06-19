@@ -409,8 +409,8 @@ export function createBashTool(cwd: string, defaultTimeout = 30_000): ToolDefini
       try {
         const result = await spawnCommand(command, cwd, {
           timeout: ms,
-          signal,
-          onUpdate,
+          ...(signal ? { signal } : {}),
+          ...(onUpdate ? { onUpdate } : {}),
         });
         let text = result.output || "(no output)";
         if (result.truncated) {

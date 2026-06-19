@@ -91,7 +91,7 @@ export interface AgentEventBase {
 export interface AgentStartEvent extends AgentEventBase { type: "agent_start"; sessionId: string }
 export interface AgentEndEvent extends AgentEventBase { type: "agent_end"; sessionId: string }
 export interface TurnStartEvent extends AgentEventBase { type: "turn_start"; turnIndex: number }
-export interface TurnEndEvent extends AgentEventBase { type: "turn_end"; turnIndex: number }
+export interface TurnEndEvent extends AgentEventBase { type: "turn_end"; turnIndex: number; message: Extract<AgentMessage, { role: "assistant" }>; toolResults: Extract<AgentMessage, { role: "tool" }>[] }
 export interface MessageStartEvent extends AgentEventBase { type: "message_start" }
 export interface MessageEndEvent extends AgentEventBase { type: "message_end" }
 
@@ -105,8 +105,8 @@ export type MessageUpdate =
 export interface MessageUpdateEvent extends AgentEventBase { type: "message_update"; update: MessageUpdate }
 
 export interface ToolExecutionStartEvent extends AgentEventBase { type: "tool_execution_start"; toolCallId: string; toolName: string }
-export interface ToolExecutionUpdateEvent extends AgentEventBase { type: "tool_execution_update"; toolCallId: string; accumulated: string }
-export interface ToolExecutionEndEvent extends AgentEventBase { type: "tool_execution_end"; toolCallId: string; result: AgentToolResult }
+export interface ToolExecutionUpdateEvent extends AgentEventBase { type: "tool_execution_update"; toolCallId: string; toolName: string; accumulated: string }
+export interface ToolExecutionEndEvent extends AgentEventBase { type: "tool_execution_end"; toolCallId: string; toolName: string; result: AgentToolResult }
 
 export interface ErrorEvent extends AgentEventBase { type: "error"; message: string }
 export interface CompactionStartEvent extends AgentEventBase { type: "compaction_start" }

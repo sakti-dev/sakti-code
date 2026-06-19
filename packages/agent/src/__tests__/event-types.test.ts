@@ -14,9 +14,24 @@ describe("AgentEvent discriminated union", () => {
 
   it("turn_start and turn_end events", () => {
     const start: AgentEvent = { type: "turn_start", turnIndex: 0, timestamp: 0 };
-    const end: AgentEvent = { type: "turn_end", turnIndex: 0, timestamp: 0 };
+    const end: AgentEvent = {
+      type: "turn_end",
+      turnIndex: 0,
+      message: {
+        role: "assistant",
+        content: [{ type: "text", text: "done" }],
+        usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+        timestamp: 0,
+      },
+      toolResults: [],
+      timestamp: 0,
+    };
     expect(start.type).toBe("turn_start");
     expect(end.type).toBe("turn_end");
+    if (end.type === "turn_end") {
+      expect(end.toolResults).toEqual([]);
+      expect(end.message.role).toBe("assistant");
+    }
   });
 
   it("message lifecycle events", () => {
@@ -51,11 +66,12 @@ describe("AgentEvent discriminated union", () => {
 
   it("tool_execution events", () => {
     const start: AgentEvent = { type: "tool_execution_start", toolCallId: "tc_1", toolName: "read", timestamp: 0 };
-    const update: AgentEvent = { type: "tool_execution_update", toolCallId: "tc_1", accumulated: "partial...", timestamp: 0 };
-    const end: AgentEvent = { type: "tool_execution_end", toolCallId: "tc_1", result: { content: "done", terminate: false }, timestamp: 0 };
+    const update: AgentEvent = { type: "tool_execution_update", toolCallId: "tc_1", toolName: "read", accumulated: "partial...", timestamp: 0 };
+    const end: AgentEvent = { type: "tool_execution_end", toolCallId: "tc_1", toolName: "read", result: { content: "done", terminate: false }, timestamp: 0 };
     expect(start.type).toBe("tool_execution_start");
     expect(update.type).toBe("tool_execution_update");
     expect(end.type).toBe("tool_execution_end");
+    if (end.type === "tool_execution_end") expect(end.toolName).toBe("read");
   });
 
   it("error event", () => {
