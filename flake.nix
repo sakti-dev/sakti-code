@@ -10,43 +10,47 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+
+        runtimeLibs = with pkgs; [
+          # Electrobun Linux native dependencies
+          # (from src/native/linux/nativeWrapper.cpp includes)
+          gtk3
+          webkitgtk_4_1
+          libsoup_3
+          libayatana-appindicator
+          libx11
+          libxext
+          libxcursor
+          libxfixes
+          libxrandr
+          libxcomposite
+          libxdamage
+          libxscrnsaver
+          glib-networking
+
+          # Runtime / general
+          glib
+          cairo
+          gdk-pixbuf
+          at-spi2-atk
+          pango
+          harfbuzz
+          fontconfig
+          freetype
+          stdenv.cc.cc.lib
+        ];
       in
       {
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             bun
             zig_0_13
-
-            # Electrobun Linux native dependencies
-            # (from src/native/linux/nativeWrapper.cpp includes)
-            gtk3
-            webkitgtk_4_1
-            libsoup_3
-            libayatana-appindicator
-            xorg.libX11
-            xorg.libXext
-            xorg.libXcursor
-            xorg.libXfixes
-            xorg.libXrandr
-            xorg.libXcomposite
-            xorg.libXdamage
-            xorg.libXScrnSaver
-
-            # Runtime / general
-            glib
-            cairo
-            gdk-pixbuf
-            at-spi2-atk
-            pango
-            harfbuzz
-            fontconfig
-            freetype
-            stdenv.cc
-          ];
+          ] ++ runtimeLibs;
 
           shellHook = ''
             export GDK_BACKEND=x11
             export GIO_MODULE_DIR="${pkgs.glib-networking}/lib/gio/modules"
+            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath runtimeLibs}:$LD_LIBRARY_PATH"
           '';
         };
       }
