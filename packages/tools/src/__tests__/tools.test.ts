@@ -52,6 +52,19 @@ describe("ReadTool", () => {
     expect(result.content).toContain("truncated");
     expect(result.content.split("\n").length).toBeLessThan(3000);
   });
+
+  it("reads image files as base64 data URL", async () => {
+    const minimalPng = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+      "base64",
+    );
+    writeFileSync(join(tmpDir, "test.png"), minimalPng);
+    const tool = createReadTool(tmpDir);
+    const result = await tool.execute("tc_1", { path: "test.png" });
+    expect(result.isError).toBeFalsy();
+    expect(result.content).toContain("image/png");
+    expect(result.content).toContain("data:image/png;base64,");
+  });
 });
 
 describe("WriteTool", () => {

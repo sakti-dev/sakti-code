@@ -25,6 +25,16 @@ function restoreLineEndings(content: string, ending: string): string {
 
 const fileLocks = new Map<string, Promise<void>>();
 
+const IMAGE_EXTENSIONS = new Map([
+  ["jpg", "image/jpeg"], ["jpeg", "image/jpeg"],
+  ["png", "image/png"], ["gif", "image/gif"], ["webp", "image/webp"],
+]);
+
+function detectImageMime(path: string): string | undefined {
+  const ext = path.split(".").pop()?.toLowerCase();
+  return ext ? IMAGE_EXTENSIONS.get(ext) : undefined;
+}
+
 function withFileLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
   const pending = fileLocks.get(path);
   const next = pending ? pending.then(fn, fn) : fn();
@@ -202,6 +212,13 @@ export function createReadTool(cwd: string): ToolDefinition {
 
       if (!existsSync(filePath)) {
         return { content: `File not found: ${path}`, terminate: false, isError: true };
+      }
+
+      const mime = detectImageMime(path);
+      if (mime) {
+        const buf = await readFile(filePath);
+        const dataUrl = `data:${mime};base64,${buf.toString("base64")}`;
+        return { content: `Read image file [${mime}]\n${dataUrl}`, terminate: false };
       }
 
       const raw = await readFile(filePath, "utf-8");
