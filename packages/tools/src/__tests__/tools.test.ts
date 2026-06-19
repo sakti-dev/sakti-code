@@ -115,6 +115,42 @@ describe("EditTool", () => {
     const result = await tool.execute("tc_1", { path: "nope.txt", edits: [{ oldText: "x", newText: "y" }] });
     expect(result.isError).toBe(true);
   });
+
+  it("preserves BOM on edit", async () => {
+    const bom = Buffer.from([0xef, 0xbb, 0xbf]);
+    const content = Buffer.concat([bom, Buffer.from("hello\nworld\n")]);
+    writeFileSync(join(tmpDir, "bom.txt"), content);
+    const tool = createEditTool(tmpDir);
+    await tool.execute("tc_1", { path: "bom.txt", edits: [{ oldText: "hello", newText: "HELLO" }] });
+    const result = readFileSync(join(tmpDir, "bom.txt"), "utf-8");
+    expect(result.charCodeAt(0)).toBe(0xfeff);
+    expect(result).toContain("HELLO");
+  });
+
+  it("preserves CRLF line endings", async () => {
+    writeFileSync(join(tmpDir, "crlf.txt"), "line1\r\nline2\r\n");
+    const tool = createEditTool(tmpDir);
+    await tool.execute("tc_1", { path: "crlf.txt", edits: [{ oldText: "line1", newText: "LINE1" }] });
+    const result = readFileSync(join(tmpDir, "crlf.txt"), "utf-8");
+    expect(result).toContain("\r\n");
+    expect(result).toContain("LINE1\r\n");
+  });
+
+  it("rejects non-unique oldText", async () => {
+    writeFileSync(join(tmpDir, "dup.txt"), "const x = 1;\nconst x = 2;\n");
+    const tool = createEditTool(tmpDir);
+    const result = await tool.execute("tc_1", { path: "dup.txt", edits: [{ oldText: "const x", newText: "const y" }] });
+    expect(result.isError).toBe(true);
+    expect(result.content).toContain("matches 2 locations");
+    expect(readFileSync(join(tmpDir, "dup.txt"), "utf-8")).toBe("const x = 1;\nconst x = 2;\n");
+  });
+
+  it("rejects empty edits array", async () => {
+    writeFileSync(join(tmpDir, "empty.txt"), "hello");
+    const tool = createEditTool(tmpDir);
+    const result = await tool.execute("tc_1", { path: "empty.txt", edits: [] });
+    expect(result.isError).toBe(true);
+  });
 });
 
 describe("BashTool", () => {
