@@ -85,19 +85,19 @@
 
 ## 9. Database Repos (`packages/db`)
 
-- [ ] 9.1 TDD: Write failing test — ProjectRepo.create() inserts a project, findById() retrieves it, findByCwd() finds by cwd, list() returns all projects ordered by createdAt desc
-- [ ] 9.2 Implement `src/repos/project.ts` — ProjectRepo class with create, findById, findByCwd, list, update, delete methods using Drizzle queries. Verify test passes
-- [ ] 9.3 TDD: Write failing test — SessionRepo.create() inserts a session linked to project, listByProject() returns sessions ordered by date
-- [ ] 9.4 Implement `src/repos/session.ts` — SessionRepo class. Verify test passes
-- [ ] 9.5 TDD: Write failing test — MessageRepo.append() inserts a message, loadBySession() returns messages in chronological order, replaceForSession() atomically swaps messages in a transaction
-- [ ] 9.6 Implement `src/repos/message.ts` — MessageRepo class with transaction support for replaceForSession. Verify test passes
-- [ ] 9.7 TDD: Write failing test — CostRepo.record() persists a cost row, aggregateByProject() sums tokens and costs correctly
-- [ ] 9.8 Implement `src/repos/cost.ts`. Verify test passes
-- [ ] 9.9 TDD: Write failing test — SettingsRepo.set() upserts a key-value pair, get() retrieves it, get() returns null for missing key
-- [ ] 9.10 Implement `src/repos/settings.ts`. Verify test passes
-- [ ] 9.11 TDD: Write failing test — ModelConfigRepo.set() creates a config, getForProject() returns project config or falls back to global default
-- [ ] 9.12 Implement `src/repos/model-config.ts`. Verify test passes
-- [ ] 9.13 Create `src/repos/index.ts` re-exporting all repos
+- [x] 9.1 TDD: Write failing test — ProjectRepo.create() inserts a project, findById() retrieves it, findByCwd() finds by cwd, list() returns all projects ordered by createdAt desc
+- [x] 9.2 Implement `src/repos/project.ts` — ProjectRepo class with create, findById, findByCwd, list, update, delete methods using Drizzle queries. Verify test passes
+- [x] 9.3 TDD: Write failing test — SessionRepo.create() inserts a session linked to project, listByProject() returns sessions ordered by date
+- [x] 9.4 Implement `src/repos/session.ts` — SessionRepo class. Verify test passes
+- [x] 9.5 TDD: Write failing test — MessageRepo.append() inserts a message, loadBySession() returns messages in chronological order, replaceForSession() atomically swaps messages in a transaction
+- [x] 9.6 Implement `src/repos/message.ts` — MessageRepo class with transaction support for replaceForSession. Verify test passes
+- [x] 9.7 TDD: Write failing test — CostRepo.record() persists a cost row, aggregateByProject() sums tokens and costs correctly
+- [x] 9.8 Implement `src/repos/cost.ts`. Verify test passes
+- [x] 9.9 TDD: Write failing test — SettingsRepo.set() upserts a key-value pair, get() retrieves it, get() returns null for missing key
+- [x] 9.10 Implement `src/repos/settings.ts`. Verify test passes
+- [x] 9.11 TDD: Write failing test — ModelConfigRepo.set() creates a config, getForProject() returns project config or falls back to global default
+- [x] 9.12 Implement `src/repos/model-config.ts`. Verify test passes
+- [x] 9.13 Create `src/repos/index.ts` re-exporting all repos
 
 ## 10. SqliteSessionStore (`packages/db`)
 
