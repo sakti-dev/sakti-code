@@ -6,26 +6,38 @@ export function shouldCompact(
   return tokens >= contextWindow - reserveTokens;
 }
 
+function contentTokenEstimate(content: string | unknown[]): number {
+  if (typeof content === "string") {
+    return content.length;
+  }
+  if (!Array.isArray(content)) {
+    return 0;
+  }
+
+  let total = 0;
+  for (const block of content) {
+    if (typeof block === "string") {
+      total += block.length;
+    } else if (block !== null && typeof block === "object") {
+      const b = block as Record<string, unknown>;
+      if (typeof b.text === "string") {
+        total += b.text.length;
+      } else if (typeof b.thinking === "string") {
+        total += b.thinking.length;
+      } else if (b.arguments) {
+        total += JSON.stringify(b.arguments).length;
+      }
+    }
+  }
+  return total;
+}
+
 export function estimateTokens(
-  messages: Array<{ content: string | any[] }>
+  messages: Array<{ content: string | unknown[] }>
 ): number {
   let total = 0;
   for (const msg of messages) {
-    if (typeof msg.content === "string") {
-      total += msg.content.length;
-    } else if (Array.isArray(msg.content)) {
-      for (const block of msg.content) {
-        if (typeof block === "string") {
-          total += block.length;
-        } else if ("text" in block && typeof block.text === "string") {
-          total += block.text.length;
-        } else if ("thinking" in block && typeof block.thinking === "string") {
-          total += block.thinking.length;
-        } else if ("arguments" in block && block.arguments) {
-          total += JSON.stringify(block.arguments).length;
-        }
-      }
-    }
+    total += contentTokenEstimate(msg.content);
   }
   // Rough: 4 chars per token
   return Math.ceil(total / 4);
@@ -71,6 +83,7 @@ export interface CompactionOptions {
   contextWindow: number;
   keepRecentTokens?: number;
   messages: AgentMessage[];
+  // biome-ignore lint/suspicious/noExplicitAny: Model<TApi> is generic over provider API; AnyModel intentionally accepts any
   model: import("@earendil-works/pi-ai").Model<any>;
   reserveTokens?: number;
   signal?: AbortSignal;
@@ -111,7 +124,11 @@ export async function compactMessages(
   let cutIndex = messages.length;
   let recentTokens = 0;
   for (let i = messages.length - 1; i >= 0; i--) {
-    recentTokens += estimateTokens([messages[i]!]);
+    const msg = messages[i];
+    if (!msg) {
+      continue;
+    }
+    recentTokens += estimateTokens([msg]);
     if (recentTokens >= keepRecentTokens) {
       cutIndex = i;
       break;

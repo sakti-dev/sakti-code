@@ -9,6 +9,7 @@ export class SqliteSessionStore implements SessionStore {
     this.messageRepo = new MessageRepo(db);
   }
 
+  // biome-ignore lint/suspicious/useAwait: SessionStore interface requires async; drizzle calls are synchronous
   async loadMessages(sessionId: string): Promise<AgentMessage[]> {
     const rows = this.messageRepo.loadBySession(sessionId);
     return rows.map(mapRowToAgentMessage);

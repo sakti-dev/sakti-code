@@ -226,6 +226,7 @@ export function isAgentEvent(v: unknown): v is AgentEvent {
 import type { Model } from "@earendil-works/pi-ai";
 
 export type { Model };
+// biome-ignore lint/suspicious/noExplicitAny: Model<TApi> is generic over provider API; AnyModel intentionally accepts any
 export type AnyModel = Model<any>;
 
 // ── SessionStore interface ──

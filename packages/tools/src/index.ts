@@ -147,6 +147,10 @@ function withFileLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
   return next;
 }
 
+function errMsg(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 function shellQuote(s: string): string {
   return `'${s.replace(/'/g, "'\\''")}'`;
 }
@@ -522,7 +526,7 @@ export function createEditTool(cwd: string): ToolDefinition {
         };
       }
 
-      return withFileLock(filePath, async () => {
+      return await withFileLock(filePath, async () => {
         const raw = await readFile(filePath, "utf-8");
         const { bom, text } = stripBom(raw);
         const originalEnding = detectLineEnding(text);
@@ -619,9 +623,9 @@ export function createBashTool(
           return { content: text, terminate: false, isError: true };
         }
         return { content: text, terminate: false };
-      } catch (err: any) {
+      } catch (err: unknown) {
         return {
-          content: err.message || String(err),
+          content: errMsg(err),
           terminate: false,
           isError: true,
         };
@@ -649,6 +653,7 @@ export function createGrepTool(cwd: string): ToolDefinition {
       },
       required: ["pattern"],
     },
+    // biome-ignore lint/suspicious/useAwait: interface requires async; execSync is synchronous
     execute: async (_id, args) => {
       const v = validateArgs(
         args as Record<string, unknown>,
@@ -693,12 +698,12 @@ export function createGrepTool(cwd: string): ToolDefinition {
         });
 
         return { content: matches.join("\n"), terminate: false };
-      } catch (err: any) {
-        if (err.status === 1) {
+      } catch (err: unknown) {
+        if (err instanceof Error && "status" in err && err.status === 1) {
           return { content: "No matches found.", terminate: false };
         }
         return {
-          content: `grep error: ${err.message?.slice(0, 200) ?? String(err)}`,
+          content: `grep error: ${errMsg(err).slice(0, 200)}`,
           terminate: false,
           isError: true,
         };
@@ -725,6 +730,7 @@ export function createFindTool(cwd: string): ToolDefinition {
       },
       required: ["pattern"],
     },
+    // biome-ignore lint/suspicious/useAwait: interface requires async; execSync is synchronous
     execute: async (_id, args) => {
       const v = validateArgs(
         args as Record<string, unknown>,
@@ -763,12 +769,14 @@ export function createFindTool(cwd: string): ToolDefinition {
         }
 
         return { content: files.join("\n"), terminate: false };
-      } catch (err: any) {
-        if (err.status === 1) {
+      } catch (err: unknown) {
+        if (err instanceof Error && "status" in err && err.status === 1) {
           return { content: "No files found.", terminate: false };
         }
+        const stderr =
+          err instanceof Error && "stderr" in err ? String(err.stderr) : "";
         return {
-          content: `find error: ${err.stderr?.slice(0, 200) ?? err.message?.slice(0, 200) ?? String(err)} (status=${err.status})`,
+          content: `find error: ${stderr.slice(0, 200) || errMsg(err).slice(0, 200)}`,
           terminate: false,
           isError: true,
         };
@@ -823,9 +831,9 @@ export function createLsTool(cwd: string): ToolDefinition {
           .map((e) => (e.isDirectory() ? `${e.name}/` : e.name));
 
         return { content: sorted.join("\n"), terminate: false };
-      } catch (err: any) {
+      } catch (err: unknown) {
         return {
-          content: `ls error: ${err.message?.slice(0, 200) ?? String(err)}`,
+          content: `ls error: ${errMsg(err).slice(0, 200)}`,
           terminate: false,
           isError: true,
         };

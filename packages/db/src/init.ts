@@ -4,6 +4,7 @@ import * as schema from "./schema.ts";
 
 export type DrizzleDB = BunSQLiteDatabase<typeof schema>;
 
+// biome-ignore lint/suspicious/useAwait: SessionStore interface requires async; drizzle/bun:sqlite calls are synchronous
 export async function initDatabase(sqlite: Database): Promise<DrizzleDB> {
   // Enable WAL mode and foreign keys
   sqlite.exec("PRAGMA journal_mode = WAL");

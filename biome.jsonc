@@ -12,7 +12,8 @@
         "noNamespaceImport": "off"
       },
       "style": {
-        "noExportedImports": "off"
+        "noExportedImports": "off",
+        "useDefaultSwitchClause": "off"
       }
     }
   },
@@ -23,7 +24,11 @@
         "rules": {
           "suspicious": {
             "noExplicitAny": "off",
-            "noEmptyBlockStatements": "off"
+            "noEmptyBlockStatements": "off",
+            "useAwait": "off"
+          },
+          "style": {
+            "noNonNullAssertion": "off"
           }
         }
       }

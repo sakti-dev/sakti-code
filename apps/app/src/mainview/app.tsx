@@ -16,10 +16,14 @@ export default function App() {
             you can edit this component and see changes instantly.
           </p>
           <div class="button-group">
-            <button class="primary" onClick={() => setCount(count() + 1)}>
+            <button
+              class="primary"
+              onClick={() => setCount(count() + 1)}
+              type="button"
+            >
               Count: {count()}
             </button>
-            <button class="secondary" onClick={() => setCount(0)}>
+            <button class="secondary" onClick={() => setCount(0)} type="button">
               Reset
             </button>
           </div>

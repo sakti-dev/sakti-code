@@ -10,7 +10,10 @@ import {
 } from "../schema.ts";
 
 export class ProjectRepo {
-  constructor(private readonly db: DrizzleDB) {}
+  private readonly db: DrizzleDB;
+  constructor(db: DrizzleDB) {
+    this.db = db;
+  }
 
   async create(name: string, cwd: string) {
     const id = crypto.randomUUID();
@@ -18,7 +21,11 @@ export class ProjectRepo {
     await this.db
       .insert(projects)
       .values({ id, name, cwd, createdAt: now, updatedAt: now });
-    return this.findById(id)!;
+    const created = this.findById(id);
+    if (!created) {
+      throw new Error(`Not found after write: ${id}`);
+    }
+    return created;
   }
 
   findById(id: string) {
@@ -45,7 +52,11 @@ export class ProjectRepo {
       .update(projects)
       .set({ ...data, updatedAt: Date.now() })
       .where(eq(projects.id, id));
-    return this.findById(id)!;
+    const created = this.findById(id);
+    if (!created) {
+      throw new Error(`Not found after write: ${id}`);
+    }
+    return created;
   }
 
   async delete(id: string) {
@@ -54,7 +65,10 @@ export class ProjectRepo {
 }
 
 export class SessionRepo {
-  constructor(private readonly db: DrizzleDB) {}
+  private readonly db: DrizzleDB;
+  constructor(db: DrizzleDB) {
+    this.db = db;
+  }
 
   async create(
     projectId: string,
@@ -72,7 +86,11 @@ export class SessionRepo {
       createdAt: now,
       updatedAt: now,
     });
-    return this.findById(id)!;
+    const created = this.findById(id);
+    if (!created) {
+      throw new Error(`Not found after write: ${id}`);
+    }
+    return created;
   }
 
   findById(id: string) {
@@ -98,7 +116,11 @@ export class SessionRepo {
       .update(sessions)
       .set({ ...data, updatedAt: Date.now() })
       .where(eq(sessions.id, id));
-    return this.findById(id)!;
+    const created = this.findById(id);
+    if (!created) {
+      throw new Error(`Not found after write: ${id}`);
+    }
+    return created;
   }
 
   async delete(id: string) {
@@ -107,7 +129,10 @@ export class SessionRepo {
 }
 
 export class MessageRepo {
-  constructor(private readonly db: DrizzleDB) {}
+  private readonly db: DrizzleDB;
+  constructor(db: DrizzleDB) {
+    this.db = db;
+  }
 
   async append(
     sessionId: string,
@@ -197,7 +222,10 @@ export class MessageRepo {
 }
 
 export class CostRepo {
-  constructor(private readonly db: DrizzleDB) {}
+  private readonly db: DrizzleDB;
+  constructor(db: DrizzleDB) {
+    this.db = db;
+  }
 
   async record(
     sessionId: string,
@@ -245,7 +273,10 @@ export class CostRepo {
 }
 
 export class SettingsRepo {
-  constructor(private readonly db: DrizzleDB) {}
+  private readonly db: DrizzleDB;
+  constructor(db: DrizzleDB) {
+    this.db = db;
+  }
 
   get(key: string) {
     const row = this.db
@@ -273,7 +304,10 @@ export class SettingsRepo {
 }
 
 export class ModelConfigRepo {
-  constructor(private readonly db: DrizzleDB) {}
+  private readonly db: DrizzleDB;
+  constructor(db: DrizzleDB) {
+    this.db = db;
+  }
 
   async set(data: {
     projectId?: string;
