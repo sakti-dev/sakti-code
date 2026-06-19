@@ -147,7 +147,7 @@
 
 ## 12. Integration Verification
 
-- [ ] 12.1 TDD: Write failing test — create AgentLoop with SqliteSessionStore + coding tools, send a prompt that triggers read + edit tools, verify full cycle: messages persisted to SQLite, events yielded correctly
-- [ ] 12.2 Set up integration test using real SqliteSessionStore and real tools (with temp directories). Verify test passes
-- [ ] 12.3 Run `bun run typecheck` across all packages — verify zero errors
-- [ ] 12.4 Run all tests across all packages — verify 100% pass rate
+- [x] 12.1 TDD: Write failing test — create AgentLoop with SqliteSessionStore + coding tools, send a prompt that triggers read + edit tools, verify full cycle: messages persisted to SQLite, events yielded correctly
+- [x] 12.2 Set up integration test using real SqliteSessionStore and real tools (with temp directories). Verify test passes
+- [x] 12.3 Run `bun run typecheck` across all packages — verify zero errors
+- [x] 12.4 Run all tests across all packages — verify 100% pass rate

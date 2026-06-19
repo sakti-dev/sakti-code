@@ -38,6 +38,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@sakti-code/agent": "workspace:*",
+        "@sakti-code/tools": "workspace:*",
         "drizzle-kit": "0.31.4",
         "drizzle-orm": "0.44.2",
       },
