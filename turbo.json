@@ -13,9 +13,16 @@
 			"cache": false,
 			"persistent": true
 		},
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"]
+		},
 		"build:canary": {
 			"dependsOn": ["^build:canary"],
 			"outputs": ["dist/**", "build/**"]
+		},
+		"test": {
+			"dependsOn": ["^build"]
 		}
 	}
 }

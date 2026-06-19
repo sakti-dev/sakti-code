@@ -1,7 +1,7 @@
 {
 	"name": "sakti-code",
 	"private": true,
-	"workspaces": ["apps/*"],
+	"workspaces": ["apps/*", "packages/*"],
 	"scripts": {
 		"dev": "turbo run dev",
 		"start": "turbo run start",
@@ -9,7 +9,8 @@
 		"build:canary": "turbo run build:canary"
 	},
 	"devDependencies": {
-		"turbo": "2.9.18"
+		"turbo": "2.9.18",
+		"vitest": "^4.1.9"
 	},
 	"packageManager": "bun@1.2.15"
 }

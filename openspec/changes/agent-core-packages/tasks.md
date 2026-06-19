@@ -1,52 +1,52 @@
 ## 1. Monorepo Setup
 
-- [ ] 1.1 Create `packages/agent/package.json` with name `@sakti-code/agent`, type module, main/types pointing to dist, add `@earendil-works/pi-ai` as dependency
-- [ ] 1.2 Create `packages/db/package.json` with name `@sakti-code/db`, type module, add `drizzle-orm` and `drizzle-kit` as dependencies, add `@sakti-code/agent` as workspace dependency
-- [ ] 1.3 Create `packages/tools/package.json` with name `@sakti-code/tools`, type module, no workspace dependencies (independent package)
-- [ ] 1.4 Update root `package.json` workspaces from `["apps/*"]` to `["apps/*", "packages/*"]`
-- [ ] 1.5 Create shared `tsconfig.base.json` at root with strict mode, ESNext target, bundler module resolution, noEmit, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`
-- [ ] 1.6 Create `packages/agent/tsconfig.json` extending base, include `src/`, outDir `dist/`, add composite:true and references
-- [ ] 1.7 Create `packages/db/tsconfig.json` extending base, include `src/`, outDir `dist/`, add composite:true and references
-- [ ] 1.8 Create `packages/tools/tsconfig.json` extending base, include `src/`, outDir `dist/`, add composite:true and references
-- [ ] 1.9 Update root `turbo.json` to add `build` pipeline for packages with `dependsOn: ["^build"]`
-- [ ] 1.10 Run `bun install` and verify all workspace packages resolve correctly
+- [x] 1.1 Create `packages/agent/package.json` with name `@sakti-code/agent`, type module, main/types pointing to dist, add `@earendil-works/pi-ai` as dependency
+- [x] 1.2 Create `packages/db/package.json` with name `@sakti-code/db`, type module, add `drizzle-orm` and `drizzle-kit` as dependencies, add `@sakti-code/agent` as workspace dependency
+- [x] 1.3 Create `packages/tools/package.json` with name `@sakti-code/tools`, type module, no workspace dependencies (independent package)
+- [x] 1.4 Update root `package.json` workspaces from `["apps/*"]` to `["apps/*", "packages/*"]`
+- [x] 1.5 Create shared `tsconfig.base.json` at root with strict mode, ESNext target, bundler module resolution, noEmit, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`
+- [x] 1.6 Create `packages/agent/tsconfig.json` extending base, include `src/`, outDir `dist/`, add composite:true and references
+- [x] 1.7 Create `packages/db/tsconfig.json` extending base, include `src/`, outDir `dist/`, add composite:true and references
+- [x] 1.8 Create `packages/tools/tsconfig.json` extending base, include `src/`, outDir `dist/`, add composite:true and references
+- [x] 1.9 Update root `turbo.json` to add `build` pipeline for packages with `dependsOn: ["^build"]`
+- [x] 1.10 Run `bun install` and verify all workspace packages resolve correctly
 
 ## 2. Agent Types (`packages/agent`)
 
-- [ ] 2.1 TDD: Write failing test for `AgentMessage` type — verify discriminated union: user message (role + content), assistant message (role + content + optional toolCalls + usage), tool result message (role + toolCallId + content + optional isError)
-- [ ] 2.2 Implement `AgentMessage` type as discriminated union in `src/types.ts`, export it, verify test passes
-- [ ] 2.3 TDD: Write failing test for `AgentTool` interface — verify it has: name, description, parameters schema, execute function returning Promise of `AgentToolResult`
-- [ ] 2.4 Implement `AgentTool` and `AgentToolResult` interfaces in `src/types.ts`, export them, verify test passes
-- [ ] 2.5 TDD: Write failing test for `AgentEvent` discriminated union — verify all event types: agent_start, agent_end, turn_start, turn_end, message_start, message_update (with text_delta, thinking_delta, toolcall_start/delta/end subtypes), message_end, tool_execution_start, tool_execution_update, tool_execution_end, error, compaction_start, compaction_end, retry
-- [ ] 2.6 Implement `AgentEvent` type as discriminated union in `src/types.ts`, verify test passes
-- [ ] 2.7 TDD: Write failing test for `AgentConfig` type — verify it has: model (Model from pi-ai), tools (AgentTool[]), store (SessionStore), toolExecutionMode ("sequential"|"parallel"), maxRetries (number), retryBaseDelayMs (number), reserveTokens (number), keepRecentTokens (number)
-- [ ] 2.8 Implement `AgentConfig` type in `src/types.ts`, verify test passes
-- [ ] 2.9 Create `src/index.ts` that re-exports all types from `src/types.ts`
+- [x] 2.1 TDD: Write failing test for `AgentMessage` type — verify discriminated union: user message (role + content), assistant message (role + content + optional toolCalls + usage), tool result message (role + toolCallId + content + optional isError)
+- [x] 2.2 Implement `AgentMessage` type as discriminated union in `src/types.ts`, export it, verify test passes
+- [x] 2.3 TDD: Write failing test for `AgentTool` interface — verify it has: name, description, parameters schema, execute function returning Promise of `AgentToolResult`
+- [x] 2.4 Implement `AgentTool` and `AgentToolResult` interfaces in `src/types.ts`, export them, verify test passes
+- [x] 2.5 TDD: Write failing test for `AgentEvent` discriminated union — verify all event types: agent_start, agent_end, turn_start, turn_end, message_start, message_update (with text_delta, thinking_delta, toolcall_start/delta/end subtypes), message_end, tool_execution_start, tool_execution_update, tool_execution_end, error, compaction_start, compaction_end, retry
+- [x] 2.6 Implement `AgentEvent` type as discriminated union in `src/types.ts`, verify test passes
+- [x] 2.7 TDD: Write failing test for `AgentConfig` type — verify it has: model (Model from pi-ai), tools (AgentTool[]), store (SessionStore), toolExecutionMode ("sequential"|"parallel"), maxRetries (number), retryBaseDelayMs (number), reserveTokens (number), keepRecentTokens (number)
+- [x] 2.8 Implement `AgentConfig` type in `src/types.ts`, verify test passes
+- [x] 2.9 Create `src/index.ts` that re-exports all types from `src/types.ts`
 
 ## 3. SessionStore Interface (`packages/agent`)
 
-- [ ] 3.1 TDD: Write failing test that defines a mock SessionStore implementing the interface — verify `loadMessages()` returns AgentMessage[], `appendMessage()` persists one message, `replaceMessages()` atomically replaces all messages
-- [ ] 3.2 Define `SessionStore` interface in `src/session-store.ts` with methods: loadMessages(sessionId: string): Promise<AgentMessage[]>, appendMessage(sessionId: string, message: AgentMessage): Promise<void>, replaceMessages(sessionId: string, messages: AgentMessage[]): Promise<void>
-- [ ] 3.3 Verify mock implementation satisfies the interface (TypeScript compilation), verify test passes
-- [ ] 3.4 Export `SessionStore` from `src/index.ts`
+- [x] 3.1 TDD: Write failing test that defines a mock SessionStore implementing the interface — verify `loadMessages()` returns AgentMessage[], `appendMessage()` persists one message, `replaceMessages()` atomically replaces all messages
+- [x] 3.2 Define `SessionStore` interface in `src/types.ts` with methods: loadMessages(sessionId: string): Promise<AgentMessage[]>, appendMessage(sessionId: string, message: AgentMessage): Promise<void>, replaceMessages(sessionId: string, messages: AgentMessage[]): Promise<void>
+- [x] 3.3 Verify mock implementation satisfies the interface (TypeScript compilation), verify test passes
+- [x] 3.4 Export `SessionStore` from `src/index.ts`
 
 ## 4. Agent Loop (`packages/agent`)
 
-- [ ] 4.1 TDD: Write failing test — agent receives a simple prompt, LLM returns plain text (mock pi-ai streamSimple), agent yields text_delta events then done, appends user and assistant messages to store
-- [ ] 4.2 Implement `AgentLoop.prompt()` in `src/loop.ts` — accepts message string, builds AgentMessage[], calls pi-ai streamSimple, yields AgentEvents, appends messages to store. Verify test passes
-- [ ] 4.3 TDD: Write failing test — LLM returns a tool call, tool executes successfully, result is appended, LLM then returns text. Verify full event sequence: agent_start → turn_start → message_start → toolcall events → message_end → tool_execution events → turn_start → message_start → text_delta → done → message_end → turn_end → agent_end
-- [ ] 4.4 Implement tool execution in `src/loop.ts` — after toolcall_done, execute tool, append tool result message, call pi-ai again with tool results. Verify test passes
-- [ ] 4.5 TDD: Write failing test — LLM returns multiple tool calls, mode is parallel, all tools execute concurrently, all results sent back together
-- [ ] 4.6 Implement parallel tool execution using `Promise.all()` in `src/loop.ts`. Verify test passes
-- [ ] 4.7 TDD: Write failing test — LLM returns multiple tool calls, mode is sequential, tools execute one at a time
-- [ ] 4.8 Implement sequential tool execution in `src/loop.ts`. Verify test passes
-- [ ] 4.9 TDD: Write failing test — tool execution throws an error, agent appends error result (isError: true), loop continues to LLM
-- [ ] 4.10 Implement error handling in tool execution — catch errors, create error tool result message, continue loop. Verify test passes
-- [ ] 4.11 TDD: Write failing test — tool result has terminate: true, agent stops loop without sending results back to LLM
-- [ ] 4.12 Implement terminate check in tool execution — if all results have terminate, stop inner loop. Verify test passes
-- [ ] 4.13 TDD: Write failing test — tool calls onUpdate callback, agent yields tool_execution_update events with accumulated partial result
-- [ ] 4.13 Implement tool progress streaming — wire onUpdate from tool execute to tool_execution_update events. Verify test passes
-- [ ] 4.14 Export `AgentLoop` from `src/index.ts`
+- [x] 4.1 TDD: Write failing test — agent receives a simple prompt, LLM returns plain text (mock pi-ai streamSimple), agent yields text_delta events then done, appends user and assistant messages to store
+- [x] 4.2 Implement `AgentLoop.prompt()` in `src/loop.ts` — accepts message string, builds AgentMessage[], calls pi-ai streamSimple, yields AgentEvents, appends messages to store. Verify test passes
+- [x] 4.3 TDD: Write failing test — LLM returns a tool call, tool executes successfully, result is appended, LLM then returns text. Verify full event sequence: agent_start → turn_start → message_start → toolcall events → message_end → tool_execution events → turn_start → message_start → text_delta → done → message_end → turn_end → agent_end
+- [x] 4.4 Implement tool execution in `src/loop.ts` — after toolcall_done, execute tool, append tool result message, call pi-ai again with tool results. Verify test passes
+- [x] 4.5 TDD: Write failing test — LLM returns multiple tool calls, mode is parallel, all tools execute concurrently, all results sent back together
+- [x] 4.6 Implement parallel tool execution using `Promise.all()` in `src/loop.ts`. Verify test passes
+- [x] 4.7 TDD: Write failing test — LLM returns multiple tool calls, mode is sequential, tools execute one at a time
+- [x] 4.8 Implement sequential tool execution in `src/loop.ts`. Verify test passes
+- [x] 4.9 TDD: Write failing test — tool execution throws an error, agent appends error result (isError: true), loop continues to LLM
+- [x] 4.10 Implement error handling in tool execution — catch errors, create error tool result message, continue loop. Verify test passes
+- [x] 4.11 TDD: Write failing test — tool result has terminate: true, agent stops loop without sending results back to LLM
+- [x] 4.12 Implement terminate check in tool execution — if all results have terminate, stop inner loop. Verify test passes
+- [x] 4.13 TDD: Write failing test — tool calls onUpdate callback, agent yields tool_execution_update events with accumulated partial result
+- [x] 4.13 Implement tool progress streaming — wire onUpdate from tool execute to tool_execution_update events. Verify test passes
+- [x] 4.14 Export `AgentLoop` from `src/index.ts`
 
 ## 5. Agent Retry (`packages/agent`)
 
