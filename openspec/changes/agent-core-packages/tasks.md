@@ -113,37 +113,37 @@
 
 ## 11. Coding Tools (`packages/tools`)
 
-- [ ] 11.1 TDD: Write failing test — createReadTool(cwd) returns a tool that reads a file and returns content
-- [ ] 11.2 Implement `src/read.ts` — factory function, read file relative to cwd, truncate to 2000 lines / 50KB, return text content. Verify test passes
-- [ ] 11.3 TDD: Write failing test — read tool with offset and limit returns correct line range
-- [ ] 11.4 Implement offset/limit support in read tool. Verify test passes
-- [ ] 11.5 TDD: Write failing test — read tool returns error for missing file
-- [ ] 11.6 Implement error handling for missing files. Verify test passes
-- [ ] 11.7 TDD: Write failing test — createWriteTool(cwd) returns a tool that writes content to a file
-- [ ] 11.8 Implement `src/write.ts` — factory function, write file relative to cwd, create parent dirs with recursive mkdir. Verify test passes
-- [ ] 11.9 TDD: Write failing test — write tool overwrites existing file
-- [ ] 11.10 Implement overwrite behavior (write already creates/overwrites). Verify test passes
-- [ ] 11.11 TDD: Write failing test — createEditTool(cwd) returns a tool that replaces exact text in a file
-- [ ] 11.12 Implement `src/edit.ts` — factory function, read file, apply all edits (oldText → newText), write back. Atomic: all edits must match or none applied. Verify test passes
-- [ ] 11.13 TDD: Write failing test — edit tool fails if oldText not found, returns error, file unchanged
-- [ ] 11.14 Implement validation: check all oldText matches before applying, return error if any not found. Verify test passes
-- [ ] 11.15 TDD: Write failing test — createBashTool(cwd) returns a tool that executes a command and returns output
-- [ ] 11.16 Implement `src/bash.ts` — factory function, spawn shell in cwd, collect stdout/stderr, support timeout (default 30s, SIGTERM then SIGKILL). Verify test passes
-- [ ] 11.17 TDD: Write failing test — bash tool kills process on timeout, returns partial output
-- [ ] 11.18 Implement timeout handling. Verify test passes
-- [ ] 11.19 TDD: Write failing test — bash tool returns error on non-zero exit code
-- [ ] 11.20 Implement exit code error handling. Verify test passes
-- [ ] 11.21 TDD: Write failing test — createGrepTool(cwd) returns a tool that searches with ripgrep and returns matches
-- [ ] 11.22 Implement `src/grep.ts` — factory function, spawn `rg --json`, parse JSON output, format as `file:line: text`, limit 100. Verify test passes
-- [ ] 11.23 TDD: Write failing test — grep tool supports ignoreCase and path parameters
-- [ ] 11.24 Implement ignoreCase and path support. Verify test passes
-- [ ] 11.25 TDD: Write failing test — createFindTool(cwd) returns a tool that locates files with fd
-- [ ] 11.26 Implement `src/find.ts` — factory function, spawn `fd --glob --hidden --no-require-git`, return relative paths, limit 1000. Verify test passes
-- [ ] 11.27 TDD: Write failing test — createLsTool(cwd) returns a tool that lists directory contents
-- [ ] 11.28 Implement `src/ls.ts` — factory function, fs.readdir + fs.stat, sorted, `/` suffix for dirs, limit 500. Verify test passes
-- [ ] 11.29 TDD: Write failing test — ls tool lists subdirectory when path parameter is provided
-- [ ] 11.30 Implement subdirectory listing. Verify test passes
-- [ ] 11.31 Create `src/index.ts` re-exporting all tool factory functions
+- [x] 11.1 TDD: Write failing test — createReadTool(cwd) returns a tool that reads a file and returns content
+- [x] 11.2 Implement `src/read.ts` — factory function, read file relative to cwd, truncate to 2000 lines / 50KB, return text content. Verify test passes
+- [x] 11.3 TDD: Write failing test — read tool with offset and limit returns correct line range
+- [x] 11.4 Implement offset/limit support in read tool. Verify test passes
+- [x] 11.5 TDD: Write failing test — read tool returns error for missing file
+- [x] 11.6 Implement error handling for missing files. Verify test passes
+- [x] 11.7 TDD: Write failing test — createWriteTool(cwd) returns a tool that writes content to a file
+- [x] 11.8 Implement `src/write.ts` — factory function, write file relative to cwd, create parent dirs with recursive mkdir. Verify test passes
+- [x] 11.9 TDD: Write failing test — write tool overwrites existing file
+- [x] 11.10 Implement overwrite behavior (write already creates/overwrites). Verify test passes
+- [x] 11.11 TDD: Write failing test — createEditTool(cwd) returns a tool that replaces exact text in a file
+- [x] 11.12 Implement `src/edit.ts` — factory function, read file, apply all edits (oldText → newText), write back. Atomic: all edits must match or none applied. Verify test passes
+- [x] 11.13 TDD: Write failing test — edit tool fails if oldText not found, returns error, file unchanged
+- [x] 11.14 Implement validation: check all oldText matches before applying, return error if any not found. Verify test passes
+- [x] 11.15 TDD: Write failing test — createBashTool(cwd) returns a tool that executes a command and returns output
+- [x] 11.16 Implement `src/bash.ts` — factory function, spawn shell in cwd, collect stdout/stderr, support timeout (default 30s, SIGTERM then SIGKILL). Verify test passes
+- [x] 11.17 TDD: Write failing test — bash tool kills process on timeout, returns partial output
+- [x] 11.18 Implement timeout handling. Verify test passes
+- [x] 11.19 TDD: Write failing test — bash tool returns error on non-zero exit code
+- [x] 11.20 Implement exit code error handling. Verify test passes
+- [x] 11.21 TDD: Write failing test — createGrepTool(cwd) returns a tool that searches with ripgrep and returns matches
+- [x] 11.22 Implement `src/grep.ts` — factory function, spawn `rg --json`, parse JSON output, format as `file:line: text`, limit 100. Verify test passes
+- [x] 11.23 TDD: Write failing test — grep tool supports ignoreCase and path parameters
+- [x] 11.24 Implement ignoreCase and path support. Verify test passes
+- [x] 11.25 TDD: Write failing test — createFindTool(cwd) returns a tool that locates files with fd
+- [x] 11.26 Implement `src/find.ts` — factory function, spawn `fd --glob --hidden --no-require-git`, return relative paths, limit 1000. Verify test passes
+- [x] 11.27 TDD: Write failing test — createLsTool(cwd) returns a tool that lists directory contents
+- [x] 11.28 Implement `src/ls.ts` — factory function, fs.readdir + fs.stat, sorted, `/` suffix for dirs, limit 500. Verify test passes
+- [x] 11.29 TDD: Write failing test — ls tool lists subdirectory when path parameter is provided
+- [x] 11.30 Implement subdirectory listing. Verify test passes
+- [x] 11.31 Create `src/index.ts` re-exporting all tool factory functions
 
 ## 12. Integration Verification
 
