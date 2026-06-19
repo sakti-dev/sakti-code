@@ -1,9 +1,9 @@
 import type { AgentMessage, SessionStore } from "@sakti-code/agent";
-import { MessageRepo } from "./repos/index.ts";
 import type { DrizzleDB } from "./init.ts";
+import { MessageRepo } from "./repos/index.ts";
 
 export class SqliteSessionStore implements SessionStore {
-  private messageRepo: MessageRepo;
+  private readonly messageRepo: MessageRepo;
 
   constructor(db: DrizzleDB) {
     this.messageRepo = new MessageRepo(db);
@@ -18,15 +18,28 @@ export class SqliteSessionStore implements SessionStore {
     await this.messageRepo.append(sessionId, agentMessageToRow(message));
   }
 
-  async replaceMessages(sessionId: string, messages: AgentMessage[]): Promise<void> {
+  async replaceMessages(
+    sessionId: string,
+    messages: AgentMessage[]
+  ): Promise<void> {
     await this.messageRepo.replaceForSession(
       sessionId,
-      messages.map(agentMessageToRow),
+      messages.map(agentMessageToRow)
     );
   }
 }
 
-function mapRowToAgentMessage(row: { role: string; content: string; toolCalls?: string | null; toolCallId?: string | null; toolName?: string | null; toolArguments?: string | null; isError?: number | null; usage?: string | null; createdAt: number }): AgentMessage {
+function mapRowToAgentMessage(row: {
+  role: string;
+  content: string;
+  toolCalls?: string | null;
+  toolCallId?: string | null;
+  toolName?: string | null;
+  toolArguments?: string | null;
+  isError?: number | null;
+  usage?: string | null;
+  createdAt: number;
+}): AgentMessage {
   const base = { timestamp: row.createdAt };
 
   if (row.role === "user") {
@@ -40,9 +53,16 @@ function mapRowToAgentMessage(row: { role: string; content: string; toolCalls?: 
     // Parse tool calls if present
     if (row.toolCalls) {
       try {
-        const calls = JSON.parse(row.toolCalls) as Array<{ type: "toolCall"; id: string; name: string; arguments: Record<string, unknown> }>;
+        const calls = JSON.parse(row.toolCalls) as Array<{
+          type: "toolCall";
+          id: string;
+          name: string;
+          arguments: Record<string, unknown>;
+        }>;
         content.push(...calls);
-      } catch { /* ignore parse errors */ }
+      } catch {
+        /* ignore parse errors */
+      }
     }
 
     let usage: Extract<AgentMessage, { role: "assistant" }>["usage"];
@@ -50,10 +70,24 @@ function mapRowToAgentMessage(row: { role: string; content: string; toolCalls?: 
       try {
         usage = JSON.parse(row.usage);
       } catch {
-        usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } };
+        usage = {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        };
       }
     } else {
-      usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } };
+      usage = {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      };
     }
 
     return { role: "assistant", content, usage, ...base };
@@ -93,16 +127,26 @@ function agentMessageToRow(msg: AgentMessage): {
     const content = textParts.join("");
 
     // Extract tool calls
-    const toolCallParts = aMsg.content.filter((c): c is { type: "toolCall"; id: string; name: string; arguments: Record<string, unknown> } => c.type === "toolCall");
-    const toolCalls = toolCallParts.length > 0 ? JSON.stringify(toolCallParts) : undefined;
+    const toolCallParts = aMsg.content.filter(
+      (
+        c
+      ): c is {
+        type: "toolCall";
+        id: string;
+        name: string;
+        arguments: Record<string, unknown>;
+      } => c.type === "toolCall"
+    );
+    const toolCalls =
+      toolCallParts.length > 0 ? JSON.stringify(toolCallParts) : undefined;
 
     const usage = aMsg.usage ? JSON.stringify(aMsg.usage) : undefined;
 
     return {
       role: "assistant",
       content,
-      ...(usage !== undefined ? { usage } : {}),
-      ...(toolCalls !== undefined ? { toolCalls } : {}),
+      ...(usage === undefined ? {} : { usage }),
+      ...(toolCalls === undefined ? {} : { toolCalls }),
     };
   }
 
@@ -110,7 +154,9 @@ function agentMessageToRow(msg: AgentMessage): {
   const tMsg = msg as AgentMessage & { role: "tool" };
   return {
     role: "tool",
-    content: tMsg.content.map((c: { type: string; text: string }) => c.text).join(""),
+    content: tMsg.content
+      .map((c: { type: string; text: string }) => c.text)
+      .join(""),
     toolCallId: tMsg.toolCallId,
     toolName: tMsg.toolName,
     isError: tMsg.isError ? 1 : 0,

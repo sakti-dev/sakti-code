@@ -1,19 +1,21 @@
-import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import { Database } from "bun:sqlite";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { initDatabase } from "../../init.ts";
 import {
+  CostRepo,
+  MessageRepo,
+  ModelConfigRepo,
   ProjectRepo,
   SessionRepo,
-  MessageRepo,
-  CostRepo,
   SettingsRepo,
-  ModelConfigRepo,
 } from "..";
 
 describe("ProjectRepo", () => {
-  let db: ReturnType<typeof initDatabase extends Promise<infer T> ? () => T : never>;
+  let db: ReturnType<
+    typeof initDatabase extends Promise<infer T> ? () => T : never
+  >;
   let tmpDir: string;
   let repo: ProjectRepo;
 
@@ -70,7 +72,9 @@ describe("SessionRepo", () => {
 
   test("create + findById + listByProject", async () => {
     const proj = await projectRepo.create("p", "/tmp/p");
-    const s = await repo.create(proj.id, "claude-sonnet", { title: "First session" });
+    const s = await repo.create(proj.id, "claude-sonnet", {
+      title: "First session",
+    });
     expect(s.id).toBeDefined();
     expect(s.modelId).toBe("claude-sonnet");
     expect(s.title).toBe("First session");
@@ -93,8 +97,16 @@ describe("MessageRepo", () => {
     const sqlite = new Database(join(tmpDir, "test.db"));
     db = await initDatabase(sqlite);
     repo = new MessageRepo(db);
-    db.$client.prepare("INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)").run();
-    db.$client.prepare("INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'm1', 1, 1)").run();
+    db.$client
+      .prepare(
+        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)"
+      )
+      .run();
+    db.$client
+      .prepare(
+        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'm1', 1, 1)"
+      )
+      .run();
   });
 
   afterAll(() => {
@@ -104,12 +116,16 @@ describe("MessageRepo", () => {
 
   test("append + loadBySession + countBySession", async () => {
     await repo.append("s1", { role: "user", content: "hello" });
-    await repo.append("s1", { role: "assistant", content: "hi there", usage: '{"input":10}' });
+    await repo.append("s1", {
+      role: "assistant",
+      content: "hi there",
+      usage: '{"input":10}',
+    });
 
     const msgs = repo.loadBySession("s1");
     expect(msgs.length).toBe(2);
-    expect(msgs[0]!.role).toBe("user");
-    expect(msgs[1]!.role).toBe("assistant");
+    expect(msgs[0]?.role).toBe("user");
+    expect(msgs[1]?.role).toBe("assistant");
 
     expect(repo.countBySession("s1")).toBe(2);
   });
@@ -122,8 +138,8 @@ describe("MessageRepo", () => {
 
     const msgs = repo.loadBySession("s1");
     expect(msgs.length).toBe(2);
-    expect(msgs[0]!.content).toBe("summary");
-    expect(msgs[1]!.content).toBe("ok");
+    expect(msgs[0]?.content).toBe("summary");
+    expect(msgs[1]?.content).toBe("ok");
   });
 });
 
@@ -137,8 +153,16 @@ describe("CostRepo", () => {
     const sqlite = new Database(join(tmpDir, "test.db"));
     db = await initDatabase(sqlite);
     repo = new CostRepo(db);
-    db.$client.prepare("INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)").run();
-    db.$client.prepare("INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'm1', 1, 1)").run();
+    db.$client
+      .prepare(
+        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)"
+      )
+      .run();
+    db.$client
+      .prepare(
+        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'm1', 1, 1)"
+      )
+      .run();
   });
 
   afterAll(() => {
@@ -147,7 +171,12 @@ describe("CostRepo", () => {
   });
 
   test("record + aggregateByProject", async () => {
-    await repo.record("s1", "p1", { inputTokens: 100, outputTokens: 50, costUsd: 0.01 }, "claude-sonnet");
+    await repo.record(
+      "s1",
+      "p1",
+      { inputTokens: 100, outputTokens: 50, costUsd: 0.01 },
+      "claude-sonnet"
+    );
 
     const agg = repo.aggregateByProject("p1");
     expect(agg.totalInputTokens).toBe(100);
@@ -193,7 +222,11 @@ describe("ModelConfigRepo", () => {
     const sqlite = new Database(join(tmpDir, "test.db"));
     db = await initDatabase(sqlite);
     repo = new ModelConfigRepo(db);
-    db.$client.prepare("INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)").run();
+    db.$client
+      .prepare(
+        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)"
+      )
+      .run();
   });
 
   afterAll(() => {
@@ -202,12 +235,20 @@ describe("ModelConfigRepo", () => {
   });
 
   test("set + getForProject with fallback to global", async () => {
-    await repo.set({ projectId: "p1", provider: "anthropic", modelId: "claude-sonnet" });
+    await repo.set({
+      projectId: "p1",
+      provider: "anthropic",
+      modelId: "claude-sonnet",
+    });
     const config = repo.getForProject("p1");
     expect(config?.provider).toBe("anthropic");
 
     // Project with no config falls back to global
-    db.$client.prepare("INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p2', 'P2', '/tmp2', 1, 1)").run();
+    db.$client
+      .prepare(
+        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p2', 'P2', '/tmp2', 1, 1)"
+      )
+      .run();
     expect(repo.getForProject("p2")).toBeNull();
 
     // After setting global default

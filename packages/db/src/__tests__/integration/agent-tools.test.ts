@@ -1,12 +1,10 @@
-import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import { Database } from "bun:sqlite";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { initDatabase, SqliteSessionStore } from "../../";
 import { createAgentLoop } from "@sakti-code/agent";
-import type { AgentEvent } from "@sakti-code/agent";
-import type { AssistantMessageEvent } from "@sakti-code/agent";
-import { createReadTool, createEditTool } from "@sakti-code/tools";
+import { createEditTool, createReadTool } from "@sakti-code/tools";
+import { initDatabase, SqliteSessionStore } from "../../";
 
 describe("Integration: AgentLoop + SqliteSessionStore + Tools", () => {
   let tmpDir: string;
@@ -18,8 +16,16 @@ describe("Integration: AgentLoop + SqliteSessionStore + Tools", () => {
     const sqlite = new Database(join(tmpDir, "test.db"));
     db = await initDatabase(sqlite);
     store = new SqliteSessionStore(db);
-    db.$client.prepare("INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)").run();
-    db.$client.prepare("INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'claude-sonnet', 1, 1)").run();
+    db.$client
+      .prepare(
+        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)"
+      )
+      .run();
+    db.$client
+      .prepare(
+        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'claude-sonnet', 1, 1)"
+      )
+      .run();
   });
 
   afterAll(() => {
@@ -28,10 +34,7 @@ describe("Integration: AgentLoop + SqliteSessionStore + Tools", () => {
   });
 
   test("full cycle: user prompt → LLM tool call → tool execution → result → persistence", async () => {
-    const tools = [
-      createReadTool(tmpDir),
-      createEditTool(tmpDir),
-    ];
+    const tools = [createReadTool(tmpDir), createEditTool(tmpDir)];
 
     const model = {
       id: "test",
@@ -42,11 +45,11 @@ describe("Integration: AgentLoop + SqliteSessionStore + Tools", () => {
       reasoning: false,
       input: ["text"] as ["text"],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: 200000,
+      contextWindow: 200_000,
       maxTokens: 4096,
     };
 
-    const loop = createAgentLoop({
+    const _loop = createAgentLoop({
       sessionId: "s1",
       model,
       tools,
@@ -69,14 +72,16 @@ describe("Integration: AgentLoop + SqliteSessionStore + Tools", () => {
 
     const loaded = await store.loadMessages("s1");
     expect(loaded.length).toBeGreaterThanOrEqual(1);
-    expect(loaded[0]!.role).toBe("user");
+    expect(loaded[0]?.role).toBe("user");
 
     // Test tool execution against real filesystem
     writeFileSync(join(tmpDir, "test-file.txt"), "old content\nmore content");
     const readTool = tools[0]!;
     const editTool = tools[1]!;
 
-    const readResult = await readTool.execute("tc_1", { path: "test-file.txt" });
+    const readResult = await readTool.execute("tc_1", {
+      path: "test-file.txt",
+    });
     expect(readResult.isError).toBeFalsy();
     expect(readResult.content).toContain("old content");
 
@@ -95,7 +100,11 @@ describe("Integration: AgentLoop + SqliteSessionStore + Tools", () => {
 
   test("SqliteSessionStore persists all message roles correctly", async () => {
     const sessionId = "s2";
-    db.$client.prepare("INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s2', 'p1', 'claude-sonnet', 1, 1)").run();
+    db.$client
+      .prepare(
+        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s2', 'p1', 'claude-sonnet', 1, 1)"
+      )
+      .run();
 
     // User message
     await store.appendMessage(sessionId, {
@@ -109,9 +118,21 @@ describe("Integration: AgentLoop + SqliteSessionStore + Tools", () => {
       role: "assistant",
       content: [
         { type: "text", text: "Let me read the file." },
-        { type: "toolCall", id: "tc_1", name: "read", arguments: { path: "src/index.ts" } },
+        {
+          type: "toolCall",
+          id: "tc_1",
+          name: "read",
+          arguments: { path: "src/index.ts" },
+        },
       ],
-      usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+      usage: {
+        input: 100,
+        output: 50,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 150,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
       timestamp: 2000,
     });
 
@@ -131,18 +152,20 @@ describe("Integration: AgentLoop + SqliteSessionStore + Tools", () => {
 
     const user = messages.find((m) => m.role === "user");
     expect(user).toBeDefined();
-    if (user!.role === "user") expect(user.content).toBe("fix the bug");
+    if (user?.role === "user") {
+      expect(user.content).toBe("fix the bug");
+    }
 
     const asst = messages.find((m) => m.role === "assistant");
     expect(asst).toBeDefined();
-    if (asst!.role === "assistant") {
+    if (asst?.role === "assistant") {
       expect(asst.content.length).toBeGreaterThanOrEqual(2);
       expect(asst.content.some((c) => c.type === "toolCall")).toBe(true);
     }
 
     const tool = messages.find((m) => m.role === "tool");
     expect(tool).toBeDefined();
-    if (tool!.role === "tool") {
+    if (tool?.role === "tool") {
       expect(tool.toolCallId).toBe("tc_1");
       expect(tool.isError).toBe(false);
     }
@@ -150,7 +173,11 @@ describe("Integration: AgentLoop + SqliteSessionStore + Tools", () => {
 
   test("replaceMessages supports compaction flow", async () => {
     const sessionId = "s3";
-    db.$client.prepare("INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s3', 'p1', 'claude-sonnet', 1, 1)").run();
+    db.$client
+      .prepare(
+        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s3', 'p1', 'claude-sonnet', 1, 1)"
+      )
+      .run();
 
     // Simulate compaction: replace many messages with summary + recent
     const summary: AgentMessage = {
@@ -160,8 +187,20 @@ describe("Integration: AgentLoop + SqliteSessionStore + Tools", () => {
     };
     const recent: AgentMessage = {
       role: "assistant",
-      content: [{ type: "text", text: "Understood, continuing from where we left off." }],
-      usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+      content: [
+        {
+          type: "text",
+          text: "Understood, continuing from where we left off.",
+        },
+      ],
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
       timestamp: 2000,
     };
 
@@ -169,7 +208,7 @@ describe("Integration: AgentLoop + SqliteSessionStore + Tools", () => {
 
     const messages = await store.loadMessages(sessionId);
     expect(messages.length).toBe(2);
-    expect(messages[0]!.role).toBe("user");
+    expect(messages[0]?.role).toBe("user");
     expect((messages[0] as any).content).toContain("summary");
   });
 });

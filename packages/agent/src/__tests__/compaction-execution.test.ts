@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@earendil-works/pi-ai", async () => {
   const actual = await vi.importActual("@earendil-works/pi-ai");
@@ -8,14 +8,26 @@ vi.mock("@earendil-works/pi-ai", async () => {
   };
 });
 
-import { compactMessages, estimateTokens } from "../compaction";
+import { compactMessages } from "../compaction";
 
 const { completeSimple } = await import("@earendil-works/pi-ai");
 
 const SUMMARY_RESPONSE = {
   stopReason: "stop",
-  content: [{ type: "text", text: "## Goal\nFix bug\n\n## Progress\n### Done\n- [x] found it" }],
-  usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+  content: [
+    {
+      type: "text",
+      text: "## Goal\nFix bug\n\n## Progress\n### Done\n- [x] found it",
+    },
+  ],
+  usage: {
+    input: 100,
+    output: 50,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 150,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+  },
   timestamp: Date.now(),
 };
 
@@ -28,9 +40,16 @@ function longConversation(n = 100): import("../types").AgentMessage[] {
 }
 
 const testModel = {
-  id: "test", name: "Test", api: "openai-completions" as const, provider: "openai",
-  input: ["text"] as ["text"], contextWindow: 200000, maxTokens: 4096,
-  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, reasoning: false, baseUrl: "",
+  id: "test",
+  name: "Test",
+  api: "openai-completions" as const,
+  provider: "openai",
+  input: ["text"] as ["text"],
+  contextWindow: 200_000,
+  maxTokens: 4096,
+  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+  reasoning: false,
+  baseUrl: "",
 };
 
 describe("compactMessages", () => {
@@ -46,14 +65,16 @@ describe("compactMessages", () => {
       model: testModel,
       apiKey: "test-key",
       messages,
-      contextWindow: 200000,
+      contextWindow: 200_000,
       keepRecentTokens: 5000,
     });
 
     expect(result.tokensBefore).toBeGreaterThan(result.tokensAfter);
     expect(result.messages.length).toBeLessThan(100);
-    expect(result.messages[0]!.role).toBe("user");
-    expect((result.messages[0] as { content: string }).content).toContain("[Session Summary]");
+    expect(result.messages[0]?.role).toBe("user");
+    expect((result.messages[0] as { content: string }).content).toContain(
+      "[Session Summary]"
+    );
   });
 
   it("returns original messages when not enough history", async () => {
@@ -65,7 +86,7 @@ describe("compactMessages", () => {
       model: testModel,
       apiKey: "test-key",
       messages,
-      contextWindow: 200000,
+      contextWindow: 200_000,
     });
 
     expect(result.messages).toBe(messages);
@@ -82,14 +103,16 @@ describe("compactMessages", () => {
       model: testModel,
       apiKey: "test-key",
       messages,
-      contextWindow: 200000,
+      contextWindow: 200_000,
       keepRecentTokens: 2000,
     });
 
     // Last few messages should be preserved as-is
-    const lastOriginal = messages[messages.length - 1]!;
-    const lastCompacted = result.messages[result.messages.length - 1]!;
-    expect((lastCompacted as { content: string }).content).toBe(lastOriginal.content);
+    const lastOriginal = messages.at(-1)!;
+    const lastCompacted = result.messages.at(-1)!;
+    expect((lastCompacted as { content: string }).content).toBe(
+      lastOriginal.content
+    );
   });
 
   it("returns original messages when LLM returns error", async () => {
@@ -100,7 +123,10 @@ describe("compactMessages", () => {
     });
 
     const result = await compactMessages({
-      model: testModel, apiKey: "test-key", messages, contextWindow: 200000,
+      model: testModel,
+      apiKey: "test-key",
+      messages,
+      contextWindow: 200_000,
     });
 
     expect(result.messages).toBe(messages);
@@ -115,7 +141,10 @@ describe("compactMessages", () => {
     });
 
     const result = await compactMessages({
-      model: testModel, apiKey: "test-key", messages, contextWindow: 200000,
+      model: testModel,
+      apiKey: "test-key",
+      messages,
+      contextWindow: 200_000,
     });
 
     expect(result.messages).toBe(messages);
@@ -127,13 +156,16 @@ describe("compactMessages", () => {
     vi.mocked(completeSimple).mockResolvedValue(SUMMARY_RESPONSE);
 
     await compactMessages({
-      model: testModel, apiKey: "test-key", messages, contextWindow: 200000,
+      model: testModel,
+      apiKey: "test-key",
+      messages,
+      contextWindow: 200_000,
     });
 
     expect(completeSimple).toHaveBeenCalledTimes(1);
     const callArgs = vi.mocked(completeSimple).mock.calls[0]!;
     const promptMessages = callArgs[1].messages as Array<{ content: string }>;
-    const promptText = promptMessages[0]!.content;
+    const promptText = promptMessages[0]?.content;
     expect(promptText).toContain("<conversation>");
     expect(promptText).toContain("Message 0:");
     expect(promptText).toContain("## Goal");
@@ -144,7 +176,11 @@ describe("compactMessages", () => {
   it("handles mixed message types (user, assistant, tool)", async () => {
     const messages: import("../types").AgentMessage[] = [
       { role: "user", content: "fix the bug", timestamp: 1 },
-      { role: "assistant", content: [{ type: "text", text: "I'll look into it" }], timestamp: 2 },
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "I'll look into it" }],
+        timestamp: 2,
+      },
       { role: "user", content: "any progress?", timestamp: 3 },
       ...Array.from({ length: 40 }, (_, i) => ({
         role: "user" as const,
@@ -154,13 +190,18 @@ describe("compactMessages", () => {
     ];
 
     const result = await compactMessages({
-      model: testModel, apiKey: "test-key", messages, contextWindow: 200000,
+      model: testModel,
+      apiKey: "test-key",
+      messages,
+      contextWindow: 200_000,
     });
 
     expect(result.tokensBefore).toBeGreaterThan(result.tokensAfter);
     expect(result.messages.length).toBeLessThan(messages.length);
     // Summary message is first
-    expect(result.messages[0]!.role).toBe("user");
-    expect((result.messages[0] as { content: string }).content).toContain("[Session Summary]");
+    expect(result.messages[0]?.role).toBe("user");
+    expect((result.messages[0] as { content: string }).content).toContain(
+      "[Session Summary]"
+    );
   });
 });

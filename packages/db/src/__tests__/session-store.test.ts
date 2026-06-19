@@ -1,10 +1,10 @@
-import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import { Database } from "bun:sqlite";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import type { AgentMessage } from "@sakti-code/agent";
 import { initDatabase } from "../init";
 import { SqliteSessionStore } from "../session-store";
-import type { AgentMessage } from "@sakti-code/agent";
 
 describe("SqliteSessionStore", () => {
   let db: any;
@@ -16,9 +16,21 @@ describe("SqliteSessionStore", () => {
     const sqlite = new Database(join(tmpDir, "test.db"));
     db = await initDatabase(sqlite);
     store = new SqliteSessionStore(db);
-    db.$client.prepare("INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)").run();
-    db.$client.prepare("INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'm1', 1, 1)").run();
-    db.$client.prepare("INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s2', 'p1', 'm1', 1, 1)").run();
+    db.$client
+      .prepare(
+        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)"
+      )
+      .run();
+    db.$client
+      .prepare(
+        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'm1', 1, 1)"
+      )
+      .run();
+    db.$client
+      .prepare(
+        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s2', 'p1', 'm1', 1, 1)"
+      )
+      .run();
   });
 
   afterAll(() => {
@@ -31,13 +43,24 @@ describe("SqliteSessionStore", () => {
   });
 
   test("appendMessage persists and loadMessages retrieves in order", async () => {
-    const userMsg: AgentMessage = { role: "user", content: "hello", timestamp: 1000 };
+    const userMsg: AgentMessage = {
+      role: "user",
+      content: "hello",
+      timestamp: 1000,
+    };
     await store.appendMessage("s1", userMsg);
 
     const asstMsg: AgentMessage = {
       role: "assistant",
       content: [{ type: "text", text: "hi there" }],
-      usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
       timestamp: 2000,
     };
     await store.appendMessage("s1", asstMsg);
@@ -54,10 +77,10 @@ describe("SqliteSessionStore", () => {
 
     const loaded = await store.loadMessages("s1");
     expect(loaded.length).toBe(3);
-    expect(loaded[0]!.role).toBe("user");
+    expect(loaded[0]?.role).toBe("user");
     expect((loaded[0] as any).content).toBe("hello");
-    expect(loaded[1]!.role).toBe("assistant");
-    expect(loaded[2]!.role).toBe("tool");
+    expect(loaded[1]?.role).toBe("assistant");
+    expect(loaded[2]?.role).toBe("tool");
     expect((loaded[2] as any).toolCallId).toBe("tc_1");
   });
 
@@ -70,7 +93,14 @@ describe("SqliteSessionStore", () => {
     const recent: AgentMessage = {
       role: "assistant",
       content: [{ type: "text", text: "ok" }],
-      usage: { input: 5, output: 3, cacheRead: 0, cacheWrite: 0, totalTokens: 8, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+      usage: {
+        input: 5,
+        output: 3,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 8,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
       timestamp: 5000,
     };
     await store.replaceMessages("s1", [replacement, recent]);
@@ -81,7 +111,11 @@ describe("SqliteSessionStore", () => {
   });
 
   test("sessions don't interfere with each other", async () => {
-    await store.appendMessage("s2", { role: "user", content: "other session", timestamp: 1000 });
+    await store.appendMessage("s2", {
+      role: "user",
+      content: "other session",
+      timestamp: 1000,
+    });
     expect((await store.loadMessages("s1")).length).toBe(2); // still the replacement
     expect((await store.loadMessages("s2")).length).toBe(1);
   });

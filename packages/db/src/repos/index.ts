@@ -1,14 +1,23 @@
-import { eq, desc, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import type { DrizzleDB } from "../init.ts";
-import { projects, sessions, messages, costs, settings, modelConfigs } from "../schema.ts";
+import {
+  costs,
+  messages,
+  modelConfigs,
+  projects,
+  sessions,
+  settings,
+} from "../schema.ts";
 
 export class ProjectRepo {
-  constructor(private db: DrizzleDB) {}
+  constructor(private readonly db: DrizzleDB) {}
 
   async create(name: string, cwd: string) {
     const id = crypto.randomUUID();
     const now = Date.now();
-    await this.db.insert(projects).values({ id, name, cwd, createdAt: now, updatedAt: now });
+    await this.db
+      .insert(projects)
+      .values({ id, name, cwd, createdAt: now, updatedAt: now });
     return this.findById(id)!;
   }
 
@@ -21,11 +30,21 @@ export class ProjectRepo {
   }
 
   list() {
-    return this.db.select().from(projects).orderBy(desc(projects.createdAt)).all();
+    return this.db
+      .select()
+      .from(projects)
+      .orderBy(desc(projects.createdAt))
+      .all();
   }
 
-  async update(id: string, data: Partial<Pick<typeof projects.$inferInsert, "name" | "cwd">>) {
-    await this.db.update(projects).set({ ...data, updatedAt: Date.now() }).where(eq(projects.id, id));
+  async update(
+    id: string,
+    data: Partial<Pick<typeof projects.$inferInsert, "name" | "cwd">>
+  ) {
+    await this.db
+      .update(projects)
+      .set({ ...data, updatedAt: Date.now() })
+      .where(eq(projects.id, id));
     return this.findById(id)!;
   }
 
@@ -35,9 +54,13 @@ export class ProjectRepo {
 }
 
 export class SessionRepo {
-  constructor(private db: DrizzleDB) {}
+  constructor(private readonly db: DrizzleDB) {}
 
-  async create(projectId: string, modelId: string, options?: { title?: string; thinkingLevel?: string }) {
+  async create(
+    projectId: string,
+    modelId: string,
+    options?: { title?: string; thinkingLevel?: string }
+  ) {
     const id = crypto.randomUUID();
     const now = Date.now();
     await this.db.insert(sessions).values({
@@ -57,11 +80,24 @@ export class SessionRepo {
   }
 
   listByProject(projectId: string) {
-    return this.db.select().from(sessions).where(eq(sessions.projectId, projectId)).orderBy(desc(sessions.createdAt)).all();
+    return this.db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.projectId, projectId))
+      .orderBy(desc(sessions.createdAt))
+      .all();
   }
 
-  async update(id: string, data: Partial<Pick<typeof sessions.$inferInsert, "title" | "modelId" | "thinkingLevel">>) {
-    await this.db.update(sessions).set({ ...data, updatedAt: Date.now() }).where(eq(sessions.id, id));
+  async update(
+    id: string,
+    data: Partial<
+      Pick<typeof sessions.$inferInsert, "title" | "modelId" | "thinkingLevel">
+    >
+  ) {
+    await this.db
+      .update(sessions)
+      .set({ ...data, updatedAt: Date.now() })
+      .where(eq(sessions.id, id));
     return this.findById(id)!;
   }
 
@@ -71,19 +107,22 @@ export class SessionRepo {
 }
 
 export class MessageRepo {
-  constructor(private db: DrizzleDB) {}
+  constructor(private readonly db: DrizzleDB) {}
 
-  async append(sessionId: string, data: {
-    id?: string;
-    role: string;
-    content: string;
-    toolCalls?: string;
-    toolCallId?: string;
-    toolName?: string;
-    toolArguments?: string;
-    isError?: number;
-    usage?: string;
-  }) {
+  async append(
+    sessionId: string,
+    data: {
+      id?: string;
+      role: string;
+      content: string;
+      toolCalls?: string;
+      toolCallId?: string;
+      toolName?: string;
+      toolArguments?: string;
+      isError?: number;
+      usage?: string;
+    }
+  ) {
     const id = data.id ?? crypto.randomUUID();
     await this.db.insert(messages).values({
       id,
@@ -102,19 +141,27 @@ export class MessageRepo {
   }
 
   loadBySession(sessionId: string) {
-    return this.db.select().from(messages).where(eq(messages.sessionId, sessionId)).orderBy(messages.createdAt).all();
+    return this.db
+      .select()
+      .from(messages)
+      .where(eq(messages.sessionId, sessionId))
+      .orderBy(messages.createdAt)
+      .all();
   }
 
-  async replaceForSession(sessionId: string, newMessages: Array<{
-    role: string;
-    content: string;
-    toolCalls?: string;
-    toolCallId?: string;
-    toolName?: string;
-    toolArguments?: string;
-    isError?: number;
-    usage?: string;
-  }>) {
+  async replaceForSession(
+    sessionId: string,
+    newMessages: Array<{
+      role: string;
+      content: string;
+      toolCalls?: string;
+      toolCallId?: string;
+      toolName?: string;
+      toolArguments?: string;
+      isError?: number;
+      usage?: string;
+    }>
+  ) {
     // Use a transaction for atomicity
     await this.db.transaction(async (tx) => {
       await tx.delete(messages).where(eq(messages.sessionId, sessionId));
@@ -133,7 +180,7 @@ export class MessageRepo {
             isError: m.isError ?? null,
             usage: m.usage ?? null,
             createdAt: now + i, // preserve order via timestamp
-          })),
+          }))
         );
       }
     });
@@ -150,9 +197,14 @@ export class MessageRepo {
 }
 
 export class CostRepo {
-  constructor(private db: DrizzleDB) {}
+  constructor(private readonly db: DrizzleDB) {}
 
-  async record(sessionId: string, projectId: string, usage: { inputTokens: number; outputTokens: number; costUsd: number }, modelId: string) {
+  async record(
+    sessionId: string,
+    projectId: string,
+    usage: { inputTokens: number; outputTokens: number; costUsd: number },
+    modelId: string
+  ) {
     const id = crypto.randomUUID();
     await this.db.insert(costs).values({
       id,
@@ -193,10 +245,14 @@ export class CostRepo {
 }
 
 export class SettingsRepo {
-  constructor(private db: DrizzleDB) {}
+  constructor(private readonly db: DrizzleDB) {}
 
   get(key: string) {
-    const row = this.db.select().from(settings).where(eq(settings.key, key)).get();
+    const row = this.db
+      .select()
+      .from(settings)
+      .where(eq(settings.key, key))
+      .get();
     return row?.value ?? null;
   }
 
@@ -205,7 +261,10 @@ export class SettingsRepo {
     await this.db
       .insert(settings)
       .values({ key, value, updatedAt: now })
-      .onConflictDoUpdate({ target: settings.key, set: { value, updatedAt: now } });
+      .onConflictDoUpdate({
+        target: settings.key,
+        set: { value, updatedAt: now },
+      });
   }
 
   getAll() {
@@ -214,9 +273,14 @@ export class SettingsRepo {
 }
 
 export class ModelConfigRepo {
-  constructor(private db: DrizzleDB) {}
+  constructor(private readonly db: DrizzleDB) {}
 
-  async set(data: { projectId?: string; provider: string; modelId: string; thinkingLevel?: string }) {
+  async set(data: {
+    projectId?: string;
+    provider: string;
+    modelId: string;
+    thinkingLevel?: string;
+  }) {
     const id = crypto.randomUUID();
     const now = Date.now();
     await this.db.insert(modelConfigs).values({
@@ -238,12 +302,26 @@ export class ModelConfigRepo {
       .from(modelConfigs)
       .where(eq(modelConfigs.projectId, projectId))
       .get();
-    if (projectConfig) return projectConfig;
+    if (projectConfig) {
+      return projectConfig;
+    }
 
-    return this.db.select().from(modelConfigs).where(sql`${modelConfigs.projectId} IS NULL`).get() ?? null;
+    return (
+      this.db
+        .select()
+        .from(modelConfigs)
+        .where(sql`${modelConfigs.projectId} IS NULL`)
+        .get() ?? null
+    );
   }
 
   getGlobalDefault() {
-    return this.db.select().from(modelConfigs).where(sql`${modelConfigs.projectId} IS NULL`).get() ?? null;
+    return (
+      this.db
+        .select()
+        .from(modelConfigs)
+        .where(sql`${modelConfigs.projectId} IS NULL`)
+        .get() ?? null
+    );
   }
 }

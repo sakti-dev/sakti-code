@@ -16,16 +16,26 @@ const { createAgentLoop } = await import("../loop");
 
 /** Minimal async iterable + push stream that mimics MockEventStream. */
 class MockEventStream<T> implements AsyncIterable<T> {
-  private events: T[] = [];
+  private readonly events: T[] = [];
   private _result?: any;
 
-  push(event: T) { this.events.push(event); }
-  setResult(r: any) { this._result = r; }
-  result() { return this._result; }
-  end() { /* no-op */ }
+  push(event: T) {
+    this.events.push(event);
+  }
+  setResult(r: any) {
+    this._result = r;
+  }
+  result() {
+    return this._result;
+  }
+  end() {
+    /* no-op */
+  }
 
   async *[Symbol.asyncIterator]() {
-    for (const e of this.events) yield e;
+    for (const e of this.events) {
+      yield e;
+    }
   }
 }
 
@@ -54,7 +64,7 @@ function createTestModel() {
     reasoning: false,
     input: ["text"] as ["text"],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: 200000,
+    contextWindow: 200_000,
     maxTokens: 4096,
   };
 }
@@ -62,22 +72,135 @@ function createTestModel() {
 function createTextStream(text: string) {
   const stream = new MockEventStream();
   const now = Date.now();
-  stream.push({ type: "start", partial: { role: "assistant", content: [], usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", api: "openai-completions", provider: "openai", model: "test", timestamp: now } as any });
+  stream.push({
+    type: "start",
+    partial: {
+      role: "assistant",
+      content: [],
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: "stop",
+      api: "openai-completions",
+      provider: "openai",
+      model: "test",
+      timestamp: now,
+    } as any,
+  });
   stream.push({ type: "text_start", contentIndex: 0, partial: {} as any });
-  stream.push({ type: "text_delta", contentIndex: 0, delta: text, partial: {} as any });
-  stream.push({ type: "text_end", contentIndex: 0, content: text, partial: {} as any });
-  stream.push({ type: "done", reason: "stop", message: { role: "assistant", content: [{ type: "text", text }], usage: { input: 10, output: text.length, cacheRead: 0, cacheWrite: 0, totalTokens: 10 + text.length, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", api: "openai-completions", provider: "openai", model: "test", timestamp: now } });
+  stream.push({
+    type: "text_delta",
+    contentIndex: 0,
+    delta: text,
+    partial: {} as any,
+  });
+  stream.push({
+    type: "text_end",
+    contentIndex: 0,
+    content: text,
+    partial: {} as any,
+  });
+  stream.push({
+    type: "done",
+    reason: "stop",
+    message: {
+      role: "assistant",
+      content: [{ type: "text", text }],
+      usage: {
+        input: 10,
+        output: text.length,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 10 + text.length,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: "stop",
+      api: "openai-completions",
+      provider: "openai",
+      model: "test",
+      timestamp: now,
+    },
+  });
   return stream;
 }
 
-function createToolCallStream(toolCall: { id: string; name: string; args: Record<string, unknown> }) {
+function createToolCallStream(toolCall: {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+}) {
   const stream = new MockEventStream();
   const now = Date.now();
-  stream.push({ type: "start", partial: { role: "assistant", content: [], usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "toolUse", api: "openai-completions", provider: "openai", model: "test", timestamp: now } as any });
+  stream.push({
+    type: "start",
+    partial: {
+      role: "assistant",
+      content: [],
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: "toolUse",
+      api: "openai-completions",
+      provider: "openai",
+      model: "test",
+      timestamp: now,
+    } as any,
+  });
   stream.push({ type: "toolcall_start", contentIndex: 0, partial: {} as any });
-  stream.push({ type: "toolcall_delta", contentIndex: 0, delta: JSON.stringify(toolCall.args), partial: {} as any });
-  stream.push({ type: "toolcall_end", contentIndex: 0, toolCall: { type: "toolCall", id: toolCall.id, name: toolCall.name, arguments: toolCall.args } });
-  stream.push({ type: "done", reason: "toolUse", message: { role: "assistant", content: [{ type: "toolCall", id: toolCall.id, name: toolCall.name, arguments: toolCall.args }], usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "toolUse", api: "openai-completions", provider: "openai", model: "test", timestamp: now } });
+  stream.push({
+    type: "toolcall_delta",
+    contentIndex: 0,
+    delta: JSON.stringify(toolCall.args),
+    partial: {} as any,
+  });
+  stream.push({
+    type: "toolcall_end",
+    contentIndex: 0,
+    toolCall: {
+      type: "toolCall",
+      id: toolCall.id,
+      name: toolCall.name,
+      arguments: toolCall.args,
+    },
+  });
+  stream.push({
+    type: "done",
+    reason: "toolUse",
+    message: {
+      role: "assistant",
+      content: [
+        {
+          type: "toolCall",
+          id: toolCall.id,
+          name: toolCall.name,
+          arguments: toolCall.args,
+        },
+      ],
+      usage: {
+        input: 10,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 15,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: "toolUse",
+      api: "openai-completions",
+      provider: "openai",
+      model: "test",
+      timestamp: now,
+    },
+  });
   return stream;
 }
 
@@ -94,12 +217,16 @@ describe("AgentLoop", () => {
     });
 
     const events: AgentEvent[] = [];
-    for await (const e of loop.prompt("Say hello")) events.push(e);
+    for await (const e of loop.prompt("Say hello")) {
+      events.push(e);
+    }
 
     expect(events.some((e) => e.type === "agent_start")).toBe(true);
     expect(events.some((e) => e.type === "turn_start")).toBe(true);
     expect(events.some((e) => e.type === "message_start")).toBe(true);
-    expect(events.filter((e) => e.type === "message_update").length).toBeGreaterThan(0);
+    expect(
+      events.filter((e) => e.type === "message_update").length
+    ).toBeGreaterThan(0);
     expect(events.some((e) => e.type === "message_end")).toBe(true);
     expect(events.some((e) => e.type === "turn_end")).toBe(true);
     expect(events.some((e) => e.type === "agent_end")).toBe(true);
@@ -112,7 +239,11 @@ describe("AgentLoop", () => {
     vi.mocked(streamSimple).mockImplementation(() => {
       callCount++;
       if (callCount === 1) {
-        return createToolCallStream({ id: "tc_1", name: "read", args: { path: "src/index.ts" } });
+        return createToolCallStream({
+          id: "tc_1",
+          name: "read",
+          args: { path: "src/index.ts" },
+        });
       }
       return createTextStream("I read the file");
     });
@@ -132,7 +263,9 @@ describe("AgentLoop", () => {
     });
 
     const events: AgentEvent[] = [];
-    for await (const e of loop.prompt("Read the file")) events.push(e);
+    for await (const e of loop.prompt("Read the file")) {
+      events.push(e);
+    }
 
     expect(events.some((e) => e.type === "tool_execution_start")).toBe(true);
     expect(events.some((e) => e.type === "tool_execution_end")).toBe(true);
@@ -146,7 +279,13 @@ describe("AgentLoop", () => {
     let callCount = 0;
     vi.mocked(streamSimple).mockImplementation(() => {
       callCount++;
-      if (callCount === 1) return createToolCallStream({ id: "tc_1", name: "bash", args: { command: "false" } });
+      if (callCount === 1) {
+        return createToolCallStream({
+          id: "tc_1",
+          name: "bash",
+          args: { command: "false" },
+        });
+      }
       return createTextStream("I see the command failed");
     });
 
@@ -154,7 +293,9 @@ describe("AgentLoop", () => {
       name: "bash",
       description: "Run command",
       parameters: {},
-      execute: async () => { throw new Error("Command failed"); },
+      execute: async () => {
+        throw new Error("Command failed");
+      },
     };
 
     const loop = createAgentLoop({
@@ -165,7 +306,9 @@ describe("AgentLoop", () => {
     });
 
     const events: AgentEvent[] = [];
-    for await (const e of loop.prompt("Run a command")) events.push(e);
+    for await (const e of loop.prompt("Run a command")) {
+      events.push(e);
+    }
 
     expect(events.some((e) => e.type === "tool_execution_end")).toBe(true);
     expect(store.appendMessage).toHaveBeenCalledTimes(4);
@@ -174,7 +317,7 @@ describe("AgentLoop", () => {
   it("tool result with terminate → loop stops without sending back to LLM", async () => {
     const store = createMockStore();
     vi.mocked(streamSimple).mockReturnValue(
-      createToolCallStream({ id: "tc_1", name: "kill", args: {} }),
+      createToolCallStream({ id: "tc_1", name: "kill", args: {} })
     );
 
     const killTool = {
@@ -192,7 +335,9 @@ describe("AgentLoop", () => {
     });
 
     const events: AgentEvent[] = [];
-    for await (const e of loop.prompt("Kill it")) events.push(e);
+    for await (const e of loop.prompt("Kill it")) {
+      events.push(e);
+    }
 
     expect(events.some((e) => e.type === "agent_end")).toBe(true);
     // user + assistant(tool call) + tool result = 3 (no second LLM call)
@@ -204,7 +349,13 @@ describe("AgentLoop", () => {
     let callCount = 0;
     vi.mocked(streamSimple).mockImplementation(() => {
       callCount++;
-      if (callCount === 1) return createToolCallStream({ id: "tc_1", name: "nonexistent", args: {} });
+      if (callCount === 1) {
+        return createToolCallStream({
+          id: "tc_1",
+          name: "nonexistent",
+          args: {},
+        });
+      }
       return createTextStream("ok");
     });
 
@@ -216,7 +367,9 @@ describe("AgentLoop", () => {
     });
 
     const events: AgentEvent[] = [];
-    for await (const e of loop.prompt("Use tool")) events.push(e);
+    for await (const e of loop.prompt("Use tool")) {
+      events.push(e);
+    }
 
     const toolEnd = events.find((e) => e.type === "tool_execution_end") as any;
     expect(toolEnd).toBeDefined();
@@ -228,7 +381,13 @@ describe("AgentLoop", () => {
     let callCount = 0;
     vi.mocked(streamSimple).mockImplementation(() => {
       callCount++;
-      if (callCount === 1) return createToolCallStream({ id: "tc_1", name: "bash", args: { command: "echo hi" } });
+      if (callCount === 1) {
+        return createToolCallStream({
+          id: "tc_1",
+          name: "bash",
+          args: { command: "echo hi" },
+        });
+      }
       return createTextStream("done");
     });
 
@@ -236,7 +395,12 @@ describe("AgentLoop", () => {
       name: "bash",
       description: "Run command",
       parameters: {},
-      execute: async (_id: string, _args: any, _signal: any, onUpdate?: (p: string) => void) => {
+      execute: async (
+        _id: string,
+        _args: any,
+        _signal: any,
+        onUpdate?: (p: string) => void
+      ) => {
         onUpdate?.("line 1\n");
         onUpdate?.("line 2\n");
         return { content: "line 1\nline 2\n", terminate: false };
@@ -251,9 +415,13 @@ describe("AgentLoop", () => {
     });
 
     const events: AgentEvent[] = [];
-    for await (const e of loop.prompt("Run it")) events.push(e);
+    for await (const e of loop.prompt("Run it")) {
+      events.push(e);
+    }
 
-    const update = events.find((e) => e.type === "tool_execution_update") as any;
+    const update = events.find(
+      (e) => e.type === "tool_execution_update"
+    ) as any;
     expect(update).toBeDefined();
     expect(update.accumulated).toBe("line 1\nline 2\n");
   });

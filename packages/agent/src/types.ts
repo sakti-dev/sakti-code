@@ -5,52 +5,64 @@ import type { ToolCall, Usage } from "@earendil-works/pi-ai";
 export type { ToolCall, Usage };
 
 export interface TextContent {
-  type: "text";
   text: string;
+  type: "text";
 }
 
 export interface ThinkingContent {
-  type: "thinking";
   thinking: string;
+  type: "thinking";
 }
 
 // ── AgentMessage discriminated union ──
 
 export interface UserMessage {
-  role: "user";
   content: string;
+  role: "user";
   timestamp: number;
 }
 
 export interface AssistantMessage {
-  role: "assistant";
   content: (TextContent | ThinkingContent | ToolCall)[];
-  usage: Usage;
+  role: "assistant";
   timestamp: number;
+  usage: Usage;
 }
 
 export interface ToolResultMessage {
-  role: "tool";
-  toolCallId: string;
-  toolName: string;
   content: TextContent[];
   isError: boolean;
+  role: "tool";
   timestamp: number;
+  toolCallId: string;
+  toolName: string;
 }
 
 export type AgentMessage = UserMessage | AssistantMessage | ToolResultMessage;
 
 export function isAgentMessage(v: unknown): v is AgentMessage {
-  if (v == null || typeof v !== "object") return false;
+  if (v == null || typeof v !== "object") {
+    return false;
+  }
   const o = v as Record<string, unknown>;
-  if (typeof o.role !== "string" || typeof o.timestamp !== "number") return false;
+  if (typeof o.role !== "string" || typeof o.timestamp !== "number") {
+    return false;
+  }
   switch (o.role) {
     case "user":
       return typeof o.content === "string";
     case "assistant":
-      return Array.isArray(o.content) && typeof o.usage === "object" && o.usage !== null;
+      return (
+        Array.isArray(o.content) &&
+        typeof o.usage === "object" &&
+        o.usage !== null
+      );
     case "tool":
-      return typeof o.toolCallId === "string" && typeof o.toolName === "string" && Array.isArray(o.content);
+      return (
+        typeof o.toolCallId === "string" &&
+        typeof o.toolName === "string" &&
+        Array.isArray(o.content)
+      );
     default:
       return false;
   }
@@ -60,26 +72,32 @@ export function isAgentMessage(v: unknown): v is AgentMessage {
 
 export interface AgentToolResult {
   content: string;
-  terminate: boolean;
   isError?: boolean;
+  terminate: boolean;
 }
 
 export interface AgentTool {
-  name: string;
   description: string;
-  parameters: Record<string, unknown>;
   execute: (
     id: string,
     args: Record<string, unknown>,
     signal?: AbortSignal,
-    onUpdate?: (partial: string) => void,
+    onUpdate?: (partial: string) => void
   ) => Promise<AgentToolResult>;
+  name: string;
+  parameters: Record<string, unknown>;
 }
 
 export function isAgentTool(v: unknown): v is AgentTool {
-  if (v == null || typeof v !== "object") return false;
+  if (v == null || typeof v !== "object") {
+    return false;
+  }
   const o = v as Record<string, unknown>;
-  return typeof o.name === "string" && typeof o.description === "string" && typeof o.execute === "function";
+  return (
+    typeof o.name === "string" &&
+    typeof o.description === "string" &&
+    typeof o.execute === "function"
+  );
 }
 
 // ── Event types ──
@@ -88,12 +106,30 @@ export interface AgentEventBase {
   timestamp: number;
 }
 
-export interface AgentStartEvent extends AgentEventBase { type: "agent_start"; sessionId: string }
-export interface AgentEndEvent extends AgentEventBase { type: "agent_end"; sessionId: string }
-export interface TurnStartEvent extends AgentEventBase { type: "turn_start"; turnIndex: number }
-export interface TurnEndEvent extends AgentEventBase { type: "turn_end"; turnIndex: number; message: Extract<AgentMessage, { role: "assistant" }>; toolResults: Extract<AgentMessage, { role: "tool" }>[] }
-export interface MessageStartEvent extends AgentEventBase { type: "message_start" }
-export interface MessageEndEvent extends AgentEventBase { type: "message_end" }
+export interface AgentStartEvent extends AgentEventBase {
+  sessionId: string;
+  type: "agent_start";
+}
+export interface AgentEndEvent extends AgentEventBase {
+  sessionId: string;
+  type: "agent_end";
+}
+export interface TurnStartEvent extends AgentEventBase {
+  turnIndex: number;
+  type: "turn_start";
+}
+export interface TurnEndEvent extends AgentEventBase {
+  message: Extract<AgentMessage, { role: "assistant" }>;
+  toolResults: Extract<AgentMessage, { role: "tool" }>[];
+  turnIndex: number;
+  type: "turn_end";
+}
+export interface MessageStartEvent extends AgentEventBase {
+  type: "message_start";
+}
+export interface MessageEndEvent extends AgentEventBase {
+  type: "message_end";
+}
 
 export type MessageUpdate =
   | { type: "text_delta"; delta: string }
@@ -102,38 +138,85 @@ export type MessageUpdate =
   | { type: "toolcall_delta"; contentIndex: number; delta: string }
   | { type: "toolcall_end"; contentIndex: number; toolCall: ToolCall };
 
-export interface MessageUpdateEvent extends AgentEventBase { type: "message_update"; update: MessageUpdate }
+export interface MessageUpdateEvent extends AgentEventBase {
+  type: "message_update";
+  update: MessageUpdate;
+}
 
-export interface ToolExecutionStartEvent extends AgentEventBase { type: "tool_execution_start"; toolCallId: string; toolName: string }
-export interface ToolExecutionUpdateEvent extends AgentEventBase { type: "tool_execution_update"; toolCallId: string; toolName: string; accumulated: string }
-export interface ToolExecutionEndEvent extends AgentEventBase { type: "tool_execution_end"; toolCallId: string; toolName: string; result: AgentToolResult }
+export interface ToolExecutionStartEvent extends AgentEventBase {
+  toolCallId: string;
+  toolName: string;
+  type: "tool_execution_start";
+}
+export interface ToolExecutionUpdateEvent extends AgentEventBase {
+  accumulated: string;
+  toolCallId: string;
+  toolName: string;
+  type: "tool_execution_update";
+}
+export interface ToolExecutionEndEvent extends AgentEventBase {
+  result: AgentToolResult;
+  toolCallId: string;
+  toolName: string;
+  type: "tool_execution_end";
+}
 
-export interface ErrorEvent extends AgentEventBase { type: "error"; message: string }
-export interface CompactionStartEvent extends AgentEventBase { type: "compaction_start" }
-export interface CompactionEndEvent extends AgentEventBase { type: "compaction_end"; tokensBefore: number; tokensAfter: number }
-export interface RetryEvent extends AgentEventBase { type: "retry"; attempt: number; maxRetries: number; delayMs: number }
+export interface ErrorEvent extends AgentEventBase {
+  message: string;
+  type: "error";
+}
+export interface CompactionStartEvent extends AgentEventBase {
+  type: "compaction_start";
+}
+export interface CompactionEndEvent extends AgentEventBase {
+  tokensAfter: number;
+  tokensBefore: number;
+  type: "compaction_end";
+}
+export interface RetryEvent extends AgentEventBase {
+  attempt: number;
+  delayMs: number;
+  maxRetries: number;
+  type: "retry";
+}
 
 export type AgentEvent =
-  | AgentStartEvent | AgentEndEvent
-  | TurnStartEvent | TurnEndEvent
-  | MessageStartEvent | MessageEndEvent | MessageUpdateEvent
-  | ToolExecutionStartEvent | ToolExecutionUpdateEvent | ToolExecutionEndEvent
+  | AgentStartEvent
+  | AgentEndEvent
+  | TurnStartEvent
+  | TurnEndEvent
+  | MessageStartEvent
+  | MessageEndEvent
+  | MessageUpdateEvent
+  | ToolExecutionStartEvent
+  | ToolExecutionUpdateEvent
+  | ToolExecutionEndEvent
   | ErrorEvent
-  | CompactionStartEvent | CompactionEndEvent
+  | CompactionStartEvent
+  | CompactionEndEvent
   | RetryEvent;
 
 const EVENT_TYPES = new Set([
-  "agent_start", "agent_end",
-  "turn_start", "turn_end",
-  "message_start", "message_end", "message_update",
-  "tool_execution_start", "tool_execution_update", "tool_execution_end",
+  "agent_start",
+  "agent_end",
+  "turn_start",
+  "turn_end",
+  "message_start",
+  "message_end",
+  "message_update",
+  "tool_execution_start",
+  "tool_execution_update",
+  "tool_execution_end",
   "error",
-  "compaction_start", "compaction_end",
+  "compaction_start",
+  "compaction_end",
   "retry",
 ]);
 
 export function isAgentEvent(v: unknown): v is AgentEvent {
-  if (v == null || typeof v !== "object") return false;
+  if (v == null || typeof v !== "object") {
+    return false;
+  }
   const o = v as Record<string, unknown>;
   return EVENT_TYPES.has(o.type as string) && typeof o.timestamp === "number";
 }
@@ -141,39 +224,40 @@ export function isAgentEvent(v: unknown): v is AgentEvent {
 // ── Config ──
 
 import type { Model } from "@earendil-works/pi-ai";
+
 export type { Model };
 export type AnyModel = Model<any>;
 
 // ── SessionStore interface ──
 
 export interface SessionStore {
-  loadMessages(sessionId: string): Promise<AgentMessage[]>;
   appendMessage(sessionId: string, message: AgentMessage): Promise<void>;
+  loadMessages(sessionId: string): Promise<AgentMessage[]>;
   replaceMessages(sessionId: string, messages: AgentMessage[]): Promise<void>;
 }
 
 export interface AgentConfig {
-  sessionId: string;
+  keepRecentTokens: number;
+  maxRetries: number;
   model: AnyModel;
-  tools: AgentTool[];
+  reserveTokens: number;
+  retryBaseDelayMs: number;
+  sessionId: string;
   store: SessionStore;
   toolExecutionMode: "sequential" | "parallel";
-  maxRetries: number;
-  retryBaseDelayMs: number;
-  reserveTokens: number;
-  keepRecentTokens: number;
+  tools: AgentTool[];
 }
 
 export interface AgentConfigInput {
-  sessionId: string;
+  keepRecentTokens?: number;
+  maxRetries?: number;
   model: AnyModel;
-  tools: AgentTool[];
+  reserveTokens?: number;
+  retryBaseDelayMs?: number;
+  sessionId: string;
   store: SessionStore;
   toolExecutionMode?: "sequential" | "parallel";
-  maxRetries?: number;
-  retryBaseDelayMs?: number;
-  reserveTokens?: number;
-  keepRecentTokens?: number;
+  tools: AgentTool[];
 }
 
 export function createAgentConfig(input: AgentConfigInput): AgentConfig {
@@ -181,14 +265,21 @@ export function createAgentConfig(input: AgentConfigInput): AgentConfig {
     toolExecutionMode: input.toolExecutionMode ?? "parallel",
     maxRetries: input.maxRetries ?? 3,
     retryBaseDelayMs: input.retryBaseDelayMs ?? 1000,
-    reserveTokens: input.reserveTokens ?? 16000,
-    keepRecentTokens: input.keepRecentTokens ?? 20000,
+    reserveTokens: input.reserveTokens ?? 16_000,
+    keepRecentTokens: input.keepRecentTokens ?? 20_000,
     ...input,
   };
 }
 
 export function isAgentConfig(v: unknown): v is AgentConfig {
-  if (v == null || typeof v !== "object") return false;
+  if (v == null || typeof v !== "object") {
+    return false;
+  }
   const o = v as Record<string, unknown>;
-  return typeof o.sessionId === "string" && Array.isArray(o.tools) && typeof o.store === "object" && o.store !== null;
+  return (
+    typeof o.sessionId === "string" &&
+    Array.isArray(o.tools) &&
+    typeof o.store === "object" &&
+    o.store !== null
+  );
 }

@@ -20,7 +20,7 @@ describe("AgentConfig type", () => {
         reasoning: false,
         input: ["text"],
         cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
-        contextWindow: 200000,
+        contextWindow: 200_000,
         maxTokens: 8192,
       },
       tools: [],
@@ -28,14 +28,14 @@ describe("AgentConfig type", () => {
       toolExecutionMode: "parallel",
       maxRetries: 3,
       retryBaseDelayMs: 1000,
-      reserveTokens: 16000,
-      keepRecentTokens: 20000,
+      reserveTokens: 16_000,
+      keepRecentTokens: 20_000,
     });
 
     expect(config.sessionId).toBe("s1");
     expect(config.toolExecutionMode).toBe("parallel");
     expect(config.maxRetries).toBe(3);
-    expect(config.reserveTokens).toBe(16000);
+    expect(config.reserveTokens).toBe(16_000);
   });
 
   it("defaults toolExecutionMode to parallel", () => {
@@ -48,10 +48,16 @@ describe("AgentConfig type", () => {
     const config = createAgentConfig({
       sessionId: "s1",
       model: {
-        id: "x", name: "x", api: "openai-completions", provider: "openai", baseUrl: "",
-        reasoning: false, input: ["text"],
+        id: "x",
+        name: "x",
+        api: "openai-completions",
+        provider: "openai",
+        baseUrl: "",
+        reasoning: false,
+        input: ["text"],
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-        contextWindow: 128000, maxTokens: 4096,
+        contextWindow: 128_000,
+        maxTokens: 4096,
       },
       tools: [],
       store,
@@ -64,9 +70,24 @@ describe("AgentConfig type", () => {
     const { isAgentConfig } = await import("../types");
     const minimal = {
       sessionId: "s1",
-      model: { id: "x", name: "x", api: "openai-completions", provider: "openai", baseUrl: "", reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128000, maxTokens: 4096 },
+      model: {
+        id: "x",
+        name: "x",
+        api: "openai-completions",
+        provider: "openai",
+        baseUrl: "",
+        reasoning: false,
+        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 128_000,
+        maxTokens: 4096,
+      },
       tools: [],
-      store: { loadMessages: async () => [], appendMessage: async () => {}, replaceMessages: async () => {} },
+      store: {
+        loadMessages: async () => [],
+        appendMessage: async () => {},
+        replaceMessages: async () => {},
+      },
     };
     expect(isAgentConfig(minimal)).toBe(true);
     expect(isAgentConfig(null)).toBe(false);

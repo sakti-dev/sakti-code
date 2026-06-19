@@ -1,5 +1,5 @@
-import { Database } from "bun:sqlite";
-import { drizzle, type BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
+import type { Database } from "bun:sqlite";
+import { type BunSQLiteDatabase, drizzle } from "drizzle-orm/bun-sqlite";
 import * as schema from "./schema.ts";
 
 export type DrizzleDB = BunSQLiteDatabase<typeof schema>;

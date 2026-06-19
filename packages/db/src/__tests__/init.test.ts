@@ -1,5 +1,5 @@
-import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import { Database } from "bun:sqlite";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { initDatabase } from "../init";
@@ -22,7 +22,10 @@ describe("initDatabase", () => {
     const drizzleDb = await initDatabase(db);
 
     // WAL mode
-    const journalMode = db.query("PRAGMA journal_mode").get() as Record<string, string>;
+    const journalMode = db.query("PRAGMA journal_mode").get() as Record<
+      string,
+      string
+    >;
     expect(journalMode.journal_mode).toBe("wal");
 
     // Foreign keys
@@ -44,13 +47,27 @@ describe("initDatabase", () => {
     expect(names).toContain("model_configs");
 
     // Can insert into each table
-    db.prepare("INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?)").run("p1", "Test", "/tmp/test", 1, 1);
-    db.prepare("INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)").run("s1", "p1", "claude-sonnet", 1, 1);
-    db.prepare("INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)").run("m1", "s1", "user", "hello", 1);
-    db.prepare("INSERT INTO tool_executions (id, message_id, session_id, tool_name, arguments, created_at) VALUES (?, ?, ?, ?, ?, ?)").run("te1", "m1", "s1", "bash", "{}", 1);
-    db.prepare("INSERT INTO costs (id, session_id, project_id, input_tokens, output_tokens, cost_usd, model_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run("c1", "s1", "p1", 100, 50, 0.01, "claude-sonnet", 1);
-    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)").run("theme", "dark", 1);
-    db.prepare("INSERT INTO model_configs (id, project_id, provider, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)").run("mc1", "p1", "anthropic", "claude-sonnet", 1, 1);
+    db.prepare(
+      "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+    ).run("p1", "Test", "/tmp/test", 1, 1);
+    db.prepare(
+      "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+    ).run("s1", "p1", "claude-sonnet", 1, 1);
+    db.prepare(
+      "INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)"
+    ).run("m1", "s1", "user", "hello", 1);
+    db.prepare(
+      "INSERT INTO tool_executions (id, message_id, session_id, tool_name, arguments, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run("te1", "m1", "s1", "bash", "{}", 1);
+    db.prepare(
+      "INSERT INTO costs (id, session_id, project_id, input_tokens, output_tokens, cost_usd, model_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run("c1", "s1", "p1", 100, 50, 0.01, "claude-sonnet", 1);
+    db.prepare(
+      "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)"
+    ).run("theme", "dark", 1);
+    db.prepare(
+      "INSERT INTO model_configs (id, project_id, provider, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run("mc1", "p1", "anthropic", "claude-sonnet", 1, 1);
 
     expect(drizzleDb).toBeDefined();
   });

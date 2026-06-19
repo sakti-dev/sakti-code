@@ -1,28 +1,28 @@
 {
-	"$schema": "https://turbo.build/schema.json",
-	"tasks": {
-		"dev": {
-			"cache": false,
-			"persistent": true
-		},
-		"start": {
-			"cache": false,
-			"persistent": true
-		},
-		"hmr": {
-			"cache": false,
-			"persistent": true
-		},
-		"build": {
-			"dependsOn": ["^build"],
-			"outputs": ["dist/**"]
-		},
-		"build:canary": {
-			"dependsOn": ["^build:canary"],
-			"outputs": ["dist/**", "build/**"]
-		},
-		"test": {
-			"dependsOn": ["^build"]
-		}
-	}
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "start": {
+      "cache": false,
+      "persistent": true
+    },
+    "hmr": {
+      "cache": false,
+      "persistent": true
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "build:canary": {
+      "dependsOn": ["^build:canary"],
+      "outputs": ["dist/**", "build/**"]
+    },
+    "test": {
+      "dependsOn": ["^build"]
+    }
+  }
 }

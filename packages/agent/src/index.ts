@@ -1,3 +1,3 @@
+export { estimateTokens, shouldCompact } from "./compaction.ts";
+export { type AgentLoop, createAgentLoop } from "./loop.ts";
 export * from "./types.ts";
-export { createAgentLoop, type AgentLoop } from "./loop.ts";
-export { shouldCompact, estimateTokens } from "./compaction.ts";

@@ -61,7 +61,10 @@ describe("AgentTool interface", () => {
 
 describe("AgentToolResult type", () => {
   it("has content string and terminate flag", () => {
-    const result: AgentToolResult = { content: "file contents", terminate: false };
+    const result: AgentToolResult = {
+      content: "file contents",
+      terminate: false,
+    };
     expect(result.content).toBe("file contents");
     expect(result.terminate).toBe(false);
   });

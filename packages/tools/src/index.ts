@@ -1,10 +1,10 @@
-import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
-import { join, resolve, relative } from "node:path";
-import { existsSync } from "node:fs";
 import { execSync, spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { join, relative, resolve } from "node:path";
 
 function stripBom(content: string): { bom: string; text: string } {
-  if (content.charCodeAt(0) === 0xfeff) {
+  if (content.charCodeAt(0) === 0xfe_ff) {
     return { bom: "\ufeff", text: content.slice(1) };
   }
   return { bom: "", text: content };
@@ -19,15 +19,20 @@ function normalizeToLf(content: string): string {
 }
 
 function restoreLineEndings(content: string, ending: string): string {
-  if (ending === "\r\n") return content.replace(/\n/g, "\r\n");
+  if (ending === "\r\n") {
+    return content.replace(/\n/g, "\r\n");
+  }
   return content;
 }
 
 const fileLocks = new Map<string, Promise<void>>();
 
 const IMAGE_EXTENSIONS = new Map([
-  ["jpg", "image/jpeg"], ["jpeg", "image/jpeg"],
-  ["png", "image/png"], ["gif", "image/gif"], ["webp", "image/webp"],
+  ["jpg", "image/jpeg"],
+  ["jpeg", "image/jpeg"],
+  ["png", "image/png"],
+  ["gif", "image/gif"],
+  ["webp", "image/webp"],
 ]);
 
 function detectImageMime(path: string): string | undefined {
@@ -36,33 +41,67 @@ function detectImageMime(path: string): string | undefined {
 }
 
 function sniffImageMime(buf: Buffer): string | undefined {
-  if (buf.length < 4) return undefined;
+  if (buf.length < 4) {
+    return;
+  }
   // PNG: \x89PNG\r\n\x1a\n
-  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "image/png";
+  if (
+    buf[0] === 0x89 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x4e &&
+    buf[3] === 0x47
+  ) {
+    return "image/png";
+  }
   // JPEG: \xff\xd8\xff
-  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
+    return "image/jpeg";
+  }
   // GIF: GIF8
-  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38) return "image/gif";
+  if (
+    buf[0] === 0x47 &&
+    buf[1] === 0x49 &&
+    buf[2] === 0x46 &&
+    buf[3] === 0x38
+  ) {
+    return "image/gif";
+  }
   // WebP: RIFF....WEBP
-  if (buf.length >= 12 && buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46
-    && buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) return "image/webp";
-  return undefined;
+  if (
+    buf.length >= 12 &&
+    buf[0] === 0x52 &&
+    buf[1] === 0x49 &&
+    buf[2] === 0x46 &&
+    buf[3] === 0x46 &&
+    buf[8] === 0x57 &&
+    buf[9] === 0x45 &&
+    buf[10] === 0x42 &&
+    buf[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+  return;
 }
 
 interface ArgDef {
-  type: "string" | "number" | "boolean" | "array" | "object";
   required?: boolean;
+  type: "string" | "number" | "boolean" | "array" | "object";
 }
 
 function validateArgs(
   args: Record<string, unknown>,
   schema: Record<string, ArgDef>,
-  toolName: string,
-): { valid: true; args: Record<string, unknown> } | { valid: false; error: string } {
+  toolName: string
+):
+  | { valid: true; args: Record<string, unknown> }
+  | { valid: false; error: string } {
   const result: Record<string, unknown> = {};
   for (const [key, def] of Object.entries(schema)) {
     if (def.required && !(key in args)) {
-      return { valid: false, error: `Missing required argument '${key}' for ${toolName}` };
+      return {
+        valid: false,
+        error: `Missing required argument '${key}' for ${toolName}`,
+      };
     }
     if (key in args) {
       const val = args[key];
@@ -71,9 +110,15 @@ function validateArgs(
         (def.type === "number" && typeof val === "number") ||
         (def.type === "boolean" && typeof val === "boolean") ||
         (def.type === "array" && Array.isArray(val)) ||
-        (def.type === "object" && val !== null && typeof val === "object" && !Array.isArray(val));
+        (def.type === "object" &&
+          val !== null &&
+          typeof val === "object" &&
+          !Array.isArray(val));
       if (!typeOk && val !== undefined) {
-        return { valid: false, error: `Argument '${key}' must be ${def.type}, got ${typeof val}` };
+        return {
+          valid: false,
+          error: `Argument '${key}' must be ${def.type}, got ${typeof val}`,
+        };
       }
       result[key] = val;
     }
@@ -84,15 +129,26 @@ function validateArgs(
 function withFileLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
   const pending = fileLocks.get(path);
   const next = pending ? pending.then(fn, fn) : fn();
-  fileLocks.set(path, next.then(
-    () => { if (fileLocks.get(path) === next) fileLocks.delete(path); },
-    () => { if (fileLocks.get(path) === next) fileLocks.delete(path); },
-  ));
+  fileLocks.set(
+    path,
+    next.then(
+      () => {
+        if (fileLocks.get(path) === next) {
+          fileLocks.delete(path);
+        }
+      },
+      () => {
+        if (fileLocks.get(path) === next) {
+          fileLocks.delete(path);
+        }
+      }
+    )
+  );
   return next;
 }
 
 function shellQuote(s: string): string {
-  return "'" + s.replace(/'/g, "'\\''") + "'";
+  return `'${s.replace(/'/g, "'\\''")}'`;
 }
 
 /** Resolve a binary from PATH, returning absolute path or the name as fallback. */
@@ -111,7 +167,9 @@ function resolveBin(name: string): string {
       try {
         execSync(`test -x ${c}`);
         return c;
-      } catch { /* continue */ }
+      } catch {
+        /* continue */
+      }
     }
     return name;
   }
@@ -120,7 +178,7 @@ function resolveBin(name: string): string {
 const RG_BIN = resolveBin("rg");
 const FD_BIN = resolveBin("fd");
 
-function runCommand(cmd: string, cwd: string, timeout = 30000): string {
+function runCommand(cmd: string, cwd: string, timeout = 30_000): string {
   return execSync(cmd, {
     encoding: "utf-8",
     cwd,
@@ -132,17 +190,21 @@ function runCommand(cmd: string, cwd: string, timeout = 30000): string {
 
 /** Accumulates process output with byte and line limits. */
 class OutputAccumulator {
-  private chunks: Buffer[] = [];
+  private readonly chunks: Buffer[] = [];
   private totalBytes = 0;
-  private readonly maxBytes: number;
   private lineCount = 0;
+  private readonly maxBytes: number;
+  private readonly maxLines: number;
 
-  constructor(maxBytes = 100 * 1024) {
+  constructor(maxBytes = 100 * 1024, maxLines = 2000) {
     this.maxBytes = maxBytes;
+    this.maxLines = maxLines;
   }
 
   append(data: Buffer): void {
-    if (this.totalBytes >= this.maxBytes) return;
+    if (this.totalBytes >= this.maxBytes) {
+      return;
+    }
     const remaining = this.maxBytes - this.totalBytes;
     const chunk = data.length > remaining ? data.subarray(0, remaining) : data;
     this.chunks.push(chunk);
@@ -155,7 +217,7 @@ class OutputAccumulator {
   }
 
   get truncated(): boolean {
-    return this.totalBytes >= this.maxBytes;
+    return this.lineCount > this.maxLines || this.totalBytes >= this.maxBytes;
   }
 }
 
@@ -167,8 +229,13 @@ function spawnCommand(
     signal?: AbortSignal;
     onUpdate?: (text: string) => void;
     env?: Record<string, string>;
-  } = {},
-): Promise<{ output: string; exitCode: number | null; truncated: boolean; timedOut: boolean }> {
+  } = {}
+): Promise<{
+  output: string;
+  exitCode: number | null;
+  truncated: boolean;
+  timedOut: boolean;
+}> {
   return new Promise((resolve) => {
     const accum = new OutputAccumulator();
     const ms = options.timeout ?? 30_000;
@@ -186,19 +253,28 @@ function spawnCommand(
           const snapshot = accum.content;
           if (snapshot.length > lastUpdateLen) {
             lastUpdateLen = snapshot.length;
-            options.onUpdate!(snapshot);
+            options.onUpdate?.(snapshot);
           }
         }, 50)
       : null;
 
     const finish = (exitCode: number | null, timedOutFlag: boolean) => {
-      if (finished) return;
+      if (finished) {
+        return;
+      }
       finished = true;
-      if (updateTimer) clearInterval(updateTimer);
+      if (updateTimer) {
+        clearInterval(updateTimer);
+      }
       if (options.onUpdate && accum.content.length > lastUpdateLen) {
         options.onUpdate(accum.content);
       }
-      resolve({ output: accum.content, exitCode, truncated: accum.truncated, timedOut: timedOutFlag });
+      resolve({
+        output: accum.content,
+        exitCode,
+        truncated: accum.truncated,
+        timedOut: timedOutFlag,
+      });
     };
 
     child.stdout?.on("data", (data: Buffer) => accum.append(data));
@@ -209,32 +285,49 @@ function spawnCommand(
         child.kill("SIGKILL");
         finish(null, true);
       }, ms);
-      child.on("close", (code) => { clearTimeout(timer); finish(code, false); });
-      child.on("error", () => { clearTimeout(timer); finish(null, false); });
+      child.on("close", (code) => {
+        clearTimeout(timer);
+        finish(code, false);
+      });
+      child.on("error", () => {
+        clearTimeout(timer);
+        finish(null, false);
+      });
     } else {
       child.on("close", (code) => finish(code, false));
       child.on("error", () => finish(null, false));
     }
 
     if (options.signal) {
-      const onAbort = () => { child.kill("SIGKILL"); finish(null, false); };
-      if (options.signal.aborted) onAbort();
-      else options.signal.addEventListener("abort", onAbort, { once: true });
+      const onAbort = () => {
+        child.kill("SIGKILL");
+        finish(null, false);
+      };
+      if (options.signal.aborted) {
+        onAbort();
+      } else {
+        options.signal.addEventListener("abort", onAbort, { once: true });
+      }
     }
   });
 }
 
 export interface ToolResult {
   content: string;
-  terminate: boolean;
   isError?: boolean;
+  terminate: boolean;
 }
 
 export interface ToolDefinition {
-  name: string;
   description: string;
+  execute: (
+    id: string,
+    args: Record<string, unknown>,
+    signal?: AbortSignal,
+    onUpdate?: (p: string) => void
+  ) => Promise<ToolResult>;
+  name: string;
   parameters: Record<string, unknown>;
-  execute: (id: string, args: Record<string, unknown>, signal?: AbortSignal, onUpdate?: (p: string) => void) => Promise<ToolResult>;
 }
 
 // ── Read Tool ──
@@ -247,19 +340,40 @@ export function createReadTool(cwd: string): ToolDefinition {
       type: "object",
       properties: {
         path: { type: "string", description: "File path relative to cwd" },
-        offset: { type: "number", description: "Line number to start reading from (1-indexed)" },
+        offset: {
+          type: "number",
+          description: "Line number to start reading from (1-indexed)",
+        },
         limit: { type: "number", description: "Max lines to read" },
       },
       required: ["path"],
     },
     execute: async (_id, args) => {
-      const v = validateArgs(args as Record<string, unknown>, { path: { type: "string", required: true }, offset: { type: "number" }, limit: { type: "number" } }, "read");
-      if (!v.valid) return { content: v.error, terminate: false, isError: true };
-      const { path, offset, limit } = v.args as { path: string; offset?: number; limit?: number };
+      const v = validateArgs(
+        args as Record<string, unknown>,
+        {
+          path: { type: "string", required: true },
+          offset: { type: "number" },
+          limit: { type: "number" },
+        },
+        "read"
+      );
+      if (!v.valid) {
+        return { content: v.error, terminate: false, isError: true };
+      }
+      const { path, offset, limit } = v.args as {
+        path: string;
+        offset?: number;
+        limit?: number;
+      };
       const filePath = resolve(cwd, path);
 
       if (!existsSync(filePath)) {
-        return { content: `File not found: ${path}`, terminate: false, isError: true };
+        return {
+          content: `File not found: ${path}`,
+          terminate: false,
+          isError: true,
+        };
       }
 
       let mime = detectImageMime(path);
@@ -271,7 +385,10 @@ export function createReadTool(cwd: string): ToolDefinition {
       if (mime) {
         const buf = await readFile(filePath);
         const dataUrl = `data:${mime};base64,${buf.toString("base64")}`;
-        return { content: `Read image file [${mime}]\n${dataUrl}`, terminate: false };
+        return {
+          content: `Read image file [${mime}]\n${dataUrl}`,
+          terminate: false,
+        };
       }
 
       const raw = await readFile(filePath, "utf-8");
@@ -310,7 +427,8 @@ export function createReadTool(cwd: string): ToolDefinition {
 export function createWriteTool(cwd: string): ToolDefinition {
   return {
     name: "write",
-    description: "Write content to a file. Creates parent directories if needed.",
+    description:
+      "Write content to a file. Creates parent directories if needed.",
     parameters: {
       type: "object",
       properties: {
@@ -320,8 +438,17 @@ export function createWriteTool(cwd: string): ToolDefinition {
       required: ["path", "content"],
     },
     execute: async (_id, args) => {
-      const v = validateArgs(args as Record<string, unknown>, { path: { type: "string", required: true }, content: { type: "string", required: true } }, "write");
-      if (!v.valid) return { content: v.error, terminate: false, isError: true };
+      const v = validateArgs(
+        args as Record<string, unknown>,
+        {
+          path: { type: "string", required: true },
+          content: { type: "string", required: true },
+        },
+        "write"
+      );
+      if (!v.valid) {
+        return { content: v.error, terminate: false, isError: true };
+      }
       const { path, content } = v.args as { path: string; content: string };
       const filePath = resolve(cwd, path);
 
@@ -329,7 +456,10 @@ export function createWriteTool(cwd: string): ToolDefinition {
       await mkdir(dir, { recursive: true });
       await writeFile(filePath, content, "utf-8");
 
-      return { content: `Wrote ${Buffer.byteLength(content, "utf-8")} bytes to ${path}`, terminate: false };
+      return {
+        content: `Wrote ${Buffer.byteLength(content, "utf-8")} bytes to ${path}`,
+        terminate: false,
+      };
     },
   };
 }
@@ -339,7 +469,8 @@ export function createWriteTool(cwd: string): ToolDefinition {
 export function createEditTool(cwd: string): ToolDefinition {
   return {
     name: "edit",
-    description: "Apply exact text replacements to a file. Every edits[].oldText must match a unique, non-overlapping region. BOM and line endings are preserved.",
+    description:
+      "Apply exact text replacements to a file. Every edits[].oldText must match a unique, non-overlapping region. BOM and line endings are preserved.",
     parameters: {
       type: "object",
       properties: {
@@ -359,16 +490,36 @@ export function createEditTool(cwd: string): ToolDefinition {
       required: ["path", "edits"],
     },
     execute: async (_id, args) => {
-      const v = validateArgs(args as Record<string, unknown>, { path: { type: "string", required: true }, edits: { type: "array", required: true } }, "edit");
-      if (!v.valid) return { content: v.error, terminate: false, isError: true };
-      const { path, edits } = v.args as { path: string; edits: Array<{ oldText: string; newText: string }> };
+      const v = validateArgs(
+        args as Record<string, unknown>,
+        {
+          path: { type: "string", required: true },
+          edits: { type: "array", required: true },
+        },
+        "edit"
+      );
+      if (!v.valid) {
+        return { content: v.error, terminate: false, isError: true };
+      }
+      const { path, edits } = v.args as {
+        path: string;
+        edits: Array<{ oldText: string; newText: string }>;
+      };
       const filePath = resolve(cwd, path);
 
       if (!existsSync(filePath)) {
-        return { content: `File not found: ${path}`, terminate: false, isError: true };
+        return {
+          content: `File not found: ${path}`,
+          terminate: false,
+          isError: true,
+        };
       }
       if (!Array.isArray(edits) || edits.length === 0) {
-        return { content: "edits must be a non-empty array", terminate: false, isError: true };
+        return {
+          content: "edits must be a non-empty array",
+          terminate: false,
+          isError: true,
+        };
       }
 
       return withFileLock(filePath, async () => {
@@ -382,13 +533,15 @@ export function createEditTool(cwd: string): ToolDefinition {
           if (count === 0) {
             return {
               content: `Edit failed: oldText not found in ${path}:\n${edit.oldText.slice(0, 200)}`,
-              terminate: false, isError: true,
+              terminate: false,
+              isError: true,
             };
           }
           if (count > 1) {
             return {
               content: `Edit failed: oldText matches ${count} locations in ${path} (must be unique). Add more context:\n${edit.oldText.slice(0, 200)}`,
-              terminate: false, isError: true,
+              terminate: false,
+              isError: true,
             };
           }
         }
@@ -400,7 +553,10 @@ export function createEditTool(cwd: string): ToolDefinition {
 
         const final = bom + restoreLineEndings(result, originalEnding);
         await writeFile(filePath, final, "utf-8");
-        return { content: `Applied ${edits.length} edit(s) to ${path}`, terminate: false };
+        return {
+          content: `Applied ${edits.length} edit(s) to ${path}`,
+          terminate: false,
+        };
       });
     },
   };
@@ -408,10 +564,14 @@ export function createEditTool(cwd: string): ToolDefinition {
 
 // ── Bash Tool ──
 
-export function createBashTool(cwd: string, defaultTimeout = 30_000): ToolDefinition {
+export function createBashTool(
+  cwd: string,
+  defaultTimeout = 30_000
+): ToolDefinition {
   return {
     name: "bash",
-    description: "Execute a shell command. Returns stdout+stderr. Output truncated to 100KB. Optional timeout in seconds.",
+    description:
+      "Execute a shell command. Returns stdout+stderr. Output truncated to 100KB. Optional timeout in seconds.",
     parameters: {
       type: "object",
       properties: {
@@ -421,9 +581,21 @@ export function createBashTool(cwd: string, defaultTimeout = 30_000): ToolDefini
       required: ["command"],
     },
     execute: async (_id, args, signal, onUpdate) => {
-      const v = validateArgs(args as Record<string, unknown>, { command: { type: "string", required: true }, timeout: { type: "number" } }, "bash");
-      if (!v.valid) return { content: v.error, terminate: false, isError: true };
-      const { command, timeout } = v.args as { command: string; timeout?: number };
+      const v = validateArgs(
+        args as Record<string, unknown>,
+        {
+          command: { type: "string", required: true },
+          timeout: { type: "number" },
+        },
+        "bash"
+      );
+      if (!v.valid) {
+        return { content: v.error, terminate: false, isError: true };
+      }
+      const { command, timeout } = v.args as {
+        command: string;
+        timeout?: number;
+      };
       const ms = timeout ? timeout * 1000 : defaultTimeout;
       try {
         const result = await spawnCommand(command, cwd, {
@@ -433,17 +605,26 @@ export function createBashTool(cwd: string, defaultTimeout = 30_000): ToolDefini
         });
         let text = result.output || "(no output)";
         if (result.truncated) {
-          text += "\n\n[Output truncated. Use grep/head/tail to read specific parts.]";
+          text +=
+            "\n\n[Output truncated. Use grep/head/tail to read specific parts.]";
         }
         if (result.timedOut) {
-          return { content: `${text}\n\n[Command timed out after ${timeout ?? Math.round(ms / 1000)}s]`, terminate: false, isError: true };
+          return {
+            content: `${text}\n\n[Command timed out after ${timeout ?? Math.round(ms / 1000)}s]`,
+            terminate: false,
+            isError: true,
+          };
         }
         if (result.exitCode !== null && result.exitCode !== 0) {
           return { content: text, terminate: false, isError: true };
         }
         return { content: text, terminate: false };
       } catch (err: any) {
-        return { content: err.message || String(err), terminate: false, isError: true };
+        return {
+          content: err.message || String(err),
+          terminate: false,
+          isError: true,
+        };
       }
     },
   };
@@ -459,16 +640,35 @@ export function createGrepTool(cwd: string): ToolDefinition {
       type: "object",
       properties: {
         pattern: { type: "string", description: "Regex pattern" },
-        path: { type: "string", description: "Directory to search in (relative to cwd)" },
+        path: {
+          type: "string",
+          description: "Directory to search in (relative to cwd)",
+        },
         ignoreCase: { type: "boolean", description: "Case insensitive search" },
         limit: { type: "number", description: "Max matches (default 100)" },
       },
       required: ["pattern"],
     },
     execute: async (_id, args) => {
-      const v = validateArgs(args as Record<string, unknown>, { pattern: { type: "string", required: true }, path: { type: "string" }, ignoreCase: { type: "boolean" }, limit: { type: "number" } }, "grep");
-      if (!v.valid) return { content: v.error, terminate: false, isError: true };
-      const { pattern, path, ignoreCase, limit } = v.args as { pattern: string; path?: string; ignoreCase?: boolean; limit?: number };
+      const v = validateArgs(
+        args as Record<string, unknown>,
+        {
+          pattern: { type: "string", required: true },
+          path: { type: "string" },
+          ignoreCase: { type: "boolean" },
+          limit: { type: "number" },
+        },
+        "grep"
+      );
+      if (!v.valid) {
+        return { content: v.error, terminate: false, isError: true };
+      }
+      const { pattern, path, ignoreCase, limit } = v.args as {
+        pattern: string;
+        path?: string;
+        ignoreCase?: boolean;
+        limit?: number;
+      };
       const searchDir = shellQuote(resolve(cwd, path ?? "."));
       const maxMatches = limit ?? 100;
       const icFlag = ignoreCase ? " -i" : "";
@@ -476,7 +676,8 @@ export function createGrepTool(cwd: string): ToolDefinition {
       try {
         const result = runCommand(
           `${RG_BIN} --no-heading -n${icFlag} --max-count ${maxMatches} ${shellQuote(pattern)} ${searchDir}`,
-          cwd, 30000,
+          cwd,
+          30_000
         );
 
         const lines = result.trim().split("\n").filter(Boolean);
@@ -496,7 +697,11 @@ export function createGrepTool(cwd: string): ToolDefinition {
         if (err.status === 1) {
           return { content: "No matches found.", terminate: false };
         }
-        return { content: `grep error: ${err.message?.slice(0, 200) ?? String(err)}`, terminate: false, isError: true };
+        return {
+          content: `grep error: ${err.message?.slice(0, 200) ?? String(err)}`,
+          terminate: false,
+          isError: true,
+        };
       }
     },
   };
@@ -512,25 +717,47 @@ export function createFindTool(cwd: string): ToolDefinition {
       type: "object",
       properties: {
         pattern: { type: "string", description: "Glob pattern (e.g. *.ts)" },
-        path: { type: "string", description: "Directory to search (relative to cwd)" },
+        path: {
+          type: "string",
+          description: "Directory to search (relative to cwd)",
+        },
         limit: { type: "number", description: "Max results (default 1000)" },
       },
       required: ["pattern"],
     },
     execute: async (_id, args) => {
-      const v = validateArgs(args as Record<string, unknown>, { pattern: { type: "string", required: true }, path: { type: "string" }, limit: { type: "number" } }, "find");
-      if (!v.valid) return { content: v.error, terminate: false, isError: true };
-      const { pattern, path, limit } = v.args as { pattern: string; path?: string; limit?: number };
+      const v = validateArgs(
+        args as Record<string, unknown>,
+        {
+          pattern: { type: "string", required: true },
+          path: { type: "string" },
+          limit: { type: "number" },
+        },
+        "find"
+      );
+      if (!v.valid) {
+        return { content: v.error, terminate: false, isError: true };
+      }
+      const { pattern, path, limit } = v.args as {
+        pattern: string;
+        path?: string;
+        limit?: number;
+      };
       const searchDir = shellQuote(resolve(cwd, path ?? "."));
       const maxResults = limit ?? 1000;
 
       try {
         const result = runCommand(
           `${FD_BIN} --glob ${shellQuote(pattern)} --hidden --no-require-git --max-results ${maxResults} ${searchDir}`,
-          cwd, 15000,
+          cwd,
+          15_000
         );
 
-        const files = result.trim().split("\n").filter(Boolean).map((f) => relative(cwd, f));
+        const files = result
+          .trim()
+          .split("\n")
+          .filter(Boolean)
+          .map((f) => relative(cwd, f));
         if (files.length === 0) {
           return { content: "No files found.", terminate: false };
         }
@@ -540,7 +767,11 @@ export function createFindTool(cwd: string): ToolDefinition {
         if (err.status === 1) {
           return { content: "No files found.", terminate: false };
         }
-        return { content: `find error: ${err.stderr?.slice(0, 200) ?? err.message?.slice(0, 200) ?? String(err)} (status=${err.status})`, terminate: false, isError: true };
+        return {
+          content: `find error: ${err.stderr?.slice(0, 200) ?? err.message?.slice(0, 200) ?? String(err)} (status=${err.status})`,
+          terminate: false,
+          isError: true,
+        };
       }
     },
   };
@@ -555,13 +786,22 @@ export function createLsTool(cwd: string): ToolDefinition {
     parameters: {
       type: "object",
       properties: {
-        path: { type: "string", description: "Directory to list (relative to cwd, default is cwd)" },
+        path: {
+          type: "string",
+          description: "Directory to list (relative to cwd, default is cwd)",
+        },
         limit: { type: "number", description: "Max entries (default 500)" },
       },
     },
     execute: async (_id, args) => {
-      const v = validateArgs(args as Record<string, unknown>, { path: { type: "string" }, limit: { type: "number" } }, "ls");
-      if (!v.valid) return { content: v.error, terminate: false, isError: true };
+      const v = validateArgs(
+        args as Record<string, unknown>,
+        { path: { type: "string" }, limit: { type: "number" } },
+        "ls"
+      );
+      if (!v.valid) {
+        return { content: v.error, terminate: false, isError: true };
+      }
       const { path, limit } = v.args as { path?: string; limit?: number };
       const dirPath = resolve(cwd, path ?? ".");
       const maxEntries = limit ?? 500;
@@ -571,16 +811,24 @@ export function createLsTool(cwd: string): ToolDefinition {
         const sorted = entries
           .sort((a, b) => {
             // Directories first
-            if (a.isDirectory() && !b.isDirectory()) return -1;
-            if (!a.isDirectory() && b.isDirectory()) return 1;
+            if (a.isDirectory() && !b.isDirectory()) {
+              return -1;
+            }
+            if (!a.isDirectory() && b.isDirectory()) {
+              return 1;
+            }
             return a.name.localeCompare(b.name);
           })
           .slice(0, maxEntries)
-          .map((e) => e.isDirectory() ? `${e.name}/` : e.name);
+          .map((e) => (e.isDirectory() ? `${e.name}/` : e.name));
 
         return { content: sorted.join("\n"), terminate: false };
       } catch (err: any) {
-        return { content: `ls error: ${err.message?.slice(0, 200) ?? String(err)}`, terminate: false, isError: true };
+        return {
+          content: `ls error: ${err.message?.slice(0, 200) ?? String(err)}`,
+          terminate: false,
+          isError: true,
+        };
       }
     },
   };

@@ -1,18 +1,29 @@
-export function shouldCompact(tokens: number, contextWindow: number, reserveTokens: number): boolean {
+export function shouldCompact(
+  tokens: number,
+  contextWindow: number,
+  reserveTokens: number
+): boolean {
   return tokens >= contextWindow - reserveTokens;
 }
 
-export function estimateTokens(messages: Array<{ content: string | any[] }>): number {
+export function estimateTokens(
+  messages: Array<{ content: string | any[] }>
+): number {
   let total = 0;
   for (const msg of messages) {
     if (typeof msg.content === "string") {
       total += msg.content.length;
     } else if (Array.isArray(msg.content)) {
       for (const block of msg.content) {
-        if (typeof block === "string") total += block.length;
-        else if ("text" in block && typeof block.text === "string") total += block.text.length;
-        else if ("thinking" in block && typeof block.thinking === "string") total += block.thinking.length;
-        else if ("arguments" in block && block.arguments) total += JSON.stringify(block.arguments).length;
+        if (typeof block === "string") {
+          total += block.length;
+        } else if ("text" in block && typeof block.text === "string") {
+          total += block.text.length;
+        } else if ("thinking" in block && typeof block.thinking === "string") {
+          total += block.thinking.length;
+        } else if ("arguments" in block && block.arguments) {
+          total += JSON.stringify(block.arguments).length;
+        }
       }
     }
   }
@@ -23,7 +34,8 @@ export function estimateTokens(messages: Array<{ content: string | any[] }>): nu
 import { completeSimple } from "@earendil-works/pi-ai";
 import type { AgentMessage } from "./types.ts";
 
-const SUMMARIZE_SYSTEM_PROMPT = `You are a context summarization assistant. Produce a structured summary. Do NOT continue the conversation.`;
+const SUMMARIZE_SYSTEM_PROMPT =
+  "You are a context summarization assistant. Produce a structured summary. Do NOT continue the conversation.";
 
 const SUMMARIZE_PROMPT = `Create a structured context checkpoint summary:
 
@@ -50,22 +62,24 @@ Keep each section concise. Preserve exact file paths, function names, and error 
 
 export interface CompactionResult {
   messages: AgentMessage[];
-  tokensBefore: number;
   tokensAfter: number;
+  tokensBefore: number;
 }
 
 export interface CompactionOptions {
-  model: import("@earendil-works/pi-ai").Model<any>;
   apiKey: string;
-  messages: AgentMessage[];
   contextWindow: number;
-  reserveTokens?: number;
   keepRecentTokens?: number;
+  messages: AgentMessage[];
+  model: import("@earendil-works/pi-ai").Model<any>;
+  reserveTokens?: number;
   signal?: AbortSignal;
 }
 
 function messageToText(msg: AgentMessage): string {
-  if (msg.role === "user") return `User: ${msg.content}`;
+  if (msg.role === "user") {
+    return `User: ${msg.content}`;
+  }
   if (msg.role === "assistant") {
     const text = (msg.content as Array<{ type: string; text?: string }>)
       .filter((b) => b.type === "text" && b.text)
@@ -79,10 +93,16 @@ function messageToText(msg: AgentMessage): string {
   return "";
 }
 
-export async function compactMessages(options: CompactionOptions): Promise<CompactionResult> {
+export async function compactMessages(
+  options: CompactionOptions
+): Promise<CompactionResult> {
   const {
-    model, apiKey, messages,
-    reserveTokens = 16_000, keepRecentTokens = 20_000, signal,
+    model,
+    apiKey,
+    messages,
+    reserveTokens = 16_000,
+    keepRecentTokens = 20_000,
+    signal,
   } = options;
 
   const tokensBefore = estimateTokens(messages);
@@ -112,13 +132,15 @@ export async function compactMessages(options: CompactionOptions): Promise<Compa
     model,
     {
       systemPrompt: SUMMARIZE_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: summaryPrompt, timestamp: Date.now() }],
+      messages: [
+        { role: "user", content: summaryPrompt, timestamp: Date.now() },
+      ],
     },
     {
       maxTokens: Math.floor(reserveTokens * 0.8),
       apiKey,
       ...(signal ? { signal } : {}),
-    },
+    }
   );
 
   if (response.stopReason === "error" || response.stopReason === "aborted") {

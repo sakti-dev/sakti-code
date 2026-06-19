@@ -1,7 +1,3 @@
-# AGENTS.md
-
-Guide for AI coding agents working in this repository.
-
 ## Project
 
 sakti-code: desktop app (Electrobun + SolidJS) running multiple AI coding agents concurrently on different codebases. The agent core lives here as a TypeScript monorepo.
@@ -21,10 +17,11 @@ sakti-code: desktop app (Electrobun + SolidJS) running multiple AI coding agents
 ## Commands
 
 ```
-npx tsc --project tsconfig.json                    # typecheck all packages (TS 6.0.3)
-npx vitest run packages/tools/                     # tool tests
-npx vitest run packages/agent/                     # agent tests (vitest)
-cd packages/db && bun test                         # db tests (bun:test, needs bun:sqlite)
+bun x ultracite fix                              # format + lint fix + diagnostics (run before committing)
+npx tsc --project tsconfig.json                  # typecheck all packages (TS 6.0.3)
+npx vitest run packages/tools/                   # tool tests (vitest)
+npx vitest run packages/agent/                   # agent tests (vitest)
+cd packages/db && bun test                       # db tests (bun:test, needs bun:sqlite)
 ```
 
 ## Conventions
@@ -35,6 +32,25 @@ cd packages/db && bun test                         # db tests (bun:test, needs b
 - TS 6.0 quirks: `include`/`references` must be top-level in tsconfig (not inside `compilerOptions`); `shell` in `execSync` must be a `string` (e.g. `"/bin/sh"`), not `boolean`.
 - Workspace `package.json` exports point to `./src/index.ts` (not `./dist/`) so bun dev resolves `.ts` directly.
 - Before editing unfamiliar code: read `openspec/changes/*/specs/` and the file you're changing.
+
+## Code style (Ultracite / Biome)
+
+Write code that is **accessible, performant, type-safe, and maintainable**. Focus on clarity and explicit intent over brevity. Run `bun x ultracite fix` — it applies formatting and lint fixes and reports any remaining diagnostics.
+
+- Explicit types for params/returns when they aid clarity; prefer `unknown` over `any`.
+- `const` by default, `let` only when reassigning, never `var`. Const assertions (`as const`) for immutable values.
+- Arrow functions for callbacks; `for...of` over `.forEach()`. Optional chaining `?.` and nullish coalescing `??` for safe access. Template literals over concatenation. Destructuring.
+- Always `await` promises; `async/await` over promise chains; meaningful `try-catch` (don't catch only to rethrow). Never use async functions as Promise executors.
+- **SolidJS:** use `class` and `for` attributes (not `className`/`htmlFor`).
+- Throw `Error` objects with descriptive messages, not strings. Early returns over nesting. Named booleans for complex conditions.
+- No `console.log`/`debugger`/`alert` in production code. `rel="noopener"` on `target="_blank"`. No `eval()` or raw `document.cookie`.
+- Prefer specific imports over namespace imports; avoid barrel files; top-level regex literals; no spread in loop accumulators.
+
+### Testing
+
+- Assert inside `it()`/`test()`; async/await not done-callbacks. No `.only`/`.skip` in committed code. Flat suites over deep `describe` nesting.
+
+Biome catches formatting and common issues automatically — focus your judgment on business logic, naming, architecture, edge cases, and UX/accessibility.
 
 ## Debugging: bisect before you theorize
 
