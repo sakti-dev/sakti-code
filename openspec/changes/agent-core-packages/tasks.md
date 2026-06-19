@@ -101,15 +101,15 @@
 
 ## 10. SqliteSessionStore (`packages/db`)
 
-- [ ] 10.1 TDD: Write failing test — SqliteSessionStore.loadMessages() returns AgentMessage[] mapped from database rows, preserving chronological order
-- [ ] 10.2 Implement `src/session-store.ts` — SqliteSessionStore class, loadMessages maps DB rows to AgentMessage discriminated union (user → content, assistant → content + toolCalls + usage, tool → toolCallId + content + isError). Verify test passes
-- [ ] 10.3 TDD: Write failing test — SqliteSessionStore.appendMessage() maps AgentMessage to DB row (role, content, JSON fields) and persists via MessageRepo
-- [ ] 10.4 Implement appendMessage — map each AgentMessage variant to the correct DB row format. Verify test passes
-- [ ] 10.5 TDD: Write failing test — SqliteSessionStore.replaceMessages() maps AgentMessage[] to rows and calls MessageRepo.replaceForSession() atomically
-- [ ] 10.6 Implement replaceMessages. Verify test passes
-- [ ] 10.7 TDD: Write failing test — SqliteSessionStore has no runtime dependency on pi-ai (only imports SessionStore type from @sakti-code/agent)
-- [ ] 10.8 Verify package.json has no pi-ai dependency, only @sakti-code/agent. Verify test passes
-- [ ] 10.9 Export SqliteSessionStore from `src/index.ts`
+- [x] 10.1 TDD: Write failing test — SqliteSessionStore.loadMessages() returns AgentMessage[] mapped from database rows, preserving chronological order
+- [x] 10.2 Implement `src/session-store.ts` — SqliteSessionStore class, loadMessages maps DB rows to AgentMessage discriminated union (user → content, assistant → content + toolCalls + usage, tool → toolCallId + content + isError). Verify test passes
+- [x] 10.3 TDD: Write failing test — SqliteSessionStore.appendMessage() maps AgentMessage to DB row (role, content, JSON fields) and persists via MessageRepo
+- [x] 10.4 Implement appendMessage — map each AgentMessage variant to the correct DB row format. Verify test passes
+- [x] 10.5 TDD: Write failing test — SqliteSessionStore.replaceMessages() maps AgentMessage[] to rows and calls MessageRepo.replaceForSession() atomically
+- [x] 10.6 Implement replaceMessages. Verify test passes
+- [x] 10.7 TDD: Write failing test — SqliteSessionStore has no runtime dependency on pi-ai (only imports SessionStore type from @sakti-code/agent)
+- [x] 10.8 Verify package.json has no pi-ai dependency, only @sakti-code/agent. Verify test passes
+- [x] 10.9 Export SqliteSessionStore from `src/index.ts`
 
 ## 11. Coding Tools (`packages/tools`)
 
