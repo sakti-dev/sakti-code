@@ -1,0 +1,104 @@
+## ADDED Requirements
+
+### Requirement: Agent loop streams LLM responses
+The agent SHALL accept a prompt message, send it to the LLM via `@earendil-works/pi-ai`'s `streamSimple()`, and yield streaming events (`text_delta`, `thinking_delta`, `toolcall_start`, `toolcall_delta`, `toolcall_end`, `done`, `error`) as an async iterable.
+
+#### Scenario: Single text response with no tool calls
+- **WHEN** the agent receives a prompt and the LLM responds with plain text
+- **THEN** the agent yields `text_delta` events for each content chunk, followed by a `done` event, and the final `AssistantMessage` is returned
+
+#### Scenario: LLM response includes tool calls
+- **WHEN** the agent receives a prompt and the LLM responds with one or more tool calls
+- **THEN** the agent yields `toolcall_start`, `toolcall_delta`, and `toolcall_end` events for each tool call, then enters the tool execution phase
+
+#### Scenario: LLM returns an error
+- **WHEN** the LLM returns a non-retryable error (e.g., billing limit, invalid request)
+- **THEN** the agent yields an `error` event with the error message and stops the loop
+
+### Requirement: Agent loop executes tool calls
+The agent SHALL execute tool calls returned by the LLM, append tool results as messages, and re-send to the LLM for the next turn. This continues until the LLM responds without tool calls or a tool result sets `terminate: true`.
+
+#### Scenario: Single tool call followed by text response
+- **WHEN** the LLM returns one tool call and the tool executes successfully
+- **THEN** the agent appends the tool result message, sends to the LLM again, and yields the text response events
+
+#### Scenario: Multiple tool calls in parallel
+- **WHEN** the LLM returns multiple tool calls and tool execution mode is `parallel`
+- **THEN** the agent executes all tool calls concurrently, appends all results, and sends them together to the LLM
+
+#### Scenario: Multiple tool calls in sequence
+- **WHEN** the LLM returns multiple tool calls and tool execution mode is `sequential`
+- **THEN** the agent executes tool calls one at a time, appending each result before the next
+
+#### Scenario: Tool execution fails
+- **WHEN** a tool call throws an error or returns `isError: true`
+- **THEN** the agent appends the error as a tool result message and continues the loop (sends to LLM for recovery)
+
+#### Scenario: Tool result sets terminate flag
+- **WHEN** a tool result includes `terminate: true`
+- **THEN** the agent stops the loop after all pending tool results are collected, without sending back to the LLM
+
+### Requirement: Agent loop reports tool execution progress
+The agent SHALL yield `tool_execution_start`, `tool_execution_update`, and `tool_execution_end` events during tool execution, allowing the UI to show progress.
+
+#### Scenario: Tool emits partial updates
+- **WHEN** a tool calls its `onUpdate` callback with partial result text
+- **THEN** the agent yields a `tool_execution_update` event with the accumulated partial result
+
+### Requirement: Agent loop persists messages via SessionStore
+The agent SHALL call `store.appendMessage()` for every new message (user prompt, assistant response, tool results) as it is produced during the loop.
+
+#### Scenario: Messages are persisted as they are produced
+- **WHEN** the agent loop processes a turn with multiple tool calls
+- **THEN** each user message, assistant message (on done), and tool result message is appended to the store immediately
+
+### Requirement: Agent loop supports compaction
+The agent SHALL check after each LLM response whether the context window is near capacity (using `shouldCompact(tokens, contextWindow, reserveTokens)`). If so, the agent SHALL summarize old messages via an LLM call, then call `store.replaceMessages()` to atomically replace the message list.
+
+#### Scenario: Context window approaching limit triggers compaction
+- **WHEN** the total tokens of messages exceed `contextWindow - reserveTokens` (default reserve: 16,000)
+- **THEN** the agent summarizes the oldest messages (keeping ~20,000 tokens of recent context), yields compaction events, and replaces messages in the store
+
+#### Scenario: Context window not near limit
+- **WHEN** the total tokens of messages are within budget
+- **THEN** no compaction occurs and the loop continues normally
+
+### Requirement: Agent loop retries retryable errors
+The agent SHALL catch retryable LLM errors (HTTP 429, 5xx) and retry with exponential backoff (base delay × 2^(attempt-1)). Max retries default to 3. Context overflow errors SHALL NOT be retried (handled by compaction instead).
+
+#### Scenario: Rate limit triggers retry
+- **WHEN** the LLM returns HTTP 429
+- **THEN** the agent waits with exponential backoff and retries the LLM call up to 3 times, yielding retry events for each attempt
+
+#### Scenario: Max retries exceeded
+- **WHEN** the LLM fails 3 consecutive times with retryable errors
+- **THEN** the agent yields an `error` event and stops the loop
+
+#### Scenario: Context overflow is not retried
+- **WHEN** the LLM returns a context window overflow error
+- **THEN** the agent triggers compaction instead of retrying
+
+### Requirement: Agent loop emits lifecycle events
+The agent SHALL yield `agent_start`, `turn_start`, `message_start`, `message_update`, `message_end`, `turn_end`, and `agent_end` events to provide full observability of the loop's lifecycle.
+
+#### Scenario: Full turn lifecycle
+- **WHEN** the agent processes a prompt that results in one tool call and a final text response
+- **THEN** the agent yields events in order: `agent_start` → `turn_start` → `message_start` → (streaming events) → `message_end` → `tool_execution_start` → `tool_execution_end` → `turn_start` → `message_start` → (streaming events) → `message_end` → `turn_end` → `agent_end`
+
+### Requirement: Agent supports abort
+The agent SHALL support cancellation via an `AbortSignal`. When aborted, the agent SHALL stop the current LLM stream, cancel pending tool executions, and yield an `agent_end` event.
+
+#### Scenario: Abort during LLM streaming
+- **WHEN** the abort signal fires while the LLM is streaming
+- **THEN** the agent stops consuming the LLM stream and yields `agent_end`
+
+#### Scenario: Abort during tool execution
+- **WHEN** the abort signal fires while a tool is executing
+- **THEN** the agent cancels the tool execution and yields `agent_end`
+
+### Requirement: Agent configuration
+The agent SHALL accept a configuration object (`AgentConfig`) specifying: model, tools, session store, tool execution mode (sequential/parallel), retry settings (max retries, base delay), and compaction settings (reserve tokens, keep-recent tokens).
+
+#### Scenario: Configuration with custom settings
+- **WHEN** an agent is created with `toolExecutionMode: "parallel"` and `maxRetries: 5`
+- **THEN** the agent uses parallel tool execution and retries up to 5 times
