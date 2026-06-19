@@ -1,4 +1,4 @@
-bun test
+bun test packages/db/
 # ultracite
 #!/bin/sh
 bun x lint-staged
