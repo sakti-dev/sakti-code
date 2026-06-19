@@ -35,6 +35,38 @@ function detectImageMime(path: string): string | undefined {
   return ext ? IMAGE_EXTENSIONS.get(ext) : undefined;
 }
 
+interface ArgDef {
+  type: "string" | "number" | "boolean" | "array" | "object";
+  required?: boolean;
+}
+
+function validateArgs(
+  args: Record<string, unknown>,
+  schema: Record<string, ArgDef>,
+  toolName: string,
+): { valid: true; args: Record<string, unknown> } | { valid: false; error: string } {
+  const result: Record<string, unknown> = {};
+  for (const [key, def] of Object.entries(schema)) {
+    if (def.required && !(key in args)) {
+      return { valid: false, error: `Missing required argument '${key}' for ${toolName}` };
+    }
+    if (key in args) {
+      const val = args[key];
+      const typeOk =
+        (def.type === "string" && typeof val === "string") ||
+        (def.type === "number" && typeof val === "number") ||
+        (def.type === "boolean" && typeof val === "boolean") ||
+        (def.type === "array" && Array.isArray(val)) ||
+        (def.type === "object" && val !== null && typeof val === "object" && !Array.isArray(val));
+      if (!typeOk && val !== undefined) {
+        return { valid: false, error: `Argument '${key}' must be ${def.type}, got ${typeof val}` };
+      }
+      result[key] = val;
+    }
+  }
+  return { valid: true, args: result };
+}
+
 function withFileLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
   const pending = fileLocks.get(path);
   const next = pending ? pending.then(fn, fn) : fn();
@@ -207,7 +239,9 @@ export function createReadTool(cwd: string): ToolDefinition {
       required: ["path"],
     },
     execute: async (_id, args) => {
-      const { path, offset, limit } = args as { path: string; offset?: number; limit?: number };
+      const v = validateArgs(args as Record<string, unknown>, { path: { type: "string", required: true }, offset: { type: "number" }, limit: { type: "number" } }, "read");
+      if (!v.valid) return { content: v.error, terminate: false, isError: true };
+      const { path, offset, limit } = v.args as { path: string; offset?: number; limit?: number };
       const filePath = resolve(cwd, path);
 
       if (!existsSync(filePath)) {
@@ -267,7 +301,9 @@ export function createWriteTool(cwd: string): ToolDefinition {
       required: ["path", "content"],
     },
     execute: async (_id, args) => {
-      const { path, content } = args as { path: string; content: string };
+      const v = validateArgs(args as Record<string, unknown>, { path: { type: "string", required: true }, content: { type: "string", required: true } }, "write");
+      if (!v.valid) return { content: v.error, terminate: false, isError: true };
+      const { path, content } = v.args as { path: string; content: string };
       const filePath = resolve(cwd, path);
 
       const dir = join(filePath, "..");
@@ -304,7 +340,9 @@ export function createEditTool(cwd: string): ToolDefinition {
       required: ["path", "edits"],
     },
     execute: async (_id, args) => {
-      const { path, edits } = args as { path: string; edits: Array<{ oldText: string; newText: string }> };
+      const v = validateArgs(args as Record<string, unknown>, { path: { type: "string", required: true }, edits: { type: "array", required: true } }, "edit");
+      if (!v.valid) return { content: v.error, terminate: false, isError: true };
+      const { path, edits } = v.args as { path: string; edits: Array<{ oldText: string; newText: string }> };
       const filePath = resolve(cwd, path);
 
       if (!existsSync(filePath)) {
@@ -364,7 +402,9 @@ export function createBashTool(cwd: string, defaultTimeout = 30_000): ToolDefini
       required: ["command"],
     },
     execute: async (_id, args, signal, onUpdate) => {
-      const { command, timeout } = args as { command: string; timeout?: number };
+      const v = validateArgs(args as Record<string, unknown>, { command: { type: "string", required: true }, timeout: { type: "number" } }, "bash");
+      if (!v.valid) return { content: v.error, terminate: false, isError: true };
+      const { command, timeout } = v.args as { command: string; timeout?: number };
       const ms = timeout ? timeout * 1000 : defaultTimeout;
       try {
         const result = await spawnCommand(command, cwd, {
@@ -407,7 +447,9 @@ export function createGrepTool(cwd: string): ToolDefinition {
       required: ["pattern"],
     },
     execute: async (_id, args) => {
-      const { pattern, path, ignoreCase, limit } = args as { pattern: string; path?: string; ignoreCase?: boolean; limit?: number };
+      const v = validateArgs(args as Record<string, unknown>, { pattern: { type: "string", required: true }, path: { type: "string" }, ignoreCase: { type: "boolean" }, limit: { type: "number" } }, "grep");
+      if (!v.valid) return { content: v.error, terminate: false, isError: true };
+      const { pattern, path, ignoreCase, limit } = v.args as { pattern: string; path?: string; ignoreCase?: boolean; limit?: number };
       const searchDir = shellQuote(resolve(cwd, path ?? "."));
       const maxMatches = limit ?? 100;
       const icFlag = ignoreCase ? " -i" : "";
@@ -457,7 +499,9 @@ export function createFindTool(cwd: string): ToolDefinition {
       required: ["pattern"],
     },
     execute: async (_id, args) => {
-      const { pattern, path, limit } = args as { pattern: string; path?: string; limit?: number };
+      const v = validateArgs(args as Record<string, unknown>, { pattern: { type: "string", required: true }, path: { type: "string" }, limit: { type: "number" } }, "find");
+      if (!v.valid) return { content: v.error, terminate: false, isError: true };
+      const { pattern, path, limit } = v.args as { pattern: string; path?: string; limit?: number };
       const searchDir = shellQuote(resolve(cwd, path ?? "."));
       const maxResults = limit ?? 1000;
 
@@ -497,7 +541,9 @@ export function createLsTool(cwd: string): ToolDefinition {
       },
     },
     execute: async (_id, args) => {
-      const { path, limit } = args as { path?: string; limit?: number };
+      const v = validateArgs(args as Record<string, unknown>, { path: { type: "string" }, limit: { type: "number" } }, "ls");
+      if (!v.valid) return { content: v.error, terminate: false, isError: true };
+      const { path, limit } = v.args as { path?: string; limit?: number };
       const dirPath = resolve(cwd, path ?? ".");
       const maxEntries = limit ?? 500;
 

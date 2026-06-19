@@ -290,6 +290,36 @@ describe("LsTool", () => {
   });
 });
 
+describe("Tool Argument Validation", () => {
+  it("read rejects missing path", async () => {
+    const tool = createReadTool(tmpDir);
+    const result = await tool.execute("tc_1", {});
+    expect(result.isError).toBe(true);
+    expect(result.content).toContain("Missing required");
+  });
+
+  it("bash rejects missing command", async () => {
+    const tool = createBashTool(tmpDir);
+    const result = await tool.execute("tc_1", {});
+    expect(result.isError).toBe(true);
+    expect(result.content).toContain("Missing required");
+  });
+
+  it("edit rejects missing path", async () => {
+    const tool = createEditTool(tmpDir);
+    const result = await tool.execute("tc_1", { edits: [{ oldText: "x", newText: "y" }] });
+    expect(result.isError).toBe(true);
+    expect(result.content).toContain("Missing required");
+  });
+
+  it("bash rejects wrong type for timeout", async () => {
+    const tool = createBashTool(tmpDir);
+    const result = await tool.execute("tc_1", { command: "echo hi", timeout: "ten" });
+    expect(result.isError).toBe(true);
+    expect(result.content).toContain("must be number");
+  });
+});
+
 function readFileSync(path: string, encoding: string) {
   const { readFileSync: rf } = require("node:fs");
   return rf(path, encoding);
