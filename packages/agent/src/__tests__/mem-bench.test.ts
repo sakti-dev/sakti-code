@@ -139,7 +139,13 @@ async function drain(gen: AsyncIterable<unknown>) {
   }
 }
 
-describe("agent loop memory profile", () => {
+// Skipped by default — this is a measurement tool, not an assertion.
+// Run on demand when you want memory numbers (e.g. after adding custom tools):
+//   bun mem
+// (sets RUN_MEM_BENCH=1, which enables the suite below)
+const describeMem =
+  process.env.RUN_MEM_BENCH === "1" ? describe : describe.skip;
+describeMem("agent loop memory profile", () => {
   it("[1] one prompt, empty history", async () => {
     const store = createStore();
     const loop = createAgentLoop({ sessionId: "s1", model, tools: [], store });

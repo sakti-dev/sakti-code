@@ -12,6 +12,7 @@
   "name": "sakti-code",
   "scripts": {
     "typecheck": "tsc --project tsconfig.json",
+    "mem": "RUN_MEM_BENCH=1 NODE_OPTIONS=--expose-gc vitest run packages/agent/src/__tests__/mem-bench.test.ts --disable-console-intercept",
     "dev": "turbo run dev",
     "start": "turbo run start",
     "hmr": "turbo run hmr",
