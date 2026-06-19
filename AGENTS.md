@@ -18,9 +18,9 @@ sakti-code: desktop app (Electrobun + SolidJS) running multiple AI coding agents
 
 ```
 bun x ultracite fix                              # format + lint fix + diagnostics (run before committing)
-npx tsc --project tsconfig.json                  # typecheck all packages (TS 6.0.3)
-npx vitest run packages/tools/                   # tool tests (vitest)
-npx vitest run packages/agent/                   # agent tests (vitest)
+bun typecheck                                    # typecheck all packages (tsc --project tsconfig.json, TS 6.0.3)
+bun vitest run packages/tools/                   # tool tests (vitest)
+bun vitest run packages/agent/                   # agent tests (vitest)
 cd packages/db && bun test                       # db tests (bun:test, needs bun:sqlite)
 ```
 
