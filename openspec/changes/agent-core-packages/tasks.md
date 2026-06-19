@@ -50,30 +50,30 @@
 
 ## 5. Agent Retry (`packages/agent`)
 
-- [ ] 5.1 TDD: Write failing test — LLM returns 429 error, agent retries with backoff, second attempt succeeds, yields retry event
-- [ ] 5.2 Implement retry logic in `src/loop.ts` — catch retryable errors (429, 5xx), wait with exponential backoff, re-call pi-ai. Verify test passes
-- [ ] 5.3 TDD: Write failing test — LLM fails 3 times with retryable errors, agent yields error event and stops
-- [ ] 5.4 Implement max retry limit check. Verify test passes
-- [ ] 5.5 TDD: Write failing test — LLM returns context overflow error, agent does NOT retry (compaction handles this instead)
-- [ ] 5.6 Add context overflow to non-retryable error list. Verify test passes
+- [x] 5.1 TDD: Write failing test — LLM returns 429 error, agent retries with backoff, second attempt succeeds, yields retry event
+- [x] 5.2 Implement retry logic in `src/loop.ts` — catch retryable errors (429, 5xx), wait with exponential backoff, re-call pi-ai. Verify test passes
+- [x] 5.3 TDD: Write failing test — LLM fails 3 times with retryable errors, agent yields error event and stops
+- [x] 5.4 Implement max retry limit check. Verify test passes
+- [x] 5.5 TDD: Write failing test — LLM returns context overflow error, agent does NOT retry (compaction handles this instead)
+- [x] 5.6 Add context overflow to non-retryable error list. Verify test passes
 
 ## 6. Agent Compaction (`packages/agent`)
 
-- [ ] 6.1 TDD: Write failing test for `shouldCompact()` — returns true when tokens > contextWindow - reserveTokens, returns false when within budget
-- [ ] 6.2 Implement `shouldCompact()` as exported function in `src/compaction.ts`. Verify test passes
-- [ ] 6.3 TDD: Write failing test — messages exceed budget, agent calls store.replaceMessages() with summary + recent messages, yields compaction_start and compaction_end events
-- [ ] 6.4 Implement compaction in `src/compaction.ts` — take messages, split into old (to summarize) and recent (keep ~20k tokens), call pi-ai to summarize old messages, call store.replaceMessages(). Verify test passes
-- [ ] 6.5 TDD: Write failing test — compaction handles turn boundary correctly when cut point splits a multi-message turn (generates turn prefix summary)
-- [ ] 6.6 Implement turn-boundary-aware compaction. Verify test passes
-- [ ] 6.7 Wire compaction check into the agent loop — after each LLM done event, check shouldCompact, trigger compaction if needed
-- [ ] 6.8 Export compaction functions from `src/index.ts`
+- [x] 6.1 TDD: Write failing test for `shouldCompact()` — returns true when tokens > contextWindow - reserveTokens, returns false when within budget
+- [x] 6.2 Implement `shouldCompact()` as exported function in `src/compaction.ts`. Verify test passes
+- [x] 6.3 TDD: Write failing test — messages exceed budget, agent calls store.replaceMessages() with summary + recent messages, yields compaction_start and compaction_end events
+- [x] 6.4 Implement compaction in `src/compaction.ts` — take messages, split into old (to summarize) and recent (keep ~20k tokens), call pi-ai to summarize old messages, call store.replaceMessages(). Verify test passes
+- [x] 6.5 TDD: Write failing test — compaction handles turn boundary correctly when cut point splits a multi-message turn (generates turn prefix summary)
+- [x] 6.6 Implement turn-boundary-aware compaction. Verify test passes
+- [x] 6.7 Wire compaction check into the agent loop — after each LLM done event, check shouldCompact, trigger compaction if needed
+- [x] 6.8 Export compaction functions from `src/index.ts`
 
 ## 7. Agent Abort (`packages/agent`)
 
-- [ ] 7.1 TDD: Write failing test — abort signal fires during LLM streaming, agent stops and yields agent_end
-- [ ] 7.2 Implement AbortSignal support in `src/loop.ts` — pass signal to pi-ai stream, check between iterations. Verify test passes
-- [ ] 7.3 TDD: Write failing test — abort signal fires during tool execution, agent cancels tool and yields agent_end
-- [ ] 7.4 Implement tool execution cancellation on abort. Verify test passes
+- [x] 7.1 TDD: Write failing test — abort signal fires during LLM streaming, agent stops and yields agent_end
+- [x] 7.2 Implement AbortSignal support in `src/loop.ts` — pass signal to pi-ai stream, check between iterations. Verify test passes
+- [x] 7.3 TDD: Write failing test — abort signal fires during tool execution, agent cancels tool and yields agent_end
+- [x] 7.4 Implement tool execution cancellation on abort. Verify test passes
 
 ## 8. Database Schema (`packages/db`)
 
