@@ -77,11 +77,11 @@
 
 ## 8. Database Schema (`packages/db`)
 
-- [ ] 8.1 Create `src/schema.ts` with Drizzle `sqliteTable()` definitions for: projects, sessions, messages, toolExecutions, costs, settings, modelConfigs — all columns matching the spec
-- [ ] 8.2 TDD: Write failing test — initDatabase() creates a new SQLite file, creates all tables, enables WAL mode and foreign keys
-- [ ] 8.3 Implement `src/init.ts` — `initDatabase(dbPath)` opens bun:sqlite with WAL mode, runs Drizzle migrations (create tables), returns Drizzle instance. Verify test passes
-- [ ] 8.4 Create `drizzle.config.ts` at root for Drizzle Kit (schema path, dialect, out folder)
-- [ ] 8.5 Export schema and init function from `src/index.ts`
+- [x] 8.1 Create `src/schema.ts` with Drizzle `sqliteTable()` definitions for: projects, sessions, messages, toolExecutions, costs, settings, modelConfigs — all columns matching the spec
+- [x] 8.2 TDD: Write failing test — initDatabase() creates a new SQLite file, creates all tables, enables WAL mode and foreign keys
+- [x] 8.3 Implement `src/init.ts` — `initDatabase(dbPath)` opens bun:sqlite with WAL mode, runs Drizzle migrations (create tables), returns Drizzle instance. Verify test passes
+- [x] 8.4 Create `drizzle.config.ts` at root for Drizzle Kit (schema path, dialect, out folder)
+- [x] 8.5 Export schema and init function from `src/index.ts`
 
 ## 9. Database Repos (`packages/db`)
 
