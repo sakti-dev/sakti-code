@@ -46,6 +46,30 @@ export function estimateTokens(
 import { completeSimple } from "@earendil-works/pi-ai";
 import type { AgentMessage } from "./types.ts";
 
+/**
+ * Estimate the current context size using the provider-reported usage from the
+ * most recent assistant message when available, plus a char/4 estimate for any
+ * messages appended after it. Falls back to a pure char/4 estimate over all
+ * messages when no assistant usage exists (e.g. the first turn). Mirrors the
+ * proven pi agent's `estimateContextTokens` so the auto-compaction threshold
+ * keys off a real token count rather than a systematic char/4 guess.
+ */
+export function estimateContextTokens(messages: AgentMessage[]): number {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m && m.role === "assistant") {
+      const u = m.usage;
+      const usageTokens =
+        u?.totalTokens ||
+        (u ? u.input + u.output + u.cacheRead + u.cacheWrite : 0);
+      if (usageTokens > 0) {
+        return usageTokens + estimateTokens(messages.slice(i + 1));
+      }
+    }
+  }
+  return estimateTokens(messages);
+}
+
 const SUMMARIZE_SYSTEM_PROMPT =
   "You are a context summarization assistant. Produce a structured summary. Do NOT continue the conversation.";
 

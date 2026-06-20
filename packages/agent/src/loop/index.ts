@@ -1,3 +1,8 @@
+import {
+  compactMessages,
+  estimateContextTokens,
+  shouldCompact,
+} from "../compaction.ts";
 import type { AgentConfigInput, AgentEvent, AgentMessage } from "../types.ts";
 import { createAgentConfig } from "../types.ts";
 import { evt } from "./events.ts";
@@ -86,6 +91,43 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
     while (true) {
       // Process any queued steers before the turn
       await drainSteers(messages);
+
+      // Auto-compaction: if enabled and a summarization key is available,
+      // check whether the context is near the window limit before sending
+      // to the LLM. Keys off the real provider-reported usage.totalTokens
+      // (estimateContextTokens), matching the proven pi agent. A missing key
+      // is skipped silently; a failed summarization leaves messages unchanged
+      // (compactMessages returns the same array reference on no-op).
+      if (resolved.autoCompaction && resolved.apiKey) {
+        const contextTokens = estimateContextTokens(messages);
+        if (
+          shouldCompact(
+            contextTokens,
+            model.contextWindow,
+            resolved.reserveTokens
+          )
+        ) {
+          yield evt("compaction_start", {});
+          const result = await compactMessages({
+            model,
+            apiKey: resolved.apiKey,
+            contextWindow: model.contextWindow,
+            messages,
+            reserveTokens: resolved.reserveTokens,
+            keepRecentTokens: resolved.keepRecentTokens,
+            ...(signal ? { signal } : {}),
+          });
+          if (result.messages !== messages) {
+            messages.length = 0;
+            messages.push(...result.messages);
+            await store.replaceMessages(sessionId, result.messages);
+          }
+          yield evt("compaction_end", {
+            tokensBefore: result.tokensBefore,
+            tokensAfter: result.tokensAfter,
+          });
+        }
+      }
 
       yield evt("turn_start", { turnIndex });
       yield evt("message_start");
