@@ -33,6 +33,19 @@ Every divergence below was verified directly against both codebases. Citations: 
 | 8 | Tool-result truncation in serialization | `compaction.ts messageToText` dumps full output | PI `utils.ts:89,156` caps at ~2000 chars |
 | 9 | Error/abort persisted to transcript | `streaming.ts:128` emits bare `error`, persists nothing | PI `agent-loop.ts:196` materializes error AssistantMessage |
 | 10 | Abort breaks the tool batch | `tool-execution.ts` no `signal?.aborted` check between tools | PI `agent-loop.ts:440,478,497` checks + emits aborted results |
+| 11 | Event lifecycle (message_start/end around prompt + steers + tool results) | `index.ts` emits message_start/end only around the assistant stream (`:133,157`) | PI `agent-loop.ts:112-113` (prompt), `:184-185` (steers), `:746-747` (tool results) |
+
+### Phase 3 — Complete Missing Patterns Catalog (deferred / YAGNI / out-of-scope, each with explicit rationale)
+
+| # | Pattern | Category | PI evidence |
+|---|---------|----------|-------------|
+| 12 | Split-turn cuts in compaction | DEFERRED (trigger-based) | PI `compaction.ts:442-447` `isSplitTurn` + `TURN_PREFIX_SUMMARIZATION` |
+| 13 | Previous-summary chaining | DEFERRED (trigger-based) | PI `compaction.ts:663-675,579-592` `UPDATE_SUMMARIZATION_PROMPT` |
+| 14 | Cumulative file-ops tracking | DEFERRED (trigger-based) | PI `utils.ts extractFileOpsFromMessage` → `<read-files>`/`<modified-files>` |
+| 15 | Default `steeringMode`/`followUpMode` | NEEDS PRODUCT DECISION | PI `agent.ts:212-213` defaults `"one-at-a-time"`; ours `"all"` |
+| 16 | Extension hooks (7: beforeToolCall/afterToolCall/prepareNextTurn/shouldStopAfterTurn/transformContext/getApiKey/validateToolArguments) | YAGNI (no extension system) | PI `agent-loop.ts:226,242,284,302,581,684,580` |
+| 17 | `message_update` carries full assembled message | STRUCTURAL DIVERGENCE (documented) | PI `types.ts:418` carries `message` + raw event; ours narrow delta |
+| 18 | Provider auth layering (keychain/OAuth/headers) | OUT OF SCOPE (no auth infra) | PI `model-registry.ts:685-704` `getApiKeyAndHeaders` |
 
 ### Phase 3 — Medium-Impact Missing Patterns (needs design decision)
 
@@ -860,6 +873,53 @@ it("persists an error AssistantMessage when the LLM stream errors", async () => 
 
 ---
 
+### Task 11: Emit message_start/message_end around every message (Pattern #11)
+
+**Files:**
+- Modify: `packages/agent/src/loop/index.ts` (emit lifecycle around prompt, each steer, each tool result)
+- Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
+
+**Root cause:** pi emits `message_start`/`message_end` around the **prompt** (`agent-loop.ts:112-113`), **each injected steer** (`:184-185`), **each tool result** (`:746-747`), and the assistant message (`:319,353,366`). We only emit them around the assistant LLM stream (`index.ts:133,157`). UI consumers cannot know when a user/steer/tool message "starts" and "ends" — they must special-case these.
+
+**Step 1: Write failing test**
+
+```typescript
+// packages/agent/src/__tests__/loop-behavior.test.ts
+it("wraps the user prompt in message_start/message_end", async () => {
+  const store = createMockStore();
+  vi.mocked(streamSimple).mockReturnValue(textStream("hi"));
+  const loop = createAgentLoop({ sessionId: "s1", model: testModel, tools: [], store });
+  const events = await collectEvents(loop.prompt("hello"));
+  const types = events.map((e) => e.type);
+  // The FIRST message_start should be before turn_start (wrapping the prompt)
+  const firstMessageStart = types.indexOf("message_start");
+  const firstTurnStart = types.indexOf("turn_start");
+  expect(firstMessageStart).toBeGreaterThanOrEqual(0);
+});
+```
+
+**Step 2: Run test → FAIL**
+
+**Step 3: Emit lifecycle around each message injection site**
+
+```typescript
+// packages/agent/src/loop/index.ts — wrap injectMessage call for the prompt
+// BEFORE (line ~89): await injectMessage(messages, message);
+// AFTER:
+  yield evt("message_start");
+  await injectMessage(messages, message);
+  yield evt("message_end");
+
+// Same pattern in drainSteers (each steer) — drainSteers must yield events,
+// or the loop wraps each steer injection.
+```
+
+**Note:** `drainSteers` is currently `async` returning a boolean. To emit events around each steer it must become an async generator OR the loop must wrap each steer injection. Simplest: keep `drainSteers` as-is but have the loop emit message_start/end is not possible per-steer since drainSteers batches. Consider making `drainSteers` a generator that yields events around each injection — see pi's `agent-loop.ts:174-189`.
+
+**Step 4: Run test → PASS. Gate + commit.**
+
+---
+
 ### Task 10: Abort breaks the tool batch (Pattern #10)
 
 **Files:**
@@ -916,25 +976,65 @@ it("stops executing remaining tools when abort signal fires mid-batch", async ()
 
 ---
 
-## Phase 3: Medium-Impact Missing Patterns (Needs Design Decision)
+## Phase 3: Complete Missing Patterns Catalog (Deferred — needs decision or YAGNI)
 
-These are documented for future OpenSpec changes. Each changes behavior in ways that need product input.
+This section catalogs EVERY missing pi pattern found in the cross-reference, with explicit rationale. Nothing is silently dropped — each is either deferred with a trigger, or rejected with a reason.
 
-### Task 11 (DEFERRED): Split-turn cuts in compaction
+### Task 12 (DEFERRED): Split-turn cuts in compaction
 
-**Status:** Needs design decision. pi's `findCutPoint` detects when a single turn exceeds `keepRecentTokens` and produces a "turn prefix" summary in addition to the history summary. Our `cutIndex <= 1` short-circuit means huge turns either no-op or wipe everything. **Open as a separate OpenSpec change** — the change touches `compactMessages` output shape and the manual `/compact` route.
+**PI evidence:** `compaction.ts:442-447` `findCutPoint isSplitTurn` + `TURN_PREFIX_SUMMARIZATION` (`:779-821`). When a single turn exceeds `keepRecentTokens`, pi cuts mid-turn at an assistant message and generates a separate "turn prefix" summary merged with the history summary.
 
-### Task 12 (DEFERRED): Previous-summary chaining
+**OUR gap:** `compaction.ts` `cutIndex <= 1` short-circuits → a huge single turn either no-ops (no compaction) or, if it crosses the boundary, wipes the turn keeping nothing.
 
-**Status:** Needs design decision. pi reads the prior `CompactionEntry.summary` and uses `UPDATE_SUMMARIZATION_PROMPT` to merge rather than re-summarize from scratch. Improves quality and reduces tokens. **Open as a separate OpenSpec change** — requires a "previous summary" field on the message list or store.
+**Trigger to implement:** when a real session hits a single agentic turn large enough to break compaction (observable as repeated no-op compaction or context overflow mid-turn). Open as a separate OpenSpec change — it changes `compactMessages` output shape and touches the manual `/compact` route.
 
-### Task 13 (DEFERRED): Cumulative file-ops tracking
+### Task 13 (DEFERRED): Previous-summary chaining
 
-**Status:** Needs design decision. pi extracts read/modified files from tool calls and includes `<read-files>`/`<modified-files>` tags in the summary, accumulating across compactions. **Open as a separate OpenSpec change** — requires file-op extraction from tool call args.
+**PI evidence:** `compaction.ts:663-675` reads prior `CompactionEntry.summary` → `previousSummary`; `:579-592` uses `UPDATE_SUMMARIZATION_PROMPT` to merge rather than re-summarize from scratch. Summarization starts from the prior kept boundary (`firstKeptEntryId`), not the session start.
 
-### Task 14 (NEEDS DECISION): Default `steeringMode`/`followUpMode`
+**OUR gap:** `compactMessages` re-summarizes the entire pre-cut history from scratch every time → quality drift on repeated compaction + re-paying tokens for already-summarized content.
 
-**Status:** Product decision. Ours defaults to `"all"` (loop/index.ts:59); pi defaults to `"one-at-a-time"` (agent.ts:212). `"all"` batch-processes all queued steers in one turn; `"one-at-a-time"` interleaves one-steer→one-turn. **Ask the product owner** before changing — this may be intentional for our UX.
+**Trigger to implement:** after the first long session that compacts multiple times shows summary degradation. Requires a "previous summary" concept on the message list or store.
+
+### Task 14 (DEFERRED): Cumulative file-ops tracking
+
+**PI evidence:** `utils.ts extractFileOpsFromMessage` → `<read-files>`/`<modified-files>` tags appended to the summary (`compaction.ts compact()`), accumulated across compactions via `prevCompaction.details`.
+
+**OUR gap:** `messageToText` serializes raw text; no file-op extraction; summary has no file list.
+
+**Trigger to implement:** when file-tracking context loss becomes a quality issue post-compaction. Requires file-op extraction from tool call args.
+
+### Task 15 (NEEDS DECISION): Default `steeringMode`/`followUpMode`
+
+**PI evidence:** `agent.ts:212-213` defaults `steeringMode` and `followUpMode` to `"one-at-a-time"`.
+
+**OUR state:** `loop/index.ts:59` defaults to `"all"`. With `"all"`, multiple queued steers batch-inject as consecutive user messages then run ONE assistant stream; with `"one-at-a-time"`, one-steer→one-assistant-turn per iteration.
+
+**Decision needed:** this is a product/UX choice, not a bug. `"all"` may be intentional for our UX (faster, less chatty). **Ask the product owner.** If aligning with pi, change the default and the `DEFAULT_SETTINGS` in `runner.ts`.
+
+### Task 16 (YAGNI — rejected with reason): Proven extension hooks
+
+**PI evidence:** `agent-loop.ts` wires 7 hooks: `prepareNextTurn` (`:226`), `shouldStopAfterTurn` (`:242`), `transformContext` (`:284`), per-turn `getApiKey` (`:302`), `beforeToolCall` (`:581`), `afterToolCall` (`:684`), `validateToolArguments` (`:12,580`). These power pi's extension/plugin system.
+
+**OUR state:** zero hook infrastructure (`loop/index.ts`, `tool-execution.ts`, `types.ts` — grep confirmed empty).
+
+**Reason rejected:** pi's hooks exist to support its extension system (user-loaded `.ts` plugins, `pi.on("session_before_compact")`, etc.). Our scope has no extension system and no consumers for these hooks. Adding them now is speculative architecture. **Revisit if/when we build an extension system** — at that point, port pi's hook surface as the proven design.
+
+### Task 17 (STRUCTURAL DESIGN DIVERGENCE — documented): `message_update` carries full assembled message
+
+**PI evidence:** `types.ts:418` — `message_update` carries `message: AgentMessage` (full assembled assistant message so far) + raw `assistantMessageEvent`. Built incrementally at `agent-loop.ts:335-340` where `partialMessage` is updated per stream event.
+
+**OUR state:** `types.ts:146-152` — `message_update` carries a narrow `MessageUpdate` delta union (`text_delta`/`thinking_delta`/`toolcall_start`/`toolcall_delta`/`toolcall_end`). Consumers must re-accumulate deltas themselves; no full-message snapshot.
+
+**Reason documented, not changed:** this is a structural API choice, not a bug. Our delta-based design is lower-memory and is already consumed by the WS layer. Changing to full-message would break the existing WS contract and every consumer. **Document so consumers know they must accumulate** — no code change unless a consumer needs the snapshot.
+
+### Task 18 (OUT OF SCOPE): Provider auth layering (keychain/OAuth/headers)
+
+**PI evidence:** `model-registry.ts:685-704` `getApiKeyAndHeaders` layers `authStorage.getApiKey` (OAuth + keychain, `:689`) → models.json apiKey (`resolveConfigValueOrThrow :693`) → provider/model **headers** + `Authorization: Bearer` (`:700-710`).
+
+**OUR state:** `runner.ts:90` `getEnvApiKey(provider) ?? undefined` — env-var only. This is the **exact same function pi uses** (`env-api-keys.ts:64-175` already has multi-name precedence), so we do NOT miss env-var fallback.
+
+**Reason out of scope:** what we lack is the keychain/OAuth/models.json layering pi builds on top of `getEnvApiKey`. That requires auth-storage infrastructure (keychain access, OAuth token refresh, models.json config) we don't have. For our current deployment model (env-var config), `getEnvApiKey` is sufficient and correct. **Revisit if we add OAuth/keychain auth.**
 
 ---
 
@@ -979,12 +1079,18 @@ After implementing, slice into OpenSpec changes for spec sync:
 
 | Slice | Tasks | Spec capability |
 |-------|-------|----------------|
-| `agent-runtime-bugfixes` | 1-6 (Phase 1) | `agent-loop`, `agent-streaming` |
+| `agent-runtime-bugfixes` | 1–6 (Phase 1) | `agent-loop`, `agent-streaming` |
 | `compaction-serialization` | 8, 9 | `agent-loop` |
 | `parallel-tool-execution` | 7 | `agent-loop` |
 | `session-concurrency-guard` | 5 | `agent-streaming` |
-| `compaction-split-turn` (deferred) | 11 | `agent-loop` |
-| `compaction-summary-chaining` (deferred) | 12 | `agent-loop` |
+| `event-lifecycle-completeness` | 11 | `agent-loop` |
+| `compaction-split-turn` (deferred) | 12 | `agent-loop` |
+| `compaction-summary-chaining` (deferred) | 13 | `agent-loop` |
+| `compaction-file-ops` (deferred) | 14 | `agent-loop` |
+| `agent-loop-controls` (amend default) | 15 | `per-session-settings` |
+| `extension-hooks` (YAGNI — deferred) | 16 | (new capability if built) |
+| `stream-message-shape` (structural) | 17 | `agent-streaming` |
+| `provider-auth-layering` (out of scope) | 18 | (new capability if built) |
 
 ---
 
