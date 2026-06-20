@@ -434,3 +434,59 @@ describe("steer queue, follow-up, and no-op contracts", () => {
     expect((await store.loadMessages("s1")).length).toBe(before);
   });
 });
+
+describe("config overrides (S3)", () => {
+  it("autoRetry: false disables the retry loop on a retryable error", async () => {
+    const store = createMockStore();
+    streamSimple.mockImplementation(() => {
+      throw Object.assign(new Error("429 Rate limited"), { statusCode: 429 });
+    });
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [],
+      store,
+      autoRetry: false,
+    });
+    const events = await collect(loop.prompt("hi"));
+
+    expect(events.filter((e) => e.type === "retry")).toHaveLength(0);
+    expect(events.some((e) => e.type === "error")).toBe(true);
+  });
+
+  it("steeringMode one-at-a-time drains at most one steer before the next turn", async () => {
+    const store = createMockStore();
+    const blocked = blockingTextStream(() => {});
+    let call = 0;
+    streamSimple.mockImplementation(() => {
+      call++;
+      return call === 1 ? blocked : textStream("ok");
+    });
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [],
+      store,
+      steeringMode: "one-at-a-time",
+    });
+    const promise = (async () => {
+      for await (const _e of loop.prompt("hi")) {
+        // consume
+      }
+    })();
+    await new Promise((r) => setTimeout(r, 15));
+    loop.steer("first");
+    loop.steer("second");
+    blocked.release();
+    await promise;
+
+    const steers = (await store.loadMessages("s1"))
+      .filter((m) => m.role === "user" && m.content !== "hi")
+      .map((m) => m.content);
+    // one-at-a-time: only the first steer is processed before the next turn starts.
+    expect(steers[0]).toBe("first");
+    expect(steers).toContain("second");
+  });
+});

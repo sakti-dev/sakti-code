@@ -17,7 +17,7 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
   const { sessionId, model, tools, store } = resolved;
   const maxRetries = resolved.maxRetries;
   const baseDelay = resolved.retryBaseDelayMs;
-  const autoRetry = config.autoRetry ?? true;
+  const autoRetry = resolved.autoRetry ?? true;
 
   const steerQueue: string[] = [];
   const followUpQueue: string[] = [];
@@ -51,7 +51,7 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
     if (steerQueue.length === 0) {
       return false;
     }
-    const mode = config.steeringMode ?? "all";
+    const mode = resolved.steeringMode ?? "all";
     if (mode === "one-at-a-time") {
       const msg = steerQueue.shift();
       if (msg) {

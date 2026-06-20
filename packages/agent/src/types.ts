@@ -238,25 +238,31 @@ export interface SessionStore {
 }
 
 export interface AgentConfig {
+  autoRetry?: boolean;
   keepRecentTokens: number;
   maxRetries: number;
   model: AnyModel;
   reserveTokens: number;
   retryBaseDelayMs: number;
   sessionId: string;
+  steeringMode?: string;
   store: SessionStore;
+  thinkingLevel?: string;
   toolExecutionMode: "sequential" | "parallel";
   tools: AgentTool[];
 }
 
 export interface AgentConfigInput {
+  autoRetry?: boolean;
   keepRecentTokens?: number;
   maxRetries?: number;
   model: AnyModel;
   reserveTokens?: number;
   retryBaseDelayMs?: number;
   sessionId: string;
+  steeringMode?: string;
   store: SessionStore;
+  thinkingLevel?: string;
   toolExecutionMode?: "sequential" | "parallel";
   tools: AgentTool[];
 }
