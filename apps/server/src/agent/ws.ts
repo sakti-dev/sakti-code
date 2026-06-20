@@ -1,8 +1,30 @@
+import { readFileSync } from "node:fs";
 import { SqliteSessionStore } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import type { ServerContext } from "../context.ts";
 import type { WsIn } from "./ws-handler.ts";
 import { handleMessage } from "./ws-handler.ts";
+
+// ── Server version (read once from package.json) ──
+
+export const SERVER_VERSION: string = (() => {
+  try {
+    const pkg = JSON.parse(
+      readFileSync(new URL("../../package.json", import.meta.url), "utf-8")
+    );
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+})();
+
+export function createWelcomeFrame(): string {
+  return JSON.stringify({
+    type: "welcome",
+    version: SERVER_VERSION,
+    cwd: process.cwd(),
+  });
+}
 
 // ── Connection-scoped store map (keyed by Bun's stable ws id) ──
 
@@ -27,6 +49,8 @@ export function buildWsApp() {
     open(ws) {
       // biome-ignore lint/suspicious/noExplicitAny: Elysia WS raw shape
       (ws as any).data.wsId = (ws as any).raw.id;
+      // Send welcome frame on connect
+      ws.send(createWelcomeFrame());
     },
     close(ws) {
       // biome-ignore lint/suspicious/noExplicitAny: Elysia WS raw shape
