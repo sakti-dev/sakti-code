@@ -46,11 +46,26 @@ function getOrCreateStore(
 
 const wsConnections = new Map<string, WsHandle>();
 
-function pushToConnection(connectionId: string, data: unknown) {
+/** Whether a WS connection with the given id is currently open. */
+export function hasWsConnection(connectionId: string): boolean {
+  return wsConnections.has(connectionId);
+}
+
+export function pushToConnection(connectionId: string, data: unknown) {
   const ws = wsConnections.get(connectionId);
   if (ws) {
     ws.send(JSON.stringify(data));
   }
+}
+
+// Test-only seams over the connection map so terminal-push behavior can be
+// exercised without a real WS round-trip.
+export function registerTestConnection(connectionId: string, ws: WsHandle) {
+  wsConnections.set(connectionId, ws);
+}
+
+export function unregisterTestConnection(connectionId: string) {
+  wsConnections.delete(connectionId);
 }
 
 // ── Wire terminal manager callbacks (called once during setup) ──

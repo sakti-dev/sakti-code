@@ -1,57 +1,79 @@
 import { describe, expect, it } from "bun:test";
+import {
+  hasWsConnection,
+  pushToConnection,
+  registerTestConnection,
+  unregisterTestConnection,
+} from "../agent/ws.ts";
 
-describe("terminal push channels", () => {
-  it("terminal.data push has correct structure", () => {
-    const frame = {
+describe("terminal push channels (real pushToConnection path)", () => {
+  it("C3: a push to a registered connection delivers the exact frame JSON", () => {
+    const received: unknown[] = [];
+    registerTestConnection("conn-1", {
+      send: (d: string) => received.push(JSON.parse(d)),
+    });
+
+    pushToConnection("conn-1", {
       type: "push",
       channel: "terminal.data",
-      data: { terminalId: "term-1", data: "hello\n" },
-    };
-    expect(frame.type).toBe("push");
-    expect(frame.channel).toBe("terminal.data");
-    expect(frame.data.terminalId).toBe("term-1");
-    expect(frame.data.data).toBe("hello\n");
-  });
+      data: { terminalId: "t1", data: "hello\n" },
+    });
 
-  it("terminal.exit push has correct structure", () => {
-    const frame = {
+    expect(received).toHaveLength(1);
+    expect(received[0]).toEqual({
       type: "push",
-      channel: "terminal.exit",
-      data: { terminalId: "term-1", exitCode: 0 },
-    };
-    expect(frame.type).toBe("push");
-    expect(frame.channel).toBe("terminal.exit");
-    expect(frame.data.terminalId).toBe("term-1");
-    expect(frame.data.exitCode).toBe(0);
+      channel: "terminal.data",
+      data: { terminalId: "t1", data: "hello\n" },
+    });
+
+    unregisterTestConnection("conn-1");
   });
 
-  it("terminal.exit push includes signal when provided", () => {
-    const frame = {
-      type: "push",
-      channel: "terminal.exit",
-      data: { terminalId: "term-1", exitCode: 9, signal: 9 },
-    };
-    expect(frame.data.signal).toBe(9);
-  });
-
-  it("terminal.exit push omits signal when undefined", () => {
-    const frame: Record<string, unknown> = {
-      type: "push",
-      channel: "terminal.exit",
-      data: { terminalId: "term-1", exitCode: 0 },
-    };
-    const hasSignal = "signal" in (frame.data as Record<string, unknown>);
-    expect(hasSignal).toBe(false);
-  });
-
-  it("push to unknown connection does not throw", () => {
+  it("C3: a push to an unknown connection is silently dropped (no throw)", () => {
     expect(() => {
-      // Simulate sending to a connection that doesn't exist
-      // In ws.ts this is handled by wsConnections.get returning undefined
-      const pushToConnection = (_connectionId: string, _data: unknown) => {
-        // No-op: unknown connections are handled gracefully
-      };
-      pushToConnection("nonexistent", { type: "push" });
+      pushToConnection("does-not-exist", {
+        type: "push",
+        channel: "terminal.data",
+        data: { terminalId: "t1", data: "x" },
+      });
     }).not.toThrow();
+  });
+
+  it("C3: hasWsConnection reflects registration lifecycle", () => {
+    expect(hasWsConnection("conn-2")).toBe(false);
+    registerTestConnection("conn-2", { send: () => {} });
+    expect(hasWsConnection("conn-2")).toBe(true);
+    unregisterTestConnection("conn-2");
+    expect(hasWsConnection("conn-2")).toBe(false);
+  });
+
+  it("C3: terminal.exit push includes signal when provided, omits when undefined", () => {
+    const received: unknown[] = [];
+    registerTestConnection("conn-3", {
+      send: (d: string) => received.push(JSON.parse(d)),
+    });
+
+    pushToConnection("conn-3", {
+      type: "push",
+      channel: "terminal.exit",
+      data: { terminalId: "t1", exitCode: 9, signal: 9 },
+    });
+    pushToConnection("conn-3", {
+      type: "push",
+      channel: "terminal.exit",
+      data: { terminalId: "t2", exitCode: 0 },
+    });
+
+    expect(received).toHaveLength(2);
+    expect(received[0]).toEqual({
+      type: "push",
+      channel: "terminal.exit",
+      data: { terminalId: "t1", exitCode: 9, signal: 9 },
+    });
+    expect(
+      "signal" in (received[1] as { data: Record<string, unknown> }).data
+    ).toBe(false);
+
+    unregisterTestConnection("conn-3");
   });
 });

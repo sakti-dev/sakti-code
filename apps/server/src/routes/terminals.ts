@@ -1,9 +1,13 @@
 import { Elysia, t } from "elysia";
+import { hasWsConnection } from "../agent/ws.ts";
 import { getCtx } from "../context.ts";
 
 const createBody = t.Object({
-  cwd: t.Optional(t.String()),
+  // The client's WS connection id (the wsId from the welcome frame). Terminals
+  // are pushed to over WS, so a terminal MUST belong to a live connection.
+  connectionId: t.String(),
   cols: t.Optional(t.Number()),
+  cwd: t.Optional(t.String()),
   rows: t.Optional(t.Number()),
 });
 
@@ -21,6 +25,16 @@ export const terminalRoutes = new Elysia({ name: "routes.terminals" })
     "/api/terminals",
     ({ body, store }) => {
       const ctx = getCtx(store);
+      // The terminal's data/exit frames are pushed to this WS connection, so
+      // reject creates for a connection that isn't open.
+      if (!hasWsConnection(body.connectionId)) {
+        return new Response(
+          JSON.stringify({
+            error: "Unknown connectionId; open a WS connection first",
+          }),
+          { status: 400, headers: { "content-type": "application/json" } }
+        );
+      }
       if (!ctx.terminalManager.bunPtyAvailable) {
         const msg = ctx.terminalManager.loadError ?? "bun-pty not available";
         return new Response(
@@ -28,7 +42,7 @@ export const terminalRoutes = new Elysia({ name: "routes.terminals" })
           { status: 503, headers: { "content-type": "application/json" } }
         );
       }
-      const result = ctx.terminalManager.create(crypto.randomUUID(), {
+      const result = ctx.terminalManager.create(body.connectionId, {
         cwd: body.cwd,
         cols: body.cols,
         rows: body.rows,
