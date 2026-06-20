@@ -25,7 +25,7 @@ afterAll(() => {
 function longConversation(n: number) {
   return Array.from({ length: n }, (_, i) => ({
     role: "user" as const,
-    content: `Message ${i}: ${"x".repeat(200)}`,
+    content: `Message ${i}: ${"x".repeat(500)}`,
   }));
 }
 
@@ -41,12 +41,12 @@ describe("compaction route", () => {
     });
     const session = await ctx.repos.sessions.create(project.id, "test-model");
 
-    // Seed 50 long messages so there is real history to compact
-    for (const msg of longConversation(50)) {
+    // Seed 200 long messages so there is real history to compact
+    for (const msg of longConversation(200)) {
       await ctx.repos.messages.append(session.id, msg);
     }
     const beforeCount = ctx.repos.messages.countBySession(session.id);
-    expect(beforeCount).toBe(50);
+    expect(beforeCount).toBe(200);
 
     const res = await app.handle(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
@@ -60,7 +60,7 @@ describe("compaction route", () => {
 
     // Persisted messages are fewer
     const afterCount = ctx.repos.messages.countBySession(session.id);
-    expect(afterCount).toBeLessThan(50);
+    expect(afterCount).toBeLessThan(200);
   });
 
   it("POST /api/sessions/nope/compact returns 404", async () => {
@@ -114,7 +114,7 @@ describe("compaction route", () => {
       modelId: "test-model",
     });
     const session = await ctx.repos.sessions.create(project.id, "test-model");
-    for (const msg of longConversation(50)) {
+    for (const msg of longConversation(200)) {
       await ctx.repos.messages.append(session.id, msg);
     }
     const beforeCount = ctx.repos.messages.countBySession(session.id);

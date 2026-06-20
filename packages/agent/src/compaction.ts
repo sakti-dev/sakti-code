@@ -118,19 +118,71 @@ export interface CompactionOptions {
   signal?: AbortSignal;
 }
 
-function messageToText(msg: AgentMessage): string {
+const TOOL_RESULT_MAX_CHARS = 2000;
+
+function truncateForSummary(text: string, maxChars: number): string {
+  if (text.length <= maxChars) {
+    return text;
+  }
+  const truncatedChars = text.length - maxChars;
+  return `${text.slice(0, maxChars)}\n\n[... ${truncatedChars} more characters truncated]`;
+}
+
+function serializeAssistant(msg: AgentMessage): string {
+  const blocks = msg.content as Array<
+    | { type: "text"; text: string }
+    | { type: "thinking"; thinking: string }
+    | { type: "toolCall"; name: string; arguments: Record<string, unknown> }
+  >;
+  const thinkingParts: string[] = [];
+  const textParts: string[] = [];
+  const toolCalls: string[] = [];
+
+  for (const block of blocks) {
+    if (block.type === "text") {
+      textParts.push(block.text);
+    } else if (block.type === "thinking") {
+      thinkingParts.push(block.thinking);
+    } else if (block.type === "toolCall") {
+      const args = block.arguments as Record<string, unknown>;
+      const argsStr = Object.entries(args)
+        .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+        .join(", ");
+      toolCalls.push(`${block.name}(${argsStr})`);
+    }
+  }
+
+  const parts: string[] = [];
+  if (thinkingParts.length > 0) {
+    parts.push(`[Assistant thinking]: ${thinkingParts.join("\n")}`);
+  }
+  if (textParts.length > 0) {
+    parts.push(`[Assistant]: ${textParts.join("\n")}`);
+  }
+  if (toolCalls.length > 0) {
+    parts.push(`[Assistant tool calls]: ${toolCalls.join("; ")}`);
+  }
+  return parts.join("\n\n");
+}
+
+export function messageToText(msg: AgentMessage): string {
   if (msg.role === "user") {
-    return `User: ${msg.content}`;
+    if (!msg.content) {
+      return "";
+    }
+    return `[User]: ${msg.content}`;
   }
   if (msg.role === "assistant") {
-    const text = (msg.content as Array<{ type: string; text?: string }>)
-      .filter((b) => b.type === "text" && b.text)
-      .map((b) => b.text)
-      .join("\n");
-    return `Assistant: ${text}`;
+    return serializeAssistant(msg);
   }
   if (msg.role === "tool") {
-    return `Tool (${msg.toolName}): ${(msg.content as Array<{ text: string }>).map((c) => c.text).join("")}`;
+    const content = (msg.content as Array<{ text: string }>)
+      .map((c) => c.text)
+      .join("");
+    if (!content) {
+      return "";
+    }
+    return `[Tool result]: ${truncateForSummary(content, TOOL_RESULT_MAX_CHARS)}`;
   }
   return "";
 }
@@ -163,8 +215,12 @@ export async function compactMessages(
       break;
     }
   }
+  // Advance past any tool results to avoid orphaning (pi findValidCutPoints)
+  while (cutIndex < messages.length && messages[cutIndex]?.role === "tool") {
+    cutIndex++;
+  }
 
-  if (cutIndex <= 1) {
+  if (cutIndex <= 1 || cutIndex >= messages.length) {
     return { messages, tokensBefore, tokensAfter: tokensBefore };
   }
 
