@@ -7,6 +7,7 @@ import {
   SessionRepo,
   SettingsRepo,
 } from "@sakti-code/db";
+import { TerminalManager } from "./terminal/terminal-manager.ts";
 
 export interface ServerContext {
   db: DrizzleDB;
@@ -18,6 +19,7 @@ export interface ServerContext {
     settings: SettingsRepo;
     models: ModelConfigRepo;
   };
+  terminalManager: TerminalManager;
 }
 
 export function createContext(db: DrizzleDB): ServerContext {
@@ -31,6 +33,7 @@ export function createContext(db: DrizzleDB): ServerContext {
       settings: new SettingsRepo(db),
       models: new ModelConfigRepo(db),
     },
+    terminalManager: new TerminalManager(),
   };
 }
 

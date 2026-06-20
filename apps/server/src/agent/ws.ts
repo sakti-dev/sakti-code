@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { SqliteSessionStore } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import type { ServerContext } from "../context.ts";
-import type { WsIn } from "./ws-handler.ts";
+import type { WsHandle, WsIn } from "./ws-handler.ts";
 import { handleMessage } from "./ws-handler.ts";
 
 // ── Server version (read once from package.json) ──
@@ -26,7 +26,7 @@ export function createWelcomeFrame(): string {
   });
 }
 
-// ── Connection-scoped store map (keyed by Bun's stable ws id) ──
+// ── Connection-scoped stores ──
 
 const connectionStores = new Map<string, SqliteSessionStore>();
 
@@ -42,19 +42,71 @@ function getOrCreateStore(
   return store;
 }
 
+// ── Terminal push: WS connections keyed by connection ID ──
+
+const wsConnections = new Map<string, WsHandle>();
+
+function pushToConnection(connectionId: string, data: unknown) {
+  const ws = wsConnections.get(connectionId);
+  if (ws) {
+    ws.send(JSON.stringify(data));
+  }
+}
+
+// ── Wire terminal manager callbacks (called once during setup) ──
+
+function wireTerminalCallbacks(ctx: ServerContext) {
+  ctx.terminalManager.onData = (terminalId, connectionId, data) => {
+    pushToConnection(connectionId, {
+      type: "push",
+      channel: "terminal.data",
+      data: { terminalId, data },
+    });
+  };
+  ctx.terminalManager.onExit = (terminalId, connectionId, exitCode, signal) => {
+    pushToConnection(connectionId, {
+      type: "push",
+      channel: "terminal.exit",
+      data: {
+        terminalId,
+        exitCode,
+        ...(signal === undefined ? {} : { signal }),
+      },
+    });
+  };
+}
+
 // ── Elysia WS lifecycle handler ──
+
+let terminalCallbacksWired = false;
 
 export function buildWsApp() {
   return new Elysia({ name: "ws" }).ws("/ws", {
     open(ws) {
       // biome-ignore lint/suspicious/noExplicitAny: Elysia WS raw shape
-      (ws as any).data.wsId = (ws as any).raw.id;
+      const raw = ws as any;
+      raw.data.wsId = raw.raw.id;
+      // Register WS connection for terminal push
+      wsConnections.set(raw.data.wsId, ws);
+      // Wire terminal callbacks once
+      if (!terminalCallbacksWired && raw.data.ctx) {
+        wireTerminalCallbacks(raw.data.ctx as ServerContext);
+        terminalCallbacksWired = true;
+      }
       // Send welcome frame on connect
       ws.send(createWelcomeFrame());
     },
     close(ws) {
       // biome-ignore lint/suspicious/noExplicitAny: Elysia WS raw shape
-      connectionStores.delete((ws as any).data.wsId);
+      const raw = ws as any;
+      connectionStores.delete(raw.data.wsId);
+      wsConnections.delete(raw.data.wsId);
+      // Clean up terminals owned by this connection
+      if (raw.data.ctx) {
+        (raw.data.ctx as ServerContext).terminalManager.closeByConnection(
+          raw.data.wsId
+        );
+      }
     },
     message(ws, msg) {
       // biome-ignore lint/suspicious/noExplicitAny: Elysia WS data shape
