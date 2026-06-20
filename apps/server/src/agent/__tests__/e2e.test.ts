@@ -6,6 +6,12 @@ vi.mock("../runner.ts", () => ({
   abortRun: vi.fn(),
   registerRun: vi.fn(),
   unregisterRun: vi.fn(),
+  isRunActive: vi.fn(() => false),
+  busyMessage: vi.fn(
+    (id: string) =>
+      `A run is already active for session ${id}. Send a 'steer' or 'followUp' message to queue input, or 'abort' to cancel the active run first.`
+  ),
+  clearRunsForTesting: vi.fn(),
 }));
 
 const { runPrompt: mockRunPrompt } = await import("../runner.ts");

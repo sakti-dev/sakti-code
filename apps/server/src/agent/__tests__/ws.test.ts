@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const MISSING_FIELDS_RE = /Missing sessionId or message/;
 const NO_ACTIVE_RUN_RE = /No active run/;
+const BUSY_RE = /A run is already active.*steer.*followUp.*abort/;
 
 // Mock @earendil-works/pi-ai before importing anything that uses it
 vi.mock("@earendil-works/pi-ai", async () => {
@@ -21,6 +22,7 @@ import {
   createMockStore,
   createTestModel,
   createTextStream,
+  MockStream,
 } from "./helpers.ts";
 
 const streamSimpleMock = streamSimple as ReturnType<typeof vi.fn>;
@@ -35,6 +37,13 @@ function makeFakeWs(): { sent: any[]; ws: { send: (d: string) => void } } {
 }
 
 describe("WS message handler", () => {
+  beforeEach(async () => {
+    const { clearRunsForTesting } = await import("../runner.ts");
+    clearRunsForTesting();
+    streamSimpleMock.mockClear();
+    getModelMock.mockClear();
+  });
+
   it("prompt produces event frames with correct sessionId and event type", async () => {
     const ctx = createMockCtx();
     const store = createMockStore();
@@ -143,5 +152,241 @@ describe("WS message handler", () => {
     expect(errorFrames.length).toBe(1);
     expect(errorFrames[0]?.sessionId).toBe("no-run");
     expect(errorFrames[0]?.error).toMatch(NO_ACTIVE_RUN_RE);
+  });
+
+  it("second prompt on active session is rejected with guidance and preserves first run", async () => {
+    const ctx = createMockCtx();
+    const store = createMockStore();
+    getModelMock.mockReturnValue(createTestModel());
+    const hanging = new MockStream<any>();
+    hanging.hang();
+    streamSimpleMock.mockReturnValue(hanging);
+
+    const { ws: ws1 } = makeFakeWs();
+    handleMessage(ctx, store, ws1, {
+      type: "prompt",
+      sessionId: "sess-1",
+      message: "first prompt",
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const { sent: sent2, ws: ws2 } = makeFakeWs();
+    handleMessage(ctx, store, ws2, {
+      type: "prompt",
+      sessionId: "sess-1",
+      message: "second prompt",
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const errorFrames2 = sent2.filter((f: any) => f.type === "error");
+    expect(errorFrames2.length).toBe(1);
+    expect(errorFrames2[0]?.error).toMatch(BUSY_RE);
+    expect(errorFrames2[0]?.sessionId).toBe("sess-1");
+
+    const { abortRun } = await import("../runner.ts");
+    expect(abortRun("sess-1")).toBe(true);
+
+    hanging.push({
+      type: "done",
+      reason: "stop",
+      message: {
+        role: "assistant",
+        content: [{ type: "text", text: "done" }],
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: "stop",
+        api: "openai-completions",
+        provider: "openai",
+        model: "test",
+        timestamp: Date.now(),
+      },
+    });
+  });
+
+  it("race: two near-simultaneous prompts yield exactly one run", async () => {
+    const ctx = createMockCtx();
+    const store = createMockStore();
+    getModelMock.mockReturnValue(createTestModel());
+    const hanging = new MockStream<any>();
+    hanging.hang();
+    streamSimpleMock.mockReturnValue(hanging);
+
+    const { sent: sent1, ws: ws1 } = makeFakeWs();
+    const { sent: sent2, ws: ws2 } = makeFakeWs();
+
+    handleMessage(ctx, store, ws1, {
+      type: "prompt",
+      sessionId: "sess-1",
+      message: "prompt-a",
+    });
+    handleMessage(ctx, store, ws2, {
+      type: "prompt",
+      sessionId: "sess-1",
+      message: "prompt-b",
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const errors1 = sent1.filter((f: any) => f.type === "error");
+    const errors2 = sent2.filter((f: any) => f.type === "error");
+    const totalErrors = errors1.length + errors2.length;
+    expect(totalErrors).toBe(1);
+
+    const allErrors = [...errors1, ...errors2];
+    expect(allErrors[0]?.error).toMatch(BUSY_RE);
+
+    const totalEvents =
+      sent1.filter((f: any) => f.type === "event").length +
+      sent2.filter((f: any) => f.type === "event").length;
+    expect(totalEvents).toBeGreaterThan(0);
+
+    hanging.push({
+      type: "done",
+      reason: "stop",
+      message: {
+        role: "assistant",
+        content: [{ type: "text", text: "done" }],
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: "stop",
+        api: "openai-completions",
+        provider: "openai",
+        model: "test",
+        timestamp: Date.now(),
+      },
+    });
+  });
+
+  it("steer while active run queues without error", async () => {
+    const ctx = createMockCtx();
+    const store = createMockStore();
+    getModelMock.mockReturnValue(createTestModel());
+    const hanging = new MockStream<any>();
+    hanging.hang();
+    streamSimpleMock.mockReturnValue(hanging);
+
+    const { ws: ws1 } = makeFakeWs();
+    handleMessage(ctx, store, ws1, {
+      type: "prompt",
+      sessionId: "sess-1",
+      message: "first",
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const { isRunActive } = await import("../runner.ts");
+    expect(isRunActive("sess-1")).toBe(true);
+
+    const { sent: sentSteer, ws: wsSteer } = makeFakeWs();
+    handleMessage(ctx, store, wsSteer, {
+      type: "steer",
+      sessionId: "sess-1",
+      message: "change direction",
+    });
+    const steerErrors = sentSteer.filter((f: any) => f.type === "error");
+    expect(steerErrors.length).toBe(0);
+
+    const { sent: sentFollow, ws: wsFollow } = makeFakeWs();
+    handleMessage(ctx, store, wsFollow, {
+      type: "followUp",
+      sessionId: "sess-1",
+      message: "follow up",
+    });
+    const followErrors = sentFollow.filter((f: any) => f.type === "error");
+    expect(followErrors.length).toBe(0);
+
+    hanging.push({
+      type: "done",
+      reason: "stop",
+      message: {
+        role: "assistant",
+        content: [{ type: "text", text: "done" }],
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: "stop",
+        api: "openai-completions",
+        provider: "openai",
+        model: "test",
+        timestamp: Date.now(),
+      },
+    });
+  });
+
+  it("abort during active run then new prompt succeeds", async () => {
+    const ctx = createMockCtx();
+    const store = createMockStore();
+    getModelMock.mockReturnValue(createTestModel());
+    const hanging = new MockStream<any>();
+    hanging.hang();
+    streamSimpleMock.mockReturnValue(hanging);
+
+    const { ws: ws1 } = makeFakeWs();
+    handleMessage(ctx, store, ws1, {
+      type: "prompt",
+      sessionId: "sess-1",
+      message: "first",
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const { abortRun } = await import("../runner.ts");
+    expect(abortRun("sess-1")).toBe(true);
+
+    hanging.push({
+      type: "done",
+      reason: "stop",
+      message: {
+        role: "assistant",
+        content: [{ type: "text", text: "done" }],
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: "stop",
+        api: "openai-completions",
+        provider: "openai",
+        model: "test",
+        timestamp: Date.now(),
+      },
+    });
+    hanging.unhang();
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    streamSimpleMock.mockReturnValue(createTextStream("after abort"));
+    const { sent, ws: ws2 } = makeFakeWs();
+    handleMessage(ctx, store, ws2, {
+      type: "prompt",
+      sessionId: "sess-1",
+      message: "second after abort",
+    });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const errorFrames = sent.filter((f: any) => f.type === "error");
+    expect(errorFrames.length).toBe(0);
+    const eventFrames = sent.filter((f: any) => f.type === "event");
+    expect(eventFrames.length).toBeGreaterThan(0);
   });
 });

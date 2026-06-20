@@ -1,6 +1,12 @@
 import type { AgentEvent, SessionStore } from "@sakti-code/agent";
 import type { ServerContext } from "../context.ts";
-import { abortRun, getActiveLoop, runPrompt } from "./runner.ts";
+import {
+  abortRun,
+  busyMessage,
+  getActiveLoop,
+  isRunActive,
+  runPrompt,
+} from "./runner.ts";
 
 // ── Inbound message types ──
 
@@ -134,5 +140,9 @@ export function handleMessage(
   }
 
   // Fire-and-forget — does NOT await the stream
+  if (isRunActive(msg.sessionId)) {
+    sendError(ws, msg.sessionId, busyMessage(msg.sessionId));
+    return;
+  }
   runAgentStream(ctx, msg.sessionId, msg.message, store, ws);
 }

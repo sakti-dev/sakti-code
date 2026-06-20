@@ -13,12 +13,31 @@ export const piAiMock = {
 
 export class MockStream<T> implements AsyncIterable<T> {
   private readonly items: T[] = [];
+  private _hangPromise: Promise<void> | null = null;
+  private _hangResolve: (() => void) | null = null;
   push(item: T) {
     this.items.push(item);
+  }
+  hang(): void {
+    if (!this._hangPromise) {
+      this._hangPromise = new Promise<void>((resolve) => {
+        this._hangResolve = resolve;
+      });
+    }
+  }
+  unhang(): void {
+    if (this._hangResolve) {
+      this._hangResolve();
+      this._hangResolve = null;
+      this._hangPromise = null;
+    }
   }
   async *[Symbol.asyncIterator]() {
     for (const item of this.items) {
       yield item;
+    }
+    if (this._hangPromise) {
+      await this._hangPromise;
     }
   }
 }

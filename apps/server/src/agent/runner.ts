@@ -12,16 +12,32 @@ interface ActiveRun {
 
 const activeRuns = new Map<string, ActiveRun>();
 
+export function busyMessage(sessionId: string): string {
+  return `A run is already active for session ${sessionId}. Send a 'steer' or 'followUp' message to queue input, or 'abort' to cancel the active run first.`;
+}
+
 export function registerRun(
   sessionId: string,
   controller: AbortController,
   loop: AgentLoop
-) {
+): boolean {
+  if (activeRuns.has(sessionId)) {
+    return false;
+  }
   activeRuns.set(sessionId, { controller, loop });
+  return true;
 }
 
 export function unregisterRun(sessionId: string) {
   activeRuns.delete(sessionId);
+}
+
+export function isRunActive(sessionId: string): boolean {
+  return activeRuns.has(sessionId);
+}
+
+export function clearRunsForTesting(): void {
+  activeRuns.clear();
 }
 
 export function abortRun(sessionId: string): boolean {
@@ -120,7 +136,9 @@ export async function* runPrompt(
     tools,
   });
 
-  registerRun(sessionId, controller, loop);
+  if (!registerRun(sessionId, controller, loop)) {
+    throw new Error(busyMessage(sessionId));
+  }
 
   try {
     yield* loop.prompt(message, controller.signal);
