@@ -88,4 +88,47 @@ describe("bash routes", () => {
     expect(body.cancelled).toBe(true);
     expect(body.output).toContain("timed out");
   });
+
+  it("C1: timeout is in SECONDS — timeout:1 cancels a 2s sleep and reports 'after 1s'", async () => {
+    const { app, ctx } = await makeApp([bashRoutes]);
+    const project = await ctx.repos.projects.create("c1-sec", "/tmp");
+    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+
+    const t0 = Date.now();
+    const res = await app.handle(
+      new Request(`http://localhost/api/sessions/${session.id}/bash`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ command: "sleep 2", timeout: 1 }),
+      })
+    );
+    const elapsed = Date.now() - t0;
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.cancelled).toBe(true);
+    expect(body.output).toBe("[Command timed out after 1s]");
+    // ~1s, not 1ms (old bug) and not 2s/30s
+    expect(elapsed).toBeGreaterThan(900);
+    expect(elapsed).toBeLessThan(1900);
+  });
+
+  it("C2: output preserves trailing content (not trimmed)", async () => {
+    const { app, ctx } = await makeApp([bashRoutes]);
+    const project = await ctx.repos.projects.create("c2-trim", "/tmp");
+    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+
+    const res = await app.handle(
+      new Request(`http://localhost/api/sessions/${session.id}/bash`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        // printf 'a\nb\n' → exact trailing newline preserved
+        body: JSON.stringify({ command: "printf 'a\nb\n'" }),
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.output).toBe("a\nb\n");
+    expect(body.exitCode).toBe(0);
+    expect(body.cancelled).toBe(false);
+  });
 });

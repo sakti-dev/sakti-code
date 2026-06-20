@@ -88,15 +88,13 @@ async function runBash(
   const stdout = await new Response(proc.stdout).text();
   const stderr = await new Response(proc.stderr).text();
   const combined = stdout + stderr;
-  const output =
-    combined.length > BASH_OUTPUT_LIMIT
-      ? combined.slice(0, BASH_OUTPUT_LIMIT)
-      : combined;
+  const truncated = combined.length > BASH_OUTPUT_LIMIT;
+  const output = truncated ? combined.slice(0, BASH_OUTPUT_LIMIT) : combined;
   return {
     cancelled: false,
     exitCode: code,
-    output: output.trim() || "(no output)",
-    truncated: combined.length > BASH_OUTPUT_LIMIT,
+    output: output.length > 0 ? output : "(no output)",
+    truncated,
   };
 }
 
@@ -124,7 +122,8 @@ export const bashRoutes = new Elysia({ name: "routes.bash" })
         body.command,
         project.cwd,
         params.id,
-        body.timeout
+        // body.timeout is in SECONDS (per spec); convert to ms. Default 30s.
+        body.timeout === undefined ? undefined : body.timeout * 1000
       );
 
       if (body.injectToContext) {
