@@ -170,4 +170,42 @@ describe("runPrompt", () => {
     expect(settings.auto_retry).toBe("true");
     expect(settings.steering_mode).toBe("all");
   });
+
+  it("W4: per-session thinking_level 'off' disables a session row's 'high'", async () => {
+    const ctx = createMockCtx();
+    // Session row wants thinking 'high'...
+    (
+      ctx.repos.sessions.findById as ReturnType<typeof vi.fn>
+    ).mockImplementation(async (id: string) =>
+      id === "sess-1"
+        ? {
+            id: "sess-1",
+            projectId: "proj-1",
+            modelId: "test-model",
+            title: null,
+            thinkingLevel: "high",
+            createdAt: 0,
+            updatedAt: 0,
+          }
+        : null
+    );
+    // ...but the per-session setting explicitly overrides it to 'off'.
+    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation(
+      (key: string) => (key.endsWith(":thinking_level") ? "off" : null)
+    );
+
+    const store = createMockStore();
+    getModelMock.mockReturnValue(createTestModel());
+    streamSimpleMock.mockReturnValue(createTextStream("ok"));
+
+    for await (const _event of runPrompt(ctx, "sess-1", "hi", store)) {
+      // consume
+    }
+
+    const opts = (streamSimpleMock.mock.calls[0] as unknown[])[2] as
+      | Record<string, unknown>
+      | undefined;
+    const hasThinkingLevel = opts && "thinkingLevel" in opts;
+    expect(hasThinkingLevel).toBe(false);
+  });
 });
