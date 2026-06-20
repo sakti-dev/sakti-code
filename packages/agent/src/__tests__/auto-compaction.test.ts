@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentEvent, AgentMessage, SessionStore } from "../types";
+import { collectEvents, MockEventStream } from "./helpers";
 
 // Both the main loop stream and the summarization call come from pi-ai.
 vi.mock("@earendil-works/pi-ai", () => ({
@@ -13,18 +14,6 @@ const completeSimpleMock = completeSimple as ReturnType<typeof vi.fn>;
 const { createAgentLoop } = await import("../loop");
 
 // ── Minimal async-iterable stream fixture ──
-
-class MockEventStream<T> implements AsyncIterable<T> {
-  private readonly events: T[] = [];
-  push(event: T) {
-    this.events.push(event);
-  }
-  async *[Symbol.asyncIterator]() {
-    for (const e of this.events) {
-      yield e;
-    }
-  }
-}
 
 const basePartial: any = {
   role: "assistant",
@@ -63,16 +52,6 @@ function textStream(text: string) {
     },
   });
   return s;
-}
-
-async function collectEvents(
-  gen: AsyncIterable<AgentEvent>
-): Promise<AgentEvent[]> {
-  const events: AgentEvent[] = [];
-  for await (const e of gen) {
-    events.push(e);
-  }
-  return events;
 }
 
 // ── Test fixtures ──
@@ -163,7 +142,7 @@ describe("auto-compaction in the agent loop", () => {
 
   it("triggers when context exceeds the window, replaces messages, emits events (2.1)", async () => {
     const store = createStore(largeHistory());
-    streamSimpleMock.mockReturnValue(textStream("done!"));
+    streamSimpleMock.mockImplementation(() => textStream("done!"));
     completeSimpleMock.mockResolvedValue(SUMMARY_RESPONSE);
 
     const loop = createAgentLoop({
@@ -204,7 +183,7 @@ describe("auto-compaction in the agent loop", () => {
     // gate path (distinct from 'autoCompaction omitted'): a bug that always
     // fired compaction when enabled would pass the default-off test but fail here.
     const store = createStore([{ role: "user", content: "hi", timestamp: 1 }]);
-    streamSimpleMock.mockReturnValue(textStream("done!"));
+    streamSimpleMock.mockImplementation(() => textStream("done!"));
     completeSimpleMock.mockResolvedValue(SUMMARY_RESPONSE);
 
     const loop = createAgentLoop({
@@ -229,7 +208,7 @@ describe("auto-compaction in the agent loop", () => {
 
   it("does NOT trigger when autoCompaction is omitted (default off) (2.2)", async () => {
     const store = createStore(largeHistory());
-    streamSimpleMock.mockReturnValue(textStream("done!"));
+    streamSimpleMock.mockImplementation(() => textStream("done!"));
     completeSimpleMock.mockResolvedValue(SUMMARY_RESPONSE);
 
     const loop = createAgentLoop({
@@ -251,7 +230,7 @@ describe("auto-compaction in the agent loop", () => {
 
   it("skips gracefully (no events, no throw) when apiKey is absent (2.3)", async () => {
     const store = createStore(largeHistory());
-    streamSimpleMock.mockReturnValue(textStream("done!"));
+    streamSimpleMock.mockImplementation(() => textStream("done!"));
     completeSimpleMock.mockResolvedValue(SUMMARY_RESPONSE);
 
     const loop = createAgentLoop({
@@ -277,7 +256,7 @@ describe("auto-compaction in the agent loop", () => {
 
   it("summarization failure keeps messages unchanged, no error event (2.4)", async () => {
     const store = createStore(largeHistory());
-    streamSimpleMock.mockReturnValue(textStream("done!"));
+    streamSimpleMock.mockImplementation(() => textStream("done!"));
     // Summarization call fails.
     completeSimpleMock.mockResolvedValue({
       ...SUMMARY_RESPONSE,

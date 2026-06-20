@@ -5,6 +5,7 @@ import type {
   AgentTool,
   SessionStore,
 } from "../types";
+import { collectEvents, MockEventStream } from "./helpers";
 
 vi.mock("@earendil-works/pi-ai", () => ({
   streamSimple: vi.fn(),
@@ -62,20 +63,8 @@ const basePartial = {
   model: "test",
 };
 
-class EventList<T> implements AsyncIterable<T> {
-  private readonly events: T[] = [];
-  push(e: T) {
-    this.events.push(e);
-  }
-  async *[Symbol.asyncIterator]() {
-    for (const e of this.events) {
-      yield e;
-    }
-  }
-}
-
 function textStream(text: string) {
-  const s = new EventList();
+  const s = new MockEventStream();
   const now = Date.now();
   s.push({
     type: "start",
@@ -102,7 +91,7 @@ function toolCallStream(
   args: Record<string, unknown>,
   id = "tc_1"
 ) {
-  const s = new EventList();
+  const s = new MockEventStream();
   const now = Date.now();
   s.push({
     type: "start",
@@ -196,11 +185,7 @@ function blockingTextStream(onDone: () => void) {
 }
 
 async function collect(gen: AsyncIterable<AgentEvent>): Promise<AgentEvent[]> {
-  const out: AgentEvent[] = [];
-  for await (const e of gen) {
-    out.push(e);
-  }
-  return out;
+  return collectEvents(gen);
 }
 
 describe("steer signal wiring (C4)", () => {
@@ -210,7 +195,7 @@ describe("steer signal wiring (C4)", () => {
     const blocking = blockingTextStream(() => {
       streamedMessage = "completed";
     });
-    streamSimple.mockReturnValue(blocking);
+    streamSimple.mockImplementation(() => blocking);
 
     const loop = createAgentLoop({
       sessionId: "s1",
@@ -348,7 +333,7 @@ describe("steer signal wiring (C4)", () => {
 describe("steer queue, follow-up, and no-op contracts", () => {
   it("steer queue is bounded at 10; the 11th is dropped", async () => {
     const store = createMockStore();
-    streamSimple.mockReturnValue(textStream("ok"));
+    streamSimple.mockImplementation(() => textStream("ok"));
 
     const loop = createAgentLoop({
       sessionId: "s1",
@@ -415,7 +400,7 @@ describe("steer queue, follow-up, and no-op contracts", () => {
 
   it("S1: steer/followUp on a finished loop is a no-op (drops, does not throw)", async () => {
     const store = createMockStore();
-    streamSimple.mockReturnValue(textStream("done"));
+    streamSimple.mockImplementation(() => textStream("done"));
 
     const loop = createAgentLoop({
       sessionId: "s1",

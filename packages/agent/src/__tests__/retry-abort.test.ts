@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentEvent, AgentMessage, SessionStore } from "../types";
+import { MockEventStream } from "./helpers";
 
 vi.mock("@earendil-works/pi-ai", async () => {
   const actual = await vi.importActual("@earendil-works/pi-ai");
@@ -9,28 +10,6 @@ vi.mock("@earendil-works/pi-ai", async () => {
 const { streamSimple: _streamSimple } = await import("@earendil-works/pi-ai");
 const streamSimple = _streamSimple as any;
 const { createAgentLoop } = await import("../loop");
-
-class MockEventStream<T> implements AsyncIterable<T> {
-  private readonly events: T[] = [];
-  private _result?: any;
-  push(event: T) {
-    this.events.push(event);
-  }
-  setResult(r: any) {
-    this._result = r;
-  }
-  result() {
-    return this._result;
-  }
-  end() {
-    /* no-op for mock */
-  }
-  async *[Symbol.asyncIterator]() {
-    for (const e of this.events) {
-      yield e;
-    }
-  }
-}
 
 function createMockStore(): SessionStore {
   const messages: Map<string, AgentMessage[]> = new Map();
@@ -189,7 +168,7 @@ describe("Agent abort", () => {
       partial: { ...basePartial, stopReason: "stop", timestamp: now },
     });
 
-    vi.mocked(streamSimple).mockReturnValue(stream);
+    vi.mocked(streamSimple).mockImplementation(() => stream);
 
     const loop = createAgentLoop({
       sessionId: "s1",

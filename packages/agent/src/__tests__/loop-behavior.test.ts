@@ -5,6 +5,7 @@ import type {
   AgentTool,
   SessionStore,
 } from "../types";
+import { collectEvents, MockEventStream } from "./helpers";
 
 vi.mock("@earendil-works/pi-ai", () => ({
   streamSimple: vi.fn(),
@@ -13,18 +14,6 @@ vi.mock("@earendil-works/pi-ai", () => ({
 const { streamSimple: _streamSimple } = await import("@earendil-works/pi-ai");
 const streamSimple = _streamSimple as any;
 const { createAgentLoop } = await import("../loop");
-
-class MockEventStream<T> implements AsyncIterable<T> {
-  private readonly events: T[] = [];
-  push(event: T) {
-    this.events.push(event);
-  }
-  async *[Symbol.asyncIterator]() {
-    for (const e of this.events) {
-      yield e;
-    }
-  }
-}
 
 function createMockStore(): SessionStore {
   const messages = new Map<string, AgentMessage[]>();
@@ -140,20 +129,10 @@ function toolCallStream(
   return s;
 }
 
-async function collectEvents(
-  gen: AsyncIterable<AgentEvent>
-): Promise<AgentEvent[]> {
-  const events: AgentEvent[] = [];
-  for await (const e of gen) {
-    events.push(e);
-  }
-  return events;
-}
-
 describe("Agent loop event ordering", () => {
   it("emits events in correct order for a simple text turn", async () => {
     const store = createMockStore();
-    vi.mocked(streamSimple).mockReturnValue(textStream("Hello!"));
+    vi.mocked(streamSimple).mockImplementation(() => textStream("Hello!"));
 
     const loop = createAgentLoop({
       sessionId: "s1",
@@ -181,7 +160,7 @@ describe("Agent loop event ordering", () => {
 
   it("turn_end carries the final assistant message", async () => {
     const store = createMockStore();
-    vi.mocked(streamSimple).mockReturnValue(textStream("Done!"));
+    vi.mocked(streamSimple).mockImplementation(() => textStream("Done!"));
 
     const loop = createAgentLoop({
       sessionId: "s1",
@@ -263,7 +242,9 @@ describe("Agent loop tool execution", () => {
       execute: async () => ({ content: "stopping", terminate: true }),
     };
 
-    vi.mocked(streamSimple).mockReturnValue(toolCallStream("stop", {}));
+    vi.mocked(streamSimple).mockImplementation(() =>
+      toolCallStream("stop", {})
+    );
 
     const loop = createAgentLoop({
       sessionId: "s1",
@@ -318,7 +299,7 @@ describe("Agent loop tool execution", () => {
 describe("Agent loop message lifecycle", () => {
   it("wraps the user prompt in message_start/message_end with payload", async () => {
     const store = createMockStore();
-    vi.mocked(streamSimple).mockReturnValue(textStream("Hello!"));
+    vi.mocked(streamSimple).mockImplementation(() => textStream("Hello!"));
 
     const loop = createAgentLoop({
       sessionId: "s1",
@@ -362,7 +343,7 @@ describe("Agent loop message lifecycle", () => {
 
   it("wraps each injected steer in its own message_start/message_end with payload", async () => {
     const store = createMockStore();
-    vi.mocked(streamSimple).mockReturnValue(textStream("Hello!"));
+    vi.mocked(streamSimple).mockImplementation(() => textStream("Hello!"));
 
     const loop = createAgentLoop({
       sessionId: "s1",
@@ -455,7 +436,7 @@ describe("Agent loop message lifecycle", () => {
 
   it("assistant-stream message_start and message_end carry the message payload", async () => {
     const store = createMockStore();
-    vi.mocked(streamSimple).mockReturnValue(textStream("Hello!"));
+    vi.mocked(streamSimple).mockImplementation(() => textStream("Hello!"));
 
     const loop = createAgentLoop({
       sessionId: "s1",
@@ -508,7 +489,7 @@ describe("Agent loop error/aborted turn persistence (pi agent-loop.ts:196)", () 
     s.push({ type: "start", partial: errorPiMessage });
     s.push({ type: "error", reason: "error", error: errorPiMessage });
 
-    vi.mocked(streamSimple).mockReturnValue(s);
+    vi.mocked(streamSimple).mockImplementation(() => s);
     const loop = createAgentLoop({
       sessionId: "s1",
       model: testModel,
@@ -555,7 +536,7 @@ describe("Agent loop error/aborted turn persistence (pi agent-loop.ts:196)", () 
     s.push({ type: "start", partial: errorPiMessage });
     s.push({ type: "error", reason: "error", error: errorPiMessage });
 
-    vi.mocked(streamSimple).mockReturnValue(s);
+    vi.mocked(streamSimple).mockImplementation(() => s);
     const loop = createAgentLoop({
       sessionId: "s1",
       model: testModel,
@@ -599,7 +580,7 @@ describe("Agent loop error/aborted turn persistence (pi agent-loop.ts:196)", () 
     s.push({ type: "start", partial: abortedPiMessage });
     s.push({ type: "error", reason: "aborted", error: abortedPiMessage });
 
-    vi.mocked(streamSimple).mockReturnValue(s);
+    vi.mocked(streamSimple).mockImplementation(() => s);
     const loop = createAgentLoop({
       sessionId: "s1",
       model: testModel,
@@ -645,7 +626,7 @@ describe("Agent loop error/aborted turn persistence (pi agent-loop.ts:196)", () 
     s.push({ type: "start", partial: abortedPiMessage });
     s.push({ type: "error", reason: "aborted", error: abortedPiMessage });
 
-    vi.mocked(streamSimple).mockReturnValue(s);
+    vi.mocked(streamSimple).mockImplementation(() => s);
     const loop = createAgentLoop({
       sessionId: "s1",
       model: testModel,
@@ -840,7 +821,7 @@ describe("Agent loop tool batch termination (AND semantics)", () => {
       execute: async () => ({ content: "stop", terminate: true }),
     };
 
-    vi.mocked(streamSimple).mockReturnValue(
+    vi.mocked(streamSimple).mockImplementation(() =>
       multiToolCallStream([
         { name: "stop", args: {}, id: "tc_1" },
         { name: "stop", args: {}, id: "tc_2" },
@@ -869,7 +850,9 @@ describe("Agent loop tool batch termination (AND semantics)", () => {
       execute: async () => ({ content: "stop", terminate: true }),
     };
 
-    vi.mocked(streamSimple).mockReturnValue(toolCallStream("stop", {}));
+    vi.mocked(streamSimple).mockImplementation(() =>
+      toolCallStream("stop", {})
+    );
 
     const loop = createAgentLoop({
       sessionId: "s1",

@@ -14,6 +14,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import type { AgentMessage, SessionStore } from "../types";
+import { MockEventStream } from "./helpers";
 
 // Mock streamSimple before importing the loop — same pattern as loop.test.ts.
 vi.mock("@earendil-works/pi-ai", async () => {
@@ -26,18 +27,6 @@ const streamSimple = _streamSimple as ReturnType<typeof vi.fn>;
 const { createAgentLoop } = await import("../loop");
 
 // ── Mock stream (no network) ──
-
-class MockEventStream implements AsyncIterable<unknown> {
-  private readonly events: unknown[] = [];
-  push(e: unknown) {
-    this.events.push(e);
-  }
-  async *[Symbol.asyncIterator]() {
-    for (const e of this.events) {
-      yield e;
-    }
-  }
-}
 
 function textStream(text: string) {
   const s = new MockEventStream();
@@ -149,7 +138,7 @@ describeMem("agent loop memory profile", () => {
   it("[1] one prompt, empty history", async () => {
     const store = createStore();
     const loop = createAgentLoop({ sessionId: "s1", model, tools: [], store });
-    streamSimple.mockReturnValue(textStream("ok"));
+    streamSimple.mockImplementation(() => textStream("ok"));
     const before = process.memoryUsage();
     await drain(loop.prompt("hello"));
     const after = snapshot("[1] one prompt, empty history");
@@ -161,7 +150,7 @@ describeMem("agent loop memory profile", () => {
     const store = createStore();
     await store.replaceMessages("s2", seedHistory(100));
     const loop = createAgentLoop({ sessionId: "s2", model, tools: [], store });
-    streamSimple.mockReturnValue(textStream("ok"));
+    streamSimple.mockImplementation(() => textStream("ok"));
     const before = process.memoryUsage();
     await drain(loop.prompt("next"));
     const after = snapshot("[2] one prompt, 100-msg history");
@@ -173,7 +162,7 @@ describeMem("agent loop memory profile", () => {
     const store = createStore();
     await store.replaceMessages("s2b", seedHistory(1000));
     const loop = createAgentLoop({ sessionId: "s2b", model, tools: [], store });
-    streamSimple.mockReturnValue(textStream("ok"));
+    streamSimple.mockImplementation(() => textStream("ok"));
     const before = process.memoryUsage();
     await drain(loop.prompt("next"));
     const after = snapshot("[2b] one prompt, 1000-msg history");
@@ -196,7 +185,7 @@ describeMem("agent loop memory profile", () => {
       tools: [],
       store: createStore(),
     });
-    streamSimple.mockReturnValue(textStream("ok"));
+    streamSimple.mockImplementation(() => textStream("ok"));
     const before = process.memoryUsage();
     await Promise.all([drain(loopA.prompt("a")), drain(loopB.prompt("b"))]);
     const after = snapshot("[3] two concurrent prompts");
@@ -208,7 +197,7 @@ describeMem("agent loop memory profile", () => {
     const store = createStore();
     await store.replaceMessages("s4", seedHistory(200)); // ~200KB
     const loop = createAgentLoop({ sessionId: "s4", model, tools: [], store });
-    streamSimple.mockReturnValue(textStream("ok"));
+    streamSimple.mockImplementation(() => textStream("ok"));
     const before = snapshot("[4] before prompt (200-msg seeded)");
     await drain(loop.prompt("go"));
     const after = snapshot("[4] after prompt ends");

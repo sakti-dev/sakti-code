@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AgentEvent, AgentMessage, SessionStore } from "../types";
+import { MockEventStream } from "./helpers";
 
 // Mock streamSimple before importing loop
 vi.mock("@earendil-works/pi-ai", async () => {
@@ -13,31 +14,6 @@ vi.mock("@earendil-works/pi-ai", async () => {
 const { streamSimple: _streamSimple } = await import("@earendil-works/pi-ai");
 const streamSimple = _streamSimple as any;
 const { createAgentLoop } = await import("../loop");
-
-/** Minimal async iterable + push stream that mimics MockEventStream. */
-class MockEventStream<T> implements AsyncIterable<T> {
-  private readonly events: T[] = [];
-  private _result?: any;
-
-  push(event: T) {
-    this.events.push(event);
-  }
-  setResult(r: any) {
-    this._result = r;
-  }
-  result() {
-    return this._result;
-  }
-  end() {
-    /* no-op */
-  }
-
-  async *[Symbol.asyncIterator]() {
-    for (const e of this.events) {
-      yield e;
-    }
-  }
-}
 
 function createMockStore(): SessionStore {
   const messages: Map<string, AgentMessage[]> = new Map();
@@ -207,7 +183,9 @@ function createToolCallStream(toolCall: {
 describe("AgentLoop", () => {
   it("simple prompt → LLM text response → yields events, appends messages", async () => {
     const store = createMockStore();
-    vi.mocked(streamSimple).mockReturnValue(createTextStream("Hello!"));
+    vi.mocked(streamSimple).mockImplementation(() =>
+      createTextStream("Hello!")
+    );
 
     const loop = createAgentLoop({
       sessionId: "s1",
@@ -316,7 +294,7 @@ describe("AgentLoop", () => {
 
   it("tool result with terminate → loop stops without sending back to LLM", async () => {
     const store = createMockStore();
-    vi.mocked(streamSimple).mockReturnValue(
+    vi.mocked(streamSimple).mockImplementation(() =>
       createToolCallStream({ id: "tc_1", name: "kill", args: {} })
     );
 

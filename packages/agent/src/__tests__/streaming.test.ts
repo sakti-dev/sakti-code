@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { collectEvents, MockEventStream } from "./helpers";
 
 vi.mock("@earendil-works/pi-ai", () => ({
   streamSimple: vi.fn(),
@@ -8,18 +9,6 @@ vi.mock("@earendil-works/pi-ai", () => ({
 const { streamSimple: _streamSimple } = await import("@earendil-works/pi-ai");
 const streamSimple = _streamSimple as any;
 const { streamLLMResponse } = await import("../loop/streaming");
-
-class MockEventStream<T> implements AsyncIterable<T> {
-  private readonly events: T[] = [];
-  push(event: T) {
-    this.events.push(event);
-  }
-  async *[Symbol.asyncIterator]() {
-    for (const e of this.events) {
-      yield e;
-    }
-  }
-}
 
 const reasoningModel = {
   id: "o3",
@@ -95,14 +84,6 @@ function textStream(text: string) {
   return s;
 }
 
-async function collectEvents(gen: AsyncIterable<any>) {
-  const events: any[] = [];
-  for await (const e of gen) {
-    events.push(e);
-  }
-  return events;
-}
-
 async function drainGenerator(gen: AsyncGenerator<any, any>) {
   let result: IteratorResult<any, any> | undefined;
   while (true) {
@@ -118,7 +99,7 @@ describe("streaming: reasoning option", () => {
     vi.clearAllMocks();
   });
   it("passes reasoning:'high' to streamSimple for a reasoning-capable model with thinkingLevel:'high'", async () => {
-    vi.mocked(streamSimple).mockReturnValue(textStream("ok"));
+    vi.mocked(streamSimple).mockImplementation(() => textStream("ok"));
 
     const gen = streamLLMResponse(
       reasoningModel,
@@ -139,7 +120,7 @@ describe("streaming: reasoning option", () => {
   });
 
   it("does NOT pass reasoning for a non-reasoning model even with thinkingLevel:'high'", async () => {
-    vi.mocked(streamSimple).mockReturnValue(textStream("ok"));
+    vi.mocked(streamSimple).mockImplementation(() => textStream("ok"));
 
     const gen = streamLLMResponse(
       nonReasoningModel,
@@ -160,7 +141,7 @@ describe("streaming: reasoning option", () => {
   });
 
   it("does NOT pass reasoning when thinkingLevel is 'off'", async () => {
-    vi.mocked(streamSimple).mockReturnValue(textStream("ok"));
+    vi.mocked(streamSimple).mockImplementation(() => textStream("ok"));
 
     const gen = streamLLMResponse(
       reasoningModel,
@@ -180,7 +161,7 @@ describe("streaming: reasoning option", () => {
   });
 
   it("does NOT pass reasoning when thinkingLevel is undefined", async () => {
-    vi.mocked(streamSimple).mockReturnValue(textStream("ok"));
+    vi.mocked(streamSimple).mockImplementation(() => textStream("ok"));
 
     const gen = streamLLMResponse(
       reasoningModel,
@@ -243,7 +224,7 @@ describe("streaming: whole-message preservation (pi-ai source-of-truth)", () => 
     });
     s.push({ type: "done", reason: "stop", message: fullMessage });
 
-    vi.mocked(streamSimple).mockReturnValue(s);
+    vi.mocked(streamSimple).mockImplementation(() => s);
     const gen = streamLLMResponse(
       nonReasoningModel,
       [],
@@ -288,7 +269,7 @@ describe("streaming: whole-message preservation (pi-ai source-of-truth)", () => 
     };
     s.push({ type: "error", reason: "error", error: errorMessage });
 
-    vi.mocked(streamSimple).mockReturnValue(s);
+    vi.mocked(streamSimple).mockImplementation(() => s);
     const gen = streamLLMResponse(
       nonReasoningModel,
       [],
