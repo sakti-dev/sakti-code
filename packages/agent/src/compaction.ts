@@ -58,6 +58,11 @@ export function estimateContextTokens(messages: AgentMessage[]): number {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i];
     if (m && m.role === "assistant") {
+      // Skip errored or aborted turns — their usage is garbage
+      // (pi getAssistantUsage: compaction.ts:144-152)
+      if (m.stopReason === "error" || m.stopReason === "aborted") {
+        continue;
+      }
       const u = m.usage;
       const usageTokens =
         u?.totalTokens ||

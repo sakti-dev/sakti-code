@@ -42,10 +42,10 @@
 
 ## 6. Skip error/aborted usage in estimateContextTokens (Task 4 — pi getAssistantUsage)
 
-- [ ] 6.1 Write failing test in `packages/agent/src/__tests__/compaction.test.ts`: message list where the most recent assistant has `stopReason: "error"`, zero usage, and an earlier successful assistant has `usage.totalTokens: 500`; assert `estimateContextTokens` returns ~500 (uses the earlier message), NOT 0. RED.
-- [ ] 6.2 In `packages/agent/src/compaction.ts` `estimateContextTokens`: when scanning back, `continue` past any assistant with `stopReason === "error" || stopReason === "aborted"` (pi `getAssistantUsage`). Keep the existing `usageTokens > 0` guard.
-- [ ] 6.3 Test → GREEN. Run full agent suite.
-- [ ] 6.4 Gate + commit "fix(compaction): skip error/aborted usage in estimateContextTokens (pi getAssistantUsage)".
+- [x] 6.1 Write failing test in `packages/agent/src/__tests__/compaction.test.ts`: message list where the most recent assistant has `stopReason: "error"`, zero usage, and an earlier successful assistant has `usage.totalTokens: 500`; assert `estimateContextTokens` returns ~500 (uses the earlier message), NOT 0. RED.
+- [x] 6.2 In `packages/agent/src/compaction.ts` `estimateContextTokens`: when scanning back, `continue` past any assistant with `stopReason === "error" || stopReason === "aborted"` (pi `getAssistantUsage`). Keep the existing `usageTokens > 0` guard.
+- [x] 6.3 Test → GREEN. Run full agent suite.
+- [x] 6.4 Gate + commit "fix(compaction): skip error/aborted usage in estimateContextTokens (pi getAssistantUsage)".
 
 ## 7. Verification
 
