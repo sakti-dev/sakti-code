@@ -1,12 +1,12 @@
 ## ADDED Requirements
 
 ### Requirement: Per-prompt agent runner
-The system SHALL provide `runPrompt(ctx, sessionId, message, signal)` as an `AsyncGenerator<AgentEvent>` that, for a valid session+project, resolves the model from stored config, builds cwd-scoped tools, constructs a fresh ephemeral `createAgentLoop`, and forwards the loop's `AgentEvent` stream. Each invocation SHALL construct its own loop, model, tools, and store (no shared mutable state between prompts). Messages produced by the loop SHALL be persisted via `SqliteSessionStore` so they survive across prompts.
+The system SHALL provide `runPrompt(ctx, sessionId, message, store)` as an `AsyncGenerator<AgentEvent>` that, for a valid session+project, resolves the model from stored config, builds cwd-scoped tools, constructs a fresh ephemeral `createAgentLoop`, and forwards the loop's `AgentEvent` stream. Each invocation SHALL construct its own loop, model, tools, and store (no shared mutable state between prompts). Messages produced by the loop SHALL be persisted via the injected `SessionStore` so they survive across prompts. The runner manages an internal `AbortController` per invocation; callers do not provide a signal.
 
 #### Scenario: streams events and persists messages for a valid session
 - **WHEN** `runPrompt` is called with a valid `sessionId` and the loop's mocked `streamSimple` yields a `done` event
 - **THEN** the generator yields events including `agent_start` and `agent_end`
-- **AND** `MessageRepo.countBySession(sessionId)` is greater than zero after the generator completes
+- **AND** `store.loadMessages(sessionId)` returns messages after the generator completes
 
 #### Scenario: unknown session
 - **WHEN** `runPrompt` is called with a `sessionId` that does not exist
