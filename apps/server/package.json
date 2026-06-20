@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
+    "test": "bun test --path-ignore-patterns '**/agent/**'",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

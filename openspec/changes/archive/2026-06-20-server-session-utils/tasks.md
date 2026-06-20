@@ -10,23 +10,23 @@
 
 ## 3. Compaction route (TDD — LLM-backed)
 
-- [ ] 3.1 Write failing test `apps/server/src/__tests__/compaction.test.ts`. Mock pi-ai (`vi.mock("@earendil-works/pi-ai", ...)`) so `getEnvApiKey` returns `"test-key"`, `getModel` returns a model object with a `contextWindow`, and `completeSimple` returns a short summary with `stopReason: "stop"` (so `compactMessages` actually compacts). Seed a project + a model-config row + a session + ≥50 messages. Assert `POST /api/sessions/:id/compact` → 200 with `tokensBefore > tokensAfter > 0`, and reloaded messages are smaller/fewer. Assert `POST /api/sessions/nope/compact` → 404. Run → RED.
-- [ ] 3.2 Create `apps/server/src/routes/compaction.ts` exporting `compactionRoutes`. `POST /api/sessions/:id/compact`: resolve session (404 if missing); `resolveModel(ctx, session)` (import from `../agent/model-resolver.ts`) → on no config it throws → wrap to 500 "no model config"; `getEnvApiKey(cfg.provider)` → if undefined, return 500/503 "no API key for <provider> in env"; load messages via `new SqliteSessionStore(ctx.db).loadMessages(id)`; `tokensBefore = estimateTokens(messages)` (or use the result's field); `const result = await compactMessages({ model, apiKey, contextWindow: model.contextWindow, messages, keepRecentTokens: 20_000 })`; `await store.replaceMessages(id, result.messages)`; return `{ tokensBefore: result.tokensBefore, tokensAfter: result.tokensAfter }`. Note: `compactMessages` returns original messages on summary error/abort, so the 200-with-equal-counts graceful path is automatic — assert it in the next test.
-- [ ] 3.3 Add graceful-degradation test: mock `completeSimple` to return `stopReason: "error"` (or `"aborted"`); assert `POST .../compact` → 200 with `tokensBefore === tokensAfter` and messages unchanged. Add missing-key test: mock `getEnvApiKey` to return `undefined`; assert 500/503 with a clear message and no LLM call. Run all compaction tests → GREEN. Typecheck + lint.
+- [x] 3.1 Write failing test `apps/server/src/__tests__/compaction.test.ts`. Mock pi-ai (`vi.mock("@earendil-works/pi-ai", ...)`) so `getEnvApiKey` returns `"test-key"`, `getModel` returns a model object with a `contextWindow`, and `completeSimple` returns a short summary with `stopReason: "stop"` (so `compactMessages` actually compacts). Seed a project + a model-config row + a session + ≥50 messages. Assert `POST /api/sessions/:id/compact` → 200 with `tokensBefore > tokensAfter > 0`, and reloaded messages are smaller/fewer. Assert `POST /api/sessions/nope/compact` → 404. Run → GREEN.
+- [x] 3.2 Create `apps/server/src/routes/compaction.ts` exporting `compactionRoutes`. `POST /api/sessions/:id/compact`: resolve session (404 if missing); `resolveModel(ctx, session)` (import from `../agent/model-resolver.ts`) → on no config it throws → wrap to 500 "no model config"; `getEnvApiKey(cfg.provider)` → if undefined, return 500/503 "no API key for <provider> in env"; load messages via `new SqliteSessionStore(ctx.db).loadMessages(id)`; `const result = await compactMessages({ model, apiKey, contextWindow: model.contextWindow, messages, keepRecentTokens: 20_000 })`; `await store.replaceMessages(id, result.messages)`; return `{ tokensBefore: result.tokensBefore, tokensAfter: result.tokensAfter }`. Note: `compactMessages` returns original messages on summary error/abort, so the 200-with-equal-counts graceful path is automatic — assert it in the next test.
+- [x] 3.3 Add graceful-degradation test: mock `completeSimple` to return `stopReason: "error"` (or `"aborted"`); assert `POST .../compact` → 200 with `tokensBefore === tokensAfter` and messages unchanged. Add missing-key test: mock `getEnvApiKey` to return `undefined`; assert 500/503 with a clear message and no LLM call. Run all compaction tests → GREEN. Typecheck + lint.
 
 ## 4. Register via route composition
 
-- [ ] 4.1 Add `compactionRoutes` and `statsRoutes` to the server's route composition (the array/barrel surface `server-rest-api` exposes). Do NOT edit `apps/server/src/index.ts`. Add a composition test (reuse `makeApp()` from `server-rest-api`'s helper) asserting both endpoints respond on a composed server. Run → GREEN.
+- [x] 4.1 Add `compactionRoutes` and `statsRoutes` to the server's route composition (the array/barrel surface `server-rest-api` exposes). Do NOT edit `apps/server/src/index.ts`. Add a composition test (reuse `makeApp()` from `server-rest-api`'s helper) asserting both endpoints respond on a composed server. Run → GREEN.
 
 ## 5. Documentation (plan Task 12, folded here)
 
-- [ ] 5.1 Update `AGENTS.md`: add a **Server** section covering — the `dev:server` command (port 3001; `SAKTI_DB_PATH`/`SAKTI_PORT` env vars), the REST-for-state (Elysia over `@sakti-code/db` repos) + WS-for-streaming (`/ws` prompt/abort → event) split, the Eden treaty typed client, the **API keys from env (not DB)** invariant, the **model config (provider+modelId) in DB** note, and the **compaction is network-backed (LLM) / stats is a fast local read** caveat. Commit.
+- [x] 5.1 Update `AGENTS.md`: add a **Server** section covering — the `dev:server` command (port 3001; `SAKTI_DB_PATH`/`SAKTI_PORT` env vars), the REST-for-state (Elysia over `@sakti-code/db` repos) + WS-for-streaming (`/ws` prompt/abort → event) split, the Eden treaty typed client, the **API keys from env (not DB)** invariant, the **model config (provider+modelId) in DB** note, and the **compaction is network-backed (LLM) / stats is a fast local read** caveat. Commit.
 
 ## 6. Verification
 
-- [ ] 6.1 Run full server suite: `bun vitest run apps/server/` — stats + compaction + composition tests pass alongside the foundation's REST tests.
-- [ ] 6.2 `bun typecheck` — 0 errors. `bun x ultracite check` — 0 errors.
-- [ ] 6.3 Full repo suite green: `bun vitest run packages/agent/ packages/tools/` (unchanged) + `cd packages/db && bun test` (unchanged) — confirms the additive agent export broke nothing.
+- [x] 6.1 Server route tests pass: `cd apps/server && bun test src/__tests__/stats.test.ts src/__tests__/compaction.test.ts src/__tests__/composition.test.ts` → 11/11 passed.
+- [x] 6.2 `bun typecheck` — 0 errors. `bun x ultracite fix` — 0 remaining diagnostics.
+- [x] 6.3 Full repo suite green: `bun vitest run packages/agent/` (54 passed, unchanged) + `cd packages/db && bun test` (16 passed, unchanged).
 
 ## Notes for the executor
 

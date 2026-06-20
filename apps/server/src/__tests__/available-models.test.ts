@@ -1,12 +1,17 @@
-import { describe, expect, it, vi } from "bun:test";
+import { describe, expect, it, type mock } from "bun:test";
 
-vi.mock("@earendil-works/pi-ai", () => ({
-  getProviders: () => ["openai", "anthropic"],
-  getModels: (p: string) =>
-    p === "openai"
-      ? [{ id: "gpt-4o", name: "GPT-4o", provider: "openai" }]
-      : [{ id: "claude-3", name: "Claude 3", provider: "anthropic" }],
-}));
+// pi-ai is globally mocked via apps/server/test-setup.ts.
+// Override getProviders and getModels with test-specific values.
+const { getProviders, getModels } = await import("@earendil-works/pi-ai");
+(getProviders as ReturnType<typeof mock>).mockImplementation(() => [
+  "openai",
+  "anthropic",
+]);
+(getModels as ReturnType<typeof mock>).mockImplementation((p: string) =>
+  p === "openai"
+    ? [{ id: "gpt-4o", name: "GPT-4o", provider: "openai" }]
+    : [{ id: "claude-3", name: "Claude 3", provider: "anthropic" }]
+);
 
 const { availableModelsRoutes } = await import("../routes/available-models.ts");
 

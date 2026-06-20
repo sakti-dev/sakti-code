@@ -23,7 +23,8 @@ bun typecheck                                    # typecheck all packages (tsc -
 bun vitest run packages/tools/                   # tool tests (vitest)
 bun vitest run packages/agent/                   # agent tests (vitest)
 cd packages/db && bun test                       # db tests (bun:test, needs bun:sqlite)
-cd apps/server && bun test                       # server route tests (bun:test)
+cd apps/server && bun run test                  # server route tests (via preload, excludes agent vitest tests);
+                                                 # bun test directly without the script also works but picks up agent vitest tests
 bun dev:server                                   # start Elysia server on port 3001 (SAKTI_PORT env override)
 ```
 
@@ -54,6 +55,44 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 - Assert inside `it()`/`test()`; async/await not done-callbacks. No `.only`/`.skip` in committed code. Flat suites over deep `describe` nesting.
 
 Biome catches formatting and common issues automatically — focus your judgment on business logic, naming, architecture, edge cases, and UX/accessibility.
+
+## Server
+
+The Elysia REST server lives in `apps/server/` and follows a **REST-for-state, WS-for-streaming** split:
+
+- **REST routes** handle CRUD over sessions, projects, settings, models, costs, git operations, and session utilities (stats, compaction). Each route module is a standalone Elysia plugin composed via `buildServer({ db, routes: [...] })`.
+- **WebSocket** (`/ws`) manages the agent streaming loop — send a JSON prompt, receive typed events back over the socket. See the `agent-streaming` spec for the wire format.
+- **Eden treaty** typed client at `apps/app/src/lib/api.ts` provides end-to-end type safety for REST calls.
+
+### Running the server
+
+```bash
+bun dev:server                              # starts on port 3001
+SAKTI_PORT=4000 bun dev:server              # override port
+SAKTI_DB_PATH=/custom/path/sakti.db bun dev:server   # custom db path
+```
+
+### Environment & configuration
+
+- **API keys come from env, never from the DB.** Each LLM provider's key is resolved at runtime via `getEnvApiKey(provider)` (pi-ai). Standard env vars are `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, etc.
+- **Model config (provider + modelId) lives in the DB** (`model_config` table), settable per-project or as a global default.
+
+### Route modules
+
+Leaf change sets register themselves via `buildServer`'s `routes` array — the foundation `index.ts` is never edited for new route modules.
+
+| Module | Routes | Notes |
+| :--- | :--- | :--- |
+| `healthRoutes` | `GET /health` | Liveness check |
+| `projectsRoutes` | `GET/PUT/DELETE /api/projects` | Project CRUD |
+| `sessionsRoutes` | `GET /api/sessions` | Session listing |
+| `settingsRoutes` | `GET/PUT /api/settings` | Global settings |
+| `modelConfigRoutes` | `GET/PUT/DELETE /api/models` | Per-project model config |
+| `costsRoutes` | `GET /api/costs` | Cost aggregation |
+| `availableModelsRoutes` | `GET /api/available-models` | Models catalog |
+| `gitRoutes` | `GET /api/git/:projectId/status, /branch, /diff, /log` | Git operations (status, branch switch, diff, log) |
+| `statsRoutes` | `GET /api/sessions/:id/stats` | **Fast, local read** — DB-only message count + cost aggregation + duration projection |
+| `compactionRoutes` | `POST /api/sessions/:id/compact` | **Network-backed (LLM)** — runs the agent's `compactMessages` summarizer on a session's history, persists the result, returns token counts. Latency depends on the provider. Calls `resolveModel` from `agent-streaming` and resolves required API key from env. Degrades gracefully: on summary failure (error/abort) it returns the original messages unchanged with equal token counts. |
 
 ## Debugging: bisect before you theorize
 

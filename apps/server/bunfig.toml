@@ -1,0 +1,4 @@
+[test]
+# Global mock for @earendil-works/pi-ai — loaded before any test file runs.
+# Individual tests override specific functions via mockImplementation.
+preload = ["./test-setup.ts"]
