@@ -1,12 +1,12 @@
 ## 1. Agent-package prerequisite export
 
-- [ ] 1.1 Add to `packages/agent/src/index.ts`: `export { compactMessages, type CompactionOptions, type CompactionResult } from "./compaction.ts";` (additive re-export, no behavior change). Run `bun vitest run packages/agent/` → all 54 (5 mem-bench skipped) still pass. Typecheck + lint + commit. (This unblocks the compaction route's package-boundary import.)
+- [x] 1.1 Add to `packages/agent/src/index.ts`: `export { compactMessages, type CompactionOptions, type CompactionResult } from "./compaction.ts";` (additive re-export, no behavior change). Run `bun vitest run packages/agent/` → all 54 (5 mem-bench skipped) still pass. Typecheck + lint + commit. (This unblocks the compaction route's package-boundary import.)
 
 ## 2. Stats route (TDD — pure DB, do this first as the simpler half)
 
-- [ ] 2.1 Write failing test `apps/server/src/__tests__/stats.test.ts`: seed a project + session + 2 messages; `GET /api/sessions/:id/stats` → 200 with `messageCount: 2`, `createdAt === session.createdAt`, `durationMs >= 0`, and `totalInputTokens/totalOutputTokens/totalCostUsd` all 0 (no costs recorded). Assert `GET /api/sessions/nope/stats` → 404. Run → RED.
-- [ ] 2.2 Create `apps/server/src/routes/stats.ts` exporting `statsRoutes` (`new Elysia({ name: "routes.stats" })`). `GET /api/sessions/:id/stats`: resolve session via `store.ctx.repos.sessions.findById` (404 if missing), compose `messageCount = ctx.repos.messages.countBySession(id)`, `costs = ctx.repos.costs.aggregateBySession(id)` (default zeros if empty), `createdAt = session.createdAt`, `durationMs = Date.now() - session.createdAt`. Return the typed object (use `t.Object({...})` response schema).
-- [ ] 2.3 Run → GREEN. Typecheck + lint.
+- [x] 2.1 Write failing test `apps/server/src/__tests__/stats.test.ts`: seed a project + session + 2 messages; `GET /api/sessions/:id/stats` → 200 with `messageCount: 2`, `createdAt === session.createdAt`, `durationMs >= 0`, and `totalInputTokens/totalOutputTokens/totalCostUsd` all 0 (no costs recorded). Assert `GET /api/sessions/nope/stats` → 404. Run → RED.
+- [x] 2.2 Create `apps/server/src/routes/stats.ts` exporting `statsRoutes` (`new Elysia({ name: "routes.stats" })`). `GET /api/sessions/:id/stats`: resolve session via `store.ctx.repos.sessions.findById` (404 if missing), compose `messageCount = ctx.repos.messages.countBySession(id)`, `costs = ctx.repos.costs.aggregateBySession(id)` (default zeros if empty), `createdAt = session.createdAt`, `durationMs = Date.now() - session.createdAt`. Return the typed object (use `t.Object({...})` response schema).
+- [x] 2.3 Run → GREEN. Typecheck + lint.
 
 ## 3. Compaction route (TDD — LLM-backed)
 
