@@ -79,9 +79,11 @@ export async function* executeToolCalls(
       isError: result.isError ?? false,
       timestamp: Date.now(),
     };
+    yield evt("message_start", { message: toolMsg });
     messages.push(toolMsg);
     toolResultMessages.push(toolMsg);
     await store.appendMessage(sessionId, toolMsg);
+    yield evt("message_end", { message: toolMsg });
 
     if (result.terminate) {
       shouldTerminate = true;

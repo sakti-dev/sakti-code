@@ -167,16 +167,16 @@ describe("Agent loop event ordering", () => {
     expect(types.indexOf("agent_start")).toBeLessThan(
       types.indexOf("turn_start")
     );
-    expect(types.indexOf("turn_start")).toBeLessThan(
-      types.indexOf("message_start")
-    );
-    expect(types.indexOf("message_start")).toBeLessThan(
-      types.indexOf("message_end")
-    );
-    expect(types.indexOf("message_end")).toBeLessThan(
-      types.indexOf("turn_end")
-    );
-    expect(types.indexOf("turn_end")).toBeLessThan(types.indexOf("agent_end"));
+
+    const lastMsgStartIdx = types.lastIndexOf("message_start");
+    const lastMsgEndIdx = types.lastIndexOf("message_end");
+    const turnStartIdx = types.indexOf("turn_start");
+    expect(turnStartIdx).toBeLessThan(lastMsgStartIdx);
+    expect(lastMsgStartIdx).toBeLessThan(lastMsgEndIdx);
+
+    const turnEndIdx = types.indexOf("turn_end");
+    expect(lastMsgEndIdx).toBeLessThan(turnEndIdx);
+    expect(turnEndIdx).toBeLessThan(types.indexOf("agent_end"));
   });
 
   it("turn_end carries the final assistant message", async () => {
@@ -311,6 +311,173 @@ describe("Agent loop tool execution", () => {
     await collectEvents(loop.prompt("read x"));
 
     expect(store.appendMessage).toHaveBeenCalledTimes(4); // user + assistant1 + tool + assistant2
+  });
+});
+
+describe("Agent loop message lifecycle", () => {
+  it("wraps the user prompt in message_start/message_end with payload", async () => {
+    const store = createMockStore();
+    vi.mocked(streamSimple).mockReturnValue(textStream("Hello!"));
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [],
+      store,
+    });
+    const events = await collectEvents(loop.prompt("hello"));
+
+    const types = events.map((e) => e.type);
+
+    const agentStartIdx = types.indexOf("agent_start");
+    const turnStartIdx = types.indexOf("turn_start");
+
+    const promptMsgStarts = events
+      .map((e, i) => ({ e, i }))
+      .filter(
+        (x) =>
+          x.e.type === "message_start" &&
+          x.e.message?.role === "user" &&
+          (x.e.message as any).content === "hello"
+      );
+    expect(promptMsgStarts.length).toBe(1);
+    const promptMsgStartIdx = promptMsgStarts[0]!.i;
+
+    const promptMsgEnds = events
+      .map((e, i) => ({ e, i }))
+      .filter(
+        (x) =>
+          x.e.type === "message_end" &&
+          x.e.message?.role === "user" &&
+          (x.e.message as any).content === "hello"
+      );
+    expect(promptMsgEnds.length).toBe(1);
+    const promptMsgEndIdx = promptMsgEnds[0]!.i;
+
+    expect(promptMsgStartIdx).toBeGreaterThan(agentStartIdx);
+    expect(promptMsgEndIdx).toBeLessThan(turnStartIdx);
+    expect(promptMsgStartIdx).toBeLessThan(promptMsgEndIdx);
+  });
+
+  it("wraps each injected steer in its own message_start/message_end with payload", async () => {
+    const store = createMockStore();
+    vi.mocked(streamSimple).mockReturnValue(textStream("Hello!"));
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [],
+      store,
+    });
+
+    loop.steer("steer one");
+    loop.steer("steer two");
+    const events = await collectEvents(loop.prompt("hi"));
+
+    const steer1Starts = events.filter(
+      (e) =>
+        e.type === "message_start" &&
+        e.message?.role === "user" &&
+        (e.message as any).content === "steer one"
+    );
+    const steer1Ends = events.filter(
+      (e) =>
+        e.type === "message_end" &&
+        e.message?.role === "user" &&
+        (e.message as any).content === "steer one"
+    );
+    expect(steer1Starts.length).toBe(1);
+    expect(steer1Ends.length).toBe(1);
+
+    const steer2Starts = events.filter(
+      (e) =>
+        e.type === "message_start" &&
+        e.message?.role === "user" &&
+        (e.message as any).content === "steer two"
+    );
+    const steer2Ends = events.filter(
+      (e) =>
+        e.type === "message_end" &&
+        e.message?.role === "user" &&
+        (e.message as any).content === "steer two"
+    );
+    expect(steer2Starts.length).toBe(1);
+    expect(steer2Ends.length).toBe(1);
+  });
+
+  it("wraps each tool-result message in message_start/message_end with payload", async () => {
+    const store = createMockStore();
+    const echoTool: AgentTool = {
+      name: "echo",
+      description: "Echoes input",
+      parameters: {
+        type: "object",
+        properties: { msg: { type: "string" } },
+        required: ["msg"],
+      },
+      execute: async () => ({ content: "echoed", terminate: false }),
+    };
+
+    let callCount = 0;
+    vi.mocked(streamSimple).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return toolCallStream("echo", { msg: "hello" });
+      }
+      return textStream("All done!");
+    });
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [echoTool],
+      store,
+    });
+    const events = await collectEvents(loop.prompt("use echo"));
+
+    const toolMsgStarts = events.filter(
+      (e) => e.type === "message_start" && e.message?.role === "tool"
+    );
+    const toolMsgEnds = events.filter(
+      (e) => e.type === "message_end" && e.message?.role === "tool"
+    );
+    expect(toolMsgStarts.length).toBe(1);
+    expect(toolMsgEnds.length).toBe(1);
+
+    const types = events.map((e) => e.type);
+    const toolExecEndIdx = types.indexOf("tool_execution_end");
+    const toolMsgStartIdx = events.findIndex(
+      (e) => e.type === "message_start" && e.message?.role === "tool"
+    );
+    expect(toolExecEndIdx).toBeLessThan(toolMsgStartIdx);
+  });
+
+  it("assistant-stream message_start and message_end carry the message payload", async () => {
+    const store = createMockStore();
+    vi.mocked(streamSimple).mockReturnValue(textStream("Hello!"));
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [],
+      store,
+    });
+    const events = await collectEvents(loop.prompt("hi"));
+
+    const assistantMsgStarts = events.filter(
+      (e) => e.type === "message_start" && e.message?.role === "assistant"
+    );
+    const assistantMsgEnds = events.filter(
+      (e) => e.type === "message_end" && e.message?.role === "assistant"
+    );
+    expect(assistantMsgStarts.length).toBe(1);
+    expect(assistantMsgEnds.length).toBe(1);
+
+    const endPayload = assistantMsgEnds[0]!.message!;
+    expect(endPayload.role).toBe("assistant");
+    expect((endPayload as any).content).toEqual([
+      { type: "text", text: "Hello!" },
+    ]);
   });
 });
 

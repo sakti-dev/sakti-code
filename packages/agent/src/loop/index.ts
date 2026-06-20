@@ -38,7 +38,7 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
   async function injectMessage(
     messages: AgentMessage[],
     text: string
-  ): Promise<void> {
+  ): Promise<AgentMessage> {
     const msg: AgentMessage = {
       role: "user",
       content: text,
@@ -46,13 +46,16 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
     };
     messages.push(msg);
     await store.appendMessage(sessionId, msg);
+    return msg;
   }
 
   /**
    * Drain the steer queue: pop messages and inject as user messages.
-   * Returns true if any steers were processed.
+   * Yields message_start/message_end per steer. Returns true if any steers were processed.
    */
-  async function drainSteers(messages: AgentMessage[]): Promise<boolean> {
+  async function* drainSteers(
+    messages: AgentMessage[]
+  ): AsyncGenerator<AgentEvent, boolean> {
     if (steerQueue.length === 0) {
       return false;
     }
@@ -60,13 +63,17 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
     if (mode === "one-at-a-time") {
       const msg = steerQueue.shift();
       if (msg) {
-        await injectMessage(messages, msg);
+        const userMsg = await injectMessage(messages, msg);
+        yield evt("message_start", { message: userMsg });
+        yield evt("message_end", { message: userMsg });
       }
     } else {
       while (steerQueue.length > 0) {
         const msg = steerQueue.shift();
         if (msg) {
-          await injectMessage(messages, msg);
+          const userMsg = await injectMessage(messages, msg);
+          yield evt("message_start", { message: userMsg });
+          yield evt("message_end", { message: userMsg });
         }
       }
     }
@@ -84,13 +91,15 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
     // lifecycle; this flag gates both follow-up injection points.
     let followUpDone = false;
 
-    await injectMessage(messages, message);
-
     yield evt("agent_start", { sessionId });
+
+    const userMsg = await injectMessage(messages, message);
+    yield evt("message_start", { message: userMsg });
+    yield evt("message_end", { message: userMsg });
 
     while (true) {
       // Process any queued steers before the turn
-      await drainSteers(messages);
+      yield* drainSteers(messages);
 
       // Auto-compaction: if enabled and a summarization key is available,
       // check whether the context is near the window limit before sending
@@ -130,7 +139,20 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
       }
 
       yield evt("turn_start", { turnIndex });
-      yield evt("message_start");
+      const initialAssistant: Extract<AgentMessage, { role: "assistant" }> = {
+        role: "assistant",
+        content: [],
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        timestamp: Date.now(),
+      };
+      yield evt("message_start", { message: initialAssistant });
 
       // The LLM stream must NOT be aborted by a steer — a steer arriving
       // mid-stream is processed after the stream completes (see drainSteers
@@ -159,7 +181,9 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
         return;
       }
 
-      yield evt("message_end");
+      yield evt("message_end", {
+        message: streamResult.finalAssistant,
+      });
 
       if (!streamResult.finalAssistant) {
         yield evt("error", {
@@ -181,7 +205,7 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
 
         // A steer may have arrived during streaming — process it before
         // checking follow-up / terminating.
-        if (await drainSteers(messages)) {
+        if (yield* drainSteers(messages)) {
           turnIndex++;
           continue;
         }
@@ -225,7 +249,7 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
       }
 
       // After tool execution, check for steers that arrived mid-execution
-      const hadSteers = await drainSteers(messages);
+      const hadSteers = yield* drainSteers(messages);
       if (hadSteers) {
         continue; // process steers in a new turn
       }

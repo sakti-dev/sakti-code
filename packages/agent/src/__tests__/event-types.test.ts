@@ -54,6 +54,17 @@ describe("AgentEvent discriminated union", () => {
     const me: AgentEvent = { type: "message_end", timestamp: 0 };
     expect(ms.type).toBe("message_start");
     expect(me.type).toBe("message_end");
+
+    const userMsg: AgentEvent = {
+      type: "message_start",
+      timestamp: 0,
+      message: { role: "user", content: "hello", timestamp: 0 },
+    };
+    expect(userMsg.type).toBe("message_start");
+    if (userMsg.type === "message_start" && userMsg.message) {
+      expect(userMsg.message.role).toBe("user");
+      expect(userMsg.message.content).toBe("hello");
+    }
   });
 
   it("text_delta message update", () => {

@@ -133,9 +133,11 @@ export interface TurnEndEvent extends AgentEventBase {
   type: "turn_end";
 }
 export interface MessageStartEvent extends AgentEventBase {
+  message?: AgentMessage;
   type: "message_start";
 }
 export interface MessageEndEvent extends AgentEventBase {
+  message?: AgentMessage;
   type: "message_end";
 }
 
