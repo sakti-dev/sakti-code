@@ -12,6 +12,7 @@ sakti-code: desktop app (Electrobun + SolidJS) running multiple AI coding agents
 - `packages/agent/` — pure agent loop, types, compaction. **No persistence, no DB.** Talks to storage via the `SessionStore` interface.
 - `packages/db/` — Drizzle schema, repos, `SqliteSessionStore` (implements `SessionStore`).
 - `packages/tools/` — coding tools (read, write, edit, bash, grep, find, ls).
+- `apps/server/` — Elysia REST server. Composes route modules via `buildServer()`. State injected via `.state("ctx", createContext(db))`; routes access it through `getCtx(store)`. Eden treaty client at `apps/app/src/lib/api.ts`.
 - `openspec/` — change specs + the Pi reference implementation under `references/`.
 
 ## Commands
@@ -22,12 +23,14 @@ bun typecheck                                    # typecheck all packages (tsc -
 bun vitest run packages/tools/                   # tool tests (vitest)
 bun vitest run packages/agent/                   # agent tests (vitest)
 cd packages/db && bun test                       # db tests (bun:test, needs bun:sqlite)
+cd apps/server && bun test                       # server route tests (bun:test)
+bun dev:server                                   # start Elysia server on port 3001 (SAKTI_PORT env override)
 ```
 
 ## Conventions
 
 - **Follow TDD** — write the failing test first (RED), implement until it passes (GREEN), then refactor. Verify RED before implementing.
-- **Tests live in `__tests__/` colocated with source.** Vitest for agent+tools; `bun:test` for db.
+- **Tests live in `__tests__/` colocated with source.** Vitest for agent+tools; `bun:test` for db + server.
 - **`exactOptionalPropertyTypes: true` is on.** Use conditional spread `...(x !== undefined ? { x } : {})` instead of passing `undefined`.
 - TS 6.0 quirks: `include`/`references` must be top-level in tsconfig (not inside `compilerOptions`); `shell` in `execSync` must be a `string` (e.g. `"/bin/sh"`), not `boolean`.
 - Workspace `package.json` exports point to `./src/index.ts` (not `./dist/`) so bun dev resolves `.ts` directly.

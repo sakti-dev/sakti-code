@@ -19,6 +19,7 @@
     "build:canary": "turbo run build:canary",
     "check": "ultracite check",
     "fix": "ultracite fix",
+    "dev:server": "bun run --watch apps/server/src/index.ts",
     "prepare": "husky"
   },
   "workspaces": [

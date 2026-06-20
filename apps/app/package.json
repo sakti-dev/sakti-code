@@ -10,6 +10,8 @@
     "build:canary": "vite build && electrobun build --env=canary"
   },
   "dependencies": {
+    "@elysiajs/eden": "^1.4.9",
+    "@sakti-code/server": "workspace:*",
     "electrobun": "1.18.1"
   },
   "devDependencies": {

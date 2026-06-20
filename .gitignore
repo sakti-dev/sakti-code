@@ -7,4 +7,4 @@ dist/
 artifacts/
 references/
 *.tsbuildinfo
-.direnv/
+.direnv/sakti.db

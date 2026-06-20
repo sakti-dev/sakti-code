@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "strictNullChecks": true,
+    "exactOptionalPropertyTypes": false,
+    "paths": {
+      "@sakti-code/agent": ["../../packages/agent/src/index.ts"],
+      "@sakti-code/db": ["../../packages/db/src/index.ts"],
+      "@sakti-code/tools": ["../../packages/tools/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": []
+}
