@@ -27,5 +27,8 @@
     "packages/*"
   ],
   "private": true,
-  "packageManager": "bun@1.2.15"
+  "packageManager": "bun@1.2.15",
+  "dependencies": {
+    "typebox": "^1.2.18"
+  }
 }

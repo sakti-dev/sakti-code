@@ -35,6 +35,25 @@
           }
         }
       }
+    },
+    {
+      "includes": ["packages/agent/src/**", "packages/tools/src/**"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noBannedTypes": "off"
+          },
+          "suspicious": {
+            "noExplicitAny": "off"
+          },
+          "style": {
+            "useGroupedAccessorPairs": "off",
+            "useConsistentMemberAccessibility": "off",
+            "useConsistentTypeDefinitions": "off",
+            "useConsistentArrayType": "off"
+          }
+        }
+      }
     }
   ]
 }
