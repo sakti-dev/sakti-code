@@ -16,9 +16,9 @@
 
 ## 3. Server runner: wire apiKey + autoCompaction
 
-- [ ] 3.1 Write/extend failing test in `apps/server/src/agent/__tests__/runner.test.ts`: with a configured provider API key and `auto_compaction: "true"` in settings → assert `createAgentLoop` receives `autoCompaction: true` and a non-undefined `apiKey`. (RED — currently neither is passed)
-- [ ] 3.2 Implement in `apps/server/src/agent/runner.ts`: import `getEnvApiKey` from `@earendil-works/pi-ai`; after resolving the model, compute `provider = ctx.repos.models.getForProject(session.projectId)?.provider ?? ""` and `apiKey = getEnvApiKey(provider) ?? undefined`; pass `autoCompaction: settings.auto_compaction === "true"` and `...(apiKey !== undefined ? { apiKey } : {})` to `createAgentLoop`
-- [ ] 3.3 Run `cd apps/server && bun vitest run src/agent/__tests__/runner.test.ts` — GREEN
+- [x] 3.1 Write/extend failing test in `apps/server/src/agent/__tests__/runner.test.ts`: with a configured provider API key and `auto_compaction: "true"` in settings → assert `createAgentLoop` receives `autoCompaction: true` and a non-undefined `apiKey`. (RED — currently neither is passed)
+- [x] 3.2 Implement in `apps/server/src/agent/runner.ts`: import `getEnvApiKey` from `@earendil-works/pi-ai`; after resolving the model, compute `provider = ctx.repos.models.getForProject(session.projectId)?.provider ?? ""` and `apiKey = getEnvApiKey(provider) ?? undefined`; pass `autoCompaction: settings.auto_compaction === "true"` and `...(apiKey !== undefined ? { apiKey } : {})` to `createAgentLoop`
+- [x] 3.3 Run `cd apps/server && bun vitest run src/agent/__tests__/runner.test.ts` — GREEN
 
 ## 4. Verification
 

@@ -158,7 +158,7 @@ export function createMockCtx(overrides?: {
       },
       models: {
         getForProject: vi.fn(
-          async () =>
+          () =>
             overrides?.modelConfig ?? {
               id: "cfg-1",
               projectId,
@@ -169,7 +169,7 @@ export function createMockCtx(overrides?: {
               updatedAt: Date.now(),
             }
         ),
-        getGlobalDefault: vi.fn(async () => null),
+        getGlobalDefault: vi.fn(() => null),
       },
       settings: {
         get: vi.fn(() => null),
@@ -230,7 +230,7 @@ export function createMultiSessionCtx(
         findById: vi.fn(async (id: string) => projects[id] ?? null),
       },
       models: {
-        getForProject: vi.fn(async () => ({
+        getForProject: vi.fn(() => ({
           id: "cfg-1",
           provider: "openai",
           modelId: "test-model",
@@ -238,7 +238,7 @@ export function createMultiSessionCtx(
           createdAt: Date.now(),
           updatedAt: Date.now(),
         })),
-        getGlobalDefault: vi.fn(async () => null),
+        getGlobalDefault: vi.fn(() => null),
       },
       settings: {
         get: vi.fn(() => null),

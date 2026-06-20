@@ -1,3 +1,4 @@
+import { getEnvApiKey } from "@earendil-works/pi-ai";
 import type { AgentEvent, AgentLoop, SessionStore } from "@sakti-code/agent";
 import { createAgentLoop } from "@sakti-code/agent";
 import type { ServerContext } from "../context.ts";
@@ -81,6 +82,13 @@ export async function* runPrompt(
   const model = resolveModel(ctx, session);
   const tools = buildTools(project.cwd);
 
+  // Resolve the provider API key for the summarization LLM call (same pattern
+  // as the manual /compact route). The agent package is pure, so the key must
+  // be supplied here via AgentConfig.apiKey.
+  const modelConfig = ctx.repos.models.getForProject(session.projectId);
+  const provider = modelConfig?.provider ?? "";
+  const apiKey = getEnvApiKey(provider) ?? undefined;
+
   // Load per-session settings
   const settings = loadSessionSettings(ctx, sessionId);
   // Distinguish "thinking_level key absent" (fall back to the session row) from
@@ -99,6 +107,8 @@ export async function* runPrompt(
   const controller = new AbortController();
 
   const loop = createAgentLoop({
+    ...(apiKey === undefined ? {} : { apiKey }),
+    autoCompaction: settings.auto_compaction === "true",
     autoRetry: settings.auto_retry === "true",
     followUpMode: settings.follow_up_mode,
     maxRetries: Number(settings.max_retries),

@@ -9,10 +9,23 @@ vi.mock("@earendil-works/pi-ai", async () => {
     ...actual,
     streamSimple: vi.fn(),
     getModel: vi.fn(),
+    getEnvApiKey: vi.fn(),
   };
 });
 
-const { streamSimple, getModel } = await import("@earendil-works/pi-ai");
+const { streamSimple, getModel, getEnvApiKey } = await import(
+  "@earendil-works/pi-ai"
+);
+
+// Wrap createAgentLoop in a spy so runner wiring tests can assert the config
+// it receives (autoCompaction / apiKey) while still running the real loop.
+vi.mock("@sakti-code/agent", async () => {
+  const actual = await vi.importActual("@sakti-code/agent");
+  return {
+    ...actual,
+    createAgentLoop: vi.fn(actual.createAgentLoop),
+  };
+});
 
 import type { AgentEvent } from "@sakti-code/agent";
 import { abortRun, loadSessionSettings, runPrompt } from "../runner.ts";
@@ -26,6 +39,11 @@ import {
 // Re-wire the imported fns to our mock refs
 const streamSimpleMock = streamSimple as ReturnType<typeof vi.fn>;
 const getModelMock = getModel as ReturnType<typeof vi.fn>;
+const getEnvApiKeyMock = getEnvApiKey as ReturnType<typeof vi.fn>;
+
+import { createAgentLoop } from "@sakti-code/agent";
+
+const createAgentLoopSpy = createAgentLoop as ReturnType<typeof vi.fn>;
 
 describe("runPrompt", () => {
   it("valid session run yields agent_start + agent_end and persists messages", async () => {
@@ -213,5 +231,59 @@ describe("runPrompt", () => {
     const ctx = createMockCtx();
     const settings = loadSessionSettings(ctx, "sess-1");
     expect(settings.auto_compaction).toBe("false");
+  });
+
+  it("auto-compaction: runner resolves apiKey + passes autoCompaction to createAgentLoop", async () => {
+    const ctx = createMockCtx();
+    // Session opts into auto-compaction.
+    (
+      ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>
+    ).mockReturnValue([
+      { key: "session:sess-1:auto_compaction", value: "true" },
+    ]);
+    // Provider key resolved from env.
+    getEnvApiKeyMock.mockReturnValue("resolved-env-key");
+
+    const store = createMockStore();
+    getModelMock.mockReturnValue(createTestModel());
+    streamSimpleMock.mockReturnValue(createTextStream("ok"));
+    createAgentLoopSpy.mockClear();
+
+    for await (const _event of runPrompt(ctx, "sess-1", "hi", store)) {
+      // consume
+    }
+
+    expect(createAgentLoopSpy).toHaveBeenCalledTimes(1);
+    const config = createAgentLoopSpy.mock.calls[0]![0] as Record<
+      string,
+      unknown
+    >;
+    expect(config.autoCompaction).toBe(true);
+    expect(config.apiKey).toBe("resolved-env-key");
+    // Provider was resolved from the project's model config.
+    expect(getEnvApiKeyMock).toHaveBeenCalledWith("openai");
+  });
+
+  it("auto-compaction: when auto_compaction is off, apiKey is still resolved but autoCompaction is false", async () => {
+    const ctx = createMockCtx();
+    // No auto_compaction override → default "false".
+    getEnvApiKeyMock.mockReturnValue("resolved-env-key");
+
+    const store = createMockStore();
+    getModelMock.mockReturnValue(createTestModel());
+    streamSimpleMock.mockReturnValue(createTextStream("ok"));
+    createAgentLoopSpy.mockClear();
+
+    for await (const _event of runPrompt(ctx, "sess-1", "hi", store)) {
+      // consume
+    }
+
+    const config = createAgentLoopSpy.mock.calls[0]![0] as Record<
+      string,
+      unknown
+    >;
+    expect(config.autoCompaction).toBe(false);
+    // Key still plumbed through so a later-enabled run could use it.
+    expect(config.apiKey).toBe("resolved-env-key");
   });
 });
