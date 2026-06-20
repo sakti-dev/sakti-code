@@ -3,29 +3,61 @@ import { getCtx } from "../context.ts";
 
 const GIT_TIMEOUT_MS = 10_000;
 
-async function runGit(
-  args: string[],
-  cwd: string
-): Promise<{ output: string; timedOut: boolean }> {
-  const proc = Bun.spawn(["git", ...args], {
-    cwd,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  const timer = setTimeout(() => proc.kill(), GIT_TIMEOUT_MS);
-
+function trySpawnGit(args: string[], cwd: string) {
   try {
-    const exited = await proc.exited;
-    clearTimeout(timer);
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
-    const output = exited === 0 ? stdout : `${stdout}${stderr}`.trim();
-    return { output, timedOut: false };
+    return Bun.spawn(["git", ...args], {
+      cwd,
+      env: { ...process.env },
+      stdin: "pipe",
+      stdout: "pipe",
+      stderr: "pipe",
+    });
   } catch {
-    clearTimeout(timer);
-    return { output: "git timed out", timedOut: true };
+    return null;
   }
+}
+
+export interface GitResult {
+  kind: "ok" | "timeout" | "spawn-error";
+  output: string;
+}
+
+export async function runGit(
+  args: string[],
+  cwd: string,
+  timeoutMs: number = GIT_TIMEOUT_MS
+): Promise<GitResult> {
+  const proc = trySpawnGit(args, cwd);
+  if (proc === null) {
+    return { kind: "spawn-error", output: "git not found" };
+  }
+
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    proc.kill();
+  }, timeoutMs);
+
+  const code = await proc.exited;
+  clearTimeout(timer);
+
+  if (timedOut) {
+    return { kind: "timeout", output: "git timed out" };
+  }
+
+  const stdout = await new Response(proc.stdout).text();
+  if (code === 0) {
+    return { kind: "ok", output: stdout };
+  }
+  const stderr = await new Response(proc.stderr).text();
+  return { kind: "ok", output: `${stdout}${stderr}`.trim() };
+}
+
+function handleResult(result: GitResult): Response | string {
+  if (result.kind === "spawn-error") {
+    return new Response(result.output, { status: 500 });
+  }
+  return result.output;
 }
 
 const statusQuery = t.Object({ projectId: t.String() });
@@ -36,7 +68,7 @@ const diffQuery = t.Object({
   staged: t.Optional(t.Boolean()),
 });
 const logQuery = t.Object({
-  limit: t.Optional(t.Integer()),
+  limit: t.Optional(t.Integer({ minimum: 0 })),
   projectId: t.String(),
 });
 
@@ -49,8 +81,7 @@ export const gitRoutes = new Elysia({ name: "routes.git" })
       if (!project) {
         return new Response("Not found", { status: 404 });
       }
-      const { output } = await runGit(["status", "--short"], project.cwd);
-      return output;
+      return handleResult(await runGit(["status", "--short"], project.cwd));
     },
     { query: statusQuery }
   )
@@ -62,11 +93,9 @@ export const gitRoutes = new Elysia({ name: "routes.git" })
       if (!project) {
         return new Response("Not found", { status: 404 });
       }
-      const { output } = await runGit(
-        ["branch", "--show-current"],
-        project.cwd
+      return handleResult(
+        await runGit(["branch", "--show-current"], project.cwd)
       );
-      return output;
     },
     { query: branchQuery }
   )
@@ -85,8 +114,7 @@ export const gitRoutes = new Elysia({ name: "routes.git" })
       if (query.path) {
         args.push("--", query.path);
       }
-      const { output } = await runGit(args, project.cwd);
-      return output;
+      return handleResult(await runGit(args, project.cwd));
     },
     { query: diffQuery }
   )
@@ -99,11 +127,9 @@ export const gitRoutes = new Elysia({ name: "routes.git" })
         return new Response("Not found", { status: 404 });
       }
       const limit = query.limit ?? 20;
-      const { output } = await runGit(
-        ["log", "-n", String(limit), "--oneline"],
-        project.cwd
+      return handleResult(
+        await runGit(["log", "-n", String(limit), "--oneline"], project.cwd)
       );
-      return output;
     },
     { query: logQuery }
   );
