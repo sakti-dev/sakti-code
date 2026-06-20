@@ -1,3 +1,4 @@
+import type { streamSimple } from "@earendil-works/pi-ai";
 import type {
   AssistantMessage,
   AssistantMessageEvent,
@@ -5,7 +6,6 @@ import type {
   Message,
   Model,
   SimpleStreamOptions,
-  streamSimple,
   TextContent,
   Tool,
   ToolResultMessage,

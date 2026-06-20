@@ -1,8 +1,3 @@
-export { type AgentLoop, createAgentLoop } from "./_legacy/loop-index.ts";
-export type {
-  CompactionOptions,
-  CompactionResult,
-} from "./_legacy/old-compaction.ts";
 export { Agent } from "./agent.ts";
 export {
   collectEntriesForBranchSummary,
@@ -11,7 +6,6 @@ export {
 export {
   calculateContextTokens,
   compact,
-  compactMessages,
   DEFAULT_COMPACTION_SETTINGS,
   estimateContextTokens,
   estimateTokens,
@@ -34,16 +28,22 @@ export type {
   AgentHarnessPhase,
   AgentHarnessResources,
   ExecutionEnv,
+  ExecutionEnvExecOptions,
+  FileErrorCode,
   FileInfo,
+  FileKind,
   PromptTemplate,
   Result,
   SessionMetadata,
   SessionStorage,
   SessionTreeEntry,
   Skill,
+  ThinkingLevel,
 } from "./harness/types.ts";
 export {
+  ExecutionError,
   err,
+  FileError,
   getOrThrow,
   getOrUndefined,
   ok,

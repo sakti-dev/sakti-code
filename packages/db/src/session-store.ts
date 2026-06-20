@@ -1,9 +1,9 @@
-import type { AgentMessage, SessionStore } from "@sakti-code/agent";
+import type { AgentMessage } from "@sakti-code/agent";
 import type { DrizzleDB } from "./init.ts";
 import { MessageRepo, SessionRepo } from "./repos/index.ts";
 import { messages } from "./schema.ts";
 
-export class SqliteSessionStore implements SessionStore {
+export class SqliteSessionStore {
   private readonly db: DrizzleDB;
   private readonly messageRepo: MessageRepo;
   private readonly sessionRepo: SessionRepo;
