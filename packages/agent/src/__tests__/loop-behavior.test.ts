@@ -313,3 +313,99 @@ describe("Agent loop tool execution", () => {
     expect(store.appendMessage).toHaveBeenCalledTimes(4); // user + assistant1 + tool + assistant2
   });
 });
+
+describe("Agent loop error/aborted turn persistence (pi agent-loop.ts:196)", () => {
+  it("persists the error assistant message on stream error", async () => {
+    const store = createMockStore();
+    const s = new MockEventStream();
+    const now = Date.now();
+    const errorPiMessage: any = {
+      role: "assistant",
+      content: [{ type: "text", text: "billing exceeded" }],
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: "error",
+      errorMessage: "billing exceeded",
+      api: "openai-completions",
+      provider: "openai",
+      model: "test",
+      timestamp: now,
+    };
+    s.push({ type: "start", partial: errorPiMessage });
+    s.push({ type: "error", reason: "error", error: errorPiMessage });
+
+    vi.mocked(streamSimple).mockReturnValue(s);
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [],
+      store,
+    });
+    const events = await collectEvents(loop.prompt("hi"));
+
+    // (a) error event is emitted live
+    expect(events.some((e) => e.type === "error")).toBe(true);
+    // (b) the error assistant message is persisted
+    const storedMessages = store.loadMessages as any;
+    const allMsgs = (await storedMessages("s1")) as AgentMessage[];
+    const errorMsg = allMsgs.find(
+      (m: AgentMessage) => m.role === "assistant"
+    ) as any;
+    expect(errorMsg).toBeDefined();
+    expect(errorMsg.stopReason).toBe("error");
+    expect(errorMsg.errorMessage).toBe("billing exceeded");
+  });
+
+  it("persists the aborted assistant message on caller abort", async () => {
+    const store = createMockStore();
+    const s = new MockEventStream();
+    const now = Date.now();
+    const abortedPiMessage: any = {
+      role: "assistant",
+      content: [{ type: "text", text: "" }],
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: "aborted",
+      errorMessage: "aborted",
+      api: "openai-completions",
+      provider: "openai",
+      model: "test",
+      timestamp: now,
+    };
+    // pi-ai pushes the error event when it detects the abort, so the
+    // error event carries the aborted message BEFORE our code checks the signal.
+    s.push({ type: "start", partial: abortedPiMessage });
+    s.push({ type: "error", reason: "aborted", error: abortedPiMessage });
+
+    vi.mocked(streamSimple).mockReturnValue(s);
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [],
+      store,
+    });
+    // Don't actually abort — just simulate a stream that terminates
+    // with stopReason:aborted (the way pi-ai does when it detects the signal)
+    await collectEvents(loop.prompt("hi"));
+
+    const storedMessages = store.loadMessages as any;
+    const allMsgs = (await storedMessages("s1")) as AgentMessage[];
+    const abortedMsg = allMsgs.find(
+      (m: AgentMessage) => m.role === "assistant"
+    ) as any;
+    expect(abortedMsg).toBeDefined();
+    expect(abortedMsg.stopReason).toBe("aborted");
+  });
+});

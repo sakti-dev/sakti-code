@@ -147,6 +147,11 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
       );
 
       if (!streamResult.ok) {
+        // Persist the error/aborted assistant message (pi agent-loop.ts:196)
+        if (streamResult.finalAssistant) {
+          messages.push(streamResult.finalAssistant);
+          await store.appendMessage(sessionId, streamResult.finalAssistant);
+        }
         return;
       }
       if (signal?.aborted) {

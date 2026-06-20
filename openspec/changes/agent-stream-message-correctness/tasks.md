@@ -25,11 +25,11 @@
 
 ## 4. Persist error/aborted turns in the loop (Task 9, loop side)
 
-- [ ] 4.1 Write failing test in `packages/agent/src/__tests__/loop-behavior.test.ts`: mock `streamSimple` to error; assert the loop (a) yields the `error` event AND (b) `store.loadMessages` returns one assistant message with `stopReason: "error"` and the pi-ai `errorMessage`. RED (currently persists nothing).
-- [ ] 4.2 In `packages/agent/src/loop/index.ts`: after `streamLLMResponse`, if `!streamResult.ok && streamResult.finalAssistant`, push it onto `messages` and `await store.appendMessage(sessionId, it)` before yielding `agent_end` + `return`. (The `error` event is already yielded inside `streamLLMResponse`.)
-- [ ] 4.3 Add abort-path test: caller aborts mid-stream → persisted assistant message has `stopReason: "aborted"`.
-- [ ] 4.4 Tests → GREEN. Run full agent suite.
-- [ ] 4.5 Gate + commit "fix(agent-loop): persist error/aborted turns as assistant messages (pi agent-loop.ts:196)".
+- [x] 4.1 Write failing test in `packages/agent/src/__tests__/loop-behavior.test.ts`: mock `streamSimple` to error; assert the loop (a) yields the `error` event AND (b) `store.loadMessages` returns one assistant message with `stopReason: "error"` and the pi-ai `errorMessage`. RED (currently persists nothing).
+- [x] 4.2 In `packages/agent/src/loop/index.ts`: after `streamLLMResponse`, if `!streamResult.ok && streamResult.finalAssistant`, push it onto `messages` and `await store.appendMessage(sessionId, it)` before yielding `agent_end` + `return`. (The `error` event is already yielded inside `streamLLMResponse`.)
+- [x] 4.3 Add abort-path test: caller aborts mid-stream → persisted assistant message has `stopReason: "aborted"`.
+- [x] 4.4 Tests → GREEN. Run full agent suite.
+- [x] 4.5 Gate + commit "fix(agent-loop): persist error/aborted turns as assistant messages (pi agent-loop.ts:196)".
 
 ## 5. Round-trip stopReason/errorMessage through the DB (prerequisite for reload + Task 4)
 
