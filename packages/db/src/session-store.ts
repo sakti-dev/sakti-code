@@ -1,12 +1,17 @@
 import type { AgentMessage, SessionStore } from "@sakti-code/agent";
 import type { DrizzleDB } from "./init.ts";
-import { MessageRepo } from "./repos/index.ts";
+import { MessageRepo, SessionRepo } from "./repos/index.ts";
+import { messages } from "./schema.ts";
 
 export class SqliteSessionStore implements SessionStore {
+  private readonly db: DrizzleDB;
   private readonly messageRepo: MessageRepo;
+  private readonly sessionRepo: SessionRepo;
 
   constructor(db: DrizzleDB) {
+    this.db = db;
     this.messageRepo = new MessageRepo(db);
+    this.sessionRepo = new SessionRepo(db);
   }
 
   // biome-ignore lint/suspicious/useAwait: SessionStore interface requires async; drizzle calls are synchronous
@@ -27,6 +32,61 @@ export class SqliteSessionStore implements SessionStore {
       sessionId,
       messages.map(agentMessageToRow)
     );
+  }
+
+  async fork(
+    sourceSessionId: string,
+    upToMessageIndex?: number
+  ): Promise<{ sessionId: string }> {
+    const sourceSession = this.sessionRepo.findById(sourceSessionId);
+    if (!sourceSession) {
+      throw new Error("Session not found");
+    }
+
+    // Use raw DB rows directly to avoid round-tripping through AgentMessage format
+    const allRows = this.messageRepo.loadBySession(sourceSessionId);
+    const slicedRows =
+      upToMessageIndex === undefined
+        ? allRows
+        : allRows.slice(0, upToMessageIndex + 1);
+
+    const forkedTitle = sourceSession.title
+      ? `Fork of ${sourceSession.title}`
+      : "Fork";
+
+    const newSession = await this.sessionRepo.create(
+      sourceSession.projectId,
+      sourceSession.modelId,
+      {
+        title: forkedTitle,
+        thinkingLevel: sourceSession.thinkingLevel,
+        parentSessionId: sourceSessionId,
+      }
+    );
+
+    // Copy messages in a transaction using raw DB rows (content is already plain text)
+    await this.db.transaction(async (tx) => {
+      if (slicedRows.length > 0) {
+        const now = Date.now();
+        await tx.insert(messages).values(
+          slicedRows.map((row, i) => ({
+            id: crypto.randomUUID(),
+            sessionId: newSession.id,
+            role: row.role,
+            content: row.content,
+            toolCalls: row.toolCalls,
+            toolCallId: row.toolCallId,
+            toolName: row.toolName,
+            toolArguments: row.toolArguments,
+            isError: row.isError,
+            usage: row.usage,
+            createdAt: now + i,
+          }))
+        );
+      }
+    });
+
+    return { sessionId: newSession.id };
   }
 }
 

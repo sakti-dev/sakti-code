@@ -31,6 +31,7 @@ function getCreateTableSQL(_s: typeof schema): string {
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       project_id TEXT NOT NULL REFERENCES projects(id),
+      parent_session_id TEXT REFERENCES sessions(id),
       title TEXT,
       model_id TEXT NOT NULL,
       thinking_level TEXT NOT NULL DEFAULT 'off',

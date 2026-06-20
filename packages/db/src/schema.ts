@@ -13,6 +13,8 @@ export const sessions = sqliteTable("sessions", {
   projectId: text("project_id")
     .notNull()
     .references(() => projects.id),
+  // biome-ignore lint/suspicious/noExplicitAny: Drizzle self-referencing FK needs any return type
+  parentSessionId: text("parent_session_id").references((): any => sessions.id),
   title: text("title"),
   modelId: text("model_id").notNull(),
   thinkingLevel: text("thinking_level").notNull().default("off"),

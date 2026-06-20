@@ -73,13 +73,20 @@ export class SessionRepo {
   async create(
     projectId: string,
     modelId: string,
-    options?: { title?: string; thinkingLevel?: string }
+    options?: {
+      title?: string;
+      thinkingLevel?: string;
+      parentSessionId?: string;
+    }
   ) {
     const id = crypto.randomUUID();
     const now = Date.now();
     await this.db.insert(sessions).values({
       id,
       projectId,
+      ...(options?.parentSessionId === undefined
+        ? {}
+        : { parentSessionId: options.parentSessionId }),
       title: options?.title ?? null,
       modelId,
       thinkingLevel: options?.thinkingLevel ?? "off",
@@ -121,6 +128,15 @@ export class SessionRepo {
       throw new Error(`Not found after write: ${id}`);
     }
     return created;
+  }
+
+  findForkedChildren(parentId: string) {
+    return this.db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.parentSessionId, parentId))
+      .orderBy(desc(sessions.createdAt))
+      .all();
   }
 
   async delete(id: string) {
