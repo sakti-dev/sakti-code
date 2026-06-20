@@ -1,9 +1,4 @@
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai/base";
-import {
-  createBranchSummaryMessage,
-  createCompactionSummaryMessage,
-  createCustomMessage,
-} from "../messages.ts";
 import type {
   ActiveToolsChangeEntry,
   AgentMessage,
@@ -21,7 +16,12 @@ import type {
   SessionTreeEntry,
   ThinkingLevelChangeEntry,
 } from "../types.ts";
-import { SessionError } from "../types.ts";
+import {
+  createBranchSummaryMessage,
+  createCompactionSummaryMessage,
+  createCustomMessage,
+} from "./messages.ts";
+import { SessionError } from "./types.ts";
 
 export function buildSessionContext(
   pathEntries: SessionTreeEntry[]

@@ -25,13 +25,19 @@
       "includes": ["**/__tests__/**"],
       "linter": {
         "rules": {
+          "complexity": {
+            "noUselessUndefined": "off"
+          },
           "suspicious": {
             "noExplicitAny": "off",
             "noEmptyBlockStatements": "off",
+            "noTemplateCurlyInString": "off",
             "useAwait": "off"
           },
           "style": {
-            "noNonNullAssertion": "off"
+            "noNonNullAssertion": "off",
+            "useBlockStatements": "off",
+            "noParameterProperties": "off"
           }
         }
       }
@@ -42,13 +48,19 @@
         "rules": {
           "complexity": {
             "noBannedTypes": "off",
-            "noExcessiveCognitiveComplexity": "off"
+            "noExcessiveCognitiveComplexity": "off",
+            "noVoid": "off"
           },
           "suspicious": {
             "noExplicitAny": "off",
             "noControlCharactersInRegex": "off",
+            "noEmptyBlockStatements": "off",
+            "noBitwiseOperators": "off",
             "useIterableCallbackReturn": "off",
             "useAwait": "off"
+          },
+          "performance": {
+            "useTopLevelRegex": "off"
           },
           "style": {
             "useGroupedAccessorPairs": "off",

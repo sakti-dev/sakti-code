@@ -31,6 +31,7 @@
   "dependencies": {
     "ignore": "^7.0.5",
     "typebox": "^1.2.18",
+    "uuid": "^14.0.1",
     "yaml": "^2.9.0"
   }
 }
