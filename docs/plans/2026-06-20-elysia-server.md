@@ -2,6 +2,8 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+> **NOTE — this plan is now GENERAL GUIDELINES, not a direct execution script.** The work has been decomposed into **4 OpenSpec changes** (see the “OpenSpec change split” section at the end). Each change has its own proposal/spec/tasks. This document remains the shared reference: the grounded facts (repo signatures, agent API), conventions, structure decisions, and per-task code sketches all carry over. When a change's tasks.md conflicts with this plan, **the change wins** (it's the more current, more focused artifact). Read this plan for context and approved patterns; read the changes for what to actually build.
+
 **Goal:** Build an Elysia REST + WebSocket server (`apps/server`) that exposes the existing agent/db/tools packages — CRUD state over typed REST, agent-loop streaming over a minimal WebSocket.
 
 **Architecture:** One Bun process runs the server. Elysia routes call the existing repo classes directly (no service layer — repos *are* the service layer) via an injected `ServerContext` in `.state()`. The agent loop runs **in-process** as an async generator: `agent/runner.ts` builds fresh tools+store+loop per prompt from the session's project cwd, streams `AgentEvent`s to the WebSocket. The loop is ephemeral (dies when the stream ends); only a `Map<sessionId, AbortController>` is long-lived. Eden treaty gives the SolidJS app a zero-codegen typed client for the REST routes.
@@ -1527,21 +1529,21 @@ git commit -m "feat(server): git status/branch/diff/log routes"
 
 ---
 
-### Task 14: Compaction route + wire thinking-level/retry through the loop (TDD)
+### Task 14: Compaction route (TDD)
 
-Closes two half-wired gaps at once: (a) `compactMessages()` exists in the agent package but has no server route; (b) `thinkingLevel` is stored on sessions but never reaches `createAgentLoop`, and `maxRetries` is hardcoded. This task adds a compaction route AND threads per-session config into the loop so the stored values actually take effect.
+Closes a single gap: `compactMessages()` exists in the agent package but has no server route. This task adds ONLY the route — a thin server-layer concern that calls the already-built agent function.
+
+**Scope correction (important):** An earlier draft of this task bundled in two agent-package concerns — wiring `thinkingLevel` through to `streamSimple`, and threading per-session `maxRetries` into `createAgentLoop`. That bundling was wrong: those are *agent-layer* capability extensions, not server routes. They cross package boundaries (`packages/agent/src/types.ts` + `streaming.ts`) and deserve their own OpenSpec change in the agent domain. They are **out of scope here** and tracked in the v1.5 roadmap below. Mixing them into a server route task muddies the change's story and risks ballooning into an agent-package refactor. **This task does the route only.**
 
 **Files:**
 - Create: `apps/server/src/routes/compaction.ts`
 - Create: `apps/server/src/__tests__/compaction.test.ts`
-- Modify: `apps/server/src/agent/runner.ts` (read thinkingLevel/maxRetries from session; pass to loop)
-- Modify: `packages/agent/src/types.ts` (add optional `thinkingLevel` to `AgentConfigInput`) — see note below
 
 **Step 1: Write failing test**
 
 ```ts
 import { Database } from "bun:sqlite";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { initDatabase } from "@sakti-code/db";
 import { createContext } from "../context.ts";
 import { compactionRoutes } from "../routes/compaction.ts";
@@ -1617,40 +1619,12 @@ export const compactionRoutes = new Elysia({ name: "routes.compaction" })
 Run: `bun vitest run apps/server/src/__tests__/compaction.test.ts`
 Expected: PASS (2 tests).
 
-**Step 5: Wire per-session config into the loop** — modify `apps/server/src/agent/runner.ts`:
-
-The session row already carries `thinkingLevel`. The model config carries `thinkingLevel` too. And the loop's `maxRetries`/`keepRecentTokens` are hardcoded defaults. Thread them through:
-
-```ts
-// In runner.ts, inside runPrompt, after resolving model + before createAgentLoop:
-  const loop = createAgentLoop({
-    sessionId,
-    model,
-    tools: buildTools(project.cwd),
-    store,
-    maxRetries: session.maxRetries ?? 3,           // ← if you add this column
-    keepRecentTokens: 20_000,
-    // thinkingLevel: session.thinkingLevel,        // ← requires AgentConfigInput change (see note)
-  });
-```
-
-> **Note on thinkingLevel:** the agent loop currently has NO concept of thinking level — `streamSimple` is called without it. Wiring it properly requires either (a) adding `thinkingLevel` to `AgentConfigInput` and passing it to `streamSimple`'s options in `agent/streaming.ts`, or (b) resolving it at the model level (some providers bake thinking into the model). This is a real cross-package change. **For v1, I recommend storing thinkingLevel in the DB (already done) and passing it as far as the loop, but NOT changing `streamSimple`'s call signature in this task** — add a `// TODO: pass thinkingLevel to streamSimple` and file it as a follow-up. Otherwise this task balloons into an agent-package refactor. The maxRetries wiring alone is the valuable part here.
-
-**Step 6: Add maxRetries column (optional, simpler: keep hardcoded for v1)**
-
-If you don't want a schema migration for v1, skip the `session.maxRetries` read and keep the loop default. The compaction route is the valuable deliverable of this task; the retry wiring is a bonus that's easy to defer.
-
-**Step 7: Run full agent-runner test to confirm nothing broke**
-
-Run: `bun vitest run apps/server/src/agent/__tests__/runner.test.ts`
-Expected: PASS (unchanged).
-
-**Step 8: Typecheck + lint + commit**
+**Step 5: Typecheck + lint + commit**
 
 ```bash
 bun typecheck && bun x ultracite fix
 git add -A
-git commit -m "feat(server): compaction route + thread per-session config toward loop"
+git commit -m "feat(server): compaction route"
 ```
 
 ---
@@ -1778,3 +1752,58 @@ Deferred from PiBun parity — each needs new schema, loop-model changes, or OS 
 - **Elysia WS internals** (`ws.data.store.ctx`, `app.config.websocket.message` in tests, `import.meta.main`) — verify against the installed version; the TDD tests catch mismatches. The plan marks these with "Note" callouts.
 - **Eden import path** (`@elysia/eden` vs `@elysiajs/eden`) — verify which the installed `@elysiajs/eden@^1.4.9` resolves; use whichever the package exports.
 - **`getModel` generic cast** — `getModel(provider as never, modelId as never) as AnyModel` is intentional at the runtime-value boundary; biome may want a `noExplicitAny`-style ignore on `AnyModel` (already covered in the agent package).
+
+---
+
+## OpenSpec change split
+
+This plan is decomposed into **4 OpenSpec changes**. They form a clean DAG: one foundation, then three independent leaves that can be built in parallel worktrees once the foundation lands.
+
+```
+                  server-rest-api          ← foundation (ships a usable typed CRUD API)
+                         │
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+   agent-streaming   git-integration  session-utils
+   (the real-time    (subprocess      (pure DB
+    layer)            feature)          projections)
+```
+
+### Why these boundaries
+
+Split by **capability boundary**, not by task. The test for each change: *could this ship on its own and be valuable?*
+
+- **`server-rest-api`** — Tasks 1–6 + 10 (+ the REST-wiring half of Task 9). Independently shippable: a fully-typed CRUD API over the DB; the frontend can start building immediately. Splitting it smaller (e.g. "scaffold" alone) would ship an empty shell.
+- **`server-agent-streaming`** — Tasks 7, 8, the WS-wiring half of Task 9, and Task 11 (e2e). The WS layer is architecturally distinct from REST (stateful vs stateless, streaming, mock-stream tests). It's the change that makes the agent come alive. Runner + WS only make sense together — splitting them yields a runner nothing calls and a WS with nothing to stream. Needs a `design.md` (fire-and-forget concurrency, ephemeral loop, abort registry).
+- **`server-git-integration`** — Task 13 only. Git is a genuinely different beast from the other parity routes: it shells to a subprocess, needs temp-repo test setup, and raises a cwd-security surface. Bundling subprocess-driven git with pure-DB projections would muddy the change's story.
+- **`server-session-utils`** — Tasks 14 + 15. Compaction route + stats route. Both are "compute/transform over session data" — cohesive enough to share a change. Both reuse existing repo calls, no new schema.
+
+### Task → change mapping
+
+| Plan task | Change |
+|---|---|
+| 1 Scaffold | `server-rest-api` |
+| 2 Health | `server-rest-api` |
+| 3 Projects | `server-rest-api` |
+| 4 Sessions + Messages | `server-rest-api` |
+| 5 Settings/Models/Costs | `server-rest-api` |
+| 6 Available-models | `server-rest-api` |
+| 7 agent/ folder | `server-agent-streaming` |
+| 8 WS handler | `server-agent-streaming` |
+| 9 Wire index.ts + listen | split — REST wiring in `server-rest-api`, WS wiring in `server-agent-streaming` |
+| 10 Eden client | `server-rest-api` |
+| 11 e2e concurrency | `server-agent-streaming` |
+| 12 Docs | last change to land (or its own small change) |
+| 13 Git routes | `server-git-integration` |
+| 14 Compaction route | `server-session-utils` |
+| 15 Stats route | `server-session-utils` |
+
+### Cross-cutting coordination points (handle in `server-rest-api`, the foundation)
+
+1. **`index.ts` is edited by every change.** To keep the three leaves parallelizable without merge conflicts, make `buildServer` accept route modules as an array (auto-composition) in `server-rest-api`, so leaf changes add a route module + one line. Design this into the foundation, not bolted on later.
+2. **Test-helper duplication.** Every change recreates `makeApp()` (initDatabase + createContext + `.state`). Make `apps/server/src/__tests__/helpers.ts` a deliverable of `server-rest-api`; the leaves reuse it.
+3. **Spec granularity = one spec per change.** `server-rest-api` / `agent-streaming` / `git-integration` / `session-utils`. The capability split mirrors the change split, which is the correct alignment.
+
+### Explicitly NOT a server change (deferred to a separate agent-domain change, v1.5)
+
+**Thinking-level / per-session retry wiring** is an *agent-layer* capability extension, not a server route. It crosses `packages/agent` (`AgentConfigInput` + `streaming.ts`'s `streamSimple` call) and deserves its own OpenSpec change in the agent domain. The server stores `thinkingLevel` today and the `server-session-utils` compaction route works without it — so it's correctly deferred, not bundled into a server change.
