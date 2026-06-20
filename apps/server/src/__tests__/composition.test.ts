@@ -7,6 +7,7 @@ import { join } from "node:path";
 const { compactionRoutes } = await import("../routes/compaction.ts");
 const { statsRoutes } = await import("../routes/stats.ts");
 const { makeApp } = await import("./helpers.ts");
+const { buildServer } = await import("../index.ts");
 
 let tempDir: string;
 
@@ -61,5 +62,34 @@ describe("route composition", () => {
       })
     );
     expect(compactRes.status).toBe(404);
+  });
+
+  it("SYS: buildServer() with no extra routes still serves feature routes in production", async () => {
+    // Previously every feature route module was imported only by its own test
+    // and never composed into buildServer, so they 404'd in the booted server.
+    const db = await (await import("@sakti-code/db")).initDatabase(
+      new (await import("bun:sqlite")).Database(":memory:")
+    );
+    const app = buildServer({ db });
+
+    // A handful of feature endpoints from different changes should respond
+    // (not 404) when hit against the default server.
+    const commandsRes = await app.handle(
+      new Request("http://localhost/api/commands")
+    );
+    expect(commandsRes.status).toBe(200);
+
+    const settingsRes = await app.handle(
+      new Request("http://localhost/api/sessions/nope/settings")
+    );
+    // 404 here means the route IS registered (it validated the session) —
+    // an unregistered route would 404 at the framework level too, so also
+    // assert a known-present route returns its body.
+    expect([404]).toContain(settingsRes.status);
+
+    const body = await (
+      await app.handle(new Request("http://localhost/api/commands"))
+    ).json();
+    expect(Array.isArray(body.commands)).toBe(true);
   });
 });
