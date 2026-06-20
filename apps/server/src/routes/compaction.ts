@@ -1,6 +1,11 @@
 import { getEnvApiKey } from "@earendil-works/pi-ai";
-import { compactMessages } from "@sakti-code/agent";
-import { SqliteSessionStore } from "@sakti-code/db";
+import type { Model } from "@earendil-works/pi-ai/base";
+import {
+  compact,
+  DEFAULT_COMPACTION_SETTINGS,
+  prepareCompaction,
+} from "@sakti-code/agent";
+import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import { resolveModel } from "../agent/model-resolver.ts";
 import { getCtx } from "../context.ts";
@@ -14,8 +19,7 @@ export const compactionRoutes = new Elysia({ name: "routes.compaction" }).post(
       return new Response("Not found", { status: 404 });
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: pi-ai Model is generic over provider API; resolveModel returns any model type
-    let model: any;
+    let model: { model: Model<unknown>; provider: string };
     try {
       model = resolveModel(ctx, session);
     } catch {
@@ -31,20 +35,44 @@ export const compactionRoutes = new Elysia({ name: "routes.compaction" }).post(
       return new Response(`No API key for ${provider} in env`, { status: 500 });
     }
 
-    const sessionStore = new SqliteSessionStore(ctx.db);
-    const messages = await sessionStore.loadMessages(params.id);
-    const result = await compactMessages({
-      model,
-      apiKey,
-      contextWindow: model.contextWindow,
-      messages,
-      keepRecentTokens: 20_000,
+    const storage = new SqliteSessionStorage(ctx.db, params.id, {
+      id: params.id,
+      createdAt: new Date().toISOString(),
     });
-    await sessionStore.replaceMessages(params.id, result.messages);
+    const entries = await storage.getEntries();
+    const preparation = prepareCompaction(entries, DEFAULT_COMPACTION_SETTINGS);
+
+    if (!preparation.ok) {
+      return new Response(preparation.error.message, { status: 500 });
+    }
+    if (!preparation.value) {
+      return Response.json({
+        tokensBefore: 0,
+        tokensAfter: 0,
+        skipped: true,
+      });
+    }
+
+    const result = await compact(preparation.value, model.model, apiKey);
+    if (!result.ok) {
+      return new Response(result.error.message, { status: 500 });
+    }
+
+    const compactionEntry = {
+      id: await storage.createEntryId(),
+      parentId: null,
+      timestamp: new Date().toISOString(),
+      type: "compaction" as const,
+      summary: result.value.summary,
+      firstKeptEntryId: result.value.firstKeptEntryId,
+      tokensBefore: result.value.tokensBefore,
+    };
+    await storage.appendEntry(compactionEntry);
 
     return Response.json({
-      tokensBefore: result.tokensBefore,
-      tokensAfter: result.tokensAfter,
+      tokensBefore: result.value.tokensBefore,
+      summary: result.value.summary,
+      firstKeptEntryId: result.value.firstKeptEntryId,
     });
   }
 );

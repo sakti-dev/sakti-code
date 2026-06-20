@@ -1,10 +1,10 @@
-import {
-  type AssistantMessage,
-  completeSimple,
-  type ImageContent,
-  type Model,
-  type TextContent,
-  type Usage,
+import { completeSimple } from "@earendil-works/pi-ai";
+import type {
+  AssistantMessage,
+  ImageContent,
+  Model,
+  TextContent,
+  Usage,
 } from "@earendil-works/pi-ai/base";
 import {
   computeFileLists,
@@ -891,5 +891,3 @@ async function generateTurnPrefixSummary(
       .join("\n")
   );
 }
-
-export { compactMessages } from "./_legacy/old-compaction.ts";

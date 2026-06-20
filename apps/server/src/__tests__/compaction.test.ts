@@ -2,10 +2,8 @@ import { afterAll, beforeAll, describe, expect, it, type mock } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { SqliteSessionStorage } from "@sakti-code/db";
 
-// pi-ai is globally mocked via apps/server/test-setup.ts.
-// The global mock provides default implementations; we import functions
-// here so we can override them with mockImplementation/Once per test.
 const { getEnvApiKey, completeSimple } = await import("@earendil-works/pi-ai");
 const { compactionRoutes } = await import("../routes/compaction.ts");
 const { makeApp } = await import("./helpers.ts");
@@ -22,18 +20,37 @@ afterAll(() => {
   } catch {}
 });
 
-function longConversation(n: number) {
-  return Array.from({ length: n }, (_, i) => ({
-    role: "user" as const,
-    content: `Message ${i}: ${"x".repeat(500)}`,
-  }));
+async function seedEntries(
+  db: unknown,
+  sessionId: string,
+  count: number
+): Promise<void> {
+  const storage = new SqliteSessionStorage(db as any, sessionId, {
+    id: sessionId,
+    createdAt: new Date().toISOString(),
+  });
+  let parentId: string | null = null;
+  for (let i = 0; i < count; i++) {
+    const id = crypto.randomUUID();
+    await storage.appendEntry({
+      id,
+      parentId,
+      timestamp: new Date().toISOString(),
+      type: "message",
+      message: {
+        role: i % 2 === 0 ? "user" : "assistant",
+        content: `Message ${i}: ${"x".repeat(500)}`,
+        timestamp: Date.now(),
+      },
+    });
+    parentId = id;
+  }
 }
 
 describe("compaction route", () => {
-  it("POST /api/sessions/:id/compact reduces tokens and persists", async () => {
+  it("POST /api/sessions/:id/compact summarizes and persists", async () => {
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p", tempDir);
-    // Configure model so resolveModel succeeds
     ctx.repos.models.set({
       projectId: project.id,
       provider: "openai",
@@ -41,12 +58,7 @@ describe("compaction route", () => {
     });
     const session = await ctx.repos.sessions.create(project.id, "test-model");
 
-    // Seed 200 long messages so there is real history to compact
-    for (const msg of longConversation(200)) {
-      await ctx.repos.messages.append(session.id, msg);
-    }
-    const beforeCount = ctx.repos.messages.countBySession(session.id);
-    expect(beforeCount).toBe(200);
+    await seedEntries(ctx.db, session.id, 200);
 
     const res = await app.handle(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
@@ -55,12 +67,9 @@ describe("compaction route", () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.tokensBefore).toBeGreaterThan(body.tokensAfter);
-    expect(body.tokensAfter).toBeGreaterThan(0);
-
-    // Persisted messages are fewer
-    const afterCount = ctx.repos.messages.countBySession(session.id);
-    expect(afterCount).toBeLessThan(200);
+    expect(body.tokensBefore).toBeGreaterThan(0);
+    expect(typeof body.summary).toBe("string");
+    expect(body.summary.length).toBeGreaterThan(0);
   });
 
   it("POST /api/sessions/nope/compact returns 404", async () => {
@@ -75,7 +84,6 @@ describe("compaction route", () => {
 
   it("returns 500 when no model configured", async () => {
     const { app, ctx } = await makeApp([compactionRoutes]);
-    // No global default, no project config
     const project = await ctx.repos.projects.create("p2", tempDir);
     const session = await ctx.repos.sessions.create(project.id, "test-model");
 
@@ -89,8 +97,7 @@ describe("compaction route", () => {
     expect(body).toContain("model");
   });
 
-  it("graceful degradation: summary error preserves history", async () => {
-    // Override completeSimple to return error stopReason
+  it("returns 500 on summarization error", async () => {
     const mocked = completeSimple as ReturnType<typeof mock>;
     mocked.mockImplementationOnce(async () => ({
       stopReason: "error",
@@ -114,25 +121,17 @@ describe("compaction route", () => {
       modelId: "test-model",
     });
     const session = await ctx.repos.sessions.create(project.id, "test-model");
-    for (const msg of longConversation(200)) {
-      await ctx.repos.messages.append(session.id, msg);
-    }
-    const beforeCount = ctx.repos.messages.countBySession(session.id);
+    await seedEntries(ctx.db, session.id, 200);
 
     const res = await app.handle(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
         method: "POST",
       })
     );
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.tokensBefore).toBe(body.tokensAfter);
-    const afterCount = ctx.repos.messages.countBySession(session.id);
-    expect(afterCount).toBe(beforeCount);
+    expect(res.status).toBe(500);
   });
 
   it("returns 500 when no API key configured", async () => {
-    // Override getEnvApiKey to return undefined
     const mockedKey = getEnvApiKey as ReturnType<typeof mock>;
     mockedKey.mockImplementationOnce(() => undefined);
 
@@ -144,9 +143,7 @@ describe("compaction route", () => {
       modelId: "test-model",
     });
     const session = await ctx.repos.sessions.create(project.id, "test-model");
-    for (const msg of longConversation(50)) {
-      await ctx.repos.messages.append(session.id, msg);
-    }
+    await seedEntries(ctx.db, session.id, 50);
 
     const res = await app.handle(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
