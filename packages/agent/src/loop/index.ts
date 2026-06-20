@@ -4,8 +4,12 @@ import { evt } from "./events.ts";
 import { streamLLMResponse } from "./streaming.ts";
 import { executeToolCalls } from "./tool-execution.ts";
 
+const QUEUE_BOUND = 10;
+
 export interface AgentLoop {
+  followUp(message: string): void;
   prompt(message: string, signal?: AbortSignal): AsyncIterable<AgentEvent>;
+  steer(message: string): void;
 }
 
 export function createAgentLoop(config: AgentConfigInput): AgentLoop {
@@ -13,7 +17,58 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
   const { sessionId, model, tools, store } = resolved;
   const maxRetries = resolved.maxRetries;
   const baseDelay = resolved.retryBaseDelayMs;
+  const autoRetry = config.autoRetry ?? true;
 
+  const steerQueue: string[] = [];
+  const followUpQueue: string[] = [];
+  let steerAbort = new AbortController();
+
+  function enqueue(queue: string[], msg: string) {
+    if (queue.length >= QUEUE_BOUND) {
+      return; // silently drop overflow
+    }
+    queue.push(msg);
+  }
+
+  async function injectMessage(
+    messages: AgentMessage[],
+    text: string
+  ): Promise<void> {
+    const msg: AgentMessage = {
+      role: "user",
+      content: text,
+      timestamp: Date.now(),
+    };
+    messages.push(msg);
+    await store.appendMessage(sessionId, msg);
+  }
+
+  /**
+   * Drain the steer queue: pop messages and inject as user messages.
+   * Returns true if any steers were processed.
+   */
+  async function drainSteers(messages: AgentMessage[]): Promise<boolean> {
+    if (steerQueue.length === 0) {
+      return false;
+    }
+    const mode = config.steeringMode ?? "all";
+    if (mode === "one-at-a-time") {
+      const msg = steerQueue.shift();
+      if (msg) {
+        await injectMessage(messages, msg);
+      }
+    } else {
+      while (steerQueue.length > 0) {
+        const msg = steerQueue.shift();
+        if (msg) {
+          await injectMessage(messages, msg);
+        }
+      }
+    }
+    return true;
+  }
+
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: prompt orchestrates LLM streaming, tool execution, steer/follow-up queues, and termination — each is a distinct concern that composes naturally; extracting further would increase indirection without reducing the combined branching the loop must manage
   async function* prompt(
     message: string,
     signal?: AbortSignal
@@ -21,28 +76,29 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
     const messages: AgentMessage[] = await store.loadMessages(sessionId);
     let turnIndex = 0;
 
-    const userMsg: AgentMessage = {
-      role: "user",
-      content: message,
-      timestamp: Date.now(),
-    };
-    messages.push(userMsg);
-    await store.appendMessage(sessionId, userMsg);
+    await injectMessage(messages, message);
 
     yield evt("agent_start", { sessionId });
 
     while (true) {
+      // Process any queued steers before the turn
+      await drainSteers(messages);
+
       yield evt("turn_start", { turnIndex });
       yield evt("message_start");
 
+      // The LLM stream must NOT be aborted by a steer — a steer arriving
+      // mid-stream is processed after the stream completes (see drainSteers
+      // calls below). Only the caller's abort signal applies to the stream.
       const streamResult = yield* streamLLMResponse(
         model,
         messages,
         tools,
         signal,
-        maxRetries,
+        autoRetry ? maxRetries : 0,
         baseDelay,
-        sessionId
+        sessionId,
+        resolved.thinkingLevel
       );
 
       if (!streamResult.ok) {
@@ -72,13 +128,33 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
           message: streamResult.finalAssistant,
           toolResults: [],
         });
+
+        // A steer may have arrived during streaming — process it before
+        // checking follow-up / terminating.
+        if (await drainSteers(messages)) {
+          turnIndex++;
+          continue;
+        }
+
+        // Before terminating, check follow-up queue
+        const followUpMsg = followUpQueue.shift();
+        if (followUpMsg) {
+          await injectMessage(messages, followUpMsg);
+          turnIndex++;
+          continue;
+        }
         break;
       }
+
+      // Reset the steer abort controller before tool execution so a steer
+      // arriving mid-execution aborts the running tool via the combined signal.
+      steerAbort = new AbortController();
+      const toolSignal = combineSignals(signal, steerAbort.signal);
 
       const toolExec = yield* executeToolCalls(
         streamResult.toolCalls,
         tools,
-        signal,
+        toolSignal,
         store,
         sessionId,
         messages
@@ -94,10 +170,56 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
       if (toolExec.shouldTerminate || signal?.aborted) {
         break;
       }
+
+      // After tool execution, check for steers that arrived mid-execution
+      const hadSteers = await drainSteers(messages);
+      if (hadSteers) {
+        continue; // process steers in a new turn
+      }
+
+      // Check follow-up queue
+      const followUpMsg = followUpQueue.shift();
+      if (followUpMsg) {
+        await injectMessage(messages, followUpMsg);
+      }
     }
 
     yield evt("agent_end", { sessionId });
   }
 
-  return { prompt };
+  return {
+    prompt,
+    steer(message: string) {
+      enqueue(steerQueue, message);
+      // If a tool is executing, abort it
+      if (!steerAbort.signal.aborted) {
+        steerAbort.abort();
+      }
+    },
+    followUp(message: string) {
+      enqueue(followUpQueue, message);
+    },
+  };
+}
+
+function combineSignals(
+  ...signals: (AbortSignal | undefined)[]
+): AbortSignal | undefined {
+  const valid = signals.filter((s): s is AbortSignal => s !== undefined);
+  if (valid.length === 0) {
+    return;
+  }
+  if (valid.length === 1) {
+    return valid[0];
+  }
+
+  const controller = new AbortController();
+  for (const s of valid) {
+    if (s.aborted) {
+      controller.abort();
+      return controller.signal;
+    }
+    s.addEventListener("abort", () => controller.abort(), { once: true });
+  }
+  return controller.signal;
 }

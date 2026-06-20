@@ -43,8 +43,16 @@ export async function* executeToolCalls(
           accumulated,
         });
       } catch (err: unknown) {
+        let content: string;
+        if (accumulated.length > 0) {
+          content = accumulated;
+        } else if (err instanceof Error) {
+          content = err.message;
+        } else {
+          content = "Tool execution error";
+        }
         result = {
-          content: err instanceof Error ? err.message : "Tool execution error",
+          content,
           terminate: false,
           isError: true,
         };
