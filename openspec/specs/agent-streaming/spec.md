@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+The agent streaming layer wires a single agent-loop run to a client over a WebSocket: it resolves the session's model, builds cwd-scoped tools, constructs an ephemeral loop per prompt, forwards the loop's `AgentEvent` stream as `event` frames, and supports prompt/abort/steer/followUp control messages. It maintains an in-process abort registry keyed by sessionId and allows multiple prompts (across sessions or projects) to run concurrently on one connection with isolated persistence.
+
+## Requirements
 
 ### Requirement: Per-prompt agent runner
 The system SHALL provide `runPrompt(ctx, sessionId, message, store)` as an `AsyncGenerator<AgentEvent>` that, for a valid session+project, resolves the model from stored config, builds cwd-scoped tools, constructs a fresh ephemeral `createAgentLoop`, and forwards the loop's `AgentEvent` stream. Each invocation SHALL construct its own loop, model, tools, and store (no shared mutable state between prompts). Messages produced by the loop SHALL be persisted via the injected `SessionStore` so they survive across prompts. The runner manages an internal `AbortController` per invocation; callers do not provide a signal.
@@ -54,8 +58,8 @@ The system SHALL maintain an in-process registry mapping `sessionId` to an `Abor
 - **WHEN** a run completes (or throws)
 - **THEN** its `sessionId` is removed from the active registry
 
-### Requirement: WebSocket prompt/abort protocol
-The system SHALL expose a WebSocket at `/ws`. Inbound messages SHALL be either `{type:"prompt", sessionId, message}` or `{type:"abort", sessionId}`. Outbound messages SHALL be either `{type:"event", sessionId, event}` (where `event` is an `AgentEvent`) or `{type:"error", sessionId, message}`. Every outbound frame SHALL carry the `sessionId` so the client can route frames to the correct conversation.
+### Requirement: WebSocket prompt/abort/steer/followUp protocol
+The system SHALL expose a WebSocket at `/ws`. Inbound messages SHALL be `{type:"prompt", sessionId, message}`, `{type:"abort", sessionId}`, `{type:"steer", sessionId, message}`, or `{type:"followUp", sessionId, message}`. Outbound messages SHALL be `{type:"event", sessionId, event}` (where `event` is an `AgentEvent`) or `{type:"error", sessionId, message}`. Every outbound frame SHALL carry the `sessionId` so the client can route frames to the correct conversation.
 
 #### Scenario: prompt produces an event frame stream
 - **WHEN** a `prompt` message is received for a valid session and the loop yields `agent_start`
@@ -68,6 +72,25 @@ The system SHALL expose a WebSocket at `/ws`. Inbound messages SHALL be either `
 #### Scenario: run failure emits an error frame
 - **WHEN** a `prompt` triggers an error (e.g. session not found) and the error is caught
 - **THEN** the client receives an `error` frame carrying the `sessionId` and a human-readable message
+
+#### Scenario: steer produces no immediate event frame
+- **WHEN** a `steer` message is processed by the loop
+- **THEN** no immediate event frame is sent; the steer's effects appear as normal text_delta/tool_execution events when the loop re-sends to the LLM
+
+### Requirement: WebSocket accepts steer and followUp messages
+The WebSocket protocol at `/ws` SHALL accept two new inbound message types:
+- `{ type: "steer", sessionId: string, message: string }`
+- `{ type: "followUp", sessionId: string, message: string }`
+
+When received, the WS handler SHALL look up the active loop for the given `sessionId` via the abort registry and call `loop.steer(message)` or `loop.followUp(message)`. If no active loop exists for the sessionId, the handler SHALL send an `{ type: "error", sessionId, message: "No active run" }` frame.
+
+#### Scenario: steer message forwarded to active loop
+- **WHEN** a `steer` message is received with a `sessionId` that has an active run
+- **THEN** the handler calls `loop.steer(message)` and does NOT send a response frame
+
+#### Scenario: steer with no active session
+- **WHEN** a `steer` message is received with a `sessionId` that has no active run
+- **THEN** the handler sends an `error` frame with `sessionId` and a descriptive message
 
 ### Requirement: Same-connection concurrency
 The system SHALL allow multiple prompts on a single WebSocket connection to run concurrently. The WS `message` handler SHALL NOT await the full prompt stream before returning; each prompt stream SHALL run independently on the event loop and interleave its outbound frames. This is what enables "two projects open at once" over one connection.
