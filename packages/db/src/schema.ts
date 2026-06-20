@@ -18,6 +18,7 @@ export const sessions = sqliteTable("sessions", {
   title: text("title"),
   modelId: text("model_id").notNull(),
   thinkingLevel: text("thinking_level").notNull().default("off"),
+  leafId: text("leaf_id"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
@@ -84,4 +85,17 @@ export const modelConfigs = sqliteTable("model_configs", {
   thinkingLevel: text("thinking_level").notNull().default("off"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
+});
+
+export const sessionEntries = sqliteTable("session_entries", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  parentId: text("parent_id"),
+  sequence: integer("sequence").notNull(),
+  kind: text("kind").notNull(),
+  content: text("content").notNull(),
+  timestamp: text("timestamp").notNull(),
+  createdAt: integer("created_at").notNull(),
 });

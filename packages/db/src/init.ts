@@ -27,6 +27,11 @@ export async function initDatabase(sqlite: Database): Promise<DrizzleDB> {
   } catch {
     /* exists */
   }
+  try {
+    sqlite.exec("ALTER TABLE sessions ADD COLUMN leaf_id TEXT");
+  } catch {
+    /* exists */
+  }
 
   return db;
 }
@@ -48,6 +53,7 @@ function getCreateTableSQL(_s: typeof schema): string {
       title TEXT,
       model_id TEXT NOT NULL,
       thinking_level TEXT NOT NULL DEFAULT 'off',
+      leaf_id TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -102,6 +108,17 @@ function getCreateTableSQL(_s: typeof schema): string {
       thinking_level TEXT NOT NULL DEFAULT 'off',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS session_entries (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+      parent_id TEXT,
+      sequence INTEGER NOT NULL,
+      kind TEXT NOT NULL,
+      content TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      created_at INTEGER NOT NULL
     );
   `;
 }

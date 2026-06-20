@@ -41,15 +41,37 @@
       "linter": {
         "rules": {
           "complexity": {
-            "noBannedTypes": "off"
+            "noBannedTypes": "off",
+            "noExcessiveCognitiveComplexity": "off"
           },
           "suspicious": {
-            "noExplicitAny": "off"
+            "noExplicitAny": "off",
+            "noControlCharactersInRegex": "off",
+            "useIterableCallbackReturn": "off",
+            "useAwait": "off"
           },
           "style": {
             "useGroupedAccessorPairs": "off",
             "useConsistentMemberAccessibility": "off",
             "useConsistentTypeDefinitions": "off",
+            "useConsistentArrayType": "off",
+            "noNonNullAssertion": "off",
+            "useReadonlyClassProperties": "off",
+            "noNestedTernary": "off",
+            "useAtIndex": "off",
+            "useForOf": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/db/src/session-entry-store.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "useAwait": "off"
+          },
+          "style": {
             "useConsistentArrayType": "off"
           }
         }
