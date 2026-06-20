@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 const SESSION_NOT_FOUND_RE = /Session not found/;
+const PROJECT_NOT_FOUND_RE = /Project not found/;
 
 // Mock @earendil-works/pi-ai before importing anything that uses it
 vi.mock("@earendil-works/pi-ai", async () => {
@@ -84,6 +85,50 @@ describe("runPrompt", () => {
         }
       })()
     ).rejects.toThrow(SESSION_NOT_FOUND_RE);
+  });
+
+  it("unknown project throws Project not found", async () => {
+    const ctx = createMockCtx();
+    (
+      ctx.repos.projects.findById as ReturnType<typeof vi.fn>
+    ).mockImplementation(async (id: string) => {
+      if (id === "proj-1") {
+        return null;
+      }
+      return {
+        id,
+        name: "test-project",
+        cwd: "/tmp/test",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+    });
+    const store = createMockStore();
+    getModelMock.mockReturnValue(createTestModel());
+
+    await expect(
+      (async () => {
+        for await (const _event of runPrompt(ctx, "sess-1", "test", store)) {
+          // consume
+        }
+      })()
+    ).rejects.toThrow(PROJECT_NOT_FOUND_RE);
+  });
+
+  it("resolveModel is called once — no redundant getForProject re-query", async () => {
+    const ctx = createMockCtx();
+    getEnvApiKeyMock.mockReturnValue("key");
+
+    const store = createMockStore();
+    getModelMock.mockReturnValue(createTestModel());
+    streamSimpleMock.mockReturnValue(createTextStream("ok"));
+    (ctx.repos.models.getForProject as ReturnType<typeof vi.fn>).mockClear();
+
+    for await (const _event of runPrompt(ctx, "sess-1", "hi", store)) {
+      // consume
+    }
+
+    expect(ctx.repos.models.getForProject).toHaveBeenCalledTimes(1);
   });
 
   it("abortRun returns true for active run, false for missing", async () => {

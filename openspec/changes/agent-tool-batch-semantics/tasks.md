@@ -5,7 +5,7 @@
 - [x] 1.3 In `packages/agent/src/loop/tool-execution.ts`, extract `function shouldTerminateToolBatch(results: { terminate: boolean }[]): boolean { return results.length > 0 && results.every(r => r.terminate === true); }` (pi `agent-loop.ts:544-546`).
 - [x] 1.4 Replace the `if (result.terminate) shouldTerminate = true` accumulator + the `shouldTerminate` boolean with a `terminates: {terminate: boolean}[]` array (push `result` per tool), and `return { toolResultMessages, shouldTerminate: shouldTerminateToolBatch(terminates) };`.
 - [x] 1.5 Tests → GREEN. Run `bun vitest run packages/agent/`.
-- [ ] 1.6 Gate: `bun typecheck && bun x ultracite check`. Commit "fix(agent-loop): terminate requires ALL tools to request it (AND, pi shouldTerminateToolBatch)".
+- [x] 1.6 Gate: `bun typecheck && bun x ultracite check`. Commit "fix(agent-loop): terminate requires ALL tools to request it (AND, pi shouldTerminateToolBatch)".
 
 ## 2. Abort breaks the batch (T10)
 

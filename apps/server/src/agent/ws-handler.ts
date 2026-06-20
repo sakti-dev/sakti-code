@@ -144,5 +144,9 @@ export function handleMessage(
     sendError(ws, msg.sessionId, busyMessage(msg.sessionId));
     return;
   }
-  runAgentStream(ctx, msg.sessionId, msg.message, store, ws);
+  runAgentStream(ctx, msg.sessionId, msg.message, store, ws).catch(() => {
+    // Fire-and-forget: errors are already sent as error frames inside
+    // runAgentStream's catch. This guards against send failures
+    // (e.g., WS already closed) causing unhandled promise rejections.
+  });
 }

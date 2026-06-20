@@ -95,14 +95,9 @@ export async function* runPrompt(
     throw new Error(`Project not found: ${session.projectId}`);
   }
 
-  const model = resolveModel(ctx, session);
+  const { model, provider } = resolveModel(ctx, session);
   const tools = buildTools(project.cwd);
 
-  // Resolve the provider API key for the summarization LLM call (same pattern
-  // as the manual /compact route). The agent package is pure, so the key must
-  // be supplied here via AgentConfig.apiKey.
-  const modelConfig = ctx.repos.models.getForProject(session.projectId);
-  const provider = modelConfig?.provider ?? "";
   const apiKey = getEnvApiKey(provider) ?? undefined;
 
   // Load per-session settings
