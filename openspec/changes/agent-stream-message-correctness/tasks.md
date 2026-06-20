@@ -8,9 +8,9 @@
 
 ## 2. Widen `AssistantMessage` to carry the pi-ai fields (type prerequisite for Tasks 3+4)
 
-- [ ] 2.1 Add optional fields to `AssistantMessage` in `packages/agent/src/types.ts`: `stopReason?: string`, `errorMessage?: string`, `api?: string`, `provider?: string`, `model?: string`, `responseModel?: string`, `responseId?: string`, `diagnostics?: unknown[]`. (Optional, not required — pre-change DB rows lack them.)
-- [ ] 2.2 `bun typecheck` — fix any compile breakage from the widened type (the `TurnEndEvent.message` and consumers).
-- [ ] 2.3 Commit "feat(agent): widen AssistantMessage with stopReason/errorMessage/attribution (pi-ai fields)".
+- [x] 2.1 Add optional fields to `AssistantMessage` in `packages/agent/src/types.ts`: `stopReason?: string`, `errorMessage?: string`, `api?: string`, `provider?: string`, `model?: string`, `responseModel?: string`, `responseId?: string`, `diagnostics?: unknown[]`. (Optional, not required — pre-change DB rows lack them.)
+- [x] 2.2 `bun typecheck` — fix any compile breakage from the widened type (the `TurnEndEvent.message` and consumers).
+- [x] 2.3 Commit "feat(agent): widen AssistantMessage with stopReason/errorMessage/attribution (pi-ai fields)".
 
 ## 3. Preserve the WHOLE pi-ai message at the stream boundary (merges Tasks 6 + 9, streaming side)
 

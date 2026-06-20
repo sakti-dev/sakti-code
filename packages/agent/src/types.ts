@@ -23,8 +23,16 @@ export interface UserMessage {
 }
 
 export interface AssistantMessage {
+  api?: string;
   content: (TextContent | ThinkingContent | ToolCall)[];
+  diagnostics?: unknown[];
+  errorMessage?: string;
+  model?: string;
+  provider?: string;
+  responseId?: string;
+  responseModel?: string;
   role: "assistant";
+  stopReason?: string;
   timestamp: number;
   usage: Usage;
 }
