@@ -208,4 +208,10 @@ describe("runPrompt", () => {
     const hasThinkingLevel = opts && "thinkingLevel" in opts;
     expect(hasThinkingLevel).toBe(false);
   });
+
+  it("W3: loadSessionSettings defaults auto_compaction to false (matches the settings-route default, not 'true')", () => {
+    const ctx = createMockCtx();
+    const settings = loadSessionSettings(ctx, "sess-1");
+    expect(settings.auto_compaction).toBe("false");
+  });
 });

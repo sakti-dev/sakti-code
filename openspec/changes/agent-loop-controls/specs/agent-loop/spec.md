@@ -29,13 +29,20 @@ The `AgentConfigInput` interface SHALL gain optional `autoRetry: boolean` and `s
 - **WHEN** `steeringMode: "one-at-a-time"` is set and one steer is queued
 - **THEN** the steer is processed at the next turn start, and subsequent steers are deferred until that turn completes
 
-### Requirement: Auto-compaction respects per-session setting
-When per-session settings disable `auto_compaction`, the loop SHALL NOT call `shouldCompact` or trigger automatic compaction during turns. Manual compaction via `POST /api/sessions/:id/compact` remains available regardless of this setting.
+### Requirement: Per-session auto_compaction setting is persisted and inert pending auto-compaction
+The `auto_compaction` setting (`session:{id}:auto_compaction`, default `"false"`) SHALL be readable and writable via the settings routes and loaded by `runPrompt` at loop construction. It is persisted correctly and round-trips. Automatic turn-level compaction is NOT yet implemented in the loop; the setting is forward-compatible scaffolding consumed by the dedicated `agent-auto-compaction` change. Manual compaction via `POST /api/sessions/:id/compact` remains available regardless of this setting.
 
-#### Scenario: auto-compaction disabled
-- **WHEN** `auto_compaction` is `false` and tokens exceed the context window threshold
-- **THEN** the loop continues without triggering automatic compaction
-- **AND** no `compaction_start`/`compaction_end` events are yielded
+#### Scenario: auto_compaction default is false
+- **WHEN** a session has no stored `auto_compaction` setting
+- **THEN** `loadSessionSettings` returns `auto_compaction: "false"`
+
+#### Scenario: setting round-trips
+- **WHEN** `PATCH /api/sessions/:id/settings { auto_compaction: true }` then `GET /api/sessions/:id/settings`
+- **THEN** the response has `auto_compaction: true`
+
+#### Scenario: no compaction events are ever yielded
+- **WHEN** `auto_compaction` is enabled or disabled and tokens exceed the context window threshold
+- **THEN** the loop continues without yielding any `compaction_start`/`compaction_end` events (the gate exists but the feature behind it is implemented in `agent-auto-compaction`)
 
 ## MODIFIED Requirements
 

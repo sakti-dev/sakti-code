@@ -39,7 +39,7 @@ export function getActiveLoop(sessionId: string): AgentLoop | null {
 
 // Default per-session setting values
 const DEFAULT_SETTINGS: Record<string, string> = {
-  auto_compaction: "true",
+  auto_compaction: "false",
   auto_retry: "true",
   follow_up_mode: "all",
   max_retries: "3",
