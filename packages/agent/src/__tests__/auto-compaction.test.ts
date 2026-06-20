@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentEvent, AgentMessage, SessionStore } from "../types";
 
 // Both the main loop stream and the summarization call come from pi-ai.
@@ -153,6 +153,14 @@ function largeHistory(): AgentMessage[] {
 }
 
 describe("auto-compaction in the agent loop", () => {
+  // Reset the shared module-level mocks between tests so call-count
+  // assertions reflect only the current test (prevents order-dependent,
+  // accidentally-green tests).
+  beforeEach(() => {
+    streamSimpleMock.mockClear();
+    completeSimpleMock.mockClear();
+  });
+
   it("triggers when context exceeds the window, replaces messages, emits events (2.1)", async () => {
     const store = createStore(largeHistory());
     streamSimpleMock.mockReturnValue(textStream("done!"));
@@ -188,6 +196,35 @@ describe("auto-compaction in the agent loop", () => {
       { type: "compaction_end" }
     >;
     expect(endEvent.tokensBefore).toBeGreaterThan(endEvent.tokensAfter);
+  });
+
+  it("does NOT trigger when autoCompaction is on but context is within budget (scenario 2)", async () => {
+    // autoCompaction is ENABLED and a key is present, but the context is tiny —
+    // shouldCompact returns false, so no compaction runs. This is the positive
+    // gate path (distinct from 'autoCompaction omitted'): a bug that always
+    // fired compaction when enabled would pass the default-off test but fail here.
+    const store = createStore([{ role: "user", content: "hi", timestamp: 1 }]);
+    streamSimpleMock.mockReturnValue(textStream("done!"));
+    completeSimpleMock.mockResolvedValue(SUMMARY_RESPONSE);
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [],
+      store,
+      autoCompaction: true,
+      apiKey: "test-key",
+      reserveTokens: 200,
+      keepRecentTokens: 50,
+    });
+    const events = await collectEvents(loop.prompt("continue"));
+
+    expect(events.some((e) => e.type === "compaction_start")).toBe(false);
+    expect(events.some((e) => e.type === "compaction_end")).toBe(false);
+    expect(completeSimpleMock).not.toHaveBeenCalled();
+    expect(store.replaceMessages).not.toHaveBeenCalled();
+    // The loop still runs a normal turn.
+    expect(events.some((e) => e.type === "turn_start")).toBe(true);
   });
 
   it("does NOT trigger when autoCompaction is omitted (default off) (2.2)", async () => {
