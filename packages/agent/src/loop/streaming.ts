@@ -109,9 +109,16 @@ async function* consumeStream(
 
   for await (const event of stream) {
     if (signal?.aborted) {
-      return { status: "aborted", finalAssistant: null };
+      yield evt("message_end", { message: finalAssistant });
+      return { status: "aborted", finalAssistant };
     }
     switch (event.type) {
+      case "start":
+        if (event.partial) {
+          finalAssistant = mapPiAssistantMessage(event.partial);
+          yield evt("message_start", { message: finalAssistant });
+        }
+        break;
       case "text_delta":
         yield evt("message_update", {
           update: { type: "text_delta", delta: event.delta },
@@ -164,10 +171,12 @@ async function* consumeStream(
         yield evt("error", {
           message: event.error?.errorMessage ?? "LLM error",
         });
+        yield evt("message_end", { message: finalAssistant });
         return { status: "error", finalAssistant };
     }
   }
 
+  yield evt("message_end", { message: finalAssistant });
   return { status: "done", finalAssistant };
 }
 

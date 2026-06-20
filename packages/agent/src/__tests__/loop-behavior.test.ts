@@ -530,6 +530,94 @@ describe("Agent loop error/aborted turn persistence (pi agent-loop.ts:196)", () 
     expect(errorMsg.errorMessage).toBe("billing exceeded");
   });
 
+  it("error path: assistant message_start and message_end are paired", async () => {
+    const store = createMockStore();
+    const s = new MockEventStream();
+    const now = Date.now();
+    const errorPiMessage: any = {
+      role: "assistant",
+      content: [{ type: "text", text: "billing exceeded" }],
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: "error",
+      errorMessage: "billing exceeded",
+      api: "openai-completions",
+      provider: "openai",
+      model: "test",
+      timestamp: now,
+    };
+    s.push({ type: "start", partial: errorPiMessage });
+    s.push({ type: "error", reason: "error", error: errorPiMessage });
+
+    vi.mocked(streamSimple).mockReturnValue(s);
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [],
+      store,
+    });
+    const events = await collectEvents(loop.prompt("hi"));
+
+    const assistantStarts = events.filter(
+      (e) => e.type === "message_start" && e.message?.role === "assistant"
+    );
+    const assistantEnds = events.filter(
+      (e) => e.type === "message_end" && e.message?.role === "assistant"
+    );
+    expect(assistantStarts.length).toBe(1);
+    expect(assistantEnds.length).toBe(1);
+  });
+
+  it("abort path: assistant message_start and message_end are paired", async () => {
+    const store = createMockStore();
+    const s = new MockEventStream();
+    const now = Date.now();
+    const abortedPiMessage: any = {
+      role: "assistant",
+      content: [{ type: "text", text: "" }],
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: "aborted",
+      errorMessage: "aborted",
+      api: "openai-completions",
+      provider: "openai",
+      model: "test",
+      timestamp: now,
+    };
+    s.push({ type: "start", partial: abortedPiMessage });
+    s.push({ type: "error", reason: "aborted", error: abortedPiMessage });
+
+    vi.mocked(streamSimple).mockReturnValue(s);
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [],
+      store,
+    });
+    const events = await collectEvents(loop.prompt("hi"));
+
+    const assistantStarts = events.filter(
+      (e) => e.type === "message_start" && e.message?.role === "assistant"
+    );
+    const assistantEnds = events.filter(
+      (e) => e.type === "message_end" && e.message?.role === "assistant"
+    );
+    expect(assistantStarts.length).toBe(1);
+    expect(assistantEnds.length).toBe(1);
+  });
+
   it("persists the aborted assistant message on caller abort", async () => {
     const store = createMockStore();
     const s = new MockEventStream();

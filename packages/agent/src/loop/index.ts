@@ -139,24 +139,13 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
       }
 
       yield evt("turn_start", { turnIndex });
-      const initialAssistant: Extract<AgentMessage, { role: "assistant" }> = {
-        role: "assistant",
-        content: [],
-        usage: {
-          input: 0,
-          output: 0,
-          cacheRead: 0,
-          cacheWrite: 0,
-          totalTokens: 0,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-        },
-        timestamp: Date.now(),
-      };
-      yield evt("message_start", { message: initialAssistant });
 
       // The LLM stream must NOT be aborted by a steer — a steer arriving
       // mid-stream is processed after the stream completes (see drainSteers
       // calls below). Only the caller's abort signal applies to the stream.
+      // message_start/message_end for the assistant are emitted inside
+      // streamLLMResponse (consumeStream) on the stream's start and
+      // done/error/aborted events, matching pi's streamAssistantResponse.
       const streamResult = yield* streamLLMResponse(
         model,
         messages,
@@ -174,16 +163,26 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
           messages.push(streamResult.finalAssistant);
           await store.appendMessage(sessionId, streamResult.finalAssistant);
         }
+        yield evt("turn_end", {
+          turnIndex,
+          message: streamResult.finalAssistant,
+          toolResults: [],
+        });
+        yield evt("agent_end", { sessionId });
         return;
       }
       if (signal?.aborted) {
+        yield evt("turn_end", {
+          turnIndex,
+          message: streamResult.finalAssistant,
+          toolResults: [],
+        });
         yield evt("agent_end", { sessionId });
         return;
       }
 
-      yield evt("message_end", {
-        message: streamResult.finalAssistant,
-      });
+      // message_end for the assistant was already emitted inside streamLLMResponse
+      // (consumeStream emits it on the done event). Persist the final message.
 
       if (!streamResult.finalAssistant) {
         yield evt("error", {
