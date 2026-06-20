@@ -171,6 +171,12 @@ export function createMockCtx(overrides?: {
         ),
         getGlobalDefault: vi.fn(async () => null),
       },
+      settings: {
+        get: vi.fn(() => null),
+        getByPrefix: vi.fn(() => []),
+        set: vi.fn(async () => {}),
+        getAll: vi.fn(() => []),
+      },
     },
   } as any;
 }
@@ -233,6 +239,12 @@ export function createMultiSessionCtx(
           updatedAt: Date.now(),
         })),
         getGlobalDefault: vi.fn(async () => null),
+      },
+      settings: {
+        get: vi.fn(() => null),
+        getByPrefix: vi.fn(() => []),
+        set: vi.fn(async () => {}),
+        getAll: vi.fn(() => []),
       },
     },
   } as any;

@@ -15,7 +15,7 @@ vi.mock("@earendil-works/pi-ai", async () => {
 const { streamSimple, getModel } = await import("@earendil-works/pi-ai");
 
 import type { AgentEvent } from "@sakti-code/agent";
-import { abortRun, runPrompt } from "../runner.ts";
+import { abortRun, loadSessionSettings, runPrompt } from "../runner.ts";
 import {
   createMockCtx,
   createMockStore,
@@ -149,5 +149,25 @@ describe("runPrompt", () => {
 
     // No more active run → returns false
     expect(abortRun("sess-1")).toBe(false);
+  });
+
+  it("loadSessionSettings reads per-session settings via getByPrefix and merges defaults", async () => {
+    const ctx = createMockCtx();
+    (
+      ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>
+    ).mockReturnValue([
+      { key: "session:sess-1:thinking_level", value: "high" },
+    ]);
+
+    const settings = loadSessionSettings(ctx, "sess-1");
+
+    expect(ctx.repos.settings.getByPrefix).toHaveBeenCalledWith(
+      "session:sess-1:"
+    );
+    // override applied
+    expect(settings.thinking_level).toBe("high");
+    // defaults present for unset keys
+    expect(settings.auto_retry).toBe("true");
+    expect(settings.steering_mode).toBe("all");
   });
 });
