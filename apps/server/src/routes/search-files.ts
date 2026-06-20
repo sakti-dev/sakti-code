@@ -51,10 +51,12 @@ async function runFind(
     const ignoreDirs = [
       "node_modules",
       ".git",
-      ".cache",
       "dist",
       "build",
+      ".cache",
       ".next",
+      "__pycache__",
+      ".DS_Store",
     ];
     const ignoreDirsExpr = ignoreDirs.flatMap((d) => [
       "-not",
@@ -91,7 +93,7 @@ async function runFind(
 
 export const searchFilesRoutes = new Elysia({ name: "routes.searchFiles" }).get(
   "/api/projects/:id/search-files",
-  async ({ params, query: { q, limit }, store }) => {
+  async ({ params, query: { query: q, limit }, store }) => {
     const ctx = getCtx(store);
     const project = await ctx.repos.projects.findById(params.id);
     if (!project) {
@@ -108,11 +110,11 @@ export const searchFilesRoutes = new Elysia({ name: "routes.searchFiles" }).get(
       files = await runFind(query, project.cwd, maxResults);
     }
 
-    return Response.json({ files, projectId: project.id, cwd: project.cwd });
+    return Response.json({ files, cwd: project.cwd });
   },
   {
     query: t.Object({
-      q: t.Optional(t.String()),
+      query: t.Optional(t.String()),
       limit: t.Optional(t.Numeric()),
     }),
   }

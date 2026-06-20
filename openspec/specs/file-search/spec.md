@@ -24,7 +24,7 @@ The system SHALL expose `GET /api/projects/:id/search-files?query=&limit=` that 
 - **THEN** the response status is 404
 
 ### Requirement: File search uses fd with find fallback
-The file search SHALL first attempt to use `fd` (which respects `.gitignore` by default). If `fd` is not available or fails, the search SHALL fall back to `find` with manual ignore patterns (`node_modules`, `.git`, `dist`).
+The file search SHALL first attempt to use `fd` (which respects `.gitignore` by default). If `fd` is not available or fails, the search SHALL fall back to `find` with manual ignore patterns for common directories (`node_modules`, `.git`, `dist`, `build`, `.cache`, `.next`, `__pycache__`, `.DS_Store`).
 
 #### Scenario: fd available
 - **WHEN** `fd` is installed and search is called

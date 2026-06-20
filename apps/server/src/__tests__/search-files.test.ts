@@ -33,23 +33,17 @@ describe("file search routes", () => {
     } catch {}
   });
 
-  it("returns matching files for a query", async () => {
+  it("W6: uses ?query= (per spec, not ?q=) and returns {files, cwd} only", async () => {
     const res = await app.handle(
       new Request(
-        `http://localhost/api/projects/${projectId}/search-files?q=hello`
+        `http://localhost/api/projects/${projectId}/search-files?query=hello`
       )
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toHaveProperty("files");
-    expect(Array.isArray(body.files)).toBe(true);
+    // Response shape is exactly {files, cwd} — no undocumented projectId.
+    expect(Object.keys(body).sort()).toEqual(["cwd", "files"]);
     expect(body.files.length).toBeGreaterThanOrEqual(1);
-    // Each file entry should have path and kind
-    for (const entry of body.files) {
-      expect(typeof entry.path).toBe("string");
-      expect(["file", "directory"]).toContain(entry.kind);
-    }
-    // Should include hello.ts
     expect(
       body.files.some((f: { path: string }) => f.path.includes("hello"))
     ).toBe(true);
@@ -57,7 +51,7 @@ describe("file search routes", () => {
 
   it("unknown project returns 404", async () => {
     const res = await app.handle(
-      new Request("http://localhost/api/projects/nope/search-files?q=hello")
+      new Request("http://localhost/api/projects/nope/search-files?query=hello")
     );
     expect(res.status).toBe(404);
   });
@@ -75,7 +69,7 @@ describe("file search routes", () => {
   it("respects limit parameter", async () => {
     const res = await app.handle(
       new Request(
-        `http://localhost/api/projects/${projectId}/search-files?q=.ts&limit=2`
+        `http://localhost/api/projects/${projectId}/search-files?query=.ts&limit=2`
       )
     );
     expect(res.status).toBe(200);
