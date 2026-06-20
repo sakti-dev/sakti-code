@@ -53,6 +53,15 @@ async function executeOneTool(
       } else {
         content = "Tool execution error";
       }
+      if (accumulated.length > 0) {
+        events.push(
+          evt("tool_execution_update", {
+            toolCallId: tc.id,
+            toolName: tc.name,
+            accumulated,
+          })
+        );
+      }
       result = {
         content,
         terminate: false,

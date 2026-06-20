@@ -227,7 +227,10 @@ export async function compactMessages(
   const historyMessages = messages.slice(0, cutIndex);
   const recentMessages = messages.slice(cutIndex);
 
-  const conversationText = historyMessages.map(messageToText).join("\n\n");
+  const conversationText = historyMessages
+    .map(messageToText)
+    .filter(Boolean)
+    .join("\n\n");
   const summaryPrompt = `<conversation>\n${conversationText}\n</conversation>\n\n${SUMMARIZE_PROMPT}`;
 
   const response = await completeSimple(

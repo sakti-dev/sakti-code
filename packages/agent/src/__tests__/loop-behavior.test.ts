@@ -666,6 +666,87 @@ describe("Agent loop error/aborted turn persistence (pi agent-loop.ts:196)", () 
   });
 });
 
+it("wraps each followUp message in message_start/message_end with payload", async () => {
+  const store = createMockStore();
+  let callCount = 0;
+  vi.mocked(streamSimple).mockImplementation(() => {
+    callCount++;
+    if (callCount === 1) {
+      return textStream("First response");
+    }
+    return textStream("Second response after followUp");
+  });
+
+  const loop = createAgentLoop({
+    sessionId: "s1",
+    model: testModel,
+    tools: [],
+    store,
+  });
+
+  loop.followUp("follow up message");
+  const events = await collectEvents(loop.prompt("initial"));
+
+  const followUpStarts = events.filter(
+    (e) =>
+      e.type === "message_start" &&
+      e.message?.role === "user" &&
+      (e.message as any).content === "follow up message"
+  );
+  const followUpEnds = events.filter(
+    (e) =>
+      e.type === "message_end" &&
+      e.message?.role === "user" &&
+      (e.message as any).content === "follow up message"
+  );
+  expect(followUpStarts.length).toBe(1);
+  expect(followUpEnds.length).toBe(1);
+});
+
+it("tool with partial output then error emits tool_execution_update with accumulated content", async () => {
+  const store = createMockStore();
+  const tool: AgentTool = {
+    name: "flaky",
+    description: "Flaky tool",
+    parameters: { type: "object", properties: {} },
+    execute: async (_id, _args, _signal, onUpdate) => {
+      onUpdate("partial one");
+      onUpdate(" partial two");
+      throw new Error("tool exploded");
+    },
+  };
+
+  let flakyCallCount = 0;
+  vi.mocked(streamSimple).mockImplementation(() => {
+    flakyCallCount++;
+    if (flakyCallCount === 1) {
+      return toolCallStream("flaky", {});
+    }
+    return textStream("Recovered after flaky error");
+  });
+
+  const loop = createAgentLoop({
+    sessionId: "s1",
+    model: testModel,
+    tools: [tool],
+    store,
+  });
+  const events = await collectEvents(loop.prompt("use flaky"));
+
+  const updateEvents = events.filter(
+    (e) => e.type === "tool_execution_update" && (e as any).toolCallId
+  );
+  expect(updateEvents.length).toBe(1);
+  expect((updateEvents[0] as any).accumulated).toBe("partial one partial two");
+
+  const errorEnds = events.filter(
+    (e) => e.type === "tool_execution_end" && (e as any).toolName === "flaky"
+  );
+  expect(errorEnds.length).toBe(1);
+  expect((errorEnds[0] as any).result.content).toBe("partial one partial two");
+  expect((errorEnds[0] as any).result.isError).toBe(true);
+});
+
 function multiToolCallStream(
   tools: { name: string; args: Record<string, unknown>; id: string }[]
 ) {
@@ -1000,5 +1081,99 @@ describe("Agent loop parallel tool execution", () => {
     );
     expect(toolResultMsgs.length).toBeLessThan(3);
     expect(executeCount).toBeLessThan(3);
+  });
+});
+
+describe("Agent loop sequential mode ordering", () => {
+  it("sequential mode: tools run one at a time in call order", async () => {
+    const store = createMockStore();
+    const startTimes: number[] = [];
+
+    const toolA: AgentTool = {
+      name: "slow",
+      description: "Slow tool A",
+      parameters: { type: "object", properties: {} },
+      execute: async () => {
+        startTimes.push(Date.now());
+        await new Promise((r) => setTimeout(r, 30));
+        return { content: "A done", terminate: false };
+      },
+    };
+    const toolB: AgentTool = {
+      name: "fast",
+      description: "Fast tool B",
+      parameters: { type: "object", properties: {} },
+      execute: async () => {
+        startTimes.push(Date.now());
+        return { content: "B done", terminate: false };
+      },
+    };
+
+    let callCount = 0;
+    vi.mocked(streamSimple).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return multiToolCallStream([
+          { name: "slow", args: {}, id: "tc_1" },
+          { name: "fast", args: {}, id: "tc_2" },
+        ]);
+      }
+      return textStream("all done");
+    });
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [toolA, toolB],
+      store,
+      toolExecutionMode: "sequential",
+    });
+    const events = await collectEvents(loop.prompt("run sequential"));
+
+    expect(startTimes.length).toBe(2);
+    expect(startTimes[1]!).toBeGreaterThan(startTimes[0]! + 20);
+
+    const toolMsgs = events.filter(
+      (e) => e.type === "message_start" && e.message?.role === "tool"
+    );
+    expect(toolMsgs.length).toBe(2);
+    expect((toolMsgs[0]!.message as any).toolCallId).toBe("tc_1");
+    expect((toolMsgs[1]!.message as any).toolCallId).toBe("tc_2");
+  }, 10_000);
+});
+
+describe("Agent loop all-false terminate batch", () => {
+  it("all-false terminate batch continues the loop to a second turn", async () => {
+    const store = createMockStore();
+    const tool: AgentTool = {
+      name: "go",
+      description: "Continues",
+      parameters: { type: "object", properties: {} },
+      execute: async () => ({ content: "go", terminate: false }),
+    };
+
+    let callCount = 0;
+    vi.mocked(streamSimple).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return multiToolCallStream([
+          { name: "go", args: {}, id: "tc_1" },
+          { name: "go", args: {}, id: "tc_2" },
+        ]);
+      }
+      return textStream("Continuing after all-false batch");
+    });
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [tool],
+      store,
+    });
+    const events = await collectEvents(loop.prompt("all go"));
+
+    const turnEnds = events.filter((e) => e.type === "turn_end");
+    expect(turnEnds.length).toBe(2);
+    expect(events.some((e) => e.type === "agent_end")).toBe(true);
   });
 });

@@ -212,7 +212,9 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
         // Before terminating, check follow-up queue
         const followUpMsg = followUpQueue.shift();
         if (followUpMsg && !followUpDone) {
-          await injectMessage(messages, followUpMsg);
+          const msg = await injectMessage(messages, followUpMsg);
+          yield evt("message_start", { message: msg });
+          yield evt("message_end", { message: msg });
           if (resolved.followUpMode === "one-at-a-time") {
             followUpDone = true;
           }
@@ -257,7 +259,9 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
       // Check follow-up queue
       const followUpMsg = followUpQueue.shift();
       if (followUpMsg && !followUpDone) {
-        await injectMessage(messages, followUpMsg);
+        const msg = await injectMessage(messages, followUpMsg);
+        yield evt("message_start", { message: msg });
+        yield evt("message_end", { message: msg });
         if (resolved.followUpMode === "one-at-a-time") {
           followUpDone = true;
         }
