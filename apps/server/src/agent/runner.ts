@@ -100,6 +100,7 @@ export async function* runPrompt(
 
   const loop = createAgentLoop({
     autoRetry: settings.auto_retry === "true",
+    followUpMode: settings.follow_up_mode,
     maxRetries: Number(settings.max_retries),
     model,
     sessionId,

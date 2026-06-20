@@ -303,6 +303,14 @@ export class SettingsRepo {
     return row?.value ?? null;
   }
 
+  getByPrefix(prefix: string): Array<{ key: string; value: string }> {
+    return this.db
+      .select()
+      .from(settings)
+      .where(sql`${settings.key} LIKE ${`${prefix}%`}`)
+      .all();
+  }
+
   async set(key: string, value: string) {
     const now = Date.now();
     await this.db

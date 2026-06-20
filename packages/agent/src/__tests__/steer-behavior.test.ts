@@ -489,4 +489,40 @@ describe("config overrides (S3)", () => {
     expect(steers[0]).toBe("first");
     expect(steers).toContain("second");
   });
+
+  it("W2: followUpMode one-at-a-time processes exactly one follow-up then stops", async () => {
+    const store = createMockStore();
+    const blocked = blockingTextStream(() => {});
+    let call = 0;
+    streamSimple.mockImplementation(() => {
+      call++;
+      return call === 1 ? blocked : textStream("ok");
+    });
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [],
+      store,
+      followUpMode: "one-at-a-time",
+    });
+    const promise = (async () => {
+      for await (const _e of loop.prompt("hi")) {
+        // consume
+      }
+    })();
+    // First turn is blocked; queue two follow-ups.
+    await new Promise((r) => setTimeout(r, 15));
+    loop.followUp("first-fu");
+    loop.followUp("second-fu");
+    blocked.release();
+    await promise;
+
+    const followUps = (await store.loadMessages("s1"))
+      .filter((m) => m.role === "user" && m.content !== "hi")
+      .map((m) => m.content);
+    // one-at-a-time: only the first follow-up runs in this prompt lifecycle.
+    expect(followUps).toEqual(["first-fu"]);
+    expect(call).toBe(2); // initial turn + exactly one follow-up turn
+  });
 });

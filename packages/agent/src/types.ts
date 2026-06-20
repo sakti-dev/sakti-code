@@ -239,6 +239,7 @@ export interface SessionStore {
 
 export interface AgentConfig {
   autoRetry?: boolean;
+  followUpMode?: string;
   keepRecentTokens: number;
   maxRetries: number;
   model: AnyModel;
@@ -254,6 +255,7 @@ export interface AgentConfig {
 
 export interface AgentConfigInput {
   autoRetry?: boolean;
+  followUpMode?: string;
   keepRecentTokens?: number;
   maxRetries?: number;
   model: AnyModel;

@@ -143,7 +143,8 @@ export async function* streamLLMResponse(
   signal: AbortSignal | undefined,
   maxRetries: number,
   baseDelay: number,
-  sessionId: string
+  sessionId: string,
+  thinkingLevel?: string
 ): AsyncGenerator<AgentEvent, StreamResult> {
   const toolCalls: ToolCallInfo[] = [];
   let finalAssistant: AgentMessage | null = null;
@@ -163,7 +164,10 @@ export async function* streamLLMResponse(
             parameters: t.parameters,
           })),
         },
-        { ...(signal ? { signal } : {}) }
+        {
+          ...(signal ? { signal } : {}),
+          ...(thinkingLevel ? { thinkingLevel } : {}),
+        }
       );
       const streamResult = yield* consumeStream(stream, signal, toolCalls);
       if (streamResult.status === "error") {

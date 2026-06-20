@@ -75,6 +75,9 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
   ): AsyncGenerator<AgentEvent> {
     const messages: AgentMessage[] = await store.loadMessages(sessionId);
     let turnIndex = 0;
+    // Under followUpMode "one-at-a-time" only one follow-up runs per prompt
+    // lifecycle; this flag gates both follow-up injection points.
+    let followUpDone = false;
 
     await injectMessage(messages, message);
 
@@ -138,8 +141,11 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
 
         // Before terminating, check follow-up queue
         const followUpMsg = followUpQueue.shift();
-        if (followUpMsg) {
+        if (followUpMsg && !followUpDone) {
           await injectMessage(messages, followUpMsg);
+          if (resolved.followUpMode === "one-at-a-time") {
+            followUpDone = true;
+          }
           turnIndex++;
           continue;
         }
@@ -179,8 +185,11 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
 
       // Check follow-up queue
       const followUpMsg = followUpQueue.shift();
-      if (followUpMsg) {
+      if (followUpMsg && !followUpDone) {
         await injectMessage(messages, followUpMsg);
+        if (resolved.followUpMode === "one-at-a-time") {
+          followUpDone = true;
+        }
       }
     }
 

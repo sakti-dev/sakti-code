@@ -1,6 +1,6 @@
 import type { AgentEvent, SessionStore } from "@sakti-code/agent";
 import type { ServerContext } from "../context.ts";
-import { abortRun, runPrompt } from "./runner.ts";
+import { abortRun, getActiveLoop, runPrompt } from "./runner.ts";
 
 // ── Inbound message types ──
 
@@ -15,7 +15,23 @@ export interface AbortMessage {
   type: "abort";
 }
 
-export type WsIn = PromptMessage | AbortMessage;
+export interface SteerMessage {
+  message: string;
+  sessionId: string;
+  type: "steer";
+}
+
+export interface FollowUpMessage {
+  message: string;
+  sessionId: string;
+  type: "followUp";
+}
+
+export type WsIn =
+  | PromptMessage
+  | AbortMessage
+  | SteerMessage
+  | FollowUpMessage;
 
 // ── Outbound frame types ──
 
@@ -90,6 +106,24 @@ export function handleMessage(
 ) {
   if (msg.type === "abort") {
     abortRun(msg.sessionId);
+    return;
+  }
+
+  if (msg.type === "steer" || msg.type === "followUp") {
+    const loop = getActiveLoop(msg.sessionId);
+    if (!loop) {
+      sendError(
+        ws,
+        msg.sessionId,
+        `No active run for session ${msg.sessionId}`
+      );
+      return;
+    }
+    if (msg.type === "steer") {
+      loop.steer(msg.message);
+    } else {
+      loop.followUp(msg.message);
+    }
     return;
   }
 
