@@ -38,7 +38,7 @@ The change is confined to `packages/agent/src/compaction.ts` and its tests. It m
 
 ### 1. Cut-point guard: snap forward past `tool` messages (behaviorally equivalent to pi's two-pass, minimal to our structure)
 
-**Decision:** Keep our existing walk-back loop (accumulate tokens, break on budget → raw `cutIndex`). Then add one advancement step: `while (cutIndex < messages.length && messages[cutIndex]?.role === "tool") cutIndex++;`. If advancement exhausts the array (no valid cut point — defensive, shouldn't happen in a well-formed conversation), fall through to the existing `cutIndex >= messages.length` → keep-all path.
+**Decision:** Keep our existing walk-back loop (accumulate tokens, break on budget → raw `cutIndex`). Then add one advancement step: `while (cutIndex < messages.length && messages[cutIndex]?.role === "tool") cutIndex++;`. **Crucially, the existing keep-all guard `if (cutIndex <= 1)` MUST be widened to `if (cutIndex <= 1 || cutIndex >= messages.length)`** so that exhaustion (advancement ran off the end because the entire keep-window was tool messages — a malformed conversation) triggers keep-all, matching pi's `if (cutPoints.length === 0) return { firstKeptEntryIndex: startIndex, ... }` (compaction.ts:403) which keeps everything when no valid cut point exists. Without this guard change, an exhausted cutIndex (= `messages.length`, e.g. 40) would pass `<= 1`, skip the keep-all, and produce `recentMessages = slice(40) = []` — i.e. summarize-all-keep-nothing, the opposite of the claimed behavior. This is the one place the v1 spec hand-waved a correctness property; the guard change is mandatory, not optional.
 
 **Rationale:** pi precomputes the valid-cut-point set, then picks "closest valid cut point at or after `i`". For our simpler message model the only invalid cut role is `tool`, so "advance `cutIndex` forward past `tool` messages" produces the **same** selected index pi would pick. It's less code, fits our existing loop structure, and the equivalence is provable: the snap-forward finds exactly the smallest `j >= cutIndex` with `role !== "tool"`, which is pi's "closest valid cut point at or after `i`" (since our valid set is `role ∈ {user, assistant}`). Verified against pi's selection semantics.
 
@@ -48,12 +48,14 @@ The change is confined to `packages/agent/src/compaction.ts` and its tests. It m
 
 ### 2. Serializer: mirror pi's `serializeConversation` three-section form + truncation, not just "add truncation"
 
-**Decision:** Rewrite `messageToText` to match pi's `serializeConversation` (`utils.ts:109-160`) section-for-section:
-- `user` → `[User]: <content>`.
-- `assistant` → emit whichever of `[Assistant thinking]: …`, `[Assistant]: …`, `[Assistant tool calls]: <name>(k=v, …); …` are present, in that order.
-- `tool` → `[Tool result]: <truncateForSummary(content, TOOL_RESULT_MAX_CHARS)>`.
+**Decision:** Rewrite `messageToText` to match pi's `serializeConversation` (`utils.ts:109-163`) section-for-section, including the details pi's code actually encodes:
+- `user` → `[User]: <content>` — but **only if content is non-empty** (pi: `if (content) parts.push(...)`). Our `UserMessage.content` is always a `string`, so this is `if (msg.content) return \`[User]: ${msg.content}\``; empty user messages produce no line.
+- `assistant` → emit whichever of `[Assistant thinking]: <thinkingParts.join("\n")>`, `[Assistant]: <textParts.join("\n")>`, `[Assistant tool calls]: <calls.join("; ")>` are present, **in that order**, each gated on `.length > 0`. Each `toolCall` serializes as `${block.name}(${argsStr})` where `argsStr = Object.entries(args).map(([k,v]) => \`${k}=${JSON.stringify(v)}\`).join(", ")` — pi's exact arg format. **The multiple sections within one assistant message SHALL be joined with `"\n\n"`** (pi joins ALL parts — across messages AND within a multi-section message — with `parts.join("\n\n")`, utils.ts:163; our external `historyMessages.map(messageToText).join("\n\n")` already joins between messages, so the within-message multi-section join must also be `"\n\n"` to match).
+- `tool` → `[Tool result]: <truncateForSummary(content, TOOL_RESULT_MAX_CHARS)>` — but **only if content is non-empty** (pi: `if (content) parts.push(...)`, utils.ts:158).
 
 Add `TOOL_RESULT_MAX_CHARS = 2000` and `truncateForSummary` (`utils.ts:89-98`) verbatim (same constant, same marker `\n\n[... ${truncatedChars} more characters truncated]`).
+
+**Note on `convertToLlm`:** pi calls `convertToLlm(currentMessages)` before `serializeConversation` (compaction.ts:586-587) to map custom message types (bashExecution, custom, branchSummary, compactionSummary) onto LLM roles. Our message model has only `user`/`assistant`/`tool` — no custom types — so `convertToLlm` is a no-op equivalent for us and is intentionally NOT replicated. Stated explicitly rather than silently omitted.
 
 **Rationale:** The plan's T8 only mentioned truncation, but pi's serializer is richer — it preserves thinking and toolcall context that our current `Assistant:` line drops. "Follow pi closely" means mirroring the serializer, not bolting truncation onto our lossy version. The three-section form gives the summarizer strictly more signal (reasoning + tool invocations) at no correctness cost. Truncation bounds token cost. All three behaviors are in one function, so doing them together is the natural unit.
 
