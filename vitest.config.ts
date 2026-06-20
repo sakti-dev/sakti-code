@@ -6,7 +6,7 @@ export default defineConfig({
       "packages/**/__tests__/**/*.test.ts",
       "apps/**/__tests__/**/*.test.ts",
     ],
-    exclude: ["**/node_modules/**", "**/openspec/**"],
+    exclude: ["**/node_modules/**", "**/openspec/**", "**/_legacy/**"],
     coverage: {
       include: ["packages/*/src/**/*.ts"],
     },
