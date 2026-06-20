@@ -1,144 +1,197 @@
-import { existsSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
-import { validateArgs } from "../lib/shared.ts";
-import type { ToolDefinition } from "../lib/types.ts";
+import { constants } from "node:fs";
+import {
+  access as fsAccess,
+  readFile as fsReadFile,
+  writeFile as fsWriteFile,
+} from "node:fs/promises";
+import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
+import { type Static, Type } from "typebox";
+import {
+  applyEditsToNormalizedContent,
+  detectLineEnding,
+  type Edit,
+  generateDiffString,
+  generateUnifiedPatch,
+  normalizeToLF,
+  restoreLineEndings,
+  stripBom,
+} from "../lib/edit-diff.ts";
+import { withFileMutationQueue } from "../lib/file-mutation-queue.ts";
+import { resolveToCwd } from "../lib/path-utils.ts";
 
-function stripBom(content: string): { bom: string; text: string } {
-  if (content.charCodeAt(0) === 0xfe_ff) {
-    return { bom: "\ufeff", text: content.slice(1) };
+const replaceEditSchema = Type.Object(
+  {
+    oldText: Type.String({
+      description:
+        "Exact text for one targeted replacement. It must be unique in the original file and must not overlap with any other edits[].oldText in the same call.",
+    }),
+    newText: Type.String({
+      description: "Replacement text for this targeted edit.",
+    }),
+  },
+  { additionalProperties: false }
+);
+
+const editSchema = Type.Object(
+  {
+    path: Type.String({
+      description: "Path to the file to edit (relative or absolute)",
+    }),
+    edits: Type.Array(replaceEditSchema, {
+      description:
+        "One or more targeted replacements. Each edit is matched against the original file, not incrementally. Do not include overlapping or nested edits. If two changes touch the same block or nearby lines, merge them into one edit instead.",
+    }),
+  },
+  { additionalProperties: false }
+);
+
+export type EditToolInput = Static<typeof editSchema>;
+type LegacyEditToolInput = EditToolInput & {
+  oldText?: unknown;
+  newText?: unknown;
+};
+
+export interface EditToolDetails {
+  diff: string;
+  firstChangedLine?: number;
+  patch: string;
+}
+
+export interface EditOperations {
+  access: (absolutePath: string) => Promise<void>;
+  readFile: (absolutePath: string) => Promise<Buffer>;
+  writeFile: (absolutePath: string, content: string) => Promise<void>;
+}
+
+const defaultEditOperations: EditOperations = {
+  readFile: (path) => fsReadFile(path),
+  writeFile: (path, content) => fsWriteFile(path, content, "utf-8"),
+  access: (path) => fsAccess(path, constants.R_OK | constants.W_OK),
+};
+
+export interface EditToolOptions {
+  operations?: EditOperations;
+}
+
+function prepareEditArguments(input: unknown): EditToolInput {
+  if (!input || typeof input !== "object") {
+    return input as EditToolInput;
   }
-  return { bom: "", text: content };
-}
 
-function detectLineEnding(content: string): string {
-  return content.includes("\r\n") ? "\r\n" : "\n";
-}
+  const args = input as Record<string, unknown>;
 
-function normalizeToLf(content: string): string {
-  return content.replace(/\r\n/g, "\n");
-}
-
-function restoreLineEndings(content: string, ending: string): string {
-  if (ending === "\r\n") {
-    return content.replace(/\n/g, "\r\n");
-  }
-  return content;
-}
-
-const fileLocks = new Map<string, Promise<void>>();
-
-function withFileLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
-  const pending = fileLocks.get(path);
-  const next = pending ? pending.then(fn, fn) : fn();
-  fileLocks.set(
-    path,
-    next.then(
-      () => {
-        if (fileLocks.get(path) === next) {
-          fileLocks.delete(path);
-        }
-      },
-      () => {
-        if (fileLocks.get(path) === next) {
-          fileLocks.delete(path);
-        }
+  if (typeof args.edits === "string") {
+    try {
+      const parsed = JSON.parse(args.edits);
+      if (Array.isArray(parsed)) {
+        args.edits = parsed;
       }
-    )
-  );
-  return next;
+    } catch {}
+  }
+
+  const legacy = args as LegacyEditToolInput;
+  if (
+    typeof legacy.oldText !== "string" ||
+    typeof legacy.newText !== "string"
+  ) {
+    return args as EditToolInput;
+  }
+
+  const edits = Array.isArray(legacy.edits) ? [...legacy.edits] : [];
+  edits.push({ oldText: legacy.oldText, newText: legacy.newText });
+  const { oldText: _oldText, newText: _newText, ...rest } = legacy;
+  return { ...rest, edits } as EditToolInput;
 }
 
-export function createEditTool(cwd: string): ToolDefinition {
+function validateEditInput(input: EditToolInput): {
+  path: string;
+  edits: Edit[];
+} {
+  if (!Array.isArray(input.edits) || input.edits.length === 0) {
+    throw new Error(
+      "Edit tool input is invalid. edits must contain at least one replacement."
+    );
+  }
+  return { path: input.path, edits: input.edits };
+}
+
+export function createEditTool(
+  cwd: string,
+  options?: EditToolOptions
+): AgentTool<typeof editSchema, EditToolDetails | undefined> {
+  const ops = options?.operations ?? defaultEditOperations;
   return {
     name: "edit",
+    label: "edit",
     description:
-      "Apply exact text replacements to a file. Every edits[].oldText must match a unique, non-overlapping region. BOM and line endings are preserved.",
-    parameters: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "File path relative to cwd" },
-        edits: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              oldText: { type: "string" },
-              newText: { type: "string" },
+      "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.",
+    parameters: editSchema,
+    prepareArguments: prepareEditArguments,
+    async execute(
+      _toolCallId: string,
+      input: Static<typeof editSchema>,
+      signal?: AbortSignal,
+      _onUpdate?: AgentToolUpdateCallback<EditToolDetails | undefined>
+    ) {
+      const { path, edits } = validateEditInput(input);
+      const absolutePath = resolveToCwd(path, cwd);
+
+      return withFileMutationQueue(absolutePath, async () => {
+        const throwIfAborted = (): void => {
+          if (signal?.aborted) {
+            throw new Error("Operation aborted");
+          }
+        };
+
+        throwIfAborted();
+
+        try {
+          await ops.access(absolutePath);
+        } catch (error: unknown) {
+          throwIfAborted();
+          const errorMessage =
+            error instanceof Error && "code" in error
+              ? `Error code: ${error.code}`
+              : String(error);
+          throw new Error(`Could not edit file: ${path}. ${errorMessage}.`);
+        }
+        throwIfAborted();
+
+        const buffer = await ops.readFile(absolutePath);
+        const rawContent = buffer.toString("utf-8");
+        throwIfAborted();
+
+        const { bom, text: content } = stripBom(rawContent);
+        const originalEnding = detectLineEnding(content);
+        const normalizedContent = normalizeToLF(content);
+        const { baseContent, newContent } = applyEditsToNormalizedContent(
+          normalizedContent,
+          edits,
+          path
+        );
+        throwIfAborted();
+
+        const finalContent =
+          bom + restoreLineEndings(newContent, originalEnding);
+        await ops.writeFile(absolutePath, finalContent);
+        throwIfAborted();
+
+        const diffResult = generateDiffString(baseContent, newContent);
+        const patch = generateUnifiedPatch(path, baseContent, newContent);
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Successfully replaced ${edits.length} block(s) in ${path}.`,
             },
-            required: ["oldText", "newText"],
+          ],
+          details: {
+            diff: diffResult.diff,
+            patch,
+            ...(diffResult.firstChangedLine === undefined
+              ? {}
+              : { firstChangedLine: diffResult.firstChangedLine }),
           },
-        },
-      },
-      required: ["path", "edits"],
-    },
-    execute: async (_id, args) => {
-      const v = validateArgs(
-        args as Record<string, unknown>,
-        {
-          path: { type: "string", required: true },
-          edits: { type: "array", required: true },
-        },
-        "edit"
-      );
-      if (!v.valid) {
-        return { content: v.error, terminate: false, isError: true };
-      }
-      const { path, edits } = v.args as {
-        path: string;
-        edits: Array<{ oldText: string; newText: string }>;
-      };
-      const filePath = resolve(cwd, path);
-
-      if (!existsSync(filePath)) {
-        return {
-          content: `File not found: ${path}`,
-          terminate: false,
-          isError: true,
-        };
-      }
-      if (!Array.isArray(edits) || edits.length === 0) {
-        return {
-          content: "edits must be a non-empty array",
-          terminate: false,
-          isError: true,
-        };
-      }
-
-      return await withFileLock(filePath, async () => {
-        const raw = await readFile(filePath, "utf-8");
-        const { bom, text } = stripBom(raw);
-        const originalEnding = detectLineEnding(text);
-        const normalized = normalizeToLf(text);
-
-        for (const edit of edits) {
-          const count = normalized.split(edit.oldText).length - 1;
-          if (count === 0) {
-            return {
-              content: `Edit failed: oldText not found in ${path}:\n${edit.oldText.slice(0, 200)}`,
-              terminate: false,
-              isError: true,
-            };
-          }
-          if (count > 1) {
-            return {
-              content: `Edit failed: oldText matches ${count} locations in ${path} (must be unique). Add more context:\n${edit.oldText.slice(0, 200)}`,
-              terminate: false,
-              isError: true,
-            };
-          }
-        }
-
-        let result = normalized;
-        for (const edit of edits) {
-          result = result.replace(edit.oldText, edit.newText);
-        }
-
-        const final = bom + restoreLineEndings(result, originalEnding);
-        await writeFile(filePath, final, "utf-8");
-        return {
-          content: `Applied ${edits.length} edit(s) to ${path}`,
-          terminate: false,
         };
       });
     },

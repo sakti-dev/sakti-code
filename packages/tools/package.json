@@ -2,13 +2,10 @@
   "name": "@sakti-code/tools",
   "version": "0.0.0",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./src/index.ts"
-    }
+    ".": "./src/index.ts"
   },
   "scripts": {
     "build": "tsc",
@@ -17,6 +14,7 @@
   },
   "dependencies": {
     "@earendil-works/pi-ai": "0.79.8",
+    "@sakti-code/agent": "workspace:*",
     "diff": "^9.0.0"
   }
 }

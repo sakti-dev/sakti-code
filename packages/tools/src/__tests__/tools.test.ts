@@ -1,5 +1,13 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import {
+  globSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { join, resolve } from "node:path";
+import type { AgentToolResult } from "@sakti-code/agent";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   createBashTool,
@@ -10,6 +18,14 @@ import {
   createReadTool,
   createWriteTool,
 } from "../index";
+
+function getTextContent(result: AgentToolResult<unknown>): string {
+  const first = result.content[0];
+  if (first && "text" in first) {
+    return first.text;
+  }
+  return "";
+}
 
 let tmpDir: string;
 
@@ -26,8 +42,7 @@ describe("ReadTool", () => {
     writeFileSync(join(tmpDir, "hello.txt"), "Hello, world!");
     const tool = createReadTool(tmpDir);
     const result = await tool.execute("tc_1", { path: "hello.txt" });
-    expect(result.content).toBe("Hello, world!");
-    expect(result.isError).toBeFalsy();
+    expect(getTextContent(result)).toBe("Hello, world!");
   });
 
   it("supports offset and limit", async () => {
@@ -41,14 +56,14 @@ describe("ReadTool", () => {
       offset: 5,
       limit: 3,
     });
-    expect(result.content).toBe("line 5\nline 6\nline 7");
+    expect(getTextContent(result)).toContain("line 5\nline 6\nline 7");
   });
 
   it("returns error for missing file", async () => {
     const tool = createReadTool(tmpDir);
-    const result = await tool.execute("tc_1", { path: "nonexistent.txt" });
-    expect(result.isError).toBe(true);
-    expect(result.content).toContain("File not found");
+    await expect(
+      tool.execute("tc_1", { path: "nonexistent.txt" })
+    ).rejects.toThrow();
   });
 
   it("truncates large files", async () => {
@@ -56,8 +71,9 @@ describe("ReadTool", () => {
     writeFileSync(join(tmpDir, "big.txt"), lines.join("\n"));
     const tool = createReadTool(tmpDir);
     const result = await tool.execute("tc_1", { path: "big.txt" });
-    expect(result.content).toContain("truncated");
-    expect(result.content.split("\n").length).toBeLessThan(3000);
+    const text = getTextContent(result);
+    expect(text).toContain("lines");
+    expect(text.split("\n").length).toBeLessThan(3000);
   });
 
   it("reads image files as base64 data URL", async () => {
@@ -68,9 +84,13 @@ describe("ReadTool", () => {
     writeFileSync(join(tmpDir, "test.png"), minimalPng);
     const tool = createReadTool(tmpDir);
     const result = await tool.execute("tc_1", { path: "test.png" });
-    expect(result.isError).toBeFalsy();
-    expect(result.content).toContain("image/png");
-    expect(result.content).toContain("data:image/png;base64,");
+    const text = getTextContent(result);
+    expect(text).toContain("image/png");
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "image", mimeType: "image/png" }),
+      ])
+    );
   });
 });
 
@@ -81,8 +101,7 @@ describe("WriteTool", () => {
       path: "new.txt",
       content: "hello!",
     });
-    expect(result.isError).toBeFalsy();
-    expect(result.content).toContain("Wrote");
+    expect(getTextContent(result)).toContain("Successfully wrote");
     expect(readFileSync(join(tmpDir, "new.txt"), "utf-8")).toBe("hello!");
   });
 
@@ -108,7 +127,7 @@ describe("EditTool", () => {
       path: "edit.txt",
       edits: [{ oldText: "const x = 1", newText: "const x = 42" }],
     });
-    expect(result.isError).toBeFalsy();
+    expect(getTextContent(result)).toContain("Successfully");
     expect(readFileSync(join(tmpDir, "edit.txt"), "utf-8")).toContain(
       "const x = 42"
     );
@@ -127,27 +146,29 @@ describe("EditTool", () => {
     const content = readFileSync(join(tmpDir, "multi.txt"), "utf-8");
     expect(content).toContain("ALPHA");
     expect(content).toContain("GAMMA");
-    expect(content).toContain("beta"); // unchanged
+    expect(content).toContain("beta");
   });
 
   it("fails if oldText not found, file unchanged", async () => {
     writeFileSync(join(tmpDir, "fail.txt"), "hello");
     const tool = createEditTool(tmpDir);
-    const result = await tool.execute("tc_1", {
-      path: "fail.txt",
-      edits: [{ oldText: "nonexistent", newText: "xxx" }],
-    });
-    expect(result.isError).toBe(true);
+    await expect(
+      tool.execute("tc_1", {
+        path: "fail.txt",
+        edits: [{ oldText: "nonexistent", newText: "xxx" }],
+      })
+    ).rejects.toThrow();
     expect(readFileSync(join(tmpDir, "fail.txt"), "utf-8")).toBe("hello");
   });
 
   it("returns error for missing file", async () => {
     const tool = createEditTool(tmpDir);
-    const result = await tool.execute("tc_1", {
-      path: "nope.txt",
-      edits: [{ oldText: "x", newText: "y" }],
-    });
-    expect(result.isError).toBe(true);
+    await expect(
+      tool.execute("tc_1", {
+        path: "nope.txt",
+        edits: [{ oldText: "x", newText: "y" }],
+      })
+    ).rejects.toThrow();
   });
 
   it("preserves BOM on edit", async () => {
@@ -179,12 +200,12 @@ describe("EditTool", () => {
   it("rejects non-unique oldText", async () => {
     writeFileSync(join(tmpDir, "dup.txt"), "const x = 1;\nconst x = 2;\n");
     const tool = createEditTool(tmpDir);
-    const result = await tool.execute("tc_1", {
-      path: "dup.txt",
-      edits: [{ oldText: "const x", newText: "const y" }],
-    });
-    expect(result.isError).toBe(true);
-    expect(result.content).toContain("matches 2 locations");
+    await expect(
+      tool.execute("tc_1", {
+        path: "dup.txt",
+        edits: [{ oldText: "const x", newText: "const y" }],
+      })
+    ).rejects.toThrow("unique");
     expect(readFileSync(join(tmpDir, "dup.txt"), "utf-8")).toBe(
       "const x = 1;\nconst x = 2;\n"
     );
@@ -193,8 +214,9 @@ describe("EditTool", () => {
   it("rejects empty edits array", async () => {
     writeFileSync(join(tmpDir, "empty.txt"), "hello");
     const tool = createEditTool(tmpDir);
-    const result = await tool.execute("tc_1", { path: "empty.txt", edits: [] });
-    expect(result.isError).toBe(true);
+    await expect(
+      tool.execute("tc_1", { path: "empty.txt", edits: [] })
+    ).rejects.toThrow();
   });
 });
 
@@ -202,24 +224,21 @@ describe("BashTool", () => {
   it("runs a command and returns output", async () => {
     const tool = createBashTool(tmpDir);
     const result = await tool.execute("tc_1", { command: "echo hello" });
-    expect(result.content.trim()).toBe("hello");
-    expect(result.isError).toBeFalsy();
+    expect(getTextContent(result).trim()).toBe("hello");
   });
 
   it("returns error on non-zero exit", async () => {
     const tool = createBashTool(tmpDir);
-    const result = await tool.execute("tc_1", { command: "exit 1" });
-    expect(result.isError).toBe(true);
+    await expect(tool.execute("tc_1", { command: "exit 1" })).rejects.toThrow(
+      "exited with code 1"
+    );
   });
 
   it("times out", async () => {
-    const tool = createBashTool(tmpDir, 5);
-    const result = await tool.execute("tc_1", {
-      command: "sleep 10",
-      timeout: 0.1,
-    });
-    expect(result.isError).toBe(true);
-    expect(result.content).toContain("timed out");
+    const tool = createBashTool(tmpDir);
+    await expect(
+      tool.execute("tc_1", { command: "sleep 10", timeout: 0.1 })
+    ).rejects.toThrow("timed out");
   });
 
   it("streams output via onUpdate callback", async () => {
@@ -229,37 +248,36 @@ describe("BashTool", () => {
       "tc_1",
       { command: "for i in 1 2 3; do echo $i; sleep 0.1; done" },
       undefined,
-      (partial) => {
-        updates.push(partial);
+      (update) => {
+        const text = getTextContent(update);
+        if (text) {
+          updates.push(text);
+        }
       }
     );
-    expect(result.isError).toBeFalsy();
-    expect(result.content).toContain("3");
-    // Should have received at least 2 streaming updates during execution
+    expect(getTextContent(result)).toContain("3");
     expect(updates.length).toBeGreaterThanOrEqual(2);
   });
 
   it("respects abort signal and returns promptly", async () => {
     const controller = new AbortController();
-    const tool = createBashTool(tmpDir, 60);
+    const tool = createBashTool(tmpDir);
     const start = Date.now();
-    const result = await tool.execute(
+    const promise = tool.execute(
       "tc_1",
       { command: "sleep 30" },
       controller.signal
     );
+    setTimeout(() => controller.abort(), 100);
+    await expect(promise).rejects.toThrow();
     const elapsed = Date.now() - start;
-    // Must return within 2 seconds, not wait 30s or 60s
     expect(elapsed).toBeLessThan(2000);
-    expect(result).toBeDefined();
   });
 
   it("does not block the event loop", async () => {
-    // Run a slow command but prove other work happens concurrently
     let otherWorkRan = false;
-    const tool = createBashTool(tmpDir, 5000);
+    const tool = createBashTool(tmpDir);
     const promise = tool.execute("tc_1", { command: "sleep 0.3" });
-    // This should execute immediately, not wait for the command to finish
     otherWorkRan = true;
     const result = await promise;
     expect(otherWorkRan).toBe(true);
@@ -275,8 +293,7 @@ describe("GrepTool", () => {
     );
     const tool = createGrepTool(tmpDir);
     const result = await tool.execute("tc_1", { pattern: "TODO" });
-    expect(result.isError).toBeFalsy();
-    expect(result.content).toContain("TODO");
+    expect(getTextContent(result)).toContain("TODO");
   });
 
   it("supports ignoreCase", async () => {
@@ -286,33 +303,58 @@ describe("GrepTool", () => {
       pattern: "hello",
       ignoreCase: true,
     });
-    expect(result.content).toContain("hello");
-    expect(result.content).toContain("HELLO");
+    const text = getTextContent(result);
+    expect(text).toContain("hello");
+    expect(text).toContain("HELLO");
   });
 
   it("returns no matches message when nothing found", async () => {
     const tool = createGrepTool(tmpDir);
     const result = await tool.execute("tc_1", { pattern: "XYZNONEXISTENT" });
-    expect(result.content).toContain("No matches found");
+    expect(getTextContent(result)).toContain("No matches found");
   });
 });
 
 describe("FindTool", () => {
+  const createTestFindTool = () =>
+    createFindTool(tmpDir, {
+      operations: {
+        exists: async (p: string) => {
+          try {
+            const { stat } = await import("node:fs/promises");
+            await stat(p);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        glob: (
+          pattern: string,
+          cwd: string,
+          _opts: { ignore: string[]; limit: number }
+        ) =>
+          globSync(pattern, { cwd, ignore: _opts.ignore }).map((p) =>
+            resolve(cwd, p)
+          ),
+      },
+    });
+
   it("finds files by pattern", async () => {
     writeFileSync(join(tmpDir, "found.ts"), "x");
     writeFileSync(join(tmpDir, "found2.ts"), "y");
     writeFileSync(join(tmpDir, "found.js"), "z");
-    const tool = createFindTool(tmpDir);
+    const tool = createTestFindTool();
     const result = await tool.execute("tc_1", { pattern: "*.ts" });
-    expect(result.content).toContain("found.ts");
-    expect(result.content).toContain("found2.ts");
-    expect(result.content).not.toContain("found.js");
+    const text = getTextContent(result);
+    expect(text).toContain("found.ts");
+    expect(text).toContain("found2.ts");
+    expect(text).not.toContain("found.js");
   });
 
   it("returns no files found when empty", async () => {
-    const tool = createFindTool(tmpDir);
+    const tool = createTestFindTool();
     const result = await tool.execute("tc_1", { pattern: "*.nonexistent" });
-    expect(result.content).toContain("No files found");
+    expect(getTextContent(result)).toContain("No files found");
   });
 });
 
@@ -320,8 +362,8 @@ describe("LsTool", () => {
   it("lists current directory", async () => {
     const tool = createLsTool(tmpDir);
     const result = await tool.execute("tc_1", {});
-    expect(result.isError).toBeFalsy();
-    expect(result.content).toContain("hello.txt");
+    const text = getTextContent(result);
+    expect(text).toContain("hello.txt");
   });
 
   it("lists subdirectory with / suffix for dirs", async () => {
@@ -329,42 +371,37 @@ describe("LsTool", () => {
     writeFileSync(join(tmpDir, "subdir", "file.txt"), "x");
     const tool = createLsTool(tmpDir);
     const result = await tool.execute("tc_1", { path: "subdir" });
-    expect(result.content).toContain("file.txt");
+    expect(getTextContent(result)).toContain("file.txt");
   });
 });
 
 describe("Tool Argument Validation", () => {
   it("read rejects missing path", async () => {
     const tool = createReadTool(tmpDir);
-    const result = await tool.execute("tc_1", {});
-    expect(result.isError).toBe(true);
-    expect(result.content).toContain("Missing required");
+    await expect(tool.execute("tc_1", {} as any)).rejects.toThrow();
   });
 
   it("bash rejects missing command", async () => {
     const tool = createBashTool(tmpDir);
-    const result = await tool.execute("tc_1", {});
-    expect(result.isError).toBe(true);
-    expect(result.content).toContain("Missing required");
+    await expect(tool.execute("tc_1", {} as any)).rejects.toThrow();
   });
 
   it("edit rejects missing path", async () => {
     const tool = createEditTool(tmpDir);
-    const result = await tool.execute("tc_1", {
-      edits: [{ oldText: "x", newText: "y" }],
-    });
-    expect(result.isError).toBe(true);
-    expect(result.content).toContain("Missing required");
+    await expect(
+      tool.execute("tc_1", {
+        edits: [{ oldText: "x", newText: "y" }],
+      } as any)
+    ).rejects.toThrow();
   });
 
-  it("bash rejects wrong type for timeout", async () => {
+  it("bash ignores wrong type for timeout (handled by harness)", async () => {
     const tool = createBashTool(tmpDir);
     const result = await tool.execute("tc_1", {
       command: "echo hi",
-      timeout: "ten",
+      timeout: "ten" as unknown as number,
     });
-    expect(result.isError).toBe(true);
-    expect(result.content).toContain("must be number");
+    expect(getTextContent(result).trim()).toBe("hi");
   });
 });
 
@@ -377,32 +414,36 @@ describe("Tool Safety", () => {
     writeFileSync(join(tmpDir, "image.dat"), minimalPng);
     const tool = createReadTool(tmpDir);
     const result = await tool.execute("tc_1", { path: "image.dat" });
-    expect(result.isError).toBeFalsy();
-    expect(result.content).toContain("data:image/png;base64,");
+    const text = getTextContent(result);
+    expect(text).toContain("image/png");
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "image", mimeType: "image/png" }),
+      ])
+    );
   });
 
   it("grep pattern cannot inject flags", async () => {
     writeFileSync(join(tmpDir, "secret.txt"), "password123\n-i hello\n");
     const tool = createGrepTool(tmpDir);
-    // Malicious pattern that tries to inject -i flag
     const result = await tool.execute("tc_1", { pattern: "-i password" });
-    // Should not match case-insensitively due to flag injection
-    expect(result.isError).toBeTruthy();
+    const text = getTextContent(result);
+    expect(text).not.toContain("password123");
   });
 
   it("edit is atomic: if 2nd edit fails, file is unchanged", async () => {
     writeFileSync(join(tmpDir, "atomic.txt"), "alpha\nbeta\ngamma\n");
     const tool = createEditTool(tmpDir);
     const original = readFileSync(join(tmpDir, "atomic.txt"), "utf-8");
-    const result = await tool.execute("tc_1", {
-      path: "atomic.txt",
-      edits: [
-        { oldText: "alpha", newText: "ALPHA" },
-        { oldText: "nonexistent", newText: "fail" },
-      ],
-    });
-    expect(result.isError).toBe(true);
-    // File must be unchanged — first edit was NOT applied
+    await expect(
+      tool.execute("tc_1", {
+        path: "atomic.txt",
+        edits: [
+          { oldText: "alpha", newText: "ALPHA" },
+          { oldText: "nonexistent", newText: "fail" },
+        ],
+      })
+    ).rejects.toThrow();
     expect(readFileSync(join(tmpDir, "atomic.txt"), "utf-8")).toBe(original);
   });
 
@@ -411,12 +452,8 @@ describe("Tool Safety", () => {
     const result = await tool.execute("tc_1", {
       command: "echo stdout-msg; echo stderr-msg 1>&2",
     });
-    expect(result.content).toContain("stdout-msg");
-    expect(result.content).toContain("stderr-msg");
+    const text = getTextContent(result);
+    expect(text).toContain("stdout-msg");
+    expect(text).toContain("stderr-msg");
   });
 });
-
-function readFileSync(path: string, encoding: string) {
-  const { readFileSync: rf } = require("node:fs");
-  return rf(path, encoding);
-}

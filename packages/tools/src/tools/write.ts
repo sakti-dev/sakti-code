@@ -1,44 +1,75 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
-import { validateArgs } from "../lib/shared.ts";
-import type { ToolDefinition } from "../lib/types.ts";
+import { mkdir as fsMkdir, writeFile as fsWriteFile } from "node:fs/promises";
+import { dirname } from "node:path";
+import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
+import { type Static, Type } from "typebox";
+import { withFileMutationQueue } from "../lib/file-mutation-queue.ts";
+import { resolveToCwd } from "../lib/path-utils.ts";
 
-export function createWriteTool(cwd: string): ToolDefinition {
+const writeSchema = Type.Object({
+  path: Type.String({
+    description: "Path to the file to write (relative or absolute)",
+  }),
+  content: Type.String({ description: "Content to write to the file" }),
+});
+
+export type WriteToolInput = Static<typeof writeSchema>;
+
+export interface WriteOperations {
+  mkdir: (dir: string) => Promise<void>;
+  writeFile: (absolutePath: string, content: string) => Promise<void>;
+}
+
+const defaultWriteOperations: WriteOperations = {
+  writeFile: (path, content) => fsWriteFile(path, content, "utf-8"),
+  mkdir: (dir) => fsMkdir(dir, { recursive: true }).then(() => {}),
+};
+
+export interface WriteToolOptions {
+  operations?: WriteOperations;
+}
+
+export function createWriteTool(
+  cwd: string,
+  options?: WriteToolOptions
+): AgentTool<typeof writeSchema, undefined> {
+  const ops = options?.operations ?? defaultWriteOperations;
   return {
     name: "write",
+    label: "write",
     description:
-      "Write content to a file. Creates parent directories if needed.",
-    parameters: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "File path relative to cwd" },
-        content: { type: "string", description: "Content to write" },
-      },
-      required: ["path", "content"],
-    },
-    execute: async (_id, args) => {
-      const v = validateArgs(
-        args as Record<string, unknown>,
-        {
-          path: { type: "string", required: true },
-          content: { type: "string", required: true },
-        },
-        "write"
-      );
-      if (!v.valid) {
-        return { content: v.error, terminate: false, isError: true };
-      }
-      const { path, content } = v.args as { path: string; content: string };
-      const filePath = resolve(cwd, path);
+      "Write content to a file. Creates the file if it doesn't exist, overwrites if it does. Automatically creates parent directories.",
+    parameters: writeSchema,
+    async execute(
+      _toolCallId: string,
+      { path, content }: Static<typeof writeSchema>,
+      signal?: AbortSignal,
+      _onUpdate?: AgentToolUpdateCallback<undefined>
+    ) {
+      const absolutePath = resolveToCwd(path, cwd);
+      const dir = dirname(absolutePath);
+      return withFileMutationQueue(absolutePath, async () => {
+        const throwIfAborted = (): void => {
+          if (signal?.aborted) {
+            throw new Error("Operation aborted");
+          }
+        };
 
-      const dir = join(filePath, "..");
-      await mkdir(dir, { recursive: true });
-      await writeFile(filePath, content, "utf-8");
+        throwIfAborted();
+        await ops.mkdir(dir);
+        throwIfAborted();
+        await ops.writeFile(absolutePath, content);
+        throwIfAborted();
 
-      return {
-        content: `Wrote ${Buffer.byteLength(content, "utf-8")} bytes to ${path}`,
-        terminate: false,
-      };
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Successfully wrote ${content.length} bytes to ${path}`,
+            },
+          ],
+          details: undefined,
+        };
+      });
     },
   };
 }

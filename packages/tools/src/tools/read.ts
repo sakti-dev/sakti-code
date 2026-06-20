@@ -5,7 +5,7 @@ import {
   open,
 } from "node:fs/promises";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai/base";
-import type { AgentTool } from "@sakti-code/agent";
+import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
 import { resolveReadPathAsync } from "../lib/path-utils.ts";
 import {
@@ -169,10 +169,10 @@ export function createReadTool(
     description: `Read the contents of a file. Supports text files and images (jpg, png, gif, webp). Images are sent as attachments. For text files, output is truncated to ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.`,
     parameters: readSchema,
     execute(
-      _toolCallId,
+      _toolCallId: string,
       { path, offset, limit }: ReadToolInput,
       signal?: AbortSignal,
-      _onUpdate?
+      _onUpdate?: AgentToolUpdateCallback<ReadToolDetails | undefined>
     ) {
       return new Promise<{
         content: (TextContent | ImageContent)[];
