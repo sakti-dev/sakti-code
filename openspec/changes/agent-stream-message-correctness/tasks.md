@@ -49,10 +49,10 @@
 
 ## 7. Verification
 
-- [ ] 7.1 `bun vitest run packages/agent/` — all pass (expect ~72 + new).
-- [ ] 7.2 `cd packages/db && bun test` — all pass (expect ~23 + new round-trip test).
-- [ ] 7.3 `bun vitest run apps/server/src/agent/__tests__/` — no regressions (server reads widened messages).
-- [ ] 7.4 `cd apps/server && bun test src/__tests__ src/terminal/__tests__` — no regressions.
-- [ ] 7.5 `bun typecheck` — 0 errors.
-- [ ] 7.6 `bun x ultracite check` — 0 remaining diagnostics.
-- [ ] 7.7 Cross-check every scenario in `specs/agent-loop/spec.md` and `specs/thinking-level-config/spec.md` against the implemented tests; each scenario SHALL have a covering test.
+- [x] 7.1 `bun vitest run packages/agent/` — all pass (expect ~72 + new).
+- [x] 7.2 `cd packages/db && bun test` — all pass (expect ~23 + new round-trip test).
+- [x] 7.3 `bun vitest run apps/server/src/agent/__tests__/` — no regressions (server reads widened messages).
+- [x] 7.4 `cd apps/server && bun test src/__tests__ src/terminal/__tests__` — no regressions.
+- [x] 7.5 `bun typecheck` — 0 errors.
+- [x] 7.6 `bun x ultracite check` — 0 remaining diagnostics.
+- [x] 7.7 Cross-check every scenario in `specs/agent-loop/spec.md` and `specs/thinking-level-config/spec.md` against the implemented tests; each scenario SHALL have a covering test.
