@@ -14,14 +14,14 @@
 
 ## 3. Preserve the WHOLE pi-ai message at the stream boundary (merges Tasks 6 + 9, streaming side)
 
-- [ ] 3.1 Write failing test in `packages/agent/src/__tests__/loop-behavior.test.ts`: after a normal text turn, assert the final `AssistantMessage` (via `turn_end`/store) carries `stopReason: "stop"` AND at least one attribution field (`api`/`provider`/`model`) that the mock `streamSimple` reported. RED.
-- [ ] 3.2 Write failing test: mock `streamSimple` to terminate with an `error` event carrying `event.error` = a full `AssistantMessage` (`stopReason: "error"`, `errorMessage: "billing"`, zeroed usage). Assert `streamLLMResponse`'s result carries that exact message (NOT a synthesized one, NOT `finalAssistant: null`). RED.
-- [ ] 3.3 In `streaming.ts` `done` handler: map ALL `event.message` fields onto `finalAssistant` (content, usage, timestamp, stopReason, errorMessage, api, provider, model, responseModel, responseId, diagnostics) instead of cherry-picking four.
-- [ ] 3.4 In `streaming.ts` `error` handler: set `finalAssistant = event.error` (the whole pi-ai error message), keep yielding the `error` event, and `return { status: "error", finalAssistant: event.error }`. (Abort case: pi-ai sets `stopReason: "aborted"` on `event.error` — no special-casing needed.)
-- [ ] 3.5 Widen `StreamResult`: the non-OK variant SHALL carry `finalAssistant: AgentMessage | null` so the loop can persist it (Tasks 4+5).
-- [ ] 3.6 Fix `toPiMessages` in `streaming.ts`: pass through the now-preserved `stopReason`/`api`/`provider`/`model`/`responseModel`/`responseId` from our `AssistantMessage` instead of fabricating `"stop"/"openai-completions"/"openai"/"unknown"`; keep fabrication as fallback for messages lacking them (old rows).
-- [ ] 3.7 Tests → GREEN. Run full agent suite.
-- [ ] 3.8 Gate + commit "fix(agent-loop): preserve whole pi-ai message (done+error), fix toPiMessages fabrication".
+- [x] 3.1 Write failing test in `packages/agent/src/__tests__/loop-behavior.test.ts`: after a normal text turn, assert the final `AssistantMessage` (via `turn_end`/store) carries `stopReason: "stop"` AND at least one attribution field (`api`/`provider`/`model`) that the mock `streamSimple` reported. RED.
+- [x] 3.2 Write failing test: mock `streamSimple` to terminate with an `error` event carrying `event.error` = a full `AssistantMessage` (`stopReason: "error"`, `errorMessage: "billing"`, zeroed usage). Assert `streamLLMResponse`'s result carries that exact message (NOT a synthesized one, NOT `finalAssistant: null`). RED.
+- [x] 3.3 In `streaming.ts` `done` handler: map ALL `event.message` fields onto `finalAssistant` (content, usage, timestamp, stopReason, errorMessage, api, provider, model, responseModel, responseId, diagnostics) instead of cherry-picking four.
+- [x] 3.4 In `streaming.ts` `error` handler: set `finalAssistant = event.error` (the whole pi-ai error message), keep yielding the `error` event, and `return { status: "error", finalAssistant: event.error }`. (Abort case: pi-ai sets `stopReason: "aborted"` on `event.error` — no special-casing needed.)
+- [x] 3.5 Widen `StreamResult`: the non-OK variant SHALL carry `finalAssistant: AgentMessage | null` so the loop can persist it (Tasks 4+5).
+- [x] 3.6 Fix `toPiMessages` in `streaming.ts`: pass through the now-preserved `stopReason`/`api`/`provider`/`model`/`responseModel`/`responseId` from our `AssistantMessage` instead of fabricating `"stop"/"openai-completions"/"openai"/"unknown"`; keep fabrication as fallback for messages lacking them (old rows).
+- [x] 3.7 Tests → GREEN. Run full agent suite.
+- [x] 3.8 Gate + commit "fix(agent-loop): preserve whole pi-ai message (done+error), fix toPiMessages fabrication".
 
 ## 4. Persist error/aborted turns in the loop (Task 9, loop side)
 

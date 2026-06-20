@@ -11,7 +11,7 @@ import { evt } from "./events.ts";
 
 export type StreamResult =
   | { ok: true; finalAssistant: AgentMessage | null; toolCalls: ToolCallInfo[] }
-  | { ok: false };
+  | { ok: false; finalAssistant: AgentMessage | null };
 
 export function toPiMessages(messages: AgentMessage[]) {
   // biome-ignore lint/suspicious/noExplicitAny: pi-ai Message type varies by role; this is a type-coercion boundary
@@ -24,10 +24,12 @@ export function toPiMessages(messages: AgentMessage[]) {
         role: "assistant",
         content: msg.content,
         usage: msg.usage,
-        stopReason: "stop",
-        api: "openai-completions",
-        provider: "openai",
-        model: "unknown",
+        stopReason: msg.stopReason ?? "stop",
+        api: msg.api ?? "openai-completions",
+        provider: msg.provider ?? "openai",
+        model: msg.model ?? "unknown",
+        ...(msg.responseModel ? { responseModel: msg.responseModel } : {}),
+        ...(msg.responseId ? { responseId: msg.responseId } : {}),
         timestamp: msg.timestamp,
       };
     }
@@ -58,6 +60,41 @@ function retryErrorMessage(err: unknown, maxRetries: number): string {
     return err.message;
   }
   return "Stream error";
+}
+
+function mapPiAssistantMessage(piMsg: {
+  // biome-ignore lint/suspicious/noExplicitAny: pi-ai content/usage types are complex generics; mapping at boundary
+  content: any;
+  // biome-ignore lint/suspicious/noExplicitAny: pi-ai content/usage types are complex generics; mapping at boundary
+  usage: any;
+  timestamp: number;
+  stopReason?: unknown;
+  errorMessage?: unknown;
+  api?: string;
+  provider?: string;
+  model?: string;
+  responseModel?: string;
+  responseId?: string;
+  diagnostics?: unknown[];
+}): Extract<AgentMessage, { role: "assistant" }> {
+  return {
+    role: "assistant",
+    content: piMsg.content,
+    usage: piMsg.usage,
+    timestamp: piMsg.timestamp,
+    ...(piMsg.stopReason == null
+      ? {}
+      : { stopReason: piMsg.stopReason as string }),
+    ...(piMsg.errorMessage == null
+      ? {}
+      : { errorMessage: piMsg.errorMessage as string }),
+    ...(piMsg.api ? { api: piMsg.api } : {}),
+    ...(piMsg.provider ? { provider: piMsg.provider } : {}),
+    ...(piMsg.model ? { model: piMsg.model } : {}),
+    ...(piMsg.responseModel ? { responseModel: piMsg.responseModel } : {}),
+    ...(piMsg.responseId ? { responseId: piMsg.responseId } : {}),
+    ...(piMsg.diagnostics ? { diagnostics: piMsg.diagnostics } : {}),
+  };
 }
 
 async function* consumeStream(
@@ -117,19 +154,17 @@ async function* consumeStream(
         break;
       case "done":
         if (event.message) {
-          finalAssistant = {
-            role: "assistant",
-            content: event.message.content,
-            usage: event.message.usage,
-            timestamp: event.message.timestamp,
-          };
+          finalAssistant = mapPiAssistantMessage(event.message);
         }
         break;
       case "error":
+        if (event.error) {
+          finalAssistant = mapPiAssistantMessage(event.error);
+        }
         yield evt("error", {
           message: event.error?.errorMessage ?? "LLM error",
         });
-        return { status: "error", finalAssistant: null };
+        return { status: "error", finalAssistant };
     }
   }
 
@@ -178,7 +213,7 @@ export async function* streamLLMResponse(
       const streamResult = yield* consumeStream(stream, signal, toolCalls);
       if (streamResult.status === "error") {
         yield evt("agent_end", { sessionId });
-        return { ok: false };
+        return { ok: false, finalAssistant: streamResult.finalAssistant };
       }
       finalAssistant = streamResult.finalAssistant;
       if (streamResult.status === "aborted") {
@@ -202,7 +237,7 @@ export async function* streamLLMResponse(
       const msg = retryErrorMessage(err, maxRetries);
       yield evt("error", { message: msg });
       yield evt("agent_end", { sessionId });
-      return { ok: false };
+      return { ok: false, finalAssistant: null };
     }
   }
 
