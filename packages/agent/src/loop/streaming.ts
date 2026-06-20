@@ -136,6 +136,7 @@ async function* consumeStream(
   return { status: "done", finalAssistant };
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: one extra && in stream options
 export async function* streamLLMResponse(
   model: AnyModel,
   messages: AgentMessage[],
@@ -166,7 +167,12 @@ export async function* streamLLMResponse(
         },
         {
           ...(signal ? { signal } : {}),
-          ...(thinkingLevel ? { thinkingLevel } : {}),
+          ...(model.reasoning && thinkingLevel && thinkingLevel !== "off"
+            ? {
+                reasoning:
+                  thinkingLevel as import("@earendil-works/pi-ai").ThinkingLevel,
+              }
+            : {}),
         }
       );
       const streamResult = yield* consumeStream(stream, signal, toolCalls);

@@ -1,10 +1,10 @@
 ## 1. Reasoning option: rename `thinkingLevel` → `reasoning` AND gate on `model.reasoning` (Task 1)
 
-- [ ] 1.1 Write failing test in `packages/agent/src/__tests__/streaming.test.ts`: with a reasoning-capable model and `thinkingLevel: "high"`, assert `streamSimple` receives `{ reasoning: "high" }` (NOT `{ thinkingLevel }`). Add a second case: non-reasoning model (`reasoning: false`) + `thinkingLevel: "high"` → `streamSimple` called WITHOUT `reasoning`. RED.
-- [ ] 1.2 Confirm RED (opts.reasoning undefined; for non-reasoning model, opts currently carries the wrong `thinkingLevel` key).
-- [ ] 1.3 Fix `packages/agent/src/loop/streaming.ts:169`: gate + rename — `...(model.reasoning && thinkingLevel && thinkingLevel !== "off" ? { reasoning: thinkingLevel } : {})`. (`streamLLMResponse` already receives `model: AnyModel`, which carries pi-ai's `reasoning: boolean`.)
-- [ ] 1.4 Tests → GREEN. Run `bun vitest run packages/agent/` — no regressions.
-- [ ] 1.5 Gate: `bun typecheck && bun x ultracite check`. Commit "fix(agent-loop): map thinkingLevel→reasoning, gate on model.reasoning (pi compaction.ts:537)".
+- [x] 1.1 Write failing test in `packages/agent/src/__tests__/streaming.test.ts`: with a reasoning-capable model and `thinkingLevel: "high"`, assert `streamSimple` receives `{ reasoning: "high" }` (NOT `{ thinkingLevel }`). Add a second case: non-reasoning model (`reasoning: false`) + `thinkingLevel: "high"` → `streamSimple` called WITHOUT `reasoning`. RED.
+- [x] 1.2 Confirm RED (opts.reasoning undefined; for non-reasoning model, opts currently carries the wrong `thinkingLevel` key).
+- [x] 1.3 Fix `packages/agent/src/loop/streaming.ts:169`: gate + rename — `...(model.reasoning && thinkingLevel && thinkingLevel !== "off" ? { reasoning: thinkingLevel } : {})`. (`streamLLMResponse` already receives `model: AnyModel`, which carries pi-ai's `reasoning: boolean`.)
+- [x] 1.4 Tests → GREEN. Run `bun vitest run packages/agent/` — no regressions.
+- [x] 1.5 Gate: `bun typecheck && bun x ultracite check`. Commit "fix(agent-loop): map thinkingLevel→reasoning, gate on model.reasoning (pi compaction.ts:537)".
 
 ## 2. Widen `AssistantMessage` to carry the pi-ai fields (type prerequisite for Tasks 3+4)
 
