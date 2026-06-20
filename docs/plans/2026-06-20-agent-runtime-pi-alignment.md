@@ -873,6 +873,24 @@ it("persists an error AssistantMessage when the LLM stream errors", async () => 
 
 ---
 
+### Task 10: Abort breaks the tool batch (Pattern #10)
+
+**Files:**
+- Modify: `packages/agent/src/loop/tool-execution.ts` (check `signal?.aborted` between tools)
+- Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
+
+**Step 1: Write failing test**
+
+```typescript
+it("stops executing remaining tools when abort signal fires mid-batch", async () => {
+  // ... as before ...
+});
+```
+
+**Step 2: Run test → FAIL.** Add abort check between tools. Run → PASS. Gate + commit.
+
+---
+
 ### Task 11: Emit message_start/message_end around every message (Pattern #11)
 
 **Files:**
@@ -915,62 +933,6 @@ it("wraps the user prompt in message_start/message_end", async () => {
 ```
 
 **Note:** `drainSteers` is currently `async` returning a boolean. To emit events around each steer it must become an async generator OR the loop must wrap each steer injection. Simplest: keep `drainSteers` as-is but have the loop emit message_start/end is not possible per-steer since drainSteers batches. Consider making `drainSteers` a generator that yields events around each injection — see pi's `agent-loop.ts:174-189`.
-
-**Step 4: Run test → PASS. Gate + commit.**
-
----
-
-### Task 10: Abort breaks the tool batch (Pattern #10)
-
-**Files:**
-- Modify: `packages/agent/src/loop/tool-execution.ts` (check `signal?.aborted` between tools)
-- Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
-
-**Step 1: Write failing test**
-
-```typescript
-it("stops executing remaining tools when abort signal fires mid-batch", async () => {
-  const store = createMockStore();
-  let bExecuted = false;
-  const toolA: AgentTool = {
-    name: "toolA", description: "A",
-    parameters: { type: "object", properties: {} },
-    execute: async (_, __, signal) => {
-      await sleep(50);
-      return { content: "a", terminate: false };
-    },
-  };
-  const toolB: AgentTool = {
-    name: "toolB", description: "B",
-    parameters: { type: "object", properties: {} },
-    execute: async () => { bExecuted = true; return { content: "b", terminate: false }; },
-  };
-
-  const controller = new AbortController();
-  vi.mocked(streamSimple).mockReturnValue(multiToolCallStream([...]));
-
-  const loop = createAgentLoop({ sessionId: "s1", model: testModel, tools: [toolA, toolB], store });
-  const gen = loop.prompt("both", controller.signal);
-
-  // Abort after first tool starts
-  setTimeout(() => controller.abort(), 20);
-  await collectEvents(gen);
-
-  expect(bExecuted).toBe(false); // toolB never ran
-});
-```
-
-**Step 2: Run test → FAIL**
-
-**Step 3: Add abort check between tools**
-
-```typescript
-// packages/agent/src/loop/tool-execution.ts — inside the sequential for-loop, before each tool
-  for (const tc of toolCalls) {
-    if (signal?.aborted) break;  // ADD: stop executing remaining tools
-    // ... existing tool execution ...
-  }
-```
 
 **Step 4: Run test → PASS. Gate + commit.**
 
