@@ -77,6 +77,24 @@
       }
     },
     {
+      "includes": [
+        "apps/server/src/agent/**",
+        "apps/server/src/routes/session-controls.ts"
+      ],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
+          },
+          "suspicious": {
+            "noEmptyBlockStatements": "off",
+            "noExplicitAny": "off",
+            "useAwait": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["packages/db/src/session-entry-store.ts"],
       "linter": {
         "rules": {

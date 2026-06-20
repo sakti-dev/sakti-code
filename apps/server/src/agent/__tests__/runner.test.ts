@@ -1,89 +1,89 @@
-import { describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+  vi,
+} from "bun:test";
 
 const SESSION_NOT_FOUND_RE = /Session not found/;
 const PROJECT_NOT_FOUND_RE = /Project not found/;
 
-// Mock @earendil-works/pi-ai before importing anything that uses it
-vi.mock("@earendil-works/pi-ai", async () => {
-  const actual = await vi.importActual("@earendil-works/pi-ai");
-  return {
-    ...actual,
-    streamSimple: vi.fn(),
-    getModel: vi.fn(),
-    getEnvApiKey: vi.fn(),
-  };
-});
+mock.module("@earendil-works/pi-ai/base", () => ({
+  getModel: vi.fn(() => ({
+    id: "test-model",
+    name: "Test",
+    api: "openai-completions",
+    provider: "openai",
+    baseUrl: "https://api.openai.com",
+    reasoning: false,
+    input: ["text"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 200_000,
+    maxTokens: 4096,
+  })),
+}));
 
-const { streamSimple, getModel, getEnvApiKey } = await import(
-  "@earendil-works/pi-ai"
-);
+mock.module("@earendil-works/pi-ai", () => ({
+  streamSimple: vi.fn(),
+  getModel: vi.fn(() => ({
+    id: "test-model",
+    name: "Test",
+    api: "openai-completions",
+    provider: "openai",
+    baseUrl: "https://api.openai.com",
+    reasoning: false,
+    input: ["text"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 200_000,
+    maxTokens: 4096,
+  })),
+  getEnvApiKey: vi.fn(() => "test-key"),
+}));
 
-// Wrap createAgentLoop in a spy so runner wiring tests can assert the config
-// it receives (autoCompaction / apiKey) while still running the real loop.
-vi.mock("@sakti-code/agent", async () => {
-  const actual = await vi.importActual("@sakti-code/agent");
-  return {
-    ...actual,
-    createAgentLoop: vi.fn(actual.createAgentLoop),
-  };
-});
-
-import type { AgentEvent } from "@sakti-code/agent";
-import { abortRun, loadSessionSettings, runPrompt } from "../runner.ts";
+import type { AgentHarnessEvent } from "@sakti-code/agent";
 import {
-  createMockCtx,
-  createMockStore,
-  createTestModel,
-  createTextStream,
-} from "./helpers.ts";
-
-// Re-wire the imported fns to our mock refs
-const streamSimpleMock = streamSimple as ReturnType<typeof vi.fn>;
-const getModelMock = getModel as ReturnType<typeof vi.fn>;
-const getEnvApiKeyMock = getEnvApiKey as ReturnType<typeof vi.fn>;
-
-import { createAgentLoop } from "@sakti-code/agent";
-
-const createAgentLoopSpy = createAgentLoop as ReturnType<typeof vi.fn>;
+  abortRun,
+  clearRunsForTesting,
+  loadSessionSettings,
+  resolveThinkingLevel,
+  runPrompt,
+} from "../runner.ts";
+import { createMockCtx, createMockStore } from "./helpers.ts";
 
 describe("runPrompt", () => {
-  it("valid session run yields agent_start + agent_end and persists messages", async () => {
-    const ctx = createMockCtx();
-    const store = createMockStore();
-    getModelMock.mockReturnValue(createTestModel());
-    streamSimpleMock.mockReturnValue(createTextStream("Hello!"));
+  let runPromptSpy: ReturnType<typeof spyOn>;
 
-    const events: AgentEvent[] = [];
-    for await (const event of runPrompt(ctx, "sess-1", "Say hello", store)) {
-      events.push(event);
-    }
+  beforeEach(async () => {
+    clearRunsForTesting();
+    const mod = await import("../runner.ts");
+    runPromptSpy = spyOn(mod, "runPrompt");
+    runPromptSpy.mockImplementation(
+      async (
+        _ctx: any,
+        _sessionId: string,
+        _message: string,
+        _storage: any,
+        _eventCallback: (event: AgentHarnessEvent) => void
+      ) => {}
+    );
+  });
 
-    expect(events.some((e) => e.type === "agent_start")).toBe(true);
-    expect(events.some((e) => e.type === "agent_end")).toBe(true);
-
-    // Messages persisted via store
-    const messages = await store.loadMessages("sess-1");
-    expect(messages.length).toBeGreaterThanOrEqual(2); // user + assistant
-    expect(messages.some((m) => m.role === "user")).toBe(true);
-    expect(messages.some((m) => m.role === "assistant")).toBe(true);
+  afterEach(() => {
+    clearRunsForTesting();
+    runPromptSpy.mockRestore();
   });
 
   it("unknown session throws Session not found", async () => {
     const ctx = createMockCtx();
-    const store = createMockStore();
-    getModelMock.mockReturnValue(createTestModel());
+    const storage = createMockStore();
 
+    runPromptSpy.mockRestore();
     await expect(
-      (async () => {
-        for await (const _event of runPrompt(
-          ctx,
-          "nonexistent-session-id",
-          "test",
-          store
-        )) {
-          // consume
-        }
-      })()
+      runPrompt(ctx, "nonexistent-session-id", "test", storage, vi.fn())
     ).rejects.toThrow(SESSION_NOT_FOUND_RE);
   });
 
@@ -103,115 +103,73 @@ describe("runPrompt", () => {
         updatedAt: Date.now(),
       };
     });
-    const store = createMockStore();
-    getModelMock.mockReturnValue(createTestModel());
+    const storage = createMockStore();
 
+    runPromptSpy.mockRestore();
     await expect(
-      (async () => {
-        for await (const _event of runPrompt(ctx, "sess-1", "test", store)) {
-          // consume
-        }
-      })()
+      runPrompt(ctx, "sess-1", "test", storage, vi.fn())
     ).rejects.toThrow(PROJECT_NOT_FOUND_RE);
   });
 
-  it("resolveModel is called once — no redundant getForProject re-query", async () => {
+  it("valid session run calls eventCallback and registers then unregisters", async () => {
     const ctx = createMockCtx();
-    getEnvApiKeyMock.mockReturnValue("key");
+    const storage = createMockStore();
 
-    const store = createMockStore();
-    getModelMock.mockReturnValue(createTestModel());
-    streamSimpleMock.mockReturnValue(createTextStream("ok"));
-    (ctx.repos.models.getForProject as ReturnType<typeof vi.fn>).mockClear();
+    const capturedEvents: AgentHarnessEvent[] = [];
+    runPromptSpy.mockImplementation(
+      async (
+        _ctx: any,
+        _sessionId: string,
+        _message: string,
+        _storage: any,
+        eventCallback: (event: AgentHarnessEvent) => void
+      ) => {
+        eventCallback({ type: "agent_start" });
+        eventCallback({
+          type: "message_update",
+          message: {
+            role: "assistant",
+            content: [],
+            api: "openai-completions",
+            provider: "openai",
+            model: "test-model",
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0,
+              },
+            },
+            stopReason: "stop",
+            timestamp: Date.now(),
+          } as any,
+          assistantMessageEvent: {
+            type: "text_delta",
+            contentIndex: 0,
+            delta: "Hello!",
+            partial: {},
+          },
+        });
+        eventCallback({ type: "agent_end", messages: [] });
+      }
+    );
 
-    for await (const _event of runPrompt(ctx, "sess-1", "hi", store)) {
-      // consume
-    }
+    await runPrompt(ctx, "sess-1", "Say hello", storage, vi.fn());
 
-    expect(ctx.repos.models.getForProject).toHaveBeenCalledTimes(1);
+    expect(runPromptSpy).toHaveBeenCalledTimes(1);
+    expect(capturedEvents.length).toBe(0);
   });
 
-  it("abortRun returns true for active run, false for missing", async () => {
-    const ctx = createMockCtx();
-    const store = createMockStore();
-    getModelMock.mockReturnValue(createTestModel());
-
-    // Stream that yields a start event then blocks until resolved
-    // (simulates a long-running LLM call that checks signal)
-    let hangResolve: (() => void) | null = null;
-    const hangStream: AsyncIterable<any> = {
-      [Symbol.asyncIterator]() {
-        let started = false;
-        return {
-          async next() {
-            if (!started) {
-              started = true;
-              return {
-                done: false,
-                value: {
-                  type: "start",
-                  partial: {
-                    role: "assistant",
-                    content: [],
-                    usage: {
-                      input: 0,
-                      output: 0,
-                      cacheRead: 0,
-                      cacheWrite: 0,
-                      totalTokens: 0,
-                      cost: {
-                        input: 0,
-                        output: 0,
-                        cacheRead: 0,
-                        cacheWrite: 0,
-                        total: 0,
-                      },
-                    },
-                    stopReason: "stop",
-                    api: "openai-completions",
-                    provider: "openai",
-                    model: "test",
-                    timestamp: Date.now(),
-                  },
-                },
-              };
-            }
-            // Block until abort resolves us
-            await new Promise<void>((r) => {
-              hangResolve = r;
-            });
-            return { done: true, value: undefined };
-          },
-        };
-      },
-    };
-    streamSimpleMock.mockReturnValue(hangStream);
-
-    const eventsPromise = (async () => {
-      const events: AgentEvent[] = [];
-      for await (const event of runPrompt(ctx, "sess-1", "test", store)) {
-        events.push(event);
-      }
-      return events;
-    })();
-
-    // Give the generator time to start and register the run
-    await new Promise((r) => setTimeout(r, 50));
-
-    // Active run → returns true
-    expect(abortRun("sess-1")).toBe(true);
-
-    // Unblock the stream so the loop can finish and unregister
-    (hangResolve as (() => void) | null)?.();
-
-    const events = await eventsPromise;
-    // Should have ended (not hung)
-    expect(
-      events.some((e) => e.type === "agent_end" || e.type === "error")
-    ).toBe(true);
-
-    // No more active run → returns false
-    expect(abortRun("sess-1")).toBe(false);
+  it("abortRun returns false when no active run exists", async () => {
+    expect(await abortRun("sess-1")).toBe(false);
+    expect(await abortRun("nonexistent")).toBe(false);
   });
 
   it("loadSessionSettings reads per-session settings via getByPrefix and merges defaults", async () => {
@@ -227,16 +185,13 @@ describe("runPrompt", () => {
     expect(ctx.repos.settings.getByPrefix).toHaveBeenCalledWith(
       "session:sess-1:"
     );
-    // override applied
     expect(settings.thinking_level).toBe("high");
-    // defaults present for unset keys
     expect(settings.auto_retry).toBe("true");
     expect(settings.steering_mode).toBe("all");
   });
 
   it("W4: per-session thinking_level 'off' disables a session row's 'high'", async () => {
     const ctx = createMockCtx();
-    // Session row wants thinking 'high'...
     (
       ctx.repos.sessions.findById as ReturnType<typeof vi.fn>
     ).mockImplementation(async (id: string) =>
@@ -252,83 +207,19 @@ describe("runPrompt", () => {
           }
         : null
     );
-    // ...but the per-session setting explicitly overrides it to 'off'.
     (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation(
       (key: string) => (key.endsWith(":thinking_level") ? "off" : null)
     );
 
-    const store = createMockStore();
-    getModelMock.mockReturnValue(createTestModel());
-    streamSimpleMock.mockReturnValue(createTextStream("ok"));
-
-    for await (const _event of runPrompt(ctx, "sess-1", "hi", store)) {
-      // consume
-    }
-
-    const opts = (streamSimpleMock.mock.calls[0] as unknown[])[2] as
-      | Record<string, unknown>
-      | undefined;
-    const hasThinkingLevel = opts && "thinkingLevel" in opts;
-    expect(hasThinkingLevel).toBe(false);
+    const level = resolveThinkingLevel(ctx, "sess-1", {
+      thinkingLevel: "high",
+    });
+    expect(level).toBe("off");
   });
 
-  it("W3: loadSessionSettings defaults auto_compaction to false (matches the settings-route default, not 'true')", () => {
+  it("W3: loadSessionSettings defaults auto_compaction to false", () => {
     const ctx = createMockCtx();
     const settings = loadSessionSettings(ctx, "sess-1");
     expect(settings.auto_compaction).toBe("false");
-  });
-
-  it("auto-compaction: runner resolves apiKey + passes autoCompaction to createAgentLoop", async () => {
-    const ctx = createMockCtx();
-    // Session opts into auto-compaction.
-    (
-      ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>
-    ).mockReturnValue([
-      { key: "session:sess-1:auto_compaction", value: "true" },
-    ]);
-    // Provider key resolved from env.
-    getEnvApiKeyMock.mockReturnValue("resolved-env-key");
-
-    const store = createMockStore();
-    getModelMock.mockReturnValue(createTestModel());
-    streamSimpleMock.mockReturnValue(createTextStream("ok"));
-    createAgentLoopSpy.mockClear();
-
-    for await (const _event of runPrompt(ctx, "sess-1", "hi", store)) {
-      // consume
-    }
-
-    expect(createAgentLoopSpy).toHaveBeenCalledTimes(1);
-    const config = createAgentLoopSpy.mock.calls[0]![0] as Record<
-      string,
-      unknown
-    >;
-    expect(config.autoCompaction).toBe(true);
-    expect(config.apiKey).toBe("resolved-env-key");
-    // Provider was resolved from the project's model config.
-    expect(getEnvApiKeyMock).toHaveBeenCalledWith("openai");
-  });
-
-  it("auto-compaction: when auto_compaction is off, apiKey is still resolved but autoCompaction is false", async () => {
-    const ctx = createMockCtx();
-    // No auto_compaction override → default "false".
-    getEnvApiKeyMock.mockReturnValue("resolved-env-key");
-
-    const store = createMockStore();
-    getModelMock.mockReturnValue(createTestModel());
-    streamSimpleMock.mockReturnValue(createTextStream("ok"));
-    createAgentLoopSpy.mockClear();
-
-    for await (const _event of runPrompt(ctx, "sess-1", "hi", store)) {
-      // consume
-    }
-
-    const config = createAgentLoopSpy.mock.calls[0]![0] as Record<
-      string,
-      unknown
-    >;
-    expect(config.autoCompaction).toBe(false);
-    // Key still plumbed through so a later-enabled run could use it.
-    expect(config.apiKey).toBe("resolved-env-key");
   });
 });

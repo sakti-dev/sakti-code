@@ -1,12 +1,9 @@
 import { getModel } from "@earendil-works/pi-ai";
-import type { AnyModel } from "@sakti-code/agent";
+import type { Model } from "@earendil-works/pi-ai/base";
 import type { ServerContext } from "../context.ts";
 
-// biome-ignore lint/suspicious/noExplicitAny: DB stores provider/modelId as strings; pi-ai requires specific literal types — safe boundary cast
-const getModelAny = getModel as any;
-
 export interface ResolvedModel {
-  model: AnyModel;
+  model: Model<any>;
   provider: string;
 }
 
@@ -17,14 +14,14 @@ export function resolveModel(
   const config = ctx.repos.models.getForProject(session.projectId);
   if (config) {
     return {
-      model: getModelAny(config.provider, config.modelId) as AnyModel,
+      model: getModel(config.provider, config.modelId),
       provider: config.provider,
     };
   }
   const global = ctx.repos.models.getGlobalDefault();
   if (global) {
     return {
-      model: getModelAny(global.provider, global.modelId) as AnyModel,
+      model: getModel(global.provider, global.modelId),
       provider: global.provider,
     };
   }

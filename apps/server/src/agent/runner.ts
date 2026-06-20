@@ -1,13 +1,22 @@
 import { getEnvApiKey } from "@earendil-works/pi-ai";
-import type { AgentEvent, AgentLoop, SessionStore } from "@sakti-code/agent";
-import { createAgentLoop } from "@sakti-code/agent";
+import type {
+  AgentHarness,
+  AgentHarnessEvent,
+  SessionStorage,
+  ThinkingLevel,
+} from "@sakti-code/agent";
+import {
+  AgentHarness as HarnessClass,
+  Session as SessionClass,
+} from "@sakti-code/agent";
 import type { ServerContext } from "../context.ts";
+import { BunExecutionEnv } from "./execution-env.ts";
 import { resolveModel } from "./model-resolver.ts";
 import { buildTools } from "./tools-builder.ts";
 
 interface ActiveRun {
-  controller: AbortController;
-  loop: AgentLoop;
+  harness: AgentHarness;
+  unsubscribe: () => void;
 }
 
 const activeRuns = new Map<string, ActiveRun>();
@@ -18,17 +27,21 @@ export function busyMessage(sessionId: string): string {
 
 export function registerRun(
   sessionId: string,
-  controller: AbortController,
-  loop: AgentLoop
+  harness: AgentHarness,
+  unsubscribe: () => void
 ): boolean {
   if (activeRuns.has(sessionId)) {
     return false;
   }
-  activeRuns.set(sessionId, { controller, loop });
+  activeRuns.set(sessionId, { harness, unsubscribe });
   return true;
 }
 
 export function unregisterRun(sessionId: string) {
+  const run = activeRuns.get(sessionId);
+  if (run) {
+    run.unsubscribe();
+  }
   activeRuns.delete(sessionId);
 }
 
@@ -37,24 +50,26 @@ export function isRunActive(sessionId: string): boolean {
 }
 
 export function clearRunsForTesting(): void {
+  for (const run of activeRuns.values()) {
+    run.unsubscribe();
+  }
   activeRuns.clear();
 }
 
-export function abortRun(sessionId: string): boolean {
+export async function abortRun(sessionId: string): Promise<boolean> {
   const run = activeRuns.get(sessionId);
   if (run) {
-    run.controller.abort();
+    await run.harness.abort();
     return true;
   }
   return false;
 }
 
-export function getActiveLoop(sessionId: string): AgentLoop | null {
+export function getActiveHarness(sessionId: string): AgentHarness | null {
   const run = activeRuns.get(sessionId);
-  return run?.loop ?? null;
+  return run?.harness ?? null;
 }
 
-// Default per-session setting values
 const DEFAULT_SETTINGS: Record<string, string> = {
   auto_compaction: "false",
   auto_retry: "true",
@@ -64,7 +79,6 @@ const DEFAULT_SETTINGS: Record<string, string> = {
   thinking_level: "off",
 };
 
-/** Load per-session settings and merge with defaults. */
 export function loadSessionSettings(
   ctx: ServerContext,
   sessionId: string
@@ -79,12 +93,33 @@ export function loadSessionSettings(
   return { ...DEFAULT_SETTINGS, ...overrides };
 }
 
-export async function* runPrompt(
+export function resolveThinkingLevel(
+  ctx: ServerContext,
+  sessionId: string,
+  session: { thinkingLevel: string }
+): ThinkingLevel {
+  const thinkingLevelRow = ctx.repos.settings.get(
+    `session:${sessionId}:thinking_level`
+  );
+  if (thinkingLevelRow !== null) {
+    if (thinkingLevelRow === "off") {
+      return "off";
+    }
+    return thinkingLevelRow as ThinkingLevel;
+  }
+  if (session.thinkingLevel !== "off") {
+    return session.thinkingLevel as ThinkingLevel;
+  }
+  return "off";
+}
+
+export async function runPrompt(
   ctx: ServerContext,
   sessionId: string,
   message: string,
-  store: SessionStore
-): AsyncGenerator<AgentEvent> {
+  storage: SessionStorage,
+  eventCallback: (event: AgentHarnessEvent) => void
+): Promise<void> {
   const session = await ctx.repos.sessions.findById(sessionId);
   if (!session) {
     throw new Error(`Session not found: ${sessionId}`);
@@ -98,45 +133,43 @@ export async function* runPrompt(
   const { model, provider } = resolveModel(ctx, session);
   const tools = buildTools(project.cwd);
 
-  const apiKey = getEnvApiKey(provider) ?? undefined;
-
-  // Load per-session settings
   const settings = loadSessionSettings(ctx, sessionId);
-  // Distinguish "thinking_level key absent" (fall back to the session row) from
-  // "key explicitly present" (authoritative, including the value "off"). The
-  // merged defaults can't tell the two apart, so read the raw row.
-  const thinkingLevelRow = ctx.repos.settings.get(
-    `session:${sessionId}:thinking_level`
-  );
-  let thinkingLevel: string | undefined;
-  if (thinkingLevelRow !== null) {
-    thinkingLevel = thinkingLevelRow === "off" ? undefined : thinkingLevelRow;
-  } else if (session.thinkingLevel !== "off") {
-    thinkingLevel = session.thinkingLevel;
-  }
+  const thinkingLevel = resolveThinkingLevel(ctx, sessionId, session);
 
-  const controller = new AbortController();
+  const env = new BunExecutionEnv(project.cwd);
+  const sessionInstance = new SessionClass(storage);
+  const getApiKeyAndHeaders = async (): Promise<
+    { apiKey: string; headers?: Record<string, string> } | undefined
+  > => {
+    const key = getEnvApiKey(provider);
+    if (!key) {
+      return;
+    }
+    return { apiKey: key };
+  };
 
-  const loop = createAgentLoop({
-    ...(apiKey === undefined ? {} : { apiKey }),
-    autoCompaction: settings.auto_compaction === "true",
-    autoRetry: settings.auto_retry === "true",
-    followUpMode: settings.follow_up_mode,
-    maxRetries: Number(settings.max_retries),
+  const harness = new HarnessClass({
+    env,
     model,
-    sessionId,
-    steeringMode: settings.steering_mode,
-    store,
-    thinkingLevel,
+    session: sessionInstance,
     tools,
+    followUpMode: settings.follow_up_mode,
+    steeringMode: settings.steering_mode,
+    thinkingLevel,
+    getApiKeyAndHeaders,
   });
 
-  if (!registerRun(sessionId, controller, loop)) {
+  const unsubscribe = harness.subscribe((event) => {
+    eventCallback(event);
+  });
+
+  if (!registerRun(sessionId, harness, unsubscribe)) {
+    unsubscribe();
     throw new Error(busyMessage(sessionId));
   }
 
   try {
-    yield* loop.prompt(message, controller.signal);
+    await harness.prompt(message);
   } finally {
     unregisterRun(sessionId);
   }

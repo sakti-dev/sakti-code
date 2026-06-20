@@ -1,27 +1,38 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, mock, vi } from "bun:test";
 
-// Mock the runner module to avoid pi-ai dependency in vitest
-vi.mock("../runner.ts", () => ({
-  runPrompt: vi.fn(),
-  abortRun: vi.fn(),
-  registerRun: vi.fn(),
-  unregisterRun: vi.fn(),
-  isRunActive: vi.fn(() => false),
-  busyMessage: vi.fn(
-    (id: string) =>
-      `A run is already active for session ${id}. Send a 'steer' or 'followUp' message to queue input, or 'abort' to cancel the active run first.`
-  ),
-  clearRunsForTesting: vi.fn(),
+const streamSimpleMock = vi.fn();
+const getModelMock = vi.fn(() => ({
+  id: "test-model",
+  name: "Test",
+  api: "openai-completions",
+  provider: "openai",
+  baseUrl: "https://api.openai.com",
+  reasoning: false,
+  input: ["text"],
+  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+  contextWindow: 200_000,
+  maxTokens: 4096,
 }));
 
-const { runPrompt: mockRunPrompt } = await import("../runner.ts");
-const { handleMessage } = await import("../ws-handler.ts");
+mock.module("@earendil-works/pi-ai/base", () => ({
+  getModel: getModelMock,
+}));
 
-import type { SessionStore } from "@sakti-code/agent";
+mock.module("@earendil-works/pi-ai", () => ({
+  streamSimple: streamSimpleMock,
+  getModel: getModelMock,
+  getEnvApiKey: vi.fn(() => "test-key"),
+}));
+
 import { createMockStore, createMultiSessionCtx } from "./helpers.ts";
 
+import "@earendil-works/pi-ai";
+import "@earendil-works/pi-ai/base";
+
+const { handleMessage } = await import("../ws-handler.ts");
+
 describe("Multi-session e2e", () => {
-  it("two concurrent sessions don't cross-contaminate messages", async () => {
+  it("two concurrent sessions produce frames with correct sessionId and no cross-contamination", async () => {
     const ctx = createMultiSessionCtx({
       "sess-a": "proj-1",
       "sess-b": "proj-2",
@@ -29,30 +40,95 @@ describe("Multi-session e2e", () => {
     const storeA = createMockStore();
     const storeB = createMockStore();
 
-    // Track which store is passed to runPrompt for each session
-    const calls: Array<{
-      sessionId: string;
-      store: SessionStore;
-      message: string;
-    }> = [];
-    vi.mocked(mockRunPrompt).mockImplementation(async function* (
-      _ctx: any,
-      sessionId: any,
-      message: any,
-      store: any
-    ) {
-      calls.push({ sessionId, store, message });
-      yield { type: "agent_start", sessionId, timestamp: Date.now() };
-      yield { type: "text_delta", delta: "response", timestamp: Date.now() };
-      yield { type: "agent_end", sessionId, timestamp: Date.now() };
-    } as any);
+    getModelMock.mockReturnValue({
+      id: "test-model",
+      name: "Test",
+      api: "openai-completions",
+      provider: "openai",
+      baseUrl: "https://api.openai.com",
+      reasoning: false,
+      input: ["text"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 200_000,
+      maxTokens: 4096,
+    });
+    streamSimpleMock.mockImplementation(() => {
+      const stream: AsyncIterable<any> = (async function* () {
+        yield {
+          type: "start",
+          partial: {
+            role: "assistant",
+            content: [],
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0,
+              },
+            },
+            stopReason: "stop",
+            api: "openai-completions",
+            provider: "openai",
+            model: "test",
+            timestamp: Date.now(),
+          },
+        };
+        yield { type: "text_start", contentIndex: 0, partial: {} };
+        yield {
+          type: "text_delta",
+          contentIndex: 0,
+          delta: "response",
+          partial: {},
+        };
+        yield {
+          type: "text_end",
+          contentIndex: 0,
+          content: "response",
+          partial: {},
+        };
+        yield {
+          type: "done",
+          reason: "stop",
+          message: {
+            role: "assistant",
+            content: [{ type: "text", text: "response" }],
+            usage: {
+              input: 10,
+              output: 8,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 18,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0,
+              },
+            },
+            stopReason: "stop",
+            api: "openai-completions",
+            provider: "openai",
+            model: "test",
+            timestamp: Date.now(),
+          },
+        };
+      })();
+      return stream;
+    });
 
     const framesA: any[] = [];
     const framesB: any[] = [];
     const wsA = { send: (d: string) => framesA.push(JSON.parse(d)) };
     const wsB = { send: (d: string) => framesB.push(JSON.parse(d)) };
 
-    // Send prompts concurrently
     handleMessage(ctx, storeA, wsA, {
       type: "prompt",
       sessionId: "sess-a",
@@ -64,21 +140,11 @@ describe("Multi-session e2e", () => {
       message: "Hello from B",
     });
 
-    // Wait for fire-and-forget to complete
-    await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 200));
 
-    // Verify runPrompt was called for each session
-    expect(calls.length).toBe(2);
-    expect(calls[0]?.sessionId).toBe("sess-a");
-    expect(calls[0]?.message).toBe("Hello from A");
-    expect(calls[1]?.sessionId).toBe("sess-b");
-    expect(calls[1]?.message).toBe("Hello from B");
+    expect(framesA.every((f: any) => f.sessionId === "sess-a")).toBe(true);
+    expect(framesB.every((f: any) => f.sessionId === "sess-b")).toBe(true);
 
-    // Verify stores are not mixed — each session uses its own store
-    expect(calls[0]?.store).toBe(storeA);
-    expect(calls[1]?.store).toBe(storeB);
-
-    // Verify WS frames carry correct sessionId each
     const framesBySessionA = framesA.filter(
       (f: any) => f.sessionId === "sess-a"
     );
@@ -88,9 +154,5 @@ describe("Multi-session e2e", () => {
 
     expect(framesBySessionA.length).toBeGreaterThan(0);
     expect(framesBySessionB.length).toBeGreaterThan(0);
-
-    // No cross-contamination: A's frames should never have B's sessionId
-    expect(framesA.every((f: any) => f.sessionId === "sess-a")).toBe(true);
-    expect(framesB.every((f: any) => f.sessionId === "sess-b")).toBe(true);
   });
 });

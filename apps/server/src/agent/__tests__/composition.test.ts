@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 import type { WsIn, WsOut } from "../../agent/ws-handler.ts";
 import { handleMessage } from "../../agent/ws-handler.ts";
@@ -17,15 +17,24 @@ describe("WS route composition", () => {
       },
     } as any;
     const store = {
-      loadMessages: async () => [],
-      appendMessage: async () => {},
-      replaceMessages: async () => {},
+      appendEntry: async () => {},
+      createEntryId: async () => "",
+      findEntries: async () => [],
+      getEntries: async () => [],
+      getEntry: async () => undefined,
+      getLabel: async () => undefined,
+      getLeafId: async () => null,
+      getMetadata: async () => ({
+        id: "s1",
+        createdAt: new Date().toISOString(),
+      }),
+      getPathToRoot: async () => [],
+      setLeafId: async () => {},
     };
 
     const ws = { send: () => {} };
     const msg: WsIn = { type: "abort", sessionId: "sess-1" };
 
-    // Should not throw — abort on unknown session is a no-op
     handleMessage(ctx, store, ws, msg);
   });
 
@@ -33,7 +42,7 @@ describe("WS route composition", () => {
     const eventFrame: WsOut = {
       type: "event",
       sessionId: "sess-1",
-      event: { type: "agent_start", sessionId: "sess-1", timestamp: 0 },
+      event: { type: "agent_start" },
     };
     const errorFrame: WsOut = {
       type: "error",

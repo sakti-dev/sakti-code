@@ -1,14 +1,12 @@
-import type { AgentEvent, SessionStore } from "@sakti-code/agent";
+import type { AgentHarnessEvent, SessionStorage } from "@sakti-code/agent";
 import type { ServerContext } from "../context.ts";
 import {
   abortRun,
   busyMessage,
-  getActiveLoop,
+  getActiveHarness,
   isRunActive,
   runPrompt,
 } from "./runner.ts";
-
-// ── Inbound message types ──
 
 export interface PromptMessage {
   message: string;
@@ -39,10 +37,8 @@ export type WsIn =
   | SteerMessage
   | FollowUpMessage;
 
-// ── Outbound frame types ──
-
 export interface EventFrame {
-  event: AgentEvent;
+  event: AgentHarnessEvent;
   sessionId: string;
   type: "event";
 }
@@ -55,24 +51,19 @@ export interface ErrorFrame {
 
 export type WsOut = EventFrame | ErrorFrame;
 
-// ── Minimal WS handle interface ──
-// ElysiaWS satisfies this; tests can pass a fake object.
-
 export interface WsHandle {
   send(data: string): void;
 }
-
-// ── Agent stream runner (fire-and-forget) ──
 
 async function runAgentStream(
   ctx: ServerContext,
   sessionId: string,
   message: string,
-  store: SessionStore,
+  storage: SessionStorage,
   ws: WsHandle
 ) {
   try {
-    for await (const event of runPrompt(ctx, sessionId, message, store)) {
+    await runPrompt(ctx, sessionId, message, storage, (event) => {
       ws.send(
         JSON.stringify({
           event,
@@ -80,7 +71,7 @@ async function runAgentStream(
           type: "event",
         } satisfies EventFrame)
       );
-    }
+    });
   } catch (err) {
     ws.send(
       JSON.stringify({
@@ -91,8 +82,6 @@ async function runAgentStream(
     );
   }
 }
-
-// ── Core message handler (testable without bun:sqlite) ──
 
 export function sendError(ws: WsHandle, sessionId: string, message: string) {
   ws.send(
@@ -106,18 +95,18 @@ export function sendError(ws: WsHandle, sessionId: string, message: string) {
 
 export function handleMessage(
   ctx: ServerContext,
-  store: SessionStore,
+  storage: SessionStorage,
   ws: WsHandle,
   msg: WsIn
 ) {
   if (msg.type === "abort") {
-    abortRun(msg.sessionId);
+    abortRun(msg.sessionId).catch(() => {});
     return;
   }
 
   if (msg.type === "steer" || msg.type === "followUp") {
-    const loop = getActiveLoop(msg.sessionId);
-    if (!loop) {
+    const harness = getActiveHarness(msg.sessionId);
+    if (!harness) {
       sendError(
         ws,
         msg.sessionId,
@@ -126,27 +115,21 @@ export function handleMessage(
       return;
     }
     if (msg.type === "steer") {
-      loop.steer(msg.message);
+      harness.steer(msg.message).catch(() => {});
     } else {
-      loop.followUp(msg.message);
+      harness.followUp(msg.message).catch(() => {});
     }
     return;
   }
 
-  // msg.type === "prompt" — validate required fields
   if (!(msg.sessionId && msg.message)) {
     sendError(ws, msg.sessionId ?? "", "Missing sessionId or message");
     return;
   }
 
-  // Fire-and-forget — does NOT await the stream
   if (isRunActive(msg.sessionId)) {
     sendError(ws, msg.sessionId, busyMessage(msg.sessionId));
     return;
   }
-  runAgentStream(ctx, msg.sessionId, msg.message, store, ws).catch(() => {
-    // Fire-and-forget: errors are already sent as error frames inside
-    // runAgentStream's catch. This guards against send failures
-    // (e.g., WS already closed) causing unhandled promise rejections.
-  });
+  runAgentStream(ctx, msg.sessionId, msg.message, storage, ws).catch(() => {});
 }

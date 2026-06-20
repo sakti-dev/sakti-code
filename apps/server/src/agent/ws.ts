@@ -1,11 +1,9 @@
 import { readFileSync } from "node:fs";
-import { SqliteSessionStore } from "@sakti-code/db";
+import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import type { ServerContext } from "../context.ts";
 import type { WsHandle, WsIn } from "./ws-handler.ts";
 import { handleMessage } from "./ws-handler.ts";
-
-// ── Server version (read once from package.json) ──
 
 export const SERVER_VERSION: string = (() => {
   try {
@@ -26,27 +24,36 @@ export function createWelcomeFrame(): string {
   });
 }
 
-// ── Connection-scoped stores ──
+const connectionStores = new Map<string, SqliteSessionStorage>();
 
-const connectionStores = new Map<string, SqliteSessionStore>();
-
-function getOrCreateStore(
+function getOrCreateStorage(
   wsId: string,
-  db: ServerContext["db"]
-): SqliteSessionStore {
-  let store = connectionStores.get(wsId);
-  if (!store) {
-    store = new SqliteSessionStore(db);
-    connectionStores.set(wsId, store);
+  db: ServerContext["db"],
+  sessionId: string
+): SqliteSessionStorage {
+  const key = `${wsId}:${sessionId}`;
+  let storage = connectionStores.get(key);
+  if (!storage) {
+    storage = new SqliteSessionStorage(db, sessionId, {
+      id: sessionId,
+      createdAt: new Date().toISOString(),
+    });
+    connectionStores.set(key, storage);
   }
-  return store;
+  return storage;
 }
 
-// ── Terminal push: WS connections keyed by connection ID ──
+function clearStorageForConnection(wsId: string) {
+  const prefix = `${wsId}:`;
+  for (const key of connectionStores.keys()) {
+    if (key.startsWith(prefix)) {
+      connectionStores.delete(key);
+    }
+  }
+}
 
 const wsConnections = new Map<string, WsHandle>();
 
-/** Whether a WS connection with the given id is currently open. */
 export function hasWsConnection(connectionId: string): boolean {
   return wsConnections.has(connectionId);
 }
@@ -58,8 +65,6 @@ export function pushToConnection(connectionId: string, data: unknown) {
   }
 }
 
-// Test-only seams over the connection map so terminal-push behavior can be
-// exercised without a real WS round-trip.
 export function registerTestConnection(connectionId: string, ws: WsHandle) {
   wsConnections.set(connectionId, ws);
 }
@@ -67,8 +72,6 @@ export function registerTestConnection(connectionId: string, ws: WsHandle) {
 export function unregisterTestConnection(connectionId: string) {
   wsConnections.delete(connectionId);
 }
-
-// ── Wire terminal manager callbacks (called once during setup) ──
 
 function wireTerminalCallbacks(ctx: ServerContext) {
   ctx.terminalManager.onData = (terminalId, connectionId, data) => {
@@ -91,32 +94,24 @@ function wireTerminalCallbacks(ctx: ServerContext) {
   };
 }
 
-// ── Elysia WS lifecycle handler ──
-
 let terminalCallbacksWired = false;
 
 export function buildWsApp() {
   return new Elysia({ name: "ws" }).ws("/ws", {
     open(ws) {
-      // biome-ignore lint/suspicious/noExplicitAny: Elysia WS raw shape
       const raw = ws as any;
       raw.data.wsId = raw.raw.id;
-      // Register WS connection for terminal push
       wsConnections.set(raw.data.wsId, ws);
-      // Wire terminal callbacks once
       if (!terminalCallbacksWired && raw.data.ctx) {
         wireTerminalCallbacks(raw.data.ctx as ServerContext);
         terminalCallbacksWired = true;
       }
-      // Send welcome frame on connect
       ws.send(createWelcomeFrame());
     },
     close(ws) {
-      // biome-ignore lint/suspicious/noExplicitAny: Elysia WS raw shape
       const raw = ws as any;
-      connectionStores.delete(raw.data.wsId);
+      clearStorageForConnection(raw.data.wsId);
       wsConnections.delete(raw.data.wsId);
-      // Clean up terminals owned by this connection
       if (raw.data.ctx) {
         (raw.data.ctx as ServerContext).terminalManager.closeByConnection(
           raw.data.wsId
@@ -124,11 +119,11 @@ export function buildWsApp() {
       }
     },
     message(ws, msg) {
-      // biome-ignore lint/suspicious/noExplicitAny: Elysia WS data shape
       const { ctx: ctx2, wsId } = (ws as any).data;
       const ctx = ctx2 as ServerContext;
-      const store = getOrCreateStore(wsId, ctx.db);
-      handleMessage(ctx, store, ws, msg as WsIn);
+      const inMsg = msg as WsIn;
+      const storage = getOrCreateStorage(wsId, ctx.db, inMsg.sessionId ?? "");
+      handleMessage(ctx, storage, ws, inMsg);
     },
   });
 }

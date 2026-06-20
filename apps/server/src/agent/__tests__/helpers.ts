@@ -1,15 +1,10 @@
-import type { AgentMessage, SessionStore } from "@sakti-code/agent";
-import type { Mock } from "vitest";
-import { vi } from "vitest";
-
-// ── Mock @earendil-works/pi-ai ──
+import { vi } from "bun:test";
+import type { SessionStorage } from "@sakti-code/agent";
 
 export const piAiMock = {
-  streamSimple: vi.fn() as unknown as Mock,
-  getModel: vi.fn() as unknown as Mock,
+  streamSimple: vi.fn() as unknown as ReturnType<typeof vi.fn>,
+  getModel: vi.fn() as unknown as ReturnType<typeof vi.fn>,
 };
-
-// ── MockStream: minimal async iterable for test-driven streams ──
 
 export class MockStream<T> implements AsyncIterable<T> {
   private readonly items: T[] = [];
@@ -42,8 +37,6 @@ export class MockStream<T> implements AsyncIterable<T> {
   }
 }
 
-// ── Test model fixture ──
-
 export function createTestModel() {
   return {
     id: "test-model",
@@ -58,8 +51,6 @@ export function createTestModel() {
     maxTokens: 4096,
   };
 }
-
-// ── Stream fixture: a complete LLM response producing one text message ──
 
 export function createTextStream(text: string) {
   const stream = new MockStream<any>();
@@ -121,24 +112,28 @@ export function createTextStream(text: string) {
   return stream;
 }
 
-// ── In-memory SessionStore mock ──
-
-export function createMockStore(): SessionStore {
-  const messages: Map<string, AgentMessage[]> = new Map();
+export function createMockStore(): SessionStorage {
   return {
-    loadMessages: vi.fn(async (id) => messages.get(id) ?? []),
-    appendMessage: vi.fn(async (id, msg) => {
-      const list = messages.get(id) ?? [];
-      list.push(msg);
-      messages.set(id, list);
-    }),
-    replaceMessages: vi.fn(async (id, msgs) => {
-      messages.set(id, [...msgs]);
-    }),
+    appendEntry: vi.fn(),
+    createEntryId: vi.fn(async () => "entry-1"),
+    findEntries: vi.fn(),
+    getEntries: vi.fn(),
+    getEntry: vi.fn(),
+    getLabel: vi.fn(),
+    getLeafId: vi.fn(),
+    getMetadata: vi.fn(async () => ({
+      id: "mock",
+      projectId: "proj-1",
+      modelId: "test-model",
+      title: null,
+      thinkingLevel: "off",
+      createdAt: 0,
+      updatedAt: 0,
+    })),
+    getPathToRoot: vi.fn(async () => []),
+    setLeafId: vi.fn(),
   };
 }
-
-// ── Mock ServerContext: single-session variant ──
 
 export function createMockCtx(overrides?: {
   projectId?: string;
@@ -199,8 +194,6 @@ export function createMockCtx(overrides?: {
     },
   } as any;
 }
-
-// ── Mock ServerContext: multi-session variant ──
 
 export function createMultiSessionCtx(
   sessionIdToProjectId: Record<string, string>
