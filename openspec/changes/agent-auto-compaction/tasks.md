@@ -22,7 +22,7 @@
 
 ## 4. Verification
 
-- [ ] 4.1 Run `bun vitest run packages/agent/` — all pass
-- [ ] 4.2 Run `cd apps/server && bun vitest run src/agent/__tests__/` — all pass
-- [ ] 4.3 Run `bun typecheck` — 0 errors
-- [ ] 4.4 Run `bun x ultracite fix` — 0 remaining diagnostics
+- [x] 4.1 Run `bun vitest run packages/agent/` — all pass
+- [x] 4.2 Run `cd apps/server && bun vitest run src/agent/__tests__/` — all pass
+- [x] 4.3 Run `bun typecheck` — 0 errors
+- [x] 4.4 Run `bun x ultracite fix` — 0 remaining diagnostics
