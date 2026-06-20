@@ -5,8 +5,8 @@ import type {
   AgentToolResult,
   SessionStore,
 } from "../types.ts";
-import type { ToolCallInfo } from "./events.ts";
-import { evt } from "./events.ts";
+import type { ToolCallInfo } from "./loop-events.ts";
+import { evt } from "./loop-events.ts";
 
 export interface ToolExecResult {
   shouldTerminate: boolean;

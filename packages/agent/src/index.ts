@@ -1,9 +1,8 @@
-export {
-  type CompactionOptions,
-  type CompactionResult,
-  compactMessages,
-  shouldCompact,
-} from "./_legacy/compaction.ts";
+export { type AgentLoop, createAgentLoop } from "./_legacy/loop-index.ts";
+export type {
+  CompactionOptions,
+  CompactionResult,
+} from "./_legacy/old-compaction.ts";
 export { Agent } from "./agent.ts";
 export {
   collectEntriesForBranchSummary,
@@ -12,10 +11,12 @@ export {
 export {
   calculateContextTokens,
   compact,
+  compactMessages,
   DEFAULT_COMPACTION_SETTINGS,
   estimateContextTokens,
   estimateTokens,
   prepareCompaction,
+  shouldCompact,
 } from "./compaction.ts";
 export { AgentHarness } from "./harness/agent-harness.ts";
 export { convertToLlm } from "./harness/messages.ts";

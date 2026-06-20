@@ -6,8 +6,8 @@ import type {
   AgentTool,
   AnyModel,
 } from "../types.ts";
-import type { ToolCallInfo } from "./events.ts";
-import { evt } from "./events.ts";
+import type { ToolCallInfo } from "./loop-events.ts";
+import { evt } from "./loop-events.ts";
 
 export type StreamResult =
   | { ok: true; finalAssistant: AgentMessage | null; toolCalls: ToolCallInfo[] }

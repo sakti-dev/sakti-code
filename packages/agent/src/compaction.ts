@@ -891,3 +891,5 @@ async function generateTurnPrefixSummary(
       .join("\n")
   );
 }
+
+export { compactMessages } from "./_legacy/old-compaction.ts";

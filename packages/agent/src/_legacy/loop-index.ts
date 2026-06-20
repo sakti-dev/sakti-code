@@ -3,11 +3,63 @@ import {
   estimateContextTokens,
   shouldCompact,
 } from "../compaction.ts";
-import type { AgentConfigInput, AgentEvent, AgentMessage } from "../types.ts";
-import { createAgentConfig } from "../types.ts";
-import { evt } from "./events.ts";
-import { streamLLMResponse } from "./streaming.ts";
-import { executeToolCalls } from "./tool-execution.ts";
+import type {
+  AgentEvent,
+  AgentMessage,
+  AgentTool,
+  AnyModel,
+  SessionStore,
+} from "../types.ts";
+import { evt } from "./loop-events.ts";
+import { streamLLMResponse } from "./loop-streaming.ts";
+import { executeToolCalls } from "./loop-tool-execution.ts";
+
+interface AgentConfig {
+  apiKey?: string;
+  autoCompaction?: boolean;
+  autoRetry?: boolean;
+  followUpMode?: string;
+  keepRecentTokens: number;
+  maxRetries: number;
+  model: AnyModel;
+  reserveTokens: number;
+  retryBaseDelayMs: number;
+  sessionId: string;
+  steeringMode?: string;
+  store: SessionStore;
+  thinkingLevel?: string;
+  toolExecutionMode: "sequential" | "parallel";
+  tools: AgentTool[];
+}
+
+interface AgentConfigInput {
+  apiKey?: string;
+  autoCompaction?: boolean;
+  autoRetry?: boolean;
+  followUpMode?: string;
+  keepRecentTokens?: number;
+  maxRetries?: number;
+  model: AnyModel;
+  reserveTokens?: number;
+  retryBaseDelayMs?: number;
+  sessionId: string;
+  steeringMode?: string;
+  store: SessionStore;
+  thinkingLevel?: string;
+  toolExecutionMode?: "sequential" | "parallel";
+  tools: AgentTool[];
+}
+
+function createAgentConfig(input: AgentConfigInput): AgentConfig {
+  return {
+    toolExecutionMode: input.toolExecutionMode ?? "parallel",
+    maxRetries: input.maxRetries ?? 3,
+    retryBaseDelayMs: input.retryBaseDelayMs ?? 1000,
+    reserveTokens: input.reserveTokens ?? 16_000,
+    keepRecentTokens: input.keepRecentTokens ?? 20_000,
+    ...input,
+  };
+}
 
 const QUEUE_BOUND = 10;
 

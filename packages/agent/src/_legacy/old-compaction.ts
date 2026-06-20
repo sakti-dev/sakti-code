@@ -44,7 +44,7 @@ export function estimateTokens(
 }
 
 import { completeSimple } from "@earendil-works/pi-ai";
-import type { AgentMessage } from "./types.ts";
+import type { AgentMessage } from "../types.ts";
 
 /**
  * Estimate the current context size using the provider-reported usage from the
