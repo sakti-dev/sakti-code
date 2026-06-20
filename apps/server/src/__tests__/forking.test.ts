@@ -273,4 +273,35 @@ describe("export route", () => {
     );
     expect(res.status).toBe(404);
   });
+
+  it("W7: each assistant message emits a copy button", async () => {
+    const { app, ctx } = await makeApp([exportRoutes]);
+    const project = await ctx.repos.projects.create("w7", "/tmp/w7");
+    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    await ctx.repos.messages.append(session.id, {
+      role: "assistant",
+      content: "hi",
+    });
+
+    const res = await app.handle(
+      new Request(`http://localhost/api/sessions/${session.id}/export-html`)
+    );
+    const html = await res.text();
+    const matches = html.match(/class="copy-btn"/g);
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("W8: header shows the session creation date, not today", async () => {
+    const { app, ctx } = await makeApp([exportRoutes]);
+    const project = await ctx.repos.projects.create("w8", "/tmp/w8");
+    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    const created = new Date(session.createdAt).toISOString().slice(0, 10);
+
+    const res = await app.handle(
+      new Request(`http://localhost/api/sessions/${session.id}/export-html`)
+    );
+    const html = await res.text();
+    expect(html).toContain(created);
+  });
 });

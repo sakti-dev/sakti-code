@@ -4,10 +4,11 @@ import { getCtx } from "../context.ts";
 function renderHtmlExport(
   sessionTitle: string | null,
   projectName: string,
+  sessionCreatedAt: number,
   messages: Array<{ role: string; content: string; createdAt: number }>
 ): string {
   const title = sessionTitle || "Session Export";
-  const date = new Date().toISOString().slice(0, 10);
+  const date = new Date(sessionCreatedAt).toISOString().slice(0, 10);
 
   const messageHtml = messages
     .map((m) => {
@@ -21,12 +22,16 @@ function renderHtmlExport(
       }
       const dateStr = new Date(m.createdAt).toLocaleString();
       const collapsed = m.role === "tool" ? " collapsed" : "";
+      const copyBtn =
+        m.role === "assistant"
+          ? `<button class="copy-btn" type="button">Copy</button>`
+          : "";
 
       return `
         <div class="message ${roleClass}">
           <div class="meta">${m.role} &middot; ${dateStr}</div>
           <div class="bubble${collapsed}">
-            <pre>${escapeHtml(m.content.slice(0, 2000))}</pre>
+            ${copyBtn}<pre>${escapeHtml(m.content.slice(0, 2000))}</pre>
           </div>
         </div>`;
     })
@@ -120,7 +125,12 @@ export const exportRoutes = new Elysia({ name: "routes.export" }).get(
     const projectName = project?.name ?? "Unknown";
 
     const messagesData = ctx.repos.messages.loadBySession(params.id);
-    const html = renderHtmlExport(session.title, projectName, messagesData);
+    const html = renderHtmlExport(
+      session.title,
+      projectName,
+      session.createdAt,
+      messagesData
+    );
 
     return new Response(html, {
       headers: { "content-type": "text/html; charset=utf-8" },
