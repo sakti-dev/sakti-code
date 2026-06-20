@@ -35,8 +35,9 @@ export const forkingRoutes = new Elysia({ name: "routes.forking" })
 
     const messages = ctx.repos.messages.loadBySession(params.id);
     const forkable = messages
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .map((m, idx) => ({
+      .map((m, idx) => ({ m, idx }))
+      .filter(({ m }) => m.role === "user" || m.role === "assistant")
+      .map(({ m, idx }) => ({
         messageIndex: idx,
         role: m.role,
         textPreview: m.content.slice(0, 200),

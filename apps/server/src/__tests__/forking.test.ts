@@ -129,6 +129,45 @@ describe("fork-messages route", () => {
     );
     expect(res.status).toBe(404);
   });
+
+  it("W5: messageIndex refers to the FULL message array (consistent with fork() slice)", async () => {
+    const { app, ctx } = await makeApp([forkingRoutes]);
+    const project = await ctx.repos.projects.create("w5", "/tmp/w5");
+    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    // A tool message precedes the first user message.
+    await ctx.repos.messages.append(session.id, {
+      role: "tool",
+      content: "tool-first",
+      toolCallId: "t",
+      toolName: "x",
+    });
+    await ctx.repos.messages.append(session.id, { role: "user", content: "U" });
+    await ctx.repos.messages.append(session.id, {
+      role: "assistant",
+      content: "A",
+    });
+
+    const res = await app.handle(
+      new Request(`http://localhost/api/sessions/${session.id}/fork-messages`)
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    // user/assistant are at full-array indices 1 and 2, not 0 and 1.
+    expect(body[0].messageIndex).toBe(1);
+    expect(body[1].messageIndex).toBe(2);
+
+    // And forking at that index copies the right prefix (full-array slice).
+    const forkRes = await app.handle(
+      new Request(`http://localhost/api/sessions/${session.id}/fork`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messageIndex: 1 }),
+      })
+    );
+    const forked = await forkRes.json();
+    const msgs = ctx.repos.messages.loadBySession(forked.id);
+    expect(msgs.map((m) => m.content)).toEqual(["tool-first", "U"]);
+  });
 });
 
 describe("naming route", () => {
