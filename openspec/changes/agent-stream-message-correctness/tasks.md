@@ -1,41 +1,58 @@
-## 1. Fix thinkingLevel → reasoning field mapping (Task 1)
+## 1. Reasoning option: rename `thinkingLevel` → `reasoning` AND gate on `model.reasoning` (Task 1)
 
-- [ ] 1.1 Write failing test in `packages/agent/src/__tests__/` (new `streaming.test.ts` or nearest existing): with `thinkingLevel: "high"` configured, assert `streamSimple` receives `{ reasoning: "high" }` in its options (NOT `{ thinkingLevel }`). RED.
-- [ ] 1.2 Run `bun vitest run` on the new test — confirm RED (opts.reasoning is undefined, opts.thinkingLevel is "high").
-- [ ] 1.3 Fix the mapping in `packages/agent/src/loop/streaming.ts:169`: rename the spread key `{ thinkingLevel }` → `{ reasoning: thinkingLevel }`.
-- [ ] 1.4 Run the test → GREEN. Run full agent suite `bun vitest run packages/agent/` — no regressions.
-- [ ] 1.5 Gate: `bun typecheck && bun x ultracite check`. Commit "fix(agent-loop): map thinkingLevel to pi-ai 'reasoning' option".
+- [ ] 1.1 Write failing test in `packages/agent/src/__tests__/streaming.test.ts`: with a reasoning-capable model and `thinkingLevel: "high"`, assert `streamSimple` receives `{ reasoning: "high" }` (NOT `{ thinkingLevel }`). Add a second case: non-reasoning model (`reasoning: false`) + `thinkingLevel: "high"` → `streamSimple` called WITHOUT `reasoning`. RED.
+- [ ] 1.2 Confirm RED (opts.reasoning undefined; for non-reasoning model, opts currently carries the wrong `thinkingLevel` key).
+- [ ] 1.3 Fix `packages/agent/src/loop/streaming.ts:169`: gate + rename — `...(model.reasoning && thinkingLevel && thinkingLevel !== "off" ? { reasoning: thinkingLevel } : {})`. (`streamLLMResponse` already receives `model: AnyModel`, which carries pi-ai's `reasoning: boolean`.)
+- [ ] 1.4 Tests → GREEN. Run `bun vitest run packages/agent/` — no regressions.
+- [ ] 1.5 Gate: `bun typecheck && bun x ultracite check`. Commit "fix(agent-loop): map thinkingLevel→reasoning, gate on model.reasoning (pi compaction.ts:537)".
 
-## 2. Capture stopReason on AssistantMessage (Task 6)
+## 2. Widen `AssistantMessage` to carry the pi-ai fields (type prerequisite for Tasks 3+4)
 
-- [ ] 2.1 Write failing test in `packages/agent/src/__tests__/loop-behavior.test.ts`: after a normal text turn, assert the persisted `AssistantMessage` (e.g. via the `turn_end` event's message) carries `stopReason: "stop"`. RED.
-- [ ] 2.2 Add optional `stopReason?: string` to `AssistantMessage` in `packages/agent/src/types.ts`.
-- [ ] 2.3 Capture `stopReason` in the streaming layer's `done` handler (`streaming.ts:118-127`): set `finalAssistant.stopReason = event.message.stopReason`.
-- [ ] 2.4 Run the test → GREEN. Run full agent suite.
-- [ ] 2.5 Gate + commit "fix(agent-loop): preserve stopReason on AssistantMessage".
+- [ ] 2.1 Add optional fields to `AssistantMessage` in `packages/agent/src/types.ts`: `stopReason?: string`, `errorMessage?: string`, `api?: string`, `provider?: string`, `model?: string`, `responseModel?: string`, `responseId?: string`, `diagnostics?: unknown[]`. (Optional, not required — pre-change DB rows lack them.)
+- [ ] 2.2 `bun typecheck` — fix any compile breakage from the widened type (the `TurnEndEvent.message` and consumers).
+- [ ] 2.3 Commit "feat(agent): widen AssistantMessage with stopReason/errorMessage/attribution (pi-ai fields)".
 
-## 3. Skip error/aborted usage in estimateContextTokens (Task 4)
+## 3. Preserve the WHOLE pi-ai message at the stream boundary (merges Tasks 6 + 9, streaming side)
 
-- [ ] 3.1 Write failing test in `packages/agent/src/__tests__/compaction.test.ts` (estimateContextTokens block): build a message list whose most recent assistant has `stopReason: "error"` with zero usage, and an earlier successful assistant with `usage.totalTokens: 500`; assert `estimateContextTokens` returns 500 (uses the earlier message), NOT 0. RED.
-- [ ] 3.2 Update `estimateContextTokens` in `packages/agent/src/compaction.ts`: in the assistant-scanning loop, `continue` (skip) when `m.stopReason === "error" || m.stopReason === "aborted"`. Keep the existing `usageTokens > 0` guard.
-- [ ] 3.3 Run the test → GREEN. Run full agent suite.
-- [ ] 3.4 Gate + commit "fix(compaction): skip error/aborted usage in estimateContextTokens".
+- [ ] 3.1 Write failing test in `packages/agent/src/__tests__/loop-behavior.test.ts`: after a normal text turn, assert the final `AssistantMessage` (via `turn_end`/store) carries `stopReason: "stop"` AND at least one attribution field (`api`/`provider`/`model`) that the mock `streamSimple` reported. RED.
+- [ ] 3.2 Write failing test: mock `streamSimple` to terminate with an `error` event carrying `event.error` = a full `AssistantMessage` (`stopReason: "error"`, `errorMessage: "billing"`, zeroed usage). Assert `streamLLMResponse`'s result carries that exact message (NOT a synthesized one, NOT `finalAssistant: null`). RED.
+- [ ] 3.3 In `streaming.ts` `done` handler: map ALL `event.message` fields onto `finalAssistant` (content, usage, timestamp, stopReason, errorMessage, api, provider, model, responseModel, responseId, diagnostics) instead of cherry-picking four.
+- [ ] 3.4 In `streaming.ts` `error` handler: set `finalAssistant = event.error` (the whole pi-ai error message), keep yielding the `error` event, and `return { status: "error", finalAssistant: event.error }`. (Abort case: pi-ai sets `stopReason: "aborted"` on `event.error` — no special-casing needed.)
+- [ ] 3.5 Widen `StreamResult`: the non-OK variant SHALL carry `finalAssistant: AgentMessage | null` so the loop can persist it (Tasks 4+5).
+- [ ] 3.6 Fix `toPiMessages` in `streaming.ts`: pass through the now-preserved `stopReason`/`api`/`provider`/`model`/`responseModel`/`responseId` from our `AssistantMessage` instead of fabricating `"stop"/"openai-completions"/"openai"/"unknown"`; keep fabrication as fallback for messages lacking them (old rows).
+- [ ] 3.7 Tests → GREEN. Run full agent suite.
+- [ ] 3.8 Gate + commit "fix(agent-loop): preserve whole pi-ai message (done+error), fix toPiMessages fabrication".
 
-## 4. Persist error/aborted turns as assistant messages (Task 9)
+## 4. Persist error/aborted turns in the loop (Task 9, loop side)
 
-- [ ] 4.1 Write failing test in `packages/agent/src/__tests__/loop-behavior.test.ts`: mock `streamSimple` to yield an `error` event; assert the loop emits the `error` event AND `store.loadMessages` returns one assistant message with `stopReason: "error"` and the error text as content. RED.
-- [ ] 4.2 In `packages/agent/src/loop/streaming.ts` error handler: build a `finalAssistant` with `stopReason: "error"`, content `[{ type: "text", text: errorMessage }]`, zeroed usage, current timestamp (in addition to yielding the `error` event). Return it from `streamLLMResponse` as the result.
-- [ ] 4.3 In `packages/agent/src/loop/index.ts`: after `streamResult`, if `streamResult.finalAssistant?.stopReason` is `"error"` or `"aborted"`, push + `store.appendMessage` it before terminating the loop (for the abort case, set `stopReason: "aborted"`).
-- [ ] 4.4 Add an abort-path test: caller aborts mid-stream → persisted assistant message has `stopReason: "aborted"`.
-- [ ] 4.5 Run the tests → GREEN. Run full agent suite.
-- [ ] 4.6 Gate + commit "fix(agent-loop): persist error/aborted turns as assistant messages".
+- [ ] 4.1 Write failing test in `packages/agent/src/__tests__/loop-behavior.test.ts`: mock `streamSimple` to error; assert the loop (a) yields the `error` event AND (b) `store.loadMessages` returns one assistant message with `stopReason: "error"` and the pi-ai `errorMessage`. RED (currently persists nothing).
+- [ ] 4.2 In `packages/agent/src/loop/index.ts`: after `streamLLMResponse`, if `!streamResult.ok && streamResult.finalAssistant`, push it onto `messages` and `await store.appendMessage(sessionId, it)` before yielding `agent_end` + `return`. (The `error` event is already yielded inside `streamLLMResponse`.)
+- [ ] 4.3 Add abort-path test: caller aborts mid-stream → persisted assistant message has `stopReason: "aborted"`.
+- [ ] 4.4 Tests → GREEN. Run full agent suite.
+- [ ] 4.5 Gate + commit "fix(agent-loop): persist error/aborted turns as assistant messages (pi agent-loop.ts:196)".
 
-## 5. Verification
+## 5. Round-trip stopReason/errorMessage through the DB (prerequisite for reload + Task 4)
 
-- [ ] 5.1 Run `bun vitest run packages/agent/` — all pass (expect ~72 + new tests).
-- [ ] 5.2 Run `bun vitest run apps/server/src/agent/__tests__/` — all pass (no server-side change here, but guard against regressions in message handling).
-- [ ] 5.3 Run `cd apps/server && bun test src/__tests__ src/terminal/__tests__` — no regressions.
-- [ ] 5.4 Run `cd packages/db && bun test` — no regressions.
-- [ ] 5.5 Run `bun typecheck` — 0 errors.
-- [ ] 5.6 Run `bun x ultracite check` — 0 remaining diagnostics.
-- [ ] 5.7 Cross-check each spec scenario in `specs/agent-loop/spec.md` and `specs/thinking-level-config/spec.md` against the implemented tests; every scenario SHALL have a covering test.
+- [ ] 5.1 Write failing test in `packages/db/src/__tests__/session-store.test.ts`: `appendMessage` an assistant with `stopReason: "error"`, `errorMessage: "x"`, then `loadMessages` — assert both fields survive the round-trip. RED (currently dropped).
+- [ ] 5.2 Add nullable `stopReason text("stop_reason")` and `errorMessage text("error_message")` columns to the `messages` table in `packages/db/src/schema.ts`.
+- [ ] 5.3 Update `agentMessageToRow` (assistant branch) to emit `stopReason`/`errorMessage` when present; update `mapRowToAgentMessage` to read them back. (Attribution fields are NOT persisted — see design Decision 3.)
+- [ ] 5.4 Update `fork()` in `session-store.ts` to copy the two new columns through (it already copies columns explicitly).
+- [ ] 5.5 Test → GREEN. Run `cd packages/db && bun test` (currently 23 passing).
+- [ ] 5.6 Gate + commit "feat(db): persist stopReason/errorMessage on messages (prereq for error-turn reload)".
+
+## 6. Skip error/aborted usage in estimateContextTokens (Task 4 — pi getAssistantUsage)
+
+- [ ] 6.1 Write failing test in `packages/agent/src/__tests__/compaction.test.ts`: message list where the most recent assistant has `stopReason: "error"`, zero usage, and an earlier successful assistant has `usage.totalTokens: 500`; assert `estimateContextTokens` returns ~500 (uses the earlier message), NOT 0. RED.
+- [ ] 6.2 In `packages/agent/src/compaction.ts` `estimateContextTokens`: when scanning back, `continue` past any assistant with `stopReason === "error" || stopReason === "aborted"` (pi `getAssistantUsage`). Keep the existing `usageTokens > 0` guard.
+- [ ] 6.3 Test → GREEN. Run full agent suite.
+- [ ] 6.4 Gate + commit "fix(compaction): skip error/aborted usage in estimateContextTokens (pi getAssistantUsage)".
+
+## 7. Verification
+
+- [ ] 7.1 `bun vitest run packages/agent/` — all pass (expect ~72 + new).
+- [ ] 7.2 `cd packages/db && bun test` — all pass (expect ~23 + new round-trip test).
+- [ ] 7.3 `bun vitest run apps/server/src/agent/__tests__/` — no regressions (server reads widened messages).
+- [ ] 7.4 `cd apps/server && bun test src/__tests__ src/terminal/__tests__` — no regressions.
+- [ ] 7.5 `bun typecheck` — 0 errors.
+- [ ] 7.6 `bun x ultracite check` — 0 remaining diagnostics.
+- [ ] 7.7 Cross-check every scenario in `specs/agent-loop/spec.md` and `specs/thinking-level-config/spec.md` against the implemented tests; each scenario SHALL have a covering test.
