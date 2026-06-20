@@ -234,7 +234,8 @@ export function createAgentLoop(config: AgentConfigInput): AgentLoop {
         toolSignal,
         store,
         sessionId,
-        messages
+        messages,
+        resolved.toolExecutionMode
       );
 
       yield evt("turn_end", {

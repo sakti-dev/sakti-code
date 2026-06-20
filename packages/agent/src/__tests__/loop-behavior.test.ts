@@ -307,6 +307,7 @@ describe("Agent loop tool execution", () => {
       model: testModel,
       tools: [readTool],
       store,
+      toolExecutionMode: "sequential",
     });
     await collectEvents(loop.prompt("read x"));
 
@@ -574,5 +575,342 @@ describe("Agent loop error/aborted turn persistence (pi agent-loop.ts:196)", () 
     ) as any;
     expect(abortedMsg).toBeDefined();
     expect(abortedMsg.stopReason).toBe("aborted");
+  });
+});
+
+function multiToolCallStream(
+  tools: { name: string; args: Record<string, unknown>; id: string }[]
+) {
+  const s = new MockEventStream();
+  const now = Date.now();
+  const toolCalls = tools.map((t) => ({
+    type: "toolCall" as const,
+    id: t.id,
+    name: t.name,
+    arguments: t.args,
+  }));
+  s.push({
+    type: "start",
+    partial: { ...basePartial, stopReason: "toolUse", timestamp: now },
+  });
+  for (let i = 0; i < toolCalls.length; i++) {
+    s.push({ type: "toolcall_start", contentIndex: i, partial: {} as any });
+    s.push({
+      type: "toolcall_delta",
+      contentIndex: i,
+      delta: JSON.stringify(tools[i].args),
+      partial: {} as any,
+    });
+    s.push({
+      type: "toolcall_end",
+      contentIndex: i,
+      toolCall: toolCalls[i],
+      partial: {} as any,
+    });
+  }
+  s.push({
+    type: "done",
+    reason: "toolUse",
+    message: {
+      ...basePartial,
+      stopReason: "toolUse",
+      timestamp: now,
+      content: toolCalls,
+    },
+  });
+  return s;
+}
+
+describe("Agent loop tool batch termination (AND semantics)", () => {
+  it("mixed terminate batch (one true, one false) does NOT terminate", async () => {
+    const store = createMockStore();
+    const terminateTool: AgentTool = {
+      name: "stop",
+      description: "Stops",
+      parameters: { type: "object", properties: {} },
+      execute: async () => ({ content: "stop", terminate: true }),
+    };
+    const continueTool: AgentTool = {
+      name: "go",
+      description: "Continues",
+      parameters: { type: "object", properties: {} },
+      execute: async () => ({ content: "go", terminate: false }),
+    };
+
+    let callCount = 0;
+    vi.mocked(streamSimple).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return multiToolCallStream([
+          { name: "stop", args: {}, id: "tc_1" },
+          { name: "go", args: {}, id: "tc_2" },
+        ]);
+      }
+      return textStream("Continuing after mixed batch");
+    });
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [terminateTool, continueTool],
+      store,
+    });
+    const events = await collectEvents(loop.prompt("mixed"));
+
+    const turnEnds = events.filter((e) => e.type === "turn_end");
+    expect(turnEnds.length).toBe(2);
+    expect(events.some((e) => e.type === "agent_end")).toBe(true);
+  });
+
+  it("all-terminate batch DOES terminate", async () => {
+    const store = createMockStore();
+    const tool: AgentTool = {
+      name: "stop",
+      description: "Stops",
+      parameters: { type: "object", properties: {} },
+      execute: async () => ({ content: "stop", terminate: true }),
+    };
+
+    vi.mocked(streamSimple).mockReturnValue(
+      multiToolCallStream([
+        { name: "stop", args: {}, id: "tc_1" },
+        { name: "stop", args: {}, id: "tc_2" },
+      ])
+    );
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [tool],
+      store,
+    });
+    const events = await collectEvents(loop.prompt("all stop"));
+
+    const turnEnds = events.filter((e) => e.type === "turn_end");
+    expect(turnEnds.length).toBe(1);
+    expect(events.some((e) => e.type === "agent_end")).toBe(true);
+  });
+
+  it("single-tool terminate still terminates (regression)", async () => {
+    const store = createMockStore();
+    const terminateTool: AgentTool = {
+      name: "stop",
+      description: "Stops",
+      parameters: { type: "object", properties: {} },
+      execute: async () => ({ content: "stop", terminate: true }),
+    };
+
+    vi.mocked(streamSimple).mockReturnValue(toolCallStream("stop", {}));
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [terminateTool],
+      store,
+    });
+    const events = await collectEvents(loop.prompt("stop"));
+
+    const turnEnds = events.filter((e) => e.type === "turn_end");
+    expect(turnEnds.length).toBe(1);
+  });
+});
+
+describe("Agent loop abort breaks tool batch", () => {
+  it("sequential batch: abort after tool 2 skips tool 3", async () => {
+    const store = createMockStore();
+    let executeCount = 0;
+    let abortAfterTwo: (() => void) | undefined;
+
+    const tool: AgentTool = {
+      name: "slow",
+      description: "Slow tool",
+      parameters: { type: "object", properties: {} },
+      execute: async (_id, _args, _signal) => {
+        executeCount++;
+        if (executeCount === 2 && abortAfterTwo) {
+          abortAfterTwo();
+        }
+        return { content: `run ${executeCount}`, terminate: false };
+      },
+    };
+
+    let callCount = 0;
+    vi.mocked(streamSimple).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return multiToolCallStream([
+          { name: "slow", args: {}, id: "tc_1" },
+          { name: "slow", args: {}, id: "tc_2" },
+          { name: "slow", args: {}, id: "tc_3" },
+        ]);
+      }
+      return textStream("done");
+    });
+
+    const abortController = new AbortController();
+    abortAfterTwo = () => abortController.abort();
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [tool],
+      store,
+      toolExecutionMode: "sequential",
+    });
+    const events = await collectEvents(
+      loop.prompt("run", abortController.signal)
+    );
+
+    expect(executeCount).toBeLessThan(3);
+    const toolResultMsgs = events.filter(
+      (e) => e.type === "message_start" && e.message?.role === "tool"
+    );
+    expect(toolResultMsgs.length).toBeLessThan(3);
+    expect(toolResultMsgs.length).toBeGreaterThan(0);
+  });
+});
+
+describe("Agent loop parallel tool execution", () => {
+  it("two tools execute concurrently in parallel mode", async () => {
+    const store = createMockStore();
+    const startTimes: number[] = [];
+    const tool: AgentTool = {
+      name: "slow",
+      description: "Slow tool",
+      parameters: { type: "object", properties: {} },
+      execute: async () => {
+        startTimes.push(Date.now());
+        await new Promise((r) => setTimeout(r, 50));
+        return { content: "done", terminate: false };
+      },
+    };
+
+    let callCount = 0;
+    vi.mocked(streamSimple).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return multiToolCallStream([
+          { name: "slow", args: {}, id: "tc_1" },
+          { name: "slow", args: {}, id: "tc_2" },
+        ]);
+      }
+      return textStream("all done");
+    });
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [tool],
+      store,
+      toolExecutionMode: "parallel",
+    });
+    await collectEvents(loop.prompt("run"));
+
+    expect(startTimes.length).toBe(2);
+    expect(Math.abs(startTimes[0]! - startTimes[1]!)).toBeLessThan(30);
+  }, 10_000);
+
+  it("parallel results are finalized in call order regardless of completion order", async () => {
+    const store = createMockStore();
+    let resolveB: (() => void) | undefined;
+    const toolA: AgentTool = {
+      name: "fast",
+      description: "Fast tool",
+      parameters: { type: "object", properties: {} },
+      execute: async () => {
+        await new Promise((r) => setTimeout(r, 10));
+        return { content: "A result", terminate: false };
+      },
+    };
+    const toolB: AgentTool = {
+      name: "slow",
+      description: "Slow tool",
+      parameters: { type: "object", properties: {} },
+      execute: async () => {
+        await new Promise<void>((r) => {
+          resolveB = r;
+        });
+        return { content: "B result", terminate: false };
+      },
+    };
+
+    let callCount = 0;
+    vi.mocked(streamSimple).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return multiToolCallStream([
+          { name: "fast", args: {}, id: "tc_1" },
+          { name: "slow", args: {}, id: "tc_2" },
+        ]);
+      }
+      return textStream("done");
+    });
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [toolA, toolB],
+      store,
+      toolExecutionMode: "parallel",
+    });
+
+    const promise = collectEvents(loop.prompt("run"));
+    await new Promise((r) => setTimeout(r, 30));
+    resolveB!();
+    const events = await promise;
+
+    const toolMsgs = events.filter(
+      (e) => e.type === "message_start" && e.message?.role === "tool"
+    );
+    expect(toolMsgs.length).toBe(2);
+    expect((toolMsgs[0]!.message as any).toolCallId).toBe("tc_1");
+    expect((toolMsgs[1]!.message as any).toolCallId).toBe("tc_2");
+  });
+
+  it("parallel batch: pre-aborted signal skips tool execution", async () => {
+    const store = createMockStore();
+    let executeCount = 0;
+    const tool: AgentTool = {
+      name: "slow",
+      description: "Slow tool",
+      parameters: { type: "object", properties: {} },
+      execute: async () => {
+        executeCount++;
+        return { content: `run ${executeCount}`, terminate: false };
+      },
+    };
+
+    const abortController = new AbortController();
+    abortController.abort();
+
+    let callCount = 0;
+    vi.mocked(streamSimple).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return multiToolCallStream([
+          { name: "slow", args: {}, id: "tc_1" },
+          { name: "slow", args: {}, id: "tc_2" },
+          { name: "slow", args: {}, id: "tc_3" },
+        ]);
+      }
+      return textStream("done");
+    });
+
+    const loop = createAgentLoop({
+      sessionId: "s1",
+      model: testModel,
+      tools: [tool],
+      store,
+      toolExecutionMode: "parallel",
+    });
+    const events = await collectEvents(
+      loop.prompt("run", abortController.signal)
+    );
+
+    const toolResultMsgs = events.filter(
+      (e) => e.type === "message_start" && e.message?.role === "tool"
+    );
+    expect(toolResultMsgs.length).toBeLessThan(3);
+    expect(executeCount).toBeLessThan(3);
   });
 });
