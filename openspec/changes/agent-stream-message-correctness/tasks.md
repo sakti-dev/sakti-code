@@ -33,12 +33,12 @@
 
 ## 5. Round-trip stopReason/errorMessage through the DB (prerequisite for reload + Task 4)
 
-- [ ] 5.1 Write failing test in `packages/db/src/__tests__/session-store.test.ts`: `appendMessage` an assistant with `stopReason: "error"`, `errorMessage: "x"`, then `loadMessages` — assert both fields survive the round-trip. RED (currently dropped).
-- [ ] 5.2 Add nullable `stopReason text("stop_reason")` and `errorMessage text("error_message")` columns to the `messages` table in `packages/db/src/schema.ts`.
-- [ ] 5.3 Update `agentMessageToRow` (assistant branch) to emit `stopReason`/`errorMessage` when present; update `mapRowToAgentMessage` to read them back. (Attribution fields are NOT persisted — see design Decision 3.)
-- [ ] 5.4 Update `fork()` in `session-store.ts` to copy the two new columns through (it already copies columns explicitly).
-- [ ] 5.5 Test → GREEN. Run `cd packages/db && bun test` (currently 23 passing).
-- [ ] 5.6 Gate + commit "feat(db): persist stopReason/errorMessage on messages (prereq for error-turn reload)".
+- [x] 5.1 Write failing test in `packages/db/src/__tests__/session-store.test.ts`: `appendMessage` an assistant with `stopReason: "error"`, `errorMessage: "x"`, then `loadMessages` — assert both fields survive the round-trip. RED (currently dropped).
+- [x] 5.2 Add nullable columns `stopReason text("stop_reason")` and `errorMessage text("error_message")` columns to the `messages` table in `packages/db/src/schema.ts`.
+- [x] 5.3 Update `agentMessageToRow` (assistant branch) to emit `stopReason`/`errorMessage` when present; update `mapRowToAgentMessage` to read them back. (Attribution fields are NOT persisted — see design Decision 3.)
+- [x] 5.4 Update `fork()` in `session-store.ts` to copy the two new columns through (it already copies columns explicitly).
+- [x] 5.5 Test → GREEN. Run `cd packages/db && bun test` (currently 23 passing).
+- [x] 5.6 Gate + commit "feat(db): persist stopReason/errorMessage on messages (prereq for error-turn reload)".
 
 ## 6. Skip error/aborted usage in estimateContextTokens (Task 4 — pi getAssistantUsage)
 

@@ -122,6 +122,32 @@ describe("SqliteSessionStore", () => {
     expect((await store.loadMessages("s1")).length).toBe(2); // still the replacement
     expect((await store.loadMessages("s2")).length).toBe(1);
   });
+
+  test("round-trips stopReason and errorMessage on assistant messages", async () => {
+    const errorMsg: AgentMessage = {
+      role: "assistant",
+      content: [{ type: "text", text: "billing exceeded" }],
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: "error",
+      errorMessage: "billing exceeded",
+      timestamp: 6000,
+    };
+    await store.appendMessage("s1", errorMsg);
+
+    const loaded = await store.loadMessages("s1");
+    // s1 had 2 messages from earlier test (replacement), now +1 = 3
+    const last = loaded.at(-1) as any;
+    expect(last.role).toBe("assistant");
+    expect(last.stopReason).toBe("error");
+    expect(last.errorMessage).toBe("billing exceeded");
+  });
 });
 
 describe("SessionRepo fork support", () => {

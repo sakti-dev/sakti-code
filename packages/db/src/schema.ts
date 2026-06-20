@@ -34,6 +34,8 @@ export const messages = sqliteTable("messages", {
   toolName: text("tool_name"),
   toolArguments: text("tool_arguments"),
   isError: integer("is_error"),
+  stopReason: text("stop_reason"),
+  errorMessage: text("error_message"),
   usage: text("usage"),
   createdAt: integer("created_at").notNull(),
 });

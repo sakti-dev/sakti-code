@@ -161,6 +161,8 @@ export class MessageRepo {
       toolName?: string;
       toolArguments?: string;
       isError?: number;
+      stopReason?: string;
+      errorMessage?: string;
       usage?: string;
     }
   ) {
@@ -175,6 +177,8 @@ export class MessageRepo {
       toolName: data.toolName ?? null,
       toolArguments: data.toolArguments ?? null,
       isError: data.isError ?? null,
+      stopReason: data.stopReason ?? null,
+      errorMessage: data.errorMessage ?? null,
       usage: data.usage ?? null,
       createdAt: Date.now(),
     });

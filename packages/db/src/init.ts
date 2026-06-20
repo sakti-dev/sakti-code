@@ -15,6 +15,19 @@ export async function initDatabase(sqlite: Database): Promise<DrizzleDB> {
   // Create tables with raw SQL
   sqlite.exec(getCreateTableSQL(schema));
 
+  // Migrate: add stop_reason / error_message columns (nullable, additive)
+  // Using try/catch since ALTER TABLE ADD COLUMN fails if column exists
+  try {
+    sqlite.exec("ALTER TABLE messages ADD COLUMN stop_reason TEXT");
+  } catch {
+    /* exists */
+  }
+  try {
+    sqlite.exec("ALTER TABLE messages ADD COLUMN error_message TEXT");
+  } catch {
+    /* exists */
+  }
+
   return db;
 }
 

@@ -79,6 +79,8 @@ export class SqliteSessionStore implements SessionStore {
             toolName: row.toolName,
             toolArguments: row.toolArguments,
             isError: row.isError,
+            stopReason: row.stopReason,
+            errorMessage: row.errorMessage,
             usage: row.usage,
             createdAt: now + i,
           }))
@@ -98,6 +100,8 @@ function mapRowToAgentMessage(row: {
   toolName?: string | null;
   toolArguments?: string | null;
   isError?: number | null;
+  stopReason?: string | null;
+  errorMessage?: string | null;
   usage?: string | null;
   createdAt: number;
 }): AgentMessage {
@@ -151,7 +155,14 @@ function mapRowToAgentMessage(row: {
       };
     }
 
-    return { role: "assistant", content, usage, ...base };
+    return {
+      role: "assistant",
+      content,
+      usage,
+      ...base,
+      ...(row.stopReason ? { stopReason: row.stopReason } : {}),
+      ...(row.errorMessage ? { errorMessage: row.errorMessage } : {}),
+    };
   }
 
   // role === "tool"
@@ -173,6 +184,8 @@ function agentMessageToRow(msg: AgentMessage): {
   toolName?: string;
   toolArguments?: string;
   isError?: number;
+  stopReason?: string;
+  errorMessage?: string;
   usage?: string;
 } {
   if (msg.role === "user") {
@@ -208,6 +221,8 @@ function agentMessageToRow(msg: AgentMessage): {
       content,
       ...(usage === undefined ? {} : { usage }),
       ...(toolCalls === undefined ? {} : { toolCalls }),
+      ...(aMsg.stopReason ? { stopReason: aMsg.stopReason } : {}),
+      ...(aMsg.errorMessage ? { errorMessage: aMsg.errorMessage } : {}),
     };
   }
 
