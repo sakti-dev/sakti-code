@@ -67,6 +67,14 @@ The in-progress `agent-loop-controls` change plumbs the `auto_compaction` per-se
 
 **Alternative considered:** use a cheaper/faster model for summarization. **Rejected for now:** it adds a model-resolution path (which provider? which id?) with no existing source of truth. The manual route uses the same model; consistency wins. This is a tuning knob for a future change.
 
+### 7. Token estimate uses real provider usage (follows pi's proven `estimateContextTokens`)
+
+**Decision:** Add `estimateContextTokens(messages)` to `compaction.ts` and use it — not the pure char/4 `estimateTokens` — for the threshold check. It returns the most recent assistant message's `usage.totalTokens` (the real provider-reported prompt size) plus a char/4 estimate of any messages appended after it; when no assistant usage exists (first turn, or freshly-loaded history with no usage), it falls back to char/4 over all messages.
+
+**Rationale:** A pure char/4 estimate over every message under/over-counts systematically and triggers compaction at the wrong point. pi's agent (`openspec/references/pi/.../compaction/compaction.ts` → `estimateContextTokens` / `calculateContextTokens`) keys the threshold off the real `usage.totalTokens` from the last completed assistant response. We mirror that exactly — it's the single most important proven insight from the reference. Additive: a new exported function; existing `estimateTokens` and the manual `/compact` route are unchanged.
+
+**Out-of-scope proven refinements (documented for follow-up):** pi's `serializeConversation` truncates tool results to ~2000 chars during summarization (prevents huge bash/read output blowing up the summary prompt), and pi's `findCutPoint` supports mid-turn "split turn" cuts when a single turn exceeds `keepRecentTokens`. Both touch the shared `compactMessages` path (also used by the archived manual route); adopting them is a separate, behavior-changing change to the manual route and is deferred.
+
 ## Risks / Trade-offs
 
 - **[Summarization adds latency to a turn]** when it triggers, the loop blocks on a `completeSimple` call before the user sees the next `text_delta`. → **Mitigation:** it only triggers near the context limit (a turn that would otherwise likely fail with overflow); the latency trades off against a hard failure. The UI shows `compaction_start`/`compaction_end` so the delay is explained.

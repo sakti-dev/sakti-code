@@ -1,8 +1,8 @@
 ## 1. Agent config types
 
-- [ ] 1.1 Add `apiKey?: string` and `autoCompaction?: boolean` to `AgentConfig` in `packages/agent/src/types.ts`
-- [ ] 1.2 Add `apiKey?: string` and `autoCompaction?: boolean` to `AgentConfigInput` in `packages/agent/src/types.ts`
-- [ ] 1.3 Run `bun typecheck` — 0 errors (additive fields, no consumer breaks)
+- [x] 1.1 Add `apiKey?: string` and `autoCompaction?: boolean` to `AgentConfig` in `packages/agent/src/types.ts`
+- [x] 1.2 Add `apiKey?: string` and `autoCompaction?: boolean` to `AgentConfigInput` in `packages/agent/src/types.ts`
+- [x] 1.3 Run `bun typecheck` — 0 errors (additive fields, no consumer breaks)
 
 ## 2. Agent loop: auto-compaction check (TDD)
 
@@ -10,7 +10,7 @@
 - [ ] 2.2 Write failing test in the same file: with `autoCompaction` omitted (default), even when tokens exceed the window → assert NO `compaction_*` events are yielded. (RED)
 - [ ] 2.3 Write failing test: with `autoCompaction: true` but no `apiKey` → assert no `compaction_*` events and no error thrown (graceful skip)
 - [ ] 2.4 Write failing test: with `autoCompaction: true`, `apiKey` set, but `completeSimple` returns `stopReason: "error"` → assert loop continues, no `error` event, `replaceMessages` not called (messages unchanged)
-- [ ] 2.5 Implement the compaction check in `packages/agent/src/loop/index.ts`: import `compactMessages`, `estimateTokens`, `shouldCompact` from `../compaction.ts`; at the top of the `while(true)` loop (after `drainSteers`, before `yield evt("turn_start")`), gate on `resolved.autoCompaction && resolved.apiKey`; if `shouldCompact` trips, yield `compaction_start`, call `compactMessages({ model, apiKey, contextWindow, messages, reserveTokens, keepRecentTokens, signal })`, splice `result.messages` into the working array, `store.replaceMessages`, yield `compaction_end`
+- [ ] 2.5 Implement the compaction check in `packages/agent/src/loop/index.ts`: add `estimateContextTokens` to `packages/agent/src/compaction.ts` (prefer real `usage.totalTokens` from the last assistant message; fall back to char/4 `estimateTokens` over all messages when no usage exists — mirrors pi's proven `estimateContextTokens`); import `compactMessages`, `estimateContextTokens`, `shouldCompact` from `../compaction.ts`; at the top of the `while(true)` loop (after `drainSteers`, before `yield evt("turn_start")`), gate on `resolved.autoCompaction && resolved.apiKey`; if `shouldCompact` trips, yield `compaction_start`, call `compactMessages({ model, apiKey, contextWindow, messages, reserveTokens, keepRecentTokens, signal })`, splice `result.messages` into the working array, `store.replaceMessages`, yield `compaction_end` with `tokensBefore`/`tokensAfter`
 - [ ] 2.6 Run `bun vitest run packages/agent/src/__tests__/auto-compaction.test.ts` — all 4 new tests GREEN
 - [ ] 2.7 Run full agent suite `bun vitest run packages/agent/` — 54+ existing tests still pass
 

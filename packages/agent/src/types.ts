@@ -238,6 +238,8 @@ export interface SessionStore {
 }
 
 export interface AgentConfig {
+  apiKey?: string;
+  autoCompaction?: boolean;
   autoRetry?: boolean;
   followUpMode?: string;
   keepRecentTokens: number;
@@ -254,6 +256,8 @@ export interface AgentConfig {
 }
 
 export interface AgentConfigInput {
+  apiKey?: string;
+  autoCompaction?: boolean;
   autoRetry?: boolean;
   followUpMode?: string;
   keepRecentTokens?: number;
