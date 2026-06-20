@@ -210,6 +210,31 @@ describe("SettingsRepo", () => {
     expect(repo.get("theme")).toBe("light");
     expect(repo.getAll().length).toBe(1);
   });
+
+  test("getByPrefix returns all keys matching a prefix", async () => {
+    await repo.set("session:sess_1:auto_compaction", "false");
+    await repo.set("session:sess_1:auto_retry", "true");
+    await repo.set("session:sess_1:max_retries", "5");
+    await repo.set("session:sess_2:auto_retry", "true");
+
+    const rows = repo.getByPrefix("session:sess_1:");
+    expect(rows).toHaveLength(3);
+    const keys = rows.map((r) => r.key).sort();
+    expect(keys).toEqual(
+      [
+        "session:sess_1:auto_compaction",
+        "session:sess_1:auto_retry",
+        "session:sess_1:max_retries",
+      ].sort()
+    );
+    // Each row carries its value.
+    const byKey = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    expect(byKey["session:sess_1:auto_retry"]).toBe("true");
+  });
+
+  test("getByPrefix returns [] for an unmatched prefix", () => {
+    expect(repo.getByPrefix("session:never_set:")).toEqual([]);
+  });
 });
 
 describe("ModelConfigRepo", () => {
