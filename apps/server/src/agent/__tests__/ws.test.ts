@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 const MISSING_FIELDS_RE = /Missing sessionId or message/;
+const NO_ACTIVE_RUN_RE = /No active run/;
 
 // Mock @earendil-works/pi-ai before importing anything that uses it
 vi.mock("@earendil-works/pi-ai", async () => {
@@ -112,5 +113,35 @@ describe("WS message handler", () => {
     const errorFrames = sent.filter((f: any) => f.type === "error");
     expect(errorFrames.length).toBe(1);
     expect(errorFrames[0]?.error).toMatch(MISSING_FIELDS_RE);
+  });
+
+  it("steer with no active run sends an error frame carrying the sessionId", () => {
+    const ctx = createMockCtx();
+    const store = createMockStore();
+    const { sent, ws } = makeFakeWs();
+    handleMessage(ctx, store, ws, {
+      type: "steer",
+      sessionId: "no-run",
+      message: "change course",
+    });
+    const errorFrames = sent.filter((f: any) => f.type === "error");
+    expect(errorFrames.length).toBe(1);
+    expect(errorFrames[0]?.sessionId).toBe("no-run");
+    expect(errorFrames[0]?.error).toMatch(NO_ACTIVE_RUN_RE);
+  });
+
+  it("followUp with no active run sends an error frame carrying the sessionId", () => {
+    const ctx = createMockCtx();
+    const store = createMockStore();
+    const { sent, ws } = makeFakeWs();
+    handleMessage(ctx, store, ws, {
+      type: "followUp",
+      sessionId: "no-run",
+      message: "again",
+    });
+    const errorFrames = sent.filter((f: any) => f.type === "error");
+    expect(errorFrames.length).toBe(1);
+    expect(errorFrames[0]?.sessionId).toBe("no-run");
+    expect(errorFrames[0]?.error).toMatch(NO_ACTIVE_RUN_RE);
   });
 });
