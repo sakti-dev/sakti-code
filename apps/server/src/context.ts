@@ -6,10 +6,12 @@ import {
   SettingsRepo,
   SqliteSessionStorage,
 } from "@sakti-code/db";
+import type { ServerHooks } from "./create-server.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
 
 export interface ServerContext {
   db: DrizzleDB;
+  hooks: ServerHooks;
   repos: {
     projects: ProjectRepo;
     sessions: SessionRepo;
@@ -19,9 +21,13 @@ export interface ServerContext {
   terminalManager: TerminalManager;
 }
 
-export function createContext(db: DrizzleDB): ServerContext {
+export function createContext(
+  db: DrizzleDB,
+  hooks: ServerHooks = {}
+): ServerContext {
   return {
     db,
+    hooks,
     repos: {
       projects: new ProjectRepo(db),
       sessions: new SessionRepo(db),

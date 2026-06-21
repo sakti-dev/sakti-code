@@ -5,7 +5,7 @@ import {
   createServer,
   type SaktiServer,
 } from "@sakti-code/server/create-server";
-import { BrowserWindow } from "electrobun/bun";
+import { BrowserWindow, Utils } from "electrobun/bun";
 import {
   debouncedSaveWindowState,
   flushWindowState,
@@ -111,7 +111,21 @@ async function bootstrap(): Promise<void> {
       console.warn(`Static dir not found: ${staticDir}`);
     }
     const dbPath = join(homedir(), ".sakti", "sakti-code.db");
-    const sakti = await createServer({ port: 0, staticDir, dbPath });
+    const sakti = await createServer({
+      port: 0,
+      staticDir,
+      dbPath,
+      hooks: {
+        onOpenFolderDialog: async () => {
+          const result = await Utils.openFileDialog({
+            canChooseFiles: false,
+            canChooseDirectory: true,
+            allowsMultipleSelection: false,
+          });
+          return result[0] ?? null;
+        },
+      },
+    });
     server = sakti;
     await waitForReady(sakti.url);
     url = sakti.url;

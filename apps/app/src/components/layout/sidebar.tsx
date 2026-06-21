@@ -81,6 +81,25 @@ export default function Sidebar() {
     await actions.createSession(projectId, "default");
   };
 
+  const handleAddProject = async () => {
+    try {
+      const res = await fetch("/api/dialog/folder");
+      if (res.status === 501) {
+        // Native dialog not available — fall back to inline input
+        setShowAddInput(true);
+        return;
+      }
+      const data = (await res.json()) as { folderPath: string | null };
+      if (data.folderPath) {
+        // TODO: Wire to API - POST /api/projects
+        console.log("Add project:", data.folderPath);
+      }
+    } catch {
+      // Network error or server not running — fall back to inline input
+      setShowAddInput(true);
+    }
+  };
+
   const handleRemoveProject = (projectId: string) => {
     server.actions.removeProject(projectId);
   };
@@ -183,7 +202,7 @@ export default function Sidebar() {
             <Tooltip content="Add project">
               <button
                 class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-                onClick={() => setShowAddInput(true)}
+                onClick={handleAddProject}
                 type="button"
               >
                 <svg

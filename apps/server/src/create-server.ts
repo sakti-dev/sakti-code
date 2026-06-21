@@ -8,8 +8,13 @@ import { createContext } from "./context.ts";
 
 const LEADING_SLASHES = /^\/+/;
 
+export interface ServerHooks {
+  onOpenFolderDialog?: () => Promise<string | null>;
+}
+
 export interface CreateServerOptions {
   dbPath?: string;
+  hooks?: ServerHooks;
   hostname?: string;
   port?: number;
   staticDir?: string | null;
@@ -53,10 +58,11 @@ export async function createServer(
     hostname = process.env.SAKTI_HOST ?? "localhost",
     dbPath = process.env.SAKTI_DB_PATH ?? "sakti-code.db",
     staticDir = null,
+    hooks = {},
   } = options ?? {};
 
   const db = await initDatabase(new Database(dbPath));
-  const ctx = createContext(db);
+  const ctx = createContext(db, hooks);
   const dir: string | null = staticDir;
 
   const instance = new Elysia()

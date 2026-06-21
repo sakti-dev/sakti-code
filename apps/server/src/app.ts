@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import { buildWsApp } from "./agent/ws.ts";
 import type { ServerContext } from "./context.ts";
+import { dialogRoutes } from "./routes/dialog.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { availableModelsRoutes } from "./routes/models/available-models.ts";
 import { modelConfigRoutes } from "./routes/models/models.ts";
@@ -34,7 +35,8 @@ const restApp = new Elysia({ prefix: "/api" })
   .use(terminalRoutes)
   .use(forkingRoutes)
   .use(exportRoutes)
-  .use(sessionSettingsRoutes);
+  .use(sessionSettingsRoutes)
+  .use(dialogRoutes);
 
 export function buildApp(ctx: ServerContext) {
   return new Elysia().use(restApp).use(buildWsApp(ctx));
