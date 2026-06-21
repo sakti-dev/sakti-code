@@ -22,7 +22,7 @@ The system SHALL provide an `apps/server` Bun workspace package (`@sakti-code/se
 - **THEN** the server listens on port 4000 and logs its URL
 
 ### Requirement: ServerContext injection
-The system SHALL construct a single `ServerContext` object holding the `DrizzleDB` and instances of all six repo classes (`ProjectRepo`, `SessionRepo`, `MessageRepo`, `CostRepo`, `SettingsRepo`, `ModelConfigRepo`) and inject it into every route via Elysia `.state("ctx", ctx)`. Routes SHALL access repos via `store.ctx.repos.<name>` and SHALL NOT construct repos themselves.
+The system SHALL construct a single `ServerContext` object holding the `DrizzleDB` and instances of the repo classes (`ProjectRepo`, `SessionRepo`, `SettingsRepo`, `ModelConfigRepo`) and inject it into every route via Elysia `.state("ctx", ctx)`. Routes SHALL access repos via `store.ctx.repos.<name>` and SHALL NOT construct repos themselves. Session-scoped reads (messages, stats, export, fork, last-assistant-text) SHALL go through `SqliteSessionStorage` + `buildSessionContext` from `@sakti-code/agent` / `@sakti-code/db`, not through a per-session repo.
 
 #### Scenario: context flows to a route handler
 - **WHEN** a route handler reads `store.ctx.repos.projects`
@@ -48,8 +48,8 @@ The system SHALL expose REST endpoints over `ProjectRepo`: `GET /api/projects` (
 - **WHEN** `GET /api/projects/nope`
 - **THEN** the response status is 404
 
-### Requirement: Sessions CRUD with message history
-The system SHALL expose REST endpoints over `SessionRepo`: `GET /api/sessions?projectId=<id>` (list by project), `GET /api/sessions/:id` (one), `POST /api/sessions` (create with `{ projectId, modelId, title? }`), `PATCH /api/sessions/:id` (update `title`/`modelId`/`thinkingLevel`). Message history SHALL be readable via `GET /api/sessions/:id/messages` returning the session's messages in creation order; there SHALL be no standalone `/api/messages` route because messages belong to the Session aggregate. Unknown session ids SHALL return HTTP 404.
+### Requirement: Sessions CRUD with entry-tree message history
+The system SHALL expose REST endpoints over `SessionRepo`: `GET /api/sessions?projectId=<id>` (list by project), `GET /api/sessions/:id` (one), `POST /api/sessions` (create with `{ projectId, modelId, title? }`), `PATCH /api/sessions/:id` (update `title`/`modelId`/`thinkingLevel`). Message history SHALL be readable via `GET /api/sessions/:id/messages` returning the session's messages projected from its entry tree (via `SqliteSessionStorage.getPathToRoot` + `buildSessionContext`) in chronological order; there SHALL be no standalone `/api/messages` route because messages belong to the Session aggregate. Unknown session ids SHALL return HTTP 404.
 
 #### Scenario: create session under a project and list it
 - **WHEN** `POST /api/sessions` with `{ projectId, modelId: "gpt-4o" }` then `GET /api/sessions?projectId=<id>`
@@ -76,13 +76,6 @@ The system SHALL expose endpoints over `ModelConfigRepo`: `GET /api/model-config
 #### Scenario: set then read project config
 - **WHEN** `POST /api/model-configs` with `{ provider: "openai", modelId: "gpt-4o", projectId }` then `GET /api/model-configs/projects/<id>`
 - **THEN** the read returns the stored config without an `apiKey` field
-
-### Requirement: Cost aggregation
-The system SHALL expose read-only cost aggregation: `GET /api/costs/projects/:projectId` and `GET /api/costs/sessions/:sessionId`, each returning `{ totalInputTokens, totalOutputTokens, totalCostUsd }`. Endpoints with no recorded costs SHALL return zeros (not 404).
-
-#### Scenario: empty project aggregates to zero
-- **WHEN** `GET /api/costs/projects/<id>` for a project with no recorded costs
-- **THEN** the response is `{ totalInputTokens: 0, totalOutputTokens: 0, totalCostUsd: 0 }`
 
 ### Requirement: Available-models registry
 The system SHALL expose `GET /api/available-models` returning the list of providers (via pi-ai `getProviders()`) and `GET /api/available-models/:provider` returning the models for that provider (via `getModels()`). This endpoint reads from the pi-ai static registry, not the DB.

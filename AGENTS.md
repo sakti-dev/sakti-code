@@ -10,7 +10,7 @@ sakti-code: desktop app (Electrobun + SolidJS) running multiple AI coding agents
 ## Monorepo layout
 
 - `packages/agent/` — pure agent loop, types, compaction. **No persistence, no DB.** Talks to storage via the `SessionStore` interface.
-- `packages/db/` — Drizzle schema, repos, `SqliteSessionStore` (implements `SessionStore`).
+- `packages/db/` — Drizzle schema, repos, `SqliteSessionStorage` (implements `SessionStorage`).
 - `packages/tools/` — coding tools (read, write, edit, bash, grep, find, ls).
 - `apps/server/` — Elysia REST server. Composes route modules via `buildServer()`. State injected via `.state("ctx", createContext(db))`; routes access it through `getCtx(store)`. Eden treaty client at `apps/app/src/lib/api.ts`.
 - `openspec/` — change specs + the Pi reference implementation under `references/`.
@@ -85,14 +85,16 @@ Leaf change sets register themselves via `buildServer`'s `routes` array — the 
 | :--- | :--- | :--- |
 | `healthRoutes` | `GET /health` | Liveness check |
 | `projectsRoutes` | `GET/PUT/DELETE /api/projects` | Project CRUD |
-| `sessionsRoutes` | `GET /api/sessions` | Session listing |
+| `sessionsRoutes` | `GET /api/sessions`, `GET /api/sessions/:id/messages` | Session listing; `:id/messages` projects the entry tree via `buildSessionContext` |
 | `settingsRoutes` | `GET/PUT /api/settings` | Global settings |
 | `modelConfigRoutes` | `GET/POST /api/model-configs` | Per-project and global model config |
-| `costsRoutes` | `GET /api/costs` | Cost aggregation |
 | `availableModelsRoutes` | `GET /api/available-models` | Models catalog |
 | `gitRoutes` | `GET /api/git/:projectId/status, /branch, /diff, /log` | Git operations (status, branch switch, diff, log) |
-| `statsRoutes` | `GET /api/sessions/:id/stats` | **Fast, local read** — DB-only message count + cost aggregation + duration projection |
+| `statsRoutes` | `GET /api/sessions/:id/stats` | **Fast, local read** — derives `messageCount` + token/cost totals from assistant `usage` fields via `buildSessionContext`; no `costs` table |
 | `compactionRoutes` | `POST /api/sessions/:id/compact` | **Network-backed (LLM)** — runs the agent's `prepareCompaction` + `compact` summarizer on a session's entry tree, persists the compaction entry via `Session.appendCompaction()`, returns `{ tokensBefore, summary, firstKeptEntryId }`. Latency depends on the provider. Calls `resolveModel` from `agent-streaming` and resolves required API key from env. Returns 500 on summary failure (error/abort). |
+| `forkingRoutes` | `POST /api/sessions/:id/fork`, `GET /api/sessions/:id/fork-messages` | Entry-tree fork via `SqliteSessionStorage.forkFrom`; copies `session_entries` rows with regenerated IDs preserving the tree |
+| `lastAssistantTextRoutes` | `GET /api/sessions/:id/last-assistant-text` | Reads last assistant message from the entry tree |
+| `exportRoutes` | `GET /api/sessions/:id/export-html` | Renders session to standalone HTML |
 
 ## Debugging: bisect before you theorize
 
