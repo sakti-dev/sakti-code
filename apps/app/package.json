@@ -4,8 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "concurrently -k -n server,web,desktop -c blue,green,magenta \"bun run dev:server\" \"bun run dev:web\" \"bun run dev:desktop\"",
-    "dev:server": "cd ../../ && bun dev:server",
+    "dev": "concurrently -k -n web,desktop -c green,magenta \"bun run dev:web\" \"bun run dev:desktop\"",
     "dev:web": "vite --port 5173",
     "dev:desktop": "SAKTI_DEV=1 electrobun dev",
     "start": "vite build && electrobun dev",
