@@ -4,21 +4,21 @@ Session utility routes provide session-level operations beyond the core CRUD: ma
 
 ## Requirements
 
-### Requirement: Agent package exports compactMessages
-The `@sakti-code/agent` package SHALL re-export `compactMessages`, `CompactionOptions`, and `CompactionResult` from its public barrel so server-layer code can import them through the package boundary (not a deep internal path). This is an additive re-export with no behavior change to existing agent functionality.
+### Requirement: Agent package exports compaction utilities
+The `@sakti-code/agent` package SHALL re-export `prepareCompaction`, `compact`, `DEFAULT_COMPACTION_SETTINGS`, and related types (`CompactionPreparation`, `CompactionResult`, `CompactionSettings`) from its public barrel so server-layer code can import them through the package boundary (not a deep internal path). This is an additive re-export with no behavior change to existing agent functionality.
 
-#### Scenario: compactMessages importable from the package
-- **WHEN** server code does `import { compactMessages } from "@sakti-code/agent"`
-- **THEN** the import resolves to the function defined in `packages/agent/src/compaction.ts`
+#### Scenario: compaction utilities importable from the package
+- **WHEN** server code does `import { prepareCompaction, compact } from "@sakti-code/agent"`
+- **THEN** the import resolves to the functions defined in `packages/agent/src/compaction.ts`
 - **AND** the existing agent test suite still passes unchanged
 
 ### Requirement: Manual compaction route
-The system SHALL expose `POST /api/sessions/:id/compact` that loads the session's messages via `SqliteSessionStore`, resolves the session's configured model (reusing `resolveModel` from `server-agent-streaming`), resolves the model provider's API key from the environment, runs `compactMessages`, persists the resulting compacted messages back via the store, and returns `{ tokensBefore, tokensAfter }`.
+The system SHALL expose `POST /api/sessions/:id/compact` that loads the session's entries via `SqliteSessionStorage`, resolves the session's configured model (reusing `resolveModel` from `server-agent-streaming`), resolves the model provider's API key from the environment, runs `prepareCompaction` + `compact` on the entry tree, persists the resulting compaction entry via `Session.appendCompaction()`, and returns `{ tokensBefore, summary, firstKeptEntryId }`.
 
-#### Scenario: compaction reduces token count and persists
-- **WHEN** `POST /api/sessions/:id/compact` is called on a session with many messages (and the summary LLM is mocked to return a short summary)
-- **THEN** the response status is 200 and the body is `{ tokensBefore, tokensAfter }` with `tokensBefore > tokensAfter > 0`
-- **AND** reloading the session's messages yields the compacted set (fewer/smaller messages than before)
+#### Scenario: compaction summarizes and persists
+- **WHEN** `POST /api/sessions/:id/compact` is called on a session with many entries (and the summary LLM is mocked to return a short summary)
+- **THEN** the response status is 200 and the body contains `tokensBefore`, `summary`, and `firstKeptEntryId`
+- **AND** a compaction entry is persisted in the session's entry tree
 
 #### Scenario: unknown session
 - **WHEN** `POST /api/sessions/nope/compact` is called
@@ -29,24 +29,24 @@ The system SHALL expose `POST /api/sessions/:id/compact` that loads the session'
 - **THEN** the response status is 500 and the body indicates a missing model configuration
 
 ### Requirement: Compaction uses the session's configured model
-The compaction summary SHALL run on the model resolved from the session's project config (falling back to the global default), using the same `resolveModel` logic as the agent runner. The route SHALL pass `contextWindow` from the resolved model and `apiKey` resolved from the environment for that model's provider.
+The compaction summary SHALL run on the model resolved from the session's project config (falling back to the global default), using the same `resolveModel` logic as the agent runner. The route SHALL pass the resolved `Model` and `apiKey` resolved from the environment for that model's provider to the `compact()` function.
 
 #### Scenario: provider key resolved from env
 - **WHEN** a compaction runs for a session whose configured provider has a key in the environment
-- **THEN** `compactMessages` is invoked with an `apiKey` resolved via pi-ai's `getEnvApiKey(provider)` and a `contextWindow` equal to the resolved model's `contextWindow`
+- **THEN** `compact` is invoked with an `apiKey` resolved via pi-ai's `getEnvApiKey(provider)` and the model resolved from the project or global config
 
 #### Scenario: missing provider key surfaces a clear error
 - **WHEN** the configured provider has no API key in the environment
 - **THEN** the response status is 500 (or 503) and the body clearly states that no API key is configured for that provider
 - **AND** no LLM call is attempted
 
-### Requirement: Compaction degrades gracefully on summary failure
-Because `compactMessages` makes a real LLM call that can fail, the route SHALL NOT lose data on failure: when the summary's stop reason is `error` or `aborted`, `compactMessages` returns the original messages unchanged (`tokensBefore === tokensAfter`), and the route SHALL return HTTP 200 with equal before/after counts rather than throwing or returning an error status.
+### Requirement: Compaction returns 500 on summary failure
+Because `compact` makes a real LLM call that can fail, the route SHALL return HTTP 500 when the summary's stop reason is `error` or `aborted` (i.e., `compact()` returns `err`). No compaction entry is persisted in this case. The session's existing entries remain unchanged.
 
-#### Scenario: summary failure preserves history
+#### Scenario: summary failure returns 500
 - **WHEN** the mocked summary returns a `stopReason` of `error` or `aborted`
-- **THEN** the response status is 200 with `tokensBefore === tokensAfter`
-- **AND** the session's persisted messages are unchanged from before the call
+- **THEN** the response status is 500
+- **AND** the session's persisted entries are unchanged from before the call
 
 ### Requirement: Session stats route
 The system SHALL expose `GET /api/sessions/:id/stats` returning a unified read-only projection `{ messageCount, totalInputTokens, totalOutputTokens, totalCostUsd, createdAt, durationMs }`, composed from `MessageRepo.countBySession`, `CostRepo.aggregateBySession`, and the session's `createdAt` (`durationMs = Date.now() - createdAt`). The route SHALL make no LLM or network calls.

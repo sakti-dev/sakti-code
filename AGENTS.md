@@ -87,12 +87,12 @@ Leaf change sets register themselves via `buildServer`'s `routes` array — the 
 | `projectsRoutes` | `GET/PUT/DELETE /api/projects` | Project CRUD |
 | `sessionsRoutes` | `GET /api/sessions` | Session listing |
 | `settingsRoutes` | `GET/PUT /api/settings` | Global settings |
-| `modelConfigRoutes` | `GET/PUT/DELETE /api/models` | Per-project model config |
+| `modelConfigRoutes` | `GET/POST /api/model-configs` | Per-project and global model config |
 | `costsRoutes` | `GET /api/costs` | Cost aggregation |
 | `availableModelsRoutes` | `GET /api/available-models` | Models catalog |
 | `gitRoutes` | `GET /api/git/:projectId/status, /branch, /diff, /log` | Git operations (status, branch switch, diff, log) |
 | `statsRoutes` | `GET /api/sessions/:id/stats` | **Fast, local read** — DB-only message count + cost aggregation + duration projection |
-| `compactionRoutes` | `POST /api/sessions/:id/compact` | **Network-backed (LLM)** — runs the agent's `compactMessages` summarizer on a session's history, persists the result, returns token counts. Latency depends on the provider. Calls `resolveModel` from `agent-streaming` and resolves required API key from env. Degrades gracefully: on summary failure (error/abort) it returns the original messages unchanged with equal token counts. |
+| `compactionRoutes` | `POST /api/sessions/:id/compact` | **Network-backed (LLM)** — runs the agent's `prepareCompaction` + `compact` summarizer on a session's entry tree, persists the compaction entry via `Session.appendCompaction()`, returns `{ tokensBefore, summary, firstKeptEntryId }`. Latency depends on the provider. Calls `resolveModel` from `agent-streaming` and resolves required API key from env. Returns 500 on summary failure (error/abort). |
 
 ## Debugging: bisect before you theorize
 

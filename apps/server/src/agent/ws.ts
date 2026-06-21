@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import type { ServerContext } from "../context.ts";
-import type { WsHandle, WsIn } from "./ws-handler.ts";
+import type { ErrorFrame, WsHandle, WsIn } from "./ws-handler.ts";
 import { handleMessage } from "./ws-handler.ts";
 
 export const SERVER_VERSION: string = (() => {
@@ -122,7 +122,17 @@ export function buildWsApp() {
       const { ctx: ctx2, wsId } = (ws as any).data;
       const ctx = ctx2 as ServerContext;
       const inMsg = msg as WsIn;
-      const storage = getOrCreateStorage(wsId, ctx.db, inMsg.sessionId ?? "");
+      if (!inMsg.sessionId) {
+        ws.send(
+          JSON.stringify({
+            error: "Missing sessionId",
+            sessionId: "",
+            type: "error",
+          } satisfies ErrorFrame)
+        );
+        return;
+      }
+      const storage = getOrCreateStorage(wsId, ctx.db, inMsg.sessionId);
       handleMessage(ctx, storage, ws, inMsg);
     },
   });

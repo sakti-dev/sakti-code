@@ -1,16 +1,16 @@
 ## Purpose
 
-The agent streaming layer wires a single agent-loop run to a client over a WebSocket: it resolves the session's model, builds cwd-scoped tools, constructs an ephemeral loop per prompt, forwards the loop's `AgentEvent` stream as `event` frames, and supports prompt/abort/steer/followUp control messages. It maintains an in-process abort registry keyed by sessionId and allows multiple prompts (across sessions or projects) to run concurrently on one connection with isolated persistence.
+The agent streaming layer wires a single `AgentHarness` run to a client over a WebSocket: it resolves the session's model, builds cwd-scoped tools, constructs an ephemeral `AgentHarness` per prompt, forwards the harness's `AgentHarnessEvent` stream as `event` frames via a push-based `subscribe()` callback, and supports prompt/abort/steer/followUp control messages. It maintains an in-process active-run registry keyed by sessionId and allows multiple prompts (across sessions or projects) to run concurrently on one connection with isolated persistence.
 
 ## Requirements
 
 ### Requirement: Per-prompt agent runner
-The system SHALL provide `runPrompt(ctx, sessionId, message, store)` as an `AsyncGenerator<AgentEvent>` that, for a valid session+project, resolves the model from stored config, builds cwd-scoped tools, constructs a fresh ephemeral `createAgentLoop`, and forwards the loop's `AgentEvent` stream. Each invocation SHALL construct its own loop, model, tools, and store (no shared mutable state between prompts). Messages produced by the loop SHALL be persisted via the injected `SessionStore` so they survive across prompts. The runner manages an internal `AbortController` per invocation; callers do not provide a signal.
+The system SHALL provide `runPrompt(ctx, sessionId, message, storage, eventCallback)` returning `Promise<void>` that, for a valid session+project, resolves the model from stored config, builds cwd-scoped tools, constructs a fresh ephemeral `AgentHarness` wrapping a `Session` over the injected `SessionStorage`, subscribes to the harness's events via `harness.subscribe(eventCallback)`, and runs `harness.prompt(message)`. Each invocation SHALL construct its own harness, model, tools, and session (no shared mutable state between prompts). Entries produced by the harness SHALL be persisted via the injected `SessionStorage` so they survive across prompts. The runner manages an internal active-run registry; callers call `harness.abort()` to cancel.
 
-#### Scenario: streams events and persists messages for a valid session
-- **WHEN** `runPrompt` is called with a valid `sessionId` and the loop's mocked `streamSimple` yields a `done` event
-- **THEN** the generator yields events including `agent_start` and `agent_end`
-- **AND** `store.loadMessages(sessionId)` returns messages after the generator completes
+#### Scenario: streams events and persists entries for a valid session
+- **WHEN** `runPrompt` is called with a valid `sessionId` and the harness's `prompt` runs to completion
+- **THEN** the `eventCallback` receives events including `agent_start` and `agent_end`
+- **AND** `storage.getEntries()` returns entries after the promise resolves
 
 #### Scenario: unknown session
 - **WHEN** `runPrompt` is called with a `sessionId` that does not exist
@@ -24,12 +24,12 @@ The system SHALL provide `runPrompt(ctx, sessionId, message, store)` as an `Asyn
 The system SHALL resolve the pi-ai `Model` for a session by reading `ModelConfigRepo.getForProject(projectId)` and falling back to `ModelConfigRepo.getGlobalDefault()` when no project-specific config exists. Resolution SHALL call `getModel(provider, modelId)` using only values stored in the config row. API keys SHALL NOT be read from the DB — they come from the environment (pi-ai reads them). If neither a project config nor a global default exists, the resolver SHALL throw.
 
 #### Scenario: resolves via project config
-- **WHEN** a session's project has a stored model config and `runPrompt` constructs the loop
-- **THEN** the loop's model is the one resolved from the project's config row
+- **WHEN** a session's project has a stored model config and `runPrompt` constructs the harness
+- **THEN** the harness's model is the one resolved from the project's config row
 
 #### Scenario: falls back to global default
 - **WHEN** a session's project has no stored config but a global default exists
-- **THEN** the loop's model is the global default
+- **THEN** the harness's model is the global default
 
 #### Scenario: no config available
 - **WHEN** neither a project config nor a global default exists
@@ -42,12 +42,12 @@ The system SHALL build the 7 coding tools (`createReadTool`, `createWriteTool`, 
 - **WHEN** `runPrompt` runs for a session whose project cwd is `/proj/a`
 - **THEN** every tool constructed for that run is scoped to `/proj/a`
 
-### Requirement: Abort registry
-The system SHALL maintain an in-process registry mapping `sessionId` to an `AbortController` for the duration of an active run. `abortRun(sessionId)` SHALL signal the run's `AbortController` and return `true` if a run was active (or `false` otherwise). Runs SHALL unregister themselves when the stream ends (normally, via abort, or via error) so the registry does not leak.
+### Requirement: Active-run registry
+The system SHALL maintain an in-process registry mapping `sessionId` to the active `AgentHarness` and its unsubscribe callback for the duration of a run. `abortRun(sessionId)` SHALL call `harness.abort()` and return `true` if a run was active (or `false` otherwise). Runs SHALL unregister themselves when the prompt completes (normally, via abort, or via error) via a `finally { unregisterRun }` block so the registry does not leak.
 
 #### Scenario: abort signals an active run
 - **WHEN** a run is registered and `abortRun(sessionId)` is called
-- **THEN** the run's `AbortSignal` becomes aborted
+- **THEN** `harness.abort()` is invoked on the active run
 - **AND** `abortRun` returns `true`
 
 #### Scenario: abort with no active run
@@ -59,41 +59,41 @@ The system SHALL maintain an in-process registry mapping `sessionId` to an `Abor
 - **THEN** its `sessionId` is removed from the active registry
 
 ### Requirement: WebSocket prompt/abort/steer/followUp protocol
-The system SHALL expose a WebSocket at `/ws`. Inbound messages SHALL be `{type:"prompt", sessionId, message}`, `{type:"abort", sessionId}`, `{type:"steer", sessionId, message}`, or `{type:"followUp", sessionId, message}`. Outbound messages SHALL be `{type:"event", sessionId, event}` (where `event` is an `AgentEvent`) or `{type:"error", sessionId, error}`. Every outbound frame SHALL carry the `sessionId` so the client can route frames to the correct conversation.
+The system SHALL expose a WebSocket at `/ws`. Inbound messages SHALL be `{type:"prompt", sessionId, message}`, `{type:"abort", sessionId}`, `{type:"steer", sessionId, message}`, or `{type:"followUp", sessionId, message}`. Outbound messages SHALL be `{type:"event", sessionId, event}` (where `event` is an `AgentHarnessEvent`) or `{type:"error", sessionId, error}`. Every outbound frame SHALL carry the `sessionId` so the client can route frames to the correct conversation.
 
 #### Scenario: prompt produces an event frame stream
-- **WHEN** a `prompt` message is received for a valid session and the loop yields `agent_start`
+- **WHEN** a `prompt` message is received for a valid session and the harness emits an `agent_start` event
 - **THEN** the client receives an `event` frame whose `event.type` is `agent_start` and whose `sessionId` matches the request
 
 #### Scenario: abort stops a run
 - **WHEN** an `abort` message is received while a run is active on that `sessionId`
-- **THEN** the run's `AbortSignal` is signaled and the run stops
+- **THEN** `harness.abort()` is called and the run stops
 
 #### Scenario: run failure emits an error frame
 - **WHEN** a `prompt` triggers an error (e.g. session not found) and the error is caught
 - **THEN** the client receives an `error` frame carrying the `sessionId` and a human-readable message
 
 #### Scenario: steer produces no immediate event frame
-- **WHEN** a `steer` message is processed by the loop
-- **THEN** no immediate event frame is sent; the steer's effects appear as normal text_delta/tool_execution events when the loop re-sends to the LLM
+- **WHEN** a `steer` message is processed by the harness
+- **THEN** no immediate event frame is sent; the steer's effects appear as normal text_delta/tool_execution events when the harness re-sends to the LLM
 
 ### Requirement: WebSocket accepts steer and followUp messages
 The WebSocket protocol at `/ws` SHALL accept two new inbound message types:
 - `{ type: "steer", sessionId: string, message: string }`
 - `{ type: "followUp", sessionId: string, message: string }`
 
-When received, the WS handler SHALL look up the active loop for the given `sessionId` via the abort registry and call `loop.steer(message)` or `loop.followUp(message)`. If no active loop exists for the sessionId, the handler SHALL send an `{ type: "error", sessionId, error: "No active run" }` frame.
+When received, the WS handler SHALL look up the active harness for the given `sessionId` via the active-run registry and call `harness.steer(message)` or `harness.followUp(message)`. If no active run exists for the sessionId, the handler SHALL send an `{ type: "error", sessionId, error: "No active run" }` frame.
 
-#### Scenario: steer message forwarded to active loop
+#### Scenario: steer message forwarded to active harness
 - **WHEN** a `steer` message is received with a `sessionId` that has an active run
-- **THEN** the handler calls `loop.steer(message)` and does NOT send a response frame
+- **THEN** the handler calls `harness.steer(message)` and does NOT send a response frame
 
 #### Scenario: steer with no active session
 - **WHEN** a `steer` message is received with a `sessionId` that has no active run
 - **THEN** the handler sends an `error` frame with `sessionId` and a descriptive message
 
 ### Requirement: Same-connection concurrency
-The system SHALL allow multiple prompts on a single WebSocket connection to run concurrently. The WS `message` handler SHALL NOT await the full prompt stream before returning; each prompt stream SHALL run independently on the event loop and interleave its outbound frames. This is what enables "two projects open at once" over one connection.
+The system SHALL allow multiple prompts on a single WebSocket connection to run concurrently. The WS `message` handler SHALL NOT await the full `runPrompt` promise before returning; each prompt SHALL run independently on the event loop and interleave its outbound frames. This is what enables "two projects open at once" over one connection.
 
 #### Scenario: second prompt is not blocked by the first
 - **WHEN** a `prompt` message is received while a previous prompt on the same connection is still streaming
@@ -101,11 +101,11 @@ The system SHALL allow multiple prompts on a single WebSocket connection to run 
 - **AND** both streams' frames are delivered to the client, each carrying its own `sessionId`
 
 ### Requirement: Multi-session persistence isolation
-When two prompts run concurrently on two different sessions (different projects), each session's messages SHALL be persisted independently with no cross-contamination — each session's `MessageRepo.loadBySession` returns only that session's messages.
+When two prompts run concurrently on two different sessions (different projects), each session's entries SHALL be persisted independently with no cross-contamination — each session's `SessionStorage.getEntries()` returns only that session's entries.
 
 #### Scenario: two projects concurrent, independent persistence
 - **WHEN** two `prompt` messages are sent (one per project/session) and both runs are allowed to complete
-- **THEN** each session's loaded messages belong only to that session
+- **THEN** each session's loaded entries belong only to that session
 - **AND** each client receives frames tagged with only its own `sessionId`
 
 ### Requirement: Registration via route composition
@@ -137,11 +137,11 @@ The system SHALL reject a `prompt` message for a session that already has an act
 
 #### Scenario: Steer and followUp while active still queue (unchanged)
 - **WHEN** a `steer` or `followUp` message arrives for a session with an active run
-- **THEN** the message is queued via `loop.steer()` / `loop.followUp()` as before — the concurrency guard applies only to `prompt`, not to steer/followUp (these are pi's explicit-streamingBehavior queue paths, already wired)
+- **THEN** the message is queued via `harness.steer()` / `harness.followUp()` as before — the concurrency guard applies only to `prompt`, not to steer/followUp (these are the harness's explicit queue paths, already wired)
 
 #### Scenario: Abort during the termination window still rejects a new prompt
 - **WHEN** `abort` has been called but the run has not yet reached its `finally { unregisterRun }` block
-- **THEN** a new `prompt` on the same session is still rejected (the run is technically still active until fully unregistered), matching pi's `isStreaming` remaining true until the stream fully drains
+- **THEN** a new `prompt` on the same session is still rejected (the run is technically still active until fully unregistered), matching pi's `isStreaming` remaining true until the run fully drains
 
 ### Requirement: Tool-batch termination requires ALL tools to request it (AND semantics)
 When multiple tool calls execute in a single turn (a "batch"), the agent loop SHALL terminate the turn only if **every** tool result in the batch requests termination. The terminate decision SHALL be computed as `shouldTerminateToolBatch(results) = results.length > 0 && results.every(r => r.result.terminate === true)` — matching pi's `shouldTerminateToolBatch` (`openspec/references/pi/packages/agent/src/agent-loop.ts:544-546`). A batch where some tools request termination and others do not SHALL NOT terminate (previously it did, under OR semantics). An empty batch SHALL NOT terminate (the `length > 0` guard).

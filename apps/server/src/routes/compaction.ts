@@ -4,6 +4,7 @@ import {
   compact,
   DEFAULT_COMPACTION_SETTINGS,
   prepareCompaction,
+  Session,
 } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
@@ -58,16 +59,13 @@ export const compactionRoutes = new Elysia({ name: "routes.compaction" }).post(
       return new Response(result.error.message, { status: 500 });
     }
 
-    const compactionEntry = {
-      id: await storage.createEntryId(),
-      parentId: null,
-      timestamp: new Date().toISOString(),
-      type: "compaction" as const,
-      summary: result.value.summary,
-      firstKeptEntryId: result.value.firstKeptEntryId,
-      tokensBefore: result.value.tokensBefore,
-    };
-    await storage.appendEntry(compactionEntry);
+    const sessionInstance = new Session(storage);
+    await sessionInstance.appendCompaction(
+      result.value.summary,
+      result.value.firstKeptEntryId,
+      result.value.tokensBefore,
+      result.value.details
+    );
 
     return Response.json({
       tokensBefore: result.value.tokensBefore,

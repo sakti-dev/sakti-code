@@ -139,7 +139,9 @@ export async function runPrompt(
 
   const env = new BunExecutionEnv(project.cwd);
   const sessionInstance = new SessionClass(storage);
-  const getApiKeyAndHeaders = async (): Promise<
+  const getApiKeyAndHeaders = async (
+    _model: unknown
+  ): Promise<
     { apiKey: string; headers?: Record<string, string> } | undefined
   > => {
     const key = getEnvApiKey(provider);
@@ -154,12 +156,8 @@ export async function runPrompt(
     model,
     session: sessionInstance,
     tools,
-    ...(settings.follow_up_mode === undefined
-      ? {}
-      : { followUpMode: settings.follow_up_mode as QueueMode }),
-    ...(settings.steering_mode === undefined
-      ? {}
-      : { steeringMode: settings.steering_mode as QueueMode }),
+    followUpMode: settings.follow_up_mode as QueueMode,
+    steeringMode: settings.steering_mode as QueueMode,
     thinkingLevel,
     getApiKeyAndHeaders,
   });
