@@ -71,7 +71,7 @@ export default function App() {
 
         <div class="footer">
           <p>
-            Edit <code>src/mainview/App.tsx</code> and save to see HMR in action
+            Edit <code>src/App.tsx</code> and save to see HMR in action
           </p>
         </div>
       </div>

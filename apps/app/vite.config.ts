@@ -3,9 +3,9 @@ import solid from "vite-plugin-solid";
 
 export default defineConfig({
   plugins: [solid()],
-  root: "src/mainview",
+  root: "src",
   build: {
-    outDir: "../../dist",
+    outDir: "../dist",
     emptyOutDir: true,
   },
   server: {

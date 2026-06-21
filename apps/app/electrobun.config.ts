@@ -8,7 +8,7 @@ export default {
   },
   build: {
     bun: {
-      entrypoint: "src/bun/index.ts",
+      entrypoint: "src/lib/bun/index.ts",
     },
     copy: {
       "../app/dist": "web-dist",
