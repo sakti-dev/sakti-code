@@ -114,6 +114,10 @@ async function bootstrap(): Promise<void> {
         return result[0] ?? null;
       },
     },
+    // In dev mode, migrations are in the source tree; in prod, they're co-located
+    migrationsFolder: isDev
+      ? join(process.cwd(), "packages/db/migrations")
+      : undefined,
   });
   server = sakti;
   await waitForReady(sakti.url);

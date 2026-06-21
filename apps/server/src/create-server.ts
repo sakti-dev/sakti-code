@@ -16,6 +16,7 @@ export interface CreateServerOptions {
   dbPath?: string;
   hooks?: ServerHooks;
   hostname?: string;
+  migrationsFolder?: string;
   port?: number;
   staticDir?: string | null;
 }
@@ -59,9 +60,10 @@ export async function createServer(
     dbPath = process.env.SAKTI_DB_PATH ?? "sakti-code.db",
     staticDir = null,
     hooks = {},
+    migrationsFolder,
   } = options ?? {};
 
-  const db = await initDatabase(new Database(dbPath));
+  const db = await initDatabase(new Database(dbPath), { migrationsFolder });
   const ctx = createContext(db, hooks);
   const dir: string | null = staticDir;
 

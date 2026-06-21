@@ -5,12 +5,17 @@ import * as schema from "./schema.ts";
 
 export type DrizzleDB = BunSQLiteDatabase<typeof schema>;
 
-export async function initDatabase(sqlite: Database): Promise<DrizzleDB> {
+export async function initDatabase(
+  sqlite: Database,
+  options?: { migrationsFolder?: string }
+): Promise<DrizzleDB> {
   sqlite.run("PRAGMA journal_mode = WAL");
   sqlite.run("PRAGMA foreign_keys = ON");
 
   const db = drizzle(sqlite, { schema });
-  migrate(db, { migrationsFolder: `${import.meta.dir}/../migrations` });
+  const migrationsFolder =
+    options?.migrationsFolder ?? `${import.meta.dir}/../migrations`;
+  migrate(db, { migrationsFolder });
 
   return db;
 }
