@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import {
   access as accessAsync,
@@ -346,51 +345,70 @@ export class BunExecutionEnv implements ExecutionEnv {
     if (options?.abortSignal?.aborted) {
       return err(new ExecutionError("aborted", "Command aborted"));
     }
+
+    const timeoutMs = options?.timeout ? options.timeout * 1000 : undefined;
+
+    let proc: ReturnType<typeof Bun.spawn>;
     try {
-      const timeoutMs = options?.timeout ? options.timeout * 1000 : undefined;
-      const stdout = execFileSync("/bin/sh", ["-c", command], {
+      proc = Bun.spawn(["/bin/sh", "-c", command], {
         cwd: options?.cwd ?? this._cwd,
-        env: options?.env ? { ...process.env, ...options.env } : undefined,
-        encoding: "utf-8" as BufferEncoding,
-        timeout: timeoutMs,
-        stdio: ["pipe", "pipe", "pipe"],
+        stdout: "pipe",
+        stderr: "pipe",
+        ...(options?.env ? { env: { ...process.env, ...options.env } } : {}),
       });
-      return ok({ stdout, stderr: "", exitCode: 0 });
     } catch (e: unknown) {
-      if (options?.abortSignal?.aborted) {
-        return err(
-          new ExecutionError(
-            "aborted",
-            "Command aborted",
-            e instanceof Error ? e : undefined
-          )
-        );
-      }
-      const nodeErr = e as {
-        stdout?: string;
-        stderr?: string;
-        status?: number;
-        message?: string;
-      };
-      const isTimeout =
-        nodeErr.message?.includes("timed out") ||
-        nodeErr.message?.includes("ETIMEDOUT");
-      if (isTimeout) {
-        return err(
-          new ExecutionError(
-            "timeout",
-            nodeErr.stderr ?? "Command timed out",
-            e instanceof Error ? e : undefined
-          )
-        );
-      }
       return err(
         new ExecutionError(
-          nodeErr.status === 127 ? "shell_unavailable" : "unknown",
-          nodeErr.stderr ?? nodeErr.message ?? String(e),
+          "shell_unavailable",
+          e instanceof Error ? e.message : String(e),
           e instanceof Error ? e : undefined
         )
       );
+    }
+
+    let timedOut = false;
+    const timeoutId = timeoutMs
+      ? setTimeout(() => {
+          timedOut = true;
+          proc.kill();
+        }, timeoutMs)
+      : undefined;
+
+    const onAbort = () => proc.kill();
+    options?.abortSignal?.addEventListener("abort", onAbort);
+
+    try {
+      const [stdout, stderr, exitCode] = await Promise.all([
+        new Response(proc.stdout as ReadableStream<Uint8Array>).text(),
+        new Response(proc.stderr as ReadableStream<Uint8Array>).text(),
+        proc.exited,
+      ]);
+
+      if (options?.abortSignal?.aborted) {
+        return err(new ExecutionError("aborted", "Command aborted"));
+      }
+      if (timedOut) {
+        return err(
+          new ExecutionError("timeout", stderr || "Command timed out")
+        );
+      }
+
+      return ok({ stdout, stderr, exitCode });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const cause = e instanceof Error ? e : undefined;
+      if (options?.abortSignal?.aborted) {
+        return err(new ExecutionError("aborted", msg, cause));
+      }
+      if (timedOut) {
+        return err(new ExecutionError("timeout", msg, cause));
+      }
+      return err(new ExecutionError("unknown", msg, cause));
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      options?.abortSignal?.removeEventListener("abort", onAbort);
     }
   }
 }
