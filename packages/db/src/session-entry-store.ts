@@ -149,6 +149,83 @@ export class SqliteSessionStorage<
       .get();
     return (row?.max ?? -1) + 1;
   }
+
+  /**
+   * Copy entries from a source session into this session, preserving the tree.
+   * If upToEntryId is provided, only copies entries up to and including that entry.
+   * Entry IDs and parentIds are regenerated so the fork is independent.
+   */
+  async forkFrom(sourceSessionId: string, upToEntryId?: string): Promise<void> {
+    // Load source entries in sequence order
+    const sourceRows = this.db
+      .select()
+      .from(sessionEntries)
+      .where(eq(sessionEntries.sessionId, sourceSessionId))
+      .orderBy(sessionEntries.sequence)
+      .all();
+
+    let entriesToCopy = sourceRows;
+    if (upToEntryId) {
+      const cutIndex = sourceRows.findIndex((r) => r.id === upToEntryId);
+      if (cutIndex >= 0) {
+        entriesToCopy = sourceRows.slice(0, cutIndex + 1);
+      }
+    }
+
+    if (entriesToCopy.length === 0) {
+      return;
+    }
+
+    // Build a mapping from old entry IDs to new (regenerated) IDs
+    const idMap = new Map<string, string>();
+    for (const row of entriesToCopy) {
+      idMap.set(row.id, crypto.randomUUID());
+    }
+
+    // Read the source session's leaf to know the effective leaf entry
+    const sourceSessionRow = this.db
+      .select({ leafId: sessions.leafId })
+      .from(sessions)
+      .where(eq(sessions.id, sourceSessionId))
+      .get();
+    const sourceLeafId = sourceSessionRow?.leafId ?? null;
+
+    // Insert copied entries with re-chained parentId.
+    // appendEntry updates the leaf on each insert; we overwrite the leaf once
+    // at the end so it points at the right spot (source leaf, or last copied
+    // entry if the source leaf was beyond the cut point).
+    for (const row of entriesToCopy) {
+      const newId = idMap.get(row.id);
+      if (!newId) {
+        continue;
+      }
+      const newParentId = row.parentId
+        ? (idMap.get(row.parentId) ?? null)
+        : null;
+
+      // Parse the entry content and rewrite id/parentId so the JSON blob is
+      // consistent with the new DB columns.
+      const entry = JSON.parse(row.content) as SessionTreeEntry;
+      const forkedEntry = {
+        ...entry,
+        id: newId,
+        parentId: newParentId,
+      } as SessionTreeEntry;
+
+      await this.appendEntry(forkedEntry);
+    }
+
+    // Pick the new leaf: the copied equivalent of the source leaf if it was in
+    // the copied range; otherwise the last copied entry.
+    let newLeafId: string | null;
+    if (sourceLeafId && idMap.has(sourceLeafId)) {
+      newLeafId = idMap.get(sourceLeafId) ?? null;
+    } else {
+      const lastSourceRow = entriesToCopy.at(-1);
+      newLeafId = lastSourceRow ? (idMap.get(lastSourceRow.id) ?? null) : null;
+    }
+    await this.setLeafId(newLeafId);
+  }
 }
 
 function parseEntry(content: string): SessionTreeEntry {
