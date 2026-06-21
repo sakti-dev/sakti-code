@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -99,38 +98,29 @@ async function bootstrap(): Promise<void> {
     `Restoring window: ${currentFrame.width}x${currentFrame.height} at (${currentFrame.x}, ${currentFrame.y})`
   );
 
-  let url: string;
-
-  if (isDev) {
-    url = "http://localhost:5173";
-    console.log("Dev mode: loading from Vite dev server");
-    console.log("Ensure standalone server is running: bun dev:server");
-  } else {
-    const staticDir = resolve(import.meta.dir, "../web-dist");
-    if (!existsSync(staticDir)) {
-      console.warn(`Static dir not found: ${staticDir}`);
-    }
-    const dbPath = join(homedir(), ".sakti", "sakti-code.db");
-    const sakti = await createServer({
-      port: 0,
-      staticDir,
-      dbPath,
-      hooks: {
-        onOpenFolderDialog: async () => {
-          const result = await Utils.openFileDialog({
-            canChooseFiles: false,
-            canChooseDirectory: true,
-            allowsMultipleSelection: false,
-          });
-          return result[0] ?? null;
-        },
+  // Always create server with hooks (needed for native dialogs)
+  const dbPath = join(homedir(), ".sakti", "sakti-code.db");
+  const sakti = await createServer({
+    port: isDev ? 3001 : 0,
+    staticDir: isDev ? null : resolve(import.meta.dir, "../web-dist"),
+    dbPath,
+    hooks: {
+      onOpenFolderDialog: async () => {
+        const result = await Utils.openFileDialog({
+          canChooseFiles: false,
+          canChooseDirectory: true,
+          allowsMultipleSelection: false,
+        });
+        return result[0] ?? null;
       },
-    });
-    server = sakti;
-    await waitForReady(sakti.url);
-    url = sakti.url;
-    console.log(`Server started on ${url}`);
-  }
+    },
+  });
+  server = sakti;
+  await waitForReady(sakti.url);
+  console.log(`Server started on ${sakti.url}`);
+
+  // In dev mode, load frontend from Vite; in prod, use the bundled static files
+  const url = isDev ? "http://localhost:5173" : sakti.url;
 
   const mainWindow = new BrowserWindow({
     title: APP_TITLE,
