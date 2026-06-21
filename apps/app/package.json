@@ -22,6 +22,7 @@
     "@tailwindcss/vite": "^4.3.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dayjs": "^1.11.21",
     "electrobun": "1.18.1",
     "elysia": "^1.4.29",
     "tailwind-merge": "^3.6.0",
