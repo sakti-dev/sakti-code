@@ -1,5 +1,3 @@
-import { Session } from "@sakti-code/agent";
-import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia, t } from "elysia";
 import { getCtx } from "../context.ts";
 
@@ -110,7 +108,6 @@ async function runBash(
 
 const bashBody = t.Object({
   command: t.String(),
-  injectToContext: t.Optional(t.Boolean()),
   timeout: t.Optional(t.Number()),
 });
 
@@ -135,27 +132,6 @@ export const bashRoutes = new Elysia({ name: "routes.bash" })
         // body.timeout is in SECONDS (per spec); convert to ms. Default 30s.
         body.timeout === undefined ? undefined : body.timeout * 1000
       );
-
-      if (body.injectToContext) {
-        const content = JSON.stringify({
-          command: body.command,
-          exitCode: result.exitCode,
-          output: result.output,
-        });
-        const storage = new SqliteSessionStorage(ctx.db, session.id, {
-          id: session.id,
-          createdAt: new Date(session.createdAt).toISOString(),
-        });
-        const sessionInstance = new Session(storage);
-        await sessionInstance.appendMessage({
-          role: "toolResult",
-          content: [{ type: "text", text: content }],
-          toolCallId: crypto.randomUUID(),
-          toolName: "user_bash",
-          isError: false,
-          timestamp: Date.now(),
-        });
-      }
 
       return result;
     },

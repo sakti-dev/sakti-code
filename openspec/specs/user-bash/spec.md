@@ -1,11 +1,11 @@
 ## Purpose
 
-User bash allows executing shell commands independently from the agent loop, with optional result injection into session context.
+User bash allows executing shell commands independently from the agent loop. The output is shown in the UI; users who want the agent to see it paste it as a user message.
 
 ## Requirements
 
 ### Requirement: User bash executes a shell command
-The system SHALL expose `POST /api/sessions/:id/bash` accepting a body `{ command: string, timeout?: number, injectToContext?: boolean }`. The command SHALL be executed via `Bun.spawn` scoped to the session's project cwd with a default timeout of 30 seconds. The response SHALL contain `{ output: string, exitCode: number | null, cancelled: boolean, truncated: boolean }`. Unknown sessions SHALL return HTTP 404.
+The system SHALL expose `POST /api/sessions/:id/bash` accepting a body `{ command: string, timeout?: number }`. The command SHALL be executed via `Bun.spawn` scoped to the session's project cwd with a default timeout of 30 seconds. The response SHALL contain `{ output: string, exitCode: number | null, cancelled: boolean, truncated: boolean }`. Unknown sessions SHALL return HTTP 404.
 
 #### Scenario: Execute a simple command
 - **WHEN** `POST /api/sessions/:id/bash` is called with `{ command: "echo hello" }` for a valid session
@@ -37,14 +37,6 @@ The system SHALL expose `POST /api/sessions/:id/abort-bash` that kills a running
 #### Scenario: Abort with no running bash
 - **WHEN** `POST /api/sessions/:id/abort-bash` is called for a session with no active bash command
 - **THEN** the response status is 200 with `{ ok: true }` (no-op)
-
-### Requirement: Bash result injection into session context
-When `POST /api/sessions/:id/bash` is called with `{ injectToContext: true }`, the bash result SHALL be appended to the session's message history as a tool-like message. The message SHALL have role "tool" with `toolName: "user_bash"` and contain the command, output, and exit code.
-
-#### Scenario: Inject bash result into session
-- **WHEN** `POST /api/sessions/:id/bash` is called with `{ command: "ls", injectToContext: true }`
-- **THEN** the session's messages now include a tool message with the command, output, and exit code
-- **AND** the next LLM prompt will see this context
 
 ### Requirement: User bash is scoped to project cwd
 The bash command SHALL execute in the session's project working directory, resolved via `ProjectRepo.findById(session.projectId).cwd`.
