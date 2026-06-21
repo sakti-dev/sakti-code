@@ -20,7 +20,6 @@ import { sessionsRoutes } from "./routes/sessions.ts";
 import { settingsRoutes } from "./routes/settings.ts";
 import { statsRoutes } from "./routes/stats.ts";
 import { terminalRoutes } from "./routes/terminals.ts";
-import { turnDiffRoutes } from "./routes/turn-diff.ts";
 import { workspaceRoutes } from "./routes/workspace.ts";
 
 // biome-ignore lint/suspicious/noExplicitAny: Elysia plugin composition requires erasing generics
@@ -37,7 +36,6 @@ const defaultRoutes = [
   modelConfigRoutes,
   availableModelsRoutes,
   searchFilesRoutes,
-  turnDiffRoutes,
   workspaceRoutes,
   lastAssistantTextRoutes,
   compactionRoutes,

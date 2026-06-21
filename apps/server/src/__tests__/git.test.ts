@@ -148,6 +148,62 @@ describe("git routes", () => {
       process.env.PATH = originalPath;
     }
   });
+
+  it("GET /api/git/turn-diff returns structured diff against HEAD", async () => {
+    const res = await app.handle(
+      new Request(`http://localhost/api/git/turn-diff?projectId=${projectId}`)
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.files)).toBe(true);
+    expect(body.files.length).toBeGreaterThan(0);
+    const hello = body.files.find(
+      (f: { path: string }) => f.path === "hello.txt"
+    );
+    expect(hello).toBeDefined();
+    expect(hello.additions).toBeGreaterThanOrEqual(1);
+    expect(typeof body.diff).toBe("string");
+    expect(body.diff).toContain("hello.txt");
+    expect(body.cwd).toBe(tempDir);
+  });
+
+  it("GET /api/git/turn-diff?files[]=hello.txt scopes the diff", async () => {
+    const res = await app.handle(
+      new Request(
+        `http://localhost/api/git/turn-diff?projectId=${projectId}&files[]=hello.txt`
+      )
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.files).toHaveLength(1);
+    expect(body.files[0].path).toBe("hello.txt");
+  });
+
+  it("GET /api/git/turn-diff returns 404 for unknown project", async () => {
+    const res = await app.handle(
+      new Request("http://localhost/api/git/turn-diff?projectId=nope")
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("GET /api/git/turn-diff returns empty files for a repo with no commits", async () => {
+    const emptyDir = mkdtempSync(join(tmpdir(), "sakti-git-empty-"));
+    try {
+      await execGit(emptyDir, "init", "-b", "main");
+      writeFileSync(join(emptyDir, "x.txt"), "x\n");
+      const built = await makeApp([gitRoutes]);
+      const p = await built.ctx.repos.projects.create("empty", emptyDir);
+      const res = await built.app.handle(
+        new Request(`http://localhost/api/git/turn-diff?projectId=${p.id}`)
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.files).toEqual([]);
+      expect(body.diff).toBe("");
+    } finally {
+      rmSync(emptyDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("runGit timeout", () => {
