@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import { buildSessionContext } from "@sakti-code/agent";
+import { SqliteSessionStorage } from "@sakti-code/db";
 import { bashRoutes } from "../routes/bash.ts";
 import { makeApp } from "./helpers.ts";
 
@@ -51,7 +53,7 @@ describe("bash routes", () => {
     expect(body).toEqual({ ok: true });
   });
 
-  it("POST /api/sessions/:id/bash with injectToContext appends tool message", async () => {
+  it("POST /api/sessions/:id/bash with injectToContext appends a toolResult entry", async () => {
     const { app, ctx } = await makeApp([bashRoutes]);
     const project = await ctx.repos.projects.create("bash-inject", "/tmp");
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
@@ -64,11 +66,22 @@ describe("bash routes", () => {
       })
     );
 
-    const msgs = ctx.repos.messages.loadBySession(session.id);
-    const toolMsg = msgs.find((m) => m.role === "tool");
+    // Verify the entry was written to session_entries
+    const storage = new SqliteSessionStorage(ctx.db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+    const entries = await storage.getPathToRoot(await storage.getLeafId());
+    const { messages } = buildSessionContext(entries);
+
+    const toolMsg = messages.find((m) => m.role === "toolResult");
     expect(toolMsg).toBeDefined();
     expect(toolMsg!.toolName).toBe("user_bash");
-    expect(toolMsg!.content).toContain("hello");
+    const text = toolMsg!.content
+      .filter((c): c is { type: "text"; text: string } => c.type === "text")
+      .map((c) => c.text)
+      .join("");
+    expect(text).toContain("hello");
   });
 
   it("POST /api/sessions/:id/bash with timeout returns cancelled", async () => {

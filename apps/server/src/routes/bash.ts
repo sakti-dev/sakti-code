@@ -1,3 +1,5 @@
+import { Session } from "@sakti-code/agent";
+import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia, t } from "elysia";
 import { getCtx } from "../context.ts";
 
@@ -140,11 +142,18 @@ export const bashRoutes = new Elysia({ name: "routes.bash" })
           exitCode: result.exitCode,
           output: result.output,
         });
-        await ctx.repos.messages.append(session.id, {
-          content,
-          role: "tool",
+        const storage = new SqliteSessionStorage(ctx.db, session.id, {
+          id: session.id,
+          createdAt: new Date(session.createdAt).toISOString(),
+        });
+        const sessionInstance = new Session(storage);
+        await sessionInstance.appendMessage({
+          role: "toolResult",
+          content: [{ type: "text", text: content }],
           toolCallId: crypto.randomUUID(),
           toolName: "user_bash",
+          isError: false,
+          timestamp: Date.now(),
         });
       }
 
