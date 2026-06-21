@@ -15,6 +15,7 @@
   "dependencies": {
     "@elysiajs/eden": "^1.4.9",
     "@sakti-code/server": "workspace:*",
+    "@solidjs/router": "^0.16.1",
     "@tailwindcss/vite": "^4.3.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
