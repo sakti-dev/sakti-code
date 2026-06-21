@@ -33,12 +33,12 @@ export interface WsSubscribeApi {
  * EdenWS has more methods, but we only need these.
  */
 export interface EdenWSLike {
-  close: () => void;
-  on: (
+  close(): void;
+  on(
     type: "open" | "message" | "close" | "error",
-    listener: (event: { data?: unknown }) => void
-  ) => void;
-  send: (data: unknown) => void;
+    listener: (event: { type: string; data?: unknown }) => void
+  ): void;
+  send(data: unknown): void;
   ws: { readyState: number };
 }
 

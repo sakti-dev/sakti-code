@@ -59,9 +59,9 @@ export function makeAssistantMessageWithToolCall(
   return {
     ...makeAssistantMessage(text),
     content: [
-      ...(text ? [{ type: "text", text }] : []),
+      ...(text ? [{ type: "text" as const, text }] : []),
       {
-        type: "toolCall",
+        type: "toolCall" as const,
         id: toolCall.id,
         name: toolCall.name,
         arguments: toolCall.args,
@@ -78,8 +78,8 @@ export function makeAssistantMessageWithThinking(
   return {
     ...makeAssistantMessage(text),
     content: [
-      { type: "thinking", thinking },
-      ...(text ? [{ type: "text", text }] : []),
+      { type: "thinking" as const, thinking },
+      ...(text ? [{ type: "text" as const, text }] : []),
     ],
   };
 }
