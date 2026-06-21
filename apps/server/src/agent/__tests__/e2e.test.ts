@@ -31,10 +31,10 @@ describe("Multi-session e2e", () => {
     const framesA: unknown[] = [];
     const framesB: unknown[] = [];
     const wsA = {
-      send: (d: string) => framesA.push(JSON.parse(d)),
+      send: (d: unknown) => framesA.push(d),
     };
     const wsB = {
-      send: (d: string) => framesB.push(JSON.parse(d)),
+      send: (d: unknown) => framesB.push(d),
     };
 
     handleMessage(ctx, storeA, wsA, {

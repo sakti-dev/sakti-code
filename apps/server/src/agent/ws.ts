@@ -2,17 +2,21 @@ import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import pkg from "../../package.json" with { type: "json" };
 import type { ServerContext } from "../context.ts";
-import type { ErrorFrame, WsHandle, WsIn } from "./ws-handler.ts";
-import { handleMessage } from "./ws-handler.ts";
+import type { WsHandle } from "./ws-handler.ts";
+import { handleMessage, wsBodySchema, wsResponseSchema } from "./ws-handler.ts";
 
 export const SERVER_VERSION: string = pkg.version ?? "0.0.0";
 
-export function createWelcomeFrame(): string {
-  return JSON.stringify({
+export function createWelcomeFrame(): {
+  cwd: string;
+  type: "welcome";
+  version: string;
+} {
+  return {
     type: "welcome",
     version: SERVER_VERSION,
     cwd: process.cwd(),
-  });
+  };
 }
 
 const connectionStores = new Map<string, SqliteSessionStorage>();
@@ -55,7 +59,7 @@ export function hasWsConnection(connectionId: string): boolean {
 export function pushToConnection(connectionId: string, data: unknown) {
   const ws = wsConnections.get(connectionId);
   if (ws) {
-    ws.send(JSON.stringify(data));
+    ws.send(data);
   }
 }
 
@@ -104,6 +108,8 @@ export function buildWsApp(ctx: ServerContext) {
   let terminalCallbacksWired = false;
 
   return new Elysia({ name: "ws" }).ws("/ws", {
+    body: wsBodySchema,
+    response: wsResponseSchema,
     open(ws) {
       const wsId = getWsId(ws);
       wsConnections.set(wsId, ws);
@@ -121,19 +127,16 @@ export function buildWsApp(ctx: ServerContext) {
     },
     message(ws, msg) {
       const wsId = getWsId(ws);
-      const inMsg = msg as WsIn;
-      if (!inMsg.sessionId) {
-        ws.send(
-          JSON.stringify({
-            error: "Missing sessionId",
-            sessionId: "",
-            type: "error",
-          } satisfies ErrorFrame)
-        );
+      if (!msg.sessionId) {
+        ws.send({
+          error: "Missing sessionId",
+          sessionId: "",
+          type: "error",
+        });
         return;
       }
-      const storage = getOrCreateStorage(wsId, ctx, inMsg.sessionId);
-      handleMessage(ctx, storage, ws, inMsg);
+      const storage = getOrCreateStorage(wsId, ctx, msg.sessionId);
+      handleMessage(ctx, storage, ws, msg);
     },
   });
 }

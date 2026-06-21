@@ -24,7 +24,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-ai": "0.79.9",
     "@elysiajs/eden": "^1.4.9",
     "@sakti-code/agent": "workspace:*",
     "@sakti-code/db": "workspace:*",

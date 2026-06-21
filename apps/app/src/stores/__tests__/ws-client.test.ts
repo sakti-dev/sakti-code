@@ -1,9 +1,12 @@
-import type { WsOut } from "@sakti-code/server/ws";
 import { describe, expect, it } from "vitest";
 import { createServerStore } from "../server-store.ts";
 import { SessionRegistry } from "../session-registry.ts";
 import { TerminalRegistry } from "../terminal-registry.ts";
-import { createWsClient } from "../ws-client.ts";
+import {
+  createWsClient,
+  type EdenWSLike,
+  type WsSubscribeApi,
+} from "../ws-client.ts";
 
 function makeDeps() {
   return {
@@ -13,64 +16,66 @@ function makeDeps() {
   };
 }
 
-function makeMockWs() {
-  const handlers = {
-    onopen: null as (() => void) | null,
-    onmessage: null as ((event: { data: string }) => void) | null,
-    onclose: null as (() => void) | null,
-  };
-  const sent: string[] = [];
+function makeMockEdenWs() {
+  const openHandlers: Array<() => void> = [];
+  const messageHandlers: Array<(event: { data?: unknown }) => void> = [];
+  const closeHandlers: Array<() => void> = [];
+  const sent: unknown[] = [];
   let readyState = 0;
 
-  const mock = {
-    get readyState() {
-      return readyState;
+  const mock: EdenWSLike = {
+    ws: {
+      get readyState() {
+        return readyState;
+      },
     },
-    set onopen(fn: (() => void) | null) {
-      handlers.onopen = fn;
-    },
-    set onmessage(fn: ((event: { data: string }) => void) | null) {
-      handlers.onmessage = fn;
-    },
-    set onclose(fn: (() => void) | null) {
-      handlers.onclose = fn;
-    },
-    send(data: string) {
+    send(data: unknown) {
       sent.push(data);
+    },
+    on(type, listener) {
+      if (type === "open") openHandlers.push(listener as () => void);
+      else if (type === "message")
+        messageHandlers.push(listener as (e: { data?: unknown }) => void);
+      else if (type === "close") closeHandlers.push(listener as () => void);
     },
     close() {
       readyState = 3;
-      handlers.onclose?.();
+      for (const h of closeHandlers) h();
     },
+  };
+
+  return {
+    mock,
+    sent,
     fireOpen() {
       readyState = 1;
-      handlers.onopen?.();
+      for (const h of openHandlers) h();
     },
-    fireMessage(data: WsOut) {
-      handlers.onmessage?.({ data: JSON.stringify(data) });
+    fireMessage(data: unknown) {
+      for (const h of messageHandlers) h({ data });
     },
     fireClose() {
       readyState = 3;
-      handlers.onclose?.();
+      for (const h of closeHandlers) h();
     },
-    fireRaw(data: string) {
-      handlers.onmessage?.({ data });
-    },
-    sent,
   };
+}
 
-  function MockWebSocketCtor() {
-    return mock;
-  }
-
-  return { mock, Ctor: MockWebSocketCtor as never as typeof WebSocket };
+function makeMockApi() {
+  const edenWs = makeMockEdenWs();
+  const api: WsSubscribeApi = {
+    ws: {
+      subscribe: () => edenWs.mock,
+    },
+  };
+  return { api, edenWs };
 }
 
 describe("WS client", () => {
   it("connection starts as connecting", () => {
     const deps = makeDeps();
-    const { Ctor } = makeMockWs();
-    const ws = createWsClient("ws://test", deps, Ctor);
+    const { api } = makeMockApi();
+    const ws = createWsClient(api, deps);
 
     expect(deps.serverStore.store.connection.status).toBe("connecting");
 
@@ -79,11 +84,11 @@ describe("WS client", () => {
 
   it("welcome frame sets connection to open", () => {
     const deps = makeDeps();
-    const { mock, Ctor } = makeMockWs();
-    const ws = createWsClient("ws://test", deps, Ctor);
+    const { api, edenWs } = makeMockApi();
+    const ws = createWsClient(api, deps);
 
-    mock.fireOpen();
-    mock.fireMessage({ type: "welcome", version: "1.0.0", cwd: "/tmp" });
+    edenWs.fireOpen();
+    edenWs.fireMessage({ type: "welcome", version: "1.0.0", cwd: "/tmp" });
 
     expect(deps.serverStore.store.connection.status).toBe("open");
 
@@ -92,11 +97,11 @@ describe("WS client", () => {
 
   it("dispatches event frames to session store", () => {
     const deps = makeDeps();
-    const { mock, Ctor } = makeMockWs();
-    const ws = createWsClient("ws://test", deps, Ctor);
+    const { api, edenWs } = makeMockApi();
+    const ws = createWsClient(api, deps);
 
-    mock.fireOpen();
-    mock.fireMessage({
+    edenWs.fireOpen();
+    edenWs.fireMessage({
       type: "event",
       sessionId: "s-test",
       event: { type: "agent_start" },
@@ -108,16 +113,16 @@ describe("WS client", () => {
     ws.disconnect();
   });
 
-  it("send serializes and sends prompt frame", () => {
+  it("send sends typed message via Eden WS", () => {
     const deps = makeDeps();
-    const { mock, Ctor } = makeMockWs();
-    const ws = createWsClient("ws://test", deps, Ctor);
+    const { api, edenWs } = makeMockApi();
+    const ws = createWsClient(api, deps);
 
-    mock.fireOpen();
+    edenWs.fireOpen();
     ws.send({ type: "prompt", sessionId: "s1", message: "hello" });
 
-    expect(mock.sent).toHaveLength(1);
-    expect(JSON.parse(mock.sent[0]!)).toEqual({
+    expect(edenWs.sent).toHaveLength(1);
+    expect(edenWs.sent[0]).toEqual({
       type: "prompt",
       sessionId: "s1",
       message: "hello",
@@ -128,21 +133,21 @@ describe("WS client", () => {
 
   it("send is dropped when socket not open", () => {
     const deps = makeDeps();
-    const { Ctor } = makeMockWs();
-    const ws = createWsClient("ws://test", deps, Ctor);
+    const { api, edenWs } = makeMockApi();
+    const ws = createWsClient(api, deps);
 
     ws.send({ type: "prompt", sessionId: "s1", message: "hello" });
-    expect(deps.serverStore.store.connection.status).toBe("connecting");
+    expect(edenWs.sent).toHaveLength(0);
 
     ws.disconnect();
   });
 
   it("error frame sets error on current message", () => {
     const deps = makeDeps();
-    const { mock, Ctor } = makeMockWs();
-    const ws = createWsClient("ws://test", deps, Ctor);
+    const { api, edenWs } = makeMockApi();
+    const ws = createWsClient(api, deps);
 
-    mock.fireOpen();
+    edenWs.fireOpen();
 
     const session = deps.sessionRegistry.get("s1");
     session.actions.addMessage({
@@ -155,7 +160,7 @@ describe("WS client", () => {
     });
     session.actions.setCurrentMessage("m1");
 
-    mock.fireMessage({ type: "error", sessionId: "s1", error: "boom" });
+    edenWs.fireMessage({ type: "error", sessionId: "s1", error: "boom" });
 
     expect(session.store.messages.m1!.error).toBe("boom");
     expect(session.store.streaming.phase).toBe("error");
@@ -165,11 +170,11 @@ describe("WS client", () => {
 
   it("push frame routes terminal data", () => {
     const deps = makeDeps();
-    const { mock, Ctor } = makeMockWs();
-    const ws = createWsClient("ws://test", deps, Ctor);
+    const { api, edenWs } = makeMockApi();
+    const ws = createWsClient(api, deps);
 
-    mock.fireOpen();
-    mock.fireMessage({
+    edenWs.fireOpen();
+    edenWs.fireMessage({
       type: "push",
       channel: "terminal.data",
       data: { terminalId: "t1", data: "hello terminal" },
@@ -183,11 +188,11 @@ describe("WS client", () => {
 
   it("push frame routes terminal exit", () => {
     const deps = makeDeps();
-    const { mock, Ctor } = makeMockWs();
-    const ws = createWsClient("ws://test", deps, Ctor);
+    const { api, edenWs } = makeMockApi();
+    const ws = createWsClient(api, deps);
 
-    mock.fireOpen();
-    mock.fireMessage({
+    edenWs.fireOpen();
+    edenWs.fireMessage({
       type: "push",
       channel: "terminal.exit",
       data: { terminalId: "t1", exitCode: 0 },
@@ -199,25 +204,12 @@ describe("WS client", () => {
     ws.disconnect();
   });
 
-  it("malformed JSON is silently ignored", () => {
-    const deps = makeDeps();
-    const { mock, Ctor } = makeMockWs();
-    const ws = createWsClient("ws://test", deps, Ctor);
-
-    mock.fireOpen();
-    mock.fireRaw("not valid json {{{");
-
-    expect(deps.serverStore.store.connection.status).toBe("open");
-
-    ws.disconnect();
-  });
-
   it("disconnect sets connection to closed", () => {
     const deps = makeDeps();
-    const { mock, Ctor } = makeMockWs();
-    const ws = createWsClient("ws://test", deps, Ctor);
+    const { api, edenWs } = makeMockApi();
+    const ws = createWsClient(api, deps);
 
-    mock.fireOpen();
+    edenWs.fireOpen();
     ws.disconnect();
 
     expect(deps.serverStore.store.connection.status).toBe("closed");

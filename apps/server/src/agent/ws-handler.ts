@@ -1,4 +1,5 @@
 import type { AgentHarnessEvent, SessionStorage } from "@sakti-code/agent";
+import { t } from "elysia";
 import type { ServerContext } from "../context.ts";
 import {
   abortRun,
@@ -66,8 +67,66 @@ export interface PushFrame {
 export type WsOut = EventFrame | ErrorFrame | WelcomeFrame | PushFrame;
 
 export interface WsHandle {
-  send(data: string): void;
+  send(data: unknown): void;
 }
+
+// TypeBox schemas for runtime validation on the .ws() endpoint.
+// These mirror the TS interfaces above. The TS interfaces stay as
+// the compile-time source of truth; TypeBox is the runtime layer.
+
+export const wsBodySchema = t.Union([
+  t.Object({
+    type: t.Literal("prompt"),
+    sessionId: t.String(),
+    message: t.String(),
+  }),
+  t.Object({
+    type: t.Literal("abort"),
+    sessionId: t.String(),
+  }),
+  t.Object({
+    type: t.Literal("steer"),
+    sessionId: t.String(),
+    message: t.String(),
+  }),
+  t.Object({
+    type: t.Literal("followUp"),
+    sessionId: t.String(),
+    message: t.String(),
+  }),
+]);
+
+export const wsResponseSchema = t.Union([
+  t.Object({
+    type: t.Literal("welcome"),
+    version: t.String(),
+    cwd: t.String(),
+  }),
+  t.Object({
+    type: t.Literal("event"),
+    sessionId: t.String(),
+    event: t.Unknown(),
+  }),
+  t.Object({
+    type: t.Literal("error"),
+    sessionId: t.String(),
+    error: t.String(),
+  }),
+  t.Object({
+    type: t.Literal("push"),
+    channel: t.Literal("terminal.data"),
+    data: t.Object({ terminalId: t.String(), data: t.String() }),
+  }),
+  t.Object({
+    type: t.Literal("push"),
+    channel: t.Literal("terminal.exit"),
+    data: t.Object({
+      terminalId: t.String(),
+      exitCode: t.Number(),
+      signal: t.Optional(t.Union([t.Number(), t.String()])),
+    }),
+  }),
+]);
 
 async function runAgentStream(
   ctx: ServerContext,
@@ -78,33 +137,27 @@ async function runAgentStream(
 ) {
   try {
     await runPrompt(ctx, sessionId, message, storage, (event) => {
-      ws.send(
-        JSON.stringify({
-          event,
-          sessionId,
-          type: "event",
-        } satisfies EventFrame)
-      );
+      ws.send({
+        event,
+        sessionId,
+        type: "event",
+      } satisfies EventFrame);
     });
   } catch (err) {
-    ws.send(
-      JSON.stringify({
-        error: err instanceof Error ? err.message : String(err),
-        sessionId,
-        type: "error",
-      } satisfies ErrorFrame)
-    );
+    ws.send({
+      error: err instanceof Error ? err.message : String(err),
+      sessionId,
+      type: "error",
+    } satisfies ErrorFrame);
   }
 }
 
 export function sendError(ws: WsHandle, sessionId: string, message: string) {
-  ws.send(
-    JSON.stringify({
-      error: message,
-      sessionId,
-      type: "error",
-    } satisfies ErrorFrame)
-  );
+  ws.send({
+    error: message,
+    sessionId,
+    type: "error",
+  } satisfies ErrorFrame);
 }
 
 export function handleMessage(

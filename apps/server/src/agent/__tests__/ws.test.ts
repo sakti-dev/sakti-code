@@ -22,14 +22,14 @@ import { handleMessage } from "../ws-handler.ts";
 import { createMockCtx, createMockStore } from "./helpers.ts";
 
 interface FakeWsHandle {
-  send: (d: string) => void;
+  send: (d: unknown) => void;
 }
 
 function makeFakeWs(): { sent: unknown[]; ws: FakeWsHandle } {
   const sent: unknown[] = [];
   return {
     sent,
-    ws: { send: (d: string) => sent.push(JSON.parse(d)) },
+    ws: { send: (d: unknown) => sent.push(d) },
   };
 }
 

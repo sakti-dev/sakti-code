@@ -6,7 +6,7 @@ describe("WS welcome push", () => {
       "../agent/ws.ts"
     );
 
-    const frame = JSON.parse(createWelcomeFrame());
+    const frame = createWelcomeFrame();
     expect(frame).toHaveProperty("type", "welcome");
     expect(frame).toHaveProperty("version", SERVER_VERSION);
     expect(frame).toHaveProperty("cwd", process.cwd());

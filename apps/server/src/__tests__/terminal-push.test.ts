@@ -10,7 +10,7 @@ describe("terminal push channels (real pushToConnection path)", () => {
   it("C3: a push to a registered connection delivers the exact frame JSON", () => {
     const received: unknown[] = [];
     registerTestConnection("conn-1", {
-      send: (d: string) => received.push(JSON.parse(d)),
+      send: (d: unknown) => received.push(d),
     });
 
     pushToConnection("conn-1", {
@@ -50,7 +50,7 @@ describe("terminal push channels (real pushToConnection path)", () => {
   it("C3: terminal.exit push includes signal when provided, omits when undefined", () => {
     const received: unknown[] = [];
     registerTestConnection("conn-3", {
-      send: (d: string) => received.push(JSON.parse(d)),
+      send: (d: unknown) => received.push(d),
     });
 
     pushToConnection("conn-3", {

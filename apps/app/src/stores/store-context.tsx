@@ -13,7 +13,6 @@ import { TerminalRegistry } from "./terminal-registry.ts";
 import { createWsClient, type WsClient } from "./ws-client.ts";
 
 const API_URL = "http://localhost:3001";
-const WS_URL = "ws://localhost:3001/ws";
 
 export interface StoreContextValue {
   actions: Actions;
@@ -32,7 +31,7 @@ export const StoreProvider: ParentComponent = (props) => {
   const terminals = new TerminalRegistry();
 
   const api = treaty<App>(API_URL);
-  const ws = createWsClient(WS_URL, {
+  const ws = createWsClient(api, {
     serverStore: server,
     sessionRegistry: sessions,
     terminalRegistry: terminals,
