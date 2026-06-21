@@ -7,7 +7,6 @@ import { availableModelsRoutes } from "./routes/available-models.ts";
 import { bashRoutes } from "./routes/bash.ts";
 import { commandsRoutes } from "./routes/commands.ts";
 import { compactionRoutes } from "./routes/compaction.ts";
-import { costsRoutes } from "./routes/costs.ts";
 import { exportRoutes } from "./routes/export.ts";
 import { forkingRoutes } from "./routes/forking.ts";
 import { gitRoutes } from "./routes/git.ts";
@@ -38,7 +37,6 @@ const defaultRoutes = [
   sessionsRoutes,
   settingsRoutes,
   modelConfigRoutes,
-  costsRoutes,
   availableModelsRoutes,
   commandsRoutes,
   searchFilesRoutes,

@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite";
 import { describe, expect, it } from "bun:test";
 import { initDatabase } from "@sakti-code/db";
 import { Elysia } from "elysia";
+import { createContext } from "../context.ts";
 import { buildServer } from "../index.ts";
 
 describe("built server", () => {
@@ -31,5 +32,14 @@ describe("built server", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.custom).toBe(true);
+  });
+});
+
+describe("ServerContext", () => {
+  it("does not have messages or costs repos", async () => {
+    const db = await initDatabase(new Database(":memory:"));
+    const ctx = createContext(db);
+    expect(ctx.repos).not.toHaveProperty("messages");
+    expect(ctx.repos).not.toHaveProperty("costs");
   });
 });

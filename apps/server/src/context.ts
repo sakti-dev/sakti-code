@@ -1,7 +1,5 @@
 import {
-  CostRepo,
   type DrizzleDB,
-  MessageRepo,
   ModelConfigRepo,
   ProjectRepo,
   SessionRepo,
@@ -14,8 +12,6 @@ export interface ServerContext {
   repos: {
     projects: ProjectRepo;
     sessions: SessionRepo;
-    messages: MessageRepo;
-    costs: CostRepo;
     settings: SettingsRepo;
     models: ModelConfigRepo;
   };
@@ -28,8 +24,6 @@ export function createContext(db: DrizzleDB): ServerContext {
     repos: {
       projects: new ProjectRepo(db),
       sessions: new SessionRepo(db),
-      messages: new MessageRepo(db),
-      costs: new CostRepo(db),
       settings: new SettingsRepo(db),
       models: new ModelConfigRepo(db),
     },
