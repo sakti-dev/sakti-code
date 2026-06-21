@@ -27,7 +27,8 @@ function extractAssistantText(messages: AgentMessage[]): string | null {
 
 export const lastAssistantTextRoutes = new Elysia({
   name: "routes.lastAssistantText",
-}).get("/sessions/:id/last-assistant-text", async ({ params, store }) => {
+  prefix: "/sessions",
+}).get("/:id/last-assistant-text", async ({ params, store }) => {
   const ctx = getCtx(store);
   const session = ctx.repos.sessions.findById(params.id);
   if (!session) {

@@ -16,9 +16,12 @@ function flattenContent(content: unknown): string {
   return "";
 }
 
-export const forkingRoutes = new Elysia({ name: "routes.forking" })
+export const forkingRoutes = new Elysia({
+  name: "routes.forking",
+  prefix: "/sessions",
+})
   .post(
-    "/sessions/:id/fork",
+    "/:id/fork",
     async ({ params, store }) => {
       const ctx = getCtx(store);
       const session = ctx.repos.sessions.findById(params.id);
@@ -55,7 +58,7 @@ export const forkingRoutes = new Elysia({ name: "routes.forking" })
       ),
     }
   )
-  .get("/sessions/:id/fork-messages", async ({ params, store }) => {
+  .get("/:id/fork-messages", async ({ params, store }) => {
     const ctx = getCtx(store);
     const session = ctx.repos.sessions.findById(params.id);
     if (!session) {

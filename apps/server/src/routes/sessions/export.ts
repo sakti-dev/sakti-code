@@ -127,40 +127,40 @@ function flattenContent(content: unknown): string {
   return "";
 }
 
-export const exportRoutes = new Elysia({ name: "routes.export" }).get(
-  "/sessions/:id/export-html",
-  async ({ params, store }) => {
-    const ctx = getCtx(store);
-    const session = ctx.repos.sessions.findById(params.id);
-    if (!session) {
-      return new Response("Not found", { status: 404 });
-    }
-
-    const project = ctx.repos.projects.findById(session.projectId);
-    const projectName = project?.name ?? "Unknown";
-
-    const storage = new SqliteSessionStorage(ctx.db, params.id, {
-      id: params.id,
-      createdAt: new Date(session.createdAt).toISOString(),
-    });
-    const entries = await storage.getPathToRoot(await storage.getLeafId());
-    const { messages: agentMessages } = buildSessionContext(entries);
-
-    const messagesData = agentMessages.map((m) => ({
-      role: m.role,
-      content: flattenContent((m as { content: unknown }).content),
-      createdAt: (m as { timestamp: number }).timestamp ?? session.createdAt,
-    }));
-
-    const html = renderHtmlExport(
-      session.title,
-      projectName,
-      session.createdAt,
-      messagesData
-    );
-
-    return new Response(html, {
-      headers: { "content-type": "text/html; charset=utf-8" },
-    });
+export const exportRoutes = new Elysia({
+  name: "routes.export",
+  prefix: "/sessions",
+}).get("/:id/export-html", async ({ params, store }) => {
+  const ctx = getCtx(store);
+  const session = ctx.repos.sessions.findById(params.id);
+  if (!session) {
+    return new Response("Not found", { status: 404 });
   }
-);
+
+  const project = ctx.repos.projects.findById(session.projectId);
+  const projectName = project?.name ?? "Unknown";
+
+  const storage = new SqliteSessionStorage(ctx.db, params.id, {
+    id: params.id,
+    createdAt: new Date(session.createdAt).toISOString(),
+  });
+  const entries = await storage.getPathToRoot(await storage.getLeafId());
+  const { messages: agentMessages } = buildSessionContext(entries);
+
+  const messagesData = agentMessages.map((m) => ({
+    role: m.role,
+    content: flattenContent((m as { content: unknown }).content),
+    createdAt: (m as { timestamp: number }).timestamp ?? session.createdAt,
+  }));
+
+  const html = renderHtmlExport(
+    session.title,
+    projectName,
+    session.createdAt,
+    messagesData
+  );
+
+  return new Response(html, {
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
+});
