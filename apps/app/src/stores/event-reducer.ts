@@ -88,7 +88,6 @@ export function dispatchEvent(
       const msgId = actions.getCurrentMessageId();
       if (msgId) {
         actions.finalizeMessage(msgId);
-        actions.clearCurrentMessage();
       }
       break;
     }
@@ -112,6 +111,7 @@ export function dispatchEvent(
 
     case "turn_end":
       actions.setPhase("idle");
+      actions.clearCurrentMessage();
       break;
 
     case "turn_start":

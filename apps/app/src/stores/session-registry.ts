@@ -1,21 +1,27 @@
 import type { SessionStore } from "./session-store.ts";
 import { createSessionStore } from "./session-store.ts";
 
-const registry = new Map<string, SessionStore>();
+export class SessionRegistry {
+  private readonly stores = new Map<string, SessionStore>();
 
-export function getSessionStore(sessionId: string): SessionStore {
-  let store = registry.get(sessionId);
-  if (!store) {
-    store = createSessionStore(sessionId);
-    registry.set(sessionId, store);
+  get(sessionId: string): SessionStore {
+    let store = this.stores.get(sessionId);
+    if (!store) {
+      store = createSessionStore(sessionId);
+      this.stores.set(sessionId, store);
+    }
+    return store;
   }
-  return store;
-}
 
-export function hasSessionStore(sessionId: string): boolean {
-  return registry.has(sessionId);
-}
+  has(sessionId: string): boolean {
+    return this.stores.has(sessionId);
+  }
 
-export function disposeSessionStore(sessionId: string): void {
-  registry.delete(sessionId);
+  dispose(sessionId: string): void {
+    this.stores.delete(sessionId);
+  }
+
+  disposeAll(): void {
+    this.stores.clear();
+  }
 }

@@ -1,15 +1,21 @@
 import type { AgentMessage } from "@sakti-code/agent";
 import type { App } from "@sakti-code/server";
-import {
-  getServerStore,
-  type Project,
-  type SessionMeta,
+import type {
+  Project,
+  ServerActions,
+  ServerStoreData,
+  SessionMeta,
 } from "./server-store.ts";
-import { getSessionStore } from "./session-registry.ts";
+import type { SessionRegistry } from "./session-registry.ts";
 import { agentMessageToUI, type UIMessage } from "./types.ts";
 import type { WsClient } from "./ws-client.ts";
 
 type ApiClient = ReturnType<typeof import("@elysiajs/eden").treaty<App>>;
+
+export interface ActionsDeps {
+  serverStore: { store: ServerStoreData; actions: ServerActions };
+  sessionRegistry: SessionRegistry;
+}
 
 export interface Actions {
   abortRun: (sessionId: string) => void;
@@ -26,8 +32,12 @@ export interface Actions {
   steerRun: (sessionId: string, text: string) => void;
 }
 
-export function createActions(api: ApiClient, ws: WsClient): Actions {
-  const server = getServerStore();
+export function createActions(
+  api: ApiClient,
+  ws: WsClient,
+  deps: ActionsDeps
+): Actions {
+  const { serverStore: server, sessionRegistry } = deps;
 
   return {
     async loadProjects() {
@@ -75,12 +85,12 @@ export function createActions(api: ApiClient, ws: WsClient): Actions {
       }
       const messages = data as AgentMessage[];
       const uiMessages = messages.map(agentMessageToUI);
-      const session = getSessionStore(sessionId);
+      const session = sessionRegistry.get(sessionId);
       session.actions.loadMessages(uiMessages);
     },
 
     sendPrompt(sessionId, text) {
-      const session = getSessionStore(sessionId);
+      const session = sessionRegistry.get(sessionId);
 
       const userMsg: UIMessage = {
         id: crypto.randomUUID(),

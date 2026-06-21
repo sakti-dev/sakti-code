@@ -1,9 +1,9 @@
 import type { AgentHarnessEvent } from "@sakti-code/agent";
 import type { WsIn, WsOut } from "@sakti-code/server/ws";
 import { dispatchEvent } from "./event-reducer.ts";
-import { getServerStore } from "./server-store.ts";
-import { getSessionStore } from "./session-registry.ts";
-import { getTerminalStore } from "./terminal-registry.ts";
+import type { ServerActions, ServerStoreData } from "./server-store.ts";
+import type { SessionRegistry } from "./session-registry.ts";
+import type { TerminalRegistry } from "./terminal-registry.ts";
 import { createTokenBatcher } from "./token-batcher.ts";
 
 const RECONNECT_DELAY_MS = 2000;
@@ -13,11 +13,18 @@ export interface WsClient {
   send: (msg: WsIn) => void;
 }
 
+export interface WsClientDeps {
+  serverStore: { store: ServerStoreData; actions: ServerActions };
+  sessionRegistry: SessionRegistry;
+  terminalRegistry: TerminalRegistry;
+}
+
 export function createWsClient(
   url: string,
+  deps: WsClientDeps,
   WebSocketCtor: typeof WebSocket = WebSocket
 ): WsClient {
-  const server = getServerStore();
+  const { serverStore: server, sessionRegistry, terminalRegistry } = deps;
   let ws: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let shouldReconnect = true;
@@ -27,7 +34,7 @@ export function createWsClient(
   function getBatcher(sessionId: string) {
     let b = batchers.get(sessionId);
     if (!b) {
-      const session = getSessionStore(sessionId);
+      const session = sessionRegistry.get(sessionId);
       b = createTokenBatcher((msgId, text) => {
         session.actions.appendToken(msgId, text);
       });
@@ -43,7 +50,7 @@ export function createWsClient(
         break;
 
       case "event": {
-        const session = getSessionStore(data.sessionId);
+        const session = sessionRegistry.get(data.sessionId);
         const batcher = getBatcher(data.sessionId);
         dispatchEvent(
           session.actions,
@@ -54,7 +61,7 @@ export function createWsClient(
       }
 
       case "error": {
-        const session = getSessionStore(data.sessionId);
+        const session = sessionRegistry.get(data.sessionId);
         const msgId = session.store.streaming.currentMessageId;
         if (msgId) {
           session.actions.setError(msgId, data.error);
@@ -65,10 +72,10 @@ export function createWsClient(
       case "push": {
         if (data.channel === "terminal.data") {
           const d = data.data as { terminalId: string; data: string };
-          getTerminalStore(d.terminalId).appendData(d.data);
+          terminalRegistry.get(d.terminalId).appendData(d.data);
         } else if (data.channel === "terminal.exit") {
           const d = data.data as { terminalId: string; exitCode: number };
-          getTerminalStore(d.terminalId).setExit(d.exitCode);
+          terminalRegistry.get(d.terminalId).setExit(d.exitCode);
         }
         break;
       }

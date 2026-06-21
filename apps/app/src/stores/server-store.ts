@@ -112,12 +112,3 @@ export function createServerStore(): ServerStore {
 
   return { store, actions };
 }
-
-let singleton: ServerStore | null = null;
-
-export function getServerStore(): ServerStore {
-  if (!singleton) {
-    singleton = createServerStore();
-  }
-  return singleton;
-}

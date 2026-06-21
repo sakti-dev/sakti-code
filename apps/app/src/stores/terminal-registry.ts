@@ -1,16 +1,26 @@
 import { createTerminalStore, type TerminalStore } from "./terminal-store.ts";
 
-const registry = new Map<string, TerminalStore>();
+export class TerminalRegistry {
+  private readonly stores = new Map<string, TerminalStore>();
 
-export function getTerminalStore(terminalId: string): TerminalStore {
-  let store = registry.get(terminalId);
-  if (!store) {
-    store = createTerminalStore(terminalId);
-    registry.set(terminalId, store);
+  get(terminalId: string): TerminalStore {
+    let store = this.stores.get(terminalId);
+    if (!store) {
+      store = createTerminalStore(terminalId);
+      this.stores.set(terminalId, store);
+    }
+    return store;
   }
-  return store;
-}
 
-export function disposeTerminalStore(terminalId: string): void {
-  registry.delete(terminalId);
+  has(terminalId: string): boolean {
+    return this.stores.has(terminalId);
+  }
+
+  dispose(terminalId: string): void {
+    this.stores.delete(terminalId);
+  }
+
+  disposeAll(): void {
+    this.stores.clear();
+  }
 }
