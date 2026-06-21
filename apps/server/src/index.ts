@@ -13,7 +13,6 @@ import { gitRoutes } from "./routes/git.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { lastAssistantTextRoutes } from "./routes/last-assistant-text.ts";
 import { modelConfigRoutes } from "./routes/models.ts";
-import { namingRoutes } from "./routes/naming.ts";
 import { projectsRoutes } from "./routes/projects.ts";
 import { searchFilesRoutes } from "./routes/search-files.ts";
 import { sessionControlRoutes } from "./routes/session-controls.ts";
@@ -49,7 +48,6 @@ const defaultRoutes = [
   bashRoutes,
   terminalRoutes,
   forkingRoutes,
-  namingRoutes,
   exportRoutes,
   sessionSettingsRoutes,
   sessionControlRoutes,

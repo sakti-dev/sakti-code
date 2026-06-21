@@ -3,7 +3,6 @@ import { buildSessionContext } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { exportRoutes } from "../routes/export.ts";
 import { forkingRoutes } from "../routes/forking.ts";
-import { namingRoutes } from "../routes/naming.ts";
 import { seedEntries } from "./entry-helpers.ts";
 import { makeApp } from "./helpers.ts";
 
@@ -103,55 +102,6 @@ describe("fork-messages route", () => {
     const { app } = await makeApp([forkingRoutes]);
     const res = await app.handle(
       new Request("http://localhost/api/sessions/nope/fork-messages")
-    );
-    expect(res.status).toBe(404);
-  });
-});
-
-describe("naming route", () => {
-  it("PATCH /api/sessions/:id/name sets title", async () => {
-    const { app, ctx } = await makeApp([namingRoutes]);
-    const project = await ctx.repos.projects.create("name-test", "/tmp/name");
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
-
-    const res = await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/name`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title: "My Session" }),
-      })
-    );
-    expect(res.status).toBe(200);
-    const updated = await res.json();
-    expect(updated.title).toBe("My Session");
-  });
-
-  it("empty title clears to null", async () => {
-    const { app, ctx } = await makeApp([namingRoutes]);
-    const project = await ctx.repos.projects.create("name-test2", "/tmp/name2");
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o", {
-      title: "Old",
-    });
-
-    const res = await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/name`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title: "" }),
-      })
-    );
-    const updated = await res.json();
-    expect(updated.title).toBeNull();
-  });
-
-  it("unknown session returns 404", async () => {
-    const { app } = await makeApp([namingRoutes]);
-    const res = await app.handle(
-      new Request("http://localhost/api/sessions/nope/name", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title: "Test" }),
-      })
     );
     expect(res.status).toBe(404);
   });
