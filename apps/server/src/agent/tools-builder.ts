@@ -11,7 +11,7 @@ import {
 
 export function buildTools(cwd: string): AgentTool[] {
   return [
-    createReadTool(cwd),
+    createReadTool(cwd, { autoResizeImages: true }),
     createWriteTool(cwd),
     createEditTool(cwd),
     createBashTool(cwd),

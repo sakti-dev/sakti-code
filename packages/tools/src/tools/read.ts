@@ -1,6 +1,7 @@
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai/base";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
+import { formatDimensionNote, resizeImage } from "../lib/image-resize.ts";
 import { resolveReadPathAsync } from "../lib/path-utils.ts";
 import {
   DEFAULT_MAX_BYTES,
@@ -200,22 +201,48 @@ export function createReadTool(
                 return;
               }
 
-              const base64Data = buffer.toString("base64");
-              const base64Size = Buffer.byteLength(base64Data, "utf-8");
-
-              if (base64Size > MAX_IMAGE_BASE64_BYTES) {
-                content = [
-                  {
-                    type: "text",
-                    text: `Read image file [${mimeType}]\n[Image omitted: base64 payload (${formatSize(base64Size)}) exceeds ${formatSize(MAX_IMAGE_BASE64_BYTES)} limit. The file needs to be resized or compressed before it can be sent to the model.]`,
-                  },
-                ];
+              let imageContent: (TextContent | ImageContent)[];
+              if (options?.autoResizeImages) {
+                const resized = await resizeImage(buffer, mimeType);
+                if (resized) {
+                  const dimensionNote = formatDimensionNote(resized);
+                  const textNote = dimensionNote
+                    ? `Read image file [${resized.mimeType}]\n${dimensionNote}`
+                    : `Read image file [${resized.mimeType}]`;
+                  imageContent = [
+                    { type: "text", text: textNote },
+                    {
+                      type: "image",
+                      data: resized.data,
+                      mimeType: resized.mimeType,
+                    },
+                  ];
+                } else {
+                  imageContent = [
+                    {
+                      type: "text",
+                      text: `Read image file [${mimeType}]\n[Image omitted: could not be resized below the inline image size limit.]`,
+                    },
+                  ];
+                }
               } else {
-                content = [
-                  { type: "text", text: `Read image file [${mimeType}]` },
-                  { type: "image", data: base64Data, mimeType },
-                ];
+                const base64Data = buffer.toString("base64");
+                const base64Size = Buffer.byteLength(base64Data, "utf-8");
+                if (base64Size > MAX_IMAGE_BASE64_BYTES) {
+                  imageContent = [
+                    {
+                      type: "text",
+                      text: `Read image file [${mimeType}]\n[Image omitted: base64 payload (${formatSize(base64Size)}) exceeds ${formatSize(MAX_IMAGE_BASE64_BYTES)} limit. Enable autoResizeImages to downscale before sending.]`,
+                    },
+                  ];
+                } else {
+                  imageContent = [
+                    { type: "text", text: `Read image file [${mimeType}]` },
+                    { type: "image", data: base64Data, mimeType },
+                  ];
+                }
               }
+              content = imageContent;
             } else {
               const buffer = await ops.readFile(absolutePath);
               if (aborted) {

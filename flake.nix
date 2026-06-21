@@ -43,7 +43,6 @@
       {
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
-            bun
             zig_0_13
           ] ++ runtimeLibs;
 
