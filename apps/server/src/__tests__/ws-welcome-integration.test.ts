@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { readFileSync } from "node:fs";
+import pkg from "../../package.json" with { type: "json" };
 import { buildWsApp, createWelcomeFrame, SERVER_VERSION } from "../agent/ws.ts";
 
 describe("WS welcome push", () => {
@@ -11,9 +11,6 @@ describe("WS welcome push", () => {
   });
 
   it("SERVER_VERSION is a non-empty string read from package.json", () => {
-    const pkg = JSON.parse(
-      readFileSync(new URL("../../package.json", import.meta.url), "utf-8")
-    );
     expect(typeof SERVER_VERSION).toBe("string");
     expect(SERVER_VERSION.length).toBeGreaterThan(0);
     expect(SERVER_VERSION).toBe(pkg.version ?? "0.0.0");

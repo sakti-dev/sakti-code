@@ -1,14 +1,11 @@
 import {
-  accessSync,
   appendFileSync,
-  constants,
+  existsSync,
   lstatSync,
   mkdirSync,
   readdirSync,
-  readFileSync,
   realpathSync,
   rmSync,
-  writeFileSync,
 } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import type {
@@ -141,7 +138,7 @@ export class TestExecutionEnv implements ExecutionEnv {
       dir,
       `${options?.prefix ?? ""}${Date.now()}${options?.suffix ?? ""}`
     );
-    writeFileSync(file, "");
+    await Bun.write(file, "");
     return Promise.resolve(ok(file));
   }
 
@@ -150,8 +147,7 @@ export class TestExecutionEnv implements ExecutionEnv {
     _abortSignal?: AbortSignal
   ): Promise<Result<boolean, FileError>> {
     try {
-      accessSync(resolve(this.rootDir, path), constants.F_OK);
-      return Promise.resolve(ok(true));
+      return Promise.resolve(ok(existsSync(resolve(this.rootDir, path))));
     } catch {
       return Promise.resolve(ok(false));
     }
@@ -215,9 +211,8 @@ export class TestExecutionEnv implements ExecutionEnv {
     _abortSignal?: AbortSignal
   ): Promise<Result<Uint8Array, FileError>> {
     try {
-      return Promise.resolve(
-        ok(new Uint8Array(readFileSync(resolve(this.rootDir, path))))
-      );
+      const data = await Bun.file(resolve(this.rootDir, path)).arrayBuffer();
+      return Promise.resolve(ok(new Uint8Array(data)));
     } catch (e) {
       return Promise.resolve(err(toFileError(e)));
     }
@@ -229,7 +224,7 @@ export class TestExecutionEnv implements ExecutionEnv {
   ): Promise<Result<string, FileError>> {
     try {
       return Promise.resolve(
-        ok(readFileSync(resolve(this.rootDir, path), "utf-8"))
+        ok(await Bun.file(resolve(this.rootDir, path)).text())
       );
     } catch (e) {
       return Promise.resolve(err(toFileError(e)));
@@ -275,7 +270,7 @@ export class TestExecutionEnv implements ExecutionEnv {
     _abortSignal?: AbortSignal
   ): Promise<Result<void, FileError>> {
     try {
-      writeFileSync(resolve(this.rootDir, path), content);
+      await Bun.write(resolve(this.rootDir, path), content);
       return Promise.resolve(ok(undefined));
     } catch (e) {
       return Promise.resolve(err(toFileError(e)));
