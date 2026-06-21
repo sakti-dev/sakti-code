@@ -1,4 +1,3 @@
-import { getEnvApiKey } from "@earendil-works/pi-ai";
 import type {
   AgentHarness,
   AgentHarnessEvent,
@@ -12,7 +11,7 @@ import {
 } from "@sakti-code/agent";
 import type { ServerContext } from "../context.ts";
 import { BunExecutionEnv } from "./execution-env.ts";
-import { resolveModel } from "./model-resolver.ts";
+import { resolveAuth, resolveModel } from "./model-resolver.ts";
 import { buildTools } from "./tools-builder.ts";
 
 interface ActiveRun {
@@ -131,7 +130,13 @@ export async function runPrompt(
     throw new Error(`Project not found: ${session.projectId}`);
   }
 
-  const { model, provider } = resolveModel(ctx, session);
+  const auth = resolveAuth(ctx, session);
+  if (!auth) {
+    throw new Error(
+      `No API key for ${resolveModel(ctx, session).provider} in env`
+    );
+  }
+  const { model } = auth;
   const tools = buildTools(project.cwd);
 
   const settings = loadSessionSettings(ctx, sessionId);
@@ -143,13 +148,7 @@ export async function runPrompt(
     _model: unknown
   ): Promise<
     { apiKey: string; headers?: Record<string, string> } | undefined
-  > => {
-    const key = getEnvApiKey(provider);
-    if (!key) {
-      return;
-    }
-    return { apiKey: key };
-  };
+  > => ({ apiKey: auth.apiKey });
 
   const harness = new HarnessClass({
     env,

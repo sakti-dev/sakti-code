@@ -46,24 +46,36 @@ export class SqliteSessionStorage<
   }
 
   async appendEntry(entry: SessionTreeEntry): Promise<void> {
-    const sequence = await this.getNextSequence();
-
     const content = JSON.stringify(entry);
 
-    await this.db.insert(sessionEntries).values({
-      id: entry.id,
-      sessionId: this.sessionId,
-      parentId: entry.parentId,
-      sequence,
-      kind: entry.type,
-      content,
-      timestamp: entry.timestamp,
-      createdAt: Date.now(),
-    });
+    await this.db.transaction((tx) => {
+      const row = tx
+        .select({ max: sql<number>`coalesce(max(sequence), -1)` })
+        .from(sessionEntries)
+        .where(eq(sessionEntries.sessionId, this.sessionId))
+        .get();
+      const sequence = (row?.max ?? -1) + 1;
 
-    if (entry.type !== "leaf") {
-      await this.setLeafId(entry.id);
-    }
+      tx.insert(sessionEntries)
+        .values({
+          id: entry.id,
+          sessionId: this.sessionId,
+          parentId: entry.parentId,
+          sequence,
+          kind: entry.type,
+          content,
+          timestamp: entry.timestamp,
+          createdAt: Date.now(),
+        })
+        .run();
+
+      if (entry.type !== "leaf") {
+        tx.update(sessions)
+          .set({ leafId: entry.id })
+          .where(eq(sessions.id, this.sessionId))
+          .run();
+      }
+    });
   }
 
   async getEntry(id: string): Promise<SessionTreeEntry | undefined> {
@@ -110,25 +122,19 @@ export class SqliteSessionStorage<
       return this.getEntries();
     }
 
-    const allEntries = await this.getEntries();
-    const entryMap = new Map(allEntries.map((e) => [e.id, e]));
-
-    const path: SessionTreeEntry[] = [];
-    let current: string | null = leafId;
-    const visited = new Set<string>();
-
-    while (current && !visited.has(current)) {
-      visited.add(current);
-      const entry = entryMap.get(current);
-      if (!entry) {
-        break;
-      }
-      path.push(entry);
-      current = entry.parentId ?? null;
-    }
-
-    path.reverse();
-    return path;
+    const rows = this.db.all<{
+      content: string;
+    }>(sql`
+      WITH RECURSIVE path AS (
+        SELECT * FROM ${sessionEntries}
+        WHERE id = ${leafId} AND session_id = ${this.sessionId}
+        UNION ALL
+        SELECT e.* FROM ${sessionEntries} e
+        JOIN path p ON e.id = p.parent_id
+      )
+      SELECT content FROM path ORDER BY sequence
+    `);
+    return rows.map((r) => parseEntry(r.content));
   }
 
   async getEntries(): Promise<SessionTreeEntry[]> {
@@ -139,15 +145,6 @@ export class SqliteSessionStorage<
       .orderBy(sessionEntries.sequence)
       .all();
     return rows.map((r) => parseEntry(r.content));
-  }
-
-  private async getNextSequence(): Promise<number> {
-    const row = this.db
-      .select({ max: sql<number>`coalesce(max(sequence), -1)` })
-      .from(sessionEntries)
-      .where(eq(sessionEntries.sessionId, this.sessionId))
-      .get();
-    return (row?.max ?? -1) + 1;
   }
 
   /**

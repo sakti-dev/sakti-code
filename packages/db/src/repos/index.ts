@@ -190,24 +190,36 @@ export class ModelConfigRepo {
   }) {
     const id = crypto.randomUUID();
     const now = Date.now();
-    await this.db.insert(modelConfigs).values({
-      id,
-      projectId: data.projectId ?? null,
-      provider: data.provider,
-      modelId: data.modelId,
-      thinkingLevel: data.thinkingLevel ?? "off",
-      createdAt: now,
-      updatedAt: now,
-    });
+    await this.db
+      .insert(modelConfigs)
+      .values({
+        id,
+        projectId: data.projectId ?? null,
+        provider: data.provider,
+        modelId: data.modelId,
+        thinkingLevel: data.thinkingLevel ?? "off",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: modelConfigs.projectId,
+        set: {
+          provider: data.provider,
+          modelId: data.modelId,
+          thinkingLevel: data.thinkingLevel ?? "off",
+          updatedAt: now,
+        },
+      });
     return id;
   }
 
   getForProject(projectId: string) {
-    // Try project-specific first, fall back to global (null projectId)
     const projectConfig = this.db
       .select()
       .from(modelConfigs)
       .where(eq(modelConfigs.projectId, projectId))
+      .orderBy(desc(modelConfigs.updatedAt))
+      .limit(1)
       .get();
     if (projectConfig) {
       return projectConfig;
@@ -218,6 +230,8 @@ export class ModelConfigRepo {
         .select()
         .from(modelConfigs)
         .where(sql`${modelConfigs.projectId} IS NULL`)
+        .orderBy(desc(modelConfigs.updatedAt))
+        .limit(1)
         .get() ?? null
     );
   }
@@ -228,6 +242,8 @@ export class ModelConfigRepo {
         .select()
         .from(modelConfigs)
         .where(sql`${modelConfigs.projectId} IS NULL`)
+        .orderBy(desc(modelConfigs.updatedAt))
+        .limit(1)
         .get() ?? null
     );
   }

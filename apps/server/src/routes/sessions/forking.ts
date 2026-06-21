@@ -1,6 +1,6 @@
 import { buildSessionContext } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 import { getCtx } from "../../context.ts";
 
 function flattenContent(content: unknown): string {
@@ -20,49 +20,39 @@ export const forkingRoutes = new Elysia({
   name: "routes.forking",
   prefix: "/sessions",
 })
-  .post(
-    "/:id/fork",
-    async ({ params, store }) => {
-      const ctx = getCtx(store);
-      const session = ctx.repos.sessions.findById(params.id);
-      if (!session) {
-        return new Response("Not found", { status: 404 });
-      }
-
-      const forkedTitle = session.title ? `Fork of ${session.title}` : "Fork";
-
-      const newSession = await ctx.repos.sessions.create(
-        session.projectId,
-        session.modelId,
-        {
-          title: forkedTitle,
-          thinkingLevel: session.thinkingLevel,
-          parentSessionId: params.id,
-        }
-      );
-
-      const forkedStorage = new SqliteSessionStorage(ctx.db, newSession.id, {
-        id: newSession.id,
-        createdAt: new Date(newSession.createdAt).toISOString(),
-      });
-
-      try {
-        await forkedStorage.forkFrom(params.id);
-      } catch (err) {
-        await ctx.repos.sessions.delete(newSession.id);
-        throw err;
-      }
-
-      return Response.json(newSession);
-    },
-    {
-      body: t.Optional(
-        t.Object({
-          messageIndex: t.Optional(t.Number()),
-        })
-      ),
+  .post("/:id/fork", async ({ params, store }) => {
+    const ctx = getCtx(store);
+    const session = ctx.repos.sessions.findById(params.id);
+    if (!session) {
+      return new Response("Not found", { status: 404 });
     }
-  )
+
+    const forkedTitle = session.title ? `Fork of ${session.title}` : "Fork";
+
+    const newSession = await ctx.repos.sessions.create(
+      session.projectId,
+      session.modelId,
+      {
+        title: forkedTitle,
+        thinkingLevel: session.thinkingLevel,
+        parentSessionId: params.id,
+      }
+    );
+
+    const forkedStorage = new SqliteSessionStorage(ctx.db, newSession.id, {
+      id: newSession.id,
+      createdAt: new Date(newSession.createdAt).toISOString(),
+    });
+
+    try {
+      await forkedStorage.forkFrom(params.id);
+    } catch (err) {
+      await ctx.repos.sessions.delete(newSession.id);
+      throw err;
+    }
+
+    return Response.json(newSession);
+  })
   .get("/:id/fork-messages", async ({ params, store }) => {
     const ctx = getCtx(store);
     const session = ctx.repos.sessions.findById(params.id);

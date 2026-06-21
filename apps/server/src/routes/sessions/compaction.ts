@@ -1,4 +1,3 @@
-import { getEnvApiKey } from "@earendil-works/pi-ai";
 import type { Api, Model } from "@earendil-works/pi-ai/base";
 import {
   compact,
@@ -8,7 +7,7 @@ import {
 } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
-import { resolveModel } from "../../agent/model-resolver.ts";
+import { resolveAuth, resolveModel } from "../../agent/model-resolver.ts";
 import { getCtx } from "../../context.ts";
 
 export const compactionRoutes = new Elysia({
@@ -30,11 +29,11 @@ export const compactionRoutes = new Elysia({
     });
   }
 
-  const config = ctx.repos.models.getForProject(session.projectId);
-  const provider = config?.provider ?? "";
-  const apiKey = getEnvApiKey(provider);
-  if (!apiKey) {
-    return new Response(`No API key for ${provider} in env`, { status: 500 });
+  const auth = resolveAuth(ctx, session);
+  if (!auth) {
+    return new Response(`No API key for ${model.provider} in env`, {
+      status: 500,
+    });
   }
 
   const storage = new SqliteSessionStorage(ctx.db, params.id, {
@@ -55,7 +54,7 @@ export const compactionRoutes = new Elysia({
     });
   }
 
-  const result = await compact(preparation.value, model.model, apiKey);
+  const result = await compact(preparation.value, auth.model, auth.apiKey);
   if (!result.ok) {
     return new Response(result.error.message, { status: 500 });
   }

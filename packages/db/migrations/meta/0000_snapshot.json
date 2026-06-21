@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "780307b6-e1ee-45fd-abe5-a08d6d657a53",
+  "id": "a321abd0-3a5d-4dd5-88c4-b786525e2872",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "model_configs": {
@@ -58,7 +58,15 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "model_configs_project_id_idx": {
+          "name": "model_configs_project_id_idx",
+          "columns": [
+            "project_id"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "model_configs_project_id_projects_id_fk": {
           "name": "model_configs_project_id_projects_id_fk",
@@ -191,7 +199,16 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "session_entries_session_id_sequence_idx": {
+          "name": "session_entries_session_id_sequence_idx",
+          "columns": [
+            "session_id",
+            "sequence"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "session_entries_session_id_sessions_id_fk": {
           "name": "session_entries_session_id_sessions_id_fk",

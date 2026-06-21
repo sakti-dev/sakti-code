@@ -966,7 +966,7 @@ export class AgentHarness<
         preparation,
         branchEntries,
         customInstructions,
-        signal: new AbortController().signal,
+        signal: this.runAbortController?.signal ?? new AbortController().signal,
       });
       if (hookResult?.cancel) {
         throw new AgentHarnessError("compaction", "Compaction cancelled");
@@ -1050,7 +1050,8 @@ export class AgentHarness<
         replaceInstructions: options?.replaceInstructions,
         label: options?.label,
       };
-      const signal = new AbortController().signal;
+      const signal =
+        this.runAbortController?.signal ?? new AbortController().signal;
       const hookResult = await this.emitHook({
         type: "session_before_tree",
         preparation,
@@ -1081,7 +1082,8 @@ export class AgentHarness<
           model,
           apiKey: auth.apiKey,
           ...(auth.headers === undefined ? {} : { headers: auth.headers }),
-          signal: new AbortController().signal,
+          signal:
+            this.runAbortController?.signal ?? new AbortController().signal,
           ...(hookResult?.customInstructions !== undefined ||
           options?.customInstructions !== undefined
             ? {

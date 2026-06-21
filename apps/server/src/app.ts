@@ -1,5 +1,4 @@
 import { Elysia } from "elysia";
-import { buildWsApp } from "./agent/ws.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { availableModelsRoutes } from "./routes/models/available-models.ts";
 import { modelConfigRoutes } from "./routes/models/models.ts";
@@ -33,7 +32,6 @@ export const app = new Elysia({ prefix: "/api" })
   .use(terminalRoutes)
   .use(forkingRoutes)
   .use(exportRoutes)
-  .use(sessionSettingsRoutes)
-  .use(buildWsApp());
+  .use(sessionSettingsRoutes);
 
 export type App = typeof app;

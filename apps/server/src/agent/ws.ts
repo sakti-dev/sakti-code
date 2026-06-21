@@ -64,6 +64,18 @@ export function unregisterTestConnection(connectionId: string) {
   wsConnections.delete(connectionId);
 }
 
+const wsIdMap = new WeakMap<object, string>();
+
+function getWsId(ws: object): string {
+  const existing = wsIdMap.get(ws);
+  if (existing) {
+    return existing;
+  }
+  const id = crypto.randomUUID();
+  wsIdMap.set(ws, id);
+  return id;
+}
+
 function wireTerminalCallbacks(ctx: ServerContext) {
   ctx.terminalManager.onData = (terminalId, connectionId, data) => {
     pushToConnection(connectionId, {
@@ -85,33 +97,27 @@ function wireTerminalCallbacks(ctx: ServerContext) {
   };
 }
 
-let terminalCallbacksWired = false;
+export function buildWsApp(ctx: ServerContext) {
+  let terminalCallbacksWired = false;
 
-export function buildWsApp() {
   return new Elysia({ name: "ws" }).ws("/ws", {
     open(ws) {
-      const raw = ws as any;
-      raw.data.wsId = raw.raw.id;
-      wsConnections.set(raw.data.wsId, ws);
-      if (!terminalCallbacksWired && raw.data.ctx) {
-        wireTerminalCallbacks(raw.data.ctx as ServerContext);
+      const wsId = getWsId(ws);
+      wsConnections.set(wsId, ws);
+      if (!terminalCallbacksWired) {
+        wireTerminalCallbacks(ctx);
         terminalCallbacksWired = true;
       }
       ws.send(createWelcomeFrame());
     },
     close(ws) {
-      const raw = ws as any;
-      clearStorageForConnection(raw.data.wsId);
-      wsConnections.delete(raw.data.wsId);
-      if (raw.data.ctx) {
-        (raw.data.ctx as ServerContext).terminalManager.closeByConnection(
-          raw.data.wsId
-        );
-      }
+      const wsId = getWsId(ws);
+      clearStorageForConnection(wsId);
+      wsConnections.delete(wsId);
+      ctx.terminalManager.closeByConnection(wsId);
     },
     message(ws, msg) {
-      const { ctx: ctx2, wsId } = (ws as any).data;
-      const ctx = ctx2 as ServerContext;
+      const wsId = getWsId(ws);
       const inMsg = msg as WsIn;
       if (!inMsg.sessionId) {
         ws.send(
