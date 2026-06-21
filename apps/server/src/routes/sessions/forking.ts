@@ -46,7 +46,12 @@ export const forkingRoutes = new Elysia({
         createdAt: new Date(newSession.createdAt).toISOString(),
       });
 
-      await forkedStorage.forkFrom(params.id);
+      try {
+        await forkedStorage.forkFrom(params.id);
+      } catch (err) {
+        await ctx.repos.sessions.delete(newSession.id);
+        throw err;
+      }
 
       return Response.json(newSession);
     },

@@ -40,9 +40,6 @@ describe("initDatabase", () => {
 
     expect(names).toContain("projects");
     expect(names).toContain("sessions");
-    expect(names).toContain("messages");
-    expect(names).toContain("tool_executions");
-    expect(names).toContain("costs");
     expect(names).toContain("settings");
     expect(names).toContain("model_configs");
     expect(names).toContain("session_entries");
@@ -54,15 +51,6 @@ describe("initDatabase", () => {
     db.prepare(
       "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
     ).run("s1", "p1", "claude-sonnet", 1, 1);
-    db.prepare(
-      "INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)"
-    ).run("m1", "s1", "user", "hello", 1);
-    db.prepare(
-      "INSERT INTO tool_executions (id, message_id, session_id, tool_name, arguments, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run("te1", "m1", "s1", "bash", "{}", 1);
-    db.prepare(
-      "INSERT INTO costs (id, session_id, project_id, input_tokens, output_tokens, cost_usd, model_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    ).run("c1", "s1", "p1", 100, 50, 0.01, "claude-sonnet", 1);
     db.prepare(
       "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)"
     ).run("theme", "dark", 1);

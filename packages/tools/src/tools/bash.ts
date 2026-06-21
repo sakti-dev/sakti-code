@@ -283,10 +283,12 @@ export function createBashTool(
 
         const snapshot = await finishOutput();
         const { text: outputText, details } = formatOutput(snapshot);
-        if (exitCode !== 0 && exitCode !== null) {
-          throw new Error(
-            appendStatus(outputText, `Command exited with code ${exitCode}`)
-          );
+        if (exitCode !== 0) {
+          const reason =
+            exitCode === null
+              ? "Command was killed by a signal"
+              : `Command exited with code ${exitCode}`;
+          throw new Error(appendStatus(outputText, reason));
         }
         return { content: [{ type: "text", text: outputText }], details };
       } finally {

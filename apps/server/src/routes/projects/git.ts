@@ -72,18 +72,20 @@ export async function runGit(
     proc.kill();
   }, timeoutMs);
 
-  const code = await proc.exited;
+  const [code, stdout, stderr] = await Promise.all([
+    proc.exited,
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
   clearTimeout(timer);
 
   if (timedOut) {
     return { kind: "timeout", output: "git timed out" };
   }
 
-  const stdout = await new Response(proc.stdout).text();
   if (code === 0) {
     return { kind: "ok", code, output: stdout };
   }
-  const stderr = await new Response(proc.stderr).text();
   return { kind: "ok", code, output: `${stdout}${stderr}`.trim() };
 }
 
