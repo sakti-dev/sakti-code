@@ -1,4 +1,4 @@
-import { mkdir as fsMkdir, writeFile as fsWriteFile } from "node:fs/promises";
+import { mkdir as fsMkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
@@ -20,7 +20,9 @@ export interface WriteOperations {
 }
 
 const defaultWriteOperations: WriteOperations = {
-  writeFile: (path, content) => fsWriteFile(path, content, "utf-8"),
+  writeFile: async (path, content) => {
+    await Bun.write(path, content);
+  },
   mkdir: (dir) => fsMkdir(dir, { recursive: true }).then(() => {}),
 };
 

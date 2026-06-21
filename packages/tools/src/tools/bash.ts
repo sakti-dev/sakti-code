@@ -1,5 +1,4 @@
-import { constants } from "node:fs";
-import { access as fsAccess } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
 import { OutputAccumulator } from "../lib/output-accumulator.ts";
@@ -40,9 +39,7 @@ export interface BashOperations {
 function createLocalBashOperations(): BashOperations {
   return {
     exec: async (command, cwd, { onData, signal, timeout, env }) => {
-      try {
-        await fsAccess(cwd, constants.F_OK);
-      } catch {
+      if (!existsSync(cwd)) {
         throw new Error(
           `Working directory does not exist: ${cwd}\nCannot execute bash commands.`
         );

@@ -1,8 +1,6 @@
-import { accessSync, constants } from "node:fs";
-import { access } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve as nodeResolvePath } from "node:path";
-import { fileURLToPath } from "node:url";
 
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
 
@@ -37,7 +35,7 @@ function normalizePath(input: string, options: PathInputOptions = {}): string {
   }
 
   if (/^file:\/\//.test(normalized)) {
-    return fileURLToPath(normalized);
+    return decodeURIComponent(new URL(normalized).pathname);
   }
 
   return normalized;
@@ -70,21 +68,11 @@ function tryCurlyQuoteVariant(filePath: string): string {
 }
 
 function fileExists(filePath: string): boolean {
-  try {
-    accessSync(filePath, constants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
+  return existsSync(filePath);
 }
 
 export async function pathExists(filePath: string): Promise<boolean> {
-  try {
-    await access(filePath, constants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
+  return existsSync(filePath);
 }
 
 export function expandPath(filePath: string): string {

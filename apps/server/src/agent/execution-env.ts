@@ -1,15 +1,11 @@
-import { writeFileSync } from "node:fs";
 import {
-  access as accessAsync,
   appendFile as appendFileAsync,
   lstat as lstatAsync,
   mkdir as mkdirAsync,
   mkdtemp as mkdtempAsync,
   readdir as readdirAsync,
-  readFile as readFileAsync,
   realpath as realpathAsync,
   rm as rmAsync,
-  writeFile as writeFileAsync,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -172,7 +168,7 @@ export class BunExecutionEnv implements ExecutionEnv {
         dirPath,
         `${options?.prefix ?? ""}${Date.now()}${options?.suffix ?? ""}`
       );
-      writeFileSync(filePath, new Uint8Array(0));
+      await Bun.write(filePath, new Uint8Array(0));
       return ok(filePath);
     } catch (e: unknown) {
       return err(toFileError(e));
@@ -187,13 +183,10 @@ export class BunExecutionEnv implements ExecutionEnv {
       return err(new FileError("aborted", "Operation aborted"));
     }
     try {
-      await accessAsync(resolve(this._cwd, path));
-      return ok(true);
+      const fullPath = resolve(this._cwd, path);
+      const exists = await Bun.file(fullPath).exists();
+      return ok(exists);
     } catch (e: unknown) {
-      const nodeErr = e as { code?: string };
-      if (nodeErr.code === "ENOENT") {
-        return ok(false);
-      }
       return err(toFileError(e, resolve(this._cwd, path)));
     }
   }
@@ -258,8 +251,8 @@ export class BunExecutionEnv implements ExecutionEnv {
     }
     try {
       const fullPath = resolve(this._cwd, path);
-      const data = await readFileAsync(fullPath);
-      return ok(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+      const data = await Bun.file(fullPath).arrayBuffer();
+      return ok(new Uint8Array(data));
     } catch (e: unknown) {
       return err(toFileError(e, resolve(this._cwd, path)));
     }
@@ -274,7 +267,7 @@ export class BunExecutionEnv implements ExecutionEnv {
     }
     try {
       const fullPath = resolve(this._cwd, path);
-      const data = await readFileAsync(fullPath, "utf-8");
+      const data = await Bun.file(fullPath).text();
       return ok(data);
     } catch (e: unknown) {
       return err(toFileError(e, resolve(this._cwd, path)));
@@ -329,7 +322,7 @@ export class BunExecutionEnv implements ExecutionEnv {
     }
     try {
       const fullPath = resolve(this._cwd, path);
-      await writeFileAsync(fullPath, content);
+      await Bun.write(fullPath, content);
       return ok(undefined);
     } catch (e: unknown) {
       return err(toFileError(e, resolve(this._cwd, path)));

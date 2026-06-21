@@ -1,4 +1,4 @@
-import { readFile as fsReadFile, stat as fsStat } from "node:fs/promises";
+import { stat as fsStat } from "node:fs/promises";
 import nodePath from "node:path";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
@@ -65,7 +65,7 @@ export interface GrepOperations {
 
 const defaultGrepOperations: GrepOperations = {
   isDirectory: async (p) => (await fsStat(p)).isDirectory(),
-  readFile: (p) => fsReadFile(p, "utf-8"),
+  readFile: (p) => Bun.file(p).text(),
 };
 
 export interface GrepToolOptions {

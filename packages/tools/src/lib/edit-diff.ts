@@ -1,5 +1,3 @@
-import { constants } from "node:fs";
-import { access, readFile } from "node:fs/promises";
 import * as Diff from "diff";
 import { resolveToCwd } from "./path-utils.ts";
 
@@ -518,17 +516,13 @@ export async function computeEditsDiff(
   const absolutePath = resolveToCwd(path, cwd);
 
   try {
-    try {
-      await access(absolutePath, constants.R_OK);
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error && "code" in error
-          ? `Error code: ${error.code}`
-          : String(error);
-      return { error: `Could not edit file: ${path}. ${errorMessage}.` };
+    if (!(await Bun.file(absolutePath).exists())) {
+      return {
+        error: `Could not edit file: ${path}. Error code: ENOENT.`,
+      };
     }
 
-    const rawContent = await readFile(absolutePath, "utf-8");
+    const rawContent = await Bun.file(absolutePath).text();
     const { text: content } = stripBom(rawContent);
     const normalizedContent = normalizeToLF(content);
     const { baseContent, newContent } = applyEditsToNormalizedContent(

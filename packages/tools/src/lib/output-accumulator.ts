@@ -1,5 +1,3 @@
-import { randomBytes } from "node:crypto";
-import { createWriteStream, type WriteStream } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -22,7 +20,9 @@ export interface OutputSnapshot {
 }
 
 function defaultTempFilePath(prefix: string): string {
-  const id = randomBytes(8).toString("hex");
+  const id = Buffer.from(crypto.getRandomValues(new Uint8Array(8))).toString(
+    "hex"
+  );
   return join(tmpdir(), `${prefix}-${id}.log`);
 }
 
@@ -50,7 +50,7 @@ export class OutputAccumulator {
   private finished = false;
 
   private tempFilePath: string | undefined;
-  private tempFileStream: WriteStream | undefined;
+  private tempFileStream: import("bun").FileSink | undefined;
 
   constructor(options: OutputAccumulatorOptions = {}) {
     this.maxLines = options.maxLines ?? DEFAULT_MAX_LINES;
@@ -124,23 +124,9 @@ export class OutputAccumulator {
     if (!this.tempFileStream) {
       return;
     }
-
-    const stream = this.tempFileStream;
+    const sink = this.tempFileStream;
     this.tempFileStream = undefined;
-
-    await new Promise<void>((resolve, reject) => {
-      const onError = (error: Error) => {
-        stream.off("finish", onFinish);
-        reject(error);
-      };
-      const onFinish = () => {
-        stream.off("error", onError);
-        resolve();
-      };
-      stream.once("error", onError);
-      stream.once("finish", onFinish);
-      stream.end();
-    });
+    await sink.end();
   }
 
   getLastLineBytes(): number {
@@ -220,7 +206,7 @@ export class OutputAccumulator {
       return;
     }
     this.tempFilePath = defaultTempFilePath(this.tempFilePrefix);
-    this.tempFileStream = createWriteStream(this.tempFilePath);
+    this.tempFileStream = Bun.file(this.tempFilePath).writer();
     for (const chunk of this.rawChunks) {
       this.tempFileStream.write(chunk);
     }

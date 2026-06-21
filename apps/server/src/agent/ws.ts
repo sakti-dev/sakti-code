@@ -1,20 +1,11 @@
-import { readFileSync } from "node:fs";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
+import pkg from "../../package.json" with { type: "json" };
 import type { ServerContext } from "../context.ts";
 import type { ErrorFrame, WsHandle, WsIn } from "./ws-handler.ts";
 import { handleMessage } from "./ws-handler.ts";
 
-export const SERVER_VERSION: string = (() => {
-  try {
-    const pkg = JSON.parse(
-      readFileSync(new URL("../../package.json", import.meta.url), "utf-8")
-    );
-    return pkg.version ?? "0.0.0";
-  } catch {
-    return "0.0.0";
-  }
-})();
+export const SERVER_VERSION: string = pkg.version ?? "0.0.0";
 
 export function createWelcomeFrame(): string {
   return JSON.stringify({
