@@ -32,6 +32,7 @@ export interface ServerStoreData {
 
 export interface ServerActions {
   addSession: (session: SessionMeta) => void;
+  removeProject: (projectId: string) => void;
   removeSession: (sessionId: string) => void;
   setActiveProject: (projectId: string) => void;
   setActiveSession: (sessionId: string) => void;
@@ -113,6 +114,12 @@ export function createServerStore(): ServerStore {
       // biome-ignore lint/suspicious/noExplicitAny: SolidJS store deletion requires any cast
       setStore("sessions", sessionId, undefined as any);
       setStore("sessionOrder", (prev) => prev.filter((id) => id !== sessionId));
+    },
+
+    removeProject(projectId) {
+      // biome-ignore lint/suspicious/noExplicitAny: SolidJS store deletion requires any cast
+      setStore("projects", projectId, undefined as any);
+      setStore("projectOrder", (prev) => prev.filter((id) => id !== projectId));
     },
   };
 

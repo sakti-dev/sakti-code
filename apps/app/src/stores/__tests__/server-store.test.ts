@@ -204,3 +204,24 @@ describe("server store — setConnectionStatus", () => {
     expect(store.connection.status).toBe("closed");
   });
 });
+
+describe("server store — removeProject", () => {
+  it("removes project from projects and projectOrder", () => {
+    const { store, actions } = createServerStore();
+    actions.setProjects([
+      { id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 },
+      { id: "p2", name: "B", cwd: "/b", createdAt: 2, updatedAt: 2 },
+    ]);
+
+    actions.removeProject("p1");
+
+    expect(store.projects.p1).toBeUndefined();
+    expect(store.projects.p2).toBeDefined();
+    expect(store.projectOrder).toEqual(["p2"]);
+  });
+
+  it("removing non-existent project does not throw", () => {
+    const { actions } = createServerStore();
+    expect(() => actions.removeProject("nonexistent")).not.toThrow();
+  });
+});
