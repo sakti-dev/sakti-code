@@ -1,4 +1,6 @@
 import { Elysia } from "elysia";
+import { buildWsApp } from "./agent/ws.ts";
+import type { ServerContext } from "./context.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { availableModelsRoutes } from "./routes/models/available-models.ts";
 import { modelConfigRoutes } from "./routes/models/models.ts";
@@ -16,7 +18,7 @@ import { settingsRoutes } from "./routes/settings.ts";
 import { terminalRoutes } from "./routes/workspace/terminals.ts";
 import { workspaceRoutes } from "./routes/workspace/workspace.ts";
 
-export const app = new Elysia({ prefix: "/api" })
+const restApp = new Elysia({ prefix: "/api" })
   .use(healthRoutes)
   .use(projectsRoutes)
   .use(sessionsRoutes)
@@ -34,4 +36,8 @@ export const app = new Elysia({ prefix: "/api" })
   .use(exportRoutes)
   .use(sessionSettingsRoutes);
 
-export type App = typeof app;
+export function buildApp(ctx: ServerContext) {
+  return new Elysia().use(restApp).use(buildWsApp(ctx));
+}
+
+export type App = ReturnType<typeof buildApp>;

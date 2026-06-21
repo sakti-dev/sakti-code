@@ -2,14 +2,16 @@ import type { ElectrobunConfig } from "electrobun";
 
 export default {
   app: {
-    name: "solid-app",
-    identifier: "solidapp.electrobun.dev",
-    version: "0.0.1",
+    name: "sakti-code",
+    identifier: "dev.sakti-code.app",
+    version: "0.1.0",
   },
   build: {
+    bun: {
+      entrypoint: "src/bun/index.ts",
+    },
     copy: {
-      "dist/index.html": "views/mainview/index.html",
-      "dist/assets": "views/mainview/assets",
+      "../app/dist": "web-dist",
     },
     watchIgnore: ["dist/**"],
     mac: {
@@ -21,5 +23,8 @@ export default {
     win: {
       bundleCEF: false,
     },
+  },
+  runtime: {
+    exitOnLastWindowClosed: false,
   },
 } satisfies ElectrobunConfig;

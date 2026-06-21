@@ -2,4 +2,8 @@ import "./app.css";
 import { render } from "solid-js/web";
 import App from "./app";
 
-render(() => <App />, document.getElementById("app") ?? undefined);
+const root = document.getElementById("app");
+if (!root) {
+  throw new Error("Root element #app not found");
+}
+render(() => <App />, root);

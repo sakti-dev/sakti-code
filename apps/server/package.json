@@ -7,6 +7,10 @@
     ".": {
       "types": "./src/app.ts",
       "default": "./src/app.ts"
+    },
+    "./create-server": {
+      "types": "./src/create-server.ts",
+      "default": "./src/create-server.ts"
     }
   },
   "scripts": {

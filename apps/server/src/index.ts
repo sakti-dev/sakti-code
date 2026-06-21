@@ -1,18 +1,18 @@
-import { Database } from "bun:sqlite";
-import { initDatabase } from "@sakti-code/db";
-import { buildWsApp } from "./agent/ws.ts";
-import { app } from "./app.ts";
-import { createContext } from "./context.ts";
+import { createServer } from "./create-server.ts";
 
-const db = await initDatabase(
-  new Database(process.env.SAKTI_DB_PATH ?? "sakti-code.db")
-);
-const ctx = createContext(db);
-app
-  .state("ctx", ctx)
-  .use(buildWsApp(ctx))
-  .compile()
-  .listen(Number(process.env.SAKTI_PORT ?? 3001));
-console.log(
-  `sakti-code server on http://localhost:${process.env.SAKTI_PORT ?? 3001}`
-);
+const sakti = await createServer();
+
+console.log(`sakti-code server on ${sakti.url}`);
+
+function shutdown(signal: string): void {
+  console.log(`\n${signal} received — shutting down...`);
+  sakti.stop();
+  process.exit(0);
+}
+
+process.on("SIGINT", () => {
+  shutdown("SIGINT");
+});
+process.on("SIGTERM", () => {
+  shutdown("SIGTERM");
+});

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { initDatabase } from "@sakti-code/db";
 import { Elysia } from "elysia";
-import { app } from "../app.ts";
+import { buildApp } from "../app.ts";
 import { createContext } from "../context.ts";
 import {
   fauxAssistantMessage,
@@ -79,10 +79,8 @@ describe("route composition", () => {
 
   it("default app serves feature routes in production", async () => {
     const db = await initDatabase(new Database(":memory:"));
-    const server = new Elysia()
-      .state("ctx", createContext(db))
-      .use(app)
-      .compile();
+    const ctx = createContext(db);
+    const server = new Elysia().state("ctx", ctx).use(buildApp(ctx)).compile();
 
     const settingsRes = await server.handle(
       new Request("http://localhost/api/settings")
