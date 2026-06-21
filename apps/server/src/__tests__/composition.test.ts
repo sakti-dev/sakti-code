@@ -74,22 +74,15 @@ describe("route composition", () => {
 
     // A handful of feature endpoints from different changes should respond
     // (not 404) when hit against the default server.
-    const commandsRes = await app.handle(
-      new Request("http://localhost/api/commands")
-    );
-    expect(commandsRes.status).toBe(200);
-
     const settingsRes = await app.handle(
-      new Request("http://localhost/api/sessions/nope/settings")
+      new Request("http://localhost/api/settings")
     );
-    // 404 here means the route IS registered (it validated the session) —
-    // an unregistered route would 404 at the framework level too, so also
-    // assert a known-present route returns its body.
-    expect([404]).toContain(settingsRes.status);
+    expect(settingsRes.status).toBe(200);
 
     const body = await (
-      await app.handle(new Request("http://localhost/api/commands"))
+      await app.handle(new Request("http://localhost/api/settings"))
     ).json();
-    expect(Array.isArray(body.commands)).toBe(true);
+    expect(typeof body).toBe("object");
+    expect(body).not.toBeNull();
   });
 });

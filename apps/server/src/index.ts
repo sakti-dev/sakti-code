@@ -5,7 +5,6 @@ import { buildWsApp } from "./agent/ws.ts";
 import { createContext } from "./context.ts";
 import { availableModelsRoutes } from "./routes/available-models.ts";
 import { bashRoutes } from "./routes/bash.ts";
-import { commandsRoutes } from "./routes/commands.ts";
 import { compactionRoutes } from "./routes/compaction.ts";
 import { exportRoutes } from "./routes/export.ts";
 import { forkingRoutes } from "./routes/forking.ts";
@@ -37,7 +36,6 @@ const defaultRoutes = [
   settingsRoutes,
   modelConfigRoutes,
   availableModelsRoutes,
-  commandsRoutes,
   searchFilesRoutes,
   turnDiffRoutes,
   workspaceRoutes,
