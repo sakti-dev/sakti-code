@@ -4,7 +4,7 @@ const MISSING_FIELDS_RE = /Missing sessionId or message/;
 const NO_ACTIVE_RUN_RE = /No active run/;
 const BUSY_RE = /A run is already active.*steer.*followUp.*abort/;
 
-mock("@earendil-works/pi-ai/base", () => ({
+mock.module("@earendil-works/pi-ai/base", () => ({
   getModel: vi.fn(() => ({
     id: "test-model",
     name: "Test",
@@ -33,7 +33,7 @@ const getModelMock = vi.fn(() => ({
   maxTokens: 4096,
 }));
 
-mock("@earendil-works/pi-ai", () => ({
+mock.module("@earendil-works/pi-ai", () => ({
   streamSimple: streamSimpleMock,
   getModel: getModelMock,
   getEnvApiKey: vi.fn(() => "test-key"),
@@ -56,6 +56,10 @@ function makeFakeWs(): { sent: any[]; ws: { send: (d: string) => void } } {
     sent,
     ws: { send: (d: string) => sent.push(JSON.parse(d)) },
   };
+}
+
+function callFn(fn: (() => void) | null): void {
+  if (fn) fn();
 }
 
 describe("WS message handler", () => {
@@ -198,7 +202,7 @@ describe("WS message handler", () => {
       }
       return false;
     });
-    getActiveHarnessSpy.mockImplementation(() => mockHarness);
+    getActiveHarnessSpy.mockImplementation(() => mockHarness as any);
     runPromptSpy.mockImplementation(
       async (
         _ctx: any,
@@ -214,7 +218,7 @@ describe("WS message handler", () => {
           timestamp: Date.now(),
         });
         return new Promise<void>((resolve) => {
-          promptResolve = resolve;
+          promptResolve = () => resolve();
         });
       }
     );
@@ -281,7 +285,7 @@ describe("WS message handler", () => {
       }
       return false;
     });
-    getActiveHarnessSpy.mockImplementation(() => mockHarness);
+    getActiveHarnessSpy.mockImplementation(() => mockHarness as any);
     runPromptSpy.mockImplementation(
       async (
         _ctx: any,
@@ -298,7 +302,7 @@ describe("WS message handler", () => {
           timestamp: Date.now(),
         });
         return new Promise<void>((resolve) => {
-          promptResolve = resolve;
+          promptResolve = () => resolve();
         });
       }
     );
@@ -332,7 +336,7 @@ describe("WS message handler", () => {
       sent2.filter((f: any) => f.type === "event").length;
     expect(totalEvents).toBeGreaterThan(0);
 
-    promptResolve?.();
+    callFn(promptResolve);
     runPromptSpy.mockRestore();
     isRunActiveSpy.mockRestore();
     abortRunSpy.mockRestore();
@@ -362,7 +366,7 @@ describe("WS message handler", () => {
     isRunActiveSpy.mockImplementation((sessionId: string) =>
       testActiveRuns.has(sessionId)
     );
-    getActiveHarnessSpy.mockImplementation(() => mockHarness);
+    getActiveHarnessSpy.mockImplementation(() => mockHarness as any);
     runPromptSpy.mockImplementation(
       async (
         _ctx: any,
@@ -373,7 +377,7 @@ describe("WS message handler", () => {
       ) => {
         testActiveRuns.add("sess-1");
         return new Promise<void>((resolve) => {
-          promptResolve = resolve;
+          promptResolve = () => resolve();
         });
       }
     );
@@ -408,7 +412,7 @@ describe("WS message handler", () => {
     expect(followErrors.length).toBe(0);
     expect(mockHarness.followUp).toHaveBeenCalled();
 
-    promptResolve?.();
+    callFn(promptResolve);
     runPromptSpy.mockRestore();
     isRunActiveSpy.mockRestore();
     getActiveHarnessSpy.mockRestore();
@@ -444,7 +448,7 @@ describe("WS message handler", () => {
       }
       return false;
     });
-    getActiveHarnessSpy.mockImplementation(() => mockHarness);
+    getActiveHarnessSpy.mockImplementation(() => mockHarness as any);
     runPromptSpy.mockImplementation(
       async (
         _ctx: any,
@@ -460,7 +464,7 @@ describe("WS message handler", () => {
           timestamp: Date.now(),
         });
         return new Promise<void>((resolve) => {
-          promptResolve = resolve;
+          promptResolve = () => resolve();
         });
       }
     );

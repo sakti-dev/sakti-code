@@ -155,7 +155,7 @@ describe("runPrompt", () => {
             contentIndex: 0,
             delta: "Hello!",
             partial: {},
-          },
+          } as any,
         });
         eventCallback({ type: "agent_end", messages: [] });
       }

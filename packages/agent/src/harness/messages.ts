@@ -3,7 +3,20 @@ import type {
   Message,
   TextContent,
 } from "@earendil-works/pi-ai/base";
-import type { AgentMessage } from "../types.ts";
+import type {
+  AgentMessage,
+  BashExecutionMessage,
+  BranchSummaryMessage,
+  CompactionSummaryMessage,
+  CustomMessage,
+} from "../types.ts";
+
+export type {
+  BashExecutionMessage,
+  BranchSummaryMessage,
+  CompactionSummaryMessage,
+  CustomMessage,
+} from "../types.ts";
 
 export const COMPACTION_SUMMARY_PREFIX = `The conversation history before this point was compacted into the following summary:
 
@@ -19,50 +32,6 @@ export const BRANCH_SUMMARY_PREFIX = `The following is a summary of a branch tha
 `;
 
 export const BRANCH_SUMMARY_SUFFIX = "</summary>";
-
-export interface BashExecutionMessage {
-  cancelled: boolean;
-  command: string;
-  excludeFromContext?: boolean;
-  exitCode: number | undefined;
-  fullOutputPath?: string;
-  output: string;
-  role: "bashExecution";
-  timestamp: number;
-  truncated: boolean;
-}
-
-export interface CustomMessage<T = unknown> {
-  content: string | (TextContent | ImageContent)[];
-  customType: string;
-  details?: T;
-  display: boolean;
-  role: "custom";
-  timestamp: number;
-}
-
-export interface BranchSummaryMessage {
-  fromId: string;
-  role: "branchSummary";
-  summary: string;
-  timestamp: number;
-}
-
-export interface CompactionSummaryMessage {
-  role: "compactionSummary";
-  summary: string;
-  timestamp: number;
-  tokensBefore: number;
-}
-
-declare module "../types.ts" {
-  interface CustomAgentMessages {
-    bashExecution: BashExecutionMessage;
-    branchSummary: BranchSummaryMessage;
-    compactionSummary: CompactionSummaryMessage;
-    custom: CustomMessage;
-  }
-}
 
 export function bashExecutionToText(msg: BashExecutionMessage): string {
   let text = `Ran \`${msg.command}\`\n`;

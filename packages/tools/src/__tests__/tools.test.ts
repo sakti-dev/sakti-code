@@ -333,7 +333,7 @@ describe("FindTool", () => {
           cwd: string,
           _opts: { ignore: string[]; limit: number }
         ) =>
-          globSync(pattern, { cwd, ignore: _opts.ignore }).map((p) =>
+          globSync(pattern, { cwd, exclude: _opts.ignore }).map((p) =>
             resolve(cwd, p)
           ),
       },

@@ -64,9 +64,9 @@ type MutableAgentState = Omit<
   "isStreaming" | "streamingMessage" | "pendingToolCalls" | "errorMessage"
 > & {
   isStreaming: boolean;
-  streamingMessage?: AgentMessage;
+  streamingMessage?: AgentMessage | undefined;
   pendingToolCalls: Set<string>;
-  errorMessage?: string;
+  errorMessage?: string | undefined;
 };
 
 function createMutableAgentState(
@@ -105,44 +105,59 @@ function createMutableAgentState(
 
 /** Options for constructing an {@link Agent}. */
 export interface AgentOptions {
-  afterToolCall?: (
-    context: AfterToolCallContext,
-    signal?: AbortSignal
-  ) => Promise<AfterToolCallResult | undefined>;
-  beforeToolCall?: (
-    context: BeforeToolCallContext,
-    signal?: AbortSignal
-  ) => Promise<BeforeToolCallResult | undefined>;
-  convertToLlm?: (messages: AgentMessage[]) => Message[] | Promise<Message[]>;
-  followUpMode?: QueueMode;
-  getApiKey?: (
-    provider: string
-  ) => Promise<string | undefined> | string | undefined;
-  initialState?: Partial<
-    Omit<
-      AgentState,
-      "pendingToolCalls" | "isStreaming" | "streamingMessage" | "errorMessage"
-    >
-  >;
-  maxRetryDelayMs?: number;
-  onPayload?: SimpleStreamOptions["onPayload"];
-  onResponse?: SimpleStreamOptions["onResponse"];
-  prepareNextTurn?: (
-    signal?: AbortSignal
-  ) =>
-    | Promise<AgentLoopTurnUpdate | undefined>
-    | AgentLoopTurnUpdate
+  afterToolCall?:
+    | ((
+        context: AfterToolCallContext,
+        signal?: AbortSignal
+      ) => Promise<AfterToolCallResult | undefined>)
     | undefined;
-  sessionId?: string;
-  steeringMode?: QueueMode;
-  streamFn?: StreamFn;
-  thinkingBudgets?: ThinkingBudgets;
-  toolExecution?: ToolExecutionMode;
-  transformContext?: (
-    messages: AgentMessage[],
-    signal?: AbortSignal
-  ) => Promise<AgentMessage[]>;
-  transport?: Transport;
+  beforeToolCall?:
+    | ((
+        context: BeforeToolCallContext,
+        signal?: AbortSignal
+      ) => Promise<BeforeToolCallResult | undefined>)
+    | undefined;
+  convertToLlm?:
+    | ((messages: AgentMessage[]) => Message[] | Promise<Message[]>)
+    | undefined;
+  followUpMode?: QueueMode | undefined;
+  getApiKey?:
+    | ((provider: string) => Promise<string | undefined> | string | undefined)
+    | undefined;
+  initialState?:
+    | Partial<
+        Omit<
+          AgentState,
+          | "pendingToolCalls"
+          | "isStreaming"
+          | "streamingMessage"
+          | "errorMessage"
+        >
+      >
+    | undefined;
+  maxRetryDelayMs?: number | undefined;
+  onPayload?: SimpleStreamOptions["onPayload"] | undefined;
+  onResponse?: SimpleStreamOptions["onResponse"] | undefined;
+  prepareNextTurn?:
+    | ((
+        signal?: AbortSignal
+      ) =>
+        | Promise<AgentLoopTurnUpdate | undefined>
+        | AgentLoopTurnUpdate
+        | undefined)
+    | undefined;
+  sessionId?: string | undefined;
+  steeringMode?: QueueMode | undefined;
+  streamFn?: StreamFn | undefined;
+  thinkingBudgets?: ThinkingBudgets | undefined;
+  toolExecution?: ToolExecutionMode | undefined;
+  transformContext?:
+    | ((
+        messages: AgentMessage[],
+        signal?: AbortSignal
+      ) => Promise<AgentMessage[]>)
+    | undefined;
+  transport?: Transport | undefined;
 }
 
 class PendingMessageQueue {
@@ -204,39 +219,47 @@ export class Agent {
   public convertToLlm: (
     messages: AgentMessage[]
   ) => Message[] | Promise<Message[]>;
-  public transformContext?: (
-    messages: AgentMessage[],
-    signal?: AbortSignal
-  ) => Promise<AgentMessage[]>;
-  public streamFn: StreamFn;
-  public getApiKey?: (
-    provider: string
-  ) => Promise<string | undefined> | string | undefined;
-  public onPayload?: SimpleStreamOptions["onPayload"];
-  public onResponse?: SimpleStreamOptions["onResponse"];
-  public beforeToolCall?: (
-    context: BeforeToolCallContext,
-    signal?: AbortSignal
-  ) => Promise<BeforeToolCallResult | undefined>;
-  public afterToolCall?: (
-    context: AfterToolCallContext,
-    signal?: AbortSignal
-  ) => Promise<AfterToolCallResult | undefined>;
-  public prepareNextTurn?: (
-    signal?: AbortSignal
-  ) =>
-    | Promise<AgentLoopTurnUpdate | undefined>
-    | AgentLoopTurnUpdate
+  public transformContext?:
+    | ((
+        messages: AgentMessage[],
+        signal?: AbortSignal
+      ) => Promise<AgentMessage[]>)
     | undefined;
-  private activeRun?: ActiveRun;
+  public streamFn: StreamFn;
+  public getApiKey?:
+    | ((provider: string) => Promise<string | undefined> | string | undefined)
+    | undefined;
+  public onPayload?: SimpleStreamOptions["onPayload"] | undefined;
+  public onResponse?: SimpleStreamOptions["onResponse"] | undefined;
+  public beforeToolCall?:
+    | ((
+        context: BeforeToolCallContext,
+        signal?: AbortSignal
+      ) => Promise<BeforeToolCallResult | undefined>)
+    | undefined;
+  public afterToolCall?:
+    | ((
+        context: AfterToolCallContext,
+        signal?: AbortSignal
+      ) => Promise<AfterToolCallResult | undefined>)
+    | undefined;
+  public prepareNextTurn?:
+    | ((
+        signal?: AbortSignal
+      ) =>
+        | Promise<AgentLoopTurnUpdate | undefined>
+        | AgentLoopTurnUpdate
+        | undefined)
+    | undefined;
+  private activeRun?: ActiveRun | undefined;
   /** Session identifier forwarded to providers for cache-aware backends. */
-  public sessionId?: string;
+  public sessionId?: string | undefined;
   /** Optional per-level thinking token budgets forwarded to the stream function. */
-  public thinkingBudgets?: ThinkingBudgets;
+  public thinkingBudgets?: ThinkingBudgets | undefined;
   /** Preferred transport forwarded to the stream function. */
   public transport: Transport;
   /** Optional cap for provider-requested retry delays. */
-  public maxRetryDelayMs?: number;
+  public maxRetryDelayMs?: number | undefined;
   /** Tool execution strategy for assistant messages that contain multiple tool calls. */
   public toolExecution: ToolExecutionMode;
 
@@ -482,15 +505,16 @@ export class Agent {
     let skipInitialSteeringPoll = options.skipInitialSteeringPoll === true;
     return {
       model: this._state.model,
-      reasoning:
-        this._state.thinkingLevel === "off"
-          ? undefined
-          : this._state.thinkingLevel,
+      ...(this._state.thinkingLevel === "off"
+        ? {}
+        : { reasoning: this._state.thinkingLevel }),
       sessionId: this.sessionId,
       onPayload: this.onPayload,
       onResponse: this.onResponse,
       transport: this.transport,
-      thinkingBudgets: this.thinkingBudgets,
+      ...(this.thinkingBudgets === undefined
+        ? {}
+        : { thinkingBudgets: this.thinkingBudgets }),
       maxRetryDelayMs: this.maxRetryDelayMs,
       toolExecution: this.toolExecution,
       beforeToolCall: this.beforeToolCall,

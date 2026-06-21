@@ -43,9 +43,9 @@ export const terminalRoutes = new Elysia({ name: "routes.terminals" })
         );
       }
       const result = ctx.terminalManager.create(body.connectionId, {
-        cwd: body.cwd,
-        cols: body.cols,
-        rows: body.rows,
+        ...(body.cwd === undefined ? {} : { cwd: body.cwd }),
+        ...(body.cols === undefined ? {} : { cols: body.cols }),
+        ...(body.rows === undefined ? {} : { rows: body.rows }),
       });
       return result;
     },

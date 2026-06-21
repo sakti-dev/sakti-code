@@ -1,10 +1,10 @@
-import type { spawn as PtySpawn } from "bun-pty";
+import type { IExitEvent, IPty } from "bun-pty";
 
 export interface ManagedTerminal {
   connectionId: string;
   createdAt: number;
   pid: number;
-  pty: ReturnType<PtySpawn>;
+  pty: IPty;
   terminalId: string;
 }
 
@@ -17,10 +17,22 @@ export type TerminalExitCallback = (
   terminalId: string,
   connectionId: string,
   exitCode: number,
-  signal?: number
+  signal?: number | string
 ) => void;
 
-let ptySpawnFn: typeof PtySpawn | null = null;
+let ptySpawnFn:
+  | ((
+      file: string,
+      args: string[],
+      options: {
+        cwd?: string;
+        cols?: number;
+        rows?: number;
+        name: string;
+        env?: Record<string, string>;
+      }
+    ) => IPty)
+  | null = null;
 let ptyLoadError: string | null = null;
 
 async function loadBunPty(): Promise<void> {
@@ -29,15 +41,14 @@ async function loadBunPty(): Promise<void> {
   }
   try {
     const bunPty = await import("bun-pty");
-    ptySpawnFn = bunPty.spawn as typeof PtySpawn;
+    ptySpawnFn = bunPty.spawn;
   } catch (err) {
     ptyLoadError =
       err instanceof Error ? err.message : "Failed to load bun-pty";
   }
 }
 
-// Eagerly start loading bun-pty at module init so it's ready when routes fire
-const _initPromise = loadBunPty();
+loadBunPty();
 
 export class TerminalManager {
   private readonly terminals = new Map<string, ManagedTerminal>();
@@ -94,14 +105,17 @@ export class TerminalManager {
       }
     });
 
-    pty.onExit(
-      ({ exitCode, signal }: { exitCode: number; signal?: number }) => {
-        this.terminals.delete(terminalId);
-        if (this.onExitCallback) {
-          this.onExitCallback(terminalId, connectionId, exitCode, signal);
-        }
+    pty.onExit((event: IExitEvent) => {
+      this.terminals.delete(terminalId);
+      if (this.onExitCallback) {
+        this.onExitCallback(
+          terminalId,
+          connectionId,
+          event.exitCode,
+          event.signal
+        );
       }
-    );
+    });
 
     return { terminalId, pid: pty.pid };
   }

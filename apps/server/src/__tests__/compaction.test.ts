@@ -41,7 +41,7 @@ async function seedEntries(
         role: i % 2 === 0 ? "user" : "assistant",
         content: `Message ${i}: ${"x".repeat(500)}`,
         timestamp: Date.now(),
-      },
+      } as any,
     });
     parentId = id;
   }

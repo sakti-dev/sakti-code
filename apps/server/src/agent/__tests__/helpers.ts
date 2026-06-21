@@ -127,7 +127,7 @@ export function createMockStore(): SessionStorage {
       modelId: "test-model",
       title: null,
       thinkingLevel: "off",
-      createdAt: 0,
+      createdAt: new Date(0).toISOString(),
       updatedAt: 0,
     })),
     getPathToRoot: vi.fn(async () => []),

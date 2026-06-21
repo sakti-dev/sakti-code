@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import {
   accessSync,
+  appendFileSync,
   constants,
   lstatSync,
   mkdirSync,
@@ -10,15 +11,22 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { join, resolve } from "node:path";
-import type { ExecutionEnv, FileError, FileInfo } from "../../harness/types.ts";
-import { err, ok } from "../../harness/types.ts";
+import { isAbsolute, join, resolve } from "node:path";
+import type {
+  ExecutionEnv,
+  ExecutionEnvExecOptions,
+  FileError,
+  FileInfo,
+  Result,
+} from "../../harness/types.ts";
+import {
+  ExecutionError,
+  err,
+  FileError as FileErrorClass,
+  ok,
+} from "../../harness/types.ts";
 
-function statToFileInfo(
-  _rootDir: string,
-  fullPath: string,
-  name: string
-): FileInfo {
+function statToFileInfo(fullPath: string, name: string): FileInfo {
   const s = lstatSync(fullPath);
   let kind: "file" | "directory" | "symlink";
   if (s.isSymbolicLink()) {
@@ -29,6 +37,26 @@ function statToFileInfo(
     kind = "file";
   }
   return { kind, mtimeMs: s.mtimeMs, name, path: fullPath, size: s.size };
+}
+
+function toFileError(e: unknown): FileError {
+  if (e instanceof FileErrorClass) {
+    return e;
+  }
+  const nodeErr = e as NodeJS.ErrnoException;
+  const code =
+    nodeErr?.code === "ENOENT"
+      ? "not_found"
+      : nodeErr?.code === "EACCES"
+        ? "permission_denied"
+        : nodeErr?.code === "EEXIST"
+          ? "invalid"
+          : nodeErr?.code === "ENOTDIR"
+            ? "not_directory"
+            : nodeErr?.code === "EISDIR"
+              ? "is_directory"
+              : "unknown";
+  return new FileErrorClass(code, e instanceof Error ? e.message : String(e));
 }
 
 export class TestExecutionEnv implements ExecutionEnv {
@@ -42,167 +70,206 @@ export class TestExecutionEnv implements ExecutionEnv {
     return this.rootDir;
   }
 
+  async absolutePath(
+    path: string,
+    _abortSignal?: AbortSignal
+  ): Promise<Result<string, FileError>> {
+    return Promise.resolve(
+      ok(isAbsolute(path) ? path : resolve(this.rootDir, path))
+    );
+  }
+
+  async appendFile(
+    path: string,
+    content: string | Uint8Array,
+    _abortSignal?: AbortSignal
+  ): Promise<Result<void, FileError>> {
+    try {
+      appendFileSync(resolve(this.rootDir, path), content);
+      return Promise.resolve(ok(undefined));
+    } catch (e) {
+      return Promise.resolve(err(toFileError(e)));
+    }
+  }
+
+  async canonicalPath(
+    path: string,
+    _abortSignal?: AbortSignal
+  ): Promise<Result<string, FileError>> {
+    try {
+      return Promise.resolve(ok(realpathSync(resolve(this.rootDir, path))));
+    } catch {
+      return Promise.resolve(ok(resolve(this.rootDir, path)));
+    }
+  }
+
+  cleanup(): Promise<void> {
+    return Promise.resolve();
+  }
+
   async createDir(
     path: string,
     options?: { recursive?: boolean; abortSignal?: AbortSignal }
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<string>>
-      : ReturnType<typeof err>
-  > {
+  ): Promise<Result<void, FileError>> {
     try {
       mkdirSync(resolve(this.rootDir, path), { recursive: options?.recursive });
-      return ok(resolve(this.rootDir, path));
+      return Promise.resolve(ok(undefined));
+    } catch (e) {
+      return Promise.resolve(err(toFileError(e)));
+    }
+  }
+
+  async createTempDir(
+    _prefix?: string,
+    _abortSignal?: AbortSignal
+  ): Promise<Result<string, FileError>> {
+    const dir = join(
+      this.rootDir,
+      `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
+    mkdirSync(dir, { recursive: true });
+    return Promise.resolve(ok(dir));
+  }
+
+  async createTempFile(options?: {
+    prefix?: string;
+    suffix?: string;
+    abortSignal?: AbortSignal;
+  }): Promise<Result<string, FileError>> {
+    const dir = join(this.rootDir, `tmp-${Date.now()}`);
+    mkdirSync(dir, { recursive: true });
+    const file = join(
+      dir,
+      `${options?.prefix ?? ""}${Date.now()}${options?.suffix ?? ""}`
+    );
+    writeFileSync(file, "");
+    return Promise.resolve(ok(file));
+  }
+
+  async exists(
+    path: string,
+    _abortSignal?: AbortSignal
+  ): Promise<Result<boolean, FileError>> {
+    try {
+      accessSync(resolve(this.rootDir, path), constants.F_OK);
+      return Promise.resolve(ok(true));
+    } catch {
+      return Promise.resolve(ok(false));
+    }
+  }
+
+  async exec(
+    command: string,
+    options?: ExecutionEnvExecOptions
+  ): Promise<
+    Result<{ stdout: string; stderr: string; exitCode: number }, ExecutionError>
+  > {
+    try {
+      const stdout = execSync(command, {
+        encoding: "utf-8",
+        cwd: options?.cwd ?? this.rootDir,
+        timeout: options?.timeout ? options.timeout * 1000 : undefined,
+      });
+      return Promise.resolve(ok({ stdout, stderr: "", exitCode: 0 }));
     } catch (e: unknown) {
-      const code =
-        (e as NodeJS.ErrnoException).code === "EEXIST"
-          ? "already_exists"
-          : "write_failed";
-      return err({ code } as FileError);
-    }
-  }
-
-  async writeFile(
-    path: string,
-    content: string,
-    _options?: { abortSignal?: AbortSignal }
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<void>>
-      : ReturnType<typeof err>
-  > {
-    try {
-      writeFileSync(resolve(this.rootDir, path), content);
-      return ok(undefined);
-    } catch {
-      return err({ code: "write_failed" } as FileError);
-    }
-  }
-
-  async readTextFile(
-    path: string,
-    _signal?: AbortSignal
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<string>>
-      : ReturnType<typeof err>
-  > {
-    try {
-      return ok(readFileSync(resolve(this.rootDir, path), "utf-8"));
-    } catch {
-      return err({ code: "not_found" } as FileError);
+      const execErr = e as {
+        stdout?: string;
+        stderr?: string;
+        status?: number;
+      };
+      if (execErr.status !== undefined) {
+        return Promise.resolve(
+          ok({
+            stdout: execErr.stdout ?? "",
+            stderr: execErr.stderr ?? "",
+            exitCode: execErr.status,
+          })
+        );
+      }
+      return Promise.resolve(
+        err(
+          new ExecutionError(
+            "unknown",
+            e instanceof Error ? e.message : String(e)
+          )
+        )
+      );
     }
   }
 
   async fileInfo(
     path: string,
-    _signal?: AbortSignal
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<FileInfo>>
-      : ReturnType<typeof err>
-  > {
+    _abortSignal?: AbortSignal
+  ): Promise<Result<FileInfo, FileError>> {
     try {
       const fullPath = resolve(this.rootDir, path);
       const name = path.split("/").pop() ?? path;
-      return ok(statToFileInfo(this.rootDir, fullPath, name));
-    } catch {
-      return err({ code: "not_found" } as FileError);
-    }
-  }
-
-  async exists(
-    path: string,
-    _signal?: AbortSignal
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<boolean>>
-      : ReturnType<typeof err>
-  > {
-    try {
-      accessSync(resolve(this.rootDir, path), constants.F_OK);
-      return ok(true);
-    } catch {
-      return ok(false);
-    }
-  }
-
-  async listDir(
-    path: string,
-    _signal?: AbortSignal
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<FileInfo[]>>
-      : ReturnType<typeof err>
-  > {
-    try {
-      const dirPath = resolve(this.rootDir, path);
-      const entries = readdirSync(dirPath, { withFileTypes: true });
-      return ok(
-        entries.map((e) =>
-          statToFileInfo(this.rootDir, join(dirPath, e.name), e.name)
-        )
-      );
-    } catch {
-      return err({ code: "not_found" } as FileError);
+      return Promise.resolve(ok(statToFileInfo(fullPath, name)));
+    } catch (e) {
+      return Promise.resolve(err(toFileError(e)));
     }
   }
 
   async joinPath(
     parts: string[],
-    _signal?: AbortSignal
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<string>>
-      : ReturnType<typeof err>
-  > {
-    return ok(resolve(this.rootDir, ...parts));
+    _abortSignal?: AbortSignal
+  ): Promise<Result<string, FileError>> {
+    return Promise.resolve(ok(resolve(this.rootDir, ...parts)));
   }
 
-  async canonicalPath(
+  async listDir(
     path: string,
-    _signal?: AbortSignal
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<string>>
-      : ReturnType<typeof err>
-  > {
+    _abortSignal?: AbortSignal
+  ): Promise<Result<FileInfo[], FileError>> {
     try {
-      return ok(realpathSync(resolve(this.rootDir, path)));
-    } catch {
-      return ok(resolve(this.rootDir, path));
+      const dirPath = resolve(this.rootDir, path);
+      const entries = readdirSync(dirPath, { withFileTypes: true });
+      return Promise.resolve(
+        ok(entries.map((e) => statToFileInfo(join(dirPath, e.name), e.name)))
+      );
+    } catch (e) {
+      return Promise.resolve(err(toFileError(e)));
     }
   }
 
   async readBinaryFile(
     path: string,
-    _signal?: AbortSignal
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<Uint8Array>>
-      : ReturnType<typeof err>
-  > {
+    _abortSignal?: AbortSignal
+  ): Promise<Result<Uint8Array, FileError>> {
     try {
-      return ok(new Uint8Array(readFileSync(resolve(this.rootDir, path))));
-    } catch {
-      return err({ code: "not_found" } as FileError);
+      return Promise.resolve(
+        ok(new Uint8Array(readFileSync(resolve(this.rootDir, path))))
+      );
+    } catch (e) {
+      return Promise.resolve(err(toFileError(e)));
+    }
+  }
+
+  async readTextFile(
+    path: string,
+    _abortSignal?: AbortSignal
+  ): Promise<Result<string, FileError>> {
+    try {
+      return Promise.resolve(
+        ok(readFileSync(resolve(this.rootDir, path), "utf-8"))
+      );
+    } catch (e) {
+      return Promise.resolve(err(toFileError(e)));
     }
   }
 
   async readTextLines(
     path: string,
     options?: { maxLines?: number; abortSignal?: AbortSignal }
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<string[]>>
-      : ReturnType<typeof err>
-  > {
+  ): Promise<Result<string[], FileError>> {
     const result = await this.readTextFile(path);
     if (!result.ok) {
       return result;
     }
     const lines = result.value.split("\n");
-    return ok(options?.maxLines ? lines.slice(0, options.maxLines) : lines);
+    return Promise.resolve(
+      ok(options?.maxLines ? lines.slice(0, options.maxLines) : lines)
+    );
   }
 
   async remove(
@@ -212,80 +279,28 @@ export class TestExecutionEnv implements ExecutionEnv {
       force?: boolean;
       abortSignal?: AbortSignal;
     }
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<void>>
-      : ReturnType<typeof err>
-  > {
+  ): Promise<Result<void, FileError>> {
     try {
       rmSync(resolve(this.rootDir, path), {
         recursive: options?.recursive,
         force: options?.force,
       });
-      return ok(undefined);
-    } catch {
-      return err({ code: "write_failed" } as FileError);
+      return Promise.resolve(ok(undefined));
+    } catch (e) {
+      return Promise.resolve(err(toFileError(e)));
     }
   }
 
-  async createTempDir(
-    _prefix?: string,
-    _signal?: AbortSignal
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<string>>
-      : ReturnType<typeof err>
-  > {
-    const dir = join(
-      this.rootDir,
-      `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    );
-    mkdirSync(dir, { recursive: true });
-    return ok(dir);
-  }
-
-  async createTempFile(options?: {
-    prefix?: string;
-    suffix?: string;
-    abortSignal?: AbortSignal;
-  }): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<typeof ok<string>>
-      : ReturnType<typeof err>
-  > {
-    const dir = join(this.rootDir, `tmp-${Date.now()}`);
-    mkdirSync(dir, { recursive: true });
-    const file = join(
-      dir,
-      `${options?.prefix ?? ""}${Date.now()}${options?.suffix ?? ""}`
-    );
-    writeFileSync(file, "");
-    return ok(file);
-  }
-
-  async exec(
-    command: string,
-    _options?: { cwd?: string; timeout?: number; abortSignal?: AbortSignal }
-  ): Promise<
-    typeof ok extends typeof err
-      ? ReturnType<
-          typeof ok<{ stdout: string; stderr: string; exitCode: number }>
-        >
-      : ReturnType<typeof err>
-  > {
+  async writeFile(
+    path: string,
+    content: string | Uint8Array,
+    _abortSignal?: AbortSignal
+  ): Promise<Result<void, FileError>> {
     try {
-      const stdout = execSync(command, {
-        encoding: "utf-8",
-        cwd: this.rootDir,
-      });
-      return ok({ stdout, stderr: "", exitCode: 0 });
-    } catch (e: unknown) {
-      const err2 = e as { stdout?: string; stderr?: string; status?: number };
-      return err({ code: "exec_failed", message: err2.stderr ?? String(e) });
+      writeFileSync(resolve(this.rootDir, path), content);
+      return Promise.resolve(ok(undefined));
+    } catch (e) {
+      return Promise.resolve(err(toFileError(e)));
     }
-  }
-
-  cleanup(): Promise<void> {
-    return Promise.resolve();
   }
 }

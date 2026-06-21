@@ -17,7 +17,7 @@ export interface ShellCaptureOptions
 export interface ShellCaptureResult {
   cancelled: boolean;
   exitCode: number | undefined;
-  fullOutputPath?: string;
+  fullOutputPath?: string | undefined;
   output: string;
   truncated: boolean;
 }
@@ -99,7 +99,9 @@ export async function executeShellWithCapture(
       const tempFile = await env.createTempFile({
         prefix: "bash-",
         suffix: ".log",
-        abortSignal: options?.abortSignal,
+        ...(options?.abortSignal === undefined
+          ? {}
+          : { abortSignal: options.abortSignal }),
       });
       if (!tempFile.ok) {
         return err(toExecutionError(tempFile.error));

@@ -11,14 +11,12 @@ describe("SqliteSessionStore", () => {
   let db: any;
   let tmpDir: string;
   let store: SqliteSessionStore;
-  let _sessionRepo: SessionRepo;
 
   beforeAll(async () => {
     tmpDir = mkdtempSync(join(import.meta.dirname!, "test-XXXXXX"));
     const sqlite = new Database(join(tmpDir, "test.db"));
     db = await initDatabase(sqlite);
     store = new SqliteSessionStore(db);
-    _sessionRepo = new SessionRepo(db);
     db.$client
       .prepare(
         "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)"
@@ -56,6 +54,10 @@ describe("SqliteSessionStore", () => {
     const asstMsg: AgentMessage = {
       role: "assistant",
       content: [{ type: "text", text: "hi there" }],
+      api: "openai-completions",
+      provider: "openai",
+      model: "gpt-4o",
+      stopReason: "stop",
       usage: {
         input: 10,
         output: 5,
@@ -69,7 +71,7 @@ describe("SqliteSessionStore", () => {
     await store.appendMessage("s1", asstMsg);
 
     const toolMsg: AgentMessage = {
-      role: "tool",
+      role: "toolResult",
       toolCallId: "tc_1",
       toolName: "bash",
       content: [{ type: "text", text: "ok" }],
@@ -83,7 +85,7 @@ describe("SqliteSessionStore", () => {
     expect(loaded[0]?.role).toBe("user");
     expect((loaded[0] as any).content).toBe("hello");
     expect(loaded[1]?.role).toBe("assistant");
-    expect(loaded[2]?.role).toBe("tool");
+    expect(loaded[2]?.role).toBe("toolResult");
     expect((loaded[2] as any).toolCallId).toBe("tc_1");
   });
 
@@ -96,6 +98,10 @@ describe("SqliteSessionStore", () => {
     const recent: AgentMessage = {
       role: "assistant",
       content: [{ type: "text", text: "ok" }],
+      api: "openai-completions",
+      provider: "openai",
+      model: "gpt-4o",
+      stopReason: "stop",
       usage: {
         input: 5,
         output: 3,
@@ -127,6 +133,9 @@ describe("SqliteSessionStore", () => {
     const errorMsg: AgentMessage = {
       role: "assistant",
       content: [{ type: "text", text: "billing exceeded" }],
+      api: "openai-completions",
+      provider: "openai",
+      model: "gpt-4o",
       usage: {
         input: 0,
         output: 0,
@@ -154,7 +163,6 @@ describe("SessionRepo fork support", () => {
   let db: any;
   let tmpDir: string;
   let sessionRepo: SessionRepo;
-  let _projectId: string;
   let parentSessionId: string;
 
   beforeAll(async () => {
@@ -168,7 +176,6 @@ describe("SessionRepo fork support", () => {
         "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('fp1', 'ForkTest', '/tmp', 1, 1)"
       )
       .run();
-    _projectId = "fp1";
     // Create a parent session
     parentSessionId = (
       await sessionRepo.create("fp1", "gpt-4o", { title: "Original" })

@@ -242,8 +242,8 @@ export class AgentHarness<
   readonly env: ExecutionEnv;
   private session: Session;
   private phase: AgentHarnessPhase = "idle";
-  private runAbortController?: AbortController;
-  private runPromise?: Promise<void>;
+  private runAbortController?: AbortController | undefined;
+  private runPromise?: Promise<void> | undefined;
   private pendingSessionWrites: PendingSessionWrite[] = [];
   private model: Model<any>;
   private thinkingLevel: ThinkingLevel;
@@ -498,13 +498,17 @@ export class AgentHarness<
             streamOptions?.signal
           );
         },
-        reasoning: streamOptions?.reasoning,
-        signal: streamOptions?.signal,
+        ...(streamOptions?.reasoning === undefined
+          ? {}
+          : { reasoning: streamOptions.reasoning }),
+        ...(streamOptions?.signal === undefined
+          ? {}
+          : { signal: streamOptions.signal }),
         sessionId: turnState.sessionId,
         timeoutMs: requestOptions.timeoutMs,
         transport: requestOptions.transport,
         apiKey: auth?.apiKey,
-      });
+      } as Parameters<typeof streamSimple>[2]);
     };
   }
 
@@ -534,8 +538,9 @@ export class AgentHarness<
     const turnState = getTurnState();
     return {
       model: turnState.model,
-      reasoning:
-        turnState.thinkingLevel === "off" ? undefined : turnState.thinkingLevel,
+      ...(turnState.thinkingLevel === "off"
+        ? {}
+        : { reasoning: turnState.thinkingLevel }),
       convertToLlm,
       transformContext: async (messages) => {
         const result = await this.emitHook({
@@ -1075,12 +1080,23 @@ export class AgentHarness<
         const branchSummary = await generateBranchSummary(entries, {
           model,
           apiKey: auth.apiKey,
-          headers: auth.headers,
+          ...(auth.headers === undefined ? {} : { headers: auth.headers }),
           signal: new AbortController().signal,
-          customInstructions:
-            hookResult?.customInstructions ?? options?.customInstructions,
-          replaceInstructions:
-            hookResult?.replaceInstructions ?? options?.replaceInstructions,
+          ...(hookResult?.customInstructions !== undefined ||
+          options?.customInstructions !== undefined
+            ? {
+                customInstructions:
+                  hookResult?.customInstructions ?? options?.customInstructions,
+              }
+            : {}),
+          ...((hookResult?.replaceInstructions ??
+            options?.replaceInstructions) === undefined
+            ? {}
+            : {
+                replaceInstructions:
+                  hookResult?.replaceInstructions ??
+                  options?.replaceInstructions,
+              }),
         });
         if (!branchSummary.ok) {
           if (branchSummary.error.code === "aborted") {

@@ -57,8 +57,8 @@ describe("fork routes", () => {
     const forked = await res.json();
     const msgs = ctx.repos.messages.loadBySession(forked.id);
     expect(msgs).toHaveLength(2);
-    expect(msgs[0].content).toBe("A");
-    expect(msgs[1].content).toBe("B");
+    expect(msgs[0]!.content).toBe("A");
+    expect(msgs[1]!.content).toBe("B");
   });
 
   it("POST /api/sessions/nope/fork returns 404", async () => {

@@ -79,7 +79,8 @@
     {
       "includes": [
         "apps/server/src/agent/**",
-        "apps/server/src/routes/session-controls.ts"
+        "apps/server/src/routes/session-controls.ts",
+        "apps/server/src/terminal/**"
       ],
       "linter": {
         "rules": {

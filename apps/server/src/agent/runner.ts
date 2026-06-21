@@ -2,6 +2,7 @@ import { getEnvApiKey } from "@earendil-works/pi-ai";
 import type {
   AgentHarness,
   AgentHarnessEvent,
+  QueueMode,
   SessionStorage,
   ThinkingLevel,
 } from "@sakti-code/agent";
@@ -153,8 +154,12 @@ export async function runPrompt(
     model,
     session: sessionInstance,
     tools,
-    followUpMode: settings.follow_up_mode,
-    steeringMode: settings.steering_mode,
+    ...(settings.follow_up_mode === undefined
+      ? {}
+      : { followUpMode: settings.follow_up_mode as QueueMode }),
+    ...(settings.steering_mode === undefined
+      ? {}
+      : { steeringMode: settings.steering_mode as QueueMode }),
     thinkingLevel,
     getApiKeyAndHeaders,
   });

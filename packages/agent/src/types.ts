@@ -56,8 +56,8 @@ export type AgentToolCall = Extract<
  * `reason` becomes the text shown in that error result. If omitted, a default blocked message is used.
  */
 export interface BeforeToolCallResult {
-  block?: boolean;
-  reason?: string;
+  block?: boolean | undefined;
+  reason?: string | undefined;
 }
 
 /**
@@ -73,14 +73,14 @@ export interface BeforeToolCallResult {
  * There is no deep merge for `content` or `details`.
  */
 export interface AfterToolCallResult {
-  content?: (TextContent | ImageContent)[];
+  content?: (TextContent | ImageContent)[] | undefined;
   details?: unknown;
-  isError?: boolean;
+  isError?: boolean | undefined;
   /**
    * Hint that the agent should stop after the current tool batch.
    * Early termination only happens when every finalized tool result in the batch sets this to true.
    */
-  terminate?: boolean;
+  terminate?: boolean | undefined;
 }
 
 /** Context passed to `beforeToolCall`. */
@@ -126,16 +126,16 @@ export interface ShouldStopAfterTurnContext {
 /** Replacement runtime state used by the agent loop before starting another provider request. */
 export interface AgentLoopTurnUpdate {
   /** Context for the next provider request. */
-  context?: AgentContext;
+  context?: AgentContext | undefined;
   /** Model for the next provider request. */
-  model?: Model<any>;
+  model?: Model<any> | undefined;
   /** Thinking level for the next provider request. */
-  thinkingLevel?: ThinkingLevel;
+  thinkingLevel?: ThinkingLevel | undefined;
 }
 
 export interface PrepareNextTurnContext extends ShouldStopAfterTurnContext {}
 
-export interface AgentLoopConfig extends SimpleStreamOptions {
+export interface AgentLoopConfig {
   /**
    * Called after a tool finishes executing, before `tool_execution_end` and tool-result message events are emitted.
    *
@@ -148,10 +148,14 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
    * Any omitted fields keep their original values. No deep merge is performed.
    * The hook receives the agent abort signal and is responsible for honoring it.
    */
-  afterToolCall?: (
-    context: AfterToolCallContext,
-    signal?: AbortSignal
-  ) => Promise<AfterToolCallResult | undefined>;
+  afterToolCall?:
+    | ((
+        context: AfterToolCallContext,
+        signal?: AbortSignal
+      ) => Promise<AfterToolCallResult | undefined>)
+    | undefined;
+
+  apiKey?: string | undefined;
 
   /**
    * Called before a tool is executed, after arguments have been validated.
@@ -159,10 +163,13 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
    * Return `{ block: true }` to prevent execution. The loop emits an error tool result instead.
    * The hook receives the agent abort signal and is responsible for honoring it.
    */
-  beforeToolCall?: (
-    context: BeforeToolCallContext,
-    signal?: AbortSignal
-  ) => Promise<BeforeToolCallResult | undefined>;
+  beforeToolCall?:
+    | ((
+        context: BeforeToolCallContext,
+        signal?: AbortSignal
+      ) => Promise<BeforeToolCallResult | undefined>)
+    | undefined;
+  cacheRetention?: SimpleStreamOptions["cacheRetention"] | undefined;
 
   /**
    * Converts AgentMessage[] to LLM-compatible Message[] before each LLM call.
@@ -200,9 +207,9 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
    *
    * Contract: must not throw or reject. Return undefined when no key is available.
    */
-  getApiKey?: (
-    provider: string
-  ) => Promise<string | undefined> | string | undefined;
+  getApiKey?:
+    | ((provider: string) => Promise<string | undefined> | string | undefined)
+    | undefined;
 
   /**
    * Returns follow-up messages to process after the agent would otherwise stop.
@@ -215,7 +222,7 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
    *
    * Contract: must not throw or reject. Return [] when no follow-up messages are available.
    */
-  getFollowUpMessages?: () => Promise<AgentMessage[]>;
+  getFollowUpMessages?: (() => Promise<AgentMessage[]>) | undefined;
 
   /**
    * Returns steering messages to inject into the conversation mid-run.
@@ -228,21 +235,30 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
    *
    * Contract: must not throw or reject. Return [] when no steering messages are available.
    */
-  getSteeringMessages?: () => Promise<AgentMessage[]>;
+  getSteeringMessages?: (() => Promise<AgentMessage[]>) | undefined;
+  headers?: Record<string, string> | undefined;
+  maxRetries?: number | undefined;
+  maxRetryDelayMs?: number | undefined;
+  metadata?: SimpleStreamOptions["metadata"] | undefined;
   model: Model<any>;
+  onPayload?: SimpleStreamOptions["onPayload"] | undefined;
+  onResponse?: SimpleStreamOptions["onResponse"] | undefined;
 
   /**
    * Called after `turn_end` and before the loop decides whether another provider request should start.
    * Return replacement context/model/thinking state to affect the next turn in this run.
    * Return undefined to keep using the current context/config.
    */
-  prepareNextTurn?: (
-    context: PrepareNextTurnContext
-  ) =>
-    | AgentLoopTurnUpdate
-    | undefined
-    | Promise<AgentLoopTurnUpdate | undefined>;
-
+  prepareNextTurn?:
+    | ((
+        context: PrepareNextTurnContext
+      ) =>
+        | AgentLoopTurnUpdate
+        | undefined
+        | Promise<AgentLoopTurnUpdate | undefined>)
+    | undefined;
+  reasoning?: SimpleStreamOptions["reasoning"] | undefined;
+  sessionId?: string | undefined;
   /**
    * Called after each turn fully completes and `turn_end` has been emitted.
    *
@@ -253,9 +269,12 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
    *
    * Contract: must not throw or reject. Throwing interrupts the low-level agent loop without producing a normal event sequence.
    */
-  shouldStopAfterTurn?: (
-    context: ShouldStopAfterTurnContext
-  ) => boolean | Promise<boolean>;
+  shouldStopAfterTurn?:
+    | ((context: ShouldStopAfterTurnContext) => boolean | Promise<boolean>)
+    | undefined;
+  signal?: AbortSignal | undefined;
+  thinkingBudgets?: SimpleStreamOptions["thinkingBudgets"] | undefined;
+  timeoutMs?: number | undefined;
 
   /**
    * Tool execution mode.
@@ -266,7 +285,7 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
    *
    * Default: "parallel"
    */
-  toolExecution?: ToolExecutionMode;
+  toolExecution?: ToolExecutionMode | undefined;
 
   /**
    * Optional transform applied to the context before `convertToLlm`.
@@ -288,10 +307,13 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
    * }
    * ```
    */
-  transformContext?: (
-    messages: AgentMessage[],
-    signal?: AbortSignal
-  ) => Promise<AgentMessage[]>;
+  transformContext?:
+    | ((
+        messages: AgentMessage[],
+        signal?: AbortSignal
+      ) => Promise<AgentMessage[]>)
+    | undefined;
+  transport?: SimpleStreamOptions["transport"] | undefined;
 }
 
 /**
@@ -323,13 +345,47 @@ export type ThinkingLevel =
  */
 export type CustomAgentMessages = {};
 
-/**
- * AgentMessage: Union of LLM messages + custom messages.
- * This abstraction allows apps to add custom message types while maintaining
- * type safety and compatibility with the base LLM messages.
- */
+export interface CustomMessage<T = unknown> {
+  content: string | (TextContent | ImageContent)[];
+  customType: string;
+  details?: T;
+  display: boolean;
+  role: "custom";
+  timestamp: number;
+}
+
+export interface BashExecutionMessage {
+  cancelled: boolean;
+  command: string;
+  excludeFromContext?: boolean;
+  exitCode: number | undefined;
+  fullOutputPath?: string;
+  output: string;
+  role: "bashExecution";
+  timestamp: number;
+  truncated: boolean;
+}
+
+export interface BranchSummaryMessage {
+  fromId: string;
+  role: "branchSummary";
+  summary: string;
+  timestamp: number;
+}
+
+export interface CompactionSummaryMessage {
+  role: "compactionSummary";
+  summary: string;
+  timestamp: number;
+  tokensBefore: number;
+}
+
 export type AgentMessage =
   | Message
+  | CustomMessage
+  | BashExecutionMessage
+  | BranchSummaryMessage
+  | CompactionSummaryMessage
   | CustomAgentMessages[keyof CustomAgentMessages];
 
 /**
@@ -340,7 +396,7 @@ export type AgentMessage =
  */
 export interface AgentState {
   /** Error message from the most recent failed or aborted assistant turn, if any. */
-  readonly errorMessage?: string;
+  readonly errorMessage?: string | undefined;
   /**
    * True while the agent is processing a prompt or continuation.
    *
@@ -355,7 +411,7 @@ export interface AgentState {
   /** Tool call ids currently executing. */
   readonly pendingToolCalls: ReadonlySet<string>;
   /** Partial assistant message for the current streamed response, if any. */
-  readonly streamingMessage?: AgentMessage;
+  readonly streamingMessage?: AgentMessage | undefined;
   /** System prompt sent with each model request. */
   systemPrompt: string;
   /** Requested reasoning level for future turns. */
@@ -375,7 +431,7 @@ export interface AgentToolResult<T> {
    * Hint that the agent should stop after the current tool batch.
    * Early termination only happens when every finalized tool result in the batch sets this to true.
    */
-  terminate?: boolean;
+  terminate?: boolean | undefined;
 }
 
 /**
@@ -407,14 +463,14 @@ export interface AgentTool<
    *
    * If omitted, the default execution mode applies.
    */
-  executionMode?: ToolExecutionMode;
+  executionMode?: ToolExecutionMode | undefined;
   /** Human-readable label for UI display. */
   label: string;
   /**
    * Optional compatibility shim for raw tool-call arguments before schema validation.
    * Must return an object that matches `TParameters`.
    */
-  prepareArguments?: (args: unknown) => Static<TParameters>;
+  prepareArguments?: ((args: unknown) => Static<TParameters>) | undefined;
 }
 
 /** Context snapshot passed into the low-level agent loop. */
@@ -424,7 +480,7 @@ export interface AgentContext {
   /** System prompt included with the request. */
   systemPrompt: string;
   /** Tools available for this run. */
-  tools?: AgentTool<any>[];
+  tools?: AgentTool<any>[] | undefined;
 }
 
 /**

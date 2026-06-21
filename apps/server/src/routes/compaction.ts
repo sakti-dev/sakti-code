@@ -1,5 +1,5 @@
 import { getEnvApiKey } from "@earendil-works/pi-ai";
-import type { Model } from "@earendil-works/pi-ai/base";
+import type { Api, Model } from "@earendil-works/pi-ai/base";
 import {
   compact,
   DEFAULT_COMPACTION_SETTINGS,
@@ -19,7 +19,7 @@ export const compactionRoutes = new Elysia({ name: "routes.compaction" }).post(
       return new Response("Not found", { status: 404 });
     }
 
-    let model: { model: Model<unknown>; provider: string };
+    let model: { model: Model<Api>; provider: string };
     try {
       model = resolveModel(ctx, session);
     } catch {

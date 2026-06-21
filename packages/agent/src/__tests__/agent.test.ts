@@ -674,7 +674,7 @@ describe("Agent", () => {
     });
 
     expect(hasQueuedFollowUp).toBe(true);
-    expect(agent.state.messages[agent.state.messages.length - 1].role).toBe(
+    expect(agent.state.messages[agent.state.messages.length - 1]!.role).toBe(
       "assistant"
     );
   });

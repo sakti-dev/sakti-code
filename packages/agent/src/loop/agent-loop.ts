@@ -7,6 +7,7 @@ import {
   type AssistantMessage,
   type Context,
   EventStream,
+  type SimpleStreamOptions,
   streamSimple,
   type ToolResultMessage,
   validateToolArguments,
@@ -71,7 +72,7 @@ export function agentLoopContinue(
     throw new Error("Cannot continue: no messages in context");
   }
 
-  if (context.messages[context.messages.length - 1].role === "assistant") {
+  if (context.messages[context.messages.length - 1]!.role === "assistant") {
     throw new Error("Cannot continue from message role: assistant");
   }
 
@@ -128,7 +129,7 @@ export async function runAgentLoopContinue(
     throw new Error("Cannot continue: no messages in context");
   }
 
-  if (context.messages[context.messages.length - 1].role === "assistant") {
+  if (context.messages[context.messages.length - 1]!.role === "assistant") {
     throw new Error("Cannot continue from message role: assistant");
   }
 
@@ -239,15 +240,16 @@ async function runLoop(
       const nextTurnSnapshot = await config.prepareNextTurn?.(nextTurnContext);
       if (nextTurnSnapshot) {
         currentContext = nextTurnSnapshot.context ?? currentContext;
+        const reasoning =
+          nextTurnSnapshot.thinkingLevel === undefined
+            ? config.reasoning
+            : nextTurnSnapshot.thinkingLevel === "off"
+              ? undefined
+              : nextTurnSnapshot.thinkingLevel;
         config = {
           ...config,
           model: nextTurnSnapshot.model ?? config.model,
-          reasoning:
-            nextTurnSnapshot.thinkingLevel === undefined
-              ? config.reasoning
-              : nextTurnSnapshot.thinkingLevel === "off"
-                ? undefined
-                : nextTurnSnapshot.thinkingLevel,
+          ...(reasoning === undefined ? {} : { reasoning }),
         };
       }
 
@@ -305,7 +307,7 @@ async function streamAssistantResponse(
   const llmContext: Context = {
     systemPrompt: context.systemPrompt,
     messages: llmMessages,
-    tools: context.tools,
+    ...(context.tools === undefined ? {} : { tools: context.tools }),
   };
 
   const streamFunction = streamFn || streamSimple;
@@ -318,9 +320,9 @@ async function streamAssistantResponse(
 
   const response = await streamFunction(config.model, llmContext, {
     ...config,
-    apiKey: resolvedApiKey,
-    signal,
-  });
+    ...(resolvedApiKey === undefined ? {} : { apiKey: resolvedApiKey }),
+    ...(signal === undefined ? {} : { signal }),
+  } as SimpleStreamOptions);
 
   let partialMessage: AssistantMessage | null = null;
   let addedPartial = false;

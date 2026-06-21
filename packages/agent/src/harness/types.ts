@@ -12,6 +12,9 @@ import type {
   QueueMode,
   ThinkingLevel,
 } from "../types.ts";
+
+export type { ThinkingLevel } from "../types.ts";
+
 import type { Session } from "./session.ts";
 
 /** Result of a fallible operation. Expected failures are returned as `ok: false` instead of thrown. */
@@ -96,27 +99,27 @@ export interface AgentHarnessResources<
   TPromptTemplate extends PromptTemplate = PromptTemplate,
 > {
   /** Prompt templates available for explicit invocation. */
-  promptTemplates?: TPromptTemplate[];
+  promptTemplates?: TPromptTemplate[] | undefined;
   /** Skills available to the model and explicit skill invocation. */
-  skills?: TSkill[];
+  skills?: TSkill[] | undefined;
 }
 
 /** Curated provider request options owned by the harness and snapshotted per turn. */
 export interface AgentHarnessStreamOptions {
   /** Provider cache retention hint. */
-  cacheRetention?: SimpleStreamOptions["cacheRetention"];
+  cacheRetention?: SimpleStreamOptions["cacheRetention"] | undefined;
   /** Additional request headers merged with auth and lifecycle headers. */
-  headers?: Record<string, string>;
+  headers?: Record<string, string> | undefined;
   /** Maximum provider retry attempts. */
-  maxRetries?: number;
+  maxRetries?: number | undefined;
   /** Optional cap for provider-requested retry delays. */
-  maxRetryDelayMs?: number;
+  maxRetryDelayMs?: number | undefined;
   /** Provider metadata forwarded with requests. */
-  metadata?: SimpleStreamOptions["metadata"];
+  metadata?: SimpleStreamOptions["metadata"] | undefined;
   /** Provider request timeout in milliseconds. */
-  timeoutMs?: number;
+  timeoutMs?: number | undefined;
   /** Preferred transport forwarded to the stream function. */
-  transport?: Transport;
+  transport?: Transport | undefined;
 }
 
 /** Per-request stream option patch returned by provider hooks. */
@@ -147,7 +150,7 @@ export class FileError extends Error {
   /** Backend-independent error code. */
   public code: FileErrorCode;
   /** Absolute addressed path associated with the failure, when available. */
-  public path?: string;
+  public path: string | undefined;
 
   constructor(
     code: FileErrorCode,
@@ -436,17 +439,17 @@ export interface ActiveToolsChangeEntry extends SessionTreeEntryBase {
 }
 
 export interface CompactionEntry<T = unknown> extends SessionTreeEntryBase {
-  details?: T;
+  details?: T | undefined;
   firstKeptEntryId: string;
-  fromHook?: boolean;
+  fromHook?: boolean | undefined;
   summary: string;
   tokensBefore: number;
   type: "compaction";
 }
 
 export interface BranchSummaryEntry<T = unknown> extends SessionTreeEntryBase {
-  details?: T;
-  fromHook?: boolean;
+  details?: T | undefined;
+  fromHook?: boolean | undefined;
   fromId: string;
   summary: string;
   type: "branch_summary";
@@ -454,14 +457,14 @@ export interface BranchSummaryEntry<T = unknown> extends SessionTreeEntryBase {
 
 export interface CustomEntry<T = unknown> extends SessionTreeEntryBase {
   customType: string;
-  data?: T;
+  data?: T | undefined;
   type: "custom";
 }
 
 export interface CustomMessageEntry<T = unknown> extends SessionTreeEntryBase {
   content: string | (TextContent | ImageContent)[];
   customType: string;
-  details?: T;
+  details?: T | undefined;
   display: boolean;
   type: "custom_message";
 }
@@ -473,7 +476,7 @@ export interface LabelEntry extends SessionTreeEntryBase {
 }
 
 export interface SessionInfoEntry extends SessionTreeEntryBase {
-  name?: string;
+  name?: string | undefined;
   type: "session_info"; // legacy name, kept for backwards compatibility
 }
 
@@ -531,7 +534,7 @@ export interface SessionStorage<
   setLeafId(leafId: string | null): Promise<void>;
 }
 
-export type { Session } from "./session/session.ts";
+export type { Session } from "./session.ts";
 
 export interface SessionCreateOptions {
   id?: string;
@@ -614,7 +617,7 @@ export interface BeforeAgentStartEvent<
   TSkill extends Skill = Skill,
   TPromptTemplate extends PromptTemplate = PromptTemplate,
 > {
-  images?: ImageContent[];
+  images?: ImageContent[] | undefined;
   prompt: string;
   resources: AgentHarnessResources<TSkill, TPromptTemplate>;
   systemPrompt: string;
@@ -664,7 +667,7 @@ export interface ToolResultEvent {
 
 export interface SessionBeforeCompactEvent {
   branchEntries: SessionTreeEntry[];
-  customInstructions?: string;
+  customInstructions?: string | undefined;
   preparation: CompactionPreparation;
   signal: AbortSignal;
   type: "session_before_compact";
@@ -683,10 +686,10 @@ export interface SessionBeforeTreeEvent {
 }
 
 export interface SessionTreeEvent {
-  fromHook?: boolean;
+  fromHook?: boolean | undefined;
   newLeafId: string | null;
   oldLeafId: string | null;
-  summaryEntry?: BranchSummaryEntry;
+  summaryEntry?: BranchSummaryEntry | undefined;
   type: "session_tree";
 }
 
@@ -832,8 +835,8 @@ export interface CompactResult {
 
 export interface NavigateTreeResult {
   cancelled: boolean;
-  editorText?: string;
-  summaryEntry?: BranchSummaryEntry;
+  editorText?: string | undefined;
+  summaryEntry?: BranchSummaryEntry | undefined;
 }
 
 export interface CompactionSettings {
@@ -847,7 +850,7 @@ export interface CompactionPreparation {
   firstKeptEntryId: string;
   isSplitTurn: boolean;
   messagesToSummarize: AgentMessage[];
-  previousSummary?: string;
+  previousSummary?: string | undefined;
   settings: CompactionSettings;
   tokensBefore: number;
   turnPrefixMessages: AgentMessage[];
@@ -861,22 +864,22 @@ export interface FileOperations {
 
 export interface TreePreparation {
   commonAncestorId: string | null;
-  customInstructions?: string;
+  customInstructions?: string | undefined;
   entriesToSummarize: SessionTreeEntry[];
-  label?: string;
+  label?: string | undefined;
   oldLeafId: string | null;
-  replaceInstructions?: boolean;
+  replaceInstructions?: boolean | undefined;
   targetId: string;
   userWantsSummary: boolean;
 }
 
 export interface GenerateBranchSummaryOptions {
   apiKey: string;
-  customInstructions?: string;
-  headers?: Record<string, string>;
+  customInstructions?: string | undefined;
+  headers?: Record<string, string> | undefined;
   model: Model<any>;
-  replaceInstructions?: boolean;
-  reserveTokens?: number;
+  replaceInstructions?: boolean | undefined;
+  reserveTokens?: number | undefined;
   signal: AbortSignal;
 }
 

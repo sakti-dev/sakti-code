@@ -722,8 +722,8 @@ describe("AgentHarness", () => {
     };
     const resources = { skills: [skill], promptTemplates: [promptTemplate] };
     const updates: Array<{
-      resourcesSource?: string;
-      previousSource?: string;
+      resourcesSource: string | undefined;
+      previousSource: string | undefined;
     }> = [];
     harness.subscribe((event) => {
       if (event.type === "resources_update") {

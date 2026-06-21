@@ -84,13 +84,13 @@ export async function collectEntriesForBranchSummary(
     return { entries: [], commonAncestorId: null };
   }
   const oldPath = new Set(
-    (await session.getBranch(oldLeafId)).map((e) => e.id)
+    (await session.getBranch(oldLeafId)).map((e: SessionTreeEntry) => e.id)
   );
   const targetPath = await session.getBranch(targetId);
   let commonAncestorId: string | null = null;
   for (let i = targetPath.length - 1; i >= 0; i--) {
-    if (oldPath.has(targetPath[i].id)) {
-      commonAncestorId = targetPath[i].id;
+    if (oldPath.has(targetPath[i]!.id)) {
+      commonAncestorId = targetPath[i]!.id;
       break;
     }
   }
@@ -176,7 +176,7 @@ export function prepareBranchEntries(
     }
   }
   for (let i = entries.length - 1; i >= 0; i--) {
-    const entry = entries[i];
+    const entry = entries[i]!;
     const message = getMessageFromEntry(entry);
     if (!message) {
       continue;
@@ -287,7 +287,12 @@ export async function generateBranchSummary(
       systemPrompt: SUMMARIZATION_SYSTEM_PROMPT,
       messages: summarizationMessages,
     },
-    { apiKey, headers, signal, maxTokens: 2048 }
+    {
+      apiKey,
+      ...(headers === undefined ? {} : { headers }),
+      signal,
+      maxTokens: 2048,
+    }
   );
   if (response.stopReason === "aborted") {
     return err(

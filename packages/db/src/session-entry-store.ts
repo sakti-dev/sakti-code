@@ -114,7 +114,7 @@ export class SqliteSessionStorage<
     const entryMap = new Map(allEntries.map((e) => [e.id, e]));
 
     const path: SessionTreeEntry[] = [];
-    let current = leafId;
+    let current: string | null = leafId;
     const visited = new Set<string>();
 
     while (current && !visited.has(current)) {

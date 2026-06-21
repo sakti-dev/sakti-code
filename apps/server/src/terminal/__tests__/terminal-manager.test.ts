@@ -55,7 +55,12 @@ describe("TerminalManager", () => {
 
   it("onExit setter stores callback", () => {
     const tm = new TerminalManager();
-    const cb = (_tid: string, _cid: string, _code: number, _sig?: number) => {};
+    const cb = (
+      _tid: string,
+      _cid: string,
+      _code: number,
+      _sig?: number | string
+    ) => {};
     tm.onExit = cb;
     expect(true).toBe(true);
   });

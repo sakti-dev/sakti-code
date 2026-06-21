@@ -13,9 +13,7 @@ import {
 } from "..";
 
 describe("ProjectRepo", () => {
-  let db: ReturnType<
-    typeof initDatabase extends Promise<infer T> ? () => T : never
-  >;
+  let db: any;
   let tmpDir: string;
   let repo: ProjectRepo;
 
@@ -178,7 +176,7 @@ describe("CostRepo", () => {
       "claude-sonnet"
     );
 
-    const agg = repo.aggregateByProject("p1");
+    const agg = repo.aggregateByProject("p1")!;
     expect(agg.totalInputTokens).toBe(100);
     expect(agg.totalOutputTokens).toBe(50);
     expect(agg.totalCostUsd).toBeCloseTo(0.01, 5);

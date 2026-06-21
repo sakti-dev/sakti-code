@@ -170,7 +170,7 @@ export function getLastAssistantUsage(
   entries: SessionTreeEntry[]
 ): Usage | undefined {
   for (let i = entries.length - 1; i >= 0; i--) {
-    const entry = entries[i];
+    const entry = entries[i]!;
     if (entry.type === "message") {
       const usage = getAssistantUsage(entry.message as AgentMessage);
       if (usage) {
@@ -197,7 +197,7 @@ function getLastAssistantUsageInfo(
   messages: AgentMessage[]
 ): { usage: Usage; index: number } | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
-    const usage = getAssistantUsage(messages[i]);
+    const usage = getAssistantUsage(messages[i]!);
     if (usage) {
       return { usage, index: i };
     }
@@ -227,7 +227,7 @@ export function estimateContextTokens(
   const usageTokens = calculateContextTokens(usageInfo.usage);
   let trailingTokens = 0;
   for (let i = usageInfo.index + 1; i < messages.length; i++) {
-    trailingTokens += estimateTokens(messages[i]);
+    trailingTokens += estimateTokens(messages[i]!);
   }
 
   return {
@@ -324,7 +324,7 @@ function findValidCutPoints(
 ): number[] {
   const cutPoints: number[] = [];
   for (let i = startIndex; i < endIndex; i++) {
-    const entry = entries[i];
+    const entry = entries[i]!;
     switch (entry.type) {
       case "message": {
         const role = entry.message.role;
@@ -368,7 +368,7 @@ export function findTurnStartIndex(
   startIndex: number
 ): number {
   for (let i = entryIndex; i >= startIndex; i--) {
-    const entry = entries[i];
+    const entry = entries[i]!;
     if (entry.type === "branch_summary" || entry.type === "custom_message") {
       return i;
     }
@@ -409,10 +409,10 @@ export function findCutPoint(
     };
   }
   let accumulatedTokens = 0;
-  let cutIndex = cutPoints[0];
+  let cutIndex = cutPoints[0]!;
 
   for (let i = endIndex - 1; i >= startIndex; i--) {
-    const entry = entries[i];
+    const entry = entries[i]!;
     if (entry.type !== "message") {
       continue;
     }
@@ -420,8 +420,8 @@ export function findCutPoint(
     accumulatedTokens += messageTokens;
     if (accumulatedTokens >= keepRecentTokens) {
       for (let c = 0; c < cutPoints.length; c++) {
-        if (cutPoints[c] >= i) {
-          cutIndex = cutPoints[c];
+        if (cutPoints[c]! >= i) {
+          cutIndex = cutPoints[c]!;
           break;
         }
       }
@@ -429,7 +429,7 @@ export function findCutPoint(
     }
   }
   while (cutIndex > startIndex) {
-    const prevEntry = entries[cutIndex - 1];
+    const prevEntry = entries[cutIndex - 1]!;
     if (prevEntry.type === "compaction") {
       break;
     }
@@ -438,7 +438,7 @@ export function findCutPoint(
     }
     cutIndex--;
   }
-  const cutEntry = entries[cutIndex];
+  const cutEntry = entries[cutIndex]!;
   const isUserMessage =
     cutEntry.type === "message" && cutEntry.message.role === "user";
   const turnStartIndex = isUserMessage
@@ -566,10 +566,15 @@ export async function generateSummary(
     },
   ];
 
-  const completionOptions =
-    model.reasoning && thinkingLevel && thinkingLevel !== "off"
-      ? { maxTokens, signal, apiKey, headers, reasoning: thinkingLevel }
-      : { maxTokens, signal, apiKey, headers };
+  const completionOptions = {
+    maxTokens,
+    ...(signal === undefined ? {} : { signal }),
+    apiKey,
+    ...(headers === undefined ? {} : { headers }),
+    ...(model.reasoning && thinkingLevel && thinkingLevel !== "off"
+      ? { reasoning: thinkingLevel }
+      : {}),
+  };
 
   const response = await completeSimple(
     model,
@@ -615,7 +620,7 @@ export interface CompactionPreparation {
   /** Messages summarized into the history summary. */
   messagesToSummarize: AgentMessage[];
   /** Previous compaction summary used for iterative updates. */
-  previousSummary?: string;
+  previousSummary?: string | undefined;
   /** Settings used to prepare compaction. */
   settings: CompactionSettings;
   /** Estimated context tokens before compaction. */
@@ -631,14 +636,14 @@ export function prepareCompaction(
 ): Result<CompactionPreparation | undefined, CompactionError> {
   if (
     pathEntries.length === 0 ||
-    pathEntries[pathEntries.length - 1].type === "compaction"
+    pathEntries[pathEntries.length - 1]!.type === "compaction"
   ) {
     return ok(undefined);
   }
 
   let prevCompactionIndex = -1;
   for (let i = pathEntries.length - 1; i >= 0; i--) {
-    if (pathEntries[i].type === "compaction") {
+    if (pathEntries[i]!.type === "compaction") {
       prevCompactionIndex = i;
       break;
     }
@@ -683,7 +688,7 @@ export function prepareCompaction(
     : cutPoint.firstKeptEntryIndex;
   const messagesToSummarize: AgentMessage[] = [];
   for (let i = boundaryStart; i < historyEnd; i++) {
-    const msg = getMessageFromEntryForCompaction(pathEntries[i]);
+    const msg = getMessageFromEntryForCompaction(pathEntries[i]!);
     if (msg) {
       messagesToSummarize.push(msg);
     }
@@ -695,7 +700,7 @@ export function prepareCompaction(
       i < cutPoint.firstKeptEntryIndex;
       i++
     ) {
-      const msg = getMessageFromEntryForCompaction(pathEntries[i]);
+      const msg = getMessageFromEntryForCompaction(pathEntries[i]!);
       if (msg) {
         turnPrefixMessages.push(msg);
       }
@@ -863,9 +868,15 @@ async function generateTurnPrefixSummary(
       systemPrompt: SUMMARIZATION_SYSTEM_PROMPT,
       messages: summarizationMessages,
     },
-    model.reasoning && thinkingLevel && thinkingLevel !== "off"
-      ? { maxTokens, signal, apiKey, headers, reasoning: thinkingLevel }
-      : { maxTokens, signal, apiKey, headers }
+    {
+      maxTokens,
+      ...(signal === undefined ? {} : { signal }),
+      apiKey,
+      ...(headers === undefined ? {} : { headers }),
+      ...(model.reasoning && thinkingLevel && thinkingLevel !== "off"
+        ? { reasoning: thinkingLevel }
+        : {}),
+    }
   );
   if (response.stopReason === "aborted") {
     return err(

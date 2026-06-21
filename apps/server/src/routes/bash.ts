@@ -74,8 +74,12 @@ async function runBash(
   }
 
   if (wasCancelled) {
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
+    const stdout = await new Response(
+      proc.stdout as ReadableStream<Uint8Array>
+    ).text();
+    const stderr = await new Response(
+      proc.stderr as ReadableStream<Uint8Array>
+    ).text();
     return {
       cancelled: true,
       exitCode: code,
@@ -85,8 +89,12 @@ async function runBash(
   }
 
   // Normal completion
-  const stdout = await new Response(proc.stdout).text();
-  const stderr = await new Response(proc.stderr).text();
+  const stdout = await new Response(
+    proc.stdout as ReadableStream<Uint8Array>
+  ).text();
+  const stderr = await new Response(
+    proc.stderr as ReadableStream<Uint8Array>
+  ).text();
   const combined = stdout + stderr;
   const truncated = combined.length > BASH_OUTPUT_LIMIT;
   const output = truncated ? combined.slice(0, BASH_OUTPUT_LIMIT) : combined;

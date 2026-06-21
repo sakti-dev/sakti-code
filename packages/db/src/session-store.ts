@@ -158,16 +158,22 @@ function mapRowToAgentMessage(row: {
     return {
       role: "assistant",
       content,
+      api: "",
+      provider: "",
+      model: "",
       usage,
+      stopReason: (row.stopReason ?? "stop") as Extract<
+        AgentMessage,
+        { role: "assistant" }
+      >["stopReason"],
       ...base,
-      ...(row.stopReason ? { stopReason: row.stopReason } : {}),
       ...(row.errorMessage ? { errorMessage: row.errorMessage } : {}),
     };
   }
 
-  // role === "tool"
+  // role === "toolResult"
   return {
-    role: "tool",
+    role: "toolResult",
     toolCallId: row.toolCallId ?? "",
     toolName: row.toolName ?? "",
     content: [{ type: "text", text: row.content }],
@@ -189,7 +195,16 @@ function agentMessageToRow(msg: AgentMessage): {
   usage?: string;
 } {
   if (msg.role === "user") {
-    return { role: "user", content: msg.content };
+    const content =
+      typeof msg.content === "string"
+        ? msg.content
+        : msg.content
+            .filter(
+              (c): c is { type: "text"; text: string } => c.type === "text"
+            )
+            .map((c) => c.text)
+            .join("");
+    return { role: "user", content };
   }
 
   if (msg.role === "assistant") {
@@ -226,12 +241,13 @@ function agentMessageToRow(msg: AgentMessage): {
     };
   }
 
-  // role === "tool"
-  const tMsg = msg as AgentMessage & { role: "tool" };
+  // role === "toolResult"
+  const tMsg = msg as Extract<AgentMessage, { role: "toolResult" }>;
   return {
-    role: "tool",
+    role: "toolResult",
     content: tMsg.content
-      .map((c: { type: string; text: string }) => c.text)
+      .filter((c): c is { type: "text"; text: string } => c.type === "text")
+      .map((c) => c.text)
       .join(""),
     toolCallId: tMsg.toolCallId,
     toolName: tMsg.toolName,
