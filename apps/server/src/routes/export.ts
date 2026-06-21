@@ -1,3 +1,5 @@
+import { buildSessionContext } from "@sakti-code/agent";
+import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import { getCtx } from "../context.ts";
 
@@ -112,9 +114,22 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function flattenContent(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+  if (Array.isArray(content)) {
+    return content
+      .filter((c): c is { type: "text"; text: string } => c.type === "text")
+      .map((c) => c.text)
+      .join("");
+  }
+  return "";
+}
+
 export const exportRoutes = new Elysia({ name: "routes.export" }).get(
   "/api/sessions/:id/export-html",
-  ({ params, store }) => {
+  async ({ params, store }) => {
     const ctx = getCtx(store);
     const session = ctx.repos.sessions.findById(params.id);
     if (!session) {
@@ -124,7 +139,19 @@ export const exportRoutes = new Elysia({ name: "routes.export" }).get(
     const project = ctx.repos.projects.findById(session.projectId);
     const projectName = project?.name ?? "Unknown";
 
-    const messagesData = ctx.repos.messages.loadBySession(params.id);
+    const storage = new SqliteSessionStorage(ctx.db, params.id, {
+      id: params.id,
+      createdAt: new Date(session.createdAt).toISOString(),
+    });
+    const entries = await storage.getPathToRoot(await storage.getLeafId());
+    const { messages: agentMessages } = buildSessionContext(entries);
+
+    const messagesData = agentMessages.map((m) => ({
+      role: m.role,
+      content: flattenContent((m as { content: unknown }).content),
+      createdAt: (m as { timestamp: number }).timestamp ?? session.createdAt,
+    }));
+
     const html = renderHtmlExport(
       session.title,
       projectName,

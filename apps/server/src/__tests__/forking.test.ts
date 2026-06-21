@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { exportRoutes } from "../routes/export.ts";
 import { forkingRoutes } from "../routes/forking.ts";
 import { namingRoutes } from "../routes/naming.ts";
+import { seedEntries } from "./entry-helpers.ts";
 import { makeApp } from "./helpers.ts";
 
 describe("fork routes", () => {
@@ -229,14 +230,11 @@ describe("export route", () => {
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o", {
       title: "ExportMe",
     });
-    await ctx.repos.messages.append(session.id, {
-      role: "user",
-      content: "Hello",
-    });
-    await ctx.repos.messages.append(session.id, {
-      role: "assistant",
-      content: "World",
-    });
+
+    await seedEntries(ctx.db, session.id, [
+      { role: "user", content: "Hello" },
+      { role: "assistant", content: "World" },
+    ]);
 
     const res = await app.handle(
       new Request(`http://localhost/api/sessions/${session.id}/export-html`)
@@ -278,10 +276,10 @@ describe("export route", () => {
     const { app, ctx } = await makeApp([exportRoutes]);
     const project = await ctx.repos.projects.create("w7", "/tmp/w7");
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
-    await ctx.repos.messages.append(session.id, {
-      role: "assistant",
-      content: "hi",
-    });
+
+    await seedEntries(ctx.db, session.id, [
+      { role: "assistant", content: "hi" },
+    ]);
 
     const res = await app.handle(
       new Request(`http://localhost/api/sessions/${session.id}/export-html`)
