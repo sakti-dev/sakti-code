@@ -116,7 +116,8 @@ async function bootstrap(): Promise<void> {
     },
     // In dev mode, migrations are in the source tree; in prod, they're co-located
     migrationsFolder: isDev
-      ? resolve(process.cwd(), "../../packages/db/migrations")
+      ? (process.env.SAKTI_MIGRATIONS_FOLDER ??
+        resolve(import.meta.dir, "../../../../../packages/db/migrations"))
       : undefined,
   });
   server = sakti;

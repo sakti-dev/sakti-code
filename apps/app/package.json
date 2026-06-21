@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently -k -n web,desktop -c green,magenta \"bun run dev:web\" \"bun run dev:desktop\"",
     "dev:web": "vite --port 5173",
-    "dev:desktop": "SAKTI_DEV=1 electrobun dev",
+    "dev:desktop": "SAKTI_DEV=1 SAKTI_MIGRATIONS_FOLDER=../../packages/db/migrations electrobun dev",
     "start": "vite build && electrobun dev",
     "test": "vitest run",
     "test:watch": "vitest",
