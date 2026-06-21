@@ -5,6 +5,7 @@
     "jsxImportSource": "solid-js",
     "exactOptionalPropertyTypes": false,
     "paths": {
+      "~/*": ["./src/*"],
       "elysia": ["../../apps/server/node_modules/elysia"],
       "elysia/*": ["../../apps/server/node_modules/elysia/*"]
     }

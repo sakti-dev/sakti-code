@@ -15,11 +15,18 @@
   "dependencies": {
     "@elysiajs/eden": "^1.4.9",
     "@sakti-code/server": "workspace:*",
+    "@tailwindcss/vite": "^4.3.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "electrobun": "1.18.1",
-    "elysia": "^1.4.29"
+    "elysia": "^1.4.29",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.1",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/node": "^26.0.0",
     "concurrently": "^9.1.0",
     "solid-js": "^1.9.3",
     "typescript": "^5.7.2",
