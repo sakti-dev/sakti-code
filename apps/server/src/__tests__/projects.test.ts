@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { projectsRoutes } from "../routes/projects.ts";
+import { projectsRoutes } from "../routes/projects/projects.ts";
 import { makeApp } from "./helpers.ts";
 
 describe("projects routes", () => {

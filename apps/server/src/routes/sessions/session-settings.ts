@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { getCtx } from "../context.ts";
+import { getCtx } from "../../context.ts";
 
 // Default per-session setting values matching runner.ts
 const DEFAULT_SETTINGS = {

@@ -1,7 +1,7 @@
 import { buildSessionContext } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia, t } from "elysia";
-import { getCtx } from "../context.ts";
+import { getCtx } from "../../context.ts";
 
 function flattenContent(content: unknown): string {
   if (typeof content === "string") {

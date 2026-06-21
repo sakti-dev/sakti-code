@@ -8,8 +8,8 @@ import {
 } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
-import { resolveModel } from "../agent/model-resolver.ts";
-import { getCtx } from "../context.ts";
+import { resolveModel } from "../../agent/model-resolver.ts";
+import { getCtx } from "../../context.ts";
 
 export const compactionRoutes = new Elysia({ name: "routes.compaction" }).post(
   "/api/sessions/:id/compact",

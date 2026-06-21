@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { getCtx } from "../context.ts";
+import { getCtx } from "../../context.ts";
 
 const BASH_TIMEOUT_MS = 30_000;
 const BASH_OUTPUT_LIMIT = 100_000; // 100 KB

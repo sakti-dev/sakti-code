@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
-import { hasWsConnection } from "../agent/ws.ts";
-import { getCtx } from "../context.ts";
+import { hasWsConnection } from "../../agent/ws.ts";
+import { getCtx } from "../../context.ts";
 
 const createBody = t.Object({
   // The client's WS connection id (the wsId from the welcome frame). Terminals

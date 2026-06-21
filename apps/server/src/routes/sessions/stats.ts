@@ -2,7 +2,7 @@ import type { AgentMessage } from "@sakti-code/agent";
 import { buildSessionContext } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia, t } from "elysia";
-import { getCtx } from "../context.ts";
+import { getCtx } from "../../context.ts";
 
 function deriveStats(messages: AgentMessage[]): {
   messageCount: number;

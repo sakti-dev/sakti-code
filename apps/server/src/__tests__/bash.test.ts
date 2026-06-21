@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { bashRoutes } from "../routes/bash.ts";
+import { bashRoutes } from "../routes/sessions/bash.ts";
 import { makeApp } from "./helpers.ts";
 
 describe("bash routes", () => {

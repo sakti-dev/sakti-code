@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { getCtx } from "../context.ts";
+import { getCtx } from "../../context.ts";
 
 const WORKSPACE_KEY = "workspace:sessions";
 

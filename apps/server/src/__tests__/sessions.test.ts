@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { projectsRoutes } from "../routes/projects.ts";
-import { sessionsRoutes } from "../routes/sessions.ts";
+import { projectsRoutes } from "../routes/projects/projects.ts";
+import { sessionsRoutes } from "../routes/sessions/sessions.ts";
 import { makeApp } from "./helpers.ts";
 
 describe("sessions routes", () => {

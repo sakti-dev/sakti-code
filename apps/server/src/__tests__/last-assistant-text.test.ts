@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { lastAssistantTextRoutes } from "../routes/last-assistant-text.ts";
+import { lastAssistantTextRoutes } from "../routes/sessions/last-assistant-text.ts";
 import { seedEntries } from "./entry-helpers.ts";
 import { makeApp } from "./helpers.ts";
 

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { searchFilesRoutes } from "../routes/search-files.ts";
+import { searchFilesRoutes } from "../routes/projects/search-files.ts";
 import { makeApp } from "./helpers.ts";
 
 describe("file search routes", () => {

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { SqliteSessionStorage } from "@sakti-code/db";
 
 const { getEnvApiKey, completeSimple } = await import("@earendil-works/pi-ai");
-const { compactionRoutes } = await import("../routes/compaction.ts");
+const { compactionRoutes } = await import("../routes/sessions/compaction.ts");
 const { makeApp } = await import("./helpers.ts");
 
 let tempDir: string;

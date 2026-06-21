@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 // pi-ai is globally mocked via apps/server/test-setup.ts.
-const { compactionRoutes } = await import("../routes/compaction.ts");
-const { statsRoutes } = await import("../routes/stats.ts");
+const { compactionRoutes } = await import("../routes/sessions/compaction.ts");
+const { statsRoutes } = await import("../routes/sessions/stats.ts");
 const { makeApp } = await import("./helpers.ts");
 const { buildServer } = await import("../index.ts");
 

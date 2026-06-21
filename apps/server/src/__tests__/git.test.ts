@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { gitRoutes, runGit } from "../routes/git.ts";
+import { gitRoutes, runGit } from "../routes/projects/git.ts";
 import { makeApp } from "./helpers.ts";
 
 function execGit(cwd: string, ...args: string[]): Promise<string> {

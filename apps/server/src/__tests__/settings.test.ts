@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { sessionSettingsRoutes } from "../routes/session-settings.ts";
+import { sessionSettingsRoutes } from "../routes/sessions/session-settings.ts";
 import { makeApp } from "./helpers.ts";
 
 const DEFAULTS = {

@@ -3,7 +3,7 @@ import {
   registerTestConnection,
   unregisterTestConnection,
 } from "../agent/ws.ts";
-import { terminalRoutes } from "../routes/terminals.ts";
+import { terminalRoutes } from "../routes/workspace/terminals.ts";
 import { makeApp } from "./helpers.ts";
 
 const CONN_ID = "term-test-conn";

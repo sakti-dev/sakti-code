@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { workspaceRoutes } from "../routes/workspace.ts";
+import { workspaceRoutes } from "../routes/workspace/workspace.ts";
 import { makeApp } from "./helpers.ts";
 
 describe("workspace routes", () => {

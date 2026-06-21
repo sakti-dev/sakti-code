@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { buildSessionContext } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
-import { exportRoutes } from "../routes/export.ts";
-import { forkingRoutes } from "../routes/forking.ts";
+import { exportRoutes } from "../routes/sessions/export.ts";
+import { forkingRoutes } from "../routes/sessions/forking.ts";
 import { seedEntries } from "./entry-helpers.ts";
 import { makeApp } from "./helpers.ts";
 

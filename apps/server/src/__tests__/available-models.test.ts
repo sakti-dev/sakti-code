@@ -13,7 +13,9 @@ const { getProviders, getModels } = await import("@earendil-works/pi-ai");
     : [{ id: "claude-3", name: "Claude 3", provider: "anthropic" }]
 );
 
-const { availableModelsRoutes } = await import("../routes/available-models.ts");
+const { availableModelsRoutes } = await import(
+  "../routes/models/available-models.ts"
+);
 
 describe("available-models routes", () => {
   it("lists providers", async () => {

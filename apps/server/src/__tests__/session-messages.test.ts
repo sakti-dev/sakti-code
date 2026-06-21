@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { sessionsRoutes } from "../routes/sessions.ts";
+import { sessionsRoutes } from "../routes/sessions/sessions.ts";
 import { seedEntries } from "./entry-helpers.ts";
 import { makeApp } from "./helpers.ts";
 
