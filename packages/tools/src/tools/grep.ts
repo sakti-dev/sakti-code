@@ -73,10 +73,6 @@ export interface GrepToolOptions {
   rgPath?: string;
 }
 
-function resolveBin(name: string): string {
-  return name;
-}
-
 export function createGrepTool(
   cwd: string,
   options?: GrepToolOptions
@@ -105,7 +101,7 @@ export function createGrepTool(
         throw new Error("Operation aborted");
       }
 
-      const rgPath = options?.rgPath ?? resolveBin("rg");
+      const rgPath = options?.rgPath ?? "rg";
       const searchPath = resolveToCwd(searchDir || ".", cwd);
       const ops = customOps ?? defaultGrepOperations;
       let isDirectory: boolean;

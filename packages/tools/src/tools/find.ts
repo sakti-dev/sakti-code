@@ -57,10 +57,6 @@ export interface FindToolOptions {
   operations?: FindOperations;
 }
 
-function resolveBin(name: string): string {
-  return name;
-}
-
 export function createFindTool(
   cwd: string,
   options?: FindToolOptions
@@ -142,7 +138,7 @@ export function createFindTool(
         };
       }
 
-      const fdPath = options?.fdPath ?? resolveBin("fd");
+      const fdPath = options?.fdPath ?? "fd";
       if (signal?.aborted) {
         throw new Error("Operation aborted");
       }
