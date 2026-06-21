@@ -1,80 +1,87 @@
-import { beforeEach, describe, expect, it, mock, spyOn, vi } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  spyOn,
+  vi,
+} from "bun:test";
 
 const MISSING_FIELDS_RE = /Missing sessionId or message/;
 const NO_ACTIVE_RUN_RE = /No active run/;
 const BUSY_RE = /A run is already active.*steer.*followUp.*abort/;
 
-mock.module("@earendil-works/pi-ai/base", () => ({
-  getModel: vi.fn(() => ({
-    id: "test-model",
-    name: "Test",
-    api: "openai-completions",
-    provider: "openai",
-    baseUrl: "https://api.openai.com",
-    reasoning: false,
-    input: ["text"],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: 200_000,
-    maxTokens: 4096,
-  })),
-}));
-
-const streamSimpleMock = vi.fn();
-const getModelMock = vi.fn(() => ({
-  id: "test-model",
-  name: "Test",
-  api: "openai-completions",
-  provider: "openai",
-  baseUrl: "https://api.openai.com",
-  reasoning: false,
-  input: ["text"],
-  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-  contextWindow: 200_000,
-  maxTokens: 4096,
-}));
-
-mock.module("@earendil-works/pi-ai", () => ({
-  streamSimple: streamSimpleMock,
-  getModel: getModelMock,
-  getEnvApiKey: vi.fn(() => "test-key"),
-}));
-
-import { handleMessage } from "../ws-handler.ts";
 import {
-  createMockCtx,
-  createMockStore,
-  createTestModel,
-  createTextStream,
-} from "./helpers.ts";
+  fauxAssistantMessage,
+  teardownFauxLlm,
+  useFauxLlm,
+} from "../../__tests__/llm-helpers.ts";
+import { clearRunsForTesting } from "../runner.ts";
+import { handleMessage } from "../ws-handler.ts";
+import { createMockCtx, createMockStore } from "./helpers.ts";
 
-import "@earendil-works/pi-ai";
-import "@earendil-works/pi-ai/base";
+interface FakeWsHandle {
+  send: (d: string) => void;
+}
 
-function makeFakeWs(): { sent: any[]; ws: { send: (d: string) => void } } {
-  const sent: any[] = [];
+function makeFakeWs(): { sent: unknown[]; ws: FakeWsHandle } {
+  const sent: unknown[] = [];
   return {
     sent,
     ws: { send: (d: string) => sent.push(JSON.parse(d)) },
   };
 }
 
-function callFn(fn: (() => void) | null): void {
-  if (fn) fn();
+function asErrorFrames(
+  frames: unknown[]
+): Array<{ error?: string; sessionId?: string }> {
+  return frames.filter(
+    (f) => (f as { type?: string }).type === "error"
+  ) as Array<{ error?: string; sessionId?: string }>;
+}
+
+function asEventFrames(
+  frames: unknown[]
+): Array<{ event?: { type?: string }; sessionId?: string }> {
+  return frames.filter(
+    (f) => (f as { type?: string }).type === "event"
+  ) as Array<{ event?: { type?: string }; sessionId?: string }>;
+}
+
+interface MockHarness {
+  abort: ReturnType<typeof vi.fn>;
+  followUp: ReturnType<typeof vi.fn>;
+  steer: ReturnType<typeof vi.fn>;
+}
+
+function makeMockHarness(
+  testActiveRuns: Set<string>,
+  getPromptResolve: () => (() => void) | null
+): MockHarness {
+  return {
+    steer: vi.fn(async () => {}),
+    followUp: vi.fn(async () => {}),
+    abort: vi.fn(async () => {
+      testActiveRuns.delete("sess-1");
+      getPromptResolve()?.();
+    }),
+  };
 }
 
 describe("WS message handler", () => {
-  beforeEach(async () => {
-    const { clearRunsForTesting } = await import("../runner.ts");
+  beforeEach(() => {
     clearRunsForTesting();
-    streamSimpleMock.mockClear();
-    getModelMock.mockClear();
-    getModelMock.mockReturnValue(createTestModel());
+  });
+
+  afterEach(() => {
+    teardownFauxLlm();
   });
 
   it("prompt produces event frames with correct sessionId and event type", async () => {
+    useFauxLlm([fauxAssistantMessage("Hello!")]);
     const ctx = createMockCtx();
     const storage = createMockStore();
-    streamSimpleMock.mockReturnValue(createTextStream("Hello!"));
 
     const { sent, ws } = makeFakeWs();
     handleMessage(ctx, storage, ws, {
@@ -83,14 +90,12 @@ describe("WS message handler", () => {
       message: "Say hello",
     });
 
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 100));
 
-    const eventFrames = sent.filter((f: any) => f.type === "event");
+    const eventFrames = asEventFrames(sent);
     expect(eventFrames.length).toBeGreaterThan(0);
 
-    const startFrame = eventFrames.find(
-      (f: any) => f.event?.type === "agent_start"
-    );
+    const startFrame = eventFrames.find((f) => f.event?.type === "agent_start");
     expect(startFrame).toBeDefined();
     expect(startFrame?.sessionId).toBe("sess-1");
   });
@@ -98,7 +103,6 @@ describe("WS message handler", () => {
   it("prompt for unknown session produces error frame", async () => {
     const ctx = createMockCtx();
     const storage = createMockStore();
-    streamSimpleMock.mockReturnValue(createTextStream("ok"));
 
     const { sent, ws } = makeFakeWs();
     handleMessage(ctx, storage, ws, {
@@ -109,7 +113,7 @@ describe("WS message handler", () => {
 
     await new Promise((r) => setTimeout(r, 200));
 
-    const errorFrames = sent.filter((f: any) => f.type === "error");
+    const errorFrames = asErrorFrames(sent);
     expect(errorFrames.length).toBeGreaterThan(0);
     expect(errorFrames[0]?.sessionId).toBe("nonexistent");
   });
@@ -137,7 +141,7 @@ describe("WS message handler", () => {
       message: "test",
     });
 
-    const errorFrames = sent.filter((f: any) => f.type === "error");
+    const errorFrames = asErrorFrames(sent);
     expect(errorFrames.length).toBe(1);
     expect(errorFrames[0]?.error).toMatch(MISSING_FIELDS_RE);
   });
@@ -151,7 +155,7 @@ describe("WS message handler", () => {
       sessionId: "no-run",
       message: "change course",
     });
-    const errorFrames = sent.filter((f: any) => f.type === "error");
+    const errorFrames = asErrorFrames(sent);
     expect(errorFrames.length).toBe(1);
     expect(errorFrames[0]?.sessionId).toBe("no-run");
     expect(errorFrames[0]?.error).toMatch(NO_ACTIVE_RUN_RE);
@@ -166,7 +170,7 @@ describe("WS message handler", () => {
       sessionId: "no-run",
       message: "again",
     });
-    const errorFrames = sent.filter((f: any) => f.type === "error");
+    const errorFrames = asErrorFrames(sent);
     expect(errorFrames.length).toBe(1);
     expect(errorFrames[0]?.sessionId).toBe("no-run");
     expect(errorFrames[0]?.error).toMatch(NO_ACTIVE_RUN_RE);
@@ -178,12 +182,7 @@ describe("WS message handler", () => {
 
     const testActiveRuns = new Set<string>();
     let promptResolve: (() => void) | null = null;
-    const mockHarness = {
-      abort: vi.fn(async () => {
-        testActiveRuns.delete("sess-1");
-        promptResolve?.();
-      }),
-    };
+    const mockHarness = makeMockHarness(testActiveRuns, () => promptResolve);
 
     const runnerMod = await import("../runner.ts");
     const runPromptSpy = spyOn(runnerMod, "runPrompt");
@@ -191,68 +190,64 @@ describe("WS message handler", () => {
     const abortRunSpy = spyOn(runnerMod, "abortRun");
     const getActiveHarnessSpy = spyOn(runnerMod, "getActiveHarness");
 
-    isRunActiveSpy.mockImplementation((sessionId: string) =>
-      testActiveRuns.has(sessionId)
-    );
-    abortRunSpy.mockImplementation(async (sessionId: string) => {
-      if (testActiveRuns.has(sessionId)) {
-        testActiveRuns.delete(sessionId);
-        promptResolve?.();
-        return true;
-      }
-      return false;
-    });
-    getActiveHarnessSpy.mockImplementation(() => mockHarness as any);
-    runPromptSpy.mockImplementation(
-      async (
-        _ctx: any,
-        sessionId: string,
-        _message: string,
-        _storage: any,
-        eventCallback: (event: any) => void
-      ) => {
-        testActiveRuns.add(sessionId);
-        eventCallback({
-          type: "agent_start",
-          sessionId,
-          timestamp: Date.now(),
-        });
-        return new Promise<void>((resolve) => {
-          promptResolve = () => resolve();
-        });
-      }
-    );
+    try {
+      isRunActiveSpy.mockImplementation((sessionId: string) =>
+        testActiveRuns.has(sessionId)
+      );
+      abortRunSpy.mockImplementation(async (sessionId: string) => {
+        if (testActiveRuns.has(sessionId)) {
+          testActiveRuns.delete(sessionId);
+          promptResolve?.();
+          return true;
+        }
+        return false;
+      });
+      getActiveHarnessSpy.mockImplementation(() => mockHarness as never);
+      runPromptSpy.mockImplementation(
+        async (_ctx, sessionId, _message, _storage, eventCallback) => {
+          testActiveRuns.add(sessionId);
+          eventCallback({
+            type: "agent_start",
+            sessionId,
+            timestamp: Date.now(),
+          });
+          return new Promise<void>((resolve) => {
+            promptResolve = () => resolve();
+          });
+        }
+      );
 
-    const { ws: ws1 } = makeFakeWs();
-    handleMessage(ctx, storage, ws1, {
-      type: "prompt",
-      sessionId: "sess-1",
-      message: "first prompt",
-    });
+      const { ws: ws1 } = makeFakeWs();
+      handleMessage(ctx, storage, ws1, {
+        type: "prompt",
+        sessionId: "sess-1",
+        message: "first prompt",
+      });
 
-    await new Promise((r) => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 50));
 
-    const { sent: sent2, ws: ws2 } = makeFakeWs();
-    handleMessage(ctx, storage, ws2, {
-      type: "prompt",
-      sessionId: "sess-1",
-      message: "second prompt",
-    });
+      const { sent: sent2, ws: ws2 } = makeFakeWs();
+      handleMessage(ctx, storage, ws2, {
+        type: "prompt",
+        sessionId: "sess-1",
+        message: "second prompt",
+      });
 
-    await new Promise((r) => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 50));
 
-    const errorFrames2 = sent2.filter((f: any) => f.type === "error");
-    expect(errorFrames2.length).toBe(1);
-    expect(errorFrames2[0]?.error).toMatch(BUSY_RE);
-    expect(errorFrames2[0]?.sessionId).toBe("sess-1");
+      const errorFrames2 = asErrorFrames(sent2);
+      expect(errorFrames2.length).toBe(1);
+      expect(errorFrames2[0]?.error).toMatch(BUSY_RE);
+      expect(errorFrames2[0]?.sessionId).toBe("sess-1");
 
-    expect(await abortRunSpy("sess-1")).toBe(true);
-
-    promptResolve = null;
-    runPromptSpy.mockRestore();
-    isRunActiveSpy.mockRestore();
-    abortRunSpy.mockRestore();
-    getActiveHarnessSpy.mockRestore();
+      expect(await abortRunSpy("sess-1")).toBe(true);
+    } finally {
+      promptResolve = null;
+      runPromptSpy.mockRestore();
+      isRunActiveSpy.mockRestore();
+      abortRunSpy.mockRestore();
+      getActiveHarnessSpy.mockRestore();
+    }
   });
 
   it("race: two near-simultaneous prompts yield exactly one run", async () => {
@@ -261,12 +256,7 @@ describe("WS message handler", () => {
 
     const testActiveRuns = new Set<string>();
     let promptResolve: (() => void) | null = null;
-    const mockHarness = {
-      abort: vi.fn(async () => {
-        testActiveRuns.delete("sess-1");
-        promptResolve?.();
-      }),
-    };
+    const mockHarness = makeMockHarness(testActiveRuns, () => promptResolve);
 
     const runnerMod = await import("../runner.ts");
     const runPromptSpy = spyOn(runnerMod, "runPrompt");
@@ -274,73 +264,69 @@ describe("WS message handler", () => {
     const abortRunSpy = spyOn(runnerMod, "abortRun");
     const getActiveHarnessSpy = spyOn(runnerMod, "getActiveHarness");
 
-    isRunActiveSpy.mockImplementation((sessionId: string) =>
-      testActiveRuns.has(sessionId)
-    );
-    abortRunSpy.mockImplementation(async (sessionId: string) => {
-      if (testActiveRuns.has(sessionId)) {
-        testActiveRuns.delete(sessionId);
-        promptResolve?.();
-        return true;
-      }
-      return false;
-    });
-    getActiveHarnessSpy.mockImplementation(() => mockHarness as any);
-    runPromptSpy.mockImplementation(
-      async (
-        _ctx: any,
-        sessionId: string,
-        _message: string,
-        _storage: any,
-        eventCallback: (event: any) => void
-      ) => {
-        if (testActiveRuns.has(sessionId)) return;
-        testActiveRuns.add(sessionId);
-        eventCallback({
-          type: "agent_start",
-          sessionId,
-          timestamp: Date.now(),
-        });
-        return new Promise<void>((resolve) => {
-          promptResolve = () => resolve();
-        });
-      }
-    );
+    try {
+      isRunActiveSpy.mockImplementation((sessionId: string) =>
+        testActiveRuns.has(sessionId)
+      );
+      abortRunSpy.mockImplementation(async (sessionId: string) => {
+        if (testActiveRuns.has(sessionId)) {
+          testActiveRuns.delete(sessionId);
+          promptResolve?.();
+          return true;
+        }
+        return false;
+      });
+      getActiveHarnessSpy.mockImplementation(() => mockHarness as never);
+      runPromptSpy.mockImplementation(
+        async (_ctx, sessionId, _message, _storage, eventCallback) => {
+          if (testActiveRuns.has(sessionId)) return;
+          testActiveRuns.add(sessionId);
+          eventCallback({
+            type: "agent_start",
+            sessionId,
+            timestamp: Date.now(),
+          });
+          return new Promise<void>((resolve) => {
+            promptResolve = () => resolve();
+          });
+        }
+      );
 
-    const { sent: sent1, ws: ws1 } = makeFakeWs();
-    const { sent: sent2, ws: ws2 } = makeFakeWs();
+      const { sent: sent1, ws: ws1 } = makeFakeWs();
+      const { sent: sent2, ws: ws2 } = makeFakeWs();
 
-    handleMessage(ctx, storage, ws1, {
-      type: "prompt",
-      sessionId: "sess-1",
-      message: "prompt-a",
-    });
-    handleMessage(ctx, storage, ws2, {
-      type: "prompt",
-      sessionId: "sess-1",
-      message: "prompt-b",
-    });
+      handleMessage(ctx, storage, ws1, {
+        type: "prompt",
+        sessionId: "sess-1",
+        message: "prompt-a",
+      });
+      handleMessage(ctx, storage, ws2, {
+        type: "prompt",
+        sessionId: "sess-1",
+        message: "prompt-b",
+      });
 
-    await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 100));
 
-    const errors1 = sent1.filter((f: any) => f.type === "error");
-    const errors2 = sent2.filter((f: any) => f.type === "error");
-    const totalErrors = errors1.length + errors2.length;
-    expect(totalErrors).toBe(1);
+      const errors1 = asErrorFrames(sent1);
+      const errors2 = asErrorFrames(sent2);
+      const totalErrors = errors1.length + errors2.length;
+      expect(totalErrors).toBe(1);
 
-    const allErrors = [...errors1, ...errors2];
-    expect(allErrors[0]?.error).toMatch(BUSY_RE);
+      const allErrors = [...errors1, ...errors2];
+      expect(allErrors[0]?.error).toMatch(BUSY_RE);
 
-    const totalEvents =
-      sent1.filter((f: any) => f.type === "event").length +
-      sent2.filter((f: any) => f.type === "event").length;
-    expect(totalEvents).toBeGreaterThan(0);
+      const totalEvents =
+        asEventFrames(sent1).length + asEventFrames(sent2).length;
+      expect(totalEvents).toBeGreaterThan(0);
 
-    callFn(promptResolve);
-    runPromptSpy.mockRestore();
-    isRunActiveSpy.mockRestore();
-    abortRunSpy.mockRestore();
-    getActiveHarnessSpy.mockRestore();
+      promptResolve?.();
+    } finally {
+      runPromptSpy.mockRestore();
+      isRunActiveSpy.mockRestore();
+      abortRunSpy.mockRestore();
+      getActiveHarnessSpy.mockRestore();
+    }
   });
 
   it("steer while active run queues without error", async () => {
@@ -349,73 +335,61 @@ describe("WS message handler", () => {
 
     const testActiveRuns = new Set<string>();
     let promptResolve: (() => void) | null = null;
-    const mockHarness = {
-      steer: vi.fn(async () => {}),
-      followUp: vi.fn(async () => {}),
-      abort: vi.fn(async () => {
-        testActiveRuns.delete("sess-1");
-        promptResolve?.();
-      }),
-    };
+    const mockHarness = makeMockHarness(testActiveRuns, () => promptResolve);
 
     const runnerMod = await import("../runner.ts");
     const runPromptSpy = spyOn(runnerMod, "runPrompt");
     const isRunActiveSpy = spyOn(runnerMod, "isRunActive");
     const getActiveHarnessSpy = spyOn(runnerMod, "getActiveHarness");
 
-    isRunActiveSpy.mockImplementation((sessionId: string) =>
-      testActiveRuns.has(sessionId)
-    );
-    getActiveHarnessSpy.mockImplementation(() => mockHarness as any);
-    runPromptSpy.mockImplementation(
-      async (
-        _ctx: any,
-        _sessionId: string,
-        _message: string,
-        _storage: any,
-        _eventCallback: (event: any) => void
-      ) => {
+    try {
+      isRunActiveSpy.mockImplementation((sessionId: string) =>
+        testActiveRuns.has(sessionId)
+      );
+      getActiveHarnessSpy.mockImplementation(() => mockHarness as never);
+      runPromptSpy.mockImplementation(async () => {
         testActiveRuns.add("sess-1");
         return new Promise<void>((resolve) => {
           promptResolve = () => resolve();
         });
-      }
-    );
+      });
 
-    const { ws: ws1 } = makeFakeWs();
-    handleMessage(ctx, storage, ws1, {
-      type: "prompt",
-      sessionId: "sess-1",
-      message: "first",
-    });
-    await new Promise((r) => setTimeout(r, 50));
+      const { ws: ws1 } = makeFakeWs();
+      handleMessage(ctx, storage, ws1, {
+        type: "prompt",
+        sessionId: "sess-1",
+        message: "first",
+      });
+      await new Promise((r) => setTimeout(r, 50));
 
-    expect(isRunActiveSpy("sess-1")).toBe(true);
+      expect(isRunActiveSpy("sess-1")).toBe(true);
 
-    const { sent: sentSteer, ws: wsSteer } = makeFakeWs();
-    handleMessage(ctx, storage, wsSteer, {
-      type: "steer",
-      sessionId: "sess-1",
-      message: "change direction",
-    });
-    const steerErrors = sentSteer.filter((f: any) => f.type === "error");
-    expect(steerErrors.length).toBe(0);
-    expect(mockHarness.steer).toHaveBeenCalled();
+      const { sent: sentSteer, ws: wsSteer } = makeFakeWs();
+      handleMessage(ctx, storage, wsSteer, {
+        type: "steer",
+        sessionId: "sess-1",
+        message: "change direction",
+      });
+      const steerErrors = asErrorFrames(sentSteer);
+      expect(steerErrors.length).toBe(0);
+      expect(mockHarness.steer).toHaveBeenCalled();
 
-    const { sent: sentFollow, ws: wsFollow } = makeFakeWs();
-    handleMessage(ctx, storage, wsFollow, {
-      type: "followUp",
-      sessionId: "sess-1",
-      message: "follow up",
-    });
-    const followErrors = sentFollow.filter((f: any) => f.type === "error");
-    expect(followErrors.length).toBe(0);
-    expect(mockHarness.followUp).toHaveBeenCalled();
+      const { sent: sentFollow, ws: wsFollow } = makeFakeWs();
+      handleMessage(ctx, storage, wsFollow, {
+        type: "followUp",
+        sessionId: "sess-1",
+        message: "follow up",
+      });
+      const followErrors = asErrorFrames(sentFollow);
+      expect(followErrors.length).toBe(0);
+      expect(mockHarness.followUp).toHaveBeenCalled();
 
-    callFn(promptResolve);
-    runPromptSpy.mockRestore();
-    isRunActiveSpy.mockRestore();
-    getActiveHarnessSpy.mockRestore();
+      promptResolve?.();
+    } finally {
+      runPromptSpy.mockRestore();
+      isRunActiveSpy.mockRestore();
+      getActiveHarnessSpy.mockRestore();
+    }
   });
 
   it("abort during active run then new prompt succeeds", async () => {
@@ -424,12 +398,7 @@ describe("WS message handler", () => {
 
     const testActiveRuns = new Set<string>();
     let promptResolve: (() => void) | null = null;
-    const mockHarness = {
-      abort: vi.fn(async () => {
-        testActiveRuns.delete("sess-1");
-        promptResolve?.();
-      }),
-    };
+    const mockHarness = makeMockHarness(testActiveRuns, () => promptResolve);
 
     const runnerMod = await import("../runner.ts");
     const runPromptSpy = spyOn(runnerMod, "runPrompt");
@@ -437,94 +406,79 @@ describe("WS message handler", () => {
     const abortRunSpy = spyOn(runnerMod, "abortRun");
     const getActiveHarnessSpy = spyOn(runnerMod, "getActiveHarness");
 
-    isRunActiveSpy.mockImplementation((sessionId: string) =>
-      testActiveRuns.has(sessionId)
-    );
-    abortRunSpy.mockImplementation(async (sessionId: string) => {
-      if (testActiveRuns.has(sessionId)) {
-        testActiveRuns.delete(sessionId);
-        promptResolve?.();
-        return true;
-      }
-      return false;
-    });
-    getActiveHarnessSpy.mockImplementation(() => mockHarness as any);
-    runPromptSpy.mockImplementation(
-      async (
-        _ctx: any,
-        sessionId: string,
-        _message: string,
-        _storage: any,
-        eventCallback: (event: any) => void
-      ) => {
-        testActiveRuns.add(sessionId);
-        eventCallback({
-          type: "agent_start",
-          sessionId,
-          timestamp: Date.now(),
-        });
-        return new Promise<void>((resolve) => {
-          promptResolve = () => resolve();
-        });
-      }
-    );
+    try {
+      isRunActiveSpy.mockImplementation((sessionId: string) =>
+        testActiveRuns.has(sessionId)
+      );
+      abortRunSpy.mockImplementation(async (sessionId: string) => {
+        if (testActiveRuns.has(sessionId)) {
+          testActiveRuns.delete(sessionId);
+          promptResolve?.();
+          return true;
+        }
+        return false;
+      });
+      getActiveHarnessSpy.mockImplementation(() => mockHarness as never);
+      runPromptSpy.mockImplementation(
+        async (_ctx, sessionId, _message, _storage, eventCallback) => {
+          testActiveRuns.add(sessionId);
+          eventCallback({
+            type: "agent_start",
+            sessionId,
+            timestamp: Date.now(),
+          });
+          return new Promise<void>((resolve) => {
+            promptResolve = () => resolve();
+          });
+        }
+      );
 
-    const { ws: ws1 } = makeFakeWs();
-    handleMessage(ctx, storage, ws1, {
-      type: "prompt",
-      sessionId: "sess-1",
-      message: "first",
-    });
-    await new Promise((r) => setTimeout(r, 50));
+      const { ws: ws1 } = makeFakeWs();
+      handleMessage(ctx, storage, ws1, {
+        type: "prompt",
+        sessionId: "sess-1",
+        message: "first",
+      });
+      await new Promise((r) => setTimeout(r, 50));
 
-    expect(await abortRunSpy("sess-1")).toBe(true);
+      expect(await abortRunSpy("sess-1")).toBe(true);
 
-    promptResolve = null;
-    await new Promise((r) => setTimeout(r, 50));
+      promptResolve = null;
+      await new Promise((r) => setTimeout(r, 50));
 
-    runPromptSpy.mockImplementation(
-      async (
-        _ctx: any,
-        sessionId: string,
-        _message: string,
-        _storage: any,
-        eventCallback: (event: any) => void
-      ) => {
-        eventCallback({
-          type: "agent_start",
-          sessionId,
-          timestamp: Date.now(),
-        });
-        eventCallback({
-          type: "text_delta",
-          delta: "after abort",
-          sessionId,
-          timestamp: Date.now(),
-        });
-        eventCallback({
-          type: "agent_end",
-          sessionId,
-          timestamp: Date.now(),
-        });
-      }
-    );
+      runPromptSpy.mockImplementation(
+        async (_ctx, sessionId, _message, _storage, eventCallback) => {
+          eventCallback({
+            type: "agent_start",
+            sessionId,
+            timestamp: Date.now(),
+          });
+          eventCallback({
+            type: "agent_end",
+            messages: [],
+            sessionId,
+            timestamp: Date.now(),
+          });
+        }
+      );
 
-    const { sent, ws: ws2 } = makeFakeWs();
-    handleMessage(ctx, storage, ws2, {
-      type: "prompt",
-      sessionId: "sess-1",
-      message: "second after abort",
-    });
-    await new Promise((r) => setTimeout(r, 100));
+      const { sent, ws: ws2 } = makeFakeWs();
+      handleMessage(ctx, storage, ws2, {
+        type: "prompt",
+        sessionId: "sess-1",
+        message: "second after abort",
+      });
+      await new Promise((r) => setTimeout(r, 100));
 
-    const errorFrames = sent.filter((f: any) => f.type === "error");
-    expect(errorFrames.length).toBe(0);
-    const eventFrames = sent.filter((f: any) => f.type === "event");
-    expect(eventFrames.length).toBeGreaterThan(0);
-
-    runPromptSpy.mockRestore();
-    isRunActiveSpy.mockRestore();
-    abortRunSpy.mockRestore();
-    getActiveHarnessSpy.mockRestore();
+      const errorFrames = asErrorFrames(sent);
+      expect(errorFrames.length).toBe(0);
+      const eventFrames = asEventFrames(sent);
+      expect(eventFrames.length).toBeGreaterThan(0);
+    } finally {
+      runPromptSpy.mockRestore();
+      isRunActiveSpy.mockRestore();
+      abortRunSpy.mockRestore();
+      getActiveHarnessSpy.mockRestore();
+    }
   });
 });

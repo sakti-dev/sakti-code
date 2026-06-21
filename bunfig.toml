@@ -1,2 +1,2 @@
 [test]
-exclude = ["openspec/**", "node_modules/**", "**/node_modules/**"]
+pathIgnorePatterns = ["openspec/**", "node_modules/**", "**/node_modules/**"]

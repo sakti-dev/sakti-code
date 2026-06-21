@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,43 +7,52 @@ import { initDatabase } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import { app } from "../app.ts";
 import { createContext } from "../context.ts";
+import {
+  fauxAssistantMessage,
+  teardownFauxLlm,
+  useFauxLlm,
+} from "./llm-helpers.ts";
 
-// pi-ai is globally mocked via apps/server/test-setup.ts.
+const TEST_MODEL_ID = "gpt-4";
+
 const { compactionRoutes } = await import("../routes/sessions/compaction.ts");
 const { statsRoutes } = await import("../routes/sessions/stats.ts");
 const { makeApp } = await import("./helpers.ts");
 
 let tempDir: string;
 
+beforeAll(() => {
+  tempDir = mkdtempSync(join(tmpdir(), "sakti-composition-test-"));
+});
+
+afterAll(() => {
+  try {
+    rmSync(tempDir, { recursive: true, force: true });
+  } catch {}
+});
+
+afterEach(() => {
+  teardownFauxLlm();
+});
+
 describe("route composition", () => {
-  beforeAll(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "sakti-composition-test-"));
-  });
-
-  afterAll(() => {
-    try {
-      rmSync(tempDir, { recursive: true, force: true });
-    } catch {}
-  });
-
   it("compaction and stats routes work together via makeApp", async () => {
+    useFauxLlm([fauxAssistantMessage("Compacted session summary.")]);
     const { app, ctx } = await makeApp([compactionRoutes, statsRoutes]);
 
     const project = await ctx.repos.projects.create("p", tempDir);
     ctx.repos.models.set({
       projectId: project.id,
       provider: "openai",
-      modelId: "test-model",
+      modelId: TEST_MODEL_ID,
     });
-    const session = await ctx.repos.sessions.create(project.id, "test-model");
+    const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
 
-    // Stats endpoint works
     const statsRes = await app.handle(
       new Request(`http://localhost/api/sessions/${session.id}/stats`)
     );
     expect(statsRes.status).toBe(200);
 
-    // Compaction endpoint works when model is configured
     const compactRes = await app.handle(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
         method: "POST",
@@ -69,7 +78,6 @@ describe("route composition", () => {
   });
 
   it("default app serves feature routes in production", async () => {
-    // Verify all composed routes respond (not 404) when hit against the default app.
     const db = await initDatabase(new Database(":memory:"));
     const server = new Elysia()
       .state("ctx", createContext(db))

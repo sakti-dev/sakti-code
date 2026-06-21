@@ -1,17 +1,5 @@
-import { describe, expect, it, type mock } from "bun:test";
-
-// pi-ai is globally mocked via apps/server/test-setup.ts.
-// Override getProviders and getModels with test-specific values.
-const { getProviders, getModels } = await import("@earendil-works/pi-ai");
-(getProviders as ReturnType<typeof mock>).mockImplementation(() => [
-  "openai",
-  "anthropic",
-]);
-(getModels as ReturnType<typeof mock>).mockImplementation((p: string) =>
-  p === "openai"
-    ? [{ id: "gpt-4o", name: "GPT-4o", provider: "openai" }]
-    : [{ id: "claude-3", name: "Claude 3", provider: "anthropic" }]
-);
+import { describe, expect, it } from "bun:test";
+import { getModels, getProviders } from "@earendil-works/pi-ai";
 
 const { availableModelsRoutes } = await import(
   "../routes/models/available-models.ts"
@@ -24,7 +12,9 @@ describe("available-models routes", () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual(["openai", "anthropic"]);
+    expect(body).toEqual(getProviders());
+    expect(Array.isArray(body)).toBe(true);
+    expect(body).toContain("openai");
   });
 
   it("lists models for a provider", async () => {
@@ -33,6 +23,10 @@ describe("available-models routes", () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body[0]?.id).toBe("gpt-4o");
+    expect(body).toEqual(getModels("openai"));
+    expect(body.length).toBeGreaterThan(0);
+    expect(
+      body.every((m: { provider: string }) => m.provider === "openai")
+    ).toBe(true);
   });
 });

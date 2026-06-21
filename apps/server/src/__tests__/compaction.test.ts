@@ -1,12 +1,19 @@
-import { afterAll, beforeAll, describe, expect, it, type mock } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { afterEach, beforeAll, describe, expect, it } from "bun:test";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SqliteSessionStorage } from "@sakti-code/db";
+import {
+  fauxAssistantMessage,
+  teardownFauxLlm,
+  useFauxLlm,
+} from "./llm-helpers.ts";
 
-const { getEnvApiKey, completeSimple } = await import("@earendil-works/pi-ai");
 const { compactionRoutes } = await import("../routes/sessions/compaction.ts");
 const { makeApp } = await import("./helpers.ts");
+
+/** Real model id so `getModel("openai", id)` resolves during runPrompt/compact. */
+const TEST_MODEL_ID = "gpt-4";
 
 let tempDir: string;
 
@@ -14,10 +21,8 @@ beforeAll(() => {
   tempDir = mkdtempSync(join(tmpdir(), "sakti-compaction-test-"));
 });
 
-afterAll(() => {
-  try {
-    rmSync(tempDir, { recursive: true, force: true });
-  } catch {}
+afterEach(() => {
+  teardownFauxLlm();
 });
 
 async function seedEntries(
@@ -25,7 +30,7 @@ async function seedEntries(
   sessionId: string,
   count: number
 ): Promise<void> {
-  const storage = new SqliteSessionStorage(db as any, sessionId, {
+  const storage = new SqliteSessionStorage(db as never, sessionId, {
     id: sessionId,
     createdAt: new Date().toISOString(),
   });
@@ -41,7 +46,7 @@ async function seedEntries(
         role: i % 2 === 0 ? "user" : "assistant",
         content: `Message ${i}: ${"x".repeat(500)}`,
         timestamp: Date.now(),
-      } as any,
+      } as never,
     });
     parentId = id;
   }
@@ -49,14 +54,15 @@ async function seedEntries(
 
 describe("compaction route", () => {
   it("POST /api/sessions/:id/compact summarizes and persists", async () => {
+    useFauxLlm([fauxAssistantMessage("Compacted summary of the session.")]);
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p", tempDir);
     ctx.repos.models.set({
       projectId: project.id,
       provider: "openai",
-      modelId: "test-model",
+      modelId: TEST_MODEL_ID,
     });
-    const session = await ctx.repos.sessions.create(project.id, "test-model");
+    const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
 
     await seedEntries(ctx.db, session.id, 200);
 
@@ -85,7 +91,7 @@ describe("compaction route", () => {
   it("returns 500 when no model configured", async () => {
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p2", tempDir);
-    const session = await ctx.repos.sessions.create(project.id, "test-model");
+    const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
 
     const res = await app.handle(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
@@ -98,29 +104,21 @@ describe("compaction route", () => {
   });
 
   it("returns 500 on summarization error", async () => {
-    const mocked = completeSimple as ReturnType<typeof mock>;
-    mocked.mockImplementationOnce(async () => ({
-      stopReason: "error",
-      content: [],
-      usage: {
-        input: 0,
-        output: 0,
-        cacheRead: 0,
-        cacheWrite: 0,
-        totalTokens: 0,
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-      },
-      timestamp: Date.now(),
-    }));
+    useFauxLlm([
+      fauxAssistantMessage("", {
+        stopReason: "error",
+        errorMessage: "summarization failed",
+      }),
+    ]);
 
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p3", tempDir);
     ctx.repos.models.set({
       projectId: project.id,
       provider: "openai",
-      modelId: "test-model",
+      modelId: TEST_MODEL_ID,
     });
-    const session = await ctx.repos.sessions.create(project.id, "test-model");
+    const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
     await seedEntries(ctx.db, session.id, 200);
 
     const res = await app.handle(
@@ -132,17 +130,17 @@ describe("compaction route", () => {
   });
 
   it("returns 500 when no API key configured", async () => {
-    const mockedKey = getEnvApiKey as ReturnType<typeof mock>;
-    mockedKey.mockImplementationOnce(() => undefined);
+    // Don't call useFauxLlm — leave OPENAI_API_KEY unset so getEnvApiKey returns undefined.
+    delete process.env.OPENAI_API_KEY;
 
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p4", tempDir);
     ctx.repos.models.set({
       projectId: project.id,
       provider: "openai",
-      modelId: "test-model",
+      modelId: TEST_MODEL_ID,
     });
-    const session = await ctx.repos.sessions.create(project.id, "test-model");
+    const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
     await seedEntries(ctx.db, session.id, 50);
 
     const res = await app.handle(

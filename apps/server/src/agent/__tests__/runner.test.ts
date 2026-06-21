@@ -4,45 +4,12 @@ import {
   describe,
   expect,
   it,
-  mock,
   spyOn,
   vi,
 } from "bun:test";
 
 const SESSION_NOT_FOUND_RE = /Session not found/;
 const PROJECT_NOT_FOUND_RE = /Project not found/;
-
-mock.module("@earendil-works/pi-ai/base", () => ({
-  getModel: vi.fn(() => ({
-    id: "test-model",
-    name: "Test",
-    api: "openai-completions",
-    provider: "openai",
-    baseUrl: "https://api.openai.com",
-    reasoning: false,
-    input: ["text"],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: 200_000,
-    maxTokens: 4096,
-  })),
-}));
-
-mock.module("@earendil-works/pi-ai", () => ({
-  streamSimple: vi.fn(),
-  getModel: vi.fn(() => ({
-    id: "test-model",
-    name: "Test",
-    api: "openai-completions",
-    provider: "openai",
-    baseUrl: "https://api.openai.com",
-    reasoning: false,
-    input: ["text"],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: 200_000,
-    maxTokens: 4096,
-  })),
-  getEnvApiKey: vi.fn(() => "test-key"),
-}));
 
 import type { AgentHarnessEvent } from "@sakti-code/agent";
 import {
