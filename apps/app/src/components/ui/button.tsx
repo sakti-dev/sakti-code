@@ -1,8 +1,8 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import type { ParentComponent } from "solid-js";
+import type { JSX, ParentComponent } from "solid-js";
 import { cn } from "~/lib/utils";
 
-const buttonVariants = cva(
+export const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
@@ -32,20 +32,20 @@ const buttonVariants = cva(
   }
 );
 
-type ButtonProps = {
-  variant?: ButtonVariants["variant"];
-  size?: ButtonVariants["size"];
+type ButtonVariants = VariantProps<typeof buttonVariants>;
+
+export type ButtonProps = {
+  children?: unknown;
   class?: string;
   disabled?: boolean;
   loading?: boolean;
-  type?: "button" | "submit" | "reset";
   onClick?: () => void;
-  children?: unknown;
+  size?: ButtonVariants["size"];
+  type?: "button" | "submit" | "reset";
+  variant?: ButtonVariants["variant"];
 } & Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, "class">;
 
-type ButtonVariants = VariantProps<typeof buttonVariants>;
-
-const Button: ParentComponent<ButtonProps> = (props) => (
+export const Button: ParentComponent<ButtonProps> = (props) => (
   <button
     class={cn(
       buttonVariants({ variant: props.variant, size: props.size }),
@@ -84,6 +84,3 @@ const Button: ParentComponent<ButtonProps> = (props) => (
     {props.children}
   </button>
 );
-
-export type { ButtonProps, ButtonVariants };
-export { Button, buttonVariants };

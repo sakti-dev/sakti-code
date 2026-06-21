@@ -1,14 +1,14 @@
 import type { ParentComponent } from "solid-js";
 import { cn } from "~/lib/utils";
 
-interface ScrollAreaProps {
+export interface ScrollAreaProps {
   children?: unknown;
   class?: string;
   horizontal?: boolean;
   vertical?: boolean;
 }
 
-const ScrollArea: ParentComponent<ScrollAreaProps> = (props) => (
+export const ScrollArea: ParentComponent<ScrollAreaProps> = (props) => (
   <div
     class={cn(
       "overflow-auto",
@@ -20,6 +20,3 @@ const ScrollArea: ParentComponent<ScrollAreaProps> = (props) => (
     {props.children}
   </div>
 );
-
-export type { ScrollAreaProps };
-export { ScrollArea };

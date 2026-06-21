@@ -1,35 +1,32 @@
-import { Popover as PopoverPrimitive } from "@kobalte/core/popover";
-import { type JSX, type ParentComponent, splitProps } from "solid-js";
+import type { PolymorphicProps } from "@kobalte/core/polymorphic";
+import * as PopoverPrimitive from "@kobalte/core/popover";
+import type { Component, ValidComponent } from "solid-js";
+import { splitProps } from "solid-js";
+
 import { cn } from "~/lib/utils";
 
-const Popover = PopoverPrimitive;
-const PopoverTrigger = PopoverPrimitive.Trigger;
-const PopoverPortal = PopoverPrimitive.Portal;
+export const PopoverTrigger = PopoverPrimitive.Trigger;
 
-const PopoverContent: ParentComponent<
-  JSX.IntrinsicElements["div"] & { class?: string }
-> = (props) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+export const Popover: Component<PopoverPrimitive.PopoverRootProps> = (
+  props
+) => <PopoverPrimitive.Root gutter={4} {...props} />;
+
+type PopoverContentProps<T extends ValidComponent = "div"> =
+  PopoverPrimitive.PopoverContentProps<T> & { class?: string | undefined };
+
+export const PopoverContent = <T extends ValidComponent = "div">(
+  props: PolymorphicProps<T, PopoverContentProps<T>>
+) => {
+  const [local, others] = splitProps(props as PopoverContentProps, ["class"]);
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
         class={cn(
-          "z-50 w-72 rounded-lg border bg-popover p-4 text-popover-foreground shadow-md outline-none",
-          "data-[expanded]:fade-in-0 data-[expanded]:zoom-in-95 data-[expanded]:animate-in",
-          "data-[closed]:fade-out-0 data-[closed]:zoom-out-95 data-[closed]:animate-out",
-          "data-[side=top]:slide-in-from-bottom-2",
-          "data-[side=bottom]:slide-in-from-top-2",
-          "data-[side=left]:slide-in-from-right-2",
-          "data-[side=right]:slide-in-from-left-2",
+          "data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 z-50 w-72 origin-[var(--kb-popover-content-transform-origin)] rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[closed]:animate-out data-[expanded]:animate-in",
           local.class
         )}
         {...others}
-      >
-        {local.children}
-        <PopoverPrimitive.Arrow class="fill-popover" />
-      </PopoverPrimitive.Content>
+      />
     </PopoverPrimitive.Portal>
   );
 };
-
-export { Popover, PopoverContent, PopoverPortal, PopoverTrigger };

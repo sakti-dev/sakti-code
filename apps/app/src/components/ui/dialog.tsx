@@ -1,13 +1,14 @@
-import { Dialog as DialogPrimitive } from "@kobalte/core/dialog";
-import { type JSX, type ParentComponent, splitProps } from "solid-js";
+import * as DialogPrimitive from "@kobalte/core/dialog";
+import type { PolymorphicProps } from "@kobalte/core/polymorphic";
+import type { Component, ValidComponent } from "solid-js";
+import { splitProps } from "solid-js";
+
 import { cn } from "~/lib/utils";
 
-const Dialog = DialogPrimitive;
-const DialogTrigger = DialogPrimitive.Trigger;
-const DialogPortal = DialogPrimitive.Portal;
-const DialogClose = DialogPrimitive.CloseButton;
+export const Dialog = DialogPrimitive;
+export const DialogTrigger = DialogPrimitive.Trigger;
 
-const DialogOverlay: ParentComponent<{ class?: string }> = (props) => (
+export const DialogOverlay: Component<{ class?: string }> = (props) => (
   <DialogPrimitive.Overlay
     class={cn(
       "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm",
@@ -18,16 +19,26 @@ const DialogOverlay: ParentComponent<{ class?: string }> = (props) => (
   />
 );
 
-const DialogContent: ParentComponent<
-  JSX.IntrinsicElements["div"] & { class?: string }
-> = (props) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+type DialogContentProps<T extends ValidComponent = "div"> =
+  DialogPrimitive.DialogContentProps<T> & {
+    class?: string | undefined;
+    children?: import("solid-js").JSX.Element;
+  };
+
+export const DialogContent = <T extends ValidComponent = "div">(
+  props: PolymorphicProps<T, DialogContentProps<T>>
+) => {
+  const [local, others] = splitProps(props as DialogContentProps, [
+    "class",
+    "children",
+  ]);
   return (
-    <DialogPortal>
+    <DialogPrimitive.Portal>
       <DialogOverlay />
       <DialogPrimitive.Content
         class={cn(
           "fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2",
+          "origin-[var(--kb-dialog-content-transform-origin)]",
           "border bg-card p-6 text-card-foreground shadow-2xl",
           "rounded-xl",
           "data-[expanded]:fade-in-0 data-[expanded]:zoom-in-95 data-[expanded]:slide-in-from-left-1/2 data-[expanded]:slide-in-from-top-[48%] data-[expanded]:animate-in",
@@ -57,12 +68,12 @@ const DialogContent: ParentComponent<
           <span class="sr-only">Close</span>
         </DialogPrimitive.CloseButton>
       </DialogPrimitive.Content>
-    </DialogPortal>
+    </DialogPrimitive.Portal>
   );
 };
 
-const DialogTitle: ParentComponent<
-  JSX.IntrinsicElements["h2"] & { class?: string }
+export const DialogTitle: Component<
+  DialogPrimitive.DialogTitleProps & { class?: string }
 > = (props) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
@@ -76,8 +87,8 @@ const DialogTitle: ParentComponent<
   );
 };
 
-const DialogDescription: ParentComponent<
-  JSX.IntrinsicElements["p"] & { class?: string }
+export const DialogDescription: Component<
+  DialogPrimitive.DialogDescriptionProps & { class?: string }
 > = (props) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
@@ -86,15 +97,4 @@ const DialogDescription: ParentComponent<
       {...others}
     />
   );
-};
-
-export {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogOverlay,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
 };

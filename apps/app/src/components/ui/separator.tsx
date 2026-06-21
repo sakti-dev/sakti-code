@@ -1,12 +1,12 @@
 import type { ParentComponent } from "solid-js";
 import { cn } from "~/lib/utils";
 
-interface SeparatorProps {
+export interface SeparatorProps {
   class?: string;
   orientation?: "horizontal" | "vertical";
 }
 
-const Separator: ParentComponent<SeparatorProps> = (props) => (
+export const Separator: ParentComponent<SeparatorProps> = (props) => (
   <hr
     aria-orientation={props.orientation ?? "horizontal"}
     class={cn(
@@ -18,6 +18,3 @@ const Separator: ParentComponent<SeparatorProps> = (props) => (
     )}
   />
 );
-
-export type { SeparatorProps };
-export { Separator };

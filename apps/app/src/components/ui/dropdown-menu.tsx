@@ -1,17 +1,26 @@
-import { DropdownMenu as DropdownMenuPrimitive } from "@kobalte/core/dropdown-menu";
-import { type JSX, type ParentComponent, splitProps } from "solid-js";
+import * as DropdownMenuPrimitive from "@kobalte/core/dropdown-menu";
+import type { PolymorphicProps } from "@kobalte/core/polymorphic";
+import type { Component, ValidComponent } from "solid-js";
+import { splitProps } from "solid-js";
+
 import { cn } from "~/lib/utils";
 
-const DropdownMenu = DropdownMenuPrimitive;
+export const DropdownMenu = DropdownMenuPrimitive;
+export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+type DropdownMenuContentProps<T extends ValidComponent = "div"> =
+  DropdownMenuPrimitive.DropdownMenuContentProps<T> & {
+    class?: string | undefined;
+    children?: import("solid-js").JSX.Element;
+  };
 
-const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
-
-const DropdownMenuContent: ParentComponent<
-  JSX.IntrinsicElements["div"] & { class?: string }
-> = (props) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+export const DropdownMenuContent = <T extends ValidComponent = "div">(
+  props: PolymorphicProps<T, DropdownMenuContentProps<T>>
+) => {
+  const [local, others] = splitProps(props as DropdownMenuContentProps, [
+    "class",
+    "children",
+  ]);
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
@@ -33,13 +42,21 @@ const DropdownMenuContent: ParentComponent<
   );
 };
 
-const DropdownMenuItem: ParentComponent<
-  JSX.IntrinsicElements["div"] & {
-    class?: string;
+type DropdownMenuItemProps<T extends ValidComponent = "div"> =
+  DropdownMenuPrimitive.DropdownMenuItemProps<T> & {
+    class?: string | undefined;
+    children?: import("solid-js").JSX.Element;
     shortcut?: string;
-  }
-> = (props) => {
-  const [local, others] = splitProps(props, ["class", "children", "shortcut"]);
+  };
+
+export const DropdownMenuItem = <T extends ValidComponent = "div">(
+  props: PolymorphicProps<T, DropdownMenuItemProps<T>>
+) => {
+  const [local, others] = splitProps(props as DropdownMenuItemProps, [
+    "class",
+    "children",
+    "shortcut",
+  ]);
   return (
     <DropdownMenuPrimitive.Item
       class={cn(
@@ -60,18 +77,18 @@ const DropdownMenuItem: ParentComponent<
   );
 };
 
-const DropdownMenuSeparator: ParentComponent<{ class?: string }> = (props) => (
+export const DropdownMenuSeparator: Component<{ class?: string }> = (props) => (
   <DropdownMenuPrimitive.Separator
     class={cn("-mx-1 my-1 h-px bg-muted", props.class)}
   />
 );
 
-const DropdownMenuLabel: ParentComponent<
-  JSX.IntrinsicElements["div"] & { class?: string }
+export const DropdownMenuLabel: Component<
+  DropdownMenuPrimitive.DropdownMenuGroupLabelProps & { class?: string }
 > = (props) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
-    <DropdownMenuPrimitive.Label
+    <DropdownMenuPrimitive.GroupLabel
       class={cn(
         "px-2 py-1.5 font-semibold text-foreground text-sm",
         local.class
@@ -79,14 +96,4 @@ const DropdownMenuLabel: ParentComponent<
       {...others}
     />
   );
-};
-
-export {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuPortal,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
 };

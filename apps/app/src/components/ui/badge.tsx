@@ -2,7 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ParentComponent } from "solid-js";
 import { cn } from "~/lib/utils";
 
-const badgeVariants = cva(
+export const badgeVariants = cva(
   "inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
@@ -28,16 +28,16 @@ const badgeVariants = cva(
   }
 );
 
-interface BadgeProps {
+type BadgeVariants = VariantProps<typeof badgeVariants>;
+
+export interface BadgeProps {
   children?: unknown;
   class?: string;
   size?: BadgeVariants["size"];
   variant?: BadgeVariants["variant"];
 }
 
-type BadgeVariants = VariantProps<typeof badgeVariants>;
-
-const Badge: ParentComponent<BadgeProps> = (props) => (
+export const Badge: ParentComponent<BadgeProps> = (props) => (
   <span
     class={cn(
       badgeVariants({ variant: props.variant, size: props.size }),
@@ -47,6 +47,3 @@ const Badge: ParentComponent<BadgeProps> = (props) => (
     {props.children}
   </span>
 );
-
-export type { BadgeProps, BadgeVariants };
-export { Badge, badgeVariants };

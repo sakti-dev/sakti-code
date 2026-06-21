@@ -53,7 +53,9 @@ export default function Sidebar() {
   const sessionsForProject = (projectId: string) =>
     server.store.sessionOrder
       .map((id) => server.store.sessions[id])
-      .filter((s) => s && s.projectId === projectId)
+      .filter(
+        (s): s is NonNullable<typeof s> => !!s && s.projectId === projectId
+      )
       .sort((a, b) => b.updatedAt - a.updatedAt);
 
   const projectCount = () => server.store.projectOrder.length;
