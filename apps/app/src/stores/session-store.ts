@@ -59,8 +59,10 @@ export function createSessionStore(_sessionId: string): SessionStore {
     },
 
     loadMessages(msgs) {
-      setStore("messages", {});
-      setStore("messageOrder", []);
+      for (const key of Object.keys(store.messages)) {
+        // biome-ignore lint/suspicious/noExplicitAny: SolidJS store deletion requires any cast
+        setStore("messages", key, undefined as any);
+      }
       for (const msg of msgs) {
         setStore("messages", msg.id, msg);
       }

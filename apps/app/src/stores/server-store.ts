@@ -65,7 +65,10 @@ export function createServerStore(): ServerStore {
     },
 
     setProjects(projects) {
-      setStore("projects", {});
+      for (const key of Object.keys(store.projects)) {
+        // biome-ignore lint/suspicious/noExplicitAny: SolidJS store deletion requires any cast
+        setStore("projects", key, undefined as any);
+      }
       for (const p of projects) {
         setStore("projects", p.id, p);
       }
@@ -80,7 +83,10 @@ export function createServerStore(): ServerStore {
     },
 
     setSessions(sessions) {
-      setStore("sessions", {});
+      for (const key of Object.keys(store.sessions)) {
+        // biome-ignore lint/suspicious/noExplicitAny: SolidJS store deletion requires any cast
+        setStore("sessions", key, undefined as any);
+      }
       for (const s of sessions) {
         setStore("sessions", s.id, s);
       }
