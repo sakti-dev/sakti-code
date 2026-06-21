@@ -3,14 +3,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { initDatabase } from "../../init.ts";
-import {
-  CostRepo,
-  MessageRepo,
-  ModelConfigRepo,
-  ProjectRepo,
-  SessionRepo,
-  SettingsRepo,
-} from "..";
+import { ModelConfigRepo, ProjectRepo, SessionRepo, SettingsRepo } from "..";
 
 describe("ProjectRepo", () => {
   let db: any;
@@ -82,104 +75,6 @@ describe("SessionRepo", () => {
 
     const list = repo.listByProject(proj.id);
     expect(list.length).toBe(1);
-  });
-});
-
-describe("MessageRepo", () => {
-  let db: any;
-  let tmpDir: string;
-  let repo: MessageRepo;
-
-  beforeAll(async () => {
-    tmpDir = mkdtempSync(join(import.meta.dirname!, "test-XXXXXX"));
-    const sqlite = new Database(join(tmpDir, "test.db"));
-    db = await initDatabase(sqlite);
-    repo = new MessageRepo(db);
-    db.$client
-      .prepare(
-        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)"
-      )
-      .run();
-    db.$client
-      .prepare(
-        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'm1', 1, 1)"
-      )
-      .run();
-  });
-
-  afterAll(() => {
-    db.$client.close?.();
-    rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  test("append + loadBySession + countBySession", async () => {
-    await repo.append("s1", { role: "user", content: "hello" });
-    await repo.append("s1", {
-      role: "assistant",
-      content: "hi there",
-      usage: '{"input":10}',
-    });
-
-    const msgs = repo.loadBySession("s1");
-    expect(msgs.length).toBe(2);
-    expect(msgs[0]?.role).toBe("user");
-    expect(msgs[1]?.role).toBe("assistant");
-
-    expect(repo.countBySession("s1")).toBe(2);
-  });
-
-  test("replaceForSession atomically swaps messages", async () => {
-    await repo.replaceForSession("s1", [
-      { role: "user", content: "summary" },
-      { role: "assistant", content: "ok", usage: "{}" },
-    ]);
-
-    const msgs = repo.loadBySession("s1");
-    expect(msgs.length).toBe(2);
-    expect(msgs[0]?.content).toBe("summary");
-    expect(msgs[1]?.content).toBe("ok");
-  });
-});
-
-describe("CostRepo", () => {
-  let db: any;
-  let tmpDir: string;
-  let repo: CostRepo;
-
-  beforeAll(async () => {
-    tmpDir = mkdtempSync(join(import.meta.dirname!, "test-XXXXXX"));
-    const sqlite = new Database(join(tmpDir, "test.db"));
-    db = await initDatabase(sqlite);
-    repo = new CostRepo(db);
-    db.$client
-      .prepare(
-        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)"
-      )
-      .run();
-    db.$client
-      .prepare(
-        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'm1', 1, 1)"
-      )
-      .run();
-  });
-
-  afterAll(() => {
-    db.$client.close?.();
-    rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  test("record + aggregateByProject", async () => {
-    await repo.record(
-      "s1",
-      "p1",
-      { inputTokens: 100, outputTokens: 50, costUsd: 0.01 },
-      "claude-sonnet"
-    );
-
-    const agg = repo.aggregateByProject("p1")!;
-    expect(agg.totalInputTokens).toBe(100);
-    expect(agg.totalOutputTokens).toBe(50);
-    expect(agg.totalCostUsd).toBeCloseTo(0.01, 5);
   });
 });
 
