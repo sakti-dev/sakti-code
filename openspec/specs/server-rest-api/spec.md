@@ -5,7 +5,7 @@ REST API server for the sakti-code desktop app. Built on Elysia (Bun), backed by
 ## Requirements
 
 ### Requirement: Server scaffold and composition
-The system SHALL provide an `apps/server` Bun workspace package (`@sakti-code/server`) that builds an Elysia application via a `buildServer({ db, routes })` function. `buildServer` SHALL accept an optional `routes` array of Elysia route instances and compose them via `.use()`, so downstream changes can register additional routes without editing the foundation's `index.ts`. When run directly (`import.meta.main`), the server SHALL listen on `SAKTI_PORT` (default 3001) and initialize its database from `SAKTI_DB_PATH` (default `sakti.db`).
+The system SHALL provide an `apps/server` Bun workspace package (`@sakti-code/server`) that builds an Elysia application via a `buildServer({ db, routes })` function. `buildServer` SHALL accept an optional `routes` array of Elysia route instances and compose them via `.use()`, so downstream changes can register additional routes without editing the foundation's `index.ts`. When run directly (`import.meta.main`), the server SHALL listen on `SAKTI_PORT` (default 3001) and initialize its database from `SAKTI_DB_PATH` (default `sakti-code.db`).
 
 #### Scenario: buildServer composes default routes
 - **WHEN** `buildServer({ db })` is called with no `routes` argument

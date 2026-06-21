@@ -4,7 +4,7 @@ import { app } from "./app.ts";
 import { createContext } from "./context.ts";
 
 const db = await initDatabase(
-  new Database(process.env.SAKTI_DB_PATH ?? "sakti.db")
+  new Database(process.env.SAKTI_DB_PATH ?? "sakti-code.db")
 );
 app
   .state("ctx", createContext(db))

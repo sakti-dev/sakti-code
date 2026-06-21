@@ -96,7 +96,10 @@
       }
     },
     {
-      "includes": ["packages/db/src/session-entry-store.ts"],
+      "includes": [
+        "packages/db/src/session-entry-store.ts",
+        "packages/db/src/init.ts"
+      ],
       "linter": {
         "rules": {
           "suspicious": {
@@ -106,6 +109,15 @@
             "useConsistentArrayType": "off"
           }
         }
+      }
+    },
+    {
+      "includes": ["packages/db/migrations/**"],
+      "formatter": {
+        "enabled": false
+      },
+      "linter": {
+        "enabled": false
       }
     }
   ]

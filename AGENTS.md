@@ -70,7 +70,7 @@ The Elysia REST server lives in `apps/server/` and follows a **REST-for-state, W
 ```bash
 bun dev:server                              # starts on port 3001
 SAKTI_PORT=4000 bun dev:server              # override port
-SAKTI_DB_PATH=/custom/path/sakti.db bun dev:server   # custom db path
+SAKTI_DB_PATH=/custom/path/sakti-code.db bun dev:server   # custom db path
 ```
 
 ### Environment & configuration
