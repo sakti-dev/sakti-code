@@ -19,7 +19,7 @@ export {
   loadPromptTemplates,
   loadSourcedPromptTemplates,
 } from "./harness/prompt-templates.ts";
-export { Session } from "./harness/session.ts";
+export { buildSessionContext, Session } from "./harness/session.ts";
 export { loadSkills, loadSourcedSkills } from "./harness/skills.ts";
 export { formatSkillsForSystemPrompt } from "./harness/system-prompt.ts";
 export type {
