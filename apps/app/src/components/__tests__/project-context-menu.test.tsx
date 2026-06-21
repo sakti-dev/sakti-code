@@ -4,7 +4,7 @@ import { ProjectContextMenu } from "../layout/project-context-menu.tsx";
 
 describe("ProjectContextMenu", () => {
   it("renders menu items", () => {
-    const { getByText } = render(() => (
+    const { getAllByText } = render(() => (
       <ProjectContextMenu
         onClose={vi.fn()}
         onCopyPath={vi.fn()}
@@ -17,15 +17,15 @@ describe("ProjectContextMenu", () => {
         y={100}
       />
     ));
-    expect(getByText("Open in Terminal")).toBeTruthy();
-    expect(getByText("Open in Editor")).toBeTruthy();
-    expect(getByText("Copy Path")).toBeTruthy();
-    expect(getByText("Remove Project")).toBeTruthy();
+    expect(getAllByText("Open in Terminal").length).toBeGreaterThan(0);
+    expect(getAllByText("Open in Editor").length).toBeGreaterThan(0);
+    expect(getAllByText("Copy Path").length).toBeGreaterThan(0);
+    expect(getAllByText("Remove Project").length).toBeGreaterThan(0);
   });
 
   it("calls onOpenInTerminal when clicked", async () => {
     const onOpenInTerminal = vi.fn();
-    const { getByText } = render(() => (
+    const { getAllByText } = render(() => (
       <ProjectContextMenu
         onClose={vi.fn()}
         onCopyPath={vi.fn()}
@@ -38,13 +38,13 @@ describe("ProjectContextMenu", () => {
         y={100}
       />
     ));
-    getByText("Open in Terminal").click();
+    getAllByText("Open in Terminal")[0]!.click();
     expect(onOpenInTerminal).toHaveBeenCalledWith("p1");
   });
 
   it("calls onClose after action", async () => {
     const onClose = vi.fn();
-    const { getByText } = render(() => (
+    const { getAllByText } = render(() => (
       <ProjectContextMenu
         onClose={onClose}
         onCopyPath={vi.fn()}
@@ -57,7 +57,7 @@ describe("ProjectContextMenu", () => {
         y={100}
       />
     ));
-    getByText("Copy Path").click();
+    getAllByText("Copy Path")[0]!.click();
     expect(onClose).toHaveBeenCalled();
   });
 
