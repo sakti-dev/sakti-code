@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@elysiajs/eden": "^1.4.9",
+    "@kobalte/core": "^0.13.11",
     "@sakti-code/server": "workspace:*",
     "@solidjs/router": "^0.16.1",
     "@tailwindcss/vite": "^4.3.1",
