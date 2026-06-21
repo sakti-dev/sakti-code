@@ -12,6 +12,7 @@ import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
 import { setSidebarOpen, sidebarOpen } from "~/stores/ui-signals";
+import { AddProjectInput } from "./add-project-input.tsx";
 import { ProjectContextMenu } from "./project-context-menu.tsx";
 import { ProjectGroup } from "./project-group.tsx";
 
@@ -20,13 +21,12 @@ export default function Sidebar() {
   const [expandedProjects, setExpandedProjects] = createSignal<Set<string>>(
     new Set()
   );
+  const [showAddInput, setShowAddInput] = createSignal(false);
   const [contextMenu, setContextMenu] = createSignal<{
     projectId: string;
     x: number;
     y: number;
   } | null>(null);
-  const [folderInputRef, setFolderInputRef] =
-    createSignal<HTMLInputElement | null>(null);
 
   onMount(() => {
     actions.loadProjects();
@@ -79,23 +79,6 @@ export default function Sidebar() {
   const handleNewSession = async (projectId: string) => {
     server.actions.setActiveProject(projectId);
     await actions.createSession(projectId, "default");
-  };
-
-  const handleFolderSelect = (e: Event) => {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (file) {
-      // webkitRelativePath gives "foldername/subfolder/file.txt"
-      const parts = file.webkitRelativePath.split("/");
-      const folderName = parts[0] ?? "unknown";
-      const cwd = `/${folderName}`;
-
-      // TODO: Wire to API - POST /api/projects
-      console.log("Add project:", cwd, folderName);
-
-      // Reset input so same folder can be selected again
-      input.value = "";
-    }
   };
 
   const handleRemoveProject = (projectId: string) => {
@@ -158,17 +141,6 @@ export default function Sidebar() {
         />
       </Show>
 
-      {/* Hidden folder input */}
-      <input
-        accept="*/*"
-        class="hidden"
-        multiple={false}
-        onChange={handleFolderSelect}
-        ref={setFolderInputRef}
-        type="file"
-        {...({ webkitdirectory: "" } as Record<string, string>)}
-      />
-
       {/* Sidebar panel */}
       <aside
         class={cn(
@@ -211,7 +183,7 @@ export default function Sidebar() {
             <Tooltip content="Add project">
               <button
                 class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-                onClick={() => folderInputRef()?.click()}
+                onClick={() => setShowAddInput(true)}
                 type="button"
               >
                 <svg
@@ -307,6 +279,18 @@ export default function Sidebar() {
                 );
               }}
             </For>
+          </Show>
+
+          {/* Add project input */}
+          <Show when={showAddInput()}>
+            <AddProjectInput
+              onAdd={(cwd) => {
+                setShowAddInput(false);
+                // TODO: Wire to API - POST /api/projects
+                console.log("Add project:", cwd);
+              }}
+              onCancel={() => setShowAddInput(false)}
+            />
           </Show>
         </ScrollArea>
 
