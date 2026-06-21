@@ -22,7 +22,7 @@ const resizeBody = t.Object({
 
 export const terminalRoutes = new Elysia({ name: "routes.terminals" })
   .post(
-    "/api/terminals",
+    "/workspace/terminals",
     ({ body, store }) => {
       const ctx = getCtx(store);
       // The terminal's data/exit frames are pushed to this WS connection, so
@@ -52,7 +52,7 @@ export const terminalRoutes = new Elysia({ name: "routes.terminals" })
     { body: createBody }
   )
   .post(
-    "/api/terminals/:id/write",
+    "/workspace/terminals/:id/write",
     ({ params, body, store }) => {
       const ctx = getCtx(store);
       try {
@@ -65,7 +65,7 @@ export const terminalRoutes = new Elysia({ name: "routes.terminals" })
     { body: writeBody }
   )
   .post(
-    "/api/terminals/:id/resize",
+    "/workspace/terminals/:id/resize",
     ({ params, body, store }) => {
       const ctx = getCtx(store);
       try {
@@ -77,7 +77,7 @@ export const terminalRoutes = new Elysia({ name: "routes.terminals" })
     },
     { body: resizeBody }
   )
-  .delete("/api/terminals/:id", ({ params, store }) => {
+  .delete("/workspace/terminals/:id", ({ params, store }) => {
     const ctx = getCtx(store);
     try {
       ctx.terminalManager.close(params.id);

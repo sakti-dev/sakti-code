@@ -29,7 +29,7 @@ function extractAssistantText(
 
 export const lastAssistantTextRoutes = new Elysia({
   name: "routes.lastAssistantText",
-}).get("/api/sessions/:id/last-assistant-text", async ({ params, store }) => {
+}).get("/sessions/:id/last-assistant-text", async ({ params, store }) => {
   const ctx = getCtx(store);
   const session = ctx.repos.sessions.findById(params.id);
   if (!session) {

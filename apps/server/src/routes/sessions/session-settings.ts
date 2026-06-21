@@ -23,7 +23,7 @@ const patchBody = t.Object({
 export const sessionSettingsRoutes = new Elysia({
   name: "routes.session-settings",
 })
-  .get("/api/sessions/:id/settings", ({ params, store }) => {
+  .get("/sessions/:id/settings", ({ params, store }) => {
     const ctx = getCtx(store);
     const session = ctx.repos.sessions.findById(params.id);
     if (!session) {
@@ -55,7 +55,7 @@ export const sessionSettingsRoutes = new Elysia({
     return settings;
   })
   .patch(
-    "/api/sessions/:id/settings",
+    "/sessions/:id/settings",
     async ({ params, body, store }) => {
       const ctx = getCtx(store);
       const session = ctx.repos.sessions.findById(params.id);

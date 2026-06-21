@@ -31,7 +31,7 @@ function deriveStats(messages: AgentMessage[]): {
 }
 
 export const statsRoutes = new Elysia({ name: "routes.stats" }).get(
-  "/api/sessions/:id/stats",
+  "/sessions/:id/stats",
   async ({ params, store }): Promise<Response> => {
     const ctx = getCtx(store);
     const session = ctx.repos.sessions.findById(params.id);

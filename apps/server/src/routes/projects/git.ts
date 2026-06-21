@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { getCtx } from "../../context.ts";
+import { getCtx, type ServerContext } from "../../context.ts";
 
 const GIT_TIMEOUT_MS = 10_000;
 
@@ -93,16 +93,10 @@ async function runGitTimed(
   timeoutMs: number = GIT_TIMEOUT_MS
 ): Promise<string> {
   const result = await runGit(args, cwd, timeoutMs);
-  // runGit returns spawn-error / timeout as `kind`; treat both as empty string.
-  // For non-zero exits, runGit merges stderr into `output` — callers that need
-  // to distinguish success from failure should use `runGit` directly.
   return result.kind === "ok" ? result.output : "";
 }
 
 async function hasHead(cwd: string): Promise<boolean> {
-  // Check the exit code directly: `git rev-parse HEAD` exits non-zero when no
-  // commit exists, but runGit merges stderr into `output` for non-zero exits,
-  // so checking output emptiness would be unreliable.
   const result = await runGit(["rev-parse", "HEAD"], cwd);
   return result.kind === "ok" && result.code === 0;
 }
@@ -114,54 +108,36 @@ function handleResult(result: GitResult): Response | string {
   return result.output;
 }
 
-const statusQuery = t.Object({ projectId: t.String() });
-const branchQuery = t.Object({ projectId: t.String() });
-const diffQuery = t.Object({
-  path: t.Optional(t.String()),
-  projectId: t.String(),
-  staged: t.Optional(t.Boolean()),
-});
-const logQuery = t.Object({
-  limit: t.Optional(t.Integer({ minimum: 0 })),
-  projectId: t.String(),
-});
-const turnDiffQuery = t.Object({
-  projectId: t.String(),
-  files: t.Optional(t.Array(t.String())),
-});
+async function findProject(store: { ctx?: ServerContext }, id: string) {
+  const ctx = getCtx(store);
+  const project = await ctx.repos.projects.findById(id);
+  if (!project) {
+    return null;
+  }
+  return project;
+}
 
 export const gitRoutes = new Elysia({ name: "routes.git" })
+  .get("/projects/:id/git/status", async ({ params, store }) => {
+    const project = await findProject(store, params.id);
+    if (!project) {
+      return new Response("Not found", { status: 404 });
+    }
+    return handleResult(await runGit(["status", "--short"], project.cwd));
+  })
+  .get("/projects/:id/git/branch", async ({ params, store }) => {
+    const project = await findProject(store, params.id);
+    if (!project) {
+      return new Response("Not found", { status: 404 });
+    }
+    return handleResult(
+      await runGit(["branch", "--show-current"], project.cwd)
+    );
+  })
   .get(
-    "/api/git/status",
-    async ({ query, store }) => {
-      const ctx = getCtx(store);
-      const project = await ctx.repos.projects.findById(query.projectId);
-      if (!project) {
-        return new Response("Not found", { status: 404 });
-      }
-      return handleResult(await runGit(["status", "--short"], project.cwd));
-    },
-    { query: statusQuery }
-  )
-  .get(
-    "/api/git/branch",
-    async ({ query, store }) => {
-      const ctx = getCtx(store);
-      const project = await ctx.repos.projects.findById(query.projectId);
-      if (!project) {
-        return new Response("Not found", { status: 404 });
-      }
-      return handleResult(
-        await runGit(["branch", "--show-current"], project.cwd)
-      );
-    },
-    { query: branchQuery }
-  )
-  .get(
-    "/api/git/diff",
-    async ({ query, store }) => {
-      const ctx = getCtx(store);
-      const project = await ctx.repos.projects.findById(query.projectId);
+    "/projects/:id/git/diff",
+    async ({ params, query, store }) => {
+      const project = await findProject(store, params.id);
       if (!project) {
         return new Response("Not found", { status: 404 });
       }
@@ -174,13 +150,17 @@ export const gitRoutes = new Elysia({ name: "routes.git" })
       }
       return handleResult(await runGit(args, project.cwd));
     },
-    { query: diffQuery }
+    {
+      query: t.Object({
+        path: t.Optional(t.String()),
+        staged: t.Optional(t.Boolean()),
+      }),
+    }
   )
   .get(
-    "/api/git/log",
-    async ({ query, store }) => {
-      const ctx = getCtx(store);
-      const project = await ctx.repos.projects.findById(query.projectId);
+    "/projects/:id/git/log",
+    async ({ params, query, store }) => {
+      const project = await findProject(store, params.id);
       if (!project) {
         return new Response("Not found", { status: 404 });
       }
@@ -189,13 +169,16 @@ export const gitRoutes = new Elysia({ name: "routes.git" })
         await runGit(["log", "-n", String(limit), "--oneline"], project.cwd)
       );
     },
-    { query: logQuery }
+    {
+      query: t.Object({
+        limit: t.Optional(t.Integer({ minimum: 0 })),
+      }),
+    }
   )
   .get(
-    "/api/git/turn-diff",
-    async ({ query, store }) => {
-      const ctx = getCtx(store);
-      const project = await ctx.repos.projects.findById(query.projectId);
+    "/projects/:id/git/turn-diff",
+    async ({ params, query, store }) => {
+      const project = await findProject(store, params.id);
       if (!project) {
         return new Response("Not found", { status: 404 });
       }
@@ -222,5 +205,9 @@ export const gitRoutes = new Elysia({ name: "routes.git" })
 
       return Response.json({ files, diff, cwd });
     },
-    { query: turnDiffQuery }
+    {
+      query: t.Object({
+        files: t.Optional(t.Array(t.String())),
+      }),
+    }
   );

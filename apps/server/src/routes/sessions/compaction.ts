@@ -12,7 +12,7 @@ import { resolveModel } from "../../agent/model-resolver.ts";
 import { getCtx } from "../../context.ts";
 
 export const compactionRoutes = new Elysia({ name: "routes.compaction" }).post(
-  "/api/sessions/:id/compact",
+  "/sessions/:id/compact",
   async ({ params, store }): Promise<Response> => {
     const ctx = getCtx(store);
     const session = ctx.repos.sessions.findById(params.id);

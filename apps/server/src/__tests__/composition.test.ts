@@ -1,13 +1,17 @@
+import { Database } from "bun:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { initDatabase } from "@sakti-code/db";
+import { Elysia } from "elysia";
+import { app } from "../app.ts";
+import { createContext } from "../context.ts";
 
 // pi-ai is globally mocked via apps/server/test-setup.ts.
 const { compactionRoutes } = await import("../routes/sessions/compaction.ts");
 const { statsRoutes } = await import("../routes/sessions/stats.ts");
 const { makeApp } = await import("./helpers.ts");
-const { buildServer } = await import("../index.ts");
 
 let tempDir: string;
 
@@ -64,23 +68,21 @@ describe("route composition", () => {
     expect(compactRes.status).toBe(404);
   });
 
-  it("SYS: buildServer() with no extra routes still serves feature routes in production", async () => {
-    // Previously every feature route module was imported only by its own test
-    // and never composed into buildServer, so they 404'd in the booted server.
-    const db = await (await import("@sakti-code/db")).initDatabase(
-      new (await import("bun:sqlite")).Database(":memory:")
-    );
-    const app = buildServer({ db });
+  it("default app serves feature routes in production", async () => {
+    // Verify all composed routes respond (not 404) when hit against the default app.
+    const db = await initDatabase(new Database(":memory:"));
+    const server = new Elysia()
+      .state("ctx", createContext(db))
+      .use(app)
+      .compile();
 
-    // A handful of feature endpoints from different changes should respond
-    // (not 404) when hit against the default server.
-    const settingsRes = await app.handle(
+    const settingsRes = await server.handle(
       new Request("http://localhost/api/settings")
     );
     expect(settingsRes.status).toBe(200);
 
     const body = await (
-      await app.handle(new Request("http://localhost/api/settings"))
+      await server.handle(new Request("http://localhost/api/settings"))
     ).json();
     expect(typeof body).toBe("object");
     expect(body).not.toBeNull();

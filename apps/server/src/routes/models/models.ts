@@ -13,21 +13,15 @@ const modelConfigModel = t.Object({
 
 export const modelConfigRoutes = new Elysia({ name: "routes.modelConfigs" })
   .model({ modelConfig: modelConfigModel })
-  .get("/api/model-configs/global", ({ store }) =>
-    getCtx(store).repos.models.getGlobalDefault()
-  )
-  .get("/api/model-configs/projects/:projectId", ({ params, store }) =>
+  .get("/config", ({ store }) => getCtx(store).repos.models.getGlobalDefault())
+  .get("/config/:projectId", ({ params, store }) =>
     getCtx(store).repos.models.getForProject(params.projectId)
   )
-  .post(
-    "/api/model-configs",
-    ({ body, store }) => getCtx(store).repos.models.set(body),
-    {
-      body: t.Object({
-        provider: t.String(),
-        modelId: t.String(),
-        thinkingLevel: t.Optional(t.String()),
-        projectId: t.Optional(t.String()),
-      }),
-    }
-  );
+  .post("/config", ({ body, store }) => getCtx(store).repos.models.set(body), {
+    body: t.Object({
+      provider: t.String(),
+      modelId: t.String(),
+      thinkingLevel: t.Optional(t.String()),
+      projectId: t.Optional(t.String()),
+    }),
+  });

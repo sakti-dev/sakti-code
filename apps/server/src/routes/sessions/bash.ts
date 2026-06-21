@@ -113,7 +113,7 @@ const bashBody = t.Object({
 
 export const bashRoutes = new Elysia({ name: "routes.bash" })
   .post(
-    "/api/sessions/:id/bash",
+    "/sessions/:id/bash",
     async ({ params, body, store }) => {
       const ctx = getCtx(store);
       const session = await ctx.repos.sessions.findById(params.id);
@@ -137,7 +137,7 @@ export const bashRoutes = new Elysia({ name: "routes.bash" })
     },
     { body: bashBody }
   )
-  .post("/api/sessions/:id/abort-bash", async ({ params, store }) => {
+  .post("/sessions/:id/abort-bash", async ({ params, store }) => {
     const ctx = getCtx(store);
     const session = await ctx.repos.sessions.findById(params.id);
     if (!session) {

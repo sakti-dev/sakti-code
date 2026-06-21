@@ -20,13 +20,13 @@ function parsePaths(raw: string | null): string[] {
 }
 
 export const workspaceRoutes = new Elysia({ name: "routes.workspace" })
-  .get("/api/workspace/sessions", ({ store }) => {
+  .get("/workspace/sessions", ({ store }) => {
     const ctx = getCtx(store);
     const raw = ctx.repos.settings.get(WORKSPACE_KEY);
     return Response.json(parsePaths(raw));
   })
   .post(
-    "/api/workspace/sessions",
+    "/workspace/sessions",
     async ({ body, store }) => {
       const ctx = getCtx(store);
       const raw = ctx.repos.settings.get(WORKSPACE_KEY);
@@ -39,7 +39,7 @@ export const workspaceRoutes = new Elysia({ name: "routes.workspace" })
     },
     { body: sessionPathBody }
   )
-  .delete("/api/workspace/sessions/:path", async ({ params, store }) => {
+  .delete("/workspace/sessions/:path", async ({ params, store }) => {
     const ctx = getCtx(store);
     const decodedPath = decodeURIComponent(params.path);
     const raw = ctx.repos.settings.get(WORKSPACE_KEY);

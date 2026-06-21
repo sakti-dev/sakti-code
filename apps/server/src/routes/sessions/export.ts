@@ -128,7 +128,7 @@ function flattenContent(content: unknown): string {
 }
 
 export const exportRoutes = new Elysia({ name: "routes.export" }).get(
-  "/api/sessions/:id/export-html",
+  "/sessions/:id/export-html",
   async ({ params, store }) => {
     const ctx = getCtx(store);
     const session = ctx.repos.sessions.findById(params.id);

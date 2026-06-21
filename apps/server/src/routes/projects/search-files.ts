@@ -92,7 +92,7 @@ async function runFind(
 }
 
 export const searchFilesRoutes = new Elysia({ name: "routes.searchFiles" }).get(
-  "/api/projects/:id/search-files",
+  "/projects/:id/files",
   async ({ params, query: { query: q, limit }, store }) => {
     const ctx = getCtx(store);
     const project = await ctx.repos.projects.findById(params.id);
@@ -106,7 +106,6 @@ export const searchFilesRoutes = new Elysia({ name: "routes.searchFiles" }).get(
     let files: FileEntry[];
     files = await runFd(query, project.cwd, maxResults);
     if (files.length === 0) {
-      // Fallback to find
       files = await runFind(query, project.cwd, maxResults);
     }
 

@@ -16,7 +16,7 @@ const sessionModel = t.Object({
 export const sessionsRoutes = new Elysia({ name: "routes.sessions" })
   .model({ session: sessionModel })
   .get(
-    "/api/sessions",
+    "/sessions",
     ({ query, store }) =>
       getCtx(store).repos.sessions.listByProject(query.projectId),
     {
@@ -25,7 +25,7 @@ export const sessionsRoutes = new Elysia({ name: "routes.sessions" })
     }
   )
   .get(
-    "/api/sessions/:id",
+    "/sessions/:id",
     ({ params, store }) => {
       const s = getCtx(store).repos.sessions.findById(params.id);
       if (!s) {
@@ -36,7 +36,7 @@ export const sessionsRoutes = new Elysia({ name: "routes.sessions" })
     { response: t.Ref("session") }
   )
   .post(
-    "/api/sessions",
+    "/sessions",
     ({ body, store }) =>
       getCtx(store).repos.sessions.create(body.projectId, body.modelId, {
         ...(body.title === undefined ? {} : { title: body.title }),
@@ -51,7 +51,7 @@ export const sessionsRoutes = new Elysia({ name: "routes.sessions" })
     }
   )
   .patch(
-    "/api/sessions/:id",
+    "/sessions/:id",
     ({ params, body, store }) =>
       getCtx(store).repos.sessions.update(params.id, body),
     {
@@ -65,7 +65,7 @@ export const sessionsRoutes = new Elysia({ name: "routes.sessions" })
       response: t.Ref("session"),
     }
   )
-  .get("/api/sessions/:id/messages", async ({ params, store }) => {
+  .get("/sessions/:id/messages", async ({ params, store }) => {
     const ctx = getCtx(store);
     const storage = new SqliteSessionStorage(ctx.db, params.id, {
       id: params.id,

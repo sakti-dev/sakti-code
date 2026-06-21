@@ -12,7 +12,6 @@ describe("file search routes", () => {
 
   beforeAll(async () => {
     tempDir = mkdtempSync(join(tmpdir(), "sakti-search-test-"));
-    // Create some test files
     writeFileSync(join(tempDir, "hello.ts"), 'console.log("hello");\n');
     writeFileSync(
       join(tempDir, "hello.test.ts"),
@@ -36,12 +35,11 @@ describe("file search routes", () => {
   it("W6: uses ?query= (per spec, not ?q=) and returns {files, cwd} only", async () => {
     const res = await app.handle(
       new Request(
-        `http://localhost/api/projects/${projectId}/search-files?query=hello`
+        `http://localhost/api/projects/${projectId}/files?query=hello`
       )
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    // Response shape is exactly {files, cwd} — no undocumented projectId.
     expect(Object.keys(body).sort()).toEqual(["cwd", "files"]);
     expect(body.files.length).toBeGreaterThanOrEqual(1);
     expect(
@@ -51,25 +49,24 @@ describe("file search routes", () => {
 
   it("unknown project returns 404", async () => {
     const res = await app.handle(
-      new Request("http://localhost/api/projects/nope/search-files?query=hello")
+      new Request("http://localhost/api/projects/nope/files?query=hello")
     );
     expect(res.status).toBe(404);
   });
 
   it("returns some files for empty query (general listing)", async () => {
     const res = await app.handle(
-      new Request(`http://localhost/api/projects/${projectId}/search-files`)
+      new Request(`http://localhost/api/projects/${projectId}/files`)
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    // Empty query should return a general listing (not empty)
     expect(body.files.length).toBeGreaterThan(0);
   });
 
   it("respects limit parameter", async () => {
     const res = await app.handle(
       new Request(
-        `http://localhost/api/projects/${projectId}/search-files?query=.ts&limit=2`
+        `http://localhost/api/projects/${projectId}/files?query=.ts&limit=2`
       )
     );
     expect(res.status).toBe(200);

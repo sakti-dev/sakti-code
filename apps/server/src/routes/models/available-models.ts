@@ -4,7 +4,7 @@ import { Elysia } from "elysia";
 export const availableModelsRoutes = new Elysia({
   name: "routes.availableModels",
 })
-  .get("/api/available-models", () => getProviders())
-  .get("/api/available-models/:provider", ({ params }) =>
+  .get("/available", () => getProviders())
+  .get("/available/:provider", ({ params }) =>
     getModels(params.provider as import("@earendil-works/pi-ai").KnownProvider)
   );
