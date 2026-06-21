@@ -44,43 +44,10 @@ export interface TruncationOptions {
   maxLines?: number;
 }
 
-interface RuntimeBuffer {
-  byteLength(content: string, encoding: "utf8"): number;
-}
-
-const runtimeBuffer = (globalThis as { Buffer?: RuntimeBuffer }).Buffer;
-const nonAsciiPattern = /[^\x00-\x7f]/;
+const utf8Encoder = new TextEncoder();
 
 function utf8ByteLength(content: string): number {
-  if (runtimeBuffer) {
-    return runtimeBuffer.byteLength(content, "utf8");
-  }
-
-  const firstNonAscii = content.search(nonAsciiPattern);
-  if (firstNonAscii === -1) {
-    return content.length;
-  }
-
-  let bytes = firstNonAscii;
-  for (let i = firstNonAscii; i < content.length; i++) {
-    const code = content.charCodeAt(i);
-    if (code <= 0x7f) {
-      bytes += 1;
-    } else if (code <= 0x7_ff) {
-      bytes += 2;
-    } else if (code >= 0xd8_00 && code <= 0xdb_ff && i + 1 < content.length) {
-      const next = content.charCodeAt(i + 1);
-      if (next >= 0xdc_00 && next <= 0xdf_ff) {
-        bytes += 4;
-        i++;
-      } else {
-        bytes += 3;
-      }
-    } else {
-      bytes += 3;
-    }
-  }
-  return bytes;
+  return utf8Encoder.encode(content).length;
 }
 
 function replaceUnpairedSurrogates(content: string): string {

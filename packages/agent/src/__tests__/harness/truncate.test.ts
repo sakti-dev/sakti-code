@@ -2,13 +2,14 @@ import { describe, expect, it } from "bun:test";
 import { truncateHead, truncateTail } from "../../lib/truncate.ts";
 
 const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
 function byteLength(content: string): number {
   return encoder.encode(content).length;
 }
 
 function bufferTail(content: string, maxBytes: number): string {
-  const bytes = Buffer.from(content, "utf8");
+  const bytes = encoder.encode(content);
   if (bytes.length <= maxBytes) {
     return content;
   }
@@ -16,14 +17,14 @@ function bufferTail(content: string, maxBytes: number): string {
   while (start < bytes.length && (bytes[start]! & 0xc0) === 0x80) {
     start++;
   }
-  return bytes.subarray(start).toString("utf8");
+  return decoder.decode(bytes.subarray(start));
 }
 
 function assertMatchesBufferTail(
   input: string,
   maxByteValues?: readonly number[]
 ): void {
-  const totalBytes = Buffer.byteLength(input, "utf8");
+  const totalBytes = byteLength(input);
   const values =
     maxByteValues ??
     Array.from({ length: totalBytes + 5 }, (_, maxBytes) => maxBytes);
@@ -35,7 +36,7 @@ function assertMatchesBufferTail(
         `tail mismatch input=${JSON.stringify(input)} maxBytes=${maxBytes} expected=${JSON.stringify(expected)} actual=${JSON.stringify(result.content)}`
       );
     }
-    const outputBytes = Buffer.byteLength(result.content, "utf8");
+    const outputBytes = byteLength(result.content);
     if (outputBytes > maxBytes) {
       throw new Error(
         `tail output exceeded byte limit input=${JSON.stringify(input)} maxBytes=${maxBytes} outputBytes=${outputBytes}`
@@ -45,7 +46,7 @@ function assertMatchesBufferTail(
 }
 
 function sampledByteLimits(input: string): number[] {
-  const totalBytes = Buffer.byteLength(input, "utf8");
+  const totalBytes = byteLength(input);
   const candidates = [
     0,
     1,
