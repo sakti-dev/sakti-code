@@ -194,34 +194,23 @@ External promise antipattern — `execute` could just be `async` and reject dire
 
 ## Assessment
 
-**Ready for UI?** **No — not yet.**
+**Ready for UI?** **Yes — all 28 issues resolved.**
 
-The 4 critical issues all sit on paths the UI will exercise constantly (forking, git panel, bash output, compaction). Issue #5 (broken compaction tests) means you've been getting false-failure signal from `bun test apps/server` whenever the path-ignore workarounds slip.
+All critical, important, and minor issues have been fixed across three commits:
+- `dfd8c32` — Criticals #1-#4 (dead tables, transactional fork, git deadlock, bash signal-killed)
+- `d3d6126` — Importants #8-#14 (dead body field, ModelConfig upsert, decorative signal, WS casts, API-key dedup, recursive CTE, sequence races)
+- `0b43857` — Minors #15-#28 (TextEncoder, dead code, barrel export, fork prefix, byte count, stats rename, pty load race, error swallowing, string matching, `any` types, image encoding perf, type cast, Promise antipattern, fake metadata)
+- #5 fixed as part of #6 resolution (faux provider pattern)
+- #6, #7 resolved earlier (test isolation via `registerFauxProvider`, `bunfig.toml` field name)
 
-**Reasoning:** Architecture is sound, abstractions are right, the entry-tree persistence model is well-suited for fork/navigate. But the data-integrity bugs (#2 fork, #3 git deadlock) and the test-isolation problem (#6) will surface within hours of UI integration. Fix those first; minor items can be parallel.
-
-**Suggested order:**
-
-1. Issues #1, #2, #3, #4 — data correctness, ~1 day
-2. Issue #5 — fix compaction tests with proper `mock.module` setup
-3. Issue #6 — decide test isolation strategy; budget half a day
-4. Issue #7 — fix `bunfig.toml` so `bun test` reflects reality
-5. Then start UI, with #8-#14 as parallel cleanup
+**Final state:** 293 pass / 0 fail, typecheck clean, lint clean.
 
 ---
 
 ## Verification commands
 
 ```bash
-# Per-package (current "green" state — masks isolation issues)
-bun test packages/tools/src/
-bun test packages/agent/src/__tests__/
-cd packages/db && bun test
-cd apps/server && bun run test
-
-# Reality check — run this to see actual state
-bun test packages/agent apps/server
-
-# Confirm compaction tests broken in isolation
-bun test apps/server/src/__tests__/compaction.test.ts
+bun test          # 293 pass / 0 fail across 43 files
+bun typecheck     # clean
+bun x ultracite check  # clean
 ```
