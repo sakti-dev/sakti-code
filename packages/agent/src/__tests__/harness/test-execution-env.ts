@@ -159,16 +159,17 @@ export class TestExecutionEnv implements ExecutionEnv {
   ): Promise<
     Result<{ stdout: string; stderr: string; exitCode: number }, ExecutionError>
   > {
-    const result = Bun.spawnSync(["/bin/sh", "-c", command], {
+    const proc = Bun.spawn(["/bin/sh", "-c", command], {
       cwd: options?.cwd ?? this.rootDir,
+      stdout: "pipe",
+      stderr: "pipe",
     });
-    return Promise.resolve(
-      ok({
-        stdout: result.stdout?.toString() ?? "",
-        stderr: result.stderr?.toString() ?? "",
-        exitCode: result.exitCode ?? -1,
-      })
-    );
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout as ReadableStream<Uint8Array>).text(),
+      new Response(proc.stderr as ReadableStream<Uint8Array>).text(),
+      proc.exited,
+    ]);
+    return ok({ stdout, stderr, exitCode });
   }
 
   async fileInfo(
