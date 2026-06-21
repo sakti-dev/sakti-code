@@ -4,8 +4,17 @@
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "exactOptionalPropertyTypes": false,
+    "types": ["vitest/globals", "@testing-library/jest-dom"],
     "paths": {
       "~/*": ["./src/*"],
+      "@sakti-code/agent": ["../../packages/agent/src/index.ts"],
+      "@sakti-code/agent/*": ["../../packages/agent/src/*"],
+      "@earendil-works/pi-ai": [
+        "../../packages/agent/node_modules/@earendil-works/pi-ai/dist/index.d.ts"
+      ],
+      "@earendil-works/pi-ai/*": [
+        "../../packages/agent/node_modules/@earendil-works/pi-ai/dist/*"
+      ],
       "elysia": ["../../apps/server/node_modules/elysia"],
       "elysia/*": ["../../apps/server/node_modules/elysia/*"]
     }

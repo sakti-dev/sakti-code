@@ -8,6 +8,7 @@ import "./index.css";
 import { render } from "solid-js/web";
 import AppShell from "./components/layout/app-shell";
 import Home from "./pages/home";
+import { StoreProvider } from "./stores/store-context";
 
 const colorModeStorage = createLocalStorageManager("sakti-theme");
 const root = document.getElementById("app");
@@ -26,11 +27,13 @@ render(
         initialColorMode="dark"
         storageManager={colorModeStorage}
       >
-        <Router>
-          <Route component={AppShell} path="/">
-            <Route component={Home} path="/" />
-          </Route>
-        </Router>
+        <StoreProvider>
+          <Router>
+            <Route component={AppShell} path="/">
+              <Route component={Home} path="/" />
+            </Route>
+          </Router>
+        </StoreProvider>
       </ColorModeProvider>
     </>
   ),

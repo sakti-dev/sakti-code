@@ -11,6 +11,10 @@
     "./create-server": {
       "types": "./src/create-server.ts",
       "default": "./src/create-server.ts"
+    },
+    "./ws": {
+      "types": "./src/agent/ws-handler.ts",
+      "default": "./src/agent/ws-handler.ts"
     }
   },
   "scripts": {

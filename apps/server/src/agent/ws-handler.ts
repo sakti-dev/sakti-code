@@ -49,7 +49,21 @@ export interface ErrorFrame {
   type: "error";
 }
 
-export type WsOut = EventFrame | ErrorFrame;
+export interface WelcomeFrame {
+  cwd: string;
+  type: "welcome";
+  version: string;
+}
+
+export interface PushFrame {
+  channel: "terminal.data" | "terminal.exit";
+  data:
+    | { terminalId: string; data: string }
+    | { terminalId: string; exitCode: number; signal?: number | string };
+  type: "push";
+}
+
+export type WsOut = EventFrame | ErrorFrame | WelcomeFrame | PushFrame;
 
 export interface WsHandle {
   send(data: string): void;

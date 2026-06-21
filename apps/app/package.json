@@ -8,12 +8,15 @@
     "dev:web": "vite --port 5173",
     "dev:desktop": "SAKTI_DEV=1 electrobun dev",
     "start": "vite build && electrobun dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "build:canary": "vite build && electrobun build --env=canary"
   },
   "dependencies": {
     "@elysiajs/eden": "^1.4.9",
     "@kobalte/core": "^0.13.11",
+    "@sakti-code/agent": "workspace:*",
     "@sakti-code/server": "workspace:*",
     "@solidjs/router": "^0.16.1",
     "@tailwindcss/vite": "^4.3.1",
@@ -26,12 +29,18 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@earendil-works/pi-ai": "^0.79.9",
+    "@solidjs/testing-library": "^0.8.10",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/user-event": "^14.6.1",
     "@types/bun": "latest",
     "@types/node": "^26.0.0",
     "concurrently": "^9.1.0",
+    "jsdom": "^29.1.1",
     "solid-js": "^1.9.3",
     "typescript": "^5.7.2",
     "vite": "^6.0.3",
-    "vite-plugin-solid": "^2.11.0"
+    "vite-plugin-solid": "^2.11.0",
+    "vitest": "^4.1.9"
   }
 }
