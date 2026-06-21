@@ -16,6 +16,8 @@ export interface ProjectGroupProps {
   isActive: boolean;
   isExpanded: boolean;
   name: string;
+  onNewSession?: (projectId: string) => void;
+  onRemove?: (projectId: string) => void;
   onSelectSession: (sessionId: string) => void;
   onToggle: (projectId: string) => void;
   projectId: string;
