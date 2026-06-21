@@ -6,7 +6,6 @@ import { modelConfigRoutes } from "./routes/models/models.ts";
 import { gitRoutes } from "./routes/projects/git.ts";
 import { projectsRoutes } from "./routes/projects/projects.ts";
 import { searchFilesRoutes } from "./routes/projects/search-files.ts";
-import { bashRoutes } from "./routes/sessions/bash.ts";
 import { compactionRoutes } from "./routes/sessions/compaction.ts";
 import { exportRoutes } from "./routes/sessions/export.ts";
 import { forkingRoutes } from "./routes/sessions/forking.ts";
@@ -31,7 +30,6 @@ export const app = new Elysia({ prefix: "/api" })
   .use(compactionRoutes)
   .use(statsRoutes)
   .use(gitRoutes)
-  .use(bashRoutes)
   .use(terminalRoutes)
   .use(forkingRoutes)
   .use(exportRoutes)

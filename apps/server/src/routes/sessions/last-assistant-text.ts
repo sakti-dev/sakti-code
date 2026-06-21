@@ -1,11 +1,9 @@
-import { buildSessionContext } from "@sakti-code/agent";
+import { type AgentMessage, buildSessionContext } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import { getCtx } from "../../context.ts";
 
-function extractAssistantText(
-  messages: Array<{ role: string; content: unknown }>
-): string | null {
+function extractAssistantText(messages: AgentMessage[]): string | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg?.role !== "assistant") {

@@ -9,9 +9,9 @@ type AnyElysia = Elysia<any, any, any, any, any, any, any>;
 export async function makeApp(routes: AnyElysia[]) {
   const db = await initDatabase(new Database(":memory:"));
   const ctx = createContext(db);
-  let app = new Elysia({ prefix: "/api" }).state("ctx", ctx);
+  let app: AnyElysia = new Elysia({ prefix: "/api" }).state("ctx", ctx);
   for (const route of routes) {
-    app = app.use(route as typeof app);
+    app = app.use(route as AnyElysia);
   }
   app.compile();
   return { app, db, ctx };
