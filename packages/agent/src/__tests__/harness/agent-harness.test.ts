@@ -1,10 +1,10 @@
+import { afterEach, describe, expect, it } from "bun:test";
 import {
   fauxAssistantMessage,
   fauxToolCall,
   getModel,
   registerFauxProvider,
 } from "@earendil-works/pi-ai";
-import { afterEach, describe, expect, it } from "vitest";
 import { AgentHarness } from "../../harness/agent-harness.ts";
 import { InMemorySessionStorage } from "../../harness/memory-storage.ts";
 import { Session } from "../../harness/session.ts";

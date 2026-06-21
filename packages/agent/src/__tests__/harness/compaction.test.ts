@@ -1,3 +1,4 @@
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import {
   type AssistantMessage,
   type FauxProviderRegistration,
@@ -7,7 +8,6 @@ import {
   registerFauxProvider,
   type Usage,
 } from "@earendil-works/pi-ai";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   type CompactionPreparation,
   calculateContextTokens,

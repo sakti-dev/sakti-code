@@ -21,18 +21,18 @@ sakti-code: desktop app (Electrobun + SolidJS) running multiple AI coding agents
 bun x ultracite fix                              # format + lint fix + diagnostics (run before committing)
 bun typecheck                                    # typecheck packages + server (tsc --project tsconfig.json)
 cd apps/server && bun run typecheck              # typecheck server incl. tests (tsc --noEmit with apps/server/tsconfig.json)
-bun vitest run packages/tools/                   # tool tests (vitest)
-bun vitest run packages/agent/                   # agent tests (vitest)
+bun test packages/tools/src/                     # tool tests (bun:test)
+bun test packages/agent/src/__tests__/           # agent tests (bun:test)
 cd packages/db && bun test                       # db tests (bun:test, needs bun:sqlite)
-cd apps/server && bun run test                  # server route tests (via preload, excludes agent vitest tests);
-                                                 # bun test directly without the script also works but picks up agent vitest tests
+cd apps/server && bun run test                   # server route tests (via preload);
+                                                 # bun test directly without the script also works but picks up all tests
 bun dev:server                                   # start Elysia server on port 3001 (SAKTI_PORT env override)
 ```
 
 ## Conventions
 
 - **Follow TDD** — write the failing test first (RED), implement until it passes (GREEN), then refactor. Verify RED before implementing.
-- **Tests live in `__tests__/` colocated with source.** Vitest for agent+tools; `bun:test` for db + server.
+- **Tests live in `__tests__/` colocated with source.** All tests use `bun:test`.
 - **`exactOptionalPropertyTypes: true` is on.** Use conditional spread `...(x !== undefined ? { x } : {})` instead of passing `undefined`.
 - TS 6.0 quirks: `include`/`references` must be top-level in tsconfig (not inside `compilerOptions`); `shell` in `execSync` must be a `string` (e.g. `"/bin/sh"`), not `boolean`.
 - Workspace `package.json` exports point to `./src/index.ts` (not `./dist/`) so bun dev resolves `.ts` directly.

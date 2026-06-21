@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { access as fsAccess } from "node:fs/promises";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
@@ -38,31 +37,6 @@ export interface BashOperations {
   ) => Promise<{ exitCode: number | null }>;
 }
 
-function waitForChildProcess(
-  child: import("node:child_process").ChildProcess
-): Promise<number | null> {
-  return new Promise((resolve) => {
-    const onExit = (code: number | null, _signal: string | null) => {
-      child.off("error", onError);
-      resolve(code);
-    };
-    const onError = () => {
-      child.off("exit", onExit);
-      resolve(null);
-    };
-    child.on("exit", onExit);
-    child.on("error", onError);
-  });
-}
-
-function killProcessTree(pid: number): void {
-  try {
-    process.kill(-pid, "SIGKILL");
-  } catch {
-    process.kill(pid, "SIGKILL");
-  }
-}
-
 function createLocalBashOperations(): BashOperations {
   return {
     exec: async (command, cwd, { onData, signal, timeout, env }) => {
@@ -78,34 +52,34 @@ function createLocalBashOperations(): BashOperations {
       }
 
       const shell = process.env.SHELL ?? "/bin/bash";
-      const child = spawn(shell, ["-c", command], {
+      const proc = Bun.spawn({
+        cmd: [shell, "-c", command],
         cwd,
-        detached: process.platform !== "win32",
-        env: env ?? process.env,
-        stdio: ["ignore", "pipe", "pipe"],
-        windowsHide: true,
+        env: (env ?? process.env) as Record<string, string>,
+        stdout: "pipe",
+        stderr: "pipe",
       });
 
+      const stdoutStream = proc.stdout as ReadableStream<Uint8Array>;
+      const stderrStream = proc.stderr as ReadableStream<Uint8Array>;
+
       let timedOut = false;
-      let timeoutHandle: NodeJS.Timeout | undefined;
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
       const onAbort = () => {
-        if (child.pid) {
-          killProcessTree(child.pid);
-        }
+        proc.kill("SIGKILL");
+        stdoutStream.cancel().catch(() => {});
+        stderrStream.cancel().catch(() => {});
       };
 
       try {
         if (timeout !== undefined && timeout > 0) {
           timeoutHandle = setTimeout(() => {
             timedOut = true;
-            if (child.pid) {
-              killProcessTree(child.pid);
-            }
+            proc.kill("SIGKILL");
+            stdoutStream.cancel().catch(() => {});
+            stderrStream.cancel().catch(() => {});
           }, timeout * 1000);
         }
-
-        child.stdout?.on("data", onData);
-        child.stderr?.on("data", onData);
 
         if (signal) {
           if (signal.aborted) {
@@ -115,7 +89,24 @@ function createLocalBashOperations(): BashOperations {
           }
         }
 
-        const exitCode = await waitForChildProcess(child);
+        const readStream = async (stream: ReadableStream<Uint8Array>) => {
+          const reader = stream.getReader();
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                break;
+              }
+              onData(Buffer.from(value));
+            }
+          } catch {
+            // Stream cancelled (timeout/abort)
+          }
+        };
+
+        await Promise.all([readStream(stdoutStream), readStream(stderrStream)]);
+
+        const exitCode = await proc.exited;
         if (signal?.aborted) {
           throw new Error("aborted");
         }

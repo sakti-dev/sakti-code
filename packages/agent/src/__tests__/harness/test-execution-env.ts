@@ -1,4 +1,3 @@
-import { execSync } from "node:child_process";
 import {
   accessSync,
   appendFileSync,
@@ -20,7 +19,7 @@ import type {
   Result,
 } from "../../harness/types.ts";
 import {
-  ExecutionError,
+  type ExecutionError,
   err,
   FileError as FileErrorClass,
   ok,
@@ -164,37 +163,16 @@ export class TestExecutionEnv implements ExecutionEnv {
   ): Promise<
     Result<{ stdout: string; stderr: string; exitCode: number }, ExecutionError>
   > {
-    try {
-      const stdout = execSync(command, {
-        encoding: "utf-8",
-        cwd: options?.cwd ?? this.rootDir,
-        timeout: options?.timeout ? options.timeout * 1000 : undefined,
-      });
-      return Promise.resolve(ok({ stdout, stderr: "", exitCode: 0 }));
-    } catch (e: unknown) {
-      const execErr = e as {
-        stdout?: string;
-        stderr?: string;
-        status?: number;
-      };
-      if (execErr.status !== undefined) {
-        return Promise.resolve(
-          ok({
-            stdout: execErr.stdout ?? "",
-            stderr: execErr.stderr ?? "",
-            exitCode: execErr.status,
-          })
-        );
-      }
-      return Promise.resolve(
-        err(
-          new ExecutionError(
-            "unknown",
-            e instanceof Error ? e.message : String(e)
-          )
-        )
-      );
-    }
+    const result = Bun.spawnSync(["/bin/sh", "-c", command], {
+      cwd: options?.cwd ?? this.rootDir,
+    });
+    return Promise.resolve(
+      ok({
+        stdout: result.stdout?.toString() ?? "",
+        stderr: result.stderr?.toString() ?? "",
+        exitCode: result.exitCode ?? -1,
+      })
+    );
   }
 
   async fileInfo(

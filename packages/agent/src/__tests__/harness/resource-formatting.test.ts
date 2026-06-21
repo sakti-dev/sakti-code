@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { formatPromptTemplateInvocation } from "../../harness/prompt-templates.ts";
 import { formatSkillInvocation } from "../../harness/skills.ts";
 

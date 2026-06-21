@@ -1,3 +1,4 @@
+import { describe, expect, it } from "bun:test";
 import {
   type AssistantMessage,
   type AssistantMessageEvent,
@@ -7,7 +8,6 @@ import {
   type UserMessage,
 } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
-import { describe, expect, it } from "vitest";
 import { agentLoop, agentLoopContinue } from "../loop/agent-loop.ts";
 import type {
   AgentContext,

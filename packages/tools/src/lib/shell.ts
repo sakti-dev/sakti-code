@@ -1,49 +1,50 @@
-import { execSync, spawn } from "node:child_process";
-
 function shellQuote(s: string): string {
   return `'${s.replace(/'/g, "'\\''")}'`;
 }
 
 export { shellQuote };
 
-/** Resolve a binary from PATH, returning absolute path or the name as fallback. */
 function resolveBin(name: string): string {
   try {
-    return execSync(`which ${name}`, { encoding: "utf-8" }).trim();
-  } catch {
-    // Fallback: check common locations
-    const home = process.env.HOME ?? "/root";
-    const candidates = [
-      `${home}/.pi/agent/bin/${name}`,
-      `${home}/.local/bin/${name}`,
-      `/usr/local/bin/${name}`,
-    ];
-    for (const c of candidates) {
-      try {
-        execSync(`test -x ${c}`);
-        return c;
-      } catch {
-        /* continue */
-      }
+    const result = Bun.spawnSync(["/bin/sh", "-c", `which ${name}`]);
+    const stdout = result.stdout?.toString().trim();
+    if (stdout && result.exitCode === 0) {
+      return stdout;
     }
-    return name;
+  } catch {
+    /* continue to fallback */
   }
+  const home = process.env.HOME ?? "/root";
+  const candidates = [
+    `${home}/.pi/agent/bin/${name}`,
+    `${home}/.local/bin/${name}`,
+    `/usr/local/bin/${name}`,
+  ];
+  for (const c of candidates) {
+    try {
+      const check = Bun.spawnSync(["/bin/sh", "-c", `test -x ${c}`]);
+      if (check.exitCode === 0) {
+        return c;
+      }
+    } catch {
+      /* continue */
+    }
+  }
+  return name;
 }
 
 export const RG_BIN = resolveBin("rg");
 export const FD_BIN = resolveBin("fd");
 
-export function runCommand(cmd: string, cwd: string, timeout = 30_000): string {
-  return execSync(cmd, {
-    encoding: "utf-8",
-    cwd,
-    timeout,
-    maxBuffer: 1024 * 1024,
-    shell: "/bin/sh",
-  });
+export function runCommand(
+  cmd: string,
+  cwd: string,
+  _timeout = 30_000
+): string {
+  const result = Bun.spawnSync(["/bin/sh", "-c", cmd], { cwd });
+  return result.stdout?.toString() ?? "";
 }
 
-/** Accumulates process output with byte and line limits. */
 class OutputAccumulator {
   private readonly chunks: Buffer[] = [];
   private totalBytes = 0;
@@ -76,7 +77,7 @@ class OutputAccumulator {
   }
 }
 
-export function spawnCommand(
+export async function spawnCommand(
   command: string,
   cwd: string,
   options: {
@@ -91,78 +92,90 @@ export function spawnCommand(
   truncated: boolean;
   timedOut: boolean;
 }> {
-  return new Promise((resolve) => {
-    const accum = new OutputAccumulator();
-    const ms = options.timeout ?? 30_000;
-    let finished = false;
+  const accum = new OutputAccumulator();
+  const ms = options.timeout ?? 30_000;
 
-    const child = spawn("/bin/sh", ["-c", command], {
-      cwd,
-      env: { ...process.env, ...options.env } as Record<string, string>,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    let lastUpdateLen = 0;
-    const updateTimer = options.onUpdate
-      ? setInterval(() => {
-          const snapshot = accum.content;
-          if (snapshot.length > lastUpdateLen) {
-            lastUpdateLen = snapshot.length;
-            options.onUpdate?.(snapshot);
-          }
-        }, 50)
-      : null;
-
-    const finish = (exitCode: number | null, timedOutFlag: boolean) => {
-      if (finished) {
-        return;
-      }
-      finished = true;
-      if (updateTimer) {
-        clearInterval(updateTimer);
-      }
-      if (options.onUpdate && accum.content.length > lastUpdateLen) {
-        options.onUpdate(accum.content);
-      }
-      resolve({
-        output: accum.content,
-        exitCode,
-        truncated: accum.truncated,
-        timedOut: timedOutFlag,
-      });
-    };
-
-    child.stdout?.on("data", (data: Buffer) => accum.append(data));
-    child.stderr?.on("data", (data: Buffer) => accum.append(data));
-
-    if (ms > 0) {
-      const timer = setTimeout(() => {
-        child.kill("SIGKILL");
-        finish(null, true);
-      }, ms);
-      child.on("close", (code) => {
-        clearTimeout(timer);
-        finish(code, false);
-      });
-      child.on("error", () => {
-        clearTimeout(timer);
-        finish(null, false);
-      });
-    } else {
-      child.on("close", (code) => finish(code, false));
-      child.on("error", () => finish(null, false));
-    }
-
-    if (options.signal) {
-      const onAbort = () => {
-        child.kill("SIGKILL");
-        finish(null, false);
-      };
-      if (options.signal.aborted) {
-        onAbort();
-      } else {
-        options.signal.addEventListener("abort", onAbort, { once: true });
-      }
-    }
+  const proc = Bun.spawn({
+    cmd: ["/bin/sh", "-c", command],
+    cwd,
+    env: { ...process.env, ...options.env },
+    stdout: "pipe",
+    stderr: "pipe",
   });
+
+  const stdoutStream = proc.stdout as ReadableStream<Uint8Array>;
+  const stderrStream = proc.stderr as ReadableStream<Uint8Array>;
+
+  let timedOut = false;
+  const timeoutId =
+    ms > 0
+      ? setTimeout(() => {
+          timedOut = true;
+          proc.kill("SIGKILL");
+          stdoutStream.cancel().catch(() => {});
+          stderrStream.cancel().catch(() => {});
+        }, ms)
+      : undefined;
+
+  let lastUpdateLen = 0;
+  const updateTimer = options.onUpdate
+    ? setInterval(() => {
+        const snapshot = accum.content;
+        if (snapshot.length > lastUpdateLen) {
+          lastUpdateLen = snapshot.length;
+          options.onUpdate?.(snapshot);
+        }
+      }, 50)
+    : undefined;
+
+  const onAbort = () => {
+    proc.kill("SIGKILL");
+    stdoutStream.cancel().catch(() => {});
+    stderrStream.cancel().catch(() => {});
+  };
+  if (options.signal) {
+    if (options.signal.aborted) {
+      onAbort();
+    } else {
+      options.signal.addEventListener("abort", onAbort, { once: true });
+    }
+  }
+
+  const readStream = async (stream: ReadableStream<Uint8Array>) => {
+    const reader = stream.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      accum.append(Buffer.from(value));
+    }
+  };
+
+  try {
+    await Promise.all([
+      readStream(proc.stdout as ReadableStream<Uint8Array>),
+      readStream(proc.stderr as ReadableStream<Uint8Array>),
+    ]);
+    const exitCode = await proc.exited;
+
+    if (options.onUpdate && accum.content.length > lastUpdateLen) {
+      options.onUpdate(accum.content);
+    }
+
+    return {
+      output: accum.content,
+      exitCode,
+      truncated: accum.truncated,
+      timedOut,
+    };
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    if (updateTimer) {
+      clearInterval(updateTimer);
+    }
+    options.signal?.removeEventListener("abort", onAbort);
+  }
 }

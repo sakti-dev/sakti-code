@@ -1,6 +1,4 @@
-import { spawn } from "node:child_process";
 import nodePath from "node:path";
-import { createInterface } from "node:readline";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
 import { pathExists, resolveToCwd } from "../lib/path-utils.ts";
@@ -79,251 +77,185 @@ export function createFindTool(
       signal?: AbortSignal,
       _onUpdate?: AgentToolUpdateCallback<FindToolDetails | undefined>
     ) {
-      return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        throw new Error("Operation aborted");
+      }
+
+      const searchPath = resolveToCwd(searchDir || ".", cwd);
+      const effectiveLimit = limit ?? DEFAULT_LIMIT;
+      const ops = customOps ?? defaultFindOperations;
+
+      if (customOps?.glob) {
+        if (!(await ops.exists(searchPath))) {
+          throw new Error(`Path not found: ${searchPath}`);
+        }
         if (signal?.aborted) {
-          reject(new Error("Operation aborted"));
-          return;
+          throw new Error("Operation aborted");
+        }
+        const results = await ops.glob(pattern, searchPath, {
+          ignore: ["**/node_modules/**", "**/.git/**"],
+          limit: effectiveLimit,
+        });
+        if (signal?.aborted) {
+          throw new Error("Operation aborted");
+        }
+        if (results.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "No files found matching pattern",
+              },
+            ],
+            details: undefined,
+          };
         }
 
-        let settled = false;
-        let stopChild: (() => void) | undefined;
-        const settle = (fn: () => void) => {
-          if (settled) {
-            return;
+        const relativized = results.map((p) => {
+          if (p.startsWith(searchPath)) {
+            return toPosixPath(p.slice(searchPath.length + 1));
           }
-          settled = true;
-          signal?.removeEventListener("abort", onAbort);
-          stopChild = undefined;
-          fn();
+          return toPosixPath(nodePath.relative(searchPath, p));
+        });
+        const resultLimitReached = relativized.length >= effectiveLimit;
+        const rawOutput = relativized.join("\n");
+        const truncation = truncateHead(rawOutput, {
+          maxLines: Number.MAX_SAFE_INTEGER,
+        });
+        let resultOutput = truncation.content;
+        const details: FindToolDetails = {};
+        const notices: string[] = [];
+        if (resultLimitReached) {
+          notices.push(`${effectiveLimit} results limit reached`);
+          details.resultLimitReached = effectiveLimit;
+        }
+        if (truncation.truncated) {
+          notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
+          details.truncation = truncation;
+        }
+        if (notices.length > 0) {
+          resultOutput += `\n\n[${notices.join(". ")}]`;
+        }
+        return {
+          content: [{ type: "text", text: resultOutput }],
+          details: Object.keys(details).length > 0 ? details : undefined,
         };
-        const onAbort = () => {
-          stopChild?.();
-          settle(() => reject(new Error("Operation aborted")));
-        };
-        signal?.addEventListener("abort", onAbort, { once: true });
+      }
 
-        (async () => {
-          try {
-            const searchPath = resolveToCwd(searchDir || ".", cwd);
-            const effectiveLimit = limit ?? DEFAULT_LIMIT;
-            const ops = customOps ?? defaultFindOperations;
+      const fdPath = options?.fdPath ?? resolveBin("fd");
+      if (signal?.aborted) {
+        throw new Error("Operation aborted");
+      }
 
-            if (customOps?.glob) {
-              if (!(await ops.exists(searchPath))) {
-                settle(() =>
-                  reject(new Error(`Path not found: ${searchPath}`))
-                );
-                return;
-              }
-              if (signal?.aborted) {
-                settle(() => reject(new Error("Operation aborted")));
-                return;
-              }
-              const results = await ops.glob(pattern, searchPath, {
-                ignore: ["**/node_modules/**", "**/.git/**"],
-                limit: effectiveLimit,
-              });
-              if (signal?.aborted) {
-                settle(() => reject(new Error("Operation aborted")));
-                return;
-              }
-              if (results.length === 0) {
-                settle(() =>
-                  resolve({
-                    content: [
-                      {
-                        type: "text",
-                        text: "No files found matching pattern",
-                      },
-                    ],
-                    details: undefined,
-                  })
-                );
-                return;
-              }
+      const args: string[] = [
+        "--glob",
+        "--color=never",
+        "--hidden",
+        "--no-require-git",
+        "--max-results",
+        String(effectiveLimit),
+      ];
 
-              const relativized = results.map((p) => {
-                if (p.startsWith(searchPath)) {
-                  return toPosixPath(p.slice(searchPath.length + 1));
-                }
-                return toPosixPath(nodePath.relative(searchPath, p));
-              });
-              const resultLimitReached = relativized.length >= effectiveLimit;
-              const rawOutput = relativized.join("\n");
-              const truncation = truncateHead(rawOutput, {
-                maxLines: Number.MAX_SAFE_INTEGER,
-              });
-              let resultOutput = truncation.content;
-              const details: FindToolDetails = {};
-              const notices: string[] = [];
-              if (resultLimitReached) {
-                notices.push(`${effectiveLimit} results limit reached`);
-                details.resultLimitReached = effectiveLimit;
-              }
-              if (truncation.truncated) {
-                notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
-                details.truncation = truncation;
-              }
-              if (notices.length > 0) {
-                resultOutput += `\n\n[${notices.join(". ")}]`;
-              }
-              settle(() =>
-                resolve({
-                  content: [{ type: "text", text: resultOutput }],
-                  details:
-                    Object.keys(details).length > 0 ? details : undefined,
-                })
-              );
-              return;
-            }
+      let effectivePattern = pattern;
+      if (pattern.includes("/")) {
+        args.push("--full-path");
+        if (
+          !(pattern.startsWith("/") || pattern.startsWith("**/")) &&
+          pattern !== "**"
+        ) {
+          effectivePattern = `**/${pattern}`;
+        }
+      }
+      args.push("--", effectivePattern, searchPath);
 
-            const fdPath = options?.fdPath ?? resolveBin("fd");
-            if (signal?.aborted) {
-              settle(() => reject(new Error("Operation aborted")));
-              return;
-            }
-
-            const args: string[] = [
-              "--glob",
-              "--color=never",
-              "--hidden",
-              "--no-require-git",
-              "--max-results",
-              String(effectiveLimit),
-            ];
-
-            let effectivePattern = pattern;
-            if (pattern.includes("/")) {
-              args.push("--full-path");
-              if (
-                !(pattern.startsWith("/") || pattern.startsWith("**/")) &&
-                pattern !== "**"
-              ) {
-                effectivePattern = `**/${pattern}`;
-              }
-            }
-            args.push("--", effectivePattern, searchPath);
-
-            const child = spawn(fdPath, args, {
-              stdio: ["ignore", "pipe", "pipe"],
-            });
-            const rl = createInterface({ input: child.stdout });
-            let stderr = "";
-            const lines: string[] = [];
-
-            stopChild = () => {
-              if (!child.killed) {
-                child.kill();
-              }
-            };
-
-            const cleanup = () => {
-              rl.close();
-            };
-
-            child.stderr?.on("data", (chunk) => {
-              stderr += chunk.toString();
-            });
-
-            rl.on("line", (line) => {
-              lines.push(line);
-            });
-
-            child.on("error", (error) => {
-              cleanup();
-              settle(() =>
-                reject(new Error(`Failed to run fd: ${error.message}`))
-              );
-            });
-
-            child.on("close", (code) => {
-              cleanup();
-              if (signal?.aborted) {
-                settle(() => reject(new Error("Operation aborted")));
-                return;
-              }
-              const output = lines.join("\n");
-              if (code !== 0) {
-                const errorMsg = stderr.trim() || `fd exited with code ${code}`;
-                if (!output) {
-                  settle(() => reject(new Error(errorMsg)));
-                  return;
-                }
-              }
-              if (!output) {
-                settle(() =>
-                  resolve({
-                    content: [
-                      {
-                        type: "text",
-                        text: "No files found matching pattern",
-                      },
-                    ],
-                    details: undefined,
-                  })
-                );
-                return;
-              }
-
-              const relativized: string[] = [];
-              for (const rawLine of lines) {
-                const line = rawLine.replace(/\r$/, "").trim();
-                if (!line) {
-                  continue;
-                }
-                const hadTrailingSlash =
-                  line.endsWith("/") || line.endsWith("\\");
-                let relativePath = line;
-                if (line.startsWith(searchPath)) {
-                  relativePath = line.slice(searchPath.length + 1);
-                } else {
-                  relativePath = nodePath.relative(searchPath, line);
-                }
-                if (hadTrailingSlash && !relativePath.endsWith("/")) {
-                  relativePath += "/";
-                }
-                relativized.push(toPosixPath(relativePath));
-              }
-
-              const resultLimitReached = relativized.length >= effectiveLimit;
-              const rawOutput = relativized.join("\n");
-              const truncation = truncateHead(rawOutput, {
-                maxLines: Number.MAX_SAFE_INTEGER,
-              });
-              let resultOutput = truncation.content;
-              const details: FindToolDetails = {};
-              const notices: string[] = [];
-              if (resultLimitReached) {
-                notices.push(
-                  `${effectiveLimit} results limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`
-                );
-                details.resultLimitReached = effectiveLimit;
-              }
-              if (truncation.truncated) {
-                notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
-                details.truncation = truncation;
-              }
-              if (notices.length > 0) {
-                resultOutput += `\n\n[${notices.join(". ")}]`;
-              }
-              settle(() =>
-                resolve({
-                  content: [{ type: "text", text: resultOutput }],
-                  details:
-                    Object.keys(details).length > 0 ? details : undefined,
-                })
-              );
-            });
-          } catch (e) {
-            if (signal?.aborted) {
-              settle(() => reject(new Error("Operation aborted")));
-              return;
-            }
-            const error = e instanceof Error ? e : new Error(String(e));
-            settle(() => reject(error));
-          }
-        })();
+      const proc = Bun.spawn({
+        cmd: [fdPath, ...args],
+        stdout: "pipe",
+        stderr: "pipe",
       });
+
+      const onAbort = () => proc.kill();
+      signal?.addEventListener("abort", onAbort, { once: true });
+
+      try {
+        const [stdoutText, stderrText, exitCode] = await Promise.all([
+          new Response(proc.stdout as ReadableStream).text(),
+          new Response(proc.stderr as ReadableStream).text(),
+          proc.exited,
+        ]);
+
+        if (signal?.aborted) {
+          throw new Error("Operation aborted");
+        }
+
+        const output = stdoutText.trim();
+        if (exitCode !== 0) {
+          const errorMsg =
+            stderrText.trim() || `fd exited with code ${exitCode}`;
+          if (!output) {
+            throw new Error(errorMsg);
+          }
+        }
+        if (!output) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "No files found matching pattern",
+              },
+            ],
+            details: undefined,
+          };
+        }
+
+        const lines = output.split("\n");
+        const relativized: string[] = [];
+        for (const rawLine of lines) {
+          const line = rawLine.replace(/\r$/, "").trim();
+          if (!line) {
+            continue;
+          }
+          const hadTrailingSlash = line.endsWith("/") || line.endsWith("\\");
+          let relativePath = line;
+          if (line.startsWith(searchPath)) {
+            relativePath = line.slice(searchPath.length + 1);
+          } else {
+            relativePath = nodePath.relative(searchPath, line);
+          }
+          if (hadTrailingSlash && !relativePath.endsWith("/")) {
+            relativePath += "/";
+          }
+          relativized.push(toPosixPath(relativePath));
+        }
+
+        const resultLimitReached = relativized.length >= effectiveLimit;
+        const rawOutput = relativized.join("\n");
+        const truncation = truncateHead(rawOutput, {
+          maxLines: Number.MAX_SAFE_INTEGER,
+        });
+        let resultOutput = truncation.content;
+        const details: FindToolDetails = {};
+        const notices: string[] = [];
+        if (resultLimitReached) {
+          notices.push(
+            `${effectiveLimit} results limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`
+          );
+          details.resultLimitReached = effectiveLimit;
+        }
+        if (truncation.truncated) {
+          notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
+          details.truncation = truncation;
+        }
+        if (notices.length > 0) {
+          resultOutput += `\n\n[${notices.join(". ")}]`;
+        }
+        return {
+          content: [{ type: "text", text: resultOutput }],
+          details: Object.keys(details).length > 0 ? details : undefined,
+        };
+      } finally {
+        signal?.removeEventListener("abort", onAbort);
+      }
     },
   };
 }

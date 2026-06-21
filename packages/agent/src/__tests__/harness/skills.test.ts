@@ -1,6 +1,6 @@
+import { describe, expect, it } from "bun:test";
 import { symlink } from "node:fs/promises";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
 import { loadSkills, loadSourcedSkills } from "../../harness/skills.ts";
 import { createTempDir } from "./session-test-utils.ts";
 import { TestExecutionEnv } from "./test-execution-env.ts";
