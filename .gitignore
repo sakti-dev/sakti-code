@@ -9,4 +9,4 @@ artifacts/
 references/
 *.tsbuildinfo
 .direnv/
-*.db
+*.db*

@@ -1,18 +1,18 @@
-import ConnectionBanner from "./connection-banner";
+import BannerConnection from "./banner-connection";
+import BannerError from "./banner-error";
+import BannerUpdate from "./banner-update";
 import ContentTabBar from "./content-tab-bar";
-import ErrorBanner from "./error-banner";
 import Sidebar from "./sidebar";
 import Toolbar from "./toolbar";
-import UpdateBanner from "./update-banner";
 
 export default function AppShell() {
   return (
     <div class="flex h-screen bg-background text-foreground">
       <Sidebar />
       <div class="flex min-w-0 flex-1 flex-col">
-        <ConnectionBanner />
-        <ErrorBanner />
-        <UpdateBanner />
+        <BannerConnection />
+        <BannerError />
+        <BannerUpdate />
         <main class="flex min-w-0 flex-1 flex-col">
           <Toolbar />
           <ContentTabBar />
