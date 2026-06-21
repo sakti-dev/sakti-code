@@ -1,6 +1,6 @@
 ## Purpose
 
-Session controls let a client interact with an active agent-loop run mid-flight: injecting a "steer" message to redirect the loop while it works (aborting an in-progress tool but never the LLM stream), or queueing "follow-up" messages to run as additional turns after the current one completes. Both are delivered over the existing WebSocket and also exposed as REST fallback endpoints.
+Session controls let a client interact with an active agent-loop run mid-flight: injecting a "steer" message to redirect the loop while it works (aborting an in-progress tool but never the LLM stream), or queueing "follow-up" messages to run as additional turns after the current one completes. Both are delivered over the existing WebSocket.
 
 ## Requirements
 
@@ -55,13 +55,3 @@ The system SHALL accept `steer` and `followUp` messages over the existing WebSoc
 - **WHEN** a `steer` message arrives for a sessionId with no active run
 - **THEN** the handler sends an `error` frame with message "No active run for session X"
 
-### Requirement: Steer/follow-up routes via REST (fallback)
-The system SHALL expose `POST /api/sessions/:id/steer` and `POST /api/sessions/:id/follow-up` as REST endpoints. These SHALL look up the active loop for the sessionId and call the corresponding method. If no active run exists, the endpoint SHALL return HTTP 404.
-
-#### Scenario: REST steer with active run
-- **WHEN** `POST /api/sessions/:id/steer` with body `{message: "..."}` is called for a session with an active run
-- **THEN** the response status is 200 and the steer is queued
-
-#### Scenario: REST steer without active run
-- **WHEN** `POST /api/sessions/:id/steer` is called for a session with no active run
-- **THEN** the response status is 404

@@ -14,7 +14,6 @@ import { lastAssistantTextRoutes } from "./routes/last-assistant-text.ts";
 import { modelConfigRoutes } from "./routes/models.ts";
 import { projectsRoutes } from "./routes/projects.ts";
 import { searchFilesRoutes } from "./routes/search-files.ts";
-import { sessionControlRoutes } from "./routes/session-controls.ts";
 import { sessionSettingsRoutes } from "./routes/session-settings.ts";
 import { sessionsRoutes } from "./routes/sessions.ts";
 import { settingsRoutes } from "./routes/settings.ts";
@@ -46,7 +45,6 @@ const defaultRoutes = [
   forkingRoutes,
   exportRoutes,
   sessionSettingsRoutes,
-  sessionControlRoutes,
   buildWsApp(),
 ];
 
