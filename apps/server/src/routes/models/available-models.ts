@@ -3,6 +3,7 @@ import { Elysia } from "elysia";
 
 export const availableModelsRoutes = new Elysia({
   name: "routes.availableModels",
+  prefix: "/models",
 })
   .get("/available", () => getProviders())
   .get("/available/:provider", ({ params }) =>

@@ -9,13 +9,16 @@ const projectModel = t.Object({
   updatedAt: t.Number(),
 });
 
-export const projectsRoutes = new Elysia({ name: "routes.projects" })
+export const projectsRoutes = new Elysia({
+  name: "routes.projects",
+  prefix: "/projects",
+})
   .model({ project: projectModel })
-  .get("/projects", ({ store }) => getCtx(store).repos.projects.list(), {
+  .get("/", ({ store }) => getCtx(store).repos.projects.list(), {
     response: t.Array(t.Ref("project")),
   })
   .get(
-    "/projects/:id",
+    "/:id",
     ({ params, store }) => {
       const p = getCtx(store).repos.projects.findById(params.id);
       if (!p) {
@@ -26,7 +29,7 @@ export const projectsRoutes = new Elysia({ name: "routes.projects" })
     { response: t.Ref("project") }
   )
   .post(
-    "/projects",
+    "/",
     ({ body, store }) =>
       getCtx(store).repos.projects.create(body.name, body.cwd),
     {
@@ -35,7 +38,7 @@ export const projectsRoutes = new Elysia({ name: "routes.projects" })
     }
   )
   .put(
-    "/projects/:id",
+    "/:id",
     ({ params, body, store }) =>
       getCtx(store).repos.projects.update(params.id, body),
     {
@@ -43,6 +46,6 @@ export const projectsRoutes = new Elysia({ name: "routes.projects" })
       response: t.Ref("project"),
     }
   )
-  .delete("/projects/:id", ({ params, store }) =>
+  .delete("/:id", ({ params, store }) =>
     getCtx(store).repos.projects.delete(params.id)
   );

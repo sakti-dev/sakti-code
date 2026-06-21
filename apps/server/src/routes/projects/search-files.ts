@@ -91,8 +91,11 @@ async function runFind(
   }
 }
 
-export const searchFilesRoutes = new Elysia({ name: "routes.searchFiles" }).get(
-  "/projects/:id/files",
+export const searchFilesRoutes = new Elysia({
+  name: "routes.searchFiles",
+  prefix: "/projects",
+}).get(
+  "/:id/files",
   async ({ params, query: { query: q, limit }, store }) => {
     const ctx = getCtx(store);
     const project = await ctx.repos.projects.findById(params.id);

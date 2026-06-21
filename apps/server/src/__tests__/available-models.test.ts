@@ -20,7 +20,7 @@ const { availableModelsRoutes } = await import(
 describe("available-models routes", () => {
   it("lists providers", async () => {
     const res = await availableModelsRoutes.handle(
-      new Request("http://localhost:3001/available")
+      new Request("http://localhost:3001/models/available")
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -29,7 +29,7 @@ describe("available-models routes", () => {
 
   it("lists models for a provider", async () => {
     const res = await availableModelsRoutes.handle(
-      new Request("http://localhost:3001/available/openai")
+      new Request("http://localhost:3001/models/available/openai")
     );
     expect(res.status).toBe(200);
     const body = await res.json();

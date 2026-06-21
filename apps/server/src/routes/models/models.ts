@@ -11,7 +11,10 @@ const modelConfigModel = t.Object({
   updatedAt: t.Number(),
 });
 
-export const modelConfigRoutes = new Elysia({ name: "routes.modelConfigs" })
+export const modelConfigRoutes = new Elysia({
+  name: "routes.modelConfigs",
+  prefix: "/models",
+})
   .model({ modelConfig: modelConfigModel })
   .get("/config", ({ store }) => getCtx(store).repos.models.getGlobalDefault())
   .get("/config/:projectId", ({ params, store }) =>

@@ -117,15 +117,15 @@ async function findProject(store: { ctx?: ServerContext }, id: string) {
   return project;
 }
 
-export const gitRoutes = new Elysia({ name: "routes.git" })
-  .get("/projects/:id/git/status", async ({ params, store }) => {
+export const gitRoutes = new Elysia({ name: "routes.git", prefix: "/projects" })
+  .get("/:id/git/status", async ({ params, store }) => {
     const project = await findProject(store, params.id);
     if (!project) {
       return new Response("Not found", { status: 404 });
     }
     return handleResult(await runGit(["status", "--short"], project.cwd));
   })
-  .get("/projects/:id/git/branch", async ({ params, store }) => {
+  .get("/:id/git/branch", async ({ params, store }) => {
     const project = await findProject(store, params.id);
     if (!project) {
       return new Response("Not found", { status: 404 });
@@ -135,7 +135,7 @@ export const gitRoutes = new Elysia({ name: "routes.git" })
     );
   })
   .get(
-    "/projects/:id/git/diff",
+    "/:id/git/diff",
     async ({ params, query, store }) => {
       const project = await findProject(store, params.id);
       if (!project) {
@@ -158,7 +158,7 @@ export const gitRoutes = new Elysia({ name: "routes.git" })
     }
   )
   .get(
-    "/projects/:id/git/log",
+    "/:id/git/log",
     async ({ params, query, store }) => {
       const project = await findProject(store, params.id);
       if (!project) {
@@ -176,7 +176,7 @@ export const gitRoutes = new Elysia({ name: "routes.git" })
     }
   )
   .get(
-    "/projects/:id/git/turn-diff",
+    "/:id/git/turn-diff",
     async ({ params, query, store }) => {
       const project = await findProject(store, params.id);
       if (!project) {
