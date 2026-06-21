@@ -1,9 +1,9 @@
 import { getEnvApiKey, getModel } from "@earendil-works/pi-ai";
-import type { KnownProvider, Model } from "@earendil-works/pi-ai/base";
+import type { Api, KnownProvider, Model } from "@earendil-works/pi-ai/base";
 import type { ServerContext } from "../context.ts";
 
 export interface ResolvedModel {
-  model: Model<any>;
+  model: Model<Api>;
   provider: string;
 }
 
@@ -11,10 +11,12 @@ export interface ResolvedAuth extends ResolvedModel {
   apiKey: string;
 }
 
-const resolveModelInstance = getModel as unknown as (
+function resolveModelInstance(
   provider: KnownProvider,
   modelId: string
-) => Model<any>;
+): Model<Api> {
+  return getModel(provider, modelId as never);
+}
 
 export function resolveModel(
   ctx: ServerContext,

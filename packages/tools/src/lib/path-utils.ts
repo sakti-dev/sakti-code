@@ -67,10 +67,6 @@ function tryCurlyQuoteVariant(filePath: string): string {
   return filePath.replace(/'/g, "\u2019");
 }
 
-function fileExists(filePath: string): boolean {
-  return existsSync(filePath);
-}
-
 export async function pathExists(filePath: string): Promise<boolean> {
   return existsSync(filePath);
 }
@@ -87,36 +83,6 @@ export function resolveToCwd(filePath: string, cwd: string): string {
     normalizeUnicodeSpaces: true,
     stripAtPrefix: true,
   });
-}
-
-export function resolveReadPath(filePath: string, cwd: string): string {
-  const resolved = resolveToCwd(filePath, cwd);
-
-  if (fileExists(resolved)) {
-    return resolved;
-  }
-
-  const amPmVariant = tryMacOSScreenshotPath(resolved);
-  if (amPmVariant !== resolved && fileExists(amPmVariant)) {
-    return amPmVariant;
-  }
-
-  const nfdVariant = tryNFDVariant(resolved);
-  if (nfdVariant !== resolved && fileExists(nfdVariant)) {
-    return nfdVariant;
-  }
-
-  const curlyVariant = tryCurlyQuoteVariant(resolved);
-  if (curlyVariant !== resolved && fileExists(curlyVariant)) {
-    return curlyVariant;
-  }
-
-  const nfdCurlyVariant = tryCurlyQuoteVariant(nfdVariant);
-  if (nfdCurlyVariant !== resolved && fileExists(nfdCurlyVariant)) {
-    return nfdCurlyVariant;
-  }
-
-  return resolved;
 }
 
 export async function resolveReadPathAsync(

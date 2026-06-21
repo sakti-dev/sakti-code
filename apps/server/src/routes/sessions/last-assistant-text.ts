@@ -1,7 +1,6 @@
 import { type AgentMessage, buildSessionContext } from "@sakti-code/agent";
-import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
-import { getCtx } from "../../context.ts";
+import { createSessionStorage, getCtx } from "../../context.ts";
 
 function extractAssistantText(messages: AgentMessage[]): string | null {
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -35,10 +34,7 @@ export const lastAssistantTextRoutes = new Elysia({
     return new Response("Not found", { status: 404 });
   }
 
-  const storage = new SqliteSessionStorage(ctx.db, params.id, {
-    id: params.id,
-    createdAt: new Date(session.createdAt).toISOString(),
-  });
+  const storage = createSessionStorage(ctx, params.id);
   const entries = await storage.getPathToRoot(await storage.getLeafId());
   const { messages } = buildSessionContext(entries);
 

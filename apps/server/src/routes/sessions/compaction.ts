@@ -5,10 +5,9 @@ import {
   prepareCompaction,
   Session,
 } from "@sakti-code/agent";
-import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import { resolveAuth, resolveModel } from "../../agent/model-resolver.ts";
-import { getCtx } from "../../context.ts";
+import { createSessionStorage, getCtx } from "../../context.ts";
 
 export const compactionRoutes = new Elysia({
   name: "routes.compaction",
@@ -36,10 +35,7 @@ export const compactionRoutes = new Elysia({
     });
   }
 
-  const storage = new SqliteSessionStorage(ctx.db, params.id, {
-    id: params.id,
-    createdAt: new Date().toISOString(),
-  });
+  const storage = createSessionStorage(ctx, params.id);
   const entries = await storage.getEntries();
   const preparation = prepareCompaction(entries, DEFAULT_COMPACTION_SETTINGS);
 

@@ -49,16 +49,16 @@ Because `compact` makes a real LLM call that can fail, the route SHALL return HT
 - **AND** the session's persisted entries are unchanged from before the call
 
 ### Requirement: Session stats route
-The system SHALL expose `GET /api/sessions/:id/stats` returning a unified read-only projection `{ messageCount, totalInputTokens, totalOutputTokens, totalCostUsd, createdAt, durationMs }`. The stats SHALL be **derived from the entry tree** (`session_entries`) by loading the session's path entries via `SqliteSessionStorage.getPathToRoot`, projecting them to `AgentMessage[]` via `buildSessionContext`, then walking the assistant messages to sum `usage.input`, `usage.output`, and `usage.cost.total`. The `messageCount` SHALL equal the projected message count. The route SHALL make no LLM or network calls and SHALL NOT read from any legacy `messages` or `costs` table.
+The system SHALL expose `GET /api/sessions/:id/stats` returning a unified read-only projection `{ activeMessageCount, totalInputTokens, totalOutputTokens, totalCostUsd, createdAt, durationMs }`. The stats SHALL be **derived from the entry tree** (`session_entries`) by loading the session's path entries via `SqliteSessionStorage.getPathToRoot`, projecting them to `AgentMessage[]` via `buildSessionContext`, then walking the assistant messages to sum `usage.input`, `usage.output`, and `usage.cost.total`. The `activeMessageCount` SHALL equal the projected message count (reflects active messages after compaction, not total lifetime messages). The route SHALL make no LLM or network calls and SHALL NOT read from any legacy `messages` or `costs` table.
 
 #### Scenario: stats for a session with entries
 - **WHEN** a session has 2 message entries (1 user + 1 assistant with `usage`) and `GET /api/sessions/:id/stats` is called
-- **THEN** the response status is 200 and `body.messageCount` is 2, `body.createdAt` equals the session's creation time, and `body.durationMs >= 0`
+- **THEN** the response status is 200 and `body.activeMessageCount` is 2, `body.createdAt` equals the session's creation time, and `body.durationMs >= 0`
 - **AND** `body.totalInputTokens`, `body.totalOutputTokens`, and `body.totalCostUsd` reflect the assistant message's `usage` fields
 
 #### Scenario: stats for a session with no entries
 - **WHEN** a session has no message entries
-- **THEN** `messageCount`, `totalInputTokens`, `totalOutputTokens`, and `totalCostUsd` are all 0 (not null, not 404)
+- **THEN** `activeMessageCount`, `totalInputTokens`, `totalOutputTokens`, and `totalCostUsd` are all 0 (not null, not 404)
 
 #### Scenario: unknown session
 - **WHEN** `GET /api/sessions/nope/stats` is called

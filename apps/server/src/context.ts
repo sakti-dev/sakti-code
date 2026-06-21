@@ -4,6 +4,7 @@ import {
   ProjectRepo,
   SessionRepo,
   SettingsRepo,
+  SqliteSessionStorage,
 } from "@sakti-code/db";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
 
@@ -29,6 +30,19 @@ export function createContext(db: DrizzleDB): ServerContext {
     },
     terminalManager: new TerminalManager(),
   };
+}
+
+export function createSessionStorage(
+  ctx: ServerContext,
+  sessionId: string
+): SqliteSessionStorage {
+  const session = ctx.repos.sessions.findById(sessionId);
+  return new SqliteSessionStorage(ctx.db, sessionId, {
+    id: sessionId,
+    createdAt: session
+      ? new Date(session.createdAt).toISOString()
+      : new Date().toISOString(),
+  });
 }
 
 /** Extract typed ServerContext from Elysia store. */

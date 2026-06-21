@@ -34,18 +34,22 @@ let ptySpawnFn:
     ) => IPty)
   | null = null;
 let ptyLoadError: string | null = null;
+let ptyLoadPromise: Promise<void> | null = null;
 
 async function loadBunPty(): Promise<void> {
-  if (ptySpawnFn !== null || ptyLoadError !== null) {
+  if (ptySpawnFn !== null || ptyLoadError !== null || ptyLoadPromise) {
     return;
   }
-  try {
-    const bunPty = await import("bun-pty");
-    ptySpawnFn = bunPty.spawn;
-  } catch (err) {
-    ptyLoadError =
-      err instanceof Error ? err.message : "Failed to load bun-pty";
-  }
+  ptyLoadPromise = (async () => {
+    try {
+      const bunPty = await import("bun-pty");
+      ptySpawnFn = bunPty.spawn;
+    } catch (err) {
+      ptyLoadError =
+        err instanceof Error ? err.message : "Failed to load bun-pty";
+    }
+  })();
+  await ptyLoadPromise;
 }
 
 loadBunPty();
@@ -54,6 +58,12 @@ export class TerminalManager {
   private readonly terminals = new Map<string, ManagedTerminal>();
   private onDataCallback: TerminalDataCallback | null = null;
   private onExitCallback: TerminalExitCallback | null = null;
+
+  async ensureLoaded(): Promise<void> {
+    if (ptyLoadPromise) {
+      await ptyLoadPromise;
+    }
+  }
 
   get bunPtyAvailable(): boolean {
     return ptySpawnFn !== null;

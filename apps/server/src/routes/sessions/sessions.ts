@@ -1,7 +1,6 @@
 import { buildSessionContext } from "@sakti-code/agent";
-import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia, t } from "elysia";
-import { getCtx } from "../../context.ts";
+import { createSessionStorage, getCtx } from "../../context.ts";
 
 const sessionModel = t.Object({
   id: t.String(),
@@ -70,10 +69,7 @@ export const sessionsRoutes = new Elysia({
   )
   .get("/:id/messages", async ({ params, store }) => {
     const ctx = getCtx(store);
-    const storage = new SqliteSessionStorage(ctx.db, params.id, {
-      id: params.id,
-      createdAt: new Date().toISOString(),
-    });
+    const storage = createSessionStorage(ctx, params.id);
     const entries = await storage.getPathToRoot(await storage.getLeafId());
     const { messages } = buildSessionContext(entries);
     return messages;

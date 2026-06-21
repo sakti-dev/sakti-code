@@ -36,6 +36,19 @@ export interface BashOperations {
   ) => Promise<{ exitCode: number | null }>;
 }
 
+export class BashAbortedError extends Error {
+  readonly code = "BASH_ABORTED" as const;
+}
+
+export class BashTimeoutError extends Error {
+  readonly code = "BASH_TIMEOUT" as const;
+  readonly timeoutSeconds: number;
+  constructor(timeoutSeconds: number) {
+    super(`timeout:${timeoutSeconds}`);
+    this.timeoutSeconds = timeoutSeconds;
+  }
+}
+
 function createLocalBashOperations(): BashOperations {
   return {
     exec: async (command, cwd, { onData, signal, timeout, env }) => {
@@ -45,7 +58,7 @@ function createLocalBashOperations(): BashOperations {
         );
       }
       if (signal?.aborted) {
-        throw new Error("aborted");
+        throw new BashAbortedError();
       }
 
       const shell = process.env.SHELL ?? "/bin/bash";
@@ -108,7 +121,7 @@ function createLocalBashOperations(): BashOperations {
           throw new Error("aborted");
         }
         if (timedOut) {
-          throw new Error(`timeout:${timeout}`);
+          throw new BashTimeoutError(timeout ?? 0);
         }
         return { exitCode };
       } finally {
@@ -266,15 +279,14 @@ export function createBashTool(
         } catch (err) {
           const snapshot = await finishOutput();
           const { text } = formatOutput(snapshot, "");
-          if (err instanceof Error && err.message === "aborted") {
+          if (err instanceof BashAbortedError) {
             throw new Error(appendStatus(text, "Command aborted"));
           }
-          if (err instanceof Error && err.message.startsWith("timeout:")) {
-            const timeoutSecs = err.message.split(":")[1];
+          if (err instanceof BashTimeoutError) {
             throw new Error(
               appendStatus(
                 text,
-                `Command timed out after ${timeoutSecs} seconds`
+                `Command timed out after ${err.timeoutSeconds} seconds`
               )
             );
           }

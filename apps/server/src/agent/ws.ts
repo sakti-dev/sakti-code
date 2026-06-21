@@ -19,15 +19,18 @@ const connectionStores = new Map<string, SqliteSessionStorage>();
 
 function getOrCreateStorage(
   wsId: string,
-  db: ServerContext["db"],
+  ctx: ServerContext,
   sessionId: string
 ): SqliteSessionStorage {
   const key = `${wsId}:${sessionId}`;
   let storage = connectionStores.get(key);
   if (!storage) {
-    storage = new SqliteSessionStorage(db, sessionId, {
+    const session = ctx.repos.sessions.findById(sessionId);
+    storage = new SqliteSessionStorage(ctx.db, sessionId, {
       id: sessionId,
-      createdAt: new Date().toISOString(),
+      createdAt: session
+        ? new Date(session.createdAt).toISOString()
+        : new Date().toISOString(),
     });
     connectionStores.set(key, storage);
   }
@@ -129,7 +132,7 @@ export function buildWsApp(ctx: ServerContext) {
         );
         return;
       }
-      const storage = getOrCreateStorage(wsId, ctx.db, inMsg.sessionId);
+      const storage = getOrCreateStorage(wsId, ctx, inMsg.sessionId);
       handleMessage(ctx, storage, ws, inMsg);
     },
   });

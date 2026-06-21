@@ -4,7 +4,7 @@ import { seedEntries } from "./entry-helpers.ts";
 import { makeApp } from "./helpers.ts";
 
 describe("stats routes", () => {
-  it("GET /api/sessions/:id/stats derives messageCount and costs from entries", async () => {
+  it("GET /api/sessions/:id/stats derives activeMessageCount and costs from entries", async () => {
     const { app, ctx } = await makeApp([statsRoutes]);
     const project = await ctx.repos.projects.create("p", "/tmp");
     const session = await ctx.repos.sessions.create(project.id, "test-model");
@@ -36,7 +36,7 @@ describe("stats routes", () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.messageCount).toBe(2);
+    expect(body.activeMessageCount).toBe(2);
     expect(body.createdAt).toBe(session.createdAt);
     expect(body.durationMs).toBeGreaterThanOrEqual(0);
     expect(body.totalInputTokens).toBe(100);
@@ -54,7 +54,7 @@ describe("stats routes", () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.messageCount).toBe(0);
+    expect(body.activeMessageCount).toBe(0);
     expect(body.totalInputTokens).toBe(0);
     expect(body.totalOutputTokens).toBe(0);
     expect(body.totalCostUsd).toBe(0);

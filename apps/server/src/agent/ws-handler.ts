@@ -100,7 +100,13 @@ export function handleMessage(
   msg: WsIn
 ) {
   if (msg.type === "abort") {
-    abortRun(msg.sessionId).catch(() => {});
+    abortRun(msg.sessionId).catch((err) => {
+      sendError(
+        ws,
+        msg.sessionId,
+        err instanceof Error ? err.message : String(err)
+      );
+    });
     return;
   }
 
@@ -114,11 +120,17 @@ export function handleMessage(
       );
       return;
     }
-    if (msg.type === "steer") {
-      harness.steer(msg.message).catch(() => {});
-    } else {
-      harness.followUp(msg.message).catch(() => {});
-    }
+    const action =
+      msg.type === "steer"
+        ? harness.steer(msg.message)
+        : harness.followUp(msg.message);
+    action.catch((err) => {
+      sendError(
+        ws,
+        msg.sessionId,
+        err instanceof Error ? err.message : String(err)
+      );
+    });
     return;
   }
 
@@ -131,5 +143,11 @@ export function handleMessage(
     sendError(ws, msg.sessionId, busyMessage(msg.sessionId));
     return;
   }
-  runAgentStream(ctx, msg.sessionId, msg.message, storage, ws).catch(() => {});
+  runAgentStream(ctx, msg.sessionId, msg.message, storage, ws).catch((err) => {
+    sendError(
+      ws,
+      msg.sessionId,
+      err instanceof Error ? err.message : String(err)
+    );
+  });
 }

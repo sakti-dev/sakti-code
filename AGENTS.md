@@ -91,7 +91,7 @@ Leaf change sets register themselves via `buildServer`'s `routes` array — the 
 | `modelConfigRoutes` | `GET/POST /api/model-configs` | Per-project and global model config |
 | `availableModelsRoutes` | `GET /api/available-models` | Models catalog |
 | `gitRoutes` | `GET /api/git/:projectId/status, /branch, /diff, /log`, `GET /api/git/turn-diff` | Git operations (status, branch switch, diff, log) + structured turn-diff (numstat-parsed file changes since HEAD) |
-| `statsRoutes` | `GET /api/sessions/:id/stats` | **Fast, local read** — derives `messageCount` + token/cost totals from assistant `usage` fields via `buildSessionContext`; no `costs` table |
+| `statsRoutes` | `GET /api/sessions/:id/stats` | **Fast, local read** — derives `activeMessageCount` + token/cost totals from assistant `usage` fields via `buildSessionContext`; no `costs` table |
 | `compactionRoutes` | `POST /api/sessions/:id/compact` | **Network-backed (LLM)** — runs the agent's `prepareCompaction` + `compact` summarizer on a session's entry tree, persists the compaction entry via `Session.appendCompaction()`, returns `{ tokensBefore, summary, firstKeptEntryId }`. Latency depends on the provider. Calls `resolveModel` from `agent-streaming` and resolves required API key from env. Returns 500 on summary failure (error/abort). |
 | `forkingRoutes` | `POST /api/sessions/:id/fork`, `GET /api/sessions/:id/fork-messages` | Entry-tree fork via `SqliteSessionStorage.forkFrom`; copies `session_entries` rows with regenerated IDs preserving the tree |
 | `lastAssistantTextRoutes` | `GET /api/sessions/:id/last-assistant-text` | Reads last assistant message from the entry tree |

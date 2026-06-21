@@ -1,11 +1,10 @@
 import type { AgentMessage } from "@sakti-code/agent";
 import { buildSessionContext } from "@sakti-code/agent";
-import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia, t } from "elysia";
-import { getCtx } from "../../context.ts";
+import { createSessionStorage, getCtx } from "../../context.ts";
 
 function deriveStats(messages: AgentMessage[]): {
-  messageCount: number;
+  activeMessageCount: number;
   totalInputTokens: number;
   totalOutputTokens: number;
   totalCostUsd: number;
@@ -23,7 +22,7 @@ function deriveStats(messages: AgentMessage[]): {
   }
 
   return {
-    messageCount: messages.length,
+    activeMessageCount: messages.length,
     totalInputTokens,
     totalOutputTokens,
     totalCostUsd,
@@ -42,10 +41,7 @@ export const statsRoutes = new Elysia({
       return new Response("Not found", { status: 404 });
     }
 
-    const storage = new SqliteSessionStorage(ctx.db, params.id, {
-      id: params.id,
-      createdAt: new Date(session.createdAt).toISOString(),
-    });
+    const storage = createSessionStorage(ctx, params.id);
     const entries = await storage.getPathToRoot(await storage.getLeafId());
     const { messages } = buildSessionContext(entries);
     const stats = deriveStats(messages);
@@ -58,7 +54,7 @@ export const statsRoutes = new Elysia({
   },
   {
     response: t.Object({
-      messageCount: t.Number(),
+      activeMessageCount: t.Number(),
       totalInputTokens: t.Number(),
       totalOutputTokens: t.Number(),
       totalCostUsd: t.Number(),

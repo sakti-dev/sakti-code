@@ -66,7 +66,7 @@ export function createWriteTool(
           content: [
             {
               type: "text" as const,
-              text: `Successfully wrote ${content.length} bytes to ${path}`,
+              text: `Successfully wrote ${Buffer.byteLength(content, "utf-8")} bytes to ${path}`,
             },
           ],
           details: undefined,

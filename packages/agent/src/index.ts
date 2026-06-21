@@ -51,4 +51,16 @@ export {
 } from "./harness/types.ts";
 export { truncateHead, truncateTail } from "./lib/truncate.ts";
 export { runAgentLoop, runAgentLoopContinue } from "./loop/agent-loop.ts";
-export * from "./types.ts";
+export type {
+  AgentEvent,
+  AgentLoopConfig,
+  AgentMessage,
+  AgentState,
+  AgentTool,
+  AgentToolCall,
+  AgentToolResult,
+  AgentToolUpdateCallback,
+  QueueMode,
+  StreamFn,
+  ToolExecutionMode,
+} from "./types.ts";

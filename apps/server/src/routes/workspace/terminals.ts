@@ -26,10 +26,9 @@ export const terminalRoutes = new Elysia({
 })
   .post(
     "/terminals",
-    ({ body, store }) => {
+    async ({ body, store }) => {
       const ctx = getCtx(store);
-      // The terminal's data/exit frames are pushed to this WS connection, so
-      // reject creates for a connection that isn't open.
+      await ctx.terminalManager.ensureLoaded();
       if (!hasWsConnection(body.connectionId)) {
         return new Response(
           JSON.stringify({

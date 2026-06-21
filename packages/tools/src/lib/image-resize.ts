@@ -108,51 +108,67 @@ export async function resizeImage(
   async function tryEncodings(
     width: number,
     height: number,
-    jpegQualities: number[]
-  ): Promise<EncodedCandidate[]> {
-    const candidates: EncodedCandidate[] = [];
+    jpegQualities: number[],
+    maxBytes: number
+  ): Promise<EncodedCandidate | null> {
+    let bestCandidate: EncodedCandidate | null = null;
 
-    // PNG — try both truecolor and indexed (palette). Palette is much
-    // smaller for screenshots / UI assets.
-    for (const pngOpts of [
-      {},
-      { palette: true, colors: 64, dither: true },
-    ] as const) {
-      try {
-        const data = await img
-          .resize(width, height, { fit: "inside" })
-          .png(pngOpts)
-          .toBase64();
-        candidates.push({
-          data,
-          encodedSize: data.length,
-          mimeType: "image/png",
-        });
-      } catch (error: unknown) {
-        if (isImageError(error) && error.code === "ERR_IMAGE_ENCODE_FAILED") {
-          // continue trying other encodings
-        }
-      }
-    }
-
-    // JPEG at multiple qualities — pick whichever lands smallest.
     for (const quality of jpegQualities) {
       try {
         const data = await img
           .resize(width, height, { fit: "inside" })
           .jpeg({ quality })
           .toBase64();
-        candidates.push({
+        const candidate = {
           data,
           encodedSize: data.length,
-          mimeType: "image/jpeg",
-        });
+          mimeType: "image/jpeg" as const,
+        };
+        if (candidate.encodedSize < maxBytes) {
+          return candidate;
+        }
+        if (
+          !bestCandidate ||
+          candidate.encodedSize < bestCandidate.encodedSize
+        ) {
+          bestCandidate = candidate;
+        }
       } catch {
         // skip
       }
     }
 
-    return candidates;
+    for (const pngOpts of [
+      { palette: true, colors: 64, dither: true },
+      {},
+    ] as const) {
+      try {
+        const data = await img
+          .resize(width, height, { fit: "inside" })
+          .png(pngOpts)
+          .toBase64();
+        const candidate = {
+          data,
+          encodedSize: data.length,
+          mimeType: "image/png" as const,
+        };
+        if (candidate.encodedSize < maxBytes) {
+          return candidate;
+        }
+        if (
+          !bestCandidate ||
+          candidate.encodedSize < bestCandidate.encodedSize
+        ) {
+          bestCandidate = candidate;
+        }
+      } catch (error: unknown) {
+        if (isImageError(error) && error.code === "ERR_IMAGE_ENCODE_FAILED") {
+          // continue
+        }
+      }
+    }
+
+    return bestCandidate;
   }
 
   const qualitySteps = Array.from(new Set([opts.jpegQuality, 85, 70, 55, 40]));
@@ -160,26 +176,23 @@ export async function resizeImage(
   let currentHeight = targetHeight;
 
   while (true) {
-    const candidates = await tryEncodings(
+    const candidate = await tryEncodings(
       currentWidth,
       currentHeight,
-      qualitySteps
+      qualitySteps,
+      opts.maxBytes
     );
 
-    if (candidates.length > 0) {
-      candidates.sort((a, b) => a.encodedSize - b.encodedSize);
-      const smallest = candidates[0];
-      if (smallest && smallest.encodedSize < opts.maxBytes) {
-        return {
-          data: smallest.data,
-          mimeType: smallest.mimeType,
-          originalWidth,
-          originalHeight,
-          width: currentWidth,
-          height: currentHeight,
-          wasResized: true,
-        };
-      }
+    if (candidate && candidate.encodedSize < opts.maxBytes) {
+      return {
+        data: candidate.data,
+        mimeType: candidate.mimeType,
+        originalWidth,
+        originalHeight,
+        width: currentWidth,
+        height: currentHeight,
+        wasResized: true,
+      };
     }
 
     if (currentWidth === 1 && currentHeight === 1) {

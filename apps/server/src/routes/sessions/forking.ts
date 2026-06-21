@@ -1,7 +1,6 @@
 import { buildSessionContext } from "@sakti-code/agent";
-import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
-import { getCtx } from "../../context.ts";
+import { createSessionStorage, getCtx } from "../../context.ts";
 
 function flattenContent(content: unknown): string {
   if (typeof content === "string") {
@@ -27,7 +26,10 @@ export const forkingRoutes = new Elysia({
       return new Response("Not found", { status: 404 });
     }
 
-    const forkedTitle = session.title ? `Fork of ${session.title}` : "Fork";
+    const baseTitle = session.title?.startsWith("Fork of ")
+      ? session.title.slice("Fork of ".length)
+      : session.title;
+    const forkedTitle = baseTitle ? `Fork of ${baseTitle}` : "Fork";
 
     const newSession = await ctx.repos.sessions.create(
       session.projectId,
@@ -39,10 +41,7 @@ export const forkingRoutes = new Elysia({
       }
     );
 
-    const forkedStorage = new SqliteSessionStorage(ctx.db, newSession.id, {
-      id: newSession.id,
-      createdAt: new Date(newSession.createdAt).toISOString(),
-    });
+    const forkedStorage = createSessionStorage(ctx, newSession.id);
 
     try {
       await forkedStorage.forkFrom(params.id);
@@ -60,10 +59,7 @@ export const forkingRoutes = new Elysia({
       return new Response("Not found", { status: 404 });
     }
 
-    const storage = new SqliteSessionStorage(ctx.db, params.id, {
-      id: params.id,
-      createdAt: new Date(session.createdAt).toISOString(),
-    });
+    const storage = createSessionStorage(ctx, params.id);
     const entries = await storage.getPathToRoot(await storage.getLeafId());
     const { messages } = buildSessionContext(entries);
 

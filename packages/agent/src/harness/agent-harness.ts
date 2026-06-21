@@ -190,9 +190,9 @@ function applyStreamOptionsPatch(
 const SUBSCRIBER_EVENT_TYPE = "*";
 
 type AgentHarnessHandler = (
-  event: any,
+  event: AgentHarnessEvent,
   signal?: AbortSignal
-) => Promise<any> | any;
+) => Promise<unknown> | unknown;
 
 function normalizeHarnessError(
   error: unknown,
@@ -332,7 +332,9 @@ export class AgentHarness<
     let lastResult: AgentHarnessEventResultMap[TType] | undefined;
     for (const handler of handlers) {
       try {
-        const result = await handler(event);
+        const result = (await handler(event)) as
+          | AgentHarnessEventResultMap[TType]
+          | undefined;
         if (result !== undefined) {
           lastResult = result;
         }
@@ -355,12 +357,12 @@ export class AgentHarness<
     }
     for (const handler of handlers) {
       try {
-        const result = await handler({
+        const result = (await handler({
           type: "before_provider_request",
           model,
           sessionId,
           streamOptions: cloneStreamOptions(current),
-        });
+        })) as { streamOptions?: AgentHarnessStreamOptionsPatch } | undefined;
         if (result?.streamOptions) {
           current = applyStreamOptionsPatch(current, result.streamOptions);
         }
@@ -382,12 +384,12 @@ export class AgentHarness<
     }
     for (const handler of handlers) {
       try {
-        const result = await handler({
+        const result = (await handler({
           type: "before_provider_payload",
           model,
           payload: current,
-        });
-        if (result !== undefined) {
+        })) as { payload?: unknown } | undefined;
+        if (result !== undefined && result.payload !== undefined) {
           current = result.payload;
         }
       } catch (error) {

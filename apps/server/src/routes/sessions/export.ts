@@ -1,7 +1,6 @@
 import { buildSessionContext } from "@sakti-code/agent";
-import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
-import { getCtx } from "../../context.ts";
+import { createSessionStorage, getCtx } from "../../context.ts";
 
 function renderHtmlExport(
   sessionTitle: string | null,
@@ -140,10 +139,7 @@ export const exportRoutes = new Elysia({
   const project = ctx.repos.projects.findById(session.projectId);
   const projectName = project?.name ?? "Unknown";
 
-  const storage = new SqliteSessionStorage(ctx.db, params.id, {
-    id: params.id,
-    createdAt: new Date(session.createdAt).toISOString(),
-  });
+  const storage = createSessionStorage(ctx, params.id);
   const entries = await storage.getPathToRoot(await storage.getLeafId());
   const { messages: agentMessages } = buildSessionContext(entries);
 

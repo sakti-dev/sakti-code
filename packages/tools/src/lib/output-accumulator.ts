@@ -26,8 +26,10 @@ function defaultTempFilePath(prefix: string): string {
   return join(tmpdir(), `${prefix}-${id}.log`);
 }
 
+const textEncoder = new TextEncoder();
+
 function byteLength(text: string): number {
-  return Buffer.byteLength(text, "utf-8");
+  return textEncoder.encode(text).length;
 }
 
 export class OutputAccumulator {
