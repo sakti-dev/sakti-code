@@ -8,8 +8,7 @@ export interface RunProcessOptions {
 
 /**
  * Spawn a process, collect stdout/stderr as strings, and resolve its exit code.
- * On abort, the child is killed with SIGKILL. Mirrors the collect-all pattern
- * the find/grep tools previously built on top of Bun.spawn + Response(stream).
+ * On abort, the child is killed with SIGKILL.
  */
 export async function runProcess(
   command: string,
