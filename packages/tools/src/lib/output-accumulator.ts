@@ -1,3 +1,4 @@
+import { createWriteStream, type WriteStream } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -52,7 +53,7 @@ export class OutputAccumulator {
   private finished = false;
 
   private tempFilePath: string | undefined;
-  private tempFileStream: import("bun").FileSink | undefined;
+  private tempFileStream: WriteStream | undefined;
 
   constructor(options: OutputAccumulatorOptions = {}) {
     this.maxLines = options.maxLines ?? DEFAULT_MAX_LINES;
@@ -128,7 +129,7 @@ export class OutputAccumulator {
     }
     const sink = this.tempFileStream;
     this.tempFileStream = undefined;
-    await sink.end();
+    await new Promise<void>((resolve) => sink.end(resolve));
   }
 
   getLastLineBytes(): number {
@@ -208,7 +209,7 @@ export class OutputAccumulator {
       return;
     }
     this.tempFilePath = defaultTempFilePath(this.tempFilePrefix);
-    this.tempFileStream = Bun.file(this.tempFilePath).writer();
+    this.tempFileStream = createWriteStream(this.tempFilePath);
     for (const chunk of this.rawChunks) {
       this.tempFileStream.write(chunk);
     }

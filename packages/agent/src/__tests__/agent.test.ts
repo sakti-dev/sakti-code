@@ -1,4 +1,3 @@
-import { describe, expect, it } from "bun:test";
 import {
   type AssistantMessage,
   type AssistantMessageEvent,
@@ -6,6 +5,7 @@ import {
   getModel,
 } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
+import { describe, expect, it } from "vitest";
 import { Agent } from "../agent.ts";
 import type {
   AgentEvent,

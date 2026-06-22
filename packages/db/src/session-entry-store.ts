@@ -184,7 +184,7 @@ export class SqliteSessionStorage<
       .get();
     const sourceLeafId = sourceSessionRow?.leafId ?? null;
 
-    await this.db.transaction(async (tx) => {
+    this.db.transaction((tx) => {
       const row = tx
         .select({ max: sql<number>`coalesce(max(sequence), -1)` })
         .from(sessionEntries)

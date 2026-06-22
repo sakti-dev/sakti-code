@@ -2,6 +2,7 @@ import nodePath from "node:path";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
 import { pathExists, resolveToCwd } from "../lib/path-utils.ts";
+import { runProcess } from "../lib/spawn.ts";
 import {
   DEFAULT_MAX_BYTES,
   formatSize,
@@ -164,94 +165,80 @@ export function createFindTool(
       }
       args.push("--", effectivePattern, searchPath);
 
-      const proc = Bun.spawn({
-        cmd: [fdPath, ...args],
-        stdout: "pipe",
-        stderr: "pipe",
-      });
+      const {
+        exitCode,
+        stderr: stderrText,
+        stdout: stdoutText,
+      } = await runProcess(fdPath, args, signal ? { signal } : {});
 
-      const onAbort = () => proc.kill();
-      signal?.addEventListener("abort", onAbort, { once: true });
-
-      try {
-        const [stdoutText, stderrText, exitCode] = await Promise.all([
-          new Response(proc.stdout as ReadableStream).text(),
-          new Response(proc.stderr as ReadableStream).text(),
-          proc.exited,
-        ]);
-
-        if (signal?.aborted) {
-          throw new Error("Operation aborted");
-        }
-
-        const output = stdoutText.trim();
-        if (exitCode !== 0) {
-          const errorMsg =
-            stderrText.trim() || `fd exited with code ${exitCode}`;
-          if (!output) {
-            throw new Error(errorMsg);
-          }
-        }
-        if (!output) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "No files found matching pattern",
-              },
-            ],
-            details: undefined,
-          };
-        }
-
-        const lines = output.split("\n");
-        const relativized: string[] = [];
-        for (const rawLine of lines) {
-          const line = rawLine.replace(/\r$/, "").trim();
-          if (!line) {
-            continue;
-          }
-          const hadTrailingSlash = line.endsWith("/") || line.endsWith("\\");
-          let relativePath = line;
-          if (line.startsWith(searchPath)) {
-            relativePath = line.slice(searchPath.length + 1);
-          } else {
-            relativePath = nodePath.relative(searchPath, line);
-          }
-          if (hadTrailingSlash && !relativePath.endsWith("/")) {
-            relativePath += "/";
-          }
-          relativized.push(toPosixPath(relativePath));
-        }
-
-        const resultLimitReached = relativized.length >= effectiveLimit;
-        const rawOutput = relativized.join("\n");
-        const truncation = truncateHead(rawOutput, {
-          maxLines: Number.MAX_SAFE_INTEGER,
-        });
-        let resultOutput = truncation.content;
-        const details: FindToolDetails = {};
-        const notices: string[] = [];
-        if (resultLimitReached) {
-          notices.push(
-            `${effectiveLimit} results limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`
-          );
-          details.resultLimitReached = effectiveLimit;
-        }
-        if (truncation.truncated) {
-          notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
-          details.truncation = truncation;
-        }
-        if (notices.length > 0) {
-          resultOutput += `\n\n[${notices.join(". ")}]`;
-        }
-        return {
-          content: [{ type: "text", text: resultOutput }],
-          details: Object.keys(details).length > 0 ? details : undefined,
-        };
-      } finally {
-        signal?.removeEventListener("abort", onAbort);
+      if (signal?.aborted) {
+        throw new Error("Operation aborted");
       }
+
+      const output = stdoutText.trim();
+      if (exitCode !== 0) {
+        const errorMsg = stderrText.trim() || `fd exited with code ${exitCode}`;
+        if (!output) {
+          throw new Error(errorMsg);
+        }
+      }
+      if (!output) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "No files found matching pattern",
+            },
+          ],
+          details: undefined,
+        };
+      }
+
+      const lines = output.split("\n");
+      const relativized: string[] = [];
+      for (const rawLine of lines) {
+        const line = rawLine.replace(/\r$/, "").trim();
+        if (!line) {
+          continue;
+        }
+        const hadTrailingSlash = line.endsWith("/") || line.endsWith("\\");
+        let relativePath = line;
+        if (line.startsWith(searchPath)) {
+          relativePath = line.slice(searchPath.length + 1);
+        } else {
+          relativePath = nodePath.relative(searchPath, line);
+        }
+        if (hadTrailingSlash && !relativePath.endsWith("/")) {
+          relativePath += "/";
+        }
+        relativized.push(toPosixPath(relativePath));
+      }
+
+      const resultLimitReached = relativized.length >= effectiveLimit;
+      const rawOutput = relativized.join("\n");
+      const truncation = truncateHead(rawOutput, {
+        maxLines: Number.MAX_SAFE_INTEGER,
+      });
+      let resultOutput = truncation.content;
+      const details: FindToolDetails = {};
+      const notices: string[] = [];
+      if (resultLimitReached) {
+        notices.push(
+          `${effectiveLimit} results limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`
+        );
+        details.resultLimitReached = effectiveLimit;
+      }
+      if (truncation.truncated) {
+        notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
+        details.truncation = truncation;
+      }
+      if (notices.length > 0) {
+        resultOutput += `\n\n[${notices.join(". ")}]`;
+      }
+      return {
+        content: [{ type: "text", text: resultOutput }],
+        details: Object.keys(details).length > 0 ? details : undefined,
+      };
     },
   };
 }

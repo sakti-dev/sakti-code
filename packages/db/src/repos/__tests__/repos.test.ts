@@ -1,7 +1,7 @@
-import { Database } from "bun:sqlite";
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { initDatabase } from "../../init.ts";
 import { ModelConfigRepo, ProjectRepo, SessionRepo, SettingsRepo } from "..";
 
@@ -12,7 +12,7 @@ describe("ProjectRepo", () => {
 
   beforeAll(async () => {
     tmpDir = mkdtempSync(join(import.meta.dirname!, "test-XXXXXX"));
-    const sqlite = new Database(join(tmpDir, "test.db"));
+    const sqlite = new DatabaseSync(join(tmpDir, "test.db"));
     db = await initDatabase(sqlite);
     repo = new ProjectRepo(db);
   });
@@ -50,7 +50,7 @@ describe("SessionRepo", () => {
 
   beforeAll(async () => {
     tmpDir = mkdtempSync(join(import.meta.dirname!, "test-XXXXXX"));
-    const sqlite = new Database(join(tmpDir, "test.db"));
+    const sqlite = new DatabaseSync(join(tmpDir, "test.db"));
     db = await initDatabase(sqlite);
     repo = new SessionRepo(db);
     projectRepo = new ProjectRepo(db);
@@ -85,7 +85,7 @@ describe("SettingsRepo", () => {
 
   beforeAll(async () => {
     tmpDir = mkdtempSync(join(import.meta.dirname!, "test-XXXXXX"));
-    const sqlite = new Database(join(tmpDir, "test.db"));
+    const sqlite = new DatabaseSync(join(tmpDir, "test.db"));
     db = await initDatabase(sqlite);
     repo = new SettingsRepo(db);
   });
@@ -137,7 +137,7 @@ describe("ModelConfigRepo", () => {
 
   beforeAll(async () => {
     tmpDir = mkdtempSync(join(import.meta.dirname!, "test-XXXXXX"));
-    const sqlite = new Database(join(tmpDir, "test.db"));
+    const sqlite = new DatabaseSync(join(tmpDir, "test.db"));
     db = await initDatabase(sqlite);
     repo = new ModelConfigRepo(db);
     db.$client

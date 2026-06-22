@@ -1,8 +1,9 @@
-import { stat as fsStat } from "node:fs/promises";
+import { readFile as fsReadFile, stat as fsStat } from "node:fs/promises";
 import nodePath from "node:path";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
 import { resolveToCwd } from "../lib/path-utils.ts";
+import { runProcess } from "../lib/spawn.ts";
 import {
   DEFAULT_MAX_BYTES,
   formatSize,
@@ -65,7 +66,7 @@ export interface GrepOperations {
 
 const defaultGrepOperations: GrepOperations = {
   isDirectory: async (p) => (await fsStat(p)).isDirectory(),
-  readFile: (p) => Bun.file(p).text(),
+  readFile: (p) => fsReadFile(p, "utf8"),
 };
 
 export interface GrepToolOptions {
@@ -158,180 +159,165 @@ export function createGrepTool(
       }
       args.push("--", pattern, searchPath);
 
-      const proc = Bun.spawn({
-        cmd: [rgPath, ...args],
-        stdout: "pipe",
-        stderr: "pipe",
-      });
+      const {
+        exitCode,
+        stderr: stderrText,
+        stdout: stdoutText,
+      } = await runProcess(rgPath, args, signal ? { signal } : {});
 
-      const onAbort = () => proc.kill();
-      signal?.addEventListener("abort", onAbort, { once: true });
-
-      try {
-        const [stdoutText, stderrText, exitCode] = await Promise.all([
-          new Response(proc.stdout as ReadableStream).text(),
-          new Response(proc.stderr as ReadableStream).text(),
-          proc.exited,
-        ]);
-
-        if (signal?.aborted) {
-          throw new Error("Operation aborted");
-        }
-        if (exitCode !== 0 && exitCode !== 1) {
-          throw new Error(
-            stderrText.trim() || `ripgrep exited with code ${exitCode}`
-          );
-        }
-
-        const lines = stdoutText.split("\n").filter(Boolean);
-        const matches: Array<{
-          filePath: string;
-          lineNumber: number;
-          lineText?: string;
-        }> = [];
-        let matchLimitReached = false;
-        let matchCount = 0;
-
-        const formatBlock = async (
-          filePath: string,
-          lineNumber: number
-        ): Promise<string[]> => {
-          const relativePath = formatPath(filePath);
-          const fileLines = await getFileLines(filePath);
-          if (!fileLines.length) {
-            return [`${relativePath}:${lineNumber}: (unable to read file)`];
-          }
-          const block: string[] = [];
-          const start =
-            contextValue > 0
-              ? Math.max(1, lineNumber - contextValue)
-              : lineNumber;
-          const end =
-            contextValue > 0
-              ? Math.min(fileLines.length, lineNumber + contextValue)
-              : lineNumber;
-          for (let current = start; current <= end; current++) {
-            const lineText = fileLines[current - 1] ?? "";
-            const sanitized = lineText.replace(/\r/g, "");
-            const isMatchLine = current === lineNumber;
-            const { text: truncatedText, wasTruncated } =
-              truncateLine(sanitized);
-            if (wasTruncated) {
-              linesTruncated = true;
-            }
-            if (isMatchLine) {
-              block.push(`${relativePath}:${current}: ${truncatedText}`);
-            } else {
-              block.push(`${relativePath}-${current}- ${truncatedText}`);
-            }
-          }
-          return block;
-        };
-
-        let linesTruncated = false;
-
-        for (const line of lines) {
-          if (matchCount >= effectiveLimit) {
-            matchLimitReached = true;
-            break;
-          }
-          let event: Record<string, unknown>;
-          try {
-            event = JSON.parse(line) as Record<string, unknown>;
-          } catch {
-            continue;
-          }
-          if (event.type === "match") {
-            matchCount++;
-            const filePath = (event.data as Record<string, unknown>)?.path
-              ? (
-                  (event.data as Record<string, unknown>)?.path as {
-                    text?: string;
-                  }
-                )?.text
-              : undefined;
-            const lineNumber = (event.data as Record<string, unknown>)
-              ?.line_number as number | undefined;
-            const lineText = (event.data as Record<string, unknown>)?.lines
-              ? (
-                  (event.data as Record<string, unknown>)?.lines as {
-                    text?: string;
-                  }
-                )?.text
-              : undefined;
-            if (filePath && typeof lineNumber === "number") {
-              matches.push({
-                filePath,
-                lineNumber,
-                ...(lineText === undefined ? {} : { lineText }),
-              });
-            }
-          }
-        }
-
-        if (matches.length === 0) {
-          return {
-            content: [{ type: "text", text: "No matches found" }],
-            details: undefined,
-          };
-        }
-
-        const outputLines: string[] = [];
-
-        for (const match of matches) {
-          if (contextValue === 0 && match.lineText !== undefined) {
-            const relativePath = formatPath(match.filePath);
-            const sanitized = match.lineText
-              .replace(/\r\n/g, "\n")
-              .replace(/\r/g, "")
-              .replace(/\n$/, "");
-            const { text: truncatedText, wasTruncated } =
-              truncateLine(sanitized);
-            if (wasTruncated) {
-              linesTruncated = true;
-            }
-            outputLines.push(
-              `${relativePath}:${match.lineNumber}: ${truncatedText}`
-            );
-          } else {
-            const block = await formatBlock(match.filePath, match.lineNumber);
-            outputLines.push(...block);
-          }
-        }
-
-        const rawOutput = outputLines.join("\n");
-        const truncation = truncateHead(rawOutput, {
-          maxLines: Number.MAX_SAFE_INTEGER,
-        });
-        let output = truncation.content;
-        const details: GrepToolDetails = {};
-        const notices: string[] = [];
-        if (matchLimitReached) {
-          notices.push(
-            `${effectiveLimit} matches limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`
-          );
-          details.matchLimitReached = effectiveLimit;
-        }
-        if (truncation.truncated) {
-          notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
-          details.truncation = truncation;
-        }
-        if (linesTruncated) {
-          notices.push(
-            `Some lines truncated to ${GREP_MAX_LINE_LENGTH} chars. Use read tool to see full lines`
-          );
-          details.linesTruncated = true;
-        }
-        if (notices.length > 0) {
-          output += `\n\n[${notices.join(". ")}]`;
-        }
-        return {
-          content: [{ type: "text", text: output }],
-          details: Object.keys(details).length > 0 ? details : undefined,
-        };
-      } finally {
-        signal?.removeEventListener("abort", onAbort);
+      if (signal?.aborted) {
+        throw new Error("Operation aborted");
       }
+      if (exitCode !== 0 && exitCode !== 1) {
+        throw new Error(
+          stderrText.trim() || `ripgrep exited with code ${exitCode}`
+        );
+      }
+
+      const lines = stdoutText.split("\n").filter(Boolean);
+      const matches: Array<{
+        filePath: string;
+        lineNumber: number;
+        lineText?: string;
+      }> = [];
+      let matchLimitReached = false;
+      let matchCount = 0;
+
+      const formatBlock = async (
+        filePath: string,
+        lineNumber: number
+      ): Promise<string[]> => {
+        const relativePath = formatPath(filePath);
+        const fileLines = await getFileLines(filePath);
+        if (!fileLines.length) {
+          return [`${relativePath}:${lineNumber}: (unable to read file)`];
+        }
+        const block: string[] = [];
+        const start =
+          contextValue > 0
+            ? Math.max(1, lineNumber - contextValue)
+            : lineNumber;
+        const end =
+          contextValue > 0
+            ? Math.min(fileLines.length, lineNumber + contextValue)
+            : lineNumber;
+        for (let current = start; current <= end; current++) {
+          const lineText = fileLines[current - 1] ?? "";
+          const sanitized = lineText.replace(/\r/g, "");
+          const isMatchLine = current === lineNumber;
+          const { text: truncatedText, wasTruncated } = truncateLine(sanitized);
+          if (wasTruncated) {
+            linesTruncated = true;
+          }
+          if (isMatchLine) {
+            block.push(`${relativePath}:${current}: ${truncatedText}`);
+          } else {
+            block.push(`${relativePath}-${current}- ${truncatedText}`);
+          }
+        }
+        return block;
+      };
+
+      let linesTruncated = false;
+
+      for (const line of lines) {
+        if (matchCount >= effectiveLimit) {
+          matchLimitReached = true;
+          break;
+        }
+        let event: Record<string, unknown>;
+        try {
+          event = JSON.parse(line) as Record<string, unknown>;
+        } catch {
+          continue;
+        }
+        if (event.type === "match") {
+          matchCount++;
+          const filePath = (event.data as Record<string, unknown>)?.path
+            ? (
+                (event.data as Record<string, unknown>)?.path as {
+                  text?: string;
+                }
+              )?.text
+            : undefined;
+          const lineNumber = (event.data as Record<string, unknown>)
+            ?.line_number as number | undefined;
+          const lineText = (event.data as Record<string, unknown>)?.lines
+            ? (
+                (event.data as Record<string, unknown>)?.lines as {
+                  text?: string;
+                }
+              )?.text
+            : undefined;
+          if (filePath && typeof lineNumber === "number") {
+            matches.push({
+              filePath,
+              lineNumber,
+              ...(lineText === undefined ? {} : { lineText }),
+            });
+          }
+        }
+      }
+
+      if (matches.length === 0) {
+        return {
+          content: [{ type: "text", text: "No matches found" }],
+          details: undefined,
+        };
+      }
+
+      const outputLines: string[] = [];
+
+      for (const match of matches) {
+        if (contextValue === 0 && match.lineText !== undefined) {
+          const relativePath = formatPath(match.filePath);
+          const sanitized = match.lineText
+            .replace(/\r\n/g, "\n")
+            .replace(/\r/g, "")
+            .replace(/\n$/, "");
+          const { text: truncatedText, wasTruncated } = truncateLine(sanitized);
+          if (wasTruncated) {
+            linesTruncated = true;
+          }
+          outputLines.push(
+            `${relativePath}:${match.lineNumber}: ${truncatedText}`
+          );
+        } else {
+          const block = await formatBlock(match.filePath, match.lineNumber);
+          outputLines.push(...block);
+        }
+      }
+
+      const rawOutput = outputLines.join("\n");
+      const truncation = truncateHead(rawOutput, {
+        maxLines: Number.MAX_SAFE_INTEGER,
+      });
+      let output = truncation.content;
+      const details: GrepToolDetails = {};
+      const notices: string[] = [];
+      if (matchLimitReached) {
+        notices.push(
+          `${effectiveLimit} matches limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`
+        );
+        details.matchLimitReached = effectiveLimit;
+      }
+      if (truncation.truncated) {
+        notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
+        details.truncation = truncation;
+      }
+      if (linesTruncated) {
+        notices.push(
+          `Some lines truncated to ${GREP_MAX_LINE_LENGTH} chars. Use read tool to see full lines`
+        );
+        details.linesTruncated = true;
+      }
+      if (notices.length > 0) {
+        output += `\n\n[${notices.join(". ")}]`;
+      }
+      return {
+        content: [{ type: "text", text: output }],
+        details: Object.keys(details).length > 0 ? details : undefined,
+      };
     },
   };
 }
