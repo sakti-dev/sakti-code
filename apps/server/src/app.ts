@@ -1,6 +1,6 @@
-import { Elysia } from "elysia";
 import { buildWsApp } from "./agent/ws.ts";
-import type { ServerContext } from "./context.ts";
+import { ctxMiddleware, type ServerContext } from "./context.ts";
+import { factory } from "./factory.ts";
 import { createApiKeyRoutes } from "./routes/api-keys.ts";
 import { dialogRoutes } from "./routes/dialog.ts";
 import { healthRoutes } from "./routes/health.ts";
@@ -20,30 +20,33 @@ import { settingsRoutes } from "./routes/settings.ts";
 import { terminalRoutes } from "./routes/workspace/terminals.ts";
 import { workspaceRoutes } from "./routes/workspace/workspace.ts";
 
-const restApp = new Elysia({ prefix: "/api" })
-  .use(healthRoutes)
-  .use(projectsRoutes)
-  .use(sessionsRoutes)
-  .use(settingsRoutes)
-  .use(modelConfigRoutes)
-  .use(availableModelsRoutes)
-  .use(searchFilesRoutes)
-  .use(workspaceRoutes)
-  .use(lastAssistantTextRoutes)
-  .use(compactionRoutes)
-  .use(statsRoutes)
-  .use(gitRoutes)
-  .use(terminalRoutes)
-  .use(forkingRoutes)
-  .use(exportRoutes)
-  .use(sessionSettingsRoutes)
-  .use(dialogRoutes);
-
 export function buildApp(ctx: ServerContext) {
-  return new Elysia()
-    .use(restApp)
-    .use(createApiKeyRoutes(ctx.apiKeys))
-    .use(buildWsApp(ctx));
+  const rest = factory
+    .createApp()
+    .route("/", healthRoutes)
+    .route("/", projectsRoutes)
+    .route("/", gitRoutes)
+    .route("/", searchFilesRoutes)
+    .route("/", sessionsRoutes)
+    .route("/", compactionRoutes)
+    .route("/", statsRoutes)
+    .route("/", forkingRoutes)
+    .route("/", exportRoutes)
+    .route("/", lastAssistantTextRoutes)
+    .route("/", sessionSettingsRoutes)
+    .route("/", settingsRoutes)
+    .route("/", modelConfigRoutes)
+    .route("/", availableModelsRoutes)
+    .route("/", workspaceRoutes)
+    .route("/", terminalRoutes)
+    .route("/", dialogRoutes);
+
+  return factory
+    .createApp()
+    .use(ctxMiddleware(ctx))
+    .route("/api", rest)
+    .route("/", buildWsApp(ctx))
+    .route("/", createApiKeyRoutes(ctx.apiKeys));
 }
 
 export type App = ReturnType<typeof buildApp>;

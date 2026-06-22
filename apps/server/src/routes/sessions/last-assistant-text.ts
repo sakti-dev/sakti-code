@@ -1,5 +1,5 @@
 import { type AgentMessage, buildSessionContext } from "@sakti-code/agent";
-import { Elysia } from "elysia";
+import { Hono } from "hono";
 import { createSessionStorage, getCtx } from "../../context.ts";
 
 function extractAssistantText(messages: AgentMessage[]): string | null {
@@ -24,19 +24,19 @@ function extractAssistantText(messages: AgentMessage[]): string | null {
   return null;
 }
 
-export const lastAssistantTextRoutes = new Elysia({
-  name: "routes.lastAssistantText",
-  prefix: "/sessions",
-}).get("/:id/last-assistant-text", async ({ params, store }) => {
-  const ctx = getCtx(store);
-  const session = ctx.repos.sessions.findById(params.id);
-  if (!session) {
-    return new Response("Not found", { status: 404 });
-  }
+export const lastAssistantTextRoutes = new Hono()
+  .basePath("/sessions")
+  .get("/:id/last-assistant-text", async (c) => {
+    const ctx = getCtx(c);
+    const id = c.req.param("id");
+    const session = ctx.repos.sessions.findById(id);
+    if (!session) {
+      return c.json({ error: "Not found" }, 404);
+    }
 
-  const storage = createSessionStorage(ctx, params.id);
-  const entries = await storage.getPathToRoot(await storage.getLeafId());
-  const { messages } = buildSessionContext(entries);
+    const storage = createSessionStorage(ctx, id);
+    const entries = await storage.getPathToRoot(await storage.getLeafId());
+    const { messages } = buildSessionContext(entries);
 
-  return Response.json({ text: extractAssistantText(messages) });
-});
+    return c.json({ text: extractAssistantText(messages) });
+  });

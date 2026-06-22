@@ -1,5 +1,6 @@
-import { Elysia, t } from "elysia";
+import { Hono } from "hono";
 import { getCtx } from "../../context.ts";
+import { spawnPiped } from "../../lib/spawn.ts";
 
 interface FileEntry {
   kind: "file" | "directory";
@@ -25,14 +26,12 @@ async function runFd(
     if (query) {
       args.push(query);
     }
-    const proc = Bun.spawn(["fd", ...args], {
-      cwd,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    await proc.exited;
-    const output = await new Response(proc.stdout).text();
-    const lines = output.split("\n").filter(Boolean).slice(0, limit);
+    const { done } = spawnPiped("fd", args, { cwd });
+    const result = await done;
+    if (result.spawnError) {
+      return [];
+    }
+    const lines = result.stdout.split("\n").filter(Boolean).slice(0, limit);
     return lines.map((p) => ({
       path: p.endsWith("/") ? p.slice(0, -1) : p,
       kind: p.endsWith("/") ? ("directory" as const) : ("file" as const),
@@ -71,14 +70,12 @@ async function runFind(
     }
     args.push(...ignoreDirsExpr);
 
-    const proc = Bun.spawn(["find", ...args], {
-      cwd,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    await proc.exited;
-    const output = await new Response(proc.stdout).text();
-    return output
+    const { done } = spawnPiped("find", args, { cwd });
+    const result = await done;
+    if (result.spawnError) {
+      return [];
+    }
+    return result.stdout
       .split("\n")
       .filter(Boolean)
       .slice(0, limit)
@@ -91,33 +88,29 @@ async function runFind(
   }
 }
 
-export const searchFilesRoutes = new Elysia({
-  name: "routes.searchFiles",
-  prefix: "/projects",
-}).get(
-  "/:id/files",
-  async ({ params, query: { query: q, limit }, store }) => {
-    const ctx = getCtx(store);
-    const project = await ctx.repos.projects.findById(params.id);
+export const searchFilesRoutes = new Hono()
+  .basePath("/projects")
+  .get("/:id/files", async (c) => {
+    const ctx = getCtx(c);
+    const project = await ctx.repos.projects.findById(c.req.param("id"));
     if (!project) {
-      return new Response("Not found", { status: 404 });
+      return c.json({ error: "Not found" }, 404);
     }
 
-    const query = q ?? null;
-    const maxResults = Math.min(limit ?? 20, 100);
+    const q = c.req.query("query") ?? null;
+    const rawLimit = c.req.query("limit");
+    const parsedLimit = rawLimit === undefined ? undefined : Number(rawLimit);
+    const maxResults = Math.min(
+      parsedLimit === undefined || !Number.isFinite(parsedLimit)
+        ? 20
+        : parsedLimit,
+      100
+    );
 
-    let files: FileEntry[];
-    files = await runFd(query, project.cwd, maxResults);
+    let files: FileEntry[] = await runFd(q, project.cwd, maxResults);
     if (files.length === 0) {
-      files = await runFind(query, project.cwd, maxResults);
+      files = await runFind(q, project.cwd, maxResults);
     }
 
-    return Response.json({ files, cwd: project.cwd });
-  },
-  {
-    query: t.Object({
-      query: t.Optional(t.String()),
-      limit: t.Optional(t.Numeric()),
-    }),
-  }
-);
+    return c.json({ files, cwd: project.cwd });
+  });

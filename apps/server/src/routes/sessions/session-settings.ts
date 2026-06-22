@@ -1,4 +1,6 @@
-import { Elysia, t } from "elysia";
+import { tbValidator } from "@hono/typebox-validator";
+import { Hono } from "hono";
+import Type from "typebox";
 import { getCtx } from "../../context.ts";
 
 // Default per-session setting values matching runner.ts
@@ -11,27 +13,26 @@ const DEFAULT_SETTINGS = {
   thinking_level: "off",
 };
 
-const patchBody = t.Object({
-  auto_compaction: t.Optional(t.Boolean()),
-  auto_retry: t.Optional(t.Boolean()),
-  follow_up_mode: t.Optional(t.String()),
-  max_retries: t.Optional(t.Number()),
-  steering_mode: t.Optional(t.String()),
-  thinking_level: t.Optional(t.String()),
+const patchBody = Type.Object({
+  auto_compaction: Type.Optional(Type.Boolean()),
+  auto_retry: Type.Optional(Type.Boolean()),
+  follow_up_mode: Type.Optional(Type.String()),
+  max_retries: Type.Optional(Type.Number()),
+  steering_mode: Type.Optional(Type.String()),
+  thinking_level: Type.Optional(Type.String()),
 });
 
-export const sessionSettingsRoutes = new Elysia({
-  name: "routes.session-settings",
-  prefix: "/sessions",
-})
-  .get("/:id/settings", ({ params, store }) => {
-    const ctx = getCtx(store);
-    const session = ctx.repos.sessions.findById(params.id);
+export const sessionSettingsRoutes = new Hono()
+  .basePath("/sessions")
+  .get("/:id/settings", (c) => {
+    const ctx = getCtx(c);
+    const id = c.req.param("id");
+    const session = ctx.repos.sessions.findById(id);
     if (!session) {
-      return new Response("Not found", { status: 404 });
+      return c.json({ error: "Not found" }, 404);
     }
 
-    const prefix = `session:${params.id}:`;
+    const prefix = `session:${id}:`;
     const rows = ctx.repos.settings.getByPrefix(prefix);
     const overrides: Record<string, string> = {};
     for (const row of rows) {
@@ -53,25 +54,23 @@ export const sessionSettingsRoutes = new Elysia({
       }
     }
 
-    return settings;
+    return c.json(settings);
   })
-  .patch(
-    "/:id/settings",
-    async ({ params, body, store }) => {
-      const ctx = getCtx(store);
-      const session = ctx.repos.sessions.findById(params.id);
-      if (!session) {
-        return new Response("Not found", { status: 404 });
-      }
+  .patch("/:id/settings", tbValidator("json", patchBody), async (c) => {
+    const ctx = getCtx(c);
+    const id = c.req.param("id");
+    const session = ctx.repos.sessions.findById(id);
+    if (!session) {
+      return c.json({ error: "Not found" }, 404);
+    }
 
-      const prefix = `session:${params.id}:`;
-      for (const [key, value] of Object.entries(body)) {
-        if (value !== undefined) {
-          await ctx.repos.settings.set(`${prefix}${key}`, String(value));
-        }
+    const body = c.req.valid("json");
+    const prefix = `session:${id}:`;
+    for (const [key, value] of Object.entries(body)) {
+      if (value !== undefined) {
+        await ctx.repos.settings.set(`${prefix}${key}`, String(value));
       }
+    }
 
-      return new Response(null, { status: 204 });
-    },
-    { body: patchBody }
-  );
+    return c.body(null, 204);
+  });

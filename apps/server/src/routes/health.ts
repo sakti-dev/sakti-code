@@ -1,9 +1,5 @@
-import { Elysia, t } from "elysia";
+import { Hono } from "hono";
 
-export const healthRoutes = new Elysia({ name: "routes.health" }).get(
-  "/health",
-  () => ({ status: "ok" as const, uptime: process.uptime() }),
-  {
-    response: t.Object({ status: t.Literal("ok"), uptime: t.Number() }),
-  }
-);
+export const healthRoutes = new Hono()
+  .basePath("/health")
+  .get("/", (c) => c.json({ status: "ok" as const, uptime: process.uptime() }));

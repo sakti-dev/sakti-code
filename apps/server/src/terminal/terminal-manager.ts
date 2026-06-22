@@ -1,4 +1,4 @@
-import type { IExitEvent, IPty } from "bun-pty";
+import type { IPty } from "node-pty";
 
 export interface ManagedTerminal {
   connectionId: string;
@@ -36,23 +36,23 @@ let ptySpawnFn:
 let ptyLoadError: string | null = null;
 let ptyLoadPromise: Promise<void> | null = null;
 
-async function loadBunPty(): Promise<void> {
+async function loadPty(): Promise<void> {
   if (ptySpawnFn !== null || ptyLoadError !== null || ptyLoadPromise) {
     return;
   }
   ptyLoadPromise = (async () => {
     try {
-      const bunPty = await import("bun-pty");
-      ptySpawnFn = bunPty.spawn;
+      const ptyMod = await import("node-pty");
+      ptySpawnFn = ptyMod.spawn;
     } catch (err) {
       ptyLoadError =
-        err instanceof Error ? err.message : "Failed to load bun-pty";
+        err instanceof Error ? err.message : "Failed to load node-pty";
     }
   })();
   await ptyLoadPromise;
 }
 
-loadBunPty();
+loadPty();
 
 export class TerminalManager {
   private readonly terminals = new Map<string, ManagedTerminal>();
@@ -65,7 +65,7 @@ export class TerminalManager {
     }
   }
 
-  get bunPtyAvailable(): boolean {
+  get ptyAvailable(): boolean {
     return ptySpawnFn !== null;
   }
 
@@ -87,7 +87,7 @@ export class TerminalManager {
   ): { terminalId: string; pid: number } {
     if (!ptySpawnFn) {
       throw new Error(
-        `Terminal unavailable: ${ptyLoadError ?? "bun-pty not loaded"}`
+        `Terminal unavailable: ${ptyLoadError ?? "node-pty not loaded"}`
       );
     }
 
@@ -115,7 +115,7 @@ export class TerminalManager {
       }
     });
 
-    pty.onExit((event: IExitEvent) => {
+    pty.onExit((event) => {
       this.terminals.delete(terminalId);
       if (this.onExitCallback) {
         this.onExitCallback(

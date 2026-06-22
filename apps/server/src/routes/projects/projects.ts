@@ -1,51 +1,41 @@
-import { Elysia, t } from "elysia";
+import { tbValidator } from "@hono/typebox-validator";
+import { Hono } from "hono";
+import Type from "typebox";
 import { getCtx } from "../../context.ts";
 
-const projectModel = t.Object({
-  id: t.String(),
-  name: t.String(),
-  cwd: t.String(),
-  createdAt: t.Number(),
-  updatedAt: t.Number(),
-});
-
-export const projectsRoutes = new Elysia({
-  name: "routes.projects",
-  prefix: "/projects",
-})
-  .model({ project: projectModel })
-  .get("/", ({ store }) => getCtx(store).repos.projects.list(), {
-    response: t.Array(t.Ref("project")),
+export const projectsRoutes = new Hono()
+  .basePath("/projects")
+  .get("/", (c) => c.json(getCtx(c).repos.projects.list()))
+  .get("/:id", (c) => {
+    const p = getCtx(c).repos.projects.findById(c.req.param("id"));
+    if (!p) {
+      return c.json({ error: "Not found" }, 404);
+    }
+    return c.json(p);
   })
-  .get(
-    "/:id",
-    ({ params, store }) => {
-      const p = getCtx(store).repos.projects.findById(params.id);
-      if (!p) {
-        return new Response("Not found", { status: 404 });
-      }
-      return p;
-    },
-    { response: t.Ref("project") }
-  )
   .post(
     "/",
-    ({ body, store }) =>
-      getCtx(store).repos.projects.create(body.name, body.cwd),
-    {
-      body: t.Object({ name: t.String(), cwd: t.String() }),
-      response: t.Ref("project"),
+    tbValidator(
+      "json",
+      Type.Object({ name: Type.String(), cwd: Type.String() })
+    ),
+    (c) => {
+      const body = c.req.valid("json");
+      return c.json(getCtx(c).repos.projects.create(body.name, body.cwd));
     }
   )
   .put(
     "/:id",
-    ({ params, body, store }) =>
-      getCtx(store).repos.projects.update(params.id, body),
-    {
-      body: t.Partial(t.Object({ name: t.String(), cwd: t.String() })),
-      response: t.Ref("project"),
+    tbValidator(
+      "json",
+      Type.Partial(Type.Object({ name: Type.String(), cwd: Type.String() }))
+    ),
+    (c) => {
+      const body = c.req.valid("json");
+      return c.json(getCtx(c).repos.projects.update(c.req.param("id"), body));
     }
   )
-  .delete("/:id", ({ params, store }) =>
-    getCtx(store).repos.projects.delete(params.id)
-  );
+  .delete("/:id", (c) => {
+    getCtx(c).repos.projects.delete(c.req.param("id"));
+    return c.body(null, 204);
+  });

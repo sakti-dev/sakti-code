@@ -1,11 +1,13 @@
 import { getModels, getProviders } from "@earendil-works/pi-ai";
-import { Elysia } from "elysia";
+import { Hono } from "hono";
 
-export const availableModelsRoutes = new Elysia({
-  name: "routes.availableModels",
-  prefix: "/models",
-})
-  .get("/available", () => getProviders())
-  .get("/available/:provider", ({ params }) =>
-    getModels(params.provider as import("@earendil-works/pi-ai").KnownProvider)
+export const availableModelsRoutes = new Hono()
+  .basePath("/models")
+  .get("/available", (c) => c.json(getProviders()))
+  .get("/available/:provider", (c) =>
+    c.json(
+      getModels(
+        c.req.param("provider") as import("@earendil-works/pi-ai").KnownProvider
+      )
+    )
   );
