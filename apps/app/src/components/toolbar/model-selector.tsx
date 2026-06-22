@@ -21,15 +21,17 @@ interface Model {
 export default function ModelSelector() {
   const { api, server } = useStore();
 
-  const [providers] = createResource(async () => {
-    const { data, error } = await api.api.models.available.get();
-    if (error || !data) {
-      return [] as string[];
+  const [providers, { refetch: refetchProviders }] = createResource(
+    async () => {
+      const { data, error } = await api.api.models.available.get();
+      if (error || !data) {
+        return [] as string[];
+      }
+      return data as string[];
     }
-    return data as string[];
-  });
+  );
 
-  const [providerModels] = createResource(
+  const [providerModels, { refetch: refetchProviderModels }] = createResource(
     () => providers() ?? [],
     async (providerList) => {
       const results: Record<string, Model[]> = {};
@@ -44,6 +46,11 @@ export default function ModelSelector() {
       return results;
     }
   );
+
+  const handleRefresh = () => {
+    refetchProviders();
+    refetchProviderModels();
+  };
 
   const activeSession = () => {
     const id = server.store.activeSessionId;
@@ -124,6 +131,30 @@ export default function ModelSelector() {
           <span class="font-medium text-foreground text-xs">
             Available Models
           </span>
+          <button
+            class={cn(
+              "rounded p-1 text-muted-foreground transition-colors hover:text-foreground",
+              providers.loading && "animate-spin"
+            )}
+            onClick={handleRefresh}
+            title="Refresh models"
+            type="button"
+          >
+            <svg
+              aria-label="Refresh"
+              class="h-3.5 w-3.5"
+              fill="currentColor"
+              role="img"
+              viewBox="0 0 16 16"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <title>Refresh</title>
+              <path
+                clip-rule="evenodd"
+                d="M3.083 5.802a5 5 0 0 1 8.92-.798.75.75 0 1 0 1.37-.61 6.5 6.5 0 0 0-11.595 1.036L1 4.75V7.5h2.75L3.083 5.802zM12.917 10.198a5 5 0 0 1-8.92.798.75.75 0 0 0-1.37.61 6.5 6.5 0 0 0 11.595-1.036L15 11.25V8.5h-2.75l.667 1.698z"
+              />
+            </svg>
+          </button>
         </div>
         <Show
           fallback={

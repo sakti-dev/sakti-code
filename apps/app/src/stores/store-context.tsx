@@ -12,7 +12,7 @@ import { SessionRegistry } from "./session-registry.ts";
 import { TerminalRegistry } from "./terminal-registry.ts";
 import { createWsClient, type WsClient } from "./ws-client.ts";
 
-const API_URL = "http://localhost:3001";
+const API_URL = window.location.origin;
 
 export interface StoreContextValue {
   actions: Actions;

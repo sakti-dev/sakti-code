@@ -4,6 +4,7 @@ import type { ServerActions, ServerStoreData } from "./server-store.ts";
 import type { SessionRegistry } from "./session-registry.ts";
 import type { TerminalRegistry } from "./terminal-registry.ts";
 import { createTokenBatcher } from "./token-batcher.ts";
+import { setIsStreaming } from "./ui-signals.ts";
 
 const RECONNECT_DELAY_MS = 2000;
 
@@ -72,6 +73,14 @@ export function createWsClient(
     return b;
   }
 
+  function updateStreamingState(evt: AgentHarnessEvent): void {
+    if (evt.type === "agent_start") {
+      setIsStreaming(true);
+    } else if (evt.type === "agent_end" || evt.type === "abort") {
+      setIsStreaming(false);
+    }
+  }
+
   function handleFrame(data: unknown): void {
     const frame = data as {
       type: string;
@@ -91,12 +100,13 @@ export function createWsClient(
         if (!frame.sessionId || frame.event === undefined) {
           break;
         }
-        const session = sessionRegistry.get(frame.sessionId);
+        const evt = frame.event as AgentHarnessEvent;
+        updateStreamingState(evt);
         const batcher = getBatcher(frame.sessionId);
         dispatchEvent(
-          session.actions,
+          sessionRegistry.get(frame.sessionId).actions,
           batcher,
-          frame.event as AgentHarnessEvent
+          evt
         );
         break;
       }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createServerStore } from "../server-store.ts";
 import { SessionRegistry } from "../session-registry.ts";
 import { TerminalRegistry } from "../terminal-registry.ts";
+import { isStreaming } from "../ui-signals.ts";
 import {
   createWsClient,
   type EdenWSLike,
@@ -213,5 +214,65 @@ describe("WS client", () => {
     ws.disconnect();
 
     expect(deps.serverStore.store.connection.status).toBe("closed");
+  });
+
+  it("isStreaming is set true on agent_start", () => {
+    const deps = makeDeps();
+    const { api, edenWs } = makeMockApi();
+    const ws = createWsClient(api, deps);
+
+    edenWs.fireOpen();
+    edenWs.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "agent_start" },
+    });
+
+    expect(isStreaming()).toBe(true);
+    ws.disconnect();
+  });
+
+  it("isStreaming is set false on agent_end", () => {
+    const deps = makeDeps();
+    const { api, edenWs } = makeMockApi();
+    const ws = createWsClient(api, deps);
+
+    edenWs.fireOpen();
+    edenWs.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "agent_start" },
+    });
+    expect(isStreaming()).toBe(true);
+
+    edenWs.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "agent_end", messages: [] },
+    });
+    expect(isStreaming()).toBe(false);
+    ws.disconnect();
+  });
+
+  it("isStreaming is set false on abort", () => {
+    const deps = makeDeps();
+    const { api, edenWs } = makeMockApi();
+    const ws = createWsClient(api, deps);
+
+    edenWs.fireOpen();
+    edenWs.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "agent_start" },
+    });
+    expect(isStreaming()).toBe(true);
+
+    edenWs.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "abort" },
+    });
+    expect(isStreaming()).toBe(false);
+    ws.disconnect();
   });
 });

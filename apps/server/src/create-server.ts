@@ -63,7 +63,9 @@ export async function createServer(
     migrationsFolder,
   } = options ?? {};
 
-  const db = await initDatabase(new Database(dbPath), { migrationsFolder });
+  const db = await initDatabase(new Database(dbPath), {
+    ...(migrationsFolder === undefined ? {} : { migrationsFolder }),
+  });
   const ctx = createContext(db, hooks);
   const dir: string | null = staticDir;
 

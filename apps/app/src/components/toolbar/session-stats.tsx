@@ -8,11 +8,14 @@ import {
 } from "solid-js";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
+import { isStreaming } from "~/stores/ui-signals";
 
 interface SessionStatsData {
   activeMessageCount: number;
   createdAt: number;
   durationMs: number;
+  totalCacheReadTokens: number;
+  totalCacheWriteTokens: number;
   totalCostUsd: number;
   totalInputTokens: number;
   totalOutputTokens: number;
@@ -43,10 +46,18 @@ function formatCost(cost: number): string {
 
 const TOKEN_ROWS: {
   label: string;
-  key: keyof Pick<SessionStatsData, "totalInputTokens" | "totalOutputTokens">;
+  key: keyof Pick<
+    SessionStatsData,
+    | "totalInputTokens"
+    | "totalOutputTokens"
+    | "totalCacheReadTokens"
+    | "totalCacheWriteTokens"
+  >;
 }[] = [
   { label: "Input", key: "totalInputTokens" },
   { label: "Output", key: "totalOutputTokens" },
+  { label: "Cache read", key: "totalCacheReadTokens" },
+  { label: "Cache write", key: "totalCacheWriteTokens" },
 ];
 
 export default function SessionStats() {
@@ -118,7 +129,8 @@ export default function SessionStats() {
         class={cn(
           "flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] tabular-nums transition-colors",
           "text-muted-foreground hover:bg-secondary hover:text-foreground",
-          isOpen() && "bg-secondary text-foreground"
+          isOpen() && "bg-secondary text-foreground",
+          isStreaming() && "animate-pulse"
         )}
         onClick={() => setIsOpen((prev) => !prev)}
         ref={triggerRef}

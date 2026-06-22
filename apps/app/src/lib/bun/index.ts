@@ -132,6 +132,10 @@ async function bootstrap(): Promise<void> {
 
   wireWindowLifecycle(mainWindow);
 
+  if (isDev) {
+    mainWindow.webview.openDevTools();
+  }
+
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 

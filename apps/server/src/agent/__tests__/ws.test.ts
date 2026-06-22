@@ -69,6 +69,10 @@ function makeMockHarness(
   };
 }
 
+function runResolver(fn: (() => void) | null): void {
+  fn?.();
+}
+
 describe("WS message handler", () => {
   beforeEach(() => {
     clearRunsForTesting();
@@ -206,11 +210,7 @@ describe("WS message handler", () => {
       runPromptSpy.mockImplementation(
         async (_ctx, sessionId, _message, _storage, eventCallback) => {
           testActiveRuns.add(sessionId);
-          eventCallback({
-            type: "agent_start",
-            sessionId,
-            timestamp: Date.now(),
-          });
+          eventCallback({ type: "agent_start" });
           return new Promise<void>((resolve) => {
             promptResolve = () => resolve();
           });
@@ -281,11 +281,7 @@ describe("WS message handler", () => {
         async (_ctx, sessionId, _message, _storage, eventCallback) => {
           if (testActiveRuns.has(sessionId)) return;
           testActiveRuns.add(sessionId);
-          eventCallback({
-            type: "agent_start",
-            sessionId,
-            timestamp: Date.now(),
-          });
+          eventCallback({ type: "agent_start" });
           return new Promise<void>((resolve) => {
             promptResolve = () => resolve();
           });
@@ -320,7 +316,8 @@ describe("WS message handler", () => {
         asEventFrames(sent1).length + asEventFrames(sent2).length;
       expect(totalEvents).toBeGreaterThan(0);
 
-      promptResolve?.();
+      const resolve: (() => void) | null = promptResolve;
+      runResolver(resolve);
     } finally {
       runPromptSpy.mockRestore();
       isRunActiveSpy.mockRestore();
@@ -384,7 +381,8 @@ describe("WS message handler", () => {
       expect(followErrors.length).toBe(0);
       expect(mockHarness.followUp).toHaveBeenCalled();
 
-      promptResolve?.();
+      const resolve: (() => void) | null = promptResolve;
+      runResolver(resolve);
     } finally {
       runPromptSpy.mockRestore();
       isRunActiveSpy.mockRestore();
@@ -422,11 +420,7 @@ describe("WS message handler", () => {
       runPromptSpy.mockImplementation(
         async (_ctx, sessionId, _message, _storage, eventCallback) => {
           testActiveRuns.add(sessionId);
-          eventCallback({
-            type: "agent_start",
-            sessionId,
-            timestamp: Date.now(),
-          });
+          eventCallback({ type: "agent_start" });
           return new Promise<void>((resolve) => {
             promptResolve = () => resolve();
           });
@@ -447,18 +441,9 @@ describe("WS message handler", () => {
       await new Promise((r) => setTimeout(r, 50));
 
       runPromptSpy.mockImplementation(
-        async (_ctx, sessionId, _message, _storage, eventCallback) => {
-          eventCallback({
-            type: "agent_start",
-            sessionId,
-            timestamp: Date.now(),
-          });
-          eventCallback({
-            type: "agent_end",
-            messages: [],
-            sessionId,
-            timestamp: Date.now(),
-          });
+        async (_ctx, _sessionId, _message, _storage, eventCallback) => {
+          eventCallback({ type: "agent_start" });
+          eventCallback({ type: "agent_end", messages: [] });
         }
       );
 

@@ -7,16 +7,22 @@ function deriveStats(messages: AgentMessage[]): {
   activeMessageCount: number;
   totalInputTokens: number;
   totalOutputTokens: number;
+  totalCacheReadTokens: number;
+  totalCacheWriteTokens: number;
   totalCostUsd: number;
 } {
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
+  let totalCacheReadTokens = 0;
+  let totalCacheWriteTokens = 0;
   let totalCostUsd = 0;
 
   for (const msg of messages) {
     if (msg.role === "assistant" && msg.usage) {
       totalInputTokens += msg.usage.input;
       totalOutputTokens += msg.usage.output;
+      totalCacheReadTokens += msg.usage.cacheRead;
+      totalCacheWriteTokens += msg.usage.cacheWrite;
       totalCostUsd += msg.usage.cost.total;
     }
   }
@@ -25,6 +31,8 @@ function deriveStats(messages: AgentMessage[]): {
     activeMessageCount: messages.length,
     totalInputTokens,
     totalOutputTokens,
+    totalCacheReadTokens,
+    totalCacheWriteTokens,
     totalCostUsd,
   };
 }
@@ -57,6 +65,8 @@ export const statsRoutes = new Elysia({
       activeMessageCount: t.Number(),
       totalInputTokens: t.Number(),
       totalOutputTokens: t.Number(),
+      totalCacheReadTokens: t.Number(),
+      totalCacheWriteTokens: t.Number(),
       totalCostUsd: t.Number(),
       createdAt: t.Number(),
       durationMs: t.Number(),
