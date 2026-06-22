@@ -1,11 +1,11 @@
 import { Show } from "solid-js";
 import { setSidebarOpen, sidebarOpen } from "~/stores/ui-signals";
-import { SettingsDialog } from "../settings/settings-dialog";
-import ExportButton from "../toolbar/export-button";
-import GitStatusBar from "../toolbar/git-status-bar";
-import ModelSelector from "../toolbar/model-selector";
-import SessionStats from "../toolbar/session-stats";
-import ThinkingSelector from "../toolbar/thinking-selector";
+import { SettingsDialog } from "../../settings/settings-dialog";
+import ExportButton from "./export-button";
+import GitStatusBar from "./git-status-bar";
+import ModelSelector from "./model-selector";
+import SessionStats from "./session-stats";
+import ThinkingSelector from "./thinking-selector";
 
 export default function Toolbar() {
   return (

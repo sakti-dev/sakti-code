@@ -3,12 +3,12 @@ import Home from "~/pages/home";
 import { useStore } from "~/stores/store-context";
 import { activeTab, filterStaleProjects } from "~/stores/tab-store";
 import { sidebarOpen } from "~/stores/ui-signals";
-import BannerConnection from "./banner-connection";
-import { BannerError, BannerHealth } from "./banner-error";
-import BannerUpdate from "./banner-update";
-import ProjectTabBar from "./project-tab-bar";
-import Sidebar from "./sidebar";
-import Toolbar from "./toolbar";
+import BannerConnection from "./banners/banner-connection";
+import { BannerError, BannerHealth } from "./banners/banner-error";
+import BannerUpdate from "./banners/banner-update";
+import Sidebar from "./sidebar/sidebar";
+import ProjectTabBar from "./tab-bar/project-tab-bar";
+import Toolbar from "./toolbar/toolbar";
 
 export default function WorkspaceLayout(): JSX.Element {
   const { server, actions } = useStore();

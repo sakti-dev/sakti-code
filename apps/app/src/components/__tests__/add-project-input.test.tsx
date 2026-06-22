@@ -1,6 +1,6 @@
 import { render } from "@solidjs/testing-library";
 import { describe, expect, it, vi } from "vitest";
-import { AddProjectInput } from "../layout/add-project-input.tsx";
+import { AddProjectInput } from "../layout/sidebar/add-project-input.tsx";
 
 describe("AddProjectInput", () => {
   it("renders input with placeholder", () => {

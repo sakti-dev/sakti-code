@@ -1,6 +1,6 @@
 import { render } from "@solidjs/testing-library";
 import { describe, expect, it, vi } from "vitest";
-import { ProjectGroup } from "../layout/project-group.tsx";
+import { ProjectGroup } from "../layout/sidebar/project-group.tsx";
 
 const mockSessions = [
   {

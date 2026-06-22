@@ -1,6 +1,6 @@
 import { render } from "@solidjs/testing-library";
 import { describe, expect, it, vi } from "vitest";
-import { ProjectContextMenu } from "../layout/project-context-menu.tsx";
+import { ProjectContextMenu } from "../layout/sidebar/project-context-menu.tsx";
 
 describe("ProjectContextMenu", () => {
   it("renders menu items", () => {
