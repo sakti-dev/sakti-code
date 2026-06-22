@@ -28,6 +28,10 @@
           libxscrnsaver
           glib-networking
 
+          # GTK dialogs (file picker, etc.)
+          adwaita-icon-theme
+          gsettings-desktop-schemas
+
           # Runtime / general
           glib
           cairo
@@ -50,6 +54,7 @@
             export GDK_BACKEND=x11
             export GIO_MODULE_DIR="${pkgs.glib-networking}/lib/gio/modules"
             export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath runtimeLibs}:$LD_LIBRARY_PATH"
+            export XDG_DATA_DIRS="${pkgs.adwaita-icon-theme}/share:${pkgs.gsettings-desktop-schemas}/share:${pkgs.shared-mime-info}/share:$XDG_DATA_DIRS"
           '';
         };
       }
