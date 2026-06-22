@@ -1,11 +1,11 @@
-import { Database } from "bun:sqlite";
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { initDatabase } from "../init";
 
 describe("initDatabase", () => {
-  let db: Database;
+  let db: DatabaseSync;
   let tmpDir: string;
 
   beforeAll(() => {
@@ -18,23 +18,28 @@ describe("initDatabase", () => {
   });
 
   test("creates all tables, enables WAL mode and foreign keys", async () => {
-    db = new Database(join(tmpDir, "test.db"));
+    db = new DatabaseSync(join(tmpDir, "test.db"));
     const drizzleDb = await initDatabase(db);
 
     // WAL mode
-    const journalMode = db.query("PRAGMA journal_mode").get() as Record<
+    const journalMode = db.prepare("PRAGMA journal_mode").get() as Record<
       string,
       string
     >;
     expect(journalMode.journal_mode).toBe("wal");
 
     // Foreign keys
-    const fk = db.query("PRAGMA foreign_keys").get() as Record<string, number>;
+    const fk = db.prepare("PRAGMA foreign_keys").get() as Record<
+      string,
+      number
+    >;
     expect(fk.foreign_keys).toBe(1);
 
     // Tables exist
     const tables = db
-      .query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+      )
       .all() as Array<{ name: string }>;
     const names = tables.map((t) => t.name);
 

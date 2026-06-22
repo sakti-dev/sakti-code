@@ -1,20 +1,20 @@
-import type { Database } from "bun:sqlite";
-import { type BunSQLiteDatabase, drizzle } from "drizzle-orm/bun-sqlite";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import type { DatabaseSync } from "node:sqlite";
+import { drizzle, type NodeSQLiteDatabase } from "drizzle-orm/node-sqlite";
+import { migrate } from "drizzle-orm/node-sqlite/migrator";
 import * as schema from "./schema.ts";
 
-export type DrizzleDB = BunSQLiteDatabase<typeof schema>;
+export type DrizzleDB = NodeSQLiteDatabase<typeof schema>;
 
 export async function initDatabase(
-  sqlite: Database,
+  sqlite: DatabaseSync,
   options?: { migrationsFolder?: string }
 ): Promise<DrizzleDB> {
-  sqlite.run("PRAGMA journal_mode = WAL");
-  sqlite.run("PRAGMA foreign_keys = ON");
+  sqlite.exec("PRAGMA journal_mode = WAL");
+  sqlite.exec("PRAGMA foreign_keys = ON");
 
-  const db = drizzle(sqlite, { schema });
+  const db = drizzle({ client: sqlite, schema });
   const migrationsFolder =
-    options?.migrationsFolder ?? `${import.meta.dir}/../migrations`;
+    options?.migrationsFolder ?? `${import.meta.dirname}/../migrations`;
   migrate(db, { migrationsFolder });
 
   return db;
