@@ -3,11 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { gitRoutes, runGit } from "../routes/projects/git.ts";
+import { spawnPiped } from "../lib/spawn.ts";
 import { makeApp } from "./helpers.ts";
 
 function execGit(cwd: string, ...args: string[]): Promise<string> {
-  const proc = Bun.spawn(["git", ...args], { cwd, env: { ...process.env } });
-  return proc.exited.then(() => new Response(proc.stdout).text());
+  const { done } = spawnPiped("git", args, {
+    cwd,
+    env: { ...process.env } as Record<string, string>,
+  });
+  return done.then((r) => r.stdout);
 }
 
 async function createTempGitRepo(): Promise<string> {

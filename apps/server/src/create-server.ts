@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { serve, type WebSocketServerLike } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -54,7 +55,10 @@ export async function createServer(
     const indexHtml = join(staticRoot, "index.html");
     app.use("/*", serveStatic({ root: staticRoot }));
     // SPA fallback: unknown routes serve index.html.
-    app.get("*", () => new Response(Bun.file(indexHtml)));
+    app.get("*", async (c) => {
+      const html = await readFile(indexHtml, "utf8");
+      return c.html(html);
+    });
   }
 
   const wss = new WebSocketServer({ noServer: true });
