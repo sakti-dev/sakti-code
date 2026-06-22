@@ -1,4 +1,4 @@
-import { FiPlus, FiX } from "solid-icons/fi";
+import { FiFolder, FiPlus, FiX } from "solid-icons/fi";
 import { For, type JSX, Show } from "solid-js";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
@@ -35,9 +35,9 @@ export default function ProjectTabBar(): JSX.Element {
   };
 
   return (
-    <div class="flex h-9 shrink-0 items-center border-border border-b bg-card">
-      {/* Tabs — scrollable */}
-      <div class="scrollbar-none flex min-w-0 flex-1 items-stretch overflow-x-auto">
+    <div class="relative z-0 flex h-10 shrink-0 items-end bg-card pt-1.5">
+      {/* Tabs */}
+      <div class="scrollbar-none flex min-w-0 flex-1 items-stretch">
         <For each={tabs()}>
           {(tab, index) => {
             const label = () => tabLabel(tab.projectId);
@@ -46,10 +46,10 @@ export default function ProjectTabBar(): JSX.Element {
               <div
                 aria-selected={isActive()}
                 class={cn(
-                  "group relative flex h-9 shrink-0 cursor-pointer items-center gap-1.5 border-border border-r px-3 text-xs transition-colors",
+                  "chrome-tab group flex h-8 shrink-0 cursor-pointer items-center px-3 text-xs transition-colors",
                   isActive()
-                    ? "bg-background text-foreground"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    ? "is-active z-10 bg-background text-foreground"
+                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                 )}
                 onClick={() => switchTab(index())}
                 onKeyDown={(e) => {
@@ -62,23 +62,32 @@ export default function ProjectTabBar(): JSX.Element {
                 role="tab"
                 tabIndex={0}
               >
-                {/* Active indicator bar */}
+                {/* Aurora glow layer */}
                 <Show when={isActive()}>
-                  <span class="absolute top-0 left-0 h-0.5 w-full bg-primary" />
+                  <div class="chrome-tab-glow" />
                 </Show>
 
-                <span class="max-w-[140px] truncate">{label()}</span>
+                {/* Content */}
+                <div class="relative flex items-center gap-1.5">
+                  <FiFolder class="h-3 w-3 shrink-0 opacity-70" />
+                  <span class="max-w-[140px] truncate">{label()}</span>
 
-                {/* Close button */}
-                <button
-                  aria-label={`Close ${label()} tab`}
-                  class="ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:bg-secondary group-hover:opacity-100"
-                  onClick={(e) => handleClose(e, index())}
-                  tabIndex={-1}
-                  type="button"
-                >
-                  <FiX class="h-3 w-3" />
-                </button>
+                  {/* Close button */}
+                  <button
+                    aria-label={`Close ${label()} tab`}
+                    class={cn(
+                      "ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded transition-opacity",
+                      isActive()
+                        ? "opacity-60 hover:bg-secondary hover:opacity-100"
+                        : "opacity-0 hover:bg-secondary group-hover:opacity-60"
+                    )}
+                    onClick={(e) => handleClose(e, index())}
+                    tabIndex={-1}
+                    type="button"
+                  >
+                    <FiX class="h-3 w-3" />
+                  </button>
+                </div>
               </div>
             );
           }}
@@ -86,14 +95,17 @@ export default function ProjectTabBar(): JSX.Element {
 
         {/* New tab button */}
         <button
-          aria-label="New tab"
-          class="flex h-9 shrink-0 items-center justify-center px-3 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+          aria-label="New workspace"
+          class="mb-px ml-1 flex h-7 w-7 shrink-0 items-center justify-center self-center rounded text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
           onClick={() => newTab()}
           type="button"
         >
           <FiPlus class="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {/* Bottom separator line — active tab covers it */}
+      <div class="pointer-events-none absolute right-0 bottom-0 left-0 h-px bg-border" />
     </div>
   );
 }
