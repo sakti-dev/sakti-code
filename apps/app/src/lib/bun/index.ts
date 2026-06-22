@@ -97,6 +97,14 @@ async function bootstrap(): Promise<void> {
   console.log(
     `Restoring window: ${currentFrame.width}x${currentFrame.height} at (${currentFrame.x}, ${currentFrame.y})`
   );
+  console.log(
+    "[debug] GSETTINGS_SCHEMA_DIR:",
+    process.env.GSETTINGS_SCHEMA_DIR
+  );
+  console.log(
+    "[debug] XDG_DATA_DIRS:",
+    process.env.XDG_DATA_DIRS?.slice(0, 100)
+  );
 
   // Always create server with hooks (needed for native dialogs)
   const dbPath = join(homedir(), ".sakti", "sakti-code.db");
