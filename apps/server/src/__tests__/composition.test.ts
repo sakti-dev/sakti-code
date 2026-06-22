@@ -7,6 +7,7 @@ import { initDatabase } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import { buildApp } from "../app.ts";
 import { createContext } from "../context.ts";
+import { createApiKeyStore } from "../lib/api-key-store.ts";
 import {
   fauxAssistantMessage,
   teardownFauxLlm,
@@ -79,7 +80,11 @@ describe("route composition", () => {
 
   it("default app serves feature routes in production", async () => {
     const db = await initDatabase(new Database(":memory:"));
-    const ctx = createContext(db);
+    const ctx = createContext(
+      db,
+      {},
+      createApiKeyStore(`/tmp/sakti-test-keys-${Date.now()}.json`)
+    );
     const server = new Elysia().state("ctx", ctx).use(buildApp(ctx)).compile();
 
     const settingsRes = await server.handle(

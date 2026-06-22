@@ -4,11 +4,16 @@ import { initDatabase } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import { buildApp } from "../app.ts";
 import { createContext } from "../context.ts";
+import { createApiKeyStore } from "../lib/api-key-store.ts";
 
 describe("built server", () => {
   it("responds to /api/health and /api/projects", async () => {
     const db = await initDatabase(new Database(":memory:"));
-    const ctx = createContext(db);
+    const ctx = createContext(
+      db,
+      {},
+      createApiKeyStore(`/tmp/sakti-test-keys-${Date.now()}.json`)
+    );
     const server = new Elysia().state("ctx", ctx).use(buildApp(ctx)).compile();
     const health = await (
       await server.handle(new Request("http://localhost:3001/api/health"))
@@ -24,7 +29,11 @@ describe("built server", () => {
 describe("ServerContext", () => {
   it("does not have messages or costs repos", async () => {
     const db = await initDatabase(new Database(":memory:"));
-    const ctx = createContext(db);
+    const ctx = createContext(
+      db,
+      {},
+      createApiKeyStore(`/tmp/sakti-test-keys-${Date.now()}.json`)
+    );
     expect(ctx.repos).not.toHaveProperty("messages");
     expect(ctx.repos).not.toHaveProperty("costs");
   });

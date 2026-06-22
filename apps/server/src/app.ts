@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import { buildWsApp } from "./agent/ws.ts";
 import type { ServerContext } from "./context.ts";
+import { createApiKeyRoutes } from "./routes/api-keys.ts";
 import { dialogRoutes } from "./routes/dialog.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { availableModelsRoutes } from "./routes/models/available-models.ts";
@@ -39,7 +40,10 @@ const restApp = new Elysia({ prefix: "/api" })
   .use(dialogRoutes);
 
 export function buildApp(ctx: ServerContext) {
-  return new Elysia().use(restApp).use(buildWsApp(ctx));
+  return new Elysia()
+    .use(restApp)
+    .use(createApiKeyRoutes(ctx.apiKeys))
+    .use(buildWsApp(ctx));
 }
 
 export type App = ReturnType<typeof buildApp>;

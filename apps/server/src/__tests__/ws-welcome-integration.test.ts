@@ -4,6 +4,7 @@ import { initDatabase } from "@sakti-code/db";
 import pkg from "../../package.json" with { type: "json" };
 import { buildWsApp, createWelcomeFrame, SERVER_VERSION } from "../agent/ws.ts";
 import { createContext } from "../context.ts";
+import { createApiKeyStore } from "../lib/api-key-store.ts";
 
 describe("WS welcome push", () => {
   it("createWelcomeFrame emits a welcome frame with type/version/cwd", () => {
@@ -21,7 +22,11 @@ describe("WS welcome push", () => {
 
   it("buildWsApp compiles to a valid handler with ws configured", async () => {
     const db = await initDatabase(new Database(":memory:"));
-    const ctx = createContext(db);
+    const ctx = createContext(
+      db,
+      {},
+      createApiKeyStore(`/tmp/sakti-test-keys-${Date.now()}.json`)
+    );
     const app = buildWsApp(ctx);
     expect(app).toBeDefined();
     expect(typeof (app as { fetch?: unknown }).fetch).toBe("function");

@@ -1,8 +1,10 @@
 import { Show } from "solid-js";
 import { setSidebarOpen, sidebarOpen } from "~/stores/ui-signals";
+import ExportButton from "../toolbar/export-button";
 import GitStatusBar from "../toolbar/git-status-bar";
 import ModelSelector from "../toolbar/model-selector";
 import SessionStats from "../toolbar/session-stats";
+import SettingsDialog from "../toolbar/settings-dialog";
 import ThinkingSelector from "../toolbar/thinking-selector";
 
 export default function Toolbar() {
@@ -64,6 +66,11 @@ export default function Toolbar() {
       <div class="h-5 w-px bg-border" />
 
       <SessionStats />
+
+      <div class="flex items-center gap-1 border-border border-l pl-2">
+        <ExportButton />
+        <SettingsDialog />
+      </div>
     </div>
   );
 }

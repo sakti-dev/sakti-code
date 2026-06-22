@@ -7,9 +7,11 @@ import {
   SqliteSessionStorage,
 } from "@sakti-code/db";
 import type { ServerHooks } from "./create-server.ts";
+import type { ApiKeyStore } from "./lib/api-key-store.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
 
 export interface ServerContext {
+  apiKeys: ApiKeyStore;
   db: DrizzleDB;
   hooks: ServerHooks;
   repos: {
@@ -23,9 +25,11 @@ export interface ServerContext {
 
 export function createContext(
   db: DrizzleDB,
-  hooks: ServerHooks = {}
+  hooks: ServerHooks,
+  apiKeys: ApiKeyStore
 ): ServerContext {
   return {
+    apiKeys,
     db,
     hooks,
     repos: {

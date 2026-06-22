@@ -5,6 +5,7 @@ import { initDatabase } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import { buildApp } from "./app.ts";
 import { createContext } from "./context.ts";
+import { createApiKeyStore } from "./lib/api-key-store.ts";
 
 const LEADING_SLASHES = /^\/+/;
 
@@ -66,7 +67,9 @@ export async function createServer(
   const db = await initDatabase(new Database(dbPath), {
     ...(migrationsFolder === undefined ? {} : { migrationsFolder }),
   });
-  const ctx = createContext(db, hooks);
+  const apiKeys = createApiKeyStore(process.env.SAKTI_KEYS_PATH ?? undefined);
+  apiKeys.loadIntoEnv();
+  const ctx = createContext(db, hooks, apiKeys);
   const dir: string | null = staticDir;
 
   const instance = new Elysia()
