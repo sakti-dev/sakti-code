@@ -30,6 +30,7 @@
 
           # GTK dialogs (file picker, etc.)
           adwaita-icon-theme
+          hicolor-icon-theme
           gsettings-desktop-schemas
 
           # Runtime / general
@@ -54,7 +55,7 @@
             export GDK_BACKEND=x11
             export GIO_MODULE_DIR="${pkgs.glib-networking}/lib/gio/modules"
             export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath runtimeLibs}:$LD_LIBRARY_PATH"
-            export XDG_DATA_DIRS="${pkgs.adwaita-icon-theme}/share:${pkgs.gsettings-desktop-schemas}/share:${pkgs.shared-mime-info}/share:$XDG_DATA_DIRS"
+            export XDG_DATA_DIRS="${pkgs.adwaita-icon-theme}/share:${pkgs.hicolor-icon-theme}/share:${pkgs.gsettings-desktop-schemas}/share:$XDG_DATA_DIRS"
             export GSETTINGS_SCHEMA_DIR="${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}"
           '';
         };
