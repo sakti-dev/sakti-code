@@ -1,3 +1,4 @@
+import { motion } from "motion-solidjs";
 import { FiFolder, FiPlus, FiX } from "solid-icons/fi";
 import { For, type JSX, Show } from "solid-js";
 import "./project-tab-bar.css";
@@ -49,7 +50,7 @@ export default function ProjectTabBar(): JSX.Element {
                 class={cn(
                   "chrome-tab group flex h-8 shrink-0 cursor-pointer items-center px-3 text-xs transition-colors",
                   isActive()
-                    ? "is-active z-10 bg-background text-foreground"
+                    ? "z-10 text-foreground"
                     : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                 )}
                 onClick={() => switchTab(index())}
@@ -63,9 +64,21 @@ export default function ProjectTabBar(): JSX.Element {
                 role="tab"
                 tabIndex={0}
               >
-                {/* Aurora glow layer */}
+                {/*
+                  Active background layer — slides between tabs.
+                  motion-solidjs `layoutId` captures this element's box
+                  and animates it from the previously-active tab to this
+                  one. The chrome curves + aurora glow live inside so
+                  they travel as a unit.
+                */}
                 <Show when={isActive()}>
-                  <div class="chrome-tab-glow" />
+                  <motion.div
+                    class="chrome-tab-active-layer"
+                    layoutId="chrome-tab-active"
+                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  >
+                    <div class="chrome-tab-glow" />
+                  </motion.div>
                 </Show>
 
                 {/* Content */}

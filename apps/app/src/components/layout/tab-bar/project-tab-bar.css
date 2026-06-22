@@ -5,8 +5,24 @@
   border-top-right-radius: var(--tab-curve);
 }
 
-.chrome-tab.is-active::before,
-.chrome-tab.is-active::after {
+/*
+ * Active background layer — animated between tabs via motion-solidjs
+ * `layoutId`. The element is rendered inside whichever tab is active;
+ * motion captures its bounding box, and when it re-mounts in a sibling
+ * tab, tweens from the old position to the new one. The chrome curves
+ * (pseudo-elements) and aurora glow live on this layer so they slide
+ * together as a single visual unit.
+ */
+.chrome-tab-active-layer {
+  position: absolute;
+  inset: 0;
+  background: var(--background);
+  border-top-left-radius: var(--tab-curve);
+  border-top-right-radius: var(--tab-curve);
+}
+
+.chrome-tab-active-layer::before,
+.chrome-tab-active-layer::after {
   position: absolute;
   bottom: 0;
   width: var(--tab-curve);
@@ -15,13 +31,13 @@
   content: "";
 }
 
-.chrome-tab.is-active::before {
+.chrome-tab-active-layer::before {
   left: calc(-1 * var(--tab-curve));
   border-bottom-right-radius: var(--tab-curve);
   box-shadow: 4px 4px 0 4px var(--background);
 }
 
-.chrome-tab.is-active::after {
+.chrome-tab-active-layer::after {
   right: calc(-1 * var(--tab-curve));
   border-bottom-left-radius: var(--tab-curve);
   box-shadow: -4px 4px 0 4px var(--background);
