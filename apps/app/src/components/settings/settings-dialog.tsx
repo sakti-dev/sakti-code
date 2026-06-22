@@ -3,6 +3,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
@@ -99,13 +100,13 @@ export function SettingsDialog(props: SettingsDialogProps) {
           />
         </svg>
       </DialogTrigger>
-      <DialogContent class="flex h-[600px] w-full max-w-4xl flex-col gap-0 overflow-hidden p-0">
-        <div class="flex items-center justify-between border-border/80 border-b px-4 pt-4 pb-4">
+      <DialogContent class="flex h-[600px] w-full max-w-4xl flex-col overflow-hidden p-0">
+        <DialogHeader class="flex items-center justify-between px-4 pt-4 pb-4">
           <div class="flex flex-col">
             <DialogTitle>{activeTabLabel()}</DialogTitle>
             <DialogDescription>{activeTabDescription()}</DialogDescription>
           </div>
-        </div>
+        </DialogHeader>
 
         <div class="flex flex-1 overflow-hidden">
           <div class="w-56 shrink-0 border-border/80 border-r bg-background/35">

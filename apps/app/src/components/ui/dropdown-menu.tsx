@@ -5,95 +5,90 @@ import { splitProps } from "solid-js";
 
 import { cn } from "~/lib/utils";
 
-export const DropdownMenu = DropdownMenuPrimitive;
-export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
+const DropdownMenuSub = DropdownMenuPrimitive.Sub;
+const DropdownMenuGroup = DropdownMenuPrimitive.Group;
+const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
+
+const DropdownMenu: Component<DropdownMenuPrimitive.DropdownMenuRootProps> = (
+  props
+) => <DropdownMenuPrimitive.Root gutter={4} {...props} />;
 
 type DropdownMenuContentProps<T extends ValidComponent = "div"> =
   DropdownMenuPrimitive.DropdownMenuContentProps<T> & {
-    class?: string | undefined;
-    children?: import("solid-js").JSX.Element;
+    class?: string;
   };
 
-export const DropdownMenuContent = <T extends ValidComponent = "div">(
+const DropdownMenuContent = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, DropdownMenuContentProps<T>>
 ) => {
-  const [local, others] = splitProps(props as DropdownMenuContentProps, [
-    "class",
-    "children",
-  ]);
+  const [, rest] = splitProps(props as DropdownMenuContentProps, ["class"]);
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
         class={cn(
-          "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
-          "data-[expanded]:fade-in-0 data-[expanded]:zoom-in-95 data-[expanded]:animate-in",
-          "data-[closed]:fade-out-0 data-[closed]:zoom-out-95 data-[closed]:animate-out",
-          "data-[side=top]:slide-in-from-bottom-2",
-          "data-[side=bottom]:slide-in-from-top-2",
-          "data-[side=left]:slide-in-from-right-2",
-          "data-[side=right]:slide-in-from-left-2",
-          local.class
+          "z-50 min-w-[200px] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg",
+          props.class
         )}
-        {...others}
-      >
-        {local.children}
-      </DropdownMenuPrimitive.Content>
+        {...rest}
+      />
     </DropdownMenuPrimitive.Portal>
+  );
+};
+
+type DropdownMenuRadioItemProps<T extends ValidComponent = "div"> =
+  DropdownMenuPrimitive.DropdownMenuRadioItemProps<T> & {
+    class?: string;
+  };
+
+const DropdownMenuRadioItem = <T extends ValidComponent = "div">(
+  props: PolymorphicProps<T, DropdownMenuRadioItemProps<T>>
+) => {
+  const [, rest] = splitProps(props as DropdownMenuRadioItemProps, ["class"]);
+  return (
+    <DropdownMenuPrimitive.RadioItem
+      class={cn(
+        "relative flex cursor-default select-none items-center rounded-sm px-3 py-2 font-medium text-sm outline-none transition-all duration-150",
+        "hover:bg-accent hover:text-accent-foreground hover:shadow-sm focus:bg-accent focus:text-accent-foreground",
+        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "animate-fade-in-up",
+        props.class
+      )}
+      {...rest}
+    />
   );
 };
 
 type DropdownMenuItemProps<T extends ValidComponent = "div"> =
   DropdownMenuPrimitive.DropdownMenuItemProps<T> & {
-    class?: string | undefined;
-    children?: import("solid-js").JSX.Element;
-    shortcut?: string;
+    class?: string;
   };
 
-export const DropdownMenuItem = <T extends ValidComponent = "div">(
+const DropdownMenuItem = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, DropdownMenuItemProps<T>>
 ) => {
-  const [local, others] = splitProps(props as DropdownMenuItemProps, [
-    "class",
-    "children",
-    "shortcut",
-  ]);
+  const [, rest] = splitProps(props as DropdownMenuItemProps, ["class"]);
   return (
     <DropdownMenuPrimitive.Item
       class={cn(
-        "relative flex cursor-default select-none items-center gap-2 rounded-sm px-3 py-1.5 text-sm outline-none transition-colors",
-        "focus:bg-accent focus:text-accent-foreground",
-        "[&_svg]:size-4 [&_svg]:shrink-0",
-        local.class
+        "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
+        "focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        props.class
       )}
-      {...others}
-    >
-      {local.children}
-      {local.shortcut && (
-        <span class="ml-auto text-muted-foreground text-xs tracking-widest">
-          {local.shortcut}
-        </span>
-      )}
-    </DropdownMenuPrimitive.Item>
+      {...rest}
+    />
   );
 };
 
-export const DropdownMenuSeparator: Component<{ class?: string }> = (props) => (
-  <DropdownMenuPrimitive.Separator
-    class={cn("-mx-1 my-1 h-px bg-muted", props.class)}
-  />
-);
-
-export const DropdownMenuLabel: Component<
-  DropdownMenuPrimitive.DropdownMenuGroupLabelProps & { class?: string }
-> = (props) => {
-  const [local, others] = splitProps(props, ["class"]);
-  return (
-    <DropdownMenuPrimitive.GroupLabel
-      class={cn(
-        "px-2 py-1.5 font-semibold text-foreground text-sm",
-        local.class
-      )}
-      {...others}
-    />
-  );
+export {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuTrigger,
 };

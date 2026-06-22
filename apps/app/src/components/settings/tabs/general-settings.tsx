@@ -1,4 +1,5 @@
 import { useColorMode } from "@kobalte/core";
+import { createSignal } from "solid-js";
 import {
   Select,
   SelectContent,
@@ -6,12 +7,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import {
+  Switch,
+  SwitchControl,
+  SwitchLabel,
+  SwitchThumb,
+} from "~/components/ui/switch";
 
 export function GeneralSettings() {
   const { colorMode, setColorMode } = useColorMode();
 
   const THEMES = ["System", "Light", "Dark"] as const;
   type ThemeLabel = (typeof THEMES)[number];
+
+  const [sessionNotifications, setSessionNotifications] = createSignal(true);
+  const [completionSoundEffects, setCompletionSoundEffects] =
+    createSignal(true);
+  const [stripConfirmation, setStripConfirmation] = createSignal(true);
 
   const currentTheme = (): ThemeLabel => {
     const stored = localStorage.getItem("sakti-theme");
@@ -72,7 +84,16 @@ export function GeneralSettings() {
           </p>
         </div>
         <div class="ml-6">
-          <span class="text-muted-foreground text-xs">Coming soon</span>
+          <Switch
+            checked={sessionNotifications()}
+            class="flex items-center gap-3"
+            onChange={setSessionNotifications}
+          >
+            <SwitchLabel>Enabled</SwitchLabel>
+            <SwitchControl>
+              <SwitchThumb />
+            </SwitchControl>
+          </Switch>
         </div>
       </div>
 
@@ -86,7 +107,16 @@ export function GeneralSettings() {
           </p>
         </div>
         <div class="ml-6">
-          <span class="text-muted-foreground text-xs">Coming soon</span>
+          <Switch
+            checked={completionSoundEffects()}
+            class="flex items-center gap-3"
+            onChange={setCompletionSoundEffects}
+          >
+            <SwitchLabel>Enabled</SwitchLabel>
+            <SwitchControl>
+              <SwitchThumb />
+            </SwitchControl>
+          </Switch>
         </div>
       </div>
 
@@ -100,7 +130,16 @@ export function GeneralSettings() {
           </p>
         </div>
         <div class="ml-6">
-          <span class="text-muted-foreground text-xs">Coming soon</span>
+          <Switch
+            checked={stripConfirmation()}
+            class="flex items-center gap-3"
+            onChange={setStripConfirmation}
+          >
+            <SwitchLabel>Enabled</SwitchLabel>
+            <SwitchControl>
+              <SwitchThumb />
+            </SwitchControl>
+          </Switch>
         </div>
       </div>
     </div>

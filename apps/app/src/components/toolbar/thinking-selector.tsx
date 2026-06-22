@@ -61,7 +61,7 @@ export default function ThinkingSelector() {
 
   return (
     <Show when={activeSession()}>
-      <DropdownMenu.Root>
+      <DropdownMenu>
         <DropdownMenuTrigger<typeof Button>
           as={Button}
           class="h-7 gap-1.5 text-xs"
@@ -156,7 +156,7 @@ export default function ThinkingSelector() {
             </For>
           </div>
         </DropdownMenuContent>
-      </DropdownMenu.Root>
+      </DropdownMenu>
     </Show>
   );
 }

@@ -1,5 +1,6 @@
 import * as DialogPrimitive from "@kobalte/core/dialog";
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
+import { FiX } from "solid-icons/fi";
 import type { Component, ComponentProps, JSX, ValidComponent } from "solid-js";
 import { splitProps } from "solid-js";
 
@@ -8,11 +9,7 @@ import { cn } from "~/lib/utils";
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
 
-type DialogPortalProps = DialogPrimitive.DialogPortalProps & {
-  children?: JSX.Element;
-};
-
-const DialogPortal: Component<DialogPortalProps> = (props) => {
+const DialogPortal: Component<DialogPrimitive.DialogPortalProps> = (props) => {
   const [, rest] = splitProps(props, ["children"]);
   return (
     <DialogPrimitive.Portal {...rest}>
@@ -33,7 +30,7 @@ const DialogOverlay = <T extends ValidComponent = "div">(
   return (
     <DialogPrimitive.Overlay
       class={cn(
-        "data-[closed]:fade-out-0 data-[expanded]:fade-in-0 fixed inset-0 z-50 bg-background/80 backdrop-blur-sm data-[closed]:animate-out data-[expanded]:animate-in",
+        "data-[closed]:fade-out-0 data-[expanded]:fade-in-0 fixed inset-0 z-50 bg-black/80 backdrop-blur-sm data-[closed]:animate-out data-[expanded]:animate-in",
         props.class
       )}
       {...rest}
@@ -59,28 +56,19 @@ const DialogContent = <T extends ValidComponent = "div">(
       <DialogOverlay />
       <DialogPrimitive.Content
         class={cn(
-          "data-[closed]:fade-out-0 data-[expanded]:fade-in-0 fixed top-1/2 left-1/2 z-50 grid max-h-screen w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto border bg-background p-6 shadow-lg duration-200 data-[closed]:animate-out data-[expanded]:animate-in sm:rounded-lg",
+          "model-selector-shell data-[closed]:fade-out-0 data-[expanded]:fade-in-0 relative z-50 w-full max-w-4xl overflow-hidden rounded-xl border border-border/70 bg-popover text-popover-foreground shadow-[0_28px_80px_rgba(0,0,0,0.6)] duration-200 data-[closed]:animate-out data-[expanded]:animate-in",
           props.class
         )}
         {...rest}
       >
+        <div class="model-selector-aurora pointer-events-none">
+          <div class="model-selector-aurora-glow" />
+          <div class="model-selector-aurora-vignette" />
+        </div>
+        <div class="model-selector-grain pointer-events-none absolute inset-0" />
         {props.children}
-        <DialogPrimitive.CloseButton class="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[expanded]:bg-accent data-[expanded]:text-muted-foreground">
-          <svg
-            class="size-4"
-            fill="none"
-            role="img"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <title>Close</title>
-            <path d="M18 6l-12 12" />
-            <path d="M6 6l12 12" />
-          </svg>
+        <DialogPrimitive.CloseButton class="absolute top-4 right-4 z-20 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[expanded]:bg-accent data-[expanded]:text-muted-foreground">
+          <FiX class="size-4" />
           <span class="sr-only">Close</span>
         </DialogPrimitive.CloseButton>
       </DialogPrimitive.Content>
@@ -93,7 +81,7 @@ const DialogHeader: Component<ComponentProps<"div">> = (props) => {
   return (
     <div
       class={cn(
-        "flex flex-col space-y-1.5 text-center sm:text-left",
+        "relative border-border/80 border-b bg-muted/45 px-4 pt-4 pb-2.5 backdrop-blur-xl",
         props.class
       )}
       {...rest}
@@ -106,7 +94,7 @@ const DialogFooter: Component<ComponentProps<"div">> = (props) => {
   return (
     <div
       class={cn(
-        "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+        "flex items-center justify-end gap-2 border-border/80 border-t bg-muted/55 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-xl",
         props.class
       )}
       {...rest}
@@ -115,7 +103,9 @@ const DialogFooter: Component<ComponentProps<"div">> = (props) => {
 };
 
 type DialogTitleProps<T extends ValidComponent = "h2"> =
-  DialogPrimitive.DialogTitleProps<T> & { class?: string | undefined };
+  DialogPrimitive.DialogTitleProps<T> & {
+    class?: string | undefined;
+  };
 
 const DialogTitle = <T extends ValidComponent = "h2">(
   props: PolymorphicProps<T, DialogTitleProps<T>>
@@ -124,7 +114,7 @@ const DialogTitle = <T extends ValidComponent = "h2">(
   return (
     <DialogPrimitive.Title
       class={cn(
-        "font-semibold text-lg leading-none tracking-tight",
+        "font-semibold text-[13px] text-popover-foreground tracking-tight",
         props.class
       )}
       {...rest}
@@ -133,7 +123,9 @@ const DialogTitle = <T extends ValidComponent = "h2">(
 };
 
 type DialogDescriptionProps<T extends ValidComponent = "p"> =
-  DialogPrimitive.DialogDescriptionProps<T> & { class?: string | undefined };
+  DialogPrimitive.DialogDescriptionProps<T> & {
+    class?: string | undefined;
+  };
 
 const DialogDescription = <T extends ValidComponent = "p">(
   props: PolymorphicProps<T, DialogDescriptionProps<T>>
@@ -141,7 +133,7 @@ const DialogDescription = <T extends ValidComponent = "p">(
   const [, rest] = splitProps(props as DialogDescriptionProps, ["class"]);
   return (
     <DialogPrimitive.Description
-      class={cn("text-muted-foreground text-sm", props.class)}
+      class={cn("text-[10px] text-muted-foreground", props.class)}
       {...rest}
     />
   );
