@@ -1,5 +1,4 @@
-import { Database } from "bun:sqlite";
-import { describe, expect, it } from "bun:test";
+import { DatabaseSync } from "node:sqlite";
 import type { AgentMessage } from "@sakti-code/agent";
 import {
   initDatabase,
@@ -7,6 +6,7 @@ import {
   SessionRepo,
   SqliteSessionStorage,
 } from "@sakti-code/db";
+import { describe, expect, it } from "vitest";
 
 async function seedConversation(
   storage: SqliteSessionStorage,
@@ -35,7 +35,7 @@ async function seedConversation(
 
 describe("SqliteSessionStorage.forkFrom", () => {
   it("forks all entries to a new session", async () => {
-    const db = await initDatabase(new Database(":memory:"));
+    const db = await initDatabase(new DatabaseSync(":memory:"));
     const projectRepo = new ProjectRepo(db);
     const sessionRepo = new SessionRepo(db);
 
@@ -81,7 +81,7 @@ describe("SqliteSessionStorage.forkFrom", () => {
   });
 
   it("forks partial entries up to a specific entry id", async () => {
-    const db = await initDatabase(new Database(":memory:"));
+    const db = await initDatabase(new DatabaseSync(":memory:"));
     const projectRepo = new ProjectRepo(db);
     const sessionRepo = new SessionRepo(db);
 
@@ -120,7 +120,7 @@ describe("SqliteSessionStorage.forkFrom", () => {
   });
 
   it("forking a session with no entries yields an empty fork", async () => {
-    const db = await initDatabase(new Database(":memory:"));
+    const db = await initDatabase(new DatabaseSync(":memory:"));
     const projectRepo = new ProjectRepo(db);
     const sessionRepo = new SessionRepo(db);
 

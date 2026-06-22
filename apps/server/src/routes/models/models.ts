@@ -20,5 +20,5 @@ export const modelConfigRoutes = new Hono()
         projectId: Type.Optional(Type.String()),
       })
     ),
-    (c) => c.json(getCtx(c).repos.models.set(c.req.valid("json")))
+    async (c) => c.json(await getCtx(c).repos.models.set(c.req.valid("json")))
   );

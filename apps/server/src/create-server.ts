@@ -1,6 +1,6 @@
-import { Database } from "bun:sqlite";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { serve, type WebSocketServerLike } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { initDatabase } from "@sakti-code/db";
@@ -41,7 +41,7 @@ export async function createServer(
     migrationsFolder,
   } = options ?? {};
 
-  const db = await initDatabase(new Database(dbPath), {
+  const db = await initDatabase(new DatabaseSync(dbPath), {
     ...(migrationsFolder === undefined ? {} : { migrationsFolder }),
   });
   const apiKeys = createApiKeyStore(process.env.SAKTI_KEYS_PATH ?? undefined);
@@ -62,29 +62,27 @@ export async function createServer(
   }
 
   const wss = new WebSocketServer({ noServer: true });
-  const server = serve({
-    fetch: app.fetch,
-    hostname,
-    port,
-    websocket: { server: wss as unknown as WebSocketServerLike },
+
+  return await new Promise<SaktiServer>((resolveReady) => {
+    const server = serve(
+      {
+        fetch: app.fetch,
+        hostname,
+        port,
+        websocket: { server: wss as unknown as WebSocketServerLike },
+      },
+      (info) => {
+        // Fires once the OS has bound the socket (port:0 now resolved).
+        resolveReady({
+          hostname: info.address,
+          port: info.port,
+          url: `http://${info.address}:${info.port}`,
+          stop: () =>
+            new Promise<void>((resolveStop) => {
+              server.close(() => resolveStop());
+            }),
+        });
+      }
+    );
   });
-
-  const address = server.address();
-  const info =
-    typeof address === "object" && address !== null
-      ? address
-      : { port, address: hostname };
-  const actualPort = info.port ?? port;
-  const actualHostname =
-    "address" in info ? (info.address as string) : hostname;
-
-  return {
-    hostname: actualHostname,
-    port: actualPort,
-    url: `http://${actualHostname}:${actualPort}`,
-    stop: () =>
-      new Promise<void>((resolveStop) => {
-        server.close(() => resolveStop());
-      }),
-  };
 }

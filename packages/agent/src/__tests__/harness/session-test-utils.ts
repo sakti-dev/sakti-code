@@ -1,7 +1,7 @@
-import { afterEach } from "bun:test";
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach } from "vitest";
 import type { AgentMessage } from "../../types.ts";
 
 export function createUserMessage(text: string): AgentMessage {

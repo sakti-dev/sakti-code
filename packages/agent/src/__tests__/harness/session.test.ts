@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { InMemorySessionStorage } from "../../harness/memory-storage.ts";
 import { Session } from "../../harness/session.ts";
 import type { SessionStorage } from "../../harness/types.ts";

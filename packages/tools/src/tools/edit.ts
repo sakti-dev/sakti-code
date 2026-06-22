@@ -1,3 +1,8 @@
+import {
+  access as fsAccess,
+  readFile as fsReadFile,
+  writeFile as fsWriteFile,
+} from "node:fs/promises";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
 import {
@@ -58,12 +63,14 @@ export interface EditOperations {
 }
 
 const defaultEditOperations: EditOperations = {
-  readFile: async (path) => Buffer.from(await Bun.file(path).arrayBuffer()),
+  readFile: async (path) => fsReadFile(path),
   writeFile: async (path, content) => {
-    await Bun.write(path, content);
+    await fsWriteFile(path, content);
   },
   access: async (path) => {
-    if (!(await Bun.file(path).exists())) {
+    try {
+      await fsAccess(path);
+    } catch {
       throw new Error(`File not found: ${path}`);
     }
   },

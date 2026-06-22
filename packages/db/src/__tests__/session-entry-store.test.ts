@@ -1,14 +1,14 @@
-import { Database } from "bun:sqlite";
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import type { SessionMetadata, SessionTreeEntry } from "@sakti-code/agent";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import type { DrizzleDB } from "../init";
 import { initDatabase } from "../init";
 import { SqliteSessionStorage } from "../session-entry-store";
 
 describe("SqliteSessionStorage", () => {
-  let sqlite: Database;
+  let sqlite: DatabaseSync;
   let db: DrizzleDB;
   let tmpDir: string;
   let storage: SqliteSessionStorage;
@@ -20,7 +20,7 @@ describe("SqliteSessionStorage", () => {
 
   beforeAll(async () => {
     tmpDir = mkdtempSync(join(import.meta.dirname!, "test-entries-XXXXXX"));
-    sqlite = new Database(join(tmpDir, "test.db"));
+    sqlite = new DatabaseSync(join(tmpDir, "test.db"));
     db = await initDatabase(sqlite);
 
     sqlite

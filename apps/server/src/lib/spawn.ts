@@ -26,11 +26,11 @@ export function spawnPiped(
   const child = spawn(command, args, {
     cwd: opts.cwd,
     env: opts.env ? { ...process.env, ...opts.env } : process.env,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["pipe", "pipe", "pipe"],
   });
 
-  const stdoutPromise = text(child.stdout);
-  const stderrPromise = text(child.stderr);
+  const stdoutPromise = text(child.stdout).catch(() => "");
+  const stderrPromise = text(child.stderr).catch(() => "");
 
   const done = new Promise<SpawnResult>((resolve) => {
     let spawnError: string | undefined;

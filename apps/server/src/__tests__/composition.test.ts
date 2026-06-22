@@ -1,7 +1,7 @@
-import { Database } from "bun:sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { initDatabase } from "@sakti-code/db";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "../app.ts";
@@ -78,7 +78,7 @@ describe("route composition", () => {
   });
 
   it("default app serves feature routes in production", async () => {
-    const db = await initDatabase(new Database(":memory:"));
+    const db = await initDatabase(new DatabaseSync(":memory:"));
     const ctx = createContext(
       db,
       {},

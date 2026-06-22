@@ -1,4 +1,4 @@
-import { Database } from "bun:sqlite";
+import { DatabaseSync } from "node:sqlite";
 import { initDatabase } from "@sakti-code/db";
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../app.ts";
@@ -7,7 +7,7 @@ import { createApiKeyStore } from "../lib/api-key-store.ts";
 
 describe("built server", () => {
   it("responds to /api/health and /api/projects", async () => {
-    const db = await initDatabase(new Database(":memory:"));
+    const db = await initDatabase(new DatabaseSync(":memory:"));
     const ctx = createContext(
       db,
       {},
@@ -27,7 +27,7 @@ describe("built server", () => {
 
 describe("ServerContext", () => {
   it("does not have messages or costs repos", async () => {
-    const db = await initDatabase(new Database(":memory:"));
+    const db = await initDatabase(new DatabaseSync(":memory:"));
     const ctx = createContext(
       db,
       {},

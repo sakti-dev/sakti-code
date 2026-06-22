@@ -19,9 +19,9 @@ export const projectsRoutes = new Hono()
       "json",
       Type.Object({ name: Type.String(), cwd: Type.String() })
     ),
-    (c) => {
+    async (c) => {
       const body = c.req.valid("json");
-      return c.json(getCtx(c).repos.projects.create(body.name, body.cwd));
+      return c.json(await getCtx(c).repos.projects.create(body.name, body.cwd));
     }
   )
   .put(
@@ -30,12 +30,14 @@ export const projectsRoutes = new Hono()
       "json",
       Type.Partial(Type.Object({ name: Type.String(), cwd: Type.String() }))
     ),
-    (c) => {
+    async (c) => {
       const body = c.req.valid("json");
-      return c.json(getCtx(c).repos.projects.update(c.req.param("id"), body));
+      return c.json(
+        await getCtx(c).repos.projects.update(c.req.param("id"), body)
+      );
     }
   )
-  .delete("/:id", (c) => {
-    getCtx(c).repos.projects.delete(c.req.param("id"));
+  .delete("/:id", async (c) => {
+    await getCtx(c).repos.projects.delete(c.req.param("id"));
     return c.body(null, 204);
   });

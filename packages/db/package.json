@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "bun test",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -21,7 +21,11 @@
   "dependencies": {
     "@sakti-code/agent": "workspace:*",
     "@sakti-code/tools": "workspace:*",
-    "drizzle-orm": "0.44.2",
-    "drizzle-kit": "0.31.4"
+    "drizzle-kit": "1.0.0-rc.3",
+    "drizzle-orm": "1.0.0-rc.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "vitest": "^3"
   }
 }

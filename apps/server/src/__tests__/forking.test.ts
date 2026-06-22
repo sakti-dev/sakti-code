@@ -127,7 +127,9 @@ describe("export route", () => {
       new Request(`http://localhost/api/sessions/${session.id}/export-html`)
     );
     expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
+    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
+      "text/html; charset=utf-8"
+    );
     const html = await res.text();
     expect(html).toContain("ExportMe");
     expect(html).toContain("Hello");

@@ -11,7 +11,7 @@ export const settingsRoutes = new Hono()
     if (v === null) {
       return c.json({ error: "Not found" }, 404);
     }
-    return c.json(v);
+    return c.text(v);
   })
   .put(
     "/:key",

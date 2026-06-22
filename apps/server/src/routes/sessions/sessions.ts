@@ -30,9 +30,9 @@ export const sessionsRoutes = new Hono()
         title: Type.Optional(Type.String()),
       })
     ),
-    (c) => {
+    async (c) => {
       const body = c.req.valid("json");
-      const created = getCtx(c).repos.sessions.create(
+      const created = await getCtx(c).repos.sessions.create(
         body.projectId,
         body.modelId,
         {
@@ -54,9 +54,12 @@ export const sessionsRoutes = new Hono()
         })
       )
     ),
-    (c) =>
+    async (c) =>
       c.json(
-        getCtx(c).repos.sessions.update(c.req.param("id"), c.req.valid("json"))
+        await getCtx(c).repos.sessions.update(
+          c.req.param("id"),
+          c.req.valid("json")
+        )
       )
   )
   .get("/:id/messages", async (c) => {

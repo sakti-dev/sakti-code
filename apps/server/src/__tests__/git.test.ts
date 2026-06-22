@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { gitRoutes, runGit } from "../routes/projects/git.ts";
 import { spawnPiped } from "../lib/spawn.ts";
+import { gitRoutes, runGit } from "../routes/projects/git.ts";
 import { makeApp } from "./helpers.ts";
 
 function execGit(cwd: string, ...args: string[]): Promise<string> {
@@ -123,11 +123,11 @@ describe("git routes", () => {
     expect(res.status).toBe(200);
   });
 
-  it("GET /api/projects/:id/git/log rejects negative limit with 422", async () => {
+  it("GET /api/projects/:id/git/log rejects negative limit with 400", async () => {
     const res = await app.request(
       new Request(`http://localhost/api/projects/${projectId}/git/log?limit=-5`)
     );
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(400);
   });
 
   it("returns 500 when git is not on PATH", async () => {

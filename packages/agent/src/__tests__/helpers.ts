@@ -45,7 +45,7 @@ export class MockEventStream<T = unknown> implements AsyncIterable<T> {
  *
  * Includes a max-events safety cap to prevent OOM from infinite loops
  * (async generators that yield synchronously starve the macrotask queue,
- * so bun:test's test timeout never fires).
+ * so vitest's test timeout never fires).
  */
 export async function collectEvents(
   gen: AsyncIterable<AgentEvent>,

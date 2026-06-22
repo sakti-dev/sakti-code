@@ -1,3 +1,4 @@
+import { readFile as fsReadFile } from "node:fs/promises";
 import * as Diff from "diff";
 import { resolveToCwd } from "./path-utils.ts";
 
@@ -516,13 +517,15 @@ export async function computeEditsDiff(
   const absolutePath = resolveToCwd(path, cwd);
 
   try {
-    if (!(await Bun.file(absolutePath).exists())) {
+    try {
+      await fsReadFile(absolutePath);
+    } catch {
       return {
         error: `Could not edit file: ${path}. Error code: ENOENT.`,
       };
     }
 
-    const rawContent = await Bun.file(absolutePath).text();
+    const rawContent = await fsReadFile(absolutePath, "utf8");
     const { text: content } = stripBom(rawContent);
     const normalizedContent = normalizeToLF(content);
     const { baseContent, newContent } = applyEditsToNormalizedContent(

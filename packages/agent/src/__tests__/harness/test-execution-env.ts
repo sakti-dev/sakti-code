@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import {
   appendFileSync,
   existsSync,
@@ -7,6 +8,7 @@ import {
   realpathSync,
   rmSync,
 } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import type {
   ExecutionEnv,
@@ -138,7 +140,7 @@ export class TestExecutionEnv implements ExecutionEnv {
       dir,
       `${options?.prefix ?? ""}${Date.now()}${options?.suffix ?? ""}`
     );
-    await Bun.write(file, "");
+    await writeFile(file, "");
     return Promise.resolve(ok(file));
   }
 
@@ -159,17 +161,26 @@ export class TestExecutionEnv implements ExecutionEnv {
   ): Promise<
     Result<{ stdout: string; stderr: string; exitCode: number }, ExecutionError>
   > {
-    const proc = Bun.spawn(["/bin/sh", "-c", command], {
-      cwd: options?.cwd ?? this.rootDir,
-      stdout: "pipe",
-      stderr: "pipe",
+    return new Promise((resolve) => {
+      let stdout = "";
+      let stderr = "";
+      const proc = spawn("/bin/sh", ["-c", command], {
+        cwd: options?.cwd ?? this.rootDir,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      proc.stdout?.setEncoding("utf8");
+      proc.stderr?.setEncoding("utf8");
+      proc.stdout?.on("data", (chunk: string) => {
+        stdout += chunk;
+      });
+      proc.stderr?.on("data", (chunk: string) => {
+        stderr += chunk;
+      });
+      proc.on("error", () => resolve(ok({ stdout, stderr, exitCode: 1 })));
+      proc.on("close", (code) =>
+        resolve(ok({ stdout, stderr, exitCode: code ?? 0 }))
+      );
     });
-    const [stdout, stderr, exitCode] = await Promise.all([
-      new Response(proc.stdout as ReadableStream<Uint8Array>).text(),
-      new Response(proc.stderr as ReadableStream<Uint8Array>).text(),
-      proc.exited,
-    ]);
-    return ok({ stdout, stderr, exitCode });
   }
 
   async fileInfo(
@@ -212,7 +223,7 @@ export class TestExecutionEnv implements ExecutionEnv {
     _abortSignal?: AbortSignal
   ): Promise<Result<Uint8Array, FileError>> {
     try {
-      const data = await Bun.file(resolve(this.rootDir, path)).arrayBuffer();
+      const data = await readFile(resolve(this.rootDir, path));
       return Promise.resolve(ok(new Uint8Array(data)));
     } catch (e) {
       return Promise.resolve(err(toFileError(e)));
@@ -225,7 +236,7 @@ export class TestExecutionEnv implements ExecutionEnv {
   ): Promise<Result<string, FileError>> {
     try {
       return Promise.resolve(
-        ok(await Bun.file(resolve(this.rootDir, path)).text())
+        ok(await readFile(resolve(this.rootDir, path), "utf8"))
       );
     } catch (e) {
       return Promise.resolve(err(toFileError(e)));
@@ -271,7 +282,7 @@ export class TestExecutionEnv implements ExecutionEnv {
     _abortSignal?: AbortSignal
   ): Promise<Result<void, FileError>> {
     try {
-      await Bun.write(resolve(this.rootDir, path), content);
+      await writeFile(resolve(this.rootDir, path), content);
       return Promise.resolve(ok(undefined));
     } catch (e) {
       return Promise.resolve(err(toFileError(e)));
