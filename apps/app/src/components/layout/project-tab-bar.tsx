@@ -1,5 +1,6 @@
 import { FiFolder, FiPlus, FiX } from "solid-icons/fi";
 import { For, type JSX, Show } from "solid-js";
+import "./project-tab-bar.css";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
 import {

@@ -55,7 +55,7 @@ const SelectContent = <T extends ValidComponent = "div">(
         )}
         {...others}
       >
-        <SelectPrimitive.Listbox class="scrollbar-default m-0 overflow-y-auto p-1.5" />
+        <SelectPrimitive.Listbox class="m-0 overflow-y-auto p-1.5 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2.5" />
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
   );

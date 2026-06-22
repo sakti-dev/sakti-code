@@ -110,7 +110,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
 
         <div class="flex flex-1 overflow-hidden">
           <div class="w-56 shrink-0 border-border/80 border-r bg-background/35">
-            <ScrollArea class="scrollbar-subtle h-full">
+            <ScrollArea class="h-full">
               <SettingsSidebar
                 activeTab={activeTab()}
                 onTabChange={setActiveTab}
@@ -118,7 +118,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
             </ScrollArea>
           </div>
 
-          <div class="scrollbar-subtle flex-1 overflow-y-auto px-4 pb-0">
+          <div class="flex-1 overflow-y-auto px-4 pb-0 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2.5">
             <div class="max-h-full overflow-y-auto pr-2">
               {activeTabContent()}
             </div>

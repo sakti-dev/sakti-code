@@ -1,5 +1,6 @@
 import { createPresence } from "@solid-primitives/presence";
 import { FiSearch } from "solid-icons/fi";
+import "./models-settings.css";
 import {
   createEffect,
   createMemo,
@@ -631,7 +632,7 @@ export function ModelsSettings() {
 
             <div class="relative grid h-[480px] min-h-0 gap-0 md:grid-cols-[1.1fr_1.4fr]">
               <div class="min-h-0 border-border/80 border-r">
-                <div class="scrollbar-subtle h-full min-h-0 overflow-y-auto overscroll-contain bg-background/35 px-2 py-2">
+                <div class="h-full min-h-0 overflow-y-auto overscroll-contain bg-background/35 px-2 py-2 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2.5">
                   <Show
                     fallback={
                       <p class="px-3 py-4 text-muted-foreground text-sm">
@@ -706,7 +707,7 @@ export function ModelsSettings() {
                 </div>
               </div>
 
-              <div class="scrollbar-subtle h-full min-h-0 overflow-y-auto overscroll-contain bg-background/30 px-4 py-4">
+              <div class="h-full min-h-0 overflow-y-auto overscroll-contain bg-background/30 px-4 py-4 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2.5">
                 <Show
                   fallback={
                     <p class="text-muted-foreground text-sm">

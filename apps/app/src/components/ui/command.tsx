@@ -3,6 +3,7 @@ import { createPresence } from "@solid-primitives/presence";
 import { FiSearch } from "solid-icons/fi";
 import type { Component, ComponentProps, JSX, ParentComponent } from "solid-js";
 import { Show, splitProps } from "solid-js";
+import "./command.css";
 import { cn } from "~/lib/utils";
 
 export const CommandRoot: ParentComponent<ComponentProps<"div">> = (props) => {

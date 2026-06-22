@@ -3,6 +3,7 @@ import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import { FiX } from "solid-icons/fi";
 import type { Component, ComponentProps, JSX, ValidComponent } from "solid-js";
 import { splitProps } from "solid-js";
+import "./dialog.css";
 
 import { cn } from "~/lib/utils";
 

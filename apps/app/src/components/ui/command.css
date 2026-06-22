@@ -1,0 +1,23 @@
+.command-dialog-overlay-motion {
+  background: oklch(0 0 0 / 0.7);
+  opacity: 0;
+  transition:
+    opacity 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    backdrop-filter 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.command-dialog-overlay-motion[data-visible] {
+  opacity: 1;
+}
+
+.command-dialog-overlay-motion[data-closed],
+.command-dialog-overlay-motion[data-exiting] {
+  opacity: 0;
+  backdrop-filter: blur(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .command-dialog-overlay-motion {
+    transition-duration: 1ms;
+  }
+}
