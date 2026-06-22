@@ -91,8 +91,7 @@ export default function Sidebar() {
       }
       const data = (await res.json()) as { folderPath: string | null };
       if (data.folderPath) {
-        // TODO: Wire to API - POST /api/projects
-        console.log("Add project:", data.folderPath);
+        await actions.addProject(data.folderPath);
       }
     } catch {
       // Network error or server not running — fall back to inline input
@@ -305,8 +304,7 @@ export default function Sidebar() {
             <AddProjectInput
               onAdd={(cwd) => {
                 setShowAddInput(false);
-                // TODO: Wire to API - POST /api/projects
-                console.log("Add project:", cwd);
+                actions.addProject(cwd);
               }}
               onCancel={() => setShowAddInput(false)}
             />

@@ -31,6 +31,7 @@ export interface ServerStoreData {
 }
 
 export interface ServerActions {
+  addProject: (project: Project) => void;
   addSession: (session: SessionMeta) => void;
   removeProject: (projectId: string) => void;
   removeSession: (sessionId: string) => void;
@@ -61,6 +62,11 @@ export function createServerStore(): ServerStore {
   });
 
   const actions: ServerActions = {
+    addProject(project) {
+      setStore("projects", project.id, project);
+      setStore("projectOrder", (prev) => [...prev, project.id]);
+    },
+
     setConnectionStatus(status) {
       setStore("connection", "status", status);
     },

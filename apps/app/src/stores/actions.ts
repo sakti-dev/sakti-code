@@ -19,6 +19,7 @@ export interface ActionsDeps {
 
 export interface Actions {
   abortRun: (sessionId: string) => void;
+  addProject: (cwd: string) => Promise<Project | undefined>;
   createSession: (
     projectId: string,
     modelId: string,
@@ -40,6 +41,18 @@ export function createActions(
   const { serverStore: server, sessionRegistry } = deps;
 
   return {
+    async addProject(cwd) {
+      const name = cwd.split("/").pop() ?? cwd;
+      const { data, error } = await api.api.projects.post({ name, cwd });
+      if (error || !data) {
+        return;
+      }
+      const project = data as Project;
+      server.actions.addProject(project);
+      server.actions.setActiveProject(project.id);
+      return project;
+    },
+
     async loadProjects() {
       const { data, error } = await api.api.projects.get();
       if (error || !data) {
