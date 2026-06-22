@@ -1,5 +1,5 @@
 import type { AgentHarnessEvent, SessionStorage } from "@sakti-code/agent";
-import { t } from "elysia";
+import { Type as t } from "typebox";
 import type { ServerContext } from "../context.ts";
 import {
   abortRun,
