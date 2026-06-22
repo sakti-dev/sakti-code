@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
@@ -62,32 +63,32 @@ function createLocalBashOperations(): BashOperations {
       }
 
       const shell = process.env.SHELL ?? "/bin/bash";
-      const proc = Bun.spawn({
-        cmd: [shell, "-c", command],
+      const proc = spawn(shell, ["-c", command], {
         cwd,
         env: (env ?? process.env) as Record<string, string>,
-        stdout: "pipe",
-        stderr: "pipe",
+        stdio: ["ignore", "pipe", "pipe"],
       });
-
-      const stdoutStream = proc.stdout as ReadableStream<Uint8Array>;
-      const stderrStream = proc.stderr as ReadableStream<Uint8Array>;
 
       let timedOut = false;
       let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
-      const onAbort = () => {
-        proc.kill("SIGKILL");
-        stdoutStream.cancel().catch(() => {});
-        stderrStream.cancel().catch(() => {});
-      };
+      const onAbort = () => proc.kill("SIGKILL");
+
+      const readStream = (stream: NodeJS.ReadableStream | null) =>
+        new Promise<void>((resolve) => {
+          if (!stream) {
+            resolve();
+            return;
+          }
+          stream.on("data", (chunk: Buffer) => onData(chunk));
+          stream.on("error", () => resolve());
+          stream.on("end", () => resolve());
+        });
 
       try {
         if (timeout !== undefined && timeout > 0) {
           timeoutHandle = setTimeout(() => {
             timedOut = true;
             proc.kill("SIGKILL");
-            stdoutStream.cancel().catch(() => {});
-            stderrStream.cancel().catch(() => {});
           }, timeout * 1000);
         }
 
@@ -99,24 +100,11 @@ function createLocalBashOperations(): BashOperations {
           }
         }
 
-        const readStream = async (stream: ReadableStream<Uint8Array>) => {
-          const reader = stream.getReader();
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) {
-                break;
-              }
-              onData(Buffer.from(value));
-            }
-          } catch {
-            // Stream cancelled (timeout/abort)
-          }
-        };
+        await Promise.all([readStream(proc.stdout), readStream(proc.stderr)]);
 
-        await Promise.all([readStream(stdoutStream), readStream(stderrStream)]);
-
-        const exitCode = await proc.exited;
+        const exitCode = await new Promise<number>((resolve) =>
+          proc.once("close", (code) => resolve(code ?? 0))
+        );
         if (signal?.aborted) {
           throw new Error("aborted");
         }

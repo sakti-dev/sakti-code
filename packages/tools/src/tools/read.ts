@@ -1,3 +1,8 @@
+import {
+  access as fsAccess,
+  readFile as fsReadFile,
+  open as openFile,
+} from "node:fs/promises";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai/base";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
@@ -40,9 +45,11 @@ export interface ReadOperations {
 }
 
 const defaultReadOperations: ReadOperations = {
-  readFile: async (path) => Buffer.from(await Bun.file(path).arrayBuffer()),
+  readFile: async (path) => fsReadFile(path),
   access: async (path) => {
-    if (!(await Bun.file(path).exists())) {
+    try {
+      await fsAccess(path);
+    } catch {
       throw new Error(`File not found: ${path}`);
     }
   },
@@ -79,9 +86,19 @@ function detectSupportedImageMimeType(buffer: Uint8Array): string | null {
 async function detectSupportedImageMimeTypeFromFile(
   filePath: string
 ): Promise<string | null | undefined> {
-  const blob = Bun.file(filePath).slice(0, IMAGE_TYPE_SNIFF_BYTES);
-  const buffer = Buffer.from(await blob.arrayBuffer());
-  return detectSupportedImageMimeType(buffer);
+  const handle = await openFile(filePath);
+  try {
+    const buffer = Buffer.alloc(IMAGE_TYPE_SNIFF_BYTES);
+    const { bytesRead } = await handle.read(
+      buffer,
+      0,
+      IMAGE_TYPE_SNIFF_BYTES,
+      0
+    );
+    return detectSupportedImageMimeType(buffer.subarray(0, bytesRead));
+  } finally {
+    await handle.close();
+  }
 }
 
 function isPng(buffer: Uint8Array): boolean {

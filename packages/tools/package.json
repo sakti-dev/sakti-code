@@ -9,12 +9,17 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "bun test",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "0.79.9",
     "@sakti-code/agent": "workspace:*",
+    "@silvia-odwyer/photon-node": "0.3.4",
     "diff": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "vitest": "^3"
   }
 }

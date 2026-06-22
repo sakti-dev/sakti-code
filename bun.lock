@@ -78,6 +78,10 @@
       "dependencies": {
         "@earendil-works/pi-ai": "0.79.9",
       },
+      "devDependencies": {
+        "@types/node": "^24",
+        "vitest": "^3",
+      },
     },
     "packages/db": {
       "name": "@sakti-code/db",
@@ -99,7 +103,12 @@
       "dependencies": {
         "@earendil-works/pi-ai": "0.79.9",
         "@sakti-code/agent": "workspace:*",
+        "@silvia-odwyer/photon-node": "0.3.4",
         "diff": "^9.0.0",
+      },
+      "devDependencies": {
+        "@types/node": "^24",
+        "vitest": "^3",
       },
     },
   },
@@ -421,6 +430,8 @@
     "@sakti-code/server": ["@sakti-code/server@workspace:apps/server"],
 
     "@sakti-code/tools": ["@sakti-code/tools@workspace:packages/tools"],
+
+    "@silvia-odwyer/photon-node": ["@silvia-odwyer/photon-node@0.3.4", "", {}, "sha512-bnly4BKB3KDTFxrUIcgCLbaeVVS8lrAkri1pEzskpmxu9MdfGQTy8b8EgcD83ywD3RPMsIulY8xJH5Awa+t9fA=="],
 
     "@sinclair/typebox": ["@sinclair/typebox@0.34.49", "", {}, "sha512-brySQQs7Jtn0joV8Xh9ZV/hZb9Ozb0pmazDIASBkYKCjXrXU3mpcFahmK/z4YDhGkQvP9mWJbVyahdtU5wQA+A=="],
 
