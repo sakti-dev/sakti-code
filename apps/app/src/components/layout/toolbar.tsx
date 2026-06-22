@@ -1,13 +1,15 @@
-import { Show } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { setSidebarOpen, sidebarOpen } from "~/stores/ui-signals";
+import { SettingsDialog } from "../settings/settings-dialog";
 import ExportButton from "../toolbar/export-button";
 import GitStatusBar from "../toolbar/git-status-bar";
 import ModelSelector from "../toolbar/model-selector";
 import SessionStats from "../toolbar/session-stats";
-import SettingsDialog from "../toolbar/settings-dialog";
 import ThinkingSelector from "../toolbar/thinking-selector";
 
 export default function Toolbar() {
+  const [showSettings, setShowSettings] = createSignal(false);
+
   return (
     <div class="flex items-center gap-2 border-border border-b px-4 py-2">
       <button
@@ -69,7 +71,7 @@ export default function Toolbar() {
 
       <div class="flex items-center gap-1 border-border border-l pl-2">
         <ExportButton />
-        <SettingsDialog />
+        <SettingsDialog onOpenChange={setShowSettings} open={showSettings()} />
       </div>
     </div>
   );
