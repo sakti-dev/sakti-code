@@ -8,6 +8,16 @@ import {
 } from "~/components/ui/dialog";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { SETTINGS_TABS, SettingsSidebar } from "./settings-sidebar";
+import { AgentsSettings } from "./tabs/agents-settings";
+import { CommandsSettings } from "./tabs/commands-settings";
+import { ExperimentalSettings } from "./tabs/experimental-settings";
+import { GeneralSettings } from "./tabs/general-settings";
+import { GitSettings } from "./tabs/git-settings";
+import { HooksSettings } from "./tabs/hooks-settings";
+import { McpSettings } from "./tabs/mcp-settings";
+import { MemorySettings } from "./tabs/memory-settings";
+import { ModelsSettings } from "./tabs/models-settings";
+import { TerminalSettings } from "./tabs/terminal-settings";
 
 interface SettingsDialogProps {
   onOpenChange: (open: boolean) => void;
@@ -25,6 +35,47 @@ export function SettingsDialog(props: SettingsDialogProps) {
       return "Configure your preferences";
     }
     return `Configure ${activeTab()} settings`;
+  };
+
+  const activeTabContent = () => {
+    switch (activeTab()) {
+      case "general":
+        return <GeneralSettings />;
+      case "models":
+        return <ModelsSettings />;
+      case "git":
+        return <GitSettings />;
+      case "terminal":
+        return <TerminalSettings />;
+      case "mcp":
+        return <McpSettings />;
+      case "commands":
+        return <CommandsSettings />;
+      case "agents":
+        return <AgentsSettings />;
+      case "memory":
+        return <MemorySettings />;
+      case "hooks":
+        return <HooksSettings />;
+      case "experimental":
+        return <ExperimentalSettings />;
+      case "changelog":
+      case "docs":
+        return (
+          <div class="flex h-full items-center justify-center text-muted-foreground">
+            <p>External link opened in new tab</p>
+          </div>
+        );
+      default:
+        return (
+          <div class="flex h-full items-center justify-center text-muted-foreground">
+            <p>
+              {SETTINGS_TABS.find((t) => t.id === activeTab())?.label} settings
+              coming soon
+            </p>
+          </div>
+        );
+    }
   };
 
   return (
@@ -49,9 +100,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
 
           <div class="flex-1 overflow-y-auto px-4 pb-0">
             <div class="max-h-full overflow-y-auto pr-2">
-              <div class="py-8 text-center text-muted-foreground text-sm">
-                {activeTabLabel()} settings
-              </div>
+              {activeTabContent()}
             </div>
           </div>
         </div>
