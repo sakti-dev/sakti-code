@@ -1,5 +1,5 @@
 import { createEffect, type JSX, onMount, Show } from "solid-js";
-import Home from "~/pages/home";
+import Home from "~/components/home/home";
 import { useStore } from "~/stores/store-context";
 import { activeTab, filterStaleProjects } from "~/stores/tab-store";
 import { sidebarOpen } from "~/stores/ui-signals";
