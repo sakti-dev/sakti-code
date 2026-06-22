@@ -12,7 +12,7 @@ import { CloneDialog } from "~/components/home/clone-dialog";
 import { EmptyState } from "~/components/home/empty-state";
 import { KeyboardShortcutsFooter } from "~/components/home/keyboard-shortcuts-footer";
 import { ProjectCard } from "~/components/home/project-card";
-import SettingsDialog from "~/components/toolbar/settings-dialog";
+import { SettingsDialog } from "~/components/settings/settings-dialog";
 import { Kbd } from "~/components/ui/kbd";
 import type { Project, SessionMeta } from "~/stores/server-store";
 import { useStore } from "~/stores/store-context";
@@ -38,6 +38,7 @@ export default function Home() {
   >({});
   const [searchQuery, setSearchQuery] = createSignal("");
   const [isCloneOpen, setIsCloneOpen] = createSignal(false);
+  const [showSettings, setShowSettings] = createSignal(false);
 
   const filteredProjects = () => filterProjects(projects(), searchQuery());
 
@@ -146,7 +147,10 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                  <SettingsDialog />
+                  <SettingsDialog
+                    onOpenChange={setShowSettings}
+                    open={showSettings()}
+                  />
                 </div>
 
                 {/* Action Cards */}
