@@ -18,25 +18,38 @@ function makeDeps() {
   };
 }
 
+/** Minimal Hono client fetch-Response shape (success). */
+function okRes(data: unknown) {
+  return Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve(data),
+  });
+}
+
+/** Minimal Hono client fetch-Response shape (error). */
+function errRes() {
+  return Promise.resolve({
+    ok: false,
+    json: () => Promise.resolve(null),
+  });
+}
+
 describe("actions", () => {
   it("loadProjects fetches and populates store", async () => {
     const deps = makeDeps();
     const mockApi = {
       api: {
         projects: {
-          get: vi.fn(() =>
-            Promise.resolve({
-              data: [
-                {
-                  id: "p1",
-                  name: "Proj",
-                  cwd: "/tmp",
-                  createdAt: 1,
-                  updatedAt: 1,
-                },
-              ],
-              error: null,
-            })
+          $get: vi.fn(() =>
+            okRes([
+              {
+                id: "p1",
+                name: "Proj",
+                cwd: "/tmp",
+                createdAt: 1,
+                updatedAt: 1,
+              },
+            ])
           ),
         },
       },
@@ -54,13 +67,10 @@ describe("actions", () => {
     const mockApi = {
       api: {
         projects: {
-          get: vi.fn(() =>
-            Promise.resolve({
-              data: [
-                { id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 },
-              ],
-              error: null,
-            })
+          $get: vi.fn(() =>
+            okRes([
+              { id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 },
+            ])
           ),
         },
       },
@@ -78,13 +88,10 @@ describe("actions", () => {
     const mockApi = {
       api: {
         projects: {
-          get: vi.fn(() =>
-            Promise.resolve({
-              data: [
-                { id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 },
-              ],
-              error: null,
-            })
+          $get: vi.fn(() =>
+            okRes([
+              { id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 },
+            ])
           ),
         },
       },
@@ -100,21 +107,18 @@ describe("actions", () => {
     const mockApi = {
       api: {
         sessions: {
-          get: vi.fn(() =>
-            Promise.resolve({
-              data: [
-                {
-                  id: "s1",
-                  projectId: "p1",
-                  title: "Sess",
-                  modelId: "gpt-4",
-                  thinkingLevel: "off",
-                  createdAt: 1,
-                  updatedAt: 1,
-                },
-              ],
-              error: null,
-            })
+          $get: vi.fn(() =>
+            okRes([
+              {
+                id: "s1",
+                projectId: "p1",
+                title: "Sess",
+                modelId: "gpt-4",
+                thinkingLevel: "off",
+                createdAt: 1,
+                updatedAt: 1,
+              },
+            ])
           ),
         },
       },
@@ -193,12 +197,7 @@ describe("actions", () => {
     const mockApi = {
       api: {
         projects: {
-          get: vi.fn(() =>
-            Promise.resolve({
-              data: null,
-              error: { status: 500, value: "server down" },
-            })
-          ),
+          $get: vi.fn(() => errRes()),
         },
       },
     };

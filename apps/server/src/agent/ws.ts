@@ -116,7 +116,7 @@ function asWsHandle(ws: { send: (data: string) => void }): WsHandle {
   };
 }
 
-export function buildWsApp(ctx: ServerContext): Hono {
+export function buildWsApp(ctx: ServerContext) {
   let terminalCallbacksWired = false;
 
   return new Hono().get(

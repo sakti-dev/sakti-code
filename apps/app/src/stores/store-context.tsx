@@ -1,11 +1,11 @@
-import { treaty } from "@elysiajs/eden";
-import type { App } from "@sakti-code/server";
 import {
   createContext,
   onCleanup,
   type ParentComponent,
   useContext,
 } from "solid-js";
+import type { Client } from "~/lib/api";
+import { hcWithType } from "~/lib/api";
 import { type Actions, createActions } from "./actions.ts";
 import { createServerStore, type ServerStore } from "./server-store.ts";
 import { SessionRegistry } from "./session-registry.ts";
@@ -17,7 +17,7 @@ console.log("[store] API_URL:", API_URL);
 
 export interface StoreContextValue {
   actions: Actions;
-  api: ReturnType<typeof treaty<App>>;
+  api: Client;
   server: ServerStore;
   sessions: SessionRegistry;
   terminals: TerminalRegistry;
@@ -31,7 +31,7 @@ export const StoreProvider: ParentComponent = (props) => {
   const sessions = new SessionRegistry();
   const terminals = new TerminalRegistry();
 
-  const api = treaty<App>(API_URL);
+  const api = hcWithType(API_URL);
   const ws = createWsClient(api, {
     serverStore: server,
     sessionRegistry: sessions,

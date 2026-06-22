@@ -1,5 +1,5 @@
 import type { AgentMessage } from "@sakti-code/agent";
-import type { App } from "@sakti-code/server";
+import type { Client } from "~/lib/api";
 import type {
   Project,
   ServerActions,
@@ -10,7 +10,7 @@ import type { SessionRegistry } from "./session-registry.ts";
 import { agentMessageToUI, type UIMessage } from "./types.ts";
 import type { WsClient } from "./ws-client.ts";
 
-type ApiClient = ReturnType<typeof import("@elysiajs/eden").treaty<App>>;
+type ApiClient = Client;
 
 export interface ActionsDeps {
   serverStore: { store: ServerStoreData; actions: ServerActions };
@@ -43,55 +43,55 @@ export function createActions(
   return {
     async addProject(cwd) {
       const name = cwd.split("/").pop() ?? cwd;
-      const { data, error } = await api.api.projects.post({ name, cwd });
-      if (error || !data) {
+      const res = await api.api.projects.$post({ json: { name, cwd } });
+      if (!res.ok) {
         return;
       }
-      const project = data as Project;
+      const project = (await res.json()) as Project;
       server.actions.addProject(project);
       return project;
     },
 
     async loadProjects() {
-      const { data, error } = await api.api.projects.get();
-      if (error || !data) {
+      const res = await api.api.projects.$get();
+      if (!res.ok) {
         return;
       }
-      server.actions.setProjects(data as Project[]);
+      server.actions.setProjects((await res.json()) as Project[]);
     },
 
     async loadSessions(projectId) {
-      const { data, error } = await api.api.sessions.get({
-        query: { projectId },
-      });
-      if (error || !data) {
+      const res = await api.api.sessions.$get({ query: { projectId } });
+      if (!res.ok) {
         return;
       }
-      server.actions.setSessions(data as SessionMeta[]);
+      server.actions.setSessions((await res.json()) as SessionMeta[]);
     },
 
     async createSession(projectId, modelId, title) {
-      const { data, error } = await api.api.sessions.post({
-        projectId,
-        modelId,
-        ...(title === undefined ? {} : { title }),
+      const res = await api.api.sessions.$post({
+        json: {
+          projectId,
+          modelId,
+          ...(title === undefined ? {} : { title }),
+        },
       });
-      if (error || !data) {
+      if (!res.ok) {
         return;
       }
-      const session = data as SessionMeta;
+      const session = (await res.json()) as SessionMeta;
       server.actions.addSession(session);
       return session;
     },
 
     async loadMessages(sessionId) {
-      const { data, error } = await api.api
-        .sessions({ id: sessionId })
-        .messages.get();
-      if (error || !data) {
+      const res = await api.api.sessions[":id"].messages.$get({
+        param: { id: sessionId },
+      });
+      if (!res.ok) {
         return;
       }
-      const messages = data as AgentMessage[];
+      const messages = (await res.json()) as AgentMessage[];
       const uiMessages = messages.map(agentMessageToUI);
       const session = sessionRegistry.get(sessionId);
       session.actions.loadMessages(uiMessages);

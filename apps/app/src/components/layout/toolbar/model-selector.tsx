@@ -23,11 +23,11 @@ export default function ModelSelector() {
 
   const [providers, { refetch: refetchProviders }] = createResource(
     async () => {
-      const { data, error } = await api.api.models.available.get();
-      if (error || !data) {
+      const res = await api.api.models.available.$get();
+      if (!res.ok) {
         return [] as string[];
       }
-      return data as string[];
+      return (await res.json()) as string[];
     }
   );
 
@@ -36,11 +36,11 @@ export default function ModelSelector() {
     async (providerList) => {
       const results: Record<string, Model[]> = {};
       for (const provider of providerList) {
-        const { data, error } = await api.api.models
-          .available({ provider })
-          .get();
-        if (!error && data) {
-          results[provider] = data as Model[];
+        const res = await api.api.models.available[":provider"].$get({
+          param: { provider },
+        });
+        if (res.ok) {
+          results[provider] = (await res.json()) as Model[];
         }
       }
       return results;

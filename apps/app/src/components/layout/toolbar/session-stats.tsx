@@ -71,13 +71,13 @@ export default function SessionStats() {
   const [stats, { refetch }] = createResource(
     () => server.store.activeSessionId,
     async (sessionId) => {
-      const { data, error } = await api.api
-        .sessions({ id: sessionId })
-        .stats.get();
-      if (error || !data) {
+      const res = await api.api.sessions[":id"].stats.$get({
+        param: { id: sessionId },
+      });
+      if (!res.ok) {
         return null;
       }
-      return data as SessionStatsData;
+      return (await res.json()) as SessionStatsData;
     }
   );
 

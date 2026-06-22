@@ -83,6 +83,10 @@ export function createServerStore(): ServerStore {
         "projectOrder",
         projects.map((p) => p.id)
       );
+      const first = projects[0];
+      if (store.activeProjectId === null && first) {
+        setStore("activeProjectId", first.id);
+      }
     },
 
     setActiveProject(projectId) {

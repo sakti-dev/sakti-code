@@ -1,4 +1,5 @@
 import type { AgentHarnessEvent } from "@sakti-code/agent";
+import type { WsIn, WsOut } from "@sakti-code/server/ws";
 import { dispatchEvent } from "./event-reducer.ts";
 import type { ServerActions, ServerStoreData } from "./server-store.ts";
 import type { SessionRegistry } from "./session-registry.ts";
@@ -10,7 +11,7 @@ const RECONNECT_DELAY_MS = 2000;
 
 export interface WsClient {
   disconnect: () => void;
-  send: (msg: WsInMessage) => void;
+  send: (msg: WsIn) => void;
 }
 
 export interface WsClientDeps {
@@ -20,42 +21,21 @@ export interface WsClientDeps {
 }
 
 /**
- * Minimal treaty client shape — only the .ws.subscribe() path.
- * This lets tests inject a mock without constructing a full treaty client.
+ * Minimal Hono client shape — only the .ws.$ws() path.
+ * This lets tests inject a mock without constructing a full hc client.
  */
-export interface WsSubscribeApi {
+export interface WsConnectable {
   ws: {
-    subscribe: () => EdenWSLike;
+    $ws: () => WebSocket;
   };
 }
 
-/**
- * Minimal EdenWS interface — the subset of EdenWS methods we use.
- * EdenWS has more methods, but we only need these.
- */
-export interface EdenWSLike {
-  close(): void;
-  on(
-    type: "open" | "message" | "close" | "error",
-    listener: (event: { type: string; data?: unknown }) => void
-  ): void;
-  send(data: unknown): void;
-  ws: { readyState: number };
-}
-
-/** Inbound message type (client to server) */
-type WsInMessage =
-  | { type: "prompt"; sessionId: string; message: string }
-  | { type: "abort"; sessionId: string }
-  | { type: "steer"; sessionId: string; message: string }
-  | { type: "followUp"; sessionId: string; message: string };
-
 export function createWsClient(
-  api: WsSubscribeApi,
+  api: WsConnectable,
   deps: WsClientDeps
 ): WsClient {
   const { serverStore: server, sessionRegistry, terminalRegistry } = deps;
-  let conn: EdenWSLike | null = null;
+  let conn: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let shouldReconnect = true;
 
@@ -81,30 +61,21 @@ export function createWsClient(
     }
   }
 
-  function handleFrame(data: unknown): void {
-    const frame = data as {
-      type: string;
-      sessionId?: string;
-      error?: string;
-      channel?: string;
-      data?: unknown;
-      event?: unknown;
-    };
-
-    switch (frame.type) {
+  function handleFrame(data: WsOut): void {
+    switch (data.type) {
       case "welcome":
         server.actions.setConnectionStatus("open");
         break;
 
       case "event": {
-        if (!frame.sessionId || frame.event === undefined) {
+        if (!data.sessionId || data.event === undefined) {
           break;
         }
-        const evt = frame.event as AgentHarnessEvent;
+        const evt = data.event as AgentHarnessEvent;
         updateStreamingState(evt);
-        const batcher = getBatcher(frame.sessionId);
+        const batcher = getBatcher(data.sessionId);
         dispatchEvent(
-          sessionRegistry.get(frame.sessionId).actions,
+          sessionRegistry.get(data.sessionId).actions,
           batcher,
           evt
         );
@@ -112,23 +83,23 @@ export function createWsClient(
       }
 
       case "error": {
-        if (!(frame.sessionId && frame.error)) {
+        if (!(data.sessionId && data.error)) {
           break;
         }
-        const session = sessionRegistry.get(frame.sessionId);
+        const session = sessionRegistry.get(data.sessionId);
         const msgId = session.store.streaming.currentMessageId;
         if (msgId) {
-          session.actions.setError(msgId, frame.error);
+          session.actions.setError(msgId, data.error);
         }
         break;
       }
 
       case "push": {
-        if (frame.channel === "terminal.data") {
-          const d = frame.data as { terminalId: string; data: string };
+        if (data.channel === "terminal.data") {
+          const d = data.data as { terminalId: string; data: string };
           terminalRegistry.get(d.terminalId).appendData(d.data);
-        } else if (frame.channel === "terminal.exit") {
-          const d = frame.data as { terminalId: string; exitCode: number };
+        } else if (data.channel === "terminal.exit") {
+          const d = data.data as { terminalId: string; exitCode: number };
           terminalRegistry.get(d.terminalId).setExit(d.exitCode);
         }
         break;
@@ -139,18 +110,19 @@ export function createWsClient(
   function connect(): void {
     console.log("[ws] connecting...");
     server.actions.setConnectionStatus("connecting");
-    conn = api.ws.subscribe();
+    conn = api.ws.$ws();
 
-    conn.on("open", () => {
+    conn.addEventListener("open", () => {
       console.log("[ws] connected");
       server.actions.setConnectionStatus("open");
     });
 
-    conn.on("message", (event) => {
-      handleFrame(event.data);
+    conn.addEventListener("message", (event) => {
+      const frame = JSON.parse((event as MessageEvent).data as string) as WsOut;
+      handleFrame(frame);
     });
 
-    conn.on("close", () => {
+    conn.addEventListener("close", () => {
       console.log("[ws] closed");
       server.actions.setConnectionStatus("closed");
       conn = null;
@@ -163,9 +135,9 @@ export function createWsClient(
   connect();
 
   return {
-    send(msg: WsInMessage) {
-      if (conn && conn.ws.readyState === 1) {
-        conn.send(msg);
+    send(msg: WsIn) {
+      if (conn && conn.readyState === 1) {
+        conn.send(JSON.stringify(msg));
       }
     },
     disconnect() {

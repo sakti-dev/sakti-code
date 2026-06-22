@@ -19,17 +19,17 @@ export default function GitStatusBar() {
     const fetchGit = async () => {
       setLoading(true);
       try {
-        const branchRes = await api.api
-          .projects({ id: projectId })
-          .git.branch.get();
-        if (!branchRes.error && branchRes.data) {
-          setBranch(branchRes.data as string);
+        const branchRes = await api.api.projects[":id"].git.branch.$get({
+          param: { id: projectId },
+        });
+        if (branchRes.ok) {
+          setBranch((await branchRes.json()) as string);
         }
-        const statusRes = await api.api
-          .projects({ id: projectId })
-          .git.status.get();
-        if (!statusRes.error && statusRes.data) {
-          const lines = (statusRes.data as string)
+        const statusRes = await api.api.projects[":id"].git.status.$get({
+          param: { id: projectId },
+        });
+        if (statusRes.ok) {
+          const lines = ((await statusRes.json()) as string)
             .split("\n")
             .filter((l) => l.trim());
           setChangedCount(lines.length);

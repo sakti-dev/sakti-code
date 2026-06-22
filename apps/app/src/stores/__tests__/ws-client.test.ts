@@ -3,11 +3,62 @@ import { createServerStore } from "../server-store.ts";
 import { SessionRegistry } from "../session-registry.ts";
 import { TerminalRegistry } from "../terminal-registry.ts";
 import { isStreaming } from "../ui-signals.ts";
-import {
-  createWsClient,
-  type EdenWSLike,
-  type WsSubscribeApi,
-} from "../ws-client.ts";
+import { createWsClient, type WsConnectable } from "../ws-client.ts";
+
+type EventListener = (event: { data?: unknown }) => void;
+
+function makeFakeWebSocket() {
+  const listeners = new Map<string, Set<EventListener>>();
+  const sent: string[] = [];
+  let readyState = 0;
+
+  const ws = {
+    readyState,
+    addEventListener(type: string, listener: EventListener) {
+      let set = listeners.get(type);
+      if (!set) {
+        set = new Set();
+        listeners.set(type, set);
+      }
+      set.add(listener);
+    },
+    send(data: string) {
+      sent.push(data);
+    },
+    close() {
+      readyState = 3;
+      for (const h of listeners.get("close") ?? []) {
+        h({});
+      }
+    },
+  };
+
+  Object.defineProperty(ws, "readyState", {
+    get: () => readyState,
+  });
+
+  return {
+    ws,
+    sent,
+    fireOpen() {
+      readyState = 1;
+      for (const h of listeners.get("open") ?? []) {
+        h({});
+      }
+    },
+    fireMessage(data: unknown) {
+      for (const h of listeners.get("message") ?? []) {
+        h({ data: JSON.stringify(data) });
+      }
+    },
+    fireClose() {
+      readyState = 3;
+      for (const h of listeners.get("close") ?? []) {
+        h({});
+      }
+    },
+  };
+}
 
 function makeDeps() {
   return {
@@ -17,59 +68,14 @@ function makeDeps() {
   };
 }
 
-function makeMockEdenWs() {
-  const openHandlers: Array<() => void> = [];
-  const messageHandlers: Array<(event: { data?: unknown }) => void> = [];
-  const closeHandlers: Array<() => void> = [];
-  const sent: unknown[] = [];
-  let readyState = 0;
-
-  const mock: EdenWSLike = {
-    ws: {
-      get readyState() {
-        return readyState;
-      },
-    },
-    send(data: unknown) {
-      sent.push(data);
-    },
-    on(type, listener) {
-      if (type === "open") openHandlers.push(listener as () => void);
-      else if (type === "message")
-        messageHandlers.push(listener as (e: { data?: unknown }) => void);
-      else if (type === "close") closeHandlers.push(listener as () => void);
-    },
-    close() {
-      readyState = 3;
-      for (const h of closeHandlers) h();
-    },
-  };
-
-  return {
-    mock,
-    sent,
-    fireOpen() {
-      readyState = 1;
-      for (const h of openHandlers) h();
-    },
-    fireMessage(data: unknown) {
-      for (const h of messageHandlers) h({ data });
-    },
-    fireClose() {
-      readyState = 3;
-      for (const h of closeHandlers) h();
-    },
-  };
-}
-
 function makeMockApi() {
-  const edenWs = makeMockEdenWs();
-  const api: WsSubscribeApi = {
+  const fake = makeFakeWebSocket();
+  const api: WsConnectable = {
     ws: {
-      subscribe: () => edenWs.mock,
+      $ws: () => fake.ws as unknown as WebSocket,
     },
   };
-  return { api, edenWs };
+  return { api, fake };
 }
 
 describe("WS client", () => {
@@ -85,11 +91,11 @@ describe("WS client", () => {
 
   it("welcome frame sets connection to open", () => {
     const deps = makeDeps();
-    const { api, edenWs } = makeMockApi();
+    const { api, fake } = makeMockApi();
     const ws = createWsClient(api, deps);
 
-    edenWs.fireOpen();
-    edenWs.fireMessage({ type: "welcome", version: "1.0.0", cwd: "/tmp" });
+    fake.fireOpen();
+    fake.fireMessage({ type: "welcome", version: "1.0.0", cwd: "/tmp" });
 
     expect(deps.serverStore.store.connection.status).toBe("open");
 
@@ -98,11 +104,11 @@ describe("WS client", () => {
 
   it("dispatches event frames to session store", () => {
     const deps = makeDeps();
-    const { api, edenWs } = makeMockApi();
+    const { api, fake } = makeMockApi();
     const ws = createWsClient(api, deps);
 
-    edenWs.fireOpen();
-    edenWs.fireMessage({
+    fake.fireOpen();
+    fake.fireMessage({
       type: "event",
       sessionId: "s-test",
       event: { type: "agent_start" },
@@ -114,16 +120,16 @@ describe("WS client", () => {
     ws.disconnect();
   });
 
-  it("send sends typed message via Eden WS", () => {
+  it("send serializes typed message via WebSocket", () => {
     const deps = makeDeps();
-    const { api, edenWs } = makeMockApi();
+    const { api, fake } = makeMockApi();
     const ws = createWsClient(api, deps);
 
-    edenWs.fireOpen();
+    fake.fireOpen();
     ws.send({ type: "prompt", sessionId: "s1", message: "hello" });
 
-    expect(edenWs.sent).toHaveLength(1);
-    expect(edenWs.sent[0]).toEqual({
+    expect(fake.sent).toHaveLength(1);
+    expect(JSON.parse(fake.sent[0]!)).toEqual({
       type: "prompt",
       sessionId: "s1",
       message: "hello",
@@ -134,21 +140,21 @@ describe("WS client", () => {
 
   it("send is dropped when socket not open", () => {
     const deps = makeDeps();
-    const { api, edenWs } = makeMockApi();
+    const { api, fake } = makeMockApi();
     const ws = createWsClient(api, deps);
 
     ws.send({ type: "prompt", sessionId: "s1", message: "hello" });
-    expect(edenWs.sent).toHaveLength(0);
+    expect(fake.sent).toHaveLength(0);
 
     ws.disconnect();
   });
 
   it("error frame sets error on current message", () => {
     const deps = makeDeps();
-    const { api, edenWs } = makeMockApi();
+    const { api, fake } = makeMockApi();
     const ws = createWsClient(api, deps);
 
-    edenWs.fireOpen();
+    fake.fireOpen();
 
     const session = deps.sessionRegistry.get("s1");
     session.actions.addMessage({
@@ -161,7 +167,7 @@ describe("WS client", () => {
     });
     session.actions.setCurrentMessage("m1");
 
-    edenWs.fireMessage({ type: "error", sessionId: "s1", error: "boom" });
+    fake.fireMessage({ type: "error", sessionId: "s1", error: "boom" });
 
     expect(session.store.messages.m1!.error).toBe("boom");
     expect(session.store.streaming.phase).toBe("error");
@@ -171,11 +177,11 @@ describe("WS client", () => {
 
   it("push frame routes terminal data", () => {
     const deps = makeDeps();
-    const { api, edenWs } = makeMockApi();
+    const { api, fake } = makeMockApi();
     const ws = createWsClient(api, deps);
 
-    edenWs.fireOpen();
-    edenWs.fireMessage({
+    fake.fireOpen();
+    fake.fireMessage({
       type: "push",
       channel: "terminal.data",
       data: { terminalId: "t1", data: "hello terminal" },
@@ -189,11 +195,11 @@ describe("WS client", () => {
 
   it("push frame routes terminal exit", () => {
     const deps = makeDeps();
-    const { api, edenWs } = makeMockApi();
+    const { api, fake } = makeMockApi();
     const ws = createWsClient(api, deps);
 
-    edenWs.fireOpen();
-    edenWs.fireMessage({
+    fake.fireOpen();
+    fake.fireMessage({
       type: "push",
       channel: "terminal.exit",
       data: { terminalId: "t1", exitCode: 0 },
@@ -207,10 +213,10 @@ describe("WS client", () => {
 
   it("disconnect sets connection to closed", () => {
     const deps = makeDeps();
-    const { api, edenWs } = makeMockApi();
+    const { api, fake } = makeMockApi();
     const ws = createWsClient(api, deps);
 
-    edenWs.fireOpen();
+    fake.fireOpen();
     ws.disconnect();
 
     expect(deps.serverStore.store.connection.status).toBe("closed");
@@ -218,11 +224,11 @@ describe("WS client", () => {
 
   it("isStreaming is set true on agent_start", () => {
     const deps = makeDeps();
-    const { api, edenWs } = makeMockApi();
+    const { api, fake } = makeMockApi();
     const ws = createWsClient(api, deps);
 
-    edenWs.fireOpen();
-    edenWs.fireMessage({
+    fake.fireOpen();
+    fake.fireMessage({
       type: "event",
       sessionId: "s1",
       event: { type: "agent_start" },
@@ -234,18 +240,18 @@ describe("WS client", () => {
 
   it("isStreaming is set false on agent_end", () => {
     const deps = makeDeps();
-    const { api, edenWs } = makeMockApi();
+    const { api, fake } = makeMockApi();
     const ws = createWsClient(api, deps);
 
-    edenWs.fireOpen();
-    edenWs.fireMessage({
+    fake.fireOpen();
+    fake.fireMessage({
       type: "event",
       sessionId: "s1",
       event: { type: "agent_start" },
     });
     expect(isStreaming()).toBe(true);
 
-    edenWs.fireMessage({
+    fake.fireMessage({
       type: "event",
       sessionId: "s1",
       event: { type: "agent_end", messages: [] },
@@ -256,18 +262,18 @@ describe("WS client", () => {
 
   it("isStreaming is set false on abort", () => {
     const deps = makeDeps();
-    const { api, edenWs } = makeMockApi();
+    const { api, fake } = makeMockApi();
     const ws = createWsClient(api, deps);
 
-    edenWs.fireOpen();
-    edenWs.fireMessage({
+    fake.fireOpen();
+    fake.fireMessage({
       type: "event",
       sessionId: "s1",
       event: { type: "agent_start" },
     });
     expect(isStreaming()).toBe(true);
 
-    edenWs.fireMessage({
+    fake.fireMessage({
       type: "event",
       sessionId: "s1",
       event: { type: "abort" },
