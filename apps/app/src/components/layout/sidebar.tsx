@@ -1,3 +1,4 @@
+import { useNavigate } from "@solidjs/router";
 import {
   createEffect,
   createSignal,
@@ -18,6 +19,7 @@ import { ProjectGroup } from "./project-group.tsx";
 
 export default function Sidebar() {
   const { server, actions } = useStore();
+  const navigate = useNavigate();
   const [expandedProjects, setExpandedProjects] = createSignal<Set<string>>(
     new Set()
   );
@@ -73,12 +75,14 @@ export default function Sidebar() {
     if (session) {
       server.actions.setActiveProject(session.projectId);
       server.actions.setActiveSession(sessionId);
+      navigate("/workspace");
     }
   };
 
   const handleNewSession = async (projectId: string) => {
     server.actions.setActiveProject(projectId);
     await actions.createSession(projectId, "default");
+    navigate("/workspace");
   };
 
   const handleAddProject = async () => {
@@ -92,6 +96,7 @@ export default function Sidebar() {
       const data = (await res.json()) as { folderPath: string | null };
       if (data.folderPath) {
         await actions.addProject(data.folderPath);
+        navigate("/workspace");
       }
     } catch {
       // Network error or server not running — fall back to inline input

@@ -1,0 +1,76 @@
+import { render } from "@solidjs/testing-library";
+import { describe, expect, it, vi } from "vitest";
+import { ProjectCard } from "../home/project-card.tsx";
+
+const mockProject = {
+  id: "p1",
+  name: "My Project",
+  cwd: "/home/user/projects/my-project",
+  createdAt: Date.now() - 86_400_000,
+  updatedAt: Date.now() - 3_600_000,
+};
+
+const mockSessions = [
+  {
+    id: "s1",
+    title: "Session 1",
+    projectId: "p1",
+    modelId: "gpt-4",
+    thinkingLevel: "off",
+    createdAt: Date.now() - 7_200_000,
+    updatedAt: Date.now() - 1_800_000,
+  },
+  {
+    id: "s2",
+    title: null,
+    projectId: "p1",
+    modelId: "gpt-4",
+    thinkingLevel: "off",
+    createdAt: Date.now() - 3_600_000,
+    updatedAt: Date.now() - 600_000,
+  },
+];
+
+describe("ProjectCard", () => {
+  it("renders project name", () => {
+    const { getByText } = render(() => (
+      <ProjectCard onOpen={vi.fn()} project={mockProject} sessions={[]} />
+    ));
+    expect(getByText("My Project")).toBeTruthy();
+  });
+
+  it("renders project path", () => {
+    const { getByText } = render(() => (
+      <ProjectCard onOpen={vi.fn()} project={mockProject} sessions={[]} />
+    ));
+    expect(getByText("/home/user/projects/my-project")).toBeTruthy();
+  });
+
+  it("shows 'No sessions yet' when empty", () => {
+    const { getByText } = render(() => (
+      <ProjectCard onOpen={vi.fn()} project={mockProject} sessions={[]} />
+    ));
+    expect(getByText("No sessions yet")).toBeTruthy();
+  });
+
+  it("renders session titles", () => {
+    const { getByText } = render(() => (
+      <ProjectCard
+        onOpen={vi.fn()}
+        project={mockProject}
+        sessions={mockSessions}
+      />
+    ));
+    expect(getByText("Session 1")).toBeTruthy();
+    expect(getByText("Untitled session")).toBeTruthy();
+  });
+
+  it("calls onOpen when clicked", async () => {
+    const onOpen = vi.fn();
+    const { getByText } = render(() => (
+      <ProjectCard onOpen={onOpen} project={mockProject} sessions={[]} />
+    ));
+    getByText("My Project").click();
+    expect(onOpen).toHaveBeenCalled();
+  });
+});

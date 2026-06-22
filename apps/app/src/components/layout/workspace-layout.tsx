@@ -1,4 +1,5 @@
-import { Show } from "solid-js";
+import { useNavigate } from "@solidjs/router";
+import { createEffect, Show } from "solid-js";
 import { useStore } from "~/stores/store-context";
 import { sidebarOpen } from "~/stores/ui-signals";
 import BannerConnection from "./banner-connection";
@@ -8,8 +9,15 @@ import ContentTabBar from "./content-tab-bar";
 import Sidebar from "./sidebar";
 import Toolbar from "./toolbar";
 
-export default function AppShell() {
+export default function WorkspaceLayout() {
   const { server } = useStore();
+  const navigate = useNavigate();
+
+  createEffect(() => {
+    if (!server.store.activeProjectId) {
+      navigate("/");
+    }
+  });
 
   const activeProject = () => {
     const id = server.store.activeProjectId;
