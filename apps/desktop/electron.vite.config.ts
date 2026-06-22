@@ -11,10 +11,12 @@ export default defineConfig({
   },
   preload: {
     build: {
-      // sandbox preload cannot require() npm deps — bundle everything (only `electron` stays external)
+      // sandbox preloads can't use ESM `import` — emit CJS, and bundle everything
+      // (only `electron` stays external; sandboxed require() allows it)
       externalizeDeps: false,
       rollupOptions: {
         input: resolve(import.meta.dirname, "electron/preload/index.ts"),
+        output: { format: "cjs", entryFileNames: "[name].cjs" },
       },
     },
   },

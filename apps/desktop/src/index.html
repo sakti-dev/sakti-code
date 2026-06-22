@@ -37,11 +37,14 @@
     try {
       const { baseUrl } = await window.sakti.server.getConfig();
       const health = await fetch(`${baseUrl}/api/health`).then((r) => r.json());
-      out.textContent = `server: ${baseUrl}\nhealth: ${JSON.stringify(health)}`;
+      const msg = `server: ${baseUrl}\nhealth: ${JSON.stringify(health)}`;
+      out.textContent = msg;
       out.className = "ok";
+      console.log("SMOKE OK " + msg);
     } catch (e) {
       out.textContent = `ERR: ${e?.message ?? e}`;
       out.className = "err";
+      console.log("SMOKE ERR " + (e?.message ?? e));
     }
     </script>
   </body>

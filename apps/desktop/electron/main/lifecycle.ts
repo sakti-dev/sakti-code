@@ -4,8 +4,8 @@ import { BrowserWindow, shell } from "electron";
 
 import { logger } from "./lib/logger";
 
-// electron-vite emits preload at out/preload/index.mjs (ESM project); main runs at out/main/
-const PRELOAD_PATH = join(import.meta.dirname, "../preload/index.mjs");
+// electron-vite emits preload at out/preload/index.cjs (CJS — sandbox can't run ESM); main runs at out/main/
+const PRELOAD_PATH = join(import.meta.dirname, "../preload/index.cjs");
 const PROD_INDEX = join(import.meta.dirname, "../renderer/index.html");
 
 export function createWindow(): BrowserWindow {
