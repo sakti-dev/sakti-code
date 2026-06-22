@@ -4,7 +4,7 @@ import {
   createServer,
   type SaktiServer,
 } from "@sakti-code/server/create-server";
-import { BrowserWindow, Utils } from "electrobun/bun";
+import { BrowserWindow, Screen, Utils } from "electrobun/bun";
 import {
   debouncedSaveWindowState,
   flushWindowState,
@@ -122,7 +122,26 @@ async function bootstrap(): Promise<void> {
   console.log(`Server started on ${sakti.url}`);
 
   // In dev mode, load frontend from Vite; in prod, use the bundled static files
-  const url = isDev ? "http://localhost:5173" : sakti.url;
+  // CEF on Linux doesn't auto-scale on high-DPI displays (especially on
+  // Wayland where GDK only reports integer scales). Compute a sensible CSS
+  // zoom from the display resolution when the OS isn't scaling, and pass
+  // it to the webview (see inline script in index.html).
+  const display = Screen.getPrimaryDisplay();
+  let scale = display.scaleFactor;
+  if (scale <= 1) {
+    const w = display.bounds.width;
+    if (w >= 3840) {
+      scale = 2.0;
+    } else if (w >= 2880) {
+      scale = 1.5;
+    } else if (w >= 2560) {
+      scale = 1.25;
+    }
+  }
+  const scaleParam = scale > 1.01 ? `?dpr=${scale}` : "";
+  const url = isDev
+    ? `http://localhost:5173${scaleParam}`
+    : `${sakti.url}${scaleParam}`;
 
   if (isDev) {
     await waitForReady(url);
