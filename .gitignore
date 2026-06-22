@@ -10,3 +10,5 @@ references/
 *.tsbuildinfo
 .direnv/
 *.db*
+.worktrees/
+.worktrees/
