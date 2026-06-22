@@ -1,17 +1,22 @@
 import { Show } from "solid-js";
-import { connectionStore } from "~/lib/state/connection";
+import {
+  setUpdateAvailable,
+  setUpdateVersion,
+  updateAvailable,
+  updateVersion,
+} from "~/stores/ui-signals";
 
 export default function BannerUpdate() {
-  const updateAvailable = () => connectionStore.updateAvailable();
-  const updateVersion = () => connectionStore.updateVersion();
+  const available = () => updateAvailable();
+  const version = () => updateVersion();
 
   const dismiss = () => {
-    connectionStore.setUpdateAvailable(false);
-    connectionStore.setUpdateVersion(null);
+    setUpdateAvailable(false);
+    setUpdateVersion(null);
   };
 
   return (
-    <Show when={updateAvailable()}>
+    <Show when={available()}>
       <div class="flex items-center gap-3 bg-success/10 px-4 py-2 text-sm text-success">
         <svg
           aria-label="Update"
@@ -26,7 +31,7 @@ export default function BannerUpdate() {
         </svg>
         <span class="flex-1 truncate font-medium">
           Update available
-          <Show when={updateVersion()}> v{updateVersion()}</Show>
+          <Show when={version()}> v{version()}</Show>
         </span>
         <button
           class="shrink-0 rounded bg-success/80 px-3 py-1 font-medium text-white text-xs transition-colors hover:bg-success"

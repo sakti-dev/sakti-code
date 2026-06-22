@@ -12,13 +12,21 @@
         pkgs = nixpkgs.legacyPackages.${system};
 
         runtimeLibs = with pkgs; [
-          # Electrobun Linux native dependencies
-          # (from src/native/linux/nativeWrapper.cpp includes)
-          gtk3
-          webkitgtk_4_1
-          libsoup_3
-          libayatana-appindicator
+          # CEF / Chromium runtime deps (replaces WebKitGTK)
+          nss
+          nspr
+          libxkbcommon
+          libgbm
+          libdrm
+          expat
+          libcap
+          dbus
+          alsa-lib
+          cups
+
+          # X11 libs (shared by CEF + native dialogs)
           libx11
+          libxcb
           libxext
           libxcursor
           libxfixes
@@ -26,15 +34,25 @@
           libxcomposite
           libxdamage
           libxscrnsaver
-          glib-networking
+          libxrender
+          libxtst
+          libxi
+
+          # GTK (still needed for native file dialogs via Utils.openFileDialog)
+          # WebKitGTK + libsoup are required by libNativeWrapper.so even in CEF mode
+          gtk3
+          webkitgtk_4_1
+          libsoup_3
+          libayatana-appindicator
 
           # GTK dialogs (file picker, etc.)
           adwaita-icon-theme
           hicolor-icon-theme
           gsettings-desktop-schemas
 
-          # Runtime / general
+          # Text rendering / general
           glib
+          glib-networking
           cairo
           gdk-pixbuf
           at-spi2-atk

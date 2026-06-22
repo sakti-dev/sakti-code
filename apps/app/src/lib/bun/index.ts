@@ -124,6 +124,11 @@ async function bootstrap(): Promise<void> {
   // In dev mode, load frontend from Vite; in prod, use the bundled static files
   const url = isDev ? "http://localhost:5173" : sakti.url;
 
+  if (isDev) {
+    await waitForReady(url);
+    console.log(`Vite ready at ${url}`);
+  }
+
   const mainWindow = new BrowserWindow({
     title: APP_TITLE,
     url,

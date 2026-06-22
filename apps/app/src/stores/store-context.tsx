@@ -13,6 +13,7 @@ import { TerminalRegistry } from "./terminal-registry.ts";
 import { createWsClient, type WsClient } from "./ws-client.ts";
 
 const API_URL = window.location.origin;
+console.log("[store] API_URL:", API_URL);
 
 export interface StoreContextValue {
   actions: Actions;

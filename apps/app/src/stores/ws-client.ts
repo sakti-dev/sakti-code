@@ -137,10 +137,12 @@ export function createWsClient(
   }
 
   function connect(): void {
+    console.log("[ws] connecting...");
     server.actions.setConnectionStatus("connecting");
     conn = api.ws.subscribe();
 
     conn.on("open", () => {
+      console.log("[ws] connected");
       server.actions.setConnectionStatus("open");
     });
 
@@ -149,6 +151,7 @@ export function createWsClient(
     });
 
     conn.on("close", () => {
+      console.log("[ws] closed");
       server.actions.setConnectionStatus("closed");
       conn = null;
       if (shouldReconnect) {

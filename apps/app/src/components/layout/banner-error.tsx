@@ -1,26 +1,28 @@
 import { createEffect, For, Show } from "solid-js";
-import { connectionStore } from "~/lib/state/connection";
 import { cn } from "~/lib/utils";
+import {
+  healthIssues,
+  lastError,
+  setHealthIssues,
+  setLastError,
+} from "~/stores/ui-signals";
 
 const AUTO_DISMISS_MS = 10_000;
 
 export function BannerError() {
-  const lastError = () => connectionStore.lastError();
+  const lastErr = () => lastError();
 
   createEffect(() => {
-    const error = lastError();
+    const error = lastErr();
     if (!error) {
       return;
     }
-    const timer = setTimeout(
-      () => connectionStore.setError(null),
-      AUTO_DISMISS_MS
-    );
+    const timer = setTimeout(() => setLastError(null), AUTO_DISMISS_MS);
     clearTimeout(timer);
   });
 
   return (
-    <Show when={lastError()}>
+    <Show when={lastErr()}>
       <div class="flex items-center gap-2 bg-error/10 px-4 py-1.5 font-medium text-error text-xs">
         <svg
           aria-label="Error"
@@ -36,10 +38,10 @@ export function BannerError() {
             d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
           />
         </svg>
-        <span class="flex-1 truncate">{lastError()}</span>
+        <span class="flex-1 truncate">{lastErr()}</span>
         <button
           class="shrink-0 rounded p-0.5 transition-colors hover:bg-error/20"
-          onClick={() => connectionStore.setError(null)}
+          onClick={() => setLastError(null)}
           title="Dismiss"
           type="button"
         >
@@ -70,10 +72,10 @@ const HEALTH_ICONS: Record<
 };
 
 export function BannerHealth() {
-  const issues = () => connectionStore.healthIssues();
+  const issues = () => healthIssues();
 
   const handleDismiss = () => {
-    connectionStore.setHealthIssues([]);
+    setHealthIssues([]);
   };
 
   return (

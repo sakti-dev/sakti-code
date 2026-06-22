@@ -15,13 +15,16 @@ export default {
     },
     watchIgnore: ["dist/**"],
     mac: {
-      bundleCEF: false,
+      bundleCEF: true,
+      defaultRenderer: "cef",
     },
     linux: {
-      bundleCEF: false,
+      bundleCEF: true,
+      defaultRenderer: "cef",
     },
     win: {
-      bundleCEF: false,
+      bundleCEF: true,
+      defaultRenderer: "cef",
     },
   },
   runtime: {
