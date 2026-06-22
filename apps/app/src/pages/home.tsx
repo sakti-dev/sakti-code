@@ -1,4 +1,3 @@
-import { useNavigate } from "@solidjs/router";
 import { FiFolder, FiGitBranch } from "solid-icons/fi";
 import {
   createEffect,
@@ -16,6 +15,12 @@ import { SettingsDialog } from "~/components/settings/settings-dialog";
 import { Kbd } from "~/components/ui/kbd";
 import type { Project, SessionMeta } from "~/stores/server-store";
 import { useStore } from "~/stores/store-context";
+import {
+  activeTab,
+  activeTabIndex,
+  openProjectTab,
+  transformTab,
+} from "~/stores/tab-store";
 
 function filterProjects<T extends { name: string }>(
   projects: T[],
@@ -29,8 +34,16 @@ function filterProjects<T extends { name: string }>(
 }
 
 export default function Home() {
-  const navigate = useNavigate();
   const { server, actions } = useStore();
+
+  const openProject = (projectId: string): void => {
+    const tab = activeTab();
+    if (tab && tab.projectId === null) {
+      transformTab(activeTabIndex(), projectId);
+    } else {
+      openProjectTab(projectId);
+    }
+  };
 
   const [projects, setProjects] = createSignal<Project[]>([]);
   const [sessionsMap, setSessionsMap] = createSignal<
@@ -66,8 +79,7 @@ export default function Home() {
   });
 
   const handleOpenProject = (projectId: string) => {
-    server.actions.setActiveProject(projectId);
-    navigate("/workspace");
+    openProject(projectId);
   };
 
   const handleOpenFolder = async () => {
@@ -80,7 +92,7 @@ export default function Home() {
       if (data.folderPath) {
         const project = await actions.addProject(data.folderPath);
         if (project) {
-          navigate("/workspace");
+          openProject(project.id);
         }
       }
     } catch (err) {
@@ -91,7 +103,7 @@ export default function Home() {
   const handleCloneRepo = async (url: string) => {
     const project = await actions.addProject(url);
     if (project) {
-      navigate("/workspace");
+      openProject(project.id);
     }
   };
 

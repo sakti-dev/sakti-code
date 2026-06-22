@@ -1,22 +1,39 @@
-import { useNavigate } from "@solidjs/router";
-import { createEffect, Show } from "solid-js";
+import { createEffect, type JSX, onMount, Show } from "solid-js";
+import Home from "~/pages/home";
 import { useStore } from "~/stores/store-context";
+import { activeTab, filterStaleProjects } from "~/stores/tab-store";
 import { sidebarOpen } from "~/stores/ui-signals";
 import BannerConnection from "./banner-connection";
 import { BannerError, BannerHealth } from "./banner-error";
 import BannerUpdate from "./banner-update";
-import ContentTabBar from "./content-tab-bar";
+import ProjectTabBar from "./project-tab-bar";
 import Sidebar from "./sidebar";
 import Toolbar from "./toolbar";
 
-export default function WorkspaceLayout() {
-  const { server } = useStore();
-  const navigate = useNavigate();
+export default function WorkspaceLayout(): JSX.Element {
+  const { server, actions } = useStore();
 
+  // Sync active tab → server store
   createEffect(() => {
-    if (!server.store.activeProjectId) {
-      navigate("/");
+    const tab = activeTab();
+    if (tab) {
+      server.actions.setActiveProject(tab.projectId);
+      server.actions.setActiveSession(tab.sessionId);
     }
+  });
+
+  // Load projects on mount, then filter stale tab entries
+  createEffect(() => {
+    const projectOrder = server.store.projectOrder;
+    if (projectOrder.length > 0) {
+      const validIds = new Set(projectOrder);
+      filterStaleProjects(validIds);
+    }
+  });
+
+  // Load projects on mount
+  onMount(() => {
+    actions.loadProjects();
   });
 
   const activeProject = () => {
@@ -29,41 +46,48 @@ export default function WorkspaceLayout() {
     return id ? server.store.sessions[id] : undefined;
   };
 
+  const isNewTab = () => activeTab()?.projectId === null;
+
   return (
-    <div class="flex h-screen bg-background text-foreground">
-      <Show when={sidebarOpen()}>
-        <Sidebar />
-      </Show>
-      <div class="flex min-w-0 flex-1">
+    <div class="flex h-screen flex-col bg-background text-foreground">
+      <ProjectTabBar />
+      <div class="flex min-h-0 flex-1">
+        <Show when={sidebarOpen() && !isNewTab()}>
+          <Sidebar />
+        </Show>
         <main class="flex min-w-0 flex-1 flex-col">
-          <BannerConnection />
-          <BannerError />
-          <BannerHealth />
-          <BannerUpdate />
-          <Toolbar />
-          <ContentTabBar />
-          <div class="relative min-h-0 flex-1">
-            <div class="absolute inset-0 flex flex-col overflow-hidden">
-              <Show
-                fallback={
-                  <Show fallback={<NoProjectSelected />} when={activeProject()}>
-                    <NoSessionSelected
-                      projectName={activeProject()?.name ?? ""}
-                    />
-                  </Show>
-                }
-                when={activeSession()}
-              >
-                <div class="flex flex-1 items-center justify-center px-4">
-                  <div class="w-full max-w-md text-center">
-                    <p class="text-muted-foreground text-sm">
-                      Chat view coming soon
-                    </p>
+          <Show fallback={<Home />} when={!isNewTab()}>
+            <BannerConnection />
+            <BannerError />
+            <BannerHealth />
+            <BannerUpdate />
+            <Toolbar />
+            <div class="relative min-h-0 flex-1">
+              <div class="absolute inset-0 flex flex-col overflow-hidden">
+                <Show
+                  fallback={
+                    <Show
+                      fallback={<NoProjectSelected />}
+                      when={activeProject()}
+                    >
+                      <NoSessionSelected
+                        projectName={activeProject()?.name ?? ""}
+                      />
+                    </Show>
+                  }
+                  when={activeSession()}
+                >
+                  <div class="flex flex-1 items-center justify-center px-4">
+                    <div class="w-full max-w-md text-center">
+                      <p class="text-muted-foreground text-sm">
+                        Chat view coming soon
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </Show>
+                </Show>
+              </div>
             </div>
-          </div>
+          </Show>
         </main>
       </div>
     </div>

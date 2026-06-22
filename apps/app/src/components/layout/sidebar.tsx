@@ -1,4 +1,3 @@
-import { useNavigate } from "@solidjs/router";
 import {
   createEffect,
   createSignal,
@@ -12,6 +11,7 @@ import { Separator } from "~/components/ui/separator";
 import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
+import { openProjectTab } from "~/stores/tab-store";
 import { setSidebarOpen, sidebarOpen } from "~/stores/ui-signals";
 import { AddProjectInput } from "./add-project-input.tsx";
 import { ProjectContextMenu } from "./project-context-menu.tsx";
@@ -19,7 +19,6 @@ import { ProjectGroup } from "./project-group.tsx";
 
 export default function Sidebar() {
   const { server, actions } = useStore();
-  const navigate = useNavigate();
   const [expandedProjects, setExpandedProjects] = createSignal<Set<string>>(
     new Set()
   );
@@ -73,33 +72,30 @@ export default function Sidebar() {
   const selectSession = (sessionId: string) => {
     const session = server.store.sessions[sessionId];
     if (session) {
-      server.actions.setActiveProject(session.projectId);
-      server.actions.setActiveSession(sessionId);
-      navigate("/workspace");
+      openProjectTab(session.projectId, sessionId);
     }
   };
 
   const handleNewSession = async (projectId: string) => {
-    server.actions.setActiveProject(projectId);
-    await actions.createSession(projectId, "default");
-    navigate("/workspace");
+    const session = await actions.createSession(projectId, "default");
+    openProjectTab(projectId, session?.id ?? null);
   };
 
   const handleAddProject = async () => {
     try {
       const res = await fetch("/api/dialog/folder");
       if (res.status === 501) {
-        // Native dialog not available — fall back to inline input
         setShowAddInput(true);
         return;
       }
       const data = (await res.json()) as { folderPath: string | null };
       if (data.folderPath) {
-        await actions.addProject(data.folderPath);
-        navigate("/workspace");
+        const project = await actions.addProject(data.folderPath);
+        if (project) {
+          openProjectTab(project.id);
+        }
       }
     } catch {
-      // Network error or server not running — fall back to inline input
       setShowAddInput(true);
     }
   };
@@ -173,31 +169,7 @@ export default function Sidebar() {
           sidebarOpen() ? "translate-x-0" : "-translate-x-full md:hidden"
         )}
       >
-        {/* Header */}
-        <div class="flex h-10 items-center justify-between border-border border-b px-3">
-          <span class="font-semibold text-foreground text-sm">sakti-code</span>
-          <Tooltip content="Close sidebar">
-            <button
-              class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:hidden"
-              onClick={() => setSidebarOpen(false)}
-              type="button"
-            >
-              <svg
-                aria-label="Close sidebar"
-                class="h-3.5 w-3.5"
-                fill="currentColor"
-                role="img"
-                viewBox="0 0 16 16"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <title>Close sidebar</title>
-                <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22z" />
-              </svg>
-            </button>
-          </Tooltip>
-        </div>
-
-        {/* Projects section */}
+        {/* Projects section header */}
         <div class="flex items-center justify-between px-3 py-2">
           <span class="font-medium text-muted-foreground text-xs uppercase tracking-wider">
             Projects
@@ -238,6 +210,25 @@ export default function Sidebar() {
                 >
                   <title>Refresh projects</title>
                   <path d="M13.836 2.477a.75.75 0 0 1 .75.75v3.182a.75.75 0 0 1-.75.75h-3.182a.75.75 0 0 1 0-1.5h1.37A5.508 5.508 0 0 0 8 3.5a5.5 5.5 0 1 0 5.215 3.772.75.75 0 1 1 1.423-.474A7 7 0 1 1 12.12 3.16l1.716.005z" />
+                </svg>
+              </button>
+            </Tooltip>
+            <Tooltip content="Close sidebar">
+              <button
+                class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground md:hidden"
+                onClick={() => setSidebarOpen(false)}
+                type="button"
+              >
+                <svg
+                  aria-label="Close sidebar"
+                  class="h-3.5 w-3.5"
+                  fill="currentColor"
+                  role="img"
+                  viewBox="0 0 16 16"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <title>Close sidebar</title>
+                  <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22z" />
                 </svg>
               </button>
             </Tooltip>

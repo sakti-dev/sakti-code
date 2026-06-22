@@ -3,12 +3,9 @@ import {
   ColorModeScript,
   createLocalStorageManager,
 } from "@kobalte/core";
-import { Route, Router } from "@solidjs/router";
 import "./index.css";
 import { render } from "solid-js/web";
 import WorkspaceLayout from "./components/layout/workspace-layout";
-import Home from "./pages/home";
-import Workspace from "./pages/workspace";
 import { StoreProvider } from "./stores/store-context";
 
 const colorModeStorage = createLocalStorageManager("sakti-theme");
@@ -29,12 +26,7 @@ render(
         storageManager={colorModeStorage}
       >
         <StoreProvider>
-          <Router>
-            <Route component={Home} path="/" />
-            <Route component={WorkspaceLayout} path="/workspace">
-              <Route component={Workspace} path="/" />
-            </Route>
-          </Router>
+          <WorkspaceLayout />
         </StoreProvider>
       </ColorModeProvider>
     </>

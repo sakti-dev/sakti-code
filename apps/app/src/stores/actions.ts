@@ -49,7 +49,6 @@ export function createActions(
       }
       const project = data as Project;
       server.actions.addProject(project);
-      server.actions.setActiveProject(project.id);
       return project;
     },
 
@@ -59,10 +58,6 @@ export function createActions(
         return;
       }
       server.actions.setProjects(data as Project[]);
-      if (data.length > 0 && !server.store.activeProjectId) {
-        const first = data[0] as Project;
-        server.actions.setActiveProject(first.id);
-      }
     },
 
     async loadSessions(projectId) {

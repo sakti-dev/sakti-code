@@ -35,8 +35,8 @@ export interface ServerActions {
   addSession: (session: SessionMeta) => void;
   removeProject: (projectId: string) => void;
   removeSession: (sessionId: string) => void;
-  setActiveProject: (projectId: string) => void;
-  setActiveSession: (sessionId: string) => void;
+  setActiveProject: (projectId: string | null) => void;
+  setActiveSession: (sessionId: string | null) => void;
   setConnectionStatus: (
     status: ServerStoreData["connection"]["status"]
   ) => void;
