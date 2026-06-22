@@ -1,0 +1,32 @@
+{
+  "name": "desktop",
+  "productName": "sakti-code",
+  "version": "0.1.0",
+  "description": "Sakti desktop coding agent (Electron + SolidJS)",
+  "author": "sakti-code",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "package": "electron-vite build && electron-builder",
+    "rebuild": "electron-builder install-app-deps",
+    "spike": "electron spike.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sakti-code/server": "workspace:*"
+  },
+  "devDependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@swc/core": "^1.15.43",
+    "@types/node": "^26.0.0",
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "vite": "^7.3.5"
+  }
+}

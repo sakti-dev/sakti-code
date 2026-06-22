@@ -13,13 +13,14 @@ sakti-code: desktop app (Electrobun + SolidJS) running multiple AI coding agents
 - `packages/db/` — Drizzle schema, repos, `SqliteSessionStorage` (implements `SessionStorage`).
 - `packages/tools/` — coding tools (read, write, edit, bash, grep, find, ls).
 - `apps/server/` — Hono REST server (on `@hono/node-server`). Composes route modules via `buildApp(ctx)`; each module is a `factory.createApp()` with `.basePath()`, mounted via chained `.route()`. Context is injected through a `ctxMiddleware` that sets `c.var.ctx`; routes access it through `getCtx(c)`. Typed client (Hono RPC) is deferred — UI still uses Eden, will be migrated in a follow-up.
+- `apps/desktop/` — Electron desktop shell (electron-vite + electron-builder, **not** Electrobun). Single package: `src/` is the SolidJS/Vite renderer, `electron/{main,preload,shared}` is the shell. Main embeds the Hono server in-process via `createServer({ port: 0, hooks })` (`@sakti-code/server/create-server`) on an ephemeral `127.0.0.1` port; the renderer talks to it over real `fetch` + WS. Preload is sandboxed (`contextBridge` exposes only `window.sakti`). Migrating the renderer off `apps/app` is tracked in a separate change.
 - `openspec/` — change specs + the Pi reference implementation under `references/`.
 
 ## Commands
 
 ```
 bun x ultracite fix                              # format + lint fix + diagnostics (run before committing)
-bun typecheck                                    # typecheck packages + server (tsc --project tsconfig.json)
+bun typecheck                                    # typecheck all packages via turbo (agent, db, tools, server, desktop) — each package owns its tsconfig
 cd apps/server && bun run typecheck              # typecheck server incl. tests (tsc --noEmit with apps/server/tsconfig.json)
 bun test packages/tools/src/                     # tool tests (bun:test)
 bun test packages/agent/src/__tests__/           # agent tests (bun:test)
@@ -27,7 +28,12 @@ cd packages/db && bun test                       # db tests (bun:test, needs bun
 cd apps/server && bun x vitest run               # server tests (vitest; DB-touching tests fail until bun:sqlite→better-sqlite3 re-wire)
 cd apps/server && bun run test                   # server route tests (via preload);
                                                  # bun test directly without the script also works but picks up all tests
-bun dev:server                                   # start Hono server on port 3001 (SAKTI_PORT env override)
+bun dev:server                                   # start Hono server standalone on port 3001 (SAKTI_PORT env override)
+cd apps/desktop && bun dev                        # run the Electron app (electron-vite dev: renderer HMR + embedded server on ephemeral port)
+cd apps/desktop && bun run spike                  # headless Electron spike: verifies node:sqlite + embedded createServer + /api/health
+cd apps/desktop && bun run rebuild                # rebuild native modules (node-pty) against Electron's ABI — run once after install (in nix develop)
+cd apps/desktop && bun run package                # build + package a Linux app into release/ (run in `nix develop`; python3 needed for node-pty)
+nix develop                                       # enter dev shell: Electron runtime libs (libEGL/libGL…) + python3/gnumake for native rebuild
 ```
 
 ## Conventions

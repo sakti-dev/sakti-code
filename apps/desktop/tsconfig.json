@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "types": ["node", "bun"],
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["src", "electron", "electron.vite.config.ts"],
+  "exclude": ["node_modules", "out", "release", "spike.mjs"]
+}

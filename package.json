@@ -10,7 +10,7 @@
   },
   "name": "sakti-code",
   "scripts": {
-    "typecheck": "tsc --project tsconfig.json",
+    "typecheck": "turbo run typecheck",
     "dev": "turbo run dev",
     "start": "turbo run start",
     "hmr": "turbo run hmr",

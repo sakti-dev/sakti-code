@@ -238,7 +238,7 @@ Sakti is a **native desktop coding agent** that runs multiple AI coding agents c
 | Server framework | Elysia (REST + WebSocket) |
 | Database | `bun:sqlite` + Drizzle ORM |
 | LLM provider | `@earendil-works/pi-ai` (no hand-rolled provider code) |
-| Desktop framework | Electrobun |
+| Desktop framework | Electron (electron-vite + electron-builder) |
 | Runtime | Bun |
 | Target platform | Linux (v1) |
 | TypeScript | 6.0.3, strict mode, `exactOptionalPropertyTypes` |

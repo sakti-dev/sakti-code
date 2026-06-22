@@ -1,80 +1,109 @@
 {
-  description = "Electrobun SolidJS app";
+  description = "sakti-code - Electron + SolidJS + Bun dev environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        runtimeLibs = with pkgs; [
-          # CEF / Chromium runtime deps (replaces WebKitGTK)
+        # All runtime dependencies for Electron (proven set from sakti-code-old)
+        electronLibs = with pkgs; [
+          # Core libraries
+          glib
+          gtk3
           nss
           nspr
-          libxkbcommon
-          libgbm
-          libdrm
-          expat
-          libcap
-          dbus
           alsa-lib
-          cups
-
-          # X11 libs (shared by CEF + native dialogs)
-          libx11
-          libxcb
-          libxext
-          libxcursor
-          libxfixes
-          libxrandr
-          libxcomposite
-          libxdamage
-          libxscrnsaver
-          libxrender
-          libxtst
-          libxi
-
-          # GTK (still needed for native file dialogs via Utils.openFileDialog)
-          # WebKitGTK + libsoup are required by libNativeWrapper.so even in CEF mode
-          gtk3
-          webkitgtk_4_1
-          libsoup_3
-          libayatana-appindicator
-
-          # GTK dialogs (file picker, etc.)
-          adwaita-icon-theme
-          hicolor-icon-theme
-          gsettings-desktop-schemas
-
-          # Text rendering / general
-          glib
-          glib-networking
-          cairo
-          gdk-pixbuf
           at-spi2-atk
+          cups
+          dbus
+          expat
+
+          # Graphics/OpenGL (provides libEGL.so.1, libGL.so.1, libGLESv2.so.2)
+          libglvnd
+          libgbm
+          mesa
+          libGL
+          libGLU
+          libdrm
+          libxkbcommon
+
+          # X11
+          xorg.libX11
+          xorg.libXcomposite
+          xorg.libXdamage
+          xorg.libXext
+          xorg.libXfixes
+          xorg.libXrandr
+          xorg.libXcursor
+          xorg.libXi
+          xorg.libXScrnSaver
+          libxcb
+
+          # Fonts and UI
+          cairo
           pango
-          harfbuzz
-          fontconfig
-          freetype
+          liberation_ttf
+
+          # Media
+          ffmpeg
+
+          # System/hardware
+          systemd
+          udev
+
+          # C++ runtime for native modules (better-sqlite3 / node-pty / tokenizers if used)
+          gcc.cc.lib
           stdenv.cc.cc.lib
+          stdenv.cc.cc
+
+          # Additional dependencies for native modules
+          zlib
+          libgcc
         ];
-      in
-      {
+
+        # native module build tools (node-gyp needs python + make to rebuild node-pty)
+        nativeBuildTools = with pkgs; [ python3 gnumake pkg-config ];
+
+      in {
         devShells.default = pkgs.mkShell {
-          packages = with pkgs; [
-            zig_0_13
-          ] ++ runtimeLibs;
+          buildInputs = with pkgs; [
+            git
+          ] ++ nativeBuildTools ++ electronLibs;
 
           shellHook = ''
-            export GDK_BACKEND=x11
-            export GIO_MODULE_DIR="${pkgs.glib-networking}/lib/gio/modules"
-            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath runtimeLibs}:$LD_LIBRARY_PATH"
-            export XDG_DATA_DIRS="${pkgs.adwaita-icon-theme}/share:${pkgs.hicolor-icon-theme}/share:${pkgs.gsettings-desktop-schemas}/share:$XDG_DATA_DIRS"
-            export GSETTINGS_SCHEMA_DIR="${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}/glib-2.0/schemas:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}/glib-2.0/schemas"
+            # Library paths — Electron's bundled Chromium needs these at runtime
+            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath electronLibs}:$LD_LIBRARY_PATH"
+            export PATH="${pkgs.lib.makeBinPath ([ pkgs.git ] ++ nativeBuildTools)}:$PATH"
+
+            # Locale
+            export LOCALE_ARCHIVE="${pkgs.glibcLocales}/lib/locale/locale-archive"
+
+            # Electron configuration
+            export ELECTRON_DISABLE_SECURITY_WARNINGS=true
+            export ELECTRON_OZONE_PLATFORM_HINT=wayland
+
+            # Glibc compatibility (run nix-ld-style for downloaded binaries: electron, native .node)
+            export NIX_LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath electronLibs}"
+            export NIX_LD=${pkgs.glibc}/lib64/ld-linux-x86-64.so.2
+
+            echo ""
+            echo "🚀 sakti-code development environment"
+            echo "   Bun:      $(bun --version)"
+            echo "   Node:     $(node --version 2>/dev/null || echo 'n/a')"
+            echo "   Electron: (via node_modules — run: bun install in apps/desktop)"
+            echo "   Glibc:    ${pkgs.glibc.version}"
+            echo ""
+            echo "Available commands:"
+            echo "   bun dev:server       - Start the Hono server standalone (port 3001)"
+            echo "   cd apps/desktop && bun dev   - Run the Electron app (HMR + embedded server)"
+            echo "   bun typecheck        - TypeScript checks"
+            echo ""
           '';
         };
       }

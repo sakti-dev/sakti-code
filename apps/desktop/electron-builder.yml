@@ -1,0 +1,16 @@
+appId: dev.sakti-code.desktop
+productName: sakti-code
+directories:
+  output: release
+files:
+  - out/**/*
+asar: true
+# Native runtime modules (node-pty from @sakti-code/server) must be unpacked:
+asarUnpack:
+  - "**/node-pty/**"
+  - "**/*.node"
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Development
