@@ -1,12 +1,4 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  spyOn,
-  vi,
-} from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const SESSION_NOT_FOUND_RE = /Session not found/;
 const PROJECT_NOT_FOUND_RE = /Project not found/;
@@ -22,12 +14,12 @@ import {
 import { createMockCtx, createMockStore } from "./helpers.ts";
 
 describe("runPrompt", () => {
-  let runPromptSpy: ReturnType<typeof spyOn>;
+  let runPromptSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     clearRunsForTesting();
     const mod = await import("../runner.ts");
-    runPromptSpy = spyOn(mod, "runPrompt");
+    runPromptSpy = vi.spyOn(mod, "runPrompt");
     runPromptSpy.mockImplementation(
       async (
         _ctx: any,

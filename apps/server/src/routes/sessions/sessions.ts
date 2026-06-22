@@ -1,76 +1,71 @@
+import { tbValidator } from "@hono/typebox-validator";
 import { buildSessionContext } from "@sakti-code/agent";
-import { Elysia, t } from "elysia";
+import { Hono } from "hono";
+import Type from "typebox";
 import { createSessionStorage, getCtx } from "../../context.ts";
 
-const sessionModel = t.Object({
-  id: t.String(),
-  projectId: t.String(),
-  title: t.Union([t.String(), t.Null()]),
-  modelId: t.String(),
-  thinkingLevel: t.String(),
-  createdAt: t.Number(),
-  updatedAt: t.Number(),
-});
-
-export const sessionsRoutes = new Elysia({
-  name: "routes.sessions",
-  prefix: "/sessions",
-})
-  .model({ session: sessionModel })
-  .get(
-    "/",
-    ({ query, store }) =>
-      getCtx(store).repos.sessions.listByProject(query.projectId),
-    {
-      query: t.Object({ projectId: t.String() }),
-      response: t.Array(t.Ref("session")),
+export const sessionsRoutes = new Hono()
+  .basePath("/sessions")
+  .get("/", (c) => {
+    const projectId = c.req.query("projectId");
+    if (!projectId) {
+      return c.json({ error: "Missing projectId" }, 400);
     }
-  )
-  .get(
-    "/:id",
-    ({ params, store }) => {
-      const s = getCtx(store).repos.sessions.findById(params.id);
-      if (!s) {
-        return new Response("Not found", { status: 404 });
-      }
-      return s;
-    },
-    { response: t.Ref("session") }
-  )
+    return c.json(getCtx(c).repos.sessions.listByProject(projectId));
+  })
+  .get("/:id", (c) => {
+    const s = getCtx(c).repos.sessions.findById(c.req.param("id"));
+    if (!s) {
+      return c.json({ error: "Not found" }, 404);
+    }
+    return c.json(s);
+  })
   .post(
     "/",
-    ({ body, store }) =>
-      getCtx(store).repos.sessions.create(body.projectId, body.modelId, {
-        ...(body.title === undefined ? {} : { title: body.title }),
-      }),
-    {
-      body: t.Object({
-        projectId: t.String(),
-        modelId: t.String(),
-        title: t.Optional(t.String()),
-      }),
-      response: t.Ref("session"),
+    tbValidator(
+      "json",
+      Type.Object({
+        projectId: Type.String(),
+        modelId: Type.String(),
+        title: Type.Optional(Type.String()),
+      })
+    ),
+    async (c) => {
+      const body = c.req.valid("json");
+      const created = await getCtx(c).repos.sessions.create(
+        body.projectId,
+        body.modelId,
+        {
+          ...(body.title === undefined ? {} : { title: body.title }),
+        }
+      );
+      return c.json(created);
     }
   )
   .patch(
     "/:id",
-    ({ params, body, store }) =>
-      getCtx(store).repos.sessions.update(params.id, body),
-    {
-      body: t.Partial(
-        t.Object({
-          title: t.Union([t.String(), t.Null()]),
-          modelId: t.String(),
-          thinkingLevel: t.String(),
+    tbValidator(
+      "json",
+      Type.Partial(
+        Type.Object({
+          title: Type.Union([Type.String(), Type.Null()]),
+          modelId: Type.String(),
+          thinkingLevel: Type.String(),
         })
-      ),
-      response: t.Ref("session"),
-    }
+      )
+    ),
+    async (c) =>
+      c.json(
+        await getCtx(c).repos.sessions.update(
+          c.req.param("id"),
+          c.req.valid("json")
+        )
+      )
   )
-  .get("/:id/messages", async ({ params, store }) => {
-    const ctx = getCtx(store);
-    const storage = createSessionStorage(ctx, params.id);
+  .get("/:id/messages", async (c) => {
+    const ctx = getCtx(c);
+    const storage = createSessionStorage(ctx, c.req.param("id"));
     const entries = await storage.getPathToRoot(await storage.getLeafId());
     const { messages } = buildSessionContext(entries);
-    return messages;
+    return c.json(messages);
   });

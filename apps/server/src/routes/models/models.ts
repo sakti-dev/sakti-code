@@ -1,30 +1,24 @@
-import { Elysia, t } from "elysia";
+import { tbValidator } from "@hono/typebox-validator";
+import { Hono } from "hono";
+import Type from "typebox";
 import { getCtx } from "../../context.ts";
 
-const modelConfigModel = t.Object({
-  id: t.String(),
-  projectId: t.Union([t.String(), t.Null()]),
-  provider: t.String(),
-  modelId: t.String(),
-  thinkingLevel: t.String(),
-  createdAt: t.Number(),
-  updatedAt: t.Number(),
-});
-
-export const modelConfigRoutes = new Elysia({
-  name: "routes.modelConfigs",
-  prefix: "/models",
-})
-  .model({ modelConfig: modelConfigModel })
-  .get("/config", ({ store }) => getCtx(store).repos.models.getGlobalDefault())
-  .get("/config/:projectId", ({ params, store }) =>
-    getCtx(store).repos.models.getForProject(params.projectId)
+export const modelConfigRoutes = new Hono()
+  .basePath("/models")
+  .get("/config", (c) => c.json(getCtx(c).repos.models.getGlobalDefault()))
+  .get("/config/:projectId", (c) =>
+    c.json(getCtx(c).repos.models.getForProject(c.req.param("projectId")))
   )
-  .post("/config", ({ body, store }) => getCtx(store).repos.models.set(body), {
-    body: t.Object({
-      provider: t.String(),
-      modelId: t.String(),
-      thinkingLevel: t.Optional(t.String()),
-      projectId: t.Optional(t.String()),
-    }),
-  });
+  .post(
+    "/config",
+    tbValidator(
+      "json",
+      Type.Object({
+        provider: Type.String(),
+        modelId: Type.String(),
+        thinkingLevel: Type.Optional(Type.String()),
+        projectId: Type.Optional(Type.String()),
+      })
+    ),
+    async (c) => c.json(await getCtx(c).repos.models.set(c.req.valid("json")))
+  );

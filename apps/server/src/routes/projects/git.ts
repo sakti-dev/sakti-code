@@ -1,5 +1,6 @@
-import { Elysia, t } from "elysia";
-import { getCtx, type ServerContext } from "../../context.ts";
+import { type Context, Hono } from "hono";
+import { getCtx } from "../../context.ts";
+import { spawnPiped } from "../../lib/spawn.ts";
 
 const GIT_TIMEOUT_MS = 10_000;
 
@@ -38,13 +39,7 @@ function parseNumstat(output: string): NumstatEntry[] {
 
 function trySpawnGit(args: string[], cwd: string) {
   try {
-    return Bun.spawn(["git", ...args], {
-      cwd,
-      env: { ...process.env },
-      stdin: "pipe",
-      stdout: "pipe",
-      stderr: "pipe",
-    });
+    return spawnPiped("git", args, { cwd, env: { ...process.env } });
   } catch {
     return null;
   }
@@ -61,32 +56,36 @@ export async function runGit(
   cwd: string,
   timeoutMs: number = GIT_TIMEOUT_MS
 ): Promise<GitResult> {
-  const proc = trySpawnGit(args, cwd);
-  if (proc === null) {
+  const spawned = trySpawnGit(args, cwd);
+  if (spawned === null) {
     return { kind: "spawn-error", output: "git not found" };
   }
+  const { child, done } = spawned;
 
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
-    proc.kill();
+    child.kill();
   }, timeoutMs);
 
-  const [code, stdout, stderr] = await Promise.all([
-    proc.exited,
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-  ]);
+  const result = await done;
   clearTimeout(timer);
 
+  // Missing-binary case: Node emits an async ENOENT 'error' event.
+  if (result.spawnError) {
+    return { kind: "spawn-error", output: "git not found" };
+  }
   if (timedOut) {
     return { kind: "timeout", output: "git timed out" };
   }
-
-  if (code === 0) {
-    return { kind: "ok", code, output: stdout };
+  if (result.exitCode === 0) {
+    return { kind: "ok", code: result.exitCode, output: result.stdout };
   }
-  return { kind: "ok", code, output: `${stdout}${stderr}`.trim() };
+  return {
+    kind: "ok",
+    code: result.exitCode ?? 0,
+    output: `${result.stdout}${result.stderr}`.trim(),
+  };
 }
 
 async function runGitTimed(
@@ -103,15 +102,15 @@ async function hasHead(cwd: string): Promise<boolean> {
   return result.kind === "ok" && result.code === 0;
 }
 
-function handleResult(result: GitResult): Response | string {
+function handleResult(c: Context, result: GitResult) {
   if (result.kind === "spawn-error") {
-    return new Response(result.output, { status: 500 });
+    return c.text(result.output, 500);
   }
-  return result.output;
+  return c.text(result.output);
 }
 
-async function findProject(store: { ctx?: ServerContext }, id: string) {
-  const ctx = getCtx(store);
+async function findProject(c: Context, id: string) {
+  const ctx = getCtx(c);
   const project = await ctx.repos.projects.findById(id);
   if (!project) {
     return null;
@@ -119,97 +118,84 @@ async function findProject(store: { ctx?: ServerContext }, id: string) {
   return project;
 }
 
-export const gitRoutes = new Elysia({ name: "routes.git", prefix: "/projects" })
-  .get("/:id/git/status", async ({ params, store }) => {
-    const project = await findProject(store, params.id);
+export const gitRoutes = new Hono()
+  .basePath("/projects")
+  .get("/:id/git/status", async (c) => {
+    const project = await findProject(c, c.req.param("id"));
     if (!project) {
-      return new Response("Not found", { status: 404 });
+      return c.text("Not found", 404);
     }
-    return handleResult(await runGit(["status", "--short"], project.cwd));
+    return handleResult(c, await runGit(["status", "--short"], project.cwd));
   })
-  .get("/:id/git/branch", async ({ params, store }) => {
-    const project = await findProject(store, params.id);
+  .get("/:id/git/branch", async (c) => {
+    const project = await findProject(c, c.req.param("id"));
     if (!project) {
-      return new Response("Not found", { status: 404 });
+      return c.text("Not found", 404);
     }
     return handleResult(
+      c,
       await runGit(["branch", "--show-current"], project.cwd)
     );
   })
-  .get(
-    "/:id/git/diff",
-    async ({ params, query, store }) => {
-      const project = await findProject(store, params.id);
-      if (!project) {
-        return new Response("Not found", { status: 404 });
-      }
-      const args: string[] = ["diff"];
-      if (query.staged) {
-        args.push("--cached");
-      }
-      if (query.path) {
-        args.push("--", query.path);
-      }
-      return handleResult(await runGit(args, project.cwd));
-    },
-    {
-      query: t.Object({
-        path: t.Optional(t.String()),
-        staged: t.Optional(t.Boolean()),
-      }),
+  .get("/:id/git/diff", async (c) => {
+    const project = await findProject(c, c.req.param("id"));
+    if (!project) {
+      return c.text("Not found", 404);
     }
-  )
-  .get(
-    "/:id/git/log",
-    async ({ params, query, store }) => {
-      const project = await findProject(store, params.id);
-      if (!project) {
-        return new Response("Not found", { status: 404 });
-      }
-      const limit = query.limit ?? 20;
-      return handleResult(
-        await runGit(["log", "-n", String(limit), "--oneline"], project.cwd)
-      );
-    },
-    {
-      query: t.Object({
-        limit: t.Optional(t.Integer({ minimum: 0 })),
-      }),
+    const stagedParam = c.req.query("staged");
+    const pathParam = c.req.query("path");
+    const args: string[] = ["diff"];
+    if (stagedParam !== undefined && stagedParam !== "false") {
+      args.push("--cached");
     }
-  )
-  .get(
-    "/:id/git/turn-diff",
-    async ({ params, query, store }) => {
-      const project = await findProject(store, params.id);
-      if (!project) {
-        return new Response("Not found", { status: 404 });
-      }
-
-      const cwd = project.cwd;
-      const hasHeadCommit = await hasHead(cwd);
-      if (!hasHeadCommit) {
-        return Response.json({ files: [], diff: "", cwd });
-      }
-
-      const diffArgs: string[] = ["diff", "HEAD"];
-      const numstatArgs: string[] = ["diff", "HEAD", "--numstat"];
-      if (query.files && query.files.length > 0) {
-        diffArgs.push("--", ...query.files);
-        numstatArgs.push("--", ...query.files);
-      }
-
-      const [diff, numstat] = await Promise.all([
-        runGitTimed(diffArgs, cwd),
-        runGitTimed(numstatArgs, cwd),
-      ]);
-
-      const files = parseNumstat(numstat);
-
-      return Response.json({ files, diff, cwd });
-    },
-    {
-      query: t.Object({
-        files: t.Optional(t.Array(t.String())),
-      }),
+    if (pathParam) {
+      args.push("--", pathParam);
     }
-  );
+    return handleResult(c, await runGit(args, project.cwd));
+  })
+  .get("/:id/git/log", async (c) => {
+    const project = await findProject(c, c.req.param("id"));
+    if (!project) {
+      return c.text("Not found", 404);
+    }
+    const rawLimit = c.req.query("limit") ?? "20";
+    const limit = Number.parseInt(rawLimit, 10);
+    if (!Number.isFinite(limit) || limit < 0) {
+      return c.text("Invalid limit", 400);
+    }
+    return handleResult(
+      c,
+      await runGit(["log", "-n", String(limit), "--oneline"], project.cwd)
+    );
+  })
+  .get("/:id/git/turn-diff", async (c) => {
+    const project = await findProject(c, c.req.param("id"));
+    if (!project) {
+      return c.text("Not found", 404);
+    }
+
+    const cwd = project.cwd;
+    const hasHeadCommit = await hasHead(cwd);
+    if (!hasHeadCommit) {
+      return c.json({ files: [], diff: "", cwd });
+    }
+
+    const filesParam = c.req.queries("files[]");
+    const queryFiles = filesParam ? filesParam.filter(Boolean) : [];
+
+    const diffArgs: string[] = ["diff", "HEAD"];
+    const numstatArgs: string[] = ["diff", "HEAD", "--numstat"];
+    if (queryFiles.length > 0) {
+      diffArgs.push("--", ...queryFiles);
+      numstatArgs.push("--", ...queryFiles);
+    }
+
+    const [diff, numstat] = await Promise.all([
+      runGitTimed(diffArgs, cwd),
+      runGitTimed(numstatArgs, cwd),
+    ]);
+
+    const files = parseNumstat(numstat);
+
+    return c.json({ files, diff, cwd });
+  });

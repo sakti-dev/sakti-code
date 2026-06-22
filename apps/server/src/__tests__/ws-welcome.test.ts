@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 
 describe("WS welcome push", () => {
   it("createWelcomeFrame returns valid welcome frame", async () => {

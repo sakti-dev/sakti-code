@@ -1,10 +1,12 @@
-import { Elysia, t } from "elysia";
+import { tbValidator } from "@hono/typebox-validator";
+import { Hono } from "hono";
+import Type from "typebox";
 import { getCtx } from "../../context.ts";
 
 const WORKSPACE_KEY = "workspace:sessions";
 
-const sessionPathBody = t.Object({
-  sessionPath: t.String(),
+const sessionPathBody = Type.Object({
+  sessionPath: Type.String(),
 });
 
 function parsePaths(raw: string | null): string[] {
@@ -19,34 +21,29 @@ function parsePaths(raw: string | null): string[] {
   }
 }
 
-export const workspaceRoutes = new Elysia({
-  name: "routes.workspace",
-  prefix: "/workspace",
-})
-  .get("/sessions", ({ store }) => {
-    const ctx = getCtx(store);
+export const workspaceRoutes = new Hono()
+  .basePath("/workspace")
+  .get("/sessions", (c) => {
+    const ctx = getCtx(c);
     const raw = ctx.repos.settings.get(WORKSPACE_KEY);
-    return Response.json(parsePaths(raw));
+    return c.json(parsePaths(raw));
   })
-  .post(
-    "/sessions",
-    async ({ body, store }) => {
-      const ctx = getCtx(store);
-      const raw = ctx.repos.settings.get(WORKSPACE_KEY);
-      const paths = parsePaths(raw);
-      if (!paths.includes(body.sessionPath)) {
-        paths.push(body.sessionPath);
-        await ctx.repos.settings.set(WORKSPACE_KEY, JSON.stringify(paths));
-      }
-      return Response.json(paths);
-    },
-    { body: sessionPathBody }
-  )
-  .delete("/sessions/:path", async ({ params, store }) => {
-    const ctx = getCtx(store);
-    const decodedPath = decodeURIComponent(params.path);
+  .post("/sessions", tbValidator("json", sessionPathBody), async (c) => {
+    const ctx = getCtx(c);
+    const body = c.req.valid("json");
+    const raw = ctx.repos.settings.get(WORKSPACE_KEY);
+    const paths = parsePaths(raw);
+    if (!paths.includes(body.sessionPath)) {
+      paths.push(body.sessionPath);
+      await ctx.repos.settings.set(WORKSPACE_KEY, JSON.stringify(paths));
+    }
+    return c.json(paths);
+  })
+  .delete("/sessions/:path", async (c) => {
+    const ctx = getCtx(c);
+    const decodedPath = decodeURIComponent(c.req.param("path"));
     const raw = ctx.repos.settings.get(WORKSPACE_KEY);
     const paths = parsePaths(raw).filter((p: string) => p !== decodedPath);
     await ctx.repos.settings.set(WORKSPACE_KEY, JSON.stringify(paths));
-    return Response.json(paths);
+    return c.json(paths);
   });

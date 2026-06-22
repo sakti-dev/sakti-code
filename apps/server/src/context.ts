@@ -6,7 +6,9 @@ import {
   SettingsRepo,
   SqliteSessionStorage,
 } from "@sakti-code/db";
+import type { Context } from "hono";
 import type { ServerHooks } from "./create-server.ts";
+import { factory } from "./factory.ts";
 import type { ApiKeyStore } from "./lib/api-key-store.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
 
@@ -55,10 +57,19 @@ export function createSessionStorage(
   });
 }
 
-/** Extract typed ServerContext from Elysia store. */
-export function getCtx(store: { ctx?: ServerContext }): ServerContext {
-  if (!store.ctx) {
+/** Middleware that injects ServerContext into c.var.ctx for all downstream routes. */
+export function ctxMiddleware(ctx: ServerContext) {
+  return factory.createMiddleware(async (c, next) => {
+    c.set("ctx", ctx);
+    await next();
+  });
+}
+
+/** Read the injected ServerContext from a Hono context. */
+export function getCtx(c: Context): ServerContext {
+  const ctx = c.get("ctx") as ServerContext | undefined;
+  if (!ctx) {
     throw new Error("ServerContext not injected");
   }
-  return store.ctx;
+  return ctx;
 }

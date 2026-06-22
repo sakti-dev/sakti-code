@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import {
   registerTestConnection,
   unregisterTestConnection,
@@ -8,18 +8,20 @@ import { makeApp } from "./helpers.ts";
 
 const CONN_ID = "term-test-conn";
 
+type TestApp = Awaited<ReturnType<typeof makeApp>>["app"];
+
 // Helper: create a terminal against a registered test connection.
 // Terminals push their data/exit frames over WS keyed by connectionId, so a
 // connection MUST be open before a terminal can be created.
 async function createTerminal(
-  app: { handle: (req: Request) => Promise<Response> },
-  bodyOverrides: Record<string, unknown> = {}
+  app: TestApp,
+  bodyChanges: Record<string, unknown> = {}
 ) {
-  return app.handle(
+  return app.request(
     new Request("http://localhost/api/workspace/terminals", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ connectionId: CONN_ID, ...bodyOverrides }),
+      body: JSON.stringify({ connectionId: CONN_ID, ...bodyChanges }),
     })
   );
 }
@@ -54,7 +56,7 @@ describe("terminal routes", () => {
   it("C3: POST /api/workspace/terminals without a valid connectionId is rejected (400)", async () => {
     const { app } = await makeApp([terminalRoutes]);
     // No connection registered for this id → cannot push → 400.
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/workspace/terminals", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -71,7 +73,7 @@ describe("terminal routes", () => {
       const createRes = await createTerminal(app, { cwd: "/tmp" });
       const { terminalId } = await createRes.json();
 
-      const res = await app.handle(
+      const res = await app.request(
         new Request(
           `http://localhost/api/workspace/terminals/${terminalId}/write`,
           {
@@ -87,7 +89,7 @@ describe("terminal routes", () => {
 
   it("POST /api/workspace/terminals/nope/write returns 404", async () => {
     const { app } = await makeApp([terminalRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/workspace/terminals/nope/write", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -108,7 +110,7 @@ describe("terminal routes", () => {
       });
       const { terminalId } = await createRes.json();
 
-      const res = await app.handle(
+      const res = await app.request(
         new Request(
           `http://localhost/api/workspace/terminals/${terminalId}/resize`,
           {
@@ -129,7 +131,7 @@ describe("terminal routes", () => {
       const createRes = await createTerminal(app, { cwd: "/tmp" });
       const { terminalId } = await createRes.json();
 
-      const res = await app.handle(
+      const res = await app.request(
         new Request(`http://localhost/api/workspace/terminals/${terminalId}`, {
           method: "DELETE",
         })
@@ -140,7 +142,7 @@ describe("terminal routes", () => {
 
   it("DELETE /api/workspace/terminals/nope returns 404", async () => {
     const { app } = await makeApp([terminalRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/workspace/terminals/nope", {
         method: "DELETE",
       })

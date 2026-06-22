@@ -1,5 +1,5 @@
 import type { AgentHarnessEvent, SessionStorage } from "@sakti-code/agent";
-import { t } from "elysia";
+import Type from "typebox";
 import type { ServerContext } from "../context.ts";
 import {
   abortRun,
@@ -74,56 +74,56 @@ export interface WsHandle {
 // These mirror the TS interfaces above. The TS interfaces stay as
 // the compile-time source of truth; TypeBox is the runtime layer.
 
-export const wsBodySchema = t.Union([
-  t.Object({
-    type: t.Literal("prompt"),
-    sessionId: t.String(),
-    message: t.String(),
+export const wsBodySchema = Type.Union([
+  Type.Object({
+    type: Type.Literal("prompt"),
+    sessionId: Type.String(),
+    message: Type.String(),
   }),
-  t.Object({
-    type: t.Literal("abort"),
-    sessionId: t.String(),
+  Type.Object({
+    type: Type.Literal("abort"),
+    sessionId: Type.String(),
   }),
-  t.Object({
-    type: t.Literal("steer"),
-    sessionId: t.String(),
-    message: t.String(),
+  Type.Object({
+    type: Type.Literal("steer"),
+    sessionId: Type.String(),
+    message: Type.String(),
   }),
-  t.Object({
-    type: t.Literal("followUp"),
-    sessionId: t.String(),
-    message: t.String(),
+  Type.Object({
+    type: Type.Literal("followUp"),
+    sessionId: Type.String(),
+    message: Type.String(),
   }),
 ]);
 
-export const wsResponseSchema = t.Union([
-  t.Object({
-    type: t.Literal("welcome"),
-    version: t.String(),
-    cwd: t.String(),
+export const wsResponseSchema = Type.Union([
+  Type.Object({
+    type: Type.Literal("welcome"),
+    version: Type.String(),
+    cwd: Type.String(),
   }),
-  t.Object({
-    type: t.Literal("event"),
-    sessionId: t.String(),
-    event: t.Unknown(),
+  Type.Object({
+    type: Type.Literal("event"),
+    sessionId: Type.String(),
+    event: Type.Unknown(),
   }),
-  t.Object({
-    type: t.Literal("error"),
-    sessionId: t.String(),
-    error: t.String(),
+  Type.Object({
+    type: Type.Literal("error"),
+    sessionId: Type.String(),
+    error: Type.String(),
   }),
-  t.Object({
-    type: t.Literal("push"),
-    channel: t.Literal("terminal.data"),
-    data: t.Object({ terminalId: t.String(), data: t.String() }),
+  Type.Object({
+    type: Type.Literal("push"),
+    channel: Type.Literal("terminal.data"),
+    data: Type.Object({ terminalId: Type.String(), data: Type.String() }),
   }),
-  t.Object({
-    type: t.Literal("push"),
-    channel: t.Literal("terminal.exit"),
-    data: t.Object({
-      terminalId: t.String(),
-      exitCode: t.Number(),
-      signal: t.Optional(t.Union([t.Number(), t.String()])),
+  Type.Object({
+    type: Type.Literal("push"),
+    channel: Type.Literal("terminal.exit"),
+    data: Type.Object({
+      terminalId: Type.String(),
+      exitCode: Type.Number(),
+      signal: Type.Optional(Type.Union([Type.Number(), Type.String()])),
     }),
   }),
 ]);

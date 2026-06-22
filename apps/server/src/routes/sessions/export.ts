@@ -1,5 +1,5 @@
 import { buildSessionContext } from "@sakti-code/agent";
-import { Elysia } from "elysia";
+import { Hono } from "hono";
 import { createSessionStorage, getCtx } from "../../context.ts";
 
 function renderHtmlExport(
@@ -126,37 +126,35 @@ function flattenContent(content: unknown): string {
   return "";
 }
 
-export const exportRoutes = new Elysia({
-  name: "routes.export",
-  prefix: "/sessions",
-}).get("/:id/export-html", async ({ params, store }) => {
-  const ctx = getCtx(store);
-  const session = ctx.repos.sessions.findById(params.id);
-  if (!session) {
-    return new Response("Not found", { status: 404 });
-  }
+export const exportRoutes = new Hono()
+  .basePath("/sessions")
+  .get("/:id/export-html", async (c) => {
+    const ctx = getCtx(c);
+    const id = c.req.param("id");
+    const session = ctx.repos.sessions.findById(id);
+    if (!session) {
+      return c.json({ error: "Not found" }, 404);
+    }
 
-  const project = ctx.repos.projects.findById(session.projectId);
-  const projectName = project?.name ?? "Unknown";
+    const project = ctx.repos.projects.findById(session.projectId);
+    const projectName = project?.name ?? "Unknown";
 
-  const storage = createSessionStorage(ctx, params.id);
-  const entries = await storage.getPathToRoot(await storage.getLeafId());
-  const { messages: agentMessages } = buildSessionContext(entries);
+    const storage = createSessionStorage(ctx, id);
+    const entries = await storage.getPathToRoot(await storage.getLeafId());
+    const { messages: agentMessages } = buildSessionContext(entries);
 
-  const messagesData = agentMessages.map((m) => ({
-    role: m.role,
-    content: flattenContent((m as { content: unknown }).content),
-    createdAt: (m as { timestamp: number }).timestamp ?? session.createdAt,
-  }));
+    const messagesData = agentMessages.map((m) => ({
+      role: m.role,
+      content: flattenContent((m as { content: unknown }).content),
+      createdAt: (m as { timestamp: number }).timestamp ?? session.createdAt,
+    }));
 
-  const html = renderHtmlExport(
-    session.title,
-    projectName,
-    session.createdAt,
-    messagesData
-  );
+    const html = renderHtmlExport(
+      session.title,
+      projectName,
+      session.createdAt,
+      messagesData
+    );
 
-  return new Response(html, {
-    headers: { "content-type": "text/html; charset=utf-8" },
+    return c.html(html);
   });
-});

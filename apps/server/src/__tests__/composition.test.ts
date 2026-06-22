@@ -1,10 +1,9 @@
-import { Database } from "bun:sqlite";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { initDatabase } from "@sakti-code/db";
-import { Elysia } from "elysia";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "../app.ts";
 import { createContext } from "../context.ts";
 import { createApiKeyStore } from "../lib/api-key-store.ts";
@@ -49,12 +48,12 @@ describe("route composition", () => {
     });
     const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
 
-    const statsRes = await app.handle(
+    const statsRes = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/stats`)
     );
     expect(statsRes.status).toBe(200);
 
-    const compactRes = await app.handle(
+    const compactRes = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
         method: "POST",
       })
@@ -65,12 +64,12 @@ describe("route composition", () => {
   it("compaction and stats routes both return 404 for unknown sessions", async () => {
     const { app } = await makeApp([compactionRoutes, statsRoutes]);
 
-    const statsRes = await app.handle(
+    const statsRes = await app.request(
       new Request("http://localhost/api/sessions/nope/stats")
     );
     expect(statsRes.status).toBe(404);
 
-    const compactRes = await app.handle(
+    const compactRes = await app.request(
       new Request("http://localhost/api/sessions/nope/compact", {
         method: "POST",
       })
@@ -79,21 +78,19 @@ describe("route composition", () => {
   });
 
   it("default app serves feature routes in production", async () => {
-    const db = await initDatabase(new Database(":memory:"));
+    const db = await initDatabase(new DatabaseSync(":memory:"));
     const ctx = createContext(
       db,
       {},
       createApiKeyStore(`/tmp/sakti-test-keys-${Date.now()}.json`)
     );
-    const server = new Elysia().state("ctx", ctx).use(buildApp(ctx)).compile();
+    const server = buildApp(ctx);
 
-    const settingsRes = await server.handle(
-      new Request("http://localhost/api/settings")
-    );
+    const settingsRes = await server.request("http://localhost/api/settings");
     expect(settingsRes.status).toBe(200);
 
     const body = await (
-      await server.handle(new Request("http://localhost/api/settings"))
+      await server.request("http://localhost/api/settings")
     ).json();
     expect(typeof body).toBe("object");
     expect(body).not.toBeNull();

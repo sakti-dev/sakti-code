@@ -1,8 +1,8 @@
-import { afterEach, beforeAll, describe, expect, it } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SqliteSessionStorage } from "@sakti-code/db";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   fauxAssistantMessage,
   teardownFauxLlm,
@@ -66,7 +66,7 @@ describe("compaction route", () => {
 
     await seedEntries(ctx.db, session.id, 200);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
         method: "POST",
       })
@@ -80,7 +80,7 @@ describe("compaction route", () => {
 
   it("POST /api/sessions/nope/compact returns 404", async () => {
     const { app } = await makeApp([compactionRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/sessions/nope/compact", {
         method: "POST",
       })
@@ -93,7 +93,7 @@ describe("compaction route", () => {
     const project = await ctx.repos.projects.create("p2", tempDir);
     const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
         method: "POST",
       })
@@ -121,7 +121,7 @@ describe("compaction route", () => {
     const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
     await seedEntries(ctx.db, session.id, 200);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
         method: "POST",
       })
@@ -143,7 +143,7 @@ describe("compaction route", () => {
     const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
     await seedEntries(ctx.db, session.id, 50);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
         method: "POST",
       })
@@ -155,7 +155,7 @@ describe("compaction route", () => {
 
   it("compactionRoutes is composable via makeApp", async () => {
     const built = await makeApp([compactionRoutes]);
-    const res = await built.app.handle(
+    const res = await built.app.request(
       new Request("http://localhost/api/sessions/nope/compact", {
         method: "POST",
       })

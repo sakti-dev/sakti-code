@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { sessionSettingsRoutes } from "../routes/sessions/session-settings.ts";
 import { makeApp } from "./helpers.ts";
 
@@ -17,7 +17,7 @@ describe("session settings routes", () => {
     const project = await ctx.repos.projects.create("ss", "/tmp/ss");
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/settings`)
     );
     expect(res.status).toBe(200);
@@ -29,7 +29,7 @@ describe("session settings routes", () => {
     const project = await ctx.repos.projects.create("ss-rt", "/tmp/ss-rt");
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
 
-    const patch = await app.handle(
+    const patch = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/settings`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
@@ -38,7 +38,7 @@ describe("session settings routes", () => {
     );
     expect(patch.status).toBe(204);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/settings`)
     );
     expect(await res.json()).toEqual({ ...DEFAULTS, auto_compaction: true });
@@ -49,7 +49,7 @@ describe("session settings routes", () => {
     const project = await ctx.repos.projects.create("ss-num", "/tmp/ss-num");
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
 
-    await app.handle(
+    await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/settings`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
@@ -60,7 +60,7 @@ describe("session settings routes", () => {
       })
     );
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/settings`)
     );
     expect(await res.json()).toEqual({
@@ -72,7 +72,7 @@ describe("session settings routes", () => {
 
   it("GET unknown session returns 404", async () => {
     const { app } = await makeApp([sessionSettingsRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/sessions/nope/settings")
     );
     expect(res.status).toBe(404);
@@ -80,7 +80,7 @@ describe("session settings routes", () => {
 
   it("PATCH unknown session returns 404", async () => {
     const { app } = await makeApp([sessionSettingsRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/sessions/nope/settings", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
@@ -95,7 +95,7 @@ describe("session settings routes", () => {
     const project = await ctx.repos.projects.create("ss-kv", "/tmp/ss-kv");
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
 
-    await app.handle(
+    await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/settings`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },

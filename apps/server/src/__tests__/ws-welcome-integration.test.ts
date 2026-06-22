@@ -1,6 +1,6 @@
-import { Database } from "bun:sqlite";
-import { describe, expect, it } from "bun:test";
+import { DatabaseSync } from "node:sqlite";
 import { initDatabase } from "@sakti-code/db";
+import { describe, expect, it } from "vitest";
 import pkg from "../../package.json" with { type: "json" };
 import { buildWsApp, createWelcomeFrame, SERVER_VERSION } from "../agent/ws.ts";
 import { createContext } from "../context.ts";
@@ -21,7 +21,7 @@ describe("WS welcome push", () => {
   });
 
   it("buildWsApp compiles to a valid handler with ws configured", async () => {
-    const db = await initDatabase(new Database(":memory:"));
+    const db = await initDatabase(new DatabaseSync(":memory:"));
     const ctx = createContext(
       db,
       {},

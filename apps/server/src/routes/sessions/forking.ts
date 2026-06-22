@@ -1,5 +1,5 @@
 import { buildSessionContext } from "@sakti-code/agent";
-import { Elysia } from "elysia";
+import { Hono } from "hono";
 import { createSessionStorage, getCtx } from "../../context.ts";
 
 function flattenContent(content: unknown): string {
@@ -15,15 +15,14 @@ function flattenContent(content: unknown): string {
   return "";
 }
 
-export const forkingRoutes = new Elysia({
-  name: "routes.forking",
-  prefix: "/sessions",
-})
-  .post("/:id/fork", async ({ params, store }) => {
-    const ctx = getCtx(store);
-    const session = ctx.repos.sessions.findById(params.id);
+export const forkingRoutes = new Hono()
+  .basePath("/sessions")
+  .post("/:id/fork", async (c) => {
+    const ctx = getCtx(c);
+    const id = c.req.param("id");
+    const session = ctx.repos.sessions.findById(id);
     if (!session) {
-      return new Response("Not found", { status: 404 });
+      return c.json({ error: "Not found" }, 404);
     }
 
     const baseTitle = session.title?.startsWith("Fork of ")
@@ -37,29 +36,30 @@ export const forkingRoutes = new Elysia({
       {
         title: forkedTitle,
         thinkingLevel: session.thinkingLevel,
-        parentSessionId: params.id,
+        parentSessionId: id,
       }
     );
 
     const forkedStorage = createSessionStorage(ctx, newSession.id);
 
     try {
-      await forkedStorage.forkFrom(params.id);
+      await forkedStorage.forkFrom(id);
     } catch (err) {
       await ctx.repos.sessions.delete(newSession.id);
       throw err;
     }
 
-    return Response.json(newSession);
+    return c.json(newSession);
   })
-  .get("/:id/fork-messages", async ({ params, store }) => {
-    const ctx = getCtx(store);
-    const session = ctx.repos.sessions.findById(params.id);
+  .get("/:id/fork-messages", async (c) => {
+    const ctx = getCtx(c);
+    const id = c.req.param("id");
+    const session = ctx.repos.sessions.findById(id);
     if (!session) {
-      return new Response("Not found", { status: 404 });
+      return c.json({ error: "Not found" }, 404);
     }
 
-    const storage = createSessionStorage(ctx, params.id);
+    const storage = createSessionStorage(ctx, id);
     const entries = await storage.getPathToRoot(await storage.getLeafId());
     const { messages } = buildSessionContext(entries);
 
@@ -73,5 +73,5 @@ export const forkingRoutes = new Elysia({
         ),
       }));
 
-    return Response.json(forkable);
+    return c.json(forkable);
   });

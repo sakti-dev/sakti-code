@@ -1,23 +1,24 @@
-import { Elysia, t } from "elysia";
+import { tbValidator } from "@hono/typebox-validator";
+import { Hono } from "hono";
+import Type from "typebox";
 import { getCtx } from "../context.ts";
 
-export const settingsRoutes = new Elysia({
-  name: "routes.settings",
-  prefix: "/settings",
-})
-  .get("/", ({ store }) => getCtx(store).repos.settings.getAll())
-  .get("/:key", ({ params, store }) => {
-    const v = getCtx(store).repos.settings.get(params.key);
+export const settingsRoutes = new Hono()
+  .basePath("/settings")
+  .get("/", (c) => c.json(getCtx(c).repos.settings.getAll()))
+  .get("/:key", (c) => {
+    const v = getCtx(c).repos.settings.get(c.req.param("key"));
     if (v === null) {
-      return new Response("Not found", { status: 404 });
+      return c.json({ error: "Not found" }, 404);
     }
-    return v;
+    return c.text(v);
   })
   .put(
     "/:key",
-    async ({ params, body, store }) => {
-      await getCtx(store).repos.settings.set(params.key, body.value);
-      return new Response(null, { status: 204 });
-    },
-    { body: t.Object({ value: t.String() }) }
+    tbValidator("json", Type.Object({ value: Type.String() })),
+    async (c) => {
+      const body = c.req.valid("json");
+      await getCtx(c).repos.settings.set(c.req.param("key"), body.value);
+      return c.body(null, 204);
+    }
   );

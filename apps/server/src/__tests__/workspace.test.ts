@@ -1,11 +1,11 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { workspaceRoutes } from "../routes/workspace/workspace.ts";
 import { makeApp } from "./helpers.ts";
 
 describe("workspace routes", () => {
   it("returns empty array initially", async () => {
     const { app } = await makeApp([workspaceRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/workspace/sessions")
     );
     expect(res.status).toBe(200);
@@ -15,7 +15,7 @@ describe("workspace routes", () => {
 
   it("POST adds a session path and returns updated array", async () => {
     const { app } = await makeApp([workspaceRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/workspace/sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -29,14 +29,14 @@ describe("workspace routes", () => {
 
   it("duplicate POST is idempotent", async () => {
     const { app } = await makeApp([workspaceRoutes]);
-    await app.handle(
+    await app.request(
       new Request("http://localhost/api/workspace/sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ sessionPath: "/tmp/dup" }),
       })
     );
-    const res2 = await app.handle(
+    const res2 = await app.request(
       new Request("http://localhost/api/workspace/sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -52,7 +52,7 @@ describe("workspace routes", () => {
   it("DELETE removes a session path", async () => {
     const { app } = await makeApp([workspaceRoutes]);
     // Add first
-    await app.handle(
+    await app.request(
       new Request("http://localhost/api/workspace/sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -60,7 +60,7 @@ describe("workspace routes", () => {
       })
     );
     // Delete
-    const res = await app.handle(
+    const res = await app.request(
       new Request(
         `http://localhost/api/workspace/sessions/${encodeURIComponent("/tmp/to-delete")}`,
         { method: "DELETE" }
@@ -73,7 +73,7 @@ describe("workspace routes", () => {
 
   it("DELETE on non-existent path is idempotent", async () => {
     const { app } = await makeApp([workspaceRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request(
         `http://localhost/api/workspace/sessions/${encodeURIComponent("/tmp/nope")}`,
         { method: "DELETE" }

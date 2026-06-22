@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { sessionsRoutes } from "../routes/sessions/sessions.ts";
 import { seedEntries } from "./entry-helpers.ts";
 import { makeApp } from "./helpers.ts";
@@ -14,7 +14,7 @@ describe("GET /api/sessions/:id/messages", () => {
       { role: "assistant", content: "Hi!" },
     ]);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/messages`)
     );
     expect(res.status).toBe(200);
@@ -29,7 +29,7 @@ describe("GET /api/sessions/:id/messages", () => {
     const project = await ctx.repos.projects.create("empty", "/tmp/empty");
     const session = await ctx.repos.sessions.create(project.id, "test-model");
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/messages`)
     );
     expect(res.status).toBe(200);

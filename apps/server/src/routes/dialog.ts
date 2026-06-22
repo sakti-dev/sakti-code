@@ -1,17 +1,13 @@
-import { Elysia } from "elysia";
+import { Hono } from "hono";
 import { getCtx } from "../context.ts";
 
-export const dialogRoutes = new Elysia({
-  name: "routes.dialog",
-  prefix: "/dialog",
-}).get("/folder", async ({ store }) => {
-  const ctx = getCtx(store);
-  if (!ctx.hooks.onOpenFolderDialog) {
-    return new Response(
-      JSON.stringify({ error: "Native folder dialog not available" }),
-      { status: 501, headers: { "Content-Type": "application/json" } }
-    );
-  }
-  const folderPath = await ctx.hooks.onOpenFolderDialog();
-  return { folderPath };
-});
+export const dialogRoutes = new Hono()
+  .basePath("/dialog")
+  .get("/folder", async (c) => {
+    const ctx = getCtx(c);
+    if (!ctx.hooks.onOpenFolderDialog) {
+      return c.json({ error: "Native folder dialog not available" }, 501);
+    }
+    const folderPath = await ctx.hooks.onOpenFolderDialog();
+    return c.json({ folderPath });
+  });

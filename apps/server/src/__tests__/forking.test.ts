@@ -1,6 +1,6 @@
-import { describe, expect, it } from "bun:test";
 import { buildSessionContext } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
+import { describe, expect, it } from "vitest";
 import { exportRoutes } from "../routes/sessions/export.ts";
 import { forkingRoutes } from "../routes/sessions/forking.ts";
 import { seedEntries } from "./entry-helpers.ts";
@@ -17,7 +17,7 @@ describe("fork routes", () => {
       { role: "assistant", content: "Hi!" },
     ]);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/fork`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -44,7 +44,7 @@ describe("fork routes", () => {
 
   it("POST /api/sessions/nope/fork returns 404", async () => {
     const { app } = await makeApp([forkingRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/sessions/nope/fork", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -71,7 +71,7 @@ describe("fork-messages route", () => {
       },
     ]);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/fork-messages`)
     );
     expect(res.status).toBe(200);
@@ -91,7 +91,7 @@ describe("fork-messages route", () => {
     );
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/fork-messages`)
     );
     expect(res.status).toBe(200);
@@ -100,7 +100,7 @@ describe("fork-messages route", () => {
 
   it("unknown session returns 404", async () => {
     const { app } = await makeApp([forkingRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/sessions/nope/fork-messages")
     );
     expect(res.status).toBe(404);
@@ -123,11 +123,13 @@ describe("export route", () => {
       { role: "assistant", content: "World" },
     ]);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/export-html`)
     );
     expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
+    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
+      "text/html; charset=utf-8"
+    );
     const html = await res.text();
     expect(html).toContain("ExportMe");
     expect(html).toContain("Hello");
@@ -143,7 +145,7 @@ describe("export route", () => {
     );
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/export-html`)
     );
     expect(res.status).toBe(200);
@@ -153,7 +155,7 @@ describe("export route", () => {
 
   it("unknown session returns 404", async () => {
     const { app } = await makeApp([exportRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/sessions/nope/export-html")
     );
     expect(res.status).toBe(404);
@@ -168,7 +170,7 @@ describe("export route", () => {
       { role: "assistant", content: "hi" },
     ]);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/export-html`)
     );
     const html = await res.text();
@@ -183,7 +185,7 @@ describe("export route", () => {
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
     const created = new Date(session.createdAt).toISOString().slice(0, 10);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/export-html`)
     );
     const html = await res.text();

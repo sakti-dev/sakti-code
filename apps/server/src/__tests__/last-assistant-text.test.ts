@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { lastAssistantTextRoutes } from "../routes/sessions/last-assistant-text.ts";
 import { seedEntries } from "./entry-helpers.ts";
 import { makeApp } from "./helpers.ts";
@@ -14,7 +14,7 @@ describe("last assistant text route", () => {
       { role: "assistant", content: "Hi there!" },
     ]);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(
         `http://localhost/api/sessions/${session.id}/last-assistant-text`
       )
@@ -34,7 +34,7 @@ describe("last assistant text route", () => {
 
     await seedEntries(ctx.db, session.id, [{ role: "user", content: "Hello" }]);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(
         `http://localhost/api/sessions/${session.id}/last-assistant-text`
       )
@@ -46,7 +46,7 @@ describe("last assistant text route", () => {
 
   it("unknown session returns 404", async () => {
     const { app } = await makeApp([lastAssistantTextRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/sessions/nope/last-assistant-text")
     );
     expect(res.status).toBe(404);

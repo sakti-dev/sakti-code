@@ -1,11 +1,14 @@
 import {
+  access,
   appendFile as appendFileAsync,
   lstat as lstatAsync,
   mkdir as mkdirAsync,
   mkdtemp as mkdtempAsync,
   readdir as readdirAsync,
+  readFile,
   realpath as realpathAsync,
   rm as rmAsync,
+  writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -18,6 +21,7 @@ import type {
   Result,
 } from "@sakti-code/agent";
 import { ExecutionError, err, FileError, ok } from "@sakti-code/agent";
+import { spawnPiped } from "../lib/spawn.ts";
 
 function mapFsErrorCode(code: string | undefined): FileErrorCode {
   switch (code) {
@@ -168,7 +172,7 @@ export class BunExecutionEnv implements ExecutionEnv {
         dirPath,
         `${options?.prefix ?? ""}${Date.now()}${options?.suffix ?? ""}`
       );
-      await Bun.write(filePath, new Uint8Array(0));
+      await writeFile(filePath, new Uint8Array(0));
       return ok(filePath);
     } catch (e: unknown) {
       return err(toFileError(e));
@@ -184,8 +188,12 @@ export class BunExecutionEnv implements ExecutionEnv {
     }
     try {
       const fullPath = resolve(this._cwd, path);
-      const exists = await Bun.file(fullPath).exists();
-      return ok(exists);
+      try {
+        await access(fullPath);
+        return ok(true);
+      } catch {
+        return ok(false);
+      }
     } catch (e: unknown) {
       return err(toFileError(e, resolve(this._cwd, path)));
     }
@@ -251,7 +259,7 @@ export class BunExecutionEnv implements ExecutionEnv {
     }
     try {
       const fullPath = resolve(this._cwd, path);
-      const data = await Bun.file(fullPath).arrayBuffer();
+      const data = await readFile(fullPath);
       return ok(new Uint8Array(data));
     } catch (e: unknown) {
       return err(toFileError(e, resolve(this._cwd, path)));
@@ -267,7 +275,7 @@ export class BunExecutionEnv implements ExecutionEnv {
     }
     try {
       const fullPath = resolve(this._cwd, path);
-      const data = await Bun.file(fullPath).text();
+      const data = await readFile(fullPath, "utf8");
       return ok(data);
     } catch (e: unknown) {
       return err(toFileError(e, resolve(this._cwd, path)));
@@ -322,7 +330,7 @@ export class BunExecutionEnv implements ExecutionEnv {
     }
     try {
       const fullPath = resolve(this._cwd, path);
-      await Bun.write(fullPath, content);
+      await writeFile(fullPath, content);
       return ok(undefined);
     } catch (e: unknown) {
       return err(toFileError(e, resolve(this._cwd, path)));
@@ -341,13 +349,11 @@ export class BunExecutionEnv implements ExecutionEnv {
 
     const timeoutMs = options?.timeout ? options.timeout * 1000 : undefined;
 
-    let proc: ReturnType<typeof Bun.spawn>;
+    let spawned: ReturnType<typeof spawnPiped>;
     try {
-      proc = Bun.spawn(["/bin/sh", "-c", command], {
+      spawned = spawnPiped("/bin/sh", ["-c", command], {
         cwd: options?.cwd ?? this._cwd,
-        stdout: "pipe",
-        stderr: "pipe",
-        ...(options?.env ? { env: { ...process.env, ...options.env } } : {}),
+        ...(options?.env ? { env: options.env } : {}),
       });
     } catch (e: unknown) {
       return err(
@@ -358,6 +364,7 @@ export class BunExecutionEnv implements ExecutionEnv {
         )
       );
     }
+    const { child: proc, done } = spawned;
 
     let timedOut = false;
     const timeoutId = timeoutMs
@@ -371,22 +378,25 @@ export class BunExecutionEnv implements ExecutionEnv {
     options?.abortSignal?.addEventListener("abort", onAbort);
 
     try {
-      const [stdout, stderr, exitCode] = await Promise.all([
-        new Response(proc.stdout as ReadableStream<Uint8Array>).text(),
-        new Response(proc.stderr as ReadableStream<Uint8Array>).text(),
-        proc.exited,
-      ]);
+      const result = await done;
 
+      if (result.spawnError) {
+        return err(new ExecutionError("shell_unavailable", result.spawnError));
+      }
       if (options?.abortSignal?.aborted) {
         return err(new ExecutionError("aborted", "Command aborted"));
       }
       if (timedOut) {
         return err(
-          new ExecutionError("timeout", stderr || "Command timed out")
+          new ExecutionError("timeout", result.stderr || "Command timed out")
         );
       }
 
-      return ok({ stdout, stderr, exitCode });
+      return ok({
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode ?? 0,
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       const cause = e instanceof Error ? e : undefined;

@@ -1,9 +1,11 @@
+import { upgradeWebSocket } from "@hono/node-server";
 import { SqliteSessionStorage } from "@sakti-code/db";
-import { Elysia } from "elysia";
+import { Hono } from "hono";
+import { Compile } from "typebox/compile";
 import pkg from "../../package.json" with { type: "json" };
 import type { ServerContext } from "../context.ts";
 import type { WsHandle } from "./ws-handler.ts";
-import { handleMessage, wsBodySchema, wsResponseSchema } from "./ws-handler.ts";
+import { handleMessage, wsBodySchema } from "./ws-handler.ts";
 
 export const SERVER_VERSION: string = pkg.version ?? "0.0.0";
 
@@ -104,39 +106,81 @@ function wireTerminalCallbacks(ctx: ServerContext) {
   };
 }
 
-export function buildWsApp(ctx: ServerContext) {
+// Compiled once: validates inbound WS frames against wsBodySchema.
+const bodyChecker = Compile(wsBodySchema);
+
+/** Wraps a Hono WSContext (send takes string) as a WsHandle that accepts object frames. */
+function asWsHandle(ws: { send: (data: string) => void }): WsHandle {
+  return {
+    send: (data: unknown) => ws.send(JSON.stringify(data)),
+  };
+}
+
+export function buildWsApp(ctx: ServerContext): Hono {
   let terminalCallbacksWired = false;
 
-  return new Elysia({ name: "ws" }).ws("/ws", {
-    body: wsBodySchema,
-    response: wsResponseSchema,
-    open(ws) {
-      const wsId = getWsId(ws);
-      wsConnections.set(wsId, ws);
-      if (!terminalCallbacksWired) {
-        wireTerminalCallbacks(ctx);
-        terminalCallbacksWired = true;
-      }
-      ws.send(createWelcomeFrame());
-    },
-    close(ws) {
-      const wsId = getWsId(ws);
-      clearStorageForConnection(wsId);
-      wsConnections.delete(wsId);
-      ctx.terminalManager.closeByConnection(wsId);
-    },
-    message(ws, msg) {
-      const wsId = getWsId(ws);
-      if (!msg.sessionId) {
-        ws.send({
-          error: "Missing sessionId",
-          sessionId: "",
-          type: "error",
-        });
-        return;
-      }
-      const storage = getOrCreateStorage(wsId, ctx, msg.sessionId);
-      handleMessage(ctx, storage, ws, msg);
-    },
-  });
+  return new Hono().get(
+    "/ws",
+    upgradeWebSocket(() => ({
+      onOpen(_evt, ws) {
+        const wsId = getWsId(ws);
+        const handle = asWsHandle(ws);
+        wsConnections.set(wsId, handle);
+        if (!terminalCallbacksWired) {
+          wireTerminalCallbacks(ctx);
+          terminalCallbacksWired = true;
+        }
+        handle.send(createWelcomeFrame());
+      },
+      onMessage(evt, ws) {
+        const wsId = getWsId(ws);
+        const handle = asWsHandle(ws);
+        let msg: unknown;
+        if (typeof evt.data !== "string") {
+          handle.send({
+            error: "Text frames only",
+            sessionId: "",
+            type: "error",
+          });
+          return;
+        }
+        try {
+          msg = JSON.parse(evt.data);
+        } catch {
+          handle.send({ error: "Invalid JSON", sessionId: "", type: "error" });
+          return;
+        }
+        if (!bodyChecker.Check(msg)) {
+          handle.send({
+            error: "Invalid message shape",
+            sessionId: "",
+            type: "error",
+          });
+          return;
+        }
+        const parsed = msg as { sessionId?: string };
+        if (!parsed.sessionId) {
+          handle.send({
+            error: "Missing sessionId",
+            sessionId: "",
+            type: "error",
+          });
+          return;
+        }
+        const storage = getOrCreateStorage(wsId, ctx, parsed.sessionId);
+        handleMessage(
+          ctx,
+          storage,
+          handle,
+          msg as Parameters<typeof handleMessage>[3]
+        );
+      },
+      onClose(_evt, ws) {
+        const wsId = getWsId(ws);
+        clearStorageForConnection(wsId);
+        wsConnections.delete(wsId);
+        ctx.terminalManager.closeByConnection(wsId);
+      },
+    }))
+  );
 }

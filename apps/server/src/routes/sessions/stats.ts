@@ -1,6 +1,6 @@
 import type { AgentMessage } from "@sakti-code/agent";
 import { buildSessionContext } from "@sakti-code/agent";
-import { Elysia, t } from "elysia";
+import { Hono } from "hono";
 import { createSessionStorage, getCtx } from "../../context.ts";
 
 function deriveStats(messages: AgentMessage[]): {
@@ -37,39 +37,24 @@ function deriveStats(messages: AgentMessage[]): {
   };
 }
 
-export const statsRoutes = new Elysia({
-  name: "routes.stats",
-  prefix: "/sessions",
-}).get(
-  "/:id/stats",
-  async ({ params, store }): Promise<Response> => {
-    const ctx = getCtx(store);
-    const session = ctx.repos.sessions.findById(params.id);
+export const statsRoutes = new Hono()
+  .basePath("/sessions")
+  .get("/:id/stats", async (c) => {
+    const ctx = getCtx(c);
+    const id = c.req.param("id");
+    const session = ctx.repos.sessions.findById(id);
     if (!session) {
-      return new Response("Not found", { status: 404 });
+      return c.json({ error: "Not found" }, 404);
     }
 
-    const storage = createSessionStorage(ctx, params.id);
+    const storage = createSessionStorage(ctx, id);
     const entries = await storage.getPathToRoot(await storage.getLeafId());
     const { messages } = buildSessionContext(entries);
     const stats = deriveStats(messages);
 
-    return Response.json({
+    return c.json({
       ...stats,
       createdAt: session.createdAt,
       durationMs: Date.now() - session.createdAt,
     });
-  },
-  {
-    response: t.Object({
-      activeMessageCount: t.Number(),
-      totalInputTokens: t.Number(),
-      totalOutputTokens: t.Number(),
-      totalCacheReadTokens: t.Number(),
-      totalCacheWriteTokens: t.Number(),
-      totalCostUsd: t.Number(),
-      createdAt: t.Number(),
-      durationMs: t.Number(),
-    }),
-  }
-);
+  });

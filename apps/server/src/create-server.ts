@@ -1,13 +1,13 @@
-import { Database } from "bun:sqlite";
-import { statSync } from "node:fs";
-import { join, resolve, sep } from "node:path";
+import { readFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { serve, type WebSocketServerLike } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { initDatabase } from "@sakti-code/db";
-import { Elysia } from "elysia";
+import { WebSocketServer } from "ws";
 import { buildApp } from "./app.ts";
 import { createContext } from "./context.ts";
 import { createApiKeyStore } from "./lib/api-key-store.ts";
-
-const LEADING_SLASHES = /^\/+/;
 
 export interface ServerHooks {
   onOpenFolderDialog?: () => Promise<string | null>;
@@ -25,31 +25,8 @@ export interface CreateServerOptions {
 export interface SaktiServer {
   hostname: string;
   port: number;
-  stop(): void;
+  stop(): Promise<void>;
   url: string;
-}
-
-function isFile(path: string): boolean {
-  try {
-    return statSync(path).isFile();
-  } catch {
-    return false;
-  }
-}
-
-function serveStaticFile(staticDir: string, pathname: string): Response {
-  const staticRoot = resolve(staticDir);
-  const clean = pathname.replace(LEADING_SLASHES, "");
-  const resolved = clean
-    ? resolve(join(staticRoot, clean))
-    : join(staticRoot, "index.html");
-
-  if (resolved !== staticRoot && !resolved.startsWith(`${staticRoot}${sep}`)) {
-    return new Response(Bun.file(join(staticRoot, "index.html")));
-  }
-
-  const filePath = isFile(resolved) ? resolved : join(staticRoot, "index.html");
-  return new Response(Bun.file(filePath));
 }
 
 export async function createServer(
@@ -64,35 +41,48 @@ export async function createServer(
     migrationsFolder,
   } = options ?? {};
 
-  const db = await initDatabase(new Database(dbPath), {
+  const db = await initDatabase(new DatabaseSync(dbPath), {
     ...(migrationsFolder === undefined ? {} : { migrationsFolder }),
   });
   const apiKeys = createApiKeyStore(process.env.SAKTI_KEYS_PATH ?? undefined);
   apiKeys.loadIntoEnv();
   const ctx = createContext(db, hooks, apiKeys);
-  const dir: string | null = staticDir;
 
-  const instance = new Elysia()
-    .state("ctx", ctx)
-    .use(buildApp(ctx))
-    .get("/*", ({ request }) => {
-      if (!dir) {
-        return new Response("Not Found", { status: 404 });
+  const app = buildApp(ctx);
+
+  if (staticDir) {
+    const staticRoot = resolve(staticDir);
+    const indexHtml = join(staticRoot, "index.html");
+    app.use("/*", serveStatic({ root: staticRoot }));
+    // SPA fallback: unknown routes serve index.html.
+    app.get("*", async (c) => {
+      const html = await readFile(indexHtml, "utf8");
+      return c.html(html);
+    });
+  }
+
+  const wss = new WebSocketServer({ noServer: true });
+
+  return await new Promise<SaktiServer>((resolveReady) => {
+    const server = serve(
+      {
+        fetch: app.fetch,
+        hostname,
+        port,
+        websocket: { server: wss as unknown as WebSocketServerLike },
+      },
+      (info) => {
+        // Fires once the OS has bound the socket (port:0 now resolved).
+        resolveReady({
+          hostname: info.address,
+          port: info.port,
+          url: `http://${info.address}:${info.port}`,
+          stop: () =>
+            new Promise<void>((resolveStop) => {
+              server.close(() => resolveStop());
+            }),
+        });
       }
-      return serveStaticFile(dir, new URL(request.url).pathname);
-    })
-    .compile()
-    .listen({ port, hostname });
-
-  const actualPort = instance.server?.port ?? port;
-  const actualHostname = instance.server?.hostname ?? hostname;
-
-  return {
-    port: actualPort,
-    hostname: actualHostname,
-    url: `http://${actualHostname}:${actualPort}`,
-    stop: () => {
-      instance.server?.stop();
-    },
-  };
+    );
+  });
 }

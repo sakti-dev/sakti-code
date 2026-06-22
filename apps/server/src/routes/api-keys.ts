@@ -1,4 +1,6 @@
-import { Elysia, t } from "elysia";
+import { tbValidator } from "@hono/typebox-validator";
+import { Hono } from "hono";
+import Type from "typebox";
 import {
   type ApiKeyInfo,
   type ApiKeyStore,
@@ -6,60 +8,30 @@ import {
 } from "../lib/api-key-store.ts";
 
 export function createApiKeyRoutes(store: ApiKeyStore) {
-  return new Elysia({
-    name: "routes.api-keys",
-    prefix: "/api/api-keys",
-  })
-    .get("/", () => store.list(), {
-      response: t.Array(
-        t.Object({
-          provider: t.String(),
-          envVar: t.String(),
-          hasKey: t.Boolean(),
-          maskedKey: t.Union([t.String(), t.Null()]),
-        })
-      ),
-    })
-    .get("/providers", () => [...COMMON_PROVIDERS], {
-      response: t.Array(t.String()),
-    })
+  return new Hono()
+    .basePath("/api/api-keys")
+    .get("/", (c) => c.json(store.list()))
+    .get("/providers", (c) => c.json([...COMMON_PROVIDERS]))
     .put(
       "/:provider",
-      ({ params, body, set }) => {
-        const ok = store.set(params.provider, body.key);
+      tbValidator("json", Type.Object({ key: Type.String() })),
+      (c) => {
+        const provider = c.req.param("provider");
+        const body = c.req.valid("json");
+        const ok = store.set(provider, body.key);
         if (!ok) {
-          set.status = 400;
-          return { error: "Unknown provider or empty key" };
+          return c.json({ error: "Unknown provider or empty key" }, 400);
         }
-        set.status = 204;
-        return null;
-      },
-      {
-        body: t.Object({ key: t.String() }),
-        response: {
-          204: t.Null(),
-          400: t.Object({ error: t.String() }),
-        },
+        return c.body(null, 204);
       }
     )
-    .delete(
-      "/:provider",
-      ({ params, set }) => {
-        const ok = store.delete(params.provider);
-        if (!ok) {
-          set.status = 404;
-          return { error: "Key not found" };
-        }
-        set.status = 204;
-        return null;
-      },
-      {
-        response: {
-          204: t.Null(),
-          404: t.Object({ error: t.String() }),
-        },
+    .delete("/:provider", (c) => {
+      const ok = store.delete(c.req.param("provider"));
+      if (!ok) {
+        return c.json({ error: "Key not found" }, 404);
       }
-    );
+      return c.body(null, 204);
+    });
 }
 
 export type ApiKeyRoutes = ReturnType<typeof createApiKeyRoutes>;

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "bun:test";
 import { getModels, getProviders } from "@earendil-works/pi-ai";
+import { describe, expect, it } from "vitest";
 
 const { availableModelsRoutes } = await import(
   "../routes/models/available-models.ts"
@@ -7,7 +7,7 @@ const { availableModelsRoutes } = await import(
 
 describe("available-models routes", () => {
   it("lists providers", async () => {
-    const res = await availableModelsRoutes.handle(
+    const res = await availableModelsRoutes.request(
       new Request("http://localhost:3001/models/available")
     );
     expect(res.status).toBe(200);
@@ -18,7 +18,7 @@ describe("available-models routes", () => {
   });
 
   it("lists models for a provider", async () => {
-    const res = await availableModelsRoutes.handle(
+    const res = await availableModelsRoutes.request(
       new Request("http://localhost:3001/models/available/openai")
     );
     expect(res.status).toBe(200);

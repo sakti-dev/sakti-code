@@ -4,7 +4,7 @@ sakti-code: desktop app (Electrobun + SolidJS) running multiple AI coding agents
 
 - **SolidJS** is a hard requirement (not React).
 - LLM via **`@earendil-works/pi-ai`** — don't hand-roll provider code.
-- App server: **Elysia** (REST + WebSocket, not all-WS).
+- App server: **Hono** on `@hono/node-server` (REST + WebSocket, not all-WS).
 - DB: **bun:sqlite + Drizzle ORM** (not libsql). DB is owned by the app/server, never by the agent package.
 
 ## Monorepo layout
@@ -12,7 +12,7 @@ sakti-code: desktop app (Electrobun + SolidJS) running multiple AI coding agents
 - `packages/agent/` — pure agent loop, types, compaction. **No persistence, no DB.** Talks to storage via the `SessionStore` interface.
 - `packages/db/` — Drizzle schema, repos, `SqliteSessionStorage` (implements `SessionStorage`).
 - `packages/tools/` — coding tools (read, write, edit, bash, grep, find, ls).
-- `apps/server/` — Elysia REST server. Composes route modules via `buildServer()`. State injected via `.state("ctx", createContext(db))`; routes access it through `getCtx(store)`. Eden treaty client at `apps/app/src/lib/api.ts`.
+- `apps/server/` — Hono REST server (on `@hono/node-server`). Composes route modules via `buildApp(ctx)`; each module is a `factory.createApp()` with `.basePath()`, mounted via chained `.route()`. Context is injected through a `ctxMiddleware` that sets `c.var.ctx`; routes access it through `getCtx(c)`. Typed client (Hono RPC) is deferred — UI still uses Eden, will be migrated in a follow-up.
 - `openspec/` — change specs + the Pi reference implementation under `references/`.
 
 ## Commands
@@ -24,15 +24,16 @@ cd apps/server && bun run typecheck              # typecheck server incl. tests 
 bun test packages/tools/src/                     # tool tests (bun:test)
 bun test packages/agent/src/__tests__/           # agent tests (bun:test)
 cd packages/db && bun test                       # db tests (bun:test, needs bun:sqlite)
+cd apps/server && bun x vitest run               # server tests (vitest; DB-touching tests fail until bun:sqlite→better-sqlite3 re-wire)
 cd apps/server && bun run test                   # server route tests (via preload);
                                                  # bun test directly without the script also works but picks up all tests
-bun dev:server                                   # start Elysia server on port 3001 (SAKTI_PORT env override)
+bun dev:server                                   # start Hono server on port 3001 (SAKTI_PORT env override)
 ```
 
 ## Conventions
 
 - **Follow TDD** — write the failing test first (RED), implement until it passes (GREEN), then refactor. Verify RED before implementing.
-- **Tests live in `__tests__/` colocated with source.** All tests use `bun:test`.
+- **Tests live in `__tests__/` colocated with source.** Server tests use `vitest` (run via `bun x vitest`); package tests use `bun:test`.
 - **`exactOptionalPropertyTypes: true` is on.** Use conditional spread `...(x !== undefined ? { x } : {})` instead of passing `undefined`.
 - TS 6.0 quirks: `include`/`references` must be top-level in tsconfig (not inside `compilerOptions`); `shell` in `execSync` must be a `string` (e.g. `"/bin/sh"`), not `boolean`.
 - Workspace `package.json` exports point to `./src/index.ts` (not `./dist/`) so bun dev resolves `.ts` directly.
@@ -59,11 +60,11 @@ Biome catches formatting and common issues automatically — focus your judgment
 
 ## Server
 
-The Elysia REST server lives in `apps/server/` and follows a **REST-for-state, WS-for-streaming** split:
+The Hono REST server lives in `apps/server/` (served by `@hono/node-server`) and follows a **REST-for-state, WS-for-streaming** split:
 
-- **REST routes** handle CRUD over sessions, projects, settings, models, costs, git operations, and session utilities (stats, compaction). Each route module is a standalone Elysia plugin composed via `buildServer({ db, routes: [...] })`.
-- **WebSocket** (`/ws`) manages the agent streaming loop — send a JSON prompt, receive typed events back over the socket. See the `agent-streaming` spec for the wire format.
-- **Eden treaty** typed client at `apps/app/src/lib/api.ts` provides end-to-end type safety for REST calls.
+- **REST routes** handle CRUD over sessions, projects, settings, models, costs, git operations, and session utilities (stats, compaction). Each route module is a `factory.createApp()` Hono sub-app (see `src/factory.ts`) with a `.basePath()`, composed under `/api` via chained `.route()` in `buildApp(ctx)`. Runtime validation uses `@hono/typebox-validator` over the workspace `typebox` package.
+- **WebSocket** (`/ws`) manages the agent streaming loop — send a JSON prompt, receive typed events back over the socket. Implemented via `upgradeWebSocket` from `@hono/node-server` + a `ws` `WebSocketServer`. See the `agent-streaming` spec for the wire format.
+- **Typed client** is deferred: the UI still uses the Eden treaty client at `apps/app/src/lib/api.ts` and is temporarily broken; a follow-up swaps it for Hono RPC (`hc<AppType>()`) + a raw/typed WS client.
 
 ### Running the server
 
@@ -80,7 +81,7 @@ SAKTI_DB_PATH=/custom/path/sakti-code.db bun dev:server   # custom db path
 
 ### Route modules
 
-Leaf change sets register themselves via `buildServer`'s `routes` array — the foundation `index.ts` is never edited for new route modules.
+Route modules register themselves via `buildApp`'s chained `.route()` calls in `src/app.ts` — add new modules there.
 
 | Module | Routes | Notes |
 | :--- | :--- | :--- |

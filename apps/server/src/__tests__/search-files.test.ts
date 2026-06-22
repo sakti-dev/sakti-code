@@ -1,7 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { searchFilesRoutes } from "../routes/projects/search-files.ts";
 import { makeApp } from "./helpers.ts";
 
@@ -33,7 +33,7 @@ describe("file search routes", () => {
   });
 
   it("W6: uses ?query= (per spec, not ?q=) and returns {files, cwd} only", async () => {
-    const res = await app.handle(
+    const res = await app.request(
       new Request(
         `http://localhost/api/projects/${projectId}/files?query=hello`
       )
@@ -48,14 +48,14 @@ describe("file search routes", () => {
   });
 
   it("unknown project returns 404", async () => {
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/projects/nope/files?query=hello")
     );
     expect(res.status).toBe(404);
   });
 
   it("returns some files for empty query (general listing)", async () => {
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/projects/${projectId}/files`)
     );
     expect(res.status).toBe(200);
@@ -64,7 +64,7 @@ describe("file search routes", () => {
   });
 
   it("respects limit parameter", async () => {
-    const res = await app.handle(
+    const res = await app.request(
       new Request(
         `http://localhost/api/projects/${projectId}/files?query=.ts&limit=2`
       )
