@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
-import { describe, expect, it } from "bun:test";
 import { initDatabase } from "@sakti-code/db";
+import { describe, expect, it } from "vitest";
 import pkg from "../../package.json" with { type: "json" };
 import { buildWsApp, createWelcomeFrame, SERVER_VERSION } from "../agent/ws.ts";
 import { createContext } from "../context.ts";

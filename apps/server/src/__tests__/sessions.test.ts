@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { projectsRoutes } from "../routes/projects/projects.ts";
 import { sessionsRoutes } from "../routes/sessions/sessions.ts";
 import { makeApp } from "./helpers.ts";
@@ -8,7 +8,7 @@ describe("sessions routes", () => {
     const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes]);
     const project = await ctx.repos.projects.create("demo", "/tmp/demo");
 
-    const created = await app.handle(
+    const created = await app.request(
       new Request("http://localhost:3001/api/sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -21,7 +21,7 @@ describe("sessions routes", () => {
     expect(session.modelId).toBe("gpt-4o");
 
     const list = await (
-      await app.handle(
+      await app.request(
         new Request(
           `http://localhost:3001/api/sessions?projectId=${project.id}`
         )
@@ -35,7 +35,7 @@ describe("sessions routes", () => {
     const project = await ctx.repos.projects.create("demo", "/tmp/demo");
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost:3001/api/sessions/${session.id}/messages`)
     );
     expect(res.status).toBe(200);

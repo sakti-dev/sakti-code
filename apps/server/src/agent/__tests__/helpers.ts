@@ -1,5 +1,5 @@
-import { vi } from "bun:test";
 import type { SessionStorage } from "@sakti-code/agent";
+import { vi } from "vitest";
 
 /** Real model id that exists in pi-ai's registry so `getModel("openai", id)` resolves. */
 const TEST_MODEL_ID = "gpt-4";

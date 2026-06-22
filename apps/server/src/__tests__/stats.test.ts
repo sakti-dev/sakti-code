@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { statsRoutes } from "../routes/sessions/stats.ts";
 import { seedEntries } from "./entry-helpers.ts";
 import { makeApp } from "./helpers.ts";
@@ -31,7 +31,7 @@ describe("stats routes", () => {
       },
     ]);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/stats`)
     );
     expect(res.status).toBe(200);
@@ -51,7 +51,7 @@ describe("stats routes", () => {
     const project = await ctx.repos.projects.create("empty", "/tmp/empty");
     const session = await ctx.repos.sessions.create(project.id, "test-model");
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/stats`)
     );
     expect(res.status).toBe(200);
@@ -110,7 +110,7 @@ describe("stats routes", () => {
       },
     ]);
 
-    const res = await app.handle(
+    const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/stats`)
     );
     expect(res.status).toBe(200);
@@ -125,7 +125,7 @@ describe("stats routes", () => {
 
   it("GET /api/sessions/nope/stats returns 404", async () => {
     const { app } = await makeApp([statsRoutes]);
-    const res = await app.handle(
+    const res = await app.request(
       new Request("http://localhost/api/sessions/nope/stats")
     );
     expect(res.status).toBe(404);

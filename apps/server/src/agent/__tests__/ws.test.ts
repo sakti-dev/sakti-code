@@ -1,12 +1,4 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  spyOn,
-  vi,
-} from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const MISSING_FIELDS_RE = /Missing sessionId or message/;
 const NO_ACTIVE_RUN_RE = /No active run/;
@@ -189,10 +181,10 @@ describe("WS message handler", () => {
     const mockHarness = makeMockHarness(testActiveRuns, () => promptResolve);
 
     const runnerMod = await import("../runner.ts");
-    const runPromptSpy = spyOn(runnerMod, "runPrompt");
-    const isRunActiveSpy = spyOn(runnerMod, "isRunActive");
-    const abortRunSpy = spyOn(runnerMod, "abortRun");
-    const getActiveHarnessSpy = spyOn(runnerMod, "getActiveHarness");
+    const runPromptSpy = vi.spyOn(runnerMod, "runPrompt");
+    const isRunActiveSpy = vi.spyOn(runnerMod, "isRunActive");
+    const abortRunSpy = vi.spyOn(runnerMod, "abortRun");
+    const getActiveHarnessSpy = vi.spyOn(runnerMod, "getActiveHarness");
 
     try {
       isRunActiveSpy.mockImplementation((sessionId: string) =>
@@ -259,10 +251,10 @@ describe("WS message handler", () => {
     const mockHarness = makeMockHarness(testActiveRuns, () => promptResolve);
 
     const runnerMod = await import("../runner.ts");
-    const runPromptSpy = spyOn(runnerMod, "runPrompt");
-    const isRunActiveSpy = spyOn(runnerMod, "isRunActive");
-    const abortRunSpy = spyOn(runnerMod, "abortRun");
-    const getActiveHarnessSpy = spyOn(runnerMod, "getActiveHarness");
+    const runPromptSpy = vi.spyOn(runnerMod, "runPrompt");
+    const isRunActiveSpy = vi.spyOn(runnerMod, "isRunActive");
+    const abortRunSpy = vi.spyOn(runnerMod, "abortRun");
+    const getActiveHarnessSpy = vi.spyOn(runnerMod, "getActiveHarness");
 
     try {
       isRunActiveSpy.mockImplementation((sessionId: string) =>
@@ -335,9 +327,9 @@ describe("WS message handler", () => {
     const mockHarness = makeMockHarness(testActiveRuns, () => promptResolve);
 
     const runnerMod = await import("../runner.ts");
-    const runPromptSpy = spyOn(runnerMod, "runPrompt");
-    const isRunActiveSpy = spyOn(runnerMod, "isRunActive");
-    const getActiveHarnessSpy = spyOn(runnerMod, "getActiveHarness");
+    const runPromptSpy = vi.spyOn(runnerMod, "runPrompt");
+    const isRunActiveSpy = vi.spyOn(runnerMod, "isRunActive");
+    const getActiveHarnessSpy = vi.spyOn(runnerMod, "getActiveHarness");
 
     try {
       isRunActiveSpy.mockImplementation((sessionId: string) =>
@@ -399,10 +391,10 @@ describe("WS message handler", () => {
     const mockHarness = makeMockHarness(testActiveRuns, () => promptResolve);
 
     const runnerMod = await import("../runner.ts");
-    const runPromptSpy = spyOn(runnerMod, "runPrompt");
-    const isRunActiveSpy = spyOn(runnerMod, "isRunActive");
-    const abortRunSpy = spyOn(runnerMod, "abortRun");
-    const getActiveHarnessSpy = spyOn(runnerMod, "getActiveHarness");
+    const runPromptSpy = vi.spyOn(runnerMod, "runPrompt");
+    const isRunActiveSpy = vi.spyOn(runnerMod, "isRunActive");
+    const abortRunSpy = vi.spyOn(runnerMod, "abortRun");
+    const getActiveHarnessSpy = vi.spyOn(runnerMod, "getActiveHarness");
 
     try {
       isRunActiveSpy.mockImplementation((sessionId: string) =>

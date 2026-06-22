@@ -1,7 +1,6 @@
 import { Database } from "bun:sqlite";
-import { describe, expect, it } from "bun:test";
 import { initDatabase } from "@sakti-code/db";
-import { Elysia } from "elysia";
+import { describe, expect, it } from "vitest";
 import { buildApp } from "../app.ts";
 import { createContext } from "../context.ts";
 import { createApiKeyStore } from "../lib/api-key-store.ts";
@@ -14,13 +13,13 @@ describe("built server", () => {
       {},
       createApiKeyStore(`/tmp/sakti-test-keys-${Date.now()}.json`)
     );
-    const server = new Elysia().state("ctx", ctx).use(buildApp(ctx)).compile();
+    const server = buildApp(ctx);
     const health = await (
-      await server.handle(new Request("http://localhost:3001/api/health"))
+      await server.request("http://localhost:3001/api/health")
     ).json();
     expect(health.status).toBe("ok");
     const projects = await (
-      await server.handle(new Request("http://localhost:3001/api/projects"))
+      await server.request("http://localhost:3001/api/projects")
     ).json();
     expect(projects).toEqual([]);
   });
