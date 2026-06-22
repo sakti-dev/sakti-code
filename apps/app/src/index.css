@@ -203,3 +203,105 @@
     padding-left: 1rem;
   }
 }
+
+/* Scrollbar styles */
+.scrollbar-default,
+.scrollbar-subtle,
+.scrollbar-emphasis {
+  scrollbar-width: thin;
+}
+
+.scrollbar-default::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-subtle::-webkit-scrollbar,
+.scrollbar-emphasis::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-default::-webkit-scrollbar-track,
+.scrollbar-subtle::-webkit-scrollbar-track,
+.scrollbar-emphasis::-webkit-scrollbar-track,
+.scrollbar-default::-webkit-scrollbar-corner,
+.scrollbar-subtle::-webkit-scrollbar-corner,
+.scrollbar-emphasis::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.scrollbar-default::-webkit-scrollbar-thumb {
+  background: oklch(from var(--border) l c h / 0.5);
+  border-radius: 9999px;
+  transition: background 0.15s ease;
+}
+
+.scrollbar-default::-webkit-scrollbar-thumb:hover {
+  background: oklch(from var(--muted-foreground) l c h / 0.6);
+}
+
+.scrollbar-default {
+  scrollbar-color: oklch(from var(--border) l c h / 0.5) transparent;
+}
+
+.scrollbar-default:hover {
+  scrollbar-color: oklch(from var(--muted-foreground) l c h / 0.6) transparent;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb {
+  background: oklch(from var(--border) l c h / 0.35);
+  border-radius: 9999px;
+  transition: background 0.15s ease;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+  background: oklch(from var(--muted-foreground) l c h / 0.5);
+}
+
+.scrollbar-subtle {
+  scrollbar-color: oklch(from var(--border) l c h / 0.35) transparent;
+}
+
+.scrollbar-subtle:hover {
+  scrollbar-color: oklch(from var(--muted-foreground) l c h / 0.5) transparent;
+}
+
+.scrollbar-emphasis::-webkit-scrollbar-thumb {
+  background: oklch(from var(--muted-foreground) l c h / 0.65);
+  border-radius: 9999px;
+  transition: background 0.15s ease;
+}
+
+.scrollbar-emphasis::-webkit-scrollbar-thumb:hover {
+  background: oklch(from var(--muted-foreground) l c h / 0.85);
+}
+
+.scrollbar-emphasis {
+  scrollbar-color: oklch(from var(--muted-foreground) l c h / 0.65) transparent;
+}
+
+.scrollbar-emphasis:hover {
+  scrollbar-color: oklch(from var(--muted-foreground) l c h / 0.85) transparent;
+}
+
+/* Model selector / provider modal */
+.model-selector-shell {
+  isolation: isolate;
+}
+
+.model-selector-grain {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in oklch, var(--color-popover-foreground) 6%, transparent) 0 1px,
+      transparent 1px 2px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--color-popover-foreground) 4%, transparent) 0 1px,
+      transparent 1px 2px
+    );
+  mix-blend-mode: overlay;
+  opacity: 0.12;
+}

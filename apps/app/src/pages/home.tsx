@@ -38,7 +38,6 @@ export default function Home() {
   >({});
   const [searchQuery, setSearchQuery] = createSignal("");
   const [isCloneOpen, setIsCloneOpen] = createSignal(false);
-  const [showSettings, setShowSettings] = createSignal(false);
 
   const filteredProjects = () => filterProjects(projects(), searchQuery());
 
@@ -147,10 +146,7 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                  <SettingsDialog
-                    onOpenChange={setShowSettings}
-                    open={showSettings()}
-                  />
+                  <SettingsDialog />
                 </div>
 
                 {/* Action Cards */}
