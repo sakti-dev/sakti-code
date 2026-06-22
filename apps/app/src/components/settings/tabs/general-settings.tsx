@@ -25,26 +25,19 @@ export function GeneralSettings() {
     createSignal(true);
   const [stripConfirmation, setStripConfirmation] = createSignal(true);
 
-  const currentTheme = (): ThemeLabel => {
-    const stored = localStorage.getItem("sakti-theme");
-    if (stored === '"system"' || stored === "system") {
-      return "System";
-    }
-    return colorMode() === "dark" ? "Dark" : "Light";
-  };
+  const currentTheme = (): ThemeLabel =>
+    colorMode() === "dark" ? "Dark" : "Light";
 
   const handleSelectTheme = (value: ThemeLabel | null) => {
     if (!value) {
       return;
     }
     if (value === "System") {
-      localStorage.setItem("sakti-theme", '"system"');
       const prefersDark = window.matchMedia(
         "(prefers-color-scheme: dark)"
       ).matches;
       setColorMode(prefersDark ? "dark" : "light");
     } else {
-      localStorage.setItem("sakti-theme", `"${value.toLowerCase()}"`);
       setColorMode(value.toLowerCase() as "light" | "dark");
     }
   };
