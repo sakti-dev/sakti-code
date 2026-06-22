@@ -19,16 +19,25 @@
   },
   "scripts": {
     "start": "bun run src/index.ts",
-    "test": "bun test",
+    "dev": "bun run --hot src/index.ts",
+    "test": "bun x vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "0.79.9",
-    "@elysiajs/eden": "^1.4.9",
+    "@hono/node-server": "^2.0.6",
+    "@hono/typebox-validator": "^1.1.0",
     "@sakti-code/agent": "workspace:*",
     "@sakti-code/db": "workspace:*",
     "@sakti-code/tools": "workspace:*",
-    "bun-pty": "^0.4.10",
-    "elysia": "^1.4.29"
+    "hono": "^4.12.26",
+    "node-pty": "^1.1.0",
+    "vitest": "^4.1.9",
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "@types/ws": "^8.18.1",
+    "node-gyp": "^13.0.0"
   }
 }
