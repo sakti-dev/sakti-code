@@ -265,10 +265,15 @@ describe("event reducer — full lifecycle", () => {
     const msgId = session.store.messageOrder[0]!;
     const msg = session.store.messages[msgId]!;
     expect(msg.content).toBe("Let me check");
-    // The streaming text only updates `content` (via batched deltas); `parts`
-    // only carries the tool_call because message_start fired with empty content.
-    expect(msg.parts).toHaveLength(1);
-    expect(msg.parts[0]).toMatchObject({
+    // Both text part and tool_call part are present.
+    // (In this synchronous test, tool_call is added first via direct dispatch,
+    // then text via batcher microtask flush. In the real app the order would
+    // be text-then-tool because WS events arrive asynchronously.)
+    expect(msg.parts).toHaveLength(2);
+    const textPart = msg.parts.find((p) => p.type === "text");
+    const toolPart = msg.parts.find((p) => p.type === "tool_call");
+    expect(textPart).toMatchObject({ type: "text", text: "Let me check" });
+    expect(toolPart).toMatchObject({
       type: "tool_call",
       toolName: "bash",
       status: "done",

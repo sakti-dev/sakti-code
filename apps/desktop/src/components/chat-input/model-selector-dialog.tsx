@@ -57,7 +57,7 @@ export interface ModelSelectorDialogProps {
   modelSections: ModelSelectorSection[];
   onOpenChange: (open: boolean) => void;
   onSearchChange?: (query: string) => void;
-  onSelect: (modelId: string) => void;
+  onSelect: (modelId: string, providerId: string) => void;
   open: boolean;
   searchQuery?: string;
   selectedModelId?: string;
@@ -84,6 +84,7 @@ export function ModelSelectorDialog(props: ModelSelectorDialogProps) {
     orderedModelSections().flatMap((section) =>
       section.models.map((model) => ({
         id: model.id,
+        providerId: model.providerId,
         title: model.name ?? model.id,
         subtitle: section.providerName,
       }))
@@ -250,8 +251,8 @@ export function ModelSelectorDialog(props: ModelSelectorDialogProps) {
     }
   });
 
-  const handlePick = (modelId: string) => {
-    props.onSelect(modelId);
+  const handlePick = (modelId: string, providerId: string) => {
+    props.onSelect(modelId, providerId);
     setQuery("");
     props.onOpenChange(false);
   };
@@ -277,7 +278,7 @@ export function ModelSelectorDialog(props: ModelSelectorDialogProps) {
         event.preventDefault();
         const entry = ids[activeIndex()];
         if (entry) {
-          handlePick(entry.id);
+          handlePick(entry.id, entry.providerId);
         }
         break;
       }
@@ -372,7 +373,10 @@ export function ModelSelectorDialog(props: ModelSelectorDialogProps) {
                               isActive((entry.row as ModelItemRow).model.id) &&
                                 "border-primary/45 bg-accent/70 shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-primary)_45%,transparent),0_8px_24px_color-mix(in_oklch,var(--color-primary)_18%,transparent)]"
                             )}
-                            onPick={handlePick}
+                            onPick={() => {
+                              const row = entry.row as ModelItemRow;
+                              handlePick(row.model.id, row.model.providerId);
+                            }}
                             value={(entry.row as ModelItemRow).model.id}
                           >
                             <span class="truncate">

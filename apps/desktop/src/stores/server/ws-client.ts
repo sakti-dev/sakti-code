@@ -43,9 +43,14 @@ export function createWsClient(
     let b = batchers.get(sessionId);
     if (!b) {
       const session = sessionRegistry.get(sessionId);
-      b = createTokenBatcher((msgId, text) => {
-        session.actions.appendToken(msgId, text);
-      });
+      const batch =
+        globalThis.localStorage?.getItem("sakti:token-batch") !== "off";
+      b = createTokenBatcher(
+        (msgId, text) => {
+          session.actions.appendToken(msgId, text);
+        },
+        { batch }
+      );
       batchers.set(sessionId, b);
     }
     return b;

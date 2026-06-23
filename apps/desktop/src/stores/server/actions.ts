@@ -30,6 +30,11 @@ export interface Actions {
   loadMessages: (sessionId: string) => Promise<void>;
   loadProjects: () => Promise<void>;
   loadSessions: (projectId: string) => Promise<void>;
+  selectModel: (
+    sessionId: string | null,
+    provider: string,
+    model: string
+  ) => Promise<void>;
   sendPrompt: (sessionId: string, text: string) => void;
   steerRun: (sessionId: string, text: string) => void;
   upsertIntakeSession: (projectId: string) => Promise<SessionMeta | undefined>;
@@ -168,6 +173,58 @@ export function createActions(
 
     abortRun(sessionId) {
       ws.send({ type: "abort", sessionId });
+    },
+
+    async selectModel(sessionId, provider, model) {
+      try {
+        const getRes = await api.api.profiles.$get();
+        if (!getRes.ok) {
+          return;
+        }
+        const profiles = (await getRes.json()) as {
+          defaultProfile: string;
+          profiles: Record<
+            string,
+            {
+              name: string;
+              models: Record<
+                string,
+                { provider: string; model: string; thinkingLevel?: string }
+              >;
+            }
+          >;
+        };
+
+        const profileId = profiles.defaultProfile;
+        const profile = profiles.profiles[profileId];
+        if (!profile) {
+          return;
+        }
+        const currentRef = profile.models.default ?? {
+          provider: "",
+          model: "",
+        };
+        profile.models.default = {
+          provider,
+          model,
+          ...(currentRef.thinkingLevel === undefined
+            ? {}
+            : { thinkingLevel: currentRef.thinkingLevel }),
+        };
+
+        const putRes = await api.api.profiles.$put({ json: profiles });
+        if (!putRes.ok) {
+          return;
+        }
+
+        if (sessionId) {
+          server.actions.updateSession(sessionId, { modelId: model });
+        }
+      } catch (error) {
+        setLastError(
+          error instanceof Error ? error.message : "Failed to select model"
+        );
+      }
     },
 
     steerRun(sessionId, text) {

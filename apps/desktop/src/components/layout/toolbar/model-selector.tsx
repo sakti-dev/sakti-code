@@ -19,7 +19,7 @@ interface Model {
 }
 
 export default function ModelSelector() {
-  const { api, server } = useStore();
+  const { actions, api, server } = useStore();
 
   const [providers, { refetch: refetchProviders }] = createResource(
     async () => {
@@ -75,12 +75,13 @@ export default function ModelSelector() {
     return session.modelId;
   };
 
-  const handleSelect = (model: Model) => {
+  const handleSelect = async (model: Model) => {
     const session = activeSession();
-    if (!session) {
-      return;
-    }
-    server.actions.updateSession(session.id, { modelId: model.id });
+    await actions.selectModel(
+      session ? session.id : null,
+      model.provider,
+      model.id
+    );
   };
 
   const providerLabel = (provider: string) => {

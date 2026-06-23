@@ -55,6 +55,49 @@ describe("session store — appendToken", () => {
     session.actions.appendToken("m1", "b");
     expect(session.store.streaming.tokenCount).toBe(2);
   });
+
+  it("creates a text part when none exists", () => {
+    const session = createSessionStore();
+    session.actions.addMessage(makeMessage({ id: "m1", parts: [] }));
+
+    session.actions.appendToken("m1", "Hello");
+
+    expect(session.store.messages.m1!.parts).toHaveLength(1);
+    expect(session.store.messages.m1!.parts[0]).toMatchObject({
+      type: "text",
+      text: "Hello",
+    });
+  });
+
+  it("appends to existing last text part", () => {
+    const session = createSessionStore();
+    session.actions.addMessage({
+      id: "m1",
+      parts: [{ type: "text", text: "Hel" }],
+    } as Partial<UIMessage> as UIMessage);
+
+    session.actions.appendToken("m1", "lo");
+
+    expect(session.store.messages.m1!.parts).toHaveLength(1);
+    expect(session.store.messages.m1!.parts[0]).toMatchObject({
+      type: "text",
+      text: "Hello",
+    });
+  });
+
+  it("creates new text part when last part is a tool call", () => {
+    const session = createSessionStore();
+    session.actions.addMessage(makeMessage({ id: "m1", parts: [] }));
+    session.actions.addToolCall("m1", "tc1", "bash", {});
+
+    session.actions.appendToken("m1", "done");
+
+    expect(session.store.messages.m1!.parts).toHaveLength(2);
+    expect(session.store.messages.m1!.parts[1]).toMatchObject({
+      type: "text",
+      text: "done",
+    });
+  });
 });
 
 describe("session store — setContent", () => {

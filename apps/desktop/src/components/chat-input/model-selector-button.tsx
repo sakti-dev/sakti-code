@@ -19,7 +19,7 @@ interface Model {
 }
 
 export function ModelSelectorButton(props: { sessionId: string | null }) {
-  const { api, server } = useStore();
+  const { actions, api, server } = useStore();
   const [isOpen, setIsOpen] = createSignal(false);
   const [searchQuery, setSearchQuery] = createSignal("");
 
@@ -139,19 +139,13 @@ export function ModelSelectorButton(props: { sessionId: string | null }) {
     return found ? (found.name ?? found.id) : s.modelId;
   };
 
-  const handleSelect = (modelId: string) => {
-    log.debug("handleSelect", { modelId, sessionId: props.sessionId });
-    if (!props.sessionId) {
-      return;
-    }
-    server.actions.updateSession(props.sessionId, { modelId });
-    api.api.sessions[":id"].$patch({
-      param: { id: props.sessionId },
-      json: { modelId },
+  const handleSelect = async (modelId: string, providerId: string) => {
+    log.debug("handleSelect", {
+      modelId,
+      providerId,
+      sessionId: props.sessionId,
     });
-    log.debug("after updateSession", {
-      modelId: server.store.sessions[props.sessionId]?.modelId,
-    });
+    await actions.selectModel(props.sessionId, providerId, modelId);
   };
 
   return (

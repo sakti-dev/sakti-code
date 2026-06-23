@@ -81,6 +81,13 @@ export function createSessionStore(): SessionStore {
 
     appendToken(msgId, delta) {
       setStore("messages", msgId, "content", (prev) => prev + delta);
+      setStore("messages", msgId, "parts", (prev) => {
+        const last = prev.at(-1);
+        if (last !== undefined && last.type === "text") {
+          return [...prev.slice(0, -1), { ...last, text: last.text + delta }];
+        }
+        return [...prev, { type: "text" as const, text: delta }];
+      });
       setStore("streaming", "tokenCount", (n) => n + 1);
     },
 
