@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { initDatabase } from "../../init.ts";
-import { ModelConfigRepo, ProjectRepo, SessionRepo, SettingsRepo } from "..";
+import { ProjectRepo, SessionRepo, SettingsRepo } from "..";
 
 describe("ProjectRepo", () => {
   let db: any;
@@ -39,6 +39,17 @@ describe("ProjectRepo", () => {
 
   test("findByCwd returns undefined for missing", () => {
     expect(repo.findByCwd("/nonexistent")).toBeUndefined();
+  });
+
+  test("created project has null profileId", async () => {
+    const p = await repo.create("profile-test", "/tmp/profile-test");
+    expect(p.profileId).toBeNull();
+  });
+
+  test("update can set profileId", async () => {
+    const p = await repo.create("profile-set", "/tmp/profile-set");
+    const updated = await repo.update(p.id, { profileId: "fast" });
+    expect(updated.profileId).toBe("fast");
   });
 });
 
@@ -127,52 +138,5 @@ describe("SettingsRepo", () => {
 
   test("getByPrefix returns [] for an unmatched prefix", () => {
     expect(repo.getByPrefix("session:never_set:")).toEqual([]);
-  });
-});
-
-describe("ModelConfigRepo", () => {
-  let db: any;
-  let tmpDir: string;
-  let repo: ModelConfigRepo;
-
-  beforeAll(async () => {
-    tmpDir = mkdtempSync(join(import.meta.dirname!, "test-XXXXXX"));
-    const sqlite = new DatabaseSync(join(tmpDir, "test.db"));
-    db = await initDatabase(sqlite);
-    repo = new ModelConfigRepo(db);
-    db.$client
-      .prepare(
-        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)"
-      )
-      .run();
-  });
-
-  afterAll(() => {
-    db.$client.close?.();
-    rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  test("set + getForProject with fallback to global", async () => {
-    await repo.set({
-      projectId: "p1",
-      provider: "anthropic",
-      modelId: "claude-sonnet",
-    });
-    const config = repo.getForProject("p1");
-    expect(config?.provider).toBe("anthropic");
-
-    // Project with no config falls back to global
-    db.$client
-      .prepare(
-        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p2', 'P2', '/tmp2', 1, 1)"
-      )
-      .run();
-    expect(repo.getForProject("p2")).toBeNull();
-
-    // After setting global default
-    await repo.set({ provider: "openai", modelId: "gpt-4o" });
-    expect(repo.getForProject("p2")?.provider).toBe("openai");
-    // Project-specific still takes precedence
-    expect(repo.getForProject("p1")?.provider).toBe("anthropic");
   });
 });

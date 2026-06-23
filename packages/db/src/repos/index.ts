@@ -1,6 +1,6 @@
 import { desc, eq, sql } from "drizzle-orm";
 import type { DrizzleDB } from "../init.ts";
-import { modelConfigs, projects, sessions, settings } from "../schema.ts";
+import { projects, sessions, settings } from "../schema.ts";
 
 export class ProjectRepo {
   private readonly db: DrizzleDB;
@@ -39,7 +39,9 @@ export class ProjectRepo {
 
   async update(
     id: string,
-    data: Partial<Pick<typeof projects.$inferInsert, "name" | "cwd">>
+    data: Partial<
+      Pick<typeof projects.$inferInsert, "name" | "cwd" | "profileId">
+    >
   ) {
     await this.db
       .update(projects)
@@ -173,78 +175,5 @@ export class SettingsRepo {
 
   getAll() {
     return this.db.select().from(settings).all();
-  }
-}
-
-export class ModelConfigRepo {
-  private readonly db: DrizzleDB;
-  constructor(db: DrizzleDB) {
-    this.db = db;
-  }
-
-  async set(data: {
-    projectId?: string;
-    provider: string;
-    modelId: string;
-    thinkingLevel?: string;
-  }) {
-    const id = crypto.randomUUID();
-    const now = Date.now();
-    await this.db
-      .insert(modelConfigs)
-      .values({
-        id,
-        projectId: data.projectId ?? null,
-        provider: data.provider,
-        modelId: data.modelId,
-        thinkingLevel: data.thinkingLevel ?? "off",
-        createdAt: now,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: modelConfigs.projectId,
-        set: {
-          provider: data.provider,
-          modelId: data.modelId,
-          thinkingLevel: data.thinkingLevel ?? "off",
-          updatedAt: now,
-        },
-      });
-    return id;
-  }
-
-  getForProject(projectId: string) {
-    const projectConfig = this.db
-      .select()
-      .from(modelConfigs)
-      .where(eq(modelConfigs.projectId, projectId))
-      .orderBy(desc(modelConfigs.updatedAt))
-      .limit(1)
-      .get();
-    if (projectConfig) {
-      return projectConfig;
-    }
-
-    return (
-      this.db
-        .select()
-        .from(modelConfigs)
-        .where(sql`${modelConfigs.projectId} IS NULL`)
-        .orderBy(desc(modelConfigs.updatedAt))
-        .limit(1)
-        .get() ?? null
-    );
-  }
-
-  getGlobalDefault() {
-    return (
-      this.db
-        .select()
-        .from(modelConfigs)
-        .where(sql`${modelConfigs.projectId} IS NULL`)
-        .orderBy(desc(modelConfigs.updatedAt))
-        .limit(1)
-        .get() ?? null
-    );
   }
 }

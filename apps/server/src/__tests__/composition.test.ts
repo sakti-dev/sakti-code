@@ -1,12 +1,9 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
-import { initDatabase } from "@sakti-code/db";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { clearProfileCache } from "../agent/model-resolver.ts";
 import { buildApp } from "../app.ts";
-import { createContext } from "../context.ts";
-import { createApiKeyStore } from "../lib/api-key-store.ts";
 import {
   fauxAssistantMessage,
   teardownFauxLlm,
@@ -17,7 +14,7 @@ const TEST_MODEL_ID = "gpt-4";
 
 const { compactionRoutes } = await import("../routes/sessions/compaction.ts");
 const { statsRoutes } = await import("../routes/sessions/stats.ts");
-const { makeApp } = await import("./helpers.ts");
+const { makeApp, makeContext, seedProfile } = await import("./helpers.ts");
 
 let tempDir: string;
 
@@ -33,6 +30,7 @@ afterAll(() => {
 
 afterEach(() => {
   teardownFauxLlm();
+  clearProfileCache();
 });
 
 describe("route composition", () => {
@@ -41,11 +39,7 @@ describe("route composition", () => {
     const { app, ctx } = await makeApp([compactionRoutes, statsRoutes]);
 
     const project = await ctx.repos.projects.create("p", tempDir);
-    ctx.repos.models.set({
-      projectId: project.id,
-      provider: "openai",
-      modelId: TEST_MODEL_ID,
-    });
+    seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
     const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
 
     const statsRes = await app.request(
@@ -78,12 +72,7 @@ describe("route composition", () => {
   });
 
   it("default app serves feature routes in production", async () => {
-    const db = await initDatabase(new DatabaseSync(":memory:"));
-    const ctx = createContext(
-      db,
-      {},
-      createApiKeyStore(`/tmp/sakti-test-keys-${Date.now()}.json`)
-    );
+    const { ctx } = await makeContext();
     const server = buildApp(ctx);
 
     const settingsRes = await server.request("http://localhost/api/settings");

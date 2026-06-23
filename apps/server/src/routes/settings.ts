@@ -1,24 +1,21 @@
-import { tbValidator } from "@hono/typebox-validator";
 import { Hono } from "hono";
-import Type from "typebox";
 import { getCtx } from "../context.ts";
 
 export const settingsRoutes = new Hono()
   .basePath("/settings")
-  .get("/", (c) => c.json(getCtx(c).repos.settings.getAll()))
-  .get("/:key", (c) => {
-    const v = getCtx(c).repos.settings.get(c.req.param("key"));
-    if (v === null) {
-      return c.json({ error: "Not found" }, 404);
+  .get("/", (c) => c.json(getCtx(c).settingsFile.read()))
+  .put("/", async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Malformed JSON" }, 400);
     }
-    return c.text(v);
-  })
-  .put(
-    "/:key",
-    tbValidator("json", Type.Object({ value: Type.String() })),
-    async (c) => {
-      const body = c.req.valid("json");
-      await getCtx(c).repos.settings.set(c.req.param("key"), body.value);
-      return c.body(null, 204);
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      return c.json({ error: "Body must be a JSON object" }, 400);
     }
-  );
+    getCtx(c).settingsFile.update(body as Record<string, unknown>);
+    return c.body(null, 204);
+  });
+
+export type SettingsRoutes = typeof settingsRoutes;

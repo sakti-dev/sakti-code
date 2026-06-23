@@ -1,11 +1,11 @@
 import { buildWsApp } from "./agent/ws.ts";
 import { ctxMiddleware, type ServerContext } from "./context.ts";
 import { factory } from "./factory.ts";
-import { createApiKeyRoutes } from "./routes/api-keys.ts";
+import { authRoutes } from "./routes/auth.ts";
 import { dialogRoutes } from "./routes/dialog.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { availableModelsRoutes } from "./routes/models/available-models.ts";
-import { modelConfigRoutes } from "./routes/models/models.ts";
+import { profilesRoutes } from "./routes/profiles.ts";
 import { gitRoutes } from "./routes/projects/git.ts";
 import { projectsRoutes } from "./routes/projects/projects.ts";
 import { searchFilesRoutes } from "./routes/projects/search-files.ts";
@@ -35,8 +35,9 @@ export function buildApp(ctx: ServerContext) {
     .route("/", lastAssistantTextRoutes)
     .route("/", sessionSettingsRoutes)
     .route("/", settingsRoutes)
-    .route("/", modelConfigRoutes)
+    .route("/", profilesRoutes)
     .route("/", availableModelsRoutes)
+    .route("/", authRoutes)
     .route("/", workspaceRoutes)
     .route("/", terminalRoutes)
     .route("/", dialogRoutes);
@@ -45,8 +46,7 @@ export function buildApp(ctx: ServerContext) {
     .createApp()
     .use(ctxMiddleware(ctx))
     .route("/api", rest)
-    .route("/", buildWsApp(ctx))
-    .route("/", createApiKeyRoutes(ctx.apiKeys));
+    .route("/", buildWsApp(ctx));
 }
 
 export type App = ReturnType<typeof buildApp>;

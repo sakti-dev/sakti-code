@@ -3,6 +3,7 @@ import { buildSessionContext } from "@sakti-code/agent";
 import { Hono } from "hono";
 import Type from "typebox";
 import { createSessionStorage, getCtx } from "../../context.ts";
+import { resolveModelRef } from "../../lib/profile-resolver.ts";
 
 export const sessionsRoutes = new Hono()
   .basePath("/sessions")
@@ -26,19 +27,44 @@ export const sessionsRoutes = new Hono()
       "json",
       Type.Object({
         projectId: Type.String(),
-        modelId: Type.String(),
+        modelId: Type.Optional(Type.String()),
         title: Type.Optional(Type.String()),
       })
     ),
     async (c) => {
+      const ctx = getCtx(c);
       const body = c.req.valid("json");
-      const created = await getCtx(c).repos.sessions.create(
-        body.projectId,
-        body.modelId,
-        {
-          ...(body.title === undefined ? {} : { title: body.title }),
+
+      let modelId = body.modelId;
+      let thinkingLevel: string | undefined;
+
+      if (modelId === undefined) {
+        const project = ctx.repos.projects.findById(body.projectId);
+        if (!project) {
+          return c.json({ error: "Project not found" }, 404);
         }
-      );
+        const profiles = ctx.profiles.read();
+        try {
+          const ref = resolveModelRef(profiles, project.profileId, "default");
+          modelId = ref.model;
+          thinkingLevel = ref.thinkingLevel;
+        } catch (e) {
+          return c.json(
+            {
+              error:
+                e instanceof Error
+                  ? e.message
+                  : "No model configured for this project's profile",
+            },
+            400
+          );
+        }
+      }
+
+      const created = await ctx.repos.sessions.create(body.projectId, modelId, {
+        ...(body.title === undefined ? {} : { title: body.title }),
+        ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
+      });
       return c.json(created);
     }
   )

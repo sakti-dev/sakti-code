@@ -31,11 +31,13 @@
     "@sakti-code/tools": "workspace:*",
     "hono": "^4.12.26",
     "node-pty": "^1.1.0",
+    "proper-lockfile": "^4.1.2",
     "vitest": "^4.1.9",
     "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
+    "@types/proper-lockfile": "^4.1.4",
     "@types/ws": "^8.18.1",
     "node-gyp": "^13.0.0",
     "tsx": "^4.19.2"

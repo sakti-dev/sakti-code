@@ -5,15 +5,19 @@ The database schema defines all tables using Drizzle ORM. Tables use nanoid text
 ## Requirements
 
 ### Requirement: Schema defines projects table
-The database schema SHALL define a `projects` table with columns: `id` (text, primary key, nanoid), `name` (text, not null), `cwd` (text, not null, unique), `createdAt` (integer, not null), `updatedAt` (integer, not null).
+The database schema SHALL define a `projects` table with columns: `id` (text, primary key, nanoid), `name` (text, not null), `cwd` (text, not null, unique), `profileId` (text, nullable — references a profile id in `profiles.json`, null means use `defaultProfile`), `createdAt` (integer, not null), `updatedAt` (integer, not null). `profileId` SHALL NOT be a SQL foreign key (profiles live in a JSON file, not the DB).
 
 #### Scenario: Create a new project
 - **WHEN** a project is inserted with a unique `cwd`
-- **THEN** the row is created with an auto-generated `id` and current timestamp
+- **THEN** the row is created with an auto-generated `id`, `profileId` null, and current timestamp
 
 #### Scenario: Duplicate cwd rejected
 - **WHEN** a project is inserted with a `cwd` that already exists
 - **THEN** a unique constraint violation occurs
+
+#### Scenario: Project profile assignment
+- **WHEN** a project is updated with `profileId = "fast"`
+- **THEN** subsequent reads return `profileId = "fast"` (no DB-level constraint enforces the profile's existence)
 
 ### Requirement: Schema defines sessions table
 The database schema SHALL define a `sessions` table with columns: `id` (text, primary key, nanoid), `projectId` (text, foreign key to `projects.id`, not null), `parentSessionId` (text, foreign key to `sessions.id`, nullable), `title` (text, nullable), `modelId` (text, not null), `thinkingLevel` (text, not null, default "off"), `createdAt` (integer, not null), `updatedAt` (integer, not null).
@@ -68,29 +72,22 @@ The database schema SHALL define a `costs` table with columns: `id` (text, prima
 - **THEN** total input tokens, output tokens, and cost are returned
 
 ### Requirement: Schema defines settings table
-The database schema SHALL define a `settings` table with columns: `key` (text, primary key), `value` (text, not null), `updatedAt` (integer, not null).
+The database schema SHALL define a `settings` table with columns: `key` (text, primary key), `value` (text, not null), `updatedAt` (integer, not null). The table SHALL be used ONLY for per-session runtime overrides keyed with the `session:{sessionId}:{settingName}` convention. Global application settings SHALL NOT be stored in this table (they live in `settings.json`).
 
-#### Scenario: Get and set a setting
-- **WHEN** a setting is upserted with key `"theme"` and value `"dark"`
-- **THEN** subsequent reads of key `"theme"` return `"dark"`
+#### Scenario: Get and set a per-session setting
+- **WHEN** a setting is upserted with key `"session:sess_1:auto_compaction"` and value `"true"`
+- **THEN** subsequent reads of that key return `"true"`
 
-### Requirement: Schema defines model_configs table
-The database schema SHALL define a `model_configs` table with columns: `id` (text, primary key, nanoid), `projectId` (text, foreign key to `projects.id`, nullable — null means global default), `provider` (text, not null), `modelId` (text, not null), `thinkingLevel` (text, not null, default "off"), `createdAt` (integer, not null), `updatedAt` (integer, not null).
-
-#### Scenario: Project-specific model config
-- **WHEN** a model config is inserted with a `projectId`
-- **THEN** that project uses the specified model/provider when no override is given
-
-#### Scenario: Global default model config
-- **WHEN** a model config is inserted with `projectId` null
-- **THEN** it serves as the default for projects without their own config
+#### Scenario: Global settings are not stored in the table
+- **WHEN** a global app preference such as theme is written
+- **THEN** it is written to `settings.json` and no row is inserted into the `settings` table
 
 ### Requirement: Schema uses Drizzle ORM table definitions
 All tables SHALL be defined using Drizzle's `sqliteTable()` function in a single `schema.ts` file. Tables SHALL use nanoid for text primary keys and integer Unix timestamps for dates.
 
 #### Scenario: Schema file exports all tables
 - **WHEN** the schema module is imported
-- **THEN** it exports all table definitions: `projects`, `sessions`, `messages`, `toolExecutions`, `costs`, `settings`, `modelConfigs`
+- **THEN** it exports table definitions: `projects`, `sessions`, `messages`, `toolExecutions`, `costs`, `settings` (and SHALL NOT export `modelConfigs`)
 
 ### Requirement: Database is initialized with WAL mode
 The database SHALL be opened with WAL journal mode for concurrent read/write support and `foreign_keys` pragma enabled.

@@ -1,6 +1,5 @@
 import {
   type DrizzleDB,
-  ModelConfigRepo,
   ProjectRepo,
   SessionRepo,
   SettingsRepo,
@@ -9,37 +8,45 @@ import {
 import type { Context } from "hono";
 import type { ServerHooks } from "./create-server.ts";
 import { factory } from "./factory.ts";
-import type { ApiKeyStore } from "./lib/api-key-store.ts";
+import type { AuthStore } from "./lib/auth-store.ts";
+import type { ProfilesStore } from "./lib/profiles-store.ts";
+import type { SettingsFileStore } from "./lib/settings-file-store.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
 
 export interface ServerContext {
-  apiKeys: ApiKeyStore;
+  auth: AuthStore;
   db: DrizzleDB;
   hooks: ServerHooks;
+  profiles: ProfilesStore;
   repos: {
     projects: ProjectRepo;
     sessions: SessionRepo;
     settings: SettingsRepo;
-    models: ModelConfigRepo;
   };
+  settingsFile: SettingsFileStore;
   terminalManager: TerminalManager;
 }
 
 export function createContext(
   db: DrizzleDB,
   hooks: ServerHooks,
-  apiKeys: ApiKeyStore
+  deps: {
+    auth: AuthStore;
+    profiles: ProfilesStore;
+    settingsFile: SettingsFileStore;
+  }
 ): ServerContext {
   return {
-    apiKeys,
+    auth: deps.auth,
     db,
     hooks,
+    profiles: deps.profiles,
     repos: {
       projects: new ProjectRepo(db),
       sessions: new SessionRepo(db),
       settings: new SettingsRepo(db),
-      models: new ModelConfigRepo(db),
     },
+    settingsFile: deps.settingsFile,
     terminalManager: new TerminalManager(),
   };
 }

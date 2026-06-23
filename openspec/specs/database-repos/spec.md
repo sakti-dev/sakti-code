@@ -57,26 +57,19 @@ Repository classes provide typed data access over the database schema. Each repo
 - **THEN** total input tokens, output tokens, and cost across all sessions are returned
 
 ### Requirement: SettingsRepo manages key-value settings
-`SettingsRepo` SHALL provide methods: `get(key)`, `set(key, value)`, `getAll()`.
+`SettingsRepo` SHALL provide methods scoped to per-session runtime overrides: `get(key)`, `set(key, value)`, `getAll()`, and `getByPrefix(prefix)`. It SHALL be used ONLY for keys matching the `session:{sessionId}:{settingName}` convention. Global application settings SHALL NOT pass through `SettingsRepo`; they are read and written via the file-backed settings store (see `app-config-files`).
 
-#### Scenario: Set and get a setting
-- **WHEN** `set("theme", "dark")` is called, then `get("theme")` is called
-- **THEN** `"dark"` is returned
+#### Scenario: Set and get a per-session setting
+- **WHEN** `set("session:sess_1:auto_compaction", "true")` is called, then `get("session:sess_1:auto_compaction")` is called
+- **THEN** `"true"` is returned
 
 #### Scenario: Get nonexistent setting
-- **WHEN** `get("nonexistent")` is called
+- **WHEN** `get("session:sess_1:nope")` is called
 - **THEN** null is returned
 
-### Requirement: ModelConfigRepo manages model configurations
-`ModelConfigRepo` SHALL provide methods: `set(projectId, provider, modelId, thinkingLevel)`, `getForProject(projectId)`, `getGlobalDefault()`.
-
-#### Scenario: Get model config with project override
-- **WHEN** `getForProject("proj-1")` is called and the project has a config
-- **THEN** the project-specific config is returned
-
-#### Scenario: Fall back to global default
-- **WHEN** `getForProject("proj-1")` is called and the project has no config
-- **THEN** the global default config is returned (or null if none set)
+#### Scenario: Global settings do not use SettingsRepo
+- **WHEN** a global preference such as theme is read or written
+- **THEN** the operation goes through the file-backed settings store, not `SettingsRepo`
 
 ### Requirement: All repos accept a Drizzle database instance
 Each repo SHALL be constructed with a `DrizzleDatabase` instance. Repos are stateless — they don't own the connection.

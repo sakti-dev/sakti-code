@@ -29,14 +29,28 @@ export function createMockStore(): SessionStorage {
 
 export function createMockCtx(overrides?: {
   projectId?: string;
-  modelConfig?: {
-    provider: string;
-    modelId: string;
-    thinkingLevel?: string;
-  };
+  profileId?: string | null;
 }) {
   const projectId = overrides?.projectId ?? "proj-1";
   return {
+    profiles: {
+      read: vi.fn(() => ({
+        defaultProfile: "default",
+        profiles: {
+          default: {
+            name: "Default",
+            models: {
+              default: {
+                provider: "openai",
+                model: TEST_MODEL_ID,
+                thinkingLevel: "off",
+              },
+            },
+          },
+        },
+      })),
+      getMtimeMs: vi.fn(() => 1000),
+    },
     repos: {
       sessions: {
         findById: vi.fn(async (id: string) =>
@@ -60,26 +74,12 @@ export function createMockCtx(overrides?: {
                 id: projectId,
                 name: "test-project",
                 cwd: "/tmp/test",
+                profileId: overrides?.profileId ?? null,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
               }
             : null
         ),
-      },
-      models: {
-        getForProject: vi.fn(
-          () =>
-            overrides?.modelConfig ?? {
-              id: "cfg-1",
-              projectId,
-              provider: "openai",
-              modelId: TEST_MODEL_ID,
-              thinkingLevel: "off",
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-            }
-        ),
-        getGlobalDefault: vi.fn(() => null),
       },
       settings: {
         get: vi.fn(() => null),
@@ -100,6 +100,7 @@ export function createMultiSessionCtx(
       id: string;
       name: string;
       cwd: string;
+      profileId: null;
       createdAt: number;
       updatedAt: number;
     }
@@ -110,6 +111,7 @@ export function createMultiSessionCtx(
         id: pid,
         name: `project-${pid}`,
         cwd: pid === "proj-1" ? "/tmp/project-a" : "/tmp/project-b",
+        profileId: null,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -118,6 +120,24 @@ export function createMultiSessionCtx(
 
   return {
     db: {},
+    profiles: {
+      read: vi.fn(() => ({
+        defaultProfile: "default",
+        profiles: {
+          default: {
+            name: "Default",
+            models: {
+              default: {
+                provider: "openai",
+                model: TEST_MODEL_ID,
+                thinkingLevel: "off",
+              },
+            },
+          },
+        },
+      })),
+      getMtimeMs: vi.fn(() => 1000),
+    },
     repos: {
       sessions: {
         findById: vi.fn(async (id: string) =>
@@ -136,17 +156,6 @@ export function createMultiSessionCtx(
       },
       projects: {
         findById: vi.fn(async (id: string) => projects[id] ?? null),
-      },
-      models: {
-        getForProject: vi.fn(() => ({
-          id: "cfg-1",
-          provider: "openai",
-          modelId: TEST_MODEL_ID,
-          thinkingLevel: "off",
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        })),
-        getGlobalDefault: vi.fn(() => null),
       },
       settings: {
         get: vi.fn(() => null),

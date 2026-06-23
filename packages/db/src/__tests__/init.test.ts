@@ -46,22 +46,25 @@ describe("initDatabase", () => {
     expect(names).toContain("projects");
     expect(names).toContain("sessions");
     expect(names).toContain("settings");
-    expect(names).toContain("model_configs");
     expect(names).toContain("session_entries");
+    expect(names).not.toContain("model_configs");
 
     // Can insert into each table
     db.prepare(
-      "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
-    ).run("p1", "Test", "/tmp/test", 1, 1);
+      "INSERT INTO projects (id, name, cwd, profile_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run("p1", "Test", "/tmp/test", null, 1, 1);
     db.prepare(
       "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
     ).run("s1", "p1", "claude-sonnet", 1, 1);
     db.prepare(
       "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)"
     ).run("theme", "dark", 1);
-    db.prepare(
-      "INSERT INTO model_configs (id, project_id, provider, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run("mc1", "p1", "anthropic", "claude-sonnet", 1, 1);
+
+    // profile_id column exists and is nullable
+    const project = db
+      .prepare("SELECT profile_id FROM projects WHERE id = ?")
+      .get("p1") as { profile_id: string | null };
+    expect(project.profile_id).toBeNull();
 
     expect(drizzleDb).toBeDefined();
   });

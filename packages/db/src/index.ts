@@ -1,6 +1,5 @@
 export { type DrizzleDB, initDatabase } from "./init.ts";
 export {
-  ModelConfigRepo,
   ProjectRepo,
   SessionRepo,
   SettingsRepo,

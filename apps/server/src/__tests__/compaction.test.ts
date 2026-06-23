@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { clearProfileCache } from "../agent/model-resolver.ts";
 import {
   fauxAssistantMessage,
   teardownFauxLlm,
@@ -10,7 +11,9 @@ import {
 } from "./llm-helpers.ts";
 
 const { compactionRoutes } = await import("../routes/sessions/compaction.ts");
-const { makeApp } = await import("./helpers.ts");
+const { makeApp, seedProfile } = await import("./helpers.ts");
+
+const MODEL_ERROR_RE = /model|api key|provider/;
 
 /** Real model id so `getModel("openai", id)` resolves during runPrompt/compact. */
 const TEST_MODEL_ID = "gpt-4";
@@ -23,6 +26,7 @@ beforeAll(() => {
 
 afterEach(() => {
   teardownFauxLlm();
+  clearProfileCache();
 });
 
 async function seedEntries(
@@ -57,11 +61,7 @@ describe("compaction route", () => {
     useFauxLlm([fauxAssistantMessage("Compacted summary of the session.")]);
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p", tempDir);
-    ctx.repos.models.set({
-      projectId: project.id,
-      provider: "openai",
-      modelId: TEST_MODEL_ID,
-    });
+    seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
     const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
 
     await seedEntries(ctx.db, session.id, 200);
@@ -88,7 +88,7 @@ describe("compaction route", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns 500 when no model configured", async () => {
+  it("returns 500 when no model configured (empty default profile)", async () => {
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p2", tempDir);
     const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
@@ -100,7 +100,7 @@ describe("compaction route", () => {
     );
     expect(res.status).toBe(500);
     const body = await res.text();
-    expect(body).toContain("model");
+    expect(body.toLowerCase()).toMatch(MODEL_ERROR_RE);
   });
 
   it("returns 500 on summarization error", async () => {
@@ -113,11 +113,7 @@ describe("compaction route", () => {
 
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p3", tempDir);
-    ctx.repos.models.set({
-      projectId: project.id,
-      provider: "openai",
-      modelId: TEST_MODEL_ID,
-    });
+    seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
     const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
     await seedEntries(ctx.db, session.id, 200);
 
@@ -135,11 +131,7 @@ describe("compaction route", () => {
 
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p4", tempDir);
-    ctx.repos.models.set({
-      projectId: project.id,
-      provider: "openai",
-      modelId: TEST_MODEL_ID,
-    });
+    seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
     const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
     await seedEntries(ctx.db, session.id, 50);
 

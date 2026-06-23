@@ -9,6 +9,7 @@ export const projects = sqliteTable("projects", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   cwd: text("cwd").notNull().unique(),
+  profileId: text("profile_id"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
@@ -33,20 +34,6 @@ export const settings = sqliteTable("settings", {
   value: text("value").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
-
-export const modelConfigs = sqliteTable(
-  "model_configs",
-  {
-    id: text("id").primaryKey(),
-    projectId: text("project_id").references(() => projects.id),
-    provider: text("provider").notNull(),
-    modelId: text("model_id").notNull(),
-    thinkingLevel: text("thinking_level").notNull().default("off"),
-    createdAt: integer("created_at").notNull(),
-    updatedAt: integer("updated_at").notNull(),
-  },
-  (table) => [uniqueIndex("model_configs_project_id_idx").on(table.projectId)]
-);
 
 export const sessionEntries = sqliteTable(
   "session_entries",

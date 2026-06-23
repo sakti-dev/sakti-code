@@ -1,13 +1,23 @@
 import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { serve, type WebSocketServerLike } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { initDatabase } from "@sakti-code/db";
+import { initDatabase, settings as settingsTable } from "@sakti-code/db";
 import { WebSocketServer } from "ws";
 import { buildApp } from "./app.ts";
 import { createContext } from "./context.ts";
-import { createApiKeyStore } from "./lib/api-key-store.ts";
+import { createAuthStore } from "./lib/auth-store.ts";
+import {
+  getAuthPath,
+  getMigratedSentinelPath,
+  getProfilesPath,
+  getSettingsPath,
+} from "./lib/config-dirs.ts";
+import { runMigration } from "./lib/config-migration.ts";
+import { createProfilesStore } from "./lib/profiles-store.ts";
+import { createSettingsFileStore } from "./lib/settings-file-store.ts";
 
 export interface ServerHooks {
   onOpenFolderDialog?: () => Promise<string | null>;
@@ -41,12 +51,69 @@ export async function createServer(
     migrationsFolder,
   } = options ?? {};
 
-  const db = await initDatabase(new DatabaseSync(dbPath), {
+  const rawDb = new DatabaseSync(dbPath);
+
+  // Read global model_config BEFORE initDatabase applies migrations that drop the table
+  let globalModelConfig: {
+    provider: string;
+    model: string;
+    thinkingLevel?: string;
+  } | null = null;
+  try {
+    const row = rawDb
+      .prepare(
+        "SELECT provider, model_id, thinking_level FROM model_configs WHERE project_id IS NULL LIMIT 1"
+      )
+      .get() as
+      | { provider: string; model_id: string; thinking_level: string }
+      | undefined;
+    if (row) {
+      globalModelConfig = {
+        provider: row.provider,
+        model: row.model_id,
+        thinkingLevel: row.thinking_level,
+      };
+    }
+  } catch {
+    // Table doesn't exist (fresh install or already migrated)
+  }
+
+  const db = await initDatabase(rawDb, {
     ...(migrationsFolder === undefined ? {} : { migrationsFolder }),
   });
-  const apiKeys = createApiKeyStore(process.env.SAKTI_KEYS_PATH ?? undefined);
-  apiKeys.loadIntoEnv();
-  const ctx = createContext(db, hooks, apiKeys);
+
+  const authPath = getAuthPath();
+  const profilesPath = getProfilesPath();
+  const settingsPath = getSettingsPath();
+
+  const auth = createAuthStore(authPath);
+  const profiles = createProfilesStore(profilesPath);
+  const settingsFile = createSettingsFileStore(settingsPath);
+
+  runMigration(getMigratedSentinelPath(), {
+    legacyKeysPath:
+      process.env.SAKTI_KEYS_PATH ??
+      join(
+        process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"),
+        "sakti-code",
+        "api-keys.json"
+      ),
+    authPath,
+    profilesPath,
+    settingsPath,
+    profilesStore: profiles,
+    settingsFileStore: settingsFile,
+    globalModelConfig,
+    getAllSettings: () =>
+      db.select().from(settingsTable).all() as Array<{
+        key: string;
+        value: string;
+      }>,
+  });
+
+  auth.loadIntoEnv();
+
+  const ctx = createContext(db, hooks, { auth, profiles, settingsFile });
 
   const app = buildApp(ctx);
 

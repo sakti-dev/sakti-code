@@ -21,19 +21,23 @@ The system SHALL provide `runPrompt(ctx, sessionId, message, storage, eventCallb
 - **THEN** the generator throws an error matching `/Project not found/`
 
 ### Requirement: Model resolution from stored config
-The system SHALL resolve the pi-ai `Model` for a session by reading `ModelConfigRepo.getForProject(projectId)` and falling back to `ModelConfigRepo.getGlobalDefault()` when no project-specific config exists. Resolution SHALL call `getModel(provider, modelId)` using only values stored in the config row. API keys SHALL NOT be read from the DB — they come from the environment (pi-ai reads them). If neither a project config nor a global default exists, the resolver SHALL throw.
+The system SHALL resolve the pi-ai `Model` for a session by resolving the active profile from `profiles.json` and the session's project: the active profile id is `project.profileId ?? profiles.defaultProfile`; the model reference is `profile.models[<current runtime mode>] ?? profile.models.default`. Until runtime modes ship, the current mode SHALL always be `default`. Resolution SHALL call `getModel(provider, modelId)` using only values from the resolved model reference and SHALL pass the reference's `thinkingLevel` (defaulting to `"off"`) into the session config. The resolved profile JSON SHALL be cached keyed on the file's `mtimeMs` so an external edit to `profiles.json` is reflected on the next resolution without a server restart. API keys SHALL NOT be read from the DB or profiles file by the resolver — they come from `process.env` via pi-ai (set by the auth file store on startup and on write). If the resolved profile or its `models.default` is missing, the resolver SHALL throw an error mentioning the missing profile/default.
 
-#### Scenario: resolves via project config
-- **WHEN** a session's project has a stored model config and `runPrompt` constructs the harness
-- **THEN** the harness's model is the one resolved from the project's config row
+#### Scenario: resolves via default model
+- **WHEN** a session's project resolves to a profile whose `models.default` is set
+- **THEN** the harness's model is the one resolved from `models.default`
 
-#### Scenario: falls back to global default
-- **WHEN** a session's project has no stored config but a global default exists
-- **THEN** the harness's model is the global default
+#### Scenario: project profileId overrides defaultProfile
+- **WHEN** `profiles.defaultProfile` is `"balanced"` but the session's `project.profileId` is `"fast"`
+- **THEN** the harness's model is resolved from the `"fast"` profile's `models.default`
 
-#### Scenario: no config available
-- **WHEN** neither a project config nor a global default exists
-- **THEN** `runPrompt` throws an error mentioning the missing config
+#### Scenario: cache invalidates on file change
+- **WHEN** `profiles.json` is edited externally (mtime changes) and a subsequent `runPrompt` resolves the model
+- **THEN** the new profile content is used (not the cached pre-edit copy)
+
+#### Scenario: no default model available
+- **WHEN** the resolved profile has no `models.default`
+- **THEN** `runPrompt` throws an error mentioning the missing default model
 
 ### Requirement: Cwd-scoped tools built per prompt
 The system SHALL build the 7 coding tools (`createReadTool`, `createWriteTool`, `createEditTool`, `createBashTool`, `createGrepTool`, `createFindTool`, `createLsTool`) scoped to the session's project `cwd` on every `runPrompt` call. Each call SHALL construct fresh tool instances; tools SHALL NOT be shared across prompts or projects.

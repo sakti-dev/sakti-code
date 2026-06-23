@@ -82,7 +82,8 @@ SAKTI_DB_PATH=/custom/path/sakti-code.db nub run dev:server   # custom db path
 ### Environment & configuration
 
 - **API keys come from env, never from the DB.** Each LLM provider's key is resolved at runtime via `getEnvApiKey(provider)` (pi-ai). Standard env vars are `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, etc.
-- **Model config (provider + modelId) lives in the DB** (`model_config` table), settable per-project or as a global default.
+- **Config home is `~/.sakti/agent/`** (pi-style; overridable via `SAKTI_AGENT_DIR` env). One JSON file per concern: `auth.json` (credentials, locked + `0o600`), `profiles.json` (model selection per mode), `settings.json` (global app preferences). A one-time non-destructive migration runs on first start (copies legacy `~/.config/sakti-code/api-keys.json` → `auth.json`).
+- **Model selection lives in `profiles.json`**, not the DB. A profile maps runtime modes (`default` required; `intake`/`plan`/`build` optional, mode-forward) to `{ provider, model, thinkingLevel }`. A `defaultProfile` id selects the active one. Projects reference a profile via `projects.profileId` (nullable; null → `defaultProfile`).
 
 ### Route modules
 
@@ -93,8 +94,9 @@ Route modules register themselves via `buildApp`'s chained `.route()` calls in `
 | `healthRoutes` | `GET /health` | Liveness check |
 | `projectsRoutes` | `GET/PUT/DELETE /api/projects` | Project CRUD |
 | `sessionsRoutes` | `GET /api/sessions`, `GET /api/sessions/:id/messages` | Session listing; `:id/messages` projects the entry tree via `buildSessionContext` |
-| `settingsRoutes` | `GET/PUT /api/settings` | Global settings |
-| `modelConfigRoutes` | `GET/POST /api/model-configs` | Per-project and global model config |
+| `settingsRoutes` | `GET/PUT /api/settings` | Global settings (file-backed `settings.json`, deep-merge on PUT) |
+| `profilesRoutes` | `GET/PUT /api/profiles` | Profiles (file-backed `profiles.json`, whole-file replace on PUT) |
+| `authRoutes` | `GET /api/auth`, `POST/DELETE /api/auth/:provider` | Provider credentials (masked list, file-backed `auth.json`) |
 | `availableModelsRoutes` | `GET /api/available-models` | Models catalog |
 | `gitRoutes` | `GET /api/git/:projectId/status, /branch, /diff, /log`, `GET /api/git/turn-diff` | Git operations (status, branch switch, diff, log) + structured turn-diff (numstat-parsed file changes since HEAD) |
 | `statsRoutes` | `GET /api/sessions/:id/stats` | **Fast, local read** — derives `activeMessageCount` + token/cost totals from assistant `usage` fields via `buildSessionContext`; no `costs` table |
