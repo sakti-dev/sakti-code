@@ -14,6 +14,7 @@ export type MessagePart =
       input: unknown;
       status: "running" | "done" | "error";
       result?: string;
+      details?: unknown;
     }
   | { type: "thinking"; text: string };
 

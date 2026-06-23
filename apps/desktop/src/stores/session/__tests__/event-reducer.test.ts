@@ -5,10 +5,12 @@ import {
   makeAgentEndEvent,
   makeAgentStartEvent,
   makeAssistantMessage,
+  makeAssistantMessageWithToolCall,
   makeFullTurnSequence,
   makeMessageEndEvent,
   makeMessageStartEvent,
   makeMessageUpdateTextDeltaEvent,
+  makeMessageUpdateThinkingDeltaEvent,
   makeToolExecutionEndEvent,
   makeToolExecutionStartEvent,
   makeTurnEndEvent,
@@ -55,7 +57,7 @@ describe("event reducer — individual events", () => {
     expect(session.store.streaming.phase).toBe("writing");
   });
 
-  it("message_start for user is skipped", () => {
+  it("message_start for user adds user message from event stream", () => {
     const { session, batcher } = setup();
     const userMsg = {
       role: "user",
@@ -63,7 +65,31 @@ describe("event reducer — individual events", () => {
       timestamp: Date.now(),
     } as AgentMessage;
     dispatchEvent(session.actions, batcher, makeMessageStartEvent(userMsg));
-    expect(session.store.messageOrder).toHaveLength(0);
+    expect(session.store.messageOrder).toHaveLength(1);
+    expect(session.store.messages[session.store.messageOrder[0]!]!.role).toBe(
+      "user"
+    );
+  });
+
+  it("message_start for user skips when sendPrompt already added it", () => {
+    const { session, batcher } = setup();
+    session.actions.addMessage({
+      id: "pre-added",
+      role: "user",
+      content: "hello world",
+      parts: [{ type: "text", text: "hello world" }],
+      isStreaming: false,
+      timestamp: Date.now(),
+    });
+
+    const userMsg = {
+      role: "user",
+      content: "hello world",
+      timestamp: Date.now(),
+    } as AgentMessage;
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(userMsg));
+
+    expect(session.store.messageOrder).toHaveLength(1);
   });
 
   it("message_update text_delta is batched", async () => {
@@ -80,6 +106,29 @@ describe("event reducer — individual events", () => {
     await Promise.resolve();
 
     expect(session.store.messages[msgId]!.content).toBe("Hello");
+  });
+
+  it("message_update thinking_delta appends to thinking part", () => {
+    const { session, batcher } = setup();
+    const msg = makeAssistantMessage("");
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(msg));
+    const msgId = session.store.streaming.currentMessageId!;
+
+    dispatchEvent(
+      session.actions,
+      batcher,
+      makeMessageUpdateThinkingDeltaEvent(msg, "Let me think ")
+    );
+    dispatchEvent(
+      session.actions,
+      batcher,
+      makeMessageUpdateThinkingDeltaEvent(msg, "about this")
+    );
+
+    const parts = session.store.messages[msgId]!.parts;
+    expect(parts).toHaveLength(1);
+    expect(parts[0]!.type).toBe("thinking");
+    expect((parts[0] as { text: string }).text).toBe("Let me think about this");
   });
 
   it("message_end finalizes message but does NOT clear currentMessageId", () => {
@@ -177,6 +226,63 @@ describe("event reducer — individual events", () => {
       status: "error",
       result: "command not found",
     });
+  });
+
+  it("tool_execution_end extracts content text from structured result", () => {
+    const { session, batcher } = setup();
+    const msg = makeAssistantMessageWithToolCall("", {
+      id: "call-1",
+      name: "bash",
+      args: { command: "echo hello" },
+    });
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(msg));
+    dispatchEvent(
+      session.actions,
+      batcher,
+      makeToolExecutionStartEvent("call-1", "bash", { command: "echo hello" })
+    );
+
+    dispatchEvent(
+      session.actions,
+      batcher,
+      makeToolExecutionEndEvent("call-1", "bash", {
+        content: [{ type: "text", text: "hello\n" }],
+        details: { truncation: false },
+      })
+    );
+
+    const part =
+      session.store.messages[session.store.messageOrder[0]!]!.parts[0]!;
+    expect(part.type).toBe("tool_call");
+    expect((part as { result?: string }).result).toBe("hello\n");
+    expect((part as { details?: unknown }).details).toEqual({
+      truncation: false,
+    });
+  });
+
+  it("tool_execution_end falls back to stringify for primitive result", () => {
+    const { session, batcher } = setup();
+    const msg = makeAssistantMessageWithToolCall("", {
+      id: "call-1",
+      name: "bash",
+      args: { command: "echo" },
+    });
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(msg));
+    dispatchEvent(
+      session.actions,
+      batcher,
+      makeToolExecutionStartEvent("call-1", "bash", { command: "echo" })
+    );
+
+    dispatchEvent(
+      session.actions,
+      batcher,
+      makeToolExecutionEndEvent("call-1", "bash", "plain string result")
+    );
+
+    const part =
+      session.store.messages[session.store.messageOrder[0]!]!.parts[0]!;
+    expect((part as { result?: string }).result).toBe("plain string result");
   });
 
   it("turn_end clears currentMessageId and sets idle", () => {

@@ -26,6 +26,7 @@ export interface SessionActions {
     toolName: string,
     input: unknown
   ) => void;
+  appendThinkingToken: (msgId: string, delta: string) => void;
   appendToken: (msgId: string, delta: string) => void;
   clearCurrentMessage: () => void;
   clearCurrentTool: () => void;
@@ -34,7 +35,8 @@ export interface SessionActions {
     msgId: string,
     toolCallId: string,
     result: string,
-    isError?: boolean
+    isError?: boolean,
+    details?: unknown
   ) => void;
   finalizeMessage: (msgId: string) => void;
   getCurrentMessageId: () => string | null;
@@ -46,6 +48,7 @@ export interface SessionActions {
   setError: (msgId: string, error: string) => void;
   setPhase: (phase: StreamState["phase"]) => void;
   setProposedSession: (proposal: ProposedSession) => void;
+  wasLastUserMessage: (text: string) => boolean;
 }
 
 export interface SessionStore {
@@ -89,6 +92,16 @@ export function createSessionStore(): SessionStore {
         return [...prev, { type: "text" as const, text: delta }];
       });
       setStore("streaming", "tokenCount", (n) => n + 1);
+    },
+
+    appendThinkingToken(msgId, delta) {
+      setStore("messages", msgId, "parts", (prev) => {
+        const last = prev.at(-1);
+        if (last !== undefined && last.type === "thinking") {
+          return [...prev.slice(0, -1), { ...last, text: last.text + delta }];
+        }
+        return [...prev, { type: "thinking" as const, text: delta }];
+      });
     },
 
     setContent(msgId, content) {
@@ -140,14 +153,16 @@ export function createSessionStore(): SessionStore {
       setStore("streaming", "phase", "tool_running");
     },
 
-    completeToolCall(msgId, toolCallId, result, isError = false) {
+    completeToolCall(msgId, toolCallId, result, isError, details) {
+      const isErr = isError ?? false;
       setStore("messages", msgId, "parts", (prev) =>
         prev.map((p) =>
           p.type === "tool_call" && p.toolCallId === toolCallId
             ? {
                 ...p,
-                status: isError ? ("error" as const) : ("done" as const),
+                status: isErr ? ("error" as const) : ("done" as const),
                 result,
+                ...(details === undefined ? {} : { details }),
               }
             : p
         )
@@ -173,6 +188,15 @@ export function createSessionStore(): SessionStore {
           s.streaming = { ...idleStreamState };
         })
       );
+    },
+
+    wasLastUserMessage(text) {
+      const lastId = store.messageOrder.at(-1);
+      if (!lastId) {
+        return false;
+      }
+      const lastMsg = store.messages[lastId];
+      return lastMsg?.role === "user" && lastMsg.content === text;
     },
   };
 

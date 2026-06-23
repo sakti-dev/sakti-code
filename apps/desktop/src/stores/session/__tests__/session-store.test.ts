@@ -100,6 +100,113 @@ describe("session store — appendToken", () => {
   });
 });
 
+describe("session store — appendThinkingToken", () => {
+  it("creates a thinking part if none exists", () => {
+    const session = createSessionStore();
+    session.actions.addMessage({
+      id: "msg-1",
+      role: "assistant",
+      content: "",
+      parts: [],
+      isStreaming: true,
+      timestamp: Date.now(),
+    });
+
+    session.actions.appendThinkingToken("msg-1", "I should ");
+
+    expect(session.store.messages["msg-1"]!.parts).toEqual([
+      { type: "thinking", text: "I should " },
+    ]);
+  });
+
+  it("appends to existing thinking part", () => {
+    const session = createSessionStore();
+    session.actions.addMessage({
+      id: "msg-1",
+      role: "assistant",
+      content: "",
+      parts: [{ type: "thinking", text: "I should " }],
+      isStreaming: true,
+      timestamp: Date.now(),
+    });
+
+    session.actions.appendThinkingToken("msg-1", "consider ");
+
+    expect(session.store.messages["msg-1"]!.parts).toEqual([
+      { type: "thinking", text: "I should consider " },
+    ]);
+  });
+
+  it("creates new thinking part when last part is text", () => {
+    const session = createSessionStore();
+    session.actions.addMessage({
+      id: "msg-1",
+      role: "assistant",
+      content: "Hello",
+      parts: [{ type: "text", text: "Hello" }],
+      isStreaming: true,
+      timestamp: Date.now(),
+    });
+
+    session.actions.appendThinkingToken("msg-1", "Wait ");
+
+    expect(session.store.messages["msg-1"]!.parts).toHaveLength(2);
+    expect(session.store.messages["msg-1"]!.parts[1]).toEqual({
+      type: "thinking",
+      text: "Wait ",
+    });
+  });
+});
+
+describe("session store — wasLastUserMessage", () => {
+  it("returns true when last message is user with matching content", () => {
+    const session = createSessionStore();
+    session.actions.addMessage({
+      id: "msg-1",
+      role: "user",
+      content: "hello world",
+      parts: [{ type: "text", text: "hello world" }],
+      isStreaming: false,
+      timestamp: Date.now(),
+    });
+
+    expect(session.actions.wasLastUserMessage("hello world")).toBe(true);
+  });
+
+  it("returns false when last message is assistant", () => {
+    const session = createSessionStore();
+    session.actions.addMessage({
+      id: "msg-1",
+      role: "assistant",
+      content: "hi",
+      parts: [{ type: "text", text: "hi" }],
+      isStreaming: false,
+      timestamp: Date.now(),
+    });
+
+    expect(session.actions.wasLastUserMessage("hi")).toBe(false);
+  });
+
+  it("returns false when last user message has different content", () => {
+    const session = createSessionStore();
+    session.actions.addMessage({
+      id: "msg-1",
+      role: "user",
+      content: "hello",
+      parts: [{ type: "text", text: "hello" }],
+      isStreaming: false,
+      timestamp: Date.now(),
+    });
+
+    expect(session.actions.wasLastUserMessage("goodbye")).toBe(false);
+  });
+
+  it("returns false when store is empty", () => {
+    const session = createSessionStore();
+    expect(session.actions.wasLastUserMessage("anything")).toBe(false);
+  });
+});
+
 describe("session store — setContent", () => {
   it("replaces entire content", () => {
     const session = createSessionStore();
@@ -211,6 +318,67 @@ describe("session store — completeToolCall", () => {
       status: "error",
       result: "failed",
     });
+  });
+});
+
+describe("session store — completeToolCall with details", () => {
+  it("stores details when provided", () => {
+    const session = createSessionStore();
+    session.actions.addMessage({
+      id: "msg-1",
+      role: "assistant",
+      content: "",
+      parts: [
+        {
+          type: "tool_call",
+          toolCallId: "call-1",
+          toolName: "edit",
+          input: { path: "/test.ts" },
+          status: "running",
+        },
+      ],
+      isStreaming: true,
+      timestamp: Date.now(),
+    });
+
+    const diff = "--- old\n+++ new";
+    session.actions.completeToolCall(
+      "msg-1",
+      "call-1",
+      "Edited /test.ts",
+      false,
+      diff
+    );
+
+    const part = session.store.messages["msg-1"]!.parts[0]!;
+    expect(part.type).toBe("tool_call");
+    expect((part as { details?: unknown }).details).toBe(diff);
+  });
+
+  it("works without details (backward compatible)", () => {
+    const session = createSessionStore();
+    session.actions.addMessage({
+      id: "msg-1",
+      role: "assistant",
+      content: "",
+      parts: [
+        {
+          type: "tool_call",
+          toolCallId: "call-1",
+          toolName: "bash",
+          input: { command: "ls" },
+          status: "running",
+        },
+      ],
+      isStreaming: true,
+      timestamp: Date.now(),
+    });
+
+    session.actions.completeToolCall("msg-1", "call-1", "output", false);
+
+    const part = session.store.messages["msg-1"]!.parts[0]!;
+    expect(part.type).toBe("tool_call");
+    expect((part as { details?: unknown }).details).toBeUndefined();
   });
 });
 

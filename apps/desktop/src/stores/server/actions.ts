@@ -1,7 +1,8 @@
 import type { AgentMessage } from "@sakti-code/agent";
 import type { Client } from "~/lib/api";
+import { hydrateSessionMessages } from "../session/hydrate-messages.ts";
 import type { SessionRegistry } from "../session/session-registry.ts";
-import { agentMessageToUI, type UIMessage } from "../types.ts";
+import type { UIMessage } from "../types.ts";
 import { setLastError } from "../workspace/ui-signals.ts";
 import type {
   Project,
@@ -144,7 +145,7 @@ export function createActions(
           return;
         }
         const messages = (await res.json()) as AgentMessage[];
-        const uiMessages = messages.map(agentMessageToUI);
+        const uiMessages = hydrateSessionMessages(messages);
         const session = sessionRegistry.get(sessionId);
         session.actions.loadMessages(uiMessages);
       } catch (error) {

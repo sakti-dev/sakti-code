@@ -391,4 +391,57 @@ describe("actions", () => {
 
     expect(Object.keys(deps.serverStore.store.projects)).toHaveLength(0);
   });
+
+  it("loadMessages hydrates thinking + tool calls + tool results", async () => {
+    const deps = makeDeps();
+    const mockApi = {
+      api: {
+        sessions: {
+          ":id": {
+            messages: {
+              $get: vi.fn(() =>
+                okRes([
+                  { role: "user", content: "test", timestamp: 1 },
+                  {
+                    role: "assistant",
+                    content: [
+                      { type: "thinking", thinking: "hmm" },
+                      { type: "text", text: "ok" },
+                      {
+                        type: "toolCall",
+                        id: "c1",
+                        name: "bash",
+                        arguments: { command: "ls" },
+                      },
+                    ],
+                    timestamp: 2,
+                  },
+                  {
+                    role: "toolResult",
+                    toolCallId: "c1",
+                    toolName: "bash",
+                    content: [{ type: "text", text: "file1" }],
+                    isError: false,
+                    timestamp: 3,
+                  },
+                ])
+              ),
+            },
+          },
+        },
+      },
+    };
+    const actions = createActions(mockApi as never, makeMockWs(), deps);
+
+    await actions.loadMessages("sess-1");
+
+    const store = deps.sessionRegistry.get("sess-1").store;
+    expect(store.messageOrder).toHaveLength(2); // user + assistant (toolResult merged)
+
+    const assistantMsg = store.messages[store.messageOrder[1]!]!;
+    expect(assistantMsg.parts).toHaveLength(3); // thinking + text + tool_call(done)
+    const toolPart = assistantMsg.parts[2]!;
+    expect(toolPart.type).toBe("tool_call");
+    expect((toolPart as { status: string }).status).toBe("done");
+  });
 });

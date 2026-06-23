@@ -130,6 +130,22 @@ export function makeMessageUpdateTextDeltaEvent(
   } as AgentHarnessEvent;
 }
 
+export function makeMessageUpdateThinkingDeltaEvent(
+  message: AgentMessage,
+  delta: string
+): AgentHarnessEvent {
+  return {
+    type: "message_update",
+    message,
+    assistantMessageEvent: {
+      type: "thinking_delta",
+      contentIndex: 0,
+      delta,
+      partial: message,
+    },
+  } as AgentHarnessEvent;
+}
+
 export function makeMessageEndEvent(message: AgentMessage): AgentHarnessEvent {
   return { type: "message_end", message } as AgentHarnessEvent;
 }

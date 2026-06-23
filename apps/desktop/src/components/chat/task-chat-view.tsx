@@ -1,4 +1,4 @@
-import { createMemo, type JSX } from "solid-js";
+import { createMemo, type JSX, onMount } from "solid-js";
 import { MessageTimeline } from "~/components/chat/timeline/message-timeline";
 import { ChatInput } from "~/components/chat-input/chat-input";
 import { buildChatTurns } from "~/stores/session/turn-projection";
@@ -9,9 +9,13 @@ interface TaskChatViewProps {
 }
 
 export function TaskChatView(props: TaskChatViewProps): JSX.Element {
-  const { sessions } = useStore();
+  const { sessions, actions } = useStore();
 
   const sessionStore = createMemo(() => sessions.get(props.sessionId));
+
+  onMount(() => {
+    actions.loadMessages(props.sessionId);
+  });
 
   const turns = createMemo(() => {
     const session = sessionStore();

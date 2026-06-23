@@ -30,6 +30,23 @@ function handleMessageStart(
   actions: SessionActions,
   message: AgentMessage
 ): void {
+  if (message.role === "user") {
+    const text = extractTextContent(message);
+    if (actions.wasLastUserMessage(text)) {
+      return;
+    }
+    actions.addMessage({
+      id: crypto.randomUUID(),
+      role: "user",
+      content: text,
+      parts: [{ type: "text", text }],
+      isStreaming: false,
+      timestamp:
+        typeof message.timestamp === "number" ? message.timestamp : Date.now(),
+    });
+    return;
+  }
+
   if (message.role !== "assistant") {
     return;
   }
@@ -55,11 +72,42 @@ function handleToolExecutionEnd(
   if (!msgId) {
     return;
   }
-  const resultText =
-    typeof event.result === "object" && event.result !== null
-      ? JSON.stringify(event.result)
-      : String(event.result);
-  actions.completeToolCall(msgId, event.toolCallId, resultText, event.isError);
+
+  const result = event.result;
+  let resultText: string;
+  let details: unknown;
+
+  if (
+    result !== null &&
+    typeof result === "object" &&
+    "content" in result &&
+    Array.isArray((result as { content: unknown }).content)
+  ) {
+    const content = (result as { content: unknown[] }).content;
+    resultText = content
+      .filter(
+        (c): c is { type: "text"; text: string } =>
+          c !== null &&
+          typeof c === "object" &&
+          "type" in c &&
+          c.type === "text"
+      )
+      .map((c) => c.text)
+      .join("");
+    details = (result as { details?: unknown }).details;
+  } else if (typeof result === "object" && result !== null) {
+    resultText = JSON.stringify(result);
+  } else {
+    resultText = String(result);
+  }
+
+  actions.completeToolCall(
+    msgId,
+    event.toolCallId,
+    resultText,
+    event.isError,
+    details
+  );
 }
 
 export function dispatchEvent(
@@ -78,8 +126,13 @@ export function dispatchEvent(
 
     case "message_update": {
       const msgId = actions.getCurrentMessageId();
-      if (msgId && event.assistantMessageEvent.type === "text_delta") {
+      if (!msgId) {
+        break;
+      }
+      if (event.assistantMessageEvent.type === "text_delta") {
         batcher.append(msgId, event.assistantMessageEvent.delta);
+      } else if (event.assistantMessageEvent.type === "thinking_delta") {
+        actions.appendThinkingToken(msgId, event.assistantMessageEvent.delta);
       }
       break;
     }
