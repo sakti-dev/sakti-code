@@ -1,13 +1,14 @@
 import type { AgentHarnessEvent } from "@sakti-code/agent";
 import type { WsIn, WsOut } from "@sakti-code/server/ws";
-import { dispatchEvent } from "./event-reducer.ts";
+import { dispatchEvent } from "../session/event-reducer.ts";
+import type { SessionRegistry } from "../session/session-registry.ts";
+import { createTokenBatcher } from "../session/token-batcher.ts";
+import type { TerminalRegistry } from "../terminal/terminal-registry.ts";
+import { setIsStreaming, setLastError } from "../workspace/ui-signals.ts";
 import type { ServerActions, ServerStoreData } from "./server-store.ts";
-import type { SessionRegistry } from "./session-registry.ts";
-import type { TerminalRegistry } from "./terminal-registry.ts";
-import { createTokenBatcher } from "./token-batcher.ts";
-import { setIsStreaming } from "./ui-signals.ts";
 
-const RECONNECT_DELAY_MS = 2000;
+const INITIAL_RECONNECT_MS = 1000;
+const MAX_RECONNECT_MS = 30_000;
 
 export interface WsClient {
   disconnect: () => void;
@@ -20,10 +21,6 @@ export interface WsClientDeps {
   terminalRegistry: TerminalRegistry;
 }
 
-/**
- * Minimal Hono client shape — only the .ws.$ws() path.
- * This lets tests inject a mock without constructing a full hc client.
- */
 export interface WsConnectable {
   ws: {
     $ws: () => WebSocket;
@@ -38,6 +35,7 @@ export function createWsClient(
   let conn: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let shouldReconnect = true;
+  let reconnectAttempts = 0;
 
   const batchers = new Map<string, ReturnType<typeof createTokenBatcher>>();
 
@@ -107,27 +105,43 @@ export function createWsClient(
     }
   }
 
+  function scheduleReconnect(): void {
+    const delay = Math.min(
+      INITIAL_RECONNECT_MS * 2 ** reconnectAttempts,
+      MAX_RECONNECT_MS
+    );
+    reconnectAttempts++;
+    reconnectTimer = setTimeout(connect, delay);
+  }
+
   function connect(): void {
-    console.log("[ws] connecting...");
     server.actions.setConnectionStatus("connecting");
     conn = api.ws.$ws();
 
     conn.addEventListener("open", () => {
-      console.log("[ws] connected");
+      reconnectAttempts = 0;
       server.actions.setConnectionStatus("open");
     });
 
     conn.addEventListener("message", (event) => {
-      const frame = JSON.parse((event as MessageEvent).data as string) as WsOut;
+      let frame: WsOut;
+      try {
+        frame = JSON.parse((event as MessageEvent).data as string) as WsOut;
+      } catch {
+        return;
+      }
       handleFrame(frame);
     });
 
+    conn.addEventListener("error", () => {
+      setLastError("WebSocket connection error");
+    });
+
     conn.addEventListener("close", () => {
-      console.log("[ws] closed");
       server.actions.setConnectionStatus("closed");
       conn = null;
       if (shouldReconnect) {
-        reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
+        scheduleReconnect();
       }
     });
   }
@@ -146,6 +160,10 @@ export function createWsClient(
         clearTimeout(reconnectTimer);
       }
       conn?.close();
+      for (const batcher of batchers.values()) {
+        batcher.dispose();
+      }
+      batchers.clear();
     },
   };
 }

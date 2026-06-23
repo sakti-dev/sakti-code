@@ -5,14 +5,13 @@ import {
   useContext,
 } from "solid-js";
 import { api, type Client } from "~/lib/api";
-import { type Actions, createActions } from "./actions.ts";
-import { createServerStore, type ServerStore } from "./server-store.ts";
-import { SessionRegistry } from "./session-registry.ts";
-import { TerminalRegistry } from "./terminal-registry.ts";
-import { createWsClient, type WsClient } from "./ws-client.ts";
+import { type Actions, createActions } from "./server/actions.ts";
+import { createServerStore, type ServerStore } from "./server/server-store.ts";
+import { createWsClient, type WsClient } from "./server/ws-client.ts";
+import { SessionRegistry } from "./session/session-registry.ts";
+import { TerminalRegistry } from "./terminal/terminal-registry.ts";
 
 const API_URL = window.location.origin;
-console.log("[store] API_URL:", API_URL);
 
 export interface StoreContextValue {
   actions: Actions;

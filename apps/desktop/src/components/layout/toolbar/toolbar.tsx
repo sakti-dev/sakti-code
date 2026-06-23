@@ -1,5 +1,5 @@
 import { Show } from "solid-js";
-import { setSidebarOpen, sidebarOpen } from "~/stores/ui-signals";
+import { setSidebarOpen, sidebarOpen } from "~/stores/workspace/ui-signals";
 import { SettingsDialog } from "../../settings/settings-dialog";
 import ExportButton from "./export-button";
 import GitStatusBar from "./git-status-bar";

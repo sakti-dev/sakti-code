@@ -1,10 +1,10 @@
-import { createStore } from "solid-js/store";
+import { createStore, produce, reconcile } from "solid-js/store";
 import {
   idleStreamState,
   type MessagePart,
   type StreamState,
   type UIMessage,
-} from "./types.ts";
+} from "../types.ts";
 
 export interface SessionStoreData {
   messageOrder: string[];
@@ -45,7 +45,7 @@ export interface SessionStore {
   store: SessionStoreData;
 }
 
-export function createSessionStore(_sessionId: string): SessionStore {
+export function createSessionStore(): SessionStore {
   const [store, setStore] = createStore<SessionStoreData>({
     messages: {},
     messageOrder: [],
@@ -59,13 +59,11 @@ export function createSessionStore(_sessionId: string): SessionStore {
     },
 
     loadMessages(msgs) {
-      for (const key of Object.keys(store.messages)) {
-        // biome-ignore lint/suspicious/noExplicitAny: SolidJS store deletion requires any cast
-        setStore("messages", key, undefined as any);
-      }
+      const newMessages: Record<string, UIMessage> = {};
       for (const msg of msgs) {
-        setStore("messages", msg.id, msg);
+        newMessages[msg.id] = msg;
       }
+      setStore("messages", reconcile(newMessages));
       setStore(
         "messageOrder",
         msgs.map((m) => m.id)
@@ -143,12 +141,13 @@ export function createSessionStore(_sessionId: string): SessionStore {
     },
 
     reset() {
-      for (const key of Object.keys(store.messages)) {
-        // biome-ignore lint/suspicious/noExplicitAny: SolidJS store deletion requires any cast
-        setStore("messages", key, undefined as any);
-      }
-      setStore("messageOrder", () => []);
-      setStore("streaming", { ...idleStreamState });
+      setStore(
+        produce((s) => {
+          s.messages = {};
+          s.messageOrder = [];
+          s.streaming = { ...idleStreamState };
+        })
+      );
     },
   };
 

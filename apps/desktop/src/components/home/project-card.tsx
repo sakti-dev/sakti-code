@@ -1,6 +1,6 @@
 import { FaRegularClock } from "solid-icons/fa";
 import { For, Show } from "solid-js";
-import type { Project, SessionMeta } from "~/stores/server-store";
+import type { Project, SessionMeta } from "~/stores/server/server-store";
 
 interface ProjectCardProps {
   onOpen: () => void;

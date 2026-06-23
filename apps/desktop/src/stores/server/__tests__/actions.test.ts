@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import { SessionRegistry } from "../../session/session-registry.ts";
 import { createActions } from "../actions.ts";
 import { createServerStore } from "../server-store.ts";
-import { SessionRegistry } from "../session-registry.ts";
 import type { WsClient } from "../ws-client.ts";
 
 function makeMockWs(): WsClient {

@@ -1,7 +1,7 @@
 import { createRenderEffect, createRoot } from "solid-js";
 import { describe, expect, it } from "vitest";
+import type { UIMessage } from "../../types.ts";
 import { createSessionStore } from "../session-store.ts";
-import type { UIMessage } from "../types.ts";
 
 function makeMessage(overrides: Partial<UIMessage> = {}): UIMessage {
   return {
@@ -17,7 +17,7 @@ function makeMessage(overrides: Partial<UIMessage> = {}): UIMessage {
 
 describe("session store — addMessage", () => {
   it("inserts into messages map and order", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "m1", content: "hello" }));
 
     expect(session.store.messages.m1).toBeDefined();
@@ -26,7 +26,7 @@ describe("session store — addMessage", () => {
   });
 
   it("preserves insertion order for multiple messages", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "m1" }));
     session.actions.addMessage(makeMessage({ id: "m2" }));
     session.actions.addMessage(makeMessage({ id: "m3" }));
@@ -37,7 +37,7 @@ describe("session store — addMessage", () => {
 
 describe("session store — appendToken", () => {
   it("appends to content", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "m1", content: "Hel" }));
 
     session.actions.appendToken("m1", "lo");
@@ -48,7 +48,7 @@ describe("session store — appendToken", () => {
   });
 
   it("increments tokenCount", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "m1" }));
 
     session.actions.appendToken("m1", "a");
@@ -59,7 +59,7 @@ describe("session store — appendToken", () => {
 
 describe("session store — setContent", () => {
   it("replaces entire content", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "m1", content: "old" }));
 
     session.actions.setContent("m1", "new content");
@@ -69,7 +69,7 @@ describe("session store — setContent", () => {
 
 describe("session store — setPhase", () => {
   it("updates streaming phase", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.setPhase("thinking");
     expect(session.store.streaming.phase).toBe("thinking");
 
@@ -83,7 +83,7 @@ describe("session store — setPhase", () => {
 
 describe("session store — currentMessage tracking", () => {
   it("setCurrentMessage and clearCurrentMessage", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.setCurrentMessage("m1");
     expect(session.store.streaming.currentMessageId).toBe("m1");
 
@@ -92,7 +92,7 @@ describe("session store — currentMessage tracking", () => {
   });
 
   it("getCurrentMessageId returns current value", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     expect(session.actions.getCurrentMessageId()).toBeNull();
 
     session.actions.setCurrentMessage("m1");
@@ -102,7 +102,7 @@ describe("session store — currentMessage tracking", () => {
 
 describe("session store — currentTool tracking", () => {
   it("setCurrentTool and clearCurrentTool", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.setCurrentTool("bash");
     expect(session.store.streaming.currentToolName).toBe("bash");
 
@@ -113,7 +113,7 @@ describe("session store — currentTool tracking", () => {
 
 describe("session store — addToolCall", () => {
   it("adds a tool_call part and sets current tool", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "m1" }));
 
     session.actions.addToolCall("m1", "tc1", "bash", { command: "ls" });
@@ -131,7 +131,7 @@ describe("session store — addToolCall", () => {
   });
 
   it("adds multiple tool calls to same message", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "m1" }));
 
     session.actions.addToolCall("m1", "tc1", "read", {});
@@ -143,7 +143,7 @@ describe("session store — addToolCall", () => {
 
 describe("session store — completeToolCall", () => {
   it("marks tool done with result", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "m1" }));
     session.actions.addToolCall("m1", "tc1", "bash", {});
 
@@ -158,7 +158,7 @@ describe("session store — completeToolCall", () => {
   });
 
   it("marks tool error with isError=true", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "m1" }));
     session.actions.addToolCall("m1", "tc1", "bash", {});
 
@@ -173,7 +173,7 @@ describe("session store — completeToolCall", () => {
 
 describe("session store — setError", () => {
   it("sets error on message and phase to error", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "m1" }));
 
     session.actions.setError("m1", "Something broke");
@@ -185,7 +185,7 @@ describe("session store — setError", () => {
 
 describe("session store — finalizeMessage", () => {
   it("sets isStreaming to false", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "m1", isStreaming: true }));
 
     session.actions.finalizeMessage("m1");
@@ -196,7 +196,7 @@ describe("session store — finalizeMessage", () => {
 
 describe("session store — loadMessages", () => {
   it("replaces entire message set", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "old" }));
 
     session.actions.loadMessages([
@@ -212,7 +212,7 @@ describe("session store — loadMessages", () => {
 
 describe("session store — reset", () => {
   it("clears everything back to idle", () => {
-    const session = createSessionStore("s1");
+    const session = createSessionStore();
     session.actions.addMessage(makeMessage({ id: "m1" }));
     session.actions.setPhase("writing");
     session.actions.setCurrentMessage("m1");
@@ -234,7 +234,7 @@ describe("session store — reactivity", () => {
     let dispose: () => void = () => {};
     createRoot((d) => {
       dispose = d;
-      const session = createSessionStore("s1");
+      const session = createSessionStore();
 
       // createRenderEffect runs its initial computation synchronously.
       // SolidJS batches subsequent signal updates onto a microtask.

@@ -4,7 +4,7 @@ import {
   setUpdateVersion,
   updateAvailable,
   updateVersion,
-} from "~/stores/ui-signals";
+} from "~/stores/workspace/ui-signals";
 
 export default function BannerUpdate() {
   const available = () => updateAvailable();

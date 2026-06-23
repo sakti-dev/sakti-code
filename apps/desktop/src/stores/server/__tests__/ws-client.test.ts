@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { SessionRegistry } from "../../session/session-registry.ts";
+import { TerminalRegistry } from "../../terminal/terminal-registry.ts";
+import { isStreaming } from "../../workspace/ui-signals.ts";
 import { createServerStore } from "../server-store.ts";
-import { SessionRegistry } from "../session-registry.ts";
-import { TerminalRegistry } from "../terminal-registry.ts";
-import { isStreaming } from "../ui-signals.ts";
 import { createWsClient, type WsConnectable } from "../ws-client.ts";
 
 type EventListener = (event: { data?: unknown }) => void;
@@ -188,7 +188,7 @@ describe("WS client", () => {
     });
 
     const term = deps.terminalRegistry.get("t1");
-    expect(term.store.buffer).toBe("hello terminal");
+    expect(term.buffer).toBe("hello terminal");
 
     ws.disconnect();
   });

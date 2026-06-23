@@ -1,4 +1,4 @@
-import { createStore } from "solid-js/store";
+import { createStore, produce, reconcile } from "solid-js/store";
 
 export interface Project {
   createdAt: number;
@@ -72,13 +72,11 @@ export function createServerStore(): ServerStore {
     },
 
     setProjects(projects) {
-      for (const key of Object.keys(store.projects)) {
-        // biome-ignore lint/suspicious/noExplicitAny: SolidJS store deletion requires any cast
-        setStore("projects", key, undefined as any);
-      }
+      const map: Record<string, Project> = {};
       for (const p of projects) {
-        setStore("projects", p.id, p);
+        map[p.id] = p;
       }
+      setStore("projects", reconcile(map));
       setStore(
         "projectOrder",
         projects.map((p) => p.id)
@@ -94,13 +92,11 @@ export function createServerStore(): ServerStore {
     },
 
     setSessions(sessions) {
-      for (const key of Object.keys(store.sessions)) {
-        // biome-ignore lint/suspicious/noExplicitAny: SolidJS store deletion requires any cast
-        setStore("sessions", key, undefined as any);
-      }
+      const map: Record<string, SessionMeta> = {};
       for (const s of sessions) {
-        setStore("sessions", s.id, s);
+        map[s.id] = s;
       }
+      setStore("sessions", reconcile(map));
       setStore(
         "sessionOrder",
         sessions.map((s) => s.id)
@@ -121,14 +117,22 @@ export function createServerStore(): ServerStore {
     },
 
     removeSession(sessionId) {
-      // biome-ignore lint/suspicious/noExplicitAny: SolidJS store deletion requires any cast
-      setStore("sessions", sessionId, undefined as any);
+      setStore(
+        "sessions",
+        produce((s) => {
+          delete s[sessionId];
+        })
+      );
       setStore("sessionOrder", (prev) => prev.filter((id) => id !== sessionId));
     },
 
     removeProject(projectId) {
-      // biome-ignore lint/suspicious/noExplicitAny: SolidJS store deletion requires any cast
-      setStore("projects", projectId, undefined as any);
+      setStore(
+        "projects",
+        produce((p) => {
+          delete p[projectId];
+        })
+      );
       setStore("projectOrder", (prev) => prev.filter((id) => id !== projectId));
     },
   };

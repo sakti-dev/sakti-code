@@ -1,7 +1,7 @@
 import { createEffect, createSignal, Show } from "solid-js";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
-import { activeView, setActiveView } from "~/stores/ui-signals";
+import { activeView, setActiveView } from "~/stores/workspace/ui-signals";
 
 export default function GitStatusBar() {
   const { api, server } = useStore();

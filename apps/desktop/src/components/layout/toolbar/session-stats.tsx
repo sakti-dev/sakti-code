@@ -8,7 +8,7 @@ import {
 } from "solid-js";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
-import { isStreaming } from "~/stores/ui-signals";
+import { isStreaming } from "~/stores/workspace/ui-signals";
 
 interface SessionStatsData {
   activeMessageCount: number;

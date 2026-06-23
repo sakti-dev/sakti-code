@@ -13,14 +13,14 @@ import { KeyboardShortcutsFooter } from "~/components/home/keyboard-shortcuts-fo
 import { ProjectCard } from "~/components/home/project-card";
 import { SettingsDialog } from "~/components/settings/settings-dialog";
 import { Kbd } from "~/components/ui/kbd";
-import type { Project, SessionMeta } from "~/stores/server-store";
+import type { Project, SessionMeta } from "~/stores/server/server-store";
 import { useStore } from "~/stores/store-context";
 import {
   activeTab,
   activeTabIndex,
   openProjectTab,
   transformTab,
-} from "~/stores/tab-store";
+} from "~/stores/workspace/tab-store";
 
 function filterProjects<T extends { name: string }>(
   projects: T[],

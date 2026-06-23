@@ -1,8 +1,5 @@
 import type { AgentMessage } from "@sakti-code/agent";
 import { describe, expect, it } from "vitest";
-import { dispatchEvent } from "../event-reducer.ts";
-import { createSessionStore } from "../session-store.ts";
-import { createTokenBatcher } from "../token-batcher.ts";
 import {
   makeAbortEvent,
   makeAgentEndEvent,
@@ -16,10 +13,13 @@ import {
   makeToolExecutionStartEvent,
   makeTurnEndEvent,
   makeTurnStartEvent,
-} from "./helpers.ts";
+} from "../../__tests__/helpers.ts";
+import { dispatchEvent } from "../event-reducer.ts";
+import { createSessionStore } from "../session-store.ts";
+import { createTokenBatcher } from "../token-batcher.ts";
 
 function setup() {
-  const session = createSessionStore("s1");
+  const session = createSessionStore();
   const batcher = createTokenBatcher((msgId, text) => {
     session.actions.appendToken(msgId, text);
   });

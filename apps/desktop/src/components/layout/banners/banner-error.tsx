@@ -5,7 +5,7 @@ import {
   lastError,
   setHealthIssues,
   setLastError,
-} from "~/stores/ui-signals";
+} from "~/stores/workspace/ui-signals";
 
 const AUTO_DISMISS_MS = 10_000;
 

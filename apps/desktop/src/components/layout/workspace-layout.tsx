@@ -1,8 +1,8 @@
 import { createEffect, type JSX, onMount, Show } from "solid-js";
 import Home from "~/components/home/home";
 import { useStore } from "~/stores/store-context";
-import { activeTab, filterStaleProjects } from "~/stores/tab-store";
-import { sidebarOpen } from "~/stores/ui-signals";
+import { activeTab, filterStaleProjects } from "~/stores/workspace/tab-store";
+import { sidebarOpen } from "~/stores/workspace/ui-signals";
 import BannerConnection from "./banners/banner-connection";
 import { BannerError, BannerHealth } from "./banners/banner-error";
 import BannerUpdate from "./banners/banner-update";

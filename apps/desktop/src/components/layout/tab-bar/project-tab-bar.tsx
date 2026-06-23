@@ -10,7 +10,7 @@ import {
   newTab,
   openTabs,
   switchTab,
-} from "~/stores/tab-store";
+} from "~/stores/workspace/tab-store";
 
 export default function ProjectTabBar(): JSX.Element {
   const { server } = useStore();
