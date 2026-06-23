@@ -50,7 +50,7 @@ describe("POST /api/projects/:id/intake-session", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns 400 when no model is configured", async () => {
+  it("creates session with empty modelId when no model is configured", async () => {
     const { app, ctx } = await makeApp([projectsRoutes, intakeSessionRoutes]);
     const project = await ctx.repos.projects.create("demo", "/tmp/demo");
 
@@ -62,6 +62,9 @@ describe("POST /api/projects/:id/intake-session", () => {
         }
       )
     );
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(201);
+    const session = await res.json();
+    expect(session.kind).toBe("intake");
+    expect(session.modelId).toBe("");
   });
 });

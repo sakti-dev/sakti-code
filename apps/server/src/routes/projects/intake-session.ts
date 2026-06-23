@@ -19,22 +19,15 @@ export const intakeSessionRoutes = new Hono()
     }
 
     const profiles = ctx.profiles.read();
-    let modelId: string;
-    let thinkingLevel: string;
+    let modelId = "";
+    let thinkingLevel = "off";
     try {
       const ref = resolveModelRef(profiles, project.profileId, "default");
       modelId = ref.model;
       thinkingLevel = ref.thinkingLevel;
-    } catch (e) {
-      return c.json(
-        {
-          error:
-            e instanceof Error
-              ? e.message
-              : "No model configured for this project's profile",
-        },
-        400
-      );
+    } catch {
+      // No model configured in profile — create the session anyway.
+      // The user will pick a model via the model selector.
     }
 
     const created = await ctx.repos.sessions.create(projectId, modelId, {

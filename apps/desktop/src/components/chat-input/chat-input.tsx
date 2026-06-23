@@ -1,7 +1,9 @@
-import { FiLoader, FiSend } from "solid-icons/fi";
-import { createEffect, createSignal, type JSX, Show } from "solid-js";
+import { createEffect, createSignal, type JSX } from "solid-js";
+import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
-import { ModelPickerButton } from "./model-picker-button";
+import { InputFooter } from "./input-footer";
+import { ModelSelectorButton } from "./model-selector-button";
+import { SendButton } from "./send-button";
 
 export interface ChatInputProps {
   disabled?: boolean;
@@ -12,7 +14,7 @@ export interface ChatInputProps {
 export function ChatInput(props: ChatInputProps): JSX.Element {
   const { actions, sessions } = useStore();
   const [value, setValue] = createSignal("");
-  // biome-ignore lint/suspicious/noUnassignedVariables: assigned by SolidJS ref
+  const [isFocused, setIsFocused] = createSignal(false);
   let textareaRef: HTMLTextAreaElement | undefined;
 
   const isGenerating = () => {
@@ -27,7 +29,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   };
 
   const canSend = () =>
-    value().trim().length > 0 && !isGenerating() && !props.disabled;
+    value().trim().length > 0 && !isGenerating() && !!props.sessionId;
 
   const send = () => {
     if (!(canSend() && props.sessionId)) {
@@ -45,56 +47,64 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     }
   };
 
-  // Auto-resize textarea
-  createEffect(() => {
-    const el = textareaRef;
-    if (!el) {
+  const autoResize = () => {
+    if (!textareaRef) {
       return;
     }
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+    textareaRef.style.height = "24px";
+    textareaRef.style.height = `${Math.min(textareaRef.scrollHeight, 200)}px`;
+  };
+
+  createEffect(() => {
+    if (value() === "") {
+      autoResize();
+    }
   });
 
   return (
-    <div class="border-border border-t p-3">
+    <div class="w-full px-4 pb-4">
       <div class="mx-auto max-w-3xl">
-        <div class="flex items-end gap-2 rounded-xl border border-border bg-background px-3 py-2 focus-within:border-primary/50">
-          <ModelPickerButton sessionId={props.sessionId} />
+        <div
+          class={cn(
+            "flex w-full min-w-0 flex-col gap-3 rounded-xl border p-3 shadow-lg transition-all duration-200",
+            "glass-effect border-border/50 bg-background/95 backdrop-blur",
+            "focus-within:ring-2 focus-within:ring-primary/20",
+            isFocused() && "border-primary/40 shadow-xl"
+          )}
+          data-component="chat-input"
+        >
           <textarea
-            class="max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent py-1 text-foreground text-sm outline-none placeholder:text-muted-foreground"
-            disabled={props.disabled || !props.sessionId}
-            onInput={(e) => setValue(e.currentTarget.value)}
+            class={cn(
+              "scrollbar-default w-full resize-none bg-transparent px-1 py-2 outline-none",
+              "text-foreground placeholder:text-muted-foreground/60",
+              "max-h-[200px] min-h-6"
+            )}
+            disabled={props.disabled}
+            onBlur={() => setIsFocused(false)}
+            onFocus={() => setIsFocused(true)}
+            onInput={(e) => {
+              setValue(e.currentTarget.value);
+              autoResize();
+            }}
             onKeyDown={handleKeyDown}
             placeholder={props.placeholder ?? "Send a message…"}
-            ref={textareaRef}
+            ref={(el: HTMLTextAreaElement) => {
+              textareaRef = el;
+            }}
             rows={1}
             value={value()}
           />
-          <Show
-            fallback={
-              <button
-                class="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground"
-                disabled
-                type="button"
-              >
-                <FiSend class="size-4" />
-              </button>
-            }
-            when={canSend()}
-          >
-            <button
-              class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+
+          <div class="flex items-center justify-end gap-2">
+            <ModelSelectorButton sessionId={props.sessionId} />
+            <SendButton
+              canSend={canSend}
+              isSending={isGenerating()}
               onClick={send}
-              type="button"
-            >
-              <Show
-                fallback={<FiLoader class="size-4 animate-spin" />}
-                when={!isGenerating()}
-              >
-                <FiSend class="size-4" />
-              </Show>
-            </button>
-          </Show>
+            />
+          </div>
+
+          <InputFooter charCount={() => value().length} />
         </div>
       </div>
     </div>

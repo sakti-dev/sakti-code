@@ -3,17 +3,28 @@ import { describe, expect, it, vi } from "vitest";
 import { ChatInput } from "../chat-input";
 
 const mockSendPrompt = vi.fn();
-const mockGet = vi.fn(() => ({
-  store: { streaming: { phase: "idle" }, messages: {}, messageOrder: [] },
-}));
 
 vi.mock("~/stores/store-context", () => ({
   useStore: () => ({
     actions: { sendPrompt: mockSendPrompt },
-    sessions: { get: mockGet },
-    server: { store: { sessions: {} } },
+    sessions: {
+      get: () => ({
+        store: { streaming: { phase: "idle" }, messages: {}, messageOrder: [] },
+      }),
+    },
+    server: { store: { sessions: { s1: { modelId: "test-model" } } } },
     api: {
-      api: { models: { available: { $get: async () => ({ ok: false }) } } },
+      api: {
+        auth: { $get: async () => ({ ok: false, json: async () => [] }) },
+        models: {
+          available: {
+            $get: async () => ({ ok: false, json: async () => [] }),
+            ":provider": {
+              $get: async () => ({ ok: false, json: async () => [] }),
+            },
+          },
+        },
+      },
     },
   }),
 }));
@@ -26,13 +37,14 @@ describe("ChatInput", () => {
     expect(getByPlaceholderText("Type here…")).toBeTruthy();
   });
 
-  it("disables input when sessionId is null", () => {
+  it("keeps input enabled when sessionId is null", () => {
     const { getByRole } = render(() => <ChatInput sessionId={null} />);
     const textarea = getByRole("textbox") as HTMLTextAreaElement;
-    expect(textarea.disabled).toBe(true);
+    expect(textarea.disabled).toBe(false);
   });
 
   it("sends message on Enter, clears input", () => {
+    mockSendPrompt.mockClear();
     const { getByRole } = render(() => <ChatInput sessionId="s1" />);
     const textarea = getByRole("textbox") as HTMLTextAreaElement;
     textarea.value = "hello world";

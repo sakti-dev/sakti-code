@@ -17,9 +17,13 @@ vi.mock("~/stores/store-context", () => ({
     server: { store: { sessions: {} } },
     api: {
       api: {
+        auth: { $get: async () => ({ ok: false, json: async () => [] }) },
         models: {
           available: {
             $get: async () => ({ ok: false, json: async () => [] }),
+            ":provider": {
+              $get: async () => ({ ok: false, json: async () => [] }),
+            },
           },
         },
       },
