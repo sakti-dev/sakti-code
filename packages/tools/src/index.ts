@@ -33,6 +33,8 @@ export type {
   LsToolOptions,
 } from "./tools/ls.ts";
 export { createLsTool } from "./tools/ls.ts";
+export type { ProposeSessionToolInput } from "./tools/propose-session.ts";
+export { createProposeSessionTool } from "./tools/propose-session.ts";
 export type {
   ReadOperations,
   ReadToolDetails,

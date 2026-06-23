@@ -7,8 +7,10 @@ import type {
 } from "@sakti-code/agent";
 import {
   AgentHarness as HarnessClass,
+  INTAKE_SYSTEM_PROMPT,
   Session as SessionClass,
 } from "@sakti-code/agent";
+import { createProposeSessionTool } from "@sakti-code/tools";
 import type { ServerContext } from "../context.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth, resolveModel } from "./model-resolver.ts";
@@ -137,7 +139,11 @@ export async function runPrompt(
     );
   }
   const { model } = auth;
+  const isIntake = session.kind === "intake";
   const tools = buildTools(project.cwd);
+  if (isIntake) {
+    tools.push(createProposeSessionTool());
+  }
 
   const settings = loadSessionSettings(ctx, sessionId);
   const thinkingLevel = resolveThinkingLevel(ctx, sessionId, session);
@@ -154,6 +160,7 @@ export async function runPrompt(
     env,
     model,
     session: sessionInstance,
+    ...(isIntake ? { systemPrompt: INTAKE_SYSTEM_PROMPT } : {}),
     tools,
     followUpMode: settings.follow_up_mode as QueueMode,
     steeringMode: settings.steering_mode as QueueMode,
