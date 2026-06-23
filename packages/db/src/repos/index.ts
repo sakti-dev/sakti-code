@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { DrizzleDB } from "../init.ts";
 import { projects, sessions, settings } from "../schema.ts";
 
@@ -72,6 +72,7 @@ export class SessionRepo {
       title?: string;
       thinkingLevel?: string;
       parentSessionId?: string;
+      kind?: string;
     }
   ) {
     const id = crypto.randomUUID();
@@ -84,6 +85,7 @@ export class SessionRepo {
         : { parentSessionId: options.parentSessionId }),
       title: options?.title ?? null,
       modelId,
+      kind: options?.kind ?? "task",
       thinkingLevel: options?.thinkingLevel ?? "off",
       createdAt: now,
       updatedAt: now,
@@ -99,6 +101,16 @@ export class SessionRepo {
     return this.db.select().from(sessions).where(eq(sessions.id, id)).get();
   }
 
+  findIntakeByProject(projectId: string) {
+    return this.db
+      .select()
+      .from(sessions)
+      .where(
+        and(eq(sessions.projectId, projectId), eq(sessions.kind, "intake"))
+      )
+      .get();
+  }
+
   listByProject(projectId: string) {
     return this.db
       .select()
@@ -111,7 +123,10 @@ export class SessionRepo {
   async update(
     id: string,
     data: Partial<
-      Pick<typeof sessions.$inferInsert, "title" | "modelId" | "thinkingLevel">
+      Pick<
+        typeof sessions.$inferInsert,
+        "title" | "modelId" | "thinkingLevel" | "kind"
+      >
     >
   ) {
     await this.db

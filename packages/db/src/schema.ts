@@ -23,6 +23,7 @@ export const sessions = sqliteTable("sessions", {
   parentSessionId: text("parent_session_id").references((): any => sessions.id),
   title: text("title"),
   modelId: text("model_id").notNull(),
+  kind: text("kind").notNull().default("task"),
   thinkingLevel: text("thinking_level").notNull().default("off"),
   leafId: text("leaf_id"),
   createdAt: integer("created_at").notNull(),
