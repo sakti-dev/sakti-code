@@ -138,3 +138,33 @@ export function formatLsSummary(part: ToolPartData): string {
 
   return `Listed ${abbreviatedPath}`;
 }
+
+export function formatTaskCreateSummary(part: ToolPartData): string {
+  const args = getArgs(part);
+  const subject = typeof args.subject === "string" ? args.subject : "untitled";
+  return `Created task: ${subject}`;
+}
+
+export function formatTaskUpdateSummary(part: ToolPartData): string {
+  const args = getArgs(part);
+  const taskId = typeof args.taskId === "string" ? args.taskId : "?";
+  const status = typeof args.status === "string" ? args.status : "updated";
+  return `Task ${taskId} → ${status}`;
+}
+
+export function formatWebfetchSummary(part: ToolPartData): string {
+  const args = getArgs(part);
+  const url = typeof args.url === "string" ? args.url : "";
+  try {
+    const domain = new URL(url).hostname;
+    return `Fetched ${domain}`;
+  } catch {
+    return "Fetched URL";
+  }
+}
+
+export function formatVscodeDiagnosticsSummary(part: ToolPartData): string {
+  const output = typeof part.output === "string" ? part.output : "";
+  const hasIssues = output.length > 0 && !output.includes("No problems");
+  return hasIssues ? "Diagnostics: issues found" : "Diagnostics: clean";
+}

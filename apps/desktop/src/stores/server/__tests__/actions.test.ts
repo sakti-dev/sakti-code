@@ -445,3 +445,80 @@ describe("actions", () => {
     expect((toolPart as { status: string }).status).toBe("done");
   });
 });
+
+describe("replay actions", () => {
+  it("replayStart resets session, sets replayState, sends WS replay start", () => {
+    const ws = makeMockWs();
+    const deps = makeDeps();
+    const session = deps.sessionRegistry.get("sess-1");
+    session.actions.addMessage({
+      id: "m1",
+      role: "user",
+      content: "old",
+      parts: [{ type: "text", text: "old" }],
+      isStreaming: false,
+      timestamp: 0,
+    });
+
+    const actions = createActions({} as never, ws, deps);
+    actions.replayStart("sess-1");
+
+    expect(ws.send).toHaveBeenCalledWith({
+      type: "replay",
+      sessionId: "sess-1",
+      action: "start",
+    });
+    expect(session.store.messageOrder).toHaveLength(0);
+  });
+
+  it("replayPause sends WS replay pause", () => {
+    const ws = makeMockWs();
+    const deps = makeDeps();
+    const actions = createActions({} as never, ws, deps);
+
+    actions.replayPause("sess-1");
+
+    expect(ws.send).toHaveBeenCalledWith({
+      type: "replay",
+      sessionId: "sess-1",
+      action: "pause",
+    });
+  });
+
+  it("replayResume sends WS replay resume", () => {
+    const ws = makeMockWs();
+    const deps = makeDeps();
+    const actions = createActions({} as never, ws, deps);
+
+    actions.replayResume("sess-1");
+
+    expect(ws.send).toHaveBeenCalledWith({
+      type: "replay",
+      sessionId: "sess-1",
+      action: "resume",
+    });
+  });
+
+  it("replayReset sends abort WS and clears session store", () => {
+    const ws = makeMockWs();
+    const deps = makeDeps();
+    const session = deps.sessionRegistry.get("sess-1");
+    session.actions.addMessage({
+      id: "m1",
+      role: "user",
+      content: "old",
+      parts: [{ type: "text", text: "old" }],
+      isStreaming: false,
+      timestamp: 0,
+    });
+
+    const actions = createActions({} as never, ws, deps);
+    actions.replayReset("sess-1");
+
+    expect(ws.send).toHaveBeenCalledWith({
+      type: "abort",
+      sessionId: "sess-1",
+    });
+    expect(session.store.messageOrder).toHaveLength(0);
+  });
+});

@@ -3,7 +3,7 @@ import type { Client } from "~/lib/api";
 import { hydrateSessionMessages } from "../session/hydrate-messages.ts";
 import type { SessionRegistry } from "../session/session-registry.ts";
 import type { UIMessage } from "../types.ts";
-import { setLastError } from "../workspace/ui-signals.ts";
+import { setLastError, setReplayState } from "../workspace/ui-signals.ts";
 import type {
   Project,
   ServerActions,
@@ -31,6 +31,10 @@ export interface Actions {
   loadMessages: (sessionId: string) => Promise<void>;
   loadProjects: () => Promise<void>;
   loadSessions: (projectId: string) => Promise<void>;
+  replayPause: (sessionId: string) => void;
+  replayReset: (sessionId: string) => void;
+  replayResume: (sessionId: string) => void;
+  replayStart: (sessionId: string) => void;
   selectModel: (
     sessionId: string | null,
     provider: string,
@@ -234,6 +238,30 @@ export function createActions(
 
     followUpRun(sessionId, text) {
       ws.send({ type: "followUp", sessionId, message: text });
+    },
+
+    replayStart(sessionId) {
+      const session = sessionRegistry.get(sessionId);
+      session.actions.reset();
+      setReplayState("playing");
+      ws.send({ type: "replay", sessionId, action: "start" });
+    },
+
+    replayPause(sessionId) {
+      setReplayState("paused");
+      ws.send({ type: "replay", sessionId, action: "pause" });
+    },
+
+    replayResume(sessionId) {
+      setReplayState("playing");
+      ws.send({ type: "replay", sessionId, action: "resume" });
+    },
+
+    replayReset(sessionId) {
+      ws.send({ type: "abort", sessionId });
+      const session = sessionRegistry.get(sessionId);
+      session.actions.reset();
+      setReplayState("idle");
     },
   };
 }

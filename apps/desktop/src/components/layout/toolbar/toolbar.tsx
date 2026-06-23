@@ -4,6 +4,7 @@ import { SettingsDialog } from "../../settings/settings-dialog";
 import ExportButton from "./export-button";
 import GitStatusBar from "./git-status-bar";
 import ModelSelector from "./model-selector";
+import { ReplayButton } from "./replay-button";
 import SessionStats from "./session-stats";
 import ThinkingSelector from "./thinking-selector";
 
@@ -68,6 +69,10 @@ export default function Toolbar() {
       <SessionStats />
 
       <div class="flex items-center gap-1 border-border border-l pl-2">
+        <Show when={import.meta.env.DEV}>
+          <ReplayButton />
+          <div class="h-5 w-px bg-border" />
+        </Show>
         <ExportButton />
         <SettingsDialog />
       </div>

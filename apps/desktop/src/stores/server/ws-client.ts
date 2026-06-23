@@ -4,7 +4,11 @@ import { dispatchEvent } from "../session/event-reducer.ts";
 import type { SessionRegistry } from "../session/session-registry.ts";
 import { createTokenBatcher } from "../session/token-batcher.ts";
 import type { TerminalRegistry } from "../terminal/terminal-registry.ts";
-import { setIsStreaming, setLastError } from "../workspace/ui-signals.ts";
+import {
+  setIsStreaming,
+  setLastError,
+  setReplayState,
+} from "../workspace/ui-signals.ts";
 import type { ServerActions, ServerStoreData } from "./server-store.ts";
 
 const INITIAL_RECONNECT_MS = 1000;
@@ -61,6 +65,7 @@ export function createWsClient(
       setIsStreaming(true);
     } else if (evt.type === "agent_end" || evt.type === "abort") {
       setIsStreaming(false);
+      setReplayState("idle");
     }
   }
 

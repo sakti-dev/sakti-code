@@ -9,6 +9,10 @@ import {
   formatGrepSummary,
   formatLsSummary,
   formatReadSummary,
+  formatTaskCreateSummary,
+  formatTaskUpdateSummary,
+  formatVscodeDiagnosticsSummary,
+  formatWebfetchSummary,
   formatWriteSummary,
 } from "../tools/tool-summary-formatters.ts";
 import { ToolSummaryRow } from "../tools/tool-summary-row.tsx";
@@ -97,6 +101,14 @@ export const ToolPart: Component<PartProps> = (props) => {
         return formatGlobSummary(part);
       case "grep":
         return formatGrepSummary(part);
+      case "TaskCreate":
+        return formatTaskCreateSummary(part);
+      case "TaskUpdate":
+        return formatTaskUpdateSummary(part);
+      case "webfetch":
+        return formatWebfetchSummary(part);
+      case "vscode_get_diagnostics":
+        return formatVscodeDiagnosticsSummary(part);
       default:
         return formatGenericToolSummary(part);
     }
