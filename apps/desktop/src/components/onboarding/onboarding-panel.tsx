@@ -1,4 +1,5 @@
-import { type JSX, Show } from "solid-js";
+import { For, type JSX, Show } from "solid-js";
+import { ChatInput } from "~/components/chat-input/chat-input";
 import { useStore } from "~/stores/store-context";
 import { WelcomePanel } from "./welcome-panel";
 
@@ -10,28 +11,52 @@ interface OnboardingPanelProps {
 export function OnboardingPanel(props: OnboardingPanelProps): JSX.Element {
   const { sessions } = useStore();
 
-  const hasMessages = () => {
+  const sessionStore = () => {
     if (!props.intakeSessionId) {
-      return false;
+      return null;
     }
-    const sessionStore = sessions.get(props.intakeSessionId);
-    return sessionStore.store.messageOrder.length > 0;
+    return sessions.get(props.intakeSessionId);
   };
+
+  const hasMessages = () =>
+    (sessionStore()?.store.messageOrder.length ?? 0) > 0;
 
   return (
     <div class="flex min-h-0 flex-1 flex-col">
       <Show fallback={<WelcomePanel />} when={hasMessages()}>
         <div class="flex-1 overflow-y-auto p-4">
-          <p class="text-center text-muted-foreground text-sm">
-            Chat timeline coming in Phase 3
-          </p>
+          <div class="mx-auto max-w-3xl">
+            <For each={sessionStore()?.store.messageOrder ?? []}>
+              {(msgId) => {
+                const msg = sessionStore()?.store.messages[msgId];
+                return (
+                  <Show when={msg}>
+                    {(m) => (
+                      <div
+                        class={`mb-3 flex ${m().role === "user" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          class={`inline-block max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                            m().role === "user"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-foreground"
+                          }`}
+                        >
+                          {m().content || "…"}
+                        </div>
+                      </div>
+                    )}
+                  </Show>
+                );
+              }}
+            </For>
+          </div>
         </div>
       </Show>
-      <div class="border-border border-t p-4">
-        <p class="text-center text-muted-foreground text-sm">
-          Chat input coming in Phase 2
-        </p>
-      </div>
+      <ChatInput
+        placeholder="Ask anything about this project…"
+        sessionId={props.intakeSessionId}
+      />
     </div>
   );
 }

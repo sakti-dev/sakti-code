@@ -4,10 +4,25 @@ import { OnboardingPanel } from "../onboarding-panel";
 
 vi.mock("~/stores/store-context", () => ({
   useStore: () => ({
+    actions: { sendPrompt: vi.fn() },
     sessions: {
       get: () => ({
-        store: { messageOrder: [], messages: {}, streaming: { phase: "idle" } },
+        store: {
+          messageOrder: [],
+          messages: {},
+          streaming: { phase: "idle" },
+        },
       }),
+    },
+    server: { store: { sessions: {} } },
+    api: {
+      api: {
+        models: {
+          available: {
+            $get: async () => ({ ok: false, json: async () => [] }),
+          },
+        },
+      },
     },
   }),
 }));
@@ -27,10 +42,12 @@ describe("OnboardingPanel", () => {
     expect(getByText("No messages yet")).toBeTruthy();
   });
 
-  it("renders chat placeholders", () => {
-    const { getByText } = render(() => (
+  it("renders chat input", () => {
+    const { getByPlaceholderText } = render(() => (
       <OnboardingPanel intakeSessionId="s1" projectId="p1" />
     ));
-    expect(getByText("Chat input coming in Phase 2")).toBeTruthy();
+    expect(
+      getByPlaceholderText("Ask anything about this project…")
+    ).toBeTruthy();
   });
 });
