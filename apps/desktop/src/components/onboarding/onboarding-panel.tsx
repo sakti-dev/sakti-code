@@ -1,8 +1,10 @@
 import { createMemo, type JSX, Show } from "solid-js";
+import { ProposedSessionCard } from "~/components/chat/parts/proposed-session-card";
 import { MessageTimeline } from "~/components/chat/timeline/message-timeline";
 import { ChatInput } from "~/components/chat-input/chat-input";
 import { buildChatTurns } from "~/stores/session/turn-projection";
 import { useStore } from "~/stores/store-context";
+import { setTabSession } from "~/stores/workspace/tab-store";
 import { WelcomePanel } from "./welcome-panel";
 
 interface OnboardingPanelProps {
@@ -11,7 +13,7 @@ interface OnboardingPanelProps {
 }
 
 export function OnboardingPanel(props: OnboardingPanelProps): JSX.Element {
-  const { sessions } = useStore();
+  const { server, sessions, actions } = useStore();
 
   const sessionStore = () => {
     if (!props.intakeSessionId) {
@@ -37,6 +39,28 @@ export function OnboardingPanel(props: OnboardingPanelProps): JSX.Element {
 
   const isGenerating = () => sessionStore()?.store.streaming.phase !== "idle";
 
+  const handleConfirmSession = async () => {
+    const session = sessionStore();
+    const proposal = session?.store.proposedSession;
+    if (!(proposal && props.intakeSessionId)) {
+      return;
+    }
+
+    const modelId = server.store.sessions[props.intakeSessionId]?.modelId ?? "";
+    const taskSession = await actions.createSession(
+      props.projectId,
+      modelId,
+      proposal.title
+    );
+    if (!taskSession) {
+      return;
+    }
+
+    session.actions.clearProposedSession();
+    setTabSession(props.projectId, taskSession.id);
+    actions.sendPrompt(taskSession.id, proposal.message);
+  };
+
   return (
     <div class="flex min-h-0 flex-1 flex-col">
       <Show
@@ -44,6 +68,17 @@ export function OnboardingPanel(props: OnboardingPanelProps): JSX.Element {
         when={!hasMessages()}
       >
         <WelcomePanel />
+      </Show>
+      <Show when={sessionStore()?.store.proposedSession}>
+        {(proposal) => (
+          <div class="px-4 pb-2">
+            <ProposedSessionCard
+              onConfirm={handleConfirmSession}
+              onReject={() => sessionStore()?.actions.clearProposedSession()}
+              proposal={proposal()}
+            />
+          </div>
+        )}
       </Show>
       <ChatInput
         placeholder="Ask anything about this project…"

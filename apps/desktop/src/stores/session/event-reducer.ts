@@ -102,6 +102,18 @@ export function dispatchEvent(
           event.args
         );
       }
+      if (event.toolName === "propose_session") {
+        const args = event.args as { title?: unknown; message?: unknown };
+        if (
+          typeof args.title === "string" &&
+          typeof args.message === "string"
+        ) {
+          actions.setProposedSession({
+            title: args.title,
+            message: args.message,
+          });
+        }
+      }
       break;
     }
 

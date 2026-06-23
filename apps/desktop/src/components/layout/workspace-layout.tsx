@@ -1,4 +1,5 @@
 import { createEffect, createSignal, type JSX, onMount, Show } from "solid-js";
+import { TaskChatView } from "~/components/chat/task-chat-view";
 import Home from "~/components/home/home";
 import { OnboardingPanel } from "~/components/onboarding/onboarding-panel";
 import { useStore } from "~/stores/store-context";
@@ -99,13 +100,7 @@ export default function WorkspaceLayout(): JSX.Element {
                   }
                   when={activeSession()}
                 >
-                  <div class="flex flex-1 items-center justify-center px-4">
-                    <div class="w-full max-w-md text-center">
-                      <p class="text-muted-foreground text-sm">
-                        Chat view coming soon
-                      </p>
-                    </div>
-                  </div>
+                  {(session) => <TaskChatView sessionId={session().id} />}
                 </Show>
               </div>
             </div>

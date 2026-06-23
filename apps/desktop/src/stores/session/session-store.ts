@@ -6,9 +6,15 @@ import {
   type UIMessage,
 } from "../types.ts";
 
+export interface ProposedSession {
+  message: string;
+  title: string;
+}
+
 export interface SessionStoreData {
   messageOrder: string[];
   messages: Record<string, UIMessage>;
+  proposedSession: ProposedSession | null;
   streaming: StreamState;
 }
 
@@ -23,6 +29,7 @@ export interface SessionActions {
   appendToken: (msgId: string, delta: string) => void;
   clearCurrentMessage: () => void;
   clearCurrentTool: () => void;
+  clearProposedSession: () => void;
   completeToolCall: (
     msgId: string,
     toolCallId: string,
@@ -38,6 +45,7 @@ export interface SessionActions {
   setCurrentTool: (toolName: string) => void;
   setError: (msgId: string, error: string) => void;
   setPhase: (phase: StreamState["phase"]) => void;
+  setProposedSession: (proposal: ProposedSession) => void;
 }
 
 export interface SessionStore {
@@ -49,6 +57,7 @@ export function createSessionStore(): SessionStore {
   const [store, setStore] = createStore<SessionStoreData>({
     messages: {},
     messageOrder: [],
+    proposedSession: null,
     streaming: { ...idleStreamState },
   });
 
@@ -81,6 +90,14 @@ export function createSessionStore(): SessionStore {
 
     setPhase(phase) {
       setStore("streaming", "phase", phase);
+    },
+
+    setProposedSession(proposal) {
+      setStore("proposedSession", proposal);
+    },
+
+    clearProposedSession() {
+      setStore("proposedSession", null);
     },
 
     setCurrentMessage(msgId) {
@@ -145,6 +162,7 @@ export function createSessionStore(): SessionStore {
         produce((s) => {
           s.messages = {};
           s.messageOrder = [];
+          s.proposedSession = null;
           s.streaming = { ...idleStreamState };
         })
       );

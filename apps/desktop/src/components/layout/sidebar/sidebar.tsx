@@ -136,7 +136,8 @@ export default function Sidebar() {
     server.store.sessionOrder
       .map((id) => server.store.sessions[id])
       .filter(
-        (s): s is NonNullable<typeof s> => !!s && s.projectId === projectId
+        (s): s is NonNullable<typeof s> =>
+          !!s && s.projectId === projectId && s.kind === "task"
       )
       .sort((a, b) => b.updatedAt - a.updatedAt);
 
