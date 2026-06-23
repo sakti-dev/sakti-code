@@ -1,6 +1,7 @@
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import {
   type Accessor,
+  createEffect,
   createSignal,
   For,
   type JSX,
@@ -20,10 +21,13 @@ export interface MessageTimelineProps {
   turns: Accessor<ChatTurn[]>;
 }
 
+const NEAR_BOTTOM_THRESHOLD = 100;
+
 export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
   const [scrollEl, setScrollEl] = createSignal<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = createSignal(0);
   const [fontVersion, setFontVersion] = createSignal(0);
+  const [pinnedToBottom, setPinnedToBottom] = createSignal(true);
 
   const virtualizer = createVirtualizer<HTMLDivElement, HTMLDivElement>({
     get count() {
@@ -35,12 +39,24 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
       const turn = props.turns()[index];
       return turn ? estimateTurnHeight(turn, width) : 200;
     },
-    followOnAppend: true,
     getItemKey: (index) => props.turns()[index]?.id ?? index,
     getScrollElement: () => scrollEl(),
     overscan: 6,
-    scrollEndThreshold: 80,
-    anchorTo: "end",
+  });
+
+  // Auto-scroll: pin to bottom when streaming and user hasn't scrolled up.
+  // Runs in a RAF to ensure DOM (including new content height) is committed.
+  createEffect(() => {
+    props.turns();
+    props.isStreaming();
+    if (pinnedToBottom()) {
+      requestAnimationFrame(() => {
+        const el = scrollEl();
+        if (el) {
+          el.scrollTop = el.scrollHeight;
+        }
+      });
+    }
   });
 
   onMount(() => {
@@ -49,6 +65,14 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
       return;
     }
 
+    // observeElementRect may have read dimensions before layout (0×0).
+    // Manually set the correct rect and force re-measure.
+    virtualizer.scrollRect = {
+      width: el.offsetWidth,
+      height: el.offsetHeight,
+    };
+    virtualizer.measure();
+
     const updateWidth = () => setContainerWidth(el.clientWidth);
     updateWidth();
 
@@ -56,8 +80,17 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
     observer.observe(el);
     onCleanup(() => observer.disconnect());
 
+    // Track whether user is near the bottom
+    const handleScroll = () => {
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setPinnedToBottom(distance < NEAR_BOTTOM_THRESHOLD);
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    onCleanup(() => el.removeEventListener("scroll", handleScroll));
+
+    // Initial scroll to bottom
     if (props.turns().length > 0) {
-      virtualizer.scrollToEnd();
+      el.scrollTop = el.scrollHeight;
     }
 
     if (typeof document !== "undefined" && document.fonts) {
