@@ -3,12 +3,14 @@ import type { MessagePart, UIMessage } from "../types.ts";
 export interface ChatTurn {
   assistantMessages: UIMessage[];
   error: string | null;
+  id: string;
   userMessage: UIMessage | null;
   working: boolean;
 }
 
-function newTurn(userMessage: UIMessage | null): ChatTurn {
+function newTurn(userMessage: UIMessage | null, id: string): ChatTurn {
   return {
+    id,
     userMessage,
     assistantMessages: [],
     working: false,
@@ -20,7 +22,7 @@ function handleAssistantMessage(
   currentTurn: ChatTurn | null,
   msg: UIMessage
 ): ChatTurn {
-  const turn = currentTurn ?? newTurn(null);
+  const turn = currentTurn ?? newTurn(null, msg.id);
   turn.assistantMessages.push(msg);
   if (msg.isStreaming) {
     turn.working = true;
@@ -49,7 +51,7 @@ export function buildChatTurns(
       if (currentTurn) {
         turns.push(currentTurn);
       }
-      currentTurn = newTurn(msg);
+      currentTurn = newTurn(msg, msg.id);
     } else if (msg.role === "assistant") {
       currentTurn = handleAssistantMessage(currentTurn, msg);
     }
