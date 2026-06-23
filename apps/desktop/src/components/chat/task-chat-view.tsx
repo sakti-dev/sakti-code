@@ -11,7 +11,7 @@ interface TaskChatViewProps {
 export function TaskChatView(props: TaskChatViewProps): JSX.Element {
   const { sessions } = useStore();
 
-  const sessionStore = () => sessions.get(props.sessionId);
+  const sessionStore = createMemo(() => sessions.get(props.sessionId));
 
   const turns = createMemo(() => {
     const session = sessionStore();

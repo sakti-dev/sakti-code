@@ -1,4 +1,4 @@
-import { type Accessor, For, type JSX, Show } from "solid-js";
+import { type Accessor, Index, type JSX, Show } from "solid-js";
 import { cn } from "~/lib/utils";
 import { createAutoScroll } from "~/lib/utils/create-auto-scroll";
 import type { ChatTurn } from "~/stores/session/turn-projection";
@@ -38,16 +38,13 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
       >
         <div class={CHAT_TIMELINE_RAIL_CLASS} data-slot="timeline-rail">
           <ul class="flex flex-col gap-5" data-slot="timeline-list">
-            <For each={props.turns()}>
+            <Index each={props.turns()}>
               {(turn) => (
-                <li data-testid={`turn-${turn.userMessage?.id ?? "orphan"}`}>
-                  <SessionTurn
-                    isStreaming={props.isStreaming}
-                    turn={() => turn}
-                  />
+                <li data-testid={`turn-${turn().userMessage?.id ?? "orphan"}`}>
+                  <SessionTurn isStreaming={props.isStreaming} turn={turn} />
                 </li>
               )}
-            </For>
+            </Index>
           </ul>
         </div>
       </Show>

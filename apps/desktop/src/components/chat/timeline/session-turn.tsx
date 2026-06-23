@@ -1,6 +1,7 @@
 import {
   type Accessor,
   createEffect,
+  createMemo,
   createSignal,
   For,
   type JSX,
@@ -35,23 +36,19 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
   const turn = props.turn;
   const [liveDurationMs, setLiveDurationMs] = createSignal(0);
 
-  createEffect(() => {
-    const currentTurn = turn();
-    const updateDuration = () => {
-      if (!(currentTurn.working && currentTurn.userMessage)) {
-        setLiveDurationMs(0);
-        return;
-      }
-      setLiveDurationMs(
-        Math.max(0, Date.now() - currentTurn.userMessage.timestamp)
-      );
-    };
+  const isWorking = createMemo(() => turn().working);
 
-    updateDuration();
-    if (!currentTurn.working) {
+  createEffect(() => {
+    if (!isWorking()) {
+      setLiveDurationMs(0);
       return;
     }
 
+    const startedAt = turn().userMessage?.timestamp ?? Date.now();
+    const updateDuration = () =>
+      setLiveDurationMs(Math.max(0, Date.now() - startedAt));
+
+    updateDuration();
     const timer = setInterval(updateDuration, 1000);
     onCleanup(() => clearInterval(timer));
   });

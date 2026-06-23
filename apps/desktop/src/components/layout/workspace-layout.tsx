@@ -35,7 +35,7 @@ export default function WorkspaceLayout(): JSX.Element {
       return;
     }
     actions.upsertIntakeSession(projectId).then((session) => {
-      if (session) {
+      if (session && server.store.activeProjectId === projectId) {
         setIntakeSessionId(session.id);
       }
     });

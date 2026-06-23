@@ -1,4 +1,4 @@
-import { createEffect, createSignal, type JSX } from "solid-js";
+import { createEffect, createMemo, createSignal, type JSX } from "solid-js";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
 import { InputFooter } from "./input-footer";
@@ -17,7 +17,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   const [isFocused, setIsFocused] = createSignal(false);
   let textareaRef: HTMLTextAreaElement | undefined;
 
-  const isGenerating = () => {
+  const isGenerating = createMemo(() => {
     if (!props.sessionId) {
       return false;
     }
@@ -26,7 +26,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     return (
       phase === "thinking" || phase === "writing" || phase === "tool_running"
     );
-  };
+  });
 
   const canSend = () =>
     value().trim().length > 0 && !isGenerating() && !!props.sessionId;

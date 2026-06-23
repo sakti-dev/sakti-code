@@ -15,12 +15,12 @@ interface OnboardingPanelProps {
 export function OnboardingPanel(props: OnboardingPanelProps): JSX.Element {
   const { server, sessions, actions } = useStore();
 
-  const sessionStore = () => {
+  const sessionStore = createMemo(() => {
     if (!props.intakeSessionId) {
       return null;
     }
     return sessions.get(props.intakeSessionId);
-  };
+  });
 
   const hasMessages = () =>
     (sessionStore()?.store.messageOrder.length ?? 0) > 0;
@@ -42,7 +42,7 @@ export function OnboardingPanel(props: OnboardingPanelProps): JSX.Element {
   const handleConfirmSession = async () => {
     const session = sessionStore();
     const proposal = session?.store.proposedSession;
-    if (!(proposal && props.intakeSessionId)) {
+    if (!(session && proposal && props.intakeSessionId)) {
       return;
     }
 

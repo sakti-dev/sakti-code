@@ -113,7 +113,6 @@ export default function Sidebar() {
     const project = server.store.projects[projectId];
     if (project) {
       // TODO: Wire to terminal store
-      console.log("Open in terminal:", project.cwd);
     }
   };
 
@@ -121,7 +120,6 @@ export default function Sidebar() {
     const project = server.store.projects[projectId];
     if (project) {
       // TODO: Wire to native API
-      console.log("Open in editor:", project.cwd);
     }
   };
 

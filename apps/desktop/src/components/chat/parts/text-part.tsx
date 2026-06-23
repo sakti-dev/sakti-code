@@ -1,4 +1,4 @@
-import { type Component, createSignal, Show } from "solid-js";
+import { type Component, createSignal, onCleanup, Show } from "solid-js";
 import { Markdown } from "~/components/ui/markdown";
 import { cn } from "~/lib/utils";
 import type { PartProps } from "./part-registry.ts";
@@ -7,6 +7,13 @@ export const TextPart: Component<PartProps> = (props) => {
   const text = () => (props.part.type === "text" ? props.part.text : "");
 
   const [copied, setCopied] = createSignal(false);
+  let copyTimer: ReturnType<typeof setTimeout> | undefined;
+
+  onCleanup(() => {
+    if (copyTimer) {
+      clearTimeout(copyTimer);
+    }
+  });
 
   const isEmpty = () => {
     const t = text();
@@ -17,7 +24,10 @@ export const TextPart: Component<PartProps> = (props) => {
     try {
       await navigator.clipboard.writeText(text());
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copyTimer) {
+        clearTimeout(copyTimer);
+      }
+      copyTimer = setTimeout(() => setCopied(false), 2000);
     } catch {
       // ignore clipboard errors
     }
