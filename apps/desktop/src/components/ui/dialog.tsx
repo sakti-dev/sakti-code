@@ -2,9 +2,13 @@ import * as DialogPrimitive from "@kobalte/core/dialog";
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import { FiX } from "solid-icons/fi";
 import type { Component, ComponentProps, JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
+import { createUniqueId, onMount, splitProps } from "solid-js";
 import "./dialog.css";
 
+import {
+  recomputeDialogStack,
+  startDialogStackObserver,
+} from "~/lib/ui/dismissible-stack";
 import { cn } from "~/lib/utils";
 
 const Dialog = DialogPrimitive.Root;
@@ -52,14 +56,20 @@ const DialogContent = <T extends ValidComponent = "div">(
     "class",
     "children",
   ]);
+  const stackId = createUniqueId();
+  onMount(() => {
+    startDialogStackObserver();
+    recomputeDialogStack();
+  });
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay data-stack-overlay={stackId} />
       <DialogPrimitive.Content
         class={cn(
           "model-selector-shell data-[closed]:fade-out-0 data-[expanded]:fade-in-0 relative z-50 w-full max-w-4xl overflow-hidden rounded-xl border border-border/70 bg-popover text-popover-foreground shadow-[0_28px_80px_rgba(0,0,0,0.6)] duration-200 data-[closed]:animate-out data-[expanded]:animate-in",
           props.class
         )}
+        data-stack-content={stackId}
         {...rest}
       >
         <div class="model-selector-aurora pointer-events-none">

@@ -6,10 +6,12 @@ import {
   createMemo,
   createResource,
   createSignal,
+  createUniqueId,
   For,
   onCleanup,
   Show,
 } from "solid-js";
+import { Portal } from "solid-js/web";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
@@ -183,6 +185,7 @@ export function ModelsSettings() {
   const [providerSearchQuery, setProviderSearchQuery] = createSignal("");
   const [activeIndex, setActiveIndex] = createSignal(0);
   const [hybridEnabled, setHybridEnabled] = createSignal(true);
+  const providerStackId = createUniqueId();
   let providerSearchInputRef: HTMLInputElement | undefined;
 
   const [apiKeyInfos, { refetch: refetchApiKeys, mutate: mutateApiKeys }] =
@@ -567,286 +570,290 @@ export function ModelsSettings() {
       </Card>
 
       <Show when={modalPresence.isMounted()}>
-        {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Modal wrapper listens for keyboard shortcuts while focus may be inside nested content. */}
-        <div
-          aria-modal="true"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4"
-          data-testid="provider-modal"
-          onKeyDown={(event) => handleProviderModalKeyDown(event)}
-          role="dialog"
-          tabIndex={-1}
-        >
-          <button
-            aria-label="Close provider selector"
-            class="command-dialog-overlay-motion absolute inset-0 bg-black/80 backdrop-blur-sm"
-            data-exiting={modalPresence.isExiting() ? "" : undefined}
-            data-visible={modalPresence.isVisible() ? "" : undefined}
-            onClick={closeModal}
-            type="button"
-          />
-
+        <Portal>
+          {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Modal wrapper listens for keyboard shortcuts while focus may be inside nested content. */}
           <div
-            class="provider-modal-content-motion model-selector-shell relative z-10 w-full max-w-5xl overflow-hidden rounded-xl border border-border/70 bg-popover/95 text-popover-foreground shadow-[0_28px_80px_rgba(0,0,0,0.6)]"
-            data-exiting={modalPresence.isExiting() ? "" : undefined}
-            data-visible={modalPresence.isVisible() ? "" : undefined}
+            aria-modal="true"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4"
+            data-testid="provider-modal"
+            onKeyDown={(event) => handleProviderModalKeyDown(event)}
+            role="dialog"
+            tabIndex={-1}
           >
-            <div class="model-selector-grain pointer-events-none absolute inset-0" />
-            <div class="relative border-border/80 border-b bg-muted/45 px-4 pt-3 pb-2.5 backdrop-blur-xl">
-              <div class="flex items-center justify-between gap-3">
-                <div>
-                  <h3 class="font-semibold text-[13px] tracking-tight">
-                    Connect a provider
-                  </h3>
-                  <p class="text-[10px] text-muted-foreground">
-                    Search providers and connect with API key
-                  </p>
-                </div>
-                <button
-                  class="rounded-md border border-border/80 bg-background/75 px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted/80 hover:text-foreground"
-                  onClick={closeModal}
-                  type="button"
-                >
-                  Close
-                </button>
-              </div>
+            <button
+              aria-label="Close provider selector"
+              class="command-dialog-overlay-motion absolute inset-0 bg-black/80 backdrop-blur-sm"
+              data-exiting={modalPresence.isExiting() ? "" : undefined}
+              data-stack-overlay={providerStackId}
+              data-visible={modalPresence.isVisible() ? "" : undefined}
+              onClick={closeModal}
+              type="button"
+            />
 
-              <div class="mt-3">
-                <label class="flex items-center gap-2 rounded-md border border-border/80 bg-background/65 px-2.5 py-2 transition-colors focus-within:border-primary/40">
-                  <FiSearch class="size-4 text-muted-foreground" />
-                  <input
-                    autofocus
-                    class="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/80"
-                    onInput={(event) =>
-                      setProviderSearchQuery(event.currentTarget.value)
-                    }
-                    placeholder="Search providers..."
-                    ref={(element) => {
-                      providerSearchInputRef = element;
-                    }}
-                    type="text"
-                    value={providerSearchQuery()}
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div class="relative grid h-[480px] min-h-0 gap-0 md:grid-cols-[1.1fr_1.4fr]">
-              <div class="min-h-0 border-border/80 border-r">
-                <div class="h-full min-h-0 overflow-y-auto overscroll-contain bg-background/35 px-2 py-2 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2.5">
-                  <Show
-                    fallback={
-                      <p class="px-3 py-4 text-muted-foreground text-sm">
-                        No providers found.
-                      </p>
-                    }
-                    when={filteredProviders().length > 0}
+            <div
+              class="provider-modal-content-motion model-selector-shell relative z-10 w-full max-w-5xl overflow-hidden rounded-xl border border-border/70 bg-popover/95 text-popover-foreground shadow-[0_28px_80px_rgba(0,0,0,0.6)]"
+              data-exiting={modalPresence.isExiting() ? "" : undefined}
+              data-stack-content={providerStackId}
+              data-visible={modalPresence.isVisible() ? "" : undefined}
+            >
+              <div class="model-selector-grain pointer-events-none absolute inset-0" />
+              <div class="relative border-border/80 border-b bg-muted/45 px-4 pt-3 pb-2.5 backdrop-blur-xl">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 class="font-semibold text-[13px] tracking-tight">
+                      Connect a provider
+                    </h3>
+                    <p class="text-[10px] text-muted-foreground">
+                      Search providers and connect with API key
+                    </p>
+                  </div>
+                  <button
+                    class="rounded-md border border-border/80 bg-background/75 px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted/80 hover:text-foreground"
+                    onClick={closeModal}
+                    type="button"
                   >
-                    <div class="mb-3">
-                      <p class="px-2 pb-1 font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.1em]">
-                        All Providers
-                      </p>
-                      <div class="space-y-1">
-                        <For each={filteredProviders()}>
-                          {(provider) => {
-                            const isSelected = () =>
-                              selectedProviderId() === provider.id;
-                            const isConnected = () => provider.connected;
-                            return (
-                              <button
-                                class={cn(
-                                  "group w-full rounded-md border px-2.5 py-2 text-left transition-all duration-120",
-                                  isSelected()
-                                    ? "border-primary/45 bg-accent/70 shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-primary)_45%,transparent),0_8px_24px_color-mix(in_oklch,var(--color-primary)_18%,transparent)]"
-                                    : "border-transparent hover:border-border/90 hover:bg-muted/70"
-                                )}
-                                data-testid={`provider-option-${provider.id}`}
-                                onClick={() =>
-                                  setSelectedProviderId(provider.id)
-                                }
-                                type="button"
-                              >
-                                <div class="flex items-center justify-between gap-2">
-                                  <span class="truncate font-medium text-sm">
-                                    {provider.name}
-                                  </span>
-                                  <div class="flex items-center gap-1">
-                                    <Show when={provider.popular}>
-                                      <span class="rounded-full border border-primary/35 bg-primary/12 px-1.5 py-0.5 text-[10px] text-primary uppercase tracking-wide">
-                                        Popular
+                    Close
+                  </button>
+                </div>
+
+                <div class="mt-3">
+                  <label class="flex items-center gap-2 rounded-md border border-border/80 bg-background/65 px-2.5 py-2 transition-colors focus-within:border-primary/40">
+                    <FiSearch class="size-4 text-muted-foreground" />
+                    <input
+                      autofocus
+                      class="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/80"
+                      onInput={(event) =>
+                        setProviderSearchQuery(event.currentTarget.value)
+                      }
+                      placeholder="Search providers..."
+                      ref={(element) => {
+                        providerSearchInputRef = element;
+                      }}
+                      type="text"
+                      value={providerSearchQuery()}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div class="relative grid h-[480px] min-h-0 gap-0 md:grid-cols-[1.1fr_1.4fr]">
+                <div class="min-h-0 border-border/80 border-r">
+                  <div class="h-full min-h-0 overflow-y-auto overscroll-contain bg-background/35 px-2 py-2 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2.5">
+                    <Show
+                      fallback={
+                        <p class="px-3 py-4 text-muted-foreground text-sm">
+                          No providers found.
+                        </p>
+                      }
+                      when={filteredProviders().length > 0}
+                    >
+                      <div class="mb-3">
+                        <p class="px-2 pb-1 font-semibold text-[11px] text-muted-foreground uppercase tracking-[0.1em]">
+                          All Providers
+                        </p>
+                        <div class="space-y-1">
+                          <For each={filteredProviders()}>
+                            {(provider) => {
+                              const isSelected = () =>
+                                selectedProviderId() === provider.id;
+                              const isConnected = () => provider.connected;
+                              return (
+                                <button
+                                  class={cn(
+                                    "group w-full rounded-md border px-2.5 py-2 text-left transition-all duration-120",
+                                    isSelected()
+                                      ? "border-primary/45 bg-accent/70 shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-primary)_45%,transparent),0_8px_24px_color-mix(in_oklch,var(--color-primary)_18%,transparent)]"
+                                      : "border-transparent hover:border-border/90 hover:bg-muted/70"
+                                  )}
+                                  data-testid={`provider-option-${provider.id}`}
+                                  onClick={() =>
+                                    setSelectedProviderId(provider.id)
+                                  }
+                                  type="button"
+                                >
+                                  <div class="flex items-center justify-between gap-2">
+                                    <span class="truncate font-medium text-sm">
+                                      {provider.name}
+                                    </span>
+                                    <div class="flex items-center gap-1">
+                                      <Show when={provider.popular}>
+                                        <span class="rounded-full border border-primary/35 bg-primary/12 px-1.5 py-0.5 text-[10px] text-primary uppercase tracking-wide">
+                                          Popular
+                                        </span>
+                                      </Show>
+                                      <span
+                                        class={cn(
+                                          "rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide",
+                                          isConnected()
+                                            ? "border-primary/30 bg-primary/10 text-primary"
+                                            : "border-border bg-background text-muted-foreground"
+                                        )}
+                                      >
+                                        {isConnected()
+                                          ? "Connected"
+                                          : "Not Connected"}
                                       </span>
-                                    </Show>
-                                    <span
-                                      class={cn(
-                                        "rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide",
-                                        isConnected()
-                                          ? "border-primary/30 bg-primary/10 text-primary"
-                                          : "border-border bg-background text-muted-foreground"
-                                      )}
-                                    >
-                                      {isConnected()
-                                        ? "Connected"
-                                        : "Not Connected"}
+                                    </div>
+                                  </div>
+                                  <div class="mt-1 flex items-center justify-between gap-2">
+                                    <span class="truncate text-muted-foreground text-xs">
+                                      {provider.id}
+                                    </span>
+                                    <span class="text-[10px] text-muted-foreground">
+                                      {provider.modelCount} models
                                     </span>
                                   </div>
-                                </div>
-                                <div class="mt-1 flex items-center justify-between gap-2">
-                                  <span class="truncate text-muted-foreground text-xs">
-                                    {provider.id}
-                                  </span>
-                                  <span class="text-[10px] text-muted-foreground">
-                                    {provider.modelCount} models
-                                  </span>
-                                </div>
-                              </button>
-                            );
-                          }}
-                        </For>
+                                </button>
+                              );
+                            }}
+                          </For>
+                        </div>
                       </div>
-                    </div>
+                    </Show>
+                  </div>
+                </div>
+
+                <div class="h-full min-h-0 overflow-y-auto overscroll-contain bg-background/30 px-4 py-4 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2.5">
+                  <Show
+                    fallback={
+                      <p class="text-muted-foreground text-sm">
+                        Select a provider.
+                      </p>
+                    }
+                    when={selectedProvider()}
+                  >
+                    {(provider) => {
+                      const providerId = () => provider().id;
+                      const isConnected = () => provider().connected;
+                      const error = () => errorByProvider()[providerId()];
+
+                      return (
+                        <div class="space-y-4">
+                          <div class="rounded-lg border border-border/80 bg-background/65 p-3">
+                            <div class="flex items-center justify-between gap-3">
+                              <div class="min-w-0">
+                                <p class="truncate font-semibold text-sm tracking-tight">
+                                  {provider().name}
+                                </p>
+                                <p class="truncate text-muted-foreground text-xs">
+                                  {provider().id}
+                                </p>
+                              </div>
+                              <div class="flex items-center gap-2">
+                                <span class="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wide">
+                                  {provider().modelCount} models
+                                </span>
+                                <Show when={provider().popular}>
+                                  <span class="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 text-[10px] text-primary uppercase tracking-wide">
+                                    Popular
+                                  </span>
+                                </Show>
+                              </div>
+                            </div>
+                            <Show when={provider().note}>
+                              <p class="mt-2 text-muted-foreground text-xs">
+                                {provider().note}
+                              </p>
+                            </Show>
+                          </div>
+
+                          <Show
+                            fallback={
+                              <div class="rounded-lg border border-border/80 bg-background/60 p-3">
+                                <div class="mb-3 flex items-center justify-between gap-2">
+                                  <p class="font-semibold text-foreground text-xs tracking-wide">
+                                    API Key
+                                  </p>
+                                  <span class="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wide">
+                                    api
+                                  </span>
+                                </div>
+                                <div class="space-y-2">
+                                  <div class="flex flex-wrap items-center gap-2">
+                                    <input
+                                      class="w-full min-w-[220px] flex-1 rounded-md border border-border bg-background px-2.5 py-2 text-foreground text-xs outline-none transition-colors placeholder:text-muted-foreground/80 focus:border-primary/45"
+                                      onInput={(event) => {
+                                        setTokenDraft(
+                                          providerId(),
+                                          event.currentTarget.value
+                                        );
+                                      }}
+                                      placeholder="API key"
+                                      type="password"
+                                      value={
+                                        tokenByProvider()[providerId()] ?? ""
+                                      }
+                                    />
+                                    <button
+                                      class="rounded-md border border-border/90 bg-muted/70 px-2.5 py-2 font-medium text-foreground text-xs transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                                      disabled={
+                                        (
+                                          tokenByProvider()[providerId()] ?? ""
+                                        ).trim().length === 0
+                                      }
+                                      onClick={() => connectToken(providerId())}
+                                      type="button"
+                                    >
+                                      Connect
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            }
+                            when={isConnected()}
+                          >
+                            <div class="rounded-lg border border-primary/30 bg-primary/10 p-3">
+                              <div class="flex items-center justify-between gap-2">
+                                <p class="font-semibold text-primary text-xs tracking-wide">
+                                  Connected
+                                </p>
+                                <span class="rounded-full border border-primary/35 px-1.5 py-0.5 text-[10px] text-primary uppercase tracking-wide">
+                                  Active
+                                </span>
+                              </div>
+                              <p class="mt-1 text-muted-foreground text-xs">
+                                This provider is connected. You can disconnect
+                                it from here.
+                              </p>
+                              <div class="mt-3">
+                                <button
+                                  class="rounded-md border border-border/90 bg-muted/70 px-2.5 py-2 font-medium text-foreground text-xs transition-colors hover:bg-muted"
+                                  onClick={() => disconnect(providerId())}
+                                  type="button"
+                                >
+                                  Disconnect
+                                </button>
+                              </div>
+                            </div>
+                          </Show>
+
+                          <Show when={error()}>
+                            <p class="text-destructive text-xs">{error()}</p>
+                          </Show>
+                        </div>
+                      );
+                    }}
                   </Show>
                 </div>
               </div>
 
-              <div class="h-full min-h-0 overflow-y-auto overscroll-contain bg-background/30 px-4 py-4 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2.5">
-                <Show
-                  fallback={
-                    <p class="text-muted-foreground text-sm">
-                      Select a provider.
-                    </p>
-                  }
-                  when={selectedProvider()}
-                >
-                  {(provider) => {
-                    const providerId = () => provider().id;
-                    const isConnected = () => provider().connected;
-                    const error = () => errorByProvider()[providerId()];
-
-                    return (
-                      <div class="space-y-4">
-                        <div class="rounded-lg border border-border/80 bg-background/65 p-3">
-                          <div class="flex items-center justify-between gap-3">
-                            <div class="min-w-0">
-                              <p class="truncate font-semibold text-sm tracking-tight">
-                                {provider().name}
-                              </p>
-                              <p class="truncate text-muted-foreground text-xs">
-                                {provider().id}
-                              </p>
-                            </div>
-                            <div class="flex items-center gap-2">
-                              <span class="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wide">
-                                {provider().modelCount} models
-                              </span>
-                              <Show when={provider().popular}>
-                                <span class="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 text-[10px] text-primary uppercase tracking-wide">
-                                  Popular
-                                </span>
-                              </Show>
-                            </div>
-                          </div>
-                          <Show when={provider().note}>
-                            <p class="mt-2 text-muted-foreground text-xs">
-                              {provider().note}
-                            </p>
-                          </Show>
-                        </div>
-
-                        <Show
-                          fallback={
-                            <div class="rounded-lg border border-border/80 bg-background/60 p-3">
-                              <div class="mb-3 flex items-center justify-between gap-2">
-                                <p class="font-semibold text-foreground text-xs tracking-wide">
-                                  API Key
-                                </p>
-                                <span class="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wide">
-                                  api
-                                </span>
-                              </div>
-                              <div class="space-y-2">
-                                <div class="flex flex-wrap items-center gap-2">
-                                  <input
-                                    class="w-full min-w-[220px] flex-1 rounded-md border border-border bg-background px-2.5 py-2 text-foreground text-xs outline-none transition-colors placeholder:text-muted-foreground/80 focus:border-primary/45"
-                                    onInput={(event) => {
-                                      setTokenDraft(
-                                        providerId(),
-                                        event.currentTarget.value
-                                      );
-                                    }}
-                                    placeholder="API key"
-                                    type="password"
-                                    value={
-                                      tokenByProvider()[providerId()] ?? ""
-                                    }
-                                  />
-                                  <button
-                                    class="rounded-md border border-border/90 bg-muted/70 px-2.5 py-2 font-medium text-foreground text-xs transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-                                    disabled={
-                                      (
-                                        tokenByProvider()[providerId()] ?? ""
-                                      ).trim().length === 0
-                                    }
-                                    onClick={() => connectToken(providerId())}
-                                    type="button"
-                                  >
-                                    Connect
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          }
-                          when={isConnected()}
-                        >
-                          <div class="rounded-lg border border-primary/30 bg-primary/10 p-3">
-                            <div class="flex items-center justify-between gap-2">
-                              <p class="font-semibold text-primary text-xs tracking-wide">
-                                Connected
-                              </p>
-                              <span class="rounded-full border border-primary/35 px-1.5 py-0.5 text-[10px] text-primary uppercase tracking-wide">
-                                Active
-                              </span>
-                            </div>
-                            <p class="mt-1 text-muted-foreground text-xs">
-                              This provider is connected. You can disconnect it
-                              from here.
-                            </p>
-                            <div class="mt-3">
-                              <button
-                                class="rounded-md border border-border/90 bg-muted/70 px-2.5 py-2 font-medium text-foreground text-xs transition-colors hover:bg-muted"
-                                onClick={() => disconnect(providerId())}
-                                type="button"
-                              >
-                                Disconnect
-                              </button>
-                            </div>
-                          </div>
-                        </Show>
-
-                        <Show when={error()}>
-                          <p class="text-destructive text-xs">{error()}</p>
-                        </Show>
-                      </div>
-                    );
-                  }}
-                </Show>
+              <div class="flex items-center justify-end gap-2 border-border/80 border-t bg-muted/55 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-xl">
+                <kbd class="rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
+                  Enter
+                </kbd>
+                <span>Select</span>
+                <kbd class="ml-2 rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
+                  ↑↓
+                </kbd>
+                <span>Navigate</span>
+                <kbd class="ml-2 rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
+                  Esc
+                </kbd>
+                <span>Close</span>
               </div>
             </div>
-
-            <div class="flex items-center justify-end gap-2 border-border/80 border-t bg-muted/55 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-xl">
-              <kbd class="rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
-                Enter
-              </kbd>
-              <span>Select</span>
-              <kbd class="ml-2 rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
-                ↑↓
-              </kbd>
-              <span>Navigate</span>
-              <kbd class="ml-2 rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
-                Esc
-              </kbd>
-              <span>Close</span>
-            </div>
           </div>
-        </div>
+        </Portal>
       </Show>
     </>
   );
