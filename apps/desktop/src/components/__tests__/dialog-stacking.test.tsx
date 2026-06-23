@@ -9,13 +9,15 @@ function contentFor(testId: string): HTMLElement {
   return el;
 }
 
-const visibleOverlays = () =>
-  Array.from(
-    document.querySelectorAll<HTMLElement>("[data-stack-overlay]")
-  ).filter((el) => el.dataset.stackedHidden === undefined);
+const isHidden = (el: HTMLElement) => el.classList.contains("opacity-0");
 
 const overlays = () =>
   document.querySelectorAll<HTMLElement>("[data-stack-overlay]");
+
+const visibleOverlays = () =>
+  Array.from(
+    document.querySelectorAll<HTMLElement>("[data-stack-overlay]")
+  ).filter((el) => !isHidden(el));
 
 describe("dialog stacking", () => {
   it("hides the lower dialog when a second opens on top", async () => {
@@ -33,14 +35,14 @@ describe("dialog stacking", () => {
     ));
 
     // A open alone → visible
-    expect(contentFor("a").dataset.stackedHidden).toBeUndefined();
+    expect(isHidden(contentFor("a"))).toBe(false);
 
     // open B on top of A
     setOpenB(true);
     await Promise.resolve();
 
-    expect(contentFor("a").dataset.stackedHidden).toBe("true");
-    expect(contentFor("b").dataset.stackedHidden).toBeUndefined();
+    expect(isHidden(contentFor("a"))).toBe(true);
+    expect(isHidden(contentFor("b"))).toBe(false);
     // only the topmost overlay should be visible (no doubled backdrop)
     expect(overlays().length).toBe(2);
     expect(visibleOverlays().length).toBe(1);
@@ -48,7 +50,7 @@ describe("dialog stacking", () => {
     // close B → A visible again
     setOpenB(false);
     await Promise.resolve();
-    expect(contentFor("a").dataset.stackedHidden).toBeUndefined();
+    expect(isHidden(contentFor("a"))).toBe(false);
     expect(visibleOverlays().length).toBe(1);
   });
 });

@@ -14,6 +14,7 @@ import {
 import { Portal } from "solid-js/web";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
+import { useDismissibleVisibility } from "~/lib/ui/dismissible-stack";
 import { cn } from "~/lib/utils";
 
 interface ApiKeyInfo {
@@ -186,7 +187,20 @@ export function ModelsSettings() {
   const [activeIndex, setActiveIndex] = createSignal(0);
   const [hybridEnabled, setHybridEnabled] = createSignal(true);
   const providerStackId = createUniqueId();
+  const {
+    isTopmost: isProviderTopmost,
+    show: showProviderStack,
+    hide: hideProviderStack,
+  } = useDismissibleVisibility(providerStackId);
   let providerSearchInputRef: HTMLInputElement | undefined;
+
+  createEffect(() => {
+    if (modalPresence.isMounted()) {
+      showProviderStack();
+    } else {
+      hideProviderStack();
+    }
+  });
 
   const [apiKeyInfos, { refetch: refetchApiKeys, mutate: mutateApiKeys }] =
     createResource(fetchApiKeys);
@@ -574,10 +588,17 @@ export function ModelsSettings() {
           {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Modal wrapper listens for keyboard shortcuts while focus may be inside nested content. */}
           <div
             aria-modal="true"
-            class="fixed inset-0 z-50 flex items-center justify-center p-4"
+            class={cn(
+              "fixed inset-0 z-50 flex items-center justify-center p-4",
+              !isProviderTopmost() && "pointer-events-none opacity-0"
+            )}
+            data-kb-top-layer={isProviderTopmost() ? "" : undefined}
             data-testid="provider-modal"
             onKeyDown={(event) => handleProviderModalKeyDown(event)}
             role="dialog"
+            style={{
+              "pointer-events": isProviderTopmost() ? "auto" : undefined,
+            }}
             tabIndex={-1}
           >
             <button
