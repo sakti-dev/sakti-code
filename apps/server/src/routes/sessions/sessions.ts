@@ -29,6 +29,8 @@ export const sessionsRoutes = new Hono()
         projectId: Type.String(),
         modelId: Type.Optional(Type.String()),
         title: Type.Optional(Type.String()),
+        kind: Type.Optional(Type.String()),
+        parentSessionId: Type.Optional(Type.String()),
       })
     ),
     async (c) => {
@@ -64,6 +66,10 @@ export const sessionsRoutes = new Hono()
       const created = await ctx.repos.sessions.create(body.projectId, modelId, {
         ...(body.title === undefined ? {} : { title: body.title }),
         ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
+        ...(body.kind === undefined ? {} : { kind: body.kind }),
+        ...(body.parentSessionId === undefined
+          ? {}
+          : { parentSessionId: body.parentSessionId }),
       });
       return c.json(created);
     }
