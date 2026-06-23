@@ -4,14 +4,14 @@
 
 Sakti is a **native desktop coding agent** that runs multiple AI coding agents concurrently on different codebases. Unlike wrapper apps that shell out to external CLIs, Sakti owns the full agent loop in-process — built on top of `@earendil-works/pi-ai` for LLM streaming with its own agent core, persistence, and tool execution.
 
-**v1 goal:** Achieve feature parity with the [pibun](openspec/references/pibun/) reference implementation — a mature desktop coding agent UI — while leveraging Sakti's in-process architecture advantages. Target platform is **Linux** (Electrobun). macOS and Windows support may follow.
+**v1 goal:** Achieve feature parity with the [pibun](openspec/references/pibun/) reference implementation — a mature desktop coding agent UI — while leveraging Sakti's in-process architecture advantages. Target platform is **Linux** (Electron). macOS and Windows support may follow.
 
 ### Key architectural differentiator vs pibun
 
 | Aspect | pibun | Sakti |
 |--------|-------|-------|
 | Agent runtime | Subprocess RPC (`pi --mode rpc`) | In-process (`@earendil-works/pi-ai`) |
-| Persistence | Delegated to Pi subprocess | Owned via `bun:sqlite` + Drizzle ORM |
+| Persistence | Delegated to Pi subprocess | Owned via `node:sqlite` + Drizzle ORM |
 | Server framework | Raw `Bun.serve()` | Elysia with Eden treaty (type-safe REST) |
 | Frontend framework | React 19 | SolidJS |
 | Tool execution | Delegated to Pi | Self-managed (7 tools in `packages/tools`) |
@@ -50,7 +50,7 @@ Sakti is a **native desktop coding agent** that runs multiple AI coding agents c
 │  ┌──────────┐ ┌──────────────┐ ┌─────────────┐ │
 │  │ REST     │ │ WS Agent     │ │ Terminal    │ │
 │  │ Routes   │ │ Streaming    │ │ Manager     │ │
-│  │ (20+)    │ │ (/ws)        │ │ (bun-pty)   │ │
+│  │ (20+)    │ │ (/ws)        │ │ (node-pty)  │ │
 │  └────┬─────┘ └──────┬───────┘ └──────┬──────┘ │
 │       │              │                │         │
 │  ┌────▼──────────────▼────────────────▼──────┐  │
@@ -173,7 +173,7 @@ Sakti is a **native desktop coding agent** that runs multiple AI coding agents c
 - **FR-TH-04:** CSS custom properties for all theme tokens (colors, backgrounds, borders, text)
 - **FR-TH-05:** Theme persisted across app restarts
 
-### 4.10 Desktop Features (Electrobun)
+### 4.10 Desktop Features (Electron)
 
 - **FR-DF-01:** Native desktop window with size/position persistence across restarts
 - **FR-DF-02:** System tray icon with session status indicators
@@ -236,10 +236,10 @@ Sakti is a **native desktop coding agent** that runs multiple AI coding agents c
 |-----------|-------|
 | Frontend framework | SolidJS (required, not React) |
 | Server framework | Elysia (REST + WebSocket) |
-| Database | `bun:sqlite` + Drizzle ORM |
+| Database | `node:sqlite` + Drizzle ORM |
 | LLM provider | `@earendil-works/pi-ai` (no hand-rolled provider code) |
 | Desktop framework | Electron (electron-vite + electron-builder) |
-| Runtime | Bun |
+| Runtime | Node.js (via [nub](https://github.com/nubjs/nub) toolkit) |
 | Target platform | Linux (v1) |
 | TypeScript | 6.0.3, strict mode, `exactOptionalPropertyTypes` |
 | State management | SolidJS signals (not Zustand or Redux) |

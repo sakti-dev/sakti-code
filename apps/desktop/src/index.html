@@ -6,10 +6,9 @@
     <title>sakti-code</title>
     <script>
     "use strict";
-    // CEF on Linux ignores the OS DPI scale factor. The bun side passes
-    // the real OS scale via ?dpr=. If the webview's devicePixelRatio is
-    // lower than the OS scale, apply a CSS zoom to compensate. Runs
-    // synchronously in <head> to prevent a flash of unscaled content.
+    // CEF/Electron on Linux may ignore the OS DPI scale factor. If a real OS scale
+    // is passed via ?dpr= and the webview's devicePixelRatio is lower, apply a CSS
+    // zoom to compensate. Runs synchronously in <head> to prevent an unscaled flash.
     (() => {
       const dpr = Number.parseFloat(
         new URLSearchParams(location.search).get("dpr") || "1"

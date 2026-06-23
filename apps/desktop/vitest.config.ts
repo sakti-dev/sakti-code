@@ -5,7 +5,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [solid(), tailwindcss()],
-  root: resolve(import.meta.dirname, "src"),
+  root: resolve(import.meta.dirname),
   resolve: {
     alias: {
       "~": resolve(import.meta.dirname, "src"),
@@ -14,6 +14,6 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    include: ["**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "electron/**/__tests__/**/*.test.ts"],
   },
 });

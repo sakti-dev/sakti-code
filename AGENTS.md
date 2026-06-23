@@ -1,11 +1,11 @@
 ## Project
 
-sakti-code: desktop app (Electrobun + SolidJS) running multiple AI coding agents concurrently on different codebases. The agent core lives here as a TypeScript monorepo.
+sakti-code: desktop app (Electron + SolidJS) running multiple AI coding agents concurrently on different codebases. The agent core lives here as a TypeScript monorepo.
 
 - **SolidJS** is a hard requirement (not React).
 - LLM via **`@earendil-works/pi-ai`** — don't hand-roll provider code.
 - App server: **Hono** on `@hono/node-server` (REST + WebSocket, not all-WS).
-- DB: **bun:sqlite + Drizzle ORM** (not libsql). DB is owned by the app/server, never by the agent package.
+- DB: **node:sqlite + Drizzle ORM** (not libsql, not bun:sqlite). DB is owned by the app/server, never by the agent package. Tooling is **nub** (a Node-based Bun-like toolkit) — not the Bun runtime.
 
 ## Monorepo layout
 
@@ -19,35 +19,34 @@ sakti-code: desktop app (Electrobun + SolidJS) running multiple AI coding agents
 ## Commands
 
 ```
-bun x ultracite fix                              # format + lint fix + diagnostics (run before committing)
-bun typecheck                                    # typecheck all packages via turbo (agent, db, tools, server, desktop) — each package owns its tsconfig
-cd apps/server && bun run typecheck              # typecheck server incl. tests (tsc --noEmit with apps/server/tsconfig.json)
-bun test packages/tools/src/                     # tool tests (bun:test)
-bun test packages/agent/src/__tests__/           # agent tests (bun:test)
-cd packages/db && bun test                       # db tests (bun:test, needs bun:sqlite)
-cd apps/server && bun x vitest run               # server tests (vitest; DB-touching tests fail until bun:sqlite→better-sqlite3 re-wire)
-cd apps/server && bun run test                   # server route tests (via preload);
-                                                 # bun test directly without the script also works but picks up all tests
-bun dev:server                                   # start Hono server standalone on port 3001 (SAKTI_PORT env override)
-cd apps/desktop && bun dev                        # run the Electron app (electron-vite dev: renderer HMR + embedded server on ephemeral port)
-cd apps/desktop && bun run spike                  # headless Electron spike: verifies node:sqlite + embedded createServer + /api/health
-cd apps/desktop && bun run rebuild                # rebuild native modules (node-pty) against Electron's ABI — run once after install (in nix develop)
-cd apps/desktop && bun run package                # build + package a Linux app into release/ (run in `nix develop`; python3 needed for node-pty)
+nubx ultracite fix                                # format + lint fix + diagnostics (run before committing)
+nub run typecheck                                 # typecheck all packages via turbo (agent, db, tools, server, desktop) — each package owns its tsconfig
+cd apps/server && nub run typecheck               # typecheck server incl. tests (tsc --noEmit with apps/server/tsconfig.json)
+cd packages/tools && nub run test                 # tool tests (vitest)
+cd packages/agent && nub run test                 # agent tests (vitest)
+cd packages/db && nub run test                    # db tests (vitest, node:sqlite)
+cd apps/server && nub run test                    # server tests (vitest)
+cd apps/desktop && nub run test                   # desktop renderer + electron tests (vitest)
+nub run dev:server                                # start Hono server standalone on port 3001 (SAKTI_PORT env override); runs .ts directly via nub watch
+cd apps/desktop && nub run dev                    # run the Electron app (electron-vite dev: renderer HMR + embedded server on fixed dev port 3001)
+cd apps/desktop && nub run spike                  # headless Electron spike: verifies node:sqlite + embedded createServer + /api/health
+cd apps/desktop && nub run rebuild                # rebuild native modules (node-pty) against Electron's ABI — run once after install (in nix develop)
+cd apps/desktop && nub run package                # build + package a Linux app into release/ (run in `nix develop`; python3 needed for node-pty)
 nix develop                                       # enter dev shell: Electron runtime libs (libEGL/libGL…) + python3/gnumake for native rebuild
 ```
 
 ## Conventions
 
 - **Follow TDD** — write the failing test first (RED), implement until it passes (GREEN), then refactor. Verify RED before implementing.
-- **Tests live in `__tests__/` colocated with source.** Server tests use `vitest` (run via `bun x vitest`); package tests use `bun:test`.
+- **Tests live in `__tests__/` colocated with source.** Tests use **vitest** throughout (server, desktop renderer, and packages; renderer tests run under jsdom).
 - **`exactOptionalPropertyTypes: true` is on.** Use conditional spread `...(x !== undefined ? { x } : {})` instead of passing `undefined`.
 - TS 6.0 quirks: `include`/`references` must be top-level in tsconfig (not inside `compilerOptions`); `shell` in `execSync` must be a `string` (e.g. `"/bin/sh"`), not `boolean`.
-- Workspace `package.json` exports point to `./src/index.ts` (not `./dist/`) so bun dev resolves `.ts` directly.
+- Workspace `package.json` exports point to `./src/index.ts` (not `./dist/`) so nub resolves `.ts` directly.
 - Before editing unfamiliar code: read `openspec/changes/*/specs/` and the file you're changing.
 
 ## Code style (Ultracite / Biome)
 
-Write code that is **accessible, performant, type-safe, and maintainable**. Focus on clarity and explicit intent over brevity. Run `bun x ultracite fix` — it applies formatting and lint fixes and reports any remaining diagnostics.
+Write code that is **accessible, performant, type-safe, and maintainable**. Focus on clarity and explicit intent over brevity. Run `nubx ultracite fix` — it applies formatting and lint fixes and reports any remaining diagnostics.
 
 - Explicit types for params/returns when they aid clarity; prefer `unknown` over `any`.
 - `const` by default, `let` only when reassigning, never `var`. Const assertions (`as const`) for immutable values.
@@ -75,9 +74,9 @@ The Hono REST server lives in `apps/server/` (served by `@hono/node-server`) and
 ### Running the server
 
 ```bash
-bun dev:server                              # starts on port 3001
-SAKTI_PORT=4000 bun dev:server              # override port
-SAKTI_DB_PATH=/custom/path/sakti-code.db bun dev:server   # custom db path
+nub run dev:server                          # starts on port 3001
+SAKTI_PORT=4000 nub run dev:server          # override port
+SAKTI_DB_PATH=/custom/path/sakti-code.db nub run dev:server   # custom db path
 ```
 
 ### Environment & configuration

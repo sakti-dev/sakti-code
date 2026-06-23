@@ -1,5 +1,5 @@
-(cd packages/agent && bun run test) && (cd packages/db && bun run test) && (cd packages/tools && bun run test)
+(cd packages/agent && pnpm run test) && (cd packages/db && pnpm run test) && (cd packages/tools && pnpm run test)
 # ultracite
 #!/bin/sh
-bun x lint-staged
+pnpm exec lint-staged
 # ultracite end

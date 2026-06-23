@@ -4,7 +4,7 @@
 **Backend (complete):**
 - Elysia REST server with 20+ route modules
 - Agent core (loop, tools, compaction, streaming events)
-- DB layer (Drizzle + bun:sqlite)
+- DB layer (Drizzle + node:sqlite)
 - Eden typed WS with TypeBox schemas
 
 **Frontend stores (complete, 13 test files, 98+124 tests passing):**

@@ -10,7 +10,7 @@ import {
   Session as SessionClass,
 } from "@sakti-code/agent";
 import type { ServerContext } from "../context.ts";
-import { BunExecutionEnv } from "./execution-env.ts";
+import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth, resolveModel } from "./model-resolver.ts";
 import { buildTools } from "./tools-builder.ts";
 
@@ -142,7 +142,7 @@ export async function runPrompt(
   const settings = loadSessionSettings(ctx, sessionId);
   const thinkingLevel = resolveThinkingLevel(ctx, sessionId, session);
 
-  const env = new BunExecutionEnv(project.cwd);
+  const env = new NodeExecutionEnv(project.cwd);
   const sessionInstance = new SessionClass(storage);
   const getApiKeyAndHeaders = async (
     _model: unknown

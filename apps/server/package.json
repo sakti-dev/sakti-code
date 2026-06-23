@@ -18,9 +18,9 @@
     }
   },
   "scripts": {
-    "start": "bun run src/index.ts",
-    "dev": "bun run --hot src/index.ts",
-    "test": "bun x vitest run",
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -38,6 +38,7 @@
   "devDependencies": {
     "@types/node": "^26.0.0",
     "@types/ws": "^8.18.1",
-    "node-gyp": "^13.0.0"
+    "node-gyp": "^13.0.0",
+    "tsx": "^4.19.2"
   }
 }

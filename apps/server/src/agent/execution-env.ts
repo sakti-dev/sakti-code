@@ -71,7 +71,7 @@ async function statToFileInfo(fullPath: string): Promise<FileInfo> {
   };
 }
 
-export class BunExecutionEnv implements ExecutionEnv {
+export class NodeExecutionEnv implements ExecutionEnv {
   private readonly _cwd: string;
 
   constructor(cwd?: string) {

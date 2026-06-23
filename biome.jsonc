@@ -5,9 +5,6 @@
     "ultracite/biome/vitest",
     "ultracite/biome/solid"
   ],
-  "javascript": {
-    "globals": ["Bun"]
-  },
   "linter": {
     "rules": {
       "performance": {

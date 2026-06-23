@@ -1,5 +1,5 @@
 // §1 spike: verify node:sqlite + embedded createServer run under ELECTRON's bundled Node.
-// Headless (no window). Run: bun run --filter desktop spike   (or)  electron apps/desktop/spike.mjs
+// Headless (no window). Run: nub run --filter desktop spike   (or)  electron apps/desktop/spike.mjs
 
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";

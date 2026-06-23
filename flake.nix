@@ -1,5 +1,5 @@
 {
-  description = "sakti-code - Electron + SolidJS + Bun dev environment";
+  description = "sakti-code - Electron + SolidJS + Node (nub) dev environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -94,15 +94,15 @@
 
             echo ""
             echo "🚀 sakti-code development environment"
-            echo "   Bun:      $(bun --version)"
+            echo "   nub:      $(nub --version 2>/dev/null || echo 'n/a (install: https://nubjs.com)')"
             echo "   Node:     $(node --version 2>/dev/null || echo 'n/a')"
-            echo "   Electron: (via node_modules — run: bun install in apps/desktop)"
+            echo "   Electron: (via node_modules — run: nub install)"
             echo "   Glibc:    ${pkgs.glibc.version}"
             echo ""
             echo "Available commands:"
-            echo "   bun dev:server       - Start the Hono server standalone (port 3001)"
-            echo "   cd apps/desktop && bun dev   - Run the Electron app (HMR + embedded server)"
-            echo "   bun typecheck        - TypeScript checks"
+            echo "   nub run dev:server             - Start the Hono server standalone (port 3001)"
+            echo "   cd apps/desktop && nub run dev - Run the Electron app (HMR + embedded server)"
+            echo "   nub run typecheck              - TypeScript checks"
             echo ""
           '';
         };

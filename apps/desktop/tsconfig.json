@@ -7,7 +7,7 @@
     "jsxImportSource": "solid-js",
     // renderer source was authored under relaxed optionals (apps/app); keep it unchanged
     "exactOptionalPropertyTypes": false,
-    "types": ["node", "bun", "vitest/globals", "@testing-library/jest-dom"],
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom"],
     "noEmit": true,
     "skipLibCheck": true,
     "paths": {

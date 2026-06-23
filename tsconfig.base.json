@@ -16,7 +16,7 @@
     "resolveJsonModule": true,
     "sourceMap": true,
     "noEmit": true,
-    "types": ["bun"],
+    "types": ["node"],
     "allowImportingTsExtensions": true
   }
 }
