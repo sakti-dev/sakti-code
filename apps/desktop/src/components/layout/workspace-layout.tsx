@@ -1,5 +1,6 @@
-import { createEffect, type JSX, onMount, Show } from "solid-js";
+import { createEffect, createSignal, type JSX, onMount, Show } from "solid-js";
 import Home from "~/components/home/home";
+import { OnboardingPanel } from "~/components/onboarding/onboarding-panel";
 import { useStore } from "~/stores/store-context";
 import { activeTab, filterStaleProjects } from "~/stores/workspace/tab-store";
 import { sidebarOpen } from "~/stores/workspace/ui-signals";
@@ -20,6 +21,23 @@ export default function WorkspaceLayout(): JSX.Element {
       server.actions.setActiveProject(tab.projectId);
       server.actions.setActiveSession(tab.sessionId);
     }
+  });
+
+  // Upsert intake session when a project becomes active
+  const [intakeSessionId, setIntakeSessionId] = createSignal<string | null>(
+    null
+  );
+  createEffect(() => {
+    const projectId = server.store.activeProjectId;
+    if (!projectId) {
+      setIntakeSessionId(null);
+      return;
+    }
+    actions.upsertIntakeSession(projectId).then((session) => {
+      if (session) {
+        setIntakeSessionId(session.id);
+      }
+    });
   });
 
   // Load projects on mount, then filter stale tab entries
@@ -68,11 +86,15 @@ export default function WorkspaceLayout(): JSX.Element {
                   fallback={
                     <Show
                       fallback={<NoProjectSelected />}
+                      keyed
                       when={activeProject()}
                     >
-                      <NoSessionSelected
-                        projectName={activeProject()?.name ?? ""}
-                      />
+                      {(project) => (
+                        <OnboardingPanel
+                          intakeSessionId={intakeSessionId()}
+                          projectId={project.id}
+                        />
+                      )}
                     </Show>
                   }
                   when={activeSession()}
@@ -104,23 +126,6 @@ function NoProjectSelected() {
         </p>
         <p class="mt-1 text-muted-foreground text-xs">
           Or add a new project to begin a session
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function NoSessionSelected(props: { projectName: string }) {
-  return (
-    <div class="flex flex-1 flex-col items-center justify-center px-4">
-      <div class="w-full max-w-md text-center">
-        <div class="mb-3 text-3xl">{"\u{1F967}"}</div>
-        <p class="text-muted-foreground text-sm">
-          Ready to work on{" "}
-          <span class="font-medium text-foreground">{props.projectName}</span>
-        </p>
-        <p class="mt-1 text-muted-foreground text-xs">
-          Create a new session to start chatting
         </p>
       </div>
     </div>
