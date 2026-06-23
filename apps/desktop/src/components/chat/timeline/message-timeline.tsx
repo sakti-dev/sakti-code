@@ -4,12 +4,14 @@ import {
   createSignal,
   For,
   type JSX,
+  onCleanup,
   onMount,
   Show,
 } from "solid-js";
 import { cn } from "~/lib/utils";
 import type { ChatTurn } from "~/stores/session/turn-projection";
 import { CHAT_TIMELINE_CLASS } from "../layout";
+import { clearPretextCache, estimateTurnHeight } from "./estimate-turn-height";
 import { SessionTurn } from "./session-turn";
 
 export interface MessageTimelineProps {
@@ -20,12 +22,19 @@ export interface MessageTimelineProps {
 
 export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
   const [scrollEl, setScrollEl] = createSignal<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = createSignal(0);
+  const [fontVersion, setFontVersion] = createSignal(0);
 
   const virtualizer = createVirtualizer<HTMLDivElement, HTMLDivElement>({
     get count() {
       return props.turns().length;
     },
-    estimateSize: () => 200,
+    estimateSize: (index: number) => {
+      fontVersion();
+      const width = containerWidth();
+      const turn = props.turns()[index];
+      return turn ? estimateTurnHeight(turn, width) : 200;
+    },
     followOnAppend: true,
     getItemKey: (index) => props.turns()[index]?.id ?? index,
     getScrollElement: () => scrollEl(),
@@ -35,8 +44,27 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
   });
 
   onMount(() => {
+    const el = scrollEl();
+    if (!el) {
+      return;
+    }
+
+    const updateWidth = () => setContainerWidth(el.clientWidth);
+    updateWidth();
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(el);
+    onCleanup(() => observer.disconnect());
+
     if (props.turns().length > 0) {
       virtualizer.scrollToEnd();
+    }
+
+    if (typeof document !== "undefined" && document.fonts) {
+      document.fonts.ready.then(() => {
+        clearPretextCache();
+        setFontVersion((v) => v + 1);
+      });
     }
   });
 
@@ -69,6 +97,7 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
                 ref={virtualizer.measureElement}
                 style={{
                   left: 0,
+                  "padding-bottom": "20px",
                   position: "absolute",
                   top: 0,
                   transform: `translateY(${virtualItem.start}px)`,

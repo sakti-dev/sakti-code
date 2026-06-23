@@ -19,6 +19,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@chenglou/pretext": "^0.0.8",
     "@corvu/resizable": "^0.2.5",
     "@kobalte/core": "^0.13.11",
     "@sakti-code/agent": "workspace:*",
