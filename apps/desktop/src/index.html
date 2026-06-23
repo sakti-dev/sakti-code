@@ -1,51 +1,29 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>sakti-code</title>
-    <style>
-    body {
-      margin: 2rem;
-      font-family: system-ui, sans-serif;
-      color: #e6e6e6;
-      background: #0b0d10;
-    }
-    h1 {
-      font-size: 1.1rem;
-      font-weight: 600;
-    }
-    pre {
-      padding: 1rem;
-      white-space: pre-wrap;
-      background: #14181c;
-      border-radius: 8px;
-    }
-    .ok {
-      color: #4ade80;
-    }
-    .err {
-      color: #f87171;
-    }
-    </style>
+    <script>
+    "use strict";
+    // CEF on Linux ignores the OS DPI scale factor. The bun side passes
+    // the real OS scale via ?dpr=. If the webview's devicePixelRatio is
+    // lower than the OS scale, apply a CSS zoom to compensate. Runs
+    // synchronously in <head> to prevent a flash of unscaled content.
+    (() => {
+      const dpr = Number.parseFloat(
+        new URLSearchParams(location.search).get("dpr") || "1"
+      );
+      if (dpr > 1 && window.devicePixelRatio < dpr - 0.01) {
+        document.documentElement.style.zoom = String(
+          dpr / window.devicePixelRatio
+        );
+      }
+    })();
+    </script>
   </head>
   <body>
-    <h1>sakti-code desktop — smoke</h1>
-    <pre id="out" class="ok">booting…</pre>
-    <script type="module">
-    const out = document.getElementById("out");
-    try {
-      const { baseUrl } = await window.sakti.server.getConfig();
-      const health = await fetch(`${baseUrl}/api/health`).then((r) => r.json());
-      const msg = `server: ${baseUrl}\nhealth: ${JSON.stringify(health)}`;
-      out.textContent = msg;
-      out.className = "ok";
-      console.log("SMOKE OK " + msg);
-    } catch (e) {
-      out.textContent = `ERR: ${e?.message ?? e}`;
-      out.className = "err";
-      console.log("SMOKE ERR " + (e?.message ?? e));
-    }
-    </script>
+    <div id="app"></div>
+    <script type="module" src="/app.tsx"></script>
   </body>
 </html>

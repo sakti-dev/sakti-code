@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import {
   createServer,
   type SaktiServer,
@@ -14,9 +15,11 @@ let server: SaktiServer | null = null;
 let shuttingDown = false;
 
 app.on("ready", async () => {
+  const isDev = !app.isPackaged;
   server = await createServer({
-    port: 0,
+    port: isDev ? 3001 : 0,
     hostname: "127.0.0.1",
+    staticDir: isDev ? null : resolve(import.meta.dirname, "../renderer"),
     hooks: createDialogHooks(),
   });
   logger.info("embedded server on", server.url);
@@ -26,7 +29,7 @@ app.on("ready", async () => {
   registerShellHandlers();
   registerLogHandler();
 
-  createWindow();
+  createWindow(server.url);
 });
 
 app.on("window-all-closed", () => {
@@ -36,8 +39,8 @@ app.on("window-all-closed", () => {
 });
 
 app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
+  if (BrowserWindow.getAllWindows().length === 0 && server) {
+    createWindow(server.url);
   }
 });
 

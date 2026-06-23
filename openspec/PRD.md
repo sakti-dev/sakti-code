@@ -33,9 +33,9 @@ Sakti is a **native desktop coding agent** that runs multiple AI coding agents c
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Electrobun Desktop Shell (apps/app)             │
+│  Electron Desktop Shell (apps/desktop)            │
 │  ┌─────────────────────────────────────────────┐ │
-│  │  SolidJS App (Vite → CEF webview)           │ │
+│  │  SolidJS App (Vite → Electron webContents)   │ │
 │  │  ┌───────────┐  ┌──────────┐  ┌─────────┐ │ │
 │  │  │ ChatView  │  │ Sidebar  │  │ Terminal│ │ │
 │  │  │ Composer  │  │ Settings │  │  Tabs   │ │ │
@@ -245,7 +245,7 @@ Sakti is a **native desktop coding agent** that runs multiple AI coding agents c
 | State management | SolidJS signals (not Zustand or Redux) |
 | Styling | CSS with custom properties (no Tailwind — TBD, confirm with user) |
 | WS protocol | JSON frames over `/ws` |
-| REST typing | Eden treaty client (`apps/app/src/lib/api.ts`) |
+| REST typing | Hono RPC `hcWithType<App>` (`apps/desktop/src/lib/api.ts`) |
 
 ---
 

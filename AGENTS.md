@@ -12,8 +12,8 @@ sakti-code: desktop app (Electrobun + SolidJS) running multiple AI coding agents
 - `packages/agent/` — pure agent loop, types, compaction. **No persistence, no DB.** Talks to storage via the `SessionStore` interface.
 - `packages/db/` — Drizzle schema, repos, `SqliteSessionStorage` (implements `SessionStorage`).
 - `packages/tools/` — coding tools (read, write, edit, bash, grep, find, ls).
-- `apps/server/` — Hono REST server (on `@hono/node-server`). Composes route modules via `buildApp(ctx)`; each module is a `factory.createApp()` with `.basePath()`, mounted via chained `.route()`. Context is injected through a `ctxMiddleware` that sets `c.var.ctx`; routes access it through `getCtx(c)`. Exports `type App = ReturnType<typeof buildApp>`; the UI consumes it via Hono RPC (`hc<App>` in `apps/app/src/lib/api.ts`).
-- `apps/desktop/` — Electron desktop shell (electron-vite + electron-builder, **not** Electrobun). Single package: `src/` is the SolidJS/Vite renderer, `electron/{main,preload,shared}` is the shell. Main embeds the Hono server in-process via `createServer({ port: 0, hooks })` (`@sakti-code/server/create-server`) on an ephemeral `127.0.0.1` port; the renderer talks to it over real `fetch` + WS. Preload is sandboxed (`contextBridge` exposes only `window.sakti`). Migrating the renderer off `apps/app` is tracked in a separate change.
+- `apps/server/` — Hono REST server (on `@hono/node-server`). Composes route modules via `buildApp(ctx)`; each module is a `factory.createApp()` with `.basePath()`, mounted via chained `.route()`. Context is injected through a `ctxMiddleware` that sets `c.var.ctx`; routes access it through `getCtx(c)`. Exports `type App = ReturnType<typeof buildApp>`; the UI consumes it via Hono RPC (`hcWithType<App>` in `apps/desktop/src/lib/api.ts`).
+- `apps/desktop/` — Electron desktop shell (electron-vite + electron-builder, **not** Electrobun). Single package: `src/` is the SolidJS/Vite renderer, `electron/{main,preload,shared}` is the shell. Main embeds the Hono server in-process via `createServer` (`@sakti-code/server/create-server`); the renderer is served **same-origin** (dev: server on fixed port `3001` + Vite proxy; prod: `createServer({ staticDir })` + `win.loadURL(server.url)`), so `window.location.origin` resolves to the embedded server (no CORS, no `window.sakti` for the API). Preload is sandboxed (`contextBridge` exposes only `window.sakti`).
 - `openspec/` — change specs + the Pi reference implementation under `references/`.
 
 ## Commands
@@ -70,7 +70,7 @@ The Hono REST server lives in `apps/server/` (served by `@hono/node-server`) and
 
 - **REST routes** handle CRUD over sessions, projects, settings, models, costs, git operations, and session utilities (stats, compaction). Each route module is a `factory.createApp()` Hono sub-app (see `src/factory.ts`) with a `.basePath()`, composed under `/api` via chained `.route()` in `buildApp(ctx)`. Runtime validation uses `@hono/typebox-validator` over the workspace `typebox` package.
 - **WebSocket** (`/ws`) manages the agent streaming loop — send a JSON prompt, receive typed events back over the socket. Implemented via `upgradeWebSocket` from `@hono/node-server` + a `ws` `WebSocketServer`. See the `agent-streaming` spec for the wire format.
-- **Typed client** is deferred: the UI still uses the Eden treaty client at `apps/app/src/lib/api.ts` and is temporarily broken; a follow-up swaps it for Hono RPC (`hc<AppType>()`) + a raw/typed WS client.
+- **Typed client**: the UI consumes the server via Hono RPC (`hcWithType<App>` in `apps/desktop/src/lib/api.ts`) for typed REST; WS is driven through `client.ws.$ws()` in `apps/desktop/src/stores/ws-client.ts`.
 
 ### Running the server
 

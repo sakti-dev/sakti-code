@@ -9,7 +9,7 @@
 | Server base URL | `http://localhost:3001` |
 | REST prefix | `/api` |
 | WebSocket | `ws://localhost:3001/ws` |
-| Eden treaty client | `apps/app/src/lib/api.ts` |
+| Hono RPC client | `apps/desktop/src/lib/api.ts` (`hcWithType<App>`) |
 | WS frame types | `@sakti-code/server/ws` (Task 1 of state plan) |
 | Agent event types | `@sakti-code/agent` (`AgentHarnessEvent`, `AgentMessage`) |
 
