@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "velomark/styles.css";
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *, [data-kb-theme="dark"] *));

@@ -1,0 +1,22 @@
+import { registerPartComponent } from "./part-registry.ts";
+import { TextPart } from "./text-part.tsx";
+import { ThinkingPart } from "./thinking-part.tsx";
+import { ToolPart } from "./tool-part.tsx";
+
+let registered = false;
+
+export function registerDefaultPartComponents(): void {
+  if (registered) {
+    return;
+  }
+
+  registerPartComponent("text", TextPart);
+  registerPartComponent("thinking", ThinkingPart);
+  registerPartComponent("tool_call", ToolPart);
+
+  registered = true;
+}
+
+export function resetRegistration(): void {
+  registered = false;
+}

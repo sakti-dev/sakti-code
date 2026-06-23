@@ -93,6 +93,9 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@4.3.1)
+      velomark:
+        specifier: workspace:*
+        version: link:../../packages/velomark
     devDependencies:
       '@earendil-works/pi-ai':
         specifier: ^0.79.9
