@@ -46,7 +46,7 @@ Writes to `auth.json` SHALL be performed under an exclusive file lock (using `pr
 - **THEN** the lock is released (no stale lockfile blocks subsequent operations)
 
 ### Requirement: Auth API never returns full keys
-`GET /api/auth` SHALL return one entry per known provider with `{ provider, envVar, hasKey, maskedKey }` where `maskedKey` is the last four characters of the key prefixed by `...` (or null when `hasKey` is false). No REST response SHALL include the full API key for any provider. Full keys SHALL only leave `auth.json` by being set into `process.env` for pi-ai's `getEnvApiKey()` to read.
+`GET /api/auth` SHALL return one entry per provider in pi-ai's `getProviders()` catalog with `{ provider, hasKey, maskedKey }` where `maskedKey` is the last four characters of the key prefixed by `...` (or `null` when `hasKey` is false). No REST response SHALL include the full API key for any provider. `hasKey` SHALL reflect the presence of a non-empty key stored for that provider in `auth.json` only — it SHALL NOT consider `process.env` or any ambient credential source. The response SHALL NOT include an `envVar` field.
 
 #### Scenario: masked list returned
 - **WHEN** `GET /api/auth` is called and a key `sk-abcdef1234567890` is stored for a provider
@@ -56,20 +56,36 @@ Writes to `auth.json` SHALL be performed under an exclusive file lock (using `pr
 - **WHEN** `POST /api/auth/openai` with `{ key: "sk-test-1234567890abcdef" }` then `GET /api/auth`
 - **THEN** the openai entry has `hasKey: true` and `maskedKey: "...cdef"`
 
-### Requirement: Credentials flow into process.env
-On startup the system SHALL load every key in `auth.json` into the matching `process.env[envVar]` (provider→envVar map mirrors pi-ai's env-api-keys). `POST /api/auth/:provider` SHALL write the file and set the env var. `DELETE /api/auth/:provider` SHALL remove both. Setting an unknown provider or an empty/whitespace key SHALL be rejected with HTTP 400 and SHALL NOT modify env or file.
+#### Scenario: every pi-ai provider appears in the list
+- **WHEN** `GET /api/auth` is called
+- **THEN** the response contains one entry for every provider id returned by pi-ai's `getProviders()` (e.g. `anthropic`, `openai`, `zai`, `cerebras`, `together`, `fireworks`, `huggingface`, `opencode`, …) — no provider is hidden by a hand-curated allowlist
 
-#### Scenario: startup populates env
-- **WHEN** the server starts with `auth.json` containing `{ "anthropic": "sk-abc" }`
-- **THEN** `process.env.ANTHROPIC_API_KEY` is `sk-abc`
+#### Scenario: hasKey reflects auth.json only
+- **WHEN** `process.env.OPENAI_API_KEY` is set in the launching shell but no key is stored in `auth.json` for `openai`
+- **THEN** the openai entry in `GET /api/auth` has `hasKey: false` and `maskedKey: null`
 
-#### Scenario: unknown provider rejected
-- **WHEN** `POST /api/auth/bogus` with `{ key: "x" }`
-- **THEN** the response is 400 and `auth.json` is unchanged
+### Requirement: Credentials live only in auth.json
+The system SHALL treat `auth.json` as the single source of truth for provider API keys. The auth store (`apps/server/src/lib/auth-store.ts`) SHALL expose `getApiKey(provider): string | undefined` that returns the stored key for a provider directly from `auth.json` (or `undefined` when none is stored). The auth store SHALL NOT read from or write to `process.env` for credential storage — neither on `set(provider, key)`, on `delete(provider)`, nor on server startup. The previous `loadIntoEnv()` method SHALL be removed. `resolveAuth(ctx, session)` in `apps/server/src/agent/model-resolver.ts` SHALL obtain the API key by calling `ctx.auth.getApiKey(resolved.provider)` and SHALL NOT call pi-ai's `getEnvApiKey()`. If no key is stored for the resolved provider, `resolveAuth` SHALL return `undefined` (so the runner/route can surface a "no API key" error). Provider iteration in `list()` SHALL come from pi-ai's `getProviders()`; `set(provider, key)` SHALL validate the provider id against `getProviders()` and reject unknown providers. The auth store SHALL NOT contain any hand-curated constant mapping providers to env-var names or any hand-curated list of known provider ids.
 
-#### Scenario: empty key rejected
-- **WHEN** `POST /api/auth/openai` with `{ key: "   " }`
-- **THEN** the response is 400 and `auth.json` is unchanged
+#### Scenario: stored key is returned to the resolver
+- **WHEN** `auth.set("openai", "sk-test")` has been called and `resolveAuth` runs for a session whose resolved provider is `openai`
+- **THEN** `ctx.auth.getApiKey("openai")` returns `"sk-test"` and the harness receives `apiKey: "sk-test"` via `getApiKeyAndHeaders`
+
+#### Scenario: no stored key yields undefined
+- **WHEN** no key is stored in `auth.json` for the resolved provider
+- **THEN** `ctx.auth.getApiKey(provider)` returns `undefined` and `resolveAuth` returns `undefined` — regardless of whether `process.env` happens to contain a matching variable
+
+#### Scenario: set then delete round-trips through auth.json only
+- **WHEN** `auth.set("zai", "sk-zai")` then `auth.delete("zai")`
+- **THEN** `auth.getApiKey("zai")` returns `undefined`, no `process.env.ZAI_API_KEY` variable is created or removed, and `auth.json` no longer contains a `zai` entry
+
+#### Scenario: set rejects unknown providers
+- **WHEN** `auth.set("bogus", "sk-x")` is called
+- **THEN** it returns `false` (or throws, depending on the store's existing convention) and `auth.json` is unchanged — because `"bogus"` is not in pi-ai's `getProviders()`
+
+#### Scenario: provider list is never hand-curated
+- **WHEN** pi-ai adds a new provider id to its catalog in a future version
+- **THEN** that provider appears in `GET /api/auth` responses and is accepted by `POST /api/auth/<new-provider>` without any code change in the auth store — because the list is derived from `getProviders()`, not from a constant in this repository
 
 ### Requirement: Global settings file-backed, per-session settings unchanged
 `GET /api/settings` and `PUT /api/settings` SHALL read and write global app preferences in `settings.json` (deep-merged on write). The `settings` DB table SHALL be retained ONLY for per-session runtime overrides keyed `session:{id}:*` (see `per-session-settings`, unchanged). Global keys SHALL NOT be read from or written to the DB after migration.

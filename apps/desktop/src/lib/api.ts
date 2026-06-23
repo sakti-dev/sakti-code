@@ -3,5 +3,4 @@ import { hc } from "hono/client";
 
 export type Client = ReturnType<typeof hc<App>>;
 
-export const hcWithType = (...args: Parameters<typeof hc>): Client =>
-  hc<App>(...args);
+export const api = (...args: Parameters<typeof hc>): Client => hc<App>(...args);

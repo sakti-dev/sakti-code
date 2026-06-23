@@ -36,7 +36,6 @@ describe("AuthStore", () => {
       expect(entry.hasKey).toBe(false);
       expect(entry.maskedKey).toBeNull();
       expect(entry.provider).toBeTruthy();
-      expect(entry.envVar).toBeTruthy();
     }
   });
 
@@ -63,26 +62,26 @@ describe("AuthStore", () => {
     expect(store.delete("openai")).toBe(false);
   });
 
-  it("set writes to process.env", () => {
+  it("getApiKey returns the stored key", () => {
     store.set("openai", "sk-test-1234567890abcdef");
-    expect(process.env.OPENAI_API_KEY).toBe("sk-test-1234567890abcdef");
-    delete process.env.OPENAI_API_KEY;
+    expect(store.getApiKey("openai")).toBe("sk-test-1234567890abcdef");
   });
 
-  it("delete clears process.env", () => {
+  it("getApiKey returns undefined after delete", () => {
     store.set("openai", "sk-test-1234567890abcdef");
     store.delete("openai");
-    expect(process.env.OPENAI_API_KEY).toBeUndefined();
+    expect(store.getApiKey("openai")).toBeUndefined();
   });
 
-  it("loadIntoEnv reads file and sets env vars", () => {
-    store.set("anthropic", "sk-ant-test");
-    delete process.env.ANTHROPIC_API_KEY;
+  it("getApiKey returns undefined for a provider with no stored key", () => {
+    expect(store.getApiKey("openai")).toBeUndefined();
+  });
 
-    const fresh = createAuthStore(authPath);
-    fresh.loadIntoEnv();
-    expect(process.env.ANTHROPIC_API_KEY).toBe("sk-ant-test");
-    delete process.env.ANTHROPIC_API_KEY;
+  it("set then list round-trips for a provider not in the old hardcoded list", () => {
+    store.set("zai", "sk-zai-test-1234567890");
+    const zai = store.list().find((e) => e.provider === "zai");
+    expect(zai?.hasKey).toBe(true);
+    expect(zai?.maskedKey).toBe("...7890");
   });
 
   it("unknown provider is rejected", () => {

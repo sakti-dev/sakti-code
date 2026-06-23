@@ -1,4 +1,4 @@
-import { getEnvApiKey, getModel } from "@earendil-works/pi-ai";
+import { getModel } from "@earendil-works/pi-ai";
 import type { Api, KnownProvider, Model } from "@earendil-works/pi-ai/base";
 import type { ServerContext } from "../context.ts";
 import { resolveModelRef } from "../lib/profile-resolver.ts";
@@ -73,7 +73,7 @@ export function resolveAuth(
   session: { projectId: string }
 ): ResolvedAuth | undefined {
   const resolved = resolveModel(ctx, session);
-  const apiKey = getEnvApiKey(resolved.provider);
+  const apiKey = ctx.auth.getApiKey(resolved.provider);
   if (!apiKey) {
     return;
   }

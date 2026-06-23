@@ -4,8 +4,7 @@ import {
   type ParentComponent,
   useContext,
 } from "solid-js";
-import type { Client } from "~/lib/api";
-import { hcWithType } from "~/lib/api";
+import { api, type Client } from "~/lib/api";
 import { type Actions, createActions } from "./actions.ts";
 import { createServerStore, type ServerStore } from "./server-store.ts";
 import { SessionRegistry } from "./session-registry.ts";
@@ -31,13 +30,13 @@ export const StoreProvider: ParentComponent = (props) => {
   const sessions = new SessionRegistry();
   const terminals = new TerminalRegistry();
 
-  const api = hcWithType(API_URL);
-  const ws = createWsClient(api, {
+  const client = api(API_URL);
+  const ws = createWsClient(client, {
     serverStore: server,
     sessionRegistry: sessions,
     terminalRegistry: terminals,
   });
-  const actions = createActions(api, ws, {
+  const actions = createActions(client, ws, {
     serverStore: server,
     sessionRegistry: sessions,
   });
@@ -50,7 +49,7 @@ export const StoreProvider: ParentComponent = (props) => {
 
   return (
     <StoreContext.Provider
-      value={{ server, ws, actions, sessions, terminals, api }}
+      value={{ server, ws, actions, sessions, terminals, api: client }}
     >
       {props.children}
     </StoreContext.Provider>

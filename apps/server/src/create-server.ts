@@ -111,8 +111,6 @@ export async function createServer(
       }>,
   });
 
-  auth.loadIntoEnv();
-
   const ctx = createContext(db, hooks, { auth, profiles, settingsFile });
 
   const app = buildApp(ctx);

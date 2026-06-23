@@ -14,11 +14,12 @@ import {
 import { Portal } from "solid-js/web";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
+import type { Client } from "~/lib/api";
 import { useDismissibleVisibility } from "~/lib/ui/dismissible-stack";
 import { cn } from "~/lib/utils";
+import { useStore } from "~/stores/store-context";
 
 interface ApiKeyInfo {
-  envVar: string;
   hasKey: boolean;
   maskedKey: string | null;
   provider: string;
@@ -138,9 +139,9 @@ const PROVIDER_CATALOG: Omit<ProviderCatalogItem, "connected">[] = [
   },
 ];
 
-async function fetchApiKeys(): Promise<ApiKeyInfo[]> {
+async function fetchApiKeys(client: Client): Promise<ApiKeyInfo[]> {
   try {
-    const res = await fetch("/api/api-keys/");
+    const res = await client.api.auth.$get();
     if (!res.ok) {
       return [];
     }
@@ -150,12 +151,15 @@ async function fetchApiKeys(): Promise<ApiKeyInfo[]> {
   }
 }
 
-async function setApiKey(provider: string, key: string): Promise<boolean> {
+async function setApiKey(
+  client: Client,
+  provider: string,
+  key: string
+): Promise<boolean> {
   try {
-    const res = await fetch(`/api/api-keys/${provider}`, {
-      body: JSON.stringify({ key }),
-      headers: { "Content-Type": "application/json" },
-      method: "PUT",
+    const res = await client.api.auth[":provider"].$post({
+      param: { provider },
+      json: { key },
     });
     return res.ok;
   } catch {
@@ -163,9 +167,14 @@ async function setApiKey(provider: string, key: string): Promise<boolean> {
   }
 }
 
-async function deleteApiKey(provider: string): Promise<boolean> {
+async function deleteApiKey(
+  client: Client,
+  provider: string
+): Promise<boolean> {
   try {
-    const res = await fetch(`/api/api-keys/${provider}`, { method: "DELETE" });
+    const res = await client.api.auth[":provider"].$delete({
+      param: { provider },
+    });
     return res.ok;
   } catch {
     return false;
@@ -173,6 +182,7 @@ async function deleteApiKey(provider: string): Promise<boolean> {
 }
 
 export function ModelsSettings() {
+  const { api: client } = useStore();
   const [tokenByProvider, setTokenByProvider] = createSignal<
     Record<string, string>
   >({});
@@ -203,7 +213,7 @@ export function ModelsSettings() {
   });
 
   const [apiKeyInfos, { refetch: refetchApiKeys, mutate: mutateApiKeys }] =
-    createResource(fetchApiKeys);
+    createResource(() => fetchApiKeys(client));
 
   const connectedSet = createMemo(() => {
     const infos = apiKeyInfos();
@@ -300,7 +310,7 @@ export function ModelsSettings() {
       return;
     }
 
-    const ok = await setApiKey(providerId, token);
+    const ok = await setApiKey(client, providerId, token);
     if (ok) {
       mutateApiKeys((prev) =>
         (prev ?? []).map((info) =>
@@ -325,7 +335,7 @@ export function ModelsSettings() {
   };
 
   const disconnect = async (providerId: string) => {
-    const ok = await deleteApiKey(providerId);
+    const ok = await deleteApiKey(client, providerId);
     if (ok) {
       mutateApiKeys((prev) =>
         (prev ?? []).map((info) =>

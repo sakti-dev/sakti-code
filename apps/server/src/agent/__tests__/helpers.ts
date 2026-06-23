@@ -33,6 +33,12 @@ export function createMockCtx(overrides?: {
 }) {
   const projectId = overrides?.projectId ?? "proj-1";
   return {
+    auth: {
+      getApiKey: vi.fn(() => "test-key-1234567890"),
+      set: vi.fn(() => true),
+      delete: vi.fn(() => true),
+      list: vi.fn(() => []),
+    },
     profiles: {
       read: vi.fn(() => ({
         defaultProfile: "default",
@@ -119,6 +125,12 @@ export function createMultiSessionCtx(
   }
 
   return {
+    auth: {
+      getApiKey: vi.fn(() => "test-key-1234567890"),
+      set: vi.fn(() => true),
+      delete: vi.fn(() => true),
+      list: vi.fn(() => []),
+    },
     db: {},
     profiles: {
       read: vi.fn(() => ({

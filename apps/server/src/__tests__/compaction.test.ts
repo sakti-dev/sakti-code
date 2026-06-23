@@ -62,6 +62,7 @@ describe("compaction route", () => {
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p", tempDir);
     seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
+    ctx.auth.set("openai", "test-key-1234567890");
     const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
 
     await seedEntries(ctx.db, session.id, 200);
@@ -114,6 +115,7 @@ describe("compaction route", () => {
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p3", tempDir);
     seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
+    ctx.auth.set("openai", "test-key-1234567890");
     const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
     await seedEntries(ctx.db, session.id, 200);
 
@@ -126,7 +128,7 @@ describe("compaction route", () => {
   });
 
   it("returns 500 when no API key configured", async () => {
-    // Don't call useFauxLlm — leave OPENAI_API_KEY unset so getEnvApiKey returns undefined.
+    // Don't seed ctx.auth — leave auth.json empty so ctx.auth.getApiKey returns undefined.
     delete process.env.OPENAI_API_KEY;
 
     const { app, ctx } = await makeApp([compactionRoutes]);

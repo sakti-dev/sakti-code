@@ -39,8 +39,6 @@ describe("auth routes", () => {
     const openai = list.find((e) => e.provider === "openai");
     expect(openai?.hasKey).toBe(true);
     expect(openai?.maskedKey).toBe("...cdef");
-
-    delete process.env.OPENAI_API_KEY;
   });
 
   it("DELETE removes a key", async () => {

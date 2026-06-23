@@ -6,46 +6,19 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
+import { getProviders, type KnownProvider } from "@earendil-works/pi-ai";
 import lockfile from "proper-lockfile";
 
 /**
- * Maps provider names to their standard environment variable names.
- * Mirrors pi-ai's env-api-keys.ts mapping so keys loaded into process.env
- * are found by getEnvApiKey().
+ * Auth credential store. `auth.json` is the single source of truth — keys
+ * persist here and are read back directly via `getApiKey()`. The store never
+ * writes to or reads from `process.env`.
  */
-const PROVIDER_ENV_MAP: Record<string, string> = {
-  anthropic: "ANTHROPIC_API_KEY",
-  cerebras: "CEREBRAS_API_KEY",
-  deepseek: "DEEPSEEK_API_KEY",
-  fireworks: "FIREWORKS_API_KEY",
-  google: "GEMINI_API_KEY",
-  groq: "GROQ_API_KEY",
-  huggingface: "HF_TOKEN",
-  mistral: "MISTRAL_API_KEY",
-  openai: "OPENAI_API_KEY",
-  opencode: "OPENCODE_API_KEY",
-  openrouter: "OPENROUTER_API_KEY",
-  together: "TOGETHER_API_KEY",
-  xai: "XAI_API_KEY",
-  zai: "ZAI_API_KEY",
-};
 
-/** Known provider ids in a stable display order. */
-export const KNOWN_PROVIDERS = [
-  "anthropic",
-  "openai",
-  "google",
-  "deepseek",
-  "xai",
-  "openrouter",
-  "groq",
-  "mistral",
-] as const;
-
-export const PROVIDER_ENV_VARS = PROVIDER_ENV_MAP;
+/** Known provider ids from pi-ai's catalog. Static per process. */
+const KNOWN_PROVIDERS: readonly KnownProvider[] = getProviders();
 
 export interface AuthEntry {
-  envVar: string;
   hasKey: boolean;
   /** Last 4 characters of the key prefixed by `...`, or null if not set. */
   maskedKey: string | null;
@@ -55,10 +28,10 @@ export interface AuthEntry {
 export interface AuthStore {
   /** Delete a key for a provider. Returns true if it existed. */
   delete(provider: string): boolean;
+  /** Get the stored key for a provider, or undefined if none is stored. */
+  getApiKey(provider: string): string | undefined;
   /** List all known providers with their key status (masked). */
   list(): AuthEntry[];
-  /** Load all stored keys into process.env. Called on startup. */
-  loadIntoEnv(): void;
   /** Set a key for a provider. Returns true if successful. */
   set(provider: string, key: string): boolean;
 }
@@ -144,6 +117,10 @@ export function createAuthStore(authPath: string): AuthStore {
   }
 
   return {
+    getApiKey(provider) {
+      return withLock((current) => ({ result: current[provider] }));
+    },
+
     list() {
       ensureParentDir(authPath);
       ensureFileExists(authPath);
@@ -151,14 +128,9 @@ export function createAuthStore(authPath: string): AuthStore {
 
       const result: AuthEntry[] = [];
       for (const provider of KNOWN_PROVIDERS) {
-        const envVar = PROVIDER_ENV_MAP[provider];
-        if (!envVar) {
-          continue;
-        }
         const key = keys[provider];
         result.push({
           provider,
-          envVar,
           hasKey: !!key,
           maskedKey: key ? `...${key.slice(-4)}` : null,
         });
@@ -167,30 +139,24 @@ export function createAuthStore(authPath: string): AuthStore {
     },
 
     set(provider, key) {
-      const envVar = PROVIDER_ENV_MAP[provider];
-      if (!envVar) {
+      if (!KNOWN_PROVIDERS.includes(provider as KnownProvider)) {
         return false;
       }
       const trimmed = key.trim();
       if (!trimmed) {
         return false;
       }
-      const ok = withLock((current) => {
+      return withLock((current) => {
         const next = { ...current, [provider]: trimmed };
         return { result: true, next };
       });
-      if (ok) {
-        process.env[envVar] = trimmed;
-      }
-      return ok;
     },
 
     delete(provider) {
-      const envVar = PROVIDER_ENV_MAP[provider];
-      if (!envVar) {
+      if (!KNOWN_PROVIDERS.includes(provider as KnownProvider)) {
         return false;
       }
-      const ok = withLock((current) => {
+      return withLock((current) => {
         if (!(provider in current)) {
           return { result: false };
         }
@@ -198,22 +164,6 @@ export function createAuthStore(authPath: string): AuthStore {
         delete next[provider];
         return { result: true, next };
       });
-      if (ok) {
-        delete process.env[envVar];
-      }
-      return ok;
-    },
-
-    loadIntoEnv() {
-      ensureParentDir(authPath);
-      ensureFileExists(authPath);
-      const keys = readRaw(authPath);
-      for (const [provider, key] of Object.entries(keys)) {
-        const envVar = PROVIDER_ENV_MAP[provider];
-        if (envVar && key) {
-          process.env[envVar] = key;
-        }
-      }
     },
   };
 }

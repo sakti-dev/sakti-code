@@ -24,9 +24,11 @@ function makeProfilesMock(
 
 function makeCtx(
   profilesMock: ReturnType<typeof makeProfilesMock>,
-  project: { id: string; profileId: string | null } | null
+  project: { id: string; profileId: string | null } | null,
+  auth?: { getApiKey: (provider: string) => string | undefined }
 ) {
   return {
+    auth: auth ?? { getApiKey: () => undefined },
     profiles: profilesMock,
     repos: {
       projects: {
@@ -277,9 +279,64 @@ describe("resolveModel / resolveAuth", () => {
   });
 
   describe("resolveAuth", () => {
-    it("returns undefined when API key is not in env", () => {
+    it("returns undefined when no key is stored for the provider", () => {
+      const profilesMock = makeProfilesMock(
+        {
+          defaultProfile: "default",
+          profiles: {
+            default: {
+              name: "Default",
+              models: {
+                default: { provider: "openai", model: TEST_MODEL_ID },
+              },
+            },
+          },
+        },
+        1000
+      );
+      const ctx = makeCtx(profilesMock, {
+        id: "proj-1",
+        profileId: null,
+      });
+
+      const result = resolveAuth(ctx, { projectId: "proj-1" });
+      expect(result).toBeUndefined();
+    });
+
+    it("returns ResolvedAuth when auth store has the key", () => {
+      const profilesMock = makeProfilesMock(
+        {
+          defaultProfile: "default",
+          profiles: {
+            default: {
+              name: "Default",
+              models: {
+                default: { provider: "openai", model: TEST_MODEL_ID },
+              },
+            },
+          },
+        },
+        1000
+      );
+      const ctx = makeCtx(
+        profilesMock,
+        { id: "proj-1", profileId: null },
+        {
+          getApiKey: (provider) =>
+            provider === "openai" ? "sk-test-key-1234567890" : undefined,
+        }
+      );
+
+      const result = resolveAuth(ctx, { projectId: "proj-1" });
+      expect(result).toBeDefined();
+      expect(result?.apiKey).toBe("sk-test-key-1234567890");
+      expect(result?.provider).toBe("openai");
+      expect(result?.thinkingLevel).toBe("off");
+    });
+
+    it("ignores env vars — only auth.json is consulted", () => {
       const savedKey = process.env.OPENAI_API_KEY;
-      delete process.env.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY = "sk-from-env-1234567890";
       try {
         const profilesMock = makeProfilesMock(
           {
@@ -295,6 +352,8 @@ describe("resolveModel / resolveAuth", () => {
           },
           1000
         );
+        // auth store has no key for openai → resolveAuth returns undefined
+        // even though process.env.OPENAI_API_KEY is set
         const ctx = makeCtx(profilesMock, {
           id: "proj-1",
           profileId: null,
@@ -302,41 +361,6 @@ describe("resolveModel / resolveAuth", () => {
 
         const result = resolveAuth(ctx, { projectId: "proj-1" });
         expect(result).toBeUndefined();
-      } finally {
-        if (savedKey !== undefined) {
-          process.env.OPENAI_API_KEY = savedKey;
-        }
-      }
-    });
-
-    it("returns ResolvedAuth when API key is in env", () => {
-      const savedKey = process.env.OPENAI_API_KEY;
-      process.env.OPENAI_API_KEY = "sk-test-key-1234567890";
-      try {
-        const profilesMock = makeProfilesMock(
-          {
-            defaultProfile: "default",
-            profiles: {
-              default: {
-                name: "Default",
-                models: {
-                  default: { provider: "openai", model: TEST_MODEL_ID },
-                },
-              },
-            },
-          },
-          1000
-        );
-        const ctx = makeCtx(profilesMock, {
-          id: "proj-1",
-          profileId: null,
-        });
-
-        const result = resolveAuth(ctx, { projectId: "proj-1" });
-        expect(result).toBeDefined();
-        expect(result?.apiKey).toBe("sk-test-key-1234567890");
-        expect(result?.provider).toBe("openai");
-        expect(result?.thinkingLevel).toBe("off");
       } finally {
         if (savedKey === undefined) {
           delete process.env.OPENAI_API_KEY;
