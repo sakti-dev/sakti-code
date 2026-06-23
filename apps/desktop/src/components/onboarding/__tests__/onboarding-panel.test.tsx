@@ -17,14 +17,14 @@ describe("OnboardingPanel", () => {
     const { getByText } = render(() => (
       <OnboardingPanel intakeSessionId="s1" projectId="p1" />
     ));
-    expect(getByText("How can I help?")).toBeTruthy();
+    expect(getByText("No messages yet")).toBeTruthy();
   });
 
-  it("renders timeline placeholder when intakeSessionId is null", () => {
+  it("renders welcome state when intakeSessionId is null", () => {
     const { getByText } = render(() => (
       <OnboardingPanel intakeSessionId={null} projectId="p1" />
     ));
-    expect(getByText("How can I help?")).toBeTruthy();
+    expect(getByText("No messages yet")).toBeTruthy();
   });
 
   it("renders chat placeholders", () => {
