@@ -32,6 +32,7 @@ export interface Actions {
   loadSessions: (projectId: string) => Promise<void>;
   sendPrompt: (sessionId: string, text: string) => void;
   steerRun: (sessionId: string, text: string) => void;
+  upsertIntakeSession: (projectId: string) => Promise<SessionMeta | undefined>;
 }
 
 export function createActions(
@@ -105,6 +106,26 @@ export function createActions(
       } catch (error) {
         setLastError(
           error instanceof Error ? error.message : "Failed to create session"
+        );
+      }
+    },
+
+    async upsertIntakeSession(projectId) {
+      try {
+        const res = await api.api.projects[":id"]["intake-session"].$post({
+          param: { id: projectId },
+        });
+        if (!res.ok) {
+          return;
+        }
+        const session = (await res.json()) as SessionMeta;
+        server.actions.addSession(session);
+        return session;
+      } catch (error) {
+        setLastError(
+          error instanceof Error
+            ? error.message
+            : "Failed to upsert intake session"
         );
       }
     },

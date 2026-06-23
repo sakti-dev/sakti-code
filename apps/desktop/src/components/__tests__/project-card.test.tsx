@@ -1,5 +1,6 @@
 import { render } from "@solidjs/testing-library";
 import { describe, expect, it, vi } from "vitest";
+import type { SessionMeta } from "~/stores/server/server-store";
 import { ProjectCard } from "../home/project-card.tsx";
 
 const mockProject = {
@@ -10,12 +11,13 @@ const mockProject = {
   updatedAt: Date.now() - 3_600_000,
 };
 
-const mockSessions = [
+const mockSessions: SessionMeta[] = [
   {
     id: "s1",
     title: "Session 1",
     projectId: "p1",
     modelId: "gpt-4",
+    kind: "task",
     thinkingLevel: "off",
     createdAt: Date.now() - 7_200_000,
     updatedAt: Date.now() - 1_800_000,
@@ -25,6 +27,7 @@ const mockSessions = [
     title: null,
     projectId: "p1",
     modelId: "gpt-4",
+    kind: "task",
     thinkingLevel: "off",
     createdAt: Date.now() - 3_600_000,
     updatedAt: Date.now() - 600_000,

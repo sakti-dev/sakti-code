@@ -11,6 +11,7 @@ export interface Project {
 export interface SessionMeta {
   createdAt: number;
   id: string;
+  kind: "intake" | "task";
   modelId: string;
   projectId: string;
   thinkingLevel: string;
