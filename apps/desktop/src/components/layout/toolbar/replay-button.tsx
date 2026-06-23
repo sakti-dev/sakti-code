@@ -1,11 +1,15 @@
 import { type JSX, Show } from "solid-js";
 import { useStore } from "~/stores/store-context";
-import { replayState } from "~/stores/workspace/ui-signals";
+import {
+  activeIntakeSessionId,
+  replayState,
+} from "~/stores/workspace/ui-signals";
 
 export function ReplayButton(): JSX.Element {
   const { server, actions } = useStore();
 
-  const sessionId = () => server.store.activeSessionId;
+  const sessionId = () =>
+    server.store.activeSessionId ?? activeIntakeSessionId();
 
   const handleClick = () => {
     const id = sessionId();

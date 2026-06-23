@@ -12,6 +12,9 @@ export const [isStreaming, setIsStreaming] = createSignal(false);
 // ── Replay (dev-only) ─────────────────────────────────────────────
 export type ReplayState = "idle" | "playing" | "paused";
 export const [replayState, setReplayState] = createSignal<ReplayState>("idle");
+export const [activeIntakeSessionId, setActiveIntakeSessionId] = createSignal<
+  string | null
+>(null);
 
 // ── Error / health ────────────────────────────────────────────────
 export const [lastError, setLastError] = createSignal<string | null>(null);

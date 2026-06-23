@@ -4,7 +4,10 @@ import Home from "~/components/home/home";
 import { OnboardingPanel } from "~/components/onboarding/onboarding-panel";
 import { useStore } from "~/stores/store-context";
 import { activeTab, filterStaleProjects } from "~/stores/workspace/tab-store";
-import { sidebarOpen } from "~/stores/workspace/ui-signals";
+import {
+  setActiveIntakeSessionId,
+  sidebarOpen,
+} from "~/stores/workspace/ui-signals";
 import BannerConnection from "./banners/banner-connection";
 import { BannerError, BannerHealth } from "./banners/banner-error";
 import BannerUpdate from "./banners/banner-update";
@@ -32,11 +35,13 @@ export default function WorkspaceLayout(): JSX.Element {
     const projectId = server.store.activeProjectId;
     if (!projectId) {
       setIntakeSessionId(null);
+      setActiveIntakeSessionId(null);
       return;
     }
     actions.upsertIntakeSession(projectId).then((session) => {
       if (session && server.store.activeProjectId === projectId) {
         setIntakeSessionId(session.id);
+        setActiveIntakeSessionId(session.id);
       }
     });
   });
