@@ -7,6 +7,7 @@ import { healthRoutes } from "./routes/health.ts";
 import { availableModelsRoutes } from "./routes/models/available-models.ts";
 import { profilesRoutes } from "./routes/profiles.ts";
 import { gitRoutes } from "./routes/projects/git.ts";
+import { intakeSessionRoutes } from "./routes/projects/intake-session.ts";
 import { projectsRoutes } from "./routes/projects/projects.ts";
 import { searchFilesRoutes } from "./routes/projects/search-files.ts";
 import { compactionRoutes } from "./routes/sessions/compaction.ts";
@@ -25,6 +26,7 @@ export function buildApp(ctx: ServerContext) {
     .createApp()
     .route("/", healthRoutes)
     .route("/", projectsRoutes)
+    .route("/", intakeSessionRoutes)
     .route("/", gitRoutes)
     .route("/", searchFilesRoutes)
     .route("/", sessionsRoutes)
