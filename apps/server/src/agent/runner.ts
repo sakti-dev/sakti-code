@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type {
   AgentHarness,
   AgentHarnessEvent,
@@ -14,7 +16,9 @@ import { createProposeSessionTool } from "@sakti-code/tools";
 import type { ServerContext } from "../context.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth, resolveModel } from "./model-resolver.ts";
+import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
 import { buildTools } from "./tools-builder.ts";
+import type { WsHandle } from "./ws-handler.ts";
 
 interface ActiveRun {
   harness: AgentHarness;
@@ -56,6 +60,78 @@ export function clearRunsForTesting(): void {
     run.unsubscribe();
   }
   activeRuns.clear();
+}
+
+// ── Replay (dev-only) ─────────────────────────────────────────────
+
+const REPLAY_PATH =
+  process.env.SAKTI_REPLAY_PATH ??
+  resolve(import.meta.dirname, "../../fixtures/replay.jsonl");
+
+const activeReplays = new Map<string, ReplayRunner>();
+
+export function clearReplaysForTesting(): void {
+  for (const runner of activeReplays.values()) {
+    runner.abort();
+  }
+  activeReplays.clear();
+}
+
+export async function startReplay(
+  sessionId: string,
+  ws: WsHandle
+): Promise<void> {
+  if (activeReplays.has(sessionId)) {
+    return;
+  }
+  if (activeRuns.has(sessionId)) {
+    throw new Error(busyMessage(sessionId));
+  }
+
+  const data = readFileSync(REPLAY_PATH, "utf-8");
+  const entries: ReplayEntry[] = data
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line) as ReplayEntry);
+
+  const runner = new ReplayRunner(entries, ws, sessionId, {
+    wordDelayMs: 15,
+    toolDelayMs: 300,
+  });
+  activeReplays.set(sessionId, runner);
+
+  try {
+    await runner.run();
+  } finally {
+    activeReplays.delete(sessionId);
+  }
+}
+
+export function pauseReplay(sessionId: string): boolean {
+  const runner = activeReplays.get(sessionId);
+  if (runner) {
+    runner.pause();
+    return true;
+  }
+  return false;
+}
+
+export function resumeReplay(sessionId: string): boolean {
+  const runner = activeReplays.get(sessionId);
+  if (runner) {
+    runner.resume();
+    return true;
+  }
+  return false;
+}
+
+export function stopReplay(sessionId: string): boolean {
+  const runner = activeReplays.get(sessionId);
+  if (runner) {
+    runner.abort();
+    return true;
+  }
+  return false;
 }
 
 export async function abortRun(sessionId: string): Promise<boolean> {
