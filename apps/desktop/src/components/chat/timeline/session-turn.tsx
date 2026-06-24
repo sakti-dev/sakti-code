@@ -61,11 +61,8 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
       data-slot="session-turn-root"
     >
       <Show when={turn().userMessage}>
-        <div
-          class={`sticky top-0 z-10 bg-background ${CHAT_COMPACT_STACK_GAP_CLASS}`}
-          data-slot="session-turn-sticky"
-        >
-          <div class="rounded-lg bg-muted/30 p-3" data-slot="session-turn-user">
+        <div class={CHAT_COMPACT_STACK_GAP_CLASS} data-slot="session-turn-user">
+          <div class="rounded-lg bg-muted/30 p-3">
             <div class={CHAT_COMPACT_STACK_GAP_CLASS}>
               <div class="text-muted-foreground text-xs">You</div>
               <div class="text-sm">{getUserText(turn())}</div>

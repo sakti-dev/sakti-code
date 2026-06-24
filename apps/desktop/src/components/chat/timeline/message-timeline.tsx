@@ -1,7 +1,7 @@
-import { createVirtualizer } from "@tanstack/solid-virtual";
 import {
   type Accessor,
   createEffect,
+  createMemo,
   createSignal,
   For,
   type JSX,
@@ -21,42 +21,112 @@ export interface MessageTimelineProps {
   turns: Accessor<ChatTurn[]>;
 }
 
-const NEAR_BOTTOM_THRESHOLD = 100;
+const NEAR_BOTTOM_THRESHOLD = 150;
+const OVERSCAN = 4;
+
+interface ItemLayout {
+  size: number;
+  start: number;
+}
+
+interface VisibleItem {
+  index: number;
+  layout: ItemLayout;
+}
 
 export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
   const [scrollEl, setScrollEl] = createSignal<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = createSignal(0);
-  const [fontVersion, setFontVersion] = createSignal(0);
-  const [pinnedToBottom, setPinnedToBottom] = createSignal(true);
+  const [scrollTop, setScrollTop] = createSignal(0);
+  const [measureVersion, setMeasureVersion] = createSignal(0);
 
-  const virtualizer = createVirtualizer<HTMLDivElement, HTMLDivElement>({
-    get count() {
-      return props.turns().length;
-    },
-    estimateSize: (index: number) => {
-      fontVersion();
+  let userPinned = true;
+  let selfScrolling = false;
+
+  // Measured actual sizes from ResizeObserver, keyed by turn id.
+  const measuredSizes = new Map<string, number>();
+  let itemObserver: ResizeObserver | undefined;
+
+  // Layout: accumulated starts for all turns.
+  const layout = createMemo<{ items: ItemLayout[]; totalHeight: number }>(
+    () => {
+      measureVersion();
+      const turns = props.turns();
       const width = containerWidth();
-      const turn = props.turns()[index];
-      return turn ? estimateTurnHeight(turn, width) : 200;
-    },
-    getItemKey: (index) => props.turns()[index]?.id ?? index,
-    getScrollElement: () => scrollEl(),
-    overscan: 6,
-  });
+      const items: ItemLayout[] = [];
+      let acc = 0;
+      for (const turn of turns) {
+        const size =
+          measuredSizes.get(turn.id) ?? estimateTurnHeight(turn, width);
+        items.push({ start: acc, size });
+        acc += size;
+      }
+      return { items, totalHeight: acc };
+    }
+  );
 
-  // Auto-scroll: pin to bottom when streaming and user hasn't scrolled up.
-  // Runs in a RAF to ensure DOM (including new content height) is committed.
+  // Visible range via binary search on accumulated starts.
+  const visible = createMemo<{ items: VisibleItem[]; totalHeight: number }>(
+    () => {
+      const { items, totalHeight } = layout();
+      const st = scrollTop();
+      const viewport = scrollEl()?.clientHeight ?? 0;
+      if (items.length === 0 || viewport === 0) {
+        return { items: [], totalHeight };
+      }
+
+      const top = st - OVERSCAN * 300;
+      const bottom = st + viewport + OVERSCAN * 300;
+
+      let lo = 0;
+      let hi = items.length;
+      while (lo < hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        const item = items[mid];
+        if (item && item.start + item.size < top) {
+          lo = mid + 1;
+        } else {
+          hi = mid;
+        }
+      }
+      const first = Math.max(0, lo - OVERSCAN);
+
+      let last = first;
+      while (last < items.length) {
+        const item = items[last];
+        if (!item || item.start > bottom) {
+          break;
+        }
+        last++;
+      }
+      last = Math.min(items.length, last + OVERSCAN);
+
+      const slice: VisibleItem[] = [];
+      for (let i = first; i < last; i++) {
+        const l = items[i];
+        if (l) {
+          slice.push({ index: i, layout: l });
+        }
+      }
+      return { items: slice, totalHeight };
+    }
+  );
+
+  // Auto-scroll: snap to bottom in RAF when user is pinned.
+  // Depends on both turns (new content) and measureVersion (size corrections
+  // from ResizeObserver — e.g. when a big markdown block is measured taller
+  // than the Pretext estimate, the inner div grows and we need to re-scroll).
   createEffect(() => {
     props.turns();
-    props.isStreaming();
-    if (pinnedToBottom()) {
-      requestAnimationFrame(() => {
-        const el = scrollEl();
-        if (el) {
-          el.scrollTop = el.scrollHeight;
-        }
-      });
-    }
+    measureVersion();
+    requestAnimationFrame(() => {
+      const el = scrollEl();
+      if (!(el && userPinned)) {
+        return;
+      }
+      selfScrolling = true;
+      el.scrollTop = el.scrollHeight;
+    });
   });
 
   onMount(() => {
@@ -65,30 +135,52 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
       return;
     }
 
-    // observeElementRect may have read dimensions before layout (0×0).
-    // Manually set the correct rect and force re-measure.
-    virtualizer.scrollRect = {
-      width: el.offsetWidth,
-      height: el.offsetHeight,
-    };
-    virtualizer.measure();
-
     const updateWidth = () => setContainerWidth(el.clientWidth);
     updateWidth();
 
-    const observer = new ResizeObserver(updateWidth);
-    observer.observe(el);
-    onCleanup(() => observer.disconnect());
+    const widthObserver = new ResizeObserver(updateWidth);
+    widthObserver.observe(el);
+    onCleanup(() => widthObserver.disconnect());
 
-    // Track whether user is near the bottom
-    const handleScroll = () => {
-      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-      setPinnedToBottom(distance < NEAR_BOTTOM_THRESHOLD);
-    };
-    el.addEventListener("scroll", handleScroll, { passive: true });
-    onCleanup(() => el.removeEventListener("scroll", handleScroll));
+    itemObserver = new ResizeObserver((entries) => {
+      let changed = false;
+      for (const entry of entries) {
+        const index = Number(entry.target.getAttribute("data-index"));
+        const turn = props.turns()[index];
+        if (!turn) {
+          continue;
+        }
+        const height =
+          entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
+        const prev = measuredSizes.get(turn.id);
+        if (height > 0 && prev !== height) {
+          measuredSizes.set(turn.id, height);
+          changed = true;
+        }
+      }
+      if (changed) {
+        setMeasureVersion((v) => v + 1);
+      }
+    });
+    onCleanup(() => {
+      itemObserver?.disconnect();
+      measuredSizes.clear();
+    });
 
-    // Initial scroll to bottom
+    el.addEventListener(
+      "scroll",
+      () => {
+        setScrollTop(el.scrollTop);
+        if (selfScrolling) {
+          selfScrolling = false;
+          return;
+        }
+        const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+        userPinned = distance < NEAR_BOTTOM_THRESHOLD;
+      },
+      { passive: true }
+    );
+
     if (props.turns().length > 0) {
       el.scrollTop = el.scrollHeight;
     }
@@ -96,7 +188,8 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
     if (typeof document !== "undefined" && document.fonts) {
       document.fonts.ready.then(() => {
         clearPretextCache();
-        setFontVersion((v) => v + 1);
+        measuredSizes.clear();
+        setMeasureVersion((v) => v + 1);
       });
     }
   });
@@ -118,26 +211,29 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
       >
         <div
           style={{
-            height: `${virtualizer.getTotalSize()}px`,
+            height: `${visible().totalHeight}px`,
             position: "relative",
             width: "100%",
           }}
         >
-          <For each={virtualizer.getVirtualItems()}>
-            {(virtualItem) => (
+          <For each={visible().items}>
+            {(item) => (
               <div
-                data-index={virtualItem.index}
-                ref={virtualizer.measureElement}
+                data-index={item.index}
+                ref={(el: HTMLDivElement) => {
+                  itemObserver?.observe(el);
+                  onCleanup(() => itemObserver?.unobserve(el));
+                }}
                 style={{
                   left: 0,
                   "padding-bottom": "20px",
                   position: "absolute",
                   top: 0,
-                  transform: `translateY(${virtualItem.start}px)`,
+                  transform: `translateY(${item.layout.start}px)`,
                   width: "100%",
                 }}
               >
-                <Show when={props.turns()[virtualItem.index]}>
+                <Show when={props.turns()[item.index]}>
                   {(turn) => (
                     <SessionTurn isStreaming={props.isStreaming} turn={turn} />
                   )}
