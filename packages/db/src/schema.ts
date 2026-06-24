@@ -57,3 +57,23 @@ export const sessionEntries = sqliteTable(
     ),
   ]
 );
+
+export const turns = sqliteTable(
+  "turns",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull(),
+    startedAt: integer("started_at").notNull(),
+    endedAt: integer("ended_at"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("turns_session_id_sequence_idx").on(
+      table.sessionId,
+      table.sequence
+    ),
+  ]
+);
