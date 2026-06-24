@@ -1,6 +1,5 @@
 import {
   type Accessor,
-  createEffect,
   createSignal,
   For,
   type JSX,
@@ -21,36 +20,15 @@ export interface MessageTimelineProps {
   turns: Accessor<ChatTurn[]>;
 }
 
-const NEAR_BOTTOM_THRESHOLD = 150;
-
 export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
   const [containerWidth, setContainerWidth] = createSignal(0);
 
-  let userPinned = true;
-  let selfScrolling = false;
-
   const virtual = createVirtualList<ChatTurn>({
-    items: props.turns,
+    follow: { threshold: 150 },
     estimateSize: (turn) => estimateTurnHeight(turn, containerWidth()),
     getItemKey: (turn) => turn.id,
+    items: props.turns,
     overscan: 4,
-  });
-
-  // Auto-scroll: snap to bottom in RAF when user is pinned.
-  // Depends on both turns (new content) and measureVersion (size corrections
-  // from ResizeObserver — when a big markdown block is measured taller than
-  // the Pretext estimate, the inner div grows and we need to re-scroll).
-  createEffect(() => {
-    props.turns();
-    virtual.measureVersion();
-    requestAnimationFrame(() => {
-      const el = virtual.scrollElement();
-      if (!(el && userPinned)) {
-        return;
-      }
-      selfScrolling = true;
-      el.scrollTop = el.scrollHeight;
-    });
   });
 
   onMount(() => {
@@ -66,21 +44,8 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
     widthObserver.observe(el);
     onCleanup(() => widthObserver.disconnect());
 
-    el.addEventListener(
-      "scroll",
-      () => {
-        if (selfScrolling) {
-          selfScrolling = false;
-          return;
-        }
-        const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-        userPinned = distance < NEAR_BOTTOM_THRESHOLD;
-      },
-      { passive: true }
-    );
-
     if (props.turns().length > 0) {
-      el.scrollTop = el.scrollHeight;
+      virtual.scrollToBottom();
     }
 
     if (typeof document !== "undefined" && document.fonts) {

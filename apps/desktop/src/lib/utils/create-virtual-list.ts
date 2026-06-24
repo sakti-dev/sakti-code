@@ -1,4 +1,10 @@
-import { type Accessor, createMemo, createSignal, onCleanup } from "solid-js";
+import {
+  type Accessor,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+} from "solid-js";
 
 export interface VirtualListItem {
   index: number;
@@ -9,6 +15,16 @@ export interface VirtualListItem {
 
 export interface CreateVirtualListOptions<T> {
   estimateSize: (item: T, index: number) => number;
+  /**
+   * Enable follow-to-bottom behavior. When enabled, the hook tracks
+   * whether the user is following the latest content and automatically
+   * scrolls to the new bottom when items change or sizes are corrected.
+   *
+   * - `true` — use default threshold (150px)
+   * - `{ threshold: number }` — custom threshold
+   * - omitted / `false` — disabled
+   */
+  follow?: boolean | { threshold?: number };
   getItemKey: (item: T, index: number) => string;
   items: Accessor<readonly T[]>;
   overscan?: number;
@@ -20,18 +36,21 @@ export interface VirtualListState {
 }
 
 export interface VirtualListControls {
-  bumpMeasure: () => void;
   /** Bump to force layout recompute (e.g. after clearing caches). */
+  bumpMeasure: () => void;
+  /** Whether the user is following the bottom (always true when follow is off). */
+  isFollowing: () => boolean;
+  /** Reactive signal that bumps when sizes are corrected. Use as a trigger dep. */
   readonly measureVersion: Accessor<number>;
   /**
    * Observe a visible item element for size correction.
    * Call in a ref callback. Returns a cleanup function for onCleanup.
    */
   observeItem: (el: Element, index: number) => () => void;
-  /** Scroll event handler — pass to onScroll. */
-  onScroll: (e: Event) => void;
   /** Current scroll element (null until mounted). */
   readonly scrollElement: Accessor<HTMLElement | null>;
+  /** Imperatively scroll to the bottom. */
+  scrollToBottom: () => void;
   /** Ref callback for the scroll container element. */
   setScrollElement: (el: HTMLElement) => void;
   /** Reactive virtual list state (visible items + total height). */
@@ -47,9 +66,19 @@ export function createVirtualList<T>(
   options: CreateVirtualListOptions<T>
 ): VirtualListControls {
   const overscan = options.overscan ?? 4;
+  const followEnabled =
+    options.follow !== undefined && options.follow !== false;
+  const followThreshold =
+    typeof options.follow === "object"
+      ? (options.follow.threshold ?? 150)
+      : 150;
+
   const [scrollEl, setScrollEl] = createSignal<HTMLElement | null>(null);
   const [scrollTop, setScrollTop] = createSignal(0);
   const [measureVersion, setMeasureVersion] = createSignal(0);
+
+  let userFollowing = true;
+  let selfScrolling = false;
 
   // Measured actual sizes from ResizeObserver, keyed by item key.
   const measuredSizes = new Map<string, number>();
@@ -126,8 +155,7 @@ export function createVirtualList<T>(
     return { items: slice, totalHeight };
   });
 
-  // Set up item ResizeObserver lazily (needs to be in reactive scope)
-  // but we create it eagerly so observeItem works immediately.
+  // Item ResizeObserver for size correction.
   if (typeof ResizeObserver !== "undefined") {
     itemObserver = new ResizeObserver((entries) => {
       let changed = false;
@@ -152,6 +180,46 @@ export function createVirtualList<T>(
     });
   }
 
+  // Internal scroll listener — always tracks scrollTop for visible range.
+  // When follow is enabled, also tracks userFollowing/selfScrolling.
+  createEffect(() => {
+    const el = scrollEl();
+    if (!el) {
+      return;
+    }
+    const handleScroll = () => {
+      setScrollTop(el.scrollTop);
+      if (!followEnabled) {
+        return;
+      }
+      if (selfScrolling) {
+        selfScrolling = false;
+        return;
+      }
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      userFollowing = distance < followThreshold;
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    onCleanup(() => el.removeEventListener("scroll", handleScroll));
+  });
+
+  // Follow effect — snap to bottom in RAF when following.
+  // Depends on items (new content) + measureVersion (size corrections).
+  if (followEnabled) {
+    createEffect(() => {
+      options.items();
+      measureVersion();
+      requestAnimationFrame(() => {
+        const el = scrollEl();
+        if (!(el && userFollowing)) {
+          return;
+        }
+        selfScrolling = true;
+        el.scrollTop = el.scrollHeight;
+      });
+    });
+  }
+
   onCleanup(() => {
     itemObserver?.disconnect();
     measuredSizes.clear();
@@ -163,14 +231,20 @@ export function createVirtualList<T>(
     bumpMeasure: () => setMeasureVersion((v) => v + 1),
     scrollElement: scrollEl,
     setScrollElement: (el: HTMLElement) => setScrollEl(el),
-    onScroll: (e: Event) => {
-      const target = e.currentTarget as HTMLElement;
-      setScrollTop(target.scrollTop);
-    },
     observeItem: (el: Element, index: number) => {
       el.setAttribute("data-virtual-index", String(index));
       itemObserver?.observe(el);
       return () => itemObserver?.unobserve(el);
     },
+    scrollToBottom: () => {
+      const el = scrollEl();
+      if (el) {
+        if (followEnabled) {
+          selfScrolling = true;
+        }
+        el.scrollTop = el.scrollHeight;
+      }
+    },
+    isFollowing: () => userFollowing,
   };
 }
