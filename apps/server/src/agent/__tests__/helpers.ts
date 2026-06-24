@@ -93,6 +93,20 @@ export function createMockCtx(overrides?: {
         set: vi.fn(async () => {}),
         getAll: vi.fn(() => []),
       },
+      turns: {
+        create: vi.fn((sessionId: string, startedAt: number) => ({
+          id: "turn-1",
+          sessionId,
+          sequence: 0,
+          startedAt,
+          endedAt: null,
+          createdAt: Date.now(),
+        })),
+        finalize: vi.fn(),
+        finalizeLatest: vi.fn(),
+        listBySession: vi.fn(() => []),
+        copyForFork: vi.fn(),
+      },
     },
   } as any;
 }
@@ -174,6 +188,20 @@ export function createMultiSessionCtx(
         getByPrefix: vi.fn(() => []),
         set: vi.fn(async () => {}),
         getAll: vi.fn(() => []),
+      },
+      turns: {
+        create: vi.fn((sessionId: string, startedAt: number) => ({
+          id: "turn-1",
+          sessionId,
+          sequence: 0,
+          startedAt,
+          endedAt: null,
+          createdAt: Date.now(),
+        })),
+        finalize: vi.fn(),
+        finalizeLatest: vi.fn(),
+        listBySession: vi.fn(() => []),
+        copyForFork: vi.fn(),
       },
     },
   } as any;

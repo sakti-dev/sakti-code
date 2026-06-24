@@ -4,6 +4,7 @@ import {
   SessionRepo,
   SettingsRepo,
   SqliteSessionStorage,
+  TurnRepo,
 } from "@sakti-code/db";
 import type { Context } from "hono";
 import type { ServerHooks } from "./create-server.ts";
@@ -22,6 +23,7 @@ export interface ServerContext {
     projects: ProjectRepo;
     sessions: SessionRepo;
     settings: SettingsRepo;
+    turns: TurnRepo;
   };
   settingsFile: SettingsFileStore;
   terminalManager: TerminalManager;
@@ -45,6 +47,7 @@ export function createContext(
       projects: new ProjectRepo(db),
       sessions: new SessionRepo(db),
       settings: new SettingsRepo(db),
+      turns: new TurnRepo(db),
     },
     settingsFile: deps.settingsFile,
     terminalManager: new TerminalManager(),

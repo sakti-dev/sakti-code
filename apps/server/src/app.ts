@@ -17,6 +17,7 @@ import { lastAssistantTextRoutes } from "./routes/sessions/last-assistant-text.t
 import { sessionSettingsRoutes } from "./routes/sessions/session-settings.ts";
 import { sessionsRoutes } from "./routes/sessions/sessions.ts";
 import { statsRoutes } from "./routes/sessions/stats.ts";
+import { turnsRoutes } from "./routes/sessions/turns.ts";
 import { settingsRoutes } from "./routes/settings.ts";
 import { terminalRoutes } from "./routes/workspace/terminals.ts";
 import { workspaceRoutes } from "./routes/workspace/workspace.ts";
@@ -32,6 +33,7 @@ export function buildApp(ctx: ServerContext) {
     .route("/", sessionsRoutes)
     .route("/", compactionRoutes)
     .route("/", statsRoutes)
+    .route("/", turnsRoutes)
     .route("/", forkingRoutes)
     .route("/", exportRoutes)
     .route("/", lastAssistantTextRoutes)

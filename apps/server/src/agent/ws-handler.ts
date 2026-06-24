@@ -155,6 +155,7 @@ async function runAgentStream(
   storage: SessionStorage,
   ws: WsHandle
 ) {
+  ctx.repos.turns.create(sessionId, Date.now());
   try {
     await runPrompt(ctx, sessionId, message, storage, (event) => {
       ws.send({
@@ -169,6 +170,8 @@ async function runAgentStream(
       sessionId,
       type: "error",
     } satisfies ErrorFrame);
+  } finally {
+    ctx.repos.turns.finalizeLatest(sessionId, Date.now());
   }
 }
 

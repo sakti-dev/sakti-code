@@ -44,6 +44,7 @@ export const forkingRoutes = new Hono()
 
     try {
       await forkedStorage.forkFrom(id);
+      ctx.repos.turns.copyForFork(id, newSession.id);
     } catch (err) {
       await ctx.repos.sessions.delete(newSession.id);
       throw err;
