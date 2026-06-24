@@ -85,7 +85,9 @@ export default function WorkspaceLayout(): JSX.Element {
             <BannerError />
             <BannerHealth />
             <BannerUpdate />
-            <Toolbar />
+            <Show when={false}>
+              <Toolbar />
+            </Show>
             <div class="relative min-h-0 flex-1">
               <div class="absolute inset-0 flex flex-col overflow-hidden">
                 <Show

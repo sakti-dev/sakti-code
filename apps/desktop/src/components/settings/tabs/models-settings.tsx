@@ -18,6 +18,7 @@ import type { Client } from "~/lib/api";
 import { useDismissibleVisibility } from "~/lib/ui/dismissible-stack";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
+import { ProfileEditor } from "./profile-editor";
 
 interface ApiKeyInfo {
   hasKey: boolean;
@@ -546,6 +547,8 @@ export function ModelsSettings() {
           </Show>
         </Show>
       </Card>
+
+      <ProfileEditor />
 
       <Card class="mt-4 p-4">
         <div class="mb-3 flex items-center justify-between gap-3">

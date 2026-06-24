@@ -3,7 +3,6 @@ import { setSidebarOpen, sidebarOpen } from "~/stores/workspace/ui-signals";
 import { SettingsDialog } from "../../settings/settings-dialog";
 import ExportButton from "./export-button";
 import GitStatusBar from "./git-status-bar";
-import ModelSelector from "./model-selector";
 import { ReplayButton } from "./replay-button";
 import SessionStats from "./session-stats";
 import ThinkingSelector from "./thinking-selector";
@@ -57,7 +56,6 @@ export default function Toolbar() {
 
       <div class="h-5 w-px bg-border" />
 
-      <ModelSelector />
       <ThinkingSelector />
 
       <div class="flex-1" />

@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, type JSX } from "solid-js";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
 import { InputFooter } from "./input-footer";
-import { ModelSelectorButton } from "./model-selector-button";
+import { ProfileSelect } from "./profile-select";
 import { SendButton } from "./send-button";
 
 export interface ChatInputProps {
@@ -96,7 +96,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
           />
 
           <div class="flex items-center justify-end gap-2">
-            <ModelSelectorButton sessionId={props.sessionId} />
+            <ProfileSelect sessionId={props.sessionId} />
             <SendButton
               canSend={canSend}
               isSending={isGenerating()}

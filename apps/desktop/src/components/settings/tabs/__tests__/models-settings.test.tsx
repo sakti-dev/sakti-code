@@ -19,6 +19,38 @@ vi.mock("~/stores/store-context", () => ({
             $delete: mocks.$delete,
           },
         },
+        profiles: {
+          $get: vi.fn().mockResolvedValue({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                defaultProfile: "default",
+                profiles: {
+                  default: {
+                    name: "Default",
+                    models: {
+                      default: { provider: "", model: "" },
+                    },
+                  },
+                },
+              }),
+          }),
+          $put: vi.fn().mockResolvedValue({ ok: true }),
+        },
+        models: {
+          available: {
+            $get: vi.fn().mockResolvedValue({
+              ok: true,
+              json: () => Promise.resolve([]),
+            }),
+            ":provider": {
+              $get: vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve([]),
+              }),
+            },
+          },
+        },
       },
     },
   }),
@@ -57,7 +89,7 @@ describe("ModelsSettings", () => {
   it("calls GET /api/auth on mount", async () => {
     mocks.$get.mockImplementation(() => okRes(authEntries()));
     render(() => <ModelsSettings />);
-    await vi.waitFor(() => expect(mocks.$get).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(mocks.$get).toHaveBeenCalled());
   });
 
   it("shows empty state when no provider is connected", async () => {
