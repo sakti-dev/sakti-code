@@ -1,4 +1,14 @@
-import { type Accessor, For, Index, type JSX, Show } from "solid-js";
+import {
+  type Accessor,
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  Index,
+  type JSX,
+  onCleanup,
+  Show,
+} from "solid-js";
 import type { ChatTurn } from "~/stores/session/turn-projection";
 import { getUserText } from "~/stores/session/turn-projection";
 import type { MessagePart } from "~/stores/types.ts";
@@ -27,8 +37,48 @@ function getPartCopyText(part: MessagePart): string | undefined {
   return;
 }
 
+function formatWorkDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}
+
 export function SessionTurn(props: SessionTurnProps): JSX.Element {
   const turn = props.turn;
+  const [liveMs, setLiveMs] = createSignal(0);
+
+  createEffect(() => {
+    const startedAt = turn().startedAt;
+    const endedAt = turn().endedAt;
+    if (startedAt === null || endedAt !== null) {
+      setLiveMs(0);
+      return;
+    }
+    setLiveMs(Math.max(0, Date.now() - startedAt));
+    const timer = setInterval(() => {
+      setLiveMs(Math.max(0, Date.now() - startedAt));
+    }, 1000);
+    onCleanup(() => clearInterval(timer));
+  });
+
+  const durationLabel = createMemo(() => {
+    const { startedAt, endedAt } = turn();
+    if (startedAt === null) {
+      return null;
+    }
+    if (endedAt !== null) {
+      return formatWorkDuration(endedAt - startedAt);
+    }
+    return formatWorkDuration(liveMs());
+  });
 
   return (
     <div
@@ -52,6 +102,18 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
             copyText={getUserText(turn()) || undefined}
             timestamp={turn().userMessage?.timestamp ?? Date.now()}
           />
+        </div>
+      </Show>
+
+      <Show when={durationLabel()}>
+        <div class="flex items-center gap-2 border-border/50 border-b px-3 py-1.5 text-muted-foreground text-xs">
+          <Show when={turn().endedAt === null}>
+            <div class="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          </Show>
+          <span>
+            {turn().endedAt === null ? "Working for " : "Worked for "}
+            {durationLabel()}
+          </span>
         </div>
       </Show>
 
@@ -85,12 +147,6 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               </div>
             )}
           </For>
-        </div>
-      </Show>
-
-      <Show when={turn().assistantMessages.length === 0 && turn().working}>
-        <div class="flex items-center justify-center py-8 text-muted-foreground text-sm">
-          Waiting for response…
         </div>
       </Show>
     </div>

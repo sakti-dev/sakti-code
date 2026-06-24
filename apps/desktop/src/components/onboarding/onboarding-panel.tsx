@@ -33,7 +33,8 @@ export function OnboardingPanel(props: OnboardingPanelProps): JSX.Element {
     return buildChatTurns(
       session.store.messageOrder,
       session.store.messages,
-      session.store.streaming.phase
+      session.store.streaming.phase,
+      session.store.turnTimings
     );
   });
 

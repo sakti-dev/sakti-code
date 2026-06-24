@@ -99,6 +99,7 @@ export function createWsClient(
         if (msgId) {
           session.actions.setError(msgId, data.error);
         }
+        session.actions.finalizeTurn(Date.now());
         break;
       }
 

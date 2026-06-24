@@ -25,7 +25,8 @@ export function TaskChatView(props: TaskChatViewProps): JSX.Element {
     return buildChatTurns(
       session.store.messageOrder,
       session.store.messages,
-      session.store.streaming.phase
+      session.store.streaming.phase,
+      session.store.turnTimings
     );
   });
 

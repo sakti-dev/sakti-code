@@ -3,6 +3,7 @@ import {
   idleStreamState,
   type MessagePart,
   type StreamState,
+  type TurnTiming,
   type UIMessage,
 } from "../types.ts";
 
@@ -16,6 +17,7 @@ export interface SessionStoreData {
   messages: Record<string, UIMessage>;
   proposedSession: ProposedSession | null;
   streaming: StreamState;
+  turnTimings: TurnTiming[];
 }
 
 export interface SessionActions {
@@ -39,8 +41,10 @@ export interface SessionActions {
     details?: unknown
   ) => void;
   finalizeMessage: (msgId: string) => void;
+  finalizeTurn: (endedAt: number) => void;
   getCurrentMessageId: () => string | null;
   loadMessages: (msgs: UIMessage[]) => void;
+  loadTurnTimings: (timings: TurnTiming[]) => void;
   reset: () => void;
   setContent: (msgId: string, content: string) => void;
   setCurrentMessage: (msgId: string) => void;
@@ -48,6 +52,7 @@ export interface SessionActions {
   setError: (msgId: string, error: string) => void;
   setPhase: (phase: StreamState["phase"]) => void;
   setProposedSession: (proposal: ProposedSession) => void;
+  startTurn: (startedAt: number) => void;
   wasLastUserMessage: (text: string) => boolean;
 }
 
@@ -62,6 +67,7 @@ export function createSessionStore(): SessionStore {
     messageOrder: [],
     proposedSession: null,
     streaming: { ...idleStreamState },
+    turnTimings: [],
   });
 
   const actions: SessionActions = {
@@ -244,6 +250,27 @@ export function createSessionStore(): SessionStore {
       setStore("messages", msgId, "isStreaming", false);
     },
 
+    startTurn(startedAt) {
+      setStore("turnTimings", (prev) => [
+        ...prev,
+        { startedAt, endedAt: null },
+      ]);
+    },
+
+    finalizeTurn(endedAt) {
+      setStore("turnTimings", (prev) => {
+        const last = prev.at(-1);
+        if (last === undefined || last.endedAt !== null) {
+          return prev;
+        }
+        return [...prev.slice(0, -1), { ...last, endedAt }];
+      });
+    },
+
+    loadTurnTimings(timings) {
+      setStore("turnTimings", timings);
+    },
+
     reset() {
       setStore(
         produce((s) => {
@@ -251,6 +278,7 @@ export function createSessionStore(): SessionStore {
           s.messageOrder = [];
           s.proposedSession = null;
           s.streaming = { ...idleStreamState };
+          s.turnTimings = [];
         })
       );
     },

@@ -46,6 +46,11 @@ export interface StreamState {
   tokenCount: number;
 }
 
+export interface TurnTiming {
+  endedAt: number | null;
+  startedAt: number;
+}
+
 export const idleStreamState: StreamState = {
   phase: "idle",
   startedAt: 0,

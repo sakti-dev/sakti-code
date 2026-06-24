@@ -118,6 +118,7 @@ export function dispatchEvent(
   switch (event.type) {
     case "agent_start":
       actions.setPhase("thinking");
+      actions.startTurn(Date.now());
       break;
 
     case "message_start":
@@ -188,6 +189,7 @@ export function dispatchEvent(
       actions.setPhase("idle");
       actions.clearCurrentMessage();
       actions.clearCurrentTool();
+      actions.finalizeTurn(Date.now());
       break;
   }
 }

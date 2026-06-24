@@ -1,9 +1,11 @@
-import type { MessagePart, UIMessage } from "../types.ts";
+import type { MessagePart, TurnTiming, UIMessage } from "../types.ts";
 
 export interface ChatTurn {
   assistantMessages: UIMessage[];
+  endedAt: number | null;
   error: string | null;
   id: string;
+  startedAt: number | null;
   userMessage: UIMessage | null;
   working: boolean;
 }
@@ -15,6 +17,8 @@ function newTurn(userMessage: UIMessage | null, id: string): ChatTurn {
     assistantMessages: [],
     working: false,
     error: null,
+    startedAt: null,
+    endedAt: null,
   };
 }
 
@@ -36,7 +40,8 @@ function handleAssistantMessage(
 export function buildChatTurns(
   messageOrder: string[],
   messages: Record<string, UIMessage>,
-  streamingPhase: string
+  streamingPhase: string,
+  turnTimings: TurnTiming[] = []
 ): ChatTurn[] {
   const turns: ChatTurn[] = [];
   let currentTurn: ChatTurn | null = null;
@@ -64,6 +69,16 @@ export function buildChatTurns(
   const lastTurn = turns.at(-1);
   if (lastTurn && streamingPhase !== "idle") {
     lastTurn.working = true;
+  }
+
+  const count = Math.min(turns.length, turnTimings.length);
+  for (let i = 0; i < count; i++) {
+    const turn = turns[i];
+    const timing = turnTimings[i];
+    if (turn && timing) {
+      turn.startedAt = timing.startedAt;
+      turn.endedAt = timing.endedAt;
+    }
   }
 
   return turns;

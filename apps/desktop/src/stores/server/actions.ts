@@ -152,6 +152,26 @@ export function createActions(
         const uiMessages = hydrateSessionMessages(messages);
         const session = sessionRegistry.get(sessionId);
         session.actions.loadMessages(uiMessages);
+
+        try {
+          const turnsRes = await api.api.sessions[":id"].turns.$get({
+            param: { id: sessionId },
+          });
+          if (turnsRes.ok) {
+            const turns = (await turnsRes.json()) as Array<{
+              startedAt: number;
+              endedAt: number | null;
+            }>;
+            session.actions.loadTurnTimings(
+              turns.map((t) => ({
+                startedAt: t.startedAt,
+                endedAt: t.endedAt,
+              }))
+            );
+          }
+        } catch {
+          // turns endpoint not available (older server)
+        }
       } catch (error) {
         setLastError(
           error instanceof Error ? error.message : "Failed to load messages"
