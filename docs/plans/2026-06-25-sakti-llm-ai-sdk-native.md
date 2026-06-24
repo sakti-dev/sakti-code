@@ -184,30 +184,40 @@ Verify each path exists before relying on it.
 
 ---
 
-## Phase 3 — Compat transform (port opencode `transform.ts`, plain TS)
+## Phase 3 — Compat transform (port opencode `transform.ts`, plain TS) ✓ DONE
 
-### Task 3.1 — `buildProviderOptions` (thinkingFormat)
-- `src/provider/transform.ts` — `buildProviderOptions(model, level): Record<string, unknown>`.
-- **Reads `model.compat.thinkingFormat`** (populated at catalog generation in Phase 1; see `src/catalog/compat.ts`). First-party `@ai-sdk/*` models have NO compat — skip entirely. Only `@ai-sdk/openai-compatible` models reach this logic.
-- **opencode's `transform.ts` is the structural template** (how each value emits `providerOptions` for `streamText`). **pi-ai's `openai-completions.ts:594-666` (PI-COMPAT) is the data-values source** (which fields each format produces — preserve these exactly). One branch per `thinkingFormat` value:
-  - `zai` → `thinking:{type:"enabled"}` + `reasoning_effort`
-  - `qwen` → `enable_thinking: !!effort`
-  - `qwen-chat-template` → `chat_template_kwargs.enable_thinking`
-  - `chat-template` → `chat_template_kwargs` from compat
-  - `deepseek` → `thinking:{type:…}` + `reasoning_effort`
-  - `openrouter` → `reasoning:{effort}`
-  - `ant-ling` → `reasoning:{effort}` only when effort non-null
-  - `together` → `reasoning:{enabled}` + `reasoning_effort`
-  - `string-thinking` → top-level `thinking: string`
-  - `openai` (fallthrough) → `reasoning_effort`
-- Honor `thinkingLevelMap`: `null` → unsupported → omit. Port the resolution verbatim.
-- `level === "off"` or `model.reasoning === false` → `{}`.
-- **One test per value (10 tests)** asserting the exact `providerOptions` keys, citing the PI-COMPAT line range each branch came from.
+> **26 new tests (88 total) · typecheck clean · ultracite fix clean.**
+> `applyCacheControl` middleware deferred to Phase 4 (needs `ai` package's
+> `wrapLanguageModel` — naturally lives with `stream()`).
 
-### Task 3.2 — `buildHeaders` + cache-control middleware
-- `buildHeaders(model, options)`: when `compat.sendSessionAffinityHeaders && options.sessionId`, emit `session_id`/`x-client-request-id`/`x-session-affinity` (mirror PI-COMPAT header logic).
-- `applyCacheControl` via `wrapLanguageModel({ model, middleware:[{ specificationVersion:"v3", transformParams }] })` (port OC-STREAM `:325-343`). When `compat.cacheControlFormat === "anthropic"` and cache retention enabled, attach `cache_control:{type:"ephemeral"}` to system prompt / last user message (mirror OC-TRANSFORM `:329-344`).
-- Tests: headers present/absent per flag; cache_control markers attached when configured.
+### Task 3.1 — `buildProviderOptions` ✓ (TDD: 22 tests)
+- `src/provider/transform.ts` — `buildProviderOptions({ model, level }):
+  Record<string, unknown>`. Returns `{ [model.provider]: { ...fields } }` —
+  the flat thinkingFormat fields scoped under the provider name (matches how
+  `@ai-sdk/openai-compatible` reads `providerOptions[name]`).
+- **10 thinkingFormat branches** ported verbatim from pi-ai's
+  `openai-completions.ts:594-668`. Each annotated with its source line range.
+  Per-branch `null` handling preserved exactly (some use `typeof === "string"`
+  guard, others use `??` fallback — the inconsistency is intentional).
+- `chat-template` kwarg resolver ports pi-ai's `resolveChatTemplateKwargValue`
+  (`:706-725`): `{ $var: "thinking.enabled" }` → boolean; `{ $var: "thinking.effort" }`
+  → mapped effort string; `omitWhenOff` drops the key when off.
+- Only `@ai-sdk/openai-compatible` models reach this logic. First-party
+  `@ai-sdk/*` models have no `compat` → `{}` (factory handles reasoning).
+- **Compat data update**: `PROVIDER_COMPAT` now carries `supportsReasoningEffort`
+  for deepseek (`true`) and the default (`true`). Catalog regenerated.
+- Tests: one per format value (10), off-level handling (5), thinkingLevelMap
+  mapping (2), scoping (1), early returns (2), ant-ling no-map edge case (1),
+  openai no-supportsReasoningEffort (1).
+
+### Task 3.2 — `buildHeaders` + cache-control ✓ / ⏭
+- `buildHeaders({ model, sessionId })` — emits session-affinity headers
+  (`session_id`, `x-client-request-id`, `x-session-affinity`) when
+  `compat.sendSessionAffinityHeaders && sessionId`. 4 tests.
+- **`applyCacheControl` deferred to Phase 4** — needs `wrapLanguageModel` from
+  the `ai` package. It wraps the model and modifies prompt messages at stream
+  time, so it naturally belongs with `stream()`. Will be implemented alongside
+  the streamText call in Task 4.2.
 
 ---
 

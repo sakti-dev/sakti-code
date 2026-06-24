@@ -56,5 +56,7 @@ export {
   resolveBaseURL,
   resolveLanguageModel,
 } from "./provider/resolve.ts";
+// Compat transform: thinkingFormat → providerOptions + session-affinity headers.
+export { buildHeaders, buildProviderOptions } from "./provider/transform.ts";
 // Message contract + Model descriptor (the shapes ~20 consumers depend on).
 export * from "./types.ts";

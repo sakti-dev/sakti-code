@@ -35,21 +35,30 @@ import type { OpenAICompletionsCompat } from "../types.ts";
  * (i.e. `reasoning_effort`) in the converter.
  */
 export const PROVIDER_COMPAT: Record<string, OpenAICompletionsCompat> = {
-  /** DeepSeek uses `thinking: { type }` + `reasoning_effort` (pi-ai thinkingFormat "deepseek"). */
-  deepseek: { thinkingFormat: "deepseek" },
+  /**
+   * DeepSeek uses `thinking: { type }` + `reasoning_effort`.
+   * supportsReasoningEffort: true (pi-ai auto-detection — deepseek is not in
+   * the exclusion list at `openai-completions.ts:358-359`).
+   */
+  deepseek: { supportsReasoningEffort: true, thinkingFormat: "deepseek" },
 
-  /** Z.AI (GLM) uses `thinking: { type: "enabled" }` + optional `reasoning_effort`. */
+  /** Z.AI (GLM) uses `thinking: { type: "enabled" }` + optional `reasoning_effort` (glm-5.2 only). */
   "zai-coding-plan": { thinkingFormat: "zai" },
   zai: { thinkingFormat: "zai" },
 
-  /** Together AI uses `reasoning: { enabled }` + `reasoning_effort` when supported. */
+  /**
+   * Together AI uses `reasoning: { enabled }` + `reasoning_effort` when supported.
+   * supportsReasoningEffort is provider-level false (per-model overrides exist
+   * in pi-ai for specific Together models; not encoded here yet).
+   */
   togetherai: { thinkingFormat: "together" },
 };
 
 /**
  * The fallback compat for any `@ai-sdk/openai-compatible` provider not listed
- * in {@link PROVIDER_COMPAT}. Standard OpenAI `reasoning_effort`.
+ * in {@link PROVIDER_COMPAT}. Standard OpenAI `reasoning_effort`, supported.
  */
 export const DEFAULT_OPENAI_COMPAT_COMPAT: OpenAICompletionsCompat = {
+  supportsReasoningEffort: true,
   thinkingFormat: "openai",
 };
