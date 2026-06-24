@@ -221,43 +221,39 @@ Verify each path exists before relying on it.
 
 ---
 
-## Phase 4 — `stream()` entry point
+## Phase 4 — `stream()` entry point ✓ DONE
 
-### Task 4.1 — Message conversion
-- `src/messages.ts` — `toModelMessages(messages: Message[], system?: string): ModelMessage[]` (returns @ai-sdk `CoreMessage`/`ModelMessage`). Handle: text/image/thinking content, toolCall, tool results, system prompt. Round-trip tests for every content type (text, image, thinking, toolCall, toolResult, multi-content assistant).
+> **24 new tests (112 total) · typecheck clean · ultracite fix clean.**
+> `stream()` is async (`Promise<StreamResult>`) — resolveLanguageModel does
+> dynamic imports. `streamWithModel` exported for tests (takes a pre-resolved
+> LanguageModelV3, no async resolution needed).
 
-### Task 4.2 — `stream()`
-- `src/stream.ts`:
-  ```ts
-  interface StreamRequest {
-    model: Model<"ai-sdk">;
-    messages: Message[];
-    system?: string;
-    tools?: /* @ai-sdk ToolSpecification */;
-    abortSignal?: AbortSignal;
-    maxOutputTokens?: number;
-    temperature?: number;
-    topP?: number;
-    thinkingLevel?: ModelThinkingLevel;
-    sessionId?: string;
-    apiKey?: string;
-  }
-  interface FinishResult {
-    usage: Usage;         // populated incl. cost via calculateCost
-    finishReason: StopReason;
-    responseId?: string;
-    responseModel?: string;
-  }
-  interface StreamResult {
-    fullStream: AsyncIterable<FullStreamPart>;
-    result: Promise<FinishResult>;
-  }
-  export function stream(req: StreamRequest): StreamResult
-  ```
-- Wire: `resolveLanguageModel` → `buildProviderOptions` → `buildHeaders` → `wrapLanguageModel` (cache) → `streamText({ model: wrapped, messages: toModelMessages(...), tools, providerOptions, headers, maxRetries: 0, abortSignal, … })`.
-- Port the `streamText` option set from OC-STREAM (`:280-353`) line for line.
-- `result` promise: on stream finish, read `totalUsage`, map to `Usage` (input/output/totalTokens/cacheRead/cacheWrite from `inputTokenDetails`), run `calculateCost`, map `finishReason` → `StopReason` (`stop`, `length`, `tool-calls`/`tool-use` → `toolUse`, default `stop`).
-- **Inject `runStreamText` for tests** so `stream()` is testable with fake parts (no real API calls).
+### Task 4.1 — Message conversion ✓ (TDD: 10 tests)
+- `src/messages.ts` — `toModelMessages(messages: Message[]): ModelMessage[]`.
+  Converts UserMessage/AssistantMessage/ToolResultMessage to @ai-sdk's
+  UserModelMessage/AssistantModelMessage/ToolModelMessage.
+- Content mapping: TextContent→TextPart, ThinkingContent→ReasoningPart
+  (`thinking`→`text`), ImageContent→ImagePart (`data`→`image`,
+  `mimeType`→`mediaType`), ToolCall→ToolCallPart (`arguments`→`input`).
+- ToolResultMessage → one ToolResultPart per message. Output is
+  `{ type: "text", value: concatenatedText }` (@ai-sdk's ToolResultOutput shape).
+- Deferred: thinkingSignature/thoughtSignature (provider metadata), image tool results.
+
+### Task 4.2 — `stream()` ✓ (TDD: 14 tests)
+- `src/stream.ts` — `stream(req: StreamRequest): Promise<StreamResult>`.
+  Wires: resolveLanguageModel → toModelMessages → buildProviderOptions →
+  buildHeaders → streamText → mapStreamResult.
+- `streamWithModel(req, language, runStreamText?)` — synchronous, takes a
+  pre-resolved LanguageModelV3. Tests use this with a fake model + fake
+  streamText to verify result-mapping without real API calls.
+- `mapUsage(raw: LanguageModelUsage, model: Model): Usage` — maps @ai-sdk's
+  nested inputTokenDetails/cacheReadTokens to our flat cacheRead/cacheWrite,
+  runs calculateCost. Pure function.
+- `mapFinishReason(reason: FinishReason): StopReason` — "tool-calls"→"toolUse",
+  "content-filter"/"other"→"stop". Pure function.
+- StreamText options constructed with conditional spread (exactOptionalPropertyTypes).
+- Deferred: `applyCacheControl` middleware (wrapLanguageModel) — can be added
+  in Phase 5 if the agent loop needs Anthropic-style cache_control markers.
 
 ---
 

@@ -42,6 +42,8 @@ export type { AuthResult, ModelAuth } from "./auth/types.ts";
 export { ALL_MODELS, CATALOG, PROVIDERS } from "./catalog/index.ts";
 // Cost computation (mutates usage.cost in place; Anthropic 1h cache premium).
 export { calculateCost } from "./cost.ts";
+// Message conversion: Message[] → @ai-sdk ModelMessage[].
+export { toModelMessages } from "./messages.ts";
 export type {
   ProviderFactory,
   ProviderFactoryLoader,
@@ -58,5 +60,13 @@ export {
 } from "./provider/resolve.ts";
 // Compat transform: thinkingFormat → providerOptions + session-affinity headers.
 export { buildHeaders, buildProviderOptions } from "./provider/transform.ts";
+export type { FinishResult, StreamRequest, StreamResult } from "./stream.ts";
+// Stream entry point: the single function the agent loop calls.
+export {
+  mapFinishReason,
+  mapUsage,
+  stream,
+  streamWithModel,
+} from "./stream.ts";
 // Message contract + Model descriptor (the shapes ~20 consumers depend on).
 export * from "./types.ts";

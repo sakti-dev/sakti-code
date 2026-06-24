@@ -25,6 +25,7 @@
     "@ai-sdk/openai-compatible": "2.0.41",
     "@ai-sdk/provider": "3.0.8",
     "@ai-sdk/xai": "3.0.82",
+    "ai": "6.0.168",
     "typebox": "1.1.38"
   },
   "devDependencies": {
