@@ -5,6 +5,7 @@ import type { SessionRegistry } from "../session/session-registry.ts";
 import { createTokenBatcher } from "../session/token-batcher.ts";
 import type { TerminalRegistry } from "../terminal/terminal-registry.ts";
 import {
+  replayState,
   setIsStreaming,
   setLastError,
   setReplayState,
@@ -85,7 +86,8 @@ export function createWsClient(
         dispatchEvent(
           sessionRegistry.get(data.sessionId).actions,
           batcher,
-          evt
+          evt,
+          { skipTiming: replayState() !== "idle" }
         );
         break;
       }

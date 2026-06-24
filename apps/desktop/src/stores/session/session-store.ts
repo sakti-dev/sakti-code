@@ -278,7 +278,6 @@ export function createSessionStore(): SessionStore {
           s.messageOrder = [];
           s.proposedSession = null;
           s.streaming = { ...idleStreamState };
-          s.turnTimings = [];
         })
       );
     },

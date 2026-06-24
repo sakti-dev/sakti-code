@@ -110,15 +110,32 @@ function handleToolExecutionEnd(
   );
 }
 
+function handleTurnTiming(
+  actions: SessionActions,
+  event: AgentHarnessEvent,
+  skipTiming: boolean
+): void {
+  if (skipTiming) {
+    return;
+  }
+  if (event.type === "agent_start") {
+    actions.startTurn(Date.now());
+  } else if (event.type === "agent_end" || event.type === "abort") {
+    actions.finalizeTurn(Date.now());
+  }
+}
+
 export function dispatchEvent(
   actions: SessionActions,
   batcher: TokenBatcher,
-  event: AgentHarnessEvent
+  event: AgentHarnessEvent,
+  options?: { skipTiming?: boolean }
 ): void {
+  handleTurnTiming(actions, event, options?.skipTiming ?? false);
+
   switch (event.type) {
     case "agent_start":
       actions.setPhase("thinking");
-      actions.startTurn(Date.now());
       break;
 
     case "message_start":
@@ -189,7 +206,6 @@ export function dispatchEvent(
       actions.setPhase("idle");
       actions.clearCurrentMessage();
       actions.clearCurrentTool();
-      actions.finalizeTurn(Date.now());
       break;
   }
 }
