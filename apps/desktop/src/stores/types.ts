@@ -5,7 +5,7 @@ import type { AgentMessage } from "@sakti-code/agent";
  * Text is accumulated from streaming deltas.
  * Tool calls track their execution lifecycle.
  */
-export type MessagePart =
+export type MessagePart = { isStreaming?: boolean } & (
   | { type: "text"; text: string }
   | {
       type: "tool_call";
@@ -16,7 +16,8 @@ export type MessagePart =
       result?: string;
       details?: unknown;
     }
-  | { type: "thinking"; text: string; startedAt?: number; endedAt?: number };
+  | { type: "thinking"; text: string; startedAt?: number; endedAt?: number }
+);
 
 /**
  * Frontend representation of a chat message.

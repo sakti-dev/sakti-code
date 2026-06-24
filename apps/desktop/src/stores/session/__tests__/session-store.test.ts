@@ -388,6 +388,7 @@ describe("session store — addToolCall", () => {
       toolName: "bash",
       input: { command: "ls" },
       status: "running",
+      isStreaming: true,
     });
     expect(session.store.streaming.currentToolName).toBe("bash");
     expect(session.store.streaming.phase).toBe("tool_running");

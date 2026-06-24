@@ -1,18 +1,10 @@
-import {
-  type Accessor,
-  createEffect,
-  createMemo,
-  createSignal,
-  For,
-  Index,
-  type JSX,
-  onCleanup,
-  Show,
-} from "solid-js";
+import { type Accessor, For, Index, type JSX, Show } from "solid-js";
 import type { ChatTurn } from "~/stores/session/turn-projection";
 import { getUserText } from "~/stores/session/turn-projection";
+import type { MessagePart } from "~/stores/types.ts";
 import { CHAT_COMPACT_STACK_GAP_CLASS, CHAT_STACK_GAP_CLASS } from "../layout";
 import { Part } from "../parts/message-part";
+import { PartFooter } from "../parts/part-footer";
 
 export interface SessionTurnProps {
   class?: string;
@@ -20,67 +12,46 @@ export interface SessionTurnProps {
   turn: Accessor<ChatTurn>;
 }
 
-function formatDuration(ms: number): string {
-  if (ms < 1000) {
-    return `${ms}ms`;
+function getPartCopyText(part: MessagePart): string | undefined {
+  if (part.type === "text") {
+    return part.text || undefined;
   }
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) {
-    return `${seconds}s`;
+  if (part.type === "thinking") {
+    return part.text || undefined;
   }
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
+  if (part.type === "tool_call") {
+    return typeof part.result === "string" && part.result
+      ? part.result
+      : undefined;
+  }
+  return;
 }
 
 export function SessionTurn(props: SessionTurnProps): JSX.Element {
   const turn = props.turn;
-  const [liveDurationMs, setLiveDurationMs] = createSignal(0);
-
-  const isWorking = createMemo(() => turn().working);
-
-  createEffect(() => {
-    if (!isWorking()) {
-      setLiveDurationMs(0);
-      return;
-    }
-
-    const startedAt = turn().userMessage?.timestamp ?? Date.now();
-    const updateDuration = () =>
-      setLiveDurationMs(Math.max(0, Date.now() - startedAt));
-
-    updateDuration();
-    const timer = setInterval(updateDuration, 1000);
-    onCleanup(() => clearInterval(timer));
-  });
 
   return (
     <div
       class={props.class}
-      classList={{ [CHAT_STACK_GAP_CLASS]: true }}
+      classList={{ [CHAT_STACK_GAP_CLASS]: true, "@container": true }}
       data-component="session-turn"
       data-slot="session-turn-root"
     >
       <Show when={turn().userMessage}>
-        <div class={CHAT_COMPACT_STACK_GAP_CLASS} data-slot="session-turn-user">
-          <div class="rounded-lg bg-muted/30 p-3">
-            <div class={CHAT_COMPACT_STACK_GAP_CLASS}>
-              <div class="text-muted-foreground text-xs">You</div>
-              <div class="text-sm">{getUserText(turn())}</div>
-            </div>
-          </div>
-        </div>
-      </Show>
-
-      <Show when={turn().working}>
         <div
-          class="flex items-center gap-2 px-3 text-muted-foreground text-xs"
-          data-slot="session-turn-status"
+          class="flex flex-col items-end gap-1 px-3"
+          data-slot="session-turn-user"
         >
-          <div class="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          <Show when={liveDurationMs() > 0}>
-            <span>{formatDuration(liveDurationMs())}</span>
-          </Show>
+          <div class="@2xl:max-w-[450px] @4xl:max-w-[800px] max-w-[80%] rounded-2xl rounded-br-none bg-primary px-4 py-2 text-primary-foreground text-sm">
+            <div class="mb-1 font-medium text-primary-foreground/70 text-xs">
+              You
+            </div>
+            {getUserText(turn())}
+          </div>
+          <PartFooter
+            copyText={getUserText(turn()) || undefined}
+            timestamp={turn().userMessage?.timestamp ?? Date.now()}
+          />
         </div>
       </Show>
 
@@ -100,7 +71,15 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               <div class={CHAT_COMPACT_STACK_GAP_CLASS}>
                 <Index each={msg.parts}>
                   {(part) => (
-                    <Part isStreaming={props.isStreaming()} part={part()} />
+                    <div class="flex flex-col gap-1">
+                      <Part isStreaming={props.isStreaming()} part={part()} />
+                      <Show when={!part().isStreaming}>
+                        <PartFooter
+                          copyText={getPartCopyText(part())}
+                          timestamp={msg.timestamp}
+                        />
+                      </Show>
+                    </div>
                   )}
                 </Index>
               </div>
