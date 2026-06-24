@@ -4,6 +4,7 @@ import {
   createMemo,
   createSignal,
   For,
+  Index,
   type JSX,
   onCleanup,
   Show,
@@ -97,11 +98,11 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
           <For each={turn().assistantMessages}>
             {(msg) => (
               <div class={CHAT_COMPACT_STACK_GAP_CLASS}>
-                <For each={msg.parts}>
+                <Index each={msg.parts}>
                   {(part) => (
-                    <Part isStreaming={props.isStreaming()} part={part} />
+                    <Part isStreaming={props.isStreaming()} part={part()} />
                   )}
-                </For>
+                </Index>
               </div>
             )}
           </For>

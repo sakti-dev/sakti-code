@@ -120,8 +120,17 @@ export const ThinkingPart: Component<PartProps> = (props) => {
           onClick={toggle}
           type="button"
         >
-          <TbOutlineBrain class="h-4 w-4 shrink-0" />
-          <span>{headerLabel()}</span>
+          <TbOutlineBrain
+            class="h-4 w-4 shrink-0"
+            classList={{ "animate-pulse": isThinkingActive() }}
+          />
+          <span
+            classList={{
+              "animate-shimmer text-shimmer": isThinkingActive(),
+            }}
+          >
+            {headerLabel()}
+          </span>
         </button>
         <div
           class="grid transition-[grid-template-rows] duration-200 ease-in-out"
@@ -130,12 +139,13 @@ export const ThinkingPart: Component<PartProps> = (props) => {
         >
           <div class="min-h-0 overflow-hidden">
             <div
-              class="max-h-[200px] overflow-y-auto border-border/50 border-t px-4 py-2.5 text-sm italic leading-relaxed"
+              class="max-h-[200px] overflow-y-auto border-border/50 border-t px-4 py-2.5 italic leading-relaxed"
               onScroll={handleContentScroll}
               ref={setContentEl}
+              style={{ "--foreground": "var(--muted-foreground)" }}
             >
               <Markdown
-                class="prose-p:m-0"
+                class="prose-p:m-0 text-sm"
                 isStreaming={props.isStreaming}
                 text={text()}
               />
