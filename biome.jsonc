@@ -116,6 +116,16 @@
       "linter": {
         "enabled": false
       }
+    },
+    {
+      "includes": ["packages/ai/src/types.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
+          }
+        }
+      }
     }
   ]
 }
