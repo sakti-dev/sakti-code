@@ -1,6 +1,6 @@
 import { createMemo, type JSX, Show } from "solid-js";
-import { ProposedSessionCard } from "~/components/chat/parts/proposed-session-card";
-import { MessageTimeline } from "~/components/chat/timeline/message-timeline";
+import { ProposedSessionCard } from "~/components/chat-area/parts/proposed-session-card";
+import { MessageTimeline } from "~/components/chat-area/timeline/message-timeline";
 import { ChatInput } from "~/components/chat-input/chat-input";
 import { buildChatTurns } from "~/stores/session/turn-projection";
 import { useStore } from "~/stores/store-context";

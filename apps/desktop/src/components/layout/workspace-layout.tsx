@@ -1,5 +1,5 @@
 import { createEffect, createSignal, type JSX, onMount, Show } from "solid-js";
-import { TaskChatView } from "~/components/chat/task-chat-view";
+import { TaskChatView } from "~/components/chat-area/task-chat-view";
 import Home from "~/components/home/home";
 import { OnboardingPanel } from "~/components/onboarding/onboarding-panel";
 import { useStore } from "~/stores/store-context";
