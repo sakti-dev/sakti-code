@@ -16,7 +16,7 @@ export type MessagePart =
       result?: string;
       details?: unknown;
     }
-  | { type: "thinking"; text: string };
+  | { type: "thinking"; text: string; startedAt?: number; endedAt?: number };
 
 /**
  * Frontend representation of a chat message.

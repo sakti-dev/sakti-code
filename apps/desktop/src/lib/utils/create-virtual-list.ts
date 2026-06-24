@@ -62,6 +62,44 @@ interface ItemLayout {
   start: number;
 }
 
+interface VisibleRange {
+  first: number;
+  last: number;
+}
+
+function computeVisibleRange(
+  items: ItemLayout[],
+  scrollTop: number,
+  viewport: number,
+  overscan: number
+): VisibleRange {
+  const top = scrollTop - overscan * 300;
+  const bottom = scrollTop + viewport + overscan * 300;
+
+  let lo = 0;
+  let hi = items.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const item = items[mid];
+    if (item && item.start + item.size < top) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  const first = Math.max(0, lo - overscan);
+
+  let last = first;
+  while (last < items.length) {
+    const item = items[last];
+    if (!item || item.start > bottom) {
+      break;
+    }
+    last++;
+  }
+  return { first, last: Math.min(items.length, last + overscan) };
+}
+
 export function createVirtualList<T>(
   options: CreateVirtualListOptions<T>
 ): VirtualListControls {
@@ -82,6 +120,11 @@ export function createVirtualList<T>(
 
   // Measured actual sizes from ResizeObserver, keyed by item key.
   const measuredSizes = new Map<string, number>();
+  // Cached VirtualListItem objects so <For> sees stable references.
+  const itemCache = new Map<
+    string,
+    { index: number; key: string; size: number; start: number }
+  >();
   let itemObserver: ResizeObserver | undefined;
 
   // Layout: accumulated starts for all items.
@@ -118,38 +161,32 @@ export function createVirtualList<T>(
       return { items: [], totalHeight };
     }
 
-    const top = st - overscan * 300;
-    const bottom = st + viewport + overscan * 300;
-
-    let lo = 0;
-    let hi = items.length;
-    while (lo < hi) {
-      const mid = Math.floor((lo + hi) / 2);
-      const item = items[mid];
-      if (item && item.start + item.size < top) {
-        lo = mid + 1;
-      } else {
-        hi = mid;
-      }
-    }
-    const first = Math.max(0, lo - overscan);
-
-    let last = first;
-    while (last < items.length) {
-      const item = items[last];
-      if (!item || item.start > bottom) {
-        break;
-      }
-      last++;
-    }
-    last = Math.min(items.length, last + overscan);
+    const { first, last } = computeVisibleRange(items, st, viewport, overscan);
 
     const slice: VirtualListItem[] = [];
     for (let i = first; i < last; i++) {
       const l = items[i];
       const key = keys[i];
-      if (l && key) {
-        slice.push({ index: i, key, start: l.start, size: l.size });
+      if (!(l && key)) {
+        continue;
+      }
+      const cached = itemCache.get(key);
+      if (
+        cached &&
+        cached.index === i &&
+        cached.start === l.start &&
+        cached.size === l.size
+      ) {
+        slice.push(cached);
+      } else {
+        const obj: VirtualListItem = {
+          index: i,
+          key,
+          start: l.start,
+          size: l.size,
+        };
+        itemCache.set(key, obj);
+        slice.push(obj);
       }
     }
     return { items: slice, totalHeight };
@@ -223,6 +260,7 @@ export function createVirtualList<T>(
   onCleanup(() => {
     itemObserver?.disconnect();
     measuredSizes.clear();
+    itemCache.clear();
   });
 
   return {

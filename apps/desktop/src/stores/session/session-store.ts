@@ -86,6 +86,14 @@ export function createSessionStore(): SessionStore {
       setStore("messages", msgId, "content", (prev) => prev + delta);
       setStore("messages", msgId, "parts", (prev) => {
         const last = prev.at(-1);
+        if (last !== undefined && last.type === "thinking") {
+          const finalized = { ...last, endedAt: Date.now() };
+          return [
+            ...prev.slice(0, -1),
+            finalized,
+            { type: "text" as const, text: delta },
+          ];
+        }
         if (last !== undefined && last.type === "text") {
           return [...prev.slice(0, -1), { ...last, text: last.text + delta }];
         }
@@ -100,7 +108,10 @@ export function createSessionStore(): SessionStore {
         if (last !== undefined && last.type === "thinking") {
           return [...prev.slice(0, -1), { ...last, text: last.text + delta }];
         }
-        return [...prev, { type: "thinking" as const, text: delta }];
+        return [
+          ...prev,
+          { type: "thinking" as const, text: delta, startedAt: Date.now() },
+        ];
       });
     },
 
@@ -148,7 +159,17 @@ export function createSessionStore(): SessionStore {
         input,
         status: "running",
       };
-      setStore("messages", msgId, "parts", (prev) => [...prev, part]);
+      setStore("messages", msgId, "parts", (prev) => {
+        const last = prev.at(-1);
+        if (
+          last !== undefined &&
+          last.type === "thinking" &&
+          last.endedAt === undefined
+        ) {
+          return [...prev.slice(0, -1), { ...last, endedAt: Date.now() }, part];
+        }
+        return [...prev, part];
+      });
       setStore("streaming", "currentToolName", toolName);
       setStore("streaming", "phase", "tool_running");
     },
@@ -176,6 +197,17 @@ export function createSessionStore(): SessionStore {
     },
 
     finalizeMessage(msgId) {
+      setStore("messages", msgId, "parts", (prev) => {
+        const last = prev.at(-1);
+        if (
+          last !== undefined &&
+          last.type === "thinking" &&
+          last.endedAt === undefined
+        ) {
+          return [...prev.slice(0, -1), { ...last, endedAt: Date.now() }];
+        }
+        return prev;
+      });
       setStore("messages", msgId, "isStreaming", false);
     },
 

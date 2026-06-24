@@ -114,9 +114,15 @@ describe("session store — appendThinkingToken", () => {
 
     session.actions.appendThinkingToken("msg-1", "I should ");
 
-    expect(session.store.messages["msg-1"]!.parts).toEqual([
-      { type: "thinking", text: "I should " },
-    ]);
+    expect(session.store.messages["msg-1"]!.parts).toHaveLength(1);
+    expect(session.store.messages["msg-1"]!.parts[0]).toMatchObject({
+      type: "thinking",
+      text: "I should ",
+    });
+    expect(
+      (session.store.messages["msg-1"]!.parts[0] as { startedAt?: number })
+        .startedAt
+    ).toBeTypeOf("number");
   });
 
   it("appends to existing thinking part", () => {
@@ -151,10 +157,117 @@ describe("session store — appendThinkingToken", () => {
     session.actions.appendThinkingToken("msg-1", "Wait ");
 
     expect(session.store.messages["msg-1"]!.parts).toHaveLength(2);
-    expect(session.store.messages["msg-1"]!.parts[1]).toEqual({
+    expect(session.store.messages["msg-1"]!.parts[1]).toMatchObject({
       type: "thinking",
       text: "Wait ",
     });
+    expect(
+      (session.store.messages["msg-1"]!.parts[1] as { startedAt?: number })
+        .startedAt
+    ).toBeTypeOf("number");
+  });
+});
+
+describe("session store — thinking timing", () => {
+  it("sets startedAt when creating a new thinking part", () => {
+    const session = createSessionStore();
+    session.actions.addMessage(makeMessage({ id: "m1", parts: [] }));
+
+    const before = Date.now();
+    session.actions.appendThinkingToken("m1", "Hmm");
+    const after = Date.now();
+
+    const part = session.store.messages.m1!.parts[0] as {
+      startedAt?: number;
+    };
+    expect(part.startedAt).toBeGreaterThanOrEqual(before);
+    expect(part.startedAt).toBeLessThanOrEqual(after);
+  });
+
+  it("does not change startedAt when appending to existing thinking part", () => {
+    const session = createSessionStore();
+    session.actions.addMessage(makeMessage({ id: "m1", parts: [] }));
+
+    session.actions.appendThinkingToken("m1", "Hmm");
+    const part = session.store.messages.m1!.parts[0] as {
+      startedAt?: number;
+    };
+    const firstStartedAt = part.startedAt;
+
+    session.actions.appendThinkingToken("m1", " more");
+
+    const updatedPart = session.store.messages.m1!.parts[0] as {
+      startedAt?: number;
+    };
+    expect(updatedPart.startedAt).toBe(firstStartedAt);
+  });
+
+  it("sets endedAt on thinking part when text token arrives", () => {
+    const session = createSessionStore();
+    session.actions.addMessage(makeMessage({ id: "m1", parts: [] }));
+
+    session.actions.appendThinkingToken("m1", "Thinking...");
+    const before = Date.now();
+    session.actions.appendToken("m1", "Answer");
+    const after = Date.now();
+
+    const thinkingPart = session.store.messages.m1!.parts[0] as {
+      endedAt?: number;
+    };
+    expect(thinkingPart.endedAt).toBeGreaterThanOrEqual(before);
+    expect(thinkingPart.endedAt).toBeLessThanOrEqual(after);
+  });
+
+  it("sets endedAt on thinking part when tool call is added", () => {
+    const session = createSessionStore();
+    session.actions.addMessage(makeMessage({ id: "m1", parts: [] }));
+
+    session.actions.appendThinkingToken("m1", "Need to read...");
+    const before = Date.now();
+    session.actions.addToolCall("m1", "tc1", "read", {});
+    const after = Date.now();
+
+    const thinkingPart = session.store.messages.m1!.parts[0] as {
+      endedAt?: number;
+    };
+    expect(thinkingPart.endedAt).toBeGreaterThanOrEqual(before);
+    expect(thinkingPart.endedAt).toBeLessThanOrEqual(after);
+  });
+
+  it("sets endedAt on thinking part when message is finalized", () => {
+    const session = createSessionStore();
+    session.actions.addMessage(
+      makeMessage({ id: "m1", isStreaming: true, parts: [] })
+    );
+
+    session.actions.appendThinkingToken("m1", "Only thinking, no text");
+    const before = Date.now();
+    session.actions.finalizeMessage("m1");
+    const after = Date.now();
+
+    const thinkingPart = session.store.messages.m1!.parts[0] as {
+      endedAt?: number;
+    };
+    expect(thinkingPart.endedAt).toBeGreaterThanOrEqual(before);
+    expect(thinkingPart.endedAt).toBeLessThanOrEqual(after);
+  });
+
+  it("does not overwrite endedAt if already set", () => {
+    const session = createSessionStore();
+    session.actions.addMessage(makeMessage({ id: "m1", parts: [] }));
+
+    session.actions.appendThinkingToken("m1", "Thinking...");
+    session.actions.appendToken("m1", "Answer");
+    const firstEndedAt = (
+      session.store.messages.m1!.parts[0] as { endedAt?: number }
+    ).endedAt;
+
+    session.actions.finalizeMessage("m1");
+
+    const finalEndedAt = (
+      session.store.messages.m1!.parts[0] as { endedAt?: number }
+    ).endedAt;
+    expect(finalEndedAt).toBe(firstEndedAt);
   });
 });
 

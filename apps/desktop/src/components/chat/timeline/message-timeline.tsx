@@ -1,5 +1,6 @@
 import {
   type Accessor,
+  createMemo,
   createSignal,
   For,
   type JSX,
@@ -8,6 +9,7 @@ import {
   Show,
 } from "solid-js";
 import { cn } from "~/lib/utils";
+import type { VirtualListItem } from "~/lib/utils/create-virtual-list";
 import { createVirtualList } from "~/lib/utils/create-virtual-list";
 import type { ChatTurn } from "~/stores/session/turn-projection";
 import { CHAT_TIMELINE_CLASS } from "../layout";
@@ -29,6 +31,18 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
     getItemKey: (turn) => turn.id,
     items: props.turns,
     overscan: 4,
+  });
+
+  // Derive stable key strings + a lookup map from the virtual list state.
+  // <For> compares items by reference — strings are primitives (=== by value),
+  // so items with the same key survive state recomputes without DOM recreation.
+  const visibleKeys = createMemo(() => virtual.state().items.map((i) => i.key));
+  const itemByKey = createMemo(() => {
+    const map = new Map<string, VirtualListItem>();
+    for (const item of virtual.state().items) {
+      map.set(item.key, item);
+    }
+    return map;
   });
 
   onMount(() => {
@@ -78,28 +92,41 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
             width: "100%",
           }}
         >
-          <For each={virtual.state().items}>
-            {(item) => (
-              <div
-                ref={(el: HTMLDivElement) =>
-                  onCleanup(virtual.observeItem(el, item.index))
-                }
-                style={{
-                  left: 0,
-                  "padding-bottom": "20px",
-                  position: "absolute",
-                  top: 0,
-                  transform: `translateY(${item.start}px)`,
-                  width: "100%",
-                }}
-              >
-                <Show when={props.turns()[item.index]}>
-                  {(turn) => (
-                    <SessionTurn isStreaming={props.isStreaming} turn={turn} />
-                  )}
-                </Show>
-              </div>
-            )}
+          <For each={visibleKeys()}>
+            {(key) => {
+              const item = () => itemByKey().get(key);
+              return (
+                <div
+                  ref={(el: HTMLDivElement) => {
+                    const i = item();
+                    if (i) {
+                      onCleanup(virtual.observeItem(el, i.index));
+                    }
+                  }}
+                  style={{
+                    left: 0,
+                    "padding-bottom": "20px",
+                    position: "absolute",
+                    top: 0,
+                    transform: `translateY(${item()?.start ?? 0}px)`,
+                    width: "100%",
+                  }}
+                >
+                  <Show when={item()}>
+                    {(i) => (
+                      <Show when={props.turns()[i().index]}>
+                        {(turn) => (
+                          <SessionTurn
+                            isStreaming={props.isStreaming}
+                            turn={turn}
+                          />
+                        )}
+                      </Show>
+                    )}
+                  </Show>
+                </div>
+              );
+            }}
           </For>
         </div>
       </Show>
