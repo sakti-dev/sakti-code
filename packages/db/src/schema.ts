@@ -9,7 +9,6 @@ export const projects = sqliteTable("projects", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   cwd: text("cwd").notNull().unique(),
-  profileId: text("profile_id"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
@@ -22,7 +21,8 @@ export const sessions = sqliteTable("sessions", {
   // biome-ignore lint/suspicious/noExplicitAny: Drizzle self-referencing FK needs any return type
   parentSessionId: text("parent_session_id").references((): any => sessions.id),
   title: text("title"),
-  modelId: text("model_id").notNull(),
+  modelId: text("model_id"),
+  profileId: text("profile_id"),
   kind: text("kind").notNull().default("task"),
   thinkingLevel: text("thinking_level").notNull().default("off"),
   leafId: text("leaf_id"),

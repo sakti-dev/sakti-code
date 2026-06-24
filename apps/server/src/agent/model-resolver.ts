@@ -51,15 +51,10 @@ function getCachedProfiles(ctx: ServerContext): Profiles {
 
 export function resolveModel(
   ctx: ServerContext,
-  session: { projectId: string }
+  session: { id: string; projectId: string; profileId: string | null }
 ): ResolvedModel {
-  const project = ctx.repos.projects.findById(session.projectId);
-  if (!project) {
-    throw new Error(`Project not found: ${session.projectId}`);
-  }
-
   const profiles = getCachedProfiles(ctx);
-  const ref = resolveModelRef(profiles, project.profileId, "default");
+  const ref = resolveModelRef(profiles, session.profileId, "default");
   return {
     model: resolveModelInstance(ref.provider as KnownProvider, ref.model),
     modelId: ref.model,
@@ -70,7 +65,7 @@ export function resolveModel(
 
 export function resolveAuth(
   ctx: ServerContext,
-  session: { projectId: string }
+  session: { id: string; projectId: string; profileId: string | null }
 ): ResolvedAuth | undefined {
   const resolved = resolveModel(ctx, session);
   const apiKey = ctx.auth.getApiKey(resolved.provider);

@@ -77,7 +77,7 @@ export default function Sidebar() {
   };
 
   const handleNewSession = async (projectId: string) => {
-    const session = await actions.createSession(projectId, "default");
+    const session = await actions.createSession(projectId);
     openProjectTab(projectId, session?.id ?? null);
   };
 

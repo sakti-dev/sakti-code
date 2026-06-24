@@ -13,7 +13,7 @@ interface OnboardingPanelProps {
 }
 
 export function OnboardingPanel(props: OnboardingPanelProps): JSX.Element {
-  const { server, sessions, actions } = useStore();
+  const { sessions, actions } = useStore();
 
   const sessionStore = createMemo(() => {
     if (!props.intakeSessionId) {
@@ -47,10 +47,8 @@ export function OnboardingPanel(props: OnboardingPanelProps): JSX.Element {
       return;
     }
 
-    const modelId = server.store.sessions[props.intakeSessionId]?.modelId ?? "";
     const taskSession = await actions.createSession(
       props.projectId,
-      modelId,
       proposal.title
     );
     if (!taskSession) {

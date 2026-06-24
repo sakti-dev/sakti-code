@@ -7,7 +7,7 @@ describe("GET /api/sessions/:id/messages", () => {
   it("returns messages from the entry tree", async () => {
     const { app, ctx } = await makeApp([sessionsRoutes]);
     const project = await ctx.repos.projects.create("p", "/tmp");
-    const session = await ctx.repos.sessions.create(project.id, "test-model");
+    const session = await ctx.repos.sessions.create(project.id);
 
     await seedEntries(ctx.db, session.id, [
       { role: "user", content: "Hello" },
@@ -27,7 +27,7 @@ describe("GET /api/sessions/:id/messages", () => {
   it("returns empty array for session with no entries", async () => {
     const { app, ctx } = await makeApp([sessionsRoutes]);
     const project = await ctx.repos.projects.create("empty", "/tmp/empty");
-    const session = await ctx.repos.sessions.create(project.id, "test-model");
+    const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/messages`)

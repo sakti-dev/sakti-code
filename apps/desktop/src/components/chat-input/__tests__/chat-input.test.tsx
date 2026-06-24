@@ -12,7 +12,9 @@ vi.mock("~/stores/store-context", () => ({
         store: { streaming: { phase: "idle" }, messages: {}, messageOrder: [] },
       }),
     },
-    server: { store: { sessions: { s1: { modelId: "test-model" } } } },
+    server: {
+      store: { sessions: { s1: { modelId: "test-model", profileId: null } } },
+    },
     api: {
       api: {
         auth: { $get: async () => ({ ok: false, json: async () => [] }) },

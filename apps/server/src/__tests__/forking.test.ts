@@ -10,7 +10,7 @@ describe("fork routes", () => {
   it("POST /api/sessions/:id/fork creates a forked session with all entries", async () => {
     const { app, ctx } = await makeApp([forkingRoutes]);
     const project = await ctx.repos.projects.create("fork-test", "/tmp/fork");
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    const session = await ctx.repos.sessions.create(project.id);
 
     await seedEntries(ctx.db, session.id, [
       { role: "user", content: "Hello" },
@@ -58,7 +58,7 @@ describe("fork-messages route", () => {
   it("returns user/assistant messages with entryIndex and textPreview", async () => {
     const { app, ctx } = await makeApp([forkingRoutes]);
     const project = await ctx.repos.projects.create("fm-test", "/tmp/fm");
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    const session = await ctx.repos.sessions.create(project.id);
 
     await seedEntries(ctx.db, session.id, [
       { role: "user", content: "Hello" },
@@ -89,7 +89,7 @@ describe("fork-messages route", () => {
       "fm-empty",
       "/tmp/fm-empty"
     );
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/fork-messages`)
@@ -114,7 +114,7 @@ describe("export route", () => {
       "export-test",
       "/tmp/export"
     );
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o", {
+    const session = await ctx.repos.sessions.create(project.id, {
       title: "ExportMe",
     });
 
@@ -143,7 +143,7 @@ describe("export route", () => {
       "export-empty",
       "/tmp/export-empty"
     );
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/export-html`)
@@ -164,7 +164,7 @@ describe("export route", () => {
   it("W7: each assistant message emits a copy button", async () => {
     const { app, ctx } = await makeApp([exportRoutes]);
     const project = await ctx.repos.projects.create("w7", "/tmp/w7");
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    const session = await ctx.repos.sessions.create(project.id);
 
     await seedEntries(ctx.db, session.id, [
       { role: "assistant", content: "hi" },
@@ -182,7 +182,7 @@ describe("export route", () => {
   it("W8: header shows the session creation date, not today", async () => {
     const { app, ctx } = await makeApp([exportRoutes]);
     const project = await ctx.repos.projects.create("w8", "/tmp/w8");
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    const session = await ctx.repos.sessions.create(project.id);
     const created = new Date(session.createdAt).toISOString().slice(0, 10);
 
     const res = await app.request(

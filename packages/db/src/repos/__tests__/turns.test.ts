@@ -23,7 +23,7 @@ describe("TurnRepo", () => {
     sessions = new SessionRepo(db);
     turns = new TurnRepo(db);
     const project = await projects.create("p", "/tmp/test");
-    const session = await sessions.create(project.id, "model-1");
+    const session = await sessions.create(project.id);
     sessionId = session.id;
   });
 
@@ -79,7 +79,7 @@ describe("TurnRepo", () => {
 
   it("copyForFork copies all turns to a new session", async () => {
     const project2 = await projects.create("p2", "/tmp/test2");
-    const session2 = await sessions.create(project2.id, "model-1");
+    const session2 = await sessions.create(project2.id);
     turns.copyForFork(sessionId, session2.id);
     const sourceTurns = turns.listBySession(sessionId);
     const forkedTurns = turns.listBySession(session2.id);

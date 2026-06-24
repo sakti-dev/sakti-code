@@ -15,7 +15,7 @@ describe("session settings routes", () => {
   it("GET returns merged defaults for a new session", async () => {
     const { app, ctx } = await makeApp([sessionSettingsRoutes]);
     const project = await ctx.repos.projects.create("ss", "/tmp/ss");
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/settings`)
@@ -27,7 +27,7 @@ describe("session settings routes", () => {
   it("PATCH then GET round-trips a single key, others stay at defaults", async () => {
     const { app, ctx } = await makeApp([sessionSettingsRoutes]);
     const project = await ctx.repos.projects.create("ss-rt", "/tmp/ss-rt");
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    const session = await ctx.repos.sessions.create(project.id);
 
     const patch = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/settings`, {
@@ -47,7 +47,7 @@ describe("session settings routes", () => {
   it("PATCH coerces and round-trips a numeric/string key", async () => {
     const { app, ctx } = await makeApp([sessionSettingsRoutes]);
     const project = await ctx.repos.projects.create("ss-num", "/tmp/ss-num");
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    const session = await ctx.repos.sessions.create(project.id);
 
     await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/settings`, {
@@ -93,7 +93,7 @@ describe("session settings routes", () => {
   it("settings are stored under the session:{id}:{key} convention", async () => {
     const { app, ctx } = await makeApp([sessionSettingsRoutes]);
     const project = await ctx.repos.projects.create("ss-kv", "/tmp/ss-kv");
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+    const session = await ctx.repos.sessions.create(project.id);
 
     await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/settings`, {

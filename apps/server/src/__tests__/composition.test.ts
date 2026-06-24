@@ -41,7 +41,7 @@ describe("route composition", () => {
     const project = await ctx.repos.projects.create("p", tempDir);
     seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
     ctx.auth.set("openai", "test-key-1234567890");
-    const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
+    const session = await ctx.repos.sessions.create(project.id);
 
     const statsRes = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/stats`)

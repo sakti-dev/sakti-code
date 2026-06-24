@@ -7,7 +7,7 @@ describe("stats routes", () => {
   it("GET /api/sessions/:id/stats derives activeMessageCount and costs from entries", async () => {
     const { app, ctx } = await makeApp([statsRoutes]);
     const project = await ctx.repos.projects.create("p", "/tmp");
-    const session = await ctx.repos.sessions.create(project.id, "test-model");
+    const session = await ctx.repos.sessions.create(project.id);
 
     await seedEntries(ctx.db, session.id, [
       { role: "user", content: "hello" },
@@ -49,7 +49,7 @@ describe("stats routes", () => {
   it("returns zeros for session with no entries", async () => {
     const { app, ctx } = await makeApp([statsRoutes]);
     const project = await ctx.repos.projects.create("empty", "/tmp/empty");
-    const session = await ctx.repos.sessions.create(project.id, "test-model");
+    const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/stats`)
@@ -67,7 +67,7 @@ describe("stats routes", () => {
   it("accumulates cache tokens across multiple assistant turns", async () => {
     const { app, ctx } = await makeApp([statsRoutes]);
     const project = await ctx.repos.projects.create("multi", "/tmp/multi");
-    const session = await ctx.repos.sessions.create(project.id, "test-model");
+    const session = await ctx.repos.sessions.create(project.id);
 
     await seedEntries(ctx.db, session.id, [
       { role: "user", content: "first" },

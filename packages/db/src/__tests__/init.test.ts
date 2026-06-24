@@ -51,20 +51,20 @@ describe("initDatabase", () => {
 
     // Can insert into each table
     db.prepare(
-      "INSERT INTO projects (id, name, cwd, profile_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run("p1", "Test", "/tmp/test", null, 1, 1);
+      "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+    ).run("p1", "Test", "/tmp/test", 1, 1);
     db.prepare(
-      "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
-    ).run("s1", "p1", "claude-sonnet", 1, 1);
+      "INSERT INTO sessions (id, project_id, model_id, profile_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run("s1", "p1", "claude-sonnet", null, 1, 1);
     db.prepare(
       "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)"
     ).run("theme", "dark", 1);
 
-    // profile_id column exists and is nullable
-    const project = db
-      .prepare("SELECT profile_id FROM projects WHERE id = ?")
-      .get("p1") as { profile_id: string | null };
-    expect(project.profile_id).toBeNull();
+    // profile_id column on sessions exists and is nullable
+    const session = db
+      .prepare("SELECT profile_id FROM sessions WHERE id = ?")
+      .get("s1") as { profile_id: string | null };
+    expect(session.profile_id).toBeNull();
 
     expect(drizzleDb).toBeDefined();
   });

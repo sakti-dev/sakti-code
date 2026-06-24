@@ -31,13 +31,13 @@ describe("sessions kind column", () => {
 
   it("defaults to 'task' when not specified", async () => {
     const project = await projectRepo.create("test", "/tmp/test");
-    const session = await sessionRepo.create(project.id, "test-model");
+    const session = await sessionRepo.create(project.id);
     expect(session.kind).toBe("task");
   });
 
   it("can be set to 'intake'", async () => {
     const project = await projectRepo.create("test2", "/tmp/test2");
-    const session = await sessionRepo.create(project.id, "test-model", {
+    const session = await sessionRepo.create(project.id, {
       kind: "intake",
     });
     expect(session.kind).toBe("intake");

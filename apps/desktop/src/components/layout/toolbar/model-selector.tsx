@@ -19,7 +19,7 @@ interface Model {
 }
 
 export default function ModelSelector() {
-  const { actions, api, server } = useStore();
+  const { api, server } = useStore();
 
   const [providers, { refetch: refetchProviders }] = createResource(
     async () => {
@@ -64,6 +64,9 @@ export default function ModelSelector() {
     }
     const models = providerModels();
     if (!models) {
+      if (!session.modelId) {
+        return "Select profile";
+      }
       return session.modelId;
     }
     for (const providerModelsList of Object.values(models)) {
@@ -72,16 +75,14 @@ export default function ModelSelector() {
         return found.name || found.id;
       }
     }
+    if (!session.modelId) {
+      return "Select profile";
+    }
     return session.modelId;
   };
 
-  const handleSelect = async (model: Model) => {
-    const session = activeSession();
-    await actions.selectModel(
-      session ? session.id : null,
-      model.provider,
-      model.id
-    );
+  const handleSelect = async (_model: Model) => {
+    // TODO: replace with profile selector in follow-up plan
   };
 
   const providerLabel = (provider: string) => {

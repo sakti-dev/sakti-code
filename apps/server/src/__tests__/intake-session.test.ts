@@ -50,7 +50,7 @@ describe("POST /api/projects/:id/intake-session", () => {
     expect(res.status).toBe(404);
   });
 
-  it("creates session with empty modelId when no model is configured", async () => {
+  it("creates session with null profileId when no profile is configured", async () => {
     const { app, ctx } = await makeApp([projectsRoutes, intakeSessionRoutes]);
     const project = await ctx.repos.projects.create("demo", "/tmp/demo");
 
@@ -65,6 +65,6 @@ describe("POST /api/projects/:id/intake-session", () => {
     expect(res.status).toBe(201);
     const session = await res.json();
     expect(session.kind).toBe("intake");
-    expect(session.modelId).toBe("");
+    expect(session.profileId).toBeNull();
   });
 });

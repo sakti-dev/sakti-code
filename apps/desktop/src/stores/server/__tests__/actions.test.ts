@@ -114,6 +114,7 @@ describe("actions", () => {
                 projectId: "p1",
                 title: "Sess",
                 modelId: "gpt-4",
+                profileId: null,
                 thinkingLevel: "off",
                 createdAt: 1,
                 updatedAt: 1,
@@ -192,187 +193,68 @@ describe("actions", () => {
     });
   });
 
-  describe("selectModel", () => {
-    it("writes provider+model to default profile in profiles.json", async () => {
-      const deps = makeDeps();
-      const existingProfiles = {
-        defaultProfile: "default",
-        profiles: {
-          default: {
-            name: "Default",
-            models: { default: { provider: "", model: "" } },
-          },
-        },
-      };
-      let writtenBody: unknown;
-      const mockApi = {
-        api: {
-          profiles: {
-            $get: vi.fn(() => okRes(existingProfiles)),
-            $put: vi.fn((args: { json: unknown }) => {
-              writtenBody = args.json;
-              return okRes(null);
-            }),
-          },
-        },
-      };
-      const actions = createActions(mockApi as never, makeMockWs(), deps);
-
-      await actions.selectModel(null, "anthropic", "claude-sonnet-4-20250514");
-
-      expect(mockApi.api.profiles.$get).toHaveBeenCalledOnce();
-      expect(mockApi.api.profiles.$put).toHaveBeenCalledOnce();
-      expect(writtenBody).toEqual({
-        defaultProfile: "default",
-        profiles: {
-          default: {
-            name: "Default",
-            models: {
-              default: {
-                provider: "anthropic",
-                model: "claude-sonnet-4-20250514",
-              },
-            },
-          },
-        },
-      });
-    });
-
-    it("preserves existing thinkingLevel when updating model", async () => {
-      const deps = makeDeps();
-      const existingProfiles = {
-        defaultProfile: "default",
-        profiles: {
-          default: {
-            name: "Default",
-            models: {
-              default: {
-                provider: "openai",
-                model: "gpt-4",
-                thinkingLevel: "high",
-              },
-            },
-          },
-        },
-      };
-      let writtenBody: unknown;
-      const mockApi = {
-        api: {
-          profiles: {
-            $get: vi.fn(() => okRes(existingProfiles)),
-            $put: vi.fn((args: { json: unknown }) => {
-              writtenBody = args.json;
-              return okRes(null);
-            }),
-          },
-        },
-      };
-      const actions = createActions(mockApi as never, makeMockWs(), deps);
-
-      await actions.selectModel(null, "anthropic", "claude-sonnet-4-20250514");
-
-      const written = writtenBody as {
-        profiles: {
-          default: { models: { default: { thinkingLevel?: string } } };
-        };
-      };
-      expect(written.profiles.default.models.default.thinkingLevel).toBe(
-        "high"
-      );
-    });
-
-    it("updates session.modelId for display when sessionId provided", async () => {
+  describe("selectProfile", () => {
+    it("PATCHes session profileId on server", async () => {
       const deps = makeDeps();
       deps.serverStore.actions.addSession({
         id: "s1",
         projectId: "p1",
         title: null,
-        modelId: "",
+        modelId: null,
+        profileId: null,
         thinkingLevel: "off",
         kind: "task",
         createdAt: 1,
         updatedAt: 1,
       });
-      const existingProfiles = {
-        defaultProfile: "default",
-        profiles: {
-          default: {
-            name: "Default",
-            models: { default: { provider: "", model: "" } },
-          },
-        },
-      };
       const mockApi = {
         api: {
-          profiles: {
-            $get: vi.fn(() => okRes(existingProfiles)),
-            $put: vi.fn(() => okRes(null)),
+          sessions: {
+            ":id": {
+              $patch: vi.fn(() =>
+                okRes({
+                  id: "s1",
+                  projectId: "p1",
+                  title: null,
+                  modelId: null,
+                  profileId: "fast",
+                  thinkingLevel: "off",
+                  kind: "task",
+                  createdAt: 1,
+                  updatedAt: 1,
+                })
+              ),
+            },
           },
         },
       };
       const actions = createActions(mockApi as never, makeMockWs(), deps);
 
-      await actions.selectModel("s1", "anthropic", "claude-sonnet-4-20250514");
+      await actions.selectProfile("s1", "fast");
 
-      expect(deps.serverStore.store.sessions.s1?.modelId).toBe(
-        "claude-sonnet-4-20250514"
-      );
+      expect(mockApi.api.sessions[":id"].$patch).toHaveBeenCalledWith({
+        param: { id: "s1" },
+        json: { profileId: "fast" },
+      });
+      expect(deps.serverStore.store.sessions.s1?.profileId).toBe("fast");
     });
 
-    it("preserves other profiles and modes when writing", async () => {
+    it("does nothing when sessionId is null", async () => {
       const deps = makeDeps();
-      const existingProfiles = {
-        defaultProfile: "default",
-        profiles: {
-          default: {
-            name: "Default",
-            models: {
-              default: { provider: "openai", model: "gpt-4" },
-              intake: { provider: "openai", model: "gpt-4o-mini" },
-            },
-          },
-          custom: {
-            name: "Custom",
-            models: {
-              default: { provider: "anthropic", model: "claude-3-haiku" },
-            },
-          },
-        },
-      };
-      let writtenBody: unknown;
       const mockApi = {
         api: {
-          profiles: {
-            $get: vi.fn(() => okRes(existingProfiles)),
-            $put: vi.fn((args: { json: unknown }) => {
-              writtenBody = args.json;
-              return okRes(null);
-            }),
+          sessions: {
+            ":id": {
+              $patch: vi.fn(),
+            },
           },
         },
       };
       const actions = createActions(mockApi as never, makeMockWs(), deps);
 
-      await actions.selectModel(null, "google", "gemini-2.5-pro");
+      await actions.selectProfile(null, "fast");
 
-      const written = writtenBody as {
-        profiles: Record<
-          string,
-          { models: Record<string, { provider: string; model: string }> }
-        >;
-      };
-      // Other profile untouched
-      expect(written.profiles.custom!.models.default!.model).toBe(
-        "claude-3-haiku"
-      );
-      // Other mode (intake) untouched
-      expect(written.profiles.default!.models.intake?.model).toBe(
-        "gpt-4o-mini"
-      );
-      // Default mode updated
-      expect(written.profiles.default!.models.default!.model).toBe(
-        "gemini-2.5-pro"
-      );
+      expect(mockApi.api.sessions[":id"].$patch).not.toHaveBeenCalled();
     });
   });
 

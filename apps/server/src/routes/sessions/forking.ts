@@ -30,15 +30,15 @@ export const forkingRoutes = new Hono()
       : session.title;
     const forkedTitle = baseTitle ? `Fork of ${baseTitle}` : "Fork";
 
-    const newSession = await ctx.repos.sessions.create(
-      session.projectId,
-      session.modelId,
-      {
-        title: forkedTitle,
-        thinkingLevel: session.thinkingLevel,
-        parentSessionId: id,
-      }
-    );
+    const newSession = await ctx.repos.sessions.create(session.projectId, {
+      title: forkedTitle,
+      parentSessionId: id,
+      ...(session.profileId === null ? {} : { profileId: session.profileId }),
+      ...(session.modelId === null || session.modelId === undefined
+        ? {}
+        : { modelId: session.modelId }),
+      thinkingLevel: session.thinkingLevel,
+    });
 
     const forkedStorage = createSessionStorage(ctx, newSession.id);
 

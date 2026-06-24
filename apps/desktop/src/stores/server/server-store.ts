@@ -12,7 +12,8 @@ export interface SessionMeta {
   createdAt: number;
   id: string;
   kind: "intake" | "task";
-  modelId: string;
+  modelId: string | null;
+  profileId: string | null;
   projectId: string;
   thinkingLevel: string;
   title: string | null;

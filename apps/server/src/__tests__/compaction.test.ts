@@ -63,7 +63,7 @@ describe("compaction route", () => {
     const project = await ctx.repos.projects.create("p", tempDir);
     seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
     ctx.auth.set("openai", "test-key-1234567890");
-    const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
+    const session = await ctx.repos.sessions.create(project.id);
 
     await seedEntries(ctx.db, session.id, 200);
 
@@ -92,7 +92,7 @@ describe("compaction route", () => {
   it("returns 500 when no model configured (empty default profile)", async () => {
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p2", tempDir);
-    const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
+    const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
@@ -116,7 +116,7 @@ describe("compaction route", () => {
     const project = await ctx.repos.projects.create("p3", tempDir);
     seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
     ctx.auth.set("openai", "test-key-1234567890");
-    const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
+    const session = await ctx.repos.sessions.create(project.id);
     await seedEntries(ctx.db, session.id, 200);
 
     const res = await app.request(
@@ -134,7 +134,7 @@ describe("compaction route", () => {
     const { app, ctx } = await makeApp([compactionRoutes]);
     const project = await ctx.repos.projects.create("p4", tempDir);
     seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
-    const session = await ctx.repos.sessions.create(project.id, TEST_MODEL_ID);
+    const session = await ctx.repos.sessions.create(project.id);
     await seedEntries(ctx.db, session.id, 50);
 
     const res = await app.request(

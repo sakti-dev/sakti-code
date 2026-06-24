@@ -40,17 +40,6 @@ describe("ProjectRepo", () => {
   test("findByCwd returns undefined for missing", () => {
     expect(repo.findByCwd("/nonexistent")).toBeUndefined();
   });
-
-  test("created project has null profileId", async () => {
-    const p = await repo.create("profile-test", "/tmp/profile-test");
-    expect(p.profileId).toBeNull();
-  });
-
-  test("update can set profileId", async () => {
-    const p = await repo.create("profile-set", "/tmp/profile-set");
-    const updated = await repo.update(p.id, { profileId: "fast" });
-    expect(updated.profileId).toBe("fast");
-  });
 });
 
 describe("SessionRepo", () => {
@@ -74,11 +63,10 @@ describe("SessionRepo", () => {
 
   test("create + findById + listByProject", async () => {
     const proj = await projectRepo.create("p", "/tmp/p");
-    const s = await repo.create(proj.id, "claude-sonnet", {
-      title: "First session",
-    });
+    const s = await repo.create(proj.id, { title: "First session" });
     expect(s.id).toBeDefined();
-    expect(s.modelId).toBe("claude-sonnet");
+    expect(s.modelId).toBeNull();
+    expect(s.profileId).toBeNull();
     expect(s.title).toBe("First session");
 
     const found = repo.findById(s.id);
@@ -86,6 +74,27 @@ describe("SessionRepo", () => {
 
     const list = repo.listByProject(proj.id);
     expect(list.length).toBe(1);
+  });
+
+  test("create with profileId", async () => {
+    const proj = await projectRepo.create("p-prof", "/tmp/p-prof");
+    const s = await repo.create(proj.id, { profileId: "fast" });
+    expect(s.profileId).toBe("fast");
+    expect(s.modelId).toBeNull();
+  });
+
+  test("update can set profileId", async () => {
+    const proj = await projectRepo.create("p-upd", "/tmp/p-upd");
+    const s = await repo.create(proj.id);
+    const updated = await repo.update(s.id, { profileId: "balanced" });
+    expect(updated.profileId).toBe("balanced");
+  });
+
+  test("update can clear profileId", async () => {
+    const proj = await projectRepo.create("p-clear", "/tmp/p-clear");
+    const s = await repo.create(proj.id, { profileId: "fast" });
+    const updated = await repo.update(s.id, { profileId: null });
+    expect(updated.profileId).toBeNull();
   });
 });
 

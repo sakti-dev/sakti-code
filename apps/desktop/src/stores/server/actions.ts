@@ -24,7 +24,6 @@ export interface Actions {
   addProject: (cwd: string) => Promise<Project | undefined>;
   createSession: (
     projectId: string,
-    modelId: string,
     title?: string
   ) => Promise<SessionMeta | undefined>;
   followUpRun: (sessionId: string, text: string) => void;
@@ -35,11 +34,7 @@ export interface Actions {
   replayReset: (sessionId: string) => void;
   replayResume: (sessionId: string) => void;
   replayStart: (sessionId: string) => void;
-  selectModel: (
-    sessionId: string | null,
-    provider: string,
-    model: string
-  ) => Promise<void>;
+  selectProfile: (sessionId: string | null, profileId: string) => Promise<void>;
   sendPrompt: (sessionId: string, text: string) => void;
   steerRun: (sessionId: string, text: string) => void;
   upsertIntakeSession: (projectId: string) => Promise<SessionMeta | undefined>;
@@ -98,12 +93,11 @@ export function createActions(
       }
     },
 
-    async createSession(projectId, modelId, title) {
+    async createSession(projectId, title) {
       try {
         const res = await api.api.sessions.$post({
           json: {
             projectId,
-            modelId,
             ...(title === undefined ? {} : { title }),
           },
         });
@@ -200,54 +194,25 @@ export function createActions(
       ws.send({ type: "abort", sessionId });
     },
 
-    async selectModel(sessionId, provider, model) {
+    async selectProfile(sessionId, profileId) {
+      if (!sessionId) {
+        return;
+      }
       try {
-        const getRes = await api.api.profiles.$get();
-        if (!getRes.ok) {
+        const res = await api.api.sessions[":id"].$patch({
+          param: { id: sessionId },
+          json: { profileId },
+        });
+        if (!res.ok) {
           return;
         }
-        const profiles = (await getRes.json()) as {
-          defaultProfile: string;
-          profiles: Record<
-            string,
-            {
-              name: string;
-              models: Record<
-                string,
-                { provider: string; model: string; thinkingLevel?: string }
-              >;
-            }
-          >;
-        };
-
-        const profileId = profiles.defaultProfile;
-        const profile = profiles.profiles[profileId];
-        if (!profile) {
-          return;
-        }
-        const currentRef = profile.models.default ?? {
-          provider: "",
-          model: "",
-        };
-        profile.models.default = {
-          provider,
-          model,
-          ...(currentRef.thinkingLevel === undefined
-            ? {}
-            : { thinkingLevel: currentRef.thinkingLevel }),
-        };
-
-        const putRes = await api.api.profiles.$put({ json: profiles });
-        if (!putRes.ok) {
-          return;
-        }
-
-        if (sessionId) {
-          server.actions.updateSession(sessionId, { modelId: model });
-        }
+        const updated = (await res.json()) as SessionMeta;
+        server.actions.updateSession(sessionId, {
+          profileId: updated.profileId,
+        });
       } catch (error) {
         setLastError(
-          error instanceof Error ? error.message : "Failed to select model"
+          error instanceof Error ? error.message : "Failed to select profile"
         );
       }
     },

@@ -1,3 +1,4 @@
+import { TbOutlineChevronRight } from "solid-icons/tb";
 import {
   type Accessor,
   createEffect,
@@ -6,12 +7,13 @@ import {
   For,
   Index,
   type JSX,
+  on,
   onCleanup,
   Show,
 } from "solid-js";
 import type { ChatTurn } from "~/stores/session/turn-projection";
 import { getUserText } from "~/stores/session/turn-projection";
-import type { MessagePart } from "~/stores/types.ts";
+import type { MessagePart, UIMessage } from "~/stores/types.ts";
 import { CHAT_COMPACT_STACK_GAP_CLASS, CHAT_STACK_GAP_CLASS } from "../layout";
 import { Part } from "../parts/message-part";
 import { PartFooter } from "../parts/part-footer";
@@ -51,9 +53,30 @@ function formatWorkDuration(ms: number): string {
   return `${seconds}s`;
 }
 
+function MessageContent(msg: UIMessage, isStreaming: boolean): JSX.Element {
+  return (
+    <div class={CHAT_COMPACT_STACK_GAP_CLASS}>
+      <Index each={msg.parts}>
+        {(part) => (
+          <div class="flex flex-col gap-1">
+            <Part isStreaming={isStreaming} part={part()} />
+            <Show when={!part().isStreaming}>
+              <PartFooter
+                copyText={getPartCopyText(part())}
+                timestamp={msg.timestamp}
+              />
+            </Show>
+          </div>
+        )}
+      </Index>
+    </div>
+  );
+}
+
 export function SessionTurn(props: SessionTurnProps): JSX.Element {
   const turn = props.turn;
   const [liveMs, setLiveMs] = createSignal(0);
+  const [expanded, setExpanded] = createSignal(false);
 
   createEffect(() => {
     const startedAt = turn().startedAt;
@@ -69,6 +92,15 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
     onCleanup(() => clearInterval(timer));
   });
 
+  createEffect(
+    on(
+      () => turn().endedAt,
+      (endedAt) => {
+        setExpanded(endedAt === null);
+      }
+    )
+  );
+
   const durationLabel = createMemo(() => {
     const { startedAt, endedAt } = turn();
     if (startedAt === null) {
@@ -78,6 +110,24 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
       return formatWorkDuration(endedAt - startedAt);
     }
     return formatWorkDuration(liveMs());
+  });
+
+  const canCollapse = createMemo(() => {
+    const t = turn();
+    return t.endedAt !== null && !t.error && t.assistantMessages.length > 1;
+  });
+
+  const intermediateMessages = createMemo(() => {
+    const msgs = turn().assistantMessages;
+    if (msgs.length <= 1) {
+      return [];
+    }
+    return msgs.slice(0, -1);
+  });
+
+  const summaryMessage = createMemo(() => {
+    const msgs = turn().assistantMessages;
+    return msgs.at(-1) ?? null;
   });
 
   return (
@@ -106,7 +156,19 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
       </Show>
 
       <Show when={durationLabel()}>
-        <div class="flex items-center gap-2 border-border/50 border-b px-3 py-1.5 text-muted-foreground text-xs">
+        <button
+          class="flex w-full items-center gap-2 border-border/50 border-b px-3 py-1.5 text-left text-muted-foreground text-xs transition-colors hover:bg-muted/30 disabled:cursor-default disabled:hover:bg-transparent"
+          data-slot="turn-header"
+          disabled={!canCollapse()}
+          onClick={() => setExpanded((e) => !e)}
+          type="button"
+        >
+          <Show when={canCollapse()}>
+            <TbOutlineChevronRight
+              class="h-3 w-3 shrink-0 transition-transform duration-200"
+              classList={{ "rotate-90": expanded() }}
+            />
+          </Show>
           <Show when={turn().endedAt === null}>
             <div class="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
           </Show>
@@ -114,12 +176,13 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
             {turn().endedAt === null ? "Working for " : "Worked for "}
             {durationLabel()}
           </span>
-        </div>
+        </button>
       </Show>
 
-      <Show when={turn().assistantMessages.length > 0}>
+      {/* Can't collapse (streaming, replay, error, single msg): show ALL messages */}
+      <Show when={!canCollapse() && turn().assistantMessages.length > 0}>
         <div
-          class={"flex flex-col gap-3 px-3 [overflow-anchor:none]"}
+          class="flex flex-col gap-3 px-3 [overflow-anchor:none]"
           data-slot="session-turn-stream"
         >
           <Show when={turn().error && !turn().working}>
@@ -127,27 +190,39 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               {turn().error}
             </div>
           </Show>
-
           <For each={turn().assistantMessages}>
-            {(msg) => (
-              <div class={CHAT_COMPACT_STACK_GAP_CLASS}>
-                <Index each={msg.parts}>
-                  {(part) => (
-                    <div class="flex flex-col gap-1">
-                      <Part isStreaming={props.isStreaming()} part={part()} />
-                      <Show when={!part().isStreaming}>
-                        <PartFooter
-                          copyText={getPartCopyText(part())}
-                          timestamp={msg.timestamp}
-                        />
-                      </Show>
-                    </div>
-                  )}
-                </Index>
-              </div>
-            )}
+            {(msg) => MessageContent(msg, props.isStreaming())}
           </For>
         </div>
+      </Show>
+
+      {/* Collapsible: accordion intermediate + always-visible summary */}
+      <Show when={canCollapse()}>
+        <div
+          class="grid transition-[grid-template-rows] duration-200 ease-in-out"
+          style={{
+            "grid-template-rows": expanded() ? "1fr" : "0fr",
+          }}
+        >
+          <div class="min-h-0 overflow-hidden">
+            <div class="flex flex-col gap-3 px-3 py-2 opacity-50 [overflow-anchor:none]">
+              <For each={intermediateMessages()}>
+                {(msg) => MessageContent(msg, props.isStreaming())}
+              </For>
+            </div>
+          </div>
+        </div>
+
+        <Show when={summaryMessage()}>
+          {(msg) => (
+            <div
+              class="flex flex-col gap-3 px-3 [overflow-anchor:none]"
+              data-slot="session-turn-stream"
+            >
+              {MessageContent(msg(), props.isStreaming())}
+            </div>
+          )}
+        </Show>
       </Show>
     </div>
   );

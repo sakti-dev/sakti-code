@@ -19,7 +19,7 @@ interface Model {
 }
 
 export function ModelSelectorButton(props: { sessionId: string | null }) {
-  const { actions, api, server } = useStore();
+  const { api, server } = useStore();
   const [isOpen, setIsOpen] = createSignal(false);
   const [searchQuery, setSearchQuery] = createSignal("");
 
@@ -139,13 +139,8 @@ export function ModelSelectorButton(props: { sessionId: string | null }) {
     return found ? (found.name ?? found.id) : s.modelId;
   };
 
-  const handleSelect = async (modelId: string, providerId: string) => {
-    log.debug("handleSelect", {
-      modelId,
-      providerId,
-      sessionId: props.sessionId,
-    });
-    await actions.selectModel(props.sessionId, providerId, modelId);
+  const handleSelect = async (_modelId: string, _providerId: string) => {
+    // TODO: replace with profile selector in follow-up plan
   };
 
   return (
@@ -169,7 +164,7 @@ export function ModelSelectorButton(props: { sessionId: string | null }) {
           onSelect={handleSelect}
           open={isOpen()}
           searchQuery={searchQuery()}
-          selectedModelId={session()?.modelId}
+          selectedModelId={session()?.modelId ?? undefined}
         />
       </div>
     </Show>

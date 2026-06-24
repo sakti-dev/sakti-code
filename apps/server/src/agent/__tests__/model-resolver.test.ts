@@ -10,7 +10,6 @@ const TEST_MODEL_ID = "gpt-4";
 const PROFILE_NOT_FOUND_RE = /nonexistent/;
 const MISSING_DEFAULT_RE = /models\.default/;
 const NO_MODEL_CONFIGURED_RE = /no model configured/;
-const PROJECT_NOT_FOUND_RE = /Project not found/;
 
 function makeProfilesMock(
   profiles: unknown,
@@ -24,7 +23,7 @@ function makeProfilesMock(
 
 function makeCtx(
   profilesMock: ReturnType<typeof makeProfilesMock>,
-  project: { id: string; profileId: string | null } | null,
+  session: { projectId: string; profileId: string | null } | null,
   auth?: { getApiKey: (provider: string) => string | undefined }
 ) {
   return {
@@ -33,7 +32,26 @@ function makeCtx(
     repos: {
       projects: {
         findById: vi.fn((id: string) =>
-          project && project.id === id ? project : null
+          session && session.projectId === id
+            ? { id, name: "test", cwd: "/tmp", createdAt: 0, updatedAt: 0 }
+            : null
+        ),
+      },
+      sessions: {
+        findById: vi.fn(() =>
+          session
+            ? {
+                id: "sess-1",
+                projectId: session.projectId,
+                profileId: session.profileId,
+                modelId: null,
+                title: null,
+                thinkingLevel: "off",
+                kind: "task",
+                createdAt: 0,
+                updatedAt: 0,
+              }
+            : null
         ),
       },
     },
@@ -66,11 +84,15 @@ describe("resolveModel / resolveAuth", () => {
         1000
       );
       const ctx = makeCtx(profilesMock, {
-        id: "proj-1",
+        projectId: "proj-1",
         profileId: null,
       });
 
-      const result = resolveModel(ctx, { projectId: "proj-1" });
+      const result = resolveModel(ctx, {
+        id: "sess-1",
+        projectId: "proj-1",
+        profileId: null,
+      });
 
       expect(result.provider).toBe("openai");
       expect(result.modelId).toBe(TEST_MODEL_ID);
@@ -78,7 +100,7 @@ describe("resolveModel / resolveAuth", () => {
       expect(result.model).toBeDefined();
     });
 
-    it("resolves via project.profileId override", () => {
+    it("resolves via session.profileId override", () => {
       const profilesMock = makeProfilesMock(
         {
           defaultProfile: "balanced",
@@ -100,11 +122,15 @@ describe("resolveModel / resolveAuth", () => {
         1000
       );
       const ctx = makeCtx(profilesMock, {
-        id: "proj-1",
+        projectId: "proj-1",
         profileId: "fast",
       });
 
-      const result = resolveModel(ctx, { projectId: "proj-1" });
+      const result = resolveModel(ctx, {
+        id: "sess-1",
+        projectId: "proj-1",
+        profileId: "fast",
+      });
 
       expect(result.provider).toBe("groq");
       expect(result.modelId).toBe("llama-3.1-8b-instant");
@@ -126,12 +152,12 @@ describe("resolveModel / resolveAuth", () => {
         1000
       );
       const ctx = makeCtx(profilesMock, {
-        id: "proj-1",
+        projectId: "proj-1",
         profileId: null,
       });
 
-      resolveModel(ctx, { projectId: "proj-1" });
-      resolveModel(ctx, { projectId: "proj-1" });
+      resolveModel(ctx, { id: "sess-1", projectId: "proj-1", profileId: null });
+      resolveModel(ctx, { id: "sess-1", projectId: "proj-1", profileId: null });
 
       expect(profilesMock.read).toHaveBeenCalledTimes(1);
     });
@@ -152,11 +178,11 @@ describe("resolveModel / resolveAuth", () => {
         1000
       );
       const ctx = makeCtx(profilesMock, {
-        id: "proj-1",
+        projectId: "proj-1",
         profileId: null,
       });
 
-      resolveModel(ctx, { projectId: "proj-1" });
+      resolveModel(ctx, { id: "sess-1", projectId: "proj-1", profileId: null });
       expect(profilesMock.read).toHaveBeenCalledTimes(1);
 
       // Simulate external edit to profiles.json
@@ -176,7 +202,11 @@ describe("resolveModel / resolveAuth", () => {
         },
       });
 
-      const result = resolveModel(ctx, { projectId: "proj-1" });
+      const result = resolveModel(ctx, {
+        id: "sess-1",
+        projectId: "proj-1",
+        profileId: null,
+      });
 
       expect(profilesMock.read).toHaveBeenCalledTimes(2);
       expect(result.provider).toBe("anthropic");
@@ -198,13 +228,17 @@ describe("resolveModel / resolveAuth", () => {
         1000
       );
       const ctx = makeCtx(profilesMock, {
-        id: "proj-1",
+        projectId: "proj-1",
         profileId: "nonexistent",
       });
 
-      expect(() => resolveModel(ctx, { projectId: "proj-1" })).toThrow(
-        PROFILE_NOT_FOUND_RE
-      );
+      expect(() =>
+        resolveModel(ctx, {
+          id: "sess-1",
+          projectId: "proj-1",
+          profileId: "nonexistent",
+        })
+      ).toThrow(PROFILE_NOT_FOUND_RE);
     });
 
     it("throws when profile has no models.default", () => {
@@ -221,13 +255,17 @@ describe("resolveModel / resolveAuth", () => {
         1000
       );
       const ctx = makeCtx(profilesMock, {
-        id: "proj-1",
+        projectId: "proj-1",
         profileId: null,
       });
 
-      expect(() => resolveModel(ctx, { projectId: "proj-1" })).toThrow(
-        MISSING_DEFAULT_RE
-      );
+      expect(() =>
+        resolveModel(ctx, {
+          id: "sess-1",
+          projectId: "proj-1",
+          profileId: null,
+        })
+      ).toThrow(MISSING_DEFAULT_RE);
     });
 
     it("throws on empty provider/model with clear message", () => {
@@ -246,35 +284,17 @@ describe("resolveModel / resolveAuth", () => {
         1000
       );
       const ctx = makeCtx(profilesMock, {
-        id: "proj-1",
+        projectId: "proj-1",
         profileId: null,
       });
 
-      expect(() => resolveModel(ctx, { projectId: "proj-1" })).toThrow(
-        NO_MODEL_CONFIGURED_RE
-      );
-    });
-
-    it("throws when project is not found", () => {
-      const profilesMock = makeProfilesMock(
-        {
-          defaultProfile: "default",
-          profiles: {
-            default: {
-              name: "Default",
-              models: {
-                default: { provider: "openai", model: TEST_MODEL_ID },
-              },
-            },
-          },
-        },
-        1000
-      );
-      const ctx = makeCtx(profilesMock, null);
-
-      expect(() => resolveModel(ctx, { projectId: "missing" })).toThrow(
-        PROJECT_NOT_FOUND_RE
-      );
+      expect(() =>
+        resolveModel(ctx, {
+          id: "sess-1",
+          projectId: "proj-1",
+          profileId: null,
+        })
+      ).toThrow(NO_MODEL_CONFIGURED_RE);
     });
   });
 
@@ -295,11 +315,15 @@ describe("resolveModel / resolveAuth", () => {
         1000
       );
       const ctx = makeCtx(profilesMock, {
-        id: "proj-1",
+        projectId: "proj-1",
         profileId: null,
       });
 
-      const result = resolveAuth(ctx, { projectId: "proj-1" });
+      const result = resolveAuth(ctx, {
+        id: "sess-1",
+        projectId: "proj-1",
+        profileId: null,
+      });
       expect(result).toBeUndefined();
     });
 
@@ -320,14 +344,18 @@ describe("resolveModel / resolveAuth", () => {
       );
       const ctx = makeCtx(
         profilesMock,
-        { id: "proj-1", profileId: null },
+        { projectId: "proj-1", profileId: null },
         {
           getApiKey: (provider) =>
             provider === "openai" ? "sk-test-key-1234567890" : undefined,
         }
       );
 
-      const result = resolveAuth(ctx, { projectId: "proj-1" });
+      const result = resolveAuth(ctx, {
+        id: "sess-1",
+        projectId: "proj-1",
+        profileId: null,
+      });
       expect(result).toBeDefined();
       expect(result?.apiKey).toBe("sk-test-key-1234567890");
       expect(result?.provider).toBe("openai");
@@ -355,11 +383,15 @@ describe("resolveModel / resolveAuth", () => {
         // auth store has no key for openai → resolveAuth returns undefined
         // even though process.env.OPENAI_API_KEY is set
         const ctx = makeCtx(profilesMock, {
-          id: "proj-1",
+          projectId: "proj-1",
           profileId: null,
         });
 
-        const result = resolveAuth(ctx, { projectId: "proj-1" });
+        const result = resolveAuth(ctx, {
+          id: "sess-1",
+          projectId: "proj-1",
+          profileId: null,
+        });
         expect(result).toBeUndefined();
       } finally {
         if (savedKey === undefined) {

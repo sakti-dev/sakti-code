@@ -7,7 +7,7 @@ describe("last assistant text route", () => {
   it("returns text for session with assistant messages", async () => {
     const { app, ctx } = await makeApp([lastAssistantTextRoutes]);
     const project = await ctx.repos.projects.create("test", "/tmp/test-last");
-    const session = await ctx.repos.sessions.create(project.id, "test-model");
+    const session = await ctx.repos.sessions.create(project.id);
 
     await seedEntries(ctx.db, session.id, [
       { role: "user", content: "Hello" },
@@ -30,7 +30,7 @@ describe("last assistant text route", () => {
       "test2",
       "/tmp/test-last-2"
     );
-    const session = await ctx.repos.sessions.create(project.id, "test-model");
+    const session = await ctx.repos.sessions.create(project.id);
 
     await seedEntries(ctx.db, session.id, [{ role: "user", content: "Hello" }]);
 

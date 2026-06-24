@@ -39,9 +39,7 @@ export class ProjectRepo {
 
   async update(
     id: string,
-    data: Partial<
-      Pick<typeof projects.$inferInsert, "name" | "cwd" | "profileId">
-    >
+    data: Partial<Pick<typeof projects.$inferInsert, "name" | "cwd">>
   ) {
     await this.db
       .update(projects)
@@ -67,9 +65,10 @@ export class SessionRepo {
 
   async create(
     projectId: string,
-    modelId: string,
     options?: {
       title?: string;
+      modelId?: string;
+      profileId?: string | null;
       thinkingLevel?: string;
       parentSessionId?: string;
       kind?: string;
@@ -84,7 +83,10 @@ export class SessionRepo {
         ? {}
         : { parentSessionId: options.parentSessionId }),
       title: options?.title ?? null,
-      modelId,
+      ...(options?.modelId === undefined ? {} : { modelId: options.modelId }),
+      ...(options?.profileId === undefined
+        ? {}
+        : { profileId: options.profileId }),
       kind: options?.kind ?? "task",
       thinkingLevel: options?.thinkingLevel ?? "off",
       createdAt: now,
@@ -125,7 +127,7 @@ export class SessionRepo {
     data: Partial<
       Pick<
         typeof sessions.$inferInsert,
-        "title" | "modelId" | "thinkingLevel" | "kind"
+        "title" | "modelId" | "thinkingLevel" | "kind" | "profileId"
       >
     >
   ) {

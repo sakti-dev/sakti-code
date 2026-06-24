@@ -64,9 +64,11 @@ export function createMockCtx(overrides?: {
             ? {
                 id: "sess-1",
                 projectId,
-                modelId: TEST_MODEL_ID,
+                profileId: overrides?.profileId ?? null,
+                modelId: null,
                 title: null,
                 thinkingLevel: "off",
+                kind: "task",
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
               }
@@ -80,7 +82,6 @@ export function createMockCtx(overrides?: {
                 id: projectId,
                 name: "test-project",
                 cwd: "/tmp/test",
-                profileId: overrides?.profileId ?? null,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
               }
@@ -120,7 +121,6 @@ export function createMultiSessionCtx(
       id: string;
       name: string;
       cwd: string;
-      profileId: null;
       createdAt: number;
       updatedAt: number;
     }
@@ -131,7 +131,6 @@ export function createMultiSessionCtx(
         id: pid,
         name: `project-${pid}`,
         cwd: pid === "proj-1" ? "/tmp/project-a" : "/tmp/project-b",
-        profileId: null,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -171,9 +170,11 @@ export function createMultiSessionCtx(
             ? {
                 id,
                 projectId: sessionIdToProjectId[id],
-                modelId: TEST_MODEL_ID,
+                profileId: null,
+                modelId: null,
                 title: null,
                 thinkingLevel: "off",
+                kind: "task",
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
               }

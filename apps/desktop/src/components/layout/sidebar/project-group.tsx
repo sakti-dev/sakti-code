@@ -5,7 +5,8 @@ import { SessionItem } from "./session-item.tsx";
 export interface Session {
   createdAt: number;
   id: string;
-  modelId: string;
+  modelId: string | null;
+  profileId: string | null;
   projectId: string;
   thinkingLevel: string;
   title: string | null;

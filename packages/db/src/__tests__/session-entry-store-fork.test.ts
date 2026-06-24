@@ -40,7 +40,7 @@ describe("SqliteSessionStorage.forkFrom", () => {
     const sessionRepo = new SessionRepo(db);
 
     const project = await projectRepo.create("test", "/tmp");
-    const sourceSession = await sessionRepo.create(project.id, "test-model");
+    const sourceSession = await sessionRepo.create(project.id);
 
     const sourceStorage = new SqliteSessionStorage(db, sourceSession.id, {
       id: sourceSession.id,
@@ -52,7 +52,7 @@ describe("SqliteSessionStorage.forkFrom", () => {
       { role: "user", content: "How are you?" },
     ]);
 
-    const forkedSession = await sessionRepo.create(project.id, "test-model", {
+    const forkedSession = await sessionRepo.create(project.id, {
       parentSessionId: sourceSession.id,
     });
     const forkedStorage = new SqliteSessionStorage(db, forkedSession.id, {
@@ -86,7 +86,7 @@ describe("SqliteSessionStorage.forkFrom", () => {
     const sessionRepo = new SessionRepo(db);
 
     const project = await projectRepo.create("test2", "/tmp2");
-    const sourceSession = await sessionRepo.create(project.id, "test-model");
+    const sourceSession = await sessionRepo.create(project.id);
 
     const sourceStorage = new SqliteSessionStorage(db, sourceSession.id, {
       id: sourceSession.id,
@@ -100,7 +100,7 @@ describe("SqliteSessionStorage.forkFrom", () => {
       { role: "user", content: "C" },
     ]);
 
-    const forkedSession = await sessionRepo.create(project.id, "test-model");
+    const forkedSession = await sessionRepo.create(project.id);
     const forkedStorage = new SqliteSessionStorage(db, forkedSession.id, {
       id: forkedSession.id,
       createdAt: new Date().toISOString(),
@@ -125,8 +125,8 @@ describe("SqliteSessionStorage.forkFrom", () => {
     const sessionRepo = new SessionRepo(db);
 
     const project = await projectRepo.create("empty", "/tmp/empty");
-    const sourceSession = await sessionRepo.create(project.id, "test-model");
-    const forkedSession = await sessionRepo.create(project.id, "test-model");
+    const sourceSession = await sessionRepo.create(project.id);
+    const forkedSession = await sessionRepo.create(project.id);
 
     const forkedStorage = new SqliteSessionStorage(db, forkedSession.id, {
       id: forkedSession.id,
