@@ -1,0 +1,91 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { initDatabase } from "../../init.ts";
+import { ProjectRepo, SessionRepo } from "../index.ts";
+import { TurnRepo } from "../turns.ts";
+
+describe("TurnRepo", () => {
+  let tmpDir: string;
+  let rawDb: DatabaseSync;
+  let db: Awaited<ReturnType<typeof initDatabase>>;
+  let projects: ProjectRepo;
+  let sessions: SessionRepo;
+  let turns: TurnRepo;
+  let sessionId: string;
+
+  beforeAll(async () => {
+    tmpDir = mkdtempSync(join(import.meta.dirname!, "test-XXXXXX"));
+    rawDb = new DatabaseSync(join(tmpDir, "test.db"));
+    db = await initDatabase(rawDb);
+    projects = new ProjectRepo(db);
+    sessions = new SessionRepo(db);
+    turns = new TurnRepo(db);
+    const project = await projects.create("p", "/tmp/test");
+    const session = await sessions.create(project.id, "model-1");
+    sessionId = session.id;
+  });
+
+  afterAll(() => {
+    rawDb.close?.();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("create inserts a turn with auto-incrementing sequence", () => {
+    const turn = turns.create(sessionId, 1000);
+    expect(turn.sequence).toBe(0);
+    expect(turn.startedAt).toBe(1000);
+    expect(turn.endedAt).toBeNull();
+
+    const turn2 = turns.create(sessionId, 2000);
+    expect(turn2.sequence).toBe(1);
+  });
+
+  it("finalize sets endedAt", () => {
+    const turn = turns.create(sessionId, 3000);
+    turns.finalize(turn.id, 5000);
+    const list = turns.listBySession(sessionId);
+    const found = list.find((t) => t.id === turn.id);
+    expect(found?.endedAt).toBe(5000);
+  });
+
+  it("finalizeLatest only finalizes the last unfinalized turn", () => {
+    turns.create(sessionId, 6000);
+    turns.finalizeLatest(sessionId, 7000);
+    const list = turns.listBySession(sessionId);
+    const last = list.at(-1);
+    expect(last?.endedAt).toBe(7000);
+  });
+
+  it("finalizeLatest is a no-op when last turn is already finalized", () => {
+    const before = turns.listBySession(sessionId).at(-1);
+    turns.finalizeLatest(sessionId, 99_999);
+    const after = turns.listBySession(sessionId).at(-1);
+    expect(after?.endedAt).toBe(before?.endedAt);
+  });
+
+  it("listBySession returns turns ordered by sequence", () => {
+    const list = turns.listBySession(sessionId);
+    expect(list.length).toBeGreaterThan(0);
+    for (let i = 1; i < list.length; i++) {
+      expect(list[i]!.sequence).toBeGreaterThan(list[i - 1]!.sequence);
+    }
+  });
+
+  it("listBySession returns empty for unknown session", () => {
+    expect(turns.listBySession("nonexistent")).toEqual([]);
+  });
+
+  it("copyForFork copies all turns to a new session", async () => {
+    const project2 = await projects.create("p2", "/tmp/test2");
+    const session2 = await sessions.create(project2.id, "model-1");
+    turns.copyForFork(sessionId, session2.id);
+    const sourceTurns = turns.listBySession(sessionId);
+    const forkedTurns = turns.listBySession(session2.id);
+    expect(forkedTurns).toHaveLength(sourceTurns.length);
+    expect(forkedTurns[0]!.sequence).toBe(sourceTurns[0]!.sequence);
+    expect(forkedTurns[0]!.startedAt).toBe(sourceTurns[0]!.startedAt);
+    expect(forkedTurns[0]!.id).not.toBe(sourceTurns[0]!.id);
+  });
+});
