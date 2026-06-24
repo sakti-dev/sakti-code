@@ -1,5 +1,8 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "maxSize": 2000000
+  },
   "extends": [
     "ultracite/biome/core",
     "ultracite/biome/vitest",
@@ -110,6 +113,15 @@
     },
     {
       "includes": ["packages/db/migrations/**"],
+      "formatter": {
+        "enabled": false
+      },
+      "linter": {
+        "enabled": false
+      }
+    },
+    {
+      "includes": ["packages/llm/src/catalog/generated.ts"],
       "formatter": {
         "enabled": false
       },

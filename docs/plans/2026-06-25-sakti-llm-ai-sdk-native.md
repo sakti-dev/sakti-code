@@ -45,8 +45,9 @@ apps/desktop   event-reducer reads slim delta instead of assistantMessageEvent (
 
 - `exactOptionalPropertyTypes: true` → conditional spread `...(x !== undefined ? { x } : {})`, never pass `undefined`.
 - TS 6.0 → `include`/`references` top-level in tsconfig; `shell` in `execSync` is a `string`.
-- Tests: `packages/llm/test/*.test.ts`, `packages/agent/src/__tests__/`, vitest `globals: true`, node env.
-- No `console.log`/`any`/`debugger`. `unknown` over `any`. `for...of` over `.forEach()`. Arrow callbacks.
+- Tests: `packages/llm/src/__tests__/*.test.ts`, `packages/agent/src/__tests__/`, vitest `globals: true`, node env.
+- No `console.log`/`any`/`debugger`. `unknown` over `any` (incl. `ToolCall.arguments: Record<string, unknown>`, `ToolResultMessage<TDetails = unknown>`). `for...of` over `.forEach()`. Arrow callbacks.
+- `expectTypeOf<T>()` no-arg form fails for interfaces under vitest 3.2.6 / expect-type 1.3.0 — use `const x = {} as T; expectTypeOf(x)` instead.
 - Before commit: `nubx ultracite fix`. Typecheck: `cd packages/llm && nub run typecheck`. Test: `cd packages/llm && nub run test`.
 
 ---
@@ -104,37 +105,46 @@ Verify each path exists before relying on it.
 
 ---
 
-## Phase 1 — `packages/llm` foundation (types + catalog + cost)
+## Phase 1 — `packages/llm` foundation (types + catalog + cost) ✓ DONE
 
-### Task 1.1 — Scaffold package
-- Create `packages/llm/` with `package.json` (`@sakti-code/llm`, `type: module`, exports → `./src/index.ts`), `tsconfig.json` (extends `../../tsconfig.base.json`, includes `src`+`test`+`scripts`, `typecheck: tsc --noEmit`), `vitest.config.ts` (globals, node).
-- Add `@ai-sdk/*` + `ai` deps — carry versions from current `packages/ai/package.json`.
-- Workspace already covers `packages/*`; run `pnpm install`.
-- Empty `src/index.ts` re-exporting nothing yet. Verify `pnpm run typecheck` is green.
+> **47/47 tests green · typecheck clean · ultracite fix clean.**
+> Catalog: 4147 models / 142 providers (matches opencode's models.dev set).
+>
+> Three deviations from the original plan text (approved during execution):
+> 1. **Task 1.3 trimmed** — skipped `ProviderAuth`/`ApiKeyAuth`/`OAuthAuth`/`CredentialStore` (login/OAuth orchestration is server-owned). packages/llm only resolves env keys + carries `ModelAuth`/`AuthResult`.
+> 2. **Task 1.4 target changed** — source is **opencode's models.dev set, NOT pi-ai's count** (user directive: "provider count should match opencode, this is the sole reason we wrote our own"). pi-ai's per-model compat sprawl collapsed to a 4-entry provider-level `PROVIDER_COMPAT` table.
+> 3. **`any` → `unknown`** on `ToolCall.arguments` + `ToolResultMessage<TDetails>` (per "no any" guardrail).
 
-### Task 1.2 — Message + model types (TDD)
-- Move + evolve pi-ai's types into `packages/llm/src/types.ts`:
-  - Content: `TextContent`, `ThinkingContent`, `ImageContent`, `ToolCall`.
-  - Messages: `UserMessage`, `AssistantMessage`, `ToolResultMessage`, `Message`.
-  - `Usage` (with `cost` block + `cacheWrite1h?`), `StopReason`.
-  - `Model<"ai-sdk">` — **drop the 9 `KnownApi` variants** (we're ai-sdk-only). Fields: `id, name, api: "ai-sdk", provider, baseUrl, reasoning, thinkingLevelMap?, input, cost{input,output,cacheRead,cacheWrite}, contextWindow, maxTokens, headers?, compat?, npm?`.
-  - `OpenAICompletionsCompat` — carry verbatim from pi-ai (`packages/ai/src/types.ts:465-512`), incl. the full `thinkingFormat` union.
-  - `ThinkingLevelMap`, `ModelThinkingLevel`.
-- Tests (`test/types.test.ts`): type-level + a factory smoke proving `Model<"ai-sdk">` with `npm` + `compat` accepts.
+### Task 1.1 — Scaffold package ✓
+- `packages/llm/{package.json,tsconfig.json,vitest.config.ts,src/index.ts}` following the `packages/tools` convention (exports → `./src/index.ts`).
+- Deps added per-phase (Phase 1 only needs `typebox`; `@ai-sdk/*` + `ai` arrive in Phase 2/4 when first imported).
+- `tsconfig.json` includes `src/**/*.ts` + `scripts/**/*.ts`.
+- `vitest.config.ts` — node env, `src/**/__tests__/**/*.test.ts`.
 
-### Task 1.3 — Auth resolution
-- Port `packages/ai/src/auth/types.ts` (PI-AUTH) → `src/auth/types.ts`: `ProviderAuth`, `AuthResult`, `ModelAuth`.
-- `src/auth/env.ts` — `getEnvApiKey(provider)` (port pi-ai's env-key resolution: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, …).
+### Task 1.2 — Message + Model types ✓ (TDD: 12 tests)
+- `src/types.ts` — kept: content blocks, messages, `Usage`, `StopReason`, `OpenAICompletionsCompat` (verbatim, 10 thinkingFormat values), `ThinkingLevelMap`, `Tool`, `Context`, `KnownProvider`.
+- **`Model` is non-generic** (not `Model<"ai-sdk">` with a type param) — `api: "ai-sdk"` literal. The old `Model<TApi extends Api>` generic is gone.
+- **`AssistantMessage.api: string`** (NOT literal `"ai-sdk"`) — widened for DB compat (historical rows carry legacy api values).
+- Dropped: `KnownApi`/`Api`, `AssistantMessageEvent`/`AssistantMessageEventStream`, `ProviderStreams`/`StreamFunction`/`*StreamOptions`, `AnthropicMessagesCompat`/`OpenAIResponsesCompat`, all image-generation types.
+- `ToolCall.arguments: Record<string, unknown>`; `ToolResultMessage<TDetails = unknown>` (not `any`).
+- `AssistantMessageDiagnostic` inlined (small, tightly coupled to `AssistantMessage`).
 
-### Task 1.4 — models.dev build-time ingestion
-- `scripts/generate-models.ts` — fetch models.dev JSON at build time → write `src/catalog/<provider>.generated.ts`, each exporting `Model<"ai-sdk">[]`.
-- Generic converter `convertModelsDev(data)` — port OC-MD (`provider.ts:1188-1271`) field mapping to plain TS: `id, name → Model.id/name`; `provider.npm ?? model.provider?.npm → Model.npm`; `provider.api ?? … → Model.baseUrl`; cost from `model.cost.*`; limits → `contextWindow`/`maxTokens`; `modalities.input includes "image" → input: ["text","image"]`; `model.reasoning → Model.reasoning`; drop models where `tool_call !== true`.
-- `COMPAT_OVERRIDES: Record<string, OpenAICompletionsCompat>` keyed by `${provider}` and `${provider}:${modelId}` — **extract every compat object verbatim from PI-GENMODEL** (ZAI `thinkingFormat:"zai"`, NVIDIA, Together, Cloudflare, the opencode-go minimax/qwen corrections at `:1293-1321`, etc.). `model.compat = COMPAT_OVERRIDES[key] ?? COMPAT_OVERRIDES[provider]`.
-- Same for `thinkingLevelMap` overrides — extract from PI-GENMODEL.
-- **Verification gate:** per-provider model counts MUST match pi-ai's current generation (run both, diff counts). No models lost.
+### Task 1.3 — Auth resolution ✓ (TDD: 13 tests)
+- `src/auth/types.ts` — `ModelAuth`, `AuthResult` only. **Skipped** `ProviderAuth`/`ApiKeyAuth`/`OAuthAuth`/`CredentialStore` (server-owned login flow; packages/llm's stream layer receives a resolved `apiKey` string).
+- `src/auth/env.ts` — `getEnvApiKey`/`findEnvKeys` + the 30-provider env-var map. Dropped: Bun sandbox `/proc/self/environ` fallback (Node-only); Vertex ADC + Bedrock ambient checks (`@ai-sdk/google-vertex` + `@ai-sdk/amazon-bedrock` handle those internally).
 
-### Task 1.5 — `calculateCost`
-- Port PI-COST (`models.ts:385-395`) verbatim into `src/cost.ts`, including the Anthropic `cacheWrite1h` 2× handling. Signature: `calculateCost(model: Model<"ai-sdk">, usage: Usage): Usage["cost"]` (mutates `usage.cost.*` in place, like pi-ai).
+### Task 1.4 — models.dev build-time ingestion ✓ (TDD: 16 tests on converter)
+- **Target: opencode's models.dev provider set** (NOT pi-ai's count). Result: 142 providers, 4147 tool-capable models, 1152 non-tool dropped.
+- `src/catalog/types.ts` — `ModelsDevProvider`/`ModelsDevModel`/`ModelsDevCatalog` (minimal typed view of the API JSON).
+- `src/catalog/convert.ts` — `convertModelsDevModel(provider, model): Model | null`. Ports opencode's `fromModelsDevModel` (`provider.ts:1188-1231`) field mapping: `id/name` verbatim, `api: "ai-sdk"`, `baseUrl ← provider.api`, `npm ← model.provider?.npm ?? provider.npm ?? "@ai-sdk/openai-compatible"`, cost snake→camelCase, limits, modalities. Drops `tool_call !== true`.
+- `src/catalog/compat.ts` — `PROVIDER_COMPAT`: **4-entry** provider-level table (`deepseek`/`zai`/`zai-coding-plan`/`togetherai`). First-party `@ai-sdk/*` providers get NO compat (the factory handles reasoning). Unmapped `@ai-sdk/openai-compatible` providers default to `{ thinkingFormat: "openai" }`.
+- `scripts/generate-models.ts` — build-time generator (`nub run generate-models`). Fetches `https://models.dev/api.json`, writes `src/catalog/generated.ts` (single committed file; 1.3 MB).
+- `src/catalog/generated.ts` — committed catalog data. Biome override added: formatter+linter disabled, `files.maxSize` bumped to 2 MB.
+- `src/catalog/index.ts` — entry point re-exporting `CATALOG`/`ALL_MODELS`/`PROVIDERS`.
+- **Verification gate (revised):** provider set matches models.dev = opencode's set. ✓ (142 providers with ≥1 tool-capable model).
+
+### Task 1.5 — `calculateCost` ✓ (TDD: 6 tests)
+- `src/cost.ts` — ported verbatim from PI-COST (`models.ts:385-395`), incl. Anthropic `cacheWrite1h` 2× premium. Signature: `calculateCost(model: Model, usage: Usage): Usage["cost"]` (non-generic; mutates in place).
 
 ---
 
@@ -161,6 +171,7 @@ Verify each path exists before relying on it.
 
 ### Task 3.1 — `buildProviderOptions` (thinkingFormat)
 - `src/provider/transform.ts` — `buildProviderOptions(model, level): Record<string, unknown>`.
+- **Reads `model.compat.thinkingFormat`** (populated at catalog generation in Phase 1; see `src/catalog/compat.ts`). First-party `@ai-sdk/*` models have NO compat — skip entirely. Only `@ai-sdk/openai-compatible` models reach this logic.
 - **opencode's `transform.ts` is the structural template** (how each value emits `providerOptions` for `streamText`). **pi-ai's `openai-completions.ts:594-666` (PI-COMPAT) is the data-values source** (which fields each format produces — preserve these exactly). One branch per `thinkingFormat` value:
   - `zai` → `thinking:{type:"enabled"}` + `reasoning_effort`
   - `qwen` → `enable_thinking: !!effort`
@@ -304,7 +315,7 @@ Verify each path exists before relying on it.
 - **Provider resolution correctness (Phase 2).** Dynamic import + factory dispatch must match `@ai-sdk`'s expected options. *Mitigation:* per-provider smoke (8.3).
 - **Compat regression (Phase 3).** `thinkingFormat` ported wrong → silent reasoning breakage. *Mitigation:* one test per value (10 cases) + smoke.
 - **Agent loop cutover (Phase 5).** The loop is ~825 lines; the stream seam is ~30 lines but accumulation logic is real. *Mitigation:* full agent test suite green; do a vertical slice (anthropic only) first before genericizing.
-- **models.dev count regression (Phase 1).** *Mitigation:* Task 1.4 verification gate (per-provider counts match pi-ai).
+- **models.dev count regression (Phase 1).** *Resolved:* catalog targets opencode's models.dev set (142 providers / 4147 models), not pi-ai's count. Provider-level compat table (`PROVIDER_COMPAT`) covers the 4 openai-compatible providers needing non-default reasoning encoding; first-party `@ai-sdk/*` factories handle the rest.
 - **Message conversion bugs (Phase 4.1).** *Mitigation:* round-trip tests for every content type.
 
 ## Out of scope
