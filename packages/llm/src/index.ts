@@ -42,5 +42,19 @@ export type { AuthResult, ModelAuth } from "./auth/types.ts";
 export { ALL_MODELS, CATALOG, PROVIDERS } from "./catalog/index.ts";
 // Cost computation (mutates usage.cost in place; Anthropic 1h cache premium).
 export { calculateCost } from "./cost.ts";
+export type {
+  ProviderFactory,
+  ProviderFactoryLoader,
+  ProviderFactoryOptions,
+  ProviderSDK,
+} from "./provider/registry.ts";
+// Provider resolution: Model + auth → @ai-sdk LanguageModelV3.
+export { BUNDLED_PROVIDERS } from "./provider/registry.ts";
+export type { ResolveOptions } from "./provider/resolve.ts";
+export {
+  clearResolveCache,
+  resolveBaseURL,
+  resolveLanguageModel,
+} from "./provider/resolve.ts";
 // Message contract + Model descriptor (the shapes ~20 consumers depend on).
 export * from "./types.ts";

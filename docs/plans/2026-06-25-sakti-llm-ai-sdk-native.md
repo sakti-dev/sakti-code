@@ -148,22 +148,39 @@ Verify each path exists before relying on it.
 
 ---
 
-## Phase 2 — Provider resolution (port opencode `provider.ts`, plain TS)
+## Phase 2 — Provider resolution (port opencode `provider.ts`, plain TS) ✓ DONE
 
-### Task 2.1 — `BUNDLED_PROVIDERS` registry
-- `src/provider/registry.ts` — port OC-LOADER (`provider.ts:107-134`) entry-for-entry. Each `@ai-sdk/*` (and `@openrouter/ai-sdk-provider`, etc.) maps to `() => import(NPM).then(m => m.createX)`. Keep the same `createX` export names.
-- Factory type: `(opts: Record<string, unknown>) => { languageModel(id: string): unknown }` — `unknown` at this layer; the runtime flows through `streamText`.
-- Drop opencode-internal entries (`@opencode-ai/core/github-copilot/…`) — TODO comment.
+> **15 new tests (62 total) · typecheck clean · ultracite fix clean.**
+> Factory injection: tests pass fake factories to verify option passing without
+> real API setup.
 
-### Task 2.2 — `resolveLanguageModel`
-- `src/provider/resolve.ts` — port OC-RESOLVE (`:1639-1771`) + OC-GETLANG (`:1801-1830`) logic to plain TS:
-  - baseURL: `options.baseURL ?? model.baseUrl`; `${VAR}` env substitution (port `:1664-1683` verbatim).
-  - apiKey from `AuthResult.auth.apiKey` (PI-AUTH) → passed as `provider.key`.
-  - headers merge (`:1687-1691`).
-  - dispatch: `factory(options).languageModel(model.id)`.
-  - Drop opencode's `Hash.fast` SDK cache → plain `Map<string, unknown>` keyed by `JSON.stringify({npm, options})`.
-  - Drop opencode's fetch/SSE wrapper (`:1703-1734`) — `@ai-sdk/*` handles fetch.
-- Port OC-FALLBACK (`:1747-1767`): when `BUNDLED_PROVIDERS[npm]` missing, dynamic `import(npm)`, find the export whose name starts with `create`, call it. **Skip** opencode's `Npm.add` auto-install (assume package present).
+### Task 2.1 — `BUNDLED_PROVIDERS` registry ✓
+- `src/provider/registry.ts` — 11-entry map (the @ai-sdk packages installed in
+  the workspace: anthropic, openai, google, google-vertex + /anthropic subpath,
+  azure, amazon-bedrock, mistral, openai-compatible, xai, gateway). Each maps
+  to `() => import(npm).then(m => m.createX as ProviderFactory)`.
+- Factory cast: each `createX` is cast to the generic `ProviderFactory` because
+  @ai-sdk packages declare specific, incompatible settings types (e.g.
+  `createOpenAICompatible` requires `baseURL`). Safe — the catalog guarantees
+  the fields per provider.
+- Missing providers (groq, cerebras, togetherai, cohere, etc.) rely on the
+  dynamic-import fallback in the resolver. They work when the user installs them.
+
+### Task 2.2 — `resolveLanguageModel` ✓ (TDD: 15 tests)
+- `src/provider/resolve.ts` — `resolveLanguageModel(model, options, factoryMap?)`.
+  Ports opencode's `resolveSDK` + `getLanguage` to plain TS.
+- `resolveBaseURL(url, env)` — pure `${VAR}` substitution helper (extracted,
+  top-level regex). Empty URL → undefined (factory default).
+- SDK cache: module-level `Map<string, ProviderSDK>` keyed by `JSON({npm, opts})`.
+  Skipped when a non-default `factoryMap` is injected (so tests get fresh SDKs).
+  `clearResolveCache()` exported for test isolation.
+- `buildFactoryOptions` — merges: `options.baseURL ?? model.baseUrl` → resolveBaseURL;
+  `options.apiKey`; headers (`options.headers` first, `model.headers` override).
+- Dynamic-import fallback (`loadFactoryFromNpm`): when npm not in factory map,
+  `import(npm)`, find `create*` export, call it. Skipped opencode's `Npm.add`
+  auto-install (desktop app — can't auto-install at runtime).
+- Dropped: opencode's fetch/SSE wrapper, `Hash.fast` SDK cache key, custom
+  `modelLoaders` plugin hooks, Effect plumbing.
 
 ---
 
