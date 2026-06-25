@@ -36,6 +36,53 @@ const outputPath = join(packageRoot, "src", "catalog", "generated.ts");
 
 const MODELS_DEV_URL = "https://models.dev/api.json";
 
+const BUNDLED_NPM = new Set([
+  "@ai-sdk/amazon-bedrock",
+  "@ai-sdk/amazon-bedrock/mantle",
+  "@ai-sdk/anthropic",
+  "@ai-sdk/azure",
+  "@ai-sdk/cerebras",
+  "@ai-sdk/cohere",
+  "@ai-sdk/deepinfra",
+  "@ai-sdk/gateway",
+  "@ai-sdk/google",
+  "@ai-sdk/google-vertex",
+  "@ai-sdk/google-vertex/anthropic",
+  "@ai-sdk/groq",
+  "@ai-sdk/mistral",
+  "@ai-sdk/openai",
+  "@ai-sdk/openai-compatible",
+  "@ai-sdk/togetherai",
+  "@ai-sdk/vercel",
+  "@ai-sdk/xai",
+  "@openrouter/ai-sdk-provider",
+  "merge-gateway-ai-sdk-provider",
+  "venice-ai-sdk-provider",
+  "@aihubmix/ai-sdk-provider",
+  "ai-gateway-provider",
+  "@jerome-benoit/sap-ai-provider-v2",
+  "gitlab-ai-provider",
+]);
+
+function checkBundledNpm(catalog: Record<string, Model[]>): void {
+  const unbundled = new Set<string>();
+  for (const models of Object.values(catalog)) {
+    for (const model of models) {
+      if (model.npm && !BUNDLED_NPM.has(model.npm)) {
+        unbundled.add(model.npm);
+      }
+    }
+  }
+  if (unbundled.size > 0) {
+    process.stderr.write(
+      `WARNING: ${unbundled.size} npm package(s) not bundled: ` +
+        [...unbundled].join(", ") +
+        "\nThese models will fall to dynamic import at runtime.\n" +
+        "Add them to BUNDLED_PROVIDERS in registry.ts and this list.\n"
+    );
+  }
+}
+
 async function main(): Promise<void> {
   process.stderr.write("Fetching models.dev catalog…\n");
   const response = await fetch(MODELS_DEV_URL);
@@ -86,6 +133,8 @@ async function main(): Promise<void> {
       ...(rawProvider?.doc ? { doc: rawProvider.doc } : {}),
     };
   }
+
+  checkBundledNpm(catalog);
 
   writeFileSync(outputPath, renderCatalog(catalog, providers, providerInfo));
   process.stderr.write(`Wrote ${outputPath}\n`);
