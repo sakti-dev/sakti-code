@@ -206,6 +206,11 @@ export function dispatchEvent(
       actions.setPhase("idle");
       actions.clearCurrentMessage();
       actions.clearCurrentTool();
+      // Safety net: store.retry is normally cleared by auto_retry_end, but if
+      // the run terminates abnormally (retry loop threw after emitting start,
+      // or the harness aborted mid-turn without a clean end event) the banner
+      // must not outlive the run. agent_end/abort mean the run is over.
+      actions.setRetry(null);
       break;
 
     case "auto_retry_start":

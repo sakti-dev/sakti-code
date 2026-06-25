@@ -346,4 +346,41 @@ describe("executeWithRetry", () => {
     // runTurn was called once (the failing turn) but not a second time.
     expect(fake.rollbackCalls).toBe(1);
   });
+
+  it("reports end(failure) when the retried turn is aborted mid-flight", async () => {
+    // Regression guard: an aborted retried turn has stopReason "aborted"
+    // (not "error"), so a `stopReason !== "error"` check alone would
+    // mislabel it as success. The abort signal is authoritative.
+    const controller = new AbortController();
+    const emitCalls: AgentEvent[] = [];
+    let turnIndex = 0;
+    const turns: AssistantMessage[] = [
+      assistantMessage({
+        stopReason: "error",
+        errorMessage: "429 rate limited",
+      }),
+      assistantMessage({ stopReason: "aborted" }),
+    ];
+    const deps: RetryRunnerDeps = {
+      signal: controller.signal,
+      emit: (event) => emitCalls.push(event),
+      rollbackLeaf: async () => {},
+      runTurn: async () => {
+        const message = turns[turnIndex]!;
+        turnIndex++;
+        // Simulate the abort landing mid-turn: the retried turn returns an
+        // "aborted" message and the signal is now aborted.
+        if (turnIndex === 2) {
+          controller.abort();
+        }
+        return message;
+      },
+    };
+    await executeWithRetry(deps, enabledSettings);
+
+    const end = emitCalls.at(-1)!;
+    expect(end.type).toBe("auto_retry_end");
+    // Aborted retries are NOT successes, even though stopReason is "aborted".
+    expect(end).toMatchObject({ success: false, attempt: 1 });
+  });
 });

@@ -331,6 +331,40 @@ describe("event reducer — individual events", () => {
   });
 });
 
+describe("event reducer — retry banner safety net", () => {
+  // Safety net: store.retry is normally cleared by auto_retry_end. But if a
+  // run terminates abnormally (the retry loop throws after emitting start, or
+  // the harness aborts mid-turn without a clean end event), agent_end/abort
+  // must also clear the banner so it can never outlive the run.
+  function makeRetryStartEvent() {
+    return {
+      type: "auto_retry_start" as const,
+      attempt: 1,
+      delayMs: 2000,
+      errorMessage: "429 rate limited",
+      maxAttempts: 3,
+    };
+  }
+
+  it("agent_end clears a stuck retry banner", () => {
+    const { session, batcher } = setup();
+    dispatchEvent(session.actions, batcher, makeRetryStartEvent());
+    expect(session.store.retry).not.toBeNull();
+
+    dispatchEvent(session.actions, batcher, makeAgentEndEvent());
+    expect(session.store.retry).toBeNull();
+  });
+
+  it("abort clears a stuck retry banner", () => {
+    const { session, batcher } = setup();
+    dispatchEvent(session.actions, batcher, makeRetryStartEvent());
+    expect(session.store.retry).not.toBeNull();
+
+    dispatchEvent(session.actions, batcher, makeAbortEvent());
+    expect(session.store.retry).toBeNull();
+  });
+});
+
 describe("event reducer — full lifecycle", () => {
   it("text-only turn: start → stream → end → turn_end", async () => {
     const { session, batcher } = setup();

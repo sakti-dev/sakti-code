@@ -210,7 +210,10 @@ export async function executeWithRetry(
   // Only emit an end event if we actually retried. A clean first-turn success
   // emits nothing.
   if (attempt > 0) {
-    const success = message.stopReason !== "error";
+    // An aborted retried turn has stopReason "aborted" (not "error"), so the
+    // stopReason check alone would mislabel an abort as success. The run's
+    // abort signal is authoritative — if it fired, the retry did not succeed.
+    const success = !deps.signal.aborted && message.stopReason !== "error";
     deps.emit({
       type: "auto_retry_end",
       success,

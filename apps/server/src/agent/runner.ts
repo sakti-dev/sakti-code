@@ -290,6 +290,13 @@ export async function runPrompt(
         // failed assistant message so the next turn re-runs from the prior
         // user/toolResult message (same mechanism as session branching).
         rollbackLeaf: async () => {
+          // Orphan the failed assistant message by moving the leaf to its
+          // parent, so continue() re-runs from the preceding user/toolResult
+          // message. Assumes the failed turn appended exactly one entry —
+          // which holds for the transient provider errors we retry (429/5xx
+          // fail at the request, before any tools execute). shouldRetry only
+          // classifies stopReason === "error" messages, so non-transient or
+          // tool-producing turns never reach here.
           const branch = await sessionInstance.getBranch();
           const lastEntry = branch.at(-1);
           if (lastEntry?.parentId) {
