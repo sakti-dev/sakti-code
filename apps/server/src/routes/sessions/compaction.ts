@@ -22,9 +22,11 @@ export const compactionRoutes = new Hono()
     let model: { model: Model; provider: string };
     try {
       model = resolveModel(ctx, session);
-    } catch {
+    } catch (e) {
       return c.json(
-        { error: "No model configuration found for this session" },
+        {
+          error: `Model resolution failed: ${e instanceof Error ? e.message : String(e)}`,
+        },
         500
       );
     }

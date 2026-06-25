@@ -25,7 +25,14 @@ const MODE_LABELS: Record<string, string> = {
   plan: "Plan",
   build: "Build",
 };
-const THINKING_LEVELS = ["off", "low", "medium", "high"] as const;
+const THINKING_LEVELS = [
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+] as const;
 
 interface ModelRef {
   model: string;
