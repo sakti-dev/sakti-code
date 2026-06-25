@@ -1,10 +1,9 @@
-import {
-  type AssistantMessage,
-  type ImageContent,
-  type Model,
-  streamSimple,
-  type UserMessage,
-} from "@earendil-works/pi-ai/base";
+import type {
+  AssistantMessage,
+  ImageContent,
+  Model,
+  UserMessage,
+} from "@sakti-code/llm";
 import {
   collectEntriesForBranchSummary,
   generateBranchSummary,
@@ -64,7 +63,7 @@ function createUserMessage(text: string, images?: ImageContent[]): UserMessage {
 }
 
 function createFailureMessage(
-  model: Model<any>,
+  model: Model,
   error: unknown,
   aborted: boolean
 ): AssistantMessage {
@@ -94,9 +93,6 @@ function cloneStreamOptions(
   return {
     ...streamOptions,
     headers: streamOptions?.headers ? { ...streamOptions.headers } : undefined,
-    metadata: streamOptions?.metadata
-      ? { ...streamOptions.metadata }
-      : undefined,
   };
 }
 
@@ -136,22 +132,6 @@ function applyStreamOptionsPatch(
     return result;
   }
 
-  if (Object.hasOwn(patch, "transport")) {
-    result.transport = patch.transport;
-  }
-  if (Object.hasOwn(patch, "timeoutMs")) {
-    result.timeoutMs = patch.timeoutMs;
-  }
-  if (Object.hasOwn(patch, "maxRetries")) {
-    result.maxRetries = patch.maxRetries;
-  }
-  if (Object.hasOwn(patch, "maxRetryDelayMs")) {
-    result.maxRetryDelayMs = patch.maxRetryDelayMs;
-  }
-  if (Object.hasOwn(patch, "cacheRetention")) {
-    result.cacheRetention = patch.cacheRetention;
-  }
-
   if (Object.hasOwn(patch, "headers")) {
     if (patch.headers === undefined) {
       result.headers = undefined;
@@ -165,22 +145,6 @@ function applyStreamOptionsPatch(
         }
       }
       result.headers = Object.keys(headers).length > 0 ? headers : undefined;
-    }
-  }
-
-  if (Object.hasOwn(patch, "metadata")) {
-    if (patch.metadata === undefined) {
-      result.metadata = undefined;
-    } else {
-      const metadata = { ...(result.metadata ?? {}) };
-      for (const [key, value] of Object.entries(patch.metadata)) {
-        if (value === undefined) {
-          delete metadata[key];
-        } else {
-          metadata[key] = value;
-        }
-      }
-      result.metadata = Object.keys(metadata).length > 0 ? metadata : undefined;
     }
   }
 
@@ -225,7 +189,7 @@ interface AgentHarnessTurnState<
 > {
   activeTools: TTool[];
   messages: AgentMessage[];
-  model: Model<any>;
+  model: Model;
   resources: AgentHarnessResources<TSkill, TPromptTemplate>;
   sessionId: string;
   streamOptions: AgentHarnessStreamOptions;
@@ -245,7 +209,7 @@ export class AgentHarness<
   private runAbortController?: AbortController | undefined;
   private runPromise?: Promise<void> | undefined;
   private pendingSessionWrites: PendingSessionWrite[] = [];
-  private model: Model<any>;
+  private model: Model;
   private thinkingLevel: ThinkingLevel;
   private systemPrompt: AgentHarnessOptions<
     TSkill,
@@ -253,6 +217,7 @@ export class AgentHarness<
     TTool
   >["systemPrompt"];
   private streamOptions: AgentHarnessStreamOptions;
+  private testStreamFn?: StreamFn;
   private getApiKeyAndHeaders?: AgentHarnessOptions["getApiKeyAndHeaders"];
   private resources: AgentHarnessResources<TSkill, TPromptTemplate>;
   private tools = new Map<string, TTool>();
@@ -269,6 +234,9 @@ export class AgentHarness<
     this.session = options.session;
     this.resources = options.resources ?? {};
     this.streamOptions = cloneStreamOptions(options.streamOptions);
+    if (options.streamFn) {
+      this.testStreamFn = options.streamFn;
+    }
     this.systemPrompt = options.systemPrompt;
     this.getApiKeyAndHeaders = options.getApiKeyAndHeaders;
     this.validateUniqueNames(
@@ -346,7 +314,7 @@ export class AgentHarness<
   }
 
   private async emitBeforeProviderRequest(
-    model: Model<any>,
+    model: Model,
     sessionId: string,
     streamOptions: AgentHarnessStreamOptions
   ): Promise<AgentHarnessStreamOptions> {
@@ -365,32 +333,6 @@ export class AgentHarness<
         })) as { streamOptions?: AgentHarnessStreamOptionsPatch } | undefined;
         if (result?.streamOptions) {
           current = applyStreamOptionsPatch(current, result.streamOptions);
-        }
-      } catch (error) {
-        throw normalizeHookError(error);
-      }
-    }
-    return current;
-  }
-
-  private async emitBeforeProviderPayload(
-    model: Model<any>,
-    payload: unknown
-  ): Promise<unknown> {
-    const handlers = this.getHandlers("before_provider_payload");
-    let current = payload;
-    if (!handlers || handlers.size === 0) {
-      return current;
-    }
-    for (const handler of handlers) {
-      try {
-        const result = (await handler({
-          type: "before_provider_payload",
-          model,
-          payload: current,
-        })) as { payload?: unknown } | undefined;
-        if (result !== undefined && result.payload !== undefined) {
-          current = result.payload;
         }
       } catch (error) {
         throw normalizeHookError(error);
@@ -469,48 +411,43 @@ export class AgentHarness<
   private createStreamFn(
     getTurnState: () => AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
   ): StreamFn {
-    return async (model, context, streamOptions) => {
+    return async (req) => {
       const turnState = getTurnState();
-      const auth = await this.getApiKeyAndHeaders?.(model);
-      const snapshotOptions: AgentHarnessStreamOptions = {
-        ...turnState.streamOptions,
-        headers: mergeHeaders(turnState.streamOptions.headers, auth?.headers),
-      };
-      const requestOptions = await this.emitBeforeProviderRequest(
-        model,
-        turnState.sessionId,
-        snapshotOptions
+      const auth = await this.getApiKeyAndHeaders?.(req.model);
+
+      // Merge headers from turn state + auth + caller request
+      const mergedHeaders = mergeHeaders(
+        mergeHeaders(turnState.streamOptions.headers, auth?.headers),
+        req.headers
       );
-      return streamSimple(model, context, {
-        cacheRetention: requestOptions.cacheRetention,
-        headers: requestOptions.headers,
-        maxRetries: requestOptions.maxRetries,
-        maxRetryDelayMs: requestOptions.maxRetryDelayMs,
-        metadata: requestOptions.metadata,
-        onPayload: async (payload) =>
-          await this.emitBeforeProviderPayload(model, payload),
-        onResponse: async (response) => {
-          const headers = { ...(response.headers as Record<string, string>) };
-          await this.emitOwn(
-            {
-              type: "after_provider_response",
-              status: response.status,
-              headers,
-            },
-            streamOptions?.signal
-          );
-        },
-        ...(streamOptions?.reasoning === undefined
-          ? {}
-          : { reasoning: streamOptions.reasoning }),
-        ...(streamOptions?.signal === undefined
-          ? {}
-          : { signal: streamOptions.signal }),
+
+      // Emit before_provider_request hook (allows header patching)
+      const requestOptions = await this.emitBeforeProviderRequest(
+        req.model,
+        turnState.sessionId,
+        {
+          ...turnState.streamOptions,
+          headers: mergedHeaders,
+        }
+      );
+
+      // Use test-injected streamFn if provided, otherwise call real stream()
+      if (this.testStreamFn) {
+        return this.testStreamFn(req);
+      }
+      const { stream } = await import("@sakti-code/llm");
+      const apiKey = auth?.apiKey ?? req.apiKey;
+      return stream({
+        model: req.model,
+        messages: req.messages,
+        ...(req.system ? { system: req.system } : {}),
+        ...(req.tools ? { tools: req.tools } : {}),
+        ...(req.thinkingLevel ? { thinkingLevel: req.thinkingLevel } : {}),
+        ...(apiKey ? { apiKey } : {}),
+        ...(requestOptions.headers ? { headers: requestOptions.headers } : {}),
         sessionId: turnState.sessionId,
-        timeoutMs: requestOptions.timeoutMs,
-        transport: requestOptions.transport,
-        apiKey: auth?.apiKey,
-      } as Parameters<typeof streamSimple>[2]);
+        ...(req.abortSignal ? { abortSignal: req.abortSignal } : {}),
+      });
     };
   }
 
@@ -691,7 +628,7 @@ export class AgentHarness<
   }
 
   private async emitRunFailure(
-    model: Model<any>,
+    model: Model,
     error: unknown,
     aborted: boolean,
     signal: AbortSignal
@@ -1182,11 +1119,11 @@ export class AgentHarness<
     }
   }
 
-  getModel(): Model<any> {
+  getModel(): Model {
     return this.model;
   }
 
-  async setModel(model: Model<any>): Promise<void> {
+  async setModel(model: Model): Promise<void> {
     try {
       const previousModel = this.model;
       if (this.phase === "idle") {

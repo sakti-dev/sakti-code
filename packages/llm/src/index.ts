@@ -39,7 +39,10 @@
 export { findEnvKeys, getEnvApiKey } from "./auth/env.ts";
 export type { AuthResult, ModelAuth } from "./auth/types.ts";
 // Generated model catalog from models.dev (142 providers, matches opencode).
-export { ALL_MODELS, CATALOG, PROVIDERS } from "./catalog/index.ts";
+export { ALL_MODELS, CATALOG, getModel, PROVIDERS } from "./catalog/index.ts";
+export type { CompleteRequest, CompleteResult } from "./complete.ts";
+// Non-streaming completion (generateText wrapper) for compaction and one-shots.
+export { complete, completeWithModel } from "./complete.ts";
 // Cost computation (mutates usage.cost in place; Anthropic 1h cache premium).
 export { calculateCost } from "./cost.ts";
 // Message conversion: Message[] → @ai-sdk ModelMessage[].

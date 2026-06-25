@@ -1,4 +1,4 @@
-import type { ImageContent, TextContent } from "@earendil-works/pi-ai/base";
+import type { ImageContent, TextContent } from "@sakti-code/llm";
 import type { AgentMessage } from "../types.ts";
 import {
   createBranchSummaryMessage,

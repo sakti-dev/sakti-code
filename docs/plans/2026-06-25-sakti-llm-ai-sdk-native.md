@@ -257,31 +257,71 @@ Verify each path exists before relying on it.
 
 ---
 
-## Phase 5 — Agent loop `@ai-sdk`-native cutover
+## Phase 5 — Agent loop `@ai-sdk`-native cutover ✓ DONE
 
-### Task 5.1 — Retarget agent deps
-- `packages/agent/package.json`: replace `@earendil-works/pi-ai` → `@sakti-code/llm` (workspace).
-- Update every import in `packages/agent/src/**`: message types + `stream` now from `@sakti-code/llm`. (Grep `@earendil-works/pi-ai` → rewrite each.)
+> **111/111 agent tests green · 117/117 llm tests green · typecheck clean ·
+> ultracite fix clean.**
+>
+> The agent loop now consumes `stream().fullStream` natively — no
+> `AssistantMessageEvent` protocol, no adapter. Accumulates text-delta,
+> reasoning-delta, and tool-call parts into `AssistantMessage`. Emits slim
+> per-token deltas (`{ kind: "text"|"thinking", text }`).
 
-### Task 5.2 — Replace stream consumption
-- Replace `agent-loop.ts:313-364` (the `streamFunction(...)` + `for await (event of response)` switch) with:
-  - `const { fullStream, result } = stream({ model, messages: llmMessages, system, tools, abortSignal, thinkingLevel, sessionId, apiKey, … });`
-  - Iterate `fullStream`: `text-start/delta/end` → accumulate text block + emit slim delta; `reasoning-*` → accumulate thinking + emit slim delta (kind:"thinking"); `tool-call` → accumulate tool call; `finish` → read `await result`, build final `AssistantMessage` (content + usage + stopReason + calculateCost already applied); `error` → build error `AssistantMessage`.
-  - Accumulator state: current text index, current thinking index, tool-call array, usage. (The accumulator that used to live in pi-ai's 9 API impls now lives here — once.)
-- Map @ai-sdk `finishReason` → our `StopReason`.
-- Emit lifecycle: `message_start` (on first partial), `message_update` (per delta — slim), `message_end` (final AssistantMessage).
+### Added to `@sakti-code/llm`
+- `src/complete.ts` — `complete(req): Promise<CompleteResult>` wraps
+  `generateText` for compaction. Errors caught → `finishReason: "error"`,
+  never thrown. `completeWithModel` for tests.
+- `src/catalog/index.ts` — `getModel(provider, id)` lookup helper.
+- 5 new tests (117 total in llm).
 
-### Task 5.3 — Slim UI seam (Option 2 + perf fix)
-- `AgentEvent.message_update` payload (AG-EVENT `:506-511`):
-  - **Remove** `assistantMessageEvent: AssistantMessageEvent`.
-  - **Remove** the per-token `message: {...partialMessage}` clone (the dead payload — perf invariant).
-  - **Add** `delta: { text: string; kind: "text"|"thinking" }`.
-  - `message` only flows on `message_start` / `message_end`.
-- Update `StreamFn` (AG-STREAMFN) → matches `@sakti-code/llm`'s `stream` signature.
+### Moved into `@sakti-code/agent` (agent-internal utilities)
+- `src/utils/event-stream.ts` — `EventStream<T, R>` class (async queue).
+- `src/utils/validation.ts` — `validateToolArguments` (TypeBox validation
+  + JSON Schema coercion, ~350 lines ported verbatim).
 
-### Task 5.4 — Agent tests
-- `agent-loop.test.ts`, `agent.test.ts`: replace `AssistantMessageEvent` fixtures with `fullStream` parts (fake `stream` injected via dep injection); assert accumulation + slim-delta emission + final AssistantMessage usage/cost.
-- `harness/*` tests: update fixtures.
+### Task 5.1 — Retarget deps ✓
+- `packages/agent/package.json`: `@earendil-works/pi-ai` → `@sakti-code/llm`
+  (workspace) + `typebox`.
+- Every import in `packages/agent/src/**` swapped to `@sakti-code/llm` or
+  the local `utils/` modules.
+
+### Task 5.2 — Replace stream consumption ✓
+- `agent-loop.ts:streamAssistantResponse` rewritten (~100 lines):
+  - Builds `StreamRequest` from `AgentContext` + `AgentLoopConfig`.
+  - Iterates `fullStream`: `text-delta` → accumulate text + emit slim
+    delta; `reasoning-delta` → accumulate thinking + emit slim delta;
+    `tool-call` → accumulate tool call; `error` → capture error.
+  - After stream ends, awaits `result`, builds final `AssistantMessage`.
+  - `toStreamTools` converts `AgentTool[]` to @ai-sdk tool format
+    (schema-only, no `execute` — the agent loop manages tool execution).
+  - `defaultStreamFn` lazily imports `stream` from `@sakti-code/llm`.
+
+### Task 5.3 — Slim UI seam ✓
+- `AgentEvent.message_update` now carries `{ delta: { kind: "text"|"thinking"; text: string } }`.
+- Removed `assistantMessageEvent: AssistantMessageEvent`.
+- Removed per-token `message: {...partialMessage}` clone (perf invariant).
+- `AgentLoopConfig` lost all `SimpleStreamOptions[...]` fields
+  (`cacheRetention`, `metadata`, `onPayload`, `onResponse`,
+  `thinkingBudgets`, `transport`, `timeoutMs`, `maxRetries`,
+  `maxRetryDelayMs`). Kept: `apiKey`, `headers`, `sessionId`, `reasoning`.
+- `AgentHarnessStreamOptions` simplified to `{ headers? }`.
+- `AgentHarnessOptions` gained `streamFn?: StreamFn` injection point
+  (bypasses real LLM calls for testing).
+
+### Task 5.4 — Tests ✓
+- `agent-loop.test.ts` (19 tests): full rewrite — `fakeStreamResult`
+  helper replaces `MockAssistantStream`. All tests inject `StreamFn`
+  that returns synthetic `StreamResult`.
+- `agent.test.ts` (18 tests): same pattern. Abort tests use blocking
+  async generators.
+- `harness/agent-harness.test.ts` (13 tests): `registerFauxStreamProvider`
+  replaces pi-ai's `registerFauxProvider`. Tests inject `streamFn` via
+  `AgentHarnessOptions`.
+- `harness/compaction.test.ts` (20 tests): `vi.mock("@sakti-code/llm")`
+  mocks `complete`. Response functions return `CompleteResult`.
+- Behavioral change: compaction errors that were `code: "aborted"` are now
+  `code: "summarization_failed"` (since @ai-sdk doesn't distinguish abort
+  from error in `generateText`).
 
 ---
 

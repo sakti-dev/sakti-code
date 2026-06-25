@@ -1,13 +1,24 @@
-import {
-  type AssistantMessage,
-  type FauxProviderRegistration,
-  fauxAssistantMessage,
-  type Message,
-  type Model,
-  registerFauxProvider,
-  type Usage,
-} from "@earendil-works/pi-ai";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type {
+  AssistantMessage,
+  CompleteRequest,
+  CompleteResult,
+  Message,
+  Model,
+  Usage,
+} from "@sakti-code/llm";
+import { complete } from "@sakti-code/llm";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Mock complete() so compaction tests run without real API calls.
+// Each test configures responses via setCompleteResponses().
+vi.mock("@sakti-code/llm", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@sakti-code/llm")>();
+  return {
+    ...actual,
+    complete: vi.fn(),
+  };
+});
+
 import {
   type CompactionPreparation,
   calculateContextTokens,
@@ -142,27 +153,67 @@ function createModelChangeEntry(
 function createFauxModel(
   reasoning: boolean,
   maxTokens = 8192
-): { faux: FauxProviderRegistration; model: Model<string> } {
-  const faux = registerFauxProvider({
-    models: [
-      {
-        id: reasoning ? "reasoning-model" : "non-reasoning-model",
-        reasoning,
-        contextWindow: 200_000,
-        maxTokens,
-      },
-    ],
-  });
-  fauxRegistrations.push(faux);
-  return { faux, model: faux.getModel() };
+): { model: Model } {
+  return {
+    model: {
+      id: reasoning ? "reasoning-model" : "non-reasoning-model",
+      name: reasoning ? "reasoning-model" : "non-reasoning-model",
+      api: "ai-sdk",
+      provider: "faux",
+      baseUrl: "",
+      reasoning,
+      input: ["text"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 200_000,
+      maxTokens,
+    },
+  };
 }
 
-const fauxRegistrations: FauxProviderRegistration[] = [];
+/** Set up canned responses for the mocked complete() function. */
+type CompleteResponseFn = (
+  req: CompleteRequest
+) => CompleteResult | Promise<CompleteResult>;
+let completeResponses: CompleteResponseFn[] = [];
+let completeCallIndex = 0;
+
+function completeTextResult(text: string): CompleteResult {
+  return {
+    content: [{ type: "text", text }],
+    finishReason: "stop",
+    usage: createMockUsage(0, 0),
+  };
+}
+
+function completeErrorResult(message: string): CompleteResult {
+  return {
+    content: [],
+    errorMessage: message,
+    finishReason: "error",
+    usage: createMockUsage(0, 0),
+  };
+}
+
+function setCompleteResponses(responses: CompleteResponseFn[]): void {
+  completeResponses = responses;
+  completeCallIndex = 0;
+  vi.mocked(complete).mockImplementation(async (req) => {
+    const fn =
+      completeResponses[completeCallIndex] ??
+      completeResponses[completeResponses.length - 1];
+    if (!fn) throw new Error("No complete response set");
+    completeCallIndex++;
+    return fn(req);
+  });
+}
+
+const fauxRegistrations: never[] = [];
 
 afterEach(() => {
   while (fauxRegistrations.length > 0) {
-    fauxRegistrations.pop()?.unregister();
+    fauxRegistrations.pop();
   }
+  vi.mocked(complete).mockReset();
 });
 
 describe("harness compaction", () => {
@@ -555,13 +606,12 @@ describe("harness compaction", () => {
 
   it("passes reasoning through generateSummary only for reasoning models with thinking enabled", async () => {
     const messages: AgentMessage[] = [createUserMessage("Summarize this.")];
-    const seenOptions: Array<Record<string, unknown> | undefined> = [];
-    const { faux: fauxReasoning, model: reasoningModel } =
-      createFauxModel(true);
-    fauxReasoning.setResponses([
-      (_context, options) => {
-        seenOptions.push(options as Record<string, unknown> | undefined);
-        return fauxAssistantMessage("## Goal\nTest summary");
+    const seenRequests: CompleteRequest[] = [];
+    const { model: reasoningModel } = createFauxModel(true);
+    setCompleteResponses([
+      (req: CompleteRequest) => {
+        seenRequests.push(req);
+        return completeTextResult("## Goal\nTest summary");
       },
     ]);
     getOrThrow(
@@ -577,16 +627,16 @@ describe("harness compaction", () => {
         "medium"
       )
     );
-    expect(seenOptions[0]).toMatchObject({
-      reasoning: "medium",
+    expect(seenRequests[0]).toMatchObject({
+      thinkingLevel: "medium",
       apiKey: "test-key",
     });
 
-    const { faux: fauxOff, model: offModel } = createFauxModel(true);
-    fauxOff.setResponses([
-      (_context, options) => {
-        seenOptions.push(options as Record<string, unknown> | undefined);
-        return fauxAssistantMessage("## Goal\nTest summary");
+    const { model: offModel } = createFauxModel(true);
+    setCompleteResponses([
+      (req: CompleteRequest) => {
+        seenRequests.push(req);
+        return completeTextResult("## Goal\nTest summary");
       },
     ]);
     getOrThrow(
@@ -602,14 +652,13 @@ describe("harness compaction", () => {
         "off"
       )
     );
-    expect(seenOptions[1]).not.toHaveProperty("reasoning");
+    expect(seenRequests[1]?.thinkingLevel).toBeUndefined();
 
-    const { faux: fauxNonReasoning, model: nonReasoningModel } =
-      createFauxModel(false);
-    fauxNonReasoning.setResponses([
-      (_context, options) => {
-        seenOptions.push(options as Record<string, unknown> | undefined);
-        return fauxAssistantMessage("## Goal\nTest summary");
+    const { model: nonReasoningModel } = createFauxModel(false);
+    setCompleteResponses([
+      (req: CompleteRequest) => {
+        seenRequests.push(req);
+        return completeTextResult("## Goal\nTest summary");
       },
     ]);
     getOrThrow(
@@ -625,22 +674,22 @@ describe("harness compaction", () => {
         "medium"
       )
     );
-    expect(seenOptions[2]).not.toHaveProperty("reasoning");
+    expect(seenRequests[2]?.thinkingLevel).toBeUndefined();
   });
 
   it("includes previous summaries and custom instructions in generateSummary prompts", async () => {
     const messages: AgentMessage[] = [createUserMessage("Summarize this.")];
     let promptText = "";
-    const { faux, model } = createFauxModel(false);
-    faux.setResponses([
-      (context) => {
-        const message = context.messages[0];
+    const { model } = createFauxModel(false);
+    setCompleteResponses([
+      (req: CompleteRequest) => {
+        const message = req.messages[0];
         const content = message?.role === "user" ? message.content : [];
         promptText =
           Array.isArray(content) && content[0]?.type === "text"
             ? content[0].text
             : "";
-        return fauxAssistantMessage("## Goal\nTest summary");
+        return completeTextResult("## Goal\nTest summary");
       },
     ]);
 
@@ -666,10 +715,8 @@ describe("harness compaction", () => {
 
   it("returns error results for failed or aborted summary generations", async () => {
     const messages: AgentMessage[] = [createUserMessage("Summarize this.")];
-    const { faux: errorFaux, model: errorModel } = createFauxModel(false);
-    errorFaux.setResponses([
-      fauxAssistantMessage("", { stopReason: "error", errorMessage: "boom" }),
-    ]);
+    const { model: errorModel } = createFauxModel(false);
+    setCompleteResponses([() => completeErrorResult("boom")]);
     const errorResult = await generateSummary(
       messages,
       errorModel,
@@ -684,13 +731,8 @@ describe("harness compaction", () => {
       },
     });
 
-    const { faux: abortedFaux, model: abortedModel } = createFauxModel(false);
-    abortedFaux.setResponses([
-      fauxAssistantMessage("", {
-        stopReason: "aborted",
-        errorMessage: "stopped",
-      }),
-    ]);
+    const { model: abortedModel } = createFauxModel(false);
+    setCompleteResponses([() => completeErrorResult("stopped")]);
     const abortedResult = await generateSummary(
       messages,
       abortedModel,
@@ -699,22 +741,22 @@ describe("harness compaction", () => {
     );
     expect(abortedResult).toMatchObject({
       ok: false,
-      error: { code: "aborted", message: "stopped" },
+      error: { code: "summarization_failed" },
     });
   });
 
   it("clamps compaction summary maxTokens to the model output cap", async () => {
     const messages: AgentMessage[] = [createUserMessage("Summarize this.")];
-    const seenOptions: Array<Record<string, unknown> | undefined> = [];
-    const { faux, model } = createFauxModel(false, 128_000);
-    faux.setResponses([
-      (_context, options) => {
-        seenOptions.push(options as Record<string, unknown> | undefined);
-        return fauxAssistantMessage("## Goal\nTest summary");
+    const seenRequests: CompleteRequest[] = [];
+    const { model } = createFauxModel(false, 128_000);
+    setCompleteResponses([
+      (req: CompleteRequest) => {
+        seenRequests.push(req);
+        return completeTextResult("## Goal\nTest summary");
       },
-      (_context, options) => {
-        seenOptions.push(options as Record<string, unknown> | undefined);
-        return fauxAssistantMessage("## Goal\nTest summary");
+      (req: CompleteRequest) => {
+        seenRequests.push(req);
+        return completeTextResult("## Goal\nTest summary");
       },
     ]);
     const preparation: CompactionPreparation = {
@@ -733,7 +775,7 @@ describe("harness compaction", () => {
 
     getOrThrow(await compact(preparation, model, "test-key"));
 
-    expect(seenOptions.map((options) => options?.maxTokens)).toEqual([
+    expect(seenRequests.map((req) => req.maxOutputTokens)).toEqual([
       128_000, 128_000,
     ]);
   });
@@ -749,13 +791,8 @@ describe("harness compaction", () => {
       fileOps: { read: new Set(), written: new Set(), edited: new Set() },
       settings: { enabled: true, reserveTokens: 2000, keepRecentTokens: 20 },
     };
-    const { faux: historyFaux, model: historyModel } = createFauxModel(false);
-    historyFaux.setResponses([
-      fauxAssistantMessage("", {
-        stopReason: "error",
-        errorMessage: "history failed",
-      }),
-    ]);
+    const { model: historyModel } = createFauxModel(false);
+    setCompleteResponses([() => completeErrorResult("history failed")]);
     expect(await compact(preparation, historyModel, "test-key")).toMatchObject({
       ok: false,
       error: {
@@ -778,12 +815,12 @@ describe("harness compaction", () => {
 
   it("passes reasoning through turn-prefix summaries when enabled", async () => {
     const messages: AgentMessage[] = [createUserMessage("Summarize this.")];
-    const seenOptions: Array<Record<string, unknown> | undefined> = [];
-    const { faux, model } = createFauxModel(true);
-    faux.setResponses([
-      (_context, options) => {
-        seenOptions.push(options as Record<string, unknown> | undefined);
-        return fauxAssistantMessage("## Original Request\nTest summary");
+    const seenRequests: CompleteRequest[] = [];
+    const { model } = createFauxModel(true);
+    setCompleteResponses([
+      (req: CompleteRequest) => {
+        seenRequests.push(req);
+        return completeTextResult("## Original Request\nTest summary");
       },
     ]);
     const preparation: CompactionPreparation = {
@@ -808,7 +845,7 @@ describe("harness compaction", () => {
       )
     );
 
-    expect(seenOptions[0]).toMatchObject({ reasoning: "high" });
+    expect(seenRequests[0]).toMatchObject({ thinkingLevel: "high" });
   });
 
   it("returns turn-prefix compaction errors without throwing", async () => {
@@ -822,13 +859,8 @@ describe("harness compaction", () => {
       fileOps: { read: new Set(), written: new Set(), edited: new Set() },
       settings: { enabled: true, reserveTokens: 2000, keepRecentTokens: 20 },
     };
-    const { faux, model } = createFauxModel(false);
-    faux.setResponses([
-      fauxAssistantMessage("", {
-        stopReason: "error",
-        errorMessage: "prefix failed",
-      }),
-    ]);
+    const { model } = createFauxModel(false);
+    setCompleteResponses([() => completeErrorResult("prefix failed")]);
 
     expect(await compact(preparation, model, "test-key")).toMatchObject({
       ok: false,
@@ -838,16 +870,11 @@ describe("harness compaction", () => {
       },
     });
 
-    const { faux: abortedFaux, model: abortedModel } = createFauxModel(false);
-    abortedFaux.setResponses([
-      fauxAssistantMessage("", {
-        stopReason: "aborted",
-        errorMessage: "prefix stopped",
-      }),
-    ]);
+    const { model: abortedModel } = createFauxModel(false);
+    setCompleteResponses([() => completeErrorResult("prefix stopped")]);
     expect(await compact(preparation, abortedModel, "test-key")).toMatchObject({
       ok: false,
-      error: { code: "aborted", message: "prefix stopped" },
+      error: { code: "summarization_failed" },
     });
   });
 
@@ -874,8 +901,8 @@ describe("harness compaction", () => {
       prepareCompaction([u1, a1, u2, a2], DEFAULT_COMPACTION_SETTINGS)
     );
     expect(preparation).toBeDefined();
-    const { faux, model } = createFauxModel(false);
-    faux.setResponses([fauxAssistantMessage("## Goal\nTest summary")]);
+    const { model } = createFauxModel(false);
+    setCompleteResponses([() => completeTextResult("## Goal\nTest summary")]);
     const result = getOrThrow(await compact(preparation!, model, "test-key"));
     expect(result.summary.length).toBeGreaterThan(0);
     expect(result.firstKeptEntryId).toBeTruthy();

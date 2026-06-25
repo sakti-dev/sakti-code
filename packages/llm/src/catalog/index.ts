@@ -19,3 +19,23 @@
  */
 
 export { ALL_MODELS, CATALOG, PROVIDERS } from "./generated.ts";
+
+import type { Model } from "../types.ts";
+import { CATALOG } from "./generated.ts";
+
+/**
+ * Look up a model by provider + id from the catalog.
+ *
+ * @throws if the model is not found.
+ */
+export function getModel(provider: string, id: string): Model {
+  const models = CATALOG[provider];
+  if (models) {
+    for (const model of models) {
+      if (model.id === id) {
+        return model;
+      }
+    }
+  }
+  throw new Error(`Model not found: ${provider}/${id}`);
+}

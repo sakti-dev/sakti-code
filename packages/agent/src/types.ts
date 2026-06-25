@@ -1,29 +1,30 @@
-import type { streamSimple } from "@earendil-works/pi-ai";
 import type {
   AssistantMessage,
-  AssistantMessageEvent,
   ImageContent,
   Message,
   Model,
-  SimpleStreamOptions,
+  StreamRequest,
+  StreamResult,
   TextContent,
   Tool,
   ToolResultMessage,
-} from "@earendil-works/pi-ai/base";
+} from "@sakti-code/llm";
 import type { Static, TSchema } from "typebox";
 
 /**
  * Stream function used by the agent loop.
  *
+ * Matches {@link stream} from `@sakti-code/llm`. The agent loop calls this
+ * with a `StreamRequest` and gets back `{ fullStream, result }`. Tests inject
+ * a fake implementation that yields synthetic fullStream parts.
+ *
  * Contract:
- * - Must not throw or return a rejected promise for request/model/runtime failures.
- * - Must return an AssistantMessageEventStream.
- * - Failures must be encoded in the returned stream via protocol events and a
- *   final AssistantMessage with stopReason "error" or "aborted" and errorMessage.
+ * - Must not throw for request/model/runtime failures — encode them in the
+ *   stream as error parts or in the `result` promise's `finishReason`.
  */
 export type StreamFn = (
-  ...args: Parameters<typeof streamSimple>
-) => ReturnType<typeof streamSimple> | Promise<ReturnType<typeof streamSimple>>;
+  req: StreamRequest
+) => Promise<StreamResult> | StreamResult;
 
 /**
  * Configuration for how tool calls from a single assistant message are executed.
@@ -128,7 +129,7 @@ export interface AgentLoopTurnUpdate {
   /** Context for the next provider request. */
   context?: AgentContext | undefined;
   /** Model for the next provider request. */
-  model?: Model<any> | undefined;
+  model?: Model | undefined;
   /** Thinking level for the next provider request. */
   thinkingLevel?: ThinkingLevel | undefined;
 }
@@ -169,7 +170,6 @@ export interface AgentLoopConfig {
         signal?: AbortSignal
       ) => Promise<BeforeToolCallResult | undefined>)
     | undefined;
-  cacheRetention?: SimpleStreamOptions["cacheRetention"] | undefined;
 
   /**
    * Converts AgentMessage[] to LLM-compatible Message[] before each LLM call.
@@ -237,12 +237,7 @@ export interface AgentLoopConfig {
    */
   getSteeringMessages?: (() => Promise<AgentMessage[]>) | undefined;
   headers?: Record<string, string> | undefined;
-  maxRetries?: number | undefined;
-  maxRetryDelayMs?: number | undefined;
-  metadata?: SimpleStreamOptions["metadata"] | undefined;
-  model: Model<any>;
-  onPayload?: SimpleStreamOptions["onPayload"] | undefined;
-  onResponse?: SimpleStreamOptions["onResponse"] | undefined;
+  model: Model;
 
   /**
    * Called after `turn_end` and before the loop decides whether another provider request should start.
@@ -257,7 +252,9 @@ export interface AgentLoopConfig {
         | undefined
         | Promise<AgentLoopTurnUpdate | undefined>)
     | undefined;
-  reasoning?: SimpleStreamOptions["reasoning"] | undefined;
+
+  /** Thinking level forwarded to the stream function as `thinkingLevel`. */
+  reasoning?: ThinkingLevel | undefined;
   sessionId?: string | undefined;
   /**
    * Called after each turn fully completes and `turn_end` has been emitted.
@@ -272,9 +269,6 @@ export interface AgentLoopConfig {
   shouldStopAfterTurn?:
     | ((context: ShouldStopAfterTurnContext) => boolean | Promise<boolean>)
     | undefined;
-  signal?: AbortSignal | undefined;
-  thinkingBudgets?: SimpleStreamOptions["thinkingBudgets"] | undefined;
-  timeoutMs?: number | undefined;
 
   /**
    * Tool execution mode.
@@ -313,13 +307,12 @@ export interface AgentLoopConfig {
         signal?: AbortSignal
       ) => Promise<AgentMessage[]>)
     | undefined;
-  transport?: SimpleStreamOptions["transport"] | undefined;
 }
 
 /**
  * Thinking/reasoning level for models that support it.
- * Note: "xhigh" is only supported by selected model families. Use model thinking-level metadata
- * from @earendil-works/pi-ai to detect support for a concrete model.
+ * Note: "xhigh" is only supported by selected model families. Use model
+ * `reasoning` metadata from @sakti-code/llm to detect support.
  */
 export type ThinkingLevel =
   | "off"
@@ -407,7 +400,7 @@ export interface AgentState {
   set messages(messages: AgentMessage[]);
   get messages(): AgentMessage[];
   /** Active model used for future turns. */
-  model: Model<any>;
+  model: Model;
   /** Tool call ids currently executing. */
   readonly pendingToolCalls: ReadonlySet<string>;
   /** Partial assistant message for the current streamed response, if any. */
@@ -503,11 +496,11 @@ export type AgentEvent =
     }
   // Message lifecycle - emitted for user, assistant, and toolResult messages
   | { type: "message_start"; message: AgentMessage }
-  // Only emitted for assistant messages during streaming
+  // Only emitted for assistant messages during streaming — carries a slim delta
+  // (not a full partial-message clone). `kind` distinguishes text vs thinking.
   | {
       type: "message_update";
-      message: AgentMessage;
-      assistantMessageEvent: AssistantMessageEvent;
+      delta: { kind: "text" | "thinking"; text: string };
     }
   | { type: "message_end"; message: AgentMessage }
   // Tool execution lifecycle

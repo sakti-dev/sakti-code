@@ -1,15 +1,10 @@
-import type {
-  ImageContent,
-  Model,
-  SimpleStreamOptions,
-  TextContent,
-  Transport,
-} from "@earendil-works/pi-ai/base";
+import type { ImageContent, Model, TextContent } from "@sakti-code/llm";
 import type {
   AgentEvent,
   AgentMessage,
   AgentTool,
   QueueMode,
+  StreamFn,
   ThinkingLevel,
 } from "../types.ts";
 
@@ -106,29 +101,14 @@ export interface AgentHarnessResources<
 
 /** Curated provider request options owned by the harness and snapshotted per turn. */
 export interface AgentHarnessStreamOptions {
-  /** Provider cache retention hint. */
-  cacheRetention?: SimpleStreamOptions["cacheRetention"] | undefined;
   /** Additional request headers merged with auth and lifecycle headers. */
   headers?: Record<string, string> | undefined;
-  /** Maximum provider retry attempts. */
-  maxRetries?: number | undefined;
-  /** Optional cap for provider-requested retry delays. */
-  maxRetryDelayMs?: number | undefined;
-  /** Provider metadata forwarded with requests. */
-  metadata?: SimpleStreamOptions["metadata"] | undefined;
-  /** Provider request timeout in milliseconds. */
-  timeoutMs?: number | undefined;
-  /** Preferred transport forwarded to the stream function. */
-  transport?: Transport | undefined;
 }
 
 /** Per-request stream option patch returned by provider hooks. */
-export interface AgentHarnessStreamOptionsPatch
-  extends Omit<Partial<AgentHarnessStreamOptions>, "headers" | "metadata"> {
+export interface AgentHarnessStreamOptionsPatch {
   /** Header patch. `undefined` values delete keys; explicit `headers: undefined` clears all headers. */
   headers?: Record<string, string | undefined>;
-  /** Metadata patch. `undefined` values delete keys; explicit `metadata: undefined` clears all metadata. */
-  metadata?: Record<string, unknown | undefined>;
 }
 
 /** Kind of filesystem object as addressed by a {@link FileSystem}. Symlinks are not followed automatically. */
@@ -630,14 +610,14 @@ export interface ContextEvent {
 }
 
 export interface BeforeProviderRequestEvent {
-  model: Model<any>;
+  model: Model;
   sessionId: string;
   streamOptions: AgentHarnessStreamOptions;
   type: "before_provider_request";
 }
 
 export interface BeforeProviderPayloadEvent {
-  model: Model<any>;
+  model: Model;
   payload: unknown;
   type: "before_provider_payload";
 }
@@ -694,8 +674,8 @@ export interface SessionTreeEvent {
 }
 
 export interface ModelUpdateEvent {
-  model: Model<any>;
-  previousModel: Model<any> | undefined;
+  model: Model;
+  previousModel: Model | undefined;
   source: "set" | "restore";
   type: "model_update";
 }
@@ -877,7 +857,7 @@ export interface GenerateBranchSummaryOptions {
   apiKey: string;
   customInstructions?: string | undefined;
   headers?: Record<string, string> | undefined;
-  model: Model<any>;
+  model: Model;
   replaceInstructions?: boolean | undefined;
   reserveTokens?: number | undefined;
   signal: AbortSignal;
@@ -898,11 +878,11 @@ export interface AgentHarnessOptions<
   env: ExecutionEnv;
   followUpMode?: QueueMode;
   getApiKeyAndHeaders?: (
-    model: Model<any>
+    model: Model
   ) => Promise<
     { apiKey: string; headers?: Record<string, string> } | undefined
   >;
-  model: Model<any>;
+  model: Model;
   /**
    * Concrete resources available to explicit invocation methods and system-prompt callbacks.
    * Applications own loading/reloading resources and should call `setResources()` with new values.
@@ -910,6 +890,8 @@ export interface AgentHarnessOptions<
   resources?: AgentHarnessResources<TSkill, TPromptTemplate>;
   session: Session;
   steeringMode?: QueueMode;
+  /** Injectable stream function for testing (bypasses real LLM calls). */
+  streamFn?: StreamFn;
   /** Curated stream/provider request options. Snapshotted at turn start. */
   streamOptions?: AgentHarnessStreamOptions;
   systemPrompt?:
@@ -917,7 +899,7 @@ export interface AgentHarnessOptions<
     | ((context: {
         env: ExecutionEnv;
         session: Session;
-        model: Model<any>;
+        model: Model;
         thinkingLevel: ThinkingLevel;
         activeTools: TTool[];
         resources: AgentHarnessResources<TSkill, TPromptTemplate>;

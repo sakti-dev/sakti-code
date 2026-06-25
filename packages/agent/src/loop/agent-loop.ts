@@ -3,15 +3,14 @@
  * Transforms to Message[] only at the LLM call boundary.
  */
 
-import {
-  type AssistantMessage,
-  type Context,
-  EventStream,
-  type SimpleStreamOptions,
-  streamSimple,
-  type ToolResultMessage,
-  validateToolArguments,
-} from "@earendil-works/pi-ai/base";
+import type {
+  AssistantMessage,
+  TextContent,
+  ThinkingContent,
+  ToolCall,
+  ToolResultMessage,
+  Usage,
+} from "@sakti-code/llm";
 import type {
   AgentContext,
   AgentEvent,
@@ -22,6 +21,8 @@ import type {
   AgentToolResult,
   StreamFn,
 } from "../types.ts";
+import { EventStream } from "../utils/event-stream.ts";
+import { validateToolArguments } from "../utils/validation.ts";
 
 export type AgentEventSink = (event: AgentEvent) => Promise<void> | void;
 
@@ -286,6 +287,9 @@ async function runLoop(
 /**
  * Stream an assistant response from the LLM.
  * This is where AgentMessage[] gets transformed to Message[] for the LLM.
+ *
+ * Consumes @ai-sdk's `fullStream` natively — accumulates text-delta, reasoning-delta,
+ * and tool-call parts into an `AssistantMessage`, emitting slim per-token deltas.
  */
 async function streamAssistantResponse(
   context: AgentContext,
@@ -303,86 +307,195 @@ async function streamAssistantResponse(
   // Convert to LLM-compatible messages (AgentMessage[] → Message[])
   const llmMessages = await config.convertToLlm(messages);
 
-  // Build LLM context
-  const llmContext: Context = {
-    systemPrompt: context.systemPrompt,
-    messages: llmMessages,
-    ...(context.tools === undefined ? {} : { tools: context.tools }),
-  };
-
-  const streamFunction = streamFn || streamSimple;
-
   // Resolve API key (important for expiring tokens)
   const resolvedApiKey =
     (config.getApiKey
       ? await config.getApiKey(config.model.provider)
       : undefined) || config.apiKey;
 
-  const response = await streamFunction(config.model, llmContext, {
-    ...config,
+  // Build StreamRequest — @sakti-code/llm's single entry point
+  const streamFunction = streamFn ?? defaultStreamFn;
+  const { fullStream, result } = await streamFunction({
+    model: config.model,
+    messages: llmMessages,
+    ...(context.systemPrompt ? { system: context.systemPrompt } : {}),
+    ...(context.tools && context.tools.length > 0
+      ? { tools: toStreamTools(context.tools) }
+      : {}),
+    ...(config.reasoning === undefined
+      ? {}
+      : { thinkingLevel: config.reasoning }),
     ...(resolvedApiKey === undefined ? {} : { apiKey: resolvedApiKey }),
-    ...(signal === undefined ? {} : { signal }),
-  } as SimpleStreamOptions);
+    ...(config.headers ? { headers: config.headers } : {}),
+    ...(config.sessionId ? { sessionId: config.sessionId } : {}),
+    ...(signal ? { abortSignal: signal } : {}),
+  });
 
-  let partialMessage: AssistantMessage | null = null;
-  let addedPartial = false;
+  // ── Accumulator state ──────────────────────────────────────────────
+  let textBuffer = "";
+  let thinkingBuffer = "";
+  const toolCallBlocks: ToolCall[] = [];
+  let messageStarted = false;
 
-  for await (const event of response) {
-    switch (event.type) {
-      case "start":
-        partialMessage = event.partial;
-        context.messages.push(partialMessage);
-        addedPartial = true;
-        await emit({ type: "message_start", message: { ...partialMessage } });
-        break;
+  // Placeholder pushed to context.messages; replaced with final message at end.
+  const placeholder: AssistantMessage = {
+    role: "assistant",
+    content: [],
+    api: config.model.api,
+    provider: config.model.provider,
+    model: config.model.id,
+    usage: EMPTY_USAGE,
+    stopReason: "stop",
+    timestamp: Date.now(),
+  };
 
-      case "text_start":
-      case "text_delta":
-      case "text_end":
-      case "thinking_start":
-      case "thinking_delta":
-      case "thinking_end":
-      case "toolcall_start":
-      case "toolcall_delta":
-      case "toolcall_end":
-        if (partialMessage) {
-          partialMessage = event.partial;
-          context.messages[context.messages.length - 1] = partialMessage;
+  /** Emit message_start once (on first content or at finalization). */
+  const ensureMessageStarted = async (): Promise<void> => {
+    if (!messageStarted) {
+      messageStarted = true;
+      context.messages.push(placeholder);
+      await emit({ type: "message_start", message: placeholder });
+    }
+  };
+
+  // ── Iterate fullStream parts ───────────────────────────────────────
+  let streamError: Error | undefined;
+  try {
+    for await (const part of fullStream as AsyncIterable<
+      Record<string, unknown>
+    >) {
+      const type = part.type as string;
+      switch (type) {
+        case "text-delta": {
+          await ensureMessageStarted();
+          const delta = part.text as string;
+          textBuffer += delta;
           await emit({
             type: "message_update",
-            assistantMessageEvent: event,
-            message: { ...partialMessage },
+            delta: { kind: "text", text: delta },
           });
+          break;
         }
-        break;
-
-      case "done":
-      case "error": {
-        const finalMessage = await response.result();
-        if (addedPartial) {
-          context.messages[context.messages.length - 1] = finalMessage;
-        } else {
-          context.messages.push(finalMessage);
+        case "reasoning-delta": {
+          await ensureMessageStarted();
+          const delta = part.text as string;
+          thinkingBuffer += delta;
+          await emit({
+            type: "message_update",
+            delta: { kind: "thinking", text: delta },
+          });
+          break;
         }
-        if (!addedPartial) {
-          await emit({ type: "message_start", message: { ...finalMessage } });
+        case "tool-call": {
+          await ensureMessageStarted();
+          toolCallBlocks.push({
+            type: "toolCall",
+            id: part.toolCallId as string,
+            name: part.toolName as string,
+            arguments: (part.input as Record<string, unknown>) ?? {},
+          });
+          break;
         }
-        await emit({ type: "message_end", message: finalMessage });
-        return finalMessage;
+        case "error": {
+          streamError =
+            part.error instanceof Error
+              ? part.error
+              : new Error(String(part.error));
+          break;
+        }
+        // Other parts (text-start/end, reasoning-start/end, start-step,
+        // finish-step, tool-input-*, raw, source, file, start, finish, abort)
+        // are ignored — we accumulate from *-delta and tool-call only.
       }
     }
+  } catch (iterationError) {
+    streamError =
+      iterationError instanceof Error
+        ? iterationError
+        : new Error(String(iterationError));
   }
 
-  const finalMessage = await response.result();
-  if (addedPartial) {
+  // ── Build final AssistantMessage ───────────────────────────────────
+  const content: (TextContent | ThinkingContent | ToolCall)[] = [];
+  if (thinkingBuffer) {
+    content.push({ type: "thinking", thinking: thinkingBuffer });
+  }
+  if (textBuffer) {
+    content.push({ type: "text", text: textBuffer });
+  }
+  content.push(...toolCallBlocks);
+
+  let finish: {
+    usage: Usage;
+    finishReason: AssistantMessage["stopReason"];
+    responseId?: string;
+    responseModel?: string;
+  };
+  try {
+    const raw = await result;
+    finish = {
+      usage: raw.usage,
+      finishReason: raw.finishReason,
+      ...(raw.responseId ? { responseId: raw.responseId } : {}),
+      ...(raw.responseModel ? { responseModel: raw.responseModel } : {}),
+    };
+  } catch {
+    finish = { usage: EMPTY_USAGE, finishReason: "error" };
+  }
+
+  const finalMessage: AssistantMessage = {
+    role: "assistant",
+    content: content.length > 0 ? content : [{ type: "text", text: "" }],
+    api: config.model.api,
+    provider: config.model.provider,
+    model: config.model.id,
+    usage: finish.usage,
+    stopReason: streamError ? "error" : finish.finishReason,
+    timestamp: Date.now(),
+    ...(streamError ? { errorMessage: streamError.message } : {}),
+    ...(finish.responseId ? { responseId: finish.responseId } : {}),
+    ...(finish.responseModel ? { responseModel: finish.responseModel } : {}),
+  };
+
+  // Replace placeholder (or push if no content arrived)
+  if (messageStarted) {
     context.messages[context.messages.length - 1] = finalMessage;
   } else {
     context.messages.push(finalMessage);
-    await emit({ type: "message_start", message: { ...finalMessage } });
+    await emit({ type: "message_start", message: finalMessage });
   }
   await emit({ type: "message_end", message: finalMessage });
   return finalMessage;
 }
+
+/** Lazy import of the default stream function from @sakti-code/llm. */
+async function defaultStreamFn(
+  req: Parameters<StreamFn>[0]
+): Promise<Awaited<ReturnType<StreamFn>>> {
+  const { stream } = await import("@sakti-code/llm");
+  return stream(req);
+}
+
+/** Convert AgentTool[] to @ai-sdk tool format (schema-only, no execute). */
+function toStreamTools(tools: AgentTool[]): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const tool of tools) {
+    result[tool.name] = {
+      description: tool.description,
+      parameters: tool.parameters,
+    };
+  }
+  return result;
+}
+
+const EMPTY_USAGE: Usage = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+  totalTokens: 0,
+  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+};
 
 /**
  * Execute tool calls from an assistant message.

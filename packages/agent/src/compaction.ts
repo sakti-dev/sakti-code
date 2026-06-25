@@ -1,11 +1,11 @@
-import { completeSimple } from "@earendil-works/pi-ai";
 import type {
   AssistantMessage,
   ImageContent,
   Model,
   TextContent,
   Usage,
-} from "@earendil-works/pi-ai/base";
+} from "@sakti-code/llm";
+import { complete } from "@sakti-code/llm";
 import {
   computeFileLists,
   createFileOps,
@@ -531,7 +531,7 @@ Keep each section concise. Preserve exact file paths, function names, and error 
 /** Generate or update a conversation summary for compaction. */
 export async function generateSummary(
   currentMessages: AgentMessage[],
-  model: Model<any>,
+  model: Model,
   reserveTokens: number,
   apiKey: string,
   headers?: Record<string, string>,
@@ -572,27 +572,29 @@ export async function generateSummary(
     apiKey,
     ...(headers === undefined ? {} : { headers }),
     ...(model.reasoning && thinkingLevel && thinkingLevel !== "off"
-      ? { reasoning: thinkingLevel }
+      ? { thinkingLevel }
       : {}),
   };
 
-  const response = await completeSimple(
+  const response = await complete({
     model,
-    {
-      systemPrompt: SUMMARIZATION_SYSTEM_PROMPT,
-      messages: summarizationMessages,
-    },
-    completionOptions
-  );
-  if (response.stopReason === "aborted") {
-    return err(
-      new CompactionError(
-        "aborted",
-        response.errorMessage || "Summarization aborted"
-      )
-    );
-  }
-  if (response.stopReason === "error") {
+    messages: summarizationMessages,
+    system: SUMMARIZATION_SYSTEM_PROMPT,
+    ...(completionOptions.maxTokens
+      ? { maxOutputTokens: completionOptions.maxTokens }
+      : {}),
+    ...(completionOptions.signal
+      ? { abortSignal: completionOptions.signal }
+      : {}),
+    apiKey: completionOptions.apiKey,
+    ...(completionOptions.headers
+      ? { headers: completionOptions.headers }
+      : {}),
+    ...(completionOptions.thinkingLevel
+      ? { thinkingLevel: completionOptions.thinkingLevel }
+      : {}),
+  });
+  if (response.finishReason === "error") {
     return err(
       new CompactionError(
         "summarization_failed",
@@ -601,10 +603,7 @@ export async function generateSummary(
     );
   }
 
-  const textContent = response.content
-    .filter((c): c is { type: "text"; text: string } => c.type === "text")
-    .map((c) => c.text)
-    .join("\n");
+  const textContent = response.content.map((c) => c.text).join("\n");
 
   return ok(textContent);
 }
@@ -749,7 +748,7 @@ export { serializeConversation } from "./compaction/utils.ts";
 /** Generate compaction summary data from prepared session history. */
 export async function compact(
   preparation: CompactionPreparation,
-  model: Model<any>,
+  model: Model,
   apiKey: string,
   headers?: Record<string, string>,
   customInstructions?: string,
@@ -840,7 +839,7 @@ export async function compact(
 }
 async function generateTurnPrefixSummary(
   messages: AgentMessage[],
-  model: Model<any>,
+  model: Model,
   reserveTokens: number,
   apiKey: string,
   headers?: Record<string, string>,
@@ -862,31 +861,19 @@ async function generateTurnPrefixSummary(
     },
   ];
 
-  const response = await completeSimple(
+  const response = await complete({
     model,
-    {
-      systemPrompt: SUMMARIZATION_SYSTEM_PROMPT,
-      messages: summarizationMessages,
-    },
-    {
-      maxTokens,
-      ...(signal === undefined ? {} : { signal }),
-      apiKey,
-      ...(headers === undefined ? {} : { headers }),
-      ...(model.reasoning && thinkingLevel && thinkingLevel !== "off"
-        ? { reasoning: thinkingLevel }
-        : {}),
-    }
-  );
-  if (response.stopReason === "aborted") {
-    return err(
-      new CompactionError(
-        "aborted",
-        response.errorMessage || "Turn prefix summarization aborted"
-      )
-    );
-  }
-  if (response.stopReason === "error") {
+    messages: summarizationMessages,
+    system: SUMMARIZATION_SYSTEM_PROMPT,
+    ...(maxTokens ? { maxOutputTokens: maxTokens } : {}),
+    ...(signal ? { abortSignal: signal } : {}),
+    apiKey,
+    ...(headers ? { headers } : {}),
+    ...(model.reasoning && thinkingLevel && thinkingLevel !== "off"
+      ? { thinkingLevel }
+      : {}),
+  });
+  if (response.finishReason === "error") {
     return err(
       new CompactionError(
         "summarization_failed",
@@ -895,10 +882,5 @@ async function generateTurnPrefixSummary(
     );
   }
 
-  return ok(
-    response.content
-      .filter((c): c is { type: "text"; text: string } => c.type === "text")
-      .map((c) => c.text)
-      .join("\n")
-  );
+  return ok(response.content.map((c) => c.text).join("\n"));
 }

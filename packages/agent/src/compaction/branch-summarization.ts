@@ -1,4 +1,5 @@
-import { completeSimple, type Model } from "@earendil-works/pi-ai/base";
+import type { Model } from "@sakti-code/llm";
+import { complete } from "@sakti-code/llm";
 import { estimateTokens, SUMMARIZATION_SYSTEM_PROMPT } from "../compaction.ts";
 import {
   convertToLlm,
@@ -65,7 +66,7 @@ export interface GenerateBranchSummaryOptions {
   /** Optional request headers forwarded to the provider. */
   headers?: Record<string, string>;
   /** Model used for summarization. */
-  model: Model<any>;
+  model: Model;
   /** Replace the default prompt with custom instructions instead of appending them. */
   replaceInstructions?: boolean;
   /** Tokens reserved for prompt and model output. Defaults to 16384. */
@@ -281,28 +282,16 @@ export async function generateBranchSummary(
       timestamp: Date.now(),
     },
   ];
-  const response = await completeSimple(
+  const response = await complete({
     model,
-    {
-      systemPrompt: SUMMARIZATION_SYSTEM_PROMPT,
-      messages: summarizationMessages,
-    },
-    {
-      apiKey,
-      ...(headers === undefined ? {} : { headers }),
-      signal,
-      maxTokens: 2048,
-    }
-  );
-  if (response.stopReason === "aborted") {
-    return err(
-      new BranchSummaryError(
-        "aborted",
-        response.errorMessage || "Branch summary aborted"
-      )
-    );
-  }
-  if (response.stopReason === "error") {
+    messages: summarizationMessages,
+    system: SUMMARIZATION_SYSTEM_PROMPT,
+    apiKey,
+    ...(headers === undefined ? {} : { headers }),
+    ...(signal ? { abortSignal: signal } : {}),
+    maxOutputTokens: 2048,
+  });
+  if (response.finishReason === "error") {
     return err(
       new BranchSummaryError(
         "summarization_failed",
@@ -311,10 +300,7 @@ export async function generateBranchSummary(
     );
   }
 
-  let summary = response.content
-    .filter((c): c is { type: "text"; text: string } => c.type === "text")
-    .map((c) => c.text)
-    .join("\n");
+  let summary = response.content.map((c) => c.text).join("\n");
   summary = BRANCH_SUMMARY_PREAMBLE + summary;
   const { readFiles, modifiedFiles } = computeFileLists(fileOps);
   summary += formatFileOperations(readFiles, modifiedFiles);

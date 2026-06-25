@@ -1,9 +1,4 @@
-import {
-  type AssistantMessage,
-  type AssistantMessageEvent,
-  EventStream,
-  getModel,
-} from "@earendil-works/pi-ai";
+import { getModel } from "@sakti-code/llm";
 import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
 import { Agent } from "../agent.ts";
@@ -11,75 +6,13 @@ import type {
   AgentEvent,
   AgentTool,
   AgentToolUpdateCallback,
+  StreamFn,
 } from "../types.ts";
-
-// Mock stream that mimics AssistantMessageEventStream
-class MockAssistantStream extends EventStream<
-  AssistantMessageEvent,
-  AssistantMessage
-> {
-  constructor() {
-    super(
-      (event) => event.type === "done" || event.type === "error",
-      (event) => {
-        if (event.type === "done") {
-          return event.message;
-        }
-        if (event.type === "error") {
-          return event.error;
-        }
-        throw new Error("Unexpected event type");
-      }
-    );
-  }
-}
-
-function createAssistantMessage(text: string): AssistantMessage {
-  return {
-    role: "assistant",
-    content: [{ type: "text", text }],
-    api: "openai-responses",
-    provider: "openai",
-    model: "mock",
-    usage: {
-      input: 0,
-      output: 0,
-      cacheRead: 0,
-      cacheWrite: 0,
-      totalTokens: 0,
-      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-    },
-    stopReason: "stop",
-    timestamp: Date.now(),
-  };
-}
-
-type ToolCallContent = Extract<
-  AssistantMessage["content"][number],
-  { type: "toolCall" }
->;
-
-function createAssistantToolUseMessage(
-  content: ToolCallContent[]
-): AssistantMessage {
-  return {
-    role: "assistant",
-    content,
-    api: "openai-responses",
-    provider: "openai",
-    model: "mock",
-    usage: {
-      input: 0,
-      output: 0,
-      cacheRead: 0,
-      cacheWrite: 0,
-      totalTokens: 0,
-      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-    },
-    stopReason: "toolUse",
-    timestamp: Date.now(),
-  };
-}
+import {
+  createAssistantMessage,
+  createUsage,
+  fakeStreamResult,
+} from "./helpers/stream-mock.ts";
 
 function createDeferred(): {
   promise: Promise<void>;
@@ -131,18 +64,13 @@ describe("Agent", () => {
       eventCount++;
     });
 
-    // No initial event on subscribe
     expect(eventCount).toBe(0);
-
-    // State mutators don't emit events
     agent.state.systemPrompt = "Test prompt";
     expect(eventCount).toBe(0);
     expect(agent.state.systemPrompt).toBe("Test prompt");
-
-    // Unsubscribe should work
     unsubscribe();
     agent.state.systemPrompt = "Another prompt";
-    expect(eventCount).toBe(0); // Should not increase
+    expect(eventCount).toBe(0);
   });
 
   it("emits full lifecycle events for thrown run failures", async () => {
@@ -180,19 +108,11 @@ describe("Agent", () => {
 
   it("should await async subscribers before prompt resolves", async () => {
     const barrier = createDeferred();
-    const agent = new Agent({
-      streamFn: () => {
-        const stream = new MockAssistantStream();
-        queueMicrotask(() => {
-          stream.push({
-            type: "done",
-            reason: "stop",
-            message: createAssistantMessage("ok"),
-          });
-        });
-        return stream;
-      },
-    });
+    const streamFn: StreamFn = () =>
+      Promise.resolve(
+        fakeStreamResult({ content: [{ type: "text", text: "ok" }] })
+      );
+    const agent = new Agent({ streamFn });
 
     let listenerFinished = false;
     agent.subscribe(async (event) => {
@@ -222,19 +142,11 @@ describe("Agent", () => {
 
   it("waitForIdle should wait for async subscribers", async () => {
     const barrier = createDeferred();
-    const agent = new Agent({
-      streamFn: () => {
-        const stream = new MockAssistantStream();
-        queueMicrotask(() => {
-          stream.push({
-            type: "done",
-            reason: "stop",
-            message: createAssistantMessage("ok"),
-          });
-        });
-        return stream;
-      },
-    });
+    const streamFn: StreamFn = () =>
+      Promise.resolve(
+        fakeStreamResult({ content: [{ type: "text", text: "ok" }] })
+      );
+    const agent = new Agent({ streamFn });
 
     agent.subscribe(async (event) => {
       if (event.type === "message_end" && event.message.role === "assistant") {
@@ -261,27 +173,20 @@ describe("Agent", () => {
 
   it("should pass the active abort signal to subscribers", async () => {
     let receivedSignal: AbortSignal | undefined;
-    const agent = new Agent({
-      streamFn: (_model, _context, options) => {
-        const stream = new MockAssistantStream();
-        queueMicrotask(() => {
-          stream.push({ type: "start", partial: createAssistantMessage("") });
-          const checkAbort = () => {
-            if (options?.signal?.aborted) {
-              stream.push({
-                type: "error",
-                reason: "aborted",
-                error: createAssistantMessage("Aborted"),
-              });
-            } else {
-              setTimeout(checkAbort, 5);
-            }
-          };
-          checkAbort();
-        });
-        return stream;
-      },
-    });
+    const streamFn: StreamFn = (req) =>
+      Promise.resolve({
+        fullStream: (async function* () {
+          while (!req.abortSignal?.aborted) {
+            await new Promise((r) => setTimeout(r, 5));
+          }
+          yield { type: "error", error: new Error("Aborted") };
+        })(),
+        result: Promise.resolve({
+          finishReason: "error" as const,
+          usage: createUsage(),
+        }),
+      });
+    const agent = new Agent({ streamFn });
 
     agent.subscribe((event, signal) => {
       if (event.type === "agent_start") {
@@ -327,26 +232,23 @@ describe("Agent", () => {
         };
       },
     };
+    const streamFn: StreamFn = () =>
+      Promise.resolve(
+        fakeStreamResult({
+          content: [
+            {
+              type: "toolCall",
+              id: "call-1",
+              name: "delayed_tool",
+              arguments: {},
+            },
+          ],
+          finishReason: "toolUse",
+        })
+      );
     const agent = new Agent({
       initialState: { tools: [tool] },
-      streamFn: () => {
-        const stream = new MockAssistantStream();
-        queueMicrotask(() => {
-          stream.push({
-            type: "done",
-            reason: "toolUse",
-            message: createAssistantToolUseMessage([
-              {
-                type: "toolCall",
-                id: "call-1",
-                name: "delayed_tool",
-                arguments: {},
-              },
-            ]),
-          });
-        });
-        return stream;
-      },
+      streamFn,
     });
     agent.subscribe((event) => {
       events.push(event);
@@ -411,32 +313,29 @@ describe("Agent", () => {
         };
       },
     };
+    const streamFn: StreamFn = () =>
+      Promise.resolve(
+        fakeStreamResult({
+          content: [
+            {
+              type: "toolCall",
+              id: "call-1",
+              name: "settled_tool",
+              arguments: {},
+            },
+            {
+              type: "toolCall",
+              id: "call-2",
+              name: "slow_tool",
+              arguments: {},
+            },
+          ],
+          finishReason: "toolUse",
+        })
+      );
     const agent = new Agent({
       initialState: { tools: [settledTool, slowTool] },
-      streamFn: () => {
-        const stream = new MockAssistantStream();
-        queueMicrotask(() => {
-          stream.push({
-            type: "done",
-            reason: "toolUse",
-            message: createAssistantToolUseMessage([
-              {
-                type: "toolCall",
-                id: "call-1",
-                name: "settled_tool",
-                arguments: {},
-              },
-              {
-                type: "toolCall",
-                id: "call-2",
-                name: "slow_tool",
-                arguments: {},
-              },
-            ]),
-          });
-        });
-        return stream;
-      },
+      streamFn,
     });
     agent.subscribe((event) => {
       events.push(event);
@@ -469,43 +368,38 @@ describe("Agent", () => {
   it("should update state with mutators", () => {
     const agent = new Agent();
 
-    // Test setSystemPrompt
     agent.state.systemPrompt = "Custom prompt";
     expect(agent.state.systemPrompt).toBe("Custom prompt");
 
-    // Test setModel
     const newModel = getModel("google", "gemini-2.5-flash");
     agent.state.model = newModel;
     expect(agent.state.model).toBe(newModel);
 
-    // Test setThinkingLevel
     agent.state.thinkingLevel = "high";
     expect(agent.state.thinkingLevel).toBe("high");
 
-    // Test setTools
-    const tools = [{ name: "test", description: "test tool" } as any];
+    const tools = [
+      { name: "test", description: "test tool" } as unknown as AgentTool,
+    ];
     agent.state.tools = tools;
     expect(agent.state.tools).toEqual(tools);
-    expect(agent.state.tools).not.toBe(tools); // Should be a copy
+    expect(agent.state.tools).not.toBe(tools);
 
-    // Test replaceMessages
     const messages = [
       { role: "user" as const, content: "Hello", timestamp: Date.now() },
     ];
     agent.state.messages = messages;
     expect(agent.state.messages).toEqual(messages);
-    expect(agent.state.messages).not.toBe(messages); // Should be a copy
+    expect(agent.state.messages).not.toBe(messages);
 
-    // Test appendMessage
     const newMessage = {
       role: "assistant" as const,
       content: [{ type: "text" as const, text: "Hi" }],
     };
-    agent.state.messages.push(newMessage as any);
+    agent.state.messages.push(newMessage as unknown as never);
     expect(agent.state.messages).toHaveLength(2);
     expect(agent.state.messages[1]).toBe(newMessage);
 
-    // Test clearMessages
     agent.state.messages = [];
     expect(agent.state.messages).toEqual([]);
   });
@@ -520,7 +414,6 @@ describe("Agent", () => {
     };
     agent.steer(message);
 
-    // The message is queued but not yet in state.messages
     expect(agent.state.messages).not.toContainEqual(message);
   });
 
@@ -534,122 +427,84 @@ describe("Agent", () => {
     };
     agent.followUp(message);
 
-    // The message is queued but not yet in state.messages
     expect(agent.state.messages).not.toContainEqual(message);
   });
 
   it("should handle abort controller", () => {
     const agent = new Agent();
-
-    // Should not throw even if nothing is running
     expect(() => agent.abort()).not.toThrow();
   });
 
   it("should throw when prompt() called while streaming", async () => {
-    let abortSignal: AbortSignal | undefined;
-    const agent = new Agent({
-      // Use a stream function that responds to abort
-      streamFn: (_model, _context, options) => {
-        abortSignal = options?.signal;
-        const stream = new MockAssistantStream();
-        queueMicrotask(() => {
-          stream.push({ type: "start", partial: createAssistantMessage("") });
-          // Check abort signal periodically
-          const checkAbort = () => {
-            if (abortSignal?.aborted) {
-              stream.push({
-                type: "error",
-                reason: "aborted",
-                error: createAssistantMessage("Aborted"),
-              });
-            } else {
-              setTimeout(checkAbort, 5);
-            }
-          };
-          checkAbort();
-        });
-        return stream;
-      },
-    });
+    const streamFn: StreamFn = (req) =>
+      Promise.resolve({
+        fullStream: (async function* () {
+          while (!req.abortSignal?.aborted) {
+            await new Promise((r) => setTimeout(r, 5));
+          }
+          yield { type: "error", error: new Error("Aborted") };
+        })(),
+        result: Promise.resolve({
+          finishReason: "error" as const,
+          usage: createUsage(),
+        }),
+      });
+    const agent = new Agent({ streamFn });
 
-    // Start first prompt (don't await, it will block until abort)
     const firstPrompt = agent.prompt("First message");
 
-    // Wait a tick for isStreaming to be set
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(agent.state.isStreaming).toBe(true);
 
-    // Second prompt should reject
     await expect(agent.prompt("Second message")).rejects.toThrow(
       "Agent is already processing a prompt. Use steer() or followUp() to queue messages, or wait for completion."
     );
 
-    // Cleanup - abort to stop the stream
     agent.abort();
-    await firstPrompt.catch(() => {}); // Ignore abort error
+    await firstPrompt.catch(() => {});
   });
 
   it("should throw when continue() called while streaming", async () => {
-    let abortSignal: AbortSignal | undefined;
-    const agent = new Agent({
-      streamFn: (_model, _context, options) => {
-        abortSignal = options?.signal;
-        const stream = new MockAssistantStream();
-        queueMicrotask(() => {
-          stream.push({ type: "start", partial: createAssistantMessage("") });
-          const checkAbort = () => {
-            if (abortSignal?.aborted) {
-              stream.push({
-                type: "error",
-                reason: "aborted",
-                error: createAssistantMessage("Aborted"),
-              });
-            } else {
-              setTimeout(checkAbort, 5);
-            }
-          };
-          checkAbort();
-        });
-        return stream;
-      },
-    });
+    const streamFn: StreamFn = (req) =>
+      Promise.resolve({
+        fullStream: (async function* () {
+          while (!req.abortSignal?.aborted) {
+            await new Promise((r) => setTimeout(r, 5));
+          }
+          yield { type: "error", error: new Error("Aborted") };
+        })(),
+        result: Promise.resolve({
+          finishReason: "error" as const,
+          usage: createUsage(),
+        }),
+      });
+    const agent = new Agent({ streamFn });
 
-    // Start first prompt
     const firstPrompt = agent.prompt("First message");
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(agent.state.isStreaming).toBe(true);
 
-    // continue() should reject
     await expect(agent.continue()).rejects.toThrow(
       "Agent is already processing. Wait for completion before continuing."
     );
 
-    // Cleanup
     agent.abort();
     await firstPrompt.catch(() => {});
   });
 
   it("continue() should process queued follow-up messages after an assistant turn", async () => {
-    const agent = new Agent({
-      streamFn: () => {
-        const stream = new MockAssistantStream();
-        queueMicrotask(() => {
-          stream.push({
-            type: "done",
-            reason: "stop",
-            message: createAssistantMessage("Processed"),
-          });
-        });
-        return stream;
-      },
-    });
+    const streamFn: StreamFn = () =>
+      Promise.resolve(
+        fakeStreamResult({ content: [{ type: "text", text: "Processed" }] })
+      );
+    const agent = new Agent({ streamFn });
 
     agent.state.messages = [
       {
         role: "user",
         content: [{ type: "text", text: "Initial" }],
         timestamp: Date.now() - 10,
-      },
+      } as never,
       createAssistantMessage("Initial response"),
     ];
 
@@ -681,27 +536,22 @@ describe("Agent", () => {
 
   it("continue() should keep one-at-a-time steering semantics from assistant tail", async () => {
     let responseCount = 0;
-    const agent = new Agent({
-      streamFn: () => {
-        const stream = new MockAssistantStream();
-        responseCount++;
-        queueMicrotask(() => {
-          stream.push({
-            type: "done",
-            reason: "stop",
-            message: createAssistantMessage(`Processed ${responseCount}`),
-          });
-        });
-        return stream;
-      },
-    });
+    const streamFn: StreamFn = () => {
+      responseCount++;
+      return Promise.resolve(
+        fakeStreamResult({
+          content: [{ type: "text", text: `Processed ${responseCount}` }],
+        })
+      );
+    };
+    const agent = new Agent({ streamFn });
 
     agent.state.messages = [
       {
         role: "user",
         content: [{ type: "text", text: "Initial" }],
         timestamp: Date.now() - 10,
-      },
+      } as never,
       createAssistantMessage("Initial response"),
     ];
 
@@ -728,25 +578,19 @@ describe("Agent", () => {
     expect(responseCount).toBe(2);
   });
 
-  it("forwards sessionId to streamFn options", async () => {
+  it("forwards sessionId to streamFn request", async () => {
     let receivedSessionId: string | undefined;
-    const agent = new Agent({
-      sessionId: "session-abc",
-      streamFn: (_model, _context, options) => {
-        receivedSessionId = options?.sessionId;
-        const stream = new MockAssistantStream();
-        queueMicrotask(() => {
-          const message = createAssistantMessage("ok");
-          stream.push({ type: "done", reason: "stop", message });
-        });
-        return stream;
-      },
-    });
+    const streamFn: StreamFn = (req) => {
+      receivedSessionId = req.sessionId;
+      return Promise.resolve(
+        fakeStreamResult({ content: [{ type: "text", text: "ok" }] })
+      );
+    };
+    const agent = new Agent({ sessionId: "session-abc", streamFn });
 
     await agent.prompt("hello");
     expect(receivedSessionId).toBe("session-abc");
 
-    // Test setter
     agent.sessionId = "session-def";
     expect(agent.sessionId).toBe("session-def");
 

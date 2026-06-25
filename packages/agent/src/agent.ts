@@ -1,13 +1,9 @@
-import {
-  type ImageContent,
-  type Message,
-  type Model,
-  type SimpleStreamOptions,
-  streamSimple,
-  type TextContent,
-  type ThinkingBudgets,
-  type Transport,
-} from "@earendil-works/pi-ai/base";
+import type {
+  ImageContent,
+  Message,
+  Model,
+  TextContent,
+} from "@sakti-code/llm";
 import { runAgentLoop, runAgentLoopContinue } from "./loop/agent-loop.ts";
 import type {
   AfterToolCallContext,
@@ -37,6 +33,14 @@ function defaultConvertToLlm(messages: AgentMessage[]): Message[] {
   );
 }
 
+/** Default stream function — imports lazily to avoid circular deps at module load. */
+async function defaultStreamFn(
+  req: Parameters<StreamFn>[0]
+): Promise<Awaited<ReturnType<StreamFn>>> {
+  const { stream } = await import("@sakti-code/llm");
+  return stream(req);
+}
+
 const EMPTY_USAGE = {
   input: 0,
   output: 0,
@@ -49,15 +53,15 @@ const EMPTY_USAGE = {
 const DEFAULT_MODEL = {
   id: "unknown",
   name: "unknown",
-  api: "unknown",
+  api: "ai-sdk" as const,
   provider: "unknown",
   baseUrl: "",
   reasoning: false,
-  input: [],
+  input: [] as ("text" | "image")[],
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   contextWindow: 0,
   maxTokens: 0,
-} satisfies Model<any>;
+} satisfies Model;
 
 type MutableAgentState = Omit<
   AgentState,
@@ -136,8 +140,6 @@ export interface AgentOptions {
       >
     | undefined;
   maxRetryDelayMs?: number | undefined;
-  onPayload?: SimpleStreamOptions["onPayload"] | undefined;
-  onResponse?: SimpleStreamOptions["onResponse"] | undefined;
   prepareNextTurn?:
     | ((
         signal?: AbortSignal
@@ -149,7 +151,6 @@ export interface AgentOptions {
   sessionId?: string | undefined;
   steeringMode?: QueueMode | undefined;
   streamFn?: StreamFn | undefined;
-  thinkingBudgets?: ThinkingBudgets | undefined;
   toolExecution?: ToolExecutionMode | undefined;
   transformContext?:
     | ((
@@ -157,7 +158,6 @@ export interface AgentOptions {
         signal?: AbortSignal
       ) => Promise<AgentMessage[]>)
     | undefined;
-  transport?: Transport | undefined;
 }
 
 class PendingMessageQueue {
@@ -229,8 +229,6 @@ export class Agent {
   public getApiKey?:
     | ((provider: string) => Promise<string | undefined> | string | undefined)
     | undefined;
-  public onPayload?: SimpleStreamOptions["onPayload"] | undefined;
-  public onResponse?: SimpleStreamOptions["onResponse"] | undefined;
   public beforeToolCall?:
     | ((
         context: BeforeToolCallContext,
@@ -254,10 +252,6 @@ export class Agent {
   private activeRun?: ActiveRun | undefined;
   /** Session identifier forwarded to providers for cache-aware backends. */
   public sessionId?: string | undefined;
-  /** Optional per-level thinking token budgets forwarded to the stream function. */
-  public thinkingBudgets?: ThinkingBudgets | undefined;
-  /** Preferred transport forwarded to the stream function. */
-  public transport: Transport;
   /** Optional cap for provider-requested retry delays. */
   public maxRetryDelayMs?: number | undefined;
   /** Tool execution strategy for assistant messages that contain multiple tool calls. */
@@ -267,10 +261,8 @@ export class Agent {
     this._state = createMutableAgentState(options.initialState);
     this.convertToLlm = options.convertToLlm ?? defaultConvertToLlm;
     this.transformContext = options.transformContext;
-    this.streamFn = options.streamFn ?? streamSimple;
+    this.streamFn = options.streamFn ?? defaultStreamFn;
     this.getApiKey = options.getApiKey;
-    this.onPayload = options.onPayload;
-    this.onResponse = options.onResponse;
     this.beforeToolCall = options.beforeToolCall;
     this.afterToolCall = options.afterToolCall;
     this.prepareNextTurn = options.prepareNextTurn;
@@ -281,8 +273,6 @@ export class Agent {
       options.followUpMode ?? "one-at-a-time"
     );
     this.sessionId = options.sessionId;
-    this.thinkingBudgets = options.thinkingBudgets;
-    this.transport = options.transport ?? "auto";
     this.maxRetryDelayMs = options.maxRetryDelayMs;
     this.toolExecution = options.toolExecution ?? "parallel";
   }
@@ -509,13 +499,6 @@ export class Agent {
         ? {}
         : { reasoning: this._state.thinkingLevel }),
       sessionId: this.sessionId,
-      onPayload: this.onPayload,
-      onResponse: this.onResponse,
-      transport: this.transport,
-      ...(this.thinkingBudgets === undefined
-        ? {}
-        : { thinkingBudgets: this.thinkingBudgets }),
-      maxRetryDelayMs: this.maxRetryDelayMs,
       toolExecution: this.toolExecution,
       beforeToolCall: this.beforeToolCall,
       afterToolCall: this.afterToolCall,
@@ -613,7 +596,7 @@ export class Agent {
         break;
 
       case "message_update":
-        this._state.streamingMessage = event.message;
+        // Slim delta — no full message clone. streamingMessage stays from message_start.
         break;
 
       case "message_end":

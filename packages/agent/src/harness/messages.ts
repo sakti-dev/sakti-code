@@ -1,8 +1,4 @@
-import type {
-  ImageContent,
-  Message,
-  TextContent,
-} from "@earendil-works/pi-ai/base";
+import type { ImageContent, Message, TextContent } from "@sakti-code/llm";
 import type {
   AgentMessage,
   BashExecutionMessage,
