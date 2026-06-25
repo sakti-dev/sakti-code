@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 /**
  * Returns the agent config directory. Defaults to `~/.sakti/agent` (pi-style),
@@ -11,6 +11,20 @@ export function getAgentDir(): string {
     return override;
   }
   return join(homedir(), ".sakti", "agent");
+}
+
+/**
+ * Returns the log directory. Defaults to `~/.sakti/logs` — a sibling of the
+ * agent dir so logs live alongside the rest of sakti state (not under
+ * `~/.config`). Overridable via `SAKTI_LOG_DIR`; when `SAKTI_AGENT_DIR` is set,
+ * logs move to its sibling too (`<parent>/logs`).
+ */
+export function getLogDir(): string {
+  const override = process.env.SAKTI_LOG_DIR;
+  if (override) {
+    return override;
+  }
+  return join(dirname(getAgentDir()), "logs");
 }
 
 export function getAuthPath(): string {

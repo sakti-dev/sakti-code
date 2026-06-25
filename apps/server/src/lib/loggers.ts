@@ -1,12 +1,11 @@
 import { mkdirSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import {
   createConsoleLogger,
   type Logger,
   type LogLevel,
 } from "@sakti-code/logger";
 import { createPinoLogger } from "@sakti-code/logger/node";
+import { getLogDir } from "./config-dirs.ts";
 
 /**
  * The per-layer loggers the server owns. Each writes to its own rolling file
@@ -23,18 +22,11 @@ export interface ServerLoggers {
 }
 
 /**
- * Resolve the log directory: explicit env override wins, otherwise the shared
- * app config dir (`~/.config/sakti-code/logs`).
+ * Resolve the log directory: explicit `SAKTI_LOG_DIR` wins, otherwise the
+ * sakti state sibling (`~/.sakti/logs`). See {@link getLogDir}.
  */
 export function resolveLogDir(): string {
-  return (
-    process.env.SAKTI_LOG_DIR ??
-    join(
-      process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"),
-      "sakti-code",
-      "logs"
-    )
-  );
+  return getLogDir();
 }
 
 /**

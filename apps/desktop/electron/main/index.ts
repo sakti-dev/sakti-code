@@ -1,8 +1,9 @@
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import {
   createServer,
   type SaktiServer,
 } from "@sakti-code/server/create-server";
+import { getLogDir } from "@sakti-code/server/dirs";
 import { app, BrowserWindow, screen } from "electron";
 import { createDialogHooks } from "./ipc/dialog";
 import { registerLogHandler } from "./ipc/log";
@@ -39,9 +40,7 @@ app.on("ready", async () => {
   const baseUrl = server.url;
   registerServerConfigHandler(() => ({ baseUrl }));
   registerShellHandlers();
-  registerLogHandler(
-    createDesktopLogger(join(app.getPath("userData"), "logs"))
-  );
+  registerLogHandler(createDesktopLogger(getLogDir()));
 
   createWindow(server.url);
 });
