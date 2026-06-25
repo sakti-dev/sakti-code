@@ -1,4 +1,5 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { Logger } from "@sakti-code/logger";
 import type { FinishReason, LanguageModelUsage } from "ai";
 import { streamText as aiStreamText } from "ai";
 import { calculateCost } from "./cost.ts";
@@ -47,6 +48,8 @@ export interface StreamRequest {
   baseURL?: string;
   /** Extra HTTP headers (merged with session-affinity headers). */
   headers?: Record<string, string>;
+  /** Optional logger — when set, stream errors/finish are logged (surfaces provider failures like "Upstream request failed"). Omit to keep zero overhead. */
+  logger?: Logger;
   /** Max output tokens. */
   maxOutputTokens?: number;
   /** Conversation history (our Message type, converted to @ai-sdk format). */
@@ -203,9 +206,39 @@ export function streamWithModel(
   });
 
   return {
-    fullStream: raw.fullStream,
-    result: mapStreamResult(req.model, raw),
+    fullStream:
+      req.logger === undefined
+        ? raw.fullStream
+        : logStream(raw.fullStream, req.logger, req.model),
+    result: mapStreamResult(req.model, raw, req.logger),
   };
+}
+
+/**
+ * Pass-through wrapper that logs each stream `error` part with the full error
+ * object + model/provider/baseURL context, then yields the part unchanged so
+ * the agent loop still sees it. This is the layer that surfaces previously
+ * silent provider failures (e.g. `"Upstream request failed"`) into `llm.log`.
+ */
+async function* logStream(
+  inner: AsyncIterable<unknown>,
+  logger: Logger,
+  model: Model
+): AsyncIterable<unknown> {
+  for await (const part of inner) {
+    if (
+      typeof part === "object" &&
+      part !== null &&
+      (part as { type?: string }).type === "error"
+    ) {
+      logger.error("stream error", (part as { error?: unknown }).error, {
+        baseURL: model.baseUrl,
+        model: model.id,
+        provider: model.provider,
+      });
+    }
+    yield part;
+  }
 }
 
 /** Merge session-affinity headers with caller headers (caller wins on conflict). */
@@ -222,7 +255,8 @@ function mergeRequestHeaders(
 /** Wire streamText's promises into our FinishResult (with cost via calculateCost). */
 function mapStreamResult(
   model: Model,
-  raw: StreamTextStream
+  raw: StreamTextStream,
+  logger?: Logger
 ): Promise<FinishResult> {
   return (async () => {
     const [usage, finishReason, response] = await Promise.all([
@@ -230,6 +264,12 @@ function mapStreamResult(
       raw.finishReason,
       raw.response,
     ]);
+    logger?.debug("stream finish", {
+      baseURL: model.baseUrl,
+      finishReason,
+      model: model.id,
+      provider: model.provider,
+    });
     return {
       finishReason: mapFinishReason(finishReason),
       usage: mapUsage(usage, model),

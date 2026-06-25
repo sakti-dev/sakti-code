@@ -11,6 +11,7 @@
  */
 
 import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { Logger } from "@sakti-code/logger";
 import type { FinishReason, LanguageModelUsage } from "ai";
 import { generateText as aiGenerateText } from "ai";
 import { toModelMessages } from "./messages.ts";
@@ -34,6 +35,8 @@ export interface CompleteRequest {
   apiKey?: string;
   baseURL?: string;
   headers?: Record<string, string>;
+  /** Optional logger — logs completion failures (abort/provider errors) with model context. */
+  logger?: Logger;
   maxOutputTokens?: number;
   messages: Message[];
   model: Model;
@@ -126,6 +129,10 @@ export async function completeWithModel(
     };
   } catch (error) {
     // Abort or provider failure — return as error result, never throw.
+    req.logger?.error("complete failed", error, {
+      model: req.model.id,
+      provider: req.model.provider,
+    });
     const message = error instanceof Error ? error.message : String(error);
     return {
       content: [],
