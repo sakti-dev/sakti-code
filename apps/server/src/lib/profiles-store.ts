@@ -7,6 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
+import { CATALOG, PROVIDERS } from "@sakti-code/llm";
 import Type from "typebox";
 import { Value } from "typebox/value";
 
@@ -97,6 +98,27 @@ function ensureParentDir(filePath: string): void {
   }
 }
 
+function validateModelRefs(profiles: Profiles): void {
+  for (const [profileId, profile] of Object.entries(profiles.profiles)) {
+    for (const [mode, ref] of Object.entries(profile.models)) {
+      if (!(ref?.provider && ref?.model)) {
+        continue;
+      }
+      if (!PROVIDERS.includes(ref.provider)) {
+        throw new Error(
+          `Profile "${profileId}" mode "${mode}": unknown provider "${ref.provider}"`
+        );
+      }
+      const models = CATALOG[ref.provider];
+      if (models && !models.some((m) => m.id === ref.model)) {
+        throw new Error(
+          `Profile "${profileId}" mode "${mode}": model "${ref.model}" not found for provider "${ref.provider}"`
+        );
+      }
+    }
+  }
+}
+
 function validate(profiles: unknown): asserts profiles is Profiles {
   if (!Value.Check(ProfilesSchema, profiles)) {
     throw new Error("Invalid profiles: schema validation failed");
@@ -106,6 +128,7 @@ function validate(profiles: unknown): asserts profiles is Profiles {
       `Invalid profiles: defaultProfile "${profiles.defaultProfile}" not found in profiles`
     );
   }
+  validateModelRefs(profiles);
 }
 
 export function createProfilesStore(filePath: string): ProfilesStore {
