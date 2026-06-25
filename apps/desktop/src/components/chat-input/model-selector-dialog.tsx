@@ -21,6 +21,7 @@ export interface ModelSelectorOption {
   name?: string;
   providerId: string;
   providerName?: string;
+  status?: "active" | "alpha" | "beta" | "deprecated";
 }
 
 export interface ModelSelectorSection {
@@ -65,6 +66,31 @@ export interface ModelSelectorDialogProps {
 
 const MODEL_ROW_HEIGHT = 40;
 const MODEL_OVERSCAN = 8;
+
+/**
+ * Small lifecycle badge for non-active models. Deprecated surfaces clearly
+ * (amber) so users avoid it; alpha/beta get a muted heads-up. Active/absent
+ * → no badge.
+ */
+function statusBadge(
+  status: "active" | "alpha" | "beta" | "deprecated" | undefined
+) {
+  if (status === undefined || status === "active") {
+    return null;
+  }
+  const label = status === "deprecated" ? "deprecated" : status;
+  const classes =
+    status === "deprecated"
+      ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+      : "border-border bg-muted text-muted-foreground";
+  return (
+    <span
+      class={`ml-2 shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] uppercase tracking-wide ${classes}`}
+    >
+      {label}
+    </span>
+  );
+}
 
 export function ModelSelectorDialog(props: ModelSelectorDialogProps) {
   const [query, setQuery] = createSignal("");
@@ -383,6 +409,9 @@ export function ModelSelectorDialog(props: ModelSelectorDialogProps) {
                               {(entry.row as ModelItemRow).model.name ??
                                 (entry.row as ModelItemRow).model.id}
                             </span>
+                            {statusBadge(
+                              (entry.row as ModelItemRow).model.status
+                            )}
                           </CommandItem>
                         </div>
                       }

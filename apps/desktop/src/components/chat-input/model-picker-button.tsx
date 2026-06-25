@@ -13,6 +13,7 @@ interface Model {
   name: string;
   provider: string;
   reasoning: boolean;
+  status?: "active" | "alpha" | "beta" | "deprecated";
 }
 
 interface ProviderSummary {
@@ -109,9 +110,17 @@ export function ModelPickerButton(props: ModelPickerButtonProps) {
           providerId: provider,
           providerName,
           connected: true,
+          ...(model.status ? { status: model.status } : {}),
         });
       }
     }
+    // Deprecated models sink to the bottom of their provider's list so the
+    // recommended (active/alpha/beta) models surface first; stable otherwise.
+    options.sort((a, b) => {
+      const ad = a.status === "deprecated" ? 1 : 0;
+      const bd = b.status === "deprecated" ? 1 : 0;
+      return ad - bd;
+    });
     return options;
   });
 
