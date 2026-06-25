@@ -16,6 +16,7 @@ import {
   getSettingsPath,
 } from "./lib/config-dirs.ts";
 import { runMigration } from "./lib/config-migration.ts";
+import { createServerLoggers } from "./lib/loggers.ts";
 import { createProfilesStore } from "./lib/profiles-store.ts";
 import { createSettingsFileStore } from "./lib/settings-file-store.ts";
 
@@ -111,7 +112,13 @@ export async function createServer(
       }>,
   });
 
-  const ctx = createContext(db, hooks, { auth, profiles, settingsFile });
+  const loggers = createServerLoggers();
+  const ctx = createContext(db, hooks, {
+    auth,
+    profiles,
+    settingsFile,
+    log: loggers,
+  });
 
   const app = buildApp(ctx);
 

@@ -255,6 +255,7 @@ export async function runPrompt(
     model,
     session: sessionInstance,
     ...(isIntake ? { systemPrompt: INTAKE_SYSTEM_PROMPT } : {}),
+    ...(ctx.log === undefined ? {} : { logger: ctx.log.agent }),
     tools,
     followUpMode: settings.follow_up_mode as QueueMode,
     steeringMode: settings.steering_mode as QueueMode,

@@ -10,6 +10,7 @@ import type { Context } from "hono";
 import type { ServerHooks } from "./create-server.ts";
 import { factory } from "./factory.ts";
 import type { AuthStore } from "./lib/auth-store.ts";
+import type { ServerLoggers } from "./lib/loggers.ts";
 import type { ProfilesStore } from "./lib/profiles-store.ts";
 import type { SettingsFileStore } from "./lib/settings-file-store.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
@@ -18,6 +19,8 @@ export interface ServerContext {
   auth: AuthStore;
   db: DrizzleDB;
   hooks: ServerHooks;
+  /** Per-layer file loggers (server/agent/tools/llm). Optional: absent in tests / when logging is disabled. */
+  log?: ServerLoggers;
   profiles: ProfilesStore;
   repos: {
     projects: ProjectRepo;
@@ -36,12 +39,14 @@ export function createContext(
     auth: AuthStore;
     profiles: ProfilesStore;
     settingsFile: SettingsFileStore;
+    log?: ServerLoggers;
   }
 ): ServerContext {
   return {
     auth: deps.auth,
     db,
     hooks,
+    ...(deps.log === undefined ? {} : { log: deps.log }),
     profiles: deps.profiles,
     repos: {
       projects: new ProjectRepo(db),

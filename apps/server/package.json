@@ -28,6 +28,7 @@
     "@sakti-code/agent": "workspace:*",
     "@sakti-code/db": "workspace:*",
     "@sakti-code/llm": "workspace:*",
+    "@sakti-code/logger": "workspace:*",
     "@sakti-code/tools": "workspace:*",
     "hono": "^4.12.26",
     "node-pty": "^1.1.0",
