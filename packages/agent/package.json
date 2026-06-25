@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@sakti-code/llm": "workspace:*",
+    "@sakti-code/logger": "workspace:*",
     "typebox": "1.1.38"
   },
   "devDependencies": {

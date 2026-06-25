@@ -4,6 +4,7 @@ import type {
   Model,
   UserMessage,
 } from "@sakti-code/llm";
+import type { Logger } from "@sakti-code/logger";
 import {
   collectEntriesForBranchSummary,
   generateBranchSummary,
@@ -219,6 +220,7 @@ export class AgentHarness<
   private streamOptions: AgentHarnessStreamOptions;
   private testStreamFn?: StreamFn;
   private getApiKeyAndHeaders?: AgentHarnessOptions["getApiKeyAndHeaders"];
+  private logger?: Logger | undefined;
   private resources: AgentHarnessResources<TSkill, TPromptTemplate>;
   private tools = new Map<string, TTool>();
   private activeToolNames: string[];
@@ -239,6 +241,7 @@ export class AgentHarness<
     }
     this.systemPrompt = options.systemPrompt;
     this.getApiKeyAndHeaders = options.getApiKeyAndHeaders;
+    this.logger = options.logger;
     this.validateUniqueNames(
       (options.tools ?? []).map((tool) => tool.name),
       "Duplicate tool name(s)"
@@ -447,6 +450,7 @@ export class AgentHarness<
         ...(requestOptions.headers ? { headers: requestOptions.headers } : {}),
         sessionId: turnState.sessionId,
         ...(req.abortSignal ? { abortSignal: req.abortSignal } : {}),
+        ...(this.logger === undefined ? {} : { logger: this.logger }),
       });
     };
   }
@@ -480,6 +484,7 @@ export class AgentHarness<
       ...(turnState.thinkingLevel === "off"
         ? {}
         : { reasoning: turnState.thinkingLevel }),
+      ...(this.logger === undefined ? {} : { logger: this.logger }),
       convertToLlm,
       transformContext: async (messages) => {
         const result = await this.emitHook({

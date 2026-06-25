@@ -1,4 +1,5 @@
 import type { ImageContent, Model, TextContent } from "@sakti-code/llm";
+import type { Logger } from "@sakti-code/logger";
 import type {
   AgentEvent,
   AgentMessage,
@@ -882,6 +883,8 @@ export interface AgentHarnessOptions<
   ) => Promise<
     { apiKey: string; headers?: Record<string, string> } | undefined
   >;
+  /** Optional logger — threaded into the loop config + the llm stream() call so provider failures surface in agent.log/llm.log. */
+  logger?: Logger;
   model: Model;
   /**
    * Concrete resources available to explicit invocation methods and system-prompt callbacks.

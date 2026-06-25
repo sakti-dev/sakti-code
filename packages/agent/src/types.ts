@@ -9,6 +9,7 @@ import type {
   Tool,
   ToolResultMessage,
 } from "@sakti-code/llm";
+import type { Logger } from "@sakti-code/logger";
 import type { Static, TSchema } from "typebox";
 
 /**
@@ -237,6 +238,8 @@ export interface AgentLoopConfig {
    */
   getSteeringMessages?: (() => Promise<AgentMessage[]>) | undefined;
   headers?: Record<string, string> | undefined;
+  /** Optional logger — the loop logs stream errors + tool dispatch here. Defaults to silent (no-op). */
+  logger?: Logger | undefined;
   model: Model;
 
   /**

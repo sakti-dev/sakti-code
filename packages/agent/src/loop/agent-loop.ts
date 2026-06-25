@@ -413,6 +413,13 @@ async function streamAssistantResponse(
       iterationError instanceof Error
         ? iterationError
         : new Error(String(iterationError));
+    // The llm layer logs `type:"error"` parts, but a thrown iteration error
+    // (network/parse failure mid-stream) is only visible here — log it so it
+    // never disappears silently.
+    config.logger?.error("agent stream iteration failed", streamError, {
+      model: config.model.id,
+      provider: config.model.provider,
+    });
   }
 
   // ── Build final AssistantMessage ───────────────────────────────────
