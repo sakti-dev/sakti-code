@@ -184,6 +184,64 @@ describe("toModelMessages — ToolResultMessage", () => {
   });
 });
 
+// ─── reasoning signature cross-model guard (B4) ──────────────────────────────
+
+describe("toModelMessages — reasoning signature guard", () => {
+  function assistantWithSignature(
+    model: string,
+    thinking: string,
+    signature: string
+  ): AssistantMessage {
+    return {
+      ...assistant([
+        { thinking, thinkingSignature: signature, type: "thinking" },
+      ]),
+      model,
+    };
+  }
+
+  it("forwards thinkingSignature when targetModel matches the producing model", () => {
+    const messages = toModelMessages(
+      [assistantWithSignature("claude-sonnet-4.5", "hmm", "sig-123")],
+      { targetModel: "claude-sonnet-4.5" }
+    );
+    const part = (
+      messages[0] as {
+        content: { providerMetadata?: Record<string, unknown> }[];
+      }
+    ).content[0]!;
+    expect(part.providerMetadata?.anthropic).toEqual({ signature: "sig-123" });
+  });
+
+  it("drops thinkingSignature when targetModel differs (cross-model)", () => {
+    // Anthropic encrypted thinking signatures are model-specific. Sending a
+    // stale signature to a different model causes provider rejections. Matches
+    // opencode's `sameModel` guard (session/runner/to-llm-message.ts:71-87).
+    const messages = toModelMessages(
+      [assistantWithSignature("claude-sonnet-4.5", "hmm", "sig-123")],
+      { targetModel: "gpt-4o" }
+    );
+    const part = (
+      messages[0] as {
+        content: { providerMetadata?: Record<string, unknown> }[];
+      }
+    ).content[0]!;
+    expect(part.providerMetadata?.anthropic).toBeUndefined();
+  });
+
+  it("forwards signature when no targetModel option is given (back-compat)", () => {
+    const messages = toModelMessages([
+      assistantWithSignature("claude-sonnet-4.5", "hmm", "sig-123"),
+    ]);
+    const part = (
+      messages[0] as {
+        content: { providerMetadata?: Record<string, unknown> }[];
+      }
+    ).content[0]!;
+    expect(part.providerMetadata?.anthropic).toEqual({ signature: "sig-123" });
+  });
+});
+
 // ─── mixed arrays + types ──────────────────────────────────────────────────────
 
 describe("toModelMessages — mixed arrays", () => {

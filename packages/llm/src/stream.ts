@@ -222,7 +222,11 @@ export function streamWithModel(
   const raw = runner({
     ...(mergedHeaders ? { headers: mergedHeaders } : {}),
     maxRetries: 0,
-    messages: toModelMessages(req.messages),
+    // Pass the target model so reasoning signatures are only forwarded when
+    // they were produced by the same model (cross-model guard, B4).
+    messages: toModelMessages(req.messages, {
+      ...(req.model.id ? { targetModel: req.model.id } : {}),
+    }),
     model: language,
     ...(providerOptions && Object.keys(providerOptions).length > 0
       ? { providerOptions }
