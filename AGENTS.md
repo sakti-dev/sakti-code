@@ -5,7 +5,7 @@ sakti-code: desktop app (Electron + SolidJS) running multiple AI coding agents c
 - **SolidJS** is a hard requirement (not React).
 - LLM via **`@earendil-works/pi-ai`** — don't hand-roll provider code.
 - App server: **Hono** on `@hono/node-server` (REST + WebSocket, not all-WS).
-- DB: **node:sqlite + Drizzle ORM** (not libsql, not bun:sqlite). DB is owned by the app/server, never by the agent package. Tooling is **nub** (a Node-based Bun-like toolkit) — not the Bun runtime.
+- DB: **node:sqlite + Drizzle ORM** (not libsql, not bun:sqlite). DB is owned by the app/server, never by the agent package. Package manager / tooling is **pnpm** (not the Bun runtime, not npm/yarn). `.ts` is executed directly via `tsx`/`vite`/`vitest`.
 
 ## Monorepo layout
 
@@ -19,19 +19,19 @@ sakti-code: desktop app (Electron + SolidJS) running multiple AI coding agents c
 ## Commands
 
 ```
-nubx ultracite fix                                # format + lint fix + diagnostics (run before committing)
-nub run typecheck                                 # typecheck all packages via turbo (agent, db, tools, server, desktop) — each package owns its tsconfig
-cd apps/server && nub run typecheck               # typecheck server incl. tests (tsc --noEmit with apps/server/tsconfig.json)
-cd packages/tools && nub run test                 # tool tests (vitest)
-cd packages/agent && nub run test                 # agent tests (vitest)
-cd packages/db && nub run test                    # db tests (vitest, node:sqlite)
-cd apps/server && nub run test                    # server tests (vitest)
-cd apps/desktop && nub run test                   # desktop renderer + electron tests (vitest)
-nub run dev:server                                # start Hono server standalone on port 3001 (SAKTI_PORT env override); runs .ts directly via nub watch
-cd apps/desktop && nub run dev                    # run the Electron app (electron-vite dev: renderer HMR + embedded server on fixed dev port 3001)
-cd apps/desktop && nub run spike                  # headless Electron spike: verifies node:sqlite + embedded createServer + /api/health
-cd apps/desktop && nub run rebuild                # rebuild native modules (node-pty) against Electron's ABI — run once after install (in nix develop)
-cd apps/desktop && nub run package                # build + package a Linux app into release/ (run in `nix develop`; python3 needed for node-pty)
+pnpm run fix                                      # format + lint fix + diagnostics (ultracite; run before committing). `npx biome check` is a lint-only alternative.
+pnpm run typecheck                                # typecheck all packages via turbo (agent, db, tools, server, desktop) — each package owns its tsconfig
+cd apps/server && pnpm run typecheck              # typecheck server incl. tests (tsc --noEmit with apps/server/tsconfig.json)
+cd packages/tools && pnpm run test                # tool tests (vitest)
+cd packages/agent && pnpm run test                # agent tests (vitest)
+cd packages/db && pnpm run test                   # db tests (vitest, node:sqlite)
+cd apps/server && pnpm run test                   # server tests (vitest)
+cd apps/desktop && pnpm run test                  # desktop renderer + electron tests (vitest)
+pnpm run dev:server                               # start Hono server standalone on port 3001 (SAKTI_PORT env override); runs .ts directly via tsx watch
+cd apps/desktop && pnpm run dev                   # run the Electron app (electron-vite dev: renderer HMR + embedded server on fixed dev port 3001)
+cd apps/desktop && pnpm run spike                 # headless Electron spike: verifies node:sqlite + embedded createServer + /api/health
+cd apps/desktop && pnpm run rebuild               # rebuild native modules (node-pty) against Electron's ABI — run once after install (in nix develop)
+cd apps/desktop && pnpm run package               # build + package a Linux app into release/ (run in `nix develop`; python3 needed for node-pty)
 nix develop                                       # enter dev shell: Electron runtime libs (libEGL/libGL…) + python3/gnumake for native rebuild
 ```
 
@@ -41,12 +41,12 @@ nix develop                                       # enter dev shell: Electron ru
 - **Tests live in `__tests__/` colocated with source.** Tests use **vitest** throughout (server, desktop renderer, and packages; renderer tests run under jsdom).
 - **`exactOptionalPropertyTypes: true` is on.** Use conditional spread `...(x !== undefined ? { x } : {})` instead of passing `undefined`.
 - TS 6.0 quirks: `include`/`references` must be top-level in tsconfig (not inside `compilerOptions`); `shell` in `execSync` must be a `string` (e.g. `"/bin/sh"`), not `boolean`.
-- Workspace `package.json` exports point to `./src/index.ts` (not `./dist/`) so nub resolves `.ts` directly.
+- Workspace `package.json` exports point to `./src/index.ts` (not `./dist/`) so the dev tooling resolves `.ts` directly.
 - Before editing unfamiliar code: read `openspec/changes/*/specs/` and the file you're changing.
 
 ## Code style (Ultracite / Biome)
 
-Write code that is **accessible, performant, type-safe, and maintainable**. Focus on clarity and explicit intent over brevity. Run `nubx ultracite fix` — it applies formatting and lint fixes and reports any remaining diagnostics.
+Write code that is **accessible, performant, type-safe, and maintainable**. Focus on clarity and explicit intent over brevity. Run `pnpm run fix` — it applies formatting and lint fixes and reports any remaining diagnostics.
 
 - Explicit types for params/returns when they aid clarity; prefer `unknown` over `any`.
 - `const` by default, `let` only when reassigning, never `var`. Const assertions (`as const`) for immutable values.
@@ -74,9 +74,9 @@ The Hono REST server lives in `apps/server/` (served by `@hono/node-server`) and
 ### Running the server
 
 ```bash
-nub run dev:server                          # starts on port 3001
-SAKTI_PORT=4000 nub run dev:server          # override port
-SAKTI_DB_PATH=/custom/path/sakti-code.db nub run dev:server   # custom db path
+pnpm run dev:server                          # starts on port 3001
+SAKTI_PORT=4000 pnpm run dev:server          # override port
+SAKTI_DB_PATH=/custom/path/sakti-code.db pnpm run dev:server   # custom db path
 ```
 
 ### Environment & configuration
