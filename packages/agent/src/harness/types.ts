@@ -895,6 +895,8 @@ export interface AgentHarnessOptions<
   steeringMode?: QueueMode;
   /** Injectable stream function for testing (bypasses real LLM calls). */
   streamFn?: StreamFn;
+  /** Optional logger for the LLM stream() call specifically (defaults to `logger`). Route this to `llm.log` so stream errors land separately from loop events. */
+  streamLogger?: Logger;
   /** Curated stream/provider request options. Snapshotted at turn start. */
   streamOptions?: AgentHarnessStreamOptions;
   systemPrompt?:

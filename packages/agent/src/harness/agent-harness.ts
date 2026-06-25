@@ -221,6 +221,7 @@ export class AgentHarness<
   private testStreamFn?: StreamFn;
   private getApiKeyAndHeaders?: AgentHarnessOptions["getApiKeyAndHeaders"];
   private logger?: Logger | undefined;
+  private streamLogger?: Logger | undefined;
   private resources: AgentHarnessResources<TSkill, TPromptTemplate>;
   private tools = new Map<string, TTool>();
   private activeToolNames: string[];
@@ -242,6 +243,7 @@ export class AgentHarness<
     this.systemPrompt = options.systemPrompt;
     this.getApiKeyAndHeaders = options.getApiKeyAndHeaders;
     this.logger = options.logger;
+    this.streamLogger = options.streamLogger;
     this.validateUniqueNames(
       (options.tools ?? []).map((tool) => tool.name),
       "Duplicate tool name(s)"
@@ -417,6 +419,9 @@ export class AgentHarness<
     return async (req) => {
       const turnState = getTurnState();
       const auth = await this.getApiKeyAndHeaders?.(req.model);
+      // Stream errors route to the llm logger (llm.log) when supplied,
+      // otherwise fall back to the agent logger.
+      const streamLogger = this.streamLogger ?? this.logger;
 
       // Merge headers from turn state + auth + caller request
       const mergedHeaders = mergeHeaders(
@@ -450,7 +455,7 @@ export class AgentHarness<
         ...(requestOptions.headers ? { headers: requestOptions.headers } : {}),
         sessionId: turnState.sessionId,
         ...(req.abortSignal ? { abortSignal: req.abortSignal } : {}),
-        ...(this.logger === undefined ? {} : { logger: this.logger }),
+        ...(streamLogger === undefined ? {} : { logger: streamLogger }),
       });
     };
   }
