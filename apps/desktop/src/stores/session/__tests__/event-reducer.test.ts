@@ -450,3 +450,55 @@ describe("event reducer — full lifecycle", () => {
     });
   });
 });
+
+describe("event reducer — auto_retry", () => {
+  it("auto_retry_start stores the retry state for the banner", () => {
+    const { session, batcher } = setup();
+    dispatchEvent(session.actions, batcher, {
+      type: "auto_retry_start",
+      attempt: 2,
+      maxAttempts: 3,
+      delayMs: 4000,
+      errorMessage: "Rate limited (429)",
+    });
+    expect(session.store.retry).toEqual({
+      attempt: 2,
+      maxAttempts: 3,
+      delayMs: 4000,
+      errorMessage: "Rate limited (429)",
+    });
+  });
+
+  it("auto_retry_end clears retry state on success", () => {
+    const { session, batcher } = setup();
+    session.actions.setRetry({
+      attempt: 2,
+      maxAttempts: 3,
+      delayMs: 4000,
+      errorMessage: "Rate limited (429)",
+    });
+    dispatchEvent(session.actions, batcher, {
+      type: "auto_retry_end",
+      success: true,
+      attempt: 2,
+    });
+    expect(session.store.retry).toBeNull();
+  });
+
+  it("auto_retry_end clears retry state on final failure", () => {
+    const { session, batcher } = setup();
+    session.actions.setRetry({
+      attempt: 3,
+      maxAttempts: 3,
+      delayMs: 8000,
+      errorMessage: "Rate limited (429)",
+    });
+    dispatchEvent(session.actions, batcher, {
+      type: "auto_retry_end",
+      success: false,
+      attempt: 3,
+      finalError: "Still rate limited after 3 attempts",
+    });
+    expect(session.store.retry).toBeNull();
+  });
+});

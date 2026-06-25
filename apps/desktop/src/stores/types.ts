@@ -51,6 +51,22 @@ export interface TurnTiming {
   startedAt: number;
 }
 
+/**
+ * Transient retry state shown in the banner while the server retries a failed
+ * turn. Set by `auto_retry_start`, cleared by `auto_retry_end`. `null` when no
+ * retry is in progress (the common case).
+ */
+export interface RetryState {
+  // 1-based retry attempt number (first retry = 1).
+  attempt: number;
+  // Computed backoff delay before the retry runs.
+  delayMs: number;
+  // The error text from the failed turn.
+  errorMessage: string;
+  // Configured max attempts, for "attempt N of M".
+  maxAttempts: number;
+}
+
 export const idleStreamState: StreamState = {
   phase: "idle",
   startedAt: 0,

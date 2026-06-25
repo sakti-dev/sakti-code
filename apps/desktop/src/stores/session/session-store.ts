@@ -2,6 +2,7 @@ import { createStore, produce, reconcile } from "solid-js/store";
 import {
   idleStreamState,
   type MessagePart,
+  type RetryState,
   type StreamState,
   type TurnTiming,
   type UIMessage,
@@ -16,6 +17,8 @@ export interface SessionStoreData {
   messageOrder: string[];
   messages: Record<string, UIMessage>;
   proposedSession: ProposedSession | null;
+  /** Active retry banner state; `null` when no retry is in progress. */
+  retry: RetryState | null;
   streaming: StreamState;
   turnTimings: TurnTiming[];
 }
@@ -52,6 +55,8 @@ export interface SessionActions {
   setError: (msgId: string, error: string) => void;
   setPhase: (phase: StreamState["phase"]) => void;
   setProposedSession: (proposal: ProposedSession) => void;
+  /** Set or clear the retry banner state (null clears it). */
+  setRetry: (retry: RetryState | null) => void;
   startTurn: (startedAt: number) => void;
   wasLastUserMessage: (text: string) => boolean;
 }
@@ -66,6 +71,7 @@ export function createSessionStore(): SessionStore {
     messages: {},
     messageOrder: [],
     proposedSession: null,
+    retry: null,
     streaming: { ...idleStreamState },
     turnTimings: [],
   });
@@ -161,6 +167,10 @@ export function createSessionStore(): SessionStore {
 
     clearProposedSession() {
       setStore("proposedSession", null);
+    },
+
+    setRetry(retry) {
+      setStore("retry", retry);
     },
 
     setCurrentMessage(msgId) {
@@ -277,6 +287,7 @@ export function createSessionStore(): SessionStore {
           s.messages = {};
           s.messageOrder = [];
           s.proposedSession = null;
+          s.retry = null;
           s.streaming = { ...idleStreamState };
         })
       );

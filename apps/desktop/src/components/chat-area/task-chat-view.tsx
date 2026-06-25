@@ -1,4 +1,5 @@
-import { createMemo, type JSX, onMount } from "solid-js";
+import { createMemo, type JSX, onMount, Show } from "solid-js";
+import { RetryBanner } from "~/components/chat-area/retry-banner";
 import { MessageTimeline } from "~/components/chat-area/timeline/message-timeline";
 import { ChatInput } from "~/components/chat-input/chat-input";
 import { buildChatTurns } from "~/stores/session/turn-projection";
@@ -35,6 +36,14 @@ export function TaskChatView(props: TaskChatViewProps): JSX.Element {
   return (
     <div class="flex min-h-0 flex-1 flex-col">
       <MessageTimeline isStreaming={isGenerating} turns={turns} />
+      <Show when={sessionStore()?.store.retry}>
+        {(retry) => (
+          <RetryBanner
+            onCancel={() => actions.abortRun(props.sessionId)}
+            retry={retry()}
+          />
+        )}
+      </Show>
       <ChatInput placeholder="Continue working…" sessionId={props.sessionId} />
     </div>
   );

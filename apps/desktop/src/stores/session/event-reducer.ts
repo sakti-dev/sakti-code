@@ -207,5 +207,20 @@ export function dispatchEvent(
       actions.clearCurrentMessage();
       actions.clearCurrentTool();
       break;
+
+    case "auto_retry_start":
+      // Show the retry banner: error, attempt count, and backoff delay.
+      actions.setRetry({
+        attempt: event.attempt,
+        delayMs: event.delayMs,
+        errorMessage: event.errorMessage,
+        maxAttempts: event.maxAttempts,
+      });
+      break;
+
+    case "auto_retry_end":
+      // Retry resolved (success or final failure) — hide the banner.
+      actions.setRetry(null);
+      break;
   }
 }
