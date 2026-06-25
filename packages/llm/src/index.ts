@@ -63,6 +63,8 @@ export {
 } from "./provider/resolve.ts";
 // Compat transform: thinkingFormat → providerOptions + session-affinity headers.
 export { buildHeaders, buildProviderOptions } from "./provider/transform.ts";
+// Transient error classifier — decides if a failed turn is worth retrying.
+export { isRetryableAssistantError } from "./retry.ts";
 export type { FinishResult, StreamRequest, StreamResult } from "./stream.ts";
 // Stream entry point: the single function the agent loop calls.
 export {
