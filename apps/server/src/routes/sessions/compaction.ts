@@ -31,7 +31,12 @@ export const compactionRoutes = new Hono()
 
     const auth = resolveAuth(ctx, session);
     if (!auth) {
-      return c.json({ error: `No API key for ${model.provider} in env` }, 500);
+      return c.json(
+        {
+          error: `No API key for ${model.provider} — add one in Settings > Models`,
+        },
+        500
+      );
     }
 
     const storage = createSessionStorage(ctx, id);

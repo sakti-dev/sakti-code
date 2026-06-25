@@ -23,7 +23,11 @@ function makeProfilesMock(
 
 function makeCtx(
   profilesMock: ReturnType<typeof makeProfilesMock>,
-  session: { projectId: string; profileId: string | null } | null,
+  session: {
+    kind?: string;
+    projectId: string;
+    profileId: string | null;
+  } | null,
   auth?: { getApiKey: (provider: string) => string | undefined }
 ) {
   return {
@@ -86,12 +90,14 @@ describe("resolveModel / resolveAuth", () => {
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
         profileId: null,
+        kind: "task",
       });
 
       const result = resolveModel(ctx, {
         id: "sess-1",
         projectId: "proj-1",
         profileId: null,
+        kind: "task",
       });
 
       expect(result.provider).toBe("openai");
@@ -124,12 +130,14 @@ describe("resolveModel / resolveAuth", () => {
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
         profileId: "fast",
+        kind: "task",
       });
 
       const result = resolveModel(ctx, {
         id: "sess-1",
         projectId: "proj-1",
         profileId: "fast",
+        kind: "task",
       });
 
       expect(result.provider).toBe("groq");
@@ -154,10 +162,21 @@ describe("resolveModel / resolveAuth", () => {
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
         profileId: null,
+        kind: "task",
       });
 
-      resolveModel(ctx, { id: "sess-1", projectId: "proj-1", profileId: null });
-      resolveModel(ctx, { id: "sess-1", projectId: "proj-1", profileId: null });
+      resolveModel(ctx, {
+        id: "sess-1",
+        projectId: "proj-1",
+        profileId: null,
+        kind: "task",
+      });
+      resolveModel(ctx, {
+        id: "sess-1",
+        projectId: "proj-1",
+        profileId: null,
+        kind: "task",
+      });
 
       expect(profilesMock.read).toHaveBeenCalledTimes(1);
     });
@@ -180,9 +199,15 @@ describe("resolveModel / resolveAuth", () => {
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
         profileId: null,
+        kind: "task",
       });
 
-      resolveModel(ctx, { id: "sess-1", projectId: "proj-1", profileId: null });
+      resolveModel(ctx, {
+        id: "sess-1",
+        projectId: "proj-1",
+        profileId: null,
+        kind: "task",
+      });
       expect(profilesMock.read).toHaveBeenCalledTimes(1);
 
       // Simulate external edit to profiles.json
@@ -206,6 +231,7 @@ describe("resolveModel / resolveAuth", () => {
         id: "sess-1",
         projectId: "proj-1",
         profileId: null,
+        kind: "task",
       });
 
       expect(profilesMock.read).toHaveBeenCalledTimes(2);
@@ -230,6 +256,7 @@ describe("resolveModel / resolveAuth", () => {
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
         profileId: "nonexistent",
+        kind: "task",
       });
 
       expect(() =>
@@ -237,6 +264,7 @@ describe("resolveModel / resolveAuth", () => {
           id: "sess-1",
           projectId: "proj-1",
           profileId: "nonexistent",
+          kind: "task",
         })
       ).toThrow(PROFILE_NOT_FOUND_RE);
     });
@@ -257,6 +285,7 @@ describe("resolveModel / resolveAuth", () => {
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
         profileId: null,
+        kind: "task",
       });
 
       expect(() =>
@@ -264,6 +293,7 @@ describe("resolveModel / resolveAuth", () => {
           id: "sess-1",
           projectId: "proj-1",
           profileId: null,
+          kind: "task",
         })
       ).toThrow(MISSING_DEFAULT_RE);
     });
@@ -286,6 +316,7 @@ describe("resolveModel / resolveAuth", () => {
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
         profileId: null,
+        kind: "task",
       });
 
       expect(() =>
@@ -293,8 +324,110 @@ describe("resolveModel / resolveAuth", () => {
           id: "sess-1",
           projectId: "proj-1",
           profileId: null,
+          kind: "task",
         })
       ).toThrow(NO_MODEL_CONFIGURED_RE);
+    });
+
+    it("resolves intake model when session kind is intake", () => {
+      const profilesMock = makeProfilesMock(
+        {
+          defaultProfile: "default",
+          profiles: {
+            default: {
+              name: "Default",
+              models: {
+                default: { provider: "openai", model: TEST_MODEL_ID },
+                intake: {
+                  provider: "anthropic",
+                  model: "claude-sonnet-4-20250514",
+                },
+              },
+            },
+          },
+        },
+        1000
+      );
+      const ctx = makeCtx(profilesMock, {
+        projectId: "proj-1",
+        profileId: null,
+      });
+
+      const result = resolveModel(ctx, {
+        id: "sess-1",
+        projectId: "proj-1",
+        profileId: null,
+        kind: "intake",
+      });
+
+      expect(result.provider).toBe("anthropic");
+      expect(result.modelId).toBe("claude-sonnet-4-20250514");
+    });
+
+    it("falls back to default when intake mode has no model configured", () => {
+      const profilesMock = makeProfilesMock(
+        {
+          defaultProfile: "default",
+          profiles: {
+            default: {
+              name: "Default",
+              models: {
+                default: { provider: "openai", model: TEST_MODEL_ID },
+              },
+            },
+          },
+        },
+        1000
+      );
+      const ctx = makeCtx(profilesMock, {
+        projectId: "proj-1",
+        profileId: null,
+      });
+
+      const result = resolveModel(ctx, {
+        id: "sess-1",
+        projectId: "proj-1",
+        profileId: null,
+        kind: "intake",
+      });
+
+      expect(result.provider).toBe("openai");
+      expect(result.modelId).toBe(TEST_MODEL_ID);
+    });
+
+    it("uses default mode for task kind even when intake is configured", () => {
+      const profilesMock = makeProfilesMock(
+        {
+          defaultProfile: "default",
+          profiles: {
+            default: {
+              name: "Default",
+              models: {
+                default: { provider: "openai", model: TEST_MODEL_ID },
+                intake: {
+                  provider: "anthropic",
+                  model: "claude-sonnet-4-20250514",
+                },
+              },
+            },
+          },
+        },
+        1000
+      );
+      const ctx = makeCtx(profilesMock, {
+        projectId: "proj-1",
+        profileId: null,
+      });
+
+      const result = resolveModel(ctx, {
+        id: "sess-1",
+        projectId: "proj-1",
+        profileId: null,
+        kind: "task",
+      });
+
+      expect(result.provider).toBe("openai");
+      expect(result.modelId).toBe(TEST_MODEL_ID);
     });
   });
 
@@ -317,12 +450,14 @@ describe("resolveModel / resolveAuth", () => {
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
         profileId: null,
+        kind: "task",
       });
 
       const result = resolveAuth(ctx, {
         id: "sess-1",
         projectId: "proj-1",
         profileId: null,
+        kind: "task",
       });
       expect(result).toBeUndefined();
     });
@@ -355,6 +490,7 @@ describe("resolveModel / resolveAuth", () => {
         id: "sess-1",
         projectId: "proj-1",
         profileId: null,
+        kind: "task",
       });
       expect(result).toBeDefined();
       expect(result?.apiKey).toBe("sk-test-key-1234567890");
@@ -391,6 +527,7 @@ describe("resolveModel / resolveAuth", () => {
           id: "sess-1",
           projectId: "proj-1",
           profileId: null,
+          kind: "task",
         });
         expect(result).toBeUndefined();
       } finally {

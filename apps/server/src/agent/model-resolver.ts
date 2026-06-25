@@ -1,6 +1,7 @@
 import type { KnownProvider, Model } from "@sakti-code/llm";
 import { getModel } from "@sakti-code/llm";
 import type { ServerContext } from "../context.ts";
+import { kindToMode } from "../lib/kind-to-mode.ts";
 import { resolveModelRef } from "../lib/profile-resolver.ts";
 import type { Profiles, ProfilesStore } from "../lib/profiles-store.ts";
 
@@ -48,15 +49,22 @@ function getCachedProfiles(ctx: ServerContext): Profiles {
 
 export function resolveModel(
   ctx: ServerContext,
-  session: { id: string; projectId: string; profileId: string | null }
+  session: {
+    id: string;
+    kind: string;
+    projectId: string;
+    profileId: string | null;
+  }
 ): ResolvedModel {
   const profiles = getCachedProfiles(ctx);
-  const ref = resolveModelRef(profiles, session.profileId, "default");
+  const mode = kindToMode(session.kind);
+  const ref = resolveModelRef(profiles, session.profileId, mode);
   const model = resolveModelInstance(ref.provider as KnownProvider, ref.model);
   ctx.log?.agent.debug("model resolved", {
     modelId: model.id,
     provider: model.provider,
     baseURL: model.baseUrl,
+    mode,
   });
   return {
     model,
@@ -68,7 +76,12 @@ export function resolveModel(
 
 export function resolveAuth(
   ctx: ServerContext,
-  session: { id: string; projectId: string; profileId: string | null }
+  session: {
+    id: string;
+    kind: string;
+    projectId: string;
+    profileId: string | null;
+  }
 ): ResolvedAuth | undefined {
   const resolved = resolveModel(ctx, session);
   const apiKey = ctx.auth.getApiKey(resolved.provider);

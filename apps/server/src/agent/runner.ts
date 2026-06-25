@@ -15,7 +15,7 @@ import {
 import { createProposeSessionTool } from "@sakti-code/tools";
 import type { ServerContext } from "../context.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
-import { resolveAuth, resolveModel } from "./model-resolver.ts";
+import { resolveAuth } from "./model-resolver.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
 import { executeWithRetry, parseRetrySettings } from "./retry-loop.ts";
 import { buildTools } from "./tools-builder.ts";
@@ -239,7 +239,7 @@ export async function runPrompt(
   const auth = resolveAuth(ctx, session);
   if (!auth) {
     throw new Error(
-      `No API key for ${resolveModel(ctx, session).provider} in env`
+      "No API key configured for this session's provider — add one in Settings > Models"
     );
   }
   const { model } = auth;
