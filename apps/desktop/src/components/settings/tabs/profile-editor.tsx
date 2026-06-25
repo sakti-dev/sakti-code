@@ -6,7 +6,7 @@ import {
   For,
   Show,
 } from "solid-js";
-import { ModelPickerButton } from "~/components/chat-input/model-picker-button";
+import { ModelPickerButton } from "~/components/commands/model-picker-button";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import {

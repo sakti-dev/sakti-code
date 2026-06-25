@@ -25,6 +25,9 @@ vi.mock("~/stores/store-context", () => ({
               $get: async () => ({ ok: false, json: async () => [] }),
             },
           },
+          connected: {
+            $get: async () => ({ ok: false, json: async () => [] }),
+          },
         },
       },
     },

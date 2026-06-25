@@ -28,6 +28,12 @@ vi.mock("~/stores/store-context", () => ({
               }),
             },
           },
+          connected: {
+            $get: vi.fn().mockResolvedValue({
+              ok: true,
+              json: () => Promise.resolve([]),
+            }),
+          },
         },
       },
     },

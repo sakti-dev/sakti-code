@@ -1,4 +1,4 @@
-import { CATALOG, PROVIDER_INFO } from "@sakti-code/llm";
+import { PROVIDER_INFO } from "@sakti-code/llm";
 import { describe, expect, it } from "vitest";
 
 const { availableModelsRoutes } = await import(
@@ -21,18 +21,5 @@ describe("available-models routes", () => {
     expect(openai.modelCount).toBeGreaterThan(0);
 
     expect(body.every((p: object) => typeof p === "object")).toBe(true);
-  });
-
-  it("lists models for a provider", async () => {
-    const res = await availableModelsRoutes.request(
-      new Request("http://localhost:3001/models/available/openai")
-    );
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toEqual(CATALOG.openai);
-    expect(body.length).toBeGreaterThan(0);
-    expect(
-      body.every((m: { provider: string }) => m.provider === "openai")
-    ).toBe(true);
   });
 });

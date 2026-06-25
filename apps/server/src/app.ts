@@ -5,6 +5,7 @@ import { authRoutes } from "./routes/auth.ts";
 import { dialogRoutes } from "./routes/dialog.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { availableModelsRoutes } from "./routes/models/available-models.ts";
+import { connectedModelsRoutes } from "./routes/models/connected.ts";
 import { profilesRoutes } from "./routes/profiles.ts";
 import { gitRoutes } from "./routes/projects/git.ts";
 import { intakeSessionRoutes } from "./routes/projects/intake-session.ts";
@@ -41,6 +42,7 @@ export function buildApp(ctx: ServerContext) {
     .route("/", settingsRoutes)
     .route("/", profilesRoutes)
     .route("/", availableModelsRoutes)
+    .route("/", connectedModelsRoutes)
     .route("/", authRoutes)
     .route("/", workspaceRoutes)
     .route("/", terminalRoutes)

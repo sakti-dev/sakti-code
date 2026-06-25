@@ -11,7 +11,4 @@ export const availableModelsRoutes = new Hono()
         modelCount: CATALOG[id]?.length ?? 0,
       }))
     )
-  )
-  .get("/available/:provider", (c) =>
-    c.json(CATALOG[c.req.param("provider")] ?? [])
   );
