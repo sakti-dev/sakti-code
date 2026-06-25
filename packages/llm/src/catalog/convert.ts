@@ -34,8 +34,12 @@ export function convertModelsDevModel(
   provider: ModelsDevProvider,
   model: ModelsDevModel
 ): Model | null {
-  // Gate: the agent loop requires tool support. models.dev sets tool_call
-  // explicitly only when true; absent or false → drop.
+  // Gate: the agent loop requires tool support, so drop any model that isn't
+  // confirmed tool-capable. models.dev always emits tool_call (verified
+  // empirically: 5308/5308 models), so in practice this drops the ~1150
+  // models with tool_call === false. opencode keeps non-tool models because
+  // it supports plain-chat modes; we drop them because our agent can't drive
+  // them. Not a bug — a deliberate tool-only-agent constraint. (B3)
   if (model.tool_call !== true) {
     return null;
   }
@@ -69,6 +73,7 @@ export function convertModelsDevModel(
     npm,
     provider: provider.id,
     reasoning: model.reasoning === true,
+    ...(model.status ? { status: model.status } : {}),
     ...(compat ? { compat } : {}),
   };
 

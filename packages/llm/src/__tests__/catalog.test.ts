@@ -136,6 +136,32 @@ describe("convertModelsDevModel — tool_call filtering", () => {
   });
 });
 
+describe("convertModelsDevModel — status (M6)", () => {
+  it("carries status from models.dev when present", () => {
+    const model = convertModelsDevModel(anthropicProvider, {
+      ...baseModel,
+      status: "deprecated",
+    });
+    expect(model?.status).toBe("deprecated");
+  });
+
+  it("defaults to 'active' when status is absent", () => {
+    const model = convertModelsDevModel(anthropicProvider, baseModel);
+    // opencode: draft.status = model.status ?? "active". We omit the field
+    // when absent (undefined ≈ active for consumers), matching the optional
+    // Model.status type. Either way, a missing status means active.
+    expect(model?.status ?? "active").toBe("active");
+  });
+
+  it("passes alpha status through", () => {
+    const model = convertModelsDevModel(anthropicProvider, {
+      ...baseModel,
+      status: "alpha",
+    });
+    expect(model?.status).toBe("alpha");
+  });
+});
+
 describe("convertModelsDevModel — compat assignment", () => {
   it("assigns no compat for first-party @ai-sdk/anthropic", () => {
     const model = convertModelsDevModel(anthropicProvider, baseModel);
