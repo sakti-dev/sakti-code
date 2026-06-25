@@ -52,11 +52,12 @@ const formatValue = (value: unknown): string => {
 };
 
 /** Render the merged default+call context as a ` key=value key=value` tail (empty string if nothing to show). */
-const formatContext = (
+/** Merge the logger's pinned default context with a per-call context, folding a logged error into `context.error` (via `describeError`). */
+export const mergeContext = (
   defaultContext: LogContext,
   context?: LogContext,
   error?: unknown
-): string => {
+): LogContext => {
   const merged: LogContext = {
     ...defaultContext,
     ...(context ?? {}),
@@ -66,6 +67,11 @@ const formatContext = (
     merged.error = describeError(error);
   }
 
+  return merged;
+};
+
+/** Render the non-internal keys of an already-merged context as ` key=value …` (empty string if nothing user-facing to show). */
+const formatContextTail = (merged: LogContext): string => {
   const entries = Object.entries(merged).filter(
     ([key]) => !INTERNAL_CONTEXT_KEYS.has(key)
   );
@@ -77,6 +83,14 @@ const formatContext = (
     .map(([key, value]) => `${toSnakeCase(key)}=${formatValue(value)}`)
     .join(" ")}`;
 };
+
+/**
+ * Full console line: `[DOMAIN:ACTION] message key=value …`.
+ * Shared with `createForwardingLogger` so renderer DevTools output matches the
+ * console logger exactly. `context` is the already-merged context (if any).
+ */
+export const formatLine = (message: string, context?: LogContext): string =>
+  `[${inferDomain(context ?? {})}:${toAction(message)}] ${message}${context === undefined ? "" : formatContextTail(context)}`;
 
 /**
  * Build a console logger that tags every line `[DOMAIN:ACTION] message key=value …`.
@@ -94,7 +108,7 @@ const createBaseLogger = (defaultContext: LogContext = {}): Logger => {
   ): void => {
     emit(
       level,
-      `[${inferDomain(defaultContext)}:${toAction(message)}] ${message}${formatContext(defaultContext, context, error)}`
+      formatLine(message, mergeContext(defaultContext, context, error))
     );
   };
 
