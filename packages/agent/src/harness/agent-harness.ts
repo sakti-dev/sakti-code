@@ -25,6 +25,7 @@ import type {
   StreamFn,
   ThinkingLevel,
 } from "../types.ts";
+import { buildHarnessStreamRequest } from "./build-stream-request.ts";
 import { convertToLlm } from "./messages.ts";
 import { formatPromptTemplateInvocation } from "./prompt-templates.ts";
 import { formatSkillInvocation } from "./skills.ts";
@@ -445,24 +446,25 @@ export class AgentHarness<
       }
       this.logger?.debug("llm call starting", {
         messageCount: req.messages.length,
-        toolCount: req.tools ? Object.keys(req.tools).length : 0,
         maxTokens: req.maxOutputTokens,
         thinkingLevel: req.thinkingLevel,
+        toolCount: req.tools ? Object.keys(req.tools).length : 0,
       });
       const { stream } = await import("@sakti-code/llm");
-      const apiKey = auth?.apiKey ?? req.apiKey;
-      return stream({
-        model: req.model,
-        messages: req.messages,
-        ...(req.system ? { system: req.system } : {}),
-        ...(req.tools ? { tools: req.tools } : {}),
-        ...(req.thinkingLevel ? { thinkingLevel: req.thinkingLevel } : {}),
-        ...(apiKey ? { apiKey } : {}),
-        ...(requestOptions.headers ? { headers: requestOptions.headers } : {}),
-        sessionId: turnState.sessionId,
-        ...(req.abortSignal ? { abortSignal: req.abortSignal } : {}),
-        ...(streamLogger === undefined ? {} : { logger: streamLogger }),
-      });
+      // buildHarnessStreamRequest forwards the loop's full request (including
+      // maxOutputTokens, toolChoice, temperature, topP — previously dropped)
+      // while injecting harness-owned sessionId, resolved api key, hook-merged
+      // headers, and the stream logger.
+      return stream(
+        buildHarnessStreamRequest(req, {
+          sessionId: turnState.sessionId,
+          ...(requestOptions.headers
+            ? { headers: requestOptions.headers }
+            : {}),
+          ...(auth?.apiKey ? { apiKey: auth.apiKey } : {}),
+          ...(streamLogger === undefined ? {} : { logger: streamLogger }),
+        })
+      );
     };
   }
 
