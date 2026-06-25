@@ -151,6 +151,35 @@ describe("mapUsage", () => {
     expect(usage.output).toBe(0);
     expect(usage.cacheRead).toBe(0);
     expect(usage.cacheWrite).toBe(0);
+    expect(usage.reasoningTokens).toBeUndefined();
+  });
+
+  it("captures reasoningTokens from outputTokenDetails (subset of output)", () => {
+    const raw = {
+      inputTokenDetails: { noCacheTokens: 100 },
+      inputTokens: 100,
+      outputTokenDetails: { reasoningTokens: 300, textTokens: 200 },
+      outputTokens: 500,
+      totalTokens: 600,
+    } as LanguageModelUsage;
+    const usage = mapUsage(raw, model);
+    expect(usage.reasoningTokens).toBe(300);
+    // output stays the inclusive total; reasoning is not priced separately
+    expect(usage.output).toBe(500);
+  });
+
+  it("falls back to top-level reasoningTokens when outputTokenDetails omits it", () => {
+    const raw = {
+      inputTokenDetails: { noCacheTokens: 100 },
+      inputTokens: 100,
+      outputTokenDetails: {},
+      outputTokens: 500,
+      // @ai-sdk marks the top-level field deprecated but still emits it
+      reasoningTokens: 42,
+      totalTokens: 600,
+    } as LanguageModelUsage;
+    const usage = mapUsage(raw, model);
+    expect(usage.reasoningTokens).toBe(42);
   });
 });
 

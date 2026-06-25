@@ -224,6 +224,14 @@ export interface Usage {
   };
   input: number;
   output: number;
+  /**
+   * Tokens spent on hidden reasoning, a subset of `output` (not priced
+   * separately — `output` already charges them at the output rate). Captured
+   * from `outputTokenDetails.reasoningTokens` for context-pressure UI and
+   * future reasoning-cost analysis. Omitted when the provider doesn't report
+   * it (e.g. Anthropic folds extended-thinking into `output_tokens`).
+   */
+  reasoningTokens?: number;
   totalTokens: number;
 }
 

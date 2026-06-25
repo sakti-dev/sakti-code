@@ -117,6 +117,11 @@ type RunStreamText = (options: Record<string, unknown>) => StreamTextStream;
  */
 export function mapUsage(raw: LanguageModelUsage, model: Model): Usage {
   const noCache = raw.inputTokenDetails.noCacheTokens;
+  // outputTokenDetails.reasoningTokens is the non-deprecated path; the
+  // top-level reasoningTokens is @ai-sdk's deprecated alias (still emitted).
+  // Matches @opencode-ai/llm's ai-sdk bridge fallback.
+  const reasoningTokens =
+    raw.outputTokenDetails.reasoningTokens ?? raw.reasoningTokens;
   const usage: Usage = {
     cacheRead: raw.inputTokenDetails.cacheReadTokens ?? 0,
     cacheWrite: raw.inputTokenDetails.cacheWriteTokens ?? 0,
@@ -125,6 +130,7 @@ export function mapUsage(raw: LanguageModelUsage, model: Model): Usage {
     // total when the provider doesn't report the breakdown.
     input: noCache ?? raw.inputTokens ?? 0,
     output: raw.outputTokens ?? 0,
+    ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
     totalTokens:
       raw.totalTokens ?? (raw.inputTokens ?? 0) + (raw.outputTokens ?? 0),
   };
