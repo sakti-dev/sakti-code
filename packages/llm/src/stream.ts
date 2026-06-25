@@ -105,13 +105,25 @@ type RunStreamText = (options: Record<string, unknown>) => StreamTextStream;
  * @ai-sdk uses nested `inputTokenDetails` / `outputTokenDetails`; we use flat
  * fields. `undefined` values default to 0. Cost is populated in-place via
  * {@link calculateCost}.
+ *
+ * **Non-cached input (B1):** `raw.inputTokens` is the INCLUSIVE total (it
+ * includes cached reads/writes). {@link calculateCost} prices `usage.input`
+ * at the input rate AND charges `cacheRead`/`cacheWrite` separately, so
+ * feeding the inclusive total would double-count cached tokens. We use
+ * `inputTokenDetails.noCacheTokens` (the non-cached subset) when the provider
+ * reports the breakdown, falling back to `inputTokens` for providers that
+ * don't. This matches @opencode-ai/llm's `Usage` contract invariant:
+ * `nonCachedInput + cacheRead + cacheWrite = inputTokens`.
  */
 export function mapUsage(raw: LanguageModelUsage, model: Model): Usage {
+  const noCache = raw.inputTokenDetails.noCacheTokens;
   const usage: Usage = {
     cacheRead: raw.inputTokenDetails.cacheReadTokens ?? 0,
     cacheWrite: raw.inputTokenDetails.cacheWriteTokens ?? 0,
     cost: { cacheRead: 0, cacheWrite: 0, input: 0, output: 0, total: 0 },
-    input: raw.inputTokens ?? 0,
+    // noCacheTokens is the non-cached subset; fall back to the inclusive
+    // total when the provider doesn't report the breakdown.
+    input: noCache ?? raw.inputTokens ?? 0,
     output: raw.outputTokens ?? 0,
     totalTokens:
       raw.totalTokens ?? (raw.inputTokens ?? 0) + (raw.outputTokens ?? 0),

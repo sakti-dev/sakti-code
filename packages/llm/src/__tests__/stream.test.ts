@@ -37,9 +37,13 @@ function sampleUsage(
 // ─── mapUsage (pure) ─────────────────────────────────────────────────────────
 
 describe("mapUsage", () => {
-  it("maps inputTokens/outputTokens/totalTokens to our Usage", () => {
+  // sampleUsage() models a cached turn: inputTokens=100 is the INCLUSIVE
+  // total; noCacheTokens=85 is the non-cached subset (100 = 85 + 10 read + 5
+  // write). mapUsage must use noCacheTokens for usage.input so cost does not
+  // double-charge cached tokens (they're priced separately via cacheRead/cacheWrite).
+  it("maps noCacheTokens→input, outputTokens→output, totalTokens through", () => {
     const usage = mapUsage(sampleUsage(), model);
-    expect(usage.input).toBe(100);
+    expect(usage.input).toBe(85);
     expect(usage.output).toBe(50);
     expect(usage.totalTokens).toBe(150);
   });
@@ -50,16 +54,84 @@ describe("mapUsage", () => {
     expect(usage.cacheWrite).toBe(5);
   });
 
-  it("populates cost via calculateCost", () => {
+  it("populates cost via calculateCost (non-cached input, no double-count)", () => {
     const usage = mapUsage(sampleUsage(), model);
-    // input: (3/1e6) * 100 = 0.0003
-    expect(usage.cost.input).toBeCloseTo(0.0003, 10);
+    // input cost uses the NON-cached subset (85), not the inclusive 100
+    // input: (3/1e6) * 85 = 0.000255
+    expect(usage.cost.input).toBeCloseTo(0.000_255, 10);
     // output: (15/1e6) * 50 = 0.00075
     expect(usage.cost.output).toBeCloseTo(0.000_75, 10);
     expect(usage.cost.total).toBeCloseTo(
-      0.0003 + 0.000_75 + usage.cost.cacheRead + usage.cost.cacheWrite,
+      0.000_255 + 0.000_75 + usage.cost.cacheRead + usage.cost.cacheWrite,
       10
     );
+  });
+
+  it("uses noCacheTokens (not inclusive inputTokens) to avoid double-counting cache in cost", () => {
+    const modelNoOp: Model = {
+      api: "ai-sdk",
+      baseUrl: "",
+      contextWindow: 200_000,
+      cost: { cacheRead: 0.3, cacheWrite: 3.75, input: 3, output: 15 },
+      id: "test",
+      input: ["text"],
+      maxTokens: 8192,
+      name: "test",
+      provider: "anthropic",
+      reasoning: false,
+    };
+    // @ai-sdk's LanguageModelUsage: inputTokens is the inclusive total
+    // (800 fresh + 150 cache-read + 50 cache-write = 1000); noCacheTokens is
+    // the non-cached subset (800). Cost must price the 800 once and the cache
+    // subsets separately, not 1000 once (which double-charges cache).
+    const raw = {
+      inputTokenDetails: {
+        cacheReadTokens: 150,
+        cacheWriteTokens: 50,
+        noCacheTokens: 800,
+      },
+      inputTokens: 1000,
+      outputTokenDetails: {},
+      outputTokens: 500,
+      totalTokens: 1500,
+    } as LanguageModelUsage;
+
+    const usage = mapUsage(raw, modelNoOp);
+    expect(usage.input).toBe(800);
+    expect(usage.cacheRead).toBe(150);
+    expect(usage.cacheWrite).toBe(50);
+    expect(usage.cost.input).toBeCloseTo((3 / 1_000_000) * 800, 10);
+    expect(usage.cost.total).toBeCloseTo(
+      (3 / 1_000_000) * 800 +
+        (15 / 1_000_000) * 500 +
+        (0.3 / 1_000_000) * 150 +
+        (3.75 / 1_000_000) * 50,
+      8
+    );
+  });
+
+  it("falls back to inputTokens when noCacheTokens is undefined", () => {
+    const modelSimple: Model = {
+      api: "ai-sdk",
+      baseUrl: "",
+      contextWindow: 1,
+      cost: { cacheRead: 0, cacheWrite: 0, input: 0, output: 0 },
+      id: "m",
+      input: ["text"],
+      maxTokens: 1,
+      name: "m",
+      provider: "p",
+      reasoning: false,
+    };
+    const raw = {
+      inputTokenDetails: {},
+      inputTokens: 500,
+      outputTokenDetails: {},
+      outputTokens: 100,
+      totalTokens: 600,
+    } as LanguageModelUsage;
+    const usage = mapUsage(raw, modelSimple);
+    expect(usage.input).toBe(500);
   });
 
   it("handles undefined fields gracefully (defaults to 0)", () => {
@@ -166,7 +238,7 @@ describe("streamWithModel()", () => {
       fake as never
     );
     const finish = await result;
-    expect(finish.usage.input).toBe(100);
+    expect(finish.usage.input).toBe(85);
     expect(finish.usage.output).toBe(50);
     expect(finish.usage.cost.total).toBeGreaterThan(0);
   });
