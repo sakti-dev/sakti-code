@@ -38,6 +38,7 @@ export const forkingRoutes = new Hono()
         ? {}
         : { modelId: session.modelId }),
       thinkingLevel: session.thinkingLevel,
+      kind: session.kind,
     });
 
     const forkedStorage = createSessionStorage(ctx, newSession.id);

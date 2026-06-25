@@ -4,6 +4,7 @@ import {
   resolveAuth,
   resolveModel,
 } from "../model-resolver.ts";
+import { resolveThinkingLevel } from "../runner.ts";
 
 const TEST_MODEL_ID = "gpt-4";
 
@@ -538,5 +539,77 @@ describe("resolveModel / resolveAuth", () => {
         }
       }
     });
+  });
+});
+
+describe("resolveThinkingLevel with profile fallback", () => {
+  function makeSettingsCtx(getValue: string | null) {
+    return {
+      repos: {
+        settings: {
+          get: vi.fn(() => getValue),
+        },
+      },
+    } as unknown as Parameters<typeof resolveThinkingLevel>[0];
+  }
+
+  it("uses profile thinkingLevel when no session-level override exists", () => {
+    const ctx = makeSettingsCtx(null);
+
+    const result = resolveThinkingLevel(
+      ctx,
+      "sess-1",
+      {
+        thinkingLevel: "off",
+      },
+      "high"
+    );
+
+    expect(result).toBe("high");
+  });
+
+  it("per-session setting overrides profile thinkingLevel", () => {
+    const ctx = makeSettingsCtx("low");
+
+    const result = resolveThinkingLevel(
+      ctx,
+      "sess-1",
+      {
+        thinkingLevel: "off",
+      },
+      "high"
+    );
+
+    expect(result).toBe("low");
+  });
+
+  it("session row thinkingLevel overrides profile when not 'off'", () => {
+    const ctx = makeSettingsCtx(null);
+
+    const result = resolveThinkingLevel(
+      ctx,
+      "sess-1",
+      {
+        thinkingLevel: "medium",
+      },
+      "high"
+    );
+
+    expect(result).toBe("medium");
+  });
+
+  it("defaults to 'off' when profile is also 'off'", () => {
+    const ctx = makeSettingsCtx(null);
+
+    const result = resolveThinkingLevel(
+      ctx,
+      "sess-1",
+      {
+        thinkingLevel: "off",
+      },
+      "off"
+    );
+
+    expect(result).toBe("off");
   });
 });

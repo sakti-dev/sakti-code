@@ -52,6 +52,27 @@ describe("fork routes", () => {
     );
     expect(res.status).toBe(404);
   });
+
+  it("POST /api/sessions/:id/fork preserves session kind", async () => {
+    const { app, ctx } = await makeApp([forkingRoutes]);
+    const project = await ctx.repos.projects.create(
+      "fork-kind",
+      "/tmp/fork-kind"
+    );
+    const session = await ctx.repos.sessions.create(project.id, {
+      kind: "intake",
+    });
+
+    const res = await app.request(
+      new Request(`http://localhost/api/sessions/${session.id}/fork`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+      })
+    );
+    expect(res.status).toBe(200);
+    const forked = await res.json();
+    expect(forked.kind).toBe("intake");
+  });
 });
 
 describe("fork-messages route", () => {

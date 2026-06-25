@@ -192,7 +192,8 @@ export function loadSessionSettings(
 export function resolveThinkingLevel(
   ctx: ServerContext,
   sessionId: string,
-  session: { thinkingLevel: string }
+  session: { thinkingLevel: string },
+  profileThinkingLevel = "off"
 ): ThinkingLevel {
   const thinkingLevelRow = ctx.repos.settings.get(
     `session:${sessionId}:thinking_level`
@@ -206,7 +207,7 @@ export function resolveThinkingLevel(
   if (session.thinkingLevel !== "off") {
     return session.thinkingLevel as ThinkingLevel;
   }
-  return "off";
+  return profileThinkingLevel as ThinkingLevel;
 }
 
 export async function runPrompt(
@@ -250,7 +251,12 @@ export async function runPrompt(
   }
 
   const settings = loadSessionSettings(ctx, sessionId);
-  const thinkingLevel = resolveThinkingLevel(ctx, sessionId, session);
+  const thinkingLevel = resolveThinkingLevel(
+    ctx,
+    sessionId,
+    session,
+    auth.thinkingLevel
+  );
 
   const env = new NodeExecutionEnv(project.cwd);
   const sessionInstance = new SessionClass(storage);
