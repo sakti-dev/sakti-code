@@ -60,6 +60,9 @@ importers:
       '@sakti-code/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@sakti-code/logger':
+        specifier: workspace:*
+        version: link:../../packages/logger
       '@sakti-code/server':
         specifier: workspace:*
         version: link:../server
@@ -169,6 +172,9 @@ importers:
       '@sakti-code/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@sakti-code/logger':
+        specifier: workspace:*
+        version: link:../../packages/logger
       '@sakti-code/tools':
         specifier: workspace:*
         version: link:../../packages/tools
@@ -209,6 +215,9 @@ importers:
       '@sakti-code/llm':
         specifier: workspace:*
         version: link:../llm
+      '@sakti-code/logger':
+        specifier: workspace:*
+        version: link:../logger
       typebox:
         specifier: 1.1.38
         version: 1.1.38
