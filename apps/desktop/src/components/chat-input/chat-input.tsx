@@ -9,6 +9,7 @@ import {
 } from "solid-js";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+import { aggregateUsage } from "~/stores/session/usage-stats";
 import { useStore } from "~/stores/store-context";
 import { InputFooter } from "./input-footer";
 import { ProfileSelect } from "./profile-select";
@@ -42,6 +43,19 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
       return null;
     }
     return sessions.get(props.sessionId);
+  });
+
+  // Aggregate token/cost totals across the session's messages for the footer.
+  const sessionStats = createMemo(() => {
+    const s = sessionStore();
+    if (!s) {
+      return;
+    }
+    const totals = aggregateUsage(s.store.messages);
+    // Hide the line entirely until there's at least one assistant turn.
+    return totals.cost === 0 && totals.input === 0 && totals.output === 0
+      ? undefined
+      : totals;
   });
 
   const retry = () => sessionStore()?.store.retry ?? null;
@@ -177,7 +191,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
             />
           </div>
 
-          <InputFooter charCount={() => value().length} />
+          <InputFooter charCount={() => value().length} stats={sessionStats} />
         </div>
       </div>
     </div>

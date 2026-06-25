@@ -32,7 +32,13 @@ export interface UIMessage {
   parts: MessagePart[];
   role: "user" | "assistant" | "system";
   timestamp: number;
-  usage?: { input: number; output: number; cost: number };
+  usage?: {
+    cost: number;
+    input: number;
+    output: number;
+    /** Tokens spent on hidden reasoning (subset of `output`). Optional. */
+    reasoningTokens?: number;
+  };
 }
 
 /**
@@ -99,6 +105,9 @@ export function agentMessageToUI(msg: AgentMessage): UIMessage {
             input: msg.usage.input,
             output: msg.usage.output,
             cost: msg.usage.cost.total,
+            ...(msg.usage.reasoningTokens === undefined
+              ? {}
+              : { reasoningTokens: msg.usage.reasoningTokens }),
           }
         : undefined;
 

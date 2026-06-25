@@ -1,6 +1,7 @@
 import type { AgentMessage } from "@sakti-code/agent";
 import type { Message } from "@sakti-code/llm";
 import type { MessagePart, UIMessage } from "../types.ts";
+import { extractUsage } from "./usage-stats.ts";
 
 function hasContent(
   msg: AgentMessage
@@ -87,14 +88,7 @@ function convertAssistantMessage(msg: AgentMessage): UIMessage {
     parts.unshift({ type: "text", text: rawContent });
   }
 
-  const usage =
-    "usage" in msg && msg.usage
-      ? {
-          input: (msg.usage as { input: number }).input,
-          output: (msg.usage as { output: number }).output,
-          cost: (msg.usage as { cost: { total: number } }).cost.total,
-        }
-      : undefined;
+  const usage = extractUsage(msg);
 
   return {
     id: crypto.randomUUID(),

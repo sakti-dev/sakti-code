@@ -43,7 +43,7 @@ export interface SessionActions {
     isError?: boolean,
     details?: unknown
   ) => void;
-  finalizeMessage: (msgId: string) => void;
+  finalizeMessage: (msgId: string, usage?: UIMessage["usage"]) => void;
   finalizeTurn: (endedAt: number) => void;
   getCurrentMessageId: () => string | null;
   loadMessages: (msgs: UIMessage[]) => void;
@@ -243,7 +243,7 @@ export function createSessionStore(): SessionStore {
       setStore("streaming", "phase", "error");
     },
 
-    finalizeMessage(msgId) {
+    finalizeMessage(msgId, usage) {
       setStore("messages", msgId, "parts", (prev) => {
         const last = prev.at(-1);
         if (last === undefined) {
@@ -258,6 +258,12 @@ export function createSessionStore(): SessionStore {
         return [...prev.slice(0, -1), { ...last, isStreaming: false }];
       });
       setStore("messages", msgId, "isStreaming", false);
+      // Persist provider usage (tokens/cost) so the session-stats aggregate is
+      // available live, not only after a reload. The agent's message_end event
+      // carries the final AssistantMessage with usage; the reducer extracts it.
+      if (usage !== undefined) {
+        setStore("messages", msgId, "usage", usage);
+      }
     },
 
     startTurn(startedAt) {

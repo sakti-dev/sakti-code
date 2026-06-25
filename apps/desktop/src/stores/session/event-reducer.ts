@@ -2,6 +2,7 @@ import type { AgentHarnessEvent, AgentMessage } from "@sakti-code/agent";
 import type { Message } from "@sakti-code/llm";
 import type { SessionActions } from "./session-store.ts";
 import type { TokenBatcher } from "./token-batcher.ts";
+import { extractUsage } from "./usage-stats.ts";
 
 function isMessageWithContent(
   msg: AgentMessage
@@ -158,7 +159,10 @@ export function dispatchEvent(
     case "message_end": {
       const msgId = actions.getCurrentMessageId();
       if (msgId) {
-        actions.finalizeMessage(msgId);
+        // Persist provider usage (tokens/cost) so the session-stats aggregate
+        // is available live, not only after a reload. message_end carries the
+        // final AssistantMessage; extractUsage returns undefined for non-assistant.
+        actions.finalizeMessage(msgId, extractUsage(event.message));
       }
       break;
     }
