@@ -14,3 +14,8 @@ references/
 *.db*
 .worktrees/
 .worktrees/
+
+# Test-generated temp dirs (mkdtemp output, not test source). Pattern is
+# intentionally narrow: only matches the "test-workdir-*" scratch dirs tests
+# create at runtime — never *.test.ts source files.
+test-workdir-*
