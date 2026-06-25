@@ -49,12 +49,6 @@ export interface StreamRequest {
   headers?: Record<string, string>;
   /** Max output tokens. */
   maxOutputTokens?: number;
-  /**
-   * Max SDK-level retry attempts on transient errors (429/500/503).
-   * Default 0 (fail fast, matching pi-ai). @ai-sdk handles exponential
-   * backoff internally when > 0.
-   */
-  maxRetries?: number;
   /** Conversation history (our Message type, converted to @ai-sdk format). */
   messages: Message[];
   /** The model descriptor from the catalog. */
@@ -194,7 +188,7 @@ export function streamWithModel(
 
   const raw = runner({
     ...(mergedHeaders ? { headers: mergedHeaders } : {}),
-    maxRetries: req.maxRetries ?? 0,
+    maxRetries: 0,
     messages: toModelMessages(req.messages),
     model: language,
     ...(providerOptions && Object.keys(providerOptions).length > 0

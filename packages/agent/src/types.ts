@@ -237,11 +237,6 @@ export interface AgentLoopConfig {
    */
   getSteeringMessages?: (() => Promise<AgentMessage[]>) | undefined;
   headers?: Record<string, string> | undefined;
-  /**
-   * Max SDK-level retry attempts on transient errors (429/500/503).
-   * Default 0 (fail fast). Passed through to the stream layer.
-   */
-  maxRetries?: number | undefined;
   model: Model;
 
   /**

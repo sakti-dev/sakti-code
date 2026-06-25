@@ -327,9 +327,6 @@ async function streamAssistantResponse(
       : { thinkingLevel: config.reasoning }),
     ...(resolvedApiKey === undefined ? {} : { apiKey: resolvedApiKey }),
     ...(config.headers ? { headers: config.headers } : {}),
-    ...(config.maxRetries === undefined
-      ? {}
-      : { maxRetries: config.maxRetries }),
     ...(config.sessionId ? { sessionId: config.sessionId } : {}),
     ...(signal ? { abortSignal: signal } : {}),
   });
