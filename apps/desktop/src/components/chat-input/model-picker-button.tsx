@@ -44,22 +44,6 @@ export function ModelPickerButton(props: ModelPickerButtonProps) {
     return (await res.json()) as ProviderSummary[];
   });
 
-  const [providerModels] = createResource(
-    () => providers() ?? [],
-    async (providerList) => {
-      const results: Record<string, Model[]> = {};
-      for (const provider of providerList) {
-        const res = await api.api.models.available[":provider"].$get({
-          param: { provider: provider.id },
-        });
-        if (res.ok) {
-          results[provider.id] = (await res.json()) as Model[];
-        }
-      }
-      return results;
-    }
-  );
-
   const [authStates] = createResource(async () => {
     const res = await api.api.auth.$get();
     if (!res.ok) {
@@ -78,6 +62,32 @@ export function ModelPickerButton(props: ModelPickerButtonProps) {
     }
     return new Set(states.filter((s) => s.hasKey).map((s) => s.provider));
   });
+
+  const [providerModels] = createResource(
+    () => {
+      const ps = providers();
+      const connected = connectedProviders();
+      if (!ps || connected.size === 0) {
+        return null;
+      }
+      return [...connected];
+    },
+    async (connectedIds) => {
+      if (!connectedIds) {
+        return {};
+      }
+      const results: Record<string, Model[]> = {};
+      for (const providerId of connectedIds) {
+        const res = await api.api.models.available[":provider"].$get({
+          param: { provider: providerId },
+        });
+        if (res.ok) {
+          results[providerId] = (await res.json()) as Model[];
+        }
+      }
+      return results;
+    }
+  );
 
   const modelOptions = createMemo<ModelSelectorOption[]>(() => {
     const models = providerModels();
