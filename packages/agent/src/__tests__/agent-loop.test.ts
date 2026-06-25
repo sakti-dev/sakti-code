@@ -270,6 +270,79 @@ describe("agentLoop with AgentMessage", () => {
     );
   });
 
+  it("forces toolChoice='none' on the last step when maxSteps is set (M1)", async () => {
+    const captured: (string | undefined)[] = [];
+    const streamFn = makeStreamFnWithReq((req, callIndex) => {
+      captured.push(
+        "toolChoice" in req ? (req.toolChoice as string | undefined) : undefined
+      );
+      // First call emits a tool call (so a step 2 would normally follow);
+      // later calls emit text so the loop terminates even in the RED state.
+      // With maxSteps=1 the first call is the last and must forbid tools.
+      return callIndex === 0
+        ? {
+            content: [
+              { type: "toolCall", id: "tc1", name: "noop", arguments: {} },
+            ],
+            finishReason: "toolUse",
+          }
+        : { content: [{ type: "text", text: "done" }] };
+    });
+
+    const context: AgentContext = {
+      systemPrompt: "x",
+      messages: [],
+      tools: [],
+    };
+    const config: AgentLoopConfig = {
+      model: createModel(),
+      convertToLlm: identityConverter,
+      maxSteps: 1,
+    };
+
+    const stream = agentLoop(
+      [createUserMessage("Hi")],
+      context,
+      config,
+      undefined,
+      streamFn.fn
+    );
+    for await (const _event of stream) {
+      void _event;
+    }
+    await stream.result();
+
+    // The single allowed step must forbid tool calls.
+    expect(captured[0]).toBe("none");
+  });
+
+  it("does not set toolChoice when maxSteps is unset", async () => {
+    const captured: (string | undefined)[] = [];
+    const streamFn = makeStreamFnWithReq((req) => {
+      captured.push(
+        "toolChoice" in req ? (req.toolChoice as string | undefined) : undefined
+      );
+      return { content: [{ type: "text", text: "hi" }] };
+    });
+
+    const config: AgentLoopConfig = {
+      model: createModel(),
+      convertToLlm: identityConverter,
+    };
+    const stream = agentLoop(
+      [createUserMessage("Hi")],
+      { systemPrompt: "x", messages: [], tools: [] },
+      config,
+      undefined,
+      streamFn.fn
+    );
+    for await (const _event of stream) {
+      void _event;
+    }
+    await stream.result();
+    expect(captured[0]).toBeUndefined();
+  });
+
   it("should handle custom message types via convertToLlm", async () => {
     interface CustomNotification {
       role: "notification";

@@ -166,6 +166,10 @@ async function runLoop(
   let config = initialConfig;
   let firstTurn = true;
   let lastAssistantMessage: AssistantMessage | undefined;
+  // Provider-turn counter for the maxSteps budget. Incremented after each
+  // streamAssistantResponse call. When maxSteps is set and this is the final
+  // allowed turn, the request carries toolChoice: "none".
+  let step = 0;
   // Check for steering messages at start (user may have typed while waiting)
   let pendingMessages: AgentMessage[] =
     (await config.getSteeringMessages?.()) || [];
@@ -193,14 +197,19 @@ async function runLoop(
         pendingMessages = [];
       }
 
-      // Stream assistant response
+      // Stream assistant response. On the final allowed turn (maxSteps
+      // budget), forbid tool calls so the model emits a final answer.
+      const isLastStep =
+        config.maxSteps !== undefined && step >= config.maxSteps - 1;
       const message = await streamAssistantResponse(
         currentContext,
         config,
         signal,
         emit,
-        streamFn
+        streamFn,
+        isLastStep
       );
+      step++;
       newMessages.push(message);
       lastAssistantMessage = message;
 
@@ -317,7 +326,9 @@ async function streamAssistantResponse(
   config: AgentLoopConfig,
   signal: AbortSignal | undefined,
   emit: AgentEventSink,
-  streamFn?: StreamFn
+  streamFn?: StreamFn,
+  /** When true, send toolChoice: "none" so the model emits a final answer. */
+  forbidTools = false
 ): Promise<AssistantMessage> {
   // Apply context transform if configured (AgentMessage[] → AgentMessage[])
   let messages = context.messages;
@@ -343,6 +354,7 @@ async function streamAssistantResponse(
     ...(context.tools && context.tools.length > 0
       ? { tools: toStreamTools(context.tools) }
       : {}),
+    ...(forbidTools ? { toolChoice: "none" as const } : {}),
     ...(config.reasoning === undefined
       ? {}
       : { thinkingLevel: config.reasoning }),

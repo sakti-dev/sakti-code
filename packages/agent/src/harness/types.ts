@@ -885,6 +885,12 @@ export interface AgentHarnessOptions<
   >;
   /** Optional logger — threaded into the loop config + the llm stream() call so provider failures surface in agent.log/llm.log. */
   logger?: Logger;
+  /**
+   * Maximum provider turns per run. The final turn is sent with
+   * `toolChoice: "none"` so the model emits a final answer instead of looping
+   * on more tool calls. Unset → run until the model stops emitting tool calls.
+   */
+  maxSteps?: number;
   model: Model;
   /**
    * Concrete resources available to explicit invocation methods and system-prompt callbacks.

@@ -240,6 +240,14 @@ export interface AgentLoopConfig {
   headers?: Record<string, string> | undefined;
   /** Optional logger — the loop logs stream errors + tool dispatch here. Defaults to silent (no-op). */
   logger?: Logger | undefined;
+  /**
+   * Maximum number of provider turns for one loop invocation. When set, the
+   * final turn is sent with `toolChoice: "none"` so the model emits a final
+   * answer instead of another tool call, bounding the run and forcing
+   * convergence. Matches opencode's `isLastStep` step-budget behavior. Unset
+   * → the loop runs until the model stops emitting tool calls.
+   */
+  maxSteps?: number | undefined;
   model: Model;
 
   /**

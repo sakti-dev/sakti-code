@@ -212,6 +212,7 @@ export class AgentHarness<
   private runPromise?: Promise<void> | undefined;
   private pendingSessionWrites: PendingSessionWrite[] = [];
   private model: Model;
+  private maxSteps?: number;
   private thinkingLevel: ThinkingLevel;
   private systemPrompt: AgentHarnessOptions<
     TSkill,
@@ -253,6 +254,9 @@ export class AgentHarness<
       this.tools.set(tool.name, tool);
     }
     this.model = options.model;
+    if (options.maxSteps !== undefined) {
+      this.maxSteps = options.maxSteps;
+    }
     this.thinkingLevel = options.thinkingLevel ?? "off";
     this.activeToolNames = options.activeToolNames
       ? [...options.activeToolNames]
@@ -494,6 +498,7 @@ export class AgentHarness<
     const turnState = getTurnState();
     return {
       model: turnState.model,
+      ...(this.maxSteps === undefined ? {} : { maxSteps: this.maxSteps }),
       ...(turnState.thinkingLevel === "off"
         ? {}
         : { reasoning: turnState.thinkingLevel }),
