@@ -122,6 +122,16 @@ function buildFactoryOptions(
     ...(baseURL ? { baseURL } : {}),
     ...(options.apiKey ? { apiKey: options.apiKey } : {}),
     ...(headers ? { headers } : {}),
+    // Force-enable usage reporting for the generic openai-compatible factory.
+    // Without this, ~100 catalog providers (deepseek, groq, zai, togetherai,
+    // …) may silently return zero usage, breaking cost tracking. First-party
+    // factories (anthropic, openai, google, …) report usage natively and
+    // ignore this setting. Mirrors opencode's openai-compatible plugin
+    // (plugin/provider/openai-compatible.ts: `if (options.includeUsage !==
+    // false) options.includeUsage = true`).
+    ...(model.npm === "@ai-sdk/openai-compatible"
+      ? { includeUsage: true }
+      : {}),
   };
 }
 

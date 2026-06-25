@@ -213,6 +213,35 @@ describe("resolveLanguageModel", () => {
     expect(rec.calls[0]?.headers).toBeUndefined();
   });
 
+  it("force-enables includeUsage for @ai-sdk/openai-compatible (B2)", async () => {
+    const rec = recordingFactory("deepseek");
+    const factories = {
+      "@ai-sdk/openai-compatible": () => Promise.resolve(rec.factory),
+    };
+    const model: Model = {
+      ...baseModel,
+      baseUrl: "https://api.deepseek.com",
+      npm: "@ai-sdk/openai-compatible",
+      provider: "deepseek",
+    };
+    await resolveLanguageModel(model, { apiKey: "sk-test" }, factories);
+    // Without includeUsage, openai-compatible providers may silently return
+    // zero usage, breaking cost tracking. opencode forces this on too
+    // (plugin/provider/openai-compatible.ts).
+    expect(rec.calls[0]?.includeUsage).toBe(true);
+  });
+
+  it("does not set includeUsage for first-party @ai-sdk factories", async () => {
+    const rec = recordingFactory("anthropic");
+    const factories = {
+      "@ai-sdk/anthropic": () => Promise.resolve(rec.factory),
+    };
+    await resolveLanguageModel(baseModel, { apiKey: "sk-test" }, factories);
+    // includeUsage is an openai-compatible-specific setting; first-party
+    // factories (anthropic, openai, google, …) report usage natively.
+    expect(rec.calls[0]?.includeUsage).toBeUndefined();
+  });
+
   it("throws a clear error when model.npm is missing", async () => {
     const model: Model = {
       api: "ai-sdk",
