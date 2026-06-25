@@ -34,7 +34,9 @@ const transport = (entry: LogEntry): void => {
 };
 
 /** Singleton forwarding logger wired to the desktop.log IPC bridge. */
-export const logger: Logger = createForwardingLogger(transport);
+export const logger: Logger = createForwardingLogger(transport, {
+  minLevel: import.meta.env.DEV ? "debug" : "info",
+});
 
 /** Derive a child logger that pins the given context (e.g. `{ module }`). */
 export const createLogger = (context: LogContext = {}): Logger =>

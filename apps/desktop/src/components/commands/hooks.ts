@@ -5,8 +5,10 @@ import {
   createSignal,
   onCleanup,
 } from "solid-js";
+import { createLogger } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
 
+const _log = createLogger({ module: "useModelSelector" });
 export interface ModelSelectorOption {
   id: string;
   name: string;
@@ -60,12 +62,12 @@ export function useModelPicker() {
     }>;
   });
 
-  const modelSections = createMemo(() => {
+  const rawModelSections = createMemo(() => {
     const data = selectorData();
     if (!data) {
       return [];
     }
-    const sections: ModelSelectorSection[] = data.map((section) => ({
+    return data.map((section) => ({
       providerId: section.providerId,
       providerName: section.providerName,
       models: section.models.map((m) => ({
@@ -76,20 +78,6 @@ export function useModelPicker() {
         ...(m.status === undefined ? {} : { status: m.status }),
       })),
     }));
-    const query = searchQuery().trim().toLowerCase();
-    if (!query) {
-      return sections;
-    }
-    return sections
-      .map((section) => ({
-        ...section,
-        models: section.models.filter((m) =>
-          `${m.id} ${m.name} ${section.providerId}`
-            .toLowerCase()
-            .includes(query)
-        ),
-      }))
-      .filter((section) => section.models.length > 0);
   });
 
   return {
@@ -97,7 +85,8 @@ export function useModelPicker() {
     setIsOpen,
     searchQuery,
     setSearchQuery,
-    modelSections,
+    modelSections: rawModelSections,
+    rawModelSections,
   };
 }
 
@@ -123,8 +112,35 @@ export function useModelSelector(props: {
     modelListRef = el;
   };
 
+  const filteredSections = createMemo(() => {
+    const sections = props.modelSections;
+    const q = query().trim().toLowerCase();
+    _log.debug("filteredSections", {
+      q,
+      inputLen: sections.length,
+      inputCounts: sections.map((s) => s.models.length),
+    });
+    if (!q) {
+      return sections;
+    }
+    const result = sections
+      .map((section) => ({
+        ...section,
+        models: section.models.filter((m) =>
+          `${m.id} ${m.name} ${section.providerId}`.toLowerCase().includes(q)
+        ),
+      }))
+      .filter((section) => section.models.length > 0);
+    _log.debug("filteredSections result", {
+      q,
+      resultLen: result.length,
+      counts: result.map((s) => s.models.length),
+    });
+    return result;
+  });
+
   const modelEntries = createMemo(() =>
-    props.modelSections.flatMap((section) =>
+    filteredSections().flatMap((section) =>
       section.models.map((model) => ({
         id: model.id,
         providerId: model.providerId,
@@ -136,7 +152,7 @@ export function useModelSelector(props: {
   );
 
   const modelRows = createMemo<ModelRow[]>(() => {
-    const sections = props.modelSections;
+    const sections = filteredSections();
     const rows: ModelRow[] = [];
 
     for (const section of sections) {
@@ -183,21 +199,6 @@ export function useModelSelector(props: {
       }
     });
     return map;
-  });
-
-  // Sync external search query
-  createEffect(() => {
-    if (props.searchQuery === undefined) {
-      return;
-    }
-    if (props.searchQuery !== query()) {
-      setQuery(props.searchQuery);
-    }
-  });
-
-  // Notify parent of search changes
-  createEffect(() => {
-    props.onSearchChange?.(query());
   });
 
   // Reset active index on open / model change
@@ -287,12 +288,22 @@ export function useModelSelector(props: {
     providerId: string,
     reasoning: boolean
   ) => {
+    _log.info("model selected", {
+      modelId,
+      providerId,
+      stack: new Error("trace").stack?.split("\n").slice(2, 5).join(" | "),
+    });
     props.onSelect(modelId, providerId, reasoning);
     setQuery("");
     props.onOpenChange(false);
   };
 
   const handleInputKeyDown = (event: KeyboardEvent) => {
+    _log.debug("handleInputKeyDown", {
+      key: event.key,
+      target: (event.target as HTMLElement).tagName,
+      activeIndex: activeIndex(),
+    });
     const ids = modelEntries();
     if (ids.length === 0) {
       return;

@@ -1,6 +1,9 @@
 import { Show } from "solid-js";
+import { createLogger } from "~/lib/utils";
 import { useModelPicker } from "./hooks";
 import { ModelSelectorDialog } from "./model-selector-dialog";
+
+const pickerLog = createLogger({ module: "ModelPickerButton" });
 
 export interface ModelPickerButtonProps {
   onSelect: (model: {
@@ -13,18 +16,27 @@ export interface ModelPickerButtonProps {
 }
 
 export function ModelPickerButton(props: ModelPickerButtonProps) {
-  const { isOpen, setIsOpen, searchQuery, setSearchQuery, modelSections } =
-    useModelPicker();
+  const {
+    isOpen,
+    setIsOpen,
+    searchQuery,
+    setSearchQuery,
+    modelSections,
+    rawModelSections,
+  } = useModelPicker();
 
   return (
-    <Show when={modelSections().some((s) => s.models.length > 0)}>
+    <Show when={rawModelSections().some((s) => s.models.length > 0)}>
       <div class="flex flex-col items-end gap-0.5">
         <button
           aria-label="Open model selector"
           class="flex h-7 flex-1 items-center justify-between gap-1 rounded-md border border-border/60 bg-background/70 px-2 py-1 text-xs transition-colors hover:bg-muted/60"
           onClick={() => {
             setSearchQuery("");
-            setIsOpen((open) => !open);
+            setIsOpen((open) => {
+              pickerLog.info("dialog toggle", { to: !open });
+              return !open;
+            });
           }}
           type="button"
         >
@@ -46,7 +58,16 @@ export function ModelPickerButton(props: ModelPickerButtonProps) {
         </button>
         <ModelSelectorDialog
           modelSections={modelSections()}
-          onOpenChange={setIsOpen}
+          onOpenChange={(v) => {
+            pickerLog.info("onOpenChange", {
+              to: v,
+              stack: new Error("trace").stack
+                ?.split("\n")
+                .slice(2, 5)
+                .join(" | "),
+            });
+            setIsOpen(v);
+          }}
           onSearchChange={setSearchQuery}
           onSelect={(modelId, providerId, reasoning) => {
             props.onSelect({

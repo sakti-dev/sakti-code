@@ -1,11 +1,8 @@
-import * as DialogPrimitive from "@kobalte/core/dialog";
-import { createPresence } from "@solid-primitives/presence";
 import { FiSearch } from "solid-icons/fi";
 import type { Component, ComponentProps, JSX, ParentComponent } from "solid-js";
-import { createUniqueId, onCleanup, Show, splitProps } from "solid-js";
-import "./command.css";
-import { useDismissibleVisibility } from "~/lib/ui/dismissible-stack";
-import { cn } from "~/lib/utils";
+import { createEffect, splitProps } from "solid-js";
+import { Dialog, DialogContent } from "~/components/ui/dialog";
+import { cn, createLogger } from "~/lib/utils";
 
 export const CommandRoot: ParentComponent<ComponentProps<"div">> = (props) => {
   const [local, others] = splitProps(props, ["class", "children"]);
@@ -20,6 +17,8 @@ export const CommandRoot: ParentComponent<ComponentProps<"div">> = (props) => {
   );
 };
 
+const cmdLog = createLogger({ module: "CommandDialog" });
+
 export const CommandDialog: ParentComponent<{
   open: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -32,56 +31,25 @@ export const CommandDialog: ParentComponent<{
     "children",
     "contentClass",
   ]);
-  const presence = createPresence(() => (local.open ? true : undefined), {
-    transitionDuration: 220,
-    initialEnter: true,
+
+  createEffect(() => {
+    cmdLog.info("open state changed", { open: local.open });
   });
-  const stackId = createUniqueId();
-  const { isTopmost, show, hide } = useDismissibleVisibility(stackId);
+
+  const handleOpenChange = (v: boolean) => {
+    local.onOpenChange?.(v);
+  };
 
   return (
-    <Show when={presence.isMounted()}>
-      <DialogPrimitive.Root
-        forceMount={true}
-        modal
-        onOpenChange={local.onOpenChange}
-        open={local.open}
+    <Dialog modal onOpenChange={handleOpenChange} open={local.open}>
+      <DialogContent
+        class={cn("w-[680px] max-w-[calc(100vw-2rem)]", local.contentClass)}
       >
-        <DialogPrimitive.Portal>
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <DialogPrimitive.Overlay
-              class={cn(
-                "command-dialog-overlay-motion fixed inset-0",
-                !isTopmost() && "pointer-events-none opacity-0"
-              )}
-              data-component="command-dialog-overlay"
-              data-exiting={presence.isExiting() ? "" : undefined}
-              data-stack-overlay={stackId}
-              data-visible={presence.isVisible() ? "" : undefined}
-            />
-            <DialogPrimitive.Content
-              class={cn(
-                "command-dialog-content-motion fixed top-1/2 left-1/2 w-[680px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2",
-                !isTopmost() && "pointer-events-none opacity-0",
-                local.contentClass
-              )}
-              data-component="command-dialog-content"
-              data-exiting={presence.isExiting() ? "" : undefined}
-              data-stack-content={stackId}
-              data-visible={presence.isVisible() ? "" : undefined}
-              ref={(_el) => {
-                show();
-                onCleanup(hide);
-              }}
-            >
-              <CommandRoot class="flex size-full flex-col overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg blur-none">
-                {local.children}
-              </CommandRoot>
-            </DialogPrimitive.Content>
-          </div>
-        </DialogPrimitive.Portal>
-      </DialogPrimitive.Root>
-    </Show>
+        <CommandRoot class="flex size-full flex-col overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg blur-none">
+          {local.children}
+        </CommandRoot>
+      </DialogContent>
+    </Dialog>
   );
 };
 

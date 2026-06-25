@@ -44,6 +44,7 @@ type DialogContentProps<T extends ValidComponent = "div"> =
   DialogPrimitive.DialogContentProps<T> & {
     class?: string | undefined;
     children?: JSX.Element;
+    overlayClass?: string | undefined;
   };
 
 const DialogContent = <T extends ValidComponent = "div">(
@@ -53,13 +54,17 @@ const DialogContent = <T extends ValidComponent = "div">(
     "class",
     "children",
     "ref",
+    "overlayClass",
   ]);
   const stackId = createUniqueId();
   const { isTopmost, show, hide } = useDismissibleVisibility(stackId);
   return (
     <DialogPortal>
       <DialogOverlay
-        class={cn(!isTopmost() && "pointer-events-none opacity-0")}
+        class={cn(
+          !isTopmost() && "pointer-events-none opacity-0",
+          local.overlayClass
+        )}
         data-stack-overlay={stackId}
       />
       <DialogPrimitive.Content

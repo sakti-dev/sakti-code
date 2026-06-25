@@ -524,7 +524,7 @@ export function ModelsSettings() {
           >
             <button
               aria-label="Close provider selector"
-              class="command-dialog-overlay-motion absolute inset-0 bg-black/80 backdrop-blur-sm"
+              class="absolute inset-0 bg-black/80 backdrop-blur-sm"
               data-exiting={modalPresence.isExiting() ? "" : undefined}
               data-stack-overlay={providerStackId}
               data-visible={modalPresence.isVisible() ? "" : undefined}

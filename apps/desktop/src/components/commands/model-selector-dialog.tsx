@@ -1,4 +1,4 @@
-import { For, Show } from "solid-js";
+import { createEffect, For, Show } from "solid-js";
 import {
   CommandDialog,
   CommandEmpty,
@@ -6,7 +6,10 @@ import {
   CommandItem,
   CommandList,
 } from "~/components/ui/command";
-import { cn } from "~/lib/utils";
+import { cn, createLogger } from "~/lib/utils";
+
+const dialogLog = createLogger({ module: "ModelSelectorDialog" });
+
 import {
   MODEL_ROW_HEIGHT,
   type ModelHeadingRow,
@@ -46,6 +49,16 @@ function statusBadge(
 }
 
 export function ModelSelectorDialog(props: ModelSelectorDialogProps) {
+  createEffect(() => {
+    dialogLog.debug("render", {
+      modelSectionsCount: props.modelSections.length,
+      modelSections: props.modelSections.map((s) => ({
+        providerName: s.providerName,
+        modelCount: s.models.length,
+      })),
+    });
+  });
+
   const {
     query,
     setQuery,

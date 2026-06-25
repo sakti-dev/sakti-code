@@ -13,6 +13,13 @@ const CONSOLE: Record<LogLevel, (line: string) => void> = {
   warn: (line) => console.warn(line),
 };
 
+const LEVEL_RANK: Record<LogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+};
+
 /**
  * Circular-reference-safe deep clone via JSON round-trip.
  *
@@ -52,8 +59,12 @@ function cloneSafe(value: LogContext): LogContext {
  *   subsystem can fix its domain/module once.
  */
 export function createForwardingLogger(
-  transport: (entry: LogEntry) => void
+  transport: (entry: LogEntry) => void,
+  options?: { minLevel?: LogLevel }
 ): Logger {
+  const minRank =
+    options?.minLevel === undefined ? 0 : LEVEL_RANK[options.minLevel];
+
   const make = (defaultContext: LogContext): Logger => {
     const send = (
       level: LogLevel,
@@ -70,13 +81,16 @@ export function createForwardingLogger(
         ...(isEmpty ? {} : { context: sanitized }),
       };
 
-      // DevTools visibility first — always fires, independent of transport.
-      CONSOLE[level](formatLine(message, isEmpty ? undefined : sanitized));
+      // Console output respects minLevel (suppress debug in production, etc.)
+      if (LEVEL_RANK[level] >= minRank) {
+        CONSOLE[level](formatLine(message, isEmpty ? undefined : sanitized));
+      }
 
+      // Transport always fires — the IPC bridge decides what to persist.
       try {
         transport(entry);
       } catch {
-        // IPC bridge down: the console sink above already captured the line.
+        // IPC bridge down: the console sink above already handled it.
       }
     };
 

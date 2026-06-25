@@ -63,6 +63,30 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 
 Biome catches formatting and common issues automatically — focus your judgment on business logic, naming, architecture, edge cases, and UX/accessibility.
 
+## Logging (renderer / `@sakti-code/logger`)
+
+Use the structured logger from `~/lib/utils` (`createLogger({ module })`). Keep it — don't add logs for debugging then remove them.
+
+**Level contract (permanent):**
+- `error` — bugs, API failures, unrecoverable states. Always stays.
+- `warn` — recoverable edge cases (unexpected state handled gracefully).
+- `info` — user actions and state transitions (dialog opened, model selected, setting changed). Stays permanently.
+- `debug` — internal data flow, per-event noise (filteredSections, keydown, render counts). Visible in dev console, suppressed in production via `minLevel: import.meta.env.DEV ? "debug" : "info"`.
+
+**Pattern (one logger per file):**
+```ts
+const log = createLogger({ module: "ComponentName" });
+log.info("dialog open", { source: "picker_button" });
+log.debug("filteredSections", { query, counts }); // internal flow only
+```
+
+**Structured context** — always pass data as the context argument (`{ key: value }`), never interpolate into the message string. The forwarding logger formats it as `[MODULE:ACTION] message key=value`.
+
+**What stays vs what's temporary:**
+- `info` and `warn` — permanent. Leave them in.
+- `debug` — permanent but invisible in production. Fine to leave in.
+- If a debug log is particularly expensive (large arrays, allocations), wrap in `if (import.meta.env.DEV) { ... }` to strip in production builds.
+
 ## Server
 
 The Hono REST server lives in `apps/server/` (served by `@hono/node-server`) and follows a **REST-for-state, WS-for-streaming** split:
