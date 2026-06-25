@@ -523,4 +523,30 @@ export type AgentEvent =
       toolName: string;
       result: any;
       isError: boolean;
+    }
+  // Auto-retry lifecycle — emitted by the SERVER's retry loop, never by the
+  // agent loop itself. Flows through the same AgentEvent sink so the UI gets
+  // typed retry state without a parallel channel.
+  // `auto_retry_start` is emitted before the backoff sleep (UI shows a banner).
+  | {
+      type: "auto_retry_start";
+      // 1-based attempt number about to be tried (first retry = 1).
+      attempt: number;
+      // Configured max attempts (from session settings) for "attempt N of M".
+      maxAttempts: number;
+      // Computed backoff delay before the retry runs.
+      delayMs: number;
+      // The error text from the failed turn that triggered the retry.
+      errorMessage: string;
+    }
+  // `auto_retry_end` is emitted after the final retry outcome — success or the
+  // budget being exhausted. On failure `finalError` carries the last error.
+  | {
+      type: "auto_retry_end";
+      // Whether the retried turn ultimately succeeded.
+      success: boolean;
+      // The attempt number that produced the outcome.
+      attempt: number;
+      // Present only when `success` is false (the error that defeated retry).
+      finalError?: string;
     };

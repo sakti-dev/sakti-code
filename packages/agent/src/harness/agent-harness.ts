@@ -13,7 +13,7 @@ import {
   DEFAULT_COMPACTION_SETTINGS,
   prepareCompaction,
 } from "../compaction.ts";
-import { runAgentLoop } from "../loop/agent-loop.ts";
+import { runAgentLoop, runAgentLoopContinue } from "../loop/agent-loop.ts";
 import type {
   AgentContext,
   AgentEvent,
@@ -749,6 +749,118 @@ export class AgentHarness<
     try {
       const turnState = await this.createTurnState();
       return await this.executeTurn(turnState, text, options);
+    } catch (error) {
+      this.phase = "idle";
+      throw normalizeHarnessError(error, "unknown");
+    } finally {
+      finishRunPromise();
+    }
+  }
+
+  /**
+   * Continue the agent loop from the current transcript WITHOUT adding a new
+   * prompt message. Used by the server's retry loop: after a failed turn is
+   * rolled back (session leaf moved past the failed assistant message), the
+   * transcript ends in a user or toolResult message, and `continue()` re-runs
+   * the loop to produce a fresh assistant response.
+   *
+   * Unlike {@link prompt} this does NOT:
+   * - create a new user message,
+   * - emit the `before_agent_start` hook (the prompt hasn't changed),
+   * - drain the next-turn queue (retry reuses the existing tail).
+   *
+   * @returns The last assistant message produced by the continued turn.
+   * @throws {AgentHarnessError} code `"busy"` if not idle, `"invalid_state"`
+   *   if the transcript is empty or ends in an assistant message.
+   */
+  async continue(): Promise<AssistantMessage> {
+    if (this.phase !== "idle") {
+      throw new AgentHarnessError("busy", "AgentHarness is busy");
+    }
+    this.phase = "turn";
+    const finishRunPromise = this.startRunPromise();
+    try {
+      // Build the turn state from the CURRENT session (post-rollback in the
+      // retry case). `messages` reflects the live leaf, not a fresh prompt.
+      let activeTurnState = await this.createTurnState();
+      const getTurnState = () => activeTurnState;
+      const setTurnState = (
+        nextTurnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
+      ) => {
+        activeTurnState = nextTurnState;
+      };
+
+      // Validate the transcript tail before running. runAgentLoopContinue
+      // re-checks, but failing here gives a cleaner error and avoids emitting
+      // any agent_start events for a doomed run.
+      if (activeTurnState.messages.length === 0) {
+        throw new AgentHarnessError(
+          "invalid_state",
+          "No messages to continue from"
+        );
+      }
+      const lastMessage =
+        activeTurnState.messages[activeTurnState.messages.length - 1]!;
+      if (lastMessage.role === "assistant") {
+        throw new AgentHarnessError(
+          "invalid_state",
+          "Cannot continue from an assistant message"
+        );
+      }
+
+      const abortController = new AbortController();
+      this.runAbortController = abortController;
+      const context = this.createContext(activeTurnState);
+
+      // Wrap runAgentLoopContinue so loop/stream failures are converted into a
+      // failure assistant message — the server retry loop then sees a
+      // consistent error shape (mirrors executeTurn's failure handling).
+      const runResultPromise = (async () => {
+        try {
+          return await runAgentLoopContinue(
+            context,
+            this.createLoopConfig(getTurnState, setTurnState),
+            (event) => this.handleAgentEvent(event, abortController.signal),
+            abortController.signal,
+            this.createStreamFn(getTurnState)
+          );
+        } catch (error) {
+          try {
+            return await this.emitRunFailure(
+              activeTurnState.model,
+              error,
+              abortController.signal.aborted,
+              abortController.signal
+            );
+          } catch (failureError) {
+            const cause = new AggregateError(
+              [toError(error), toError(failureError)],
+              "Agent continue failed and failure reporting failed"
+            );
+            throw new AgentHarnessError("unknown", cause.message, cause);
+          }
+        }
+      })();
+
+      try {
+        const newMessages = await runResultPromise;
+        for (let i = newMessages.length - 1; i >= 0; i--) {
+          const message = newMessages[i]!;
+          if (message.role === "assistant") {
+            return message;
+          }
+        }
+        throw new AgentHarnessError(
+          "invalid_state",
+          "Continue completed without an assistant message"
+        );
+      } finally {
+        try {
+          await this.flushPendingSessionWrites();
+        } finally {
+          this.runAbortController = undefined;
+        }
+      }
     } catch (error) {
       this.phase = "idle";
       throw normalizeHarnessError(error, "unknown");
