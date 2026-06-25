@@ -58,7 +58,7 @@ describe("buildProviderOptions — early returns", () => {
   });
 });
 
-// ─── one test per thinkingFormat value (10 branches from pi-ai :594-668) ──
+// ─── one test per thinkingFormat value (3 live formats) ──────────────────
 
 describe("buildProviderOptions — thinkingFormat branches", () => {
   it("openai → reasoning_effort from mapped level", () => {
@@ -74,12 +74,6 @@ describe("buildProviderOptions — thinkingFormat branches", () => {
     expect(buildProviderOptions({ level: "high", model })).toEqual({});
   });
 
-  it("openrouter → reasoning.effort object", () => {
-    const model = modelWith("openrouter");
-    const result = inner(buildProviderOptions({ level: "high", model }));
-    expect(result).toEqual({ reasoning: { effort: "high" } });
-  });
-
   it("deepseek → thinking.type enabled + reasoning_effort when supported", () => {
     const model = modelWith("deepseek", {
       compat: { supportsReasoningEffort: true },
@@ -88,17 +82,6 @@ describe("buildProviderOptions — thinkingFormat branches", () => {
     expect(result).toEqual({
       reasoning_effort: "high",
       thinking: { type: "enabled" },
-    });
-  });
-
-  it("together → reasoning.enabled + reasoning_effort when supported", () => {
-    const model = modelWith("together", {
-      compat: { supportsReasoningEffort: true },
-    });
-    const result = inner(buildProviderOptions({ level: "high", model }));
-    expect(result).toEqual({
-      reasoning: { enabled: true },
-      reasoning_effort: "high",
     });
   });
 
@@ -112,57 +95,6 @@ describe("buildProviderOptions — thinkingFormat branches", () => {
       thinking: { type: "enabled" },
     });
   });
-
-  it("qwen → enable_thinking boolean", () => {
-    const model = modelWith("qwen");
-    const result = inner(buildProviderOptions({ level: "high", model }));
-    expect(result).toEqual({ enable_thinking: true });
-  });
-
-  it("qwen-chat-template → chat_template_kwargs with enable_thinking + preserve_thinking", () => {
-    const model = modelWith("qwen-chat-template");
-    const result = inner(buildProviderOptions({ level: "high", model }));
-    expect(result).toEqual({
-      chat_template_kwargs: { enable_thinking: true, preserve_thinking: true },
-    });
-  });
-
-  it("chat-template → chat_template_kwargs resolved from compat.chatTemplateKwargs", () => {
-    const model = modelWith("chat-template", {
-      compat: {
-        chatTemplateKwargs: {
-          enable_thinking: { $var: "thinking.enabled" },
-          effort: { $var: "thinking.effort" },
-          static_value: "literal",
-        },
-      },
-    });
-    const result = inner(buildProviderOptions({ level: "high", model }));
-    expect(result).toEqual({
-      chat_template_kwargs: {
-        effort: "high",
-        enable_thinking: true,
-        static_value: "literal",
-      },
-    });
-  });
-
-  it("string-thinking → top-level thinking string", () => {
-    const model = modelWith("string-thinking");
-    const result = inner(buildProviderOptions({ level: "high", model }));
-    expect(result).toEqual({ thinking: "high" });
-  });
-
-  it("ant-ling → reasoning.effort only when thinkingLevelMap maps the level to a string", () => {
-    const model = modelWith("ant-ling", { thinkingLevelMap: { high: "high" } });
-    const result = inner(buildProviderOptions({ level: "high", model }));
-    expect(result).toEqual({ reasoning: { effort: "high" } });
-  });
-
-  it("ant-ling → emits nothing when thinkingLevelMap has no entry for the level", () => {
-    const model = modelWith("ant-ling");
-    expect(buildProviderOptions({ level: "high", model })).toEqual({});
-  });
 });
 
 // ─── level "off" handling ─────────────────────────────────────────────────
@@ -173,42 +105,11 @@ describe("buildProviderOptions — level off", () => {
     const result = inner(buildProviderOptions({ level: "off", model }));
     expect(result).toEqual({ thinking: { type: "disabled" } });
   });
-
-  it("qwen → enable_thinking false when level is off", () => {
-    const model = modelWith("qwen");
-    const result = inner(buildProviderOptions({ level: "off", model }));
-    expect(result).toEqual({ enable_thinking: false });
-  });
-
-  it("together → reasoning.enabled false when level is off", () => {
-    const model = modelWith("together");
-    const result = inner(buildProviderOptions({ level: "off", model }));
-    expect(result).toEqual({ reasoning: { enabled: false } });
-  });
-
-  it("openrouter → omits reasoning when level is off and off is unsupported (null in map)", () => {
-    const model = modelWith("openrouter", { thinkingLevelMap: { off: null } });
-    expect(buildProviderOptions({ level: "off", model })).toEqual({});
-  });
-
-  it("openrouter → reasoning.effort 'none' when level is off and off is not mapped", () => {
-    const model = modelWith("openrouter");
-    const result = inner(buildProviderOptions({ level: "off", model }));
-    expect(result).toEqual({ reasoning: { effort: "none" } });
-  });
 });
 
 // ─── thinkingLevelMap mapping ─────────────────────────────────────────────
 
 describe("buildProviderOptions — thinkingLevelMap", () => {
-  it("maps the level through thinkingLevelMap before emitting", () => {
-    const model = modelWith("openrouter", {
-      thinkingLevelMap: { high: "HIGH" },
-    });
-    const result = inner(buildProviderOptions({ level: "high", model }));
-    expect(result).toEqual({ reasoning: { effort: "HIGH" } });
-  });
-
   it("uses raw level when thinkingLevelMap entry is undefined", () => {
     const model = modelWith("openai", {
       compat: { supportsReasoningEffort: true },
@@ -223,9 +124,12 @@ describe("buildProviderOptions — thinkingLevelMap", () => {
 
 describe("buildProviderOptions — scoping", () => {
   it("scopes fields under model.provider", () => {
-    const model = modelWith("qwen", { provider: "custom-provider" });
+    const model = modelWith("openai", {
+      provider: "custom-provider",
+      compat: { supportsReasoningEffort: true },
+    });
     const result = buildProviderOptions({ level: "high", model });
-    expect(result).toHaveProperty("custom-provider.enable_thinking", true);
+    expect(result).toHaveProperty("custom-provider.reasoning_effort", "high");
     expect(Object.keys(result)).toEqual(["custom-provider"]);
   });
 });
