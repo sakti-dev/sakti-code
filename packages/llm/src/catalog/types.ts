@@ -85,6 +85,12 @@ export interface ModelsDevProvider {
   npm?: string;
 }
 
+/** Display metadata for a provider, derived from models.dev. */
+export interface ProviderInfo {
+  doc?: string;
+  name: string;
+}
+
 /** Top-level shape: `{ "<provider-id>": ModelsDevProvider, ... }`. */
 export type ModelsDevCatalog = Record<
   string,

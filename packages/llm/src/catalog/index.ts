@@ -14,11 +14,11 @@
  *
  * The catalog includes every models.dev provider with at least one
  * tool-capable model — this matches opencode's provider set (the reference
- * implementation we follow). Re-run `nub run generate-models` when models.dev
+ * implementation we follow). Re-run `pnpm run generate-models` when models.dev
  * adds providers to pick them up.
  */
 
-export { ALL_MODELS, CATALOG, PROVIDERS } from "./generated.ts";
+export { ALL_MODELS, CATALOG, PROVIDER_INFO, PROVIDERS } from "./generated.ts";
 
 import type { Model } from "../types.ts";
 import { CATALOG } from "./generated.ts";

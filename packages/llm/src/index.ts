@@ -39,7 +39,14 @@
 export { findEnvKeys, getEnvApiKey } from "./auth/env.ts";
 export type { AuthResult, ModelAuth } from "./auth/types.ts";
 // Generated model catalog from models.dev (142 providers, matches opencode).
-export { ALL_MODELS, CATALOG, getModel, PROVIDERS } from "./catalog/index.ts";
+export {
+  ALL_MODELS,
+  CATALOG,
+  getModel,
+  PROVIDER_INFO,
+  PROVIDERS,
+} from "./catalog/index.ts";
+export type { ProviderInfo } from "./catalog/types.ts";
 export type { CompleteRequest, CompleteResult } from "./complete.ts";
 // Non-streaming completion (generateText wrapper) for compaction and one-shots.
 export { complete, completeWithModel } from "./complete.ts";

@@ -166,6 +166,29 @@ describe("convertModelsDevModel — compat assignment", () => {
   });
 });
 
+describe("generated catalog — provider info", () => {
+  it("exports PROVIDER_INFO with a name for every provider", async () => {
+    const { PROVIDER_INFO, PROVIDERS } = await import(
+      "../catalog/generated.ts"
+    );
+    for (const providerId of PROVIDERS) {
+      const info = PROVIDER_INFO[providerId];
+      expect(
+        info,
+        `provider ${providerId} missing from PROVIDER_INFO`
+      ).toBeDefined();
+      if (!info) continue;
+      expect(typeof info.name).toBe("string");
+      expect(info.name.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("PROVIDER_INFO for anthropic has name 'Anthropic'", async () => {
+    const { PROVIDER_INFO } = await import("../catalog/generated.ts");
+    expect(PROVIDER_INFO.anthropic?.name).toBe("Anthropic");
+  });
+});
+
 describe("convertModelsDevModel — output type", () => {
   it("returns Model shape", () => {
     const model = convertModelsDevModel(anthropicProvider, baseModel);
