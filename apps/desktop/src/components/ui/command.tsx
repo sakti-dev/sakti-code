@@ -2,8 +2,9 @@ import * as DialogPrimitive from "@kobalte/core/dialog";
 import { createPresence } from "@solid-primitives/presence";
 import { FiSearch } from "solid-icons/fi";
 import type { Component, ComponentProps, JSX, ParentComponent } from "solid-js";
-import { Show, splitProps } from "solid-js";
+import { createUniqueId, onCleanup, Show, splitProps } from "solid-js";
 import "./command.css";
+import { useDismissibleVisibility } from "~/lib/ui/dismissible-stack";
 import { cn } from "~/lib/utils";
 
 export const CommandRoot: ParentComponent<ComponentProps<"div">> = (props) => {
@@ -35,6 +36,8 @@ export const CommandDialog: ParentComponent<{
     transitionDuration: 220,
     initialEnter: true,
   });
+  const stackId = createUniqueId();
+  const { isTopmost, show, hide } = useDismissibleVisibility(stackId);
 
   return (
     <Show when={presence.isMounted()}>
@@ -47,19 +50,29 @@ export const CommandDialog: ParentComponent<{
         <DialogPrimitive.Portal>
           <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
             <DialogPrimitive.Overlay
-              class={cn("command-dialog-overlay-motion fixed inset-0")}
+              class={cn(
+                "command-dialog-overlay-motion fixed inset-0",
+                !isTopmost() && "pointer-events-none opacity-0"
+              )}
               data-component="command-dialog-overlay"
               data-exiting={presence.isExiting() ? "" : undefined}
+              data-stack-overlay={stackId}
               data-visible={presence.isVisible() ? "" : undefined}
             />
             <DialogPrimitive.Content
               class={cn(
                 "command-dialog-content-motion fixed top-1/2 left-1/2 w-[680px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2",
+                !isTopmost() && "pointer-events-none opacity-0",
                 local.contentClass
               )}
               data-component="command-dialog-content"
               data-exiting={presence.isExiting() ? "" : undefined}
+              data-stack-content={stackId}
               data-visible={presence.isVisible() ? "" : undefined}
+              ref={(_el) => {
+                show();
+                onCleanup(hide);
+              }}
             >
               <CommandRoot class="flex size-full flex-col overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg blur-none">
                 {local.children}
