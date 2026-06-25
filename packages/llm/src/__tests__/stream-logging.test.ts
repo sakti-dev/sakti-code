@@ -112,4 +112,57 @@ describe("streamWithModel logging", () => {
     expect(fullStream).toBe(okResult.fullStream);
     await result;
   });
+
+  it("logs a stream request (provider/model/baseURL/hasApiKey/headerKeys/counts) at debug before calling", () => {
+    const { logger, debugs } = spyLogger();
+    const okResult = {
+      fullStream: (async function* () {
+        yield { type: "text-delta", text: "hi" };
+      })(),
+      finishReason: Promise.resolve("stop" as const),
+      response: Promise.resolve({ id: "r", modelId: "test-model" }),
+      usage: Promise.resolve({
+        inputTokens: 1,
+        outputTokens: 1,
+        totalTokens: 2,
+        inputTokenDetails: {},
+        outputTokenDetails: {},
+      }),
+    };
+    const fake = () => okResult;
+    streamWithModel(
+      {
+        messages: [
+          { role: "user", content: "hi", timestamp: 1 },
+          { role: "user", content: "again", timestamp: 2 },
+        ],
+        model,
+        logger,
+        apiKey: "sk-secret",
+        baseURL: "https://example.com",
+        headers: { "X-Trace": "v", Authorization: "Bearer x" },
+        tools: { read: {}, write: {} },
+        thinkingLevel: "medium",
+        maxOutputTokens: 4096,
+      },
+      fakeLanguage,
+      fake as never
+    );
+
+    const req = debugs.find((d) => d.message === "stream request");
+    expect(req).toBeDefined();
+    expect(req?.context).toMatchObject({
+      provider: "testprov",
+      model: "test-model",
+      baseURL: "https://example.com",
+      hasApiKey: true,
+      messageCount: 2,
+      toolCount: 2,
+      thinkingLevel: "medium",
+      maxOutputTokens: 4096,
+    });
+    // Header *names* only, never values (auth header value must not leak).
+    expect(req?.context?.headerKeys).toEqual(["X-Trace", "Authorization"]);
+    expect(JSON.stringify(req?.context)).not.toContain("Bearer");
+  });
 });

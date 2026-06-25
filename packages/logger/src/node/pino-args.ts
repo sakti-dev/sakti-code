@@ -1,4 +1,5 @@
 import { describeError } from "../describe-error.ts";
+import { extractErrorFields } from "../error-fields.ts";
 import type { LogContext } from "../types.ts";
 
 /**
@@ -23,7 +24,15 @@ export function toPinoCall(
 ): [Record<string, unknown>, string] {
   const obj: Record<string, unknown> = { ...(context ?? {}), layer };
   if (error !== undefined) {
+    // `error`: one-line message for greppability / the console sink.
     obj.error = describeError(error);
+    // `err`: structured AI SDK fields (statusCode, responseBody, url,
+    // responseHeaders, isRetryable, cause) so the actual upstream failure
+    // reason survives into the JSON log — `error` alone hides it.
+    const fields = extractErrorFields(error);
+    if (Object.keys(fields).length > 0) {
+      obj.err = fields;
+    }
   }
   return [obj, message];
 }

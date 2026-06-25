@@ -22,6 +22,26 @@ describe("toPinoCall", () => {
     expect(msg).toBe("boom");
   });
 
+  it("nests AI SDK error fields under obj.err (statusCode/responseBody/url/...)", () => {
+    const apiErr = Object.assign(new Error("Upstream request failed"), {
+      name: "AI_APICallError",
+      url: "https://opencode.ai/zen/v1/chat/completions",
+      statusCode: 502,
+      responseBody: '{"error":"upstream down"}',
+      isRetryable: true,
+      requestBodyValues: { messages: [] },
+    });
+    const [obj] = toPinoCall("stream error", {}, apiErr, "llm");
+    const err = (obj as { err?: Record<string, unknown> }).err;
+    expect(err?.name).toBe("AI_APICallError");
+    expect(err?.statusCode).toBe(502);
+    expect(err?.responseBody).toBe('{"error":"upstream down"}');
+    expect(err?.url).toBe("https://opencode.ai/zen/v1/chat/completions");
+    expect(err?.isRetryable).toBe(true);
+    // requestBodyValues stays out of the structured fields.
+    expect(err?.requestBodyValues).toBeUndefined();
+  });
+
   it("omits error key when no error is passed", () => {
     const [obj] = toPinoCall("w", { attempt: 1 }, undefined, "agent");
     expect((obj as Record<string, unknown>).error).toBeUndefined();

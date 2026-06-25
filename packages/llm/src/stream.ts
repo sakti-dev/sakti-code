@@ -189,6 +189,18 @@ export function streamWithModel(
 
   const runner = runStreamText ?? (aiStreamText as unknown as RunStreamText);
 
+  req.logger?.debug("stream request", {
+    baseURL: req.model.baseUrl,
+    hasApiKey: req.apiKey !== undefined,
+    headerKeys: mergedHeaders ? Object.keys(mergedHeaders) : [],
+    maxOutputTokens: req.maxOutputTokens,
+    messageCount: req.messages.length,
+    model: req.model.id,
+    provider: req.model.provider,
+    thinkingLevel: req.thinkingLevel ?? "off",
+    toolCount: req.tools ? Object.keys(req.tools).length : 0,
+  });
+
   const raw = runner({
     ...(mergedHeaders ? { headers: mergedHeaders } : {}),
     maxRetries: 0,

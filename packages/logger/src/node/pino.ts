@@ -20,6 +20,8 @@ const DEFAULT_REDACT = [
   "*.authorization",
   "*.cookie",
   "apiKey",
+  "err.responseHeaders.authorization",
+  "err.responseHeaders.cookie",
   "headers.authorization",
   "headers.cookie",
 ];
