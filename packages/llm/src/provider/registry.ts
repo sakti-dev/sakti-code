@@ -10,11 +10,8 @@ import type { LanguageModelV3 } from "@ai-sdk/provider";
  * exists (for providers whose packages aren't bundled).
  *
  * Ported from opencode's `BUNDLED_PROVIDERS` (`provider/provider.ts:107-134`).
- * Dropped: opencode-internal entries (`@opencode-ai/core/github-copilot/…`)
- * and packages not installed in this workspace (`@ai-sdk/groq`,
- * `@ai-sdk/cerebras`, `@ai-sdk/togetherai`, `@ai-sdk/cohere`, …). Those rely
- * on the dynamic-import fallback in the resolver — they work when the user
- * has installed them.
+ * Every catalog npm package now has an explicit entry — no dynamic-import
+ * fallback needed for catalog models.
  */
 
 /**
@@ -70,12 +67,28 @@ export const BUNDLED_PROVIDERS: Record<string, ProviderFactoryLoader> = {
     import("@ai-sdk/amazon-bedrock").then(
       (m) => m.createAmazonBedrock as ProviderFactory
     ),
+  "@ai-sdk/amazon-bedrock/mantle": () =>
+    import("@ai-sdk/amazon-bedrock/mantle").then(
+      (m) => m.createBedrockMantle as ProviderFactory
+    ),
   "@ai-sdk/anthropic": () =>
     import("@ai-sdk/anthropic").then(
       (m) => m.createAnthropic as ProviderFactory
     ),
   "@ai-sdk/azure": () =>
     import("@ai-sdk/azure").then((m) => m.createAzure as ProviderFactory),
+  "@ai-sdk/cerebras": () =>
+    import("@ai-sdk/cerebras").then(
+      (m) => m.createCerebras as unknown as ProviderFactory
+    ),
+  "@ai-sdk/cohere": () =>
+    import("@ai-sdk/cohere").then(
+      (m) => m.createCohere as unknown as ProviderFactory
+    ),
+  "@ai-sdk/deepinfra": () =>
+    import("@ai-sdk/deepinfra").then(
+      (m) => m.createDeepInfra as unknown as ProviderFactory
+    ),
   // Vercel AI Gateway — createGateway is the package's alias for createGatewayProvider.
   "@ai-sdk/gateway": () =>
     import("@ai-sdk/gateway").then((m) => m.createGateway as ProviderFactory),
@@ -92,6 +105,10 @@ export const BUNDLED_PROVIDERS: Record<string, ProviderFactoryLoader> = {
     import("@ai-sdk/google-vertex/anthropic").then(
       (m) => m.createVertexAnthropic as ProviderFactory
     ),
+  "@ai-sdk/groq": () =>
+    import("@ai-sdk/groq").then(
+      (m) => m.createGroq as unknown as ProviderFactory
+    ),
   "@ai-sdk/mistral": () =>
     import("@ai-sdk/mistral").then((m) => m.createMistral as ProviderFactory),
   "@ai-sdk/openai": () =>
@@ -102,6 +119,42 @@ export const BUNDLED_PROVIDERS: Record<string, ProviderFactoryLoader> = {
     import("@ai-sdk/openai-compatible").then(
       (m) => m.createOpenAICompatible as ProviderFactory
     ),
+  "@ai-sdk/togetherai": () =>
+    import("@ai-sdk/togetherai").then(
+      (m) => m.createTogetherAI as unknown as ProviderFactory
+    ),
+  "@ai-sdk/vercel": () =>
+    import("@ai-sdk/vercel").then(
+      (m) => m.createVercel as unknown as ProviderFactory
+    ),
   "@ai-sdk/xai": () =>
     import("@ai-sdk/xai").then((m) => m.createXai as ProviderFactory),
+
+  // Third-party provider packages
+  "@openrouter/ai-sdk-provider": () =>
+    import("@openrouter/ai-sdk-provider").then(
+      (m) => m.createOpenRouter as ProviderFactory
+    ),
+  "merge-gateway-ai-sdk-provider": () =>
+    import("merge-gateway-ai-sdk-provider").then(
+      (m) => m.createMergeGateway as ProviderFactory
+    ),
+  "venice-ai-sdk-provider": () =>
+    import("venice-ai-sdk-provider").then(
+      (m) => m.createVenice as ProviderFactory
+    ),
+  "@aihubmix/ai-sdk-provider": () =>
+    import("@aihubmix/ai-sdk-provider").then(
+      (m) => m.createAihubmix as ProviderFactory
+    ),
+  "ai-gateway-provider": () =>
+    import("ai-gateway-provider").then(
+      (m) => m.createAiGateway as unknown as ProviderFactory
+    ),
+  "@jerome-benoit/sap-ai-provider-v2": () =>
+    import("@jerome-benoit/sap-ai-provider-v2").then(
+      (m) => m.createSAPAIProvider as unknown as ProviderFactory
+    ),
+  "gitlab-ai-provider": () =>
+    import("gitlab-ai-provider").then((m) => m.createGitLab as ProviderFactory),
 };
