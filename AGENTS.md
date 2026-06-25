@@ -3,7 +3,7 @@
 sakti-code: desktop app (Electron + SolidJS) running multiple AI coding agents concurrently on different codebases. The agent core lives here as a TypeScript monorepo.
 
 - **SolidJS** is a hard requirement (not React).
-- LLM via **`@earendil-works/pi-ai`** — don't hand-roll provider code.
+- LLM via **`@sakti-code/llm`** — `@ai-sdk`-native, driven by models.dev data. Don't hand-roll provider code.
 - App server: **Hono** on `@hono/node-server` (REST + WebSocket, not all-WS).
 - DB: **node:sqlite + Drizzle ORM** (not libsql, not bun:sqlite). DB is owned by the app/server, never by the agent package. Package manager / tooling is **pnpm** (not the Bun runtime, not npm/yarn). `.ts` is executed directly via `tsx`/`vite`/`vitest`.
 
@@ -81,9 +81,9 @@ SAKTI_DB_PATH=/custom/path/sakti-code.db pnpm run dev:server   # custom db path
 
 ### Environment & configuration
 
-- **API keys come from env, never from the DB.** Each LLM provider's key is resolved at runtime via `getEnvApiKey(provider)` (pi-ai). Standard env vars are `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, etc.
+- **API keys come from `auth.json`, never from the DB.** Each LLM provider's key is stored in `~/.sakti/agent/auth.json` (locked + `0o600`) and resolved at runtime via `ctx.auth.getApiKey(provider)`. The store never reads from `process.env`.
 - **Config home is `~/.sakti/agent/`** (pi-style; overridable via `SAKTI_AGENT_DIR` env). One JSON file per concern: `auth.json` (credentials, locked + `0o600`), `profiles.json` (model selection per mode), `settings.json` (global app preferences). A one-time non-destructive migration runs on first start (copies legacy `~/.config/sakti-code/api-keys.json` → `auth.json`).
-- **Model selection lives in `profiles.json`**, not the DB. A profile maps runtime modes (`default` required; `intake`/`plan`/`build` optional, mode-forward) to `{ provider, model, thinkingLevel }`. A `defaultProfile` id selects the active one. Projects reference a profile via `projects.profileId` (nullable; null → `defaultProfile`).
+- **Model selection lives in `profiles.json`**, not the DB. A profile maps runtime modes (`default` required; `intake`/`plan`/`build` optional, mode-forward) to `{ provider, model, thinkingLevel }`. A `defaultProfile` id selects the active one. Sessions reference a profile via `sessions.profileId` (nullable; null → `defaultProfile`).
 
 ### Route modules
 
@@ -100,7 +100,7 @@ Route modules register themselves via `buildApp`'s chained `.route()` calls in `
 | `availableModelsRoutes` | `GET /api/available-models` | Models catalog |
 | `gitRoutes` | `GET /api/git/:projectId/status, /branch, /diff, /log`, `GET /api/git/turn-diff` | Git operations (status, branch switch, diff, log) + structured turn-diff (numstat-parsed file changes since HEAD) |
 | `statsRoutes` | `GET /api/sessions/:id/stats` | **Fast, local read** — derives `activeMessageCount` + token/cost totals from assistant `usage` fields via `buildSessionContext`; no `costs` table |
-| `compactionRoutes` | `POST /api/sessions/:id/compact` | **Network-backed (LLM)** — runs the agent's `prepareCompaction` + `compact` summarizer on a session's entry tree, persists the compaction entry via `Session.appendCompaction()`, returns `{ tokensBefore, summary, firstKeptEntryId }`. Latency depends on the provider. Calls `resolveModel` from `agent-streaming` and resolves required API key from env. Returns 500 on summary failure (error/abort). |
+| `compactionRoutes` | `POST /api/sessions/:id/compact` | **Network-backed (LLM)** — runs the agent's `prepareCompaction` + `compact` summarizer on a session's entry tree, persists the compaction entry via `Session.appendCompaction()`, returns `{ tokensBefore, summary, firstKeptEntryId }`. Latency depends on the provider. Calls `resolveModel`/`resolveAuth` from `agent/model-resolver.ts` and resolves the API key from `auth.json`. Returns 500 on summary failure (error/abort). |
 | `forkingRoutes` | `POST /api/sessions/:id/fork`, `GET /api/sessions/:id/fork-messages` | Entry-tree fork via `SqliteSessionStorage.forkFrom`; copies `session_entries` rows with regenerated IDs preserving the tree |
 | `lastAssistantTextRoutes` | `GET /api/sessions/:id/last-assistant-text` | Reads last assistant message from the entry tree |
 | `exportRoutes` | `GET /api/sessions/:id/export-html` | Renders session to standalone HTML |
