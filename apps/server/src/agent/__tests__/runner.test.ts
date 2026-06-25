@@ -86,35 +86,7 @@ describe("runPrompt", () => {
         eventCallback({ type: "agent_start" });
         eventCallback({
           type: "message_update",
-          message: {
-            role: "assistant",
-            content: [],
-            api: "openai-completions",
-            provider: "openai",
-            model: "test-model",
-            usage: {
-              input: 0,
-              output: 0,
-              cacheRead: 0,
-              cacheWrite: 0,
-              totalTokens: 0,
-              cost: {
-                input: 0,
-                output: 0,
-                cacheRead: 0,
-                cacheWrite: 0,
-                total: 0,
-              },
-            },
-            stopReason: "stop",
-            timestamp: Date.now(),
-          } as any,
-          assistantMessageEvent: {
-            type: "text_delta",
-            contentIndex: 0,
-            delta: "Hello!",
-            partial: {},
-          } as any,
+          delta: { kind: "text", text: "Hello!" },
         });
         eventCallback({ type: "agent_end", messages: [] });
       }

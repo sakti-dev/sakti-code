@@ -1,10 +1,10 @@
-import type { Api, Model } from "@earendil-works/pi-ai/base";
 import {
   compact,
   DEFAULT_COMPACTION_SETTINGS,
   prepareCompaction,
   Session,
 } from "@sakti-code/agent";
+import type { Model } from "@sakti-code/llm";
 import { Hono } from "hono";
 import { resolveAuth, resolveModel } from "../../agent/model-resolver.ts";
 import { createSessionStorage, getCtx } from "../../context.ts";
@@ -19,7 +19,7 @@ export const compactionRoutes = new Hono()
       return c.json({ error: "Not found" }, 404);
     }
 
-    let model: { model: Model<Api>; provider: string };
+    let model: { model: Model; provider: string };
     try {
       model = resolveModel(ctx, session);
     } catch {

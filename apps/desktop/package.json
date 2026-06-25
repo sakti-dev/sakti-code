@@ -23,6 +23,7 @@
     "@corvu/resizable": "^0.2.5",
     "@kobalte/core": "^0.13.11",
     "@sakti-code/agent": "workspace:*",
+    "@sakti-code/llm": "workspace:*",
     "@sakti-code/server": "workspace:*",
     "@solid-primitives/presence": "^0.1.3",
     "@solid-primitives/virtual": "^0.2.3",

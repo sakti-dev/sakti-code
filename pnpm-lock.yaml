@@ -57,6 +57,9 @@ importers:
       '@sakti-code/agent':
         specifier: workspace:*
         version: link:../../packages/agent
+      '@sakti-code/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
       '@sakti-code/server':
         specifier: workspace:*
         version: link:../server
@@ -169,6 +172,9 @@ importers:
       '@sakti-code/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@sakti-code/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
       '@sakti-code/tools':
         specifier: workspace:*
         version: link:../../packages/tools

@@ -1,5 +1,5 @@
-import type { Message } from "@earendil-works/pi-ai/base";
 import type { AgentMessage } from "@sakti-code/agent";
+import type { Message } from "@sakti-code/llm";
 import type { MessagePart, UIMessage } from "../types.ts";
 
 function hasContent(

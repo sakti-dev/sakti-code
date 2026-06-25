@@ -1,5 +1,5 @@
-import type { AssistantMessage, Usage } from "@earendil-works/pi-ai/base";
 import type { AgentHarnessEvent, AgentMessage } from "@sakti-code/agent";
+import type { AssistantMessage, Usage } from "@sakti-code/llm";
 
 // ── Usage factory ─────────────────────────────────────────────────
 
@@ -115,34 +115,20 @@ export function makeMessageStartEvent(
 }
 
 export function makeMessageUpdateTextDeltaEvent(
-  message: AgentMessage,
   delta: string
 ): AgentHarnessEvent {
   return {
     type: "message_update",
-    message,
-    assistantMessageEvent: {
-      type: "text_delta",
-      contentIndex: 0,
-      delta,
-      partial: message,
-    },
+    delta: { kind: "text", text: delta },
   } as AgentHarnessEvent;
 }
 
 export function makeMessageUpdateThinkingDeltaEvent(
-  message: AgentMessage,
   delta: string
 ): AgentHarnessEvent {
   return {
     type: "message_update",
-    message,
-    assistantMessageEvent: {
-      type: "thinking_delta",
-      contentIndex: 0,
-      delta,
-      partial: message,
-    },
+    delta: { kind: "thinking", text: delta },
   } as AgentHarnessEvent;
 }
 
@@ -215,7 +201,7 @@ export function makeFullTurnSequence(options: {
   events.push(makeMessageStartEvent(streamingMsg));
 
   if (options.text) {
-    events.push(makeMessageUpdateTextDeltaEvent(finalMsg, options.text));
+    events.push(makeMessageUpdateTextDeltaEvent(options.text));
   }
 
   events.push(makeMessageEndEvent(finalMsg));

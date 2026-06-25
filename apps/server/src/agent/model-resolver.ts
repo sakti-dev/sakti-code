@@ -1,11 +1,11 @@
-import { getModel } from "@earendil-works/pi-ai";
-import type { Api, KnownProvider, Model } from "@earendil-works/pi-ai/base";
+import type { KnownProvider, Model } from "@sakti-code/llm";
+import { getModel } from "@sakti-code/llm";
 import type { ServerContext } from "../context.ts";
 import { resolveModelRef } from "../lib/profile-resolver.ts";
 import type { Profiles, ProfilesStore } from "../lib/profiles-store.ts";
 
 export interface ResolvedModel {
-  model: Model<Api>;
+  model: Model;
   /** The raw model ID string from the profile (for session snapshot). */
   modelId: string;
   provider: string;
@@ -24,11 +24,8 @@ interface ProfileCache {
 
 let cache: ProfileCache | null = null;
 
-function resolveModelInstance(
-  provider: KnownProvider,
-  modelId: string
-): Model<Api> {
-  return getModel(provider, modelId as never);
+function resolveModelInstance(provider: KnownProvider, modelId: string): Model {
+  return getModel(provider, modelId);
 }
 
 /** Clear the profile cache (for testing). */

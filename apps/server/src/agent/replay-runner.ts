@@ -115,7 +115,7 @@ export class ReplayRunner {
         part.type === "thinking"
       ) {
         const thinking = (part as { thinking?: string }).thinking ?? "";
-        await this.streamDeltas(message, "thinking_delta", thinking);
+        await this.streamDeltas("thinking", thinking);
       }
     }
 
@@ -127,7 +127,7 @@ export class ReplayRunner {
         part.type === "text"
       ) {
         const text = (part as { text?: string }).text ?? "";
-        await this.streamDeltas(message, "text_delta", text);
+        await this.streamDeltas("text", text);
       }
     }
 
@@ -206,8 +206,7 @@ export class ReplayRunner {
   }
 
   private async streamDeltas(
-    message: AgentMessage,
-    deltaType: "thinking_delta" | "text_delta",
+    deltaType: "thinking" | "text",
     text: string
   ): Promise<void> {
     const chunks = splitIntoChunks(text);
@@ -221,13 +220,7 @@ export class ReplayRunner {
 
       this.emit({
         type: "message_update",
-        message,
-        assistantMessageEvent: {
-          type: deltaType,
-          contentIndex: 0,
-          delta: chunk,
-          partial: message,
-        },
+        delta: { kind: deltaType, text: chunk },
       } as AgentHarnessEvent);
 
       if (delay > 0) {

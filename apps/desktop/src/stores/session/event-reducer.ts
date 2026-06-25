@@ -1,5 +1,5 @@
-import type { Message } from "@earendil-works/pi-ai/base";
 import type { AgentHarnessEvent, AgentMessage } from "@sakti-code/agent";
+import type { Message } from "@sakti-code/llm";
 import type { SessionActions } from "./session-store.ts";
 import type { TokenBatcher } from "./token-batcher.ts";
 
@@ -147,10 +147,10 @@ export function dispatchEvent(
       if (!msgId) {
         break;
       }
-      if (event.assistantMessageEvent.type === "text_delta") {
-        batcher.append(msgId, event.assistantMessageEvent.delta);
-      } else if (event.assistantMessageEvent.type === "thinking_delta") {
-        actions.appendThinkingToken(msgId, event.assistantMessageEvent.delta);
+      if (event.delta.kind === "text") {
+        batcher.append(msgId, event.delta.text);
+      } else {
+        actions.appendThinkingToken(msgId, event.delta.text);
       }
       break;
     }

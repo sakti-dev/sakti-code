@@ -92,7 +92,7 @@ describe("event reducer — individual events", () => {
     expect(session.store.messageOrder).toHaveLength(1);
   });
 
-  it("message_update text_delta is batched", async () => {
+  it("message_update text delta is batched", async () => {
     const { session, batcher } = setup();
     const msg = makeAssistantMessage("");
     dispatchEvent(session.actions, batcher, makeMessageStartEvent(msg));
@@ -101,14 +101,14 @@ describe("event reducer — individual events", () => {
     dispatchEvent(
       session.actions,
       batcher,
-      makeMessageUpdateTextDeltaEvent(msg, "Hello")
+      makeMessageUpdateTextDeltaEvent("Hello")
     );
     await Promise.resolve();
 
     expect(session.store.messages[msgId]!.content).toBe("Hello");
   });
 
-  it("message_update thinking_delta appends to thinking part", () => {
+  it("message_update thinking delta appends to thinking part", () => {
     const { session, batcher } = setup();
     const msg = makeAssistantMessage("");
     dispatchEvent(session.actions, batcher, makeMessageStartEvent(msg));
@@ -117,12 +117,12 @@ describe("event reducer — individual events", () => {
     dispatchEvent(
       session.actions,
       batcher,
-      makeMessageUpdateThinkingDeltaEvent(msg, "Let me think ")
+      makeMessageUpdateThinkingDeltaEvent("Let me think ")
     );
     dispatchEvent(
       session.actions,
       batcher,
-      makeMessageUpdateThinkingDeltaEvent(msg, "about this")
+      makeMessageUpdateThinkingDeltaEvent("about this")
     );
 
     const parts = session.store.messages[msgId]!.parts;

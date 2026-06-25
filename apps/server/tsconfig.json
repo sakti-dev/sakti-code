@@ -6,6 +6,8 @@
     "paths": {
       "@sakti-code/agent": ["../../packages/agent/src/index.ts"],
       "@sakti-code/db": ["../../packages/db/src/index.ts"],
+      "@sakti-code/llm": ["../../packages/llm/src/index.ts"],
+      "@sakti-code/llm/*": ["../../packages/llm/src/*"],
       "@sakti-code/tools": ["../../packages/tools/src/index.ts"]
     }
   },

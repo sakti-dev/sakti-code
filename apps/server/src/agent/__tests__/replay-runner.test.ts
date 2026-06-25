@@ -187,14 +187,13 @@ describe("ReplayRunner", () => {
       )
       .map(
         (f) =>
-          (f as { event?: { assistantMessageEvent?: { type?: string } } }).event
-            ?.assistantMessageEvent?.type
+          (f as { event?: { delta?: { kind?: string } } }).event?.delta?.kind
       );
 
     const firstDelta = deltas[0];
     const lastDelta = deltas.at(-1);
-    expect(firstDelta).toBe("thinking_delta");
-    expect(lastDelta).toBe("text_delta");
+    expect(firstDelta).toBe("thinking");
+    expect(lastDelta).toBe("text");
   });
 
   it("emits tool_execution_start and tool_execution_end", async () => {

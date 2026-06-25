@@ -325,16 +325,53 @@ Verify each path exists before relying on it.
 
 ---
 
-## Phase 6 — Server + UI cutover
+## Phase 6 — Server + UI cutover ✓ DONE
 
-### Task 6.1 — Server WS + replay
-- `apps/server/src/agent/replay-runner.ts:~225` (SRV-REPLAY): synthesize `{ type:"message_update", delta:{ text: chunk, kind: deltaType } }` instead of `assistantMessageEvent:{type, contentIndex, delta, partial}`. No `message` field per chunk.
-- WS handler forwards `AgentEvent` unchanged (the payload type changed; serialization is structural).
-- Update `apps/server/src/__tests__/composition.test.ts`, `ws.test.ts`, `e2e.test.ts`, `compaction.test.ts` fixtures.
+> **Server typecheck clean · desktop typecheck clean · all tests match
+> pre-existing pass/fail (no regressions).** Phase 6 fixed 2 of the 4
+> typecheck errors introduced by Phase 5; the remaining server-side
+> pi-ai→llm import swaps (available-models, auth-store, llm-helpers)
+> are Phase 7 scope.
 
-### Task 6.2 — Desktop UI reducer
-- `apps/desktop/src/stores/session/event-reducer.ts:150-153` (UI-REDUCER): read `event.delta.kind === "text" → batcher.append(msgId, event.delta.text)`; `=== "thinking" → actions.appendThinkingToken(msgId, event.delta.text)`. (4 lines.)
-- Update `apps/desktop/src/stores/session/__tests__/event-reducer.test.ts` + `hydrate-messages.ts` if it reads the old field.
+### Infrastructure
+- `apps/desktop/tsconfig.json` — replaced `@earendil-works/pi-ai` path
+  mappings with `@sakti-code/llm` (workspace source).
+- `apps/server/tsconfig.json` — added `@sakti-code/llm` path mappings.
+- Both `package.json` files — added `@sakti-code/llm: workspace:*` dep.
+
+### Task 6.1 — Server WS + replay ✓
+- `replay-runner.ts:streamDeltas` — now emits `{ type: "message_update",
+  delta: { kind: "text"|"thinking", text: chunk } }`. Dropped
+  `assistantMessageEvent` wrapper, `message` field, `contentIndex`,
+  `partial`. `streamDeltas` lost its unused `message` parameter.
+- `replay-runner.test.ts` — assertions check `event.delta.kind` instead
+  of `event.assistantMessageEvent.type`.
+- `runner.test.ts` — `message_update` fixture simplified from ~25 lines
+  to 2 lines (slim delta, no fake assistant message).
+- `model-resolver.ts` — swapped `@earendil-works/pi-ai` →
+  `@sakti-code/llm`. Dropped `Api` generic: `Model<Api>` → `Model`.
+  Simplified `getModel()` call (removed `as never` cast).
+- `routes/sessions/compaction.ts` — swapped import, dropped `Api`
+  generic from local type annotation.
+
+### Task 6.2 — Desktop UI reducer ✓
+- `event-reducer.ts:message_update` case — reads `event.delta.kind` /
+  `event.delta.text` (4 lines, as planned). Swapped `Message` import
+  from `@earendil-works/pi-ai/base` → `@sakti-code/llm`.
+- `helpers.ts` — event factories `makeMessageUpdateTextDeltaEvent` /
+  `makeMessageUpdateThinkingDeltaEvent` simplified: dropped `message`
+  parameter (no longer needed), emit slim `{ delta: { kind, text } }`.
+  Swapped `AssistantMessage, Usage` import → `@sakti-code/llm`.
+- `hydrate-messages.ts` — swapped `Message` import → `@sakti-code/llm`.
+- `event-reducer.test.ts` — updated call sites (removed `message` arg
+  from helper calls), renamed tests from "text_delta"/"thinking_delta"
+  to "text delta"/"thinking delta".
+
+### Pre-existing test failures (not introduced by Phase 6)
+- Server: 4 terminal tests (node-pty native module), 1 compaction test
+  (needs live LLM). Identical to Phase 5 commit.
+- Desktop: 44 SolidJS HMR errors in onboarding-panel.test.tsx. Identical
+  to Phase 5 commit.
 
 ---
 
