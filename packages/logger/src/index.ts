@@ -1,4 +1,10 @@
+export {
+  createConsoleLogger,
+  createDomainLogger,
+  createLogger,
+} from "./console.ts";
 export { describeError } from "./describe-error.ts";
+export { inferDomain } from "./infer-domain.ts";
 export { noopLogger } from "./noop.ts";
 export type {
   LogContext,
