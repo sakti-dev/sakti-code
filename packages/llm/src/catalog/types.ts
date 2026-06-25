@@ -64,7 +64,7 @@ export interface ModelsDevModel {
   reasoning?: boolean;
   reasoning_options?: ModelsDevReasoningOption[];
   release_date?: string;
-  status?: "active" | "deprecated" | "alpha";
+  status?: "active" | "alpha" | "beta" | "deprecated";
   /** Gate: the converter drops models where this is not `true`. */
   tool_call?: boolean;
 }

@@ -112,7 +112,13 @@ function buildFactoryOptions(
   options: ResolveOptions
 ): ProviderFactoryOptions {
   const env = options.env ?? processEnvRecord();
-  const rawBaseURL = options.baseURL ?? model.baseUrl;
+  // Empty string is treated as "unset" (not a real override): `??` alone would
+  // keep "" (not nullish), then resolveBaseURL("") → undefined, silently
+  // discarding the model's real base URL.
+  const rawBaseURL =
+    options.baseURL !== "" && options.baseURL !== undefined
+      ? options.baseURL
+      : model.baseUrl;
   const baseURL = resolveBaseURL(rawBaseURL, env);
 
   const headers = mergeHeaders(model.headers, options.headers);

@@ -172,6 +172,17 @@ describe("resolveLanguageModel", () => {
     expect(rec.calls[0]?.baseURL).toBe("https://custom.example.com");
   });
 
+  it("empty-string options.baseURL falls back to model.baseUrl (B7)", async () => {
+    // `??` would keep "" (not nullish), then resolveBaseURL("") → undefined,
+    // silently losing the model's real URL. Empty must be treated as unset.
+    const rec = recordingFactory("anthropic");
+    const factories = {
+      "@ai-sdk/anthropic": () => Promise.resolve(rec.factory),
+    };
+    await resolveLanguageModel(baseModel, { baseURL: "" }, factories);
+    expect(rec.calls[0]?.baseURL).toBe("https://api.anthropic.com");
+  });
+
   it("passes model.provider as the factory name", async () => {
     const rec = recordingFactory("anthropic");
     const factories = {

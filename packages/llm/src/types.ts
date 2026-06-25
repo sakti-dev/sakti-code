@@ -556,6 +556,6 @@ export interface Model {
   /** Whether the model supports reasoning/thinking at all. */
   reasoning: boolean;
   /** Model lifecycle status. Absent ≈ active. Lets the UI/agent filter deprecated models. */
-  status?: "active" | "deprecated" | "alpha";
+  status?: "active" | "alpha" | "beta" | "deprecated";
   thinkingLevelMap?: ThinkingLevelMap;
 }

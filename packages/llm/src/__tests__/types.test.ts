@@ -174,7 +174,7 @@ describe("Model type (ai-sdk-only)", () => {
       npm?: string;
       provider: ProviderId;
       reasoning: boolean;
-      status?: "active" | "deprecated" | "alpha";
+      status?: "active" | "alpha" | "beta" | "deprecated";
       thinkingLevelMap?: ThinkingLevelMap;
     }>();
   });
