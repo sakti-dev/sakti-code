@@ -72,9 +72,7 @@ export interface ModelsDevModel {
 /**
  * Per-provider entry in models.dev.
  *
- * `npm` names the `@ai-sdk/*` factory package; `api` is the base URL; `env`
- * lists the conventional env var names that hold the API key (matches our
- * `getEnvApiKey` map).
+ * `npm` names the `@ai-sdk/*` factory package; `api` is the base URL.
  */
 export interface ModelsDevProvider {
   api?: string;

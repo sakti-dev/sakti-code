@@ -11,8 +11,7 @@
  * src/
  * ├─ types.ts          message contract + Model descriptor (Phase 1 ✓)
  * ├─ auth/
- * │   ├─ types.ts      ModelAuth / AuthResult (Phase 1 ✓)
- * │   └─ env.ts        getEnvApiKey / findEnvKeys (Phase 1 ✓)
+ * │   └─ types.ts      ModelAuth / AuthResult (Phase 1 ✓)
  * ├─ cost.ts           calculateCost (Phase 1 ✓)
  * ├─ catalog/
  * │   ├─ types.ts      models.dev JSON shape (Phase 1 ✓)
@@ -36,7 +35,6 @@
  */
 
 // Auth: env-key resolution. Full login/OAuth orchestration is server-owned.
-export { findEnvKeys, getEnvApiKey } from "./auth/env.ts";
 export type { AuthResult, ModelAuth } from "./auth/types.ts";
 // Generated model catalog from models.dev (142 providers, matches opencode).
 export {
