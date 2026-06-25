@@ -293,4 +293,67 @@ describe("streamWithModel()", () => {
     const finish = await result;
     expect(finish.finishReason).toBe("error");
   });
+
+  /** Runner that records the options object it was called with. */
+  function capturingRunner() {
+    const calls: Record<string, unknown>[] = [];
+    const runner = (opts: Record<string, unknown>) => {
+      calls.push(opts);
+      return fakeStreamResult();
+    };
+    return { calls, runner: runner as never };
+  }
+
+  it("passes toolChoice through to streamText (M1)", () => {
+    const { calls, runner } = capturingRunner();
+    streamWithModel(
+      { ...{ messages: [], model }, toolChoice: "none" },
+      fakeLanguage,
+      runner
+    );
+    expect(calls[0]?.toolChoice).toBe("none");
+  });
+
+  it("omits toolChoice when not set", () => {
+    const { calls, runner } = capturingRunner();
+    streamWithModel({ messages: [], model }, fakeLanguage, runner);
+    expect(calls[0]?.toolChoice).toBeUndefined();
+  });
+
+  it("hints openai.promptCacheKey from sessionId (M2)", () => {
+    const { calls, runner } = capturingRunner();
+    streamWithModel(
+      { messages: [], model, sessionId: "sess-abc-123" },
+      fakeLanguage,
+      runner
+    );
+    const providerOptions = calls[0]?.providerOptions as
+      | { openai?: { promptCacheKey?: string } }
+      | undefined;
+    expect(providerOptions?.openai?.promptCacheKey).toBe("sess-abc-123");
+  });
+
+  it("strips ses_ prefix from 64-hex session ids for promptCacheKey", () => {
+    // opencode: /^ses_[0-9a-f]{64}$/ → slice(4). Matches its cache-key derivation.
+    const { calls, runner } = capturingRunner();
+    const sesId = `ses_${"0".repeat(64)}`;
+    streamWithModel(
+      { messages: [], model, sessionId: sesId },
+      fakeLanguage,
+      runner
+    );
+    const providerOptions = calls[0]?.providerOptions as
+      | { openai?: { promptCacheKey?: string } }
+      | undefined;
+    expect(providerOptions?.openai?.promptCacheKey).toBe("0".repeat(64));
+  });
+
+  it("omits promptCacheKey when no sessionId", () => {
+    const { calls, runner } = capturingRunner();
+    streamWithModel({ messages: [], model }, fakeLanguage, runner);
+    const providerOptions = calls[0]?.providerOptions as
+      | { openai?: { promptCacheKey?: string } }
+      | undefined;
+    expect(providerOptions?.openai?.promptCacheKey).toBeUndefined();
+  });
 });

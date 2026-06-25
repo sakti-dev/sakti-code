@@ -56,7 +56,7 @@ export interface StreamRequest {
   messages: Message[];
   /** The model descriptor from the catalog. */
   model: Model;
-  /** Session id (for session-affinity header providers). */
+  /** Session id (for session-affinity header providers + OpenAI prompt cache key). */
   sessionId?: string;
   /** System prompt (passed to streamText separately, not as a message). */
   system?: string;
@@ -64,6 +64,12 @@ export interface StreamRequest {
   temperature?: number;
   /** Thinking level — drives buildProviderOptions. */
   thinkingLevel?: ModelThinkingLevel;
+  /**
+   * Force tool choice: `"none"` = no tools, `"auto"` = model decides,
+   * `"required"` = must call one. opencode forces `"none"` on the last agent
+   * step so the model emits a final answer instead of another tool call.
+   */
+  toolChoice?: "auto" | "none" | "required";
   /** Tools (already in @ai-sdk tool format). */
   tools?: Record<string, unknown>;
   /** Top-p. */
@@ -98,6 +104,28 @@ interface StreamTextStream {
 type RunStreamText = (options: Record<string, unknown>) => StreamTextStream;
 
 // ─── pure mappers ────────────────────────────────────────────────────────────
+
+/**
+ * OpenAI session-id format (`ses_` + 64 hex). When a session id matches, the
+ * `ses_` prefix is stripped for use as `promptCacheKey` (matches opencode's
+ * derivation in `session/runner/llm.ts`). Top-level so it isn't re-compiled
+ * per call.
+ */
+const OPENAI_SESSION_ID_PATTERN = /^ses_[0-9a-f]{64}$/;
+
+/**
+ * Derive a stable per-session OpenAI prompt-cache key. Strips the `ses_`
+ * prefix from a 64-hex session id; returns other ids verbatim; returns
+ * `undefined` when no session id is set (caller omits the hint entirely).
+ */
+function promptCacheKeyFor(sessionId: string | undefined): string | undefined {
+  if (sessionId === undefined) {
+    return;
+  }
+  return OPENAI_SESSION_ID_PATTERN.test(sessionId)
+    ? sessionId.slice(4)
+    : sessionId;
+}
 
 /**
  * Map @ai-sdk's `LanguageModelUsage` to our `Usage` and populate cost.
@@ -193,10 +221,26 @@ export function streamWithModel(
   language: LanguageModelV3,
   runStreamText?: RunStreamText
 ): StreamResult {
-  const providerOptions = buildProviderOptions({
+  const reasoningOptions = buildProviderOptions({
     level: req.thinkingLevel ?? "off",
     model: req.model,
   });
+
+  // Hint the OpenAI prompt cache with a stable per-session key so cached
+  // prefixes reuse across turns. opencode derives this from session.id
+  // (stripping a `ses_<64hex>` prefix); we mirror that. No-op for providers
+  // that don't read providerOptions.openai.promptCacheKey.
+  const promptCacheKey = promptCacheKeyFor(req.sessionId);
+  const providerOptions =
+    promptCacheKey === undefined
+      ? reasoningOptions
+      : {
+          ...reasoningOptions,
+          openai: {
+            ...(reasoningOptions.openai as object | undefined),
+            promptCacheKey,
+          },
+        };
 
   const sessionHeaders = buildHeaders({
     model: req.model,
@@ -236,6 +280,7 @@ export function streamWithModel(
     ...(req.system ? { system: req.system } : {}),
     ...(req.temperature === undefined ? {} : { temperature: req.temperature }),
     ...(req.tools ? { tools: req.tools } : {}),
+    ...(req.toolChoice ? { toolChoice: req.toolChoice } : {}),
     ...(req.topP === undefined ? {} : { topP: req.topP }),
   });
 
