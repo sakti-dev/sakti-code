@@ -35,6 +35,11 @@ export interface CompleteRequest {
   baseURL?: string;
   headers?: Record<string, string>;
   maxOutputTokens?: number;
+  /**
+   * Max SDK-level retry attempts on transient errors (429/500/503).
+   * Default 0 (fail fast). @ai-sdk handles exponential backoff when > 0.
+   */
+  maxRetries?: number;
   messages: Message[];
   model: Model;
   sessionId?: string;
@@ -108,7 +113,7 @@ export async function completeWithModel(
   try {
     const raw = await runner({
       ...(mergedHeaders ? { headers: mergedHeaders } : {}),
-      maxRetries: 0,
+      maxRetries: req.maxRetries ?? 0,
       messages: toModelMessages(req.messages),
       model: language,
       ...(providerOptions && Object.keys(providerOptions).length > 0
