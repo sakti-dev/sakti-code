@@ -26,7 +26,6 @@ function setup(initial: ReplayState = "idle") {
       onReplayStart={spies.onReplayStart}
       onRetryEvent={spies.onRetryEvent}
       replayState={replay}
-      sessionId="s1"
     />
   ));
   return { ...result, setReplay, spies };

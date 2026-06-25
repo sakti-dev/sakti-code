@@ -1,4 +1,13 @@
-import { createEffect, createMemo, createSignal, type JSX } from "solid-js";
+import { FiAlertCircle } from "solid-icons/fi";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  type JSX,
+  onCleanup,
+  Show,
+} from "solid-js";
+import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
 import { InputFooter } from "./input-footer";
@@ -26,6 +35,36 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     return (
       phase === "thinking" || phase === "writing" || phase === "tool_running"
     );
+  });
+
+  const sessionStore = createMemo(() => {
+    if (!props.sessionId) {
+      return null;
+    }
+    return sessions.get(props.sessionId);
+  });
+
+  const retry = () => sessionStore()?.store.retry ?? null;
+
+  const [countdown, setCountdown] = createSignal(0);
+
+  // Tick down every second while the retry banner is visible. The effect keys
+  // off the `retry()` *reference*: the reducer must replace the object on each
+  // `auto_retry_start` (not mutate in place) so the countdown resets to the
+  // new attempt's delay. `onCleanup` clears the interval when the retry object
+  // changes or the component unmounts.
+  createEffect(() => {
+    const r = retry();
+    if (!r) {
+      setCountdown(0);
+      return;
+    }
+    const initial = Math.max(1, Math.round(r.delayMs / 1000));
+    setCountdown(initial);
+    const interval = setInterval(() => {
+      setCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    onCleanup(() => clearInterval(interval));
   });
 
   const canSend = () =>
@@ -63,7 +102,41 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
 
   return (
     <div class="w-full px-4 pb-4">
-      <div class="mx-auto max-w-3xl">
+      <div class="mx-auto flex max-w-3xl flex-col">
+        <Show when={retry()}>
+          {(r) => (
+            <div
+              aria-live="polite"
+              class="-mb-2 flex items-center gap-3 rounded-t-xl border-warning/30 border-x border-t bg-warning/10 px-3 pt-2 pb-4 text-sm"
+              role="status"
+            >
+              <FiAlertCircle class="size-4 shrink-0 text-warning" />
+              <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span class="truncate font-medium text-warning-foreground">
+                  {r().errorMessage}
+                </span>
+                <span class="text-muted-foreground text-xs">
+                  Retrying in {countdown()}s · attempt {r().attempt} of{" "}
+                  {r().maxAttempts}
+                </span>
+              </div>
+              {/* The strip only renders when `retry()` is set, which requires a
+                  live session — but guard anyway since sessionId is a separate
+                  nullable prop. */}
+              <Button
+                onClick={() => {
+                  if (props.sessionId) {
+                    actions.abortRun(props.sessionId);
+                  }
+                }}
+                size="sm"
+                variant="ghost"
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+        </Show>
         <div
           class={cn(
             "flex w-full min-w-0 flex-col gap-3 rounded-xl border p-3 shadow-lg transition-all duration-200",

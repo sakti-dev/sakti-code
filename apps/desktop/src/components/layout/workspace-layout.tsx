@@ -1,10 +1,15 @@
+import type { AgentHarnessEvent } from "@sakti-code/agent";
 import { createEffect, createSignal, type JSX, onMount, Show } from "solid-js";
+import { DevToolbar } from "~/components/chat-area/dev-toolbar";
 import { TaskChatView } from "~/components/chat-area/task-chat-view";
 import Home from "~/components/home/home";
 import { OnboardingPanel } from "~/components/onboarding/onboarding-panel";
+import { dispatchEvent } from "~/stores/session/event-reducer";
+import { createTokenBatcher } from "~/stores/session/token-batcher";
 import { useStore } from "~/stores/store-context";
 import { activeTab, filterStaleProjects } from "~/stores/workspace/tab-store";
 import {
+  replayState,
   setActiveIntakeSessionId,
   sidebarOpen,
 } from "~/stores/workspace/ui-signals";
@@ -14,8 +19,16 @@ import BannerUpdate from "./banners/banner-update";
 import Sidebar from "./sidebar/sidebar";
 import ProjectTabBar from "./tab-bar/project-tab-bar";
 
+// Dev-only no-op batcher for retry simulator events (no text tokens to flush).
+const devBatcher = createTokenBatcher(
+  () => {
+    /* no-op */
+  },
+  { batch: false }
+);
+
 export default function WorkspaceLayout(): JSX.Element {
-  const { server, actions } = useStore();
+  const { server, actions, sessions } = useStore();
 
   // Sync active tab → server store
   createEffect(() => {
@@ -71,6 +84,8 @@ export default function WorkspaceLayout(): JSX.Element {
 
   const isNewTab = () => activeTab()?.projectId === null;
 
+  const currentSessionId = () => activeSession()?.id ?? intakeSessionId();
+
   return (
     <div class="flex h-screen flex-col bg-background text-foreground">
       <ProjectTabBar />
@@ -84,6 +99,30 @@ export default function WorkspaceLayout(): JSX.Element {
             <BannerError />
             <BannerHealth />
             <BannerUpdate />
+            {import.meta.env.DEV && (
+              <DevToolbar
+                onReplayPause={() =>
+                  actions.replayPause(currentSessionId() ?? "")
+                }
+                onReplayReset={() =>
+                  actions.replayReset(currentSessionId() ?? "")
+                }
+                onReplayResume={() =>
+                  actions.replayResume(currentSessionId() ?? "")
+                }
+                onReplayStart={() =>
+                  actions.replayStart(currentSessionId() ?? "")
+                }
+                onRetryEvent={(event: AgentHarnessEvent) => {
+                  const sId = currentSessionId();
+                  if (sId) {
+                    const session = sessions.get(sId);
+                    dispatchEvent(session.actions, devBatcher, event);
+                  }
+                }}
+                replayState={replayState}
+              />
+            )}
             <div class="relative min-h-0 flex-1">
               <div class="absolute inset-0 flex flex-col overflow-hidden">
                 <Show

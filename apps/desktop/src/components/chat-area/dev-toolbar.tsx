@@ -23,7 +23,6 @@ export interface DevToolbarProps {
   onRetryEvent: (event: AgentHarnessEvent) => void;
   /** Reactive replay state — drives which replay buttons show. */
   replayState: () => ReplayState;
-  sessionId: string;
 }
 
 /**
