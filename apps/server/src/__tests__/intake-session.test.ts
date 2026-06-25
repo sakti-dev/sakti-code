@@ -6,7 +6,7 @@ import { makeApp, seedProfile } from "./helpers.ts";
 describe("POST /api/projects/:id/intake-session", () => {
   it("creates an intake session (201) then upserts the same one (200)", async () => {
     const { app, ctx } = await makeApp([projectsRoutes, intakeSessionRoutes]);
-    seedProfile(ctx, { provider: "anthropic", model: "claude-sonnet" });
+    seedProfile(ctx, { provider: "anthropic", model: "claude-sonnet-4-5" });
     const project = await ctx.repos.projects.create("demo", "/tmp/demo");
 
     const first = await app.request(

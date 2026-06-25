@@ -9,7 +9,7 @@ const VALID_PROFILES: Profiles = {
     balanced: {
       name: "Balanced",
       models: {
-        default: { provider: "anthropic", model: "claude-sonnet" },
+        default: { provider: "anthropic", model: "claude-sonnet-4-5" },
       },
     },
   },
