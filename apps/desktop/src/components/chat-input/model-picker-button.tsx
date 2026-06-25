@@ -15,6 +15,12 @@ interface Model {
   reasoning: boolean;
 }
 
+interface ProviderSummary {
+  id: string;
+  modelCount: number;
+  name: string;
+}
+
 export interface ModelPickerButtonProps {
   onSelect: (model: {
     id: string;
@@ -33,9 +39,9 @@ export function ModelPickerButton(props: ModelPickerButtonProps) {
   const [providers] = createResource(async () => {
     const res = await api.api.models.available.$get();
     if (!res.ok) {
-      return [] as string[];
+      return [] as ProviderSummary[];
     }
-    return (await res.json()) as string[];
+    return (await res.json()) as ProviderSummary[];
   });
 
   const [providerModels] = createResource(
@@ -44,10 +50,10 @@ export function ModelPickerButton(props: ModelPickerButtonProps) {
       const results: Record<string, Model[]> = {};
       for (const provider of providerList) {
         const res = await api.api.models.available[":provider"].$get({
-          param: { provider },
+          param: { provider: provider.id },
         });
         if (res.ok) {
-          results[provider] = (await res.json()) as Model[];
+          results[provider.id] = (await res.json()) as Model[];
         }
       }
       return results;
@@ -86,7 +92,7 @@ export function ModelPickerButton(props: ModelPickerButtonProps) {
       }
       for (const model of providerModelList) {
         const providerName =
-          provider.charAt(0).toUpperCase() + provider.slice(1);
+          providers()?.find((p) => p.id === provider)?.name ?? provider;
         options.push({
           id: model.id,
           name: model.name || model.id,

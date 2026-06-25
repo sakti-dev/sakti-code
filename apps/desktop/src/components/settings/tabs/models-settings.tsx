@@ -26,119 +26,12 @@ interface ApiKeyInfo {
   provider: string;
 }
 
-interface ProviderCatalogItem {
-  authMethods: { label: string; type: "api" }[];
+interface ProviderItem {
   connected: boolean;
   id: string;
   modelCount: number;
   name: string;
-  note?: string;
-  popular?: boolean;
 }
-
-const PROVIDER_CATALOG: Omit<ProviderCatalogItem, "connected">[] = [
-  {
-    id: "anthropic",
-    name: "Anthropic",
-    modelCount: 8,
-    popular: true,
-    note: "Claude models — Opus, Sonnet, Haiku",
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "openai",
-    name: "OpenAI",
-    modelCount: 12,
-    popular: true,
-    note: "GPT-4o, o1, o3, and more",
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "google",
-    name: "Google",
-    modelCount: 6,
-    popular: true,
-    note: "Gemini Pro, Flash, and more",
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "deepseek",
-    name: "DeepSeek",
-    modelCount: 4,
-    popular: true,
-    note: "Cost-effective reasoning models",
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "xai",
-    name: "xAI",
-    modelCount: 3,
-    note: "Grok models",
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "openrouter",
-    name: "OpenRouter",
-    modelCount: 200,
-    popular: true,
-    note: "Access 200+ models from one key",
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "groq",
-    name: "Groq",
-    modelCount: 5,
-    note: "Ultra-fast inference",
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "mistral",
-    name: "Mistral AI",
-    modelCount: 6,
-    note: "Open and commercial models",
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "together",
-    name: "Together AI",
-    modelCount: 50,
-    note: "Open-source models at scale",
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "fireworks",
-    name: "Fireworks AI",
-    modelCount: 30,
-    note: "Fast, open-source model hosting",
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "cerebras",
-    name: "Cerebras",
-    modelCount: 4,
-    note: "Ultra-fast inference on custom hardware",
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "huggingface",
-    name: "Hugging Face",
-    modelCount: 100,
-    note: "Thousands of open models",
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "zai",
-    name: "ZAI",
-    modelCount: 3,
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-  {
-    id: "opencode",
-    name: "OpenCode",
-    modelCount: 2,
-    authMethods: [{ label: "API Key", type: "api" }],
-  },
-];
 
 async function fetchApiKeys(client: Client): Promise<ApiKeyInfo[]> {
   try {
@@ -213,6 +106,14 @@ export function ModelsSettings() {
     }
   });
 
+  const [providerList] = createResource(async () => {
+    const res = await client.api.models.available.$get();
+    if (!res.ok) {
+      return [] as Omit<ProviderItem, "connected">[];
+    }
+    return (await res.json()) as Omit<ProviderItem, "connected">[];
+  });
+
   const [apiKeyInfos, { refetch: refetchApiKeys, mutate: mutateApiKeys }] =
     createResource(() => fetchApiKeys(client));
 
@@ -226,14 +127,21 @@ export function ModelsSettings() {
     );
   });
 
-  const catalogProviders = createMemo<ProviderCatalogItem[]>(() =>
-    PROVIDER_CATALOG.map((provider) => ({
-      ...provider,
-      connected: connectedSet().has(provider.id),
-    }))
-  );
+  const catalogProviders = createMemo<ProviderItem[]>(() => {
+    const providers = providerList();
+    if (!providers) {
+      return [];
+    }
+    const connected = connectedSet();
+    return providers.map((p) => ({
+      ...p,
+      connected: connected.has(p.id),
+    }));
+  });
 
-  const hasLoaded = createMemo(() => apiKeyInfos() !== undefined);
+  const hasLoaded = createMemo(
+    () => apiKeyInfos() !== undefined && providerList() !== undefined
+  );
 
   const filteredProviders = createMemo(() => {
     const query = providerSearchQuery().trim().toLowerCase();
@@ -710,11 +618,6 @@ export function ModelsSettings() {
                                       {provider.name}
                                     </span>
                                     <div class="flex items-center gap-1">
-                                      <Show when={provider.popular}>
-                                        <span class="rounded-full border border-primary/35 bg-primary/12 px-1.5 py-0.5 text-[10px] text-primary uppercase tracking-wide">
-                                          Popular
-                                        </span>
-                                      </Show>
                                       <span
                                         class={cn(
                                           "rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide",
@@ -777,18 +680,8 @@ export function ModelsSettings() {
                                 <span class="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wide">
                                   {provider().modelCount} models
                                 </span>
-                                <Show when={provider().popular}>
-                                  <span class="rounded-full border border-primary/35 bg-primary/12 px-2 py-0.5 text-[10px] text-primary uppercase tracking-wide">
-                                    Popular
-                                  </span>
-                                </Show>
                               </div>
                             </div>
-                            <Show when={provider().note}>
-                              <p class="mt-2 text-muted-foreground text-xs">
-                                {provider().note}
-                              </p>
-                            </Show>
                           </div>
 
                           <Show
