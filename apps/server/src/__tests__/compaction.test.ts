@@ -57,27 +57,52 @@ async function seedEntries(
 }
 
 describe("compaction route", () => {
-  it("POST /api/sessions/:id/compact summarizes and persists", async () => {
-    useFauxLlm([fauxAssistantMessage("Compacted summary of the session.")]);
-    const { app, ctx } = await makeApp([compactionRoutes]);
-    const project = await ctx.repos.projects.create("p", tempDir);
-    seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
-    ctx.auth.set("openai", "test-key-1234567890");
-    const session = await ctx.repos.sessions.create(project.id);
+  it(
+    "POST /api/sessions/:id/compact summarizes and persists",
+    async () => {
+      // Smoke-test mode: set SAKTI_SMOKE=1 + OPENCODE_API_KEY=<key> to run
+      // against the real DeepSeek V4 Flash model via the opencode gateway.
+      const isSmoke = process.env.SAKTI_SMOKE === "1";
+      const smokeProvider = "opencode";
+      const smokeModel = "deepseek-v4-flash-free";
+      const smokeKey = process.env.OPENCODE_API_KEY;
 
-    await seedEntries(ctx.db, session.id, 200);
+      if (!isSmoke) {
+        useFauxLlm([fauxAssistantMessage("Compacted summary of the session.")]);
+      } else if (!smokeKey) {
+        throw new Error(
+          "SAKTI_SMOKE=1 but OPENCODE_API_KEY is not set — cannot run smoke test"
+        );
+      }
 
-    const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/compact`, {
-        method: "POST",
-      })
-    );
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.tokensBefore).toBeGreaterThan(0);
-    expect(typeof body.summary).toBe("string");
-    expect(body.summary.length).toBeGreaterThan(0);
-  });
+      const { app, ctx } = await makeApp([compactionRoutes]);
+      const project = await ctx.repos.projects.create("p", tempDir);
+      seedProfile(ctx, {
+        provider: isSmoke ? smokeProvider : "openai",
+        model: isSmoke ? smokeModel : TEST_MODEL_ID,
+      });
+      ctx.auth.set(
+        isSmoke ? smokeProvider : "openai",
+        isSmoke ? smokeKey! : "test-key-1234567890"
+      );
+      const session = await ctx.repos.sessions.create(project.id);
+
+      await seedEntries(ctx.db, session.id, 200);
+
+      const res = await app.request(
+        new Request(`http://localhost/api/sessions/${session.id}/compact`, {
+          method: "POST",
+        })
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.tokensBefore).toBeGreaterThan(0);
+      expect(typeof body.summary).toBe("string");
+      expect(body.summary.length).toBeGreaterThan(0);
+    },
+    // Smoke mode hits a real LLM summarizing 200 messages — give it 2 minutes.
+    process.env.SAKTI_SMOKE === "1" ? 120_000 : 15_000
+  );
 
   it("POST /api/sessions/nope/compact returns 404", async () => {
     const { app } = await makeApp([compactionRoutes]);
