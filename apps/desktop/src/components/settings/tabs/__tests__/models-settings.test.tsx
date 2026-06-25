@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@solidjs/testing-library";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ModelsSettings } from "../models-settings.tsx";
+import { ModelsSettings } from "../models-settings/index.tsx";
 
 const mocks = vi.hoisted(() => ({
   $delete: vi.fn(),
