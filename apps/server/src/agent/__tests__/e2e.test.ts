@@ -14,8 +14,7 @@ afterEach(() => {
 
 describe("Multi-session e2e", () => {
   it("two concurrent sessions produce frames with correct sessionId and no cross-contamination", async () => {
-    // Single faux provider handles both sessions. setResponses is FIFO; we
-    // queue two responses so each session's streamSimple call gets one.
+    // Two concurrent sessions — each gets its own frame stream.
     useFauxLlm([
       fauxAssistantMessage("response"),
       fauxAssistantMessage("response"),

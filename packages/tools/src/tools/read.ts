@@ -3,8 +3,8 @@ import {
   readFile as fsReadFile,
   open as openFile,
 } from "node:fs/promises";
-import type { ImageContent, TextContent } from "@earendil-works/pi-ai/base";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
+import type { ImageContent, TextContent } from "@sakti-code/llm";
 import { type Static, Type } from "typebox";
 import { formatDimensionNote, resizeImage } from "../lib/image-resize.ts";
 import { resolveReadPathAsync } from "../lib/path-utils.ts";

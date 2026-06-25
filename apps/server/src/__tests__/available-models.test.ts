@@ -1,4 +1,4 @@
-import { getModels, getProviders } from "@earendil-works/pi-ai";
+import { CATALOG, PROVIDERS } from "@sakti-code/llm";
 import { describe, expect, it } from "vitest";
 
 const { availableModelsRoutes } = await import(
@@ -12,7 +12,7 @@ describe("available-models routes", () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual(getProviders());
+    expect(body).toEqual(PROVIDERS);
     expect(Array.isArray(body)).toBe(true);
     expect(body).toContain("openai");
   });
@@ -23,7 +23,7 @@ describe("available-models routes", () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual(getModels("openai"));
+    expect(body).toEqual(CATALOG.openai);
     expect(body.length).toBeGreaterThan(0);
     expect(
       body.every((m: { provider: string }) => m.provider === "openai")

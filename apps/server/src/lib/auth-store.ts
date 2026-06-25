@@ -6,7 +6,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
-import { getProviders, type KnownProvider } from "@earendil-works/pi-ai";
+import { type KnownProvider, PROVIDERS } from "@sakti-code/llm";
 import lockfile from "proper-lockfile";
 
 /**
@@ -15,8 +15,8 @@ import lockfile from "proper-lockfile";
  * writes to or reads from `process.env`.
  */
 
-/** Known provider ids from pi-ai's catalog. Static per process. */
-const KNOWN_PROVIDERS: readonly KnownProvider[] = getProviders();
+/** Known provider ids from the catalog. Static per process. */
+const KNOWN_PROVIDERS: readonly KnownProvider[] = PROVIDERS as KnownProvider[];
 
 export interface AuthEntry {
   hasKey: boolean;

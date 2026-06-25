@@ -13,8 +13,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.79.9",
     "@sakti-code/agent": "workspace:*",
+    "@sakti-code/llm": "workspace:*",
     "@silvia-odwyer/photon-node": "0.3.4",
     "diff": "^9.0.0"
   },

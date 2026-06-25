@@ -23,7 +23,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.79.9",
     "@hono/node-server": "^2.0.6",
     "@hono/typebox-validator": "^1.1.0",
     "@sakti-code/agent": "workspace:*",

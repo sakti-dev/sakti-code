@@ -41,7 +41,6 @@
     "velomark": "workspace:*"
   },
   "devDependencies": {
-    "@earendil-works/pi-ai": "^0.79.9",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@solidjs/testing-library": "^0.8.10",
