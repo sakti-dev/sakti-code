@@ -52,8 +52,14 @@ export function resolveModel(
 ): ResolvedModel {
   const profiles = getCachedProfiles(ctx);
   const ref = resolveModelRef(profiles, session.profileId, "default");
+  const model = resolveModelInstance(ref.provider as KnownProvider, ref.model);
+  ctx.log?.agent.debug("model resolved", {
+    modelId: model.id,
+    provider: model.provider,
+    baseURL: model.baseUrl,
+  });
   return {
-    model: resolveModelInstance(ref.provider as KnownProvider, ref.model),
+    model,
     modelId: ref.model,
     provider: ref.provider,
     thinkingLevel: ref.thinkingLevel,
@@ -67,7 +73,15 @@ export function resolveAuth(
   const resolved = resolveModel(ctx, session);
   const apiKey = ctx.auth.getApiKey(resolved.provider);
   if (!apiKey) {
+    ctx.log?.agent.warn("auth not found", {
+      provider: resolved.provider,
+      sessionId: session.id,
+    });
     return;
   }
+  ctx.log?.agent.debug("auth resolved", {
+    provider: resolved.provider,
+    hasApiKey: apiKey !== undefined,
+  });
   return { ...resolved, apiKey };
 }

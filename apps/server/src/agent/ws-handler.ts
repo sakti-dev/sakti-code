@@ -155,7 +155,12 @@ async function runAgentStream(
   storage: SessionStorage,
   ws: WsHandle
 ) {
+  const log = ctx.log?.server;
   ctx.repos.turns.create(sessionId, Date.now());
+  log?.info("agent run started", {
+    sessionId,
+    messageLength: message.length ?? 0,
+  });
   try {
     await runPrompt(ctx, sessionId, message, storage, (event) => {
       ws.send({
@@ -164,7 +169,9 @@ async function runAgentStream(
         type: "event",
       } satisfies EventFrame);
     });
+    log?.info("agent run finished", { sessionId });
   } catch (err) {
+    log?.error("agent run failed", err, { sessionId });
     ws.send({
       error: err instanceof Error ? err.message : String(err),
       sessionId,
@@ -172,6 +179,7 @@ async function runAgentStream(
     } satisfies ErrorFrame);
   } finally {
     ctx.repos.turns.finalizeLatest(sessionId, Date.now());
+    log?.debug("turn finalized", { sessionId });
   }
 }
 
@@ -189,9 +197,20 @@ export function handleMessage(
   ws: WsHandle,
   msg: WsIn
 ) {
+  const log = ctx.log?.server;
+  log?.info("incoming message", {
+    type: msg.type,
+    sessionId: msg.sessionId,
+    ...(msg.type === "replay" ? { action: msg.action } : {}),
+    ...(msg.type !== "abort" && msg.type !== "replay"
+      ? { messageLength: msg.message.length }
+      : {}),
+  });
+
   if (msg.type === "replay") {
     if (msg.action === "start") {
       startReplay(msg.sessionId, ws).catch((err) => {
+        log?.warn("replay start failed", { sessionId: msg.sessionId });
         sendError(
           ws,
           msg.sessionId,
@@ -211,6 +230,7 @@ export function handleMessage(
       return;
     }
     abortRun(msg.sessionId).catch((err) => {
+      log?.warn("abort failed", { sessionId: msg.sessionId });
       sendError(
         ws,
         msg.sessionId,
@@ -223,6 +243,9 @@ export function handleMessage(
   if (msg.type === "steer" || msg.type === "followUp") {
     const harness = getActiveHarness(msg.sessionId);
     if (!harness) {
+      log?.warn("no active harness for steer/followUp", {
+        sessionId: msg.sessionId,
+      });
       sendError(
         ws,
         msg.sessionId,
@@ -235,6 +258,7 @@ export function handleMessage(
         ? harness.steer(msg.message)
         : harness.followUp(msg.message);
     action.catch((err) => {
+      log?.warn("steer/followUp action failed", { sessionId: msg.sessionId });
       sendError(
         ws,
         msg.sessionId,
@@ -245,15 +269,22 @@ export function handleMessage(
   }
 
   if (!(msg.sessionId && msg.message)) {
+    log?.warn("invalid message: missing sessionId or message", {
+      sessionId: msg.sessionId ?? "",
+    });
     sendError(ws, msg.sessionId ?? "", "Missing sessionId or message");
     return;
   }
 
   if (isRunActive(msg.sessionId)) {
+    log?.warn("busy — cannot start new run", { sessionId: msg.sessionId });
     sendError(ws, msg.sessionId, busyMessage(msg.sessionId));
     return;
   }
   runAgentStream(ctx, msg.sessionId, msg.message, storage, ws).catch((err) => {
+    log?.warn("runAgentStream failed unexpectedly", {
+      sessionId: msg.sessionId,
+    });
     sendError(
       ws,
       msg.sessionId,

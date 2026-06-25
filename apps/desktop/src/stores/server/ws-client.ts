@@ -1,5 +1,6 @@
 import type { AgentHarnessEvent } from "@sakti-code/agent";
 import type { WsIn, WsOut } from "@sakti-code/server/ws";
+import { createLogger } from "~/lib/utils";
 import { dispatchEvent } from "../session/event-reducer.ts";
 import type { SessionRegistry } from "../session/session-registry.ts";
 import { createTokenBatcher } from "../session/token-batcher.ts";
@@ -11,6 +12,8 @@ import {
   setReplayState,
 } from "../workspace/ui-signals.ts";
 import type { ServerActions, ServerStoreData } from "./server-store.ts";
+
+const log = createLogger({ module: "ws-client" });
 
 const INITIAL_RECONNECT_MS = 1000;
 const MAX_RECONNECT_MS = 30_000;
@@ -81,6 +84,10 @@ export function createWsClient(
           break;
         }
         const evt = data.event as AgentHarnessEvent;
+        log.debug("ws event", {
+          sessionId: data.sessionId,
+          eventType: evt.type,
+        });
         updateStreamingState(evt);
         const batcher = getBatcher(data.sessionId);
         dispatchEvent(
@@ -96,6 +103,9 @@ export function createWsClient(
         if (!(data.sessionId && data.error)) {
           break;
         }
+        log.error("ws error", new Error(data.error), {
+          sessionId: data.sessionId,
+        });
         const session = sessionRegistry.get(data.sessionId);
         const msgId = session.store.streaming.currentMessageId;
         if (msgId) {
@@ -134,6 +144,7 @@ export function createWsClient(
     conn.addEventListener("open", () => {
       reconnectAttempts = 0;
       server.actions.setConnectionStatus("open");
+      log.info("ws connected");
     });
 
     conn.addEventListener("message", (event) => {
@@ -147,11 +158,13 @@ export function createWsClient(
     });
 
     conn.addEventListener("error", () => {
+      log.error("ws error");
       setLastError("WebSocket connection error");
     });
 
     conn.addEventListener("close", () => {
       server.actions.setConnectionStatus("closed");
+      log.warn("ws disconnected");
       conn = null;
       if (shouldReconnect) {
         scheduleReconnect();
@@ -163,6 +176,17 @@ export function createWsClient(
 
   return {
     send(msg: WsIn) {
+      const sessionMeta = server.store.sessions[msg.sessionId];
+      log.debug("ws outgoing", {
+        type: msg.type,
+        sessionId: msg.sessionId,
+        ...("message" in msg ? { messageLength: msg.message.length } : {}),
+        ...(sessionMeta?.modelId ? { modelId: sessionMeta.modelId } : {}),
+        ...(sessionMeta?.profileId ? { profileId: sessionMeta.profileId } : {}),
+        ...(sessionMeta?.thinkingLevel
+          ? { thinkingLevel: sessionMeta.thinkingLevel }
+          : {}),
+      });
       if (conn && conn.readyState === 1) {
         conn.send(JSON.stringify(msg));
       }

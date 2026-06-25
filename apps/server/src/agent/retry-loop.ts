@@ -29,6 +29,7 @@
 import type { AgentEvent } from "@sakti-code/agent";
 import type { AssistantMessage } from "@sakti-code/llm";
 import { isRetryableAssistantError } from "@sakti-code/llm";
+import type { Logger } from "@sakti-code/logger";
 
 // ─── pure decision helpers (unit-tested in isolation) ────────────────────────
 
@@ -136,6 +137,8 @@ export function abortableSleep(
 export interface RetryRunnerDeps {
   /** Forward an `auto_retry_start`/`auto_retry_end` event to the WS subscriber. */
   emit: (event: AgentEvent) => void;
+  /** Optional logger for tracing retry lifecycle. When absent, no logs are emitted. */
+  logger?: Logger;
   /** Roll the session leaf back past the failed message so the next turn re-runs it. */
   rollbackLeaf: () => Promise<void>;
   /** Run one turn. The first call runs `harness.prompt`, later calls run `harness.continue`. */
@@ -159,11 +162,16 @@ export async function executeWithRetry(
 ): Promise<void> {
   // Run the first turn. If retry is disabled we still ran the turn; we just
   // don't attempt any retries.
+  deps.logger?.debug("turn attempt", {
+    attempt: 0,
+    maxRetries: settings.maxRetries,
+  });
   let message = await deps.runTurn();
   if (!settings.enabled) {
     return;
   }
 
+  deps.logger?.info("retry started", { maxRetries: settings.maxRetries });
   let attempt = 0;
   while (
     shouldRetry({
@@ -176,6 +184,17 @@ export async function executeWithRetry(
     attempt++;
     const delayMs = computeRetryDelay(attempt, settings.baseDelayMs);
 
+    deps.logger?.error(
+      "turn error",
+      message.errorMessage ? new Error(message.errorMessage) : undefined,
+      { attempt }
+    );
+    deps.logger?.debug("should retry", {
+      attempt,
+      maxRetries: settings.maxRetries,
+      willRetry: true,
+    });
+
     // Tell the UI a retry is coming (shows the banner + countdown).
     deps.emit({
       type: "auto_retry_start",
@@ -187,11 +206,14 @@ export async function executeWithRetry(
 
     // Orphan the failed assistant message so continue() sees the preceding
     // user/toolResult message as the transcript tail.
+    deps.logger?.warn("rolling back leaf", { attempt });
     await deps.rollbackLeaf();
 
     // Backoff — interruptible by abort. If aborted, report final failure.
+    deps.logger?.debug("backoff", { delayMs, attempt });
     const slept = await abortableSleep(delayMs, deps.signal);
     if (!slept || deps.signal.aborted) {
+      deps.logger?.warn("retry aborted", { attempt });
       deps.emit({
         type: "auto_retry_end",
         success: false,
@@ -204,6 +226,10 @@ export async function executeWithRetry(
     }
 
     // Re-run the turn (harness.continue under the hood).
+    deps.logger?.debug("turn attempt", {
+      attempt,
+      maxRetries: settings.maxRetries,
+    });
     message = await deps.runTurn();
   }
 
@@ -214,6 +240,14 @@ export async function executeWithRetry(
     // stopReason check alone would mislabel an abort as success. The run's
     // abort signal is authoritative — if it fired, the retry did not succeed.
     const success = !deps.signal.aborted && message.stopReason !== "error";
+    if (success) {
+      deps.logger?.info("turn succeeded", { attempt });
+    } else {
+      deps.logger?.error("all retries exhausted", undefined, {
+        attempts: attempt,
+        errorMessage: message.errorMessage ?? "Unknown error",
+      });
+    }
     deps.emit({
       type: "auto_retry_end",
       success,

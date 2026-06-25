@@ -220,11 +220,21 @@ export async function runPrompt(
   if (!session) {
     throw new Error(`Session not found: ${sessionId}`);
   }
+  ctx.log?.agent.debug("session loaded", {
+    sessionId,
+    projectId: session.projectId,
+    kind: session.kind,
+    thinkingLevel: (session as { thinkingLevel: string }).thinkingLevel,
+  });
 
   const project = await ctx.repos.projects.findById(session.projectId);
   if (!project) {
     throw new Error(`Project not found: ${session.projectId}`);
   }
+  ctx.log?.agent.debug("project loaded", {
+    projectId: project.id,
+    cwd: project.cwd,
+  });
 
   const auth = resolveAuth(ctx, session);
   if (!auth) {
@@ -264,6 +274,7 @@ export async function runPrompt(
     thinkingLevel,
     getApiKeyAndHeaders,
   });
+  ctx.log?.agent.debug("harness created", { sessionId });
 
   const unsubscribe = harness.subscribe((event) => {
     eventCallback(event);
@@ -279,6 +290,16 @@ export async function runPrompt(
     throw new Error(busyMessage(sessionId));
   }
 
+  ctx.log?.agent.info("run starting", {
+    sessionId,
+    model: model.id,
+    provider: model.provider,
+    hasApiKey: auth.apiKey !== undefined,
+    toolCount: tools.length,
+    thinkingLevel,
+    isIntake,
+  });
+
   try {
     // Application-level retry: run the turn, and on a transient failure emit
     // auto_retry_start/end events, roll the session leaf back past the failed
@@ -289,6 +310,7 @@ export async function runPrompt(
       {
         signal: retryAbort.signal,
         emit: (event) => eventCallback(event),
+        ...(ctx.log === undefined ? {} : { logger: ctx.log.agent }),
         // Move the session leaf to the failed message's parent, orphaning the
         // failed assistant message so the next turn re-runs from the prior
         // user/toolResult message (same mechanism as session branching).
@@ -311,14 +333,23 @@ export async function runPrompt(
         runTurn: async () => {
           if (firstTurn) {
             firstTurn = false;
+            ctx.log?.agent.info("turn prompt", {
+              sessionId,
+              messageLength: message.length,
+            });
             return harness.prompt(message);
           }
+          ctx.log?.agent.info("turn retry", { sessionId });
           return harness.continue();
         },
       },
       retrySettings
     );
+  } catch (err) {
+    ctx.log?.agent.error("run failed", err, { sessionId });
+    throw err;
   } finally {
+    ctx.log?.agent.info("run finished", { sessionId });
     unregisterRun(sessionId);
   }
 }

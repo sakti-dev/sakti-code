@@ -443,6 +443,12 @@ export class AgentHarness<
       if (this.testStreamFn) {
         return this.testStreamFn(req);
       }
+      this.logger?.debug("llm call starting", {
+        messageCount: req.messages.length,
+        toolCount: req.tools ? Object.keys(req.tools).length : 0,
+        maxTokens: req.maxOutputTokens,
+        thinkingLevel: req.thinkingLevel,
+      });
       const { stream } = await import("@sakti-code/llm");
       const apiKey = auth?.apiKey ?? req.apiKey;
       return stream({
@@ -710,6 +716,11 @@ export class AgentHarness<
           this.createStreamFn(getTurnState)
         );
       } catch (error) {
+        this.logger?.error("turn failed", error, {
+          model: activeTurnState.model.id,
+          provider: activeTurnState.model.provider,
+          aborted: String(abortController.signal.aborted),
+        });
         try {
           return await this.emitRunFailure(
             activeTurnState.model,
@@ -755,6 +766,11 @@ export class AgentHarness<
       throw new AgentHarnessError("busy", "AgentHarness is busy");
     }
     this.phase = "turn";
+    this.logger?.info("turn started", {
+      mode: "prompt",
+      model: this.model.id,
+      provider: this.model.provider,
+    });
     const finishRunPromise = this.startRunPromise();
     try {
       const turnState = await this.createTurnState();
@@ -788,6 +804,11 @@ export class AgentHarness<
       throw new AgentHarnessError("busy", "AgentHarness is busy");
     }
     this.phase = "turn";
+    this.logger?.info("turn started", {
+      mode: "continue",
+      model: this.model.id,
+      provider: this.model.provider,
+    });
     const finishRunPromise = this.startRunPromise();
     try {
       // Build the turn state from the CURRENT session (post-rollback in the
@@ -835,6 +856,11 @@ export class AgentHarness<
             this.createStreamFn(getTurnState)
           );
         } catch (error) {
+          this.logger?.error("turn failed", error, {
+            model: activeTurnState.model.id,
+            provider: activeTurnState.model.provider,
+            aborted: String(abortController.signal.aborted),
+          });
           try {
             return await this.emitRunFailure(
               activeTurnState.model,
@@ -1420,6 +1446,7 @@ export class AgentHarness<
     this.steerQueue = [];
     this.followUpQueue = [];
     this.runAbortController?.abort();
+    this.logger?.warn("turn aborted");
     const errors: Error[] = [];
     try {
       await this.emitQueueUpdate();

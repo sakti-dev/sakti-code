@@ -1,5 +1,6 @@
 import type { AgentMessage } from "@sakti-code/agent";
 import type { Client } from "~/lib/api";
+import { createLogger } from "~/lib/utils";
 import { hydrateSessionMessages } from "../session/hydrate-messages.ts";
 import type { SessionRegistry } from "../session/session-registry.ts";
 import type { UIMessage } from "../types.ts";
@@ -11,6 +12,8 @@ import type {
   SessionMeta,
 } from "./server-store.ts";
 import type { WsClient } from "./ws-client.ts";
+
+const log = createLogger({ module: "actions" });
 
 type ApiClient = Client;
 
@@ -175,6 +178,15 @@ export function createActions(
 
     sendPrompt(sessionId, text) {
       const session = sessionRegistry.get(sessionId);
+      const sessionMeta = server.store.sessions[sessionId];
+
+      log.info("user prompt", { sessionId, messageLength: text.length });
+      log.debug("prompt submitted", {
+        ...(sessionMeta?.modelId ? { modelId: sessionMeta.modelId } : {}),
+        ...(sessionMeta?.thinkingLevel
+          ? { thinkingLevel: sessionMeta.thinkingLevel }
+          : {}),
+      });
 
       const userMsg: UIMessage = {
         id: crypto.randomUUID(),

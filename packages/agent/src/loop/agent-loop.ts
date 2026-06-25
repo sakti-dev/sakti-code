@@ -165,6 +165,7 @@ async function runLoop(
   let currentContext = initialContext;
   let config = initialConfig;
   let firstTurn = true;
+  let lastAssistantMessage: AssistantMessage | undefined;
   // Check for steering messages at start (user may have typed while waiting)
   let pendingMessages: AgentMessage[] =
     (await config.getSteeringMessages?.()) || [];
@@ -201,8 +202,13 @@ async function runLoop(
         streamFn
       );
       newMessages.push(message);
+      lastAssistantMessage = message;
 
       if (message.stopReason === "error" || message.stopReason === "aborted") {
+        config.logger?.info("turn finished", {
+          stopReason: message.stopReason,
+          usage: message.usage,
+        });
         await emit({ type: "turn_end", message, toolResults: [] });
         await emit({ type: "agent_end", messages: newMessages });
         return;
@@ -262,9 +268,20 @@ async function runLoop(
           newMessages,
         })
       ) {
+        config.logger?.info("turn finished", {
+          stopReason: message.stopReason,
+          usage: message.usage,
+        });
         await emit({ type: "agent_end", messages: newMessages });
         return;
       }
+
+      config.logger?.debug("iteration complete", {
+        messagesInContext: currentContext.messages.length,
+        toolCallsInTurn: toolCalls.length,
+        hasMoreToolCalls,
+        pendingSteeringCount: pendingMessages.length,
+      });
 
       pendingMessages = (await config.getSteeringMessages?.()) || [];
     }
@@ -281,6 +298,10 @@ async function runLoop(
     break;
   }
 
+  config.logger?.info("turn finished", {
+    stopReason: lastAssistantMessage?.stopReason,
+    usage: lastAssistantMessage?.usage,
+  });
   await emit({ type: "agent_end", messages: newMessages });
 }
 
@@ -401,6 +422,10 @@ async function streamAssistantResponse(
             part.error instanceof Error
               ? part.error
               : new Error(String(part.error));
+          config.logger?.error("llm stream error part", streamError, {
+            model: config.model.id,
+            provider: config.model.provider,
+          });
           break;
         }
         // Other parts (text-start/end, reasoning-start/end, start-step,
@@ -581,6 +606,11 @@ async function executeToolCallsSequential(
         isError: preparation.isError,
       };
     } else {
+      config.logger?.debug("tool call", {
+        toolName: toolCall.name,
+        toolCallId: toolCall.id,
+        argsPreview: JSON.stringify(toolCall.arguments).slice(0, 200),
+      });
       const executed = await executePreparedToolCall(preparation, signal, emit);
       finalized = await finalizeExecutedToolCall(
         currentContext,
@@ -590,6 +620,11 @@ async function executeToolCallsSequential(
         config,
         signal
       );
+      config.logger?.debug("tool result", {
+        toolName: finalized.toolCall.name,
+        isError: finalized.isError,
+        resultLength: String(finalized.result.content).length,
+      });
     }
 
     await emitToolExecutionEnd(finalized, emit);
@@ -649,6 +684,14 @@ async function executeToolCallsParallel(
     }
 
     finalizedCalls.push(async () => {
+      config.logger?.debug("tool call", {
+        toolName: preparation.toolCall.name,
+        toolCallId: preparation.toolCall.id,
+        argsPreview: JSON.stringify(preparation.toolCall.arguments).slice(
+          0,
+          200
+        ),
+      });
       const executed = await executePreparedToolCall(preparation, signal, emit);
       const finalized = await finalizeExecutedToolCall(
         currentContext,
@@ -658,6 +701,11 @@ async function executeToolCallsParallel(
         config,
         signal
       );
+      config.logger?.debug("tool result", {
+        toolName: finalized.toolCall.name,
+        isError: finalized.isError,
+        resultLength: String(finalized.result.content).length,
+      });
       await emitToolExecutionEnd(finalized, emit);
       return finalized;
     });
