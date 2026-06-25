@@ -17,11 +17,19 @@ import type { ServerContext } from "../context.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth, resolveModel } from "./model-resolver.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
+import { executeWithRetry, parseRetrySettings } from "./retry-loop.ts";
 import { buildTools } from "./tools-builder.ts";
 import type { WsHandle } from "./ws-handler.ts";
 
 interface ActiveRun {
   harness: AgentHarness;
+  /**
+   * Abort controller for the retry loop's backoff sleep. The harness's own
+   * abort covers in-progress turns; this one covers the gap between turns
+   * (when the harness is idle but we're sleeping before a retry). `abortRun`
+   * aborts both so a user cancel interrupts the full retry sequence.
+   */
+  retryAbort?: AbortController | undefined;
   unsubscribe: () => void;
 }
 
@@ -34,12 +42,17 @@ export function busyMessage(sessionId: string): string {
 export function registerRun(
   sessionId: string,
   harness: AgentHarness,
-  unsubscribe: () => void
+  unsubscribe: () => void,
+  retryAbort?: AbortController
 ): boolean {
   if (activeRuns.has(sessionId)) {
     return false;
   }
-  activeRuns.set(sessionId, { harness, unsubscribe });
+  activeRuns.set(sessionId, {
+    harness,
+    unsubscribe,
+    ...(retryAbort ? { retryAbort } : {}),
+  });
   return true;
 }
 
@@ -137,6 +150,8 @@ export function stopReplay(sessionId: string): boolean {
 export async function abortRun(sessionId: string): Promise<boolean> {
   const run = activeRuns.get(sessionId);
   if (run) {
+    // Abort the retry backoff sleep (if mid-retry) AND the in-progress turn.
+    run.retryAbort?.abort();
     await run.harness.abort();
     return true;
   }
@@ -151,6 +166,9 @@ export function getActiveHarness(sessionId: string): AgentHarness | null {
 const DEFAULT_SETTINGS: Record<string, string> = {
   auto_compaction: "false",
   auto_retry: "true",
+  // Exponential backoff base for application-level retry (2s → 4s → 8s).
+  // Matches pi's coding-agent defaults (settings-manager.ts:807-813).
+  base_delay_ms: "2000",
   follow_up_mode: "all",
   max_retries: "3",
   steering_mode: "all",
@@ -248,13 +266,48 @@ export async function runPrompt(
     eventCallback(event);
   });
 
-  if (!registerRun(sessionId, harness, unsubscribe)) {
+  // Abort controller spanning the full run, including the retry backoff sleep.
+  // abortRun() aborts this so a user cancel interrupts the retry sequence
+  // even when the harness itself is idle between turns.
+  const retryAbort = new AbortController();
+
+  if (!registerRun(sessionId, harness, unsubscribe, retryAbort)) {
     unsubscribe();
     throw new Error(busyMessage(sessionId));
   }
 
   try {
-    await harness.prompt(message);
+    // Application-level retry: run the turn, and on a transient failure emit
+    // auto_retry_start/end events, roll the session leaf back past the failed
+    // message, back off, and re-run via harness.continue(). See retry-loop.ts.
+    const retrySettings = parseRetrySettings(settings);
+    let firstTurn = true;
+    await executeWithRetry(
+      {
+        signal: retryAbort.signal,
+        emit: (event) => eventCallback(event),
+        // Move the session leaf to the failed message's parent, orphaning the
+        // failed assistant message so the next turn re-runs from the prior
+        // user/toolResult message (same mechanism as session branching).
+        rollbackLeaf: async () => {
+          const branch = await sessionInstance.getBranch();
+          const lastEntry = branch.at(-1);
+          if (lastEntry?.parentId) {
+            await sessionInstance.getStorage().setLeafId(lastEntry.parentId);
+          }
+        },
+        // The first turn is a fresh prompt; subsequent turns continue from the
+        // rolled-back transcript (no new user message).
+        runTurn: async () => {
+          if (firstTurn) {
+            firstTurn = false;
+            return harness.prompt(message);
+          }
+          return harness.continue();
+        },
+      },
+      retrySettings
+    );
   } finally {
     unregisterRun(sessionId);
   }
