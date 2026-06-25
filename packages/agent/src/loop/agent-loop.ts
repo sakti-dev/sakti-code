@@ -356,6 +356,11 @@ async function streamAssistantResponse(
   // ── Accumulator state ──────────────────────────────────────────────
   let textBuffer = "";
   let thinkingBuffer = "";
+  // Anthropic encrypted thinking signature from reasoning-end's
+  // providerMetadata.anthropic.signature — captured so the messages layer can
+  // replay it for multi-turn extended-thinking continuity (gated by the
+  // sameModel guard in toModelMessages). Last block wins when several fire.
+  let thinkingSignature: string | undefined;
   const toolCallBlocks: ToolCall[] = [];
   let messageStarted = false;
 
@@ -408,6 +413,20 @@ async function streamAssistantResponse(
           });
           break;
         }
+        case "reasoning-end": {
+          // Capture the Anthropic encrypted thinking signature for multi-turn
+          // extended-thinking continuity (forwarded by toModelMessages when
+          // the target model matches — see B4 sameModel guard).
+          const signature = (
+            part as {
+              providerMetadata?: { anthropic?: { signature?: string } };
+            }
+          ).providerMetadata?.anthropic?.signature;
+          if (signature) {
+            thinkingSignature = signature;
+          }
+          break;
+        }
         case "tool-call": {
           await ensureMessageStarted();
           toolCallBlocks.push({
@@ -451,7 +470,11 @@ async function streamAssistantResponse(
   // ── Build final AssistantMessage ───────────────────────────────────
   const content: (TextContent | ThinkingContent | ToolCall)[] = [];
   if (thinkingBuffer) {
-    content.push({ type: "thinking", thinking: thinkingBuffer });
+    content.push({
+      type: "thinking",
+      thinking: thinkingBuffer,
+      ...(thinkingSignature ? { thinkingSignature } : {}),
+    });
   }
   if (textBuffer) {
     content.push({ type: "text", text: textBuffer });

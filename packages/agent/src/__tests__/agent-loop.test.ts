@@ -217,6 +217,59 @@ describe("agentLoop with AgentMessage", () => {
     expect(eventTypes).toContain("agent_end");
   });
 
+  it("captures thinkingSignature from reasoning-end providerMetadata (B4)", async () => {
+    // @ai-sdk emits the Anthropic encrypted thinking signature on the
+    // reasoning-end part's providerMetadata.anthropic.signature. The loop must
+    // capture it so multi-turn extended-thinking continuity works (and so the
+    // messages-layer sameModel guard has something to gate).
+    const streamFn: StreamFn = () =>
+      Promise.resolve({
+        fullStream: (async function* () {
+          yield { type: "reasoning-delta", id: "r1", text: "thinking…" };
+          yield {
+            type: "reasoning-end",
+            id: "r1",
+            providerMetadata: { anthropic: { signature: "sig-abc-123" } },
+          };
+          yield { type: "text-delta", id: "t1", text: "answer" };
+        })(),
+        result: Promise.resolve({
+          finishReason: "stop" as const,
+          usage: createUsage(),
+        }),
+      });
+
+    const context: AgentContext = {
+      systemPrompt: "x",
+      messages: [],
+      tools: [],
+    };
+    const config: AgentLoopConfig = {
+      model: createModel(),
+      convertToLlm: identityConverter,
+    };
+
+    const stream = agentLoop(
+      [createUserMessage("Hi")],
+      context,
+      config,
+      undefined,
+      streamFn
+    );
+    for await (const _event of stream) {
+      void _event;
+    }
+    const messages = await stream.result();
+    const assistant = messages[1] as AssistantMessage;
+    const thinking = assistant.content.find(
+      (c: AssistantMessage["content"][number]) => c.type === "thinking"
+    );
+    expect(thinking).toBeDefined();
+    expect((thinking as { thinkingSignature?: string }).thinkingSignature).toBe(
+      "sig-abc-123"
+    );
+  });
+
   it("should handle custom message types via convertToLlm", async () => {
     interface CustomNotification {
       role: "notification";
