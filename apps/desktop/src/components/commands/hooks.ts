@@ -301,7 +301,7 @@ export function useModelSelector(props: {
   const handleInputKeyDown = (event: KeyboardEvent) => {
     _log.debug("handleInputKeyDown", {
       key: event.key,
-      target: (event.target as HTMLElement).tagName,
+      target: (event.target as HTMLElement | null)?.tagName ?? null,
       activeIndex: activeIndex(),
     });
     const ids = modelEntries();
@@ -347,9 +347,11 @@ export function useModelSelector(props: {
     modelViewportHeight,
     registerSearchInput,
     registerModelList,
+    filteredSections,
     modelEntries,
     modelRows,
     visibleModelRows,
+    modelRowIndexById,
     handlePick,
     handleInputKeyDown,
     isActive,
