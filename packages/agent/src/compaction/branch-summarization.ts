@@ -289,7 +289,7 @@ export async function generateBranchSummary(
     apiKey,
     ...(headers === undefined ? {} : { headers }),
     ...(signal ? { abortSignal: signal } : {}),
-    maxOutputTokens: 2048,
+    maxOutputTokens: Math.min(model.maxTokens, 4096),
   });
   if (response.finishReason === "error") {
     return err(

@@ -1495,3 +1495,40 @@ describe("agentLoopContinue with AgentMessage", () => {
     expect(messages[0]!.role).toBe("assistant");
   });
 });
+
+describe("agentLoop maxOutputTokens", () => {
+  it("passes model.maxTokens as maxOutputTokens to the stream function", async () => {
+    const context: AgentContext = {
+      systemPrompt: "You are helpful.",
+      messages: [],
+      tools: [],
+    };
+
+    const model = createModel();
+    model.maxTokens = 8192;
+
+    const config: AgentLoopConfig = {
+      model,
+      convertToLlm: identityConverter,
+    };
+
+    let capturedReq: StreamRequest | undefined;
+    const { fn: streamFn } = makeStreamFnWithReq((req) => {
+      capturedReq = req;
+      return { content: [{ type: "text", text: "ok" }] };
+    });
+
+    const stream = agentLoop(
+      [createUserMessage("Hello")],
+      context,
+      config,
+      undefined,
+      streamFn
+    );
+    for await (const _ of stream) {
+      // drain
+    }
+
+    expect(capturedReq?.maxOutputTokens).toBe(8192);
+  });
+});
