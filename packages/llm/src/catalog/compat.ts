@@ -45,13 +45,6 @@ export const PROVIDER_COMPAT: Record<string, OpenAICompletionsCompat> = {
   /** Z.AI (GLM) uses `thinking: { type: "enabled" }` + optional `reasoning_effort` (glm-5.2 only). */
   "zai-coding-plan": { thinkingFormat: "zai" },
   zai: { thinkingFormat: "zai" },
-
-  /**
-   * Together AI uses `reasoning: { enabled }` + `reasoning_effort` when supported.
-   * supportsReasoningEffort is provider-level false (per-model overrides exist
-   * in pi-ai for specific Together models; not encoded here yet).
-   */
-  togetherai: { thinkingFormat: "together" },
 };
 
 /**

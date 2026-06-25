@@ -73,7 +73,7 @@ function getApiKeyEnvVars(provider: string): readonly string[] | undefined {
     "cloudflare-workers-ai": "CLOUDFLARE_API_KEY",
     cerebras: "CEREBRAS_API_KEY",
     deepseek: "DEEPSEEK_API_KEY",
-    fireworks: "FIREWORKS_API_KEY",
+    "fireworks-ai": "FIREWORKS_API_KEY",
     google: "GEMINI_API_KEY",
     "google-vertex": "GOOGLE_CLOUD_API_KEY",
     // HF uses the generic token env var, not a provider-namespaced one.
@@ -91,7 +91,7 @@ function getApiKeyEnvVars(provider: string): readonly string[] | undefined {
     // Both opencode variants share one env var.
     opencode: "OPENCODE_API_KEY",
     openrouter: "OPENROUTER_API_KEY",
-    together: "TOGETHER_API_KEY",
+    togetherai: "TOGETHER_API_KEY",
     "vercel-ai-gateway": "AI_GATEWAY_API_KEY",
     xai: "XAI_API_KEY",
     "xiaomi-token-plan-ams": "XIAOMI_TOKEN_PLAN_AMS_API_KEY",

@@ -13,11 +13,10 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type { FinishReason, LanguageModelUsage } from "ai";
 import { generateText as aiGenerateText } from "ai";
-import { calculateCost } from "./cost.ts";
 import { toModelMessages } from "./messages.ts";
 import { resolveLanguageModel } from "./provider/resolve.ts";
 import { buildHeaders, buildProviderOptions } from "./provider/transform.ts";
-import { mapFinishReason } from "./stream.ts";
+import { mapFinishReason, mapUsage } from "./stream.ts";
 import type {
   Message,
   Model,
@@ -101,7 +100,7 @@ export async function completeWithModel(
     ...(req.sessionId ? { sessionId: req.sessionId } : {}),
   });
 
-  const mergedHeaders = { ...sessionHeaders, ...req.headers };
+  const mergedHeaders = mergeRequestHeaders(sessionHeaders, req.headers);
 
   const runner =
     runGenerateText ?? (aiGenerateText as unknown as RunGenerateText);
@@ -123,7 +122,7 @@ export async function completeWithModel(
     return {
       content: [{ type: "text", text: raw.text }],
       finishReason: mapFinishReason(raw.finishReason),
-      usage: mapCompleteUsage(raw.usage, req.model),
+      usage: mapUsage(raw.usage, req.model),
     };
   } catch (error) {
     // Abort or provider failure — return as error result, never throw.
@@ -139,19 +138,15 @@ export async function completeWithModel(
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-/** Map @ai-sdk's LanguageModelUsage to our Usage + populate cost. */
-function mapCompleteUsage(raw: LanguageModelUsage, model: Model): Usage {
-  const usage: Usage = {
-    cacheRead: raw.inputTokenDetails.cacheReadTokens ?? 0,
-    cacheWrite: raw.inputTokenDetails.cacheWriteTokens ?? 0,
-    cost: { cacheRead: 0, cacheWrite: 0, input: 0, output: 0, total: 0 },
-    input: raw.inputTokens ?? 0,
-    output: raw.outputTokens ?? 0,
-    totalTokens:
-      raw.totalTokens ?? (raw.inputTokens ?? 0) + (raw.outputTokens ?? 0),
-  };
-  calculateCost(model, usage);
-  return usage;
+/** Merge session-affinity headers with caller headers (caller wins on conflict). */
+function mergeRequestHeaders(
+  session: Record<string, string> | undefined,
+  caller: Record<string, string> | undefined
+): Record<string, string> | undefined {
+  if (!(session || caller)) {
+    return;
+  }
+  return { ...session, ...caller };
 }
 
 function emptyUsage(): Usage {

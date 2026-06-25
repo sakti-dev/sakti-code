@@ -94,7 +94,20 @@ function convertAssistantContent(part: AssistantMessage["content"][number]) {
     case "text":
       return { text: part.text, type: "text" as const };
     case "thinking":
-      return { text: part.thinking, type: "reasoning" as const };
+      // Forward the provider signature via providerMetadata so Anthropic's
+      // extended-thinking multi-turn continuity works (@ai-sdk reads
+      // providerMetadata.anthropic.signature on reasoning parts).
+      return {
+        text: part.thinking,
+        type: "reasoning" as const,
+        ...(part.thinkingSignature
+          ? {
+              providerMetadata: {
+                anthropic: { signature: part.thinkingSignature },
+              },
+            }
+          : {}),
+      };
     case "toolCall":
       return {
         input: part.arguments,
