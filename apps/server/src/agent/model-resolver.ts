@@ -1,4 +1,4 @@
-import type { KnownProvider, Model } from "@sakti-code/llm";
+import type { Model } from "@sakti-code/llm";
 import { getModel } from "@sakti-code/llm";
 import type { ServerContext } from "../context.ts";
 import { kindToMode } from "../lib/kind-to-mode.ts";
@@ -25,7 +25,7 @@ interface ProfileCache {
 
 let cache: ProfileCache | null = null;
 
-function resolveModelInstance(provider: KnownProvider, modelId: string): Model {
+function resolveModelInstance(provider: string, modelId: string): Model {
   return getModel(provider, modelId);
 }
 
@@ -59,7 +59,7 @@ export function resolveModel(
   const profiles = getCachedProfiles(ctx);
   const mode = kindToMode(session.kind);
   const ref = resolveModelRef(profiles, session.profileId, mode);
-  const model = resolveModelInstance(ref.provider as KnownProvider, ref.model);
+  const model = resolveModelInstance(ref.provider, ref.model);
   ctx.log?.agent.debug("model resolved", {
     modelId: model.id,
     provider: model.provider,

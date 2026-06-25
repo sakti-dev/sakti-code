@@ -54,57 +54,12 @@ import type { TSchema } from "typebox";
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Known provider ids from pi-ai's catalog. Kept as a literal union for editor
- * autocomplete and as documentation of which providers the env-key resolver
- * and catalog generator recognise.
- *
- * `Model.provider` is typed `ProviderId` (this union extended with
- * `string & {}`), so custom providers still typecheck — the union is advisory,
- * not exhaustive.
+ * Provider identifier — any string. The catalog (`PROVIDERS` in
+ * `catalog/generated.ts`) is the runtime source of truth for which
+ * provider ids exist. No hand-curated literal union is maintained
+ * because it rots as models.dev evolves.
  */
-export type KnownProvider =
-  | "amazon-bedrock"
-  | "ant-ling"
-  | "anthropic"
-  | "google"
-  | "google-vertex"
-  | "openai"
-  | "azure-openai-responses"
-  | "openai-codex"
-  | "nvidia"
-  | "deepseek"
-  | "github-copilot"
-  | "xai"
-  | "groq"
-  | "cerebras"
-  | "openrouter"
-  | "vercel-ai-gateway"
-  | "zai"
-  | "zai-coding-cn"
-  | "mistral"
-  | "minimax"
-  | "minimax-cn"
-  | "moonshotai"
-  | "moonshotai-cn"
-  | "huggingface"
-  | "fireworks-ai"
-  | "togetherai"
-  | "opencode"
-  | "opencode-go"
-  | "kimi-coding"
-  | "cloudflare-workers-ai"
-  | "cloudflare-ai-gateway"
-  | "xiaomi"
-  | "xiaomi-token-plan-cn"
-  | "xiaomi-token-plan-ams"
-  | "xiaomi-token-plan-sgp";
-
-/**
- * `KnownProvider | (string & {})` — the `& {}` trick widens to `string` for
- * assignability while keeping literal autocomplete on the known set. Any
- * string is a valid `ProviderId`; the known list is for tooling only.
- */
-export type ProviderId = KnownProvider | (string & {});
+export type ProviderId = string;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Thinking levels

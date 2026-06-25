@@ -6,7 +6,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
-import { type KnownProvider, PROVIDERS } from "@sakti-code/llm";
+import { PROVIDERS } from "@sakti-code/llm";
 import lockfile from "proper-lockfile";
 
 /**
@@ -16,7 +16,7 @@ import lockfile from "proper-lockfile";
  */
 
 /** Known provider ids from the catalog. Static per process. */
-const KNOWN_PROVIDERS: readonly KnownProvider[] = PROVIDERS as KnownProvider[];
+const KNOWN_PROVIDERS: readonly string[] = PROVIDERS;
 
 export interface AuthEntry {
   hasKey: boolean;
@@ -139,7 +139,7 @@ export function createAuthStore(authPath: string): AuthStore {
     },
 
     set(provider, key) {
-      if (!KNOWN_PROVIDERS.includes(provider as KnownProvider)) {
+      if (!KNOWN_PROVIDERS.includes(provider)) {
         return false;
       }
       const trimmed = key.trim();
@@ -153,7 +153,7 @@ export function createAuthStore(authPath: string): AuthStore {
     },
 
     delete(provider) {
-      if (!KNOWN_PROVIDERS.includes(provider as KnownProvider)) {
+      if (!KNOWN_PROVIDERS.includes(provider)) {
         return false;
       }
       return withLock((current) => {
