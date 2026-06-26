@@ -10,6 +10,7 @@ import type {
   ThinkingLevel,
 } from "@sakti-code/agent";
 import {
+  appendSkillsBlock,
   evaluate,
   fromConfig,
   AgentHarness as HarnessClass,
@@ -34,7 +35,6 @@ import { resolveAuth } from "./model-resolver.ts";
 import { planFirstTurn } from "./prompt-preprocessor.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
 import { executeWithRetry, parseRetrySettings } from "./retry-loop.ts";
-import { appendSkillsBlock } from "./system-prompt.ts";
 import { buildTools } from "./tools-builder.ts";
 import type { WsHandle } from "./ws-handler.ts";
 

@@ -50,7 +50,10 @@ export type {
   SkillDiagnosticCode,
 } from "./harness/skills.ts";
 export { loadSkills, loadSourcedSkills } from "./harness/skills.ts";
-export { formatSkillsForSystemPrompt } from "./harness/system-prompt.ts";
+export {
+  appendSkillsBlock,
+  formatSkillsForSystemPrompt,
+} from "./harness/system-prompt.ts";
 export type {
   AgentDefinition,
   AgentHarnessEvent,
