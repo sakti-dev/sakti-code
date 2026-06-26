@@ -1,8 +1,8 @@
 import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ReplayState } from "../../stores/workspace/ui-signals.ts";
-import { DevToolbar } from "../layout/dev-toolbar.tsx";
+import type { ReplayState } from "../../../stores/workspace/ui-signals.ts";
+import { DevToolbar } from "../dev-toolbar.tsx";
 
 /**
  * Render the toolbar with a controllable replayState signal + spies.
