@@ -30,6 +30,10 @@ import type { AgentEvent } from "@sakti-code/agent";
 import type { AssistantMessage } from "@sakti-code/llm";
 import { isRetryableAssistantError } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
+import type {
+  CompactionDecision,
+  RunCompactionOutcome,
+} from "./auto-compaction.ts";
 
 // ─── pure decision helpers (unit-tested in isolation) ────────────────────────
 
@@ -135,12 +139,22 @@ export function abortableSleep(
  * real harness/storage — the test supplies fakes.
  */
 export interface RetryRunnerDeps {
+  /**
+   * Decide whether the just-finished turn needs compaction (optional). When
+   * provided alongside {@link runCompaction}, a compaction phase runs after the
+   * retry loop: on a "compact" decision it emits `compaction_start`, runs the
+   * compaction, emits `compaction_end`, and — for an overflow that should retry
+   * — re-runs the turn via {@link runTurn}. Mirrors pi's `_handlePostAgentRun`.
+   */
+  checkCompaction?: (message: AssistantMessage) => Promise<CompactionDecision>;
   /** Forward an `auto_retry_start`/`auto_retry_end` event to the WS subscriber. */
   emit: (event: AgentEvent) => void;
   /** Optional logger for tracing retry lifecycle. When absent, no logs are emitted. */
   logger?: Logger;
   /** Roll the session leaf back past the failed message so the next turn re-runs it. */
   rollbackLeaf: () => Promise<void>;
+  /** Run one compaction (prepare → summarize → persist). Required iff checkCompaction is. */
+  runCompaction?: () => Promise<RunCompactionOutcome>;
   /** Run one turn. The first call runs `harness.prompt`, later calls run `harness.continue`. */
   runTurn: () => Promise<AssistantMessage>;
   /** Aborts the backoff sleep and stops retrying (wired to the run's abort). */
@@ -168,6 +182,8 @@ export async function executeWithRetry(
   });
   let message = await deps.runTurn();
   if (!settings.enabled) {
+    // Retry disabled — but compaction may still need to run on this turn.
+    await runCompactionPhase(deps, message);
     return;
   }
 
@@ -257,5 +273,92 @@ export async function executeWithRetry(
         ? {}
         : { finalError: message.errorMessage ?? "Unknown error" }),
     });
+  }
+
+  // Compaction phase — runs on the final turn's message whether or not a retry
+  // happened. Mirrors pi's _handlePostAgentRun compaction check. No-op when the
+  // deps are absent (back-compat).
+  await runCompactionPhase(deps, message);
+}
+
+/**
+ * Post-turn compaction: decide → emit start → run → emit end, retrying the turn
+ * once on an overflow (`willRetry`). One compact-and-retry per overflow episode
+ * (pi's `_overflowRecoveryAttempted` semantics). `[PORT]` of the compaction half
+ * of pi's `_handlePostAgentRun` + `_runAutoCompaction` event flow.
+ */
+async function runCompactionPhase(
+  deps: RetryRunnerDeps,
+  initialMessage: AssistantMessage
+): Promise<void> {
+  if (deps.checkCompaction === undefined || deps.runCompaction === undefined) {
+    return;
+  }
+  let message = initialMessage;
+  let overflowAttempts = 0;
+  for (;;) {
+    const decision = await deps.checkCompaction(message);
+    if (decision.action !== "compact" || decision.reason === undefined) {
+      return;
+    }
+    const reason = decision.reason;
+
+    // Only one compact-and-retry per overflow episode; a second overflow gives up.
+    if (reason === "overflow" && overflowAttempts > 0) {
+      deps.logger?.error("overflow recovery exhausted", undefined, {
+        reason,
+      });
+      deps.emit({
+        type: "compaction_end",
+        reason,
+        aborted: false,
+        willRetry: false,
+        errorMessage:
+          "Context overflow recovery failed after one compact-and-retry attempt. Try reducing context or switching to a larger-context model.",
+      });
+      return;
+    }
+
+    deps.logger?.info("compaction start", { reason });
+    deps.emit({ type: "compaction_start", reason });
+
+    const outcome = await deps.runCompaction();
+    if (outcome.ok) {
+      deps.logger?.info("compaction done", {
+        reason,
+        tokensBefore: outcome.tokensBefore,
+      });
+      deps.emit({
+        type: "compaction_end",
+        reason,
+        result: {
+          summary: outcome.summary,
+          firstKeptEntryId: outcome.firstKeptEntryId,
+          tokensBefore: outcome.tokensBefore,
+        },
+        aborted: false,
+        willRetry: decision.willRetry === true,
+      });
+    } else {
+      deps.logger?.error("compaction failed", undefined, {
+        reason,
+        errorMessage: outcome.errorMessage,
+      });
+      deps.emit({
+        type: "compaction_end",
+        reason,
+        aborted: false,
+        willRetry: false,
+        errorMessage: outcome.errorMessage,
+      });
+      return; // No retry on a failed compaction.
+    }
+
+    if (decision.willRetry !== true) {
+      return;
+    }
+    overflowAttempts++;
+    // Retry the turn with the compacted context (harness.continue under the hood).
+    message = await deps.runTurn();
   }
 }
