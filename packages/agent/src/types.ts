@@ -626,4 +626,27 @@ export type AgentEvent =
       attempt: number;
       // Present only when `success` is false (the error that defeated retry).
       finalError?: string;
+    }
+  // Auto-compaction lifecycle — emitted by the SERVER's compaction phase (never
+  // by the agent loop). Flows through the same AgentEvent sink as retry so the
+  // UI gets typed compaction state without a parallel channel. Ported from pi's
+  // `agent-session.ts` compaction_start/compaction_end events.
+  // `compaction_start` fires before the summary LLM call; `compaction_end` fires
+  // on success, abort, or failure.
+  | { type: "compaction_start"; reason: "threshold" | "overflow" }
+  | {
+      type: "compaction_end";
+      reason: "threshold" | "overflow";
+      // Present on success only — undefined when aborted or failed.
+      result?: {
+        summary: string;
+        firstKeptEntryId: string;
+        tokensBefore: number;
+      };
+      // True if the user/system aborted the compaction mid-summary.
+      aborted: boolean;
+      // True when the overflowed turn is retried after compaction.
+      willRetry: boolean;
+      // Present only on failure.
+      errorMessage?: string;
     };
