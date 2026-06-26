@@ -39,6 +39,17 @@ export {
   match,
   merge,
 } from "./harness/permission.ts";
+export type {
+  FirstTurnPlan,
+  LeadingInvocation,
+  LoadedResources,
+  ReadFile,
+} from "./harness/prompt-preprocessor.ts";
+export {
+  expandFileMentions,
+  parseLeadingInvocation,
+  planFirstTurn,
+} from "./harness/prompt-preprocessor.ts";
 export {
   formatPromptTemplateInvocation,
   loadPromptTemplates,

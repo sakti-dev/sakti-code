@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+
 export type LeadingInvocation =
   | { kind: "template"; name: string; args: string }
   | { kind: "skill"; name: string; args: string }
@@ -43,21 +45,22 @@ export function parseLeadingInvocation(
   return { kind: "prompt" };
 }
 
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+/** Injected file reader: returns the file's bytes, or `null` if unreadable. */
+export type ReadFile = (absolutePath: string) => Promise<Uint8Array | null>;
 
 const FILE_MAX_BYTES = 65_536;
 const FILE_MENTION = /@(\S+)/g;
 
 /**
  * Scan for `@path` tokens anywhere in the text and inline the content of any
- * that resolve to a readable file under `cwd`. Tokens that don't resolve to a
- * file (missing paths, emails, etc.) are left untouched — this keeps emails and
+ * that the supplied reader resolves. Tokens the reader returns `null` for
+ * (missing paths, emails, etc.) are left untouched — this keeps emails and
  * ordinary prose intact. Huge files are truncated to FILE_MAX_BYTES.
  */
 export async function expandFileMentions(
   text: string,
-  cwd: string
+  cwd: string,
+  readFile: ReadFile
 ): Promise<string> {
   const seen = new Set<string>();
   let out = text;
@@ -68,15 +71,15 @@ export async function expandFileMentions(
     }
     seen.add(token);
     const abs = resolve(cwd, token);
-    const buf = await readFile(abs).catch(() => null);
-    if (!buf) {
+    const bytes = await readFile(abs);
+    if (!bytes) {
       continue;
     }
-    const total = buf.length;
+    const total = bytes.byteLength;
     const slice =
-      total > FILE_MAX_BYTES ? buf.subarray(0, FILE_MAX_BYTES) : buf;
+      total > FILE_MAX_BYTES ? bytes.subarray(0, FILE_MAX_BYTES) : bytes;
     const note = total > FILE_MAX_BYTES ? `\n[truncated: ${total} bytes]` : "";
-    const inlined = `\n<file path="${token}">\n${slice.toString("utf8")}${note}\n</file>`;
+    const inlined = `\n<file path="${token}">\n${new TextDecoder().decode(slice)}${note}\n</file>`;
     out = out.replaceAll(`@${token}`, inlined);
   }
   return out;
@@ -95,11 +98,15 @@ export type FirstTurnPlan =
 export async function planFirstTurn(
   message: string,
   loaded: LoadedResources,
-  cwd: string
+  cwd: string,
+  readFile: ReadFile
 ): Promise<FirstTurnPlan> {
   const lead = parseLeadingInvocation(message, loaded);
   if (lead.kind === "template" || lead.kind === "skill") {
     return lead;
   }
-  return { kind: "prompt", text: await expandFileMentions(message, cwd) };
+  return {
+    kind: "prompt",
+    text: await expandFileMentions(message, cwd, readFile),
+  };
 }

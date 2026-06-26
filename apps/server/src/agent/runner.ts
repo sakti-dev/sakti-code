@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type {
   AgentDefinition,
@@ -15,6 +16,7 @@ import {
   fromConfig,
   AgentHarness as HarnessClass,
   INTAKE_SYSTEM_PROMPT,
+  planFirstTurn,
   Session as SessionClass,
 } from "@sakti-code/agent";
 import { createProposeSessionTool } from "@sakti-code/tools";
@@ -32,7 +34,6 @@ import {
 import { BUILTIN_AGENTS, DEFAULT_AGENT_NAME } from "./builtin-agents.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
-import { planFirstTurn } from "./prompt-preprocessor.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
 import { executeWithRetry, parseRetrySettings } from "./retry-loop.ts";
 import { buildTools } from "./tools-builder.ts";
@@ -493,7 +494,8 @@ export async function runPrompt(
                 skills: loadedContext.skills,
                 templates: loadedContext.commands,
               },
-              project.cwd
+              project.cwd,
+              (p) => readFile(p).catch(() => null)
             );
             if (plan.kind === "template") {
               const argv = plan.args.trim()
