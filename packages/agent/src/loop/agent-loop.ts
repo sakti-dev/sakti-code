@@ -534,6 +534,26 @@ async function streamAssistantResponse(
     await emit({ type: "message_start", message: finalMessage });
   }
   await emit({ type: "message_end", message: finalMessage });
+
+  // Diagnose silent-empty turns (e.g. a provider returning finish "stop" with
+  // zero content): summarize what actually accumulated vs. the finish reason.
+  // Paired with the llm layer's raw/mapped usage trace so a "nothing came
+  // back" failure is pinappable from the logs alone.
+  config.logger?.debug("stream response", {
+    ...(finish.responseModel ? { responseModel: finish.responseModel } : {}),
+    ...(finish.responseId ? { responseId: finish.responseId } : {}),
+    finishReason: finish.finishReason,
+    hadStreamError: streamError !== undefined,
+    messageStarted,
+    model: config.model.id,
+    provider: config.model.provider,
+    stopReason: finalMessage.stopReason,
+    textLength: textBuffer.length,
+    thinkingLength: thinkingBuffer.length,
+    toolCallCount: toolCallBlocks.length,
+    usage: finalMessage.usage,
+  });
+
   return finalMessage;
 }
 

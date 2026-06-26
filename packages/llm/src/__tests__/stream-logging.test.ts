@@ -165,4 +165,40 @@ describe("streamWithModel logging", () => {
     expect(req?.context?.headerKeys).toEqual(["X-Trace", "Authorization"]);
     expect(JSON.stringify(req?.context)).not.toContain("Bearer");
   });
+
+  it("logs raw + mapped usage on stream finish so a 0-token stop is diagnosable", async () => {
+    const { logger, debugs } = spyLogger();
+    const okResult = {
+      fullStream: (async function* () {
+        yield { type: "text-delta", text: "hi" };
+      })(),
+      finishReason: Promise.resolve("stop" as const),
+      response: Promise.resolve({ id: "r", modelId: "test-model" }),
+      usage: Promise.resolve({
+        inputTokens: 10,
+        outputTokens: 0,
+        totalTokens: 10,
+        inputTokenDetails: {},
+        outputTokenDetails: {},
+      }),
+    };
+    const fake = () => okResult;
+    const { result } = streamWithModel(
+      { messages: [], model, logger },
+      fakeLanguage,
+      fake as never
+    );
+    const finish = await result;
+
+    const entry = debugs.find((d) => d.message === "stream finish");
+    expect(entry).toBeDefined();
+    // The raw provider view — proves whether the provider returned 0 output.
+    expect(entry?.context?.rawUsage).toMatchObject({
+      inputTokens: 10,
+      outputTokens: 0,
+    });
+    // Our mapped view — what the agent loop actually consumes.
+    expect(entry?.context?.usage).toBe(finish.usage);
+    expect(entry?.context?.finishReason).toBe("stop");
+  });
 });

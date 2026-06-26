@@ -343,15 +343,22 @@ function mapStreamResult(
       raw.finishReason,
       raw.response,
     ]);
+    const mappedUsage = mapUsage(usage, model);
+    // Log the RAW provider usage alongside our mapped view so a "stop with 0
+    // tokens" outcome is immediately diagnosable: if raw shows outputTokens>0
+    // but mapped is 0, our mapping is at fault; if raw is 0, the provider
+    // genuinely returned an empty completion (quota/rate-limit/empty body).
     logger?.debug("stream finish", {
       baseURL: model.baseUrl,
       finishReason,
       model: model.id,
       provider: model.provider,
+      rawUsage: usage,
+      usage: mappedUsage,
     });
     return {
       finishReason: mapFinishReason(finishReason),
-      usage: mapUsage(usage, model),
+      usage: mappedUsage,
       ...(response.id ? { responseId: response.id } : {}),
       ...(response.modelId ? { responseModel: response.modelId } : {}),
     };
