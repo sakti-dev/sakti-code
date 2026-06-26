@@ -124,4 +124,19 @@ Use this skill.
     expect(skills.map((skill) => skill.name)).toEqual(["skills"]);
     expect(skills[0]?.content).toBe("Root content");
   });
+
+  it("loads skills even when matched by a .gitignore in the scanned tree", async () => {
+    const root = createTempDir();
+    const env = new TestExecutionEnv(root);
+    await env.createDir(".agents/skills/excluded", { recursive: true });
+    await env.writeFile(".agents/skills/.gitignore", "excluded/\n");
+    await env.writeFile(
+      ".agents/skills/excluded/SKILL.md",
+      "---\nname: excluded\ndescription: Excluded skill\n---\nContent"
+    );
+
+    const { skills } = await loadSkills(env, ".agents/skills");
+
+    expect(skills.map((skill) => skill.name)).toContain("excluded");
+  });
 });

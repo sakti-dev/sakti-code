@@ -1,4 +1,3 @@
-import ignore from "ignore";
 import { parse } from "yaml";
 import {
   type ExecutionEnv,
@@ -10,9 +9,6 @@ import {
 
 const MAX_NAME_LENGTH = 64;
 const MAX_DESCRIPTION_LENGTH = 1024;
-const IGNORE_FILE_NAMES = [".gitignore", ".ignore", ".fdignore"];
-
-type IgnoreMatcher = ReturnType<typeof ignore>;
 
 export type SkillDiagnosticCode =
   | "file_info_failed"
@@ -54,8 +50,10 @@ export function formatSkillInvocation(
 /**
  * Load skills from one or more directories.
  *
- * Traverses directories recursively, loads `SKILL.md` files, loads direct root `.md` files as skills, honors ignore files,
+ * Traverses directories recursively, loads `SKILL.md` files, loads direct root `.md` files as skills,
  * and returns diagnostics for invalid skill files. Missing input directories are skipped.
+ * Ignore files (`.gitignore`, `.ignore`, `.fdignore`) are deliberately not honored — skills the user
+ * creates should always load, even when the containing directory is gitignored.
  */
 export async function loadSkills(
   env: ExecutionEnv,
@@ -84,7 +82,6 @@ export async function loadSkills(
       env,
       rootInfo.path,
       true,
-      ignore(),
       rootInfo.path
     );
     skills.push(...result.skills);
@@ -128,7 +125,6 @@ async function loadSkillsFromDirInternal(
   env: ExecutionEnv,
   dir: string,
   includeRootFiles: boolean,
-  ignoreMatcher: IgnoreMatcher,
   rootDir: string
 ): Promise<{ skills: Skill[]; diagnostics: SkillDiagnostic[] }> {
   const skills: Skill[] = [];
@@ -151,8 +147,6 @@ async function loadSkillsFromDirInternal(
     return { skills, diagnostics };
   }
 
-  await addIgnoreRules(env, ignoreMatcher, dir, rootDir, diagnostics);
-
   const entriesResult = await env.listDir(dir);
   if (!entriesResult.ok) {
     diagnostics.push({
@@ -174,10 +168,6 @@ async function loadSkillsFromDirInternal(
     if (kind !== "file") {
       continue;
     }
-    const relPath = relativeEnvPath(rootDir, fullPath);
-    if (ignoreMatcher.ignores(relPath)) {
-      continue;
-    }
 
     const result = await loadSkillFromFile(env, fullPath);
     if (result.skill) {
@@ -197,18 +187,11 @@ async function loadSkillsFromDirInternal(
       continue;
     }
 
-    const relPath = relativeEnvPath(rootDir, fullPath);
-    const ignorePath = kind === "directory" ? `${relPath}/` : relPath;
-    if (ignoreMatcher.ignores(ignorePath)) {
-      continue;
-    }
-
     if (kind === "directory") {
       const result = await loadSkillsFromDirInternal(
         env,
         fullPath,
         false,
-        ignoreMatcher,
         rootDir
       );
       skills.push(...result.skills);
@@ -227,77 +210,6 @@ async function loadSkillsFromDirInternal(
   }
 
   return { skills, diagnostics };
-}
-
-async function addIgnoreRules(
-  env: ExecutionEnv,
-  ig: IgnoreMatcher,
-  dir: string,
-  rootDir: string,
-  diagnostics: SkillDiagnostic[]
-): Promise<void> {
-  const relativeDir = relativeEnvPath(rootDir, dir);
-  const prefix = relativeDir ? `${relativeDir}/` : "";
-
-  for (const filename of IGNORE_FILE_NAMES) {
-    const ignorePath = joinEnvPath(dir, filename);
-    const info = await env.fileInfo(ignorePath);
-    if (!info.ok) {
-      if (info.error.code !== "not_found") {
-        diagnostics.push({
-          type: "warning",
-          code: "file_info_failed",
-          message: info.error.message,
-          path: ignorePath,
-        });
-      }
-      continue;
-    }
-    if (info.value.kind !== "file") {
-      continue;
-    }
-    const content = await env.readTextFile(ignorePath);
-    if (!content.ok) {
-      diagnostics.push({
-        type: "warning",
-        code: "read_failed",
-        message: content.error.message,
-        path: ignorePath,
-      });
-      continue;
-    }
-    const patterns = content.value
-      .split(/\r?\n/)
-      .map((line) => prefixIgnorePattern(line, prefix))
-      .filter((line): line is string => Boolean(line));
-    if (patterns.length > 0) {
-      ig.add(patterns);
-    }
-  }
-}
-
-function prefixIgnorePattern(line: string, prefix: string): string | null {
-  const trimmed = line.trim();
-  if (!trimmed) {
-    return null;
-  }
-  if (trimmed.startsWith("#") && !trimmed.startsWith("\\#")) {
-    return null;
-  }
-
-  let pattern = line;
-  let negated = false;
-  if (pattern.startsWith("!")) {
-    negated = true;
-    pattern = pattern.slice(1);
-  } else if (pattern.startsWith("\\!")) {
-    pattern = pattern.slice(1);
-  }
-  if (pattern.startsWith("/")) {
-    pattern = pattern.slice(1);
-  }
-  const prefixed = prefix ? `${prefix}${pattern}` : pattern;
-  return negated ? `!${prefixed}` : prefixed;
 }
 
 async function loadSkillFromFile(
@@ -468,10 +380,6 @@ async function resolveKind(
     : undefined;
 }
 
-function joinEnvPath(base: string, child: string): string {
-  return `${base.replace(/\/+$/, "")}/${child.replace(/^\/+/, "")}`;
-}
-
 function dirnameEnvPath(path: string): string {
   const normalized = path.replace(/\/+$/, "");
   const slashIndex = normalized.lastIndexOf("/");
@@ -482,15 +390,4 @@ function basenameEnvPath(path: string): string {
   const normalized = path.replace(/\/+$/, "");
   const slashIndex = normalized.lastIndexOf("/");
   return slashIndex === -1 ? normalized : normalized.slice(slashIndex + 1);
-}
-
-function relativeEnvPath(root: string, path: string): string {
-  const normalizedRoot = root.replace(/\/+$/, "");
-  const normalizedPath = path.replace(/\/+$/, "");
-  if (normalizedPath === normalizedRoot) {
-    return "";
-  }
-  return normalizedPath.startsWith(`${normalizedRoot}/`)
-    ? normalizedPath.slice(normalizedRoot.length + 1)
-    : normalizedPath.replace(/^\/+/, "");
 }
