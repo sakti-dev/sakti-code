@@ -1,6 +1,9 @@
 import { createEffect, For, Show } from "solid-js";
 import {
   CommandDialog,
+  CommandDialogDescription,
+  CommandDialogHeader,
+  CommandDialogTitle,
   CommandEmpty,
   CommandInput,
   CommandItem,
@@ -87,15 +90,10 @@ export function ModelSelectorDialog(props: ModelSelectorDialogProps) {
       onOpenChange={props.onOpenChange}
       open={props.open}
     >
-      <div class="model-selector-aurora pointer-events-none absolute inset-0" />
-      <div class="model-selector-grain pointer-events-none absolute inset-0" />
-
-      <div class="border-border/70 border-b bg-muted/45 px-3.5 pt-3 pb-2.5 backdrop-blur-xl">
-        <p class="font-semibold text-[13px] text-popover-foreground tracking-tight">
-          Selecting model
-        </p>
-        <p class="text-[10px] text-muted-foreground">Command Center</p>
-      </div>
+      <CommandDialogHeader>
+        <CommandDialogTitle>Selecting model</CommandDialogTitle>
+        <CommandDialogDescription>Command Center</CommandDialogDescription>
+      </CommandDialogHeader>
 
       <div class="border-border/70 border-b bg-background/45">
         <CommandInput

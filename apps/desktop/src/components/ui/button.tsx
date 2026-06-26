@@ -41,7 +41,7 @@ type ButtonProps<T extends ValidComponent = "button"> =
 
 const ButtonLoader = () => <FiLoader class="size-4 animate-spin" />;
 
-const Button = <T extends ValidComponent = "button">(
+export const Button = <T extends ValidComponent = "button">(
   props: PolymorphicProps<T, ButtonProps<T>>
 ) => {
   const [local, others] = splitProps(props as ButtonProps, [
@@ -86,4 +86,3 @@ const Button = <T extends ValidComponent = "button">(
 };
 
 export type { ButtonProps, ButtonSize, ButtonVariant };
-export { Button };

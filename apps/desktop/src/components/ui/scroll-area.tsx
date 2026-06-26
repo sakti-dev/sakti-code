@@ -2,7 +2,7 @@ import type { Component, JSX } from "solid-js";
 import { splitProps } from "solid-js";
 import { cn } from "~/lib/utils";
 
-const ScrollArea: Component<
+export const ScrollArea: Component<
   JSX.HTMLAttributes<HTMLDivElement> & {
     orientation?: "vertical" | "horizontal" | "both";
   }
@@ -29,7 +29,7 @@ const ScrollArea: Component<
   );
 };
 
-const ScrollBar: Component<
+export const ScrollBar: Component<
   JSX.HTMLAttributes<HTMLDivElement> & {
     orientation?: "vertical" | "horizontal";
   }
@@ -51,5 +51,3 @@ const ScrollBar: Component<
     </div>
   );
 };
-
-export { ScrollArea, ScrollBar };

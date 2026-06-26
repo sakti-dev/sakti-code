@@ -1,5 +1,5 @@
 /** True when `background-clip: text` is usable (prefixed or not). SSR-safe. */
-export function supportsBackgroundClipText(): boolean {
+export const supportsBackgroundClipText = (): boolean => {
   if (typeof window === "undefined") {
     return true;
   }
@@ -10,16 +10,13 @@ export function supportsBackgroundClipText(): boolean {
     window.CSS.supports("background-clip", "text") ||
     window.CSS.supports("-webkit-background-clip", "text")
   );
-}
+};
 
 /** True when the user asked for reduced motion. SSR-safe. */
-export function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
-}
+export const prefersReducedMotion = (): boolean =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export interface GateOptions {
   pauseOnScroll: boolean;
@@ -35,11 +32,11 @@ const SCROLL_IDLE_MS = 120;
  * page is visible AND nothing is scrolling (or that gate disabled). Returns a
  * cleanup. No-ops gracefully on the server.
  */
-export function observeShimmerActive(
+export const observeShimmerActive = (
   el: Element,
   { pauseOnScroll, pauseWhenOffscreen }: GateOptions,
   onChange: (active: boolean) => void
-): () => void {
+): (() => void) => {
   if (typeof window === "undefined") {
     return () => undefined;
   }
@@ -97,4 +94,4 @@ export function observeShimmerActive(
     }
     clearTimeout(scrollTimer);
   };
-}
+};

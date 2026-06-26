@@ -1,4 +1,4 @@
-import { createMemo, Show } from "solid-js";
+import { type Component, createMemo, Show } from "solid-js";
 import { Velomark } from "velomark";
 import { cn } from "~/lib/utils";
 import {
@@ -13,7 +13,7 @@ export interface MarkdownProps {
   text: string;
 }
 
-export function Markdown(props: MarkdownProps) {
+export const Markdown: Component<MarkdownProps> = (props) => {
   const theme = createMemo(() => createDesktopVelomarkTheme());
 
   return (
@@ -29,4 +29,4 @@ export function Markdown(props: MarkdownProps) {
       </Show>
     </div>
   );
-}
+};

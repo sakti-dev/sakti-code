@@ -8,8 +8,8 @@ import "./dialog.css";
 import { useDismissibleVisibility } from "~/lib/ui/dismissible-stack";
 import { cn } from "~/lib/utils";
 
-const Dialog = DialogPrimitive.Root;
-const DialogTrigger = DialogPrimitive.Trigger;
+export const Dialog = DialogPrimitive.Root;
+export const DialogTrigger = DialogPrimitive.Trigger;
 
 const DialogPortal: Component<DialogPrimitive.DialogPortalProps> = (props) => {
   const [, rest] = splitProps(props, ["children"]);
@@ -47,7 +47,7 @@ type DialogContentProps<T extends ValidComponent = "div"> =
     overlayClass?: string | undefined;
   };
 
-const DialogContent = <T extends ValidComponent = "div">(
+export const DialogContent = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, DialogContentProps<T>>
 ) => {
   const [local, rest] = splitProps(props as DialogContentProps, [
@@ -100,12 +100,12 @@ const DialogContent = <T extends ValidComponent = "div">(
   );
 };
 
-const DialogHeader: Component<ComponentProps<"div">> = (props) => {
+export const DialogHeader: Component<ComponentProps<"div">> = (props) => {
   const [, rest] = splitProps(props, ["class"]);
   return (
     <div
       class={cn(
-        "relative border-border/80 border-b bg-muted/45 px-4 pt-4 pb-2.5 backdrop-blur-xl",
+        "relative border-border/70 border-b bg-muted/45 px-3.5 pt-3 pb-2.5 backdrop-blur-xl",
         props.class
       )}
       {...rest}
@@ -113,7 +113,7 @@ const DialogHeader: Component<ComponentProps<"div">> = (props) => {
   );
 };
 
-const DialogFooter: Component<ComponentProps<"div">> = (props) => {
+export const DialogFooter: Component<ComponentProps<"div">> = (props) => {
   const [, rest] = splitProps(props, ["class"]);
   return (
     <div
@@ -131,7 +131,7 @@ type DialogTitleProps<T extends ValidComponent = "h2"> =
     class?: string | undefined;
   };
 
-const DialogTitle = <T extends ValidComponent = "h2">(
+export const DialogTitle = <T extends ValidComponent = "h2">(
   props: PolymorphicProps<T, DialogTitleProps<T>>
 ) => {
   const [, rest] = splitProps(props as DialogTitleProps, ["class"]);
@@ -151,7 +151,7 @@ type DialogDescriptionProps<T extends ValidComponent = "p"> =
     class?: string | undefined;
   };
 
-const DialogDescription = <T extends ValidComponent = "p">(
+export const DialogDescription = <T extends ValidComponent = "p">(
   props: PolymorphicProps<T, DialogDescriptionProps<T>>
 ) => {
   const [, rest] = splitProps(props as DialogDescriptionProps, ["class"]);
@@ -161,14 +161,4 @@ const DialogDescription = <T extends ValidComponent = "p">(
       {...rest}
     />
   );
-};
-
-export {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
 };

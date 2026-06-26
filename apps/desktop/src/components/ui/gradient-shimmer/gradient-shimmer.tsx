@@ -1,4 +1,5 @@
 import {
+  type Component,
   createEffect,
   createMemo,
   createSignal,
@@ -26,7 +27,7 @@ const DEFAULT_DURATION_SECONDS = 1.45;
 const DEFAULT_SPREAD = 3;
 const DEFAULT_ANGLE = 105;
 
-function resolveStops(gradient: GradientInput | undefined): GradientStop[] {
+const resolveStops = (gradient: GradientInput | undefined): GradientStop[] => {
   if (!gradient) {
     return gradientPresets.sunrise;
   }
@@ -34,17 +35,16 @@ function resolveStops(gradient: GradientInput | undefined): GradientStop[] {
     return gradientPresets[gradient] ?? gradientPresets.sunrise;
   }
   return gradient;
-}
+};
 
-function finiteOr(value: number, fallback: number): number {
-  return Number.isFinite(value) ? value : fallback;
-}
+const finiteOr = (value: number, fallback: number): number =>
+  Number.isFinite(value) ? value : fallback;
 
 /**
  * A text shimmer that sweeps a multi-stop gradient highlight across its text.
  * Web-Animations-API driven, zero runtime dependencies.
  */
-export function GradientShimmer(props: GradientShimmerProps): JSX.Element {
+export const GradientShimmer: Component<GradientShimmerProps> = (props) => {
   const children = () => props.children;
   const safeDuration = () =>
     Math.max(
@@ -200,4 +200,4 @@ export function GradientShimmer(props: GradientShimmerProps): JSX.Element {
       {children()}
     </span>
   );
-}
+};

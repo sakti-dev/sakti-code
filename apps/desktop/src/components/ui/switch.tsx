@@ -5,15 +5,15 @@ import { splitProps } from "solid-js";
 
 import { cn } from "~/lib/utils";
 
-const Switch = SwitchPrimitive.Root;
-const SwitchDescription = SwitchPrimitive.Description;
+export const Switch = SwitchPrimitive.Root;
+export const SwitchDescription = SwitchPrimitive.Description;
 
 type SwitchControlProps = SwitchPrimitive.SwitchControlProps & {
   class?: string | undefined;
   children?: JSX.Element;
 };
 
-const SwitchControl = <T extends ValidComponent = "button">(
+export const SwitchControl = <T extends ValidComponent = "button">(
   props: PolymorphicProps<T, SwitchControlProps>
 ) => {
   const [local, others] = splitProps(props as SwitchControlProps, [
@@ -45,7 +45,7 @@ type SwitchThumbProps = SwitchPrimitive.SwitchThumbProps & {
   class?: string | undefined;
 };
 
-const SwitchThumb = <T extends ValidComponent = "div">(
+export const SwitchThumb = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, SwitchThumbProps>
 ) => {
   const [local, others] = splitProps(props as SwitchThumbProps, ["class"]);
@@ -64,7 +64,7 @@ type SwitchLabelProps = SwitchPrimitive.SwitchLabelProps & {
   class?: string | undefined;
 };
 
-const SwitchLabel = <T extends ValidComponent = "label">(
+export const SwitchLabel = <T extends ValidComponent = "label">(
   props: PolymorphicProps<T, SwitchLabelProps>
 ) => {
   const [local, others] = splitProps(props as SwitchLabelProps, ["class"]);
@@ -78,5 +78,3 @@ const SwitchLabel = <T extends ValidComponent = "label">(
     />
   );
 };
-
-export { Switch, SwitchControl, SwitchDescription, SwitchLabel, SwitchThumb };

@@ -6,9 +6,9 @@ import { splitProps } from "solid-js";
 
 import { cn } from "~/lib/utils";
 
-const Select = SelectPrimitive.Root;
-const SelectHiddenSelect = SelectPrimitive.HiddenSelect;
-const SelectValue = SelectPrimitive.Value;
+export const Select = SelectPrimitive.Root;
+export const SelectHiddenSelect = SelectPrimitive.HiddenSelect;
+export const SelectValue = SelectPrimitive.Value;
 
 type SelectTriggerProps<T extends ValidComponent = "button"> =
   SelectPrimitive.SelectTriggerProps<T> & {
@@ -16,7 +16,7 @@ type SelectTriggerProps<T extends ValidComponent = "button"> =
     children?: JSX.Element;
   };
 
-const SelectTrigger = <T extends ValidComponent = "button">(
+export const SelectTrigger = <T extends ValidComponent = "button">(
   props: PolymorphicProps<T, SelectTriggerProps<T>>
 ) => {
   const [local, others] = splitProps(props as SelectTriggerProps, [
@@ -42,7 +42,7 @@ const SelectTrigger = <T extends ValidComponent = "button">(
 type SelectContentProps<T extends ValidComponent = "div"> =
   SelectPrimitive.SelectContentProps<T> & { class?: string | undefined };
 
-const SelectContent = <T extends ValidComponent = "div">(
+export const SelectContent = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, SelectContentProps<T>>
 ) => {
   const [local, others] = splitProps(props as SelectContentProps, ["class"]);
@@ -67,7 +67,7 @@ type SelectItemProps<T extends ValidComponent = "li"> =
     children?: JSX.Element;
   };
 
-const SelectItem = <T extends ValidComponent = "li">(
+export const SelectItem = <T extends ValidComponent = "li">(
   props: PolymorphicProps<T, SelectItemProps<T>>
 ) => {
   const [local, others] = splitProps(props as SelectItemProps, [
@@ -101,7 +101,7 @@ type SelectLabelProps<T extends ValidComponent = "label"> =
     class?: string | undefined;
   };
 
-const SelectLabel = <T extends ValidComponent = "label">(
+export const SelectLabel = <T extends ValidComponent = "label">(
   props: PolymorphicProps<T, SelectLabelProps<T>>
 ) => {
   const [local, others] = splitProps(props as SelectLabelProps, ["class"]);
@@ -114,14 +114,4 @@ const SelectLabel = <T extends ValidComponent = "label">(
       {...others}
     />
   );
-};
-
-export {
-  Select,
-  SelectContent,
-  SelectHiddenSelect,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
 };

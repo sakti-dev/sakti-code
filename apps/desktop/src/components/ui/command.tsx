@@ -1,7 +1,13 @@
 import { FiSearch } from "solid-icons/fi";
 import type { Component, ComponentProps, JSX, ParentComponent } from "solid-js";
 import { createEffect, splitProps } from "solid-js";
-import { Dialog, DialogContent } from "~/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
 import { cn, createLogger } from "~/lib/utils";
 
 export const CommandRoot: ParentComponent<ComponentProps<"div">> = (props) => {
@@ -162,3 +168,7 @@ export const CommandSeparator: Component<ComponentProps<"div">> = (props) => {
   const [local, others] = splitProps(props, ["class"]);
   return <div class={cn("h-px bg-border", local.class)} {...others} />;
 };
+
+export const CommandDialogHeader = DialogHeader;
+export const CommandDialogTitle = DialogTitle;
+export const CommandDialogDescription = DialogDescription;
