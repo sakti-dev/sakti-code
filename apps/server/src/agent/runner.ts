@@ -233,7 +233,11 @@ export function resolveAgentByName(
     byName.set(agent.name, agent);
   }
   const resolved = byName.get(name) ?? byName.get(DEFAULT_AGENT_NAME);
-  return resolved ?? BUILTIN_AGENTS[0];
+  if (resolved) {
+    return resolved;
+  }
+  // Unreachable: builtins always seed DEFAULT_AGENT_NAME ("build") above.
+  throw new Error(`No agent resolved for "${name}"`);
 }
 
 /** Load project agents and resolve the active agent by name. */
