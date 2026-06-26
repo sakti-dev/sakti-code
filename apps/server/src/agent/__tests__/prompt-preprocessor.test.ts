@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   expandFileMentions,
   parseLeadingInvocation,
+  planFirstTurn,
 } from "../prompt-preprocessor.ts";
 
 const skills = [{ name: "graphify", description: "g", content: "c" }];
@@ -110,5 +111,40 @@ describe("expandFileMentions", () => {
     const out = await expandFileMentions("@big.txt", dir);
     expect(out).toContain("[truncated:");
     expect(out.length).toBeLessThan(70_000);
+  });
+});
+
+describe("planFirstTurn", () => {
+  const loaded = {
+    skills: [{ name: "graphify", description: "g", content: "c" }],
+    templates: [{ name: "commit", description: "c", content: "c" }],
+  };
+
+  it("plans a template turn for a leading /name", async () => {
+    const plan = await planFirstTurn("/commit feat: x", loaded, "/tmp");
+    expect(plan).toEqual({ kind: "template", name: "commit", args: "feat: x" });
+  });
+
+  it("plans a skill turn for a leading skill:name", async () => {
+    const plan = await planFirstTurn("skill:graphify go", loaded, "/tmp");
+    expect(plan).toEqual({ kind: "skill", name: "graphify", args: "go" });
+  });
+
+  it("plans a prompt turn with @file expanded for ordinary text", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sakti-plan-"));
+    writeFileSync(join(dir, "f.txt"), "DATA");
+    const plan = await planFirstTurn("look at @f.txt", loaded, dir);
+    expect(plan.kind).toBe("prompt");
+    if (plan.kind === "prompt") {
+      expect(plan.text).toContain("DATA");
+    }
+  });
+
+  it("plans a prompt turn leaving unknown @tokens untouched", async () => {
+    const plan = await planFirstTurn("email me@host.com", loaded, "/tmp");
+    expect(plan.kind).toBe("prompt");
+    if (plan.kind === "prompt") {
+      expect(plan.text).toBe("email me@host.com");
+    }
   });
 });

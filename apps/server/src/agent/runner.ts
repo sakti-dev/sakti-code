@@ -31,10 +31,13 @@ import {
 import { BUILTIN_AGENTS, DEFAULT_AGENT_NAME } from "./builtin-agents.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
+import { planFirstTurn } from "./prompt-preprocessor.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
 import { executeWithRetry, parseRetrySettings } from "./retry-loop.ts";
 import { buildTools } from "./tools-builder.ts";
 import type { WsHandle } from "./ws-handler.ts";
+
+const PROMPT_ARG_SPLIT = /\s+/;
 
 interface ActiveRun {
   harness: AgentHarness;
@@ -355,6 +358,11 @@ export async function runPrompt(
     { apiKey: string; headers?: Record<string, string> } | undefined
   > => ({ apiKey: auth.apiKey });
 
+  // Load the project's full agent context once: used both to wire the harness
+  // resources (skills + command templates, so harness.skill/promptFromTemplate
+  // resolve) and to resolve the session agent by name without a second scan.
+  const loadedContext = await loadAgentContext(project.cwd);
+
   const harness = new HarnessClass({
     env,
     model,
@@ -368,6 +376,10 @@ export async function runPrompt(
     steeringMode: settings.steering_mode as QueueMode,
     thinkingLevel,
     getApiKeyAndHeaders,
+    resources: {
+      skills: loadedContext.skills,
+      promptTemplates: loadedContext.commands,
+    },
   });
   ctx.log?.agent.debug("harness created", { sessionId });
 
@@ -376,7 +388,7 @@ export async function runPrompt(
   // applies the agent's system prompt + tool allowlist + thinking level.
   // Intake keeps its dedicated INTAKE_SYSTEM_PROMPT and proposeSession flow.
   const agentName = settings.agent ?? DEFAULT_AGENT_NAME;
-  const agent = await resolveSessionAgent(project.cwd, agentName);
+  const agent = resolveAgentByName(agentName, loadedContext.agents);
   const agentRuleset = agent.permission ?? fromConfig({ "*": "allow" });
 
   // Wire the interactive permission channel: the evaluator merges live grants
@@ -455,7 +467,30 @@ export async function runPrompt(
               sessionId,
               messageLength: message.length,
             });
-            return harness.prompt(message);
+            // Prompt preprocessor: a leading `/name` or `skill:name` dispatches
+            // to the matching harness method; otherwise run as a prompt with any
+            // `@file` mentions expanded into the message.
+            const plan = await planFirstTurn(
+              message,
+              {
+                skills: loadedContext.skills,
+                templates: loadedContext.commands,
+              },
+              project.cwd
+            );
+            if (plan.kind === "template") {
+              const argv = plan.args.trim()
+                ? plan.args.trim().split(PROMPT_ARG_SPLIT)
+                : [];
+              return harness.promptFromTemplate(plan.name, argv);
+            }
+            if (plan.kind === "skill") {
+              return harness.skill(
+                plan.name,
+                plan.args.length > 0 ? plan.args : undefined
+              );
+            }
+            return harness.prompt(plan.text);
           }
           ctx.log?.agent.info("turn retry", { sessionId });
           return harness.continue();

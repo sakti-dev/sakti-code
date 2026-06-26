@@ -81,3 +81,25 @@ export async function expandFileMentions(
   }
   return out;
 }
+
+export type FirstTurnPlan =
+  | { kind: "template"; name: string; args: string }
+  | { kind: "skill"; name: string; args: string }
+  | { kind: "prompt"; text: string };
+
+/**
+ * Decide how the first turn runs: a leading `/name` or `skill:name` dispatches
+ * to the harness template/skill method; otherwise the message is a prompt with
+ * any `@file` mentions expanded. Called once per run before the first turn.
+ */
+export async function planFirstTurn(
+  message: string,
+  loaded: LoadedResources,
+  cwd: string
+): Promise<FirstTurnPlan> {
+  const lead = parseLeadingInvocation(message, loaded);
+  if (lead.kind === "template" || lead.kind === "skill") {
+    return lead;
+  }
+  return { kind: "prompt", text: await expandFileMentions(message, cwd) };
+}
