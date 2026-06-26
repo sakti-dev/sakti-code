@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
+import { scanCommand } from "../lib/command-scan.ts";
 import { OutputAccumulator } from "../lib/output-accumulator.ts";
 import {
   DEFAULT_MAX_BYTES,
@@ -142,6 +143,21 @@ export function createBashTool(
     label: "bash",
     description: `Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.`,
     parameters: bashSchema,
+    permissions: (params) => {
+      const command = (params as BashToolInput).command ?? "";
+      const scan = scanCommand(command, cwd);
+      return [
+        { permission: "bash", patterns: [command] },
+        ...(scan.externalDirectories.length > 0
+          ? [
+              {
+                permission: "external_directory",
+                patterns: scan.externalDirectories,
+              },
+            ]
+          : []),
+      ];
+    },
     async execute(
       _toolCallId: string,
       { command, timeout }: BashToolInput,

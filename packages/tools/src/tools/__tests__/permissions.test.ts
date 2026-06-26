@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createBashTool,
   createEditTool,
   createFindTool,
   createGrepTool,
@@ -55,5 +56,26 @@ describe("tool permissions declarators", () => {
     expect(tool.permissions?.({})).toEqual([
       { permission: "list", patterns: ["*"] },
     ]);
+  });
+});
+
+describe("bash permissions declarator", () => {
+  it("declares bash + external_directory for an out-of-cwd command", () => {
+    const tool = createBashTool("/proj");
+    const result = tool.permissions?.({ command: "cat /etc/passwd" });
+    expect(result).toContainEqual({
+      permission: "bash",
+      patterns: ["cat /etc/passwd"],
+    });
+    expect(result).toContainEqual({
+      permission: "external_directory",
+      patterns: ["/etc/passwd"],
+    });
+  });
+
+  it("declares only bash for an in-cwd command", () => {
+    const tool = createBashTool("/proj");
+    const result = tool.permissions?.({ command: "ls src" });
+    expect(result).toEqual([{ permission: "bash", patterns: ["ls src"] }]);
   });
 });
