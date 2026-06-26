@@ -13,8 +13,8 @@ import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import { aggregateUsage } from "~/stores/session/usage-stats";
 import { useStore } from "~/stores/store-context";
+import { ChipInput, type ChipInputApi } from "./chip-input.tsx";
 import { ContextMenu, type ContextMenuMode } from "./context-menu.tsx";
-import { detectTrigger } from "./detect-trigger.ts";
 import { InputFooter } from "./input-footer";
 import { PermissionStrip } from "./permission-strip";
 import { ProfileSelect } from "./profile-select";
@@ -30,14 +30,11 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   const { actions, api, server, sessions } = useStore();
   const [value, setValue] = createSignal("");
   const [isFocused, setIsFocused] = createSignal(false);
-  let textareaRef: HTMLTextAreaElement | undefined;
+  let chipApi: ChipInputApi | undefined;
 
-  // Slash/at context menu state. `index` is where the trigger char sits in the
-  // textarea value; on pick we replace that char with the chosen token.
-  const [menu, setMenu] = createSignal<{
-    mode: ContextMenuMode;
-    index: number;
-  } | null>(null);
+  // Slash/at context menu state. The chip editor owns caret bookkeeping; the
+  // menu just needs to know which mode opened.
+  const [menu, setMenu] = createSignal<ContextMenuMode | null>(null);
 
   const project = createMemo(() => {
     const sid = props.sessionId;
@@ -95,28 +92,20 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
 
   const closeMenu = () => {
     setMenu(null);
-    // Return focus to the textarea so the user can keep typing (Escape, click
-    // outside, etc.). The pick path refocuses via insertToken too.
-    queueMicrotask(() => textareaRef?.focus());
+    // Return focus to the chip editor so the user can keep typing (Escape,
+    // click outside, etc.). The pick path refocuses via insertChip too.
+    queueMicrotask(() => chipApi?.focus());
   };
 
-  const insertToken = (token: string) => {
-    const m = menu();
-    if (!m) {
-      return;
-    }
-    const before = value().slice(0, m.index);
-    const after = value().slice(m.index + 1);
-    const head = `${before}${token} `;
-    setValue(head + after);
-    setMenu(null);
+  const onTrigger = ({ char }: { char: ContextMenuMode }) => {
+    setMenu(char);
+    // Move focus to the dialog's search input so further typing filters there,
+    // not in the editor.
     queueMicrotask(() => {
-      if (textareaRef) {
-        const pos = head.length;
-        textareaRef.focus();
-        textareaRef.setSelectionRange(pos, pos);
-        autoResize();
-      }
+      const input = document.querySelector(
+        "[cmdk-input]"
+      ) as HTMLInputElement | null;
+      input?.focus();
     });
   };
 
@@ -192,29 +181,8 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     }
     const text = value().trim();
     actions.sendPrompt(props.sessionId, text);
-    setValue("");
+    chipApi?.clear();
   };
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  };
-
-  const autoResize = () => {
-    if (!textareaRef) {
-      return;
-    }
-    textareaRef.style.height = "24px";
-    textareaRef.style.height = `${Math.min(textareaRef.scrollHeight, 200)}px`;
-  };
-
-  createEffect(() => {
-    if (value() === "") {
-      autoResize();
-    }
-  });
 
   return (
     <div class="w-full px-4 pb-4">
@@ -266,40 +234,16 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
             isFocused() && "border-primary/40 shadow-xl"
           )}
           data-component="chat-input"
+          onFocusIn={() => setIsFocused(true)}
+          onFocusOut={() => setIsFocused(false)}
         >
-          <textarea
-            class={cn(
-              "scrollbar-default w-full resize-none bg-transparent px-1 py-2 outline-none",
-              "text-foreground placeholder:text-muted-foreground/60",
-              "max-h-[200px] min-h-6"
-            )}
+          <ChipInput
             disabled={props.disabled}
-            onBlur={() => setIsFocused(false)}
-            onFocus={() => setIsFocused(true)}
-            onInput={(e) => {
-              const el = e.currentTarget;
-              setValue(el.value);
-              autoResize();
-              const trig = detectTrigger(el.value, el.selectionStart ?? 0);
-              if (trig) {
-                setMenu({ mode: trig.char, index: trig.index });
-                // Move focus to the dialog's search input so further typing
-                // filters there, not in the textarea.
-                queueMicrotask(() => {
-                  const input = document.querySelector(
-                    "[cmdk-input]"
-                  ) as HTMLInputElement | null;
-                  input?.focus();
-                });
-              }
-            }}
-            onKeyDown={handleKeyDown}
+            onChange={setValue}
+            onSubmit={send}
+            onTrigger={onTrigger}
             placeholder={props.placeholder ?? "Send a message…"}
-            ref={(el: HTMLTextAreaElement) => {
-              textareaRef = el;
-            }}
-            rows={1}
-            value={value()}
+            registerApi={(a) => (chipApi = a)}
           />
 
           <div class="flex items-center justify-end gap-2">
@@ -318,10 +262,10 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
       <ContextMenu
         commands={catalog()?.commands ?? []}
         files={files() ?? []}
-        mode={menu()?.mode ?? "/"}
+        mode={menu() ?? "/"}
         onClose={closeMenu}
         onFilesQuery={onFilesQuery}
-        onPick={insertToken}
+        onPick={(token) => chipApi?.insertChip(token)}
         open={menu() !== null}
         skills={catalog()?.skills ?? []}
       />

@@ -50,11 +50,11 @@ describe("OnboardingPanel", () => {
   });
 
   it("renders chat input", () => {
-    const { getByPlaceholderText } = render(() => (
+    const { getByText } = render(() => (
       <OnboardingPanel intakeSessionId="s1" projectId="p1" />
     ));
-    expect(
-      getByPlaceholderText("Ask anything about this project…")
-    ).toBeTruthy();
+    // ChipInput renders the placeholder as an overlay <div> (contenteditable
+    // has no native placeholder attribute), so look it up by text.
+    expect(getByText("Ask anything about this project…")).toBeTruthy();
   });
 });
