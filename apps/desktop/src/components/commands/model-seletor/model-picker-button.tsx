@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
 import { createLogger } from "~/lib/utils";
+import { ModelSelectorDialog } from ".";
 import { useModelPicker } from "./hooks";
-import { ModelSelectorDialog } from "./model-selector-dialog";
 
 const pickerLog = createLogger({ module: "ModelPickerButton" });
 

@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@solidjs/testing-library";
 import { describe, expect, it, vi } from "vitest";
+import { ModelSelectorDialog } from "..";
 import type { ModelSelectorSection } from "../hooks";
-import { ModelSelectorDialog } from "../model-selector-dialog";
 
 const mockSections: ModelSelectorSection[] = [
   {
