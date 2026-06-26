@@ -13,12 +13,17 @@ import type {
 import {
   appendSkillsBlock,
   BUILTIN_AGENTS,
+  checkCompaction,
   DEFAULT_AGENT_NAME,
   evaluate,
+  executeWithRetry,
   fromConfig,
   AgentHarness as HarnessClass,
   INTAKE_SYSTEM_PROMPT,
+  parseCompactionSettings,
+  parseRetrySettings,
   planFirstTurn,
+  runAutoCompaction,
   Session as SessionClass,
 } from "@sakti-code/agent";
 import { createProposeSessionTool } from "@sakti-code/tools";
@@ -28,15 +33,9 @@ import {
   getPermissionChannel,
   type PermissionFrame,
 } from "../lib/permission-channel.ts";
-import {
-  checkCompaction,
-  parseCompactionSettings,
-  runAutoCompaction,
-} from "./auto-compaction.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
-import { executeWithRetry, parseRetrySettings } from "./retry-loop.ts";
 import { buildTools } from "./tools-builder.ts";
 import type { WsHandle } from "./ws-handler.ts";
 

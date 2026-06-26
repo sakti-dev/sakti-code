@@ -1,4 +1,16 @@
 export { Agent } from "./agent.ts";
+export type {
+  CheckCompactionInput,
+  CompactionDecision,
+  CompactionReason,
+  RunCompactionDeps,
+  RunCompactionOutcome,
+} from "./compaction/auto-compaction.ts";
+export {
+  checkCompaction,
+  parseCompactionSettings,
+  runAutoCompaction,
+} from "./compaction/auto-compaction.ts";
 export {
   collectEntriesForBranchSummary,
   generateBranchSummary,
@@ -102,6 +114,18 @@ export {
 export { truncateHead, truncateTail } from "./lib/truncate.ts";
 export { runAgentLoop, runAgentLoopContinue } from "./loop/agent-loop.ts";
 export { INTAKE_SYSTEM_PROMPT } from "./prompts/intake-system-prompt.ts";
+export type {
+  RetryDecisionInput,
+  RetryRunnerDeps,
+  RetrySettings,
+} from "./retry-loop.ts";
+export {
+  abortableSleep,
+  computeRetryDelay,
+  executeWithRetry,
+  parseRetrySettings,
+  shouldRetry,
+} from "./retry-loop.ts";
 export type {
   AgentEvent,
   AgentLoopConfig,

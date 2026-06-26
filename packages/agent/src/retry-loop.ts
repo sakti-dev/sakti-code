@@ -2,17 +2,18 @@
  * # Application-level retry loop
  *
  * Wraps a failed LLM turn with classification, exponential backoff, and UI
- * visibility. Lives in the server layer (not the agent loop, not the SDK) so
- * that retry state can surface to the user via typed `auto_retry_*` events on
- * the same WS channel as agent events.
+ * visibility. Lives in the agent package but owns no transport: the server
+ * supplies the callbacks (`emit`, `runTurn`, `rollbackLeaf`, `signal`) so retry
+ * state surfaces to the user via the same channel the caller chooses (in sakti,
+ * typed `auto_retry_*` events on the WS channel).
  *
  * ## Why application-level retry?
  *
  * The SDK (`@sakti-code/llm`) runs with `maxRetries: 0` (fail fast). Retrying
  * at the SDK level hides failures from the user and offers no way to show a
- * "retrying in 4s…" banner or to cancel mid-backoff. By handling retry here,
- * we get full control over backoff timing, abort, and UI reporting — matching
- * pi's coding-agent design.
+ * "retrying in 4s…" banner or to cancel mid-backoff. Handling retry here gives
+ * full control over backoff timing, abort, and UI reporting — matching pi's
+ * coding-agent design.
  *
  * ## Flow
  *
@@ -26,14 +27,14 @@
  * @see docs/plans/2026-06-25-application-level-retry.md
  */
 
-import type { AgentEvent } from "@sakti-code/agent";
 import type { AssistantMessage } from "@sakti-code/llm";
 import { isRetryableAssistantError } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
 import type {
   CompactionDecision,
   RunCompactionOutcome,
-} from "./auto-compaction.ts";
+} from "./compaction/auto-compaction.ts";
+import type { AgentEvent } from "./types.ts";
 
 // ─── pure decision helpers (unit-tested in isolation) ────────────────────────
 

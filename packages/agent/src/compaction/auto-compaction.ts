@@ -1,34 +1,36 @@
-import type { ThinkingLevel } from "@sakti-code/agent";
-import {
-  type AgentMessage,
-  type CompactionSettings,
-  calculateContextTokens,
-  compact,
-  estimateContextTokens,
-  prepareCompaction,
-  type Session,
-  type SessionTreeEntry,
-  shouldCompact,
-} from "@sakti-code/agent";
 import {
   type AssistantMessage,
   isContextOverflow,
   type Model,
 } from "@sakti-code/llm";
+import {
+  type CompactionSettings,
+  calculateContextTokens,
+  compact,
+  estimateContextTokens,
+  prepareCompaction,
+  shouldCompact,
+} from "../compaction.ts";
+import type { Session } from "../harness/session.ts";
+import type { SessionTreeEntry, ThinkingLevel } from "../harness/types.ts";
+import type { AgentMessage } from "../types.ts";
 
 /**
- * # Auto-compaction orchestrator
+ * # Auto-compaction policy
  *
  * Ports pi's `_checkCompaction` + `_runAutoCompaction` (from
- * `openspec/references/pi/packages/coding-agent/src/core/agent-session.ts`)
- * into the server layer. The agent loop deliberately does not compact (neither
- * does pi's); the decision + execution live here, hooked into the turn loop via
- * {@link CheckCompactionInput} / {@link RunCompactionDeps}.
+ * `openspec/references/pi/packages/coding-agent/src/core/agent-session.ts`).
+ * The agent loop itself does not compact (neither does pi's); this module
+ * supplies the per-turn policy (decide + run) and is hooked into the turn
+ * loop by the server via {@link CheckCompactionInput} / {@link RunCompactionDeps}.
  *
  * The pure primitives (`shouldCompact`, `estimateContextTokens`,
- * `calculateContextTokens`, `prepareCompaction`, `compact`) already mirror pi
- * and live in `@sakti-code/agent`; this module supplies the policy that calls
- * them per turn.
+ * `calculateContextTokens`, `prepareCompaction`, `compact`) live alongside in
+ * `../compaction.ts`; this module supplies the policy that calls them per turn.
+ *
+ * It owns no I/O of its own: persistence goes through the `Session`
+ * (`SessionStorage`) interface, and the model + API key are injected by the
+ * caller — so it has no dependency on app config (`profiles.json` / `auth.json`).
  *
  * Known limitation (inherited from pi): when the last assistant reports
  * present-but-empty usage (e.g. z.ai's degenerate `finishReason:"other"`
