@@ -89,6 +89,40 @@ export interface PromptTemplate {
   name: string;
 }
 
+/** Runtime role of an agent. Mirrors opencode's mode literals. */
+export type AgentMode = "primary" | "subagent" | "all";
+
+/**
+ * A named, switchable agent definition. Loaded from markdown under an `agent` or
+ * `agents` directory (frontmatter → mode/hidden/description/model, body →
+ * systemPrompt) or provided as a builtin by the application. Covers both
+ * builtins and user-defined agents. Phase 1 carries `activeToolNames` as a
+ * simple tool allowlist; Phase 2 will add a permission ruleset. Named
+ * `AgentDefinition` to avoid clashing with the runtime {@link Agent} loop
+ * wrapper exported from `agent.ts`.
+ */
+export interface AgentDefinition {
+  /**
+   * Phase 1 tool allowlist. When set, only these tool names are active while the
+   * agent is selected. Phase 2 replaces/augments this with a permission ruleset.
+   */
+  activeToolNames?: string[];
+  /** Short human-readable summary for menus/autocomplete. */
+  description?: string;
+  /** Exclude from the `@`-mention menu while still allowing explicit selection. */
+  hidden?: boolean;
+  /** Runtime role: top-level (`primary`), spawned for subtasks (`subagent`), or both (`all`). */
+  mode: AgentMode;
+  /** Override the model used while this agent is active. */
+  model?: { providerId: string; modelId: string };
+  /** Stable agent name used for `@`-mention lookup and switching. */
+  name: string;
+  /** System prompt used while this agent is active. */
+  systemPrompt: string;
+  /** Override the reasoning level used while this agent is active. */
+  thinkingLevel?: ThinkingLevel;
+}
+
 /** Resources made available to explicit invocation methods and system-prompt callbacks. */
 export interface AgentHarnessResources<
   TSkill extends Skill = Skill,

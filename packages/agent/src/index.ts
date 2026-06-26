@@ -29,10 +29,12 @@ export { buildSessionContext, Session } from "./harness/session.ts";
 export { loadSkills, loadSourcedSkills } from "./harness/skills.ts";
 export { formatSkillsForSystemPrompt } from "./harness/system-prompt.ts";
 export type {
+  AgentDefinition,
   AgentHarnessEvent,
   AgentHarnessOptions,
   AgentHarnessPhase,
   AgentHarnessResources,
+  AgentMode,
   ExecutionEnv,
   ExecutionEnvExecOptions,
   FileErrorCode,
