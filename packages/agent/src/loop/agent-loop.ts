@@ -841,6 +841,24 @@ async function prepareToolCall(
   try {
     const preparedToolCall = prepareToolCallArguments(tool, toolCall);
     const validatedArgs = validateToolArguments(tool, preparedToolCall);
+    if (config.evaluatePermission && tool.permissions) {
+      const requests = tool.permissions(validatedArgs) ?? [];
+      const blocked = requests.some((request) =>
+        request.patterns.some(
+          (pattern) =>
+            config.evaluatePermission!(request.permission, pattern) !== "allow"
+        )
+      );
+      if (blocked) {
+        return {
+          kind: "immediate",
+          result: createErrorToolResult(
+            `Permission denied for tool "${tool.name}"`
+          ),
+          isError: true,
+        };
+      }
+    }
     if (config.beforeToolCall) {
       const beforeResult = await config.beforeToolCall(
         {

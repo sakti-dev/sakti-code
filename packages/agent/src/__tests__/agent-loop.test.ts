@@ -577,6 +577,71 @@ describe("agentLoop with AgentMessage", () => {
     expect(executed).toEqual([123]);
   });
 
+  it("blocks a tool call when evaluatePermission denies it", async () => {
+    const toolSchema = Type.Object({ path: Type.String() });
+    const executed: string[] = [];
+    const tool: AgentTool<typeof toolSchema, undefined> = {
+      name: "read",
+      label: "Read",
+      description: "Read",
+      parameters: toolSchema,
+      async execute(_toolCallId, params) {
+        executed.push(params.path);
+        return {
+          content: [{ type: "text", text: "ok" }],
+          details: undefined,
+        };
+      },
+      permissions: (params) => [
+        { permission: "read", patterns: [(params as { path: string }).path] },
+      ],
+    };
+
+    const context: AgentContext = {
+      systemPrompt: "",
+      messages: [],
+      tools: [tool],
+    };
+    const config: AgentLoopConfig = {
+      model: createModel(),
+      convertToLlm: identityConverter,
+      evaluatePermission: (permission, pattern) =>
+        permission === "read" && pattern.endsWith(".env") ? "deny" : "allow",
+    };
+
+    const { fn: streamFn } = makeStreamFn(
+      {
+        content: [
+          {
+            type: "toolCall",
+            id: "tool-1",
+            name: "read",
+            arguments: { path: "secret.env" },
+          },
+        ],
+        finishReason: "toolUse",
+      },
+      { content: [{ type: "text", text: "done" }] }
+    );
+
+    const events: AgentEvent[] = [];
+    for await (const event of agentLoop(
+      [createUserMessage("read it")],
+      context,
+      config,
+      undefined,
+      streamFn
+    )) {
+      events.push(event);
+    }
+
+    expect(executed).toEqual([]);
+    const toolEnd = events.find((e) => e.type === "tool_execution_end");
+    expect(toolEnd?.type === "tool_execution_end" && toolEnd.isError).toBe(
+      true
+    );
+  });
+
   it("should prepare tool arguments for validation", async () => {
     const replaceSchema = Type.Object({
       oldText: Type.String(),

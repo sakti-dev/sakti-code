@@ -201,6 +201,19 @@ export interface AgentLoopConfig {
   convertToLlm: (messages: AgentMessage[]) => Message[] | Promise<Message[]>;
 
   /**
+   * Optional permission evaluator invoked for every entry a tool declares via
+   * `AgentTool.permissions`. The loop calls it with each `(permission, pattern)`
+   * pair before executing the tool; if any returns `"deny"` or `"ask"`, the call
+   * is blocked (Phase 2 treats `ask` as deny since the interactive approval
+   * channel lands in Phase 4). Returning `"allow"` for all pairs lets the call
+   * proceed. When unset, no permission enforcement happens.
+   */
+  evaluatePermission?: (
+    permission: string,
+    pattern: string
+  ) => "allow" | "deny" | "ask";
+
+  /**
    * Resolves an API key dynamically for each LLM call.
    *
    * Useful for short-lived OAuth tokens (e.g., GitHub Copilot) that may expire
