@@ -9,7 +9,7 @@ sakti-code: desktop app (Electron + SolidJS) running multiple AI coding agents c
 
 ## Monorepo layout
 
-- `packages/agent/` — pure agent loop, types, compaction. **No persistence, no DB.** Talks to storage via the `SessionStore` interface.
+- `packages/agent/` — pure agent loop, types, compaction, plus the coding-agent policy layer (system-prompt composition, prompt preprocessor, builtin agents, auto-compaction policy, application-level retry). **No persistence, no DB, no app config.** Talks to storage via the `SessionStore` interface; model + API key are injected by the caller.
 - `packages/db/` — Drizzle schema, repos, `SqliteSessionStorage` (implements `SessionStorage`).
 - `packages/tools/` — coding tools (read, write, edit, bash, grep, find, ls).
 - `apps/server/` — Hono REST server (on `@hono/node-server`). Composes route modules via `buildApp(ctx)`; each module is a `factory.createApp()` with `.basePath()`, mounted via chained `.route()`. Context is injected through a `ctxMiddleware` that sets `c.var.ctx`; routes access it through `getCtx(c)`. Exports `type App = ReturnType<typeof buildApp>`; the UI consumes it via Hono RPC (`hcWithType<App>` in `apps/desktop/src/lib/api.ts`).
