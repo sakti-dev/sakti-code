@@ -1,11 +1,14 @@
+import { describe, expect, it } from "vitest";
+import {
+  BUILTIN_AGENTS,
+  resolveBuiltinAgent,
+} from "../../harness/builtin-agents.ts";
 import {
   evaluate,
   fromConfig,
   merge,
   type PermissionRuleset,
-} from "@sakti-code/agent";
-import { describe, expect, it } from "vitest";
-import { BUILTIN_AGENTS, resolveBuiltinAgent } from "../builtin-agents.ts";
+} from "../../harness/permission.ts";
 
 function decision(
   ruleset: PermissionRuleset,

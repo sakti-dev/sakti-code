@@ -1,8 +1,5 @@
-import {
-  type AgentDefinition,
-  fromConfig,
-  type PermissionRuleset,
-} from "@sakti-code/agent";
+import { fromConfig, type PermissionRuleset } from "./permission.ts";
+import type { AgentDefinition } from "./types.ts";
 
 /**
  * Builtin switchable agents. Ruleset values are ported from opencode's

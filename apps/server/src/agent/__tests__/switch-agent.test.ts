@@ -1,10 +1,13 @@
-import { type AgentDefinition, fromConfig } from "@sakti-code/agent";
+import {
+  type AgentDefinition,
+  fromConfig,
+  resolveBuiltinAgent,
+} from "@sakti-code/agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getPermissionChannel,
   resetPermissionChannelsForTesting,
 } from "../../lib/permission-channel.ts";
-import { resolveBuiltinAgent } from "../builtin-agents.ts";
 import {
   buildPermissionEvaluator,
   clearRunsForTesting,

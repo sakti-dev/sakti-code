@@ -19,6 +19,11 @@ export type {
   AgentDiagnosticCode,
 } from "./harness/agents.ts";
 export { loadAgents } from "./harness/agents.ts";
+export {
+  BUILTIN_AGENTS,
+  DEFAULT_AGENT_NAME,
+  resolveBuiltinAgent,
+} from "./harness/builtin-agents.ts";
 export type {
   CommandDiagnostic,
   CommandDiagnosticCode,

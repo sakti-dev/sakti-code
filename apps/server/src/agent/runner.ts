@@ -12,6 +12,8 @@ import type {
 } from "@sakti-code/agent";
 import {
   appendSkillsBlock,
+  BUILTIN_AGENTS,
+  DEFAULT_AGENT_NAME,
   evaluate,
   fromConfig,
   AgentHarness as HarnessClass,
@@ -31,7 +33,6 @@ import {
   parseCompactionSettings,
   runAutoCompaction,
 } from "./auto-compaction.ts";
-import { BUILTIN_AGENTS, DEFAULT_AGENT_NAME } from "./builtin-agents.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
