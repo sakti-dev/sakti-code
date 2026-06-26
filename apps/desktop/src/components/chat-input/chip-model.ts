@@ -38,6 +38,18 @@ export function chipKind(token: string): ChipKind {
   return "file";
 }
 
+/** Visible chip label: command and skill chips are shown with a `/` prefix
+ *  (`/commit`, `/skill:graphify`); files keep their `@`. The wire token in
+ *  `data-token` is unchanged so the server preprocessor still receives
+ *  `skill:graphify` / `@path`. */
+export function chipLabel(token: string): string {
+  const kind = chipKind(token);
+  if (kind === "file") {
+    return token;
+  }
+  return token.startsWith("/") ? token : `/${token}`;
+}
+
 /** Create an atomic chip span carrying the wire token. */
 export function createChipElement(token: string): HTMLSpanElement {
   const chip = document.createElement("span");
@@ -45,7 +57,7 @@ export function createChipElement(token: string): HTMLSpanElement {
   chip.className = "chip";
   chip.dataset.token = token;
   chip.dataset.chipKind = chipKind(token);
-  chip.textContent = token;
+  chip.textContent = chipLabel(token);
   return chip;
 }
 

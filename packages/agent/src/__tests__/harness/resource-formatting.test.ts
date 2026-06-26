@@ -12,7 +12,7 @@ describe("resource formatting helpers", () => {
     };
 
     expect(formatSkillInvocation(skill, "Check errors.")).toBe(
-      '<skill name="inspect" location="/project/.pi/skills/inspect/SKILL.md">\nReferences are relative to /project/.pi/skills/inspect.\n\nUse inspection tools.\n</skill>\n\nCheck errors.'
+      '<skill name="inspect" location="/project/.pi/skills/inspect/SKILL.md">\nThis skill is already loaded in full below — do not read its file again.\nReferences are relative to /project/.pi/skills/inspect.\n\nUse inspection tools.\n</skill>\n\nCheck errors.'
     );
   });
 

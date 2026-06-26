@@ -34,6 +34,7 @@ import { resolveAuth } from "./model-resolver.ts";
 import { planFirstTurn } from "./prompt-preprocessor.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
 import { executeWithRetry, parseRetrySettings } from "./retry-loop.ts";
+import { appendSkillsBlock } from "./system-prompt.ts";
 import { buildTools } from "./tools-builder.ts";
 import type { WsHandle } from "./ws-handler.ts";
 
@@ -402,7 +403,23 @@ export async function runPrompt(
   harness.setPermissionAskResolver((req) => permissionChannel.ask(req));
 
   if (!isIntake) {
-    await harness.switchAgent(agent);
+    // Compose the agent's system prompt with the available-skills block
+    // (mirrors pi's coding-agent buildSystemPrompt): skills are advertised
+    // only when `read` is available, since they're loaded by reading the
+    // SKILL.md path. Intake keeps its dedicated prompt and skips this.
+    const hasRead =
+      agent.activeToolNames === undefined ||
+      agent.activeToolNames.includes("read");
+    const composedSystemPrompt = appendSkillsBlock(
+      agent.systemPrompt,
+      loadedContext.skills,
+      hasRead
+    );
+    await harness.switchAgent(
+      composedSystemPrompt === agent.systemPrompt
+        ? agent
+        : { ...agent, systemPrompt: composedSystemPrompt }
+    );
   }
   ctx.log?.agent.debug("agent resolved", { sessionId, agent: agent.name });
 

@@ -40,7 +40,7 @@ export function formatSkillInvocation(
   skill: Skill,
   additionalInstructions?: string
 ): string {
-  const skillBlock = `<skill name="${skill.name}" location="${skill.filePath}">\nReferences are relative to ${dirnameEnvPath(skill.filePath)}.\n\n${skill.content}\n</skill>`;
+  const skillBlock = `<skill name="${skill.name}" location="${skill.filePath}">\nThis skill is already loaded in full below — do not read its file again.\nReferences are relative to ${dirnameEnvPath(skill.filePath)}.\n\n${skill.content}\n</skill>`;
   return additionalInstructions
     ? `${skillBlock}\n\n${additionalInstructions}`
     : skillBlock;

@@ -47,6 +47,14 @@ if (process.platform === "linux") {
   ]);
 }
 
+// Verbose diagnostics for dev: capture the agent/llm request+response traces
+// (debug level) and stop pino redacting the resolved API key so the auth.json
+// → stream-call chain is verifiable. cleanLogs() wipes these files on each
+// launch, so secrets only live on disk for the current session — still, rotate
+// the key if you pasted one into auth.json for debugging.
+process.env.SAKTI_LOG_LEVEL ??= "debug";
+process.env.SAKTI_LOG_SECRETS ??= "true";
+
 const ps = spawn("electron-vite", ["dev", ...process.argv.slice(2)], {
   stdio: "inherit",
   shell: true,
