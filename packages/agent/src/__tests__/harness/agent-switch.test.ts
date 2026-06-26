@@ -147,6 +147,40 @@ describe("AgentHarness.switchAgent", () => {
     expect(toolResults).toContainEqual({ name: "write", isError: true });
   });
 
+  it("forwards the turn sessionId to resolvePermissionAsk requests", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    registration.setResponses([
+      () =>
+        fauxAssistantMessageWithContent(
+          [fauxToolCall("read", { path: "secret.env" })],
+          "toolUse"
+        ),
+      () => fauxAssistantMessage("done"),
+    ]);
+    const { readTool } = buildReadWriteTools();
+    const session = new Session(new InMemorySessionStorage());
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session,
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      thinkingLevel: "off",
+      tools: [readTool],
+    });
+    harness.setPermissionEvaluator(() => "ask");
+    const expectedId = (await session.getMetadata()).id;
+    let captured: string | undefined;
+    harness.setPermissionAskResolver(async (req) => {
+      captured = req.sessionId;
+      return "allow";
+    });
+
+    await harness.prompt("read it");
+
+    expect(captured).toBe(expectedId);
+  });
+
   it("forwards resolvePermissionAsk so an ask the user allows proceeds", async () => {
     const registration = registerFauxStreamProvider();
     registrations.push(registration);

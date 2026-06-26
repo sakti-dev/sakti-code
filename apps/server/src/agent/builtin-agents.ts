@@ -10,8 +10,8 @@ import {
  * `fromConfig` overlay), adapted to sakti's flat `PermissionRuleset` engine.
  *
  * Differences from opencode:
- * - `.env` reads are `"deny"` (opencode uses `"ask"`); Phase 3 has no
- *   interactive approval channel yet, so `"deny"` makes the policy explicit.
+ * - `.env` reads are `"ask"` (interactive approval channel wired in Phase 4);
+ *   `.env.example` is explicitly `"allow"` as a non-secret template.
  * - opencode merges a large `defaults` ruleset (doom_loop/question/plan_*);
  *   sakti's tool surface doesn't include those permissions yet, so each agent
  *   declares a self-contained ruleset.

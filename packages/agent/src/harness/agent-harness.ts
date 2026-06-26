@@ -507,6 +507,7 @@ export class AgentHarness<
     const turnState = getTurnState();
     return {
       model: turnState.model,
+      sessionId: turnState.sessionId,
       ...(this.maxSteps === undefined ? {} : { maxSteps: this.maxSteps }),
       ...(turnState.thinkingLevel === "off"
         ? {}

@@ -280,7 +280,12 @@ export async function switchAgentForSession(
     if (project) {
       const agent = await resolveSessionAgent(project.cwd, agentName);
       const ruleset = agent.permission ?? fromConfig({ "*": "allow" });
-      harness.setPermissionEvaluator(buildPermissionEvaluator(ruleset));
+      // Mirror runPrompt: the evaluator merges live grants so an "always"
+      // accrued earlier in the session survives a mid-run agent switch.
+      const channel = getPermissionChannel(sessionId);
+      harness.setPermissionEvaluator((permission, pattern) =>
+        channel.evaluate(permission, pattern, ruleset)
+      );
       await harness.switchAgent(agent);
     }
   }
