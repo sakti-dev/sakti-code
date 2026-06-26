@@ -48,6 +48,8 @@ export type { ProviderInfo } from "./catalog/types.ts";
 export type { CompleteRequest, CompleteResult } from "./complete.ts";
 // Non-streaming completion (generateText wrapper) for compaction and one-shots.
 export { complete, completeWithModel } from "./complete.ts";
+// Context-overflow classifier (provider error patterns + silent z.ai/MiMo cases).
+export { isContextOverflow } from "./context-overflow.ts";
 // Cost computation (mutates usage.cost in place; Anthropic 1h cache premium).
 export { calculateCost } from "./cost.ts";
 // Message conversion: Message[] → @ai-sdk ModelMessage[].
