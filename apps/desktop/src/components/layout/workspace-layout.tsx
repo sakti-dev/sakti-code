@@ -1,8 +1,8 @@
 import type { AgentHarnessEvent } from "@sakti-code/agent";
 import { createEffect, createSignal, type JSX, onMount, Show } from "solid-js";
-import { DevToolbar } from "~/components/chat-area/dev-toolbar";
 import { TaskChatView } from "~/components/chat-area/task-chat-view";
 import Home from "~/components/home/home";
+import { DevToolbar } from "~/components/layout/dev-toolbar";
 import { OnboardingPanel } from "~/components/onboarding/onboarding-panel";
 import { dispatchEvent } from "~/stores/session/event-reducer";
 import { createTokenBatcher } from "~/stores/session/token-batcher";
