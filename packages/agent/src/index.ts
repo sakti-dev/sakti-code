@@ -25,6 +25,19 @@ export type {
 export { loadCommands } from "./harness/commands.ts";
 export { configEntryNameFromPath } from "./harness/config-entry-name.ts";
 export { convertToLlm } from "./harness/messages.ts";
+export type {
+  PermissionAction,
+  PermissionConfig,
+  PermissionRule,
+  PermissionRuleset,
+} from "./harness/permission.ts";
+export {
+  disabled,
+  evaluate,
+  fromConfig,
+  match,
+  merge,
+} from "./harness/permission.ts";
 export {
   formatPromptTemplateInvocation,
   loadPromptTemplates,
