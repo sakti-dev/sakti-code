@@ -31,6 +31,10 @@ export {
   loadSourcedPromptTemplates,
 } from "./harness/prompt-templates.ts";
 export { buildSessionContext, Session } from "./harness/session.ts";
+export type {
+  SkillDiagnostic,
+  SkillDiagnosticCode,
+} from "./harness/skills.ts";
 export { loadSkills, loadSourcedSkills } from "./harness/skills.ts";
 export { formatSkillsForSystemPrompt } from "./harness/system-prompt.ts";
 export type {
