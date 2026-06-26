@@ -112,7 +112,8 @@ describe("ChipInput triggers + chips", () => {
     fireEvent.keyDown(ed, { key: "@" });
     api?.insertChip("@src/a.ts");
     expect(ed.querySelector('.chip[data-token="@src/a.ts"]')).toBeTruthy();
-    expect(onChange).toHaveBeenLastCalledWith("@src/a.ts");
+    // A trailing space is inserted after the chip to anchor the caret.
+    expect(onChange).toHaveBeenLastCalledWith("@src/a.ts ");
   });
 
   it("insertChip falls back to appending at the end when no caret bookmark", () => {
@@ -126,7 +127,7 @@ describe("ChipInput triggers + chips", () => {
     fireEvent.input(ed);
     // No trigger key fired → no bookmark → insertChip appends at end.
     api?.insertChip("@src/a.ts");
-    expect(serializeEditor(ed)).toBe("fix @src/a.ts");
-    expect(onChange).toHaveBeenLastCalledWith("fix @src/a.ts");
+    expect(serializeEditor(ed)).toBe("fix @src/a.ts ");
+    expect(onChange).toHaveBeenLastCalledWith("fix @src/a.ts ");
   });
 });

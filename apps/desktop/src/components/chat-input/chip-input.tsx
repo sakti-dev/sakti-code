@@ -60,21 +60,33 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
       return;
     }
     const chip = createChipElement(token);
+    // A trailing space gives the caret a text node to anchor to (a caret set
+    // directly after a contenteditable=false element at the end of the editor
+    // is unreliable in browsers) and matches the prior `${token} ` UX.
+    const spacer = document.createTextNode(" ");
     const bookmark = pendingTrigger;
     if (bookmark) {
-      // Real browser: insert the chip at the saved caret.
+      // Real browser: insert at the saved caret.
       bookmark.insertNode(chip);
-      const after = document.createRange();
-      after.setStartAfter(chip);
-      after.collapse(true);
-      const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(after);
+      chip.after(spacer);
     } else {
       // No saved caret (e.g. programmatic insert / jsdom): append at the end.
       ed.appendChild(chip);
+      ed.appendChild(spacer);
     }
     pendingTrigger = null;
+    // Focus BEFORE placing the caret — focusing a contenteditable can reset a
+    // selection that was set while the editor was unfocused (the menu input
+    // had focus during the pick).
+    ed.focus();
+    const sel = window.getSelection();
+    if (sel) {
+      const after = document.createRange();
+      after.setStartAfter(spacer);
+      after.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(after);
+    }
     const text = serializeEditor(ed);
     setEmpty(false);
     props.onChange(text);
