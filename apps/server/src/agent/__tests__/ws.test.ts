@@ -9,6 +9,7 @@ import {
   teardownFauxLlm,
   useFauxLlm,
 } from "../../__tests__/llm-helpers.ts";
+import { getPermissionChannel } from "../../lib/permission-channel.ts";
 import { clearReplaysForTesting, clearRunsForTesting } from "../runner.ts";
 import { handleMessage } from "../ws-handler.ts";
 import { createMockCtx, createMockStore } from "./helpers.ts";
@@ -113,6 +114,38 @@ describe("WS message handler", () => {
     const errorFrames = asErrorFrames(sent);
     expect(errorFrames.length).toBeGreaterThan(0);
     expect(errorFrames[0]?.sessionId).toBe("nonexistent");
+  });
+
+  it("permission.reply resolves the pending ask and emits a replied frame", async () => {
+    const ctx = createMockCtx();
+    const storage = createMockStore();
+    const channel = getPermissionChannel("sess-perm");
+    channel.setSink(() => {});
+    const pending = channel.ask({
+      sessionId: "sess-perm",
+      permission: "read",
+      patterns: ["a.env"],
+      always: ["a.env"],
+      toolName: "read",
+      toolCallId: "c1",
+    });
+    const id = channel.listPending()[0]!.id;
+
+    const { sent, ws } = makeFakeWs();
+    handleMessage(ctx, storage, ws, {
+      type: "permission.reply",
+      sessionId: "sess-perm",
+      id,
+      reply: "once",
+    });
+
+    expect(await pending).toBe("allow");
+    const replied = sent.find(
+      (f) =>
+        (f as { type?: string }).type === "permission.replied" &&
+        (f as { id?: string }).id === id
+    );
+    expect(replied).toBeDefined();
   });
 
   it("abort message returns synchronously without error", () => {

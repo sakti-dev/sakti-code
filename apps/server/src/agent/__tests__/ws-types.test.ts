@@ -24,4 +24,32 @@ describe("WS frame types", () => {
     ];
     expect(frames).toHaveLength(4);
   });
+
+  it("WsIn accepts permission.reply and WsOut includes asked/replied frames", () => {
+    const msg: WsIn = {
+      type: "permission.reply",
+      sessionId: "s1",
+      id: "per_1",
+      reply: "always",
+    };
+    expect(msg.type).toBe("permission.reply");
+    const out: WsOut[] = [
+      {
+        type: "permission.asked",
+        sessionId: "s1",
+        id: "per_1",
+        permission: "read",
+        patterns: ["a.env"],
+        toolName: "read",
+        toolCallId: "c1",
+      },
+      {
+        type: "permission.replied",
+        sessionId: "s1",
+        id: "per_1",
+        reply: "always",
+      },
+    ];
+    expect(out).toHaveLength(2);
+  });
 });

@@ -19,6 +19,10 @@ import {
 import { createProposeSessionTool } from "@sakti-code/tools";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";
+import {
+  getPermissionChannel,
+  type PermissionFrame,
+} from "../lib/permission-channel.ts";
 import { BUILTIN_AGENTS, DEFAULT_AGENT_NAME } from "./builtin-agents.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
@@ -288,7 +292,8 @@ export async function runPrompt(
   sessionId: string,
   message: string,
   storage: SessionStorage,
-  eventCallback: (event: AgentHarnessEvent) => void
+  eventCallback: (event: AgentHarnessEvent) => void,
+  permissionAskedSink: (frame: PermissionFrame) => void
 ): Promise<void> {
   const session = await ctx.repos.sessions.findById(sessionId);
   if (!session) {
@@ -362,7 +367,17 @@ export async function runPrompt(
   const agentName = settings.agent ?? DEFAULT_AGENT_NAME;
   const agent = await resolveSessionAgent(project.cwd, agentName);
   const agentRuleset = agent.permission ?? fromConfig({ "*": "allow" });
-  harness.setPermissionEvaluator(buildPermissionEvaluator(agentRuleset));
+
+  // Wire the interactive permission channel: the evaluator merges live grants
+  // (so a prior "always" auto-allows), and the ask resolver bridges to the WS
+  // approval strip. Grants persist across runs; the sink is reattached here.
+  const permissionChannel = getPermissionChannel(sessionId);
+  permissionChannel.setSink(permissionAskedSink);
+  harness.setPermissionEvaluator((permission, pattern) =>
+    permissionChannel.evaluate(permission, pattern, agentRuleset)
+  );
+  harness.setPermissionAskResolver((req) => permissionChannel.ask(req));
+
   if (!isIntake) {
     await harness.switchAgent(agent);
   }
@@ -442,6 +457,9 @@ export async function runPrompt(
     throw err;
   } finally {
     ctx.log?.agent.info("run finished", { sessionId });
+    // Reject any still-pending permission asks so the UI strip clears and the
+    // loop is not left awaiting a reply on a dead/aborted run.
+    getPermissionChannel(sessionId).rejectPending();
     unregisterRun(sessionId);
   }
 }

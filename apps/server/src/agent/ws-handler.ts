@@ -1,6 +1,11 @@
-import type { AgentHarnessEvent, SessionStorage } from "@sakti-code/agent";
+import type {
+  AgentHarnessEvent,
+  PermissionReply,
+  SessionStorage,
+} from "@sakti-code/agent";
 import Type from "typebox";
 import type { ServerContext } from "../context.ts";
+import { getPermissionChannel } from "../lib/permission-channel.ts";
 import {
   abortRun,
   busyMessage,
@@ -50,13 +55,21 @@ export interface SwitchAgentMessage {
   type: "switchAgent";
 }
 
+export interface PermissionReplyMessage {
+  id: string;
+  reply: PermissionReply;
+  sessionId: string;
+  type: "permission.reply";
+}
+
 export type WsIn =
   | PromptMessage
   | AbortMessage
   | SteerMessage
   | FollowUpMessage
   | ReplayMessage
-  | SwitchAgentMessage;
+  | SwitchAgentMessage
+  | PermissionReplyMessage;
 
 export interface EventFrame {
   event: AgentHarnessEvent;
@@ -84,7 +97,32 @@ export interface PushFrame {
   type: "push";
 }
 
-export type WsOut = EventFrame | ErrorFrame | WelcomeFrame | PushFrame;
+/** A tool is requesting permission; the user must reply (allow/always/deny). */
+export interface PermissionAskedFrame {
+  id: string;
+  patterns: string[];
+  permission: string;
+  sessionId: string;
+  toolCallId: string;
+  toolName: string;
+  type: "permission.asked";
+}
+
+/** Acknowledgement of a permission reply (for UX state cleanup). */
+export interface PermissionRepliedFrame {
+  id: string;
+  reply: PermissionReply;
+  sessionId: string;
+  type: "permission.replied";
+}
+
+export type WsOut =
+  | EventFrame
+  | ErrorFrame
+  | WelcomeFrame
+  | PushFrame
+  | PermissionAskedFrame
+  | PermissionRepliedFrame;
 
 export interface WsHandle {
   send(data: unknown): void;
@@ -127,6 +165,16 @@ export const wsBodySchema = Type.Union([
     type: Type.Literal("switchAgent"),
     sessionId: Type.String(),
     name: Type.String(),
+  }),
+  Type.Object({
+    type: Type.Literal("permission.reply"),
+    sessionId: Type.String(),
+    id: Type.String(),
+    reply: Type.Union([
+      Type.Literal("once"),
+      Type.Literal("always"),
+      Type.Literal("reject"),
+    ]),
   }),
 ]);
 
@@ -176,13 +224,30 @@ async function runAgentStream(
     messageLength: message.length ?? 0,
   });
   try {
-    await runPrompt(ctx, sessionId, message, storage, (event) => {
-      ws.send({
-        event,
-        sessionId,
-        type: "event",
-      } satisfies EventFrame);
-    });
+    await runPrompt(
+      ctx,
+      sessionId,
+      message,
+      storage,
+      (event) => {
+        ws.send({
+          event,
+          sessionId,
+          type: "event",
+        } satisfies EventFrame);
+      },
+      (frame) => {
+        ws.send({
+          type: "permission.asked",
+          sessionId,
+          id: frame.id,
+          permission: frame.permission,
+          patterns: frame.patterns,
+          toolName: frame.toolName,
+          toolCallId: frame.toolCallId,
+        } satisfies PermissionAskedFrame);
+      }
+    );
     log?.info("agent run finished", { sessionId });
   } catch (err) {
     log?.error("agent run failed", err, { sessionId });
@@ -292,6 +357,17 @@ export function handleMessage(
         err instanceof Error ? err.message : String(err)
       );
     });
+    return;
+  }
+
+  if (msg.type === "permission.reply") {
+    getPermissionChannel(msg.sessionId).reply(msg.id, msg.reply);
+    ws.send({
+      id: msg.id,
+      reply: msg.reply,
+      sessionId: msg.sessionId,
+      type: "permission.replied",
+    } satisfies PermissionRepliedFrame);
     return;
   }
 

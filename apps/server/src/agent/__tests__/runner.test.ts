@@ -42,7 +42,14 @@ describe("runPrompt", () => {
 
     runPromptSpy.mockRestore();
     await expect(
-      runPrompt(ctx, "nonexistent-session-id", "test", storage, vi.fn())
+      runPrompt(
+        ctx,
+        "nonexistent-session-id",
+        "test",
+        storage,
+        vi.fn(),
+        vi.fn()
+      )
     ).rejects.toThrow(SESSION_NOT_FOUND_RE);
   });
 
@@ -66,7 +73,7 @@ describe("runPrompt", () => {
 
     runPromptSpy.mockRestore();
     await expect(
-      runPrompt(ctx, "sess-1", "test", storage, vi.fn())
+      runPrompt(ctx, "sess-1", "test", storage, vi.fn(), vi.fn())
     ).rejects.toThrow(PROJECT_NOT_FOUND_RE);
   });
 
@@ -92,7 +99,7 @@ describe("runPrompt", () => {
       }
     );
 
-    await runPrompt(ctx, "sess-1", "Say hello", storage, vi.fn());
+    await runPrompt(ctx, "sess-1", "Say hello", storage, vi.fn(), vi.fn());
 
     expect(runPromptSpy).toHaveBeenCalledTimes(1);
     expect(capturedEvents.length).toBe(0);
