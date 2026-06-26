@@ -1,10 +1,19 @@
+import { tbValidator } from "@hono/typebox-validator";
 import { Hono } from "hono";
+import Type from "typebox";
 import { getCtx } from "../../context.ts";
 import { searchProjectFiles } from "../../lib/file-search.ts";
 
-export const searchFilesRoutes = new Hono()
-  .basePath("/projects")
-  .get("/:id/files", async (c) => {
+export const searchFilesRoutes = new Hono().basePath("/projects").get(
+  "/:id/files",
+  tbValidator(
+    "query",
+    Type.Object({
+      query: Type.Optional(Type.String()),
+      limit: Type.Optional(Type.String()),
+    })
+  ),
+  async (c) => {
     const ctx = getCtx(c);
     const project = await ctx.repos.projects.findById(c.req.param("id"));
     if (!project) {
@@ -24,4 +33,5 @@ export const searchFilesRoutes = new Hono()
     const files = await searchProjectFiles(project.cwd, q, maxResults);
 
     return c.json({ files, cwd: project.cwd });
-  });
+  }
+);

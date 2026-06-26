@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@solidjs/testing-library";
+import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChatInput } from "../chat-input";
 
@@ -22,11 +22,46 @@ vi.mock("~/stores/store-context", () => ({
       get: () => ({ store: mockSessionStore.current }),
     },
     server: {
-      store: { sessions: { s1: { modelId: "test-model", profileId: null } } },
+      store: {
+        sessions: {
+          s1: { modelId: "test-model", profileId: null, projectId: "proj1" },
+        },
+        projects: {
+          proj1: {
+            id: "proj1",
+            name: "P",
+            cwd: "/tmp/proj",
+            createdAt: 0,
+            updatedAt: 0,
+          },
+        },
+      },
     },
     api: {
       api: {
         auth: { $get: async () => ({ ok: false, json: async () => [] }) },
+        projects: {
+          ":id": {
+            context: {
+              $get: async () => ({
+                ok: true,
+                json: async () => ({
+                  commands: [{ name: "commit", description: "d" }],
+                  skills: [],
+                  agents: [],
+                }),
+              }),
+            },
+            files: {
+              $get: async () => ({
+                ok: true,
+                json: async () => ({
+                  files: [{ kind: "file", path: "src/a.ts" }],
+                }),
+              }),
+            },
+          },
+        },
         models: {
           available: {
             $get: async () => ({ ok: false, json: async () => [] }),
@@ -112,5 +147,59 @@ describe("ChatInput", () => {
     render(() => <ChatInput sessionId="s1" />);
     await fireEvent.click(screen.getByRole("button", { name: "Allow" }));
     expect(mockReplyPermission).toHaveBeenCalledWith("s1", "per_1", "once");
+  });
+});
+
+describe("ChatInput context menus", () => {
+  it("opens the / menu when / is typed at caret 0", async () => {
+    const { getByPlaceholderText } = render(() => (
+      <ChatInput placeholder="p" sessionId="s1" />
+    ));
+    const textarea = getByPlaceholderText("p") as HTMLTextAreaElement;
+    textarea.value = "/";
+    textarea.setSelectionRange(1, 1);
+    fireEvent.input(textarea);
+    await waitFor(() => {
+      expect(screen.getByText("Commands & Skills")).toBeTruthy();
+    });
+  });
+
+  it("opens the @ menu when @ is typed mid-text", async () => {
+    const { getByPlaceholderText } = render(() => (
+      <ChatInput placeholder="p" sessionId="s1" />
+    ));
+    const textarea = getByPlaceholderText("p") as HTMLTextAreaElement;
+    textarea.value = "see @";
+    textarea.setSelectionRange(5, 5);
+    fireEvent.input(textarea);
+    await waitFor(() => {
+      expect(screen.getByText("Files")).toBeTruthy();
+    });
+  });
+
+  it("inserts the picked token into the textarea (/ mode)", async () => {
+    const { getByPlaceholderText } = render(() => (
+      <ChatInput placeholder="p" sessionId="s1" />
+    ));
+    const textarea = getByPlaceholderText("p") as HTMLTextAreaElement;
+    textarea.value = "/";
+    textarea.setSelectionRange(1, 1);
+    fireEvent.input(textarea);
+    await waitFor(() => {
+      expect(screen.getByText("commit")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText("commit"));
+    expect(textarea.value).toBe("/commit ");
+  });
+
+  it("does not open a menu for / typed mid-text", async () => {
+    const { getByPlaceholderText } = render(() => (
+      <ChatInput placeholder="p" sessionId="s1" />
+    ));
+    const textarea = getByPlaceholderText("p") as HTMLTextAreaElement;
+    textarea.value = "hi /";
+    textarea.setSelectionRange(4, 4);
+    fireEvent.input(textarea);
+    expect(screen.queryByText("Commands & Skills")).toBeNull();
   });
 });

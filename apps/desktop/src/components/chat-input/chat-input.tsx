@@ -3,6 +3,7 @@ import { FiAlertCircle } from "solid-icons/fi";
 import {
   createEffect,
   createMemo,
+  createResource,
   createSignal,
   type JSX,
   onCleanup,
@@ -12,6 +13,8 @@ import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import { aggregateUsage } from "~/stores/session/usage-stats";
 import { useStore } from "~/stores/store-context";
+import { ContextMenu, type ContextMenuMode } from "./context-menu.tsx";
+import { detectTrigger } from "./detect-trigger.ts";
 import { InputFooter } from "./input-footer";
 import { PermissionStrip } from "./permission-strip";
 import { ProfileSelect } from "./profile-select";
@@ -24,10 +27,91 @@ export interface ChatInputProps {
 }
 
 export function ChatInput(props: ChatInputProps): JSX.Element {
-  const { actions, sessions } = useStore();
+  const { actions, api, server, sessions } = useStore();
   const [value, setValue] = createSignal("");
   const [isFocused, setIsFocused] = createSignal(false);
   let textareaRef: HTMLTextAreaElement | undefined;
+
+  // Slash/at context menu state. `index` is where the trigger char sits in the
+  // textarea value; on pick we replace that char with the chosen token.
+  const [menu, setMenu] = createSignal<{
+    mode: ContextMenuMode;
+    index: number;
+  } | null>(null);
+
+  const project = createMemo(() => {
+    const sid = props.sessionId;
+    if (!sid) {
+      return null;
+    }
+    const meta = server.store.sessions[sid];
+    if (!meta) {
+      return null;
+    }
+    const p = server.store.projects[meta.projectId];
+    return p ? { id: p.id, cwd: p.cwd } : null;
+  });
+
+  // Catalog (commands + skills) for the / menu — one fetch per project,
+  // prefetched so the menu opens instantly.
+  const [catalog] = createResource(
+    () => project()?.id ?? null,
+    async (pid) => {
+      const res = await api.api.projects[":id"].context.$get({
+        param: { id: pid },
+      });
+      if (!res.ok) {
+        return null;
+      }
+      return (await res.json()) as {
+        commands: { name: string; description?: string }[];
+        skills: { name: string; description?: string }[];
+      };
+    }
+  );
+
+  // Files for the @ menu — debounced query fetch (server does frecency search).
+  const [filesQuery, setFilesQuery] = createSignal("");
+  let filesDebounce: ReturnType<typeof setTimeout> | undefined;
+  const onFilesQuery = (q: string) => {
+    clearTimeout(filesDebounce);
+    filesDebounce = setTimeout(() => setFilesQuery(q), 120);
+  };
+  const [files] = createResource(filesQuery, async (q) => {
+    const pid = project()?.id;
+    if (!pid) {
+      return [];
+    }
+    const res = await api.api.projects[":id"].files.$get({
+      param: { id: pid },
+      query: { query: q },
+    });
+    if (!res.ok) {
+      return [];
+    }
+    const body = await res.json();
+    return body.files as { path: string }[];
+  });
+
+  const insertToken = (token: string) => {
+    const m = menu();
+    if (!m) {
+      return;
+    }
+    const before = value().slice(0, m.index);
+    const after = value().slice(m.index + 1);
+    const head = `${before}${token} `;
+    setValue(head + after);
+    setMenu(null);
+    queueMicrotask(() => {
+      if (textareaRef) {
+        const pos = head.length;
+        textareaRef.focus();
+        textareaRef.setSelectionRange(pos, pos);
+        autoResize();
+      }
+    });
+  };
 
   const isGenerating = createMemo(() => {
     if (!props.sessionId) {
@@ -186,8 +270,21 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
             onBlur={() => setIsFocused(false)}
             onFocus={() => setIsFocused(true)}
             onInput={(e) => {
-              setValue(e.currentTarget.value);
+              const el = e.currentTarget;
+              setValue(el.value);
               autoResize();
+              const trig = detectTrigger(el.value, el.selectionStart ?? 0);
+              if (trig) {
+                setMenu({ mode: trig.char, index: trig.index });
+                // Move focus to the dialog's search input so further typing
+                // filters there, not in the textarea.
+                queueMicrotask(() => {
+                  const input = document.querySelector(
+                    "[cmdk-input]"
+                  ) as HTMLInputElement | null;
+                  input?.focus();
+                });
+              }
             }}
             onKeyDown={handleKeyDown}
             placeholder={props.placeholder ?? "Send a message…"}
@@ -210,6 +307,17 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
           <InputFooter charCount={() => value().length} stats={sessionStats} />
         </div>
       </div>
+
+      <ContextMenu
+        commands={catalog()?.commands ?? []}
+        files={files() ?? []}
+        mode={menu()?.mode ?? "/"}
+        onClose={() => setMenu(null)}
+        onFilesQuery={onFilesQuery}
+        onPick={insertToken}
+        open={menu() !== null}
+        skills={catalog()?.skills ?? []}
+      />
     </div>
   );
 }
