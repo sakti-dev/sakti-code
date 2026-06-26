@@ -13,6 +13,7 @@ export {
   shouldCompact,
 } from "./compaction.ts";
 export { AgentHarness } from "./harness/agent-harness.ts";
+export { configEntryNameFromPath } from "./harness/config-entry-name.ts";
 export { convertToLlm } from "./harness/messages.ts";
 export {
   formatPromptTemplateInvocation,
