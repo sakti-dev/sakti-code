@@ -125,6 +125,22 @@ export function createWsClient(
         }
         break;
       }
+
+      case "permission.asked": {
+        sessionRegistry.get(data.sessionId).actions.setPermission({
+          id: data.id,
+          permission: data.permission,
+          patterns: data.patterns,
+          toolName: data.toolName,
+          toolCallId: data.toolCallId,
+        });
+        break;
+      }
+
+      case "permission.replied": {
+        sessionRegistry.get(data.sessionId).actions.setPermission(null);
+        break;
+      }
     }
   }
 

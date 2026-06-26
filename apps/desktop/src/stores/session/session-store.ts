@@ -13,9 +13,20 @@ export interface ProposedSession {
   title: string;
 }
 
+/** A pending permission request awaiting the user's allow/always/deny. */
+export interface PermissionPending {
+  id: string;
+  patterns: string[];
+  permission: string;
+  toolCallId: string;
+  toolName: string;
+}
+
 export interface SessionStoreData {
   messageOrder: string[];
   messages: Record<string, UIMessage>;
+  /** Active permission approval state; `null` when no approval is pending. */
+  permission: PermissionPending | null;
   proposedSession: ProposedSession | null;
   /** Active retry banner state; `null` when no retry is in progress. */
   retry: RetryState | null;
@@ -53,6 +64,8 @@ export interface SessionActions {
   setCurrentMessage: (msgId: string) => void;
   setCurrentTool: (toolName: string) => void;
   setError: (msgId: string, error: string) => void;
+  /** Set or clear the pending permission approval (null clears it). */
+  setPermission: (permission: PermissionPending | null) => void;
   setPhase: (phase: StreamState["phase"]) => void;
   setProposedSession: (proposal: ProposedSession) => void;
   /** Set or clear the retry banner state (null clears it). */
@@ -71,6 +84,7 @@ export function createSessionStore(): SessionStore {
     messages: {},
     messageOrder: [],
     proposedSession: null,
+    permission: null,
     retry: null,
     streaming: { ...idleStreamState },
     turnTimings: [],
@@ -163,6 +177,10 @@ export function createSessionStore(): SessionStore {
 
     setProposedSession(proposal) {
       setStore("proposedSession", proposal);
+    },
+
+    setPermission(permission) {
+      setStore("permission", permission);
     },
 
     clearProposedSession() {
@@ -293,6 +311,7 @@ export function createSessionStore(): SessionStore {
           s.messages = {};
           s.messageOrder = [];
           s.proposedSession = null;
+          s.permission = null;
           s.retry = null;
           s.streaming = { ...idleStreamState };
         })

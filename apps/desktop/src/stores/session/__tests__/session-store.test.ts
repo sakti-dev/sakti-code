@@ -581,3 +581,34 @@ describe("session store — reactivity", () => {
     expect(captured).toContain("writing");
   });
 });
+
+describe("session store — permission slice", () => {
+  it("setPermission sets and clears the pending approval", () => {
+    const session = createSessionStore();
+    expect(session.store.permission).toBeNull();
+    session.actions.setPermission({
+      id: "per_1",
+      permission: "read",
+      patterns: ["a.env"],
+      toolName: "read",
+      toolCallId: "c1",
+    });
+    expect(session.store.permission?.id).toBe("per_1");
+    expect(session.store.permission?.patterns).toEqual(["a.env"]);
+    session.actions.setPermission(null);
+    expect(session.store.permission).toBeNull();
+  });
+
+  it("reset clears a pending approval", () => {
+    const session = createSessionStore();
+    session.actions.setPermission({
+      id: "per_1",
+      permission: "read",
+      patterns: ["a.env"],
+      toolName: "read",
+      toolCallId: "c1",
+    });
+    session.actions.reset();
+    expect(session.store.permission).toBeNull();
+  });
+});

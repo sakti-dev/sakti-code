@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@sakti-code/agent";
+import type { AgentMessage, PermissionReply } from "@sakti-code/agent";
 import type { Client } from "~/lib/api";
 import { createLogger } from "~/lib/utils";
 import { hydrateSessionMessages } from "../session/hydrate-messages.ts";
@@ -37,6 +37,11 @@ export interface Actions {
   replayReset: (sessionId: string) => void;
   replayResume: (sessionId: string) => void;
   replayStart: (sessionId: string) => void;
+  replyPermission: (
+    sessionId: string,
+    id: string,
+    reply: PermissionReply
+  ) => void;
   selectProfile: (sessionId: string | null, profileId: string) => Promise<void>;
   sendPrompt: (sessionId: string, text: string) => void;
   steerRun: (sessionId: string, text: string) => void;
@@ -242,6 +247,10 @@ export function createActions(
       session.actions.reset();
       setReplayState("playing");
       ws.send({ type: "replay", sessionId, action: "start" });
+    },
+
+    replyPermission(sessionId, id, reply) {
+      ws.send({ type: "permission.reply", sessionId, id, reply });
     },
 
     replayPause(sessionId) {
