@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@sakti-code/llm": "workspace:*",
+    "@sakti-code/logger": "workspace:*",
     "effect": "^3.21.0",
     "typebox": "1.1.38"
   },
