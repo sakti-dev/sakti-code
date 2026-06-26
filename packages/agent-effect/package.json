@@ -1,0 +1,23 @@
+{
+  "name": "@sakti-code/agent-effect",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sakti-code/llm": "workspace:*",
+    "effect": "^3.21.0",
+    "typebox": "1.1.38"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "vitest": "^3"
+  }
+}
