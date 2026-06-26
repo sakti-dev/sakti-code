@@ -14,6 +14,11 @@ export {
 } from "./compaction.ts";
 export { AgentHarness } from "./harness/agent-harness.ts";
 export type {
+  AgentDiagnostic,
+  AgentDiagnosticCode,
+} from "./harness/agents.ts";
+export { loadAgents } from "./harness/agents.ts";
+export type {
   CommandDiagnostic,
   CommandDiagnosticCode,
 } from "./harness/commands.ts";
