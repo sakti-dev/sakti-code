@@ -45,8 +45,8 @@
 
 | Mode | Group | Items | Token inserted |
 | :--- | :--- | :--- | :--- |
-| `/` | Commands | from `GET /api/projects/:id/commands` | `/name` |
-| `/` | Skills | from `GET /api/projects/:id/skills` (new) | `skill:name` |
+| `/` | Commands | from `GET /api/projects/:id/context` → `.commands` | `/name` |
+| `/` | Skills | from `GET /api/projects/:id/context` → `.skills` | `skill:name` |
 | `@` | Files | from `GET /api/projects/:id/files?query=<dialog query>&limit=20` | `@relative/path` |
 
 - `/` filtering is client-side over `name` + `description`.
@@ -58,12 +58,13 @@
 
 | Need | Source | Status |
 | :--- | :--- | :--- |
-| Commands | `GET /api/projects/:id/commands` (`routes/projects/context.ts:12`) ← `loadCommands` over `~/.sakti/agent` + `<cwd>/.agents` `command\|commands/*.md` | **exists** |
-| Skills | `loadSkills` (`context-loader.ts:45`) | loader exists; **route missing** → add `GET /api/projects/:id/skills` |
-| Files | `GET /api/projects/:id/files?query=&limit=` (`routes/projects/search-files.ts`) ← fff/fd/find frecency | **exists** |
+| Catalog (commands + skills + agents) | `GET /api/projects/:id/context` (NEW) ← one `loadAgentContext()` (`context-loader.ts:40`) returning `{ commands, skills, agents }` in a single fetch | **create** — replaces existing `/commands` + `/agents` (both have zero desktop consumers) |
+| Files | `GET /api/projects/:id/files?query=&limit=` (`routes/projects/search-files.ts`) ← fff/fd/find frecency | **exists** (unchanged) |
 | Project cwd | `server.store.sessions[id]` → project → `cwd` | **exists** in desktop store |
 
-All three project-scoped routes are composed into the app (`app.ts:34-35`) and typed via the Hono RPC client (`hc<App>` in `apps/desktop/src/lib/api.ts`) — no client codegen.
+**One catalog endpoint, not three.** Commands, skills, and agents share a shape (loaded-from-disk config items with `name` + `description`), are produced by a single `loadAgentContext()` call, and the `/` menu renders commands + skills together — so one fetch is cheaper than `?type=` filtering and matches the loader's return shape. Files stays its own endpoint because it's a frecency *search* (query-essential, ranked, capped), not a catalog list — folding it under `?type=files` would give the unified route a branch with different param semantics without removing any code.
+
+The new `/context` route and the existing `/files` route are composed into the app via `app.ts` and typed through the Hono RPC client (`hc<App>` in `apps/desktop/src/lib/api.ts`) — no client codegen.
 
 ---
 
@@ -86,7 +87,7 @@ Tokens may appear anywhere in the message; the preprocessor scans the whole text
 ## Server work (v1)
 
 1. **Prompt preprocessor** in `runner.ts` — parses `/name`, `skill:name`, `@path` and dispatches to the harness / file reader before `harness.prompt`. This is the shared piece all three token types ride on.
-2. **`GET /api/projects/:id/skills` route** — extend `routes/projects/context.ts` (the loader already runs in `context-loader.ts`; only the HTTP exposure is missing).
+2. **`GET /api/projects/:id/context` route** — new consolidated catalog endpoint returning `{ commands, skills, agents }` from `loadAgentContext`. **Remove** the existing `/commands` and `/agents` routes (zero desktop consumers; migrate their tests to `/context`).
 3. **Harness `resources` wiring** — `runner.ts:358` currently builds the harness with **no** `resources:`, so `harness.skill()` / `harness.promptFromTemplate()` would throw "Unknown skill/template" at runtime. Wire `{ skills, promptTemplates }` from the loaded `AgentContext` into the harness constructor.
 
 ---
@@ -101,6 +102,7 @@ Tokens may appear anywhere in the message; the preprocessor scans the whole text
 | `@file` attaches content (capped), not a hint | Matches user expectation from other tools; a bare path hint is too weak to be useful. |
 | `@agent` deferred | No per-turn agent semantics wanted yet; avoids a new runtime path in the harness. Data plumbing stays ready for later. |
 | Skills listed with `skill:` prefix | Distinguishes skill tokens from `/command` tokens in the preprocessor; user direction. |
+| One `/context` endpoint for the catalog (commands+skills+agents), files separate | Catalog types share a shape + are loaded together + the `/` menu needs commands+skills at once → one fetch beats `?type=`. Files is a frecency search (query-essential) → stays its own route. No consumers yet → consolidation is nearly free now. |
 | Keyboard nav in a shared `useListNavigation` hook | `CommandItem` has no built-in nav; model-selector already hand-rolls it — extract once rather than duplicate. |
 
 ---
