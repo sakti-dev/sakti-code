@@ -16,7 +16,7 @@ describe("context routes", () => {
     }
   });
 
-  it("GET /api/projects/:id/commands returns commands from the project .agents dir", async () => {
+  it("GET /api/projects/:id/context returns commands, skills, and agents", async () => {
     process.env.SAKTI_AGENT_DIR = mkdtempSync(join(tmpdir(), "sakti-ctx-g-"));
     const { ctx } = await makeContext();
     const projectDir = mkdtempSync(join(tmpdir(), "sakti-ctx-p-"));
@@ -25,11 +25,23 @@ describe("context routes", () => {
       join(projectDir, ".agents", "commands", "commit.md"),
       "---\ndescription: commit and push\n---\ncommit body"
     );
+    mkdirSync(join(projectDir, ".agents", "skills", "lint"), {
+      recursive: true,
+    });
+    writeFileSync(
+      join(projectDir, ".agents", "skills", "lint", "SKILL.md"),
+      "---\ndescription: lint the repo\n---\nlint body"
+    );
+    mkdirSync(join(projectDir, ".agents", "agents"), { recursive: true });
+    writeFileSync(
+      join(projectDir, ".agents", "agents", "scout.md"),
+      "---\nmode: subagent\ndescription: scout\n---\nscout prompt"
+    );
     const project = await ctx.repos.projects.create("p", projectDir);
 
     const app = buildApp(ctx);
     const res = await app.request(
-      `http://localhost:3001/api/projects/${project.id}/commands`
+      `http://localhost:3001/api/projects/${project.id}/context`
     );
     const body = await res.json();
     expect(res.status).toBe(200);
@@ -41,25 +53,7 @@ describe("context routes", () => {
       description: "commit and push",
       content: "commit body",
     });
-  });
-
-  it("GET /api/projects/:id/agents returns agent definitions", async () => {
-    process.env.SAKTI_AGENT_DIR = mkdtempSync(join(tmpdir(), "sakti-ctx-g2-"));
-    const { ctx } = await makeContext();
-    const projectDir = mkdtempSync(join(tmpdir(), "sakti-ctx-p2-"));
-    mkdirSync(join(projectDir, ".agents", "agents"), { recursive: true });
-    writeFileSync(
-      join(projectDir, ".agents", "agents", "scout.md"),
-      "---\nmode: subagent\ndescription: scout\n---\nscout prompt"
-    );
-    const project = await ctx.repos.projects.create("p2", projectDir);
-
-    const app = buildApp(ctx);
-    const res = await app.request(
-      `http://localhost:3001/api/projects/${project.id}/agents`
-    );
-    const body = await res.json();
-    expect(res.status).toBe(200);
+    expect(body.skills.map((s: { name: string }) => s.name)).toEqual(["lint"]);
     expect(body.agents.map((a: { name: string }) => a.name)).toEqual(["scout"]);
     expect(body.agents[0]).toMatchObject({ mode: "subagent" });
   });
@@ -69,7 +63,7 @@ describe("context routes", () => {
     const { ctx } = await makeContext();
     const app = buildApp(ctx);
     const res = await app.request(
-      "http://localhost:3001/api/projects/nope/commands"
+      "http://localhost:3001/api/projects/nope/context"
     );
     expect(res.status).toBe(404);
   });
