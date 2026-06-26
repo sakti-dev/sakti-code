@@ -1,19 +1,25 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type {
+  AgentDefinition,
   AgentHarness,
   AgentHarnessEvent,
+  PermissionRuleset,
   QueueMode,
   SessionStorage,
   ThinkingLevel,
 } from "@sakti-code/agent";
 import {
+  evaluate,
+  fromConfig,
   AgentHarness as HarnessClass,
   INTAKE_SYSTEM_PROMPT,
   Session as SessionClass,
 } from "@sakti-code/agent";
 import { createProposeSessionTool } from "@sakti-code/tools";
 import type { ServerContext } from "../context.ts";
+import { loadAgentContext } from "../lib/context-loader.ts";
+import { BUILTIN_AGENTS, DEFAULT_AGENT_NAME } from "./builtin-agents.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
@@ -210,6 +216,69 @@ export function resolveThinkingLevel(
   return profileThinkingLevel as ThinkingLevel;
 }
 
+/**
+ * Resolve an agent by name from builtins plus project-loaded agents (a
+ * user-defined agent with the same name overrides the builtin). Falls back to
+ * the default (`build`) agent when the name is unknown.
+ */
+export function resolveAgentByName(
+  name: string,
+  loadedAgents: AgentDefinition[]
+): AgentDefinition {
+  const byName = new Map<string, AgentDefinition>();
+  for (const agent of BUILTIN_AGENTS) {
+    byName.set(agent.name, agent);
+  }
+  for (const agent of loadedAgents) {
+    byName.set(agent.name, agent);
+  }
+  const resolved = byName.get(name) ?? byName.get(DEFAULT_AGENT_NAME);
+  return resolved ?? BUILTIN_AGENTS[0];
+}
+
+/** Load project agents and resolve the active agent by name. */
+export async function resolveSessionAgent(
+  projectCwd: string,
+  agentName: string
+): Promise<AgentDefinition> {
+  const { agents } = await loadAgentContext(projectCwd);
+  return resolveAgentByName(agentName, agents);
+}
+
+/** Build a loop permission evaluator closed over a ruleset. */
+export function buildPermissionEvaluator(ruleset: PermissionRuleset) {
+  return (permission: string, pattern: string): "allow" | "deny" | "ask" =>
+    evaluate(permission, pattern, ruleset).action;
+}
+
+/**
+ * Persist the selected agent for a session and, when a run is active, apply it
+ * to the live harness immediately (permission evaluator + switchAgent). Returns
+ * `false` only when the session does not exist.
+ */
+export async function switchAgentForSession(
+  ctx: ServerContext,
+  sessionId: string,
+  agentName: string
+): Promise<boolean> {
+  const session = await ctx.repos.sessions.findById(sessionId);
+  if (!session) {
+    return false;
+  }
+  await ctx.repos.settings.set(`session:${sessionId}:agent`, agentName);
+  const harness = getActiveHarness(sessionId);
+  if (harness) {
+    const project = await ctx.repos.projects.findById(session.projectId);
+    if (project) {
+      const agent = await resolveSessionAgent(project.cwd, agentName);
+      const ruleset = agent.permission ?? fromConfig({ "*": "allow" });
+      harness.setPermissionEvaluator(buildPermissionEvaluator(ruleset));
+      await harness.switchAgent(agent);
+    }
+  }
+  return true;
+}
+
 export async function runPrompt(
   ctx: ServerContext,
   sessionId: string,
@@ -281,6 +350,19 @@ export async function runPrompt(
     getApiKeyAndHeaders,
   });
   ctx.log?.agent.debug("harness created", { sessionId });
+
+  // Resolve the session's selected agent (default `build`) and wire its
+  // permission ruleset into the loop. For non-intake sessions, switchAgent also
+  // applies the agent's system prompt + tool allowlist + thinking level.
+  // Intake keeps its dedicated INTAKE_SYSTEM_PROMPT and proposeSession flow.
+  const agentName = settings.agent ?? DEFAULT_AGENT_NAME;
+  const agent = await resolveSessionAgent(project.cwd, agentName);
+  const agentRuleset = agent.permission ?? fromConfig({ "*": "allow" });
+  harness.setPermissionEvaluator(buildPermissionEvaluator(agentRuleset));
+  if (!isIntake) {
+    await harness.switchAgent(agent);
+  }
+  ctx.log?.agent.debug("agent resolved", { sessionId, agent: agent.name });
 
   const unsubscribe = harness.subscribe((event) => {
     eventCallback(event);

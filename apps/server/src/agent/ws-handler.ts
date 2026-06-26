@@ -11,6 +11,7 @@ import {
   runPrompt,
   startReplay,
   stopReplay,
+  switchAgentForSession,
 } from "./runner.ts";
 
 export interface PromptMessage {
@@ -42,12 +43,20 @@ export interface ReplayMessage {
   type: "replay";
 }
 
+export interface SwitchAgentMessage {
+  /** Agent name to activate (e.g. `build`, `explore`, `plan`). */
+  name: string;
+  sessionId: string;
+  type: "switchAgent";
+}
+
 export type WsIn =
   | PromptMessage
   | AbortMessage
   | SteerMessage
   | FollowUpMessage
-  | ReplayMessage;
+  | ReplayMessage
+  | SwitchAgentMessage;
 
 export interface EventFrame {
   event: AgentHarnessEvent;
@@ -113,6 +122,11 @@ export const wsBodySchema = Type.Union([
       Type.Literal("pause"),
       Type.Literal("resume"),
     ]),
+  }),
+  Type.Object({
+    type: Type.Literal("switchAgent"),
+    sessionId: Type.String(),
+    name: Type.String(),
   }),
 ]);
 
@@ -198,13 +212,14 @@ export function handleMessage(
   msg: WsIn
 ) {
   const log = ctx.log?.server;
+  const hasMessage =
+    msg.type === "prompt" || msg.type === "steer" || msg.type === "followUp";
   log?.info("incoming message", {
     type: msg.type,
     sessionId: msg.sessionId,
     ...(msg.type === "replay" ? { action: msg.action } : {}),
-    ...(msg.type !== "abort" && msg.type !== "replay"
-      ? { messageLength: msg.message.length }
-      : {}),
+    ...(msg.type === "switchAgent" ? { agent: msg.name } : {}),
+    ...(hasMessage ? { messageLength: msg.message.length } : {}),
   });
 
   if (msg.type === "replay") {
@@ -259,6 +274,18 @@ export function handleMessage(
         : harness.followUp(msg.message);
     action.catch((err) => {
       log?.warn("steer/followUp action failed", { sessionId: msg.sessionId });
+      sendError(
+        ws,
+        msg.sessionId,
+        err instanceof Error ? err.message : String(err)
+      );
+    });
+    return;
+  }
+
+  if (msg.type === "switchAgent") {
+    switchAgentForSession(ctx, msg.sessionId, msg.name).catch((err) => {
+      log?.warn("switchAgent failed", { sessionId: msg.sessionId });
       sendError(
         ws,
         msg.sessionId,
