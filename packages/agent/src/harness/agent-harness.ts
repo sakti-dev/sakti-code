@@ -31,6 +31,7 @@ import { formatPromptTemplateInvocation } from "./prompt-templates.ts";
 import { formatSkillInvocation } from "./skills.ts";
 import type {
   AbortResult,
+  AgentDefinition,
   AgentHarnessEvent,
   AgentHarnessEventResultMap,
   AgentHarnessOptions,
@@ -227,6 +228,10 @@ export class AgentHarness<
   private resources: AgentHarnessResources<TSkill, TPromptTemplate>;
   private tools = new Map<string, TTool>();
   private activeToolNames: string[];
+  private currentAgent: AgentDefinition | undefined;
+  private permissionEvaluator?:
+    | ((permission: string, pattern: string) => "allow" | "deny" | "ask")
+    | undefined;
   private steerQueue: UserMessage[] = [];
   private steeringQueueMode: QueueMode;
   private followUpQueue: UserMessage[] = [];
@@ -503,6 +508,12 @@ export class AgentHarness<
         ? {}
         : { reasoning: turnState.thinkingLevel }),
       ...(this.logger === undefined ? {} : { logger: this.logger }),
+      ...(this.permissionEvaluator === undefined
+        ? {}
+        : {
+            evaluatePermission: (permission: string, pattern: string) =>
+              this.permissionEvaluator!(permission, pattern),
+          }),
       convertToLlm,
       transformContext: async (messages) => {
         const result = await this.emitHook({
@@ -1435,6 +1446,46 @@ export class AgentHarness<
       resources: this.getResources(),
       previousResources,
     });
+  }
+
+  /** Current switchable agent, set by {@link switchAgent}. */
+  getCurrentAgent(): AgentDefinition | undefined {
+    return this.currentAgent;
+  }
+
+  /**
+   * Set the permission evaluator forwarded to the agent loop. The loop calls it
+   * with each `(permission, pattern)` pair a tool declares before executing it;
+   * any non-`"allow"` result blocks the call. Updating it mid-run takes effect
+   * on the next tool call within the current turn.
+   */
+  setPermissionEvaluator(
+    evaluator:
+      | ((permission: string, pattern: string) => "allow" | "deny" | "ask")
+      | undefined
+  ): void {
+    this.permissionEvaluator = evaluator;
+  }
+
+  /**
+   * Atomically switch the active agent: records it (so a system-prompt callback
+   * or {@link getCurrentAgent} can read it), overrides the system prompt, and
+   * applies the agent's active-tool allowlist and thinking level. Model
+   * overrides are resolved by the application (an `AgentDefinition.model` is a
+   * coarse `{providerId, modelId}` pointer) and applied via {@link setModel}.
+   * Permission rulesets are wired separately via {@link setPermissionEvaluator}.
+   * Tool/model/prompt changes take effect on the next turn (prepareNextTurn
+   * re-reads them); the permission evaluator takes effect immediately.
+   */
+  async switchAgent(agent: AgentDefinition): Promise<void> {
+    this.currentAgent = agent;
+    this.systemPrompt = agent.systemPrompt;
+    if (agent.thinkingLevel !== undefined) {
+      await this.setThinkingLevel(agent.thinkingLevel);
+    }
+    if (agent.activeToolNames !== undefined) {
+      await this.setActiveTools(agent.activeToolNames);
+    }
   }
 
   getStreamOptions(): AgentHarnessStreamOptions {

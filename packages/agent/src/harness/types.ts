@@ -11,6 +11,7 @@ import type {
 
 export type { ThinkingLevel } from "../types.ts";
 
+import type { PermissionRuleset } from "./permission.ts";
 import type { Session } from "./session.ts";
 
 /** Result of a fallible operation. Expected failures are returned as `ok: false` instead of thrown. */
@@ -117,6 +118,12 @@ export interface AgentDefinition {
   model?: { providerId: string; modelId: string };
   /** Stable agent name used for `@`-mention lookup and switching. */
   name: string;
+  /**
+   * Permission ruleset active while this agent is selected. The application
+   * resolves the active ruleset by merging this with any session-level
+   * grants and wiring the result into the loop's permission evaluator.
+   */
+  permission?: PermissionRuleset;
   /** System prompt used while this agent is active. */
   systemPrompt: string;
   /** Override the reasoning level used while this agent is active. */
