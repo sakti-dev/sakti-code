@@ -118,11 +118,9 @@ export function SettingsDialog(props: SettingsDialogProps) {
             </ScrollArea>
           </div>
 
-          <div class="flex-1 overflow-y-auto px-4 pb-0 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2.5">
-            <div class="max-h-full overflow-y-auto pr-2">
-              {activeTabContent()}
-            </div>
-          </div>
+          <ScrollArea class="flex-1 pl-4">
+            <div class="pr-4 pb-4">{activeTabContent()}</div>
+          </ScrollArea>
         </div>
       </DialogContent>
     </Dialog>

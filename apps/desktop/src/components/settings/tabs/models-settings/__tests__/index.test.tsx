@@ -1,11 +1,11 @@
 import { fireEvent, render, screen } from "@solidjs/testing-library";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ModelsSettings } from "../models-settings/index.tsx";
+import { ModelsSettings } from "../index.tsx";
 
 const mocks = vi.hoisted(() => ({
   $delete: vi.fn(),
-  $get: vi.fn(),
   $post: vi.fn(),
+  availableGet: vi.fn(),
 }));
 
 vi.mock("~/stores/store-context", () => ({
@@ -13,7 +13,6 @@ vi.mock("~/stores/store-context", () => ({
     api: {
       api: {
         auth: {
-          $get: mocks.$get,
           ":provider": {
             $post: mocks.$post,
             $delete: mocks.$delete,
@@ -39,16 +38,7 @@ vi.mock("~/stores/store-context", () => ({
         },
         models: {
           available: {
-            $get: vi.fn().mockResolvedValue({
-              ok: true,
-              json: () => Promise.resolve([]),
-            }),
-            ":provider": {
-              $get: vi.fn().mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve([]),
-              }),
-            },
+            $get: mocks.availableGet,
           },
           connected: {
             $get: vi.fn().mockResolvedValue({
@@ -76,43 +66,46 @@ function errRes() {
   });
 }
 
-function authEntries(connected: string[] = []) {
+function availableProviders(connected: string[] = []) {
   const all = ["anthropic", "openai"];
-  return all.map((provider) => ({
-    provider,
-    hasKey: connected.includes(provider),
-    maskedKey: connected.includes(provider) ? "...XXXX" : null,
+  return all.map((id) => ({
+    id,
+    name: id === "anthropic" ? "Anthropic" : "OpenAI",
+    modelCount: 1,
+    connected: connected.includes(id),
   }));
 }
 
 describe("ModelsSettings", () => {
   beforeEach(() => {
-    mocks.$get.mockReset();
+    mocks.availableGet.mockReset();
     mocks.$post.mockReset();
     mocks.$delete.mockReset();
   });
 
-  it("calls GET /api/auth on mount", async () => {
-    mocks.$get.mockImplementation(() => okRes(authEntries()));
+  it("calls GET /api/models/available on mount", async () => {
+    mocks.availableGet.mockImplementation(() => okRes(availableProviders()));
     render(() => <ModelsSettings />);
-    await vi.waitFor(() => expect(mocks.$get).toHaveBeenCalled());
+    await vi.waitFor(() => expect(mocks.availableGet).toHaveBeenCalled());
   });
 
   it("shows empty state when no provider is connected", async () => {
-    mocks.$get.mockImplementation(() => okRes(authEntries()));
+    mocks.availableGet.mockImplementation(() => okRes(availableProviders()));
     render(() => <ModelsSettings />);
     expect(await screen.findByText("No provider connected yet.")).toBeTruthy();
   });
 
   it("lists connected providers", async () => {
-    mocks.$get.mockImplementation(() => okRes(authEntries(["anthropic"])));
+    mocks.availableGet.mockImplementation(() =>
+      okRes(availableProviders(["anthropic"]))
+    );
     render(() => <ModelsSettings />);
     expect(await screen.findByText("Anthropic")).toBeTruthy();
     expect(screen.queryByText("No provider connected yet.")).toBeNull();
   });
 
   it("connects via POST /api/auth/:provider with { param, json }", async () => {
-    mocks.$get.mockImplementation(() => okRes(authEntries()));
+    mocks.availableGet.mockImplementation(() => okRes(availableProviders()));
     render(() => <ModelsSettings />);
 
     await screen.findByText("No provider connected yet.");
@@ -136,7 +129,9 @@ describe("ModelsSettings", () => {
   });
 
   it("disconnects via DELETE /api/auth/:provider", async () => {
-    mocks.$get.mockImplementation(() => okRes(authEntries(["anthropic"])));
+    mocks.availableGet.mockImplementation(() =>
+      okRes(availableProviders(["anthropic"]))
+    );
     render(() => <ModelsSettings />);
 
     mocks.$delete.mockImplementation(() => okRes(null));
@@ -150,7 +145,7 @@ describe("ModelsSettings", () => {
   });
 
   it("shows error when connect fails", async () => {
-    mocks.$get.mockImplementation(() => okRes(authEntries()));
+    mocks.availableGet.mockImplementation(() => okRes(availableProviders()));
     render(() => <ModelsSettings />);
 
     await screen.findByText("No provider connected yet.");

@@ -5,14 +5,14 @@ import { ChatInput } from "~/components/chat-input/chat-input";
 import { buildChatTurns } from "~/stores/session/turn-projection";
 import { useStore } from "~/stores/store-context";
 import { setTabSession } from "~/stores/workspace/tab-store";
-import { WelcomePanel } from "./welcome-panel";
+import { EmptyState } from "./empty-state";
 
 interface OnboardingPanelProps {
   intakeSessionId: string | null;
   projectId: string;
 }
 
-export function OnboardingPanel(props: OnboardingPanelProps): JSX.Element {
+export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
   const { sessions, actions } = useStore();
 
   const sessionStore = createMemo(() => {
@@ -66,7 +66,7 @@ export function OnboardingPanel(props: OnboardingPanelProps): JSX.Element {
         fallback={<MessageTimeline isStreaming={isGenerating} turns={turns} />}
         when={!hasMessages()}
       >
-        <WelcomePanel />
+        <EmptyState />
       </Show>
       <Show when={sessionStore()?.store.proposedSession}>
         {(proposal) => (
@@ -85,4 +85,4 @@ export function OnboardingPanel(props: OnboardingPanelProps): JSX.Element {
       />
     </div>
   );
-}
+};
