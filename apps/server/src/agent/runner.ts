@@ -23,6 +23,11 @@ import {
   getPermissionChannel,
   type PermissionFrame,
 } from "../lib/permission-channel.ts";
+import {
+  checkCompaction,
+  parseCompactionSettings,
+  runAutoCompaction,
+} from "./auto-compaction.ts";
 import { BUILTIN_AGENTS, DEFAULT_AGENT_NAME } from "./builtin-agents.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
@@ -340,6 +345,7 @@ export async function runPrompt(
     session,
     auth.thinkingLevel
   );
+  const compactionSettings = parseCompactionSettings(settings);
 
   const env = new NodeExecutionEnv(project.cwd);
   const sessionInstance = new SessionClass(storage);
@@ -454,6 +460,39 @@ export async function runPrompt(
           ctx.log?.agent.info("turn retry", { sessionId });
           return harness.continue();
         },
+        // Auto-compaction: decide after each turn whether the context needs
+        // summarizing, and run it (prepare -> compact -> persist) when it does.
+        // Mirrors pi's _handlePostAgentRun compaction check.
+        checkCompaction: async (assistantMessage) => {
+          const entries = await sessionInstance.getBranch();
+          const messages = (await sessionInstance.buildContext()).messages;
+          let latestCompactionTimestamp: number | undefined;
+          for (let i = entries.length - 1; i >= 0; i--) {
+            const entry = entries[i];
+            if (entry?.type === "compaction") {
+              const ts = Date.parse(entry.timestamp);
+              latestCompactionTimestamp = Number.isNaN(ts) ? undefined : ts;
+              break;
+            }
+          }
+          return checkCompaction({
+            message: assistantMessage,
+            messages,
+            contextWindow: model.contextWindow ?? 0,
+            settings: compactionSettings,
+            ...(latestCompactionTimestamp === undefined
+              ? {}
+              : { latestCompactionTimestamp }),
+          });
+        },
+        runCompaction: async () =>
+          runAutoCompaction({
+            session: sessionInstance,
+            model,
+            apiKey: auth.apiKey,
+            settings: compactionSettings,
+            ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
+          }),
       },
       retrySettings
     );
