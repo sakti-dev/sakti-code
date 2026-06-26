@@ -13,6 +13,11 @@ export {
   shouldCompact,
 } from "./compaction.ts";
 export { AgentHarness } from "./harness/agent-harness.ts";
+export type {
+  CommandDiagnostic,
+  CommandDiagnosticCode,
+} from "./harness/commands.ts";
+export { loadCommands } from "./harness/commands.ts";
 export { configEntryNameFromPath } from "./harness/config-entry-name.ts";
 export { convertToLlm } from "./harness/messages.ts";
 export {
