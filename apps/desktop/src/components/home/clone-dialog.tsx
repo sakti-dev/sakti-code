@@ -6,6 +6,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import {
+  TextField,
+  TextFieldInput,
+  TextFieldLabel,
+} from "~/components/ui/text-field";
 
 interface CloneDialogProps {
   isOpen: boolean;
@@ -57,15 +62,9 @@ export function CloneDialog(props: CloneDialogProps) {
           <DialogTitle>Clone Repository</DialogTitle>
         </DialogHeader>
         <div class="space-y-4 p-6">
-          <div>
-            <label
-              class="mb-1.5 block font-medium text-foreground text-sm"
-              for="clone-repository-url"
-            >
-              Repository URL
-            </label>
-            <input
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground text-sm placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          <TextField>
+            <TextFieldLabel>Repository URL</TextFieldLabel>
+            <TextFieldInput
               disabled={isCloning()}
               id="clone-repository-url"
               onInput={(e) => setUrl(e.currentTarget.value)}
@@ -73,7 +72,7 @@ export function CloneDialog(props: CloneDialogProps) {
               type="text"
               value={url()}
             />
-          </div>
+          </TextField>
 
           <Show when={error()}>
             <div class="rounded-md border border-error/20 bg-error/10 p-3">

@@ -1,4 +1,3 @@
-import { FiSearch } from "solid-icons/fi";
 import { For, Show } from "solid-js";
 import {
   Dialog,
@@ -8,6 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { SearchBar } from "~/components/ui/search-bar";
+import { TextField, TextFieldInput } from "~/components/ui/text-field";
 import { cn } from "~/lib/utils";
 import { useProviderConnect } from "./use-provider-connect";
 
@@ -69,18 +70,15 @@ export const ProviderConnectModal = (props: ProviderConnectModalProps) => {
           </div>
 
           <div class="mt-3">
-            <label class="flex items-center gap-2 rounded-md border border-border/80 bg-background/65 px-2.5 py-2 transition-colors focus-within:border-primary/40">
-              <FiSearch class="size-4 text-muted-foreground" />
-              <input
-                autofocus
-                class="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/80"
-                onInput={(event) => setSearchQuery(event.currentTarget.value)}
-                placeholder="Search providers..."
-                ref={setProviderSearchInputRef}
-                type="text"
-                value={searchQuery()}
-              />
-            </label>
+            <SearchBar
+              inputProps={{
+                autofocus: true,
+                ref: setProviderSearchInputRef,
+              }}
+              onInput={setSearchQuery}
+              placeholder="Search providers..."
+              value={searchQuery()}
+            />
           </div>
         </DialogHeader>
 
@@ -199,18 +197,20 @@ export const ProviderConnectModal = (props: ProviderConnectModalProps) => {
                           </div>
                           <div class="space-y-2">
                             <div class="flex flex-wrap items-center gap-2">
-                              <input
-                                class="w-full min-w-[220px] flex-1 rounded-md border border-border bg-background px-2.5 py-2 text-foreground text-xs outline-none transition-colors placeholder:text-muted-foreground/80 focus:border-primary/45"
-                                onInput={(event) => {
-                                  setTokenDraft(
-                                    providerId(),
-                                    event.currentTarget.value
-                                  );
-                                }}
-                                placeholder="API key"
-                                type="password"
-                                value={tokenByProvider()[providerId()] ?? ""}
-                              />
+                              <TextField class="contents">
+                                <TextFieldInput
+                                  class="min-w-[220px] flex-1"
+                                  onInput={(event) => {
+                                    setTokenDraft(
+                                      providerId(),
+                                      event.currentTarget.value
+                                    );
+                                  }}
+                                  placeholder="API key"
+                                  type="password"
+                                  value={tokenByProvider()[providerId()] ?? ""}
+                                />
+                              </TextField>
                               <button
                                 class="rounded-md border border-border/90 bg-muted/70 px-2.5 py-2 font-medium text-foreground text-xs transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
                                 disabled={

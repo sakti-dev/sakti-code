@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { TextField, TextFieldInput } from "~/components/ui/text-field";
 import { useStore } from "~/stores/store-context";
 
 const MODES = ["default", "intake", "plan", "build"] as const;
@@ -251,16 +252,18 @@ export function ProfileEditor() {
               <div class="rounded-lg border border-border/70 bg-background/50 p-3">
                 <div class="mb-3 flex items-center justify-between gap-3">
                   <div class="flex min-w-0 flex-1 items-center gap-2">
-                    <input
-                      class="min-w-0 flex-1 rounded-md border border-border/70 bg-background px-2 py-1 font-medium text-sm outline-none focus:border-primary/45"
-                      onInput={(e) =>
-                        updateProfile(profileId, {
-                          name: e.currentTarget.value,
-                        })
-                      }
-                      type="text"
-                      value={profile.name}
-                    />
+                    <TextField class="contents">
+                      <TextFieldInput
+                        class="min-w-0 flex-1 font-medium"
+                        onInput={(e) =>
+                          updateProfile(profileId, {
+                            name: e.currentTarget.value,
+                          })
+                        }
+                        type="text"
+                        value={profile.name}
+                      />
+                    </TextField>
                     <Show when={isDefault(profileId)}>
                       <span class="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary uppercase tracking-wide">
                         Default

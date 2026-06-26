@@ -13,6 +13,7 @@ import { KeyboardShortcutsFooter } from "~/components/home/keyboard-shortcuts-fo
 import { ProjectCard } from "~/components/home/project-card";
 import { SettingsDialog } from "~/components/settings/settings-dialog";
 import { Kbd } from "~/components/ui/kbd";
+import { SearchBar } from "~/components/ui/search-bar";
 import type { Project, SessionMeta } from "~/stores/server/server-store";
 import { useStore } from "~/stores/store-context";
 import {
@@ -107,13 +108,12 @@ export default function Home() {
     }
   };
 
+  let searchInputRef: HTMLInputElement | undefined;
+
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.ctrlKey && e.key === "f") {
       e.preventDefault();
-      const searchInput = document.querySelector(
-        '[data-test="search-input"]'
-      ) as HTMLInputElement;
-      searchInput?.focus();
+      searchInputRef?.focus();
     }
   };
 
@@ -210,31 +210,22 @@ export default function Home() {
                 </div>
 
                 {/* Search */}
-                <div class="relative mb-3">
-                  <div class="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
-                    <svg
-                      aria-label="Search"
-                      class="h-4 w-4"
-                      fill="currentColor"
-                      role="img"
-                      viewBox="0 0 16 16"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <title>Search</title>
-                      <path d="M11.5 7a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm-.82 4.74a6 6 0 1 1 1.06-1.06l3.04 3.04a.75.75 0 1 1-1.06 1.06l-3.04-3.04Z" />
-                    </svg>
-                  </div>
-                  <input
-                    class="w-full rounded-xl border border-border bg-background py-2 pr-20 pl-10 text-foreground text-sm outline-none transition-all duration-200 placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary"
-                    data-test="search-input"
-                    onInput={(e) => setSearchQuery(e.currentTarget.value)}
+                <div class="mb-3">
+                  <SearchBar
+                    inputProps={{
+                      ref: (el) => {
+                        searchInputRef = el;
+                      },
+                    }}
+                    onInput={setSearchQuery}
                     placeholder="Search projects..."
-                    type="text"
+                    trailing={
+                      <div class="flex items-center pr-2">
+                        <Kbd>Ctrl + F</Kbd>
+                      </div>
+                    }
                     value={searchQuery()}
                   />
-                  <div class="absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-1 rounded-md bg-muted px-2 py-1 font-medium text-muted-foreground text-xs">
-                    <Kbd>Ctrl + F</Kbd>
-                  </div>
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
