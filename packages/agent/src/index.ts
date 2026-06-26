@@ -91,6 +91,7 @@ export type {
   AgentToolCall,
   AgentToolResult,
   AgentToolUpdateCallback,
+  PermissionRequest,
   QueueMode,
   StreamFn,
   ToolExecutionMode,

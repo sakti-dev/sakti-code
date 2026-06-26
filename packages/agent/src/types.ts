@@ -439,6 +439,18 @@ export interface AgentToolResult<T> {
 }
 
 /**
+ * A tool's declaration of what it is about to touch, so the permission engine
+ * can evaluate allow/deny/ask before execution. `permission` is the tool or
+ * category name (e.g. "read", "bash", "external_directory"); `patterns` are the
+ * argument globs the call operates on (e.g. file paths or a command string).
+ * Mirrors the `{ permission, patterns }` opencode tools emit before running.
+ */
+export interface PermissionRequest {
+  patterns: string[];
+  permission: string;
+}
+
+/**
  * Callback used by tools to stream partial execution updates.
  *
  * The callback is scoped to the current `execute()` invocation. Calls made after
@@ -470,6 +482,18 @@ export interface AgentTool<
   executionMode?: ToolExecutionMode | undefined;
   /** Human-readable label for UI display. */
   label: string;
+  /**
+   * Optional declarator of the permission requests this call raises, evaluated
+   * by the agent loop against the active ruleset before `execute`: any `deny`
+   * blocks the call, `ask` is treated as deny until the interactive channel
+   * lands (Phase 4). Returning `undefined` or an empty array means the tool
+   * raises no permission requests.
+   *
+   * Typed `unknown` (not `Static<TParameters>`) so that apps intersecting
+   * `AgentTool<specificParams>` with extra metadata still satisfy the harness
+   * generic constraint; implementations narrow `params` to their own input type.
+   */
+  permissions?: (params: unknown) => PermissionRequest[] | undefined;
   /**
    * Optional compatibility shim for raw tool-call arguments before schema validation.
    * Must return an object that matches `TParameters`.
