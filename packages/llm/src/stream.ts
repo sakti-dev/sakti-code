@@ -252,6 +252,7 @@ export function streamWithModel(
   const runner = runStreamText ?? (aiStreamText as unknown as RunStreamText);
 
   req.logger?.debug("stream request", {
+    apiKey: req.apiKey,
     baseURL: req.model.baseUrl,
     hasApiKey: req.apiKey !== undefined,
     headerKeys: mergedHeaders ? Object.keys(mergedHeaders) : [],

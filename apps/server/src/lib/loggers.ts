@@ -77,11 +77,22 @@ export function createServerLoggers(options?: {
 }): ServerLoggers {
   const logDir = options?.logDir ?? resolveLogDir();
   const level = resolveLogLevel(options?.level, process.env.SAKTI_LOG_LEVEL);
+  // Opt-in secret logging: set SAKTI_LOG_SECRETS=true to stop pino redacting
+  // apiKey/authorization so you can confirm the key resolved from auth.json
+  // actually reaches the stream call. Off by default (writes secrets to disk
+  // otherwise) — rotate the key after a debugging session that enables it.
+  const bypassRedaction = process.env.SAKTI_LOG_SECRETS === "true";
 
   try {
     mkdirSync(logDir, { recursive: true });
     const make = (dest: string, layer: string): Logger =>
-      createPinoLogger({ dest, layer, logDir, level });
+      createPinoLogger({
+        dest,
+        layer,
+        level,
+        logDir,
+        ...(bypassRedaction ? { redactPaths: [] } : {}),
+      });
     return {
       agent: make("agent.log", "agent"),
       llm: make("llm.log", "llm"),
