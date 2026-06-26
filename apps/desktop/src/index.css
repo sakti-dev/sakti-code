@@ -238,14 +238,11 @@
   border-radius: calc(var(--radius) - 4px);
 }
 
-.chip[data-chip-kind="command"] {
-  color: var(--secondary-foreground);
-  background-color: var(--secondary);
-}
-
+/* Command + skill chips share the brand (primary) color; files stay muted. */
+.chip[data-chip-kind="command"],
 .chip[data-chip-kind="skill"] {
-  color: var(--info-foreground);
-  background-color: var(--info);
+  color: var(--primary-foreground);
+  background-color: var(--primary);
 }
 
 .chip[data-chip-kind="file"] {
