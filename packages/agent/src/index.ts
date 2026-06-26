@@ -3,6 +3,7 @@ export {
   collectEntriesForBranchSummary,
   generateBranchSummary,
 } from "./compaction/branch-summarization.ts";
+export type { CompactionSettings } from "./compaction.ts";
 export {
   calculateContextTokens,
   compact,
