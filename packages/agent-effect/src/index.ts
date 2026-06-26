@@ -1,5 +1,8 @@
+export type { FileOperations } from "./compaction/utils.ts";
+export { serializeConversation } from "./compaction/utils.ts";
 export { buildHarnessStreamRequest } from "./harness/build-stream-request.ts";
 export { configEntryNameFromPath } from "./harness/config-entry-name.ts";
+export { InMemorySessionStorage } from "./harness/memory-storage.ts";
 export type {
   BashExecutionMessage,
   BranchSummaryMessage,
@@ -41,6 +44,29 @@ export {
   parseLeadingInvocation,
   planFirstTurn,
 } from "./harness/prompt-preprocessor.ts";
+export {
+  appendSkillsBlock,
+  formatSkillsForSystemPrompt,
+} from "./harness/system-prompt.ts";
+export type { Skill } from "./harness/types.ts";
+export {
+  type CompactionEntry,
+  err,
+  getOrThrow,
+  getOrUndefined,
+  type LabelEntry,
+  type LeafEntry,
+  type MessageEntry,
+  ok,
+  type Result,
+  SessionError,
+  type SessionErrorCode,
+  type SessionInfoEntry,
+  type SessionMetadata,
+  type SessionStorage,
+  type SessionTreeEntry,
+  type SessionTreeEntryBase,
+} from "./harness/types.ts";
 export type { TruncationOptions, TruncationResult } from "./lib/truncate.ts";
 export {
   DEFAULT_MAX_BYTES,

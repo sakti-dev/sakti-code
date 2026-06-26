@@ -43,7 +43,11 @@
       }
     },
     {
-      "includes": ["packages/agent/src/**", "packages/tools/src/**"],
+      "includes": [
+        "packages/agent/src/**",
+        "packages/agent-effect/src/**",
+        "packages/tools/src/**"
+      ],
       "linter": {
         "rules": {
           "complexity": {

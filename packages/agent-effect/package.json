@@ -15,10 +15,12 @@
     "@sakti-code/llm": "workspace:*",
     "@sakti-code/logger": "workspace:*",
     "effect": "^3.21.0",
-    "typebox": "1.1.38"
+    "typebox": "1.1.38",
+    "uuid": "^11"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
+    "@types/uuid": "^10",
     "vitest": "^3"
   }
 }
