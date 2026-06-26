@@ -25,16 +25,17 @@ describe("builtin agents", () => {
     ]);
   });
 
-  it("build is allow-all but denies reads of .env (except .env.example)", () => {
+  it("build is allow-all but asks on reads of .env (except .env.example) and external dirs", () => {
     const build = resolveBuiltinAgent("build");
     expect(build).toBeDefined();
     const rs = build!.permission!;
-    expect(decision(rs, "read", "secret.env")).toBe("deny");
-    expect(decision(rs, "read", "config/.env.local")).toBe("deny");
+    expect(decision(rs, "read", "secret.env")).toBe("ask");
+    expect(decision(rs, "read", "config/.env.local")).toBe("ask");
     expect(decision(rs, "read", "config/.env.example")).toBe("allow");
     expect(decision(rs, "read", "src/a.ts")).toBe("allow");
     expect(decision(rs, "edit", "src/a.ts")).toBe("allow");
     expect(decision(rs, "bash", "ls -la")).toBe("allow");
+    expect(decision(rs, "external_directory", "/etc/passwd")).toBe("ask");
   });
 
   it("explore is read-only: denies edit/write but allows read/grep/glob/list/bash", () => {

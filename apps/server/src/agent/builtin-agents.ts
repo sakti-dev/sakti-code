@@ -33,13 +33,14 @@ function allowAllRuleset(): PermissionRuleset {
   return fromConfig({ "*": "allow" });
 }
 
-/** Allow everything but deny reads of secret env files (`.env.example` is fine). */
+/** Allow everything but ask before reading secret env files (`.env.example` is fine) or touching external dirs. */
 function buildRuleset(): PermissionRuleset {
   return fromConfig({
     "*": "allow",
+    external_directory: { "*": "ask" },
     read: {
-      "*.env": "deny",
-      "*.env.*": "deny",
+      "*.env": "ask",
+      "*.env.*": "ask",
       "*.env.example": "allow",
     },
   });

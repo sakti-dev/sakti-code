@@ -41,10 +41,10 @@ describe("resolveAgentByName", () => {
 });
 
 describe("buildPermissionEvaluator", () => {
-  it("build ruleset denies .env reads and allows everything else", () => {
+  it("build ruleset asks on .env reads and allows everything else", () => {
     const build = resolveBuiltinAgent("build")!;
     const decide = buildPermissionEvaluator(build.permission!);
-    expect(decide("read", "secret.env")).toBe("deny");
+    expect(decide("read", "secret.env")).toBe("ask");
     expect(decide("read", "src/a.ts")).toBe("allow");
     expect(decide("edit", "src/a.ts")).toBe("allow");
   });
