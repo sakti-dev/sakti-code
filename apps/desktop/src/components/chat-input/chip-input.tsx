@@ -75,21 +75,24 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
       ed.appendChild(spacer);
     }
     pendingTrigger = null;
-    // Focus BEFORE placing the caret — focusing a contenteditable can reset a
-    // selection that was set while the editor was unfocused (the menu input
-    // had focus during the pick).
-    ed.focus();
-    const sel = window.getSelection();
-    if (sel) {
+    const text = serializeEditor(ed);
+    setEmpty(false);
+    props.onChange(text);
+    // Place the caret after the trailing space. Defer to the next animation
+    // frame: the context menu (Kobalte Dialog) closes on pick and restores
+    // focus to the editor's *pre-open* selection (caret 0), which would
+    // clobber a selection set synchronously. rAF runs after that restore.
+    requestAnimationFrame(() => {
+      const sel = window.getSelection();
+      if (!sel) {
+        return;
+      }
       const after = document.createRange();
       after.setStartAfter(spacer);
       after.collapse(true);
       sel.removeAllRanges();
       sel.addRange(after);
-    }
-    const text = serializeEditor(ed);
-    setEmpty(false);
-    props.onChange(text);
+    });
   };
 
   const api: ChipInputApi = {
