@@ -1,11 +1,10 @@
-import { parse } from "yaml";
 import {
-  type ExecutionEnv,
-  type FileInfo,
-  type Result,
-  type Skill,
-  toError,
-} from "./types.ts";
+  basenameEnvPath,
+  dirnameEnvPath,
+  parseFrontmatter,
+  resolveKind,
+} from "./loader-shared.ts";
+import type { ExecutionEnv, Skill } from "./types.ts";
 
 const MAX_NAME_LENGTH = 64;
 const MAX_DESCRIPTION_LENGTH = 1024;
@@ -318,76 +317,4 @@ function validateDescription(description: string | undefined): string[] {
     );
   }
   return errors;
-}
-
-function parseFrontmatter<T extends Record<string, unknown>>(
-  content: string
-): Result<{ frontmatter: T; body: string }, Error> {
-  try {
-    const normalized = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-    if (!normalized.startsWith("---")) {
-      return { ok: true, value: { frontmatter: {} as T, body: normalized } };
-    }
-    const endIndex = normalized.indexOf("\n---", 3);
-    if (endIndex === -1) {
-      return { ok: true, value: { frontmatter: {} as T, body: normalized } };
-    }
-    const yamlString = normalized.slice(4, endIndex);
-    const body = normalized.slice(endIndex + 4).trim();
-    return {
-      ok: true,
-      value: { frontmatter: (parse(yamlString) ?? {}) as T, body },
-    };
-  } catch (error) {
-    return { ok: false, error: toError(error) };
-  }
-}
-
-async function resolveKind(
-  env: ExecutionEnv,
-  info: FileInfo,
-  diagnostics: SkillDiagnostic[]
-): Promise<"file" | "directory" | undefined> {
-  if (info.kind === "file" || info.kind === "directory") {
-    return info.kind;
-  }
-  const canonicalPath = await env.canonicalPath(info.path);
-  if (!canonicalPath.ok) {
-    if (canonicalPath.error.code !== "not_found") {
-      diagnostics.push({
-        type: "warning",
-        code: "file_info_failed",
-        message: canonicalPath.error.message,
-        path: info.path,
-      });
-    }
-    return;
-  }
-  const target = await env.fileInfo(canonicalPath.value);
-  if (!target.ok) {
-    if (target.error.code !== "not_found") {
-      diagnostics.push({
-        type: "warning",
-        code: "file_info_failed",
-        message: target.error.message,
-        path: info.path,
-      });
-    }
-    return;
-  }
-  return target.value.kind === "file" || target.value.kind === "directory"
-    ? target.value.kind
-    : undefined;
-}
-
-function dirnameEnvPath(path: string): string {
-  const normalized = path.replace(/\/+$/, "");
-  const slashIndex = normalized.lastIndexOf("/");
-  return slashIndex <= 0 ? "/" : normalized.slice(0, slashIndex);
-}
-
-function basenameEnvPath(path: string): string {
-  const normalized = path.replace(/\/+$/, "");
-  const slashIndex = normalized.lastIndexOf("/");
-  return slashIndex === -1 ? normalized : normalized.slice(slashIndex + 1);
 }
