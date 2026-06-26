@@ -41,6 +41,9 @@ export function createWriteTool(
     description:
       "Write content to a file. Creates the file if it doesn't exist, overwrites if it does. Automatically creates parent directories.",
     parameters: writeSchema,
+    permissions: (params) => [
+      { permission: "edit", patterns: [(params as WriteToolInput).path] },
+    ],
     async execute(
       _toolCallId: string,
       { path, content }: Static<typeof writeSchema>,

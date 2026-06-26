@@ -68,6 +68,9 @@ export function createFindTool(
     label: "find",
     description: `Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to ${DEFAULT_LIMIT} results or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
     parameters: findSchema,
+    permissions: (params) => [
+      { permission: "glob", patterns: [(params as FindToolInput).pattern] },
+    ],
     async execute(
       _toolCallId: string,
       { pattern, path: searchDir, limit }: FindToolInput,
