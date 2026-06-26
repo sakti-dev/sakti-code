@@ -1,3 +1,4 @@
+import type { PermissionReply } from "@sakti-code/agent";
 import { FiAlertCircle } from "solid-icons/fi";
 import {
   createEffect,
@@ -12,6 +13,7 @@ import { cn } from "~/lib/utils";
 import { aggregateUsage } from "~/stores/session/usage-stats";
 import { useStore } from "~/stores/store-context";
 import { InputFooter } from "./input-footer";
+import { PermissionStrip } from "./permission-strip";
 import { ProfileSelect } from "./profile-select";
 import { SendButton } from "./send-button";
 
@@ -59,6 +61,15 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   });
 
   const retry = () => sessionStore()?.store.retry ?? null;
+
+  const permission = () => sessionStore()?.store.permission ?? null;
+
+  const replyPermission = (reply: PermissionReply) => {
+    const req = permission();
+    if (req && props.sessionId) {
+      actions.replyPermission(props.sessionId, req.id, reply);
+    }
+  };
 
   const [countdown, setCountdown] = createSignal(0);
 
@@ -149,6 +160,11 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
                 Cancel
               </Button>
             </div>
+          )}
+        </Show>
+        <Show when={permission()}>
+          {(req) => (
+            <PermissionStrip onReply={replyPermission} request={req()} />
           )}
         </Show>
         <div

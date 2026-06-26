@@ -1,16 +1,25 @@
-import { fireEvent, render } from "@solidjs/testing-library";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@solidjs/testing-library";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChatInput } from "../chat-input";
 
 const mockSendPrompt = vi.fn();
+const mockReplyPermission = vi.fn();
+const mockSessionStore = {
+  current: {
+    streaming: { phase: "idle" },
+    messages: {},
+    messageOrder: [],
+  } as Record<string, unknown>,
+};
 
 vi.mock("~/stores/store-context", () => ({
   useStore: () => ({
-    actions: { sendPrompt: mockSendPrompt },
+    actions: {
+      sendPrompt: mockSendPrompt,
+      replyPermission: mockReplyPermission,
+    },
     sessions: {
-      get: () => ({
-        store: { streaming: { phase: "idle" }, messages: {}, messageOrder: [] },
-      }),
+      get: () => ({ store: mockSessionStore.current }),
     },
     server: {
       store: { sessions: { s1: { modelId: "test-model", profileId: null } } },
@@ -35,6 +44,16 @@ vi.mock("~/stores/store-context", () => ({
 }));
 
 describe("ChatInput", () => {
+  afterEach(() => {
+    mockSessionStore.current = {
+      streaming: { phase: "idle" },
+      messages: {},
+      messageOrder: [],
+    };
+    mockSendPrompt.mockClear();
+    mockReplyPermission.mockClear();
+  });
+
   it("renders textarea with placeholder", () => {
     const { getByPlaceholderText } = render(() => (
       <ChatInput placeholder="Type here…" sessionId="s1" />
@@ -75,5 +94,23 @@ describe("ChatInput", () => {
     const textarea = getByRole("textbox") as HTMLTextAreaElement;
     fireEvent.keyDown(textarea, { key: "Enter" });
     expect(mockSendPrompt).not.toHaveBeenCalled();
+  });
+
+  it("renders the permission strip and wires replyPermission when a request is pending", async () => {
+    mockSessionStore.current = {
+      streaming: { phase: "idle" },
+      messages: {},
+      messageOrder: [],
+      permission: {
+        id: "per_1",
+        permission: "read",
+        patterns: ["secret.env"],
+        toolName: "read",
+        toolCallId: "c1",
+      },
+    };
+    render(() => <ChatInput sessionId="s1" />);
+    await fireEvent.click(screen.getByRole("button", { name: "Allow" }));
+    expect(mockReplyPermission).toHaveBeenCalledWith("s1", "per_1", "once");
   });
 });
