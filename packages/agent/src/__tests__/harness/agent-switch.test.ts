@@ -146,4 +146,33 @@ describe("AgentHarness.switchAgent", () => {
     expect(executed).toEqual([]);
     expect(toolResults).toContainEqual({ name: "write", isError: true });
   });
+
+  it("forwards resolvePermissionAsk so an ask the user allows proceeds", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    registration.setResponses([
+      () =>
+        fauxAssistantMessageWithContent(
+          [fauxToolCall("read", { path: "secret.env" })],
+          "toolUse"
+        ),
+      () => fauxAssistantMessage("done"),
+    ]);
+    const { readTool, executed } = buildReadWriteTools();
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: new Session(new InMemorySessionStorage()),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      thinkingLevel: "off",
+      tools: [readTool],
+    });
+    // read of anything is "ask"; the resolver allows it.
+    harness.setPermissionEvaluator(() => "ask");
+    harness.setPermissionAskResolver(async () => "allow");
+
+    await harness.prompt("read it");
+
+    expect(executed).toEqual(["read:secret.env"]);
+  });
 });

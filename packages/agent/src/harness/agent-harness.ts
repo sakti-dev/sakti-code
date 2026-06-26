@@ -21,6 +21,7 @@ import type {
   AgentLoopConfig,
   AgentMessage,
   AgentTool,
+  PermissionAskRequest,
   QueueMode,
   StreamFn,
   ThinkingLevel,
@@ -231,6 +232,9 @@ export class AgentHarness<
   private currentAgent: AgentDefinition | undefined;
   private permissionEvaluator?:
     | ((permission: string, pattern: string) => "allow" | "deny" | "ask")
+    | undefined;
+  private permissionAskResolver?:
+    | ((req: PermissionAskRequest) => Promise<"allow" | "deny">)
     | undefined;
   private steerQueue: UserMessage[] = [];
   private steeringQueueMode: QueueMode;
@@ -513,6 +517,13 @@ export class AgentHarness<
         : {
             evaluatePermission: (permission: string, pattern: string) =>
               this.permissionEvaluator!(permission, pattern),
+          }),
+      ...(this.permissionAskResolver === undefined
+        ? {}
+        : {
+            resolvePermissionAsk: (
+              req: PermissionAskRequest
+            ): Promise<"allow" | "deny"> => this.permissionAskResolver!(req),
           }),
       convertToLlm,
       transformContext: async (messages) => {
@@ -1465,6 +1476,19 @@ export class AgentHarness<
       | undefined
   ): void {
     this.permissionEvaluator = evaluator;
+  }
+
+  /**
+   * Set the async `"ask"` resolver forwarded to the loop. Invoked when
+   * {@link setPermissionEvaluator} returns `"ask"`; the loop pauses until the
+   * returned promise settles. Wire this to an interactive approval channel.
+   */
+  setPermissionAskResolver(
+    resolver:
+      | ((req: PermissionAskRequest) => Promise<"allow" | "deny">)
+      | undefined
+  ): void {
+    this.permissionAskResolver = resolver;
   }
 
   /**
