@@ -1,5 +1,11 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseLeadingInvocation } from "../prompt-preprocessor.ts";
+import {
+  expandFileMentions,
+  parseLeadingInvocation,
+} from "../prompt-preprocessor.ts";
 
 const skills = [{ name: "graphify", description: "g", content: "c" }];
 const templates = [{ name: "commit", description: "c", content: "c" }];
@@ -65,5 +71,44 @@ describe("parseLeadingInvocation", () => {
     expect(parseLeadingInvocation("run skill:graphify now", resources)).toEqual(
       { kind: "prompt" }
     );
+  });
+});
+
+describe("expandFileMentions", () => {
+  it("inlines an existing file's content for @path", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sakti-pp-"));
+    writeFileSync(join(dir, "foo.txt"), "hello file");
+    const out = await expandFileMentions("see @foo.txt please", dir);
+    expect(out).toContain('<file path="foo.txt">');
+    expect(out).toContain("hello file");
+    expect(out).toContain("please");
+  });
+
+  it("resolves nested relative paths", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sakti-pp2-"));
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src", "a.ts"), "export const x = 1;");
+    const out = await expandFileMentions("@src/a.ts", dir);
+    expect(out).toContain("export const x = 1;");
+  });
+
+  it("leaves non-file @tokens untouched (e.g. emails)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sakti-pp3-"));
+    const out = await expandFileMentions("email me@host.com ok", dir);
+    expect(out).toBe("email me@host.com ok");
+  });
+
+  it("leaves a non-existent path untouched (no error note)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sakti-pp4-"));
+    const out = await expandFileMentions("@nope/missing.txt", dir);
+    expect(out).toBe("@nope/missing.txt");
+  });
+
+  it("truncates files larger than the byte cap", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sakti-pp5-"));
+    writeFileSync(join(dir, "big.txt"), "x".repeat(70_000));
+    const out = await expandFileMentions("@big.txt", dir);
+    expect(out).toContain("[truncated:");
+    expect(out.length).toBeLessThan(70_000);
   });
 });
