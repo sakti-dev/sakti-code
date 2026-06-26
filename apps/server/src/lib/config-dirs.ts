@@ -63,6 +63,25 @@ export function getAuthPath(): string {
   return join(getAgentDir(), "auth.json");
 }
 
+/**
+ * Returns the session database path. Defaults to `~/.sakti/sessions.db` — a
+ * sibling of the agent dir (alongside `logs/`) so all sakti state lives in one
+ * place. Overridable via `SAKTI_DB_PATH`.
+ *
+ * Honors `SAKTI_AGENT_DIR`: when that moves the agent dir, the DB moves to its
+ * sibling too (`<parent>/sessions.db`), matching {@link getLogDir}. The
+ * previous default was a relative `"sakti-code.db"` resolved against the
+ * process cwd — which scattered stale DBs across the repo depending on where
+ * the app launched from.
+ */
+export function getDbPath(): string {
+  const override = process.env.SAKTI_DB_PATH;
+  if (override) {
+    return override;
+  }
+  return join(dirname(getAgentDir()), "sessions.db");
+}
+
 export function getProfilesPath(): string {
   return join(getAgentDir(), "profiles.json");
 }

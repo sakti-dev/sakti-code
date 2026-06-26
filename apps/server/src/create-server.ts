@@ -11,6 +11,7 @@ import { createContext } from "./context.ts";
 import { createAuthStore } from "./lib/auth-store.ts";
 import {
   getAuthPath,
+  getDbPath,
   getMigratedSentinelPath,
   getProfilesPath,
   getSettingsPath,
@@ -46,7 +47,7 @@ export async function createServer(
   const {
     port = Number(process.env.SAKTI_PORT ?? 3001),
     hostname = process.env.SAKTI_HOST ?? "localhost",
-    dbPath = process.env.SAKTI_DB_PATH ?? "sakti-code.db",
+    dbPath = getDbPath(),
     staticDir = null,
     hooks = {},
     migrationsFolder,
