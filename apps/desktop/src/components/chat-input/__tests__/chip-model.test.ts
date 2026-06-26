@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  chipKind,
   createChipElement,
   isAtEditorStart,
   isPointAtEditorStart,
@@ -44,6 +45,27 @@ describe("createChipElement", () => {
     expect(chip.dataset.token).toBe("/commit");
     expect(chip.textContent).toBe("/commit");
     expect(chip.className).toContain("chip");
+  });
+
+  it("tags the chip kind from the token prefix", () => {
+    expect(createChipElement("/commit").dataset.chipKind).toBe("command");
+    expect(createChipElement("skill:graphify").dataset.chipKind).toBe("skill");
+    expect(createChipElement("@src/a.ts").dataset.chipKind).toBe("file");
+  });
+});
+
+describe("chipKind", () => {
+  it("classifies / tokens as command", () => {
+    expect(chipKind("/commit")).toBe("command");
+  });
+  it("classifies skill: tokens as skill", () => {
+    expect(chipKind("skill:graphify")).toBe("skill");
+  });
+  it("classifies @ tokens as file", () => {
+    expect(chipKind("@src/a.ts")).toBe("file");
+  });
+  it("defaults unknown tokens to file", () => {
+    expect(chipKind("plain")).toBe("file");
   });
 });
 

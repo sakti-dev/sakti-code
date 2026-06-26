@@ -222,3 +222,33 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* Inline chip badges inside the contenteditable chat input. Atomic
+   (contenteditable=false) and color-coded by token kind via data-chip-kind.
+   user-select:all so a single click selects the whole chip. */
+.chip {
+  display: inline-block;
+  padding: 0 0.35rem;
+  margin: 0 0.1rem;
+  font-size: 0.85em;
+  line-height: 1.45;
+  vertical-align: baseline;
+  user-select: all;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 4px);
+}
+
+.chip[data-chip-kind="command"] {
+  color: var(--secondary-foreground);
+  background-color: var(--secondary);
+}
+
+.chip[data-chip-kind="skill"] {
+  color: var(--info-foreground);
+  background-color: var(--info);
+}
+
+.chip[data-chip-kind="file"] {
+  color: var(--muted-foreground);
+  background-color: var(--muted);
+}

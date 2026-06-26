@@ -25,12 +25,26 @@ export function serializeEditor(editor: HTMLElement): string {
   return out;
 }
 
+export type ChipKind = "command" | "skill" | "file";
+
+/** Derive the visual chip kind from the token prefix. */
+export function chipKind(token: string): ChipKind {
+  if (token.startsWith("/")) {
+    return "command";
+  }
+  if (token.startsWith("skill:")) {
+    return "skill";
+  }
+  return "file";
+}
+
 /** Create an atomic chip span carrying the wire token. */
 export function createChipElement(token: string): HTMLSpanElement {
   const chip = document.createElement("span");
   chip.contentEditable = "false";
   chip.className = "chip";
   chip.dataset.token = token;
+  chip.dataset.chipKind = chipKind(token);
   chip.textContent = token;
   return chip;
 }
