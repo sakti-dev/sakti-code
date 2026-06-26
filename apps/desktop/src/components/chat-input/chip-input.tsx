@@ -1,10 +1,19 @@
 import { createSignal, type JSX, onMount, Show } from "solid-js";
 import { cn } from "~/lib/utils";
-import { serializeEditor } from "./chip-model";
+import {
+  createChipElement,
+  isAtEditorStart,
+  serializeEditor,
+} from "./chip-model";
+
+export interface ChipTrigger {
+  char: "/" | "@";
+}
 
 export interface ChipInputApi {
   clear: () => void;
   focus: () => void;
+  insertChip: (token: string) => void;
 }
 
 export interface ChipInputProps {
@@ -12,8 +21,18 @@ export interface ChipInputProps {
   disabled?: boolean;
   onChange: (value: string) => void;
   onSubmit?: () => void;
+  onTrigger?: (t: ChipTrigger) => void;
   placeholder?: string;
   registerApi?: (api: ChipInputApi) => void;
+}
+
+/** Snapshot the current selection as a Range, or null when unavailable. */
+function saveCaret(): Range | null {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    return sel.getRangeAt(0).cloneRange();
+  }
+  return null;
 }
 
 export function ChipInput(props: ChipInputProps): JSX.Element {
@@ -21,6 +40,8 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
   const [empty, setEmpty] = createSignal(true);
   // IME composition guard — suppress key handling mid-composition.
   let composing = false;
+  // Caret bookmark captured when a trigger char is typed; consumed by insertChip.
+  let pendingTrigger: Range | null = null;
 
   const emit = () => {
     if (!editorRef) {
@@ -28,6 +49,34 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
     }
     const text = serializeEditor(editorRef);
     setEmpty(text.length === 0 && editorRef.childNodes.length === 0);
+    // Any free-form input invalidates a pending trigger bookmark.
+    pendingTrigger = null;
+    props.onChange(text);
+  };
+
+  const insertChip = (token: string) => {
+    const ed = editorRef;
+    if (!ed) {
+      return;
+    }
+    const chip = createChipElement(token);
+    const bookmark = pendingTrigger;
+    if (bookmark) {
+      // Real browser: insert the chip at the saved caret.
+      bookmark.insertNode(chip);
+      const after = document.createRange();
+      after.setStartAfter(chip);
+      after.collapse(true);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(after);
+    } else {
+      // No saved caret (e.g. programmatic insert / jsdom): append at the end.
+      ed.appendChild(chip);
+    }
+    pendingTrigger = null;
+    const text = serializeEditor(ed);
+    setEmpty(false);
     props.onChange(text);
   };
 
@@ -35,10 +84,12 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
     clear: () => {
       if (editorRef) {
         editorRef.textContent = "";
+        pendingTrigger = null;
         emit();
       }
     },
     focus: () => editorRef?.focus(),
+    insertChip,
   };
 
   onMount(() => {
@@ -52,6 +103,19 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       props.onSubmit?.();
+      return;
+    }
+    // Trigger detection: "/" only at the editor start, "@" anywhere.
+    // preventDefault so the char never enters the DOM — insertChip owns the
+    // mutation against the saved caret bookmark (simpler Range math).
+    if (e.key === "/" && editorRef && isAtEditorStart(editorRef)) {
+      e.preventDefault();
+      pendingTrigger = saveCaret();
+      props.onTrigger?.({ char: "/" });
+    } else if (e.key === "@") {
+      e.preventDefault();
+      pendingTrigger = saveCaret();
+      props.onTrigger?.({ char: "@" });
     }
     // Shift+Enter falls through → default contenteditable newline (pre-wrap renders \n).
   };
