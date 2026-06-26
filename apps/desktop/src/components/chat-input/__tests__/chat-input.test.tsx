@@ -203,3 +203,21 @@ describe("ChatInput context menus", () => {
     expect(screen.queryByText("Commands & Skills")).toBeNull();
   });
 });
+
+it("refocuses the textarea when the menu closes via Escape", async () => {
+  const { getByPlaceholderText } = render(() => (
+    <ChatInput placeholder="p" sessionId="s1" />
+  ));
+  const textarea = getByPlaceholderText("p") as HTMLTextAreaElement;
+  textarea.value = "/";
+  textarea.setSelectionRange(1, 1);
+  fireEvent.input(textarea);
+  await waitFor(() => {
+    expect(screen.getByText("Commands & Skills")).toBeTruthy();
+  });
+  const input = document.querySelector("[cmdk-input]") as HTMLInputElement;
+  fireEvent.keyDown(input, { key: "Escape" });
+  await waitFor(() => {
+    expect(document.activeElement).toBe(textarea);
+  });
+});

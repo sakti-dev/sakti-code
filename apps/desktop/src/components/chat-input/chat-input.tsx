@@ -93,6 +93,13 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     return body.files as { path: string }[];
   });
 
+  const closeMenu = () => {
+    setMenu(null);
+    // Return focus to the textarea so the user can keep typing (Escape, click
+    // outside, etc.). The pick path refocuses via insertToken too.
+    queueMicrotask(() => textareaRef?.focus());
+  };
+
   const insertToken = (token: string) => {
     const m = menu();
     if (!m) {
@@ -312,7 +319,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
         commands={catalog()?.commands ?? []}
         files={files() ?? []}
         mode={menu()?.mode ?? "/"}
-        onClose={() => setMenu(null)}
+        onClose={closeMenu}
         onFilesQuery={onFilesQuery}
         onPick={insertToken}
         open={menu() !== null}
