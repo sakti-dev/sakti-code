@@ -19,6 +19,7 @@ import type {
   AgentTool,
   AgentToolCall,
   AgentToolResult,
+  PermissionAskRequest,
   StreamFn,
 } from "../types.ts";
 import { EventStream } from "../utils/event-stream.ts";
@@ -843,13 +844,32 @@ async function prepareToolCall(
     const validatedArgs = validateToolArguments(tool, preparedToolCall);
     if (config.evaluatePermission && tool.permissions) {
       const requests = tool.permissions(validatedArgs) ?? [];
-      const blocked = requests.some((request) =>
-        request.patterns.some(
-          (pattern) =>
-            config.evaluatePermission!(request.permission, pattern) !== "allow"
-        )
-      );
-      if (blocked) {
+      let deny = false;
+      const askQueue: PermissionAskRequest[] = [];
+      for (const request of requests) {
+        if (deny) {
+          break;
+        }
+        for (const pattern of request.patterns) {
+          const action = config.evaluatePermission(request.permission, pattern);
+          if (action === "deny") {
+            deny = true;
+            break;
+          }
+          if (action === "ask") {
+            askQueue.push({
+              sessionId: config.sessionId ?? "",
+              permission: request.permission,
+              patterns: request.patterns,
+              always: request.patterns,
+              toolName: toolCall.name,
+              toolCallId: toolCall.id,
+            });
+            break;
+          }
+        }
+      }
+      if (deny) {
         return {
           kind: "immediate",
           result: createErrorToolResult(
@@ -857,6 +877,34 @@ async function prepareToolCall(
           ),
           isError: true,
         };
+      }
+      if (askQueue.length > 0) {
+        const resolver = config.resolvePermissionAsk;
+        if (resolver) {
+          for (const ask of askQueue) {
+            if (signal?.aborted) {
+              break;
+            }
+            const verdict = await resolver(ask);
+            if (verdict === "deny") {
+              return {
+                kind: "immediate",
+                result: createErrorToolResult(
+                  `Permission denied for tool "${tool.name}"`
+                ),
+                isError: true,
+              };
+            }
+          }
+        } else {
+          return {
+            kind: "immediate",
+            result: createErrorToolResult(
+              `Permission denied for tool "${tool.name}"`
+            ),
+            isError: true,
+          };
+        }
       }
     }
     if (config.beforeToolCall) {

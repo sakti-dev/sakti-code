@@ -279,6 +279,17 @@ export interface AgentLoopConfig {
 
   /** Thinking level forwarded to the stream function as `thinkingLevel`. */
   reasoning?: ThinkingLevel | undefined;
+
+  /**
+   * Async resolver invoked when {@link evaluatePermission} returns `"ask"` for a
+   * tool's declared permission. The loop pauses mid-tool and awaits this; on
+   * `"allow"` the tool proceeds, on `"deny"` it is blocked with an error result.
+   * When unset, `"ask"` is treated as `"deny"` (no interactive channel). The
+   * application bridges this to a UI (e.g. an approval dialog over WebSocket).
+   */
+  resolvePermissionAsk?: (
+    req: PermissionAskRequest
+  ) => Promise<"allow" | "deny">;
   sessionId?: string | undefined;
   /**
    * Called after each turn fully completes and `turn_end` has been emitted.
@@ -462,6 +473,24 @@ export interface PermissionRequest {
   patterns: string[];
   permission: string;
 }
+
+/**
+ * A request to resolve an `"ask"` permission interactively. Carried to the
+ * application's approval channel (e.g. a UI dialog). `always` is the set of
+ * patterns to persist as a session grant when the user replies "always"
+ * (defaults to `patterns`). Mirrors opencode's `Permission.Request`.
+ */
+export interface PermissionAskRequest {
+  always: string[];
+  patterns: string[];
+  permission: string;
+  sessionId: string;
+  toolCallId: string;
+  toolName: string;
+}
+
+/** A user's reply to a {@link PermissionAskRequest}. Mirrors opencode's vocabulary. */
+export type PermissionReply = "once" | "always" | "reject";
 
 /**
  * Callback used by tools to stream partial execution updates.
