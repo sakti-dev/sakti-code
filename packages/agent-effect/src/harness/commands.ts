@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import { configEntryNameFromPath } from "./config-entry-name.ts";
 import {
   type LoaderDiagnostic,
@@ -171,3 +172,12 @@ async function loadCommandFromFile(
     diagnostics,
   };
 }
+
+/** Effect-native variant of {@link loadCommands}. */
+export const loadCommandsEffect = (
+  env: ExecutionEnv,
+  dirs: string | string[]
+): Effect.Effect<{
+  commands: PromptTemplate[];
+  diagnostics: CommandDiagnostic[];
+}> => Effect.promise(() => loadCommands(env, dirs));

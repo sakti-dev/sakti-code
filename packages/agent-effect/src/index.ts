@@ -37,7 +37,7 @@ export type {
   AgentDiagnostic,
   AgentDiagnosticCode,
 } from "./harness/agents.ts";
-export { loadAgents } from "./harness/agents.ts";
+export { loadAgents, loadAgentsEffect } from "./harness/agents.ts";
 export { buildHarnessStreamRequest } from "./harness/build-stream-request.ts";
 export {
   BUILTIN_AGENTS,
@@ -48,7 +48,7 @@ export type {
   CommandDiagnostic,
   CommandDiagnosticCode,
 } from "./harness/commands.ts";
-export { loadCommands } from "./harness/commands.ts";
+export { loadCommands, loadCommandsEffect } from "./harness/commands.ts";
 export { configEntryNameFromPath } from "./harness/config-entry-name.ts";
 export { InMemorySessionStorageLive } from "./harness/memory-storage.ts";
 export type {
@@ -95,6 +95,7 @@ export {
 export {
   formatPromptTemplateInvocation,
   loadPromptTemplates,
+  loadPromptTemplatesEffect,
   loadSourcedPromptTemplates,
 } from "./harness/prompt-templates.ts";
 export { buildSessionContext, Session } from "./harness/session.ts";
@@ -102,7 +103,12 @@ export type {
   SkillDiagnostic,
   SkillDiagnosticCode,
 } from "./harness/skills.ts";
-export { loadSkills, loadSourcedSkills } from "./harness/skills.ts";
+export {
+  loadSkills,
+  loadSkillsEffect,
+  loadSourcedSkills,
+  loadSourcedSkillsEffect,
+} from "./harness/skills.ts";
 export {
   appendSkillsBlock,
   formatSkillsForSystemPrompt,

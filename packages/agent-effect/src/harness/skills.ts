@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import {
   basenameEnvPath,
   dirnameEnvPath,
@@ -319,3 +320,11 @@ function validateDescription(description: string | undefined): string[] {
   }
   return errors;
 }
+
+/** Effect-native variants of {@link loadSkills} and {@link loadSourcedSkills}. */
+export const loadSkillsEffect = (...args: Parameters<typeof loadSkills>) =>
+  Effect.promise(() => loadSkills(...args));
+
+export const loadSourcedSkillsEffect = (
+  ...args: Parameters<typeof loadSourcedSkills>
+) => Effect.promise(() => loadSourcedSkills(...args));

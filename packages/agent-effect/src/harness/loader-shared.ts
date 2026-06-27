@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import { parse } from "yaml";
 import {
   type ExecutionEnv,
@@ -109,3 +110,7 @@ export function dirnameEnvPath(path: string): string {
   const slashIndex = normalized.lastIndexOf("/");
   return slashIndex <= 0 ? "/" : normalized.slice(0, slashIndex);
 }
+
+/** Effect-native variant of {@link resolveKind}. */
+export const resolveKindEffect = (...args: Parameters<typeof resolveKind>) =>
+  Effect.promise(() => resolveKind(...args));

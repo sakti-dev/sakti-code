@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import {
   basenameEnvPath,
   parseFrontmatter,
@@ -270,3 +271,12 @@ export function formatPromptTemplateInvocation(
 ): string {
   return substituteArgs(template.content, args);
 }
+
+/** Effect-native variants of {@link loadPromptTemplates} and {@link loadSourcedPromptTemplates}. */
+export const loadPromptTemplatesEffect = (
+  ...args: Parameters<typeof loadPromptTemplates>
+) => Effect.promise(() => loadPromptTemplates(...args));
+
+export const loadSourcedPromptTemplatesEffect = (
+  ...args: Parameters<typeof loadSourcedPromptTemplates>
+) => Effect.promise(() => loadSourcedPromptTemplates(...args));

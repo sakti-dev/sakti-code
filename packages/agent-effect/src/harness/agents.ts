@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import { configEntryNameFromPath } from "./config-entry-name.ts";
 import {
   type LoaderDiagnostic,
@@ -207,3 +208,7 @@ function resolveModel(
     modelId: value.slice(slashIndex + 1),
   };
 }
+
+/** Effect-native variant of {@link loadAgents}. */
+export const loadAgentsEffect = (...args: Parameters<typeof loadAgents>) =>
+  Effect.promise(() => loadAgents(...args));
