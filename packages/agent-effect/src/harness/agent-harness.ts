@@ -310,7 +310,11 @@ export class AgentHarness<
     event: AgentHarnessOwnEvent<TSkill, TPromptTemplate>,
     signal?: AbortSignal
   ): Promise<void> {
-    for (const listener of this.getHandlers(SUBSCRIBER_EVENT_TYPE) ?? []) {
+    const handlers = this.getHandlers(SUBSCRIBER_EVENT_TYPE);
+    if (!handlers || handlers.size === 0) {
+      return;
+    }
+    for (const listener of handlers) {
       try {
         await listener(event, signal);
       } catch (error) {
@@ -323,7 +327,11 @@ export class AgentHarness<
     event: AgentHarnessEvent<TSkill, TPromptTemplate>,
     signal?: AbortSignal
   ): Promise<void> {
-    for (const listener of this.getHandlers(SUBSCRIBER_EVENT_TYPE) ?? []) {
+    const handlers = this.getHandlers(SUBSCRIBER_EVENT_TYPE);
+    if (!handlers || handlers.size === 0) {
+      return;
+    }
+    for (const listener of handlers) {
       try {
         await listener(event, signal);
       } catch (error) {
