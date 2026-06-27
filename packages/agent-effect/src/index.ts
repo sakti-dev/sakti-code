@@ -152,6 +152,7 @@ export {
   abortableSleep,
   computeRetryDelay,
   executeWithRetry,
+  executeWithRetryEffect,
   parseRetrySettings,
   shouldRetry,
 } from "./retry-loop.ts";

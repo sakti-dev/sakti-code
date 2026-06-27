@@ -1,10 +1,12 @@
 import type { AssistantMessage } from "@sakti-code/llm";
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import type { CompactionDecision } from "../compaction/auto-compaction.ts";
 import {
   abortableSleep,
   computeRetryDelay,
   executeWithRetry,
+  executeWithRetryEffect,
   parseRetrySettings,
   type RetryRunnerDeps,
   type RetrySettings,
@@ -572,5 +574,55 @@ describe("executeWithRetry compaction phase", () => {
       errorMessage: "boom",
     });
     expect((end as { result?: unknown }).result).toBeUndefined();
+  });
+});
+
+describe("executeWithRetryEffect", () => {
+  it("returns an Effect (not a Promise)", () => {
+    const fake = makeFakeDeps({
+      signal: new AbortController().signal,
+      turns: [assistantMessage({ text: "ok", stopReason: "stop" })],
+    });
+    const effect = executeWithRetryEffect(fake.deps, enabledSettings);
+    expect(Effect.isEffect(effect)).toBe(true);
+  });
+
+  it("runs via Effect.runPromise with same semantics as executeWithRetry", async () => {
+    const fake = makeFakeDeps({
+      signal: new AbortController().signal,
+      turns: [
+        assistantMessage({
+          stopReason: "error",
+          errorMessage: "429 rate limited",
+        }),
+        assistantMessage({ text: "ok", stopReason: "stop" }),
+      ],
+    });
+    await Effect.runPromise(executeWithRetryEffect(fake.deps, enabledSettings));
+
+    expect(fake.emitCalls.map((e) => e.type)).toEqual([
+      "auto_retry_start",
+      "auto_retry_end",
+    ]);
+    expect(fake.rollbackCalls).toBe(1);
+    const end = fake.emitCalls[1] as { success: boolean; attempt: number };
+    expect(end.success).toBe(true);
+    expect(end.attempt).toBe(1);
+  });
+
+  it("composes inside another Effect.gen", async () => {
+    const fake = makeFakeDeps({
+      signal: new AbortController().signal,
+      turns: [assistantMessage({ text: "ok", stopReason: "stop" })],
+    });
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        yield* executeWithRetryEffect(fake.deps, enabledSettings);
+        return "done";
+      })
+    );
+    expect(result).toBe("done");
+    expect(fake.emitCalls).toEqual([]);
   });
 });

@@ -30,6 +30,7 @@
 import type { AssistantMessage } from "@sakti-code/llm";
 import { isRetryableAssistantError } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
+import { Effect } from "effect";
 import type {
   CompactionDecision,
   RunCompactionOutcome,
@@ -168,198 +169,198 @@ export interface RetryRunnerDeps {
  * `auto_retry_end` once the outcome is final (success, budget exhausted, or
  * aborted). If the first turn succeeds, no retry events are emitted at all.
  *
- * The `finalError` field on a failed `auto_retry_end` is omitted when the
- * outcome is a success (respects `exactOptionalPropertyTypes`).
+ * Effect-native version — runs via `Effect.runPromise` or composed inside
+ * another Effect. The Promise-based wrapper {@link executeWithRetry} is kept
+ * for not-yet-migrated callers (server).
+ */
+export const executeWithRetryEffect = (
+  deps: RetryRunnerDeps,
+  settings: RetrySettings
+): Effect.Effect<void> =>
+  Effect.gen(function* () {
+    deps.logger?.debug("turn attempt", {
+      attempt: 0,
+      maxRetries: settings.maxRetries,
+    });
+    let message = yield* Effect.promise(() => deps.runTurn());
+    if (!settings.enabled) {
+      yield* runCompactionPhaseEffect(deps, message);
+      return;
+    }
+
+    deps.logger?.info("retry started", { maxRetries: settings.maxRetries });
+    let attempt = 0;
+    while (
+      shouldRetry({
+        message,
+        attempt,
+        maxRetries: settings.maxRetries,
+        autoRetryEnabled: settings.enabled,
+      })
+    ) {
+      attempt++;
+      const delayMs = computeRetryDelay(attempt, settings.baseDelayMs);
+
+      deps.logger?.error(
+        "turn error",
+        message.errorMessage ? new Error(message.errorMessage) : undefined,
+        { attempt }
+      );
+      deps.logger?.debug("should retry", {
+        attempt,
+        maxRetries: settings.maxRetries,
+        willRetry: true,
+      });
+
+      deps.emit({
+        type: "auto_retry_start",
+        attempt,
+        delayMs,
+        errorMessage: message.errorMessage ?? "Unknown error",
+        maxAttempts: settings.maxRetries,
+      });
+
+      deps.logger?.warn("rolling back leaf", { attempt });
+      yield* Effect.promise(() => deps.rollbackLeaf());
+
+      deps.logger?.debug("backoff", { delayMs, attempt });
+      const slept = yield* Effect.promise(() =>
+        abortableSleep(delayMs, deps.signal)
+      );
+      if (!slept || deps.signal.aborted) {
+        deps.logger?.warn("retry aborted", { attempt });
+        deps.emit({
+          type: "auto_retry_end",
+          success: false,
+          attempt,
+          ...(message.errorMessage === undefined
+            ? {}
+            : { finalError: message.errorMessage }),
+        });
+        return;
+      }
+
+      deps.logger?.debug("turn attempt", {
+        attempt,
+        maxRetries: settings.maxRetries,
+      });
+      message = yield* Effect.promise(() => deps.runTurn());
+    }
+
+    if (attempt > 0) {
+      const success = !deps.signal.aborted && message.stopReason !== "error";
+      if (success) {
+        deps.logger?.info("turn succeeded", { attempt });
+      } else {
+        deps.logger?.error("all retries exhausted", undefined, {
+          attempts: attempt,
+          errorMessage: message.errorMessage ?? "Unknown error",
+        });
+      }
+      deps.emit({
+        type: "auto_retry_end",
+        success,
+        attempt,
+        ...(success
+          ? {}
+          : { finalError: message.errorMessage ?? "Unknown error" }),
+      });
+    }
+
+    yield* runCompactionPhaseEffect(deps, message);
+  });
+
+/**
+ * @migration TODO: remove when server migrates to Effect.
+ * Promise-based wrapper around {@link executeWithRetryEffect}.
  */
 export async function executeWithRetry(
   deps: RetryRunnerDeps,
   settings: RetrySettings
 ): Promise<void> {
-  // Run the first turn. If retry is disabled we still ran the turn; we just
-  // don't attempt any retries.
-  deps.logger?.debug("turn attempt", {
-    attempt: 0,
-    maxRetries: settings.maxRetries,
-  });
-  let message = await deps.runTurn();
-  if (!settings.enabled) {
-    // Retry disabled — but compaction may still need to run on this turn.
-    await runCompactionPhase(deps, message);
-    return;
-  }
-
-  deps.logger?.info("retry started", { maxRetries: settings.maxRetries });
-  let attempt = 0;
-  while (
-    shouldRetry({
-      message,
-      attempt,
-      maxRetries: settings.maxRetries,
-      autoRetryEnabled: settings.enabled,
-    })
-  ) {
-    attempt++;
-    const delayMs = computeRetryDelay(attempt, settings.baseDelayMs);
-
-    deps.logger?.error(
-      "turn error",
-      message.errorMessage ? new Error(message.errorMessage) : undefined,
-      { attempt }
-    );
-    deps.logger?.debug("should retry", {
-      attempt,
-      maxRetries: settings.maxRetries,
-      willRetry: true,
-    });
-
-    // Tell the UI a retry is coming (shows the banner + countdown).
-    deps.emit({
-      type: "auto_retry_start",
-      attempt,
-      delayMs,
-      errorMessage: message.errorMessage ?? "Unknown error",
-      maxAttempts: settings.maxRetries,
-    });
-
-    // Orphan the failed assistant message so continue() sees the preceding
-    // user/toolResult message as the transcript tail.
-    deps.logger?.warn("rolling back leaf", { attempt });
-    await deps.rollbackLeaf();
-
-    // Backoff — interruptible by abort. If aborted, report final failure.
-    deps.logger?.debug("backoff", { delayMs, attempt });
-    const slept = await abortableSleep(delayMs, deps.signal);
-    if (!slept || deps.signal.aborted) {
-      deps.logger?.warn("retry aborted", { attempt });
-      deps.emit({
-        type: "auto_retry_end",
-        success: false,
-        attempt,
-        ...(message.errorMessage === undefined
-          ? {}
-          : { finalError: message.errorMessage }),
-      });
-      return;
-    }
-
-    // Re-run the turn (harness.continue under the hood).
-    deps.logger?.debug("turn attempt", {
-      attempt,
-      maxRetries: settings.maxRetries,
-    });
-    message = await deps.runTurn();
-  }
-
-  // Only emit an end event if we actually retried. A clean first-turn success
-  // emits nothing.
-  if (attempt > 0) {
-    // An aborted retried turn has stopReason "aborted" (not "error"), so the
-    // stopReason check alone would mislabel an abort as success. The run's
-    // abort signal is authoritative — if it fired, the retry did not succeed.
-    const success = !deps.signal.aborted && message.stopReason !== "error";
-    if (success) {
-      deps.logger?.info("turn succeeded", { attempt });
-    } else {
-      deps.logger?.error("all retries exhausted", undefined, {
-        attempts: attempt,
-        errorMessage: message.errorMessage ?? "Unknown error",
-      });
-    }
-    deps.emit({
-      type: "auto_retry_end",
-      success,
-      attempt,
-      // Only attach finalError when there is one (success has none).
-      ...(success
-        ? {}
-        : { finalError: message.errorMessage ?? "Unknown error" }),
-    });
-  }
-
-  // Compaction phase — runs on the final turn's message whether or not a retry
-  // happened. Mirrors pi's _handlePostAgentRun compaction check. No-op when the
-  // deps are absent (back-compat).
-  await runCompactionPhase(deps, message);
+  return Effect.runPromise(executeWithRetryEffect(deps, settings));
 }
 
 /**
- * Post-turn compaction: decide → emit start → run → emit end, retrying the turn
- * once on an overflow (`willRetry`). One compact-and-retry per overflow episode
- * (pi's `_overflowRecoveryAttempted` semantics). `[PORT]` of the compaction half
- * of pi's `_handlePostAgentRun` + `_runAutoCompaction` event flow.
+ * Post-turn compaction Effect: decide → emit start → run → emit end, retrying
+ * the turn once on an overflow (`willRetry`).
  */
-async function runCompactionPhase(
+const runCompactionPhaseEffect = (
   deps: RetryRunnerDeps,
   initialMessage: AssistantMessage
-): Promise<void> {
-  if (deps.checkCompaction === undefined || deps.runCompaction === undefined) {
-    return;
-  }
-  let message = initialMessage;
-  let overflowAttempts = 0;
-  for (;;) {
-    const decision = await deps.checkCompaction(message);
-    if (decision.action !== "compact" || decision.reason === undefined) {
+): Effect.Effect<void> =>
+  Effect.gen(function* () {
+    if (
+      deps.checkCompaction === undefined ||
+      deps.runCompaction === undefined
+    ) {
       return;
     }
-    const reason = decision.reason;
+    let message = initialMessage;
+    let overflowAttempts = 0;
+    for (;;) {
+      const decision = yield* Effect.promise(() =>
+        deps.checkCompaction!(message)
+      );
+      if (decision.action !== "compact" || decision.reason === undefined) {
+        return;
+      }
+      const reason = decision.reason;
 
-    // Only one compact-and-retry per overflow episode; a second overflow gives up.
-    if (reason === "overflow" && overflowAttempts > 0) {
-      deps.logger?.error("overflow recovery exhausted", undefined, {
-        reason,
-      });
-      deps.emit({
-        type: "compaction_end",
-        reason,
-        aborted: false,
-        willRetry: false,
-        errorMessage:
-          "Context overflow recovery failed after one compact-and-retry attempt. Try reducing context or switching to a larger-context model.",
-      });
-      return;
-    }
+      if (reason === "overflow" && overflowAttempts > 0) {
+        deps.logger?.error("overflow recovery exhausted", undefined, {
+          reason,
+        });
+        deps.emit({
+          type: "compaction_end",
+          reason,
+          aborted: false,
+          willRetry: false,
+          errorMessage:
+            "Context overflow recovery failed after one compact-and-retry attempt. Try reducing context or switching to a larger-context model.",
+        });
+        return;
+      }
 
-    deps.logger?.info("compaction start", { reason });
-    deps.emit({ type: "compaction_start", reason });
+      deps.logger?.info("compaction start", { reason });
+      deps.emit({ type: "compaction_start", reason });
 
-    const outcome = await deps.runCompaction();
-    if (outcome.ok) {
-      deps.logger?.info("compaction done", {
-        reason,
-        tokensBefore: outcome.tokensBefore,
-      });
-      deps.emit({
-        type: "compaction_end",
-        reason,
-        result: {
-          summary: outcome.summary,
-          firstKeptEntryId: outcome.firstKeptEntryId,
+      const outcome = yield* Effect.promise(() => deps.runCompaction!());
+      if (outcome.ok) {
+        deps.logger?.info("compaction done", {
+          reason,
           tokensBefore: outcome.tokensBefore,
-        },
-        aborted: false,
-        willRetry: decision.willRetry === true,
-      });
-    } else {
-      deps.logger?.error("compaction failed", undefined, {
-        reason,
-        errorMessage: outcome.errorMessage,
-      });
-      deps.emit({
-        type: "compaction_end",
-        reason,
-        aborted: false,
-        willRetry: false,
-        errorMessage: outcome.errorMessage,
-      });
-      return; // No retry on a failed compaction.
-    }
+        });
+        deps.emit({
+          type: "compaction_end",
+          reason,
+          result: {
+            summary: outcome.summary,
+            firstKeptEntryId: outcome.firstKeptEntryId,
+            tokensBefore: outcome.tokensBefore,
+          },
+          aborted: false,
+          willRetry: decision.willRetry === true,
+        });
+      } else {
+        deps.logger?.error("compaction failed", undefined, {
+          reason,
+          errorMessage: outcome.errorMessage,
+        });
+        deps.emit({
+          type: "compaction_end",
+          reason,
+          aborted: false,
+          willRetry: false,
+          errorMessage: outcome.errorMessage,
+        });
+        return;
+      }
 
-    if (decision.willRetry !== true) {
-      return;
+      if (decision.willRetry !== true) {
+        return;
+      }
+      overflowAttempts++;
+      message = yield* Effect.promise(() => deps.runTurn!());
     }
-    overflowAttempts++;
-    // Retry the turn with the compacted context (harness.continue under the hood).
-    message = await deps.runTurn();
-  }
-}
+  });
