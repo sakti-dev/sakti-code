@@ -4,7 +4,7 @@
     "noEmit": true,
     "strictNullChecks": true,
     "paths": {
-      "@sakti-code/agent": ["../../packages/agent/src/index.ts"],
+      "@sakti-code/agent-effect": ["../../packages/agent-effect/src/index.ts"],
       "@sakti-code/db": ["../../packages/db/src/index.ts"],
       "@sakti-code/llm": ["../../packages/llm/src/index.ts"],
       "@sakti-code/llm/*": ["../../packages/llm/src/*"],
