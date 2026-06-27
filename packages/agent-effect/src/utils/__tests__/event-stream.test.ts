@@ -69,4 +69,70 @@ describe("EventStream", () => {
     expect(events).toEqual([1]);
     expect(await stream.result()).toBe(42);
   });
+
+  it("error() rejects the result() promise", async () => {
+    const stream = new EventStream<number, number>(
+      (event) => event < 0,
+      () => 0
+    );
+    const boom = new Error("kaboom");
+    stream.push(1);
+    stream.error(boom);
+    await expect(stream.result()).rejects.toBe(boom);
+  });
+
+  it("error() throws in async iteration (drains waiting consumers)", async () => {
+    const stream = new EventStream<number, number>(
+      (event) => event < 0,
+      () => 0
+    );
+    const boom = new Error("kaboom");
+
+    const consume = async () => {
+      const events: number[] = [];
+      for await (const event of stream) {
+        events.push(event);
+      }
+      return events;
+    };
+
+    const consumerPromise = consume();
+    // Let the consumer enter the waiting state
+    await Promise.resolve();
+    stream.error(boom);
+
+    await expect(consumerPromise).rejects.toBe(boom);
+  });
+
+  it("error() throws for queued events not yet consumed", async () => {
+    const stream = new EventStream<number, number>(
+      (event) => event < 0,
+      () => 0
+    );
+    const boom = new Error("kaboom");
+
+    stream.push(1);
+    stream.error(boom);
+
+    const consume = async () => {
+      const events: number[] = [];
+      for await (const event of stream) {
+        events.push(event);
+      }
+    };
+    await expect(consume()).rejects.toBe(boom);
+  });
+
+  it("error() ignores subsequent pushes", async () => {
+    const stream = new EventStream<number, number>(
+      (event) => event < 0,
+      () => 0
+    );
+    const boom = new Error("kaboom");
+
+    stream.error(boom);
+    stream.push(1); // should be ignored
+
+    await expect(stream.result()).rejects.toBe(boom);
+  });
 });

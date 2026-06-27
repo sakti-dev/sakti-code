@@ -1920,4 +1920,44 @@ describe("agentLoop maxOutputTokens", () => {
 
     expect(capturedReq?.maxOutputTokens).toBe(8192);
   });
+
+  it("terminates the stream with an error when the loop rejects (C1+C2)", async () => {
+    // A streamFn that rejects simulates a catastrophic loop failure.
+    // Previously, the consumer would hang forever because the fire-and-forget
+    // .then() had no rejection handler and EventStream had no error() method.
+    const boom = new Error("streamFn blew up");
+    const streamFn: StreamFn = () => Promise.reject(boom);
+
+    const context: AgentContext = {
+      systemPrompt: "You are helpful.",
+      messages: [],
+      tools: [],
+    };
+    const config: AgentLoopConfig = {
+      model: createModel(),
+      convertToLlm: identityConverter,
+    };
+
+    const stream = agentLoop(
+      [createUserMessage("Hello")],
+      context,
+      config,
+      undefined,
+      streamFn
+    );
+
+    // The consumer must see the error thrown, not hang.
+    let thrown: unknown;
+    try {
+      for await (const _ of stream) {
+        // drain
+      }
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBe(boom);
+
+    // result() must also reject with the same error.
+    await expect(stream.result()).rejects.toBe(boom);
+  });
 });

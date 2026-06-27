@@ -49,9 +49,14 @@ export function agentLoop(
     },
     signal,
     streamFn
-  ).then((messages) => {
-    stream.end(messages);
-  });
+  ).then(
+    (messages) => {
+      stream.end(messages);
+    },
+    (error) => {
+      stream.error(error);
+    }
+  );
 
   return stream;
 }
@@ -88,9 +93,14 @@ export function agentLoopContinue(
     },
     signal,
     streamFn
-  ).then((messages) => {
-    stream.end(messages);
-  });
+  ).then(
+    (messages) => {
+      stream.end(messages);
+    },
+    (error) => {
+      stream.error(error);
+    }
+  );
 
   return stream;
 }
