@@ -11,6 +11,7 @@ import type {
   ToolResultMessage,
   Usage,
 } from "@sakti-code/llm";
+import { Effect } from "effect";
 import type {
   AgentContext,
   AgentEvent,
@@ -26,6 +27,12 @@ import { EventStream } from "../utils/event-stream.ts";
 import { validateToolArguments } from "../utils/validation.ts";
 
 export type AgentEventSink = (event: AgentEvent) => Promise<void> | void;
+
+/** Lift an AgentEventSink (sync or async) into an Effect. */
+const emitEffect = (
+  emit: AgentEventSink,
+  event: AgentEvent
+): Effect.Effect<void> => Effect.promise(() => Promise.resolve(emit(event)));
 
 /**
  * Start an agent loop with a new prompt message.
@@ -154,6 +161,73 @@ export async function runAgentLoopContinue(
   await runLoop(currentContext, newMessages, config, signal, emit, streamFn);
   return newMessages;
 }
+
+/**
+ * Effect-native variant of {@link runAgentLoop}.
+ * Emits agent_start + prompts via yield*, then runs the loop.
+ */
+export const runAgentLoopEffect = (
+  prompts: AgentMessage[],
+  context: AgentContext,
+  config: AgentLoopConfig,
+  emit: AgentEventSink,
+  signal?: AbortSignal,
+  streamFn?: StreamFn
+): Effect.Effect<AgentMessage[]> =>
+  Effect.gen(function* () {
+    const newMessages: AgentMessage[] = [...prompts];
+    const currentContext: AgentContext = {
+      ...context,
+      messages: [...context.messages, ...prompts],
+    };
+
+    yield* emitEffect(emit, { type: "agent_start" });
+    yield* emitEffect(emit, { type: "turn_start" });
+    for (const prompt of prompts) {
+      yield* emitEffect(emit, { type: "message_start", message: prompt });
+      yield* emitEffect(emit, { type: "message_end", message: prompt });
+    }
+
+    yield* Effect.promise(() =>
+      runLoop(currentContext, newMessages, config, signal, emit, streamFn)
+    );
+    return newMessages;
+  });
+
+/**
+ * Effect-native variant of {@link runAgentLoopContinue}.
+ */
+export const runAgentLoopContinueEffect = (
+  context: AgentContext,
+  config: AgentLoopConfig,
+  emit: AgentEventSink,
+  signal?: AbortSignal,
+  streamFn?: StreamFn
+): Effect.Effect<AgentMessage[], Error> =>
+  Effect.gen(function* () {
+    if (context.messages.length === 0) {
+      return yield* Effect.fail(
+        new Error("Cannot continue: no messages in context")
+      );
+    }
+
+    if (context.messages[context.messages.length - 1]!.role === "assistant") {
+      return yield* Effect.fail(
+        new Error("Cannot continue from message role: assistant")
+      );
+    }
+
+    const newMessages: AgentMessage[] = [];
+    const currentContext: AgentContext = { ...context };
+
+    yield* emitEffect(emit, { type: "agent_start" });
+    yield* emitEffect(emit, { type: "turn_start" });
+
+    yield* Effect.promise(() =>
+      runLoop(currentContext, newMessages, config, signal, emit, streamFn)
+    );
+    return newMessages;
+  });
 
 function createAgentStream(): EventStream<AgentEvent, AgentMessage[]> {
   return new EventStream<AgentEvent, AgentMessage[]>(

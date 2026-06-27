@@ -152,7 +152,12 @@ export {
   truncateLine,
   truncateTail,
 } from "./lib/truncate.ts";
-export { runAgentLoop, runAgentLoopContinue } from "./loop/agent-loop.ts";
+export {
+  runAgentLoop,
+  runAgentLoopContinue,
+  runAgentLoopContinueEffect,
+  runAgentLoopEffect,
+} from "./loop/agent-loop.ts";
 export { INTAKE_SYSTEM_PROMPT } from "./prompts/intake-system-prompt.ts";
 export type {
   RetryDecisionInput,
