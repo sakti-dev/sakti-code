@@ -1,5 +1,5 @@
-import type { Skill } from "~/harness-types";
-import { SKILLS_INSTRUCTIONS } from "~/prompts/skills-instructions";
+import type { Skill } from "../harness-types";
+import { SKILLS_INSTRUCTIONS } from "../prompts/skills-instructions";
 
 export function formatSkillsForSystemPrompt(skills: Skill[]): string {
   const visibleSkills = skills.filter((skill) => !skill.disableModelInvocation);

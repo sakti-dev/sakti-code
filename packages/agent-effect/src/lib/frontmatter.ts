@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { parse } from "yaml";
-import type { ExecutionEnv, FileInfo } from "~/harness-types";
-import { err, isFailure, ok, type Result, toError } from "~/lib/result";
+import type { ExecutionEnv, FileInfo } from "../harness-types";
+import { err, isFailure, ok, type Result, toError } from "../lib/result";
 
 export interface LoaderDiagnostic {
   code: string;

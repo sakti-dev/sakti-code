@@ -3,10 +3,10 @@ import {
   type FauxProviderRegistration,
   fauxAssistantMessage,
   registerFauxStreamProvider,
-} from "~/__tests__/helpers/faux-provider";
-import { AgentHarness } from "~/agent/agent-harness";
-import { createTestSession } from "~/session/__tests__/session-test-utils";
-import type { SessionShape } from "~/session/session";
+} from "../../__tests__/helpers/faux-provider";
+import { AgentHarness } from "../../agent/agent-harness";
+import { createTestSession } from "../../session/__tests__/session-test-utils";
+import type { SessionShape } from "../../session/session";
 import { TestExecutionEnv } from "./test-execution-env.ts";
 
 /**

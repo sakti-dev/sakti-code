@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { configEntryNameFromPath } from "~/agents/config-entry-name";
+import { configEntryNameFromPath } from "../../agents/config-entry-name";
 
 describe("configEntryNameFromPath", () => {
   it("strips command/ prefix and extension", () => {

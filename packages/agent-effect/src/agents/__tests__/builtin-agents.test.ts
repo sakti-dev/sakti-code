@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_AGENTS, resolveBuiltinAgent } from "~/agents/builtin-agents";
+import {
+  BUILTIN_AGENTS,
+  resolveBuiltinAgent,
+} from "../../agents/builtin-agents";
 import {
   evaluate,
   fromConfig,
   merge,
   type PermissionRuleset,
-} from "~/agents/permission";
+} from "../../agents/permission";
 
 function decision(
   ruleset: PermissionRuleset,

@@ -1,4 +1,4 @@
-import type { AgentHarnessEvent } from "@sakti-code/agent";
+import type { AgentHarnessEvent } from "@sakti-code/agent-effect";
 import { createSignal, type JSX, Match, onCleanup, Switch } from "solid-js";
 import { Button } from "~/components/ui/button";
 import type { ReplayState } from "~/stores/workspace/ui-signals";

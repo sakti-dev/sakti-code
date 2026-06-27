@@ -3,9 +3,9 @@ import {
   basenameEnvPath,
   parseFrontmatter,
   resolveKind,
-} from "~/agents/loader-shared";
-import type { ExecutionEnv, PromptTemplate } from "~/harness-types";
-import { isFailure } from "~/harness-types";
+} from "../agents/loader-shared";
+import type { ExecutionEnv, PromptTemplate } from "../harness-types";
+import { isFailure } from "../harness-types";
 
 export type PromptTemplateDiagnosticCode =
   | "file_info_failed"

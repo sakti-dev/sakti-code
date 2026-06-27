@@ -6,18 +6,18 @@ import type {
 } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
 import { Effect } from "effect";
-import { buildHarnessStreamRequest } from "~/agent/build-stream-request";
-import { DEFAULT_SYSTEM_PROMPT } from "~/agents/builtin-agents";
+import { buildHarnessStreamRequest } from "../agent/build-stream-request";
+import { DEFAULT_SYSTEM_PROMPT } from "../agents/builtin-agents";
 import {
   collectEntriesForBranchSummaryEffect,
   generateBranchSummaryEffect,
-} from "~/compaction/branch-summarization";
+} from "../compaction/branch-summarization";
 import {
   DEFAULT_COMPACTION_SETTINGS,
   prepareCompaction,
   compactEffect as runCompactEffect,
-} from "~/compaction/compaction";
-import { runAgentLoop, runAgentLoopContinue } from "~/core/agent-loop";
+} from "../compaction/compaction";
+import { runAgentLoop, runAgentLoopContinue } from "../core/agent-loop";
 import type {
   AbortResult,
   AgentDefinition,
@@ -35,18 +35,18 @@ import type {
   PromptTemplate,
   SessionError,
   Skill,
-} from "~/harness-types";
+} from "../harness-types";
 import {
   AgentHarnessError,
   type AgentHarnessErrorCode,
   isFailure,
   ok,
   toError,
-} from "~/harness-types";
-import { formatPromptTemplateInvocation } from "~/resources/prompt-templates";
-import { formatSkillInvocation } from "~/resources/skills";
-import { convertToLlm } from "~/session/messages";
-import type { SessionShape } from "~/session/session";
+} from "../harness-types";
+import { formatPromptTemplateInvocation } from "../resources/prompt-templates";
+import { formatSkillInvocation } from "../resources/skills";
+import { convertToLlm } from "../session/messages";
+import type { SessionShape } from "../session/session";
 import type {
   AgentContext,
   AgentEvent,
@@ -57,7 +57,7 @@ import type {
   QueueMode,
   StreamFn,
   ThinkingLevel,
-} from "~/types";
+} from "../types";
 
 function createUserMessage(text: string, images?: ImageContent[]): UserMessage {
   const content: Array<{ type: "text"; text: string } | ImageContent> = [

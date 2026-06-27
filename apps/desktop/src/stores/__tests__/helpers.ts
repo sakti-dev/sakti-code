@@ -1,4 +1,4 @@
-import type { AgentHarnessEvent, AgentMessage } from "@sakti-code/agent";
+import type { AgentHarnessEvent, AgentMessage } from "@sakti-code/agent-effect";
 import type { AssistantMessage, Usage } from "@sakti-code/llm";
 
 // ── Usage factory ─────────────────────────────────────────────────

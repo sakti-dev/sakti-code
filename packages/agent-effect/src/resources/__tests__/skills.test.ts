@@ -1,9 +1,9 @@
 import { symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { TestExecutionEnv } from "~/agent/__tests__/test-execution-env";
-import { loadSkills, loadSourcedSkills } from "~/resources/skills";
-import { createTempDir } from "~/session/__tests__/session-test-utils";
+import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
+import { loadSkills, loadSourcedSkills } from "../../resources/skills";
+import { createTempDir } from "../../session/__tests__/session-test-utils";
 
 describe("loadSkills", () => {
   it("loads SKILL.md files through the execution environment", async () => {

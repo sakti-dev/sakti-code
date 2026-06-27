@@ -12,8 +12,7 @@
     "skipLibCheck": true,
     "paths": {
       "~/*": ["./src/*"],
-      "@sakti-code/agent": ["../../packages/agent/src/index.ts"],
-      "@sakti-code/agent/*": ["../../packages/agent/src/*"],
+      "@sakti-code/agent-effect": ["../../packages/agent-effect/src/index.ts"],
       "@sakti-code/llm": ["../../packages/llm/src/index.ts"],
       "@sakti-code/llm/*": ["../../packages/llm/src/*"]
     }

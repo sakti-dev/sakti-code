@@ -1,8 +1,8 @@
 import type { ImageContent, Model, TextContent } from "@sakti-code/llm";
-import type { SessionShape } from "~/session/session";
-import type { AgentMessage } from "~/types";
+import type { SessionShape } from "../session/session";
+import type { AgentMessage } from "../types";
 
-export type { ThinkingLevel } from "~/types";
+export type { ThinkingLevel } from "../types";
 
 export interface SessionTreeEntryBase {
   id: string;

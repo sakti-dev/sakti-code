@@ -1,11 +1,11 @@
-import type { AgentDefinition } from "~/harness-types";
+import type { AgentDefinition } from "../harness-types";
 import {
   BUILD_PROMPT,
   DEFAULT_SYSTEM_PROMPT,
   EXPLORE_PROMPT,
   GENERAL_PROMPT,
   PLAN_PROMPT,
-} from "~/prompts/agents";
+} from "../prompts/agents";
 import { fromConfig, type PermissionRuleset } from "./permission.ts";
 
 /**

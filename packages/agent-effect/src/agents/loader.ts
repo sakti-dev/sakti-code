@@ -1,6 +1,10 @@
 import { Effect } from "effect";
-import type { AgentDefinition, AgentMode, ExecutionEnv } from "~/harness-types";
-import { isFailure } from "~/harness-types";
+import type {
+  AgentDefinition,
+  AgentMode,
+  ExecutionEnv,
+} from "../harness-types";
+import { isFailure } from "../harness-types";
 import { configEntryNameFromPath } from "./config-entry-name.ts";
 import {
   type LoaderDiagnostic,

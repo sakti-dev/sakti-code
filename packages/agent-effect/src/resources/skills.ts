@@ -4,9 +4,9 @@ import {
   dirnameEnvPath,
   parseFrontmatter,
   resolveKind,
-} from "~/agents/loader-shared";
-import type { ExecutionEnv, Skill } from "~/harness-types";
-import { isFailure } from "~/harness-types";
+} from "../agents/loader-shared";
+import type { ExecutionEnv, Skill } from "../harness-types";
+import { isFailure } from "../harness-types";
 
 const MAX_NAME_LENGTH = 64;
 const MAX_DESCRIPTION_LENGTH = 1024;

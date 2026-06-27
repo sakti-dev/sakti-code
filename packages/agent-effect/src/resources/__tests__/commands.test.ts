@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { TestExecutionEnv } from "~/agent/__tests__/test-execution-env";
-import { loadCommands } from "~/resources/commands";
-import { createTempDir } from "~/session/__tests__/session-test-utils";
+import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
+import { loadCommands } from "../../resources/commands";
+import { createTempDir } from "../../session/__tests__/session-test-utils";
 
 describe("loadCommands", () => {
   it("loads .md files under command/ and commands/ as prompt templates named by path", async () => {

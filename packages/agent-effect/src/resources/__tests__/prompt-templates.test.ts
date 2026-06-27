@@ -1,13 +1,13 @@
 import { symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { TestExecutionEnv } from "~/agent/__tests__/test-execution-env";
+import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
 import {
   formatPromptTemplateInvocation,
   loadPromptTemplates,
   loadSourcedPromptTemplates,
-} from "~/resources/prompt-templates";
-import { createTempDir } from "~/session/__tests__/session-test-utils";
+} from "../../resources/prompt-templates";
+import { createTempDir } from "../../session/__tests__/session-test-utils";
 
 describe("loadPromptTemplates", () => {
   it("loads markdown templates non-recursively from one or more dirs", async () => {

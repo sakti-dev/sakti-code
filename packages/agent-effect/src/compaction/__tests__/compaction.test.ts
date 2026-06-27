@@ -34,7 +34,7 @@ import {
   prepareCompaction,
   serializeConversation,
   shouldCompact,
-} from "~/compaction/compaction";
+} from "../../compaction/compaction";
 import type {
   BranchSummaryEntry,
   CompactionEntry,
@@ -44,10 +44,10 @@ import type {
   ModelChangeEntry,
   SessionTreeEntry,
   ThinkingLevelChangeEntry,
-} from "~/harness-types";
-import { getOrThrow } from "~/harness-types";
-import { buildSessionContextFromEntries } from "~/session/session";
-import type { AgentMessage } from "~/types";
+} from "../../harness-types";
+import { getOrThrow } from "../../harness-types";
+import { buildSessionContextFromEntries } from "../../session/session";
+import type { AgentMessage } from "../../types";
 
 let nextId = 0;
 function createId(): string {

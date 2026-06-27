@@ -1,7 +1,7 @@
 import type { Tool, ToolCall } from "@sakti-code/llm";
 import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
-import { validateToolArguments } from "~/core/validation";
+import { validateToolArguments } from "../../core/validation";
 
 describe("validateToolArguments", () => {
   it("passes valid arguments through unchanged", () => {

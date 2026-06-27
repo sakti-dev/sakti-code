@@ -34,8 +34,8 @@ import { Effect } from "effect";
 import type {
   CompactionDecision,
   RunCompactionOutcome,
-} from "~/compaction/auto-compaction";
-import type { AgentEvent } from "~/types";
+} from "../compaction/auto-compaction";
+import type { AgentEvent } from "../types";
 
 // ─── pure decision helpers (unit-tested in isolation) ────────────────────────
 

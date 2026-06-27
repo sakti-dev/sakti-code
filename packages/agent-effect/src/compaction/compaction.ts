@@ -15,21 +15,21 @@ import {
   ok,
   type Result,
   type SessionTreeEntry,
-} from "~/harness-types";
+} from "../harness-types";
 import {
   SUMMARIZATION_PROMPT,
   SUMMARIZATION_SYSTEM_PROMPT,
   TURN_PREFIX_SUMMARIZATION_PROMPT,
   UPDATE_SUMMARIZATION_PROMPT,
-} from "~/prompts/compaction";
+} from "../prompts/compaction";
 import {
   convertToLlm,
   createBranchSummaryMessage,
   createCompactionSummaryMessage,
   createCustomMessage,
-} from "~/session/messages";
-import { buildSessionContextFromEntries } from "~/session/session";
-import type { AgentMessage, ThinkingLevel } from "~/types";
+} from "../session/messages";
+import { buildSessionContextFromEntries } from "../session/session";
+import type { AgentMessage, ThinkingLevel } from "../types";
 import {
   computeFileLists,
   createFileOps,

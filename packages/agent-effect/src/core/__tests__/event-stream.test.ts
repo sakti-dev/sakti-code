@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EventStream } from "~/core/event-stream";
+import { EventStream } from "../../core/event-stream";
 
 describe("EventStream", () => {
   it("delivers pushed events in order", async () => {

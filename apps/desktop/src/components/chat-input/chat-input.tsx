@@ -1,4 +1,4 @@
-import type { PermissionReply } from "@sakti-code/agent";
+import type { PermissionReply } from "@sakti-code/agent-effect";
 import { FiAlertCircle } from "solid-icons/fi";
 import {
   createEffect,

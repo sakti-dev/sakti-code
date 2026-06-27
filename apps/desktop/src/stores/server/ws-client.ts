@@ -1,4 +1,4 @@
-import type { AgentHarnessEvent } from "@sakti-code/agent";
+import type { AgentHarnessEvent } from "@sakti-code/agent-effect";
 import type { WsIn, WsOut } from "@sakti-code/server/ws";
 import { createLogger } from "~/lib/utils";
 import { dispatchEvent } from "../session/event-reducer.ts";

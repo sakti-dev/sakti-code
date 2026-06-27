@@ -1,4 +1,4 @@
-import type { AgentMessage, PermissionReply } from "@sakti-code/agent";
+import type { AgentMessage, PermissionReply } from "@sakti-code/agent-effect";
 import type { Client } from "~/lib/api";
 import { createLogger } from "~/lib/utils";
 import { hydrateSessionMessages } from "../session/hydrate-messages.ts";

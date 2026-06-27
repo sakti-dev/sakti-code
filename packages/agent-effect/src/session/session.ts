@@ -1,6 +1,6 @@
 import type { ImageContent, TextContent } from "@sakti-code/llm";
 import { Context, Effect, Layer } from "effect";
-import type { AgentMessage } from "~/types";
+import type { AgentMessage } from "../types";
 import type {
   ActiveToolsChangeEntry,
   BranchSummaryEntry,

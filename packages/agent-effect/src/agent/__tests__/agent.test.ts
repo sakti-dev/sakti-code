@@ -5,14 +5,14 @@ import {
   createAssistantMessage,
   createUsage,
   fakeStreamResult,
-} from "~/__tests__/helpers/stream-mock";
-import { Agent } from "~/agent/agent";
+} from "../../__tests__/helpers/stream-mock";
+import { Agent } from "../../agent/agent";
 import type {
   AgentEvent,
   AgentTool,
   AgentToolUpdateCallback,
   StreamFn,
-} from "~/types";
+} from "../../types";
 
 function createDeferred(): {
   promise: Promise<void>;

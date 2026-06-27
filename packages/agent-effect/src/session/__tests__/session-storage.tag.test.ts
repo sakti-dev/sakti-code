@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
-import { type SessionMetadata, SessionStorage } from "~/harness-types";
+import { type SessionMetadata, SessionStorage } from "../../harness-types";
 
 describe("SessionStorage (Context.Service)", () => {
   it.effect("is accessible via yield* SessionStorage", () =>

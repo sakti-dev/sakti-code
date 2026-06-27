@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   appendSkillsBlock,
   formatSkillsForSystemPrompt,
-} from "~/resources/system-prompt";
+} from "../../resources/system-prompt";
 
 const visibleSkill = {
   name: "visible",

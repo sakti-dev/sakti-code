@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AgentDefinition, AgentMode } from "~/harness-types";
+import type { AgentDefinition, AgentMode } from "../../harness-types";
 
 describe("AgentDefinition type", () => {
   it("supports exactly the primary/subagent/all modes", () => {

@@ -5,14 +5,14 @@ import type {
   BranchSummaryMessage,
   CompactionSummaryMessage,
   CustomMessage,
-} from "~/types";
+} from "../types";
 
 export type {
   BashExecutionMessage,
   BranchSummaryMessage,
   CompactionSummaryMessage,
   CustomMessage,
-} from "~/types";
+} from "../types";
 
 export const COMPACTION_SUMMARY_PREFIX = `The conversation history before this point was compacted into the following summary:
 

@@ -8,14 +8,14 @@ import {
   fauxAssistantMessageWithContent,
   fauxToolCall,
   registerFauxStreamProvider,
-} from "~/__tests__/helpers/faux-provider";
-import { calculateTool } from "~/__tests__/utils/calculate";
-import { getCurrentTimeTool } from "~/__tests__/utils/get-current-time";
-import { TestExecutionEnv } from "~/agent/__tests__/test-execution-env";
-import { AgentHarness } from "~/agent/agent-harness";
-import type { PromptTemplate, Skill } from "~/harness-types";
-import { createTestSession } from "~/session/__tests__/session-test-utils";
-import type { AgentMessage, AgentTool } from "~/types";
+} from "../../__tests__/helpers/faux-provider";
+import { calculateTool } from "../../__tests__/utils/calculate";
+import { getCurrentTimeTool } from "../../__tests__/utils/get-current-time";
+import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
+import { AgentHarness } from "../../agent/agent-harness";
+import type { PromptTemplate, Skill } from "../../harness-types";
+import { createTestSession } from "../../session/__tests__/session-test-utils";
+import type { AgentMessage, AgentTool } from "../../types";
 
 interface AppSkill extends Skill {
   source: "project" | "user";

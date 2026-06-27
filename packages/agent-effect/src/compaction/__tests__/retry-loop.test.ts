@@ -1,7 +1,7 @@
 import type { AssistantMessage } from "@sakti-code/llm";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
-import type { CompactionDecision } from "~/compaction/auto-compaction";
+import type { CompactionDecision } from "../../compaction/auto-compaction";
 import {
   abortableSleep,
   computeRetryDelay,
@@ -11,8 +11,8 @@ import {
   type RetryRunnerDeps,
   type RetrySettings,
   shouldRetry,
-} from "~/compaction/retry-loop";
-import type { AgentEvent } from "~/types";
+} from "../../compaction/retry-loop";
+import type { AgentEvent } from "../../types";
 
 /** Build a minimal assistant message for retry tests. */
 function assistantMessage(opts: {

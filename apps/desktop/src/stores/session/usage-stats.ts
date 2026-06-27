@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@sakti-code/agent";
+import type { AgentMessage } from "@sakti-code/agent-effect";
 import type { UIMessage } from "../types.ts";
 
 /**

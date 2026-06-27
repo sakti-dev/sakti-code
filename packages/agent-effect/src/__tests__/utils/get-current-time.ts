@@ -1,5 +1,5 @@
 import { type Static, Type } from "typebox";
-import type { AgentTool, AgentToolResult } from "~/types";
+import type { AgentTool, AgentToolResult } from "../../types";
 
 export interface GetCurrentTimeResult
   extends AgentToolResult<{ utcTimestamp: number }> {}

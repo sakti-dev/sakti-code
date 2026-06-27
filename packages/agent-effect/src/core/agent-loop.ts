@@ -22,7 +22,7 @@ import type {
   AgentToolResult,
   PermissionAskRequest,
   StreamFn,
-} from "~/types";
+} from "../types";
 import { EventStream } from "./event-stream.ts";
 import { validateToolArguments } from "./validation.ts";
 

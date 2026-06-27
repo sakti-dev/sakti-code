@@ -4,7 +4,7 @@ import {
   createAssistantMessage,
   createTestSession,
   createUserMessage,
-} from "~/session/__tests__/session-test-utils";
+} from "../../session/__tests__/session-test-utils";
 
 describe("Session with in-memory storage", () => {
   it("appends messages and builds context in order", async () => {

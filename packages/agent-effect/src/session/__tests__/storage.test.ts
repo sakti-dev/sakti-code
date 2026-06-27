@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { SessionStorage } from "~/harness-types";
+import { SessionStorage } from "../../harness-types";
 import {
   createAssistantMessage,
   createUserMessage,
-} from "~/session/__tests__/session-test-utils";
-import { InMemorySessionStorageLive } from "~/session/storage";
+} from "../../session/__tests__/session-test-utils";
+import { InMemorySessionStorageLive } from "../../session/storage";
 
 describe("InMemorySessionStorage", () => {
   it.effect("returns configured session metadata", () =>

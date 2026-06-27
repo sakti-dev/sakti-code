@@ -15,7 +15,7 @@ import type {
   ExecutionEnvExecOptions,
   FileError,
   FileInfo,
-} from "~/harness-types";
+} from "../../harness-types";
 import {
   type ExecutionError,
   err,
@@ -23,7 +23,7 @@ import {
   isFailure,
   ok,
   type Result,
-} from "~/harness-types";
+} from "../../harness-types";
 
 function statToFileInfo(fullPath: string, name: string): FileInfo {
   const s = lstatSync(fullPath);

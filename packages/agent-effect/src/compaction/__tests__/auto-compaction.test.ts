@@ -4,11 +4,11 @@ import {
   type CheckCompactionInput,
   checkCompaction,
   parseCompactionSettings,
-} from "~/compaction/auto-compaction";
+} from "../../compaction/auto-compaction";
 import {
   type CompactionSettings,
   DEFAULT_COMPACTION_SETTINGS,
-} from "~/compaction/compaction";
+} from "../../compaction/compaction";
 
 const usage = (over: Partial<Usage> = {}): Usage => ({
   input: 0,

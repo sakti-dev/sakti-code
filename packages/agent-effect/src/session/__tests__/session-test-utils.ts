@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Layer } from "effect";
 import { afterEach } from "vitest";
-import { Session, SessionLive, type SessionShape } from "~/session/session";
-import { InMemorySessionStorageLive } from "~/session/storage";
-import type { AgentMessage } from "~/types";
+import { Session, SessionLive, type SessionShape } from "../../session/session";
+import { InMemorySessionStorageLive } from "../../session/storage";
+import type { AgentMessage } from "../../types";
 
 export function createUserMessage(text: string): AgentMessage {
   return {

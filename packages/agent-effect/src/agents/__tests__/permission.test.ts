@@ -6,7 +6,7 @@ import {
   match,
   merge,
   type PermissionRule,
-} from "~/agents/permission";
+} from "../../agents/permission";
 
 describe("match", () => {
   it("handles ? and * glob tokens", () => {

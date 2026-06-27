@@ -8,8 +8,8 @@ import { Effect } from "effect";
 import {
   runAgentLoopContinueEffect,
   runAgentLoopEffect,
-} from "~/core/agent-loop";
-import { AgentError } from "~/harness-types";
+} from "../core/agent-loop";
+import { AgentError } from "../harness-types";
 import type {
   AfterToolCallContext,
   AfterToolCallResult,
@@ -25,9 +25,9 @@ import type {
   QueueMode,
   StreamFn,
   ToolExecutionMode,
-} from "~/types";
+} from "../types";
 
-export type { QueueMode } from "~/types";
+export type { QueueMode } from "../types";
 
 function defaultConvertToLlm(messages: AgentMessage[]): Message[] {
   return messages.filter(

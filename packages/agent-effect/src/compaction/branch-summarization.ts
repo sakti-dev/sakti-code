@@ -1,7 +1,7 @@
 import type { Model } from "@sakti-code/llm";
 import { complete } from "@sakti-code/llm";
 import { Effect } from "effect";
-import { estimateTokens } from "~/compaction/compaction";
+import { estimateTokens } from "../compaction/compaction";
 import {
   BranchSummaryError,
   type BranchSummaryResult,
@@ -10,20 +10,20 @@ import {
   type Result,
   SessionError,
   type SessionTreeEntry,
-} from "~/harness-types";
+} from "../harness-types";
 import {
   BRANCH_SUMMARY_PREAMBLE,
   BRANCH_SUMMARY_PROMPT,
-} from "~/prompts/branch-summary";
-import { SUMMARIZATION_SYSTEM_PROMPT } from "~/prompts/compaction";
+} from "../prompts/branch-summary";
+import { SUMMARIZATION_SYSTEM_PROMPT } from "../prompts/compaction";
 import {
   convertToLlm,
   createBranchSummaryMessage,
   createCompactionSummaryMessage,
   createCustomMessage,
-} from "~/session/messages";
-import type { SessionShape } from "~/session/session";
-import type { AgentMessage } from "~/types";
+} from "../session/messages";
+import type { SessionShape } from "../session/session";
+import type { AgentMessage } from "../types";
 import {
   computeFileLists,
   createFileOps,

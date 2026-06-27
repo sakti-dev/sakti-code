@@ -1,12 +1,12 @@
 import { Effect } from "effect";
-import { configEntryNameFromPath } from "~/agents/config-entry-name";
+import { configEntryNameFromPath } from "../agents/config-entry-name";
 import {
   type LoaderDiagnostic,
   parseFrontmatter,
   resolveKind,
-} from "~/agents/loader-shared";
-import type { ExecutionEnv, PromptTemplate } from "~/harness-types";
-import { isFailure } from "~/harness-types";
+} from "../agents/loader-shared";
+import type { ExecutionEnv, PromptTemplate } from "../harness-types";
+import { isFailure } from "../harness-types";
 
 export type CommandDiagnosticCode =
   | "file_info_failed"

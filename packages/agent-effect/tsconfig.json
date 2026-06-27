@@ -3,9 +3,6 @@
   "include": ["src/**/*.ts"],
   "compilerOptions": {
     "strictNullChecks": true,
-    "types": ["node"],
-    "paths": {
-      "~/*": ["./src/*"]
-    }
+    "types": ["node"]
   }
 }

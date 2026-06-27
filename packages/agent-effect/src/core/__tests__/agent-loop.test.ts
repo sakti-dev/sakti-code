@@ -8,7 +8,7 @@ import type {
 } from "@sakti-code/llm";
 import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
-import { agentLoop, agentLoopContinue } from "~/core/agent-loop";
+import { agentLoop, agentLoopContinue } from "../../core/agent-loop";
 import type {
   AgentContext,
   AgentEvent,
@@ -16,7 +16,7 @@ import type {
   AgentMessage,
   AgentTool,
   StreamFn,
-} from "~/types";
+} from "../../types";
 
 // ─── test helpers ────────────────────────────────────────────────────────────
 

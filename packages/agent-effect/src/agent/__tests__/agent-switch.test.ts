@@ -8,12 +8,12 @@ import {
   fauxAssistantMessageWithContent,
   fauxToolCall,
   registerFauxStreamProvider,
-} from "~/__tests__/helpers/faux-provider";
-import { TestExecutionEnv } from "~/agent/__tests__/test-execution-env";
-import { AgentHarness } from "~/agent/agent-harness";
-import type { AgentDefinition } from "~/harness-types";
-import { createTestSession } from "~/session/__tests__/session-test-utils";
-import type { AgentTool } from "~/types";
+} from "../../__tests__/helpers/faux-provider";
+import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
+import { AgentHarness } from "../../agent/agent-harness";
+import type { AgentDefinition } from "../../harness-types";
+import { createTestSession } from "../../session/__tests__/session-test-utils";
+import type { AgentTool } from "../../types";
 
 const registrations: FauxProviderRegistration[] = [];
 

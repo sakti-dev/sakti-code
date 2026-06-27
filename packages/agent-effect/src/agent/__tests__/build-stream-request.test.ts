@@ -1,6 +1,6 @@
 import type { Model, StreamRequest } from "@sakti-code/llm";
 import { describe, expect, it } from "vitest";
-import { buildHarnessStreamRequest } from "~/agent/build-stream-request";
+import { buildHarnessStreamRequest } from "../../agent/build-stream-request";
 
 const model: Model = {
   api: "ai-sdk",

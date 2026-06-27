@@ -1,4 +1,4 @@
-import type { AgentHarnessEvent } from "@sakti-code/agent";
+import type { AgentHarnessEvent } from "@sakti-code/agent-effect";
 import type { WsIn } from "@sakti-code/server/ws";
 import { describe, expect, it } from "vitest";
 

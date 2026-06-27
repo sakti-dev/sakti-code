@@ -4,7 +4,7 @@ import {
   parseLeadingInvocation,
   planFirstTurn,
   type ReadFile,
-} from "~/resources/prompt-preprocessor";
+} from "../../resources/prompt-preprocessor";
 
 const enc = new TextEncoder();
 

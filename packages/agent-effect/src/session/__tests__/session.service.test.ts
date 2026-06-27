@@ -3,9 +3,9 @@ import { Effect, Layer } from "effect";
 import {
   createAssistantMessage,
   createUserMessage,
-} from "~/session/__tests__/session-test-utils";
-import { Session, SessionLive, type SessionShape } from "~/session/session";
-import { InMemorySessionStorageLive } from "~/session/storage";
+} from "../../session/__tests__/session-test-utils";
+import { Session, SessionLive, type SessionShape } from "../../session/session";
+import { InMemorySessionStorageLive } from "../../session/storage";
 
 describe("Session (Context.Service)", () => {
   const TestSessionLayer = SessionLive.pipe(

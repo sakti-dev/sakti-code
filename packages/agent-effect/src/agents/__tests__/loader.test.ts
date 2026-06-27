@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { TestExecutionEnv } from "~/agent/__tests__/test-execution-env";
-import { loadAgents } from "~/agents/loader";
-import type { AgentDefinition } from "~/harness-types";
-import { createTempDir } from "~/session/__tests__/session-test-utils";
+import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
+import { loadAgents } from "../../agents/loader";
+import type { AgentDefinition } from "../../harness-types";
+import { createTempDir } from "../../session/__tests__/session-test-utils";
 
 describe("loadAgents", () => {
   it("loads .md under agent/ and agents/ as agent definitions named by path", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { SessionError } from "~/session/entries";
+import { SessionError } from "../../session/entries";
 
 describe("SessionError (Schema.TaggedErrorClass)", () => {
   it("has _tag = 'SessionError' and typed fields", () => {
