@@ -92,4 +92,52 @@ describe("validateToolArguments", () => {
     expect(toolCall.arguments).toEqual(originalSnapshot);
     expect(toolCall.arguments).toBe(original);
   });
+
+  it("coerces union (anyOf) string-to-number on non-TypeBox schema", () => {
+    const tool: Tool = {
+      name: "test",
+      description: "test tool",
+      parameters: {
+        type: "object",
+        properties: {
+          value: {
+            anyOf: [{ type: "number" }, { type: "string" }],
+          },
+        },
+        required: ["value"],
+      } as unknown as Tool["parameters"],
+    };
+    const toolCall: ToolCall = {
+      type: "toolCall",
+      id: "call_1",
+      name: "test",
+      arguments: { value: "42" },
+    };
+    const result = validateToolArguments(tool, toolCall);
+    expect(result).toEqual({ value: 42 });
+  });
+
+  it("passes union (anyOf) value unchanged when it already matches a member", () => {
+    const tool: Tool = {
+      name: "test",
+      description: "test tool",
+      parameters: {
+        type: "object",
+        properties: {
+          value: {
+            anyOf: [{ type: "number" }, { type: "string" }],
+          },
+        },
+        required: ["value"],
+      } as unknown as Tool["parameters"],
+    };
+    const toolCall: ToolCall = {
+      type: "toolCall",
+      id: "call_1",
+      name: "test",
+      arguments: { value: "hello" },
+    };
+    const result = validateToolArguments(tool, toolCall);
+    expect(result).toEqual({ value: "hello" });
+  });
 });
