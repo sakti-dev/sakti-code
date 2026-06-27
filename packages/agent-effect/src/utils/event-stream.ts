@@ -19,6 +19,7 @@ export class EventStream<T, R = T> implements AsyncIterable<T> {
       this.resolveFinalResult = resolve;
       this.rejectFinalResult = reject;
     });
+    this.finalResultPromise.catch(() => {});
   }
 
   push(event: T): void {

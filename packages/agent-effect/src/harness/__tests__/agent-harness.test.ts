@@ -759,4 +759,44 @@ describe("AgentHarness", () => {
     expect(resolved.skills).not.toBe(resources.skills);
     expect(resolved.promptTemplates).not.toBe(resources.promptTemplates);
   });
+
+  it("completes a turn without error when no subscribers are registered", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    registration.setResponses([() => fauxAssistantMessage("done")]);
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+    });
+
+    await harness.prompt("hello");
+
+    expect(registration.callCount).toBe(1);
+  });
+
+  it("delivers message_update streaming events to subscribers", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    registration.setResponses([
+      () => fauxAssistantMessageWithContent([{ type: "text", text: "hi" }]),
+    ]);
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+    });
+    const eventTypes: string[] = [];
+    harness.subscribe((event) => {
+      eventTypes.push(event.type);
+    });
+
+    await harness.prompt("hello");
+
+    expect(eventTypes).toContain("message_start");
+    expect(eventTypes).toContain("message_update");
+    expect(eventTypes).toContain("message_end");
+  });
 });
