@@ -75,47 +75,55 @@ export interface GenerateBranchSummaryOptions {
 }
 
 /** Collect entries that should be summarized before navigating to a different session tree entry. */
-// @migration TODO: remove when branch-summarization.ts migrates to Effect (Phase Compaction)
+export const collectEntriesForBranchSummaryEffect = (
+  session: SessionShape,
+  oldLeafId: string | null,
+  targetId: string
+): Effect.Effect<CollectEntriesResult, SessionError> =>
+  Effect.gen(function* () {
+    if (!oldLeafId) {
+      return { entries: [], commonAncestorId: null };
+    }
+    const oldPath = new Set(
+      (yield* session.getBranch(oldLeafId)).map((e: SessionTreeEntry) => e.id)
+    );
+    const targetPath = yield* session.getBranch(targetId);
+    let commonAncestorId: string | null = null;
+    for (let i = targetPath.length - 1; i >= 0; i--) {
+      if (oldPath.has(targetPath[i]!.id)) {
+        commonAncestorId = targetPath[i]!.id;
+        break;
+      }
+    }
+    const entries: SessionTreeEntry[] = [];
+    let current: string | null = oldLeafId;
+
+    while (current && current !== commonAncestorId) {
+      const entry: SessionTreeEntry | undefined =
+        yield* session.getEntry(current);
+      if (!entry) {
+        return yield* new SessionError({
+          code: "invalid_session",
+          message: `Entry ${current} not found`,
+        });
+      }
+      entries.push(entry as SessionTreeEntry);
+      current = entry.parentId;
+    }
+    entries.reverse();
+
+    return { entries, commonAncestorId };
+  });
+
+/** @migration Promise wrapper — removes when callers migrate to Effect. */
 export async function collectEntriesForBranchSummary(
   session: SessionShape,
   oldLeafId: string | null,
   targetId: string
 ): Promise<CollectEntriesResult> {
-  if (!oldLeafId) {
-    return { entries: [], commonAncestorId: null };
-  }
-  const oldPath = new Set(
-    (await Effect.runPromise(session.getBranch(oldLeafId))).map(
-      (e: SessionTreeEntry) => e.id
-    )
+  return Effect.runPromise(
+    collectEntriesForBranchSummaryEffect(session, oldLeafId, targetId)
   );
-  const targetPath = await Effect.runPromise(session.getBranch(targetId));
-  let commonAncestorId: string | null = null;
-  for (let i = targetPath.length - 1; i >= 0; i--) {
-    if (oldPath.has(targetPath[i]!.id)) {
-      commonAncestorId = targetPath[i]!.id;
-      break;
-    }
-  }
-  const entries: SessionTreeEntry[] = [];
-  let current: string | null = oldLeafId;
-
-  while (current && current !== commonAncestorId) {
-    const entry: SessionTreeEntry | undefined = await Effect.runPromise(
-      session.getEntry(current)
-    );
-    if (!entry) {
-      throw new SessionError({
-        code: "invalid_session",
-        message: `Entry ${current} not found`,
-      });
-    }
-    entries.push(entry as SessionTreeEntry);
-    current = entry.parentId;
-  }
-  entries.reverse();
-
-  return { entries, commonAncestorId };
 }
 function getMessageFromEntry(
   entry: SessionTreeEntry
@@ -245,76 +253,87 @@ Use this EXACT format:
 Keep each section concise. Preserve exact file paths, function names, and error messages.`;
 
 /** Generate a summary for abandoned branch entries. */
+export const generateBranchSummaryEffect = (
+  entries: SessionTreeEntry[],
+  options: GenerateBranchSummaryOptions
+): Effect.Effect<Result<BranchSummaryResult, BranchSummaryError>> =>
+  Effect.gen(function* () {
+    const {
+      model,
+      apiKey,
+      headers,
+      signal,
+      customInstructions,
+      replaceInstructions,
+      reserveTokens = 16_384,
+    } = options;
+    const contextWindow = model.contextWindow || 128_000;
+    const tokenBudget = contextWindow - reserveTokens;
+
+    const { messages, fileOps } = prepareBranchEntries(entries, tokenBudget);
+
+    if (messages.length === 0) {
+      return ok({
+        summary: "No content to summarize",
+        readFiles: [],
+        modifiedFiles: [],
+      });
+    }
+    const llmMessages = convertToLlm(messages);
+    const conversationText = serializeConversation(llmMessages);
+    let instructions: string;
+    if (replaceInstructions && customInstructions) {
+      instructions = customInstructions;
+    } else if (customInstructions) {
+      instructions = `${BRANCH_SUMMARY_PROMPT}\n\nAdditional focus: ${customInstructions}`;
+    } else {
+      instructions = BRANCH_SUMMARY_PROMPT;
+    }
+    const promptText = `<conversation>\n${conversationText}\n</conversation>\n\n${instructions}`;
+
+    const summarizationMessages = [
+      {
+        role: "user" as const,
+        content: [{ type: "text" as const, text: promptText }],
+        timestamp: Date.now(),
+      },
+    ];
+    const response = yield* Effect.promise(() =>
+      complete({
+        model,
+        messages: summarizationMessages,
+        system: SUMMARIZATION_SYSTEM_PROMPT,
+        apiKey,
+        ...(headers === undefined ? {} : { headers }),
+        ...(signal ? { abortSignal: signal } : {}),
+        maxOutputTokens: Math.min(model.maxTokens, 4096),
+      })
+    );
+    if (response.finishReason === "error") {
+      return err(
+        new BranchSummaryError({
+          code: "summarization_failed",
+          message: `Branch summary failed: ${response.errorMessage || "Unknown error"}`,
+        })
+      );
+    }
+
+    let summary = response.content.map((c) => c.text).join("\n");
+    summary = BRANCH_SUMMARY_PREAMBLE + summary;
+    const { readFiles, modifiedFiles } = computeFileLists(fileOps);
+    summary += formatFileOperations(readFiles, modifiedFiles);
+
+    return ok({
+      summary: summary || "No summary generated",
+      readFiles,
+      modifiedFiles,
+    });
+  });
+
+/** @migration Promise wrapper — removes when callers migrate to Effect. */
 export async function generateBranchSummary(
   entries: SessionTreeEntry[],
   options: GenerateBranchSummaryOptions
 ): Promise<Result<BranchSummaryResult, BranchSummaryError>> {
-  const {
-    model,
-    apiKey,
-    headers,
-    signal,
-    customInstructions,
-    replaceInstructions,
-    reserveTokens = 16_384,
-  } = options;
-  const contextWindow = model.contextWindow || 128_000;
-  const tokenBudget = contextWindow - reserveTokens;
-
-  const { messages, fileOps } = prepareBranchEntries(entries, tokenBudget);
-
-  if (messages.length === 0) {
-    return ok({
-      summary: "No content to summarize",
-      readFiles: [],
-      modifiedFiles: [],
-    });
-  }
-  const llmMessages = convertToLlm(messages);
-  const conversationText = serializeConversation(llmMessages);
-  let instructions: string;
-  if (replaceInstructions && customInstructions) {
-    instructions = customInstructions;
-  } else if (customInstructions) {
-    instructions = `${BRANCH_SUMMARY_PROMPT}\n\nAdditional focus: ${customInstructions}`;
-  } else {
-    instructions = BRANCH_SUMMARY_PROMPT;
-  }
-  const promptText = `<conversation>\n${conversationText}\n</conversation>\n\n${instructions}`;
-
-  const summarizationMessages = [
-    {
-      role: "user" as const,
-      content: [{ type: "text" as const, text: promptText }],
-      timestamp: Date.now(),
-    },
-  ];
-  const response = await complete({
-    model,
-    messages: summarizationMessages,
-    system: SUMMARIZATION_SYSTEM_PROMPT,
-    apiKey,
-    ...(headers === undefined ? {} : { headers }),
-    ...(signal ? { abortSignal: signal } : {}),
-    maxOutputTokens: Math.min(model.maxTokens, 4096),
-  });
-  if (response.finishReason === "error") {
-    return err(
-      new BranchSummaryError({
-        code: "summarization_failed",
-        message: `Branch summary failed: ${response.errorMessage || "Unknown error"}`,
-      })
-    );
-  }
-
-  let summary = response.content.map((c) => c.text).join("\n");
-  summary = BRANCH_SUMMARY_PREAMBLE + summary;
-  const { readFiles, modifiedFiles } = computeFileLists(fileOps);
-  summary += formatFileOperations(readFiles, modifiedFiles);
-
-  return ok({
-    summary: summary || "No summary generated",
-    readFiles,
-    modifiedFiles,
-  });
+  return Effect.runPromise(generateBranchSummaryEffect(entries, options));
 }

@@ -7,7 +7,7 @@ import { Effect } from "effect";
 import {
   type CompactionSettings,
   calculateContextTokens,
-  compact,
+  compactEffect,
   estimateContextTokens,
   prepareCompaction,
   shouldCompact,
@@ -15,6 +15,7 @@ import {
 import type { SessionShape } from "../harness/session.ts";
 import {
   isFailure,
+  type SessionError,
   type SessionTreeEntry,
   type ThinkingLevel,
 } from "../harness/types.ts";
@@ -188,49 +189,52 @@ export type RunCompactionOutcome =
  * harness rebuilds context from storage next turn, so no in-place message
  * mutation is needed (unlike pi).
  */
-// @migration TODO: remove when auto-compaction.ts migrates to Effect (Phase Compaction)
-export async function runAutoCompaction(
+export const runAutoCompactionEffect = (
   deps: RunCompactionDeps
-): Promise<RunCompactionOutcome> {
-  const entries: SessionTreeEntry[] = await Effect.runPromise(
-    deps.session.getBranch()
-  );
-  const preparation = prepareCompaction(entries, deps.settings);
-  if (isFailure(preparation)) {
-    return { ok: false, errorMessage: preparation.failure.message };
-  }
-  if (!preparation.success) {
-    return { ok: false, errorMessage: "Nothing to compact" };
-  }
+): Effect.Effect<RunCompactionOutcome, SessionError> =>
+  Effect.gen(function* () {
+    const entries: SessionTreeEntry[] = yield* deps.session.getBranch();
+    const preparation = prepareCompaction(entries, deps.settings);
+    if (isFailure(preparation)) {
+      return { ok: false, errorMessage: preparation.failure.message };
+    }
+    if (!preparation.success) {
+      return { ok: false, errorMessage: "Nothing to compact" };
+    }
 
-  const result = await compact(
-    preparation.success,
-    deps.model,
-    deps.apiKey,
-    undefined,
-    undefined,
-    undefined,
-    deps.thinkingLevel
-  );
-  if (isFailure(result)) {
-    return { ok: false, errorMessage: result.failure.message };
-  }
+    const result = yield* compactEffect(
+      preparation.success,
+      deps.model,
+      deps.apiKey,
+      undefined,
+      undefined,
+      undefined,
+      deps.thinkingLevel
+    );
+    if (isFailure(result)) {
+      return { ok: false, errorMessage: result.failure.message };
+    }
 
-  await Effect.runPromise(
-    deps.session.appendCompaction(
+    yield* deps.session.appendCompaction(
       result.success.summary,
       result.success.firstKeptEntryId,
       result.success.tokensBefore,
       result.success.details
-    )
-  );
+    );
 
-  return {
-    ok: true,
-    summary: result.success.summary,
-    firstKeptEntryId: result.success.firstKeptEntryId,
-    tokensBefore: result.success.tokensBefore,
-  };
+    return {
+      ok: true,
+      summary: result.success.summary,
+      firstKeptEntryId: result.success.firstKeptEntryId,
+      tokensBefore: result.success.tokensBefore,
+    };
+  });
+
+/** @migration Promise wrapper — removes when callers migrate to Effect. */
+export async function runAutoCompaction(
+  deps: RunCompactionDeps
+): Promise<RunCompactionOutcome> {
+  return Effect.runPromise(runAutoCompactionEffect(deps));
 }
 
 /**

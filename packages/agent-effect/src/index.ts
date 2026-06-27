@@ -10,10 +10,13 @@ export {
   checkCompaction,
   parseCompactionSettings,
   runAutoCompaction,
+  runAutoCompactionEffect,
 } from "./compaction/auto-compaction.ts";
 export {
   collectEntriesForBranchSummary,
+  collectEntriesForBranchSummaryEffect,
   generateBranchSummary,
+  generateBranchSummaryEffect,
 } from "./compaction/branch-summarization.ts";
 export type { FileOperations } from "./compaction/utils.ts";
 export { serializeConversation } from "./compaction/utils.ts";
@@ -21,9 +24,11 @@ export type { CompactionSettings } from "./compaction.ts";
 export {
   calculateContextTokens,
   compact,
+  compactEffect,
   DEFAULT_COMPACTION_SETTINGS,
   estimateContextTokens,
   estimateTokens,
+  generateSummaryEffect,
   prepareCompaction,
   shouldCompact,
 } from "./compaction.ts";

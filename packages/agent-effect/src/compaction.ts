@@ -6,6 +6,7 @@ import type {
   Usage,
 } from "@sakti-code/llm";
 import { complete } from "@sakti-code/llm";
+import { Effect } from "effect";
 import {
   computeFileLists,
   createFileOps,
@@ -530,7 +531,7 @@ Use this EXACT format:
 Keep each section concise. Preserve exact file paths, function names, and error messages.`;
 
 /** Generate or update a conversation summary for compaction. */
-export async function generateSummary(
+export const generateSummaryEffect = (
   currentMessages: AgentMessage[],
   model: Model,
   reserveTokens: number,
@@ -540,73 +541,83 @@ export async function generateSummary(
   customInstructions?: string,
   previousSummary?: string,
   thinkingLevel?: ThinkingLevel
-): Promise<Result<string, CompactionError>> {
-  const maxTokens = Math.min(
-    Math.floor(0.8 * reserveTokens),
-    model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY
-  );
-  let basePrompt = previousSummary
-    ? UPDATE_SUMMARIZATION_PROMPT
-    : SUMMARIZATION_PROMPT;
-  if (customInstructions) {
-    basePrompt = `${basePrompt}\n\nAdditional focus: ${customInstructions}`;
-  }
-  const llmMessages = convertToLlm(currentMessages);
-  const conversationText = serializeConversation(llmMessages);
-  let promptText = `<conversation>\n${conversationText}\n</conversation>\n\n`;
-  if (previousSummary) {
-    promptText += `<previous-summary>\n${previousSummary}\n</previous-summary>\n\n`;
-  }
-  promptText += basePrompt;
+): Effect.Effect<Result<string, CompactionError>> =>
+  Effect.gen(function* () {
+    const maxTokens = Math.min(
+      Math.floor(0.8 * reserveTokens),
+      model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY
+    );
+    let basePrompt = previousSummary
+      ? UPDATE_SUMMARIZATION_PROMPT
+      : SUMMARIZATION_PROMPT;
+    if (customInstructions) {
+      basePrompt = `${basePrompt}\n\nAdditional focus: ${customInstructions}`;
+    }
+    const llmMessages = convertToLlm(currentMessages);
+    const conversationText = serializeConversation(llmMessages);
+    let promptText = `<conversation>\n${conversationText}\n</conversation>\n\n`;
+    if (previousSummary) {
+      promptText += `<previous-summary>\n${previousSummary}\n</previous-summary>\n\n`;
+    }
+    promptText += basePrompt;
 
-  const summarizationMessages = [
-    {
-      role: "user" as const,
-      content: [{ type: "text" as const, text: promptText }],
-      timestamp: Date.now(),
-    },
-  ];
+    const summarizationMessages = [
+      {
+        role: "user" as const,
+        content: [{ type: "text" as const, text: promptText }],
+        timestamp: Date.now(),
+      },
+    ];
 
-  const completionOptions = {
-    maxTokens,
-    ...(signal === undefined ? {} : { signal }),
-    apiKey,
-    ...(headers === undefined ? {} : { headers }),
-    ...(model.reasoning && thinkingLevel && thinkingLevel !== "off"
-      ? { thinkingLevel }
-      : {}),
-  };
+    const completionOptions = {
+      maxTokens,
+      ...(signal === undefined ? {} : { signal }),
+      apiKey,
+      ...(headers === undefined ? {} : { headers }),
+      ...(model.reasoning && thinkingLevel && thinkingLevel !== "off"
+        ? { thinkingLevel }
+        : {}),
+    };
 
-  const response = await complete({
-    model,
-    messages: summarizationMessages,
-    system: SUMMARIZATION_SYSTEM_PROMPT,
-    ...(completionOptions.maxTokens
-      ? { maxOutputTokens: completionOptions.maxTokens }
-      : {}),
-    ...(completionOptions.signal
-      ? { abortSignal: completionOptions.signal }
-      : {}),
-    apiKey: completionOptions.apiKey,
-    ...(completionOptions.headers
-      ? { headers: completionOptions.headers }
-      : {}),
-    ...(completionOptions.thinkingLevel
-      ? { thinkingLevel: completionOptions.thinkingLevel }
-      : {}),
-  });
-  if (response.finishReason === "error") {
-    return err(
-      new CompactionError({
-        code: "summarization_failed",
-        message: `Summarization failed: ${response.errorMessage || "Unknown error"}`,
+    const response = yield* Effect.promise(() =>
+      complete({
+        model,
+        messages: summarizationMessages,
+        system: SUMMARIZATION_SYSTEM_PROMPT,
+        ...(completionOptions.maxTokens
+          ? { maxOutputTokens: completionOptions.maxTokens }
+          : {}),
+        ...(completionOptions.signal
+          ? { abortSignal: completionOptions.signal }
+          : {}),
+        apiKey: completionOptions.apiKey,
+        ...(completionOptions.headers
+          ? { headers: completionOptions.headers }
+          : {}),
+        ...(completionOptions.thinkingLevel
+          ? { thinkingLevel: completionOptions.thinkingLevel }
+          : {}),
       })
     );
-  }
+    if (response.finishReason === "error") {
+      return err(
+        new CompactionError({
+          code: "summarization_failed",
+          message: `Summarization failed: ${response.errorMessage || "Unknown error"}`,
+        })
+      );
+    }
 
-  const textContent = response.content.map((c) => c.text).join("\n");
+    const textContent = response.content.map((c) => c.text).join("\n");
 
-  return ok(textContent);
+    return ok(textContent);
+  });
+
+/** @migration Promise wrapper — removes when callers migrate to Effect. */
+export async function generateSummary(
+  ...args: Parameters<typeof generateSummaryEffect>
+): Promise<Result<string, CompactionError>> {
+  return Effect.runPromise(generateSummaryEffect(...args));
 }
 
 /** Prepared inputs for a compaction run. */
@@ -747,7 +758,7 @@ Be concise. Focus on what's needed to understand the kept suffix.`;
 export { serializeConversation } from "./compaction/utils.ts";
 
 /** Generate compaction summary data from prepared session history. */
-export async function compact(
+export const compactEffect = (
   preparation: CompactionPreparation,
   model: Model,
   apiKey: string,
@@ -755,90 +766,99 @@ export async function compact(
   customInstructions?: string,
   signal?: AbortSignal,
   thinkingLevel?: ThinkingLevel
-): Promise<Result<CompactionResult, CompactionError>> {
-  const {
-    firstKeptEntryId,
-    messagesToSummarize,
-    turnPrefixMessages,
-    isSplitTurn,
-    tokensBefore,
-    previousSummary,
-    fileOps,
-    settings,
-  } = preparation;
+): Effect.Effect<Result<CompactionResult, CompactionError>> =>
+  Effect.gen(function* () {
+    const {
+      firstKeptEntryId,
+      messagesToSummarize,
+      turnPrefixMessages,
+      isSplitTurn,
+      tokensBefore,
+      previousSummary,
+      fileOps,
+      settings,
+    } = preparation;
 
-  if (!firstKeptEntryId) {
-    return err(
-      new CompactionError({
-        code: "invalid_session",
-        message: "First kept entry has no UUID - session may need migration",
-      })
-    );
-  }
+    if (!firstKeptEntryId) {
+      return err(
+        new CompactionError({
+          code: "invalid_session",
+          message: "First kept entry has no UUID - session may need migration",
+        })
+      );
+    }
 
-  let summary: string;
+    let summary: string;
 
-  if (isSplitTurn && turnPrefixMessages.length > 0) {
-    const [historyResult, turnPrefixResult] = await Promise.all([
-      messagesToSummarize.length > 0
-        ? generateSummary(
-            messagesToSummarize,
-            model,
-            settings.reserveTokens,
-            apiKey,
-            headers,
-            signal,
-            customInstructions,
-            previousSummary,
-            thinkingLevel
-          )
-        : Promise.resolve(ok<string, CompactionError>("No prior history.")),
-      generateTurnPrefixSummary(
-        turnPrefixMessages,
+    if (isSplitTurn && turnPrefixMessages.length > 0) {
+      const [historyResult, turnPrefixResult] = yield* Effect.all([
+        messagesToSummarize.length > 0
+          ? generateSummaryEffect(
+              messagesToSummarize,
+              model,
+              settings.reserveTokens,
+              apiKey,
+              headers,
+              signal,
+              customInstructions,
+              previousSummary,
+              thinkingLevel
+            )
+          : Effect.succeed(ok<string, CompactionError>("No prior history.")),
+        generateTurnPrefixSummaryEffect(
+          turnPrefixMessages,
+          model,
+          settings.reserveTokens,
+          apiKey,
+          headers,
+          signal,
+          thinkingLevel
+        ),
+      ]);
+      if (isFailure(historyResult)) {
+        return err(historyResult.failure);
+      }
+      if (isFailure(turnPrefixResult)) {
+        return err(turnPrefixResult.failure);
+      }
+      summary = `${historyResult.success}\n\n---\n\n**Turn Context (split turn):**\n\n${turnPrefixResult.success}`;
+    } else {
+      const summaryResult = yield* generateSummaryEffect(
+        messagesToSummarize,
         model,
         settings.reserveTokens,
         apiKey,
         headers,
         signal,
+        customInstructions,
+        previousSummary,
         thinkingLevel
-      ),
-    ]);
-    if (isFailure(historyResult)) {
-      return err(historyResult.failure);
+      );
+      if (isFailure(summaryResult)) {
+        return err(summaryResult.failure);
+      }
+      summary = summaryResult.success;
     }
-    if (isFailure(turnPrefixResult)) {
-      return err(turnPrefixResult.failure);
-    }
-    summary = `${historyResult.success}\n\n---\n\n**Turn Context (split turn):**\n\n${turnPrefixResult.success}`;
-  } else {
-    const summaryResult = await generateSummary(
-      messagesToSummarize,
-      model,
-      settings.reserveTokens,
-      apiKey,
-      headers,
-      signal,
-      customInstructions,
-      previousSummary,
-      thinkingLevel
-    );
-    if (isFailure(summaryResult)) {
-      return err(summaryResult.failure);
-    }
-    summary = summaryResult.success;
-  }
 
-  const { readFiles, modifiedFiles } = computeFileLists(fileOps);
-  summary += formatFileOperations(readFiles, modifiedFiles);
+    const { readFiles, modifiedFiles } = computeFileLists(fileOps);
+    summary += formatFileOperations(readFiles, modifiedFiles);
 
-  return ok({
-    summary,
-    firstKeptEntryId,
-    tokensBefore,
-    details: { readFiles, modifiedFiles } as CompactionDetails,
+    return ok({
+      summary,
+      firstKeptEntryId,
+      tokensBefore,
+      details: { readFiles, modifiedFiles } as CompactionDetails,
+    });
   });
+
+/** @migration Promise wrapper — removes when callers migrate to Effect. */
+export async function compact(
+  ...args: Parameters<typeof compactEffect>
+): Promise<Result<CompactionResult, CompactionError>> {
+  return Effect.runPromise(compactEffect(...args));
 }
-async function generateTurnPrefixSummary(
+
+const generateTurnPrefixSummaryEffect = (
   messages: AgentMessage[],
   model: Model,
   reserveTokens: number,
@@ -846,42 +866,45 @@ async function generateTurnPrefixSummary(
   headers?: Record<string, string>,
   signal?: AbortSignal,
   thinkingLevel?: ThinkingLevel
-): Promise<Result<string, CompactionError>> {
-  const maxTokens = Math.min(
-    Math.floor(0.5 * reserveTokens),
-    model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY
-  );
-  const llmMessages = convertToLlm(messages);
-  const conversationText = serializeConversation(llmMessages);
-  const promptText = `<conversation>\n${conversationText}\n</conversation>\n\n${TURN_PREFIX_SUMMARIZATION_PROMPT}`;
-  const summarizationMessages = [
-    {
-      role: "user" as const,
-      content: [{ type: "text" as const, text: promptText }],
-      timestamp: Date.now(),
-    },
-  ];
+): Effect.Effect<Result<string, CompactionError>> =>
+  Effect.gen(function* () {
+    const maxTokens = Math.min(
+      Math.floor(0.5 * reserveTokens),
+      model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY
+    );
+    const llmMessages = convertToLlm(messages);
+    const conversationText = serializeConversation(llmMessages);
+    const promptText = `<conversation>\n${conversationText}\n</conversation>\n\n${TURN_PREFIX_SUMMARIZATION_PROMPT}`;
+    const summarizationMessages = [
+      {
+        role: "user" as const,
+        content: [{ type: "text" as const, text: promptText }],
+        timestamp: Date.now(),
+      },
+    ];
 
-  const response = await complete({
-    model,
-    messages: summarizationMessages,
-    system: SUMMARIZATION_SYSTEM_PROMPT,
-    ...(maxTokens ? { maxOutputTokens: maxTokens } : {}),
-    ...(signal ? { abortSignal: signal } : {}),
-    apiKey,
-    ...(headers ? { headers } : {}),
-    ...(model.reasoning && thinkingLevel && thinkingLevel !== "off"
-      ? { thinkingLevel }
-      : {}),
-  });
-  if (response.finishReason === "error") {
-    return err(
-      new CompactionError({
-        code: "summarization_failed",
-        message: `Turn prefix summarization failed: ${response.errorMessage || "Unknown error"}`,
+    const response = yield* Effect.promise(() =>
+      complete({
+        model,
+        messages: summarizationMessages,
+        system: SUMMARIZATION_SYSTEM_PROMPT,
+        ...(maxTokens ? { maxOutputTokens: maxTokens } : {}),
+        ...(signal ? { abortSignal: signal } : {}),
+        apiKey,
+        ...(headers ? { headers } : {}),
+        ...(model.reasoning && thinkingLevel && thinkingLevel !== "off"
+          ? { thinkingLevel }
+          : {}),
       })
     );
-  }
+    if (response.finishReason === "error") {
+      return err(
+        new CompactionError({
+          code: "summarization_failed",
+          message: `Turn prefix summarization failed: ${response.errorMessage || "Unknown error"}`,
+        })
+      );
+    }
 
-  return ok(response.content.map((c) => c.text).join("\n"));
-}
+    return ok(response.content.map((c) => c.text).join("\n"));
+  });
