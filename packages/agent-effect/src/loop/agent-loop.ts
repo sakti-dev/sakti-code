@@ -133,7 +133,9 @@ export async function runAgentLoop(
     await emit({ type: "message_end", message: prompt });
   }
 
-  await runLoop(currentContext, newMessages, config, signal, emit, streamFn);
+  await Effect.runPromise(
+    runLoopEffect(currentContext, newMessages, config, signal, emit, streamFn)
+  );
   return newMessages;
 }
 
@@ -158,7 +160,9 @@ export async function runAgentLoopContinue(
   await emit({ type: "agent_start" });
   await emit({ type: "turn_start" });
 
-  await runLoop(currentContext, newMessages, config, signal, emit, streamFn);
+  await Effect.runPromise(
+    runLoopEffect(currentContext, newMessages, config, signal, emit, streamFn)
+  );
   return newMessages;
 }
 
@@ -188,8 +192,13 @@ export const runAgentLoopEffect = (
       yield* emitEffect(emit, { type: "message_end", message: prompt });
     }
 
-    yield* Effect.promise(() =>
-      runLoop(currentContext, newMessages, config, signal, emit, streamFn)
+    yield* runLoopEffect(
+      currentContext,
+      newMessages,
+      config,
+      signal,
+      emit,
+      streamFn
     );
     return newMessages;
   });
@@ -223,8 +232,13 @@ export const runAgentLoopContinueEffect = (
     yield* emitEffect(emit, { type: "agent_start" });
     yield* emitEffect(emit, { type: "turn_start" });
 
-    yield* Effect.promise(() =>
-      runLoop(currentContext, newMessages, config, signal, emit, streamFn)
+    yield* runLoopEffect(
+      currentContext,
+      newMessages,
+      config,
+      signal,
+      emit,
+      streamFn
     );
     return newMessages;
   });
@@ -237,167 +251,173 @@ function createAgentStream(): EventStream<AgentEvent, AgentMessage[]> {
 }
 
 /**
- * Main loop logic shared by agentLoop and agentLoopContinue.
+ * Main loop logic shared by agentLoop and agentLoopContinue. Effect-native.
  */
-async function runLoop(
+const runLoopEffect = (
   initialContext: AgentContext,
   newMessages: AgentMessage[],
   initialConfig: AgentLoopConfig,
   signal: AbortSignal | undefined,
   emit: AgentEventSink,
   streamFn?: StreamFn
-): Promise<void> {
-  let currentContext = initialContext;
-  let config = initialConfig;
-  let firstTurn = true;
-  let lastAssistantMessage: AssistantMessage | undefined;
-  // Provider-turn counter for the maxSteps budget. Incremented after each
-  // streamAssistantResponse call. When maxSteps is set and this is the final
-  // allowed turn, the request carries toolChoice: "none".
-  let step = 0;
-  // Check for steering messages at start (user may have typed while waiting)
-  let pendingMessages: AgentMessage[] =
-    (await config.getSteeringMessages?.()) || [];
+): Effect.Effect<void> =>
+  Effect.gen(function* () {
+    let currentContext = initialContext;
+    let config = initialConfig;
+    let firstTurn = true;
+    let lastAssistantMessage: AssistantMessage | undefined;
+    let step = 0;
+    let pendingMessages: AgentMessage[] =
+      (yield* Effect.promise(
+        () => config.getSteeringMessages?.() ?? Promise.resolve([])
+      )) || [];
 
-  // Outer loop: continues when queued follow-up messages arrive after agent would stop
-  while (true) {
-    let hasMoreToolCalls = true;
+    while (true) {
+      let hasMoreToolCalls = true;
 
-    // Inner loop: process tool calls and steering messages
-    while (hasMoreToolCalls || pendingMessages.length > 0) {
-      if (firstTurn) {
-        firstTurn = false;
-      } else {
-        await emit({ type: "turn_start" });
-      }
-
-      // Process pending messages (inject before next assistant response)
-      if (pendingMessages.length > 0) {
-        for (const message of pendingMessages) {
-          await emit({ type: "message_start", message });
-          await emit({ type: "message_end", message });
-          currentContext.messages.push(message);
-          newMessages.push(message);
+      while (hasMoreToolCalls || pendingMessages.length > 0) {
+        if (firstTurn) {
+          firstTurn = false;
+        } else {
+          yield* emitEffect(emit, { type: "turn_start" });
         }
-        pendingMessages = [];
-      }
 
-      // Stream assistant response. On the final allowed turn (maxSteps
-      // budget), forbid tool calls so the model emits a final answer.
-      const isLastStep =
-        config.maxSteps !== undefined && step >= config.maxSteps - 1;
-      const message = await streamAssistantResponse(
-        currentContext,
-        config,
-        signal,
-        emit,
-        streamFn,
-        isLastStep
-      );
-      step++;
-      newMessages.push(message);
-      lastAssistantMessage = message;
+        if (pendingMessages.length > 0) {
+          for (const message of pendingMessages) {
+            yield* emitEffect(emit, { type: "message_start", message });
+            yield* emitEffect(emit, { type: "message_end", message });
+            currentContext.messages.push(message);
+            newMessages.push(message);
+          }
+          pendingMessages = [];
+        }
 
-      if (message.stopReason === "error" || message.stopReason === "aborted") {
-        config.logger?.info("turn finished", {
-          stopReason: message.stopReason,
-          usage: message.usage,
-        });
-        await emit({ type: "turn_end", message, toolResults: [] });
-        await emit({ type: "agent_end", messages: newMessages });
-        return;
-      }
-
-      // Check for tool calls
-      const toolCalls = message.content.filter((c) => c.type === "toolCall");
-
-      const toolResults: ToolResultMessage[] = [];
-      hasMoreToolCalls = false;
-      if (toolCalls.length > 0) {
-        const executedToolBatch = await executeToolCalls(
-          currentContext,
-          message,
-          config,
-          signal,
-          emit
+        const isLastStep =
+          config.maxSteps !== undefined && step >= config.maxSteps - 1;
+        const message = yield* Effect.promise(() =>
+          streamAssistantResponse(
+            currentContext,
+            config,
+            signal,
+            emit,
+            streamFn,
+            isLastStep
+          )
         );
-        toolResults.push(...executedToolBatch.messages);
-        hasMoreToolCalls = !executedToolBatch.terminate;
+        step++;
+        newMessages.push(message);
+        lastAssistantMessage = message;
 
-        for (const result of toolResults) {
-          currentContext.messages.push(result);
-          newMessages.push(result);
+        if (
+          message.stopReason === "error" ||
+          message.stopReason === "aborted"
+        ) {
+          config.logger?.info("turn finished", {
+            stopReason: message.stopReason,
+            usage: message.usage,
+          });
+          yield* emitEffect(emit, {
+            type: "turn_end",
+            message,
+            toolResults: [],
+          });
+          yield* emitEffect(emit, { type: "agent_end", messages: newMessages });
+          return;
         }
-      }
 
-      await emit({ type: "turn_end", message, toolResults });
+        const toolCalls = message.content.filter((c) => c.type === "toolCall");
 
-      const nextTurnContext = {
-        message,
-        toolResults,
-        context: currentContext,
-        newMessages,
-      };
-      const nextTurnSnapshot = await config.prepareNextTurn?.(nextTurnContext);
-      if (nextTurnSnapshot) {
-        currentContext = nextTurnSnapshot.context ?? currentContext;
-        const reasoning =
-          nextTurnSnapshot.thinkingLevel === undefined
-            ? config.reasoning
-            : nextTurnSnapshot.thinkingLevel === "off"
-              ? undefined
-              : nextTurnSnapshot.thinkingLevel;
-        config = {
-          ...config,
-          model: nextTurnSnapshot.model ?? config.model,
-          ...(reasoning === undefined ? {} : { reasoning }),
-        };
-      }
+        const toolResults: ToolResultMessage[] = [];
+        hasMoreToolCalls = false;
+        if (toolCalls.length > 0) {
+          const executedToolBatch = yield* Effect.promise(() =>
+            executeToolCalls(currentContext, message, config, signal, emit)
+          );
+          toolResults.push(...executedToolBatch.messages);
+          hasMoreToolCalls = !executedToolBatch.terminate;
 
-      if (
-        await config.shouldStopAfterTurn?.({
+          for (const result of toolResults) {
+            currentContext.messages.push(result);
+            newMessages.push(result);
+          }
+        }
+
+        yield* emitEffect(emit, { type: "turn_end", message, toolResults });
+
+        const nextTurnContext = {
           message,
           toolResults,
           context: currentContext,
           newMessages,
-        })
-      ) {
-        config.logger?.info("turn finished", {
-          stopReason: message.stopReason,
-          usage: message.usage,
+        };
+        const nextTurnSnapshot = yield* Effect.promise(() =>
+          Promise.resolve(config.prepareNextTurn?.(nextTurnContext))
+        );
+        if (nextTurnSnapshot) {
+          currentContext = nextTurnSnapshot.context ?? currentContext;
+          const reasoning =
+            nextTurnSnapshot.thinkingLevel === undefined
+              ? config.reasoning
+              : nextTurnSnapshot.thinkingLevel === "off"
+                ? undefined
+                : nextTurnSnapshot.thinkingLevel;
+          config = {
+            ...config,
+            model: nextTurnSnapshot.model ?? config.model,
+            ...(reasoning === undefined ? {} : { reasoning }),
+          };
+        }
+
+        const shouldStop = yield* Effect.promise(() =>
+          Promise.resolve(
+            config.shouldStopAfterTurn?.({
+              message,
+              toolResults,
+              context: currentContext,
+              newMessages,
+            })
+          )
+        );
+        if (shouldStop) {
+          config.logger?.info("turn finished", {
+            stopReason: message.stopReason,
+            usage: message.usage,
+          });
+          yield* emitEffect(emit, { type: "agent_end", messages: newMessages });
+          return;
+        }
+
+        config.logger?.debug("iteration complete", {
+          messagesInContext: currentContext.messages.length,
+          toolCallsInTurn: toolCalls.length,
+          hasMoreToolCalls,
+          pendingSteeringCount: pendingMessages.length,
         });
-        await emit({ type: "agent_end", messages: newMessages });
-        return;
+
+        pendingMessages =
+          (yield* Effect.promise(
+            () => config.getSteeringMessages?.() ?? Promise.resolve([])
+          )) || [];
       }
 
-      config.logger?.debug("iteration complete", {
-        messagesInContext: currentContext.messages.length,
-        toolCallsInTurn: toolCalls.length,
-        hasMoreToolCalls,
-        pendingSteeringCount: pendingMessages.length,
-      });
+      const followUpMessages =
+        (yield* Effect.promise(
+          () => config.getFollowUpMessages?.() ?? Promise.resolve([])
+        )) || [];
+      if (followUpMessages.length > 0) {
+        pendingMessages = followUpMessages;
+        continue;
+      }
 
-      pendingMessages = (await config.getSteeringMessages?.()) || [];
+      break;
     }
 
-    // Agent would stop here. Check for follow-up messages.
-    const followUpMessages = (await config.getFollowUpMessages?.()) || [];
-    if (followUpMessages.length > 0) {
-      // Set as pending so inner loop processes them
-      pendingMessages = followUpMessages;
-      continue;
-    }
-
-    // No more messages, exit
-    break;
-  }
-
-  config.logger?.info("turn finished", {
-    stopReason: lastAssistantMessage?.stopReason,
-    usage: lastAssistantMessage?.usage,
+    config.logger?.info("turn finished", {
+      stopReason: lastAssistantMessage?.stopReason,
+      usage: lastAssistantMessage?.usage,
+    });
+    yield* emitEffect(emit, { type: "agent_end", messages: newMessages });
   });
-  await emit({ type: "agent_end", messages: newMessages });
-}
 
 /**
  * Stream an assistant response from the LLM.
