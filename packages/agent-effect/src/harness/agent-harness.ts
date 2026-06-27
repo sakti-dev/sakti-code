@@ -726,6 +726,15 @@ export class AgentHarness<
     event: AgentEvent,
     signal?: AbortSignal
   ): Promise<void> {
+    if (
+      event.type !== "message_end" &&
+      event.type !== "turn_end" &&
+      event.type !== "agent_end"
+    ) {
+      await this.emitAny(event, signal);
+      return;
+    }
+
     const self = this;
     await Effect.runPromise(
       Effect.gen(function* () {
@@ -763,7 +772,6 @@ export class AgentHarness<
           );
           return;
         }
-        yield* Effect.promise(() => self.emitAny(event, signal));
       })
     );
   }
