@@ -371,6 +371,9 @@ importers:
       venice-ai-sdk-provider:
         specifier: 2.1.1
         version: 2.1.1(ai@7.0.4(zod@4.4.3))(zod@4.4.3)
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
     devDependencies:
       '@types/node':
         specifier: ^24

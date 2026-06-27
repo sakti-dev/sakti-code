@@ -46,7 +46,8 @@
     "gitlab-ai-provider": "6.9.3",
     "merge-gateway-ai-sdk-provider": "0.1.0",
     "typebox": "1.1.38",
-    "venice-ai-sdk-provider": "2.1.1"
+    "venice-ai-sdk-provider": "2.1.1",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@types/node": "^24",
