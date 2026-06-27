@@ -718,37 +718,46 @@ export class AgentHarness<
     event: AgentEvent,
     signal?: AbortSignal
   ): Promise<void> {
-    if (event.type === "message_end") {
-      await Effect.runPromise(this.session.appendMessage(event.message));
-      await this.emitAny(event, signal);
-      return;
-    }
-    if (event.type === "turn_end") {
-      let eventError: unknown;
-      try {
-        await this.emitAny(event, signal);
-      } catch (error) {
-        eventError = error;
-      }
-      const hadPendingMutations = this.pendingSessionWrites.length > 0;
-      await this.flushPendingSessionWrites();
-      if (eventError) {
-        throw eventError;
-      }
-      await this.emitOwn({ type: "save_point", hadPendingMutations });
-      return;
-    }
-    if (event.type === "agent_end") {
-      await this.flushPendingSessionWrites();
-      this.phase = "idle";
-      await this.emitAny(event, signal);
-      await this.emitOwn(
-        { type: "settled", nextTurnCount: this.nextTurnQueue.length },
-        signal
-      );
-      return;
-    }
-    await this.emitAny(event, signal);
+    const self = this;
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        if (event.type === "message_end") {
+          yield* self.session.appendMessage(event.message);
+          yield* Effect.promise(() => self.emitAny(event, signal));
+          return;
+        }
+        if (event.type === "turn_end") {
+          const eventError = yield* Effect.promise(() =>
+            self
+              .emitAny(event, signal)
+              .then(() => undefined)
+              .catch((e: unknown) => e)
+          );
+          const hadPendingMutations = self.pendingSessionWrites.length > 0;
+          yield* self.flushPendingSessionWritesEffect();
+          if (eventError) {
+            yield* Effect.fail(eventError);
+          }
+          yield* Effect.promise(() =>
+            self.emitOwn({ type: "save_point", hadPendingMutations })
+          );
+          return;
+        }
+        if (event.type === "agent_end") {
+          yield* self.flushPendingSessionWritesEffect();
+          self.phase = "idle";
+          yield* Effect.promise(() => self.emitAny(event, signal));
+          yield* Effect.promise(() =>
+            self.emitOwn(
+              { type: "settled", nextTurnCount: self.nextTurnQueue.length },
+              signal
+            )
+          );
+          return;
+        }
+        yield* Effect.promise(() => self.emitAny(event, signal));
+      })
+    );
   }
 
   private async emitRunFailure(
@@ -1087,12 +1096,17 @@ export class AgentHarness<
   }
 
   async appendMessage(message: AgentMessage): Promise<void> {
+    const self = this;
     try {
-      if (this.phase === "idle") {
-        await Effect.runPromise(this.session.appendMessage(message));
-      } else {
-        this.pendingSessionWrites.push({ type: "message", message });
-      }
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          if (self.phase === "idle") {
+            yield* self.session.appendMessage(message);
+          } else {
+            self.pendingSessionWrites.push({ type: "message", message });
+          }
+        })
+      );
     } catch (error) {
       throw normalizeHarnessError(error, "session");
     }
@@ -1401,26 +1415,31 @@ export class AgentHarness<
   }
 
   async setModel(model: Model): Promise<void> {
+    const self = this;
     try {
-      const previousModel = this.model;
-      if (this.phase === "idle") {
-        await Effect.runPromise(
-          this.session.appendModelChange(model.provider, model.id)
-        );
-      } else {
-        this.pendingSessionWrites.push({
-          type: "model_change",
-          provider: model.provider,
-          modelId: model.id,
-        });
-      }
-      this.model = model;
-      await this.emitOwn({
-        type: "model_update",
-        model,
-        previousModel,
-        source: "set",
-      });
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const previousModel = self.model;
+          if (self.phase === "idle") {
+            yield* self.session.appendModelChange(model.provider, model.id);
+          } else {
+            self.pendingSessionWrites.push({
+              type: "model_change",
+              provider: model.provider,
+              modelId: model.id,
+            });
+          }
+          self.model = model;
+          yield* Effect.promise(() =>
+            self.emitOwn({
+              type: "model_update",
+              model,
+              previousModel,
+              source: "set",
+            })
+          );
+        })
+      );
     } catch (error) {
       throw normalizeHarnessError(error, "session");
     }
@@ -1431,22 +1450,29 @@ export class AgentHarness<
   }
 
   async setThinkingLevel(level: ThinkingLevel): Promise<void> {
+    const self = this;
     try {
-      const previousLevel = this.thinkingLevel;
-      if (this.phase === "idle") {
-        await Effect.runPromise(this.session.appendThinkingLevelChange(level));
-      } else {
-        this.pendingSessionWrites.push({
-          type: "thinking_level_change",
-          thinkingLevel: level,
-        });
-      }
-      this.thinkingLevel = level;
-      await this.emitOwn({
-        type: "thinking_level_update",
-        level,
-        previousLevel,
-      });
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const previousLevel = self.thinkingLevel;
+          if (self.phase === "idle") {
+            yield* self.session.appendThinkingLevelChange(level);
+          } else {
+            self.pendingSessionWrites.push({
+              type: "thinking_level_change",
+              thinkingLevel: level,
+            });
+          }
+          self.thinkingLevel = level;
+          yield* Effect.promise(() =>
+            self.emitOwn({
+              type: "thinking_level_update",
+              level,
+              previousLevel,
+            })
+          );
+        })
+      );
     } catch (error) {
       throw normalizeHarnessError(error, "session");
     }
@@ -1457,38 +1483,43 @@ export class AgentHarness<
   }
 
   async setTools(tools: TTool[], activeToolNames?: string[]): Promise<void> {
+    const self = this;
     try {
-      this.validateUniqueNames(
-        tools.map((tool) => tool.name),
-        "Duplicate tool name(s)"
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          self.validateUniqueNames(
+            tools.map((tool) => tool.name),
+            "Duplicate tool name(s)"
+          );
+          const nextTools = new Map(tools.map((tool) => [tool.name, tool]));
+          const nextActiveToolNames = activeToolNames
+            ? [...activeToolNames]
+            : self.activeToolNames;
+          self.validateToolNames(nextActiveToolNames, nextTools);
+          const previousToolNames = [...self.tools.keys()];
+          const previousActiveToolNames = [...self.activeToolNames];
+          if (self.phase === "idle") {
+            yield* self.session.appendActiveToolsChange(nextActiveToolNames);
+          } else {
+            self.pendingSessionWrites.push({
+              type: "active_tools_change",
+              activeToolNames: [...nextActiveToolNames],
+            });
+          }
+          self.tools = nextTools;
+          self.activeToolNames = [...nextActiveToolNames];
+          yield* Effect.promise(() =>
+            self.emitOwn({
+              type: "tools_update",
+              toolNames: [...self.tools.keys()],
+              previousToolNames,
+              activeToolNames: [...self.activeToolNames],
+              previousActiveToolNames,
+              source: "set",
+            })
+          );
+        })
       );
-      const nextTools = new Map(tools.map((tool) => [tool.name, tool]));
-      const nextActiveToolNames = activeToolNames
-        ? [...activeToolNames]
-        : this.activeToolNames;
-      this.validateToolNames(nextActiveToolNames, nextTools);
-      const previousToolNames = [...this.tools.keys()];
-      const previousActiveToolNames = [...this.activeToolNames];
-      if (this.phase === "idle") {
-        await Effect.runPromise(
-          this.session.appendActiveToolsChange(nextActiveToolNames)
-        );
-      } else {
-        this.pendingSessionWrites.push({
-          type: "active_tools_change",
-          activeToolNames: [...nextActiveToolNames],
-        });
-      }
-      this.tools = nextTools;
-      this.activeToolNames = [...nextActiveToolNames];
-      await this.emitOwn({
-        type: "tools_update",
-        toolNames: [...this.tools.keys()],
-        previousToolNames,
-        activeToolNames: [...this.activeToolNames],
-        previousActiveToolNames,
-        source: "set",
-      });
     } catch (error) {
       throw normalizeHarnessError(error, "invalid_argument");
     }
@@ -1501,29 +1532,34 @@ export class AgentHarness<
   }
 
   async setActiveTools(toolNames: string[]): Promise<void> {
+    const self = this;
     try {
-      this.validateToolNames(toolNames);
-      const previousToolNames = [...this.tools.keys()];
-      const previousActiveToolNames = [...this.activeToolNames];
-      if (this.phase === "idle") {
-        await Effect.runPromise(
-          this.session.appendActiveToolsChange(toolNames)
-        );
-      } else {
-        this.pendingSessionWrites.push({
-          type: "active_tools_change",
-          activeToolNames: [...toolNames],
-        });
-      }
-      this.activeToolNames = [...toolNames];
-      await this.emitOwn({
-        type: "tools_update",
-        toolNames: [...this.tools.keys()],
-        previousToolNames,
-        activeToolNames: [...this.activeToolNames],
-        previousActiveToolNames,
-        source: "set",
-      });
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          self.validateToolNames(toolNames);
+          const previousToolNames = [...self.tools.keys()];
+          const previousActiveToolNames = [...self.activeToolNames];
+          if (self.phase === "idle") {
+            yield* self.session.appendActiveToolsChange(toolNames);
+          } else {
+            self.pendingSessionWrites.push({
+              type: "active_tools_change",
+              activeToolNames: [...toolNames],
+            });
+          }
+          self.activeToolNames = [...toolNames];
+          yield* Effect.promise(() =>
+            self.emitOwn({
+              type: "tools_update",
+              toolNames: [...self.tools.keys()],
+              previousToolNames,
+              activeToolNames: [...self.activeToolNames],
+              previousActiveToolNames,
+              source: "set",
+            })
+          );
+        })
+      );
     } catch (error) {
       throw normalizeHarnessError(error, "invalid_argument");
     }
