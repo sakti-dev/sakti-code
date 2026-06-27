@@ -83,7 +83,6 @@ function getSubSchemaValidator(
   }
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: type coercion inherently requires exhaustive type branches
 function coercePrimitiveByType(value: unknown, type: string): unknown {
   switch (type) {
     case "number": {
