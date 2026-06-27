@@ -613,13 +613,6 @@ export const generateSummaryEffect = (
     return ok(textContent);
   });
 
-/** @migration Promise wrapper — removes when callers migrate to Effect. */
-export async function generateSummary(
-  ...args: Parameters<typeof generateSummaryEffect>
-): Promise<Result<string, CompactionError>> {
-  return Effect.runPromise(generateSummaryEffect(...args));
-}
-
 /** Prepared inputs for a compaction run. */
 export interface CompactionPreparation {
   /** File operations extracted from summarized history. */

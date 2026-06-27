@@ -7,6 +7,7 @@ import type {
   Usage,
 } from "@sakti-code/llm";
 import { complete } from "@sakti-code/llm";
+import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock complete() so compaction tests run without real API calls.
@@ -28,7 +29,7 @@ import {
   estimateTokens,
   findCutPoint,
   findTurnStartIndex,
-  generateSummary,
+  generateSummaryEffect,
   getLastAssistantUsage,
   prepareCompaction,
   serializeConversation,
@@ -625,16 +626,18 @@ describe("harness compaction", () => {
       },
     ]);
     getOrThrow(
-      await generateSummary(
-        messages,
-        reasoningModel,
-        2000,
-        "test-key",
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        "medium"
+      await Effect.runPromise(
+        generateSummaryEffect(
+          messages,
+          reasoningModel,
+          2000,
+          "test-key",
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          "medium"
+        )
       )
     );
     expect(seenRequests[0]).toMatchObject({
@@ -650,16 +653,18 @@ describe("harness compaction", () => {
       },
     ]);
     getOrThrow(
-      await generateSummary(
-        messages,
-        offModel,
-        2000,
-        "test-key",
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        "off"
+      await Effect.runPromise(
+        generateSummaryEffect(
+          messages,
+          offModel,
+          2000,
+          "test-key",
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          "off"
+        )
       )
     );
     expect(seenRequests[1]?.thinkingLevel).toBeUndefined();
@@ -672,16 +677,18 @@ describe("harness compaction", () => {
       },
     ]);
     getOrThrow(
-      await generateSummary(
-        messages,
-        nonReasoningModel,
-        2000,
-        "test-key",
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        "medium"
+      await Effect.runPromise(
+        generateSummaryEffect(
+          messages,
+          nonReasoningModel,
+          2000,
+          "test-key",
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          "medium"
+        )
       )
     );
     expect(seenRequests[2]?.thinkingLevel).toBeUndefined();
@@ -704,15 +711,17 @@ describe("harness compaction", () => {
     ]);
 
     const summary = getOrThrow(
-      await generateSummary(
-        messages,
-        model,
-        2000,
-        "test-key",
-        { "x-test": "yes" },
-        undefined,
-        "focus",
-        "old summary"
+      await Effect.runPromise(
+        generateSummaryEffect(
+          messages,
+          model,
+          2000,
+          "test-key",
+          { "x-test": "yes" },
+          undefined,
+          "focus",
+          "old summary"
+        )
       )
     );
 
@@ -727,11 +736,8 @@ describe("harness compaction", () => {
     const messages: AgentMessage[] = [createUserMessage("Summarize this.")];
     const { model: errorModel } = createFauxModel(false);
     setCompleteResponses([() => completeErrorResult("boom")]);
-    const errorResult = await generateSummary(
-      messages,
-      errorModel,
-      2000,
-      "test-key"
+    const errorResult = await Effect.runPromise(
+      generateSummaryEffect(messages, errorModel, 2000, "test-key")
     );
     expect(errorResult).toMatchObject({
       failure: {
@@ -742,11 +748,8 @@ describe("harness compaction", () => {
 
     const { model: abortedModel } = createFauxModel(false);
     setCompleteResponses([() => completeErrorResult("stopped")]);
-    const abortedResult = await generateSummary(
-      messages,
-      abortedModel,
-      2000,
-      "test-key"
+    const abortedResult = await Effect.runPromise(
+      generateSummaryEffect(messages, abortedModel, 2000, "test-key")
     );
     expect(abortedResult).toMatchObject({
       failure: {
