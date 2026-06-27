@@ -156,6 +156,17 @@ export {
   shouldRetry,
 } from "./retry-loop.ts";
 export type {
+  CompletionProviderShape,
+  StreamProviderShape,
+} from "./services/llm.ts";
+// LLM provider services (Effect-native wrappers around @sakti-code/llm).
+export {
+  CompletionProvider,
+  CompletionProviderLive,
+  StreamProvider,
+  StreamProviderLive,
+} from "./services/llm.ts";
+export type {
   AgentEvent,
   AgentLoopConfig,
   AgentMessage,
