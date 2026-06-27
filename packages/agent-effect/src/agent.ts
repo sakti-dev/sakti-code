@@ -4,7 +4,12 @@ import type {
   Model,
   TextContent,
 } from "@sakti-code/llm";
-import { runAgentLoop, runAgentLoopContinue } from "./loop/agent-loop.ts";
+import { Effect } from "effect";
+import { AgentError } from "./harness/types.ts";
+import {
+  runAgentLoopContinueEffect,
+  runAgentLoopEffect,
+} from "./loop/agent-loop.ts";
 import type {
   AfterToolCallContext,
   AfterToolCallResult,
@@ -390,9 +395,11 @@ export class Agent {
     images?: ImageContent[]
   ): Promise<void> {
     if (this.activeRun) {
-      throw new Error(
-        "Agent is already processing a prompt. Use steer() or followUp() to queue messages, or wait for completion."
-      );
+      throw new AgentError({
+        code: "already_processing",
+        message:
+          "Agent is already processing a prompt. Use steer() or followUp() to queue messages, or wait for completion.",
+      });
     }
     const messages = this.normalizePromptInput(input, images);
     await this.runPromptMessages(messages);
@@ -401,14 +408,19 @@ export class Agent {
   /** Continue from the current transcript. The last message must be a user or tool-result message. */
   async continue(): Promise<void> {
     if (this.activeRun) {
-      throw new Error(
-        "Agent is already processing. Wait for completion before continuing."
-      );
+      throw new AgentError({
+        code: "already_processing",
+        message:
+          "Agent is already processing. Wait for completion before continuing.",
+      });
     }
 
     const lastMessage = this._state.messages[this._state.messages.length - 1];
     if (!lastMessage) {
-      throw new Error("No messages to continue from");
+      throw new AgentError({
+        code: "no_messages",
+        message: "No messages to continue from",
+      });
     }
 
     if (lastMessage.role === "assistant") {
@@ -426,7 +438,10 @@ export class Agent {
         return;
       }
 
-      throw new Error("Cannot continue from message role: assistant");
+      throw new AgentError({
+        code: "cannot_continue_from_assistant",
+        message: "Cannot continue from message role: assistant",
+      });
     }
 
     await this.runContinuation();
@@ -458,25 +473,29 @@ export class Agent {
     options: { skipInitialSteeringPoll?: boolean } = {}
   ): Promise<void> {
     await this.runWithLifecycle(async (signal) => {
-      await runAgentLoop(
-        messages,
-        this.createContextSnapshot(),
-        this.createLoopConfig(options),
-        (event) => this.processEvents(event),
-        signal,
-        this.streamFn
+      await Effect.runPromise(
+        runAgentLoopEffect(
+          messages,
+          this.createContextSnapshot(),
+          this.createLoopConfig(options),
+          (event) => this.processEvents(event),
+          signal,
+          this.streamFn
+        )
       );
     });
   }
 
   private async runContinuation(): Promise<void> {
     await this.runWithLifecycle(async (signal) => {
-      await runAgentLoopContinue(
-        this.createContextSnapshot(),
-        this.createLoopConfig(),
-        (event) => this.processEvents(event),
-        signal,
-        this.streamFn
+      await Effect.runPromise(
+        runAgentLoopContinueEffect(
+          this.createContextSnapshot(),
+          this.createLoopConfig(),
+          (event) => this.processEvents(event),
+          signal,
+          this.streamFn
+        )
       );
     });
   }
@@ -523,7 +542,10 @@ export class Agent {
     executor: (signal: AbortSignal) => Promise<void>
   ): Promise<void> {
     if (this.activeRun) {
-      throw new Error("Agent is already processing.");
+      throw new AgentError({
+        code: "already_processing",
+        message: "Agent is already processing.",
+      });
     }
 
     const abortController = new AbortController();

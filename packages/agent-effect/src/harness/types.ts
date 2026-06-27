@@ -231,6 +231,22 @@ export class AgentHarnessError extends Schema.TaggedErrorClass<AgentHarnessError
   }
 ) {}
 
+export const AgentErrorCode = Schema.Literals([
+  "already_processing",
+  "no_messages",
+  "cannot_continue_from_assistant",
+]);
+export type AgentErrorCode = typeof AgentErrorCode.Type;
+
+export class AgentError extends Schema.TaggedErrorClass<AgentError>()(
+  "AgentError",
+  {
+    code: AgentErrorCode,
+    message: Schema.String,
+    cause: Schema.optional(Schema.Defect()),
+  }
+) {}
+
 export interface FileInfo {
   kind: FileKind;
   mtimeMs: number;
