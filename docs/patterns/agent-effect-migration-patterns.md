@@ -338,45 +338,62 @@ it.effect("uses both deps", () =>
 
 During the migration, downstream callers (not yet converted) need a Promise-based wrapper around the new Effect API. Each adapter is tagged `// @migration` and removed in Phase Cleanup.
 
+**Simplest form (what we landed in Phase 0):** callers receive a `SessionShape` instance (the object returned by the Layer). Shape methods close over their dependencies (Refs), so `Effect.runPromise(shape.method(args))` works directly — no `Effect.provideService` needed.
+
 ```typescript
-// BEFORE (Phase 0 lands)
+// BEFORE (Phase 0 lands — Session is a plain class)
 import { Session } from "./harness/session.ts"
 
-export async function prepareCompaction(session: Session, ...) {
+async function compact(session: Session, ...) {
   const entries = await session.getBranch()
-  // ...
+  await session.appendCompaction(...)
 }
 
-// AFTER (during migration — Phase 0 has converted Session to Context.Service)
+// AFTER (during migration — Session is a Context.Service)
 import { Effect } from "effect"
-import { Session } from "./harness/session.ts"
+import type { SessionShape } from "./harness/session.ts"
 
-// @migration TODO: remove when compaction.ts migrates to Effect (Phase Compaction)
-export async function prepareCompaction(session: Session, ...) {
-  return Effect.runPromise(
-    prepareCompactionEffect(...).pipe(Effect.provideService(Session, session))
-  )
+// @migration TODO: remove when compact.ts migrates to Effect (Phase Compaction)
+export async function compact(session: SessionShape, ...) {
+  const entries = await Effect.runPromise(session.getBranch())
+  await Effect.runPromise(session.appendCompaction(...))
 }
+```
 
-// NEW: Effect-native version (what future code calls)
-export const prepareCompactionEffect = (
-  ...
-): Effect.Effect<PrepareResult, CompactionError, Session | CompletionProvider> =>
+**Effect-native form (what the migrated caller eventually becomes):** the caller requires the `Session` Tag, uses `Effect.gen`, and the composition root provides the Layer.
+
+```typescript
+export const compactEffect = (
+  ...args
+): Effect.Effect<CompactResult, CompactionError, Session> =>
   Effect.gen(function* () {
-    const session = yield* Session
+    const session = yield* Session       // require the Tag
     const entries = yield* session.getBranch()
-    // ...
+    yield* session.appendCompaction(...)
   })
+
+// Composition root (server entrypoint):
+Effect.runPromise(compactEffect(args).pipe(Effect.provide(SessionLive)))
 ```
 
 ### Rules
 - Every `// @migration` adapter must have a `TODO: remove when X migrates (Phase Y)` comment.
 - `grep "@migration" packages/agent-effect/src/` shows all outstanding adapters. Final cleanup is one PR.
 - Adapters wrap Effect via `Effect.runPromise` (the only place inside `agent-effect` where it's OK to call `runPromise`).
+- **The simplest form is preferred** for Phase 0: just wrap each call in `Effect.runPromise(shape.method(args))`. This works because Shape instances are closures over their dependencies.
+- **Do NOT use `Effect.provideService(Session, shapeInstance)`** — the shapeInstance is already the built Shape, not a Tag. The simpler `Effect.runPromise(shape.method())` is correct.
 
 ### Cleanup verification
 - At end of migration: `rg "@migration" packages/agent-effect/src/ | wc -l` must be 0.
 - Phase 0 records a baseline count after the slice lands.
+
+### Phase 0 baseline
+After Phase 0, `@migration` adapters exist in 3 source files (test files excluded — they use `Effect.runPromise` directly without tags):
+- `harness/agent-harness.ts` — 26 `Effect.runPromise` wrappers around `this.session.x()` (1 file-level `@migration` tag; Phase Harness removes)
+- `compaction/branch-summarization.ts` — 3 wrappers (1 tag; Phase Compaction removes)
+- `compaction/auto-compaction.ts` — 2 wrappers (1 tag; Phase Compaction removes)
+
+Total: 31 `Effect.runPromise` call sites across 3 files. `rg "@migration"` returns 3 (one tag per file).
 
 **Established by:** Phase 0 Task 0.12.
 
