@@ -6,11 +6,11 @@
  *
  * ## Testability
  *
- * `completeWithModel` takes a pre-resolved LanguageModelV3 + injectable
+ * `completeWithModel` takes a pre-resolved LanguageModelV4 + injectable
  * generateText runner, so tests verify result-mapping without real API calls.
  */
 
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type { Logger } from "@sakti-code/logger";
 import type { FinishReason, LanguageModelUsage } from "ai";
 import { generateText as aiGenerateText } from "ai";
@@ -86,11 +86,11 @@ export async function complete(
 }
 
 /**
- * Complete with a pre-resolved `LanguageModelV3`. Exported for tests.
+ * Complete with a pre-resolved `LanguageModelV4`. Exported for tests.
  */
 export async function completeWithModel(
   req: CompleteRequest,
-  language: LanguageModelV3,
+  language: LanguageModelV4,
   runGenerateText?: RunGenerateText
 ): Promise<CompleteResult> {
   const providerOptions = buildProviderOptions({
@@ -119,7 +119,7 @@ export async function completeWithModel(
         : {}),
       ...(req.abortSignal ? { abortSignal: req.abortSignal } : {}),
       ...(req.maxOutputTokens ? { maxOutputTokens: req.maxOutputTokens } : {}),
-      ...(req.system ? { system: req.system } : {}),
+      ...(req.system ? { instructions: req.system } : {}),
     });
 
     return {

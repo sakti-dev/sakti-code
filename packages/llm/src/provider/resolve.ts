@@ -1,4 +1,5 @@
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { LanguageModelV3, LanguageModelV4 } from "@ai-sdk/provider";
+import { wrapLanguageModel } from "ai";
 import type { Model } from "../types.ts";
 import type {
   ProviderFactory,
@@ -12,7 +13,7 @@ import { BUNDLED_PROVIDERS } from "./registry.ts";
  * # Provider resolution
  *
  * Turns a {@link Model} descriptor + auth options into an @ai-sdk
- * `LanguageModelV3` ready for `streamText`. This is the @ai-sdk-native
+ * `LanguageModelV4` ready for `streamText`. This is the @ai-sdk-native
  * replacement for pi-ai's per-provider stream dispatch — there is no
  * per-API implementation module; every provider routes through its
  * `@ai-sdk/*` factory.
@@ -29,7 +30,7 @@ import { BUNDLED_PROVIDERS } from "./registry.ts";
  *
  * SDK instances are cached per `npm + factory-options` pair so repeated
  * requests to the same provider reuse the HTTP client / auth state. The
- * `LanguageModelV3` itself is NOT cached (it's a cheap lookup on the SDK).
+ * `LanguageModelV4` itself is NOT cached (it's a cheap lookup on the SDK).
  * Call {@link clearResolveCache} in tests to isolate.
  */
 
@@ -205,7 +206,7 @@ async function loadFactoryFromNpm(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Resolve a {@link Model} to an @ai-sdk `LanguageModelV3`.
+ * Resolve a {@link Model} to an @ai-sdk `LanguageModelV4`.
  *
  * Flow:
  * 1. Build factory options (base URL with env substitution, apiKey, merged headers).
@@ -223,7 +224,7 @@ export async function resolveLanguageModel(
   model: Model,
   options: ResolveOptions,
   factoryMap: Record<string, ProviderFactoryLoader> = BUNDLED_PROVIDERS
-): Promise<LanguageModelV3> {
+): Promise<LanguageModelV4> {
   const npm = model.npm;
   if (!npm) {
     throw new Error(
@@ -241,7 +242,7 @@ export async function resolveLanguageModel(
   if (usingDefaultMap) {
     const cached = sdkCache.get(cacheKey);
     if (cached) {
-      return cached.languageModel(model.id);
+      return ensureV4(cached.languageModel(model.id));
     }
   }
 
@@ -259,5 +260,18 @@ export async function resolveLanguageModel(
     sdkCache.set(cacheKey, sdk);
   }
 
-  return sdk.languageModel(model.id);
+  return ensureV4(sdk.languageModel(model.id));
+}
+
+/**
+ * Ensure a language model is `LanguageModelV4`. First-party providers
+ * (`@ai-sdk/openai@4`, `@ai-sdk/anthropic@4`, …) already return V4; some
+ * third-party providers still return V3. `wrapLanguageModel` with empty
+ * middleware converts V3 → V4 (the interfaces are structurally identical
+ * except for `specificationVersion`).
+ */
+function ensureV4(model: LanguageModelV4 | LanguageModelV3): LanguageModelV4 {
+  return model.specificationVersion === "v4"
+    ? model
+    : wrapLanguageModel({ model, middleware: [] });
 }

@@ -1,4 +1,4 @@
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type { Logger } from "@sakti-code/logger";
 import type { FinishReason, LanguageModelUsage } from "ai";
 import { streamText as aiStreamText } from "ai";
@@ -20,7 +20,7 @@ import type {
  * The single function the agent loop calls. Wires together everything from
  * Phases 1–4:
  *
- * 1. **Resolve model** → `resolveLanguageModel` (Phase 2) gives a `LanguageModelV3`.
+ * 1. **Resolve model** → `resolveLanguageModel` (Phase 2) gives a `LanguageModelV4`.
  * 2. **Convert messages** → `toModelMessages` (Phase 4 Task 4.1).
  * 3. **Build providerOptions** → `buildProviderOptions` (Phase 3) for reasoning.
  * 4. **Build headers** → `buildHeaders` (Phase 3) for session-affinity.
@@ -145,11 +145,7 @@ function promptCacheKeyFor(sessionId: string | undefined): string | undefined {
  */
 export function mapUsage(raw: LanguageModelUsage, model: Model): Usage {
   const noCache = raw.inputTokenDetails.noCacheTokens;
-  // outputTokenDetails.reasoningTokens is the non-deprecated path; the
-  // top-level reasoningTokens is @ai-sdk's deprecated alias (still emitted).
-  // Matches @opencode-ai/llm's ai-sdk bridge fallback.
-  const reasoningTokens =
-    raw.outputTokenDetails.reasoningTokens ?? raw.reasoningTokens;
+  const reasoningTokens = raw.outputTokenDetails.reasoningTokens;
   const usage: Usage = {
     cacheRead: raw.inputTokenDetails.cacheReadTokens ?? 0,
     cacheWrite: raw.inputTokenDetails.cacheWriteTokens ?? 0,
@@ -211,14 +207,14 @@ export async function stream(
 }
 
 /**
- * Stream with a pre-resolved `LanguageModelV3`. Exported for tests so they can
+ * Stream with a pre-resolved `LanguageModelV4`. Exported for tests so they can
  * verify result-mapping + option-wiring without the async model resolution.
  *
  * Synchronous (streamText returns immediately with a lazy fullStream).
  */
 export function streamWithModel(
   req: StreamRequest,
-  language: LanguageModelV3,
+  language: LanguageModelV4,
   runStreamText?: RunStreamText
 ): StreamResult {
   const reasoningOptions = buildProviderOptions({
@@ -278,7 +274,7 @@ export function streamWithModel(
       : {}),
     ...(req.abortSignal ? { abortSignal: req.abortSignal } : {}),
     ...(req.maxOutputTokens ? { maxOutputTokens: req.maxOutputTokens } : {}),
-    ...(req.system ? { system: req.system } : {}),
+    ...(req.system ? { instructions: req.system } : {}),
     ...(req.temperature === undefined ? {} : { temperature: req.temperature }),
     ...(req.tools ? { tools: req.tools } : {}),
     ...(req.toolChoice ? { toolChoice: req.toolChoice } : {}),

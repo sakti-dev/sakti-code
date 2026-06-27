@@ -11,6 +11,7 @@ import type {
   ToolResultMessage,
   Usage,
 } from "@sakti-code/llm";
+import { jsonSchema } from "@sakti-code/llm";
 import { Effect } from "effect";
 import type {
   AgentContext,
@@ -682,7 +683,7 @@ function toStreamTools(tools: AgentTool[]): Record<string, unknown> {
   for (const tool of tools) {
     result[tool.name] = {
       description: tool.description,
-      parameters: tool.parameters,
+      inputSchema: jsonSchema(tool.parameters),
     };
   }
   return result;

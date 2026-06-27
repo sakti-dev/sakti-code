@@ -513,6 +513,72 @@ describe("agentLoop with AgentMessage", () => {
     }
   });
 
+  it("forwards tool schemas to streamText under the inputSchema key (ai-sdk v6)", async () => {
+    const toolSchema = Type.Object({
+      value: Type.String({ description: "the value" }),
+    });
+    const tool: AgentTool<typeof toolSchema, { value: string }> = {
+      name: "echo",
+      label: "Echo",
+      description: "Echo tool",
+      parameters: toolSchema,
+      async execute() {
+        return {
+          content: [{ type: "text", text: "ok" }],
+          details: { value: "" },
+        };
+      },
+    };
+
+    const context: AgentContext = {
+      systemPrompt: "",
+      messages: [],
+      tools: [tool],
+    };
+
+    const config: AgentLoopConfig = {
+      model: createModel(),
+      convertToLlm: identityConverter,
+    };
+
+    let capturedTools: Record<string, unknown> | undefined;
+    const streamFn = makeStreamFnWithReq((req) => {
+      capturedTools = req.tools;
+      return { content: [{ type: "text", text: "done" }] };
+    });
+
+    const stream = agentLoop(
+      [createUserMessage("hi")],
+      context,
+      config,
+      undefined,
+      streamFn.fn
+    );
+
+    for await (const _ of stream) {
+      // consume
+    }
+
+    // @ai-sdk v7 requires tool schemas wrapped with jsonSchema() so asSchema()
+    // recognizes them via [schemaSymbol]. Raw TypeBox TSchema objects would
+    // fall through to schema() → "schema is not a function".
+    expect(capturedTools).toBeDefined();
+    expect(capturedTools!.echo).toBeDefined();
+    const echoTool = capturedTools!.echo as Record<string, unknown>;
+    expect(echoTool.inputSchema).toBeDefined();
+    // jsonSchema() wraps the raw schema in a Schema object with a
+    // .jsonSchema getter that returns the original TypeBox schema.
+    const schema = echoTool.inputSchema as {
+      jsonSchema: Record<string, unknown>;
+    };
+    const rawSchema = schema.jsonSchema;
+    expect(rawSchema.type).toBe("object");
+    expect(rawSchema.properties).toBeDefined();
+    const props = rawSchema.properties as Record<string, unknown>;
+    expect(props.value).toBeDefined();
+    expect(echoTool.parameters).toBeUndefined();
+  });
+
   it("should execute mutated beforeToolCall args without revalidation", async () => {
     const toolSchema = Type.Object({ value: Type.String() });
     const executed: Array<string | number> = [];

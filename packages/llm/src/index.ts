@@ -34,6 +34,9 @@
  * @see docs/plans/2026-06-25-sakti-llm-ai-sdk-native.md
  */
 
+// jsonSchema wrapper — re-exported so consumers can wrap raw JSON Schema
+// objects (e.g. TypeBox TSchema) into the Schema type ai-sdk v7 expects.
+export { jsonSchema } from "ai";
 // Auth: env-key resolution. Full login/OAuth orchestration is server-owned.
 export type { AuthResult, ModelAuth } from "./auth/types.ts";
 // Generated model catalog from models.dev (142 providers, matches opencode).
@@ -66,7 +69,7 @@ export type {
   ProviderFactoryOptions,
   ProviderSDK,
 } from "./provider/registry.ts";
-// Provider resolution: Model + auth → @ai-sdk LanguageModelV3.
+// Provider resolution: Model + auth → @ai-sdk LanguageModelV4.
 export { BUNDLED_PROVIDERS } from "./provider/registry.ts";
 export type { ResolveOptions } from "./provider/resolve.ts";
 export {

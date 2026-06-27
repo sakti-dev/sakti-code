@@ -1,4 +1,4 @@
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type { FinishReason, LanguageModelUsage } from "ai";
 import { describe, expect, it } from "vitest";
 import { mapFinishReason, mapUsage, streamWithModel } from "../stream.ts";
@@ -167,20 +167,6 @@ describe("mapUsage", () => {
     // output stays the inclusive total; reasoning is not priced separately
     expect(usage.output).toBe(500);
   });
-
-  it("falls back to top-level reasoningTokens when outputTokenDetails omits it", () => {
-    const raw = {
-      inputTokenDetails: { noCacheTokens: 100 },
-      inputTokens: 100,
-      outputTokenDetails: {},
-      outputTokens: 500,
-      // @ai-sdk marks the top-level field deprecated but still emits it
-      reasoningTokens: 42,
-      totalTokens: 600,
-    } as LanguageModelUsage;
-    const usage = mapUsage(raw, model);
-    expect(usage.reasoningTokens).toBe(42);
-  });
 });
 
 // ─── mapFinishReason (pure) ──────────────────────────────────────────────────
@@ -236,12 +222,12 @@ function fakeStreamResult(
   };
 }
 
-/** A fake LanguageModelV3 so streamWithModel can run without resolveLanguageModel. */
-const fakeLanguage: LanguageModelV3 = {
+/** A fake LanguageModelV4 so streamWithModel can run without resolveLanguageModel. */
+const fakeLanguage: LanguageModelV4 = {
   modelId: "test-model",
   provider: "testprov",
-  specificationVersion: "v3",
-} as LanguageModelV3;
+  specificationVersion: "v4",
+} as LanguageModelV4;
 
 describe("streamWithModel()", () => {
   it("returns { fullStream, result } where result resolves to mapped FinishResult", () => {

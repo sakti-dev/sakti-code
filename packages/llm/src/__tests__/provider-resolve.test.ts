@@ -1,4 +1,4 @@
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { LanguageModelV4 } from "@ai-sdk/provider";
 import { beforeEach, describe, expect, it } from "vitest";
 import type {
   ProviderFactory,
@@ -17,13 +17,13 @@ import type { Model } from "../types.ts";
 
 // ─── test helpers ───────────────────────────────────────────────────────────
 
-/** Minimal fake LanguageModelV3 so we can assert identity without a real SDK. */
-function fakeLanguageModel(provider: string, modelId: string): LanguageModelV3 {
+/** Minimal fake LanguageModelV4 so we can assert identity without a real SDK. */
+function fakeLanguageModel(provider: string, modelId: string): LanguageModelV4 {
   return {
     modelId,
     provider,
-    specificationVersion: "v3",
-  } as LanguageModelV3;
+    specificationVersion: "v4",
+  } as LanguageModelV4;
 }
 
 /**
@@ -38,7 +38,7 @@ function recordingFactory(provider: string): {
   const calls: ProviderFactoryOptions[] = [];
   const languageModelIds: string[] = [];
   const sdk: ProviderSDK = {
-    languageModel(modelId: string): LanguageModelV3 {
+    languageModel(modelId: string): LanguageModelV4 {
       languageModelIds.push(modelId);
       return fakeLanguageModel(provider, modelId);
     },

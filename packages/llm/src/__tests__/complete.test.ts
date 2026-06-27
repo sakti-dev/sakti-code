@@ -1,4 +1,4 @@
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type { FinishReason, LanguageModelUsage } from "ai";
 import { describe, expect, it } from "vitest";
 import type { CompleteResult } from "../complete.ts";
@@ -69,12 +69,12 @@ function fakeGenerateResult(opts?: {
   };
 }
 
-/** A fake LanguageModelV3 so completeWithModel can run without resolveLanguageModel. */
-const fakeLanguage: LanguageModelV3 = {
+/** A fake LanguageModelV4 so completeWithModel can run without resolveLanguageModel. */
+const fakeLanguage: LanguageModelV4 = {
   modelId: "test-model",
   provider: "testprov",
-  specificationVersion: "v3",
-} as LanguageModelV3;
+  specificationVersion: "v4",
+} as LanguageModelV4;
 
 describe("completeWithModel()", () => {
   it("returns content text + mapped finishReason + usage with cost", async () => {

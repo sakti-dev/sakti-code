@@ -1,4 +1,4 @@
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type { LogContext, Logger } from "@sakti-code/logger";
 import { describe, expect, it } from "vitest";
 import { streamWithModel } from "../stream.ts";
@@ -17,11 +17,11 @@ const model: Model = {
   reasoning: true,
 };
 
-const fakeLanguage: LanguageModelV3 = {
+const fakeLanguage: LanguageModelV4 = {
   modelId: "test-model",
   provider: "testprov",
-  specificationVersion: "v3",
-} as LanguageModelV3;
+  specificationVersion: "v4",
+} as LanguageModelV4;
 
 /** A spy logger that records every call so tests can assert what was logged. */
 function spyLogger() {

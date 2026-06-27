@@ -1,4 +1,4 @@
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { LanguageModelV4 } from "@ai-sdk/provider";
 
 /**
  * # Provider factory registry
@@ -16,14 +16,14 @@ import type { LanguageModelV3 } from "@ai-sdk/provider";
 
 /**
  * A resolved provider SDK instance — the result of calling a factory. The
- * `languageModel(id)` method returns the @ai-sdk `LanguageModelV3` that gets
+ * `languageModel(id)` method returns the @ai-sdk `LanguageModelV4` that gets
  * passed to `streamText`.
  *
  * `chat`/`responses` are optional sub-selection methods some providers expose
  * (Azure, OpenAI). The default `languageModel` path covers every provider.
  */
 export interface ProviderSDK {
-  languageModel(modelId: string): LanguageModelV3;
+  languageModel(modelId: string): LanguageModelV4;
 }
 
 /**
@@ -133,19 +133,19 @@ export const BUNDLED_PROVIDERS: Record<string, ProviderFactoryLoader> = {
   // Third-party provider packages
   "@openrouter/ai-sdk-provider": () =>
     import("@openrouter/ai-sdk-provider").then(
-      (m) => m.createOpenRouter as ProviderFactory
+      (m) => m.createOpenRouter as unknown as ProviderFactory
     ),
   "merge-gateway-ai-sdk-provider": () =>
     import("merge-gateway-ai-sdk-provider").then(
-      (m) => m.createMergeGateway as ProviderFactory
+      (m) => m.createMergeGateway as unknown as ProviderFactory
     ),
   "venice-ai-sdk-provider": () =>
     import("venice-ai-sdk-provider").then(
-      (m) => m.createVenice as ProviderFactory
+      (m) => m.createVenice as unknown as ProviderFactory
     ),
   "@aihubmix/ai-sdk-provider": () =>
     import("@aihubmix/ai-sdk-provider").then(
-      (m) => m.createAihubmix as ProviderFactory
+      (m) => m.createAihubmix as unknown as ProviderFactory
     ),
   "ai-gateway-provider": () =>
     import("ai-gateway-provider").then(
@@ -156,5 +156,7 @@ export const BUNDLED_PROVIDERS: Record<string, ProviderFactoryLoader> = {
       (m) => m.createSAPAIProvider as unknown as ProviderFactory
     ),
   "gitlab-ai-provider": () =>
-    import("gitlab-ai-provider").then((m) => m.createGitLab as ProviderFactory),
+    import("gitlab-ai-provider").then(
+      (m) => m.createGitLab as unknown as ProviderFactory
+    ),
 };
