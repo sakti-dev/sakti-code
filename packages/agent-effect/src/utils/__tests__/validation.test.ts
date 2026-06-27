@@ -71,4 +71,25 @@ describe("validateToolArguments", () => {
     const result = validateToolArguments(tool, toolCall);
     expect(result).toEqual({ name: "hello" });
   });
+
+  it("does not mutate the original toolCall.arguments", () => {
+    const tool: Tool = {
+      name: "test",
+      description: "test tool",
+      parameters: Type.Object({ count: Type.Number() }),
+    };
+    const toolCall: ToolCall = {
+      type: "toolCall",
+      id: "call_1",
+      name: "test",
+      arguments: { count: "42" },
+    };
+    const original = toolCall.arguments;
+    const originalSnapshot = { ...toolCall.arguments };
+
+    validateToolArguments(tool, toolCall);
+
+    expect(toolCall.arguments).toEqual(originalSnapshot);
+    expect(toolCall.arguments).toBe(original);
+  });
 });
