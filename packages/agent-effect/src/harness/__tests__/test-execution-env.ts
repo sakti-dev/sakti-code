@@ -54,7 +54,10 @@ function toFileError(e: unknown): FileError {
             : nodeErr?.code === "EISDIR"
               ? "is_directory"
               : "unknown";
-  return new FileErrorClass(code, e instanceof Error ? e.message : String(e));
+  return new FileErrorClass({
+    code,
+    message: e instanceof Error ? e.message : String(e),
+  });
 }
 
 export class TestExecutionEnv implements ExecutionEnv {

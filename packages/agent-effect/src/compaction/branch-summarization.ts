@@ -302,10 +302,10 @@ export async function generateBranchSummary(
   });
   if (response.finishReason === "error") {
     return err(
-      new BranchSummaryError(
-        "summarization_failed",
-        `Branch summary failed: ${response.errorMessage || "Unknown error"}`
-      )
+      new BranchSummaryError({
+        code: "summarization_failed",
+        message: `Branch summary failed: ${response.errorMessage || "Unknown error"}`,
+      })
     );
   }
 

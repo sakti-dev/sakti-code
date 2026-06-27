@@ -596,10 +596,10 @@ export async function generateSummary(
   });
   if (response.finishReason === "error") {
     return err(
-      new CompactionError(
-        "summarization_failed",
-        `Summarization failed: ${response.errorMessage || "Unknown error"}`
-      )
+      new CompactionError({
+        code: "summarization_failed",
+        message: `Summarization failed: ${response.errorMessage || "Unknown error"}`,
+      })
     );
   }
 
@@ -674,10 +674,10 @@ export function prepareCompaction(
   const firstKeptEntry = pathEntries[cutPoint.firstKeptEntryIndex];
   if (!firstKeptEntry?.id) {
     return err(
-      new CompactionError(
-        "invalid_session",
-        "First kept entry has no UUID - session may need migration"
-      )
+      new CompactionError({
+        code: "invalid_session",
+        message: "First kept entry has no UUID - session may need migration",
+      })
     );
   }
   const firstKeptEntryId = firstKeptEntry.id;
@@ -768,10 +768,10 @@ export async function compact(
 
   if (!firstKeptEntryId) {
     return err(
-      new CompactionError(
-        "invalid_session",
-        "First kept entry has no UUID - session may need migration"
-      )
+      new CompactionError({
+        code: "invalid_session",
+        message: "First kept entry has no UUID - session may need migration",
+      })
     );
   }
 
@@ -875,10 +875,10 @@ async function generateTurnPrefixSummary(
   });
   if (response.finishReason === "error") {
     return err(
-      new CompactionError(
-        "summarization_failed",
-        `Turn prefix summarization failed: ${response.errorMessage || "Unknown error"}`
-      )
+      new CompactionError({
+        code: "summarization_failed",
+        message: `Turn prefix summarization failed: ${response.errorMessage || "Unknown error"}`,
+      })
     );
   }
 

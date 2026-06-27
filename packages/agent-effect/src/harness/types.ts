@@ -102,81 +102,79 @@ export interface AgentHarnessStreamOptionsPatch {
 
 export type FileKind = "file" | "directory" | "symlink";
 
-export type FileErrorCode =
-  | "aborted"
-  | "not_found"
-  | "permission_denied"
-  | "not_directory"
-  | "is_directory"
-  | "invalid"
-  | "not_supported"
-  | "unknown";
+export const FileErrorCode = Schema.Literals([
+  "aborted",
+  "not_found",
+  "permission_denied",
+  "not_directory",
+  "is_directory",
+  "invalid",
+  "not_supported",
+  "unknown",
+]);
+export type FileErrorCode = typeof FileErrorCode.Type;
 
-export class FileError extends Error {
-  public code: FileErrorCode;
-  public path: string | undefined;
-
-  constructor(
+export class FileError extends Schema.TaggedErrorClass<FileError>()(
+  "FileError",
+  {
     code: FileErrorCode,
-    message: string,
-    path?: string,
-    cause?: Error
-  ) {
-    super(message, cause === undefined ? undefined : { cause });
-    this.name = "FileError";
-    this.code = code;
-    this.path = path;
+    message: Schema.String,
+    path: Schema.optional(Schema.String),
+    cause: Schema.optional(Schema.Defect()),
   }
-}
+) {}
 
-export type ExecutionErrorCode =
-  | "aborted"
-  | "timeout"
-  | "shell_unavailable"
-  | "spawn_error"
-  | "callback_error"
-  | "unknown";
+export const ExecutionErrorCode = Schema.Literals([
+  "aborted",
+  "timeout",
+  "shell_unavailable",
+  "spawn_error",
+  "callback_error",
+  "unknown",
+]);
+export type ExecutionErrorCode = typeof ExecutionErrorCode.Type;
 
-export class ExecutionError extends Error {
-  public code: ExecutionErrorCode;
-
-  constructor(code: ExecutionErrorCode, message: string, cause?: Error) {
-    super(message, cause === undefined ? undefined : { cause });
-    this.name = "ExecutionError";
-    this.code = code;
+export class ExecutionError extends Schema.TaggedErrorClass<ExecutionError>()(
+  "ExecutionError",
+  {
+    code: ExecutionErrorCode,
+    message: Schema.String,
+    cause: Schema.optional(Schema.Defect()),
   }
-}
+) {}
 
-export type CompactionErrorCode =
-  | "aborted"
-  | "summarization_failed"
-  | "invalid_session"
-  | "unknown";
+export const CompactionErrorCode = Schema.Literals([
+  "aborted",
+  "summarization_failed",
+  "invalid_session",
+  "unknown",
+]);
+export type CompactionErrorCode = typeof CompactionErrorCode.Type;
 
-export class CompactionError extends Error {
-  public code: CompactionErrorCode;
-
-  constructor(code: CompactionErrorCode, message: string, cause?: Error) {
-    super(message, cause === undefined ? undefined : { cause });
-    this.name = "CompactionError";
-    this.code = code;
+export class CompactionError extends Schema.TaggedErrorClass<CompactionError>()(
+  "CompactionError",
+  {
+    code: CompactionErrorCode,
+    message: Schema.String,
+    cause: Schema.optional(Schema.Defect()),
   }
-}
+) {}
 
-export type BranchSummaryErrorCode =
-  | "aborted"
-  | "summarization_failed"
-  | "invalid_session";
+export const BranchSummaryErrorCode = Schema.Literals([
+  "aborted",
+  "summarization_failed",
+  "invalid_session",
+]);
+export type BranchSummaryErrorCode = typeof BranchSummaryErrorCode.Type;
 
-export class BranchSummaryError extends Error {
-  public code: BranchSummaryErrorCode;
-
-  constructor(code: BranchSummaryErrorCode, message: string, cause?: Error) {
-    super(message, cause === undefined ? undefined : { cause });
-    this.name = "BranchSummaryError";
-    this.code = code;
+export class BranchSummaryError extends Schema.TaggedErrorClass<BranchSummaryError>()(
+  "BranchSummaryError",
+  {
+    code: BranchSummaryErrorCode,
+    message: Schema.String,
+    cause: Schema.optional(Schema.Defect()),
   }
-}
+) {}
 
 export const SessionErrorCode = Schema.Literals([
   "not_found",
@@ -197,26 +195,27 @@ export class SessionError extends Schema.TaggedErrorClass<SessionError>()(
   }
 ) {}
 
-export type AgentHarnessErrorCode =
-  | "busy"
-  | "invalid_state"
-  | "invalid_argument"
-  | "session"
-  | "hook"
-  | "auth"
-  | "compaction"
-  | "branch_summary"
-  | "unknown";
+export const AgentHarnessErrorCode = Schema.Literals([
+  "busy",
+  "invalid_state",
+  "invalid_argument",
+  "session",
+  "hook",
+  "auth",
+  "compaction",
+  "branch_summary",
+  "unknown",
+]);
+export type AgentHarnessErrorCode = typeof AgentHarnessErrorCode.Type;
 
-export class AgentHarnessError extends Error {
-  public code: AgentHarnessErrorCode;
-
-  constructor(code: AgentHarnessErrorCode, message: string, cause?: Error) {
-    super(message, cause === undefined ? undefined : { cause });
-    this.name = "AgentHarnessError";
-    this.code = code;
+export class AgentHarnessError extends Schema.TaggedErrorClass<AgentHarnessError>()(
+  "AgentHarnessError",
+  {
+    code: AgentHarnessErrorCode,
+    message: Schema.String,
+    cause: Schema.optional(Schema.Defect()),
   }
-}
+) {}
 
 export interface FileInfo {
   kind: FileKind;

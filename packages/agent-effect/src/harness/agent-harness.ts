@@ -51,9 +51,7 @@ import type {
 } from "./types.ts";
 import {
   AgentHarnessError,
-  BranchSummaryError,
-  CompactionError,
-  SessionError,
+  type AgentHarnessErrorCode,
   toError,
 } from "./types.ts";
 
@@ -165,22 +163,43 @@ type AgentHarnessHandler = (
 
 function normalizeHarnessError(
   error: unknown,
-  fallbackCode: AgentHarnessError["code"]
+  fallbackCode: AgentHarnessErrorCode
 ): AgentHarnessError {
   if (error instanceof AgentHarnessError) {
     return error;
   }
   const cause = toError(error);
-  if (cause instanceof SessionError) {
-    return new AgentHarnessError("session", cause.message, cause);
+  if (
+    cause instanceof Error &&
+    "_tag" in cause &&
+    typeof cause._tag === "string"
+  ) {
+    switch (cause._tag) {
+      case "SessionError":
+        return new AgentHarnessError({
+          code: "session",
+          message: cause.message,
+          cause,
+        });
+      case "CompactionError":
+        return new AgentHarnessError({
+          code: "compaction",
+          message: cause.message,
+          cause,
+        });
+      case "BranchSummaryError":
+        return new AgentHarnessError({
+          code: "branch_summary",
+          message: cause.message,
+          cause,
+        });
+    }
   }
-  if (cause instanceof CompactionError) {
-    return new AgentHarnessError("compaction", cause.message, cause);
-  }
-  if (cause instanceof BranchSummaryError) {
-    return new AgentHarnessError("branch_summary", cause.message, cause);
-  }
-  return new AgentHarnessError(fallbackCode, cause.message, cause);
+  return new AgentHarnessError({
+    code: fallbackCode,
+    message: cause.message,
+    cause,
+  });
 }
 
 function normalizeHookError(error: unknown): AgentHarnessError {
@@ -585,10 +604,10 @@ export class AgentHarness<
   private validateUniqueNames(names: string[], message: string): void {
     const duplicates = findDuplicateNames(names);
     if (duplicates.length > 0) {
-      throw new AgentHarnessError(
-        "invalid_argument",
-        `${message}: ${duplicates.join(", ")}`
-      );
+      throw new AgentHarnessError({
+        code: "invalid_argument",
+        message: `${message}: ${duplicates.join(", ")}`,
+      });
     }
   }
 
@@ -599,10 +618,10 @@ export class AgentHarness<
     this.validateUniqueNames(toolNames, "Duplicate active tool name(s)");
     const missing = toolNames.filter((name) => !tools.has(name));
     if (missing.length > 0) {
-      throw new AgentHarnessError(
-        "invalid_argument",
-        `Unknown tool(s): ${missing.join(", ")}`
-      );
+      throw new AgentHarnessError({
+        code: "invalid_argument",
+        message: `Unknown tool(s): ${missing.join(", ")}`,
+      });
     }
   }
 
@@ -780,7 +799,11 @@ export class AgentHarness<
             [toError(error), toError(failureError)],
             "Agent run failed and failure reporting failed"
           );
-          throw new AgentHarnessError("unknown", cause.message, cause);
+          throw new AgentHarnessError({
+            code: "unknown",
+            message: cause.message,
+            cause,
+          });
         }
       }
     })();
@@ -792,10 +815,10 @@ export class AgentHarness<
           return message;
         }
       }
-      throw new AgentHarnessError(
-        "invalid_state",
-        "AgentHarness prompt completed without an assistant message"
-      );
+      throw new AgentHarnessError({
+        code: "invalid_state",
+        message: "AgentHarness prompt completed without an assistant message",
+      });
     } finally {
       try {
         await this.flushPendingSessionWrites();
@@ -810,7 +833,10 @@ export class AgentHarness<
     options?: { images?: ImageContent[] }
   ): Promise<AssistantMessage> {
     if (this.phase !== "idle") {
-      throw new AgentHarnessError("busy", "AgentHarness is busy");
+      throw new AgentHarnessError({
+        code: "busy",
+        message: "AgentHarness is busy",
+      });
     }
     this.phase = "turn";
     this.logger?.info("turn started", {
@@ -848,7 +874,10 @@ export class AgentHarness<
    */
   async continue(): Promise<AssistantMessage> {
     if (this.phase !== "idle") {
-      throw new AgentHarnessError("busy", "AgentHarness is busy");
+      throw new AgentHarnessError({
+        code: "busy",
+        message: "AgentHarness is busy",
+      });
     }
     this.phase = "turn";
     this.logger?.info("turn started", {
@@ -872,18 +901,18 @@ export class AgentHarness<
       // re-checks, but failing here gives a cleaner error and avoids emitting
       // any agent_start events for a doomed run.
       if (activeTurnState.messages.length === 0) {
-        throw new AgentHarnessError(
-          "invalid_state",
-          "No messages to continue from"
-        );
+        throw new AgentHarnessError({
+          code: "invalid_state",
+          message: "No messages to continue from",
+        });
       }
       const lastMessage =
         activeTurnState.messages[activeTurnState.messages.length - 1]!;
       if (lastMessage.role === "assistant") {
-        throw new AgentHarnessError(
-          "invalid_state",
-          "Cannot continue from an assistant message"
-        );
+        throw new AgentHarnessError({
+          code: "invalid_state",
+          message: "Cannot continue from an assistant message",
+        });
       }
 
       const abortController = new AbortController();
@@ -920,7 +949,11 @@ export class AgentHarness<
               [toError(error), toError(failureError)],
               "Agent continue failed and failure reporting failed"
             );
-            throw new AgentHarnessError("unknown", cause.message, cause);
+            throw new AgentHarnessError({
+              code: "unknown",
+              message: cause.message,
+              cause,
+            });
           }
         }
       })();
@@ -933,10 +966,10 @@ export class AgentHarness<
             return message;
           }
         }
-        throw new AgentHarnessError(
-          "invalid_state",
-          "Continue completed without an assistant message"
-        );
+        throw new AgentHarnessError({
+          code: "invalid_state",
+          message: "Continue completed without an assistant message",
+        });
       } finally {
         try {
           await this.flushPendingSessionWrites();
@@ -957,7 +990,10 @@ export class AgentHarness<
     additionalInstructions?: string
   ): Promise<AssistantMessage> {
     if (this.phase !== "idle") {
-      throw new AgentHarnessError("busy", "AgentHarness is busy");
+      throw new AgentHarnessError({
+        code: "busy",
+        message: "AgentHarness is busy",
+      });
     }
     this.phase = "turn";
     const finishRunPromise = this.startRunPromise();
@@ -967,10 +1003,10 @@ export class AgentHarness<
         (candidate) => candidate.name === name
       );
       if (!skill) {
-        throw new AgentHarnessError(
-          "invalid_argument",
-          `Unknown skill: ${name}`
-        );
+        throw new AgentHarnessError({
+          code: "invalid_argument",
+          message: `Unknown skill: ${name}`,
+        });
       }
       return await this.executeTurn(
         turnState,
@@ -989,7 +1025,10 @@ export class AgentHarness<
     args: string[] = []
   ): Promise<AssistantMessage> {
     if (this.phase !== "idle") {
-      throw new AgentHarnessError("busy", "AgentHarness is busy");
+      throw new AgentHarnessError({
+        code: "busy",
+        message: "AgentHarness is busy",
+      });
     }
     this.phase = "turn";
     const finishRunPromise = this.startRunPromise();
@@ -999,10 +1038,10 @@ export class AgentHarness<
         (candidate) => candidate.name === name
       );
       if (!template) {
-        throw new AgentHarnessError(
-          "invalid_argument",
-          `Unknown prompt template: ${name}`
-        );
+        throw new AgentHarnessError({
+          code: "invalid_argument",
+          message: `Unknown prompt template: ${name}`,
+        });
       }
       return await this.executeTurn(
         turnState,
@@ -1021,7 +1060,10 @@ export class AgentHarness<
     options?: { images?: ImageContent[] }
   ): Promise<void> {
     if (this.phase === "idle") {
-      throw new AgentHarnessError("invalid_state", "Cannot steer while idle");
+      throw new AgentHarnessError({
+        code: "invalid_state",
+        message: "Cannot steer while idle",
+      });
     }
     this.steerQueue.push(createUserMessage(text, options?.images));
     await this.emitQueueUpdate();
@@ -1032,10 +1074,10 @@ export class AgentHarness<
     options?: { images?: ImageContent[] }
   ): Promise<void> {
     if (this.phase === "idle") {
-      throw new AgentHarnessError(
-        "invalid_state",
-        "Cannot follow up while idle"
-      );
+      throw new AgentHarnessError({
+        code: "invalid_state",
+        message: "Cannot follow up while idle",
+      });
     }
     this.followUpQueue.push(createUserMessage(text, options?.images));
     await this.emitQueueUpdate();
@@ -1068,20 +1110,26 @@ export class AgentHarness<
     details?: unknown;
   }> {
     if (this.phase !== "idle") {
-      throw new AgentHarnessError("busy", "compact() requires idle harness");
+      throw new AgentHarnessError({
+        code: "busy",
+        message: "compact() requires idle harness",
+      });
     }
     this.phase = "compaction";
     try {
       const model = this.model;
       if (!model) {
-        throw new AgentHarnessError(
-          "invalid_state",
-          "No model set for compaction"
-        );
+        throw new AgentHarnessError({
+          code: "invalid_state",
+          message: "No model set for compaction",
+        });
       }
       const auth = await this.getApiKeyAndHeaders?.(model);
       if (!auth) {
-        throw new AgentHarnessError("auth", "No auth available for compaction");
+        throw new AgentHarnessError({
+          code: "auth",
+          message: "No auth available for compaction",
+        });
       }
       const branchEntries = await Effect.runPromise(this.session.getBranch());
       const preparationResult = prepareCompaction(
@@ -1093,7 +1141,10 @@ export class AgentHarness<
       }
       const preparation = preparationResult.value;
       if (!preparation) {
-        throw new AgentHarnessError("compaction", "Nothing to compact");
+        throw new AgentHarnessError({
+          code: "compaction",
+          message: "Nothing to compact",
+        });
       }
       const hookResult = await this.emitHook({
         type: "session_before_compact",
@@ -1103,7 +1154,10 @@ export class AgentHarness<
         signal: this.runAbortController?.signal ?? new AbortController().signal,
       });
       if (hookResult?.cancel) {
-        throw new AgentHarnessError("compaction", "Compaction cancelled");
+        throw new AgentHarnessError({
+          code: "compaction",
+          message: "Compaction cancelled",
+        });
       }
       const provided = hookResult?.compaction;
       const compactResult = provided
@@ -1156,10 +1210,10 @@ export class AgentHarness<
     }
   ): Promise<NavigateTreeResult> {
     if (this.phase !== "idle") {
-      throw new AgentHarnessError(
-        "busy",
-        "navigateTree() requires idle harness"
-      );
+      throw new AgentHarnessError({
+        code: "busy",
+        message: "navigateTree() requires idle harness",
+      });
     }
     this.phase = "branch_summary";
     try {
@@ -1171,10 +1225,10 @@ export class AgentHarness<
         this.session.getEntry(targetId)
       );
       if (!targetEntry) {
-        throw new AgentHarnessError(
-          "invalid_argument",
-          `Entry ${targetId} not found`
-        );
+        throw new AgentHarnessError({
+          code: "invalid_argument",
+          message: `Entry ${targetId} not found`,
+        });
       }
       const { entries, commonAncestorId } =
         await collectEntriesForBranchSummary(this.session, oldLeafId, targetId);
@@ -1204,17 +1258,17 @@ export class AgentHarness<
       if (!summaryText && options?.summarize && entries.length > 0) {
         const model = this.model;
         if (!model) {
-          throw new AgentHarnessError(
-            "invalid_state",
-            "No model set for branch summary"
-          );
+          throw new AgentHarnessError({
+            code: "invalid_state",
+            message: "No model set for branch summary",
+          });
         }
         const auth = await this.getApiKeyAndHeaders?.(model);
         if (!auth) {
-          throw new AgentHarnessError(
-            "auth",
-            "No auth available for branch summary"
-          );
+          throw new AgentHarnessError({
+            code: "auth",
+            message: "No auth available for branch summary",
+          });
         }
         const branchSummary = await generateBranchSummary(entries, {
           model,
@@ -1242,11 +1296,11 @@ export class AgentHarness<
           if (branchSummary.error.code === "aborted") {
             return { cancelled: true };
           }
-          throw new AgentHarnessError(
-            "branch_summary",
-            branchSummary.error.message,
-            branchSummary.error
-          );
+          throw new AgentHarnessError({
+            code: "branch_summary",
+            message: branchSummary.error.message,
+            cause: branchSummary.error,
+          });
         }
         summaryText = branchSummary.value.summary;
         summaryDetails = {
