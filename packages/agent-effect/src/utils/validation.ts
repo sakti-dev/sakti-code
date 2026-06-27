@@ -219,6 +219,13 @@ function coerceWithUnionSchema(
   schemas: JsonSchemaObject[]
 ): unknown {
   for (const schema of schemas) {
+    const validator = getSubSchemaValidator(schema);
+    if (validator?.Check(value)) {
+      return value;
+    }
+  }
+
+  for (const schema of schemas) {
     const candidate = structuredClone(value);
     const coerced = coerceWithJsonSchema(candidate, schema);
     const validator = getSubSchemaValidator(schema);
@@ -316,32 +323,25 @@ export function validateToolArguments(
   Value.Convert(tool.parameters, args);
 
   const validator = getValidator(tool.parameters);
+
+  let finalArgs: Record<string, unknown> = args;
   if (
     !hasTypeBoxMetadata(tool.parameters) &&
     isJsonSchemaObject(tool.parameters)
   ) {
     const coerced = coerceWithJsonSchema(args, tool.parameters);
     if (coerced !== args) {
-      if (isRecord(args) && isRecord(coerced)) {
-        for (const key of Object.keys(args)) {
-          delete args[key];
-        }
-        Object.assign(args, coerced);
-      } else {
-        return validator.Check(coerced)
-          ? (coerced as Record<string, unknown>)
-          : args;
-      }
+      finalArgs = coerced as Record<string, unknown>;
     }
   }
 
-  if (validator.Check(args)) {
-    return args;
+  if (validator.Check(finalArgs)) {
+    return finalArgs;
   }
 
   const errors =
     validator
-      .Errors(args)
+      .Errors(finalArgs)
       .map((error) => `  - ${formatValidationPath(error)}: ${error.message}`)
       .join("\n") || "Unknown validation error";
 

@@ -93,7 +93,7 @@ describe("validateToolArguments", () => {
     expect(toolCall.arguments).toBe(original);
   });
 
-  it("coerces union (anyOf) string-to-number on non-TypeBox schema", () => {
+  it("coerces union (anyOf) string-to-number when no member matches as-is", () => {
     const tool: Tool = {
       name: "test",
       description: "test tool",
@@ -101,7 +101,7 @@ describe("validateToolArguments", () => {
         type: "object",
         properties: {
           value: {
-            anyOf: [{ type: "number" }, { type: "string" }],
+            anyOf: [{ type: "number" }, { type: "boolean" }],
           },
         },
         required: ["value"],

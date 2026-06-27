@@ -331,7 +331,14 @@ const runLoopEffect = (
         hasMoreToolCalls = false;
         if (toolCalls.length > 0) {
           const executedToolBatch = yield* Effect.promise(() =>
-            executeToolCalls(currentContext, message, config, signal, emit)
+            executeToolCalls(
+              currentContext,
+              message,
+              toolCalls,
+              config,
+              signal,
+              emit
+            )
           );
           toolResults.push(...executedToolBatch.messages);
           hasMoreToolCalls = !executedToolBatch.terminate;
@@ -696,13 +703,11 @@ const EMPTY_USAGE: Usage = {
 async function executeToolCalls(
   currentContext: AgentContext,
   assistantMessage: AssistantMessage,
+  toolCalls: ToolCall[],
   config: AgentLoopConfig,
   signal: AbortSignal | undefined,
   emit: AgentEventSink
 ): Promise<ExecutedToolCallBatch> {
-  const toolCalls = assistantMessage.content.filter(
-    (c) => c.type === "toolCall"
-  );
   const hasSequentialToolCall = toolCalls.some(
     (tc) =>
       currentContext.tools?.find((t) => t.name === tc.name)?.executionMode ===
