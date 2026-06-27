@@ -6,10 +6,10 @@ import type {
   AgentHarness,
   AgentHarnessEvent,
   PermissionRuleset,
+  PromiseSessionStorage,
   QueueMode,
-  SessionStorage,
   ThinkingLevel,
-} from "@sakti-code/agent";
+} from "@sakti-code/agent-effect";
 import {
   appendSkillsBlock,
   BUILTIN_AGENTS,
@@ -20,12 +20,13 @@ import {
   fromConfig,
   AgentHarness as HarnessClass,
   INTAKE_SYSTEM_PROMPT,
+  PromiseSession,
   parseCompactionSettings,
   parseRetrySettings,
   planFirstTurn,
+  promiseSessionAsShape,
   runAutoCompaction,
-  Session as SessionClass,
-} from "@sakti-code/agent";
+} from "@sakti-code/agent-effect";
 import { createProposeSessionTool } from "@sakti-code/tools";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";
@@ -306,7 +307,7 @@ export async function runPrompt(
   ctx: ServerContext,
   sessionId: string,
   message: string,
-  storage: SessionStorage,
+  storage: PromiseSessionStorage,
   eventCallback: (event: AgentHarnessEvent) => void,
   permissionAskedSink: (frame: PermissionFrame) => void
 ): Promise<void> {
@@ -340,7 +341,7 @@ export async function runPrompt(
   const isIntake = session.kind === "intake";
   const tools = buildTools(project.cwd);
   if (isIntake) {
-    tools.push(createProposeSessionTool());
+    tools.push(createProposeSessionTool() as (typeof tools)[number]);
   }
 
   const settings = loadSessionSettings(ctx, sessionId);
@@ -353,7 +354,8 @@ export async function runPrompt(
   const compactionSettings = parseCompactionSettings(settings);
 
   const env = new NodeExecutionEnv(project.cwd);
-  const sessionInstance = new SessionClass(storage);
+  const sessionInstance = new PromiseSession(storage);
+  const sessionShape = promiseSessionAsShape(sessionInstance);
   const getApiKeyAndHeaders = async (
     _model: unknown
   ): Promise<
@@ -368,7 +370,7 @@ export async function runPrompt(
   const harness = new HarnessClass({
     env,
     model,
-    session: sessionInstance,
+    session: sessionShape,
     ...(isIntake ? { systemPrompt: INTAKE_SYSTEM_PROMPT } : {}),
     ...(ctx.log === undefined
       ? {}
@@ -541,7 +543,7 @@ export async function runPrompt(
         },
         runCompaction: async () =>
           runAutoCompaction({
-            session: sessionInstance,
+            session: sessionShape,
             model,
             apiKey: auth.apiKey,
             settings: compactionSettings,

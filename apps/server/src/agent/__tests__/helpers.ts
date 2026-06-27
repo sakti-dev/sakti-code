@@ -1,10 +1,10 @@
-import type { SessionStorage } from "@sakti-code/agent";
+import type { PromiseSessionStorage } from "@sakti-code/agent-effect";
 import { vi } from "vitest";
 
 /** Real model id that exists in pi-ai's registry so `getModel("openai", id)` resolves. */
 const TEST_MODEL_ID = "gpt-4";
 
-export function createMockStore(): SessionStorage {
+export function createMockStore(): PromiseSessionStorage {
   return {
     appendEntry: vi.fn(),
     createEntryId: vi.fn(async () => "entry-1"),

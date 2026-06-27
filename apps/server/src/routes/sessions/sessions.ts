@@ -1,5 +1,5 @@
 import { tbValidator } from "@hono/typebox-validator";
-import { buildSessionContext } from "@sakti-code/agent";
+import { buildSessionContextFromEntries } from "@sakti-code/agent-effect";
 import { Hono } from "hono";
 import Type from "typebox";
 import { createSessionStorage, getCtx } from "../../context.ts";
@@ -71,6 +71,6 @@ export const sessionsRoutes = new Hono()
     const ctx = getCtx(c);
     const storage = createSessionStorage(ctx, c.req.param("id"));
     const entries = await storage.getPathToRoot(await storage.getLeafId());
-    const { messages } = buildSessionContext(entries);
+    const { messages } = buildSessionContextFromEntries(entries);
     return c.json(messages);
   });

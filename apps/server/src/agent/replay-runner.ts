@@ -1,4 +1,4 @@
-import type { AgentHarnessEvent, AgentMessage } from "@sakti-code/agent";
+import type { AgentHarnessEvent, AgentMessage } from "@sakti-code/agent-effect";
 import type { WsHandle } from "./ws-handler.ts";
 
 export interface ReplayEntry {

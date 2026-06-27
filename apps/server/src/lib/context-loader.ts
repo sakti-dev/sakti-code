@@ -7,8 +7,13 @@ import type {
   PromptTemplate,
   Skill,
   SkillDiagnostic,
-} from "@sakti-code/agent";
-import { loadAgents, loadCommands, loadSkills } from "@sakti-code/agent";
+} from "@sakti-code/agent-effect";
+import {
+  isSuccess,
+  loadAgents,
+  loadCommands,
+  loadSkills,
+} from "@sakti-code/agent-effect";
 import { NodeExecutionEnv } from "../agent/execution-env.ts";
 import { enumerateAgentConfigDirs } from "./config-dirs.ts";
 
@@ -71,11 +76,13 @@ async function resolveSkillSubtrees(
     for (const name of SKILL_SUBTREE_NAMES) {
       const candidate = join(configDir, name);
       const info = await env.fileInfo(candidate);
-      if (!info.ok) {
+      if (!isSuccess(info)) {
         continue;
       }
-      // Accept directories and symlinks; loadSkills' resolveKind follows symlinks.
-      if (info.value.kind === "directory" || info.value.kind === "symlink") {
+      if (
+        info.success.kind === "directory" ||
+        info.success.kind === "symlink"
+      ) {
         skillDirs.push(candidate);
       }
     }

@@ -1,4 +1,4 @@
-import { buildSessionContext } from "@sakti-code/agent";
+import { buildSessionContextFromEntries } from "@sakti-code/agent-effect";
 import { Hono } from "hono";
 import { createSessionStorage, getCtx } from "../../context.ts";
 
@@ -141,7 +141,7 @@ export const exportRoutes = new Hono()
 
     const storage = createSessionStorage(ctx, id);
     const entries = await storage.getPathToRoot(await storage.getLeafId());
-    const { messages: agentMessages } = buildSessionContext(entries);
+    const { messages: agentMessages } = buildSessionContextFromEntries(entries);
 
     const messagesData = agentMessages.map((m) => ({
       role: m.role,

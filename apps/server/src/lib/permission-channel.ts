@@ -4,7 +4,7 @@ import {
   type PermissionAskRequest,
   type PermissionReply,
   type PermissionRule,
-} from "@sakti-code/agent";
+} from "@sakti-code/agent-effect";
 
 /** A pending permission request awaiting a user reply. */
 export interface PermissionFrame extends PermissionAskRequest {

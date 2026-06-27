@@ -1,9 +1,10 @@
 import {
   compact,
   DEFAULT_COMPACTION_SETTINGS,
+  isFailure,
+  PromiseSession,
   prepareCompaction,
-  Session,
-} from "@sakti-code/agent";
+} from "@sakti-code/agent-effect";
 import type { Model } from "@sakti-code/llm";
 import { Hono } from "hono";
 import { resolveAuth, resolveModel } from "../../agent/model-resolver.ts";
@@ -45,29 +46,29 @@ export const compactionRoutes = new Hono()
     const entries = await storage.getEntries();
     const preparation = prepareCompaction(entries, DEFAULT_COMPACTION_SETTINGS);
 
-    if (!preparation.ok) {
-      return c.json({ error: preparation.error.message }, 500);
+    if (isFailure(preparation)) {
+      return c.json({ error: preparation.failure.message }, 500);
     }
-    if (!preparation.value) {
+    if (!preparation.success) {
       return c.json({ tokensBefore: 0, tokensAfter: 0, skipped: true });
     }
 
-    const result = await compact(preparation.value, auth.model, auth.apiKey);
-    if (!result.ok) {
-      return c.json({ error: result.error.message }, 500);
+    const result = await compact(preparation.success, auth.model, auth.apiKey);
+    if (isFailure(result)) {
+      return c.json({ error: result.failure.message }, 500);
     }
 
-    const sessionInstance = new Session(storage);
+    const sessionInstance = new PromiseSession(storage);
     await sessionInstance.appendCompaction(
-      result.value.summary,
-      result.value.firstKeptEntryId,
-      result.value.tokensBefore,
-      result.value.details
+      result.success.summary,
+      result.success.firstKeptEntryId,
+      result.success.tokensBefore,
+      result.success.details
     );
 
     return c.json({
-      tokensBefore: result.value.tokensBefore,
-      summary: result.value.summary,
-      firstKeptEntryId: result.value.firstKeptEntryId,
+      tokensBefore: result.success.tokensBefore,
+      summary: result.success.summary,
+      firstKeptEntryId: result.success.firstKeptEntryId,
     });
   });

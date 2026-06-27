@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createPermissionChannel,
+  getPermissionChannel,
   resetPermissionChannelsForTesting,
 } from "../permission-channel.ts";
 
@@ -120,7 +121,6 @@ describe("permission channel", () => {
 describe("permission channel registry", () => {
   it("getPermissionChannel returns a stable per-session channel", () => {
     resetPermissionChannelsForTesting();
-    const { getPermissionChannel } = require("../permission-channel.ts");
     const a = getPermissionChannel("sess-x");
     const b = getPermissionChannel("sess-x");
     const c = getPermissionChannel("sess-y");

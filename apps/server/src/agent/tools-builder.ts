@@ -1,4 +1,4 @@
-import type { AgentTool } from "@sakti-code/agent";
+import type { AgentTool } from "@sakti-code/agent-effect";
 import {
   createBashTool,
   createEditTool,

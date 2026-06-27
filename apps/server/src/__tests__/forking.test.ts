@@ -1,4 +1,4 @@
-import { buildSessionContext } from "@sakti-code/agent";
+import { buildSessionContextFromEntries } from "@sakti-code/agent-effect";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { describe, expect, it } from "vitest";
 import { exportRoutes } from "../routes/sessions/export.ts";
@@ -37,7 +37,7 @@ describe("fork routes", () => {
     const entries = await forkedStorage.getPathToRoot(
       await forkedStorage.getLeafId()
     );
-    const { messages } = buildSessionContext(entries);
+    const { messages } = buildSessionContextFromEntries(entries);
     expect(messages).toHaveLength(2);
     expect((messages[0] as { content: unknown }).content).toBe("Hello");
   });

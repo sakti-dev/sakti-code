@@ -91,6 +91,7 @@ export type {
   FileErrorCode,
   FileInfo,
   FileKind,
+  PromiseSessionStorage,
   PromptTemplate,
   Result,
   SessionMetadata,
@@ -105,6 +106,8 @@ export {
   FileError,
   getOrThrow,
   getOrUndefined,
+  isFailure,
+  isSuccess,
   ok,
   toError,
 } from "./harness-types.ts";
@@ -182,7 +185,13 @@ export {
   createCompactionSummaryMessage,
   createCustomMessage,
 } from "./session/messages.ts";
-export { buildSessionContext, Session } from "./session/session.ts";
+export {
+  buildSessionContext,
+  buildSessionContextFromEntries,
+  PromiseSession,
+  promiseSessionAsShape,
+  Session,
+} from "./session/session.ts";
 export { InMemorySessionStorageLive } from "./session/storage.ts";
 export type {
   AgentEvent,

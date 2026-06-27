@@ -35,6 +35,23 @@ export interface SessionStorageShape {
   ) => Effect.Effect<void, SessionError>;
 }
 
+export interface PromiseSessionStorage<
+  TMetadata extends SessionMetadata = SessionMetadata,
+> {
+  appendEntry(entry: SessionTreeEntry): Promise<void>;
+  createEntryId(): Promise<string>;
+  findEntries<TType extends SessionTreeEntry["type"]>(
+    type: TType
+  ): Promise<Array<Extract<SessionTreeEntry, { type: TType }>>>;
+  getEntries(): Promise<SessionTreeEntry[]>;
+  getEntry(id: string): Promise<SessionTreeEntry | undefined>;
+  getLabel(id: string): Promise<string | undefined>;
+  getLeafId(): Promise<string | null>;
+  getMetadata(): Promise<TMetadata>;
+  getPathToRoot(leafId: string | null): Promise<SessionTreeEntry[]>;
+  setLeafId(leafId: string | null): Promise<void>;
+}
+
 export class SessionStorage extends Context.Service<
   SessionStorage,
   SessionStorageShape

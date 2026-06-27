@@ -59,7 +59,11 @@ export type {
   TreePreparation,
 } from "~/session/entries";
 export type { Session, SessionShape } from "~/session/session";
-export type { SessionStorageShape } from "~/session/storage";
+export { PromiseSession } from "~/session/session";
+export type {
+  PromiseSessionStorage,
+  SessionStorageShape,
+} from "~/session/storage";
 export { SessionStorage } from "~/session/storage";
 
 import type { FileError } from "~/session/entries";

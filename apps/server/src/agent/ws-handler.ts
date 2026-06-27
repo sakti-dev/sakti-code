@@ -1,8 +1,8 @@
 import type {
   AgentHarnessEvent,
   PermissionReply,
-  SessionStorage,
-} from "@sakti-code/agent";
+  PromiseSessionStorage,
+} from "@sakti-code/agent-effect";
 import Type from "typebox";
 import type { ServerContext } from "../context.ts";
 import { getPermissionChannel } from "../lib/permission-channel.ts";
@@ -214,7 +214,7 @@ async function runAgentStream(
   ctx: ServerContext,
   sessionId: string,
   message: string,
-  storage: SessionStorage,
+  storage: PromiseSessionStorage,
   ws: WsHandle
 ) {
   const log = ctx.log?.server;
@@ -272,7 +272,7 @@ export function sendError(ws: WsHandle, sessionId: string, message: string) {
 
 export function handleMessage(
   ctx: ServerContext,
-  storage: SessionStorage,
+  storage: PromiseSessionStorage,
   ws: WsHandle,
   msg: WsIn
 ) {

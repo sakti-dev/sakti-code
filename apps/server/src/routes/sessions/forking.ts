@@ -1,4 +1,4 @@
-import { buildSessionContext } from "@sakti-code/agent";
+import { buildSessionContextFromEntries } from "@sakti-code/agent-effect";
 import { Hono } from "hono";
 import { createSessionStorage, getCtx } from "../../context.ts";
 
@@ -63,7 +63,7 @@ export const forkingRoutes = new Hono()
 
     const storage = createSessionStorage(ctx, id);
     const entries = await storage.getPathToRoot(await storage.getLeafId());
-    const { messages } = buildSessionContext(entries);
+    const { messages } = buildSessionContextFromEntries(entries);
 
     const forkable = messages
       .filter((m) => m.role === "user" || m.role === "assistant")

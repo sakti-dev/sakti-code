@@ -22,6 +22,7 @@ import {
   createCompactionSummaryMessage,
   createCustomMessage,
 } from "./messages.ts";
+import type { PromiseSessionStorage } from "./storage.ts";
 import { SessionStorage } from "./storage.ts";
 
 export function buildSessionContextFromEntries(
@@ -438,3 +439,266 @@ export const buildSessionContext = (
     const branch = yield* session.getBranch(fromId);
     return buildSessionContextFromEntries(branch);
   });
+
+export class PromiseSession<
+  TMetadata extends SessionMetadata = SessionMetadata,
+> {
+  private readonly storage: PromiseSessionStorage<TMetadata>;
+
+  constructor(storage: PromiseSessionStorage<TMetadata>) {
+    this.storage = storage;
+  }
+
+  getMetadata(): Promise<TMetadata> {
+    return this.storage.getMetadata();
+  }
+
+  getStorage(): PromiseSessionStorage<TMetadata> {
+    return this.storage;
+  }
+
+  getLeafId(): Promise<string | null> {
+    return this.storage.getLeafId();
+  }
+
+  getEntry(id: string): Promise<SessionTreeEntry | undefined> {
+    return this.storage.getEntry(id);
+  }
+
+  getEntries(): Promise<SessionTreeEntry[]> {
+    return this.storage.getEntries();
+  }
+
+  async getBranch(fromId?: string): Promise<SessionTreeEntry[]> {
+    const leafId = fromId ?? (await this.storage.getLeafId());
+    return this.storage.getPathToRoot(leafId);
+  }
+
+  async buildContext(): Promise<SessionContext> {
+    return buildSessionContextFromEntries(await this.getBranch());
+  }
+
+  getLabel(id: string): Promise<string | undefined> {
+    return this.storage.getLabel(id);
+  }
+
+  async getSessionName(): Promise<string | undefined> {
+    const entries = await this.storage.findEntries("session_info");
+    return entries[entries.length - 1]?.name?.trim() || undefined;
+  }
+
+  private async appendTypedEntry<TEntry extends SessionTreeEntry>(
+    entry: TEntry
+  ): Promise<string> {
+    await this.storage.appendEntry(entry);
+    return entry.id;
+  }
+
+  async appendMessage(message: AgentMessage): Promise<string> {
+    return this.appendTypedEntry({
+      type: "message",
+      id: await this.storage.createEntryId(),
+      parentId: await this.storage.getLeafId(),
+      timestamp: new Date().toISOString(),
+      message,
+    } satisfies MessageEntry);
+  }
+
+  async appendThinkingLevelChange(thinkingLevel: string): Promise<string> {
+    return this.appendTypedEntry({
+      type: "thinking_level_change",
+      id: await this.storage.createEntryId(),
+      parentId: await this.storage.getLeafId(),
+      timestamp: new Date().toISOString(),
+      thinkingLevel,
+    } satisfies ThinkingLevelChangeEntry);
+  }
+
+  async appendModelChange(provider: string, modelId: string): Promise<string> {
+    return this.appendTypedEntry({
+      type: "model_change",
+      id: await this.storage.createEntryId(),
+      parentId: await this.storage.getLeafId(),
+      timestamp: new Date().toISOString(),
+      provider,
+      modelId,
+    } satisfies ModelChangeEntry);
+  }
+
+  async appendActiveToolsChange(activeToolNames: string[]): Promise<string> {
+    return this.appendTypedEntry({
+      type: "active_tools_change",
+      id: await this.storage.createEntryId(),
+      parentId: await this.storage.getLeafId(),
+      timestamp: new Date().toISOString(),
+      activeToolNames: [...activeToolNames],
+    } satisfies ActiveToolsChangeEntry);
+  }
+
+  async appendCompaction<T = unknown>(
+    summary: string,
+    firstKeptEntryId: string,
+    tokensBefore: number,
+    details?: T,
+    fromHook?: boolean
+  ): Promise<string> {
+    return this.appendTypedEntry({
+      type: "compaction",
+      id: await this.storage.createEntryId(),
+      parentId: await this.storage.getLeafId(),
+      timestamp: new Date().toISOString(),
+      summary,
+      firstKeptEntryId,
+      tokensBefore,
+      ...(details === undefined ? {} : { details }),
+      ...(fromHook === undefined ? {} : { fromHook }),
+    } satisfies CompactionEntry<T>);
+  }
+
+  async appendCustomEntry(customType: string, data?: unknown): Promise<string> {
+    return this.appendTypedEntry({
+      type: "custom",
+      id: await this.storage.createEntryId(),
+      parentId: await this.storage.getLeafId(),
+      timestamp: new Date().toISOString(),
+      customType,
+      ...(data === undefined ? {} : { data }),
+    } satisfies CustomEntry);
+  }
+
+  async appendCustomMessageEntry<T = unknown>(
+    customType: string,
+    content: string | (TextContent | ImageContent)[],
+    display: boolean,
+    details?: T
+  ): Promise<string> {
+    return this.appendTypedEntry({
+      type: "custom_message",
+      id: await this.storage.createEntryId(),
+      parentId: await this.storage.getLeafId(),
+      timestamp: new Date().toISOString(),
+      customType,
+      content,
+      display,
+      ...(details === undefined ? {} : { details }),
+    } satisfies CustomMessageEntry<T>);
+  }
+
+  async appendLabel(
+    targetId: string,
+    label: string | undefined
+  ): Promise<string> {
+    if (!(await this.storage.getEntry(targetId))) {
+      throw new SessionError({
+        code: "not_found",
+        message: `Entry ${targetId} not found`,
+      });
+    }
+    return this.appendTypedEntry({
+      type: "label",
+      id: await this.storage.createEntryId(),
+      parentId: await this.storage.getLeafId(),
+      timestamp: new Date().toISOString(),
+      targetId,
+      label,
+    } satisfies LabelEntry);
+  }
+
+  async appendSessionName(name: string): Promise<string> {
+    return this.appendTypedEntry({
+      type: "session_info",
+      id: await this.storage.createEntryId(),
+      parentId: await this.storage.getLeafId(),
+      timestamp: new Date().toISOString(),
+      name: name.trim(),
+    } satisfies SessionInfoEntry);
+  }
+
+  async moveTo(
+    entryId: string | null,
+    summary?: {
+      summary: string;
+      details?: unknown;
+      fromHook?: boolean;
+    }
+  ): Promise<string | undefined> {
+    if (entryId !== null && !(await this.storage.getEntry(entryId))) {
+      throw new SessionError({
+        code: "not_found",
+        message: `Entry ${entryId} not found`,
+      });
+    }
+    await this.storage.setLeafId(entryId);
+    if (!summary) {
+      return;
+    }
+    return this.appendTypedEntry({
+      type: "branch_summary",
+      id: await this.storage.createEntryId(),
+      parentId: entryId,
+      timestamp: new Date().toISOString(),
+      fromId: entryId ?? "root",
+      summary: summary.summary,
+      ...(summary.details === undefined ? {} : { details: summary.details }),
+      ...(summary.fromHook === undefined ? {} : { fromHook: summary.fromHook }),
+    } satisfies BranchSummaryEntry);
+  }
+}
+
+export function promiseSessionAsShape(session: PromiseSession): SessionShape {
+  const wrap = <T>(fn: () => Promise<T>): Effect.Effect<T, SessionError> =>
+    Effect.tryPromise({
+      try: fn,
+      catch: (e) =>
+        e instanceof SessionError
+          ? e
+          : new SessionError({
+              code: "unknown",
+              message: e instanceof Error ? e.message : String(e),
+            }),
+    });
+
+  return {
+    getMetadata: () => wrap(() => session.getMetadata()),
+    getLeafId: () => wrap(() => session.getLeafId()),
+    getEntry: (id) => wrap(() => session.getEntry(id)),
+    getEntries: () => wrap(() => session.getEntries()),
+    getBranch: (fromId) => wrap(() => session.getBranch(fromId)),
+    buildContext: () => wrap(() => session.buildContext()),
+    getLabel: (id) => wrap(() => session.getLabel(id)),
+    getSessionName: () => wrap(() => session.getSessionName()),
+    appendMessage: (msg) => wrap(() => session.appendMessage(msg)),
+    appendThinkingLevelChange: (level) =>
+      wrap(() => session.appendThinkingLevelChange(level)),
+    appendModelChange: (provider, modelId) =>
+      wrap(() => session.appendModelChange(provider, modelId)),
+    appendActiveToolsChange: (names) =>
+      wrap(() => session.appendActiveToolsChange(names)),
+    appendCompaction: (
+      summary,
+      firstKeptEntryId,
+      tokensBefore,
+      details,
+      fromHook
+    ) =>
+      wrap(() =>
+        session.appendCompaction(
+          summary,
+          firstKeptEntryId,
+          tokensBefore,
+          details,
+          fromHook
+        )
+      ),
+    appendCustomEntry: (customType, data) =>
+      wrap(() => session.appendCustomEntry(customType, data)),
+    appendCustomMessageEntry: (customType, content, display, details) =>
+      wrap(() =>
+        session.appendCustomMessageEntry(customType, content, display, details)
+      ),
+    appendLabel: (targetId, label) =>
+      wrap(() => session.appendLabel(targetId, label)),
+    appendSessionName: (name) => wrap(() => session.appendSessionName(name)),
+    moveTo: (entryId, summary) => wrap(() => session.moveTo(entryId, summary)),
+  };
+}
