@@ -5,6 +5,7 @@ import {
   resolveKind,
 } from "./loader-shared.ts";
 import type { ExecutionEnv, Skill } from "./types.ts";
+import { isFailure } from "./types.ts";
 
 const MAX_NAME_LENGTH = 64;
 const MAX_DESCRIPTION_LENGTH = 1024;
@@ -62,18 +63,18 @@ export async function loadSkills(
   const diagnostics: SkillDiagnostic[] = [];
   for (const dir of Array.isArray(dirs) ? dirs : [dirs]) {
     const rootInfoResult = await env.fileInfo(dir);
-    if (!rootInfoResult.ok) {
-      if (rootInfoResult.error.code !== "not_found") {
+    if (isFailure(rootInfoResult)) {
+      if (rootInfoResult.failure.code !== "not_found") {
         diagnostics.push({
           type: "warning",
           code: "file_info_failed",
-          message: rootInfoResult.error.message,
+          message: rootInfoResult.failure.message,
           path: dir,
         });
       }
       continue;
     }
-    const rootInfo = rootInfoResult.value;
+    const rootInfo = rootInfoResult.success;
     if ((await resolveKind(env, rootInfo, diagnostics)) !== "directory") {
       continue;
     }
@@ -130,33 +131,33 @@ async function loadSkillsFromDirInternal(
   const diagnostics: SkillDiagnostic[] = [];
 
   const dirInfoResult = await env.fileInfo(dir);
-  if (!dirInfoResult.ok) {
-    if (dirInfoResult.error.code !== "not_found") {
+  if (isFailure(dirInfoResult)) {
+    if (dirInfoResult.failure.code !== "not_found") {
       diagnostics.push({
         type: "warning",
         code: "file_info_failed",
-        message: dirInfoResult.error.message,
+        message: dirInfoResult.failure.message,
         path: dir,
       });
     }
     return { skills, diagnostics };
   }
-  const dirInfo = dirInfoResult.value;
+  const dirInfo = dirInfoResult.success;
   if ((await resolveKind(env, dirInfo, diagnostics)) !== "directory") {
     return { skills, diagnostics };
   }
 
   const entriesResult = await env.listDir(dir);
-  if (!entriesResult.ok) {
+  if (isFailure(entriesResult)) {
     diagnostics.push({
       type: "warning",
       code: "list_failed",
-      message: entriesResult.error.message,
+      message: entriesResult.failure.message,
       path: dir,
     });
     return { skills, diagnostics };
   }
-  const entries = entriesResult.value;
+  const entries = entriesResult.success;
 
   for (const entry of entries) {
     if (entry.name !== "SKILL.md") {
@@ -217,28 +218,28 @@ async function loadSkillFromFile(
 ): Promise<{ skill: Skill | null; diagnostics: SkillDiagnostic[] }> {
   const diagnostics: SkillDiagnostic[] = [];
   const rawContent = await env.readTextFile(filePath);
-  if (!rawContent.ok) {
+  if (isFailure(rawContent)) {
     diagnostics.push({
       type: "warning",
       code: "read_failed",
-      message: rawContent.error.message,
+      message: rawContent.failure.message,
       path: filePath,
     });
     return { skill: null, diagnostics };
   }
 
-  const parsed = parseFrontmatter<SkillFrontmatter>(rawContent.value);
-  if (!parsed.ok) {
+  const parsed = parseFrontmatter<SkillFrontmatter>(rawContent.success);
+  if (isFailure(parsed)) {
     diagnostics.push({
       type: "warning",
       code: "parse_failed",
-      message: parsed.error.message,
+      message: parsed.failure.message,
       path: filePath,
     });
     return { skill: null, diagnostics };
   }
 
-  const { frontmatter, body } = parsed.value;
+  const { frontmatter, body } = parsed.success;
   const skillDir = dirnameEnvPath(filePath);
   const parentDirName = basenameEnvPath(skillDir);
   const description =

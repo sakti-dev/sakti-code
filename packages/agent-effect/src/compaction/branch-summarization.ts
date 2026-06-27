@@ -9,16 +9,14 @@ import {
   createCustomMessage,
 } from "../harness/messages.ts";
 import type { SessionShape } from "../harness/session.ts";
-import type {
-  BranchSummaryResult,
-  SessionTreeEntry,
-} from "../harness/types.ts";
 import {
   BranchSummaryError,
+  type BranchSummaryResult,
   err,
   ok,
   type Result,
   SessionError,
+  type SessionTreeEntry,
 } from "../harness/types.ts";
 import type { AgentMessage } from "../types.ts";
 import {

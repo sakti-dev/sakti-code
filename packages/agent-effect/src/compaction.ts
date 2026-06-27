@@ -25,6 +25,7 @@ import {
   type CompactionEntry,
   CompactionError,
   err,
+  isFailure,
   ok,
   type Result,
   type SessionTreeEntry,
@@ -802,13 +803,13 @@ export async function compact(
         thinkingLevel
       ),
     ]);
-    if (!historyResult.ok) {
-      return err(historyResult.error);
+    if (isFailure(historyResult)) {
+      return err(historyResult.failure);
     }
-    if (!turnPrefixResult.ok) {
-      return err(turnPrefixResult.error);
+    if (isFailure(turnPrefixResult)) {
+      return err(turnPrefixResult.failure);
     }
-    summary = `${historyResult.value}\n\n---\n\n**Turn Context (split turn):**\n\n${turnPrefixResult.value}`;
+    summary = `${historyResult.success}\n\n---\n\n**Turn Context (split turn):**\n\n${turnPrefixResult.success}`;
   } else {
     const summaryResult = await generateSummary(
       messagesToSummarize,
@@ -821,10 +822,10 @@ export async function compact(
       previousSummary,
       thinkingLevel
     );
-    if (!summaryResult.ok) {
-      return err(summaryResult.error);
+    if (isFailure(summaryResult)) {
+      return err(summaryResult.failure);
     }
-    summary = summaryResult.value;
+    summary = summaryResult.success;
   }
 
   const { readFiles, modifiedFiles } = computeFileLists(fileOps);

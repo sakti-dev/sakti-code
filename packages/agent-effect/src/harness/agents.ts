@@ -5,6 +5,7 @@ import {
   resolveKind,
 } from "./loader-shared.ts";
 import type { AgentDefinition, AgentMode, ExecutionEnv } from "./types.ts";
+import { isFailure } from "./types.ts";
 
 export type AgentDiagnosticCode =
   | "file_info_failed"
@@ -56,32 +57,32 @@ export async function loadAgents(
   const diagnostics: AgentDiagnostic[] = [];
   for (const dir of Array.isArray(dirs) ? dirs : [dirs]) {
     const rootInfoResult = await env.fileInfo(dir);
-    if (!rootInfoResult.ok) {
-      if (rootInfoResult.error.code !== "not_found") {
+    if (isFailure(rootInfoResult)) {
+      if (rootInfoResult.failure.code !== "not_found") {
         diagnostics.push({
           type: "warning",
           code: "file_info_failed",
-          message: rootInfoResult.error.message,
+          message: rootInfoResult.failure.message,
           path: dir,
         });
       }
       continue;
     }
-    const rootInfo = rootInfoResult.value;
+    const rootInfo = rootInfoResult.success;
     if ((await resolveKind(env, rootInfo, diagnostics)) !== "directory") {
       continue;
     }
     const entriesResult = await env.listDir(rootInfo.path);
-    if (!entriesResult.ok) {
+    if (isFailure(entriesResult)) {
       diagnostics.push({
         type: "warning",
         code: "list_failed",
-        message: entriesResult.error.message,
+        message: entriesResult.failure.message,
         path: rootInfo.path,
       });
       continue;
     }
-    for (const entry of entriesResult.value.sort((a, b) =>
+    for (const entry of entriesResult.success.sort((a, b) =>
       a.name.localeCompare(b.name)
     )) {
       if (entry.name !== "agent" && entry.name !== "agents") {
@@ -106,16 +107,16 @@ async function collectAgents(
   diagnostics: AgentDiagnostic[]
 ): Promise<void> {
   const entriesResult = await env.listDir(dir);
-  if (!entriesResult.ok) {
+  if (isFailure(entriesResult)) {
     diagnostics.push({
       type: "warning",
       code: "list_failed",
-      message: entriesResult.error.message,
+      message: entriesResult.failure.message,
       path: dir,
     });
     return;
   }
-  for (const entry of entriesResult.value.sort((a, b) =>
+  for (const entry of entriesResult.success.sort((a, b) =>
     a.name.localeCompare(b.name)
   )) {
     const childRel = `${relFromConfig}/${entry.name}`;
@@ -142,28 +143,28 @@ async function loadAgentFromFile(
 ): Promise<{ agent: AgentDefinition | null; diagnostics: AgentDiagnostic[] }> {
   const diagnostics: AgentDiagnostic[] = [];
   const rawContent = await env.readTextFile(filePath);
-  if (!rawContent.ok) {
+  if (isFailure(rawContent)) {
     diagnostics.push({
       type: "warning",
       code: "read_failed",
-      message: rawContent.error.message,
+      message: rawContent.failure.message,
       path: filePath,
     });
     return { agent: null, diagnostics };
   }
 
-  const parsed = parseFrontmatter<AgentFrontmatter>(rawContent.value);
-  if (!parsed.ok) {
+  const parsed = parseFrontmatter<AgentFrontmatter>(rawContent.success);
+  if (isFailure(parsed)) {
     diagnostics.push({
       type: "warning",
       code: "parse_failed",
-      message: parsed.error.message,
+      message: parsed.failure.message,
       path: filePath,
     });
     return { agent: null, diagnostics };
   }
 
-  const { frontmatter, body } = parsed.value;
+  const { frontmatter, body } = parsed.success;
   const name = configEntryNameFromPath(relFromConfig, AGENT_PREFIXES);
   const mode = resolveMode(frontmatter.mode);
   const description =

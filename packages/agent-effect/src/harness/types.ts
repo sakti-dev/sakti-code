@@ -15,31 +15,45 @@ export type { ThinkingLevel } from "../types.ts";
 import type { PermissionRuleset } from "./permission.ts";
 import type { SessionShape } from "./session.ts";
 
-export type Result<TValue, TError> =
-  | { ok: true; value: TValue }
-  | { ok: false; error: TError };
+// v4-compatible Result type. Shape matches effect's Result (Success/Failure
+// with _tag/success/failure) so Result.isSuccess/isFailure from "effect"
+// work on our values. Kept as a bare type so `Result<A, E>` annotations work
+// without namespace qualification.
+export type Result<A, E = never> =
+  | { readonly _tag: "Success"; readonly success: A }
+  | { readonly _tag: "Failure"; readonly failure: E };
 
-export function ok<TValue, TError>(value: TValue): Result<TValue, TError> {
-  return { ok: true, value };
+export function ok<A, E = never>(value: A): Result<A, E> {
+  return { _tag: "Success", success: value };
 }
 
-export function err<TValue, TError>(error: TError): Result<TValue, TError> {
-  return { ok: false, error };
+export function err<A, E = never>(error: E): Result<A, E> {
+  return { _tag: "Failure", failure: error };
 }
 
-export function getOrThrow<TValue, TError>(
-  result: Result<TValue, TError>
-): TValue {
-  if (!result.ok) {
-    throw result.error;
+export function getOrThrow<A, E>(result: Result<A, E>): A {
+  if (result._tag === "Failure") {
+    throw result.failure;
   }
-  return result.value;
+  return result.success;
 }
 
-export function getOrUndefined<TValue extends object, TError>(
-  result: Result<TValue, TError>
-): TValue | undefined {
-  return result.ok ? result.value : undefined;
+export function getOrUndefined<A extends object, E>(
+  result: Result<A, E>
+): A | undefined {
+  return result._tag === "Success" ? result.success : undefined;
+}
+
+export function isSuccess<A, E>(
+  result: Result<A, E>
+): result is { readonly _tag: "Success"; readonly success: A } {
+  return result._tag === "Success";
+}
+
+export function isFailure<A, E>(
+  result: Result<A, E>
+): result is { readonly _tag: "Failure"; readonly failure: E } {
+  return result._tag === "Failure";
 }
 
 export function toError(error: unknown): Error {

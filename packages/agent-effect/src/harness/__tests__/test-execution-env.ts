@@ -15,13 +15,14 @@ import type {
   ExecutionEnvExecOptions,
   FileError,
   FileInfo,
-  Result,
 } from "../types.ts";
 import {
   type ExecutionError,
   err,
   FileError as FileErrorClass,
+  isFailure,
   ok,
+  type Result,
 } from "../types.ts";
 
 function statToFileInfo(fullPath: string, name: string): FileInfo {
@@ -251,10 +252,10 @@ export class TestExecutionEnv implements ExecutionEnv {
     options?: { maxLines?: number; abortSignal?: AbortSignal }
   ): Promise<Result<string[], FileError>> {
     const result = await this.readTextFile(path);
-    if (!result.ok) {
+    if (isFailure(result)) {
       return result;
     }
-    const lines = result.value.split("\n");
+    const lines = result.success.split("\n");
     return Promise.resolve(
       ok(options?.maxLines ? lines.slice(0, options.maxLines) : lines)
     );

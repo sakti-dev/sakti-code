@@ -4,6 +4,7 @@ import {
   resolveKind,
 } from "./loader-shared.ts";
 import type { ExecutionEnv, PromptTemplate } from "./types.ts";
+import { isFailure } from "./types.ts";
 
 export type PromptTemplateDiagnosticCode =
   | "file_info_failed"
@@ -46,18 +47,18 @@ export async function loadPromptTemplates(
   const diagnostics: PromptTemplateDiagnostic[] = [];
   for (const path of Array.isArray(paths) ? paths : [paths]) {
     const infoResult = await env.fileInfo(path);
-    if (!infoResult.ok) {
-      if (infoResult.error.code !== "not_found") {
+    if (isFailure(infoResult)) {
+      if (infoResult.failure.code !== "not_found") {
         diagnostics.push({
           type: "warning",
           code: "file_info_failed",
-          message: infoResult.error.message,
+          message: infoResult.failure.message,
           path,
         });
       }
       continue;
     }
-    const info = infoResult.value;
+    const info = infoResult.success;
     const kind = await resolveKind(env, info, diagnostics);
     if (kind === "directory") {
       const result = await loadTemplatesFromDir(env, info.path);
@@ -126,16 +127,16 @@ async function loadTemplatesFromDir(
   const promptTemplates: PromptTemplate[] = [];
   const diagnostics: PromptTemplateDiagnostic[] = [];
   const entriesResult = await env.listDir(dir);
-  if (!entriesResult.ok) {
+  if (isFailure(entriesResult)) {
     diagnostics.push({
       type: "warning",
       code: "list_failed",
-      message: entriesResult.error.message,
+      message: entriesResult.failure.message,
       path: dir,
     });
     return { promptTemplates, diagnostics };
   }
-  const entries = entriesResult.value;
+  const entries = entriesResult.success;
 
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     const kind = await resolveKind(env, entry, diagnostics);
@@ -160,28 +161,30 @@ async function loadTemplateFromFile(
 }> {
   const diagnostics: PromptTemplateDiagnostic[] = [];
   const rawContent = await env.readTextFile(filePath);
-  if (!rawContent.ok) {
+  if (isFailure(rawContent)) {
     diagnostics.push({
       type: "warning",
       code: "read_failed",
-      message: rawContent.error.message,
+      message: rawContent.failure.message,
       path: filePath,
     });
     return { promptTemplate: null, diagnostics };
   }
 
-  const parsed = parseFrontmatter<PromptTemplateFrontmatter>(rawContent.value);
-  if (!parsed.ok) {
+  const parsed = parseFrontmatter<PromptTemplateFrontmatter>(
+    rawContent.success
+  );
+  if (isFailure(parsed)) {
     diagnostics.push({
       type: "warning",
       code: "parse_failed",
-      message: parsed.error.message,
+      message: parsed.failure.message,
       path: filePath,
     });
     return { promptTemplate: null, diagnostics };
   }
 
-  const { frontmatter, body } = parsed.value;
+  const { frontmatter, body } = parsed.success;
   const firstLine = body.split("\n").find((line) => line.trim());
   let description =
     typeof frontmatter.description === "string" ? frontmatter.description : "";

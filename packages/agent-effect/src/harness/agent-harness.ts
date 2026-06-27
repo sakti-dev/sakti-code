@@ -52,6 +52,8 @@ import type {
 import {
   AgentHarnessError,
   type AgentHarnessErrorCode,
+  isFailure,
+  ok,
   toError,
 } from "./types.ts";
 
@@ -1136,10 +1138,10 @@ export class AgentHarness<
         branchEntries,
         DEFAULT_COMPACTION_SETTINGS
       );
-      if (!preparationResult.ok) {
-        throw preparationResult.error;
+      if (isFailure(preparationResult)) {
+        throw preparationResult.failure;
       }
-      const preparation = preparationResult.value;
+      const preparation = preparationResult.success;
       if (!preparation) {
         throw new AgentHarnessError({
           code: "compaction",
@@ -1161,7 +1163,7 @@ export class AgentHarness<
       }
       const provided = hookResult?.compaction;
       const compactResult = provided
-        ? { ok: true as const, value: provided }
+        ? ok(provided)
         : await compact(
             preparation,
             model,
@@ -1171,10 +1173,10 @@ export class AgentHarness<
             undefined,
             this.thinkingLevel
           );
-      if (!compactResult.ok) {
-        throw compactResult.error;
+      if (isFailure(compactResult)) {
+        throw compactResult.failure;
       }
-      const result = compactResult.value;
+      const result = compactResult.success;
       const entryId = await Effect.runPromise(
         this.session.appendCompaction(
           result.summary,
@@ -1292,20 +1294,20 @@ export class AgentHarness<
                   options?.replaceInstructions,
               }),
         });
-        if (!branchSummary.ok) {
-          if (branchSummary.error.code === "aborted") {
+        if (isFailure(branchSummary)) {
+          if (branchSummary.failure.code === "aborted") {
             return { cancelled: true };
           }
           throw new AgentHarnessError({
             code: "branch_summary",
-            message: branchSummary.error.message,
-            cause: branchSummary.error,
+            message: branchSummary.failure.message,
+            cause: branchSummary.failure,
           });
         }
-        summaryText = branchSummary.value.summary;
+        summaryText = branchSummary.success.summary;
         summaryDetails = {
-          readFiles: branchSummary.value.readFiles,
-          modifiedFiles: branchSummary.value.modifiedFiles,
+          readFiles: branchSummary.success.readFiles,
+          modifiedFiles: branchSummary.success.modifiedFiles,
         };
       }
       let editorText: string | undefined;

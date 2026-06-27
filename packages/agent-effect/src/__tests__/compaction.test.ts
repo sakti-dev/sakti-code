@@ -734,8 +734,7 @@ describe("harness compaction", () => {
       "test-key"
     );
     expect(errorResult).toMatchObject({
-      ok: false,
-      error: {
+      failure: {
         code: "summarization_failed",
         message: "Summarization failed: boom",
       },
@@ -750,8 +749,9 @@ describe("harness compaction", () => {
       "test-key"
     );
     expect(abortedResult).toMatchObject({
-      ok: false,
-      error: { code: "summarization_failed" },
+      failure: {
+        code: "summarization_failed",
+      },
     });
   });
 
@@ -804,8 +804,7 @@ describe("harness compaction", () => {
     const { model: historyModel } = createFauxModel(false);
     setCompleteResponses([() => completeErrorResult("history failed")]);
     expect(await compact(preparation, historyModel, "test-key")).toMatchObject({
-      ok: false,
-      error: {
+      failure: {
         code: "summarization_failed",
         message: "Summarization failed: history failed",
       },
@@ -818,8 +817,9 @@ describe("harness compaction", () => {
       "test-key"
     );
     expect(invalidResult).toMatchObject({
-      ok: false,
-      error: { code: "invalid_session" },
+      failure: {
+        code: "invalid_session",
+      },
     });
   });
 
@@ -873,8 +873,7 @@ describe("harness compaction", () => {
     setCompleteResponses([() => completeErrorResult("prefix failed")]);
 
     expect(await compact(preparation, model, "test-key")).toMatchObject({
-      ok: false,
-      error: {
+      failure: {
         code: "summarization_failed",
         message: "Turn prefix summarization failed: prefix failed",
       },
@@ -883,8 +882,9 @@ describe("harness compaction", () => {
     const { model: abortedModel } = createFauxModel(false);
     setCompleteResponses([() => completeErrorResult("prefix stopped")]);
     expect(await compact(preparation, abortedModel, "test-key")).toMatchObject({
-      ok: false,
-      error: { code: "summarization_failed" },
+      failure: {
+        code: "summarization_failed",
+      },
     });
   });
 
