@@ -6,7 +6,16 @@
 
 ## Goal
 
-Migrate `packages/agent-effect` from a verbatim structural port (no Effect in business logic) to a fully Effect-native package: typed errors via `Data.TaggedError`, `Either` instead of `Result`, services via `Layer`, the agent loop as a `Stream`, `Session` as an `Effect.Service`, and `@effect/vitest` for tests. Along the way, fix the latent bugs surfaced in the deep-dive review (C1–C6) and address the highest-leverage performance opportunities (P1–P2).
+Migrate `packages/agent-effect` from a verbatim structural port (no Effect in business logic) to a fully Effect-**v4**-native package: typed errors via `Schema.TaggedErrorClass`, services via `Context.Service` + `Layer.effect`, `Either` instead of `Result`, the agent loop as a `Stream`, `Session` as a v4 service, and `@effect/vitest` for tests. Along the way, fix the latent bugs surfaced in the deep-dive review (C1–C6) and address the highest-leverage performance opportunities (P1–P2).
+
+## v4 API references (canonical when docs lag)
+
+- **Effect v4 source (pinned to installed `4.0.0-beta.90`):** `openspec/references/effect-v4/packages/effect/src/`
+- **opencode (real-world v4 codebase):** `openspec/references/opencode/packages/`
+- **Migration patterns (concrete templates):** `docs/patterns/agent-effect-migration-patterns.md`
+- **Skill (high-level guide — verify against source):** `.opencode/skills/effect-ts/`
+
+**Critical skill correction:** the skill documents `ServiceMap.Service` — **wrong**. v4 source (`Context.ts:99,200`; used in `Tracer.ts:168`, `DateTime.ts:1889`) and opencode both use **`Context.Service<Self, Shape>()("Identifier")`**. Verified.
 
 ## Constraints
 
@@ -55,20 +64,22 @@ AppRuntime (ManagedRuntime — constructed in apps/server eventually)
 ├── Logger.Default                                 ← @sakti-code/logger wrapped
 ├── Clock.Live, Random.Make                       ← effect built-ins
 │
-├── SessionStorage.Tag                            ← implemented by SqliteSessionStorage (packages/db)
+├── SessionStorage                                 ← Context.Service, "@sakti-code/SessionStorage"
+│   │                                                implemented by SqliteSessionStorage (packages/db)
 │       ▲
 │       │
-├── Session.Service                               ← depends on SessionStorage
+├── Session                                        ← Context.Service, "@sakti-code/Session"
+│   │                                                Layer.effect depends on SessionStorage
 │       ▲
 │       │
-├── FileSystem.Tag + Command.Tag + Terminal.Tag   ← @effect/platform
-│       ▲                                           (replaces custom ExecutionEnv)
-│       │
-├── StreamProvider.Tag    ┐
-│  CompletionProvider.Tag ┘── both wrap @sakti-code/llm (new Effect variants)
+├── FileSystem + Command + Terminal                ← @effect/platform (replaces custom ExecutionEnv)
 │       ▲
 │       │
-├── AgentLoopConfig services (each a separate Layer):
+├── StreamProvider     ┐
+│  CompletionProvider  ┘── Context.Service wrappers around @sakti-code/llm Effect variants
+│       ▲
+│       │
+├── AgentLoopConfig services (each a Context.Service + Layer):
 │       BeforeToolCall, AfterToolCall, PrepareNextTurn,
 │       GetFollowUpMessages, GetSteeringMessages,
 │       TransformContext, ConvertToLlm,
@@ -126,12 +137,14 @@ Convert `harness/session.ts` end-to-end first. Establishes **6 reusable patterns
 
 | # | Pattern | Established by |
 |---|---------|----------------|
-| 1 | **TaggedError template** — `Data.TaggedError("X")<{code, message, cause?}>` | `SessionError` conversion |
-| 2 | **Service Tag + Layer** — `Context.Tag` + `Layer.effect` | `SessionStorage` interface + `InMemorySessionStorageLive` |
-| 3 | **Service class** — `Effect.Service<T>()("T", { effect, dependencies })` | `Session` class |
-| 4 | **Effect-returning function** — deps in `R`, data in args | `buildSessionContext` |
-| 5 | **Test pattern** — `it.effect` + `TestLayer` + `Effect.provide` | `session.test.ts` rewrite |
+| 1 | **TaggedError template** — `Schema.TaggedErrorClass<X>()("X", { fields })` | `SessionError` conversion |
+| 2 | **Service Tag** — `class X extends Context.Service<X, Shape>()("@scope/X") {}` | `SessionStorage` interface |
+| 3 | **Layer template** — `Layer.effect(Tag, Effect.gen(...))` + `Layer.provideMerge` composition | `InMemorySessionStorageLive`, `SessionLive` |
+| 4 | **Effect-returning function** — `Effect.fn("X.method")(function* () { ... })`; deps in `R`, data in args | `buildSessionContext` |
+| 5 | **Test pattern** — `it.effect` + `Effect.provide(Layer)` per test | `session.test.ts` rewrite |
 | 6 | **Caller adapter** — `// @migration`-tagged `async` wrapper calling `Effect.runPromise` | `compaction.ts`, `branch-summarization.ts`, `auto-compaction.ts`, `agent-harness.ts` (temporary) |
+
+Detailed pattern templates with v4 canonical code live in `docs/patterns/agent-effect-migration-patterns.md`.
 
 Detailed pattern templates live in the implementation plan.
 

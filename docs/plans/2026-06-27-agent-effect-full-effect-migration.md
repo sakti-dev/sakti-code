@@ -2,19 +2,25 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Migrate `packages/agent-effect` from a verbatim structural port to a fully Effect-native package — typed errors via `Data.TaggedError`, `Either` instead of `Result`, services via `Layer`, the agent loop as a `Stream`, `Session` as an `Effect.Service`, and `@effect/vitest` for tests. Fixes latent bugs C1–C6 and perf issues P1, P2, P4–P8 along the way.
+**Goal:** Migrate `packages/agent-effect` from a verbatim structural port to a fully Effect-**v4**-native package — typed errors via `Schema.TaggedErrorClass`, services via `Context.Service` + `Layer.effect`, `Either` instead of `Result`, the agent loop as a `Stream`, `Session` as a v4 service, and `@effect/vitest` for tests. Fixes latent bugs C1–C6 and perf issues P1, P2, P4–P8 along the way.
 
 **Architecture:** Vertical Slice + Horizontal Phases (Approach C). Convert `Session` end-to-end first to establish 6 reusable patterns, then apply those patterns horizontally to every remaining module. Always-green TDD: every commit keeps the full test suite passing. Temporary `// @migration` adapters at caller boundaries let not-yet-migrated modules keep their Promise APIs.
 
 **Tech Stack:**
 - TypeScript, vitest, biome (via ultracite)
-- `effect@^3.21.4` (already in deps)
-- `@effect/vitest@^0.29.0` — to add as devDep in Phase 0
-- `@effect/platform@^0.96.2` — to add in Phase FS (deferred)
+- **`effect@4.0.0-beta.90`** (v4 beta; opencode reference on `4.0.0-beta.83`)
+- **`@effect/vitest@4.0.0-beta.90`** (matched to effect version)
+- `@effect/platform@^4.0.0-beta` — to add in Phase FS (deferred)
 - `@sakti-code/llm` (workspace; will be modified in Phase LLM to add Effect variants)
 - `typebox`, `uuid`, `yaml` (unchanged)
 
 **Design doc:** `docs/plans/2026-06-27-agent-effect-full-effect-migration-design.md` — read this first for architecture, layer tree, and pattern rationale.
+
+**Canonical v4 references (when API behavior is unclear):**
+- **Effect v4 source (pinned to installed `4.0.0-beta.90`):** `openspec/references/effect-v4/packages/effect/src/`
+- **opencode (real-world v4 codebase):** `openspec/references/opencode/packages/`
+- **Migration patterns:** `docs/patterns/agent-effect-migration-patterns.md`
+- **Skill:** `.opencode/skills/effect-ts/` (verify against source — `ServiceMap.Service` is a known skill typo; use `Context.Service`)
 
 ---
 
@@ -28,15 +34,17 @@
 - Code style: follow `AGENTS.md` (arrow fns for callbacks, `for…of`, no `any`, `const` by default, etc.).
 - All commit messages follow existing style: `feat(agent-effect): …`, `refactor(agent-effect): …`, `fix(agent-effect): …`, `docs(agent-effect): …`.
 
-**Patterns reference:** After Phase 0 lands, `docs/patterns/agent-effect-migration-patterns.md` documents the 6 patterns with concrete code. Phases A+ reference patterns by number (Pattern 1 = TaggedError, Pattern 2 = Service Tag + Layer, etc.).
+**Patterns reference:** `docs/patterns/agent-effect-migration-patterns.md` documents the 6 patterns (TaggedError, Context.Service, Layer composition, Effect-returning function, it.effect test, @migration caller adapter) with v4 canonical code. Phases A+ reference patterns by number.
 
-**Effect source reference:** The full Effect-TS source is checked out at `openspec/references/effect/packages/` (pinned at `effect@3.21.4`, matching what's installed). If you're unsure how an Effect API behaves — `Data.TaggedError` shape, `Effect.Service` signatures, `Layer` composition semantics, `Schedule` combinators, `Stream` patterns, `@effect/platform` service shapes — **read the source**. Particularly useful subdirs:
-- `effect/src/` — core Effect, Data, Context, Layer, Schedule, Stream, Queue, Ref, Clock
-- `effect/packages/effect/dtslint/` — typed test cases showing intended usage
-- `platform/`, `platform-node/` — Phase FS reference (FileSystem, Command, Terminal services)
-- `platform/packages/effect/test/` — usage examples in test form
+**Effect source reference:** The full Effect-TS v4 source is checked out at `openspec/references/effect-v4/packages/` (pinned at `effect@4.0.0-beta.90`, matching what's installed). opencode's v4 codebase is at `openspec/references/opencode/packages/` (real-world reference, `4.0.0-beta.83`). If you're unsure how an Effect API behaves — `Schema.TaggedErrorClass` shape, `Context.Service` signatures, `Layer` composition semantics, `Schedule` combinators, `Stream` patterns, `@effect/platform` service shapes — **read the source**. Particularly useful:
 
-Use `rg "class TaggedError" openspec/references/effect/packages/effect/src/` etc. to find canonical definitions. When the docs and source disagree, the source wins (docs lag; source is pinned to the installed version).
+- `openspec/references/effect-v4/packages/effect/src/Context.ts` — `Context.Service` definition (NOT `ServiceMap.Service` as the skill claims)
+- `openspec/references/effect-v4/packages/effect/src/Schema.ts` — `Schema.TaggedErrorClass`, `Schema.Class`, `Schema.brand`
+- `openspec/references/effect-v4/packages/effect/src/Effect.ts` — `Effect.fn`, `Effect.gen`
+- `openspec/references/opencode/packages/core/src/fs-util.ts` — full pattern: `Context.Service` + `Layer.effect` + `Effect.fn`
+- `openspec/references/opencode/packages/opencode/src/account/schema.ts` — `Schema.TaggedErrorClass` with `Schema.Defect` cause
+
+When docs and source disagree, **source wins** (docs lag; source is pinned).
 
 **Granularity note:** Phase 0 has full TDD micro-steps. Phases A–Retry have task-level breakdowns with key code samples. Phases Compaction–Cleanup are outlines — when reached, write a dedicated sub-plan if uncertainty surfaces during execution.
 
@@ -46,26 +54,30 @@ Use `rg "class TaggedError" openspec/references/effect/packages/effect/src/` etc
 
 **Establishes all 6 patterns. Converts `Session`, `SessionError`, `SessionStorage`, `buildSessionContext`, and rewrites session tests as `it.effect`.**
 
-### Task 0.1: Add `@effect/vitest` devDep
+### Task 0.1: Add `@effect/vitest` devDep (matched to v4 effect)
 
 **Files:**
 - Modify: `packages/agent-effect/package.json`
 
-**Step 1:** Add devDep:
-```bash
-cd packages/agent-effect && pnpm add -D @effect/vitest@^0.29.0
+**Step 1:** Confirm versions in `package.json` (should already be set):
+```json
+{
+  "dependencies": { "effect": "4.0.0-beta.90" },
+  "devDependencies": { "@effect/vitest": "4.0.0-beta.90" }
+}
 ```
+If not, run: `cd packages/agent-effect && pnpm add effect@4.0.0-beta.90 && pnpm add -D @effect/vitest@4.0.0-beta.90`
 
 **Step 2:** Verify install:
 ```bash
-pnpm exec vitest --version
-ls node_modules/@effect/vitest
+node -e "console.log(require('./packages/agent-effect/node_modules/effect/package.json').version)"
+# Should print: 4.0.0-beta.90
 ```
 
 **Step 3:** Commit
 ```bash
 git add packages/agent-effect/package.json pnpm-lock.yaml
-git commit -m "chore(agent-effect): add @effect/vitest devDep for Effect-native tests"
+git commit -m "chore(agent-effect): pin effect@4.0.0-beta.90 + @effect/vitest@4.0.0-beta.90"
 ```
 
 ---
@@ -108,49 +120,78 @@ git commit -m "docs(patterns): scaffold agent-effect migration patterns doc"
 
 ---
 
-### Task 0.3: Write failing test for TaggedError `SessionError`
+### Task 0.3: Write failing test for v4 `Schema.TaggedErrorClass` `SessionError`
 
 **Files:**
 - Create: `packages/agent-effect/src/harness/__tests__/session-error.tagged.test.ts`
 
-**Step 1:** Write the failing test:
+**Step 1:** Write the failing test using **v4** patterns (NOT `Data.TaggedError` — see Pattern 1 in PATTERNS.md):
+
 ```typescript
-import { describe, it, expect } from "vitest"
-import { Data, Effect, Either } from "effect"
+import { describe, it, expect } from "@effect/vitest"
+import { Effect, Either } from "effect"
 import { SessionError } from "../types.ts"
 
-describe("SessionError (TaggedError)", () => {
-  it("has _tag = 'SessionError'", () => {
+describe("SessionError (Schema.TaggedErrorClass)", () => {
+  it("has _tag = 'SessionError' and typed fields", () => {
     const error = new SessionError({
-      code: "entry_not_found",
-      message: "missing",
+      code: "not_found",
+      message: "missing entry",
     })
     expect(error._tag).toBe("SessionError")
-    expect(error.code).toBe("entry_not_found")
-    expect(error.message).toBe("missing")
+    expect(error.code).toBe("not_found")
+    expect(error.message).toBe("missing entry")
   })
 
-  it.effect("can be caught via Effect.catchTag", () =>
-    Effect.gen(function* () {
-      const result = yield* Effect.either(
-        Effect.fail(new SessionError({ code: "entry_not_found", message: "x" }))
-      )
-      if (Either.isLeft(result)) {
-        expect(result.left._tag).toBe("SessionError")
-      }
-    })
-  )
+  it("is still instanceof Error", () => {
+    const error = new SessionError({ code: "storage", message: "disk full" })
+    expect(error).toBeInstanceOf(Error)
+  })
 
-  it.effect("catchTag recovers from SessionError only", () =>
+  it("supports optional cause", () => {
+    const underlying = new Error("disk I/O")
+    const error = new SessionError({
+      code: "storage",
+      message: "write failed",
+      cause: underlying,
+    })
+    expect(error.cause).toBe(underlying)
+  })
+
+  it.effect("recovers via Effect.catchTag", () =>
     Effect.gen(function* () {
       const result = yield* Effect.fail(
-        new SessionError({ code: "entry_not_found", message: "x" })
+        new SessionError({ code: "not_found", message: "x" })
       ).pipe(
         Effect.catchTag("SessionError", (e) =>
           Effect.succeed(`recovered: ${e.code}`)
         )
       )
-      expect(result).toBe("recovered: entry_not_found")
+      expect(result).toBe("recovered: not_found")
+    })
+  )
+
+  it.effect("appears in Either channel via Effect.either", () =>
+    Effect.gen(function* () {
+      const either = yield* Effect.either(
+        Effect.fail(new SessionError({ code: "storage", message: "y" }))
+      )
+      expect(Either.isLeft(either)).toBe(true)
+      if (Either.isLeft(either)) {
+        expect(either.left._tag).toBe("SessionError")
+        expect(either.left.code).toBe("storage")
+      }
+    })
+  )
+
+  it.effect("is yieldable — no Effect.fail needed", () =>
+    Effect.gen(function* () {
+      const either = yield* Effect.either(
+        Effect.gen(function* () {
+          yield* new SessionError({ code: "not_found", message: "z" })
+        })
+      )
+      expect(Either.isLeft(either)).toBe(true)
     })
   )
 })
@@ -160,18 +201,28 @@ describe("SessionError (TaggedError)", () => {
 ```bash
 cd packages/agent-effect && pnpm exec vitest run src/harness/__tests__/session-error.tagged.test.ts
 ```
-Expected: FAIL — `SessionError` is not a TaggedError; `_tag` is undefined; `new SessionError({...})` doesn't match current `(code, message, cause?)` constructor signature.
+Expected: FAIL — `SessionError` is not yet a TaggedErrorClass; `new SessionError({...})` doesn't match current positional constructor `(code, message, cause?)`.
 
 ---
 
-### Task 0.4: Convert `SessionError` to `Data.TaggedError`
+### Task 0.4: Convert `SessionError` to `Schema.TaggedErrorClass` (v4)
 
 **Files:**
-- Modify: `packages/agent-effect/src/harness/types.ts:188-196`
+- Modify: `packages/agent-effect/src/harness/types.ts:180-196` (the `SessionErrorCode` union + `SessionError` class)
+- Modify call sites (find with `rg -n "new SessionError\(" src/`)
 
-**Step 1:** Replace the class:
+**Step 1:** Replace the type + class with v4 form (Pattern 1 from PATTERNS.md):
+
 ```typescript
 // BEFORE
+export type SessionErrorCode =
+  | "not_found"
+  | "invalid_session"
+  | "invalid_entry"
+  | "invalid_fork_target"
+  | "storage"
+  | "unknown";
+
 export class SessionError extends Error {
   public code: SessionErrorCode;
   constructor(code: SessionErrorCode, message: string, cause?: Error) {
@@ -181,55 +232,81 @@ export class SessionError extends Error {
   }
 }
 
-// AFTER
-export class SessionError extends Data.TaggedError("SessionError")<{
-  readonly code: SessionErrorCode;
-  readonly message: string;
-  readonly cause?: Error;
-}>() {}
+// AFTER (v4)
+import { Schema } from "effect";
+
+export const SessionErrorCode = Schema.Literals([
+  "not_found",
+  "invalid_session",
+  "invalid_entry",
+  "invalid_fork_target",
+  "storage",
+  "unknown",
+]);
+export type SessionErrorCode = typeof SessionErrorCode.Type;
+
+export class SessionError extends Schema.TaggedErrorClass<SessionError>()(
+  "SessionError",
+  {
+    code: SessionErrorCode,
+    message: Schema.String,
+    cause: Schema.optional(Schema.Defect()),
+  }
+) {}
 ```
 
-Add the import at top of file:
-```typescript
-import { Data } from "effect";
-```
+Add `import { Schema } from "effect";` at the top of `types.ts` (alongside the existing type imports).
 
-**Step 2:** Find all `new SessionError(code, message, cause?)` call sites and update to object form `new SessionError({ code, message, ...(cause !== undefined ? { cause } : {}) })`:
+**Step 2:** Find and update all `new SessionError(code, message, cause?)` call sites:
 ```bash
 cd packages/agent-effect && rg -n "new SessionError\(" src/
 ```
-Update each. (Use `exactOptionalPropertyTypes: true` rule — conditional spread for `cause`.)
 
-**Step 3:** Find all `instanceof SessionError` sites and verify they still work or convert to `_tag` check:
-```bash
-cd packages/agent-effect && rg -n "instanceof SessionError" src/
+Known sites (verify before editing):
+- `harness/session.ts:252` — `new SessionError("not_found", \`Entry ${targetId} not found\`)`
+- `harness/session.ts:279` — same with `entryId`
+- `harness/memory-storage.ts:69, 85, 153` — multi-line form: `new SessionError("invalid_session", \`...${this.leafId}...\`)`
+- `harness/memory-storage.ts:95, 144` — single-line: `new SessionError("not_found", \`Entry ${leafId} not found\`)`
+- `compaction/branch-summarization.ts:104` — `new SessionError("invalid_session", \`Entry ${current} not found\`)`
+
+Each converts to object form:
+```typescript
+new SessionError({
+  code: "not_found",
+  message: `Entry ${id} not found`,
+})
 ```
-`Data.TaggedError` classes do support `instanceof` in current Effect versions, but the idiomatic check is `_tag === "SessionError"`. Leave `instanceof` working; convert to `_tag` only inside `Effect.catchTag` patterns.
 
-**Step 4:** Run the failing test to verify it passes:
+No existing site passes `cause`, so no conditional spread needed in this pass.
+
+**Step 3:** Run the failing test — should now PASS:
 ```bash
 pnpm exec vitest run src/harness/__tests__/session-error.tagged.test.ts
 ```
-Expected: PASS
 
-**Step 5:** Run the full suite to verify no regressions:
+**Step 4:** Run the full suite to verify no regressions:
 ```bash
 pnpm run test
 ```
-Expected: 233+ tests pass (3 new from this task).
+Expected: 233+ tests pass (6 new from this task).
 
-**Step 6:** Fill in Pattern 1 in `docs/patterns/agent-effect-migration-patterns.md` with the before/after code above.
+**Step 5:** Verify Pattern 1 in `docs/patterns/agent-effect-migration-patterns.md` matches what we landed (already done — no edits needed unless divergence).
 
-**Step 7:** Commit
+**Step 6:** Commit
 ```bash
 git add packages/agent-effect/src/harness/types.ts \
         packages/agent-effect/src/harness/__tests__/session-error.tagged.test.ts \
-        docs/patterns/agent-effect-migration-patterns.md
-git commit -m "refactor(agent-effect): convert SessionError to Data.TaggedError
+        packages/agent-effect/src/harness/session.ts \
+        packages/agent-effect/src/harness/memory-storage.ts \
+        packages/agent-effect/src/compaction/branch-summarization.ts
+git commit -m "refactor(agent-effect): convert SessionError to Schema.TaggedErrorClass (v4 Pattern 1)
 
-Establishes Pattern 1 (TaggedError template) for the migration.
-All call sites updated to object-form constructor.
-instanceof still works; Effect.catchTag is now the preferred recovery."
+Establishes Pattern 1 for the migration.
+- SessionErrorCode becomes Schema.Literals (serializable)
+- SessionError becomes Schema.TaggedErrorClass
+- All call sites updated to object-form constructor
+- Yieldable: yield* new SessionError({...}) works without Effect.fail
+- catchTag('SessionError', ...) is the idiomatic recovery"
 ```
 
 ---
@@ -282,73 +359,50 @@ describe("SessionStorage (Context.Tag)", () => {
 **Files:**
 - Modify: `packages/agent-effect/src/harness/types.ts:427-442`
 
-**Step 1:** Replace the interface + add Tag:
-```typescript
-// BEFORE
-export interface SessionStorage<TMetadata extends SessionMetadata = SessionMetadata> {
-  appendEntry(entry: SessionTreeEntry): Promise<void>;
-  createEntryId(): Promise<string>;
-  // … all Promise<T>-returning
-}
-
-// AFTER
-export interface SessionStorage<TMetadata extends SessionMetadata = SessionMetadata> {
-  readonly appendEntry: (entry: SessionTreeEntry) => Effect.Effect<void, SessionError>;
-  readonly createEntryId: () => Effect.Effect<string, SessionError>;
-  readonly findEntries: <TType extends SessionTreeEntry["type"]>(
-    type: TType
-  ) => Effect.Effect<
-    Array<Extract<SessionTreeEntry, { type: TType }>>,
-    SessionError
-  >;
-  readonly getEntries: () => Effect.Effect<SessionTreeEntry[], SessionError>;
-  readonly getEntry: (
-    id: string
-  ) => Effect.Effect<SessionTreeEntry | undefined, SessionError>;
-  readonly getLabel: (
-    id: string
-  ) => Effect.Effect<string | undefined, SessionError>;
-  readonly getLeafId: () => Effect.Effect<string | null, SessionError>;
-  readonly getMetadata: () => Effect.Effect<TMetadata, SessionError>;
-  readonly getPathToRoot: (
-    leafId: string | null
-  ) => Effect.Effect<SessionTreeEntry[], SessionError>;
-  readonly setLeafId: (
-    leafId: string | null
-  ) => Effect.Effect<void, SessionError>;
-}
-
-export class SessionStorageTag<TMetadata extends SessionMetadata = SessionMetadata>
-  extends Context.Tag("SessionStorage")<
-    SessionStorageTag<TMetadata>,
-    SessionStorage<TMetadata>
-  >() {}
-
-// Backwards-compat alias (so existing imports `SessionStorage` work as the Tag too)
-export const SessionStorage = SessionStorageTag
-```
-
-Wait — there's a naming collision: the interface is `SessionStorage` and the Tag should also be `SessionStorage` (so callers do `yield* SessionStorage`). Use `Context.Tag`-based class to merge them:
+**Step 1:** Replace the interface + add Service class (v4 pattern — see Pattern 2 in PATTERNS.md):
 
 ```typescript
-import { Context, Data, Effect } from "effect"
+import { Context, Effect } from "effect"
+import type { SessionMetadata, SessionTreeEntry } from "./types.ts"
+import { SessionError } from "./types.ts"
 
-export interface SessionStorageImpl<TMetadata extends SessionMetadata = SessionMetadata> {
+// 1. The interface (the Shape) — all methods return Effect
+export interface SessionStorageShape<TMetadata extends SessionMetadata = SessionMetadata> {
   readonly appendEntry: (entry: SessionTreeEntry) => Effect.Effect<void, SessionError>
   readonly createEntryId: () => Effect.Effect<string, SessionError>
-  // … (all methods)
+  readonly findEntries: <TType extends SessionTreeEntry["type"]>(
+    type: TType
+  ) => Effect.Effect<Array<Extract<SessionTreeEntry, { type: TType }>>, SessionError>
+  readonly getEntries: () => Effect.Effect<SessionTreeEntry[], SessionError>
+  readonly getEntry: (
+    id: string
+  ) => Effect.Effect<SessionTreeEntry | undefined, SessionError>
+  readonly getLabel: (
+    id: string
+  ) => Effect.Effect<string | undefined, SessionError>
+  readonly getLeafId: () => Effect.Effect<string | null, SessionError>
+  readonly getMetadata: () => Effect.Effect<TMetadata, SessionError>
+  readonly getPathToRoot: (
+    leafId: string | null
+  ) => Effect.Effect<SessionTreeEntry[], SessionError>
+  readonly setLeafId: (
+    leafId: string | null
+  ) => Effect.Effect<void, SessionError>
 }
 
+// 2. The Service Tag (Context.Service, NOT Context.Tag — Tag isn't in v4)
+//    Pattern: class X extends Context.Service<X, Shape>()("Identifier") {}
 export class SessionStorage<TMetadata extends SessionMetadata = SessionMetadata>
-  extends Context.Tag("SessionStorage")<
-    SessionStorage<TMetadata>,
-    SessionStorageImpl<TMetadata>
-  >() {}
+  extends Context.Service<SessionStorage<TMetadata>, SessionStorageShape<TMetadata>>()(
+    "@sakti-code/SessionStorage"
+  ) {}
 ```
 
-**Step 2:** Update the failing test to use `SessionStorage` as a Tag and `SessionStorageImpl` for the shape:
+Note: `SessionStorage` (the class) becomes the Tag — callers do `yield* SessionStorage`. The interface name changes to `SessionStorageShape` to avoid collision.
 
-**Step 3:** Run failing test — should still FAIL because `InMemorySessionStorage` doesn't implement the new signature yet.
+**Step 2:** Update the failing test to use `SessionStorage` as a Tag (yield* it) and `SessionStorageShape` for the shape:
+
+**Step 3:** Run failing test — should still FAIL because `InMemorySessionStorage` doesn't implement the new signature yet (Task 0.7 fixes that).
 
 ---
 
@@ -470,69 +524,85 @@ Note: `Session.Default` should be a Layer that provides both `Session` AND `Sess
 **Files:**
 - Modify: `packages/agent-effect/src/harness/session.ts:105-296`
 
-**Step 1:** Replace the class with `Effect.Service` form:
+**Step 1:** Replace the class with v4 `Context.Service` form (Pattern 2 + 3 from PATTERNS.md). **Note**: v4 splits Tag from Layer — `Context.Service` defines the Tag only; the Layer is a separate declaration.
 
 ```typescript
-import { Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 
+// 1. The interface (Shape)
+export interface SessionShape<TMetadata extends SessionMetadata = SessionMetadata> {
+  readonly getMetadata: () => Effect.Effect<TMetadata, SessionError>
+  readonly getLeafId: () => Effect.Effect<string | null, SessionError>
+  readonly getEntry: (id: string) => Effect.Effect<SessionTreeEntry | undefined, SessionError>
+  readonly getEntries: () => Effect.Effect<SessionTreeEntry[], SessionError>
+  readonly getLabel: (id: string) => Effect.Effect<string | undefined, SessionError>
+  readonly getBranch: (fromId?: string) => Effect.Effect<SessionTreeEntry[], SessionError>
+  readonly buildContext: () => Effect.Effect<SessionContext, SessionError>
+  readonly appendMessage: (msg: AgentMessage) => Effect.Effect<void, SessionError>
+  readonly appendCompaction: <T>(arg: { firstKeptEntryId: string; summary: string; details?: T }) => Effect.Effect<void, SessionError>
+  readonly moveTo: (entryId: string) => Effect.Effect<void, SessionError>
+  // … other methods
+}
+
+// 2. The Service Tag (Context.Service, NOT Effect.Service — v3 form is deprecated)
 export class Session<TMetadata extends SessionMetadata = SessionMetadata>
-  extends Effect.Service<Session<TMetadata>>()("Session", {
-    effect: Effect.gen(function* () {
-      const storage = yield* SessionStorage<TMetadata>
+  extends Context.Service<Session<TMetadata>, SessionShape<TMetadata>>()(
+    "@sakti-code/Session"
+  ) {}
 
-      return {
-        getMetadata: () => storage.getMetadata(),
-        getLeafId: () => storage.getLeafId(),
-        getEntry: (id) => storage.getEntry(id),
-        getEntries: () => storage.getEntries(),
-        getLabel: (id) => storage.getLabel(id),
+// 3. The Layer (separately declared, depends on SessionStorage)
+//    Pattern 3 (Layer composition): use Layer.effect + yield* dependencies
+export const SessionLive = Layer.effect(
+  Session,
+  Effect.gen(function* () {
+    const storage = yield* SessionStorage
 
-        getBranch: (fromId?: string) =>
-          Effect.gen(function* () {
-            const leafId = fromId ?? (yield* storage.getLeafId())
-            return yield* storage.getPathToRoot(leafId)
-          }),
+    return {
+      getMetadata: () => storage.getMetadata(),
+      getLeafId: () => storage.getLeafId(),
+      getEntry: (id) => storage.getEntry(id),
+      getEntries: () => storage.getEntries(),
+      getLabel: (id) => storage.getLabel(id),
 
-        buildContext: () =>
-          Effect.gen(function* () {
-            const branch = yield* (yield* Session).getBranch()
-            return buildSessionContextFromEntries(branch)
-          }),
+      // Service methods use Effect.fn for tracing (Pattern 4)
+      getBranch: Effect.fn("Session.getBranch")(function* (fromId?: string) {
+        const leafId = fromId ?? (yield* storage.getLeafId())
+        return yield* storage.getPathToRoot(leafId)
+      }),
 
-        appendMessage: (msg: AgentMessage) =>
-          Effect.gen(function* () {
-            const id = yield* storage.createEntryId()
-            const parentId = yield* storage.getLeafId()
-            const entry: MessageEntry = {
-              type: "message",
-              id,
-              parentId: parentId ?? null,
-              timestamp: Date.now(),
-              message: msg,
-            }
-            yield* storage.appendEntry(entry)
-            yield* storage.setLeafId(id)
-          }),
+      buildContext: Effect.fn("Session.buildContext")(function* () {
+        const branch = yield* (yield* Session).getBranch()
+        return buildSessionContextFromEntries(branch)
+      }),
 
-        appendCompaction: <T>(arg: { firstKeptEntryId: string; summary: string; details?: T }) =>
-          Effect.gen(function* () {
-            // … existing logic with yield* storage.X instead of await this.storage.X
-          }),
+      appendMessage: Effect.fn("Session.appendMessage")(function* (msg: AgentMessage) {
+        const id = yield* storage.createEntryId()
+        const parentId = yield* storage.getLeafId()
+        const entry: MessageEntry = {
+          type: "message",
+          id,
+          parentId: parentId ?? null,
+          timestamp: Date.now(),
+          message: msg,
+        }
+        yield* storage.appendEntry(entry)
+        yield* storage.setLeafId(id)
+      }),
 
-        moveTo: (entryId: string) =>
-          Effect.gen(function* () {
-            yield* storage.setLeafId(entryId)
-          }),
+      // … other methods, each as Effect.fn("Session.X")(function* () { ... })
+    }
+  })
+)
 
-        // … all other methods, each returning Effect
-      }
-    }),
-  }) {}
+// Convenience: Session with default InMemory storage baked in (for tests)
+export const SessionWithInMemory = SessionLive.pipe(
+  Layer.provideMerge(InMemorySessionStorageLive)
+)
 ```
 
 **Step 2:** Drop `getStorage()` (no longer needed — consumers ask `SessionStorage` directly via `yield*`).
 
-**Step 3:** Run failing test — should now PASS.
+**Step 3:** Run failing test (from Task 0.9) — should now PASS when provided `SessionLive` (which requires `SessionStorage`) or `SessionWithInMemory` (self-contained).
 
 ---
 
@@ -721,7 +791,7 @@ git commit -m "docs(agent-effect): record Phase 0 @migration adapter baseline"
 
 ---
 
-## Phase A: Remaining TaggedErrors → `Data.TaggedError` — ~1 day
+## Phase A: Remaining TaggedErrors → `Schema.TaggedErrorClass` — ~1 day
 
 **Apply Pattern 1 to the 5 remaining error classes. Mechanical.**
 
@@ -731,38 +801,38 @@ git commit -m "docs(agent-effect): record Phase 0 @migration adapter baseline"
 - Modify: `packages/agent-effect/src/harness/types.ts:114-138`
 - Modify: any call sites (find with `rg "new FileError\(" packages/agent-effect/src/`)
 
-**Steps:** Apply Pattern 1 (from PATTERNS.md) verbatim. Update all `new FileError(code, message, cause?)` call sites to object form. Add `import { Data } from "effect"` if not already present.
+**Steps:** Apply Pattern 1 (from PATTERNS.md) verbatim — `Schema.TaggedErrorClass` form. Update all `new FileError(code, message, cause?)` call sites to object form. Add `import { Schema } from "effect"` if not already present.
 
 **Commit:**
 ```bash
-git add -u && git commit -m "refactor(agent-effect): convert FileError to Data.TaggedError (Pattern 1)"
+git add -u && git commit -m "refactor(agent-effect): convert FileError to Schema.TaggedErrorClass (Pattern 1)"
 ```
 
 ### Task A.2: Convert `ExecutionError`
 
 Same as A.1 — apply Pattern 1 to `ExecutionError` (`types.ts:139-154`).
 
-**Commit:** `refactor(agent-effect): convert ExecutionError to Data.TaggedError`
+**Commit:** `refactor(agent-effect): convert ExecutionError to Schema.TaggedErrorClass`
 
 ### Task A.3: Convert `CompactionError`
 
 Same — `types.ts:155-169`.
 
-**Commit:** `refactor(agent-effect): convert CompactionError to Data.TaggedError`
+**Commit:** `refactor(agent-effect): convert CompactionError to Schema.TaggedErrorClass`
 
 ### Task A.4: Convert `BranchSummaryError`
 
 Same — `types.ts:170-187`.
 
-**Commit:** `refactor(agent-effect): convert BranchSummaryError to Data.TaggedError`
+**Commit:** `refactor(agent-effect): convert BranchSummaryError to Schema.TaggedErrorClass`
 
 ### Task A.5: Convert `AgentHarnessError`
 
-Same — `types.ts:209-217`.
+Same — `types.ts:209-217`. Also convert `AgentHarnessErrorCode` to `Schema.Literals`.
 
-**Important:** Check `normalizeHarnessError` in `agent-harness.ts:165-187` — it does `instanceof` checks. Verify they still work, or convert to `_tag`-based switch (preferred).
+**Important:** Check `normalizeHarnessError` in `agent-harness.ts:165-187` — it does `instanceof` checks. Verify they still work, or convert to `_tag`-based switch (preferred for v4).
 
-**Commit:** `refactor(agent-effect): convert AgentHarnessError to Data.TaggedError`
+**Commit:** `refactor(agent-effect): convert AgentHarnessError to Schema.TaggedErrorClass`
 
 ### Task A.6: Update `normalizeHarnessError` to use `_tag` switch
 
@@ -873,15 +943,16 @@ After all sites converted, delete the aliases from `types.ts`. Update remaining 
 - Modify: `packages/llm/src/index.ts` (export)
 - Create: `packages/llm/src/effect.ts`
 
-**Step 1:** Create `packages/llm/src/effect.ts`:
+**Step 1:** Create `packages/llm/src/effect.ts` (v4 patterns):
 ```typescript
-import { Effect, Stream } from "effect"
+import { Effect, Schema } from "effect"
 import { stream, complete, type StreamRequest, type CompletionRequest, type StreamResult, type CompletionResult } from "./index.ts"
 
-export class LLMError extends Data.TaggedError("LLMError")<{
-  readonly message: string
-  readonly cause?: unknown
-}>() {}
+// v4: Schema.TaggedErrorClass, NOT Data.TaggedError (Pattern 1)
+export class LLMError extends Schema.TaggedErrorClass<LLMError>()("LLMError", {
+  message: Schema.String,
+  cause: Schema.optional(Schema.Defect()),
+}) {}
 
 export const streamEffect = (
   req: StreamRequest
@@ -900,38 +971,45 @@ export const completeEffect = (
   })
 ```
 
-**Step 2:** Add `"effect"` to `packages/llm/package.json` deps.
+**Step 2:** Add `"effect": "4.0.0-beta.90"` to `packages/llm/package.json` deps.
 
-**Step 3:** Export from `index.ts`:
+**Step 3:** Export from `packages/llm/src/index.ts`:
 ```typescript
 export * from "./effect.ts"
 ```
 
 **Step 4:** Test from `packages/llm` (add a unit test that mocks the underlying `stream`/`complete`).
 
-**Commit:** `feat(llm): add Effect-native streamEffect/completeEffect variants`
+**Commit:** `feat(llm): add Effect-native streamEffect/completeEffect variants (v4)`
 
-### Task L.2: Introduce `StreamProvider` and `CompletionProvider` tags in agent-effect
+### Task L.2: Introduce `StreamProvider` and `CompletionProvider` services in agent-effect
 
 **Files:**
 - Create: `packages/agent-effect/src/services/llm.ts`
 
-**Step 1:**
+**Step 1:** Define services with v4 `Context.Service` (Pattern 2):
 ```typescript
 import { Context, Effect, Layer } from "effect"
-import { streamEffect, completeEffect, type StreamRequest, type CompletionRequest } from "@sakti-code/llm"
-import { LLMError } from "@sakti-code/llm/effect"
+import { streamEffect, completeEffect, LLMError, type StreamRequest, type CompletionRequest } from "@sakti-code/llm"
 
-export class StreamProvider extends Context.Tag("StreamProvider")<
-  StreamProvider,
-  { readonly stream: (req: StreamRequest) => Effect.Effect<StreamResult, LLMError> }
->() {}
+// Service shapes
+interface StreamProviderShape {
+  readonly stream: (req: StreamRequest) => Effect.Effect<StreamResult, LLMError>
+}
+interface CompletionProviderShape {
+  readonly complete: (req: CompletionRequest) => Effect.Effect<CompletionResult, LLMError>
+}
 
-export class CompletionProvider extends Context.Tag("CompletionProvider")<
-  CompletionProvider,
-  { readonly complete: (req: CompletionRequest) => Effect.Effect<CompletionResult, LLMError> }
->() {}
+// v4 Service Tags (Context.Service, NOT Context.Tag — Pattern 2)
+export class StreamProvider extends Context.Service<StreamProvider, StreamProviderShape>()(
+  "@sakti-code/StreamProvider"
+) {}
 
+export class CompletionProvider extends Context.Service<CompletionProvider, CompletionProviderShape>()(
+  "@sakti-code/CompletionProvider"
+) {}
+
+// Live Layers (Pattern 3 — Layer.effect / Layer.sync)
 export const StreamProviderLive = Layer.succeed(StreamProvider, {
   stream: (req) => streamEffect(req),
 })
@@ -943,7 +1021,7 @@ export const CompletionProviderLive = Layer.succeed(CompletionProvider, {
 
 **Step 2:** Export from `index.ts`.
 
-**Commit:** `feat(agent-effect): add StreamProvider + CompletionProvider service tags`
+**Commit:** `feat(agent-effect): add StreamProvider + CompletionProvider services (Pattern 2)`
 
 ---
 
