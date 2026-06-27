@@ -47,6 +47,7 @@ import type {
   NavigateTreeResult,
   PendingSessionWrite,
   PromptTemplate,
+  SessionError,
   Skill,
 } from "./types.ts";
 import {
@@ -432,40 +433,55 @@ export class AgentHarness<
     }
   }
 
+  private createTurnStateEffect = (): Effect.Effect<
+    AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>,
+    SessionError
+  > => {
+    const self = this;
+    return Effect.gen(function* () {
+      const context = yield* self.session.buildContext();
+      const resources = self.getResources();
+      const sessionMetadata = yield* self.session.getMetadata();
+      const tools = [...self.tools.values()];
+      const activeTools = self.activeToolNames
+        .map((name) => self.tools.get(name))
+        .filter((tool): tool is TTool => tool !== undefined);
+      let systemPrompt = "You are a helpful assistant.";
+      const sp = self.systemPrompt;
+      if (typeof sp === "string") {
+        systemPrompt = sp;
+      } else if (sp) {
+        systemPrompt = yield* Effect.promise(() =>
+          Promise.resolve(
+            sp({
+              env: self.env,
+              session: self.session,
+              model: self.model,
+              thinkingLevel: self.thinkingLevel,
+              activeTools,
+              resources,
+            })
+          )
+        );
+      }
+      return {
+        messages: context.messages,
+        resources,
+        streamOptions: cloneStreamOptions(self.streamOptions),
+        sessionId: sessionMetadata.id,
+        systemPrompt,
+        model: self.model,
+        thinkingLevel: self.thinkingLevel,
+        tools,
+        activeTools,
+      };
+    });
+  };
+
   private async createTurnState(): Promise<
     AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
   > {
-    const context = await Effect.runPromise(this.session.buildContext());
-    const resources = this.getResources();
-    const sessionMetadata = await Effect.runPromise(this.session.getMetadata());
-    const tools = [...this.tools.values()];
-    const activeTools = this.activeToolNames
-      .map((name) => this.tools.get(name))
-      .filter((tool): tool is TTool => tool !== undefined);
-    let systemPrompt = "You are a helpful assistant.";
-    if (typeof this.systemPrompt === "string") {
-      systemPrompt = this.systemPrompt;
-    } else if (this.systemPrompt) {
-      systemPrompt = await this.systemPrompt({
-        env: this.env,
-        session: this.session,
-        model: this.model,
-        thinkingLevel: this.thinkingLevel,
-        activeTools,
-        resources,
-      });
-    }
-    return {
-      messages: context.messages,
-      resources,
-      streamOptions: cloneStreamOptions(this.streamOptions),
-      sessionId: sessionMetadata.id,
-      systemPrompt,
-      model: this.model,
-      thinkingLevel: this.thinkingLevel,
-      tools,
-      activeTools,
-    };
+    return Effect.runPromise(this.createTurnStateEffect());
   }
 
   private createContext(
@@ -657,51 +673,45 @@ export class AgentHarness<
     }
   }
 
-  // @migration TODO: remove when agent-harness.ts migrates to Effect (Phase Harness).
-  // Each this.session.x() returns an Effect; we run it via Effect.runPromise.
-  private async flushPendingSessionWrites(): Promise<void> {
-    while (this.pendingSessionWrites.length > 0) {
-      const write = this.pendingSessionWrites[0]!;
-      if (write.type === "message") {
-        await Effect.runPromise(this.session.appendMessage(write.message));
-      } else if (write.type === "model_change") {
-        await Effect.runPromise(
-          this.session.appendModelChange(write.provider, write.modelId)
-        );
-      } else if (write.type === "thinking_level_change") {
-        await Effect.runPromise(
-          this.session.appendThinkingLevelChange(write.thinkingLevel)
-        );
-      } else if (write.type === "active_tools_change") {
-        await Effect.runPromise(
-          this.session.appendActiveToolsChange(write.activeToolNames)
-        );
-      } else if (write.type === "custom") {
-        await Effect.runPromise(
-          this.session.appendCustomEntry(write.customType, write.data)
-        );
-      } else if (write.type === "custom_message") {
-        await Effect.runPromise(
-          this.session.appendCustomMessageEntry(
+  private flushPendingSessionWritesEffect = (): Effect.Effect<
+    void,
+    SessionError
+  > => {
+    const self = this;
+    return Effect.gen(function* () {
+      while (self.pendingSessionWrites.length > 0) {
+        const write = self.pendingSessionWrites[0]!;
+        if (write.type === "message") {
+          yield* self.session.appendMessage(write.message);
+        } else if (write.type === "model_change") {
+          yield* self.session.appendModelChange(write.provider, write.modelId);
+        } else if (write.type === "thinking_level_change") {
+          yield* self.session.appendThinkingLevelChange(write.thinkingLevel);
+        } else if (write.type === "active_tools_change") {
+          yield* self.session.appendActiveToolsChange(write.activeToolNames);
+        } else if (write.type === "custom") {
+          yield* self.session.appendCustomEntry(write.customType, write.data);
+        } else if (write.type === "custom_message") {
+          yield* self.session.appendCustomMessageEntry(
             write.customType,
             write.content,
             write.display,
             write.details
-          )
-        );
-      } else if (write.type === "label") {
-        await Effect.runPromise(
-          this.session.appendLabel(write.targetId, write.label)
-        );
-      } else if (write.type === "session_info") {
-        await Effect.runPromise(
-          this.session.appendSessionName(write.name ?? "")
-        );
-      } else if (write.type === "leaf") {
-        await Effect.runPromise(this.session.moveTo(write.targetId));
+          );
+        } else if (write.type === "label") {
+          yield* self.session.appendLabel(write.targetId, write.label);
+        } else if (write.type === "session_info") {
+          yield* self.session.appendSessionName(write.name ?? "");
+        } else if (write.type === "leaf") {
+          yield* self.session.moveTo(write.targetId);
+        }
+        self.pendingSessionWrites.shift();
       }
-      this.pendingSessionWrites.shift();
-    }
+    });
+  };
+
+  private async flushPendingSessionWrites(): Promise<void> {
+    await Effect.runPromise(this.flushPendingSessionWritesEffect());
   }
 
   private async handleAgentEvent(
