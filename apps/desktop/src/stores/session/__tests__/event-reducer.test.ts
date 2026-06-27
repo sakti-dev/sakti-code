@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@sakti-code/agent-effect";
+import type { AgentMessage } from "@sakti-code/agent";
 import { describe, expect, it } from "vitest";
 import {
   makeAbortEvent,

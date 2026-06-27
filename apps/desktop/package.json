@@ -23,7 +23,7 @@
     "@chenglou/pretext": "^0.0.8",
     "@corvu/resizable": "^0.2.5",
     "@kobalte/core": "^0.13.11",
-    "@sakti-code/agent-effect": "workspace:*",
+    "@sakti-code/agent": "workspace:*",
     "@sakti-code/llm": "workspace:*",
     "@sakti-code/logger": "workspace:*",
     "@sakti-code/server": "workspace:*",

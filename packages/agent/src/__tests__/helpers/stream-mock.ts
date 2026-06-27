@@ -1,9 +1,3 @@
-/**
- * Shared test helpers for creating fake StreamResult objects.
- *
- * Used by agent.test.ts, agent-loop.test.ts, and harness tests to inject
- * synthetic fullStream parts without real API calls.
- */
 import type {
   AssistantMessage,
   FinishResult,
@@ -51,10 +45,6 @@ function createAssistantMessage(text: string): AssistantMessage {
   };
 }
 
-/**
- * Build a fake StreamResult from content blocks + finish metadata.
- * Converts content to @ai-sdk fullStream parts.
- */
 export function fakeStreamResult(opts: {
   content?: AssistantMessage["content"];
   error?: Error;

@@ -1,4 +1,4 @@
-import { buildSessionContextFromEntries } from "@sakti-code/agent-effect";
+import { buildSessionContextFromEntries } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { describe, expect, it } from "vitest";
 import { exportRoutes } from "../routes/sessions/export.ts";

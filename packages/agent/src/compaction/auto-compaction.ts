@@ -3,17 +3,23 @@ import {
   isContextOverflow,
   type Model,
 } from "@sakti-code/llm";
+import { Effect } from "effect";
 import {
   type CompactionSettings,
   calculateContextTokens,
-  compact,
+  compactEffect,
   estimateContextTokens,
   prepareCompaction,
   shouldCompact,
-} from "../compaction.ts";
-import type { Session } from "../harness/session.ts";
-import type { SessionTreeEntry, ThinkingLevel } from "../harness/types.ts";
-import type { AgentMessage } from "../types.ts";
+} from "../compaction/compaction";
+import {
+  isFailure,
+  type SessionError,
+  type SessionTreeEntry,
+  type ThinkingLevel,
+} from "../harness-types";
+import type { SessionShape } from "../session/session";
+import type { AgentMessage } from "../types";
 
 /**
  * # Auto-compaction policy
@@ -160,7 +166,7 @@ export function checkCompaction(
 export interface RunCompactionDeps {
   apiKey: string;
   model: Model;
-  session: Session;
+  session: SessionShape;
   settings: CompactionSettings;
   thinkingLevel?: ThinkingLevel;
 }
@@ -183,44 +189,52 @@ export type RunCompactionOutcome =
  * harness rebuilds context from storage next turn, so no in-place message
  * mutation is needed (unlike pi).
  */
+export const runAutoCompactionEffect = (
+  deps: RunCompactionDeps
+): Effect.Effect<RunCompactionOutcome, SessionError> =>
+  Effect.gen(function* () {
+    const entries: SessionTreeEntry[] = yield* deps.session.getBranch();
+    const preparation = prepareCompaction(entries, deps.settings);
+    if (isFailure(preparation)) {
+      return { ok: false, errorMessage: preparation.failure.message };
+    }
+    if (!preparation.success) {
+      return { ok: false, errorMessage: "Nothing to compact" };
+    }
+
+    const result = yield* compactEffect(
+      preparation.success,
+      deps.model,
+      deps.apiKey,
+      undefined,
+      undefined,
+      undefined,
+      deps.thinkingLevel
+    );
+    if (isFailure(result)) {
+      return { ok: false, errorMessage: result.failure.message };
+    }
+
+    yield* deps.session.appendCompaction(
+      result.success.summary,
+      result.success.firstKeptEntryId,
+      result.success.tokensBefore,
+      result.success.details
+    );
+
+    return {
+      ok: true,
+      summary: result.success.summary,
+      firstKeptEntryId: result.success.firstKeptEntryId,
+      tokensBefore: result.success.tokensBefore,
+    };
+  });
+
+/** @migration Promise wrapper — removes when callers migrate to Effect. */
 export async function runAutoCompaction(
   deps: RunCompactionDeps
 ): Promise<RunCompactionOutcome> {
-  const entries: SessionTreeEntry[] = await deps.session.getBranch();
-  const preparation = prepareCompaction(entries, deps.settings);
-  if (!preparation.ok) {
-    return { ok: false, errorMessage: preparation.error.message };
-  }
-  if (!preparation.value) {
-    return { ok: false, errorMessage: "Nothing to compact" };
-  }
-
-  const result = await compact(
-    preparation.value,
-    deps.model,
-    deps.apiKey,
-    undefined,
-    undefined,
-    undefined,
-    deps.thinkingLevel
-  );
-  if (!result.ok) {
-    return { ok: false, errorMessage: result.error.message };
-  }
-
-  await deps.session.appendCompaction(
-    result.value.summary,
-    result.value.firstKeptEntryId,
-    result.value.tokensBefore,
-    result.value.details
-  );
-
-  return {
-    ok: true,
-    summary: result.value.summary,
-    firstKeptEntryId: result.value.firstKeptEntryId,
-    tokensBefore: result.value.tokensBefore,
-  };
+  return Effect.runPromise(runAutoCompactionEffect(deps));
 }
 
 /**

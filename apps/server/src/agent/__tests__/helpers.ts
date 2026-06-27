@@ -1,4 +1,4 @@
-import type { PromiseSessionStorage } from "@sakti-code/agent-effect";
+import type { PromiseSessionStorage } from "@sakti-code/agent";
 import { vi } from "vitest";
 
 /** Real model id that exists in pi-ai's registry so `getModel("openai", id)` resolves. */

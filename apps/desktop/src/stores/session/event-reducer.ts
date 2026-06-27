@@ -1,4 +1,4 @@
-import type { AgentHarnessEvent, AgentMessage } from "@sakti-code/agent-effect";
+import type { AgentHarnessEvent, AgentMessage } from "@sakti-code/agent";
 import type { Message } from "@sakti-code/llm";
 import type { SessionActions } from "./session-store.ts";
 import type { TokenBatcher } from "./token-batcher.ts";

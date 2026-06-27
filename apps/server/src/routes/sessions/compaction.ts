@@ -4,7 +4,7 @@ import {
   isFailure,
   PromiseSession,
   prepareCompaction,
-} from "@sakti-code/agent-effect";
+} from "@sakti-code/agent";
 import type { Model } from "@sakti-code/llm";
 import { Hono } from "hono";
 import { resolveAuth, resolveModel } from "../../agent/model-resolver.ts";

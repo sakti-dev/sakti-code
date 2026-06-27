@@ -2,7 +2,7 @@ import type {
   AgentHarnessEvent,
   PermissionReply,
   PromiseSessionStorage,
-} from "@sakti-code/agent-effect";
+} from "@sakti-code/agent";
 import Type from "typebox";
 import type { ServerContext } from "../context.ts";
 import { getPermissionChannel } from "../lib/permission-channel.ts";

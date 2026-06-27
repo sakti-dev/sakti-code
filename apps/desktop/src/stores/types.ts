@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@sakti-code/agent-effect";
+import type { AgentMessage } from "@sakti-code/agent";
 
 /**
  * A single content part within a UI message.

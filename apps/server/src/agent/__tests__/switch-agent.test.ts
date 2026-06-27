@@ -2,7 +2,7 @@ import {
   type AgentDefinition,
   fromConfig,
   resolveBuiltinAgent,
-} from "@sakti-code/agent-effect";
+} from "@sakti-code/agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getPermissionChannel,

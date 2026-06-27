@@ -1,5 +1,5 @@
 import { type Static, Type } from "typebox";
-import type { AgentTool, AgentToolResult } from "../../types.ts";
+import type { AgentTool, AgentToolResult } from "../../types";
 
 export interface CalculateResult extends AgentToolResult<undefined> {
   content: Array<{ type: "text"; text: string }>;

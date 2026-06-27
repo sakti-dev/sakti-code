@@ -1,4 +1,4 @@
-import type { PermissionReply } from "@sakti-code/agent-effect";
+import type { PermissionReply } from "@sakti-code/agent";
 import { fireEvent, render, screen } from "@solidjs/testing-library";
 import { describe, expect, it, vi } from "vitest";
 import type { PermissionPending } from "~/stores/session/session-store";

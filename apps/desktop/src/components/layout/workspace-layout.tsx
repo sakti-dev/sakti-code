@@ -1,4 +1,4 @@
-import type { AgentHarnessEvent } from "@sakti-code/agent-effect";
+import type { AgentHarnessEvent } from "@sakti-code/agent";
 import { createEffect, createSignal, type JSX, onMount, Show } from "solid-js";
 import { TaskChatView } from "~/components/chat-area/task-chat-view";
 import Home from "~/components/home/home";

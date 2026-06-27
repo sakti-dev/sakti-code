@@ -7,13 +7,13 @@ import type {
   PromptTemplate,
   Skill,
   SkillDiagnostic,
-} from "@sakti-code/agent-effect";
+} from "@sakti-code/agent";
 import {
   isSuccess,
   loadAgents,
   loadCommands,
   loadSkills,
-} from "@sakti-code/agent-effect";
+} from "@sakti-code/agent";
 import { NodeExecutionEnv } from "../agent/execution-env.ts";
 import { enumerateAgentConfigDirs } from "./config-dirs.ts";
 

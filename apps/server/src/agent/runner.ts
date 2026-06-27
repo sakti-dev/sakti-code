@@ -9,7 +9,7 @@ import type {
   PromiseSessionStorage,
   QueueMode,
   ThinkingLevel,
-} from "@sakti-code/agent-effect";
+} from "@sakti-code/agent";
 import {
   appendSkillsBlock,
   BUILTIN_AGENTS,
@@ -26,7 +26,7 @@ import {
   planFirstTurn,
   promiseSessionAsShape,
   runAutoCompaction,
-} from "@sakti-code/agent-effect";
+} from "@sakti-code/agent";
 import { createProposeSessionTool } from "@sakti-code/tools";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";

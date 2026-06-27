@@ -37,7 +37,7 @@ export interface CompletionProviderShape {
 export class StreamProvider extends Context.Service<
   StreamProvider,
   StreamProviderShape
->()("@sakti-code/agent-effect/StreamProvider") {}
+>()("@sakti-code/agent/StreamProvider") {}
 
 /**
  * Service Tag for the completion provider. Consumers require it via
@@ -46,7 +46,7 @@ export class StreamProvider extends Context.Service<
 export class CompletionProvider extends Context.Service<
   CompletionProvider,
   CompletionProviderShape
->()("@sakti-code/agent-effect/CompletionProvider") {}
+>()("@sakti-code/agent/CompletionProvider") {}
 
 /**
  * Live Layer backed by `@sakti-code/llm`'s `streamEffect`. Provides

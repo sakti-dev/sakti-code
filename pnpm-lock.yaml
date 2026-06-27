@@ -57,9 +57,9 @@ importers:
       '@kobalte/core':
         specifier: ^0.13.11
         version: 0.13.11(solid-js@1.9.13)
-      '@sakti-code/agent-effect':
+      '@sakti-code/agent':
         specifier: workspace:*
-        version: link:../../packages/agent-effect
+        version: link:../../packages/agent
       '@sakti-code/llm':
         specifier: workspace:*
         version: link:../../packages/llm
@@ -176,9 +176,9 @@ importers:
       '@hono/typebox-validator':
         specifier: ^1.1.0
         version: 1.1.0(hono@4.12.26)(typebox@1.3.0)
-      '@sakti-code/agent-effect':
+      '@sakti-code/agent':
         specifier: workspace:*
-        version: link:../../packages/agent-effect
+        version: link:../../packages/agent
       '@sakti-code/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -227,31 +227,6 @@ importers:
         version: 4.22.4
 
   packages/agent:
-    dependencies:
-      '@sakti-code/llm':
-        specifier: workspace:*
-        version: link:../llm
-      '@sakti-code/logger':
-        specifier: workspace:*
-        version: link:../logger
-      typebox:
-        specifier: 1.1.38
-        version: 1.1.38
-      uuid:
-        specifier: ^14.0.1
-        version: 14.0.1
-      yaml:
-        specifier: ^2.9.0
-        version: 2.9.0
-    devDependencies:
-      '@types/node':
-        specifier: ^24
-        version: 24.13.2
-      vitest:
-        specifier: ^3
-        version: 3.2.6(@types/debug@4.1.13)(@types/node@24.13.2)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
-
-  packages/agent-effect:
     dependencies:
       '@sakti-code/llm':
         specifier: workspace:*

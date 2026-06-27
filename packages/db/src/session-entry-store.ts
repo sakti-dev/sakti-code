@@ -1,6 +1,6 @@
 import type {
+  PromiseSessionStorage,
   SessionMetadata,
-  SessionStorage,
   SessionTreeEntry,
 } from "@sakti-code/agent";
 import { eq, sql } from "drizzle-orm";
@@ -9,7 +9,7 @@ import { sessionEntries, sessions } from "./schema.ts";
 
 export class SqliteSessionStorage<
   TMetadata extends SessionMetadata = SessionMetadata,
-> implements SessionStorage<TMetadata>
+> implements PromiseSessionStorage<TMetadata>
 {
   private readonly db: DrizzleDB;
   private readonly sessionId: string;

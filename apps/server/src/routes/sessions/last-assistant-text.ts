@@ -1,7 +1,7 @@
 import {
   type AgentMessage,
   buildSessionContextFromEntries,
-} from "@sakti-code/agent-effect";
+} from "@sakti-code/agent";
 import { Hono } from "hono";
 import { createSessionStorage, getCtx } from "../../context.ts";
 

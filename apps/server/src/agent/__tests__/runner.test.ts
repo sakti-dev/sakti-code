@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const SESSION_NOT_FOUND_RE = /Session not found/;
 const PROJECT_NOT_FOUND_RE = /Project not found/;
 
-import type { AgentHarnessEvent } from "@sakti-code/agent-effect";
+import type { AgentHarnessEvent } from "@sakti-code/agent";
 import {
   abortRun,
   clearRunsForTesting,

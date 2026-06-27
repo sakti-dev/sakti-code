@@ -1,25 +1,18 @@
-/**
- * Faux stream provider for harness tests.
- *
- * Replaces pi-ai's `registerFauxProvider` — returns canned responses per call
- * without real API calls. Uses the harness's `streamFn` injection point.
- */
 import type {
   AssistantMessage,
   Model,
   StreamRequest,
   ToolCall,
 } from "@sakti-code/llm";
-import type { StreamFn } from "../../types.ts";
+import type { StreamFn } from "../../types";
 import {
   createAssistantMessage,
   createUsage,
   fakeStreamResult,
-} from "../helpers/stream-mock.ts";
+} from "./stream-mock.ts";
 
 export { createAssistantMessage as fauxAssistantMessage };
 
-/** Create a tool call content block for use in fauxAssistantMessage. */
 export function fauxToolCall(
   name: string,
   args: Record<string, unknown>,
@@ -33,7 +26,6 @@ export function fauxToolCall(
   };
 }
 
-/** Create an assistant message with arbitrary content blocks. */
 export function fauxAssistantMessageWithContent(
   content: AssistantMessage["content"],
   stopReason?: AssistantMessage["stopReason"]
@@ -50,21 +42,15 @@ export function fauxAssistantMessageWithContent(
   };
 }
 
-/** A response function that receives the request and returns content. */
 export type FauxResponse = (
   req: StreamRequest,
   callIndex: number
 ) => AssistantMessage | Promise<AssistantMessage>;
 
-/** Registration returned by {@link registerFauxStreamProvider}. */
 export interface FauxProviderRegistration {
-  /** Number of LLM calls made so far. */
   get callCount(): number;
-  /** Model associated with this faux provider. */
   getModel: (id?: string) => Model;
-  /** Set the sequence of responses (called in order per LLM request). */
   setResponses: (responses: FauxResponse[]) => void;
-  /** The stream function to pass to AgentHarness or Agent. */
   streamFn: StreamFn;
 }
 
@@ -83,12 +69,6 @@ function createFauxModel(id = "faux-model"): Model {
   };
 }
 
-/**
- * Register a faux stream provider for testing.
- *
- * Returns a registration with a `streamFn` to pass to AgentHarness and
- * response functions that return canned AssistantMessages per call.
- */
 export function registerFauxStreamProvider(
   modelId?: string
 ): FauxProviderRegistration {

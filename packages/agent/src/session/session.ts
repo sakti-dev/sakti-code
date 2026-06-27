@@ -170,7 +170,7 @@ export interface SessionShape {
 }
 
 export class Session extends Context.Service<Session, SessionShape>()(
-  "@sakti-code/agent-effect/Session"
+  "@sakti-code/agent/Session"
 ) {}
 
 export const SessionLive: Layer.Layer<Session, SessionError, SessionStorage> =

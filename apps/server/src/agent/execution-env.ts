@@ -19,14 +19,14 @@ import type {
   FileInfo,
   FileKind,
   Result,
-} from "@sakti-code/agent-effect";
+} from "@sakti-code/agent";
 import {
   ExecutionError,
   err,
   FileError,
   isSuccess,
   ok,
-} from "@sakti-code/agent-effect";
+} from "@sakti-code/agent";
 import { spawnPiped } from "../lib/spawn.ts";
 
 function mapFsErrorCode(code: string | undefined): FileErrorCode {

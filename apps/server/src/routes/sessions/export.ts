@@ -1,4 +1,4 @@
-import { buildSessionContextFromEntries } from "@sakti-code/agent-effect";
+import { buildSessionContextFromEntries } from "@sakti-code/agent";
 import { Hono } from "hono";
 import { createSessionStorage, getCtx } from "../../context.ts";
 

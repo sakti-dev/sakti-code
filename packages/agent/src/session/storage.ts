@@ -55,7 +55,7 @@ export interface PromiseSessionStorage<
 export class SessionStorage extends Context.Service<
   SessionStorage,
   SessionStorageShape
->()("@sakti-code/agent-effect/SessionStorage") {}
+>()("@sakti-code/agent/SessionStorage") {}
 
 interface InMemoryState {
   byId: Map<string, SessionTreeEntry>;

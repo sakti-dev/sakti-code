@@ -1,4 +1,4 @@
-import type { PermissionReply } from "@sakti-code/agent-effect";
+import type { PermissionReply } from "@sakti-code/agent";
 import { FiShield } from "solid-icons/fi";
 import type { JSX } from "solid-js";
 import { Button } from "~/components/ui/button";
