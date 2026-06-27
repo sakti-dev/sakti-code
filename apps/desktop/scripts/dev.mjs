@@ -14,7 +14,9 @@ import { dirname, join } from "node:path";
 // Resolve the log dir the same way the server/desktop does:
 // SAKTI_LOG_DIR wins, otherwise a sibling of the agent dir (~/.sakti/logs).
 function resolveLogDir() {
-  if (process.env.SAKTI_LOG_DIR) return process.env.SAKTI_LOG_DIR;
+  if (process.env.SAKTI_LOG_DIR) {
+    return process.env.SAKTI_LOG_DIR;
+  }
   const agentDir =
     process.env.SAKTI_AGENT_DIR ?? join(homedir(), ".sakti", "agent");
   return join(dirname(agentDir), "logs");
@@ -24,10 +26,14 @@ function resolveLogDir() {
 // (pino-roll names them `<layer>.<n>.log`, plus date-rotated variants).
 function cleanLogs() {
   const dir = resolveLogDir();
-  if (!existsSync(dir)) return;
+  if (!existsSync(dir)) {
+    return;
+  }
   let removed = 0;
   for (const file of readdirSync(dir)) {
-    if (!file.endsWith(".log")) continue;
+    if (!file.endsWith(".log")) {
+      continue;
+    }
     try {
       rmSync(join(dir, file), { force: true });
       removed += 1;
@@ -35,7 +41,9 @@ function cleanLogs() {
       // Best-effort — a locked file shouldn't block dev startup.
     }
   }
-  if (removed > 0) console.log(`[dev] cleared ${removed} log file(s) in ${dir}`);
+  if (removed > 0) {
+    console.log(`[dev] cleared ${removed} log file(s) in ${dir}`);
+  }
 }
 
 cleanLogs();
