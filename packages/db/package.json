@@ -6,12 +6,13 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "development": "./src/index.ts",
       "types": "./dist/index.d.ts",
-      "default": "./src/index.ts"
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup && node ../../scripts/restore-node-protocol.mjs dist",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",

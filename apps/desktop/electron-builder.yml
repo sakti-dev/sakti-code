@@ -14,3 +14,4 @@ linux:
     - AppImage
     - deb
   category: Development
+  maintainer: Ardian Eka Candra <ardianoption@gmail.com>
