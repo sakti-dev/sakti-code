@@ -767,11 +767,13 @@ async function executeToolCallsSequential(
         isError: preparation.isError,
       };
     } else {
-      config.logger?.debug("tool call", {
-        toolName: toolCall.name,
-        toolCallId: toolCall.id,
-        argsPreview: JSON.stringify(toolCall.arguments).slice(0, 200),
-      });
+      if (config.logger) {
+        config.logger.debug("tool call", {
+          toolName: toolCall.name,
+          toolCallId: toolCall.id,
+          argsPreview: JSON.stringify(toolCall.arguments).slice(0, 200),
+        });
+      }
       const executed = await executePreparedToolCall(preparation, signal, emit);
       finalized = await finalizeExecutedToolCall(
         currentContext,
@@ -781,11 +783,13 @@ async function executeToolCallsSequential(
         config,
         signal
       );
-      config.logger?.debug("tool result", {
-        toolName: finalized.toolCall.name,
-        isError: finalized.isError,
-        resultLength: String(finalized.result.content).length,
-      });
+      if (config.logger) {
+        config.logger.debug("tool result", {
+          toolName: finalized.toolCall.name,
+          isError: finalized.isError,
+          resultLength: String(finalized.result.content).length,
+        });
+      }
     }
 
     await emitToolExecutionEnd(finalized, emit);
@@ -845,14 +849,16 @@ async function executeToolCallsParallel(
     }
 
     finalizedCalls.push(async () => {
-      config.logger?.debug("tool call", {
-        toolName: preparation.toolCall.name,
-        toolCallId: preparation.toolCall.id,
-        argsPreview: JSON.stringify(preparation.toolCall.arguments).slice(
-          0,
-          200
-        ),
-      });
+      if (config.logger) {
+        config.logger.debug("tool call", {
+          toolName: preparation.toolCall.name,
+          toolCallId: preparation.toolCall.id,
+          argsPreview: JSON.stringify(preparation.toolCall.arguments).slice(
+            0,
+            200
+          ),
+        });
+      }
       const executed = await executePreparedToolCall(preparation, signal, emit);
       const finalized = await finalizeExecutedToolCall(
         currentContext,
@@ -862,11 +868,13 @@ async function executeToolCallsParallel(
         config,
         signal
       );
-      config.logger?.debug("tool result", {
-        toolName: finalized.toolCall.name,
-        isError: finalized.isError,
-        resultLength: String(finalized.result.content).length,
-      });
+      if (config.logger) {
+        config.logger.debug("tool result", {
+          toolName: finalized.toolCall.name,
+          isError: finalized.isError,
+          resultLength: String(finalized.result.content).length,
+        });
+      }
       await emitToolExecutionEnd(finalized, emit);
       return finalized;
     });
