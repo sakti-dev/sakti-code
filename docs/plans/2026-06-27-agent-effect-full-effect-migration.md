@@ -30,6 +30,14 @@
 
 **Patterns reference:** After Phase 0 lands, `docs/patterns/agent-effect-migration-patterns.md` documents the 6 patterns with concrete code. Phases A+ reference patterns by number (Pattern 1 = TaggedError, Pattern 2 = Service Tag + Layer, etc.).
 
+**Effect source reference:** The full Effect-TS source is checked out at `openspec/references/effect/packages/` (pinned at `effect@3.21.4`, matching what's installed). If you're unsure how an Effect API behaves — `Data.TaggedError` shape, `Effect.Service` signatures, `Layer` composition semantics, `Schedule` combinators, `Stream` patterns, `@effect/platform` service shapes — **read the source**. Particularly useful subdirs:
+- `effect/src/` — core Effect, Data, Context, Layer, Schedule, Stream, Queue, Ref, Clock
+- `effect/packages/effect/dtslint/` — typed test cases showing intended usage
+- `platform/`, `platform-node/` — Phase FS reference (FileSystem, Command, Terminal services)
+- `platform/packages/effect/test/` — usage examples in test form
+
+Use `rg "class TaggedError" openspec/references/effect/packages/effect/src/` etc. to find canonical definitions. When the docs and source disagree, the source wins (docs lag; source is pinned to the installed version).
+
 **Granularity note:** Phase 0 has full TDD micro-steps. Phases A–Retry have task-level breakdowns with key code samples. Phases Compaction–Cleanup are outlines — when reached, write a dedicated sub-plan if uncertainty surfaces during execution.
 
 ---
@@ -1243,5 +1251,6 @@ Pause and write a dedicated sub-plan if any of these occur:
 - Design doc: `docs/plans/2026-06-27-agent-effect-full-effect-migration-design.md`
 - Patterns: `docs/patterns/agent-effect-migration-patterns.md` (created in Phase 0)
 - Effect-TS references: `.opencode/skills/effect-ts/references/*.md` (error-handling, layers, concurrency, streams, schema, testing, config, anti-patterns)
+- **Effect source (pinned to installed version):** `openspec/references/effect/packages/` — read the actual implementation when API behavior is unclear. Subdirs: `effect/src/`, `platform/`, `platform-node/`. The docs site can lag; this source matches `effect@3.21.4` exactly.
 - Original structural port plan (now superseded): `docs/plans/2026-06-27-agent-effect-tier5.md`
 - Deep-dive code review findings (C1–C6, P1–P8, M1–M8): in conversation log; summarize into `docs/patterns/agent-effect-migration-patterns.md` as needed

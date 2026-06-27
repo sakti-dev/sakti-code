@@ -16,7 +16,8 @@
     "@sakti-code/logger": "workspace:*",
     "effect": "^3.21.0",
     "typebox": "1.1.38",
-    "uuid": "^11"
+    "uuid": "^11",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
