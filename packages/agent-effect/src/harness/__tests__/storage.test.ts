@@ -1,114 +1,168 @@
-import { describe, expect, it } from "vitest";
-import { InMemorySessionStorage } from "../memory-storage.ts";
-import type { MessageEntry, SessionMetadata } from "../types.ts";
+import { describe, expect, it } from "@effect/vitest";
+import { Effect } from "effect";
+import { InMemorySessionStorageLive } from "../memory-storage.ts";
+import { SessionStorage } from "../types.ts";
 import {
   createAssistantMessage,
   createUserMessage,
 } from "./session-test-utils.ts";
 
 describe("InMemorySessionStorage", () => {
-  it("returns configured session metadata", async () => {
-    const metadata: SessionMetadata = {
-      id: "session-1",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    };
-    const storage = new InMemorySessionStorage({ metadata });
-    expect(await storage.getMetadata()).toEqual(metadata);
-  });
+  it.effect("returns configured session metadata", () =>
+    Effect.gen(function* () {
+      const storage = yield* SessionStorage;
+      const metadata = yield* storage.getMetadata();
+      expect(metadata).toEqual({
+        id: "session-1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+    }).pipe(
+      Effect.provide(
+        InMemorySessionStorageLive({
+          metadata: {
+            id: "session-1",
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        })
+      )
+    )
+  );
 
-  it("copies initial entries and persists leaf changes", async () => {
-    const entry: MessageEntry = {
-      type: "message",
-      id: "entry-1",
-      parentId: null,
-      timestamp: "2026-01-01T00:00:00.000Z",
-      message: createUserMessage("one"),
-    };
-    const initialEntries = [entry];
-    const storage = new InMemorySessionStorage({ entries: initialEntries });
-    initialEntries.push({ ...entry, id: "entry-2" });
-    expect(
-      (await storage.getEntries()).map((storedEntry) => storedEntry.id)
-    ).toEqual(["entry-1"]);
-    expect(await storage.getLeafId()).toBe("entry-1");
-    await storage.setLeafId(null);
-    expect(await storage.getLeafId()).toBeNull();
-    expect((await storage.getEntries()).at(-1)).toMatchObject({
-      type: "leaf",
-      targetId: null,
-    });
-  });
+  it.effect("copies initial entries and persists leaf changes", () =>
+    Effect.gen(function* () {
+      const storage = yield* SessionStorage;
+      const entries = yield* storage.getEntries();
+      expect(entries.map((e) => e.id)).toEqual(["entry-1"]);
+      const leafId = yield* storage.getLeafId();
+      expect(leafId).toBe("entry-1");
+      yield* storage.setLeafId(null);
+      const newLeaf = yield* storage.getLeafId();
+      expect(newLeaf).toBeNull();
+      const allEntries = yield* storage.getEntries();
+      expect(allEntries.at(-1)).toMatchObject({
+        type: "leaf",
+        targetId: null,
+      });
+    }).pipe(
+      Effect.provide(
+        InMemorySessionStorageLive({
+          entries: [
+            {
+              type: "message",
+              id: "entry-1",
+              parentId: null,
+              timestamp: "2026-01-01T00:00:00.000Z",
+              message: createUserMessage("one"),
+            },
+          ],
+        })
+      )
+    )
+  );
 
-  it("rejects invalid leaf ids", async () => {
-    const storage = new InMemorySessionStorage();
-    await expect(storage.setLeafId("missing")).rejects.toThrow(
-      "Entry missing not found"
-    );
-  });
+  it.effect("rejects invalid leaf ids", () =>
+    Effect.gen(function* () {
+      const storage = yield* SessionStorage;
+      const error = yield* Effect.flip(storage.setLeafId("missing"));
+      expect(error._tag).toBe("SessionError");
+      expect(error.code).toBe("not_found");
+    }).pipe(Effect.provide(InMemorySessionStorageLive()))
+  );
 
-  it("finds entries by type", async () => {
-    const entry: MessageEntry = {
-      type: "message",
-      id: "entry-1",
-      parentId: null,
-      timestamp: "2026-01-01T00:00:00.000Z",
-      message: createUserMessage("one"),
-    };
-    const storage = new InMemorySessionStorage({ entries: [entry] });
-    expect(
-      (await storage.findEntries("message")).map((found) => found.id)
-    ).toEqual(["entry-1"]);
-    expect(await storage.findEntries("session_info")).toEqual([]);
-  });
+  it.effect("finds entries by type", () =>
+    Effect.gen(function* () {
+      const storage = yield* SessionStorage;
+      const messages = yield* storage.findEntries("message");
+      expect(messages.map((m) => m.id)).toEqual(["entry-1"]);
+      const infos = yield* storage.findEntries("session_info");
+      expect(infos).toEqual([]);
+    }).pipe(
+      Effect.provide(
+        InMemorySessionStorageLive({
+          entries: [
+            {
+              type: "message",
+              id: "entry-1",
+              parentId: null,
+              timestamp: "2026-01-01T00:00:00.000Z",
+              message: createUserMessage("one"),
+            },
+          ],
+        })
+      )
+    )
+  );
 
-  it("maintains label lookup", async () => {
-    const entry: MessageEntry = {
-      type: "message",
-      id: "entry-1",
-      parentId: null,
-      timestamp: "2026-01-01T00:00:00.000Z",
-      message: createUserMessage("one"),
-    };
-    const storage = new InMemorySessionStorage({ entries: [entry] });
-    expect(await storage.getLabel("entry-1")).toBeUndefined();
-    await storage.appendEntry({
-      type: "label",
-      id: "label-1",
-      parentId: "entry-1",
-      timestamp: "2026-01-01T00:00:01.000Z",
-      targetId: "entry-1",
-      label: "checkpoint",
-    });
-    expect(await storage.getLabel("entry-1")).toBe("checkpoint");
-    await storage.appendEntry({
-      type: "label",
-      id: "label-2",
-      parentId: "label-1",
-      timestamp: "2026-01-01T00:00:02.000Z",
-      targetId: "entry-1",
-      label: undefined,
-    });
-    expect(await storage.getLabel("entry-1")).toBeUndefined();
-  });
+  it.effect("maintains label lookup", () =>
+    Effect.gen(function* () {
+      const storage = yield* SessionStorage;
+      const before = yield* storage.getLabel("entry-1");
+      expect(before).toBeUndefined();
+      yield* storage.appendEntry({
+        type: "label",
+        id: "label-1",
+        parentId: "entry-1",
+        timestamp: "2026-01-01T00:00:01.000Z",
+        targetId: "entry-1",
+        label: "checkpoint",
+      });
+      const set = yield* storage.getLabel("entry-1");
+      expect(set).toBe("checkpoint");
+      yield* storage.appendEntry({
+        type: "label",
+        id: "label-2",
+        parentId: "label-1",
+        timestamp: "2026-01-01T00:00:02.000Z",
+        targetId: "entry-1",
+        label: undefined,
+      });
+      const cleared = yield* storage.getLabel("entry-1");
+      expect(cleared).toBeUndefined();
+    }).pipe(
+      Effect.provide(
+        InMemorySessionStorageLive({
+          entries: [
+            {
+              type: "message",
+              id: "entry-1",
+              parentId: null,
+              timestamp: "2026-01-01T00:00:00.000Z",
+              message: createUserMessage("one"),
+            },
+          ],
+        })
+      )
+    )
+  );
 
-  it("walks paths to root", async () => {
-    const root: MessageEntry = {
-      type: "message",
-      id: "root",
-      parentId: null,
-      timestamp: "2026-01-01T00:00:00.000Z",
-      message: createUserMessage("root"),
-    };
-    const child: MessageEntry = {
-      ...root,
-      id: "child",
-      parentId: "root",
-      message: createAssistantMessage("child"),
-    };
-    const storage = new InMemorySessionStorage({ entries: [root, child] });
-    expect(
-      (await storage.getPathToRoot("child")).map((entry) => entry.id)
-    ).toEqual(["root", "child"]);
-    expect(await storage.getPathToRoot(null)).toEqual([]);
-  });
+  it.effect("walks paths to root", () =>
+    Effect.gen(function* () {
+      const storage = yield* SessionStorage;
+      const path = yield* storage.getPathToRoot("child");
+      expect(path.map((e) => e.id)).toEqual(["root", "child"]);
+      const empty = yield* storage.getPathToRoot(null);
+      expect(empty).toEqual([]);
+    }).pipe(
+      Effect.provide(
+        InMemorySessionStorageLive({
+          entries: [
+            {
+              type: "message",
+              id: "root",
+              parentId: null,
+              timestamp: "2026-01-01T00:00:00.000Z",
+              message: createUserMessage("root"),
+            },
+            {
+              type: "message",
+              id: "child",
+              parentId: "root",
+              timestamp: "2026-01-01T00:00:00.000Z",
+              message: createAssistantMessage("child"),
+            },
+          ],
+        })
+      )
+    )
+  );
 });

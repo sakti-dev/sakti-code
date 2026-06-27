@@ -5,6 +5,7 @@ import type {
   UserMessage,
 } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
+import { Effect } from "effect";
 import {
   collectEntriesForBranchSummary,
   generateBranchSummary,
@@ -29,6 +30,7 @@ import type {
 import { buildHarnessStreamRequest } from "./build-stream-request.ts";
 import { convertToLlm } from "./messages.ts";
 import { formatPromptTemplateInvocation } from "./prompt-templates.ts";
+import type { SessionShape } from "./session.ts";
 import { formatSkillInvocation } from "./skills.ts";
 import type {
   AbortResult,
@@ -45,7 +47,6 @@ import type {
   NavigateTreeResult,
   PendingSessionWrite,
   PromptTemplate,
-  Session,
   Skill,
 } from "./types.ts";
 import {
@@ -208,7 +209,7 @@ export class AgentHarness<
   TTool extends AgentTool = AgentTool,
 > {
   readonly env: ExecutionEnv;
-  private session: Session;
+  private session: SessionShape;
   private phase: AgentHarnessPhase = "idle";
   private runAbortController?: AbortController | undefined;
   private runPromise?: Promise<void> | undefined;
@@ -383,9 +384,9 @@ export class AgentHarness<
   private async createTurnState(): Promise<
     AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
   > {
-    const context = await this.session.buildContext();
+    const context = await Effect.runPromise(this.session.buildContext());
     const resources = this.getResources();
-    const sessionMetadata = await this.session.getMetadata();
+    const sessionMetadata = await Effect.runPromise(this.session.getMetadata());
     const tools = [...this.tools.values()];
     const activeTools = this.activeToolNames
       .map((name) => this.tools.get(name))
@@ -605,32 +606,48 @@ export class AgentHarness<
     }
   }
 
+  // @migration TODO: remove when agent-harness.ts migrates to Effect (Phase Harness).
+  // Each this.session.x() returns an Effect; we run it via Effect.runPromise.
   private async flushPendingSessionWrites(): Promise<void> {
     while (this.pendingSessionWrites.length > 0) {
       const write = this.pendingSessionWrites[0]!;
       if (write.type === "message") {
-        await this.session.appendMessage(write.message);
+        await Effect.runPromise(this.session.appendMessage(write.message));
       } else if (write.type === "model_change") {
-        await this.session.appendModelChange(write.provider, write.modelId);
+        await Effect.runPromise(
+          this.session.appendModelChange(write.provider, write.modelId)
+        );
       } else if (write.type === "thinking_level_change") {
-        await this.session.appendThinkingLevelChange(write.thinkingLevel);
+        await Effect.runPromise(
+          this.session.appendThinkingLevelChange(write.thinkingLevel)
+        );
       } else if (write.type === "active_tools_change") {
-        await this.session.appendActiveToolsChange(write.activeToolNames);
+        await Effect.runPromise(
+          this.session.appendActiveToolsChange(write.activeToolNames)
+        );
       } else if (write.type === "custom") {
-        await this.session.appendCustomEntry(write.customType, write.data);
+        await Effect.runPromise(
+          this.session.appendCustomEntry(write.customType, write.data)
+        );
       } else if (write.type === "custom_message") {
-        await this.session.appendCustomMessageEntry(
-          write.customType,
-          write.content,
-          write.display,
-          write.details
+        await Effect.runPromise(
+          this.session.appendCustomMessageEntry(
+            write.customType,
+            write.content,
+            write.display,
+            write.details
+          )
         );
       } else if (write.type === "label") {
-        await this.session.appendLabel(write.targetId, write.label);
+        await Effect.runPromise(
+          this.session.appendLabel(write.targetId, write.label)
+        );
       } else if (write.type === "session_info") {
-        await this.session.appendSessionName(write.name ?? "");
+        await Effect.runPromise(
+          this.session.appendSessionName(write.name ?? "")
+        );
       } else if (write.type === "leaf") {
-        await this.session.getStorage().setLeafId(write.targetId);
+        await Effect.runPromise(this.session.moveTo(write.targetId));
       }
       this.pendingSessionWrites.shift();
     }
@@ -641,7 +658,7 @@ export class AgentHarness<
     signal?: AbortSignal
   ): Promise<void> {
     if (event.type === "message_end") {
-      await this.session.appendMessage(event.message);
+      await Effect.runPromise(this.session.appendMessage(event.message));
       await this.emitAny(event, signal);
       return;
     }
@@ -1035,7 +1052,7 @@ export class AgentHarness<
   async appendMessage(message: AgentMessage): Promise<void> {
     try {
       if (this.phase === "idle") {
-        await this.session.appendMessage(message);
+        await Effect.runPromise(this.session.appendMessage(message));
       } else {
         this.pendingSessionWrites.push({ type: "message", message });
       }
@@ -1066,7 +1083,7 @@ export class AgentHarness<
       if (!auth) {
         throw new AgentHarnessError("auth", "No auth available for compaction");
       }
-      const branchEntries = await this.session.getBranch();
+      const branchEntries = await Effect.runPromise(this.session.getBranch());
       const preparationResult = prepareCompaction(
         branchEntries,
         DEFAULT_COMPACTION_SETTINGS
@@ -1104,14 +1121,16 @@ export class AgentHarness<
         throw compactResult.error;
       }
       const result = compactResult.value;
-      const entryId = await this.session.appendCompaction(
-        result.summary,
-        result.firstKeptEntryId,
-        result.tokensBefore,
-        result.details,
-        provided !== undefined
+      const entryId = await Effect.runPromise(
+        this.session.appendCompaction(
+          result.summary,
+          result.firstKeptEntryId,
+          result.tokensBefore,
+          result.details,
+          provided !== undefined
+        )
       );
-      const entry = await this.session.getEntry(entryId);
+      const entry = await Effect.runPromise(this.session.getEntry(entryId));
       if (entry?.type === "compaction") {
         await this.emitOwn({
           type: "session_compact",
@@ -1144,11 +1163,13 @@ export class AgentHarness<
     }
     this.phase = "branch_summary";
     try {
-      const oldLeafId = await this.session.getLeafId();
+      const oldLeafId = await Effect.runPromise(this.session.getLeafId());
       if (oldLeafId === targetId) {
         return { cancelled: false };
       }
-      const targetEntry = await this.session.getEntry(targetId);
+      const targetEntry = await Effect.runPromise(
+        this.session.getEntry(targetId)
+      );
       if (!targetEntry) {
         throw new AgentHarnessError(
           "invalid_argument",
@@ -1266,25 +1287,27 @@ export class AgentHarness<
       } else {
         newLeafId = targetId;
       }
-      const summaryId = await this.session.moveTo(
-        newLeafId,
-        summaryText
-          ? {
-              summary: summaryText,
-              details: summaryDetails,
-              fromHook: hookResult?.summary !== undefined,
-            }
-          : undefined
+      const summaryId = await Effect.runPromise(
+        this.session.moveTo(
+          newLeafId,
+          summaryText
+            ? {
+                summary: summaryText,
+                details: summaryDetails,
+                fromHook: hookResult?.summary !== undefined,
+              }
+            : undefined
+        )
       );
       if (summaryId) {
-        const entry = await this.session.getEntry(summaryId);
+        const entry = await Effect.runPromise(this.session.getEntry(summaryId));
         if (entry?.type === "branch_summary") {
           summaryEntry = entry;
         }
       }
       await this.emitOwn({
         type: "session_tree",
-        newLeafId: await this.session.getLeafId(),
+        newLeafId: await Effect.runPromise(this.session.getLeafId()),
         oldLeafId,
         summaryEntry,
         fromHook: hookResult?.summary !== undefined,
@@ -1305,7 +1328,9 @@ export class AgentHarness<
     try {
       const previousModel = this.model;
       if (this.phase === "idle") {
-        await this.session.appendModelChange(model.provider, model.id);
+        await Effect.runPromise(
+          this.session.appendModelChange(model.provider, model.id)
+        );
       } else {
         this.pendingSessionWrites.push({
           type: "model_change",
@@ -1333,7 +1358,7 @@ export class AgentHarness<
     try {
       const previousLevel = this.thinkingLevel;
       if (this.phase === "idle") {
-        await this.session.appendThinkingLevelChange(level);
+        await Effect.runPromise(this.session.appendThinkingLevelChange(level));
       } else {
         this.pendingSessionWrites.push({
           type: "thinking_level_change",
@@ -1369,7 +1394,9 @@ export class AgentHarness<
       const previousToolNames = [...this.tools.keys()];
       const previousActiveToolNames = [...this.activeToolNames];
       if (this.phase === "idle") {
-        await this.session.appendActiveToolsChange(nextActiveToolNames);
+        await Effect.runPromise(
+          this.session.appendActiveToolsChange(nextActiveToolNames)
+        );
       } else {
         this.pendingSessionWrites.push({
           type: "active_tools_change",
@@ -1401,7 +1428,9 @@ export class AgentHarness<
       const previousToolNames = [...this.tools.keys()];
       const previousActiveToolNames = [...this.activeToolNames];
       if (this.phase === "idle") {
-        await this.session.appendActiveToolsChange(toolNames);
+        await Effect.runPromise(
+          this.session.appendActiveToolsChange(toolNames)
+        );
       } else {
         this.pendingSessionWrites.push({
           type: "active_tools_change",

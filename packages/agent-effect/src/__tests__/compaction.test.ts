@@ -34,7 +34,7 @@ import {
   serializeConversation,
   shouldCompact,
 } from "../compaction.ts";
-import { buildSessionContext } from "../harness/session.ts";
+import { buildSessionContextFromEntries } from "../harness/session.ts";
 import type {
   BranchSummaryEntry,
   CompactionEntry,
@@ -434,7 +434,15 @@ describe("harness compaction", () => {
     );
     const u3 = createMessageEntry(createUserMessage("3"), compaction.id);
     const a3 = createMessageEntry(createAssistantMessage("c"), u3.id);
-    const loaded = buildSessionContext([u1, a1, u2, a2, compaction, u3, a3]);
+    const loaded = buildSessionContextFromEntries([
+      u1,
+      a1,
+      u2,
+      a2,
+      compaction,
+      u3,
+      a3,
+    ]);
     expect(loaded.messages).toHaveLength(5);
     expect(loaded.messages[0]?.role).toBe("compactionSummary");
   });
@@ -447,7 +455,7 @@ describe("harness compaction", () => {
       modelChange.id
     );
     const thinkingChange = createThinkingLevelEntry("high", assistant.id);
-    const loaded = buildSessionContext([
+    const loaded = buildSessionContextFromEntries([
       user,
       modelChange,
       assistant,
@@ -488,7 +496,9 @@ describe("harness compaction", () => {
     expect(preparation?.previousSummary).toBe("First summary");
     expect(preparation?.firstKeptEntryId).toBeTruthy();
     expect(preparation?.tokensBefore).toBe(
-      estimateContextTokens(buildSessionContext(pathEntries).messages).tokens
+      estimateContextTokens(
+        buildSessionContextFromEntries(pathEntries).messages
+      ).tokens
     );
   });
 

@@ -1,11 +1,21 @@
+import { Effect, Layer, Ref } from "effect";
 import { v7 as uuidv7 } from "uuid";
 import {
   type LeafEntry,
   SessionError,
   type SessionMetadata,
-  type SessionStorage,
+  SessionStorage,
+  type SessionStorageShape,
   type SessionTreeEntry,
 } from "./types.ts";
+
+interface InMemoryState {
+  byId: Map<string, SessionTreeEntry>;
+  entries: SessionTreeEntry[];
+  labelsById: Map<string, string>;
+  leafId: string | null;
+  metadata: SessionMetadata;
+}
 
 function updateLabelCache(
   labelsById: Map<string, string>,
@@ -44,129 +54,164 @@ function leafIdAfterEntry(entry: SessionTreeEntry): string | null {
   return entry.type === "leaf" ? entry.targetId : entry.id;
 }
 
-export class InMemorySessionStorage<
-  TMetadata extends SessionMetadata = SessionMetadata,
-> implements SessionStorage<TMetadata>
-{
-  private readonly metadata: TMetadata;
-  private readonly entries: SessionTreeEntry[];
-  private readonly byId: Map<string, SessionTreeEntry>;
-  private readonly labelsById: Map<string, string>;
-  private leafId: string | null;
-
-  constructor(options?: {
-    entries?: SessionTreeEntry[];
-    metadata?: TMetadata;
-  }) {
-    this.entries = options?.entries ? [...options.entries] : [];
-    this.byId = new Map(this.entries.map((entry) => [entry.id, entry]));
-    this.labelsById = buildLabelsById(this.entries);
-    this.leafId = null;
-    for (const entry of this.entries) {
-      this.leafId = leafIdAfterEntry(entry);
-    }
-    if (this.leafId !== null && !this.byId.has(this.leafId)) {
-      throw new SessionError({
-        code: "invalid_session",
-        message: `Entry ${this.leafId} not found`,
-      });
-    }
-    this.metadata =
-      options?.metadata ??
-      ({ id: uuidv7(), createdAt: new Date().toISOString() } as TMetadata);
+function computeInitialState(options?: {
+  entries?: SessionTreeEntry[];
+  metadata?: SessionMetadata;
+}): InMemoryState {
+  const entries = options?.entries ? [...options.entries] : [];
+  const byId = new Map(entries.map((entry) => [entry.id, entry]));
+  const labelsById = buildLabelsById(entries);
+  let leafId: string | null = null;
+  for (const entry of entries) {
+    leafId = leafIdAfterEntry(entry);
   }
-
-  async getMetadata(): Promise<TMetadata> {
-    return this.metadata;
+  if (leafId !== null && !byId.has(leafId)) {
+    throw new SessionError({
+      code: "invalid_session",
+      message: `Entry ${leafId} not found`,
+    });
   }
-
-  async getLeafId(): Promise<string | null> {
-    if (this.leafId !== null && !this.byId.has(this.leafId)) {
-      throw new SessionError({
-        code: "invalid_session",
-        message: `Entry ${this.leafId} not found`,
-      });
-    }
-    return this.leafId;
-  }
-
-  async setLeafId(leafId: string | null): Promise<void> {
-    if (leafId !== null && !this.byId.has(leafId)) {
-      throw new SessionError({
-        code: "not_found",
-        message: `Entry ${leafId} not found`,
-      });
-    }
-    const entry: LeafEntry = {
-      type: "leaf",
-      id: generateEntryId(this.byId),
-      parentId: this.leafId,
-      timestamp: new Date().toISOString(),
-      targetId: leafId,
-    };
-    this.entries.push(entry);
-    this.byId.set(entry.id, entry);
-    this.leafId = leafId;
-  }
-
-  async createEntryId(): Promise<string> {
-    return generateEntryId(this.byId);
-  }
-
-  async appendEntry(entry: SessionTreeEntry): Promise<void> {
-    this.entries.push(entry);
-    this.byId.set(entry.id, entry);
-    updateLabelCache(this.labelsById, entry);
-    this.leafId = leafIdAfterEntry(entry);
-  }
-
-  async getEntry(id: string): Promise<SessionTreeEntry | undefined> {
-    return this.byId.get(id);
-  }
-
-  async findEntries<TType extends SessionTreeEntry["type"]>(
-    type: TType
-  ): Promise<Extract<SessionTreeEntry, { type: TType }>[]> {
-    return this.entries.filter(
-      (entry): entry is Extract<SessionTreeEntry, { type: TType }> =>
-        entry.type === type
-    );
-  }
-
-  async getLabel(id: string): Promise<string | undefined> {
-    return this.labelsById.get(id);
-  }
-
-  async getPathToRoot(leafId: string | null): Promise<SessionTreeEntry[]> {
-    if (leafId === null) {
-      return [];
-    }
-    const path: SessionTreeEntry[] = [];
-    let current = this.byId.get(leafId);
-    if (!current) {
-      throw new SessionError({
-        code: "not_found",
-        message: `Entry ${leafId} not found`,
-      });
-    }
-    while (current) {
-      path.unshift(current);
-      if (!current.parentId) {
-        break;
-      }
-      const parent = this.byId.get(current.parentId);
-      if (!parent) {
-        throw new SessionError({
-          code: "invalid_session",
-          message: `Entry ${current.parentId} not found`,
-        });
-      }
-      current = parent;
-    }
-    return path;
-  }
-
-  async getEntries(): Promise<SessionTreeEntry[]> {
-    return [...this.entries];
-  }
+  const metadata =
+    options?.metadata ??
+    ({ id: uuidv7(), createdAt: new Date().toISOString() } as SessionMetadata);
+  return { entries, byId, labelsById, leafId, metadata };
 }
+
+export const InMemorySessionStorageLive = (options?: {
+  entries?: SessionTreeEntry[];
+  metadata?: SessionMetadata;
+}): Layer.Layer<SessionStorage, SessionError, never> =>
+  Layer.effect(
+    SessionStorage,
+    Effect.gen(function* () {
+      const initial = computeInitialState(options);
+      const stateRef = yield* Ref.make<InMemoryState>(initial);
+
+      const createEntryId = Effect.fnUntraced(function* () {
+        const state = yield* Ref.get(stateRef);
+        return generateEntryId(state.byId);
+      });
+
+      const appendEntry = Effect.fnUntraced(function* (
+        entry: SessionTreeEntry
+      ) {
+        yield* Ref.update(stateRef, (state) => {
+          state.entries.push(entry);
+          state.byId.set(entry.id, entry);
+          updateLabelCache(state.labelsById, entry);
+          state.leafId = leafIdAfterEntry(entry);
+          return state;
+        });
+      });
+
+      const getEntry = Effect.fnUntraced(function* (id: string) {
+        const state = yield* Ref.get(stateRef);
+        return state.byId.get(id);
+      });
+
+      const findEntries = Effect.fnUntraced(function* <
+        TType extends SessionTreeEntry["type"],
+      >(type: TType) {
+        const state = yield* Ref.get(stateRef);
+        return state.entries.filter(
+          (entry): entry is Extract<SessionTreeEntry, { type: TType }> =>
+            entry.type === type
+        );
+      });
+
+      const getLabel = Effect.fnUntraced(function* (id: string) {
+        const state = yield* Ref.get(stateRef);
+        return state.labelsById.get(id);
+      });
+
+      const getMetadata = Effect.fnUntraced(function* () {
+        const state = yield* Ref.get(stateRef);
+        return state.metadata;
+      });
+
+      const getEntries = Effect.fnUntraced(function* () {
+        const state = yield* Ref.get(stateRef);
+        return [...state.entries];
+      });
+
+      const getLeafId = Effect.fnUntraced(function* () {
+        const state = yield* Ref.get(stateRef);
+        if (state.leafId !== null && !state.byId.has(state.leafId)) {
+          return yield* new SessionError({
+            code: "invalid_session",
+            message: `Entry ${state.leafId} not found`,
+          });
+        }
+        return state.leafId;
+      });
+
+      const setLeafId = Effect.fnUntraced(function* (leafId: string | null) {
+        const state = yield* Ref.get(stateRef);
+        if (leafId !== null && !state.byId.has(leafId)) {
+          return yield* new SessionError({
+            code: "not_found",
+            message: `Entry ${leafId} not found`,
+          });
+        }
+        const entry: LeafEntry = {
+          type: "leaf",
+          id: generateEntryId(state.byId),
+          parentId: state.leafId,
+          timestamp: new Date().toISOString(),
+          targetId: leafId,
+        };
+        yield* Ref.update(stateRef, (s) => {
+          s.entries.push(entry);
+          s.byId.set(entry.id, entry);
+          s.leafId = leafId;
+          return s;
+        });
+      });
+
+      const getPathToRoot = Effect.fnUntraced(function* (
+        leafId: string | null
+      ) {
+        if (leafId === null) {
+          return [];
+        }
+        const state = yield* Ref.get(stateRef);
+        const path: SessionTreeEntry[] = [];
+        let current = state.byId.get(leafId);
+        if (!current) {
+          return yield* new SessionError({
+            code: "not_found",
+            message: `Entry ${leafId} not found`,
+          });
+        }
+        while (current) {
+          path.unshift(current);
+          if (!current.parentId) {
+            break;
+          }
+          const parent = state.byId.get(current.parentId);
+          if (!parent) {
+            return yield* new SessionError({
+              code: "invalid_session",
+              message: `Entry ${current.parentId} not found`,
+            });
+          }
+          current = parent;
+        }
+        return path;
+      });
+
+      const shape: SessionStorageShape = {
+        appendEntry,
+        createEntryId,
+        findEntries,
+        getEntries,
+        getEntry,
+        getLabel,
+        getLeafId,
+        getMetadata,
+        getPathToRoot,
+        setLeafId,
+      };
+      return shape;
+    })
+  );

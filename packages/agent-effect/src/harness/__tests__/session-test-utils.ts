@@ -1,8 +1,11 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Effect, Layer } from "effect";
 import { afterEach } from "vitest";
 import type { AgentMessage } from "../../types.ts";
+import { InMemorySessionStorageLive } from "../memory-storage.ts";
+import { Session, SessionLive, type SessionShape } from "../session.ts";
 
 export function createUserMessage(text: string): AgentMessage {
   return {
@@ -30,6 +33,18 @@ export function createAssistantMessage(text: string): AgentMessage {
     stopReason: "stop",
     timestamp: Date.now(),
   };
+}
+
+export const TestSessionLayer = SessionLive.pipe(
+  Layer.provide(InMemorySessionStorageLive())
+);
+
+export async function createTestSession(): Promise<SessionShape> {
+  return Effect.runPromise(
+    Effect.gen(function* () {
+      return yield* Session;
+    }).pipe(Effect.provide(TestSessionLayer))
+  );
 }
 
 const tempDirs: string[] = [];

@@ -45,7 +45,7 @@ export type {
 } from "./harness/commands.ts";
 export { loadCommands } from "./harness/commands.ts";
 export { configEntryNameFromPath } from "./harness/config-entry-name.ts";
-export { InMemorySessionStorage } from "./harness/memory-storage.ts";
+export { InMemorySessionStorageLive } from "./harness/memory-storage.ts";
 export type {
   BashExecutionMessage,
   BranchSummaryMessage,

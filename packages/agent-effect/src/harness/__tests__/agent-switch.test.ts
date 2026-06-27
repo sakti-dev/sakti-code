@@ -1,4 +1,5 @@
 import type { StreamRequest } from "@sakti-code/llm";
+import { Effect } from "effect";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -9,10 +10,9 @@ import {
   registerFauxStreamProvider,
 } from "../../__tests__/helpers/faux-provider.ts";
 import { AgentHarness } from "../../harness/agent-harness.ts";
-import { InMemorySessionStorage } from "../../harness/memory-storage.ts";
-import { Session } from "../../harness/session.ts";
 import type { AgentDefinition } from "../../harness/types.ts";
 import type { AgentTool } from "../../types.ts";
+import { createTestSession } from "./session-test-utils.ts";
 import { TestExecutionEnv } from "./test-execution-env.ts";
 
 const registrations: FauxProviderRegistration[] = [];
@@ -80,7 +80,7 @@ describe("AgentHarness.switchAgent", () => {
     const { readTool, writeTool } = buildReadWriteTools();
     const harness = new AgentHarness({
       env: new TestExecutionEnv(process.cwd()),
-      session: new Session(new InMemorySessionStorage()),
+      session: await createTestSession(),
       model: registration.getModel(),
       streamFn: registration.streamFn,
       thinkingLevel: "off",
@@ -124,7 +124,7 @@ describe("AgentHarness.switchAgent", () => {
     const { readTool, writeTool, executed } = buildReadWriteTools();
     const harness = new AgentHarness({
       env: new TestExecutionEnv(process.cwd()),
-      session: new Session(new InMemorySessionStorage()),
+      session: await createTestSession(),
       model: registration.getModel(),
       streamFn: registration.streamFn,
       thinkingLevel: "off",
@@ -159,7 +159,7 @@ describe("AgentHarness.switchAgent", () => {
       () => fauxAssistantMessage("done"),
     ]);
     const { readTool } = buildReadWriteTools();
-    const session = new Session(new InMemorySessionStorage());
+    const session = await createTestSession();
     const harness = new AgentHarness({
       env: new TestExecutionEnv(process.cwd()),
       session,
@@ -169,7 +169,7 @@ describe("AgentHarness.switchAgent", () => {
       tools: [readTool],
     });
     harness.setPermissionEvaluator(() => "ask");
-    const expectedId = (await session.getMetadata()).id;
+    const expectedId = (await Effect.runPromise(session.getMetadata())).id;
     let captured: string | undefined;
     harness.setPermissionAskResolver(async (req) => {
       captured = req.sessionId;
@@ -195,7 +195,7 @@ describe("AgentHarness.switchAgent", () => {
     const { readTool, executed } = buildReadWriteTools();
     const harness = new AgentHarness({
       env: new TestExecutionEnv(process.cwd()),
-      session: new Session(new InMemorySessionStorage()),
+      session: await createTestSession(),
       model: registration.getModel(),
       streamFn: registration.streamFn,
       thinkingLevel: "off",

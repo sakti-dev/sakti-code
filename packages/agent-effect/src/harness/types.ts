@@ -1,6 +1,6 @@
 import type { ImageContent, Model, TextContent } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
-import { Schema } from "effect";
+import { Context, type Effect, Schema } from "effect";
 import type {
   AgentEvent,
   AgentMessage,
@@ -13,7 +13,7 @@ import type {
 export type { ThinkingLevel } from "../types.ts";
 
 import type { PermissionRuleset } from "./permission.ts";
-import type { Session } from "./session.ts";
+import type { SessionShape } from "./session.ts";
 
 export type Result<TValue, TError> =
   | { ok: true; value: TValue }
@@ -426,24 +426,40 @@ export interface JsonlSessionMetadata extends SessionMetadata {
   path: string;
 }
 
-export interface SessionStorage<
-  TMetadata extends SessionMetadata = SessionMetadata,
-> {
-  appendEntry(entry: SessionTreeEntry): Promise<void>;
-  createEntryId(): Promise<string>;
-  findEntries<TType extends SessionTreeEntry["type"]>(
+export interface SessionStorageShape {
+  readonly appendEntry: (
+    entry: SessionTreeEntry
+  ) => Effect.Effect<void, SessionError>;
+  readonly createEntryId: () => Effect.Effect<string, SessionError>;
+  readonly findEntries: <TType extends SessionTreeEntry["type"]>(
     type: TType
-  ): Promise<Array<Extract<SessionTreeEntry, { type: TType }>>>;
-  getEntries(): Promise<SessionTreeEntry[]>;
-  getEntry(id: string): Promise<SessionTreeEntry | undefined>;
-  getLabel(id: string): Promise<string | undefined>;
-  getLeafId(): Promise<string | null>;
-  getMetadata(): Promise<TMetadata>;
-  getPathToRoot(leafId: string | null): Promise<SessionTreeEntry[]>;
-  setLeafId(leafId: string | null): Promise<void>;
+  ) => Effect.Effect<
+    Array<Extract<SessionTreeEntry, { type: TType }>>,
+    SessionError
+  >;
+  readonly getEntries: () => Effect.Effect<SessionTreeEntry[], SessionError>;
+  readonly getEntry: (
+    id: string
+  ) => Effect.Effect<SessionTreeEntry | undefined, SessionError>;
+  readonly getLabel: (
+    id: string
+  ) => Effect.Effect<string | undefined, SessionError>;
+  readonly getLeafId: () => Effect.Effect<string | null, SessionError>;
+  readonly getMetadata: () => Effect.Effect<SessionMetadata, SessionError>;
+  readonly getPathToRoot: (
+    leafId: string | null
+  ) => Effect.Effect<SessionTreeEntry[], SessionError>;
+  readonly setLeafId: (
+    leafId: string | null
+  ) => Effect.Effect<void, SessionError>;
 }
 
-export type { Session } from "./session.ts";
+export class SessionStorage extends Context.Service<
+  SessionStorage,
+  SessionStorageShape
+>()("@sakti-code/agent-effect/SessionStorage") {}
+
+export type { Session, SessionShape } from "./session.ts";
 
 export interface SessionCreateOptions {
   id?: string;
@@ -460,14 +476,14 @@ export interface SessionRepo<
   TCreateOptions extends SessionCreateOptions = SessionCreateOptions,
   TListOptions = void,
 > {
-  create(options: TCreateOptions): Promise<Session<TMetadata>>;
+  create(options: TCreateOptions): Promise<SessionShape>;
   delete(metadata: TMetadata): Promise<void>;
   fork(
     source: TMetadata,
     options: SessionForkOptions & TCreateOptions
-  ): Promise<Session<TMetadata>>;
+  ): Promise<SessionShape>;
   list(options?: TListOptions): Promise<TMetadata[]>;
-  open(metadata: TMetadata): Promise<Session<TMetadata>>;
+  open(metadata: TMetadata): Promise<SessionShape>;
 }
 
 export interface JsonlSessionCreateOptions extends SessionCreateOptions {
@@ -815,7 +831,7 @@ export interface AgentHarnessOptions<
   maxSteps?: number;
   model: Model;
   resources?: AgentHarnessResources<TSkill, TPromptTemplate>;
-  session: Session;
+  session: SessionShape;
   steeringMode?: QueueMode;
   streamFn?: StreamFn;
   streamLogger?: Logger;
@@ -824,7 +840,7 @@ export interface AgentHarnessOptions<
     | string
     | ((context: {
         env: ExecutionEnv;
-        session: Session;
+        session: SessionShape;
         model: Model;
         thinkingLevel: ThinkingLevel;
         activeTools: TTool[];

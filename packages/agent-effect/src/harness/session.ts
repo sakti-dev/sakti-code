@@ -1,4 +1,5 @@
 import type { ImageContent, TextContent } from "@sakti-code/llm";
+import { Context, Effect, Layer } from "effect";
 import type { AgentMessage } from "../types.ts";
 import {
   createBranchSummaryMessage,
@@ -17,13 +18,12 @@ import type {
   SessionContext,
   SessionInfoEntry,
   SessionMetadata,
-  SessionStorage,
   SessionTreeEntry,
   ThinkingLevelChangeEntry,
 } from "./types.ts";
-import { SessionError } from "./types.ts";
+import { SessionError, SessionStorage } from "./types.ts";
 
-export function buildSessionContext(
+export function buildSessionContextFromEntries(
   pathEntries: SessionTreeEntry[]
 ): SessionContext {
   let thinkingLevel = "off";
@@ -78,7 +78,7 @@ export function buildSessionContext(
       )
     );
     const compactionIdx = pathEntries.findIndex(
-      (e) => e.type === "compaction" && e.id === compaction.id
+      (e) => e.type === "compaction" && e.id === compaction!.id
     );
     let foundFirstKept = false;
     for (let i = 0; i < compactionIdx; i++) {
@@ -102,201 +102,338 @@ export function buildSessionContext(
   return { messages, thinkingLevel, model, activeToolNames };
 }
 
-export class Session<TMetadata extends SessionMetadata = SessionMetadata> {
-  private storage: SessionStorage<TMetadata>;
-
-  constructor(storage: SessionStorage<TMetadata>) {
-    this.storage = storage;
-  }
-
-  getMetadata(): Promise<TMetadata> {
-    return this.storage.getMetadata();
-  }
-
-  getStorage(): SessionStorage<TMetadata> {
-    return this.storage;
-  }
-
-  getLeafId(): Promise<string | null> {
-    return this.storage.getLeafId();
-  }
-
-  getEntry(id: string): Promise<SessionTreeEntry | undefined> {
-    return this.storage.getEntry(id);
-  }
-
-  getEntries(): Promise<SessionTreeEntry[]> {
-    return this.storage.getEntries();
-  }
-
-  async getBranch(fromId?: string): Promise<SessionTreeEntry[]> {
-    const leafId = fromId ?? (await this.storage.getLeafId());
-    return this.storage.getPathToRoot(leafId);
-  }
-
-  async buildContext(): Promise<SessionContext> {
-    return buildSessionContext(await this.getBranch());
-  }
-
-  getLabel(id: string): Promise<string | undefined> {
-    return this.storage.getLabel(id);
-  }
-
-  async getSessionName(): Promise<string | undefined> {
-    const entries = await this.storage.findEntries("session_info");
-    return entries[entries.length - 1]?.name?.trim() || undefined;
-  }
-
-  private async appendTypedEntry<TEntry extends SessionTreeEntry>(
-    entry: TEntry
-  ): Promise<string> {
-    await this.storage.appendEntry(entry);
-    return entry.id;
-  }
-
-  async appendMessage(message: AgentMessage): Promise<string> {
-    return this.appendTypedEntry({
-      type: "message",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
-      timestamp: new Date().toISOString(),
-      message,
-    } satisfies MessageEntry);
-  }
-
-  async appendThinkingLevelChange(thinkingLevel: string): Promise<string> {
-    return this.appendTypedEntry({
-      type: "thinking_level_change",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
-      timestamp: new Date().toISOString(),
-      thinkingLevel,
-    } satisfies ThinkingLevelChangeEntry);
-  }
-
-  async appendModelChange(provider: string, modelId: string): Promise<string> {
-    return this.appendTypedEntry({
-      type: "model_change",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
-      timestamp: new Date().toISOString(),
-      provider,
-      modelId,
-    } satisfies ModelChangeEntry);
-  }
-
-  async appendActiveToolsChange(activeToolNames: string[]): Promise<string> {
-    return this.appendTypedEntry({
-      type: "active_tools_change",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
-      timestamp: new Date().toISOString(),
-      activeToolNames: [...activeToolNames],
-    } satisfies ActiveToolsChangeEntry);
-  }
-
-  async appendCompaction<T = unknown>(
+export interface SessionShape {
+  readonly appendActiveToolsChange: (
+    activeToolNames: string[]
+  ) => Effect.Effect<string, SessionError>;
+  readonly appendCompaction: <T = unknown>(
     summary: string,
     firstKeptEntryId: string,
     tokensBefore: number,
     details?: T,
     fromHook?: boolean
-  ): Promise<string> {
-    return this.appendTypedEntry({
-      type: "compaction",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
-      timestamp: new Date().toISOString(),
-      summary,
-      firstKeptEntryId,
-      tokensBefore,
-      details,
-      fromHook,
-    } satisfies CompactionEntry<T>);
-  }
-
-  async appendCustomEntry(customType: string, data?: unknown): Promise<string> {
-    return this.appendTypedEntry({
-      type: "custom",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
-      timestamp: new Date().toISOString(),
-      customType,
-      data,
-    } satisfies CustomEntry);
-  }
-
-  async appendCustomMessageEntry<T = unknown>(
+  ) => Effect.Effect<string, SessionError>;
+  readonly appendCustomEntry: (
+    customType: string,
+    data?: unknown
+  ) => Effect.Effect<string, SessionError>;
+  readonly appendCustomMessageEntry: <T = unknown>(
     customType: string,
     content: string | (TextContent | ImageContent)[],
     display: boolean,
     details?: T
-  ): Promise<string> {
-    return this.appendTypedEntry({
-      type: "custom_message",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
-      timestamp: new Date().toISOString(),
-      customType,
-      content,
-      display,
-      details,
-    } satisfies CustomMessageEntry<T>);
-  }
-
-  async appendLabel(
+  ) => Effect.Effect<string, SessionError>;
+  readonly appendLabel: (
     targetId: string,
     label: string | undefined
-  ): Promise<string> {
-    if (!(await this.storage.getEntry(targetId))) {
-      throw new SessionError({
-        code: "not_found",
-        message: `Entry ${targetId} not found`,
-      });
-    }
-    return this.appendTypedEntry({
-      type: "label",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
-      timestamp: new Date().toISOString(),
-      targetId,
-      label,
-    } satisfies LabelEntry);
-  }
-
-  async appendSessionName(name: string): Promise<string> {
-    return this.appendTypedEntry({
-      type: "session_info",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
-      timestamp: new Date().toISOString(),
-      name: name.trim(),
-    } satisfies SessionInfoEntry);
-  }
-
-  async moveTo(
+  ) => Effect.Effect<string, SessionError>;
+  readonly appendMessage: (
+    message: AgentMessage
+  ) => Effect.Effect<string, SessionError>;
+  readonly appendModelChange: (
+    provider: string,
+    modelId: string
+  ) => Effect.Effect<string, SessionError>;
+  readonly appendSessionName: (
+    name: string
+  ) => Effect.Effect<string, SessionError>;
+  readonly appendThinkingLevelChange: (
+    thinkingLevel: string
+  ) => Effect.Effect<string, SessionError>;
+  readonly buildContext: () => Effect.Effect<SessionContext, SessionError>;
+  readonly getBranch: (
+    fromId?: string
+  ) => Effect.Effect<SessionTreeEntry[], SessionError>;
+  readonly getEntries: () => Effect.Effect<SessionTreeEntry[], SessionError>;
+  readonly getEntry: (
+    id: string
+  ) => Effect.Effect<SessionTreeEntry | undefined, SessionError>;
+  readonly getLabel: (
+    id: string
+  ) => Effect.Effect<string | undefined, SessionError>;
+  readonly getLeafId: () => Effect.Effect<string | null, SessionError>;
+  readonly getMetadata: () => Effect.Effect<SessionMetadata, SessionError>;
+  readonly getSessionName: () => Effect.Effect<
+    string | undefined,
+    SessionError
+  >;
+  readonly moveTo: (
     entryId: string | null,
-    summary?: { summary: string; details?: unknown; fromHook?: boolean }
-  ): Promise<string | undefined> {
-    if (entryId !== null && !(await this.storage.getEntry(entryId))) {
-      throw new SessionError({
-        code: "not_found",
-        message: `Entry ${entryId} not found`,
-      });
+    summary?: {
+      summary: string;
+      details?: unknown;
+      fromHook?: boolean;
     }
-    await this.storage.setLeafId(entryId);
-    if (!summary) {
-      return;
-    }
-    return this.appendTypedEntry({
-      type: "branch_summary",
-      id: await this.storage.createEntryId(),
-      parentId: entryId,
-      timestamp: new Date().toISOString(),
-      fromId: entryId ?? "root",
-      summary: summary.summary,
-      details: summary.details,
-      fromHook: summary.fromHook,
-    } satisfies BranchSummaryEntry);
-  }
+  ) => Effect.Effect<string | undefined, SessionError>;
 }
+
+export class Session extends Context.Service<Session, SessionShape>()(
+  "@sakti-code/agent-effect/Session"
+) {}
+
+export const SessionLive: Layer.Layer<Session, SessionError, SessionStorage> =
+  Layer.effect(
+    Session,
+    Effect.gen(function* () {
+      const storage = yield* SessionStorage;
+
+      const getMetadata = () => storage.getMetadata();
+      const getLeafId = () => storage.getLeafId();
+      const getEntry = (id: string) => storage.getEntry(id);
+      const getEntries = () => storage.getEntries();
+      const getLabel = (id: string) => storage.getLabel(id);
+
+      const getBranch = Effect.fnUntraced(function* (fromId?: string) {
+        const leafId = fromId ?? (yield* storage.getLeafId());
+        return yield* storage.getPathToRoot(leafId);
+      });
+
+      const buildContext = Effect.fnUntraced(function* () {
+        const branch = yield* getBranch();
+        return buildSessionContextFromEntries(branch);
+      });
+
+      const getSessionName = Effect.fnUntraced(function* () {
+        const entries = yield* storage.findEntries("session_info");
+        return entries[entries.length - 1]?.name?.trim() || undefined;
+      });
+
+      const appendMessage = Effect.fnUntraced(function* (
+        message: AgentMessage
+      ) {
+        const id = yield* storage.createEntryId();
+        const parentId = yield* storage.getLeafId();
+        const entry: MessageEntry = {
+          type: "message",
+          id,
+          parentId,
+          timestamp: new Date().toISOString(),
+          message,
+        };
+        yield* storage.appendEntry(entry);
+        return id;
+      });
+
+      const appendThinkingLevelChange = Effect.fnUntraced(function* (
+        thinkingLevel: string
+      ) {
+        const id = yield* storage.createEntryId();
+        const parentId = yield* storage.getLeafId();
+        const entry: ThinkingLevelChangeEntry = {
+          type: "thinking_level_change",
+          id,
+          parentId,
+          timestamp: new Date().toISOString(),
+          thinkingLevel,
+        };
+        yield* storage.appendEntry(entry);
+        return id;
+      });
+
+      const appendModelChange = Effect.fnUntraced(function* (
+        provider: string,
+        modelId: string
+      ) {
+        const id = yield* storage.createEntryId();
+        const parentId = yield* storage.getLeafId();
+        const entry: ModelChangeEntry = {
+          type: "model_change",
+          id,
+          parentId,
+          timestamp: new Date().toISOString(),
+          provider,
+          modelId,
+        };
+        yield* storage.appendEntry(entry);
+        return id;
+      });
+
+      const appendActiveToolsChange = Effect.fnUntraced(function* (
+        activeToolNames: string[]
+      ) {
+        const id = yield* storage.createEntryId();
+        const parentId = yield* storage.getLeafId();
+        const entry: ActiveToolsChangeEntry = {
+          type: "active_tools_change",
+          id,
+          parentId,
+          timestamp: new Date().toISOString(),
+          activeToolNames: [...activeToolNames],
+        };
+        yield* storage.appendEntry(entry);
+        return id;
+      });
+
+      const appendCompaction = Effect.fnUntraced(function* <T = unknown>(
+        summary: string,
+        firstKeptEntryId: string,
+        tokensBefore: number,
+        details?: T,
+        fromHook?: boolean
+      ) {
+        const id = yield* storage.createEntryId();
+        const parentId = yield* storage.getLeafId();
+        const entry: CompactionEntry<T> = {
+          type: "compaction",
+          id,
+          parentId,
+          timestamp: new Date().toISOString(),
+          summary,
+          firstKeptEntryId,
+          tokensBefore,
+          details,
+          fromHook,
+        };
+        yield* storage.appendEntry(entry);
+        return id;
+      });
+
+      const appendCustomEntry = Effect.fnUntraced(function* (
+        customType: string,
+        data?: unknown
+      ) {
+        const id = yield* storage.createEntryId();
+        const parentId = yield* storage.getLeafId();
+        const entry: CustomEntry = {
+          type: "custom",
+          id,
+          parentId,
+          timestamp: new Date().toISOString(),
+          customType,
+          data,
+        };
+        yield* storage.appendEntry(entry);
+        return id;
+      });
+
+      const appendCustomMessageEntry = Effect.fnUntraced(function* <
+        T = unknown,
+      >(
+        customType: string,
+        content: string | (TextContent | ImageContent)[],
+        display: boolean,
+        details?: T
+      ) {
+        const id = yield* storage.createEntryId();
+        const parentId = yield* storage.getLeafId();
+        const entry: CustomMessageEntry<T> = {
+          type: "custom_message",
+          id,
+          parentId,
+          timestamp: new Date().toISOString(),
+          customType,
+          content,
+          display,
+          details,
+        };
+        yield* storage.appendEntry(entry);
+        return id;
+      });
+
+      const appendLabel = Effect.fnUntraced(function* (
+        targetId: string,
+        label: string | undefined
+      ) {
+        const target = yield* storage.getEntry(targetId);
+        if (!target) {
+          return yield* new SessionError({
+            code: "not_found",
+            message: `Entry ${targetId} not found`,
+          });
+        }
+        const id = yield* storage.createEntryId();
+        const parentId = yield* storage.getLeafId();
+        const entry: LabelEntry = {
+          type: "label",
+          id,
+          parentId,
+          timestamp: new Date().toISOString(),
+          targetId,
+          label,
+        };
+        yield* storage.appendEntry(entry);
+        return id;
+      });
+
+      const appendSessionName = Effect.fnUntraced(function* (name: string) {
+        const id = yield* storage.createEntryId();
+        const parentId = yield* storage.getLeafId();
+        const entry: SessionInfoEntry = {
+          type: "session_info",
+          id,
+          parentId,
+          timestamp: new Date().toISOString(),
+          name: name.trim(),
+        };
+        yield* storage.appendEntry(entry);
+        return id;
+      });
+
+      const moveTo = Effect.fnUntraced(function* (
+        entryId: string | null,
+        summary?: {
+          summary: string;
+          details?: unknown;
+          fromHook?: boolean;
+        }
+      ) {
+        if (entryId !== null) {
+          const target = yield* storage.getEntry(entryId);
+          if (!target) {
+            return yield* new SessionError({
+              code: "not_found",
+              message: `Entry ${entryId} not found`,
+            });
+          }
+        }
+        yield* storage.setLeafId(entryId);
+        if (!summary) {
+          return;
+        }
+        const id = yield* storage.createEntryId();
+        const entry: BranchSummaryEntry = {
+          type: "branch_summary",
+          id,
+          parentId: entryId,
+          timestamp: new Date().toISOString(),
+          fromId: entryId ?? "root",
+          summary: summary.summary,
+          details: summary.details,
+          fromHook: summary.fromHook,
+        };
+        yield* storage.appendEntry(entry);
+        return id;
+      });
+
+      const shape: SessionShape = {
+        getMetadata,
+        getLeafId,
+        getEntry,
+        getEntries,
+        getLabel,
+        getBranch,
+        buildContext,
+        getSessionName,
+        appendMessage,
+        appendThinkingLevelChange,
+        appendModelChange,
+        appendActiveToolsChange,
+        appendCompaction,
+        appendCustomEntry,
+        appendCustomMessageEntry,
+        appendLabel,
+        appendSessionName,
+        moveTo,
+      };
+      return shape;
+    })
+  );
+
+export const buildSessionContext = (
+  fromId?: string
+): Effect.Effect<SessionContext, SessionError, Session> =>
+  Effect.gen(function* () {
+    const session = yield* Session;
+    const branch = yield* session.getBranch(fromId);
+    return buildSessionContextFromEntries(branch);
+  });

@@ -20,7 +20,7 @@ import {
   createCompactionSummaryMessage,
   createCustomMessage,
 } from "./harness/messages.ts";
-import { buildSessionContext } from "./harness/session.ts";
+import { buildSessionContextFromEntries } from "./harness/session.ts";
 import {
   type CompactionEntry,
   CompactionError,
@@ -662,7 +662,7 @@ export function prepareCompaction(
   const boundaryEnd = pathEntries.length;
 
   const tokensBefore = estimateContextTokens(
-    buildSessionContext(pathEntries).messages
+    buildSessionContextFromEntries(pathEntries).messages
   ).tokens;
 
   const cutPoint = findCutPoint(

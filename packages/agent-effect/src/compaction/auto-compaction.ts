@@ -3,6 +3,7 @@ import {
   isContextOverflow,
   type Model,
 } from "@sakti-code/llm";
+import { Effect } from "effect";
 import {
   type CompactionSettings,
   calculateContextTokens,
@@ -11,7 +12,7 @@ import {
   prepareCompaction,
   shouldCompact,
 } from "../compaction.ts";
-import type { Session } from "../harness/session.ts";
+import type { SessionShape } from "../harness/session.ts";
 import type { SessionTreeEntry, ThinkingLevel } from "../harness/types.ts";
 import type { AgentMessage } from "../types.ts";
 
@@ -160,7 +161,7 @@ export function checkCompaction(
 export interface RunCompactionDeps {
   apiKey: string;
   model: Model;
-  session: Session;
+  session: SessionShape;
   settings: CompactionSettings;
   thinkingLevel?: ThinkingLevel;
 }
@@ -183,10 +184,13 @@ export type RunCompactionOutcome =
  * harness rebuilds context from storage next turn, so no in-place message
  * mutation is needed (unlike pi).
  */
+// @migration TODO: remove when auto-compaction.ts migrates to Effect (Phase Compaction)
 export async function runAutoCompaction(
   deps: RunCompactionDeps
 ): Promise<RunCompactionOutcome> {
-  const entries: SessionTreeEntry[] = await deps.session.getBranch();
+  const entries: SessionTreeEntry[] = await Effect.runPromise(
+    deps.session.getBranch()
+  );
   const preparation = prepareCompaction(entries, deps.settings);
   if (!preparation.ok) {
     return { ok: false, errorMessage: preparation.error.message };
@@ -208,11 +212,13 @@ export async function runAutoCompaction(
     return { ok: false, errorMessage: result.error.message };
   }
 
-  await deps.session.appendCompaction(
-    result.value.summary,
-    result.value.firstKeptEntryId,
-    result.value.tokensBefore,
-    result.value.details
+  await Effect.runPromise(
+    deps.session.appendCompaction(
+      result.value.summary,
+      result.value.firstKeptEntryId,
+      result.value.tokensBefore,
+      result.value.details
+    )
   );
 
   return {

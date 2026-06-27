@@ -1,5 +1,6 @@
 import type { Model } from "@sakti-code/llm";
 import { complete } from "@sakti-code/llm";
+import { Effect } from "effect";
 import { estimateTokens, SUMMARIZATION_SYSTEM_PROMPT } from "../compaction.ts";
 import {
   convertToLlm,
@@ -7,9 +8,9 @@ import {
   createCompactionSummaryMessage,
   createCustomMessage,
 } from "../harness/messages.ts";
+import type { SessionShape } from "../harness/session.ts";
 import type {
   BranchSummaryResult,
-  Session,
   SessionTreeEntry,
 } from "../harness/types.ts";
 import {
@@ -76,8 +77,9 @@ export interface GenerateBranchSummaryOptions {
 }
 
 /** Collect entries that should be summarized before navigating to a different session tree entry. */
+// @migration TODO: remove when branch-summarization.ts migrates to Effect (Phase Compaction)
 export async function collectEntriesForBranchSummary(
-  session: Session,
+  session: SessionShape,
   oldLeafId: string | null,
   targetId: string
 ): Promise<CollectEntriesResult> {
@@ -85,9 +87,11 @@ export async function collectEntriesForBranchSummary(
     return { entries: [], commonAncestorId: null };
   }
   const oldPath = new Set(
-    (await session.getBranch(oldLeafId)).map((e: SessionTreeEntry) => e.id)
+    (await Effect.runPromise(session.getBranch(oldLeafId))).map(
+      (e: SessionTreeEntry) => e.id
+    )
   );
-  const targetPath = await session.getBranch(targetId);
+  const targetPath = await Effect.runPromise(session.getBranch(targetId));
   let commonAncestorId: string | null = null;
   for (let i = targetPath.length - 1; i >= 0; i--) {
     if (oldPath.has(targetPath[i]!.id)) {
@@ -99,7 +103,9 @@ export async function collectEntriesForBranchSummary(
   let current: string | null = oldLeafId;
 
   while (current && current !== commonAncestorId) {
-    const entry = await session.getEntry(current);
+    const entry: SessionTreeEntry | undefined = await Effect.runPromise(
+      session.getEntry(current)
+    );
     if (!entry) {
       throw new SessionError({
         code: "invalid_session",

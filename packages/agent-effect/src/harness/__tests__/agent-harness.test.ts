@@ -1,5 +1,6 @@
 import type { StreamRequest } from "@sakti-code/llm";
 import { getModel } from "@sakti-code/llm";
+import { Effect } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   type FauxProviderRegistration,
@@ -11,10 +12,9 @@ import {
 import { calculateTool } from "../../__tests__/utils/calculate.ts";
 import { getCurrentTimeTool } from "../../__tests__/utils/get-current-time.ts";
 import { AgentHarness } from "../../harness/agent-harness.ts";
-import { InMemorySessionStorage } from "../../harness/memory-storage.ts";
-import { Session } from "../../harness/session.ts";
 import type { PromptTemplate, Skill } from "../../harness/types.ts";
 import type { AgentMessage, AgentTool } from "../../types.ts";
+import { createTestSession } from "./session-test-utils.ts";
 import { TestExecutionEnv } from "./test-execution-env.ts";
 
 interface AppSkill extends Skill {
@@ -62,8 +62,8 @@ afterEach(() => {
 });
 
 describe("AgentHarness", () => {
-  it("constructs directly and exposes queue modes", () => {
-    const session = new Session(new InMemorySessionStorage());
+  it("constructs directly and exposes queue modes", async () => {
+    const session = await createTestSession();
     const env = new TestExecutionEnv(process.cwd());
     const initialModel = getModel("anthropic", "claude-sonnet-4-5");
     const harness = new AgentHarness({
@@ -112,7 +112,7 @@ describe("AgentHarness", () => {
     ]);
     const harness = new AgentHarness({
       env: new TestExecutionEnv(process.cwd()),
-      session: new Session(new InMemorySessionStorage()),
+      session: await createTestSession(),
       model: registration.getModel(),
       streamFn: registration.streamFn,
       steeringMode: "one-at-a-time",
@@ -150,7 +150,7 @@ describe("AgentHarness", () => {
         return fauxAssistantMessage("ok");
       },
     ]);
-    const session = new Session(new InMemorySessionStorage());
+    const session = await createTestSession();
     const harness = new AgentHarness({
       env: new TestExecutionEnv(process.cwd()),
       session,
@@ -169,7 +169,9 @@ describe("AgentHarness", () => {
 
     await harness.prompt("hello");
 
-    const persistedText = (await session.getEntries()).flatMap((entry) => {
+    const persistedText = (
+      await Effect.runPromise(session.getEntries())
+    ).flatMap((entry) => {
       if (entry.type !== "message" || entry.message.role !== "user") return [];
       const content = entry.message.content;
       if (typeof content === "string") return [content];
@@ -203,7 +205,7 @@ describe("AgentHarness", () => {
     ]);
     const harness = new AgentHarness({
       env: new TestExecutionEnv(process.cwd()),
-      session: new Session(new InMemorySessionStorage()),
+      session: await createTestSession(),
       model: registration.getModel(),
       streamFn: registration.streamFn,
     });
@@ -267,7 +269,7 @@ describe("AgentHarness", () => {
     ]);
     const harness = new AgentHarness({
       env: new TestExecutionEnv(process.cwd()),
-      session: new Session(new InMemorySessionStorage()),
+      session: await createTestSession(),
       model: registration.getModel(),
       streamFn: registration.streamFn,
       followUpMode: "one-at-a-time",
@@ -301,7 +303,7 @@ describe("AgentHarness", () => {
     registration.setResponses([
       () => fauxAssistantMessage("should not be used"),
     ]);
-    const session = new Session(new InMemorySessionStorage());
+    const session = await createTestSession();
     const harness = new AgentHarness({
       env: new TestExecutionEnv(process.cwd()),
       session,
@@ -321,7 +323,7 @@ describe("AgentHarness", () => {
       role: "assistant",
     });
 
-    const entries = await session.getEntries();
+    const entries = await Effect.runPromise(session.getEntries());
     const messages = entries.flatMap((entry) =>
       entry.type === "message" ? [entry.message] : []
     );
@@ -378,7 +380,7 @@ describe("AgentHarness", () => {
     ]);
     const harness = new AgentHarness<Skill, PromptTemplate, AgentTool>({
       env: new TestExecutionEnv(process.cwd()),
-      session: new Session(new InMemorySessionStorage()),
+      session: await createTestSession(),
       model: registration.getModel(),
       streamFn: registration.streamFn,
       thinkingLevel: "off",
@@ -439,7 +441,7 @@ describe("AgentHarness", () => {
     const registration = registerFauxStreamProvider();
     registrations.push(registration);
     registration.setResponses([() => fauxAssistantMessage("ok")]);
-    const session = new Session(new InMemorySessionStorage());
+    const session = await createTestSession();
     const harness = new AgentHarness({
       env: new TestExecutionEnv(process.cwd()),
       session,
@@ -466,7 +468,7 @@ describe("AgentHarness", () => {
 
     await harness.prompt("hello");
 
-    const entries = await session.getEntries();
+    const entries = await Effect.runPromise(session.getEntries());
     const roles = entries.flatMap((entry) =>
       entry.type === "message" ? [entry.message.role] : []
     );
@@ -480,7 +482,7 @@ describe("AgentHarness", () => {
     const barrier = deferred();
     const harness = new AgentHarness({
       env: new TestExecutionEnv(process.cwd()),
-      session: new Session(new InMemorySessionStorage()),
+      session: await createTestSession(),
       model: registration.getModel(),
       streamFn: registration.streamFn,
     });
@@ -522,7 +524,7 @@ describe("AgentHarness", () => {
           "toolUse"
         ),
     ]);
-    const session = new Session(new InMemorySessionStorage());
+    const session = await createTestSession();
     const harness = new AgentHarness({
       env: new TestExecutionEnv(process.cwd()),
       session,
@@ -555,7 +557,7 @@ describe("AgentHarness", () => {
 
     await harness.prompt("hello");
 
-    const toolResult = (await session.getEntries()).find(
+    const toolResult = (await Effect.runPromise(session.getEntries())).find(
       (entry) => entry.type === "message" && entry.message.role === "toolResult"
     );
     expect(seenToolCalls).toEqual([
@@ -572,7 +574,7 @@ describe("AgentHarness", () => {
   });
 
   it("preserves app tool types for getters and update events", async () => {
-    const session = new Session(new InMemorySessionStorage());
+    const session = await createTestSession();
     const env = new TestExecutionEnv(process.cwd());
     const model = getModel("anthropic", "claude-sonnet-4-5");
     type AppTool = AgentTool<typeof calculateTool.parameters, undefined> & {
@@ -668,11 +670,13 @@ describe("AgentHarness", () => {
     expect(harness.getActiveTools().map((tool) => tool.name)).toEqual([
       "search",
     ]);
-    expect((await session.buildContext()).activeToolNames).toEqual(["search"]);
+    expect(
+      (await Effect.runPromise(session.buildContext())).activeToolNames
+    ).toEqual(["search"]);
   });
 
-  it("validates constructor tool names", () => {
-    const session = new Session(new InMemorySessionStorage());
+  it("validates constructor tool names", async () => {
+    const session = await createTestSession();
     const env = new TestExecutionEnv(process.cwd());
     const model = getModel("anthropic", "claude-sonnet-4-5");
     expect(
@@ -708,7 +712,7 @@ describe("AgentHarness", () => {
   });
 
   it("preserves app resource types for getters and update events", async () => {
-    const session = new Session(new InMemorySessionStorage());
+    const session = await createTestSession();
     const env = new TestExecutionEnv(process.cwd());
     const model = getModel("anthropic", "claude-sonnet-4-5");
     const harness = new AgentHarness<AppSkill, AppPromptTemplate, AgentTool>({

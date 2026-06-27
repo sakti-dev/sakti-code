@@ -5,8 +5,8 @@ import {
   registerFauxStreamProvider,
 } from "../../__tests__/helpers/faux-provider.ts";
 import { AgentHarness } from "../../harness/agent-harness.ts";
-import { InMemorySessionStorage } from "../../harness/memory-storage.ts";
-import { Session } from "../../harness/session.ts";
+import type { SessionShape } from "../../harness/session.ts";
+import { createTestSession } from "./session-test-utils.ts";
 import { TestExecutionEnv } from "./test-execution-env.ts";
 
 /**
@@ -22,13 +22,13 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 }
 
 /** Build a harness backed by a faux stream provider. */
-function makeHarness(
+async function makeHarness(
   registration: FauxProviderRegistration,
-  session: Session = new Session(new InMemorySessionStorage())
-): AgentHarness {
+  session?: SessionShape
+): Promise<AgentHarness> {
   return new AgentHarness({
     env: new TestExecutionEnv(process.cwd()),
-    session,
+    session: session ?? (await createTestSession()),
     model: registration.getModel(),
     streamFn: registration.streamFn,
     steeringMode: "all",
@@ -55,7 +55,7 @@ describe("AgentHarness.continue()", () => {
       () => fauxAssistantMessage("first response"),
       () => fauxAssistantMessage("continued response"),
     ]);
-    const harness = makeHarness(registration);
+    const harness = await makeHarness(registration);
     const eventTypes = collectEventTypes(harness);
 
     // 1. Initial prompt produces the first assistant message.
@@ -101,7 +101,7 @@ describe("AgentHarness.continue()", () => {
         return fauxAssistantMessage("done");
       },
     ]);
-    const harness = makeHarness(registration);
+    const harness = await makeHarness(registration);
 
     // Start prompt but do NOT await — phase is set to "turn" synchronously.
     const promptPromise = harness.prompt("hello");
@@ -117,7 +117,7 @@ describe("AgentHarness.continue()", () => {
   it("throws if the session has no messages", async () => {
     const registration = registerFauxStreamProvider();
     registration.setResponses([() => fauxAssistantMessage("ok")]);
-    const harness = makeHarness(registration);
+    const harness = await makeHarness(registration);
 
     // Empty session → nothing to continue from.
     await expect(harness.continue()).rejects.toThrow(/no messages/i);
@@ -126,7 +126,7 @@ describe("AgentHarness.continue()", () => {
   it("throws if the last message is an assistant message", async () => {
     const registration = registerFauxStreamProvider();
     registration.setResponses([() => fauxAssistantMessage("ok")]);
-    const harness = makeHarness(registration);
+    const harness = await makeHarness(registration);
 
     // prompt() leaves the transcript ending in an assistant message.
     await harness.prompt("hello");
