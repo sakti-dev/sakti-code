@@ -4,7 +4,7 @@ import type {
   StreamRequest,
   ToolCall,
 } from "@sakti-code/llm";
-import type { StreamFn } from "../../types.ts";
+import type { StreamFn } from "~/types";
 import {
   createAssistantMessage,
   createUsage,

@@ -1,14 +1,7 @@
 import type { Model } from "@sakti-code/llm";
 import { complete } from "@sakti-code/llm";
 import { Effect } from "effect";
-import { estimateTokens, SUMMARIZATION_SYSTEM_PROMPT } from "../compaction.ts";
-import {
-  convertToLlm,
-  createBranchSummaryMessage,
-  createCompactionSummaryMessage,
-  createCustomMessage,
-} from "../harness/messages.ts";
-import type { SessionShape } from "../harness/session.ts";
+import { estimateTokens } from "~/compaction/compaction";
 import {
   BranchSummaryError,
   type BranchSummaryResult,
@@ -17,8 +10,20 @@ import {
   type Result,
   SessionError,
   type SessionTreeEntry,
-} from "../harness/types.ts";
-import type { AgentMessage } from "../types.ts";
+} from "~/harness-types";
+import {
+  BRANCH_SUMMARY_PREAMBLE,
+  BRANCH_SUMMARY_PROMPT,
+} from "~/prompts/branch-summary";
+import { SUMMARIZATION_SYSTEM_PROMPT } from "~/prompts/compaction";
+import {
+  convertToLlm,
+  createBranchSummaryMessage,
+  createCompactionSummaryMessage,
+  createCustomMessage,
+} from "~/session/messages";
+import type { SessionShape } from "~/session/session";
+import type { AgentMessage } from "~/types";
 import {
   computeFileLists,
   createFileOps,
@@ -217,40 +222,6 @@ export function prepareBranchEntries(
 
   return { messages, fileOps, totalTokens };
 }
-
-const BRANCH_SUMMARY_PREAMBLE = `The user explored a different conversation branch before returning here.
-Summary of that exploration:
-
-`;
-
-const BRANCH_SUMMARY_PROMPT = `Create a structured summary of this conversation branch for context when returning later.
-
-Use this EXACT format:
-
-## Goal
-[What was the user trying to accomplish in this branch?]
-
-## Constraints & Preferences
-- [Any constraints, preferences, or requirements mentioned]
-- [Or "(none)" if none were mentioned]
-
-## Progress
-### Done
-- [x] [Completed tasks/changes]
-
-### In Progress
-- [ ] [Work that was started but not finished]
-
-### Blocked
-- [Issues preventing progress, if any]
-
-## Key Decisions
-- **[Decision]**: [Brief rationale]
-
-## Next Steps
-1. [What should happen next to continue this work]
-
-Keep each section concise. Preserve exact file paths, function names, and error messages.`;
 
 /** Generate a summary for abandoned branch entries. */
 export const generateBranchSummaryEffect = (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { truncateHead, truncateTail } from "../truncate.ts";
+import { truncateHead, truncateTail } from "~/lib/truncate";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();

@@ -11,15 +11,15 @@ import {
   estimateContextTokens,
   prepareCompaction,
   shouldCompact,
-} from "../compaction.ts";
-import type { SessionShape } from "../harness/session.ts";
+} from "~/compaction/compaction";
 import {
   isFailure,
   type SessionError,
   type SessionTreeEntry,
   type ThinkingLevel,
-} from "../harness/types.ts";
-import type { AgentMessage } from "../types.ts";
+} from "~/harness-types";
+import type { SessionShape } from "~/session/session";
+import type { AgentMessage } from "~/types";
 
 /**
  * # Auto-compaction policy

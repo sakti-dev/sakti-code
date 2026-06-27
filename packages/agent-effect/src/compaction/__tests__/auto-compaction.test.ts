@@ -1,14 +1,14 @@
 import type { AssistantMessage, Usage } from "@sakti-code/llm";
 import { describe, expect, it } from "vitest";
 import {
-  type CompactionSettings,
-  DEFAULT_COMPACTION_SETTINGS,
-} from "../../compaction.ts";
-import {
   type CheckCompactionInput,
   checkCompaction,
   parseCompactionSettings,
-} from "../auto-compaction.ts";
+} from "~/compaction/auto-compaction";
+import {
+  type CompactionSettings,
+  DEFAULT_COMPACTION_SETTINGS,
+} from "~/compaction/compaction";
 
 const usage = (over: Partial<Usage> = {}): Usage => ({
   input: 0,

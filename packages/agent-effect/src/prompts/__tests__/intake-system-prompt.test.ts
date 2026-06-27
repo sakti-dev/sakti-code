@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INTAKE_SYSTEM_PROMPT } from "../intake-system-prompt.ts";
+import { INTAKE_SYSTEM_PROMPT } from "~/prompts/intake-system-prompt";
 
 describe("INTAKE_SYSTEM_PROMPT", () => {
   it("is a non-empty string", () => {

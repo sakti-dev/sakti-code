@@ -5,7 +5,7 @@ import {
   CompletionProviderLive,
   StreamProvider,
   StreamProviderLive,
-} from "../llm.ts";
+} from "~/services/llm";
 
 describe("LLM services", () => {
   it.effect("StreamProvider is accessible via yield* StreamProvider", () =>
