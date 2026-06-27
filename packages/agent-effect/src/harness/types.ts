@@ -1,5 +1,6 @@
 import type { ImageContent, Model, TextContent } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
+import { Schema } from "effect";
 import type {
   AgentEvent,
   AgentMessage,
@@ -177,23 +178,24 @@ export class BranchSummaryError extends Error {
   }
 }
 
-export type SessionErrorCode =
-  | "not_found"
-  | "invalid_session"
-  | "invalid_entry"
-  | "invalid_fork_target"
-  | "storage"
-  | "unknown";
+export const SessionErrorCode = Schema.Literals([
+  "not_found",
+  "invalid_session",
+  "invalid_entry",
+  "invalid_fork_target",
+  "storage",
+  "unknown",
+]);
+export type SessionErrorCode = typeof SessionErrorCode.Type;
 
-export class SessionError extends Error {
-  public code: SessionErrorCode;
-
-  constructor(code: SessionErrorCode, message: string, cause?: Error) {
-    super(message, cause === undefined ? undefined : { cause });
-    this.name = "SessionError";
-    this.code = code;
+export class SessionError extends Schema.TaggedErrorClass<SessionError>()(
+  "SessionError",
+  {
+    code: SessionErrorCode,
+    message: Schema.String,
+    cause: Schema.optional(Schema.Defect()),
   }
-}
+) {}
 
 export type AgentHarnessErrorCode =
   | "busy"

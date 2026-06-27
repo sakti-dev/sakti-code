@@ -101,7 +101,10 @@ export async function collectEntriesForBranchSummary(
   while (current && current !== commonAncestorId) {
     const entry = await session.getEntry(current);
     if (!entry) {
-      throw new SessionError("invalid_session", `Entry ${current} not found`);
+      throw new SessionError({
+        code: "invalid_session",
+        message: `Entry ${current} not found`,
+      });
     }
     entries.push(entry as SessionTreeEntry);
     current = entry.parentId;

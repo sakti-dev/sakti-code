@@ -66,10 +66,10 @@ export class InMemorySessionStorage<
       this.leafId = leafIdAfterEntry(entry);
     }
     if (this.leafId !== null && !this.byId.has(this.leafId)) {
-      throw new SessionError(
-        "invalid_session",
-        `Entry ${this.leafId} not found`
-      );
+      throw new SessionError({
+        code: "invalid_session",
+        message: `Entry ${this.leafId} not found`,
+      });
     }
     this.metadata =
       options?.metadata ??
@@ -82,17 +82,20 @@ export class InMemorySessionStorage<
 
   async getLeafId(): Promise<string | null> {
     if (this.leafId !== null && !this.byId.has(this.leafId)) {
-      throw new SessionError(
-        "invalid_session",
-        `Entry ${this.leafId} not found`
-      );
+      throw new SessionError({
+        code: "invalid_session",
+        message: `Entry ${this.leafId} not found`,
+      });
     }
     return this.leafId;
   }
 
   async setLeafId(leafId: string | null): Promise<void> {
     if (leafId !== null && !this.byId.has(leafId)) {
-      throw new SessionError("not_found", `Entry ${leafId} not found`);
+      throw new SessionError({
+        code: "not_found",
+        message: `Entry ${leafId} not found`,
+      });
     }
     const entry: LeafEntry = {
       type: "leaf",
@@ -141,7 +144,10 @@ export class InMemorySessionStorage<
     const path: SessionTreeEntry[] = [];
     let current = this.byId.get(leafId);
     if (!current) {
-      throw new SessionError("not_found", `Entry ${leafId} not found`);
+      throw new SessionError({
+        code: "not_found",
+        message: `Entry ${leafId} not found`,
+      });
     }
     while (current) {
       path.unshift(current);
@@ -150,10 +156,10 @@ export class InMemorySessionStorage<
       }
       const parent = this.byId.get(current.parentId);
       if (!parent) {
-        throw new SessionError(
-          "invalid_session",
-          `Entry ${current.parentId} not found`
-        );
+        throw new SessionError({
+          code: "invalid_session",
+          message: `Entry ${current.parentId} not found`,
+        });
       }
       current = parent;
     }

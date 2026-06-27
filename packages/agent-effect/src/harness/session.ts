@@ -249,7 +249,10 @@ export class Session<TMetadata extends SessionMetadata = SessionMetadata> {
     label: string | undefined
   ): Promise<string> {
     if (!(await this.storage.getEntry(targetId))) {
-      throw new SessionError("not_found", `Entry ${targetId} not found`);
+      throw new SessionError({
+        code: "not_found",
+        message: `Entry ${targetId} not found`,
+      });
     }
     return this.appendTypedEntry({
       type: "label",
@@ -276,7 +279,10 @@ export class Session<TMetadata extends SessionMetadata = SessionMetadata> {
     summary?: { summary: string; details?: unknown; fromHook?: boolean }
   ): Promise<string | undefined> {
     if (entryId !== null && !(await this.storage.getEntry(entryId))) {
-      throw new SessionError("not_found", `Entry ${entryId} not found`);
+      throw new SessionError({
+        code: "not_found",
+        message: `Entry ${entryId} not found`,
+      });
     }
     await this.storage.setLeafId(entryId);
     if (!summary) {
