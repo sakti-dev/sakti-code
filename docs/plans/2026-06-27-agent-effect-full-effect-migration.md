@@ -1332,3 +1332,24 @@ Pause and write a dedicated sub-plan if any of these occur:
 - **Effect source (pinned to installed version):** `openspec/references/effect/packages/` — read the actual implementation when API behavior is unclear. Subdirs: `effect/src/`, `platform/`, `platform-node/`. The docs site can lag; this source matches `effect@3.21.4` exactly.
 - Original structural port plan (now superseded): `docs/plans/2026-06-27-agent-effect-tier5.md`
 - Deep-dive code review findings (C1–C6, P1–P8, M1–M8): in conversation log; summarize into `docs/patterns/agent-effect-migration-patterns.md` as needed
+
+---
+
+## Phase 0 Completion Record
+
+**Completed:** 2026-06-27 (commits `aef4fab` → `4f4c2cc`)
+
+**Gates passed:**
+- Tests: 246 green (was 233 at start; +6 SessionError, +1 SessionStorage tag, +6 Session service)
+- Typecheck: clean
+- Biome: clean (pre-existing `velomark/biome.jsonc` nested-root warning unrelated)
+- No new `any` introduced (5 pre-existing in `types.ts` + `calculate.ts`)
+
+**Patterns established:** 1 (TaggedError), 2 (Context.Service + Layer), 3 (Layer composition), 4 (Effect-returning function), 5 (it.effect test), 6 (@migration caller adapter). All documented in `docs/patterns/agent-effect-migration-patterns.md`.
+
+**`@migration` adapter baseline:** 3 source files tagged, 31 `Effect.runPromise` call sites total:
+- `harness/agent-harness.ts`: 26 (Phase Harness removes)
+- `compaction/branch-summarization.ts`: 3 (Phase Compaction removes)
+- `compaction/auto-compaction.ts`: 2 (Phase Compaction removes)
+
+**Bug C5 fixed:** Session append race — `InMemorySessionStorage` now uses `Ref<InMemoryState>` with atomic `Ref.update`, eliminating the read-modify-write window.
