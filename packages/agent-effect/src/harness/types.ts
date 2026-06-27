@@ -535,8 +535,7 @@ export type AgentHarnessPhase =
   | "idle"
   | "turn"
   | "compaction"
-  | "branch_summary"
-  | "retry";
+  | "branch_summary";
 
 export type PendingSessionWrite = SessionTreeEntry extends infer TEntry
   ? TEntry extends SessionTreeEntry
@@ -588,18 +587,6 @@ export interface BeforeProviderRequestEvent {
   sessionId: string;
   streamOptions: AgentHarnessStreamOptions;
   type: "before_provider_request";
-}
-
-export interface BeforeProviderPayloadEvent {
-  model: Model;
-  payload: unknown;
-  type: "before_provider_payload";
-}
-
-export interface AfterProviderResponseEvent {
-  headers: Record<string, string>;
-  status: number;
-  type: "after_provider_response";
 }
 
 export interface ToolCallEvent {
@@ -689,8 +676,6 @@ export type AgentHarnessOwnEvent<
   | BeforeAgentStartEvent<TSkill, TPromptTemplate>
   | ContextEvent
   | BeforeProviderRequestEvent
-  | BeforeProviderPayloadEvent
-  | AfterProviderResponseEvent
   | ToolCallEvent
   | ToolResultEvent
   | SessionBeforeCompactEvent
@@ -718,10 +703,6 @@ export interface ContextResult {
 
 export interface BeforeProviderRequestResult {
   streamOptions?: AgentHarnessStreamOptionsPatch;
-}
-
-export interface BeforeProviderPayloadResult {
-  payload: unknown;
 }
 
 export interface ToolCallResult {
@@ -753,8 +734,6 @@ export type AgentHarnessEventResultMap = {
   before_agent_start: BeforeAgentStartResult | undefined;
   context: ContextResult | undefined;
   before_provider_request: BeforeProviderRequestResult | undefined;
-  before_provider_payload: BeforeProviderPayloadResult | undefined;
-  after_provider_response: undefined;
   tool_call: ToolCallResult | undefined;
   tool_result: ToolResultPatch | undefined;
   session_before_compact: SessionBeforeCompactResult | undefined;

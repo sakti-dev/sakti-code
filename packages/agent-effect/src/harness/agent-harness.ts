@@ -370,7 +370,7 @@ export class AgentHarness<
           type: "before_provider_request",
           model,
           sessionId,
-          streamOptions: cloneStreamOptions(current),
+          streamOptions: current,
         })) as { streamOptions?: AgentHarnessStreamOptionsPatch } | undefined;
         if (result?.streamOptions) {
           current = applyStreamOptionsPatch(current, result.streamOptions);
@@ -400,6 +400,36 @@ export class AgentHarness<
       this.runPromise = undefined;
       finish();
     };
+  }
+
+  private async runAsTurn<T>(
+    mode: string,
+    fn: (
+      turnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
+    ) => Promise<T>
+  ): Promise<T> {
+    if (this.phase !== "idle") {
+      throw new AgentHarnessError({
+        code: "busy",
+        message: "AgentHarness is busy",
+      });
+    }
+    this.phase = "turn";
+    this.logger?.info("turn started", {
+      mode,
+      model: this.model.id,
+      provider: this.model.provider,
+    });
+    const finishRunPromise = this.startRunPromise();
+    try {
+      const turnState = await this.createTurnState();
+      return await fn(turnState);
+    } catch (error) {
+      this.phase = "idle";
+      throw normalizeHarnessError(error, "unknown");
+    } finally {
+      finishRunPromise();
+    }
   }
 
   private async createTurnState(): Promise<
@@ -834,28 +864,9 @@ export class AgentHarness<
     text: string,
     options?: { images?: ImageContent[] }
   ): Promise<AssistantMessage> {
-    if (this.phase !== "idle") {
-      throw new AgentHarnessError({
-        code: "busy",
-        message: "AgentHarness is busy",
-      });
-    }
-    this.phase = "turn";
-    this.logger?.info("turn started", {
-      mode: "prompt",
-      model: this.model.id,
-      provider: this.model.provider,
-    });
-    const finishRunPromise = this.startRunPromise();
-    try {
-      const turnState = await this.createTurnState();
-      return await this.executeTurn(turnState, text, options);
-    } catch (error) {
-      this.phase = "idle";
-      throw normalizeHarnessError(error, "unknown");
-    } finally {
-      finishRunPromise();
-    }
+    return this.runAsTurn("prompt", (turnState) =>
+      this.executeTurn(turnState, text, options)
+    );
   }
 
   /**
@@ -991,16 +1002,7 @@ export class AgentHarness<
     name: string,
     additionalInstructions?: string
   ): Promise<AssistantMessage> {
-    if (this.phase !== "idle") {
-      throw new AgentHarnessError({
-        code: "busy",
-        message: "AgentHarness is busy",
-      });
-    }
-    this.phase = "turn";
-    const finishRunPromise = this.startRunPromise();
-    try {
-      const turnState = await this.createTurnState();
+    return this.runAsTurn("skill", async (turnState) => {
       const skill = (turnState.resources.skills ?? []).find(
         (candidate) => candidate.name === name
       );
@@ -1010,32 +1012,18 @@ export class AgentHarness<
           message: `Unknown skill: ${name}`,
         });
       }
-      return await this.executeTurn(
+      return this.executeTurn(
         turnState,
         formatSkillInvocation(skill, additionalInstructions)
       );
-    } catch (error) {
-      this.phase = "idle";
-      throw normalizeHarnessError(error, "unknown");
-    } finally {
-      finishRunPromise();
-    }
+    });
   }
 
   async promptFromTemplate(
     name: string,
     args: string[] = []
   ): Promise<AssistantMessage> {
-    if (this.phase !== "idle") {
-      throw new AgentHarnessError({
-        code: "busy",
-        message: "AgentHarness is busy",
-      });
-    }
-    this.phase = "turn";
-    const finishRunPromise = this.startRunPromise();
-    try {
-      const turnState = await this.createTurnState();
+    return this.runAsTurn("promptFromTemplate", async (turnState) => {
       const template = (turnState.resources.promptTemplates ?? []).find(
         (candidate) => candidate.name === name
       );
@@ -1045,16 +1033,11 @@ export class AgentHarness<
           message: `Unknown prompt template: ${name}`,
         });
       }
-      return await this.executeTurn(
+      return this.executeTurn(
         turnState,
         formatPromptTemplateInvocation(template, args)
       );
-    } catch (error) {
-      this.phase = "idle";
-      throw normalizeHarnessError(error, "unknown");
-    } finally {
-      finishRunPromise();
-    }
+    });
   }
 
   async steer(
@@ -1119,14 +1102,7 @@ export class AgentHarness<
     }
     this.phase = "compaction";
     try {
-      const model = this.model;
-      if (!model) {
-        throw new AgentHarnessError({
-          code: "invalid_state",
-          message: "No model set for compaction",
-        });
-      }
-      const auth = await this.getApiKeyAndHeaders?.(model);
+      const auth = await this.getApiKeyAndHeaders?.(this.model);
       if (!auth) {
         throw new AgentHarnessError({
           code: "auth",
@@ -1166,7 +1142,7 @@ export class AgentHarness<
         ? ok(provided)
         : await compact(
             preparation,
-            model,
+            this.model,
             auth.apiKey,
             auth.headers,
             customInstructions,
@@ -1258,14 +1234,7 @@ export class AgentHarness<
       let summaryText: string | undefined = hookResult?.summary?.summary;
       let summaryDetails: unknown = hookResult?.summary?.details;
       if (!summaryText && options?.summarize && entries.length > 0) {
-        const model = this.model;
-        if (!model) {
-          throw new AgentHarnessError({
-            code: "invalid_state",
-            message: "No model set for branch summary",
-          });
-        }
-        const auth = await this.getApiKeyAndHeaders?.(model);
+        const auth = await this.getApiKeyAndHeaders?.(this.model);
         if (!auth) {
           throw new AgentHarnessError({
             code: "auth",
@@ -1273,7 +1242,7 @@ export class AgentHarness<
           });
         }
         const branchSummary = await generateBranchSummary(entries, {
-          model,
+          model: this.model,
           apiKey: auth.apiKey,
           ...(auth.headers === undefined ? {} : { headers: auth.headers }),
           signal:
@@ -1475,7 +1444,9 @@ export class AgentHarness<
   }
 
   getActiveTools(): TTool[] {
-    return this.activeToolNames.map((name) => this.tools.get(name)!);
+    return this.activeToolNames
+      .map((name) => this.tools.get(name))
+      .filter((tool): tool is TTool => tool !== undefined);
   }
 
   async setActiveTools(toolNames: string[]): Promise<void> {
