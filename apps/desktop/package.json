@@ -3,8 +3,9 @@
   "productName": "sakti-code",
   "version": "0.1.0",
   "description": "Sakti desktop coding agent (Electron + SolidJS)",
-  "author": "sakti-code",
+  "author": "Ardian Eka Candra <ardianoption@gmail.com>",
   "license": "MIT",
+  "homepage": "https://github.com/sakti-dev/sakti-code",
   "private": true,
   "type": "module",
   "main": "out/main/index.js",
@@ -12,7 +13,7 @@
     "postinstall": "node node_modules/electron/install.js",
     "dev": "node scripts/dev.mjs",
     "build": "electron-vite build",
-    "package": "electron-vite build && electron-builder",
+    "package": "turbo build && electron-builder",
     "rebuild": "electron-builder install-app-deps",
     "spike": "electron spike.mjs",
     "test": "vitest run",
@@ -40,6 +41,10 @@
     "tailwindcss": "^4.3.1",
     "tailwindcss-animate": "^1.0.7",
     "velomark": "workspace:*"
+  },
+  "optionalDependencies": {
+    "@ff-labs/fff-bin-linux-x64-gnu": "^0.9.6",
+    "node-pty": "^1.1.0"
   },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.2",

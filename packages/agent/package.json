@@ -6,19 +6,22 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "development": "./src/index.ts",
       "types": "./dist/index.d.ts",
-      "default": "./src/index.ts"
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup && node ../../scripts/restore-node-protocol.mjs dist",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@sakti-code/llm": "workspace:*",
     "@sakti-code/logger": "workspace:*",
-    "typebox": "1.1.38"
+    "typebox": "1.1.38",
+    "uuid": "^14.0.1",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/node": "^24",

@@ -5,24 +5,30 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./src/app.ts",
-      "default": "./src/app.ts"
+      "development": "./src/app.ts",
+      "types": "./dist/app.d.ts",
+      "default": "./dist/app.js"
     },
     "./create-server": {
-      "types": "./src/create-server.ts",
-      "default": "./src/create-server.ts"
+      "development": "./src/create-server.ts",
+      "types": "./dist/create-server.d.ts",
+      "default": "./dist/create-server.js"
     },
     "./dirs": {
-      "types": "./src/lib/config-dirs.ts",
-      "default": "./src/lib/config-dirs.ts"
+      "development": "./src/lib/config-dirs.ts",
+      "types": "./dist/dirs.d.ts",
+      "default": "./dist/dirs.js"
     },
     "./ws": {
-      "types": "./src/agent/ws-handler.ts",
-      "default": "./src/agent/ws-handler.ts"
+      "development": "./src/agent/ws-handler.ts",
+      "types": "./dist/ws.d.ts",
+      "default": "./dist/ws.js"
     }
   },
   "scripts": {
-    "start": "tsx src/index.ts",
+    "build": "tsup && node ../../scripts/restore-node-protocol.mjs dist",
+    "dev": "NODE_OPTIONS=--conditions=development tsx src/index.ts",
+    "start": "NODE_OPTIONS=--conditions=development tsx src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -38,6 +44,7 @@
     "hono": "^4.12.26",
     "node-pty": "^1.1.0",
     "proper-lockfile": "^4.1.2",
+    "typebox": "^1.2.18",
     "vitest": "^4.1.9",
     "ws": "^8.21.0"
   },
