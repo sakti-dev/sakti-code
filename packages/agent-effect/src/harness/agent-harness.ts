@@ -7,13 +7,13 @@ import type {
 import type { Logger } from "@sakti-code/logger";
 import { Effect } from "effect";
 import {
-  collectEntriesForBranchSummary,
-  generateBranchSummary,
+  collectEntriesForBranchSummaryEffect,
+  generateBranchSummaryEffect,
 } from "../compaction/branch-summarization.ts";
 import {
-  compact,
   DEFAULT_COMPACTION_SETTINGS,
   prepareCompaction,
+  compactEffect as runCompactEffect,
 } from "../compaction.ts";
 import { runAgentLoop, runAgentLoopContinue } from "../loop/agent-loop.ts";
 import type {
@@ -1111,76 +1111,89 @@ export class AgentHarness<
       });
     }
     this.phase = "compaction";
+    const self = this;
     try {
-      const auth = await this.getApiKeyAndHeaders?.(this.model);
-      if (!auth) {
-        throw new AgentHarnessError({
-          code: "auth",
-          message: "No auth available for compaction",
-        });
-      }
-      const branchEntries = await Effect.runPromise(this.session.getBranch());
-      const preparationResult = prepareCompaction(
-        branchEntries,
-        DEFAULT_COMPACTION_SETTINGS
-      );
-      if (isFailure(preparationResult)) {
-        throw preparationResult.failure;
-      }
-      const preparation = preparationResult.success;
-      if (!preparation) {
-        throw new AgentHarnessError({
-          code: "compaction",
-          message: "Nothing to compact",
-        });
-      }
-      const hookResult = await this.emitHook({
-        type: "session_before_compact",
-        preparation,
-        branchEntries,
-        customInstructions,
-        signal: this.runAbortController?.signal ?? new AbortController().signal,
-      });
-      if (hookResult?.cancel) {
-        throw new AgentHarnessError({
-          code: "compaction",
-          message: "Compaction cancelled",
-        });
-      }
-      const provided = hookResult?.compaction;
-      const compactResult = provided
-        ? ok(provided)
-        : await compact(
-            preparation,
-            this.model,
-            auth.apiKey,
-            auth.headers,
-            customInstructions,
-            undefined,
-            this.thinkingLevel
+      return await Effect.runPromise(
+        Effect.gen(function* () {
+          const auth = yield* Effect.promise(() =>
+            Promise.resolve(
+              self.getApiKeyAndHeaders?.(self.model) ??
+                Promise.resolve(undefined)
+            )
           );
-      if (isFailure(compactResult)) {
-        throw compactResult.failure;
-      }
-      const result = compactResult.success;
-      const entryId = await Effect.runPromise(
-        this.session.appendCompaction(
-          result.summary,
-          result.firstKeptEntryId,
-          result.tokensBefore,
-          result.details,
-          provided !== undefined
-        )
+          if (!auth) {
+            yield* new AgentHarnessError({
+              code: "auth",
+              message: "No auth available for compaction",
+            });
+          }
+          const branchEntries = yield* self.session.getBranch();
+          const preparationResult = prepareCompaction(
+            branchEntries,
+            DEFAULT_COMPACTION_SETTINGS
+          );
+          if (isFailure(preparationResult)) {
+            return yield* Effect.fail(preparationResult.failure);
+          }
+          const preparation = preparationResult.success;
+          if (!preparation) {
+            yield* new AgentHarnessError({
+              code: "compaction",
+              message: "Nothing to compact",
+            });
+          }
+          const hookResult = yield* Effect.promise(() =>
+            self.emitHook({
+              type: "session_before_compact",
+              preparation: preparation!,
+              branchEntries,
+              customInstructions,
+              signal:
+                self.runAbortController?.signal ?? new AbortController().signal,
+            })
+          );
+          if (hookResult?.cancel) {
+            yield* new AgentHarnessError({
+              code: "compaction",
+              message: "Compaction cancelled",
+            });
+          }
+          const provided = hookResult?.compaction;
+          const compactResult = provided
+            ? ok(provided)
+            : yield* runCompactEffect(
+                preparation!,
+                self.model,
+                auth!.apiKey,
+                auth!.headers,
+                customInstructions,
+                undefined,
+                self.thinkingLevel
+              );
+          if (isFailure(compactResult)) {
+            return yield* Effect.fail(compactResult.failure);
+          }
+          const result = compactResult.success;
+          const entryId = yield* self.session.appendCompaction(
+            result.summary,
+            result.firstKeptEntryId,
+            result.tokensBefore,
+            result.details,
+            provided !== undefined
+          );
+          const entry = yield* self.session.getEntry(entryId);
+          if (entry?.type === "compaction") {
+            yield* Effect.promise(() =>
+              self.emitOwn({
+                type: "session_compact",
+                compactionEntry: entry,
+                fromHook: provided !== undefined,
+              })
+            );
+          }
+          return result;
+        })
       );
-      const entry = await Effect.runPromise(this.session.getEntry(entryId));
-      if (entry?.type === "compaction") {
-        await this.emitOwn({
-          type: "session_compact",
-          compactionEntry: entry,
-          fromHook: provided !== undefined,
-        });
-      }
-      return result;
     } catch (error) {
       throw normalizeHarnessError(error, "compaction");
     } finally {
@@ -1204,150 +1217,178 @@ export class AgentHarness<
       });
     }
     this.phase = "branch_summary";
+    const self = this;
     try {
-      const oldLeafId = await Effect.runPromise(this.session.getLeafId());
-      if (oldLeafId === targetId) {
-        return { cancelled: false };
-      }
-      const targetEntry = await Effect.runPromise(
-        this.session.getEntry(targetId)
-      );
-      if (!targetEntry) {
-        throw new AgentHarnessError({
-          code: "invalid_argument",
-          message: `Entry ${targetId} not found`,
-        });
-      }
-      const { entries, commonAncestorId } =
-        await collectEntriesForBranchSummary(this.session, oldLeafId, targetId);
-      const preparation = {
-        targetId,
-        oldLeafId,
-        commonAncestorId,
-        entriesToSummarize: entries,
-        userWantsSummary: options?.summarize ?? false,
-        customInstructions: options?.customInstructions,
-        replaceInstructions: options?.replaceInstructions,
-        label: options?.label,
-      };
-      const signal =
-        this.runAbortController?.signal ?? new AbortController().signal;
-      const hookResult = await this.emitHook({
-        type: "session_before_tree",
-        preparation,
-        signal,
-      });
-      if (hookResult?.cancel) {
-        return { cancelled: true };
-      }
-      let summaryEntry: NavigateTreeResult["summaryEntry"];
-      let summaryText: string | undefined = hookResult?.summary?.summary;
-      let summaryDetails: unknown = hookResult?.summary?.details;
-      if (!summaryText && options?.summarize && entries.length > 0) {
-        const auth = await this.getApiKeyAndHeaders?.(this.model);
-        if (!auth) {
-          throw new AgentHarnessError({
-            code: "auth",
-            message: "No auth available for branch summary",
-          });
-        }
-        const branchSummary = await generateBranchSummary(entries, {
-          model: this.model,
-          apiKey: auth.apiKey,
-          ...(auth.headers === undefined ? {} : { headers: auth.headers }),
-          signal:
-            this.runAbortController?.signal ?? new AbortController().signal,
-          ...(hookResult?.customInstructions !== undefined ||
-          options?.customInstructions !== undefined
-            ? {
-                customInstructions:
-                  hookResult?.customInstructions ?? options?.customInstructions,
-              }
-            : {}),
-          ...((hookResult?.replaceInstructions ??
-            options?.replaceInstructions) === undefined
-            ? {}
-            : {
-                replaceInstructions:
-                  hookResult?.replaceInstructions ??
-                  options?.replaceInstructions,
-              }),
-        });
-        if (isFailure(branchSummary)) {
-          if (branchSummary.failure.code === "aborted") {
+      return await Effect.runPromise(
+        Effect.gen(function* () {
+          const oldLeafId = yield* self.session.getLeafId();
+          if (oldLeafId === targetId) {
+            return { cancelled: false };
+          }
+          const targetEntry = yield* self.session.getEntry(targetId);
+          if (!targetEntry) {
+            yield* new AgentHarnessError({
+              code: "invalid_argument",
+              message: `Entry ${targetId} not found`,
+            });
+          }
+          const { entries, commonAncestorId } =
+            yield* collectEntriesForBranchSummaryEffect(
+              self.session,
+              oldLeafId,
+              targetId
+            );
+          const preparation = {
+            targetId,
+            oldLeafId,
+            commonAncestorId,
+            entriesToSummarize: entries,
+            userWantsSummary: options?.summarize ?? false,
+            customInstructions: options?.customInstructions,
+            replaceInstructions: options?.replaceInstructions,
+            label: options?.label,
+          };
+          const signal =
+            self.runAbortController?.signal ?? new AbortController().signal;
+          const hookResult = yield* Effect.promise(() =>
+            self.emitHook({
+              type: "session_before_tree",
+              preparation,
+              signal,
+            })
+          );
+          if (hookResult?.cancel) {
             return { cancelled: true };
           }
-          throw new AgentHarnessError({
-            code: "branch_summary",
-            message: branchSummary.failure.message,
-            cause: branchSummary.failure,
-          });
-        }
-        summaryText = branchSummary.success.summary;
-        summaryDetails = {
-          readFiles: branchSummary.success.readFiles,
-          modifiedFiles: branchSummary.success.modifiedFiles,
-        };
-      }
-      let editorText: string | undefined;
-      let newLeafId: string | null;
-      if (
-        targetEntry.type === "message" &&
-        targetEntry.message.role === "user"
-      ) {
-        newLeafId = targetEntry.parentId;
-        const content = targetEntry.message.content;
-        editorText =
-          typeof content === "string"
-            ? content
-            : content
-                .filter(
-                  (c): c is { readonly type: "text"; readonly text: string } =>
-                    c.type === "text"
-                )
-                .map((c) => c.text)
-                .join("");
-      } else if (targetEntry.type === "custom_message") {
-        newLeafId = targetEntry.parentId;
-        editorText =
-          typeof targetEntry.content === "string"
-            ? targetEntry.content
-            : targetEntry.content
-                .filter(
-                  (c): c is { readonly type: "text"; readonly text: string } =>
-                    c.type === "text"
-                )
-                .map((c) => c.text)
-                .join("");
-      } else {
-        newLeafId = targetId;
-      }
-      const summaryId = await Effect.runPromise(
-        this.session.moveTo(
-          newLeafId,
-          summaryText
-            ? {
-                summary: summaryText,
-                details: summaryDetails,
-                fromHook: hookResult?.summary !== undefined,
+          let summaryEntry: NavigateTreeResult["summaryEntry"];
+          let summaryText: string | undefined = hookResult?.summary?.summary;
+          let summaryDetails: unknown = hookResult?.summary?.details;
+          if (!summaryText && options?.summarize && entries.length > 0) {
+            const auth = yield* Effect.promise(() =>
+              Promise.resolve(
+                self.getApiKeyAndHeaders?.(self.model) ??
+                  Promise.resolve(undefined)
+              )
+            );
+            if (!auth) {
+              yield* new AgentHarnessError({
+                code: "auth",
+                message: "No auth available for branch summary",
+              });
+            }
+            const branchSummary = yield* generateBranchSummaryEffect(entries, {
+              model: self.model,
+              apiKey: auth!.apiKey,
+              ...(auth!.headers === undefined
+                ? {}
+                : { headers: auth!.headers }),
+              signal:
+                self.runAbortController?.signal ?? new AbortController().signal,
+              ...(hookResult?.customInstructions !== undefined ||
+              options?.customInstructions !== undefined
+                ? {
+                    customInstructions:
+                      hookResult?.customInstructions ??
+                      options?.customInstructions,
+                  }
+                : {}),
+              ...((hookResult?.replaceInstructions ??
+                options?.replaceInstructions) === undefined
+                ? {}
+                : {
+                    replaceInstructions:
+                      hookResult?.replaceInstructions ??
+                      options?.replaceInstructions,
+                  }),
+            });
+            if (isFailure(branchSummary)) {
+              if (branchSummary.failure.code === "aborted") {
+                return { cancelled: true };
               }
-            : undefined
-        )
+              return yield* new AgentHarnessError({
+                code: "branch_summary",
+                message: branchSummary.failure.message,
+                ...(branchSummary.failure === undefined
+                  ? {}
+                  : { cause: branchSummary.failure as Error }),
+              });
+            }
+            summaryText = branchSummary.success.summary;
+            summaryDetails = {
+              readFiles: branchSummary.success.readFiles,
+              modifiedFiles: branchSummary.success.modifiedFiles,
+            };
+          }
+          let editorText: string | undefined;
+          let newLeafId: string | null;
+          if (
+            targetEntry!.type === "message" &&
+            targetEntry!.message.role === "user"
+          ) {
+            newLeafId = targetEntry!.parentId;
+            const content = targetEntry!.message.content;
+            editorText =
+              typeof content === "string"
+                ? content
+                : content
+                    .filter(
+                      (
+                        c
+                      ): c is {
+                        readonly type: "text";
+                        readonly text: string;
+                      } => c.type === "text"
+                    )
+                    .map((c) => c.text)
+                    .join("");
+          } else if (targetEntry!.type === "custom_message") {
+            newLeafId = targetEntry!.parentId;
+            editorText =
+              typeof targetEntry!.content === "string"
+                ? targetEntry!.content
+                : targetEntry!.content
+                    .filter(
+                      (
+                        c
+                      ): c is {
+                        readonly type: "text";
+                        readonly text: string;
+                      } => c.type === "text"
+                    )
+                    .map((c) => c.text)
+                    .join("");
+          } else {
+            newLeafId = targetId;
+          }
+          const summaryId = yield* self.session.moveTo(
+            newLeafId,
+            summaryText
+              ? {
+                  summary: summaryText,
+                  details: summaryDetails,
+                  fromHook: hookResult?.summary !== undefined,
+                }
+              : undefined
+          );
+          if (summaryId) {
+            const entry = yield* self.session.getEntry(summaryId);
+            if (entry?.type === "branch_summary") {
+              summaryEntry = entry;
+            }
+          }
+          const finalLeafId = yield* self.session.getLeafId();
+          yield* Effect.promise(() =>
+            self.emitOwn({
+              type: "session_tree",
+              newLeafId: finalLeafId,
+              oldLeafId,
+              summaryEntry,
+              fromHook: hookResult?.summary !== undefined,
+            })
+          );
+          return { cancelled: false, editorText, summaryEntry };
+        })
       );
-      if (summaryId) {
-        const entry = await Effect.runPromise(this.session.getEntry(summaryId));
-        if (entry?.type === "branch_summary") {
-          summaryEntry = entry;
-        }
-      }
-      await this.emitOwn({
-        type: "session_tree",
-        newLeafId: await Effect.runPromise(this.session.getLeafId()),
-        oldLeafId,
-        summaryEntry,
-        fromHook: hookResult?.summary !== undefined,
-      });
-      return { cancelled: false, editorText, summaryEntry };
     } catch (error) {
       throw normalizeHarnessError(error, "branch_summary");
     } finally {
