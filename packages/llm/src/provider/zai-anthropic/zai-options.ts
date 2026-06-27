@@ -5,7 +5,7 @@ import { z } from "zod/v4";
  * # providerOptions.zai schema
  *
  * The Z.ai Anthropic provider's per-call options. Resolved via
- * `parseProviderOptions({ provider: "zai", schema: zaiAnthropicOptions })`.
+ * `parseProviderOptions({ provider: "zai", schema: zaiOptions })`.
  *
  * The model also accepts a handful of these fields directly through the V4
  * `reasoning` field (mapped by `buildProviderOptions` in `provider/transform.ts`);
@@ -63,5 +63,5 @@ const schema = z.object({
   sendReasoning: z.boolean().optional(),
 });
 
-export type ZaiAnthropicOptions = z.infer<typeof schema>;
-export const zaiAnthropicOptions = zodSchema(schema);
+export type ZaiOptions = z.infer<typeof schema>;
+export const zaiOptions = zodSchema(schema);

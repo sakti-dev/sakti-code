@@ -1,9 +1,9 @@
 import type { LanguageModelV4Prompt } from "@ai-sdk/provider";
 import { convertToBase64 } from "@ai-sdk/provider-utils";
-import type { ZaiCacheControl, ZaiContentBlock } from "./zai-anthropic-api.ts";
+import type { ZaiCacheControl, ZaiContentBlock } from "./zai-api.ts";
 
 /**
- * # convertToZaiMessages — V4 prompt → Anthropic Messages body shape
+ * # convertToZaiPrompt — V4 prompt → Anthropic Messages body shape
  *
  * Ported from `@ai-sdk/anthropic/convert-to-anthropic-prompt.ts`, stripped to
  * the minimal subset Z.ai surfaces. Lifts `system` to top-level, groups
@@ -49,15 +49,15 @@ export interface ZaiToolResultBlock {
   type: "tool_result";
 }
 
-export interface ConvertToZaiMessagesResult {
+export interface ConvertToZaiPromptResult {
   messages: ZaiMessage[];
   system: ZaiTextBlock[] | undefined;
 }
 
-export function convertToZaiMessages(input: {
+export function convertToZaiPrompt(input: {
   prompt: LanguageModelV4Prompt;
   sendReasoning?: boolean;
-}): ConvertToZaiMessagesResult {
+}): ConvertToZaiPromptResult {
   const sendReasoning = input.sendReasoning !== false;
   const blocks = groupIntoBlocks(input.prompt);
 

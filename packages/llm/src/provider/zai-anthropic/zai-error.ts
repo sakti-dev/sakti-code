@@ -1,5 +1,5 @@
 import { createJsonErrorResponseHandler } from "@ai-sdk/provider-utils";
-import { zaiErrorDataSchema } from "./zai-anthropic-api.ts";
+import { zaiErrorDataSchema } from "./zai-api.ts";
 
 /**
  * Anthropic-style failed-response handler. Z.ai surfaces the same

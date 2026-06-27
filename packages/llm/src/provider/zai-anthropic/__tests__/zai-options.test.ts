@@ -1,6 +1,6 @@
 import { parseProviderOptions } from "@ai-sdk/provider-utils";
 import { describe, expect, it } from "vitest";
-import { zaiAnthropicOptions } from "../zai-anthropic-options.ts";
+import { zaiOptions } from "../zai-options.ts";
 
 describe("zai-anthropic options schema", () => {
   it("parses a full options object", async () => {
@@ -15,7 +15,7 @@ describe("zai-anthropic options schema", () => {
           sendReasoning: true,
         },
       },
-      schema: zaiAnthropicOptions,
+      schema: zaiOptions,
     });
     expect(parsed?.thinking?.type).toBe("enabled");
     expect(parsed?.speed).toBe("fast");
@@ -28,7 +28,7 @@ describe("zai-anthropic options schema", () => {
       providerOptions: {
         zai: { thinking: { type: "adaptive", display: "summarized" } },
       },
-      schema: zaiAnthropicOptions,
+      schema: zaiOptions,
     });
     expect(parsed?.thinking?.type).toBe("adaptive");
   });
@@ -37,7 +37,7 @@ describe("zai-anthropic options schema", () => {
     const parsed = await parseProviderOptions({
       provider: "zai",
       providerOptions: { anthropic: { thinking: { type: "disabled" } } },
-      schema: zaiAnthropicOptions,
+      schema: zaiOptions,
     });
     expect(parsed).toBeUndefined();
   });

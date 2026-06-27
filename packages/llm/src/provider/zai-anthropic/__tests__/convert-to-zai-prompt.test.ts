@@ -1,10 +1,10 @@
 import type { LanguageModelV4Prompt } from "@ai-sdk/provider";
 import { describe, expect, it } from "vitest";
-import { convertToZaiMessages } from "../convert-to-zai-messages.ts";
+import { convertToZaiPrompt } from "../convert-to-zai-prompt.ts";
 
-describe("convertToZaiMessages", () => {
+describe("convertToZaiPrompt", () => {
   it("lifts system to top-level", () => {
-    const { system, messages } = convertToZaiMessages({
+    const { system, messages } = convertToZaiPrompt({
       prompt: [
         { role: "system", content: "you are helpful" },
         { role: "user", content: [{ type: "text", text: "hi" }] },
@@ -18,7 +18,7 @@ describe("convertToZaiMessages", () => {
   });
 
   it("emits tool_result from a tool role message", () => {
-    const { messages } = convertToZaiMessages({
+    const { messages } = convertToZaiPrompt({
       prompt: [
         { role: "user", content: [{ type: "text", text: "q" }] },
         {
@@ -45,7 +45,7 @@ describe("convertToZaiMessages", () => {
   });
 
   it("replays assistant reasoning with signature", () => {
-    const { messages } = convertToZaiMessages({
+    const { messages } = convertToZaiPrompt({
       prompt: [
         {
           role: "assistant",
@@ -68,7 +68,7 @@ describe("convertToZaiMessages", () => {
   });
 
   it("replays assistant reasoning from anthropic.signature (back-compat)", () => {
-    const { messages } = convertToZaiMessages({
+    const { messages } = convertToZaiPrompt({
       prompt: [
         {
           role: "assistant",
@@ -90,7 +90,7 @@ describe("convertToZaiMessages", () => {
   });
 
   it("drops reasoning when sendReasoning is false", () => {
-    const { messages } = convertToZaiMessages({
+    const { messages } = convertToZaiPrompt({
       prompt: [
         {
           role: "assistant",
@@ -114,7 +114,7 @@ describe("convertToZaiMessages", () => {
   });
 
   it("emits tool_use from assistant tool-call part", () => {
-    const { messages } = convertToZaiMessages({
+    const { messages } = convertToZaiPrompt({
       prompt: [
         {
           role: "assistant",
@@ -138,7 +138,7 @@ describe("convertToZaiMessages", () => {
   });
 
   it("emits image block from user file part", () => {
-    const { messages } = convertToZaiMessages({
+    const { messages } = convertToZaiPrompt({
       prompt: [
         {
           role: "user",
@@ -163,7 +163,7 @@ describe("convertToZaiMessages", () => {
   });
 
   it("marks tool_result as is_error when output is error-text", () => {
-    const { messages } = convertToZaiMessages({
+    const { messages } = convertToZaiPrompt({
       prompt: [
         {
           role: "tool",

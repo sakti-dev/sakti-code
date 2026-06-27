@@ -1,5 +1,5 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
-import { createZaiAnthropic } from "./zai-anthropic/index.ts";
+import { createZai } from "./zai-anthropic/index.ts";
 
 /**
  * # Provider factory registry
@@ -135,7 +135,7 @@ export const BUNDLED_PROVIDERS: Record<string, ProviderFactoryLoader> = {
   // Local code (not a dynamic import) — speak Anthropic Messages to Z.ai's
   // anthropic-compatible endpoint with Z.ai-native speed/output_config.
   "@sakti-code/zai-anthropic": () =>
-    Promise.resolve(createZaiAnthropic as ProviderFactory),
+    Promise.resolve(createZai as ProviderFactory),
 
   // Third-party provider packages
   "@openrouter/ai-sdk-provider": () =>

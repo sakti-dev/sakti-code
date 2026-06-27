@@ -7,10 +7,10 @@ import type {
   ProviderFactoryOptions,
   ProviderSDK,
 } from "../registry.ts";
-import { ZaiAnthropicLanguageModel } from "./zai-anthropic-language-model.ts";
+import { ZaiLanguageModel } from "./zai-language-model.ts";
 
 /**
- * # createZaiAnthropic — factory for the hand-rolled Z.ai Anthropic provider
+ * # createZai — factory for the hand-rolled Z.ai Anthropic provider
  *
  * Registered in `BUNDLED_PROVIDERS` under `"@sakti-code/zai-anthropic"`. The
  * catalog converter repoints `zai` + `zai-coding-plan` to this npm id, so the
@@ -28,13 +28,11 @@ const PROVIDER_NAME = "zai.messages";
 
 const TRAILING_SLASH_PATTERN = /\/+$/;
 
-export interface ZaiAnthropicProviderSettings extends ProviderFactoryOptions {
+export interface ZaiProviderSettings extends ProviderFactoryOptions {
   fetch?: FetchFunction;
 }
 
-export function createZaiAnthropic(
-  options: ZaiAnthropicProviderSettings
-): ProviderSDK {
+export function createZai(options: ZaiProviderSettings): ProviderSDK {
   const baseURL = (options.baseURL ?? "").replace(TRAILING_SLASH_PATTERN, "");
   const apiKey = options.apiKey ?? "";
   const headers = async () =>
@@ -49,7 +47,7 @@ export function createZaiAnthropic(
 
   return {
     languageModel: (modelId: string) =>
-      new ZaiAnthropicLanguageModel(modelId, {
+      new ZaiLanguageModel(modelId, {
         baseURL,
         provider: PROVIDER_NAME,
         headers,
@@ -59,4 +57,4 @@ export function createZaiAnthropic(
 }
 
 export type { ProviderFactory };
-export { createZaiAnthropic as createZaiAnthropicProvider };
+export { createZai as createZaiProvider };

@@ -7,7 +7,7 @@ import type {
 import type { FetchFunction } from "@ai-sdk/provider-utils";
 
 /**
- * # ZaiAnthropicLanguageModel — hand-rolled Anthropic Messages provider for Z.ai
+ * # ZaiLanguageModel — hand-rolled Anthropic Messages provider for Z.ai
  *
  * Speaks the Anthropic Messages protocol to Z.ai's Anthropic-compatible
  * endpoint (`https://api.z.ai/api/anthropic/v1/messages`), with first-class
@@ -20,7 +20,7 @@ import type { FetchFunction } from "@ai-sdk/provider-utils";
  * `docs/plans/2026-06-28-zai-anthropic-provider-design.md`.
  */
 
-export interface ZaiAnthropicConfig {
+export interface ZaiLanguageModelConfig {
   baseURL: string;
   fetch?: FetchFunction;
   headers: () => Promise<Record<string, string | undefined>>;
@@ -30,12 +30,12 @@ export interface ZaiAnthropicConfig {
 const SUPPORTED_HTTPS_URL_PATTERN = /^https?:\/\/.*$/;
 const SUPPORTED_DATA_IMAGE_URL_PATTERN = /^data:image\/.*$/;
 
-export class ZaiAnthropicLanguageModel implements LanguageModelV4 {
+export class ZaiLanguageModel implements LanguageModelV4 {
   readonly specificationVersion = "v4" as const;
   readonly modelId: string;
-  private readonly config: ZaiAnthropicConfig;
+  private readonly config: ZaiLanguageModelConfig;
 
-  constructor(modelId: string, config: ZaiAnthropicConfig) {
+  constructor(modelId: string, config: ZaiLanguageModelConfig) {
     this.modelId = modelId;
     this.config = config;
   }
@@ -61,7 +61,7 @@ export class ZaiAnthropicLanguageModel implements LanguageModelV4 {
     _options: LanguageModelV4CallOptions
   ): Promise<LanguageModelV4GenerateResult> {
     return Promise.reject(
-      new Error("ZaiAnthropicLanguageModel.doGenerate: not implemented")
+      new Error("ZaiLanguageModel.doGenerate: not implemented")
     );
   }
 
@@ -69,7 +69,7 @@ export class ZaiAnthropicLanguageModel implements LanguageModelV4 {
     _options: LanguageModelV4CallOptions
   ): Promise<LanguageModelV4StreamResult> {
     return Promise.reject(
-      new Error("ZaiAnthropicLanguageModel.doStream: not implemented")
+      new Error("ZaiLanguageModel.doStream: not implemented")
     );
   }
 }

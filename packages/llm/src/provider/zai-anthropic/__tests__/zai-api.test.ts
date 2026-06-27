@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { zaiChunkZod, zaiResponseZod } from "../zai-anthropic-api.ts";
+import { zaiChunkZod, zaiResponseZod } from "../zai-api.ts";
 
 describe("zai-anthropic wire schemas (minimal subset)", () => {
   it("parses a non-stream response with text + thinking + tool_use", () => {
