@@ -65,6 +65,31 @@ describe("Patcher MismatchError message contracts", () => {
   });
 });
 
+describe("MismatchError displayMessage", () => {
+  const details = {
+    path: "a.ts",
+    expectedFileHash: "AAAA",
+    actualFileHash: "BBBB",
+    fileLines: ["x", "y"],
+    anchorLines: [1],
+    hashRecognized: true,
+  };
+
+  it("exposes a non-empty formatted displayMessage on an instance", () => {
+    const err = new MismatchError(details);
+    expect(err.displayMessage.length).toBeGreaterThan(0);
+    expect(err.displayMessage).toMatch(/file changed between read and edit/);
+    expect(err.displayMessage).toContain("a.ts");
+  });
+
+  it("formats a user-facing message via the static helper", () => {
+    const message = MismatchError.formatDisplayMessage(details);
+    expect(message.length).toBeGreaterThan(0);
+    expect(message).toMatch(/file changed between read and edit/);
+    expect(message).toContain("AAAA");
+  });
+});
+
 describe("Patcher HEADTAIL_DRIFT_WARNING contract", () => {
   it("applies a head/tail insert with a stale tag and warns instead of hard-failing", async () => {
     const content = "a\nb\n";

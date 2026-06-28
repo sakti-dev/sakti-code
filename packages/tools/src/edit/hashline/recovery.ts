@@ -160,44 +160,6 @@ function isHeadSnapshot(head: Snapshot | null, snapshot: Snapshot): boolean {
   return head === snapshot;
 }
 
-export function recoverWithThreeWayMerge(
-  previousText: string,
-  currentText: string,
-  _patch: { edits: readonly Edit[] }
-): { success: true; text: string; warnings: string[] } | { success: false } {
-  let applied: ApplyResult;
-  try {
-    applied = applyEdits(previousText, [..._patch.edits]);
-  } catch {
-    return { success: false };
-  }
-  if (applied.text === previousText) {
-    return { success: false };
-  }
-
-  const patch = Diff.structuredPatch(
-    "file",
-    "file",
-    previousText,
-    applied.text,
-    "",
-    "",
-    { context: 3 }
-  );
-  const merged = Diff.applyPatch(currentText, patch, {
-    fuzzFactor: RECOVERY_FUZZ_FACTOR,
-  });
-  if (typeof merged !== "string" || merged === currentText) {
-    return { success: false };
-  }
-
-  return {
-    success: true,
-    text: merged,
-    warnings: [RECOVERY_EXTERNAL_WARNING, ...(applied.warnings ?? [])],
-  };
-}
-
 export class Recovery {
   readonly store: SnapshotStore;
 

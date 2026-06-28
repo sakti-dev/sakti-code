@@ -25,6 +25,12 @@ export const HL_RANGE_SEP = ".=";
 
 export const HL_LINE_BODY_SEP = ":";
 
+function regexEscape(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export const HL_LINE_BODY_SEP_RE_RAW = regexEscape(HL_LINE_BODY_SEP);
+
 export const HL_LINE_RE_RAW = "[1-9]\\d*";
 
 export const HL_LINE_CAPTURE_RE_RAW = `(${HL_LINE_RE_RAW})`;
