@@ -1064,3 +1064,109 @@ describe("softDisableTool", () => {
     expect(harness.isToolSoftDisabled("calculate")).toBe(false);
   });
 });
+
+describe("addSkill / removeSkill", () => {
+  it("addSkill: updates resources and announces via <skills-added>", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    const capturedUserText: string[] = [];
+    registration.setResponses([
+      (req: StreamRequest) => {
+        capturedUserText.push(
+          textFromUserMessages(
+            req.messages as Array<{ role: string; content: unknown }>
+          ).join("\n")
+        );
+        return fauxAssistantMessage("ok");
+      },
+    ]);
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: "frozen",
+      resources: { skills: [] as Skill[] },
+    });
+
+    await harness.addSkill({
+      name: "new-skill",
+      description: "newly installed",
+      content: "",
+      filePath: "/skills/new/SKILL.md",
+    });
+
+    expect(harness.getResources().skills?.map((s) => s.name)).toEqual([
+      "new-skill",
+    ]);
+
+    await harness.prompt("hello");
+
+    expect(capturedUserText[0]).toContain("<skills-added>");
+    expect(capturedUserText[0]).toContain("new-skill");
+  });
+
+  it("removeSkill: schedules prompt refresh + soft-disables read on the skill path", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: "frozen",
+      resources: {
+        skills: [
+          {
+            name: "old-skill",
+            description: "to be removed",
+            content: "",
+            filePath: "/skills/old/SKILL.md",
+          },
+        ],
+      },
+    });
+
+    const events: AgentHarnessEvent[] = [];
+    harness.subscribe((event) => {
+      if (event.type === "cache_bust_pending") {
+        events.push(event);
+      }
+    });
+
+    await harness.removeSkill("old-skill");
+
+    // Skill is gone from resources
+    expect(harness.getResources().skills?.map((s) => s.name)).toEqual([]);
+
+    // Prompt refresh is pending (deferred to compaction)
+    expect(harness.getPendingSystemPromptRefresh()).toBeDefined();
+
+    // Cache-bust alert fired
+    await Promise.resolve();
+    expect(events.length).toBeGreaterThanOrEqual(1);
+
+    // read on the skill's path is gated (the model shouldn't reload a
+    // disabled skill's body)
+    expect(harness.isToolPathSoftDisabled("/skills/old/SKILL.md")).toBe(true);
+  });
+
+  it("removeSkill is idempotent for unknown skills", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: "frozen",
+      resources: { skills: [] as Skill[] },
+    });
+
+    await harness.removeSkill("nonexistent");
+
+    expect(harness.getPendingSystemPromptRefresh()).toBeUndefined();
+    expect(harness.getResources().skills?.length).toBe(0);
+  });
+});

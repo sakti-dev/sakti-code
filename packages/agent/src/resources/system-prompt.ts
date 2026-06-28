@@ -43,3 +43,24 @@ export function appendSkillsBlock(
   const block = formatSkillsForSystemPrompt([...skills]);
   return block ? `${baseSystemPrompt}\n\n${block}` : baseSystemPrompt;
 }
+
+/**
+ * Strip a trailing `<available_skills>` block (as appended by
+ * {@link appendSkillsBlock}) from a composed system prompt, returning the base
+ * prompt without the skills advertisement.
+ *
+ * Used by `removeSkill` to recompose the prompt with a reduced skills list:
+ * the base is recovered by stripping, then `appendSkillsBlock` re-appends with
+ * only the remaining skills. Deterministic because the block is always a
+ * suffix starting with the first `SKILLS_INSTRUCTIONS` line.
+ *
+ * If no skills block is present, returns the input unchanged.
+ */
+export function stripSkillsBlock(composedSystemPrompt: string): string {
+  const marker = `\n\n${SKILLS_INSTRUCTIONS[0]}`;
+  const index = composedSystemPrompt.lastIndexOf(marker);
+  if (index < 0) {
+    return composedSystemPrompt;
+  }
+  return composedSystemPrompt.slice(0, index);
+}

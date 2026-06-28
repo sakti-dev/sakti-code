@@ -46,6 +46,10 @@ import {
 import { formatPromptTemplateInvocation } from "../resources/prompt-templates";
 import { formatSkillInvocation } from "../resources/skills";
 import { formatSkillsAddedNotice } from "../resources/skills-added-notice";
+import {
+  appendSkillsBlock,
+  stripSkillsBlock,
+} from "../resources/system-prompt";
 import { convertToLlm } from "../session/messages";
 import type { SessionShape } from "../session/session";
 import type {
@@ -260,6 +264,12 @@ export class AgentHarness<
    * to the model as a tool-error result.
    */
   private softDisabledTools = new Map<string, string>();
+  /**
+   * File paths (typically skill SKILL.md paths) the `read` tool should refuse.
+   * Populated by {@link removeSkill} so the model can't re-load a disabled
+   * skill's body from disk after the advertisement was removed from the prompt.
+   */
+  private softDisabledPaths = new Set<string>();
   private streamOptions: AgentHarnessStreamOptions;
   private testStreamFn?: StreamFn;
   private getApiKeyAndHeaders?: AgentHarnessOptions["getApiKeyAndHeaders"];
@@ -632,6 +642,22 @@ export class AgentHarness<
         const softBlock = this.softDisabledTools.get(toolCall.name);
         if (softBlock !== undefined) {
           return { block: true, reason: softBlock };
+        }
+        // Soft-disable gate (by path on the read tool): prevents the model
+        // from reloading a removed skill's SKILL.md body from disk.
+        if (
+          toolCall.name === "read" &&
+          typeof args === "object" &&
+          args !== null &&
+          "path" in args
+        ) {
+          const path = (args as { path?: unknown }).path;
+          if (typeof path === "string" && this.softDisabledPaths.has(path)) {
+            return {
+              block: true,
+              reason: `path ${path} is soft-disabled (likely a removed skill's SKILL.md)`,
+            };
+          }
         }
         const result = await this.emitHook({
           type: "tool_call",
@@ -1699,6 +1725,79 @@ export class AgentHarness<
       resources: this.getResources(),
       previousResources,
     });
+  }
+
+  /**
+   * Install a skill mid-session.
+   *
+   * Updates `resources.skills` and pushes a `<skills-added>` steering notice
+   * so the model learns the skill exists on the next turn. The system prompt
+   * stays frozen (the skill's advertisement is NOT added to the prompt's
+   * `<available_skills>` block until the next session) — cache stays warm.
+   *
+   * To materialize the new skill in the prompt's `<available_skills>` block,
+   * either restart the session or trigger compaction (which is a no-op
+   * cache-wise since you'd compact anyway).
+   *
+   * Idempotent: adding a skill whose name already exists is a no-op.
+   */
+  async addSkill(skill: TSkill): Promise<void> {
+    const currentSkills = this.resources.skills ?? [];
+    if (currentSkills.some((s) => s.name === skill.name)) {
+      return;
+    }
+    await this.setResources({
+      ...this.resources,
+      skills: [...currentSkills, skill],
+    });
+    this.announceSkillAdded(skill);
+  }
+
+  /**
+   * Disable a skill mid-session without immediately rewriting the prompt.
+   *
+   * Three effects, all cache-friendly:
+   *   1. Removes the skill from `resources.skills` (in-memory only).
+   *   2. Schedules a `systemPromptRefresh` with the skill removed from the
+   *      `<available_skills>` block. Applied at next compaction.
+   *   3. Soft-disables the `read` tool on the skill's `filePath`, so the
+   *      model can't reload the body from disk until compaction swaps the
+   *      prompt.
+   *
+   * Emits `cache_bust_pending` so the UI can recommend compaction.
+   *
+   * Idempotent: removing an unknown skill is a no-op.
+   */
+  async removeSkill(name: string): Promise<void> {
+    const currentSkills = this.resources.skills ?? [];
+    const skill = currentSkills.find((s) => s.name === name);
+    if (!skill) {
+      return;
+    }
+    const remaining = currentSkills.filter((s) => s.name !== name);
+    await this.setResources({
+      ...this.resources,
+      skills: remaining,
+    });
+
+    // Recompose the system prompt with the remaining skills and schedule it
+    // for compaction. The base prompt is recovered by stripping the existing
+    // skills block suffix (appendSkillsBlock always appends at the end).
+    const composedPrompt = this.getSystemPrompt() ?? "";
+    const basePrompt = stripSkillsBlock(composedPrompt);
+    const hasRead = this.activeToolNames.includes("read");
+    const recomposed = appendSkillsBlock(basePrompt, remaining, hasRead);
+    this.scheduleSystemPromptRefresh(recomposed);
+
+    // Soft-disable read on the skill path so the model can't reload the body.
+    if (skill.filePath) {
+      this.softDisabledPaths.add(skill.filePath);
+    }
+  }
+
+  /** Test/debug hook for skill-path soft-disable. */
+  isToolPathSoftDisabled(path: string): boolean {
+    return this.softDisabledPaths.has(path);
   }
 
   /** Current switchable agent, set by {@link switchAgent}. */

@@ -158,6 +158,7 @@ export { formatSkillsAddedNotice } from "./resources/skills-added-notice.ts";
 export {
   appendSkillsBlock,
   formatSkillsForSystemPrompt,
+  stripSkillsBlock,
 } from "./resources/system-prompt.ts";
 export type {
   CompletionProviderShape,
