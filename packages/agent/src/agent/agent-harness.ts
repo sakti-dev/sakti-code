@@ -1230,6 +1230,16 @@ export class AgentHarness<
               })
             );
           }
+
+          // Drain pending system-prompt refresh: compaction busts the cache
+          // anyway, so this is the free moment to swap the prefix bytes.
+          // Layer 2 only — on restart, Layer 1 (disabled_skills filter in the
+          // runner) recomposes the correct prompt at load.
+          if (self.pendingSystemPromptRefresh !== undefined) {
+            self.systemPrompt = self.pendingSystemPromptRefresh;
+            self.clearPendingSystemPromptRefresh();
+          }
+
           return result;
         })
       );

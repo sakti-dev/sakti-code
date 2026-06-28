@@ -851,4 +851,60 @@ describe("scheduleSystemPromptRefresh", () => {
 
     expect(harness.getPendingSystemPromptRefresh()).toBeUndefined();
   });
+
+  it("drains pending refresh during compaction (next turn uses new prompt)", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    const session = await createTestSession();
+    const capturedSystems: string[] = [];
+
+    // Seed one user message so prepareCompaction has entries to work with.
+    await Effect.runPromise(
+      session.appendMessage({
+        role: "user",
+        content: [{ type: "text", text: "seed message" }],
+        timestamp: Date.now(),
+      })
+    );
+    const entries = await Effect.runPromise(session.getEntries());
+    const firstKeptEntryId = entries[0]!.id;
+
+    // Post-compaction turn — should see the refreshed prompt.
+    registration.setResponses([
+      (req: StreamRequest) => {
+        capturedSystems.push(req.system ?? "");
+        return fauxAssistantMessage("ok");
+      },
+    ]);
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session,
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: "original",
+      getApiKeyAndHeaders: async () => ({ apiKey: "test-key" }),
+    });
+
+    // Inject the compaction result via the hook so we don't need an LLM
+    // summarizer call — we're testing the drain, not the summarizer.
+    harness.on("session_before_compact", () => ({
+      compaction: {
+        summary: "compact summary",
+        firstKeptEntryId,
+        tokensBefore: 100,
+      },
+    }));
+
+    harness.scheduleSystemPromptRefresh("refreshed");
+    expect(harness.getPendingSystemPromptRefresh()).toBe("refreshed");
+
+    await harness.compact();
+
+    expect(harness.getPendingSystemPromptRefresh()).toBeUndefined();
+    expect(harness.getSystemPrompt()).toBe("refreshed");
+
+    await harness.prompt("next turn after compact");
+    expect(capturedSystems).toEqual(["refreshed"]);
+  });
 });
