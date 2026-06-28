@@ -77,4 +77,57 @@ describe("cache-stability: prefix stable across turns", () => {
       ).toBe(true);
     }
   });
+
+  it("hit rate climbs past 90% as history grows across prompts (no compaction)", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    const captures: StreamRequest[] = [];
+
+    const turnText = (n: number) =>
+      `Turn ${n}: ${"please consider this requirement. ".repeat(6)}`;
+
+    // 14 short responses — one per prompt, no tool calls so each prompt is a
+    // single streamFn call.
+    registration.setResponses(
+      Array.from(
+        { length: 14 },
+        (_, i) => () => fauxAssistantMessage(`answer ${i}`)
+      )
+    );
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: (req) => {
+        captures.push(req);
+        return registration.streamFn(req);
+      },
+      systemPrompt: "You are a helpful assistant. Be concise.",
+    });
+
+    for (let i = 0; i < 14; i++) {
+      await harness.prompt(turnText(i));
+    }
+
+    expect(captures.length).toBe(14);
+
+    const rates: number[] = [];
+    for (let i = 1; i < captures.length; i++) {
+      const result = measureCacheHit(
+        captureRequest(captures[i - 1]!),
+        captureRequest(captures[i]!)
+      );
+      // Every pair must remain prefix-stable (no cache busts).
+      expect(
+        result.prefixStable,
+        `prefix broke at prompt ${i}: ${result.breakReason}`
+      ).toBe(true);
+      rates.push(result.hitRate);
+    }
+
+    // Peak hit rate should reach >= 90% — cumulative history dwarfs each turn.
+    const peak = Math.max(...rates);
+    expect(peak, `hit rates: [${rates.join(", ")}]`).toBeGreaterThanOrEqual(90);
+  });
 });
