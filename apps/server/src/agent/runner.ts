@@ -427,6 +427,35 @@ export async function switchAgentForSession(
   return true;
 }
 
+export async function setEditModeForSession(
+  ctx: ServerContext,
+  sessionId: string,
+  mode: EditMode
+): Promise<boolean> {
+  const session = await ctx.repos.sessions.findById(sessionId);
+  if (!session) {
+    return false;
+  }
+
+  // Layer 1: persist (survives restart)
+  await ctx.repos.settings.set(`session:${sessionId}:edit_mode`, mode);
+
+  // Layer 2: live apply (swap executor + schema immediately, defer
+  // description to compaction)
+  const harness = getActiveHarness(sessionId);
+  if (harness) {
+    const project = await ctx.repos.projects.findById(session.projectId);
+    if (project) {
+      const newTools = buildTools(project.cwd, mode);
+      const newEditTool = newTools.find((t) => t.name === "edit");
+      if (newEditTool) {
+        await harness.swapTool("edit", newEditTool as never);
+      }
+    }
+  }
+  return true;
+}
+
 export async function runPrompt(
   ctx: ServerContext,
   sessionId: string,

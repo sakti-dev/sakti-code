@@ -16,6 +16,7 @@ import {
   resolveEditMode,
   resolveThinkingLevel,
   runPrompt,
+  setEditModeForSession,
 } from "../runner.ts";
 import { createMockCtx, createMockStore } from "./helpers.ts";
 
@@ -178,6 +179,24 @@ describe("runPrompt", () => {
   it("resolveEditMode: defaults to hashline when not set", () => {
     const ctx = createMockCtx();
     expect(resolveEditMode(ctx, "sess-1")).toBe("hashline");
+  });
+});
+
+describe("setEditModeForSession", () => {
+  it("persists mode to settings table", async () => {
+    const ctx = createMockCtx();
+    const result = await setEditModeForSession(ctx, "sess-1", "replace");
+    expect(result).toBe(true);
+    expect(ctx.repos.settings.set).toHaveBeenCalledWith(
+      "session:sess-1:edit_mode",
+      "replace"
+    );
+  });
+
+  it("returns false for unknown session", async () => {
+    const ctx = createMockCtx();
+    const result = await setEditModeForSession(ctx, "nonexistent", "replace");
+    expect(result).toBe(false);
   });
 });
 
