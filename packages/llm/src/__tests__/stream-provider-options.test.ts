@@ -90,7 +90,7 @@ describe("streamWithModel providerOptions passthrough", () => {
     );
 
     expect(captured?.providerOptions?.zai).toEqual({
-      thinking: { type: "enabled", budget_tokens: 16_000 },
+      thinking: { type: "enabled", budget_tokens: 32_000 },
     });
   });
 });

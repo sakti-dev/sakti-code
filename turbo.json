@@ -17,6 +17,10 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "build:electron": {
+      "dependsOn": ["^build"],
+      "outputs": ["out/**", "dist/**"]
+    },
     "build:canary": {
       "dependsOn": ["^build:canary"],
       "outputs": ["dist/**", "build/**"]

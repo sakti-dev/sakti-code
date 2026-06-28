@@ -36,6 +36,13 @@ export interface ProviderFactoryOptions {
   apiKey?: string;
   baseURL?: string;
   headers?: Record<string, string>;
+  /**
+   * Model output-token ceiling (matches `Model.maxTokens`). Optional —
+   * factories may use it to enforce a hard cap or reserve headroom (e.g. the
+   * Z.ai provider reserves a slice for compaction output per
+   * `zcode-glm-best-practices.md §4`).
+   */
+  maxTokens?: number;
   /** Provider display name (matches `Model.provider`). */
   name?: string;
   [key: string]: unknown;

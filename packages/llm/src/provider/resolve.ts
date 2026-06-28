@@ -129,6 +129,7 @@ function buildFactoryOptions(
     ...(baseURL ? { baseURL } : {}),
     ...(options.apiKey ? { apiKey: options.apiKey } : {}),
     ...(headers ? { headers } : {}),
+    ...(model.maxTokens ? { maxTokens: model.maxTokens } : {}),
     // Force-enable usage reporting for the generic openai-compatible factory.
     // Without this, ~100 catalog providers (deepseek, groq, zai, togetherai,
     // …) may silently return zero usage, breaking cost tracking. First-party

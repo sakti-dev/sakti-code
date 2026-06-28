@@ -12,8 +12,8 @@
   "scripts": {
     "postinstall": "node node_modules/electron/install.js",
     "dev": "node scripts/dev.mjs",
-    "build": "electron-vite build",
-    "package": "turbo build && electron-builder",
+    "build:electron": "electron-vite build",
+    "package": "turbo run build:electron && electron-builder",
     "rebuild": "electron-builder install-app-deps",
     "spike": "electron spike.mjs",
     "test": "vitest run",

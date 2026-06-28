@@ -49,11 +49,26 @@ export interface ZaiLanguageModelConfig {
   baseURL: string;
   fetch?: FetchFunction;
   headers: () => Promise<Record<string, string | undefined>>;
+  /**
+   * Model output-token ceiling (`Model.maxTokens` from the catalog). When
+   * set, `max_tokens` is capped at `maxTokens - SUMMARY_RESERVE` so the
+   * agent loop has room for compaction output (per
+   * `zcode-glm-best-practices.md §4`).
+   */
+  maxTokens?: number;
   provider: string;
 }
 
 const SUPPORTED_HTTPS_URL_PATTERN = /^https?:\/\/.*$/;
 const SUPPORTED_DATA_IMAGE_URL_PATTERN = /^data:image\/.*$/;
+
+/**
+ * Tokens reserved at the top of `max_tokens` for compaction/summary output.
+ * Per `zcode-glm-best-practices.md §4`: ZCode computes
+ * `maxOutputTokens = min(requested, modelLimit, modelLimit − summaryReserve)`
+ * so there's always headroom for compaction. 4000 ≈ ZCode's observed value.
+ */
+const SUMMARY_RESERVE = 4000;
 
 /** Hand-written snake_case wire shape for the Anthropic Messages body. */
 export interface ZaiRequest {
@@ -235,6 +250,7 @@ export class ZaiLanguageModel implements LanguageModelV4 {
     // ─── assemble body ───────────────────────────────────────────────────
     const args = assembleZaiRequest({
       maxOutputTokens: maxOutputTokens ?? 4096,
+      maxTokensCap: this.config.maxTokens,
       messages,
       modelId: this.modelId,
       outputConfig: buildOutputConfig(zaiProviderOptions),
@@ -386,6 +402,12 @@ function stampSystemCacheControl(
 
 interface AssembleInput {
   maxOutputTokens: number;
+  /**
+   * Model output-token ceiling (`Model.maxTokens`). When set, the effective
+   * `max_tokens` is capped at `maxTokensCap − SUMMARY_RESERVE` to leave room
+   * for compaction output (per `zcode-glm-best-practices.md §4`).
+   */
+  maxTokensCap: number | undefined;
   messages: ZaiMessage[];
   modelId: string;
   outputConfig: ZaiRequest["output_config"];
@@ -407,11 +429,17 @@ interface AssembleInput {
 function assembleZaiRequest(input: AssembleInput): ZaiRequest {
   const isThinking = input.thinking !== undefined;
   // Anthropic's `thinking.budget_tokens` is a *portion of* `max_tokens` (the
-  // thinking tokens come out of the total), not additive. We previously
-  // ported @ai-sdk/anthropic's `max_tokens = requested + budget` formula,
-  // but Z.ai enforces a strict 1..131072 cap on `max_tokens` and rejects the
-  // sum. Pass `maxOutputTokens` through unchanged.
-  const maxTokens = input.maxOutputTokens;
+  // thinking tokens come out of the total), not additive. Z.ai enforces a
+  // strict 1..modelMax cap and rejects sums. Per `zcode-glm-best-practices.md
+  // §4`, also reserve `SUMMARY_RESERVE` tokens at the top for compaction
+  // output so the agent loop has headroom.
+  const cap = input.maxTokensCap;
+  const effectiveCap =
+    cap === undefined ? undefined : Math.max(1, cap - SUMMARY_RESERVE);
+  const maxTokens =
+    effectiveCap === undefined
+      ? input.maxOutputTokens
+      : Math.min(input.maxOutputTokens, effectiveCap);
 
   const args: ZaiRequest = {
     max_tokens: maxTokens,

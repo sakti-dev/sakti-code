@@ -2,11 +2,12 @@ import type { LanguageModelV4CallOptions } from "@ai-sdk/provider";
 import { describe, expect, it } from "vitest";
 import { ZaiLanguageModel } from "../zai-language-model.ts";
 
-const make = () =>
+const make = (maxTokens?: number) =>
   new ZaiLanguageModel("glm-5.2", {
     baseURL: "https://api.z.ai/api/anthropic",
     provider: "zai.messages",
     headers: async () => ({}),
+    ...(maxTokens === undefined ? {} : { maxTokens }),
   });
 
 const baseOpts = (
@@ -120,6 +121,36 @@ describe("ZaiLanguageModel.getArgs", () => {
       })
     );
     expect(args.max_tokens).toBe(131_072);
+  });
+
+  it("reserves SUMMARY_RESERVE (4000) for compaction when maxTokensCap is known", async () => {
+    const { args } = await make(131_072).getArgs(
+      baseOpts({
+        maxOutputTokens: 131_072,
+      })
+    );
+    expect(args.max_tokens).toBe(131_072 - 4000);
+  });
+
+  it("clamps to the reserved cap when agent requests the ceiling", async () => {
+    const { args } = await make(64_000).getArgs(
+      baseOpts({
+        maxOutputTokens: 64_000,
+        providerOptions: {
+          zai: { thinking: { type: "enabled", budgetTokens: 16_000 } },
+        },
+      })
+    );
+    expect(args.max_tokens).toBe(64_000 - 4000);
+  });
+
+  it("does not clamp when agent requests below the reserved cap", async () => {
+    const { args } = await make(64_000).getArgs(
+      baseOpts({
+        maxOutputTokens: 10_000,
+      })
+    );
+    expect(args.max_tokens).toBe(10_000);
   });
 
   it("warns on frequencyPenalty / presencePenalty / seed (unsupported)", async () => {

@@ -7,6 +7,13 @@ import type {
 import { ZAI_THINKING_BUDGETS } from "./zai-anthropic/thinking-budgets.ts";
 
 /**
+ * Matches Z.ai "fast-tier" model ids — turbo / flash / highspeed. Per
+ * `zcode-glm-best-practices.md §9`, these pair with `speed:"fast"` for the
+ * cheapest acceptable-quality turn.
+ */
+const TURBO_MODEL_PATTERN = /(turbo|flash|highspeed)/i;
+
+/**
  * # Provider options transform
  *
  * Turns a {@link Model}'s `compat.thinkingFormat` + the requested thinking
@@ -59,6 +66,26 @@ export function buildProviderOptions(input: {
   if (model.npm === "@sakti-code/zai-anthropic") {
     if (!model.reasoning) {
       return {};
+    }
+    // Per `zcode-glm-best-practices.md §9`: pair turbo/flash/highspeed
+    // variants with `speed:"fast"` — the cheapest acceptable-quality path.
+    if (TURBO_MODEL_PATTERN.test(model.id)) {
+      return level === "off"
+        ? {
+            zai: {
+              thinking: { type: "disabled" },
+              speed: "fast",
+            },
+          }
+        : {
+            zai: {
+              thinking: {
+                type: "enabled",
+                budget_tokens: ZAI_THINKING_BUDGETS[level],
+              },
+              speed: "fast",
+            },
+          };
     }
     if (level === "off") {
       return { zai: { thinking: { type: "disabled" } } };

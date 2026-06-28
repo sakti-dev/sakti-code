@@ -51,6 +51,9 @@ export function createZai(options: ZaiProviderSettings): ProviderSDK {
         baseURL,
         provider: PROVIDER_NAME,
         headers,
+        ...(options.maxTokens === undefined
+          ? {}
+          : { maxTokens: options.maxTokens }),
         ...(options.fetch ? { fetch: options.fetch } : {}),
       }),
   };
