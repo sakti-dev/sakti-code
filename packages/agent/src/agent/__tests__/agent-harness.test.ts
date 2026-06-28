@@ -800,3 +800,55 @@ describe("AgentHarness", () => {
     expect(eventTypes).toContain("message_end");
   });
 });
+
+describe("scheduleSystemPromptRefresh", () => {
+  it("stores a pending prompt swap without affecting the current turn", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    const captured: string[] = [];
+    registration.setResponses([
+      (req: StreamRequest) => {
+        captured.push(req.system ?? "");
+        return fauxAssistantMessage("ok");
+      },
+    ]);
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: "original prompt",
+    });
+
+    harness.scheduleSystemPromptRefresh("new prompt");
+    expect(harness.getPendingSystemPromptRefresh()).toBe("new prompt");
+
+    await harness.prompt("hello");
+
+    // Current turn still uses the original prompt — refresh is deferred.
+    expect(captured).toEqual(["original prompt"]);
+  });
+
+  it("clears pending refresh when switchAgent applies a new prompt immediately", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: "original",
+    });
+
+    harness.scheduleSystemPromptRefresh("pending");
+    expect(harness.getPendingSystemPromptRefresh()).toBe("pending");
+
+    await harness.switchAgent({
+      name: "x",
+      mode: "primary",
+      systemPrompt: "applied now",
+    });
+
+    expect(harness.getPendingSystemPromptRefresh()).toBeUndefined();
+  });
+});

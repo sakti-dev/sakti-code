@@ -245,6 +245,14 @@ export class AgentHarness<
     TPromptTemplate,
     TTool
   >["systemPrompt"];
+  /**
+   * Pending system-prompt swap scheduled by {@link scheduleSystemPromptRefresh}.
+   * Drained by {@link compact} (compaction busts the cache anyway, so the swap
+   * is free there) and cleared by {@link switchAgent} (which supersedes it).
+   * Layer 2 (in-memory only); restart-safe because Layer 1 (disabled_skills
+   * filter in the runner) recomposes the correct prompt at load.
+   */
+  private pendingSystemPromptRefresh: string | undefined;
   private streamOptions: AgentHarnessStreamOptions;
   private testStreamFn?: StreamFn;
   private getApiKeyAndHeaders?: AgentHarnessOptions["getApiKeyAndHeaders"];
@@ -1661,16 +1669,59 @@ export class AgentHarness<
    * Permission rulesets are wired separately via {@link setPermissionEvaluator}.
    * Tool/model/prompt changes take effect on the next turn (prepareNextTurn
    * re-reads them); the permission evaluator takes effect immediately.
+   *
+   * Clears any pending {@link scheduleSystemPromptRefresh} — switchAgent is the
+   * "apply now" path and supersedes a deferred swap.
    */
   async switchAgent(agent: AgentDefinition): Promise<void> {
     this.currentAgent = agent;
     this.systemPrompt = agent.systemPrompt;
+    this.clearPendingSystemPromptRefresh();
     if (agent.thinkingLevel !== undefined) {
       await this.setThinkingLevel(agent.thinkingLevel);
     }
     if (agent.activeToolNames !== undefined) {
       await this.setActiveTools(agent.activeToolNames);
     }
+  }
+
+  /**
+   * Schedule a system-prompt swap to take effect at the next compaction.
+   *
+   * The current session's cached prefix stays warm until compaction runs
+   * (compaction busts the cache anyway, so the swap is free there). Use this
+   * for any change that would otherwise rewrite the prompt mid-session:
+   * disabling a skill, changing locale, changing output style. For changes the
+   * user wants immediately, call {@link switchAgent} directly — that applies
+   * now at the cost of one cold turn.
+   */
+  scheduleSystemPromptRefresh(next: string): void {
+    this.pendingSystemPromptRefresh = next;
+  }
+
+  /** Returns the pending refresh string, if any. Test/debug hook. */
+  getPendingSystemPromptRefresh(): string | undefined {
+    return this.pendingSystemPromptRefresh;
+  }
+
+  /**
+   * Clears the pending refresh. Internal; called when compaction drains it
+   * or when {@link switchAgent} supersedes it.
+   */
+  clearPendingSystemPromptRefresh(): void {
+    this.pendingSystemPromptRefresh = undefined;
+  }
+
+  /**
+   * Returns the currently-effective system prompt when it is a plain string,
+   * or `undefined` when it is unset or a callback. Useful for tests and for
+   * the runner to recompose the base prompt (without the skills block) when
+   * scheduling a refresh.
+   */
+  getSystemPrompt(): string | undefined {
+    return typeof this.systemPrompt === "string"
+      ? this.systemPrompt
+      : undefined;
   }
 
   getStreamOptions(): AgentHarnessStreamOptions {
