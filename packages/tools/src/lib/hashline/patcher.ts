@@ -116,7 +116,9 @@ function assertSectionHashPresent(
 function recoveryToApplyResult(result: RecoveryResult): ApplyResult {
   return {
     text: result.text,
-    firstChangedLine: result.firstChangedLine,
+    ...(result.firstChangedLine === undefined
+      ? {}
+      : { firstChangedLine: result.firstChangedLine }),
     warnings: result.warnings,
   };
 }
@@ -169,7 +171,11 @@ export class Patcher {
 
   async apply(patch: Patch): Promise<PatcherApplyResult> {
     if (patch.sections.length === 1) {
-      const prepared = await this.prepare(patch.sections[0]);
+      const section = patch.sections[0];
+      if (!section) {
+        throw new Error("Empty patch");
+      }
+      const prepared = await this.prepare(section);
       return { sections: [await this.commit(prepared)] };
     }
 
@@ -188,18 +194,24 @@ export class Patcher {
 
     const results: PatchSectionResult[] = [];
     for (let index = 0; index < prepared.length; index++) {
+      const entry = prepared[index];
+      if (!entry) {
+        continue;
+      }
       try {
-        results.push(await this.commit(prepared[index]));
+        results.push(await this.commit(entry));
       } catch (error) {
         const written = prepared
           .slice(0, index)
-          .map((entry) => entry.section.path);
+          .map((e) => e?.section.path)
+          .filter((p): p is string => p !== undefined);
         const notWritten = prepared
           .slice(index + 1)
-          .map((entry) => entry.section.path);
+          .map((e) => e?.section.path)
+          .filter((p): p is string => p !== undefined);
         const message = error instanceof Error ? error.message : String(error);
         throw new Error(
-          `Failed to write ${prepared[index].section.path}: ${message}` +
+          `Failed to write ${entry.section.path}: ${message}` +
             (written.length > 0
               ? ` Sections already written: ${written.join(", ")}.`
               : "") +
@@ -257,7 +269,10 @@ export class Patcher {
       }
     }
 
-    await this.fs.preflightWrite(target.path, { fileOp });
+    await this.fs.preflightWrite(
+      target.path,
+      fileOp === undefined ? {} : { fileOp }
+    );
 
     if (!read.exists) {
       throw new Error(
@@ -329,6 +344,9 @@ export class Patcher {
       return null;
     }
     const resolved = candidates[0];
+    if (resolved === undefined) {
+      return null;
+    }
     return {
       section: section.withPath(resolved),
       canonicalPath: this.fs.canonicalPath(resolved),
@@ -402,7 +420,9 @@ export class Patcher {
         written: persisted,
         fileHash,
         header: formatHashlineHeader(moveDest, fileHash),
-        firstChangedLine: applyResult.firstChangedLine,
+        ...(applyResult.firstChangedLine === undefined
+          ? {}
+          : { firstChangedLine: applyResult.firstChangedLine }),
         moveDest,
         warnings,
       };
@@ -422,7 +442,9 @@ export class Patcher {
       written: write.text,
       fileHash,
       header: formatHashlineHeader(section.path, fileHash),
-      firstChangedLine: applyResult.firstChangedLine,
+      ...(applyResult.firstChangedLine === undefined
+        ? {}
+        : { firstChangedLine: applyResult.firstChangedLine }),
       warnings,
     };
   }

@@ -163,15 +163,22 @@ function formatLineRanges(lines: readonly number[]): string {
     return "";
   }
   const parts: string[] = [];
-  let start = sorted[0];
-  let prev = sorted[0];
+  const first = sorted[0];
+  if (first === undefined) {
+    return "";
+  }
+  let start = first;
+  let prev = first;
   for (let i = 1; i <= sorted.length; i++) {
     const current = sorted[i];
-    if (current === prev + 1) {
+    if (current !== undefined && current === prev + 1) {
       prev = current;
       continue;
     }
     parts.push(start === prev ? `${start}` : `${start}-${prev}`);
+    if (current === undefined) {
+      break;
+    }
     start = current;
     prev = current;
   }

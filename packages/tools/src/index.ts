@@ -1,3 +1,5 @@
+export type { Snapshot, SnapshotStore } from "./lib/hashline/snapshots.ts";
+export { InMemorySnapshotStore } from "./lib/hashline/snapshots.ts";
 export type {
   BashOperations,
   BashToolDetails,

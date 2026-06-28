@@ -167,6 +167,9 @@ interface JsxPayloadTag {
 
 function isJsxTagStart(text: string, index: number): boolean {
   const next = text[index + 1];
+  if (!next) {
+    return false;
+  }
   return (
     next === ">" ||
     next === "/" ||
@@ -211,7 +214,7 @@ function parseJsxPayloadTag(raw: string): JsxPayloadTag | undefined {
   const closing = raw.startsWith("</");
   const nameStart = closing ? 2 : 1;
   let nameEnd = nameStart;
-  while (nameEnd < raw.length && /[\w.:-]/.test(raw[nameEnd])) {
+  while (nameEnd < raw.length && /[\w.:-]/.test(raw[nameEnd] ?? "")) {
     nameEnd++;
   }
   if (nameEnd === nameStart) {
@@ -419,6 +422,9 @@ function findReplacementGroup(
   let i = start;
   for (; i < edits.length; i++) {
     const edit = edits[i];
+    if (!edit) {
+      break;
+    }
     if (
       edit.kind !== "insert" ||
       edit.mode !== "replacement" ||
@@ -439,6 +445,9 @@ function findReplacementGroup(
   let expectedLine = anchorLine;
   for (; i < edits.length; i++) {
     const edit = edits[i];
+    if (!edit) {
+      break;
+    }
     if (
       edit.kind !== "delete" ||
       edit.lineNum !== lineNum ||
@@ -763,8 +772,8 @@ function countDuplicateLeadingBoundaryLines(
     let matches = true;
     let hasContent = false;
     for (let offset = 0; offset < count; offset++) {
-      const line = payload[offset];
-      if (line !== fileLines[startLine - 1 - count + offset]) {
+      const line = payload[offset] ?? "";
+      if (line !== (fileLines[startLine - 1 - count + offset] ?? "")) {
         matches = false;
         break;
       }
@@ -787,8 +796,8 @@ function countDuplicateTrailingBoundaryLines(
     let matches = true;
     let hasContent = false;
     for (let offset = 0; offset < count; offset++) {
-      const line = payload[payload.length - count + offset];
-      if (line !== fileLines[endLine + offset]) {
+      const line = payload[payload.length - count + offset] ?? "";
+      if (line !== (fileLines[endLine + offset] ?? "")) {
         matches = false;
         break;
       }
@@ -976,14 +985,21 @@ function repairReplacementBoundaries(
   let i = 0;
   while (i < edits.length) {
     const group = findReplacementGroup(edits, i);
-    if (!group) {
-      slots.push({ kind: "edits", edits: [edits[i]] });
+    const current = edits[i];
+    if (!(group && current)) {
+      if (current) {
+        slots.push({ kind: "edits", edits: [current] });
+      }
       i++;
       continue;
     }
-    const inserts = group.insertIndices.map((idx) => edits[idx]);
-    const deletes = group.deleteIndices.map((idx) => edits[idx]);
-    i = group.deleteIndices[group.deleteIndices.length - 1] + 1;
+    const inserts = group.insertIndices
+      .map((idx) => edits[idx])
+      .filter((e): e is AppliedEdit => e !== undefined);
+    const deletes = group.deleteIndices
+      .map((idx) => edits[idx])
+      .filter((e): e is AppliedEdit => e !== undefined);
+    i = group.deleteIndices[group.deleteIndices.length - 1]! + 1;
 
     const boundaryEcho = findBoundaryEcho(group, fileLines);
     if (boundaryEcho) {
@@ -1311,7 +1327,9 @@ function repairAfterInsertLandings(
       groups.set(key, {
         anchor: edit.cursor.anchor.line,
         members: [idx],
-        blockStart: edit.blockStart,
+        ...(edit.blockStart === undefined
+          ? {}
+          : { blockStart: edit.blockStart }),
       });
     } else {
       group.members.push(idx);
@@ -1392,7 +1410,7 @@ function repairAfterInsertLandings(
 
 export function applyEdits(text: string, edits: readonly Edit[]): ApplyResult {
   if (edits.length === 0) {
-    return { text, firstChangedLine: undefined };
+    return { text };
   }
 
   for (const edit of edits) {
@@ -1512,7 +1530,7 @@ export function applyEdits(text: string, edits: readonly Edit[]): ApplyResult {
 
   return {
     text: fileLines.join("\n"),
-    firstChangedLine,
+    ...(firstChangedLine === undefined ? {} : { firstChangedLine }),
     ...(warnings.length > 0 ? { warnings } : {}),
   };
 }

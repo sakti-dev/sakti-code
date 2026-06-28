@@ -117,8 +117,9 @@ describe("ReadTool", () => {
     const text = getTextContent(result);
     const match = text.match(/#([0-9A-F]{4})/);
     expect(match).not.toBeNull();
-    const hash = match[1];
-    expect(snapshotStore.byHash(join(tmpDir, "snap.ts"), hash)).not.toBeNull();
+    const hash = match?.[1];
+    expect(hash).toBeDefined();
+    expect(snapshotStore.byHash(join(tmpDir, "snap.ts"), hash!)).not.toBeNull();
   });
 
   it("hashes full file content even for partial reads", async () => {
@@ -189,9 +190,10 @@ describe("WriteTool", () => {
     expect(text).toContain("[snap-write.ts#");
     const match = text.match(/#([0-9A-F]{4})/);
     expect(match).not.toBeNull();
-    const hash = match[1];
+    const hash = match?.[1];
+    expect(hash).toBeDefined();
     expect(
-      snapshotStore.byHash(join(tmpDir, "snap-write.ts"), hash)
+      snapshotStore.byHash(join(tmpDir, "snap-write.ts"), hash!)
     ).not.toBeNull();
   });
 

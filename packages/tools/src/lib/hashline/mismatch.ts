@@ -23,7 +23,13 @@ export function parseTag(ref: string): { line: number } {
       `Invalid line reference. Expected ${formatFullAnchorRequirement(ref)}.`
     );
   }
-  const line = Number.parseInt(match[1], 10);
+  const lineStr = match[1];
+  if (!lineStr) {
+    throw new Error(
+      `Invalid line reference. Expected ${formatFullAnchorRequirement(ref)}.`
+    );
+  }
+  const line = Number.parseInt(lineStr, 10);
   if (line < 1) {
     throw new Error(`Line number must be >= 1, got ${line} in "${ref}".`);
   }

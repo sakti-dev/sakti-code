@@ -217,13 +217,14 @@ export function createEditTool(
       },
       async execute(
         _toolCallId: string,
-        input: HashlineEditInput,
+        params: unknown,
         signal?: AbortSignal,
         _onUpdate?: AgentToolUpdateCallback<EditToolDetails | undefined>
       ) {
+        const { input } = params as HashlineEditInput;
         const result = await executeHashlineEdit(
           cwd,
-          input.input,
+          input,
           options?.snapshotStore,
           signal
         );
@@ -243,10 +244,11 @@ export function createEditTool(
     prepareArguments: prepareEditArguments,
     async execute(
       _toolCallId: string,
-      input: Static<typeof editSchema>,
+      params: unknown,
       signal?: AbortSignal,
       _onUpdate?: AgentToolUpdateCallback<EditToolDetails | undefined>
     ) {
+      const input = params as Static<typeof editSchema>;
       const { path, edits } = validateEditInput(input);
       const absolutePath = resolveToCwd(path, cwd);
 

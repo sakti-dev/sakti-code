@@ -60,7 +60,10 @@ function tryParseRecoveryHeader(line: string, cwd?: string): RawSection | null {
     pathText = body.replace(/\s+$/, "");
   } else {
     pathText = body.slice(0, trailing.index);
-    fileHash = trailing[1].toUpperCase();
+    const hash = trailing[1];
+    if (hash) {
+      fileHash = hash.toUpperCase();
+    }
   }
 
   if (pathText.includes("#")) {
@@ -132,7 +135,7 @@ function stripLeadingBlankLines(input: string): string {
   const stripped = input.startsWith("\uFEFF") ? input.slice(1) : input;
   const lines = stripped.split("\n");
   while (lines.length > 0) {
-    const head = lines[0].replace(/\r$/, "");
+    const head = (lines[0] ?? "").replace(/\r$/, "");
     if (
       head.trim().length === 0 ||
       TOKENIZER.tokenize(head).kind === "envelope-begin"
@@ -323,18 +326,30 @@ export class PatchSection {
     const { edits, warnings } = this.parse();
     const result = applyEdits(text, edits);
     const merged = [...warnings, ...(result.warnings ?? [])];
-    return merged.length > 0
-      ? { ...result, warnings: merged }
-      : { text: result.text, firstChangedLine: result.firstChangedLine };
+    if (merged.length > 0) {
+      return { ...result, warnings: merged };
+    }
+    return {
+      text: result.text,
+      ...(result.firstChangedLine === undefined
+        ? {}
+        : { firstChangedLine: result.firstChangedLine }),
+    };
   }
 
   applyPartialTo(text: string, _blockResolver?: BlockResolver): ApplyResult {
     const { edits, warnings } = parsePatchStreaming(this.diff);
     const result = applyEdits(text, edits);
     const merged = [...warnings, ...(result.warnings ?? [])];
-    return merged.length > 0
-      ? { ...result, warnings: merged }
-      : { text: result.text, firstChangedLine: result.firstChangedLine };
+    if (merged.length > 0) {
+      return { ...result, warnings: merged };
+    }
+    return {
+      text: result.text,
+      ...(result.firstChangedLine === undefined
+        ? {}
+        : { firstChangedLine: result.firstChangedLine }),
+    };
   }
 
   withPath(path: string): PatchSection {

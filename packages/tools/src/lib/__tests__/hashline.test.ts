@@ -657,7 +657,7 @@ describe("Patcher", () => {
     const result = await patcher.apply(
       Patch.parse(`[f.ts#${tag}]\nSWAP 2.=2:\n+B`)
     );
-    const newHash = result.sections[0].fileHash;
+    const newHash = result.sections[0]!.fileHash;
     expect(newHash).toBeDefined();
     expect(snapshots.byHash("f.ts", newHash)).not.toBeNull();
   });
@@ -681,7 +681,7 @@ describe("Patcher", () => {
     const result = await patcher.apply(
       Patch.parse(`[f.ts#${oldHash}]\nSWAP 3.=3:\n+CHANGED`)
     );
-    expect(result.sections[0].after).toBe("a\nb\nCHANGED\nd\ne\n");
+    expect(result.sections[0]!.after).toBe("a\nb\nCHANGED\nd\ne\n");
   });
 
   it("detects noop when edits produce no change", async () => {
@@ -692,7 +692,7 @@ describe("Patcher", () => {
     const result = await patcher.apply(
       Patch.parse(`[f.ts#${tag}]\nSWAP 2.=2:\n+b`)
     );
-    expect(result.sections[0].op).toBe("noop");
+    expect(result.sections[0]!.op).toBe("noop");
   });
 
   it("handles REM (delete file) op", async () => {
@@ -701,7 +701,7 @@ describe("Patcher", () => {
     const tag = snapshots.record("f.ts", content);
 
     const result = await patcher.apply(Patch.parse(`[f.ts#${tag}]\nREM`));
-    expect(result.sections[0].op).toBe("delete");
+    expect(result.sections[0]!.op).toBe("delete");
     expect(await fs.exists("f.ts")).toBe(false);
   });
 
@@ -713,8 +713,8 @@ describe("Patcher", () => {
     const result = await patcher.apply(
       Patch.parse(`[old.ts#${tag}]\nMV "new.ts"`)
     );
-    expect(result.sections[0].op).toBe("update");
-    expect(result.sections[0].moveDest).toBe("new.ts");
+    expect(result.sections[0]!.op).toBe("update");
+    expect(result.sections[0]!.moveDest).toBe("new.ts");
     expect(await fs.exists("old.ts")).toBe(false);
     expect(await fs.readText("new.ts")).toBe("a\nb\n");
   });
@@ -733,8 +733,8 @@ describe("Patcher", () => {
       )
     );
     expect(result.sections).toHaveLength(2);
-    expect(result.sections[0].after).toBe("A\n");
-    expect(result.sections[1].after).toBe("B\n");
+    expect(result.sections[0]!.after).toBe("A\n");
+    expect(result.sections[1]!.after).toBe("B\n");
   });
 
   it("rejects when section has no hash tag", async () => {
