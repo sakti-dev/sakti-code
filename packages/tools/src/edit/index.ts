@@ -154,8 +154,24 @@ function validateEditInput(input: EditToolInput): {
 const REPLACE_DESCRIPTION =
   "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.";
 
-const HASHLINE_DESCRIPTION =
-  'Edit files using hashline patches. Each section starts with [path#HASH] (copy the header from read/write output) followed by line-anchored ops: SWAP N.=M: +body, DEL N.=M, INS.PRE/POST/HEAD/TAIL N: +body, REM (delete file), MV "dest".';
+const HASHLINE_DESCRIPTION = `Edit files using hashline patches. Each section starts with [path#HASH] (copy the header from read/write output) followed by line-anchored ops.
+
+Line ops (anchor exact lines):
+- SWAP N.=M: +body        replace lines N through M with the body rows below
+- DEL N.=M                delete lines N through M
+- INS.PRE/POST/HEAD/TAIL N: +body  insert body before/after line N, or at file head/tail
+- REM                     delete the file
+- MV "dest"               move/rename the file
+
+Block ops (anchor the OPENING line of a multi-line construct; tree-sitter resolves the closing line):
+- SWAP.BLK N: +body       replace the whole syntactic block that BEGINS on line N
+- DEL.BLK N               delete the whole syntactic block that BEGINS on line N
+- INS.BLK.POST N: +body   insert body AFTER the block's end (sibling depth). To append inside a block, use INS.POST.
+
+Block-op rules:
+- Anchor the OPENING line of a MULTI-LINE construct (the def/fn/class/if line) — never its closer, last line, or a bare inner statement. A single-statement anchor resolves to ONE line and is REJECTED: use the plain op (SWAP N.=N / DEL N / INS.POST N), or point N at the real opener.
+- Leading decorators/attributes/doc-comments are SEPARATE nodes: point N at the FIRST decorator to sweep both. Standalone line-comments are never swept — use SWAP N.=M.
+- Markdown: a heading line (##/###) IS a block opener — block ops resolve its whole section (through nested deeper headings, up to the next same-or-higher heading).`;
 
 function extractHashlinePaths(input: string): string[] {
   try {
