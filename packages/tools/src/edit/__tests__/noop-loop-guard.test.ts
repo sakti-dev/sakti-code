@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { NOOP_HARD_LIMIT, type NoopLoopGuardOwner, recordNoopEdit, resetNoopEdit } from "../noop-loop-guard";
+import {
+  NOOP_HARD_LIMIT,
+  type NoopLoopGuardOwner,
+  recordNoopEdit,
+  resetNoopEdit,
+} from "../noop-loop-guard";
 
 describe("noop-loop-guard", () => {
   it("does not escalate on the first identical no-op", () => {
     const session: NoopLoopGuardOwner = {};
-    expect(recordNoopEdit(session, "/a.ts", "h1")).toEqual({ count: 1, escalate: false });
+    expect(recordNoopEdit(session, "/a.ts", "h1")).toEqual({
+      count: 1,
+      escalate: false,
+    });
   });
 
   it("escalates once count reaches NOOP_HARD_LIMIT for the same payload+path", () => {
@@ -20,7 +28,10 @@ describe("noop-loop-guard", () => {
     const session: NoopLoopGuardOwner = {};
     recordNoopEdit(session, "/a.ts", "h1");
     recordNoopEdit(session, "/a.ts", "h1");
-    expect(recordNoopEdit(session, "/a.ts", "h2")).toEqual({ count: 1, escalate: false });
+    expect(recordNoopEdit(session, "/a.ts", "h2")).toEqual({
+      count: 1,
+      escalate: false,
+    });
   });
 
   it("tracks paths independently", () => {
