@@ -1,6 +1,18 @@
 import * as path from "node:path";
+import {
+  computeFileHash,
+  formatHashlineHeader,
+} from "../../lib/hashline-utils/format";
+import {
+  detectLineEnding,
+  type LineEnding,
+  normalizeToLF,
+  restoreLineEndings,
+  stripBom,
+} from "../../lib/hashline-utils/normalize";
+import type { SnapshotStore } from "../../lib/hashline-utils/snapshots";
+import type { ApplyResult, Edit, FileOp } from "../../lib/hashline-utils/types";
 import { applyEdits } from "./apply";
-import { computeFileHash, formatHashlineHeader } from "./format";
 import { type Filesystem, isNotFound, type WriteResult } from "./fs";
 import type { Patch, PatchSection } from "./input";
 import {
@@ -10,16 +22,7 @@ import {
   unseenLinesMessage,
 } from "./messages";
 import { MismatchError } from "./mismatch";
-import {
-  detectLineEnding,
-  type LineEnding,
-  normalizeToLF,
-  restoreLineEndings,
-  stripBom,
-} from "./normalize";
 import { Recovery, type RecoveryResult } from "./recovery";
-import type { SnapshotStore } from "./snapshots";
-import type { ApplyResult, Edit, FileOp } from "./types";
 
 export interface PatcherOptions {
   fs: Filesystem;

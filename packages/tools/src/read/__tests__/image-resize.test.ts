@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDimensionNote, resizeImage } from "../lib/image-resize.ts";
+import { formatDimensionNote, resizeImage } from "../image-resize.ts";
 
 // Small 2x2 red PNG image (base64) - from pi's test fixtures
 const TINY_PNG =

@@ -4,7 +4,7 @@ import {
   HL_FILE_PREFIX,
   HL_FILE_SUFFIX,
   HL_RANGE_SEP,
-} from "./format";
+} from "../../lib/hashline-utils/format";
 
 export const MISMATCH_CONTEXT = 2;
 

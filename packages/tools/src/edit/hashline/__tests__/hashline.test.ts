@@ -3,19 +3,24 @@ import {
   computeFileHash,
   formatHashlineHeader,
   formatNumberedLine,
-} from "../hashline/format";
-import { InMemoryFilesystem, isNotFound, NotFoundError } from "../hashline/fs";
-import { Patch } from "../hashline/input";
-import { MismatchError } from "../hashline/mismatch";
+} from "../../../lib/hashline-utils/format";
 import {
   detectLineEnding,
   normalizeToLF,
   restoreLineEndings,
   stripBom,
-} from "../hashline/normalize";
-import { Patcher } from "../hashline/patcher";
-import { InMemorySnapshotStore } from "../hashline/snapshots";
-import type { Anchor, ApplyResult, Cursor, Edit } from "../hashline/types";
+} from "../../../lib/hashline-utils/normalize";
+import { InMemorySnapshotStore } from "../../../lib/hashline-utils/snapshots";
+import type {
+  Anchor,
+  ApplyResult,
+  Cursor,
+  Edit,
+} from "../../../lib/hashline-utils/types";
+import { InMemoryFilesystem, isNotFound, NotFoundError } from "../fs";
+import { Patch } from "../input";
+import { MismatchError } from "../mismatch";
+import { Patcher } from "../patcher";
 
 describe("computeFileHash", () => {
   it("produces a consistent 4-hex-char hash", () => {
@@ -63,7 +68,7 @@ describe("formatNumberedLine", () => {
 });
 
 describe("Tokenizer", () => {
-  const importTokenizer = () => import("../hashline/tokenizer");
+  const importTokenizer = () => import("../tokenizer");
   const tok = (...lines: string[]) =>
     importTokenizer().then((m) =>
       new m.Tokenizer().tokenizeAll(lines.join("\n"))
@@ -149,7 +154,7 @@ describe("Tokenizer", () => {
   });
 
   it("tokenizes blank line", async () => {
-    const { Tokenizer } = await import("../hashline/tokenizer");
+    const { Tokenizer } = await import("../tokenizer");
     const tokenizer = new Tokenizer();
     const tokens = tokenizer.tokenizeAll("\n");
     expect(tokens).toHaveLength(1);
@@ -184,7 +189,7 @@ describe("Tokenizer", () => {
 
 describe("Parser", () => {
   it("parses a simple SWAP with body", async () => {
-    const { parsePatch } = await import("../hashline/parser");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("SWAP 5.=7:\n+one\n+two\n+three");
     expect(result.edits).toHaveLength(6);
     expect(result.warnings).toEqual([]);
@@ -195,21 +200,21 @@ describe("Parser", () => {
   });
 
   it("parses DEL range", async () => {
-    const { parsePatch } = await import("../hashline/parser");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("DEL 10..12");
     expect(result.edits).toHaveLength(3);
     expect(result.fileOp).toBeUndefined();
   });
 
   it("parses INS.POST with body", async () => {
-    const { parsePatch } = await import("../hashline/parser");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("INS.POST 3:\n+extra line");
     expect(result.edits).toHaveLength(1);
     expect(result.edits[0]?.kind).toBe("insert");
   });
 
   it("parses INS.HEAD with body", async () => {
-    const { parsePatch } = await import("../hashline/parser");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("INS.HEAD:\n+preamble");
     expect(result.edits).toHaveLength(1);
     expect(result.edits[0]?.kind).toBe("insert");
@@ -219,13 +224,13 @@ describe("Parser", () => {
   });
 
   it("parses REM op", async () => {
-    const { parsePatch } = await import("../hashline/parser");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("REM");
     expect(result.fileOp?.kind).toBe("rem");
   });
 
   it("parses MV op with destination", async () => {
-    const { parsePatch } = await import("../hashline/parser");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch('MV "dest.ts"');
     expect(result.fileOp?.kind).toBe("move");
     if (result.fileOp?.kind === "move") {
@@ -236,8 +241,8 @@ describe("Parser", () => {
 
 describe("applyEdits", () => {
   it("replaces a single line", async () => {
-    const { applyEdits } = await import("../hashline/apply");
-    const { parsePatch } = await import("../hashline/parser");
+    const { applyEdits } = await import("../apply");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("SWAP 2.=2:\n+hello world");
     const applied = applyEdits("line1\nline2\nline3\n", result.edits);
     expect(applied.text).toBe("line1\nhello world\nline3\n");
@@ -245,8 +250,8 @@ describe("applyEdits", () => {
   });
 
   it("replaces a multi-line range", async () => {
-    const { applyEdits } = await import("../hashline/apply");
-    const { parsePatch } = await import("../hashline/parser");
+    const { applyEdits } = await import("../apply");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("SWAP 2.=3:\n+newA\n+newB");
     const applied = applyEdits("a\nb\nc\nd\n", result.edits);
     expect(applied.text).toBe("a\nnewA\nnewB\nd\n");
@@ -254,8 +259,8 @@ describe("applyEdits", () => {
   });
 
   it("deletes lines", async () => {
-    const { applyEdits } = await import("../hashline/apply");
-    const { parsePatch } = await import("../hashline/parser");
+    const { applyEdits } = await import("../apply");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("DEL 2..3");
     const applied = applyEdits("a\nb\nc\nd\n", result.edits);
     expect(applied.text).toBe("a\nd\n");
@@ -263,8 +268,8 @@ describe("applyEdits", () => {
   });
 
   it("inserts before a line", async () => {
-    const { applyEdits } = await import("../hashline/apply");
-    const { parsePatch } = await import("../hashline/parser");
+    const { applyEdits } = await import("../apply");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("INS.PRE 2:\n+before");
     const applied = applyEdits("a\nb\nc\n", result.edits);
     expect(applied.text).toBe("a\nbefore\nb\nc\n");
@@ -272,8 +277,8 @@ describe("applyEdits", () => {
   });
 
   it("inserts after a line", async () => {
-    const { applyEdits } = await import("../hashline/apply");
-    const { parsePatch } = await import("../hashline/parser");
+    const { applyEdits } = await import("../apply");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("INS.POST 2:\n+after");
     const applied = applyEdits("a\nb\nc\n", result.edits);
     expect(applied.text).toBe("a\nb\nafter\nc\n");
@@ -282,8 +287,8 @@ describe("applyEdits", () => {
   });
 
   it("inserts at head", async () => {
-    const { applyEdits } = await import("../hashline/apply");
-    const { parsePatch } = await import("../hashline/parser");
+    const { applyEdits } = await import("../apply");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("INS.HEAD:\n+top");
     const applied = applyEdits("a\nb\n", result.edits);
     expect(applied.text).toBe("top\na\nb\n");
@@ -291,8 +296,8 @@ describe("applyEdits", () => {
   });
 
   it("inserts at tail", async () => {
-    const { applyEdits } = await import("../hashline/apply");
-    const { parsePatch } = await import("../hashline/parser");
+    const { applyEdits } = await import("../apply");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("INS.TAIL:\n+bottom");
     const applied = applyEdits("a\nb\n", result.edits);
     expect(applied.text).toBe("a\nb\nbottom\n");
@@ -300,8 +305,8 @@ describe("applyEdits", () => {
   });
 
   it("inserts at BOF on empty file", async () => {
-    const { applyEdits } = await import("../hashline/apply");
-    const { parsePatch } = await import("../hashline/parser");
+    const { applyEdits } = await import("../apply");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("INS.HEAD:\n+content");
     const applied = applyEdits("", result.edits);
     // Empty file has no trailing newline, so output has none either
@@ -310,8 +315,8 @@ describe("applyEdits", () => {
   });
 
   it("throws on out-of-bounds anchor", async () => {
-    const { applyEdits } = await import("../hashline/apply");
-    const { parsePatch } = await import("../hashline/parser");
+    const { applyEdits } = await import("../apply");
+    const { parsePatch } = await import("../parser");
     const result = parsePatch("SWAP 10.=10:\n+x");
     expect(() => applyEdits("a\nb\n", result.edits)).toThrow(
       "Line 10 does not exist"
@@ -319,7 +324,7 @@ describe("applyEdits", () => {
   });
 
   it("returns noop for empty edits", async () => {
-    const { applyEdits } = await import("../hashline/apply");
+    const { applyEdits } = await import("../apply");
     const result = applyEdits("hello\n", []);
     expect(result.text).toBe("hello\n");
     expect(result.firstChangedLine).toBeUndefined();
@@ -328,7 +333,7 @@ describe("applyEdits", () => {
 
 describe("Patch", () => {
   it("parses a single-section patch", async () => {
-    const { Patch } = await import("../hashline/input");
+    const { Patch } = await import("../input");
     const patch = Patch.parse("[src/foo.ts#1A2B]\nSWAP 5.=7:\n+new\n+stuff\n");
     expect(patch.sections).toHaveLength(1);
     expect(patch.sections[0]?.path).toBe("src/foo.ts");
@@ -336,7 +341,7 @@ describe("Patch", () => {
   });
 
   it("parses a multi-section patch", async () => {
-    const { Patch } = await import("../hashline/input");
+    const { Patch } = await import("../input");
     const patch = Patch.parse(
       "[a.ts#1A2B]\nSWAP 1.=1:\n+x\n[b.ts#3C4D]\nDEL 2\n"
     );
@@ -346,14 +351,14 @@ describe("Patch", () => {
   });
 
   it("parses a section without hash tag", async () => {
-    const { Patch } = await import("../hashline/input");
+    const { Patch } = await import("../input");
     const patch = Patch.parse("[src/foo.ts]\nSWAP 1.=1:\n+x\n");
     expect(patch.sections).toHaveLength(1);
     expect(patch.sections[0]?.fileHash).toBeUndefined();
   });
 
   it("provides parsed edits via PatchSection.parse()", async () => {
-    const { Patch } = await import("../hashline/input");
+    const { Patch } = await import("../input");
     const patch = Patch.parse("[src/foo.ts#1A2B]\nSWAP 5.=7:\n+new\n+stuff\n");
     const parsed = patch.sections[0]?.parse();
     expect(parsed?.edits).toBeDefined();
@@ -361,7 +366,7 @@ describe("Patch", () => {
   });
 
   it("returns parsed edits lazily (cached)", async () => {
-    const { Patch } = await import("../hashline/input");
+    const { Patch } = await import("../input");
     const patch = Patch.parse("[x.ts#1A2B]\nDEL 1\n");
     const section = patch.sections[0];
     if (!section) throw new Error("No section");
@@ -373,8 +378,8 @@ describe("Patch", () => {
 
 describe("Recovery", () => {
   it("recovers from hash mismatch via 3-way merge", async () => {
-    const { Patch } = await import("../hashline/input");
-    const { recoverWithThreeWayMerge } = await import("../hashline/recovery");
+    const { Patch } = await import("../input");
+    const { recoverWithThreeWayMerge } = await import("../recovery");
     const original = "keep\nkeep\nchange\nkeep\n";
     const live = "keep\nkeep\nchange\nkeep\nadded\n";
     const patch = Patch.parseSingle("[foo.ts#ABCD]\nSWAP 3:\nreplaced\n");
@@ -386,8 +391,8 @@ describe("Recovery", () => {
   });
 
   it("returns failed result when conflict is unresolvable", async () => {
-    const { Patch } = await import("../hashline/input");
-    const { recoverWithThreeWayMerge } = await import("../hashline/recovery");
+    const { Patch } = await import("../input");
+    const { recoverWithThreeWayMerge } = await import("../recovery");
     const original = "a\nb\nc\n";
     const live = "x\ny\nz\n";
     const patch = Patch.parseSingle("[foo.ts#ABCD]\nSWAP 1:\nq\n");
@@ -398,7 +403,9 @@ describe("Recovery", () => {
 
 describe("InMemorySnapshotStore", () => {
   it("records and retrieves by hash", async () => {
-    const { InMemorySnapshotStore } = await import("../hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../../../lib/hashline-utils/snapshots"
+    );
     const store = new InMemorySnapshotStore();
     const hash = store.record("foo.ts", "hello\nworld\n");
     expect(hash).toMatch(/^[0-9A-F]{4}$/);
@@ -408,7 +415,9 @@ describe("InMemorySnapshotStore", () => {
   });
 
   it("returns head snapshot", async () => {
-    const { InMemorySnapshotStore } = await import("../hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../../../lib/hashline-utils/snapshots"
+    );
     const store = new InMemorySnapshotStore();
     store.record("foo.ts", "version1\n");
     store.record("foo.ts", "version2\n");
@@ -417,7 +426,9 @@ describe("InMemorySnapshotStore", () => {
   });
 
   it("deduplicates identical content", async () => {
-    const { InMemorySnapshotStore } = await import("../hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../../../lib/hashline-utils/snapshots"
+    );
     const store = new InMemorySnapshotStore();
     const a = store.record("foo.ts", "hello\n");
     const b = store.record("foo.ts", "hello\n");
@@ -425,7 +436,9 @@ describe("InMemorySnapshotStore", () => {
   });
 
   it("recordSeenLines merges into existing snapshot", async () => {
-    const { InMemorySnapshotStore } = await import("../hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../../../lib/hashline-utils/snapshots"
+    );
     const store = new InMemorySnapshotStore();
     const hash = store.record("foo.ts", "a\nb\nc\n", [1, 2]);
     store.recordSeenLines("foo.ts", hash, [3]);
@@ -435,7 +448,9 @@ describe("InMemorySnapshotStore", () => {
   });
 
   it("findByHash returns snapshots across paths", async () => {
-    const { InMemorySnapshotStore } = await import("../hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../../../lib/hashline-utils/snapshots"
+    );
     const store = new InMemorySnapshotStore();
     const hash = store.record("a.ts", "shared\n");
     store.record("b.ts", "other\n");
@@ -445,7 +460,9 @@ describe("InMemorySnapshotStore", () => {
   });
 
   it("invalidate clears path history", async () => {
-    const { InMemorySnapshotStore } = await import("../hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../../../lib/hashline-utils/snapshots"
+    );
     const store = new InMemorySnapshotStore();
     store.record("foo.ts", "content\n");
     expect(store.head("foo.ts")).not.toBeNull();
@@ -454,7 +471,9 @@ describe("InMemorySnapshotStore", () => {
   });
 
   it("relocate moves history to new path", async () => {
-    const { InMemorySnapshotStore } = await import("../hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../../../lib/hashline-utils/snapshots"
+    );
     const store = new InMemorySnapshotStore();
     const hash = store.record("old.ts", "content\n");
     store.relocate("old.ts", "new.ts");
@@ -610,6 +629,7 @@ describe("InMemoryFilesystem", () => {
 // ---------------------------------------------------------------------------
 // patcher.ts — Patcher orchestrator
 // (patterns matched against openspec/references/oh-my-pi/packages/hashline/test/patcher.test.ts)
+// but adapt imports to work with the local refactored paths
 // ---------------------------------------------------------------------------
 
 function setupPatcher(initial?: Iterable<readonly [string, string]>) {

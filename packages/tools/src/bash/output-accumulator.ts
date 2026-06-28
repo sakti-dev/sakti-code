@@ -6,7 +6,7 @@ import {
   DEFAULT_MAX_LINES,
   type TruncationResult,
   truncateTail,
-} from "./truncate.ts";
+} from "../lib/truncate.ts";
 
 export interface OutputAccumulatorOptions {
   maxBytes?: number;

@@ -1,12 +1,15 @@
 import * as Diff from "diff";
+import type {
+  Snapshot,
+  SnapshotStore,
+} from "../../lib/hashline-utils/snapshots";
+import type { Anchor, ApplyResult, Edit } from "../../lib/hashline-utils/types";
 import { applyEdits } from "./apply";
 import {
   RECOVERY_EXTERNAL_WARNING,
   RECOVERY_SESSION_CHAIN_WARNING,
   RECOVERY_SESSION_REPLAY_WARNING,
 } from "./messages";
-import type { Snapshot, SnapshotStore } from "./snapshots";
-import type { Anchor, ApplyResult, Edit } from "./types";
 
 const RECOVERY_FUZZ_FACTOR = 0;
 

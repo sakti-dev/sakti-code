@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createProposeSessionTool } from "../propose-session.ts";
+import { createProposeSessionTool } from "../index";
 
 describe("createProposeSessionTool", () => {
   const tool = createProposeSessionTool();

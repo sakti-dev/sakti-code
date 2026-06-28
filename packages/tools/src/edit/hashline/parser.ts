@@ -1,4 +1,13 @@
-import { HL_PAYLOAD_REPLACE, HL_RANGE_SEP } from "./format";
+import {
+  HL_PAYLOAD_REPLACE,
+  HL_RANGE_SEP,
+} from "../../lib/hashline-utils/format";
+import type {
+  Anchor,
+  Cursor,
+  Edit,
+  FileOp,
+} from "../../lib/hashline-utils/types";
 import {
   BARE_BODY_AUTO_PIPED_WARNING,
   DELETE_BLOCK_TAKES_NO_BODY,
@@ -17,7 +26,6 @@ import {
   type Token,
   Tokenizer,
 } from "./tokenizer";
-import type { Anchor, Cursor, Edit, FileOp } from "./types";
 
 function validateRangeOrder(range: ParsedRange, lineNum: number): void {
   if (range.end.line < range.start.line) {

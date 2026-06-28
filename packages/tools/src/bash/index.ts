@@ -2,14 +2,14 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
-import { scanCommand } from "../lib/command-scan.ts";
-import { OutputAccumulator } from "../lib/output-accumulator.ts";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
   formatSize,
   type TruncationResult,
 } from "../lib/truncate.ts";
+import { scanCommand } from "./command-scan.ts";
+import { OutputAccumulator } from "./output-accumulator.ts";
 
 const bashSchema = Type.Object({
   command: Type.String({ description: "Bash command to execute" }),

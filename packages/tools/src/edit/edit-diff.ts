@@ -1,6 +1,6 @@
 import { readFile as fsReadFile } from "node:fs/promises";
 import * as Diff from "diff";
-import { resolveToCwd } from "./path-utils.ts";
+import { resolveToCwd } from "../lib/path-utils.ts";
 
 export function detectLineEnding(content: string): "\r\n" | "\n" {
   const crlfIdx = content.indexOf("\r\n");

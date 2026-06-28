@@ -5,6 +5,9 @@ import {
 } from "node:fs/promises";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, type TSchema, Type } from "typebox";
+import { withFileMutationQueue } from "../lib/file-mutation-queue.ts";
+import type { SnapshotStore } from "../lib/hashline-utils/snapshots.ts";
+import { resolveToCwd } from "../lib/path-utils.ts";
 import {
   applyEditsToNormalizedContent,
   detectLineEnding,
@@ -14,13 +17,10 @@ import {
   normalizeToLF,
   restoreLineEndings,
   stripBom,
-} from "../lib/edit-diff.ts";
-import { withFileMutationQueue } from "../lib/file-mutation-queue.ts";
-import { NodeFilesystem } from "../lib/hashline/fs.ts";
-import { Patch } from "../lib/hashline/input.ts";
-import { Patcher } from "../lib/hashline/patcher.ts";
-import type { SnapshotStore } from "../lib/hashline/snapshots.ts";
-import { resolveToCwd } from "../lib/path-utils.ts";
+} from "./edit-diff.ts";
+import { NodeFilesystem } from "./hashline/fs.ts";
+import { Patch } from "./hashline/input.ts";
+import { Patcher } from "./hashline/patcher.ts";
 
 const replaceEditSchema = Type.Object(
   {

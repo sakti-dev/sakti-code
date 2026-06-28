@@ -1,10 +1,15 @@
+import type {
+  Anchor,
+  ApplyResult,
+  Cursor,
+  Edit,
+} from "../../lib/hashline-utils/types";
 import {
   afterInsertLandingShiftWarning,
   blockInsertLandingShiftWarning,
   UNRESOLVED_BLOCK_INTERNAL,
 } from "./messages";
 import { cloneCursor } from "./tokenizer";
-import type { Anchor, ApplyResult, Cursor, Edit } from "./types";
 
 type LineOrigin = "original" | "insert" | "replacement";
 

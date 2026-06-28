@@ -1,12 +1,10 @@
-export type { Snapshot, SnapshotStore } from "./lib/hashline/snapshots.ts";
-export { InMemorySnapshotStore } from "./lib/hashline/snapshots.ts";
 export type {
   BashOperations,
   BashToolDetails,
   BashToolInput,
   BashToolOptions,
-} from "./tools/bash.ts";
-export { createBashTool } from "./tools/bash.ts";
+} from "./bash/index";
+export { createBashTool } from "./bash/index";
 export type {
   EditMode,
   EditOperations,
@@ -14,41 +12,46 @@ export type {
   EditToolInput,
   EditToolOptions,
   HashlineEditInput,
-} from "./tools/edit.ts";
-export { createEditTool, hashlineEditSchema } from "./tools/edit.ts";
+} from "./edit/index";
+export { createEditTool, hashlineEditSchema } from "./edit/index";
 export type {
   FindOperations,
   FindToolDetails,
   FindToolInput,
   FindToolOptions,
-} from "./tools/find.ts";
-export { createFindTool } from "./tools/find.ts";
+} from "./find/index";
+export { createFindTool } from "./find/index";
 export type {
   GrepOperations,
   GrepToolDetails,
   GrepToolInput,
   GrepToolOptions,
-} from "./tools/grep.ts";
-export { createGrepTool } from "./tools/grep.ts";
+} from "./grep/index";
+export { createGrepTool } from "./grep/index";
+export type {
+  Snapshot,
+  SnapshotStore,
+} from "./lib/hashline-utils/snapshots.ts";
+export { InMemorySnapshotStore } from "./lib/hashline-utils/snapshots.ts";
 export type {
   LsOperations,
   LsToolDetails,
   LsToolInput,
   LsToolOptions,
-} from "./tools/ls.ts";
-export { createLsTool } from "./tools/ls.ts";
-export type { ProposeSessionToolInput } from "./tools/propose-session.ts";
-export { createProposeSessionTool } from "./tools/propose-session.ts";
+} from "./ls/index";
+export { createLsTool } from "./ls/index";
+export type { ProposeSessionToolInput } from "./propose-session/index";
+export { createProposeSessionTool } from "./propose-session/index";
 export type {
   ReadOperations,
   ReadToolDetails,
   ReadToolInput,
   ReadToolOptions,
-} from "./tools/read.ts";
-export { createReadTool } from "./tools/read.ts";
+} from "./read/index";
+export { createReadTool } from "./read/index";
 export type {
   WriteOperations,
   WriteToolInput,
   WriteToolOptions,
-} from "./tools/write.ts";
-export { createWriteTool } from "./tools/write.ts";
+} from "./write/index";
+export { createWriteTool } from "./write/index";

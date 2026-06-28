@@ -7,7 +7,7 @@ import {
   createLsTool,
   createReadTool,
   createWriteTool,
-} from "../../index.ts";
+} from "../index.ts";
 
 describe("tool permissions declarators", () => {
   it("read declares read + the file path", () => {

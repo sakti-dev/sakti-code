@@ -10,10 +10,9 @@ import {
   computeFileHash,
   formatHashlineHeader,
   formatNumberedLines,
-} from "../lib/hashline/format.ts";
-import { normalizeToLF } from "../lib/hashline/normalize.ts";
-import type { SnapshotStore } from "../lib/hashline/snapshots.ts";
-import { formatDimensionNote, resizeImage } from "../lib/image-resize.ts";
+} from "../lib/hashline-utils/format.ts";
+import { normalizeToLF } from "../lib/hashline-utils/normalize.ts";
+import type { SnapshotStore } from "../lib/hashline-utils/snapshots.ts";
 import { resolveReadPathAsync } from "../lib/path-utils.ts";
 import {
   DEFAULT_MAX_BYTES,
@@ -22,6 +21,7 @@ import {
   type TruncationResult,
   truncateHead,
 } from "../lib/truncate.ts";
+import { formatDimensionNote, resizeImage } from "./image-resize.ts";
 
 const readSchema = Type.Object({
   path: Type.String({

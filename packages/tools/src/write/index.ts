@@ -3,9 +3,9 @@ import { dirname } from "node:path";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
 import { withFileMutationQueue } from "../lib/file-mutation-queue.ts";
-import { formatHashlineHeader } from "../lib/hashline/format.ts";
-import { normalizeToLF } from "../lib/hashline/normalize.ts";
-import type { SnapshotStore } from "../lib/hashline/snapshots.ts";
+import { formatHashlineHeader } from "../lib/hashline-utils/format.ts";
+import { normalizeToLF } from "../lib/hashline-utils/normalize.ts";
+import type { SnapshotStore } from "../lib/hashline-utils/snapshots.ts";
 import { resolveToCwd } from "../lib/path-utils.ts";
 
 const writeSchema = Type.Object({

@@ -96,7 +96,9 @@ describe("ReadTool", () => {
   it("emits [path#HASH] header and numbered lines when snapshotStore is provided", async () => {
     const content = "line1\nline2\nline3\n";
     writeFileSync(join(tmpDir, "hashed.txt"), content);
-    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
     const snapshotStore = new InMemorySnapshotStore();
     const tool = createReadTool(tmpDir, { snapshotStore });
     const result = await tool.execute("tc_1", { path: "hashed.txt" });
@@ -110,7 +112,9 @@ describe("ReadTool", () => {
   it("records snapshot under absolute path when snapshotStore is provided", async () => {
     const content = "a\nb\n";
     writeFileSync(join(tmpDir, "snap.ts"), content);
-    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
     const snapshotStore = new InMemorySnapshotStore();
     const tool = createReadTool(tmpDir, { snapshotStore });
     const result = await tool.execute("tc_1", { path: "snap.ts" });
@@ -128,8 +132,10 @@ describe("ReadTool", () => {
       (_, i) => `line${i + 1}`
     ).join("\n")}\n`;
     writeFileSync(join(tmpDir, "partial.txt"), content);
-    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
-    const { computeFileHash } = await import("../lib/hashline/format");
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const { computeFileHash } = await import("../lib/hashline-utils/format");
     const snapshotStore = new InMemorySnapshotStore();
     const tool = createReadTool(tmpDir, { snapshotStore });
     const result = await tool.execute("tc_1", {
@@ -179,7 +185,9 @@ describe("WriteTool", () => {
   });
 
   it("records snapshot and emits [path#HASH] when snapshotStore provided", async () => {
-    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
     const snapshotStore = new InMemorySnapshotStore();
     const tool = createWriteTool(tmpDir, { snapshotStore });
     const result = await tool.execute("tc_1", {
@@ -313,7 +321,9 @@ describe("EditTool (hashline mode)", () => {
   it("applies a SWAP patch via hashline mode", async () => {
     const content = "line1\nline2\nline3\n";
     writeFileSync(join(tmpDir, "hl-swap.txt"), content);
-    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
     const snapshotStore = new InMemorySnapshotStore();
     const tag = snapshotStore.record(join(tmpDir, "hl-swap.txt"), content);
     const tool = createEditTool(tmpDir, {
@@ -332,7 +342,9 @@ describe("EditTool (hashline mode)", () => {
   it("applies a DEL patch via hashline mode", async () => {
     const content = "a\nb\nc\n";
     writeFileSync(join(tmpDir, "hl-del.txt"), content);
-    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
     const snapshotStore = new InMemorySnapshotStore();
     const tag = snapshotStore.record(join(tmpDir, "hl-del.txt"), content);
     const tool = createEditTool(tmpDir, {
@@ -347,7 +359,9 @@ describe("EditTool (hashline mode)", () => {
 
   it("rejects with mismatch when hash is stale", async () => {
     writeFileSync(join(tmpDir, "hl-stale.txt"), "a\nb\n");
-    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
     const snapshotStore = new InMemorySnapshotStore();
     const tool = createEditTool(tmpDir, {
       mode: "hashline",
@@ -362,7 +376,9 @@ describe("EditTool (hashline mode)", () => {
 
   it("read + edit roundtrip via snapshot store", async () => {
     writeFileSync(join(tmpDir, "roundtrip.ts"), "old line\n");
-    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
     const snapshotStore = new InMemorySnapshotStore();
     const readTool = createReadTool(tmpDir, { snapshotStore });
     const editTool = createEditTool(tmpDir, {

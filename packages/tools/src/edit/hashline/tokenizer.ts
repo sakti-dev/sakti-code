@@ -18,9 +18,13 @@ import {
   HL_REM_KEYWORD,
   HL_REPLACE_BLOCK_KEYWORD,
   HL_REPLACE_KEYWORD,
-} from "./format";
+} from "../../lib/hashline-utils/format";
+import type {
+  Anchor,
+  Cursor,
+  ParsedRange,
+} from "../../lib/hashline-utils/types";
 import { ABORT_MARKER, BEGIN_PATCH_MARKER, END_PATCH_MARKER } from "./messages";
-import type { Anchor, Cursor, ParsedRange } from "./types";
 
 const CHAR_LINE_FEED = 10;
 const CHAR_CARRIAGE_RETURN = 13;
@@ -728,4 +732,4 @@ export class Tokenizer {
   }
 }
 
-export type { ParsedRange } from "./types";
+export type { ParsedRange } from "../../lib/hashline-utils/types";

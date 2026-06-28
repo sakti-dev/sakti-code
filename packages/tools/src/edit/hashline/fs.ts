@@ -1,6 +1,6 @@
 import * as fsp from "node:fs/promises";
 import * as pathModule from "node:path";
-import type { FileOp } from "./types";
+import type { FileOp } from "../../lib/hashline-utils/types";
 
 export interface WriteResult {
   text: string;

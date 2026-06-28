@@ -1,21 +1,21 @@
 import * as path from "node:path";
-import { applyEdits } from "./apply";
 import {
   HL_FILE_HASH_EXAMPLES,
   HL_FILE_HASH_LENGTH,
   HL_FILE_HASH_SEP,
   HL_FILE_PREFIX,
   HL_FILE_SUFFIX,
-} from "./format";
-import { parsePatch, parsePatchStreaming } from "./parser";
-import { Tokenizer } from "./tokenizer";
+} from "../../lib/hashline-utils/format";
 import type {
   ApplyResult,
   BlockResolver,
   Edit,
   FileOp,
   SplitOptions,
-} from "./types";
+} from "../../lib/hashline-utils/types";
+import { applyEdits } from "./apply";
+import { parsePatch, parsePatchStreaming } from "./parser";
+import { Tokenizer } from "./tokenizer";
 
 const TOKENIZER = new Tokenizer();
 
