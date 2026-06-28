@@ -1,8 +1,39 @@
 # Effect Adoption Plan — sakti-code Agent Loop
 
+## Guiding Principles (priority order)
+
+1. **Performance first** — the single most important criterion. Evaluate every change against runtime performance (latency, throughput, memory, allocation in hot paths like the LLM token stream).
+2. **Adopt Effect maximally** — use as many Effect features as the change warrants (`Stream`, `FiberSet`, `Queue`, `Scope`, `Schedule`, `Effect.fn`, `Schema.TaggedErrorClass`). Default to adopting.
+3. **Skip an Effect feature only if it hurts performance.** API breakage, plan mismatch, and large diffs are NOT reasons to skip — breakage is fine, we can always revert. Only a real performance regression justifies skipping.
+4. When in doubt, measure/bisect rather than theorize (see "Debugging: bisect before you theorize" in AGENTS.md).
+
 ## Goal
 
 Replace the most error-prone manual async plumbing in the agent loop with Effect-native constructs — `FiberSet`, `Stream`, `Queue`, `Scope`, `Schedule` — **without** changing tool implementations or the public API.
+
+## v4 beta.90 API reality (source of truth: `openspec/references/effect-v4/` @ tag `effect@4.0.0-beta.90`)
+
+This plan was originally drafted against the **v3** Effect reference. The workspace pins `effect@4.0.0-beta.90` (**v4**), whose API surface differs. Verified-against-v4-source API corrections:
+
+| Phase | Plan assumed (v3) | v4 beta.90 reality | Verdict |
+|-------|-------------------|--------------------|---------|
+| 2b (push stream) | `Stream.asyncPush` / `async` / `asyncScoped` | **Absent.** Push-streams via `Queue` + `Stream.fromQueue(queue: Dequeue<A, E>): Stream<A, Exclude<E, Cause.Done>>`, with `Queue.end`/`endUnsafe` (clean Done) and error via the `E` channel. | Feasible via Queue→Stream |
+| 3 (Queue) | `Queue.bounded<A>(n)`, `takeAll`→`Chunk` | `Queue.bounded<A, E = never>(n)`, `takeAll: Dequeue<A,E> => Effect<NonEmptyArray<A>, E>`, `take: Dequeue<A,E> => Effect<A, E>` (E = Done signal). | API exists; sync-vs-Effect API mismatch is architectural, not API |
+| 4 (Scope) | `Scope.make()` + `Scope.extend(scope)` + `Effect.fork` | **`Scope.extend` and bare `Effect.fork` absent.** Use `Scope.make()` + `Scope.fork(scope)` / `Effect.forkIn(scope)` / `Effect.forkScoped` + `Scope.close(scope, exit)` + `Fiber.interrupt`/`join`. | Feasible, different pattern |
+| 5 (Schedule) | `Schedule.exponential().pipe(jittered, whileInput, compose(recurs))` | `exponential`/`jittered`/`recurs`/`spaced`/`andThen`/`either` exist. **`compose`/`whileInput`/`driver` absent.** Use `Effect.retry`'s options form `Retry.Options<E>` (has `times`/`whileError`/`schedule`). | Feasible via `Effect.retry` options |
+
+Additional v4 note for Phase 4: `@ai-sdk`'s `streamText` cancels via web `AbortSignal` (agent-loop.ts `abortSignal: signal`), so the `AbortController` **cannot be fully eliminated** — Effect fiber interruption must be bridged to `controller.abort()` (e.g. via a scope finalizer). opencode avoids this by having an Effect-native LLM client; we wrap `@ai-sdk`, so the AbortSignal stays.
+
+## Status
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 1 — FiberSet (parallel tools) | ✅ DONE | `executeToolCallsParallel`/`executeToolCalls` are `Effect.fn`; `raceFirst(FiberSet.join, awaitEmpty)` await (learned from opencode `session/runner/llm.ts`). 373/373 tests. |
+| 2a — Stream for LLM (production hot path) | ✅ DONE | `streamAssistantResponse` is `Effect.fn`; fullStream via `Stream.fromAsyncIterable` + `Stream.runForEach`; errors via `Effect.exit`. Composes natively in `runLoopEffect`. 373/373, baseline perf. |
+| 2b — Delete EventStream (test-facing adapter) | ✅ DONE | Replaced by Effect `Queue` → `Stream.fromQueue` → `toReadableStream` (`createAgentEventStream`). `agentLoop`/`agentLoopContinue` return `AgentEventStream` (async-iterable + `result()`). Terminal signal via queue `E` channel (`Cause.Done` / `Error`). 365/365 tests, no bridge deadlock. |
+| 3 — Queue for pending messages | ⏸ DEFERRED | `PendingMessageQueue` is a correct sync abstraction (non-blocking drain, mutable mode, sync public API). Effect Queue is designed for concurrent producer/consumer backpressure — a different problem. |
+| 4 — Scope for lifecycle | ✅ DONE | `ActiveRun` is now `{ fiber, abortController }` (dropped stored resolve). `runWithLifecycle` forks the Effect-native executor via `Effect.runFork`, joins via `Fiber.join`; `runPromptMessages`/`runContinuation` pass `runAgentLoopEffect`/`runAgentLoopContinueEffect` directly (no nested `Effect.runPromise`). `waitForIdle()` joins the fiber. AbortController stays (sync `abort()` for @ai-sdk + listeners, mirroring opencode's aisdk.ts). Race fix: `activeRun` set before `runFork` (first emit is eager). 365/365 tests. |
+| 5 — Schedule for retry | ⏸ DEFERRED | v4 `Effect.retry({while, until, times, schedule})` exists and works — but our retry is value-based (turn returns `stopReason:"error"` as a *success*), with rich per-retry side effects (`auto_retry_start` emit needing the next `delayMs`+attempt, `rollbackLeaf`, single terminal `auto_retry_end`). Mapping these onto `Effect.retry`+`schedule.tap` is more code than the clear manual loop. Narrow swap (`abortableSleep`→`Effect.sleep`) fails because `abort()` is signal-based, not fiber-interruption. opencode only uses `Schedule.exponential().pipe(jittered)` on real-failing effects. Best revisited if the turn becomes a typed `Effect.fail` or the LLM layer goes Effect-native. |
 
 ## Constraints
 

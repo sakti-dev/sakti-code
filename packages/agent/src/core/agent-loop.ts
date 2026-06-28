@@ -12,7 +12,7 @@ import type {
   Usage,
 } from "@sakti-code/llm";
 import { jsonSchema } from "@sakti-code/llm";
-import { Effect } from "effect";
+import { Cause, Effect, Exit, FiberSet, Queue, Stream } from "effect";
 import type {
   AgentContext,
   AgentEvent,
@@ -25,7 +25,6 @@ import type {
   StreamFn,
 } from "../types";
 import { captureShape, compareShape } from "./cache-shape.ts";
-import { EventStream } from "./event-stream.ts";
 import { validateToolArguments } from "./validation.ts";
 
 export type AgentEventSink = (event: AgentEvent) => Promise<void> | void;
@@ -37,6 +36,69 @@ const emitEffect = (
 ): Effect.Effect<void> => Effect.promise(() => Promise.resolve(emit(event)));
 
 /**
+ * Public agent event stream: an async-iterable sequence of {@link AgentEvent}s
+ * plus a `result()` promise that resolves with the run's final messages.
+ *
+ * Backed by an Effect `Queue` → `Stream.fromQueue` → `toReadableStream`. The
+ * producer (`runWithEmit`) runs as a fire-and-forget Effect that offers events
+ * into the queue and terminates it (`Queue.end` on success / `Queue.fail` on
+ * error), replacing the hand-rolled push/wait queue + dual error path of the
+ * old EventStream. The queue's `E` channel carries the terminal signal
+ * (`Cause.Done` = clean end, `Error` = failure).
+ */
+export type AgentEventStream = AsyncIterable<AgentEvent> & {
+  result(): Promise<AgentMessage[]>;
+};
+
+function createAgentEventStream(
+  runWithEmit: (emit: AgentEventSink) => Effect.Effect<AgentMessage[], unknown>
+): AgentEventStream {
+  const queue = Effect.runSync(
+    Queue.unbounded<AgentEvent, Cause.Done | Error>()
+  );
+
+  let resolveResult!: (messages: AgentMessage[]) => void;
+  let rejectResult!: (error: unknown) => void;
+  const resultPromise = new Promise<AgentMessage[]>((resolve, reject) => {
+    resolveResult = resolve;
+    rejectResult = reject;
+  });
+
+  // Fire-and-forget producer: offer events, then terminate the queue so the
+  // stream ends (Done) or fails (Error). Result promise resolves/rejects here.
+  void Effect.runPromise(
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(
+        runWithEmit((event) => {
+          Queue.offerUnsafe(queue, event);
+        })
+      );
+      if (Exit.isSuccess(exit)) {
+        resolveResult(exit.value);
+        yield* Queue.end(queue);
+      } else {
+        const squashed = Cause.squash(exit.cause);
+        const error =
+          squashed instanceof Error ? squashed : new Error(String(squashed));
+        rejectResult(error);
+        yield* Queue.fail(queue, error);
+      }
+    })
+  ).catch(() => {
+    /* errors surfaced via result() rejection and stream failure */
+  });
+
+  const readable = Stream.toReadableStream(Stream.fromQueue(queue));
+  return {
+    [Symbol.asyncIterator]: () =>
+      (readable as unknown as AsyncIterable<AgentEvent>)[
+        Symbol.asyncIterator
+      ](),
+    result: () => resultPromise,
+  };
+}
+
+/**
  * Start an agent loop with a new prompt message.
  * The prompt is added to the context and events are emitted for it.
  */
@@ -46,28 +108,10 @@ export function agentLoop(
   config: AgentLoopConfig,
   signal?: AbortSignal,
   streamFn?: StreamFn
-): EventStream<AgentEvent, AgentMessage[]> {
-  const stream = createAgentStream();
-
-  void runAgentLoop(
-    prompts,
-    context,
-    config,
-    async (event) => {
-      stream.push(event);
-    },
-    signal,
-    streamFn
-  ).then(
-    (messages) => {
-      stream.end(messages);
-    },
-    (error) => {
-      stream.error(error);
-    }
+): AgentEventStream {
+  return createAgentEventStream((emit) =>
+    runAgentLoopEffect(prompts, context, config, emit, signal, streamFn)
   );
-
-  return stream;
 }
 
 /**
@@ -83,7 +127,7 @@ export function agentLoopContinue(
   config: AgentLoopConfig,
   signal?: AbortSignal,
   streamFn?: StreamFn
-): EventStream<AgentEvent, AgentMessage[]> {
+): AgentEventStream {
   if (context.messages.length === 0) {
     throw new Error("Cannot continue: no messages in context");
   }
@@ -92,26 +136,9 @@ export function agentLoopContinue(
     throw new Error("Cannot continue from message role: assistant");
   }
 
-  const stream = createAgentStream();
-
-  void runAgentLoopContinue(
-    context,
-    config,
-    async (event) => {
-      stream.push(event);
-    },
-    signal,
-    streamFn
-  ).then(
-    (messages) => {
-      stream.end(messages);
-    },
-    (error) => {
-      stream.error(error);
-    }
+  return createAgentEventStream((emit) =>
+    runAgentLoopContinueEffect(context, config, emit, signal, streamFn)
   );
-
-  return stream;
 }
 
 export async function runAgentLoop(
@@ -245,13 +272,6 @@ export const runAgentLoopContinueEffect = (
     return newMessages;
   });
 
-function createAgentStream(): EventStream<AgentEvent, AgentMessage[]> {
-  return new EventStream<AgentEvent, AgentMessage[]>(
-    (event: AgentEvent) => event.type === "agent_end",
-    (event: AgentEvent) => (event.type === "agent_end" ? event.messages : [])
-  );
-}
-
 /**
  * Main loop logic shared by agentLoop and agentLoopContinue. Effect-native.
  */
@@ -306,15 +326,13 @@ const runLoopEffect = (
 
         const isLastStep =
           config.maxSteps !== undefined && step >= config.maxSteps - 1;
-        const message = yield* Effect.promise(() =>
-          streamAssistantResponse(
-            currentContext,
-            config,
-            signal,
-            emit,
-            diagnosticStreamFn,
-            isLastStep
-          )
+        const message = yield* streamAssistantResponse(
+          currentContext,
+          config,
+          signal,
+          emit,
+          diagnosticStreamFn,
+          isLastStep
         );
         step++;
         newMessages.push(message);
@@ -349,15 +367,13 @@ const runLoopEffect = (
         const toolResults: ToolResultMessage[] = [];
         hasMoreToolCalls = false;
         if (toolCalls.length > 0) {
-          const executedToolBatch = yield* Effect.promise(() =>
-            executeToolCalls(
-              currentContext,
-              message,
-              toolCalls,
-              config,
-              signal,
-              emit
-            )
+          const executedToolBatch = yield* executeToolCalls(
+            currentContext,
+            message,
+            toolCalls,
+            config,
+            signal,
+            emit
           );
           toolResults.push(...executedToolBatch.messages);
           hasMoreToolCalls = !executedToolBatch.terminate;
@@ -452,240 +468,265 @@ const runLoopEffect = (
  * Consumes @ai-sdk's `fullStream` natively — accumulates text-delta, reasoning-delta,
  * and tool-call parts into an `AssistantMessage`, emitting slim per-token deltas.
  */
-async function streamAssistantResponse(
-  context: AgentContext,
-  config: AgentLoopConfig,
-  signal: AbortSignal | undefined,
-  emit: AgentEventSink,
-  streamFn?: StreamFn,
-  /** When true, send toolChoice: "none" so the model emits a final answer. */
-  forbidTools = false
-): Promise<AssistantMessage> {
-  // Apply context transform if configured (AgentMessage[] → AgentMessage[])
-  let messages = context.messages;
-  if (config.transformContext) {
-    messages = await config.transformContext(messages, signal);
-  }
-
-  // Convert to LLM-compatible messages (AgentMessage[] → Message[])
-  const llmMessages = await config.convertToLlm(messages);
-
-  // Resolve API key (important for expiring tokens)
-  const resolvedApiKey =
-    (config.getApiKey
-      ? await config.getApiKey(config.model.provider)
-      : undefined) || config.apiKey;
-
-  // Build StreamRequest — @sakti-code/llm's single entry point
-  const streamFunction = streamFn ?? defaultStreamFn;
-  const { fullStream, result } = await streamFunction({
-    model: config.model,
-    messages: llmMessages,
-    ...(context.systemPrompt ? { system: context.systemPrompt } : {}),
-    ...(context.tools && context.tools.length > 0
-      ? { tools: toStreamTools(context.tools) }
-      : {}),
-    ...(forbidTools ? { toolChoice: "none" as const } : {}),
-    ...(config.reasoning === undefined
-      ? {}
-      : { thinkingLevel: config.reasoning }),
-    ...(resolvedApiKey === undefined ? {} : { apiKey: resolvedApiKey }),
-    ...(config.headers ? { headers: config.headers } : {}),
-    ...(config.sessionId ? { sessionId: config.sessionId } : {}),
-    maxOutputTokens: config.model.maxTokens,
-    ...(signal ? { abortSignal: signal } : {}),
-  });
-
-  // ── Accumulator state ──────────────────────────────────────────────
-  let textBuffer = "";
-  let thinkingBuffer = "";
-  // Anthropic encrypted thinking signature from reasoning-end's
-  // providerMetadata.anthropic.signature — captured so the messages layer can
-  // replay it for multi-turn extended-thinking continuity (gated by the
-  // sameModel guard in toModelMessages). Last block wins when several fire.
-  let thinkingSignature: string | undefined;
-  const toolCallBlocks: ToolCall[] = [];
-  let messageStarted = false;
-
-  // Placeholder pushed to context.messages; replaced with final message at end.
-  const placeholder: AssistantMessage = {
-    role: "assistant",
-    content: [],
-    api: config.model.api,
-    provider: config.model.provider,
-    model: config.model.id,
-    usage: EMPTY_USAGE,
-    stopReason: "stop",
-    timestamp: Date.now(),
-  };
-
-  /** Emit message_start once (on first content or at finalization). */
-  const ensureMessageStarted = async (): Promise<void> => {
-    if (!messageStarted) {
-      messageStarted = true;
-      context.messages.push(placeholder);
-      await emit({ type: "message_start", message: placeholder });
+const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(
+  function* (
+    context: AgentContext,
+    config: AgentLoopConfig,
+    signal: AbortSignal | undefined,
+    emit: AgentEventSink,
+    streamFn?: StreamFn,
+    /** When true, send toolChoice: "none" so the model emits a final answer. */
+    forbidTools = false
+  ) {
+    // Apply context transform if configured (AgentMessage[] → AgentMessage[])
+    let messages = context.messages;
+    if (config.transformContext) {
+      messages = yield* Effect.promise(() =>
+        config.transformContext!(messages, signal)
+      );
     }
-  };
 
-  // ── Iterate fullStream parts ───────────────────────────────────────
-  let streamError: Error | undefined;
-  try {
-    for await (const part of fullStream as AsyncIterable<
-      Record<string, unknown>
-    >) {
-      const type = part.type as string;
-      switch (type) {
-        case "text-delta": {
-          await ensureMessageStarted();
-          const delta = part.text as string;
-          textBuffer += delta;
-          await emit({
-            type: "message_update",
-            delta: { kind: "text", text: delta },
+    // Convert to LLM-compatible messages (AgentMessage[] → Message[])
+    const llmMessages = yield* Effect.promise(() =>
+      Promise.resolve(config.convertToLlm(messages))
+    );
+
+    // Resolve API key (important for expiring tokens)
+    const resolvedApiKey =
+      (config.getApiKey
+        ? yield* Effect.promise(() =>
+            Promise.resolve(config.getApiKey!(config.model.provider))
+          )
+        : undefined) || config.apiKey;
+
+    // Build StreamRequest — @sakti-code/llm's single entry point
+    const streamFunction = streamFn ?? defaultStreamFn;
+    const { fullStream, result } = yield* Effect.promise(() =>
+      Promise.resolve(
+        streamFunction({
+          model: config.model,
+          messages: llmMessages,
+          ...(context.systemPrompt ? { system: context.systemPrompt } : {}),
+          ...(context.tools && context.tools.length > 0
+            ? { tools: toStreamTools(context.tools) }
+            : {}),
+          ...(forbidTools ? { toolChoice: "none" as const } : {}),
+          ...(config.reasoning === undefined
+            ? {}
+            : { thinkingLevel: config.reasoning }),
+          ...(resolvedApiKey === undefined ? {} : { apiKey: resolvedApiKey }),
+          ...(config.headers ? { headers: config.headers } : {}),
+          ...(config.sessionId ? { sessionId: config.sessionId } : {}),
+          maxOutputTokens: config.model.maxTokens,
+          ...(signal ? { abortSignal: signal } : {}),
+        })
+      )
+    );
+
+    // ── Accumulator state ──────────────────────────────────────────────
+    let textBuffer = "";
+    let thinkingBuffer = "";
+    // Anthropic encrypted thinking signature from reasoning-end's
+    // providerMetadata.anthropic.signature — captured so the messages layer can
+    // replay it for multi-turn extended-thinking continuity (gated by the
+    // sameModel guard in toModelMessages). Last block wins when several fire.
+    let thinkingSignature: string | undefined;
+    const toolCallBlocks: ToolCall[] = [];
+    let messageStarted = false;
+
+    // Placeholder pushed to context.messages; replaced with final message at end.
+    const placeholder: AssistantMessage = {
+      role: "assistant",
+      content: [],
+      api: config.model.api,
+      provider: config.model.provider,
+      model: config.model.id,
+      usage: EMPTY_USAGE,
+      stopReason: "stop",
+      timestamp: Date.now(),
+    };
+
+    /** Emit message_start once (on first content or at finalization). */
+    const ensureMessageStarted = (): Effect.Effect<void> =>
+      Effect.gen(function* () {
+        if (!messageStarted) {
+          messageStarted = true;
+          context.messages.push(placeholder);
+          yield* emitEffect(emit, {
+            type: "message_start",
+            message: placeholder,
           });
-          break;
         }
-        case "reasoning-delta": {
-          await ensureMessageStarted();
-          const delta = part.text as string;
-          thinkingBuffer += delta;
-          await emit({
-            type: "message_update",
-            delta: { kind: "thinking", text: delta },
-          });
-          break;
-        }
-        case "reasoning-end": {
-          // Capture the Anthropic encrypted thinking signature for multi-turn
-          // extended-thinking continuity (forwarded by toModelMessages when
-          // the target model matches — see B4 sameModel guard).
-          const signature = (
-            part as {
-              providerMetadata?: { anthropic?: { signature?: string } };
+      });
+
+    // ── Iterate fullStream parts ───────────────────────────────────────
+    // `@ai-sdk`'s fullStream is an AsyncIterable; lift it into an Effect
+    // Stream. Iteration errors (network/parse failures mid-stream) land in the
+    // Stream's error channel; we run it under `Effect.exit` so we can capture
+    // them into `streamError` and continue to build an error-valued message —
+    // matching the previous try/catch semantics (errors are value-encoded as
+    // stopReason "error", never thrown to the caller).
+    let streamError: Error | undefined;
+    const consumed = yield* Stream.runForEach(
+      Stream.fromAsyncIterable(
+        fullStream as AsyncIterable<Record<string, unknown>>,
+        (e): Error => (e instanceof Error ? e : new Error(String(e)))
+      ),
+      (part) =>
+        Effect.gen(function* () {
+          const type = part.type as string;
+          switch (type) {
+            case "text-delta": {
+              yield* ensureMessageStarted();
+              const delta = part.text as string;
+              textBuffer += delta;
+              yield* emitEffect(emit, {
+                type: "message_update",
+                delta: { kind: "text", text: delta },
+              });
+              break;
             }
-          ).providerMetadata?.anthropic?.signature;
-          if (signature) {
-            thinkingSignature = signature;
+            case "reasoning-delta": {
+              yield* ensureMessageStarted();
+              const delta = part.text as string;
+              thinkingBuffer += delta;
+              yield* emitEffect(emit, {
+                type: "message_update",
+                delta: { kind: "thinking", text: delta },
+              });
+              break;
+            }
+            case "reasoning-end": {
+              // Capture the Anthropic encrypted thinking signature for multi-turn
+              // extended-thinking continuity (forwarded by toModelMessages when
+              // the target model matches — see B4 sameModel guard).
+              const signature = (
+                part as {
+                  providerMetadata?: { anthropic?: { signature?: string } };
+                }
+              ).providerMetadata?.anthropic?.signature;
+              if (signature) {
+                thinkingSignature = signature;
+              }
+              break;
+            }
+            case "tool-call": {
+              yield* ensureMessageStarted();
+              toolCallBlocks.push({
+                type: "toolCall",
+                id: part.toolCallId as string,
+                name: part.toolName as string,
+                arguments: (part.input as Record<string, unknown>) ?? {},
+              });
+              break;
+            }
+            case "error": {
+              streamError =
+                part.error instanceof Error
+                  ? part.error
+                  : new Error(String(part.error));
+              config.logger?.error("llm stream error part", streamError, {
+                model: config.model.id,
+                provider: config.model.provider,
+              });
+              break;
+            }
+            // Other parts (text-start/end, reasoning-start/end, start-step,
+            // finish-step, tool-input-*, raw, source, file, start, finish, abort)
+            // are ignored — we accumulate from *-delta and tool-call only.
           }
-          break;
-        }
-        case "tool-call": {
-          await ensureMessageStarted();
-          toolCallBlocks.push({
-            type: "toolCall",
-            id: part.toolCallId as string,
-            name: part.toolName as string,
-            arguments: (part.input as Record<string, unknown>) ?? {},
-          });
-          break;
-        }
-        case "error": {
-          streamError =
-            part.error instanceof Error
-              ? part.error
-              : new Error(String(part.error));
-          config.logger?.error("llm stream error part", streamError, {
-            model: config.model.id,
-            provider: config.model.provider,
-          });
-          break;
-        }
-        // Other parts (text-start/end, reasoning-start/end, start-step,
-        // finish-step, tool-input-*, raw, source, file, start, finish, abort)
-        // are ignored — we accumulate from *-delta and tool-call only.
-      }
+        })
+    ).pipe(Effect.exit);
+    if (Exit.isFailure(consumed)) {
+      const cause = Cause.squash(consumed.cause);
+      streamError = cause instanceof Error ? cause : new Error(String(cause));
+      // The llm layer logs `type:"error"` parts, but a thrown iteration error
+      // (network/parse failure mid-stream) is only visible here — log it so it
+      // never disappears silently.
+      config.logger?.error("agent stream iteration failed", streamError, {
+        model: config.model.id,
+        provider: config.model.provider,
+      });
     }
-  } catch (iterationError) {
-    streamError =
-      iterationError instanceof Error
-        ? iterationError
-        : new Error(String(iterationError));
-    // The llm layer logs `type:"error"` parts, but a thrown iteration error
-    // (network/parse failure mid-stream) is only visible here — log it so it
-    // never disappears silently.
-    config.logger?.error("agent stream iteration failed", streamError, {
+
+    // ── Build final AssistantMessage ───────────────────────────────────
+    const content: (TextContent | ThinkingContent | ToolCall)[] = [];
+    if (thinkingBuffer) {
+      content.push({
+        type: "thinking",
+        thinking: thinkingBuffer,
+        ...(thinkingSignature ? { thinkingSignature } : {}),
+      });
+    }
+    if (textBuffer) {
+      content.push({ type: "text", text: textBuffer });
+    }
+    content.push(...toolCallBlocks);
+
+    const rawExit = yield* Effect.promise(() => result).pipe(Effect.exit);
+    let finish: {
+      usage: Usage;
+      finishReason: AssistantMessage["stopReason"];
+      responseId?: string;
+      responseModel?: string;
+    };
+    if (Exit.isSuccess(rawExit)) {
+      const raw = rawExit.value;
+      finish = {
+        usage: raw.usage,
+        finishReason: raw.finishReason,
+        ...(raw.responseId ? { responseId: raw.responseId } : {}),
+        ...(raw.responseModel ? { responseModel: raw.responseModel } : {}),
+      };
+    } else {
+      finish = { usage: EMPTY_USAGE, finishReason: "error" };
+    }
+
+    const finalMessage: AssistantMessage = {
+      role: "assistant",
+      content: content.length > 0 ? content : [{ type: "text", text: "" }],
+      api: config.model.api,
+      provider: config.model.provider,
+      model: config.model.id,
+      usage: finish.usage,
+      stopReason: streamError ? "error" : finish.finishReason,
+      timestamp: Date.now(),
+      ...(streamError ? { errorMessage: streamError.message } : {}),
+      ...(finish.responseId ? { responseId: finish.responseId } : {}),
+      ...(finish.responseModel ? { responseModel: finish.responseModel } : {}),
+    };
+
+    // Replace placeholder (or push if no content arrived)
+    if (messageStarted) {
+      context.messages[context.messages.length - 1] = finalMessage;
+    } else {
+      context.messages.push(finalMessage);
+      yield* emitEffect(emit, { type: "message_start", message: finalMessage });
+    }
+    yield* emitEffect(emit, { type: "message_end", message: finalMessage });
+
+    // Diagnose silent-empty turns (e.g. a provider returning finish "stop" with
+    // zero content): summarize what actually accumulated vs. the finish reason.
+    // Paired with the llm layer's raw/mapped usage trace so a "nothing came
+    // back" failure is pinappable from the logs alone.
+    config.logger?.debug("stream response", {
+      ...(finish.responseModel ? { responseModel: finish.responseModel } : {}),
+      ...(finish.responseId ? { responseId: finish.responseId } : {}),
+      finishReason: finish.finishReason,
+      hadStreamError: streamError !== undefined,
+      messageStarted,
       model: config.model.id,
       provider: config.model.provider,
+      stopReason: finalMessage.stopReason,
+      textLength: textBuffer.length,
+      thinkingLength: thinkingBuffer.length,
+      toolCallCount: toolCallBlocks.length,
+      usage: finalMessage.usage,
     });
+
+    return finalMessage;
   }
-
-  // ── Build final AssistantMessage ───────────────────────────────────
-  const content: (TextContent | ThinkingContent | ToolCall)[] = [];
-  if (thinkingBuffer) {
-    content.push({
-      type: "thinking",
-      thinking: thinkingBuffer,
-      ...(thinkingSignature ? { thinkingSignature } : {}),
-    });
-  }
-  if (textBuffer) {
-    content.push({ type: "text", text: textBuffer });
-  }
-  content.push(...toolCallBlocks);
-
-  let finish: {
-    usage: Usage;
-    finishReason: AssistantMessage["stopReason"];
-    responseId?: string;
-    responseModel?: string;
-  };
-  try {
-    const raw = await result;
-    finish = {
-      usage: raw.usage,
-      finishReason: raw.finishReason,
-      ...(raw.responseId ? { responseId: raw.responseId } : {}),
-      ...(raw.responseModel ? { responseModel: raw.responseModel } : {}),
-    };
-  } catch {
-    finish = { usage: EMPTY_USAGE, finishReason: "error" };
-  }
-
-  const finalMessage: AssistantMessage = {
-    role: "assistant",
-    content: content.length > 0 ? content : [{ type: "text", text: "" }],
-    api: config.model.api,
-    provider: config.model.provider,
-    model: config.model.id,
-    usage: finish.usage,
-    stopReason: streamError ? "error" : finish.finishReason,
-    timestamp: Date.now(),
-    ...(streamError ? { errorMessage: streamError.message } : {}),
-    ...(finish.responseId ? { responseId: finish.responseId } : {}),
-    ...(finish.responseModel ? { responseModel: finish.responseModel } : {}),
-  };
-
-  // Replace placeholder (or push if no content arrived)
-  if (messageStarted) {
-    context.messages[context.messages.length - 1] = finalMessage;
-  } else {
-    context.messages.push(finalMessage);
-    await emit({ type: "message_start", message: finalMessage });
-  }
-  await emit({ type: "message_end", message: finalMessage });
-
-  // Diagnose silent-empty turns (e.g. a provider returning finish "stop" with
-  // zero content): summarize what actually accumulated vs. the finish reason.
-  // Paired with the llm layer's raw/mapped usage trace so a "nothing came
-  // back" failure is pinappable from the logs alone.
-  config.logger?.debug("stream response", {
-    ...(finish.responseModel ? { responseModel: finish.responseModel } : {}),
-    ...(finish.responseId ? { responseId: finish.responseId } : {}),
-    finishReason: finish.finishReason,
-    hadStreamError: streamError !== undefined,
-    messageStarted,
-    model: config.model.id,
-    provider: config.model.provider,
-    stopReason: finalMessage.stopReason,
-    textLength: textBuffer.length,
-    thinkingLength: thinkingBuffer.length,
-    toolCallCount: toolCallBlocks.length,
-    usage: finalMessage.usage,
-  });
-
-  return finalMessage;
-}
+);
 
 /** Lazy import of the default stream function from @sakti-code/llm. */
 async function defaultStreamFn(
@@ -721,39 +762,47 @@ const EMPTY_USAGE: Usage = {
 
 /**
  * Execute tool calls from an assistant message.
+ *
+ * Effect-native: sequential execution is lifted via `Effect.promise`, parallel
+ * execution runs under `Effect.scoped` to provide the `Scope` that FiberSet
+ * requires (Phase 4 will thread the lifecycle scope through directly).
  */
-async function executeToolCalls(
+const executeToolCalls = Effect.fn("agent-loop.executeToolCalls")(function* (
   currentContext: AgentContext,
   assistantMessage: AssistantMessage,
   toolCalls: ToolCall[],
   config: AgentLoopConfig,
   signal: AbortSignal | undefined,
   emit: AgentEventSink
-): Promise<ExecutedToolCallBatch> {
+) {
   const hasSequentialToolCall = toolCalls.some(
     (tc) =>
       currentContext.tools?.find((t) => t.name === tc.name)?.executionMode ===
       "sequential"
   );
   if (config.toolExecution === "sequential" || hasSequentialToolCall) {
-    return executeToolCallsSequential(
+    return yield* Effect.promise(() =>
+      executeToolCallsSequential(
+        currentContext,
+        assistantMessage,
+        toolCalls,
+        config,
+        signal,
+        emit
+      )
+    );
+  }
+  return yield* Effect.scoped(
+    executeToolCallsParallel(
       currentContext,
       assistantMessage,
       toolCalls,
       config,
       signal,
       emit
-    );
-  }
-  return executeToolCallsParallel(
-    currentContext,
-    assistantMessage,
-    toolCalls,
-    config,
-    signal,
-    emit
+    )
   );
-}
+});
 
 type ExecutedToolCallBatch = {
   messages: ToolResultMessage[];
@@ -836,46 +885,60 @@ async function executeToolCallsSequential(
   };
 }
 
-async function executeToolCallsParallel(
+const executeToolCallsParallel = Effect.fn(
+  "agent-loop.executeToolCallsParallel"
+)(function* (
   currentContext: AgentContext,
   assistantMessage: AssistantMessage,
   toolCalls: AgentToolCall[],
   config: AgentLoopConfig,
   signal: AbortSignal | undefined,
   emit: AgentEventSink
-): Promise<ExecutedToolCallBatch> {
-  const finalizedCalls: FinalizedToolCallEntry[] = [];
+) {
+  // Indexed outcomes collected from each fiber; FiberSet.join returns void, so
+  // results are stashed here and sorted back to source order after joining.
+  const finalOutcomes: Array<{
+    index: number;
+    outcome: FinalizedToolCallOutcome;
+  }> = [];
+  const set = yield* FiberSet.make<void, never>();
 
-  for (const toolCall of toolCalls) {
-    await emit({
+  for (const [i, toolCall] of toolCalls.entries()) {
+    yield* emitEffect(emit, {
       type: "tool_execution_start",
       toolCallId: toolCall.id,
       toolName: toolCall.name,
       args: toolCall.arguments,
     });
 
-    const preparation = await prepareToolCall(
-      currentContext,
-      assistantMessage,
-      toolCall,
-      config,
-      signal
+    const preparation = yield* Effect.promise(() =>
+      prepareToolCall(
+        currentContext,
+        assistantMessage,
+        toolCall,
+        config,
+        signal
+      )
     );
+
     if (preparation.kind === "immediate") {
       const finalized = {
         toolCall,
         result: preparation.result,
         isError: preparation.isError,
       } satisfies FinalizedToolCallOutcome;
-      await emitToolExecutionEnd(finalized, emit);
-      finalizedCalls.push(finalized);
+      yield* Effect.promise(() => emitToolExecutionEnd(finalized, emit));
+      finalOutcomes.push({ index: i, outcome: finalized });
       if (signal?.aborted) {
         break;
       }
       continue;
     }
 
-    finalizedCalls.push(async () => {
+    // Fork execution into the set. Each fiber emits its own
+    // tool_execution_end in completion order; the result is stashed by index
+    // and reordered to source order after the set drains.
+    yield* Effect.gen(function* () {
       if (config.logger) {
         config.logger.debug("tool call", {
           toolName: preparation.toolCall.name,
@@ -886,14 +949,18 @@ async function executeToolCallsParallel(
           ),
         });
       }
-      const executed = await executePreparedToolCall(preparation, signal, emit);
-      const finalized = await finalizeExecutedToolCall(
-        currentContext,
-        assistantMessage,
-        preparation,
-        executed,
-        config,
-        signal
+      const executed = yield* Effect.promise(() =>
+        executePreparedToolCall(preparation, signal, emit)
+      );
+      const finalized = yield* Effect.promise(() =>
+        finalizeExecutedToolCall(
+          currentContext,
+          assistantMessage,
+          preparation,
+          executed,
+          config,
+          signal
+        )
       );
       if (config.logger) {
         config.logger.debug("tool result", {
@@ -902,31 +969,36 @@ async function executeToolCallsParallel(
           resultLength: String(finalized.result.content).length,
         });
       }
-      await emitToolExecutionEnd(finalized, emit);
-      return finalized;
-    });
+      yield* Effect.promise(() => emitToolExecutionEnd(finalized, emit));
+      finalOutcomes.push({ index: i, outcome: finalized });
+    }).pipe(FiberSet.run(set));
     if (signal?.aborted) {
       break;
     }
   }
 
-  const orderedFinalizedCalls = await Promise.all(
-    finalizedCalls.map((entry) =>
-      typeof entry === "function" ? entry() : Promise.resolve(entry)
-    )
-  );
+  // Wait for every forked tool fiber. `join` surfaces the first failure (its
+  // deferred completes on error or scope close); `awaitEmpty` completes once
+  // all fibers have drained. `raceFirst` resolves on whichever fires first —
+  // without this race a bare `join` would hang when every tool succeeds.
+  // Mirrors opencode's session runner (session/runner/llm.ts).
+  yield* Effect.raceFirst(FiberSet.join(set), FiberSet.awaitEmpty(set));
+
+  const ordered = finalOutcomes
+    .sort((a, b) => a.index - b.index)
+    .map((r) => r.outcome);
   const messages: ToolResultMessage[] = [];
-  for (const finalized of orderedFinalizedCalls) {
+  for (const finalized of ordered) {
     const toolResultMessage = createToolResultMessage(finalized);
-    await emitToolResultMessage(toolResultMessage, emit);
+    yield* Effect.promise(() => emitToolResultMessage(toolResultMessage, emit));
     messages.push(toolResultMessage);
   }
 
   return {
     messages,
-    terminate: shouldTerminateToolBatch(orderedFinalizedCalls),
+    terminate: shouldTerminateToolBatch(ordered),
   };
-}
+});
 
 type PreparedToolCall = {
   kind: "prepared";
@@ -951,10 +1023,6 @@ type FinalizedToolCallOutcome = {
   result: AgentToolResult<any>;
   isError: boolean;
 };
-
-type FinalizedToolCallEntry =
-  | FinalizedToolCallOutcome
-  | (() => Promise<FinalizedToolCallOutcome>);
 
 function shouldTerminateToolBatch(
   finalizedCalls: FinalizedToolCallOutcome[]

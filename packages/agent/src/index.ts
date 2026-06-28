@@ -82,7 +82,6 @@ export type {
   PrefixShape,
 } from "./core/cache-shape.ts";
 export { captureShape, compareShape } from "./core/cache-shape.ts";
-export { EventStream } from "./core/event-stream.ts";
 export { validateToolArguments } from "./core/validation.ts";
 export type {
   AgentDefinition,

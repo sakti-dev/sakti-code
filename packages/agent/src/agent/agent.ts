@@ -4,7 +4,7 @@ import type {
   Model,
   TextContent,
 } from "@sakti-code/llm";
-import { Effect } from "effect";
+import { Effect, Fiber } from "effect";
 import {
   runAgentLoopContinueEffect,
   runAgentLoopEffect,
@@ -202,8 +202,19 @@ class PendingMessageQueue {
 }
 
 type ActiveRun = {
-  promise: Promise<void>;
-  resolve: () => void;
+  /**
+   * Fiber running the agent loop; joined for completion + idle signaling.
+   * Assigned immediately after `Effect.runFork` (which may trigger the
+   * executor's first emit synchronously, so `abortController` must already be
+   * on `activeRun` before the fork).
+   */
+  fiber: Fiber.Fiber<void, unknown> | undefined;
+  /**
+   * AbortController for @ai-sdk's streamText + the loop's manual abort checks.
+   * Kept because @ai-sdk cancels HTTP via web AbortSignal, not Effect fiber
+   * interruption (same as opencode's aisdk.ts). Aborted synchronously by
+   * `abort()`; the loop's signal checks exit the turn cleanly.
+   */
   abortController: AbortController;
 };
 
@@ -370,10 +381,17 @@ export class Agent {
   /**
    * Resolve when the current run and all awaited event listeners have finished.
    *
-   * This resolves after `agent_end` listeners settle.
+   * This resolves after `agent_end` listeners settle. Joins the run fiber,
+   * ignoring any failure (idle signaling shouldn't throw).
    */
   waitForIdle(): Promise<void> {
-    return this.activeRun?.promise ?? Promise.resolve();
+    const run = this.activeRun;
+    if (!run?.fiber) {
+      return Promise.resolve();
+    }
+    return Effect.runPromise(run.fiber.pipe(Fiber.join, Effect.exit)).then(
+      () => undefined
+    );
   }
 
   /** Clear transcript state, runtime state, and queued messages. */
@@ -468,36 +486,32 @@ export class Agent {
     return [{ role: "user", content, timestamp: Date.now() }];
   }
 
-  private async runPromptMessages(
+  private runPromptMessages(
     messages: AgentMessage[],
     options: { skipInitialSteeringPoll?: boolean } = {}
   ): Promise<void> {
-    await this.runWithLifecycle(async (signal) => {
-      await Effect.runPromise(
-        runAgentLoopEffect(
-          messages,
-          this.createContextSnapshot(),
-          this.createLoopConfig(options),
-          (event) => this.processEvents(event),
-          signal,
-          this.streamFn
-        )
-      );
-    });
+    return this.runWithLifecycle((signal) =>
+      runAgentLoopEffect(
+        messages,
+        this.createContextSnapshot(),
+        this.createLoopConfig(options),
+        (event) => this.processEvents(event),
+        signal,
+        this.streamFn
+      )
+    );
   }
 
-  private async runContinuation(): Promise<void> {
-    await this.runWithLifecycle(async (signal) => {
-      await Effect.runPromise(
-        runAgentLoopContinueEffect(
-          this.createContextSnapshot(),
-          this.createLoopConfig(),
-          (event) => this.processEvents(event),
-          signal,
-          this.streamFn
-        )
-      );
-    });
+  private runContinuation(): Promise<void> {
+    return this.runWithLifecycle((signal) =>
+      runAgentLoopContinueEffect(
+        this.createContextSnapshot(),
+        this.createLoopConfig(),
+        (event) => this.processEvents(event),
+        signal,
+        this.streamFn
+      )
+    );
   }
 
   private createContextSnapshot(): AgentContext {
@@ -538,8 +552,15 @@ export class Agent {
     };
   }
 
+  /**
+   * Run one agent turn under the lifecycle: fork it as a fiber, expose it via
+   * {@link activeRun} for `abort()`/`waitForIdle()`/`signal`, and join on
+   * completion. The executor is Effect-native; the AbortSignal is bridged to
+   * @ai-sdk and the loop's manual checks (mirrors opencode, which keeps an
+   * AbortSignal alongside its fiber-based run coordination).
+   */
   private async runWithLifecycle(
-    executor: (signal: AbortSignal) => Promise<void>
+    executor: (signal: AbortSignal) => Effect.Effect<void, unknown>
   ): Promise<void> {
     if (this.activeRun) {
       throw new AgentError({
@@ -549,18 +570,22 @@ export class Agent {
     }
 
     const abortController = new AbortController();
-    let resolvePromise = () => {};
-    const promise = new Promise<void>((resolve) => {
-      resolvePromise = resolve;
-    });
-    this.activeRun = { promise, resolve: resolvePromise, abortController };
-
+    // activeRun (with the abortController) must be set BEFORE runFork: the
+    // executor's first emit runs synchronously inside runFork (Effect.promise's
+    // thunk is eager) and processEvents reads activeRun.abortController.signal.
+    const run: ActiveRun = {
+      fiber: undefined,
+      abortController,
+    };
+    this.activeRun = run;
     this._state.isStreaming = true;
     this._state.streamingMessage = undefined;
     this._state.errorMessage = undefined;
+    run.fiber = Effect.runFork(executor(abortController.signal));
+    const fiber = run.fiber;
 
     try {
-      await executor(abortController.signal);
+      await Effect.runPromise(Fiber.join(fiber));
     } catch (error) {
       await this.handleRunFailure(error, abortController.signal.aborted);
     } finally {
@@ -600,7 +625,6 @@ export class Agent {
     this._state.isStreaming = false;
     this._state.streamingMessage = undefined;
     this._state.pendingToolCalls = new Set<string>();
-    this.activeRun?.resolve();
     this.activeRun = undefined;
   }
 
