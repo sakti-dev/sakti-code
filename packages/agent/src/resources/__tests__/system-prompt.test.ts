@@ -4,6 +4,7 @@ import {
   appendSkillsBlock,
   composeSystemPrompt,
   formatSkillsForSystemPrompt,
+  stripSkillsBlock,
 } from "../../resources/system-prompt";
 import type { AgentTool } from "../../types";
 
@@ -199,5 +200,52 @@ describe("composeSystemPrompt", () => {
     const a = composeSystemPrompt(BASE, tools, skills, true);
     const b = composeSystemPrompt(BASE, tools, skills, true);
     expect(a).toBe(b);
+  });
+});
+
+describe("mid-session skill changes with tool inventory present", () => {
+  const BASE = "You are a coding agent.";
+  const tools = [
+    mockTool("edit", "Edit files."),
+    mockTool("read", "Read files."),
+  ];
+  const skill1 = mockSkill("tdd", "TDD", "/tdd/SKILL.md");
+  const skill2 = mockSkill("debug", "Debug", "/debug/SKILL.md");
+
+  it("stripSkillsBlock preserves tool inventory when removing skills", () => {
+    const composed = composeSystemPrompt(BASE, tools, [skill1, skill2], true);
+    const stripped = stripSkillsBlock(composed);
+    expect(stripped).toContain("# Tool: edit");
+    expect(stripped).toContain("# Tool: read");
+    expect(stripped).not.toContain("<available_skills>");
+    expect(stripped).toContain(BASE);
+  });
+
+  it("appendSkillsBlock re-appends skills after tool inventory", () => {
+    const composed = composeSystemPrompt(BASE, tools, [skill1, skill2], true);
+    const stripped = stripSkillsBlock(composed);
+    const recomposed = appendSkillsBlock(stripped, [skill1], true);
+    expect(recomposed).toContain("# Tool: edit");
+    expect(recomposed).toContain("# Tool: read");
+    expect(recomposed).toContain("tdd");
+    expect(recomposed).not.toContain("debug");
+    const toolIdx = recomposed.lastIndexOf("# Tool:");
+    const skillsIdx = recomposed.indexOf("<available_skills>");
+    expect(skillsIdx).toBeGreaterThan(toolIdx);
+  });
+
+  it("full add → remove → re-add cycle preserves tools throughout", () => {
+    let prompt = composeSystemPrompt(BASE, tools, [skill1], true);
+    expect(prompt).toContain("# Tool: edit");
+    expect(prompt).toContain("tdd");
+
+    const stripped = stripSkillsBlock(prompt);
+    prompt = appendSkillsBlock(stripped, [], true);
+    expect(prompt).toContain("# Tool: edit");
+    expect(prompt).not.toContain("<available_skills>");
+
+    prompt = appendSkillsBlock(prompt, [skill2], true);
+    expect(prompt).toContain("# Tool: edit");
+    expect(prompt).toContain("debug");
   });
 });
