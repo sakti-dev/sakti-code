@@ -254,6 +254,12 @@ export class AgentHarness<
    * filter in the runner) recomposes the correct prompt at load.
    */
   private pendingSystemPromptRefresh: string | undefined;
+  /**
+   * Tools whose schema stays in the request (cache-stable) but whose execution
+   * is blocked at the beforeToolCall gate. Maps tool name to the reason returned
+   * to the model as a tool-error result.
+   */
+  private softDisabledTools = new Map<string, string>();
   private streamOptions: AgentHarnessStreamOptions;
   private testStreamFn?: StreamFn;
   private getApiKeyAndHeaders?: AgentHarnessOptions["getApiKeyAndHeaders"];
@@ -621,6 +627,12 @@ export class AgentHarness<
         return result?.messages ?? messages;
       },
       beforeToolCall: async ({ toolCall, args }) => {
+        // Soft-disable gate (by tool name): the schema stays in the request
+        // (cache-stable) but execution is blocked with a clear reason.
+        const softBlock = this.softDisabledTools.get(toolCall.name);
+        if (softBlock !== undefined) {
+          return { block: true, reason: softBlock };
+        }
         const result = await this.emitHook({
           type: "tool_call",
           toolCallId: toolCall.id,
@@ -1587,6 +1599,34 @@ export class AgentHarness<
     return this.activeToolNames
       .map((name) => this.tools.get(name))
       .filter((tool): tool is TTool => tool !== undefined);
+  }
+
+  /**
+   * Block execution of `toolName` while keeping its schema in the request.
+   *
+   * The tool's schema stays in `activeToolNames` so the cacheable tools-prefix
+   * is unchanged; when the model calls the tool, the `beforeToolCall` gate
+   * returns `{block: true, reason}` and the model receives `reason` as a
+   * tool-error result it can adapt to.
+   *
+   * Use this when the user disables an MCP server or side-effecting tool
+   * mid-session and wants it gone *now* — `setActiveTools` would rewrite the
+   * tools array and bust the cache. Pair with `scheduleSystemPromptRefresh`
+   * (or wait for natural compaction) to drop the schema from the request
+   * entirely.
+   */
+  softDisableTool(toolName: string, reason: string): void {
+    this.softDisabledTools.set(toolName, reason);
+  }
+
+  /** Re-enable a previously soft-disabled tool. */
+  softEnableTool(toolName: string): void {
+    this.softDisabledTools.delete(toolName);
+  }
+
+  /** Returns true iff `toolName` is currently soft-disabled. Test/debug hook. */
+  isToolSoftDisabled(toolName: string): boolean {
+    return this.softDisabledTools.has(toolName);
   }
 
   async setActiveTools(toolNames: string[]): Promise<void> {

@@ -980,3 +980,87 @@ describe("announceSkillAdded", () => {
     expect(captured[0]).toContain("hello");
   });
 });
+
+describe("softDisableTool", () => {
+  it("blocks execution of the named tool while keeping its schema in the request", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+
+    const capturedRequests: StreamRequest[] = [];
+    const blockedResults: string[] = [];
+    registration.setResponses([
+      (req: StreamRequest) => {
+        capturedRequests.push(req);
+        return fauxAssistantMessageWithContent(
+          [fauxToolCall("calculate", { expression: "1+1" }, { id: "c1" })],
+          "toolUse"
+        );
+      },
+      () => fauxAssistantMessage("done"),
+    ]);
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      tools: [calculateTool],
+    });
+
+    harness.subscribe((event) => {
+      if (event.type === "tool_execution_end" && event.isError) {
+        const text = (
+          event.result.content as Array<{ type: string; text?: string }>
+        )
+          .map((c) => (c.type === "text" ? (c.text ?? "") : ""))
+          .join("");
+        blockedResults.push(text);
+      }
+    });
+
+    harness.softDisableTool("calculate", "tool disabled for testing");
+
+    await harness.prompt("compute 1+1");
+
+    // Schema is still in the request (cache stays warm)
+    expect(capturedRequests[0]?.tools).toBeDefined();
+    expect(Object.keys(capturedRequests[0]!.tools!).includes("calculate")).toBe(
+      true
+    );
+
+    // Execution was blocked with a clear reason
+    expect(blockedResults.length).toBeGreaterThanOrEqual(1);
+    expect(blockedResults[0]).toContain("tool disabled for testing");
+  });
+
+  it("softEnableTool removes the gate and allows execution", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+
+    const toolResults: string[] = [];
+    registration.setResponses([() => fauxAssistantMessage("no tool call")]);
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      tools: [calculateTool],
+    });
+
+    harness.subscribe((event) => {
+      if (event.type === "tool_result") {
+        const text = event.content
+          .map((c) => (c.type === "text" ? c.text : ""))
+          .join("");
+        toolResults.push(text);
+      }
+    });
+
+    harness.softDisableTool("calculate", "temporarily off");
+    expect(harness.isToolSoftDisabled("calculate")).toBe(true);
+
+    harness.softEnableTool("calculate");
+    expect(harness.isToolSoftDisabled("calculate")).toBe(false);
+  });
+});
