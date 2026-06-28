@@ -20,6 +20,8 @@
     "check": "ultracite check",
     "fix": "ultracite fix",
     "dev:server": "pnpm --filter @sakti-code/server dev",
+    "velomark:pull": "git subtree pull --prefix=packages/velomark https://github.com/sakti-dev/velomark.git main --squash",
+    "velomark:push": "git subtree push --prefix=packages/velomark https://github.com/sakti-dev/velomark.git main",
     "prepare": "husky"
   },
   "workspaces": [
