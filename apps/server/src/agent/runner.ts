@@ -11,9 +11,9 @@ import type {
   ThinkingLevel,
 } from "@sakti-code/agent";
 import {
-  appendSkillsBlock,
   BUILTIN_AGENTS,
   checkCompaction,
+  composeSystemPrompt,
   DEFAULT_AGENT_NAME,
   evaluate,
   executeWithRetry,
@@ -493,7 +493,16 @@ export async function runPrompt(
     env,
     model,
     session: sessionShape,
-    ...(isIntake ? { systemPrompt: INTAKE_SYSTEM_PROMPT } : {}),
+    ...(isIntake
+      ? {
+          systemPrompt: composeSystemPrompt(
+            INTAKE_SYSTEM_PROMPT,
+            tools,
+            [],
+            false
+          ),
+        }
+      : {}),
     ...(ctx.log === undefined
       ? {}
       : { logger: ctx.log.agent, streamLogger: ctx.log.llm }),
@@ -528,16 +537,24 @@ export async function runPrompt(
   harness.setPermissionAskResolver((req) => permissionChannel.ask(req));
 
   if (!isIntake) {
-    // Compose the agent's system prompt with the available-skills block
-    // (mirrors pi's coding-agent buildSystemPrompt): skills are advertised
-    // only when `read` is available, since they're loaded by reading the
-    // SKILL.md path. Intake keeps its dedicated prompt and skips this.
+    // Compose the agent's system prompt with the tool inventory and the
+    // available-skills block (mirrors pi's coding-agent buildSystemPrompt):
+    // tool descriptions are always embedded so smaller LLMs see how to use
+    // each tool; skills are advertised only when `read` is available, since
+    // they're loaded by reading the SKILL.md path. Intake composes its own
+    // prompt at construction time (tool inventory only, no skills).
     // `activeSkills` already excludes Layer-1-disabled skills.
     const hasRead =
       agent.activeToolNames === undefined ||
       agent.activeToolNames.includes("read");
-    const composedSystemPrompt = appendSkillsBlock(
+    const activeNames = agent.activeToolNames;
+    const activeTools =
+      activeNames === undefined
+        ? tools
+        : tools.filter((t) => activeNames.includes(t.name));
+    const composedSystemPrompt = composeSystemPrompt(
       agent.systemPrompt,
+      activeTools,
       activeSkills,
       hasRead
     );
