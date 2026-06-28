@@ -1,5 +1,15 @@
 import type { JSONObject, LanguageModelV4Usage } from "@ai-sdk/provider";
-import type { ZaiUsage } from "./zai-api.ts";
+
+/**
+ * Input shape — accepts the parsed zod shape (where optional fields can be
+ * `undefined` as well as `number | null`).
+ */
+export interface ZaiUsageInput {
+  cache_creation_input_tokens?: number | null | undefined;
+  cache_read_input_tokens?: number | null | undefined;
+  input_tokens: number;
+  output_tokens: number;
+}
 
 /**
  * # convertZaiUsage — Z.ai usage → V4 `LanguageModelV4Usage`
@@ -19,7 +29,7 @@ export function convertZaiUsage({
   usage,
   rawUsage,
 }: {
-  usage: ZaiUsage;
+  usage: ZaiUsageInput;
   rawUsage?: JSONObject;
 }): LanguageModelV4Usage {
   const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;

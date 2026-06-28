@@ -2,9 +2,10 @@ import type {
   LanguageModelV4Content,
   LanguageModelV4GenerateResult,
 } from "@ai-sdk/provider";
+import type { z } from "zod/v4";
 import { convertZaiUsage } from "./convert-zai-usage.ts";
 import { mapZaiStopReason } from "./map-zai-stop-reason.ts";
-import type { ZaiContentBlock, ZaiResponse } from "./zai-api.ts";
+import type { ZaiContentBlock, zaiResponseZod } from "./zai-api.ts";
 
 /**
  * # mapZaiResponse — non-stream response → V4 `LanguageModelV4GenerateResult`
@@ -24,7 +25,7 @@ import type { ZaiContentBlock, ZaiResponse } from "./zai-api.ts";
 export function mapZaiResponse({
   response,
 }: {
-  response: ZaiResponse;
+  response: z.infer<typeof zaiResponseZod>;
 }): LanguageModelV4GenerateResult {
   const content: LanguageModelV4Content[] = response.content.map(
     (block): LanguageModelV4Content => mapContentBlock(block)

@@ -4,20 +4,32 @@ import type {
   LanguageModelV4CallOptions,
   LanguageModelV4FunctionTool,
   LanguageModelV4GenerateResult,
+  LanguageModelV4StreamPart,
   LanguageModelV4StreamResult,
   SharedV4Warning,
 } from "@ai-sdk/provider";
 import {
+  combineHeaders,
+  createEventSourceResponseHandler,
+  createJsonResponseHandler,
   type FetchFunction,
+  type ParseResult,
   parseProviderOptions,
+  postJsonToApi,
 } from "@ai-sdk/provider-utils";
+import type { z } from "zod/v4";
 import {
   convertToZaiPrompt,
   type ZaiMessage,
 } from "./convert-to-zai-prompt.ts";
+import { convertZaiUsage } from "./convert-zai-usage.ts";
 import { CacheControlValidator } from "./get-cache-control.ts";
+import { mapZaiResponse } from "./map-zai-response.ts";
+import { mapZaiStopReason } from "./map-zai-stop-reason.ts";
 import { sanitizeJsonSchema } from "./sanitize-json-schema.ts";
-import type { ZaiCacheControl } from "./zai-api.ts";
+import type { ZaiCacheControl, ZaiUsage } from "./zai-api.ts";
+import { zaiChunkZod, zaiResponseZod } from "./zai-api.ts";
+import { zaiFailedResponseHandler } from "./zai-error.ts";
 import { type ZaiOptions, zaiOptions } from "./zai-options.ts";
 
 /**
@@ -250,19 +262,88 @@ export class ZaiLanguageModel implements LanguageModelV4 {
     };
   }
 
-  doGenerate(
-    _options: LanguageModelV4CallOptions
+  async doGenerate(
+    options: LanguageModelV4CallOptions
   ): Promise<LanguageModelV4GenerateResult> {
-    return Promise.reject(
-      new Error("ZaiLanguageModel.doGenerate: not implemented")
-    );
+    const { args, warnings, betas } = await this.getArgs(options);
+
+    const { value: response, responseHeaders } = await postJsonToApi({
+      url: this.buildRequestUrl(false),
+      headers: await this.getHeaders(betas, options.headers),
+      body: args,
+      failedResponseHandler: zaiFailedResponseHandler,
+      successfulResponseHandler: createJsonResponseHandler(zaiResponseZod),
+      ...(options.abortSignal === undefined
+        ? {}
+        : { abortSignal: options.abortSignal }),
+      ...(this.config.fetch === undefined ? {} : { fetch: this.config.fetch }),
+    });
+
+    const mapped = mapZaiResponse({ response });
+    const result: LanguageModelV4GenerateResult = {
+      content: mapped.content,
+      finishReason: mapped.finishReason,
+      usage: mapped.usage,
+      warnings: [...warnings, ...mapped.warnings],
+      request: { body: args },
+    };
+    if (mapped.response !== undefined) {
+      result.response = {
+        ...mapped.response,
+        body: response,
+        ...(responseHeaders === undefined ? {} : { headers: responseHeaders }),
+      };
+    }
+    return result;
   }
 
-  doStream(
-    _options: LanguageModelV4CallOptions
+  async doStream(
+    options: LanguageModelV4CallOptions
   ): Promise<LanguageModelV4StreamResult> {
-    return Promise.reject(
-      new Error("ZaiLanguageModel.doStream: not implemented")
+    const { args, warnings, betas } = await this.getArgs(options);
+    const body = { ...args, stream: true as const };
+
+    const { value: response, responseHeaders } = await postJsonToApi({
+      url: this.buildRequestUrl(true),
+      headers: await this.getHeaders(betas, options.headers),
+      body,
+      failedResponseHandler: zaiFailedResponseHandler,
+      successfulResponseHandler: createEventSourceResponseHandler(zaiChunkZod),
+      ...(options.abortSignal === undefined
+        ? {}
+        : { abortSignal: options.abortSignal }),
+      ...(this.config.fetch === undefined ? {} : { fetch: this.config.fetch }),
+    });
+
+    const stream = pipeThroughZaiStream(
+      response,
+      warnings,
+      options.includeRawChunks ?? false
+    );
+
+    const result: LanguageModelV4StreamResult = {
+      stream,
+      request: { body },
+    };
+    if (responseHeaders !== undefined) {
+      result.response = { headers: responseHeaders };
+    }
+    return result;
+  }
+
+  private buildRequestUrl(_isStreaming: boolean): string {
+    return `${this.config.baseURL}/v1/messages`;
+  }
+
+  private async getHeaders(
+    betas: Set<string>,
+    requestHeaders: Record<string, string | undefined> | undefined
+  ): Promise<Record<string, string | undefined>> {
+    const config = await this.config.headers();
+    return combineHeaders(
+      config,
+      requestHeaders,
+      betas.size > 0 ? { "anthropic-beta": [...betas].join(",") } : {}
     );
   }
 }
@@ -488,4 +569,290 @@ function stripSamplingWhenThinking(
     });
   }
   return result;
+}
+
+// ─── doStream: SSE → V4 stream parts ─────────────────────────────────────────
+
+type ZaiStreamBlock =
+  | { type: "text" }
+  | { type: "reasoning" }
+  | {
+      firstDelta: boolean;
+      input: string;
+      name: string;
+      toolCallId: string;
+      type: "tool-call";
+    };
+
+interface ZaiStreamState {
+  blocks: Map<number, ZaiStreamBlock>;
+  blockType: "text" | "thinking" | "redacted_thinking" | "tool_use" | undefined;
+  finishReasonRaw: string | undefined;
+  finishReasonUnified:
+    | "stop"
+    | "length"
+    | "content-filter"
+    | "tool-calls"
+    | "error"
+    | "other";
+  usage: ZaiUsage;
+}
+
+interface ZaiStreamCtx {
+  includeRawChunks: boolean;
+  state: ZaiStreamState;
+}
+
+type StreamController =
+  TransformStreamDefaultController<LanguageModelV4StreamPart>;
+
+type ZaiChunk = z.infer<typeof zaiChunkZod>;
+
+function pipeThroughZaiStream(
+  response: ReadableStream<ParseResult<unknown>>,
+  warnings: SharedV4Warning[],
+  includeRawChunks: boolean
+): ReadableStream<LanguageModelV4StreamPart> {
+  const state: ZaiStreamState = {
+    blocks: new Map(),
+    blockType: undefined,
+    finishReasonUnified: "other",
+    finishReasonRaw: undefined,
+    usage: {
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_creation_input_tokens: 0,
+      cache_read_input_tokens: 0,
+    },
+  };
+  const ctx: ZaiStreamCtx = { state, includeRawChunks };
+  return response.pipeThrough(
+    new TransformStream<ParseResult<unknown>, LanguageModelV4StreamPart>({
+      start(controller) {
+        controller.enqueue({ type: "stream-start", warnings });
+      },
+      transform: (chunk, controller) =>
+        transformZaiChunk(ctx, chunk, controller),
+    })
+  );
+}
+
+function transformZaiChunk(
+  ctx: ZaiStreamCtx,
+  chunk: ParseResult<unknown>,
+  controller: StreamController
+): void {
+  const { state, includeRawChunks } = ctx;
+  if (includeRawChunks) {
+    controller.enqueue({ type: "raw", rawValue: chunk.rawValue });
+  }
+  if (!chunk.success) {
+    controller.enqueue({ type: "error", error: chunk.error });
+    state.finishReasonUnified = "error";
+    return;
+  }
+  const value = zaiChunkZod.parse(chunk.value) as ZaiChunk;
+  switch (value.type) {
+    case "ping":
+      return;
+    case "message_start":
+      handleMessageStart(value, state, controller);
+      return;
+    case "content_block_start":
+      handleContentBlockStart(value, state, controller);
+      return;
+    case "content_block_delta":
+      handleContentBlockDelta(value, state, controller);
+      return;
+    case "content_block_stop":
+      handleContentBlockStop(value, state, controller);
+      return;
+    case "message_delta":
+      handleMessageDelta(value, state);
+      return;
+    case "message_stop":
+      controller.enqueue({
+        type: "finish",
+        finishReason: {
+          unified: state.finishReasonUnified,
+          raw: state.finishReasonRaw,
+        },
+        usage: convertZaiUsage({ usage: state.usage }),
+      });
+      return;
+    case "error":
+      controller.enqueue({ type: "error", error: value.error });
+      state.finishReasonUnified = "error";
+      return;
+  }
+}
+
+function handleMessageStart(
+  value: Extract<ZaiChunk, { type: "message_start" }>,
+  state: ZaiStreamState,
+  controller: StreamController
+): void {
+  const msgUsage = value.message.usage;
+  if (msgUsage) {
+    state.usage.input_tokens = msgUsage.input_tokens;
+    state.usage.cache_creation_input_tokens =
+      msgUsage.cache_creation_input_tokens ?? 0;
+    state.usage.cache_read_input_tokens = msgUsage.cache_read_input_tokens ?? 0;
+  }
+  controller.enqueue({
+    type: "response-metadata",
+    ...(value.message.id !== undefined && value.message.id !== null
+      ? { id: value.message.id }
+      : {}),
+    ...(value.message.model !== undefined && value.message.model !== null
+      ? { modelId: value.message.model }
+      : {}),
+  });
+}
+
+function handleContentBlockStart(
+  value: Extract<ZaiChunk, { type: "content_block_start" }>,
+  state: ZaiStreamState,
+  controller: StreamController
+): void {
+  const part = value.content_block;
+  state.blockType = part.type;
+  if (part.type === "text") {
+    state.blocks.set(value.index, { type: "text" });
+    controller.enqueue({ type: "text-start", id: String(value.index) });
+    return;
+  }
+  if (part.type === "thinking") {
+    state.blocks.set(value.index, { type: "reasoning" });
+    controller.enqueue({ type: "reasoning-start", id: String(value.index) });
+    return;
+  }
+  if (part.type === "redacted_thinking") {
+    state.blocks.set(value.index, { type: "reasoning" });
+    controller.enqueue({
+      type: "reasoning-start",
+      id: String(value.index),
+      providerMetadata: { zai: { redactedData: part.data } },
+    });
+    return;
+  }
+  const initialInput =
+    part.input !== undefined &&
+    typeof part.input === "object" &&
+    Object.keys(part.input as object).length > 0
+      ? JSON.stringify(part.input)
+      : "";
+  state.blocks.set(value.index, {
+    type: "tool-call",
+    toolCallId: part.id,
+    name: part.name,
+    input: initialInput,
+    firstDelta: initialInput.length === 0,
+  });
+  controller.enqueue({
+    type: "tool-input-start",
+    id: part.id,
+    toolName: part.name,
+  });
+}
+
+function handleContentBlockDelta(
+  value: Extract<ZaiChunk, { type: "content_block_delta" }>,
+  state: ZaiStreamState,
+  controller: StreamController
+): void {
+  const delta = value.delta;
+  if (delta.type === "text_delta") {
+    controller.enqueue({
+      type: "text-delta",
+      id: String(value.index),
+      delta: delta.text,
+    });
+    return;
+  }
+  if (delta.type === "thinking_delta") {
+    controller.enqueue({
+      type: "reasoning-delta",
+      id: String(value.index),
+      delta: delta.thinking,
+    });
+    return;
+  }
+  if (delta.type === "signature_delta") {
+    if (state.blockType === "thinking") {
+      controller.enqueue({
+        type: "reasoning-delta",
+        id: String(value.index),
+        delta: "",
+        providerMetadata: { zai: { signature: delta.signature } },
+      });
+    }
+    return;
+  }
+  const block = state.blocks.get(value.index);
+  if (block?.type !== "tool-call") {
+    return;
+  }
+  controller.enqueue({
+    type: "tool-input-delta",
+    id: block.toolCallId,
+    delta: delta.partial_json,
+  });
+  block.input += delta.partial_json;
+  block.firstDelta = false;
+}
+
+function handleContentBlockStop(
+  value: Extract<ZaiChunk, { type: "content_block_stop" }>,
+  state: ZaiStreamState,
+  controller: StreamController
+): void {
+  const block = state.blocks.get(value.index);
+  if (!block) {
+    state.blockType = undefined;
+    return;
+  }
+  if (block.type === "text") {
+    controller.enqueue({ type: "text-end", id: String(value.index) });
+  } else if (block.type === "reasoning") {
+    controller.enqueue({ type: "reasoning-end", id: String(value.index) });
+  } else {
+    controller.enqueue({ type: "tool-input-end", id: block.toolCallId });
+    const finalInput = block.input === "" ? "{}" : block.input;
+    controller.enqueue({
+      type: "tool-call",
+      toolCallId: block.toolCallId,
+      toolName: block.name,
+      input: finalInput,
+    });
+  }
+  state.blocks.delete(value.index);
+  state.blockType = undefined;
+}
+
+function handleMessageDelta(
+  value: Extract<ZaiChunk, { type: "message_delta" }>,
+  state: ZaiStreamState
+): void {
+  if (value.usage) {
+    if (
+      value.usage.input_tokens !== undefined &&
+      value.usage.input_tokens !== null
+    ) {
+      state.usage.input_tokens = value.usage.input_tokens;
+    }
+    state.usage.output_tokens = value.usage.output_tokens;
+    if (value.usage.cache_read_input_tokens !== undefined) {
+      state.usage.cache_read_input_tokens =
+        value.usage.cache_read_input_tokens ?? 0;
+    }
+    if (value.usage.cache_creation_input_tokens !== undefined) {
+      state.usage.cache_creation_input_tokens =
+        value.usage.cache_creation_input_tokens ?? 0;
+    }
+  }
+  state.finishReasonUnified = mapZaiStopReason({
+    finishReason: value.delta.stop_reason,
+  });
+  state.finishReasonRaw = value.delta.stop_reason ?? undefined;
 }
