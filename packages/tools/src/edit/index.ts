@@ -156,17 +156,17 @@ function validateEditInput(input: EditToolInput): {
 const REPLACE_DESCRIPTION =
   "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.";
 
-const HASHLINE_DESCRIPTION = `Edit files using hashline patches. Each section starts with [path#HASH] (copy the header from read/write output) followed by line-anchored ops. Body text goes on lines BELOW the op header, each prefixed with \`+\`.
+const HASHLINE_DESCRIPTION = `Edit files using hashline patches. Line numbers are 1-indexed (line 1 = first line). Each section starts with [path#HASH] (copy from read/write/edit output) followed by line-anchored ops. Body rows go on lines BELOW the op header, each prefixed with +.
 
-Line ops (anchor exact lines):
-- SWAP N.=M:    replace lines N through M with the +body rows below
-- DEL N.=M      delete lines N through M (no body, no +rows)
+Line ops:
+- SWAP N.=M:    replace lines N through M with +body rows below
+- DEL N.=M      delete lines N through M (no body)
 - INS.PRE N:    insert +body before line N
 - INS.POST N:   insert +body after line N
 - INS.HEAD:     insert +body at file start (NO line number)
 - INS.TAIL:     insert +body at file end (NO line number)
 - REM           delete the file
-- MV "dest"     move/rename the file
+- MV "dest"    move/rename the file
 
 Block ops (anchor the OPENING line of a multi-line construct; tree-sitter resolves the closing line):
 - SWAP.BLK N:       replace the whole syntactic block that BEGINS on line N
@@ -174,9 +174,18 @@ Block ops (anchor the OPENING line of a multi-line construct; tree-sitter resolv
 - INS.BLK.POST N:   insert +body AFTER the block's end (sibling depth). To append inside a block, use INS.POST.
 
 Block-op rules:
-- Anchor the OPENING line of a MULTI-LINE construct (the def/fn/class/if line) — never its closer, last line, or a bare inner statement. A single-statement anchor resolves to ONE line and is REJECTED: use the plain op (SWAP N.=N / DEL N / INS.POST N), or point N at the real opener.
-- Leading decorators/attributes/doc-comments are SEPARATE nodes: point N at the FIRST decorator to sweep both. Standalone line-comments are never swept — use SWAP N.=M.
-- Markdown: a heading line (##/###) IS a block opener — block ops resolve its whole section (through nested deeper headings, up to the next same-or-higher heading).`;
+- Anchor the OPENING line (def/fn/class/if), never the closer or a bare statement. Single-statement anchors are rejected — use SWAP N.=N or DEL N instead.
+- Decorators/doc-comments are SEPARATE nodes: point N at the FIRST decorator.
+- Markdown headings ARE block openers — block ops resolve their whole section.
+
+Example — replace lines 3-4, delete line 7, append to end:
+[src/app.ts#1A2B]
+SWAP 3.=4:
++  const result = compute();
++  return result;
+DEL 7
+INS.TAIL:
++// EOF`;
 
 function extractHashlinePaths(input: string): string[] {
   try {
@@ -204,7 +213,9 @@ async function executeHashlineEdit(
   }
   const patch = Patch.parse(input, { cwd });
   if (patch.sections.length === 0) {
-    throw new Error("No hashline sections found in input.");
+    throw new Error(
+      "No editable sections found. Each section needs a [path#HASH] header followed by at least one op (SWAP/DEL/INS) below it."
+    );
   }
   const fs = new NodeFilesystem(cwd);
   const patcher = new Patcher({

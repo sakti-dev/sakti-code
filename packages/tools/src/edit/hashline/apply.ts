@@ -68,7 +68,7 @@ function validateLineBounds(
     for (const anchor of getEditAnchors(edit)) {
       if (anchor.line < 1 || anchor.line > fileLines.length) {
         throw new Error(
-          `Line ${anchor.line} does not exist (file has ${fileLines.length} lines)`
+          `Line ${anchor.line} does not exist (file has ${fileLines.length} lines). Re-read the file to get current line numbers.`
         );
       }
     }

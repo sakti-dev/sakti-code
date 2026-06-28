@@ -187,7 +187,9 @@ export class Patcher {
     if (patch.sections.length === 1) {
       const section = patch.sections[0];
       if (!section) {
-        throw new Error("Empty patch");
+        throw new Error(
+          "Patch has no sections. Start with a [path#HASH] header followed by ops."
+        );
       }
       const prepared = await this.prepare(section);
       return { sections: [await this.commit(prepared)] };
@@ -201,7 +203,7 @@ export class Patcher {
     for (const entry of prepared) {
       if (entry.isNoop) {
         throw new Error(
-          `Edits to ${entry.section.path} resulted in no changes being made.`
+          `Edits to ${entry.section.path} produced no changes — the body rows are byte-identical to the file at the targeted lines. Re-read the file to verify current content.`
         );
       }
     }
@@ -248,7 +250,7 @@ export class Patcher {
     for (const entry of prepared) {
       if (entry.isNoop) {
         throw new Error(
-          `Edits to ${entry.section.path} resulted in no changes being made.`
+          `Edits to ${entry.section.path} produced no changes — the body rows are byte-identical to the file at the targeted lines. Re-read the file to verify current content.`
         );
       }
     }

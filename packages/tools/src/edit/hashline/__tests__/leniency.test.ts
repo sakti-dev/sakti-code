@@ -266,3 +266,35 @@ describe("hashline apply — duplicate boundary payloads", () => {
     expect(applyPatch(text, diff)).toBe("aaa\nbbb\nccc\nbbb\nccc\nNEW");
   });
 });
+
+describe("hashline error diagnostics — self-diagnosing messages", () => {
+  it("rejects a header with no ops below it (not a vague 'no sections')", () => {
+    expect(() => Patch.parse("[src/foo.ts#1A2B]\n")).toThrow(
+      /has no operations below it/
+    );
+    expect(() => Patch.parse("[src/foo.ts#1A2B]")).toThrow(
+      /has no operations below it/
+    );
+  });
+
+  it("error names the path and hash from the header", () => {
+    try {
+      Patch.parse("[src/foo.ts#1A2B]\n");
+      throw new Error("should have thrown");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      expect(message).toContain("src/foo.ts");
+      expect(message).toContain("1A2B");
+    }
+  });
+
+  it("error suggests a concrete op to add", () => {
+    expect(() => Patch.parse("[src/foo.ts#1A2B]\n")).toThrow(/SWAP/);
+  });
+
+  it("line-bounds error suggests re-reading the file", () => {
+    expect(() => applyPatch(FILE, "SWAP 99.=99:\n+X")).toThrow(
+      /Re-read the file/
+    );
+  });
+});

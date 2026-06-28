@@ -213,6 +213,15 @@ function splitRawSections(
     const hasOps = currentLines.some((line) => line.trim().length > 0);
     if (hasOps) {
       sections.push({ ...current, diff: currentLines.join("\n") });
+    } else {
+      const hashPart =
+        current.fileHash === undefined
+          ? ""
+          : `${HL_FILE_HASH_SEP}${current.fileHash}`;
+      throw new Error(
+        `Header ${HL_FILE_PREFIX}${current.path}${hashPart}${HL_FILE_SUFFIX} has no operations below it. ` +
+          "Add at least one op (e.g. `SWAP 1.=1:` then `+body`, or `DEL 1`) on the lines below the header."
+      );
     }
     currentLines = [];
   };
@@ -398,7 +407,9 @@ export class Patch {
     const patch = Patch.parse(input, options);
     const first = patch.sections[0];
     if (!first) {
-      throw new Error("Patch input did not produce any sections.");
+      throw new Error(
+        "Input did not produce any sections. Start with a file header like [path#HASH] and add at least one op below it."
+      );
     }
     return first;
   }

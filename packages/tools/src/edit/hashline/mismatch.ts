@@ -114,7 +114,7 @@ export function validateLineRef(
 ): void {
   if (ref.line < 1 || ref.line > fileLines.length) {
     throw new Error(
-      `Line ${ref.line} does not exist (file has ${fileLines.length} lines)`
+      `Line ${ref.line} does not exist (file has ${fileLines.length} lines). Re-read the file to get current line numbers.`
     );
   }
 }
