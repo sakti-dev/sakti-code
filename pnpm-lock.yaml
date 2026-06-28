@@ -421,6 +421,9 @@ importers:
       diff:
         specifier: ^9.0.0
         version: 9.0.0
+      lru-cache:
+        specifier: ^11.5.1
+        version: 11.5.1
     devDependencies:
       '@types/node':
         specifier: ^24
