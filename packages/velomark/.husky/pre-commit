@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+pnpm exec lint-staged
+pnpm run test:client
+pnpm run test:ssr

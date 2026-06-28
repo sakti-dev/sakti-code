@@ -1,0 +1,7 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@import "../../../apps/desktop/src/assets/styles/tokens.css";
+@import "../../../apps/desktop/src/assets/styles/markdown.css";
+@import "../src/theme/styles.css";
+@import "./styles.css";
