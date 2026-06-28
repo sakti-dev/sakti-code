@@ -22,6 +22,9 @@
     "dev:server": "pnpm --filter @sakti-code/server dev",
     "velomark:pull": "git subtree pull --prefix=packages/velomark https://github.com/sakti-dev/velomark.git main --squash",
     "velomark:push": "git subtree push --prefix=packages/velomark https://github.com/sakti-dev/velomark.git main",
+    "pi:sync": "nix-shell -p git-filter-repo --run \"bash scripts/sync-pi-crates.sh\"",
+    "pi:pull": "git subtree pull --prefix=vendor/pi-crates https://github.com/sakti-dev/oh-my-pi.git crates-only --squash",
+    "pi:push": "git subtree push --prefix=vendor/pi-crates https://github.com/sakti-dev/oh-my-pi.git crates-only",
     "prepare": "husky"
   },
   "workspaces": [
