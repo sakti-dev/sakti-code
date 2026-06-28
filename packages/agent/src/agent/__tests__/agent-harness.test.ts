@@ -13,7 +13,11 @@ import { calculateTool } from "../../__tests__/utils/calculate";
 import { getCurrentTimeTool } from "../../__tests__/utils/get-current-time";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
 import { AgentHarness } from "../../agent/agent-harness";
-import type { PromptTemplate, Skill } from "../../harness-types";
+import type {
+  AgentHarnessEvent,
+  PromptTemplate,
+  Skill,
+} from "../../harness-types";
 import { createTestSession } from "../../session/__tests__/session-test-utils";
 import type { AgentMessage, AgentTool } from "../../types";
 
@@ -906,5 +910,34 @@ describe("scheduleSystemPromptRefresh", () => {
 
     await harness.prompt("next turn after compact");
     expect(capturedSystems).toEqual(["refreshed"]);
+  });
+
+  it("emits cache_bust_pending when a refresh is scheduled", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: "original",
+    });
+
+    const events: AgentHarnessEvent[] = [];
+    harness.subscribe((event) => {
+      if (event.type === "cache_bust_pending") {
+        events.push(event);
+      }
+    });
+
+    harness.scheduleSystemPromptRefresh("new");
+    // emitOwn is async; flush the microtask before asserting.
+    await Promise.resolve();
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      type: "cache_bust_pending",
+      reason: "system_prompt_refresh",
+    });
   });
 });

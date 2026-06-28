@@ -428,6 +428,19 @@ export interface ToolsUpdateEvent {
   type: "tools_update";
 }
 
+/**
+ * Emitted when a cache-busting change is pending (deferred to compaction).
+ * The UI subscribes to this to show "compact recommended" alerts — the user
+ * deferred the cache cost, and this event tells them a compact would apply it.
+ */
+export interface CacheBustPendingEvent {
+  /** Human-readable detail for UI alerts. */
+  message: string;
+  /** What kind of change is pending. */
+  reason: "skills_refresh" | "system_prompt_refresh" | "tools_refresh";
+  type: "cache_bust_pending";
+}
+
 export interface ResourcesUpdateEvent<
   TSkill extends Skill = Skill,
   TPromptTemplate extends PromptTemplate = PromptTemplate,
@@ -457,7 +470,8 @@ export type AgentHarnessOwnEvent<
   | ModelUpdateEvent
   | ThinkingLevelUpdateEvent
   | ResourcesUpdateEvent<TSkill, TPromptTemplate>
-  | ToolsUpdateEvent;
+  | ToolsUpdateEvent
+  | CacheBustPendingEvent;
 
 export type AgentHarnessEvent<
   TSkill extends Skill = Skill,
@@ -516,6 +530,7 @@ export type AgentHarnessEventResultMap = {
   thinking_level_update: undefined;
   resources_update: undefined;
   tools_update: undefined;
+  cache_bust_pending: undefined;
   queue_update: undefined;
   save_point: undefined;
   abort: undefined;

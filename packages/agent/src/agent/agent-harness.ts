@@ -1704,9 +1704,18 @@ export class AgentHarness<
    * disabling a skill, changing locale, changing output style. For changes the
    * user wants immediately, call {@link switchAgent} directly — that applies
    * now at the cost of one cold turn.
+   *
+   * Emits a `cache_bust_pending` event so the UI can show an alert recommending
+   * compaction.
    */
   scheduleSystemPromptRefresh(next: string): void {
     this.pendingSystemPromptRefresh = next;
+    void this.emitOwn({
+      type: "cache_bust_pending",
+      reason: "system_prompt_refresh",
+      message:
+        "System prompt change pending. Compact the session to apply it without busting the cache.",
+    });
   }
 
   /** Returns the pending refresh string, if any. Test/debug hook. */
