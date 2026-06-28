@@ -62,6 +62,7 @@ const BUNDLED_NPM = new Set([
   "ai-gateway-provider",
   "@jerome-benoit/sap-ai-provider-v2",
   "gitlab-ai-provider",
+  "@sakti-code/zai-anthropic",
 ]);
 
 function checkBundledNpm(catalog: Record<string, Model[]>): void {

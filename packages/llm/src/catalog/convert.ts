@@ -77,7 +77,28 @@ export function convertModelsDevModel(
     ...(compat ? { compat } : {}),
   };
 
-  return converted;
+  return applyZaiAnthropicOverride(provider.id, converted);
+}
+
+/**
+ * Repoint `zai` / `zai-coding-plan` providers to the hand-rolled
+ * `@sakti-code/zai-anthropic` factory + Z.ai's Anthropic-compatible baseURL,
+ * and drop the openai-compat `compat` block (our model reads `providerOptions.zai`
+ * directly). All other providers stay on whatever models.dev chose.
+ *
+ * Survives regeneration because it lives in the generator. See design doc
+ * §"Catalog override (choice: G — generation-time)".
+ */
+function applyZaiAnthropicOverride(providerId: string, model: Model): Model {
+  if (providerId !== "zai" && providerId !== "zai-coding-plan") {
+    return model;
+  }
+  const baseURL =
+    providerId === "zai-coding-plan"
+      ? "https://api.z.ai/api/coding/anthropic"
+      : "https://api.z.ai/api/anthropic";
+  const { compat: _compat, ...rest } = model;
+  return { ...rest, npm: "@sakti-code/zai-anthropic", baseUrl: baseURL };
 }
 
 /**
