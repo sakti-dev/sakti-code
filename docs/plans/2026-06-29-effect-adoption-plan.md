@@ -1,0 +1,290 @@
+# Effect Adoption Plan — sakti-code Agent Loop
+
+## Goal
+
+Replace the most error-prone manual async plumbing in the agent loop with Effect-native constructs — `FiberSet`, `Stream`, `Queue`, `Scope`, `Schedule` — **without** changing tool implementations or the public API.
+
+## Constraints
+
+- **Tools stay plain TS** — bash, read, write, edit remain `async function` returning `Promise`. Effect wraps them at the boundary with `Effect.promise(() => tool.execute(...))`.
+- **Incremental adoption** — each phase is independently shippable. Rollback is one revert.
+- **No `Effect.runPromise` sandwich** — once a function is Effect-native, it stays Effect-native for composition. `runPromise` is called only at the outermost boundary (agent.ts / harness entry points).
+- **Test compatibility** — existing tests use vitest, not `@effect/vitest`. Effect-native functions expose a `runTest()` helper that returns `Promise` for existing test fixtures.
+
+---
+
+## Phase 1: FiberSet for Parallel Tool Execution
+
+**Scope:** `core/agent-loop.ts` — replace `Promise.all` in `executeToolCallsParallel` with `FiberSet`.
+
+**Files to touch:**
+- `packages/agent/src/core/agent-loop.ts`
+
+**Current code** (lines 839-928):
+```ts
+async function executeToolCallsParallel(...) {
+  const finalizedCalls: FinalizedToolCallEntry[] = [];
+  for (const toolCall of toolCalls) {       // serial prep
+    await emit({ type: "tool_execution_start", ... });
+    const preparation = await prepareToolCall(...);  // permission + validation
+    finalizedCalls.push(async () => { ... });         // thunk
+  }
+  // batch fire
+  const ordered = await Promise.all(finalizedCalls.map(e => typeof e === "function" ? e() : e));
+  ...
+}
+```
+
+**Target code** (Effect-native):
+```ts
+function executeToolCallsParallel(
+  currentContext, assistantMessage, toolCalls, config, signal, emit
+): Effect.Effect<ExecutedToolCallBatch> {
+  return Effect.gen(function* () {
+    const fibers = yield* FiberSet.make<FinalizedToolCallOutcome>();
+    for (const toolCall of toolCalls) {
+      yield* emit({ type: "tool_execution_start", ... });
+      const preparation = yield* Effect.promise(() => prepareToolCall(...));
+      if (preparation.kind === "immediate") {
+        const finalized = { ... };
+        yield* emitToolExecutionEnd(finalized);
+        yield* FiberSet.add(fibers, Effect.succeed(finalized));
+      } else {
+        yield* FiberSet.add(fibers,
+          Effect.promise(() => executePreparedToolCall(preparation, signal, emit)).pipe(
+            Effect.flatMap(executed =>
+              Effect.promise(() => finalizeExecutedToolCall(...))
+            )
+          )
+        );
+      }
+    }
+    const results = yield* FiberSet.join(fibers);
+    // same result ordering + finalization as current
+    return { messages, terminate: shouldTerminateToolBatch(results) };
+  })
+}
+```
+
+**What this buys:**
+- **Fork-on-arrival** — second tool starts executing before preparation of the third is done
+- **Structured cancellation** — `FiberSet.join` is interruptible; if the parent fiber is interrupted, all tool fibers cancel automatically (no more `acceptingUpdates` boolean)
+- **Supervision** — `Effect.raceFirst(FiberSet.join(fibers), FiberSet.awaitEmpty(fibers))` handles edge cases
+
+**Risk:** Low. Tool execution functions are unchanged. The Effect boundary is clean (`Effect.promise(() => ...)`). If anything breaks, revert to `Promise.all`.
+
+**Test impact:** `executeToolCallsParallel` gains an Effect signature. Existing tests that import it need to call `Effect.runPromise(...)`. Tests that only test through the top-level `runLoopEffect` work unchanged.
+
+---
+
+## Phase 2: Stream for LLM Event Streaming
+
+**Scope:** Replace `EventStream` (manual push/wait queue) with Effect `Stream`.
+
+**Files to touch:**
+- `packages/agent/src/core/event-stream.ts` — **delete** (111 lines)
+- `packages/agent/src/core/agent-loop.ts` — replace `for await (const part of fullStream)` with `Stream.runForEach`
+- `packages/agent/src/core/stream-assistant-response.ts` (or wherever the LLM stream is created) — return a `Stream<Part>` instead of an `EventStream`
+
+**Current plumbing:**
+```
+@ai-sdk/streamText → AsyncIterable → EventStream(push/wait) → for await (consume)
+```
+
+**Target plumbing:**
+```
+@ai-sdk/streamText → AsyncIterable → Stream.fromAsyncIterable → Stream.runForEach
+```
+
+**Key changes:**
+
+1. **Delete `event-stream.ts`** — no more manual queue with stored resolve callbacks, no more `finalResultPromise.catch(() => {})`, no more dual error delivery.
+
+2. **Stream parts as Effect Stream:**
+```ts
+// Before: for await (const part of fullStream) { switch (part.type) { ... } }
+// After:
+yield* Stream.runForEach(
+  Stream.fromAsyncIterable(fullStream, (e) => e instanceof Error ? e : undefined),
+  (part) => Effect.sync(() => {
+    switch ((part as any).type) {
+      case "text-delta": ...
+      case "tool-call": ...
+      case "error": ...
+    }
+  })
+)
+```
+
+3. **Tool call forking in-stream** — each `tool-call` part forks into `FiberSet` from Phase 1 (like opencode does), instead of collecting tool call blocks and processing after the stream ends.
+
+**What this buys:**
+- **No double error path** — errors propagate through Stream naturally (no separate `errorState` + `rejectFinalResult`)
+- **Push/pull decoupling** — Stream handles backpressure if the consumer is slower than the producer
+- **Structured completion** — `Stream.runForEach` returns `Effect<void>` that completes when the stream ends or errors
+- **~100 lines deleted**
+
+**Risk:** Moderate. This is the core streaming path. `Stream.fromAsyncIterable` is a thin wrapper so the actual iteration logic doesn't change — just the error handling and completion flow.
+
+---
+
+## Phase 3: Queue for Pending Message Management
+
+**Scope:** Replace `PendingMessageQueue` in `agent.ts` with Effect `Queue`.
+
+**Files to touch:**
+- `packages/agent/src/agent/agent.ts` — `PendingMessageQueue` → `Queue<AgentMessage>`
+
+**Current code** (lines 168-202):
+```ts
+class PendingMessageQueue {
+  private messages: AgentMessage[] = [];
+  private mode: "all" | "one-at-a-time";
+  drain(): AgentMessage[] {
+    if (this.mode === "all") { ... slice all ... }
+    else { ... shift one ... }
+  }
+}
+```
+
+**Target code:**
+```ts
+// In constructor:
+this.steeringQueue = yield* Queue.bounded<AgentMessage>(100)
+this.followUpQueue = Queue.bounded<AgentMessage>(100)
+
+// In drain:
+steeringQueue: yield* Queue.takeAll(queue), yield* Queue.take(queue)
+```
+
+**What this buys:**
+- **Backpressure** — bounded queue prevents unbounded memory growth
+- **Shutdown signaling** — `Queue.shutdown()` in cleanup wakes all pending takers
+- **Structured teardown** — queue is part of Scope, cleaned up automatically
+
+**Risk:** Very low. The queue is a simple data structure with two modes. The `drain()` call sites in `prepareNextTurn` just need to be wrapped in `Effect.promise()`.
+
+---
+
+## Phase 4: Scope for Resource Cleanup
+
+**Scope:** Replace `ActiveRun` (stored resolve + abort controller) with `Scope` + `Fiber`.
+
+**Files to touch:**
+- `packages/agent/src/agent/agent.ts` — `ActiveRun` type, `runWithLifecycle`, `interruptRun`, `finishRun`
+- `packages/agent/src/agent/agent-harness.ts` — `startRunPromise`, `flushPendingSessionWrites`
+
+**Current code** (agent.ts:541-568):
+```ts
+private async runWithLifecycle(executor) {
+  const abortController = new AbortController();
+  let resolvePromise = () => {};
+  const promise = new Promise<void>((resolve) => { resolvePromise = resolve; });
+  this.activeRun = { promise, resolve: resolvePromise, abortController };
+  try { await executor(abortController.signal); }
+  catch (error) { ... handle failure ... }
+  finally { this.finishRun(); }
+}
+```
+
+**Target code:**
+```ts
+private runWithLifecycleEffect(executor) {
+  return Effect.scoped(Effect.gen(function* () {
+    const scope = yield* Scope.make();
+    const fiber = yield* Effect.fork(executor.pipe(Effect.scoped(scope)));
+    this.activeFiber = fiber;
+    const result = yield* fiber.join();
+    return result;
+  }));
+}
+```
+
+**What this buys:**
+- **No stored resolve** — `Fiber.join()` replaces the promise-based completion
+- **Structural interruption** — `Fiber.interrupt(this.activeFiber)` replaces `abortController.abort()` and propagates cancellation through all child fibers (including Phase 1's FiberSet)
+- **Automatic scope teardown** — when scope closes, all acquired resources (open queues, temp files, child fibers) are cleaned up
+- **No manual `signal?.aborted` checks** — Effect-interrupted fibers stop at the next yield point automatically
+
+**Risk:** Medium. This is the lifecycle entry point — affects `prompt()`, `continue()`, and `interrupt()`. The public API stays the same (still returns `Promise` via `Effect.runPromise`), so consumers don't change.
+
+---
+
+## Phase 5: Schedule for Retry Backoff
+
+**Scope:** Replace `abortableSleep` + manual backoff in `retry-loop.ts` with Effect `Schedule`.
+
+**Files to touch:**
+- `packages/agent/src/compaction/retry-loop.ts` — `abortableSleep()`, `executeWithRetryEffect()`
+
+**Current code:**
+```ts
+const delay = computeRetryDelay(attempt, baseDelayMs)
+const slept = await abortableSleep(delay, signal)
+if (!slept) { /* aborted */ return; }
+```
+
+**Target code:**
+```ts
+const policy = Schedule.exponential(baseDelayMs).pipe(
+  Schedule.jittered(),
+  Schedule.whileInput(() => shouldRetry(input)),
+  Schedule.compose(Schedule.records(maxRetries)),
+)
+yield* Effect.retry(turnEffect, policy)
+```
+
+**What this buys:**
+- **Jitter** — prevents thundering herd (multiple sessions retrying in sync)
+- **Composition** — `.pipe(Schedule.whileInput(...), Schedule.compose(...))` expresses intent without manual counters
+- **Deletes `abortableSleep()`** — no more `setTimeout`/`removeEventListener` management
+- **Interruptible by default** — `Effect.retry` respects the parent fiber's interruption
+
+**Risk:** Very low. Same logic, less code.
+
+---
+
+## Migration Strategy
+
+### Dependency order (no circular deps)
+
+```
+Phase 4 (Scope) ─→ Phase 2 (Stream) ─→ Phase 1 (FiberSet) ─→ Phase 3 (Queue) ─→ Phase 5 (Schedule)
+     │                                    │
+     └── provides lifecycle +             └── provides fiber dispatch
+          interruption context                  for tool execution
+```
+
+### Actual implementation order (lowest risk first)
+
+| Order | Phase | Effort | Risk | Delivers |
+|-------|-------|--------|------|----------|
+| 1 | 1 — FiberSet | 1-2 days | Low | Structured concurrency for tool execution |
+| 2 | 5 — Schedule | 0.5 day | Very low | Removes manual abortableSleep |
+| 3 | 3 — Queue | 0.5 day | Very low | Removes PendingMessageQueue |
+| 4 | 2 — Stream | 2-3 days | Medium | Removes EventStream, enables fiber-per-tool from stream |
+| 5 | 4 — Scope | 1-2 days | Medium | Removes ActiveRun + AbortController plumbing |
+
+Each phase includes:
+- **RED**: Write tests that exercise the Effect path (they exist, just need `Effect.runPromise`)
+- **GREEN**: Implement the change
+- **REFACTOR**: Run `pnpm run fix`, `pnpm run typecheck`, `pnpm run test` in the agent package
+
+### What stays unchanged
+
+- `packages/tools/` — all tools remain plain async functions
+- `packages/llm/` — stays as-is (wraps `@ai-sdk` providers)
+- `packages/db/` — stays as-is (node:sqlite + Drizzle)
+- `packages/logger/` — stays as-is
+- Public API of `Agent` class — `prompt()`, `continue()`, `interrupt()` stay as async methods
+- All TypeScript types exported by `@sakti-code/agent` — unchanged
+
+## Total impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Lines of custom async plumbing | ~200 (EventStream + abortableSleep + PendingMessageQueue + ActiveRun) | ~0 |
+| Manual `AbortSignal` checks | ~15 (agent-loop, retry-loop) | ~0 (only at the Effect→Promise boundary) |
+| `Effect.runPromise` callsites | ~8 (various entry points) | ~2 (agent.ts and agent-harness.ts entry points) |
+| Tool implementation changes | 0 | 0 |
+| Public API changes | — | 0 |
