@@ -4,7 +4,7 @@ import {
   writeFile as fsWriteFile,
 } from "node:fs/promises";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
-import { type Static, Type } from "typebox";
+import { type Static, type TSchema, Type } from "typebox";
 import {
   applyEditsToNormalizedContent,
   detectLineEnding,
@@ -16,6 +16,10 @@ import {
   stripBom,
 } from "../lib/edit-diff.ts";
 import { withFileMutationQueue } from "../lib/file-mutation-queue.ts";
+import { NodeFilesystem } from "../lib/hashline/fs.ts";
+import { Patch } from "../lib/hashline/input.ts";
+import { Patcher } from "../lib/hashline/patcher.ts";
+import type { SnapshotStore } from "../lib/hashline/snapshots.ts";
 import { resolveToCwd } from "../lib/path-utils.ts";
 
 const replaceEditSchema = Type.Object(
@@ -50,6 +54,15 @@ type LegacyEditToolInput = EditToolInput & {
   newText?: unknown;
 };
 
+export const hashlineEditSchema = Type.Object({
+  input: Type.String({
+    description:
+      "Hashline patch: section headers [path#HASH] followed by SWAP/DEL/INS/REM/MV ops with +payload lines",
+  }),
+});
+
+export type HashlineEditInput = Static<typeof hashlineEditSchema>;
+
 export interface EditToolDetails {
   diff: string;
   firstChangedLine?: number;
@@ -76,8 +89,12 @@ const defaultEditOperations: EditOperations = {
   },
 };
 
+export type EditMode = "replace" | "hashline";
+
 export interface EditToolOptions {
+  mode?: EditMode;
   operations?: EditOperations;
+  snapshotStore?: SnapshotStore;
 }
 
 function prepareEditArguments(input: unknown): EditToolInput {
@@ -122,16 +139,103 @@ function validateEditInput(input: EditToolInput): {
   return { path: input.path, edits: input.edits };
 }
 
+const REPLACE_DESCRIPTION =
+  "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.";
+
+const HASHLINE_DESCRIPTION =
+  'Edit files using hashline patches. Each section starts with [path#HASH] (copy the header from read/write output) followed by line-anchored ops: SWAP N.=M: +body, DEL N.=M, INS.PRE/POST/HEAD/TAIL N: +body, REM (delete file), MV "dest".';
+
+function extractHashlinePaths(input: string): string[] {
+  try {
+    const patch = Patch.parse(input);
+    return patch.sections.map((s) => s.path);
+  } catch {
+    return [];
+  }
+}
+
+async function executeHashlineEdit(
+  cwd: string,
+  input: string,
+  snapshotStore: SnapshotStore | undefined,
+  signal?: AbortSignal
+): Promise<{
+  content: [{ type: "text"; text: string }];
+  details: undefined;
+}> {
+  if (!snapshotStore) {
+    throw new Error(
+      "Hashline edit mode requires a snapshotStore. Ensure the edit tool is configured with one."
+    );
+  }
+  const patch = Patch.parse(input, { cwd });
+  if (patch.sections.length === 0) {
+    throw new Error("No hashline sections found in input.");
+  }
+  const fs = new NodeFilesystem(cwd);
+  const patcher = new Patcher({ fs, snapshots: snapshotStore });
+  const result = await patcher.apply(patch);
+  if (signal?.aborted) {
+    throw new Error("Operation aborted");
+  }
+  const lines = result.sections.map((s) => {
+    const note =
+      s.op === "delete"
+        ? `Deleted ${s.path}`
+        : s.op === "noop"
+          ? `No change to ${s.path}`
+          : `${s.header}`;
+    const warnings =
+      s.warnings.length > 0 ? `\n\nWarnings:\n${s.warnings.join("\n")}` : "";
+    return `${note}${warnings}`;
+  });
+  return {
+    content: [{ type: "text", text: lines.join("\n\n") }],
+    details: undefined,
+  };
+}
+
 export function createEditTool(
   cwd: string,
   options?: EditToolOptions
-): AgentTool<typeof editSchema, EditToolDetails | undefined> {
+): AgentTool<TSchema, EditToolDetails | undefined> {
+  const mode: EditMode = options?.mode ?? "replace";
   const ops = options?.operations ?? defaultEditOperations;
+
+  if (mode === "hashline") {
+    return {
+      name: "edit",
+      label: "edit",
+      description: HASHLINE_DESCRIPTION,
+      parameters: hashlineEditSchema,
+      permissions: (params) => {
+        const input = (params as HashlineEditInput).input ?? "";
+        const paths = extractHashlinePaths(input);
+        return paths.length > 0
+          ? paths.map((p) => ({ permission: "edit" as const, patterns: [p] }))
+          : [{ permission: "edit" as const, patterns: ["**"] }];
+      },
+      async execute(
+        _toolCallId: string,
+        input: HashlineEditInput,
+        signal?: AbortSignal,
+        _onUpdate?: AgentToolUpdateCallback<EditToolDetails | undefined>
+      ) {
+        const result = await executeHashlineEdit(
+          cwd,
+          input.input,
+          options?.snapshotStore,
+          signal
+        );
+        return result;
+      },
+    };
+  }
+
   return {
     name: "edit",
     label: "edit",
-    description:
-      "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.",
+    description: REPLACE_DESCRIPTION,
     parameters: editSchema,
     permissions: (params) => [
       { permission: "edit", patterns: [(params as EditToolInput).path] },

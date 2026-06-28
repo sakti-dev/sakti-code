@@ -307,6 +307,79 @@ describe("EditTool", () => {
   });
 });
 
+describe("EditTool (hashline mode)", () => {
+  it("applies a SWAP patch via hashline mode", async () => {
+    const content = "line1\nline2\nline3\n";
+    writeFileSync(join(tmpDir, "hl-swap.txt"), content);
+    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "hl-swap.txt"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    const result = await tool.execute("tc_1", {
+      input: `[hl-swap.txt#${tag}]\nSWAP 2.=2:\n+REPLACED`,
+    });
+    expect(getTextContent(result)).toContain("[hl-swap.txt#");
+    expect(readFileSync(join(tmpDir, "hl-swap.txt"), "utf-8")).toBe(
+      "line1\nREPLACED\nline3\n"
+    );
+  });
+
+  it("applies a DEL patch via hashline mode", async () => {
+    const content = "a\nb\nc\n";
+    writeFileSync(join(tmpDir, "hl-del.txt"), content);
+    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "hl-del.txt"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    await tool.execute("tc_1", {
+      input: `[hl-del.txt#${tag}]\nDEL 2.=2`,
+    });
+    expect(readFileSync(join(tmpDir, "hl-del.txt"), "utf-8")).toBe("a\nc\n");
+  });
+
+  it("rejects with mismatch when hash is stale", async () => {
+    writeFileSync(join(tmpDir, "hl-stale.txt"), "a\nb\n");
+    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const snapshotStore = new InMemorySnapshotStore();
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    await expect(
+      tool.execute("tc_1", {
+        input: "[hl-stale.txt#0000]\nSWAP 1.=1:\n+X",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("read + edit roundtrip via snapshot store", async () => {
+    writeFileSync(join(tmpDir, "roundtrip.ts"), "old line\n");
+    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const snapshotStore = new InMemorySnapshotStore();
+    const readTool = createReadTool(tmpDir, { snapshotStore });
+    const editTool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    const readResult = await readTool.execute("tc_1", { path: "roundtrip.ts" });
+    const readText = getTextContent(readResult);
+    const tag = readText.match(/#([0-9A-F]{4})/)?.[1];
+    expect(tag).toBeDefined();
+    await editTool.execute("tc_1", {
+      input: `[roundtrip.ts#${tag}]\nSWAP 1.=1:\n+new line`,
+    });
+    expect(readFileSync(join(tmpDir, "roundtrip.ts"), "utf-8")).toBe(
+      "new line\n"
+    );
+  });
+});
+
 describe("BashTool", () => {
   it("runs a command and returns output", async () => {
     const tool = createBashTool(tmpDir);

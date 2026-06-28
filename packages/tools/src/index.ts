@@ -6,12 +6,14 @@ export type {
 } from "./tools/bash.ts";
 export { createBashTool } from "./tools/bash.ts";
 export type {
+  EditMode,
   EditOperations,
   EditToolDetails,
   EditToolInput,
   EditToolOptions,
+  HashlineEditInput,
 } from "./tools/edit.ts";
-export { createEditTool } from "./tools/edit.ts";
+export { createEditTool, hashlineEditSchema } from "./tools/edit.ts";
 export type {
   FindOperations,
   FindToolDetails,

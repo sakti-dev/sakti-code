@@ -138,9 +138,17 @@ export class InMemoryFilesystem extends Filesystem {
 }
 
 export class NodeFilesystem extends Filesystem {
+  readonly baseDir: string | undefined;
+
+  constructor(baseDir?: string) {
+    super();
+    this.baseDir = baseDir;
+  }
+
   async readText(path: string): Promise<string> {
+    const resolved = this.#resolve(path);
     try {
-      return await fsp.readFile(path, "utf8");
+      return await fsp.readFile(resolved, "utf8");
     } catch (error) {
       if (isNotFound(error)) {
         throw new NotFoundError(path, error);
@@ -150,13 +158,15 @@ export class NodeFilesystem extends Filesystem {
   }
 
   async writeText(path: string, content: string): Promise<WriteResult> {
-    await fsp.writeFile(path, content, "utf8");
+    const resolved = this.#resolve(path);
+    await fsp.writeFile(resolved, content, "utf8");
     return { text: content };
   }
 
   async delete(path: string): Promise<void> {
+    const resolved = this.#resolve(path);
     try {
-      await fsp.rm(path);
+      await fsp.rm(resolved);
     } catch (error) {
       if (isNotFound(error)) {
         throw new NotFoundError(path, error);
@@ -166,13 +176,15 @@ export class NodeFilesystem extends Filesystem {
   }
 
   async move(from: string, to: string, content?: string): Promise<void> {
+    const fromResolved = this.#resolve(from);
+    const toResolved = this.#resolve(to);
     if (content !== undefined) {
-      await fsp.writeFile(to, content, "utf8");
+      await fsp.writeFile(toResolved, content, "utf8");
       await this.delete(from);
       return;
     }
     try {
-      await fsp.rename(from, to);
+      await fsp.rename(fromResolved, toResolved);
     } catch (error) {
       if (isNotFound(error)) {
         throw new NotFoundError(from, error);
@@ -182,15 +194,21 @@ export class NodeFilesystem extends Filesystem {
   }
 
   canonicalPath(path: string): string {
-    return pathModule.resolve(path);
+    return this.#resolve(path);
   }
 
   async exists(path: string): Promise<boolean> {
     try {
-      await fsp.access(path);
+      await fsp.access(this.#resolve(path));
       return true;
     } catch {
       return false;
     }
+  }
+
+  #resolve(path: string): string {
+    return this.baseDir === undefined
+      ? pathModule.resolve(path)
+      : pathModule.resolve(this.baseDir, path);
   }
 }
