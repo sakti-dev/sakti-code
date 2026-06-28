@@ -406,7 +406,12 @@ interface AssembleInput {
 
 function assembleZaiRequest(input: AssembleInput): ZaiRequest {
   const isThinking = input.thinking !== undefined;
-  const maxTokens = input.maxOutputTokens + (input.thinking?.budget ?? 0);
+  // Anthropic's `thinking.budget_tokens` is a *portion of* `max_tokens` (the
+  // thinking tokens come out of the total), not additive. We previously
+  // ported @ai-sdk/anthropic's `max_tokens = requested + budget` formula,
+  // but Z.ai enforces a strict 1..131072 cap on `max_tokens` and rejects the
+  // sum. Pass `maxOutputTokens` through unchanged.
+  const maxTokens = input.maxOutputTokens;
 
   const args: ZaiRequest = {
     max_tokens: maxTokens,

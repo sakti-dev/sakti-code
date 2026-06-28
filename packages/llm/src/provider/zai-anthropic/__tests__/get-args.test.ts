@@ -95,7 +95,7 @@ describe("ZaiLanguageModel.getArgs", () => {
     expect(args.tools?.at(-1)?.cache_control).toEqual({ type: "ephemeral" });
   });
 
-  it("max_tokens = requested + thinkingBudget", async () => {
+  it("max_tokens = requested (thinking budget comes out of max_tokens, not additive)", async () => {
     const { args } = await make().getArgs(
       baseOpts({
         maxOutputTokens: 4096,
@@ -104,7 +104,22 @@ describe("ZaiLanguageModel.getArgs", () => {
         },
       })
     );
-    expect(args.max_tokens).toBe(4096 + 32_000);
+    // Anthropic semantics: thinking.budget_tokens is a portion of max_tokens.
+    // Z.ai enforces 1..131072 and rejects `requested + budget`.
+    expect(args.max_tokens).toBe(4096);
+    expect(args.thinking).toEqual({ type: "enabled", budget_tokens: 32_000 });
+  });
+
+  it("respects Z.ai's 131072 cap on max_tokens (agent requesting the ceiling + thinking must not overflow)", async () => {
+    const { args } = await make().getArgs(
+      baseOpts({
+        maxOutputTokens: 131_072,
+        providerOptions: {
+          zai: { thinking: { type: "enabled", budgetTokens: 16_000 } },
+        },
+      })
+    );
+    expect(args.max_tokens).toBe(131_072);
   });
 
   it("warns on frequencyPenalty / presencePenalty / seed (unsupported)", async () => {
