@@ -1,8 +1,28 @@
 import { describe, expect, it } from "vitest";
+import type { Skill } from "../../harness-types";
 import {
   appendSkillsBlock,
+  composeSystemPrompt,
   formatSkillsForSystemPrompt,
 } from "../../resources/system-prompt";
+import type { AgentTool } from "../../types";
+
+function mockTool(name: string, description: string): AgentTool {
+  return {
+    name,
+    description,
+    label: name,
+    parameters: { type: "object", properties: {} },
+    execute: async () => ({
+      content: [{ type: "text", text: "" }],
+      details: undefined,
+    }),
+  } as unknown as AgentTool;
+}
+
+function mockSkill(name: string, description: string, filePath: string): Skill {
+  return { name, description, filePath, content: "" } as Skill;
+}
 
 const visibleSkill = {
   name: "visible",
@@ -102,5 +122,82 @@ describe("appendSkillsBlock", () => {
   it("returns the base unchanged when there are no model-visible skills", () => {
     expect(appendSkillsBlock(base, [disabledSkill], true)).toBe(base);
     expect(appendSkillsBlock(base, [], true)).toBe(base);
+  });
+});
+
+describe("composeSystemPrompt", () => {
+  const BASE = "You are a coding agent.";
+
+  it("returns base prompt alone when no tools and no skills", () => {
+    expect(composeSystemPrompt(BASE, [], [], false)).toBe(BASE);
+  });
+
+  it("appends tool inventory after base prompt", () => {
+    const tools = [mockTool("edit", "Edit files.")];
+    const result = composeSystemPrompt(BASE, tools, [], false);
+    expect(result).toContain(BASE);
+    expect(result).toContain("# Tool: edit");
+    expect(result).toContain("Edit files.");
+  });
+
+  it("appends skills block after tool inventory", () => {
+    const tools = [mockTool("edit", "Edit files.")];
+    const skills = [
+      mockSkill("tdd", "Test-driven dev", "/skills/tdd/SKILL.md"),
+    ];
+    const result = composeSystemPrompt(BASE, tools, skills, true);
+    const toolIdx = result.indexOf("# Tool: edit");
+    const skillsIdx = result.indexOf("<available_skills>");
+    expect(toolIdx).toBeGreaterThan(-1);
+    expect(skillsIdx).toBeGreaterThan(toolIdx);
+  });
+
+  it("omits skills block when hasRead is false", () => {
+    const skills = [mockSkill("tdd", "TDD", "/skills/tdd/SKILL.md")];
+    const result = composeSystemPrompt(BASE, [], skills, false);
+    expect(result).not.toContain("<available_skills>");
+  });
+
+  it("includes skills block when hasRead is true", () => {
+    const skills = [mockSkill("tdd", "TDD", "/skills/tdd/SKILL.md")];
+    const result = composeSystemPrompt(BASE, [], skills, true);
+    expect(result).toContain("<available_skills>");
+    expect(result).toContain("tdd");
+  });
+
+  it("separates blocks with double newlines", () => {
+    const tools = [mockTool("read", "Read files.")];
+    const skills = [mockSkill("tdd", "TDD", "/skills/tdd/SKILL.md")];
+    const result = composeSystemPrompt(BASE, tools, skills, true);
+    expect(result).toMatch(/You are a coding agent\.\n\n# Tool: read/);
+    expect(result).toMatch(/\n\n.*<available_skills>/s);
+  });
+
+  it("handles multiple tools and skills together", () => {
+    const tools = [
+      mockTool("edit", "Edit."),
+      mockTool("read", "Read."),
+      mockTool("bash", "Run."),
+    ];
+    const skills = [
+      mockSkill("tdd", "TDD", "/tdd/SKILL.md"),
+      mockSkill("debug", "Debug", "/debug/SKILL.md"),
+    ];
+    const result = composeSystemPrompt(BASE, tools, skills, true);
+    const bashIdx = result.indexOf("# Tool: bash");
+    const editIdx = result.indexOf("# Tool: edit");
+    const readIdx = result.indexOf("# Tool: read");
+    expect(bashIdx).toBeLessThan(editIdx);
+    expect(editIdx).toBeLessThan(readIdx);
+    expect(result).toContain("tdd");
+    expect(result).toContain("debug");
+  });
+
+  it("produces cache-stable output (same input → same output)", () => {
+    const tools = [mockTool("edit", "Edit."), mockTool("read", "Read.")];
+    const skills = [mockSkill("tdd", "TDD", "/tdd/SKILL.md")];
+    const a = composeSystemPrompt(BASE, tools, skills, true);
+    const b = composeSystemPrompt(BASE, tools, skills, true);
+    expect(a).toBe(b);
   });
 });

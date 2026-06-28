@@ -162,9 +162,14 @@ export {
 export { formatSkillsAddedNotice } from "./resources/skills-added-notice.ts";
 export {
   appendSkillsBlock,
+  composeSystemPrompt,
   formatSkillsForSystemPrompt,
   stripSkillsBlock,
 } from "./resources/system-prompt.ts";
+export {
+  demoteHeaders,
+  renderToolInventory,
+} from "./resources/tool-inventory.ts";
 export type {
   CompletionProviderShape,
   StreamProviderShape,

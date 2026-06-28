@@ -1,5 +1,7 @@
 import type { Skill } from "../harness-types";
 import { SKILLS_INSTRUCTIONS } from "../prompts/skills-instructions";
+import type { AgentTool } from "../types";
+import { renderToolInventory } from "./tool-inventory";
 
 export function formatSkillsForSystemPrompt(skills: Skill[]): string {
   const visibleSkills = skills.filter((skill) => !skill.disableModelInvocation);
@@ -63,4 +65,40 @@ export function stripSkillsBlock(composedSystemPrompt: string): string {
     return composedSystemPrompt;
   }
   return composedSystemPrompt.slice(0, index);
+}
+
+/**
+ * Compose a complete system prompt from three blocks:
+ * 1. The agent's base system prompt (role, principles)
+ * 2. A rendered tool inventory (# Tool: <name> sections with descriptions)
+ * 3. The skills advertisement (<available_skills> block)
+ *
+ * Blocks are separated by double newlines. Tools are always included;
+ * skills are gated on `hasRead` (the `read` tool must be available for
+ * the model to load skill files).
+ *
+ * This replaces the ad-hoc appendSkillsBlock call in the runner and
+ * mirrors pi's unified buildSystemPrompt composition.
+ */
+export function composeSystemPrompt(
+  baseSystemPrompt: string,
+  tools: readonly AgentTool[],
+  skills: readonly Skill[],
+  hasRead: boolean
+): string {
+  const parts: string[] = [baseSystemPrompt];
+
+  const toolInventory = renderToolInventory(tools);
+  if (toolInventory) {
+    parts.push(toolInventory);
+  }
+
+  if (hasRead) {
+    const skillsBlock = formatSkillsForSystemPrompt([...skills]);
+    if (skillsBlock) {
+      parts.push(skillsBlock);
+    }
+  }
+
+  return parts.join("\n\n");
 }
