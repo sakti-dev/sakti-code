@@ -677,10 +677,13 @@ async function defaultStreamFn(
   return stream(req);
 }
 
-/** Convert AgentTool[] to @ai-sdk tool format (schema-only, no execute). */
+/** Convert AgentTool[] to @ai-sdk tool format (schema-only, no execute).
+ *  Sorted by name so tool order is deterministic and cache-stable — a new
+ *  tool or MCP plugin connecting mid-session won't shift indices and bust
+ *  the prefix. Mirrors Reasonix cache_shape.go:51-64. */
 function toStreamTools(tools: AgentTool[]): Record<string, unknown> {
   const result: Record<string, unknown> = {};
-  for (const tool of tools) {
+  for (const tool of [...tools].sort((a, b) => a.name.localeCompare(b.name))) {
     result[tool.name] = {
       description: tool.description,
       inputSchema: jsonSchema(tool.parameters),

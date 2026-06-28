@@ -36,6 +36,19 @@ const calculateTool: AgentTool<typeof calculateSchema> = {
   },
 };
 
+const echoSchema = Type.Object({ text: Type.String() });
+function makeEchoTool(name: string): AgentTool<typeof echoSchema> {
+  return {
+    name,
+    label: name,
+    description: `echo tool ${name}`,
+    parameters: echoSchema,
+    async execute(_id, _params) {
+      return { content: [{ type: "text", text: name }], details: {} };
+    },
+  };
+}
+
 describe("cache-stability: prefix stable across turns", () => {
   it("system prompt + tools + message prefix is byte-identical across a multi-turn tool loop", async () => {
     const registration = registerFauxStreamProvider();
@@ -129,5 +142,41 @@ describe("cache-stability: prefix stable across turns", () => {
     // Peak hit rate should reach >= 90% — cumulative history dwarfs each turn.
     const peak = Math.max(...rates);
     expect(peak, `hit rates: [${rates.join(", ")}]`).toBeGreaterThanOrEqual(90);
+  });
+
+  it("tool schemas are sorted by name in the request regardless of registration order", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    const captures: StreamRequest[] = [];
+
+    registration.setResponses([
+      () => fauxAssistantMessage("done"),
+      () => fauxAssistantMessage("done"),
+    ]);
+
+    // Register tools in NON-alphabetical order: zeta, alpha, middle.
+    const zeta = makeEchoTool("zeta");
+    const alpha = makeEchoTool("alpha");
+    const middle = makeEchoTool("middle");
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: (req) => {
+        captures.push(req);
+        return registration.streamFn(req);
+      },
+      systemPrompt: "sorted-tools test",
+      tools: [zeta, alpha, middle],
+    });
+
+    await harness.prompt("run once");
+
+    expect(captures.length).toBeGreaterThanOrEqual(1);
+    const toolsKeys = captures[0]!.tools
+      ? Object.keys(captures[0]!.tools!)
+      : [];
+    expect(toolsKeys).toEqual(["alpha", "middle", "zeta"]);
   });
 });
