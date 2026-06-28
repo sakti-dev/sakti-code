@@ -21,6 +21,12 @@ import {
 import { NodeFilesystem } from "./hashline/fs.ts";
 import { Patch } from "./hashline/input.ts";
 import { Patcher } from "./hashline/patcher.ts";
+import {
+  hashPatchInput,
+  type NoopLoopGuardOwner,
+  recordNoopEdit,
+  resetNoopEdit,
+} from "./noop-loop-guard.ts";
 
 const replaceEditSchema = Type.Object(
   {
@@ -93,6 +99,7 @@ export type EditMode = "replace" | "hashline";
 
 export interface EditToolOptions {
   mode?: EditMode;
+  noopOwner?: NoopLoopGuardOwner;
   operations?: EditOperations;
   snapshotStore?: SnapshotStore;
 }
@@ -158,6 +165,7 @@ async function executeHashlineEdit(
   cwd: string,
   input: string,
   snapshotStore: SnapshotStore | undefined,
+  noopOwner: NoopLoopGuardOwner | undefined,
   signal?: AbortSignal
 ): Promise<{
   content: [{ type: "text"; text: string }];
@@ -178,13 +186,29 @@ async function executeHashlineEdit(
   if (signal?.aborted) {
     throw new Error("Operation aborted");
   }
+  const inputHash = noopOwner ? hashPatchInput(input) : "";
   const lines = result.sections.map((s) => {
-    const note =
-      s.op === "delete"
-        ? `Deleted ${s.path}`
-        : s.op === "noop"
-          ? `No change to ${s.path}`
-          : `${s.header}`;
+    if (s.op === "noop") {
+      if (noopOwner) {
+        const { count, escalate } = recordNoopEdit(
+          noopOwner,
+          s.canonicalPath,
+          inputHash
+        );
+        if (escalate) {
+          throw new Error(
+            `Repeated identical no-op edit on ${s.path} (${count}×) — re-read the file before editing again.`
+          );
+        }
+      }
+      const warnings =
+        s.warnings.length > 0 ? `\n\nWarnings:\n${s.warnings.join("\n")}` : "";
+      return `No change to ${s.path}${warnings}`;
+    }
+    if (noopOwner) {
+      resetNoopEdit(noopOwner, s.canonicalPath);
+    }
+    const note = s.op === "delete" ? `Deleted ${s.path}` : `${s.header}`;
     const warnings =
       s.warnings.length > 0 ? `\n\nWarnings:\n${s.warnings.join("\n")}` : "";
     return `${note}${warnings}`;
@@ -226,6 +250,7 @@ export function createEditTool(
           cwd,
           input,
           options?.snapshotStore,
+          options?.noopOwner,
           signal
         );
         return result;

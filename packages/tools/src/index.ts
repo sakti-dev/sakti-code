@@ -14,6 +14,7 @@ export type {
   HashlineEditInput,
 } from "./edit/index";
 export { createEditTool, hashlineEditSchema } from "./edit/index";
+export type { NoopLoopGuardOwner } from "./edit/noop-loop-guard.ts";
 export type {
   FindOperations,
   FindToolDetails,

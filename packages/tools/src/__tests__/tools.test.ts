@@ -398,6 +398,97 @@ describe("EditTool (hashline mode)", () => {
   });
 });
 
+describe("EditTool (hashline noop-loop-guard)", () => {
+  it("escalates to a thrown error after 3 consecutive identical no-op edits", async () => {
+    const content = "line1\nline2\nline3\n";
+    writeFileSync(join(tmpDir, "hl-noop.txt"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "hl-noop.txt"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+      noopOwner: {},
+    });
+    const noopInput = `[hl-noop.txt#${tag}]\nSWAP 2.=2:\n+line2`;
+
+    const first = await tool.execute("tc_1", { input: noopInput });
+    expect(getTextContent(first)).toBe("No change to hl-noop.txt");
+
+    const second = await tool.execute("tc_1", { input: noopInput });
+    expect(getTextContent(second)).toBe("No change to hl-noop.txt");
+
+    await expect(tool.execute("tc_1", { input: noopInput })).rejects.toThrow(
+      "Repeated identical no-op edit"
+    );
+
+    expect(readFileSync(join(tmpDir, "hl-noop.txt"), "utf-8")).toBe(content);
+  });
+
+  it("resets the counter when a non-noop edit lands on the same path", async () => {
+    const content = "line1\nline2\nline3\n";
+    writeFileSync(join(tmpDir, "hl-reset.txt"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+      noopOwner: {},
+    });
+    const readTool = createReadTool(tmpDir, { snapshotStore });
+
+    const readResult = await readTool.execute("tc_1", { path: "hl-reset.txt" });
+    const tag = getTextContent(readResult).match(/#([0-9A-F]{4})/)?.[1];
+    expect(tag).toBeDefined();
+    const noopInput = `[hl-reset.txt#${tag}]\nSWAP 2.=2:\n+line2`;
+
+    await tool.execute("tc_1", { input: noopInput });
+    await tool.execute("tc_1", { input: noopInput });
+
+    await tool.execute("tc_1", {
+      input: `[hl-reset.txt#${tag}]\nSWAP 2.=2:\n+CHANGED`,
+    });
+    expect(readFileSync(join(tmpDir, "hl-reset.txt"), "utf-8")).toBe(
+      "line1\nCHANGED\nline3\n"
+    );
+
+    const reread = await readTool.execute("tc_1", { path: "hl-reset.txt" });
+    const newTag = getTextContent(reread).match(/#([0-9A-F]{4})/)?.[1];
+    expect(newTag).toBeDefined();
+    const newNoopInput = `[hl-reset.txt#${newTag}]\nSWAP 2.=2:\n+CHANGED`;
+
+    await tool.execute("tc_1", { input: newNoopInput });
+    await tool.execute("tc_1", { input: newNoopInput });
+    await expect(tool.execute("tc_1", { input: newNoopInput })).rejects.toThrow(
+      "Repeated identical no-op edit"
+    );
+  });
+
+  it("does not escalate when no noopOwner is provided", async () => {
+    const content = "line1\nline2\nline3\n";
+    writeFileSync(join(tmpDir, "hl-noowner.txt"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "hl-noowner.txt"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    const noopInput = `[hl-noowner.txt#${tag}]\nSWAP 2.=2:\n+line2`;
+
+    for (let i = 0; i < 5; i++) {
+      const result = await tool.execute("tc_1", { input: noopInput });
+      expect(getTextContent(result)).toBe("No change to hl-noowner.txt");
+    }
+  });
+});
+
 describe("BashTool", () => {
   it("runs a command and returns output", async () => {
     const tool = createBashTool(tmpDir);
