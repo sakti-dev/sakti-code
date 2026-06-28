@@ -500,6 +500,105 @@ export function generateDiffString(
   return { diff: output.join("\n"), firstChangedLine };
 }
 
+export function generateNumberedDiff(
+  oldContent: string,
+  newContent: string,
+  contextLines = 2
+): { diff: string; firstChangedLine: number | undefined } {
+  const parts = Diff.diffLines(oldContent, newContent);
+  const output: string[] = [];
+
+  let oldLineNum = 1;
+  let newLineNum = 1;
+  let lastWasChange = false;
+  let firstChangedLine: number | undefined;
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i]!;
+    const raw = part.value.split("\n");
+    if (raw[raw.length - 1] === "") {
+      raw.pop();
+    }
+
+    if (part.added || part.removed) {
+      if (firstChangedLine === undefined) {
+        firstChangedLine = newLineNum;
+      }
+      for (const line of raw) {
+        if (part.added) {
+          output.push(`+${newLineNum}|${line}`);
+          newLineNum++;
+        } else {
+          output.push(`-${oldLineNum}|${line}`);
+          oldLineNum++;
+        }
+      }
+      lastWasChange = true;
+    } else {
+      const nextPartIsChange =
+        i < parts.length - 1 && (parts[i + 1]!.added || parts[i + 1]!.removed);
+      if (lastWasChange || nextPartIsChange) {
+        const limit = Math.max(0, contextLines);
+        let leadingSkip = 0;
+        let middleSkip = 0;
+        let trailingSkip = 0;
+        let linesToShow: string[];
+
+        if (lastWasChange && nextPartIsChange) {
+          if (raw.length > limit * 2) {
+            const leadingContext = raw.slice(0, limit);
+            const trailingContext = raw.slice(raw.length - limit);
+            middleSkip =
+              raw.length - leadingContext.length - trailingContext.length;
+            linesToShow = [...leadingContext, ...trailingContext];
+          } else {
+            linesToShow = raw;
+          }
+        } else if (nextPartIsChange) {
+          leadingSkip = Math.max(0, raw.length - limit);
+          linesToShow = raw.slice(leadingSkip);
+        } else {
+          trailingSkip = Math.max(0, raw.length - limit);
+          linesToShow = raw.slice(0, limit);
+        }
+
+        if (leadingSkip > 0) {
+          oldLineNum += leadingSkip;
+          newLineNum += leadingSkip;
+        }
+
+        const firstChunkLength = middleSkip > 0 ? limit : linesToShow.length;
+        for (const line of linesToShow.slice(0, firstChunkLength)) {
+          output.push(` ${oldLineNum}|${line}`);
+          oldLineNum++;
+          newLineNum++;
+        }
+
+        if (middleSkip > 0) {
+          oldLineNum += middleSkip;
+          newLineNum += middleSkip;
+          for (const line of linesToShow.slice(firstChunkLength)) {
+            output.push(` ${oldLineNum}|${line}`);
+            oldLineNum++;
+            newLineNum++;
+          }
+        }
+
+        if (trailingSkip > 0) {
+          oldLineNum += trailingSkip;
+          newLineNum += trailingSkip;
+        }
+      } else {
+        oldLineNum += raw.length;
+        newLineNum += raw.length;
+      }
+      lastWasChange = false;
+    }
+  }
+
+  return { diff: output.join("\n"), firstChangedLine };
+}
+
 export interface EditDiffResult {
   diff: string;
   firstChangedLine: number | undefined;

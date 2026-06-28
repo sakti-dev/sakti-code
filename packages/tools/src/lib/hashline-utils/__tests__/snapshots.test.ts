@@ -1,0 +1,140 @@
+import { describe, expect, it } from "vitest";
+import { computeFileHash } from "../format";
+import { InMemorySnapshotStore } from "../snapshots";
+
+const PATH = "/tmp/__hashline-snapshots__.ts";
+const OTHER = "/tmp/__hashline-other__.ts";
+const TAG_RE = /^[0-9A-F]{4}$/;
+
+describe("InMemorySnapshotStore", () => {
+  it("derives the tag from whole-file content (matches computeFileHash)", () => {
+    const store = new InMemorySnapshotStore();
+    const text = "L1\nL2\nL3\n";
+    const tag = store.record(PATH, text);
+    expect(tag).toMatch(TAG_RE);
+    expect(tag).toBe(computeFileHash(text));
+  });
+
+  it("fuses repeated reads of identical content onto one tag", () => {
+    const store = new InMemorySnapshotStore();
+    const text = "alpha\nbeta\ngamma\n";
+    const first = store.record(PATH, text);
+    const second = store.record(PATH, text);
+    expect(second).toBe(first);
+    expect(store.head(PATH)?.hash).toBe(first);
+    expect(store.byHash(PATH, first)?.text).toBe(text);
+  });
+
+  it("mints a new tag when content changes and retains the prior version", () => {
+    const store = new InMemorySnapshotStore();
+    const v1 = "one\ntwo\n";
+    const v2 = "one\ntwo\nthree\n";
+    const tag1 = store.record(PATH, v1);
+    const tag2 = store.record(PATH, v2);
+    expect(tag2).not.toBe(tag1);
+    expect(store.head(PATH)?.hash).toBe(tag2);
+    expect(store.byHash(PATH, tag1)?.text).toBe(v1);
+    expect(store.byHash(PATH, tag2)?.text).toBe(v2);
+  });
+
+  it("promotes a re-observed older version back to head", () => {
+    const store = new InMemorySnapshotStore();
+    const v1 = "x\n";
+    const v2 = "y\n";
+    const tag1 = store.record(PATH, v1);
+    store.record(PATH, v2);
+    expect(store.record(PATH, v1)).toBe(tag1);
+    expect(store.head(PATH)?.hash).toBe(tag1);
+  });
+
+  it("bounds per-path history to maxVersionsPerPath (oldest dropped)", () => {
+    const store = new InMemorySnapshotStore({ maxVersionsPerPath: 2 });
+    const tagA = store.record(PATH, "A\n");
+    const tagB = store.record(PATH, "B\n");
+    const tagC = store.record(PATH, "C\n");
+    expect(store.byHash(PATH, tagC)?.text).toBe("C\n");
+    expect(store.byHash(PATH, tagB)?.text).toBe("B\n");
+    expect(store.byHash(PATH, tagA)).toBeNull();
+  });
+
+  it("bounds tracked paths to maxPaths (cold path evicted)", () => {
+    const store = new InMemorySnapshotStore({ maxPaths: 1 });
+    const tag = store.record(PATH, "first\n");
+    store.record(OTHER, "second\n");
+    expect(store.byHash(PATH, tag)).toBeNull();
+    expect(store.head(PATH)).toBeNull();
+  });
+
+  it("evicts the least-recently-used path when maxPaths is reached (get refreshes recency)", () => {
+    const store = new InMemorySnapshotStore({ maxPaths: 2 });
+    store.record("/a.ts", "alpha\n");
+    store.record("/b.ts", "beta\n");
+    expect(store.head("/a.ts")?.text).toBe("alpha\n");
+    store.record("/c.ts", "gamma\n");
+    expect(store.head("/a.ts")?.text).toBe("alpha\n");
+    expect(store.head("/c.ts")?.text).toBe("gamma\n");
+    expect(store.head("/b.ts")).toBeNull();
+  });
+
+  it("evicts the least-recently-used path when maxTotalBytes is exceeded", () => {
+    const store = new InMemorySnapshotStore({ maxTotalBytes: 30 });
+    const big = "B".repeat(25);
+    store.record("/big.ts", big);
+    store.record("/small.ts", "s\n");
+    store.record("/other.ts", "o\n");
+    expect(store.head("/small.ts")?.text).toBe("s\n");
+    expect(store.head("/other.ts")?.text).toBe("o\n");
+    expect(store.head("/big.ts")).toBeNull();
+  });
+
+  it("rejects cross-path lookups", () => {
+    const store = new InMemorySnapshotStore();
+    const tag = store.record(PATH, "shared\n");
+    expect(store.byHash(OTHER, tag)).toBeNull();
+  });
+
+  it("invalidate drops one path; clear drops everything", () => {
+    const store = new InMemorySnapshotStore();
+    const tagA = store.record(PATH, "A\n");
+    const tagB = store.record(OTHER, "B\n");
+    store.invalidate(PATH);
+    expect(store.byHash(PATH, tagA)).toBeNull();
+    expect(store.byHash(OTHER, tagB)?.text).toBe("B\n");
+    store.clear();
+    expect(store.byHash(OTHER, tagB)).toBeNull();
+  });
+
+  it("relocate moves version history and read provenance to a new path", () => {
+    const store = new InMemorySnapshotStore();
+    const dest = "/tmp/__hashline-dest__.ts";
+    const tag = store.record(PATH, "A\n", [1]);
+    store.relocate(PATH, dest);
+    expect(store.byHash(PATH, tag)).toBeNull();
+    expect(store.byHash(dest, tag)?.text).toBe("A\n");
+    expect(store.byHash(dest, tag)?.seenLines).toEqual(new Set([1]));
+    expect(store.head(dest)?.hash).toBe(tag);
+  });
+
+  it("relocate is a no-op when from === to (preserves history)", () => {
+    const store = new InMemorySnapshotStore();
+    const tag = store.record(PATH, "A\n", [1]);
+    store.relocate(PATH, PATH);
+    expect(store.head(PATH)?.hash).toBe(tag);
+    expect(store.byHash(PATH, tag)?.text).toBe("A\n");
+    expect(store.byHash(PATH, tag)?.seenLines).toEqual(new Set([1]));
+  });
+
+  it("findByHash returns every retained version with that tag across paths", () => {
+    const store = new InMemorySnapshotStore();
+    const text = "shared\n";
+    const tag = store.record(PATH, text);
+    store.record(OTHER, text);
+
+    const matches = store.findByHash(tag);
+    expect(matches.map((snapshot) => snapshot.path).sort()).toEqual(
+      [OTHER, PATH].sort()
+    );
+    expect(matches.every((snapshot) => snapshot.hash === tag)).toBe(true);
+    expect(store.findByHash(tag === "0000" ? "FFFF" : "0000")).toEqual([]);
+  });
+});

@@ -64,6 +64,17 @@ export class MismatchError extends Error {
     this.hashRecognized = details.hashRecognized ?? true;
   }
 
+  get displayMessage(): string {
+    return MismatchError.formatDisplayMessage({
+      expectedFileHash: this.expectedFileHash,
+      actualFileHash: this.actualFileHash,
+      fileLines: this.fileLines,
+      anchorLines: this.anchorLines,
+      hashRecognized: this.hashRecognized,
+      ...(this.path === undefined ? {} : { path: this.path }),
+    });
+  }
+
   static rejectionHeader(details: MismatchDetails): string[] {
     const pathText = details.path ? ` for ${details.path}` : "";
     const hashRecognized = details.hashRecognized ?? true;
@@ -77,6 +88,10 @@ export class MismatchError extends Error {
       `Edit rejected${pathText}: file changed between read and edit.`,
       `Section is bound to ${HL_FILE_HASH_SEP}${details.expectedFileHash}, but the current file hashes to ${HL_FILE_HASH_SEP}${details.actualFileHash}. If a prior edit in this session modified this file, copy the ${HL_FILE_PREFIX}path${HL_FILE_HASH_SEP}newhash${HL_FILE_SUFFIX} header from that edit's response; otherwise re-read the file with \`read\` to refresh the tag before retrying.`,
     ];
+  }
+
+  static formatDisplayMessage(details: MismatchDetails): string {
+    return MismatchError.formatMessage(details);
   }
 
   static formatMessage(details: MismatchDetails): string {

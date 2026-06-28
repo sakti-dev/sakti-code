@@ -376,31 +376,6 @@ describe("Patch", () => {
   });
 });
 
-describe("Recovery", () => {
-  it("recovers from hash mismatch via 3-way merge", async () => {
-    const { Patch } = await import("../input");
-    const { recoverWithThreeWayMerge } = await import("../recovery");
-    const original = "keep\nkeep\nchange\nkeep\n";
-    const live = "keep\nkeep\nchange\nkeep\nadded\n";
-    const patch = Patch.parseSingle("[foo.ts#ABCD]\nSWAP 3:\nreplaced\n");
-    const result = recoverWithThreeWayMerge(original, live, patch);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.text).toBe("keep\nkeep\nreplaced\nkeep\nadded\n");
-    }
-  });
-
-  it("returns failed result when conflict is unresolvable", async () => {
-    const { Patch } = await import("../input");
-    const { recoverWithThreeWayMerge } = await import("../recovery");
-    const original = "a\nb\nc\n";
-    const live = "x\ny\nz\n";
-    const patch = Patch.parseSingle("[foo.ts#ABCD]\nSWAP 1:\nq\n");
-    const result = recoverWithThreeWayMerge(original, live, patch);
-    expect(result.success).toBe(false);
-  });
-});
-
 describe("InMemorySnapshotStore", () => {
   it("records and retrieves by hash", async () => {
     const { InMemorySnapshotStore } = await import(

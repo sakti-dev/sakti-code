@@ -13,14 +13,27 @@ import {
   detectLineEnding,
   type Edit,
   generateDiffString,
+  generateNumberedDiff,
   generateUnifiedPatch,
   normalizeToLF,
   restoreLineEndings,
   stripBom,
 } from "./edit-diff.ts";
+import { nativeBlockResolver } from "./hashline/block-resolver.ts";
+import { buildCompactDiffPreview } from "./hashline/diff-preview.ts";
 import { NodeFilesystem } from "./hashline/fs.ts";
 import { Patch } from "./hashline/input.ts";
+import {
+  noChangeDiagnostic,
+  noChangeLoopDiagnostic,
+} from "./hashline/messages.ts";
 import { Patcher } from "./hashline/patcher.ts";
+import {
+  hashPatchInput,
+  type NoopLoopGuardOwner,
+  recordNoopEdit,
+  resetNoopEdit,
+} from "./noop-loop-guard.ts";
 
 const replaceEditSchema = Type.Object(
   {
@@ -66,7 +79,7 @@ export type HashlineEditInput = Static<typeof hashlineEditSchema>;
 export interface EditToolDetails {
   diff: string;
   firstChangedLine?: number;
-  patch: string;
+  patch?: string;
 }
 
 export interface EditOperations {
@@ -93,6 +106,7 @@ export type EditMode = "replace" | "hashline";
 
 export interface EditToolOptions {
   mode?: EditMode;
+  noopOwner?: NoopLoopGuardOwner;
   operations?: EditOperations;
   snapshotStore?: SnapshotStore;
 }
@@ -142,8 +156,24 @@ function validateEditInput(input: EditToolInput): {
 const REPLACE_DESCRIPTION =
   "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.";
 
-const HASHLINE_DESCRIPTION =
-  'Edit files using hashline patches. Each section starts with [path#HASH] (copy the header from read/write output) followed by line-anchored ops: SWAP N.=M: +body, DEL N.=M, INS.PRE/POST/HEAD/TAIL N: +body, REM (delete file), MV "dest".';
+const HASHLINE_DESCRIPTION = `Edit files using hashline patches. Each section starts with [path#HASH] (copy the header from read/write output) followed by line-anchored ops.
+
+Line ops (anchor exact lines):
+- SWAP N.=M: +body        replace lines N through M with the body rows below
+- DEL N.=M                delete lines N through M
+- INS.PRE/POST/HEAD/TAIL N: +body  insert body before/after line N, or at file head/tail
+- REM                     delete the file
+- MV "dest"               move/rename the file
+
+Block ops (anchor the OPENING line of a multi-line construct; tree-sitter resolves the closing line):
+- SWAP.BLK N: +body       replace the whole syntactic block that BEGINS on line N
+- DEL.BLK N               delete the whole syntactic block that BEGINS on line N
+- INS.BLK.POST N: +body   insert body AFTER the block's end (sibling depth). To append inside a block, use INS.POST.
+
+Block-op rules:
+- Anchor the OPENING line of a MULTI-LINE construct (the def/fn/class/if line) — never its closer, last line, or a bare inner statement. A single-statement anchor resolves to ONE line and is REJECTED: use the plain op (SWAP N.=N / DEL N / INS.POST N), or point N at the real opener.
+- Leading decorators/attributes/doc-comments are SEPARATE nodes: point N at the FIRST decorator to sweep both. Standalone line-comments are never swept — use SWAP N.=M.
+- Markdown: a heading line (##/###) IS a block opener — block ops resolve its whole section (through nested deeper headings, up to the next same-or-higher heading).`;
 
 function extractHashlinePaths(input: string): string[] {
   try {
@@ -158,10 +188,11 @@ async function executeHashlineEdit(
   cwd: string,
   input: string,
   snapshotStore: SnapshotStore | undefined,
+  noopOwner: NoopLoopGuardOwner | undefined,
   signal?: AbortSignal
 ): Promise<{
   content: [{ type: "text"; text: string }];
-  details: undefined;
+  details: EditToolDetails;
 }> {
   if (!snapshotStore) {
     throw new Error(
@@ -173,25 +204,72 @@ async function executeHashlineEdit(
     throw new Error("No hashline sections found in input.");
   }
   const fs = new NodeFilesystem(cwd);
-  const patcher = new Patcher({ fs, snapshots: snapshotStore });
+  const patcher = new Patcher({
+    fs,
+    snapshots: snapshotStore,
+    blockResolver: nativeBlockResolver,
+  });
   const result = await patcher.apply(patch);
   if (signal?.aborted) {
     throw new Error("Operation aborted");
   }
-  const lines = result.sections.map((s) => {
-    const note =
-      s.op === "delete"
-        ? `Deleted ${s.path}`
-        : s.op === "noop"
-          ? `No change to ${s.path}`
-          : `${s.header}`;
+  const inputHash = noopOwner ? hashPatchInput(input) : "";
+  // Multi-section noops are thrown by the patcher (Patcher.apply) before the
+  // result reaches this map, so the graduated record/escalate/reset cycle
+  // below only fires for single-section noops — the common case from issue
+  // #2081. A multi-section noop still fails the tool (breaking the loop), but
+  // without graduated counting.
+  const rendered = result.sections.map((s) => {
     const warnings =
       s.warnings.length > 0 ? `\n\nWarnings:\n${s.warnings.join("\n")}` : "";
-    return `${note}${warnings}`;
+    if (s.op === "noop") {
+      if (noopOwner) {
+        const { count, escalate } = recordNoopEdit(
+          noopOwner,
+          s.canonicalPath,
+          inputHash
+        );
+        if (escalate) {
+          throw new Error(noChangeLoopDiagnostic(s.path, count));
+        }
+      }
+      return {
+        text: `${noChangeDiagnostic(s.path)}${warnings}`,
+        diff: "",
+        firstChangedLine: undefined,
+      };
+    }
+    if (noopOwner) {
+      resetNoopEdit(noopOwner, s.canonicalPath);
+    }
+    if (s.op === "delete") {
+      return {
+        text: `Deleted ${s.path}${warnings}`,
+        diff: "",
+        firstChangedLine: undefined,
+      };
+    }
+    const diff = generateNumberedDiff(s.before, s.after);
+    const preview = buildCompactDiffPreview(diff.diff);
+    const previewBlock = preview.preview ? `\n${preview.preview}` : "";
+    const firstChangedLine = s.firstChangedLine ?? diff.firstChangedLine;
+    return {
+      text: `${s.header}${previewBlock}${warnings}`,
+      diff: preview.preview,
+      firstChangedLine,
+    };
   });
+  const text = rendered.map((r) => r.text).join("\n\n");
+  const diffParts = rendered.map((r) => r.diff).filter((p) => p.length > 0);
+  const firstChanged = rendered
+    .map((r) => r.firstChangedLine)
+    .find((line): line is number => line !== undefined);
   return {
-    content: [{ type: "text", text: lines.join("\n\n") }],
-    details: undefined,
+    content: [{ type: "text", text }],
+    details: {
+      diff: diffParts.join("\n"),
+      ...(firstChanged === undefined ? {} : { firstChangedLine: firstChanged }),
+    },
   };
 }
 
@@ -226,6 +304,7 @@ export function createEditTool(
           cwd,
           input,
           options?.snapshotStore,
+          options?.noopOwner,
           signal
         );
         return result;

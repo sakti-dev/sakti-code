@@ -1,3 +1,4 @@
+import { LRUCache } from "lru-cache";
 import { computeFileHash } from "./format";
 
 export interface Snapshot {
@@ -36,7 +37,9 @@ export abstract class SnapshotStore {
   abstract clear(): void;
 }
 
+const DEFAULT_MAX_PATHS = 30;
 const DEFAULT_MAX_VERSIONS_PER_PATH = 4;
+const DEFAULT_MAX_TOTAL_BYTES = 64 * 1024 * 1024;
 
 function mergeSeenLines(
   snapshot: Snapshot,
@@ -54,15 +57,28 @@ function mergeSeenLines(
 }
 
 export interface InMemorySnapshotStoreOptions {
+  maxPaths?: number;
+  maxTotalBytes?: number;
   maxVersionsPerPath?: number;
 }
 
 export class InMemorySnapshotStore extends SnapshotStore {
-  readonly #versions = new Map<string, Snapshot[]>();
+  readonly #versions: LRUCache<string, Snapshot[]>;
   readonly #maxVersionsPerPath: number;
 
   constructor(options: InMemorySnapshotStoreOptions = {}) {
     super();
+    this.#versions = new LRUCache<string, Snapshot[]>({
+      max: options.maxPaths ?? DEFAULT_MAX_PATHS,
+      maxSize: options.maxTotalBytes ?? DEFAULT_MAX_TOTAL_BYTES,
+      sizeCalculation: (history) => {
+        let total = 1;
+        for (const version of history) {
+          total += version.text.length;
+        }
+        return total;
+      },
+    });
     this.#maxVersionsPerPath =
       options.maxVersionsPerPath ?? DEFAULT_MAX_VERSIONS_PER_PATH;
   }
@@ -132,6 +148,9 @@ export class InMemorySnapshotStore extends SnapshotStore {
   }
 
   relocate(from: string, to: string): void {
+    if (from === to) {
+      return;
+    }
     const sourceHistory = this.#versions.get(from);
     if (sourceHistory === undefined || sourceHistory.length === 0) {
       return;

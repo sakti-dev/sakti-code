@@ -339,6 +339,36 @@ describe("EditTool (hashline mode)", () => {
     );
   });
 
+  it("populates result details with a compact diff preview in hashline mode", async () => {
+    const content = "line1\nline2\nline3\n";
+    writeFileSync(join(tmpDir, "hl-preview.txt"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "hl-preview.txt"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    const result = await tool.execute("tc_1", {
+      input: `[hl-preview.txt#${tag}]\nSWAP 2.=2:\n+REPLACED`,
+    });
+    const text = getTextContent(result);
+    expect(text).toContain("REPLACED");
+    const details = (
+      result as {
+        details?: { diff?: string; firstChangedLine?: number };
+      }
+    ).details;
+    expect(details).toBeDefined();
+    expect(details?.diff).toContain("REPLACED");
+    expect(details?.firstChangedLine).toBe(2);
+    expect(readFileSync(join(tmpDir, "hl-preview.txt"), "utf-8")).toBe(
+      "line1\nREPLACED\nline3\n"
+    );
+  });
+
   it("applies a DEL patch via hashline mode", async () => {
     const content = "a\nb\nc\n";
     writeFileSync(join(tmpDir, "hl-del.txt"), content);
@@ -394,6 +424,185 @@ describe("EditTool (hashline mode)", () => {
     });
     expect(readFileSync(join(tmpDir, "roundtrip.ts"), "utf-8")).toBe(
       "new line\n"
+    );
+  });
+});
+
+describe("EditTool (hashline noop-loop-guard)", () => {
+  it("escalates to a thrown error after 3 consecutive identical no-op edits", async () => {
+    const content = "line1\nline2\nline3\n";
+    writeFileSync(join(tmpDir, "hl-noop.txt"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "hl-noop.txt"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+      noopOwner: {},
+    });
+    const noopInput = `[hl-noop.txt#${tag}]\nSWAP 2.=2:\n+line2`;
+
+    const first = await tool.execute("tc_1", { input: noopInput });
+    expect(getTextContent(first)).toContain("re-read");
+
+    const second = await tool.execute("tc_1", { input: noopInput });
+    expect(getTextContent(second)).toContain("re-read");
+
+    await expect(tool.execute("tc_1", { input: noopInput })).rejects.toThrow(
+      "in a row"
+    );
+
+    expect(readFileSync(join(tmpDir, "hl-noop.txt"), "utf-8")).toBe(content);
+  });
+
+  it("resets the counter when a non-noop edit lands on the same path", async () => {
+    const content = "line1\nline2\nline3\n";
+    writeFileSync(join(tmpDir, "hl-reset.txt"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+      noopOwner: {},
+    });
+    const readTool = createReadTool(tmpDir, { snapshotStore });
+
+    const readResult = await readTool.execute("tc_1", { path: "hl-reset.txt" });
+    const tag = getTextContent(readResult).match(/#([0-9A-F]{4})/)?.[1];
+    expect(tag).toBeDefined();
+    const noopInput = `[hl-reset.txt#${tag}]\nSWAP 2.=2:\n+line2`;
+
+    await tool.execute("tc_1", { input: noopInput });
+    await tool.execute("tc_1", { input: noopInput });
+
+    await tool.execute("tc_1", {
+      input: `[hl-reset.txt#${tag}]\nSWAP 2.=2:\n+CHANGED`,
+    });
+    expect(readFileSync(join(tmpDir, "hl-reset.txt"), "utf-8")).toBe(
+      "line1\nCHANGED\nline3\n"
+    );
+
+    const reread = await readTool.execute("tc_1", { path: "hl-reset.txt" });
+    const newTag = getTextContent(reread).match(/#([0-9A-F]{4})/)?.[1];
+    expect(newTag).toBeDefined();
+    const newNoopInput = `[hl-reset.txt#${newTag}]\nSWAP 2.=2:\n+CHANGED`;
+
+    await tool.execute("tc_1", { input: newNoopInput });
+    await tool.execute("tc_1", { input: newNoopInput });
+    await expect(tool.execute("tc_1", { input: newNoopInput })).rejects.toThrow(
+      "in a row"
+    );
+  });
+
+  it("does not escalate when no noopOwner is provided", async () => {
+    const content = "line1\nline2\nline3\n";
+    writeFileSync(join(tmpDir, "hl-noowner.txt"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "hl-noowner.txt"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    const noopInput = `[hl-noowner.txt#${tag}]\nSWAP 2.=2:\n+line2`;
+
+    for (let i = 0; i < 5; i++) {
+      const result = await tool.execute("tc_1", { input: noopInput });
+      expect(getTextContent(result)).toContain("re-read");
+    }
+  });
+});
+
+describe("EditTool (hashline block edits)", () => {
+  it("applies SWAP.BLK via the native block resolver", async () => {
+    const content =
+      "function f() {\n  const a = 1\n  const b = 2\n}\n// trailer\n";
+    writeFileSync(join(tmpDir, "fn-blk-swap.ts"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "fn-blk-swap.ts"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    const result = await tool.execute("tc_1", {
+      input: `[fn-blk-swap.ts#${tag}]\nSWAP.BLK 1:\n+function g() {\n+  return 42\n+}`,
+    });
+    expect(getTextContent(result)).toContain("[fn-blk-swap.ts#");
+    expect(readFileSync(join(tmpDir, "fn-blk-swap.ts"), "utf-8")).toBe(
+      "function g() {\n  return 42\n}\n// trailer\n"
+    );
+  });
+
+  it("applies DEL.BLK via the native block resolver", async () => {
+    const content =
+      "function f() {\n  const a = 1\n  const b = 2\n}\n// trailer\n";
+    writeFileSync(join(tmpDir, "fn-blk-del.ts"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "fn-blk-del.ts"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    await tool.execute("tc_1", {
+      input: `[fn-blk-del.ts#${tag}]\nDEL.BLK 1`,
+    });
+    expect(readFileSync(join(tmpDir, "fn-blk-del.ts"), "utf-8")).toBe(
+      "// trailer\n"
+    );
+  });
+
+  it("applies INS.BLK.POST after the resolved block", async () => {
+    const content =
+      "function f() {\n  const a = 1\n  const b = 2\n}\n// trailer\n";
+    writeFileSync(join(tmpDir, "fn-blk-ins.ts"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "fn-blk-ins.ts"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    await tool.execute("tc_1", {
+      input: `[fn-blk-ins.ts#${tag}]\nINS.BLK.POST 1:\n+export const x = 1`,
+    });
+    expect(readFileSync(join(tmpDir, "fn-blk-ins.ts"), "utf-8")).toBe(
+      "function f() {\n  const a = 1\n  const b = 2\n}\nexport const x = 1\n// trailer\n"
+    );
+  });
+
+  it("rejects SWAP.BLK on a single-line statement", async () => {
+    const content = "const x = 1\n";
+    writeFileSync(join(tmpDir, "fn-blk-single.ts"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "fn-blk-single.ts"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    await expect(
+      tool.execute("tc_1", {
+        input: `[fn-blk-single.ts#${tag}]\nSWAP.BLK 1:\n+const y = 2`,
+      })
+    ).rejects.toThrow(/single-line block/);
+    expect(readFileSync(join(tmpDir, "fn-blk-single.ts"), "utf-8")).toBe(
+      content
     );
   });
 });

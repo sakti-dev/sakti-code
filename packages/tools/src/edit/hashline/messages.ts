@@ -185,6 +185,25 @@ function formatLineRanges(lines: readonly number[]): string {
   return parts.join(", ");
 }
 
+export function noChangeDiagnostic(path: string): string {
+  return (
+    `Edits to ${path} parsed and applied cleanly, but produced no change: ` +
+    "your body row(s) are byte-identical to the file at the targeted lines. " +
+    "The bug is somewhere else — re-read the file before issuing another edit. " +
+    "Do NOT widen the payload or add lines; verify the anchor first."
+  );
+}
+
+export function noChangeLoopDiagnostic(path: string, count: number): string {
+  return (
+    `STOP. Edits to ${path} have been a byte-identical no-op ${count} times in a row — ` +
+    "the patch body matches the file at the targeted lines and the soft hint did not break the cycle. " +
+    "Cease re-issuing this payload. Either the intended change is already on disk (move on), " +
+    "or your anchor is wrong (re-read the file with `read` to observe the current line numbers and " +
+    "tag, then author a different edit). This exact payload will keep being rejected until it changes."
+  );
+}
+
 export type BlockOp = "replace" | "delete" | "insert_after";
 
 export function blockSingleLineMessage(line: number, op: BlockOp): string {

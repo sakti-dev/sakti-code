@@ -25,6 +25,12 @@ export const HL_RANGE_SEP = ".=";
 
 export const HL_LINE_BODY_SEP = ":";
 
+function regexEscape(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export const HL_LINE_BODY_SEP_RE_RAW = regexEscape(HL_LINE_BODY_SEP);
+
 export const HL_LINE_RE_RAW = "[1-9]\\d*";
 
 export const HL_LINE_CAPTURE_RE_RAW = `(${HL_LINE_RE_RAW})`;
@@ -50,6 +56,15 @@ export function computeFileHash(text: string): string {
     .toString(16)
     .padStart(HL_FILE_HASH_LENGTH, "0")
     .toUpperCase();
+}
+
+export function computeRawHash(input: string): string {
+  let hash = 0x81_1c_9d_c5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01_00_01_93);
+  }
+  return (hash >>> 0).toString(16);
 }
 
 export function formatHashlineHeader(path: string, hash: string): string {

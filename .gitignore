@@ -19,3 +19,6 @@ references/
 # intentionally narrow: only matches the "test-workdir-*" scratch dirs tests
 # create at runtime — never *.test.ts source files.
 test-workdir-*
+
+# Rust / cargo build artifacts
+target/

@@ -1,0 +1,16 @@
+[package]
+name = "pi-natives"
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "3", features = ["napi8"] }
+napi-derive = "3"
+pi-ast = { path = "../../vendor/pi-crates/crates/pi-ast" }
+
+[build-dependencies]
+napi-build = "2"

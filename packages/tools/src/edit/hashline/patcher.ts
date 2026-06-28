@@ -11,8 +11,15 @@ import {
   stripBom,
 } from "../../lib/hashline-utils/normalize";
 import type { SnapshotStore } from "../../lib/hashline-utils/snapshots";
-import type { ApplyResult, Edit, FileOp } from "../../lib/hashline-utils/types";
+import type {
+  ApplyResult,
+  BlockResolution,
+  BlockResolver,
+  Edit,
+  FileOp,
+} from "../../lib/hashline-utils/types";
 import { applyEdits } from "./apply";
+import { hasBlockEdit, resolveBlockEdits } from "./block";
 import { type Filesystem, isNotFound, type WriteResult } from "./fs";
 import type { Patch, PatchSection } from "./input";
 import {
@@ -25,6 +32,7 @@ import { MismatchError } from "./mismatch";
 import { Recovery, type RecoveryResult } from "./recovery";
 
 export interface PatcherOptions {
+  blockResolver?: BlockResolver;
   fs: Filesystem;
   snapshots: SnapshotStore;
 }
@@ -32,6 +40,7 @@ export interface PatcherOptions {
 export interface PatchSectionResult {
   after: string;
   before: string;
+  blockResolutions?: BlockResolution[];
   canonicalPath: string;
   fileHash: string;
   firstChangedLine?: number;
@@ -160,6 +169,7 @@ export class Patcher {
   readonly fs: Filesystem;
   readonly snapshots: SnapshotStore;
   readonly recovery: Recovery;
+  readonly blockResolver: BlockResolver | undefined;
 
   constructor(options: PatcherOptions) {
     if (!options.snapshots) {
@@ -170,6 +180,7 @@ export class Patcher {
     this.fs = options.fs;
     this.snapshots = options.snapshots;
     this.recovery = new Recovery(options.snapshots);
+    this.blockResolver = options.blockResolver;
   }
 
   async apply(patch: Patch): Promise<PatcherApplyResult> {
@@ -426,6 +437,9 @@ export class Patcher {
         ...(applyResult.firstChangedLine === undefined
           ? {}
           : { firstChangedLine: applyResult.firstChangedLine }),
+        ...(applyResult.blockResolutions === undefined
+          ? {}
+          : { blockResolutions: applyResult.blockResolutions }),
         moveDest,
         warnings,
       };
@@ -448,6 +462,9 @@ export class Patcher {
       ...(applyResult.firstChangedLine === undefined
         ? {}
         : { firstChangedLine: applyResult.firstChangedLine }),
+      ...(applyResult.blockResolutions === undefined
+        ? {}
+        : { blockResolutions: applyResult.blockResolutions }),
       warnings,
     };
   }
@@ -518,29 +535,69 @@ export class Patcher {
     const liveMatches =
       expected !== undefined && computeFileHash(normalized) === expected;
 
+    const blockResolutions: BlockResolution[] = [];
+    const resolveWarnings: string[] = [];
+    let resolved: readonly Edit[] = edits;
+    if (hasBlockEdit(edits)) {
+      const baseText =
+        expected === undefined || liveMatches
+          ? normalized
+          : this.snapshots.byHash(canonicalPath, expected)?.text;
+      if (baseText === undefined) {
+        throw this.#mismatchError(
+          section,
+          canonicalPath,
+          normalized,
+          expected ?? "",
+          false
+        );
+      }
+      resolved = resolveBlockEdits(
+        edits,
+        baseText,
+        section.path,
+        this.blockResolver,
+        {
+          onUnresolved: "throw",
+          onResolved: (resolution) => blockResolutions.push(resolution),
+          onWarning: (warning) => resolveWarnings.push(warning),
+        }
+      );
+    }
+    const withResolveWarnings = (result: ApplyResult): ApplyResult =>
+      resolveWarnings.length === 0
+        ? result
+        : {
+            ...result,
+            warnings: [...resolveWarnings, ...(result.warnings ?? [])],
+          };
+
     if (expected === undefined || liveMatches) {
       if (expected !== undefined) {
         this.#assertSeenLines(section, canonicalPath, expected);
       }
-      return applyEdits(normalized, edits);
+      const result = applyEdits(normalized, resolved);
+      return withResolveWarnings(
+        blockResolutions.length > 0 ? { ...result, blockResolutions } : result
+      );
     }
 
-    if (!hasAnchorScopedEdit(edits)) {
-      const result = applyEdits(normalized, edits);
-      return {
+    if (!hasAnchorScopedEdit(resolved)) {
+      const result = applyEdits(normalized, resolved);
+      return withResolveWarnings({
         ...result,
         warnings: [HEADTAIL_DRIFT_WARNING, ...(result.warnings ?? [])],
-      };
+      });
     }
 
     const recovered = this.recovery.tryRecover({
       path: canonicalPath,
       currentText: normalized,
       fileHash: expected,
-      edits,
+      edits: resolved,
     });
     if (recovered) {
-      return recoveryToApplyResult(recovered);
+      return withResolveWarnings(recoveryToApplyResult(recovered));
     }
     const hashRecognized =
       this.snapshots.byHash(canonicalPath, expected) !== null;
