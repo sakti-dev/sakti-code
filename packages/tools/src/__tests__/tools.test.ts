@@ -176,6 +176,34 @@ describe("WriteTool", () => {
     await tool.execute("tc_1", { path: "overwrite.txt", content: "new" });
     expect(readFileSync(join(tmpDir, "overwrite.txt"), "utf-8")).toBe("new");
   });
+
+  it("records snapshot and emits [path#HASH] when snapshotStore provided", async () => {
+    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const snapshotStore = new InMemorySnapshotStore();
+    const tool = createWriteTool(tmpDir, { snapshotStore });
+    const result = await tool.execute("tc_1", {
+      path: "snap-write.ts",
+      content: "line1\nline2\n",
+    });
+    const text = getTextContent(result);
+    expect(text).toContain("[snap-write.ts#");
+    const match = text.match(/#([0-9A-F]{4})/);
+    expect(match).not.toBeNull();
+    const hash = match[1];
+    expect(
+      snapshotStore.byHash(join(tmpDir, "snap-write.ts"), hash)
+    ).not.toBeNull();
+  });
+
+  it("does not emit hash header when no snapshotStore", async () => {
+    const tool = createWriteTool(tmpDir);
+    const result = await tool.execute("tc_1", {
+      path: "plain-write.txt",
+      content: "hello",
+    });
+    const text = getTextContent(result);
+    expect(text).not.toMatch(/\[#/);
+  });
 });
 
 describe("EditTool", () => {

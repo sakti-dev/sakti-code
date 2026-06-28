@@ -3,6 +3,9 @@ import { dirname } from "node:path";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
 import { withFileMutationQueue } from "../lib/file-mutation-queue.ts";
+import { formatHashlineHeader } from "../lib/hashline/format.ts";
+import { normalizeToLF } from "../lib/hashline/normalize.ts";
+import type { SnapshotStore } from "../lib/hashline/snapshots.ts";
 import { resolveToCwd } from "../lib/path-utils.ts";
 
 const writeSchema = Type.Object({
@@ -28,6 +31,7 @@ const defaultWriteOperations: WriteOperations = {
 
 export interface WriteToolOptions {
   operations?: WriteOperations;
+  snapshotStore?: SnapshotStore;
 }
 
 export function createWriteTool(
@@ -65,11 +69,20 @@ export function createWriteTool(
         await ops.writeFile(absolutePath, content);
         throwIfAborted();
 
+        const byteSize = Buffer.byteLength(content, "utf-8");
+        let outputText = `Successfully wrote ${byteSize} bytes to ${path}`;
+
+        if (options?.snapshotStore) {
+          const normalized = normalizeToLF(content);
+          const hash = options.snapshotStore.record(absolutePath, normalized);
+          outputText += `\n${formatHashlineHeader(path, hash)}`;
+        }
+
         return {
           content: [
             {
               type: "text" as const,
-              text: `Successfully wrote ${Buffer.byteLength(content, "utf-8")} bytes to ${path}`,
+              text: outputText,
             },
           ],
           details: undefined,
