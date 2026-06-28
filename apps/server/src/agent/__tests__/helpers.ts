@@ -92,6 +92,7 @@ export function createMockCtx(overrides?: {
         get: vi.fn(() => null),
         getByPrefix: vi.fn(() => []),
         set: vi.fn(async () => {}),
+        delete: vi.fn(async () => {}),
         getAll: vi.fn(() => []),
       },
       turns: {
@@ -188,6 +189,7 @@ export function createMultiSessionCtx(
         get: vi.fn(() => null),
         getByPrefix: vi.fn(() => []),
         set: vi.fn(async () => {}),
+        delete: vi.fn(async () => {}),
         getAll: vi.fn(() => []),
       },
       turns: {

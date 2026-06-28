@@ -190,6 +190,10 @@ export class SettingsRepo {
       });
   }
 
+  async delete(key: string): Promise<void> {
+    await this.db.delete(settings).where(eq(settings.key, key));
+  }
+
   getAll() {
     return this.db.select().from(settings).all();
   }

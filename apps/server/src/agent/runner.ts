@@ -210,6 +210,60 @@ export function loadSessionSettings(
   return { ...DEFAULT_SETTINGS, ...overrides };
 }
 
+/**
+ * Load the set of disabled skill names for a session.
+ *
+ * Disabled skills are stored as keyed-prefix entries in the settings table:
+ *   `session:<id>:disabled_skill:<name>` = "1"
+ *
+ * This is the persistent substrate (Layer 1) that survives app restart. On
+ * restart, `loadAgentContext` rescans disk for skill files; the runner then
+ * filters out names in this set before composing the harness system prompt via
+ * `appendSkillsBlock`. The harness therefore starts in the correct state
+ * without any in-memory pending-refresh state needed.
+ *
+ * Keyed-prefix (not JSON array) so each enable/disable is a single key
+ * write/delete — atomic, no read-modify-write cycle.
+ */
+export function loadDisabledSkills(
+  ctx: ServerContext,
+  sessionId: string
+): Set<string> {
+  const prefix = `session:${sessionId}:disabled_skill:`;
+  const rows = ctx.repos.settings.getByPrefix(prefix);
+  const names = new Set<string>();
+  for (const row of rows) {
+    const name = row.key.slice(prefix.length);
+    if (name.length > 0) {
+      names.add(name);
+    }
+  }
+  return names;
+}
+
+/** Persist a skill-disable for this session (idempotent). Layer 1 only. */
+export async function persistSkillDisabled(
+  ctx: ServerContext,
+  sessionId: string,
+  skillName: string
+): Promise<void> {
+  await ctx.repos.settings.set(
+    `session:${sessionId}:disabled_skill:${skillName}`,
+    "1"
+  );
+}
+
+/** Remove a skill-disable for this session (idempotent). Layer 1 only. */
+export async function persistSkillEnabled(
+  ctx: ServerContext,
+  sessionId: string,
+  skillName: string
+): Promise<void> {
+  await ctx.repos.settings.delete(
+    `session:${sessionId}:disabled_skill:${skillName}`
+  );
+}
+
 export function resolveThinkingLevel(
   ctx: ServerContext,
   sessionId: string,
@@ -367,6 +421,15 @@ export async function runPrompt(
   // resolve) and to resolve the session agent by name without a second scan.
   const loadedContext = await loadAgentContext(project.cwd);
 
+  // Layer 1: filter out skills disabled for this session (persistent state
+  // surviving app restart). The keyed-prefix entries are read once at run
+  // start; in-session disables use the harness's removeSkill() (Layer 2) and
+  // don't need to touch this filter.
+  const disabledSkills = loadDisabledSkills(ctx, sessionId);
+  const activeSkills = loadedContext.skills.filter(
+    (skill) => !disabledSkills.has(skill.name)
+  );
+
   const harness = new HarnessClass({
     env,
     model,
@@ -381,7 +444,7 @@ export async function runPrompt(
     thinkingLevel,
     getApiKeyAndHeaders,
     resources: {
-      skills: loadedContext.skills,
+      skills: activeSkills,
       promptTemplates: loadedContext.commands,
     },
   });
@@ -410,12 +473,13 @@ export async function runPrompt(
     // (mirrors pi's coding-agent buildSystemPrompt): skills are advertised
     // only when `read` is available, since they're loaded by reading the
     // SKILL.md path. Intake keeps its dedicated prompt and skips this.
+    // `activeSkills` already excludes Layer-1-disabled skills.
     const hasRead =
       agent.activeToolNames === undefined ||
       agent.activeToolNames.includes("read");
     const composedSystemPrompt = appendSkillsBlock(
       agent.systemPrompt,
-      loadedContext.skills,
+      activeSkills,
       hasRead
     );
     await harness.switchAgent(
@@ -493,7 +557,7 @@ export async function runPrompt(
             const plan = await planFirstTurn(
               message,
               {
-                skills: loadedContext.skills,
+                skills: activeSkills,
                 templates: loadedContext.commands,
               },
               project.cwd,

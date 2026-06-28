@@ -7,7 +7,10 @@ import type { AgentHarnessEvent } from "@sakti-code/agent";
 import {
   abortRun,
   clearRunsForTesting,
+  loadDisabledSkills,
   loadSessionSettings,
+  persistSkillDisabled,
+  persistSkillEnabled,
   resolveThinkingLevel,
   runPrompt,
 } from "../runner.ts";
@@ -159,5 +162,74 @@ describe("runPrompt", () => {
     const ctx = createMockCtx();
     const settings = loadSessionSettings(ctx, "sess-1");
     expect(settings.auto_compaction).toBe("false");
+  });
+});
+
+describe("loadDisabledSkills", () => {
+  it("returns the set of disabled skill names for a session via getByPrefix", () => {
+    const ctx = createMockCtx();
+    (
+      ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>
+    ).mockReturnValue([
+      { key: "session:sess-1:disabled_skill:graphify", value: "1" },
+      { key: "session:sess-1:disabled_skill:old-thing", value: "1" },
+      // An unrelated per-session setting should never be returned because the
+      // prefix is `disabled_skill:`, but verify the slice still skips it.
+      { key: "session:sess-1:thinking_level", value: "high" },
+    ]);
+
+    const result = loadDisabledSkills(ctx, "sess-1");
+
+    expect(ctx.repos.settings.getByPrefix).toHaveBeenCalledWith(
+      "session:sess-1:disabled_skill:"
+    );
+    expect(result).toEqual(new Set(["graphify", "old-thing"]));
+  });
+
+  it("returns an empty set when nothing is disabled", () => {
+    const ctx = createMockCtx();
+    (
+      ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>
+    ).mockReturnValue([]);
+
+    const result = loadDisabledSkills(ctx, "sess-empty");
+    expect(result.size).toBe(0);
+  });
+
+  it("scopes to the requested session — does not leak across sessions", () => {
+    const ctx = createMockCtx();
+    (
+      ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>
+    ).mockReturnValue([
+      { key: "session:sess-1:disabled_skill:graphify", value: "1" },
+    ]);
+
+    const result = loadDisabledSkills(ctx, "sess-1");
+    expect(result.has("graphify")).toBe(true);
+
+    // The helper must always query with the requested session id — a different
+    // call would produce a different prefix and the mock would not match.
+    expect(ctx.repos.settings.getByPrefix).toHaveBeenCalledWith(
+      "session:sess-1:disabled_skill:"
+    );
+  });
+});
+
+describe("persistSkillDisabled / persistSkillEnabled", () => {
+  it("persistSkillDisabled writes the keyed-prefix entry with value '1'", async () => {
+    const ctx = createMockCtx();
+    await persistSkillDisabled(ctx, "sess-1", "graphify");
+    expect(ctx.repos.settings.set).toHaveBeenCalledWith(
+      "session:sess-1:disabled_skill:graphify",
+      "1"
+    );
+  });
+
+  it("persistSkillEnabled deletes the keyed-prefix entry", async () => {
+    const ctx = createMockCtx();
+    await persistSkillEnabled(ctx, "sess-1", "graphify");
+    expect(ctx.repos.settings.delete).toHaveBeenCalledWith(
+      "session:sess-1:disabled_skill:graphify"
+    );
   });
 });
