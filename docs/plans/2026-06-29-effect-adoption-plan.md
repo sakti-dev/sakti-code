@@ -6,7 +6,7 @@ Replace the most error-prone manual async plumbing in the agent loop with Effect
 
 ## Constraints
 
-- **Tools stay plain TS** — bash, read, write, edit remain `async function` returning `Promise`. Effect wraps them at the boundary with `Effect.promise(() => tool.execute(...))`.
+- **Tools stay plain TS** — bash, read, write, edit remain `async function` returning `Promise`. Effect wraps them at the boundary with `Effect.promise(() => tool.execute(...))`. (`Effect.promise` is correct here because tool results encode failures as values — the promise should never reject. If it does, that's a defect, not a recoverable error. `Effect.tryPromise` would be needed if tool errors were throws.)
 - **Incremental adoption** — each phase is independently shippable. Rollback is one revert.
 - **No `Effect.runPromise` sandwich** — once a function is Effect-native, it stays Effect-native for composition. `runPromise` is called only at the outermost boundary (agent.ts / harness entry points).
 - **Test compatibility** — existing tests use vitest, not `@effect/vitest`. Effect-native functions expose a `runTest()` helper that returns `Promise` for existing test fixtures.
@@ -35,35 +35,51 @@ async function executeToolCallsParallel(...) {
 }
 ```
 
-**Target code** (Effect-native):
+**Target code** (Effect-native, based on `openspec/references/effect/packages/effect/src/FiberSet.ts`):
+
+Note: `FiberSet.join` returns `void` (surfaces errors but doesn't collect values). Results are stored in a mutable array indexed by position to preserve ordering. `FiberSet.make()` requires `Scope.Scope` in `R`.
+
 ```ts
-function executeToolCallsParallel(
-  currentContext, assistantMessage, toolCalls, config, signal, emit
-): Effect.Effect<ExecutedToolCallBatch> {
-  return Effect.gen(function* () {
-    const fibers = yield* FiberSet.make<FinalizedToolCallOutcome>();
-    for (const toolCall of toolCalls) {
+const executeToolCallsParallel = Effect.fn("agent-loop.executeToolCallsParallel")(
+  function* (
+    currentContext, assistantMessage, toolCalls, config, signal, emit
+  ): Effect<ExecutedToolCallBatch, never, Scope.Scope> {
+    const finalOutcomes: Array<{ index: number; outcome: FinalizedToolCallOutcome }> = [];
+    const set = yield* FiberSet.make<FinalizedToolCallOutcome>();
+
+    for (const [i, toolCall] of toolCalls.entries()) {
       yield* emit({ type: "tool_execution_start", ... });
+
       const preparation = yield* Effect.promise(() => prepareToolCall(...));
+
       if (preparation.kind === "immediate") {
         const finalized = { ... };
         yield* emitToolExecutionEnd(finalized);
-        yield* FiberSet.add(fibers, Effect.succeed(finalized));
+        finalOutcomes.push({ index: i, outcome: finalized });
       } else {
-        yield* FiberSet.add(fibers,
-          Effect.promise(() => executePreparedToolCall(preparation, signal, emit)).pipe(
-            Effect.flatMap(executed =>
-              Effect.promise(() => finalizeExecutedToolCall(...))
-            )
-          )
+        // FiberSet.run forks the effect into the set, auto-removes on completion
+        yield* FiberSet.run(set,
+          Effect.gen(function* () {
+            const executed = yield* Effect.promise(() =>
+              executePreparedToolCall(preparation, signal, emit)
+            );
+            const finalized = yield* Effect.promise(() =>
+              finalizeExecutedToolCall(...)
+            );
+            finalOutcomes.push({ index: i, outcome: finalized });
+          })
         );
       }
     }
-    const results = yield* FiberSet.join(fibers);
-    // same result ordering + finalization as current
-    return { messages, terminate: shouldTerminateToolBatch(results) };
-  })
-}
+
+    yield* FiberSet.join(set); // wait for all, surfaces first error
+    const ordered = finalOutcomes.sort((a, b) => a.index - b.index).map(r => r.outcome);
+    return {
+      messages: ordered.flatMap(o => o.messages),
+      terminate: shouldTerminateToolBatch(ordered),
+    };
+  }
+)
 ```
 
 **What this buys:**
@@ -71,9 +87,20 @@ function executeToolCallsParallel(
 - **Structured cancellation** — `FiberSet.join` is interruptible; if the parent fiber is interrupted, all tool fibers cancel automatically (no more `acceptingUpdates` boolean)
 - **Supervision** — `Effect.raceFirst(FiberSet.join(fibers), FiberSet.awaitEmpty(fibers))` handles edge cases
 
+**Call-site integration (Phase 1):** Since `FiberSet.make()` requires `Scope.Scope`, the call site must wrap with `Effect.scoped` until Phase 4 provides the scope from `runWithLifecycleEffect`:
+
+```ts
+// Phase 1 (no scope available yet):
+const batch = await Effect.runPromise(
+  Effect.scoped(executeToolCallsParallel(...))
+)
+// Phase 4+ (scope comes from runWithLifecycleEffect naturally):
+const batch = await Effect.runPromise(executeToolCallsParallel(...))
+```
+
 **Risk:** Low. Tool execution functions are unchanged. The Effect boundary is clean (`Effect.promise(() => ...)`). If anything breaks, revert to `Promise.all`.
 
-**Test impact:** `executeToolCallsParallel` gains an Effect signature. Existing tests that import it need to call `Effect.runPromise(...)`. Tests that only test through the top-level `runLoopEffect` work unchanged.
+**Test impact:** `executeToolCallsParallel` gains an Effect signature. Existing tests that import it need to call `Effect.runPromise(Effect.scoped(...))`. Tests that only test through the top-level `runLoopEffect` work unchanged.
 
 ---
 
@@ -147,14 +174,18 @@ class PendingMessageQueue {
 }
 ```
 
-**Target code:**
+**Target code** (verified against source):
 ```ts
 // In constructor:
 this.steeringQueue = yield* Queue.bounded<AgentMessage>(100)
-this.followUpQueue = Queue.bounded<AgentMessage>(100)
+this.followUpQueue = yield* Queue.bounded<AgentMessage>(100)
 
-// In drain:
-steeringQueue: yield* Queue.takeAll(queue), yield* Queue.take(queue)
+// In drain (note: takeAll returns Chunk<A>, convert with Chunk.toReadonlyArray):
+steeringQueue: Chunk.toReadonlyArray(yield* Queue.takeAll(queue))
+followUpQueue: {
+  const msg = yield* Queue.take(queue);    // blocks until available
+  // ... process one message ...
+}
 ```
 
 **What this buys:**
@@ -187,23 +218,40 @@ private async runWithLifecycle(executor) {
 }
 ```
 
-**Target code:**
+**Target code** (per processes.md §Scope Patterns — Manual; verified against source):
 ```ts
-private runWithLifecycleEffect(executor) {
-  return Effect.scoped(Effect.gen(function* () {
+private readonly runWithLifecycle = Effect.fn("Agent.runWithLifecycle")(
+  function* <R>(executor: Effect.Effect<R>) {
     const scope = yield* Scope.make();
-    const fiber = yield* Effect.fork(executor.pipe(Effect.scoped(scope)));
-    this.activeFiber = fiber;
+    const fiber = yield* Effect.fork(
+      executor.pipe(Scope.extend(scope))
+    );
+    this.activeRun = { fiber, scope };
     const result = yield* fiber.join();
+    yield* Scope.close(scope, Exit.succeed(undefined));
     return result;
-  }));
+  }
+);
+
+// External interruption (called from async code):
+interruptRun() {
+  const run = this.activeRun;
+  if (run) {
+    Effect.runPromise(Scope.close(run.scope, Exit.succeed(undefined)));
+  }
 }
 ```
 
+**Pattern explanation:**
+- `Scope.make()` creates a manual, closeable scope (not auto-closed by `Effect.scoped`)
+- `Scope.extend(scope)` ties the executor's resources to our scope and removes `Scope` from its requirements
+- `Effect.fork` spawns the executor as a child fiber within the scope
+- `Scope.close(scope, Exit.succeed(undefined))` on interruption terminates the scope, which cascades to all fibers and resources registered in it
+
 **What this buys:**
 - **No stored resolve** — `Fiber.join()` replaces the promise-based completion
-- **Structural interruption** — `Fiber.interrupt(this.activeFiber)` replaces `abortController.abort()` and propagates cancellation through all child fibers (including Phase 1's FiberSet)
-- **Automatic scope teardown** — when scope closes, all acquired resources (open queues, temp files, child fibers) are cleaned up
+- **Structural interruption** — `Scope.close` cascades cancellation through all child fibers (including Phase 1's FiberSet), replacing the manual `AbortController.abort()` + `acceptingUpdates` boolean
+- **Automatic scope teardown** — when scope closes, all acquired resources (queues from Phase 3, temp files) are finalized automatically
 - **No manual `signal?.aborted` checks** — Effect-interrupted fibers stop at the next yield point automatically
 
 **Risk:** Medium. This is the lifecycle entry point — affects `prompt()`, `continue()`, and `interrupt()`. The public API stays the same (still returns `Promise` via `Effect.runPromise`), so consumers don't change.
@@ -229,7 +277,7 @@ if (!slept) { /* aborted */ return; }
 const policy = Schedule.exponential(baseDelayMs).pipe(
   Schedule.jittered(),
   Schedule.whileInput(() => shouldRetry(input)),
-  Schedule.compose(Schedule.records(maxRetries)),
+  Schedule.compose(Schedule.recurs(maxRetries)),
 )
 yield* Effect.retry(turnEffect, policy)
 ```
@@ -241,6 +289,59 @@ yield* Effect.retry(turnEffect, policy)
 - **Interruptible by default** — `Effect.retry` respects the parent fiber's interruption
 
 **Risk:** Very low. Same logic, less code.
+
+---
+
+## Effect Style Guidelines
+
+Based on the Effect-TS skill (`.opencode/skills/effect-ts/`):
+
+### Use `Effect.fn` for all orchestration functions
+
+Every Effect function that appears at the module boundary should use `Effect.fn` for call-site tracing and named spans:
+
+```ts
+const executeToolCallsParallel = Effect.fn("agent-loop.executeToolCallsParallel")(
+  function* (...args) {
+    // ...
+  }
+)
+```
+
+This applies to: `executeToolCallsParallel`, `executeWithRetry`, `runWithLifecycle`, `processStream` — any publicly composed Effect sequence.
+
+### Prefer `Effect.gen` over chaining
+
+Use `Effect.gen(function* () { ... yield* ... })` for sequential composition. Reserve `.pipe()` for cross-cutting concerns (retry, timeout, provide).
+
+### Error types use `Schema.TaggedErrorClass`
+
+If new domain errors are introduced (e.g., `ToolExecutionError`, `StreamInterruptedError`), define them as `Schema.TaggedErrorClass` so they're yieldable, serializable, and pattern-matchable with `catchTag`.
+
+### Provide once at the boundary
+
+`Effect.runPromise` is called only at `prompt()` / `continue()` / `interrupt()`. All intermediate code stays Effect-native for composition.
+
+### Verification Complete
+
+All APIs verified against `openspec/references/effect/packages/effect/src/`:
+
+| API | Found at | Verdict | Notes |
+|-----|----------|---------|-------|
+| `FiberSet.make()` | `FiberSet.ts:117` | ✅ | Returns `Effect<FiberSet<A, E>, never, Scope>` — requires `Effect.scoped` or `Scope.extend` |
+| `FiberSet.run(set, effect)` | `FiberSet.ts:306` | ✅ | Forks effect into set, returns `Effect<RuntimeFiber>`. Auto-removes on completion. |
+| `FiberSet.join(set)` | `FiberSet.ts:477` | ✅ | Returns `Effect<void, E>` — **does NOT collect values**. Use mutable array + index to collect results. |
+| `FiberSet.add` | `FiberSet.ts:242` | ✅ | Takes `RuntimeFiber` (already running). Prefer `FiberSet.run` for new effects. |
+| `Stream.fromAsyncIterable(iterable, onError)` | `Stream.ts:1903` | ✅ | Signature: `<A, E>(iterable: AsyncIterable<A>, onError: (e: unknown) => E) => Stream<A, E>` |
+| `Queue.bounded(n)` | `Queue.ts:435` | ✅ | Returns `Effect<Queue<A>>` — must be yielded, not called sync |
+| `Queue.take(queue)` | `Queue.ts:598` | ✅ | Returns `Effect<A>` — blocks until available |
+| `Queue.takeAll(queue)` | `Queue.ts:607` | ✅ | Returns `Effect<Chunk<A>>` — **not `A[]`**, use `Chunk.toReadonlyArray` |
+| `Queue.shutdown(queue)` | `Queue.ts:535` | ✅ | Returns `Effect<void>` — wakes all pending takers |
+| `Scope.make()` | `Scope.ts:202` | ✅ | Returns `Effect<CloseableScope>` — can take optional `ExecutionStrategy` |
+| `Scope.extend(scope)` | `Scope.ts:163` | ✅ | Dual: `Scope.extend(scope)(effect)` or `effect.pipe(Scope.extend(scope))` |
+| `Scope.close(scope, exit)` | `Scope.ts:152` | ✅ | Signature: `(CloseableScope, Exit<unknown, unknown>) => Effect<void>` — use `Exit.succeed(undefined)` for success |
+| `Effect.fn(name)` | `Effect.ts:14630` | ✅ | Returns `fn.Gen & fn.NonGen`. Call with `(function* () { ... }, ...policies?)` |
+| `Effect.promise(() => p)` | Source | ✅ | Wraps promise, rejects become defects (correct for value-encoded tool errors) |
 
 ---
 
