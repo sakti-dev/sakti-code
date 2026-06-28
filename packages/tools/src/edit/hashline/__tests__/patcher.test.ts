@@ -19,6 +19,12 @@ describe("Patcher construction", () => {
 
     expect(() => new Patcher(options)).toThrow(/requires a SnapshotStore/);
   });
+
+  it("normalizes lowercase section tags while parsing", () => {
+    const section = Patch.parseSingle("[a.ts#1a2b]\nSWAP 1.=1:\n+after");
+
+    expect(section.fileHash).toBe("1A2B");
+  });
 });
 
 describe("Patcher MismatchError message contracts", () => {

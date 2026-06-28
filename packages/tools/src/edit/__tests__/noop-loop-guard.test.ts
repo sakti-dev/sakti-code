@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  hashPatchInput,
   NOOP_HARD_LIMIT,
   type NoopLoopGuardOwner,
   recordNoopEdit,
@@ -52,5 +53,17 @@ describe("noop-loop-guard", () => {
   it("resetNoopEdit is a no-op when no guard exists yet", () => {
     const session: NoopLoopGuardOwner = {};
     expect(() => resetNoopEdit(session, "/a.ts")).not.toThrow();
+  });
+
+  it("hashPatchInput does not normalize trailing whitespace (progress is detected)", () => {
+    expect(hashPatchInput("SWAP 1.=1:\nfoo")).not.toBe(
+      hashPatchInput("SWAP 1.=1:\nfoo   ")
+    );
+  });
+
+  it("hashPatchInput is deterministic for identical payloads", () => {
+    expect(hashPatchInput("SWAP 1.=1:\nfoo")).toBe(
+      hashPatchInput("SWAP 1.=1:\nfoo")
+    );
   });
 });

@@ -1,4 +1,4 @@
-import { computeFileHash } from "../lib/hashline-utils/format";
+import { computeRawHash } from "../lib/hashline-utils/format";
 
 interface NoopLoopEntry {
   count: number;
@@ -51,5 +51,5 @@ export function resetNoopEdit(
 }
 
 export function hashPatchInput(input: string): string {
-  return computeFileHash(input);
+  return computeRawHash(input);
 }

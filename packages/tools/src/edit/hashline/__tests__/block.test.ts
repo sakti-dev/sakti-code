@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatNumberedLine } from "../../../lib/hashline-utils/format";
+import {
+  computeFileHash,
+  formatNumberedLine,
+} from "../../../lib/hashline-utils/format";
+import { InMemorySnapshotStore } from "../../../lib/hashline-utils/snapshots";
 import type {
   BlockResolution,
   BlockResolver,
@@ -7,7 +11,11 @@ import type {
   Edit,
 } from "../../../lib/hashline-utils/types";
 import { hasBlockEdit, resolveBlockEdits } from "../block";
+import { InMemoryFilesystem } from "../fs";
+import { Patch } from "../input";
+import { MismatchError } from "../mismatch";
 import { parsePatch } from "../parser";
+import { Patcher } from "../patcher";
 
 const PATH = "x.ts";
 
@@ -280,5 +288,229 @@ describe("resolveBlockEdits passthrough", () => {
     if (first?.kind === "insert") {
       expect(first.text).toBe("keep");
     }
+  });
+});
+
+describe("PatchSection.applyTo / applyPartialTo with block edits", () => {
+  const text = "function x() {\n  if (y) {\n  }\n}\n";
+
+  it("applyTo resolves a block edit and matches the equivalent replace", () => {
+    const blockSection = Patch.parseSingle(
+      `[${PATH}#1A2B]\nSWAP.BLK 2:\n+  if (y || z) {\n+  }`
+    );
+    const replaceSection = Patch.parseSingle(
+      `[${PATH}#1A2B]\nSWAP 2.=3:\n+  if (y || z) {\n+  }`
+    );
+
+    const blockResult = blockSection.applyTo(text, stubResolver);
+    const replaceResult = replaceSection.applyTo(text);
+
+    expect(blockResult.text).toBe("function x() {\n  if (y || z) {\n  }\n}\n");
+    expect(blockResult.text).toBe(replaceResult.text);
+  });
+
+  it("applyTo throws when a block edit has no resolver", () => {
+    const section = Patch.parseSingle(`[${PATH}#1A2B]\nSWAP.BLK 2:\n+X`);
+    expect(() => section.applyTo(text)).toThrow("no block resolver configured");
+  });
+
+  it("applyPartialTo drops an unresolvable block edit instead of throwing", () => {
+    const section = Patch.parseSingle(`[${PATH}#1A2B]\nSWAP.BLK 2:\n+X`);
+    const result = section.applyPartialTo(text);
+    expect(result.text).toBe(text);
+  });
+});
+
+describe("Patcher with a block resolver", () => {
+  const text = "function x() {\n  if (y) {\n  }\n}\n";
+
+  it("applies a block edit on the hash-match path", async () => {
+    const fs = new InMemoryFilesystem([[PATH, text]]);
+    const snapshots = new InMemorySnapshotStore();
+    const tag = snapshots.record(PATH, text);
+    const patcher = new Patcher({ fs, snapshots, blockResolver: stubResolver });
+
+    const result = await patcher.apply(
+      Patch.parse(`[${PATH}#${tag}]\nSWAP.BLK 2:\n+  if (y || z) {\n+  }`)
+    );
+
+    expect(result.sections[0]?.op).toBe("update");
+    expect(fs.get(PATH)).toBe("function x() {\n  if (y || z) {\n  }\n}\n");
+  });
+
+  it("surfaces the resolved span on the section result (hash-match path)", async () => {
+    const fs = new InMemoryFilesystem([[PATH, text]]);
+    const snapshots = new InMemorySnapshotStore();
+    const tag = snapshots.record(PATH, text);
+    const patcher = new Patcher({ fs, snapshots, blockResolver: stubResolver });
+
+    const result = await patcher.apply(
+      Patch.parse(`[${PATH}#${tag}]\nSWAP.BLK 2:\n+  if (y || z) {\n+  }`)
+    );
+
+    expect(result.sections[0]?.blockResolutions).toEqual([
+      { anchorLine: 2, start: 2, end: 3, op: "replace" },
+    ]);
+  });
+
+  it("resolves against the tagged snapshot and recovers onto drifted content", async () => {
+    const snapshotText = "line0\nline1\nline2\nline3\nline4\n";
+    // The live file gained a trailing line after the read minted the tag.
+    const liveText = "line0\nline1\nline2\nline3\nline4\nline5\n";
+    const fs = new InMemoryFilesystem([[PATH, liveText]]);
+    const snapshots = new InMemorySnapshotStore();
+    const tag = snapshots.record(PATH, snapshotText);
+    const patcher = new Patcher({ fs, snapshots, blockResolver: stubResolver });
+
+    // `block 2` resolves against the SNAPSHOT → span [2,3] → replace
+    // "line1","line2"; recovery 3-way-merges the change onto the live file.
+    const result = await patcher.apply(
+      Patch.parse(`[${PATH}#${tag}]\nSWAP.BLK 2:\n+NEW`)
+    );
+
+    expect(result.sections[0]?.op).toBe("update");
+    expect(fs.get(PATH)).toBe("line0\nNEW\nline3\nline4\nline5\n");
+    expect(result.sections[0]?.warnings.some((w) => /Recovered/.test(w))).toBe(
+      true
+    );
+    // Drift routed the resolution through recovery, where line numbers shift,
+    // so the (now-misleading) span is intentionally not surfaced.
+    expect(result.sections[0]?.blockResolutions).toBeUndefined();
+  });
+
+  it("rejects a block edit whose tag was never recorded for this path", async () => {
+    const liveText = "line0\nline1\nline2\n";
+    const fs = new InMemoryFilesystem([[PATH, liveText]]);
+    const snapshots = new InMemorySnapshotStore();
+    const live = computeFileHash(liveText);
+    const bogus = live === "FFFF" ? "0000" : "FFFF";
+    const patcher = new Patcher({ fs, snapshots, blockResolver: stubResolver });
+
+    await expect(
+      patcher.apply(Patch.parse(`[${PATH}#${bogus}]\nSWAP.BLK 2:\n+NEW`))
+    ).rejects.toBeInstanceOf(MismatchError);
+    expect(fs.get(PATH)).toBe(liveText);
+  });
+
+  it("throws a block-unresolved error when the resolver returns null", async () => {
+    const fs = new InMemoryFilesystem([[PATH, text]]);
+    const snapshots = new InMemorySnapshotStore();
+    const tag = snapshots.record(PATH, text);
+    const patcher = new Patcher({ fs, snapshots, blockResolver: () => null });
+
+    await expect(
+      patcher.apply(Patch.parse(`[${PATH}#${tag}]\nSWAP.BLK 2:\n+X`))
+    ).rejects.toThrow("could not resolve a syntactic block");
+    expect(fs.get(PATH)).toBe(text);
+  });
+});
+
+describe("DEL.BLK Patcher integration", () => {
+  const text = "function x() {\n  if (y) {\n  }\n}\n";
+
+  it("Patcher applies a delete-block edit on the hash-match path", async () => {
+    const fs = new InMemoryFilesystem([[PATH, text]]);
+    const snapshots = new InMemorySnapshotStore();
+    const tag = snapshots.record(PATH, text);
+    const patcher = new Patcher({ fs, snapshots, blockResolver: stubResolver });
+
+    const result = await patcher.apply(
+      Patch.parse(`[${PATH}#${tag}]\nDEL.BLK 2`)
+    );
+
+    expect(result.sections[0]?.op).toBe("update");
+    expect(fs.get(PATH)).toBe("function x() {\n}\n");
+  });
+});
+
+describe("INS.BLK.POST applyTo + Patcher integration", () => {
+  const text = "function x() {\n  if (y) {\n  }\n}\n";
+
+  it("lowers a closing-delimiter anchor to plain INS.POST N: with a warning", () => {
+    const section = Patch.parseSingle(
+      `[${PATH}#1A2B]\nINS.BLK.POST 3:\n+  done();`
+    );
+    const resolver: BlockResolver = ({ line }) =>
+      line === 2 ? { start: 2, end: 3 } : null;
+
+    const result = section.applyTo(text, resolver);
+
+    // line 3 is `  }` — no block begins there, but it ends one; the body
+    // lands after it, exactly where `insert_after_block` would have put it.
+    expect(result.text).toBe("function x() {\n  if (y) {\n  }\n  done();\n}\n");
+    expect(
+      result.warnings?.some((w) => /applied as plain `INS.POST 3:`/.test(w))
+    ).toBe(true);
+  });
+
+  it("lowers an unresolvable blank-line anchor to plain INS.POST N: instead of failing", () => {
+    const blankAnchored = Patch.parseSingle(
+      "[notes.md#1A2B]\nINS.BLK.POST 2:\n+- new entry"
+    );
+
+    const result = blankAnchored.applyTo(
+      "### Changed\n\n- old entry\n",
+      () => null
+    );
+
+    expect(result.text).toBe("### Changed\n\n- new entry\n- old entry\n");
+    expect(
+      result.warnings?.some((w) =>
+        /could not resolve a syntactic block.*applied as plain `INS.POST 2:`/.test(
+          w
+        )
+      )
+    ).toBe(true);
+  });
+
+  it("Patcher surfaces the closer-anchor lowering warning", async () => {
+    const fs = new InMemoryFilesystem([[PATH, text]]);
+    const snapshots = new InMemorySnapshotStore();
+    const tag = snapshots.record(PATH, text);
+    const resolver: BlockResolver = ({ line }) =>
+      line === 2 ? { start: 2, end: 3 } : null;
+    const patcher = new Patcher({ fs, snapshots, blockResolver: resolver });
+
+    const result = await patcher.apply(
+      Patch.parse(`[${PATH}#${tag}]\nINS.BLK.POST 3:\n+  done();`)
+    );
+
+    expect(fs.get(PATH)).toBe(
+      "function x() {\n  if (y) {\n  }\n  done();\n}\n"
+    );
+    expect(
+      result.sections[0]?.warnings.some((w) =>
+        /applied as plain `INS.POST 3:`/.test(w)
+      )
+    ).toBe(true);
+  });
+
+  it("applyTo inserts the body after the resolved block's last line", () => {
+    const section = Patch.parseSingle(
+      `[${PATH}#1A2B]\nINS.BLK.POST 2:\n+  done();`
+    );
+    // stub span [2,3] → body lands after "  }" (line 3), before the final "}".
+    expect(section.applyTo(text, stubResolver).text).toBe(
+      "function x() {\n  if (y) {\n  }\n  done();\n}\n"
+    );
+  });
+
+  it("Patcher applies an insert-after-block edit and surfaces the resolution", async () => {
+    const fs = new InMemoryFilesystem([[PATH, text]]);
+    const snapshots = new InMemorySnapshotStore();
+    const tag = snapshots.record(PATH, text);
+    const patcher = new Patcher({ fs, snapshots, blockResolver: stubResolver });
+
+    const result = await patcher.apply(
+      Patch.parse(`[${PATH}#${tag}]\nINS.BLK.POST 2:\n+  done();`)
+    );
+
+    expect(result.sections[0]?.op).toBe("update");
+    expect(fs.get(PATH)).toBe(
+      "function x() {\n  if (y) {\n  }\n  done();\n}\n"
+    );
+    expect(result.sections[0]?.blockResolutions).toEqual([
+      { anchorLine: 2, start: 2, end: 3, op: "insert_after" },
+    ]);
   });
 });

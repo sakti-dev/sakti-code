@@ -115,6 +115,15 @@ describe("InMemorySnapshotStore", () => {
     expect(store.head(dest)?.hash).toBe(tag);
   });
 
+  it("relocate is a no-op when from === to (preserves history)", () => {
+    const store = new InMemorySnapshotStore();
+    const tag = store.record(PATH, "A\n", [1]);
+    store.relocate(PATH, PATH);
+    expect(store.head(PATH)?.hash).toBe(tag);
+    expect(store.byHash(PATH, tag)?.text).toBe("A\n");
+    expect(store.byHash(PATH, tag)?.seenLines).toEqual(new Set([1]));
+  });
+
   it("findByHash returns every retained version with that tag across paths", () => {
     const store = new InMemorySnapshotStore();
     const text = "shared\n";

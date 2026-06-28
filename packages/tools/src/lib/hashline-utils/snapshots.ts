@@ -148,6 +148,9 @@ export class InMemorySnapshotStore extends SnapshotStore {
   }
 
   relocate(from: string, to: string): void {
+    if (from === to) {
+      return;
+    }
     const sourceHistory = this.#versions.get(from);
     if (sourceHistory === undefined || sourceHistory.length === 0) {
       return;

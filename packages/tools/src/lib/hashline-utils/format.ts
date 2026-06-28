@@ -58,6 +58,15 @@ export function computeFileHash(text: string): string {
     .toUpperCase();
 }
 
+export function computeRawHash(input: string): string {
+  let hash = 0x81_1c_9d_c5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01_00_01_93);
+  }
+  return (hash >>> 0).toString(16);
+}
+
 export function formatHashlineHeader(path: string, hash: string): string {
   return `${HL_FILE_PREFIX}${path}${HL_FILE_HASH_SEP}${hash}${HL_FILE_SUFFIX}`;
 }

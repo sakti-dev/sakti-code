@@ -1,5 +1,5 @@
 import { blockRangeAt } from "@sakti-code/pi-natives";
-import { computeFileHash } from "../../lib/hashline-utils/format";
+import { computeRawHash } from "../../lib/hashline-utils/format";
 import type { BlockResolver } from "../../lib/hashline-utils/types";
 
 const resolutionCache = new Map<
@@ -9,7 +9,7 @@ const resolutionCache = new Map<
 const RESOLUTION_CACHE_MAX = 512;
 
 export const nativeBlockResolver: BlockResolver = ({ path, text, line }) => {
-  const key = `${computeFileHash(text)}:${text.length}:${line}:${path}`;
+  const key = `${computeRawHash(text)}:${text.length}:${line}:${path}`;
   const cached = resolutionCache.get(key);
   if (cached !== undefined) {
     return cached;
