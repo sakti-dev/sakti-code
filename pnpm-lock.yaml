@@ -415,6 +415,9 @@ importers:
       '@sakti-code/llm':
         specifier: workspace:*
         version: link:../llm
+      '@sakti-code/pi-natives':
+        specifier: workspace:*
+        version: link:../../crates/pi-natives
       '@silvia-odwyer/photon-node':
         specifier: 0.3.4
         version: 0.3.4

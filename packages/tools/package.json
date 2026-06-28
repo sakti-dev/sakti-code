@@ -19,6 +19,7 @@
   "dependencies": {
     "@sakti-code/agent": "workspace:*",
     "@sakti-code/llm": "workspace:*",
+    "@sakti-code/pi-natives": "workspace:*",
     "@silvia-odwyer/photon-node": "0.3.4",
     "diff": "^9.0.0",
     "lru-cache": "^11.5.1"
