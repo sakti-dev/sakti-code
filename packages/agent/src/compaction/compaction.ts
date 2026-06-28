@@ -30,6 +30,7 @@ import {
 } from "../session/messages";
 import { buildSessionContextFromEntries } from "../session/session";
 import type { AgentMessage, ThinkingLevel } from "../types";
+import { pruneStaleToolResults } from "./prune";
 import {
   computeFileLists,
   createFileOps,
@@ -627,6 +628,15 @@ export function prepareCompaction(
       messagesToSummarize.push(msg);
     }
   }
+  // Pre-compaction prune (§13): elide large stale tool results before the
+  // summarizer sees them. Everything in messagesToSummarize is outside the
+  // kept tail by definition, so all of it is a prune candidate. Tool output is
+  // re-derivable; this shrinks the summarizer input (and its LLM call) for
+  // free. File-op extraction below only reads assistant toolCall blocks, so
+  // pruning toolResult content does not lose file-tracking data.
+  const prunedSummarize = pruneStaleToolResults(messagesToSummarize, {
+    tailStartIndex: messagesToSummarize.length,
+  }).pruned;
   const turnPrefixMessages: AgentMessage[] = [];
   if (cutPoint.isSplitTurn) {
     for (
@@ -641,7 +651,7 @@ export function prepareCompaction(
     }
   }
   const fileOps = extractFileOperations(
-    messagesToSummarize,
+    prunedSummarize,
     pathEntries,
     prevCompactionIndex
   );
@@ -653,7 +663,7 @@ export function prepareCompaction(
 
   return ok({
     firstKeptEntryId,
-    messagesToSummarize,
+    messagesToSummarize: prunedSummarize,
     turnPrefixMessages,
     isSplitTurn: cutPoint.isSplitTurn,
     tokensBefore,
