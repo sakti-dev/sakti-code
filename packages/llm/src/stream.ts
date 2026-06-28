@@ -56,6 +56,14 @@ export interface StreamRequest {
   messages: Message[];
   /** The model descriptor from the catalog. */
   model: Model;
+  /**
+   * Caller-supplied providerOptions, deep-merged with the auto-derived ones
+   * from {@link buildProviderOptions}. The auto-derived thinking level wins
+   * for the namespace(s) the model owns (e.g. `zai.thinking`); caller keys
+   * win everywhere else (e.g. `zai.speed`, `zai.outputConfig`). Used to pass
+   * Z.ai-native `speed` / `output_config` fields through to the model.
+   */
+  providerOptions?: Record<string, unknown>;
   /** Session id (for session-affinity header providers + OpenAI prompt cache key). */
   sessionId?: string;
   /** System prompt (passed to streamText separately, not as a message). */
@@ -217,23 +225,26 @@ export function streamWithModel(
   language: LanguageModelV4,
   runStreamText?: RunStreamText
 ): StreamResult {
-  const reasoningOptions = buildProviderOptions({
-    level: req.thinkingLevel ?? "off",
-    model: req.model,
-  });
-
   // Hint the OpenAI prompt cache with a stable per-session key so cached
   // prefixes reuse across turns. opencode derives this from session.id
   // (stripping a `ses_<64hex>` prefix); we mirror that. No-op for providers
   // that don't read providerOptions.openai.promptCacheKey.
   const promptCacheKey = promptCacheKeyFor(req.sessionId);
+  const reasoningOptions = buildProviderOptions({
+    level: req.thinkingLevel ?? "off",
+    model: req.model,
+  });
+  const mergedProviderOptions = mergeProviderOptions(
+    reasoningOptions,
+    req.providerOptions
+  );
   const providerOptions =
     promptCacheKey === undefined
-      ? reasoningOptions
+      ? mergedProviderOptions
       : {
-          ...reasoningOptions,
+          ...mergedProviderOptions,
           openai: {
-            ...(reasoningOptions.openai as object | undefined),
+            ...(mergedProviderOptions.openai as object | undefined),
             promptCacheKey,
           },
         };
@@ -326,6 +337,47 @@ function mergeRequestHeaders(
     return;
   }
   return { ...session, ...caller };
+}
+
+/**
+ * Deep-merge auto-derived providerOptions with caller-supplied ones.
+ *
+ * Per-namespace merge: caller's keys are overlaid on auto's. The auto-derived
+ * `thinking` key (under whichever namespace the model owns — currently `zai`)
+ * is preserved as-is when both sides set it, because the runtime thinking
+ * level is the authority (see design doc §"Exposing speed / outputConfig").
+ *
+ * For other keys (`speed`, `outputConfig`, `cacheControl`, `sendReasoning`,
+ * `promptCacheKey`, …) caller wins.
+ */
+function mergeProviderOptions(
+  auto: Record<string, unknown>,
+  caller: Record<string, unknown> | undefined
+): Record<string, unknown> {
+  if (caller === undefined) {
+    return auto;
+  }
+  const namespaces = new Set([...Object.keys(auto), ...Object.keys(caller)]);
+  const merged: Record<string, unknown> = {};
+  for (const ns of namespaces) {
+    const autoNs = auto[ns] as Record<string, unknown> | undefined;
+    const callerNs = caller[ns] as Record<string, unknown> | undefined;
+    if (autoNs === undefined) {
+      merged[ns] = callerNs;
+      continue;
+    }
+    if (callerNs === undefined) {
+      merged[ns] = autoNs;
+      continue;
+    }
+    merged[ns] = {
+      ...autoNs,
+      ...callerNs,
+      // Auto-derived thinking is authoritative for the runtime level.
+      ...(autoNs.thinking === undefined ? {} : { thinking: autoNs.thinking }),
+    };
+  }
+  return merged;
 }
 
 /** Wire streamText's promises into our FinishResult (with cost via calculateCost). */
