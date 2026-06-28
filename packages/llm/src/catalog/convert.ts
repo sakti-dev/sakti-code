@@ -93,12 +93,15 @@ function applyZaiAnthropicOverride(providerId: string, model: Model): Model {
   if (providerId !== "zai" && providerId !== "zai-coding-plan") {
     return model;
   }
-  const baseURL =
-    providerId === "zai-coding-plan"
-      ? "https://api.z.ai/api/coding/anthropic"
-      : "https://api.z.ai/api/anthropic";
+  // Both zai and zai-coding-plan use the SAME Anthropic endpoint; the
+  // coding-plan vs regular subscription is selected by API key, not URL path.
+  // (We previously tried https://api.z.ai/api/coding/anthropic — 404s.)
   const { compat: _compat, ...rest } = model;
-  return { ...rest, npm: "@sakti-code/zai-anthropic", baseUrl: baseURL };
+  return {
+    ...rest,
+    npm: "@sakti-code/zai-anthropic",
+    baseUrl: "https://api.z.ai/api/anthropic",
+  };
 }
 
 /**

@@ -32,13 +32,13 @@ describe("convertModelsDevModel zai override", () => {
     expect(converted.reasoning).toBe(true);
   });
 
-  it("repoints zai-coding-plan to the coding anthropic baseURL", () => {
+  it("uses the same anthropic baseURL for zai-coding-plan (selected via API key, not URL)", () => {
     const converted = convertModelsDevModel(
       { ...zaiProvider, id: "zai-coding-plan" },
       glmModel
     )!;
     expect(converted.npm).toBe("@sakti-code/zai-anthropic");
-    expect(converted.baseUrl).toBe("https://api.z.ai/api/coding/anthropic");
+    expect(converted.baseUrl).toBe("https://api.z.ai/api/anthropic");
   });
 
   it("leaves a non-zai provider on @ai-sdk/openai-compatible", () => {
