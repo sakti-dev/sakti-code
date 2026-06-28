@@ -83,11 +83,11 @@ describe("hashline section headers", () => {
 
 describe("hashline core — verb header forms", () => {
   it("rejects a bare single-number hunk header with verb guidance", () => {
-    expect(() => parsePatch("2\n+B")).toThrow(/hunk headers need a verb/);
+    expect(() => parsePatch("2\n+B")).toThrow(/op headers need a verb/);
   });
 
   it("rejects a bare numeric range with verb guidance", () => {
-    expect(() => parsePatch("2 3\n+X")).toThrow(/Hunk headers need a verb/);
+    expect(() => parsePatch("2 3\n+X")).toThrow(/Add a verb/);
   });
 
   it("accepts canonical replace/delete/insert forms", () => {
@@ -246,7 +246,7 @@ describe("hashline — apply_patch / unified-diff contamination", () => {
 
   it("treats top-level `+TEXT` as an orphan literal payload", () => {
     expect(() => parsePatch("+const X = 1;\nSWAP 2.=2:")).toThrow(
-      /payload line has no preceding hunk header/
+      /body line found before any op header/
     );
   });
 });

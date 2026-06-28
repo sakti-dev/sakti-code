@@ -48,7 +48,7 @@ export const ABORT_MARKER = "*** Abort";
 export const REPLACE_PAIR_COALESCED_WARNING = `Two hunks targeted the same range; kept only the second. One \`SWAP N${HL_RANGE_SEP}M:\` hunk per range — the body is the final content, never old+new.`;
 
 export const BARE_BODY_AUTO_PIPED_WARNING =
-  "Auto-prefixed bare body row(s) with `+`. Body rows must be `+TEXT` literal lines.";
+  "Auto-prefixed bare body row(s) with `+`. Body rows should start with `+` (e.g. write `+  const x = 5;` not `  const x = 5;`).";
 
 export const MINUS_ROW_REJECTED =
   "`-` rows are not valid; the range already names the lines being changed. For a literal `-` line, write `+-…`.";

@@ -85,13 +85,13 @@ function detectApplyPatchContamination(
     );
   }
   if (/^[1-9]\d*\s*$/.test(trimmed)) {
-    return `hunk headers need a verb. Use \`SWAP ${trimmed}${HL_RANGE_SEP}${trimmed}:\` to replace, or \`DEL ${trimmed}\` to delete.`;
+    return `op headers need a verb. Use \`SWAP ${trimmed}${HL_RANGE_SEP}${trimmed}:\` to replace, or \`DEL ${trimmed}\` to delete.`;
   }
   const bareRange = /^([1-9]\d*)\s*[-. …=]+\s*([1-9]\d*)\s*:?$/.exec(trimmed);
   if (bareRange !== null) {
     return (
-      `bare range hunk header ${JSON.stringify(trimmed)} is not valid. ` +
-      `Hunk headers need a verb: write \`SWAP ${bareRange[1]}${HL_RANGE_SEP}${bareRange[2]}:\` or \`DEL ${bareRange[1]}${HL_RANGE_SEP}${bareRange[2]}\`.`
+      `bare range ${JSON.stringify(trimmed)} is not a valid op header. ` +
+      `Add a verb: write \`SWAP ${bareRange[1]}${HL_RANGE_SEP}${bareRange[2]}:\` or \`DEL ${bareRange[1]}${HL_RANGE_SEP}${bareRange[2]}\`.`
     );
   }
   return null;
@@ -306,8 +306,7 @@ export class Executor {
         throw new Error(`line ${lineNum}: ${MOVE_TAKES_NO_BODY}`);
       }
       throw new Error(
-        `line ${lineNum}: payload line has no preceding hunk header. ` +
-          `Got ${JSON.stringify(`${HL_PAYLOAD_REPLACE}${text}`)}.`
+        `line ${lineNum}: body line found before any op header. Start with an op like \`SWAP 1.=1:\`, \`DEL 1\`, or \`INS.HEAD:\` before adding body lines. Got ${JSON.stringify(`${HL_PAYLOAD_REPLACE}${text}`)}.`
       );
     }
     if (pending.target.kind === "delete") {
@@ -361,8 +360,7 @@ export class Executor {
       return;
     }
     throw new Error(
-      `line ${lineNum}: payload line has no preceding hunk header. ` +
-        `Use \`SWAP N${HL_RANGE_SEP}M:\`, \`DEL N${HL_RANGE_SEP}M\`, or \`INS.PRE|POST|HEAD|TAIL:\` above the body. Got ${JSON.stringify(text)}.`
+      `line ${lineNum}: body line found before any op header. Start with an op like \`SWAP 10.=15:\`, \`DEL 5\`, or \`INS.HEAD:\` on its own line, then add \`+body\` rows below. Got ${JSON.stringify(text)}.`
     );
   }
 

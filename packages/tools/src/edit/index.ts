@@ -165,18 +165,17 @@ Line ops:
 - INS.POST N:   insert +body after line N
 - INS.HEAD:     insert +body at file start (NO line number)
 - INS.TAIL:     insert +body at file end (NO line number)
-- REM           delete the file
-- MV "dest"    move/rename the file
+- REM           delete the file entirely
+- MV "dest"    move/rename (e.g. MV "src/utils/helpers.ts")
 
-Block ops (anchor the OPENING line of a multi-line construct; tree-sitter resolves the closing line):
-- SWAP.BLK N:       replace the whole syntactic block that BEGINS on line N
-- DEL.BLK N         delete the whole syntactic block that BEGINS on line N (no body)
-- INS.BLK.POST N:   insert +body AFTER the block's end (sibling depth). To append inside a block, use INS.POST.
+Block ops (anchor the OPENING line of a multi-line construct):
+- SWAP.BLK N:       replace the whole block starting on line N
+- DEL.BLK N         delete the whole block starting on line N
+- INS.BLK.POST N:   insert +body AFTER the block's end (sibling depth)
 
-Block-op rules:
-- Anchor the OPENING line (def/fn/class/if), never the closer or a bare statement. Single-statement anchors are rejected — use SWAP N.=N or DEL N instead.
-- Decorators/doc-comments are SEPARATE nodes: point N at the FIRST decorator.
-- Markdown headings ARE block openers — block ops resolve their whole section.
+Block ops work on: function, class, if/else, for, while, try, switch, markdown headings.
+Do NOT use on single statements (return, const x = 5, break) — use SWAP/DEL instead.
+Point N at the FIRST decorator to sweep decorators + body together.
 
 Example — replace lines 3-4, delete line 7, append to end:
 [src/app.ts#1A2B]
@@ -268,7 +267,7 @@ async function executeHashlineEdit(
     const previewBlock = preview.preview ? `\n${preview.preview}` : "";
     const firstChangedLine = s.firstChangedLine ?? diff.firstChangedLine;
     return {
-      text: `${s.header}${previewBlock}${warnings}`,
+      text: `Edited ${s.header}${previewBlock}${warnings}`,
       diff: preview.preview,
       firstChangedLine,
     };
