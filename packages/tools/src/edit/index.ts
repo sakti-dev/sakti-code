@@ -13,12 +13,14 @@ import {
   detectLineEnding,
   type Edit,
   generateDiffString,
+  generateNumberedDiff,
   generateUnifiedPatch,
   normalizeToLF,
   restoreLineEndings,
   stripBom,
 } from "./edit-diff.ts";
 import { nativeBlockResolver } from "./hashline/block-resolver.ts";
+import { buildCompactDiffPreview } from "./hashline/diff-preview.ts";
 import { NodeFilesystem } from "./hashline/fs.ts";
 import { Patch } from "./hashline/input.ts";
 import {
@@ -77,7 +79,7 @@ export type HashlineEditInput = Static<typeof hashlineEditSchema>;
 export interface EditToolDetails {
   diff: string;
   firstChangedLine?: number;
-  patch: string;
+  patch?: string;
 }
 
 export interface EditOperations {
@@ -190,7 +192,7 @@ async function executeHashlineEdit(
   signal?: AbortSignal
 ): Promise<{
   content: [{ type: "text"; text: string }];
-  details: undefined;
+  details: EditToolDetails;
 }> {
   if (!snapshotStore) {
     throw new Error(
@@ -217,7 +219,9 @@ async function executeHashlineEdit(
   // below only fires for single-section noops — the common case from issue
   // #2081. A multi-section noop still fails the tool (breaking the loop), but
   // without graduated counting.
-  const lines = result.sections.map((s) => {
+  const rendered = result.sections.map((s) => {
+    const warnings =
+      s.warnings.length > 0 ? `\n\nWarnings:\n${s.warnings.join("\n")}` : "";
     if (s.op === "noop") {
       if (noopOwner) {
         const { count, escalate } = recordNoopEdit(
@@ -229,21 +233,43 @@ async function executeHashlineEdit(
           throw new Error(noChangeLoopDiagnostic(s.path, count));
         }
       }
-      const warnings =
-        s.warnings.length > 0 ? `\n\nWarnings:\n${s.warnings.join("\n")}` : "";
-      return `${noChangeDiagnostic(s.path)}${warnings}`;
+      return {
+        text: `${noChangeDiagnostic(s.path)}${warnings}`,
+        diff: "",
+        firstChangedLine: undefined,
+      };
     }
     if (noopOwner) {
       resetNoopEdit(noopOwner, s.canonicalPath);
     }
-    const note = s.op === "delete" ? `Deleted ${s.path}` : `${s.header}`;
-    const warnings =
-      s.warnings.length > 0 ? `\n\nWarnings:\n${s.warnings.join("\n")}` : "";
-    return `${note}${warnings}`;
+    if (s.op === "delete") {
+      return {
+        text: `Deleted ${s.path}${warnings}`,
+        diff: "",
+        firstChangedLine: undefined,
+      };
+    }
+    const diff = generateNumberedDiff(s.before, s.after);
+    const preview = buildCompactDiffPreview(diff.diff);
+    const previewBlock = preview.preview ? `\n${preview.preview}` : "";
+    const firstChangedLine = s.firstChangedLine ?? diff.firstChangedLine;
+    return {
+      text: `${s.header}${previewBlock}${warnings}`,
+      diff: preview.preview,
+      firstChangedLine,
+    };
   });
+  const text = rendered.map((r) => r.text).join("\n\n");
+  const diffParts = rendered.map((r) => r.diff).filter((p) => p.length > 0);
+  const firstChanged = rendered
+    .map((r) => r.firstChangedLine)
+    .find((line): line is number => line !== undefined);
   return {
-    content: [{ type: "text", text: lines.join("\n\n") }],
-    details: undefined,
+    content: [{ type: "text", text }],
+    details: {
+      diff: diffParts.join("\n"),
+      ...(firstChanged === undefined ? {} : { firstChangedLine: firstChanged }),
+    },
   };
 }
 

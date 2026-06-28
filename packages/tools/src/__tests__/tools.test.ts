@@ -339,6 +339,36 @@ describe("EditTool (hashline mode)", () => {
     );
   });
 
+  it("populates result details with a compact diff preview in hashline mode", async () => {
+    const content = "line1\nline2\nline3\n";
+    writeFileSync(join(tmpDir, "hl-preview.txt"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "hl-preview.txt"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    const result = await tool.execute("tc_1", {
+      input: `[hl-preview.txt#${tag}]\nSWAP 2.=2:\n+REPLACED`,
+    });
+    const text = getTextContent(result);
+    expect(text).toContain("REPLACED");
+    const details = (
+      result as {
+        details?: { diff?: string; firstChangedLine?: number };
+      }
+    ).details;
+    expect(details).toBeDefined();
+    expect(details?.diff).toContain("REPLACED");
+    expect(details?.firstChangedLine).toBe(2);
+    expect(readFileSync(join(tmpDir, "hl-preview.txt"), "utf-8")).toBe(
+      "line1\nREPLACED\nline3\n"
+    );
+  });
+
   it("applies a DEL patch via hashline mode", async () => {
     const content = "a\nb\nc\n";
     writeFileSync(join(tmpDir, "hl-del.txt"), content);
