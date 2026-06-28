@@ -165,6 +165,7 @@ export {
   composeSystemPrompt,
   formatSkillsForSystemPrompt,
   stripSkillsBlock,
+  stripToolInventory,
 } from "./resources/system-prompt.ts";
 export {
   demoteHeaders,

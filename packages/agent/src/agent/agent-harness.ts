@@ -47,8 +47,9 @@ import { formatPromptTemplateInvocation } from "../resources/prompt-templates";
 import { formatSkillInvocation } from "../resources/skills";
 import { formatSkillsAddedNotice } from "../resources/skills-added-notice";
 import {
-  appendSkillsBlock,
+  composeSystemPrompt,
   stripSkillsBlock,
+  stripToolInventory,
 } from "../resources/system-prompt";
 import { convertToLlm } from "../session/messages";
 import type { SessionShape } from "../session/session";
@@ -1656,6 +1657,26 @@ export class AgentHarness<
   }
 
   /**
+   * Rebuild the system prompt from the base agent instructions + the current
+   * tool inventory (excluding soft-disabled tools) + the current skills block.
+   *
+   * Used by {@link softDisableTool}, {@link softEnableTool}, and
+   * {@link removeSkill} to schedule a cache-stable prompt refresh: the
+   * recomposed prompt is handed to {@link scheduleSystemPromptRefresh} and
+   * applied at the next compaction (when the cache is busted anyway).
+   */
+  private recomposeSystemPrompt(): string {
+    const current = this.getSystemPrompt() ?? "";
+    const base = stripToolInventory(stripSkillsBlock(current));
+    const activeTools = this.getActiveTools().filter(
+      (tool) => !this.softDisabledTools.has(tool.name)
+    );
+    const skills = this.resources.skills ?? [];
+    const hasRead = this.activeToolNames.includes("read");
+    return composeSystemPrompt(base, activeTools, skills, hasRead);
+  }
+
+  /**
    * Block execution of `toolName` while keeping its schema in the request.
    *
    * The tool's schema stays in `activeToolNames` so the cacheable tools-prefix
@@ -1663,19 +1684,28 @@ export class AgentHarness<
    * returns `{block: true, reason}` and the model receives `reason` as a
    * tool-error result it can adapt to.
    *
+   * Additionally schedules a {@link scheduleSystemPromptRefresh} so the tool's
+   * description is removed from the system prompt at the next compaction.
+   * The live prompt stays frozen until then (cache-stable).
+   *
    * Use this when the user disables an MCP server or side-effecting tool
    * mid-session and wants it gone *now* — `setActiveTools` would rewrite the
-   * tools array and bust the cache. Pair with `scheduleSystemPromptRefresh`
-   * (or wait for natural compaction) to drop the schema from the request
-   * entirely.
+   * tools array and bust the cache.
    */
   softDisableTool(toolName: string, reason: string): void {
     this.softDisabledTools.set(toolName, reason);
+    this.scheduleSystemPromptRefresh(this.recomposeSystemPrompt());
   }
 
-  /** Re-enable a previously soft-disabled tool. */
+  /**
+   * Re-enable a previously soft-disabled tool.
+   *
+   * Removes the execution gate and schedules a prompt refresh so the tool's
+   * description reappears in the system prompt at the next compaction.
+   */
   softEnableTool(toolName: string): void {
     this.softDisabledTools.delete(toolName);
+    this.scheduleSystemPromptRefresh(this.recomposeSystemPrompt());
   }
 
   /** Returns true iff `toolName` is currently soft-disabled. Test/debug hook. */
@@ -1809,13 +1839,10 @@ export class AgentHarness<
     });
 
     // Recompose the system prompt with the remaining skills and schedule it
-    // for compaction. The base prompt is recovered by stripping the existing
-    // skills block suffix (appendSkillsBlock always appends at the end).
-    const composedPrompt = this.getSystemPrompt() ?? "";
-    const basePrompt = stripSkillsBlock(composedPrompt);
-    const hasRead = this.activeToolNames.includes("read");
-    const recomposed = appendSkillsBlock(basePrompt, remaining, hasRead);
-    this.scheduleSystemPromptRefresh(recomposed);
+    // for compaction. recomposeSystemPrompt recovers the base prompt (stripping
+    // both the tool inventory and skills block), then rebuilds from the current
+    // tools (minus soft-disabled) and remaining skills.
+    this.scheduleSystemPromptRefresh(this.recomposeSystemPrompt());
 
     // Soft-disable read on the skill path so the model can't reload the body.
     if (skill.filePath) {

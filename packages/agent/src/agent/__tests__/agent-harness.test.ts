@@ -18,6 +18,7 @@ import type {
   PromptTemplate,
   Skill,
 } from "../../harness-types";
+import { composeSystemPrompt } from "../../resources/system-prompt";
 import { createTestSession } from "../../session/__tests__/session-test-utils";
 import type { AgentMessage, AgentTool } from "../../types";
 
@@ -1062,6 +1063,200 @@ describe("softDisableTool", () => {
 
     harness.softEnableTool("calculate");
     expect(harness.isToolSoftDisabled("calculate")).toBe(false);
+  });
+});
+
+describe("softDisableTool prompt refresh", () => {
+  it("schedules a prompt refresh that excludes the disabled tool description", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+
+    const basePrompt = "You are a coding agent.";
+    const composedPrompt = composeSystemPrompt(
+      basePrompt,
+      [calculateTool, getCurrentTimeTool],
+      [],
+      false
+    );
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: composedPrompt,
+      tools: [calculateTool, getCurrentTimeTool],
+    });
+
+    harness.softDisableTool("calculate", "user disabled");
+
+    // Live prompt is unchanged (cache stays warm)
+    expect(harness.getSystemPrompt()).toContain("# Tool: calculate");
+
+    // Pending refresh excludes the disabled tool
+    const pending = harness.getPendingSystemPromptRefresh();
+    expect(pending).toBeDefined();
+    expect(pending).not.toContain("# Tool: calculate");
+    expect(pending).toContain("# Tool: get_current_time");
+  });
+
+  it("softEnableTool schedules a prompt refresh that re-includes the tool", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+
+    const basePrompt = "You are a coding agent.";
+    const composedPrompt = composeSystemPrompt(
+      basePrompt,
+      [calculateTool, getCurrentTimeTool],
+      [],
+      false
+    );
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: composedPrompt,
+      tools: [calculateTool, getCurrentTimeTool],
+    });
+
+    harness.softDisableTool("calculate", "temporarily off");
+    expect(harness.getPendingSystemPromptRefresh()).not.toContain(
+      "# Tool: calculate"
+    );
+
+    harness.softEnableTool("calculate");
+    const pending = harness.getPendingSystemPromptRefresh();
+    expect(pending).toBeDefined();
+    expect(pending).toContain("# Tool: calculate");
+  });
+
+  it("emits cache_bust_pending when scheduling the refresh", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+
+    const composedPrompt = composeSystemPrompt(
+      "Base.",
+      [calculateTool],
+      [],
+      false
+    );
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: composedPrompt,
+      tools: [calculateTool],
+    });
+
+    const events: AgentHarnessEvent[] = [];
+    harness.subscribe((event) => {
+      if (event.type === "cache_bust_pending") {
+        events.push(event);
+      }
+    });
+
+    harness.softDisableTool("calculate", "off");
+    await Promise.resolve();
+
+    expect(events.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("removeSkill + softDisableTool: pending refresh excludes both", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+
+    const skill: Skill = {
+      name: "tdd",
+      description: "TDD",
+      content: "",
+      filePath: "/skills/tdd/SKILL.md",
+    };
+    const basePrompt = "You are a coding agent.";
+    const composedPrompt = composeSystemPrompt(
+      basePrompt,
+      [calculateTool, getCurrentTimeTool],
+      [skill],
+      true
+    );
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: composedPrompt,
+      tools: [calculateTool, getCurrentTimeTool],
+      resources: { skills: [skill] },
+    });
+
+    await harness.removeSkill("tdd");
+    harness.softDisableTool("calculate", "off");
+
+    const pending = harness.getPendingSystemPromptRefresh();
+    expect(pending).toBeDefined();
+    // Tool excluded
+    expect(pending).not.toContain("# Tool: calculate");
+    expect(pending).toContain("# Tool: get_current_time");
+    // Skill excluded
+    expect(pending).not.toContain("<available_skills>");
+    expect(pending).not.toContain("tdd");
+  });
+
+  it("preserves skills block in refresh when only a tool is disabled", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+
+    const skill: Skill = {
+      name: "tdd",
+      description: "TDD",
+      content: "",
+      filePath: "/skills/tdd/SKILL.md",
+    };
+    const readTool: AgentTool = {
+      name: "read",
+      description: "Read a file.",
+      label: "Read",
+      parameters: { type: "object", properties: {} },
+      execute: async () => ({
+        content: [{ type: "text", text: "" }],
+        details: undefined,
+      }),
+    } as unknown as AgentTool;
+    const allTools = [calculateTool, getCurrentTimeTool, readTool];
+    const basePrompt = "You are a coding agent.";
+    const composedPrompt = composeSystemPrompt(
+      basePrompt,
+      allTools,
+      [skill],
+      true
+    );
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: composedPrompt,
+      tools: allTools,
+      resources: { skills: [skill] },
+    });
+
+    harness.softDisableTool("calculate", "off");
+
+    const pending = harness.getPendingSystemPromptRefresh();
+    expect(pending).toBeDefined();
+    // Tool excluded
+    expect(pending).not.toContain("# Tool: calculate");
+    // Other tools still present
+    expect(pending).toContain("# Tool: get_current_time");
+    expect(pending).toContain("# Tool: read");
+    // Skill still present (read is available)
+    expect(pending).toContain("<available_skills>");
+    expect(pending).toContain("tdd");
   });
 });
 

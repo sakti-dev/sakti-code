@@ -68,6 +68,28 @@ export function stripSkillsBlock(composedSystemPrompt: string): string {
 }
 
 /**
+ * Strip the tool-inventory section from a composed system prompt, returning
+ * the base prompt without any `# Tool:` headings.
+ *
+ * The tool inventory always starts with `\n\n# Tool: <name>` (inserted by
+ * {@link renderToolInventory} via {@link composeSystemPrompt}). This function
+ * finds that boundary and returns everything before it.
+ *
+ * To recover the full base prompt (without tools AND without skills), chain:
+ * `stripToolInventory(stripSkillsBlock(composed))`.
+ *
+ * If no tool inventory is present, returns the input unchanged.
+ */
+export function stripToolInventory(composedSystemPrompt: string): string {
+  const marker = "\n\n# Tool: ";
+  const index = composedSystemPrompt.indexOf(marker);
+  if (index < 0) {
+    return composedSystemPrompt;
+  }
+  return composedSystemPrompt.slice(0, index);
+}
+
+/**
  * Compose a complete system prompt from three blocks:
  * 1. The agent's base system prompt (role, principles)
  * 2. A rendered tool inventory (# Tool: <name> sections with descriptions)

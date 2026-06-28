@@ -5,6 +5,7 @@ import {
   composeSystemPrompt,
   formatSkillsForSystemPrompt,
   stripSkillsBlock,
+  stripToolInventory,
 } from "../../resources/system-prompt";
 import type { AgentTool } from "../../types";
 
@@ -247,5 +248,67 @@ describe("mid-session skill changes with tool inventory present", () => {
     prompt = appendSkillsBlock(prompt, [skill2], true);
     expect(prompt).toContain("# Tool: edit");
     expect(prompt).toContain("debug");
+  });
+});
+
+describe("stripToolInventory", () => {
+  const BASE = "You are a coding agent.";
+
+  it("returns prompt unchanged when no tool inventory is present", () => {
+    expect(stripToolInventory(BASE)).toBe(BASE);
+  });
+
+  it("strips tool inventory from a composed prompt (tools only, no skills)", () => {
+    const tools = [mockTool("edit", "Edit."), mockTool("read", "Read.")];
+    const composed = composeSystemPrompt(BASE, tools, [], false);
+    const stripped = stripToolInventory(composed);
+    expect(stripped).toBe(BASE);
+  });
+
+  it("strips tool inventory and trailing skills, returning base only", () => {
+    const tools = [mockTool("edit", "Edit.")];
+    const skills = [mockSkill("tdd", "TDD", "/tdd/SKILL.md")];
+    const composed = composeSystemPrompt(BASE, tools, skills, true);
+    // stripToolInventory cuts at the first # Tool: heading, which removes
+    // the tool section AND the trailing skills block (both come after it).
+    const stripped = stripToolInventory(composed);
+    expect(stripped).toBe(BASE);
+    expect(stripped).not.toContain("# Tool: edit");
+    expect(stripped).not.toContain("<available_skills>");
+  });
+
+  it("recovers the base when stripping both tools and skills (chain)", () => {
+    const tools = [mockTool("edit", "Edit."), mockTool("read", "Read.")];
+    const skills = [mockSkill("tdd", "TDD", "/tdd/SKILL.md")];
+    const composed = composeSystemPrompt(BASE, tools, skills, true);
+    // Chain: strip skills first (removes suffix), then strip tools (removes tool section)
+    const recovered = stripToolInventory(stripSkillsBlock(composed));
+    expect(recovered).toBe(BASE);
+  });
+
+  it("handles empty string", () => {
+    expect(stripToolInventory("")).toBe("");
+  });
+
+  it("does not false-positive on base prompts with non-Tool headers", () => {
+    const baseWithHeader =
+      "You are a coding agent.\n\n## Important\nDo good work.";
+    const tools = [mockTool("edit", "Edit.")];
+    const composed = composeSystemPrompt(baseWithHeader, tools, [], false);
+    const stripped = stripToolInventory(composed);
+    expect(stripped).toBe(baseWithHeader);
+  });
+
+  it("round-trips: strip then recompose produces same output", () => {
+    const tools = [
+      mockTool("bash", "Run."),
+      mockTool("edit", "Edit."),
+      mockTool("read", "Read."),
+    ];
+    const skills = [mockSkill("tdd", "TDD", "/tdd/SKILL.md")];
+    const composed = composeSystemPrompt(BASE, tools, skills, true);
+    const recovered = stripToolInventory(stripSkillsBlock(composed));
+    const recomposed = composeSystemPrompt(recovered, tools, skills, true);
+    expect(recomposed).toBe(composed);
   });
 });
