@@ -10,6 +10,7 @@ import {
   compactEffect,
   estimateContextTokens,
   prepareCompaction,
+  serializeConversation,
   shouldCompact,
 } from "../compaction/compaction";
 import {
@@ -18,8 +19,10 @@ import {
   type SessionTreeEntry,
   type ThinkingLevel,
 } from "../harness-types";
+import { convertToLlm } from "../session/messages";
 import type { SessionShape } from "../session/session";
 import type { AgentMessage } from "../types";
+import { canSkipSummarizer } from "./prune";
 
 /**
  * # Auto-compaction policy
@@ -225,6 +228,11 @@ export type RunCompactionOutcome =
  * and can't run mid-loop) and persists via `session.appendCompaction()`. The
  * harness rebuilds context from storage next turn, so no in-place message
  * mutation is needed (unlike pi).
+ *
+ * §13 "free win": when the pre-compaction prune alone clears the threshold
+ * (tool output dominated the context), skips the summarizer LLM call and
+ * serializes the pruned conversation directly as the compaction summary —
+ * cheaper and preserves full conversational flow with elided tool output.
  */
 export const runAutoCompactionEffect = (
   deps: RunCompactionDeps
@@ -237,6 +245,38 @@ export const runAutoCompactionEffect = (
     }
     if (!preparation.success) {
       return { ok: false, errorMessage: "Nothing to compact" };
+    }
+    const prep = preparation.success;
+
+    // §13 skip-summarizer: if pruning cleared the threshold, serialize the
+    // pruned conversation instead of calling the summarizer. Preserves full
+    // conversational flow (with elided tool output) at zero LLM cost.
+    const skip = canSkipSummarizer({
+      tokensBefore: prep.tokensBefore,
+      pruneStats: prep.pruneStats,
+      contextWindow: deps.model.contextWindow ?? 0,
+      reserveTokens: deps.settings.reserveTokens,
+    });
+    if (skip && !prep.isSplitTurn) {
+      const conversationText = serializeConversation(
+        convertToLlm(prep.messagesToSummarize)
+      );
+      const summary = `[context retained with stale tool output elided — ${prep.pruneStats.results} result(s) pruned, no summary needed]\n\n${conversationText}`;
+      yield* deps.session.appendCompaction(
+        summary,
+        prep.firstKeptEntryId,
+        prep.tokensBefore,
+        {
+          prunedResults: prep.pruneStats.results,
+          prunedChars: prep.pruneStats.savedChars,
+        }
+      );
+      return {
+        ok: true,
+        summary,
+        firstKeptEntryId: prep.firstKeptEntryId,
+        tokensBefore: prep.tokensBefore,
+      };
     }
 
     const result = yield* compactEffect(

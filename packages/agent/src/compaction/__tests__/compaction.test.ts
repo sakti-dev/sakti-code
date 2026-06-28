@@ -779,6 +779,7 @@ describe("harness compaction", () => {
       isSplitTurn: true,
       tokensBefore: 600_000,
       fileOps: { read: new Set(), written: new Set(), edited: new Set() },
+      pruneStats: { results: 0, savedChars: 0 },
       settings: {
         enabled: true,
         reserveTokens: 500_000,
@@ -802,6 +803,7 @@ describe("harness compaction", () => {
       isSplitTurn: false,
       tokensBefore: 100,
       fileOps: { read: new Set(), written: new Set(), edited: new Set() },
+      pruneStats: { results: 0, savedChars: 0 },
       settings: { enabled: true, reserveTokens: 2000, keepRecentTokens: 20 },
     };
     const { model: historyModel } = createFauxModel(false);
@@ -843,6 +845,7 @@ describe("harness compaction", () => {
       isSplitTurn: true,
       tokensBefore: 100,
       fileOps: { read: new Set(), written: new Set(), edited: new Set() },
+      pruneStats: { results: 0, savedChars: 0 },
       settings: { enabled: true, reserveTokens: 2000, keepRecentTokens: 20 },
     };
 
@@ -870,6 +873,7 @@ describe("harness compaction", () => {
       isSplitTurn: true,
       tokensBefore: 100,
       fileOps: { read: new Set(), written: new Set(), edited: new Set() },
+      pruneStats: { results: 0, savedChars: 0 },
       settings: { enabled: true, reserveTokens: 2000, keepRecentTokens: 20 },
     };
     const { model } = createFauxModel(false);

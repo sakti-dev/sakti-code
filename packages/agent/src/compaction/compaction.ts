@@ -30,7 +30,7 @@ import {
 } from "../session/messages";
 import { buildSessionContextFromEntries } from "../session/session";
 import type { AgentMessage, ThinkingLevel } from "../types";
-import { pruneStaleToolResults } from "./prune";
+import { type PruneStats, pruneStaleToolResults } from "./prune";
 import {
   computeFileLists,
   createFileOps,
@@ -556,6 +556,8 @@ export interface CompactionPreparation {
   messagesToSummarize: AgentMessage[];
   /** Previous compaction summary used for iterative updates. */
   previousSummary?: string | undefined;
+  /** Stats from the pre-compaction prune pass (§13); `results: 0` when nothing was pruned. */
+  pruneStats: PruneStats;
   /** Settings used to prepare compaction. */
   settings: CompactionSettings;
   /** Estimated context tokens before compaction. */
@@ -634,9 +636,12 @@ export function prepareCompaction(
   // re-derivable; this shrinks the summarizer input (and its LLM call) for
   // free. File-op extraction below only reads assistant toolCall blocks, so
   // pruning toolResult content does not lose file-tracking data.
-  const prunedSummarize = pruneStaleToolResults(messagesToSummarize, {
-    tailStartIndex: messagesToSummarize.length,
-  }).pruned;
+  const { pruned: prunedSummarize, stats: pruneStats } = pruneStaleToolResults(
+    messagesToSummarize,
+    {
+      tailStartIndex: messagesToSummarize.length,
+    }
+  );
   const turnPrefixMessages: AgentMessage[] = [];
   if (cutPoint.isSplitTurn) {
     for (
@@ -669,6 +674,7 @@ export function prepareCompaction(
     tokensBefore,
     previousSummary,
     fileOps,
+    pruneStats,
     settings,
   });
 }

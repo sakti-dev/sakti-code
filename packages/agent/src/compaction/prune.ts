@@ -130,3 +130,34 @@ function extractTextContent(content: unknown): string {
   }
   return "";
 }
+
+/**
+ * Decide whether pruning alone clears the compaction threshold, letting the
+ * caller skip the summarizer LLM call (§13 "free win").
+ *
+ * Uses the same `chars / 4` token heuristic as {@link estimateTokens}. When
+ * the estimated post-prune token count is at or under
+ * `contextWindow - reserveTokens`, the pruned conversation is short enough to
+ * keep verbatim (with elided tool output) — serializing it is cheaper than a
+ * summary and preserves full conversational flow.
+ *
+ * @returns `false` when the context window is unknown (0) or pruning saved
+ *   nothing, so the caller always falls back to the summarizer.
+ */
+export function canSkipSummarizer(input: {
+  tokensBefore: number;
+  pruneStats: PruneStats;
+  contextWindow: number;
+  reserveTokens: number;
+}): boolean {
+  if (input.contextWindow <= 0) {
+    return false;
+  }
+  if (input.pruneStats.results === 0) {
+    return false;
+  }
+  const estimatedPruneTokensSaved = Math.ceil(input.pruneStats.savedChars / 4);
+  const projectedTokens = input.tokensBefore - estimatedPruneTokensSaved;
+  const threshold = input.contextWindow - input.reserveTokens;
+  return projectedTokens <= threshold;
+}

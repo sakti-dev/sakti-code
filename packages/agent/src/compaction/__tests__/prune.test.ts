@@ -3,7 +3,11 @@ import type { MessageEntry, SessionTreeEntry } from "../../harness-types";
 import { getOrThrow } from "../../harness-types";
 import type { AgentMessage } from "../../types";
 import { DEFAULT_COMPACTION_SETTINGS, prepareCompaction } from "../compaction";
-import { DEFAULT_MIN_PRUNE_BYTES, pruneStaleToolResults } from "../prune";
+import {
+  canSkipSummarizer,
+  DEFAULT_MIN_PRUNE_BYTES,
+  pruneStaleToolResults,
+} from "../prune";
 
 function textBlock(text: string) {
   return { type: "text" as const, text };
@@ -308,5 +312,57 @@ describe("prepareCompaction integration", () => {
     const content = (toolResult as unknown as { content: { text: string }[] })
       .content;
     expect(content[0]!.text).toBe("small output");
+  });
+});
+
+describe("canSkipSummarizer", () => {
+  it("returns true when prune savings bring tokens under the threshold", () => {
+    // tokensBefore 1000, contextWindow 1000, reserve 100 → threshold 900.
+    // Pruning saves 200 chars = ~50 tokens → 1000 - 50 = 950... still over.
+    // Need bigger savings: 800 chars = 200 tokens → 1000 - 200 = 800 < 900. ✓
+    expect(
+      canSkipSummarizer({
+        tokensBefore: 1000,
+        pruneStats: { results: 1, savedChars: 800 },
+        contextWindow: 1000,
+        reserveTokens: 100,
+      })
+    ).toBe(true);
+  });
+
+  it("returns false when prune savings are insufficient", () => {
+    // 1000 tokens, pruning saves only 100 tokens → 900, exactly at threshold.
+    // shouldCompact uses `>` (strict), so 900 is NOT over 900 → under threshold.
+    // Use 1001 to be clearly over: 1001 - 100 = 901 > 900 → still over → false.
+    expect(
+      canSkipSummarizer({
+        tokensBefore: 1001,
+        pruneStats: { results: 1, savedChars: 100 },
+        contextWindow: 1000,
+        reserveTokens: 100,
+      })
+    ).toBe(false);
+  });
+
+  it("returns false when nothing was pruned (no savings)", () => {
+    expect(
+      canSkipSummarizer({
+        tokensBefore: 950,
+        pruneStats: { results: 0, savedChars: 0 },
+        contextWindow: 1000,
+        reserveTokens: 100,
+      })
+    ).toBe(false);
+  });
+
+  it("returns false when contextWindow is 0 (unknown)", () => {
+    expect(
+      canSkipSummarizer({
+        tokensBefore: 950,
+        pruneStats: { results: 5, savedChars: 10_000 },
+        contextWindow: 0,
+        reserveTokens: 100,
+      })
+    ).toBe(false);
   });
 });
