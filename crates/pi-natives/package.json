@@ -6,7 +6,7 @@
   "main": "./index.js",
   "types": "./index.d.ts",
   "scripts": {
-    "build": "napi build --platform --release",
+    "build:native": "napi build --platform --release",
     "build:debug": "napi build --platform",
     "test": "vitest run",
     "prepublishOnly": "napi prepublish -t npm"
