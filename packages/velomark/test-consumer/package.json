@@ -1,17 +1,17 @@
 {
-	"name": "velomark-test-consumer",
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"build": "vite build"
-	},
-	"dependencies": {
-		"solid-js": "1.9.10",
-		"velomark": "file:./vendor/velomark-0.0.0.tgz"
-	},
-	"devDependencies": {
-		"typescript": "5.4.5",
-		"vite": "5.2.11",
-		"vite-plugin-solid": "2.10.2"
-	}
+  "name": "velomark-test-consumer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "solid-js": "1.9.10",
+    "velomark": "file:./vendor/velomark-0.0.0.tgz"
+  },
+  "devDependencies": {
+    "typescript": "5.4.5",
+    "vite": "5.2.11",
+    "vite-plugin-solid": "2.10.2"
+  }
 }

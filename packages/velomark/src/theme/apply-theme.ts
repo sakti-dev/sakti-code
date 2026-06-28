@@ -5,29 +5,29 @@ import { mergeTheme, type PartialVelomarkTheme } from "./merge-theme";
 import type { VelomarkTheme, VelomarkThemeName } from "./types";
 
 export const resolveTheme = (
-	theme?: VelomarkThemeName | PartialVelomarkTheme | VelomarkTheme,
+  theme?: VelomarkThemeName | PartialVelomarkTheme | VelomarkTheme
 ): VelomarkTheme => {
-	if (theme === "dark") {
-		return darkTheme;
-	}
+  if (theme === "dark") {
+    return darkTheme;
+  }
 
-	if (theme === "default" || theme === undefined) {
-		return defaultTheme;
-	}
+  if (theme === "default" || theme === undefined) {
+    return defaultTheme;
+  }
 
-	return mergeTheme(defaultTheme, theme);
+  return mergeTheme(defaultTheme, theme);
 };
 
 export const applyTheme = (
-	element: HTMLElement,
-	theme?: VelomarkThemeName | PartialVelomarkTheme | VelomarkTheme,
+  element: HTMLElement,
+  theme?: VelomarkThemeName | PartialVelomarkTheme | VelomarkTheme
 ): VelomarkTheme => {
-	const resolvedTheme = resolveTheme(theme);
-	const cssVars = generateCssVars(resolvedTheme);
+  const resolvedTheme = resolveTheme(theme);
+  const cssVars = generateCssVars(resolvedTheme);
 
-	for (const [key, value] of Object.entries(cssVars)) {
-		element.style.setProperty(key, value);
-	}
+  for (const [key, value] of Object.entries(cssVars)) {
+    element.style.setProperty(key, value);
+  }
 
-	return resolvedTheme;
+  return resolvedTheme;
 };
