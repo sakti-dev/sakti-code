@@ -2,6 +2,7 @@ import type { AssistantMessage, Usage } from "@sakti-code/llm";
 import { describe, expect, it } from "vitest";
 import {
   type CheckCompactionInput,
+  type CompactionDecision,
   checkCompaction,
   parseCompactionSettings,
 } from "../../compaction/auto-compaction";
@@ -297,5 +298,103 @@ describe("stuck guard", () => {
     expect(decision.action).toBe("compact");
     expect(decision.reason).toBe("overflow");
     expect(decision.pauseAutoCompaction).toBeUndefined();
+  });
+});
+
+describe("stuck guard lifecycle (§4 + §11)", () => {
+  // Simulates a too-small-window run: the context stays over threshold after
+  // each compaction. The guard should latch after 2 consecutive compactions,
+  // pause further auto-compaction, then clear when a turn finally drops below
+  // the threshold — capping total compactions at 2 until recovery.
+  const settings: CompactionSettings = {
+    enabled: true,
+    reserveTokens: 100,
+    keepRecentTokens: 100,
+  };
+  const contextWindow = 1000; // threshold at 900
+
+  function decide(
+    totalTokens: number,
+    consecutiveCompacts: number,
+    paused: boolean
+  ): {
+    decision: CompactionDecision;
+    nextCompacts: number;
+    nextPaused: boolean;
+  } {
+    // The runner always calls the pure checkCompaction — `paused` only gates
+    // runCompaction (the actual compaction), not the decision. The decision
+    // still runs so a sub-threshold turn can signal resetStuckGuard.
+    const message = asst("stop", {
+      usage: usage({ totalTokens }),
+      timestamp: Date.now(),
+    });
+    const decision = checkCompaction(
+      baseInput(message, {
+        contextWindow,
+        settings,
+        ...(consecutiveCompacts > 0 ? { consecutiveCompacts } : {}),
+      })
+    );
+    let nextCompacts = consecutiveCompacts;
+    let nextPaused = paused;
+    // runCompaction only fires when the decision says compact AND not paused.
+    if (decision.action === "compact" && !paused) {
+      nextCompacts = consecutiveCompacts + 1;
+    }
+    if (decision.pauseAutoCompaction) {
+      nextPaused = true;
+    }
+    if (decision.resetStuckGuard) {
+      nextCompacts = 0;
+      nextPaused = false;
+    }
+    return { decision, nextCompacts, nextPaused };
+  }
+
+  it("caps threshold compactions at 2 then pauses, and recovers when the prompt shrinks", () => {
+    let consecutiveCompacts = 0;
+    let paused = false;
+    const compactCount = { value: 0 };
+
+    // Turns 1–2: over threshold, guard not yet latched → compact each time.
+    for (let turn = 1; turn <= 2; turn++) {
+      const { decision, nextCompacts } = decide(
+        950,
+        consecutiveCompacts,
+        paused
+      );
+      expect(decision.action, `turn ${turn} should compact`).toBe("compact");
+      consecutiveCompacts = nextCompacts;
+      compactCount.value++;
+    }
+    expect(consecutiveCompacts).toBe(2);
+
+    // Turn 3: still over threshold, 2 consecutive compacts → guard latches.
+    const turn3 = decide(950, consecutiveCompacts, paused);
+    expect(turn3.decision.action).toBe("none");
+    expect(turn3.decision.pauseAutoCompaction).toBe(true);
+    expect(turn3.decision.reason).toBe("stuck_guard");
+    paused = turn3.nextPaused;
+
+    // Turns 4+: guard latched, so runCompaction is skipped — no more compactions.
+    for (let turn = 4; turn <= 6; turn++) {
+      const { decision } = decide(950, consecutiveCompacts, paused);
+      expect(decision.action, `turn ${turn} while paused`).toBe("none");
+    }
+    expect(compactCount.value).toBe(2); // capped at 2
+
+    // Turn 7: prompt drops below threshold → guard resets.
+    const turn7 = decide(500, consecutiveCompacts, paused);
+    expect(turn7.decision.resetStuckGuard).toBe(true);
+    consecutiveCompacts = turn7.nextCompacts;
+    paused = turn7.nextPaused;
+    expect(consecutiveCompacts).toBe(0);
+    expect(paused).toBe(false);
+
+    // Turn 8: over threshold again, guard cleared → compacts once more.
+    const turn8 = decide(950, consecutiveCompacts, paused);
+    expect(turn8.decision.action).toBe("compact");
+    expect(turn8.decision.pauseAutoCompaction).toBeUndefined();
   });
 });
