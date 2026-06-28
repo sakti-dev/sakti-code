@@ -45,6 +45,7 @@ import {
 } from "../harness-types";
 import { formatPromptTemplateInvocation } from "../resources/prompt-templates";
 import { formatSkillInvocation } from "../resources/skills";
+import { formatSkillsAddedNotice } from "../resources/skills-added-notice";
 import { convertToLlm } from "../session/messages";
 import type { SessionShape } from "../session/session";
 import type {
@@ -1096,6 +1097,28 @@ export class AgentHarness<
     }
     this.steerQueue.push(createUserMessage(text, options?.images));
     await this.emitQueueUpdate();
+  }
+
+  /**
+   * Advertise one or more newly-installed skills on the next turn via a
+   * `<skills-added>` block. The block rides the user message (transient tail),
+   * not the system prompt — the prompt-cache prefix stays warm.
+   *
+   * Use this when a skill is installed mid-session. The model reads the skill
+   * body on-demand via the `read` tool, so only the {name, description, location}
+   * triple needs to reach it.
+   *
+   * Unlike {@link steer}, this is safe to call while idle — the notice lands on
+   * the next turn's user-message tail via the steer queue, which is drained at
+   * loop start (before the first LLM call).
+   */
+  announceSkillAdded(skills: readonly Skill[] | Skill): void {
+    const arr = Array.isArray(skills) ? skills : [skills];
+    const notice = formatSkillsAddedNotice(arr);
+    if (notice === "") {
+      return;
+    }
+    this.steerQueue.push(createUserMessage(notice));
   }
 
   async followUp(

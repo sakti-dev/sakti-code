@@ -1,7 +1,8 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "files": {
-    "maxSize": 2000000
+    "maxSize": 2000000,
+    "includes": ["!openspec"]
   },
   "extends": [
     "ultracite/biome/core",

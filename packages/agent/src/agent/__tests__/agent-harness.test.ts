@@ -941,3 +941,42 @@ describe("scheduleSystemPromptRefresh", () => {
     });
   });
 });
+
+describe("announceSkillAdded", () => {
+  it("pushes a <skills-added> steering message on the next turn", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    const captured: string[] = [];
+    registration.setResponses([
+      (req: StreamRequest) => {
+        const userText = textFromUserMessages(
+          req.messages as Array<{ role: string; content: unknown }>
+        ).join("\n");
+        captured.push(userText);
+        return fauxAssistantMessage("ok");
+      },
+    ]);
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: "frozen prompt",
+    });
+
+    harness.announceSkillAdded({
+      name: "graphify",
+      description: "any input to knowledge graph",
+      content: "",
+      filePath: "/home/user/skills/graphify/SKILL.md",
+    });
+
+    await harness.prompt("hello");
+
+    expect(captured[0]).toContain("<skills-added>");
+    expect(captured[0]).toContain("graphify");
+    expect(captured[0]).toContain("/home/user/skills/graphify/SKILL.md");
+    expect(captured[0]).toContain("hello");
+  });
+});

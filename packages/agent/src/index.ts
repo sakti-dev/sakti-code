@@ -154,6 +154,7 @@ export {
   loadSourcedSkills,
   loadSourcedSkillsEffect,
 } from "./resources/skills.ts";
+export { formatSkillsAddedNotice } from "./resources/skills-added-notice.ts";
 export {
   appendSkillsBlock,
   formatSkillsForSystemPrompt,
