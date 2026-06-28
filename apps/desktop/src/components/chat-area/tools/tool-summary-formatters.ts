@@ -2,6 +2,8 @@ import { middleEllipsisPath } from "~/lib/utils/path-utils";
 
 const PATH_MAX_LENGTH = 50;
 
+const HASHLINE_PATH_RE = /^\[([^\]]+?)#[0-9A-Fa-f]{4}\]/m;
+
 interface ToolPartData {
   args?: Record<string, unknown>;
   output?: unknown;
@@ -80,13 +82,31 @@ export function formatWriteSummary(part: ToolPartData): string {
   return `Created ${middleEllipsisPath(filePath, PATH_MAX_LENGTH)}`;
 }
 
+function extractHashlinePath(input: string): string | undefined {
+  const match = HASHLINE_PATH_RE.exec(input);
+  return match?.[1];
+}
+
 export function formatEditSummary(part: ToolPartData): string {
   const args = getArgs(part);
+
+  // Standard replace mode: path is a top-level arg
   const filePath =
     (typeof args.filePath === "string" ? args.filePath : undefined) ??
-    (typeof args.path === "string" ? args.path : undefined) ??
-    "unknown";
-  return `Edited ${middleEllipsisPath(filePath, PATH_MAX_LENGTH)}`;
+    (typeof args.path === "string" ? args.path : undefined);
+  if (filePath) {
+    return `Edited ${middleEllipsisPath(filePath, PATH_MAX_LENGTH)}`;
+  }
+
+  // Hashline mode: path is inside the input string as [path#HASH] headers
+  if (typeof args.input === "string") {
+    const hashlinePath = extractHashlinePath(args.input);
+    if (hashlinePath) {
+      return `Edited ${middleEllipsisPath(hashlinePath, PATH_MAX_LENGTH)}`;
+    }
+  }
+
+  return "Edited file";
 }
 
 export function formatBashSummary(part: ToolPartData): string {
@@ -110,6 +130,17 @@ export function formatGlobSummary(part: ToolPartData): string {
   const args = getArgs(part);
   const pattern =
     (typeof args.pattern === "string" ? args.pattern : undefined) ?? "*";
+  const path = typeof args.path === "string" ? args.path : undefined;
+  const pathPart = path ? ` in ${path}` : "";
+  return `Found files matching ${pattern}${pathPart}`;
+}
+
+export function formatFindSummary(part: ToolPartData): string {
+  const args = getArgs(part);
+  const pattern =
+    (typeof args.pattern === "string" ? args.pattern : undefined) ??
+    (typeof args.glob === "string" ? args.glob : undefined) ??
+    "*";
   const path = typeof args.path === "string" ? args.path : undefined;
   const pathPart = path ? ` in ${path}` : "";
   return `Found files matching ${pattern}${pathPart}`;

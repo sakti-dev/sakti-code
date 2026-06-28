@@ -4,6 +4,7 @@ import { normalizeToolName } from "../tools/tool-name.ts";
 import {
   formatBashSummary,
   formatEditSummary,
+  formatFindSummary,
   formatGenericToolSummary,
   formatGlobSummary,
   formatGrepSummary,
@@ -24,6 +25,7 @@ type ToolIcon = "file" | "folder" | "terminal" | "search";
 const TOOL_ICON_MAP: Record<string, ToolIcon> = {
   bash: "terminal",
   edit: "file",
+  find: "folder",
   glob: "folder",
   grep: "search",
   ls: "folder",
@@ -97,6 +99,8 @@ export const ToolPart: Component<PartProps> = (props) => {
         return formatEditSummary(part);
       case "bash":
         return formatBashSummary(part);
+      case "find":
+        return formatFindSummary(part);
       case "glob":
         return formatGlobSummary(part);
       case "grep":
