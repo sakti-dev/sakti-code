@@ -4,6 +4,17 @@ import {
   formatHashlineHeader,
   formatNumberedLine,
 } from "../hashline/format";
+import { InMemoryFilesystem, isNotFound, NotFoundError } from "../hashline/fs";
+import { Patch } from "../hashline/input";
+import { MismatchError } from "../hashline/mismatch";
+import {
+  detectLineEnding,
+  normalizeToLF,
+  restoreLineEndings,
+  stripBom,
+} from "../hashline/normalize";
+import { Patcher } from "../hashline/patcher";
+import { InMemorySnapshotStore } from "../hashline/snapshots";
 import type { Anchor, ApplyResult, Cursor, Edit } from "../hashline/types";
 
 describe("computeFileHash", () => {
@@ -494,5 +505,250 @@ describe("Hashline types", () => {
     const result: ApplyResult = { text: "hello\nworld", firstChangedLine: 1 };
     expect(result.text).toBe("hello\nworld");
     expect(result.firstChangedLine).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// normalize.ts — BOM stripping + line-ending normalization
+// ---------------------------------------------------------------------------
+
+describe("normalize", () => {
+  it("detects CRLF", () => {
+    expect(detectLineEnding("a\r\nb\r\n")).toBe("\r\n");
+  });
+
+  it("detects LF", () => {
+    expect(detectLineEnding("a\nb\n")).toBe("\n");
+  });
+
+  it("defaults to LF when no line endings", () => {
+    expect(detectLineEnding("hello")).toBe("\n");
+  });
+
+  it("normalizeToLF converts CRLF and bare CR to LF", () => {
+    expect(normalizeToLF("a\r\nb\rc\nd")).toBe("a\nb\nc\nd");
+  });
+
+  it("restoreLineEndings re-encodes LF to CRLF", () => {
+    expect(restoreLineEndings("a\nb\n", "\r\n")).toBe("a\r\nb\r\n");
+  });
+
+  it("restoreLineEndings is identity for LF", () => {
+    expect(restoreLineEndings("a\nb\n", "\n")).toBe("a\nb\n");
+  });
+
+  it("stripBom removes UTF-8 BOM", () => {
+    const { bom, text } = stripBom("\uFEFFhello");
+    expect(bom).toBe("\uFEFF");
+    expect(text).toBe("hello");
+  });
+
+  it("stripBom is identity without BOM", () => {
+    const { bom, text } = stripBom("hello");
+    expect(bom).toBe("");
+    expect(text).toBe("hello");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// fs.ts — InMemoryFilesystem
+// ---------------------------------------------------------------------------
+
+describe("InMemoryFilesystem", () => {
+  it("reads and writes text", async () => {
+    const fs = new InMemoryFilesystem();
+    await fs.writeText("a.txt", "hello\n");
+    expect(await fs.readText("a.txt")).toBe("hello\n");
+  });
+
+  it("throws NotFoundError for missing files", async () => {
+    const fs = new InMemoryFilesystem();
+    await expect(fs.readText("missing.txt")).rejects.toBeInstanceOf(
+      NotFoundError
+    );
+  });
+
+  it("isNotFound returns true for NotFoundError", () => {
+    const err = new NotFoundError("x");
+    expect(isNotFound(err)).toBe(true);
+  });
+
+  it("isNotFound returns true for ENOENT errors", () => {
+    const err = Object.assign(new Error("nope"), { code: "ENOENT" });
+    expect(isNotFound(err)).toBe(true);
+  });
+
+  it("deletes files", async () => {
+    const fs = new InMemoryFilesystem([["a.txt", "hi"]]);
+    await fs.delete("a.txt");
+    expect(await fs.exists("a.txt")).toBe(false);
+  });
+
+  it("moves files preserving content", async () => {
+    const fs = new InMemoryFilesystem([["old.ts", "x"]]);
+    await fs.move("old.ts", "new.ts");
+    expect(await fs.exists("old.ts")).toBe(false);
+    expect(await fs.readText("new.ts")).toBe("x");
+  });
+
+  it("moves files with explicit content", async () => {
+    const fs = new InMemoryFilesystem([["old.ts", "x"]]);
+    await fs.move("old.ts", "new.ts", "y");
+    expect(await fs.readText("new.ts")).toBe("y");
+  });
+
+  it("accepts initial entries", async () => {
+    const fs = new InMemoryFilesystem([
+      ["a.ts", "1"],
+      ["b.ts", "2"],
+    ]);
+    expect(await fs.readText("a.ts")).toBe("1");
+    expect(await fs.readText("b.ts")).toBe("2");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// patcher.ts — Patcher orchestrator
+// (patterns matched against openspec/references/oh-my-pi/packages/hashline/test/patcher.test.ts)
+// ---------------------------------------------------------------------------
+
+function setupPatcher(initial?: Iterable<readonly [string, string]>) {
+  const fs = new InMemoryFilesystem(initial);
+  const snapshots = new InMemorySnapshotStore();
+  const patcher = new Patcher({ fs, snapshots });
+  return { fs, snapshots, patcher };
+}
+
+describe("Patcher", () => {
+  it("applies when the section tag is the live file's content hash", async () => {
+    const content = "line1\nline2\nline3\n";
+    const { fs, snapshots, patcher } = setupPatcher([["a.ts", content]]);
+    const tag = snapshots.record("a.ts", content);
+
+    const result = await patcher.apply(
+      Patch.parse(`[a.ts#${tag}]\nSWAP 2.=2:\n+replaced`)
+    );
+
+    expect(result.sections[0]?.op).toBe("update");
+    expect(result.sections[0]?.fileHash).toMatch(/^[0-9A-F]{4}$/);
+    expect(result.sections[0]?.fileHash).not.toBe(tag);
+    expect(fs.get("a.ts")).toBe("line1\nreplaced\nline3\n");
+  });
+
+  it("validates any anchor from the content hash, even with no recorded snapshot", async () => {
+    const content = "l1\nl2\nl3\nl4\nl5\n";
+    const { fs, snapshots, patcher } = setupPatcher([["a.ts", content]]);
+    const tag = computeFileHash(content);
+    expect(snapshots.byHash("a.ts", tag)).toBeNull();
+
+    const result = await patcher.apply(
+      Patch.parse(`[a.ts#${tag}]\nSWAP 3.=3:\n+L3`)
+    );
+
+    expect(result.sections[0]?.op).toBe("update");
+    expect(fs.get("a.ts")).toBe("l1\nl2\nL3\nl4\nl5\n");
+  });
+
+  it("records a fresh snapshot after apply", async () => {
+    const content = "a\nb\nc\n";
+    const { snapshots, patcher } = setupPatcher([["f.ts", content]]);
+    const tag = snapshots.record("f.ts", content);
+
+    const result = await patcher.apply(
+      Patch.parse(`[f.ts#${tag}]\nSWAP 2.=2:\n+B`)
+    );
+    const newHash = result.sections[0].fileHash;
+    expect(newHash).toBeDefined();
+    expect(snapshots.byHash("f.ts", newHash)).not.toBeNull();
+  });
+
+  it("throws MismatchError when hash mismatches and recovery fails", async () => {
+    const oldContent = "a\nb\nc\n";
+    const liveContent = "X\nY\nZ\n";
+    const { snapshots, patcher } = setupPatcher([["f.ts", liveContent]]);
+    const oldHash = snapshots.record("f.ts", oldContent);
+
+    await expect(
+      patcher.apply(Patch.parse(`[f.ts#${oldHash}]\nSWAP 2.=2:\n+B`))
+    ).rejects.toBeInstanceOf(MismatchError);
+  });
+
+  it("recovers via 3-way merge when content drifted non-conflictingly", async () => {
+    const oldContent = "a\nb\nc\nd\ne\n";
+    const { snapshots, patcher } = setupPatcher([["f.ts", oldContent]]);
+    const oldHash = snapshots.record("f.ts", oldContent);
+
+    const result = await patcher.apply(
+      Patch.parse(`[f.ts#${oldHash}]\nSWAP 3.=3:\n+CHANGED`)
+    );
+    expect(result.sections[0].after).toBe("a\nb\nCHANGED\nd\ne\n");
+  });
+
+  it("detects noop when edits produce no change", async () => {
+    const content = "a\nb\nc\n";
+    const { snapshots, patcher } = setupPatcher([["f.ts", content]]);
+    const tag = snapshots.record("f.ts", content);
+
+    const result = await patcher.apply(
+      Patch.parse(`[f.ts#${tag}]\nSWAP 2.=2:\n+b`)
+    );
+    expect(result.sections[0].op).toBe("noop");
+  });
+
+  it("handles REM (delete file) op", async () => {
+    const content = "a\nb\n";
+    const { fs, snapshots, patcher } = setupPatcher([["f.ts", content]]);
+    const tag = snapshots.record("f.ts", content);
+
+    const result = await patcher.apply(Patch.parse(`[f.ts#${tag}]\nREM`));
+    expect(result.sections[0].op).toBe("delete");
+    expect(await fs.exists("f.ts")).toBe(false);
+  });
+
+  it("handles MV (move file) op", async () => {
+    const content = "a\nb\n";
+    const { fs, snapshots, patcher } = setupPatcher([["old.ts", content]]);
+    const tag = snapshots.record("old.ts", content);
+
+    const result = await patcher.apply(
+      Patch.parse(`[old.ts#${tag}]\nMV "new.ts"`)
+    );
+    expect(result.sections[0].op).toBe("update");
+    expect(result.sections[0].moveDest).toBe("new.ts");
+    expect(await fs.exists("old.ts")).toBe(false);
+    expect(await fs.readText("new.ts")).toBe("a\nb\n");
+  });
+
+  it("applies multi-section patches atomically", async () => {
+    const { snapshots, patcher } = setupPatcher([
+      ["a.ts", "1\n"],
+      ["b.ts", "2\n"],
+    ]);
+    const hashA = snapshots.record("a.ts", "1\n");
+    const hashB = snapshots.record("b.ts", "2\n");
+
+    const result = await patcher.apply(
+      Patch.parse(
+        `[a.ts#${hashA}]\nSWAP 1.=1:\n+A\n[b.ts#${hashB}]\nSWAP 1.=1:\n+B`
+      )
+    );
+    expect(result.sections).toHaveLength(2);
+    expect(result.sections[0].after).toBe("A\n");
+    expect(result.sections[1].after).toBe("B\n");
+  });
+
+  it("rejects when section has no hash tag", async () => {
+    const { patcher } = setupPatcher([["f.ts", "x\n"]]);
+    await expect(
+      patcher.apply(Patch.parse("[f.ts]\nSWAP 1.=1:\n+y"))
+    ).rejects.toThrow(/hash/i);
+  });
+
+  it("rejects when target file does not exist", async () => {
+    const { snapshots, patcher } = setupPatcher();
+    const tag = snapshots.record("ghost.ts", "x\n");
+    await expect(
+      patcher.apply(Patch.parse(`[ghost.ts#${tag}]\nSWAP 1.=1:\n+y`))
+    ).rejects.toThrow(/not found/i);
   });
 });
