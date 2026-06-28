@@ -264,6 +264,65 @@ export async function persistSkillEnabled(
   );
 }
 
+/**
+ * # Stuck-guard state (§4)
+ *
+ * Tracks consecutive auto-compactions so {@link checkCompaction} can pause
+ * when the context window is too small (≥2 compacts in a row that still leave
+ * the prompt over threshold). The pure decision lives in
+ * `packages/agent/.../auto-compaction.ts`; this module owns the persistence so
+ * the counter survives across `runPrompt` calls (each of which builds a fresh
+ * harness) and across app restarts.
+ *
+ * Keys (settings table):
+ *   `session:<id>:consecutive_compacts`   — stringified non-negative int
+ *   `session:<id>:auto_compaction_paused` — present ("1") iff the guard latched
+ *
+ * The paused key is deleted (not set to "0") when the guard clears, so the
+ * common steady state keeps the settings table clean.
+ */
+export interface StuckGuardState {
+  consecutiveCompacts: number;
+  paused: boolean;
+}
+
+export function loadStuckGuardState(
+  ctx: ServerContext,
+  sessionId: string
+): StuckGuardState {
+  const rawCount = ctx.repos.settings.get(
+    `session:${sessionId}:consecutive_compacts`
+  );
+  const parsed = Number.parseInt(rawCount ?? "0", 10);
+  const consecutiveCompacts =
+    Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  const paused =
+    ctx.repos.settings.get(`session:${sessionId}:auto_compaction_paused`) ===
+    "1";
+  return { consecutiveCompacts, paused };
+}
+
+export async function persistStuckGuardState(
+  ctx: ServerContext,
+  sessionId: string,
+  state: StuckGuardState
+): Promise<void> {
+  await ctx.repos.settings.set(
+    `session:${sessionId}:consecutive_compacts`,
+    String(state.consecutiveCompacts)
+  );
+  if (state.paused) {
+    await ctx.repos.settings.set(
+      `session:${sessionId}:auto_compaction_paused`,
+      "1"
+    );
+  } else {
+    await ctx.repos.settings.delete(
+      `session:${sessionId}:auto_compaction_paused`
+    );
+  }
+}
+
 export function resolveThinkingLevel(
   ctx: ServerContext,
   sessionId: string,
@@ -520,6 +579,11 @@ export async function runPrompt(
     // message, back off, and re-run via harness.continue(). See retry-loop.ts.
     const retrySettings = parseRetrySettings(settings);
     let firstTurn = true;
+    // Stuck-guard state (§4) persists across prompts via the settings table
+    // because each runPrompt builds a fresh harness; the closure caches the
+    // loaded state for this run's callbacks (the overflow retry loop can fire
+    // checkCompaction/runCompaction multiple times in one run).
+    const stuckGuard = loadStuckGuardState(ctx, sessionId);
     await executeWithRetry(
       {
         signal: retryAbort.signal,
@@ -582,7 +646,8 @@ export async function runPrompt(
         },
         // Auto-compaction: decide after each turn whether the context needs
         // summarizing, and run it (prepare -> compact -> persist) when it does.
-        // Mirrors pi's _handlePostAgentRun compaction check.
+        // Mirrors pi's _handlePostAgentRun compaction check. The stuckGuard
+        // closure is initialized above executeWithRetry.
         checkCompaction: async (assistantMessage) => {
           const entries = await sessionInstance.getBranch();
           const messages = (await sessionInstance.buildContext()).messages;
@@ -595,7 +660,7 @@ export async function runPrompt(
               break;
             }
           }
-          return checkCompaction({
+          const decision = checkCompaction({
             message: assistantMessage,
             messages,
             contextWindow: model.contextWindow ?? 0,
@@ -603,16 +668,45 @@ export async function runPrompt(
             ...(latestCompactionTimestamp === undefined
               ? {}
               : { latestCompactionTimestamp }),
+            ...(stuckGuard.consecutiveCompacts > 0
+              ? { consecutiveCompacts: stuckGuard.consecutiveCompacts }
+              : {}),
           });
+          // Apply stuck-guard side effects so they survive to the next prompt.
+          if (decision.pauseAutoCompaction) {
+            stuckGuard.paused = true;
+            await persistStuckGuardState(ctx, sessionId, stuckGuard);
+            ctx.log?.agent.warn("auto-compaction paused (stuck guard)", {
+              sessionId,
+              consecutiveCompacts: stuckGuard.consecutiveCompacts,
+            });
+          } else if (decision.resetStuckGuard) {
+            stuckGuard.consecutiveCompacts = 0;
+            stuckGuard.paused = false;
+            await persistStuckGuardState(ctx, sessionId, stuckGuard);
+          }
+          return decision;
         },
-        runCompaction: async () =>
-          runAutoCompaction({
+        runCompaction: async () => {
+          if (stuckGuard.paused) {
+            return {
+              ok: false as const,
+              errorMessage: "Auto-compaction paused (stuck guard)",
+            };
+          }
+          const result = await runAutoCompaction({
             session: sessionShape,
             model,
             apiKey: auth.apiKey,
             settings: compactionSettings,
             ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
-          }),
+          });
+          if (result.ok) {
+            stuckGuard.consecutiveCompacts += 1;
+            await persistStuckGuardState(ctx, sessionId, stuckGuard);
+          }
+          return result;
+        },
       },
       retrySettings
     );

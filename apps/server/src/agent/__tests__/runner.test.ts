@@ -9,8 +9,10 @@ import {
   clearRunsForTesting,
   loadDisabledSkills,
   loadSessionSettings,
+  loadStuckGuardState,
   persistSkillDisabled,
   persistSkillEnabled,
+  persistStuckGuardState,
   resolveThinkingLevel,
   runPrompt,
 } from "../runner.ts";
@@ -230,6 +232,70 @@ describe("persistSkillDisabled / persistSkillEnabled", () => {
     await persistSkillEnabled(ctx, "sess-1", "graphify");
     expect(ctx.repos.settings.delete).toHaveBeenCalledWith(
       "session:sess-1:disabled_skill:graphify"
+    );
+  });
+});
+
+describe("stuck guard state (loadStuckGuardState / persistStuckGuardState)", () => {
+  it("loadStuckGuardState returns zeroed defaults when no keys are set", async () => {
+    const ctx = createMockCtx();
+    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    const state = loadStuckGuardState(ctx, "sess-1");
+    expect(state).toEqual({ consecutiveCompacts: 0, paused: false });
+  });
+
+  it("loadStuckGuardState reads consecutive_compacts and paused from settings", async () => {
+    const ctx = createMockCtx();
+    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation(
+      (key: string) => {
+        if (key === "session:sess-1:consecutive_compacts") return "2";
+        if (key === "session:sess-1:auto_compaction_paused") return "1";
+        return null;
+      }
+    );
+    const state = loadStuckGuardState(ctx, "sess-1");
+    expect(state).toEqual({ consecutiveCompacts: 2, paused: true });
+  });
+
+  it("loadStuckGuardState treats a malformed consecutive_compacts as 0", async () => {
+    const ctx = createMockCtx();
+    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation(
+      (key: string) =>
+        key === "session:sess-1:consecutive_compacts" ? "not-a-number" : null
+    );
+    const state = loadStuckGuardState(ctx, "sess-1");
+    expect(state.consecutiveCompacts).toBe(0);
+    expect(state.paused).toBe(false);
+  });
+
+  it("persistStuckGuardState writes consecutive_compacts and sets paused='1' when paused", async () => {
+    const ctx = createMockCtx();
+    await persistStuckGuardState(ctx, "sess-1", {
+      consecutiveCompacts: 2,
+      paused: true,
+    });
+    expect(ctx.repos.settings.set).toHaveBeenCalledWith(
+      "session:sess-1:consecutive_compacts",
+      "2"
+    );
+    expect(ctx.repos.settings.set).toHaveBeenCalledWith(
+      "session:sess-1:auto_compaction_paused",
+      "1"
+    );
+  });
+
+  it("persistStuckGuardState deletes the paused key when not paused (keeps table clean)", async () => {
+    const ctx = createMockCtx();
+    await persistStuckGuardState(ctx, "sess-1", {
+      consecutiveCompacts: 0,
+      paused: false,
+    });
+    expect(ctx.repos.settings.set).toHaveBeenCalledWith(
+      "session:sess-1:consecutive_compacts",
+      "0"
+    );
+    expect(ctx.repos.settings.delete).toHaveBeenCalledWith(
+      "session:sess-1:auto_compaction_paused"
     );
   });
 });
