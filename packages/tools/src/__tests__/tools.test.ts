@@ -415,13 +415,13 @@ describe("EditTool (hashline noop-loop-guard)", () => {
     const noopInput = `[hl-noop.txt#${tag}]\nSWAP 2.=2:\n+line2`;
 
     const first = await tool.execute("tc_1", { input: noopInput });
-    expect(getTextContent(first)).toBe("No change to hl-noop.txt");
+    expect(getTextContent(first)).toContain("re-read");
 
     const second = await tool.execute("tc_1", { input: noopInput });
-    expect(getTextContent(second)).toBe("No change to hl-noop.txt");
+    expect(getTextContent(second)).toContain("re-read");
 
     await expect(tool.execute("tc_1", { input: noopInput })).rejects.toThrow(
-      "Repeated identical no-op edit"
+      "in a row"
     );
 
     expect(readFileSync(join(tmpDir, "hl-noop.txt"), "utf-8")).toBe(content);
@@ -464,7 +464,7 @@ describe("EditTool (hashline noop-loop-guard)", () => {
     await tool.execute("tc_1", { input: newNoopInput });
     await tool.execute("tc_1", { input: newNoopInput });
     await expect(tool.execute("tc_1", { input: newNoopInput })).rejects.toThrow(
-      "Repeated identical no-op edit"
+      "in a row"
     );
   });
 
@@ -484,7 +484,7 @@ describe("EditTool (hashline noop-loop-guard)", () => {
 
     for (let i = 0; i < 5; i++) {
       const result = await tool.execute("tc_1", { input: noopInput });
-      expect(getTextContent(result)).toBe("No change to hl-noowner.txt");
+      expect(getTextContent(result)).toContain("re-read");
     }
   });
 });

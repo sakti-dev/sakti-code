@@ -20,6 +20,10 @@ import {
 } from "./edit-diff.ts";
 import { NodeFilesystem } from "./hashline/fs.ts";
 import { Patch } from "./hashline/input.ts";
+import {
+  noChangeDiagnostic,
+  noChangeLoopDiagnostic,
+} from "./hashline/messages.ts";
 import { Patcher } from "./hashline/patcher.ts";
 import {
   hashPatchInput,
@@ -187,6 +191,11 @@ async function executeHashlineEdit(
     throw new Error("Operation aborted");
   }
   const inputHash = noopOwner ? hashPatchInput(input) : "";
+  // Multi-section noops are thrown by the patcher (Patcher.apply) before the
+  // result reaches this map, so the graduated record/escalate/reset cycle
+  // below only fires for single-section noops — the common case from issue
+  // #2081. A multi-section noop still fails the tool (breaking the loop), but
+  // without graduated counting.
   const lines = result.sections.map((s) => {
     if (s.op === "noop") {
       if (noopOwner) {
@@ -196,14 +205,12 @@ async function executeHashlineEdit(
           inputHash
         );
         if (escalate) {
-          throw new Error(
-            `Repeated identical no-op edit on ${s.path} (${count}×) — re-read the file before editing again.`
-          );
+          throw new Error(noChangeLoopDiagnostic(s.path, count));
         }
       }
       const warnings =
         s.warnings.length > 0 ? `\n\nWarnings:\n${s.warnings.join("\n")}` : "";
-      return `No change to ${s.path}${warnings}`;
+      return `${noChangeDiagnostic(s.path)}${warnings}`;
     }
     if (noopOwner) {
       resetNoopEdit(noopOwner, s.canonicalPath);
