@@ -30,6 +30,7 @@ import {
 } from "../session/messages";
 import { buildSessionContextFromEntries } from "../session/session";
 import type { AgentMessage, ThinkingLevel } from "../types";
+import { partitionPinnedTurns, renderPinnedTurns } from "./pinned-turns";
 import { type PruneStats, pruneStaleToolResults } from "./prune";
 import {
   computeFileLists,
@@ -554,6 +555,8 @@ export interface CompactionPreparation {
   isSplitTurn: boolean;
   /** Messages summarized into the history summary. */
   messagesToSummarize: AgentMessage[];
+  /** Small user turns kept verbatim through compaction (§5.1). */
+  pinnedUserTurns: AgentMessage[];
   /** Previous compaction summary used for iterative updates. */
   previousSummary?: string | undefined;
   /** Stats from the pre-compaction prune pass (§13); `results: 0` when nothing was pruned. */
@@ -666,9 +669,15 @@ export function prepareCompaction(
     }
   }
 
+  // §5.1: pin small user turns out of the summarize range — a user-stated
+  // fact survives compaction verbatim rather than being summarized away.
+  const { pinned: pinnedUserTurns, foldable: foldableMessages } =
+    partitionPinnedTurns(prunedSummarize);
+
   return ok({
     firstKeptEntryId,
-    messagesToSummarize: prunedSummarize,
+    messagesToSummarize: foldableMessages,
+    pinnedUserTurns,
     turnPrefixMessages,
     isSplitTurn: cutPoint.isSplitTurn,
     tokensBefore,
@@ -695,6 +704,7 @@ export const compactEffect = (
     const {
       firstKeptEntryId,
       messagesToSummarize,
+      pinnedUserTurns,
       turnPrefixMessages,
       isSplitTurn,
       tokensBefore,
@@ -762,6 +772,12 @@ export const compactEffect = (
         return err(summaryResult.failure);
       }
       summary = summaryResult.success;
+    }
+
+    // §5.1: embed pinned user turns verbatim at the top of the summary.
+    if (pinnedUserTurns.length > 0) {
+      const pinnedBlock = renderPinnedTurns(pinnedUserTurns);
+      summary = `${pinnedBlock}\n\n${summary}`;
     }
 
     const { readFiles, modifiedFiles } = computeFileLists(fileOps);

@@ -24,6 +24,7 @@ import type {
   PermissionAskRequest,
   StreamFn,
 } from "../types";
+import { captureShape, compareShape } from "./cache-shape.ts";
 import { EventStream } from "./event-stream.ts";
 import { validateToolArguments } from "./validation.ts";
 
@@ -273,6 +274,16 @@ const runLoopEffect = (
         () => config.getSteeringMessages?.() ?? Promise.resolve([])
       )) || [];
 
+    // §10: wrap streamFn to capture prefix shape for cache diagnostics.
+    let prevShape: ReturnType<typeof captureShape> | undefined;
+    let lastShape: ReturnType<typeof captureShape> | undefined;
+    const diagnosticStreamFn: StreamFn | undefined = streamFn
+      ? async (req) => {
+          lastShape = captureShape(req);
+          return streamFn!(req);
+        }
+      : undefined;
+
     while (true) {
       let hasMoreToolCalls = true;
 
@@ -301,13 +312,20 @@ const runLoopEffect = (
             config,
             signal,
             emit,
-            streamFn,
+            diagnosticStreamFn,
             isLastStep
           )
         );
         step++;
         newMessages.push(message);
         lastAssistantMessage = message;
+
+        // §10: emit cache-shape diagnostics for the just-completed turn.
+        if (lastShape) {
+          const diagnostics = compareShape(prevShape, lastShape, message.usage);
+          yield* emitEffect(emit, { type: "cache_shape", diagnostics });
+          prevShape = lastShape;
+        }
 
         if (
           message.stopReason === "error" ||

@@ -779,6 +779,7 @@ describe("harness compaction", () => {
       isSplitTurn: true,
       tokensBefore: 600_000,
       fileOps: { read: new Set(), written: new Set(), edited: new Set() },
+      pinnedUserTurns: [],
       pruneStats: { results: 0, savedChars: 0 },
       settings: {
         enabled: true,
@@ -803,6 +804,7 @@ describe("harness compaction", () => {
       isSplitTurn: false,
       tokensBefore: 100,
       fileOps: { read: new Set(), written: new Set(), edited: new Set() },
+      pinnedUserTurns: [],
       pruneStats: { results: 0, savedChars: 0 },
       settings: { enabled: true, reserveTokens: 2000, keepRecentTokens: 20 },
     };
@@ -845,6 +847,7 @@ describe("harness compaction", () => {
       isSplitTurn: true,
       tokensBefore: 100,
       fileOps: { read: new Set(), written: new Set(), edited: new Set() },
+      pinnedUserTurns: [],
       pruneStats: { results: 0, savedChars: 0 },
       settings: { enabled: true, reserveTokens: 2000, keepRecentTokens: 20 },
     };
@@ -873,6 +876,7 @@ describe("harness compaction", () => {
       isSplitTurn: true,
       tokensBefore: 100,
       fileOps: { read: new Set(), written: new Set(), edited: new Set() },
+      pinnedUserTurns: [],
       pruneStats: { results: 0, savedChars: 0 },
       settings: { enabled: true, reserveTokens: 2000, keepRecentTokens: 20 },
     };
@@ -924,6 +928,68 @@ describe("harness compaction", () => {
     expect(result.summary.length).toBeGreaterThan(0);
     expect(result.firstKeptEntryId).toBeTruthy();
     expect(result.details).toBeDefined();
+  });
+});
+
+describe("prepareCompaction pinned user turns (§5.1)", () => {
+  it("partitions small user turns out of messagesToSummarize into pinnedUserTurns", () => {
+    const u1 = createMessageEntry(createUserMessage("always use pnpm"));
+    const a1 = createMessageEntry(createAssistantMessage("ok"), u1.id);
+    const u2 = createMessageEntry(
+      createUserMessage("x".repeat(8000)), // large user turn
+      a1.id
+    );
+    const a2 = createMessageEntry(createAssistantMessage("done"), u2.id);
+
+    const preparation = getOrThrow(
+      prepareCompaction([u1, a1, u2, a2], {
+        ...DEFAULT_COMPACTION_SETTINGS,
+        keepRecentTokens: 1,
+      })
+    );
+    expect(preparation).toBeDefined();
+    // u1 ("always use pnpm") is small → pinned
+    const pinned = preparation?.pinnedUserTurns ?? [];
+    expect(pinned).toHaveLength(1);
+    const pinnedText = (
+      pinned[0] as { content: Array<{ type: string; text?: string }> }
+    ).content[0]?.text;
+    expect(pinnedText).toBe("always use pnpm");
+    // The pinned turn is NOT in messagesToSummarize (it's in pinnedUserTurns)
+    const summarizeTexts = (preparation?.messagesToSummarize ?? [])
+      .filter((m) => m.role === "user")
+      .map(
+        (m) => (m as { content: Array<{ text?: string }> }).content[0]?.text
+      );
+    expect(summarizeTexts).not.toContain("always use pnpm");
+  });
+
+  it("embeds pinned user turns verbatim at the top of the compaction summary", async () => {
+    const pinnedMsg = createUserMessage("always use pnpm");
+    const foldable = createAssistantMessage("foldable assistant");
+    const preparation: CompactionPreparation = {
+      firstKeptEntryId: "entry-keep",
+      messagesToSummarize: [foldable],
+      pinnedUserTurns: [pinnedMsg],
+      turnPrefixMessages: [],
+      isSplitTurn: false,
+      tokensBefore: 100,
+      fileOps: { read: new Set(), written: new Set(), edited: new Set() },
+      pruneStats: { results: 0, savedChars: 0 },
+      settings: { enabled: true, reserveTokens: 2000, keepRecentTokens: 20 },
+    };
+    const { model } = createFauxModel(false);
+    setCompleteResponses([() => completeTextResult("## Summary\nDone")]);
+
+    const result = getOrThrow(await compact(preparation, model, "test-key"));
+
+    expect(result.summary).toContain("<pinned-user-turns>");
+    expect(result.summary).toContain("always use pnpm");
+    expect(result.summary).toContain("## Summary");
+    // Pinned block comes before the summary text
+    expect(result.summary.indexOf("<pinned-user-turns>")).toBeLessThan(
+      result.summary.indexOf("## Summary")
+    );
   });
 });
 

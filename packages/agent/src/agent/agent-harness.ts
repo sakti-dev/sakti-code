@@ -291,6 +291,9 @@ export class AgentHarness<
   private followUpQueueMode: QueueMode;
   private nextTurnQueue: AgentMessage[] = [];
   private handlers = new Map<string, Set<AgentHarnessHandler>>();
+  private cacheHitTokens = 0;
+  private cacheMissTokens = 0;
+  private cacheShapeTurnCount = 0;
 
   constructor(options: AgentHarnessOptions<TSkill, TPromptTemplate, TTool>) {
     this.env = options.env;
@@ -774,6 +777,14 @@ export class AgentHarness<
     event: AgentEvent,
     signal?: AbortSignal
   ): Promise<void> {
+    if (event.type === "cache_shape") {
+      this.cacheHitTokens += event.diagnostics.cacheHitTokens;
+      this.cacheMissTokens += event.diagnostics.cacheMissTokens;
+      this.cacheShapeTurnCount++;
+      await this.emitAny(event, signal);
+      return;
+    }
+
     if (
       event.type !== "message_end" &&
       event.type !== "turn_end" &&
@@ -1508,6 +1519,23 @@ export class AgentHarness<
 
   getModel(): Model {
     return this.model;
+  }
+
+  /** Session-cumulative cache counters (§10). Survive compaction. */
+  getCacheCounters(): {
+    cacheHitTokens: number;
+    cacheMissTokens: number;
+    turnCount: number;
+    hitRate: number;
+  } {
+    const total = this.cacheHitTokens + this.cacheMissTokens;
+    return {
+      cacheHitTokens: this.cacheHitTokens,
+      cacheMissTokens: this.cacheMissTokens,
+      turnCount: this.cacheShapeTurnCount,
+      hitRate:
+        total === 0 ? 0 : Math.floor((this.cacheHitTokens * 100) / total),
+    };
   }
 
   async setModel(model: Model): Promise<void> {

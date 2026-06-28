@@ -78,6 +78,7 @@ function fakeStreamResult(opts: {
   content?: AssistantMessage["content"];
   error?: Error;
   finishReason?: AssistantMessage["stopReason"];
+  usage?: Usage;
 }): StreamResult {
   const content = opts.content ?? [];
   const parts: Record<string, unknown>[] = [];
@@ -106,7 +107,7 @@ function fakeStreamResult(opts: {
 
   const finish: FinishResult = {
     finishReason: opts.error ? "error" : (opts.finishReason ?? "stop"),
-    usage: createUsage(),
+    usage: opts.usage ?? createUsage(),
   };
 
   return {
@@ -125,6 +126,7 @@ function makeStreamFn(
     content?: AssistantMessage["content"];
     error?: Error;
     finishReason?: AssistantMessage["stopReason"];
+    usage?: Usage;
   }>
 ): { fn: StreamFn; callCount: () => number } {
   let i = 0;
@@ -147,6 +149,7 @@ function makeStreamFnWithReq(
     content?: AssistantMessage["content"];
     error?: Error;
     finishReason?: AssistantMessage["stopReason"];
+    usage?: Usage;
   }
 ): { fn: StreamFn; callCount: () => number } {
   let i = 0;
@@ -1641,6 +1644,7 @@ describe("agentLoop with AgentMessage", () => {
       "message_end",
       "message_start",
       "message_end",
+      "cache_shape",
       "tool_execution_start",
       "tool_execution_end",
       "message_start",
@@ -2025,5 +2029,54 @@ describe("agentLoop maxOutputTokens", () => {
 
     // result() must also reject with the same error.
     await expect(stream.result()).rejects.toBe(boom);
+  });
+});
+
+describe("agentLoop cache_shape diagnostics (§10)", () => {
+  it("emits a cache_shape event with hit/miss tokens from usage", async () => {
+    const context: AgentContext = {
+      systemPrompt: "You are helpful.",
+      messages: [],
+      tools: [],
+    };
+    const userPrompt = createUserMessage("Hello");
+
+    const config: AgentLoopConfig = {
+      model: createModel(),
+      convertToLlm: identityConverter,
+    };
+
+    // Response with non-zero cache usage.
+    const cacheUsage: Usage = {
+      ...createUsage(),
+      cacheRead: 800,
+      cacheWrite: 200,
+      totalTokens: 1000,
+    };
+    const { fn: streamFn } = makeStreamFn({
+      content: [{ type: "text", text: "Hi!" }],
+      usage: cacheUsage,
+    });
+
+    const events: AgentEvent[] = [];
+    const stream = agentLoop(
+      [userPrompt],
+      context,
+      config,
+      undefined,
+      streamFn
+    );
+    for await (const event of stream) {
+      events.push(event);
+      if (event.type === "agent_end") break;
+    }
+
+    const shapeEvent = events.find((e) => e.type === "cache_shape");
+    expect(shapeEvent).toBeDefined();
+    if (shapeEvent?.type === "cache_shape") {
+      expect(shapeEvent.diagnostics.cacheHitTokens).toBe(800);
+      expect(shapeEvent.diagnostics.cacheMissTokens).toBe(200);
+      expect(shapeEvent.diagnostics.prefixHash).toMatch(/^[0-9a-f]{8}$/);
+    }
   });
 });

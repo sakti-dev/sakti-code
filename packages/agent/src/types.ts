@@ -11,6 +11,7 @@ import type {
 } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
 import type { Static, TSchema } from "typebox";
+import type { CacheDiagnostics } from "./core/cache-shape";
 
 export type StreamFn = (
   req: StreamRequest
@@ -309,4 +310,5 @@ export type AgentEvent =
       aborted: boolean;
       willRetry: boolean;
       errorMessage?: string;
-    };
+    }
+  | { type: "cache_shape"; diagnostics: CacheDiagnostics };

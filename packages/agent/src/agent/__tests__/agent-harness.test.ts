@@ -1169,4 +1169,30 @@ describe("addSkill / removeSkill", () => {
     expect(harness.getPendingSystemPromptRefresh()).toBeUndefined();
     expect(harness.getResources().skills?.length).toBe(0);
   });
+
+  it("tracks session-cumulative cache hit/miss counters across turns (§10)", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    registration.setResponses([
+      () => fauxAssistantMessage("first"),
+      () => fauxAssistantMessage("second"),
+    ]);
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: "You are helpful.",
+    });
+
+    await harness.prompt("hello");
+    await harness.prompt("world");
+
+    const counters = harness.getCacheCounters();
+    expect(typeof counters.cacheHitTokens).toBe("number");
+    expect(typeof counters.cacheMissTokens).toBe("number");
+    expect(counters.turnCount).toBeGreaterThanOrEqual(2);
+    expect(typeof counters.hitRate).toBe("number");
+  });
 });
