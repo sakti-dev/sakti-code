@@ -92,6 +92,65 @@ describe("ReadTool", () => {
       ])
     );
   });
+
+  it("emits [path#HASH] header and numbered lines when snapshotStore is provided", async () => {
+    const content = "line1\nline2\nline3\n";
+    writeFileSync(join(tmpDir, "hashed.txt"), content);
+    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const snapshotStore = new InMemorySnapshotStore();
+    const tool = createReadTool(tmpDir, { snapshotStore });
+    const result = await tool.execute("tc_1", { path: "hashed.txt" });
+    const text = getTextContent(result);
+    expect(text).toMatch(/^\[hashed\.txt#[0-9A-F]{4}\]/m);
+    expect(text).toContain("1:line1");
+    expect(text).toContain("2:line2");
+    expect(text).toContain("3:line3");
+  });
+
+  it("records snapshot under absolute path when snapshotStore is provided", async () => {
+    const content = "a\nb\n";
+    writeFileSync(join(tmpDir, "snap.ts"), content);
+    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const snapshotStore = new InMemorySnapshotStore();
+    const tool = createReadTool(tmpDir, { snapshotStore });
+    const result = await tool.execute("tc_1", { path: "snap.ts" });
+    const text = getTextContent(result);
+    const match = text.match(/#([0-9A-F]{4})/);
+    expect(match).not.toBeNull();
+    const hash = match[1];
+    expect(snapshotStore.byHash(join(tmpDir, "snap.ts"), hash)).not.toBeNull();
+  });
+
+  it("hashes full file content even for partial reads", async () => {
+    const content = `${Array.from(
+      { length: 10 },
+      (_, i) => `line${i + 1}`
+    ).join("\n")}\n`;
+    writeFileSync(join(tmpDir, "partial.txt"), content);
+    const { InMemorySnapshotStore } = await import("../lib/hashline/snapshots");
+    const { computeFileHash } = await import("../lib/hashline/format");
+    const snapshotStore = new InMemorySnapshotStore();
+    const tool = createReadTool(tmpDir, { snapshotStore });
+    const result = await tool.execute("tc_1", {
+      path: "partial.txt",
+      offset: 3,
+      limit: 2,
+    });
+    const text = getTextContent(result);
+    const fullHash = computeFileHash(content);
+    expect(text).toContain(`#${fullHash}`);
+    expect(text).toContain("3:line3");
+    expect(text).toContain("4:line4");
+  });
+
+  it("does not emit hash header when no snapshotStore", async () => {
+    writeFileSync(join(tmpDir, "plain.txt"), "hello\n");
+    const tool = createReadTool(tmpDir);
+    const result = await tool.execute("tc_1", { path: "plain.txt" });
+    const text = getTextContent(result);
+    expect(text).not.toMatch(/^\[plain\.txt#/m);
+    expect(text).toContain("hello");
+  });
 });
 
 describe("WriteTool", () => {

@@ -6,6 +6,13 @@ import {
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import type { ImageContent, TextContent } from "@sakti-code/llm";
 import { type Static, Type } from "typebox";
+import {
+  computeFileHash,
+  formatHashlineHeader,
+  formatNumberedLines,
+} from "../lib/hashline/format.ts";
+import { normalizeToLF } from "../lib/hashline/normalize.ts";
+import type { SnapshotStore } from "../lib/hashline/snapshots.ts";
 import { formatDimensionNote, resizeImage } from "../lib/image-resize.ts";
 import { resolveReadPathAsync } from "../lib/path-utils.ts";
 import {
@@ -59,6 +66,7 @@ const defaultReadOperations: ReadOperations = {
 export interface ReadToolOptions {
   autoResizeImages?: boolean;
   operations?: ReadOperations;
+  snapshotStore?: SnapshotStore;
 }
 
 const IMAGE_TYPE_SNIFF_BYTES = 4100;
@@ -278,34 +286,72 @@ export function createReadTool(
         }
 
         const truncation = truncateHead(selectedContent);
-        let outputText: string;
+        const hashline = !!options?.snapshotStore;
+        let displayContent = "";
+        let displayText = "";
+        const notices: string[] = [];
+
         if (truncation.firstLineExceedsLimit) {
           const firstLineSize = formatSize(
             Buffer.byteLength(allLines[startLine]!, "utf-8")
           );
-          outputText = `[Line ${startLineDisplay} is ${firstLineSize}, exceeds ${formatSize(DEFAULT_MAX_BYTES)} limit. Use bash: sed -n '${startLineDisplay}p' ${path} | head -c ${DEFAULT_MAX_BYTES}]`;
+          if (hashline) {
+            displayText = `[Line ${startLineDisplay} is ${firstLineSize}, exceeds ${formatSize(DEFAULT_MAX_BYTES)} limit. Hashline output requires full lines; cannot emit an editable numbered preview for a truncated line.]`;
+          } else {
+            displayText = `[Line ${startLineDisplay} is ${firstLineSize}, exceeds ${formatSize(DEFAULT_MAX_BYTES)} limit. Use bash: sed -n '${startLineDisplay}p' ${path} | head -c ${DEFAULT_MAX_BYTES}]`;
+          }
           details = { truncation };
         } else if (truncation.truncated) {
+          displayContent = truncation.content;
           const endLineDisplay = startLineDisplay + truncation.outputLines - 1;
           const nextOffset = endLineDisplay + 1;
-          outputText = truncation.content;
           if (truncation.truncatedBy === "lines") {
-            outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines}. Use offset=${nextOffset} to continue.]`;
+            notices.push(
+              `[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines}. Use offset=${nextOffset} to continue.]`
+            );
           } else {
-            outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Use offset=${nextOffset} to continue.]`;
+            notices.push(
+              `[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Use offset=${nextOffset} to continue.]`
+            );
           }
           details = { truncation };
         } else if (
           userLimitedLines !== undefined &&
           startLine + userLimitedLines < allLines.length
         ) {
+          displayContent = truncation.content;
           const remaining = allLines.length - (startLine + userLimitedLines);
           const nextOffset = startLine + userLimitedLines + 1;
-          outputText = `${truncation.content}\n\n[${remaining} more lines in file. Use offset=${nextOffset} to continue.]`;
+          notices.push(
+            `[${remaining} more lines in file. Use offset=${nextOffset} to continue.]`
+          );
         } else {
-          outputText = truncation.content;
+          displayContent = truncation.content;
         }
-        content = [{ type: "text", text: outputText }];
+
+        if (hashline && displayContent) {
+          const normalized = normalizeToLF(textContent);
+          const fileHash = computeFileHash(normalized);
+          const header = formatHashlineHeader(path, fileHash);
+          const numbered = formatNumberedLines(
+            displayContent,
+            startLineDisplay
+          );
+          const outputLineCount = displayContent.split("\n").length;
+          const seenLines = new Set<number>();
+          for (let i = 0; i < outputLineCount; i++) {
+            seenLines.add(startLineDisplay + i);
+          }
+          options!.snapshotStore!.record(absolutePath, normalized, seenLines);
+          displayText = `${header}\n${numbered}`;
+        } else if (!hashline) {
+          displayText = displayContent;
+        }
+
+        if (notices.length > 0) {
+          displayText = `${displayText}\n\n${notices.join("\n")}`;
+        }
+        content = [{ type: "text", text: displayText }];
       }
 
       throwIfAborted();
