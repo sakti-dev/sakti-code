@@ -47,6 +47,20 @@ export function demoteHeaders(description: string): string {
 }
 
 /**
+ * Render a single tool as a `# Tool: <name>` section — the same format used
+ * in the system prompt inventory. Reused by {@link renderToolInventory} and
+ * by mid-session tool-change notifications so the model sees identical
+ * formatting in both places.
+ */
+export function renderToolSection(tool: AgentTool): string {
+  const parts = [`# Tool: ${tool.name}`];
+  if (tool.description) {
+    parts.push(demoteHeaders(tool.description));
+  }
+  return parts.join("\n");
+}
+
+/**
  * Render a set of tools as `# Tool: <name>` sections for embedding in the
  * system prompt. Tools are sorted alphabetically for cache stability.
  * Each tool's description has its ATX headers demoted by one level so they
@@ -57,13 +71,5 @@ export function renderToolInventory(tools: readonly AgentTool[]): string {
     return "";
   }
   const sorted = [...tools].sort((a, b) => a.name.localeCompare(b.name));
-  return sorted
-    .map((tool) => {
-      const parts = [`# Tool: ${tool.name}`];
-      if (tool.description) {
-        parts.push(demoteHeaders(tool.description));
-      }
-      return parts.join("\n");
-    })
-    .join("\n\n");
+  return sorted.map(renderToolSection).join("\n\n");
 }

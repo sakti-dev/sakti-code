@@ -170,6 +170,7 @@ export {
 export {
   demoteHeaders,
   renderToolInventory,
+  renderToolSection,
 } from "./resources/tool-inventory.ts";
 export type {
   CompletionProviderShape,
