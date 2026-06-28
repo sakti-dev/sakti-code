@@ -37,9 +37,9 @@ export abstract class SnapshotStore {
   abstract clear(): void;
 }
 
-const DEFAULT_MAX_PATHS = 30;
-const DEFAULT_MAX_VERSIONS_PER_PATH = 4;
-const DEFAULT_MAX_TOTAL_BYTES = 64 * 1024 * 1024;
+const DEFAULT_MAX_PATHS = 100;
+const DEFAULT_MAX_VERSIONS_PER_PATH = 10;
+const DEFAULT_MAX_TOTAL_BYTES = 128 * 1024 * 1024;
 
 function mergeSeenLines(
   snapshot: Snapshot,
