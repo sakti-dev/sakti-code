@@ -18,6 +18,7 @@ import {
   restoreLineEndings,
   stripBom,
 } from "./edit-diff.ts";
+import { nativeBlockResolver } from "./hashline/block-resolver.ts";
 import { NodeFilesystem } from "./hashline/fs.ts";
 import { Patch } from "./hashline/input.ts";
 import {
@@ -185,7 +186,11 @@ async function executeHashlineEdit(
     throw new Error("No hashline sections found in input.");
   }
   const fs = new NodeFilesystem(cwd);
-  const patcher = new Patcher({ fs, snapshots: snapshotStore });
+  const patcher = new Patcher({
+    fs,
+    snapshots: snapshotStore,
+    blockResolver: nativeBlockResolver,
+  });
   const result = await patcher.apply(patch);
   if (signal?.aborted) {
     throw new Error("Operation aborted");

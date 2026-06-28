@@ -489,6 +489,94 @@ describe("EditTool (hashline noop-loop-guard)", () => {
   });
 });
 
+describe("EditTool (hashline block edits)", () => {
+  it("applies SWAP.BLK via the native block resolver", async () => {
+    const content =
+      "function f() {\n  const a = 1\n  const b = 2\n}\n// trailer\n";
+    writeFileSync(join(tmpDir, "fn-blk-swap.ts"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "fn-blk-swap.ts"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    const result = await tool.execute("tc_1", {
+      input: `[fn-blk-swap.ts#${tag}]\nSWAP.BLK 1:\n+function g() {\n+  return 42\n+}`,
+    });
+    expect(getTextContent(result)).toContain("[fn-blk-swap.ts#");
+    expect(readFileSync(join(tmpDir, "fn-blk-swap.ts"), "utf-8")).toBe(
+      "function g() {\n  return 42\n}\n// trailer\n"
+    );
+  });
+
+  it("applies DEL.BLK via the native block resolver", async () => {
+    const content =
+      "function f() {\n  const a = 1\n  const b = 2\n}\n// trailer\n";
+    writeFileSync(join(tmpDir, "fn-blk-del.ts"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "fn-blk-del.ts"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    await tool.execute("tc_1", {
+      input: `[fn-blk-del.ts#${tag}]\nDEL.BLK 1`,
+    });
+    expect(readFileSync(join(tmpDir, "fn-blk-del.ts"), "utf-8")).toBe(
+      "// trailer\n"
+    );
+  });
+
+  it("applies INS.BLK.POST after the resolved block", async () => {
+    const content =
+      "function f() {\n  const a = 1\n  const b = 2\n}\n// trailer\n";
+    writeFileSync(join(tmpDir, "fn-blk-ins.ts"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "fn-blk-ins.ts"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    await tool.execute("tc_1", {
+      input: `[fn-blk-ins.ts#${tag}]\nINS.BLK.POST 1:\n+export const x = 1`,
+    });
+    expect(readFileSync(join(tmpDir, "fn-blk-ins.ts"), "utf-8")).toBe(
+      "function f() {\n  const a = 1\n  const b = 2\n}\nexport const x = 1\n// trailer\n"
+    );
+  });
+
+  it("rejects SWAP.BLK on a single-line statement", async () => {
+    const content = "const x = 1\n";
+    writeFileSync(join(tmpDir, "fn-blk-single.ts"), content);
+    const { InMemorySnapshotStore } = await import(
+      "../lib/hashline-utils/snapshots"
+    );
+    const snapshotStore = new InMemorySnapshotStore();
+    const tag = snapshotStore.record(join(tmpDir, "fn-blk-single.ts"), content);
+    const tool = createEditTool(tmpDir, {
+      mode: "hashline",
+      snapshotStore,
+    });
+    await expect(
+      tool.execute("tc_1", {
+        input: `[fn-blk-single.ts#${tag}]\nSWAP.BLK 1:\n+const y = 2`,
+      })
+    ).rejects.toThrow(/single-line block/);
+    expect(readFileSync(join(tmpDir, "fn-blk-single.ts"), "utf-8")).toBe(
+      content
+    );
+  });
+});
+
 describe("BashTool", () => {
   it("runs a command and returns output", async () => {
     const tool = createBashTool(tmpDir);

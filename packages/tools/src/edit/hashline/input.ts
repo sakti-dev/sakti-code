@@ -14,6 +14,7 @@ import type {
   SplitOptions,
 } from "../../lib/hashline-utils/types";
 import { applyEdits } from "./apply";
+import { resolveBlockEdits } from "./block";
 import { parsePatch, parsePatchStreaming } from "./parser";
 import { Tokenizer } from "./tokenizer";
 
@@ -322,10 +323,19 @@ export class PatchSection {
     return [...lines].sort((a, b) => a - b);
   }
 
-  applyTo(text: string, _blockResolver?: BlockResolver): ApplyResult {
+  applyTo(text: string, blockResolver?: BlockResolver): ApplyResult {
     const { edits, warnings } = this.parse();
-    const result = applyEdits(text, edits);
-    const merged = [...warnings, ...(result.warnings ?? [])];
+    const resolveWarnings: string[] = [];
+    const resolved = resolveBlockEdits(edits, text, this.path, blockResolver, {
+      onUnresolved: "throw",
+      onWarning: (warning) => resolveWarnings.push(warning),
+    });
+    const result = applyEdits(text, resolved);
+    const merged = [
+      ...warnings,
+      ...resolveWarnings,
+      ...(result.warnings ?? []),
+    ];
     if (merged.length > 0) {
       return { ...result, warnings: merged };
     }
@@ -337,10 +347,19 @@ export class PatchSection {
     };
   }
 
-  applyPartialTo(text: string, _blockResolver?: BlockResolver): ApplyResult {
+  applyPartialTo(text: string, blockResolver?: BlockResolver): ApplyResult {
     const { edits, warnings } = parsePatchStreaming(this.diff);
-    const result = applyEdits(text, edits);
-    const merged = [...warnings, ...(result.warnings ?? [])];
+    const resolveWarnings: string[] = [];
+    const resolved = resolveBlockEdits(edits, text, this.path, blockResolver, {
+      onUnresolved: "drop",
+      onWarning: (warning) => resolveWarnings.push(warning),
+    });
+    const result = applyEdits(text, resolved);
+    const merged = [
+      ...warnings,
+      ...resolveWarnings,
+      ...(result.warnings ?? []),
+    ];
     if (merged.length > 0) {
       return { ...result, warnings: merged };
     }
