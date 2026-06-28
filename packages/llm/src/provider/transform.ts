@@ -4,6 +4,7 @@ import type {
   OpenAICompletionsCompat,
   ThinkingLevel,
 } from "../types.ts";
+import { ZAI_THINKING_BUDGETS } from "./zai-anthropic/thinking-budgets.ts";
 
 /**
  * # Provider options transform
@@ -50,6 +51,27 @@ export function buildProviderOptions(input: {
   model: Model;
 }): Record<string, unknown> {
   const { level, model } = input;
+
+  // Hand-rolled Z.ai Anthropic provider: bypasses the OpenAI-compat
+  // `compat.thinkingFormat` machinery and emits providerOptions.zai.thinking
+  // directly. See docs/plans/2026-06-28-zai-anthropic-provider-design.md
+  // §"Reasoning levels + providerOptions.zai transform".
+  if (model.npm === "@sakti-code/zai-anthropic") {
+    if (!model.reasoning) {
+      return {};
+    }
+    if (level === "off") {
+      return { zai: { thinking: { type: "disabled" } } };
+    }
+    return {
+      zai: {
+        thinking: {
+          type: "enabled",
+          budget_tokens: ZAI_THINKING_BUDGETS[level],
+        },
+      },
+    };
+  }
 
   if (!(model.compat && model.reasoning)) {
     return {};
