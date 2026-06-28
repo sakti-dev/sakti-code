@@ -51,6 +51,7 @@ import {
   stripSkillsBlock,
   stripToolInventory,
 } from "../resources/system-prompt";
+import { renderToolSection } from "../resources/tool-inventory";
 import { convertToLlm } from "../session/messages";
 import type { SessionShape } from "../session/session";
 import type {
@@ -1171,6 +1172,25 @@ export class AgentHarness<
     this.steerQueue.push(createUserMessage(notice));
   }
 
+  /**
+   * Push a `<tool-schema-changed>` notice onto the steer queue so the model
+   * knows a tool's format has changed. The notice includes the full
+   * {@link renderToolSection} output — identical to what the system prompt
+   * will show after compaction.
+   *
+   * Safe to call while idle (same as {@link announceSkillAdded}).
+   */
+  private announceToolChange(tool: TTool): void {
+    const notice = [
+      "<tool-schema-changed>",
+      `The "${tool.name}" tool has been updated. The previous format is no longer active. Use the updated format below:`,
+      "",
+      renderToolSection(tool),
+      "</tool-schema-changed>",
+    ].join("\n");
+    this.steerQueue.push(createUserMessage(notice));
+  }
+
   async followUp(
     text: string,
     options?: { images?: ImageContent[] }
@@ -1648,6 +1668,49 @@ export class AgentHarness<
     } catch (error) {
       throw normalizeHarnessError(error, "invalid_argument");
     }
+  }
+
+  /**
+   * Replace a single tool's implementation while preserving activeToolNames.
+   *
+   * The new tool must have the same `name` as the one being replaced. The
+   * tools-tier cache busts on the next request (new parameters schema), but
+   * the system prompt cache survives — the `# Tool:` description stays frozen
+   * until the next compaction applies the scheduled refresh.
+   *
+   * Announces the change via a `<tool-schema-changed>` user message on the
+   * steer queue so the model knows the format changed.
+   *
+   * Use this for mid-session tool reconfiguration (e.g. switching edit mode
+   * from hashline to replace) where the tool stays active but its contract
+   * changes.
+   */
+  async swapTool(name: string, newTool: TTool): Promise<void> {
+    if (newTool.name !== name) {
+      throw new AgentHarnessError({
+        code: "invalid_argument",
+        message: `swapTool: newTool.name "${newTool.name}" must match "${name}"`,
+      });
+    }
+    if (!this.tools.has(name)) {
+      throw new AgentHarnessError({
+        code: "invalid_argument",
+        message: `swapTool: tool "${name}" not found in registry`,
+      });
+    }
+    const previousToolNames = [...this.tools.keys()];
+    const previousActiveToolNames = [...this.activeToolNames];
+    this.tools.set(name, newTool);
+    this.scheduleSystemPromptRefresh(this.recomposeSystemPrompt());
+    this.announceToolChange(newTool);
+    void this.emitOwn({
+      type: "tools_update",
+      toolNames: [...this.tools.keys()],
+      previousToolNames,
+      activeToolNames: [...this.activeToolNames],
+      previousActiveToolNames,
+      source: "swap",
+    });
   }
 
   getActiveTools(): TTool[] {

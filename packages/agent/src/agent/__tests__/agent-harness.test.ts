@@ -607,7 +607,7 @@ describe("AgentHarness", () => {
       previousToolNames: string[];
       activeToolNames: string[];
       previousActiveToolNames: string[];
-      source: "set" | "restore";
+      source: "set" | "restore" | "swap";
     }> = [];
     harness.subscribe((event) => {
       if (event.type === "tools_update") {
@@ -1257,6 +1257,195 @@ describe("softDisableTool prompt refresh", () => {
     // Skill still present (read is available)
     expect(pending).toContain("<available_skills>");
     expect(pending).toContain("tdd");
+  });
+});
+
+describe("swapTool", () => {
+  it("swaps tool implementation while preserving activeToolNames", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    registration.setResponses([() => fauxAssistantMessage("ok")]);
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      tools: [calculateTool, getCurrentTimeTool],
+    });
+
+    const originalEdit = harness.getTools().find((t) => t.name === "calculate");
+    const swappedTool = {
+      ...calculateTool,
+      description: "A completely different description.",
+    } as typeof calculateTool;
+
+    await harness.swapTool("calculate", swappedTool);
+
+    const currentTools = harness.getTools();
+    const swapped = currentTools.find((t) => t.name === "calculate");
+    expect(swapped).toBeDefined();
+    expect(swapped?.description).toBe("A completely different description.");
+    expect(swapped).not.toBe(originalEdit);
+
+    // activeToolNames preserved
+    const active = harness.getActiveTools();
+    expect(active.map((t) => t.name)).toEqual([
+      "calculate",
+      "get_current_time",
+    ]);
+  });
+
+  it("schedules prompt refresh with the new tool description", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+
+    const basePrompt = "You are a coding agent.";
+    const composedPrompt = composeSystemPrompt(
+      basePrompt,
+      [calculateTool, getCurrentTimeTool],
+      [],
+      false
+    );
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: composedPrompt,
+      tools: [calculateTool, getCurrentTimeTool],
+    });
+
+    const newTool = {
+      ...calculateTool,
+      description: "Calculate things differently.",
+    } as typeof calculateTool;
+
+    await harness.swapTool("calculate", newTool);
+
+    // Live prompt still has old description (frozen)
+    expect(harness.getSystemPrompt()).toContain(calculateTool.description);
+
+    // Pending refresh has new description
+    const pending = harness.getPendingSystemPromptRefresh();
+    expect(pending).toBeDefined();
+    expect(pending).toContain("Calculate things differently.");
+    expect(pending).not.toContain(calculateTool.description);
+    // Other tool unchanged
+    expect(pending).toContain("# Tool: get_current_time");
+  });
+
+  it("announces via <tool-schema-changed> on the steer queue", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    const capturedUserText: string[] = [];
+    registration.setResponses([
+      (req: StreamRequest) => {
+        capturedUserText.push(
+          textFromUserMessages(
+            req.messages as Array<{ role: string; content: unknown }>
+          ).join("\n")
+        );
+        return fauxAssistantMessage("ok");
+      },
+    ]);
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      systemPrompt: "frozen",
+      tools: [calculateTool],
+    });
+
+    const newTool = {
+      ...calculateTool,
+      description: "Brand new format for calculating.",
+    } as typeof calculateTool;
+
+    await harness.swapTool("calculate", newTool);
+    await harness.prompt("hello");
+
+    expect(capturedUserText[0]).toContain("<tool-schema-changed>");
+    expect(capturedUserText[0]).toContain("calculate");
+    expect(capturedUserText[0]).toContain("Brand new format for calculating.");
+  });
+
+  it("throws when newTool.name does not match name", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      tools: [calculateTool],
+    });
+
+    await expect(
+      harness.swapTool(
+        "calculate",
+        getCurrentTimeTool as unknown as typeof calculateTool
+      )
+    ).rejects.toThrow("must match");
+  });
+
+  it("throws when tool name not found in registry", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      tools: [calculateTool],
+    });
+
+    const ghostTool = {
+      ...calculateTool,
+      name: "nonexistent",
+    } as typeof calculateTool;
+
+    await expect(harness.swapTool("nonexistent", ghostTool)).rejects.toThrow(
+      "not found"
+    );
+  });
+
+  it("emits tools_update event with source swap", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+
+    const events: AgentHarnessEvent[] = [];
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+      tools: [calculateTool, getCurrentTimeTool],
+    });
+    harness.subscribe((event) => {
+      events.push(event);
+    });
+
+    const newTool = {
+      ...calculateTool,
+      description: "Updated.",
+    } as typeof calculateTool;
+
+    await harness.swapTool("calculate", newTool);
+
+    const update = events.find(
+      (e) => e.type === "tools_update" && e.source === "swap"
+    );
+    expect(update).toBeDefined();
+    expect(update?.type).toBe("tools_update");
+    if (update?.type === "tools_update") {
+      expect(update.activeToolNames).toEqual(["calculate", "get_current_time"]);
+    }
   });
 });
 

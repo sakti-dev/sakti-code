@@ -423,7 +423,7 @@ export interface ToolsUpdateEvent {
   activeToolNames: string[];
   previousActiveToolNames: string[];
   previousToolNames: string[];
-  source: "set" | "restore";
+  source: "set" | "restore" | "swap";
   toolNames: string[];
   type: "tools_update";
 }
