@@ -13,6 +13,7 @@ import {
   persistSkillDisabled,
   persistSkillEnabled,
   persistStuckGuardState,
+  resolveEditMode,
   resolveThinkingLevel,
   runPrompt,
 } from "../runner.ts";
@@ -164,6 +165,19 @@ describe("runPrompt", () => {
     const ctx = createMockCtx();
     const settings = loadSessionSettings(ctx, "sess-1");
     expect(settings.auto_compaction).toBe("false");
+  });
+
+  it("resolveEditMode: returns stored mode when set", () => {
+    const ctx = createMockCtx();
+    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation(
+      (key: string) => (key === "session:sess-1:edit_mode" ? "replace" : null)
+    );
+    expect(resolveEditMode(ctx, "sess-1")).toBe("replace");
+  });
+
+  it("resolveEditMode: defaults to hashline when not set", () => {
+    const ctx = createMockCtx();
+    expect(resolveEditMode(ctx, "sess-1")).toBe("hashline");
   });
 });
 

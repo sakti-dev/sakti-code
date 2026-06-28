@@ -27,7 +27,7 @@ import {
   promiseSessionAsShape,
   runAutoCompaction,
 } from "@sakti-code/agent";
-import { createProposeSessionTool } from "@sakti-code/tools";
+import { createProposeSessionTool, type EditMode } from "@sakti-code/tools";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";
 import {
@@ -344,6 +344,17 @@ export function resolveThinkingLevel(
   return profileThinkingLevel as ThinkingLevel;
 }
 
+export function resolveEditMode(
+  ctx: ServerContext,
+  sessionId: string
+): EditMode {
+  const row = ctx.repos.settings.get(`session:${sessionId}:edit_mode`);
+  if (row === "hashline" || row === "replace") {
+    return row;
+  }
+  return "hashline";
+}
+
 /**
  * Resolve an agent by name from builtins plus project-loaded agents (a
  * user-defined agent with the same name overrides the builtin). Falls back to
@@ -452,12 +463,13 @@ export async function runPrompt(
   }
   const { model } = auth;
   const isIntake = session.kind === "intake";
-  const tools = buildTools(project.cwd);
+  const settings = loadSessionSettings(ctx, sessionId);
+  const editMode = resolveEditMode(ctx, sessionId);
+  const tools = buildTools(project.cwd, editMode);
   if (isIntake) {
     tools.push(createProposeSessionTool() as (typeof tools)[number]);
   }
 
-  const settings = loadSessionSettings(ctx, sessionId);
   const thinkingLevel = resolveThinkingLevel(
     ctx,
     sessionId,
