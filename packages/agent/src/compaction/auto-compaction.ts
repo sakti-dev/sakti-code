@@ -47,18 +47,37 @@ import type { AgentMessage } from "../types";
  */
 
 /** Reason the compaction check fired. */
-export type CompactionReason = "threshold" | "overflow";
+export type CompactionReason = "threshold" | "overflow" | "stuck_guard";
 
 /** Outcome of {@link checkCompaction} — a pure decision over inputs. */
 export interface CompactionDecision {
   action: "none" | "compact";
+  /**
+   * True when the stuck guard has latched — the context window is too small
+   * for compaction to help, so the caller should stop auto-compacting until
+   * {@link resetStuckGuard} fires. Only set on threshold-path decisions.
+   */
+  pauseAutoCompaction?: boolean;
   reason?: CompactionReason;
+  /**
+   * True when a sub-threshold turn clears the stuck guard — the caller should
+   * reset its consecutive-compact counter. Only set when the counter was > 0.
+   */
+  resetStuckGuard?: boolean;
   /** True when an overflowed turn should be retried after compaction. */
   willRetry?: boolean;
 }
 
 /** Inputs to {@link checkCompaction}. All pure — no I/O. */
 export interface CheckCompactionInput {
+  /**
+   * Number of consecutive compactions that have fired without a sub-threshold
+   * turn in between. Tracked by the caller (runner). When ≥2 and the prompt is
+   * still over the threshold, the stuck guard latches and auto-compaction is
+   * paused — the context window is too small for compaction to help, and
+   * re-compacting every turn rewrites the prefix and craters the cache.
+   */
+  consecutiveCompacts?: number;
   /** The current model's context window; 0 if unknown (disables threshold). */
   contextWindow: number;
   /**
@@ -157,7 +176,25 @@ export function checkCompaction(
   }
 
   if (shouldCompact(contextTokens, input.contextWindow, settings)) {
+    // Stuck guard: if we've compacted twice in a row and the prompt is STILL
+    // over the threshold, the context window is too small for compaction to
+    // help. Pause auto-compaction to avoid rewriting the prefix every turn
+    // (each compaction busts the cache). The caller latches `paused` and stops
+    // calling runCompaction until a sub-threshold turn clears it (below).
+    if ((input.consecutiveCompacts ?? 0) >= 2) {
+      return {
+        action: "none",
+        reason: "stuck_guard",
+        pauseAutoCompaction: true,
+      };
+    }
     return { action: "compact", reason: "threshold", willRetry: false };
+  }
+
+  // Sub-threshold turn. If we had a non-zero consecutive-compact counter (or
+  // the guard was latched), signal a reset so the caller clears its state.
+  if ((input.consecutiveCompacts ?? 0) > 0) {
+    return { action: "none", resetStuckGuard: true };
   }
   return { action: "none" };
 }

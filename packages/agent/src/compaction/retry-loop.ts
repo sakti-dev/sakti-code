@@ -305,7 +305,11 @@ const runCompactionPhaseEffect = (
       if (decision.action !== "compact" || decision.reason === undefined) {
         return;
       }
-      const reason = decision.reason;
+      // decision.action === "compact" only happens for threshold/overflow (the
+      // stuck guard returns action "none"). Narrow so the event reason type
+      // stays "threshold" | "overflow" — the stuck guard emits no event.
+      const reason: "threshold" | "overflow" =
+        decision.reason === "overflow" ? "overflow" : "threshold";
 
       if (reason === "overflow" && overflowAttempts > 0) {
         deps.logger?.error("overflow recovery exhausted", undefined, {

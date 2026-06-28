@@ -207,3 +207,95 @@ describe("checkCompaction", () => {
     expect(d.reason).toBe("overflow");
   });
 });
+
+describe("stuck guard", () => {
+  const settings: CompactionSettings = {
+    enabled: true,
+    reserveTokens: 100,
+    keepRecentTokens: 100,
+  };
+  // contextWindow 1000, reserve 100 -> threshold at 900 tokens.
+
+  it("does NOT pause when consecutiveCompacts is below 2 (still compacts)", () => {
+    const message = asst("stop", {
+      usage: usage({ totalTokens: 950 }),
+      timestamp: 200,
+    });
+    const decision = checkCompaction(
+      baseInput(message, {
+        contextWindow: 1000,
+        settings,
+        consecutiveCompacts: 1,
+      })
+    );
+    expect(decision.action).toBe("compact");
+    expect(decision.reason).toBe("threshold");
+    expect(decision.pauseAutoCompaction).toBeUndefined();
+  });
+
+  it("pauses auto-compaction when consecutiveCompacts >= 2 and prompt still over threshold", () => {
+    const message = asst("stop", {
+      usage: usage({ totalTokens: 950 }),
+      timestamp: 200,
+    });
+    const decision = checkCompaction(
+      baseInput(message, {
+        contextWindow: 1000,
+        settings,
+        consecutiveCompacts: 2,
+      })
+    );
+    expect(decision.action).toBe("none");
+    expect(decision.pauseAutoCompaction).toBe(true);
+    expect(decision.reason).toBe("stuck_guard");
+  });
+
+  it("resets the guard when prompt drops below threshold after prior compacts", () => {
+    const message = asst("stop", {
+      usage: usage({ totalTokens: 500 }),
+      timestamp: 200,
+    });
+    const decision = checkCompaction(
+      baseInput(message, {
+        contextWindow: 1000,
+        settings,
+        consecutiveCompacts: 2, // was stuck, but now below threshold
+      })
+    );
+    expect(decision.action).toBe("none");
+    expect(decision.pauseAutoCompaction).toBeUndefined();
+    expect(decision.resetStuckGuard).toBe(true);
+  });
+
+  it("does not signal reset when below threshold and counter was already 0", () => {
+    const message = asst("stop", {
+      usage: usage({ totalTokens: 500 }),
+      timestamp: 200,
+    });
+    const decision = checkCompaction(
+      baseInput(message, {
+        contextWindow: 1000,
+        settings,
+      })
+    );
+    expect(decision.action).toBe("none");
+    expect(decision.resetStuckGuard).toBeUndefined();
+  });
+
+  it("stuck guard does not fire on overflow path (overflow still compacts+retries)", () => {
+    const message = asst("error", {
+      errorMessage: "prompt is too long",
+      timestamp: 200,
+    });
+    const decision = checkCompaction(
+      baseInput(message, {
+        contextWindow: 1000,
+        settings,
+        consecutiveCompacts: 5,
+      })
+    );
+    expect(decision.action).toBe("compact");
+    expect(decision.reason).toBe("overflow");
+    expect(decision.pauseAutoCompaction).toBeUndefined();
+  });
+});
