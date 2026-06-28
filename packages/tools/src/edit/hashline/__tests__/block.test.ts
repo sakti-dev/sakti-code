@@ -57,7 +57,7 @@ describe("resolveBlockEdits", () => {
       blockEdits,
       "ignored",
       PATH,
-      stubResolver,
+      stubResolver
     );
     const replaceEdits = parsePatch("SWAP 2.=3:\n+A\n+B").edits;
 
@@ -73,7 +73,7 @@ describe("resolveBlockEdits", () => {
   it("throws (default) when no resolver is wired", () => {
     const edits = parsePatch("SWAP.BLK 2:\n+X").edits;
     expect(() => resolveBlockEdits(edits, "ignored", PATH, undefined)).toThrow(
-      "not available here",
+      "not available here"
     );
   });
 
@@ -87,9 +87,9 @@ describe("resolveBlockEdits", () => {
 
   it("throws a block-unresolved error in throw mode when the resolver returns null", () => {
     const edits = parsePatch("SWAP.BLK 7:\n+X").edits;
-    expect(() =>
-      resolveBlockEdits(edits, "ignored", PATH, () => null),
-    ).toThrow("could not resolve a syntactic block beginning on line 7");
+    expect(() => resolveBlockEdits(edits, "ignored", PATH, () => null)).toThrow(
+      "could not resolve a syntactic block beginning on line 7"
+    );
   });
 
   it("includes a nearby-context preview in the block-unresolved error", () => {
@@ -102,7 +102,7 @@ describe("resolveBlockEdits", () => {
       error = err as Error;
     }
     expect(error?.message).toContain(
-      "could not resolve a syntactic block beginning on line 3",
+      "could not resolve a syntactic block beginning on line 3"
     );
     expect(error?.message).toContain(formatNumberedLine(1, "alpha"));
     expect(error?.message).toContain(`*${formatNumberedLine(3, "charlie")}`);
@@ -112,12 +112,24 @@ describe("resolveBlockEdits", () => {
 
   it("fires onResolved with the resolved span for replace and delete blocks", () => {
     const seen: BlockResolution[] = [];
-    resolveBlockEdits(parsePatch("SWAP.BLK 2:\n+A\n+B").edits, "ignored", PATH, stubResolver, {
-      onResolved: (resolution) => seen.push(resolution),
-    });
-    resolveBlockEdits(parsePatch("DEL.BLK 5").edits, "ignored", PATH, stubResolver, {
-      onResolved: (resolution) => seen.push(resolution),
-    });
+    resolveBlockEdits(
+      parsePatch("SWAP.BLK 2:\n+A\n+B").edits,
+      "ignored",
+      PATH,
+      stubResolver,
+      {
+        onResolved: (resolution) => seen.push(resolution),
+      }
+    );
+    resolveBlockEdits(
+      parsePatch("DEL.BLK 5").edits,
+      "ignored",
+      PATH,
+      stubResolver,
+      {
+        onResolved: (resolution) => seen.push(resolution),
+      }
+    );
 
     expect(seen).toEqual([
       { anchorLine: 2, start: 2, end: 3, op: "replace" },
@@ -135,7 +147,7 @@ describe("resolveBlockEdits", () => {
       {
         onUnresolved: "drop",
         onResolved: (resolution) => seen.push(resolution),
-      },
+      }
     );
     expect(seen).toHaveLength(0);
   });
@@ -143,22 +155,28 @@ describe("resolveBlockEdits", () => {
   it("rejects a SWAP.BLK that resolves to a single line", () => {
     const edits = parsePatch("SWAP.BLK 2:\n+X").edits;
     expect(() =>
-      resolveBlockEdits(edits, "a\nb\nc", PATH, singleLineResolver),
+      resolveBlockEdits(edits, "a\nb\nc", PATH, singleLineResolver)
     ).toThrow(/resolved a single-line block/);
   });
 
   it("rejects an INS.BLK.POST that resolves to a single line", () => {
     const edits = parsePatch("INS.BLK.POST 2:\n+X").edits;
     expect(() =>
-      resolveBlockEdits(edits, "a\nb\nc", PATH, singleLineResolver),
+      resolveBlockEdits(edits, "a\nb\nc", PATH, singleLineResolver)
     ).toThrow(/single-line block/);
   });
 
   it("drops a single-line block resolution on the lenient preview path", () => {
     const edits = parsePatch("SWAP.BLK 2:\n+X").edits;
-    const resolved = resolveBlockEdits(edits, "a\nb\nc", PATH, singleLineResolver, {
-      onUnresolved: "drop",
-    });
+    const resolved = resolveBlockEdits(
+      edits,
+      "a\nb\nc",
+      PATH,
+      singleLineResolver,
+      {
+        onUnresolved: "drop",
+      }
+    );
     expect(resolved).toHaveLength(0);
   });
 });
@@ -170,7 +188,7 @@ describe("DEL.BLK resolveBlockEdits", () => {
 
     expect(resolved.every((edit) => edit.kind === "delete")).toBe(true);
     expect(
-      resolved.map((edit) => (edit.kind === "delete" ? edit.anchor.line : -1)),
+      resolved.map((edit) => (edit.kind === "delete" ? edit.anchor.line : -1))
     ).toEqual([2, 3]);
   });
 });
@@ -178,7 +196,12 @@ describe("DEL.BLK resolveBlockEdits", () => {
 describe("INS.BLK.POST resolveBlockEdits", () => {
   it("expands to after_anchor inserts at the resolved block's last line", () => {
     const blockEdits = parsePatch("INS.BLK.POST 2:\n+A\n+B").edits;
-    const resolved = resolveBlockEdits(blockEdits, "ignored", PATH, stubResolver);
+    const resolved = resolveBlockEdits(
+      blockEdits,
+      "ignored",
+      PATH,
+      stubResolver
+    );
     const insertEdits = parsePatch("INS.POST 3:\n+A\n+B").edits;
 
     expect(resolved.some((edit) => edit.kind === "block")).toBe(false);
@@ -187,7 +210,12 @@ describe("INS.BLK.POST resolveBlockEdits", () => {
 
   it("tags lowered inserts with blockStart so the applier can correct landings", () => {
     const blockEdits = parsePatch("INS.BLK.POST 2:\n+A").edits;
-    const resolved = resolveBlockEdits(blockEdits, "ignored", PATH, stubResolver);
+    const resolved = resolveBlockEdits(
+      blockEdits,
+      "ignored",
+      PATH,
+      stubResolver
+    );
     const insert = resolved[0];
     expect(insert?.kind).toBe("insert");
     if (insert?.kind === "insert") {
@@ -206,7 +234,7 @@ describe("INS.BLK.POST resolveBlockEdits", () => {
       "ignored",
       PATH,
       stubResolver,
-      { onResolved: (resolution) => seen.push(resolution) },
+      { onResolved: (resolution) => seen.push(resolution) }
     );
     expect(seen).toEqual([
       { anchorLine: 2, start: 2, end: 3, op: "insert_after" },
@@ -222,7 +250,7 @@ describe("INS.BLK.POST resolveBlockEdits", () => {
     });
 
     expect(normalizeEdits(resolved)).toEqual(
-      normalizeEdits(parsePatch("INS.POST 7:\n+X").edits),
+      normalizeEdits(parsePatch("INS.POST 7:\n+X").edits)
     );
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("applied as plain `INS.POST 7:`");
@@ -237,7 +265,7 @@ describe("INS.BLK.POST resolveBlockEdits", () => {
     });
 
     expect(normalizeEdits(resolved)).toEqual(
-      normalizeEdits(parsePatch("INS.POST 2:\n+X").edits),
+      normalizeEdits(parsePatch("INS.POST 2:\n+X").edits)
     );
     expect(warnings).toHaveLength(1);
   });
