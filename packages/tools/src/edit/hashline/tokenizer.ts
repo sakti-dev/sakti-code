@@ -341,16 +341,20 @@ function scanInsertTarget(
   }
   const headEnd = scanKeyword(line, cursor, end, HL_INSERT_HEAD);
   if (headEnd !== null) {
+    const num = scanLineNumber(line, skipWhitespace(line, headEnd, end), end);
+    const afterNum = num === null ? headEnd : num.nextIndex;
     return {
       target: { kind: "bof" },
-      nextIndex: consumeOptionalColon(line, headEnd, end),
+      nextIndex: consumeOptionalColon(line, afterNum, end),
     };
   }
   const tailEnd = scanKeyword(line, cursor, end, HL_INSERT_TAIL);
   if (tailEnd !== null) {
+    const num = scanLineNumber(line, skipWhitespace(line, tailEnd, end), end);
+    const afterNum = num === null ? tailEnd : num.nextIndex;
     return {
       target: { kind: "eof" },
-      nextIndex: consumeOptionalColon(line, tailEnd, end),
+      nextIndex: consumeOptionalColon(line, afterNum, end),
     };
   }
   return null;
@@ -464,13 +468,9 @@ function scanHunkAnchor(
     if (anchor === null) {
       return null;
     }
-    const next = skipWhitespace(line, anchor.nextIndex, end);
-    if (next < end && line.charCodeAt(next) === CHAR_COLON) {
-      return null;
-    }
     return {
       target: { kind: "delete_block", anchor: { line: anchor.line } },
-      nextIndex: next,
+      nextIndex: consumeOptionalColon(line, anchor.nextIndex, end),
     };
   }
   const deleteEnd = scanKeyword(line, cursor, end, HL_DELETE_KEYWORD);
@@ -479,13 +479,9 @@ function scanHunkAnchor(
     if (range === null) {
       return null;
     }
-    const next = skipWhitespace(line, range.nextIndex, end);
-    if (next < end && line.charCodeAt(next) === CHAR_COLON) {
-      return null;
-    }
     return {
       target: { kind: "delete", range: range.range },
-      nextIndex: next,
+      nextIndex: consumeOptionalColon(line, range.nextIndex, end),
     };
   }
   const insertAfterBlockEnd = scanKeyword(

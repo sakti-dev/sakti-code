@@ -118,6 +118,33 @@ describe("hashline core — verb header forms", () => {
   });
 });
 
+describe("hashline leniency — head/tail line number and del colon", () => {
+  it("accepts INS.HEAD with an ignored line number", () => {
+    expect(applyPatch(FILE, "INS.HEAD 1:\n+X")).toBe("X\na\nb\nc\nd\ne");
+    expect(applyPatch(FILE, "INS.HEAD 5:\n+X")).toBe("X\na\nb\nc\nd\ne");
+  });
+
+  it("accepts INS.TAIL with an ignored line number", () => {
+    expect(applyPatch(FILE, "INS.TAIL 1:\n+X")).toBe("a\nb\nc\nd\ne\nX");
+    expect(applyPatch(FILE, "INS.TAIL 99:\n+X")).toBe("a\nb\nc\nd\ne\nX");
+  });
+
+  it("accepts DEL range with a trailing colon (no body follows)", () => {
+    expect(applyPatch(FILE, "DEL 2.=3:")).toBe("a\nd\ne");
+    expect(applyPatch(FILE, "DEL 2.=2:")).toBe("a\nc\nd\ne");
+  });
+
+  it("accepts DEL single-line with a trailing colon", () => {
+    expect(applyPatch(FILE, "DEL 2:")).toBe("a\nc\nd\ne");
+  });
+
+  it("rejects DEL with colon AND body rows with the specific error", () => {
+    expect(() => parsePatch("DEL 2.=3:\n+X")).toThrow(
+      /does not take body rows/
+    );
+  });
+});
+
 describe("hashline body contracts", () => {
   it("auto-pipes a bare body row while warning", () => {
     const result = parsePatch("SWAP 2.=2:\n  hello");
@@ -195,12 +222,9 @@ describe("hashline body contracts", () => {
     expect(() => parsePatch("INS.TAIL:")).toThrow(/`INS` needs/);
   });
 
-  it("rejects delete with a body", () => {
+  it("rejects delete with a body (with or without colon)", () => {
     expect(() => parsePatch("DEL 2\n+X")).toThrow(/does not take body rows/);
-  });
-
-  it("rejects delete with a colon", () => {
-    expect(() => parsePatch("DEL 2:\n+X")).toThrow(/has no colon/);
+    expect(() => parsePatch("DEL 2:\n+X")).toThrow(/does not take body rows/);
   });
 });
 
