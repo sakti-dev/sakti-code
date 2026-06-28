@@ -19,7 +19,7 @@ const zaiModel = (overrides: Partial<Model> = {}): Model => ({
 
 describe("buildProviderOptions — zai-anthropic branch", () => {
   it("maps each ThinkingLevel to zcode's high/max budgets", () => {
-    // Lower 3 tiers collapse to zcode "high" (16000); upper 2 to "max" (32000).
+    // Lower 4 tiers map to zcode "high" (16000); xhigh escalates to "max" (32000).
     expect(
       buildProviderOptions({ level: "minimal", model: zaiModel() })
     ).toEqual({
@@ -34,7 +34,7 @@ describe("buildProviderOptions — zai-anthropic branch", () => {
       zai: { thinking: { type: "enabled", budget_tokens: 16_000 } },
     });
     expect(buildProviderOptions({ level: "high", model: zaiModel() })).toEqual({
-      zai: { thinking: { type: "enabled", budget_tokens: 32_000 } },
+      zai: { thinking: { type: "enabled", budget_tokens: 16_000 } },
     });
     expect(buildProviderOptions({ level: "xhigh", model: zaiModel() })).toEqual(
       {

@@ -83,7 +83,7 @@ describe("streamWithModel providerOptions passthrough", () => {
       {
         model: zaiModel,
         messages: [{ role: "user", content: "hi", timestamp: 0 }],
-        thinkingLevel: "high",
+        thinkingLevel: "xhigh",
       },
       {} as LanguageModelV4,
       fakeRunner
