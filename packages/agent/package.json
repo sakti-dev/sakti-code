@@ -28,6 +28,6 @@
     "@effect/vitest": "4.0.0-beta.90",
     "@types/node": "^26.0.0",
     "@types/uuid": "^10",
-    "vitest": "^3"
+    "vitest": "^4.1.9"
   }
 }
