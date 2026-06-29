@@ -20,10 +20,6 @@ import {
 } from "@sakti-code/agent";
 import { type EditMode, InMemorySnapshotStore } from "@sakti-code/tools";
 import { Effect } from "effect";
-import {
-  BRANCH_SUMMARY_PROMPTS,
-  COMPACTION_PROMPTS,
-} from "../compaction/prompts.ts";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";
 import {
@@ -31,7 +27,9 @@ import {
   type PermissionFrame,
 } from "../lib/permission-channel.ts";
 import {
+  BRANCH_SUMMARY_PROMPTS,
   buildAgentTools,
+  COMPACTION_PROMPTS,
   DEFAULT_AGENT_NAME,
   rebuildTool,
   resolveSessionAgent,

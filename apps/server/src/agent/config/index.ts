@@ -1,6 +1,11 @@
 /** Agent configuration: catalog, prompts, tool registry, resolution helpers. */
 
 export {
+  BRANCH_SUMMARY_PROMPTS,
+  COMPACTION_PROMPTS,
+} from "./compaction-prompts.ts";
+
+export {
   BUILD_PROMPT,
   DEFAULT_SYSTEM_PROMPT,
   EXPLORE_PROMPT,

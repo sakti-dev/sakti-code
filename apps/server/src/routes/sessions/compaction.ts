@@ -8,8 +8,8 @@ import {
 import type { Model } from "@sakti-code/llm";
 import { Effect } from "effect";
 import { Hono } from "hono";
+import { COMPACTION_PROMPTS } from "../../agent/config/index.ts";
 import { resolveAuth, resolveModel } from "../../agent/model-resolver.ts";
-import { COMPACTION_PROMPTS } from "../../compaction/prompts.ts";
 import { createSessionStorage, getCtx } from "../../context.ts";
 
 export const compactionRoutes = new Hono()
