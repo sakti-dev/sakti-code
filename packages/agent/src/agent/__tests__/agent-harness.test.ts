@@ -836,26 +836,28 @@ describe("AgentHarness", () => {
     });
 
     const stream = harness.subscribeStream();
-    // Fork the prompt via runFork so events emit concurrently with stream
-    // consumption. v4 has no bare Effect.fork — top-level forks go through
-    // Effect.runFork, which returns a Fiber.
+    const events: AgentHarnessEvent[] = [];
+
+    // Start the drain FIRST (forked), then fork the prompt. Stream.fromPubSub
+    // subscribes on first pull — if we fork prompt first, agent_start can be
+    // published before the subscription exists and we'd miss it. This is the
+    // documented PubSub semantics, not a bug in the harness.
+    const drainFiber = Effect.runFork(
+      Stream.runForEach(stream, (e) =>
+        Effect.sync(() => events.push(e as AgentHarnessEvent))
+      )
+    );
+    // Yield a microtask so the drain's subscription is registered before the
+    // prompt starts publishing.
+    await new Promise((r) => setTimeout(r, 0));
+
     const turnFiber = Effect.runFork(harness.promptEffect("hello"));
 
-    const collected = await Effect.runPromise(
-      Effect.gen(function* () {
-        const events: AgentHarnessEvent[] = [];
-        yield* Stream.runForEach(stream, (e) =>
-          Effect.sync(() => events.push(e as AgentHarnessEvent))
-        ).pipe(
-          // End the drain when the turn settles (Stream fromPubSub never ends
-          // on its own; raceFirst returns when the join resolves).
-          Effect.raceFirst(Fiber.join(turnFiber).pipe(Effect.ignore))
-        );
-        return events;
-      })
-    );
+    // Wait for the turn to settle, then interrupt the (infinite) drain.
+    await Effect.runPromise(Fiber.join(turnFiber).pipe(Effect.exit));
+    await Effect.runPromise(Fiber.interrupt(drainFiber).pipe(Effect.exit));
 
-    const types = collected.map((e) => e.type);
+    const types = events.map((e) => e.type);
     expect(types).toContain("agent_start");
     expect(types).toContain("turn_end");
   });
@@ -1783,5 +1785,49 @@ describe("*Effect cores (Phase H1)", () => {
     expect(typeof effect).toBe("object");
     const result = await Effect.runPromise(effect);
     expect(result.cancelled).toBe(false);
+  });
+});
+
+describe("Effect-native prompt emit ordering (Phase H2 regression)", () => {
+  // Locks the emit sequence from promptEffect against prompt. The previous
+  // flake (1/3 runs in ws.test.ts) was caused by emit-timing divergence
+  // between runAgentLoopEffect (Effect.promise) and runAgentLoop (await).
+  // After H2 both paths route through the same Effect core, so the sequences
+  // must be byte-identical for the same input.
+
+  it("promptEffect produces the same event-type sequence as prompt", async () => {
+    const seenTypes = async (useEffect: boolean): Promise<string[]> => {
+      const registration = registerFauxStreamProvider();
+      registrations.push(registration);
+      registration.setResponses([() => fauxAssistantMessage("ok")]);
+      const events: string[] = [];
+      const harness = new AgentHarness({
+        env: new TestExecutionEnv(process.cwd()),
+        session: await createTestSession(),
+        model: registration.getModel(),
+        streamFn: registration.streamFn,
+      });
+      harness.subscribe((event) => {
+        events.push(event.type);
+        return Promise.resolve();
+      });
+      if (useEffect) {
+        await Effect.runPromise(harness.promptEffect("hello"));
+        await Effect.runPromise(harness.waitForIdleEffect());
+      } else {
+        await harness.prompt("hello");
+        await harness.waitForIdle();
+      }
+      return events;
+    };
+
+    const fromEffect = await seenTypes(true);
+    const fromPromise = await seenTypes(false);
+
+    expect(fromEffect).toEqual(fromPromise);
+    // Sanity: canonical sequence present
+    expect(fromEffect).toEqual(
+      expect.arrayContaining(["agent_start", "turn_start", "agent_end"])
+    );
   });
 });

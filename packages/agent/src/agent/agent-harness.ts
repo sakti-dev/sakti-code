@@ -5,7 +5,7 @@ import type {
   UserMessage,
 } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
-import { Effect, PubSub, Stream } from "effect";
+import { Cause, Effect, Exit, PubSub, Stream } from "effect";
 import { buildHarnessStreamRequest } from "../agent/build-stream-request";
 import { DEFAULT_SYSTEM_PROMPT } from "../agents/builtin-agents";
 import {
@@ -17,7 +17,10 @@ import {
   prepareCompaction,
   compactEffect as runCompactEffect,
 } from "../compaction/compaction";
-import { runAgentLoop, runAgentLoopContinue } from "../core/agent-loop";
+import {
+  runAgentLoopContinueEffect,
+  runAgentLoopEffect,
+} from "../core/agent-loop";
 import {
   type AbortResult,
   type AgentDefinition,
@@ -37,7 +40,7 @@ import {
   ok,
   type PendingSessionWrite,
   type PromptTemplate,
-  SessionError,
+  type SessionError,
   type Skill,
   toError,
 } from "../harness-types";
@@ -344,93 +347,141 @@ export class AgentHarness<
     return this.handlers.get(type);
   }
 
-  private async emitOwn(
+  private emitOwn(
     event: AgentHarnessOwnEvent<TSkill, TPromptTemplate>,
     signal?: AbortSignal
   ): Promise<void> {
-    const handlers = this.getHandlers(SUBSCRIBER_EVENT_TYPE);
-    if (!handlers || handlers.size === 0) {
-      return;
-    }
-    for (const listener of handlers) {
-      try {
-        await listener(event, signal);
-      } catch (error) {
-        throw normalizeHookError(error);
-      }
-    }
+    return Effect.runPromise(this.emitOwnEffect(event, signal));
   }
 
-  private async emitAny(
-    event: AgentHarnessEvent<TSkill, TPromptTemplate>,
-    signal?: AbortSignal
-  ): Promise<void> {
-    const handlers = this.getHandlers(SUBSCRIBER_EVENT_TYPE);
-    if (!handlers || handlers.size === 0) {
-      return;
-    }
-    for (const listener of handlers) {
-      try {
-        await listener(event, signal);
-      } catch (error) {
-        throw normalizeHookError(error);
-      }
-    }
-  }
-
-  private async emitHook<TType extends keyof AgentHarnessEventResultMap>(
+  private emitHook<TType extends keyof AgentHarnessEventResultMap>(
     event: Extract<AgentHarnessOwnEvent, { type: TType }>
   ): Promise<AgentHarnessEventResultMap[TType] | undefined> {
-    const handlers = this.getHandlers(event.type as TType);
-    if (!handlers || handlers.size === 0) {
-      return;
-    }
-    let lastResult: AgentHarnessEventResultMap[TType] | undefined;
-    for (const handler of handlers) {
-      try {
-        const result = (await handler(event)) as
-          | AgentHarnessEventResultMap[TType]
-          | undefined;
-        if (result !== undefined) {
-          lastResult = result;
-        }
-      } catch (error) {
-        throw normalizeHookError(error);
-      }
-    }
-    return lastResult;
+    return Effect.runPromise(this.emitHookEffect(event));
   }
 
-  private async emitBeforeProviderRequest(
+  private emitBeforeProviderRequest(
     model: Model,
     sessionId: string,
     streamOptions: AgentHarnessStreamOptions
   ): Promise<AgentHarnessStreamOptions> {
+    return Effect.runPromise(
+      this.emitBeforeProviderRequestEffect(model, sessionId, streamOptions)
+    );
+  }
+
+  private emitQueueUpdate(): Promise<void> {
+    return Effect.runPromise(this.emitQueueUpdateEffect());
+  }
+
+  // ── Effect-typed emit helpers ───────────────────────────────────────
+  // Phase H2: these are the Effect cores. The Promise variants above are
+  // one-line wrappers so existing Promise callers (steer/followUp/nextTurn/
+  // swapTool/scheduleSystemPromptRefresh/etc.) stay unchanged. The run/emit
+  // path (executeTurn/handleAgentEvent) uses these directly.
+
+  private emitOwnEffect(
+    event: AgentHarnessOwnEvent<TSkill, TPromptTemplate>,
+    signal?: AbortSignal
+  ): Effect.Effect<void, AgentHarnessError> {
+    const handlers = this.getHandlers(SUBSCRIBER_EVENT_TYPE);
+    if (!handlers || handlers.size === 0) {
+      return Effect.void;
+    }
+    return Effect.gen(function* () {
+      for (const listener of handlers) {
+        yield* Effect.tryPromise({
+          try: () => Promise.resolve(listener(event, signal)),
+          catch: (error: unknown) => normalizeHookError(error),
+        });
+      }
+    });
+  }
+
+  private emitAnyEffect(
+    event: AgentHarnessEvent<TSkill, TPromptTemplate>,
+    signal?: AbortSignal
+  ): Effect.Effect<void, AgentHarnessError> {
+    const handlers = this.getHandlers(SUBSCRIBER_EVENT_TYPE);
+    if (!handlers || handlers.size === 0) {
+      return Effect.void;
+    }
+    return Effect.gen(function* () {
+      for (const listener of handlers) {
+        yield* Effect.tryPromise({
+          try: () => Promise.resolve(listener(event, signal)),
+          catch: (error: unknown) => normalizeHookError(error),
+        });
+      }
+    });
+  }
+
+  private emitHookEffect<TType extends keyof AgentHarnessEventResultMap>(
+    event: Extract<AgentHarnessOwnEvent, { type: TType }>
+  ): Effect.Effect<
+    AgentHarnessEventResultMap[TType] | undefined,
+    AgentHarnessError
+  > {
+    const handlers = this.getHandlers(event.type as TType);
+    if (!handlers || handlers.size === 0) {
+      return Effect.succeed(undefined);
+    }
+    return Effect.gen(function* () {
+      let lastResult: AgentHarnessEventResultMap[TType] | undefined;
+      for (const handler of handlers) {
+        const result = yield* Effect.tryPromise({
+          try: () =>
+            Promise.resolve(
+              handler(event) as AgentHarnessEventResultMap[TType] | undefined
+            ),
+          catch: (error: unknown) => normalizeHookError(error),
+        });
+        if (result !== undefined) {
+          lastResult = result;
+        }
+      }
+      return lastResult;
+    });
+  }
+
+  private emitBeforeProviderRequestEffect(
+    model: Model,
+    sessionId: string,
+    streamOptions: AgentHarnessStreamOptions
+  ): Effect.Effect<AgentHarnessStreamOptions, AgentHarnessError> {
     const handlers = this.getHandlers("before_provider_request");
     let current = cloneStreamOptions(streamOptions);
     if (!handlers || handlers.size === 0) {
-      return current;
+      return Effect.succeed(current);
     }
-    for (const handler of handlers) {
-      try {
-        const result = (await handler({
-          type: "before_provider_request",
-          model,
-          sessionId,
-          streamOptions: current,
-        })) as { streamOptions?: AgentHarnessStreamOptionsPatch } | undefined;
+    return Effect.gen(function* () {
+      for (const handler of handlers) {
+        const result = yield* Effect.tryPromise({
+          try: () =>
+            Promise.resolve(
+              handler({
+                type: "before_provider_request",
+                model,
+                sessionId,
+                streamOptions: current,
+              }) as
+                | {
+                    streamOptions?: AgentHarnessStreamOptionsPatch;
+                  }
+                | undefined
+            ),
+          catch: (error: unknown) => normalizeHookError(error),
+        });
         if (result?.streamOptions) {
           current = applyStreamOptionsPatch(current, result.streamOptions);
         }
-      } catch (error) {
-        throw normalizeHookError(error);
       }
-    }
-    return current;
+      return current;
+    });
   }
 
-  private async emitQueueUpdate(): Promise<void> {
-    await this.emitOwn({
+  private emitQueueUpdateEffect(): Effect.Effect<void, AgentHarnessError> {
+    return this.emitOwnEffect({
       type: "queue_update",
       steer: [...this.steerQueue],
       followUp: [...this.followUpQueue],
@@ -449,34 +500,43 @@ export class AgentHarness<
     };
   }
 
-  private async runAsTurn<T>(
+  private runAsTurnEffect<T>(
     mode: string,
     fn: (
       turnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
-    ) => Promise<T>
-  ): Promise<T> {
-    if (this.phase !== "idle") {
-      throw new AgentHarnessError({
-        code: "busy",
-        message: "AgentHarness is busy",
+    ) => Effect.Effect<T, AgentHarnessError | SessionError>
+  ): Effect.Effect<T, AgentHarnessError | SessionError> {
+    const self = this;
+    let finishRunPromise: () => void = () => {};
+    return Effect.gen(function* () {
+      if (self.phase !== "idle") {
+        return yield* Effect.fail(
+          new AgentHarnessError({
+            code: "busy",
+            message: "AgentHarness is busy",
+          })
+        );
+      }
+      self.phase = "turn";
+      self.logger?.info("turn started", {
+        mode,
+        model: self.model.id,
+        provider: self.model.provider,
       });
-    }
-    this.phase = "turn";
-    this.logger?.info("turn started", {
-      mode,
-      model: this.model.id,
-      provider: this.model.provider,
-    });
-    const finishRunPromise = this.startRunPromise();
-    try {
-      const turnState = await this.createTurnState();
-      return await fn(turnState);
-    } catch (error) {
-      this.phase = "idle";
-      throw normalizeHarnessError(error, "unknown");
-    } finally {
-      finishRunPromise();
-    }
+      finishRunPromise = self.startRunPromise();
+      const turnState = yield* self.createTurnStateEffect();
+      return yield* fn(turnState);
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => finishRunPromise())),
+      Effect.mapError((error) => {
+        // On any failure mid-turn, reset phase to idle (mirrors the original
+        // catch block) and normalize.
+        if (self.phase === "turn") {
+          self.phase = "idle";
+        }
+        return normalizeHarnessError(error, "unknown");
+      })
+    );
   }
 
   private createTurnStateEffect = (): Effect.Effect<
@@ -782,10 +842,10 @@ export class AgentHarness<
     await Effect.runPromise(this.flushPendingSessionWritesEffect());
   }
 
-  private async handleAgentEvent(
+  private handleAgentEventEffect(
     event: AgentEvent,
     signal?: AbortSignal
-  ): Promise<void> {
+  ): Effect.Effect<void, AgentHarnessError | SessionError> {
     // Phase D: broadcast to PubSub subscribers (subscribeStream). Non-blocking
     // for unbounded PubSub; if the bus is shut down (e.g. after dispose), ignore.
     try {
@@ -798,8 +858,7 @@ export class AgentHarness<
       this.cacheHitTokens += event.diagnostics.cacheHitTokens;
       this.cacheMissTokens += event.diagnostics.cacheMissTokens;
       this.cacheShapeTurnCount++;
-      await this.emitAny(event, signal);
-      return;
+      return this.emitAnyEffect(event, signal);
     }
 
     if (
@@ -807,177 +866,199 @@ export class AgentHarness<
       event.type !== "turn_end" &&
       event.type !== "agent_end"
     ) {
-      await this.emitAny(event, signal);
-      return;
+      return this.emitAnyEffect(event, signal);
     }
 
     const self = this;
-    await Effect.runPromise(
-      Effect.gen(function* () {
-        if (event.type === "message_end") {
-          yield* self.session.appendMessage(event.message);
-          yield* Effect.promise(() => self.emitAny(event, signal));
-          return;
-        }
-        if (event.type === "turn_end") {
-          const eventError = yield* Effect.promise(() =>
-            self
-              .emitAny(event, signal)
-              .then(() => undefined)
-              .catch((e: unknown) => e)
+    return Effect.gen(function* () {
+      if (event.type === "message_end") {
+        yield* self.session.appendMessage(event.message);
+        yield* self.emitAnyEffect(event, signal);
+        return;
+      }
+      if (event.type === "turn_end") {
+        // Preserve the deferred-error semantics of the original: emit, but
+        // capture any listener error so the pending-writes flush + save_point
+        // still run before we re-throw.
+        const eventError = yield* Effect.exit(
+          self.emitAnyEffect(event, signal)
+        );
+        const hadPendingMutations = self.pendingSessionWrites.length > 0;
+        yield* self.flushPendingSessionWritesEffect();
+        if (Exit.isFailure(eventError)) {
+          yield* Effect.fail(
+            normalizeHookError(Cause.squash(eventError.cause))
           );
-          const hadPendingMutations = self.pendingSessionWrites.length > 0;
-          yield* self.flushPendingSessionWritesEffect();
-          if (eventError) {
-            yield* Effect.fail(eventError);
-          }
-          yield* Effect.promise(() =>
-            self.emitOwn({ type: "save_point", hadPendingMutations })
-          );
-          return;
         }
-        if (event.type === "agent_end") {
-          yield* self.flushPendingSessionWritesEffect();
-          self.phase = "idle";
-          yield* Effect.promise(() => self.emitAny(event, signal));
-          yield* Effect.promise(() =>
-            self.emitOwn(
-              { type: "settled", nextTurnCount: self.nextTurnQueue.length },
-              signal
-            )
-          );
-          return;
-        }
-      })
-    );
+        yield* self.emitOwnEffect({ type: "save_point", hadPendingMutations });
+        return;
+      }
+      // event.type === "agent_end"
+      yield* self.flushPendingSessionWritesEffect();
+      self.phase = "idle";
+      yield* self.emitAnyEffect(event, signal);
+      yield* self.emitOwnEffect(
+        { type: "settled", nextTurnCount: self.nextTurnQueue.length },
+        signal
+      );
+    });
   }
 
-  private async emitRunFailure(
+  private emitRunFailureEffect(
     model: Model,
     error: unknown,
     aborted: boolean,
     signal: AbortSignal
-  ): Promise<AgentMessage[]> {
-    const failureMessage = createFailureMessage(model, error, aborted);
-    await this.handleAgentEvent(
-      { type: "message_start", message: failureMessage },
-      signal
-    );
-    await this.handleAgentEvent(
-      { type: "message_end", message: failureMessage },
-      signal
-    );
-    await this.handleAgentEvent(
-      { type: "turn_end", message: failureMessage, toolResults: [] },
-      signal
-    );
-    await this.handleAgentEvent(
-      { type: "agent_end", messages: [failureMessage] },
-      signal
-    );
-    return [failureMessage];
+  ): Effect.Effect<AgentMessage[], AgentHarnessError | SessionError> {
+    const self = this;
+    return Effect.gen(function* () {
+      const failureMessage = createFailureMessage(model, error, aborted);
+      yield* self.handleAgentEventEffect(
+        { type: "message_start", message: failureMessage },
+        signal
+      );
+      yield* self.handleAgentEventEffect(
+        { type: "message_end", message: failureMessage },
+        signal
+      );
+      yield* self.handleAgentEventEffect(
+        { type: "turn_end", message: failureMessage, toolResults: [] },
+        signal
+      );
+      yield* self.handleAgentEventEffect(
+        { type: "agent_end", messages: [failureMessage] },
+        signal
+      );
+      return [failureMessage];
+    });
   }
 
-  private async executeTurn(
+  private executeTurnEffect(
     turnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>,
     text: string,
     options?: { images?: ImageContent[] }
-  ): Promise<AssistantMessage> {
+  ): Effect.Effect<AssistantMessage, AgentHarnessError | SessionError> {
+    const self = this;
     let activeTurnState = turnState;
     let messages: AgentMessage[] = [createUserMessage(text, options?.images)];
-    if (this.nextTurnQueue.length > 0) {
-      const queuedMessages = this.nextTurnQueue.splice(0);
-      try {
-        await this.emitQueueUpdate();
-      } catch (error) {
-        this.nextTurnQueue.unshift(...queuedMessages);
-        throw normalizeHookError(error);
-      }
-      messages = [...queuedMessages, messages[0]!];
-    }
-    const beforeResult = await this.emitHook({
-      type: "before_agent_start",
-      prompt: text,
-      images: options?.images,
-      systemPrompt: turnState.systemPrompt,
-      resources: turnState.resources,
-    });
-    if (beforeResult?.messages) {
-      messages = [...messages, ...beforeResult.messages];
-    }
 
-    const abortController = new AbortController();
-    const getTurnState = () => activeTurnState;
-    const setTurnState = (
-      nextTurnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
-    ) => {
-      activeTurnState = nextTurnState;
-    };
-    this.runAbortController = abortController;
-    const runResultPromise = (async () => {
-      try {
-        return await runAgentLoop(
-          messages,
-          this.createContext(turnState, beforeResult?.systemPrompt),
-          this.createLoopConfig(getTurnState, setTurnState),
-          (event) => this.handleAgentEvent(event, abortController.signal),
-          abortController.signal,
-          this.createStreamFn(getTurnState)
+    return Effect.gen(function* () {
+      if (self.nextTurnQueue.length > 0) {
+        const queuedMessages = self.nextTurnQueue.splice(0);
+        try {
+          yield* self.emitQueueUpdateEffect();
+        } catch (error) {
+          self.nextTurnQueue.unshift(...queuedMessages);
+          return yield* Effect.fail(normalizeHookError(error));
+        }
+        messages = [...queuedMessages, messages[0]!];
+      }
+      const beforeResult = yield* self.emitHookEffect({
+        type: "before_agent_start",
+        prompt: text,
+        ...(options?.images === undefined ? {} : { images: options.images }),
+        systemPrompt: turnState.systemPrompt,
+        resources: turnState.resources,
+      });
+      if (beforeResult?.messages) {
+        messages = [...messages, ...beforeResult.messages];
+      }
+
+      const abortController = new AbortController();
+      const getTurnState = () => activeTurnState;
+      const setTurnState = (
+        nextTurnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
+      ) => {
+        activeTurnState = nextTurnState;
+      };
+      self.runAbortController = abortController;
+
+      const newMessages = yield* (function* () {
+        const exit = yield* Effect.exit(
+          runAgentLoopEffect(
+            messages,
+            self.createContext(turnState, beforeResult?.systemPrompt),
+            self.createLoopConfig(getTurnState, setTurnState),
+            (event) =>
+              Effect.runPromise(
+                self.handleAgentEventEffect(event, abortController.signal)
+              ),
+            abortController.signal,
+            self.createStreamFn(getTurnState)
+          )
         );
-      } catch (error) {
-        this.logger?.error("turn failed", error, {
+        if (Exit.isSuccess(exit)) {
+          return exit.value;
+        }
+        const error = Cause.squash(exit.cause);
+        self.logger?.error("turn failed", error, {
           model: activeTurnState.model.id,
           provider: activeTurnState.model.provider,
           aborted: String(abortController.signal.aborted),
         });
-        try {
-          return await this.emitRunFailure(
+        // Mirror the original double-fail path: if emitRunFailure itself
+        // throws, wrap both errors in a single AgentHarnessError.
+        const failureExit = yield* Effect.exit(
+          self.emitRunFailureEffect(
             activeTurnState.model,
             error,
             abortController.signal.aborted,
             abortController.signal
-          );
-        } catch (failureError) {
-          const cause = new AggregateError(
-            [toError(error), toError(failureError)],
-            "Agent run failed and failure reporting failed"
-          );
-          throw new AgentHarnessError({
-            code: "unknown",
-            message: cause.message,
-            cause,
-          });
+          )
+        );
+        if (Exit.isSuccess(failureExit)) {
+          return failureExit.value;
         }
-      }
-    })();
-    try {
-      const newMessages = await runResultPromise;
+        const failureError = Cause.squash(failureExit.cause);
+        const aggregated = new AggregateError(
+          [toError(error), toError(failureError)],
+          "Agent run failed and failure reporting failed"
+        );
+        return yield* Effect.fail(
+          new AgentHarnessError({
+            code: "unknown",
+            message: aggregated.message,
+            cause: aggregated,
+          })
+        );
+      })();
+
       for (let i = newMessages.length - 1; i >= 0; i--) {
         const message = newMessages[i]!;
         if (message.role === "assistant") {
           return message;
         }
       }
-      throw new AgentHarnessError({
-        code: "invalid_state",
-        message: "AgentHarness prompt completed without an assistant message",
-      });
-    } finally {
-      try {
-        await this.flushPendingSessionWrites();
-      } finally {
-        this.runAbortController = undefined;
-      }
-    }
+      return yield* Effect.fail(
+        new AgentHarnessError({
+          code: "invalid_state",
+          message: "AgentHarness prompt completed without an assistant message",
+        })
+      );
+    }).pipe(
+      Effect.ensuring(
+        Effect.gen(function* () {
+          yield* self.flushPendingSessionWritesEffect().pipe(Effect.ignore);
+          self.runAbortController = undefined;
+        })
+      )
+    );
+  }
+
+  promptEffect(
+    text: string,
+    options?: { images?: ImageContent[] }
+  ): Effect.Effect<AssistantMessage, AgentHarnessError | SessionError> {
+    return this.runAsTurnEffect("prompt", (turnState) =>
+      this.executeTurnEffect(turnState, text, options)
+    );
   }
 
   async prompt(
     text: string,
     options?: { images?: ImageContent[] }
   ): Promise<AssistantMessage> {
-    return this.runAsTurn("prompt", (turnState) =>
-      this.executeTurn(turnState, text, options)
-    );
+    return Effect.runPromise(this.promptEffect(text, options));
   }
 
   /**
@@ -996,24 +1077,36 @@ export class AgentHarness<
    * @throws {AgentHarnessError} code `"busy"` if not idle, `"invalid_state"`
    *   if the transcript is empty or ends in an assistant message.
    */
-  async continue(): Promise<AssistantMessage> {
-    if (this.phase !== "idle") {
-      throw new AgentHarnessError({
-        code: "busy",
-        message: "AgentHarness is busy",
+  continueEffect(): Effect.Effect<
+    AssistantMessage,
+    AgentHarnessError | SessionError
+  > {
+    const self = this;
+    // Hoisted so Effect.ensuring (outside the gen) can reference it; assigned
+    // inside the gen after the busy check passes (preserves original semantics
+    // where startRunPromise wasn't called on the busy-fail path).
+    let finishRunPromise: () => void = () => {};
+    return Effect.gen(function* () {
+      if (self.phase !== "idle") {
+        return yield* Effect.fail(
+          new AgentHarnessError({
+            code: "busy",
+            message: "AgentHarness is busy",
+          })
+        );
+      }
+      self.phase = "turn";
+      self.logger?.info("turn started", {
+        mode: "continue",
+        model: self.model.id,
+        provider: self.model.provider,
       });
-    }
-    this.phase = "turn";
-    this.logger?.info("turn started", {
-      mode: "continue",
-      model: this.model.id,
-      provider: this.model.provider,
-    });
-    const finishRunPromise = this.startRunPromise();
-    try {
+      finishRunPromise = self.startRunPromise();
+
       // Build the turn state from the CURRENT session (post-rollback in the
       // retry case). `messages` reflects the live leaf, not a fresh prompt.
-      let activeTurnState = await this.createTurnState();
+      const initialTurnState = yield* self.createTurnStateEffect();
+      let activeTurnState = initialTurnState;
       const getTurnState = () => activeTurnState;
       const setTurnState = (
         nextTurnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
@@ -1025,130 +1118,174 @@ export class AgentHarness<
       // re-checks, but failing here gives a cleaner error and avoids emitting
       // any agent_start events for a doomed run.
       if (activeTurnState.messages.length === 0) {
-        throw new AgentHarnessError({
-          code: "invalid_state",
-          message: "No messages to continue from",
-        });
+        return yield* Effect.fail(
+          new AgentHarnessError({
+            code: "invalid_state",
+            message: "No messages to continue from",
+          })
+        );
       }
       const lastMessage =
         activeTurnState.messages[activeTurnState.messages.length - 1]!;
       if (lastMessage.role === "assistant") {
-        throw new AgentHarnessError({
-          code: "invalid_state",
-          message: "Cannot continue from an assistant message",
-        });
+        return yield* Effect.fail(
+          new AgentHarnessError({
+            code: "invalid_state",
+            message: "Cannot continue from an assistant message",
+          })
+        );
       }
 
       const abortController = new AbortController();
-      this.runAbortController = abortController;
-      const context = this.createContext(activeTurnState);
+      self.runAbortController = abortController;
+      const context = self.createContext(activeTurnState);
 
-      // Wrap runAgentLoopContinue so loop/stream failures are converted into a
-      // failure assistant message — the server retry loop then sees a
-      // consistent error shape (mirrors executeTurn's failure handling).
-      const runResultPromise = (async () => {
-        try {
-          return await runAgentLoopContinue(
+      const newMessages = yield* (function* () {
+        const exit = yield* Effect.exit(
+          runAgentLoopContinueEffect(
             context,
-            this.createLoopConfig(getTurnState, setTurnState),
-            (event) => this.handleAgentEvent(event, abortController.signal),
+            self.createLoopConfig(getTurnState, setTurnState),
+            (event) =>
+              Effect.runPromise(
+                self.handleAgentEventEffect(event, abortController.signal)
+              ),
             abortController.signal,
-            this.createStreamFn(getTurnState)
-          );
-        } catch (error) {
-          this.logger?.error("turn failed", error, {
-            model: activeTurnState.model.id,
-            provider: activeTurnState.model.provider,
-            aborted: String(abortController.signal.aborted),
-          });
-          try {
-            return await this.emitRunFailure(
-              activeTurnState.model,
-              error,
-              abortController.signal.aborted,
-              abortController.signal
-            );
-          } catch (failureError) {
-            const cause = new AggregateError(
-              [toError(error), toError(failureError)],
-              "Agent continue failed and failure reporting failed"
-            );
-            throw new AgentHarnessError({
-              code: "unknown",
-              message: cause.message,
-              cause,
-            });
-          }
+            self.createStreamFn(getTurnState)
+          )
+        );
+        if (Exit.isSuccess(exit)) {
+          return exit.value;
         }
+        const error = Cause.squash(exit.cause);
+        self.logger?.error("turn failed", error, {
+          model: activeTurnState.model.id,
+          provider: activeTurnState.model.provider,
+          aborted: String(abortController.signal.aborted),
+        });
+        const failureExit = yield* Effect.exit(
+          self.emitRunFailureEffect(
+            activeTurnState.model,
+            error,
+            abortController.signal.aborted,
+            abortController.signal
+          )
+        );
+        if (Exit.isSuccess(failureExit)) {
+          return failureExit.value;
+        }
+        const failureError = Cause.squash(failureExit.cause);
+        const aggregated = new AggregateError(
+          [toError(error), toError(failureError)],
+          "Agent continue failed and failure reporting failed"
+        );
+        return yield* Effect.fail(
+          new AgentHarnessError({
+            code: "unknown",
+            message: aggregated.message,
+            cause: aggregated,
+          })
+        );
       })();
 
-      try {
-        const newMessages = await runResultPromise;
-        for (let i = newMessages.length - 1; i >= 0; i--) {
-          const message = newMessages[i]!;
-          if (message.role === "assistant") {
-            return message;
-          }
-        }
-        throw new AgentHarnessError({
-          code: "invalid_state",
-          message: "Continue completed without an assistant message",
-        });
-      } finally {
-        try {
-          await this.flushPendingSessionWrites();
-        } finally {
-          this.runAbortController = undefined;
+      for (let i = newMessages.length - 1; i >= 0; i--) {
+        const message = newMessages[i]!;
+        if (message.role === "assistant") {
+          return message;
         }
       }
-    } catch (error) {
-      this.phase = "idle";
-      throw normalizeHarnessError(error, "unknown");
-    } finally {
-      finishRunPromise();
-    }
+      return yield* Effect.fail(
+        new AgentHarnessError({
+          code: "invalid_state",
+          message: "Continue completed without an assistant message",
+        })
+      );
+    }).pipe(
+      Effect.ensuring(
+        Effect.gen(function* () {
+          yield* self.flushPendingSessionWritesEffect().pipe(Effect.ignore);
+          self.runAbortController = undefined;
+        })
+      ),
+      Effect.ensuring(Effect.sync(() => finishRunPromise())),
+      Effect.mapError((error) => {
+        // On any failure mid-continue, reset phase to idle (the original
+        // catch did this) and normalize.
+        if (self.phase === "turn") {
+          self.phase = "idle";
+        }
+        return normalizeHarnessError(error, "unknown");
+      })
+    );
+  }
+
+  async continue(): Promise<AssistantMessage> {
+    return Effect.runPromise(this.continueEffect());
+  }
+
+  skillEffect(
+    name: string,
+    additionalInstructions?: string
+  ): Effect.Effect<AssistantMessage, AgentHarnessError | SessionError> {
+    const self = this;
+    return self.runAsTurnEffect("skill", (turnState) =>
+      Effect.gen(function* () {
+        const skill = (turnState.resources.skills ?? []).find(
+          (candidate) => candidate.name === name
+        );
+        if (!skill) {
+          return yield* Effect.fail(
+            new AgentHarnessError({
+              code: "invalid_argument",
+              message: `Unknown skill: ${name}`,
+            })
+          );
+        }
+        return yield* self.executeTurnEffect(
+          turnState,
+          formatSkillInvocation(skill, additionalInstructions)
+        );
+      })
+    );
   }
 
   async skill(
     name: string,
     additionalInstructions?: string
   ): Promise<AssistantMessage> {
-    return this.runAsTurn("skill", async (turnState) => {
-      const skill = (turnState.resources.skills ?? []).find(
-        (candidate) => candidate.name === name
-      );
-      if (!skill) {
-        throw new AgentHarnessError({
-          code: "invalid_argument",
-          message: `Unknown skill: ${name}`,
-        });
-      }
-      return this.executeTurn(
-        turnState,
-        formatSkillInvocation(skill, additionalInstructions)
-      );
-    });
+    return Effect.runPromise(this.skillEffect(name, additionalInstructions));
+  }
+
+  promptFromTemplateEffect(
+    name: string,
+    args: string[] = []
+  ): Effect.Effect<AssistantMessage, AgentHarnessError | SessionError> {
+    const self = this;
+    return self.runAsTurnEffect("promptFromTemplate", (turnState) =>
+      Effect.gen(function* () {
+        const template = (turnState.resources.promptTemplates ?? []).find(
+          (candidate) => candidate.name === name
+        );
+        if (!template) {
+          return yield* Effect.fail(
+            new AgentHarnessError({
+              code: "invalid_argument",
+              message: `Unknown prompt template: ${name}`,
+            })
+          );
+        }
+        return yield* self.executeTurnEffect(
+          turnState,
+          formatPromptTemplateInvocation(template, args)
+        );
+      })
+    );
   }
 
   async promptFromTemplate(
     name: string,
     args: string[] = []
   ): Promise<AssistantMessage> {
-    return this.runAsTurn("promptFromTemplate", async (turnState) => {
-      const template = (turnState.resources.promptTemplates ?? []).find(
-        (candidate) => candidate.name === name
-      );
-      if (!template) {
-        throw new AgentHarnessError({
-          code: "invalid_argument",
-          message: `Unknown prompt template: ${name}`,
-        });
-      }
-      return this.executeTurn(
-        turnState,
-        formatPromptTemplateInvocation(template, args)
-      );
-    });
+    return Effect.runPromise(this.promptFromTemplateEffect(name, args));
   }
 
   async steer(
@@ -2018,16 +2155,25 @@ export class AgentHarness<
    * Clears any pending {@link scheduleSystemPromptRefresh} — switchAgent is the
    * "apply now" path and supersedes a deferred swap.
    */
+  switchAgentEffect(
+    agent: AgentDefinition
+  ): Effect.Effect<void, AgentHarnessError | SessionError> {
+    const self = this;
+    return Effect.gen(function* () {
+      self.currentAgent = agent;
+      self.systemPrompt = agent.systemPrompt;
+      self.clearPendingSystemPromptRefresh();
+      if (agent.thinkingLevel !== undefined) {
+        yield* self.setThinkingLevelEffect(agent.thinkingLevel);
+      }
+      if (agent.activeToolNames !== undefined) {
+        yield* self.setActiveToolsEffect(agent.activeToolNames);
+      }
+    });
+  }
+
   async switchAgent(agent: AgentDefinition): Promise<void> {
-    this.currentAgent = agent;
-    this.systemPrompt = agent.systemPrompt;
-    this.clearPendingSystemPromptRefresh();
-    if (agent.thinkingLevel !== undefined) {
-      await this.setThinkingLevel(agent.thinkingLevel);
-    }
-    if (agent.activeToolNames !== undefined) {
-      await this.setActiveTools(agent.activeToolNames);
-    }
+    await Effect.runPromise(this.switchAgentEffect(agent));
   }
 
   /**
@@ -2088,41 +2234,51 @@ export class AgentHarness<
     this.streamOptions = cloneStreamOptions(streamOptions);
   }
 
+  abortEffect(): Effect.Effect<AbortResult, AgentHarnessError | SessionError> {
+    const self = this;
+    return Effect.gen(function* () {
+      const clearedSteer = [...self.steerQueue];
+      const clearedFollowUp = [...self.followUpQueue];
+      self.steerQueue = [];
+      self.followUpQueue = [];
+      self.runAbortController?.abort();
+      self.logger?.warn("turn aborted");
+      const errors: Error[] = [];
+      const drainExit = (exit: Exit.Exit<unknown, unknown>) => {
+        if (Exit.isFailure(exit)) {
+          errors.push(toError(Cause.squash(exit.cause)));
+        }
+      };
+
+      drainExit(yield* Effect.exit(self.emitQueueUpdateEffect()));
+      drainExit(yield* Effect.exit(self.waitForIdleEffect()));
+      drainExit(
+        yield* Effect.exit(
+          self.emitOwnEffect({ type: "abort", clearedSteer, clearedFollowUp })
+        )
+      );
+
+      if (errors.length > 0) {
+        const cause =
+          errors.length === 1
+            ? errors[0]!
+            : new AggregateError(errors, "Abort completed with errors");
+        return yield* Effect.fail(normalizeHarnessError(cause, "hook"));
+      }
+      return { clearedSteer, clearedFollowUp };
+    });
+  }
+
   async abort(): Promise<AbortResult> {
-    const clearedSteer = [...this.steerQueue];
-    const clearedFollowUp = [...this.followUpQueue];
-    this.steerQueue = [];
-    this.followUpQueue = [];
-    this.runAbortController?.abort();
-    this.logger?.warn("turn aborted");
-    const errors: Error[] = [];
-    try {
-      await this.emitQueueUpdate();
-    } catch (error) {
-      errors.push(toError(error));
-    }
-    try {
-      await this.waitForIdle();
-    } catch (error) {
-      errors.push(toError(error));
-    }
-    try {
-      await this.emitOwn({ type: "abort", clearedSteer, clearedFollowUp });
-    } catch (error) {
-      errors.push(toError(error));
-    }
-    if (errors.length > 0) {
-      const cause =
-        errors.length === 1
-          ? errors[0]!
-          : new AggregateError(errors, "Abort completed with errors");
-      throw normalizeHarnessError(cause, "hook");
-    }
-    return { clearedSteer, clearedFollowUp };
+    return Effect.runPromise(this.abortEffect());
+  }
+
+  waitForIdleEffect(): Effect.Effect<void, AgentHarnessError | SessionError> {
+    return Effect.promise(() => this.runPromise ?? Promise.resolve());
   }
 
   async waitForIdle(): Promise<void> {
-    await this.runPromise;
+    await Effect.runPromise(this.waitForIdleEffect());
   }
 
   subscribe(
@@ -2171,73 +2327,5 @@ export class AgentHarness<
     }
     handlers.add(handler as AgentHarnessHandler);
     return () => handlers!.delete(handler as AgentHarnessHandler);
-  }
-
-  // ── Effect-typed variants ────────────────────────────────────────────
-  // The server's WS/REST edge (Phase F of the Effect migration) consumes
-  // these so it can `yield*` harness ops inside an `Effect.gen` and keep a
-  // single `Effect.runPromise` boundary at the edge. Internally they wrap
-  // the existing Promise impls via `Effect.tryPromise`, so the harness's
-  // event path is untouched (no risk of the eager-emit timing flake that
-  // bit the previous attempt at bolting Effect onto the run loop).
-
-  /**
-   * Effect-typed {@link prompt}. Yields the last assistant message produced
-   * by the turn, or fails with `AgentHarnessError`.
-   */
-  promptEffect(
-    text: string,
-    options?: { images?: ImageContent[] }
-  ): Effect.Effect<AssistantMessage, AgentHarnessError | SessionError> {
-    return Effect.tryPromise({
-      try: () => this.prompt(text, options),
-      catch: (e): AgentHarnessError | SessionError =>
-        e instanceof AgentHarnessError || e instanceof SessionError
-          ? e
-          : normalizeHarnessError(e, "unknown"),
-    });
-  }
-
-  /**
-   * Effect-typed {@link continue}. Yields the last assistant message produced
-   * by the continued turn.
-   */
-  continueEffect(): Effect.Effect<
-    AssistantMessage,
-    AgentHarnessError | SessionError
-  > {
-    return Effect.tryPromise({
-      try: () => this.continue(),
-      catch: (e): AgentHarnessError | SessionError =>
-        e instanceof AgentHarnessError || e instanceof SessionError
-          ? e
-          : normalizeHarnessError(e, "unknown"),
-    });
-  }
-
-  /**
-   * Effect-typed {@link abort}. Yields the cleared steer/followUp queues.
-   */
-  abortEffect(): Effect.Effect<AbortResult, AgentHarnessError | SessionError> {
-    return Effect.tryPromise({
-      try: () => this.abort(),
-      catch: (e): AgentHarnessError | SessionError =>
-        e instanceof AgentHarnessError || e instanceof SessionError
-          ? e
-          : normalizeHarnessError(e, "unknown"),
-    });
-  }
-
-  /**
-   * Effect-typed {@link waitForIdle}. Resolves when any in-flight run settles.
-   */
-  waitForIdleEffect(): Effect.Effect<void, AgentHarnessError | SessionError> {
-    return Effect.tryPromise({
-      try: () => this.waitForIdle(),
-      catch: (e): AgentHarnessError | SessionError =>
-        e instanceof AgentHarnessError || e instanceof SessionError
-          ? e
-          : normalizeHarnessError(e, "unknown"),
-    });
   }
 }
