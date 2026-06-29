@@ -28,7 +28,7 @@ import {
   runAutoCompaction,
 } from "@sakti-code/agent";
 import { createProposeSessionTool, type EditMode } from "@sakti-code/tools";
-import { Effect } from "effect";
+import { Effect, Fiber, Stream } from "effect";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";
 import {
@@ -608,9 +608,18 @@ export async function runPrompt(
   }
   ctx.log?.agent.debug("agent resolved", { sessionId, agent: agent.name });
 
-  const unsubscribe = harness.subscribe((event) => {
-    eventCallback(event);
-  });
+  // Phase F: event delivery via PubSub-backed subscribeStream (decoupled,
+  // non-blocking broadcast — no per-listener `await` serialization on the
+  // hot path). The drain runs concurrently with executeWithRetry below.
+  const eventStream = harness.subscribeStream();
+  const drainFiber = Effect.runFork(
+    Stream.runForEach(eventStream, (event) =>
+      Effect.sync(() => eventCallback(event))
+    )
+  );
+  const unsubscribe = () => {
+    Effect.runPromise(Fiber.interrupt(drainFiber).pipe(Effect.exit));
+  };
 
   // Abort controller spanning the full run, including the retry backoff sleep.
   // abortRun() aborts this so a user cancel interrupts the retry sequence
