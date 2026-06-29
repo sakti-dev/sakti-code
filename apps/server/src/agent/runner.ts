@@ -620,7 +620,7 @@ export function runPromptEffect(
 
     // Phase F: event delivery via PubSub-backed subscribeStream (decoupled,
     // non-blocking broadcast — no per-listener `await` serialization on the
-    // hot path). The drain runs concurrently with executeWithRetry below.
+    // hot path). The drain runs concurrently with executeWithRetryEffect below.
     const eventStream = harness.subscribeStream();
     const drainFiber = Effect.runFork(
       Stream.runForEach(eventStream, (event) =>

@@ -136,41 +136,9 @@ export function abortableSleep(
 // ─── the orchestration loop ──────────────────────────────────────────────────
 
 /**
- * Injectable dependencies for {@link executeWithRetry}. Keeping these as a
- * callback interface makes the retry loop unit-testable without spinning up a
- * real harness/storage — the test supplies fakes.
- *
- * @deprecated for the Promise interface — prefer {@link RetryRunnerDepsEffect}
- * (Phase H3). Kept for back-compat with not-yet-migrated callers; converted
- * to the Effect version via {@link retryDepsFromPromise}.
- */
-export interface RetryRunnerDeps {
-  /**
-   * Decide whether the just-finished turn needs compaction (optional). When
-   * provided alongside {@link runCompaction}, a compaction phase runs after the
-   * retry loop: on a "compact" decision it emits `compaction_start`, runs the
-   * compaction, emits `compaction_end`, and — for an overflow that should retry
-   * — re-runs the turn via {@link runTurn}. Mirrors pi's `_handlePostAgentRun`.
-   */
-  checkCompaction?: (message: AssistantMessage) => Promise<CompactionDecision>;
-  /** Forward an `auto_retry_start`/`auto_retry_end` event to the WS subscriber. */
-  emit: (event: AgentEvent) => void;
-  /** Optional logger for tracing retry lifecycle. When absent, no logs are emitted. */
-  logger?: Logger;
-  /** Roll the session leaf back past the failed message so the next turn re-runs it. */
-  rollbackLeaf: () => Promise<void>;
-  /** Run one compaction (prepare → summarize → persist). Required iff checkCompaction is. */
-  runCompaction?: () => Promise<RunCompactionOutcome>;
-  /** Run one turn. The first call runs `harness.prompt`, later calls run `harness.continue`. */
-  runTurn: () => Promise<AssistantMessage>;
-  /** Aborts the backoff sleep and stops retrying (wired to the run's abort). */
-  signal: AbortSignal;
-}
-
-/**
- * Effect-typed retry deps (Phase H3). The callbacks return Effects instead of
- * Promises, so {@link executeWithRetryEffect} can `yield*` them directly
- * without `Effect.promise(() => deps.X())` bridges.
+ * Effect-typed retry deps. The callbacks return Effects instead of Promises,
+ * so {@link executeWithRetryEffect} can `yield*` them directly without
+ * `Effect.promise(() => deps.X())` bridges.
  *
  * `emit` stays sync (it just forwards an event to the WS subscriber — no
  * await needed). `signal` stays an `AbortSignal` because {@link abortableSleep}
@@ -186,34 +154,6 @@ export interface RetryRunnerDepsEffect {
   readonly runCompaction?: () => Effect.Effect<RunCompactionOutcome, Error>;
   readonly runTurn: () => Effect.Effect<AssistantMessage, Error>;
   readonly signal: AbortSignal;
-}
-
-/**
- * Adapter: lift a legacy Promise-typed {@link RetryRunnerDeps} into the
- * Effect version. Used by {@link executeWithRetry} (Promise wrapper) so
- * not-yet-migrated callers keep working.
- */
-export function retryDepsFromPromise(
-  deps: RetryRunnerDeps
-): RetryRunnerDepsEffect {
-  return {
-    signal: deps.signal,
-    emit: deps.emit,
-    ...(deps.logger === undefined ? {} : { logger: deps.logger }),
-    ...(deps.checkCompaction === undefined
-      ? {}
-      : {
-          checkCompaction: (message: AssistantMessage) =>
-            Effect.promise(() => deps.checkCompaction!(message)),
-        }),
-    rollbackLeaf: () => Effect.promise(() => deps.rollbackLeaf()),
-    ...(deps.runCompaction === undefined
-      ? {}
-      : {
-          runCompaction: () => Effect.promise(() => deps.runCompaction!()),
-        }),
-    runTurn: () => Effect.promise(() => deps.runTurn()),
-  };
 }
 
 /**
@@ -322,20 +262,6 @@ export const executeWithRetryEffect = (
 
     yield* runCompactionPhaseEffect(deps, message);
   });
-
-/**
- * @migration TODO: remove once `runner.ts` migrates to `executeWithRetryEffect`
- * directly (Phase H4). Promise-based wrapper that lifts legacy Promise deps
- * via {@link retryDepsFromPromise}.
- */
-export async function executeWithRetry(
-  deps: RetryRunnerDeps,
-  settings: RetrySettings
-): Promise<void> {
-  return Effect.runPromise(
-    executeWithRetryEffect(retryDepsFromPromise(deps), settings)
-  );
-}
 
 /**
  * Post-turn compaction Effect: decide → emit start → run → emit end, retrying

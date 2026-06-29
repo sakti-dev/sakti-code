@@ -57,17 +57,14 @@ export {
 } from "./compaction/compaction.ts";
 export type {
   RetryDecisionInput,
-  RetryRunnerDeps,
   RetryRunnerDepsEffect,
   RetrySettings,
 } from "./compaction/retry-loop.ts";
 export {
   abortableSleep,
   computeRetryDelay,
-  executeWithRetry,
   executeWithRetryEffect,
   parseRetrySettings,
-  retryDepsFromPromise,
   shouldRetry,
 } from "./compaction/retry-loop.ts";
 export type { FileOperations } from "./compaction/utils.ts";
