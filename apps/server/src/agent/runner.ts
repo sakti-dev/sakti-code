@@ -178,18 +178,6 @@ export function getActiveHarness(sessionId: string): AgentHarness | null {
   return run?.harness ?? null;
 }
 
-const DEFAULT_SETTINGS: Record<string, string> = {
-  auto_compaction: "false",
-  auto_retry: "true",
-  // Exponential backoff base for application-level retry (2s → 4s → 8s).
-  // Matches pi's coding-agent defaults (settings-manager.ts:807-813).
-  base_delay_ms: "2000",
-  follow_up_mode: "all",
-  max_retries: "3",
-  steering_mode: "all",
-  thinking_level: "off",
-};
-
 /**
  * Load the raw per-session settings overrides from the DB (no defaults merged).
  * Callers wrap with `parseSessionSettings(...)` from `@sakti-code/agent` to
@@ -207,14 +195,6 @@ export function loadSessionSettings(
     overrides[key] = row.value;
   }
   return overrides;
-}
-
-/** @deprecated Kept until tests migrate to `parseSessionSettings(loadSessionSettings(...))`. */
-export function loadSessionSettingsWithDefaults(
-  ctx: ServerContext,
-  sessionId: string
-): Record<string, string> {
-  return { ...DEFAULT_SETTINGS, ...loadSessionSettings(ctx, sessionId) };
 }
 
 /**
