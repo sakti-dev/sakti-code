@@ -139,6 +139,10 @@ export function abortableSleep(
  * Injectable dependencies for {@link executeWithRetry}. Keeping these as a
  * callback interface makes the retry loop unit-testable without spinning up a
  * real harness/storage — the test supplies fakes.
+ *
+ * @deprecated for the Promise interface — prefer {@link RetryRunnerDepsEffect}
+ * (Phase H3). Kept for back-compat with not-yet-migrated callers; converted
+ * to the Effect version via {@link retryDepsFromPromise}.
  */
 export interface RetryRunnerDeps {
   /**
@@ -164,17 +168,66 @@ export interface RetryRunnerDeps {
 }
 
 /**
+ * Effect-typed retry deps (Phase H3). The callbacks return Effects instead of
+ * Promises, so {@link executeWithRetryEffect} can `yield*` them directly
+ * without `Effect.promise(() => deps.X())` bridges.
+ *
+ * `emit` stays sync (it just forwards an event to the WS subscriber — no
+ * await needed). `signal` stays an `AbortSignal` because {@link abortableSleep}
+ * uses it directly (Effect sleep + abort integration is future work).
+ */
+export interface RetryRunnerDepsEffect {
+  readonly checkCompaction?: (
+    message: AssistantMessage
+  ) => Effect.Effect<CompactionDecision>;
+  readonly emit: (event: AgentEvent) => void;
+  readonly logger?: Logger;
+  readonly rollbackLeaf: () => Effect.Effect<void>;
+  readonly runCompaction?: () => Effect.Effect<RunCompactionOutcome>;
+  readonly runTurn: () => Effect.Effect<AssistantMessage>;
+  readonly signal: AbortSignal;
+}
+
+/**
+ * Adapter: lift a legacy Promise-typed {@link RetryRunnerDeps} into the
+ * Effect version. Used by {@link executeWithRetry} (Promise wrapper) so
+ * not-yet-migrated callers keep working.
+ */
+export function retryDepsFromPromise(
+  deps: RetryRunnerDeps
+): RetryRunnerDepsEffect {
+  return {
+    signal: deps.signal,
+    emit: deps.emit,
+    ...(deps.logger === undefined ? {} : { logger: deps.logger }),
+    ...(deps.checkCompaction === undefined
+      ? {}
+      : {
+          checkCompaction: (message: AssistantMessage) =>
+            Effect.promise(() => deps.checkCompaction!(message)),
+        }),
+    rollbackLeaf: () => Effect.promise(() => deps.rollbackLeaf()),
+    ...(deps.runCompaction === undefined
+      ? {}
+      : {
+          runCompaction: () => Effect.promise(() => deps.runCompaction!()),
+        }),
+    runTurn: () => Effect.promise(() => deps.runTurn()),
+  };
+}
+
+/**
  * Run a turn, retrying transient failures with exponential backoff and full UI
  * visibility. Emits `auto_retry_start` before each retry's backoff and a single
  * `auto_retry_end` once the outcome is final (success, budget exhausted, or
  * aborted). If the first turn succeeds, no retry events are emitted at all.
  *
- * Effect-native version — runs via `Effect.runPromise` or composed inside
- * another Effect. The Promise-based wrapper {@link executeWithRetry} is kept
- * for not-yet-migrated callers (server).
+ * Effect-native: consumes {@link RetryRunnerDepsEffect} (Effect-typed callbacks).
+ * Run via `Effect.runPromise` at the edge, or composed inside another Effect.
+ * {@link executeWithRetry} is the Promise-based back-compat wrapper.
  */
 export const executeWithRetryEffect = (
-  deps: RetryRunnerDeps,
+  deps: RetryRunnerDepsEffect,
   settings: RetrySettings
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
@@ -182,7 +235,7 @@ export const executeWithRetryEffect = (
       attempt: 0,
       maxRetries: settings.maxRetries,
     });
-    let message = yield* Effect.promise(() => deps.runTurn());
+    let message = yield* deps.runTurn();
     if (!settings.enabled) {
       yield* runCompactionPhaseEffect(deps, message);
       return;
@@ -221,7 +274,7 @@ export const executeWithRetryEffect = (
       });
 
       deps.logger?.warn("rolling back leaf", { attempt });
-      yield* Effect.promise(() => deps.rollbackLeaf());
+      yield* deps.rollbackLeaf();
 
       deps.logger?.debug("backoff", { delayMs, attempt });
       const slept = yield* Effect.promise(() =>
@@ -244,7 +297,7 @@ export const executeWithRetryEffect = (
         attempt,
         maxRetries: settings.maxRetries,
       });
-      message = yield* Effect.promise(() => deps.runTurn());
+      message = yield* deps.runTurn();
     }
 
     if (attempt > 0) {
@@ -271,14 +324,17 @@ export const executeWithRetryEffect = (
   });
 
 /**
- * @migration TODO: remove when server migrates to Effect.
- * Promise-based wrapper around {@link executeWithRetryEffect}.
+ * @migration TODO: remove once `runner.ts` migrates to `executeWithRetryEffect`
+ * directly (Phase H4). Promise-based wrapper that lifts legacy Promise deps
+ * via {@link retryDepsFromPromise}.
  */
 export async function executeWithRetry(
   deps: RetryRunnerDeps,
   settings: RetrySettings
 ): Promise<void> {
-  return Effect.runPromise(executeWithRetryEffect(deps, settings));
+  return Effect.runPromise(
+    executeWithRetryEffect(retryDepsFromPromise(deps), settings)
+  );
 }
 
 /**
@@ -286,7 +342,7 @@ export async function executeWithRetry(
  * the turn once on an overflow (`willRetry`).
  */
 const runCompactionPhaseEffect = (
-  deps: RetryRunnerDeps,
+  deps: RetryRunnerDepsEffect,
   initialMessage: AssistantMessage
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
@@ -299,9 +355,7 @@ const runCompactionPhaseEffect = (
     let message = initialMessage;
     let overflowAttempts = 0;
     for (;;) {
-      const decision = yield* Effect.promise(() =>
-        deps.checkCompaction!(message)
-      );
+      const decision = yield* deps.checkCompaction!(message);
       if (decision.action !== "compact" || decision.reason === undefined) {
         return;
       }
@@ -329,7 +383,7 @@ const runCompactionPhaseEffect = (
       deps.logger?.info("compaction start", { reason });
       deps.emit({ type: "compaction_start", reason });
 
-      const outcome = yield* Effect.promise(() => deps.runCompaction!());
+      const outcome = yield* deps.runCompaction!();
       if (outcome.ok) {
         deps.logger?.info("compaction done", {
           reason,
@@ -365,6 +419,6 @@ const runCompactionPhaseEffect = (
         return;
       }
       overflowAttempts++;
-      message = yield* Effect.promise(() => deps.runTurn!());
+      message = yield* deps.runTurn();
     }
   });

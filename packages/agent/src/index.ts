@@ -58,6 +58,7 @@ export {
 export type {
   RetryDecisionInput,
   RetryRunnerDeps,
+  RetryRunnerDepsEffect,
   RetrySettings,
 } from "./compaction/retry-loop.ts";
 export {
@@ -66,6 +67,7 @@ export {
   executeWithRetry,
   executeWithRetryEffect,
   parseRetrySettings,
+  retryDepsFromPromise,
   shouldRetry,
 } from "./compaction/retry-loop.ts";
 export type { FileOperations } from "./compaction/utils.ts";

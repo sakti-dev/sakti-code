@@ -5,10 +5,9 @@ import type { CompactionDecision } from "../../compaction/auto-compaction";
 import {
   abortableSleep,
   computeRetryDelay,
-  executeWithRetry,
   executeWithRetryEffect,
   parseRetrySettings,
-  type RetryRunnerDeps,
+  type RetryRunnerDepsEffect,
   type RetrySettings,
   shouldRetry,
 } from "../../compaction/retry-loop";
@@ -170,14 +169,14 @@ describe("abortableSleep", () => {
   });
 });
 
-/** Build fake deps for executeWithRetry, scripting runTurn responses in order.
+/** Build fake deps for executeWithRetryEffect, scripting runTurn responses in order.
  * Returns a holder so `rollbackCalls` can be read LIVE after the await
  * (primitives returned by value would snapshot at destructure time). */
 function makeFakeDeps(opts: {
   turns: AssistantMessage[];
   signal: AbortSignal;
 }): {
-  deps: RetryRunnerDeps;
+  deps: RetryRunnerDepsEffect;
   emitCalls: AgentEvent[];
   rollbackCalls: number;
 } {
@@ -188,14 +187,16 @@ function makeFakeDeps(opts: {
     deps: {
       signal: opts.signal,
       emit: (event) => emitCalls.push(event),
-      rollbackLeaf: async () => {
-        rollbackCount++;
-      },
-      runTurn: async () => {
-        const message = opts.turns[turnIndex] ?? opts.turns.at(-1)!;
-        turnIndex++;
-        return message;
-      },
+      rollbackLeaf: () =>
+        Effect.sync(() => {
+          rollbackCount++;
+        }),
+      runTurn: () =>
+        Effect.sync(() => {
+          const message = opts.turns[turnIndex] ?? opts.turns.at(-1)!;
+          turnIndex++;
+          return message;
+        }),
     },
     emitCalls,
     // Getter reads the live counter — survives the await in the caller.
@@ -211,13 +212,21 @@ const enabledSettings: RetrySettings = {
   maxRetries: 3,
 };
 
+/** Run an Effect-typed retry deps through the loop, returning void. */
+async function runRetry(
+  deps: RetryRunnerDepsEffect,
+  settings: RetrySettings = enabledSettings
+): Promise<void> {
+  await Effect.runPromise(executeWithRetryEffect(deps, settings));
+}
+
 describe("executeWithRetry", () => {
   it("does nothing when the first turn succeeds (no retry events)", async () => {
     const fake = makeFakeDeps({
       signal: new AbortController().signal,
       turns: [assistantMessage({ text: "ok", stopReason: "stop" })],
     });
-    await executeWithRetry(fake.deps, enabledSettings);
+    await runRetry(fake.deps, enabledSettings);
     expect(fake.emitCalls).toEqual([]);
     expect(fake.rollbackCalls).toBe(0);
   });
@@ -233,7 +242,7 @@ describe("executeWithRetry", () => {
         assistantMessage({ text: "ok", stopReason: "stop" }),
       ],
     });
-    await executeWithRetry(fake.deps, enabledSettings);
+    await runRetry(fake.deps, enabledSettings);
 
     // One start (attempt 1) and one end (success, attempt 1).
     expect(fake.emitCalls.map((e) => e.type)).toEqual([
@@ -280,7 +289,7 @@ describe("executeWithRetry", () => {
         }),
       ],
     });
-    await executeWithRetry(fake.deps, enabledSettings);
+    await runRetry(fake.deps, enabledSettings);
 
     // 3 starts (attempts 1,2,3), then one failure end.
     expect(fake.emitCalls.map((e) => e.type)).toEqual([
@@ -309,7 +318,7 @@ describe("executeWithRetry", () => {
         }),
       ],
     });
-    await executeWithRetry(fake.deps, { ...enabledSettings, enabled: false });
+    await runRetry(fake.deps, { ...enabledSettings, enabled: false });
     expect(fake.emitCalls).toEqual([]);
     expect(fake.rollbackCalls).toBe(0);
   });
@@ -333,7 +342,7 @@ describe("executeWithRetry", () => {
     });
     // Abort shortly after the retry sleep starts.
     setTimeout(() => controller.abort(), 20);
-    await executeWithRetry(fake.deps, longDelaySettings);
+    await runRetry(fake.deps, longDelaySettings);
 
     expect(fake.emitCalls.map((e) => e.type)).toEqual([
       "auto_retry_start",
@@ -364,22 +373,23 @@ describe("executeWithRetry", () => {
       }),
       assistantMessage({ stopReason: "aborted" }),
     ];
-    const deps: RetryRunnerDeps = {
+    const deps: RetryRunnerDepsEffect = {
       signal: controller.signal,
       emit: (event) => emitCalls.push(event),
-      rollbackLeaf: async () => {},
-      runTurn: async () => {
-        const message = turns[turnIndex]!;
-        turnIndex++;
-        // Simulate the abort landing mid-turn: the retried turn returns an
-        // "aborted" message and the signal is now aborted.
-        if (turnIndex === 2) {
-          controller.abort();
-        }
-        return message;
-      },
+      rollbackLeaf: () => Effect.void,
+      runTurn: () =>
+        Effect.sync(() => {
+          const message = turns[turnIndex]!;
+          turnIndex++;
+          // Simulate the abort landing mid-turn: the retried turn returns an
+          // "aborted" message and the signal is now aborted.
+          if (turnIndex === 2) {
+            controller.abort();
+          }
+          return message;
+        }),
     };
-    await executeWithRetry(deps, enabledSettings);
+    await runRetry(deps, enabledSettings);
 
     const end = emitCalls.at(-1)!;
     expect(end.type).toBe("auto_retry_end");
@@ -394,12 +404,13 @@ describe("executeWithRetry compaction phase", () => {
     let decisionIndex = 0;
     let runCalls = 0;
     return {
-      checkCompaction: async (): Promise<CompactionDecision> => {
-        const d = decisions[decisionIndex] ?? { action: "none" };
-        decisionIndex++;
-        return d;
-      },
-      runCompaction: async (): Promise<
+      checkCompaction: (): Effect.Effect<CompactionDecision> =>
+        Effect.sync(() => {
+          const d = decisions[decisionIndex] ?? { action: "none" };
+          decisionIndex++;
+          return d;
+        }),
+      runCompaction: (): Effect.Effect<
         | {
             ok: true;
             summary: string;
@@ -407,15 +418,16 @@ describe("executeWithRetry compaction phase", () => {
             tokensBefore: number;
           }
         | { ok: false; errorMessage: string }
-      > => {
-        runCalls++;
-        return {
-          ok: true,
-          summary: "summarized",
-          firstKeptEntryId: "kept-1",
-          tokensBefore: 5000,
-        };
-      },
+      > =>
+        Effect.sync(() => {
+          runCalls++;
+          return {
+            ok: true,
+            summary: "summarized",
+            firstKeptEntryId: "kept-1",
+            tokensBefore: 5000,
+          };
+        }),
       get runCompactionCalls() {
         return runCalls;
       },
@@ -427,7 +439,7 @@ describe("executeWithRetry compaction phase", () => {
       signal: new AbortController().signal,
       turns: [assistantMessage({ text: "ok" })],
     });
-    await executeWithRetry(fake.deps, enabledSettings);
+    await runRetry(fake.deps, enabledSettings);
     expect(fake.emitCalls.some((e) => e.type === "compaction_start")).toBe(
       false
     );
@@ -441,7 +453,7 @@ describe("executeWithRetry compaction phase", () => {
     const comp = makeCompactionDeps([
       { action: "compact", reason: "threshold", willRetry: false },
     ]);
-    await executeWithRetry(
+    await runRetry(
       {
         ...fake.deps,
         checkCompaction: comp.checkCompaction,
@@ -472,27 +484,30 @@ describe("executeWithRetry compaction phase", () => {
 
   it("does not retry the turn when willRetry is false (threshold)", async () => {
     let turnCalls = 0;
-    const deps: RetryRunnerDeps = {
+    const deps: RetryRunnerDepsEffect = {
       signal: new AbortController().signal,
       emit: () => {},
-      rollbackLeaf: async () => {},
-      runTurn: async () => {
-        turnCalls++;
-        return assistantMessage({ text: "ok" });
-      },
-      checkCompaction: async () => ({
-        action: "compact",
-        reason: "threshold",
-        willRetry: false,
-      }),
-      runCompaction: async () => ({
-        ok: true,
-        summary: "s",
-        firstKeptEntryId: "k",
-        tokensBefore: 1,
-      }),
+      rollbackLeaf: () => Effect.void,
+      runTurn: () =>
+        Effect.sync(() => {
+          turnCalls++;
+          return assistantMessage({ text: "ok" });
+        }),
+      checkCompaction: () =>
+        Effect.succeed({
+          action: "compact",
+          reason: "threshold",
+          willRetry: false,
+        }),
+      runCompaction: () =>
+        Effect.succeed({
+          ok: true,
+          summary: "s",
+          firstKeptEntryId: "k",
+          tokensBefore: 1,
+        }),
     };
-    await executeWithRetry(deps, enabledSettings);
+    await runRetry(deps, enabledSettings);
     expect(turnCalls).toBe(1); // no continue() after a threshold compaction
   });
 
@@ -503,51 +518,56 @@ describe("executeWithRetry compaction phase", () => {
       { action: "none" }, // the retried turn no longer overflows
     ];
     let decisionIndex = 0;
-    const deps: RetryRunnerDeps = {
+    const deps: RetryRunnerDepsEffect = {
       signal: new AbortController().signal,
       emit: () => {},
-      rollbackLeaf: async () => {},
-      runTurn: async () => {
-        turnCalls++;
-        return assistantMessage({ text: "ok" });
-      },
-      checkCompaction: async () =>
-        decisions[decisionIndex++] ?? { action: "none" },
-      runCompaction: async () => ({
-        ok: true,
-        summary: "s",
-        firstKeptEntryId: "k",
-        tokensBefore: 1,
-      }),
+      rollbackLeaf: () => Effect.void,
+      runTurn: () =>
+        Effect.sync(() => {
+          turnCalls++;
+          return assistantMessage({ text: "ok" });
+        }),
+      checkCompaction: () =>
+        Effect.succeed(decisions[decisionIndex++] ?? { action: "none" }),
+      runCompaction: () =>
+        Effect.succeed({
+          ok: true,
+          summary: "s",
+          firstKeptEntryId: "k",
+          tokensBefore: 1,
+        }),
     };
-    await executeWithRetry(deps, enabledSettings);
+    await runRetry(deps, enabledSettings);
     expect(turnCalls).toBe(2); // initial turn + one continue()
   });
 
   it("caps overflow recovery at one compact-and-retry", async () => {
     let turnCalls = 0;
     // Every check keeps requesting an overflow retry — only one is allowed.
-    const deps: RetryRunnerDeps = {
+    const deps: RetryRunnerDepsEffect = {
       signal: new AbortController().signal,
       emit: () => {},
-      rollbackLeaf: async () => {},
-      runTurn: async () => {
-        turnCalls++;
-        return assistantMessage({ text: "ok" });
-      },
-      checkCompaction: async () => ({
-        action: "compact",
-        reason: "overflow",
-        willRetry: true,
-      }),
-      runCompaction: async () => ({
-        ok: true,
-        summary: "s",
-        firstKeptEntryId: "k",
-        tokensBefore: 1,
-      }),
+      rollbackLeaf: () => Effect.void,
+      runTurn: () =>
+        Effect.sync(() => {
+          turnCalls++;
+          return assistantMessage({ text: "ok" });
+        }),
+      checkCompaction: () =>
+        Effect.succeed({
+          action: "compact",
+          reason: "overflow",
+          willRetry: true,
+        }),
+      runCompaction: () =>
+        Effect.succeed({
+          ok: true,
+          summary: "s",
+          firstKeptEntryId: "k",
+          tokensBefore: 1,
+        }),
     };
-    await executeWithRetry(deps, enabledSettings);
+    await runRetry(deps, enabledSettings);
     // initial + exactly one recovery retry, then the second overflow gives up.
     expect(turnCalls).toBe(2);
   });
@@ -557,16 +577,17 @@ describe("executeWithRetry compaction phase", () => {
       signal: new AbortController().signal,
       turns: [assistantMessage({ text: "ok" })],
     });
-    const deps: RetryRunnerDeps = {
+    const deps: RetryRunnerDepsEffect = {
       ...fake.deps,
-      checkCompaction: async () => ({
-        action: "compact",
-        reason: "threshold",
-        willRetry: false,
-      }),
-      runCompaction: async () => ({ ok: false, errorMessage: "boom" }),
+      checkCompaction: () =>
+        Effect.succeed({
+          action: "compact",
+          reason: "threshold",
+          willRetry: false,
+        }),
+      runCompaction: () => Effect.succeed({ ok: false, errorMessage: "boom" }),
     };
-    await executeWithRetry(deps, enabledSettings);
+    await runRetry(deps, enabledSettings);
     const end = fake.emitCalls.find((e) => e.type === "compaction_end");
     expect(end).toMatchObject({
       type: "compaction_end",
