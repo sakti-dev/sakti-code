@@ -1,6 +1,6 @@
 import type { StreamRequest } from "@sakti-code/llm";
 import { getModel } from "@sakti-code/llm";
-import { Effect } from "effect";
+import { Effect, Fiber, Stream } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   type FauxProviderRegistration,
@@ -779,6 +779,85 @@ describe("AgentHarness", () => {
     await harness.prompt("hello");
 
     expect(registration.callCount).toBe(1);
+  });
+
+  it("promptEffect returns an Effect that resolves to the assistant message", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    registration.setResponses([() => fauxAssistantMessage("hello back")]);
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+    });
+
+    const message = await Effect.runPromise(harness.promptEffect("hello"));
+
+    expect(message.role).toBe("assistant");
+    expect(registration.callCount).toBe(1);
+  });
+
+  it("promptEffect surfaces harness errors as Effect.fail (busy state)", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    registration.setResponses([
+      () => fauxAssistantMessage("first"),
+      () => fauxAssistantMessage("second"),
+    ]);
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+    });
+
+    // Kick off a prompt but don't await — the harness is still busy.
+    const inFlight = harness.prompt("first");
+    // Microtask let the run start.
+    await Promise.resolve();
+    const secondResult = await Effect.runPromise(
+      harness.promptEffect("second").pipe(Effect.exit)
+    );
+    expect(secondResult._tag).toBe("Failure");
+    // Clean up: let the in-flight turn finish so the harness settles.
+    await inFlight;
+  });
+
+  it("subscribeStream yields a Stream that surfaces agent_start + turn events", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    registration.setResponses([() => fauxAssistantMessage("hi")]);
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+    });
+
+    const stream = harness.subscribeStream();
+    // Fork the prompt via runFork so events emit concurrently with stream
+    // consumption. v4 has no bare Effect.fork — top-level forks go through
+    // Effect.runFork, which returns a Fiber.
+    const turnFiber = Effect.runFork(harness.promptEffect("hello"));
+
+    const collected = await Effect.runPromise(
+      Effect.gen(function* () {
+        const events: AgentHarnessEvent[] = [];
+        yield* Stream.runForEach(stream, (e) =>
+          Effect.sync(() => events.push(e as AgentHarnessEvent))
+        ).pipe(
+          // End the drain when the turn settles (Stream fromPubSub never ends
+          // on its own; raceFirst returns when the join resolves).
+          Effect.raceFirst(Fiber.join(turnFiber).pipe(Effect.ignore))
+        );
+        return events;
+      })
+    );
+
+    const types = collected.map((e) => e.type);
+    expect(types).toContain("agent_start");
+    expect(types).toContain("turn_end");
   });
 
   it("delivers message_update streaming events to subscribers", async () => {

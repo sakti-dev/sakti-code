@@ -5,7 +5,7 @@ import type {
   UserMessage,
 } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
-import { Effect } from "effect";
+import { Effect, PubSub, Stream } from "effect";
 import { buildHarnessStreamRequest } from "../agent/build-stream-request";
 import { DEFAULT_SYSTEM_PROMPT } from "../agents/builtin-agents";
 import {
@@ -18,29 +18,27 @@ import {
   compactEffect as runCompactEffect,
 } from "../compaction/compaction";
 import { runAgentLoop, runAgentLoopContinue } from "../core/agent-loop";
-import type {
-  AbortResult,
-  AgentDefinition,
-  AgentHarnessEvent,
-  AgentHarnessEventResultMap,
-  AgentHarnessOptions,
-  AgentHarnessOwnEvent,
-  AgentHarnessPhase,
-  AgentHarnessResources,
-  AgentHarnessStreamOptions,
-  AgentHarnessStreamOptionsPatch,
-  ExecutionEnv,
-  NavigateTreeResult,
-  PendingSessionWrite,
-  PromptTemplate,
-  SessionError,
-  Skill,
-} from "../harness-types";
 import {
+  type AbortResult,
+  type AgentDefinition,
   AgentHarnessError,
   type AgentHarnessErrorCode,
+  type AgentHarnessEvent,
+  type AgentHarnessEventResultMap,
+  type AgentHarnessOptions,
+  type AgentHarnessOwnEvent,
+  type AgentHarnessPhase,
+  type AgentHarnessResources,
+  type AgentHarnessStreamOptions,
+  type AgentHarnessStreamOptionsPatch,
+  type ExecutionEnv,
   isFailure,
+  type NavigateTreeResult,
   ok,
+  type PendingSessionWrite,
+  type PromptTemplate,
+  SessionError,
+  type Skill,
   toError,
 } from "../harness-types";
 import { formatPromptTemplateInvocation } from "../resources/prompt-templates";
@@ -244,6 +242,15 @@ export class AgentHarness<
   private runAbortController?: AbortController | undefined;
   private runPromise?: Promise<void> | undefined;
   private pendingSessionWrites: PendingSessionWrite[] = [];
+  /**
+   * Harness-lifetime event bus. Every event published via {@link handleAgentEvent}
+   * is also published here so {@link subscribeStream} consumers see live
+   * updates without going through the legacy per-listener `await` path.
+   * Decouples emit from persist (per the design doc, Phase D).
+   */
+  private readonly eventBus: PubSub.PubSub<
+    AgentHarnessEvent<TSkill, TPromptTemplate>
+  > = Effect.runSync(PubSub.unbounded());
   private model: Model;
   private maxSteps?: number;
   private thinkingLevel: ThinkingLevel;
@@ -779,6 +786,14 @@ export class AgentHarness<
     event: AgentEvent,
     signal?: AbortSignal
   ): Promise<void> {
+    // Phase D: broadcast to PubSub subscribers (subscribeStream). Non-blocking
+    // for unbounded PubSub; if the bus is shut down (e.g. after dispose), ignore.
+    try {
+      PubSub.publishUnsafe(this.eventBus, event);
+    } catch {
+      // bus closed — drop.
+    }
+
     if (event.type === "cache_shape") {
       this.cacheHitTokens += event.diagnostics.cacheHitTokens;
       this.cacheMissTokens += event.diagnostics.cacheMissTokens;
@@ -2085,6 +2100,22 @@ export class AgentHarness<
     return () => handlers!.delete(listener as AgentHarnessHandler);
   }
 
+  /**
+   * Effect-native stream subscription over the harness event bus.
+   *
+   * Returns a `Stream.Stream<AgentHarnessEvent>` whose subscribers see every
+   * agent event (agent_start, message_update, message_end, turn_end, agent_end,
+   * tool_execution_*, auto_retry_*, compaction_*, cache_shape) emitted by the
+   * harness. Decouples emit from persist: publishing is non-blocking, and each
+   * subscriber drains at its own pace.
+   *
+   * Multiple calls return independent streams (PubSub broadcast). The stream
+   * ends when the underlying PubSub is shut down (harness disposal).
+   */
+  subscribeStream(): Stream.Stream<AgentHarnessEvent<TSkill, TPromptTemplate>> {
+    return Stream.fromPubSub(this.eventBus);
+  }
+
   on<TType extends keyof AgentHarnessEventResultMap>(
     type: TType,
     handler: (
@@ -2100,5 +2131,73 @@ export class AgentHarness<
     }
     handlers.add(handler as AgentHarnessHandler);
     return () => handlers!.delete(handler as AgentHarnessHandler);
+  }
+
+  // ── Effect-typed variants ────────────────────────────────────────────
+  // The server's WS/REST edge (Phase F of the Effect migration) consumes
+  // these so it can `yield*` harness ops inside an `Effect.gen` and keep a
+  // single `Effect.runPromise` boundary at the edge. Internally they wrap
+  // the existing Promise impls via `Effect.tryPromise`, so the harness's
+  // event path is untouched (no risk of the eager-emit timing flake that
+  // bit the previous attempt at bolting Effect onto the run loop).
+
+  /**
+   * Effect-typed {@link prompt}. Yields the last assistant message produced
+   * by the turn, or fails with `AgentHarnessError`.
+   */
+  promptEffect(
+    text: string,
+    options?: { images?: ImageContent[] }
+  ): Effect.Effect<AssistantMessage, AgentHarnessError | SessionError> {
+    return Effect.tryPromise({
+      try: () => this.prompt(text, options),
+      catch: (e): AgentHarnessError | SessionError =>
+        e instanceof AgentHarnessError || e instanceof SessionError
+          ? e
+          : normalizeHarnessError(e, "unknown"),
+    });
+  }
+
+  /**
+   * Effect-typed {@link continue}. Yields the last assistant message produced
+   * by the continued turn.
+   */
+  continueEffect(): Effect.Effect<
+    AssistantMessage,
+    AgentHarnessError | SessionError
+  > {
+    return Effect.tryPromise({
+      try: () => this.continue(),
+      catch: (e): AgentHarnessError | SessionError =>
+        e instanceof AgentHarnessError || e instanceof SessionError
+          ? e
+          : normalizeHarnessError(e, "unknown"),
+    });
+  }
+
+  /**
+   * Effect-typed {@link abort}. Yields the cleared steer/followUp queues.
+   */
+  abortEffect(): Effect.Effect<AbortResult, AgentHarnessError | SessionError> {
+    return Effect.tryPromise({
+      try: () => this.abort(),
+      catch: (e): AgentHarnessError | SessionError =>
+        e instanceof AgentHarnessError || e instanceof SessionError
+          ? e
+          : normalizeHarnessError(e, "unknown"),
+    });
+  }
+
+  /**
+   * Effect-typed {@link waitForIdle}. Resolves when any in-flight run settles.
+   */
+  waitForIdleEffect(): Effect.Effect<void, AgentHarnessError | SessionError> {
+    return Effect.tryPromise({
+      try: () => this.waitForIdle(),
+      catch: (e): AgentHarnessError | SessionError =>
+        e instanceof AgentHarnessError || e instanceof SessionError
+          ? e
+          : normalizeHarnessError(e, "unknown"),
+    });
   }
 }
