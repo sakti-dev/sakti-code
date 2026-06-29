@@ -179,12 +179,12 @@ export interface RetryRunnerDeps {
 export interface RetryRunnerDepsEffect {
   readonly checkCompaction?: (
     message: AssistantMessage
-  ) => Effect.Effect<CompactionDecision>;
+  ) => Effect.Effect<CompactionDecision, Error>;
   readonly emit: (event: AgentEvent) => void;
   readonly logger?: Logger;
-  readonly rollbackLeaf: () => Effect.Effect<void>;
-  readonly runCompaction?: () => Effect.Effect<RunCompactionOutcome>;
-  readonly runTurn: () => Effect.Effect<AssistantMessage>;
+  readonly rollbackLeaf: () => Effect.Effect<void, Error>;
+  readonly runCompaction?: () => Effect.Effect<RunCompactionOutcome, Error>;
+  readonly runTurn: () => Effect.Effect<AssistantMessage, Error>;
   readonly signal: AbortSignal;
 }
 
@@ -229,7 +229,7 @@ export function retryDepsFromPromise(
 export const executeWithRetryEffect = (
   deps: RetryRunnerDepsEffect,
   settings: RetrySettings
-): Effect.Effect<void> =>
+): Effect.Effect<void, Error> =>
   Effect.gen(function* () {
     deps.logger?.debug("turn attempt", {
       attempt: 0,
@@ -344,7 +344,7 @@ export async function executeWithRetry(
 const runCompactionPhaseEffect = (
   deps: RetryRunnerDepsEffect,
   initialMessage: AssistantMessage
-): Effect.Effect<void> =>
+): Effect.Effect<void, Error> =>
   Effect.gen(function* () {
     if (
       deps.checkCompaction === undefined ||

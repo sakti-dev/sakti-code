@@ -16,7 +16,7 @@ import {
   composeSystemPrompt,
   DEFAULT_AGENT_NAME,
   evaluate,
-  executeWithRetry,
+  executeWithRetryEffect,
   fromConfig,
   AgentHarness as HarnessClass,
   INTAKE_SYSTEM_PROMPT,
@@ -25,7 +25,8 @@ import {
   parseRetrySettings,
   planFirstTurn,
   promiseSessionAsShape,
-  runAutoCompaction,
+  type RetryRunnerDepsEffect,
+  runAutoCompactionEffect,
 } from "@sakti-code/agent";
 import { createProposeSessionTool, type EditMode } from "@sakti-code/tools";
 import { Effect, Fiber, Stream } from "effect";
@@ -457,191 +458,200 @@ export async function setEditModeForSession(
   return true;
 }
 
-export async function runPrompt(
+export function runPromptEffect(
   ctx: ServerContext,
   sessionId: string,
   message: string,
   storage: SessionStorageShape,
   eventCallback: (event: AgentHarnessEvent) => void,
   permissionAskedSink: (frame: PermissionFrame) => void
-): Promise<void> {
-  const session = await ctx.repos.sessions.findById(sessionId);
-  if (!session) {
-    throw new Error(`Session not found: ${sessionId}`);
-  }
-  ctx.log?.agent.debug("session loaded", {
-    sessionId,
-    projectId: session.projectId,
-    kind: session.kind,
-    thinkingLevel: (session as { thinkingLevel: string }).thinkingLevel,
-  });
+): Effect.Effect<void, Error> {
+  return Effect.gen(function* () {
+    const session = ctx.repos.sessions.findById(sessionId);
+    if (!session) {
+      return yield* Effect.fail(new Error(`Session not found: ${sessionId}`));
+    }
+    ctx.log?.agent.debug("session loaded", {
+      sessionId,
+      projectId: session.projectId,
+      kind: session.kind,
+      thinkingLevel: (session as { thinkingLevel: string }).thinkingLevel,
+    });
 
-  const project = await ctx.repos.projects.findById(session.projectId);
-  if (!project) {
-    throw new Error(`Project not found: ${session.projectId}`);
-  }
-  ctx.log?.agent.debug("project loaded", {
-    projectId: project.id,
-    cwd: project.cwd,
-  });
+    const project = ctx.repos.projects.findById(session.projectId);
+    if (!project) {
+      return yield* Effect.fail(
+        new Error(`Project not found: ${session.projectId}`)
+      );
+    }
+    ctx.log?.agent.debug("project loaded", {
+      projectId: project.id,
+      cwd: project.cwd,
+    });
 
-  const auth = resolveAuth(ctx, session);
-  if (!auth) {
-    throw new Error(
-      "No API key configured for this session's provider — add one in Settings > Models"
+    const auth = resolveAuth(ctx, session);
+    if (!auth) {
+      return yield* Effect.fail(
+        new Error(
+          "No API key configured for this session's provider — add one in Settings > Models"
+        )
+      );
+    }
+    const { model } = auth;
+    const isIntake = session.kind === "intake";
+    const settings = loadSessionSettings(ctx, sessionId);
+    const editMode = resolveEditMode(ctx, sessionId);
+    const tools = buildTools(project.cwd, editMode);
+    if (isIntake) {
+      tools.push(createProposeSessionTool() as (typeof tools)[number]);
+    }
+
+    const thinkingLevel = resolveThinkingLevel(
+      ctx,
+      sessionId,
+      session,
+      auth.thinkingLevel
     );
-  }
-  const { model } = auth;
-  const isIntake = session.kind === "intake";
-  const settings = loadSessionSettings(ctx, sessionId);
-  const editMode = resolveEditMode(ctx, sessionId);
-  const tools = buildTools(project.cwd, editMode);
-  if (isIntake) {
-    tools.push(createProposeSessionTool() as (typeof tools)[number]);
-  }
+    const compactionSettings = parseCompactionSettings(settings);
 
-  const thinkingLevel = resolveThinkingLevel(
-    ctx,
-    sessionId,
-    session,
-    auth.thinkingLevel
-  );
-  const compactionSettings = parseCompactionSettings(settings);
+    const env = new NodeExecutionEnv(project.cwd);
+    const sessionInstance = new PromiseSession(storage);
+    const sessionShape = promiseSessionAsShape(sessionInstance);
+    const getApiKeyAndHeaders = async (
+      _model: unknown
+    ): Promise<
+      { apiKey: string; headers?: Record<string, string> } | undefined
+    > => ({ apiKey: auth.apiKey });
 
-  const env = new NodeExecutionEnv(project.cwd);
-  const sessionInstance = new PromiseSession(storage);
-  const sessionShape = promiseSessionAsShape(sessionInstance);
-  const getApiKeyAndHeaders = async (
-    _model: unknown
-  ): Promise<
-    { apiKey: string; headers?: Record<string, string> } | undefined
-  > => ({ apiKey: auth.apiKey });
+    // Load the project's full agent context once: used both to wire the harness
+    // resources (skills + command templates, so harness.skill/promptFromTemplate
+    // resolve) and to resolve the session agent by name without a second scan.
+    const loadedContext = yield* Effect.tryPromise({
+      try: () => loadAgentContext(project.cwd),
+      catch: (e: unknown) =>
+        new Error(`Failed to load agent context: ${String(e)}`),
+    });
 
-  // Load the project's full agent context once: used both to wire the harness
-  // resources (skills + command templates, so harness.skill/promptFromTemplate
-  // resolve) and to resolve the session agent by name without a second scan.
-  const loadedContext = await loadAgentContext(project.cwd);
-
-  // Layer 1: filter out skills disabled for this session (persistent state
-  // surviving app restart). The keyed-prefix entries are read once at run
-  // start; in-session disables use the harness's removeSkill() (Layer 2) and
-  // don't need to touch this filter.
-  const disabledSkills = loadDisabledSkills(ctx, sessionId);
-  const activeSkills = loadedContext.skills.filter(
-    (skill) => !disabledSkills.has(skill.name)
-  );
-
-  const harness = new HarnessClass({
-    env,
-    model,
-    session: sessionShape,
-    ...(isIntake
-      ? {
-          systemPrompt: composeSystemPrompt(
-            INTAKE_SYSTEM_PROMPT,
-            tools,
-            [],
-            false
-          ),
-        }
-      : {}),
-    ...(ctx.log === undefined
-      ? {}
-      : { logger: ctx.log.agent, streamLogger: ctx.log.llm }),
-    tools,
-    followUpMode: settings.follow_up_mode as QueueMode,
-    steeringMode: settings.steering_mode as QueueMode,
-    thinkingLevel,
-    getApiKeyAndHeaders,
-    resources: {
-      skills: activeSkills,
-      promptTemplates: loadedContext.commands,
-    },
-  });
-  ctx.log?.agent.debug("harness created", { sessionId });
-
-  // Resolve the session's selected agent (default `build`) and wire its
-  // permission ruleset into the loop. For non-intake sessions, switchAgent also
-  // applies the agent's system prompt + tool allowlist + thinking level.
-  // Intake keeps its dedicated INTAKE_SYSTEM_PROMPT and proposeSession flow.
-  const agentName = settings.agent ?? DEFAULT_AGENT_NAME;
-  const agent = resolveAgentByName(agentName, loadedContext.agents);
-  const agentRuleset = agent.permission ?? fromConfig({ "*": "allow" });
-
-  // Wire the interactive permission channel: the evaluator merges live grants
-  // (so a prior "always" auto-allows), and the ask resolver bridges to the WS
-  // approval strip. Grants persist across runs; the sink is reattached here.
-  const permissionChannel = getPermissionChannel(sessionId);
-  permissionChannel.setSink(permissionAskedSink);
-  harness.setPermissionEvaluator((permission, pattern) =>
-    permissionChannel.evaluate(permission, pattern, agentRuleset)
-  );
-  harness.setPermissionAskResolver((req) => permissionChannel.ask(req));
-
-  if (!isIntake) {
-    // Compose the agent's system prompt with the tool inventory and the
-    // available-skills block (mirrors pi's coding-agent buildSystemPrompt):
-    // tool descriptions are always embedded so smaller LLMs see how to use
-    // each tool; skills are advertised only when `read` is available, since
-    // they're loaded by reading the SKILL.md path. Intake composes its own
-    // prompt at construction time (tool inventory only, no skills).
-    // `activeSkills` already excludes Layer-1-disabled skills.
-    const hasRead =
-      agent.activeToolNames === undefined ||
-      agent.activeToolNames.includes("read");
-    const activeNames = agent.activeToolNames;
-    const activeTools =
-      activeNames === undefined
-        ? tools
-        : tools.filter((t) => activeNames.includes(t.name));
-    const composedSystemPrompt = composeSystemPrompt(
-      agent.systemPrompt,
-      activeTools,
-      activeSkills,
-      hasRead
+    // Layer 1: filter out skills disabled for this session (persistent state
+    // surviving app restart). The keyed-prefix entries are read once at run
+    // start; in-session disables use the harness's removeSkill() (Layer 2) and
+    // don't need to touch this filter.
+    const disabledSkills = loadDisabledSkills(ctx, sessionId);
+    const activeSkills = loadedContext.skills.filter(
+      (skill) => !disabledSkills.has(skill.name)
     );
-    await harness.switchAgent(
-      composedSystemPrompt === agent.systemPrompt
-        ? agent
-        : { ...agent, systemPrompt: composedSystemPrompt }
+
+    const harness = new HarnessClass({
+      env,
+      model,
+      session: sessionShape,
+      ...(isIntake
+        ? {
+            systemPrompt: composeSystemPrompt(
+              INTAKE_SYSTEM_PROMPT,
+              tools,
+              [],
+              false
+            ),
+          }
+        : {}),
+      ...(ctx.log === undefined
+        ? {}
+        : { logger: ctx.log.agent, streamLogger: ctx.log.llm }),
+      tools,
+      followUpMode: settings.follow_up_mode as QueueMode,
+      steeringMode: settings.steering_mode as QueueMode,
+      thinkingLevel,
+      getApiKeyAndHeaders,
+      resources: {
+        skills: activeSkills,
+        promptTemplates: loadedContext.commands,
+      },
+    });
+    ctx.log?.agent.debug("harness created", { sessionId });
+
+    // Resolve the session's selected agent (default `build`) and wire its
+    // permission ruleset into the loop. For non-intake sessions, switchAgent also
+    // applies the agent's system prompt + tool allowlist + thinking level.
+    // Intake keeps its dedicated INTAKE_SYSTEM_PROMPT and proposeSession flow.
+    const agentName = settings.agent ?? DEFAULT_AGENT_NAME;
+    const agent = resolveAgentByName(agentName, loadedContext.agents);
+    const agentRuleset = agent.permission ?? fromConfig({ "*": "allow" });
+
+    // Wire the interactive permission channel: the evaluator merges live grants
+    // (so a prior "always" auto-allows), and the ask resolver bridges to the WS
+    // approval strip. Grants persist across runs; the sink is reattached here.
+    const permissionChannel = getPermissionChannel(sessionId);
+    permissionChannel.setSink(permissionAskedSink);
+    harness.setPermissionEvaluator((permission, pattern) =>
+      permissionChannel.evaluate(permission, pattern, agentRuleset)
     );
-  }
-  ctx.log?.agent.debug("agent resolved", { sessionId, agent: agent.name });
+    harness.setPermissionAskResolver((req) => permissionChannel.ask(req));
 
-  // Phase F: event delivery via PubSub-backed subscribeStream (decoupled,
-  // non-blocking broadcast — no per-listener `await` serialization on the
-  // hot path). The drain runs concurrently with executeWithRetry below.
-  const eventStream = harness.subscribeStream();
-  const drainFiber = Effect.runFork(
-    Stream.runForEach(eventStream, (event) =>
-      Effect.sync(() => eventCallback(event))
-    )
-  );
-  const unsubscribe = () => {
-    Effect.runPromise(Fiber.interrupt(drainFiber).pipe(Effect.exit));
-  };
+    if (!isIntake) {
+      // Compose the agent's system prompt with the tool inventory and the
+      // available-skills block (mirrors pi's coding-agent buildSystemPrompt):
+      // tool descriptions are always embedded so smaller LLMs see how to use
+      // each tool; skills are advertised only when `read` is available, since
+      // they're loaded by reading the SKILL.md path. Intake composes its own
+      // prompt at construction time (tool inventory only, no skills).
+      // `activeSkills` already excludes Layer-1-disabled skills.
+      const hasRead =
+        agent.activeToolNames === undefined ||
+        agent.activeToolNames.includes("read");
+      const activeNames = agent.activeToolNames;
+      const activeTools =
+        activeNames === undefined
+          ? tools
+          : tools.filter((t) => activeNames.includes(t.name));
+      const composedSystemPrompt = composeSystemPrompt(
+        agent.systemPrompt,
+        activeTools,
+        activeSkills,
+        hasRead
+      );
+      yield* harness.switchAgentEffect(
+        composedSystemPrompt === agent.systemPrompt
+          ? agent
+          : { ...agent, systemPrompt: composedSystemPrompt }
+      );
+    }
+    ctx.log?.agent.debug("agent resolved", { sessionId, agent: agent.name });
 
-  // Abort controller spanning the full run, including the retry backoff sleep.
-  // abortRun() aborts this so a user cancel interrupts the retry sequence
-  // even when the harness itself is idle between turns.
-  const retryAbort = new AbortController();
+    // Phase F: event delivery via PubSub-backed subscribeStream (decoupled,
+    // non-blocking broadcast — no per-listener `await` serialization on the
+    // hot path). The drain runs concurrently with executeWithRetry below.
+    const eventStream = harness.subscribeStream();
+    const drainFiber = Effect.runFork(
+      Stream.runForEach(eventStream, (event) =>
+        Effect.sync(() => eventCallback(event))
+      )
+    );
 
-  if (!registerRun(sessionId, harness, unsubscribe, retryAbort)) {
-    unsubscribe();
-    throw new Error(busyMessage(sessionId));
-  }
+    // Abort controller spanning the full run, including the retry backoff sleep.
+    // abortRun() aborts this so a user cancel interrupts the retry sequence
+    // even when the harness itself is idle between turns.
+    const retryAbort = new AbortController();
 
-  ctx.log?.agent.info("run starting", {
-    sessionId,
-    model: model.id,
-    provider: model.provider,
-    hasApiKey: auth.apiKey !== undefined,
-    toolCount: tools.length,
-    thinkingLevel,
-    isIntake,
-  });
+    const unsubscribe = () => {
+      Effect.runPromise(Fiber.interrupt(drainFiber).pipe(Effect.exit));
+    };
 
-  try {
+    if (!registerRun(sessionId, harness, unsubscribe, retryAbort)) {
+      unsubscribe();
+      return yield* Effect.fail(new Error(busyMessage(sessionId)));
+    }
+
+    ctx.log?.agent.info("run starting", {
+      sessionId,
+      model: model.id,
+      provider: model.provider,
+      hasApiKey: auth.apiKey !== undefined,
+      toolCount: tools.length,
+      thinkingLevel,
+      isIntake,
+    });
+
     // Application-level retry: run the turn, and on a transient failure emit
     // auto_retry_start/end events, roll the session leaf back past the failed
     // message, back off, and re-run via harness.continue(). See retry-loop.ts.
@@ -652,15 +662,13 @@ export async function runPrompt(
     // loaded state for this run's callbacks (the overflow retry loop can fire
     // checkCompaction/runCompaction multiple times in one run).
     const stuckGuard = loadStuckGuardState(ctx, sessionId);
-    await executeWithRetry(
-      {
-        signal: retryAbort.signal,
-        emit: (event) => eventCallback(event),
-        ...(ctx.log === undefined ? {} : { logger: ctx.log.agent }),
-        // Move the session leaf to the failed message's parent, orphaning the
-        // failed assistant message so the next turn re-runs from the prior
-        // user/toolResult message (same mechanism as session branching).
-        rollbackLeaf: async () => {
+
+    const depsEffect: RetryRunnerDepsEffect = {
+      signal: retryAbort.signal,
+      emit: (event) => eventCallback(event),
+      ...(ctx.log === undefined ? {} : { logger: ctx.log.agent }),
+      rollbackLeaf: () =>
+        Effect.gen(function* () {
           // Orphan the failed assistant message by moving the leaf to its
           // parent, so continue() re-runs from the preceding user/toolResult
           // message. Assumes the failed turn appended exactly one entry —
@@ -668,17 +676,14 @@ export async function runPrompt(
           // fail at the request, before any tools execute). shouldRetry only
           // classifies stopReason === "error" messages, so non-transient or
           // tool-producing turns never reach here.
-          const branch = await sessionInstance.getBranch();
+          const branch = yield* sessionShape.getBranch();
           const lastEntry = branch.at(-1);
           if (lastEntry?.parentId) {
-            await Effect.runPromise(
-              sessionInstance.getStorage().setLeafId(lastEntry.parentId)
-            );
+            yield* storage.setLeafId(lastEntry.parentId);
           }
-        },
-        // The first turn is a fresh prompt; subsequent turns continue from the
-        // rolled-back transcript (no new user message).
-        runTurn: async () => {
+        }),
+      runTurn: () =>
+        Effect.gen(function* () {
           if (firstTurn) {
             firstTurn = false;
             ctx.log?.agent.info("turn prompt", {
@@ -688,39 +693,41 @@ export async function runPrompt(
             // Prompt preprocessor: a leading `/name` or `skill:name` dispatches
             // to the matching harness method; otherwise run as a prompt with any
             // `@file` mentions expanded into the message.
-            const plan = await planFirstTurn(
-              message,
-              {
-                skills: activeSkills,
-                templates: loadedContext.commands,
-              },
-              project.cwd,
-              (p) => readFile(p).catch(() => null)
-            );
+            const plan = yield* Effect.tryPromise({
+              try: () =>
+                planFirstTurn(
+                  message,
+                  {
+                    skills: activeSkills,
+                    templates: loadedContext.commands,
+                  },
+                  project.cwd,
+                  (p) => readFile(p).catch(() => null)
+                ),
+              catch: (e: unknown) =>
+                new Error(`planFirstTurn failed: ${String(e)}`),
+            });
             if (plan.kind === "template") {
               const argv = plan.args.trim()
                 ? plan.args.trim().split(PROMPT_ARG_SPLIT)
                 : [];
-              return harness.promptFromTemplate(plan.name, argv);
+              return yield* harness.promptFromTemplateEffect(plan.name, argv);
             }
             if (plan.kind === "skill") {
-              return harness.skill(
+              return yield* harness.skillEffect(
                 plan.name,
                 plan.args.length > 0 ? plan.args : undefined
               );
             }
-            return harness.prompt(plan.text);
+            return yield* harness.promptEffect(plan.text);
           }
           ctx.log?.agent.info("turn retry", { sessionId });
-          return harness.continue();
-        },
-        // Auto-compaction: decide after each turn whether the context needs
-        // summarizing, and run it (prepare -> compact -> persist) when it does.
-        // Mirrors pi's _handlePostAgentRun compaction check. The stuckGuard
-        // closure is initialized above executeWithRetry.
-        checkCompaction: async (assistantMessage) => {
-          const entries = await sessionInstance.getBranch();
-          const messages = (await sessionInstance.buildContext()).messages;
+          return yield* harness.continueEffect();
+        }),
+      checkCompaction: (assistantMessage) =>
+        Effect.gen(function* () {
+          const entries = yield* sessionShape.getBranch();
+          const messages = (yield* sessionShape.buildContext()).messages;
           let latestCompactionTimestamp: number | undefined;
           for (let i = entries.length - 1; i >= 0; i--) {
             const entry = entries[i];
@@ -745,7 +752,11 @@ export async function runPrompt(
           // Apply stuck-guard side effects so they survive to the next prompt.
           if (decision.pauseAutoCompaction) {
             stuckGuard.paused = true;
-            await persistStuckGuardState(ctx, sessionId, stuckGuard);
+            yield* Effect.tryPromise({
+              try: () => persistStuckGuardState(ctx, sessionId, stuckGuard),
+              catch: (e: unknown) =>
+                new Error(`persistStuckGuardState failed: ${String(e)}`),
+            });
             ctx.log?.agent.warn("auto-compaction paused (stuck guard)", {
               sessionId,
               consecutiveCompacts: stuckGuard.consecutiveCompacts,
@@ -753,18 +764,23 @@ export async function runPrompt(
           } else if (decision.resetStuckGuard) {
             stuckGuard.consecutiveCompacts = 0;
             stuckGuard.paused = false;
-            await persistStuckGuardState(ctx, sessionId, stuckGuard);
+            yield* Effect.tryPromise({
+              try: () => persistStuckGuardState(ctx, sessionId, stuckGuard),
+              catch: (e: unknown) =>
+                new Error(`persistStuckGuardState failed: ${String(e)}`),
+            });
           }
           return decision;
-        },
-        runCompaction: async () => {
+        }),
+      runCompaction: () =>
+        Effect.gen(function* () {
           if (stuckGuard.paused) {
             return {
               ok: false as const,
               errorMessage: "Auto-compaction paused (stuck guard)",
             };
           }
-          const result = await runAutoCompaction({
+          const result = yield* runAutoCompactionEffect({
             session: sessionShape,
             model,
             apiKey: auth.apiKey,
@@ -773,21 +789,60 @@ export async function runPrompt(
           });
           if (result.ok) {
             stuckGuard.consecutiveCompacts += 1;
-            await persistStuckGuardState(ctx, sessionId, stuckGuard);
+            yield* Effect.tryPromise({
+              try: () => persistStuckGuardState(ctx, sessionId, stuckGuard),
+              catch: (e: unknown) =>
+                new Error(`persistStuckGuardState failed: ${String(e)}`),
+            });
           }
           return result;
-        },
-      },
-      retrySettings
-    );
-  } catch (err) {
-    ctx.log?.agent.error("run failed", err, { sessionId });
-    throw err;
-  } finally {
-    ctx.log?.agent.info("run finished", { sessionId });
-    // Reject any still-pending permission asks so the UI strip clears and the
-    // loop is not left awaiting a reply on a dead/aborted run.
-    getPermissionChannel(sessionId).rejectPending();
-    unregisterRun(sessionId);
-  }
+        }),
+    };
+
+    yield* executeWithRetryEffect(depsEffect, retrySettings);
+  }).pipe(
+    Effect.ensuring(
+      Effect.sync(() => {
+        ctx.log?.agent.info("run finished", { sessionId });
+        // Reject any still-pending permission asks so the UI strip clears and the
+        // loop is not left awaiting a reply on a dead/aborted run.
+        getPermissionChannel(sessionId).rejectPending();
+        unregisterRun(sessionId);
+      })
+    ),
+    Effect.mapError((error) => {
+      const err =
+        error instanceof Error
+          ? error
+          : new Error(`Run failed: ${String(error)}`);
+      ctx.log?.agent.error("run failed", err, { sessionId });
+      return err;
+    })
+  );
+}
+
+/**
+ * Promise wrapper around {@link runPromptEffect} for back-compat with callers
+ * that haven't migrated to Effect (e.g. tests). The WS handler uses this too
+ * — the single Effect.runPromise boundary for the production run path lives
+ * here, with the Effect.gen body providing the structured-concurrency shape.
+ */
+export function runPrompt(
+  ctx: ServerContext,
+  sessionId: string,
+  message: string,
+  storage: SessionStorageShape,
+  eventCallback: (event: AgentHarnessEvent) => void,
+  permissionAskedSink: (frame: PermissionFrame) => void
+): Promise<void> {
+  return Effect.runPromise(
+    runPromptEffect(
+      ctx,
+      sessionId,
+      message,
+      storage,
+      eventCallback,
+      permissionAskedSink
+    )
+  );
 }

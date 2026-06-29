@@ -64,7 +64,7 @@ describe("runPrompt", () => {
     const ctx = createMockCtx();
     (
       ctx.repos.projects.findById as ReturnType<typeof vi.fn>
-    ).mockImplementation(async (id: string) => {
+    ).mockImplementation((id: string) => {
       if (id === "proj-1") {
         return null;
       }

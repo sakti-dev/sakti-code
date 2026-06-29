@@ -65,7 +65,7 @@ export function createMockCtx(overrides?: {
     },
     repos: {
       sessions: {
-        findById: vi.fn(async (id: string) =>
+        findById: vi.fn((id: string) =>
           id === "sess-1"
             ? {
                 id: "sess-1",
@@ -82,7 +82,7 @@ export function createMockCtx(overrides?: {
         ),
       },
       projects: {
-        findById: vi.fn(async (id: string) =>
+        findById: vi.fn((id: string) =>
           id === projectId
             ? {
                 id: projectId,
@@ -172,7 +172,7 @@ export function createMultiSessionCtx(
     },
     repos: {
       sessions: {
-        findById: vi.fn(async (id: string) =>
+        findById: vi.fn((id: string) =>
           sessionIdToProjectId[id]
             ? {
                 id,
@@ -189,7 +189,7 @@ export function createMultiSessionCtx(
         ),
       },
       projects: {
-        findById: vi.fn(async (id: string) => projects[id] ?? null),
+        findById: vi.fn((id: string) => projects[id] ?? null),
       },
       settings: {
         get: vi.fn(() => null),
