@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type {
   AgentDefinition,
@@ -12,23 +11,19 @@ import type {
 } from "@sakti-code/agent";
 import {
   BUILTIN_AGENTS,
-  checkCompaction,
   composeSystemPrompt,
   DEFAULT_AGENT_NAME,
   evaluate,
-  executeWithRetryEffect,
   fromConfig,
   AgentHarness as HarnessClass,
   INTAKE_SYSTEM_PROMPT,
   PromiseSession,
   parseSessionSettings,
-  planFirstTurn,
   promiseSessionAsShape,
-  type RetryRunnerDepsEffect,
-  runAutoCompactionEffect,
+  runAgentRunEffect,
 } from "@sakti-code/agent";
 import { createProposeSessionTool, type EditMode } from "@sakti-code/tools";
-import { Effect, Fiber, Stream } from "effect";
+import { Effect } from "effect";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";
 import {
@@ -40,8 +35,6 @@ import { resolveAuth } from "./model-resolver.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
 import { buildTools } from "./tools-builder.ts";
 import type { WsHandle } from "./ws-handler.ts";
-
-const PROMPT_ARG_SPLIT = /\s+/;
 
 interface ActiveRun {
   harness: AgentHarness;
@@ -626,30 +619,6 @@ export function runPromptEffect(
     }
     ctx.log?.agent.debug("agent resolved", { sessionId, agent: agent.name });
 
-    // Phase F: event delivery via PubSub-backed subscribeStream (decoupled,
-    // non-blocking broadcast — no per-listener `await` serialization on the
-    // hot path). The drain runs concurrently with executeWithRetryEffect below.
-    const eventStream = harness.subscribeStream();
-    const drainFiber = Effect.runFork(
-      Stream.runForEach(eventStream, (event) =>
-        Effect.sync(() => eventCallback(event))
-      )
-    );
-
-    // Abort controller spanning the full run, including the retry backoff sleep.
-    // abortRun() aborts this so a user cancel interrupts the retry sequence
-    // even when the harness itself is idle between turns.
-    const retryAbort = new AbortController();
-
-    const unsubscribe = () => {
-      Effect.runPromise(Fiber.interrupt(drainFiber).pipe(Effect.exit));
-    };
-
-    if (!registerRun(sessionId, harness, unsubscribe, retryAbort)) {
-      unsubscribe();
-      return yield* Effect.fail(new Error(busyMessage(sessionId)));
-    }
-
     ctx.log?.agent.info("run starting", {
       sessionId,
       model: model.id,
@@ -660,154 +629,32 @@ export function runPromptEffect(
       isIntake,
     });
 
-    // Application-level retry: run the turn, and on a transient failure emit
-    // auto_retry_start/end events, roll the session leaf back past the failed
-    // message, back off, and re-run via harness.continue(). See retry-loop.ts.
-    const retrySettings = settings.retry();
-    let firstTurn = true;
-    // Stuck-guard state (§4) persists across prompts via the settings table
-    // because each runPrompt builds a fresh harness; the closure caches the
-    // loaded state for this run's callbacks (the overflow retry loop can fire
-    // checkCompaction/runCompaction multiple times in one run).
-    const stuckGuard = loadStuckGuardState(ctx, sessionId);
-
-    const depsEffect: RetryRunnerDepsEffect = {
-      signal: retryAbort.signal,
-      emit: (event) => eventCallback(event),
-      ...(ctx.log === undefined ? {} : { logger: ctx.log.agent }),
-      rollbackLeaf: () =>
-        Effect.gen(function* () {
-          // Orphan the failed assistant message by moving the leaf to its
-          // parent, so continue() re-runs from the preceding user/toolResult
-          // message. Assumes the failed turn appended exactly one entry —
-          // which holds for the transient provider errors we retry (429/5xx
-          // fail at the request, before any tools execute). shouldRetry only
-          // classifies stopReason === "error" messages, so non-transient or
-          // tool-producing turns never reach here.
-          const branch = yield* sessionShape.getBranch();
-          const lastEntry = branch.at(-1);
-          if (lastEntry?.parentId) {
-            yield* storage.setLeafId(lastEntry.parentId);
-          }
-        }),
-      runTurn: () =>
-        Effect.gen(function* () {
-          if (firstTurn) {
-            firstTurn = false;
-            ctx.log?.agent.info("turn prompt", {
-              sessionId,
-              messageLength: message.length,
-            });
-            // Prompt preprocessor: a leading `/name` or `skill:name` dispatches
-            // to the matching harness method; otherwise run as a prompt with any
-            // `@file` mentions expanded into the message.
-            const plan = yield* Effect.tryPromise({
-              try: () =>
-                planFirstTurn(
-                  message,
-                  {
-                    skills: activeSkills,
-                    templates: loadedContext.commands,
-                  },
-                  project.cwd,
-                  (p) => readFile(p).catch(() => null)
-                ),
-              catch: (e: unknown) =>
-                new Error(`planFirstTurn failed: ${String(e)}`),
-            });
-            if (plan.kind === "template") {
-              const argv = plan.args.trim()
-                ? plan.args.trim().split(PROMPT_ARG_SPLIT)
-                : [];
-              return yield* harness.promptFromTemplateEffect(plan.name, argv);
-            }
-            if (plan.kind === "skill") {
-              return yield* harness.skillEffect(
-                plan.name,
-                plan.args.length > 0 ? plan.args : undefined
-              );
-            }
-            return yield* harness.promptEffect(plan.text);
-          }
-          ctx.log?.agent.info("turn retry", { sessionId });
-          return yield* harness.continueEffect();
-        }),
-      checkCompaction: (assistantMessage) =>
-        Effect.gen(function* () {
-          const entries = yield* sessionShape.getBranch();
-          const messages = (yield* sessionShape.buildContext()).messages;
-          let latestCompactionTimestamp: number | undefined;
-          for (let i = entries.length - 1; i >= 0; i--) {
-            const entry = entries[i];
-            if (entry?.type === "compaction") {
-              const ts = Date.parse(entry.timestamp);
-              latestCompactionTimestamp = Number.isNaN(ts) ? undefined : ts;
-              break;
-            }
-          }
-          const decision = checkCompaction({
-            message: assistantMessage,
-            messages,
-            contextWindow: model.contextWindow ?? 0,
-            settings: compactionSettings,
-            ...(latestCompactionTimestamp === undefined
-              ? {}
-              : { latestCompactionTimestamp }),
-            ...(stuckGuard.consecutiveCompacts > 0
-              ? { consecutiveCompacts: stuckGuard.consecutiveCompacts }
-              : {}),
-          });
-          // Apply stuck-guard side effects so they survive to the next prompt.
-          if (decision.pauseAutoCompaction) {
-            stuckGuard.paused = true;
-            yield* Effect.tryPromise({
-              try: () => persistStuckGuardState(ctx, sessionId, stuckGuard),
-              catch: (e: unknown) =>
-                new Error(`persistStuckGuardState failed: ${String(e)}`),
-            });
-            ctx.log?.agent.warn("auto-compaction paused (stuck guard)", {
-              sessionId,
-              consecutiveCompacts: stuckGuard.consecutiveCompacts,
-            });
-          } else if (decision.resetStuckGuard) {
-            stuckGuard.consecutiveCompacts = 0;
-            stuckGuard.paused = false;
-            yield* Effect.tryPromise({
-              try: () => persistStuckGuardState(ctx, sessionId, stuckGuard),
-              catch: (e: unknown) =>
-                new Error(`persistStuckGuardState failed: ${String(e)}`),
-            });
-          }
-          return decision;
-        }),
-      runCompaction: () =>
-        Effect.gen(function* () {
-          if (stuckGuard.paused) {
-            return {
-              ok: false as const,
-              errorMessage: "Auto-compaction paused (stuck guard)",
-            };
-          }
-          const result = yield* runAutoCompactionEffect({
-            session: sessionShape,
-            model,
-            apiKey: auth.apiKey,
-            settings: compactionSettings,
-            ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
-          });
-          if (result.ok) {
-            stuckGuard.consecutiveCompacts += 1;
-            yield* Effect.tryPromise({
-              try: () => persistStuckGuardState(ctx, sessionId, stuckGuard),
-              catch: (e: unknown) =>
-                new Error(`persistStuckGuardState failed: ${String(e)}`),
-            });
-          }
-          return result;
-        }),
-    };
-
-    yield* executeWithRetryEffect(depsEffect, retrySettings);
+    // Delegate the orchestration (event drain, retry abort, retry-deps
+    // assembly, planFirstTurn dispatch, stuck-guard policy, compaction
+    // callbacks, ensuring cleanup) to the factory in @sakti-code/agent.
+    yield* runAgentRunEffect({
+      harness,
+      sessionShape,
+      storage,
+      message,
+      retrySettings: settings.retry(),
+      compactionSettings,
+      model,
+      apiKey: auth.apiKey,
+      ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
+      skills: activeSkills,
+      templates: loadedContext.commands,
+      cwd: project.cwd,
+      loadStuckGuard: () =>
+        Effect.sync(() => loadStuckGuardState(ctx, sessionId)),
+      persistStuckGuard: (s) =>
+        Effect.tryPromise(() => persistStuckGuardState(ctx, sessionId, s)),
+      emit: eventCallback,
+      registerRun: ({ harness: h, retryAbort, unsubscribe }) =>
+        registerRun(sessionId, h, unsubscribe, retryAbort),
+      unregisterRun: () => unregisterRun(sessionId),
+      ...(ctx.log === undefined ? {} : { log: ctx.log.agent }),
+    });
   }).pipe(
     Effect.ensuring(
       Effect.sync(() => {
@@ -815,7 +662,6 @@ export function runPromptEffect(
         // Reject any still-pending permission asks so the UI strip clears and the
         // loop is not left awaiting a reply on a dead/aborted run.
         getPermissionChannel(sessionId).rejectPending();
-        unregisterRun(sessionId);
       })
     ),
     Effect.mapError((error) => {
