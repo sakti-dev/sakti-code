@@ -19,6 +19,7 @@ import {
 import type {
   BranchSummaryPrompts,
   CompactionPrompts,
+  SkillsInstructions,
 } from "../compaction/prompt-bundles";
 import {
   runAgentLoopContinueEffect,
@@ -272,6 +273,7 @@ export class AgentHarness<
   private model: Model;
   private compactionPrompts: CompactionPrompts;
   private branchSummaryPrompts: BranchSummaryPrompts;
+  private skillsInstructions: SkillsInstructions;
   private maxSteps?: number;
   private thinkingLevel: ThinkingLevel;
   private systemPrompt: AgentHarnessOptions<
@@ -346,6 +348,7 @@ export class AgentHarness<
     this.model = options.model;
     this.compactionPrompts = options.compactionPrompts;
     this.branchSummaryPrompts = options.branchSummaryPrompts;
+    this.skillsInstructions = options.skillsInstructions;
     if (options.maxSteps !== undefined) {
       this.maxSteps = options.maxSteps;
     }
@@ -1937,13 +1940,21 @@ export class AgentHarness<
    */
   private recomposeSystemPrompt(): string {
     const current = this.getSystemPrompt() ?? "";
-    const base = stripToolInventory(stripSkillsBlock(current));
+    const base = stripToolInventory(
+      stripSkillsBlock(current, this.skillsInstructions)
+    );
     const activeTools = this.getActiveTools().filter(
       (tool) => !this.softDisabledTools.has(tool.name)
     );
     const skills = this.resources.skills ?? [];
     const hasRead = this.activeToolNames.includes("read");
-    return composeSystemPrompt(base, activeTools, skills, hasRead);
+    return composeSystemPrompt(
+      base,
+      activeTools,
+      skills,
+      hasRead,
+      this.skillsInstructions
+    );
   }
 
   /**

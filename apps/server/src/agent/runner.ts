@@ -25,6 +25,7 @@ import {
   resolveSessionAgentForKind,
 } from "../agents/resolve-agent.ts";
 import { DEFAULT_AGENT_NAME } from "../agents/server-agents.ts";
+import { SKILLS_INSTRUCTIONS } from "../agents/skills-instructions.ts";
 import {
   buildAgentTools,
   rebuildTool,
@@ -559,6 +560,7 @@ export function runPromptEffect(
       session: sessionShape,
       compactionPrompts: COMPACTION_PROMPTS,
       branchSummaryPrompts: BRANCH_SUMMARY_PROMPTS,
+      skillsInstructions: SKILLS_INSTRUCTIONS,
       ...(ctx.log === undefined
         ? {}
         : { logger: ctx.log.agent, streamLogger: ctx.log.llm }),
@@ -598,7 +600,8 @@ export function runPromptEffect(
       agent.systemPrompt,
       tools,
       activeSkills,
-      hasRead
+      hasRead,
+      SKILLS_INSTRUCTIONS
     );
     yield* harness.switchAgentEffect(
       composedSystemPrompt === agent.systemPrompt

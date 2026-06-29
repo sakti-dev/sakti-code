@@ -1,6 +1,7 @@
 import type { AgentTool } from "@sakti-code/agent";
 import { composeSystemPrompt } from "@sakti-code/agent";
 import { describe, expect, it } from "vitest";
+import { SKILLS_INSTRUCTIONS } from "../../agents/skills-instructions.ts";
 
 function mockTool(name: string, description: string): AgentTool {
   return {
@@ -27,7 +28,8 @@ describe("runner system prompt composition", () => {
       "You are a coding agent.",
       [editTool, readTool],
       [],
-      true
+      true,
+      SKILLS_INSTRUCTIONS
     );
 
     expect(prompt).toContain("# Tool: edit");
@@ -47,7 +49,13 @@ describe("runner system prompt composition", () => {
       activeToolNames.includes(t.name)
     );
 
-    const prompt = composeSystemPrompt("Base.", activeTools, [], false);
+    const prompt = composeSystemPrompt(
+      "Base.",
+      activeTools,
+      [],
+      false,
+      SKILLS_INSTRUCTIONS
+    );
     expect(prompt).toContain("# Tool: read");
     expect(prompt).toContain("# Tool: bash");
     expect(prompt).not.toContain("# Tool: edit");
@@ -59,7 +67,13 @@ describe("runner system prompt composition", () => {
       mockTool("read", "Read."),
       mockTool("propose_session", "Propose a session."),
     ];
-    const prompt = composeSystemPrompt(intakeBase, tools, [], false);
+    const prompt = composeSystemPrompt(
+      intakeBase,
+      tools,
+      [],
+      false,
+      SKILLS_INSTRUCTIONS
+    );
     expect(prompt).toContain(intakeBase);
     expect(prompt).toContain("# Tool: propose_session");
     expect(prompt).not.toContain("<available_skills>");

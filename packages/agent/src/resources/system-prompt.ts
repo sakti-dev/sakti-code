@@ -1,15 +1,18 @@
+import type { SkillsInstructions } from "../compaction/prompt-bundles";
 import type { Skill } from "../harness-types";
-import { SKILLS_INSTRUCTIONS } from "../prompts/skills-instructions";
 import type { AgentTool } from "../types";
 import { renderToolInventory } from "./tool-inventory";
 
-export function formatSkillsForSystemPrompt(skills: Skill[]): string {
+export function formatSkillsForSystemPrompt(
+  skills: Skill[],
+  skillsInstructions: SkillsInstructions
+): string {
   const visibleSkills = skills.filter((skill) => !skill.disableModelInvocation);
   if (visibleSkills.length === 0) {
     return "";
   }
 
-  const lines = [...SKILLS_INSTRUCTIONS, "", "<available_skills>"];
+  const lines = [skillsInstructions, "", "<available_skills>"];
 
   for (const skill of visibleSkills) {
     lines.push("  <skill>");
@@ -37,12 +40,13 @@ function escapeXml(value: string): string {
 export function appendSkillsBlock(
   baseSystemPrompt: string,
   skills: readonly Skill[],
-  hasRead: boolean
+  hasRead: boolean,
+  skillsInstructions: SkillsInstructions
 ): string {
   if (!hasRead) {
     return baseSystemPrompt;
   }
-  const block = formatSkillsForSystemPrompt([...skills]);
+  const block = formatSkillsForSystemPrompt([...skills], skillsInstructions);
   return block ? `${baseSystemPrompt}\n\n${block}` : baseSystemPrompt;
 }
 
@@ -54,12 +58,20 @@ export function appendSkillsBlock(
  * Used by `removeSkill` to recompose the prompt with a reduced skills list:
  * the base is recovered by stripping, then `appendSkillsBlock` re-appends with
  * only the remaining skills. Deterministic because the block is always a
- * suffix starting with the first `SKILLS_INSTRUCTIONS` line.
+ * suffix starting with the first line of `skillsInstructions`.
  *
- * If no skills block is present, returns the input unchanged.
+ * If no skills block is present (or `skillsInstructions` is empty), returns
+ * the input unchanged.
  */
-export function stripSkillsBlock(composedSystemPrompt: string): string {
-  const marker = `\n\n${SKILLS_INSTRUCTIONS[0]}`;
+export function stripSkillsBlock(
+  composedSystemPrompt: string,
+  skillsInstructions: SkillsInstructions
+): string {
+  if (!skillsInstructions) {
+    return composedSystemPrompt;
+  }
+  const firstLine = skillsInstructions.split("\n", 1)[0];
+  const marker = `\n\n${firstLine}`;
   const index = composedSystemPrompt.lastIndexOf(marker);
   if (index < 0) {
     return composedSystemPrompt;
@@ -76,7 +88,7 @@ export function stripSkillsBlock(composedSystemPrompt: string): string {
  * finds that boundary and returns everything before it.
  *
  * To recover the full base prompt (without tools AND without skills), chain:
- * `stripToolInventory(stripSkillsBlock(composed))`.
+ * `stripToolInventory(stripSkillsBlock(composed, skillsInstructions))`.
  *
  * If no tool inventory is present, returns the input unchanged.
  */
@@ -106,7 +118,8 @@ export function composeSystemPrompt(
   baseSystemPrompt: string,
   tools: readonly AgentTool[],
   skills: readonly Skill[],
-  hasRead: boolean
+  hasRead: boolean,
+  skillsInstructions: SkillsInstructions
 ): string {
   const parts: string[] = [baseSystemPrompt];
 
@@ -116,7 +129,10 @@ export function composeSystemPrompt(
   }
 
   if (hasRead) {
-    const skillsBlock = formatSkillsForSystemPrompt([...skills]);
+    const skillsBlock = formatSkillsForSystemPrompt(
+      [...skills],
+      skillsInstructions
+    );
     if (skillsBlock) {
       parts.push(skillsBlock);
     }

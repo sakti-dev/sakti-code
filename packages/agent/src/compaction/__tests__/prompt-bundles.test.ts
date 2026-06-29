@@ -30,9 +30,9 @@ describe("prompt bundle types", () => {
     expect(p.systemPrompt).toBe("sys");
   });
 
-  it("SkillsInstructions is a readonly string array", () => {
-    const s: SkillsInstructions = ["a", "b"];
-    expect(s.length).toBe(2);
-    expect(s[0]).toBe("a");
+  it("SkillsInstructions is a string (the instructions body)", () => {
+    const s: SkillsInstructions = "first line\nsecond line";
+    expect(typeof s).toBe("string");
+    expect(s.split("\n")[0]).toBe("first line");
   });
 });

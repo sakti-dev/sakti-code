@@ -9,6 +9,7 @@ import {
 import {
   TEST_BRANCH_SUMMARY_PROMPTS,
   TEST_COMPACTION_PROMPTS,
+  TEST_SKILLS_INSTRUCTIONS,
 } from "../../__tests__/helpers/test-compaction-prompts.ts";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env.ts";
 import type { AgentHarness as AgentHarnessType } from "../../agent/agent-harness.ts";
@@ -86,6 +87,7 @@ async function makeHarnessWithResponse(resources?: {
     streamFn: registration.streamFn,
     compactionPrompts: TEST_COMPACTION_PROMPTS,
     branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
+    skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
     ...(resources === undefined
       ? {}
       : {

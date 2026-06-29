@@ -11,6 +11,7 @@ import {
 import {
   TEST_BRANCH_SUMMARY_PROMPTS,
   TEST_COMPACTION_PROMPTS,
+  TEST_SKILLS_INSTRUCTIONS,
 } from "../../__tests__/helpers/test-compaction-prompts.ts";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
 import { AgentHarness } from "../../agent/agent-harness";
@@ -71,6 +72,7 @@ describe("cache-stability: prefix stable across turns", () => {
     const harness = new AgentHarness({
       compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
+      skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -117,6 +119,7 @@ describe("cache-stability: prefix stable across turns", () => {
     const harness = new AgentHarness({
       compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
+      skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -170,6 +173,7 @@ describe("cache-stability: prefix stable across turns", () => {
     const harness = new AgentHarness({
       compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
+      skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),

@@ -31,11 +31,11 @@ export interface BranchSummaryPrompts {
 }
 
 /**
- * Required instructions block for advertising skills in the system prompt.
- * The first element is used as a sentinel marker by stripSkillsBlock —
- * callers MUST ensure the array is non-empty and that the first element
- * is unique enough not to collide with prompt content.
+ * Instructions block prepended to the skills advertisement in the system
+ * prompt. The first line is used as the sentinel marker by stripSkillsBlock
+ * — callers MUST ensure the first line is unique enough not to collide with
+ * surrounding prompt content.
  *
  * Reference implementation: apps/server/src/agents/skills-instructions.ts.
  */
-export type SkillsInstructions = readonly string[];
+export type SkillsInstructions = string;

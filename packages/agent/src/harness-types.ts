@@ -17,6 +17,7 @@ import type { PermissionRuleset } from "./agents/permission";
 import type {
   BranchSummaryPrompts,
   CompactionPrompts,
+  SkillsInstructions,
 } from "./compaction/prompt-bundles";
 import type {
   BranchSummaryEntry,
@@ -575,6 +576,12 @@ export interface AgentHarnessOptions<
   model: Model;
   resources?: AgentHarnessResources<TSkill, TPromptTemplate>;
   session: SessionShape;
+  /**
+   * Required: instructions block for the skills advertisement in the system
+   * prompt. The first element is used as the sentinel marker for
+   * stripSkillsBlock — callers MUST ensure the array is non-empty.
+   */
+  skillsInstructions: SkillsInstructions;
   steeringMode?: QueueMode;
   streamFn?: StreamFn;
   streamLogger?: Logger;

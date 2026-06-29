@@ -7,6 +7,7 @@ import {
 import {
   TEST_BRANCH_SUMMARY_PROMPTS,
   TEST_COMPACTION_PROMPTS,
+  TEST_SKILLS_INSTRUCTIONS,
 } from "../../__tests__/helpers/test-compaction-prompts.ts";
 import { AgentHarness } from "../../agent/agent-harness";
 import { createTestSession } from "../../session/__tests__/session-test-utils";
@@ -39,6 +40,7 @@ async function makeHarness(
     followUpMode: "all",
     compactionPrompts: TEST_COMPACTION_PROMPTS,
     branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
+    skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
   });
 }
 
