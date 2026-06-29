@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type {
-  AgentDefinition,
   AgentHarness,
   AgentHarnessEvent,
   PermissionRuleset,
@@ -10,13 +9,10 @@ import type {
   ThinkingLevel,
 } from "@sakti-code/agent";
 import {
-  BUILTIN_AGENTS,
   composeSystemPrompt,
-  DEFAULT_AGENT_NAME,
   evaluate,
   fromConfig,
   AgentHarness as HarnessClass,
-  INTAKE_SYSTEM_PROMPT,
   PromiseSession,
   parseSessionSettings,
   promiseSessionAsShape,
@@ -24,6 +20,11 @@ import {
 } from "@sakti-code/agent";
 import { createProposeSessionTool, type EditMode } from "@sakti-code/tools";
 import { Effect } from "effect";
+import { INTAKE_SYSTEM_PROMPT } from "../agents/prompts.ts";
+import {
+  resolveAgentByName,
+  resolveSessionAgent,
+} from "../agents/resolve-agent.ts";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";
 import {
@@ -342,34 +343,15 @@ export function resolveEditMode(
  * Resolve an agent by name from builtins plus project-loaded agents (a
  * user-defined agent with the same name overrides the builtin). Falls back to
  * the default (`build`) agent when the name is unknown.
+ *
+ * @deprecated Moved to {@link "../agents/resolve-agent.ts"}. Re-exported here
+ * for back-compat with external callers (e.g. compaction route).
  */
-export function resolveAgentByName(
-  name: string,
-  loadedAgents: AgentDefinition[]
-): AgentDefinition {
-  const byName = new Map<string, AgentDefinition>();
-  for (const agent of BUILTIN_AGENTS) {
-    byName.set(agent.name, agent);
-  }
-  for (const agent of loadedAgents) {
-    byName.set(agent.name, agent);
-  }
-  const resolved = byName.get(name) ?? byName.get(DEFAULT_AGENT_NAME);
-  if (resolved) {
-    return resolved;
-  }
-  // Unreachable: builtins always seed DEFAULT_AGENT_NAME ("build") above.
-  throw new Error(`No agent resolved for "${name}"`);
-}
-
 /** Load project agents and resolve the active agent by name. */
-export async function resolveSessionAgent(
-  projectCwd: string,
-  agentName: string
-): Promise<AgentDefinition> {
-  const { agents } = await loadAgentContext(projectCwd);
-  return resolveAgentByName(agentName, agents);
-}
+export {
+  resolveAgentByName,
+  resolveSessionAgent,
+} from "../agents/resolve-agent.ts";
 
 /** Build a loop permission evaluator closed over a ruleset. */
 export function buildPermissionEvaluator(ruleset: PermissionRuleset) {

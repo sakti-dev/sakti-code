@@ -146,16 +146,14 @@ apps/server/src/agents/
 ├── __tests__/
 │   └── server-agents.test.ts          (moved from packages/agent/src/agents/__tests__/builtin-agents.test.ts)
 ├── server-agents.ts                   (moved from packages/agent/src/agents/builtin-agents.ts)
-├── prompts.ts                         (moved from packages/agent/src/prompts/agents.ts)
-├── intake-prompt.ts                   (moved from packages/agent/src/prompts/intake-system-prompt.ts)
+├── prompts.ts                         (moved from packages/agent/src/prompts/agents.ts + intake-system-prompt.ts, consolidated)
+├── tool-registry.ts                   (new — replaces apps/server/src/agent/tools-builder.ts)
 └── resolve-agent.ts                   (new — moved from apps/server/src/agent/runner.ts:resolveAgentByName)
 ```
 
 ### A2.2 Move `BUILTIN_AGENTS` → `SERVER_AGENTS`
 
-`apps/server/src/agents/prompts.ts` — verbatim copy of `packages/agent/src/prompts/agents.ts` (BUILD_PROMPT, EXPLORE_PROMPT, PLAN_PROMPT, GENERAL_PROMPT, DEFAULT_SYSTEM_PROMPT).
-
-`apps/server/src/agents/intake-prompt.ts` — verbatim copy of `packages/agent/src/prompts/intake-system-prompt.ts`.
+`apps/server/src/agents/prompts.ts` — verbatim copy of `packages/agent/src/prompts/agents.ts` (BUILD_PROMPT, EXPLORE_PROMPT, PLAN_PROMPT, GENERAL_PROMPT, DEFAULT_SYSTEM_PROMPT) plus the intake prompt (was `packages/agent/src/prompts/intake-system-prompt.ts`) consolidated into the same file.
 
 **Tool declarations move into each agent entry (replaces the global `buildTools()` + `activeToolNames` filter pattern).**
 
@@ -320,7 +318,7 @@ The `DEFAULT_AGENT_NAME = "build"` constant lives in `apps/server/src/agents/ser
 
 - Replace import:
   - OLD: `BUILTIN_AGENTS`, `INTAKE_SYSTEM_PROMPT`, `DEFAULT_AGENT_NAME` from `@sakti-code/agent`
-  - NEW: import from `../agents/server-agents.ts`, `../agents/intake-prompt.ts`, `../agents/resolve-agent.ts`.
+  - NEW: import from `../agents/server-agents.ts`, `../agents/prompts.ts`, `../agents/resolve-agent.ts`, `../agents/tool-registry.ts`.
 - Replace `resolveAgentByName` definition (lines 346-363) with import from `../agents/resolve-agent.ts`.
 - Replace `resolveSessionAgent` (lines 366-372) to call the new local resolver.
 
