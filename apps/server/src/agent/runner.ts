@@ -21,17 +21,6 @@ import {
 import { type EditMode, InMemorySnapshotStore } from "@sakti-code/tools";
 import { Effect } from "effect";
 import {
-  resolveSessionAgent,
-  resolveSessionAgentForKind,
-} from "../agents/resolve-agent.ts";
-import { DEFAULT_AGENT_NAME } from "../agents/server-agents.ts";
-import { SKILLS_INSTRUCTIONS } from "../agents/skills-instructions.ts";
-import {
-  buildAgentTools,
-  rebuildTool,
-  type ToolContext,
-} from "../agents/tool-registry.ts";
-import {
   BRANCH_SUMMARY_PROMPTS,
   COMPACTION_PROMPTS,
 } from "../compaction/prompts.ts";
@@ -41,6 +30,15 @@ import {
   getPermissionChannel,
   type PermissionFrame,
 } from "../lib/permission-channel.ts";
+import {
+  buildAgentTools,
+  DEFAULT_AGENT_NAME,
+  rebuildTool,
+  resolveSessionAgent,
+  resolveSessionAgentForKind,
+  SKILLS_INSTRUCTIONS,
+  type ToolContext,
+} from "./config/index.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
@@ -365,19 +363,7 @@ export function resolveEditMode(
   return "hashline";
 }
 
-/**
- * Resolve an agent by name from builtins plus project-loaded agents (a
- * user-defined agent with the same name overrides the builtin). Falls back to
- * the default (`build`) agent when the name is unknown.
- *
- * @deprecated Moved to {@link "../agents/resolve-agent.ts"}. Re-exported here
- * for back-compat with external callers (e.g. compaction route).
- */
-/** Load project agents and resolve the active agent by name. */
-export {
-  resolveAgentByName,
-  resolveSessionAgent,
-} from "../agents/resolve-agent.ts";
+export { resolveAgentByName, resolveSessionAgent } from "./config/index.ts";
 
 /** Build a loop permission evaluator closed over a ruleset. */
 export function buildPermissionEvaluator(ruleset: PermissionRuleset) {

@@ -1,5 +1,5 @@
 import type { AgentDefinition } from "@sakti-code/agent";
-import { loadAgentContext } from "../lib/context-loader.ts";
+import { loadAgentContext } from "../../lib/context-loader.ts";
 import { DEFAULT_AGENT_NAME, SERVER_AGENTS } from "./server-agents.ts";
 
 /**
