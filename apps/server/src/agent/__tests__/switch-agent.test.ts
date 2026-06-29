@@ -1,9 +1,6 @@
-import {
-  type AgentDefinition,
-  fromConfig,
-  resolveBuiltinAgent,
-} from "@sakti-code/agent";
+import { type AgentDefinition, fromConfig } from "@sakti-code/agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resolveServerAgent } from "../../agents/server-agents.ts";
 import {
   getPermissionChannel,
   resetPermissionChannelsForTesting,
@@ -50,7 +47,7 @@ describe("resolveAgentByName", () => {
 
 describe("buildPermissionEvaluator", () => {
   it("build ruleset asks on .env reads and allows everything else", () => {
-    const build = resolveBuiltinAgent("build")!;
+    const build = resolveServerAgent("build")!;
     const decide = buildPermissionEvaluator(build.permission!);
     expect(decide("read", "secret.env")).toBe("ask");
     expect(decide("read", "src/a.ts")).toBe("allow");
@@ -58,7 +55,7 @@ describe("buildPermissionEvaluator", () => {
   });
 
   it("explore ruleset denies edits but allows reads/search/bash", () => {
-    const explore = resolveBuiltinAgent("explore")!;
+    const explore = resolveServerAgent("explore")!;
     const decide = buildPermissionEvaluator(explore.permission!);
     expect(decide("edit", "src/a.ts")).toBe("deny");
     expect(decide("read", "src/a.ts")).toBe("allow");

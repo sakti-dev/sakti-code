@@ -7,7 +7,6 @@ import type {
 import type { Logger } from "@sakti-code/logger";
 import { Cause, Effect, Exit, PubSub, Stream } from "effect";
 import { buildHarnessStreamRequest } from "../agent/build-stream-request";
-import { DEFAULT_SYSTEM_PROMPT } from "../agents/builtin-agents";
 import {
   collectEntriesForBranchSummaryEffect,
   generateBranchSummaryEffect,
@@ -167,6 +166,18 @@ function applyStreamOptionsPatch(
 }
 
 const SUBSCRIBER_EVENT_TYPE = "*";
+
+/**
+ * Last-resort system prompt fallback used when no agent system prompt is
+ * configured on the harness at stream-build time. The agent package ships
+ * this minimal placeholder so the harness has a valid prompt even before
+ * switchAgent is called; consumers (apps/server) always supply their own
+ * via {@link AgentHarnessOptions.systemPrompt} or switchAgent.
+ *
+ * To be removed in Change B when the harness requires an explicit prompt
+ * (no shipped content).
+ */
+const HARNESS_DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
 
 type AgentHarnessHandler = (
   event: AgentHarnessEvent,
@@ -552,7 +563,7 @@ export class AgentHarness<
       const activeTools = self.activeToolNames
         .map((name) => self.tools.get(name))
         .filter((tool): tool is TTool => tool !== undefined);
-      let systemPrompt = DEFAULT_SYSTEM_PROMPT;
+      let systemPrompt = HARNESS_DEFAULT_SYSTEM_PROMPT;
       const sp = self.systemPrompt;
       if (typeof sp === "string") {
         systemPrompt = sp;

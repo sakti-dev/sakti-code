@@ -1,10 +1,5 @@
 export { AgentHarness } from "./agent/agent-harness.ts";
 export { buildHarnessStreamRequest } from "./agent/build-stream-request.ts";
-export {
-  BUILTIN_AGENTS,
-  DEFAULT_AGENT_NAME,
-  resolveBuiltinAgent,
-} from "./agents/builtin-agents.ts";
 export { configEntryNameFromPath } from "./agents/config-entry-name.ts";
 export { defineAgent } from "./agents/define-agent.ts";
 export type {
@@ -124,7 +119,6 @@ export {
   truncateLine,
   truncateTail,
 } from "./lib/truncate.ts";
-export { INTAKE_SYSTEM_PROMPT } from "./prompts/intake-system-prompt.ts";
 export type {
   CommandDiagnostic,
   CommandDiagnosticCode,
