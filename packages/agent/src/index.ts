@@ -169,6 +169,8 @@ export {
   renderToolInventory,
   renderToolSection,
 } from "./resources/tool-inventory.ts";
+export type { AgentRunDeps } from "./runner/agent-run.ts";
+export { runAgentRunEffect } from "./runner/agent-run.ts";
 export type {
   EditMode as SessionEditMode,
   SessionSettings,
