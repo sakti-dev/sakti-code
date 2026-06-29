@@ -44,7 +44,7 @@ export function resolveLogLevel(
  * (`server.log` / `agent.log` / `tools.log` / `llm.log`) under `logDir`.
  * `agent` is threaded into the {@link AgentHarness}, `llm` into the stream()
  * call (via the harness), `server` into routes/ws-handler, `tools` into
- * buildTools.
+ * the tool factories in apps/server/src/agents/tool-registry.ts.
  */
 export interface ServerLoggers {
   agent: Logger;
