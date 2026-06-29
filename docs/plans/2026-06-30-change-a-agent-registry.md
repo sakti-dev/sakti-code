@@ -157,26 +157,113 @@ apps/server/src/agents/
 
 `apps/server/src/agents/intake-prompt.ts` — verbatim copy of `packages/agent/src/prompts/intake-system-prompt.ts`.
 
+**Tool declarations move into each agent entry (replaces the global `buildTools()` + `activeToolNames` filter pattern).**
+
+New file `apps/server/src/agents/tool-registry.ts`:
+
+```ts
+import type { AgentTool } from "@sakti-code/agent";
+import {
+  createBashTool, createEditTool, createFindTool, createGrepTool,
+  createLsTool, createProposeSessionTool, createReadTool, createWriteTool,
+  type EditMode, InMemorySnapshotStore, type NoopLoopGuardOwner,
+} from "@sakti-code/tools";
+
+export interface ToolContext {
+  readonly cwd: string;
+  readonly editMode: EditMode;
+  readonly snapshotStore: InMemorySnapshotStore;
+  readonly noopOwner: NoopLoopGuardOwner;
+}
+
+export type ToolFactory = (ctx: ToolContext) => AgentTool;
+
+export const TOOL_FACTORIES: Readonly<Record<string, ToolFactory>> = {
+  read:            (ctx) => createReadTool(ctx.cwd, { autoResizeImages: true, snapshotStore: ctx.snapshotStore }),
+  write:           (ctx) => createWriteTool(ctx.cwd, { snapshotStore: ctx.snapshotStore }),
+  edit:            (ctx) => createEditTool(ctx.cwd, { mode: ctx.editMode, snapshotStore: ctx.snapshotStore, noopOwner: ctx.noopOwner }),
+  bash:            (ctx) => createBashTool(ctx.cwd),
+  grep:            (ctx) => createGrepTool(ctx.cwd),
+  find:            (ctx) => createFindTool(ctx.cwd),
+  ls:              (ctx) => createLsTool(ctx.cwd),
+  propose_session: () => createProposeSessionTool() as AgentTool,
+};
+
+export function buildAgentTools(
+  toolNames: readonly string[],
+  ctx: ToolContext
+): AgentTool[] {
+  return toolNames.map((name) => {
+    const factory = TOOL_FACTORIES[name];
+    if (!factory) {
+      throw new Error(
+        `Unknown tool "${name}" — not in server registry. Registered: ${Object.keys(TOOL_FACTORIES).join(", ")}`
+      );
+    }
+    return factory(ctx);
+  });
+}
+
+/** Rebuild a single tool by name (used by the edit-mode swap path). */
+export function rebuildTool(name: string, ctx: ToolContext): AgentTool {
+  const factory = TOOL_FACTORIES[name];
+  if (!factory) {
+    throw new Error(`Unknown tool "${name}"`);
+  }
+  return factory(ctx);
+}
+```
+
 `apps/server/src/agents/server-agents.ts` — copy of `builtin-agents.ts` with these changes:
 - Rename export `BUILTIN_AGENTS` → `SERVER_AGENTS`.
 - Rename `resolveBuiltinAgent` → `resolveServerAgent`.
 - Update import paths to local (`./prompts.ts`).
+- **Each agent declares `toolNames: string[]` explicitly** (replaces the global `buildTools()` + `activeToolNames` filter pattern — each agent is fully self-contained):
 - **Add intake entry:**
 
 ```ts
-{
-  name: "intake",
-  mode: "primary",
-  description: "PM-style planning agent for scoping work before implementation.",
-  systemPrompt: INTAKE_SYSTEM_PROMPT,
-  permission: intakeRuleset(),
-  // Intake gets full research tools + propose_session. The permission ruleset
-  // (intakeRuleset) is read-mostly for safety, but write/edit/bash remain in
-  // the allowlist because the prompt instructs the agent to write change-request
-  // docs as part of planning. The ruleset gates destructive ops; the tool
-  // list gates what the model can call.
-  activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "ls", "propose_session"],
-}
+export const SERVER_AGENTS: AgentDefinition[] = [
+  defineAgent({
+    name: "build",
+    mode: "primary",
+    description: "The default coding agent.",
+    systemPrompt: BUILD_PROMPT,
+    permission: buildRuleset(),
+    toolNames: ["read", "write", "edit", "bash", "grep", "find", "ls"],
+  }),
+  defineAgent({
+    name: "explore",
+    mode: "subagent",
+    description: "Read-only codebase exploration.",
+    systemPrompt: EXPLORE_PROMPT,
+    permission: exploreRuleset(),
+    toolNames: ["read", "grep", "find", "ls", "bash"],
+  }),
+  defineAgent({
+    name: "plan",
+    mode: "primary",
+    description: "Planning agent — no edits.",
+    systemPrompt: PLAN_PROMPT,
+    permission: planRuleset(),
+    toolNames: ["read", "grep", "find", "ls", "bash"],
+  }),
+  defineAgent({
+    name: "general",
+    mode: "subagent",
+    description: "General-purpose subagent.",
+    systemPrompt: GENERAL_PROMPT,
+    permission: allowAllRuleset(),
+    toolNames: ["read", "write", "edit", "bash", "grep", "find", "ls"],
+  }),
+  defineAgent({
+    name: "intake",
+    mode: "primary",
+    description: "PM-style planning agent for scoping work before implementation.",
+    systemPrompt: INTAKE_SYSTEM_PROMPT,
+    permission: intakeRuleset(),
+    toolNames: ["read", "write", "edit", "bash", "grep", "find", "ls", "propose_session"],
+  }),
+];
 ```
 
 - Add `intakeRuleset()`:
@@ -192,6 +279,8 @@ function intakeRuleset(): PermissionRuleset {
 ```
 
 **Note:** The intake ruleset is intentionally minimal in v1. The key contract is that it is **not** `buildRuleset()` — intake gets its own ruleset so we can tighten it later without touching build. If you want stricter (deny edits), update intakeRuleset; the resolution path is unaffected.
+
+**Why `toolNames` instead of `activeToolNames` filter:** `activeToolNames` is a filter applied AFTER all tools are built — it's the pattern that produced the original `isIntake` mess (filter-via-allowlist instead of declare-per-agent). `toolNames` flips the relationship: each agent declares what it uses, the server builds exactly that via `buildAgentTools`. No global `buildTools()` returning a fixed list, no post-hoc filtering, no "always register propose_session then filter it out for non-intake agents." Each agent is fully self-contained.
 
 ### A2.3 Move `resolveAgentByName`
 
@@ -330,14 +419,25 @@ function defaultAgentNameForKind(kind: string): string {
 - Lines 486-488: the `if (isIntake) tools.push(createProposeSessionTool())` block.
 - Lines 529-538: the `...(isIntake ? { systemPrompt: … } : {})` block.
 - Lines 554-599: the entire `if (!isIntake) { …switchAgentEffect… }` block — including the inline `composeSystemPrompt` call and `resolveAgentByName(settings.agent())`.
+- The current `buildTools(project.cwd, editMode)` call and the post-resolution `activeToolNames` filtering.
 
 **Replace with:**
 
 ```ts
-// Always register propose_session — only the intake agent's activeToolNames
-// will enable it. Cheaper to register than to gate registration on kind.
-const tools = buildTools(project.cwd, editMode);
-tools.push(createProposeSessionTool() as (typeof tools)[number]);
+// Resolve the agent FIRST so we can build its declared tools.
+const settings = parseSessionSettings(loadSessionSettings(ctx, sessionId));
+const { agent } = resolveSessionAgentForKind(
+  session.kind,
+  loadedContext.agents,
+  settings.agent() === DEFAULT_AGENT_NAME ? undefined : settings.agent()
+);
+
+// Build only the agent's declared tools — no global buildTools() + filter.
+const editMode = resolveEditMode(ctx, sessionId);
+const snapshotStore = new InMemorySnapshotStore();
+const noopOwner: NoopLoopGuardOwner = {};
+const toolCtx: ToolContext = { cwd: project.cwd, editMode, snapshotStore, noopOwner };
+const tools = buildAgentTools(agent.toolNames ?? DEFAULT_TOOL_NAMES, toolCtx);
 
 const harness = new HarnessClass({
   env,
@@ -356,17 +456,8 @@ const harness = new HarnessClass({
 });
 ctx.log?.agent.debug("harness created", { sessionId });
 
-// Resolve the agent: per-session override first, then kind-based default.
-// Intake sessions resolve to the intake agent (own ruleset + tool allowlist);
-// everything else resolves to build (or the per-session override).
-const { agent } = resolveSessionAgentForKind(
-  session.kind,
-  loadedContext.agents,
-  settings.agent() === DEFAULT_AGENT_NAME ? undefined : settings.agent()
-);
-
-// Wire permission + apply agent (system prompt + tool allowlist + thinking
-// level) via the normal switchAgentEffect path. No special cases.
+// Wire permission + apply agent (system prompt + thinking level) via the
+// normal switchAgentEffect path. No special cases.
 const agentRuleset = agent.permission ?? fromConfig({ "*": "allow" });
 const permissionChannel = getPermissionChannel(sessionId);
 permissionChannel.setSink(permissionAskedSink);
@@ -375,16 +466,12 @@ harness.setPermissionEvaluator((permission, pattern) =>
 );
 harness.setPermissionAskResolver((req) => permissionChannel.ask(req));
 
-// Compose system prompt with tool inventory + skills (same as before).
-const hasRead =
-  agent.activeToolNames === undefined ||
-  agent.activeToolNames.includes("read");
-const activeNames = agent.activeToolNames;
-const activeTools =
-  activeNames === undefined ? tools : tools.filter((t) => activeNames.includes(t.name));
+// Compose system prompt with tool inventory + skills. The tool list passed
+// here matches what's already on the harness (agent.toolNames).
+const hasRead = agent.toolNames?.includes("read") ?? true;
 const composedSystemPrompt = composeSystemPrompt(
   agent.systemPrompt,
-  activeTools,
+  tools,
   activeSkills,
   hasRead
 );
@@ -397,19 +484,21 @@ ctx.log?.agent.debug("agent resolved", { sessionId, agent: agent.name });
 ```
 
 **Behavior changes:**
-1. Intake now gets `intakeRuleset()` (not `buildRuleset()`).
-2. Intake's `activeToolNames` filters the tools list to the 8 listed tools.
-3. Intake's `thinkingLevel` flows through `switchAgentEffect`'s `setThinkingLevelEffect` (none set on the agent → inherits harness constructor value, same as before).
-4. `propose_session` is now in the tools list always but gated by the intake agent's allowlist. Non-intake sessions never include `propose_session` in their `activeToolNames`, so it's invisible to them.
+1. Intake now resolves to the `intake` agent — gets its own `intakeRuleset()` and its declared `toolNames` (including `propose_session`).
+2. `explore` and `plan` agents now actually only see their declared tools (today their `activeToolNames` is undefined, so they get everything but rely on the ruleset to deny edits — defense in depth was missing).
+3. `propose_session` is built only when an agent declares it in `toolNames` (just intake). No more "always registered, filtered later."
+4. `thinkingLevel` still flows through `switchAgentEffect`'s `setThinkingLevelEffect`.
 
 **Per-session override subtlety:** `settings.agent()` defaults to `"build"`. If a user has explicitly selected `"explore"` for a session, we honor it. The check `settings.agent() === DEFAULT_AGENT_NAME ? undefined : settings.agent()` is how we detect "no override" (since the default IS `"build"`, returning `"build"` literally means "no override"). For intake sessions, this means: no per-session override → intake agent; per-session override to anything else → that agent. Reasonable.
 
-### A3.4 Update existing runner tests
+### A3.4 Update existing runner tests + edit-mode swap path
 
 Audit `apps/server/src/agent/__tests__/runner.test.ts` for any test that:
 - Asserts intake sessions use `INTAKE_SYSTEM_PROMPT` directly — should now go through `resolveSessionAgentForKind`.
-- Asserts intake tools include `propose_session` via the old "appended" path — should now assert it via `agent.activeToolNames`.
+- Asserts intake tools include `propose_session` via the old "appended" path — should now assert it via `agent.toolNames`.
 - Mocks `BUILTIN_AGENTS` from `@sakti-code/agent` — should now mock `SERVER_AGENTS` from `../agents/server-agents.ts`.
+
+**Edit-mode swap path (currently line 432):** `buildTools(cwd, mode)` → swap edit tool. Replace with `rebuildTool("edit", { cwd, editMode: mode, snapshotStore: <existing>, noopOwner: <existing> })`. The snapshot store must be preserved across the swap (the harness's in-flight edit tracking depends on it) — either expose it from the harness or capture it in the closure when the harness is first built.
 
 ### A3.5 Verify
 
@@ -445,6 +534,7 @@ Behavior changes:
 - `packages/agent/src/prompts/agents.ts`
 - `packages/agent/src/prompts/intake-system-prompt.ts`
 - `packages/agent/src/agents/__tests__/builtin-agents.test.ts` (already moved in A2.5)
+- `apps/server/src/agent/tools-builder.ts` (replaced by `apps/server/src/agents/tool-registry.ts`'s `buildAgentTools` + `rebuildTool`)
 
 ### A4.2 Update `packages/agent/src/index.ts`
 
