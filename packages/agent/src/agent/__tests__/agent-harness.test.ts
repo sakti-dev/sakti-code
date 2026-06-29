@@ -1659,3 +1659,129 @@ describe("addSkill / removeSkill", () => {
     expect(typeof counters.hitRate).toBe("number");
   });
 });
+
+describe("*Effect cores (Phase H1)", () => {
+  it("appendMessageEffect returns an Effect that appends a message when idle", async () => {
+    const session = await createTestSession();
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session,
+      model: getModel("anthropic", "claude-sonnet-4-5"),
+    });
+    const message: AgentMessage = {
+      role: "user",
+      content: [{ type: "text", text: "hi" }],
+      timestamp: Date.now(),
+    };
+    const effect = harness.appendMessageEffect(message);
+    expect(effect).toBeDefined();
+    expect(typeof effect).toBe("object");
+    await Effect.runPromise(effect);
+    const entries = await Effect.runPromise(session.getEntries());
+    expect(entries.some((entry) => entry.type === "message")).toBe(true);
+  });
+
+  it("setModelEffect returns an Effect that updates the model when idle", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel("initial"),
+    });
+    const nextModel = registration.getModel("next");
+    const effect = harness.setModelEffect(nextModel);
+    expect(typeof effect).toBe("object");
+    await Effect.runPromise(effect);
+    expect(harness.getModel()).toBe(nextModel);
+  });
+
+  it("setThinkingLevelEffect returns an Effect that updates the thinking level when idle", async () => {
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: getModel("anthropic", "claude-sonnet-4-5"),
+      thinkingLevel: "off",
+    });
+    const effect = harness.setThinkingLevelEffect("high");
+    expect(typeof effect).toBe("object");
+    await Effect.runPromise(effect);
+    expect(harness.getThinkingLevel()).toBe("high");
+  });
+
+  it("setToolsEffect returns an Effect that updates the tools when idle", async () => {
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: getModel("anthropic", "claude-sonnet-4-5"),
+    });
+    const effect = harness.setToolsEffect([], []);
+    expect(typeof effect).toBe("object");
+    await Effect.runPromise(effect);
+    expect(harness.getTools()).toEqual([]);
+  });
+
+  it("setActiveToolsEffect returns an Effect that updates the active tools when idle", async () => {
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: getModel("anthropic", "claude-sonnet-4-5"),
+    });
+    const effect = harness.setActiveToolsEffect([]);
+    expect(typeof effect).toBe("object");
+    await Effect.runPromise(effect);
+    expect(harness.getActiveTools()).toEqual([]);
+  });
+
+  it("compactEffect returns an Effect that compacts the session when idle", async () => {
+    const session = await createTestSession();
+    await Effect.runPromise(
+      session.appendMessage({
+        role: "user",
+        content: [{ type: "text", text: "seed message" }],
+        timestamp: Date.now(),
+      })
+    );
+    const entries = await Effect.runPromise(session.getEntries());
+    const firstKeptEntryId = entries[0]!.id;
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session,
+      model: getModel("anthropic", "claude-sonnet-4-5"),
+      getApiKeyAndHeaders: async () => ({ apiKey: "test-key" }),
+    });
+    harness.on("session_before_compact", () => ({
+      compaction: {
+        summary: "compact summary",
+        firstKeptEntryId,
+        tokensBefore: 100,
+      },
+    }));
+    const effect = harness.compactEffect();
+    expect(typeof effect).toBe("object");
+    const result = await Effect.runPromise(effect);
+    expect(result.summary).toBe("compact summary");
+  });
+
+  it("navigateTreeEffect returns an Effect that resolves cancelled:false when navigating to the current leaf", async () => {
+    const session = await createTestSession();
+    await Effect.runPromise(
+      session.appendMessage({
+        role: "user",
+        content: [{ type: "text", text: "seed message" }],
+        timestamp: Date.now(),
+      })
+    );
+    const harness = new AgentHarness({
+      env: new TestExecutionEnv(process.cwd()),
+      session,
+      model: getModel("anthropic", "claude-sonnet-4-5"),
+    });
+    const leafId = await Effect.runPromise(session.getLeafId());
+    expect(leafId).not.toBeNull();
+    const effect = harness.navigateTreeEffect(leafId!);
+    expect(typeof effect).toBe("object");
+    const result = await Effect.runPromise(effect);
+    expect(result.cancelled).toBe(false);
+  });
+});

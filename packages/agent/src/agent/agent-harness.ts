@@ -1228,21 +1228,141 @@ export class AgentHarness<
     await this.emitQueueUpdate();
   }
 
-  async appendMessage(message: AgentMessage): Promise<void> {
+  appendMessageEffect(
+    message: AgentMessage
+  ): Effect.Effect<void, AgentHarnessError | SessionError> {
     const self = this;
-    try {
-      await Effect.runPromise(
-        Effect.gen(function* () {
-          if (self.phase === "idle") {
-            yield* self.session.appendMessage(message);
-          } else {
-            self.pendingSessionWrites.push({ type: "message", message });
-          }
+    return Effect.gen(function* () {
+      if (self.phase === "idle") {
+        yield* self.session.appendMessage(message);
+      } else {
+        self.pendingSessionWrites.push({ type: "message", message });
+      }
+    }).pipe(
+      Effect.mapError((error) => normalizeHarnessError(error, "session"))
+    );
+  }
+
+  async appendMessage(message: AgentMessage): Promise<void> {
+    await Effect.runPromise(this.appendMessageEffect(message));
+  }
+
+  compactEffect(customInstructions?: string): Effect.Effect<
+    {
+      summary: string;
+      firstKeptEntryId: string;
+      tokensBefore: number;
+      details?: unknown;
+    },
+    AgentHarnessError | SessionError
+  > {
+    const self = this;
+    return Effect.gen(function* () {
+      if (self.phase !== "idle") {
+        return yield* Effect.fail(
+          new AgentHarnessError({
+            code: "busy",
+            message: "compact() requires idle harness",
+          })
+        );
+      }
+      self.phase = "compaction";
+      const auth = yield* Effect.promise(() =>
+        Promise.resolve(
+          self.getApiKeyAndHeaders?.(self.model) ?? Promise.resolve(undefined)
+        )
+      );
+      if (!auth) {
+        yield* new AgentHarnessError({
+          code: "auth",
+          message: "No auth available for compaction",
+        });
+      }
+      const branchEntries = yield* self.session.getBranch();
+      const preparationResult = prepareCompaction(
+        branchEntries,
+        DEFAULT_COMPACTION_SETTINGS
+      );
+      if (isFailure(preparationResult)) {
+        return yield* Effect.fail(preparationResult.failure);
+      }
+      const preparation = preparationResult.success;
+      if (!preparation) {
+        yield* new AgentHarnessError({
+          code: "compaction",
+          message: "Nothing to compact",
+        });
+      }
+      const hookResult = yield* Effect.promise(() =>
+        self.emitHook({
+          type: "session_before_compact",
+          preparation: preparation!,
+          branchEntries,
+          customInstructions,
+          signal:
+            self.runAbortController?.signal ?? new AbortController().signal,
         })
       );
-    } catch (error) {
-      throw normalizeHarnessError(error, "session");
-    }
+      if (hookResult?.cancel) {
+        yield* new AgentHarnessError({
+          code: "compaction",
+          message: "Compaction cancelled",
+        });
+      }
+      const provided = hookResult?.compaction;
+      const compactResult = provided
+        ? ok(provided)
+        : yield* runCompactEffect(
+            preparation!,
+            self.model,
+            auth!.apiKey,
+            auth!.headers,
+            customInstructions,
+            undefined,
+            self.thinkingLevel
+          );
+      if (isFailure(compactResult)) {
+        return yield* Effect.fail(compactResult.failure);
+      }
+      const result = compactResult.success;
+      const entryId = yield* self.session.appendCompaction(
+        result.summary,
+        result.firstKeptEntryId,
+        result.tokensBefore,
+        result.details,
+        provided !== undefined
+      );
+      const entry = yield* self.session.getEntry(entryId);
+      if (entry?.type === "compaction") {
+        yield* Effect.promise(() =>
+          self.emitOwn({
+            type: "session_compact",
+            compactionEntry: entry,
+            fromHook: provided !== undefined,
+          })
+        );
+      }
+
+      // Drain pending system-prompt refresh: compaction busts the cache
+      // anyway, so this is the free moment to swap the prefix bytes.
+      // Layer 2 only — on restart, Layer 1 (disabled_skills filter in the
+      // runner) recomposes the correct prompt at load.
+      if (self.pendingSystemPromptRefresh !== undefined) {
+        self.systemPrompt = self.pendingSystemPromptRefresh;
+        self.clearPendingSystemPromptRefresh();
+      }
+
+      return result;
+    }).pipe(
+      Effect.ensuring(
+        Effect.sync(() => {
+          if (self.phase === "compaction") {
+            self.phase = "idle";
+          }
+        })
+      ),
+      Effect.mapError((error) => normalizeHarnessError(error, "compaction"))
+    );
   }
 
   async compact(customInstructions?: string): Promise<{
@@ -1251,111 +1371,201 @@ export class AgentHarness<
     tokensBefore: number;
     details?: unknown;
   }> {
-    if (this.phase !== "idle") {
-      throw new AgentHarnessError({
-        code: "busy",
-        message: "compact() requires idle harness",
-      });
+    return Effect.runPromise(this.compactEffect(customInstructions));
+  }
+
+  navigateTreeEffect(
+    targetId: string,
+    options?: {
+      summarize?: boolean;
+      customInstructions?: string;
+      replaceInstructions?: boolean;
+      label?: string;
     }
-    this.phase = "compaction";
+  ): Effect.Effect<NavigateTreeResult, AgentHarnessError | SessionError> {
     const self = this;
-    try {
-      return await Effect.runPromise(
-        Effect.gen(function* () {
-          const auth = yield* Effect.promise(() =>
-            Promise.resolve(
-              self.getApiKeyAndHeaders?.(self.model) ??
-                Promise.resolve(undefined)
-            )
-          );
-          if (!auth) {
-            yield* new AgentHarnessError({
-              code: "auth",
-              message: "No auth available for compaction",
-            });
-          }
-          const branchEntries = yield* self.session.getBranch();
-          const preparationResult = prepareCompaction(
-            branchEntries,
-            DEFAULT_COMPACTION_SETTINGS
-          );
-          if (isFailure(preparationResult)) {
-            return yield* Effect.fail(preparationResult.failure);
-          }
-          const preparation = preparationResult.success;
-          if (!preparation) {
-            yield* new AgentHarnessError({
-              code: "compaction",
-              message: "Nothing to compact",
-            });
-          }
-          const hookResult = yield* Effect.promise(() =>
-            self.emitHook({
-              type: "session_before_compact",
-              preparation: preparation!,
-              branchEntries,
-              customInstructions,
-              signal:
-                self.runAbortController?.signal ?? new AbortController().signal,
-            })
-          );
-          if (hookResult?.cancel) {
-            yield* new AgentHarnessError({
-              code: "compaction",
-              message: "Compaction cancelled",
-            });
-          }
-          const provided = hookResult?.compaction;
-          const compactResult = provided
-            ? ok(provided)
-            : yield* runCompactEffect(
-                preparation!,
-                self.model,
-                auth!.apiKey,
-                auth!.headers,
-                customInstructions,
-                undefined,
-                self.thinkingLevel
-              );
-          if (isFailure(compactResult)) {
-            return yield* Effect.fail(compactResult.failure);
-          }
-          const result = compactResult.success;
-          const entryId = yield* self.session.appendCompaction(
-            result.summary,
-            result.firstKeptEntryId,
-            result.tokensBefore,
-            result.details,
-            provided !== undefined
-          );
-          const entry = yield* self.session.getEntry(entryId);
-          if (entry?.type === "compaction") {
-            yield* Effect.promise(() =>
-              self.emitOwn({
-                type: "session_compact",
-                compactionEntry: entry,
-                fromHook: provided !== undefined,
-              })
-            );
-          }
-
-          // Drain pending system-prompt refresh: compaction busts the cache
-          // anyway, so this is the free moment to swap the prefix bytes.
-          // Layer 2 only — on restart, Layer 1 (disabled_skills filter in the
-          // runner) recomposes the correct prompt at load.
-          if (self.pendingSystemPromptRefresh !== undefined) {
-            self.systemPrompt = self.pendingSystemPromptRefresh;
-            self.clearPendingSystemPromptRefresh();
-          }
-
-          return result;
+    return Effect.gen(function* () {
+      if (self.phase !== "idle") {
+        return yield* Effect.fail(
+          new AgentHarnessError({
+            code: "busy",
+            message: "navigateTree() requires idle harness",
+          })
+        );
+      }
+      self.phase = "branch_summary";
+      const oldLeafId = yield* self.session.getLeafId();
+      if (oldLeafId === targetId) {
+        return { cancelled: false };
+      }
+      const targetEntry = yield* self.session.getEntry(targetId);
+      if (!targetEntry) {
+        yield* new AgentHarnessError({
+          code: "invalid_argument",
+          message: `Entry ${targetId} not found`,
+        });
+      }
+      const { entries, commonAncestorId } =
+        yield* collectEntriesForBranchSummaryEffect(
+          self.session,
+          oldLeafId,
+          targetId
+        );
+      const preparation = {
+        targetId,
+        oldLeafId,
+        commonAncestorId,
+        entriesToSummarize: entries,
+        userWantsSummary: options?.summarize ?? false,
+        customInstructions: options?.customInstructions,
+        replaceInstructions: options?.replaceInstructions,
+        label: options?.label,
+      };
+      const signal =
+        self.runAbortController?.signal ?? new AbortController().signal;
+      const hookResult = yield* Effect.promise(() =>
+        self.emitHook({
+          type: "session_before_tree",
+          preparation,
+          signal,
         })
       );
-    } catch (error) {
-      throw normalizeHarnessError(error, "compaction");
-    } finally {
-      this.phase = "idle";
-    }
+      if (hookResult?.cancel) {
+        return { cancelled: true };
+      }
+      let summaryEntry: NavigateTreeResult["summaryEntry"];
+      let summaryText: string | undefined = hookResult?.summary?.summary;
+      let summaryDetails: unknown = hookResult?.summary?.details;
+      if (!summaryText && options?.summarize && entries.length > 0) {
+        const auth = yield* Effect.promise(() =>
+          Promise.resolve(
+            self.getApiKeyAndHeaders?.(self.model) ?? Promise.resolve(undefined)
+          )
+        );
+        if (!auth) {
+          yield* new AgentHarnessError({
+            code: "auth",
+            message: "No auth available for branch summary",
+          });
+        }
+        const branchSummary = yield* generateBranchSummaryEffect(entries, {
+          model: self.model,
+          apiKey: auth!.apiKey,
+          ...(auth!.headers === undefined ? {} : { headers: auth!.headers }),
+          signal:
+            self.runAbortController?.signal ?? new AbortController().signal,
+          ...(hookResult?.customInstructions !== undefined ||
+          options?.customInstructions !== undefined
+            ? {
+                customInstructions:
+                  hookResult?.customInstructions ?? options?.customInstructions,
+              }
+            : {}),
+          ...((hookResult?.replaceInstructions ??
+            options?.replaceInstructions) === undefined
+            ? {}
+            : {
+                replaceInstructions:
+                  hookResult?.replaceInstructions ??
+                  options?.replaceInstructions,
+              }),
+        });
+        if (isFailure(branchSummary)) {
+          if (branchSummary.failure.code === "aborted") {
+            return { cancelled: true };
+          }
+          return yield* new AgentHarnessError({
+            code: "branch_summary",
+            message: branchSummary.failure.message,
+            ...(branchSummary.failure === undefined
+              ? {}
+              : { cause: branchSummary.failure as Error }),
+          });
+        }
+        summaryText = branchSummary.success.summary;
+        summaryDetails = {
+          readFiles: branchSummary.success.readFiles,
+          modifiedFiles: branchSummary.success.modifiedFiles,
+        };
+      }
+      let editorText: string | undefined;
+      let newLeafId: string | null;
+      if (
+        targetEntry!.type === "message" &&
+        targetEntry!.message.role === "user"
+      ) {
+        newLeafId = targetEntry!.parentId;
+        const content = targetEntry!.message.content;
+        editorText =
+          typeof content === "string"
+            ? content
+            : content
+                .filter(
+                  (
+                    c
+                  ): c is {
+                    readonly type: "text";
+                    readonly text: string;
+                  } => c.type === "text"
+                )
+                .map((c) => c.text)
+                .join("");
+      } else if (targetEntry!.type === "custom_message") {
+        newLeafId = targetEntry!.parentId;
+        editorText =
+          typeof targetEntry!.content === "string"
+            ? targetEntry!.content
+            : targetEntry!.content
+                .filter(
+                  (
+                    c
+                  ): c is {
+                    readonly type: "text";
+                    readonly text: string;
+                  } => c.type === "text"
+                )
+                .map((c) => c.text)
+                .join("");
+      } else {
+        newLeafId = targetId;
+      }
+      const summaryId = yield* self.session.moveTo(
+        newLeafId,
+        summaryText
+          ? {
+              summary: summaryText,
+              details: summaryDetails,
+              fromHook: hookResult?.summary !== undefined,
+            }
+          : undefined
+      );
+      if (summaryId) {
+        const entry = yield* self.session.getEntry(summaryId);
+        if (entry?.type === "branch_summary") {
+          summaryEntry = entry;
+        }
+      }
+      const finalLeafId = yield* self.session.getLeafId();
+      yield* Effect.promise(() =>
+        self.emitOwn({
+          type: "session_tree",
+          newLeafId: finalLeafId,
+          oldLeafId,
+          summaryEntry,
+          fromHook: hookResult?.summary !== undefined,
+        })
+      );
+      return { cancelled: false, editorText, summaryEntry };
+    }).pipe(
+      Effect.ensuring(
+        Effect.sync(() => {
+          if (self.phase === "branch_summary") {
+            self.phase = "idle";
+          }
+        })
+      ),
+      Effect.mapError((error) => normalizeHarnessError(error, "branch_summary"))
+    );
   }
 
   async navigateTree(
@@ -1367,190 +1577,7 @@ export class AgentHarness<
       label?: string;
     }
   ): Promise<NavigateTreeResult> {
-    if (this.phase !== "idle") {
-      throw new AgentHarnessError({
-        code: "busy",
-        message: "navigateTree() requires idle harness",
-      });
-    }
-    this.phase = "branch_summary";
-    const self = this;
-    try {
-      return await Effect.runPromise(
-        Effect.gen(function* () {
-          const oldLeafId = yield* self.session.getLeafId();
-          if (oldLeafId === targetId) {
-            return { cancelled: false };
-          }
-          const targetEntry = yield* self.session.getEntry(targetId);
-          if (!targetEntry) {
-            yield* new AgentHarnessError({
-              code: "invalid_argument",
-              message: `Entry ${targetId} not found`,
-            });
-          }
-          const { entries, commonAncestorId } =
-            yield* collectEntriesForBranchSummaryEffect(
-              self.session,
-              oldLeafId,
-              targetId
-            );
-          const preparation = {
-            targetId,
-            oldLeafId,
-            commonAncestorId,
-            entriesToSummarize: entries,
-            userWantsSummary: options?.summarize ?? false,
-            customInstructions: options?.customInstructions,
-            replaceInstructions: options?.replaceInstructions,
-            label: options?.label,
-          };
-          const signal =
-            self.runAbortController?.signal ?? new AbortController().signal;
-          const hookResult = yield* Effect.promise(() =>
-            self.emitHook({
-              type: "session_before_tree",
-              preparation,
-              signal,
-            })
-          );
-          if (hookResult?.cancel) {
-            return { cancelled: true };
-          }
-          let summaryEntry: NavigateTreeResult["summaryEntry"];
-          let summaryText: string | undefined = hookResult?.summary?.summary;
-          let summaryDetails: unknown = hookResult?.summary?.details;
-          if (!summaryText && options?.summarize && entries.length > 0) {
-            const auth = yield* Effect.promise(() =>
-              Promise.resolve(
-                self.getApiKeyAndHeaders?.(self.model) ??
-                  Promise.resolve(undefined)
-              )
-            );
-            if (!auth) {
-              yield* new AgentHarnessError({
-                code: "auth",
-                message: "No auth available for branch summary",
-              });
-            }
-            const branchSummary = yield* generateBranchSummaryEffect(entries, {
-              model: self.model,
-              apiKey: auth!.apiKey,
-              ...(auth!.headers === undefined
-                ? {}
-                : { headers: auth!.headers }),
-              signal:
-                self.runAbortController?.signal ?? new AbortController().signal,
-              ...(hookResult?.customInstructions !== undefined ||
-              options?.customInstructions !== undefined
-                ? {
-                    customInstructions:
-                      hookResult?.customInstructions ??
-                      options?.customInstructions,
-                  }
-                : {}),
-              ...((hookResult?.replaceInstructions ??
-                options?.replaceInstructions) === undefined
-                ? {}
-                : {
-                    replaceInstructions:
-                      hookResult?.replaceInstructions ??
-                      options?.replaceInstructions,
-                  }),
-            });
-            if (isFailure(branchSummary)) {
-              if (branchSummary.failure.code === "aborted") {
-                return { cancelled: true };
-              }
-              return yield* new AgentHarnessError({
-                code: "branch_summary",
-                message: branchSummary.failure.message,
-                ...(branchSummary.failure === undefined
-                  ? {}
-                  : { cause: branchSummary.failure as Error }),
-              });
-            }
-            summaryText = branchSummary.success.summary;
-            summaryDetails = {
-              readFiles: branchSummary.success.readFiles,
-              modifiedFiles: branchSummary.success.modifiedFiles,
-            };
-          }
-          let editorText: string | undefined;
-          let newLeafId: string | null;
-          if (
-            targetEntry!.type === "message" &&
-            targetEntry!.message.role === "user"
-          ) {
-            newLeafId = targetEntry!.parentId;
-            const content = targetEntry!.message.content;
-            editorText =
-              typeof content === "string"
-                ? content
-                : content
-                    .filter(
-                      (
-                        c
-                      ): c is {
-                        readonly type: "text";
-                        readonly text: string;
-                      } => c.type === "text"
-                    )
-                    .map((c) => c.text)
-                    .join("");
-          } else if (targetEntry!.type === "custom_message") {
-            newLeafId = targetEntry!.parentId;
-            editorText =
-              typeof targetEntry!.content === "string"
-                ? targetEntry!.content
-                : targetEntry!.content
-                    .filter(
-                      (
-                        c
-                      ): c is {
-                        readonly type: "text";
-                        readonly text: string;
-                      } => c.type === "text"
-                    )
-                    .map((c) => c.text)
-                    .join("");
-          } else {
-            newLeafId = targetId;
-          }
-          const summaryId = yield* self.session.moveTo(
-            newLeafId,
-            summaryText
-              ? {
-                  summary: summaryText,
-                  details: summaryDetails,
-                  fromHook: hookResult?.summary !== undefined,
-                }
-              : undefined
-          );
-          if (summaryId) {
-            const entry = yield* self.session.getEntry(summaryId);
-            if (entry?.type === "branch_summary") {
-              summaryEntry = entry;
-            }
-          }
-          const finalLeafId = yield* self.session.getLeafId();
-          yield* Effect.promise(() =>
-            self.emitOwn({
-              type: "session_tree",
-              newLeafId: finalLeafId,
-              oldLeafId,
-              summaryEntry,
-              fromHook: hookResult?.summary !== undefined,
-            })
-          );
-          return { cancelled: false, editorText, summaryEntry };
-        })
-      );
-    } catch (error) {
-      throw normalizeHarnessError(error, "branch_summary");
-    } finally {
-      this.phase = "idle";
-    }
+    return Effect.runPromise(this.navigateTreeEffect(targetId, options));
   }
 
   getModel(): Model {
@@ -1574,115 +1601,124 @@ export class AgentHarness<
     };
   }
 
-  async setModel(model: Model): Promise<void> {
+  setModelEffect(
+    model: Model
+  ): Effect.Effect<void, AgentHarnessError | SessionError> {
     const self = this;
-    try {
-      await Effect.runPromise(
-        Effect.gen(function* () {
-          const previousModel = self.model;
-          if (self.phase === "idle") {
-            yield* self.session.appendModelChange(model.provider, model.id);
-          } else {
-            self.pendingSessionWrites.push({
-              type: "model_change",
-              provider: model.provider,
-              modelId: model.id,
-            });
-          }
-          self.model = model;
-          yield* Effect.promise(() =>
-            self.emitOwn({
-              type: "model_update",
-              model,
-              previousModel,
-              source: "set",
-            })
-          );
+    return Effect.gen(function* () {
+      const previousModel = self.model;
+      if (self.phase === "idle") {
+        yield* self.session.appendModelChange(model.provider, model.id);
+      } else {
+        self.pendingSessionWrites.push({
+          type: "model_change",
+          provider: model.provider,
+          modelId: model.id,
+        });
+      }
+      self.model = model;
+      yield* Effect.promise(() =>
+        self.emitOwn({
+          type: "model_update",
+          model,
+          previousModel,
+          source: "set",
         })
       );
-    } catch (error) {
-      throw normalizeHarnessError(error, "session");
-    }
+    }).pipe(
+      Effect.mapError((error) => normalizeHarnessError(error, "session"))
+    );
+  }
+
+  async setModel(model: Model): Promise<void> {
+    await Effect.runPromise(this.setModelEffect(model));
   }
 
   getThinkingLevel(): ThinkingLevel {
     return this.thinkingLevel;
   }
 
-  async setThinkingLevel(level: ThinkingLevel): Promise<void> {
+  setThinkingLevelEffect(
+    level: ThinkingLevel
+  ): Effect.Effect<void, AgentHarnessError | SessionError> {
     const self = this;
-    try {
-      await Effect.runPromise(
-        Effect.gen(function* () {
-          const previousLevel = self.thinkingLevel;
-          if (self.phase === "idle") {
-            yield* self.session.appendThinkingLevelChange(level);
-          } else {
-            self.pendingSessionWrites.push({
-              type: "thinking_level_change",
-              thinkingLevel: level,
-            });
-          }
-          self.thinkingLevel = level;
-          yield* Effect.promise(() =>
-            self.emitOwn({
-              type: "thinking_level_update",
-              level,
-              previousLevel,
-            })
-          );
+    return Effect.gen(function* () {
+      const previousLevel = self.thinkingLevel;
+      if (self.phase === "idle") {
+        yield* self.session.appendThinkingLevelChange(level);
+      } else {
+        self.pendingSessionWrites.push({
+          type: "thinking_level_change",
+          thinkingLevel: level,
+        });
+      }
+      self.thinkingLevel = level;
+      yield* Effect.promise(() =>
+        self.emitOwn({
+          type: "thinking_level_update",
+          level,
+          previousLevel,
         })
       );
-    } catch (error) {
-      throw normalizeHarnessError(error, "session");
-    }
+    }).pipe(
+      Effect.mapError((error) => normalizeHarnessError(error, "session"))
+    );
+  }
+
+  async setThinkingLevel(level: ThinkingLevel): Promise<void> {
+    await Effect.runPromise(this.setThinkingLevelEffect(level));
   }
 
   getTools(): TTool[] {
     return [...this.tools.values()];
   }
 
-  async setTools(tools: TTool[], activeToolNames?: string[]): Promise<void> {
+  setToolsEffect(
+    tools: TTool[],
+    activeToolNames?: string[]
+  ): Effect.Effect<void, AgentHarnessError | SessionError> {
     const self = this;
-    try {
-      await Effect.runPromise(
-        Effect.gen(function* () {
-          self.validateUniqueNames(
-            tools.map((tool) => tool.name),
-            "Duplicate tool name(s)"
-          );
-          const nextTools = new Map(tools.map((tool) => [tool.name, tool]));
-          const nextActiveToolNames = activeToolNames
-            ? [...activeToolNames]
-            : self.activeToolNames;
-          self.validateToolNames(nextActiveToolNames, nextTools);
-          const previousToolNames = [...self.tools.keys()];
-          const previousActiveToolNames = [...self.activeToolNames];
-          if (self.phase === "idle") {
-            yield* self.session.appendActiveToolsChange(nextActiveToolNames);
-          } else {
-            self.pendingSessionWrites.push({
-              type: "active_tools_change",
-              activeToolNames: [...nextActiveToolNames],
-            });
-          }
-          self.tools = nextTools;
-          self.activeToolNames = [...nextActiveToolNames];
-          yield* Effect.promise(() =>
-            self.emitOwn({
-              type: "tools_update",
-              toolNames: [...self.tools.keys()],
-              previousToolNames,
-              activeToolNames: [...self.activeToolNames],
-              previousActiveToolNames,
-              source: "set",
-            })
-          );
+    return Effect.gen(function* () {
+      self.validateUniqueNames(
+        tools.map((tool) => tool.name),
+        "Duplicate tool name(s)"
+      );
+      const nextTools = new Map(tools.map((tool) => [tool.name, tool]));
+      const nextActiveToolNames = activeToolNames
+        ? [...activeToolNames]
+        : self.activeToolNames;
+      self.validateToolNames(nextActiveToolNames, nextTools);
+      const previousToolNames = [...self.tools.keys()];
+      const previousActiveToolNames = [...self.activeToolNames];
+      if (self.phase === "idle") {
+        yield* self.session.appendActiveToolsChange(nextActiveToolNames);
+      } else {
+        self.pendingSessionWrites.push({
+          type: "active_tools_change",
+          activeToolNames: [...nextActiveToolNames],
+        });
+      }
+      self.tools = nextTools;
+      self.activeToolNames = [...nextActiveToolNames];
+      yield* Effect.promise(() =>
+        self.emitOwn({
+          type: "tools_update",
+          toolNames: [...self.tools.keys()],
+          previousToolNames,
+          activeToolNames: [...self.activeToolNames],
+          previousActiveToolNames,
+          source: "set",
         })
       );
-    } catch (error) {
-      throw normalizeHarnessError(error, "invalid_argument");
-    }
+    }).pipe(
+      Effect.mapError((error) =>
+        normalizeHarnessError(error, "invalid_argument")
+      )
+    );
+  }
+
+  async setTools(tools: TTool[], activeToolNames?: string[]): Promise<void> {
+    await Effect.runPromise(this.setToolsEffect(tools, activeToolNames));
   }
 
   /**
@@ -1791,38 +1827,42 @@ export class AgentHarness<
     return this.softDisabledTools.has(toolName);
   }
 
-  async setActiveTools(toolNames: string[]): Promise<void> {
+  setActiveToolsEffect(
+    toolNames: string[]
+  ): Effect.Effect<void, AgentHarnessError | SessionError> {
     const self = this;
-    try {
-      await Effect.runPromise(
-        Effect.gen(function* () {
-          self.validateToolNames(toolNames);
-          const previousToolNames = [...self.tools.keys()];
-          const previousActiveToolNames = [...self.activeToolNames];
-          if (self.phase === "idle") {
-            yield* self.session.appendActiveToolsChange(toolNames);
-          } else {
-            self.pendingSessionWrites.push({
-              type: "active_tools_change",
-              activeToolNames: [...toolNames],
-            });
-          }
-          self.activeToolNames = [...toolNames];
-          yield* Effect.promise(() =>
-            self.emitOwn({
-              type: "tools_update",
-              toolNames: [...self.tools.keys()],
-              previousToolNames,
-              activeToolNames: [...self.activeToolNames],
-              previousActiveToolNames,
-              source: "set",
-            })
-          );
+    return Effect.gen(function* () {
+      self.validateToolNames(toolNames);
+      const previousToolNames = [...self.tools.keys()];
+      const previousActiveToolNames = [...self.activeToolNames];
+      if (self.phase === "idle") {
+        yield* self.session.appendActiveToolsChange(toolNames);
+      } else {
+        self.pendingSessionWrites.push({
+          type: "active_tools_change",
+          activeToolNames: [...toolNames],
+        });
+      }
+      self.activeToolNames = [...toolNames];
+      yield* Effect.promise(() =>
+        self.emitOwn({
+          type: "tools_update",
+          toolNames: [...self.tools.keys()],
+          previousToolNames,
+          activeToolNames: [...self.activeToolNames],
+          previousActiveToolNames,
+          source: "set",
         })
       );
-    } catch (error) {
-      throw normalizeHarnessError(error, "invalid_argument");
-    }
+    }).pipe(
+      Effect.mapError((error) =>
+        normalizeHarnessError(error, "invalid_argument")
+      )
+    );
+  }
+
+  async setActiveTools(toolNames: string[]): Promise<void> {
+    await Effect.runPromise(this.setActiveToolsEffect(toolNames));
   }
 
   getSteeringMode(): QueueMode {
