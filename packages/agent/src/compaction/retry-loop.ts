@@ -136,6 +136,21 @@ export function abortableSleep(
 // ─── the orchestration loop ──────────────────────────────────────────────────
 
 /**
+ * Persistent state for the auto-compaction stuck-guard. Tracks consecutive
+ * auto-compactions so {@link checkCompaction} can pause when the context
+ * window is too small (≥2 compacts in a row that still leave the prompt over
+ * threshold).
+ *
+ * The pure decision lives in `checkCompaction`; callers (the runner /
+ * agent-run factory) own the persistence so the counter survives across run
+ * calls and app restarts.
+ */
+export interface StuckGuardState {
+  consecutiveCompacts: number;
+  paused: boolean;
+}
+
+/**
  * Effect-typed retry deps. The callbacks return Effects instead of Promises,
  * so {@link executeWithRetryEffect} can `yield*` them directly without
  * `Effect.promise(() => deps.X())` bridges.

@@ -59,6 +59,7 @@ export type {
   RetryDecisionInput,
   RetryRunnerDepsEffect,
   RetrySettings,
+  StuckGuardState,
 } from "./compaction/retry-loop.ts";
 export {
   abortableSleep,

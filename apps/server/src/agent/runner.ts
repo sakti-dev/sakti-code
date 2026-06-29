@@ -7,6 +7,7 @@ import type {
   AgentHarnessEvent,
   PermissionRuleset,
   SessionStorageShape,
+  StuckGuardState,
   ThinkingLevel,
 } from "@sakti-code/agent";
 import {
@@ -278,14 +279,14 @@ export async function persistSkillEnabled(
 }
 
 /**
- * # Stuck-guard state (§4)
+ * # Stuck-guard state persistence (§4)
  *
- * Tracks consecutive auto-compactions so {@link checkCompaction} can pause
- * when the context window is too small (≥2 compacts in a row that still leave
- * the prompt over threshold). The pure decision lives in
- * `packages/agent/.../auto-compaction.ts`; this module owns the persistence so
- * the counter survives across `runPrompt` calls (each of which builds a fresh
- * harness) and across app restarts.
+ * {@link StuckGuardState} (typed in `@sakti-code/agent`) tracks consecutive
+ * auto-compactions so `checkCompaction` can pause when the context window is
+ * too small (≥2 compacts in a row that still leave the prompt over threshold).
+ * The pure decision lives in `packages/agent/.../auto-compaction.ts`; this
+ * module owns the persistence so the counter survives across `runPrompt`
+ * calls (each of which builds a fresh harness) and across app restarts.
  *
  * Keys (settings table):
  *   `session:<id>:consecutive_compacts`   — stringified non-negative int
@@ -294,10 +295,6 @@ export async function persistSkillEnabled(
  * The paused key is deleted (not set to "0") when the guard clears, so the
  * common steady state keeps the settings table clean.
  */
-export interface StuckGuardState {
-  consecutiveCompacts: number;
-  paused: boolean;
-}
 
 export function loadStuckGuardState(
   ctx: ServerContext,
