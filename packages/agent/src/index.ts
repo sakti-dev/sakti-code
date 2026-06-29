@@ -1,4 +1,3 @@
-export { Agent } from "./agent/agent.ts";
 export { AgentHarness } from "./agent/agent-harness.ts";
 export { buildHarnessStreamRequest } from "./agent/build-stream-request.ts";
 export {
@@ -74,8 +73,6 @@ export { serializeConversation } from "./compaction/utils.ts";
 export {
   runAgentLoop,
   runAgentLoopContinue,
-  runAgentLoopContinueEffect,
-  runAgentLoopEffect,
 } from "./core/agent-loop.ts";
 export type {
   CacheDiagnostics,
