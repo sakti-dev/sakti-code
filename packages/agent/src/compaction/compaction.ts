@@ -17,12 +17,6 @@ import {
   type SessionTreeEntry,
 } from "../harness-types";
 import {
-  SUMMARIZATION_PROMPT,
-  SUMMARIZATION_SYSTEM_PROMPT,
-  TURN_PREFIX_SUMMARIZATION_PROMPT,
-  UPDATE_SUMMARIZATION_PROMPT,
-} from "../prompts/compaction";
-import {
   convertToLlm,
   createBranchSummaryMessage,
   createCompactionSummaryMessage,
@@ -31,6 +25,7 @@ import {
 import { buildSessionContextFromEntries } from "../session/session";
 import type { AgentMessage, ThinkingLevel } from "../types";
 import { partitionPinnedTurns, renderPinnedTurns } from "./pinned-turns";
+import type { CompactionPrompts } from "./prompt-bundles.ts";
 import { type PruneStats, pruneStaleToolResults } from "./prune";
 import {
   computeFileLists,
@@ -462,34 +457,41 @@ export function findCutPoint(
   };
 }
 
+/** Options for {@link generateSummaryEffect}. */
+export interface GenerateSummaryOptions {
+  readonly customInstructions?: string;
+  readonly headers?: Record<string, string>;
+  readonly previousSummary?: string;
+  /** Required prompt bundle — caller supplies, no defaults. */
+  readonly prompts: CompactionPrompts;
+  readonly signal?: AbortSignal;
+  readonly thinkingLevel?: ThinkingLevel;
+}
+
 /** Generate or update a conversation summary for compaction. */
 export const generateSummaryEffect = (
   currentMessages: AgentMessage[],
   model: Model,
   reserveTokens: number,
   apiKey: string,
-  headers?: Record<string, string>,
-  signal?: AbortSignal,
-  customInstructions?: string,
-  previousSummary?: string,
-  thinkingLevel?: ThinkingLevel
+  opts: GenerateSummaryOptions
 ): Effect.Effect<Result<string, CompactionError>> =>
   Effect.gen(function* () {
     const maxTokens = Math.min(
       Math.floor(0.8 * reserveTokens),
       model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY
     );
-    let basePrompt = previousSummary
-      ? UPDATE_SUMMARIZATION_PROMPT
-      : SUMMARIZATION_PROMPT;
-    if (customInstructions) {
-      basePrompt = `${basePrompt}\n\nAdditional focus: ${customInstructions}`;
+    let basePrompt = opts.previousSummary
+      ? opts.prompts.update
+      : opts.prompts.summarization;
+    if (opts.customInstructions) {
+      basePrompt = `${basePrompt}\n\nAdditional focus: ${opts.customInstructions}`;
     }
     const llmMessages = convertToLlm(currentMessages);
     const conversationText = serializeConversation(llmMessages);
     let promptText = `<conversation>\n${conversationText}\n</conversation>\n\n`;
-    if (previousSummary) {
-      promptText += `<previous-summary>\n${previousSummary}\n</previous-summary>\n\n`;
+    if (opts.previousSummary) {
+      promptText += `<previous-summary>\n${opts.previousSummary}\n</previous-summary>\n\n`;
     }
     promptText += basePrompt;
 
@@ -503,11 +505,11 @@ export const generateSummaryEffect = (
 
     const completionOptions = {
       maxTokens,
-      ...(signal === undefined ? {} : { signal }),
+      ...(opts.signal === undefined ? {} : { signal: opts.signal }),
       apiKey,
-      ...(headers === undefined ? {} : { headers }),
-      ...(model.reasoning && thinkingLevel && thinkingLevel !== "off"
-        ? { thinkingLevel }
+      ...(opts.headers === undefined ? {} : { headers: opts.headers }),
+      ...(model.reasoning && opts.thinkingLevel && opts.thinkingLevel !== "off"
+        ? { thinkingLevel: opts.thinkingLevel }
         : {}),
     };
 
@@ -515,7 +517,7 @@ export const generateSummaryEffect = (
       complete({
         model,
         messages: summarizationMessages,
-        system: SUMMARIZATION_SYSTEM_PROMPT,
+        system: opts.prompts.summarizationSystem,
         ...(completionOptions.maxTokens
           ? { maxOutputTokens: completionOptions.maxTokens }
           : {}),
@@ -690,15 +692,22 @@ export function prepareCompaction(
 
 export { serializeConversation } from "./utils.ts";
 
+/** Options for {@link compactEffect}. */
+export interface CompactEffectOptions {
+  readonly customInstructions?: string;
+  readonly headers?: Record<string, string>;
+  /** Required prompt bundle — caller supplies, no defaults. */
+  readonly prompts: CompactionPrompts;
+  readonly signal?: AbortSignal;
+  readonly thinkingLevel?: ThinkingLevel;
+}
+
 /** Generate compaction summary data from prepared session history. */
 export const compactEffect = (
   preparation: CompactionPreparation,
   model: Model,
   apiKey: string,
-  headers?: Record<string, string>,
-  customInstructions?: string,
-  signal?: AbortSignal,
-  thinkingLevel?: ThinkingLevel
+  opts: CompactEffectOptions
 ): Effect.Effect<Result<CompactionResult, CompactionError>> =>
   Effect.gen(function* () {
     const {
@@ -732,11 +741,20 @@ export const compactEffect = (
               model,
               settings.reserveTokens,
               apiKey,
-              headers,
-              signal,
-              customInstructions,
-              previousSummary,
-              thinkingLevel
+              {
+                ...(opts.headers === undefined
+                  ? {}
+                  : { headers: opts.headers }),
+                ...(opts.signal === undefined ? {} : { signal: opts.signal }),
+                ...(opts.customInstructions === undefined
+                  ? {}
+                  : { customInstructions: opts.customInstructions }),
+                ...(previousSummary === undefined ? {} : { previousSummary }),
+                ...(opts.thinkingLevel === undefined
+                  ? {}
+                  : { thinkingLevel: opts.thinkingLevel }),
+                prompts: opts.prompts,
+              }
             )
           : Effect.succeed(ok<string, CompactionError>("No prior history.")),
         generateTurnPrefixSummaryEffect(
@@ -744,9 +762,14 @@ export const compactEffect = (
           model,
           settings.reserveTokens,
           apiKey,
-          headers,
-          signal,
-          thinkingLevel
+          {
+            ...(opts.headers === undefined ? {} : { headers: opts.headers }),
+            ...(opts.signal === undefined ? {} : { signal: opts.signal }),
+            ...(opts.thinkingLevel === undefined
+              ? {}
+              : { thinkingLevel: opts.thinkingLevel }),
+            prompts: opts.prompts,
+          }
         ),
       ]);
       if (isFailure(historyResult)) {
@@ -762,11 +785,18 @@ export const compactEffect = (
         model,
         settings.reserveTokens,
         apiKey,
-        headers,
-        signal,
-        customInstructions,
-        previousSummary,
-        thinkingLevel
+        {
+          ...(opts.headers === undefined ? {} : { headers: opts.headers }),
+          ...(opts.signal === undefined ? {} : { signal: opts.signal }),
+          ...(opts.customInstructions === undefined
+            ? {}
+            : { customInstructions: opts.customInstructions }),
+          ...(previousSummary === undefined ? {} : { previousSummary }),
+          ...(opts.thinkingLevel === undefined
+            ? {}
+            : { thinkingLevel: opts.thinkingLevel }),
+          prompts: opts.prompts,
+        }
       );
       if (isFailure(summaryResult)) {
         return err(summaryResult.failure);
@@ -798,14 +828,19 @@ export async function compact(
   return Effect.runPromise(compactEffect(...args));
 }
 
+interface TurnPrefixSummaryOptions {
+  readonly headers?: Record<string, string>;
+  readonly prompts: CompactionPrompts;
+  readonly signal?: AbortSignal;
+  readonly thinkingLevel?: ThinkingLevel;
+}
+
 const generateTurnPrefixSummaryEffect = (
   messages: AgentMessage[],
   model: Model,
   reserveTokens: number,
   apiKey: string,
-  headers?: Record<string, string>,
-  signal?: AbortSignal,
-  thinkingLevel?: ThinkingLevel
+  opts: TurnPrefixSummaryOptions
 ): Effect.Effect<Result<string, CompactionError>> =>
   Effect.gen(function* () {
     const maxTokens = Math.min(
@@ -814,7 +849,7 @@ const generateTurnPrefixSummaryEffect = (
     );
     const llmMessages = convertToLlm(messages);
     const conversationText = serializeConversation(llmMessages);
-    const promptText = `<conversation>\n${conversationText}\n</conversation>\n\n${TURN_PREFIX_SUMMARIZATION_PROMPT}`;
+    const promptText = `<conversation>\n${conversationText}\n</conversation>\n\n${opts.prompts.turnPrefix}`;
     const summarizationMessages = [
       {
         role: "user" as const,
@@ -827,13 +862,15 @@ const generateTurnPrefixSummaryEffect = (
       complete({
         model,
         messages: summarizationMessages,
-        system: SUMMARIZATION_SYSTEM_PROMPT,
+        system: opts.prompts.summarizationSystem,
         ...(maxTokens ? { maxOutputTokens: maxTokens } : {}),
-        ...(signal ? { abortSignal: signal } : {}),
+        ...(opts.signal ? { abortSignal: opts.signal } : {}),
         apiKey,
-        ...(headers ? { headers } : {}),
-        ...(model.reasoning && thinkingLevel && thinkingLevel !== "off"
-          ? { thinkingLevel }
+        ...(opts.headers ? { headers: opts.headers } : {}),
+        ...(model.reasoning &&
+        opts.thinkingLevel &&
+        opts.thinkingLevel !== "off"
+          ? { thinkingLevel: opts.thinkingLevel }
           : {}),
       })
     );

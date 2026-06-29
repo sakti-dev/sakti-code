@@ -8,6 +8,7 @@ import {
   fauxToolCall,
   registerFauxStreamProvider,
 } from "../../__tests__/helpers/faux-provider";
+import { TEST_COMPACTION_PROMPTS } from "../../__tests__/helpers/test-compaction-prompts.ts";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
 import { AgentHarness } from "../../agent/agent-harness";
 import { createTestSession } from "../../session/__tests__/session-test-utils";
@@ -65,6 +66,7 @@ describe("cache-stability: prefix stable across turns", () => {
     ]);
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -109,6 +111,7 @@ describe("cache-stability: prefix stable across turns", () => {
     );
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -160,6 +163,7 @@ describe("cache-stability: prefix stable across turns", () => {
     const middle = makeEchoTool("middle");
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),

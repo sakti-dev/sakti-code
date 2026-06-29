@@ -8,6 +8,7 @@ import {
   runAutoCompactionEffect,
 } from "../compaction/auto-compaction.ts";
 import type { CompactionSettings } from "../compaction/compaction.ts";
+import type { CompactionPrompts } from "../compaction/prompt-bundles.ts";
 import {
   executeWithRetryEffect,
   type RetryRunnerDepsEffect,
@@ -31,6 +32,7 @@ const PROMPT_ARG_SPLIT = /\s+/;
 
 export interface AgentRunDeps {
   readonly apiKey: string;
+  readonly compactionPrompts: CompactionPrompts;
   readonly compactionSettings: CompactionSettings;
   readonly cwd: string;
 
@@ -91,6 +93,7 @@ export function runAgentRunEffect(
       message,
       retrySettings,
       compactionSettings,
+      compactionPrompts,
       model,
       apiKey,
       skills,
@@ -230,6 +233,7 @@ export function runAgentRunEffect(
             model,
             apiKey,
             settings: compactionSettings,
+            prompts: compactionPrompts,
             ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
           });
           if (result.ok) {

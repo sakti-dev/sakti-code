@@ -30,6 +30,7 @@ import {
   rebuildTool,
   type ToolContext,
 } from "../agents/tool-registry.ts";
+import { COMPACTION_PROMPTS } from "../compaction/prompts.ts";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";
 import {
@@ -553,6 +554,7 @@ export function runPromptEffect(
       env,
       model,
       session: sessionShape,
+      compactionPrompts: COMPACTION_PROMPTS,
       ...(ctx.log === undefined
         ? {}
         : { logger: ctx.log.agent, streamLogger: ctx.log.llm }),
@@ -621,6 +623,7 @@ export function runPromptEffect(
       message,
       retrySettings: settings.retry(),
       compactionSettings,
+      compactionPrompts: COMPACTION_PROMPTS,
       model,
       apiKey: auth.apiKey,
       ...(thinkingLevel === undefined ? {} : { thinkingLevel }),

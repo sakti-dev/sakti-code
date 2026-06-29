@@ -14,6 +14,7 @@ import type {
 export type { ThinkingLevel } from "./types";
 
 import type { PermissionRuleset } from "./agents/permission";
+import type { CompactionPrompts } from "./compaction/prompt-bundles";
 import type {
   BranchSummaryEntry,
   CompactionEntry,
@@ -555,6 +556,8 @@ export interface AgentHarnessOptions<
   TTool extends AgentTool = AgentTool,
 > {
   activeToolNames?: string[];
+  /** Required: prompt bundle for the harness's idle-time compaction path. */
+  compactionPrompts: CompactionPrompts;
   env: ExecutionEnv;
   followUpMode?: QueueMode;
   getApiKeyAndHeaders?: (

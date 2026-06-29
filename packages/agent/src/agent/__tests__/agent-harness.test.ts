@@ -9,6 +9,7 @@ import {
   fauxToolCall,
   registerFauxStreamProvider,
 } from "../../__tests__/helpers/faux-provider";
+import { TEST_COMPACTION_PROMPTS } from "../../__tests__/helpers/test-compaction-prompts.ts";
 import { calculateTool } from "../../__tests__/utils/calculate";
 import { getCurrentTimeTool } from "../../__tests__/utils/get-current-time";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
@@ -72,6 +73,7 @@ describe("AgentHarness", () => {
     const env = new TestExecutionEnv(process.cwd());
     const initialModel = getModel("anthropic", "claude-sonnet-4-5");
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env,
       session,
       model: initialModel,
@@ -116,6 +118,7 @@ describe("AgentHarness", () => {
       },
     ]);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -157,6 +160,7 @@ describe("AgentHarness", () => {
     ]);
     const session = await createTestSession();
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session,
       model: registration.getModel(),
@@ -209,6 +213,7 @@ describe("AgentHarness", () => {
       },
     ]);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -273,6 +278,7 @@ describe("AgentHarness", () => {
       },
     ]);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -310,6 +316,7 @@ describe("AgentHarness", () => {
     ]);
     const session = await createTestSession();
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session,
       model: registration.getModel(),
@@ -384,6 +391,7 @@ describe("AgentHarness", () => {
       },
     ]);
     const harness = new AgentHarness<Skill, PromptTemplate, AgentTool>({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -448,6 +456,7 @@ describe("AgentHarness", () => {
     registration.setResponses([() => fauxAssistantMessage("ok")]);
     const session = await createTestSession();
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session,
       model: registration.getModel(),
@@ -486,6 +495,7 @@ describe("AgentHarness", () => {
     registration.setResponses([() => fauxAssistantMessage("ok")]);
     const barrier = deferred();
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -531,6 +541,7 @@ describe("AgentHarness", () => {
     ]);
     const session = await createTestSession();
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session,
       model: registration.getModel(),
@@ -596,6 +607,7 @@ describe("AgentHarness", () => {
       source: "extension",
     };
     const harness = new AgentHarness<AppSkill, AppPromptTemplate, AppTool>({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env,
       session,
       model,
@@ -687,6 +699,7 @@ describe("AgentHarness", () => {
     expect(
       () =>
         new AgentHarness({
+          compactionPrompts: TEST_COMPACTION_PROMPTS,
           env,
           session,
           model,
@@ -697,6 +710,7 @@ describe("AgentHarness", () => {
     expect(
       () =>
         new AgentHarness({
+          compactionPrompts: TEST_COMPACTION_PROMPTS,
           env,
           session,
           model,
@@ -707,6 +721,7 @@ describe("AgentHarness", () => {
     expect(
       () =>
         new AgentHarness({
+          compactionPrompts: TEST_COMPACTION_PROMPTS,
           env,
           session,
           model,
@@ -721,6 +736,7 @@ describe("AgentHarness", () => {
     const env = new TestExecutionEnv(process.cwd());
     const model = getModel("anthropic", "claude-sonnet-4-5");
     const harness = new AgentHarness<AppSkill, AppPromptTemplate, AgentTool>({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env,
       session,
       model,
@@ -770,6 +786,7 @@ describe("AgentHarness", () => {
     registrations.push(registration);
     registration.setResponses([() => fauxAssistantMessage("done")]);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -786,6 +803,7 @@ describe("AgentHarness", () => {
     registrations.push(registration);
     registration.setResponses([() => fauxAssistantMessage("hello back")]);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -806,6 +824,7 @@ describe("AgentHarness", () => {
       () => fauxAssistantMessage("second"),
     ]);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -829,6 +848,7 @@ describe("AgentHarness", () => {
     registrations.push(registration);
     registration.setResponses([() => fauxAssistantMessage("hi")]);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -869,6 +889,7 @@ describe("AgentHarness", () => {
       () => fauxAssistantMessageWithContent([{ type: "text", text: "hi" }]),
     ]);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -899,6 +920,7 @@ describe("scheduleSystemPromptRefresh", () => {
       },
     ]);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -919,6 +941,7 @@ describe("scheduleSystemPromptRefresh", () => {
     const registration = registerFauxStreamProvider();
     registrations.push(registration);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -964,6 +987,7 @@ describe("scheduleSystemPromptRefresh", () => {
     ]);
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session,
       model: registration.getModel(),
@@ -998,6 +1022,7 @@ describe("scheduleSystemPromptRefresh", () => {
     const registration = registerFauxStreamProvider();
     registrations.push(registration);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1040,6 +1065,7 @@ describe("announceSkillAdded", () => {
     ]);
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1082,6 +1108,7 @@ describe("softDisableTool", () => {
     ]);
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1123,6 +1150,7 @@ describe("softDisableTool", () => {
     registration.setResponses([() => fauxAssistantMessage("no tool call")]);
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1161,6 +1189,7 @@ describe("softDisableTool prompt refresh", () => {
     );
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1194,6 +1223,7 @@ describe("softDisableTool prompt refresh", () => {
     );
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1225,6 +1255,7 @@ describe("softDisableTool prompt refresh", () => {
     );
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1265,6 +1296,7 @@ describe("softDisableTool prompt refresh", () => {
     );
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1317,6 +1349,7 @@ describe("softDisableTool prompt refresh", () => {
     );
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1348,6 +1381,7 @@ describe("swapTool", () => {
     registration.setResponses([() => fauxAssistantMessage("ok")]);
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1390,6 +1424,7 @@ describe("swapTool", () => {
     );
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1433,6 +1468,7 @@ describe("swapTool", () => {
     ]);
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1459,6 +1495,7 @@ describe("swapTool", () => {
     registrations.push(registration);
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1479,6 +1516,7 @@ describe("swapTool", () => {
     registrations.push(registration);
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1502,6 +1540,7 @@ describe("swapTool", () => {
 
     const events: AgentHarnessEvent[] = [];
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1547,6 +1586,7 @@ describe("addSkill / removeSkill", () => {
     ]);
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1576,6 +1616,7 @@ describe("addSkill / removeSkill", () => {
     const registration = registerFauxStreamProvider();
     registrations.push(registration);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1621,6 +1662,7 @@ describe("addSkill / removeSkill", () => {
     const registration = registerFauxStreamProvider();
     registrations.push(registration);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1644,6 +1686,7 @@ describe("addSkill / removeSkill", () => {
     ]);
 
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel(),
@@ -1666,6 +1709,7 @@ describe("*Effect cores (Phase H1)", () => {
   it("appendMessageEffect returns an Effect that appends a message when idle", async () => {
     const session = await createTestSession();
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session,
       model: getModel("anthropic", "claude-sonnet-4-5"),
@@ -1687,6 +1731,7 @@ describe("*Effect cores (Phase H1)", () => {
     const registration = registerFauxStreamProvider();
     registrations.push(registration);
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: registration.getModel("initial"),
@@ -1700,6 +1745,7 @@ describe("*Effect cores (Phase H1)", () => {
 
   it("setThinkingLevelEffect returns an Effect that updates the thinking level when idle", async () => {
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: getModel("anthropic", "claude-sonnet-4-5"),
@@ -1713,6 +1759,7 @@ describe("*Effect cores (Phase H1)", () => {
 
   it("setToolsEffect returns an Effect that updates the tools when idle", async () => {
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: getModel("anthropic", "claude-sonnet-4-5"),
@@ -1725,6 +1772,7 @@ describe("*Effect cores (Phase H1)", () => {
 
   it("setActiveToolsEffect returns an Effect that updates the active tools when idle", async () => {
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session: await createTestSession(),
       model: getModel("anthropic", "claude-sonnet-4-5"),
@@ -1747,6 +1795,7 @@ describe("*Effect cores (Phase H1)", () => {
     const entries = await Effect.runPromise(session.getEntries());
     const firstKeptEntryId = entries[0]!.id;
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session,
       model: getModel("anthropic", "claude-sonnet-4-5"),
@@ -1775,6 +1824,7 @@ describe("*Effect cores (Phase H1)", () => {
       })
     );
     const harness = new AgentHarness({
+      compactionPrompts: TEST_COMPACTION_PROMPTS,
       env: new TestExecutionEnv(process.cwd()),
       session,
       model: getModel("anthropic", "claude-sonnet-4-5"),
@@ -1802,6 +1852,7 @@ describe("Effect-native prompt emit ordering (Phase H2 regression)", () => {
       registration.setResponses([() => fauxAssistantMessage("ok")]);
       const events: string[] = [];
       const harness = new AgentHarness({
+        compactionPrompts: TEST_COMPACTION_PROMPTS,
         env: new TestExecutionEnv(process.cwd()),
         session: await createTestSession(),
         model: registration.getModel(),

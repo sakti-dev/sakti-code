@@ -4,6 +4,7 @@ import {
   fauxAssistantMessage,
   registerFauxStreamProvider,
 } from "../../__tests__/helpers/faux-provider";
+import { TEST_COMPACTION_PROMPTS } from "../../__tests__/helpers/test-compaction-prompts.ts";
 import { AgentHarness } from "../../agent/agent-harness";
 import { createTestSession } from "../../session/__tests__/session-test-utils";
 import type { SessionShape } from "../../session/session";
@@ -33,6 +34,7 @@ async function makeHarness(
     streamFn: registration.streamFn,
     steeringMode: "all",
     followUpMode: "all",
+    compactionPrompts: TEST_COMPACTION_PROMPTS,
   });
 }
 

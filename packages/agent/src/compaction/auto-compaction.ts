@@ -22,6 +22,7 @@ import {
 import { convertToLlm } from "../session/messages";
 import type { SessionShape } from "../session/session";
 import type { AgentMessage } from "../types";
+import type { CompactionPrompts } from "./prompt-bundles";
 import { canSkipSummarizer } from "./prune";
 
 /**
@@ -206,6 +207,8 @@ export function checkCompaction(
 export interface RunCompactionDeps {
   apiKey: string;
   model: Model;
+  /** Required prompt bundle — caller supplies, no defaults. */
+  prompts: CompactionPrompts;
   session: SessionShape;
   settings: CompactionSettings;
   thinkingLevel?: ThinkingLevel;
@@ -283,10 +286,12 @@ export const runAutoCompactionEffect = (
       preparation.success,
       deps.model,
       deps.apiKey,
-      undefined,
-      undefined,
-      undefined,
-      deps.thinkingLevel
+      {
+        prompts: deps.prompts,
+        ...(deps.thinkingLevel === undefined
+          ? {}
+          : { thinkingLevel: deps.thinkingLevel }),
+      }
     );
     if (isFailure(result)) {
       return { ok: false, errorMessage: result.failure.message };

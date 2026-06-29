@@ -9,6 +9,7 @@ import type { Model } from "@sakti-code/llm";
 import { Effect } from "effect";
 import { Hono } from "hono";
 import { resolveAuth, resolveModel } from "../../agent/model-resolver.ts";
+import { COMPACTION_PROMPTS } from "../../compaction/prompts.ts";
 import { createSessionStorage, getCtx } from "../../context.ts";
 
 export const compactionRoutes = new Hono()
@@ -54,7 +55,9 @@ export const compactionRoutes = new Hono()
       return c.json({ tokensBefore: 0, tokensAfter: 0, skipped: true });
     }
 
-    const result = await compact(preparation.success, auth.model, auth.apiKey);
+    const result = await compact(preparation.success, auth.model, auth.apiKey, {
+      prompts: COMPACTION_PROMPTS,
+    });
     if (isFailure(result)) {
       return c.json({ error: result.failure.message }, 500);
     }

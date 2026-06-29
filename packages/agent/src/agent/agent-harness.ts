@@ -16,6 +16,7 @@ import {
   prepareCompaction,
   compactEffect as runCompactEffect,
 } from "../compaction/compaction";
+import type { CompactionPrompts } from "../compaction/prompt-bundles";
 import {
   runAgentLoopContinueEffect,
   runAgentLoopEffect,
@@ -266,6 +267,7 @@ export class AgentHarness<
     AgentHarnessEvent<TSkill, TPromptTemplate>
   > = Effect.runSync(PubSub.unbounded());
   private model: Model;
+  private compactionPrompts: CompactionPrompts;
   private maxSteps?: number;
   private thinkingLevel: ThinkingLevel;
   private systemPrompt: AgentHarnessOptions<
@@ -338,6 +340,7 @@ export class AgentHarness<
       this.tools.set(tool.name, tool);
     }
     this.model = options.model;
+    this.compactionPrompts = options.compactionPrompts;
     if (options.maxSteps !== undefined) {
       this.maxSteps = options.maxSteps;
     }
@@ -1460,15 +1463,14 @@ export class AgentHarness<
       const provided = hookResult?.compaction;
       const compactResult = provided
         ? ok(provided)
-        : yield* runCompactEffect(
-            preparation!,
-            self.model,
-            auth!.apiKey,
-            auth!.headers,
-            customInstructions,
-            undefined,
-            self.thinkingLevel
-          );
+        : yield* runCompactEffect(preparation!, self.model, auth!.apiKey, {
+            ...(auth?.headers === undefined ? {} : { headers: auth.headers }),
+            ...(customInstructions === undefined ? {} : { customInstructions }),
+            ...(self.thinkingLevel === undefined
+              ? {}
+              : { thinkingLevel: self.thinkingLevel }),
+            prompts: self.compactionPrompts,
+          });
       if (isFailure(compactResult)) {
         return yield* Effect.fail(compactResult.failure);
       }

@@ -20,6 +20,7 @@ vi.mock("@sakti-code/llm", async (importOriginal) => {
   };
 });
 
+import { TEST_COMPACTION_PROMPTS } from "../../__tests__/helpers/test-compaction-prompts.ts";
 import {
   type CompactionPreparation,
   calculateContextTokens,
@@ -627,17 +628,10 @@ describe("harness compaction", () => {
     ]);
     getOrThrow(
       await Effect.runPromise(
-        generateSummaryEffect(
-          messages,
-          reasoningModel,
-          2000,
-          "test-key",
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          "medium"
-        )
+        generateSummaryEffect(messages, reasoningModel, 2000, "test-key", {
+          prompts: TEST_COMPACTION_PROMPTS,
+          thinkingLevel: "medium",
+        })
       )
     );
     expect(seenRequests[0]).toMatchObject({
@@ -654,17 +648,10 @@ describe("harness compaction", () => {
     ]);
     getOrThrow(
       await Effect.runPromise(
-        generateSummaryEffect(
-          messages,
-          offModel,
-          2000,
-          "test-key",
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          "off"
-        )
+        generateSummaryEffect(messages, offModel, 2000, "test-key", {
+          prompts: TEST_COMPACTION_PROMPTS,
+          thinkingLevel: "off",
+        })
       )
     );
     expect(seenRequests[1]?.thinkingLevel).toBeUndefined();
@@ -678,17 +665,10 @@ describe("harness compaction", () => {
     ]);
     getOrThrow(
       await Effect.runPromise(
-        generateSummaryEffect(
-          messages,
-          nonReasoningModel,
-          2000,
-          "test-key",
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          "medium"
-        )
+        generateSummaryEffect(messages, nonReasoningModel, 2000, "test-key", {
+          prompts: TEST_COMPACTION_PROMPTS,
+          thinkingLevel: "medium",
+        })
       )
     );
     expect(seenRequests[2]?.thinkingLevel).toBeUndefined();
@@ -712,16 +692,12 @@ describe("harness compaction", () => {
 
     const summary = getOrThrow(
       await Effect.runPromise(
-        generateSummaryEffect(
-          messages,
-          model,
-          2000,
-          "test-key",
-          { "x-test": "yes" },
-          undefined,
-          "focus",
-          "old summary"
-        )
+        generateSummaryEffect(messages, model, 2000, "test-key", {
+          headers: { "x-test": "yes" },
+          customInstructions: "focus",
+          previousSummary: "old summary",
+          prompts: TEST_COMPACTION_PROMPTS,
+        })
       )
     );
 
@@ -737,7 +713,9 @@ describe("harness compaction", () => {
     const { model: errorModel } = createFauxModel(false);
     setCompleteResponses([() => completeErrorResult("boom")]);
     const errorResult = await Effect.runPromise(
-      generateSummaryEffect(messages, errorModel, 2000, "test-key")
+      generateSummaryEffect(messages, errorModel, 2000, "test-key", {
+        prompts: TEST_COMPACTION_PROMPTS,
+      })
     );
     expect(errorResult).toMatchObject({
       failure: {
@@ -749,7 +727,9 @@ describe("harness compaction", () => {
     const { model: abortedModel } = createFauxModel(false);
     setCompleteResponses([() => completeErrorResult("stopped")]);
     const abortedResult = await Effect.runPromise(
-      generateSummaryEffect(messages, abortedModel, 2000, "test-key")
+      generateSummaryEffect(messages, abortedModel, 2000, "test-key", {
+        prompts: TEST_COMPACTION_PROMPTS,
+      })
     );
     expect(abortedResult).toMatchObject({
       failure: {
@@ -788,7 +768,11 @@ describe("harness compaction", () => {
       },
     };
 
-    getOrThrow(await compact(preparation, model, "test-key"));
+    getOrThrow(
+      await compact(preparation, model, "test-key", {
+        prompts: TEST_COMPACTION_PROMPTS,
+      })
+    );
 
     expect(seenRequests.map((req) => req.maxOutputTokens)).toEqual([
       128_000, 128_000,
@@ -810,7 +794,11 @@ describe("harness compaction", () => {
     };
     const { model: historyModel } = createFauxModel(false);
     setCompleteResponses([() => completeErrorResult("history failed")]);
-    expect(await compact(preparation, historyModel, "test-key")).toMatchObject({
+    expect(
+      await compact(preparation, historyModel, "test-key", {
+        prompts: TEST_COMPACTION_PROMPTS,
+      })
+    ).toMatchObject({
       failure: {
         code: "summarization_failed",
         message: "Summarization failed: history failed",
@@ -821,7 +809,8 @@ describe("harness compaction", () => {
     const invalidResult = await compact(
       { ...preparation, messagesToSummarize: [], firstKeptEntryId: "" },
       invalidModel,
-      "test-key"
+      "test-key",
+      { prompts: TEST_COMPACTION_PROMPTS }
     );
     expect(invalidResult).toMatchObject({
       failure: {
@@ -853,15 +842,10 @@ describe("harness compaction", () => {
     };
 
     getOrThrow(
-      await compact(
-        preparation,
-        model,
-        "test-key",
-        undefined,
-        undefined,
-        undefined,
-        "high"
-      )
+      await compact(preparation, model, "test-key", {
+        prompts: TEST_COMPACTION_PROMPTS,
+        thinkingLevel: "high",
+      })
     );
 
     expect(seenRequests[0]).toMatchObject({ thinkingLevel: "high" });
@@ -883,7 +867,11 @@ describe("harness compaction", () => {
     const { model } = createFauxModel(false);
     setCompleteResponses([() => completeErrorResult("prefix failed")]);
 
-    expect(await compact(preparation, model, "test-key")).toMatchObject({
+    expect(
+      await compact(preparation, model, "test-key", {
+        prompts: TEST_COMPACTION_PROMPTS,
+      })
+    ).toMatchObject({
       failure: {
         code: "summarization_failed",
         message: "Turn prefix summarization failed: prefix failed",
@@ -892,7 +880,11 @@ describe("harness compaction", () => {
 
     const { model: abortedModel } = createFauxModel(false);
     setCompleteResponses([() => completeErrorResult("prefix stopped")]);
-    expect(await compact(preparation, abortedModel, "test-key")).toMatchObject({
+    expect(
+      await compact(preparation, abortedModel, "test-key", {
+        prompts: TEST_COMPACTION_PROMPTS,
+      })
+    ).toMatchObject({
       failure: {
         code: "summarization_failed",
       },
@@ -924,7 +916,11 @@ describe("harness compaction", () => {
     expect(preparation).toBeDefined();
     const { model } = createFauxModel(false);
     setCompleteResponses([() => completeTextResult("## Goal\nTest summary")]);
-    const result = getOrThrow(await compact(preparation!, model, "test-key"));
+    const result = getOrThrow(
+      await compact(preparation!, model, "test-key", {
+        prompts: TEST_COMPACTION_PROMPTS,
+      })
+    );
     expect(result.summary.length).toBeGreaterThan(0);
     expect(result.firstKeptEntryId).toBeTruthy();
     expect(result.details).toBeDefined();
@@ -981,7 +977,11 @@ describe("prepareCompaction pinned user turns (§5.1)", () => {
     const { model } = createFauxModel(false);
     setCompleteResponses([() => completeTextResult("## Summary\nDone")]);
 
-    const result = getOrThrow(await compact(preparation, model, "test-key"));
+    const result = getOrThrow(
+      await compact(preparation, model, "test-key", {
+        prompts: TEST_COMPACTION_PROMPTS,
+      })
+    );
 
     expect(result.summary).toContain("<pinned-user-turns>");
     expect(result.summary).toContain("always use pnpm");
