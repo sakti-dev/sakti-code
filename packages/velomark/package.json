@@ -41,7 +41,7 @@
     "./styles.css": "./dist/styles.css"
   },
   "scripts": {
-    "dev": "vp serve dev",
+    "dev": "vp dev dev",
     "build": "tsup && cp src/theme/styles.css dist/styles.css",
     "test": "concurrently pnpm:test:client pnpm:test:ssr pnpm:test:packed-consumer",
     "test:client": "vp test run --config vitest.config.ts",
@@ -55,8 +55,7 @@
     "lint:types": "tsc --noEmit",
     "update-deps": "pnpm up -Li",
     "check": "ultracite check",
-    "fix": "ultracite fix",
-    "prepare": "husky"
+    "fix": "ultracite fix"
   },
   "peerDependencies": {
     "solid-js": "^1.9.10"
@@ -108,11 +107,6 @@
   "engines": {
     "node": ">=18",
     "pnpm": ">=9.0.0"
-  },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx,json,jsonc,css,scss,md,mdx}": [
-      "pnpm exec ultracite fix"
-    ]
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
