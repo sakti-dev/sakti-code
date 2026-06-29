@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { render } from "solid-js/web";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { Velomark } from "../../render/velomark";
 import { applyTheme } from "../apply-theme";
 import { generateCssVars } from "../generate-css-vars";

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { computeFileHash } from "../../../lib/hashline-utils/format";
 import { InMemorySnapshotStore } from "../../../lib/hashline-utils/snapshots";
 import { InMemoryFilesystem } from "../fs";

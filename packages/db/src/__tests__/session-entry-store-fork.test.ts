@@ -7,7 +7,7 @@ import {
   SqliteSessionStorage,
 } from "@sakti-code/db";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 async function seedConversation(
   storage: SqliteSessionStorage,

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { SessionRegistry } from "../../session/session-registry.ts";
 import { TerminalRegistry } from "../../terminal/terminal-registry.ts";
 import { isStreaming } from "../../workspace/ui-signals.ts";

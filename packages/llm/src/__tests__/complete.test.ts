@@ -1,6 +1,6 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type { FinishReason, LanguageModelUsage } from "ai";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { CompleteResult } from "../complete.ts";
 import { completeWithModel } from "../complete.ts";
 import type { Model } from "../types.ts";

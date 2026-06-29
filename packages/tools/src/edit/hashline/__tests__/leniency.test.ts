@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { applyEdits } from "../apply";
 import { Patch } from "../input";
 import { parsePatch } from "../parser";

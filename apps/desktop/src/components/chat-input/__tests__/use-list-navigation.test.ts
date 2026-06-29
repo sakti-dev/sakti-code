@@ -1,5 +1,5 @@
 import { renderHook } from "@solidjs/testing-library";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { useListNavigation } from "../use-list-navigation.ts";
 
 const items = [{ id: "a" }, { id: "b" }, { id: "c" }];

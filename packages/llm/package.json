@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsup && node ../../scripts/restore-node-protocol.mjs dist",
     "generate-models": "node scripts/generate-models.ts",
-    "test": "vitest run",
+    "test": "vp test run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -51,6 +51,7 @@
   },
   "devDependencies": {
     "@types/node": "^24",
-    "vitest": "^4.1.9"
+    "vitest": "catalog:",
+    "vite-plus": "catalog:"
   }
 }

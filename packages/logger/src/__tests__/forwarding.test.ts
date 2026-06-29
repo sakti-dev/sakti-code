@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { createForwardingLogger } from "../forwarding.ts";
 import type { LogEntry } from "../types.ts";
 

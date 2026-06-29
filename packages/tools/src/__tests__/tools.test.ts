@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 import type { AgentToolResult } from "@sakti-code/agent";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import {
   createBashTool,
   createEditTool,

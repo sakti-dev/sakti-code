@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, waitFor } from "@solidjs/testing-library";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { ChatInput } from "../chat-input";
 import type { ContextMenuMode } from "../context-menu";
 

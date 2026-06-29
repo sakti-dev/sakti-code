@@ -1,6 +1,6 @@
 import type { StreamRequest } from "@sakti-code/llm";
 import { Effect } from "effect";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   type FauxProviderRegistration,
   fauxAssistantMessage,

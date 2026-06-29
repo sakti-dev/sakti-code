@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { MessageEntry, SessionTreeEntry } from "../../harness-types";
 import { getOrThrow } from "../../harness-types";
 import type { AgentMessage } from "../../types";

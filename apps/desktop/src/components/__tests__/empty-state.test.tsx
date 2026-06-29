@@ -1,5 +1,5 @@
 import { render } from "@solidjs/testing-library";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { EmptyState } from "../home/empty-state.tsx";
 
 describe("EmptyState", () => {

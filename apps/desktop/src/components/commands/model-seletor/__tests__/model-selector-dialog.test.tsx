@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from "@solidjs/testing-library";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { ModelSelectorDialog } from "..";
 import type { ModelSelectorSection } from "../hooks";
 

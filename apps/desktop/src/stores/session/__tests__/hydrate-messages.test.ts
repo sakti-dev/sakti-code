@@ -1,5 +1,5 @@
 import type { AgentMessage } from "@sakti-code/agent";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { hydrateSessionMessages } from "../hydrate-messages.ts";
 
 describe("hydrateSessionMessages", () => {

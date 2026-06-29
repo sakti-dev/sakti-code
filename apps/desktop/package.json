@@ -16,7 +16,7 @@
     "package": "turbo run build:electron && electron-builder",
     "rebuild": "electron-builder install-app-deps",
     "spike": "electron spike.mjs",
-    "test": "vitest run",
+    "test": "vp test run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -59,8 +59,9 @@
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "jsdom": "^29.1.1",
-    "vite": "^7.3.5",
+    "vite": "catalog:",
     "vite-plugin-solid": "^2.11.0",
-    "vitest": "^4.1.9"
+    "vitest": "catalog:",
+    "vite-plus": "catalog:"
   }
 }

@@ -1,5 +1,5 @@
 import { isServer, renderToString } from "solid-js/web";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { Velomark } from "../src";
 
 describe("environment", () => {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { isContextOverflow } from "../context-overflow.ts";
 import type { AssistantMessage } from "../types.ts";
 

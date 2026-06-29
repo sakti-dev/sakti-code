@@ -8,11 +8,12 @@
   "scripts": {
     "build:native": "napi build --platform --release",
     "build:debug": "napi build --platform",
-    "test": "vitest run",
+    "test": "vp test run",
     "prepublishOnly": "napi prepublish -t npm"
   },
   "devDependencies": {
     "@napi-rs/cli": "^3",
-    "vitest": "^3"
+    "vitest": "catalog:",
+    "vite-plus": "catalog:"
   }
 }

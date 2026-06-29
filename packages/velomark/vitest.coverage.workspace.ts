@@ -1,4 +1,4 @@
-import { defineProject, defineWorkspace } from "vitest/config";
+import { defineProject, defineWorkspace } from "vite-plus";
 
 export default defineWorkspace([
   defineProject({

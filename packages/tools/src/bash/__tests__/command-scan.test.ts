@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { scanCommand } from "../command-scan.ts";
 
 describe("scanCommand", () => {

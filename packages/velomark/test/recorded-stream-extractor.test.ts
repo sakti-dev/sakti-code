@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 // @ts-expect-error local node script helper is imported only for test/runtime verification
 import { extractMarkdownFromRecordedChunks } from "../scripts/extract-recorded-stream-markdown-lib.mjs";
 

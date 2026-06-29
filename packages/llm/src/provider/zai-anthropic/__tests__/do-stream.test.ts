@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { ZaiLanguageModel } from "../zai-language-model.ts";
 import { sseResponse } from "./__fixtures__/sse-helper.ts";
 

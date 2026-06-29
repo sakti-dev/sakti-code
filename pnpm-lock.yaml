@@ -4,6 +4,16 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    vite-plus:
+      specifier: latest
+      version: 0.2.1
+
+overrides:
+  vite: npm:@voidzero-dev/vite-plus-core@latest
+  vitest: 4.1.9
+
 importers:
 
   .:
@@ -44,7 +54,10 @@ importers:
         version: 6.0.3
       ultracite:
         specifier: 7.8.3
-        version: 7.8.3
+        version: 7.8.3(oxfmt@0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)))(oxlint@1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)))
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
 
   apps/desktop:
     dependencies:
@@ -126,7 +139,7 @@ importers:
         version: 1.15.43(@swc/helpers@0.5.23)
       '@tailwindcss/vite':
         specifier: ^4.3.1
-        version: 4.3.1(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
+        version: 4.3.1(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
@@ -144,19 +157,22 @@ importers:
         version: 26.15.3(electron-builder-squirrel-windows@26.15.3)
       electron-vite:
         specifier: ^5.0.0
-        version: 5.0.0(@swc/core@1.15.43(@swc/helpers@0.5.23))(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
+        version: 5.0.0(@swc/core@1.15.43(@swc/helpers@0.5.23))(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))
       jsdom:
         specifier: ^29.1.1
         version: 29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3)
       vite:
-        specifier: ^7.3.5
-        version: 7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+        specifier: npm:@voidzero-dev/vite-plus-core@latest
+        version: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)'
       vite-plugin-solid:
         specifier: ^2.11.0
-        version: 2.11.12(@testing-library/jest-dom@6.9.1)(solid-js@1.9.13)(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
+        version: 2.11.12(@testing-library/jest-dom@6.9.1)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(solid-js@1.9.13)
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
       vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
+        specifier: 4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))
     optionalDependencies:
       '@ff-labs/fff-bin-linux-x64-gnu':
         specifier: ^0.9.6
@@ -207,8 +223,8 @@ importers:
         specifier: ^1.2.18
         version: 1.3.0
       vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+        specifier: 4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       ws:
         specifier: ^8.21.0
         version: 8.21.0
@@ -228,15 +244,21 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.22.4
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
 
   crates/pi-natives:
     devDependencies:
       '@napi-rs/cli':
         specifier: ^3
         version: 3.7.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@26.0.0)(node-addon-api@7.1.1)
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
       vitest:
-        specifier: ^3
-        version: 3.2.6(@types/debug@4.1.13)(@types/node@26.0.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+        specifier: 4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/agent:
     dependencies:
@@ -268,9 +290,12 @@ importers:
       '@types/uuid':
         specifier: ^10
         version: 10.0.0
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
       vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+        specifier: 4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/db:
     dependencies:
@@ -293,9 +318,12 @@ importers:
       '@types/node':
         specifier: ^24
         version: 24.13.2
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
       vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+        specifier: 4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/llm:
     dependencies:
@@ -393,9 +421,12 @@ importers:
       '@types/node':
         specifier: ^24
         version: 24.12.4
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
       vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+        specifier: 4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/logger:
     dependencies:
@@ -409,9 +440,12 @@ importers:
       '@types/node':
         specifier: ^24
         version: 24.13.2
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
       vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+        specifier: 4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/tools:
     dependencies:
@@ -437,9 +471,12 @@ importers:
       '@types/node':
         specifier: ^24
         version: 24.13.2
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
       vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+        specifier: 4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/velomark:
     dependencies:
@@ -464,7 +501,7 @@ importers:
         version: 2.4.5
       '@tailwindcss/vite':
         specifier: ^4.1.18
-        version: 4.3.1(vite@8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+        version: 4.3.1(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
@@ -479,7 +516,7 @@ importers:
         version: 7.18.0(eslint@8.57.1)(typescript@5.9.3)
       '@vitest/coverage-v8':
         specifier: ^4.1.9
-        version: 4.1.9(vitest@4.1.9)
+        version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
@@ -503,7 +540,7 @@ importers:
         version: 9.1.7
       jsdom:
         specifier: ^24.0.0
-        version: 24.1.3
+        version: 24.1.3(canvas@3.2.3)
       lint-staged:
         specifier: ^15.5.2
         version: 15.5.2
@@ -530,16 +567,19 @@ importers:
         version: 5.9.3
       ultracite:
         specifier: 7.2.5
-        version: 7.2.5
+        version: 7.2.5(oxlint@1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.21.5)(jiti@2.7.0)(jsdom@24.1.3(canvas@3.2.3))(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)))
       vite:
-        specifier: ^8
-        version: 8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
+        specifier: npm:@voidzero-dev/vite-plus-core@latest
+        version: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)'
       vite-plugin-solid:
         specifier: ^2.10.2
-        version: 2.11.12(@testing-library/jest-dom@6.9.1)(solid-js@1.9.13)(vite@8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+        version: 2.11.12(@testing-library/jest-dom@6.9.1)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(solid-js@1.9.13)
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.21.5)(jiti@2.7.0)(jsdom@24.1.3(canvas@3.2.3))(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
       vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(jsdom@24.1.3)(vite@8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+        specifier: 4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(jsdom@24.1.3(canvas@3.2.3))
 
 packages:
 
@@ -1130,6 +1170,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@blazediff/core@1.9.1':
+    resolution: {integrity: sha512-ehg3jIkYKulZh+8om/O25vkvSsXXwC+skXmyA87FFx6A/45eqOkZsBltMw/TVteb0mloiGT8oGRTcjRAz66zaA==}
+
   '@braintree/sanitize-url@7.1.2':
     resolution: {integrity: sha512-jigsZK+sMF/cuiB7sERuo9V7N9jx+dhmHHnQyDSVdpZwVutaBu7WvNYqMDLSgFgfB30n452TP3vjDAvFC973mA==}
 
@@ -1239,7 +1282,7 @@ packages:
     resolution: {integrity: sha512-eWSkDg34TjsrSVfrU0PkR8YN/AeeM0kt792/RCobCVTx5SGO/iYwyqyjl/73nP8Q5rMM6UTepaBCzK7D/H1tlg==}
     peerDependencies:
       effect: ^4.0.0-beta.90
-      vitest: ^3.0.0 || ^4.0.0
+      vitest: 4.1.9
 
   '@electron-internal/extract-zip@1.0.3':
     resolution: {integrity: sha512-OjKpjB7gohtEjZiq6nDx1egqjZJhGPN1iFOIED+NFhB/MMkXw/XRcHjh1DGXKT5z2W9eW7Jy2UKU3gpjvusFTQ==}
@@ -2668,8 +2711,277 @@ packages:
     resolution: {integrity: sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==}
     engines: {node: '>=8.0.0'}
 
+  '@oxc-project/runtime@0.136.0':
+    resolution: {integrity: sha512-u0EutjK5y6NHJkl5jNJCs8zbup1z6A/UEWgajrYzqcEU3UX05HjqybhMQOLhSM0eKGISyM6WfSMMuklYSmH2wA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+
+  '@oxc-project/types@0.136.0':
+    resolution: {integrity: sha512-39Al/B3v9esnHCX7S8l9Se2+s2tb9b2jcMd+bZ2L659VG73kNyGPpPrL5Zi/p0ty7p4pTTU2/Dd+g27hv94XCg==}
+
   '@oxc-project/types@0.137.0':
     resolution: {integrity: sha512-WT+Gb24i8hmvo85AIv2oEYouEXkRlKAlT9WaCa3TfLgNCN+GhrJOGZuIlMouAh38Qe4QOx26eUOVsq70qXrywA==}
+
+  '@oxfmt/binding-android-arm-eabi@0.55.0':
+    resolution: {integrity: sha512-+rFDOqQe5LOWgxrAJaZgLRudr6GQm0wGI6gtu7vVkrdLGjNMUSGbAlaCr8j7F2H2Er97vYQCU8WDb30onqMM1g==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm]
+    os: [android]
+
+  '@oxfmt/binding-android-arm64@0.55.0':
+    resolution: {integrity: sha512-ctulLq8s3x8Zmvw6+iccB09TIKERAklRSmbJ10gk8mlAn05qZxoyo52dj3Hi9IJcmDSwF54fQaTVh2CbL6PInw==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [android]
+
+  '@oxfmt/binding-darwin-arm64@0.55.0':
+    resolution: {integrity: sha512-xDQczLH9pw/RBk1h/GH0qcGMm8hQtmtVHBNLSH3lk1gEIR09hZ4L+mJQl4VqiVAvPK9VG9PYrWWuSQLt7xTbiA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@oxfmt/binding-darwin-x64@0.55.0':
+    resolution: {integrity: sha512-JaNoFCkF2CJdGgpPSMbuO9HVyXyoNGIhMHPvp6NYAjeVKw9XEYc0HcUWJLPQa3Q69WV5wMa9m5jPMJPtbLtcRg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oxfmt/binding-freebsd-x64@0.55.0':
+    resolution: {integrity: sha512-DNbszhpg6S2MIzax5azdHFTTBIVkR5xr8yyRZuA4yoDAwOkzIp3tmldgKZM2+VlT+hJIG0xUksA+elISzMEAfA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@oxfmt/binding-linux-arm-gnueabihf@0.55.0':
+    resolution: {integrity: sha512-2snoaoRfFFyGnbOcKUK36rREBYxe/Xgz3uHbiA5zbCB/s6R4DQj4mHqYAaWWhgizCUSDxV8cE9zAZ0XleNpKGw==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm]
+    os: [linux]
+
+  '@oxfmt/binding-linux-arm-musleabihf@0.55.0':
+    resolution: {integrity: sha512-q1aktHF/WRpSK81BX1dE/9vWrS2jGw1Nax2kb4DBLGAewubCLcoNyp4Zl/NSMgbv3vUS46Z33wIQkBVYOP3PYg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm]
+    os: [linux]
+
+  '@oxfmt/binding-linux-arm64-gnu@0.55.0':
+    resolution: {integrity: sha512-VD0y36aENezl/3tsclA/4G53Cc7iV+7Uoh7gz4yvcOTaEYBtJpQsE6PKDGTtUtOvGS4kv51ybfXY/nWZejO5IA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [linux]
+
+  '@oxfmt/binding-linux-arm64-musl@0.55.0':
+    resolution: {integrity: sha512-r8xlKJFcsRmn0H5jZrdORae6RX9jDBrZVvOoxF+bCQtampQJClv80aZEHsv+NsLsp2KCE5ql79O7DpPVzYWpXA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [linux]
+
+  '@oxfmt/binding-linux-ppc64-gnu@0.55.0':
+    resolution: {integrity: sha512-GRKv/HXHcwIVld/WU61rF0g0R16hl5EJ+ScKdpjevT57lnLnagj/U2YUbXf2mT+2Pg1uCzWC+mvGicPV3CDdLQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [ppc64]
+    os: [linux]
+
+  '@oxfmt/binding-linux-riscv64-gnu@0.55.0':
+    resolution: {integrity: sha512-rdv57enTiPtpSYRMKfAiEbQb0Puw5t9N7isVinDoo5qeLDScro2gznmZqSgSWbVZRzLisTeCTW8Qwgw0bOHv3A==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [riscv64]
+    os: [linux]
+
+  '@oxfmt/binding-linux-riscv64-musl@0.55.0':
+    resolution: {integrity: sha512-7v1nNrlD43VY6+sYQ6efYyb3lE6QY182304PD/768ZxTjOmFd/3dQa3u/nGBUAXYdGSWOQc5N3PnS0QzUXyEIA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [riscv64]
+    os: [linux]
+
+  '@oxfmt/binding-linux-s390x-gnu@0.55.0':
+    resolution: {integrity: sha512-f4lJLUSPOgScjFl9LiflKCTocyNRwE25JmTMbN4XQdDjoZzEHjqf3wA3VESF1/csg7i8m7+EQLbrZyYDqe10UQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [s390x]
+    os: [linux]
+
+  '@oxfmt/binding-linux-x64-gnu@0.55.0':
+    resolution: {integrity: sha512-MihqiPziJNoWy4MqNSV+jVA1g+07iQDjZiR0vaCaDoPgFEiJpCMsxamktzLV07cEeQsSJ04vQaU4CzCQwIvtDA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [linux]
+
+  '@oxfmt/binding-linux-x64-musl@0.55.0':
+    resolution: {integrity: sha512-Yqghym7KYAVjP9MmSrNZiDeerMuoejNjo0r3ox5H3GDKk8eAfl8VyJm9i+pWCLDCTnAbcTUMMN2ZKjUYXH1v3g==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [linux]
+
+  '@oxfmt/binding-openharmony-arm64@0.55.0':
+    resolution: {integrity: sha512-s5SDvVVSbyQl1V5UU3Yl12M+XLUQ3rl5SglNqgAA2K4PXUtQhyNSS00wivONPEnNo5W01rCou8WkDNyvI/RGHg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [openharmony]
+
+  '@oxfmt/binding-win32-arm64-msvc@0.55.0':
+    resolution: {integrity: sha512-7p9FB5R32tw2KyyNX3wpQrR2WHwEHvMEiBlGXxeTCaRMCVNx3UtFMAUbaQ/pRNWIrEUZmYhJ6tcUH52uPTRYjQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [win32]
+
+  '@oxfmt/binding-win32-ia32-msvc@0.55.0':
+    resolution: {integrity: sha512-ZYqj3fDnOT1IaVGMP5kpmkQl4F3tQIm2ZyAxvqkJYmI0xgWWak4ss4XYwv3VDfM+TWXeC9K4uQ/wW5jm/5XABA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [ia32]
+    os: [win32]
+
+  '@oxfmt/binding-win32-x64-msvc@0.55.0':
+    resolution: {integrity: sha512-eEYT5tivGnGbPHuOHuQpi6CGLObhh0re/5jcNQHihD2GRYkTM85dyi5a19zjP8Q00t1uqAx+/QGLUGdHeqzWyg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [win32]
+
+  '@oxlint-tsgolint/darwin-arm64@0.23.0':
+    resolution: {integrity: sha512-gOs9PVr2wEg4ox9z0aJo+RKhhImW86YL5N6yav8BK/rgPsIrwN/igSZ+pbRr723NFvUNKde9fgMhRA6JrXAOZw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@oxlint-tsgolint/darwin-x64@0.23.0':
+    resolution: {integrity: sha512-kjJ8B+7n4tB9VJdxS5A9GdJt6/bYpzbu4lXp2uO1S3sRmCB5gDEABlGoiePNApRWaW+xqL4b4xgiE727jSLhuA==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oxlint-tsgolint/linux-arm64@0.23.0':
+    resolution: {integrity: sha512-6dCZuKNu135seMXilkRk9SpCx6i1XgmiipYGalLij5WVRX6ZYS8c4xI7preN/zv9fCXhsQclTIMDu2Y/cytTjw==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@oxlint-tsgolint/linux-x64@0.23.0':
+    resolution: {integrity: sha512-3bdilnyA7kmSTjK27rvjIjSxL5SIg3wt7vwNiRkouWB83ytssyKnuGvxSYJxgMEmFpSutzaBzcCUM2jDtPGcgA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@oxlint-tsgolint/win32-arm64@0.23.0':
+    resolution: {integrity: sha512-j+OEp44SVYiQ+ZD+uttsX7u6L9SvmbbQ77SO1pSFCcJlsVMeCk8qZsjhKfGKuT/jIA+ipOJMVs/+pqUfObBWNw==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@oxlint-tsgolint/win32-x64@0.23.0':
+    resolution: {integrity: sha512-5MyjFuqf+g8OUPJBSGWHJtmoWnzFJYyOg4To9WMQshZYEWig/vtu7JtJ03VWnzHv9LJkAUeApY0gVCOywFR/iQ==}
+    cpu: [x64]
+    os: [win32]
+
+  '@oxlint/binding-android-arm-eabi@1.70.0':
+    resolution: {integrity: sha512-zFh0P4cswmRvw6nkyb89dr18rRanuaCPAsEXsFDoQY8WdaquI8Pt4NWFjaMJg6L23cy5NeN8J9cBnREbWzZhaw==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm]
+    os: [android]
+
+  '@oxlint/binding-android-arm64@1.70.0':
+    resolution: {integrity: sha512-qI8o4HZjeGiBrWv+pJv4lH0Yi2Gl/JSp/EumBUApezJprIKa5PS4nU0lQsQngtky8k+SplQIOjv6hwu0SSxeyg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [android]
+
+  '@oxlint/binding-darwin-arm64@1.70.0':
+    resolution: {integrity: sha512-8KjgVVHI5F9nVwHCRwwA78Ty7zNKP4Wd9OeN5PSv3iu/F/u1RVXoOCgLhWqust6HmwQG6xc8c+RCyaWENy24+w==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@oxlint/binding-darwin-x64@1.70.0':
+    resolution: {integrity: sha512-WVydssv5PSUBXFJTdNBWlmGkbNmvPGaFt/2SUT/EZRB6bq6bEOHmMlbnupZD5jmlEvi9+mZJHi8TCw15lyfSfQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oxlint/binding-freebsd-x64@1.70.0':
+    resolution: {integrity: sha512-hJucmUf8OlinHNb1R7fI4Fw6WsAstOz7i8nmkWQfiHoZXtbufNm+MxiDTIMk1ggh2Ro4vLzgQ+bKvRY54MZoRA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@oxlint/binding-linux-arm-gnueabihf@1.70.0':
+    resolution: {integrity: sha512-1BnS7wbCYDSXwWzJJ+mc3NURoha6m6m6RT5c6vgAY3oz7C3OVXP+S0awo2mRq97arrJkVvO3qRQfyAHL+76xtQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm]
+    os: [linux]
+
+  '@oxlint/binding-linux-arm-musleabihf@1.70.0':
+    resolution: {integrity: sha512-yKy/UdbR55+M2yEcuiV5DCNC/gdQAjr/GioUy50QwBzSrKm8ueWADqyRLS9Xk+qjNeCYGg6A8FvUBds56ttfqg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm]
+    os: [linux]
+
+  '@oxlint/binding-linux-arm64-gnu@1.70.0':
+    resolution: {integrity: sha512-0A5XJ4alvmqFUFP/4oYSyaO+qLto/HrKEWTSaegiVl+HOufFngK2BjYw9x4RbwBt/du5QG6l5q1zeWiJYYG5yg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [linux]
+
+  '@oxlint/binding-linux-arm64-musl@1.70.0':
+    resolution: {integrity: sha512-JiylyurlB0CLSedNtx1gzv3FvfWPF1h/2Y3BJszPLNt5XQFlBsH5ke0Jle3iJb3uqu5m2e7A/DwzpuCAHdiU+A==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [linux]
+
+  '@oxlint/binding-linux-ppc64-gnu@1.70.0':
+    resolution: {integrity: sha512-J8VPG7I3/HmgaU4u8pNU2kFx2+0U+vPLS1dXFxXOaR/2TQ0f8AC7DRz0SRGRI1bfphnX2hVYTTtLuhL4nYKL+Q==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [ppc64]
+    os: [linux]
+
+  '@oxlint/binding-linux-riscv64-gnu@1.70.0':
+    resolution: {integrity: sha512-N2+4lV2KLN+oXTIIIwmWDhwkrnvqf5oX7Hw0zPjk+RuIVgiBQSOlJWF7uQoFx2siEYX0ZQ5cfSbEAHm+J3t7Wg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [riscv64]
+    os: [linux]
+
+  '@oxlint/binding-linux-riscv64-musl@1.70.0':
+    resolution: {integrity: sha512-1e2L7cFCvx9QDzq6NPP+0tABKb5z6nWHyddWTNKprEsjO9xNrAtPowuCGpjNXxkTdsMiZ4jc8YQ5SstZd4XK6g==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [riscv64]
+    os: [linux]
+
+  '@oxlint/binding-linux-s390x-gnu@1.70.0':
+    resolution: {integrity: sha512-Kwu/l/8GcYibCWA9m9N5pRXMIKVSsL/YbgpLzYkqDhWTiqdRfnNJ/+nqIKRKQiFbHWsdlHEhzMwruJK+qcEruA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [s390x]
+    os: [linux]
+
+  '@oxlint/binding-linux-x64-gnu@1.70.0':
+    resolution: {integrity: sha512-tap04CsHYOl0nSAQJfPNIuBxqEPB2HnhQqwaOXLg1jnp2XfRo8Fa814dA4QC4zpvTWXCjAAaCY1W5LOORkEQuQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [linux]
+
+  '@oxlint/binding-linux-x64-musl@1.70.0':
+    resolution: {integrity: sha512-hzJa/WgvtJpbBD9rgfy0qe+MjbxOXNUT0bfR1S6EQQzfTtBFA9xg5q8KSwRrQ2QfSS+TaP4j+4mVPQrfNc6UNg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [linux]
+
+  '@oxlint/binding-openharmony-arm64@1.70.0':
+    resolution: {integrity: sha512-xbsaNSNzVSnaJACCUYr1HQMyY/Q/Q1LkePmHG3UvZPvGCYGNxrsZp9OmtA6ick8xH47ltRRbRrPCM1YXYcyC+A==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [openharmony]
+
+  '@oxlint/binding-win32-arm64-msvc@1.70.0':
+    resolution: {integrity: sha512-icAEsUI7JbW1TMRdEXV83mVAInhRVQYuuAlPpxdGwJ95chNdnCzjloRW8GglT0WvzOEZSio6fnYSk2DJ2Hv7LQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [win32]
+
+  '@oxlint/binding-win32-ia32-msvc@1.70.0':
+    resolution: {integrity: sha512-FHMSWbVsPVs/f+Jcl04ws4JJ2wUnauyTzlpxWRG/lSO/8GpX08Fo2gQZqdA6CrRFI+zvkxl+N/KwJGWfUwYVZA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [ia32]
+    os: [win32]
+
+  '@oxlint/binding-win32-x64-msvc@1.70.0':
+    resolution: {integrity: sha512-ptOlKwCz7n4AKs5VweMqG6DAg677FmKOK+vBkkL9DMNgFATIQ+upqUYBTOEwRQyRAx1ncGlPlXleV2hIcm3z4g==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [win32]
+
+  '@oxlint/plugins@1.68.0':
+    resolution: {integrity: sha512-titLmukUt/h8ho7Svlf0xSBjoy2ccZKrXjpXpZCj+v6V4CJccC2KyP45BLSCMx8YIpifMyiDyUptM4+5sruKbQ==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
   '@peculiar/asn1-schema@2.8.0':
     resolution: {integrity: sha512-7YT0U/ze0tF2QOBbE15gKZwy5tvgGyLRiRHLzhlbOpf7BT032oBSd0haZqXn5W6l26WLlu3dyxzjM+2638/z2Q==}
@@ -2687,6 +2999,9 @@ packages:
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
+
+  '@polka/url@1.0.0-next.29':
+    resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
   '@rolldown/binding-android-arm64@1.1.3':
     resolution: {integrity: sha512-DT6Z3PhvioeHMvxo+xHc3KtqggrI7CCTXCmC2h/5zUlp5jVitv7XEy+9q5/7v8IolhlioawpMo8Kg0EEBy7J0g==}
@@ -3602,6 +3917,16 @@ packages:
     resolution: {integrity: sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug==}
     engines: {node: '>= 20'}
 
+  '@vitest/browser-preview@4.1.9':
+    resolution: {integrity: sha512-a4/OrkMDb/WUnE4OOB/4FJbK3rYVO7YykqtUgcTKG4p2a0R3XcjPVu7SLRHFBs2+NIYhv5yxp1Lz3dbdGBjIow==}
+    peerDependencies:
+      vitest: 4.1.9
+
+  '@vitest/browser@4.1.9':
+    resolution: {integrity: sha512-j1BKtWmPcqpMhmx/L9EPLgAJpCb0zKfwoWLmqBbxaogCXHjOwHFSEoHCBfnGtx93xKQwilZ26m+UOsHqHMkRNg==}
+    peerDependencies:
+      vitest: 4.1.9
+
   '@vitest/coverage-v8@4.1.9':
     resolution: {integrity: sha512-G9/lgqibheLVBDRuya45EbsEXTYcWoSG+TLg7i2axuzx0Eq62eXn+aWXyaVdV5vKvFSWd6ywcX8hA7la9Pvu8g==}
     peerDependencies:
@@ -3611,22 +3936,8 @@ packages:
       '@vitest/browser':
         optional: true
 
-  '@vitest/expect@3.2.6':
-    resolution: {integrity: sha512-1+7q9BtaKzEmO+fmNT3kYvoNn5Y71XWAx2Q5HRim4tTVRQVRv4uJFAQ5FbK0OPUeNP/WmVCpxYxoJdvuHVjzBQ==}
-
   '@vitest/expect@4.1.9':
     resolution: {integrity: sha512-vl/rYsUKcBr3SnQn166+XR5ZQcgMx3DQhFWdfli/cWpLnLUmbxZvyrJZotLFUryib+LtArYMSTJ5RbQ57ZqrlA==}
-
-  '@vitest/mocker@3.2.6':
-    resolution: {integrity: sha512-EZOrpDbkKotFAP7wPAQV1UIyoGOk4oX7ynWhBhLB7v+meMHbQhU16oPpIYGTTe4oFlhpryGpgpcZP/sin3hYuw==}
-    peerDependencies:
-      msw: ^2.4.9
-      vite: ^5.0.0 || ^6.0.0 || ^7.0.0-0
-    peerDependenciesMeta:
-      msw:
-        optional: true
-      vite:
-        optional: true
 
   '@vitest/mocker@4.1.9':
     resolution: {integrity: sha512-EVkXzBjrPGM+cK8/ANWgBrkUCfJfb38/EfTSO8h7pWvKkyPkpWxvR7BkD2MyItMF62C97zAEoqdpUixwR/e+Rw==}
@@ -3639,35 +3950,131 @@ packages:
       vite:
         optional: true
 
-  '@vitest/pretty-format@3.2.6':
-    resolution: {integrity: sha512-lb7XXXzmm2h2ASzFnRvQpDo6onT1NmMJA3tkGTWiBFtRJ9lxGY3d3mm/Apt36gej2bkkOVLL/yTOtufDaFa/jA==}
-
   '@vitest/pretty-format@4.1.9':
     resolution: {integrity: sha512-s0iufns3iIFitdgm+YR7g1whCAaGtXz459VS9/PqyKDEEFgYIhsHOQmXgIgDuYCt7DeQmiZT0Qe2OA2p4ZPu5A==}
-
-  '@vitest/runner@3.2.6':
-    resolution: {integrity: sha512-HYcoSj1w5tcgUnzoF0HcyaAQjpA1gj9ftUJ7iSJSuipc02jW9gKkigwZbjFldAfYHA1fa8UZVRftdMY5msWM9Q==}
 
   '@vitest/runner@4.1.9':
     resolution: {integrity: sha512-KXLMDtc7oe70+3mJfGrPUWPesswH+3sTxAMAMl8DG7I8IUQT4XW718dY5ID3vPUcmlu27CcKfY4P3h3I29SLJg==}
 
-  '@vitest/snapshot@3.2.6':
-    resolution: {integrity: sha512-H+ZjNTWGpObenh0YnlBctAPnJSI20P81PL8BPzWpx54YXLLTm8hEsWawtcYLMrwvpK48hGxLLbCS+1KRXhsKhw==}
-
   '@vitest/snapshot@4.1.9':
     resolution: {integrity: sha512-Jc7RKGNBo8Z28WYIm0Niej4xdSPByRf6mU58VpHQkd6Zh05rlnA+twjbK5HyeIGHxrzsc3mJgS43uM0CZKzaIA==}
-
-  '@vitest/spy@3.2.6':
-    resolution: {integrity: sha512-oq6BbH68WzcWmwtBrU9nqLeaXTR4XwJF7FSLkKEZo4i6eoXcrxjcwSuTvWBIRUTC6VC72nXYunzqgZA+IKdtxg==}
 
   '@vitest/spy@4.1.9':
     resolution: {integrity: sha512-fHpsS6mIi+PiEW+vcRVOMkX1oSaPKne3VOclSFICPcGOmfKgXPU5iAah+wcNcj2xPrCCmfq99IDGf+EojhhvhA==}
 
-  '@vitest/utils@3.2.6':
-    resolution: {integrity: sha512-lI23nIs4bnT3T8NIoh+vFaz5s2/DdP0Jgt2jxwgWljvwn82cLJtyi/If+fjFyoLMGIOz0U/fKvWE0d4jsNQEfg==}
-
   '@vitest/utils@4.1.9':
     resolution: {integrity: sha512-A51o8ymO5PpqlWNnBP9ZHPXDIpuMtTLlGSjN7la4US+LJzoUMyhwjA5QXlm39JexgwHKW4Xjs8Z2d3dLCXOeuA==}
+
+  '@voidzero-dev/vite-plus-core@0.2.1':
+    resolution: {integrity: sha512-iWdtOlLezgYcDqIzxZx1yOUhY93vUB+ob+mRYBNr7/3Hf80uRyTQbqVD1WtsYaANbzeUi81SQ1ZoUraXHO+u8A==}
+    engines: {node: ^20.19.0 || ^22.18.0 || >=24.11.0}
+    peerDependencies:
+      '@arethetypeswrong/core': ^0.18.1
+      '@tsdown/css': 0.22.3
+      '@tsdown/exe': 0.22.3
+      '@types/node': ^20.19.0 || >=22.12.0
+      '@vitejs/devtools': ^0.1.18
+      esbuild: ^0.27.0 || ^0.28.0
+      jiti: '>=1.21.0'
+      less: ^4.0.0
+      publint: ^0.3.8
+      sass: ^1.70.0
+      sass-embedded: ^1.70.0
+      stylus: '>=0.54.8'
+      sugarss: ^5.0.0
+      terser: ^5.16.0
+      tsx: ^4.8.1
+      typescript: ^5.0.0 || ^6.0.0
+      unplugin-unused: ^0.5.0
+      unrun: '*'
+      yaml: ^2.4.2
+    peerDependenciesMeta:
+      '@arethetypeswrong/core':
+        optional: true
+      '@tsdown/css':
+        optional: true
+      '@tsdown/exe':
+        optional: true
+      '@types/node':
+        optional: true
+      '@vitejs/devtools':
+        optional: true
+      esbuild:
+        optional: true
+      jiti:
+        optional: true
+      less:
+        optional: true
+      publint:
+        optional: true
+      sass:
+        optional: true
+      sass-embedded:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+      tsx:
+        optional: true
+      typescript:
+        optional: true
+      unplugin-unused:
+        optional: true
+      unrun:
+        optional: true
+      yaml:
+        optional: true
+
+  '@voidzero-dev/vite-plus-darwin-arm64@0.2.1':
+    resolution: {integrity: sha512-9AfN/5LKRks8gbTaHPiQHT0L4yboy2xB6x6vvCRWxQMWxPS6/ZJLf5kUIZeE7I1z33AEyLKKkDscsZZVMgMLgg==}
+    engines: {node: ^20.19.0 || ^22.18.0 || >=24.11.0}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@voidzero-dev/vite-plus-darwin-x64@0.2.1':
+    resolution: {integrity: sha512-Q1vyimRbf4M82qIQSWRyr7NJaH9ag5G7vVEfGVVJlQHNprI+Q8zj2Phcs/PGf6QcyjcL8UclLznQTHU9NgnKZw==}
+    engines: {node: ^20.19.0 || ^22.18.0 || >=24.11.0}
+    cpu: [x64]
+    os: [darwin]
+
+  '@voidzero-dev/vite-plus-linux-arm64-gnu@0.2.1':
+    resolution: {integrity: sha512-WHW3DziqedRfhJ2upq6kC4y/pmdQWYt322DVB7+4Xb4oOa/CT9GtnSrWIiXVJ4PSO42v54+YsSTKPH2HC5RbtA==}
+    engines: {node: ^20.19.0 || ^22.18.0 || >=24.11.0}
+    cpu: [arm64]
+    os: [linux]
+
+  '@voidzero-dev/vite-plus-linux-arm64-musl@0.2.1':
+    resolution: {integrity: sha512-vUY7hYycZW0qEevpl7ImzZJFnOEKRYCaCOX4TBW0vk6MJZ+zj/xW7e0LOggzJcz2wbYAgLDqp5h+b8wV9dguDA==}
+    engines: {node: ^20.19.0 || ^22.18.0 || >=24.11.0}
+    cpu: [arm64]
+    os: [linux]
+
+  '@voidzero-dev/vite-plus-linux-x64-gnu@0.2.1':
+    resolution: {integrity: sha512-tFxpToEaykBGxMQHp8M/qmr1yruRRED+c9gA1h9kmplqot04OxuqzRCWu/IiIvMJ0v3JFdOP3gqkyjXLLJhxIA==}
+    engines: {node: ^20.19.0 || ^22.18.0 || >=24.11.0}
+    cpu: [x64]
+    os: [linux]
+
+  '@voidzero-dev/vite-plus-linux-x64-musl@0.2.1':
+    resolution: {integrity: sha512-2scSS7wEbLO2758fqr1/bAULg7nLCFa5V8LO2b5w3g1CrTYdMTDt2WX1ghPesIi+70pYGydRbXo6iaaN43zfMg==}
+    engines: {node: ^20.19.0 || ^22.18.0 || >=24.11.0}
+    cpu: [x64]
+    os: [linux]
+
+  '@voidzero-dev/vite-plus-win32-arm64-msvc@0.2.1':
+    resolution: {integrity: sha512-3+5FJYhi9SqBszjngI2LBmvoiqEwxJWyQ5UsOUtNz6/d+yDrDw+tOgHLl4OKIh5aVNZeIGXzxvP6h24kcEqIyg==}
+    engines: {node: ^20.19.0 || ^22.18.0 || >=24.11.0}
+    cpu: [arm64]
+    os: [win32]
+
+  '@voidzero-dev/vite-plus-win32-x64-msvc@0.2.1':
+    resolution: {integrity: sha512-5sOEwEoU5PW7ObmJ5VCakU09Oh14rYCoLQJkFqvOph6PK30lN5iqWGk0KigEyfcd7Zv+fZg9EmcERDol/3Xl9w==}
+    engines: {node: ^20.19.0 || ^22.18.0 || >=24.11.0}
+    cpu: [x64]
+    os: [win32]
 
   '@workflow/serde@4.1.0':
     resolution: {integrity: sha512-pav4F2BoirECWR7Nf1TKt+2eETcBj7jj4cBefQ8VXQCA6NPkaKeLfj/zMgi+3zYV5ZIBT4GuUiphsj0/b9hPQQ==}
@@ -4008,10 +4415,6 @@ packages:
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
 
-  chai@5.3.3:
-    resolution: {integrity: sha512-4zNhdJD/iOjSH0A05ea+Ke6MU5mmpQcbQsSOkgdaUMJ9zTlDTD/GYlwohmIE2u0gaxHYiVHEn1Fw9mZ/ktJWgw==}
-    engines: {node: '>=18'}
-
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
     engines: {node: '>=18'}
@@ -4032,10 +4435,6 @@ packages:
 
   chardet@2.2.0:
     resolution: {integrity: sha512-rddelWYNPRrXq6PtNEN2S3f6t9ILzvqaN5pVgi4kqt9jHQaXIial9PznB5iSPVlQSLNaaH22ItWz3EJtQ10+OA==}
-
-  check-error@2.1.3:
-    resolution: {integrity: sha512-PAJdDJusoxnwm1VwW07VWwUN1sl7smmC3OKggvndJFadxxDRyFJBX/ggnu/KE4kQAB7a3Dp8f/YXC1FlUprWmA==}
-    engines: {node: '>= 16'}
 
   chokidar@4.0.3:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
@@ -4422,10 +4821,6 @@ packages:
     resolution: {integrity: sha512-aW35yZM6Bb/4oJlZncMH2LCoZtJXTRxES17vE3hoRiowU2kWHaJKFkSBDnDR+cm9J+9QhXmREyIfv0pji9ejCQ==}
     engines: {node: '>=10'}
 
-  deep-eql@5.0.2:
-    resolution: {integrity: sha512-h5k/5U50IJJFpzfL6nO9jaaumfjO/f2NjK/oYB2Djzm4p9L+3T9qWpZqZ2hAbLPuuYq9wrU08WQyBTL5GbPk5Q==}
-    engines: {node: '>=6'}
-
   deep-extend@0.6.0:
     resolution: {integrity: sha512-LOHxIOaPYdHlJRtCQfDIVZtfw/ufM8+rVj649RIHzcm/vGwQRXFt6OPqIFWsm2XEMrNIEtWR64sY1LEKD2vAOA==}
     engines: {node: '>=4.0.0'}
@@ -4738,9 +5133,6 @@ packages:
   es-errors@1.3.0:
     resolution: {integrity: sha512-Zf5H2Kxt2xjTvbJvP2ZWLEICxA6j+hAmMzIlypy4xcBg1vKVnx89Wy0GbS+kf5cwCVFFzdCFh2XSCFNULS6csw==}
     engines: {node: '>= 0.4'}
-
-  es-module-lexer@1.7.0:
-    resolution: {integrity: sha512-jEQoCwk8hyb2AZziIOLhDqpm5+2ww5uIE6lkO/6jcOCusfk6LhMHpXXfBLXTZ7Ydyt0j4VoUQv6uGNYbdW+kBA==}
 
   es-module-lexer@2.1.0:
     resolution: {integrity: sha512-n27zTYMjYu1aj4MjCWzSP7G9r75utsaoc8m61weK+W8JMBGGQybd43GstCXZ3WNmSFtGT9wi59qQTW6mhTR5LQ==}
@@ -5382,9 +5774,6 @@ packages:
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
-  js-tokens@9.0.1:
-    resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
-
   js-yaml@4.2.0:
     resolution: {integrity: sha512-ePWsvanv0DWuDRsW8dnt+R4jQ31SCRCQ7hhNcPXZPsoBZiemuZNYGf7adZdqX2D86j6rvKp3RpCxVTSb8WQlOw==}
     hasBin: true
@@ -5641,9 +6030,6 @@ packages:
     resolution: {integrity: sha512-TFYA4jnP7PVbmlBIfhlSe+WKxs9dklXMTEGcBCIvLhE/Tn3H6Gk1norupVW7m5Cnd4bLcr08AytbyV/xj7f/kQ==}
     engines: {node: '>= 12.0.0'}
 
-  loupe@3.2.1:
-    resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
-
   lowercase-keys@2.0.0:
     resolution: {integrity: sha512-tqNXrS78oMOE73NMxK4EMLQsQowWf8jKooH9g7xPavRT706R6bkQJ6DY2Te7QukaZsulxa30wQ7bk0pm4XiHmA==}
     engines: {node: '>=8'}
@@ -5831,6 +6217,10 @@ packages:
         optional: true
       react-dom:
         optional: true
+
+  mrmime@2.0.1:
+    resolution: {integrity: sha512-Y3wQdFg2Va6etvQ5I82yUhGdsKrcYox6p7FfL1LbK2J4V01F9TGlepTIhnK24t7koZibmg82KGglhA1XK5IsLQ==}
+    engines: {node: '>=10'}
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
@@ -6024,6 +6414,36 @@ packages:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
 
+  oxfmt@0.55.0:
+    resolution: {integrity: sha512-jSj2wCTakwgPMxkfiVZX0jf+nX+Nz6xlyAZjqNE0qXTFdCBPYlP6JAN+ODjmealw7DXBjOzYbdsqwBMAZnPZ6A==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    hasBin: true
+    peerDependencies:
+      svelte: ^5.0.0
+      vite-plus: '*'
+    peerDependenciesMeta:
+      svelte:
+        optional: true
+      vite-plus:
+        optional: true
+
+  oxlint-tsgolint@0.23.0:
+    resolution: {integrity: sha512-3mBv3CoPbh8dFbzfDGIWa2ytZjn2v+3EX4aKRXjIhsoGFzG8GCjfRirz3rwZf1wYbZzsNLTSgpw8VjQuWdp/jA==}
+    hasBin: true
+
+  oxlint@1.70.0:
+    resolution: {integrity: sha512-D6JgHtzkhRwvEC+A0Nw5AEc5bk8x5i1pHzvZIEf/a0C4hOzmAACNGtkDGPyFaxxX3ZVGxCPeig3P3rMM8XU3/g==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    hasBin: true
+    peerDependencies:
+      oxlint-tsgolint: '>=0.22.1'
+      vite-plus: '*'
+    peerDependenciesMeta:
+      oxlint-tsgolint:
+        optional: true
+      vite-plus:
+        optional: true
+
   p-cancelable@2.1.1:
     resolution: {integrity: sha512-BZOr3nRQHOntUjTrH8+Lh54smKHoHyur8We1V8DSMVrl5A2malOOwuJRnKRDjSnkoeBh4at6BwEnb5I7Jl31wg==}
     engines: {node: '>=8'}
@@ -6079,10 +6499,6 @@ packages:
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
 
-  pathval@2.0.1:
-    resolution: {integrity: sha512-//nshmD55c46FuFw26xV/xFAaB5HF9Xdap7HJBBnrKdAd6/GxDBaNA1870O79+9ueg61cZLSVc+OaFlfmObYVQ==}
-    engines: {node: '>= 14.16'}
-
   pe-library@0.4.1:
     resolution: {integrity: sha512-eRWB5LBz7PpDu4PUlwT0PhnQfTQJlDDdPa35urV4Osrm0t0AqQFGn+UIkU3klZvwJ8KPO3VbBFsXquA6p6kqZw==}
     engines: {node: '>=12', npm: '>=6'}
@@ -6130,6 +6546,10 @@ packages:
   plist@3.1.0:
     resolution: {integrity: sha512-uysumyrvkUX0rX/dEVqt8gC3sTBzd4zoWfLeS29nb53imdaXVvLINYXTI2GNqzaMuvacNx4uJQ8+b3zXR0pkgQ==}
     engines: {node: '>=10.4.0'}
+
+  pngjs@7.0.0:
+    resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
+    engines: {node: '>=14.19.0'}
 
   points-on-curve@0.2.0:
     resolution: {integrity: sha512-0mYKnYYe9ZcqMCWhUjItv/oHjvgEsfKvnUTg8sAtnHr3GVy7rGkXCb6d5cSyqrWqL4k81b9CPg3urd+T7aop3A==}
@@ -6495,6 +6915,10 @@ packages:
     resolution: {integrity: sha512-a2B9Y0KlNXl9u/vsW6sTIu9vGEpfKu2wRV6l1H3XEas/0gUIzGzBoP/IouTcUQbm9JWZLH3COxyn03TYlFax6w==}
     engines: {node: '>=10'}
 
+  sirv@3.0.2:
+    resolution: {integrity: sha512-2wcC/oGxHis/BoHkkPwldgiPSYcpZK3JU28WoMVv55yHJgcZ8rlXvuG9iZggz+sU1d4bRgIGASwyWqjxu3FM0g==}
+    engines: {node: '>=18'}
+
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
@@ -6586,9 +7010,6 @@ packages:
     resolution: {integrity: sha512-jH9EhtKIjuXZ2cWxmXS8ZP80XyC3iasQxMDV8jzhNJpfDb7VbQLVW4Wvsxz9QZvzV+G4YoSfBUVKDOyxLzi/sg==}
     engines: {node: '>= 6'}
 
-  std-env@3.10.0:
-    resolution: {integrity: sha512-5GS12FdOZNliM5mAOxFRg7Ir0pWz8MdpYm6AY6VPkGpbA7ZzmbzNcBJQ0GPvvyWgcY7QAhCgf9Uy89I03faLkg==}
-
   std-env@4.1.0:
     resolution: {integrity: sha512-Rq7ybcX2RuC55r9oaPVEW7/xu3tj8u4GeBYHBWCychFtzMIr86A7e3PPEBPT37sHStKX3+TiX/Fr/ACmJLVlLQ==}
 
@@ -6637,9 +7058,6 @@ packages:
   strip-json-comments@3.1.1:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
-
-  strip-literal@3.1.0:
-    resolution: {integrity: sha512-8r3mkIM/2+PpjHoOtiAW8Rg3jJLHaV7xPwG+YRGrv6FP0wwk/toTpATxWYOW0BKdWwl82VT2tFYi5DlROa0Mxg==}
 
   stylis@4.4.0:
     resolution: {integrity: sha512-5Z9ZpRzfuH6l/UAvCPAPUo3665Nk2wLaZU3x+TLHKVzIz33+sbJqbtrYoC3KD4/uVOr2Zp+L0LySezP9OHV9yA==}
@@ -6731,20 +7149,12 @@ packages:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
     engines: {node: '>=12.0.0'}
 
-  tinypool@1.1.1:
-    resolution: {integrity: sha512-Zba82s87IFq9A9XmjiX5uZA/ARWDrB03OHlq+Vw1fSdt0I+4/Kutwy8BP4Y/y/aORMo61FQ0vIb5j44vSo5Pkg==}
-    engines: {node: ^18.0.0 || >=20.0.0}
-
-  tinyrainbow@2.0.0:
-    resolution: {integrity: sha512-op4nsTR47R6p0vMUUoYl/a+ljLFVtlfaXkLQmqfLR1qHma1h/ysYk4hEXZ880bf2CYgTskvTa/e196Vd5dDQXw==}
-    engines: {node: '>=14.0.0'}
+  tinypool@2.1.0:
+    resolution: {integrity: sha512-Pugqs6M0m7Lv1I7FtxN4aoyToKg1C4tu+/381vH35y8oENM/Ai7f7C4StcoK4/+BSw9ebcS8jRiVrORFKCALLw==}
+    engines: {node: ^20.0.0 || >=22.0.0}
 
   tinyrainbow@3.1.0:
     resolution: {integrity: sha512-Bf+ILmBgretUrdJxzXM0SgXLZ3XfiaUuOj/IKQHuTXip+05Xn+uyEYdVg0kYDipTBcLrCVyUzAPz7QmArb0mmw==}
-    engines: {node: '>=14.0.0'}
-
-  tinyspy@4.0.4:
-    resolution: {integrity: sha512-azl+t0z7pw/z958Gy9svOTuzqIk6xq+NSheJzn5MMWtWTFywIacg2wUlzKFGtt3cthx0r2SxMK0yzJOR0IES7Q==}
     engines: {node: '>=14.0.0'}
 
   tldts-core@7.4.3:
@@ -6768,6 +7178,10 @@ packages:
   toml@4.1.1:
     resolution: {integrity: sha512-EBJnVBr3dTXdA89WVFoAIPUqkBjxPMwRqsfuo1r240tKFHXv3zgca4+NJib/h6TyvGF7vOawz0jGuryJCdNHrw==}
     engines: {node: '>=20'}
+
+  totalist@3.0.1:
+    resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
+    engines: {node: '>=6'}
 
   tough-cookie@4.1.4:
     resolution: {integrity: sha512-Loo5UUvLD9ScZ6jh8beX1T6sO1w2/MpCRpEP7V280GKMVUQ0Jzar2U3UJPsrdbziLEMMhu3Ujnq//rhiFuIeag==}
@@ -7010,11 +7424,6 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  vite-node@3.2.4:
-    resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
-    engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
-    hasBin: true
-
   vite-plugin-solid@2.11.12:
     resolution: {integrity: sha512-FgjPcx2OwX9h6f28jli7A4bG7PP3te8uyakE5iqsmpq3Jqi1TWLgSroC9N6cMfGRU2zXsl4Q6ISvTr2VL0QHpA==}
     peerDependencies:
@@ -7025,44 +7434,17 @@ packages:
       '@testing-library/jest-dom':
         optional: true
 
-  vite@7.3.5:
-    resolution: {integrity: sha512-KuOaNhcnGFN2zIPGA7wRmzF+lJA1sea7rHq17aiJ++9lzY1WWG6Jpwqwe1KNbRVPIqHmr8GLYx7jbrQcN/7/ww==}
-    engines: {node: ^20.19.0 || >=22.12.0}
+  vite-plus@0.2.1:
+    resolution: {integrity: sha512-q5q/Y38UkWFsNg1JO+RyRdPUqoewaSqIlMyK2p83GKNUvf4D38Ntb3PToRTDZbTRh7mWt+B+d0DQBv4nCDpMcQ==}
+    engines: {node: ^20.19.0 || ^22.18.0 || >=24.11.0}
     hasBin: true
     peerDependencies:
-      '@types/node': ^20.19.0 || >=22.12.0
-      jiti: '>=1.21.0'
-      less: ^4.0.0
-      lightningcss: ^1.21.0
-      sass: ^1.70.0
-      sass-embedded: ^1.70.0
-      stylus: '>=0.54.8'
-      sugarss: ^5.0.0
-      terser: ^5.16.0
-      tsx: ^4.8.1
-      yaml: ^2.4.2
+      '@vitest/browser-playwright': 4.1.9
+      '@vitest/browser-webdriverio': 4.1.9
     peerDependenciesMeta:
-      '@types/node':
+      '@vitest/browser-playwright':
         optional: true
-      jiti:
-        optional: true
-      less:
-        optional: true
-      lightningcss:
-        optional: true
-      sass:
-        optional: true
-      sass-embedded:
-        optional: true
-      stylus:
-        optional: true
-      sugarss:
-        optional: true
-      terser:
-        optional: true
-      tsx:
-        optional: true
-      yaml:
+      '@vitest/browser-webdriverio':
         optional: true
 
   vite@8.1.0:
@@ -7114,34 +7496,6 @@ packages:
       vite: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       vite:
-        optional: true
-
-  vitest@3.2.6:
-    resolution: {integrity: sha512-xejya+bT/j/+R/AGa1XOfRxLmNUlLtlwjRsFUILF+xHfzElmGcmFydy2gqqIrd62ptIEfwVMofd19uNWD9L7Nw==}
-    engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
-    hasBin: true
-    peerDependencies:
-      '@edge-runtime/vm': '*'
-      '@types/debug': ^4.1.12
-      '@types/node': ^18.0.0 || ^20.0.0 || >=22.0.0
-      '@vitest/browser': 3.2.6
-      '@vitest/ui': 3.2.6
-      happy-dom: '*'
-      jsdom: '*'
-    peerDependenciesMeta:
-      '@edge-runtime/vm':
-        optional: true
-      '@types/debug':
-        optional: true
-      '@types/node':
-        optional: true
-      '@vitest/browser':
-        optional: true
-      '@vitest/ui':
-        optional: true
-      happy-dom:
-        optional: true
-      jsdom:
         optional: true
 
   vitest@4.1.9:
@@ -8042,6 +8396,8 @@ snapshots:
   '@biomejs/cli-win32-x64@2.4.5':
     optional: true
 
+  '@blazediff/core@1.9.1': {}
+
   '@braintree/sanitize-url@7.1.2': {}
 
   '@bramus/specificity@2.4.2':
@@ -8131,7 +8487,7 @@ snapshots:
   '@effect/vitest@4.0.0-beta.90(effect@4.0.0-beta.90)(vitest@4.1.9)':
     dependencies:
       effect: 4.0.0-beta.90
-      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
 
   '@electron-internal/extract-zip@1.0.3': {}
 
@@ -9239,7 +9595,145 @@ snapshots:
   '@opentelemetry/api@1.9.0':
     optional: true
 
+  '@oxc-project/runtime@0.136.0': {}
+
+  '@oxc-project/types@0.136.0': {}
+
   '@oxc-project/types@0.137.0': {}
+
+  '@oxfmt/binding-android-arm-eabi@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-android-arm64@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-darwin-arm64@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-darwin-x64@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-freebsd-x64@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-linux-arm-gnueabihf@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-linux-arm-musleabihf@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-linux-arm64-gnu@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-linux-arm64-musl@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-linux-ppc64-gnu@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-linux-riscv64-gnu@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-linux-riscv64-musl@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-linux-s390x-gnu@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-linux-x64-gnu@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-linux-x64-musl@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-openharmony-arm64@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-win32-arm64-msvc@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-win32-ia32-msvc@0.55.0':
+    optional: true
+
+  '@oxfmt/binding-win32-x64-msvc@0.55.0':
+    optional: true
+
+  '@oxlint-tsgolint/darwin-arm64@0.23.0':
+    optional: true
+
+  '@oxlint-tsgolint/darwin-x64@0.23.0':
+    optional: true
+
+  '@oxlint-tsgolint/linux-arm64@0.23.0':
+    optional: true
+
+  '@oxlint-tsgolint/linux-x64@0.23.0':
+    optional: true
+
+  '@oxlint-tsgolint/win32-arm64@0.23.0':
+    optional: true
+
+  '@oxlint-tsgolint/win32-x64@0.23.0':
+    optional: true
+
+  '@oxlint/binding-android-arm-eabi@1.70.0':
+    optional: true
+
+  '@oxlint/binding-android-arm64@1.70.0':
+    optional: true
+
+  '@oxlint/binding-darwin-arm64@1.70.0':
+    optional: true
+
+  '@oxlint/binding-darwin-x64@1.70.0':
+    optional: true
+
+  '@oxlint/binding-freebsd-x64@1.70.0':
+    optional: true
+
+  '@oxlint/binding-linux-arm-gnueabihf@1.70.0':
+    optional: true
+
+  '@oxlint/binding-linux-arm-musleabihf@1.70.0':
+    optional: true
+
+  '@oxlint/binding-linux-arm64-gnu@1.70.0':
+    optional: true
+
+  '@oxlint/binding-linux-arm64-musl@1.70.0':
+    optional: true
+
+  '@oxlint/binding-linux-ppc64-gnu@1.70.0':
+    optional: true
+
+  '@oxlint/binding-linux-riscv64-gnu@1.70.0':
+    optional: true
+
+  '@oxlint/binding-linux-riscv64-musl@1.70.0':
+    optional: true
+
+  '@oxlint/binding-linux-s390x-gnu@1.70.0':
+    optional: true
+
+  '@oxlint/binding-linux-x64-gnu@1.70.0':
+    optional: true
+
+  '@oxlint/binding-linux-x64-musl@1.70.0':
+    optional: true
+
+  '@oxlint/binding-openharmony-arm64@1.70.0':
+    optional: true
+
+  '@oxlint/binding-win32-arm64-msvc@1.70.0':
+    optional: true
+
+  '@oxlint/binding-win32-ia32-msvc@1.70.0':
+    optional: true
+
+  '@oxlint/binding-win32-x64-msvc@1.70.0':
+    optional: true
+
+  '@oxlint/plugins@1.68.0': {}
 
   '@peculiar/asn1-schema@2.8.0':
     dependencies:
@@ -9264,6 +9758,8 @@ snapshots:
       webcrypto-core: 1.9.2
 
   '@pinojs/redact@0.4.0': {}
+
+  '@polka/url@1.0.0-next.29': {}
 
   '@rolldown/binding-android-arm64@1.1.3':
     optional: true
@@ -9825,19 +10321,19 @@ snapshots:
       '@tailwindcss/oxide-win32-arm64-msvc': 4.3.1
       '@tailwindcss/oxide-win32-x64-msvc': 4.3.1
 
-  '@tailwindcss/vite@4.3.1(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))':
+  '@tailwindcss/vite@4.3.1(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))':
     dependencies:
       '@tailwindcss/node': 4.3.1
       '@tailwindcss/oxide': 4.3.1
       tailwindcss: 4.3.1
-      vite: 7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+      vite: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)'
 
-  '@tailwindcss/vite@4.3.1(vite@8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))':
+  '@tailwindcss/vite@4.3.1(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))':
     dependencies:
       '@tailwindcss/node': 4.3.1
       '@tailwindcss/oxide': 4.3.1
       tailwindcss: 4.3.1
-      vite: 8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
+      vite: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)'
 
   '@tanstack/solid-virtual@3.13.29(solid-js@1.9.13)':
     dependencies:
@@ -10204,7 +10700,181 @@ snapshots:
 
   '@vercel/oidc@3.2.0': {}
 
-  '@vitest/coverage-v8@4.1.9(vitest@4.1.9)':
+  '@vitest/browser-preview@4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(vitest@4.1.9)':
+    dependencies:
+      '@testing-library/dom': 10.4.1
+      '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.1)
+      '@vitest/browser': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(vitest@4.1.9)
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(jsdom@24.1.3(canvas@3.2.3))
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/browser-preview@4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(vitest@4.1.9)':
+    dependencies:
+      '@testing-library/dom': 10.4.1
+      '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.1)
+      '@vitest/browser': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(vitest@4.1.9)
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/browser-preview@4.1.9(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)':
+    dependencies:
+      '@testing-library/dom': 10.4.1
+      '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.1)
+      '@vitest/browser': 4.1.9(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/browser-preview@4.1.9(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)':
+    dependencies:
+      '@testing-library/dom': 10.4.1
+      '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.1)
+      '@vitest/browser': 4.1.9(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/browser-preview@4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)':
+    dependencies:
+      '@testing-library/dom': 10.4.1
+      '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.1)
+      '@vitest/browser': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/browser-preview@4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)':
+    dependencies:
+      '@testing-library/dom': 10.4.1
+      '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.1)
+      '@vitest/browser': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/browser@4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(vitest@4.1.9)':
+    dependencies:
+      '@blazediff/core': 1.9.1
+      '@vitest/mocker': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))
+      '@vitest/utils': 4.1.9
+      magic-string: 0.30.21
+      pngjs: 7.0.0
+      sirv: 3.0.2
+      tinyrainbow: 3.1.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(jsdom@24.1.3(canvas@3.2.3))
+      ws: 8.21.0
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/browser@4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(vitest@4.1.9)':
+    dependencies:
+      '@blazediff/core': 1.9.1
+      '@vitest/mocker': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))
+      '@vitest/utils': 4.1.9
+      magic-string: 0.30.21
+      pngjs: 7.0.0
+      sirv: 3.0.2
+      tinyrainbow: 3.1.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))
+      ws: 8.21.0
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/browser@4.1.9(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)':
+    dependencies:
+      '@blazediff/core': 1.9.1
+      '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/utils': 4.1.9
+      magic-string: 0.30.21
+      pngjs: 7.0.0
+      sirv: 3.0.2
+      tinyrainbow: 3.1.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      ws: 8.21.0
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/browser@4.1.9(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)':
+    dependencies:
+      '@blazediff/core': 1.9.1
+      '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/utils': 4.1.9
+      magic-string: 0.30.21
+      pngjs: 7.0.0
+      sirv: 3.0.2
+      tinyrainbow: 3.1.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      ws: 8.21.0
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/browser@4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)':
+    dependencies:
+      '@blazediff/core': 1.9.1
+      '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/utils': 4.1.9
+      magic-string: 0.30.21
+      pngjs: 7.0.0
+      sirv: 3.0.2
+      tinyrainbow: 3.1.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      ws: 8.21.0
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/browser@4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)':
+    dependencies:
+      '@blazediff/core': 1.9.1
+      '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/utils': 4.1.9
+      magic-string: 0.30.21
+      pngjs: 7.0.0
+      sirv: 3.0.2
+      tinyrainbow: 3.1.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      ws: 8.21.0
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/utils': 4.1.9
@@ -10216,15 +10886,9 @@ snapshots:
       obug: 2.1.3
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
-
-  '@vitest/expect@3.2.6':
-    dependencies:
-      '@types/chai': 5.2.3
-      '@vitest/spy': 3.2.6
-      '@vitest/utils': 3.2.6
-      chai: 5.3.3
-      tinyrainbow: 2.0.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+    optionalDependencies:
+      '@vitest/browser': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
 
   '@vitest/expect@4.1.9':
     dependencies:
@@ -10235,29 +10899,21 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@3.2.6(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))':
-    dependencies:
-      '@vitest/spy': 3.2.6
-      estree-walker: 3.0.3
-      magic-string: 0.30.21
-    optionalDependencies:
-      vite: 7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
-
-  '@vitest/mocker@4.1.9(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))':
+  '@vitest/mocker@4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))':
     dependencies:
       '@vitest/spy': 4.1.9
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+      vite: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)'
 
-  '@vitest/mocker@4.1.9(vite@8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))':
+  '@vitest/mocker@4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))':
     dependencies:
       '@vitest/spy': 4.1.9
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
+      vite: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)'
 
   '@vitest/mocker@4.1.9(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))':
     dependencies:
@@ -10275,6 +10931,14 @@ snapshots:
     optionalDependencies:
       vite: 8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
 
+  '@vitest/mocker@4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))':
+    dependencies:
+      '@vitest/spy': 4.1.9
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: 8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
+
   '@vitest/mocker@4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))':
     dependencies:
       '@vitest/spy': 4.1.9
@@ -10283,29 +10947,13 @@ snapshots:
     optionalDependencies:
       vite: 8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
 
-  '@vitest/pretty-format@3.2.6':
-    dependencies:
-      tinyrainbow: 2.0.0
-
   '@vitest/pretty-format@4.1.9':
     dependencies:
       tinyrainbow: 3.1.0
 
-  '@vitest/runner@3.2.6':
-    dependencies:
-      '@vitest/utils': 3.2.6
-      pathe: 2.0.3
-      strip-literal: 3.1.0
-
   '@vitest/runner@4.1.9':
     dependencies:
       '@vitest/utils': 4.1.9
-      pathe: 2.0.3
-
-  '@vitest/snapshot@3.2.6':
-    dependencies:
-      '@vitest/pretty-format': 3.2.6
-      magic-string: 0.30.21
       pathe: 2.0.3
 
   '@vitest/snapshot@4.1.9':
@@ -10315,23 +10963,112 @@ snapshots:
       magic-string: 0.30.21
       pathe: 2.0.3
 
-  '@vitest/spy@3.2.6':
-    dependencies:
-      tinyspy: 4.0.4
-
   '@vitest/spy@4.1.9': {}
-
-  '@vitest/utils@3.2.6':
-    dependencies:
-      '@vitest/pretty-format': 3.2.6
-      loupe: 3.2.1
-      tinyrainbow: 2.0.0
 
   '@vitest/utils@4.1.9':
     dependencies:
       '@vitest/pretty-format': 4.1.9
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.0
+
+  '@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)':
+    dependencies:
+      '@oxc-project/runtime': 0.136.0
+      '@oxc-project/types': 0.136.0
+      lightningcss: 1.32.0
+      postcss: 8.5.15
+    optionalDependencies:
+      '@types/node': 20.19.43
+      esbuild: 0.21.5
+      fsevents: 2.3.3
+      jiti: 2.7.0
+      tsx: 4.22.4
+      typescript: 5.9.3
+      yaml: 2.9.0
+
+  '@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)':
+    dependencies:
+      '@oxc-project/runtime': 0.136.0
+      '@oxc-project/types': 0.136.0
+      lightningcss: 1.32.0
+      postcss: 8.5.15
+    optionalDependencies:
+      '@types/node': 24.12.4
+      esbuild: 0.28.1
+      fsevents: 2.3.3
+      jiti: 2.7.0
+      tsx: 4.22.4
+      typescript: 6.0.3
+      yaml: 2.9.0
+
+  '@voidzero-dev/vite-plus-core@0.2.1(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)':
+    dependencies:
+      '@oxc-project/runtime': 0.136.0
+      '@oxc-project/types': 0.136.0
+      lightningcss: 1.32.0
+      postcss: 8.5.15
+    optionalDependencies:
+      '@types/node': 24.13.2
+      esbuild: 0.28.1
+      fsevents: 2.3.3
+      jiti: 2.7.0
+      tsx: 4.22.4
+      typescript: 6.0.3
+      yaml: 2.9.0
+
+  '@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)':
+    dependencies:
+      '@oxc-project/runtime': 0.136.0
+      '@oxc-project/types': 0.136.0
+      lightningcss: 1.32.0
+      postcss: 8.5.15
+    optionalDependencies:
+      '@types/node': 26.0.0
+      esbuild: 0.27.7
+      fsevents: 2.3.3
+      jiti: 2.7.0
+      tsx: 4.22.4
+      typescript: 6.0.3
+      yaml: 2.9.0
+
+  '@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)':
+    dependencies:
+      '@oxc-project/runtime': 0.136.0
+      '@oxc-project/types': 0.136.0
+      lightningcss: 1.32.0
+      postcss: 8.5.15
+    optionalDependencies:
+      '@types/node': 26.0.0
+      esbuild: 0.28.1
+      fsevents: 2.3.3
+      jiti: 2.7.0
+      tsx: 4.22.4
+      typescript: 6.0.3
+      yaml: 2.9.0
+
+  '@voidzero-dev/vite-plus-darwin-arm64@0.2.1':
+    optional: true
+
+  '@voidzero-dev/vite-plus-darwin-x64@0.2.1':
+    optional: true
+
+  '@voidzero-dev/vite-plus-linux-arm64-gnu@0.2.1':
+    optional: true
+
+  '@voidzero-dev/vite-plus-linux-arm64-musl@0.2.1':
+    optional: true
+
+  '@voidzero-dev/vite-plus-linux-x64-gnu@0.2.1':
+    optional: true
+
+  '@voidzero-dev/vite-plus-linux-x64-musl@0.2.1':
+    optional: true
+
+  '@voidzero-dev/vite-plus-win32-arm64-msvc@0.2.1':
+    optional: true
+
+  '@voidzero-dev/vite-plus-win32-x64-msvc@0.2.1':
+    optional: true
 
   '@workflow/serde@4.1.0': {}
 
@@ -10704,14 +11441,6 @@ snapshots:
 
   ccount@2.0.1: {}
 
-  chai@5.3.3:
-    dependencies:
-      assertion-error: 2.0.1
-      check-error: 2.1.3
-      deep-eql: 5.0.2
-      loupe: 3.2.1
-      pathval: 2.0.1
-
   chai@6.2.2: {}
 
   chalk@4.1.2:
@@ -10726,8 +11455,6 @@ snapshots:
   character-entities-legacy@3.0.0: {}
 
   chardet@2.2.0: {}
-
-  check-error@2.1.3: {}
 
   chokidar@4.0.3:
     dependencies:
@@ -11111,8 +11838,6 @@ snapshots:
     dependencies:
       mimic-response: 3.1.0
 
-  deep-eql@5.0.2: {}
-
   deep-extend@0.6.0:
     optional: true
 
@@ -11279,7 +12004,7 @@ snapshots:
 
   electron-to-chromium@1.5.376: {}
 
-  electron-vite@5.0.0(@swc/core@1.15.43(@swc/helpers@0.5.23))(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)):
+  electron-vite@5.0.0(@swc/core@1.15.43(@swc/helpers@0.5.23))(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)):
     dependencies:
       '@babel/core': 7.29.7
       '@babel/plugin-transform-arrow-functions': 7.29.7(@babel/core@7.29.7)
@@ -11287,7 +12012,7 @@ snapshots:
       esbuild: 0.25.12
       magic-string: 0.30.21
       picocolors: 1.1.1
-      vite: 7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+      vite: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)'
     optionalDependencies:
       '@swc/core': 1.15.43(@swc/helpers@0.5.23)
     transitivePeerDependencies:
@@ -11361,8 +12086,6 @@ snapshots:
   es-define-property@1.0.1: {}
 
   es-errors@1.3.0: {}
-
-  es-module-lexer@1.7.0: {}
 
   es-module-lexer@2.1.0: {}
 
@@ -12168,15 +12891,13 @@ snapshots:
 
   js-tokens@4.0.0: {}
 
-  js-tokens@9.0.1: {}
-
   js-yaml@4.2.0:
     dependencies:
       argparse: 2.0.1
 
   jsbi@4.3.2: {}
 
-  jsdom@24.1.3:
+  jsdom@24.1.3(canvas@3.2.3):
     dependencies:
       cssstyle: 4.6.0
       data-urls: 5.0.0
@@ -12199,6 +12920,8 @@ snapshots:
       whatwg-url: 14.2.0
       ws: 8.21.0
       xml-name-validator: 5.0.0
+    optionalDependencies:
+      canvas: 3.2.3
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -12460,8 +13183,6 @@ snapshots:
       safe-stable-stringify: 2.5.0
       triple-beam: 1.4.1
 
-  loupe@3.2.1: {}
-
   lowercase-keys@2.0.0: {}
 
   lru-cache@10.4.3: {}
@@ -12650,6 +13371,8 @@ snapshots:
       framer-motion: 12.40.0
       tslib: 2.8.1
 
+  mrmime@2.0.1: {}
+
   ms@2.1.3: {}
 
   msgpackr-extract@3.0.4:
@@ -12834,6 +13557,358 @@ snapshots:
       type-check: 0.4.0
       word-wrap: 1.2.5
 
+  oxfmt@0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.21.5)(jiti@2.7.0)(jsdom@24.1.3(canvas@3.2.3))(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)):
+    dependencies:
+      tinypool: 2.1.0
+    optionalDependencies:
+      '@oxfmt/binding-android-arm-eabi': 0.55.0
+      '@oxfmt/binding-android-arm64': 0.55.0
+      '@oxfmt/binding-darwin-arm64': 0.55.0
+      '@oxfmt/binding-darwin-x64': 0.55.0
+      '@oxfmt/binding-freebsd-x64': 0.55.0
+      '@oxfmt/binding-linux-arm-gnueabihf': 0.55.0
+      '@oxfmt/binding-linux-arm-musleabihf': 0.55.0
+      '@oxfmt/binding-linux-arm64-gnu': 0.55.0
+      '@oxfmt/binding-linux-arm64-musl': 0.55.0
+      '@oxfmt/binding-linux-ppc64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-musl': 0.55.0
+      '@oxfmt/binding-linux-s390x-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-musl': 0.55.0
+      '@oxfmt/binding-openharmony-arm64': 0.55.0
+      '@oxfmt/binding-win32-arm64-msvc': 0.55.0
+      '@oxfmt/binding-win32-ia32-msvc': 0.55.0
+      '@oxfmt/binding-win32-x64-msvc': 0.55.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.21.5)(jiti@2.7.0)(jsdom@24.1.3(canvas@3.2.3))(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
+
+  oxfmt@0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)):
+    dependencies:
+      tinypool: 2.1.0
+    optionalDependencies:
+      '@oxfmt/binding-android-arm-eabi': 0.55.0
+      '@oxfmt/binding-android-arm64': 0.55.0
+      '@oxfmt/binding-darwin-arm64': 0.55.0
+      '@oxfmt/binding-darwin-x64': 0.55.0
+      '@oxfmt/binding-freebsd-x64': 0.55.0
+      '@oxfmt/binding-linux-arm-gnueabihf': 0.55.0
+      '@oxfmt/binding-linux-arm-musleabihf': 0.55.0
+      '@oxfmt/binding-linux-arm64-gnu': 0.55.0
+      '@oxfmt/binding-linux-arm64-musl': 0.55.0
+      '@oxfmt/binding-linux-ppc64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-musl': 0.55.0
+      '@oxfmt/binding-linux-s390x-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-musl': 0.55.0
+      '@oxfmt/binding-openharmony-arm64': 0.55.0
+      '@oxfmt/binding-win32-arm64-msvc': 0.55.0
+      '@oxfmt/binding-win32-ia32-msvc': 0.55.0
+      '@oxfmt/binding-win32-x64-msvc': 0.55.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+
+  oxfmt@0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)):
+    dependencies:
+      tinypool: 2.1.0
+    optionalDependencies:
+      '@oxfmt/binding-android-arm-eabi': 0.55.0
+      '@oxfmt/binding-android-arm64': 0.55.0
+      '@oxfmt/binding-darwin-arm64': 0.55.0
+      '@oxfmt/binding-darwin-x64': 0.55.0
+      '@oxfmt/binding-freebsd-x64': 0.55.0
+      '@oxfmt/binding-linux-arm-gnueabihf': 0.55.0
+      '@oxfmt/binding-linux-arm-musleabihf': 0.55.0
+      '@oxfmt/binding-linux-arm64-gnu': 0.55.0
+      '@oxfmt/binding-linux-arm64-musl': 0.55.0
+      '@oxfmt/binding-linux-ppc64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-musl': 0.55.0
+      '@oxfmt/binding-linux-s390x-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-musl': 0.55.0
+      '@oxfmt/binding-openharmony-arm64': 0.55.0
+      '@oxfmt/binding-win32-arm64-msvc': 0.55.0
+      '@oxfmt/binding-win32-ia32-msvc': 0.55.0
+      '@oxfmt/binding-win32-x64-msvc': 0.55.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+
+  oxfmt@0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)):
+    dependencies:
+      tinypool: 2.1.0
+    optionalDependencies:
+      '@oxfmt/binding-android-arm-eabi': 0.55.0
+      '@oxfmt/binding-android-arm64': 0.55.0
+      '@oxfmt/binding-darwin-arm64': 0.55.0
+      '@oxfmt/binding-darwin-x64': 0.55.0
+      '@oxfmt/binding-freebsd-x64': 0.55.0
+      '@oxfmt/binding-linux-arm-gnueabihf': 0.55.0
+      '@oxfmt/binding-linux-arm-musleabihf': 0.55.0
+      '@oxfmt/binding-linux-arm64-gnu': 0.55.0
+      '@oxfmt/binding-linux-arm64-musl': 0.55.0
+      '@oxfmt/binding-linux-ppc64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-musl': 0.55.0
+      '@oxfmt/binding-linux-s390x-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-musl': 0.55.0
+      '@oxfmt/binding-openharmony-arm64': 0.55.0
+      '@oxfmt/binding-win32-arm64-msvc': 0.55.0
+      '@oxfmt/binding-win32-ia32-msvc': 0.55.0
+      '@oxfmt/binding-win32-x64-msvc': 0.55.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+
+  oxfmt@0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)):
+    dependencies:
+      tinypool: 2.1.0
+    optionalDependencies:
+      '@oxfmt/binding-android-arm-eabi': 0.55.0
+      '@oxfmt/binding-android-arm64': 0.55.0
+      '@oxfmt/binding-darwin-arm64': 0.55.0
+      '@oxfmt/binding-darwin-x64': 0.55.0
+      '@oxfmt/binding-freebsd-x64': 0.55.0
+      '@oxfmt/binding-linux-arm-gnueabihf': 0.55.0
+      '@oxfmt/binding-linux-arm-musleabihf': 0.55.0
+      '@oxfmt/binding-linux-arm64-gnu': 0.55.0
+      '@oxfmt/binding-linux-arm64-musl': 0.55.0
+      '@oxfmt/binding-linux-ppc64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-musl': 0.55.0
+      '@oxfmt/binding-linux-s390x-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-musl': 0.55.0
+      '@oxfmt/binding-openharmony-arm64': 0.55.0
+      '@oxfmt/binding-win32-arm64-msvc': 0.55.0
+      '@oxfmt/binding-win32-ia32-msvc': 0.55.0
+      '@oxfmt/binding-win32-x64-msvc': 0.55.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+
+  oxfmt@0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)):
+    dependencies:
+      tinypool: 2.1.0
+    optionalDependencies:
+      '@oxfmt/binding-android-arm-eabi': 0.55.0
+      '@oxfmt/binding-android-arm64': 0.55.0
+      '@oxfmt/binding-darwin-arm64': 0.55.0
+      '@oxfmt/binding-darwin-x64': 0.55.0
+      '@oxfmt/binding-freebsd-x64': 0.55.0
+      '@oxfmt/binding-linux-arm-gnueabihf': 0.55.0
+      '@oxfmt/binding-linux-arm-musleabihf': 0.55.0
+      '@oxfmt/binding-linux-arm64-gnu': 0.55.0
+      '@oxfmt/binding-linux-arm64-musl': 0.55.0
+      '@oxfmt/binding-linux-ppc64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-musl': 0.55.0
+      '@oxfmt/binding-linux-s390x-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-musl': 0.55.0
+      '@oxfmt/binding-openharmony-arm64': 0.55.0
+      '@oxfmt/binding-win32-arm64-msvc': 0.55.0
+      '@oxfmt/binding-win32-ia32-msvc': 0.55.0
+      '@oxfmt/binding-win32-x64-msvc': 0.55.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+
+  oxfmt@0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)):
+    dependencies:
+      tinypool: 2.1.0
+    optionalDependencies:
+      '@oxfmt/binding-android-arm-eabi': 0.55.0
+      '@oxfmt/binding-android-arm64': 0.55.0
+      '@oxfmt/binding-darwin-arm64': 0.55.0
+      '@oxfmt/binding-darwin-x64': 0.55.0
+      '@oxfmt/binding-freebsd-x64': 0.55.0
+      '@oxfmt/binding-linux-arm-gnueabihf': 0.55.0
+      '@oxfmt/binding-linux-arm-musleabihf': 0.55.0
+      '@oxfmt/binding-linux-arm64-gnu': 0.55.0
+      '@oxfmt/binding-linux-arm64-musl': 0.55.0
+      '@oxfmt/binding-linux-ppc64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-gnu': 0.55.0
+      '@oxfmt/binding-linux-riscv64-musl': 0.55.0
+      '@oxfmt/binding-linux-s390x-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-gnu': 0.55.0
+      '@oxfmt/binding-linux-x64-musl': 0.55.0
+      '@oxfmt/binding-openharmony-arm64': 0.55.0
+      '@oxfmt/binding-win32-arm64-msvc': 0.55.0
+      '@oxfmt/binding-win32-ia32-msvc': 0.55.0
+      '@oxfmt/binding-win32-x64-msvc': 0.55.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+
+  oxlint-tsgolint@0.23.0:
+    optionalDependencies:
+      '@oxlint-tsgolint/darwin-arm64': 0.23.0
+      '@oxlint-tsgolint/darwin-x64': 0.23.0
+      '@oxlint-tsgolint/linux-arm64': 0.23.0
+      '@oxlint-tsgolint/linux-x64': 0.23.0
+      '@oxlint-tsgolint/win32-arm64': 0.23.0
+      '@oxlint-tsgolint/win32-x64': 0.23.0
+
+  oxlint@1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.21.5)(jiti@2.7.0)(jsdom@24.1.3(canvas@3.2.3))(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)):
+    optionalDependencies:
+      '@oxlint/binding-android-arm-eabi': 1.70.0
+      '@oxlint/binding-android-arm64': 1.70.0
+      '@oxlint/binding-darwin-arm64': 1.70.0
+      '@oxlint/binding-darwin-x64': 1.70.0
+      '@oxlint/binding-freebsd-x64': 1.70.0
+      '@oxlint/binding-linux-arm-gnueabihf': 1.70.0
+      '@oxlint/binding-linux-arm-musleabihf': 1.70.0
+      '@oxlint/binding-linux-arm64-gnu': 1.70.0
+      '@oxlint/binding-linux-arm64-musl': 1.70.0
+      '@oxlint/binding-linux-ppc64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-musl': 1.70.0
+      '@oxlint/binding-linux-s390x-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-musl': 1.70.0
+      '@oxlint/binding-openharmony-arm64': 1.70.0
+      '@oxlint/binding-win32-arm64-msvc': 1.70.0
+      '@oxlint/binding-win32-ia32-msvc': 1.70.0
+      '@oxlint/binding-win32-x64-msvc': 1.70.0
+      oxlint-tsgolint: 0.23.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.21.5)(jiti@2.7.0)(jsdom@24.1.3(canvas@3.2.3))(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
+
+  oxlint@1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)):
+    optionalDependencies:
+      '@oxlint/binding-android-arm-eabi': 1.70.0
+      '@oxlint/binding-android-arm64': 1.70.0
+      '@oxlint/binding-darwin-arm64': 1.70.0
+      '@oxlint/binding-darwin-x64': 1.70.0
+      '@oxlint/binding-freebsd-x64': 1.70.0
+      '@oxlint/binding-linux-arm-gnueabihf': 1.70.0
+      '@oxlint/binding-linux-arm-musleabihf': 1.70.0
+      '@oxlint/binding-linux-arm64-gnu': 1.70.0
+      '@oxlint/binding-linux-arm64-musl': 1.70.0
+      '@oxlint/binding-linux-ppc64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-musl': 1.70.0
+      '@oxlint/binding-linux-s390x-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-musl': 1.70.0
+      '@oxlint/binding-openharmony-arm64': 1.70.0
+      '@oxlint/binding-win32-arm64-msvc': 1.70.0
+      '@oxlint/binding-win32-ia32-msvc': 1.70.0
+      '@oxlint/binding-win32-x64-msvc': 1.70.0
+      oxlint-tsgolint: 0.23.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+
+  oxlint@1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)):
+    optionalDependencies:
+      '@oxlint/binding-android-arm-eabi': 1.70.0
+      '@oxlint/binding-android-arm64': 1.70.0
+      '@oxlint/binding-darwin-arm64': 1.70.0
+      '@oxlint/binding-darwin-x64': 1.70.0
+      '@oxlint/binding-freebsd-x64': 1.70.0
+      '@oxlint/binding-linux-arm-gnueabihf': 1.70.0
+      '@oxlint/binding-linux-arm-musleabihf': 1.70.0
+      '@oxlint/binding-linux-arm64-gnu': 1.70.0
+      '@oxlint/binding-linux-arm64-musl': 1.70.0
+      '@oxlint/binding-linux-ppc64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-musl': 1.70.0
+      '@oxlint/binding-linux-s390x-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-musl': 1.70.0
+      '@oxlint/binding-openharmony-arm64': 1.70.0
+      '@oxlint/binding-win32-arm64-msvc': 1.70.0
+      '@oxlint/binding-win32-ia32-msvc': 1.70.0
+      '@oxlint/binding-win32-x64-msvc': 1.70.0
+      oxlint-tsgolint: 0.23.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+
+  oxlint@1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)):
+    optionalDependencies:
+      '@oxlint/binding-android-arm-eabi': 1.70.0
+      '@oxlint/binding-android-arm64': 1.70.0
+      '@oxlint/binding-darwin-arm64': 1.70.0
+      '@oxlint/binding-darwin-x64': 1.70.0
+      '@oxlint/binding-freebsd-x64': 1.70.0
+      '@oxlint/binding-linux-arm-gnueabihf': 1.70.0
+      '@oxlint/binding-linux-arm-musleabihf': 1.70.0
+      '@oxlint/binding-linux-arm64-gnu': 1.70.0
+      '@oxlint/binding-linux-arm64-musl': 1.70.0
+      '@oxlint/binding-linux-ppc64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-musl': 1.70.0
+      '@oxlint/binding-linux-s390x-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-musl': 1.70.0
+      '@oxlint/binding-openharmony-arm64': 1.70.0
+      '@oxlint/binding-win32-arm64-msvc': 1.70.0
+      '@oxlint/binding-win32-ia32-msvc': 1.70.0
+      '@oxlint/binding-win32-x64-msvc': 1.70.0
+      oxlint-tsgolint: 0.23.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+
+  oxlint@1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)):
+    optionalDependencies:
+      '@oxlint/binding-android-arm-eabi': 1.70.0
+      '@oxlint/binding-android-arm64': 1.70.0
+      '@oxlint/binding-darwin-arm64': 1.70.0
+      '@oxlint/binding-darwin-x64': 1.70.0
+      '@oxlint/binding-freebsd-x64': 1.70.0
+      '@oxlint/binding-linux-arm-gnueabihf': 1.70.0
+      '@oxlint/binding-linux-arm-musleabihf': 1.70.0
+      '@oxlint/binding-linux-arm64-gnu': 1.70.0
+      '@oxlint/binding-linux-arm64-musl': 1.70.0
+      '@oxlint/binding-linux-ppc64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-musl': 1.70.0
+      '@oxlint/binding-linux-s390x-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-musl': 1.70.0
+      '@oxlint/binding-openharmony-arm64': 1.70.0
+      '@oxlint/binding-win32-arm64-msvc': 1.70.0
+      '@oxlint/binding-win32-ia32-msvc': 1.70.0
+      '@oxlint/binding-win32-x64-msvc': 1.70.0
+      oxlint-tsgolint: 0.23.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+
+  oxlint@1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)):
+    optionalDependencies:
+      '@oxlint/binding-android-arm-eabi': 1.70.0
+      '@oxlint/binding-android-arm64': 1.70.0
+      '@oxlint/binding-darwin-arm64': 1.70.0
+      '@oxlint/binding-darwin-x64': 1.70.0
+      '@oxlint/binding-freebsd-x64': 1.70.0
+      '@oxlint/binding-linux-arm-gnueabihf': 1.70.0
+      '@oxlint/binding-linux-arm-musleabihf': 1.70.0
+      '@oxlint/binding-linux-arm64-gnu': 1.70.0
+      '@oxlint/binding-linux-arm64-musl': 1.70.0
+      '@oxlint/binding-linux-ppc64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-musl': 1.70.0
+      '@oxlint/binding-linux-s390x-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-musl': 1.70.0
+      '@oxlint/binding-openharmony-arm64': 1.70.0
+      '@oxlint/binding-win32-arm64-msvc': 1.70.0
+      '@oxlint/binding-win32-ia32-msvc': 1.70.0
+      '@oxlint/binding-win32-x64-msvc': 1.70.0
+      oxlint-tsgolint: 0.23.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+
+  oxlint@1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)):
+    optionalDependencies:
+      '@oxlint/binding-android-arm-eabi': 1.70.0
+      '@oxlint/binding-android-arm64': 1.70.0
+      '@oxlint/binding-darwin-arm64': 1.70.0
+      '@oxlint/binding-darwin-x64': 1.70.0
+      '@oxlint/binding-freebsd-x64': 1.70.0
+      '@oxlint/binding-linux-arm-gnueabihf': 1.70.0
+      '@oxlint/binding-linux-arm-musleabihf': 1.70.0
+      '@oxlint/binding-linux-arm64-gnu': 1.70.0
+      '@oxlint/binding-linux-arm64-musl': 1.70.0
+      '@oxlint/binding-linux-ppc64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-gnu': 1.70.0
+      '@oxlint/binding-linux-riscv64-musl': 1.70.0
+      '@oxlint/binding-linux-s390x-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-gnu': 1.70.0
+      '@oxlint/binding-linux-x64-musl': 1.70.0
+      '@oxlint/binding-openharmony-arm64': 1.70.0
+      '@oxlint/binding-win32-arm64-msvc': 1.70.0
+      '@oxlint/binding-win32-ia32-msvc': 1.70.0
+      '@oxlint/binding-win32-x64-msvc': 1.70.0
+      oxlint-tsgolint: 0.23.0
+      vite-plus: 0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+
   p-cancelable@2.1.1: {}
 
   p-limit@3.1.0:
@@ -12876,8 +13951,6 @@ snapshots:
   path-type@4.0.0: {}
 
   pathe@2.0.3: {}
-
-  pathval@2.0.1: {}
 
   pe-library@0.4.1: {}
 
@@ -12936,6 +14009,8 @@ snapshots:
       '@xmldom/xmldom': 0.8.13
       base64-js: 1.5.1
       xmlbuilder: 15.1.1
+
+  pngjs@7.0.0: {}
 
   points-on-curve@0.2.0: {}
 
@@ -13308,6 +14383,12 @@ snapshots:
     dependencies:
       semver: 7.8.5
 
+  sirv@3.0.2:
+    dependencies:
+      '@polka/url': 1.0.0-next.29
+      mrmime: 2.0.1
+      totalist: 3.0.1
+
   sisteransi@1.0.5: {}
 
   slash@3.0.0: {}
@@ -13404,8 +14485,6 @@ snapshots:
 
   stat-mode@1.0.0: {}
 
-  std-env@3.10.0: {}
-
   std-env@4.1.0: {}
 
   string-argv@0.3.2: {}
@@ -13454,10 +14533,6 @@ snapshots:
     optional: true
 
   strip-json-comments@3.1.1: {}
-
-  strip-literal@3.1.0:
-    dependencies:
-      js-tokens: 9.0.1
 
   stylis@4.4.0: {}
 
@@ -13563,13 +14638,9 @@ snapshots:
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
 
-  tinypool@1.1.1: {}
-
-  tinyrainbow@2.0.0: {}
+  tinypool@2.1.0: {}
 
   tinyrainbow@3.1.0: {}
-
-  tinyspy@4.0.4: {}
 
   tldts-core@7.4.3: {}
 
@@ -13588,6 +14659,8 @@ snapshots:
       is-number: 7.0.0
 
   toml@4.1.1: {}
+
+  totalist@3.0.1: {}
 
   tough-cookie@4.1.4:
     dependencies:
@@ -13742,7 +14815,7 @@ snapshots:
 
   ufo@1.6.4: {}
 
-  ultracite@7.2.5:
+  ultracite@7.2.5(oxlint@1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.21.5)(jiti@2.7.0)(jsdom@24.1.3(canvas@3.2.3))(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))):
     dependencies:
       '@clack/prompts': 1.6.0
       commander: 14.0.3
@@ -13750,8 +14823,10 @@ snapshots:
       glob: 13.0.6
       jsonc-parser: 3.3.1
       nypm: 0.6.7
+    optionalDependencies:
+      oxlint: 1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.21.5)(jiti@2.7.0)(jsdom@24.1.3(canvas@3.2.3))(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))
 
-  ultracite@7.8.3:
+  ultracite@7.8.3(oxfmt@0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)))(oxlint@1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))):
     dependencies:
       '@clack/prompts': 1.6.0
       commander: 15.0.0
@@ -13762,6 +14837,9 @@ snapshots:
       nypm: 0.6.7
       yaml: 2.9.0
       zod: 4.4.3
+    optionalDependencies:
+      oxfmt: 0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
+      oxlint: 1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
 
   undici-types@6.21.0: {}
 
@@ -13862,87 +14940,455 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-node@3.2.4(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0):
+  vite-plugin-solid@2.11.12(@testing-library/jest-dom@6.9.1)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(solid-js@1.9.13):
     dependencies:
-      cac: 6.7.14
-      debug: 4.4.3
-      es-module-lexer: 1.7.0
-      pathe: 2.0.3
-      vite: 7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+      '@babel/core': 7.29.7
+      '@types/babel__core': 7.20.5
+      babel-preset-solid: 1.9.12(@babel/core@7.29.7)(solid-js@1.9.13)
+      merge-anything: 5.1.7
+      solid-js: 1.9.13
+      solid-refresh: 0.6.3(solid-js@1.9.13)
+      vite: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)'
+      vitefu: 1.1.3(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))
+    optionalDependencies:
+      '@testing-library/jest-dom': 6.9.1
     transitivePeerDependencies:
+      - supports-color
+
+  vite-plugin-solid@2.11.12(@testing-library/jest-dom@6.9.1)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(solid-js@1.9.13):
+    dependencies:
+      '@babel/core': 7.29.7
+      '@types/babel__core': 7.20.5
+      babel-preset-solid: 1.9.12(@babel/core@7.29.7)(solid-js@1.9.13)
+      merge-anything: 5.1.7
+      solid-js: 1.9.13
+      solid-refresh: 0.6.3(solid-js@1.9.13)
+      vite: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)'
+      vitefu: 1.1.3(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))
+    optionalDependencies:
+      '@testing-library/jest-dom': 6.9.1
+    transitivePeerDependencies:
+      - supports-color
+
+  vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.21.5)(jiti@2.7.0)(jsdom@24.1.3(canvas@3.2.3))(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0):
+    dependencies:
+      '@oxc-project/types': 0.136.0
+      '@oxlint/plugins': 1.68.0
+      '@vitest/browser': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/browser-preview': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/expect': 4.1.9
+      '@vitest/mocker': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))
+      '@vitest/pretty-format': 4.1.9
+      '@vitest/runner': 4.1.9
+      '@vitest/snapshot': 4.1.9
+      '@vitest/spy': 4.1.9
+      '@vitest/utils': 4.1.9
+      '@voidzero-dev/vite-plus-core': 0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
+      oxfmt: 0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.21.5)(jiti@2.7.0)(jsdom@24.1.3(canvas@3.2.3))(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))
+      oxlint: 1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(esbuild@0.21.5)(jiti@2.7.0)(jsdom@24.1.3(canvas@3.2.3))(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))
+      oxlint-tsgolint: 0.23.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(jsdom@24.1.3(canvas@3.2.3))
+    optionalDependencies:
+      '@voidzero-dev/vite-plus-darwin-arm64': 0.2.1
+      '@voidzero-dev/vite-plus-darwin-x64': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-win32-arm64-msvc': 0.2.1
+      '@voidzero-dev/vite-plus-win32-x64-msvc': 0.2.1
+    transitivePeerDependencies:
+      - '@arethetypeswrong/core'
+      - '@edge-runtime/vm'
+      - '@opentelemetry/api'
+      - '@tsdown/css'
+      - '@tsdown/exe'
       - '@types/node'
+      - '@vitejs/devtools'
+      - '@vitest/coverage-istanbul'
+      - '@vitest/coverage-v8'
+      - '@vitest/ui'
+      - bufferutil
+      - esbuild
+      - happy-dom
       - jiti
+      - jsdom
       - less
-      - lightningcss
+      - msw
+      - publint
       - sass
       - sass-embedded
       - stylus
       - sugarss
-      - supports-color
+      - svelte
       - terser
       - tsx
+      - typescript
+      - unplugin-unused
+      - unrun
+      - utf-8-validate
+      - vite
       - yaml
 
-  vite-plugin-solid@2.11.12(@testing-library/jest-dom@6.9.1)(solid-js@1.9.13)(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)):
+  vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0):
     dependencies:
-      '@babel/core': 7.29.7
-      '@types/babel__core': 7.20.5
-      babel-preset-solid: 1.9.12(@babel/core@7.29.7)(solid-js@1.9.13)
-      merge-anything: 5.1.7
-      solid-js: 1.9.13
-      solid-refresh: 0.6.3(solid-js@1.9.13)
-      vite: 7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
-      vitefu: 1.1.3(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@oxc-project/types': 0.136.0
+      '@oxlint/plugins': 1.68.0
+      '@vitest/browser': 4.1.9(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/browser-preview': 4.1.9(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/expect': 4.1.9
+      '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/pretty-format': 4.1.9
+      '@vitest/runner': 4.1.9
+      '@vitest/snapshot': 4.1.9
+      '@vitest/spy': 4.1.9
+      '@vitest/utils': 4.1.9
+      '@voidzero-dev/vite-plus-core': 0.2.1(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+      oxfmt: 0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
+      oxlint: 1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
+      oxlint-tsgolint: 0.23.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     optionalDependencies:
-      '@testing-library/jest-dom': 6.9.1
+      '@voidzero-dev/vite-plus-darwin-arm64': 0.2.1
+      '@voidzero-dev/vite-plus-darwin-x64': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-win32-arm64-msvc': 0.2.1
+      '@voidzero-dev/vite-plus-win32-x64-msvc': 0.2.1
     transitivePeerDependencies:
-      - supports-color
+      - '@arethetypeswrong/core'
+      - '@edge-runtime/vm'
+      - '@opentelemetry/api'
+      - '@tsdown/css'
+      - '@tsdown/exe'
+      - '@types/node'
+      - '@vitejs/devtools'
+      - '@vitest/coverage-istanbul'
+      - '@vitest/coverage-v8'
+      - '@vitest/ui'
+      - bufferutil
+      - esbuild
+      - happy-dom
+      - jiti
+      - jsdom
+      - less
+      - msw
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - svelte
+      - terser
+      - tsx
+      - typescript
+      - unplugin-unused
+      - unrun
+      - utf-8-validate
+      - vite
+      - yaml
 
-  vite-plugin-solid@2.11.12(@testing-library/jest-dom@6.9.1)(solid-js@1.9.13)(vite@8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
+  vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0):
     dependencies:
-      '@babel/core': 7.29.7
-      '@types/babel__core': 7.20.5
-      babel-preset-solid: 1.9.12(@babel/core@7.29.7)(solid-js@1.9.13)
-      merge-anything: 5.1.7
-      solid-js: 1.9.13
-      solid-refresh: 0.6.3(solid-js@1.9.13)
-      vite: 8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
-      vitefu: 1.1.3(vite@8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@oxc-project/types': 0.136.0
+      '@oxlint/plugins': 1.68.0
+      '@vitest/browser': 4.1.9(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/browser-preview': 4.1.9(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/expect': 4.1.9
+      '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/pretty-format': 4.1.9
+      '@vitest/runner': 4.1.9
+      '@vitest/snapshot': 4.1.9
+      '@vitest/spy': 4.1.9
+      '@vitest/utils': 4.1.9
+      '@voidzero-dev/vite-plus-core': 0.2.1(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+      oxfmt: 0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
+      oxlint: 1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
+      oxlint-tsgolint: 0.23.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     optionalDependencies:
-      '@testing-library/jest-dom': 6.9.1
+      '@voidzero-dev/vite-plus-darwin-arm64': 0.2.1
+      '@voidzero-dev/vite-plus-darwin-x64': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-win32-arm64-msvc': 0.2.1
+      '@voidzero-dev/vite-plus-win32-x64-msvc': 0.2.1
     transitivePeerDependencies:
-      - supports-color
+      - '@arethetypeswrong/core'
+      - '@edge-runtime/vm'
+      - '@opentelemetry/api'
+      - '@tsdown/css'
+      - '@tsdown/exe'
+      - '@types/node'
+      - '@vitejs/devtools'
+      - '@vitest/coverage-istanbul'
+      - '@vitest/coverage-v8'
+      - '@vitest/ui'
+      - bufferutil
+      - esbuild
+      - happy-dom
+      - jiti
+      - jsdom
+      - less
+      - msw
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - svelte
+      - terser
+      - tsx
+      - typescript
+      - unplugin-unused
+      - unrun
+      - utf-8-validate
+      - vite
+      - yaml
 
-  vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0):
+  vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0):
     dependencies:
-      esbuild: 0.27.7
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
-      postcss: 8.5.15
-      rollup: 4.62.2
-      tinyglobby: 0.2.17
+      '@oxc-project/types': 0.136.0
+      '@oxlint/plugins': 1.68.0
+      '@vitest/browser': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/browser-preview': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/expect': 4.1.9
+      '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/pretty-format': 4.1.9
+      '@vitest/runner': 4.1.9
+      '@vitest/snapshot': 4.1.9
+      '@vitest/spy': 4.1.9
+      '@vitest/utils': 4.1.9
+      '@voidzero-dev/vite-plus-core': 0.2.1(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+      oxfmt: 0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
+      oxlint: 1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.27.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
+      oxlint-tsgolint: 0.23.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     optionalDependencies:
-      '@types/node': 26.0.0
-      fsevents: 2.3.3
-      jiti: 2.7.0
-      lightningcss: 1.32.0
-      tsx: 4.22.4
-      yaml: 2.9.0
+      '@voidzero-dev/vite-plus-darwin-arm64': 0.2.1
+      '@voidzero-dev/vite-plus-darwin-x64': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-win32-arm64-msvc': 0.2.1
+      '@voidzero-dev/vite-plus-win32-x64-msvc': 0.2.1
+    transitivePeerDependencies:
+      - '@arethetypeswrong/core'
+      - '@edge-runtime/vm'
+      - '@opentelemetry/api'
+      - '@tsdown/css'
+      - '@tsdown/exe'
+      - '@types/node'
+      - '@vitejs/devtools'
+      - '@vitest/coverage-istanbul'
+      - '@vitest/coverage-v8'
+      - '@vitest/ui'
+      - bufferutil
+      - esbuild
+      - happy-dom
+      - jiti
+      - jsdom
+      - less
+      - msw
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - svelte
+      - terser
+      - tsx
+      - typescript
+      - unplugin-unused
+      - unrun
+      - utf-8-validate
+      - vite
+      - yaml
 
-  vite@8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0):
+  vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0):
     dependencies:
-      lightningcss: 1.32.0
-      picomatch: 4.0.4
-      postcss: 8.5.15
-      rolldown: 1.1.3
-      tinyglobby: 0.2.17
+      '@oxc-project/types': 0.136.0
+      '@oxlint/plugins': 1.68.0
+      '@vitest/browser': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/browser-preview': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/expect': 4.1.9
+      '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/pretty-format': 4.1.9
+      '@vitest/runner': 4.1.9
+      '@vitest/snapshot': 4.1.9
+      '@vitest/spy': 4.1.9
+      '@vitest/utils': 4.1.9
+      '@voidzero-dev/vite-plus-core': 0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+      oxfmt: 0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
+      oxlint: 1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
+      oxlint-tsgolint: 0.23.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
     optionalDependencies:
-      '@types/node': 20.19.43
-      esbuild: 0.21.5
-      fsevents: 2.3.3
-      jiti: 2.7.0
-      tsx: 4.22.4
-      yaml: 2.9.0
+      '@voidzero-dev/vite-plus-darwin-arm64': 0.2.1
+      '@voidzero-dev/vite-plus-darwin-x64': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-win32-arm64-msvc': 0.2.1
+      '@voidzero-dev/vite-plus-win32-x64-msvc': 0.2.1
+    transitivePeerDependencies:
+      - '@arethetypeswrong/core'
+      - '@edge-runtime/vm'
+      - '@opentelemetry/api'
+      - '@tsdown/css'
+      - '@tsdown/exe'
+      - '@types/node'
+      - '@vitejs/devtools'
+      - '@vitest/coverage-istanbul'
+      - '@vitest/coverage-v8'
+      - '@vitest/ui'
+      - bufferutil
+      - esbuild
+      - happy-dom
+      - jiti
+      - jsdom
+      - less
+      - msw
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - svelte
+      - terser
+      - tsx
+      - typescript
+      - unplugin-unused
+      - unrun
+      - utf-8-validate
+      - vite
+      - yaml
+
+  vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0):
+    dependencies:
+      '@oxc-project/types': 0.136.0
+      '@oxlint/plugins': 1.68.0
+      '@vitest/browser': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/browser-preview': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/expect': 4.1.9
+      '@vitest/mocker': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))
+      '@vitest/pretty-format': 4.1.9
+      '@vitest/runner': 4.1.9
+      '@vitest/snapshot': 4.1.9
+      '@vitest/spy': 4.1.9
+      '@vitest/utils': 4.1.9
+      '@voidzero-dev/vite-plus-core': 0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+      oxfmt: 0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))
+      oxlint: 1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))
+      oxlint-tsgolint: 0.23.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))
+    optionalDependencies:
+      '@voidzero-dev/vite-plus-darwin-arm64': 0.2.1
+      '@voidzero-dev/vite-plus-darwin-x64': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-win32-arm64-msvc': 0.2.1
+      '@voidzero-dev/vite-plus-win32-x64-msvc': 0.2.1
+    transitivePeerDependencies:
+      - '@arethetypeswrong/core'
+      - '@edge-runtime/vm'
+      - '@opentelemetry/api'
+      - '@tsdown/css'
+      - '@tsdown/exe'
+      - '@types/node'
+      - '@vitejs/devtools'
+      - '@vitest/coverage-istanbul'
+      - '@vitest/coverage-v8'
+      - '@vitest/ui'
+      - bufferutil
+      - esbuild
+      - happy-dom
+      - jiti
+      - jsdom
+      - less
+      - msw
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - svelte
+      - terser
+      - tsx
+      - typescript
+      - unplugin-unused
+      - unrun
+      - utf-8-validate
+      - vite
+      - yaml
+
+  vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0):
+    dependencies:
+      '@oxc-project/types': 0.136.0
+      '@oxlint/plugins': 1.68.0
+      '@vitest/browser': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/browser-preview': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/expect': 4.1.9
+      '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/pretty-format': 4.1.9
+      '@vitest/runner': 4.1.9
+      '@vitest/snapshot': 4.1.9
+      '@vitest/spy': 4.1.9
+      '@vitest/utils': 4.1.9
+      '@voidzero-dev/vite-plus-core': 0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+      oxfmt: 0.55.0(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
+      oxlint: 1.70.0(oxlint-tsgolint@0.23.0)(vite-plus@0.2.1(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(tsx@4.22.4)(typescript@6.0.3)(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
+      oxlint-tsgolint: 0.23.0
+      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+    optionalDependencies:
+      '@voidzero-dev/vite-plus-darwin-arm64': 0.2.1
+      '@voidzero-dev/vite-plus-darwin-x64': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-arm64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-gnu': 0.2.1
+      '@voidzero-dev/vite-plus-linux-x64-musl': 0.2.1
+      '@voidzero-dev/vite-plus-win32-arm64-msvc': 0.2.1
+      '@voidzero-dev/vite-plus-win32-x64-msvc': 0.2.1
+    transitivePeerDependencies:
+      - '@arethetypeswrong/core'
+      - '@edge-runtime/vm'
+      - '@opentelemetry/api'
+      - '@tsdown/css'
+      - '@tsdown/exe'
+      - '@types/node'
+      - '@vitejs/devtools'
+      - '@vitest/coverage-istanbul'
+      - '@vitest/coverage-v8'
+      - '@vitest/ui'
+      - bufferutil
+      - esbuild
+      - happy-dom
+      - jiti
+      - jsdom
+      - less
+      - msw
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - svelte
+      - terser
+      - tsx
+      - typescript
+      - unplugin-unused
+      - unrun
+      - utf-8-validate
+      - vite
+      - yaml
 
   vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0):
     dependencies:
@@ -13974,6 +15420,21 @@ snapshots:
       tsx: 4.22.4
       yaml: 2.9.0
 
+  vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0):
+    dependencies:
+      lightningcss: 1.32.0
+      picomatch: 4.0.4
+      postcss: 8.5.15
+      rolldown: 1.1.3
+      tinyglobby: 0.2.17
+    optionalDependencies:
+      '@types/node': 26.0.0
+      esbuild: 0.27.7
+      fsevents: 2.3.3
+      jiti: 2.7.0
+      tsx: 4.22.4
+      yaml: 2.9.0
+
   vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0):
     dependencies:
       lightningcss: 1.32.0
@@ -13989,61 +15450,18 @@ snapshots:
       tsx: 4.22.4
       yaml: 2.9.0
 
-  vitefu@1.1.3(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)):
+  vitefu@1.1.3(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)):
     optionalDependencies:
-      vite: 7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+      vite: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)'
 
-  vitefu@1.1.3(vite@8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
+  vitefu@1.1.3(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)):
     optionalDependencies:
-      vite: 8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
+      vite: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)'
 
-  vitest@3.2.6(@types/debug@4.1.13)(@types/node@26.0.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0):
-    dependencies:
-      '@types/chai': 5.2.3
-      '@vitest/expect': 3.2.6
-      '@vitest/mocker': 3.2.6(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
-      '@vitest/pretty-format': 3.2.6
-      '@vitest/runner': 3.2.6
-      '@vitest/snapshot': 3.2.6
-      '@vitest/spy': 3.2.6
-      '@vitest/utils': 3.2.6
-      chai: 5.3.3
-      debug: 4.4.3
-      expect-type: 1.3.0
-      magic-string: 0.30.21
-      pathe: 2.0.3
-      picomatch: 4.0.4
-      std-env: 3.10.0
-      tinybench: 2.9.0
-      tinyexec: 0.3.2
-      tinyglobby: 0.2.17
-      tinypool: 1.1.1
-      tinyrainbow: 2.0.0
-      vite: 7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
-      vite-node: 3.2.4(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@types/debug': 4.1.13
-      '@types/node': 26.0.0
-      jsdom: 29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3)
-    transitivePeerDependencies:
-      - jiti
-      - less
-      - lightningcss
-      - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - yaml
-
-  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(jsdom@24.1.3)(vite@8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
+  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.43)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(jsdom@24.1.3(canvas@3.2.3)):
     dependencies:
       '@vitest/expect': 4.1.9
-      '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/mocker': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))
       '@vitest/pretty-format': 4.1.9
       '@vitest/runner': 4.1.9
       '@vitest/snapshot': 4.1.9
@@ -14060,17 +15478,18 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vite: 8.1.0(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
+      vite: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)'
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/node': 20.19.43
-      '@vitest/coverage-v8': 4.1.9(vitest@4.1.9)
-      jsdom: 24.1.3
+      '@vitest/browser-preview': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@20.19.43)(esbuild@0.21.5)(jiti@2.7.0)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/coverage-v8': 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
+      jsdom: 24.1.3(canvas@3.2.3)
     transitivePeerDependencies:
       - msw
 
-  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
+  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.9
       '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -14095,12 +15514,13 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/node': 24.12.4
-      '@vitest/coverage-v8': 4.1.9(vitest@4.1.9)
+      '@vitest/browser-preview': 4.1.9(vite@8.1.0(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/coverage-v8': 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       jsdom: 29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3)
     transitivePeerDependencies:
       - msw
 
-  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
+  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.13.2)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.9
       '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -14125,15 +15545,16 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/node': 24.13.2
-      '@vitest/coverage-v8': 4.1.9(vitest@4.1.9)
+      '@vitest/browser-preview': 4.1.9(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/coverage-v8': 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       jsdom: 29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3)
     transitivePeerDependencies:
       - msw
 
-  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)):
+  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.9
-      '@vitest/mocker': 4.1.9(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       '@vitest/pretty-format': 4.1.9
       '@vitest/runner': 4.1.9
       '@vitest/snapshot': 4.1.9
@@ -14150,17 +15571,18 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vite: 7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+      vite: 8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/node': 26.0.0
-      '@vitest/coverage-v8': 4.1.9(vitest@4.1.9)
+      '@vitest/browser-preview': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/coverage-v8': 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       jsdom: 29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3)
     transitivePeerDependencies:
       - msw
 
-  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
+  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.9
       '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -14185,7 +15607,70 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/node': 26.0.0
-      '@vitest/coverage-v8': 4.1.9(vitest@4.1.9)
+      '@vitest/browser-preview': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/coverage-v8': 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
+      jsdom: 29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3)
+    transitivePeerDependencies:
+      - msw
+
+  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3)):
+    dependencies:
+      '@vitest/expect': 4.1.9
+      '@vitest/mocker': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))
+      '@vitest/pretty-format': 4.1.9
+      '@vitest/runner': 4.1.9
+      '@vitest/snapshot': 4.1.9
+      '@vitest/spy': 4.1.9
+      '@vitest/utils': 4.1.9
+      es-module-lexer: 2.1.0
+      expect-type: 1.3.0
+      magic-string: 0.30.21
+      obug: 2.1.3
+      pathe: 2.0.3
+      picomatch: 4.0.4
+      std-env: 4.1.0
+      tinybench: 2.9.0
+      tinyexec: 1.2.4
+      tinyglobby: 0.2.17
+      tinyrainbow: 3.1.0
+      vite: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)'
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@opentelemetry/api': 1.9.0
+      '@types/node': 26.0.0
+      '@vitest/browser-preview': 4.1.9(@voidzero-dev/vite-plus-core@0.2.1(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/coverage-v8': 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
+      jsdom: 29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3)
+    transitivePeerDependencies:
+      - msw
+
+  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@26.0.0)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3))(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)):
+    dependencies:
+      '@vitest/expect': 4.1.9
+      '@vitest/mocker': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/pretty-format': 4.1.9
+      '@vitest/runner': 4.1.9
+      '@vitest/snapshot': 4.1.9
+      '@vitest/spy': 4.1.9
+      '@vitest/utils': 4.1.9
+      es-module-lexer: 2.1.0
+      expect-type: 1.3.0
+      magic-string: 0.30.21
+      obug: 2.1.3
+      pathe: 2.0.3
+      picomatch: 4.0.4
+      std-env: 4.1.0
+      tinybench: 2.9.0
+      tinyexec: 1.2.4
+      tinyglobby: 0.2.17
+      tinyrainbow: 3.1.0
+      vite: 8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@opentelemetry/api': 1.9.0
+      '@types/node': 26.0.0
+      '@vitest/browser-preview': 4.1.9(vite@8.1.0(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/coverage-v8': 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       jsdom: 29.1.1(@noble/hashes@2.2.0)(canvas@3.2.3)
     transitivePeerDependencies:
       - msw

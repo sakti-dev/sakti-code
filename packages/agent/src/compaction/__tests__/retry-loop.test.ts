@@ -1,6 +1,6 @@
 import type { AssistantMessage } from "@sakti-code/llm";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { CompactionDecision } from "../../compaction/auto-compaction";
 import {
   abortableSleep,

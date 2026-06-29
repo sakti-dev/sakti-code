@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@solidjs/testing-library";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ModelsSettings } from "../index.tsx";
 
 const mocks = vi.hoisted(() => ({

@@ -1,5 +1,5 @@
 import solidPlugin from "vite-plugin-solid";
-import type { UserConfig } from "vitest/config";
+import type { UserConfig } from "vite-plus";
 
 const WEB_TRANSFORM_GLOBS = ["**/*.{js,jsx,ts,tsx}"];
 const CLIENT_TEST_GLOBS = [

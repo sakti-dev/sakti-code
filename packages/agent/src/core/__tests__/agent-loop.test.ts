@@ -7,7 +7,7 @@ import type {
   Usage,
 } from "@sakti-code/llm";
 import { Type } from "typebox";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { agentLoop, agentLoopContinue } from "../../core/agent-loop";
 import type {
   AgentContext,

@@ -13,7 +13,7 @@
   },
   "scripts": {
     "build": "tsup && node ../../scripts/restore-node-protocol.mjs dist",
-    "test": "vitest run",
+    "test": "vp test run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -28,6 +28,7 @@
     "@effect/vitest": "4.0.0-beta.90",
     "@types/node": "^26.0.0",
     "@types/uuid": "^10",
-    "vitest": "^4.1.9"
+    "vitest": "catalog:",
+    "vite-plus": "catalog:"
   }
 }

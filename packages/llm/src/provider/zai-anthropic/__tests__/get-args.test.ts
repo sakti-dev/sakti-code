@@ -1,5 +1,5 @@
 import type { LanguageModelV4CallOptions } from "@ai-sdk/provider";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { ZaiLanguageModel } from "../zai-language-model.ts";
 
 const make = (maxTokens?: number) =>

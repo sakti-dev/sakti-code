@@ -1,5 +1,5 @@
 import { parseProviderOptions } from "@ai-sdk/provider-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { zaiOptions } from "../zai-options.ts";
 
 describe("zai-anthropic options schema", () => {

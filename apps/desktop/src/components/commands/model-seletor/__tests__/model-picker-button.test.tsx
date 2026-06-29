@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from "@solidjs/testing-library";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { ModelPickerButton } from "../model-picker-button";
 
 const mocks = vi.hoisted(() => ({

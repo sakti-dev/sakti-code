@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
 import { loadAgents } from "../../agents/loader";
 import type { AgentDefinition } from "../../harness-types";

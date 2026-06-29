@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { formatDimensionNote, resizeImage } from "../image-resize.ts";
 
 // Small 2x2 red PNG image (base64) - from pi's test fixtures

@@ -1,5 +1,5 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import type {
   ProviderFactory,
   ProviderFactoryLoader,

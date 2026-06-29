@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import { Velomark } from "../velomark";
 
 const mountedRoots: Array<() => void> = [];

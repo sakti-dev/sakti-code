@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Layer } from "effect";
-import { afterEach } from "vitest";
+import { afterEach } from "vite-plus/test";
 import { Session, SessionLive, type SessionShape } from "../../session/session";
 import { InMemorySessionStorageLive } from "../../session/storage";
 import type { AgentMessage } from "../../types";

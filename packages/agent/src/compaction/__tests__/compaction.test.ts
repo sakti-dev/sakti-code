@@ -8,7 +8,14 @@ import type {
 } from "@sakti-code/llm";
 import { complete } from "@sakti-code/llm";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 // Mock complete() so compaction tests run without real API calls.
 // Each test configures responses via setCompleteResponses().

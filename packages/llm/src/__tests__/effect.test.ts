@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import type { CompleteRequest, CompleteResult } from "../complete.ts";
 import type { StreamRequest, StreamResult } from "../stream.ts";
 

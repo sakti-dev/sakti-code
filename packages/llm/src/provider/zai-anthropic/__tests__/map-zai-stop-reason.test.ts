@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { mapZaiStopReason } from "../map-zai-stop-reason.ts";
 
 describe("mapZaiStopReason", () => {

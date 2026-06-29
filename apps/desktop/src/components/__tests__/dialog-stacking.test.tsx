@@ -1,6 +1,6 @@
 import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { Dialog, DialogContent } from "~/components/ui/dialog";
 
 function contentFor(testId: string): HTMLElement {

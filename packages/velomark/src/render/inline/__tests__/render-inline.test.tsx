@@ -1,5 +1,5 @@
 import { render } from "solid-js/web";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import type { VelomarkContainerRendererProps } from "../../../types";
 import { RenderInline } from "../render-inline";
 

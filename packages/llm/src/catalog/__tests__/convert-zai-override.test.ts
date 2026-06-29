@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { convertModelsDevModel } from "../convert.ts";
 import type { ModelsDevModel, ModelsDevProvider } from "../types.ts";
 

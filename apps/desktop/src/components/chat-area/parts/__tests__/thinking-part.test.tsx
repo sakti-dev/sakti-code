@@ -1,5 +1,5 @@
 import { render } from "@solidjs/testing-library";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { MessagePart } from "~/stores/types.ts";
 import type { PartProps } from "../part-registry.ts";
 import { ThinkingPart } from "../thinking-part.tsx";

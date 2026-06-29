@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { SessionRegistry } from "../../session/session-registry.ts";
 import { createActions } from "../actions.ts";
 import { createServerStore } from "../server-store.ts";

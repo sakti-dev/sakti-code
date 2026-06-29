@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { SessionMetadata, SessionTreeEntry } from "@sakti-code/agent";
 import { Effect } from "effect";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 import type { DrizzleDB } from "../init";
 import { initDatabase } from "../init";
 import { SqliteSessionStorage } from "../session-entry-store";

@@ -1,5 +1,12 @@
 import { fireEvent, render, screen } from "@solidjs/testing-library";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 import { ProfileEditor } from "../profile-editor";
 
 const mocks = vi.hoisted(() => ({

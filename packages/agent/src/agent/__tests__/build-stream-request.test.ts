@@ -1,5 +1,5 @@
 import type { Model, StreamRequest } from "@sakti-code/llm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { buildHarnessStreamRequest } from "../../agent/build-stream-request";
 
 const model: Model = {

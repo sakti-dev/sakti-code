@@ -1,5 +1,5 @@
 import { render } from "@solidjs/testing-library";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { SessionItem } from "../layout/sidebar/session-item.tsx";
 
 const agoRegex = /ago/;

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
 import { loadCommands } from "../../resources/commands";
 import { createTempDir } from "../../session/__tests__/session-test-utils";

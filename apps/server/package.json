@@ -29,7 +29,7 @@
     "build": "tsup && node ../../scripts/restore-node-protocol.mjs dist",
     "dev": "NODE_OPTIONS=--conditions=development tsx src/index.ts",
     "start": "NODE_OPTIONS=--conditions=development tsx src/index.ts",
-    "test": "vitest run",
+    "test": "vp test run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -46,7 +46,7 @@
     "node-pty": "^1.1.0",
     "proper-lockfile": "^4.1.2",
     "typebox": "^1.2.18",
-    "vitest": "^4.1.9",
+    "vitest": "catalog:",
     "ws": "^8.21.0"
   },
   "devDependencies": {
@@ -54,6 +54,7 @@
     "@types/proper-lockfile": "^4.1.4",
     "@types/ws": "^8.18.1",
     "node-gyp": "^13.0.0",
-    "tsx": "^4.19.2"
+    "tsx": "^4.19.2",
+    "vite-plus": "catalog:"
   }
 }

@@ -1,5 +1,5 @@
 import type { StreamRequest, Usage } from "@sakti-code/llm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { captureShape, compareShape } from "../cache-shape";
 
 function req(over: Partial<StreamRequest> = {}): StreamRequest {

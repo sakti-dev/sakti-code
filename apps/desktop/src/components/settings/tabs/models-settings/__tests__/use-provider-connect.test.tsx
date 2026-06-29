@@ -1,5 +1,5 @@
 import { createRoot, createSignal } from "solid-js";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { useProviderConnect } from "../use-provider-connect";
 
 interface ProviderItem {

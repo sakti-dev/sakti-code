@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { AgentMessage } from "../../types";
 import {
   DEFAULT_MAX_PINNED_USER_TOKENS,

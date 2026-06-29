@@ -1,5 +1,5 @@
 import type { LanguageModelV4Prompt } from "@ai-sdk/provider";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { convertToZaiPrompt } from "../convert-to-zai-prompt.ts";
 
 describe("convertToZaiPrompt", () => {

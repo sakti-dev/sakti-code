@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createRoot } from "solid-js";
 import { isServer, render } from "solid-js/web";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import App from "../dev/app";
 import { Velomark } from "../src";
 

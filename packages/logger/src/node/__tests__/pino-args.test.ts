@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { toPinoCall } from "../../node/pino-args.ts";
 import type { LogContext } from "../../types.ts";
 

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { render } from "solid-js/web";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import { darkTheme, defaultTheme } from "../../src/theme/tokens";
 import App from "../app";
 import { PLAYGROUND_THEME_STORAGE_KEY } from "../hooks/use-playground-theme";

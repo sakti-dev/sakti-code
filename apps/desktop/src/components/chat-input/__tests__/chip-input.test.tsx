@@ -1,5 +1,5 @@
 import { fireEvent, render } from "@solidjs/testing-library";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { ChipInput, type ChipInputApi } from "../chip-input";
 import { serializeEditor } from "../chip-model";
 

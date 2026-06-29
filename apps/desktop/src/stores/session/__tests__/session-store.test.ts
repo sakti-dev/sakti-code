@@ -1,5 +1,5 @@
 import { createRenderEffect, createRoot } from "solid-js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { UIMessage } from "../../types.ts";
 import { createSessionStore } from "../session-store.ts";
 

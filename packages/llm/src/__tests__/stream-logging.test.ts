@@ -1,6 +1,6 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type { LogContext, Logger } from "@sakti-code/logger";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { streamWithModel } from "../stream.ts";
 import type { Model } from "../types.ts";
 

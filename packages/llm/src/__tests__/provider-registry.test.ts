@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { BUNDLED_PROVIDERS } from "../provider/registry.ts";
 
 const CATALOG_NPM_PACKAGES = [

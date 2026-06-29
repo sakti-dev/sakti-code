@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { createTokenBatcher } from "../token-batcher.ts";
 
 describe("token batcher", () => {
