@@ -18,13 +18,18 @@ import {
   promiseSessionAsShape,
   runAgentRunEffect,
 } from "@sakti-code/agent";
-import { createProposeSessionTool, type EditMode } from "@sakti-code/tools";
+import { type EditMode, InMemorySnapshotStore } from "@sakti-code/tools";
 import { Effect } from "effect";
-import { INTAKE_SYSTEM_PROMPT } from "../agents/prompts.ts";
 import {
-  resolveAgentByName,
   resolveSessionAgent,
+  resolveSessionAgentForKind,
 } from "../agents/resolve-agent.ts";
+import { DEFAULT_AGENT_NAME } from "../agents/server-agents.ts";
+import {
+  buildAgentTools,
+  rebuildTool,
+  type ToolContext,
+} from "../agents/tool-registry.ts";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";
 import {
@@ -34,8 +39,24 @@ import {
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
-import { buildTools } from "./tools-builder.ts";
 import type { WsHandle } from "./ws-handler.ts";
+
+/**
+ * Fallback tool surface for agents that don't declare `activeToolNames`.
+ * Project-loaded `.sakti/agents/*.md` files may omit the tool list (legacy
+ * format) — in that case the agent gets the full coding toolset. Server
+ * catalog entries (SERVER_AGENTS) all declare explicit lists, so this only
+ * applies to user-defined agents that don't.
+ */
+const DEFAULT_TOOL_NAMES: readonly string[] = [
+  "read",
+  "write",
+  "edit",
+  "bash",
+  "grep",
+  "find",
+  "ls",
+];
 
 interface ActiveRun {
   harness: AgentHarness;
@@ -406,16 +427,21 @@ export async function setEditModeForSession(
   await ctx.repos.settings.set(`session:${sessionId}:edit_mode`, mode);
 
   // Layer 2: live apply (swap executor + schema immediately, defer
-  // description to compaction)
+  // description to compaction). Rebuild the edit tool with a fresh snapshot
+  // store — the harness's existing edit state was captured by the old tool
+  // instance; the new instance starts clean for the new edit mode.
   const harness = getActiveHarness(sessionId);
   if (harness) {
     const project = await ctx.repos.projects.findById(session.projectId);
     if (project) {
-      const newTools = buildTools(project.cwd, mode);
-      const newEditTool = newTools.find((t) => t.name === "edit");
-      if (newEditTool) {
-        await harness.swapTool("edit", newEditTool as never);
-      }
+      const editCtx: ToolContext = {
+        cwd: project.cwd,
+        editMode: mode,
+        snapshotStore: new InMemorySnapshotStore(),
+        noopOwner: {},
+      };
+      const newEditTool = rebuildTool("edit", editCtx);
+      await harness.swapTool("edit", newEditTool as never);
     }
   }
   return true;
@@ -461,13 +487,8 @@ export function runPromptEffect(
       );
     }
     const { model } = auth;
-    const isIntake = session.kind === "intake";
     const settings = parseSessionSettings(loadSessionSettings(ctx, sessionId));
     const editMode = resolveEditMode(ctx, sessionId);
-    const tools = buildTools(project.cwd, editMode);
-    if (isIntake) {
-      tools.push(createProposeSessionTool() as (typeof tools)[number]);
-    }
 
     const thinkingLevel = resolveThinkingLevel(
       ctx,
@@ -495,6 +516,30 @@ export function runPromptEffect(
         new Error(`Failed to load agent context: ${String(e)}`),
     });
 
+    // Resolve the agent: per-session override first (when it differs from the
+    // default), then kind-based default. Intake sessions resolve to the intake
+    // agent entry — own permission ruleset + own tool list (incl. propose_session).
+    // No isIntake branches anywhere: intake flows through the same path as build.
+    const { agent } = resolveSessionAgentForKind(
+      session.kind,
+      loadedContext.agents,
+      settings.agent() === DEFAULT_AGENT_NAME ? undefined : settings.agent()
+    );
+
+    // Build only the agent's declared tools via the server registry. Each agent
+    // entry is fully self-contained — propose_session is built only when the
+    // intake agent declares it; build/explore/plan/general never see it.
+    const toolCtx: ToolContext = {
+      cwd: project.cwd,
+      editMode,
+      snapshotStore: new InMemorySnapshotStore(),
+      noopOwner: {},
+    };
+    const tools = buildAgentTools(
+      agent.activeToolNames ?? DEFAULT_TOOL_NAMES,
+      toolCtx
+    );
+
     // Layer 1: filter out skills disabled for this session (persistent state
     // surviving app restart). The keyed-prefix entries are read once at run
     // start; in-session disables use the harness's removeSkill() (Layer 2) and
@@ -508,16 +553,6 @@ export function runPromptEffect(
       env,
       model,
       session: sessionShape,
-      ...(isIntake
-        ? {
-            systemPrompt: composeSystemPrompt(
-              INTAKE_SYSTEM_PROMPT,
-              tools,
-              [],
-              false
-            ),
-          }
-        : {}),
       ...(ctx.log === undefined
         ? {}
         : { logger: ctx.log.agent, streamLogger: ctx.log.llm }),
@@ -533,17 +568,10 @@ export function runPromptEffect(
     });
     ctx.log?.agent.debug("harness created", { sessionId });
 
-    // Resolve the session's selected agent (default `build`) and wire its
-    // permission ruleset into the loop. For non-intake sessions, switchAgent also
-    // applies the agent's system prompt + tool allowlist + thinking level.
-    // Intake keeps its dedicated INTAKE_SYSTEM_PROMPT and proposeSession flow.
-    const agentName = settings.agent();
-    const agent = resolveAgentByName(agentName, loadedContext.agents);
-    const agentRuleset = agent.permission ?? fromConfig({ "*": "allow" });
-
     // Wire the interactive permission channel: the evaluator merges live grants
     // (so a prior "always" auto-allows), and the ask resolver bridges to the WS
     // approval strip. Grants persist across runs; the sink is reattached here.
+    const agentRuleset = agent.permission ?? fromConfig({ "*": "allow" });
     const permissionChannel = getPermissionChannel(sessionId);
     permissionChannel.setSink(permissionAskedSink);
     harness.setPermissionEvaluator((permission, pattern) =>
@@ -551,34 +579,26 @@ export function runPromptEffect(
     );
     harness.setPermissionAskResolver((req) => permissionChannel.ask(req));
 
-    if (!isIntake) {
-      // Compose the agent's system prompt with the tool inventory and the
-      // available-skills block (mirrors pi's coding-agent buildSystemPrompt):
-      // tool descriptions are always embedded so smaller LLMs see how to use
-      // each tool; skills are advertised only when `read` is available, since
-      // they're loaded by reading the SKILL.md path. Intake composes its own
-      // prompt at construction time (tool inventory only, no skills).
-      // `activeSkills` already excludes Layer-1-disabled skills.
-      const hasRead =
-        agent.activeToolNames === undefined ||
-        agent.activeToolNames.includes("read");
-      const activeNames = agent.activeToolNames;
-      const activeTools =
-        activeNames === undefined
-          ? tools
-          : tools.filter((t) => activeNames.includes(t.name));
-      const composedSystemPrompt = composeSystemPrompt(
-        agent.systemPrompt,
-        activeTools,
-        activeSkills,
-        hasRead
-      );
-      yield* harness.switchAgentEffect(
-        composedSystemPrompt === agent.systemPrompt
-          ? agent
-          : { ...agent, systemPrompt: composedSystemPrompt }
-      );
-    }
+    // Compose the agent's system prompt with the tool inventory and the
+    // available-skills block (mirrors pi's coding-agent buildSystemPrompt):
+    // tool descriptions are always embedded so smaller LLMs see how to use
+    // each tool; skills are advertised only when `read` is available, since
+    // they're loaded by reading the SKILL.md path. The tool list passed here
+    // matches what's already on the harness (agent.activeToolNames).
+    const hasRead =
+      agent.activeToolNames === undefined ||
+      agent.activeToolNames.includes("read");
+    const composedSystemPrompt = composeSystemPrompt(
+      agent.systemPrompt,
+      tools,
+      activeSkills,
+      hasRead
+    );
+    yield* harness.switchAgentEffect(
+      composedSystemPrompt === agent.systemPrompt
+        ? agent
+        : { ...agent, systemPrompt: composedSystemPrompt }
+    );
     ctx.log?.agent.debug("agent resolved", { sessionId, agent: agent.name });
 
     ctx.log?.agent.info("run starting", {
@@ -588,7 +608,7 @@ export function runPromptEffect(
       hasApiKey: auth.apiKey !== undefined,
       toolCount: tools.length,
       thinkingLevel,
-      isIntake,
+      agent: agent.name,
     });
 
     // Delegate the orchestration (event drain, retry abort, retry-deps
