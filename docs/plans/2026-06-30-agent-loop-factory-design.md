@@ -5,6 +5,8 @@
 **Follows:** `2026-06-29-effect-single-boundary.md` (Phases H1–H5 shipped — single `Effect.runPromise` boundary at the WS edge)
 **Goal:** Move the agent run-loop orchestration out of `apps/server/src/agent/runner.ts` into `packages/agent`, so a second consumer (CLI, test harness) can drive the same orchestration without duplicating it.
 
+> **Naming note:** The factory is named `runAgentRunEffect` (file: `runner/agent-run.ts`). The existing `runAgentLoop` in `core/agent-loop.ts` is the *inner* LLM-call loop — distinct concept, distinct name.
+
 ## Context
 
 After Phase H, `runPromptEffect` is Effect-native end-to-end — but the **orchestration** (retry-deps assembly, `planFirstTurn` dispatch, stuck-guard policy, compaction callbacks, event-drain fiber, retry abort, ensuring cleanup) lives in `apps/server/src/agent/runner.ts:461-822`. That's ~360 LOC of agent-domain logic in the server package.
@@ -20,7 +22,7 @@ Concrete symptoms:
 
 **In scope:**
 
-- New `runAgentLoopEffect(deps)` factory in `packages/agent` — owns the orchestration (event drain, retry abort, retry-deps assembly, stuck-guard policy, planFirstTurn dispatch, ensuring cleanup). Server's `runPromptEffect` delegates to it.
+- New `runAgentRunEffect(deps)` factory in `packages/agent` — owns the orchestration (event drain, retry abort, retry-deps assembly, stuck-guard policy, planFirstTurn dispatch, ensuring cleanup). Server's `runPromptEffect` delegates to it.
 - New `SessionSettings` typed view in `packages/agent` — owns the `DEFAULT_SESSION_SETTINGS` map + typed accessors over the raw `Record<string, string>`. Server constructs it from `ctx.repos.settings`; factory consumes it as plain data.
 - New `StuckGuardState` typed export in `packages/agent` — currently an unnamed struct in `runner.ts`.
 
@@ -42,15 +44,15 @@ Concrete symptoms:
 │    switchAgent)                                                  │
 │  wire permission channel                                         │
 │  ↓                                                               │
-│  runAgentLoopEffect({...})  ←─ delegated orchestration           │
+│  runAgentRunEffect({...})  ←─ delegated orchestration           │
 └────────────────────────────────┬─────────────────────────────────┘
                                  │
                                  ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│ packages/agent/src/runner/agent-loop.ts                          │
+│ packages/agent/src/runner/agent-run.ts                           │
 │                                                                  │
-│  AgentLoopDeps (interface: ready harness + run config + hooks)   │
-│  runAgentLoopEffect(deps): Effect<void, Error>                   │
+│  AgentRunDeps (interface: ready harness + run config + hooks)    │
+│  runAgentRunEffect(deps): Effect<void, Error>                    │
 │                                                                  │
 │   • subscribeStream + drain fiber → emit                         │
 │   • retryAbort controller                                         │
@@ -68,7 +70,7 @@ Concrete symptoms:
 
 ## Public API
 
-### `packages/agent/src/runner/agent-loop.ts`
+### `packages/agent/src/runner/agent-run.ts`
 
 ```ts
 import type { Effect } from "effect";
@@ -86,7 +88,7 @@ import type { ThinkingLevel } from "../types.ts";
 import type { Skill } from "../skills/types.ts";
 import type { PromptTemplate } from "../agent/types.ts";
 
-export interface AgentLoopDeps {
+export interface AgentRunDeps {
   // ── the ready-to-run harness ──────────────────────────────────
   readonly harness: AgentHarness;
   readonly sessionShape: SessionShape;
@@ -134,8 +136,8 @@ export interface AgentLoopDeps {
   readonly log?: Logger;
 }
 
-export function runAgentLoopEffect(
-  deps: AgentLoopDeps,
+export function runAgentRunEffect(
+  deps: AgentRunDeps,
 ): Effect.Effect<void, Error>;
 ```
 
@@ -243,7 +245,7 @@ export function runPromptEffect(
     }
 
     // ── Delegate the orchestration ──────────────────────────────
-    yield* runAgentLoopEffect({
+    yield* runAgentRunEffect({
       harness,
       sessionShape,
       storage,
@@ -280,7 +282,7 @@ export function runPromptEffect(
 }
 ```
 
-**Net change:** `runPromptEffect` body shrinks from ~360 LOC to ~80 LOC; the deleted block moves verbatim into `runAgentLoopEffect`.
+**Net change:** `runPromptEffect` body shrinks from ~360 LOC to ~80 LOC; the deleted block moves verbatim into `runAgentRunEffect`.
 
 ## Why Approach 1 (not 3)
 
@@ -317,7 +319,7 @@ Implementation plan deferred to the writing-plans skill output, but the high-lev
 
 - **Phase I1 — `SessionSettings` typed view.** New file in `packages/agent`. Migrate `DEFAULT_SETTINGS` constant + parsing from `runner.ts`. Server's `loadSessionSettings` returns `Record<string,string>`; caller wraps with `parseSessionSettings`. Standalone — can ship without touching the factory.
 - **Phase I2 — `StuckGuardState` typed export.** Tiny. Move the interface from `runner.ts` to `packages/agent`; server imports it. Sets up the factory's deps shape.
-- **Phase I3 — `runAgentLoopEffect` factory + tests.** Factory created in `packages/agent` with full test coverage. Not yet wired into the server.
+- **Phase I3 — `runAgentRunEffect` factory + tests.** Factory created in `packages/agent` with full test coverage. Not yet wired into the server.
 - **Phase I4 — Migrate `runPromptEffect` to use the factory.** Delete the inline retry-deps block; delegate to the factory. Server-side tests still pass.
 - **Phase I5 — Cleanup.** Remove dead code paths. Finalize exports from `packages/agent/src/index.ts`.
 
