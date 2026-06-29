@@ -103,7 +103,8 @@ Be concise. Focus on what's needed to understand the kept suffix.`,
 
 /**
  * Sakti house-style branch-summary prompts. Reference implementation for
- * consumers.
+ * consumers. The systemPrompt mirrors COMPACTION_PROMPTS.summarizationSystem
+ * (same summarizer assistant role).
  */
 export const BRANCH_SUMMARY_PROMPTS: BranchSummaryPrompts = {
   preamble: `The user explored a different conversation branch before returning here.
@@ -138,4 +139,5 @@ Use this EXACT format:
 1. [What should happen next to continue this work]
 
 Keep each section concise. Preserve exact file paths, function names, and error messages.`,
+  systemPrompt: COMPACTION_PROMPTS.summarizationSystem,
 } as const;

@@ -19,13 +19,15 @@ describe("prompt bundle types", () => {
     expect(p.summarizationSystem).toBe("sys");
   });
 
-  it("BranchSummaryPrompts has preamble + prompt", () => {
+  it("BranchSummaryPrompts has preamble + prompt + systemPrompt", () => {
     const p: BranchSummaryPrompts = {
       preamble: "pre",
       prompt: "p",
+      systemPrompt: "sys",
     };
     expect(p.prompt).toBe("p");
     expect(p.preamble).toBe("pre");
+    expect(p.systemPrompt).toBe("sys");
   });
 
   it("SkillsInstructions is a readonly string array", () => {

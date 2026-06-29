@@ -6,7 +6,10 @@ import {
   fauxAssistantMessage,
   registerFauxStreamProvider,
 } from "../../__tests__/helpers/faux-provider.ts";
-import { TEST_COMPACTION_PROMPTS } from "../../__tests__/helpers/test-compaction-prompts.ts";
+import {
+  TEST_BRANCH_SUMMARY_PROMPTS,
+  TEST_COMPACTION_PROMPTS,
+} from "../../__tests__/helpers/test-compaction-prompts.ts";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env.ts";
 import type { AgentHarness as AgentHarnessType } from "../../agent/agent-harness.ts";
 import { AgentHarness } from "../../agent/agent-harness.ts";
@@ -82,6 +85,7 @@ async function makeHarnessWithResponse(resources?: {
     model: registration.getModel(),
     streamFn: registration.streamFn,
     compactionPrompts: TEST_COMPACTION_PROMPTS,
+    branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
     ...(resources === undefined
       ? {}
       : {

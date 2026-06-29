@@ -17,7 +17,7 @@ export interface CompactionPrompts {
 
 /**
  * Required prompt strings for branch summarization.
- * Consumers must provide both.
+ * Consumers must provide all three.
  *
  * Reference implementation: apps/server/src/compaction/prompts.ts.
  */
@@ -26,6 +26,8 @@ export interface BranchSummaryPrompts {
   readonly preamble: string;
   /** Base summarization prompt for the branch. */
   readonly prompt: string;
+  /** System prompt for the summarization LLM call. */
+  readonly systemPrompt: string;
 }
 
 /**

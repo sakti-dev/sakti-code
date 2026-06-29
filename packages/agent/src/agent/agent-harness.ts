@@ -16,7 +16,10 @@ import {
   prepareCompaction,
   compactEffect as runCompactEffect,
 } from "../compaction/compaction";
-import type { CompactionPrompts } from "../compaction/prompt-bundles";
+import type {
+  BranchSummaryPrompts,
+  CompactionPrompts,
+} from "../compaction/prompt-bundles";
 import {
   runAgentLoopContinueEffect,
   runAgentLoopEffect,
@@ -268,6 +271,7 @@ export class AgentHarness<
   > = Effect.runSync(PubSub.unbounded());
   private model: Model;
   private compactionPrompts: CompactionPrompts;
+  private branchSummaryPrompts: BranchSummaryPrompts;
   private maxSteps?: number;
   private thinkingLevel: ThinkingLevel;
   private systemPrompt: AgentHarnessOptions<
@@ -341,6 +345,7 @@ export class AgentHarness<
     }
     this.model = options.model;
     this.compactionPrompts = options.compactionPrompts;
+    this.branchSummaryPrompts = options.branchSummaryPrompts;
     if (options.maxSteps !== undefined) {
       this.maxSteps = options.maxSteps;
     }
@@ -1601,6 +1606,7 @@ export class AgentHarness<
         const branchSummary = yield* generateBranchSummaryEffect(entries, {
           model: self.model,
           apiKey: auth!.apiKey,
+          prompts: self.branchSummaryPrompts,
           ...(auth!.headers === undefined ? {} : { headers: auth!.headers }),
           signal:
             self.runAbortController?.signal ?? new AbortController().signal,

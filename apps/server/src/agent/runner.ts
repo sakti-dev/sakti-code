@@ -30,7 +30,10 @@ import {
   rebuildTool,
   type ToolContext,
 } from "../agents/tool-registry.ts";
-import { COMPACTION_PROMPTS } from "../compaction/prompts.ts";
+import {
+  BRANCH_SUMMARY_PROMPTS,
+  COMPACTION_PROMPTS,
+} from "../compaction/prompts.ts";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";
 import {
@@ -555,6 +558,7 @@ export function runPromptEffect(
       model,
       session: sessionShape,
       compactionPrompts: COMPACTION_PROMPTS,
+      branchSummaryPrompts: BRANCH_SUMMARY_PROMPTS,
       ...(ctx.log === undefined
         ? {}
         : { logger: ctx.log.agent, streamLogger: ctx.log.llm }),

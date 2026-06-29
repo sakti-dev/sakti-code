@@ -1,4 +1,7 @@
-import type { CompactionPrompts } from "../../compaction/prompt-bundles.ts";
+import type {
+  BranchSummaryPrompts,
+  CompactionPrompts,
+} from "../../compaction/prompt-bundles.ts";
 
 /**
  * Test-only compaction prompts fixture. Tests don't exercise the prompt
@@ -10,4 +13,11 @@ export const TEST_COMPACTION_PROMPTS: CompactionPrompts = {
   summarization: "test-summarize",
   update: "test-update",
   turnPrefix: "test-turn-prefix",
+};
+
+/** Test-only branch-summary prompts fixture. */
+export const TEST_BRANCH_SUMMARY_PROMPTS: BranchSummaryPrompts = {
+  preamble: "test-preamble",
+  prompt: "test-branch-prompt",
+  systemPrompt: "test-branch-system",
 };

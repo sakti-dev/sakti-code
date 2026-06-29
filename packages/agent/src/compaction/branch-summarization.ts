@@ -12,11 +12,6 @@ import {
   type SessionTreeEntry,
 } from "../harness-types";
 import {
-  BRANCH_SUMMARY_PREAMBLE,
-  BRANCH_SUMMARY_PROMPT,
-} from "../prompts/branch-summary";
-import { SUMMARIZATION_SYSTEM_PROMPT } from "../prompts/compaction";
-import {
   convertToLlm,
   createBranchSummaryMessage,
   createCompactionSummaryMessage,
@@ -24,6 +19,7 @@ import {
 } from "../session/messages";
 import type { SessionShape } from "../session/session";
 import type { AgentMessage } from "../types";
+import type { BranchSummaryPrompts } from "./prompt-bundles";
 import {
   computeFileLists,
   createFileOps,
@@ -71,6 +67,8 @@ export interface GenerateBranchSummaryOptions {
   headers?: Record<string, string>;
   /** Model used for summarization. */
   model: Model;
+  /** Required prompt bundle — caller supplies, no defaults. */
+  prompts: BranchSummaryPrompts;
   /** Replace the default prompt with custom instructions instead of appending them. */
   replaceInstructions?: boolean;
   /** Tokens reserved for prompt and model output. Defaults to 16384. */
@@ -237,6 +235,7 @@ export const generateBranchSummaryEffect = (
       customInstructions,
       replaceInstructions,
       reserveTokens = 16_384,
+      prompts,
     } = options;
     const contextWindow = model.contextWindow || 128_000;
     const tokenBudget = contextWindow - reserveTokens;
@@ -256,9 +255,9 @@ export const generateBranchSummaryEffect = (
     if (replaceInstructions && customInstructions) {
       instructions = customInstructions;
     } else if (customInstructions) {
-      instructions = `${BRANCH_SUMMARY_PROMPT}\n\nAdditional focus: ${customInstructions}`;
+      instructions = `${prompts.prompt}\n\nAdditional focus: ${customInstructions}`;
     } else {
-      instructions = BRANCH_SUMMARY_PROMPT;
+      instructions = prompts.prompt;
     }
     const promptText = `<conversation>\n${conversationText}\n</conversation>\n\n${instructions}`;
 
@@ -273,7 +272,7 @@ export const generateBranchSummaryEffect = (
       complete({
         model,
         messages: summarizationMessages,
-        system: SUMMARIZATION_SYSTEM_PROMPT,
+        system: prompts.systemPrompt,
         apiKey,
         ...(headers === undefined ? {} : { headers }),
         ...(signal ? { abortSignal: signal } : {}),
@@ -290,7 +289,7 @@ export const generateBranchSummaryEffect = (
     }
 
     let summary = response.content.map((c) => c.text).join("\n");
-    summary = BRANCH_SUMMARY_PREAMBLE + summary;
+    summary = prompts.preamble + summary;
     const { readFiles, modifiedFiles } = computeFileLists(fileOps);
     summary += formatFileOperations(readFiles, modifiedFiles);
 
