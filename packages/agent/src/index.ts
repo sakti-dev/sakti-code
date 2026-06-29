@@ -6,6 +6,7 @@ export {
   resolveBuiltinAgent,
 } from "./agents/builtin-agents.ts";
 export { configEntryNameFromPath } from "./agents/config-entry-name.ts";
+export { defineAgent } from "./agents/define-agent.ts";
 export type {
   AgentDiagnostic,
   AgentDiagnosticCode,
