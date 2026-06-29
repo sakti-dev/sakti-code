@@ -1,29 +1,35 @@
-import type { PromiseSessionStorage } from "@sakti-code/agent";
+import type { SessionStorageShape } from "@sakti-code/agent";
+import { Effect } from "effect";
 import { vi } from "vitest";
 
 /** Real model id that exists in pi-ai's registry so `getModel("openai", id)` resolves. */
 const TEST_MODEL_ID = "gpt-4";
 
-export function createMockStore(): PromiseSessionStorage {
+function sync<T>(value: T): Effect.Effect<T, never> {
+  return Effect.succeed(value);
+}
+
+export function createMockStore(): SessionStorageShape {
   return {
-    appendEntry: vi.fn(),
-    createEntryId: vi.fn(async () => "entry-1"),
-    findEntries: vi.fn(),
-    getEntries: vi.fn(),
-    getEntry: vi.fn(),
-    getLabel: vi.fn(),
-    getLeafId: vi.fn(),
-    getMetadata: vi.fn(async () => ({
-      id: "mock",
-      projectId: "proj-1",
-      modelId: TEST_MODEL_ID,
-      title: null,
-      thinkingLevel: "off",
-      createdAt: new Date(0).toISOString(),
-      updatedAt: 0,
-    })),
-    getPathToRoot: vi.fn(async () => []),
-    setLeafId: vi.fn(),
+    appendEntry: () => sync(undefined),
+    createEntryId: () => sync("entry-1"),
+    findEntries: (() => sync([])) as SessionStorageShape["findEntries"],
+    getEntries: () => sync([]),
+    getEntry: () => sync(undefined),
+    getLabel: () => sync(undefined),
+    getLeafId: () => sync(null),
+    getMetadata: () =>
+      sync({
+        id: "mock",
+        projectId: "proj-1",
+        modelId: TEST_MODEL_ID,
+        title: null,
+        thinkingLevel: "off",
+        createdAt: new Date(0).toISOString(),
+        updatedAt: 0,
+      }),
+    getPathToRoot: () => sync([]),
+    setLeafId: () => sync(undefined),
   };
 }
 

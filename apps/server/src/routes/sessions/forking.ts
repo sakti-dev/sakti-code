@@ -1,4 +1,5 @@
 import { buildSessionContextFromEntries } from "@sakti-code/agent";
+import { Effect } from "effect";
 import { Hono } from "hono";
 import { createSessionStorage, getCtx } from "../../context.ts";
 
@@ -44,7 +45,7 @@ export const forkingRoutes = new Hono()
     const forkedStorage = createSessionStorage(ctx, newSession.id);
 
     try {
-      await forkedStorage.forkFrom(id);
+      await Effect.runPromise(forkedStorage.forkFrom(id));
       ctx.repos.turns.copyForFork(id, newSession.id);
     } catch (err) {
       await ctx.repos.sessions.delete(newSession.id);
@@ -62,7 +63,8 @@ export const forkingRoutes = new Hono()
     }
 
     const storage = createSessionStorage(ctx, id);
-    const entries = await storage.getPathToRoot(await storage.getLeafId());
+    const leafId = await Effect.runPromise(storage.getLeafId());
+    const entries = await Effect.runPromise(storage.getPathToRoot(leafId));
     const { messages } = buildSessionContextFromEntries(entries);
 
     const forkable = messages

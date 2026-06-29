@@ -22,7 +22,7 @@ import {
   createCompactionSummaryMessage,
   createCustomMessage,
 } from "./messages.ts";
-import type { PromiseSessionStorage } from "./storage.ts";
+import type { SessionStorageShape } from "./storage.ts";
 import { SessionStorage } from "./storage.ts";
 
 export function buildSessionContextFromEntries(
@@ -443,35 +443,40 @@ export const buildSessionContext = (
 export class PromiseSession<
   TMetadata extends SessionMetadata = SessionMetadata,
 > {
-  private readonly storage: PromiseSessionStorage<TMetadata>;
+  private readonly storage: SessionStorageShape;
 
-  constructor(storage: PromiseSessionStorage<TMetadata>) {
+  constructor(storage: SessionStorageShape) {
     this.storage = storage;
   }
 
-  getMetadata(): Promise<TMetadata> {
-    return this.storage.getMetadata();
+  /** Bridge an Effect-returning storage op to a Promise (legacy callers). */
+  private run<T>(eff: Effect.Effect<T, SessionError>): Promise<T> {
+    return Effect.runPromise(eff);
   }
 
-  getStorage(): PromiseSessionStorage<TMetadata> {
+  getMetadata(): Promise<TMetadata> {
+    return this.run(this.storage.getMetadata()) as Promise<TMetadata>;
+  }
+
+  getStorage(): SessionStorageShape {
     return this.storage;
   }
 
   getLeafId(): Promise<string | null> {
-    return this.storage.getLeafId();
+    return this.run(this.storage.getLeafId());
   }
 
   getEntry(id: string): Promise<SessionTreeEntry | undefined> {
-    return this.storage.getEntry(id);
+    return this.run(this.storage.getEntry(id));
   }
 
   getEntries(): Promise<SessionTreeEntry[]> {
-    return this.storage.getEntries();
+    return this.run(this.storage.getEntries());
   }
 
   async getBranch(fromId?: string): Promise<SessionTreeEntry[]> {
-    const leafId = fromId ?? (await this.storage.getLeafId());
-    return this.storage.getPathToRoot(leafId);
+    const leafId = fromId ?? (await this.run(this.storage.getLeafId()));
+    return this.run(this.storage.getPathToRoot(leafId));
   }
 
   async buildContext(): Promise<SessionContext> {
@@ -479,26 +484,26 @@ export class PromiseSession<
   }
 
   getLabel(id: string): Promise<string | undefined> {
-    return this.storage.getLabel(id);
+    return this.run(this.storage.getLabel(id));
   }
 
   async getSessionName(): Promise<string | undefined> {
-    const entries = await this.storage.findEntries("session_info");
+    const entries = await this.run(this.storage.findEntries("session_info"));
     return entries[entries.length - 1]?.name?.trim() || undefined;
   }
 
   private async appendTypedEntry<TEntry extends SessionTreeEntry>(
     entry: TEntry
   ): Promise<string> {
-    await this.storage.appendEntry(entry);
+    await this.run(this.storage.appendEntry(entry));
     return entry.id;
   }
 
   async appendMessage(message: AgentMessage): Promise<string> {
     return this.appendTypedEntry({
       type: "message",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
+      id: await this.run(this.storage.createEntryId()),
+      parentId: await this.run(this.storage.getLeafId()),
       timestamp: new Date().toISOString(),
       message,
     } satisfies MessageEntry);
@@ -507,8 +512,8 @@ export class PromiseSession<
   async appendThinkingLevelChange(thinkingLevel: string): Promise<string> {
     return this.appendTypedEntry({
       type: "thinking_level_change",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
+      id: await this.run(this.storage.createEntryId()),
+      parentId: await this.run(this.storage.getLeafId()),
       timestamp: new Date().toISOString(),
       thinkingLevel,
     } satisfies ThinkingLevelChangeEntry);
@@ -517,8 +522,8 @@ export class PromiseSession<
   async appendModelChange(provider: string, modelId: string): Promise<string> {
     return this.appendTypedEntry({
       type: "model_change",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
+      id: await this.run(this.storage.createEntryId()),
+      parentId: await this.run(this.storage.getLeafId()),
       timestamp: new Date().toISOString(),
       provider,
       modelId,
@@ -528,8 +533,8 @@ export class PromiseSession<
   async appendActiveToolsChange(activeToolNames: string[]): Promise<string> {
     return this.appendTypedEntry({
       type: "active_tools_change",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
+      id: await this.run(this.storage.createEntryId()),
+      parentId: await this.run(this.storage.getLeafId()),
       timestamp: new Date().toISOString(),
       activeToolNames: [...activeToolNames],
     } satisfies ActiveToolsChangeEntry);
@@ -544,8 +549,8 @@ export class PromiseSession<
   ): Promise<string> {
     return this.appendTypedEntry({
       type: "compaction",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
+      id: await this.run(this.storage.createEntryId()),
+      parentId: await this.run(this.storage.getLeafId()),
       timestamp: new Date().toISOString(),
       summary,
       firstKeptEntryId,
@@ -558,8 +563,8 @@ export class PromiseSession<
   async appendCustomEntry(customType: string, data?: unknown): Promise<string> {
     return this.appendTypedEntry({
       type: "custom",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
+      id: await this.run(this.storage.createEntryId()),
+      parentId: await this.run(this.storage.getLeafId()),
       timestamp: new Date().toISOString(),
       customType,
       ...(data === undefined ? {} : { data }),
@@ -574,8 +579,8 @@ export class PromiseSession<
   ): Promise<string> {
     return this.appendTypedEntry({
       type: "custom_message",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
+      id: await this.run(this.storage.createEntryId()),
+      parentId: await this.run(this.storage.getLeafId()),
       timestamp: new Date().toISOString(),
       customType,
       content,
@@ -588,7 +593,7 @@ export class PromiseSession<
     targetId: string,
     label: string | undefined
   ): Promise<string> {
-    if (!(await this.storage.getEntry(targetId))) {
+    if (!(await this.run(this.storage.getEntry(targetId)))) {
       throw new SessionError({
         code: "not_found",
         message: `Entry ${targetId} not found`,
@@ -596,8 +601,8 @@ export class PromiseSession<
     }
     return this.appendTypedEntry({
       type: "label",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
+      id: await this.run(this.storage.createEntryId()),
+      parentId: await this.run(this.storage.getLeafId()),
       timestamp: new Date().toISOString(),
       targetId,
       label,
@@ -607,8 +612,8 @@ export class PromiseSession<
   async appendSessionName(name: string): Promise<string> {
     return this.appendTypedEntry({
       type: "session_info",
-      id: await this.storage.createEntryId(),
-      parentId: await this.storage.getLeafId(),
+      id: await this.run(this.storage.createEntryId()),
+      parentId: await this.run(this.storage.getLeafId()),
       timestamp: new Date().toISOString(),
       name: name.trim(),
     } satisfies SessionInfoEntry);
@@ -622,19 +627,19 @@ export class PromiseSession<
       fromHook?: boolean;
     }
   ): Promise<string | undefined> {
-    if (entryId !== null && !(await this.storage.getEntry(entryId))) {
+    if (entryId !== null && !(await this.run(this.storage.getEntry(entryId)))) {
       throw new SessionError({
         code: "not_found",
         message: `Entry ${entryId} not found`,
       });
     }
-    await this.storage.setLeafId(entryId);
+    await this.run(this.storage.setLeafId(entryId));
     if (!summary) {
       return;
     }
     return this.appendTypedEntry({
       type: "branch_summary",
-      id: await this.storage.createEntryId(),
+      id: await this.run(this.storage.createEntryId()),
       parentId: entryId,
       timestamp: new Date().toISOString(),
       fromId: entryId ?? "root",

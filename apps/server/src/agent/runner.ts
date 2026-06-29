@@ -6,8 +6,8 @@ import type {
   AgentHarness,
   AgentHarnessEvent,
   PermissionRuleset,
-  PromiseSessionStorage,
   QueueMode,
+  SessionStorageShape,
   ThinkingLevel,
 } from "@sakti-code/agent";
 import {
@@ -28,6 +28,7 @@ import {
   runAutoCompaction,
 } from "@sakti-code/agent";
 import { createProposeSessionTool, type EditMode } from "@sakti-code/tools";
+import { Effect } from "effect";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";
 import {
@@ -460,7 +461,7 @@ export async function runPrompt(
   ctx: ServerContext,
   sessionId: string,
   message: string,
-  storage: PromiseSessionStorage,
+  storage: SessionStorageShape,
   eventCallback: (event: AgentHarnessEvent) => void,
   permissionAskedSink: (frame: PermissionFrame) => void
 ): Promise<void> {
@@ -661,7 +662,9 @@ export async function runPrompt(
           const branch = await sessionInstance.getBranch();
           const lastEntry = branch.at(-1);
           if (lastEntry?.parentId) {
-            await sessionInstance.getStorage().setLeafId(lastEntry.parentId);
+            await Effect.runPromise(
+              sessionInstance.getStorage().setLeafId(lastEntry.parentId)
+            );
           }
         },
         // The first turn is a fresh prompt; subsequent turns continue from the

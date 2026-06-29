@@ -2,6 +2,7 @@ import {
   type AgentMessage,
   buildSessionContextFromEntries,
 } from "@sakti-code/agent";
+import { Effect } from "effect";
 import { Hono } from "hono";
 import { createSessionStorage, getCtx } from "../../context.ts";
 
@@ -38,7 +39,8 @@ export const lastAssistantTextRoutes = new Hono()
     }
 
     const storage = createSessionStorage(ctx, id);
-    const entries = await storage.getPathToRoot(await storage.getLeafId());
+    const leafId = await Effect.runPromise(storage.getLeafId());
+    const entries = await Effect.runPromise(storage.getPathToRoot(leafId));
     const { messages } = buildSessionContextFromEntries(entries);
 
     return c.json({ text: extractAssistantText(messages) });

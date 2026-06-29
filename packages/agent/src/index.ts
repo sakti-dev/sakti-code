@@ -95,11 +95,11 @@ export type {
   FileErrorCode,
   FileInfo,
   FileKind,
-  PromiseSessionStorage,
   PromptTemplate,
   Result,
   SessionMetadata,
   SessionStorage,
+  SessionStorageShape,
   SessionTreeEntry,
   Skill,
   ThinkingLevel,
@@ -113,6 +113,7 @@ export {
   isFailure,
   isSuccess,
   ok,
+  SessionError,
   toError,
 } from "./harness-types.ts";
 export type { TruncationOptions, TruncationResult } from "./lib/truncate.ts";

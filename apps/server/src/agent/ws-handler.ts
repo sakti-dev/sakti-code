@@ -1,7 +1,7 @@
 import type {
   AgentHarnessEvent,
   PermissionReply,
-  PromiseSessionStorage,
+  SessionStorageShape,
 } from "@sakti-code/agent";
 import Type from "typebox";
 import type { ServerContext } from "../context.ts";
@@ -214,7 +214,7 @@ async function runAgentStream(
   ctx: ServerContext,
   sessionId: string,
   message: string,
-  storage: PromiseSessionStorage,
+  storage: SessionStorageShape,
   ws: WsHandle
 ) {
   const log = ctx.log?.server;
@@ -272,7 +272,7 @@ export function sendError(ws: WsHandle, sessionId: string, message: string) {
 
 export function handleMessage(
   ctx: ServerContext,
-  storage: PromiseSessionStorage,
+  storage: SessionStorageShape,
   ws: WsHandle,
   msg: WsIn
 ) {

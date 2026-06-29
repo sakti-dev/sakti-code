@@ -1,16 +1,25 @@
 import type {
-  PromiseSessionStorage,
+  SessionError,
   SessionMetadata,
   SessionTreeEntry,
 } from "@sakti-code/agent";
 import { eq, sql } from "drizzle-orm";
+import { Effect } from "effect";
 import type { DrizzleDB } from "./init.ts";
 import { sessionEntries, sessions } from "./schema.ts";
 
+/**
+ * Effect-native SQLite-backed session storage. node:sqlite is fully
+ * synchronous, so every op is wrapped in `Effect.sync` (sync resolvers
+ * stay sync — no microtask overhead vs. `Effect.tryPromise`).
+ *
+ * Implements `SessionStorageShape` from `@sakti-code/agent` structurally:
+ * the agent's `SessionStorage` Context tag and the `SessionLive` layer
+ * consume it via `yield* SessionStorage`.
+ */
 export class SqliteSessionStorage<
   TMetadata extends SessionMetadata = SessionMetadata,
-> implements PromiseSessionStorage<TMetadata>
-{
+> {
   private readonly db: DrizzleDB;
   private readonly sessionId: string;
   private readonly metadata: TMetadata;
@@ -21,123 +30,150 @@ export class SqliteSessionStorage<
     this.metadata = metadata;
   }
 
-  async getMetadata(): Promise<TMetadata> {
-    return this.metadata;
+  getMetadata(): Effect.Effect<TMetadata, SessionError> {
+    return Effect.succeed(this.metadata);
   }
 
-  async getLeafId(): Promise<string | null> {
-    const row = this.db
-      .select({ leafId: sessions.leafId })
-      .from(sessions)
-      .where(eq(sessions.id, this.sessionId))
-      .get();
-    return row?.leafId ?? null;
-  }
-
-  async setLeafId(leafId: string | null): Promise<void> {
-    await this.db
-      .update(sessions)
-      .set({ leafId })
-      .where(eq(sessions.id, this.sessionId));
-  }
-
-  async createEntryId(): Promise<string> {
-    return crypto.randomUUID();
-  }
-
-  async appendEntry(entry: SessionTreeEntry): Promise<void> {
-    const content = JSON.stringify(entry);
-
-    await this.db.transaction((tx) => {
-      const row = tx
-        .select({ max: sql<number>`coalesce(max(sequence), -1)` })
-        .from(sessionEntries)
-        .where(eq(sessionEntries.sessionId, this.sessionId))
+  getLeafId(): Effect.Effect<string | null, SessionError> {
+    return Effect.sync(() => {
+      const row = this.db
+        .select({ leafId: sessions.leafId })
+        .from(sessions)
+        .where(eq(sessions.id, this.sessionId))
         .get();
-      const sequence = (row?.max ?? -1) + 1;
-
-      tx.insert(sessionEntries)
-        .values({
-          id: entry.id,
-          sessionId: this.sessionId,
-          parentId: entry.parentId,
-          sequence,
-          kind: entry.type,
-          content,
-          timestamp: entry.timestamp,
-          createdAt: Date.now(),
-        })
-        .run();
-
-      if (entry.type !== "leaf") {
-        tx.update(sessions)
-          .set({ leafId: entry.id })
-          .where(eq(sessions.id, this.sessionId))
-          .run();
-      }
+      return row?.leafId ?? null;
     });
   }
 
-  async getEntry(id: string): Promise<SessionTreeEntry | undefined> {
-    const row = this.db
-      .select()
-      .from(sessionEntries)
-      .where(eq(sessionEntries.id, id))
-      .get();
-    return row ? parseEntry(row.content) : undefined;
+  setLeafId(leafId: string | null): Effect.Effect<void, SessionError> {
+    return Effect.sync(() => {
+      this.db
+        .update(sessions)
+        .set({ leafId })
+        .where(eq(sessions.id, this.sessionId))
+        .run();
+    });
   }
 
-  async findEntries<TType extends SessionTreeEntry["type"]>(
+  createEntryId(): Effect.Effect<string, SessionError> {
+    return Effect.sync(() => crypto.randomUUID());
+  }
+
+  appendEntry(entry: SessionTreeEntry): Effect.Effect<void, SessionError> {
+    return Effect.sync(() => {
+      const content = JSON.stringify(entry);
+
+      this.db.transaction((tx) => {
+        const row = tx
+          .select({ max: sql<number>`coalesce(max(sequence), -1)` })
+          .from(sessionEntries)
+          .where(eq(sessionEntries.sessionId, this.sessionId))
+          .get();
+        const sequence = (row?.max ?? -1) + 1;
+
+        tx.insert(sessionEntries)
+          .values({
+            id: entry.id,
+            sessionId: this.sessionId,
+            parentId: entry.parentId,
+            sequence,
+            kind: entry.type,
+            content,
+            timestamp: entry.timestamp,
+            createdAt: Date.now(),
+          })
+          .run();
+
+        if (entry.type !== "leaf") {
+          tx.update(sessions)
+            .set({ leafId: entry.id })
+            .where(eq(sessions.id, this.sessionId))
+            .run();
+        }
+      });
+    });
+  }
+
+  getEntry(
+    id: string
+  ): Effect.Effect<SessionTreeEntry | undefined, SessionError> {
+    return Effect.sync(() => {
+      const row = this.db
+        .select()
+        .from(sessionEntries)
+        .where(eq(sessionEntries.id, id))
+        .get();
+      return row ? parseEntry(row.content) : undefined;
+    });
+  }
+
+  findEntries<TType extends SessionTreeEntry["type"]>(
     type: TType
-  ): Promise<Array<Extract<SessionTreeEntry, { type: TType }>>> {
-    const rows = this.db
-      .select()
-      .from(sessionEntries)
-      .where(eq(sessionEntries.kind, type))
-      .orderBy(sessionEntries.sequence)
-      .all();
-    return rows.map(
-      (r) => parseEntry(r.content) as Extract<SessionTreeEntry, { type: TType }>
-    );
+  ): Effect.Effect<
+    Array<Extract<SessionTreeEntry, { type: TType }>>,
+    SessionError
+  > {
+    return Effect.sync(() => {
+      const rows = this.db
+        .select()
+        .from(sessionEntries)
+        .where(eq(sessionEntries.kind, type))
+        .orderBy(sessionEntries.sequence)
+        .all();
+      return rows.map(
+        (r) =>
+          parseEntry(r.content) as Extract<SessionTreeEntry, { type: TType }>
+      );
+    });
   }
 
-  async getLabel(id: string): Promise<string | undefined> {
-    const row = this.db
-      .select()
-      .from(sessionEntries)
-      .where(eq(sessionEntries.id, id))
-      .get();
-    if (!row) {
-      return;
-    }
-    const entry = parseEntry(row.content);
-    if (entry?.type !== "label") {
-      return;
-    }
-    return entry.label;
+  getLabel(id: string): Effect.Effect<string | undefined, SessionError> {
+    return Effect.sync(() => {
+      const row = this.db
+        .select()
+        .from(sessionEntries)
+        .where(eq(sessionEntries.id, id))
+        .get();
+      if (!row) {
+        return;
+      }
+      const entry = parseEntry(row.content);
+      if (entry?.type !== "label") {
+        return;
+      }
+      return entry.label;
+    });
   }
 
-  async getPathToRoot(leafId: string | null): Promise<SessionTreeEntry[]> {
-    if (!leafId) {
-      return this.getEntries();
-    }
+  getPathToRoot(
+    leafId: string | null
+  ): Effect.Effect<SessionTreeEntry[], SessionError> {
+    return Effect.sync(() => {
+      if (!leafId) {
+        return this.getAllEntriesSync();
+      }
 
-    const rows = this.db.all<{
-      content: string;
-    }>(sql`
-      WITH RECURSIVE path AS (
-        SELECT * FROM ${sessionEntries}
-        WHERE id = ${leafId} AND session_id = ${this.sessionId}
-        UNION ALL
-        SELECT e.* FROM ${sessionEntries} e
-        JOIN path p ON e.id = p.parent_id
-      )
-      SELECT content FROM path ORDER BY sequence
-    `);
-    return rows.map((r) => parseEntry(r.content));
+      const rows = this.db.all<{
+        content: string;
+      }>(sql`
+        WITH RECURSIVE path AS (
+          SELECT * FROM ${sessionEntries}
+          WHERE id = ${leafId} AND session_id = ${this.sessionId}
+          UNION ALL
+          SELECT e.* FROM ${sessionEntries} e
+          JOIN path p ON e.id = p.parent_id
+        )
+        SELECT content FROM path ORDER BY sequence
+      `);
+      return rows.map((r) => parseEntry(r.content));
+    });
   }
 
-  async getEntries(): Promise<SessionTreeEntry[]> {
+  getEntries(): Effect.Effect<SessionTreeEntry[], SessionError> {
+    return Effect.sync(() => this.getAllEntriesSync());
+  }
+
+  private getAllEntriesSync(): SessionTreeEntry[] {
     const rows = this.db
       .select()
       .from(sessionEntries)
@@ -152,7 +188,14 @@ export class SqliteSessionStorage<
    * If upToEntryId is provided, only copies entries up to and including that entry.
    * Entry IDs and parentIds are regenerated so the fork is independent.
    */
-  async forkFrom(sourceSessionId: string, upToEntryId?: string): Promise<void> {
+  forkFrom(
+    sourceSessionId: string,
+    upToEntryId?: string
+  ): Effect.Effect<void, SessionError> {
+    return Effect.sync(() => this.forkFromSync(sourceSessionId, upToEntryId));
+  }
+
+  private forkFromSync(sourceSessionId: string, upToEntryId?: string): void {
     const sourceRows = this.db
       .select()
       .from(sessionEntries)

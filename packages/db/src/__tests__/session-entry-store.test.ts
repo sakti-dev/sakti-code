@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { SessionMetadata, SessionTreeEntry } from "@sakti-code/agent";
+import { Effect } from "effect";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import type { DrizzleDB } from "../init";
 import { initDatabase } from "../init";
@@ -43,12 +44,12 @@ describe("SqliteSessionStorage", () => {
   });
 
   test("getMetadata returns provided metadata", async () => {
-    const m = await storage.getMetadata();
+    const m = await Effect.runPromise(storage.getMetadata());
     expect(m.id).toBe("s1");
   });
 
   test("appendEntry + getEntry round-trip for message entry", async () => {
-    const id = await storage.createEntryId();
+    const id = await Effect.runPromise(storage.createEntryId());
     const entry: SessionTreeEntry = {
       type: "message",
       id,
@@ -61,26 +62,24 @@ describe("SqliteSessionStorage", () => {
       },
     };
 
-    await storage.appendEntry(entry);
+    await Effect.runPromise(storage.appendEntry(entry));
 
-    const retrieved = await storage.getEntry(id);
+    const retrieved = await Effect.runPromise(storage.getEntry(id));
     expect(retrieved).toBeDefined();
     expect(retrieved!.type).toBe("message");
     if (retrieved!.type === "message") {
       expect(retrieved.message.role).toBe("user");
     }
-
-    return { entryId: id };
   });
 
   test("appendEntry updates leafId on sessions table", async () => {
-    const leafId = await storage.getLeafId();
+    const leafId = await Effect.runPromise(storage.getLeafId());
     expect(leafId).not.toBeNull();
   });
 
   test("leaf entry does NOT update leafId", async () => {
-    const prevLeaf = await storage.getLeafId();
-    const id = await storage.createEntryId();
+    const prevLeaf = await Effect.runPromise(storage.getLeafId());
+    const id = await Effect.runPromise(storage.createEntryId());
     const leafEntry: SessionTreeEntry = {
       type: "leaf",
       id,
@@ -89,14 +88,14 @@ describe("SqliteSessionStorage", () => {
       targetId: prevLeaf,
     };
 
-    await storage.appendEntry(leafEntry);
+    await Effect.runPromise(storage.appendEntry(leafEntry));
 
-    const leafId = await storage.getLeafId();
+    const leafId = await Effect.runPromise(storage.getLeafId());
     expect(leafId).toBe(prevLeaf);
   });
 
   test("findEntries filters by kind", async () => {
-    const msgEntries = await storage.findEntries("message");
+    const msgEntries = await Effect.runPromise(storage.findEntries("message"));
     expect(msgEntries.length).toBeGreaterThanOrEqual(1);
     for (const e of msgEntries) {
       expect(e.type).toBe("message");
@@ -104,51 +103,53 @@ describe("SqliteSessionStorage", () => {
   });
 
   test("getPathToRoot returns entries in root-to-leaf order", async () => {
-    const leafId = await storage.getLeafId();
+    const leafId = await Effect.runPromise(storage.getLeafId());
     if (!leafId) {
       return;
     }
-    const entries = await storage.getPathToRoot(leafId);
+    const entries = await Effect.runPromise(storage.getPathToRoot(leafId));
     expect(entries.length).toBeGreaterThanOrEqual(1);
     expect(entries[0]!.parentId).toBeNull();
   });
 
   test("getEntries returns all entries ordered by sequence", async () => {
-    const entries = await storage.getEntries();
+    const entries = await Effect.runPromise(storage.getEntries());
     expect(entries.length).toBeGreaterThanOrEqual(2);
   });
 
   test("setLeafId updates leaf pointer", async () => {
-    await storage.setLeafId("custom-leaf");
-    const leafId = await storage.getLeafId();
+    await Effect.runPromise(storage.setLeafId("custom-leaf"));
+    const leafId = await Effect.runPromise(storage.getLeafId());
     expect(leafId).toBe("custom-leaf");
 
-    await storage.setLeafId("e1");
+    await Effect.runPromise(storage.setLeafId("e1"));
   });
 
   test("getLabel returns label for label entries", async () => {
-    const id = await storage.createEntryId();
-    await storage.appendEntry({
-      type: "label",
-      id,
-      parentId: "e1",
-      timestamp: new Date().toISOString(),
-      targetId: "e1",
-      label: "my-label",
-    });
+    const id = await Effect.runPromise(storage.createEntryId());
+    await Effect.runPromise(
+      storage.appendEntry({
+        type: "label",
+        id,
+        parentId: "e1",
+        timestamp: new Date().toISOString(),
+        targetId: "e1",
+        label: "my-label",
+      })
+    );
 
-    const label = await storage.getLabel(id);
+    const label = await Effect.runPromise(storage.getLabel(id));
     expect(label).toBe("my-label");
   });
 
   test("getPathToRoot with null returns all entries", async () => {
-    const entries = await storage.getPathToRoot(null);
-    const allEntries = await storage.getEntries();
+    const entries = await Effect.runPromise(storage.getPathToRoot(null));
+    const allEntries = await Effect.runPromise(storage.getEntries());
     expect(entries.length).toBe(allEntries.length);
   });
 
   test("compaction entry round-trip", async () => {
-    const id = await storage.createEntryId();
+    const id = await Effect.runPromise(storage.createEntryId());
     const entry: SessionTreeEntry = {
       type: "compaction",
       id,
@@ -159,8 +160,8 @@ describe("SqliteSessionStorage", () => {
       tokensBefore: 5000,
     };
 
-    await storage.appendEntry(entry);
-    const retrieved = await storage.getEntry(id);
+    await Effect.runPromise(storage.appendEntry(entry));
+    const retrieved = await Effect.runPromise(storage.getEntry(id));
     expect(retrieved).toBeDefined();
     expect(retrieved!.type).toBe("compaction");
     if (retrieved!.type === "compaction") {

@@ -1,5 +1,6 @@
 import type { DrizzleDB } from "@sakti-code/db";
 import { SqliteSessionStorage } from "@sakti-code/db";
+import { Effect } from "effect";
 
 export interface SeedMessage {
   content: string;
@@ -42,58 +43,64 @@ export async function seedEntries(
     const timestamp = Date.now();
 
     if (msg.role === "user") {
-      await storage.appendEntry({
-        id,
-        parentId,
-        timestamp: new Date(timestamp).toISOString(),
-        type: "message",
-        message: { role: "user", content: msg.content, timestamp },
-      });
+      await Effect.runPromise(
+        storage.appendEntry({
+          id,
+          parentId,
+          timestamp: new Date(timestamp).toISOString(),
+          type: "message",
+          message: { role: "user", content: msg.content, timestamp },
+        })
+      );
     } else if (msg.role === "assistant") {
-      await storage.appendEntry({
-        id,
-        parentId,
-        timestamp: new Date(timestamp).toISOString(),
-        type: "message",
-        message: {
-          role: "assistant",
-          content: [{ type: "text", text: msg.content }],
-          usage: msg.usage ?? {
-            input: 0,
-            output: 0,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 0,
-            cost: {
+      await Effect.runPromise(
+        storage.appendEntry({
+          id,
+          parentId,
+          timestamp: new Date(timestamp).toISOString(),
+          type: "message",
+          message: {
+            role: "assistant",
+            content: [{ type: "text", text: msg.content }],
+            usage: msg.usage ?? {
               input: 0,
               output: 0,
               cacheRead: 0,
               cacheWrite: 0,
-              total: 0,
+              totalTokens: 0,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0,
+              },
             },
+            stopReason: "stop",
+            provider: "openai",
+            model: "test-model",
+            api: "responses",
+            timestamp,
           },
-          stopReason: "stop",
-          provider: "openai",
-          model: "test-model",
-          api: "responses",
-          timestamp,
-        },
-      });
+        })
+      );
     } else {
-      await storage.appendEntry({
-        id,
-        parentId,
-        timestamp: new Date(timestamp).toISOString(),
-        type: "message",
-        message: {
-          role: "toolResult",
-          content: [{ type: "text", text: msg.content }],
-          toolCallId: msg.toolCallId ?? "test-call",
-          toolName: msg.toolName ?? "test-tool",
-          isError: false,
-          timestamp,
-        },
-      });
+      await Effect.runPromise(
+        storage.appendEntry({
+          id,
+          parentId,
+          timestamp: new Date(timestamp).toISOString(),
+          type: "message",
+          message: {
+            role: "toolResult",
+            content: [{ type: "text", text: msg.content }],
+            toolCallId: msg.toolCallId ?? "test-call",
+            toolName: msg.toolName ?? "test-tool",
+            isError: false,
+            timestamp,
+          },
+        })
+      );
     }
     parentId = id;
   }

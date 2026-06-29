@@ -6,6 +6,7 @@ import {
   prepareCompaction,
 } from "@sakti-code/agent";
 import type { Model } from "@sakti-code/llm";
+import { Effect } from "effect";
 import { Hono } from "hono";
 import { resolveAuth, resolveModel } from "../../agent/model-resolver.ts";
 import { createSessionStorage, getCtx } from "../../context.ts";
@@ -43,7 +44,7 @@ export const compactionRoutes = new Hono()
     }
 
     const storage = createSessionStorage(ctx, id);
-    const entries = await storage.getEntries();
+    const entries = await Effect.runPromise(storage.getEntries());
     const preparation = prepareCompaction(entries, DEFAULT_COMPACTION_SETTINGS);
 
     if (isFailure(preparation)) {

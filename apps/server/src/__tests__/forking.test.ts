@@ -1,5 +1,6 @@
 import { buildSessionContextFromEntries } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import { exportRoutes } from "../routes/sessions/export.ts";
 import { forkingRoutes } from "../routes/sessions/forking.ts";
@@ -34,8 +35,9 @@ describe("fork routes", () => {
       id: forked.id,
       createdAt: new Date().toISOString(),
     });
-    const entries = await forkedStorage.getPathToRoot(
-      await forkedStorage.getLeafId()
+    const leafId = await Effect.runPromise(forkedStorage.getLeafId());
+    const entries = await Effect.runPromise(
+      forkedStorage.getPathToRoot(leafId)
     );
     const { messages } = buildSessionContextFromEntries(entries);
     expect(messages).toHaveLength(2);

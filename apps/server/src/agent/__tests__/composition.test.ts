@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
 import type { WsIn, WsOut } from "../../agent/ws-handler.ts";
@@ -17,19 +18,20 @@ describe("WS route composition", () => {
       },
     } as any;
     const store = {
-      appendEntry: async () => {},
-      createEntryId: async () => "",
-      findEntries: async () => [],
-      getEntries: async () => [],
-      getEntry: async () => undefined,
-      getLabel: async () => undefined,
-      getLeafId: async () => null,
-      getMetadata: async () => ({
-        id: "s1",
-        createdAt: new Date().toISOString(),
-      }),
-      getPathToRoot: async () => [],
-      setLeafId: async () => {},
+      appendEntry: () => Effect.succeed(undefined),
+      createEntryId: () => Effect.succeed(""),
+      findEntries: () => Effect.succeed([]),
+      getEntries: () => Effect.succeed([]),
+      getEntry: () => Effect.succeed(undefined),
+      getLabel: () => Effect.succeed(undefined),
+      getLeafId: () => Effect.succeed(null),
+      getMetadata: () =>
+        Effect.succeed({
+          id: "s1",
+          createdAt: new Date().toISOString(),
+        }),
+      getPathToRoot: () => Effect.succeed([]),
+      setLeafId: () => Effect.succeed(undefined),
     };
 
     const ws = { send: () => {} };

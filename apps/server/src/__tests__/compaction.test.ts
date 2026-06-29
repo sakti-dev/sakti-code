@@ -2,6 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SqliteSessionStorage } from "@sakti-code/db";
+import { Effect } from "effect";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { clearProfileCache } from "../agent/model-resolver.ts";
 import {
@@ -41,17 +42,19 @@ async function seedEntries(
   let parentId: string | null = null;
   for (let i = 0; i < count; i++) {
     const id = crypto.randomUUID();
-    await storage.appendEntry({
-      id,
-      parentId,
-      timestamp: new Date().toISOString(),
-      type: "message",
-      message: {
-        role: i % 2 === 0 ? "user" : "assistant",
-        content: `Message ${i}: ${"x".repeat(500)}`,
-        timestamp: Date.now(),
-      } as never,
-    });
+    await Effect.runPromise(
+      storage.appendEntry({
+        id,
+        parentId,
+        timestamp: new Date().toISOString(),
+        type: "message",
+        message: {
+          role: i % 2 === 0 ? "user" : "assistant",
+          content: `Message ${i}: ${"x".repeat(500)}`,
+          timestamp: Date.now(),
+        } as never,
+      })
+    );
     parentId = id;
   }
 }

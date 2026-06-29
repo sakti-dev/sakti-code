@@ -6,6 +6,7 @@ import {
   SessionRepo,
   SqliteSessionStorage,
 } from "@sakti-code/db";
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
 async function seedConversation(
@@ -17,17 +18,19 @@ async function seedConversation(
   for (const msg of messages) {
     const id = crypto.randomUUID();
     ids.push(id);
-    await storage.appendEntry({
-      id,
-      parentId,
-      timestamp: new Date().toISOString(),
-      type: "message",
-      message: {
-        role: msg.role,
-        content: msg.content,
-        timestamp: Date.now(),
-      } as unknown as AgentMessage,
-    });
+    await Effect.runPromise(
+      storage.appendEntry({
+        id,
+        parentId,
+        timestamp: new Date().toISOString(),
+        type: "message",
+        message: {
+          role: msg.role,
+          content: msg.content,
+          timestamp: Date.now(),
+        } as unknown as AgentMessage,
+      })
+    );
     parentId = id;
   }
   return ids;
@@ -60,18 +63,20 @@ describe("SqliteSessionStorage.forkFrom", () => {
       createdAt: new Date().toISOString(),
     });
 
-    await forkedStorage.forkFrom(sourceSession.id);
+    await Effect.runPromise(forkedStorage.forkFrom(sourceSession.id));
 
-    const sourceEntries = await sourceStorage.getEntries();
-    const forkedEntries = await forkedStorage.getEntries();
+    const sourceEntries = await Effect.runPromise(sourceStorage.getEntries());
+    const forkedEntries = await Effect.runPromise(forkedStorage.getEntries());
 
     expect(forkedEntries).toHaveLength(sourceEntries.length);
     expect(forkedEntries[0]?.type).toBe(sourceEntries[0]?.type);
 
     // Verify the tree structure is preserved
-    const forkedLeaf = await forkedStorage.getLeafId();
+    const forkedLeaf = await Effect.runPromise(forkedStorage.getLeafId());
     expect(forkedLeaf).not.toBeNull();
-    const forkedPath = await forkedStorage.getPathToRoot(forkedLeaf);
+    const forkedPath = await Effect.runPromise(
+      forkedStorage.getPathToRoot(forkedLeaf)
+    );
     expect(forkedPath.length).toBe(sourceEntries.length);
 
     // Verify the IDs were regenerated (not pointing at the source session's entries)
@@ -107,15 +112,19 @@ describe("SqliteSessionStorage.forkFrom", () => {
     });
 
     // Fork up to entryIds[1] (include first 2 entries)
-    await forkedStorage.forkFrom(sourceSession.id, entryIds[1]);
+    await Effect.runPromise(
+      forkedStorage.forkFrom(sourceSession.id, entryIds[1])
+    );
 
-    const forkedEntries = await forkedStorage.getEntries();
+    const forkedEntries = await Effect.runPromise(forkedStorage.getEntries());
     expect(forkedEntries).toHaveLength(2);
 
     // Leaf should be the last copied entry (entryIds[1] equivalent)
-    const forkedLeaf = await forkedStorage.getLeafId();
+    const forkedLeaf = await Effect.runPromise(forkedStorage.getLeafId());
     expect(forkedLeaf).not.toBeNull();
-    const forkedPath = await forkedStorage.getPathToRoot(forkedLeaf);
+    const forkedPath = await Effect.runPromise(
+      forkedStorage.getPathToRoot(forkedLeaf)
+    );
     expect(forkedPath).toHaveLength(2);
   });
 
@@ -133,9 +142,9 @@ describe("SqliteSessionStorage.forkFrom", () => {
       createdAt: new Date().toISOString(),
     });
 
-    await forkedStorage.forkFrom(sourceSession.id);
+    await Effect.runPromise(forkedStorage.forkFrom(sourceSession.id));
 
-    const forkedEntries = await forkedStorage.getEntries();
+    const forkedEntries = await Effect.runPromise(forkedStorage.getEntries());
     expect(forkedEntries).toEqual([]);
   });
 });
