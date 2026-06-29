@@ -4,6 +4,7 @@ const SESSION_NOT_FOUND_RE = /Session not found/;
 const PROJECT_NOT_FOUND_RE = /Project not found/;
 
 import type { AgentHarnessEvent } from "@sakti-code/agent";
+import { parseSessionSettings } from "@sakti-code/agent";
 import {
   abortRun,
   clearRunsForTesting,
@@ -117,7 +118,7 @@ describe("runPrompt", () => {
     expect(await abortRun("nonexistent")).toBe(false);
   });
 
-  it("loadSessionSettings reads per-session settings via getByPrefix and merges defaults", async () => {
+  it("loadSessionSettings returns raw DB overrides (defaults merged by parseSessionSettings)", async () => {
     const ctx = createMockCtx();
     (
       ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>
@@ -125,14 +126,21 @@ describe("runPrompt", () => {
       { key: "session:sess-1:thinking_level", value: "high" },
     ]);
 
-    const settings = loadSessionSettings(ctx, "sess-1");
+    const raw = loadSessionSettings(ctx, "sess-1");
 
     expect(ctx.repos.settings.getByPrefix).toHaveBeenCalledWith(
       "session:sess-1:"
     );
-    expect(settings.thinking_level).toBe("high");
-    expect(settings.auto_retry).toBe("true");
-    expect(settings.steering_mode).toBe("all");
+    // Raw overrides only — no defaults merged here.
+    expect(raw.thinking_level).toBe("high");
+    expect(raw.auto_retry).toBeUndefined();
+    expect(raw.steering_mode).toBeUndefined();
+
+    // Defaults are applied by parseSessionSettings.
+    const settings = parseSessionSettings(raw);
+    expect(settings.thinkingLevelOverride()).toBe("high");
+    expect(settings.autoRetry()).toBe(true);
+    expect(settings.steeringMode()).toBe("all");
   });
 
   it("W4: per-session thinking_level 'off' disables a session row's 'high'", async () => {
@@ -162,10 +170,10 @@ describe("runPrompt", () => {
     expect(level).toBe("off");
   });
 
-  it("W3: loadSessionSettings defaults auto_compaction to false", () => {
+  it("W3: parseSessionSettings defaults auto_compaction to false", () => {
     const ctx = createMockCtx();
-    const settings = loadSessionSettings(ctx, "sess-1");
-    expect(settings.auto_compaction).toBe("false");
+    const settings = parseSessionSettings(loadSessionSettings(ctx, "sess-1"));
+    expect(settings.autoCompaction()).toBe(false);
   });
 
   it("resolveEditMode: returns stored mode when set", () => {

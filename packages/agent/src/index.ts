@@ -169,6 +169,15 @@ export {
   renderToolSection,
 } from "./resources/tool-inventory.ts";
 export type {
+  EditMode as SessionEditMode,
+  SessionSettings,
+} from "./runner/session-settings.ts";
+export {
+  DEFAULT_AGENT_NAME as DEFAULT_SESSION_AGENT_NAME,
+  DEFAULT_SESSION_SETTINGS,
+  parseSessionSettings,
+} from "./runner/session-settings.ts";
+export type {
   CompletionProviderShape,
   StreamProviderShape,
 } from "./services/llm.ts";

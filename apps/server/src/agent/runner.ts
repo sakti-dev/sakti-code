@@ -6,7 +6,6 @@ import type {
   AgentHarness,
   AgentHarnessEvent,
   PermissionRuleset,
-  QueueMode,
   SessionStorageShape,
   ThinkingLevel,
 } from "@sakti-code/agent";
@@ -21,8 +20,7 @@ import {
   AgentHarness as HarnessClass,
   INTAKE_SYSTEM_PROMPT,
   PromiseSession,
-  parseCompactionSettings,
-  parseRetrySettings,
+  parseSessionSettings,
   planFirstTurn,
   promiseSessionAsShape,
   type RetryRunnerDepsEffect,
@@ -198,6 +196,11 @@ const DEFAULT_SETTINGS: Record<string, string> = {
   thinking_level: "off",
 };
 
+/**
+ * Load the raw per-session settings overrides from the DB (no defaults merged).
+ * Callers wrap with `parseSessionSettings(...)` from `@sakti-code/agent` to
+ * get a typed view with defaults applied.
+ */
 export function loadSessionSettings(
   ctx: ServerContext,
   sessionId: string
@@ -209,7 +212,15 @@ export function loadSessionSettings(
     const key = row.key.slice(prefix.length);
     overrides[key] = row.value;
   }
-  return { ...DEFAULT_SETTINGS, ...overrides };
+  return overrides;
+}
+
+/** @deprecated Kept until tests migrate to `parseSessionSettings(loadSessionSettings(...))`. */
+export function loadSessionSettingsWithDefaults(
+  ctx: ServerContext,
+  sessionId: string
+): Record<string, string> {
+  return { ...DEFAULT_SETTINGS, ...loadSessionSettings(ctx, sessionId) };
 }
 
 /**
@@ -499,7 +510,7 @@ export function runPromptEffect(
     }
     const { model } = auth;
     const isIntake = session.kind === "intake";
-    const settings = loadSessionSettings(ctx, sessionId);
+    const settings = parseSessionSettings(loadSessionSettings(ctx, sessionId));
     const editMode = resolveEditMode(ctx, sessionId);
     const tools = buildTools(project.cwd, editMode);
     if (isIntake) {
@@ -512,7 +523,7 @@ export function runPromptEffect(
       session,
       auth.thinkingLevel
     );
-    const compactionSettings = parseCompactionSettings(settings);
+    const compactionSettings = settings.compaction();
 
     const env = new NodeExecutionEnv(project.cwd);
     const sessionInstance = new PromiseSession(storage);
@@ -559,8 +570,8 @@ export function runPromptEffect(
         ? {}
         : { logger: ctx.log.agent, streamLogger: ctx.log.llm }),
       tools,
-      followUpMode: settings.follow_up_mode as QueueMode,
-      steeringMode: settings.steering_mode as QueueMode,
+      followUpMode: settings.followUpMode(),
+      steeringMode: settings.steeringMode(),
       thinkingLevel,
       getApiKeyAndHeaders,
       resources: {
@@ -574,7 +585,7 @@ export function runPromptEffect(
     // permission ruleset into the loop. For non-intake sessions, switchAgent also
     // applies the agent's system prompt + tool allowlist + thinking level.
     // Intake keeps its dedicated INTAKE_SYSTEM_PROMPT and proposeSession flow.
-    const agentName = settings.agent ?? DEFAULT_AGENT_NAME;
+    const agentName = settings.agent();
     const agent = resolveAgentByName(agentName, loadedContext.agents);
     const agentRuleset = agent.permission ?? fromConfig({ "*": "allow" });
 
@@ -655,7 +666,7 @@ export function runPromptEffect(
     // Application-level retry: run the turn, and on a transient failure emit
     // auto_retry_start/end events, roll the session leaf back past the failed
     // message, back off, and re-run via harness.continue(). See retry-loop.ts.
-    const retrySettings = parseRetrySettings(settings);
+    const retrySettings = settings.retry();
     let firstTurn = true;
     // Stuck-guard state (§4) persists across prompts via the settings table
     // because each runPrompt builds a fresh harness; the closure caches the
