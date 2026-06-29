@@ -620,6 +620,22 @@ const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(
               });
               break;
             }
+            case "tool-input-delta": {
+              // Live tool-call argument streaming — purely a UI feed. The
+              // complete tool-call part (with parsed `input`) arrives via the
+              // `tool-call` case below and is what we persist; these deltas
+              // let the UI show "Writing toolcall…" instead of looking stuck.
+              yield* ensureMessageStarted();
+              yield* emitEffect(emit, {
+                type: "message_update",
+                delta: {
+                  kind: "tool_input",
+                  toolCallId: part.toolCallId as string,
+                  text: (part.input as string) ?? "",
+                },
+              });
+              break;
+            }
             case "error": {
               streamError =
                 part.error instanceof Error
@@ -632,7 +648,7 @@ const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(
               break;
             }
             // Other parts (text-start/end, reasoning-start/end, start-step,
-            // finish-step, tool-input-*, raw, source, file, start, finish, abort)
+            // finish-step, raw, source, file, start, finish, abort)
             // are ignored — we accumulate from *-delta and tool-call only.
           }
         })

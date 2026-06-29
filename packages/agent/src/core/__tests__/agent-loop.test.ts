@@ -273,6 +273,60 @@ describe("agentLoop with AgentMessage", () => {
     );
   });
 
+  it("emits tool_input deltas as message_update while the tool call is being written", async () => {
+    const streamFn: StreamFn = () =>
+      Promise.resolve({
+        fullStream: (async function* () {
+          yield {
+            type: "tool-input-delta",
+            toolCallId: "tc-1",
+            input: '{"path": "a',
+          };
+          yield {
+            type: "tool-input-delta",
+            toolCallId: "tc-1",
+            input: '.ts"}',
+          };
+          yield { type: "text-delta", id: "t1", text: "done" };
+        })(),
+        result: Promise.resolve({
+          finishReason: "stop" as const,
+          usage: createUsage(),
+        }),
+      });
+
+    const context: AgentContext = {
+      systemPrompt: "x",
+      messages: [],
+      tools: [],
+    };
+    const config: AgentLoopConfig = {
+      model: createModel(),
+      convertToLlm: identityConverter,
+    };
+
+    const events: AgentEvent[] = [];
+    const stream = agentLoop(
+      [createUserMessage("edit")],
+      context,
+      config,
+      undefined,
+      streamFn
+    );
+    for await (const event of stream) {
+      events.push(event);
+    }
+    await stream.result();
+
+    const toolInputDeltas = events.filter(
+      (e) => e.type === "message_update" && e.delta.kind === "tool_input"
+    );
+    expect(toolInputDeltas.length).toBe(2);
+    expect((toolInputDeltas[0] as { delta: { text: string } }).delta.text).toBe(
+      '{"path": "a'
+    );
+  });
+
   it("forces toolChoice='none' on the last step when maxSteps is set (M1)", async () => {
     const captured: (string | undefined)[] = [];
     const streamFn = makeStreamFnWithReq((req, callIndex) => {

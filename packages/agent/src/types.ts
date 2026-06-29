@@ -262,7 +262,10 @@ export type AgentEvent =
   | { type: "message_start"; message: AgentMessage }
   | {
       type: "message_update";
-      delta: { kind: "text" | "thinking"; text: string };
+      delta:
+        | { kind: "text"; text: string }
+        | { kind: "thinking"; text: string }
+        | { kind: "tool_input"; toolCallId: string; text: string };
     }
   | { type: "message_end"; message: AgentMessage }
   | {

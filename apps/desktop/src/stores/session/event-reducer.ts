@@ -150,9 +150,14 @@ export function dispatchEvent(
       }
       if (event.delta.kind === "text") {
         batcher.append(msgId, event.delta.text);
-      } else {
+      } else if (event.delta.kind === "thinking") {
         actions.appendThinkingToken(msgId, event.delta.text);
       }
+      // `tool_input` deltas are intentionally not reduced here — they are a
+      // live preview of tool-call argument generation. The authoritative
+      // tool-call (with parsed args) arrives via `tool_execution_start`, which
+      // is what creates the tool_call part in the UI store. Surfacing the
+      // live partial input is future work (needs a streaming-input part).
       break;
     }
 
