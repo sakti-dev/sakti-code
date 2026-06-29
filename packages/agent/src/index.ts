@@ -52,6 +52,11 @@ export {
   shouldCompact,
 } from "./compaction/compaction.ts";
 export type {
+  BranchSummaryPrompts,
+  CompactionPrompts,
+  SkillsInstructions,
+} from "./compaction/prompt-bundles.ts";
+export type {
   RetryDecisionInput,
   RetryRunnerDepsEffect,
   RetrySettings,
