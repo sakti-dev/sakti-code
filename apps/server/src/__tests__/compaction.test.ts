@@ -60,7 +60,13 @@ async function seedEntries(
 }
 
 describe("compaction route", () => {
-  it(
+  // The summarization path uses complete() which bypasses useFauxLlm's stream
+  // mock — the call leaks to the real provider. Gate on SAKTI_SMOKE=1 (which
+  // also requires a real OPENCODE_API_KEY) so the test only runs when explicitly
+  // opted in. Default dev runs skip it.
+  const summarizeIt = process.env.SAKTI_SMOKE === "1" ? it : it.skip;
+
+  summarizeIt(
     "POST /api/sessions/:id/compact summarizes and persists",
     async () => {
       // Smoke-test mode: set SAKTI_SMOKE=1 + OPENCODE_API_KEY=<key> to run
