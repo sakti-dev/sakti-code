@@ -63,6 +63,22 @@ export function resolveGlobPattern(inputPattern: string): string {
   return `**/*${inputPattern}*`;
 }
 
+export type RgOutcome =
+  | { kind: "results" }
+  | { kind: "empty" }
+  | { kind: "error"; message: string };
+
+/**
+ * Classify a `rg --files` result by its exit code.
+ * rg contract: 0 = matches, 1 = no matches (success), >=2 = error.
+ * Pure — no I/O.
+ */
+export function classifyRgExitCode(exitCode: number, _stdout: string, stderr: string): RgOutcome {
+  if (exitCode === 0) return { kind: "results" };
+  if (exitCode === 1) return { kind: "empty" };
+  return { kind: "error", message: stderr.trim() || `rg failed (exit ${exitCode})` };
+}
+
 export function createFindTool(
   cwd: string,
   options?: FindToolOptions,

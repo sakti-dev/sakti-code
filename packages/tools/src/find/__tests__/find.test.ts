@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentToolResult } from "@sakti-code/agent";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import { createFindTool, resolveGlobPattern } from "../index.ts";
+import { classifyRgExitCode, createFindTool, resolveGlobPattern } from "../index.ts";
 
 function getTextContent(result: AgentToolResult<unknown>): string {
   const first = result.content[0];
@@ -13,6 +13,45 @@ function getTextContent(result: AgentToolResult<unknown>): string {
   }
   return "";
 }
+
+describe("find: classifyRgExitCode (pure)", () => {
+  it("returns 'results' for exit code 0", () => {
+    expect(classifyRgExitCode(0, "src/a.ts\n", "")).toEqual({ kind: "results" });
+  });
+
+  it("returns 'empty' for exit code 1 (no matches is NOT an error)", () => {
+    expect(classifyRgExitCode(1, "", "")).toEqual({ kind: "empty" });
+  });
+
+  it("returns 'empty' for exit code 1 even if stderr is non-empty (pins rg contract)", () => {
+    expect(classifyRgExitCode(1, "", "warning: something")).toEqual({ kind: "empty" });
+  });
+
+  it("returns 'error' with stderr message for exit code 2", () => {
+    const out = classifyRgExitCode(2, "", "rg: IO error: No such file (os error 2)");
+    expect(out.kind).toBe("error");
+    if (out.kind === "error") {
+      expect(out.message).toContain("os error 2");
+    }
+  });
+
+  it("returns 'error' with fallback message when exit >=2 and stderr empty", () => {
+    const out = classifyRgExitCode(2, "", "");
+    expect(out.kind).toBe("error");
+    if (out.kind === "error") {
+      expect(out.message).toMatch(/rg failed/i);
+      expect(out.message).toContain("exit 2");
+    }
+  });
+
+  it("returns 'error' for unusual exit codes (e.g. 130 SIGINT)", () => {
+    expect(classifyRgExitCode(130, "", "").kind).toBe("error");
+  });
+
+  it("never throws — pure function", () => {
+    expect(() => classifyRgExitCode(-1, "", "")).not.toThrow();
+  });
+});
 
 describe("find: fragment dispatch (resolveGlobPattern)", () => {
   it("leaves a real glob pattern unchanged", () => {
