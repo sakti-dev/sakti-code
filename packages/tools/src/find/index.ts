@@ -64,8 +64,22 @@ export function resolveGlobPattern(inputPattern: string): string {
   return `**/*${inputPattern}*`;
 }
 
-/** Directories excluded from results. Single source of truth (expanded in a later task). */
-const EXCLUDE_GLOBS = ["**/.git/**", "**/node_modules/**"];
+/**
+ * Directories never useful in file-search results (VCS, deps, build output).
+ * Single source of truth — consumed by both the DI and production branches.
+ * NOTE: rg multi-glob is last-match-wins, so the include glob MUST be passed
+ * BEFORE these negation globs, or matching files inside these dirs get
+ * re-included.
+ */
+const EXCLUDE_GLOBS = [
+  "**/.git/**",
+  "**/node_modules/**",
+  "**/target/**", // Rust
+  "**/dist/**", // generic build output / TS
+  "**/build/**", // generic
+  "**/.next/**", // Next.js
+  "**/out/**", // Next.js export / generic
+];
 
 const LISTING_CAP = 20;
 const SIMILAR_CAP = 5;
@@ -192,8 +206,8 @@ export function createFindTool(
         "--files",
         "--hidden",
         "--no-ignore",
-        ...EXCLUDE_GLOBS.map((g) => `--glob=!${g}`),
         `--glob=${effectivePattern}`,
+        ...EXCLUDE_GLOBS.map((g) => `--glob=!${g}`),
       ];
 
       if (signal?.aborted) {

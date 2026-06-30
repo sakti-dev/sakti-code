@@ -371,3 +371,54 @@ describe("find: limit is enforced as a hard cap", () => {
     expect(text).toContain("f0.ts");
   });
 });
+
+describe("find: build artifacts and deps are excluded even when they match the pattern", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sakti-find-excl-"));
+    mkdirSync(join(dir, "target", "debug"), { recursive: true });
+    mkdirSync(join(dir, "node_modules", "pkg"), { recursive: true });
+    mkdirSync(join(dir, "dist"), { recursive: true });
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "target", "debug", "build.rs"), "x");
+    writeFileSync(join(dir, "node_modules", "pkg", "index.ts"), "x");
+    writeFileSync(join(dir, "dist", "out.ts"), "x");
+    writeFileSync(join(dir, "src", "main.rs"), "x");
+    writeFileSync(join(dir, "app.ts"), "x");
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("excludes target/ even though its file matches the include (ordering fix, report 1.2)", async () => {
+    const tool = createFindTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "*.rs" }));
+    expect(text).toContain("main.rs");
+    expect(text).not.toContain("target");
+    expect(text).not.toContain("build.rs");
+  });
+
+  it("excludes node_modules/ even though its file matches the include", async () => {
+    const tool = createFindTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "*.ts" }));
+    expect(text).toContain("app.ts");
+    expect(text).not.toContain("node_modules");
+    expect(text).not.toContain("pkg/index.ts");
+  });
+
+  it("excludes dist/", async () => {
+    const tool = createFindTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "*.ts" }));
+    expect(text).not.toContain("dist/out.ts");
+  });
+
+  it("excludes target/ within a scoped path (report 1.3)", async () => {
+    const tool = createFindTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "*.rs", path: "." }));
+    expect(text).not.toContain("target/");
+  });
+
+  it("still returns real source files", async () => {
+    const tool = createFindTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "*.ts" }));
+    expect(text).toContain("app.ts");
+  });
+});
