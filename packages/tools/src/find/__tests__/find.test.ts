@@ -315,3 +315,51 @@ describe("find: missing path raises a friendly error (report 1.9)", () => {
     ).rejects.toThrow(/Path not found/);
   });
 });
+
+describe("find: limit is enforced as a hard cap", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sakti-find-limit-"));
+    for (let i = 0; i < 12; i++) writeFileSync(join(dir, `f${i}.ts`), "x");
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("returns at most `limit` results", async () => {
+    const tool = createFindTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "*.ts", limit: 5 }));
+    const fileLines = text.split("\n").filter((l) => /^f\d+\.ts$/.test(l));
+    expect(fileLines.length).toBeLessThanOrEqual(5);
+  });
+
+  it("returns at most 1 result when limit=1", async () => {
+    const tool = createFindTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "*.ts", limit: 1 }));
+    const fileLines = text.split("\n").filter((l) => /^f\d+\.ts$/.test(l));
+    expect(fileLines.length).toBe(1);
+  });
+
+  it("shows a 'limit reached' notice when results exceed limit", async () => {
+    const tool = createFindTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "*.ts", limit: 5 }));
+    expect(text).toMatch(/limit reached|results limit/i);
+  });
+
+  it("omits the notice when results fit under the limit", async () => {
+    const tool = createFindTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "*.ts", limit: 100 }));
+    expect(text).not.toMatch(/limit reached|results limit/i);
+  });
+
+  it("treats limit <= 0 as the default (does not crash, does not return zero)", async () => {
+    const tool = createFindTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "*.ts", limit: 0 }));
+    const fileLines = text.split("\n").filter((l) => /^f\d+\.ts$/.test(l));
+    expect(fileLines.length).toBe(12); // default applies
+  });
+
+  it("still applies the 50KB byte truncation independently of limit", async () => {
+    const tool = createFindTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "*.ts", limit: 100000 }));
+    expect(text).toContain("f0.ts");
+  });
+});

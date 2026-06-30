@@ -143,7 +143,7 @@ export function createFindTool(
       }
 
       const searchPath = resolveToCwd(searchDir || ".", cwd);
-      const effectiveLimit = limit ?? DEFAULT_LIMIT;
+      const effectiveLimit = limit && limit > 0 ? limit : DEFAULT_LIMIT;
       const ops = customOps ?? defaultFindOperations;
 
       // Pre-flight: reject a missing search path once, for both branches,
@@ -247,13 +247,14 @@ function formatFindResults(
       details: undefined,
     };
   }
-  const relativized = results.map((p) => {
+  const resultLimitReached = results.length > effectiveLimit;
+  const capped = results.slice(0, effectiveLimit);
+  const relativized = capped.map((p) => {
     if (p.startsWith(searchPath)) {
       return toPosixPath(p.slice(searchPath.length + 1));
     }
     return toPosixPath(nodePath.relative(searchPath, p));
   });
-  const resultLimitReached = relativized.length >= effectiveLimit;
   const rawOutput = relativized.join("\n");
   const truncation = truncateHead(rawOutput, { maxLines: Number.MAX_SAFE_INTEGER });
   let resultOutput = truncation.content;
