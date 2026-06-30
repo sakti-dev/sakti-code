@@ -44,33 +44,54 @@ function cleanLogs() {
   }
 }
 
-cleanLogs();
+async function main() {
+  cleanLogs();
 
-const electronArgs = [];
+  const electronArgs = [];
 
-if (process.platform === "linux") {
-  electronArgs.push(
-    "--ozone-platform=wayland",
-    "--enable-features=WaylandFractionalScaleV1",
-    "--no-sandbox",
+  if (process.platform === "linux") {
+    electronArgs.push(
+      "--ozone-platform=wayland",
+      "--enable-features=WaylandFractionalScaleV1",
+      "--no-sandbox",
+    );
+  }
+
+  // Verbose diagnostics for dev: capture the agent/llm request+response traces
+  // (debug level) and stop pino redacting the resolved API key so the auth.json
+  // -> stream-call chain is verifiable. cleanLogs() wipes these files on each
+  // launch, so secrets only live on disk for the current session — still, rotate
+  // the key if you pasted one into auth.json for debugging.
+  process.env.SAKTI_LOG_LEVEL ??= "debug";
+  process.env.SAKTI_LOG_SECRETS ??= "true";
+
+  // Build workspace package dist so the Electron main can consume @sakti-code/*
+  // as pre-built libraries (they're externalized in electron.vite.config.ts).
+  // Prod does the same via the `package` script (`vp run -r build && electron-vite build`).
+  // If a cached build ever leaves dist out of sync (rare: a killed build can wipe
+  // dist while the cache stays "hit"), recover with `vp run -r build --no-cache`.
+  console.log("[dev] building workspace dist (vp run -r build)…");
+  const build = spawn("vp", ["run", "-r", "build"], { stdio: "inherit", shell: true });
+  await new Promise((resolve, reject) => {
+    build.on("exit", (code) =>
+      code === 0 ? resolve() : reject(new Error(`workspace build failed (exit ${code})`)),
+    );
+    build.on("error", reject);
+  });
+
+  const ps = spawn(
+    "electron-vite",
+    ["dev", ...(electronArgs.length > 0 ? ["--", ...electronArgs] : []), ...process.argv.slice(2)],
+    {
+      stdio: "inherit",
+      shell: true,
+    },
   );
+
+  ps.on("exit", (code) => process.exit(code ?? 0));
 }
 
-// Verbose diagnostics for dev: capture the agent/llm request+response traces
-// (debug level) and stop pino redacting the resolved API key so the auth.json
-// → stream-call chain is verifiable. cleanLogs() wipes these files on each
-// launch, so secrets only live on disk for the current session — still, rotate
-// the key if you pasted one into auth.json for debugging.
-process.env.SAKTI_LOG_LEVEL ??= "debug";
-process.env.SAKTI_LOG_SECRETS ??= "true";
-
-const ps = spawn(
-  "electron-vite",
-  ["dev", ...(electronArgs.length > 0 ? ["--", ...electronArgs] : []), ...process.argv.slice(2)],
-  {
-    stdio: "inherit",
-    shell: true,
-  },
-);
-
-ps.on("exit", (code) => process.exit(code ?? 0));
+main().catch((err) => {
+  console.error("[dev] failed to start:", err);
+  process.exit(1);
+});

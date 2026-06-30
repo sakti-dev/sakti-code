@@ -10,19 +10,26 @@ export default defineConfig({
         input: resolve(import.meta.dirname, "electron/main/index.ts"),
         external: [
           "electron",
-          "@sakti-code/pi-natives",
-          "@ff-labs/fff-node",
+          // Workspace packages are consumed as pre-built dist (apps/*/dist,
+          // packages/*/dist) — see dev.mjs / the `package` script, which run
+          // `vp run -r build` before electron-vite. Adding a dependency inside
+          // a workspace package (e.g. tools -> turndown) no longer flows into
+          // this bundle; only that package's own `vp pack` build sees it.
+          // Also covers @sakti-code/pi-natives (native Rust crate, no dist).
+          /^@sakti-code\//,
           // @vscode/ripgrep resolves its platform binary via a dynamic
           // require.resolve('@vscode/ripgrep-<plat>-<arch>/bin/rg') at runtime;
-          // bundlers can't statically resolve that, so it must stay external and
-          // resolve from node_modules (platform subpkg installed as optionalDep).
+          // bundlers can't statically resolve that, so the platform subpackages
+          // must stay external and resolve from node_modules.
           /^@vscode\/ripgrep/,
           // pino's worker-thread transport (pino.transport({ target: "pino-roll" }))
           // spawns a worker that resolves "pino-roll" + its deps at runtime via
           // require.resolve — bundling inlines the code but breaks that runtime
-          // resolution (silent async worker failure → no log files written).
+          // resolution (silent async worker failure -> no log files written).
           // Must stay external + hoisted as direct deps of desktop.
           /^pino(?:-roll)?$/,
+          // Native node bindings — can't be bundled (.node / platform binaries).
+          "@ff-labs/fff-node",
         ],
       },
     },
