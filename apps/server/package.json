@@ -41,6 +41,7 @@
     "@sakti-code/llm": "workspace:*",
     "@sakti-code/logger": "workspace:*",
     "@sakti-code/tools": "workspace:*",
+    "@vscode/ripgrep": "^1.18.0",
     "effect": "4.0.0-beta.90",
     "hono": "^4.12.26",
     "node-pty": "^1.1.0",

@@ -9,6 +9,7 @@ asar: true
 asarUnpack:
   - "**/node-pty/**"
   - "**/*.node"
+  - "**/@vscode/ripgrep*/bin/**"
 linux:
   target:
     - AppImage

@@ -11,6 +11,7 @@ import {
   type InMemorySnapshotStore,
   type NoopLoopGuardOwner,
 } from "@sakti-code/tools";
+import { rgPath } from "@vscode/ripgrep";
 
 export interface ToolContext {
   readonly cwd: string;
@@ -20,6 +21,9 @@ export interface ToolContext {
 }
 
 export type ToolFactory = (ctx: ToolContext) => AgentTool;
+
+/** Absolute path to the bundled ripgrep binary. Injected into both search tools. */
+export const rgBinPath = (): string => rgPath;
 
 /**
  * Server's tool factory registry. Names match what agents declare in
@@ -43,8 +47,8 @@ export const TOOL_FACTORIES: Readonly<Record<string, ToolFactory>> = {
       noopOwner: ctx.noopOwner,
     }) as AgentTool,
   bash: (ctx) => createBashTool(ctx.cwd) as AgentTool,
-  grep: (ctx) => createGrepTool(ctx.cwd) as AgentTool,
-  find: (ctx) => createFindTool(ctx.cwd) as AgentTool,
+  grep: (ctx) => createGrepTool(ctx.cwd, { rgPath: rgBinPath() }) as AgentTool,
+  find: (ctx) => createFindTool(ctx.cwd, { rgPath: rgBinPath() }) as AgentTool,
   propose_session: () => createProposeSessionTool() as AgentTool,
 };
 
