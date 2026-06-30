@@ -37,9 +37,9 @@ sakti-code: desktop app (Electron + SolidJS) running multiple AI coding agents c
 
 ```
 vp install                                         # install dependencies (replaces pnpm install)
-vp check                                           # format + lint (run before committing); `vp check --fix` autofixes
-vp check --fix                                     # format + autofix lint (run before committing)
-vp run -r typecheck                                # typecheck all packages via tsc --noEmit (each package owns its tsconfig)
+vp check                                           # format + lint + typecheck in one pass (run before committing); `vp check --fix` autofixes
+vp check --fix                                     # format + autofix lint + typecheck (run before committing)
+vp run -r typecheck                                # standalone typecheck (tsc --noEmit per package); rarely needed — `vp check` already typechecks via tsgolint
 vp run -r test                                     # run tests across all packages (vitest via vite-plus/test)
 vp run -r build                                    # build all packages (vp pack; electron-vite for desktop)
 vp run @sakti-code/agent#test                      # single-package test (same pattern for any workspace package)
@@ -59,13 +59,13 @@ nix develop                                        # enter dev shell: Electron r
 - **Follow TDD** — write the failing test first (RED), implement until it passes (GREEN), then refactor. Verify RED before implementing.
 - **Tests live in `__tests__/` colocated with source.** Tests use **vitest** throughout (server, desktop renderer, and packages; renderer tests run under jsdom).
 - **`exactOptionalPropertyTypes: true` is on.** Use conditional spread `...(x !== undefined ? { x } : {})` instead of passing `undefined`.
-- TS 6.0 quirks: `include`/`references` must be top-level in tsconfig (not inside `compilerOptions`); `shell` in `execSync` must be a `string` (e.g. `"/bin/sh"`), not `boolean`.
+- TS 7.0 (Go-based): `include`/`references` must be top-level in tsconfig (not inside `compilerOptions`); `shell` in `execSync` must be a `string` (e.g. `"/bin/sh"`), not `boolean`.
 - Workspace `package.json` exports point to `./src/index.ts` (not `./dist/`) so the dev tooling resolves `.ts` directly.
 - Before editing unfamiliar code: read `openspec/changes/*/specs/` and the file you're changing.
 
 ## Code style (Oxlint / Oxfmt via `vp`)
 
-Write code that is **accessible, performant, type-safe, and maintainable**. Focus on clarity and explicit intent over brevity. Run `vp check --fix` — it applies formatting (oxfmt) and lint fixes (oxlint) and reports any remaining diagnostics. `vp check` is the read-only gate; lint config lives in the root `vite.config.ts` `lint`/`fmt` blocks (type-aware on; full typecheck off — typecheck is `vp run -r typecheck`).
+Write code that is **accessible, performant, type-safe, and maintainable**. Focus on clarity and explicit intent over brevity. Run `vp check --fix` — it applies formatting (oxfmt) and lint fixes (oxlint) and reports any remaining diagnostics. `vp check` is the read-only gate; lint config lives in the root `vite.config.ts` `lint`/`fmt` blocks (type-aware on; full typecheck on via tsgolint on the TS Go toolchain).
 
 - Explicit types for params/returns when they aid clarity; prefer `unknown` over `any`.
 - `const` by default, `let` only when reassigning, never `var`. Const assertions (`as const`) for immutable values.
