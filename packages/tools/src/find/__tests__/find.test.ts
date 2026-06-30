@@ -164,19 +164,24 @@ describe("find: no matches returns a friendly message, never 'rg exited with cod
     const tool = createFindTool(dir);
     const result = await tool.execute("tc", { pattern: "[Cc]onfig" });
     expect(getTextContent(result)).not.toContain("rg exited with code");
+    expect(getTextContent(result).toLowerCase()).toContain("no files found");
   });
 
   it("treats a prefix-only wildcard that matches nothing gracefully (report 1.13)", async () => {
     const tool = createFindTool(dir);
     const result = await tool.execute("tc", { pattern: "config*" });
     expect(getTextContent(result)).not.toContain("rg exited with code");
+    expect(getTextContent(result).toLowerCase()).toContain("no files found");
   });
 
   it("treats a '.*' pattern gracefully (report 1.18)", async () => {
     writeFileSync(join(dir, ".env"), "x");
     const tool = createFindTool(dir);
     const result = await tool.execute("tc", { pattern: ".*" });
+    // '.*' is a real glob that matches the dotfile, so the positive outcome is
+    // the matched file (not the friendly empty message).
     expect(getTextContent(result)).not.toContain("rg exited with code");
+    expect(getTextContent(result)).toContain(".env");
   });
 
   it("bare name + path that matches nothing is friendly, not a crash (report 1.19)", async () => {
@@ -185,5 +190,32 @@ describe("find: no matches returns a friendly message, never 'rg exited with cod
     const tool = createFindTool(dir);
     const result = await tool.execute("tc", { pattern: "baresync*", path: "baresync" });
     expect(getTextContent(result)).not.toContain("rg exited with code");
+    expect(getTextContent(result).toLowerCase()).toContain("no files found");
+  });
+});
+
+describe("find: abort prevents partial results from leaking", () => {
+  // Regression guard for the load-bearing post-runList abort gate: runProcess
+  // finalizes a SIGKILL'd rg as exit 0, so without the `signal?.aborted` check
+  // between runList() and formatFindResults the partial/empty stdout would be
+  // formatted as a (wrong) file list. This uses the production branch (no
+  // customOps) to exercise real runProcess + that gate.
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sakti-find-abort-"));
+    for (let i = 0; i < 200; i++) writeFileSync(join(dir, `f${i}.ts`), "x");
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("throws 'Operation aborted' rather than returning a partial file list", async () => {
+    const tool = createFindTool(dir);
+    const ac = new AbortController();
+    // Abort after kicking off execute. ac.abort() runs synchronously on the
+    // main thread before any rg IO callback / await continuation can reach
+    // formatFindResults, so the post-runList gate deterministically throws.
+    const run = tool.execute("tc", { pattern: "*.ts" }, ac.signal);
+    ac.abort();
+    await expect(run).rejects.toThrow(/aborted/i);
   });
 });

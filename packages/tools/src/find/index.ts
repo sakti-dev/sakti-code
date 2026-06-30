@@ -165,6 +165,8 @@ export function createFindTool(
 
       const files = await runList();
 
+      // runProcess resolves an aborted (SIGKILL'd) rg as exit 0, so without
+      // this gate the partial/empty stdout would be formatted as a file list.
       if (signal?.aborted) {
         throw new Error("Operation aborted");
       }
