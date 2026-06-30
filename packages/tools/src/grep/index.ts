@@ -1,9 +1,11 @@
 import nodePath from "node:path";
+import { readdir } from "node:fs/promises";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
-import { resolveToCwd } from "../lib/path-utils.ts";
+import { pathExists, resolveToCwd } from "../lib/path-utils.ts";
 import { runProcess } from "../lib/spawn.ts";
 import { EXCLUDE_GLOBS } from "../lib/excludes.ts";
+import { buildPathNotFoundMessage } from "../lib/path-errors.ts";
 import {
   DEFAULT_MAX_BYTES,
   formatSize,
@@ -159,6 +161,25 @@ export function createGrepTool(
       const searchPath = resolveToCwd(searchDir || ".", cwd);
       const contextValue = context && context > 0 ? context : 0;
       const effectiveLimit = Math.max(1, limit ?? DEFAULT_LIMIT);
+
+      // Pre-flight: reject a missing search path with a friendly message
+      // enriched from the parent dir, before rg can leak an IO error.
+      if (!(await pathExists(searchPath))) {
+        let parentEntries: string[] | null = null;
+        const parent = nodePath.dirname(searchPath);
+        if (await pathExists(parent)) {
+          try {
+            parentEntries = await readdir(parent);
+          } catch {
+            parentEntries = null;
+          }
+        }
+        throw new Error(buildPathNotFoundMessage(searchPath, parentEntries));
+      }
+
+      if (signal?.aborted) {
+        throw new Error("Operation aborted");
+      }
 
       const args: string[] = ["--no-config", "--json", "--smart-case", "--hidden", "--no-ignore"];
       if (glob) {

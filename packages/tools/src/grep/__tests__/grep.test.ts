@@ -203,3 +203,40 @@ describe("grep: build artifacts are excluded even when a user glob matches them"
     expect(text).toContain("main.rs");
   });
 });
+
+describe("grep: missing path raises a friendly error", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sakti-grep-path-"));
+    writeFileSync(join(dir, "alpha.ts"), "alpha\n");
+    writeFileSync(join(dir, "alfred.ts"), "alfred\n");
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("rejects with 'Path not found', not a raw OS error", async () => {
+    const tool = createGrepTool(dir);
+    await expect(tool.execute("tc", { pattern: "alpha", path: "does-not-exist" })).rejects.toThrow(
+      /Path not found/,
+    );
+  });
+
+  it("the error message contains no raw OS error text", async () => {
+    const tool = createGrepTool(dir);
+    await expect(tool.execute("tc", { pattern: "alpha", path: "no-such-dir" })).rejects.toSatisfy(
+      (err: Error) => !err.message.includes("os error") && !err.message.includes("IO error"),
+    );
+  });
+
+  it("suggests similar entries when the parent exists", async () => {
+    const tool = createGrepTool(dir);
+    await expect(tool.execute("tc", { pattern: "alpha", path: "alp" })).rejects.toThrow(
+      /Did you mean.*(alpha\.ts|alfred\.ts)/,
+    );
+  });
+
+  it("does not false-positive on an existing path", async () => {
+    const tool = createGrepTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "alpha", path: "." }));
+    expect(text).toContain("alpha.ts");
+  });
+});
