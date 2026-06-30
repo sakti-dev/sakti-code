@@ -240,3 +240,19 @@ describe("grep: missing path raises a friendly error", () => {
     expect(text).toContain("alpha.ts");
   });
 });
+
+describe("grep: description and input guard", () => {
+  const tool = createGrepTool(process.cwd());
+
+  it("description explains the context '-' separator is not a deletion", () => {
+    expect(tool.description).toMatch(/context.*-|separator/i);
+  });
+
+  it("description states path may be a file or directory", () => {
+    expect(tool.description.toLowerCase()).toMatch(/file or (a )?dir/);
+  });
+
+  it("rejects an empty pattern with a friendly error", async () => {
+    await expect(tool.execute("tc", { pattern: "" })).rejects.toThrow(/pattern.*required|empty/i);
+  });
+});

@@ -142,7 +142,7 @@ export function createGrepTool(
   return {
     name: "grep",
     label: "grep",
-    description: `Search file contents for a pattern. Returns matching lines with file paths and line numbers. Searches all files including gitignored ones, excluding .git and node_modules. Output is truncated to ${DEFAULT_LIMIT} matches or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Long lines are truncated to ${GREP_MAX_LINE_LENGTH} chars. Smart-case is on: case-insensitive for all-lowercase patterns, sensitive otherwise.`,
+    description: `Search file CONTENTS for a pattern (regex by default). Returns matching lines as 'path:line: text'. 'path' may be a file or a directory (default: cwd). Use 'glob' to filter files (e.g. '*.ts'), 'literal=true' to treat the pattern as plain text, 'context=N' for surrounding lines, and 'limit' (default ${DEFAULT_LIMIT}) to cap matches.\nSmart-case is on: an all-lowercase pattern matches any case; any uppercase makes it case-sensitive. Searches all files including gitignored ones; excludes .git, node_modules, target, dist, build, .next, out.\nIn context output, context lines use '-' and matched lines use ':' as the separator — context lines are surrounding code, NOT deleted lines. If no pattern matches you'll get 'No matches found'; refine the pattern or widen 'path'/'glob'.`,
     parameters: grepSchema,
     permissions: (params) => [
       { permission: "grep", patterns: [(params as GrepToolInput).pattern] },
@@ -153,6 +153,9 @@ export function createGrepTool(
       signal?: AbortSignal,
       _onUpdate?: AgentToolUpdateCallback<GrepToolDetails | undefined>,
     ) {
+      if (!pattern) {
+        throw new Error("pattern is required");
+      }
       if (signal?.aborted) {
         throw new Error("Operation aborted");
       }
