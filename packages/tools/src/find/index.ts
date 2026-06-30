@@ -16,18 +16,13 @@ function toPosixPath(value: string): string {
 
 const findSchema = Type.Object({
   pattern: Type.String({
-    description: "Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'",
+    description:
+      "Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'. A bare name fragment like 'Button' is also accepted and matched as a substring across the whole path.",
   }),
   path: Type.Optional(
-    Type.String({
-      description: "Directory to search in (default: current directory)",
-    }),
+    Type.String({ description: "Directory to search in (default: current directory)" }),
   ),
-  limit: Type.Optional(
-    Type.Number({
-      description: "Maximum number of results (default: 1000)",
-    }),
-  ),
+  limit: Type.Optional(Type.Number({ description: "Maximum number of results (default: 1000)" })),
 });
 
 export type FindToolInput = Static<typeof findSchema>;
@@ -53,8 +48,26 @@ const defaultFindOperations: FindOperations = {
 };
 
 export interface FindToolOptions {
-  fdPath?: string;
+  rgPath?: string;
   operations?: FindOperations;
+}
+
+/** True if the pattern has glob metacharacters; otherwise it's a name fragment. */
+const GLOB_CHARS = /[*?[\]{}]/;
+
+/** Dispatch: real globs pass through; bare fragments become substring globs. */
+export function resolveGlobPattern(inputPattern: string): string {
+  if (GLOB_CHARS.test(inputPattern)) {
+    return inputPattern;
+  }
+  return `**/*${inputPattern}*`;
+}
+
+/** Whole-project iff the resolved search path equals the resolved project root. */
+export function isWholeProjectSearch(projectRoot: string, pathArg: string | undefined): boolean {
+  const rootAbs = nodePath.resolve(projectRoot);
+  const searchAbs = nodePath.resolve(rootAbs, pathArg ?? ".");
+  return searchAbs === rootAbs;
 }
 
 export function createFindTool(
@@ -65,7 +78,7 @@ export function createFindTool(
   return {
     name: "find",
     label: "find",
-    description: `Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to ${DEFAULT_LIMIT} results or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
+    description: `Search for files by glob pattern (or a bare name fragment). Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to ${DEFAULT_LIMIT} results or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
     parameters: findSchema,
     permissions: (params) => [
       { permission: "glob", patterns: [(params as FindToolInput).pattern] },
@@ -85,6 +98,7 @@ export function createFindTool(
       const ops = customOps ?? defaultFindOperations;
 
       if (customOps?.glob) {
+        // DI branch (tests inject a fake)
         if (!(await ops.exists(searchPath))) {
           throw new Error(`Path not found: ${searchPath}`);
         }
@@ -98,146 +112,100 @@ export function createFindTool(
         if (signal?.aborted) {
           throw new Error("Operation aborted");
         }
-        if (results.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "No files found matching pattern",
-              },
-            ],
-            details: undefined,
-          };
-        }
-
-        const relativized = results.map((p) => {
-          if (p.startsWith(searchPath)) {
-            return toPosixPath(p.slice(searchPath.length + 1));
-          }
-          return toPosixPath(nodePath.relative(searchPath, p));
-        });
-        const resultLimitReached = relativized.length >= effectiveLimit;
-        const rawOutput = relativized.join("\n");
-        const truncation = truncateHead(rawOutput, {
-          maxLines: Number.MAX_SAFE_INTEGER,
-        });
-        let resultOutput = truncation.content;
-        const details: FindToolDetails = {};
-        const notices: string[] = [];
-        if (resultLimitReached) {
-          notices.push(`${effectiveLimit} results limit reached`);
-          details.resultLimitReached = effectiveLimit;
-        }
-        if (truncation.truncated) {
-          notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
-          details.truncation = truncation;
-        }
-        if (notices.length > 0) {
-          resultOutput += `\n\n[${notices.join(". ")}]`;
-        }
-        return {
-          content: [{ type: "text", text: resultOutput }],
-          details: Object.keys(details).length > 0 ? details : undefined,
-        };
+        return formatFindResults(results, searchPath, effectiveLimit, results.length === 0);
       }
 
-      const fdPath = options?.fdPath ?? "fd";
-      if (signal?.aborted) {
-        throw new Error("Operation aborted");
-      }
-
-      const args: string[] = [
-        "--glob",
-        "--color=never",
+      // Production branch: rg --files (replaces the absent fd binary).
+      const rgPath = options?.rgPath ?? "rg";
+      const effectivePattern = resolveGlobPattern(pattern);
+      const baseArgs = [
+        "--no-config",
+        "--files",
         "--hidden",
-        "--no-require-git",
-        "--max-results",
-        String(effectiveLimit),
+        `--glob=${effectivePattern}`,
+        "--glob=!**/.git/**",
       ];
 
-      let effectivePattern = pattern;
-      if (pattern.includes("/")) {
-        args.push("--full-path");
-        if (!(pattern.startsWith("/") || pattern.startsWith("**/")) && pattern !== "**") {
-          effectivePattern = `**/${pattern}`;
-        }
-      }
-      args.push("--", effectivePattern, searchPath);
-
-      const {
-        exitCode,
-        stderr: stderrText,
-        stdout: stdoutText,
-      } = await runProcess(fdPath, args, signal ? { signal } : {});
-
       if (signal?.aborted) {
         throw new Error("Operation aborted");
       }
 
-      const output = stdoutText.trim();
-      if (exitCode !== 0) {
-        const errorMsg = stderrText.trim() || `fd exited with code ${exitCode}`;
-        if (!output) {
-          throw new Error(errorMsg);
-        }
-      }
-      if (!output) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: "No files found matching pattern",
-            },
-          ],
-          details: undefined,
-        };
-      }
-
-      const lines = output.split("\n");
-      const relativized: string[] = [];
-      for (const rawLine of lines) {
-        const line = rawLine.replace(/\r$/, "").trim();
-        if (!line) {
-          continue;
-        }
-        const hadTrailingSlash = line.endsWith("/") || line.endsWith("\\");
-        let relativePath = line;
-        if (line.startsWith(searchPath)) {
-          relativePath = line.slice(searchPath.length + 1);
-        } else {
-          relativePath = nodePath.relative(searchPath, line);
-        }
-        if (hadTrailingSlash && !relativePath.endsWith("/")) {
-          relativePath += "/";
-        }
-        relativized.push(toPosixPath(relativePath));
-      }
-
-      const resultLimitReached = relativized.length >= effectiveLimit;
-      const rawOutput = relativized.join("\n");
-      const truncation = truncateHead(rawOutput, {
-        maxLines: Number.MAX_SAFE_INTEGER,
-      });
-      let resultOutput = truncation.content;
-      const details: FindToolDetails = {};
-      const notices: string[] = [];
-      if (resultLimitReached) {
-        notices.push(
-          `${effectiveLimit} results limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`,
+      const runList = (extra: string[]): Promise<string[]> =>
+        runProcess(rgPath, [...baseArgs, ...extra, searchPath], signal ? { signal } : {}).then(
+          ({ stdout }) => stdout.split("\n").filter((l) => l.length > 0),
         );
-        details.resultLimitReached = effectiveLimit;
+
+      let files = await runList([]);
+      let retriedNoIgnore = false;
+
+      // Repair-layer - whole-project search returned nothing -> maybe the matches
+      // live in a gitignored tree (e.g. vendored references). rg --files already
+      // honors an explicit gitignored PATH argument, so this retry only helps
+      // the whole-project case (verified: 42==42 with/without --no-ignore for
+      // an explicit gitignored dir).
+      if (files.length === 0 && isWholeProjectSearch(cwd, searchDir)) {
+        const retry = await runList(["--no-ignore"]);
+        if (retry.length > 0) {
+          files = retry;
+          retriedNoIgnore = true;
+        }
       }
-      if (truncation.truncated) {
-        notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
-        details.truncation = truncation;
+
+      if (signal?.aborted) {
+        throw new Error("Operation aborted");
       }
-      if (notices.length > 0) {
-        resultOutput += `\n\n[${notices.join(". ")}]`;
-      }
-      return {
-        content: [{ type: "text", text: resultOutput }],
-        details: Object.keys(details).length > 0 ? details : undefined,
-      };
+      return formatFindResults(
+        files,
+        searchPath,
+        effectiveLimit,
+        files.length === 0,
+        retriedNoIgnore,
+      );
     },
+  };
+}
+
+/** Relativize + truncate + notices. Shared by both branches. */
+function formatFindResults(
+  results: string[],
+  searchPath: string,
+  effectiveLimit: number,
+  empty: boolean,
+  _retriedNoIgnore = false,
+): { content: [{ type: "text"; text: string }]; details: FindToolDetails | undefined } {
+  if (empty) {
+    return {
+      content: [{ type: "text", text: "No files found matching pattern" }],
+      details: undefined,
+    };
+  }
+  const relativized = results.map((p) => {
+    if (p.startsWith(searchPath)) {
+      return toPosixPath(p.slice(searchPath.length + 1));
+    }
+    return toPosixPath(nodePath.relative(searchPath, p));
+  });
+  const resultLimitReached = relativized.length >= effectiveLimit;
+  const rawOutput = relativized.join("\n");
+  const truncation = truncateHead(rawOutput, { maxLines: Number.MAX_SAFE_INTEGER });
+  let resultOutput = truncation.content;
+  const details: FindToolDetails = {};
+  const notices: string[] = [];
+  if (resultLimitReached) {
+    notices.push(
+      `${effectiveLimit} results limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`,
+    );
+    details.resultLimitReached = effectiveLimit;
+  }
+  if (truncation.truncated) {
+    notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
+    details.truncation = truncation;
+  }
+  if (notices.length > 0) {
+    resultOutput += `\n\n[${notices.join(". ")}]`;
+  }
+  return {
+    content: [{ type: "text", text: resultOutput }],
+    details: Object.keys(details).length > 0 ? details : undefined,
   };
 }
