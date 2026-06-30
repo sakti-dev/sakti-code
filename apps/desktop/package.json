@@ -36,6 +36,8 @@
     "dayjs": "^1.11.21",
     "hono": "^4.12.26",
     "motion-solidjs": "^0.5.0",
+    "pino": "^10.3.1",
+    "pino-roll": "^4.0.0",
     "solid-icons": "^1.2.0",
     "solid-js": "^1.9.3",
     "tailwind-merge": "^3.6.0",

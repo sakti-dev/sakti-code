@@ -17,6 +17,12 @@ export default defineConfig({
           // bundlers can't statically resolve that, so it must stay external and
           // resolve from node_modules (platform subpkg installed as optionalDep).
           /^@vscode\/ripgrep/,
+          // pino's worker-thread transport (pino.transport({ target: "pino-roll" }))
+          // spawns a worker that resolves "pino-roll" + its deps at runtime via
+          // require.resolve — bundling inlines the code but breaks that runtime
+          // resolution (silent async worker failure → no log files written).
+          // Must stay external + hoisted as direct deps of desktop.
+          /^pino(?:-roll)?$/,
         ],
       },
     },
