@@ -25,7 +25,7 @@ const mockSessionStore = {
 // NOTE: the open-conditional is a JSX child ternary (not an early return) so
 // Solid reactively shows/hides content — a component body runs only once, so
 // `if (!open) return null` would never re-render when `open` later flips true.
-vi.mock("../context-menu.tsx", () => ({
+vi.mock("../context-menu", () => ({
   ContextMenu: (props: {
     open: boolean;
     mode: ContextMenuMode;
@@ -84,6 +84,7 @@ vi.mock("~/stores/store-context", () => ({
     api: {
       api: {
         auth: { $get: async () => ({ ok: false, json: async () => [] }) },
+        profiles: { $get: async () => ({ ok: false, json: async () => [] }) },
         projects: {
           ":id": {
             context: {

@@ -18,6 +18,7 @@ vi.mock("~/stores/store-context", () => ({
     api: {
       api: {
         auth: { $get: async () => ({ ok: false, json: async () => [] }) },
+        profiles: { $get: async () => ({ ok: false, json: async () => [] }) },
         models: {
           available: {
             $get: async () => ({ ok: false, json: async () => [] }),
