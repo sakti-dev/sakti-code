@@ -27,5 +27,16 @@ export type {
   WebFetchToolOptions,
 } from "./webfetch/index";
 export { createWebFetchTool } from "./webfetch/index";
+export { buildDdgOperations } from "./websearch/adapters/ddg";
+export { buildExaOperations } from "./websearch/adapters/exa";
+export { buildTavilyOperations } from "./websearch/adapters/tavily";
+export type {
+  SearchOperations,
+  SearchResult,
+  WebSearchToolDetails,
+  WebSearchToolInput,
+  WebSearchToolOptions,
+} from "./websearch/index";
+export { createWebSearchTool } from "./websearch/index";
 export type { WriteOperations, WriteToolInput, WriteToolOptions } from "./write/index";
 export { createWriteTool } from "./write/index";
