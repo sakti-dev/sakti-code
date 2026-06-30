@@ -198,9 +198,6 @@ export function createGrepTool(
       if (contextValue > 0) {
         args.push(`--context=${contextValue}`);
       }
-      if (glob) {
-        args.push("--glob", glob);
-      }
       args.push("--", pattern, searchPath);
 
       if (signal?.aborted) {

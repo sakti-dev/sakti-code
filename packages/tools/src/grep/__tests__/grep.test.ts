@@ -180,9 +180,12 @@ describe("grep: build artifacts are excluded even when a user glob matches them"
   let dir: string;
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "sakti-grep-excl-"));
-    mkdirSync(join(dir, "target", "debug"), { recursive: true });
+    mkdirSync(join(dir, "target"), { recursive: true });
     mkdirSync(join(dir, "src"), { recursive: true });
-    writeFileSync(join(dir, "target", "debug", "build.rs"), "fn run_process() {}\n");
+    // 1-level-deep fixture: '*.rs' reliably basename-matches target/build.rs,
+    // so this catches a glob-after-excludes regression (a 2-deep fixture is
+    // masked by rg's '*'-doesn't-cross-'/') quirk).
+    writeFileSync(join(dir, "target", "build.rs"), "fn run_process() {}\n");
     writeFileSync(join(dir, "src", "main.rs"), "fn run_process() {}\n");
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
