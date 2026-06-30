@@ -1,6 +1,6 @@
 # Toolset Cross-Comparison: sakti-code vs opencode
 
-> **sakti**: `packages/tools/src/` — 7 coding tools + propose-session
+> **sakti**: `packages/tools/src/` — 6 coding tools + propose-session
 > **opencode**: `openspec/references/opencode/packages/core/src/tool/` — 12 builtin tools
 
 ---
@@ -23,16 +23,15 @@
 
 ### sakti (`packages/tools/src/`)
 
-| Tool              | File                       | What it does                                                                                    |
-| ----------------- | -------------------------- | ----------------------------------------------------------------------------------------------- |
-| `bash`            | `bash/index.ts`            | Shell exec via `child_process.spawn()`, throttled streaming, temp file output                   |
-| `edit`            | `edit/index.ts`            | 2 modes: **replace** (oldText/newText) and **hashline** (content-addressed line-anchored edits) |
-| `find`            | `find/index.ts`            | Glob search via `fd` CLI or custom glob; skips `node_modules`/`.git`                            |
-| `grep`            | `grep/index.ts`            | Regex search via `rg` (ripgrep) with JSON streaming + context lines                             |
-| `ls`              | `ls/index.ts`              | Directory listing with stat per entry, `/` suffix for dirs                                      |
-| `read`            | `read/index.ts`            | Text reading (offset/limit), image reading (photon resize), hashline mode                       |
-| `write`           | `write/index.ts`           | Write file with parent dir creation, hashline snapshot                                          |
-| `propose-session` | `propose-session/index.ts` | Terminates agent turn with a self-contained task brief                                          |
+| Tool              | File                       | What it does                                                                                     |
+| ----------------- | -------------------------- | ------------------------------------------------------------------------------------------------ |
+| `bash`            | `bash/index.ts`            | Shell exec via `child_process.spawn()`, throttled streaming, temp file output                    |
+| `edit`            | `edit/index.ts`            | 2 modes: **replace** (oldText/newText) and **hashline** (content-addressed line-anchored edits)  |
+| `find`            | `find/index.ts`            | Glob search via `fd` CLI or custom glob; skips `node_modules`/`.git`                             |
+| `grep`            | `grep/index.ts`            | Regex search via `rg` (ripgrep) with JSON streaming + context lines                              |
+| `read`            | `read/index.ts`            | Text reading (offset/limit), image reading (photon resize), hashline mode, **directory listing** |
+| `write`           | `write/index.ts`           | Write file with parent dir creation, hashline snapshot                                           |
+| `propose-session` | `propose-session/index.ts` | Terminates agent turn with a self-contained task brief                                           |
 
 ### opencode (`openspec/references/opencode/packages/core/src/tool/`)
 
@@ -57,17 +56,17 @@
 
 ### 3.1 Bash
 
-| Aspect           | sakti                                                        | opencode                                                   |
-| ---------------- | ------------------------------------------------------------ | ---------------------------------------------------------- |
-| **Execution**    | `child_process.spawn()` with shell                           | `AppProcess.Service.run(ChildProcess)`                     |
-| **Timeout**      | `setTimeout` + `SIGKILL`                                     | `Duration` + `forceKillAfter`                              |
-| **Output**       | `OutputAccumulator` (rolling buffer, temp file fallback)     | `AppProcess.run()` bounded capture `maxOutputBytes: 1MB`   |
-| **Throttling**   | 100ms update snapshots via `onUpdate` callback               | N/A (runs to completion)                                   |
-| **Streaming**    | Yes, incremental updates                                     | No                                                         |
-| **Permission**   | Optional `permissions()` method                              | `PermissionV2.assert()` for command + external directories |
-| **Command scan** | `command-scan.ts` — lightweight tokenizer for external paths | Inline `shellTokens()` + `externalCommandDirectories()`    |
-| **CWD default**  | Injected at tool creation                                    | Active Location (workspace-based)                          |
-| **Shell config** | OS default (`/bin/sh` or `cmd.exe`)                          | Configurable via `Config.Service`                          |
+| Aspect           | sakti                                                                                                | opencode                                                   |
+| ---------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Execution**    | `child_process.spawn()` with shell                                                                   | `AppProcess.Service.run(ChildProcess)`                     |
+| **Timeout**      | `setTimeout` + `SIGKILL`                                                                             | `Duration` + `forceKillAfter`                              |
+| **Output**       | `OutputAccumulator` (rolling buffer, temp file fallback)                                             | `AppProcess.run()` bounded capture `maxOutputBytes: 1MB`   |
+| **Throttling**   | 100ms update snapshots via `onUpdate` callback                                                       | N/A (runs to completion)                                   |
+| **Streaming**    | Yes, incremental updates                                                                             | No                                                         |
+| **Permission**   | `permissions()` emits `bash` (every command) + `external_directory` when a path resolves outside cwd | `PermissionV2.assert()` for command + external directories |
+| **Command scan** | `command-scan.ts` — lightweight tokenizer for external paths                                         | Inline `shellTokens()` + `externalCommandDirectories()`    |
+| **CWD default**  | Injected at tool creation                                                                            | Active Location (workspace-based)                          |
+| **Shell config** | OS default (`/bin/sh` or `cmd.exe`)                                                                  | Configurable via `Config.Service`                          |
 
 ### 3.2 Edit
 
@@ -84,42 +83,43 @@
 | **Snapshots**       | `InMemorySnapshotStore` (LRU, 100 paths, 10 versions/path)                                                | Not present                                                                       |
 | **BOM handling**    | `stripBom()` in hashline-utils                                                                            | `splitBom()`/`joinBom()` inline                                                   |
 | **Line endings**    | `detectLineEnding`/`normalizeToLF`/`restoreLineEndings`                                                   | Same pattern inline                                                               |
-| **Permissions**     | No built-in permission system                                                                             | `Tool.withPermission(tool, "edit")` — shares "edit" action with write/apply_patch |
+| **Permissions**     | Declares `edit` permission (`permissions()` → `{ permission: "edit", patterns: [path] }`)                 | `Tool.withPermission(tool, "edit")` — shares "edit" action with write/apply_patch |
 | **Validation**      | Hash verification, noop detection, overlap detection                                                      | OldString count, identical-string check, empty-oldString check                    |
 
 ### 3.3 Read
 
-| Aspect               | sakti                                                 | opencode                                                        |
-| -------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
-| **Image detection**  | Magic bytes (JPEG, PNG, GIF, WebP) + EXIF orientation | Magic bytes (same formats)                                      |
-| **Image resize**     | `photon.ts` (WASM) — iterative quality/size reduction | `Image.Service.normalize()`                                     |
-| **EXIF**             | `exif-orientation.ts` — all 8 orientations via photon | Not in tool; handled by `Image.Service`                         |
-| **Text paging**      | `offset`/`limit` slicing + `truncateHead`             | `ReadToolFileSystem.Service.read()` with line-by-line streaming |
-| **Binary detection** | N/A (separate tool not needed)                        | Extension-based + null-byte + printable-ratio check             |
-| **Hashline mode**    | Optional: computes hash, formats `[path#HASH]` header | Not present                                                     |
-| **Read root**        | CWD-based                                             | `Location.directory` with `FSUtil.contains()` escape guard      |
-| **Page output**      | Truncated text with offset continuation notice        | `TextPage`/`ListPage` class with `next`, `truncated`, `offset`  |
+| Aspect                | sakti                                                                                  | opencode                                                        |
+| --------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| **Image detection**   | Magic bytes (JPEG, PNG, GIF, WebP) + EXIF orientation                                  | Magic bytes (same formats)                                      |
+| **Image resize**      | `photon.ts` (WASM) — iterative quality/size reduction                                  | `Image.Service.normalize()`                                     |
+| **EXIF**              | `exif-orientation.ts` — all 8 orientations via photon                                  | Not in tool; handled by `Image.Service`                         |
+| **Text paging**       | `offset`/`limit` slicing + `truncateHead`                                              | `ReadToolFileSystem.Service.read()` with line-by-line streaming |
+| **Binary detection**  | N/A (separate tool not needed)                                                         | Extension-based + null-byte + printable-ratio check             |
+| **Hashline mode**     | Optional: computes hash, formats `[path#HASH]` header                                  | Not present                                                     |
+| **Read root**         | CWD-based                                                                              | `Location.directory` with `FSUtil.contains()` escape guard      |
+| **Page output**       | Truncated text with offset continuation notice                                         | `TextPage`/`ListPage` class with `next`, `truncated`, `offset`  |
+| **Directory listing** | `read` dispatches on `inspect()` → `"directory"`, returns paged listing (offset/limit) | Same — `read` returns `ListPage` for directories                |
 
 ### 3.4 Write
 
-| Aspect              | sakti                                   | opencode                                                |
-| ------------------- | --------------------------------------- | ------------------------------------------------------- |
-| **Parent dirs**     | Auto `mkdir({ recursive: true })`       | Via `FileMutation.Service`                              |
-| **Hashline**        | Records snapshot, returns `[path#HASH]` | Not present                                             |
-| **BOM**             | Not explicitly handled                  | `writeTextPreservingBom()`                              |
-| **Stale detection** | Not present                             | `writeIfUnchanged()` — compare expected vs actual bytes |
-| **Permission**      | None                                    | `externalDirectory` approval + `"edit"` action          |
-| **Byte count**      | Returns `bytes` written                 | Returns `operation`, `target`, `resource`, `existed`    |
+| Aspect              | sakti                                                                                     | opencode                                                |
+| ------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Parent dirs**     | Auto `mkdir({ recursive: true })`                                                         | Via `FileMutation.Service`                              |
+| **Hashline**        | Records snapshot, returns `[path#HASH]`                                                   | Not present                                             |
+| **BOM**             | Not explicitly handled                                                                    | `writeTextPreservingBom()`                              |
+| **Stale detection** | Not present                                                                               | `writeIfUnchanged()` — compare expected vs actual bytes |
+| **Permission**      | Declares `edit` permission (`permissions()` → `{ permission: "edit", patterns: [path] }`) | `externalDirectory` approval + `"edit"` action          |
+| **Byte count**      | Returns `bytes` written                                                                   | Returns `operation`, `target`, `resource`, `existed`    |
 
 ### 3.5 Find / Glob
 
-| Aspect             | sakti (`find`)                              | opencode (`glob`)                          |
-| ------------------ | ------------------------------------------- | ------------------------------------------ |
-| **Engine**         | `fd` CLI (default) or custom glob (opt-out) | `Ripgrep.Service.glob()`                   |
-| **Defaults**       | Ignores `node_modules`/`.git`               | No built-in exclude                        |
-| **Limit**          | Default 1000                                | No default (uses `MAX_SAFE_INTEGER`)       |
-| **Operations API** | `FindOperations` interface for testing      | No test abstraction (uses Effect services) |
-| **Permission**     | None                                        | `PermissionV2.assert()` + metadata         |
+| Aspect             | sakti (`find`)                                                                               | opencode (`glob`)                          |
+| ------------------ | -------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| **Engine**         | `fd` CLI (default) or custom glob (opt-out)                                                  | `Ripgrep.Service.glob()`                   |
+| **Defaults**       | Ignores `node_modules`/`.git`                                                                | No built-in exclude                        |
+| **Limit**          | Default 1000                                                                                 | No default (uses `MAX_SAFE_INTEGER`)       |
+| **Operations API** | `FindOperations` interface for testing                                                       | No test abstraction (uses Effect services) |
+| **Permission**     | Declares `glob` permission (`permissions()` → `{ permission: "glob", patterns: [pattern] }`) | `PermissionV2.assert()` + metadata         |
 
 ### 3.6 Grep
 
@@ -131,13 +131,15 @@
 | **Dedup**           | Yes + context-aware formatting (`:` vs `-`)   | No dedup (raw matches)          |
 | **Operations API**  | `GrepOperations` (isDirectory, readFile)      | No test abstraction             |
 
-### 3.7 Ls / Directory listing
+### 3.7 Directory listing
 
-| Aspect             | sakti (`ls`)                                 | opencode (in `read`)                              |
+| Aspect             | sakti (in `read`)                            | opencode (in `read`)                              |
 | ------------------ | -------------------------------------------- | ------------------------------------------------- |
-| **Separate tool?** | Yes                                          | No — `read` handles `"directory"` type            |
+| **Separate tool?** | No — `read` handles `"directory"` type       | No — `read` handles `"directory"` type            |
 | **Output format**  | Sorted case-insensitive, `/` suffix for dirs | `ListPage` class with sorted entries (dirs first) |
 | **Concurrency**    | Sequential stat                              | 16-way concurrent stat via `Effect.forEach`       |
+
+> Note: sakti previously exposed a standalone `ls` tool; it was removed and its behavior folded into `read` (which dispatches on `inspect()` → `"directory"` to return a paged listing).
 
 ---
 
@@ -177,13 +179,28 @@ Registration is scope-managed: closing a Scope removes that registration and rev
 
 ### sakti
 
-Minimal — each `AgentTool` can return `permissions()`:
+Each `AgentTool` optionally declares the permissions a call would touch:
 
 ```ts
-permissions(): Permission[]
+permissions?: (params: unknown) => PermissionRequest[] | undefined
+// where PermissionRequest = { permission: string; patterns: string[] }
 ```
 
-No centralized permission check in the tool layer. Permissions inform the UI but don't gate execution.
+Tools emit one or more permission tags per call — e.g. `bash` emits `{ permission: "bash", patterns: [command] }` on every command plus `{ permission: "external_directory", patterns: [...] }` when a referenced path resolves outside cwd; `edit`/`write` emit `{ permission: "edit", patterns: [path] }`; `read` emits `{ permission: "read", ... }`; `find` emits `glob`; `grep` emits `grep`.
+
+These declarations **gate execution**, not just inform the UI. The runner (`apps/server/src/agent/runner.ts`) wires a centralized evaluator:
+
+```ts
+harness.setPermissionEvaluator((permission, pattern) =>
+  permissionChannel.evaluate(permission, pattern, agentRuleset),
+);
+harness.setPermissionAskResolver((req) => permissionChannel.ask(req));
+```
+
+- Each agent carries a `PermissionRuleset` (built via `fromConfig()` in `apps/server/src/agent/config/server-agents.ts`) — e.g. `build` is `*: allow` (with `external_directory` and `.env` reads gated to `ask`); `intake` gates `rm *`, `git push*`, `git reset --hard*` to `ask`; `explore` is read-only (`*: deny` except read/grep/glob/bash).
+- `evaluate()` (`packages/agent/src/agents/permission.ts`) does last-match-wins glob matching over `permission` + `pattern`; no matching rule defaults to `ask`.
+- The `PermissionChannel` (`apps/server/src/lib/permission-channel.ts`) bridges to the WS approval strip: `ask()` prompts the user, `"always"` replies persists a grant for the session, grants are merged on top of the base ruleset so prior approvals auto-allow.
+- Cwd is only consulted for the `external_directory` permission (via `command-scan.ts`); the `bash` permission matches the raw command text and is cwd-independent.
 
 ### opencode
 
@@ -227,20 +244,20 @@ yield *
 
 ## 7. Key Design Differences Summary
 
-| Concept                  | sakti                                                      | opencode                                                   |
-| ------------------------ | ---------------------------------------------------------- | ---------------------------------------------------------- |
-| **Framework**            | Plain TS + TypeBox + `child_process`                       | Effect-TS (services, layers, schemas)                      |
-| **Testability**          | `Operations` interfaces (DI via constructor)               | Effect service substitution via layers                     |
-| **Edit sophistication**  | High — hashline with recovery, block-edit, noop guard      | Low — exact replace only (fuzzy deferred)                  |
-| **Permission**           | Minimal (informational)                                    | Full — centralized `PermissionV2` with assertions          |
-| **Registry**             | None (standalone tools)                                    | Two-tier (Application + Location) with scope management    |
-| **Image handling**       | photon WASM (in-process)                                   | `Image.Service` (service abstraction)                      |
-| **Bash complexity**      | High — streaming, throttling, temp files, command scanning | Moderate — bounded capture, permission-gated               |
-| **Web tools**            | None                                                       | `webfetch` + `websearch` (Exa/Parallel)                    |
-| **Interaction**          | None                                                       | `question` (ask user) + `todowrite` (task list) + `skill`  |
-| **Monorepo integration** | Tight — imports `@sakti-code/agent` types                  | Tight — imports `@opencode-ai/llm`, has `Location.Service` |
-| **Error handling**       | Thrown errors, try/catch                                   | `ToolFailure` tagged errors, `Effect.mapError`             |
-| **Stale file detection** | Hashline hash comparison                                   | `FileMutation.writeIfUnchanged()` byte comparison          |
-| **BOM support**          | Separate `stripBom()` utility                              | Integrated into decode/write pipeline                      |
-| **Line ending handling** | Detect → normalize → apply → restore                       | Same pattern inline per tool                               |
-| **Output management**    | Inline truncation utilities                                | `ToolOutputStore` with managed retention + output paths    |
+| Concept                  | sakti                                                                               | opencode                                                   |
+| ------------------------ | ----------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Framework**            | Plain TS + TypeBox + `child_process`                                                | Effect-TS (services, layers, schemas)                      |
+| **Testability**          | `Operations` interfaces (DI via constructor)                                        | Effect service substitution via layers                     |
+| **Edit sophistication**  | High — hashline with recovery, block-edit, noop guard                               | Low — exact replace only (fuzzy deferred)                  |
+| **Permission**           | Per-tool declarations + centralized evaluator (`PermissionChannel`, agent rulesets) | Full — centralized `PermissionV2` with assertions          |
+| **Registry**             | None (standalone tools)                                                             | Two-tier (Application + Location) with scope management    |
+| **Image handling**       | photon WASM (in-process)                                                            | `Image.Service` (service abstraction)                      |
+| **Bash complexity**      | High — streaming, throttling, temp files, command scanning                          | Moderate — bounded capture, permission-gated               |
+| **Web tools**            | None                                                                                | `webfetch` + `websearch` (Exa/Parallel)                    |
+| **Interaction**          | None                                                                                | `question` (ask user) + `todowrite` (task list) + `skill`  |
+| **Monorepo integration** | Tight — imports `@sakti-code/agent` types                                           | Tight — imports `@opencode-ai/llm`, has `Location.Service` |
+| **Error handling**       | Thrown errors, try/catch                                                            | `ToolFailure` tagged errors, `Effect.mapError`             |
+| **Stale file detection** | Hashline hash comparison                                                            | `FileMutation.writeIfUnchanged()` byte comparison          |
+| **BOM support**          | Separate `stripBom()` utility                                                       | Integrated into decode/write pipeline                      |
+| **Line ending handling** | Detect → normalize → apply → restore                                                | Same pattern inline per tool                               |
+| **Output management**    | Inline truncation utilities                                                         | `ToolOutputStore` with managed retention + output paths    |
