@@ -5,6 +5,7 @@ import {
   createFindTool,
   createGrepTool,
   createReadTool,
+  createWebFetchTool,
   createWriteTool,
 } from "../index.ts";
 
@@ -51,6 +52,13 @@ describe("tool permissions declarators", () => {
     const tool = createReadTool("/proj");
     expect(tool.permissions?.({ path: "src" })).toEqual([
       { permission: "read", patterns: ["src"] },
+    ]);
+  });
+
+  it("webfetch declares webfetch + the url", () => {
+    const tool = createWebFetchTool();
+    expect(tool.permissions?.({ url: "https://example.com" })).toEqual([
+      { permission: "webfetch", patterns: ["https://example.com"] },
     ]);
   });
 });

@@ -20,5 +20,12 @@ export type { ProposeSessionToolInput } from "./propose-session/index";
 export { createProposeSessionTool } from "./propose-session/index";
 export type { ReadOperations, ReadToolDetails, ReadToolInput, ReadToolOptions } from "./read/index";
 export { createReadTool } from "./read/index";
+export type {
+  WebFetchOperations,
+  WebFetchToolDetails,
+  WebFetchToolInput,
+  WebFetchToolOptions,
+} from "./webfetch/index";
+export { createWebFetchTool } from "./webfetch/index";
 export type { WriteOperations, WriteToolInput, WriteToolOptions } from "./write/index";
 export { createWriteTool } from "./write/index";
