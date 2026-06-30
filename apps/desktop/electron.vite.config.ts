@@ -8,7 +8,16 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: resolve(import.meta.dirname, "electron/main/index.ts"),
-        external: ["electron", "@sakti-code/pi-natives", "@ff-labs/fff-node"],
+        external: [
+          "electron",
+          "@sakti-code/pi-natives",
+          "@ff-labs/fff-node",
+          // @vscode/ripgrep resolves its platform binary via a dynamic
+          // require.resolve('@vscode/ripgrep-<plat>-<arch>/bin/rg') at runtime;
+          // bundlers can't statically resolve that, so it must stay external and
+          // resolve from node_modules (platform subpkg installed as optionalDep).
+          /^@vscode\/ripgrep/,
+        ],
       },
     },
   },
