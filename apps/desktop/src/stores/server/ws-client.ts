@@ -35,10 +35,7 @@ export interface WsConnectable {
   };
 }
 
-export function createWsClient(
-  api: WsConnectable,
-  deps: WsClientDeps
-): WsClient {
+export function createWsClient(api: WsConnectable, deps: WsClientDeps): WsClient {
   const { serverStore: server, sessionRegistry, terminalRegistry } = deps;
   let conn: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -51,13 +48,12 @@ export function createWsClient(
     let b = batchers.get(sessionId);
     if (!b) {
       const session = sessionRegistry.get(sessionId);
-      const batch =
-        globalThis.localStorage?.getItem("sakti:token-batch") !== "off";
+      const batch = globalThis.localStorage?.getItem("sakti:token-batch") !== "off";
       b = createTokenBatcher(
         (msgId, text) => {
           session.actions.appendToken(msgId, text);
         },
-        { batch }
+        { batch },
       );
       batchers.set(sessionId, b);
     }
@@ -90,14 +86,9 @@ export function createWsClient(
         });
         updateStreamingState(evt);
         const batcher = getBatcher(data.sessionId);
-        dispatchEvent(
-          sessionRegistry.get(data.sessionId).actions,
-          batcher,
-          evt,
-          {
-            skipTiming: replayState() !== "idle",
-          }
-        );
+        dispatchEvent(sessionRegistry.get(data.sessionId).actions, batcher, evt, {
+          skipTiming: replayState() !== "idle",
+        });
         break;
       }
 
@@ -147,10 +138,7 @@ export function createWsClient(
   }
 
   function scheduleReconnect(): void {
-    const delay = Math.min(
-      INITIAL_RECONNECT_MS * 2 ** reconnectAttempts,
-      MAX_RECONNECT_MS
-    );
+    const delay = Math.min(INITIAL_RECONNECT_MS * 2 ** reconnectAttempts, MAX_RECONNECT_MS);
     reconnectAttempts++;
     reconnectTimer = setTimeout(connect, delay);
   }
@@ -201,9 +189,7 @@ export function createWsClient(
         ...("message" in msg ? { messageLength: msg.message.length } : {}),
         ...(sessionMeta?.modelId ? { modelId: sessionMeta.modelId } : {}),
         ...(sessionMeta?.profileId ? { profileId: sessionMeta.profileId } : {}),
-        ...(sessionMeta?.thinkingLevel
-          ? { thinkingLevel: sessionMeta.thinkingLevel }
-          : {}),
+        ...(sessionMeta?.thinkingLevel ? { thinkingLevel: sessionMeta.thinkingLevel } : {}),
       });
       if (conn && conn.readyState === 1) {
         conn.send(JSON.stringify(msg));

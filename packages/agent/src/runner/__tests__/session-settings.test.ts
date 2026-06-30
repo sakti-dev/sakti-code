@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import {
-  DEFAULT_SESSION_SETTINGS,
-  parseSessionSettings,
-} from "../session-settings.ts";
+import { DEFAULT_SESSION_SETTINGS, parseSessionSettings } from "../session-settings.ts";
 
 describe("DEFAULT_SESSION_SETTINGS", () => {
   it("includes all keys used by the runner", () => {
@@ -50,15 +47,11 @@ describe("parseSessionSettings", () => {
   });
 
   it("editMode falls back to hashline for unknown values", () => {
-    expect(parseSessionSettings({ edit_mode: "garbage" }).editMode()).toBe(
-      "hashline"
-    );
+    expect(parseSessionSettings({ edit_mode: "garbage" }).editMode()).toBe("hashline");
   });
 
   it("thinkingLevelOverride returns null for 'off' (delegate to profile)", () => {
-    expect(
-      parseSessionSettings({ thinking_level: "off" }).thinkingLevelOverride()
-    ).toBeNull();
+    expect(parseSessionSettings({ thinking_level: "off" }).thinkingLevelOverride()).toBeNull();
   });
 
   it("retry() parses base_delay_ms + max_retries + auto_retry", () => {

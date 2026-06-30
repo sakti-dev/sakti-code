@@ -10,7 +10,7 @@ export const MISMATCH_CONTEXT = 2;
 
 export function formatAnchoredContext(
   anchorLines: readonly number[],
-  fileLines: readonly string[]
+  fileLines: readonly string[],
 ): string[] {
   const displayLines = new Set<number>();
   for (const line of anchorLines) {
@@ -32,9 +32,7 @@ export function formatAnchoredContext(
     }
     previous = lineNum;
     const marker = anchorSet.has(lineNum) ? "*" : " ";
-    rows.push(
-      `${marker}${formatNumberedLine(lineNum, fileLines[lineNum - 1] ?? "")}`
-    );
+    rows.push(`${marker}${formatNumberedLine(lineNum, fileLines[lineNum - 1] ?? "")}`);
   }
   return rows;
 }
@@ -61,13 +59,11 @@ export const EMPTY_BLOCK =
 export function blockUnresolvedMessage(
   line: number,
   op: "replace" | "delete" = "replace",
-  fileLines?: readonly string[]
+  fileLines?: readonly string[],
 ): string {
   const phrase = op === "delete" ? `DEL.BLK ${line}` : `SWAP.BLK ${line}:`;
   const fallback =
-    op === "delete"
-      ? `DEL ${line}${HL_RANGE_SEP}M`
-      : `SWAP ${line}${HL_RANGE_SEP}M:`;
+    op === "delete" ? `DEL ${line}${HL_RANGE_SEP}M` : `SWAP ${line}${HL_RANGE_SEP}M:`;
   let message =
     `\`${phrase}\` could not resolve a syntactic block beginning on line ${line} ` +
     `(unsupported language, blank/closer line, or parse error). Use \`${fallback}\` with explicit lines.`;
@@ -110,7 +106,7 @@ export const EMPTY_INSERT = "`INS` needs at least one `+TEXT` body row.";
 export function afterInsertLandingShiftWarning(
   anchorLine: number,
   landingLine: number,
-  crossed: number
+  crossed: number,
 ): string {
   return `INS.POST ${anchorLine}: body indented shallower than the anchor, so the landing moved past ${crossed} closing line${crossed === 1 ? "" : "s"} to after line ${landingLine}. For the deeper position inside the block, re-issue with the body indented to match.`;
 }
@@ -118,7 +114,7 @@ export function afterInsertLandingShiftWarning(
 export function blockInsertLandingShiftWarning(
   blockStart: number,
   closerLine: number,
-  landingLine: number
+  landingLine: number,
 ): string {
   return `INS.BLK.POST ${blockStart}: body indented deeper than closing line ${closerLine}, so it was placed inside the block, after line ${landingLine}. \`INS.BLK.POST\` lands AFTER the block at sibling depth — if inside was intended, use plain \`INS.POST ${closerLine}:\`.`;
 }
@@ -142,7 +138,7 @@ export function missingSnapshotTagMessage(sectionPath: string): string {
 export function pathRecoveredFromTagMessage(
   authoredPath: string,
   resolvedPath: string,
-  tag: string
+  tag: string,
 ): string {
   return `Path "${authoredPath}" does not exist; matched its filename and snapshot tag ${HL_FILE_HASH_SEP}${tag} to ${resolvedPath} (read earlier this session). Anchor future edits on ${HL_FILE_PREFIX}${resolvedPath}${HL_FILE_HASH_SEP}TAG${HL_FILE_SUFFIX}.`;
 }
@@ -150,7 +146,7 @@ export function pathRecoveredFromTagMessage(
 export function unseenLinesMessage(
   sectionPath: string,
   unseenLines: readonly number[],
-  tag: string
+  tag: string,
 ): string {
   const ranges = formatLineRanges(unseenLines);
   const selector = ranges.replace(/, /g, ",");
@@ -208,11 +204,7 @@ export type BlockOp = "replace" | "delete" | "insert_after";
 
 export function blockSingleLineMessage(line: number, op: BlockOp): string {
   const blockForm =
-    op === "insert_after"
-      ? "INS.BLK.POST"
-      : op === "delete"
-        ? "DEL.BLK"
-        : "SWAP.BLK";
+    op === "insert_after" ? "INS.BLK.POST" : op === "delete" ? "DEL.BLK" : "SWAP.BLK";
   const plainForm =
     op === "insert_after"
       ? `INS.POST ${line}:`

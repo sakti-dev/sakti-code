@@ -1,13 +1,5 @@
-import {
-  HL_PAYLOAD_REPLACE,
-  HL_RANGE_SEP,
-} from "../../lib/hashline-utils/format";
-import type {
-  Anchor,
-  Cursor,
-  Edit,
-  FileOp,
-} from "../../lib/hashline-utils/types";
+import { HL_PAYLOAD_REPLACE, HL_RANGE_SEP } from "../../lib/hashline-utils/format";
+import type { Anchor, Cursor, Edit, FileOp } from "../../lib/hashline-utils/types";
 import {
   BARE_BODY_AUTO_PIPED_WARNING,
   DELETE_BLOCK_TAKES_NO_BODY,
@@ -30,7 +22,7 @@ import {
 function validateRangeOrder(range: ParsedRange, lineNum: number): void {
   if (range.end.line < range.start.line) {
     throw new Error(
-      `line ${lineNum}: range ${range.start.line}${HL_RANGE_SEP}${range.end.line} ends before it starts.`
+      `line ${lineNum}: range ${range.start.line}${HL_RANGE_SEP}${range.end.line} ends before it starts.`,
     );
   }
 }
@@ -47,13 +39,9 @@ function isSkippableCommentLine(line: string): boolean {
   return line.trimStart().startsWith("#");
 }
 
-const BARE_LITERAL_VALUE_RE =
-  /^\s*(?:"[^"]*"|'[^']*'|[-+]?\d+(?:\.\d+)?)\s*,?\s*$/;
+const BARE_LITERAL_VALUE_RE = /^\s*(?:"[^"]*"|'[^']*'|[-+]?\d+(?:\.\d+)?)\s*,?\s*$/;
 
-function detectApplyPatchContamination(
-  text: string,
-  _hasPending: boolean
-): string | null {
+function detectApplyPatchContamination(text: string, _hasPending: boolean): string | null {
   const trimmed = text.trimStart();
   if (trimmed.length === 0) {
     return null;
@@ -189,10 +177,7 @@ export class Executor {
         }
         if (token.target.kind === "move") {
           this.#flushPending();
-          this.#setFileOp(
-            { kind: "move", dest: token.target.dest },
-            token.lineNum
-          );
+          this.#setFileOp({ kind: "move", dest: token.target.dest }, token.lineNum);
           return;
         }
         this.#flushPending();
@@ -252,7 +237,7 @@ export class Executor {
   #setFileOp(fileOp: FileOp, lineNum: number): void {
     if (this.#fileOp !== undefined) {
       throw new Error(
-        `line ${lineNum}: only one file-level op (\`REM\` or \`MV\`) per section. Merge them under one header.`
+        `line ${lineNum}: only one file-level op (\`REM\` or \`MV\`) per section. Merge them under one header.`,
       );
     }
     if (fileOp.kind === "rem" && this.#edits.length > 0) {
@@ -266,9 +251,7 @@ export class Executor {
       return;
     }
     if (this.#edits.length > 0) {
-      throw new Error(
-        "`REM` deletes the whole file and cannot be combined with line ops."
-      );
+      throw new Error("`REM` deletes the whole file and cannot be combined with line ops.");
     }
   }
 
@@ -294,7 +277,7 @@ export class Executor {
       const [firstBlock, secondBlock] = [...sourceLines].sort((a, b) => a - b);
       throw new Error(
         `line ${secondBlock}: anchor line ${anchorLine} is already targeted by another hunk on line ${firstBlock}. ` +
-          "Issue ONE hunk per range; payload is only the final desired content, never a before/after pair."
+          "Issue ONE hunk per range; payload is only the final desired content, never a before/after pair.",
       );
     }
   }
@@ -306,7 +289,7 @@ export class Executor {
         throw new Error(`line ${lineNum}: ${MOVE_TAKES_NO_BODY}`);
       }
       throw new Error(
-        `line ${lineNum}: body line found before any op header. Start with an op like \`SWAP 1.=1:\`, \`DEL 1\`, or \`INS.HEAD:\` before adding body lines. Got ${JSON.stringify(`${HL_PAYLOAD_REPLACE}${text}`)}.`
+        `line ${lineNum}: body line found before any op header. Start with an op like \`SWAP 1.=1:\`, \`DEL 1\`, or \`INS.HEAD:\` before adding body lines. Got ${JSON.stringify(`${HL_PAYLOAD_REPLACE}${text}`)}.`,
       );
     }
     if (pending.target.kind === "delete") {
@@ -320,10 +303,7 @@ export class Executor {
   }
 
   #handleRaw(text: string, lineNum: number): void {
-    const contamination = detectApplyPatchContamination(
-      text,
-      this.#pending !== undefined
-    );
+    const contamination = detectApplyPatchContamination(text, this.#pending !== undefined);
     if (contamination !== null) {
       throw new Error(`line ${lineNum}: ${contamination}`);
     }
@@ -360,7 +340,7 @@ export class Executor {
       return;
     }
     throw new Error(
-      `line ${lineNum}: body line found before any op header. Start with an op like \`SWAP 10.=15:\`, \`DEL 5\`, or \`INS.HEAD:\` on its own line, then add \`+body\` rows below. Got ${JSON.stringify(text)}.`
+      `line ${lineNum}: body line found before any op header. Start with an op like \`SWAP 10.=15:\`, \`DEL 5\`, or \`INS.HEAD:\` on its own line, then add \`+body\` rows below. Got ${JSON.stringify(text)}.`,
     );
   }
 
@@ -369,10 +349,7 @@ export class Executor {
     if (!pending) {
       return;
     }
-    if (
-      pending.target.kind === "delete" ||
-      pending.target.kind === "delete_block"
-    ) {
+    if (pending.target.kind === "delete" || pending.target.kind === "delete_block") {
       return;
     }
     if (pending.payloads.length === 0) {
@@ -424,12 +401,7 @@ export class Executor {
     }
   }
 
-  #pushInsert(
-    cursor: Cursor,
-    text: string,
-    lineNum: number,
-    mode?: "replacement"
-  ): void {
+  #pushInsert(cursor: Cursor, text: string, lineNum: number, mode?: "replacement"): void {
     this.#edits.push({
       kind: "insert",
       cursor: cloneCursor(cursor),
@@ -453,7 +425,7 @@ export class Executor {
     anchor: Anchor,
     payloads: readonly PayloadRow[],
     lineNum: number,
-    mode?: "insert_after"
+    mode?: "insert_after",
   ): void {
     this.#edits.push({
       kind: "block",
@@ -469,7 +441,7 @@ export class Executor {
     cursor: Cursor,
     payloads: readonly PayloadRow[],
     lineNum: number,
-    mode?: "replacement"
+    mode?: "replacement",
   ): void {
     for (const payload of payloads) {
       this.#pushInsert(cursor, payload.text, lineNum, mode);
@@ -532,7 +504,7 @@ export class Executor {
       this.#emitPayloadRows(
         { kind: "before_anchor", anchor: { ...target.anchor } },
         payloads,
-        lineNum
+        lineNum,
       );
       return;
     }
@@ -540,19 +512,18 @@ export class Executor {
       this.#emitPayloadRows(
         { kind: "after_anchor", anchor: { ...target.anchor } },
         payloads,
-        lineNum
+        lineNum,
       );
       return;
     }
-    const cursor: Cursor =
-      target.kind === "bof" ? { kind: "bof" } : { kind: "eof" };
+    const cursor: Cursor = target.kind === "bof" ? { kind: "bof" } : { kind: "eof" };
     this.#emitPayloadRows(cursor, payloads, lineNum);
   }
 }
 
 function drain(
   executor: Executor,
-  tokenizer: Tokenizer
+  tokenizer: Tokenizer,
 ): { edits: Edit[]; fileOp?: FileOp; warnings: string[] } {
   for (const token of tokenizer.end()) {
     executor.feed(token);

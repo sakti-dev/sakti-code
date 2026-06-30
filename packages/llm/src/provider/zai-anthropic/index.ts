@@ -1,12 +1,5 @@
-import {
-  type FetchFunction,
-  withUserAgentSuffix,
-} from "@ai-sdk/provider-utils";
-import type {
-  ProviderFactory,
-  ProviderFactoryOptions,
-  ProviderSDK,
-} from "../registry.ts";
+import { type FetchFunction, withUserAgentSuffix } from "@ai-sdk/provider-utils";
+import type { ProviderFactory, ProviderFactoryOptions, ProviderSDK } from "../registry.ts";
 import { ZaiLanguageModel } from "./zai-language-model.ts";
 
 /**
@@ -42,7 +35,7 @@ export function createZai(options: ZaiProviderSettings): ProviderSDK {
         "anthropic-version": "2023-06-01",
         ...options.headers,
       },
-      `ai-sdk/zai-anthropic/${VERSION}`
+      `ai-sdk/zai-anthropic/${VERSION}`,
     );
 
   return {
@@ -51,9 +44,7 @@ export function createZai(options: ZaiProviderSettings): ProviderSDK {
         baseURL,
         provider: PROVIDER_NAME,
         headers,
-        ...(options.maxTokens === undefined
-          ? {}
-          : { maxTokens: options.maxTokens }),
+        ...(options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens }),
         ...(options.fetch ? { fetch: options.fetch } : {}),
       }),
   };

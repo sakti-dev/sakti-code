@@ -14,7 +14,7 @@ export const Separator: ParentComponent<SeparatorProps> = (props) => (
       props.orientation === "vertical"
         ? "h-full w-px border-x-0 border-y-0 border-l"
         : "h-px w-full border-x-0 border-y-0 border-t",
-      props.class
+      props.class,
     )}
   />
 );

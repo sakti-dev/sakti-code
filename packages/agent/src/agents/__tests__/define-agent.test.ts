@@ -34,7 +34,7 @@ describe("defineAgent", () => {
         mode: "primary",
         description: "x",
         systemPrompt: "x",
-      })
+      }),
     ).toThrow(/name/);
   });
 
@@ -45,7 +45,7 @@ describe("defineAgent", () => {
         mode: "primary",
         description: "x",
         systemPrompt: "",
-      })
+      }),
     ).toThrow(/systemPrompt/);
   });
 });

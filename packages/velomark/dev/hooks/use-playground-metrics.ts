@@ -1,8 +1,5 @@
 import { createSignal, onCleanup } from "solid-js";
-import {
-  buildRenderDocument,
-  collectRenderMetrics,
-} from "../../src/model/render-document";
+import { buildRenderDocument, collectRenderMetrics } from "../../src/model/render-document";
 import type {
   PlaygroundBenchmarkResult,
   PlaygroundBenchmarkState,
@@ -25,7 +22,7 @@ function roundToTwoDecimals(value: number): number {
 function measureMode(
   markdown: string,
   chunkSize: number,
-  mode: PlaygroundStreamMode
+  mode: PlaygroundStreamMode,
 ): PlaygroundBenchmarkResult {
   const simulator = createStreamSimulator({
     chunkSize,
@@ -44,17 +41,12 @@ function measureMode(
     const start = performance.now();
     const nextDocument = buildRenderDocument(previousDocument, snapshot);
     const duration = performance.now() - start;
-    const metrics = collectRenderMetrics(
-      previousDocument.blocks,
-      nextDocument.blocks
-    );
+    const metrics = collectRenderMetrics(previousDocument.blocks, nextDocument.blocks);
 
     durations.push(duration);
     aggregate = {
-      appendedBlockCount:
-        aggregate.appendedBlockCount + metrics.appendedBlockCount,
-      replacedBlockCount:
-        aggregate.replacedBlockCount + metrics.replacedBlockCount,
+      appendedBlockCount: aggregate.appendedBlockCount + metrics.appendedBlockCount,
+      replacedBlockCount: aggregate.replacedBlockCount + metrics.replacedBlockCount,
       reusedBlockCount: aggregate.reusedBlockCount + metrics.reusedBlockCount,
     };
     previousDocument = nextDocument;
@@ -66,9 +58,7 @@ function measureMode(
   return {
     ...aggregate,
     averageUpdateMs:
-      durations.length > 0
-        ? roundToTwoDecimals(totalDuration / durations.length)
-        : 0,
+      durations.length > 0 ? roundToTwoDecimals(totalDuration / durations.length) : 0,
     maxUpdateMs: roundToTwoDecimals(maxUpdateMs),
     mode,
     updates: durations.length,

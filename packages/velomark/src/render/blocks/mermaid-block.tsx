@@ -1,11 +1,5 @@
 import type { Mermaid } from "mermaid";
-import {
-  type Component,
-  createEffect,
-  createSignal,
-  onCleanup,
-  onMount,
-} from "solid-js";
+import { type Component, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { isServer } from "solid-js/web";
 import type { CodeBlockData } from "../../parser/block-boundaries";
 import { toMermaidThemeVariables } from "../../theme/to-mermaid-theme";
@@ -27,9 +21,7 @@ export const MermaidBlock: Component<{
 }> = (props) => {
   const [diagramSvg, setDiagramSvg] = createSignal<string>("");
   const [renderFailed, setRenderFailed] = createSignal<boolean>(false);
-  const [mermaidInstance, setMermaidInstance] = createSignal<Mermaid | null>(
-    null
-  );
+  const [mermaidInstance, setMermaidInstance] = createSignal<Mermaid | null>(null);
   let activeRenderToken = 0;
 
   const code = (): string => props.block.data.code;

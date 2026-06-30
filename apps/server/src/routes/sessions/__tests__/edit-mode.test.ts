@@ -6,16 +6,12 @@ import { sessionsRoutes } from "../sessions.ts";
 
 describe("edit-mode routes", () => {
   it("GET returns default hashline when not set", async () => {
-    const { app, ctx } = await makeApp([
-      projectsRoutes,
-      sessionsRoutes,
-      editModeRoutes,
-    ]);
+    const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes, editModeRoutes]);
     const project = await ctx.repos.projects.create("demo", "/tmp/demo");
     const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
-      new Request(`http://localhost:3001/api/sessions/${session.id}/edit-mode`)
+      new Request(`http://localhost:3001/api/sessions/${session.id}/edit-mode`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -23,23 +19,16 @@ describe("edit-mode routes", () => {
   });
 
   it("PUT persists mode and returns 200", async () => {
-    const { app, ctx } = await makeApp([
-      projectsRoutes,
-      sessionsRoutes,
-      editModeRoutes,
-    ]);
+    const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes, editModeRoutes]);
     const project = await ctx.repos.projects.create("demo", "/tmp/demo");
     const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
-      new Request(
-        `http://localhost:3001/api/sessions/${session.id}/edit-mode`,
-        {
-          method: "PUT",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ mode: "replace" }),
-        }
-      )
+      new Request(`http://localhost:3001/api/sessions/${session.id}/edit-mode`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode: "replace" }),
+      }),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -51,27 +40,20 @@ describe("edit-mode routes", () => {
   });
 
   it("GET returns stored mode after PUT", async () => {
-    const { app, ctx } = await makeApp([
-      projectsRoutes,
-      sessionsRoutes,
-      editModeRoutes,
-    ]);
+    const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes, editModeRoutes]);
     const project = await ctx.repos.projects.create("demo", "/tmp/demo");
     const session = await ctx.repos.sessions.create(project.id);
 
     await app.request(
-      new Request(
-        `http://localhost:3001/api/sessions/${session.id}/edit-mode`,
-        {
-          method: "PUT",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ mode: "replace" }),
-        }
-      )
+      new Request(`http://localhost:3001/api/sessions/${session.id}/edit-mode`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode: "replace" }),
+      }),
     );
 
     const res = await app.request(
-      new Request(`http://localhost:3001/api/sessions/${session.id}/edit-mode`)
+      new Request(`http://localhost:3001/api/sessions/${session.id}/edit-mode`),
     );
     const body = await res.json();
     expect(body.mode).toBe("replace");
@@ -85,29 +67,22 @@ describe("edit-mode routes", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ mode: "replace" }),
-      })
+      }),
     );
     expect(res.status).toBe(404);
   });
 
   it("PUT rejects invalid mode", async () => {
-    const { app, ctx } = await makeApp([
-      projectsRoutes,
-      sessionsRoutes,
-      editModeRoutes,
-    ]);
+    const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes, editModeRoutes]);
     const project = await ctx.repos.projects.create("demo", "/tmp/demo");
     const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
-      new Request(
-        `http://localhost:3001/api/sessions/${session.id}/edit-mode`,
-        {
-          method: "PUT",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ mode: "invalid" }),
-        }
-      )
+      new Request(`http://localhost:3001/api/sessions/${session.id}/edit-mode`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode: "invalid" }),
+      }),
     );
     expect(res.status).toBe(400);
   });

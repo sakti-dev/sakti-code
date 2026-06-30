@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { UIMessage } from "../../types.ts";
-import {
-  buildChatTurns,
-  getAssistantParts,
-  getUserText,
-} from "../turn-projection.ts";
+import { buildChatTurns, getAssistantParts, getUserText } from "../turn-projection.ts";
 
 function makeMessage(overrides: Partial<UIMessage> = {}): UIMessage {
   return {

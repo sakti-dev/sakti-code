@@ -39,8 +39,7 @@
   --velomark-typography-body-font:
     "IBM Plex Sans", "Iosevka Aile", ui-sans-serif, system-ui, sans-serif;
   --velomark-typography-mono-font:
-    "Iosevka Term", "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas,
-    monospace;
+    "Iosevka Term", "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, monospace;
   --velomark-typography-line-height: 1.6;
   --velomark-radius-sm: 0.375rem;
   --velomark-radius-md: 0.5rem;
@@ -60,8 +59,7 @@
 }
 
 .velomark code {
-  padding: var(--velomark-spacing-inline-code-y)
-    var(--velomark-spacing-inline-code-x);
+  padding: var(--velomark-spacing-inline-code-y) var(--velomark-spacing-inline-code-x);
   font-family: var(--velomark-typography-mono-font);
   color: var(--velomark-color-text-primary);
   background: var(--velomark-color-surface-code);
@@ -69,8 +67,7 @@
 }
 
 .velomark pre {
-  padding: var(--velomark-spacing-code-padding-y)
-    var(--velomark-spacing-code-padding-x);
+  padding: var(--velomark-spacing-code-padding-y) var(--velomark-spacing-code-padding-x);
   margin: 0;
   overflow-x: auto;
   color: var(--velomark-color-text-primary);
@@ -100,8 +97,7 @@
 .velomark [data-velomark-block-kind="code"] pre {
   padding: var(--velomark-spacing-code-padding-y)
     calc(var(--velomark-spacing-code-padding-x) + 2.25rem)
-    calc(var(--velomark-spacing-code-padding-y) + 1.125rem)
-    var(--velomark-spacing-code-padding-x);
+    calc(var(--velomark-spacing-code-padding-y) + 1.125rem) var(--velomark-spacing-code-padding-x);
 }
 
 .velomark [data-velomark-code-language] {
@@ -196,8 +192,7 @@
 }
 
 .velomark [data-velomark-inline-math] [data-velomark-math-fallback] {
-  padding: var(--velomark-spacing-inline-code-y)
-    var(--velomark-spacing-inline-code-x);
+  padding: var(--velomark-spacing-inline-code-y) var(--velomark-spacing-inline-code-x);
   background: var(--velomark-color-surface-math);
   border-radius: var(--velomark-radius-sm);
 }

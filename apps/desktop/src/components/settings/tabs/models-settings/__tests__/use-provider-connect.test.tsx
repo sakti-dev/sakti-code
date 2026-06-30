@@ -25,9 +25,7 @@ function setupHook(options?: {
 }) {
   return createRoot((dispose) => {
     const [isOpen, setIsOpen] = createSignal(options?.isOpen ?? true);
-    const [providers, setProviders] = createSignal(
-      options?.providers ?? sampleProviders()
-    );
+    const [providers, setProviders] = createSignal(options?.providers ?? sampleProviders());
     const [initialProviderId] = createSignal(options?.initialProviderId);
     const onConnect = options?.onConnect ?? vi.fn().mockResolvedValue(true);
 
@@ -94,8 +92,7 @@ describe("useProviderConnect", () => {
     });
 
     it("falls back to first when selected id is stale", () => {
-      const { selectedProvider, setSelectedProviderId, setProviders, dispose } =
-        setupHook();
+      const { selectedProvider, setSelectedProviderId, setProviders, dispose } = setupHook();
       setSelectedProviderId("openai");
       setProviders([sampleProviders()[0]!]);
       expect(selectedProvider()?.id).toBe("anthropic");
@@ -105,16 +102,9 @@ describe("useProviderConnect", () => {
 
   describe("activeIndex", () => {
     it("reflects selectedProviderId position via navigation", () => {
-      const {
-        setSelectedProviderId,
-        handleKeyDown,
-        selectedProviderId,
-        dispose,
-      } = setupHook();
+      const { setSelectedProviderId, handleKeyDown, selectedProviderId, dispose } = setupHook();
       setSelectedProviderId("google");
-      handleKeyDown(
-        new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true })
-      );
+      handleKeyDown(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
       expect(selectedProviderId()).toBe("openai");
       dispose();
     });
@@ -124,9 +114,7 @@ describe("useProviderConnect", () => {
     it("ArrowDown advances selection", () => {
       const { handleKeyDown, selectedProviderId, dispose } = setupHook();
       selectedProviderId(); // read initial
-      handleKeyDown(
-        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })
-      );
+      handleKeyDown(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
       expect(selectedProviderId()).toBe("openai");
       dispose();
     });
@@ -134,24 +122,15 @@ describe("useProviderConnect", () => {
     it("ArrowUp wraps around", () => {
       const { handleKeyDown, selectedProviderId, dispose } = setupHook();
       // at index 0 → ArrowUp wraps to last
-      handleKeyDown(
-        new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true })
-      );
+      handleKeyDown(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
       expect(selectedProviderId()).toBe("google");
       dispose();
     });
 
     it("ArrowDown wraps around from last", () => {
-      const {
-        setSelectedProviderId,
-        handleKeyDown,
-        selectedProviderId,
-        dispose,
-      } = setupHook();
+      const { setSelectedProviderId, handleKeyDown, selectedProviderId, dispose } = setupHook();
       setSelectedProviderId("google"); // last index
-      handleKeyDown(
-        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })
-      );
+      handleKeyDown(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
       expect(selectedProviderId()).toBe("anthropic"); // wraps to first
       dispose();
     });
@@ -181,8 +160,7 @@ describe("useProviderConnect", () => {
     });
 
     it("sets error when token is whitespace", async () => {
-      const { connectToken, errorByProvider, setTokenDraft, dispose } =
-        setupHook();
+      const { connectToken, errorByProvider, setTokenDraft, dispose } = setupHook();
       setTokenDraft("anthropic", "   ");
       await connectToken("anthropic");
       expect(errorByProvider().anthropic).toBe("API key is required.");
@@ -191,13 +169,7 @@ describe("useProviderConnect", () => {
 
     it("calls onConnect and clears token on success", async () => {
       const onConnect = vi.fn().mockResolvedValue(true);
-      const {
-        connectToken,
-        setTokenDraft,
-        tokenByProvider,
-        errorByProvider,
-        dispose,
-      } = setupHook({
+      const { connectToken, setTokenDraft, tokenByProvider, errorByProvider, dispose } = setupHook({
         onConnect,
       });
       setTokenDraft("openai", "sk-test-key");
@@ -210,8 +182,7 @@ describe("useProviderConnect", () => {
 
     it("sets error when onConnect fails", async () => {
       const onConnect = vi.fn().mockResolvedValue(false);
-      const { connectToken, setTokenDraft, errorByProvider, dispose } =
-        setupHook({ onConnect });
+      const { connectToken, setTokenDraft, errorByProvider, dispose } = setupHook({ onConnect });
       setTokenDraft("anthropic", "sk-bad-key");
       await connectToken("anthropic");
       expect(errorByProvider().anthropic).toBe("Failed to save API key.");
@@ -256,12 +227,7 @@ describe("useProviderConnect", () => {
     });
 
     it("does not reset selection when providers change while open", async () => {
-      const {
-        selectedProviderId,
-        setSelectedProviderId,
-        setProviders,
-        dispose,
-      } = setupHook({
+      const { selectedProviderId, setSelectedProviderId, setProviders, dispose } = setupHook({
         isOpen: true,
       });
       await vi.waitFor(() => {
@@ -275,14 +241,8 @@ describe("useProviderConnect", () => {
     });
 
     it("resets transient state on close", async () => {
-      const {
-        setSearchQuery,
-        searchQuery,
-        setTokenDraft,
-        tokenByProvider,
-        setIsOpen,
-        dispose,
-      } = setupHook({ isOpen: true });
+      const { setSearchQuery, searchQuery, setTokenDraft, tokenByProvider, setIsOpen, dispose } =
+        setupHook({ isOpen: true });
       setSearchQuery("openai");
       setTokenDraft("anthropic", "sk-test");
       expect(searchQuery()).toBe("openai");

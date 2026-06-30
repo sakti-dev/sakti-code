@@ -11,9 +11,7 @@ const FILE = "a\nb\nc\nd\ne";
 
 describe("hashline section headers", () => {
   it("accepts paths with spaces in anchored section headers", () => {
-    const section = Patch.parseSingle(
-      "[dir with spaces/file.ts#1a2b]\nSWAP 1.=1:\n+after"
-    );
+    const section = Patch.parseSingle("[dir with spaces/file.ts#1a2b]\nSWAP 1.=1:\n+after");
 
     expect(section.path).toBe("dir with spaces/file.ts");
     expect(section.fileHash).toBe("1A2B");
@@ -22,7 +20,7 @@ describe("hashline section headers", () => {
 
   it("recovers apply_patch-contaminated headers whose paths contain spaces", () => {
     const section = Patch.parseSingle(
-      "[*** Update File: dir with spaces/file.ts#1A2B]\nSWAP 1.=1:\n+after"
+      "[*** Update File: dir with spaces/file.ts#1A2B]\nSWAP 1.=1:\n+after",
     );
 
     expect(section.path).toBe("dir with spaces/file.ts");
@@ -31,41 +29,37 @@ describe("hashline section headers", () => {
   });
 
   it("rejects trailing junk after a snapshot tag", () => {
-    expect(() =>
-      Patch.parse("[src/a.ts#1A2B copied from read]\nSWAP 1.=1:\n+after")
-    ).toThrow(/Input header must be/);
-    expect(() =>
-      Patch.parse("[src/a.ts#1A2B:812]\nSWAP 1.=1:\n+after")
-    ).toThrow(/Input header must be/);
+    expect(() => Patch.parse("[src/a.ts#1A2B copied from read]\nSWAP 1.=1:\n+after")).toThrow(
+      /Input header must be/,
+    );
+    expect(() => Patch.parse("[src/a.ts#1A2B:812]\nSWAP 1.=1:\n+after")).toThrow(
+      /Input header must be/,
+    );
   });
 
   it("rejects trailing junk after a snapshot tag even with apply_patch noise", () => {
     expect(() =>
-      Patch.parse(
-        "[Update File: src/a.ts#1A2B copied from read]\nSWAP 1.=1:\n+after"
-      )
+      Patch.parse("[Update File: src/a.ts#1A2B copied from read]\nSWAP 1.=1:\n+after"),
     ).toThrow(/Input header must be/);
-    expect(() =>
-      Patch.parse("[Update File: src/a.ts#1A2B:812]\nSWAP 1.=1:\n+after")
-    ).toThrow(/Input header must be/);
+    expect(() => Patch.parse("[Update File: src/a.ts#1A2B:812]\nSWAP 1.=1:\n+after")).toThrow(
+      /Input header must be/,
+    );
   });
 
   it("rejects malformed snapshot tags", () => {
-    expect(() => Patch.parse("[src/a.ts#1A2]\nSWAP 1.=1:\n+after")).toThrow(
-      /Input header must be/
-    );
+    expect(() => Patch.parse("[src/a.ts#1A2]\nSWAP 1.=1:\n+after")).toThrow(/Input header must be/);
     expect(() => Patch.parse("[src/a.ts#1A2G]\nSWAP 1.=1:\n+after")).toThrow(
-      /Input header must be/
+      /Input header must be/,
     );
     expect(() => Patch.parse("[src/a.ts#1A2B5]\nSWAP 1.=1:\n+after")).toThrow(
-      /Input header must be/
+      /Input header must be/,
     );
   });
 
   it("rejects malformed snapshot tags even with apply_patch noise", () => {
-    expect(() =>
-      Patch.parse("[Update File: src/a.ts#1A2G]\nSWAP 1.=1:\n+after")
-    ).toThrow(/Input header must be/);
+    expect(() => Patch.parse("[Update File: src/a.ts#1A2G]\nSWAP 1.=1:\n+after")).toThrow(
+      /Input header must be/,
+    );
   });
 
   it("reports bracket syntax with a 4-hex example when the header is missing", () => {
@@ -139,9 +133,7 @@ describe("hashline leniency — head/tail line number and del colon", () => {
   });
 
   it("rejects DEL with colon AND body rows with the specific error", () => {
-    expect(() => parsePatch("DEL 2.=3:\n+X")).toThrow(
-      /does not take body rows/
-    );
+    expect(() => parsePatch("DEL 2.=3:\n+X")).toThrow(/does not take body rows/);
   });
 });
 
@@ -149,17 +141,13 @@ describe("hashline body contracts", () => {
   it("auto-pipes a bare body row while warning", () => {
     const result = parsePatch("SWAP 2.=2:\n  hello");
     expect(applyEdits(FILE, result.edits).text).toBe("a\n  hello\nc\nd\ne");
-    expect(
-      result.warnings.some((w) => /Auto-prefixed bare body row/.test(w))
-    ).toBe(true);
+    expect(result.warnings.some((w) => /Auto-prefixed bare body row/.test(w))).toBe(true);
   });
 
   it("strips read-output line number prefix from auto-piped bare body rows", () => {
     const result = parsePatch("SWAP 2.=2:\n2:hello");
     expect(applyEdits(FILE, result.edits).text).toBe("a\nhello\nc\nd\ne");
-    expect(
-      result.warnings.some((w) => /Auto-prefixed bare body row/.test(w))
-    ).toBe(true);
+    expect(result.warnings.some((w) => /Auto-prefixed bare body row/.test(w))).toBe(true);
   });
 
   it("preserves `+N:` literal payloads without stripping", () => {
@@ -200,21 +188,15 @@ describe("hashline body contracts", () => {
 
   it("leaves numeric-keyed literal bodies untouched (dict/YAML shape)", () => {
     const result = parsePatch('SWAP 2.=3:\n1: "one",\n2: "two",');
-    expect(applyEdits(FILE, result.edits).text).toBe(
-      'a\n1: "one",\n2: "two",\nd\ne'
-    );
+    expect(applyEdits(FILE, result.edits).text).toBe('a\n1: "one",\n2: "two",\nd\ne');
   });
 
   it("rejects `-` body rows with a teaching error", () => {
-    expect(() => parsePatch("SWAP 2.=2:\n-old\n+new")).toThrow(
-      /`-` rows are not valid/
-    );
+    expect(() => parsePatch("SWAP 2.=2:\n-old\n+new")).toThrow(/`-` rows are not valid/);
   });
 
   it("allows literal text that begins with `-` or `+` when prefixed with `+`", () => {
-    expect(applyPatch(FILE, "SWAP 2.=2:\n+-literal\n++plus")).toBe(
-      "a\n-literal\n+plus\nc\nd\ne"
-    );
+    expect(applyPatch(FILE, "SWAP 2.=2:\n+-literal\n++plus")).toBe("a\n-literal\n+plus\nc\nd\ne");
   });
 
   it("treats empty replace as delete and still rejects empty insert", () => {
@@ -231,22 +213,18 @@ describe("hashline body contracts", () => {
 describe("hashline — apply_patch / unified-diff contamination", () => {
   it("rejects apply_patch sentinels as contamination", () => {
     expect(() => parsePatch("*** Update File: a.ts\nSWAP 2.=2:\n+X")).toThrow(
-      /apply_patch sentinel/
+      /apply_patch sentinel/,
     );
-    expect(() => parsePatch("*** Add File: a.ts\nSWAP 2.=2:\n+X")).toThrow(
-      /apply_patch sentinel/
-    );
+    expect(() => parsePatch("*** Add File: a.ts\nSWAP 2.=2:\n+X")).toThrow(/apply_patch sentinel/);
   });
 
   it("rejects unified-diff hunk headers as contamination", () => {
-    expect(() => parsePatch("@@ -1,3 +1,3 @@\nSWAP 2.=2:\n+X")).toThrow(
-      /unified-diff hunk header/
-    );
+    expect(() => parsePatch("@@ -1,3 +1,3 @@\nSWAP 2.=2:\n+X")).toThrow(/unified-diff hunk header/);
   });
 
   it("treats top-level `+TEXT` as an orphan literal payload", () => {
     expect(() => parsePatch("+const X = 1;\nSWAP 2.=2:")).toThrow(
-      /body line found before any op header/
+      /body line found before any op header/,
     );
   });
 });
@@ -256,7 +234,7 @@ describe("hashline apply — duplicate boundary payloads", () => {
     const text = ["// one", "// two", "old();"].join("\n");
     const diff = "SWAP 3.=3:\n+// one\n+// two\n+new();";
     expect(applyPatch(text, diff)).toBe(
-      ["// one", "// two", "// one", "// two", "new();"].join("\n")
+      ["// one", "// two", "// one", "// two", "new();"].join("\n"),
     );
   });
 
@@ -269,12 +247,8 @@ describe("hashline apply — duplicate boundary payloads", () => {
 
 describe("hashline error diagnostics — self-diagnosing messages", () => {
   it("rejects a header with no ops below it (not a vague 'no sections')", () => {
-    expect(() => Patch.parse("[src/foo.ts#1A2B]\n")).toThrow(
-      /has no operations below it/
-    );
-    expect(() => Patch.parse("[src/foo.ts#1A2B]")).toThrow(
-      /has no operations below it/
-    );
+    expect(() => Patch.parse("[src/foo.ts#1A2B]\n")).toThrow(/has no operations below it/);
+    expect(() => Patch.parse("[src/foo.ts#1A2B]")).toThrow(/has no operations below it/);
   });
 
   it("error names the path and hash from the header", () => {
@@ -293,8 +267,6 @@ describe("hashline error diagnostics — self-diagnosing messages", () => {
   });
 
   it("line-bounds error suggests re-reading the file", () => {
-    expect(() => applyPatch(FILE, "SWAP 99.=99:\n+X")).toThrow(
-      /Re-read the file/
-    );
+    expect(() => applyPatch(FILE, "SWAP 99.=99:\n+X")).toThrow(/Re-read the file/);
   });
 });

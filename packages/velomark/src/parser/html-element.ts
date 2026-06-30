@@ -33,8 +33,7 @@ const VOID_ELEMENTS = new Set([
   "wbr",
 ]);
 
-const ATTRIBUTE_RE =
-  /([A-Za-z_:][A-Za-z0-9:._-]*)(?:=(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+const ATTRIBUTE_RE = /([A-Za-z_:][A-Za-z0-9:._-]*)(?:=(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
 const SIMPLE_HTML_OPEN_TAG_RE = /^<([A-Za-z][A-Za-z0-9-]*)(\s[^>]*)?>/;
 
 export function parseHtmlAttributes(source: string): Record<string, string> {
@@ -87,7 +86,7 @@ function findClosingTag(source: string, tagName: string, from: number): number {
 }
 
 export function parseSimpleHtmlElement(
-  source: string
+  source: string,
 ): { length: number; node: HtmlElementNode } | null {
   const openMatch = source.match(SIMPLE_HTML_OPEN_TAG_RE);
   if (!(openMatch?.[0] && openMatch[1])) {
@@ -153,7 +152,7 @@ export function parseHtmlChildren(source: string): HtmlElementChild[] {
 
 export function htmlElementChildrenToInlineTokens(
   children: HtmlElementChild[],
-  parseInline: (text: string) => InlineToken[]
+  parseInline: (text: string) => InlineToken[],
 ): InlineToken[] {
   const tokens: InlineToken[] = [];
 
@@ -167,10 +166,7 @@ export function htmlElementChildrenToInlineTokens(
       type: "html-element",
       tagName: child.node.tagName,
       attributes: child.node.attributes,
-      children: htmlElementChildrenToInlineTokens(
-        child.node.children,
-        parseInline
-      ),
+      children: htmlElementChildrenToInlineTokens(child.node.children, parseInline),
     });
   }
 

@@ -23,9 +23,9 @@ describe("InMemorySessionStorage", () => {
             id: "session-1",
             createdAt: "2026-01-01T00:00:00.000Z",
           },
-        })
-      )
-    )
+        }),
+      ),
+    ),
   );
 
   it.effect("copies initial entries and persists leaf changes", () =>
@@ -55,9 +55,9 @@ describe("InMemorySessionStorage", () => {
               message: createUserMessage("one"),
             },
           ],
-        })
-      )
-    )
+        }),
+      ),
+    ),
   );
 
   it.effect("rejects invalid leaf ids", () =>
@@ -66,7 +66,7 @@ describe("InMemorySessionStorage", () => {
       const error = yield* Effect.flip(storage.setLeafId("missing"));
       expect(error._tag).toBe("SessionError");
       expect(error.code).toBe("not_found");
-    }).pipe(Effect.provide(InMemorySessionStorageLive()))
+    }).pipe(Effect.provide(InMemorySessionStorageLive())),
   );
 
   it.effect("finds entries by type", () =>
@@ -88,9 +88,9 @@ describe("InMemorySessionStorage", () => {
               message: createUserMessage("one"),
             },
           ],
-        })
-      )
-    )
+        }),
+      ),
+    ),
   );
 
   it.effect("maintains label lookup", () =>
@@ -130,9 +130,9 @@ describe("InMemorySessionStorage", () => {
               message: createUserMessage("one"),
             },
           ],
-        })
-      )
-    )
+        }),
+      ),
+    ),
   );
 
   it.effect("walks paths to root", () =>
@@ -161,8 +161,8 @@ describe("InMemorySessionStorage", () => {
               message: createAssistantMessage("child"),
             },
           ],
-        })
-      )
-    )
+        }),
+      ),
+    ),
   );
 });

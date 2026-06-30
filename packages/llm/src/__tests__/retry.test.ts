@@ -7,10 +7,7 @@ import type { AssistantMessage, StopReason } from "../types.ts";
  * `errorMessage` is omitted entirely when not provided (respects
  * `exactOptionalPropertyTypes` — never set an optional field to `undefined`).
  */
-function buildMsg(
-  stopReason: StopReason,
-  errorMessage?: string
-): AssistantMessage {
+function buildMsg(stopReason: StopReason, errorMessage?: string): AssistantMessage {
   return {
     api: "ai-sdk",
     content: [{ type: "text", text: "" }],
@@ -67,9 +64,7 @@ describe("isRetryableAssistantError", () => {
 
     for (const errorText of transientErrors) {
       it(`retries: "${errorText.slice(0, 40)}"`, () => {
-        expect(isRetryableAssistantError(buildMsg("error", errorText))).toBe(
-          true
-        );
+        expect(isRetryableAssistantError(buildMsg("error", errorText))).toBe(true);
       });
     }
   });
@@ -88,20 +83,16 @@ describe("isRetryableAssistantError", () => {
 
     for (const errorText of permanentErrors) {
       it(`does not retry: "${errorText.slice(0, 40)}"`, () => {
-        expect(isRetryableAssistantError(buildMsg("error", errorText))).toBe(
-          false
-        );
+        expect(isRetryableAssistantError(buildMsg("error", errorText))).toBe(false);
       });
     }
   });
 
   describe("returns false for unknown errors", () => {
     it("does not retry unrecognized error messages", () => {
-      expect(
-        isRetryableAssistantError(
-          buildMsg("error", "something unusual happened")
-        )
-      ).toBe(false);
+      expect(isRetryableAssistantError(buildMsg("error", "something unusual happened"))).toBe(
+        false,
+      );
     });
   });
 
@@ -109,9 +100,7 @@ describe("isRetryableAssistantError", () => {
     it("does not retry when a billing term appears alongside a 429", () => {
       // "billing" (non-retryable) appears with "429" (retryable) — limit wins.
       expect(
-        isRetryableAssistantError(
-          buildMsg("error", "429 rate limited: billing quota exceeded")
-        )
+        isRetryableAssistantError(buildMsg("error", "429 rate limited: billing quota exceeded")),
       ).toBe(false);
     });
   });

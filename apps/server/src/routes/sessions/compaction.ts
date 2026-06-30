@@ -30,7 +30,7 @@ export const compactionRoutes = new Hono()
         {
           error: `Model resolution failed: ${e instanceof Error ? e.message : String(e)}`,
         },
-        500
+        500,
       );
     }
 
@@ -40,7 +40,7 @@ export const compactionRoutes = new Hono()
         {
           error: `No API key for ${model.provider} — add one in Settings > Models`,
         },
-        500
+        500,
       );
     }
 
@@ -67,7 +67,7 @@ export const compactionRoutes = new Hono()
       result.success.summary,
       result.success.firstKeptEntryId,
       result.success.tokensBefore,
-      result.success.details
+      result.success.details,
     );
 
     return c.json({

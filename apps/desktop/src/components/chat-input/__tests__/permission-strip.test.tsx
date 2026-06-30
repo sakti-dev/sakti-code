@@ -7,9 +7,7 @@ import { PermissionStrip } from "../permission-strip.tsx";
 const ALLOW_RE = /Allow read/;
 const PATTERNS_RE = /secret\.env/;
 
-function makeRequest(
-  overrides: Partial<PermissionPending> = {}
-): PermissionPending {
+function makeRequest(overrides: Partial<PermissionPending> = {}): PermissionPending {
   return {
     id: "per_1",
     permission: "read",

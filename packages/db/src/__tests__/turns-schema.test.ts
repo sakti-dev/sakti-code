@@ -21,9 +21,7 @@ describe("turns table schema", () => {
 
   it("creates the turns table", () => {
     const tables = rawDb
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='turns'"
-      )
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='turns'")
       .all() as Array<{ name: string }>;
     expect(tables).toHaveLength(1);
   });
@@ -46,9 +44,7 @@ describe("turns table schema", () => {
 
   it("has unique index on session_id + sequence", () => {
     const indexes = rawDb
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='turns'"
-      )
+      .prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='turns'")
       .all() as { name: string }[];
     const indexNames = indexes.map((i) => i.name);
     expect(indexNames).toContain("turns_session_id_sequence_idx");

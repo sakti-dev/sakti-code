@@ -8,15 +8,9 @@ import { Velomark } from "../src";
 const mountedRoots: Array<() => void> = [];
 
 const loadParityFixture = (fileName: string): string =>
-  readFileSync(
-    resolve(process.cwd(), "test/fixtures/parity", fileName),
-    "utf8"
-  );
+  readFileSync(resolve(process.cwd(), "test/fixtures/parity", fileName), "utf8");
 
-const waitFor = async (
-  predicate: () => boolean,
-  attempts = 200
-): Promise<void> => {
+const waitFor = async (predicate: () => boolean, attempts = 200): Promise<void> => {
   for (let index = 0; index < attempts; index += 1) {
     if (predicate()) {
       return;
@@ -40,10 +34,7 @@ describe("velomark render-surface parity harness", () => {
     const host = document.createElement("div");
     document.body.append(host);
 
-    const dispose = render(
-      () => <Velomark markdown={loadParityFixture("math-inline.md")} />,
-      host
-    );
+    const dispose = render(() => <Velomark markdown={loadParityFixture("math-inline.md")} />, host);
     mountedRoots.push(dispose);
 
     const inlineMath = host.querySelector("[data-velomark-inline-math]");
@@ -59,10 +50,7 @@ describe("velomark render-surface parity harness", () => {
     const host = document.createElement("div");
     document.body.append(host);
 
-    const dispose = render(
-      () => <Velomark markdown={loadParityFixture("math-block.md")} />,
-      host
-    );
+    const dispose = render(() => <Velomark markdown={loadParityFixture("math-block.md")} />, host);
     mountedRoots.push(dispose);
 
     const mathBlock = host.querySelector('[data-velomark-block-kind="math"]');
@@ -78,7 +66,7 @@ describe("velomark render-surface parity harness", () => {
 
     const dispose = render(
       () => <Velomark markdown={loadParityFixture("html-inline-nested.md")} />,
-      host
+      host,
     );
     mountedRoots.push(dispose);
 
@@ -96,16 +84,14 @@ describe("velomark render-surface parity harness", () => {
 
     const dispose = render(
       () => <Velomark markdown={loadParityFixture("html-block-nested.md")} />,
-      host
+      host,
     );
     mountedRoots.push(dispose);
 
     const section = host.querySelector("section.note");
     expect(section).not.toBeNull();
     expect(section?.querySelector("p strong")?.textContent).toBe("content");
-    expect(section?.querySelector("p a")?.getAttribute("href")).toBe(
-      "https://example.com"
-    );
+    expect(section?.querySelector("p a")?.getAttribute("href")).toBe("https://example.com");
     expect(section?.querySelectorAll("ul > li")).toHaveLength(2);
 
     await waitFor(() => section?.querySelector(".katex") !== null);
@@ -118,23 +104,19 @@ describe("velomark render-surface parity harness", () => {
 
     const dispose = render(
       () => <Velomark markdown={loadParityFixture("directive-container.md")} />,
-      host
+      host,
     );
     mountedRoots.push(dispose);
 
     const container = host.querySelector('[data-velomark-container="info"]');
     expect(container).not.toBeNull();
-    expect(container?.getAttribute("data-velomark-attr-title")).toBe(
-      "Information"
-    );
+    expect(container?.getAttribute("data-velomark-attr-title")).toBe("Information");
     expect(container?.getAttribute("data-velomark-attr-tone")).toBe("info");
     expect(container?.getAttribute("data-velomark-attr-emphasis")).toBe("high");
     expect(container?.querySelector("p")?.textContent).toBe("Alpha paragraph.");
     expect(container?.querySelectorAll("ul > li")).toHaveLength(2);
 
-    const leaf = container?.querySelector(
-      '[data-velomark-leaf-directive="callout"]'
-    );
+    const leaf = container?.querySelector('[data-velomark-leaf-directive="callout"]');
     expect(leaf).not.toBeNull();
     expect(leaf?.getAttribute("data-velomark-attr-title")).toBe("Heads up");
     expect(leaf?.getAttribute("data-velomark-attr-tone")).toBe("warn");
@@ -146,7 +128,7 @@ describe("velomark render-surface parity harness", () => {
 
     const dispose = render(
       () => <Velomark markdown={loadParityFixture("directive-inline.md")} />,
-      host
+      host,
     );
     mountedRoots.push(dispose);
 
@@ -169,7 +151,7 @@ describe("velomark render-surface parity harness", () => {
         'import { createSignal } from "solid-js";',
         "",
         'type Status = "idle" | "streaming" | "done";',
-      ].join("\n")
+      ].join("\n"),
     );
 
     const dispose = render(() => <Velomark markdown={markdown()} />, host);
@@ -178,18 +160,13 @@ describe("velomark render-surface parity harness", () => {
     setMarkdown(finalFixture);
     await waitFor(
       () =>
-        (host.querySelectorAll("[data-velomark-code-highlighted] span")
-          .length ?? 0) > 0 &&
-        (host.querySelector("pre > code")?.textContent ?? "").includes(
-          "createSessionLabel"
-        )
+        (host.querySelectorAll("[data-velomark-code-highlighted] span").length ?? 0) > 0 &&
+        (host.querySelector("pre > code")?.textContent ?? "").includes("createSessionLabel"),
     );
 
-    expect(host.querySelector("pre > code")?.textContent).toContain(
-      "createSessionLabel"
+    expect(host.querySelector("pre > code")?.textContent).toContain("createSessionLabel");
+    expect(host.querySelectorAll("[data-velomark-code-highlighted] span").length).toBeGreaterThan(
+      0,
     );
-    expect(
-      host.querySelectorAll("[data-velomark-code-highlighted] span").length
-    ).toBeGreaterThan(0);
   });
 });

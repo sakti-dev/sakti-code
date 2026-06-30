@@ -3,10 +3,7 @@ import type { AssistantMessage, Model } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
 import { Effect, Fiber, Stream } from "effect";
 import type { AgentHarness } from "../agent/agent-harness.ts";
-import {
-  checkCompaction,
-  runAutoCompactionEffect,
-} from "../compaction/auto-compaction.ts";
+import { checkCompaction, runAutoCompactionEffect } from "../compaction/auto-compaction.ts";
 import type { CompactionSettings } from "../compaction/compaction.ts";
 import type { CompactionPrompts } from "../compaction/prompt-bundles.ts";
 import {
@@ -15,16 +12,8 @@ import {
   type RetrySettings,
   type StuckGuardState,
 } from "../compaction/retry-loop.ts";
-import type {
-  AgentHarnessEvent,
-  PromptTemplate,
-  Skill,
-  ThinkingLevel,
-} from "../harness-types.ts";
-import {
-  planFirstTurn,
-  type ReadFile,
-} from "../resources/prompt-preprocessor.ts";
+import type { AgentHarnessEvent, PromptTemplate, Skill, ThinkingLevel } from "../harness-types.ts";
+import { planFirstTurn, type ReadFile } from "../resources/prompt-preprocessor.ts";
 import type { SessionShape } from "../session/session.ts";
 import type { SessionStorageShape } from "../session/storage.ts";
 
@@ -45,9 +34,7 @@ export interface AgentRunDeps {
 
   readonly message: string;
   readonly model: Model;
-  readonly persistStuckGuard: (
-    state: StuckGuardState
-  ) => Effect.Effect<void, Error>;
+  readonly persistStuckGuard: (state: StuckGuardState) => Effect.Effect<void, Error>;
   /** Override node:fs readFile (used by planFirstTurn for @file expansion). */
   readonly readFile?: ReadFile;
 
@@ -82,9 +69,7 @@ export interface AgentRunDeps {
  * `apps/server/src/agent/runner.ts:runPromptEffect`. The caller builds the
  * harness and provides I/O via callbacks.
  */
-export function runAgentRunEffect(
-  deps: AgentRunDeps
-): Effect.Effect<void, Error> {
+export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error> {
   return Effect.gen(function* () {
     const {
       harness,
@@ -105,13 +90,12 @@ export function runAgentRunEffect(
     } = deps;
     const thinkingLevel = deps.thinkingLevel;
     const log = deps.log;
-    const readFile =
-      deps.readFile ?? ((p: string) => readFileAsync(p).catch(() => null));
+    const readFile = deps.readFile ?? ((p: string) => readFileAsync(p).catch(() => null));
 
     // ── Event drain (Phase F: PubSub-backed subscribeStream) ─────
     const eventStream = harness.subscribeStream();
     const drainFiber = Effect.runFork(
-      Stream.runForEach(eventStream, (event) => Effect.sync(() => emit(event)))
+      Stream.runForEach(eventStream, (event) => Effect.sync(() => emit(event))),
     );
 
     // ── Retry abort (covers the gap between turns — backoff sleep) ──
@@ -124,9 +108,7 @@ export function runAgentRunEffect(
       const ok = deps.registerRun({ harness, retryAbort, unsubscribe });
       if (!ok) {
         unsubscribe();
-        return yield* Effect.fail(
-          new Error("A run is already active for this session")
-        );
+        return yield* Effect.fail(new Error("A run is already active for this session"));
       }
     }
 
@@ -160,21 +142,17 @@ export function runAgentRunEffect(
             firstTurn = false;
             log?.info("turn prompt", { messageLength: message.length });
             const plan = yield* Effect.tryPromise({
-              try: () =>
-                planFirstTurn(message, { skills, templates }, cwd, readFile),
-              catch: (e: unknown) =>
-                new Error(`planFirstTurn failed: ${String(e)}`),
+              try: () => planFirstTurn(message, { skills, templates }, cwd, readFile),
+              catch: (e: unknown) => new Error(`planFirstTurn failed: ${String(e)}`),
             });
             if (plan.kind === "template") {
-              const argv = plan.args.trim()
-                ? plan.args.trim().split(PROMPT_ARG_SPLIT)
-                : [];
+              const argv = plan.args.trim() ? plan.args.trim().split(PROMPT_ARG_SPLIT) : [];
               return yield* harness.promptFromTemplateEffect(plan.name, argv);
             }
             if (plan.kind === "skill") {
               return yield* harness.skillEffect(
                 plan.name,
-                plan.args.length > 0 ? plan.args : undefined
+                plan.args.length > 0 ? plan.args : undefined,
               );
             }
             return yield* harness.promptEffect(plan.text);
@@ -200,9 +178,7 @@ export function runAgentRunEffect(
             messages,
             contextWindow: model.contextWindow ?? 0,
             settings: compactionSettings,
-            ...(latestCompactionTimestamp === undefined
-              ? {}
-              : { latestCompactionTimestamp }),
+            ...(latestCompactionTimestamp === undefined ? {} : { latestCompactionTimestamp }),
             ...(stuckGuard.consecutiveCompacts > 0
               ? { consecutiveCompacts: stuckGuard.consecutiveCompacts }
               : {}),
@@ -249,7 +225,7 @@ export function runAgentRunEffect(
     Effect.ensuring(
       Effect.sync(() => {
         deps.unregisterRun?.();
-      })
-    )
+      }),
+    ),
   );
 }

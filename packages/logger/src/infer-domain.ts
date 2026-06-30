@@ -18,8 +18,7 @@ export function inferDomain(context: LogContext): string {
   }
 
   const module = String(context.module ?? "ui").toLowerCase();
-  const scope =
-    context.scope == null ? "" : String(context.scope).toLowerCase();
+  const scope = context.scope == null ? "" : String(context.scope).toLowerCase();
   const candidates = `${module}:${scope}`;
 
   if (candidates.includes("auth")) {

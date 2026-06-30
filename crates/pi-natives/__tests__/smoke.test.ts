@@ -28,7 +28,7 @@ describe("blockRangeAt (napi)", () => {
         code: "function f() {\n\n  return 1;\n}\n",
         path: "f.ts",
         line: 2,
-      })
+      }),
     ).toBeNull();
   });
 
@@ -38,13 +38,11 @@ describe("blockRangeAt (napi)", () => {
         code: "def greet():\n    return 1\n",
         path: "g.py",
         line: 1,
-      })
+      }),
     ).toEqual({ startLine: 1, endLine: 2 });
   });
 
   it("returns null for an unrecognized extension", () => {
-    expect(
-      blockRangeAt({ code: "function x() {}", path: "x.unknownext", line: 1 })
-    ).toBeNull();
+    expect(blockRangeAt({ code: "function x() {}", path: "x.unknownext", line: 1 })).toBeNull();
   });
 });

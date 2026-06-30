@@ -46,11 +46,7 @@ describe("ModelPickerButton", () => {
     });
 
     render(() => (
-      <ModelPickerButton
-        onSelect={vi.fn()}
-        triggerLabel={() => "GPT-4o"}
-        value="gpt-4o"
-      />
+      <ModelPickerButton onSelect={vi.fn()} triggerLabel={() => "GPT-4o"} value="gpt-4o" />
     ));
 
     await waitFor(() => {
@@ -65,11 +61,7 @@ describe("ModelPickerButton", () => {
     });
 
     render(() => (
-      <ModelPickerButton
-        onSelect={vi.fn()}
-        triggerLabel={() => "GPT-4o"}
-        value="gpt-4o"
-      />
+      <ModelPickerButton onSelect={vi.fn()} triggerLabel={() => "GPT-4o"} value="gpt-4o" />
     ));
 
     await waitFor(() => {
@@ -90,11 +82,7 @@ describe("ModelPickerButton", () => {
     });
 
     render(() => (
-      <ModelPickerButton
-        onSelect={vi.fn()}
-        triggerLabel={() => "GPT-4o"}
-        value="gpt-4o"
-      />
+      <ModelPickerButton onSelect={vi.fn()} triggerLabel={() => "GPT-4o"} value="gpt-4o" />
     ));
 
     await waitFor(() => {
@@ -117,13 +105,7 @@ describe("ModelPickerButton", () => {
       json: () => Promise.resolve([]),
     });
 
-    render(() => (
-      <ModelPickerButton
-        onSelect={vi.fn()}
-        triggerLabel={() => "GPT-4o"}
-        value=""
-      />
-    ));
+    render(() => <ModelPickerButton onSelect={vi.fn()} triggerLabel={() => "GPT-4o"} value="" />);
 
     await waitFor(() => {
       expect(screen.queryByRole("button")).toBeNull();

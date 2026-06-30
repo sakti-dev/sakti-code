@@ -5,7 +5,7 @@ import { assignStableBlockIds } from "../stable-id";
 const BLOCK_ID_RE = /^b_[a-z0-9]{8}$/;
 
 function createDraftBlock(
-  overrides: Partial<Omit<RenderBlock, "id">> = {}
+  overrides: Partial<Omit<RenderBlock, "id">> = {},
 ): Omit<RenderBlock, "id"> {
   return {
     kind: "paragraph",
@@ -35,7 +35,7 @@ describe("assignStableBlockIds", () => {
           fingerprint: "paragraph:details",
           data: { text: "More details" },
         }),
-      ]
+      ],
     );
 
     const next = assignStableBlockIds(previous, [
@@ -82,7 +82,7 @@ describe("assignStableBlockIds", () => {
           status: "streaming",
           data: { text: "Tail v1" },
         }),
-      ]
+      ],
     );
 
     const next = assignStableBlockIds(previous, [
@@ -121,7 +121,7 @@ describe("assignStableBlockIds", () => {
           fingerprint: "paragraph:repeat",
           data: { text: "Repeat" },
         }),
-      ]
+      ],
     );
 
     expect(blocks[0]?.id).not.toBe(blocks[1]?.id);
@@ -140,7 +140,7 @@ describe("assignStableBlockIds", () => {
             text: "This preset is intentionally long and shaped like a coding-agent response.",
           },
         }),
-      ]
+      ],
     );
 
     expect(blocks[0]?.id).toMatch(BLOCK_ID_RE);

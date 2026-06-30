@@ -21,10 +21,7 @@ const glmModel: ModelsDevModel = {
 
 describe("convertModelsDevModel zai override", () => {
   it("repoints zai to @sakti-code/zai-anthropic + anthropic baseURL, drops compat", () => {
-    const converted = convertModelsDevModel(
-      { ...zaiProvider, id: "zai" },
-      glmModel
-    )!;
+    const converted = convertModelsDevModel({ ...zaiProvider, id: "zai" }, glmModel)!;
     expect(converted).toBeDefined();
     expect(converted.npm).toBe("@sakti-code/zai-anthropic");
     expect(converted.baseUrl).toBe("https://api.z.ai/api/anthropic");
@@ -33,19 +30,13 @@ describe("convertModelsDevModel zai override", () => {
   });
 
   it("uses the same anthropic baseURL for zai-coding-plan (selected via API key, not URL)", () => {
-    const converted = convertModelsDevModel(
-      { ...zaiProvider, id: "zai-coding-plan" },
-      glmModel
-    )!;
+    const converted = convertModelsDevModel({ ...zaiProvider, id: "zai-coding-plan" }, glmModel)!;
     expect(converted.npm).toBe("@sakti-code/zai-anthropic");
     expect(converted.baseUrl).toBe("https://api.z.ai/api/anthropic");
   });
 
   it("leaves a non-zai provider on @ai-sdk/openai-compatible", () => {
-    const converted = convertModelsDevModel(
-      { ...zaiProvider, id: "302ai" },
-      glmModel
-    )!;
+    const converted = convertModelsDevModel({ ...zaiProvider, id: "302ai" }, glmModel)!;
     expect(converted.npm).toBe("@ai-sdk/openai-compatible");
   });
 });

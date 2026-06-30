@@ -31,20 +31,14 @@ const CATALOG_NPM_PACKAGES = [
 
 describe("BUNDLED_PROVIDERS coverage", () => {
   it("has an entry for every npm package referenced in the catalog", () => {
-    const missing = CATALOG_NPM_PACKAGES.filter(
-      (npm) => !(npm in BUNDLED_PROVIDERS)
-    );
-    expect(missing, `Missing registry entries: ${missing.join(", ")}`).toEqual(
-      []
-    );
+    const missing = CATALOG_NPM_PACKAGES.filter((npm) => !(npm in BUNDLED_PROVIDERS));
+    expect(missing, `Missing registry entries: ${missing.join(", ")}`).toEqual([]);
   });
 
   it("each loader resolves to a ProviderFactory", async () => {
     for (const [npm, loader] of Object.entries(BUNDLED_PROVIDERS)) {
       const factory = await loader();
-      expect(typeof factory, `${npm} loader did not return a function`).toBe(
-        "function"
-      );
+      expect(typeof factory, `${npm} loader did not return a function`).toBe("function");
     }
   });
 });

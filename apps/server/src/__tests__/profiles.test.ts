@@ -32,7 +32,7 @@ describe("profiles routes", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(VALID_PROFILES),
-      })
+      }),
     );
     expect(put.status).toBe(204);
 
@@ -53,7 +53,7 @@ describe("profiles routes", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ defaultProfile: "missing", profiles: {} }),
-      })
+      }),
     );
     expect(put.status).toBe(400);
     expect(ctx.profiles.read()).toEqual(original);
@@ -66,7 +66,7 @@ describe("profiles routes", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: "{ broken",
-      })
+      }),
     );
     expect(put.status).toBe(400);
   });

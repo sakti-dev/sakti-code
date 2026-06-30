@@ -7,12 +7,7 @@ import { applyTheme } from "../apply-theme";
 import { generateCssVars } from "../generate-css-vars";
 import { mergeTheme } from "../merge-theme";
 import { toMermaidThemeVariables } from "../to-mermaid-theme";
-import {
-  darkTheme,
-  defaultTheme,
-  velomarkColors,
-  velomarkTokens,
-} from "../tokens";
+import { darkTheme, defaultTheme, velomarkColors, velomarkTokens } from "../tokens";
 import type { VelomarkTheme } from "../types";
 
 describe("velomark theme surface", () => {
@@ -104,18 +99,12 @@ describe("velomark theme surface", () => {
   });
 
   it("keeps dark preset meaningfully different from the default preset", () => {
-    expect(darkTheme.color.text.primary).not.toBe(
-      defaultTheme.color.text.primary
-    );
-    expect(darkTheme.color.surface.base).not.toBe(
-      defaultTheme.color.surface.base
-    );
+    expect(darkTheme.color.text.primary).not.toBe(defaultTheme.color.text.primary);
+    expect(darkTheme.color.surface.base).not.toBe(defaultTheme.color.surface.base);
     expect(darkTheme.color.code.copyButtonBackground).not.toBe(
-      defaultTheme.color.code.copyButtonBackground
+      defaultTheme.color.code.copyButtonBackground,
     );
-    expect(darkTheme.color.diagram.background).not.toBe(
-      defaultTheme.color.diagram.background
-    );
+    expect(darkTheme.color.diagram.background).not.toBe(defaultTheme.color.diagram.background);
   });
 
   it("deeply merges partial theme overrides into the base theme", () => {
@@ -143,34 +132,22 @@ describe("velomark theme surface", () => {
   it("generates semantic css variables from a theme object", () => {
     const cssVars = generateCssVars(defaultTheme);
 
-    expect(cssVars["--velomark-color-text-primary"]).toBe(
-      defaultTheme.color.text.primary
-    );
-    expect(cssVars["--velomark-color-surface-code"]).toBe(
-      defaultTheme.color.surface.code
-    );
+    expect(cssVars["--velomark-color-text-primary"]).toBe(defaultTheme.color.text.primary);
+    expect(cssVars["--velomark-color-surface-code"]).toBe(defaultTheme.color.surface.code);
     expect(cssVars["--velomark-color-diagram-node-background"]).toBe(
-      defaultTheme.color.diagram.nodeBackground
+      defaultTheme.color.diagram.nodeBackground,
     );
     expect(cssVars["--velomark-radius-lg"]).toBe(defaultTheme.radius.lg);
-    expect(cssVars["--velomark-spacing-code-padding-x"]).toBe(
-      defaultTheme.spacing.codePaddingX
-    );
+    expect(cssVars["--velomark-spacing-code-padding-x"]).toBe(defaultTheme.spacing.codePaddingX);
   });
 
   it("derives mermaid theme variables from the active velomark theme", () => {
     const lightMermaidTheme = toMermaidThemeVariables(defaultTheme);
     const darkMermaidTheme = toMermaidThemeVariables(darkTheme);
 
-    expect(lightMermaidTheme.background).toBe(
-      defaultTheme.color.diagram.background
-    );
-    expect(lightMermaidTheme.nodeBkg).toBe(
-      defaultTheme.color.diagram.nodeBackground
-    );
-    expect(lightMermaidTheme.primaryColor).toBe(
-      defaultTheme.color.diagram.primary
-    );
+    expect(lightMermaidTheme.background).toBe(defaultTheme.color.diagram.background);
+    expect(lightMermaidTheme.nodeBkg).toBe(defaultTheme.color.diagram.nodeBackground);
+    expect(lightMermaidTheme.primaryColor).toBe(defaultTheme.color.diagram.primary);
     expect(lightMermaidTheme.darkMode).toBe(false);
     expect(darkMermaidTheme.darkMode).toBe(true);
     expect(darkMermaidTheme.textColor).toBe(darkTheme.color.diagram.text);
@@ -182,34 +159,27 @@ describe("velomark theme surface", () => {
 
     applyTheme(element, "dark");
 
-    expect(
-      element.style.getPropertyValue("--velomark-color-text-primary")
-    ).toBe(darkTheme.color.text.primary);
-    expect(
-      element.style.getPropertyValue("--velomark-color-surface-base")
-    ).toBe(darkTheme.color.surface.base);
-    expect(element.style.getPropertyValue("--velomark-radius-md")).toBe(
-      darkTheme.radius.md
+    expect(element.style.getPropertyValue("--velomark-color-text-primary")).toBe(
+      darkTheme.color.text.primary,
     );
+    expect(element.style.getPropertyValue("--velomark-color-surface-base")).toBe(
+      darkTheme.color.surface.base,
+    );
+    expect(element.style.getPropertyValue("--velomark-radius-md")).toBe(darkTheme.radius.md);
   });
 
   it('applies the dark preset when rendered with theme="dark"', () => {
     const host = document.createElement("div");
     document.body.append(host);
 
-    const dispose = render(
-      () => Velomark({ markdown: "Hello", theme: "dark" }),
-      host
-    );
-    const root = host.querySelector(
-      "[data-velomark-root]"
-    ) as HTMLDivElement | null;
+    const dispose = render(() => Velomark({ markdown: "Hello", theme: "dark" }), host);
+    const root = host.querySelector("[data-velomark-root]") as HTMLDivElement | null;
 
     expect(root?.style.getPropertyValue("--velomark-color-text-primary")).toBe(
-      darkTheme.color.text.primary
+      darkTheme.color.text.primary,
     );
     expect(root?.style.getPropertyValue("--velomark-color-surface-base")).toBe(
-      darkTheme.color.surface.base
+      darkTheme.color.surface.base,
     );
 
     dispose();
@@ -232,17 +202,13 @@ describe("velomark theme surface", () => {
             },
           },
         }),
-      host
+      host,
     );
-    const root = host.querySelector(
-      "[data-velomark-root]"
-    ) as HTMLDivElement | null;
+    const root = host.querySelector("[data-velomark-root]") as HTMLDivElement | null;
 
-    expect(root?.style.getPropertyValue("--velomark-color-text-primary")).toBe(
-      "#123456"
-    );
+    expect(root?.style.getPropertyValue("--velomark-color-text-primary")).toBe("#123456");
     expect(root?.style.getPropertyValue("--velomark-color-surface-base")).toBe(
-      defaultTheme.color.surface.base
+      defaultTheme.color.surface.base,
     );
 
     dispose();

@@ -36,7 +36,7 @@ describe("nativeBlockResolver", () => {
         path: "x.unknownext",
         text: "function x() {}",
         line: 1,
-      })
+      }),
     ).toBeNull();
   });
 });

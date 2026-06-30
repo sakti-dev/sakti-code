@@ -21,9 +21,7 @@ const usage = (cacheRead = 0, cacheWrite = 0): Usage => ({
 
 describe("captureShape", () => {
   it("hashes system + tools into a stable PrefixShape", () => {
-    const shape = captureShape(
-      req({ system: "prompt", tools: { read: { description: "r" } } })
-    );
+    const shape = captureShape(req({ system: "prompt", tools: { read: { description: "r" } } }));
     expect(shape.systemHash).toMatch(/^[0-9a-f]{8}$/);
     expect(shape.toolsHash).toMatch(/^[0-9a-f]{8}$/);
     expect(shape.prefixHash).toMatch(/^[0-9a-f]{8}$/);

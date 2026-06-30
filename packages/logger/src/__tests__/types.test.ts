@@ -1,11 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vite-plus/test";
-import type {
-  LogContext,
-  LogEntry,
-  Logger,
-  LogLevel,
-  TelemetrySink,
-} from "../types.ts";
+import type { LogContext, LogEntry, Logger, LogLevel, TelemetrySink } from "../types.ts";
 import { noopTelemetrySink } from "../types.ts";
 
 describe("logger types", () => {

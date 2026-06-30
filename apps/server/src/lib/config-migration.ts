@@ -1,10 +1,4 @@
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { Profiles, ProfilesStore } from "./profiles-store.ts";
 import type { SettingsFileStore } from "./settings-file-store.ts";
@@ -32,9 +26,7 @@ export interface MigrationDeps {
  * legacy DB, use its provider/model/thinkingLevel; otherwise write a minimal
  * default with empty strings so the user is prompted to configure.
  */
-function buildSeedProfiles(
-  globalModelConfig: GlobalModelConfig | null
-): Profiles {
+function buildSeedProfiles(globalModelConfig: GlobalModelConfig | null): Profiles {
   const models = globalModelConfig
     ? {
         default: {

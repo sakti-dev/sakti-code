@@ -34,10 +34,7 @@ import { ThematicBreakBlock } from "./blocks/thematic-break-block";
 
 export const RenderBlockView: Component<{
   block: RenderBlock<ParsedBlockData>;
-  codeBlockRenderers?: Record<
-    string,
-    Component<VelomarkCodeBlockRendererProps>
-  >;
+  codeBlockRenderers?: Record<string, Component<VelomarkCodeBlockRendererProps>>;
   codeBlockOptions?: VelomarkCodeBlockOptions;
   containers?: Record<string, Component<VelomarkContainerRendererProps>>;
   debug?: boolean;
@@ -137,11 +134,7 @@ export const RenderBlockView: Component<{
       );
     case "thematic-break":
       return (
-        <ThematicBreakBlock
-          blockId={props.block.id}
-          debug={props.debug}
-          index={props.index}
-        />
+        <ThematicBreakBlock blockId={props.block.id} debug={props.debug} index={props.index} />
       );
     case "table":
       return (
@@ -163,9 +156,7 @@ export const RenderBlockView: Component<{
               data: {
                 text:
                   "text" in (props.block.data as Record<string, unknown>)
-                    ? String(
-                        (props.block.data as { text?: unknown }).text ?? ""
-                      )
+                    ? String((props.block.data as { text?: unknown }).text ?? "")
                     : "",
               },
             } as RenderBlock<ParagraphBlockData>

@@ -32,20 +32,13 @@ const toSnakeCase = (value: string): string =>
     .toLowerCase();
 
 /** Upper-snake-case the message into an ACTION tag (e.g. "User clicked" → "USER_CLICKED"). */
-const toAction = (message: string): string =>
-  toSnakeCase(message).toUpperCase();
+const toAction = (message: string): string => toSnakeCase(message).toUpperCase();
 
 const formatValue = (value: unknown): string => {
   if (typeof value === "string") {
-    return LOG_VALUE_NEEDS_QUOTES_PATTERN.test(value)
-      ? JSON.stringify(value)
-      : value;
+    return LOG_VALUE_NEEDS_QUOTES_PATTERN.test(value) ? JSON.stringify(value) : value;
   }
-  if (
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    value == null
-  ) {
+  if (typeof value === "number" || typeof value === "boolean" || value == null) {
     return String(value);
   }
   return JSON.stringify(value);
@@ -56,7 +49,7 @@ const formatValue = (value: unknown): string => {
 export const mergeContext = (
   defaultContext: LogContext,
   context?: LogContext,
-  error?: unknown
+  error?: unknown,
 ): LogContext => {
   const merged: LogContext = {
     ...defaultContext,
@@ -72,9 +65,7 @@ export const mergeContext = (
 
 /** Render the non-internal keys of an already-merged context as ` key=value …` (empty string if nothing user-facing to show). */
 const formatContextTail = (merged: LogContext): string => {
-  const entries = Object.entries(merged).filter(
-    ([key]) => !INTERNAL_CONTEXT_KEYS.has(key)
-  );
+  const entries = Object.entries(merged).filter(([key]) => !INTERNAL_CONTEXT_KEYS.has(key));
   if (entries.length === 0) {
     return "";
   }
@@ -98,16 +89,8 @@ export const formatLine = (message: string, context?: LogContext): string =>
  * previous `createBaseLogger`.
  */
 const createBaseLogger = (defaultContext: LogContext = {}): Logger => {
-  const log = (
-    level: LogLevel,
-    message: string,
-    context?: LogContext,
-    error?: unknown
-  ): void => {
-    emit(
-      level,
-      formatLine(message, mergeContext(defaultContext, context, error))
-    );
+  const log = (level: LogLevel, message: string, context?: LogContext, error?: unknown): void => {
+    emit(level, formatLine(message, mergeContext(defaultContext, context, error)));
   };
 
   return {
@@ -129,15 +112,13 @@ const createBaseLogger = (defaultContext: LogContext = {}): Logger => {
   };
 };
 
-export const createConsoleLogger = (context: LogContext = {}): Logger =>
-  createBaseLogger(context);
+export const createConsoleLogger = (context: LogContext = {}): Logger => createBaseLogger(context);
 
 /** Convenience alias kept for parity with the previous renderer logger API. */
-export const createLogger = (context: LogContext = {}): Logger =>
-  createBaseLogger(context);
+export const createLogger = (context: LogContext = {}): Logger => createBaseLogger(context);
 
 /** Pin a domain upfront (`createDomainLogger("AUTH")`) — convenience over passing `{ domain }`. */
 export const createDomainLogger = (
   domain: string,
-  context: Omit<LogContext, "domain"> = {}
+  context: Omit<LogContext, "domain"> = {},
 ): Logger => createBaseLogger({ ...context, domain });

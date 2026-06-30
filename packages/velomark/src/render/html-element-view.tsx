@@ -2,14 +2,8 @@ import type { Component } from "solid-js";
 import { For, type JSX } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { parseInline } from "../parser/inline-parser";
-import type {
-  ReferenceDefinitionMap,
-  VelomarkContainerRendererProps,
-} from "../types";
-import {
-  type HtmlElementRenderChild,
-  RenderInlineTokens,
-} from "./inline/inline-token-view";
+import type { ReferenceDefinitionMap, VelomarkContainerRendererProps } from "../types";
+import { type HtmlElementRenderChild, RenderInlineTokens } from "./inline/inline-token-view";
 
 export function HtmlElementView(props: {
   attributes?: Record<string, string>;
@@ -19,10 +13,7 @@ export function HtmlElementView(props: {
   tagName: string;
 }) {
   return (
-    <Dynamic
-      component={props.tagName as keyof JSX.IntrinsicElements}
-      {...props.attributes}
-    >
+    <Dynamic component={props.tagName as keyof JSX.IntrinsicElements} {...props.attributes}>
       <For each={props.children}>
         {(child) => {
           if (child.type === "text") {

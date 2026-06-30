@@ -1,9 +1,4 @@
-import {
-  clearCache,
-  layout,
-  type PreparedText,
-  prepare,
-} from "@chenglou/pretext";
+import { clearCache, layout, type PreparedText, prepare } from "@chenglou/pretext";
 import type { ChatTurn } from "~/stores/session/turn-projection";
 import type { MessagePart, UIMessage } from "~/stores/types";
 
@@ -62,11 +57,7 @@ function getPrepared(text: string, font: string): PreparedText | null {
   return prepared;
 }
 
-function fallbackTextHeight(
-  text: string,
-  width: number,
-  lineHeight: number
-): number {
+function fallbackTextHeight(text: string, width: number, lineHeight: number): number {
   const avgCharWidth = 7;
   const charsPerLine = Math.max(1, Math.floor(width / avgCharWidth));
   let height = 0;
@@ -77,12 +68,7 @@ function fallbackTextHeight(
   return height;
 }
 
-function measureText(
-  text: string,
-  font: string,
-  width: number,
-  lineHeight: number
-): number {
+function measureText(text: string, font: string, width: number, lineHeight: number): number {
   const trimmed = text.trim();
   if (!trimmed) {
     return lineHeight;
@@ -91,10 +77,7 @@ function measureText(
   if (!prepared) {
     return Math.max(lineHeight, fallbackTextHeight(trimmed, width, lineHeight));
   }
-  return Math.max(
-    lineHeight,
-    layout(prepared, Math.max(1, width), lineHeight).height
-  );
+  return Math.max(lineHeight, layout(prepared, Math.max(1, width), lineHeight).height);
 }
 
 // ── Per-part height ─────────────────────────────────────────────────
@@ -102,7 +85,7 @@ function measureText(
 function estimatePartHeight(
   part: MessagePart,
   textWidth: number,
-  thinkingTextWidth: number
+  thinkingTextWidth: number,
 ): number {
   switch (part.type) {
     case "text":
@@ -110,12 +93,7 @@ function estimatePartHeight(
     case "thinking":
       return (
         THINKING_PADDING_Y +
-        measureText(
-          part.text,
-          BODY_FONT,
-          thinkingTextWidth,
-          THINKING_LINE_HEIGHT
-        )
+        measureText(part.text, BODY_FONT, thinkingTextWidth, THINKING_LINE_HEIGHT)
       );
     case "tool_call":
       return TOOL_ROW_HEIGHT;
@@ -125,7 +103,7 @@ function estimatePartHeight(
 function estimateAssistantMessageHeight(
   msg: UIMessage,
   textWidth: number,
-  thinkingTextWidth: number
+  thinkingTextWidth: number,
 ): number {
   let height = 0;
   let first = true;
@@ -139,17 +117,13 @@ function estimateAssistantMessageHeight(
   return height;
 }
 
-function estimateAssistantBlockHeight(
-  turn: ChatTurn,
-  contentWidth: number
-): number {
+function estimateAssistantBlockHeight(turn: ChatTurn, contentWidth: number): number {
   if (turn.assistantMessages.length === 0) {
     return turn.working ? WAITING_HEIGHT : 0;
   }
 
   const textWidth = contentWidth - ASSISTANT_PADDING_X;
-  const thinkingTextWidth =
-    textWidth - THINKING_PADDING_LEFT - THINKING_PADDING_RIGHT;
+  const thinkingTextWidth = textWidth - THINKING_PADDING_LEFT - THINKING_PADDING_RIGHT;
 
   let height = 0;
   let first = true;
@@ -163,10 +137,7 @@ function estimateAssistantBlockHeight(
   return height;
 }
 
-function estimateUserMessageHeight(
-  content: string,
-  contentWidth: number
-): number {
+function estimateUserMessageHeight(content: string, contentWidth: number): number {
   const userTextWidth = contentWidth - USER_BOX_PADDING_X;
   return (
     USER_BOX_PADDING_Y +
@@ -178,18 +149,12 @@ function estimateUserMessageHeight(
 
 // ── Turn height estimation ──────────────────────────────────────────
 
-export function estimateTurnHeight(
-  turn: ChatTurn,
-  scrollWidth: number
-): number {
+export function estimateTurnHeight(turn: ChatTurn, scrollWidth: number): number {
   const contentWidth = Math.max(1, scrollWidth - TIMELINE_PADDING_X);
   let height = TURN_SPACING;
 
   if (turn.userMessage) {
-    height += estimateUserMessageHeight(
-      turn.userMessage.content ?? "",
-      contentWidth
-    );
+    height += estimateUserMessageHeight(turn.userMessage.content ?? "", contentWidth);
     height += TURN_CHILD_GAP;
   }
 

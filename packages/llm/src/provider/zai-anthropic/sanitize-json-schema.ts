@@ -47,9 +47,7 @@ export function sanitizeJsonSchema(schema: JSONSchema7): JSONSchema7 {
   return sanitizeSchema(schema) as JSONSchema7;
 }
 
-function sanitizeDefinition(
-  definition: JSONSchema7Definition
-): JSONSchema7Definition {
+function sanitizeDefinition(definition: JSONSchema7Definition): JSONSchema7Definition {
   if (typeof definition === "boolean" || !isPlainObject(definition)) {
     return definition;
   }
@@ -122,7 +120,7 @@ function copyDefinitionsFields(schema: JSONSchema7, result: JSONSchema7): void {
       Object.entries(schema.definitions).map(([name, definition]) => [
         name,
         sanitizeDefinition(definition),
-      ])
+      ]),
     );
   }
   const schemaWithDefs = schema as JSONSchema7 & {
@@ -136,7 +134,7 @@ function copyDefinitionsFields(schema: JSONSchema7, result: JSONSchema7): void {
       Object.entries(schemaWithDefs.$defs).map(([name, definition]) => [
         name,
         sanitizeDefinition(definition),
-      ])
+      ]),
     );
   }
 }
@@ -150,7 +148,7 @@ function copyObjectFields(schema: JSONSchema7, result: JSONSchema7): void {
       Object.entries(schema.properties).map(([name, definition]) => [
         name,
         sanitizeDefinition(definition),
-      ])
+      ]),
     );
   }
   result.additionalProperties = false;
@@ -169,10 +167,7 @@ function copyItemsField(schema: JSONSchema7, result: JSONSchema7): void {
 }
 
 function copyFormatField(schema: JSONSchema7, result: JSONSchema7): void {
-  if (
-    typeof schema.format === "string" &&
-    SUPPORTED_STRING_FORMATS.has(schema.format)
-  ) {
+  if (typeof schema.format === "string" && SUPPORTED_STRING_FORMATS.has(schema.format)) {
     result.format = schema.format;
   }
 }
@@ -185,10 +180,7 @@ function getConstraintDescription(schema: JSONSchema7): string | undefined {
     }
     return `${formatConstraintName(key)}: ${formatConstraintValue(value)}`;
   });
-  if (
-    typeof schema.format === "string" &&
-    !SUPPORTED_STRING_FORMATS.has(schema.format)
-  ) {
+  if (typeof schema.format === "string" && !SUPPORTED_STRING_FORMATS.has(schema.format)) {
     descriptions.push(`format: ${schema.format}`);
   }
   return descriptions.length === 0 ? undefined : `${descriptions.join("; ")}.`;

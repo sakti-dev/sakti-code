@@ -1,10 +1,4 @@
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
@@ -51,10 +45,7 @@ describe("config-migration", () => {
   }
 
   it("copies legacy api-keys.json to auth.json on first run", () => {
-    writeFileSync(
-      legacyKeysPath,
-      JSON.stringify({ openai: "sk-test-key-12345" })
-    );
+    writeFileSync(legacyKeysPath, JSON.stringify({ openai: "sk-test-key-12345" }));
 
     runMigration(join(agentDir, ".migrated"), makeDeps());
 
@@ -87,19 +78,13 @@ describe("config-migration", () => {
           model: "claude-sonnet-4-20250514",
           thinkingLevel: "high",
         },
-      })
+      }),
     );
 
     const profiles = createProfilesStore(profilesPath).read();
-    expect(profiles.profiles.default?.models.default?.provider).toBe(
-      "anthropic"
-    );
-    expect(profiles.profiles.default?.models.default?.model).toBe(
-      "claude-sonnet-4-20250514"
-    );
-    expect(profiles.profiles.default?.models.default?.thinkingLevel).toBe(
-      "high"
-    );
+    expect(profiles.profiles.default?.models.default?.provider).toBe("anthropic");
+    expect(profiles.profiles.default?.models.default?.model).toBe("claude-sonnet-4-20250514");
+    expect(profiles.profiles.default?.models.default?.thinkingLevel).toBe("high");
   });
 
   it("seeds profiles.json with minimal default when globalModelConfig is null", () => {
@@ -131,7 +116,7 @@ describe("config-migration", () => {
           provider: "anthropic",
           model: "claude-sonnet",
         },
-      })
+      }),
     );
 
     const profiles = createProfilesStore(profilesPath).read();
@@ -147,7 +132,7 @@ describe("config-migration", () => {
           { key: "theme", value: "dark" },
           { key: "session:sess_1:auto_compaction", value: "true" },
         ],
-      })
+      }),
     );
 
     const settings = createSettingsFileStore(settingsPath).read();
@@ -162,7 +147,7 @@ describe("config-migration", () => {
       join(agentDir, ".migrated"),
       makeDeps({
         getAllSettings: () => [{ key: "theme", value: "dark" }],
-      })
+      }),
     );
 
     const settings = createSettingsFileStore(settingsPath).read();
@@ -179,10 +164,7 @@ describe("config-migration", () => {
     const sentinelPath = join(agentDir, ".migrated");
     writeFileSync(sentinelPath, "");
 
-    writeFileSync(
-      legacyKeysPath,
-      JSON.stringify({ openai: "sk-should-not-copy" })
-    );
+    writeFileSync(legacyKeysPath, JSON.stringify({ openai: "sk-should-not-copy" }));
 
     runMigration(sentinelPath, makeDeps());
 
@@ -200,10 +182,7 @@ describe("config-migration", () => {
   });
 
   it("per-source independence: auth copied even when no settings", () => {
-    writeFileSync(
-      legacyKeysPath,
-      JSON.stringify({ openai: "sk-key-1234567890" })
-    );
+    writeFileSync(legacyKeysPath, JSON.stringify({ openai: "sk-key-1234567890" }));
 
     runMigration(join(agentDir, ".migrated"), makeDeps());
 
@@ -212,14 +191,8 @@ describe("config-migration", () => {
   });
 
   it("does not overwrite auth.json if it already exists", () => {
-    writeFileSync(
-      join(agentDir, "auth.json"),
-      JSON.stringify({ existing: "sk-existing-key" })
-    );
-    writeFileSync(
-      legacyKeysPath,
-      JSON.stringify({ openai: "sk-should-not-overwrite" })
-    );
+    writeFileSync(join(agentDir, "auth.json"), JSON.stringify({ existing: "sk-existing-key" }));
+    writeFileSync(legacyKeysPath, JSON.stringify({ openai: "sk-should-not-overwrite" }));
 
     runMigration(join(agentDir, ".migrated"), makeDeps());
 

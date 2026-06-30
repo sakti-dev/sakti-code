@@ -49,7 +49,7 @@ describe("actions", () => {
                 createdAt: 1,
                 updatedAt: 1,
               },
-            ])
+            ]),
           ),
         },
       },
@@ -68,9 +68,7 @@ describe("actions", () => {
       api: {
         projects: {
           $get: vi.fn(() =>
-            okRes([
-              { id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 },
-            ])
+            okRes([{ id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 }]),
           ),
         },
       },
@@ -89,9 +87,7 @@ describe("actions", () => {
       api: {
         projects: {
           $get: vi.fn(() =>
-            okRes([
-              { id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 },
-            ])
+            okRes([{ id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 }]),
           ),
         },
       },
@@ -119,7 +115,7 @@ describe("actions", () => {
                 createdAt: 1,
                 updatedAt: 1,
               },
-            ])
+            ]),
           ),
         },
       },
@@ -222,7 +218,7 @@ describe("actions", () => {
                   kind: "task",
                   createdAt: 1,
                   updatedAt: 1,
-                })
+                }),
               ),
             },
           },
@@ -306,7 +302,7 @@ describe("actions", () => {
                     isError: false,
                     timestamp: 3,
                   },
-                ])
+                ]),
               ),
             },
           },

@@ -27,8 +27,6 @@ describe("stream simulator", () => {
     expect(snapshots[0]).toBe("abc");
     expect(snapshots[1]).toContain("abcdef");
     expect(snapshots[2]).toContain("ghi");
-    expect(snapshots[2]?.length).toBeGreaterThanOrEqual(
-      snapshots[1]?.length ?? 0
-    );
+    expect(snapshots[2]?.length).toBeGreaterThanOrEqual(snapshots[1]?.length ?? 0);
   });
 });

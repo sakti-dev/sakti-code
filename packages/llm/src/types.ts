@@ -91,9 +91,7 @@ export type ModelThinkingLevel = "off" | ThinkingLevel;
  * means the model reasons by default (off/minimal unsupported) and exposes
  * only high/xhigh as distinct tiers.
  */
-export type ThinkingLevelMap = Partial<
-  Record<ModelThinkingLevel, string | null>
->;
+export type ThinkingLevelMap = Partial<Record<ModelThinkingLevel, string | null>>;
 
 /**
  * Value type for `chat_template_kwargs` entries used by the `"chat-template"`

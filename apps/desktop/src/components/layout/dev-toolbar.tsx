@@ -94,7 +94,7 @@ export function DevToolbar(props: DevToolbarProps): JSX.Element {
       setTimeout(() => {
         emitEnd();
         setRetryRunning(false);
-      }, elapsed)
+      }, elapsed),
     );
   }
 

@@ -1,9 +1,4 @@
-import type {
-  Anchor,
-  ApplyResult,
-  Cursor,
-  Edit,
-} from "../../lib/hashline-utils/types";
+import type { Anchor, ApplyResult, Cursor, Edit } from "../../lib/hashline-utils/types";
 import {
   afterInsertLandingShiftWarning,
   blockInsertLandingShiftWarning,
@@ -22,16 +17,12 @@ interface IndexedEdit {
   idx: number;
 }
 
-function isReplacementInsert(
-  edit: Edit
-): edit is InsertEdit & { mode: "replacement" } {
+function isReplacementInsert(edit: Edit): edit is InsertEdit & { mode: "replacement" } {
   return edit.kind === "insert" && edit.mode === "replacement";
 }
 
 function getCursorAnchors(cursor: Cursor): Anchor[] {
-  return cursor.kind === "before_anchor" || cursor.kind === "after_anchor"
-    ? [cursor.anchor]
-    : [];
+  return cursor.kind === "before_anchor" || cursor.kind === "after_anchor" ? [cursor.anchor] : [];
 }
 
 function getEditAnchors(edit: AppliedEdit): Anchor[] {
@@ -42,33 +33,26 @@ function getEditAnchors(edit: AppliedEdit): Anchor[] {
 }
 
 function trailingPhantomLine(fileLines: readonly string[]): number {
-  return fileLines.length > 1 && fileLines[fileLines.length - 1] === ""
-    ? fileLines.length
-    : 0;
+  return fileLines.length > 1 && fileLines[fileLines.length - 1] === "" ? fileLines.length : 0;
 }
 
 function dropTrailingPhantomDeletes(
   edits: AppliedEdit[],
-  fileLines: readonly string[]
+  fileLines: readonly string[],
 ): AppliedEdit[] {
   const phantomLine = trailingPhantomLine(fileLines);
   if (phantomLine === 0) {
     return edits;
   }
-  return edits.filter(
-    (edit) => edit.kind !== "delete" || edit.anchor.line !== phantomLine
-  );
+  return edits.filter((edit) => edit.kind !== "delete" || edit.anchor.line !== phantomLine);
 }
 
-function validateLineBounds(
-  edits: readonly AppliedEdit[],
-  fileLines: readonly string[]
-): void {
+function validateLineBounds(edits: readonly AppliedEdit[], fileLines: readonly string[]): void {
   for (const edit of edits) {
     for (const anchor of getEditAnchors(edit)) {
       if (anchor.line < 1 || anchor.line > fileLines.length) {
         throw new Error(
-          `Line ${anchor.line} does not exist (file has ${fileLines.length} lines). Re-read the file to get current line numbers.`
+          `Line ${anchor.line} does not exist (file has ${fileLines.length} lines). Re-read the file to get current line numbers.`,
         );
       }
     }
@@ -82,11 +66,7 @@ function cloneAppliedEdit(edit: AppliedEdit, index: number): AppliedEdit {
   return { ...edit, cursor: cloneCursor(edit.cursor), index };
 }
 
-function insertAtStart(
-  fileLines: string[],
-  lineOrigins: LineOrigin[],
-  lines: string[]
-): void {
+function insertAtStart(fileLines: string[], lineOrigins: LineOrigin[], lines: string[]): void {
   if (lines.length === 0) {
     return;
   }
@@ -103,7 +83,7 @@ function insertAtStart(
 function insertAtEnd(
   fileLines: string[],
   lineOrigins: LineOrigin[],
-  lines: string[]
+  lines: string[],
 ): number | undefined {
   if (lines.length === 0) {
     return;
@@ -114,26 +94,20 @@ function insertAtEnd(
     lineOrigins.splice(0, 1, ...origins);
     return 1;
   }
-  const hasTrailingNewline =
-    fileLines.length > 0 && fileLines[fileLines.length - 1] === "";
-  const insertIndex = hasTrailingNewline
-    ? fileLines.length - 1
-    : fileLines.length;
+  const hasTrailingNewline = fileLines.length > 0 && fileLines[fileLines.length - 1] === "";
+  const insertIndex = hasTrailingNewline ? fileLines.length - 1 : fileLines.length;
   fileLines.splice(insertIndex, 0, ...lines);
   lineOrigins.splice(insertIndex, 0, ...origins);
   return insertIndex + 1;
 }
 
-function bucketAnchorEditsByLine(
-  edits: IndexedEdit[]
-): Map<number, IndexedEdit[]> {
+function bucketAnchorEditsByLine(edits: IndexedEdit[]): Map<number, IndexedEdit[]> {
   const byLine = new Map<number, IndexedEdit[]>();
   for (const entry of edits) {
     const line =
       entry.edit.kind === "delete"
         ? entry.edit.anchor.line
-        : entry.edit.cursor.kind === "before_anchor" ||
-            entry.edit.cursor.kind === "after_anchor"
+        : entry.edit.cursor.kind === "before_anchor" || entry.edit.cursor.kind === "after_anchor"
           ? entry.edit.cursor.anchor.line
           : 0;
     const bucket = byLine.get(line);
@@ -176,10 +150,7 @@ function isJsxTagStart(text: string, index: number): boolean {
     return false;
   }
   return (
-    next === ">" ||
-    next === "/" ||
-    (next >= "A" && next <= "Z") ||
-    (next >= "a" && next <= "z")
+    next === ">" || next === "/" || (next >= "A" && next <= "Z") || (next >= "a" && next <= "z")
   );
 }
 
@@ -234,11 +205,7 @@ function parseJsxPayloadTag(raw: string): JsxPayloadTag | undefined {
 
 function readJsxPayloadTags(text: string): JsxPayloadTag[] {
   const tags: JsxPayloadTag[] = [];
-  for (
-    let start = text.indexOf("<");
-    start >= 0;
-    start = text.indexOf("<", start + 1)
-  ) {
+  for (let start = text.indexOf("<"); start >= 0; start = text.indexOf("<", start + 1)) {
     if (!isJsxTagStart(text, start)) {
       continue;
     }
@@ -257,7 +224,7 @@ function readJsxPayloadTags(text: string): JsxPayloadTag[] {
 
 function payloadHasJsxOpenerForEcho(
   payloadPrefix: readonly string[],
-  echoLines: readonly string[]
+  echoLines: readonly string[],
 ): boolean {
   const openTags: string[] = [];
   for (const tag of readJsxPayloadTags(payloadPrefix.join("\n"))) {
@@ -346,10 +313,7 @@ function computeDelimiterBalance(lines: readonly string[]): DelimiterBalance {
   return balance;
 }
 
-function balanceDelta(
-  a: DelimiterBalance,
-  b: DelimiterBalance
-): DelimiterBalance {
+function balanceDelta(a: DelimiterBalance, b: DelimiterBalance): DelimiterBalance {
   return {
     paren: a.paren - b.paren,
     bracket: a.bracket - b.bracket,
@@ -369,10 +333,7 @@ function balanceIsZero(a: DelimiterBalance): boolean {
   return a.paren === 0 && a.bracket === 0 && a.brace === 0;
 }
 
-function balanceSum(
-  a: DelimiterBalance,
-  b: DelimiterBalance
-): DelimiterBalance {
+function balanceSum(a: DelimiterBalance, b: DelimiterBalance): DelimiterBalance {
   return {
     paren: a.paren + b.paren,
     bracket: a.bracket + b.bracket,
@@ -384,15 +345,10 @@ function balanceComponentCovers(candidate: number, target: number): boolean {
   if (target === 0) {
     return true;
   }
-  return (
-    candidate > 0 === target > 0 && Math.abs(candidate) >= Math.abs(target)
-  );
+  return candidate > 0 === target > 0 && Math.abs(candidate) >= Math.abs(target);
 }
 
-function balanceCovers(
-  candidate: DelimiterBalance,
-  target: DelimiterBalance
-): boolean {
+function balanceCovers(candidate: DelimiterBalance, target: DelimiterBalance): boolean {
   return (
     balanceComponentCovers(candidate.paren, target.paren) &&
     balanceComponentCovers(candidate.bracket, target.bracket) &&
@@ -410,7 +366,7 @@ interface ReplacementGroup {
 
 function findReplacementGroup(
   edits: readonly AppliedEdit[],
-  start: number
+  start: number,
 ): ReplacementGroup | undefined {
   const first = edits[start];
   if (
@@ -430,17 +386,10 @@ function findReplacementGroup(
     if (!edit) {
       break;
     }
-    if (
-      edit.kind !== "insert" ||
-      edit.mode !== "replacement" ||
-      edit.lineNum !== lineNum
-    ) {
+    if (edit.kind !== "insert" || edit.mode !== "replacement" || edit.lineNum !== lineNum) {
       break;
     }
-    if (
-      edit.cursor.kind !== "before_anchor" ||
-      edit.cursor.anchor.line !== anchorLine
-    ) {
+    if (edit.cursor.kind !== "before_anchor" || edit.cursor.anchor.line !== anchorLine) {
       break;
     }
     insertIndices.push(i);
@@ -453,11 +402,7 @@ function findReplacementGroup(
     if (!edit) {
       break;
     }
-    if (
-      edit.kind !== "delete" ||
-      edit.lineNum !== lineNum ||
-      edit.anchor.line !== expectedLine
-    ) {
+    if (edit.kind !== "delete" || edit.lineNum !== lineNum || edit.anchor.line !== expectedLine) {
       break;
     }
     deleteIndices.push(i);
@@ -478,7 +423,7 @@ function findReplacementGroup(
 function findDuplicateSuffix(
   group: ReplacementGroup,
   fileLines: readonly string[],
-  delta: DelimiterBalance
+  delta: DelimiterBalance,
 ): number {
   if (balanceIsZero(delta)) {
     return 0;
@@ -496,12 +441,7 @@ function findDuplicateSuffix(
     if (!matches) {
       continue;
     }
-    if (
-      balanceEqual(
-        computeDelimiterBalance(payload.slice(payload.length - k)),
-        delta
-      )
-    ) {
+    if (balanceEqual(computeDelimiterBalance(payload.slice(payload.length - k)), delta)) {
       return k;
     }
   }
@@ -511,7 +451,7 @@ function findDuplicateSuffix(
 function findDuplicatePrefix(
   group: ReplacementGroup,
   fileLines: readonly string[],
-  delta: DelimiterBalance
+  delta: DelimiterBalance,
 ): number {
   if (balanceIsZero(delta)) {
     return 0;
@@ -544,7 +484,7 @@ interface DroppedSuffixClosers {
 
 function countPayloadRestatedSuffixHead(
   payload: readonly string[],
-  suffixLines: readonly string[]
+  suffixLines: readonly string[],
 ): number {
   const maxCount = Math.min(payload.length, suffixLines.length);
   for (let count = maxCount; count >= 1; count--) {
@@ -572,7 +512,7 @@ function countProjectedBelowSuffixTail(
   fileLines: readonly string[],
   deletedLines: ReadonlySet<number>,
   insertedLineMaps: InsertedLineMaps,
-  suffixLines: readonly string[]
+  suffixLines: readonly string[],
 ): number {
   const below: string[] = [];
   const appendCloserLines = (lines: readonly string[] | undefined): boolean => {
@@ -626,7 +566,7 @@ function computeProjectedPrefixBalance(
   fileLines: readonly string[],
   deletedLines: ReadonlySet<number>,
   insertedByLine: ReadonlyMap<number, readonly string[]>,
-  insertedLineMaps: InsertedLineMaps
+  insertedLineMaps: InsertedLineMaps,
 ): DelimiterBalance {
   const prefix: string[] = [];
   for (let line = 1; line < group.startLine; line++) {
@@ -653,7 +593,7 @@ function prefixCanCoverSuffixClosers(
   coveredBelowBalance: DelimiterBalance,
   deletedLines: ReadonlySet<number>,
   insertedByLine: ReadonlyMap<number, readonly string[]>,
-  insertedLineMaps: InsertedLineMaps
+  insertedLineMaps: InsertedLineMaps,
 ): boolean {
   const neededOpeners = balanceNegate(suffixBalance);
   const prefixBalance = computeProjectedPrefixBalance(
@@ -661,7 +601,7 @@ function prefixCanCoverSuffixClosers(
     fileLines,
     deletedLines,
     insertedByLine,
-    insertedLineMaps
+    insertedLineMaps,
   );
   const uncoveredPrefixBalance = balanceSum(prefixBalance, coveredBelowBalance);
   return balanceCovers(uncoveredPrefixBalance, neededOpeners);
@@ -675,7 +615,7 @@ function findDroppedSuffixClosers(
   deletedPrefixBalance: DelimiterBalance,
   deletedLines: ReadonlySet<number>,
   insertedByLine: ReadonlyMap<number, readonly string[]>,
-  insertedLineMaps: InsertedLineMaps
+  insertedLineMaps: InsertedLineMaps,
 ): DroppedSuffixClosers | undefined {
   let suffixLength = 0;
   while (
@@ -689,20 +629,14 @@ function findDroppedSuffixClosers(
   }
 
   const suffixStartLine = group.endLine - suffixLength + 1;
-  const suffixLines = fileLines.slice(
-    group.endLine - suffixLength,
-    group.endLine
-  );
-  const restatedHead = countPayloadRestatedSuffixHead(
-    group.payload,
-    suffixLines
-  );
+  const suffixLines = fileLines.slice(group.endLine - suffixLength, group.endLine);
+  const restatedHead = countPayloadRestatedSuffixHead(group.payload, suffixLines);
   const coveredTail = countProjectedBelowSuffixTail(
     group,
     fileLines,
     deletedLines,
     insertedLineMaps,
-    suffixLines
+    suffixLines,
   );
   const keepStart = restatedHead;
   const keepEnd = suffixLength - coveredTail;
@@ -713,9 +647,7 @@ function findDroppedSuffixClosers(
   const keptLines = suffixLines.slice(keepStart, keepEnd);
   const keptBalance = computeDelimiterBalance(keptLines);
   const neededOpeners = balanceNegate(keptBalance);
-  const coveredBelowBalance = computeDelimiterBalance(
-    suffixLines.slice(keepEnd)
-  );
+  const coveredBelowBalance = computeDelimiterBalance(suffixLines.slice(keepEnd));
   if (!balanceCovers(delta, neededOpeners)) {
     return;
   }
@@ -733,7 +665,7 @@ function findDroppedSuffixClosers(
       coveredBelowBalance,
       deletedLines,
       insertedByLine,
-      insertedLineMaps
+      insertedLineMaps,
     )
   ) {
     return;
@@ -753,14 +685,7 @@ interface BoundaryEcho {
 function hasNonWhitespace(text: string): boolean {
   for (let i = 0; i < text.length; i++) {
     const code = text.charCodeAt(i);
-    if (
-      code !== 9 &&
-      code !== 10 &&
-      code !== 11 &&
-      code !== 12 &&
-      code !== 13 &&
-      code !== 32
-    ) {
+    if (code !== 9 && code !== 10 && code !== 11 && code !== 12 && code !== 13 && code !== 32) {
       return true;
     }
   }
@@ -769,7 +694,7 @@ function hasNonWhitespace(text: string): boolean {
 
 function countDuplicateLeadingBoundaryLines(
   group: ReplacementGroup,
-  fileLines: readonly string[]
+  fileLines: readonly string[],
 ): number {
   const { payload, startLine } = group;
   const max = Math.min(payload.length, startLine - 1);
@@ -793,7 +718,7 @@ function countDuplicateLeadingBoundaryLines(
 
 function countDuplicateTrailingBoundaryLines(
   group: ReplacementGroup,
-  fileLines: readonly string[]
+  fileLines: readonly string[],
 ): number {
   const { payload, endLine } = group;
   const max = Math.min(payload.length, fileLines.length - endLine);
@@ -817,7 +742,7 @@ function countDuplicateTrailingBoundaryLines(
 
 function findBoundaryEcho(
   group: ReplacementGroup,
-  fileLines: readonly string[]
+  fileLines: readonly string[],
 ): BoundaryEcho | undefined {
   const leadingMax = countDuplicateLeadingBoundaryLines(group, fileLines);
   if (leadingMax === 0) {
@@ -830,22 +755,15 @@ function findBoundaryEcho(
   if (leadingMax + trailingMax >= group.payload.length) {
     return;
   }
-  const leadingBalance = computeDelimiterBalance(
-    group.payload.slice(0, leadingMax)
-  );
+  const leadingBalance = computeDelimiterBalance(group.payload.slice(0, leadingMax));
   const trailingBalance = computeDelimiterBalance(
-    group.payload.slice(group.payload.length - trailingMax)
+    group.payload.slice(group.payload.length - trailingMax),
   );
-  const droppedBalance = balanceDelta(
-    leadingBalance,
-    balanceNegate(trailingBalance)
-  );
+  const droppedBalance = balanceDelta(leadingBalance, balanceNegate(trailingBalance));
   if (!balanceIsZero(droppedBalance)) {
     const delta = balanceDelta(
       computeDelimiterBalance(group.payload),
-      computeDelimiterBalance(
-        fileLines.slice(group.startLine - 1, group.endLine)
-      )
+      computeDelimiterBalance(fileLines.slice(group.startLine - 1, group.endLine)),
     );
     if (!balanceEqual(droppedBalance, delta)) {
       return;
@@ -854,10 +772,7 @@ function findBoundaryEcho(
   return { leading: leadingMax, trailing: trailingMax };
 }
 
-function describeBoundaryEchoRepair(
-  group: ReplacementGroup,
-  echo: BoundaryEcho
-): string {
+function describeBoundaryEchoRepair(group: ReplacementGroup, echo: BoundaryEcho): string {
   return (
     `Auto-repaired a replacement boundary echo at line ${group.startLine}: ` +
     `dropped ${echo.leading} leading and ${echo.trailing} trailing payload line(s) already present outside the range. ` +
@@ -865,10 +780,7 @@ function describeBoundaryEchoRepair(
   );
 }
 
-function describeBoundaryRepair(
-  group: ReplacementGroup,
-  action: string
-): string {
+function describeBoundaryRepair(group: ReplacementGroup, action: string): string {
   return (
     `Auto-repaired a delimiter-balance mismatch in the replacement at line ${group.startLine}: ${action}. ` +
     "Issue the payload as the final desired content only — never restate or omit a closing bracket bordering the range."
@@ -877,7 +789,7 @@ function describeBoundaryRepair(
 
 function findOneSidedBoundaryEcho(
   group: ReplacementGroup,
-  fileLines: readonly string[]
+  fileLines: readonly string[],
 ): { side: "leading" | "trailing"; count: number } | undefined {
   const leading = countDuplicateLeadingBoundaryLines(group, fileLines);
   const trailing = countDuplicateTrailingBoundaryLines(group, fileLines);
@@ -911,7 +823,7 @@ function findOneSidedBoundaryEcho(
 function describeOneSidedEchoRepair(
   group: ReplacementGroup,
   side: "leading" | "trailing",
-  count: number
+  count: number,
 ): string {
   const where = side === "leading" ? "above" : "below";
   return (
@@ -936,31 +848,21 @@ function netDeletedPrefixBalance(
   group: ReplacementGroup,
   deletedLines: ReadonlySet<number>,
   insertedByLine: ReadonlyMap<number, readonly string[]>,
-  fileLines: readonly string[]
+  fileLines: readonly string[],
 ): DelimiterBalance {
   const deleted: string[] = [];
   const inserted: string[] = [];
-  for (
-    let line = group.startLine - 1;
-    line >= 1 && deletedLines.has(line);
-    line--
-  ) {
+  for (let line = group.startLine - 1; line >= 1 && deletedLines.has(line); line--) {
     deleted.unshift(fileLines[line - 1] ?? "");
     const insertedAtLine = insertedByLine.get(line);
     if (insertedAtLine) {
       inserted.unshift(...insertedAtLine);
     }
   }
-  return balanceDelta(
-    computeDelimiterBalance(deleted),
-    computeDelimiterBalance(inserted)
-  );
+  return balanceDelta(computeDelimiterBalance(deleted), computeDelimiterBalance(inserted));
 }
 
-function slotPatchDelta(
-  slot: RepairSlot,
-  fileLines: readonly string[]
-): DelimiterBalance {
+function slotPatchDelta(slot: RepairSlot, fileLines: readonly string[]): DelimiterBalance {
   if (slot.kind === "candidate") {
     return slot.delta;
   }
@@ -973,15 +875,12 @@ function slotPatchDelta(
       deleted.push(fileLines[edit.anchor.line - 1] ?? "");
     }
   }
-  return balanceDelta(
-    computeDelimiterBalance(inserted),
-    computeDelimiterBalance(deleted)
-  );
+  return balanceDelta(computeDelimiterBalance(inserted), computeDelimiterBalance(deleted));
 }
 
 function repairReplacementBoundaries(
   edits: readonly AppliedEdit[],
-  fileLines: readonly string[]
+  fileLines: readonly string[],
 ): {
   edits: AppliedEdit[];
   warnings: string[];
@@ -1011,10 +910,7 @@ function repairReplacementBoundaries(
       slots.push({
         kind: "edits",
         edits: [
-          ...inserts.slice(
-            boundaryEcho.leading,
-            inserts.length - boundaryEcho.trailing
-          ),
+          ...inserts.slice(boundaryEcho.leading, inserts.length - boundaryEcho.trailing),
           ...deletes,
         ],
         warning: describeBoundaryEchoRepair(group, boundaryEcho),
@@ -1024,9 +920,7 @@ function repairReplacementBoundaries(
 
     const delta = balanceDelta(
       computeDelimiterBalance(group.payload),
-      computeDelimiterBalance(
-        fileLines.slice(group.startLine - 1, group.endLine)
-      )
+      computeDelimiterBalance(fileLines.slice(group.startLine - 1, group.endLine)),
     );
     if (balanceIsZero(delta)) {
       const oneSided = findOneSidedBoundaryEcho(group, fileLines);
@@ -1038,11 +932,7 @@ function repairReplacementBoundaries(
         slots.push({
           kind: "edits",
           edits: [...trimmed, ...deletes],
-          warning: describeOneSidedEchoRepair(
-            group,
-            oneSided.side,
-            oneSided.count
-          ),
+          warning: describeOneSidedEchoRepair(group, oneSided.side, oneSided.count),
         });
         continue;
       }
@@ -1057,7 +947,7 @@ function repairReplacementBoundaries(
         edits: [...inserts.slice(0, inserts.length - dupSuffix), ...deletes],
         warning: describeBoundaryRepair(
           group,
-          `dropped ${dupSuffix} duplicated trailing payload line(s) already present below the range`
+          `dropped ${dupSuffix} duplicated trailing payload line(s) already present below the range`,
         ),
       });
       continue;
@@ -1069,7 +959,7 @@ function repairReplacementBoundaries(
         edits: [...inserts.slice(dupPrefix), ...deletes],
         warning: describeBoundaryRepair(
           group,
-          `dropped ${dupPrefix} duplicated leading payload line(s) already present above the range`
+          `dropped ${dupPrefix} duplicated leading payload line(s) already present above the range`,
         ),
       });
       continue;
@@ -1080,9 +970,7 @@ function repairReplacementBoundaries(
   const projected: AppliedEdit[] = [];
   for (const slot of slots) {
     projected.push(
-      ...(slot.kind === "candidate"
-        ? [...slot.inserts, ...slot.deletes]
-        : slot.edits)
+      ...(slot.kind === "candidate" ? [...slot.inserts, ...slot.deletes] : slot.edits),
     );
   }
   const deletedLines = new Set<number>();
@@ -1108,14 +996,9 @@ function repairReplacementBoundaries(
         insertedByLine.set(anchor.line, [edit.text]);
       }
     }
-    if (
-      edit.cursor.kind === "before_anchor" ||
-      edit.cursor.kind === "after_anchor"
-    ) {
+    if (edit.cursor.kind === "before_anchor" || edit.cursor.kind === "after_anchor") {
       const bySide =
-        edit.cursor.kind === "before_anchor"
-          ? insertedLineMaps.before
-          : insertedLineMaps.after;
+        edit.cursor.kind === "before_anchor" ? insertedLineMaps.before : insertedLineMaps.after;
       const lines = bySide.get(edit.cursor.anchor.line);
       if (lines) {
         lines.push(edit.text);
@@ -1126,10 +1009,7 @@ function repairReplacementBoundaries(
   }
   let remainingDelta: DelimiterBalance = { paren: 0, bracket: 0, brace: 0 };
   for (const slot of slots) {
-    remainingDelta = balanceSum(
-      remainingDelta,
-      slotPatchDelta(slot, fileLines)
-    );
+    remainingDelta = balanceSum(remainingDelta, slotPatchDelta(slot, fileLines));
   }
 
   const out: AppliedEdit[] = [];
@@ -1146,7 +1026,7 @@ function repairReplacementBoundaries(
       slot.group,
       deletedLines,
       insertedByLine,
-      fileLines
+      fileLines,
     );
     const droppedClosers = findDroppedSuffixClosers(
       slot.group,
@@ -1156,14 +1036,14 @@ function repairReplacementBoundaries(
       deletedPrefixBalance,
       deletedLines,
       insertedByLine,
-      insertedLineMaps
+      insertedLineMaps,
     );
     if (droppedClosers) {
       warnings.push(
         describeBoundaryRepair(
           slot.group,
-          `kept ${droppedClosers.count} structural closing line(s) the range deleted without restating`
-        )
+          `kept ${droppedClosers.count} structural closing line(s) the range deleted without restating`,
+        ),
       );
       out.push(
         ...slot.inserts,
@@ -1171,8 +1051,8 @@ function repairReplacementBoundaries(
           (edit) =>
             edit.kind !== "delete" ||
             edit.anchor.line < droppedClosers.startLine ||
-            edit.anchor.line >= droppedClosers.startLine + droppedClosers.count
-        )
+            edit.anchor.line >= droppedClosers.startLine + droppedClosers.count,
+        ),
       );
       for (
         let line = droppedClosers.startLine;
@@ -1238,7 +1118,7 @@ function resolveShiftedLanding(
   group: AfterInsertGroup,
   target: string,
   fileLines: readonly string[],
-  targetedLines: ReadonlySet<number>
+  targetedLines: ReadonlySet<number>,
 ): { line: number; crossed: number } | undefined {
   const anchorText = fileLines[group.anchor - 1];
   if (anchorText === undefined || !hasNonWhitespace(anchorText)) {
@@ -1279,7 +1159,7 @@ function resolveInwardLanding(
   target: string,
   blockStart: number,
   fileLines: readonly string[],
-  targetedLines: ReadonlySet<number>
+  targetedLines: ReadonlySet<number>,
 ): number | undefined {
   const anchorText = fileLines[group.anchor - 1];
   if (anchorText === undefined || !hasNonWhitespace(anchorText)) {
@@ -1316,7 +1196,7 @@ function resolveInwardLanding(
 
 function repairAfterInsertLandings(
   edits: readonly AppliedEdit[],
-  fileLines: readonly string[]
+  fileLines: readonly string[],
 ): { edits: readonly AppliedEdit[]; warnings: string[] } {
   const groups = new Map<string, AfterInsertGroup>();
   edits.forEach((edit, idx) => {
@@ -1332,9 +1212,7 @@ function repairAfterInsertLandings(
       groups.set(key, {
         anchor: edit.cursor.anchor.line,
         members: [idx],
-        ...(edit.blockStart === undefined
-          ? {}
-          : { blockStart: edit.blockStart }),
+        ...(edit.blockStart === undefined ? {} : { blockStart: edit.blockStart }),
       });
     } else {
       group.members.push(idx);
@@ -1348,10 +1226,7 @@ function repairAfterInsertLandings(
   for (const edit of edits) {
     if (edit.kind === "delete") {
       targetedLines.add(edit.anchor.line);
-    } else if (
-      edit.cursor.kind === "before_anchor" ||
-      edit.cursor.kind === "after_anchor"
-    ) {
+    } else if (edit.cursor.kind === "before_anchor" || edit.cursor.kind === "after_anchor") {
       targetedLines.add(edit.cursor.anchor.line);
     }
   }
@@ -1369,46 +1244,25 @@ function repairAfterInsertLandings(
     }
   };
   for (const group of groups.values()) {
-    const target = bodyTargetIndent(
-      group.members.map((idx) => (edits[idx] as InsertEdit).text)
-    );
+    const target = bodyTargetIndent(group.members.map((idx) => (edits[idx] as InsertEdit).text));
     if (target === undefined) {
       continue;
     }
-    const outward = resolveShiftedLanding(
-      group,
-      target,
-      fileLines,
-      targetedLines
-    );
+    const outward = resolveShiftedLanding(group, target, fileLines, targetedLines);
     if (outward !== undefined) {
       retarget(group, outward.line);
-      warnings.push(
-        afterInsertLandingShiftWarning(
-          group.anchor,
-          outward.line,
-          outward.crossed
-        )
-      );
+      warnings.push(afterInsertLandingShiftWarning(group.anchor, outward.line, outward.crossed));
       continue;
     }
     if (group.blockStart === undefined) {
       continue;
     }
-    const inward = resolveInwardLanding(
-      group,
-      target,
-      group.blockStart,
-      fileLines,
-      targetedLines
-    );
+    const inward = resolveInwardLanding(group, target, group.blockStart, fileLines, targetedLines);
     if (inward === undefined) {
       continue;
     }
     retarget(group, inward);
-    warnings.push(
-      blockInsertLandingShiftWarning(group.blockStart, group.anchor, inward)
-    );
+    warnings.push(blockInsertLandingShiftWarning(group.blockStart, group.anchor, inward));
   }
   return { edits: out ?? edits, warnings };
 }
@@ -1437,13 +1291,17 @@ export function applyEdits(text: string, edits: readonly Edit[]): ApplyResult {
 
   const targetEdits = dropTrailingPhantomDeletes(
     appliedEdits.map((edit, index) => cloneAppliedEdit(edit, index)),
-    fileLines
+    fileLines,
   );
   validateLineBounds(targetEdits, fileLines);
-  const { edits: repaired, warnings: boundaryWarnings } =
-    repairReplacementBoundaries(targetEdits, fileLines);
-  const { edits: landed, warnings: landingWarnings } =
-    repairAfterInsertLandings(repaired, fileLines);
+  const { edits: repaired, warnings: boundaryWarnings } = repairReplacementBoundaries(
+    targetEdits,
+    fileLines,
+  );
+  const { edits: landed, warnings: landingWarnings } = repairAfterInsertLandings(
+    repaired,
+    fileLines,
+  );
   const warnings = [...boundaryWarnings, ...landingWarnings];
 
   const bofLines: string[] = [];
@@ -1477,10 +1335,7 @@ export function applyEdits(text: string, edits: readonly Edit[]): ApplyResult {
     for (const { edit } of bucket) {
       if (isReplacementInsert(edit)) {
         replacementLines.push(edit.text);
-      } else if (
-        edit.kind === "insert" &&
-        edit.cursor.kind === "after_anchor"
-      ) {
+      } else if (edit.kind === "insert" && edit.cursor.kind === "after_anchor") {
         afterInsertLines.push(edit.text);
       } else if (edit.kind === "insert") {
         beforeInsertLines.push(edit.text);
@@ -1499,12 +1354,7 @@ export function applyEdits(text: string, edits: readonly Edit[]): ApplyResult {
 
     const replacement = deleteLine
       ? [...beforeInsertLines, ...replacementLines, ...afterInsertLines]
-      : [
-          ...beforeInsertLines,
-          ...replacementLines,
-          currentLine,
-          ...afterInsertLines,
-        ];
+      : [...beforeInsertLines, ...replacementLines, currentLine, ...afterInsertLines];
     const origins: LineOrigin[] = [];
     for (let i = 0; i < beforeInsertLines.length; i++) {
       origins.push("insert");

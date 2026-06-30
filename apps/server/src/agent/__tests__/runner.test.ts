@@ -1,11 +1,4 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const SESSION_NOT_FOUND_RE = /Session not found/;
 const PROJECT_NOT_FOUND_RE = /Project not found/;
@@ -41,8 +34,8 @@ describe("runPrompt", () => {
         _sessionId: string,
         _message: string,
         _storage: any,
-        _eventCallback: (event: AgentHarnessEvent) => void
-      ) => {}
+        _eventCallback: (event: AgentHarnessEvent) => void,
+      ) => {},
     );
   });
 
@@ -57,22 +50,13 @@ describe("runPrompt", () => {
 
     runPromptSpy.mockRestore();
     await expect(
-      runPrompt(
-        ctx,
-        "nonexistent-session-id",
-        "test",
-        storage,
-        vi.fn(),
-        vi.fn()
-      )
+      runPrompt(ctx, "nonexistent-session-id", "test", storage, vi.fn(), vi.fn()),
     ).rejects.toThrow(SESSION_NOT_FOUND_RE);
   });
 
   it("unknown project throws Project not found", async () => {
     const ctx = createMockCtx();
-    (
-      ctx.repos.projects.findById as ReturnType<typeof vi.fn>
-    ).mockImplementation((id: string) => {
+    (ctx.repos.projects.findById as ReturnType<typeof vi.fn>).mockImplementation((id: string) => {
       if (id === "proj-1") {
         return null;
       }
@@ -87,9 +71,9 @@ describe("runPrompt", () => {
     const storage = createMockStore();
 
     runPromptSpy.mockRestore();
-    await expect(
-      runPrompt(ctx, "sess-1", "test", storage, vi.fn(), vi.fn())
-    ).rejects.toThrow(PROJECT_NOT_FOUND_RE);
+    await expect(runPrompt(ctx, "sess-1", "test", storage, vi.fn(), vi.fn())).rejects.toThrow(
+      PROJECT_NOT_FOUND_RE,
+    );
   });
 
   it("valid session run calls eventCallback and registers then unregisters", async () => {
@@ -103,7 +87,7 @@ describe("runPrompt", () => {
         _sessionId: string,
         _message: string,
         _storage: any,
-        eventCallback: (event: AgentHarnessEvent) => void
+        eventCallback: (event: AgentHarnessEvent) => void,
       ) => {
         eventCallback({ type: "agent_start" });
         eventCallback({
@@ -111,7 +95,7 @@ describe("runPrompt", () => {
           delta: { kind: "text", text: "Hello!" },
         });
         eventCallback({ type: "agent_end", messages: [] });
-      }
+      },
     );
 
     await runPrompt(ctx, "sess-1", "Say hello", storage, vi.fn(), vi.fn());
@@ -127,17 +111,13 @@ describe("runPrompt", () => {
 
   it("loadSessionSettings returns raw DB overrides (defaults merged by parseSessionSettings)", async () => {
     const ctx = createMockCtx();
-    (
-      ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>
-    ).mockReturnValue([
+    (ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>).mockReturnValue([
       { key: "session:sess-1:thinking_level", value: "high" },
     ]);
 
     const raw = loadSessionSettings(ctx, "sess-1");
 
-    expect(ctx.repos.settings.getByPrefix).toHaveBeenCalledWith(
-      "session:sess-1:"
-    );
+    expect(ctx.repos.settings.getByPrefix).toHaveBeenCalledWith("session:sess-1:");
     // Raw overrides only — no defaults merged here.
     expect(raw.thinking_level).toBe("high");
     expect(raw.auto_retry).toBeUndefined();
@@ -152,23 +132,22 @@ describe("runPrompt", () => {
 
   it("W4: per-session thinking_level 'off' disables a session row's 'high'", async () => {
     const ctx = createMockCtx();
-    (
-      ctx.repos.sessions.findById as ReturnType<typeof vi.fn>
-    ).mockImplementation(async (id: string) =>
-      id === "sess-1"
-        ? {
-            id: "sess-1",
-            projectId: "proj-1",
-            modelId: "test-model",
-            title: null,
-            thinkingLevel: "high",
-            createdAt: 0,
-            updatedAt: 0,
-          }
-        : null
+    (ctx.repos.sessions.findById as ReturnType<typeof vi.fn>).mockImplementation(
+      async (id: string) =>
+        id === "sess-1"
+          ? {
+              id: "sess-1",
+              projectId: "proj-1",
+              modelId: "test-model",
+              title: null,
+              thinkingLevel: "high",
+              createdAt: 0,
+              updatedAt: 0,
+            }
+          : null,
     );
-    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation(
-      (key: string) => (key.endsWith(":thinking_level") ? "off" : null)
+    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
+      key.endsWith(":thinking_level") ? "off" : null,
     );
 
     const level = resolveThinkingLevel(ctx, "sess-1", {
@@ -185,8 +164,8 @@ describe("runPrompt", () => {
 
   it("resolveEditMode: returns stored mode when set", () => {
     const ctx = createMockCtx();
-    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation(
-      (key: string) => (key === "session:sess-1:edit_mode" ? "replace" : null)
+    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
+      key === "session:sess-1:edit_mode" ? "replace" : null,
     );
     expect(resolveEditMode(ctx, "sess-1")).toBe("replace");
   });
@@ -202,10 +181,7 @@ describe("setEditModeForSession", () => {
     const ctx = createMockCtx();
     const result = await setEditModeForSession(ctx, "sess-1", "replace");
     expect(result).toBe(true);
-    expect(ctx.repos.settings.set).toHaveBeenCalledWith(
-      "session:sess-1:edit_mode",
-      "replace"
-    );
+    expect(ctx.repos.settings.set).toHaveBeenCalledWith("session:sess-1:edit_mode", "replace");
   });
 
   it("returns false for unknown session", async () => {
@@ -218,9 +194,7 @@ describe("setEditModeForSession", () => {
 describe("loadDisabledSkills", () => {
   it("returns the set of disabled skill names for a session via getByPrefix", () => {
     const ctx = createMockCtx();
-    (
-      ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>
-    ).mockReturnValue([
+    (ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>).mockReturnValue([
       { key: "session:sess-1:disabled_skill:graphify", value: "1" },
       { key: "session:sess-1:disabled_skill:old-thing", value: "1" },
       // An unrelated per-session setting should never be returned because the
@@ -230,17 +204,13 @@ describe("loadDisabledSkills", () => {
 
     const result = loadDisabledSkills(ctx, "sess-1");
 
-    expect(ctx.repos.settings.getByPrefix).toHaveBeenCalledWith(
-      "session:sess-1:disabled_skill:"
-    );
+    expect(ctx.repos.settings.getByPrefix).toHaveBeenCalledWith("session:sess-1:disabled_skill:");
     expect(result).toEqual(new Set(["graphify", "old-thing"]));
   });
 
   it("returns an empty set when nothing is disabled", () => {
     const ctx = createMockCtx();
-    (
-      ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>
-    ).mockReturnValue([]);
+    (ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>).mockReturnValue([]);
 
     const result = loadDisabledSkills(ctx, "sess-empty");
     expect(result.size).toBe(0);
@@ -248,9 +218,7 @@ describe("loadDisabledSkills", () => {
 
   it("scopes to the requested session — does not leak across sessions", () => {
     const ctx = createMockCtx();
-    (
-      ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>
-    ).mockReturnValue([
+    (ctx.repos.settings.getByPrefix as ReturnType<typeof vi.fn>).mockReturnValue([
       { key: "session:sess-1:disabled_skill:graphify", value: "1" },
     ]);
 
@@ -259,9 +227,7 @@ describe("loadDisabledSkills", () => {
 
     // The helper must always query with the requested session id — a different
     // call would produce a different prefix and the mock would not match.
-    expect(ctx.repos.settings.getByPrefix).toHaveBeenCalledWith(
-      "session:sess-1:disabled_skill:"
-    );
+    expect(ctx.repos.settings.getByPrefix).toHaveBeenCalledWith("session:sess-1:disabled_skill:");
   });
 });
 
@@ -271,7 +237,7 @@ describe("persistSkillDisabled / persistSkillEnabled", () => {
     await persistSkillDisabled(ctx, "sess-1", "graphify");
     expect(ctx.repos.settings.set).toHaveBeenCalledWith(
       "session:sess-1:disabled_skill:graphify",
-      "1"
+      "1",
     );
   });
 
@@ -279,7 +245,7 @@ describe("persistSkillDisabled / persistSkillEnabled", () => {
     const ctx = createMockCtx();
     await persistSkillEnabled(ctx, "sess-1", "graphify");
     expect(ctx.repos.settings.delete).toHaveBeenCalledWith(
-      "session:sess-1:disabled_skill:graphify"
+      "session:sess-1:disabled_skill:graphify",
     );
   });
 });
@@ -294,22 +260,19 @@ describe("stuck guard state (loadStuckGuardState / persistStuckGuardState)", () 
 
   it("loadStuckGuardState reads consecutive_compacts and paused from settings", async () => {
     const ctx = createMockCtx();
-    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation(
-      (key: string) => {
-        if (key === "session:sess-1:consecutive_compacts") return "2";
-        if (key === "session:sess-1:auto_compaction_paused") return "1";
-        return null;
-      }
-    );
+    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) => {
+      if (key === "session:sess-1:consecutive_compacts") return "2";
+      if (key === "session:sess-1:auto_compaction_paused") return "1";
+      return null;
+    });
     const state = loadStuckGuardState(ctx, "sess-1");
     expect(state).toEqual({ consecutiveCompacts: 2, paused: true });
   });
 
   it("loadStuckGuardState treats a malformed consecutive_compacts as 0", async () => {
     const ctx = createMockCtx();
-    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation(
-      (key: string) =>
-        key === "session:sess-1:consecutive_compacts" ? "not-a-number" : null
+    (ctx.repos.settings.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
+      key === "session:sess-1:consecutive_compacts" ? "not-a-number" : null,
     );
     const state = loadStuckGuardState(ctx, "sess-1");
     expect(state.consecutiveCompacts).toBe(0);
@@ -322,13 +285,10 @@ describe("stuck guard state (loadStuckGuardState / persistStuckGuardState)", () 
       consecutiveCompacts: 2,
       paused: true,
     });
-    expect(ctx.repos.settings.set).toHaveBeenCalledWith(
-      "session:sess-1:consecutive_compacts",
-      "2"
-    );
+    expect(ctx.repos.settings.set).toHaveBeenCalledWith("session:sess-1:consecutive_compacts", "2");
     expect(ctx.repos.settings.set).toHaveBeenCalledWith(
       "session:sess-1:auto_compaction_paused",
-      "1"
+      "1",
     );
   });
 
@@ -338,12 +298,7 @@ describe("stuck guard state (loadStuckGuardState / persistStuckGuardState)", () 
       consecutiveCompacts: 0,
       paused: false,
     });
-    expect(ctx.repos.settings.set).toHaveBeenCalledWith(
-      "session:sess-1:consecutive_compacts",
-      "0"
-    );
-    expect(ctx.repos.settings.delete).toHaveBeenCalledWith(
-      "session:sess-1:auto_compaction_paused"
-    );
+    expect(ctx.repos.settings.set).toHaveBeenCalledWith("session:sess-1:consecutive_compacts", "0");
+    expect(ctx.repos.settings.delete).toHaveBeenCalledWith("session:sess-1:auto_compaction_paused");
   });
 });

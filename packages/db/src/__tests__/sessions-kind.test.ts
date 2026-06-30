@@ -2,12 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
-import {
-  type DrizzleDB,
-  initDatabase,
-  ProjectRepo,
-  SessionRepo,
-} from "../index";
+import { type DrizzleDB, initDatabase, ProjectRepo, SessionRepo } from "../index";
 
 describe("sessions kind column", () => {
   let db: DatabaseSync;

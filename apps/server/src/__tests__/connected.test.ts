@@ -10,17 +10,13 @@ describe("GET /api/models/connected", () => {
 
     ctx.auth.set("openai", "sk-test-123");
 
-    const res = await app.request(
-      new Request("http://localhost:3001/api/models/connected")
-    );
+    const res = await app.request(new Request("http://localhost:3001/api/models/connected"));
     expect(res.status).toBe(200);
 
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
 
-    const openai = body.find(
-      (p: { providerId: string }) => p.providerId === "openai"
-    );
+    const openai = body.find((p: { providerId: string }) => p.providerId === "openai");
     expect(openai).toBeDefined();
     expect(PROVIDER_INFO.openai).toBeDefined();
     expect(openai.providerName).toBe(PROVIDER_INFO.openai!.name);
@@ -43,9 +39,7 @@ describe("GET /api/models/connected", () => {
 
     ctx.auth.set("anthropic", "sk-ant-test-456");
 
-    const res = await app.request(
-      new Request("http://localhost:3001/api/models/connected")
-    );
+    const res = await app.request(new Request("http://localhost:3001/api/models/connected"));
     expect(res.status).toBe(200);
 
     const body = (await res.json()) as Array<{
@@ -57,9 +51,7 @@ describe("GET /api/models/connected", () => {
 
     const models = anthropic!.models;
     const deprecatedIdx = models.findIndex((m) => m.status === "deprecated");
-    const nonDeprecatedIdx = models.findLastIndex(
-      (m) => m.status !== "deprecated"
-    );
+    const nonDeprecatedIdx = models.findLastIndex((m) => m.status !== "deprecated");
 
     if (deprecatedIdx !== -1 && nonDeprecatedIdx !== -1) {
       expect(deprecatedIdx).toBeGreaterThan(nonDeprecatedIdx);
@@ -70,9 +62,7 @@ describe("GET /api/models/connected", () => {
     const { app, ctx } = await makeApp([connectedModelsRoutes]);
 
     ctx.auth.set("openai", "sk-test-123");
-    const res = await app.request(
-      new Request("http://localhost:3001/api/models/connected")
-    );
+    const res = await app.request(new Request("http://localhost:3001/api/models/connected"));
     expect(res.status).toBe(200);
 
     const body = (await res.json()) as Array<{
@@ -86,9 +76,7 @@ describe("GET /api/models/connected", () => {
   it("returns empty array when no providers have keys", async () => {
     const { app } = await makeApp([connectedModelsRoutes]);
 
-    const res = await app.request(
-      new Request("http://localhost:3001/api/models/connected")
-    );
+    const res = await app.request(new Request("http://localhost:3001/api/models/connected"));
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -101,9 +89,7 @@ describe("GET /api/models/connected", () => {
 
     ctx.auth.set("openai", "sk-test-123");
 
-    const res = await app.request(
-      new Request("http://localhost:3001/api/models/connected")
-    );
+    const res = await app.request(new Request("http://localhost:3001/api/models/connected"));
     const body = (await res.json()) as Array<{
       providerId: string;
       models: Record<string, unknown>[];

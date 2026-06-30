@@ -51,15 +51,12 @@ import type {
  */
 export function toModelMessages(
   messages: Message[],
-  options?: { targetModel?: string }
+  options?: { targetModel?: string },
 ): ModelMessage[] {
   return messages.map((message) => convertMessage(message, options));
 }
 
-function convertMessage(
-  message: Message,
-  options?: { targetModel?: string }
-): ModelMessage {
+function convertMessage(message: Message, options?: { targetModel?: string }): ModelMessage {
   switch (message.role) {
     case "user":
       return convertUserMessage(message);
@@ -99,24 +96,21 @@ function convertUserContent(part: TextContent | ImageContent) {
 
 function convertAssistantMessage(
   message: AssistantMessage,
-  options?: { targetModel?: string }
+  options?: { targetModel?: string },
 ): ModelMessage {
   // When a target model is specified, only reuse reasoning signatures produced
   // by the same model. A stale Anthropic signature from a different model
   // causes provider rejections. (No targetModel → forward as before, back-compat.)
-  const reuseSignature =
-    !options?.targetModel || options.targetModel === message.model;
+  const reuseSignature = !options?.targetModel || options.targetModel === message.model;
   return {
-    content: message.content.map((part) =>
-      convertAssistantContent(part, reuseSignature)
-    ),
+    content: message.content.map((part) => convertAssistantContent(part, reuseSignature)),
     role: "assistant",
   };
 }
 
 function convertAssistantContent(
   part: AssistantMessage["content"][number],
-  reuseSignature: boolean
+  reuseSignature: boolean,
 ) {
   switch (part.type) {
     case "text":

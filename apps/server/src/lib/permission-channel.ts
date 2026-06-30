@@ -34,7 +34,7 @@ export interface PermissionChannel {
   evaluate: (
     permission: string,
     pattern: string,
-    baseRuleset: PermissionRule[]
+    baseRuleset: PermissionRule[],
   ) => "allow" | "deny" | "ask";
   /** Snapshot of pending requests. */
   listPending: () => PermissionFrame[];
@@ -57,15 +57,14 @@ export function createPermissionChannel(): PermissionChannel {
   const evaluateFn = (
     permission: string,
     pattern: string,
-    baseRuleset: PermissionRule[]
-  ): "allow" | "deny" | "ask" =>
-    evaluate(permission, pattern, merge(baseRuleset, grants)).action;
+    baseRuleset: PermissionRule[],
+  ): "allow" | "deny" | "ask" => evaluate(permission, pattern, merge(baseRuleset, grants)).action;
 
   const ask = (req: PermissionAskRequest): Promise<"allow" | "deny"> => {
     // Re-check grants (race safety vs the loop's sync eval): if a prior "always"
     // already covers every pattern, allow without prompting.
     const allGranted = req.patterns.every(
-      (pattern) => evaluate(req.permission, pattern, grants).action === "allow"
+      (pattern) => evaluate(req.permission, pattern, grants).action === "allow",
     );
     if (allGranted) {
       return Promise.resolve("allow");
@@ -112,8 +111,7 @@ export function createPermissionChannel(): PermissionChannel {
     }
   };
 
-  const listPending = (): PermissionFrame[] =>
-    [...pending.values()].map((entry) => entry.frame);
+  const listPending = (): PermissionFrame[] => [...pending.values()].map((entry) => entry.frame);
 
   const setSink = (next: AskedSink): void => {
     sink = next;

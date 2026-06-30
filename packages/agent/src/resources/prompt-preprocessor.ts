@@ -15,7 +15,7 @@ const TEMPLATE_LEADING = /^\/([^\s/]+)\s*(.*)$/s;
 
 export function parseLeadingInvocation(
   message: string,
-  resources: LoadedResources
+  resources: LoadedResources,
 ): LeadingInvocation {
   const trimmed = message.trimStart();
   const skillMatch = SKILL_LEADING.exec(trimmed);
@@ -25,10 +25,7 @@ export function parseLeadingInvocation(
   }
   const templateMatch = TEMPLATE_LEADING.exec(trimmed);
   const templateName = templateMatch?.[1];
-  if (
-    templateName &&
-    resources.templates.some((t) => t.name === templateName)
-  ) {
+  if (templateName && resources.templates.some((t) => t.name === templateName)) {
     return {
       kind: "template",
       name: templateName,
@@ -46,7 +43,7 @@ const FILE_MENTION = /@(\S+)/g;
 export async function expandFileMentions(
   text: string,
   cwd: string,
-  readFile: ReadFile
+  readFile: ReadFile,
 ): Promise<string> {
   const seen = new Set<string>();
   let out = text;
@@ -62,8 +59,7 @@ export async function expandFileMentions(
       continue;
     }
     const total = bytes.byteLength;
-    const slice =
-      total > FILE_MAX_BYTES ? bytes.subarray(0, FILE_MAX_BYTES) : bytes;
+    const slice = total > FILE_MAX_BYTES ? bytes.subarray(0, FILE_MAX_BYTES) : bytes;
     const note = total > FILE_MAX_BYTES ? `\n[truncated: ${total} bytes]` : "";
     const inlined = `\n<file path="${token}">\n${new TextDecoder().decode(slice)}${note}\n</file>`;
     out = out.replaceAll(`@${token}`, inlined);
@@ -80,7 +76,7 @@ export async function planFirstTurn(
   message: string,
   loaded: LoadedResources,
   cwd: string,
-  readFile: ReadFile
+  readFile: ReadFile,
 ): Promise<FirstTurnPlan> {
   const lead = parseLeadingInvocation(message, loaded);
   if (lead.kind === "template" || lead.kind === "skill") {

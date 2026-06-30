@@ -48,7 +48,7 @@ function createModel(): Model {
 
 function createAssistantMessage(
   content: AssistantMessage["content"],
-  stopReason: AssistantMessage["stopReason"] = "stop"
+  stopReason: AssistantMessage["stopReason"] = "stop",
 ): AssistantMessage {
   return {
     role: "assistant",
@@ -144,13 +144,13 @@ function makeStreamFn(
 function makeStreamFnWithReq(
   handler: (
     req: StreamRequest,
-    callIndex: number
+    callIndex: number,
   ) => {
     content?: AssistantMessage["content"];
     error?: Error;
     finishReason?: AssistantMessage["stopReason"];
     usage?: Usage;
-  }
+  },
 ): { fn: StreamFn; callCount: () => number } {
   let i = 0;
   return {
@@ -166,8 +166,7 @@ function makeStreamFnWithReq(
 /** Simple identity converter for tests — passes through standard messages. */
 function identityConverter(messages: AgentMessage[]) {
   return messages.filter(
-    (m) =>
-      m.role === "user" || m.role === "assistant" || m.role === "toolResult"
+    (m) => m.role === "user" || m.role === "assistant" || m.role === "toolResult",
   );
 }
 
@@ -193,13 +192,7 @@ describe("agentLoop with AgentMessage", () => {
     });
 
     const events: AgentEvent[] = [];
-    const stream = agentLoop(
-      [userPrompt],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
 
     for await (const event of stream) {
       events.push(event);
@@ -252,25 +245,17 @@ describe("agentLoop with AgentMessage", () => {
       convertToLlm: identityConverter,
     };
 
-    const stream = agentLoop(
-      [createUserMessage("Hi")],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([createUserMessage("Hi")], context, config, undefined, streamFn);
     for await (const _event of stream) {
       void _event;
     }
     const messages = await stream.result();
     const assistant = messages[1] as AssistantMessage;
     const thinking = assistant.content.find(
-      (c: AssistantMessage["content"][number]) => c.type === "thinking"
+      (c: AssistantMessage["content"][number]) => c.type === "thinking",
     );
     expect(thinking).toBeDefined();
-    expect((thinking as { thinkingSignature?: string }).thinkingSignature).toBe(
-      "sig-abc-123"
-    );
+    expect((thinking as { thinkingSignature?: string }).thinkingSignature).toBe("sig-abc-123");
   });
 
   it("emits tool_input deltas as message_update while the tool call is being written", async () => {
@@ -306,41 +291,29 @@ describe("agentLoop with AgentMessage", () => {
     };
 
     const events: AgentEvent[] = [];
-    const stream = agentLoop(
-      [createUserMessage("edit")],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([createUserMessage("edit")], context, config, undefined, streamFn);
     for await (const event of stream) {
       events.push(event);
     }
     await stream.result();
 
     const toolInputDeltas = events.filter(
-      (e) => e.type === "message_update" && e.delta.kind === "tool_input"
+      (e) => e.type === "message_update" && e.delta.kind === "tool_input",
     );
     expect(toolInputDeltas.length).toBe(2);
-    expect((toolInputDeltas[0] as { delta: { text: string } }).delta.text).toBe(
-      '{"path": "a'
-    );
+    expect((toolInputDeltas[0] as { delta: { text: string } }).delta.text).toBe('{"path": "a');
   });
 
   it("forces toolChoice='none' on the last step when maxSteps is set (M1)", async () => {
     const captured: (string | undefined)[] = [];
     const streamFn = makeStreamFnWithReq((req, callIndex) => {
-      captured.push(
-        "toolChoice" in req ? (req.toolChoice as string | undefined) : undefined
-      );
+      captured.push("toolChoice" in req ? (req.toolChoice as string | undefined) : undefined);
       // First call emits a tool call (so a step 2 would normally follow);
       // later calls emit text so the loop terminates even in the RED state.
       // With maxSteps=1 the first call is the last and must forbid tools.
       return callIndex === 0
         ? {
-            content: [
-              { type: "toolCall", id: "tc1", name: "noop", arguments: {} },
-            ],
+            content: [{ type: "toolCall", id: "tc1", name: "noop", arguments: {} }],
             finishReason: "toolUse",
           }
         : { content: [{ type: "text", text: "done" }] };
@@ -357,13 +330,7 @@ describe("agentLoop with AgentMessage", () => {
       maxSteps: 1,
     };
 
-    const stream = agentLoop(
-      [createUserMessage("Hi")],
-      context,
-      config,
-      undefined,
-      streamFn.fn
-    );
+    const stream = agentLoop([createUserMessage("Hi")], context, config, undefined, streamFn.fn);
     for await (const _event of stream) {
       void _event;
     }
@@ -376,9 +343,7 @@ describe("agentLoop with AgentMessage", () => {
   it("does not set toolChoice when maxSteps is unset", async () => {
     const captured: (string | undefined)[] = [];
     const streamFn = makeStreamFnWithReq((req) => {
-      captured.push(
-        "toolChoice" in req ? (req.toolChoice as string | undefined) : undefined
-      );
+      captured.push("toolChoice" in req ? (req.toolChoice as string | undefined) : undefined);
       return { content: [{ type: "text", text: "hi" }] };
     });
 
@@ -391,7 +356,7 @@ describe("agentLoop with AgentMessage", () => {
       { systemPrompt: "x", messages: [], tools: [] },
       config,
       undefined,
-      streamFn.fn
+      streamFn.fn,
     );
     for await (const _event of stream) {
       void _event;
@@ -425,14 +390,12 @@ describe("agentLoop with AgentMessage", () => {
     const config: AgentLoopConfig = {
       model: createModel(),
       convertToLlm: (messages) => {
-        convertedMessages = messages.filter(
-          (m) => (m as { role: string }).role !== "notification"
-        );
+        convertedMessages = messages.filter((m) => (m as { role: string }).role !== "notification");
         return convertedMessages.filter(
           (m) =>
             (m as { role: string }).role === "user" ||
             (m as { role: string }).role === "assistant" ||
-            (m as { role: string }).role === "toolResult"
+            (m as { role: string }).role === "toolResult",
         ) as unknown as ReturnType<typeof identityConverter>;
       },
     };
@@ -441,13 +404,7 @@ describe("agentLoop with AgentMessage", () => {
       content: [{ type: "text", text: "Response" }],
     });
 
-    const stream = agentLoop(
-      [userPrompt],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
 
     for await (const _ of stream) {
       // consume
@@ -486,13 +443,7 @@ describe("agentLoop with AgentMessage", () => {
       content: [{ type: "text", text: "Response" }],
     });
 
-    const stream = agentLoop(
-      [userPrompt],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
 
     for await (const _ of stream) {
       // consume
@@ -543,17 +494,11 @@ describe("agentLoop with AgentMessage", () => {
         ],
         finishReason: "toolUse",
       },
-      { content: [{ type: "text", text: "done" }] }
+      { content: [{ type: "text", text: "done" }] },
     );
 
     const events: AgentEvent[] = [];
-    const stream = agentLoop(
-      [userPrompt],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
 
     for await (const event of stream) {
       events.push(event);
@@ -604,13 +549,7 @@ describe("agentLoop with AgentMessage", () => {
       return { content: [{ type: "text", text: "done" }] };
     });
 
-    const stream = agentLoop(
-      [createUserMessage("hi")],
-      context,
-      config,
-      undefined,
-      streamFn.fn
-    );
+    const stream = agentLoop([createUserMessage("hi")], context, config, undefined, streamFn.fn);
 
     for await (const _ of stream) {
       // consume
@@ -683,16 +622,10 @@ describe("agentLoop with AgentMessage", () => {
         ],
         finishReason: "toolUse",
       },
-      { content: [{ type: "text", text: "done" }] }
+      { content: [{ type: "text", text: "done" }] },
     );
 
-    const stream = agentLoop(
-      [userPrompt],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
     for await (const _event of stream) {
       // consume
     }
@@ -744,7 +677,7 @@ describe("agentLoop with AgentMessage", () => {
         ],
         finishReason: "toolUse",
       },
-      { content: [{ type: "text", text: "done" }] }
+      { content: [{ type: "text", text: "done" }] },
     );
 
     const events: AgentEvent[] = [];
@@ -753,16 +686,14 @@ describe("agentLoop with AgentMessage", () => {
       context,
       config,
       undefined,
-      streamFn
+      streamFn,
     )) {
       events.push(event);
     }
 
     expect(executed).toEqual([]);
     const toolEnd = events.find((e) => e.type === "tool_execution_end");
-    expect(toolEnd?.type === "tool_execution_end" && toolEnd.isError).toBe(
-      true
-    );
+    expect(toolEnd?.type === "tool_execution_end" && toolEnd.isError).toBe(true);
   });
 
   it("calls resolvePermissionAsk and proceeds when the ask is allowed", async () => {
@@ -797,9 +728,7 @@ describe("agentLoop with AgentMessage", () => {
       sessionId: "sess-1",
       evaluatePermission: () => "ask",
       resolvePermissionAsk: async (req) => {
-        asked.push(
-          `${req.sessionId}:${req.permission}:${req.patterns.join(",")}`
-        );
+        asked.push(`${req.sessionId}:${req.permission}:${req.patterns.join(",")}`);
         return "allow";
       },
     };
@@ -816,7 +745,7 @@ describe("agentLoop with AgentMessage", () => {
         ],
         finishReason: "toolUse",
       },
-      { content: [{ type: "text", text: "done" }] }
+      { content: [{ type: "text", text: "done" }] },
     );
 
     const events: AgentEvent[] = [];
@@ -825,7 +754,7 @@ describe("agentLoop with AgentMessage", () => {
       context,
       config,
       undefined,
-      streamFn
+      streamFn,
     )) {
       events.push(event);
     }
@@ -878,7 +807,7 @@ describe("agentLoop with AgentMessage", () => {
         ],
         finishReason: "toolUse",
       },
-      { content: [{ type: "text", text: "done" }] }
+      { content: [{ type: "text", text: "done" }] },
     );
 
     const events: AgentEvent[] = [];
@@ -887,16 +816,14 @@ describe("agentLoop with AgentMessage", () => {
       context,
       config,
       undefined,
-      streamFn
+      streamFn,
     )) {
       events.push(event);
     }
 
     expect(executed).toEqual([]);
     const toolEnd = events.find((e) => e.type === "tool_execution_end");
-    expect(toolEnd?.type === "tool_execution_end" && toolEnd.isError).toBe(
-      true
-    );
+    expect(toolEnd?.type === "tool_execution_end" && toolEnd.isError).toBe(true);
   });
 
   it("treats ask as deny when no resolvePermissionAsk is configured", async () => {
@@ -942,7 +869,7 @@ describe("agentLoop with AgentMessage", () => {
         ],
         finishReason: "toolUse",
       },
-      { content: [{ type: "text", text: "done" }] }
+      { content: [{ type: "text", text: "done" }] },
     );
 
     const events: AgentEvent[] = [];
@@ -951,16 +878,14 @@ describe("agentLoop with AgentMessage", () => {
       context,
       config,
       undefined,
-      streamFn
+      streamFn,
     )) {
       events.push(event);
     }
 
     expect(executed).toEqual([]);
     const toolEnd = events.find((e) => e.type === "tool_execution_end");
-    expect(toolEnd?.type === "tool_execution_end" && toolEnd.isError).toBe(
-      true
-    );
+    expect(toolEnd?.type === "tool_execution_end" && toolEnd.isError).toBe(true);
   });
 
   it("should prepare tool arguments for validation", async () => {
@@ -984,17 +909,11 @@ describe("agentLoop with AgentMessage", () => {
           oldText?: string;
           newText?: string;
         };
-        if (
-          typeof input.oldText !== "string" ||
-          typeof input.newText !== "string"
-        ) {
+        if (typeof input.oldText !== "string" || typeof input.newText !== "string") {
           return args as { edits: { oldText: string; newText: string }[] };
         }
         return {
-          edits: [
-            ...(input.edits ?? []),
-            { oldText: input.oldText, newText: input.newText },
-          ],
+          edits: [...(input.edits ?? []), { oldText: input.oldText, newText: input.newText }],
         };
       },
       async execute(_toolCallId, params) {
@@ -1030,16 +949,10 @@ describe("agentLoop with AgentMessage", () => {
         ],
         finishReason: "toolUse",
       },
-      { content: [{ type: "text", text: "done" }] }
+      { content: [{ type: "text", text: "done" }] },
     );
 
-    const stream = agentLoop(
-      [userPrompt],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
     for await (const _event of stream) {
       // consume
     }
@@ -1107,19 +1020,13 @@ describe("agentLoop with AgentMessage", () => {
         ],
         finishReason: "toolUse",
       },
-      { content: [{ type: "text", text: "done" }] }
+      { content: [{ type: "text", text: "done" }] },
     );
 
     // Release first tool after stream starts
     setTimeout(() => releaseFirst?.(), 20);
 
-    const stream = agentLoop(
-      [userPrompt],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
 
     const events: AgentEvent[] = [];
     for await (const event of stream) {
@@ -1131,8 +1038,7 @@ describe("agentLoop with AgentMessage", () => {
       return [event.toolCallId];
     });
     const toolResultIds = events.flatMap((event) => {
-      if (event.type !== "message_end" || event.message.role !== "toolResult")
-        return [];
+      if (event.type !== "message_end" || event.message.role !== "toolResult") return [];
       return [event.message.toolCallId];
     });
     const turnToolResultIds = events.flatMap((event) => {
@@ -1192,10 +1098,7 @@ describe("agentLoop with AgentMessage", () => {
     const { fn: streamFn } = makeStreamFnWithReq((req, callIndex) => {
       if (callIndex === 1) {
         sawInterruptInContext = req.messages.some(
-          (m) =>
-            m.role === "user" &&
-            typeof m.content === "string" &&
-            m.content === "interrupt"
+          (m) => m.role === "user" && typeof m.content === "string" && m.content === "interrupt",
         );
       }
       if (callIndex === 0) {
@@ -1221,13 +1124,7 @@ describe("agentLoop with AgentMessage", () => {
     });
 
     const events: AgentEvent[] = [];
-    const stream = agentLoop(
-      [userPrompt],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
 
     for await (const event of stream) {
       events.push(event);
@@ -1237,7 +1134,7 @@ describe("agentLoop with AgentMessage", () => {
 
     const toolEnds = events.filter(
       (e): e is Extract<AgentEvent, { type: "tool_execution_end" }> =>
-        e.type === "tool_execution_end"
+        e.type === "tool_execution_end",
     );
     expect(toolEnds.length).toBe(2);
     expect(toolEnds[0]!.isError).toBe(false);
@@ -1248,21 +1145,14 @@ describe("agentLoop with AgentMessage", () => {
       if (event.message.role === "toolResult") {
         return [`tool:${event.message.toolCallId}`];
       }
-      if (
-        event.message.role === "user" &&
-        typeof event.message.content === "string"
-      ) {
+      if (event.message.role === "user" && typeof event.message.content === "string") {
         return [event.message.content];
       }
       return [];
     });
     expect(eventSequence).toContain("interrupt");
-    expect(eventSequence.indexOf("tool:tool-1")).toBeLessThan(
-      eventSequence.indexOf("interrupt")
-    );
-    expect(eventSequence.indexOf("tool:tool-2")).toBeLessThan(
-      eventSequence.indexOf("interrupt")
-    );
+    expect(eventSequence.indexOf("tool:tool-1")).toBeLessThan(eventSequence.indexOf("interrupt"));
+    expect(eventSequence.indexOf("tool:tool-2")).toBeLessThan(eventSequence.indexOf("interrupt"));
 
     expect(sawInterruptInContext).toBe(true);
   });
@@ -1327,18 +1217,12 @@ describe("agentLoop with AgentMessage", () => {
         ],
         finishReason: "toolUse",
       },
-      { content: [{ type: "text", text: "done" }] }
+      { content: [{ type: "text", text: "done" }] },
     );
 
     setTimeout(() => releaseFirst?.(), 20);
 
-    const stream = agentLoop(
-      [userPrompt],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
 
     const events: AgentEvent[] = [];
     for await (const event of stream) {
@@ -1348,8 +1232,7 @@ describe("agentLoop with AgentMessage", () => {
     expect(parallelObserved).toBe(false);
 
     const toolResultIds = events.flatMap((event) => {
-      if (event.type !== "message_end" || event.message.role !== "toolResult")
-        return [];
+      if (event.type !== "message_end" || event.message.role !== "toolResult") return [];
       return [event.message.toolCallId];
     });
     expect(toolResultIds).toEqual(["tool-1", "tool-2"]);
@@ -1425,18 +1308,12 @@ describe("agentLoop with AgentMessage", () => {
         ],
         finishReason: "toolUse",
       },
-      { content: [{ type: "text", text: "done" }] }
+      { content: [{ type: "text", text: "done" }] },
     );
 
     setTimeout(() => releaseSlow?.(), 20);
 
-    const stream = agentLoop(
-      [userPrompt],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
 
     const events: AgentEvent[] = [];
     for await (const event of stream) {
@@ -1507,18 +1384,12 @@ describe("agentLoop with AgentMessage", () => {
         ],
         finishReason: "toolUse",
       },
-      { content: [{ type: "text", text: "done" }] }
+      { content: [{ type: "text", text: "done" }] },
     );
 
     setTimeout(() => releaseFirst?.(), 20);
 
-    const stream = agentLoop(
-      [userPrompt],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
 
     const events: AgentEvent[] = [];
     for await (const event of stream) {
@@ -1561,9 +1432,7 @@ describe("agentLoop with AgentMessage", () => {
           context: {
             systemPrompt: "second prompt",
             messages: currentContext.messages.slice(),
-            ...(currentContext.tools === undefined
-              ? {}
-              : { tools: currentContext.tools }),
+            ...(currentContext.tools === undefined ? {} : { tools: currentContext.tools }),
           },
         };
       },
@@ -1594,7 +1463,7 @@ describe("agentLoop with AgentMessage", () => {
       context,
       config,
       undefined,
-      streamFn
+      streamFn,
     );
 
     for await (const _event of stream) {
@@ -1644,12 +1513,8 @@ describe("agentLoop with AgentMessage", () => {
       },
       shouldStopAfterTurn: async ({ message, toolResults, context }) => {
         expect(message.role).toBe("assistant");
-        callbackToolResultIds = toolResults.map(
-          (toolResult) => toolResult.toolCallId
-        );
-        callbackContextRoles = context.messages.map(
-          (contextMessage) => contextMessage.role
-        );
+        callbackToolResultIds = toolResults.map((toolResult) => toolResult.toolCallId);
+        callbackContextRoles = context.messages.map((contextMessage) => contextMessage.role);
         return true;
       },
     };
@@ -1671,7 +1536,7 @@ describe("agentLoop with AgentMessage", () => {
       context,
       config,
       undefined,
-      streamFn
+      streamFn,
     );
 
     const events: AgentEvent[] = [];
@@ -1686,11 +1551,7 @@ describe("agentLoop with AgentMessage", () => {
     expect(followUpPolls).toBe(0);
     expect(callbackToolResultIds).toEqual(["tool-1"]);
     expect(callbackContextRoles).toEqual(["user", "assistant", "toolResult"]);
-    expect(messages.map((message) => message.role)).toEqual([
-      "user",
-      "assistant",
-      "toolResult",
-    ]);
+    expect(messages.map((message) => message.role)).toEqual(["user", "assistant", "toolResult"]);
     expect(events.map((event) => event.type)).toEqual([
       "agent_start",
       "turn_start",
@@ -1752,7 +1613,7 @@ describe("agentLoop with AgentMessage", () => {
       context,
       config,
       undefined,
-      streamFn
+      streamFn,
     );
 
     const events: AgentEvent[] = [];
@@ -1762,11 +1623,7 @@ describe("agentLoop with AgentMessage", () => {
 
     const messages = await stream.result();
     expect(callCount()).toBe(1);
-    expect(messages.map((message) => message.role)).toEqual([
-      "user",
-      "assistant",
-      "toolResult",
-    ]);
+    expect(messages.map((message) => message.role)).toEqual(["user", "assistant", "toolResult"]);
     expect(events.filter((event) => event.type === "turn_end")).toHaveLength(1);
   });
 
@@ -1816,7 +1673,7 @@ describe("agentLoop with AgentMessage", () => {
         ],
         finishReason: "toolUse",
       },
-      { content: [{ type: "text", text: "done" }] }
+      { content: [{ type: "text", text: "done" }] },
     );
 
     const stream = agentLoop(
@@ -1824,7 +1681,7 @@ describe("agentLoop with AgentMessage", () => {
       context,
       config,
       undefined,
-      streamFn
+      streamFn,
     );
 
     for await (const _event of stream) {
@@ -1885,7 +1742,7 @@ describe("agentLoop with AgentMessage", () => {
       context,
       config,
       undefined,
-      streamFn
+      streamFn,
     );
 
     for await (const _event of stream) {
@@ -1910,7 +1767,7 @@ describe("agentLoopContinue with AgentMessage", () => {
     };
 
     expect(() => agentLoopContinue(context, config)).toThrow(
-      "Cannot continue: no messages in context"
+      "Cannot continue: no messages in context",
     );
   });
 
@@ -1946,9 +1803,7 @@ describe("agentLoopContinue with AgentMessage", () => {
 
     const messageEndEvents = events.filter((e) => e.type === "message_end");
     expect(messageEndEvents.length).toBe(1);
-    expect(
-      (messageEndEvents[0] as { message: { role: string } }).message.role
-    ).toBe("assistant");
+    expect((messageEndEvents[0] as { message: { role: string } }).message.role).toBe("assistant");
   });
 
   it("should allow custom message types as last message (caller responsibility)", async () => {
@@ -1985,10 +1840,7 @@ describe("agentLoopContinue with AgentMessage", () => {
             return m;
           })
           .filter(
-            (m) =>
-              m.role === "user" ||
-              m.role === "assistant" ||
-              m.role === "toolResult"
+            (m) => m.role === "user" || m.role === "assistant" || m.role === "toolResult",
           ) as unknown as ReturnType<typeof identityConverter>,
     };
 
@@ -2031,13 +1883,7 @@ describe("agentLoop maxOutputTokens", () => {
       return { content: [{ type: "text", text: "ok" }] };
     });
 
-    const stream = agentLoop(
-      [createUserMessage("Hello")],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([createUserMessage("Hello")], context, config, undefined, streamFn);
     for await (const _ of stream) {
       // drain
     }
@@ -2062,13 +1908,7 @@ describe("agentLoop maxOutputTokens", () => {
       convertToLlm: identityConverter,
     };
 
-    const stream = agentLoop(
-      [createUserMessage("Hello")],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([createUserMessage("Hello")], context, config, undefined, streamFn);
 
     // The consumer must see the error thrown, not hang.
     let thrown: unknown;
@@ -2113,13 +1953,7 @@ describe("agentLoop cache_shape diagnostics (§10)", () => {
     });
 
     const events: AgentEvent[] = [];
-    const stream = agentLoop(
-      [userPrompt],
-      context,
-      config,
-      undefined,
-      streamFn
-    );
+    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
     for await (const event of stream) {
       events.push(event);
       if (event.type === "agent_end") break;

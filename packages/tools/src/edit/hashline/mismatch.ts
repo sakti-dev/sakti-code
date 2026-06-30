@@ -19,15 +19,11 @@ export function formatFullAnchorRequirement(raw?: string): string {
 export function parseTag(ref: string): { line: number } {
   const match = ref.match(LINE_REF_RE);
   if (!match) {
-    throw new Error(
-      `Invalid line reference. Expected ${formatFullAnchorRequirement(ref)}.`
-    );
+    throw new Error(`Invalid line reference. Expected ${formatFullAnchorRequirement(ref)}.`);
   }
   const lineStr = match[1];
   if (!lineStr) {
-    throw new Error(
-      `Invalid line reference. Expected ${formatFullAnchorRequirement(ref)}.`
-    );
+    throw new Error(`Invalid line reference. Expected ${formatFullAnchorRequirement(ref)}.`);
   }
   const line = Number.parseInt(lineStr, 10);
   if (line < 1) {
@@ -96,10 +92,7 @@ export class MismatchError extends Error {
 
   static formatMessage(details: MismatchDetails): string {
     const lines = MismatchError.rejectionHeader(details);
-    const context = formatAnchoredContext(
-      details.anchorLines ?? [],
-      details.fileLines
-    );
+    const context = formatAnchoredContext(details.anchorLines ?? [], details.fileLines);
     if (context.length === 0) {
       return lines.join("\n");
     }
@@ -108,13 +101,10 @@ export class MismatchError extends Error {
   }
 }
 
-export function validateLineRef(
-  ref: { line: number },
-  fileLines: string[]
-): void {
+export function validateLineRef(ref: { line: number }, fileLines: string[]): void {
   if (ref.line < 1 || ref.line > fileLines.length) {
     throw new Error(
-      `Line ${ref.line} does not exist (file has ${fileLines.length} lines). Re-read the file to get current line numbers.`
+      `Line ${ref.line} does not exist (file has ${fileLines.length} lines). Re-read the file to get current line numbers.`,
     );
   }
 }

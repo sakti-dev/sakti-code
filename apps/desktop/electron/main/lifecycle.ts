@@ -3,11 +3,7 @@ import { is } from "@electron-toolkit/utils";
 import { BrowserWindow, shell } from "electron";
 
 import { logger } from "./lib/logger";
-import {
-  debouncedSaveWindowState,
-  flushWindowState,
-  loadWindowState,
-} from "./lib/window-state";
+import { debouncedSaveWindowState, flushWindowState, loadWindowState } from "./lib/window-state";
 
 // electron-vite emits preload at out/preload/index.cjs (CJS — sandbox can't run ESM); main runs at out/main/
 const PRELOAD_PATH = join(import.meta.dirname, "../preload/index.cjs");

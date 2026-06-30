@@ -9,14 +9,14 @@ export interface RenderPatch {
 
 function areSameBlock(
   left: RenderBlock<ParsedBlockData> | undefined,
-  right: RenderBlock<ParsedBlockData> | undefined
+  right: RenderBlock<ParsedBlockData> | undefined,
 ): boolean {
   return Boolean(left && right && left.id === right.id);
 }
 
 export function planRenderPatch(
   previous: RenderDocument<ParsedBlockData> | undefined,
-  next: RenderDocument<ParsedBlockData>
+  next: RenderDocument<ParsedBlockData>,
 ): RenderPatch {
   const previousBlocks = previous?.blocks ?? [];
   const nextBlocks = next.blocks;
@@ -25,10 +25,7 @@ export function planRenderPatch(
   while (
     unchangedPrefixCount < previousBlocks.length &&
     unchangedPrefixCount < nextBlocks.length &&
-    areSameBlock(
-      previousBlocks[unchangedPrefixCount],
-      nextBlocks[unchangedPrefixCount]
-    )
+    areSameBlock(previousBlocks[unchangedPrefixCount], nextBlocks[unchangedPrefixCount])
   ) {
     unchangedPrefixCount += 1;
   }

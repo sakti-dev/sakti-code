@@ -121,9 +121,7 @@ describe("ZaiLanguageModel.doStream — tool_use", () => {
       prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
     });
     const parts = await collect(stream);
-    const toolCall = (parts as { type: string }[]).find(
-      (p) => p.type === "tool-call"
-    );
+    const toolCall = (parts as { type: string }[]).find((p) => p.type === "tool-call");
     expect(toolCall).toMatchObject({
       toolCallId: "tu_1",
       toolName: "Read",
@@ -152,13 +150,11 @@ describe("ZaiLanguageModel.doStream — error/finish/usage/redacted_thinking", (
       prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
     });
     const parts = await collect(stream);
-    const errorPart = (parts as { type: string }[]).find(
-      (p) => p.type === "error"
-    );
+    const errorPart = (parts as { type: string }[]).find((p) => p.type === "error");
     expect(errorPart).toBeDefined();
-    const finish = (
-      parts as { type: string; finishReason: { unified: string } }[]
-    ).find((p) => p.type === "finish");
+    const finish = (parts as { type: string; finishReason: { unified: string } }[]).find(
+      (p) => p.type === "finish",
+    );
     expect(finish?.finishReason.unified).toBe("error");
   });
 

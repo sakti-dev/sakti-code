@@ -129,9 +129,7 @@ describe("ModelSelectorDialog", () => {
     });
 
     const searchInput = screen.getByRole("combobox");
-    searchInput.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
-    );
+    searchInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });

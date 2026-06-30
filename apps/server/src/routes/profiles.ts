@@ -9,10 +9,7 @@ export const profilesRoutes = new Hono()
       const profiles = getCtx(c).profiles.read();
       return c.json(profiles);
     } catch (e) {
-      return c.json(
-        { error: e instanceof Error ? e.message : "Failed to read profiles" },
-        500
-      );
+      return c.json({ error: e instanceof Error ? e.message : "Failed to read profiles" }, 500);
     }
   })
   .put("/", async (c) => {
@@ -26,10 +23,7 @@ export const profilesRoutes = new Hono()
       getCtx(c).profiles.writeAll(body as Profiles);
       return c.body(null, 204);
     } catch (e) {
-      return c.json(
-        { error: e instanceof Error ? e.message : "Invalid profiles" },
-        400
-      );
+      return c.json({ error: e instanceof Error ? e.message : "Invalid profiles" }, 400);
     }
   });
 

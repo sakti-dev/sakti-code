@@ -1,10 +1,4 @@
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  statSync,
-} from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
@@ -87,17 +81,13 @@ describe("AuthStore", () => {
   it("unknown provider is rejected", () => {
     const ok = store.set("bogus", "key");
     expect(ok).toBe(false);
-    expect(existsSync(authPath) ? readFileSync(authPath, "utf-8") : "{}").toBe(
-      "{}"
-    );
+    expect(existsSync(authPath) ? readFileSync(authPath, "utf-8") : "{}").toBe("{}");
   });
 
   it("empty key is rejected", () => {
     const ok = store.set("openai", "   ");
     expect(ok).toBe(false);
-    expect(existsSync(authPath) ? readFileSync(authPath, "utf-8") : "{}").toBe(
-      "{}"
-    );
+    expect(existsSync(authPath) ? readFileSync(authPath, "utf-8") : "{}").toBe("{}");
   });
 
   it("auth.json created with mode 0o600", () => {
@@ -121,10 +111,7 @@ describe("AuthStore", () => {
     store.set("openai", "sk-key-one-1234567890");
     store2.set("anthropic", "sk-ant-key-1234567890");
 
-    const raw = JSON.parse(readFileSync(authPath, "utf-8")) as Record<
-      string,
-      string
-    >;
+    const raw = JSON.parse(readFileSync(authPath, "utf-8")) as Record<string, string>;
     expect(raw.openai).toBe("sk-key-one-1234567890");
     expect(raw.anthropic).toBe("sk-ant-key-1234567890");
   });

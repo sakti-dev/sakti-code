@@ -31,7 +31,7 @@ export const sessionsRoutes = new Hono()
         kind: Type.Optional(Type.String()),
         parentSessionId: Type.Optional(Type.String()),
         profileId: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-      })
+      }),
     ),
     async (c) => {
       const ctx = getCtx(c);
@@ -40,13 +40,11 @@ export const sessionsRoutes = new Hono()
       const created = await ctx.repos.sessions.create(body.projectId, {
         ...(body.title === undefined ? {} : { title: body.title }),
         ...(body.kind === undefined ? {} : { kind: body.kind }),
-        ...(body.parentSessionId === undefined
-          ? {}
-          : { parentSessionId: body.parentSessionId }),
+        ...(body.parentSessionId === undefined ? {} : { parentSessionId: body.parentSessionId }),
         ...(body.profileId === undefined ? {} : { profileId: body.profileId }),
       });
       return c.json(created);
-    }
+    },
   )
   .patch(
     "/:id",
@@ -57,16 +55,11 @@ export const sessionsRoutes = new Hono()
           title: Type.Union([Type.String(), Type.Null()]),
           profileId: Type.Union([Type.String(), Type.Null()]),
           thinkingLevel: Type.String(),
-        })
-      )
+        }),
+      ),
     ),
     async (c) =>
-      c.json(
-        await getCtx(c).repos.sessions.update(
-          c.req.param("id"),
-          c.req.valid("json")
-        )
-      )
+      c.json(await getCtx(c).repos.sessions.update(c.req.param("id"), c.req.valid("json"))),
   )
   .get("/:id/messages", async (c) => {
     const ctx = getCtx(c);

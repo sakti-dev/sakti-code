@@ -30,10 +30,8 @@ import { validateToolArguments } from "./validation.ts";
 export type AgentEventSink = (event: AgentEvent) => Promise<void> | void;
 
 /** Lift an AgentEventSink (sync or async) into an Effect. */
-const emitEffect = (
-  emit: AgentEventSink,
-  event: AgentEvent
-): Effect.Effect<void> => Effect.promise(() => Promise.resolve(emit(event)));
+const emitEffect = (emit: AgentEventSink, event: AgentEvent): Effect.Effect<void> =>
+  Effect.promise(() => Promise.resolve(emit(event)));
 
 /**
  * Public agent event stream: an async-iterable sequence of {@link AgentEvent}s
@@ -51,11 +49,9 @@ export type AgentEventStream = AsyncIterable<AgentEvent> & {
 };
 
 function createAgentEventStream(
-  runWithEmit: (emit: AgentEventSink) => Effect.Effect<AgentMessage[], unknown>
+  runWithEmit: (emit: AgentEventSink) => Effect.Effect<AgentMessage[], unknown>,
 ): AgentEventStream {
-  const queue = Effect.runSync(
-    Queue.unbounded<AgentEvent, Cause.Done | Error>()
-  );
+  const queue = Effect.runSync(Queue.unbounded<AgentEvent, Cause.Done | Error>());
 
   let resolveResult!: (messages: AgentMessage[]) => void;
   let rejectResult!: (error: unknown) => void;
@@ -71,19 +67,18 @@ function createAgentEventStream(
       const exit = yield* Effect.exit(
         runWithEmit((event) => {
           Queue.offerUnsafe(queue, event);
-        })
+        }),
       );
       if (Exit.isSuccess(exit)) {
         resolveResult(exit.value);
         yield* Queue.end(queue);
       } else {
         const squashed = Cause.squash(exit.cause);
-        const error =
-          squashed instanceof Error ? squashed : new Error(String(squashed));
+        const error = squashed instanceof Error ? squashed : new Error(String(squashed));
         rejectResult(error);
         yield* Queue.fail(queue, error);
       }
-    })
+    }),
   ).catch(() => {
     /* errors surfaced via result() rejection and stream failure */
   });
@@ -91,9 +86,7 @@ function createAgentEventStream(
   const readable = Stream.toReadableStream(Stream.fromQueue(queue));
   return {
     [Symbol.asyncIterator]: () =>
-      (readable as unknown as AsyncIterable<AgentEvent>)[
-        Symbol.asyncIterator
-      ](),
+      (readable as unknown as AsyncIterable<AgentEvent>)[Symbol.asyncIterator](),
     result: () => resultPromise,
   };
 }
@@ -107,10 +100,10 @@ export function agentLoop(
   context: AgentContext,
   config: AgentLoopConfig,
   signal?: AbortSignal,
-  streamFn?: StreamFn
+  streamFn?: StreamFn,
 ): AgentEventStream {
   return createAgentEventStream((emit) =>
-    runAgentLoopEffect(prompts, context, config, emit, signal, streamFn)
+    runAgentLoopEffect(prompts, context, config, emit, signal, streamFn),
   );
 }
 
@@ -126,7 +119,7 @@ export function agentLoopContinue(
   context: AgentContext,
   config: AgentLoopConfig,
   signal?: AbortSignal,
-  streamFn?: StreamFn
+  streamFn?: StreamFn,
 ): AgentEventStream {
   if (context.messages.length === 0) {
     throw new Error("Cannot continue: no messages in context");
@@ -137,7 +130,7 @@ export function agentLoopContinue(
   }
 
   return createAgentEventStream((emit) =>
-    runAgentLoopContinueEffect(context, config, emit, signal, streamFn)
+    runAgentLoopContinueEffect(context, config, emit, signal, streamFn),
   );
 }
 
@@ -147,7 +140,7 @@ export async function runAgentLoop(
   config: AgentLoopConfig,
   emit: AgentEventSink,
   signal?: AbortSignal,
-  streamFn?: StreamFn
+  streamFn?: StreamFn,
 ): Promise<AgentMessage[]> {
   const newMessages: AgentMessage[] = [...prompts];
   const currentContext: AgentContext = {
@@ -163,7 +156,7 @@ export async function runAgentLoop(
   }
 
   await Effect.runPromise(
-    runLoopEffect(currentContext, newMessages, config, signal, emit, streamFn)
+    runLoopEffect(currentContext, newMessages, config, signal, emit, streamFn),
   );
   return newMessages;
 }
@@ -173,7 +166,7 @@ export async function runAgentLoopContinue(
   config: AgentLoopConfig,
   emit: AgentEventSink,
   signal?: AbortSignal,
-  streamFn?: StreamFn
+  streamFn?: StreamFn,
 ): Promise<AgentMessage[]> {
   if (context.messages.length === 0) {
     throw new Error("Cannot continue: no messages in context");
@@ -190,7 +183,7 @@ export async function runAgentLoopContinue(
   await emit({ type: "turn_start" });
 
   await Effect.runPromise(
-    runLoopEffect(currentContext, newMessages, config, signal, emit, streamFn)
+    runLoopEffect(currentContext, newMessages, config, signal, emit, streamFn),
   );
   return newMessages;
 }
@@ -205,7 +198,7 @@ export const runAgentLoopEffect = (
   config: AgentLoopConfig,
   emit: AgentEventSink,
   signal?: AbortSignal,
-  streamFn?: StreamFn
+  streamFn?: StreamFn,
 ): Effect.Effect<AgentMessage[]> =>
   Effect.gen(function* () {
     const newMessages: AgentMessage[] = [...prompts];
@@ -221,14 +214,7 @@ export const runAgentLoopEffect = (
       yield* emitEffect(emit, { type: "message_end", message: prompt });
     }
 
-    yield* runLoopEffect(
-      currentContext,
-      newMessages,
-      config,
-      signal,
-      emit,
-      streamFn
-    );
+    yield* runLoopEffect(currentContext, newMessages, config, signal, emit, streamFn);
     return newMessages;
   });
 
@@ -240,19 +226,15 @@ export const runAgentLoopContinueEffect = (
   config: AgentLoopConfig,
   emit: AgentEventSink,
   signal?: AbortSignal,
-  streamFn?: StreamFn
+  streamFn?: StreamFn,
 ): Effect.Effect<AgentMessage[], Error> =>
   Effect.gen(function* () {
     if (context.messages.length === 0) {
-      return yield* Effect.fail(
-        new Error("Cannot continue: no messages in context")
-      );
+      return yield* Effect.fail(new Error("Cannot continue: no messages in context"));
     }
 
     if (context.messages[context.messages.length - 1]!.role === "assistant") {
-      return yield* Effect.fail(
-        new Error("Cannot continue from message role: assistant")
-      );
+      return yield* Effect.fail(new Error("Cannot continue from message role: assistant"));
     }
 
     const newMessages: AgentMessage[] = [];
@@ -261,14 +243,7 @@ export const runAgentLoopContinueEffect = (
     yield* emitEffect(emit, { type: "agent_start" });
     yield* emitEffect(emit, { type: "turn_start" });
 
-    yield* runLoopEffect(
-      currentContext,
-      newMessages,
-      config,
-      signal,
-      emit,
-      streamFn
-    );
+    yield* runLoopEffect(currentContext, newMessages, config, signal, emit, streamFn);
     return newMessages;
   });
 
@@ -281,7 +256,7 @@ const runLoopEffect = (
   initialConfig: AgentLoopConfig,
   signal: AbortSignal | undefined,
   emit: AgentEventSink,
-  streamFn?: StreamFn
+  streamFn?: StreamFn,
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
     let currentContext = initialContext;
@@ -290,9 +265,7 @@ const runLoopEffect = (
     let lastAssistantMessage: AssistantMessage | undefined;
     let step = 0;
     let pendingMessages: AgentMessage[] =
-      (yield* Effect.promise(
-        () => config.getSteeringMessages?.() ?? Promise.resolve([])
-      )) || [];
+      (yield* Effect.promise(() => config.getSteeringMessages?.() ?? Promise.resolve([]))) || [];
 
     // §10: wrap streamFn to capture prefix shape for cache diagnostics.
     let prevShape: ReturnType<typeof captureShape> | undefined;
@@ -324,15 +297,14 @@ const runLoopEffect = (
           pendingMessages = [];
         }
 
-        const isLastStep =
-          config.maxSteps !== undefined && step >= config.maxSteps - 1;
+        const isLastStep = config.maxSteps !== undefined && step >= config.maxSteps - 1;
         const message = yield* streamAssistantResponse(
           currentContext,
           config,
           signal,
           emit,
           diagnosticStreamFn,
-          isLastStep
+          isLastStep,
         );
         step++;
         newMessages.push(message);
@@ -345,10 +317,7 @@ const runLoopEffect = (
           prevShape = lastShape;
         }
 
-        if (
-          message.stopReason === "error" ||
-          message.stopReason === "aborted"
-        ) {
+        if (message.stopReason === "error" || message.stopReason === "aborted") {
           config.logger?.info("turn finished", {
             stopReason: message.stopReason,
             usage: message.usage,
@@ -373,7 +342,7 @@ const runLoopEffect = (
             toolCalls,
             config,
             signal,
-            emit
+            emit,
           );
           toolResults.push(...executedToolBatch.messages);
           hasMoreToolCalls = !executedToolBatch.terminate;
@@ -393,7 +362,7 @@ const runLoopEffect = (
           newMessages,
         };
         const nextTurnSnapshot = yield* Effect.promise(() =>
-          Promise.resolve(config.prepareNextTurn?.(nextTurnContext))
+          Promise.resolve(config.prepareNextTurn?.(nextTurnContext)),
         );
         if (nextTurnSnapshot) {
           currentContext = nextTurnSnapshot.context ?? currentContext;
@@ -417,8 +386,8 @@ const runLoopEffect = (
               toolResults,
               context: currentContext,
               newMessages,
-            })
-          )
+            }),
+          ),
         );
         if (shouldStop) {
           config.logger?.info("turn finished", {
@@ -437,15 +406,12 @@ const runLoopEffect = (
         });
 
         pendingMessages =
-          (yield* Effect.promise(
-            () => config.getSteeringMessages?.() ?? Promise.resolve([])
-          )) || [];
+          (yield* Effect.promise(() => config.getSteeringMessages?.() ?? Promise.resolve([]))) ||
+          [];
       }
 
       const followUpMessages =
-        (yield* Effect.promise(
-          () => config.getFollowUpMessages?.() ?? Promise.resolve([])
-        )) || [];
+        (yield* Effect.promise(() => config.getFollowUpMessages?.() ?? Promise.resolve([]))) || [];
       if (followUpMessages.length > 0) {
         pendingMessages = followUpMessages;
         continue;
@@ -468,285 +434,272 @@ const runLoopEffect = (
  * Consumes @ai-sdk's `fullStream` natively — accumulates text-delta, reasoning-delta,
  * and tool-call parts into an `AssistantMessage`, emitting slim per-token deltas.
  */
-const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(
-  function* (
-    context: AgentContext,
-    config: AgentLoopConfig,
-    signal: AbortSignal | undefined,
-    emit: AgentEventSink,
-    streamFn?: StreamFn,
-    /** When true, send toolChoice: "none" so the model emits a final answer. */
-    forbidTools = false
-  ) {
-    // Apply context transform if configured (AgentMessage[] → AgentMessage[])
-    let messages = context.messages;
-    if (config.transformContext) {
-      messages = yield* Effect.promise(() =>
-        config.transformContext!(messages, signal)
-      );
-    }
+const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(function* (
+  context: AgentContext,
+  config: AgentLoopConfig,
+  signal: AbortSignal | undefined,
+  emit: AgentEventSink,
+  streamFn?: StreamFn,
+  /** When true, send toolChoice: "none" so the model emits a final answer. */
+  forbidTools = false,
+) {
+  // Apply context transform if configured (AgentMessage[] → AgentMessage[])
+  let messages = context.messages;
+  if (config.transformContext) {
+    messages = yield* Effect.promise(() => config.transformContext!(messages, signal));
+  }
 
-    // Convert to LLM-compatible messages (AgentMessage[] → Message[])
-    const llmMessages = yield* Effect.promise(() =>
-      Promise.resolve(config.convertToLlm(messages))
-    );
+  // Convert to LLM-compatible messages (AgentMessage[] → Message[])
+  const llmMessages = yield* Effect.promise(() => Promise.resolve(config.convertToLlm(messages)));
 
-    // Resolve API key (important for expiring tokens)
-    const resolvedApiKey =
-      (config.getApiKey
-        ? yield* Effect.promise(() =>
-            Promise.resolve(config.getApiKey!(config.model.provider))
-          )
-        : undefined) || config.apiKey;
+  // Resolve API key (important for expiring tokens)
+  const resolvedApiKey =
+    (config.getApiKey
+      ? yield* Effect.promise(() => Promise.resolve(config.getApiKey!(config.model.provider)))
+      : undefined) || config.apiKey;
 
-    // Build StreamRequest — @sakti-code/llm's single entry point
-    const streamFunction = streamFn ?? defaultStreamFn;
-    const { fullStream, result } = yield* Effect.promise(() =>
-      Promise.resolve(
-        streamFunction({
-          model: config.model,
-          messages: llmMessages,
-          ...(context.systemPrompt ? { system: context.systemPrompt } : {}),
-          ...(context.tools && context.tools.length > 0
-            ? { tools: toStreamTools(context.tools) }
-            : {}),
-          ...(forbidTools ? { toolChoice: "none" as const } : {}),
-          ...(config.reasoning === undefined
-            ? {}
-            : { thinkingLevel: config.reasoning }),
-          ...(resolvedApiKey === undefined ? {} : { apiKey: resolvedApiKey }),
-          ...(config.headers ? { headers: config.headers } : {}),
-          ...(config.sessionId ? { sessionId: config.sessionId } : {}),
-          maxOutputTokens: config.model.maxTokens,
-          ...(signal ? { abortSignal: signal } : {}),
-        })
-      )
-    );
+  // Build StreamRequest — @sakti-code/llm's single entry point
+  const streamFunction = streamFn ?? defaultStreamFn;
+  const { fullStream, result } = yield* Effect.promise(() =>
+    Promise.resolve(
+      streamFunction({
+        model: config.model,
+        messages: llmMessages,
+        ...(context.systemPrompt ? { system: context.systemPrompt } : {}),
+        ...(context.tools && context.tools.length > 0
+          ? { tools: toStreamTools(context.tools) }
+          : {}),
+        ...(forbidTools ? { toolChoice: "none" as const } : {}),
+        ...(config.reasoning === undefined ? {} : { thinkingLevel: config.reasoning }),
+        ...(resolvedApiKey === undefined ? {} : { apiKey: resolvedApiKey }),
+        ...(config.headers ? { headers: config.headers } : {}),
+        ...(config.sessionId ? { sessionId: config.sessionId } : {}),
+        maxOutputTokens: config.model.maxTokens,
+        ...(signal ? { abortSignal: signal } : {}),
+      }),
+    ),
+  );
 
-    // ── Accumulator state ──────────────────────────────────────────────
-    let textBuffer = "";
-    let thinkingBuffer = "";
-    // Anthropic encrypted thinking signature from reasoning-end's
-    // providerMetadata.anthropic.signature — captured so the messages layer can
-    // replay it for multi-turn extended-thinking continuity (gated by the
-    // sameModel guard in toModelMessages). Last block wins when several fire.
-    let thinkingSignature: string | undefined;
-    const toolCallBlocks: ToolCall[] = [];
-    let messageStarted = false;
+  // ── Accumulator state ──────────────────────────────────────────────
+  let textBuffer = "";
+  let thinkingBuffer = "";
+  // Anthropic encrypted thinking signature from reasoning-end's
+  // providerMetadata.anthropic.signature — captured so the messages layer can
+  // replay it for multi-turn extended-thinking continuity (gated by the
+  // sameModel guard in toModelMessages). Last block wins when several fire.
+  let thinkingSignature: string | undefined;
+  const toolCallBlocks: ToolCall[] = [];
+  let messageStarted = false;
 
-    // Placeholder pushed to context.messages; replaced with final message at end.
-    const placeholder: AssistantMessage = {
-      role: "assistant",
-      content: [],
-      api: config.model.api,
-      provider: config.model.provider,
-      model: config.model.id,
-      usage: EMPTY_USAGE,
-      stopReason: "stop",
-      timestamp: Date.now(),
-    };
+  // Placeholder pushed to context.messages; replaced with final message at end.
+  const placeholder: AssistantMessage = {
+    role: "assistant",
+    content: [],
+    api: config.model.api,
+    provider: config.model.provider,
+    model: config.model.id,
+    usage: EMPTY_USAGE,
+    stopReason: "stop",
+    timestamp: Date.now(),
+  };
 
-    /** Emit message_start once (on first content or at finalization). */
-    const ensureMessageStarted = (): Effect.Effect<void> =>
-      Effect.gen(function* () {
-        if (!messageStarted) {
-          messageStarted = true;
-          context.messages.push(placeholder);
-          yield* emitEffect(emit, {
-            type: "message_start",
-            message: placeholder,
-          });
-        }
-      });
-
-    // ── Iterate fullStream parts ───────────────────────────────────────
-    // `@ai-sdk`'s fullStream is an AsyncIterable; lift it into an Effect
-    // Stream. Iteration errors (network/parse failures mid-stream) land in the
-    // Stream's error channel; we run it under `Effect.exit` so we can capture
-    // them into `streamError` and continue to build an error-valued message —
-    // matching the previous try/catch semantics (errors are value-encoded as
-    // stopReason "error", never thrown to the caller).
-    let streamError: Error | undefined;
-    const consumed = yield* Stream.runForEach(
-      Stream.fromAsyncIterable(
-        fullStream as AsyncIterable<Record<string, unknown>>,
-        (e): Error => (e instanceof Error ? e : new Error(String(e)))
-      ),
-      (part) =>
-        Effect.gen(function* () {
-          const type = part.type as string;
-          switch (type) {
-            case "text-delta": {
-              yield* ensureMessageStarted();
-              const delta = part.text as string;
-              textBuffer += delta;
-              yield* emitEffect(emit, {
-                type: "message_update",
-                delta: { kind: "text", text: delta },
-              });
-              break;
-            }
-            case "reasoning-delta": {
-              yield* ensureMessageStarted();
-              const delta = part.text as string;
-              thinkingBuffer += delta;
-              yield* emitEffect(emit, {
-                type: "message_update",
-                delta: { kind: "thinking", text: delta },
-              });
-              break;
-            }
-            case "reasoning-end": {
-              // Capture the Anthropic encrypted thinking signature for multi-turn
-              // extended-thinking continuity (forwarded by toModelMessages when
-              // the target model matches — see B4 sameModel guard).
-              const signature = (
-                part as {
-                  providerMetadata?: { anthropic?: { signature?: string } };
-                }
-              ).providerMetadata?.anthropic?.signature;
-              if (signature) {
-                thinkingSignature = signature;
-              }
-              break;
-            }
-            case "tool-call": {
-              yield* ensureMessageStarted();
-              toolCallBlocks.push({
-                type: "toolCall",
-                id: part.toolCallId as string,
-                name: part.toolName as string,
-                arguments: (part.input as Record<string, unknown>) ?? {},
-              });
-              break;
-            }
-            case "tool-input-delta": {
-              // Live tool-call argument streaming — purely a UI feed. The
-              // complete tool-call part (with parsed `input`) arrives via the
-              // `tool-call` case below and is what we persist; these deltas
-              // let the UI show "Writing toolcall…" instead of looking stuck.
-              yield* ensureMessageStarted();
-              yield* emitEffect(emit, {
-                type: "message_update",
-                delta: {
-                  kind: "tool_input",
-                  toolCallId: part.toolCallId as string,
-                  text: (part.input as string) ?? "",
-                },
-              });
-              break;
-            }
-            case "error": {
-              streamError =
-                part.error instanceof Error
-                  ? part.error
-                  : new Error(String(part.error));
-              config.logger?.error("llm stream error part", streamError, {
-                model: config.model.id,
-                provider: config.model.provider,
-              });
-              break;
-            }
-            // Other parts (text-start/end, reasoning-start/end, start-step,
-            // finish-step, raw, source, file, start, finish, abort)
-            // are ignored — we accumulate from *-delta and tool-call only.
-          }
-        })
-    ).pipe(Effect.exit);
-    if (Exit.isFailure(consumed)) {
-      const cause = Cause.squash(consumed.cause);
-      streamError = cause instanceof Error ? cause : new Error(String(cause));
-      // The llm layer logs `type:"error"` parts, but a thrown iteration error
-      // (network/parse failure mid-stream) is only visible here — log it so it
-      // never disappears silently.
-      config.logger?.error("agent stream iteration failed", streamError, {
-        model: config.model.id,
-        provider: config.model.provider,
-      });
-    }
-
-    // ── Build final AssistantMessage ───────────────────────────────────
-    const content: (TextContent | ThinkingContent | ToolCall)[] = [];
-    if (thinkingBuffer) {
-      content.push({
-        type: "thinking",
-        thinking: thinkingBuffer,
-        ...(thinkingSignature ? { thinkingSignature } : {}),
-      });
-    }
-    if (textBuffer) {
-      content.push({ type: "text", text: textBuffer });
-    }
-    content.push(...toolCallBlocks);
-
-    const rawExit = yield* Effect.promise(() => result).pipe(Effect.exit);
-    let finish: {
-      usage: Usage;
-      finishReason: AssistantMessage["stopReason"];
-      responseId?: string;
-      responseModel?: string;
-    };
-    if (Exit.isSuccess(rawExit)) {
-      const raw = rawExit.value;
-      finish = {
-        usage: raw.usage,
-        finishReason: raw.finishReason,
-        ...(raw.responseId ? { responseId: raw.responseId } : {}),
-        ...(raw.responseModel ? { responseModel: raw.responseModel } : {}),
-      };
-    } else {
-      finish = { usage: EMPTY_USAGE, finishReason: "error" };
-    }
-
-    const finalMessage: AssistantMessage = {
-      role: "assistant",
-      content: content.length > 0 ? content : [{ type: "text", text: "" }],
-      api: config.model.api,
-      provider: config.model.provider,
-      model: config.model.id,
-      usage: finish.usage,
-      stopReason: streamError ? "error" : finish.finishReason,
-      timestamp: Date.now(),
-      ...(streamError ? { errorMessage: streamError.message } : {}),
-      ...(finish.responseId ? { responseId: finish.responseId } : {}),
-      ...(finish.responseModel ? { responseModel: finish.responseModel } : {}),
-    };
-
-    // Replace placeholder (or push if no content arrived)
-    if (messageStarted) {
-      context.messages[context.messages.length - 1] = finalMessage;
-    } else {
-      context.messages.push(finalMessage);
-      yield* emitEffect(emit, { type: "message_start", message: finalMessage });
-    }
-    yield* emitEffect(emit, { type: "message_end", message: finalMessage });
-
-    // Diagnose silent-empty turns (e.g. a provider returning finish "stop" with
-    // zero content): summarize what actually accumulated vs. the finish reason.
-    // Paired with the llm layer's raw/mapped usage trace so a "nothing came
-    // back" failure is pinappable from the logs alone.
-    config.logger?.debug("stream response", {
-      ...(finish.responseModel ? { responseModel: finish.responseModel } : {}),
-      ...(finish.responseId ? { responseId: finish.responseId } : {}),
-      finishReason: finish.finishReason,
-      hadStreamError: streamError !== undefined,
-      messageStarted,
-      model: config.model.id,
-      provider: config.model.provider,
-      stopReason: finalMessage.stopReason,
-      textLength: textBuffer.length,
-      thinkingLength: thinkingBuffer.length,
-      toolCallCount: toolCallBlocks.length,
-      usage: finalMessage.usage,
+  /** Emit message_start once (on first content or at finalization). */
+  const ensureMessageStarted = (): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      if (!messageStarted) {
+        messageStarted = true;
+        context.messages.push(placeholder);
+        yield* emitEffect(emit, {
+          type: "message_start",
+          message: placeholder,
+        });
+      }
     });
 
-    return finalMessage;
+  // ── Iterate fullStream parts ───────────────────────────────────────
+  // `@ai-sdk`'s fullStream is an AsyncIterable; lift it into an Effect
+  // Stream. Iteration errors (network/parse failures mid-stream) land in the
+  // Stream's error channel; we run it under `Effect.exit` so we can capture
+  // them into `streamError` and continue to build an error-valued message —
+  // matching the previous try/catch semantics (errors are value-encoded as
+  // stopReason "error", never thrown to the caller).
+  let streamError: Error | undefined;
+  const consumed = yield* Stream.runForEach(
+    Stream.fromAsyncIterable(
+      fullStream as AsyncIterable<Record<string, unknown>>,
+      (e): Error => (e instanceof Error ? e : new Error(String(e))),
+    ),
+    (part) =>
+      Effect.gen(function* () {
+        const type = part.type as string;
+        switch (type) {
+          case "text-delta": {
+            yield* ensureMessageStarted();
+            const delta = part.text as string;
+            textBuffer += delta;
+            yield* emitEffect(emit, {
+              type: "message_update",
+              delta: { kind: "text", text: delta },
+            });
+            break;
+          }
+          case "reasoning-delta": {
+            yield* ensureMessageStarted();
+            const delta = part.text as string;
+            thinkingBuffer += delta;
+            yield* emitEffect(emit, {
+              type: "message_update",
+              delta: { kind: "thinking", text: delta },
+            });
+            break;
+          }
+          case "reasoning-end": {
+            // Capture the Anthropic encrypted thinking signature for multi-turn
+            // extended-thinking continuity (forwarded by toModelMessages when
+            // the target model matches — see B4 sameModel guard).
+            const signature = (
+              part as {
+                providerMetadata?: { anthropic?: { signature?: string } };
+              }
+            ).providerMetadata?.anthropic?.signature;
+            if (signature) {
+              thinkingSignature = signature;
+            }
+            break;
+          }
+          case "tool-call": {
+            yield* ensureMessageStarted();
+            toolCallBlocks.push({
+              type: "toolCall",
+              id: part.toolCallId as string,
+              name: part.toolName as string,
+              arguments: (part.input as Record<string, unknown>) ?? {},
+            });
+            break;
+          }
+          case "tool-input-delta": {
+            // Live tool-call argument streaming — purely a UI feed. The
+            // complete tool-call part (with parsed `input`) arrives via the
+            // `tool-call` case below and is what we persist; these deltas
+            // let the UI show "Writing toolcall…" instead of looking stuck.
+            yield* ensureMessageStarted();
+            yield* emitEffect(emit, {
+              type: "message_update",
+              delta: {
+                kind: "tool_input",
+                toolCallId: part.toolCallId as string,
+                text: (part.input as string) ?? "",
+              },
+            });
+            break;
+          }
+          case "error": {
+            streamError = part.error instanceof Error ? part.error : new Error(String(part.error));
+            config.logger?.error("llm stream error part", streamError, {
+              model: config.model.id,
+              provider: config.model.provider,
+            });
+            break;
+          }
+          // Other parts (text-start/end, reasoning-start/end, start-step,
+          // finish-step, raw, source, file, start, finish, abort)
+          // are ignored — we accumulate from *-delta and tool-call only.
+        }
+      }),
+  ).pipe(Effect.exit);
+  if (Exit.isFailure(consumed)) {
+    const cause = Cause.squash(consumed.cause);
+    streamError = cause instanceof Error ? cause : new Error(String(cause));
+    // The llm layer logs `type:"error"` parts, but a thrown iteration error
+    // (network/parse failure mid-stream) is only visible here — log it so it
+    // never disappears silently.
+    config.logger?.error("agent stream iteration failed", streamError, {
+      model: config.model.id,
+      provider: config.model.provider,
+    });
   }
-);
+
+  // ── Build final AssistantMessage ───────────────────────────────────
+  const content: (TextContent | ThinkingContent | ToolCall)[] = [];
+  if (thinkingBuffer) {
+    content.push({
+      type: "thinking",
+      thinking: thinkingBuffer,
+      ...(thinkingSignature ? { thinkingSignature } : {}),
+    });
+  }
+  if (textBuffer) {
+    content.push({ type: "text", text: textBuffer });
+  }
+  content.push(...toolCallBlocks);
+
+  const rawExit = yield* Effect.promise(() => result).pipe(Effect.exit);
+  let finish: {
+    usage: Usage;
+    finishReason: AssistantMessage["stopReason"];
+    responseId?: string;
+    responseModel?: string;
+  };
+  if (Exit.isSuccess(rawExit)) {
+    const raw = rawExit.value;
+    finish = {
+      usage: raw.usage,
+      finishReason: raw.finishReason,
+      ...(raw.responseId ? { responseId: raw.responseId } : {}),
+      ...(raw.responseModel ? { responseModel: raw.responseModel } : {}),
+    };
+  } else {
+    finish = { usage: EMPTY_USAGE, finishReason: "error" };
+  }
+
+  const finalMessage: AssistantMessage = {
+    role: "assistant",
+    content: content.length > 0 ? content : [{ type: "text", text: "" }],
+    api: config.model.api,
+    provider: config.model.provider,
+    model: config.model.id,
+    usage: finish.usage,
+    stopReason: streamError ? "error" : finish.finishReason,
+    timestamp: Date.now(),
+    ...(streamError ? { errorMessage: streamError.message } : {}),
+    ...(finish.responseId ? { responseId: finish.responseId } : {}),
+    ...(finish.responseModel ? { responseModel: finish.responseModel } : {}),
+  };
+
+  // Replace placeholder (or push if no content arrived)
+  if (messageStarted) {
+    context.messages[context.messages.length - 1] = finalMessage;
+  } else {
+    context.messages.push(finalMessage);
+    yield* emitEffect(emit, { type: "message_start", message: finalMessage });
+  }
+  yield* emitEffect(emit, { type: "message_end", message: finalMessage });
+
+  // Diagnose silent-empty turns (e.g. a provider returning finish "stop" with
+  // zero content): summarize what actually accumulated vs. the finish reason.
+  // Paired with the llm layer's raw/mapped usage trace so a "nothing came
+  // back" failure is pinappable from the logs alone.
+  config.logger?.debug("stream response", {
+    ...(finish.responseModel ? { responseModel: finish.responseModel } : {}),
+    ...(finish.responseId ? { responseId: finish.responseId } : {}),
+    finishReason: finish.finishReason,
+    hadStreamError: streamError !== undefined,
+    messageStarted,
+    model: config.model.id,
+    provider: config.model.provider,
+    stopReason: finalMessage.stopReason,
+    textLength: textBuffer.length,
+    thinkingLength: thinkingBuffer.length,
+    toolCallCount: toolCallBlocks.length,
+    usage: finalMessage.usage,
+  });
+
+  return finalMessage;
+});
 
 /** Lazy import of the default stream function from @sakti-code/llm. */
 async function defaultStreamFn(
-  req: Parameters<StreamFn>[0]
+  req: Parameters<StreamFn>[0],
 ): Promise<Awaited<ReturnType<StreamFn>>> {
   const { stream } = await import("@sakti-code/llm");
   return stream(req);
@@ -789,34 +742,18 @@ const executeToolCalls = Effect.fn("agent-loop.executeToolCalls")(function* (
   toolCalls: ToolCall[],
   config: AgentLoopConfig,
   signal: AbortSignal | undefined,
-  emit: AgentEventSink
+  emit: AgentEventSink,
 ) {
   const hasSequentialToolCall = toolCalls.some(
-    (tc) =>
-      currentContext.tools?.find((t) => t.name === tc.name)?.executionMode ===
-      "sequential"
+    (tc) => currentContext.tools?.find((t) => t.name === tc.name)?.executionMode === "sequential",
   );
   if (config.toolExecution === "sequential" || hasSequentialToolCall) {
     return yield* Effect.promise(() =>
-      executeToolCallsSequential(
-        currentContext,
-        assistantMessage,
-        toolCalls,
-        config,
-        signal,
-        emit
-      )
+      executeToolCallsSequential(currentContext, assistantMessage, toolCalls, config, signal, emit),
     );
   }
   return yield* Effect.scoped(
-    executeToolCallsParallel(
-      currentContext,
-      assistantMessage,
-      toolCalls,
-      config,
-      signal,
-      emit
-    )
+    executeToolCallsParallel(currentContext, assistantMessage, toolCalls, config, signal, emit),
   );
 });
 
@@ -831,7 +768,7 @@ async function executeToolCallsSequential(
   toolCalls: AgentToolCall[],
   config: AgentLoopConfig,
   signal: AbortSignal | undefined,
-  emit: AgentEventSink
+  emit: AgentEventSink,
 ): Promise<ExecutedToolCallBatch> {
   const finalizedCalls: FinalizedToolCallOutcome[] = [];
   const messages: ToolResultMessage[] = [];
@@ -849,7 +786,7 @@ async function executeToolCallsSequential(
       assistantMessage,
       toolCall,
       config,
-      signal
+      signal,
     );
     let finalized: FinalizedToolCallOutcome;
     if (preparation.kind === "immediate") {
@@ -873,7 +810,7 @@ async function executeToolCallsSequential(
         preparation,
         executed,
         config,
-        signal
+        signal,
       );
       if (config.logger) {
         config.logger.debug("tool result", {
@@ -901,15 +838,13 @@ async function executeToolCallsSequential(
   };
 }
 
-const executeToolCallsParallel = Effect.fn(
-  "agent-loop.executeToolCallsParallel"
-)(function* (
+const executeToolCallsParallel = Effect.fn("agent-loop.executeToolCallsParallel")(function* (
   currentContext: AgentContext,
   assistantMessage: AssistantMessage,
   toolCalls: AgentToolCall[],
   config: AgentLoopConfig,
   signal: AbortSignal | undefined,
-  emit: AgentEventSink
+  emit: AgentEventSink,
 ) {
   // Indexed outcomes collected from each fiber; FiberSet.join returns void, so
   // results are stashed here and sorted back to source order after joining.
@@ -928,13 +863,7 @@ const executeToolCallsParallel = Effect.fn(
     });
 
     const preparation = yield* Effect.promise(() =>
-      prepareToolCall(
-        currentContext,
-        assistantMessage,
-        toolCall,
-        config,
-        signal
-      )
+      prepareToolCall(currentContext, assistantMessage, toolCall, config, signal),
     );
 
     if (preparation.kind === "immediate") {
@@ -959,14 +888,11 @@ const executeToolCallsParallel = Effect.fn(
         config.logger.debug("tool call", {
           toolName: preparation.toolCall.name,
           toolCallId: preparation.toolCall.id,
-          argsPreview: JSON.stringify(preparation.toolCall.arguments).slice(
-            0,
-            200
-          ),
+          argsPreview: JSON.stringify(preparation.toolCall.arguments).slice(0, 200),
         });
       }
       const executed = yield* Effect.promise(() =>
-        executePreparedToolCall(preparation, signal, emit)
+        executePreparedToolCall(preparation, signal, emit),
       );
       const finalized = yield* Effect.promise(() =>
         finalizeExecutedToolCall(
@@ -975,8 +901,8 @@ const executeToolCallsParallel = Effect.fn(
           preparation,
           executed,
           config,
-          signal
-        )
+          signal,
+        ),
       );
       if (config.logger) {
         config.logger.debug("tool result", {
@@ -1000,9 +926,7 @@ const executeToolCallsParallel = Effect.fn(
   // Mirrors opencode's session runner (session/runner/llm.ts).
   yield* Effect.raceFirst(FiberSet.join(set), FiberSet.awaitEmpty(set));
 
-  const ordered = finalOutcomes
-    .sort((a, b) => a.index - b.index)
-    .map((r) => r.outcome);
+  const ordered = finalOutcomes.sort((a, b) => a.index - b.index).map((r) => r.outcome);
   const messages: ToolResultMessage[] = [];
   for (const finalized of ordered) {
     const toolResultMessage = createToolResultMessage(finalized);
@@ -1040,19 +964,14 @@ type FinalizedToolCallOutcome = {
   isError: boolean;
 };
 
-function shouldTerminateToolBatch(
-  finalizedCalls: FinalizedToolCallOutcome[]
-): boolean {
+function shouldTerminateToolBatch(finalizedCalls: FinalizedToolCallOutcome[]): boolean {
   return (
     finalizedCalls.length > 0 &&
     finalizedCalls.every((finalized) => finalized.result.terminate === true)
   );
 }
 
-function prepareToolCallArguments(
-  tool: AgentTool<any>,
-  toolCall: AgentToolCall
-): AgentToolCall {
+function prepareToolCallArguments(tool: AgentTool<any>, toolCall: AgentToolCall): AgentToolCall {
   if (!tool.prepareArguments) {
     return toolCall;
   }
@@ -1071,7 +990,7 @@ async function prepareToolCall(
   assistantMessage: AssistantMessage,
   toolCall: AgentToolCall,
   config: AgentLoopConfig,
-  signal: AbortSignal | undefined
+  signal: AbortSignal | undefined,
 ): Promise<PreparedToolCall | ImmediateToolCallOutcome> {
   const tool = currentContext.tools?.find((t) => t.name === toolCall.name);
   if (!tool) {
@@ -1115,9 +1034,7 @@ async function prepareToolCall(
       if (deny) {
         return {
           kind: "immediate",
-          result: createErrorToolResult(
-            `Permission denied for tool "${tool.name}"`
-          ),
+          result: createErrorToolResult(`Permission denied for tool "${tool.name}"`),
           isError: true,
         };
       }
@@ -1132,9 +1049,7 @@ async function prepareToolCall(
             if (verdict === "deny") {
               return {
                 kind: "immediate",
-                result: createErrorToolResult(
-                  `Permission denied for tool "${tool.name}"`
-                ),
+                result: createErrorToolResult(`Permission denied for tool "${tool.name}"`),
                 isError: true,
               };
             }
@@ -1142,9 +1057,7 @@ async function prepareToolCall(
         } else {
           return {
             kind: "immediate",
-            result: createErrorToolResult(
-              `Permission denied for tool "${tool.name}"`
-            ),
+            result: createErrorToolResult(`Permission denied for tool "${tool.name}"`),
             isError: true,
           };
         }
@@ -1158,7 +1071,7 @@ async function prepareToolCall(
           args: validatedArgs,
           context: currentContext,
         },
-        signal
+        signal,
       );
       if (signal?.aborted) {
         return {
@@ -1170,9 +1083,7 @@ async function prepareToolCall(
       if (beforeResult?.block) {
         return {
           kind: "immediate",
-          result: createErrorToolResult(
-            beforeResult.reason || "Tool execution was blocked"
-          ),
+          result: createErrorToolResult(beforeResult.reason || "Tool execution was blocked"),
           isError: true,
         };
       }
@@ -1193,9 +1104,7 @@ async function prepareToolCall(
   } catch (error) {
     return {
       kind: "immediate",
-      result: createErrorToolResult(
-        error instanceof Error ? error.message : String(error)
-      ),
+      result: createErrorToolResult(error instanceof Error ? error.message : String(error)),
       isError: true,
     };
   }
@@ -1204,7 +1113,7 @@ async function prepareToolCall(
 async function executePreparedToolCall(
   prepared: PreparedToolCall,
   signal: AbortSignal | undefined,
-  emit: AgentEventSink
+  emit: AgentEventSink,
 ): Promise<ExecutedToolCallOutcome> {
   const updateEvents: Promise<void>[] = [];
   let acceptingUpdates = true;
@@ -1226,10 +1135,10 @@ async function executePreparedToolCall(
               toolName: prepared.toolCall.name,
               args: prepared.toolCall.arguments,
               partialResult,
-            })
-          )
+            }),
+          ),
         );
-      }
+      },
     );
     acceptingUpdates = false;
     await Promise.all(updateEvents);
@@ -1238,9 +1147,7 @@ async function executePreparedToolCall(
     acceptingUpdates = false;
     await Promise.all(updateEvents);
     return {
-      result: createErrorToolResult(
-        error instanceof Error ? error.message : String(error)
-      ),
+      result: createErrorToolResult(error instanceof Error ? error.message : String(error)),
       isError: true,
     };
   } finally {
@@ -1254,7 +1161,7 @@ async function finalizeExecutedToolCall(
   prepared: PreparedToolCall,
   executed: ExecutedToolCallOutcome,
   config: AgentLoopConfig,
-  signal: AbortSignal | undefined
+  signal: AbortSignal | undefined,
 ): Promise<FinalizedToolCallOutcome> {
   let result = executed.result;
   let isError = executed.isError;
@@ -1270,7 +1177,7 @@ async function finalizeExecutedToolCall(
           isError,
           context: currentContext,
         },
-        signal
+        signal,
       );
       if (afterResult) {
         result = {
@@ -1281,9 +1188,7 @@ async function finalizeExecutedToolCall(
         isError = afterResult.isError ?? isError;
       }
     } catch (error) {
-      result = createErrorToolResult(
-        error instanceof Error ? error.message : String(error)
-      );
+      result = createErrorToolResult(error instanceof Error ? error.message : String(error));
       isError = true;
     }
   }
@@ -1304,7 +1209,7 @@ function createErrorToolResult(message: string): AgentToolResult<any> {
 
 async function emitToolExecutionEnd(
   finalized: FinalizedToolCallOutcome,
-  emit: AgentEventSink
+  emit: AgentEventSink,
 ): Promise<void> {
   await emit({
     type: "tool_execution_end",
@@ -1315,9 +1220,7 @@ async function emitToolExecutionEnd(
   });
 }
 
-function createToolResultMessage(
-  finalized: FinalizedToolCallOutcome
-): ToolResultMessage {
+function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResultMessage {
   return {
     role: "toolResult",
     toolCallId: finalized.toolCall.id,
@@ -1331,7 +1234,7 @@ function createToolResultMessage(
 
 async function emitToolResultMessage(
   toolResultMessage: ToolResultMessage,
-  emit: AgentEventSink
+  emit: AgentEventSink,
 ): Promise<void> {
   await emit({ type: "message_start", message: toolResultMessage });
   await emit({ type: "message_end", message: toolResultMessage });

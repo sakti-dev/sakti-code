@@ -383,14 +383,10 @@ describe("useModelSelector", () => {
 
         expect(result.activeIndex()).toBe(0);
 
-        result.handleInputKeyDown(
-          new KeyboardEvent("keydown", { key: "ArrowDown" })
-        );
+        result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "ArrowDown" }));
         expect(result.activeIndex()).toBe(1);
 
-        result.handleInputKeyDown(
-          new KeyboardEvent("keydown", { key: "ArrowDown" })
-        );
+        result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "ArrowDown" }));
         expect(result.activeIndex()).toBe(2);
       });
     });
@@ -407,9 +403,7 @@ describe("useModelSelector", () => {
 
         // Navigate to last item (index 4)
         for (let i = 0; i < 5; i++) {
-          result.handleInputKeyDown(
-            new KeyboardEvent("keydown", { key: "ArrowDown" })
-          );
+          result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "ArrowDown" }));
         }
         // 5 presses from 0 → wraps: 1,2,3,4,0
         expect(result.activeIndex()).toBe(0);
@@ -428,20 +422,14 @@ describe("useModelSelector", () => {
 
         // Start at index 3
         for (let i = 0; i < 3; i++) {
-          result.handleInputKeyDown(
-            new KeyboardEvent("keydown", { key: "ArrowDown" })
-          );
+          result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "ArrowDown" }));
         }
         expect(result.activeIndex()).toBe(3);
 
-        result.handleInputKeyDown(
-          new KeyboardEvent("keydown", { key: "ArrowUp" })
-        );
+        result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "ArrowUp" }));
         expect(result.activeIndex()).toBe(2);
 
-        result.handleInputKeyDown(
-          new KeyboardEvent("keydown", { key: "ArrowUp" })
-        );
+        result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "ArrowUp" }));
         expect(result.activeIndex()).toBe(1);
       });
     });
@@ -458,9 +446,7 @@ describe("useModelSelector", () => {
 
         expect(result.activeIndex()).toBe(0);
 
-        result.handleInputKeyDown(
-          new KeyboardEvent("keydown", { key: "ArrowUp" })
-        );
+        result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "ArrowUp" }));
         expect(result.activeIndex()).toBe(4); // wraps to last
       });
     });
@@ -479,19 +465,11 @@ describe("useModelSelector", () => {
 
         // Navigate to claude-sonnet (index 3)
         for (let i = 0; i < 3; i++) {
-          result.handleInputKeyDown(
-            new KeyboardEvent("keydown", { key: "ArrowDown" })
-          );
+          result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "ArrowDown" }));
         }
 
-        result.handleInputKeyDown(
-          new KeyboardEvent("keydown", { key: "Enter" })
-        );
-        expect(onSelect).toHaveBeenCalledWith(
-          "claude-sonnet",
-          "anthropic",
-          false
-        );
+        result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "Enter" }));
+        expect(onSelect).toHaveBeenCalledWith("claude-sonnet", "anthropic", false);
         expect(onOpenChange).toHaveBeenCalledWith(false);
       });
     });
@@ -507,9 +485,7 @@ describe("useModelSelector", () => {
           onOpenChange,
         });
 
-        result.handleInputKeyDown(
-          new KeyboardEvent("keydown", { key: "Enter" })
-        );
+        result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "Enter" }));
         expect(onSelect).not.toHaveBeenCalled();
         expect(onOpenChange).not.toHaveBeenCalled();
       });
@@ -526,9 +502,7 @@ describe("useModelSelector", () => {
           onOpenChange,
         });
 
-        result.handleInputKeyDown(
-          new KeyboardEvent("keydown", { key: "Escape" })
-        );
+        result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "Escape" }));
         expect(onOpenChange).toHaveBeenCalledWith(false);
       });
     });
@@ -544,15 +518,9 @@ describe("useModelSelector", () => {
           onOpenChange,
         });
 
-        result.handleInputKeyDown(
-          new KeyboardEvent("keydown", { key: "ArrowDown" })
-        );
-        result.handleInputKeyDown(
-          new KeyboardEvent("keydown", { key: "ArrowUp" })
-        );
-        result.handleInputKeyDown(
-          new KeyboardEvent("keydown", { key: "Enter" })
-        );
+        result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+        result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "ArrowUp" }));
+        result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "Enter" }));
         expect(onSelect).not.toHaveBeenCalled();
         expect(onOpenChange).not.toHaveBeenCalled();
       });
@@ -605,9 +573,7 @@ describe("useModelSelector", () => {
         expect(result.isActive("gpt-4o")).toBe(true);
         expect(result.isActive("o1")).toBe(false);
 
-        result.handleInputKeyDown(
-          new KeyboardEvent("keydown", { key: "ArrowDown" })
-        );
+        result.handleInputKeyDown(new KeyboardEvent("keydown", { key: "ArrowDown" }));
         expect(result.isActive("gpt-4o")).toBe(false);
         expect(result.isActive("o1")).toBe(true);
       });

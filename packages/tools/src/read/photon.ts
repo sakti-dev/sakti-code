@@ -8,13 +8,9 @@
 export type { PhotonImage as PhotonImageType } from "@silvia-odwyer/photon-node";
 
 let photonModule: typeof import("@silvia-odwyer/photon-node") | null = null;
-let loadPromise: Promise<
-  typeof import("@silvia-odwyer/photon-node") | null
-> | null = null;
+let loadPromise: Promise<typeof import("@silvia-odwyer/photon-node") | null> | null = null;
 
-export async function loadPhoton(): Promise<
-  typeof import("@silvia-odwyer/photon-node") | null
-> {
+export async function loadPhoton(): Promise<typeof import("@silvia-odwyer/photon-node") | null> {
   if (photonModule) {
     return photonModule;
   }

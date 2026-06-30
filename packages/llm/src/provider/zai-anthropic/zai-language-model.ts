@@ -18,10 +18,7 @@ import {
   postJsonToApi,
 } from "@ai-sdk/provider-utils";
 import type { z } from "zod/v4";
-import {
-  convertToZaiPrompt,
-  type ZaiMessage,
-} from "./convert-to-zai-prompt.ts";
+import { convertToZaiPrompt, type ZaiMessage } from "./convert-to-zai-prompt.ts";
 import { convertZaiUsage } from "./convert-zai-usage.ts";
 import { CacheControlValidator } from "./get-cache-control.ts";
 import { mapZaiResponse } from "./map-zai-response.ts";
@@ -138,10 +135,7 @@ export class ZaiLanguageModel implements LanguageModelV4 {
 
   get supportedUrls(): Record<string, RegExp[]> {
     return {
-      "image/*": [
-        SUPPORTED_HTTPS_URL_PATTERN,
-        SUPPORTED_DATA_IMAGE_URL_PATTERN,
-      ],
+      "image/*": [SUPPORTED_HTTPS_URL_PATTERN, SUPPORTED_DATA_IMAGE_URL_PATTERN],
     };
   }
 
@@ -153,9 +147,7 @@ export class ZaiLanguageModel implements LanguageModelV4 {
    *
    * Public for TDD; the surface used by `doGenerate`/`doStream` is stable.
    */
-  async getArgs(
-    options: LanguageModelV4CallOptions
-  ): Promise<ZaiGetArgsResult> {
+  async getArgs(options: LanguageModelV4CallOptions): Promise<ZaiGetArgsResult> {
     const warnings: SharedV4Warning[] = [];
     const betas = new Set<string>();
 
@@ -196,16 +188,11 @@ export class ZaiLanguageModel implements LanguageModelV4 {
 
     // ─── thinking ────────────────────────────────────────────────────────
     const thinkingType = zaiProviderOptions?.thinking?.type;
-    const isThinking =
-      thinkingType === "enabled" || thinkingType === "adaptive";
+    const isThinking = thinkingType === "enabled" || thinkingType === "adaptive";
     let thinkingBudget =
-      thinkingType === "enabled"
-        ? zaiProviderOptions?.thinking?.budgetTokens
-        : undefined;
+      thinkingType === "enabled" ? zaiProviderOptions?.thinking?.budgetTokens : undefined;
     const thinkingDisplay =
-      thinkingType === "adaptive"
-        ? zaiProviderOptions?.thinking?.display
-        : undefined;
+      thinkingType === "adaptive" ? zaiProviderOptions?.thinking?.display : undefined;
 
     if (isThinking && thinkingType === "enabled" && thinkingBudget == null) {
       warnings.push({
@@ -218,31 +205,23 @@ export class ZaiLanguageModel implements LanguageModelV4 {
     }
 
     // ─── temperature / topP / topK strip when thinking ───────────────────
-    const sampling = stripSamplingWhenThinking(
-      { temperature, topP, topK },
-      isThinking,
-      warnings
-    );
+    const sampling = stripSamplingWhenThinking({ temperature, topP, topK }, isThinking, warnings);
 
     // ─── prompt-caching: mark last system block + last tool ──────────────
     const cacheConfig = zaiProviderOptions?.cacheControl;
     const cachedSystem = stampSystemCacheControl(
       system,
       cacheConfig?.system ?? true,
-      cacheControlValidator
+      cacheControlValidator,
     );
     if (cachedSystem) {
       betas.add("prompt-caching-2024-07-31");
     }
 
     const functionTools = (tools ?? []).filter(
-      (t): t is LanguageModelV4FunctionTool => t.type === "function"
+      (t): t is LanguageModelV4FunctionTool => t.type === "function",
     );
-    const zaiTools = prepareTools(
-      functionTools,
-      cacheControlValidator,
-      cacheConfig?.tools ?? true
-    );
+    const zaiTools = prepareTools(functionTools, cacheControlValidator, cacheConfig?.tools ?? true);
     if (zaiTools && zaiTools.length > 0) {
       betas.add("prompt-caching-2024-07-31");
     }
@@ -259,8 +238,7 @@ export class ZaiLanguageModel implements LanguageModelV4 {
       stopSequences,
       system,
       thinking:
-        isThinking &&
-        (thinkingType === "enabled" || thinkingType === "adaptive")
+        isThinking && (thinkingType === "enabled" || thinkingType === "adaptive")
           ? {
               type: thinkingType,
               budget: thinkingBudget,
@@ -278,9 +256,7 @@ export class ZaiLanguageModel implements LanguageModelV4 {
     };
   }
 
-  async doGenerate(
-    options: LanguageModelV4CallOptions
-  ): Promise<LanguageModelV4GenerateResult> {
+  async doGenerate(options: LanguageModelV4CallOptions): Promise<LanguageModelV4GenerateResult> {
     const { args, warnings, betas } = await this.getArgs(options);
 
     const { value: response, responseHeaders } = await postJsonToApi({
@@ -289,9 +265,7 @@ export class ZaiLanguageModel implements LanguageModelV4 {
       body: args,
       failedResponseHandler: zaiFailedResponseHandler,
       successfulResponseHandler: createJsonResponseHandler(zaiResponseZod),
-      ...(options.abortSignal === undefined
-        ? {}
-        : { abortSignal: options.abortSignal }),
+      ...(options.abortSignal === undefined ? {} : { abortSignal: options.abortSignal }),
       ...(this.config.fetch === undefined ? {} : { fetch: this.config.fetch }),
     });
 
@@ -313,9 +287,7 @@ export class ZaiLanguageModel implements LanguageModelV4 {
     return result;
   }
 
-  async doStream(
-    options: LanguageModelV4CallOptions
-  ): Promise<LanguageModelV4StreamResult> {
+  async doStream(options: LanguageModelV4CallOptions): Promise<LanguageModelV4StreamResult> {
     const { args, warnings, betas } = await this.getArgs(options);
     const body = { ...args, stream: true as const };
 
@@ -325,17 +297,11 @@ export class ZaiLanguageModel implements LanguageModelV4 {
       body,
       failedResponseHandler: zaiFailedResponseHandler,
       successfulResponseHandler: createEventSourceResponseHandler(zaiChunkZod),
-      ...(options.abortSignal === undefined
-        ? {}
-        : { abortSignal: options.abortSignal }),
+      ...(options.abortSignal === undefined ? {} : { abortSignal: options.abortSignal }),
       ...(this.config.fetch === undefined ? {} : { fetch: this.config.fetch }),
     });
 
-    const stream = pipeThroughZaiStream(
-      response,
-      warnings,
-      options.includeRawChunks ?? false
-    );
+    const stream = pipeThroughZaiStream(response, warnings, options.includeRawChunks ?? false);
 
     const result: LanguageModelV4StreamResult = {
       stream,
@@ -353,13 +319,13 @@ export class ZaiLanguageModel implements LanguageModelV4 {
 
   private async getHeaders(
     betas: Set<string>,
-    requestHeaders: Record<string, string | undefined> | undefined
+    requestHeaders: Record<string, string | undefined> | undefined,
   ): Promise<Record<string, string | undefined>> {
     const config = await this.config.headers();
     return combineHeaders(
       config,
       requestHeaders,
-      betas.size > 0 ? { "anthropic-beta": [...betas].join(",") } : {}
+      betas.size > 0 ? { "anthropic-beta": [...betas].join(",") } : {},
     );
   }
 }
@@ -384,7 +350,7 @@ function stampCacheControl(block: SystemBlock, marker: ZaiCacheControl): void {
 function stampSystemCacheControl(
   system: SystemBlock[] | undefined,
   enabled: boolean,
-  validator: CacheControlValidator
+  validator: CacheControlValidator,
 ): boolean {
   if (!system || system.length === 0 || !enabled) {
     return false;
@@ -434,8 +400,7 @@ function assembleZaiRequest(input: AssembleInput): ZaiRequest {
   // §4`, also reserve `SUMMARY_RESERVE` tokens at the top for compaction
   // output so the agent loop has headroom.
   const cap = input.maxTokensCap;
-  const effectiveCap =
-    cap === undefined ? undefined : Math.max(1, cap - SUMMARY_RESERVE);
+  const effectiveCap = cap === undefined ? undefined : Math.max(1, cap - SUMMARY_RESERVE);
   const maxTokens =
     effectiveCap === undefined
       ? input.maxOutputTokens
@@ -464,12 +429,8 @@ function assembleZaiRequest(input: AssembleInput): ZaiRequest {
   if (isThinking && input.thinking) {
     args.thinking = {
       type: input.thinking.type,
-      ...(input.thinking.budget === undefined
-        ? {}
-        : { budget_tokens: input.thinking.budget }),
-      ...(input.thinking.display === undefined
-        ? {}
-        : { display: input.thinking.display }),
+      ...(input.thinking.budget === undefined ? {} : { budget_tokens: input.thinking.budget }),
+      ...(input.thinking.display === undefined ? {} : { display: input.thinking.display }),
     };
   }
   if (input.toolChoice !== undefined) {
@@ -490,16 +451,14 @@ function assembleZaiRequest(input: AssembleInput): ZaiRequest {
 function prepareTools(
   tools: LanguageModelV4FunctionTool[] | undefined,
   validator: CacheControlValidator,
-  cacheTools: boolean
+  cacheTools: boolean,
 ): ZaiTool[] | undefined {
   if (!tools || tools.length === 0) {
     return;
   }
   const prepared: ZaiTool[] = tools.map((tool) => ({
     name: tool.name,
-    ...(tool.description === undefined
-      ? {}
-      : { description: tool.description }),
+    ...(tool.description === undefined ? {} : { description: tool.description }),
     input_schema: sanitizeJsonSchema(tool.inputSchema as JSONSchema7),
   }));
   if (cacheTools && prepared.length > 0) {
@@ -515,16 +474,14 @@ function prepareTools(
 }
 
 function buildOutputConfig(
-  zaiProviderOptions: ZaiOptions | undefined
+  zaiProviderOptions: ZaiOptions | undefined,
 ): ZaiRequest["output_config"] | undefined {
   const cfg = zaiProviderOptions?.outputConfig;
   if (cfg === undefined) {
     return;
   }
   const hasAny =
-    cfg.effort !== undefined ||
-    cfg.taskBudget !== undefined ||
-    cfg.format !== undefined;
+    cfg.effort !== undefined || cfg.taskBudget !== undefined || cfg.format !== undefined;
   if (!hasAny) {
     return;
   }
@@ -550,7 +507,7 @@ function buildOutputConfig(
 }
 
 function mapToolChoice(
-  choice: NonNullable<LanguageModelV4CallOptions["toolChoice"]>
+  choice: NonNullable<LanguageModelV4CallOptions["toolChoice"]>,
 ): NonNullable<ZaiRequest["tool_choice"]> {
   switch (choice.type) {
     case "auto":
@@ -581,7 +538,7 @@ interface SamplingParams {
 function stripSamplingWhenThinking(
   params: SamplingParams,
   isThinking: boolean,
-  warnings: SharedV4Warning[]
+  warnings: SharedV4Warning[],
 ): SamplingParams {
   if (!isThinking) {
     return params;
@@ -621,13 +578,7 @@ interface ZaiStreamState {
   blocks: Map<number, ZaiStreamBlock>;
   blockType: "text" | "thinking" | "redacted_thinking" | "tool_use" | undefined;
   finishReasonRaw: string | undefined;
-  finishReasonUnified:
-    | "stop"
-    | "length"
-    | "content-filter"
-    | "tool-calls"
-    | "error"
-    | "other";
+  finishReasonUnified: "stop" | "length" | "content-filter" | "tool-calls" | "error" | "other";
   usage: ZaiUsage;
 }
 
@@ -636,15 +587,14 @@ interface ZaiStreamCtx {
   state: ZaiStreamState;
 }
 
-type StreamController =
-  TransformStreamDefaultController<LanguageModelV4StreamPart>;
+type StreamController = TransformStreamDefaultController<LanguageModelV4StreamPart>;
 
 type ZaiChunk = z.infer<typeof zaiChunkZod>;
 
 function pipeThroughZaiStream(
   response: ReadableStream<ParseResult<unknown>>,
   warnings: SharedV4Warning[],
-  includeRawChunks: boolean
+  includeRawChunks: boolean,
 ): ReadableStream<LanguageModelV4StreamPart> {
   const state: ZaiStreamState = {
     blocks: new Map(),
@@ -664,16 +614,15 @@ function pipeThroughZaiStream(
       start(controller) {
         controller.enqueue({ type: "stream-start", warnings });
       },
-      transform: (chunk, controller) =>
-        transformZaiChunk(ctx, chunk, controller),
-    })
+      transform: (chunk, controller) => transformZaiChunk(ctx, chunk, controller),
+    }),
   );
 }
 
 function transformZaiChunk(
   ctx: ZaiStreamCtx,
   chunk: ParseResult<unknown>,
-  controller: StreamController
+  controller: StreamController,
 ): void {
   const { state, includeRawChunks } = ctx;
   if (includeRawChunks) {
@@ -723,13 +672,12 @@ function transformZaiChunk(
 function handleMessageStart(
   value: Extract<ZaiChunk, { type: "message_start" }>,
   state: ZaiStreamState,
-  controller: StreamController
+  controller: StreamController,
 ): void {
   const msgUsage = value.message.usage;
   if (msgUsage) {
     state.usage.input_tokens = msgUsage.input_tokens;
-    state.usage.cache_creation_input_tokens =
-      msgUsage.cache_creation_input_tokens ?? 0;
+    state.usage.cache_creation_input_tokens = msgUsage.cache_creation_input_tokens ?? 0;
     state.usage.cache_read_input_tokens = msgUsage.cache_read_input_tokens ?? 0;
   }
   controller.enqueue({
@@ -746,7 +694,7 @@ function handleMessageStart(
 function handleContentBlockStart(
   value: Extract<ZaiChunk, { type: "content_block_start" }>,
   state: ZaiStreamState,
-  controller: StreamController
+  controller: StreamController,
 ): void {
   const part = value.content_block;
   state.blockType = part.type;
@@ -792,7 +740,7 @@ function handleContentBlockStart(
 function handleContentBlockDelta(
   value: Extract<ZaiChunk, { type: "content_block_delta" }>,
   state: ZaiStreamState,
-  controller: StreamController
+  controller: StreamController,
 ): void {
   const delta = value.delta;
   if (delta.type === "text_delta") {
@@ -838,7 +786,7 @@ function handleContentBlockDelta(
 function handleContentBlockStop(
   value: Extract<ZaiChunk, { type: "content_block_stop" }>,
   state: ZaiStreamState,
-  controller: StreamController
+  controller: StreamController,
 ): void {
   const block = state.blocks.get(value.index);
   if (!block) {
@@ -865,23 +813,18 @@ function handleContentBlockStop(
 
 function handleMessageDelta(
   value: Extract<ZaiChunk, { type: "message_delta" }>,
-  state: ZaiStreamState
+  state: ZaiStreamState,
 ): void {
   if (value.usage) {
-    if (
-      value.usage.input_tokens !== undefined &&
-      value.usage.input_tokens !== null
-    ) {
+    if (value.usage.input_tokens !== undefined && value.usage.input_tokens !== null) {
       state.usage.input_tokens = value.usage.input_tokens;
     }
     state.usage.output_tokens = value.usage.output_tokens;
     if (value.usage.cache_read_input_tokens !== undefined) {
-      state.usage.cache_read_input_tokens =
-        value.usage.cache_read_input_tokens ?? 0;
+      state.usage.cache_read_input_tokens = value.usage.cache_read_input_tokens ?? 0;
     }
     if (value.usage.cache_creation_input_tokens !== undefined) {
-      state.usage.cache_creation_input_tokens =
-        value.usage.cache_creation_input_tokens ?? 0;
+      state.usage.cache_creation_input_tokens = value.usage.cache_creation_input_tokens ?? 0;
     }
   }
   state.finishReasonUnified = mapZaiStopReason({

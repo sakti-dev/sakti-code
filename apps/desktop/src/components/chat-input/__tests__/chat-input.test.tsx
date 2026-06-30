@@ -141,9 +141,7 @@ afterEach(() => {
 
 describe("ChatInput", () => {
   it("renders the chip editor with a placeholder overlay", () => {
-    const { getByText } = render(() => (
-      <ChatInput placeholder="Type here…" sessionId="s1" />
-    ));
+    const { getByText } = render(() => <ChatInput placeholder="Type here…" sessionId="s1" />);
     expect(getByText("Type here…")).toBeTruthy();
   });
 
@@ -198,18 +196,14 @@ describe("ChatInput", () => {
 
 describe("ChatInput context menus", () => {
   it("opens the / menu when / is typed at the editor start", async () => {
-    const { getByRole, findByText } = render(() => (
-      <ChatInput placeholder="p" sessionId="s1" />
-    ));
+    const { getByRole, findByText } = render(() => <ChatInput placeholder="p" sessionId="s1" />);
     const editor = getByRole("textbox") as HTMLElement;
     fireEvent.keyDown(editor, { key: "/" });
     expect(await findByText("Commands & Skills")).toBeTruthy();
   });
 
   it("opens the @ menu when @ is typed mid-text", async () => {
-    const { getByRole, findByText } = render(() => (
-      <ChatInput placeholder="p" sessionId="s1" />
-    ));
+    const { getByRole, findByText } = render(() => <ChatInput placeholder="p" sessionId="s1" />);
     const editor = getByRole("textbox") as HTMLElement;
     typeInto(editor, "see ");
     fireEvent.keyDown(editor, { key: "@" });
@@ -217,9 +211,7 @@ describe("ChatInput context menus", () => {
   });
 
   it("inserts the picked token as a chip and refocuses on close (/ mode)", async () => {
-    const { getByRole, findByText } = render(() => (
-      <ChatInput placeholder="p" sessionId="s1" />
-    ));
+    const { getByRole, findByText } = render(() => <ChatInput placeholder="p" sessionId="s1" />);
     const editor = getByRole("textbox") as HTMLElement;
     // Picking closes the menu → closeMenu refocuses the editor. jsdom won't
     // move activeElement to a contenteditable div, so assert the wiring: the
@@ -239,9 +231,7 @@ describe("ChatInput context menus", () => {
   });
 
   it("does not open a menu for / typed mid-text", async () => {
-    const { getByRole, queryByText } = render(() => (
-      <ChatInput placeholder="p" sessionId="s1" />
-    ));
+    const { getByRole, queryByText } = render(() => <ChatInput placeholder="p" sessionId="s1" />);
     const editor = getByRole("textbox") as HTMLElement;
     typeInto(editor, "hi ");
     fireEvent.keyDown(editor, { key: "/" });

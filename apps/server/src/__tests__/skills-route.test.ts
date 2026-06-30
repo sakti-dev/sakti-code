@@ -11,12 +11,9 @@ describe("skills routes", () => {
     const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
-      new Request(
-        `http://localhost/api/sessions/${session.id}/skills/graphify/disable`,
-        {
-          method: "POST",
-        }
-      )
+      new Request(`http://localhost/api/sessions/${session.id}/skills/graphify/disable`, {
+        method: "POST",
+      }),
     );
 
     expect(res.status).toBe(204);
@@ -31,21 +28,15 @@ describe("skills routes", () => {
 
     // First disable
     await app.request(
-      new Request(
-        `http://localhost/api/sessions/${session.id}/skills/foo/disable`,
-        {
-          method: "POST",
-        }
-      )
+      new Request(`http://localhost/api/sessions/${session.id}/skills/foo/disable`, {
+        method: "POST",
+      }),
     );
     // Second disable — should not error
     const res = await app.request(
-      new Request(
-        `http://localhost/api/sessions/${session.id}/skills/foo/disable`,
-        {
-          method: "POST",
-        }
-      )
+      new Request(`http://localhost/api/sessions/${session.id}/skills/foo/disable`, {
+        method: "POST",
+      }),
     );
 
     expect(res.status).toBe(204);
@@ -57,18 +48,12 @@ describe("skills routes", () => {
     const { app, ctx } = await makeApp([skillsRoutes]);
     const project = await ctx.repos.projects.create("p", "/tmp/test");
     const session = await ctx.repos.sessions.create(project.id);
-    await ctx.repos.settings.set(
-      `session:${session.id}:disabled_skill:graphify`,
-      "1"
-    );
+    await ctx.repos.settings.set(`session:${session.id}:disabled_skill:graphify`, "1");
 
     const res = await app.request(
-      new Request(
-        `http://localhost/api/sessions/${session.id}/skills/graphify/disable`,
-        {
-          method: "DELETE",
-        }
-      )
+      new Request(`http://localhost/api/sessions/${session.id}/skills/graphify/disable`, {
+        method: "DELETE",
+      }),
     );
 
     expect(res.status).toBe(204);
@@ -82,12 +67,9 @@ describe("skills routes", () => {
     const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
-      new Request(
-        `http://localhost/api/sessions/${session.id}/skills/never-disabled/disable`,
-        {
-          method: "DELETE",
-        }
-      )
+      new Request(`http://localhost/api/sessions/${session.id}/skills/never-disabled/disable`, {
+        method: "DELETE",
+      }),
     );
 
     expect(res.status).toBe(204);
@@ -107,7 +89,7 @@ describe("skills routes", () => {
           filePath: "/skills/brand-new/SKILL.md",
         }),
         headers: { "content-type": "application/json" },
-      })
+      }),
     );
 
     expect(res.status).toBe(204);
@@ -119,12 +101,9 @@ describe("skills routes", () => {
     const { app } = await makeApp([skillsRoutes]);
 
     const res = await app.request(
-      new Request(
-        "http://localhost/api/sessions/nonexistent/skills/foo/disable",
-        {
-          method: "POST",
-        }
-      )
+      new Request("http://localhost/api/sessions/nonexistent/skills/foo/disable", {
+        method: "POST",
+      }),
     );
 
     expect(res.status).toBe(404);

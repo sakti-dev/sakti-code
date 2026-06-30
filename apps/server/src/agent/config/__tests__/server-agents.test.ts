@@ -1,17 +1,8 @@
-import {
-  evaluate,
-  fromConfig,
-  merge,
-  type PermissionRuleset,
-} from "@sakti-code/agent";
+import { evaluate, fromConfig, merge, type PermissionRuleset } from "@sakti-code/agent";
 import { describe, expect, it } from "vite-plus/test";
 import { resolveServerAgent, SERVER_AGENTS } from "../server-agents.ts";
 
-function decision(
-  ruleset: PermissionRuleset,
-  permission: string,
-  pattern: string
-) {
+function decision(ruleset: PermissionRuleset, permission: string, pattern: string) {
   return evaluate(permission, pattern, ruleset).action;
 }
 

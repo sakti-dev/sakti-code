@@ -33,12 +33,9 @@ describe("buildHarnessStreamRequest", () => {
   });
 
   it("forwards maxOutputTokens from the loop request (regression: was dropped)", () => {
-    const req = buildHarnessStreamRequest(
-      loopRequest({ maxOutputTokens: 4096 }),
-      {
-        sessionId: "s",
-      }
-    );
+    const req = buildHarnessStreamRequest(loopRequest({ maxOutputTokens: 4096 }), {
+      sessionId: "s",
+    });
     expect(req.maxOutputTokens).toBe(4096);
   });
 
@@ -50,12 +47,9 @@ describe("buildHarnessStreamRequest", () => {
   });
 
   it("forwards temperature and topP when set", () => {
-    const req = buildHarnessStreamRequest(
-      loopRequest({ temperature: 0.7, topP: 0.9 }),
-      {
-        sessionId: "s",
-      }
-    );
+    const req = buildHarnessStreamRequest(loopRequest({ temperature: 0.7, topP: 0.9 }), {
+      sessionId: "s",
+    });
     expect(req.temperature).toBe(0.7);
     expect(req.topP).toBe(0.9);
   });
@@ -94,7 +88,7 @@ describe("buildHarnessStreamRequest", () => {
         tools: { search: { description: "d", parameters: {} } },
         abortSignal: controller.signal,
       }),
-      { sessionId: "s" }
+      { sessionId: "s" },
     );
     expect(req.baseURL).toBe("https://override.example.com");
     expect(req.system).toBe("be brief");

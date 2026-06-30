@@ -12,16 +12,14 @@ describe("LLM services", () => {
     Effect.gen(function* () {
       const provider = yield* StreamProvider;
       expect(typeof provider.stream).toBe("function");
-    }).pipe(Effect.provide(StreamProviderLive))
+    }).pipe(Effect.provide(StreamProviderLive)),
   );
 
-  it.effect(
-    "CompletionProvider is accessible via yield* CompletionProvider",
-    () =>
-      Effect.gen(function* () {
-        const provider = yield* CompletionProvider;
-        expect(typeof provider.complete).toBe("function");
-      }).pipe(Effect.provide(CompletionProviderLive))
+  it.effect("CompletionProvider is accessible via yield* CompletionProvider", () =>
+    Effect.gen(function* () {
+      const provider = yield* CompletionProvider;
+      expect(typeof provider.complete).toBe("function");
+    }).pipe(Effect.provide(CompletionProviderLive)),
   );
 
   it.effect("StreamProvider.stream returns an Effect (not a Promise)", () =>
@@ -30,7 +28,7 @@ describe("LLM services", () => {
       const fakeReq = {} as never;
       const result = provider.stream(fakeReq);
       expect(Effect.isEffect(result)).toBe(true);
-    }).pipe(Effect.provide(StreamProviderLive))
+    }).pipe(Effect.provide(StreamProviderLive)),
   );
 
   it.effect("supports test layers with stub implementations", () =>
@@ -42,8 +40,8 @@ describe("LLM services", () => {
       Effect.provide(
         Layer.succeed(StreamProvider, {
           stream: () => Effect.succeed("stubbed" as never),
-        })
-      )
-    )
+        }),
+      ),
+    ),
   );
 });

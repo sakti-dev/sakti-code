@@ -17,10 +17,7 @@ describe("RenderInline", () => {
     const host = document.createElement("div");
     document.body.append(host);
 
-    const dispose = render(
-      () => <RenderInline text="Open [docs](https://example.com)" />,
-      host
-    );
+    const dispose = render(() => <RenderInline text="Open [docs](https://example.com)" />, host);
     mountedRoots.push(dispose);
 
     const link = host.querySelector("a");
@@ -33,10 +30,7 @@ describe("RenderInline", () => {
     const host = document.createElement("div");
     document.body.append(host);
 
-    const dispose = render(
-      () => <RenderInline text="Use ~~old~~ behavior" />,
-      host
-    );
+    const dispose = render(() => <RenderInline text="Use ~~old~~ behavior" />, host);
     mountedRoots.push(dispose);
 
     const strike = host.querySelector("del");
@@ -48,10 +42,8 @@ describe("RenderInline", () => {
     document.body.append(host);
 
     const dispose = render(
-      () => (
-        <RenderInline text="Logo ![alt text](https://example.com/logo.png)" />
-      ),
-      host
+      () => <RenderInline text="Logo ![alt text](https://example.com/logo.png)" />,
+      host,
     );
     mountedRoots.push(dispose);
 
@@ -72,7 +64,7 @@ describe("RenderInline", () => {
           text="Open [docs][guide]"
         />
       ),
-      host
+      host,
     );
     mountedRoots.push(dispose);
 
@@ -94,7 +86,7 @@ describe("RenderInline", () => {
           text="Open [docs][]"
         />
       ),
-      host
+      host,
     );
     mountedRoots.push(dispose);
 
@@ -120,7 +112,7 @@ describe("RenderInline", () => {
           text="Logo ![logo]"
         />
       ),
-      host
+      host,
     );
     mountedRoots.push(dispose);
 
@@ -158,10 +150,7 @@ describe("RenderInline", () => {
     const host = document.createElement("div");
     document.body.append(host);
 
-    const dispose = render(
-      () => <RenderInline text="Energy is $E = mc^2$ today" />,
-      host
-    );
+    const dispose = render(() => <RenderInline text="Energy is $E = mc^2$ today" />, host);
     mountedRoots.push(dispose);
 
     const inlineMath = host.querySelector("[data-velomark-inline-math]");
@@ -182,10 +171,7 @@ describe("RenderInline", () => {
     const host = document.createElement("div");
     document.body.append(host);
 
-    const dispose = render(
-      () => <RenderInline text={"Broken math $\\frac{1$"} />,
-      host
-    );
+    const dispose = render(() => <RenderInline text={"Broken math $\\frac{1$"} />, host);
     mountedRoots.push(dispose);
 
     const inlineMath = host.querySelector("[data-velomark-inline-math]");
@@ -201,10 +187,7 @@ describe("RenderInline", () => {
     const host = document.createElement("div");
     document.body.append(host);
 
-    const dispose = render(
-      () => <RenderInline text="Text with <span>hi here" />,
-      host
-    );
+    const dispose = render(() => <RenderInline text="Text with <span>hi here" />, host);
     mountedRoots.push(dispose);
 
     const inlineHtml = host.querySelector("[data-velomark-inline-html]");
@@ -218,7 +201,7 @@ describe("RenderInline", () => {
 
     const dispose = render(
       () => <RenderInline text='Text with <span class="chip">hi</span> here' />,
-      host
+      host,
     );
     mountedRoots.push(dispose);
 
@@ -234,13 +217,9 @@ describe("RenderInline", () => {
 
     const dispose = render(
       () => (
-        <RenderInline
-          text={
-            'Text with <span class="chip">**bold** and $E = mc^2$</span> here'
-          }
-        />
+        <RenderInline text={'Text with <span class="chip">**bold** and $E = mc^2$</span> here'} />
       ),
-      host
+      host,
     );
     mountedRoots.push(dispose);
 
@@ -263,12 +242,8 @@ describe("RenderInline", () => {
     document.body.append(host);
 
     const dispose = render(
-      () => (
-        <RenderInline
-          text={"Text with <span class='chip' data-tone='info'>hi</span> here"}
-        />
-      ),
-      host
+      () => <RenderInline text={"Text with <span class='chip' data-tone='info'>hi</span> here"} />,
+      host,
     );
     mountedRoots.push(dispose);
 
@@ -282,15 +257,10 @@ describe("RenderInline", () => {
     const host = document.createElement("div");
     document.body.append(host);
 
-    const dispose = render(
-      () => <RenderInline text='See :badge[Beta]{tone="info"} now' />,
-      host
-    );
+    const dispose = render(() => <RenderInline text='See :badge[Beta]{tone="info"} now' />, host);
     mountedRoots.push(dispose);
 
-    const directive = host.querySelector(
-      '[data-velomark-text-directive="badge"]'
-    );
+    const directive = host.querySelector('[data-velomark-text-directive="badge"]');
     expect(directive).not.toBeNull();
     expect(directive?.getAttribute("data-velomark-attr-tone")).toBe("info");
     expect(directive?.textContent).toBe("Beta");
@@ -301,18 +271,12 @@ describe("RenderInline", () => {
     document.body.append(host);
 
     const dispose = render(
-      () => (
-        <RenderInline
-          text={":badge[Beta]{tone='info' icon=bolt emphasis=\"high\"}"}
-        />
-      ),
-      host
+      () => <RenderInline text={":badge[Beta]{tone='info' icon=bolt emphasis=\"high\"}"} />,
+      host,
     );
     mountedRoots.push(dispose);
 
-    const directive = host.querySelector(
-      '[data-velomark-text-directive="badge"]'
-    );
+    const directive = host.querySelector('[data-velomark-text-directive="badge"]');
     expect(directive).not.toBeNull();
     expect(directive?.getAttribute("data-velomark-attr-tone")).toBe("info");
     expect(directive?.getAttribute("data-velomark-attr-icon")).toBe("bolt");
@@ -330,13 +294,8 @@ describe("RenderInline", () => {
     );
 
     const dispose = render(
-      () => (
-        <RenderInline
-          containers={{ badge: Badge }}
-          text='See :badge[Beta]{tone="info"} now'
-        />
-      ),
-      host
+      () => <RenderInline containers={{ badge: Badge }} text='See :badge[Beta]{tone="info"} now' />,
+      host,
     );
     mountedRoots.push(dispose);
 

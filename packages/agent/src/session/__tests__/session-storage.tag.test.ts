@@ -21,8 +21,8 @@ describe("SessionStorage (Context.Service)", () => {
           getLabel: () => Effect.succeed(undefined),
           findEntries: () => Effect.succeed([]),
           getMetadata: () => Effect.succeed({} as SessionMetadata),
-        })
-      )
-    )
+        }),
+      ),
+    ),
   );
 });

@@ -32,9 +32,7 @@ export function extractReferenceDefinitions(markdown: string): {
     }
 
     const title = match[3] ?? match[4] ?? match[5];
-    definitions[normalizeReferenceId(identifier)] = title
-      ? { href, title }
-      : { href };
+    definitions[normalizeReferenceId(identifier)] = title ? { href, title } : { href };
   }
 
   return {
@@ -57,10 +55,7 @@ function extractFootnoteDefinitions(markdown: string): {
   content: string;
   footnoteDefinitions: Record<string, DraftRenderBlock<ParsedBlockData>[]>;
 } {
-  const footnoteDefinitions: Record<
-    string,
-    DraftRenderBlock<ParsedBlockData>[]
-  > = {};
+  const footnoteDefinitions: Record<string, DraftRenderBlock<ParsedBlockData>[]> = {};
   const lines = markdown.split("\n");
   const keptLines: string[] = [];
 
@@ -92,10 +87,7 @@ function extractFootnoteDefinitions(markdown: string): {
         scanIndex += 1;
         continue;
       }
-      if (
-        continuationLine.startsWith("    ") ||
-        continuationLine.startsWith("\t")
-      ) {
+      if (continuationLine.startsWith("    ") || continuationLine.startsWith("\t")) {
         bodyLines.push(stripContinuationIndent(continuationLine));
         scanIndex += 1;
         continue;
@@ -103,9 +95,7 @@ function extractFootnoteDefinitions(markdown: string): {
       break;
     }
 
-    footnoteDefinitions[identifier] = parseBlockBoundaries(
-      bodyLines.join("\n")
-    );
+    footnoteDefinitions[identifier] = parseBlockBoundaries(bodyLines.join("\n"));
     index = scanIndex - 1;
   }
 
@@ -121,9 +111,7 @@ export function parseMarkdownToBlocks(markdown: string): {
   footnoteDefinitions: Record<string, DraftRenderBlock<ParsedBlockData>[]>;
 } {
   const extractedReferences = extractReferenceDefinitions(markdown);
-  const extractedFootnotes = extractFootnoteDefinitions(
-    extractedReferences.content
-  );
+  const extractedFootnotes = extractFootnoteDefinitions(extractedReferences.content);
   return {
     blocks: parseBlockBoundaries(extractedFootnotes.content),
     definitions: extractedReferences.definitions,

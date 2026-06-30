@@ -1,5 +1,5 @@
 export const directiveAttributeProps = (
-  attributes?: Record<string, string>
+  attributes?: Record<string, string>,
 ): Record<string, string> => {
   if (!attributes) {
     return {};

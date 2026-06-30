@@ -33,10 +33,7 @@ export function createMockStore(): SessionStorageShape {
   };
 }
 
-export function createMockCtx(overrides?: {
-  projectId?: string;
-  profileId?: string | null;
-}) {
+export function createMockCtx(overrides?: { projectId?: string; profileId?: string | null }) {
   const projectId = overrides?.projectId ?? "proj-1";
   return {
     auth: {
@@ -78,7 +75,7 @@ export function createMockCtx(overrides?: {
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
               }
-            : null
+            : null,
         ),
       },
       projects: {
@@ -91,7 +88,7 @@ export function createMockCtx(overrides?: {
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
               }
-            : null
+            : null,
         ),
       },
       settings: {
@@ -119,9 +116,7 @@ export function createMockCtx(overrides?: {
   } as any;
 }
 
-export function createMultiSessionCtx(
-  sessionIdToProjectId: Record<string, string>
-) {
+export function createMultiSessionCtx(sessionIdToProjectId: Record<string, string>) {
   const projects: Record<
     string,
     {
@@ -185,7 +180,7 @@ export function createMultiSessionCtx(
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
               }
-            : null
+            : null,
         ),
       },
       projects: {

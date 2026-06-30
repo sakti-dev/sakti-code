@@ -30,13 +30,9 @@ describe("package surface", () => {
 describe("Velomark", () => {
   it("renders a baseline markdown container", () => {
     createRoot(() => {
-      const container = (
-        <Velomark markdown={"Hello world"} />
-      ) as HTMLDivElement;
+      const container = (<Velomark markdown={"Hello world"} />) as HTMLDivElement;
       expect(container.outerHTML).toContain('data-velomark-root=""');
-      expect(container.outerHTML).toContain(
-        'data-velomark-block-kind="paragraph"'
-      );
+      expect(container.outerHTML).toContain('data-velomark-block-kind="paragraph"');
       expect(container.outerHTML).not.toContain("data-velomark-block-id");
       expect(container.textContent).toBe("Hello world");
     });

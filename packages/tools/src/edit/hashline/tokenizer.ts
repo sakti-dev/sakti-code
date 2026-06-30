@@ -19,11 +19,7 @@ import {
   HL_REPLACE_BLOCK_KEYWORD,
   HL_REPLACE_KEYWORD,
 } from "../../lib/hashline-utils/format";
-import type {
-  Anchor,
-  Cursor,
-  ParsedRange,
-} from "../../lib/hashline-utils/types";
+import type { Anchor, Cursor, ParsedRange } from "../../lib/hashline-utils/types";
 import { ABORT_MARKER, BEGIN_PATCH_MARKER, END_PATCH_MARKER } from "./messages";
 
 const CHAR_LINE_FEED = 10;
@@ -64,16 +60,10 @@ function isHexDigitCode(code: number): boolean {
 }
 
 function isWhitespaceCode(code: number): boolean {
-  return (
-    code === CHAR_SPACE || (code >= CHAR_TAB && code <= CHAR_CARRIAGE_RETURN)
-  );
+  return code === CHAR_SPACE || (code >= CHAR_TAB && code <= CHAR_CARRIAGE_RETURN);
 }
 
-function skipWhitespace(
-  line: string,
-  index: number,
-  end = line.length
-): number {
+function skipWhitespace(line: string, index: number, end = line.length): number {
   let i = index;
   while (i < end && isWhitespaceCode(line.charCodeAt(i))) {
     i++;
@@ -140,11 +130,7 @@ interface NumberScan {
   nextIndex: number;
 }
 
-function scanLineNumber(
-  line: string,
-  index: number,
-  end: number
-): NumberScan | null {
+function scanLineNumber(line: string, index: number, end: number): NumberScan | null {
   if (index >= end || !isNonZeroDigitCode(line.charCodeAt(index))) {
     return null;
   }
@@ -168,7 +154,7 @@ export function parseLid(raw: string, lineNum: number): Anchor {
   if (number === null || skipWhitespace(raw, number.nextIndex, end) !== end) {
     throw new Error(
       `line ${lineNum}: expected a line number such as ${describeAnchorExamples("119")}; ` +
-        `got ${JSON.stringify(raw)}. Use ${HL_FILE_PREFIX}PATH${HL_FILE_HASH_SEP}hash${HL_FILE_SUFFIX} from your latest read for file-version binding.`
+        `got ${JSON.stringify(raw)}. Use ${HL_FILE_PREFIX}PATH${HL_FILE_HASH_SEP}hash${HL_FILE_SUFFIX} from your latest read for file-version binding.`,
     );
   }
   return { line: number.line };
@@ -179,11 +165,7 @@ interface RangeScan {
   range: ParsedRange;
 }
 
-function scanRangeSeparator(
-  line: string,
-  index: number,
-  end: number
-): number | null {
+function scanRangeSeparator(line: string, index: number, end: number): number | null {
   let cursor = index;
   let consumedSeparator = false;
   while (cursor < end) {
@@ -201,8 +183,7 @@ function scanRangeSeparator(
     if (
       code === CHAR_DOT &&
       cursor + 1 < end &&
-      (line.charCodeAt(cursor + 1) === CHAR_DOT ||
-        line.charCodeAt(cursor + 1) === CHAR_EQUALS)
+      (line.charCodeAt(cursor + 1) === CHAR_DOT || line.charCodeAt(cursor + 1) === CHAR_EQUALS)
     ) {
       cursor += 2;
       consumedSeparator = true;
@@ -223,7 +204,7 @@ function scanHeaderRange(
   line: string,
   index = 0,
   end = trimEndIndex(line),
-  allowSingle = false
+  allowSingle = false,
 ): RangeScan | null {
   const numberStart = skipWhitespace(line, index, end);
   const start = scanLineNumber(line, numberStart, end);
@@ -268,12 +249,7 @@ interface TargetScan {
   target: BlockTarget;
 }
 
-function scanKeyword(
-  line: string,
-  index: number,
-  end: number,
-  keyword: string
-): number | null {
+function scanKeyword(line: string, index: number, end: number, keyword: string): number | null {
   if (!line.startsWith(keyword, index)) {
     return null;
   }
@@ -287,33 +263,21 @@ function scanKeyword(
   return next;
 }
 
-function consumeOptionalColon(
-  line: string,
-  index: number,
-  end: number
-): number {
+function consumeOptionalColon(line: string, index: number, end: number): number {
   const cursor = skipWhitespace(line, index, end);
   return cursor < end && line.charCodeAt(cursor) === CHAR_COLON
     ? skipWhitespace(line, cursor + 1, end)
     : cursor;
 }
 
-function scanInsertTarget(
-  line: string,
-  index: number,
-  end: number
-): TargetScan | null {
+function scanInsertTarget(line: string, index: number, end: number): TargetScan | null {
   if (index >= end || line.charCodeAt(index) !== CHAR_DOT) {
     return null;
   }
   const cursor = skipWhitespace(line, index + 1, end);
   const beforeEnd = scanKeyword(line, cursor, end, HL_INSERT_BEFORE);
   if (beforeEnd !== null) {
-    const anchor = scanLineNumber(
-      line,
-      skipWhitespace(line, beforeEnd, end),
-      end
-    );
+    const anchor = scanLineNumber(line, skipWhitespace(line, beforeEnd, end), end);
     if (anchor === null) {
       return null;
     }
@@ -325,11 +289,7 @@ function scanInsertTarget(
   }
   const afterEnd = scanKeyword(line, cursor, end, HL_INSERT_AFTER);
   if (afterEnd !== null) {
-    const anchor = scanLineNumber(
-      line,
-      skipWhitespace(line, afterEnd, end),
-      end
-    );
+    const anchor = scanLineNumber(line, skipWhitespace(line, afterEnd, end), end);
     if (anchor === null) {
       return null;
     }
@@ -398,11 +358,7 @@ function scanMoveDest(line: string, index: number, end: number): string | null {
   return unquotePath(line.slice(cursor, end).trim());
 }
 
-function scanHunkAnchor(
-  line: string,
-  start: number,
-  end: number
-): TargetScan | null {
+function scanHunkAnchor(line: string, start: number, end: number): TargetScan | null {
   const cursor = skipWhitespace(line, start, end);
 
   const remEnd = scanKeyword(line, cursor, end, HL_REM_KEYWORD);
@@ -422,18 +378,9 @@ function scanHunkAnchor(
     return { target: { kind: "move", dest }, nextIndex: end };
   }
 
-  const replaceBlockEnd = scanKeyword(
-    line,
-    cursor,
-    end,
-    HL_REPLACE_BLOCK_KEYWORD
-  );
+  const replaceBlockEnd = scanKeyword(line, cursor, end, HL_REPLACE_BLOCK_KEYWORD);
   if (replaceBlockEnd !== null) {
-    const anchor = scanLineNumber(
-      line,
-      skipWhitespace(line, replaceBlockEnd, end),
-      end
-    );
+    const anchor = scanLineNumber(line, skipWhitespace(line, replaceBlockEnd, end), end);
     if (anchor === null) {
       return null;
     }
@@ -453,18 +400,9 @@ function scanHunkAnchor(
       nextIndex: consumeOptionalColon(line, range.nextIndex, end),
     };
   }
-  const deleteBlockEnd = scanKeyword(
-    line,
-    cursor,
-    end,
-    HL_DELETE_BLOCK_KEYWORD
-  );
+  const deleteBlockEnd = scanKeyword(line, cursor, end, HL_DELETE_BLOCK_KEYWORD);
   if (deleteBlockEnd !== null) {
-    const anchor = scanLineNumber(
-      line,
-      skipWhitespace(line, deleteBlockEnd, end),
-      end
-    );
+    const anchor = scanLineNumber(line, skipWhitespace(line, deleteBlockEnd, end), end);
     if (anchor === null) {
       return null;
     }
@@ -484,18 +422,9 @@ function scanHunkAnchor(
       nextIndex: consumeOptionalColon(line, range.nextIndex, end),
     };
   }
-  const insertAfterBlockEnd = scanKeyword(
-    line,
-    cursor,
-    end,
-    HL_INSERT_AFTER_BLOCK_KEYWORD
-  );
+  const insertAfterBlockEnd = scanKeyword(line, cursor, end, HL_INSERT_AFTER_BLOCK_KEYWORD);
   if (insertAfterBlockEnd !== null) {
-    const anchor = scanLineNumber(
-      line,
-      skipWhitespace(line, insertAfterBlockEnd, end),
-      end
-    );
+    const anchor = scanLineNumber(line, skipWhitespace(line, insertAfterBlockEnd, end), end);
     if (anchor === null) {
       return null;
     }
@@ -531,9 +460,7 @@ function tryParseHunkHeader(line: string): ParsedHunkHeader | null {
   return { target: scan.target };
 }
 
-function tryParseHeader(
-  line: string
-): { path: string; fileHash?: string } | null {
+function tryParseHeader(line: string): { path: string; fileHash?: string } | null {
   if (!line.startsWith(HL_FILE_PREFIX)) {
     return null;
   }
@@ -552,10 +479,7 @@ function tryParseHeader(
   let pathEnd = bodyEnd;
   let fileHash: string | undefined;
   const trailingHashStart = bodyEnd - HL_FILE_HASH_LENGTH - 1;
-  if (
-    trailingHashStart >= FILE_PREFIX_LENGTH &&
-    line.charCodeAt(trailingHashStart) === CHAR_HASH
-  ) {
+  if (trailingHashStart >= FILE_PREFIX_LENGTH && line.charCodeAt(trailingHashStart) === CHAR_HASH) {
     let allHex = true;
     for (let probe = trailingHashStart + 1; probe < bodyEnd; probe++) {
       if (!isHexDigitCode(line.charCodeAt(probe))) {

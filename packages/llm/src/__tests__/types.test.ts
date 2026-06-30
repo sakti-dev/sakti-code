@@ -81,9 +81,7 @@ describe("message contract types", () => {
   });
 
   it("StopReason union is exactly stop/length/toolUse/error/aborted", () => {
-    expectTypeOf<StopReason>().toEqualTypeOf<
-      "stop" | "length" | "toolUse" | "error" | "aborted"
-    >();
+    expectTypeOf<StopReason>().toEqualTypeOf<"stop" | "length" | "toolUse" | "error" | "aborted">();
   });
 
   it("Message discriminates by role", () => {
@@ -146,9 +144,7 @@ describe("message contract types", () => {
   });
 
   it("ToolCall.arguments is Record<string, unknown> not any", () => {
-    expectTypeOf<ToolCall["arguments"]>().toEqualTypeOf<
-      Record<string, unknown>
-    >();
+    expectTypeOf<ToolCall["arguments"]>().toEqualTypeOf<Record<string, unknown>>();
   });
 });
 
@@ -251,14 +247,7 @@ describe("OpenAICompletionsCompat", () => {
   });
 
   it("ModelThinkingLevel includes off + minimal/low/medium/high/xhigh", () => {
-    const levels: ModelThinkingLevel[] = [
-      "off",
-      "minimal",
-      "low",
-      "medium",
-      "high",
-      "xhigh",
-    ];
+    const levels: ModelThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
     expect(levels).toHaveLength(6);
   });
 });

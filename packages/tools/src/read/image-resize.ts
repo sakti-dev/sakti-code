@@ -14,7 +14,7 @@ export type { ImageResizeOptions, ResizedImage } from "./image-resize-core.ts";
 export async function resizeImage(
   inputBytes: Uint8Array,
   mimeType: string,
-  options?: ImageResizeOptions
+  options?: ImageResizeOptions,
 ): Promise<ResizedImage | null> {
   return resizeImageInProcess(inputBytes, mimeType, options);
 }

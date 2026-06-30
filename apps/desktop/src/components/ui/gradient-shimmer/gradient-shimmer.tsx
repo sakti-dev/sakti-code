@@ -8,11 +8,7 @@ import {
 } from "solid-js";
 import { buildBandGradient } from "./build-band-gradient";
 import { easingPresets, gradientPresets } from "./presets";
-import type {
-  GradientInput,
-  GradientShimmerProps,
-  GradientStop,
-} from "./types";
+import type { GradientInput, GradientShimmerProps, GradientStop } from "./types";
 import {
   observeShimmerActive,
   prefersReducedMotion,
@@ -47,26 +43,15 @@ const finiteOr = (value: number, fallback: number): number =>
 export const GradientShimmer: Component<GradientShimmerProps> = (props) => {
   const children = () => props.children;
   const safeDuration = () =>
-    Math.max(
-      0.001,
-      finiteOr(
-        props.duration ?? DEFAULT_DURATION_SECONDS,
-        DEFAULT_DURATION_SECONDS
-      )
-    );
-  const safeSpread = () =>
-    Math.max(0, finiteOr(props.spread ?? DEFAULT_SPREAD, DEFAULT_SPREAD));
+    Math.max(0.001, finiteOr(props.duration ?? DEFAULT_DURATION_SECONDS, DEFAULT_DURATION_SECONDS));
+  const safeSpread = () => Math.max(0, finiteOr(props.spread ?? DEFAULT_SPREAD, DEFAULT_SPREAD));
   const safeAngle = () => finiteOr(props.angle ?? DEFAULT_ANGLE, DEFAULT_ANGLE);
-  const easingValue = () =>
-    easingPresets[props.easing ?? "smooth"] ?? easingPresets.smooth;
+  const easingValue = () => easingPresets[props.easing ?? "smooth"] ?? easingPresets.smooth;
 
   const stops = createMemo(() => resolveStops(props.gradient));
-  const backgroundImage = createMemo(() =>
-    buildBandGradient(stops(), safeAngle())
-  );
+  const backgroundImage = createMemo(() => buildBandGradient(stops(), safeAngle()));
 
-  const initialSpread = () =>
-    Math.min(children().length * safeSpread(), MAX_SPREAD_PX);
+  const initialSpread = () => Math.min(children().length * safeSpread(), MAX_SPREAD_PX);
 
   const [refEl, setRefEl] = createSignal<HTMLElement | null>(null);
 
@@ -88,25 +73,17 @@ export const GradientShimmer: Component<GradientShimmerProps> = (props) => {
     const respectReducedMotion = props.respectReducedMotion ?? true;
 
     const measure = () => {
-      const textWidth =
-        el.getBoundingClientRect().width || FALLBACK_TEXT_WIDTH_PX;
-      const fontSize =
-        Number.parseFloat(getComputedStyle(el).fontSize) || BASE_FONT_PX;
+      const textWidth = el.getBoundingClientRect().width || FALLBACK_TEXT_WIDTH_PX;
+      const fontSize = Number.parseFloat(getComputedStyle(el).fontSize) || BASE_FONT_PX;
       const fontScale = fontSize / BASE_FONT_PX;
       const textLength = el.textContent?.length ?? 1;
-      const spreadPx = Math.min(
-        textLength * spread * fontScale,
-        MAX_SPREAD_PX * fontScale
-      );
+      const spreadPx = Math.min(textLength * spread * fontScale, MAX_SPREAD_PX * fontScale);
       const layerWidth = Math.max(1, textWidth + spreadPx * 2);
       const start = -spreadPx - layerWidth / 2;
       const end = textWidth + spreadPx - layerWidth / 2;
       const durationMs = duration * 1000;
       el.style.setProperty("--gs-spread", `${spreadPx}px`);
-      el.style.setProperty(
-        "--gs-spread-mid",
-        `${spreadPx * SPREAD_MID_RATIO}px`
-      );
+      el.style.setProperty("--gs-spread-mid", `${spreadPx * SPREAD_MID_RATIO}px`);
       el.style.backgroundSize = `${layerWidth}px 100%`;
       return { start, end, durationMs };
     };
@@ -137,11 +114,8 @@ export const GradientShimmer: Component<GradientShimmerProps> = (props) => {
       }
       const { start, end, durationMs } = measure();
       const next = el.animate(
-        [
-          { backgroundPosition: `${start}px center` },
-          { backgroundPosition: `${end}px center` },
-        ],
-        { duration: durationMs, easing, fill: "forwards" }
+        [{ backgroundPosition: `${start}px center` }, { backgroundPosition: `${end}px center` }],
+        { duration: durationMs, easing, fill: "forwards" },
       );
       if (!active) {
         next.pause();
@@ -165,7 +139,7 @@ export const GradientShimmer: Component<GradientShimmerProps> = (props) => {
             anim.pause();
           }
         }
-      }
+      },
     );
 
     runSweep();

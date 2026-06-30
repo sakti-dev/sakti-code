@@ -52,10 +52,7 @@ export function computeFileHash(text: string): string {
     hash ^= normalized.charCodeAt(i);
     hash = Math.imul(hash, 0x01_00_01_93);
   }
-  return (hash & 0xff_ff)
-    .toString(16)
-    .padStart(HL_FILE_HASH_LENGTH, "0")
-    .toUpperCase();
+  return (hash & 0xff_ff).toString(16).padStart(HL_FILE_HASH_LENGTH, "0").toUpperCase();
 }
 
 export function computeRawHash(input: string): string {
@@ -77,9 +74,7 @@ export function formatNumberedLine(lineNumber: number, line: string): string {
 
 export function formatNumberedLines(text: string, startLine = 1): string {
   const lines = text.split("\n");
-  return lines
-    .map((line, i) => formatNumberedLine(startLine + i, line))
-    .join("\n");
+  return lines.map((line, i) => formatNumberedLine(startLine + i, line)).join("\n");
 }
 
 export function formatReplaceHeader(start: number, end: number): string {

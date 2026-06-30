@@ -14,9 +14,7 @@ export const RendererPanel: Component<RendererPanelProps> = (props) => {
   return (
     <section class="flex min-w-0 flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-xs">
       <header class="flex flex-col gap-1">
-        <h2 class="font-semibold text-foreground text-lg tracking-tight">
-          Renderer Viewport
-        </h2>
+        <h2 class="font-semibold text-foreground text-lg tracking-tight">Renderer Viewport</h2>
         <p class="text-muted-foreground text-sm leading-6">
           Rendered output updates here as presets and stream controls change.
         </p>

@@ -85,8 +85,7 @@ export const idleStreamState: StreamState = {
  * Convert an AgentMessage (from REST `/messages` or agent_end) into UIMessage(s).
  */
 export function agentMessageToUI(msg: AgentMessage): UIMessage {
-  const timestamp =
-    typeof msg.timestamp === "number" ? msg.timestamp : Date.now();
+  const timestamp = typeof msg.timestamp === "number" ? msg.timestamp : Date.now();
 
   if (msg.role === "user" || msg.role === "assistant") {
     let content = "";

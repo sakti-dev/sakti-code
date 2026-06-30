@@ -1,9 +1,4 @@
-import type {
-  AssistantMessage,
-  ImageContent,
-  Model,
-  UserMessage,
-} from "@sakti-code/llm";
+import type { AssistantMessage, ImageContent, Model, UserMessage } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
 import { Cause, Effect, Exit, PubSub, Stream } from "effect";
 import { buildHarnessStreamRequest } from "../agent/build-stream-request";
@@ -21,10 +16,7 @@ import type {
   CompactionPrompts,
   SkillsInstructions,
 } from "../compaction/prompt-bundles";
-import {
-  runAgentLoopContinueEffect,
-  runAgentLoopEffect,
-} from "../core/agent-loop";
+import { runAgentLoopContinueEffect, runAgentLoopEffect } from "../core/agent-loop";
 import {
   type AbortResult,
   type AgentDefinition,
@@ -72,20 +64,14 @@ import type {
 } from "../types";
 
 function createUserMessage(text: string, images?: ImageContent[]): UserMessage {
-  const content: Array<{ type: "text"; text: string } | ImageContent> = [
-    { type: "text", text },
-  ];
+  const content: Array<{ type: "text"; text: string } | ImageContent> = [{ type: "text", text }];
   if (images) {
     content.push(...images);
   }
   return { role: "user", content, timestamp: Date.now() };
 }
 
-function createFailureMessage(
-  model: Model,
-  error: unknown,
-  aborted: boolean
-): AssistantMessage {
+function createFailureMessage(model: Model, error: unknown, aborted: boolean): AssistantMessage {
   return {
     role: "assistant",
     content: [{ type: "text", text: "" }],
@@ -106,9 +92,7 @@ function createFailureMessage(
   };
 }
 
-function cloneStreamOptions(
-  streamOptions?: AgentHarnessStreamOptions
-): AgentHarnessStreamOptions {
+function cloneStreamOptions(streamOptions?: AgentHarnessStreamOptions): AgentHarnessStreamOptions {
   return {
     ...streamOptions,
     headers: streamOptions?.headers ? { ...streamOptions.headers } : undefined,
@@ -144,7 +128,7 @@ function findDuplicateNames(names: string[]): string[] {
 
 function applyStreamOptionsPatch(
   base: AgentHarnessStreamOptions,
-  patch?: AgentHarnessStreamOptionsPatch
+  patch?: AgentHarnessStreamOptionsPatch,
 ): AgentHarnessStreamOptions {
   const result = cloneStreamOptions(base);
   if (!patch) {
@@ -186,22 +170,18 @@ const HARNESS_DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
 
 type AgentHarnessHandler = (
   event: AgentHarnessEvent,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ) => Promise<unknown> | unknown;
 
 function normalizeHarnessError(
   error: unknown,
-  fallbackCode: AgentHarnessErrorCode
+  fallbackCode: AgentHarnessErrorCode,
 ): AgentHarnessError {
   if (error instanceof AgentHarnessError) {
     return error;
   }
   const cause = toError(error);
-  if (
-    cause instanceof Error &&
-    "_tag" in cause &&
-    typeof cause._tag === "string"
-  ) {
+  if (cause instanceof Error && "_tag" in cause && typeof cause._tag === "string") {
     switch (cause._tag) {
       case "SessionError":
         return new AgentHarnessError({
@@ -267,20 +247,15 @@ export class AgentHarness<
    * updates without going through the legacy per-listener `await` path.
    * Decouples emit from persist (per the design doc, Phase D).
    */
-  private readonly eventBus: PubSub.PubSub<
-    AgentHarnessEvent<TSkill, TPromptTemplate>
-  > = Effect.runSync(PubSub.unbounded());
+  private readonly eventBus: PubSub.PubSub<AgentHarnessEvent<TSkill, TPromptTemplate>> =
+    Effect.runSync(PubSub.unbounded());
   private model: Model;
   private compactionPrompts: CompactionPrompts;
   private branchSummaryPrompts: BranchSummaryPrompts;
   private skillsInstructions: SkillsInstructions;
   private maxSteps?: number;
   private thinkingLevel: ThinkingLevel;
-  private systemPrompt: AgentHarnessOptions<
-    TSkill,
-    TPromptTemplate,
-    TTool
-  >["systemPrompt"];
+  private systemPrompt: AgentHarnessOptions<TSkill, TPromptTemplate, TTool>["systemPrompt"];
   /**
    * Pending system-prompt swap scheduled by {@link scheduleSystemPromptRefresh}.
    * Drained by {@link compact} (compaction busts the cache anyway, so the swap
@@ -340,7 +315,7 @@ export class AgentHarness<
     this.streamLogger = options.streamLogger;
     this.validateUniqueNames(
       (options.tools ?? []).map((tool) => tool.name),
-      "Duplicate tool name(s)"
+      "Duplicate tool name(s)",
     );
     for (const tool of options.tools ?? []) {
       this.tools.set(tool.name, tool);
@@ -356,10 +331,7 @@ export class AgentHarness<
     this.activeToolNames = options.activeToolNames
       ? [...options.activeToolNames]
       : (options.tools ?? []).map((tool) => tool.name);
-    this.validateUniqueNames(
-      this.activeToolNames,
-      "Duplicate active tool name(s)"
-    );
+    this.validateUniqueNames(this.activeToolNames, "Duplicate active tool name(s)");
     this.validateToolNames(this.activeToolNames);
     this.steeringQueueMode = options.steeringMode ?? "one-at-a-time";
     this.followUpQueueMode = options.followUpMode ?? "one-at-a-time";
@@ -371,13 +343,13 @@ export class AgentHarness<
 
   private emitOwn(
     event: AgentHarnessOwnEvent<TSkill, TPromptTemplate>,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<void> {
     return Effect.runPromise(this.emitOwnEffect(event, signal));
   }
 
   private emitHook<TType extends keyof AgentHarnessEventResultMap>(
-    event: Extract<AgentHarnessOwnEvent, { type: TType }>
+    event: Extract<AgentHarnessOwnEvent, { type: TType }>,
   ): Promise<AgentHarnessEventResultMap[TType] | undefined> {
     return Effect.runPromise(this.emitHookEffect(event));
   }
@@ -385,11 +357,9 @@ export class AgentHarness<
   private emitBeforeProviderRequest(
     model: Model,
     sessionId: string,
-    streamOptions: AgentHarnessStreamOptions
+    streamOptions: AgentHarnessStreamOptions,
   ): Promise<AgentHarnessStreamOptions> {
-    return Effect.runPromise(
-      this.emitBeforeProviderRequestEffect(model, sessionId, streamOptions)
-    );
+    return Effect.runPromise(this.emitBeforeProviderRequestEffect(model, sessionId, streamOptions));
   }
 
   private emitQueueUpdate(): Promise<void> {
@@ -404,7 +374,7 @@ export class AgentHarness<
 
   private emitOwnEffect(
     event: AgentHarnessOwnEvent<TSkill, TPromptTemplate>,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Effect.Effect<void, AgentHarnessError> {
     const handlers = this.getHandlers(SUBSCRIBER_EVENT_TYPE);
     if (!handlers || handlers.size === 0) {
@@ -422,7 +392,7 @@ export class AgentHarness<
 
   private emitAnyEffect(
     event: AgentHarnessEvent<TSkill, TPromptTemplate>,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Effect.Effect<void, AgentHarnessError> {
     const handlers = this.getHandlers(SUBSCRIBER_EVENT_TYPE);
     if (!handlers || handlers.size === 0) {
@@ -439,11 +409,8 @@ export class AgentHarness<
   }
 
   private emitHookEffect<TType extends keyof AgentHarnessEventResultMap>(
-    event: Extract<AgentHarnessOwnEvent, { type: TType }>
-  ): Effect.Effect<
-    AgentHarnessEventResultMap[TType] | undefined,
-    AgentHarnessError
-  > {
+    event: Extract<AgentHarnessOwnEvent, { type: TType }>,
+  ): Effect.Effect<AgentHarnessEventResultMap[TType] | undefined, AgentHarnessError> {
     const handlers = this.getHandlers(event.type as TType);
     if (!handlers || handlers.size === 0) {
       return Effect.succeed(undefined);
@@ -453,9 +420,7 @@ export class AgentHarness<
       for (const handler of handlers) {
         const result = yield* Effect.tryPromise({
           try: () =>
-            Promise.resolve(
-              handler(event) as AgentHarnessEventResultMap[TType] | undefined
-            ),
+            Promise.resolve(handler(event) as AgentHarnessEventResultMap[TType] | undefined),
           catch: (error: unknown) => normalizeHookError(error),
         });
         if (result !== undefined) {
@@ -469,7 +434,7 @@ export class AgentHarness<
   private emitBeforeProviderRequestEffect(
     model: Model,
     sessionId: string,
-    streamOptions: AgentHarnessStreamOptions
+    streamOptions: AgentHarnessStreamOptions,
   ): Effect.Effect<AgentHarnessStreamOptions, AgentHarnessError> {
     const handlers = this.getHandlers("before_provider_request");
     let current = cloneStreamOptions(streamOptions);
@@ -490,7 +455,7 @@ export class AgentHarness<
                 | {
                     streamOptions?: AgentHarnessStreamOptionsPatch;
                   }
-                | undefined
+                | undefined,
             ),
           catch: (error: unknown) => normalizeHookError(error),
         });
@@ -525,8 +490,8 @@ export class AgentHarness<
   private runAsTurnEffect<T>(
     mode: string,
     fn: (
-      turnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
-    ) => Effect.Effect<T, AgentHarnessError | SessionError>
+      turnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>,
+    ) => Effect.Effect<T, AgentHarnessError | SessionError>,
   ): Effect.Effect<T, AgentHarnessError | SessionError> {
     const self = this;
     let finishRunPromise: () => void = () => {};
@@ -536,7 +501,7 @@ export class AgentHarness<
           new AgentHarnessError({
             code: "busy",
             message: "AgentHarness is busy",
-          })
+          }),
         );
       }
       self.phase = "turn";
@@ -557,7 +522,7 @@ export class AgentHarness<
           self.phase = "idle";
         }
         return normalizeHarnessError(error, "unknown");
-      })
+      }),
     );
   }
 
@@ -588,8 +553,8 @@ export class AgentHarness<
               thinkingLevel: self.thinkingLevel,
               activeTools,
               resources,
-            })
-          )
+            }),
+          ),
         );
       }
       return {
@@ -606,15 +571,13 @@ export class AgentHarness<
     });
   };
 
-  private async createTurnState(): Promise<
-    AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
-  > {
+  private async createTurnState(): Promise<AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>> {
     return Effect.runPromise(this.createTurnStateEffect());
   }
 
   private createContext(
     turnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>,
-    systemPrompt?: string
+    systemPrompt?: string,
   ): AgentContext {
     return {
       systemPrompt: systemPrompt ?? turnState.systemPrompt,
@@ -624,7 +587,7 @@ export class AgentHarness<
   }
 
   private createStreamFn(
-    getTurnState: () => AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
+    getTurnState: () => AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>,
   ): StreamFn {
     return async (req) => {
       const turnState = getTurnState();
@@ -636,18 +599,14 @@ export class AgentHarness<
       // Merge headers from turn state + auth + caller request
       const mergedHeaders = mergeHeaders(
         mergeHeaders(turnState.streamOptions.headers, auth?.headers),
-        req.headers
+        req.headers,
       );
 
       // Emit before_provider_request hook (allows header patching)
-      const requestOptions = await this.emitBeforeProviderRequest(
-        req.model,
-        turnState.sessionId,
-        {
-          ...turnState.streamOptions,
-          headers: mergedHeaders,
-        }
-      );
+      const requestOptions = await this.emitBeforeProviderRequest(req.model, turnState.sessionId, {
+        ...turnState.streamOptions,
+        headers: mergedHeaders,
+      });
 
       // Use test-injected streamFn if provided, otherwise call real stream()
       if (this.testStreamFn) {
@@ -667,19 +626,17 @@ export class AgentHarness<
       return stream(
         buildHarnessStreamRequest(req, {
           sessionId: turnState.sessionId,
-          ...(requestOptions.headers
-            ? { headers: requestOptions.headers }
-            : {}),
+          ...(requestOptions.headers ? { headers: requestOptions.headers } : {}),
           ...(auth?.apiKey ? { apiKey: auth.apiKey } : {}),
           ...(streamLogger === undefined ? {} : { logger: streamLogger }),
-        })
+        }),
       );
     };
   }
 
   private async drainQueuedMessages(
     queue: AgentMessage[],
-    mode: QueueMode
+    mode: QueueMode,
   ): Promise<AgentMessage[]> {
     const messages = mode === "all" ? queue.splice(0) : queue.splice(0, 1);
     if (messages.length === 0) {
@@ -696,18 +653,14 @@ export class AgentHarness<
 
   private createLoopConfig(
     getTurnState: () => AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>,
-    setTurnState: (
-      turnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
-    ) => void
+    setTurnState: (turnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>) => void,
   ): AgentLoopConfig {
     const turnState = getTurnState();
     return {
       model: turnState.model,
       sessionId: turnState.sessionId,
       ...(this.maxSteps === undefined ? {} : { maxSteps: this.maxSteps }),
-      ...(turnState.thinkingLevel === "off"
-        ? {}
-        : { reasoning: turnState.thinkingLevel }),
+      ...(turnState.thinkingLevel === "off" ? {} : { reasoning: turnState.thinkingLevel }),
       ...(this.logger === undefined ? {} : { logger: this.logger }),
       ...(this.permissionEvaluator === undefined
         ? {}
@@ -718,9 +671,8 @@ export class AgentHarness<
       ...(this.permissionAskResolver === undefined
         ? {}
         : {
-            resolvePermissionAsk: (
-              req: PermissionAskRequest
-            ): Promise<"allow" | "deny"> => this.permissionAskResolver!(req),
+            resolvePermissionAsk: (req: PermissionAskRequest): Promise<"allow" | "deny"> =>
+              this.permissionAskResolver!(req),
           }),
       convertToLlm,
       transformContext: async (messages) => {
@@ -759,9 +711,7 @@ export class AgentHarness<
           toolName: toolCall.name,
           input: args as Record<string, unknown>,
         });
-        return result
-          ? { block: result.block, reason: result.reason }
-          : undefined;
+        return result ? { block: result.block, reason: result.reason } : undefined;
       },
       afterToolCall: async ({ toolCall, args, result, isError }) => {
         const patch = await this.emitHook({
@@ -809,10 +759,7 @@ export class AgentHarness<
     }
   }
 
-  private validateToolNames(
-    toolNames: string[],
-    tools: Map<string, TTool> = this.tools
-  ): void {
+  private validateToolNames(toolNames: string[], tools: Map<string, TTool> = this.tools): void {
     this.validateUniqueNames(toolNames, "Duplicate active tool name(s)");
     const missing = toolNames.filter((name) => !tools.has(name));
     if (missing.length > 0) {
@@ -823,10 +770,7 @@ export class AgentHarness<
     }
   }
 
-  private flushPendingSessionWritesEffect = (): Effect.Effect<
-    void,
-    SessionError
-  > => {
+  private flushPendingSessionWritesEffect = (): Effect.Effect<void, SessionError> => {
     const self = this;
     return Effect.gen(function* () {
       while (self.pendingSessionWrites.length > 0) {
@@ -846,7 +790,7 @@ export class AgentHarness<
             write.customType,
             write.content,
             write.display,
-            write.details
+            write.details,
           );
         } else if (write.type === "label") {
           yield* self.session.appendLabel(write.targetId, write.label);
@@ -866,7 +810,7 @@ export class AgentHarness<
 
   private handleAgentEventEffect(
     event: AgentEvent,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Effect.Effect<void, AgentHarnessError | SessionError> {
     // Phase D: broadcast to PubSub subscribers (subscribeStream). Non-blocking
     // for unbounded PubSub; if the bus is shut down (e.g. after dispose), ignore.
@@ -883,11 +827,7 @@ export class AgentHarness<
       return this.emitAnyEffect(event, signal);
     }
 
-    if (
-      event.type !== "message_end" &&
-      event.type !== "turn_end" &&
-      event.type !== "agent_end"
-    ) {
+    if (event.type !== "message_end" && event.type !== "turn_end" && event.type !== "agent_end") {
       return this.emitAnyEffect(event, signal);
     }
 
@@ -902,15 +842,11 @@ export class AgentHarness<
         // Preserve the deferred-error semantics of the original: emit, but
         // capture any listener error so the pending-writes flush + save_point
         // still run before we re-throw.
-        const eventError = yield* Effect.exit(
-          self.emitAnyEffect(event, signal)
-        );
+        const eventError = yield* Effect.exit(self.emitAnyEffect(event, signal));
         const hadPendingMutations = self.pendingSessionWrites.length > 0;
         yield* self.flushPendingSessionWritesEffect();
         if (Exit.isFailure(eventError)) {
-          yield* Effect.fail(
-            normalizeHookError(Cause.squash(eventError.cause))
-          );
+          yield* Effect.fail(normalizeHookError(Cause.squash(eventError.cause)));
         }
         yield* self.emitOwnEffect({ type: "save_point", hadPendingMutations });
         return;
@@ -921,7 +857,7 @@ export class AgentHarness<
       yield* self.emitAnyEffect(event, signal);
       yield* self.emitOwnEffect(
         { type: "settled", nextTurnCount: self.nextTurnQueue.length },
-        signal
+        signal,
       );
     });
   }
@@ -930,27 +866,21 @@ export class AgentHarness<
     model: Model,
     error: unknown,
     aborted: boolean,
-    signal: AbortSignal
+    signal: AbortSignal,
   ): Effect.Effect<AgentMessage[], AgentHarnessError | SessionError> {
     const self = this;
     return Effect.gen(function* () {
       const failureMessage = createFailureMessage(model, error, aborted);
       yield* self.handleAgentEventEffect(
         { type: "message_start", message: failureMessage },
-        signal
+        signal,
       );
-      yield* self.handleAgentEventEffect(
-        { type: "message_end", message: failureMessage },
-        signal
-      );
+      yield* self.handleAgentEventEffect({ type: "message_end", message: failureMessage }, signal);
       yield* self.handleAgentEventEffect(
         { type: "turn_end", message: failureMessage, toolResults: [] },
-        signal
+        signal,
       );
-      yield* self.handleAgentEventEffect(
-        { type: "agent_end", messages: [failureMessage] },
-        signal
-      );
+      yield* self.handleAgentEventEffect({ type: "agent_end", messages: [failureMessage] }, signal);
       return [failureMessage];
     });
   }
@@ -958,7 +888,7 @@ export class AgentHarness<
   private executeTurnEffect(
     turnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>,
     text: string,
-    options?: { images?: ImageContent[] }
+    options?: { images?: ImageContent[] },
   ): Effect.Effect<AssistantMessage, AgentHarnessError | SessionError> {
     const self = this;
     let activeTurnState = turnState;
@@ -989,7 +919,7 @@ export class AgentHarness<
       const abortController = new AbortController();
       const getTurnState = () => activeTurnState;
       const setTurnState = (
-        nextTurnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
+        nextTurnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>,
       ) => {
         activeTurnState = nextTurnState;
       };
@@ -1002,12 +932,10 @@ export class AgentHarness<
             self.createContext(turnState, beforeResult?.systemPrompt),
             self.createLoopConfig(getTurnState, setTurnState),
             (event) =>
-              Effect.runPromise(
-                self.handleAgentEventEffect(event, abortController.signal)
-              ),
+              Effect.runPromise(self.handleAgentEventEffect(event, abortController.signal)),
             abortController.signal,
-            self.createStreamFn(getTurnState)
-          )
+            self.createStreamFn(getTurnState),
+          ),
         );
         if (Exit.isSuccess(exit)) {
           return exit.value;
@@ -1025,8 +953,8 @@ export class AgentHarness<
             activeTurnState.model,
             error,
             abortController.signal.aborted,
-            abortController.signal
-          )
+            abortController.signal,
+          ),
         );
         if (Exit.isSuccess(failureExit)) {
           return failureExit.value;
@@ -1034,14 +962,14 @@ export class AgentHarness<
         const failureError = Cause.squash(failureExit.cause);
         const aggregated = new AggregateError(
           [toError(error), toError(failureError)],
-          "Agent run failed and failure reporting failed"
+          "Agent run failed and failure reporting failed",
         );
         return yield* Effect.fail(
           new AgentHarnessError({
             code: "unknown",
             message: aggregated.message,
             cause: aggregated,
-          })
+          }),
         );
       })();
 
@@ -1055,31 +983,28 @@ export class AgentHarness<
         new AgentHarnessError({
           code: "invalid_state",
           message: "AgentHarness prompt completed without an assistant message",
-        })
+        }),
       );
     }).pipe(
       Effect.ensuring(
         Effect.gen(function* () {
           yield* self.flushPendingSessionWritesEffect().pipe(Effect.ignore);
           self.runAbortController = undefined;
-        })
-      )
+        }),
+      ),
     );
   }
 
   promptEffect(
     text: string,
-    options?: { images?: ImageContent[] }
+    options?: { images?: ImageContent[] },
   ): Effect.Effect<AssistantMessage, AgentHarnessError | SessionError> {
     return this.runAsTurnEffect("prompt", (turnState) =>
-      this.executeTurnEffect(turnState, text, options)
+      this.executeTurnEffect(turnState, text, options),
     );
   }
 
-  async prompt(
-    text: string,
-    options?: { images?: ImageContent[] }
-  ): Promise<AssistantMessage> {
+  async prompt(text: string, options?: { images?: ImageContent[] }): Promise<AssistantMessage> {
     return Effect.runPromise(this.promptEffect(text, options));
   }
 
@@ -1099,10 +1024,7 @@ export class AgentHarness<
    * @throws {AgentHarnessError} code `"busy"` if not idle, `"invalid_state"`
    *   if the transcript is empty or ends in an assistant message.
    */
-  continueEffect(): Effect.Effect<
-    AssistantMessage,
-    AgentHarnessError | SessionError
-  > {
+  continueEffect(): Effect.Effect<AssistantMessage, AgentHarnessError | SessionError> {
     const self = this;
     // Hoisted so Effect.ensuring (outside the gen) can reference it; assigned
     // inside the gen after the busy check passes (preserves original semantics
@@ -1114,7 +1036,7 @@ export class AgentHarness<
           new AgentHarnessError({
             code: "busy",
             message: "AgentHarness is busy",
-          })
+          }),
         );
       }
       self.phase = "turn";
@@ -1131,7 +1053,7 @@ export class AgentHarness<
       let activeTurnState = initialTurnState;
       const getTurnState = () => activeTurnState;
       const setTurnState = (
-        nextTurnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>
+        nextTurnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>,
       ) => {
         activeTurnState = nextTurnState;
       };
@@ -1144,17 +1066,16 @@ export class AgentHarness<
           new AgentHarnessError({
             code: "invalid_state",
             message: "No messages to continue from",
-          })
+          }),
         );
       }
-      const lastMessage =
-        activeTurnState.messages[activeTurnState.messages.length - 1]!;
+      const lastMessage = activeTurnState.messages[activeTurnState.messages.length - 1]!;
       if (lastMessage.role === "assistant") {
         return yield* Effect.fail(
           new AgentHarnessError({
             code: "invalid_state",
             message: "Cannot continue from an assistant message",
-          })
+          }),
         );
       }
 
@@ -1168,12 +1089,10 @@ export class AgentHarness<
             context,
             self.createLoopConfig(getTurnState, setTurnState),
             (event) =>
-              Effect.runPromise(
-                self.handleAgentEventEffect(event, abortController.signal)
-              ),
+              Effect.runPromise(self.handleAgentEventEffect(event, abortController.signal)),
             abortController.signal,
-            self.createStreamFn(getTurnState)
-          )
+            self.createStreamFn(getTurnState),
+          ),
         );
         if (Exit.isSuccess(exit)) {
           return exit.value;
@@ -1189,8 +1108,8 @@ export class AgentHarness<
             activeTurnState.model,
             error,
             abortController.signal.aborted,
-            abortController.signal
-          )
+            abortController.signal,
+          ),
         );
         if (Exit.isSuccess(failureExit)) {
           return failureExit.value;
@@ -1198,14 +1117,14 @@ export class AgentHarness<
         const failureError = Cause.squash(failureExit.cause);
         const aggregated = new AggregateError(
           [toError(error), toError(failureError)],
-          "Agent continue failed and failure reporting failed"
+          "Agent continue failed and failure reporting failed",
         );
         return yield* Effect.fail(
           new AgentHarnessError({
             code: "unknown",
             message: aggregated.message,
             cause: aggregated,
-          })
+          }),
         );
       })();
 
@@ -1219,14 +1138,14 @@ export class AgentHarness<
         new AgentHarnessError({
           code: "invalid_state",
           message: "Continue completed without an assistant message",
-        })
+        }),
       );
     }).pipe(
       Effect.ensuring(
         Effect.gen(function* () {
           yield* self.flushPendingSessionWritesEffect().pipe(Effect.ignore);
           self.runAbortController = undefined;
-        })
+        }),
       ),
       Effect.ensuring(Effect.sync(() => finishRunPromise())),
       Effect.mapError((error) => {
@@ -1236,7 +1155,7 @@ export class AgentHarness<
           self.phase = "idle";
         }
         return normalizeHarnessError(error, "unknown");
-      })
+      }),
     );
   }
 
@@ -1246,74 +1165,65 @@ export class AgentHarness<
 
   skillEffect(
     name: string,
-    additionalInstructions?: string
+    additionalInstructions?: string,
   ): Effect.Effect<AssistantMessage, AgentHarnessError | SessionError> {
     const self = this;
     return self.runAsTurnEffect("skill", (turnState) =>
       Effect.gen(function* () {
         const skill = (turnState.resources.skills ?? []).find(
-          (candidate) => candidate.name === name
+          (candidate) => candidate.name === name,
         );
         if (!skill) {
           return yield* Effect.fail(
             new AgentHarnessError({
               code: "invalid_argument",
               message: `Unknown skill: ${name}`,
-            })
+            }),
           );
         }
         return yield* self.executeTurnEffect(
           turnState,
-          formatSkillInvocation(skill, additionalInstructions)
+          formatSkillInvocation(skill, additionalInstructions),
         );
-      })
+      }),
     );
   }
 
-  async skill(
-    name: string,
-    additionalInstructions?: string
-  ): Promise<AssistantMessage> {
+  async skill(name: string, additionalInstructions?: string): Promise<AssistantMessage> {
     return Effect.runPromise(this.skillEffect(name, additionalInstructions));
   }
 
   promptFromTemplateEffect(
     name: string,
-    args: string[] = []
+    args: string[] = [],
   ): Effect.Effect<AssistantMessage, AgentHarnessError | SessionError> {
     const self = this;
     return self.runAsTurnEffect("promptFromTemplate", (turnState) =>
       Effect.gen(function* () {
         const template = (turnState.resources.promptTemplates ?? []).find(
-          (candidate) => candidate.name === name
+          (candidate) => candidate.name === name,
         );
         if (!template) {
           return yield* Effect.fail(
             new AgentHarnessError({
               code: "invalid_argument",
               message: `Unknown prompt template: ${name}`,
-            })
+            }),
           );
         }
         return yield* self.executeTurnEffect(
           turnState,
-          formatPromptTemplateInvocation(template, args)
+          formatPromptTemplateInvocation(template, args),
         );
-      })
+      }),
     );
   }
 
-  async promptFromTemplate(
-    name: string,
-    args: string[] = []
-  ): Promise<AssistantMessage> {
+  async promptFromTemplate(name: string, args: string[] = []): Promise<AssistantMessage> {
     return Effect.runPromise(this.promptFromTemplateEffect(name, args));
   }
 
-  async steer(
-    text: string,
-    options?: { images?: ImageContent[] }
-  ): Promise<void> {
+  async steer(text: string, options?: { images?: ImageContent[] }): Promise<void> {
     if (this.phase === "idle") {
       throw new AgentHarnessError({
         code: "invalid_state",
@@ -1365,10 +1275,7 @@ export class AgentHarness<
     this.steerQueue.push(createUserMessage(notice));
   }
 
-  async followUp(
-    text: string,
-    options?: { images?: ImageContent[] }
-  ): Promise<void> {
+  async followUp(text: string, options?: { images?: ImageContent[] }): Promise<void> {
     if (this.phase === "idle") {
       throw new AgentHarnessError({
         code: "invalid_state",
@@ -1379,16 +1286,13 @@ export class AgentHarness<
     await this.emitQueueUpdate();
   }
 
-  async nextTurn(
-    text: string,
-    options?: { images?: ImageContent[] }
-  ): Promise<void> {
+  async nextTurn(text: string, options?: { images?: ImageContent[] }): Promise<void> {
     this.nextTurnQueue.push(createUserMessage(text, options?.images));
     await this.emitQueueUpdate();
   }
 
   appendMessageEffect(
-    message: AgentMessage
+    message: AgentMessage,
   ): Effect.Effect<void, AgentHarnessError | SessionError> {
     const self = this;
     return Effect.gen(function* () {
@@ -1397,9 +1301,7 @@ export class AgentHarness<
       } else {
         self.pendingSessionWrites.push({ type: "message", message });
       }
-    }).pipe(
-      Effect.mapError((error) => normalizeHarnessError(error, "session"))
-    );
+    }).pipe(Effect.mapError((error) => normalizeHarnessError(error, "session")));
   }
 
   async appendMessage(message: AgentMessage): Promise<void> {
@@ -1422,14 +1324,12 @@ export class AgentHarness<
           new AgentHarnessError({
             code: "busy",
             message: "compact() requires idle harness",
-          })
+          }),
         );
       }
       self.phase = "compaction";
       const auth = yield* Effect.promise(() =>
-        Promise.resolve(
-          self.getApiKeyAndHeaders?.(self.model) ?? Promise.resolve(undefined)
-        )
+        Promise.resolve(self.getApiKeyAndHeaders?.(self.model) ?? Promise.resolve(undefined)),
       );
       if (!auth) {
         yield* new AgentHarnessError({
@@ -1438,10 +1338,7 @@ export class AgentHarness<
         });
       }
       const branchEntries = yield* self.session.getBranch();
-      const preparationResult = prepareCompaction(
-        branchEntries,
-        DEFAULT_COMPACTION_SETTINGS
-      );
+      const preparationResult = prepareCompaction(branchEntries, DEFAULT_COMPACTION_SETTINGS);
       if (isFailure(preparationResult)) {
         return yield* Effect.fail(preparationResult.failure);
       }
@@ -1458,9 +1355,8 @@ export class AgentHarness<
           preparation: preparation!,
           branchEntries,
           customInstructions,
-          signal:
-            self.runAbortController?.signal ?? new AbortController().signal,
-        })
+          signal: self.runAbortController?.signal ?? new AbortController().signal,
+        }),
       );
       if (hookResult?.cancel) {
         yield* new AgentHarnessError({
@@ -1474,9 +1370,7 @@ export class AgentHarness<
         : yield* runCompactEffect(preparation!, self.model, auth!.apiKey, {
             ...(auth?.headers === undefined ? {} : { headers: auth.headers }),
             ...(customInstructions === undefined ? {} : { customInstructions }),
-            ...(self.thinkingLevel === undefined
-              ? {}
-              : { thinkingLevel: self.thinkingLevel }),
+            ...(self.thinkingLevel === undefined ? {} : { thinkingLevel: self.thinkingLevel }),
             prompts: self.compactionPrompts,
           });
       if (isFailure(compactResult)) {
@@ -1488,7 +1382,7 @@ export class AgentHarness<
         result.firstKeptEntryId,
         result.tokensBefore,
         result.details,
-        provided !== undefined
+        provided !== undefined,
       );
       const entry = yield* self.session.getEntry(entryId);
       if (entry?.type === "compaction") {
@@ -1497,7 +1391,7 @@ export class AgentHarness<
             type: "session_compact",
             compactionEntry: entry,
             fromHook: provided !== undefined,
-          })
+          }),
         );
       }
 
@@ -1517,9 +1411,9 @@ export class AgentHarness<
           if (self.phase === "compaction") {
             self.phase = "idle";
           }
-        })
+        }),
       ),
-      Effect.mapError((error) => normalizeHarnessError(error, "compaction"))
+      Effect.mapError((error) => normalizeHarnessError(error, "compaction")),
     );
   }
 
@@ -1539,7 +1433,7 @@ export class AgentHarness<
       customInstructions?: string;
       replaceInstructions?: boolean;
       label?: string;
-    }
+    },
   ): Effect.Effect<NavigateTreeResult, AgentHarnessError | SessionError> {
     const self = this;
     return Effect.gen(function* () {
@@ -1548,7 +1442,7 @@ export class AgentHarness<
           new AgentHarnessError({
             code: "busy",
             message: "navigateTree() requires idle harness",
-          })
+          }),
         );
       }
       self.phase = "branch_summary";
@@ -1563,12 +1457,11 @@ export class AgentHarness<
           message: `Entry ${targetId} not found`,
         });
       }
-      const { entries, commonAncestorId } =
-        yield* collectEntriesForBranchSummaryEffect(
-          self.session,
-          oldLeafId,
-          targetId
-        );
+      const { entries, commonAncestorId } = yield* collectEntriesForBranchSummaryEffect(
+        self.session,
+        oldLeafId,
+        targetId,
+      );
       const preparation = {
         targetId,
         oldLeafId,
@@ -1579,14 +1472,13 @@ export class AgentHarness<
         replaceInstructions: options?.replaceInstructions,
         label: options?.label,
       };
-      const signal =
-        self.runAbortController?.signal ?? new AbortController().signal;
+      const signal = self.runAbortController?.signal ?? new AbortController().signal;
       const hookResult = yield* Effect.promise(() =>
         self.emitHook({
           type: "session_before_tree",
           preparation,
           signal,
-        })
+        }),
       );
       if (hookResult?.cancel) {
         return { cancelled: true };
@@ -1596,9 +1488,7 @@ export class AgentHarness<
       let summaryDetails: unknown = hookResult?.summary?.details;
       if (!summaryText && options?.summarize && entries.length > 0) {
         const auth = yield* Effect.promise(() =>
-          Promise.resolve(
-            self.getApiKeyAndHeaders?.(self.model) ?? Promise.resolve(undefined)
-          )
+          Promise.resolve(self.getApiKeyAndHeaders?.(self.model) ?? Promise.resolve(undefined)),
         );
         if (!auth) {
           yield* new AgentHarnessError({
@@ -1611,22 +1501,18 @@ export class AgentHarness<
           apiKey: auth!.apiKey,
           prompts: self.branchSummaryPrompts,
           ...(auth!.headers === undefined ? {} : { headers: auth!.headers }),
-          signal:
-            self.runAbortController?.signal ?? new AbortController().signal,
+          signal: self.runAbortController?.signal ?? new AbortController().signal,
           ...(hookResult?.customInstructions !== undefined ||
           options?.customInstructions !== undefined
             ? {
-                customInstructions:
-                  hookResult?.customInstructions ?? options?.customInstructions,
+                customInstructions: hookResult?.customInstructions ?? options?.customInstructions,
               }
             : {}),
-          ...((hookResult?.replaceInstructions ??
-            options?.replaceInstructions) === undefined
+          ...((hookResult?.replaceInstructions ?? options?.replaceInstructions) === undefined
             ? {}
             : {
                 replaceInstructions:
-                  hookResult?.replaceInstructions ??
-                  options?.replaceInstructions,
+                  hookResult?.replaceInstructions ?? options?.replaceInstructions,
               }),
         });
         if (isFailure(branchSummary)) {
@@ -1649,10 +1535,7 @@ export class AgentHarness<
       }
       let editorText: string | undefined;
       let newLeafId: string | null;
-      if (
-        targetEntry!.type === "message" &&
-        targetEntry!.message.role === "user"
-      ) {
+      if (targetEntry!.type === "message" && targetEntry!.message.role === "user") {
         newLeafId = targetEntry!.parentId;
         const content = targetEntry!.message.content;
         editorText =
@@ -1661,11 +1544,11 @@ export class AgentHarness<
             : content
                 .filter(
                   (
-                    c
+                    c,
                   ): c is {
                     readonly type: "text";
                     readonly text: string;
-                  } => c.type === "text"
+                  } => c.type === "text",
                 )
                 .map((c) => c.text)
                 .join("");
@@ -1677,11 +1560,11 @@ export class AgentHarness<
             : targetEntry!.content
                 .filter(
                   (
-                    c
+                    c,
                   ): c is {
                     readonly type: "text";
                     readonly text: string;
-                  } => c.type === "text"
+                  } => c.type === "text",
                 )
                 .map((c) => c.text)
                 .join("");
@@ -1696,7 +1579,7 @@ export class AgentHarness<
               details: summaryDetails,
               fromHook: hookResult?.summary !== undefined,
             }
-          : undefined
+          : undefined,
       );
       if (summaryId) {
         const entry = yield* self.session.getEntry(summaryId);
@@ -1712,7 +1595,7 @@ export class AgentHarness<
           oldLeafId,
           summaryEntry,
           fromHook: hookResult?.summary !== undefined,
-        })
+        }),
       );
       return { cancelled: false, editorText, summaryEntry };
     }).pipe(
@@ -1721,9 +1604,9 @@ export class AgentHarness<
           if (self.phase === "branch_summary") {
             self.phase = "idle";
           }
-        })
+        }),
       ),
-      Effect.mapError((error) => normalizeHarnessError(error, "branch_summary"))
+      Effect.mapError((error) => normalizeHarnessError(error, "branch_summary")),
     );
   }
 
@@ -1734,7 +1617,7 @@ export class AgentHarness<
       customInstructions?: string;
       replaceInstructions?: boolean;
       label?: string;
-    }
+    },
   ): Promise<NavigateTreeResult> {
     return Effect.runPromise(this.navigateTreeEffect(targetId, options));
   }
@@ -1755,14 +1638,11 @@ export class AgentHarness<
       cacheHitTokens: this.cacheHitTokens,
       cacheMissTokens: this.cacheMissTokens,
       turnCount: this.cacheShapeTurnCount,
-      hitRate:
-        total === 0 ? 0 : Math.floor((this.cacheHitTokens * 100) / total),
+      hitRate: total === 0 ? 0 : Math.floor((this.cacheHitTokens * 100) / total),
     };
   }
 
-  setModelEffect(
-    model: Model
-  ): Effect.Effect<void, AgentHarnessError | SessionError> {
+  setModelEffect(model: Model): Effect.Effect<void, AgentHarnessError | SessionError> {
     const self = this;
     return Effect.gen(function* () {
       const previousModel = self.model;
@@ -1782,11 +1662,9 @@ export class AgentHarness<
           model,
           previousModel,
           source: "set",
-        })
+        }),
       );
-    }).pipe(
-      Effect.mapError((error) => normalizeHarnessError(error, "session"))
-    );
+    }).pipe(Effect.mapError((error) => normalizeHarnessError(error, "session")));
   }
 
   async setModel(model: Model): Promise<void> {
@@ -1798,7 +1676,7 @@ export class AgentHarness<
   }
 
   setThinkingLevelEffect(
-    level: ThinkingLevel
+    level: ThinkingLevel,
   ): Effect.Effect<void, AgentHarnessError | SessionError> {
     const self = this;
     return Effect.gen(function* () {
@@ -1817,11 +1695,9 @@ export class AgentHarness<
           type: "thinking_level_update",
           level,
           previousLevel,
-        })
+        }),
       );
-    }).pipe(
-      Effect.mapError((error) => normalizeHarnessError(error, "session"))
-    );
+    }).pipe(Effect.mapError((error) => normalizeHarnessError(error, "session")));
   }
 
   async setThinkingLevel(level: ThinkingLevel): Promise<void> {
@@ -1834,18 +1710,16 @@ export class AgentHarness<
 
   setToolsEffect(
     tools: TTool[],
-    activeToolNames?: string[]
+    activeToolNames?: string[],
   ): Effect.Effect<void, AgentHarnessError | SessionError> {
     const self = this;
     return Effect.gen(function* () {
       self.validateUniqueNames(
         tools.map((tool) => tool.name),
-        "Duplicate tool name(s)"
+        "Duplicate tool name(s)",
       );
       const nextTools = new Map(tools.map((tool) => [tool.name, tool]));
-      const nextActiveToolNames = activeToolNames
-        ? [...activeToolNames]
-        : self.activeToolNames;
+      const nextActiveToolNames = activeToolNames ? [...activeToolNames] : self.activeToolNames;
       self.validateToolNames(nextActiveToolNames, nextTools);
       const previousToolNames = [...self.tools.keys()];
       const previousActiveToolNames = [...self.activeToolNames];
@@ -1867,13 +1741,9 @@ export class AgentHarness<
           activeToolNames: [...self.activeToolNames],
           previousActiveToolNames,
           source: "set",
-        })
+        }),
       );
-    }).pipe(
-      Effect.mapError((error) =>
-        normalizeHarnessError(error, "invalid_argument")
-      )
-    );
+    }).pipe(Effect.mapError((error) => normalizeHarnessError(error, "invalid_argument")));
   }
 
   async setTools(tools: TTool[], activeToolNames?: string[]): Promise<void> {
@@ -1940,21 +1810,13 @@ export class AgentHarness<
    */
   private recomposeSystemPrompt(): string {
     const current = this.getSystemPrompt() ?? "";
-    const base = stripToolInventory(
-      stripSkillsBlock(current, this.skillsInstructions)
-    );
+    const base = stripToolInventory(stripSkillsBlock(current, this.skillsInstructions));
     const activeTools = this.getActiveTools().filter(
-      (tool) => !this.softDisabledTools.has(tool.name)
+      (tool) => !this.softDisabledTools.has(tool.name),
     );
     const skills = this.resources.skills ?? [];
     const hasRead = this.activeToolNames.includes("read");
-    return composeSystemPrompt(
-      base,
-      activeTools,
-      skills,
-      hasRead,
-      this.skillsInstructions
-    );
+    return composeSystemPrompt(base, activeTools, skills, hasRead, this.skillsInstructions);
   }
 
   /**
@@ -1994,9 +1856,7 @@ export class AgentHarness<
     return this.softDisabledTools.has(toolName);
   }
 
-  setActiveToolsEffect(
-    toolNames: string[]
-  ): Effect.Effect<void, AgentHarnessError | SessionError> {
+  setActiveToolsEffect(toolNames: string[]): Effect.Effect<void, AgentHarnessError | SessionError> {
     const self = this;
     return Effect.gen(function* () {
       self.validateToolNames(toolNames);
@@ -2019,13 +1879,9 @@ export class AgentHarness<
           activeToolNames: [...self.activeToolNames],
           previousActiveToolNames,
           source: "set",
-        })
+        }),
       );
-    }).pipe(
-      Effect.mapError((error) =>
-        normalizeHarnessError(error, "invalid_argument")
-      )
-    );
+    }).pipe(Effect.mapError((error) => normalizeHarnessError(error, "invalid_argument")));
   }
 
   async setActiveTools(toolNames: string[]): Promise<void> {
@@ -2055,9 +1911,7 @@ export class AgentHarness<
     };
   }
 
-  async setResources(
-    resources: AgentHarnessResources<TSkill, TPromptTemplate>
-  ): Promise<void> {
+  async setResources(resources: AgentHarnessResources<TSkill, TPromptTemplate>): Promise<void> {
     const previousResources = this.getResources();
     this.resources = {
       skills: resources.skills?.slice(),
@@ -2152,9 +2006,7 @@ export class AgentHarness<
    * on the next tool call within the current turn.
    */
   setPermissionEvaluator(
-    evaluator:
-      | ((permission: string, pattern: string) => "allow" | "deny" | "ask")
-      | undefined
+    evaluator: ((permission: string, pattern: string) => "allow" | "deny" | "ask") | undefined,
   ): void {
     this.permissionEvaluator = evaluator;
   }
@@ -2165,9 +2017,7 @@ export class AgentHarness<
    * returned promise settles. Wire this to an interactive approval channel.
    */
   setPermissionAskResolver(
-    resolver:
-      | ((req: PermissionAskRequest) => Promise<"allow" | "deny">)
-      | undefined
+    resolver: ((req: PermissionAskRequest) => Promise<"allow" | "deny">) | undefined,
   ): void {
     this.permissionAskResolver = resolver;
   }
@@ -2185,9 +2035,7 @@ export class AgentHarness<
    * Clears any pending {@link scheduleSystemPromptRefresh} — switchAgent is the
    * "apply now" path and supersedes a deferred swap.
    */
-  switchAgentEffect(
-    agent: AgentDefinition
-  ): Effect.Effect<void, AgentHarnessError | SessionError> {
+  switchAgentEffect(agent: AgentDefinition): Effect.Effect<void, AgentHarnessError | SessionError> {
     const self = this;
     return Effect.gen(function* () {
       self.currentAgent = agent;
@@ -2249,18 +2097,14 @@ export class AgentHarness<
    * scheduling a refresh.
    */
   getSystemPrompt(): string | undefined {
-    return typeof this.systemPrompt === "string"
-      ? this.systemPrompt
-      : undefined;
+    return typeof this.systemPrompt === "string" ? this.systemPrompt : undefined;
   }
 
   getStreamOptions(): AgentHarnessStreamOptions {
     return cloneStreamOptions(this.streamOptions);
   }
 
-  async setStreamOptions(
-    streamOptions: AgentHarnessStreamOptions
-  ): Promise<void> {
+  async setStreamOptions(streamOptions: AgentHarnessStreamOptions): Promise<void> {
     this.streamOptions = cloneStreamOptions(streamOptions);
   }
 
@@ -2283,9 +2127,7 @@ export class AgentHarness<
       drainExit(yield* Effect.exit(self.emitQueueUpdateEffect()));
       drainExit(yield* Effect.exit(self.waitForIdleEffect()));
       drainExit(
-        yield* Effect.exit(
-          self.emitOwnEffect({ type: "abort", clearedSteer, clearedFollowUp })
-        )
+        yield* Effect.exit(self.emitOwnEffect({ type: "abort", clearedSteer, clearedFollowUp })),
       );
 
       if (errors.length > 0) {
@@ -2314,8 +2156,8 @@ export class AgentHarness<
   subscribe(
     listener: (
       event: AgentHarnessEvent<TSkill, TPromptTemplate>,
-      signal?: AbortSignal
-    ) => Promise<void> | void
+      signal?: AbortSignal,
+    ) => Promise<void> | void,
   ): () => void {
     let handlers = this.handlers.get(SUBSCRIBER_EVENT_TYPE);
     if (!handlers) {
@@ -2345,10 +2187,8 @@ export class AgentHarness<
   on<TType extends keyof AgentHarnessEventResultMap>(
     type: TType,
     handler: (
-      event: Extract<AgentHarnessOwnEvent, { type: TType }>
-    ) =>
-      | Promise<AgentHarnessEventResultMap[TType]>
-      | AgentHarnessEventResultMap[TType]
+      event: Extract<AgentHarnessOwnEvent, { type: TType }>,
+    ) => Promise<AgentHarnessEventResultMap[TType]> | AgentHarnessEventResultMap[TType],
   ): () => void {
     let handlers = this.handlers.get(type);
     if (!handlers) {

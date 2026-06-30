@@ -39,9 +39,7 @@ export interface ServerActions {
   removeSession: (sessionId: string) => void;
   setActiveProject: (projectId: string | null) => void;
   setActiveSession: (sessionId: string | null) => void;
-  setConnectionStatus: (
-    status: ServerStoreData["connection"]["status"]
-  ) => void;
+  setConnectionStatus: (status: ServerStoreData["connection"]["status"]) => void;
   setProjects: (projects: Project[]) => void;
   setSessions: (sessions: SessionMeta[]) => void;
   updateSession: (sessionId: string, patch: Partial<SessionMeta>) => void;
@@ -81,7 +79,7 @@ export function createServerStore(): ServerStore {
       setStore("projects", reconcile(map));
       setStore(
         "projectOrder",
-        projects.map((p) => p.id)
+        projects.map((p) => p.id),
       );
       const first = projects[0];
       if (store.activeProjectId === null && first) {
@@ -101,7 +99,7 @@ export function createServerStore(): ServerStore {
       setStore("sessions", reconcile(map));
       setStore(
         "sessionOrder",
-        sessions.map((s) => s.id)
+        sessions.map((s) => s.id),
       );
     },
 
@@ -123,7 +121,7 @@ export function createServerStore(): ServerStore {
         "sessions",
         produce((s) => {
           delete s[sessionId];
-        })
+        }),
       );
       setStore("sessionOrder", (prev) => prev.filter((id) => id !== sessionId));
     },
@@ -133,7 +131,7 @@ export function createServerStore(): ServerStore {
         "projects",
         produce((p) => {
           delete p[projectId];
-        })
+        }),
       );
       setStore("projectOrder", (prev) => prev.filter((id) => id !== projectId));
     },

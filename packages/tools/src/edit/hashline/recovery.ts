@@ -1,8 +1,5 @@
 import * as Diff from "diff";
-import type {
-  Snapshot,
-  SnapshotStore,
-} from "../../lib/hashline-utils/snapshots";
+import type { Snapshot, SnapshotStore } from "../../lib/hashline-utils/snapshots";
 import type { Anchor, ApplyResult, Edit } from "../../lib/hashline-utils/types";
 import { applyEdits } from "./apply";
 import {
@@ -30,7 +27,7 @@ function applyEditsToSnapshot(
   previousText: string,
   currentText: string,
   edits: readonly Edit[],
-  recoveryWarning: string
+  recoveryWarning: string,
 ): RecoveryResult | null {
   let applied: ApplyResult;
   try {
@@ -42,17 +39,9 @@ function applyEditsToSnapshot(
     return null;
   }
 
-  const patch = Diff.structuredPatch(
-    "file",
-    "file",
-    previousText,
-    applied.text,
-    "",
-    "",
-    {
-      context: 3,
-    }
-  );
+  const patch = Diff.structuredPatch("file", "file", previousText, applied.text, "", "", {
+    context: 3,
+  });
   const merged = Diff.applyPatch(currentText, patch, {
     fuzzFactor: RECOVERY_FUZZ_FACTOR,
   });
@@ -60,8 +49,7 @@ function applyEditsToSnapshot(
     return null;
   }
 
-  const firstChangedLine =
-    findFirstChangedLine(currentText, merged) ?? applied.firstChangedLine;
+  const firstChangedLine = findFirstChangedLine(currentText, merged) ?? applied.firstChangedLine;
   const hasNetChange = firstChangedLine !== undefined;
   const warnings = hasNetChange
     ? [recoveryWarning, ...(applied.warnings ?? [])]
@@ -87,8 +75,7 @@ function getEditAnchors(edit: Edit): Anchor[] {
   if (edit.kind === "block") {
     return [edit.anchor];
   }
-  return edit.cursor.kind === "before_anchor" ||
-    edit.cursor.kind === "after_anchor"
+  return edit.cursor.kind === "before_anchor" || edit.cursor.kind === "after_anchor"
     ? [edit.cursor.anchor]
     : [];
 }
@@ -96,7 +83,7 @@ function getEditAnchors(edit: Edit): Anchor[] {
 function verifyAnchorContent(
   previousText: string,
   currentText: string,
-  edits: readonly Edit[]
+  edits: readonly Edit[],
 ): boolean {
   const lines = collectAnchorLines(edits);
   if (lines.length === 0) {
@@ -119,7 +106,7 @@ function verifyAnchorContent(
 function replaySessionChainOnCurrent(
   previousText: string,
   currentText: string,
-  edits: readonly Edit[]
+  edits: readonly Edit[],
 ): RecoveryResult | null {
   if (previousText.split("\n").length !== currentText.split("\n").length) {
     return null;
@@ -176,15 +163,8 @@ export class Recovery {
       return null;
     }
     const isHead = isHeadSnapshot(this.store.head(path), snapshot);
-    const recoveryWarning = isHead
-      ? RECOVERY_EXTERNAL_WARNING
-      : RECOVERY_SESSION_CHAIN_WARNING;
-    const merged = applyEditsToSnapshot(
-      snapshot.text,
-      currentText,
-      edits,
-      recoveryWarning
-    );
+    const recoveryWarning = isHead ? RECOVERY_EXTERNAL_WARNING : RECOVERY_SESSION_CHAIN_WARNING;
+    const merged = applyEditsToSnapshot(snapshot.text, currentText, edits, recoveryWarning);
     if (merged !== null) {
       return merged;
     }

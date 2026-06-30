@@ -11,13 +11,12 @@ function contentFor(testId: string): HTMLElement {
 
 const isHidden = (el: HTMLElement) => el.classList.contains("opacity-0");
 
-const overlays = () =>
-  document.querySelectorAll<HTMLElement>("[data-stack-overlay]");
+const overlays = () => document.querySelectorAll<HTMLElement>("[data-stack-overlay]");
 
 const visibleOverlays = () =>
-  Array.from(
-    document.querySelectorAll<HTMLElement>("[data-stack-overlay]")
-  ).filter((el) => !isHidden(el));
+  Array.from(document.querySelectorAll<HTMLElement>("[data-stack-overlay]")).filter(
+    (el) => !isHidden(el),
+  );
 
 describe("dialog stacking", () => {
   it("hides the lower dialog when a second opens on top", async () => {

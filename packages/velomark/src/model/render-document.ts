@@ -8,36 +8,30 @@ import type {
 } from "../parser/block-boundaries";
 import { parseMarkdownToBlocks } from "../parser/block-parser";
 import { parseInline } from "../parser/inline-parser";
-import type {
-  InlineToken,
-  RenderBlock,
-  RenderDocument,
-  VelomarkDebugMetrics,
-} from "../types";
+import type { InlineToken, RenderBlock, RenderDocument, VelomarkDebugMetrics } from "../types";
 import type { DraftRenderBlock } from "./stable-id";
 import { assignStableBlockIds } from "./stable-id";
 
 function canReuseBlock<TData>(
   previous: RenderBlock<TData> | undefined,
-  next: RenderBlock<TData>
+  next: RenderBlock<TData>,
 ): previous is RenderBlock<TData> {
   return Boolean(
     previous &&
-      previous.id === next.id &&
-      previous.kind === next.kind &&
-      previous.sourceStart === next.sourceStart &&
-      previous.sourceEnd === next.sourceEnd &&
-      previous.fingerprint === next.fingerprint
+    previous.id === next.id &&
+    previous.kind === next.kind &&
+    previous.sourceStart === next.sourceStart &&
+    previous.sourceEnd === next.sourceEnd &&
+    previous.fingerprint === next.fingerprint,
   );
 }
 
 export function buildRenderDocument(
   previousDocument: RenderDocument<ParsedBlockData> | undefined,
-  markdown: string
+  markdown: string,
 ): RenderDocument<ParsedBlockData> {
   const previousBlocks = previousDocument?.blocks ?? [];
-  const previousFootnoteDefinitions =
-    previousDocument?.footnoteDefinitions ?? {};
+  const previousFootnoteDefinitions = previousDocument?.footnoteDefinitions ?? {};
   const {
     blocks: draftBlocks,
     definitions,
@@ -49,26 +43,19 @@ export function buildRenderDocument(
     return canReuseBlock(previousBlock, block) ? previousBlock : block;
   });
   const footnoteDefinitions = Object.fromEntries(
-    Object.entries(draftFootnoteDefinitions).map(
-      ([identifier, draftBlocks]) => {
-        const previousFootnoteBlocks =
-          previousFootnoteDefinitions[identifier] ?? [];
-        const nextBlocks = assignStableBlockIds(
-          previousFootnoteBlocks,
-          draftBlocks
-        ).map((block, index) => {
+    Object.entries(draftFootnoteDefinitions).map(([identifier, draftBlocks]) => {
+      const previousFootnoteBlocks = previousFootnoteDefinitions[identifier] ?? [];
+      const nextBlocks = assignStableBlockIds(previousFootnoteBlocks, draftBlocks).map(
+        (block, index) => {
           const previousBlock = previousFootnoteBlocks[index];
           return canReuseBlock(previousBlock, block) ? previousBlock : block;
-        });
+        },
+      );
 
-        return [identifier, nextBlocks];
-      }
-    )
+      return [identifier, nextBlocks];
+    }),
   );
-  const footnoteReferenceOrder = collectFootnoteReferenceOrder(
-    blocks,
-    definitions
-  );
+  const footnoteReferenceOrder = collectFootnoteReferenceOrder(blocks, definitions);
 
   return {
     blocks,
@@ -82,7 +69,7 @@ export function buildRenderDocument(
 function collectInlineFootnoteReferences(
   tokens: InlineToken[],
   seen: Set<string>,
-  order: string[]
+  order: string[],
 ): void {
   for (const token of tokens) {
     switch (token.type) {
@@ -106,10 +93,7 @@ function collectInlineFootnoteReferences(
   }
 }
 
-function collectTextFragmentsFromList(
-  block: ListBlockData,
-  fragments: string[]
-): void {
+function collectTextFragmentsFromList(block: ListBlockData, fragments: string[]): void {
   for (const item of block.items) {
     fragments.push(item.text);
     for (const child of item.children ?? []) {
@@ -118,27 +102,17 @@ function collectTextFragmentsFromList(
   }
 }
 
-function collectBlockTextFragments(
-  block: RenderBlock<ParsedBlockData>,
-  fragments: string[]
-): void {
+function collectBlockTextFragments(block: RenderBlock<ParsedBlockData>, fragments: string[]): void {
   switch (block.kind) {
     case "paragraph":
     case "heading":
-      fragments.push(
-        (block as RenderBlock<ParagraphBlockData | HeadingBlockData>).data.text
-      );
+      fragments.push((block as RenderBlock<ParagraphBlockData | HeadingBlockData>).data.text);
       break;
     case "blockquote":
-      fragments.push(
-        ...(block as RenderBlock<BlockquoteBlockData>).data.paragraphs
-      );
+      fragments.push(...(block as RenderBlock<BlockquoteBlockData>).data.paragraphs);
       break;
     case "list":
-      collectTextFragmentsFromList(
-        (block as RenderBlock<ListBlockData>).data,
-        fragments
-      );
+      collectTextFragmentsFromList((block as RenderBlock<ListBlockData>).data, fragments);
       break;
     case "table":
       for (const row of (block as RenderBlock<TableBlockData>).data.rows) {
@@ -152,7 +126,7 @@ function collectBlockTextFragments(
 
 function collectFootnoteReferenceOrder(
   blocks: RenderBlock<ParsedBlockData>[],
-  definitions: RenderDocument<ParsedBlockData>["definitions"]
+  definitions: RenderDocument<ParsedBlockData>["definitions"],
 ): string[] {
   const seen = new Set<string>();
   const order: string[] = [];
@@ -162,11 +136,7 @@ function collectFootnoteReferenceOrder(
     fragments.length = 0;
     collectBlockTextFragments(block, fragments);
     for (const fragment of fragments) {
-      collectInlineFootnoteReferences(
-        parseInline(fragment, definitions),
-        seen,
-        order
-      );
+      collectInlineFootnoteReferences(parseInline(fragment, definitions), seen, order);
     }
   }
 
@@ -175,7 +145,7 @@ function collectFootnoteReferenceOrder(
 
 export function collectRenderMetrics<TData>(
   previousBlocks: Array<DraftRenderBlock<TData> | RenderBlock<TData>>,
-  nextBlocks: Array<DraftRenderBlock<TData> | RenderBlock<TData>>
+  nextBlocks: Array<DraftRenderBlock<TData> | RenderBlock<TData>>,
 ): VelomarkDebugMetrics {
   let reusedBlockCount = 0;
   let appendedBlockCount = 0;

@@ -13,9 +13,7 @@ export interface BlockRange {
  * unrecognized, the line is blank/out-of-range, no node begins there, or the
  * resolved subtree contains a syntax error.
  */
-export declare function blockRangeAt(
-  options: BlockRangeOptions
-): BlockRange | null;
+export declare function blockRangeAt(options: BlockRangeOptions): BlockRange | null;
 
 export interface BlockRangeOptions {
   /** Source code to inspect. */

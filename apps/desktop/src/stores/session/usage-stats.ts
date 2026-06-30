@@ -20,9 +20,7 @@ export function extractUsage(msg: AgentMessage): UIMessage["usage"] {
     cost: raw.cost.total,
     input: raw.input,
     output: raw.output,
-    ...(raw.reasoningTokens === undefined
-      ? {}
-      : { reasoningTokens: raw.reasoningTokens }),
+    ...(raw.reasoningTokens === undefined ? {} : { reasoningTokens: raw.reasoningTokens }),
   };
 }
 
@@ -37,9 +35,7 @@ export interface SessionUsageStats {
   reasoningTokens: number;
 }
 
-export function aggregateUsage(
-  messages: Record<string, UIMessage>
-): SessionUsageStats {
+export function aggregateUsage(messages: Record<string, UIMessage>): SessionUsageStats {
   let cost = 0;
   let input = 0;
   let output = 0;

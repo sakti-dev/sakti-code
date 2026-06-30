@@ -11,11 +11,11 @@ describe("loadCommands", () => {
     await env.createDir(".agents/commands/git", { recursive: true });
     await env.writeFile(
       ".agents/command/commit.md",
-      "---\ndescription: git commit and push\n---\ncommit and push"
+      "---\ndescription: git commit and push\n---\ncommit and push",
     );
     await env.writeFile(
       ".agents/commands/git/push.md",
-      "---\ndescription: push commits\n---\ngit push"
+      "---\ndescription: push commits\n---\ngit push",
     );
 
     const { commands, diagnostics } = await loadCommands(env, [".agents"]);

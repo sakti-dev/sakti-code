@@ -7,8 +7,7 @@ import {
 
 describe("permission channel", () => {
   it("asks, then resolves allow on 'once' without persisting a grant", async () => {
-    const asked: Array<{ id: string; permission: string; patterns: string[] }> =
-      [];
+    const asked: Array<{ id: string; permission: string; patterns: string[] }> = [];
     const ch = createPermissionChannel();
     ch.setSink((frame) => asked.push(frame));
     const p = ch.ask({
@@ -110,9 +109,7 @@ describe("permission channel", () => {
   it("evaluate merges grants into the base ruleset", () => {
     const ch = createPermissionChannel();
     // base ruleset denies *.env; with no grant, evaluate -> deny
-    const base = [
-      { permission: "read", pattern: "*.env", action: "deny" as const },
-    ];
+    const base = [{ permission: "read", pattern: "*.env", action: "deny" as const }];
     expect(ch.evaluate("read", "a.env", base)).toBe("deny");
     expect(ch.evaluate("read", "a.ts", [])).toBe("ask"); // nothing matches -> ask
   });

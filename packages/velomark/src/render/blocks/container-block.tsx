@@ -13,7 +13,7 @@ import { RenderBlockView } from "../render-block";
 
 function withNestedId(
   parent: RenderBlock<ContainerBlockData>,
-  index: number
+  index: number,
 ): RenderBlock<ContainerBlockData["children"][number]["data"]> {
   const child = parent.data.children[index];
   if (!child) {
@@ -28,10 +28,7 @@ function withNestedId(
 
 export const ContainerBlock: Component<{
   block: RenderBlock<ContainerBlockData>;
-  codeBlockRenderers?: Record<
-    string,
-    Component<VelomarkCodeBlockRendererProps>
-  >;
+  codeBlockRenderers?: Record<string, Component<VelomarkCodeBlockRendererProps>>;
   containers?: Record<string, Component<VelomarkContainerRendererProps>>;
   debug?: boolean;
   definitions?: ReferenceDefinitionMap;
@@ -75,14 +72,10 @@ export const ContainerBlock: Component<{
       data-velomark-block-index={props.index}
       data-velomark-block-kind={props.block.kind}
       data-velomark-container={
-        props.block.data.directiveType === "container"
-          ? props.block.data.name
-          : undefined
+        props.block.data.directiveType === "container" ? props.block.data.name : undefined
       }
       data-velomark-leaf-directive={
-        props.block.data.directiveType === "leaf"
-          ? props.block.data.name
-          : undefined
+        props.block.data.directiveType === "leaf" ? props.block.data.name : undefined
       }
       {...directiveAttributeProps(props.block.data.attributes)}
     >

@@ -131,9 +131,7 @@ describe("InMemorySnapshotStore", () => {
     store.record(OTHER, text);
 
     const matches = store.findByHash(tag);
-    expect(matches.map((snapshot) => snapshot.path).sort()).toEqual(
-      [OTHER, PATH].sort()
-    );
+    expect(matches.map((snapshot) => snapshot.path).sort()).toEqual([OTHER, PATH].sort());
     expect(matches.every((snapshot) => snapshot.hash === tag)).toBe(true);
     expect(store.findByHash(tag === "0000" ? "FFFF" : "0000")).toEqual([]);
   });

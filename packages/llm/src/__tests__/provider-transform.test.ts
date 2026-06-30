@@ -5,7 +5,7 @@ import type { Model, OpenAICompletionsCompat } from "../types.ts";
 /** Build a test Model with a specific thinkingFormat + provider name "testprov". */
 function modelWith(
   thinkingFormat: OpenAICompletionsCompat["thinkingFormat"],
-  overrides: Partial<Model> & { compat?: Partial<OpenAICompletionsCompat> } = {}
+  overrides: Partial<Model> & { compat?: Partial<OpenAICompletionsCompat> } = {},
 ): Model {
   const { compat: compatOverrides, ...modelOverrides } = overrides;
   const compat = {

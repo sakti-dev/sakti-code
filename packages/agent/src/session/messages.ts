@@ -38,11 +38,7 @@ export function bashExecutionToText(msg: BashExecutionMessage): string {
   }
   if (msg.cancelled) {
     text += "\n\n(command cancelled)";
-  } else if (
-    msg.exitCode !== null &&
-    msg.exitCode !== undefined &&
-    msg.exitCode !== 0
-  ) {
+  } else if (msg.exitCode !== null && msg.exitCode !== undefined && msg.exitCode !== 0) {
     text += `\n\nCommand exited with code ${msg.exitCode}`;
   }
   if (msg.truncated && msg.fullOutputPath) {
@@ -54,7 +50,7 @@ export function bashExecutionToText(msg: BashExecutionMessage): string {
 export function createBranchSummaryMessage(
   summary: string,
   fromId: string,
-  timestamp: string
+  timestamp: string,
 ): BranchSummaryMessage {
   return {
     role: "branchSummary",
@@ -67,7 +63,7 @@ export function createBranchSummaryMessage(
 export function createCompactionSummaryMessage(
   summary: string,
   tokensBefore: number,
-  timestamp: string
+  timestamp: string,
 ): CompactionSummaryMessage {
   return {
     role: "compactionSummary",
@@ -82,7 +78,7 @@ export function createCustomMessage(
   content: string | (TextContent | ImageContent)[],
   display: boolean,
   details: unknown | undefined,
-  timestamp: string
+  timestamp: string,
 ): CustomMessage {
   return {
     role: "custom",
@@ -135,10 +131,7 @@ export function convertToLlm(messages: AgentMessage[]): Message[] {
             content: [
               {
                 type: "text" as const,
-                text:
-                  COMPACTION_SUMMARY_PREFIX +
-                  m.summary +
-                  COMPACTION_SUMMARY_SUFFIX,
+                text: COMPACTION_SUMMARY_PREFIX + m.summary + COMPACTION_SUMMARY_SUFFIX,
               },
             ],
             timestamp: m.timestamp,

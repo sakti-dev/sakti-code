@@ -18,28 +18,26 @@ function hashString(input: string): string {
 
 function buildDeterministicId<TData>(block: DraftRenderBlock<TData>): string {
   return `b_${hashString(
-    [block.kind, block.sourceStart, block.sourceEnd, block.fingerprint].join(
-      ":"
-    )
+    [block.kind, block.sourceStart, block.sourceEnd, block.fingerprint].join(":"),
   )}`;
 }
 
 function isStableMatch<TData>(
   previous: RenderBlock<TData> | undefined,
-  next: DraftRenderBlock<TData>
+  next: DraftRenderBlock<TData>,
 ): previous is RenderBlock<TData> {
   return Boolean(
     previous &&
-      previous.kind === next.kind &&
-      previous.sourceStart === next.sourceStart &&
-      previous.sourceEnd === next.sourceEnd &&
-      previous.fingerprint === next.fingerprint
+    previous.kind === next.kind &&
+    previous.sourceStart === next.sourceStart &&
+    previous.sourceEnd === next.sourceEnd &&
+    previous.fingerprint === next.fingerprint,
   );
 }
 
 function isCodeGrowthMatch<TData>(
   previous: RenderBlock<TData> | undefined,
-  next: DraftRenderBlock<TData>
+  next: DraftRenderBlock<TData>,
 ): previous is RenderBlock<TData> {
   if (previous?.kind !== "code" || next.kind !== "code") {
     return false;
@@ -57,15 +55,12 @@ function isCodeGrowthMatch<TData>(
 
 export function assignStableBlockIds<TData>(
   previousBlocks: RenderBlock<TData>[],
-  nextBlocks: DraftRenderBlock<TData>[]
+  nextBlocks: DraftRenderBlock<TData>[],
 ): RenderBlock<TData>[] {
   return nextBlocks.map((nextBlock, index) => {
     const previousBlock = previousBlocks[index];
 
-    if (
-      isStableMatch(previousBlock, nextBlock) ||
-      isCodeGrowthMatch(previousBlock, nextBlock)
-    ) {
+    if (isStableMatch(previousBlock, nextBlock) || isCodeGrowthMatch(previousBlock, nextBlock)) {
       return {
         ...nextBlock,
         id: previousBlock.id,

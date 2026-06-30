@@ -79,7 +79,7 @@ function checkBundledNpm(catalog: Record<string, Model[]>): void {
       `WARNING: ${unbundled.size} npm package(s) not bundled: ` +
         [...unbundled].join(", ") +
         "\nThese models will fall to dynamic import at runtime.\n" +
-        "Add them to BUNDLED_PROVIDERS in registry.ts and this list.\n"
+        "Add them to BUNDLED_PROVIDERS in registry.ts and this list.\n",
     );
   }
 }
@@ -88,9 +88,7 @@ async function main(): Promise<void> {
   process.stderr.write("Fetching models.dev catalog…\n");
   const response = await fetch(MODELS_DEV_URL);
   if (!response.ok) {
-    throw new Error(
-      `models.dev fetch failed: ${response.status} ${response.statusText}`
-    );
+    throw new Error(`models.dev fetch failed: ${response.status} ${response.statusText}`);
   }
   const data = (await response.json()) as ModelsDevCatalog;
 
@@ -123,7 +121,7 @@ async function main(): Promise<void> {
   const providers = Object.keys(catalog).sort();
   process.stderr.write(
     `Converted ${totalModels} models across ${providers.length} providers ` +
-      `(dropped ${droppedModels} non-tool-capable).\n`
+      `(dropped ${droppedModels} non-tool-capable).\n`,
   );
 
   const providerInfo: Record<string, ProviderInfo> = {};
@@ -151,7 +149,7 @@ async function main(): Promise<void> {
 function renderCatalog(
   catalog: Record<string, Model[]>,
   providers: string[],
-  providerInfo: Record<string, ProviderInfo>
+  providerInfo: Record<string, ProviderInfo>,
 ): string {
   const entries = providers
     .map((providerId) => {

@@ -2,10 +2,7 @@ import { blockRangeAt } from "@sakti-code/pi-natives";
 import { computeRawHash } from "../../lib/hashline-utils/format";
 import type { BlockResolver } from "../../lib/hashline-utils/types";
 
-const resolutionCache = new Map<
-  string,
-  { start: number; end: number } | null
->();
+const resolutionCache = new Map<string, { start: number; end: number } | null>();
 const RESOLUTION_CACHE_MAX = 512;
 
 export const nativeBlockResolver: BlockResolver = ({ path, text, line }) => {

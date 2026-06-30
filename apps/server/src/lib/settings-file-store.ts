@@ -1,10 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 export type SettingsData = Record<string, unknown>;
@@ -29,7 +23,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function deepMerge(
   target: Record<string, unknown>,
-  source: Record<string, unknown>
+  source: Record<string, unknown>,
 ): Record<string, unknown> {
   const result = { ...target };
   for (const [key, value] of Object.entries(source)) {

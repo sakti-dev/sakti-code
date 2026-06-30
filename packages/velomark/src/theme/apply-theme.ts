@@ -5,7 +5,7 @@ import { mergeTheme, type PartialVelomarkTheme } from "./merge-theme";
 import type { VelomarkTheme, VelomarkThemeName } from "./types";
 
 export const resolveTheme = (
-  theme?: VelomarkThemeName | PartialVelomarkTheme | VelomarkTheme
+  theme?: VelomarkThemeName | PartialVelomarkTheme | VelomarkTheme,
 ): VelomarkTheme => {
   if (theme === "dark") {
     return darkTheme;
@@ -20,7 +20,7 @@ export const resolveTheme = (
 
 export const applyTheme = (
   element: HTMLElement,
-  theme?: VelomarkThemeName | PartialVelomarkTheme | VelomarkTheme
+  theme?: VelomarkThemeName | PartialVelomarkTheme | VelomarkTheme,
 ): VelomarkTheme => {
   const resolvedTheme = resolveTheme(theme);
   const cssVars = generateCssVars(resolvedTheme);

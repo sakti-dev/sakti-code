@@ -1,9 +1,6 @@
 import type { Component } from "solid-js";
 import { parseInline } from "../../parser/inline-parser";
-import type {
-  ReferenceDefinitionMap,
-  VelomarkContainerRendererProps,
-} from "../../types";
+import type { ReferenceDefinitionMap, VelomarkContainerRendererProps } from "../../types";
 import { RenderInlineTokens } from "./inline-token-view";
 
 export const RenderInline: Component<{

@@ -1,10 +1,6 @@
 import type { Accessor } from "solid-js";
 import { Show } from "solid-js";
-import {
-  formatCost,
-  formatTokens,
-  type SessionUsageStats,
-} from "~/stores/session/usage-stats";
+import { formatCost, formatTokens, type SessionUsageStats } from "~/stores/session/usage-stats";
 
 interface InputFooterProps {
   charCount: Accessor<number>;

@@ -56,11 +56,7 @@ describe("calculateCost", () => {
       totalTokens: 1800,
     });
     calculateCost(freeModel, usage);
-    const sum =
-      usage.cost.input +
-      usage.cost.output +
-      usage.cost.cacheRead +
-      usage.cost.cacheWrite;
+    const sum = usage.cost.input + usage.cost.output + usage.cost.cacheRead + usage.cost.cacheWrite;
     expect(usage.cost.total).toBeCloseTo(sum, 10);
   });
 

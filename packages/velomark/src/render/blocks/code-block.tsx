@@ -16,10 +16,7 @@ import { MermaidBlock } from "./mermaid-block";
 
 export const CodeBlock: Component<{
   block: RenderBlock<CodeBlockData>;
-  codeBlockRenderers?: Record<
-    string,
-    Component<VelomarkCodeBlockRendererProps>
-  >;
+  codeBlockRenderers?: Record<string, Component<VelomarkCodeBlockRendererProps>>;
   codeBlockOptions?: VelomarkCodeBlockOptions;
   debug?: boolean;
   index: number;

@@ -15,18 +15,14 @@ describe("ChipInput", () => {
 
   it("calls onSubmit on Enter (without shift)", () => {
     const onSubmit = vi.fn();
-    const { getByRole } = render(() => (
-      <ChipInput onChange={() => {}} onSubmit={onSubmit} />
-    ));
+    const { getByRole } = render(() => <ChipInput onChange={() => {}} onSubmit={onSubmit} />);
     fireEvent.keyDown(getByRole("textbox"), { key: "Enter" });
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
   it("does NOT submit on Shift+Enter", () => {
     const onSubmit = vi.fn();
-    const { getByRole } = render(() => (
-      <ChipInput onChange={() => {}} onSubmit={onSubmit} />
-    ));
+    const { getByRole } = render(() => <ChipInput onChange={() => {}} onSubmit={onSubmit} />);
     fireEvent.keyDown(getByRole("textbox"), { key: "Enter", shiftKey: true });
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -60,18 +56,14 @@ describe("ChipInput", () => {
 describe("ChipInput triggers + chips", () => {
   it("fires onTrigger for / typed at the editor start", () => {
     const onTrigger = vi.fn();
-    const { getByRole } = render(() => (
-      <ChipInput onChange={() => {}} onTrigger={onTrigger} />
-    ));
+    const { getByRole } = render(() => <ChipInput onChange={() => {}} onTrigger={onTrigger} />);
     fireEvent.keyDown(getByRole("textbox"), { key: "/" });
     expect(onTrigger).toHaveBeenCalledWith({ char: "/" });
   });
 
   it("does NOT fire onTrigger for / typed after other content", () => {
     const onTrigger = vi.fn();
-    const { getByRole } = render(() => (
-      <ChipInput onChange={() => {}} onTrigger={onTrigger} />
-    ));
+    const { getByRole } = render(() => <ChipInput onChange={() => {}} onTrigger={onTrigger} />);
     const ed = getByRole("textbox");
     ed.textContent = "ab";
     fireEvent.input(ed);
@@ -81,9 +73,7 @@ describe("ChipInput triggers + chips", () => {
 
   it("fires onTrigger for @ at any position", () => {
     const onTrigger = vi.fn();
-    const { getByRole } = render(() => (
-      <ChipInput onChange={() => {}} onTrigger={onTrigger} />
-    ));
+    const { getByRole } = render(() => <ChipInput onChange={() => {}} onTrigger={onTrigger} />);
     const ed = getByRole("textbox");
     ed.textContent = "fix ";
     fireEvent.input(ed);
@@ -93,9 +83,7 @@ describe("ChipInput triggers + chips", () => {
 
   it("prevents the trigger char from entering the DOM", () => {
     const onTrigger = vi.fn();
-    const { getByRole } = render(() => (
-      <ChipInput onChange={() => {}} onTrigger={onTrigger} />
-    ));
+    const { getByRole } = render(() => <ChipInput onChange={() => {}} onTrigger={onTrigger} />);
     const ed = getByRole("textbox");
     fireEvent.keyDown(ed, { key: "@" });
     expect(ed.textContent).toBe("");

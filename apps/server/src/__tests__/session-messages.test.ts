@@ -15,7 +15,7 @@ describe("GET /api/sessions/:id/messages", () => {
     ]);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/messages`)
+      new Request(`http://localhost/api/sessions/${session.id}/messages`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -30,7 +30,7 @@ describe("GET /api/sessions/:id/messages", () => {
     const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/messages`)
+      new Request(`http://localhost/api/sessions/${session.id}/messages`),
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([]);

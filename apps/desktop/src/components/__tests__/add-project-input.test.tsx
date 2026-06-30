@@ -18,9 +18,7 @@ describe("AddProjectInput", () => {
     const input = getByPlaceholderText("/path/to/project") as HTMLInputElement;
     input.value = "/my/project";
     input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
-    );
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     expect(onAdd).toHaveBeenCalledWith("/my/project");
   });
 
@@ -30,15 +28,13 @@ describe("AddProjectInput", () => {
       <AddProjectInput onAdd={vi.fn()} onCancel={onCancel} />
     ));
     getByPlaceholderText("/path/to/project").dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
     );
     expect(onCancel).toHaveBeenCalled();
   });
 
   it("disables Add button when empty", () => {
-    const { getByText } = render(() => (
-      <AddProjectInput onAdd={vi.fn()} onCancel={vi.fn()} />
-    ));
+    const { getByText } = render(() => <AddProjectInput onAdd={vi.fn()} onCancel={vi.fn()} />);
     const btn = getByText("Add") as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
   });

@@ -10,10 +10,7 @@ export type PartComponent = Component<PartProps>;
 
 const PART_MAPPING: Record<string, PartComponent | undefined> = {};
 
-export function registerPartComponent(
-  type: string,
-  component: PartComponent
-): void {
+export function registerPartComponent(type: string, component: PartComponent): void {
   PART_MAPPING[type] = component;
 }
 

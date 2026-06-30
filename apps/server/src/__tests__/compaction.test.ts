@@ -5,11 +5,7 @@ import { SqliteSessionStorage } from "@sakti-code/db";
 import { Effect } from "effect";
 import { afterEach, beforeAll, describe, expect, it } from "vite-plus/test";
 import { clearProfileCache } from "../agent/model-resolver.ts";
-import {
-  fauxAssistantMessage,
-  teardownFauxLlm,
-  useFauxLlm,
-} from "./llm-helpers.ts";
+import { fauxAssistantMessage, teardownFauxLlm, useFauxLlm } from "./llm-helpers.ts";
 
 const { compactionRoutes } = await import("../routes/sessions/compaction.ts");
 const { makeApp, seedProfile } = await import("./helpers.ts");
@@ -30,11 +26,7 @@ afterEach(() => {
   clearProfileCache();
 });
 
-async function seedEntries(
-  db: unknown,
-  sessionId: string,
-  count: number
-): Promise<void> {
+async function seedEntries(db: unknown, sessionId: string, count: number): Promise<void> {
   const storage = new SqliteSessionStorage(db as never, sessionId, {
     id: sessionId,
     createdAt: new Date().toISOString(),
@@ -53,7 +45,7 @@ async function seedEntries(
           content: `Message ${i}: ${"x".repeat(500)}`,
           timestamp: Date.now(),
         } as never,
-      })
+      }),
     );
     parentId = id;
   }
@@ -79,9 +71,7 @@ describe("compaction route", () => {
       if (!isSmoke) {
         useFauxLlm([fauxAssistantMessage("Compacted summary of the session.")]);
       } else if (!smokeKey) {
-        throw new Error(
-          "SAKTI_SMOKE=1 but OPENCODE_API_KEY is not set — cannot run smoke test"
-        );
+        throw new Error("SAKTI_SMOKE=1 but OPENCODE_API_KEY is not set — cannot run smoke test");
       }
 
       const { app, ctx } = await makeApp([compactionRoutes]);
@@ -90,10 +80,7 @@ describe("compaction route", () => {
         provider: isSmoke ? smokeProvider : "openai",
         model: isSmoke ? smokeModel : TEST_MODEL_ID,
       });
-      ctx.auth.set(
-        isSmoke ? smokeProvider : "openai",
-        isSmoke ? smokeKey! : "test-key-1234567890"
-      );
+      ctx.auth.set(isSmoke ? smokeProvider : "openai", isSmoke ? smokeKey! : "test-key-1234567890");
       const session = await ctx.repos.sessions.create(project.id);
 
       await seedEntries(ctx.db, session.id, 200);
@@ -101,7 +88,7 @@ describe("compaction route", () => {
       const res = await app.request(
         new Request(`http://localhost/api/sessions/${session.id}/compact`, {
           method: "POST",
-        })
+        }),
       );
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -110,7 +97,7 @@ describe("compaction route", () => {
       expect(body.summary.length).toBeGreaterThan(0);
     },
     // Smoke mode hits a real LLM summarizing 200 messages — give it 2 minutes.
-    process.env.SAKTI_SMOKE === "1" ? 120_000 : 15_000
+    process.env.SAKTI_SMOKE === "1" ? 120_000 : 15_000,
   );
 
   it("POST /api/sessions/nope/compact returns 404", async () => {
@@ -118,7 +105,7 @@ describe("compaction route", () => {
     const res = await app.request(
       new Request("http://localhost/api/sessions/nope/compact", {
         method: "POST",
-      })
+      }),
     );
     expect(res.status).toBe(404);
   });
@@ -131,7 +118,7 @@ describe("compaction route", () => {
     const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
         method: "POST",
-      })
+      }),
     );
     expect(res.status).toBe(500);
     const body = await res.text();
@@ -156,7 +143,7 @@ describe("compaction route", () => {
     const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
         method: "POST",
-      })
+      }),
     );
     expect(res.status).toBe(500);
   });
@@ -174,7 +161,7 @@ describe("compaction route", () => {
     const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/compact`, {
         method: "POST",
-      })
+      }),
     );
     expect(res.status).toBe(500);
     const body = await res.text();
@@ -186,7 +173,7 @@ describe("compaction route", () => {
     const res = await built.app.request(
       new Request("http://localhost/api/sessions/nope/compact", {
         method: "POST",
-      })
+      }),
     );
     expect(res.status).toBe(404);
   });

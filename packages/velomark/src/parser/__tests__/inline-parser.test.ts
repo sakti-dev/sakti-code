@@ -3,9 +3,7 @@ import { parseInline } from "../inline-parser";
 
 describe("parseInline", () => {
   it("parses plain text as a single text token", () => {
-    expect(parseInline("Hello world")).toEqual([
-      { type: "text", text: "Hello world" },
-    ]);
+    expect(parseInline("Hello world")).toEqual([{ type: "text", text: "Hello world" }]);
   });
 
   it("parses inline code", () => {
@@ -48,9 +46,7 @@ describe("parseInline", () => {
   });
 
   it("parses inline images", () => {
-    expect(
-      parseInline("Logo ![alt text](https://example.com/logo.png)")
-    ).toEqual([
+    expect(parseInline("Logo ![alt text](https://example.com/logo.png)")).toEqual([
       { type: "text", text: "Logo " },
       {
         type: "image",
@@ -64,7 +60,7 @@ describe("parseInline", () => {
     expect(
       parseInline("Open [docs][guide]", {
         guide: { href: "https://example.com/guide" },
-      })
+      }),
     ).toEqual([
       { type: "text", text: "Open " },
       {
@@ -79,7 +75,7 @@ describe("parseInline", () => {
     expect(
       parseInline("Logo ![alt text][logo]", {
         logo: { href: "https://example.com/logo.png" },
-      })
+      }),
     ).toEqual([
       { type: "text", text: "Logo " },
       {
@@ -94,7 +90,7 @@ describe("parseInline", () => {
     expect(
       parseInline("Open [docs][]", {
         docs: { href: "https://example.com/guide" },
-      })
+      }),
     ).toEqual([
       { type: "text", text: "Open " },
       {
@@ -112,7 +108,7 @@ describe("parseInline", () => {
           href: "https://example.com/logo.png",
           title: "Brand logo",
         },
-      })
+      }),
     ).toEqual([
       { type: "text", text: "Logo " },
       {
@@ -131,7 +127,7 @@ describe("parseInline", () => {
           href: "https://example.com/guide",
           title: "Guide",
         },
-      })
+      }),
     ).toEqual([
       { type: "text", text: "Open " },
       {
@@ -147,7 +143,7 @@ describe("parseInline", () => {
     expect(
       parseInline("Logo ![logo]", {
         logo: { href: "https://example.com/logo.png" },
-      })
+      }),
     ).toEqual([
       { type: "text", text: "Logo " },
       {
@@ -159,15 +155,11 @@ describe("parseInline", () => {
   });
 
   it("falls back to plain text for unresolved collapsed references", () => {
-    expect(parseInline("Open [docs][]")).toEqual([
-      { type: "text", text: "Open [docs][]" },
-    ]);
+    expect(parseInline("Open [docs][]")).toEqual([{ type: "text", text: "Open [docs][]" }]);
   });
 
   it("falls back to plain text for unresolved shortcut references", () => {
-    expect(parseInline("Open [docs]")).toEqual([
-      { type: "text", text: "Open [docs]" },
-    ]);
+    expect(parseInline("Open [docs]")).toEqual([{ type: "text", text: "Open [docs]" }]);
   });
 
   it("preserves escaped punctuation as literal text", () => {
@@ -177,9 +169,7 @@ describe("parseInline", () => {
   });
 
   it("parses mixed inline content deterministically", () => {
-    expect(
-      parseInline("See **docs** at [site](https://example.com) and `run`")
-    ).toEqual([
+    expect(parseInline("See **docs** at [site](https://example.com) and `run`")).toEqual([
       { type: "text", text: "See " },
       { type: "strong", children: [{ type: "text", text: "docs" }] },
       { type: "text", text: " at " },
@@ -234,9 +224,7 @@ describe("parseInline", () => {
   });
 
   it("does not parse unmatched price markers as inline math", () => {
-    expect(parseInline("Price is $100")).toEqual([
-      { type: "text", text: "Price is $100" },
-    ]);
+    expect(parseInline("Price is $100")).toEqual([{ type: "text", text: "Price is $100" }]);
   });
 
   it("parses raw inline html as a dedicated token", () => {

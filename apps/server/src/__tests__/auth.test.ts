@@ -26,7 +26,7 @@ describe("auth routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key: "sk-test-1234567890abcdef" }),
-      })
+      }),
     );
     expect(post.status).toBe(204);
 
@@ -48,13 +48,13 @@ describe("auth routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key: "sk-test-1234567890abcdef" }),
-      })
+      }),
     );
 
     const del = await app.request(
       new Request("http://localhost/api/auth/openai", {
         method: "DELETE",
-      })
+      }),
     );
     expect(del.status).toBe(204);
 
@@ -74,7 +74,7 @@ describe("auth routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key: "x" }),
-      })
+      }),
     );
     expect(res.status).toBe(400);
   });
@@ -86,7 +86,7 @@ describe("auth routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key: "   " }),
-      })
+      }),
     );
     expect(res.status).toBe(400);
   });
@@ -96,7 +96,7 @@ describe("auth routes", () => {
     const res = await app.request(
       new Request("http://localhost/api/auth/openai", {
         method: "DELETE",
-      })
+      }),
     );
     expect(res.status).toBe(404);
   });

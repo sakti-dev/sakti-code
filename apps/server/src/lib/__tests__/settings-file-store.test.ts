@@ -2,10 +2,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import {
-  createSettingsFileStore,
-  type SettingsFileStore,
-} from "../settings-file-store.ts";
+import { createSettingsFileStore, type SettingsFileStore } from "../settings-file-store.ts";
 
 function makeTmpDir(): string {
   return mkdtempSync(join(tmpdir(), "sakti-settings-test-"));

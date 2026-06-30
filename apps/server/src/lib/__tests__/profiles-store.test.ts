@@ -27,7 +27,7 @@ describe("profiles store — referential validation", () => {
             },
           },
         },
-      })
+      }),
     ).toThrow(UNKNOWN_PROVIDER_RE);
   });
 
@@ -47,7 +47,7 @@ describe("profiles store — referential validation", () => {
             },
           },
         },
-      })
+      }),
     ).toThrow(MODEL_NOT_FOUND_RE);
   });
 
@@ -64,7 +64,7 @@ describe("profiles store — referential validation", () => {
             },
           },
         },
-      })
+      }),
     ).not.toThrow();
   });
 
@@ -84,7 +84,7 @@ describe("profiles store — referential validation", () => {
             },
           },
         },
-      })
+      }),
     ).not.toThrow();
   });
 });

@@ -25,10 +25,7 @@ async function getMutationQueueKey(filePath: string): Promise<string> {
   }
 }
 
-export async function withFileMutationQueue<T>(
-  filePath: string,
-  fn: () => Promise<T>
-): Promise<T> {
+export async function withFileMutationQueue<T>(filePath: string, fn: () => Promise<T>): Promise<T> {
   const registration = registrationQueue.then(async () => {
     const key = await getMutationQueueKey(filePath);
     const currentQueue = fileMutationQueues.get(key) ?? Promise.resolve();
@@ -44,7 +41,7 @@ export async function withFileMutationQueue<T>(
   });
   registrationQueue = registration.then(
     () => undefined,
-    () => undefined
+    () => undefined,
   );
 
   const { key, currentQueue, chainedQueue, releaseNext } = await registration;

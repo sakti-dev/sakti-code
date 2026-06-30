@@ -16,9 +16,7 @@ describe("playground presets", () => {
   it("uses the copied incremark solid example sample as the only playground source", () => {
     const incremarkPreset = playgroundPresets[0];
 
-    expect(incremarkPreset?.markdown).toContain(
-      "# 🚀 Incremark SolidJS Example"
-    );
+    expect(incremarkPreset?.markdown).toContain("# 🚀 Incremark SolidJS Example");
     expect(incremarkPreset?.markdown).toContain("## 📊 Mermaid Charts");
     expect(incremarkPreset?.markdown).toContain("## 🎨 Custom Containers");
     expect(incremarkPreset?.markdown).toContain("## 💻 Code Highlighting");

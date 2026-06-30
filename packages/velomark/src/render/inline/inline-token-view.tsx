@@ -10,9 +10,7 @@ import { directiveAttributeProps } from "../directives/directive-attribute-props
 import { HtmlElementView } from "../html-element-view";
 import { MathView } from "../math/math-view";
 
-function renderImageToken(
-  token: Extract<InlineToken, { type: "image" }>
-): JSX.Element {
+function renderImageToken(token: Extract<InlineToken, { type: "image" }>): JSX.Element {
   return (
     // biome-ignore lint/correctness/useImageSize: Markdown images do not provide intrinsic dimensions ahead of render.
     <img alt={token.alt} loading="lazy" src={token.src} title={token.title} />
@@ -26,7 +24,7 @@ function assertNever(value: never): never {
 export const renderInlineToken = (
   token: InlineToken,
   containers?: Record<string, Component<VelomarkContainerRendererProps>>,
-  definitions?: ReferenceDefinitionMap
+  definitions?: ReferenceDefinitionMap,
 ): JSX.Element => {
   switch (token.type) {
     case "break":
@@ -72,11 +70,7 @@ export const renderInlineToken = (
 
       if (CustomContainer) {
         return (
-          <Dynamic
-            attributes={token.attributes}
-            component={CustomContainer}
-            name={token.name}
-          >
+          <Dynamic attributes={token.attributes} component={CustomContainer} name={token.name}>
             {children}
           </Dynamic>
         );
@@ -121,12 +115,7 @@ export const renderInlineToken = (
       );
     case "link":
       return (
-        <a
-          href={token.href}
-          rel="noopener noreferrer"
-          target="_blank"
-          title={token.title}
-        >
+        <a href={token.href} rel="noopener noreferrer" target="_blank" title={token.title}>
           <For each={token.children}>
             {(child) => renderInlineToken(child, containers, definitions)}
           </For>

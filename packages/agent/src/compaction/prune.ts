@@ -62,7 +62,7 @@ interface ToolResultLike {
  */
 export function pruneStaleToolResults(
   messages: AgentMessage[],
-  options: PruneOptions
+  options: PruneOptions,
 ): { pruned: AgentMessage[]; stats: PruneStats } {
   const minPruneBytes = options.minPruneBytes ?? DEFAULT_MIN_PRUNE_BYTES;
   const stats: PruneStats = { results: 0, savedChars: 0 };

@@ -113,8 +113,7 @@ export function formatBashSummary(part: ToolPartData): string {
   const args = getArgs(part);
   const description = args.description;
   const command =
-    (typeof args.command === "string" ? args.command : undefined) ??
-    "unknown command";
+    (typeof args.command === "string" ? args.command : undefined) ?? "unknown command";
 
   let text: string;
   if (typeof description === "string" && description) {
@@ -128,8 +127,7 @@ export function formatBashSummary(part: ToolPartData): string {
 
 export function formatGlobSummary(part: ToolPartData): string {
   const args = getArgs(part);
-  const pattern =
-    (typeof args.pattern === "string" ? args.pattern : undefined) ?? "*";
+  const pattern = (typeof args.pattern === "string" ? args.pattern : undefined) ?? "*";
   const path = typeof args.path === "string" ? args.path : undefined;
   const pathPart = path ? ` in ${path}` : "";
   return `Found files matching ${pattern}${pathPart}`;
@@ -148,8 +146,7 @@ export function formatFindSummary(part: ToolPartData): string {
 
 export function formatGrepSummary(part: ToolPartData): string {
   const args = getArgs(part);
-  const pattern =
-    (typeof args.pattern === "string" ? args.pattern : undefined) ?? "unknown";
+  const pattern = (typeof args.pattern === "string" ? args.pattern : undefined) ?? "unknown";
   const path = typeof args.path === "string" ? args.path : undefined;
 
   const pathPart = path ? ` in ${path}` : "";
@@ -164,7 +161,7 @@ export function formatLsSummary(part: ToolPartData): string {
     ".";
   const abbreviatedPath = middleEllipsisPath(
     dirPath === "." ? "current directory" : dirPath,
-    PATH_MAX_LENGTH
+    PATH_MAX_LENGTH,
   );
 
   return `Listed ${abbreviatedPath}`;

@@ -54,16 +54,12 @@ describe("Patcher MismatchError message contracts", () => {
     const bogus = live === "FFFF" ? "0000" : "FFFF";
 
     try {
-      await patcher.apply(
-        Patch.parse(`[${PATH}#${bogus}]\nSWAP 1.=1:\n+after`)
-      );
+      await patcher.apply(Patch.parse(`[${PATH}#${bogus}]\nSWAP 1.=1:\n+after`));
       throw new Error("expected MismatchError");
     } catch (error) {
       expect(error).toBeInstanceOf(MismatchError);
       const message = (error as MismatchError).message;
-      expect(message).toMatch(
-        new RegExp(`hash #${bogus} is not from this session`)
-      );
+      expect(message).toMatch(new RegExp(`hash #${bogus} is not from this session`));
       expect(message).toMatch(/never invent the tag/);
       expect(message).toMatch(/current file hashes to #[0-9A-F]{4}/);
     }
@@ -105,9 +101,7 @@ describe("Patcher HEADTAIL_DRIFT_WARNING contract", () => {
     const stale = live === "0000" ? "FFFF" : "0000";
     const patcher = new Patcher({ fs, snapshots });
 
-    const result = await patcher.apply(
-      Patch.parse(`[${PATH}#${stale}]\nINS.TAIL:\n+c`)
-    );
+    const result = await patcher.apply(Patch.parse(`[${PATH}#${stale}]\nINS.TAIL:\n+c`));
 
     const section = result.sections[0];
     expect(section?.op).toBe("update");
@@ -122,9 +116,7 @@ describe("Patcher HEADTAIL_DRIFT_WARNING contract", () => {
     const tag = snapshots.record(PATH, content);
     const patcher = new Patcher({ fs, snapshots });
 
-    const result = await patcher.apply(
-      Patch.parse(`[${PATH}#${tag}]\nINS.TAIL:\n+c`)
-    );
+    const result = await patcher.apply(Patch.parse(`[${PATH}#${tag}]\nINS.TAIL:\n+c`));
 
     const section = result.sections[0];
     expect(section?.op).toBe("update");
@@ -141,9 +133,9 @@ describe("Patcher seen-line provenance", () => {
     const tag = snapshots.record(PATH, CONTENT, [1, 2]);
     const patcher = new Patcher({ fs, snapshots });
 
-    await expect(
-      patcher.apply(Patch.parse(`[${PATH}#${tag}]\nSWAP 4.=4:\n+L4`))
-    ).rejects.toThrow(/never displayed \(it showed/);
+    await expect(patcher.apply(Patch.parse(`[${PATH}#${tag}]\nSWAP 4.=4:\n+L4`))).rejects.toThrow(
+      /never displayed \(it showed/,
+    );
     expect(fs.get(PATH)).toBe(CONTENT);
   });
 
@@ -153,9 +145,7 @@ describe("Patcher seen-line provenance", () => {
     const tag = snapshots.record(PATH, CONTENT, [1, 2]);
     const patcher = new Patcher({ fs, snapshots });
 
-    const result = await patcher.apply(
-      Patch.parse(`[${PATH}#${tag}]\nSWAP 2.=2:\n+L2`)
-    );
+    const result = await patcher.apply(Patch.parse(`[${PATH}#${tag}]\nSWAP 2.=2:\n+L2`));
 
     expect(result.sections[0]?.op).toBe("update");
     expect(fs.get(PATH)).toBe("l1\nL2\nl3\nl4\nl5\n");
@@ -168,9 +158,7 @@ describe("Patcher seen-line provenance", () => {
     snapshots.record(PATH, CONTENT, [4, 5]);
     const patcher = new Patcher({ fs, snapshots });
 
-    const result = await patcher.apply(
-      Patch.parse(`[${PATH}#${tag}]\nSWAP 4.=4:\n+L4`)
-    );
+    const result = await patcher.apply(Patch.parse(`[${PATH}#${tag}]\nSWAP 4.=4:\n+L4`));
 
     expect(result.sections[0]?.op).toBe("update");
     expect(fs.get(PATH)).toBe("l1\nl2\nl3\nL4\nl5\n");
@@ -182,9 +170,7 @@ describe("Patcher seen-line provenance", () => {
     const tag = snapshots.record(PATH, CONTENT);
     const patcher = new Patcher({ fs, snapshots });
 
-    const result = await patcher.apply(
-      Patch.parse(`[${PATH}#${tag}]\nSWAP 4.=4:\n+L4`)
-    );
+    const result = await patcher.apply(Patch.parse(`[${PATH}#${tag}]\nSWAP 4.=4:\n+L4`));
 
     expect(result.sections[0]?.op).toBe("update");
   });
@@ -200,9 +186,7 @@ describe("Patcher tag-based path recovery", () => {
     const tag = snapshots.record(NESTED, CONTENT);
     const patcher = new Patcher({ fs, snapshots });
 
-    const result = await patcher.apply(
-      Patch.parse(`[file.ts#${tag}]\nSWAP 2.=2:\n+TWO`)
-    );
+    const result = await patcher.apply(Patch.parse(`[file.ts#${tag}]\nSWAP 2.=2:\n+TWO`));
 
     const section = result.sections[0];
     expect(section?.op).toBe("update");
@@ -210,9 +194,8 @@ describe("Patcher tag-based path recovery", () => {
     expect(fs.get(NESTED)).toBe("one\nTWO\nthree\n");
     expect(
       section?.warnings.some(
-        (warning) =>
-          warning.includes("does not exist") && warning.includes(NESTED)
-      )
+        (warning) => warning.includes("does not exist") && warning.includes(NESTED),
+      ),
     ).toBe(true);
   });
 
@@ -222,9 +205,9 @@ describe("Patcher tag-based path recovery", () => {
     const tag = snapshots.record(NESTED, CONTENT);
     const patcher = new Patcher({ fs, snapshots });
 
-    await expect(
-      patcher.apply(Patch.parse(`[other.ts#${tag}]\nSWAP 2.=2:\n+TWO`))
-    ).rejects.toThrow(/File not found/);
+    await expect(patcher.apply(Patch.parse(`[other.ts#${tag}]\nSWAP 2.=2:\n+TWO`))).rejects.toThrow(
+      /File not found/,
+    );
     expect(fs.get(NESTED)).toBe(CONTENT);
   });
 
@@ -236,7 +219,7 @@ describe("Patcher tag-based path recovery", () => {
     const patcher = new Patcher({ fs, snapshots });
 
     await expect(
-      patcher.apply(Patch.parse(`[file.ts#${bogus}]\nSWAP 2.=2:\n+TWO`))
+      patcher.apply(Patch.parse(`[file.ts#${bogus}]\nSWAP 2.=2:\n+TWO`)),
     ).rejects.toThrow(/File not found/);
   });
 
@@ -250,9 +233,9 @@ describe("Patcher tag-based path recovery", () => {
     snapshots.record("b/file.ts", CONTENT);
     const patcher = new Patcher({ fs, snapshots });
 
-    await expect(
-      patcher.apply(Patch.parse(`[file.ts#${tag}]\nSWAP 2.=2:\n+TWO`))
-    ).rejects.toThrow(/File not found/);
+    await expect(patcher.apply(Patch.parse(`[file.ts#${tag}]\nSWAP 2.=2:\n+TWO`))).rejects.toThrow(
+      /File not found/,
+    );
     expect(fs.get("a/file.ts")).toBe(CONTENT);
     expect(fs.get("b/file.ts")).toBe(CONTENT);
   });
@@ -268,9 +251,9 @@ describe("Patcher tag-based path recovery", () => {
     const tag = snapshots.record(NESTED, CONTENT);
     const patcher = new Patcher({ fs, snapshots });
 
-    await expect(
-      patcher.apply(Patch.parse(`[file.ts#${tag}]\nSWAP 2.=2:\n+TWO`))
-    ).rejects.toThrow(/File not found/);
+    await expect(patcher.apply(Patch.parse(`[file.ts#${tag}]\nSWAP 2.=2:\n+TWO`))).rejects.toThrow(
+      /File not found/,
+    );
     expect(fs.get(NESTED)).toBe(CONTENT);
   });
 
@@ -285,9 +268,7 @@ describe("Patcher tag-based path recovery", () => {
     const tag = snapshots.record(NESTED, CONTENT);
     const patcher = new Patcher({ fs, snapshots });
 
-    const result = await patcher.apply(
-      Patch.parse(`[file.ts#${tag}]\nSWAP 2.=2:\n+TWO`)
-    );
+    const result = await patcher.apply(Patch.parse(`[file.ts#${tag}]\nSWAP 2.=2:\n+TWO`));
     expect(result.sections[0]?.path).toBe(NESTED);
     expect(fs.get(NESTED)).toBe("one\nTWO\nthree\n");
   });
@@ -302,8 +283,8 @@ describe("Patcher tag-based path recovery", () => {
     const snapshots = new InMemorySnapshotStore();
     const patcher = new Patcher({ fs, snapshots });
 
-    await expect(
-      patcher.apply(Patch.parse("[file.ts#ABCD]\nSWAP 1.=1:\n+X"))
-    ).rejects.toThrow(/write gate/);
+    await expect(patcher.apply(Patch.parse("[file.ts#ABCD]\nSWAP 1.=1:\n+X"))).rejects.toThrow(
+      /write gate/,
+    );
   });
 });

@@ -12,11 +12,11 @@ describe("loadAgents", () => {
     await env.createDir(".agents/agents/team", { recursive: true });
     await env.writeFile(
       ".agents/agent/triage.md",
-      "---\nmode: primary\nhidden: true\ndescription: triage agent\n---\nYou triage issues."
+      "---\nmode: primary\nhidden: true\ndescription: triage agent\n---\nYou triage issues.",
     );
     await env.writeFile(
       ".agents/agents/team/research.md",
-      "---\ndescription: research\n---\nYou research."
+      "---\ndescription: research\n---\nYou research.",
     );
 
     const { agents, diagnostics } = await loadAgents(env, [".agents"]);
@@ -57,7 +57,7 @@ describe("loadAgents", () => {
     await env.createDir(".agents/agents", { recursive: true });
     await env.writeFile(
       ".agents/agents/fast.md",
-      "---\nmodel: anthropic/claude-sonnet-4-5\n---\nbe fast"
+      "---\nmodel: anthropic/claude-sonnet-4-5\n---\nbe fast",
     );
 
     const { agents } = await loadAgents(env, [".agents"]);

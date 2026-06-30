@@ -55,10 +55,7 @@ const disabledSkill = {
 describe("formatSkillsForSystemPrompt", () => {
   it("formats visible skills in order and skips model-disabled skills", () => {
     expect(
-      formatSkillsForSystemPrompt(
-        [visibleSkill, disabledSkill, secondSkill],
-        SKILLS_INSTRUCTIONS
-      )
+      formatSkillsForSystemPrompt([visibleSkill, disabledSkill, secondSkill], SKILLS_INSTRUCTIONS),
     ).toBe(
       `test-line-1-is-the-marker
 test-line-2
@@ -75,14 +72,12 @@ test-line-3
     <description>Second skill</description>
     <location>/skills/second/SKILL.md</location>
   </skill>
-</available_skills>`
+</available_skills>`,
     );
   });
 
   it("returns an empty string when no skills are model-visible", () => {
-    expect(
-      formatSkillsForSystemPrompt([disabledSkill], SKILLS_INSTRUCTIONS)
-    ).toBe("");
+    expect(formatSkillsForSystemPrompt([disabledSkill], SKILLS_INSTRUCTIONS)).toBe("");
   });
 
   it("escapes XML in all model-visible skill fields", () => {
@@ -96,10 +91,10 @@ test-line-3
             filePath: '/skills/<bad>&"quote"/SKILL.md',
           },
         ],
-        SKILLS_INSTRUCTIONS
-      )
+        SKILLS_INSTRUCTIONS,
+      ),
     ).toContain(
-      "<name>a&amp;b</name>\n    <description>Quote &quot;double&quot; and &apos;single&apos;</description>\n    <location>/skills/&lt;bad&gt;&amp;&quot;quote&quot;/SKILL.md</location>"
+      "<name>a&amp;b</name>\n    <description>Quote &quot;double&quot; and &apos;single&apos;</description>\n    <location>/skills/&lt;bad&gt;&amp;&quot;quote&quot;/SKILL.md</location>",
     );
   });
 });
@@ -123,27 +118,18 @@ describe("appendSkillsBlock", () => {
   };
 
   it("appends the available-skills block when read is available", () => {
-    const out = appendSkillsBlock(
-      base,
-      [visibleSkill],
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    const out = appendSkillsBlock(base, [visibleSkill], true, SKILLS_INSTRUCTIONS);
     expect(out.startsWith(base)).toBe(true);
     expect(out).toContain("<available_skills>");
     expect(out).toContain("<name>graphify</name>");
   });
 
   it("returns the base unchanged when read is not available", () => {
-    expect(
-      appendSkillsBlock(base, [visibleSkill], false, SKILLS_INSTRUCTIONS)
-    ).toBe(base);
+    expect(appendSkillsBlock(base, [visibleSkill], false, SKILLS_INSTRUCTIONS)).toBe(base);
   });
 
   it("returns the base unchanged when there are no model-visible skills", () => {
-    expect(
-      appendSkillsBlock(base, [disabledSkill], true, SKILLS_INSTRUCTIONS)
-    ).toBe(base);
+    expect(appendSkillsBlock(base, [disabledSkill], true, SKILLS_INSTRUCTIONS)).toBe(base);
     expect(appendSkillsBlock(base, [], true, SKILLS_INSTRUCTIONS)).toBe(base);
   });
 });
@@ -152,20 +138,12 @@ describe("composeSystemPrompt", () => {
   const BASE = "You are a coding agent.";
 
   it("returns base prompt alone when no tools and no skills", () => {
-    expect(composeSystemPrompt(BASE, [], [], false, SKILLS_INSTRUCTIONS)).toBe(
-      BASE
-    );
+    expect(composeSystemPrompt(BASE, [], [], false, SKILLS_INSTRUCTIONS)).toBe(BASE);
   });
 
   it("appends tool inventory after base prompt", () => {
     const tools = [mockTool("edit", "Edit files.")];
-    const result = composeSystemPrompt(
-      BASE,
-      tools,
-      [],
-      false,
-      SKILLS_INSTRUCTIONS
-    );
+    const result = composeSystemPrompt(BASE, tools, [], false, SKILLS_INSTRUCTIONS);
     expect(result).toContain(BASE);
     expect(result).toContain("# Tool: edit");
     expect(result).toContain("Edit files.");
@@ -173,16 +151,8 @@ describe("composeSystemPrompt", () => {
 
   it("appends skills block after tool inventory", () => {
     const tools = [mockTool("edit", "Edit files.")];
-    const skills = [
-      mockSkill("tdd", "Test-driven dev", "/skills/tdd/SKILL.md"),
-    ];
-    const result = composeSystemPrompt(
-      BASE,
-      tools,
-      skills,
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    const skills = [mockSkill("tdd", "Test-driven dev", "/skills/tdd/SKILL.md")];
+    const result = composeSystemPrompt(BASE, tools, skills, true, SKILLS_INSTRUCTIONS);
     const toolIdx = result.indexOf("# Tool: edit");
     const skillsIdx = result.indexOf("<available_skills>");
     expect(toolIdx).toBeGreaterThan(-1);
@@ -191,25 +161,13 @@ describe("composeSystemPrompt", () => {
 
   it("omits skills block when hasRead is false", () => {
     const skills = [mockSkill("tdd", "TDD", "/skills/tdd/SKILL.md")];
-    const result = composeSystemPrompt(
-      BASE,
-      [],
-      skills,
-      false,
-      SKILLS_INSTRUCTIONS
-    );
+    const result = composeSystemPrompt(BASE, [], skills, false, SKILLS_INSTRUCTIONS);
     expect(result).not.toContain("<available_skills>");
   });
 
   it("includes skills block when hasRead is true", () => {
     const skills = [mockSkill("tdd", "TDD", "/skills/tdd/SKILL.md")];
-    const result = composeSystemPrompt(
-      BASE,
-      [],
-      skills,
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    const result = composeSystemPrompt(BASE, [], skills, true, SKILLS_INSTRUCTIONS);
     expect(result).toContain("<available_skills>");
     expect(result).toContain("tdd");
   });
@@ -217,34 +175,18 @@ describe("composeSystemPrompt", () => {
   it("separates blocks with double newlines", () => {
     const tools = [mockTool("read", "Read files.")];
     const skills = [mockSkill("tdd", "TDD", "/skills/tdd/SKILL.md")];
-    const result = composeSystemPrompt(
-      BASE,
-      tools,
-      skills,
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    const result = composeSystemPrompt(BASE, tools, skills, true, SKILLS_INSTRUCTIONS);
     expect(result).toMatch(/You are a coding agent\.\n\n# Tool: read/);
     expect(result).toMatch(/\n\n.*<available_skills>/s);
   });
 
   it("handles multiple tools and skills together", () => {
-    const tools = [
-      mockTool("edit", "Edit."),
-      mockTool("read", "Read."),
-      mockTool("bash", "Run."),
-    ];
+    const tools = [mockTool("edit", "Edit."), mockTool("read", "Read."), mockTool("bash", "Run.")];
     const skills = [
       mockSkill("tdd", "TDD", "/tdd/SKILL.md"),
       mockSkill("debug", "Debug", "/debug/SKILL.md"),
     ];
-    const result = composeSystemPrompt(
-      BASE,
-      tools,
-      skills,
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    const result = composeSystemPrompt(BASE, tools, skills, true, SKILLS_INSTRUCTIONS);
     const bashIdx = result.indexOf("# Tool: bash");
     const editIdx = result.indexOf("# Tool: edit");
     const readIdx = result.indexOf("# Tool: read");
@@ -257,41 +199,20 @@ describe("composeSystemPrompt", () => {
   it("produces cache-stable output (same input → same output)", () => {
     const tools = [mockTool("edit", "Edit."), mockTool("read", "Read.")];
     const skills = [mockSkill("tdd", "TDD", "/tdd/SKILL.md")];
-    const a = composeSystemPrompt(
-      BASE,
-      tools,
-      skills,
-      true,
-      SKILLS_INSTRUCTIONS
-    );
-    const b = composeSystemPrompt(
-      BASE,
-      tools,
-      skills,
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    const a = composeSystemPrompt(BASE, tools, skills, true, SKILLS_INSTRUCTIONS);
+    const b = composeSystemPrompt(BASE, tools, skills, true, SKILLS_INSTRUCTIONS);
     expect(a).toBe(b);
   });
 });
 
 describe("mid-session skill changes with tool inventory present", () => {
   const BASE = "You are a coding agent.";
-  const tools = [
-    mockTool("edit", "Edit files."),
-    mockTool("read", "Read files."),
-  ];
+  const tools = [mockTool("edit", "Edit files."), mockTool("read", "Read files.")];
   const skill1 = mockSkill("tdd", "TDD", "/tdd/SKILL.md");
   const skill2 = mockSkill("debug", "Debug", "/debug/SKILL.md");
 
   it("stripSkillsBlock preserves tool inventory when removing skills", () => {
-    const composed = composeSystemPrompt(
-      BASE,
-      tools,
-      [skill1, skill2],
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    const composed = composeSystemPrompt(BASE, tools, [skill1, skill2], true, SKILLS_INSTRUCTIONS);
     const stripped = stripSkillsBlock(composed, SKILLS_INSTRUCTIONS);
     expect(stripped).toContain("# Tool: edit");
     expect(stripped).toContain("# Tool: read");
@@ -300,20 +221,9 @@ describe("mid-session skill changes with tool inventory present", () => {
   });
 
   it("appendSkillsBlock re-appends skills after tool inventory", () => {
-    const composed = composeSystemPrompt(
-      BASE,
-      tools,
-      [skill1, skill2],
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    const composed = composeSystemPrompt(BASE, tools, [skill1, skill2], true, SKILLS_INSTRUCTIONS);
     const stripped = stripSkillsBlock(composed, SKILLS_INSTRUCTIONS);
-    const recomposed = appendSkillsBlock(
-      stripped,
-      [skill1],
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    const recomposed = appendSkillsBlock(stripped, [skill1], true, SKILLS_INSTRUCTIONS);
     expect(recomposed).toContain("# Tool: edit");
     expect(recomposed).toContain("# Tool: read");
     expect(recomposed).toContain("tdd");
@@ -324,13 +234,7 @@ describe("mid-session skill changes with tool inventory present", () => {
   });
 
   it("full add → remove → re-add cycle preserves tools throughout", () => {
-    let prompt = composeSystemPrompt(
-      BASE,
-      tools,
-      [skill1],
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    let prompt = composeSystemPrompt(BASE, tools, [skill1], true, SKILLS_INSTRUCTIONS);
     expect(prompt).toContain("# Tool: edit");
     expect(prompt).toContain("tdd");
 
@@ -354,13 +258,7 @@ describe("stripToolInventory", () => {
 
   it("strips tool inventory from a composed prompt (tools only, no skills)", () => {
     const tools = [mockTool("edit", "Edit."), mockTool("read", "Read.")];
-    const composed = composeSystemPrompt(
-      BASE,
-      tools,
-      [],
-      false,
-      SKILLS_INSTRUCTIONS
-    );
+    const composed = composeSystemPrompt(BASE, tools, [], false, SKILLS_INSTRUCTIONS);
     const stripped = stripToolInventory(composed);
     expect(stripped).toBe(BASE);
   });
@@ -368,13 +266,7 @@ describe("stripToolInventory", () => {
   it("strips tool inventory and trailing skills, returning base only", () => {
     const tools = [mockTool("edit", "Edit.")];
     const skills = [mockSkill("tdd", "TDD", "/tdd/SKILL.md")];
-    const composed = composeSystemPrompt(
-      BASE,
-      tools,
-      skills,
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    const composed = composeSystemPrompt(BASE, tools, skills, true, SKILLS_INSTRUCTIONS);
     // stripToolInventory cuts at the first # Tool: heading, which removes
     // the tool section AND the trailing skills block (both come after it).
     const stripped = stripToolInventory(composed);
@@ -386,17 +278,9 @@ describe("stripToolInventory", () => {
   it("recovers the base when stripping both tools and skills (chain)", () => {
     const tools = [mockTool("edit", "Edit."), mockTool("read", "Read.")];
     const skills = [mockSkill("tdd", "TDD", "/tdd/SKILL.md")];
-    const composed = composeSystemPrompt(
-      BASE,
-      tools,
-      skills,
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    const composed = composeSystemPrompt(BASE, tools, skills, true, SKILLS_INSTRUCTIONS);
     // Chain: strip skills first (removes suffix), then strip tools (removes tool section)
-    const recovered = stripToolInventory(
-      stripSkillsBlock(composed, SKILLS_INSTRUCTIONS)
-    );
+    const recovered = stripToolInventory(stripSkillsBlock(composed, SKILLS_INSTRUCTIONS));
     expect(recovered).toBe(BASE);
   });
 
@@ -405,44 +289,19 @@ describe("stripToolInventory", () => {
   });
 
   it("does not false-positive on base prompts with non-Tool headers", () => {
-    const baseWithHeader =
-      "You are a coding agent.\n\n## Important\nDo good work.";
+    const baseWithHeader = "You are a coding agent.\n\n## Important\nDo good work.";
     const tools = [mockTool("edit", "Edit.")];
-    const composed = composeSystemPrompt(
-      baseWithHeader,
-      tools,
-      [],
-      false,
-      SKILLS_INSTRUCTIONS
-    );
+    const composed = composeSystemPrompt(baseWithHeader, tools, [], false, SKILLS_INSTRUCTIONS);
     const stripped = stripToolInventory(composed);
     expect(stripped).toBe(baseWithHeader);
   });
 
   it("round-trips: strip then recompose produces same output", () => {
-    const tools = [
-      mockTool("bash", "Run."),
-      mockTool("edit", "Edit."),
-      mockTool("read", "Read."),
-    ];
+    const tools = [mockTool("bash", "Run."), mockTool("edit", "Edit."), mockTool("read", "Read.")];
     const skills = [mockSkill("tdd", "TDD", "/tdd/SKILL.md")];
-    const composed = composeSystemPrompt(
-      BASE,
-      tools,
-      skills,
-      true,
-      SKILLS_INSTRUCTIONS
-    );
-    const recovered = stripToolInventory(
-      stripSkillsBlock(composed, SKILLS_INSTRUCTIONS)
-    );
-    const recomposed = composeSystemPrompt(
-      recovered,
-      tools,
-      skills,
-      true,
-      SKILLS_INSTRUCTIONS
-    );
+    const composed = composeSystemPrompt(BASE, tools, skills, true, SKILLS_INSTRUCTIONS);
+    const recovered = stripToolInventory(stripSkillsBlock(composed, SKILLS_INSTRUCTIONS));
+    const recomposed = composeSystemPrompt(recovered, tools, skills, true, SKILLS_INSTRUCTIONS);
     expect(recomposed).toBe(composed);
   });
 });

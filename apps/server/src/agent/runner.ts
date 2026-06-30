@@ -22,10 +22,7 @@ import { type EditMode, InMemorySnapshotStore } from "@sakti-code/tools";
 import { Effect } from "effect";
 import type { ServerContext } from "../context.ts";
 import { loadAgentContext } from "../lib/context-loader.ts";
-import {
-  getPermissionChannel,
-  type PermissionFrame,
-} from "../lib/permission-channel.ts";
+import { getPermissionChannel, type PermissionFrame } from "../lib/permission-channel.ts";
 import {
   BRANCH_SUMMARY_PROMPTS,
   buildAgentTools,
@@ -81,7 +78,7 @@ export function registerRun(
   sessionId: string,
   harness: AgentHarness,
   unsubscribe: () => void,
-  retryAbort?: AbortController
+  retryAbort?: AbortController,
 ): boolean {
   if (activeRuns.has(sessionId)) {
     return false;
@@ -116,8 +113,7 @@ export function clearRunsForTesting(): void {
 // ── Replay (dev-only) ─────────────────────────────────────────────
 
 const REPLAY_PATH =
-  process.env.SAKTI_REPLAY_PATH ??
-  resolve(import.meta.dirname, "../../fixtures/replay.jsonl");
+  process.env.SAKTI_REPLAY_PATH ?? resolve(import.meta.dirname, "../../fixtures/replay.jsonl");
 
 const activeReplays = new Map<string, ReplayRunner>();
 
@@ -128,10 +124,7 @@ export function clearReplaysForTesting(): void {
   activeReplays.clear();
 }
 
-export async function startReplay(
-  sessionId: string,
-  ws: WsHandle
-): Promise<void> {
+export async function startReplay(sessionId: string, ws: WsHandle): Promise<void> {
   if (activeReplays.has(sessionId)) {
     return;
   }
@@ -206,10 +199,7 @@ export function getActiveHarness(sessionId: string): AgentHarness | null {
  * Callers wrap with `parseSessionSettings(...)` from `@sakti-code/agent` to
  * get a typed view with defaults applied.
  */
-export function loadSessionSettings(
-  ctx: ServerContext,
-  sessionId: string
-): Record<string, string> {
+export function loadSessionSettings(ctx: ServerContext, sessionId: string): Record<string, string> {
   const prefix = `session:${sessionId}:`;
   const rows = ctx.repos.settings.getByPrefix(prefix);
   const overrides: Record<string, string> = {};
@@ -235,10 +225,7 @@ export function loadSessionSettings(
  * Keyed-prefix (not JSON array) so each enable/disable is a single key
  * write/delete — atomic, no read-modify-write cycle.
  */
-export function loadDisabledSkills(
-  ctx: ServerContext,
-  sessionId: string
-): Set<string> {
+export function loadDisabledSkills(ctx: ServerContext, sessionId: string): Set<string> {
   const prefix = `session:${sessionId}:disabled_skill:`;
   const rows = ctx.repos.settings.getByPrefix(prefix);
   const names = new Set<string>();
@@ -255,23 +242,18 @@ export function loadDisabledSkills(
 export async function persistSkillDisabled(
   ctx: ServerContext,
   sessionId: string,
-  skillName: string
+  skillName: string,
 ): Promise<void> {
-  await ctx.repos.settings.set(
-    `session:${sessionId}:disabled_skill:${skillName}`,
-    "1"
-  );
+  await ctx.repos.settings.set(`session:${sessionId}:disabled_skill:${skillName}`, "1");
 }
 
 /** Remove a skill-disable for this session (idempotent). Layer 1 only. */
 export async function persistSkillEnabled(
   ctx: ServerContext,
   sessionId: string,
-  skillName: string
+  skillName: string,
 ): Promise<void> {
-  await ctx.repos.settings.delete(
-    `session:${sessionId}:disabled_skill:${skillName}`
-  );
+  await ctx.repos.settings.delete(`session:${sessionId}:disabled_skill:${skillName}`);
 }
 
 /**
@@ -292,40 +274,27 @@ export async function persistSkillEnabled(
  * common steady state keeps the settings table clean.
  */
 
-export function loadStuckGuardState(
-  ctx: ServerContext,
-  sessionId: string
-): StuckGuardState {
-  const rawCount = ctx.repos.settings.get(
-    `session:${sessionId}:consecutive_compacts`
-  );
+export function loadStuckGuardState(ctx: ServerContext, sessionId: string): StuckGuardState {
+  const rawCount = ctx.repos.settings.get(`session:${sessionId}:consecutive_compacts`);
   const parsed = Number.parseInt(rawCount ?? "0", 10);
-  const consecutiveCompacts =
-    Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-  const paused =
-    ctx.repos.settings.get(`session:${sessionId}:auto_compaction_paused`) ===
-    "1";
+  const consecutiveCompacts = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  const paused = ctx.repos.settings.get(`session:${sessionId}:auto_compaction_paused`) === "1";
   return { consecutiveCompacts, paused };
 }
 
 export async function persistStuckGuardState(
   ctx: ServerContext,
   sessionId: string,
-  state: StuckGuardState
+  state: StuckGuardState,
 ): Promise<void> {
   await ctx.repos.settings.set(
     `session:${sessionId}:consecutive_compacts`,
-    String(state.consecutiveCompacts)
+    String(state.consecutiveCompacts),
   );
   if (state.paused) {
-    await ctx.repos.settings.set(
-      `session:${sessionId}:auto_compaction_paused`,
-      "1"
-    );
+    await ctx.repos.settings.set(`session:${sessionId}:auto_compaction_paused`, "1");
   } else {
-    await ctx.repos.settings.delete(
-      `session:${sessionId}:auto_compaction_paused`
-    );
+    await ctx.repos.settings.delete(`session:${sessionId}:auto_compaction_paused`);
   }
 }
 
@@ -333,11 +302,9 @@ export function resolveThinkingLevel(
   ctx: ServerContext,
   sessionId: string,
   session: { thinkingLevel: string },
-  profileThinkingLevel = "off"
+  profileThinkingLevel = "off",
 ): ThinkingLevel {
-  const thinkingLevelRow = ctx.repos.settings.get(
-    `session:${sessionId}:thinking_level`
-  );
+  const thinkingLevelRow = ctx.repos.settings.get(`session:${sessionId}:thinking_level`);
   if (thinkingLevelRow !== null) {
     if (thinkingLevelRow === "off") {
       return "off";
@@ -350,10 +317,7 @@ export function resolveThinkingLevel(
   return profileThinkingLevel as ThinkingLevel;
 }
 
-export function resolveEditMode(
-  ctx: ServerContext,
-  sessionId: string
-): EditMode {
+export function resolveEditMode(ctx: ServerContext, sessionId: string): EditMode {
   const row = ctx.repos.settings.get(`session:${sessionId}:edit_mode`);
   if (row === "hashline" || row === "replace") {
     return row;
@@ -377,7 +341,7 @@ export function buildPermissionEvaluator(ruleset: PermissionRuleset) {
 export async function switchAgentForSession(
   ctx: ServerContext,
   sessionId: string,
-  agentName: string
+  agentName: string,
 ): Promise<boolean> {
   const session = await ctx.repos.sessions.findById(sessionId);
   if (!session) {
@@ -394,7 +358,7 @@ export async function switchAgentForSession(
       // accrued earlier in the session survives a mid-run agent switch.
       const channel = getPermissionChannel(sessionId);
       harness.setPermissionEvaluator((permission, pattern) =>
-        channel.evaluate(permission, pattern, ruleset)
+        channel.evaluate(permission, pattern, ruleset),
       );
       await harness.switchAgent(agent);
     }
@@ -405,7 +369,7 @@ export async function switchAgentForSession(
 export async function setEditModeForSession(
   ctx: ServerContext,
   sessionId: string,
-  mode: EditMode
+  mode: EditMode,
 ): Promise<boolean> {
   const session = await ctx.repos.sessions.findById(sessionId);
   if (!session) {
@@ -442,7 +406,7 @@ export function runPromptEffect(
   message: string,
   storage: SessionStorageShape,
   eventCallback: (event: AgentHarnessEvent) => void,
-  permissionAskedSink: (frame: PermissionFrame) => void
+  permissionAskedSink: (frame: PermissionFrame) => void,
 ): Effect.Effect<void, Error> {
   return Effect.gen(function* () {
     const session = ctx.repos.sessions.findById(sessionId);
@@ -458,9 +422,7 @@ export function runPromptEffect(
 
     const project = ctx.repos.projects.findById(session.projectId);
     if (!project) {
-      return yield* Effect.fail(
-        new Error(`Project not found: ${session.projectId}`)
-      );
+      return yield* Effect.fail(new Error(`Project not found: ${session.projectId}`));
     }
     ctx.log?.agent.debug("project loaded", {
       projectId: project.id,
@@ -471,30 +433,23 @@ export function runPromptEffect(
     if (!auth) {
       return yield* Effect.fail(
         new Error(
-          "No API key configured for this session's provider — add one in Settings > Models"
-        )
+          "No API key configured for this session's provider — add one in Settings > Models",
+        ),
       );
     }
     const { model } = auth;
     const settings = parseSessionSettings(loadSessionSettings(ctx, sessionId));
     const editMode = resolveEditMode(ctx, sessionId);
 
-    const thinkingLevel = resolveThinkingLevel(
-      ctx,
-      sessionId,
-      session,
-      auth.thinkingLevel
-    );
+    const thinkingLevel = resolveThinkingLevel(ctx, sessionId, session, auth.thinkingLevel);
     const compactionSettings = settings.compaction();
 
     const env = new NodeExecutionEnv(project.cwd);
     const sessionInstance = new PromiseSession(storage);
     const sessionShape = promiseSessionAsShape(sessionInstance);
     const getApiKeyAndHeaders = async (
-      _model: unknown
-    ): Promise<
-      { apiKey: string; headers?: Record<string, string> } | undefined
-    > => ({
+      _model: unknown,
+    ): Promise<{ apiKey: string; headers?: Record<string, string> } | undefined> => ({
       apiKey: auth.apiKey,
     });
 
@@ -503,8 +458,7 @@ export function runPromptEffect(
     // resolve) and to resolve the session agent by name without a second scan.
     const loadedContext = yield* Effect.tryPromise({
       try: () => loadAgentContext(project.cwd),
-      catch: (e: unknown) =>
-        new Error(`Failed to load agent context: ${String(e)}`),
+      catch: (e: unknown) => new Error(`Failed to load agent context: ${String(e)}`),
     });
 
     // Resolve the agent: per-session override first (when it differs from the
@@ -514,7 +468,7 @@ export function runPromptEffect(
     const { agent } = resolveSessionAgentForKind(
       session.kind,
       loadedContext.agents,
-      settings.agent() === DEFAULT_AGENT_NAME ? undefined : settings.agent()
+      settings.agent() === DEFAULT_AGENT_NAME ? undefined : settings.agent(),
     );
 
     // Build only the agent's declared tools via the server registry. Each agent
@@ -526,19 +480,14 @@ export function runPromptEffect(
       snapshotStore: new InMemorySnapshotStore(),
       noopOwner: {},
     };
-    const tools = buildAgentTools(
-      agent.activeToolNames ?? DEFAULT_TOOL_NAMES,
-      toolCtx
-    );
+    const tools = buildAgentTools(agent.activeToolNames ?? DEFAULT_TOOL_NAMES, toolCtx);
 
     // Layer 1: filter out skills disabled for this session (persistent state
     // surviving app restart). The keyed-prefix entries are read once at run
     // start; in-session disables use the harness's removeSkill() (Layer 2) and
     // don't need to touch this filter.
     const disabledSkills = loadDisabledSkills(ctx, sessionId);
-    const activeSkills = loadedContext.skills.filter(
-      (skill) => !disabledSkills.has(skill.name)
-    );
+    const activeSkills = loadedContext.skills.filter((skill) => !disabledSkills.has(skill.name));
 
     const harness = new HarnessClass({
       env,
@@ -547,9 +496,7 @@ export function runPromptEffect(
       compactionPrompts: COMPACTION_PROMPTS,
       branchSummaryPrompts: BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: SKILLS_INSTRUCTIONS,
-      ...(ctx.log === undefined
-        ? {}
-        : { logger: ctx.log.agent, streamLogger: ctx.log.llm }),
+      ...(ctx.log === undefined ? {} : { logger: ctx.log.agent, streamLogger: ctx.log.llm }),
       tools,
       followUpMode: settings.followUpMode(),
       steeringMode: settings.steeringMode(),
@@ -569,7 +516,7 @@ export function runPromptEffect(
     const permissionChannel = getPermissionChannel(sessionId);
     permissionChannel.setSink(permissionAskedSink);
     harness.setPermissionEvaluator((permission, pattern) =>
-      permissionChannel.evaluate(permission, pattern, agentRuleset)
+      permissionChannel.evaluate(permission, pattern, agentRuleset),
     );
     harness.setPermissionAskResolver((req) => permissionChannel.ask(req));
 
@@ -579,20 +526,18 @@ export function runPromptEffect(
     // each tool; skills are advertised only when `read` is available, since
     // they're loaded by reading the SKILL.md path. The tool list passed here
     // matches what's already on the harness (agent.activeToolNames).
-    const hasRead =
-      agent.activeToolNames === undefined ||
-      agent.activeToolNames.includes("read");
+    const hasRead = agent.activeToolNames === undefined || agent.activeToolNames.includes("read");
     const composedSystemPrompt = composeSystemPrompt(
       agent.systemPrompt,
       tools,
       activeSkills,
       hasRead,
-      SKILLS_INSTRUCTIONS
+      SKILLS_INSTRUCTIONS,
     );
     yield* harness.switchAgentEffect(
       composedSystemPrompt === agent.systemPrompt
         ? agent
-        : { ...agent, systemPrompt: composedSystemPrompt }
+        : { ...agent, systemPrompt: composedSystemPrompt },
     );
     ctx.log?.agent.debug("agent resolved", { sessionId, agent: agent.name });
 
@@ -623,10 +568,8 @@ export function runPromptEffect(
       skills: activeSkills,
       templates: loadedContext.commands,
       cwd: project.cwd,
-      loadStuckGuard: () =>
-        Effect.sync(() => loadStuckGuardState(ctx, sessionId)),
-      persistStuckGuard: (s) =>
-        Effect.tryPromise(() => persistStuckGuardState(ctx, sessionId, s)),
+      loadStuckGuard: () => Effect.sync(() => loadStuckGuardState(ctx, sessionId)),
+      persistStuckGuard: (s) => Effect.tryPromise(() => persistStuckGuardState(ctx, sessionId, s)),
       emit: eventCallback,
       registerRun: ({ harness: h, retryAbort, unsubscribe }) =>
         registerRun(sessionId, h, unsubscribe, retryAbort),
@@ -640,16 +583,13 @@ export function runPromptEffect(
         // Reject any still-pending permission asks so the UI strip clears and the
         // loop is not left awaiting a reply on a dead/aborted run.
         getPermissionChannel(sessionId).rejectPending();
-      })
+      }),
     ),
     Effect.mapError((error) => {
-      const err =
-        error instanceof Error
-          ? error
-          : new Error(`Run failed: ${String(error)}`);
+      const err = error instanceof Error ? error : new Error(`Run failed: ${String(error)}`);
       ctx.log?.agent.error("run failed", err, { sessionId });
       return err;
-    })
+    }),
   );
 }
 
@@ -665,16 +605,9 @@ export function runPrompt(
   message: string,
   storage: SessionStorageShape,
   eventCallback: (event: AgentHarnessEvent) => void,
-  permissionAskedSink: (frame: PermissionFrame) => void
+  permissionAskedSink: (frame: PermissionFrame) => void,
 ): Promise<void> {
   return Effect.runPromise(
-    runPromptEffect(
-      ctx,
-      sessionId,
-      message,
-      storage,
-      eventCallback,
-      permissionAskedSink
-    )
+    runPromptEffect(ctx, sessionId, message, storage, eventCallback, permissionAskedSink),
   );
 }

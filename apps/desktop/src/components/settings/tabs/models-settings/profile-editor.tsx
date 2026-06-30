@@ -1,11 +1,4 @@
-import {
-  createEffect,
-  createMemo,
-  createResource,
-  createSignal,
-  For,
-  Show,
-} from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js";
 import { ModelPickerButton } from "~/components/commands/model-seletor/model-picker-button";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
@@ -26,14 +19,7 @@ const MODE_LABELS: Record<string, string> = {
   plan: "Plan",
   build: "Build",
 };
-const THINKING_LEVELS = [
-  "off",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-] as const;
+const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
 
 interface ModelRef {
   model: string;
@@ -53,9 +39,7 @@ interface ProfilesData {
 
 export function ProfileEditor() {
   const { api } = useStore();
-  const [localProfiles, setLocalProfiles] = createSignal<ProfilesData | null>(
-    null
-  );
+  const [localProfiles, setLocalProfiles] = createSignal<ProfilesData | null>(null);
 
   const [profilesResource] = createResource(async () => {
     const res = await api.api.profiles.$get();
@@ -122,7 +106,7 @@ export function ProfileEditor() {
   const updateModeModel = (
     profileId: string,
     mode: string,
-    model: { id: string; provider: string; reasoning: boolean }
+    model: { id: string; provider: string; reasoning: boolean },
   ) => {
     const p = localProfiles();
     if (!p) {
@@ -145,11 +129,7 @@ export function ProfileEditor() {
     updateProfile(profileId, { models });
   };
 
-  const updateModeThinking = (
-    profileId: string,
-    mode: string,
-    level: string
-  ) => {
+  const updateModeThinking = (profileId: string, mode: string, level: string) => {
     const p = localProfiles();
     if (!p) {
       return;
@@ -298,17 +278,14 @@ export function ProfileEditor() {
                   <For each={[...MODES]}>
                     {(mode) => {
                       const modelId = () => getModeModelId(profileId, mode);
-                      const thinkingLevel = () =>
-                        getModeThinking(profileId, mode);
+                      const thinkingLevel = () => getModeThinking(profileId, mode);
                       return (
                         <div class="flex items-center gap-2">
                           <span class="w-16 shrink-0 font-medium text-muted-foreground text-xs">
                             {MODE_LABELS[mode]}
                           </span>
                           <ModelPickerButton
-                            onSelect={(model) =>
-                              updateModeModel(profileId, mode, model)
-                            }
+                            onSelect={(model) => updateModeModel(profileId, mode, model)}
                             triggerLabel={() => modelId() || "Select model"}
                             value={modelId()}
                           />
@@ -327,9 +304,7 @@ export function ProfileEditor() {
                             value={thinkingLevel()}
                           >
                             <SelectTrigger class="h-7 w-20 shrink-0 gap-1 rounded-md border-border/60 bg-background/70 px-2 py-1 text-xs capitalize">
-                              <SelectValue<string>>
-                                {thinkingLevel()}
-                              </SelectValue>
+                              <SelectValue<string>>{thinkingLevel()}</SelectValue>
                             </SelectTrigger>
                             <SelectContent />
                           </Select>

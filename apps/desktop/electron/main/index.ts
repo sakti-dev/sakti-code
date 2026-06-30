@@ -1,8 +1,5 @@
 import { resolve } from "node:path";
-import {
-  createServer,
-  type SaktiServer,
-} from "@sakti-code/server/create-server";
+import { createServer, type SaktiServer } from "@sakti-code/server/create-server";
 import { getLogDir } from "@sakti-code/server/dirs";
 import { app, BrowserWindow, screen } from "electron";
 import { createDialogHooks } from "./ipc/dialog";

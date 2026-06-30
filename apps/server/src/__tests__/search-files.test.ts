@@ -13,17 +13,13 @@ describe("file search routes", () => {
   beforeAll(async () => {
     tempDir = mkdtempSync(join(tmpdir(), "sakti-search-test-"));
     writeFileSync(join(tempDir, "hello.ts"), 'console.log("hello");\n');
-    writeFileSync(
-      join(tempDir, "hello.test.ts"),
-      'describe("hello", () => {});\n'
-    );
+    writeFileSync(join(tempDir, "hello.test.ts"), 'describe("hello", () => {});\n');
     writeFileSync(join(tempDir, "world.ts"), 'console.log("world");\n');
     writeFileSync(join(tempDir, "helper.ts"), "export const helper = 42;\n");
 
     const built = await makeApp([searchFilesRoutes]);
     app = built.app;
-    projectId = (await built.ctx.repos.projects.create("search-test", tempDir))
-      .id;
+    projectId = (await built.ctx.repos.projects.create("search-test", tempDir)).id;
   });
 
   afterAll(() => {
@@ -34,30 +30,24 @@ describe("file search routes", () => {
 
   it("W6: uses ?query= (per spec, not ?q=) and returns {files, cwd} only", async () => {
     const res = await app.request(
-      new Request(
-        `http://localhost/api/projects/${projectId}/files?query=hello`
-      )
+      new Request(`http://localhost/api/projects/${projectId}/files?query=hello`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Object.keys(body).sort()).toEqual(["cwd", "files"]);
     expect(body.files.length).toBeGreaterThanOrEqual(1);
-    expect(
-      body.files.some((f: { path: string }) => f.path.includes("hello"))
-    ).toBe(true);
+    expect(body.files.some((f: { path: string }) => f.path.includes("hello"))).toBe(true);
   });
 
   it("unknown project returns 404", async () => {
     const res = await app.request(
-      new Request("http://localhost/api/projects/nope/files?query=hello")
+      new Request("http://localhost/api/projects/nope/files?query=hello"),
     );
     expect(res.status).toBe(404);
   });
 
   it("returns some files for empty query (general listing)", async () => {
-    const res = await app.request(
-      new Request(`http://localhost/api/projects/${projectId}/files`)
-    );
+    const res = await app.request(new Request(`http://localhost/api/projects/${projectId}/files`));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.files.length).toBeGreaterThan(0);
@@ -65,9 +55,7 @@ describe("file search routes", () => {
 
   it("respects limit parameter", async () => {
     const res = await app.request(
-      new Request(
-        `http://localhost/api/projects/${projectId}/files?query=.ts&limit=2`
-      )
+      new Request(`http://localhost/api/projects/${projectId}/files?query=.ts&limit=2`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();

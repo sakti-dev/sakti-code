@@ -8,8 +8,8 @@ describe("playground selection probe", () => {
     document.body.append(container);
 
     const dispose = render(() => <App />, container);
-    const probeButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent?.includes("Probe selection")
+    const probeButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Probe selection"),
     ) as HTMLButtonElement;
 
     expect(probeButton).toBeTruthy();

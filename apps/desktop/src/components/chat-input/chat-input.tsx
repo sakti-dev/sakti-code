@@ -64,7 +64,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
         commands: { name: string; description?: string }[];
         skills: { name: string; description?: string }[];
       };
-    }
+    },
   );
 
   // Files for the @ menu — debounced query fetch (server does frecency search).
@@ -102,9 +102,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     // Move focus to the dialog's search input so further typing filters there,
     // not in the editor.
     queueMicrotask(() => {
-      const input = document.querySelector(
-        "[cmdk-input]"
-      ) as HTMLInputElement | null;
+      const input = document.querySelector("[cmdk-input]") as HTMLInputElement | null;
       input?.focus();
     });
   };
@@ -115,9 +113,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     }
     const session = sessions.get(props.sessionId);
     const phase = session.store.streaming.phase;
-    return (
-      phase === "thinking" || phase === "writing" || phase === "tool_running"
-    );
+    return phase === "thinking" || phase === "writing" || phase === "tool_running";
   });
 
   const sessionStore = createMemo(() => {
@@ -135,9 +131,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     }
     const totals = aggregateUsage(s.store.messages);
     // Hide the line entirely until there's at least one assistant turn.
-    return totals.cost === 0 && totals.input === 0 && totals.output === 0
-      ? undefined
-      : totals;
+    return totals.cost === 0 && totals.input === 0 && totals.output === 0 ? undefined : totals;
   });
 
   const retry = () => sessionStore()?.store.retry ?? null;
@@ -172,8 +166,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     onCleanup(() => clearInterval(interval));
   });
 
-  const canSend = () =>
-    value().trim().length > 0 && !isGenerating() && !!props.sessionId;
+  const canSend = () => value().trim().length > 0 && !isGenerating() && !!props.sessionId;
 
   const send = () => {
     if (!(canSend() && props.sessionId)) {
@@ -196,12 +189,9 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
             >
               <FiAlertCircle class="size-4 shrink-0 text-warning" />
               <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span class="truncate font-medium text-warning-foreground">
-                  {r().errorMessage}
-                </span>
+                <span class="truncate font-medium text-warning-foreground">{r().errorMessage}</span>
                 <span class="text-muted-foreground text-xs">
-                  Retrying in {countdown()}s · attempt {r().attempt} of{" "}
-                  {r().maxAttempts}
+                  Retrying in {countdown()}s · attempt {r().attempt} of {r().maxAttempts}
                 </span>
               </div>
               {/* The strip only renders when `retry()` is set, which requires a
@@ -222,16 +212,14 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
           )}
         </Show>
         <Show when={permission()}>
-          {(req) => (
-            <PermissionStrip onReply={replyPermission} request={req()} />
-          )}
+          {(req) => <PermissionStrip onReply={replyPermission} request={req()} />}
         </Show>
         <div
           class={cn(
             "flex w-full min-w-0 flex-col gap-3 rounded-xl border p-3 shadow-lg transition-all duration-200",
             "glass-effect border-border/50 bg-background/95 backdrop-blur",
             "focus-within:ring-2 focus-within:ring-primary/20",
-            isFocused() && "border-primary/40 shadow-xl"
+            isFocused() && "border-primary/40 shadow-xl",
           )}
           data-component="chat-input"
           onFocusIn={() => setIsFocused(true)}
@@ -248,11 +236,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
 
           <div class="flex items-center justify-end gap-2">
             <ProfileSelect sessionId={props.sessionId} />
-            <SendButton
-              canSend={canSend}
-              isSending={isGenerating()}
-              onClick={send}
-            />
+            <SendButton canSend={canSend} isSending={isGenerating()} onClick={send} />
           </div>
 
           <InputFooter charCount={() => value().length} stats={sessionStats} />

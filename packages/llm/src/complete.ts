@@ -61,9 +61,7 @@ interface GenerateTextResultLike {
 }
 
 /** Injectable generateText runner (for tests). */
-type RunGenerateText = (
-  options: Record<string, unknown>
-) => Promise<GenerateTextResultLike>;
+type RunGenerateText = (options: Record<string, unknown>) => Promise<GenerateTextResultLike>;
 
 // ─── main entry point ────────────────────────────────────────────────────────
 
@@ -75,7 +73,7 @@ type RunGenerateText = (
  */
 export async function complete(
   req: CompleteRequest,
-  runGenerateText?: RunGenerateText
+  runGenerateText?: RunGenerateText,
 ): Promise<CompleteResult> {
   const language = await resolveLanguageModel(req.model, {
     ...(req.apiKey ? { apiKey: req.apiKey } : {}),
@@ -91,7 +89,7 @@ export async function complete(
 export async function completeWithModel(
   req: CompleteRequest,
   language: LanguageModelV4,
-  runGenerateText?: RunGenerateText
+  runGenerateText?: RunGenerateText,
 ): Promise<CompleteResult> {
   const providerOptions = buildProviderOptions({
     level: req.thinkingLevel ?? "off",
@@ -105,8 +103,7 @@ export async function completeWithModel(
 
   const mergedHeaders = mergeRequestHeaders(sessionHeaders, req.headers);
 
-  const runner =
-    runGenerateText ?? (aiGenerateText as unknown as RunGenerateText);
+  const runner = runGenerateText ?? (aiGenerateText as unknown as RunGenerateText);
 
   try {
     const raw = await runner({
@@ -114,9 +111,7 @@ export async function completeWithModel(
       maxRetries: 0,
       messages: toModelMessages(req.messages),
       model: language,
-      ...(providerOptions && Object.keys(providerOptions).length > 0
-        ? { providerOptions }
-        : {}),
+      ...(providerOptions && Object.keys(providerOptions).length > 0 ? { providerOptions } : {}),
       ...(req.abortSignal ? { abortSignal: req.abortSignal } : {}),
       ...(req.maxOutputTokens ? { maxOutputTokens: req.maxOutputTokens } : {}),
       ...(req.system ? { instructions: req.system } : {}),
@@ -148,7 +143,7 @@ export async function completeWithModel(
 /** Merge session-affinity headers with caller headers (caller wins on conflict). */
 function mergeRequestHeaders(
   session: Record<string, string> | undefined,
-  caller: Record<string, string> | undefined
+  caller: Record<string, string> | undefined,
 ): Record<string, string> | undefined {
   if (!(session || caller)) {
     return;

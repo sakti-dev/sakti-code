@@ -50,9 +50,7 @@ function mapStatus(status: string): ToolStatus {
 
 export const ToolPart: Component<PartProps> = (props) => {
   const toolName = () =>
-    props.part.type === "tool_call"
-      ? normalizeToolName(props.part.toolName)
-      : "unknown";
+    props.part.type === "tool_call" ? normalizeToolName(props.part.toolName) : "unknown";
 
   const toolStatus = (): ToolStatus =>
     props.part.type === "tool_call" ? mapStatus(props.part.status) : "pending";

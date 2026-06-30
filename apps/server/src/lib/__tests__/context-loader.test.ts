@@ -23,33 +23,30 @@ describe("loadAgentContext", () => {
     mkdirSync(join(globalDir, "commands"), { recursive: true });
     writeFileSync(
       join(globalDir, "commands", "global-cmd.md"),
-      "---\ndescription: global command\n---\nglobal body"
+      "---\ndescription: global command\n---\nglobal body",
     );
 
     mkdirSync(join(projectDir, ".agents", "commands"), { recursive: true });
     writeFileSync(
       join(projectDir, ".agents", "commands", "proj-cmd.md"),
-      "---\ndescription: project command\n---\nproject body"
+      "---\ndescription: project command\n---\nproject body",
     );
     mkdirSync(join(projectDir, ".agents", "agents"), { recursive: true });
     writeFileSync(
       join(projectDir, ".agents", "agents", "scout.md"),
-      "---\nmode: subagent\ndescription: scout\n---\nscout prompt"
+      "---\nmode: subagent\ndescription: scout\n---\nscout prompt",
     );
     mkdirSync(join(projectDir, ".agents", "skills", "eff"), {
       recursive: true,
     });
     writeFileSync(
       join(projectDir, ".agents", "skills", "eff", "SKILL.md"),
-      "---\nname: eff\ndescription: eff skill\n---\neff content"
+      "---\nname: eff\ndescription: eff skill\n---\neff content",
     );
 
     const ctx = await loadAgentContext(projectDir);
 
-    expect(ctx.commands.map((c) => c.name).sort()).toEqual([
-      "global-cmd",
-      "proj-cmd",
-    ]);
+    expect(ctx.commands.map((c) => c.name).sort()).toEqual(["global-cmd", "proj-cmd"]);
     expect(ctx.agents.map((a) => a.name)).toEqual(["scout"]);
     expect(ctx.skills.map((s) => s.name)).toEqual(["eff"]);
   });

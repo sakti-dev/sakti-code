@@ -21,17 +21,13 @@ describe("Velomark DOM identity", () => {
     const dispose = render(() => <Velomark markdown={markdown()} />, host);
     mountedRoots.push(dispose);
 
-    const firstBlockBefore = host.querySelector(
-      '[data-velomark-block-index="0"]'
-    );
+    const firstBlockBefore = host.querySelector('[data-velomark-block-index="0"]');
     expect(firstBlockBefore?.textContent).toBe("First paragraph");
 
     setMarkdown("First paragraph\n\nSecond paragraph");
     await Promise.resolve();
 
-    const firstBlockAfter = host.querySelector(
-      '[data-velomark-block-index="0"]'
-    );
+    const firstBlockAfter = host.querySelector('[data-velomark-block-index="0"]');
     const secondBlock = host.querySelector('[data-velomark-block-index="1"]');
 
     expect(firstBlockAfter).toBe(firstBlockBefore);
@@ -46,18 +42,14 @@ describe("Velomark DOM identity", () => {
     const dispose = render(() => <Velomark markdown={markdown()} />, host);
     mountedRoots.push(dispose);
 
-    const firstBlockBefore = host.querySelector(
-      '[data-velomark-block-index="0"]'
-    );
+    const firstBlockBefore = host.querySelector('[data-velomark-block-index="0"]');
     const firstTextNodeBefore = firstBlockBefore?.firstChild;
     expect(firstTextNodeBefore?.textContent).toBe("Alpha");
 
     setMarkdown("Alpha\n\nBeta");
     await Promise.resolve();
 
-    const firstBlockAfter = host.querySelector(
-      '[data-velomark-block-index="0"]'
-    );
+    const firstBlockAfter = host.querySelector('[data-velomark-block-index="0"]');
     const firstTextNodeAfter = firstBlockAfter?.firstChild;
 
     expect(firstBlockAfter).toBe(firstBlockBefore);

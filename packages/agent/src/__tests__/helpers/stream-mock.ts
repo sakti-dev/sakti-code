@@ -1,10 +1,4 @@
-import type {
-  AssistantMessage,
-  FinishResult,
-  Model,
-  StreamResult,
-  Usage,
-} from "@sakti-code/llm";
+import type { AssistantMessage, FinishResult, Model, StreamResult, Usage } from "@sakti-code/llm";
 
 function createUsage(): Usage {
   return {

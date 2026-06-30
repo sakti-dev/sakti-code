@@ -20,7 +20,7 @@ export const ScrollArea: Component<
           orientation() === "both" && "overflow-auto",
           "[&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2.5",
           "[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border",
-          "[&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40"
+          "[&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40",
         )}
       >
         {local.children}
@@ -43,7 +43,7 @@ export const ScrollBar: Component<
         isHorizontal()
           ? "h-2.5 flex-col border-t border-t-transparent p-[1px]"
           : "h-full w-2.5 border-l border-l-transparent p-[1px]",
-        local.class
+        local.class,
       )}
       {...rest}
     >

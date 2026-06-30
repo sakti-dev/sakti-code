@@ -40,7 +40,7 @@ export function createContext(
     profiles: ProfilesStore;
     settingsFile: SettingsFileStore;
     log?: ServerLoggers;
-  }
+  },
 ): ServerContext {
   return {
     auth: deps.auth,
@@ -59,16 +59,11 @@ export function createContext(
   };
 }
 
-export function createSessionStorage(
-  ctx: ServerContext,
-  sessionId: string
-): SqliteSessionStorage {
+export function createSessionStorage(ctx: ServerContext, sessionId: string): SqliteSessionStorage {
   const session = ctx.repos.sessions.findById(sessionId);
   return new SqliteSessionStorage(ctx.db, sessionId, {
     id: sessionId,
-    createdAt: session
-      ? new Date(session.createdAt).toISOString()
-      : new Date().toISOString(),
+    createdAt: session ? new Date(session.createdAt).toISOString() : new Date().toISOString(),
   });
 }
 

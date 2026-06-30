@@ -10,10 +10,7 @@ const mountedRoots: Array<() => void> = [];
 const loadFixture = (name: string): string =>
   readFileSync(resolve(process.cwd(), "test/fixtures/streaming", name), "utf8");
 
-const waitFor = async (
-  predicate: () => boolean,
-  attempts = 20
-): Promise<void> => {
+const waitFor = async (predicate: () => boolean, attempts = 20): Promise<void> => {
   for (let index = 0; index < attempts; index += 1) {
     if (predicate()) {
       return;
@@ -36,26 +33,18 @@ describe("Velomark streaming edge cases", () => {
   it("keeps rendering stable while a fenced code block is unfinished", async () => {
     const host = document.createElement("div");
     document.body.append(host);
-    const [markdown, setMarkdown] = createSignal(
-      loadFixture("unfinished-fence.md")
-    );
+    const [markdown, setMarkdown] = createSignal(loadFixture("unfinished-fence.md"));
 
     const dispose = render(() => <Velomark markdown={markdown()} />, host);
     mountedRoots.push(dispose);
 
-    expect(
-      host.querySelector('[data-velomark-block-kind="code"]')
-    ).not.toBeNull();
-    expect(host.querySelector("pre > code")?.textContent).toContain(
-      "const answer ="
-    );
+    expect(host.querySelector('[data-velomark-block-kind="code"]')).not.toBeNull();
+    expect(host.querySelector("pre > code")?.textContent).toContain("const answer =");
 
     setMarkdown([loadFixture("unfinished-fence.md"), "42;", "```"].join(""));
     await Promise.resolve();
 
-    expect(host.querySelector("pre > code")?.textContent).toContain(
-      "const answer =\n42;"
-    );
+    expect(host.querySelector("pre > code")?.textContent).toContain("const answer =\n42;");
   });
 
   it("keeps highlighted code rendering while streamed code grows", async () => {
@@ -67,19 +56,13 @@ describe("Velomark streaming edge cases", () => {
     mountedRoots.push(dispose);
 
     await waitFor(
-      () =>
-        (host.querySelectorAll("[data-velomark-code-highlighted] span")
-          .length ?? 0) > 0,
-      120
+      () => (host.querySelectorAll("[data-velomark-code-highlighted] span").length ?? 0) > 0,
+      120,
     );
 
     const blockBefore = host.querySelector('[data-velomark-block-kind="code"]');
-    const codeBefore = host.querySelector(
-      '[data-velomark-block-kind="code"] pre > code'
-    );
-    const highlightedBefore = host.querySelector(
-      "[data-velomark-code-highlighted]"
-    );
+    const codeBefore = host.querySelector('[data-velomark-block-kind="code"] pre > code');
+    const highlightedBefore = host.querySelector("[data-velomark-code-highlighted]");
     expect(blockBefore).not.toBeNull();
     expect(codeBefore).not.toBeNull();
     expect(highlightedBefore).not.toBeNull();
@@ -87,39 +70,31 @@ describe("Velomark streaming edge cases", () => {
     setMarkdown("```ts\nconst answer = 42;\n```");
     await waitFor(
       () =>
-        (host.querySelectorAll("[data-velomark-code-highlighted] span")
-          .length ?? 0) > 0 &&
+        (host.querySelectorAll("[data-velomark-code-highlighted] span").length ?? 0) > 0 &&
         (
-          host.querySelector('[data-velomark-block-kind="code"] pre > code')
-            ?.textContent ?? ""
+          host.querySelector('[data-velomark-block-kind="code"] pre > code')?.textContent ?? ""
         ).includes("const answer = 42;"),
-      120
+      120,
     );
 
     const blockAfter = host.querySelector('[data-velomark-block-kind="code"]');
-    const codeAfter = host.querySelector(
-      '[data-velomark-block-kind="code"] pre > code'
-    );
-    const highlightedAfter = host.querySelector(
-      "[data-velomark-code-highlighted]"
-    );
+    const codeAfter = host.querySelector('[data-velomark-block-kind="code"] pre > code');
+    const highlightedAfter = host.querySelector("[data-velomark-code-highlighted]");
     expect(blockAfter).toBe(blockBefore);
     expect(codeBefore).not.toBeNull();
     expect(codeAfter).not.toBeNull();
     expect(codeAfter).toBe(codeBefore);
     expect(highlightedAfter).toBe(highlightedBefore);
     expect(codeAfter?.textContent).toContain("const answer = 42;");
-    expect(
-      host.querySelectorAll("[data-velomark-code-highlighted] span").length
-    ).toBeGreaterThan(0);
+    expect(host.querySelectorAll("[data-velomark-code-highlighted] span").length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("upgrades unresolved references when the definition arrives later", async () => {
     const host = document.createElement("div");
     document.body.append(host);
-    const [markdown, setMarkdown] = createSignal(
-      loadFixture("unfinished-reference.md")
-    );
+    const [markdown, setMarkdown] = createSignal(loadFixture("unfinished-reference.md"));
 
     const dispose = render(() => <Velomark markdown={markdown()} />, host);
     mountedRoots.push(dispose);
@@ -127,23 +102,17 @@ describe("Velomark streaming edge cases", () => {
     expect(host.querySelector("a")).toBeNull();
     expect(host.textContent).toContain("[docs][guide]");
 
-    setMarkdown(
-      `${loadFixture("unfinished-reference.md")}\n[guide]: https://example.com/docs\n`
-    );
+    setMarkdown(`${loadFixture("unfinished-reference.md")}\n[guide]: https://example.com/docs\n`);
     await Promise.resolve();
 
-    expect(host.querySelector("a")?.getAttribute("href")).toBe(
-      "https://example.com/docs"
-    );
+    expect(host.querySelector("a")?.getAttribute("href")).toBe("https://example.com/docs");
     expect(host.querySelector("a")?.textContent).toBe("docs");
   });
 
   it("does not collapse the document while html is still incomplete", async () => {
     const host = document.createElement("div");
     document.body.append(host);
-    const [markdown, setMarkdown] = createSignal(
-      loadFixture("unfinished-html.md")
-    );
+    const [markdown, setMarkdown] = createSignal(loadFixture("unfinished-html.md"));
 
     const dispose = render(() => <Velomark markdown={markdown()} />, host);
     mountedRoots.push(dispose);
@@ -159,9 +128,7 @@ describe("Velomark streaming edge cases", () => {
   it("keeps rendering a document while a directive block is incomplete", async () => {
     const host = document.createElement("div");
     document.body.append(host);
-    const [markdown, setMarkdown] = createSignal(
-      loadFixture("unfinished-directive.md")
-    );
+    const [markdown, setMarkdown] = createSignal(loadFixture("unfinished-directive.md"));
 
     const dispose = render(() => <Velomark markdown={markdown()} />, host);
     mountedRoots.push(dispose);
@@ -171,17 +138,13 @@ describe("Velomark streaming edge cases", () => {
     setMarkdown(`${loadFixture("unfinished-directive.md")}\n:::`);
     await Promise.resolve();
 
-    expect(
-      host.querySelector('[data-velomark-container="info"]')
-    ).not.toBeNull();
+    expect(host.querySelector('[data-velomark-container="info"]')).not.toBeNull();
   });
 
   it("keeps rendering while a table is incomplete and upgrades when it stabilizes", async () => {
     const host = document.createElement("div");
     document.body.append(host);
-    const [markdown, setMarkdown] = createSignal(
-      loadFixture("unfinished-table.md")
-    );
+    const [markdown, setMarkdown] = createSignal(loadFixture("unfinished-table.md"));
 
     const dispose = render(() => <Velomark markdown={markdown()} />, host);
     mountedRoots.push(dispose);
@@ -189,9 +152,7 @@ describe("Velomark streaming edge cases", () => {
     expect(host.textContent).toContain("Name");
     expect(host.textContent).toContain("Value");
 
-    setMarkdown(
-      ["| Name | Value |", "| --- | --- |", "| A | 1 |", "| B | 2 |"].join("\n")
-    );
+    setMarkdown(["| Name | Value |", "| --- | --- |", "| A | 1 |", "| B | 2 |"].join("\n"));
     await waitFor(() => host.querySelectorAll("table tbody tr").length === 2);
 
     expect(host.querySelectorAll("table tbody tr")).toHaveLength(2);
@@ -205,27 +166,17 @@ describe("Velomark streaming edge cases", () => {
     const dispose = render(() => <Velomark markdown={markdown()} />, host);
     mountedRoots.push(dispose);
 
+    expect(host.querySelector('[data-velomark-block-kind="math"]')).not.toBeNull();
     expect(
-      host.querySelector('[data-velomark-block-kind="math"]')
-    ).not.toBeNull();
-    expect(
-      host.querySelector('[data-velomark-block-kind="math"] pre > code')
-        ?.textContent
+      host.querySelector('[data-velomark-block-kind="math"] pre > code')?.textContent,
     ).toContain("\\frac{1");
 
     setMarkdown(["$$", "\\frac{1}{2}", "$$"].join("\n"));
     await waitFor(
-      () =>
-        host.querySelector(
-          '[data-velomark-block-kind="math"] .katex-display'
-        ) !== null
+      () => host.querySelector('[data-velomark-block-kind="math"] .katex-display') !== null,
     );
 
-    expect(
-      host.querySelector('[data-velomark-block-kind="math"] .katex-display')
-    ).not.toBeNull();
-    expect(
-      host.querySelector('[data-velomark-block-kind="math"] pre > code')
-    ).toBeNull();
+    expect(host.querySelector('[data-velomark-block-kind="math"] .katex-display')).not.toBeNull();
+    expect(host.querySelector('[data-velomark-block-kind="math"] pre > code')).toBeNull();
   });
 });

@@ -22,8 +22,7 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
     return sessions.get(props.intakeSessionId);
   });
 
-  const hasMessages = () =>
-    (sessionStore()?.store.messageOrder.length ?? 0) > 0;
+  const hasMessages = () => (sessionStore()?.store.messageOrder.length ?? 0) > 0;
 
   const turns = createMemo(() => {
     const session = sessionStore();
@@ -34,7 +33,7 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
       session.store.messageOrder,
       session.store.messages,
       session.store.streaming.phase,
-      session.store.turnTimings
+      session.store.turnTimings,
     );
   });
 
@@ -47,10 +46,7 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
       return;
     }
 
-    const taskSession = await actions.createSession(
-      props.projectId,
-      proposal.title
-    );
+    const taskSession = await actions.createSession(props.projectId, proposal.title);
     if (!taskSession) {
       return;
     }
@@ -79,10 +75,7 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
           </div>
         )}
       </Show>
-      <ChatInput
-        placeholder="Ask anything about this project…"
-        sessionId={props.intakeSessionId}
-      />
+      <ChatInput placeholder="Ask anything about this project…" sessionId={props.intakeSessionId} />
     </div>
   );
 };

@@ -1,14 +1,5 @@
-import {
-  type Component,
-  createEffect,
-  createMemo,
-  createSignal,
-  For,
-} from "solid-js";
-import {
-  buildRenderDocument,
-  collectRenderMetrics,
-} from "../model/render-document";
+import { type Component, createEffect, createMemo, createSignal, For } from "solid-js";
+import { buildRenderDocument, collectRenderMetrics } from "../model/render-document";
 import type { ParsedBlockData } from "../parser/block-boundaries";
 import { resolveTheme } from "../theme/apply-theme";
 import { generateCssVars } from "../theme/generate-css-vars";
@@ -27,10 +18,7 @@ import { RenderBlockView } from "./render-block";
 export interface VelomarkProps {
   class?: string;
   codeBlockOptions?: VelomarkCodeBlockOptions;
-  codeBlockRenderers?: Record<
-    string,
-    Component<VelomarkCodeBlockRendererProps>
-  >;
+  codeBlockRenderers?: Record<string, Component<VelomarkCodeBlockRendererProps>>;
   containers?: Record<string, Component<VelomarkContainerRendererProps>>;
   debug?: boolean;
   markdown: string;
@@ -40,15 +28,9 @@ export interface VelomarkProps {
 
 const BlockSlot: Component<{
   blockId: string;
-  blockLookup: () => Map<
-    string,
-    RenderDocument<ParsedBlockData>["blocks"][number]
-  >;
+  blockLookup: () => Map<string, RenderDocument<ParsedBlockData>["blocks"][number]>;
   codeBlockOptions?: VelomarkCodeBlockOptions;
-  codeBlockRenderers?: Record<
-    string,
-    Component<VelomarkCodeBlockRendererProps>
-  >;
+  codeBlockRenderers?: Record<string, Component<VelomarkCodeBlockRendererProps>>;
   containers?: Record<string, Component<VelomarkContainerRendererProps>>;
   debug?: boolean;
   definitions: () => RenderDocument<ParsedBlockData>["definitions"];
@@ -80,24 +62,20 @@ const BlockSlot: Component<{
 
 export function Velomark(props: VelomarkProps) {
   const [document, setDocument] = createSignal<RenderDocument<ParsedBlockData>>(
-    buildRenderDocument(undefined, props.markdown)
+    buildRenderDocument(undefined, props.markdown),
   );
   const resolvedTheme = createMemo(() => resolveTheme(props.theme));
-  const themeStyle = createMemo<Record<string, string>>(() =>
-    generateCssVars(resolvedTheme())
-  );
+  const themeStyle = createMemo<Record<string, string>>(() => generateCssVars(resolvedTheme()));
   const blockIds = createMemo(() => document().blocks.map((block) => block.id));
   const blockLookup = createMemo(
-    () => new Map(document().blocks.map((block) => [block.id, block] as const))
+    () => new Map(document().blocks.map((block) => [block.id, block] as const)),
   );
 
   createEffect(() => {
     setDocument((previous) => {
       const nextDocument = buildRenderDocument(previous, props.markdown);
 
-      props.onDebugMetrics?.(
-        collectRenderMetrics(previous.blocks, nextDocument.blocks)
-      );
+      props.onDebugMetrics?.(collectRenderMetrics(previous.blocks, nextDocument.blocks));
 
       return nextDocument;
     });

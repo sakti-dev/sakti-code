@@ -26,12 +26,12 @@ describe("SqliteSessionStorage", () => {
 
     sqlite
       .prepare(
-        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)"
+        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)",
       )
       .run();
     sqlite
       .prepare(
-        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'claude', 1, 1)"
+        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'claude', 1, 1)",
       )
       .run();
 
@@ -135,7 +135,7 @@ describe("SqliteSessionStorage", () => {
         timestamp: new Date().toISOString(),
         targetId: "e1",
         label: "my-label",
-      })
+      }),
     );
 
     const label = await Effect.runPromise(storage.getLabel(id));

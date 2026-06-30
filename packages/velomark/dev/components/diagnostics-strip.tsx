@@ -13,9 +13,7 @@ function selectionLabel(probeState: SelectionProbeState): string {
   if (!probeState.hasSelection) {
     return "No";
   }
-  return probeState.anchorNodeConnected && !probeState.anchorBlockReplaced
-    ? "Yes"
-    : "No";
+  return probeState.anchorNodeConnected && !probeState.anchorBlockReplaced ? "Yes" : "No";
 }
 
 export const DiagnosticsStrip: Component<DiagnosticsStripProps> = (props) => {
@@ -37,9 +35,7 @@ export const DiagnosticsStrip: Component<DiagnosticsStripProps> = (props) => {
   return (
     <section class="flex min-w-0 flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-xs">
       <header class="flex flex-col gap-1">
-        <h2 class="font-semibold text-foreground text-lg tracking-tight">
-          Diagnostics
-        </h2>
+        <h2 class="font-semibold text-foreground text-lg tracking-tight">Diagnostics</h2>
         <p class="text-muted-foreground text-sm leading-6">
           Compact reuse and stability signals while the renderer updates.
         </p>
@@ -52,9 +48,7 @@ export const DiagnosticsStrip: Component<DiagnosticsStripProps> = (props) => {
               <dt class="font-medium text-muted-foreground text-xs uppercase tracking-[0.12em]">
                 {metric.label}
               </dt>
-              <dd class="mt-1 font-semibold text-foreground text-sm">
-                {metric.value}
-              </dd>
+              <dd class="mt-1 font-semibold text-foreground text-sm">{metric.value}</dd>
             </div>
           )}
         </For>

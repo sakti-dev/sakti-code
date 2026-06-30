@@ -1,8 +1,4 @@
-import {
-  type AssistantMessage,
-  isContextOverflow,
-  type Model,
-} from "@sakti-code/llm";
+import { type AssistantMessage, isContextOverflow, type Model } from "@sakti-code/llm";
 import { Effect } from "effect";
 import {
   type CompactionSettings,
@@ -103,9 +99,7 @@ export interface CheckCompactionInput {
  * stale-usage guard → overflow (`isContextOverflow`, `willRetry =
  * stopReason !== "stop"`) → threshold with the zero-usage fallback.
  */
-export function checkCompaction(
-  input: CheckCompactionInput
-): CompactionDecision {
+export function checkCompaction(input: CheckCompactionInput): CompactionDecision {
   const { message, settings } = input;
 
   if (!settings.enabled) {
@@ -128,10 +122,7 @@ export function checkCompaction(
 
   // Case 1: overflow. willRetry is false for a silent stop-overflow (the answer
   // already completed; continue() can't resume from it) and true for an error.
-  if (
-    input.contextWindow > 0 &&
-    isContextOverflow(message, input.contextWindow)
-  ) {
+  if (input.contextWindow > 0 && isContextOverflow(message, input.contextWindow)) {
     return {
       action: "compact",
       reason: "overflow",
@@ -155,9 +146,7 @@ export function checkCompaction(
   // Case 2: threshold. For error/zero-usage messages, estimate from the
   // transcript so persistent API failures or malformed zero-usage responses can
   // still compact (pi agent-session.ts:1876-1900).
-  const directContextTokens = message.usage
-    ? calculateContextTokens(message.usage)
-    : 0;
+  const directContextTokens = message.usage ? calculateContextTokens(message.usage) : 0;
   let contextTokens: number;
   if (message.stopReason === "error" || directContextTokens === 0) {
     const estimate = estimateContextTokens(input.messages);
@@ -169,8 +158,7 @@ export function checkCompaction(
       usageMsg !== undefined &&
       input.latestCompactionTimestamp !== undefined &&
       usageMsg.role === "assistant" &&
-      (usageMsg as AssistantMessage).timestamp <=
-        input.latestCompactionTimestamp
+      (usageMsg as AssistantMessage).timestamp <= input.latestCompactionTimestamp
     ) {
       return { action: "none" }; // Usage source is pre-compaction (stale).
     }
@@ -238,7 +226,7 @@ export type RunCompactionOutcome =
  * cheaper and preserves full conversational flow with elided tool output.
  */
 export const runAutoCompactionEffect = (
-  deps: RunCompactionDeps
+  deps: RunCompactionDeps,
 ): Effect.Effect<RunCompactionOutcome, SessionError> =>
   Effect.gen(function* () {
     const entries: SessionTreeEntry[] = yield* deps.session.getBranch();
@@ -261,19 +249,12 @@ export const runAutoCompactionEffect = (
       reserveTokens: deps.settings.reserveTokens,
     });
     if (skip && !prep.isSplitTurn) {
-      const conversationText = serializeConversation(
-        convertToLlm(prep.messagesToSummarize)
-      );
+      const conversationText = serializeConversation(convertToLlm(prep.messagesToSummarize));
       const summary = `[context retained with stale tool output elided — ${prep.pruneStats.results} result(s) pruned, no summary needed]\n\n${conversationText}`;
-      yield* deps.session.appendCompaction(
-        summary,
-        prep.firstKeptEntryId,
-        prep.tokensBefore,
-        {
-          prunedResults: prep.pruneStats.results,
-          prunedChars: prep.pruneStats.savedChars,
-        }
-      );
+      yield* deps.session.appendCompaction(summary, prep.firstKeptEntryId, prep.tokensBefore, {
+        prunedResults: prep.pruneStats.results,
+        prunedChars: prep.pruneStats.savedChars,
+      });
       return {
         ok: true,
         summary,
@@ -282,17 +263,10 @@ export const runAutoCompactionEffect = (
       };
     }
 
-    const result = yield* compactEffect(
-      preparation.success,
-      deps.model,
-      deps.apiKey,
-      {
-        prompts: deps.prompts,
-        ...(deps.thinkingLevel === undefined
-          ? {}
-          : { thinkingLevel: deps.thinkingLevel }),
-      }
-    );
+    const result = yield* compactEffect(preparation.success, deps.model, deps.apiKey, {
+      prompts: deps.prompts,
+      ...(deps.thinkingLevel === undefined ? {} : { thinkingLevel: deps.thinkingLevel }),
+    });
     if (isFailure(result)) {
       return { ok: false, errorMessage: result.failure.message };
     }
@@ -301,7 +275,7 @@ export const runAutoCompactionEffect = (
       result.success.summary,
       result.success.firstKeptEntryId,
       result.success.tokensBefore,
-      result.success.details
+      result.success.details,
     );
 
     return {
@@ -313,9 +287,7 @@ export const runAutoCompactionEffect = (
   });
 
 /** @migration Promise wrapper — removes when callers migrate to Effect. */
-export async function runAutoCompaction(
-  deps: RunCompactionDeps
-): Promise<RunCompactionOutcome> {
+export async function runAutoCompaction(deps: RunCompactionDeps): Promise<RunCompactionOutcome> {
   return Effect.runPromise(runAutoCompactionEffect(deps));
 }
 
@@ -325,18 +297,10 @@ export async function runAutoCompaction(
  * (enabled true, reserve 16384, keepRecent 20000). The legacy `auto_compaction`
  * key (previously dead config) is resurrected as the enabled toggle.
  */
-export function parseCompactionSettings(
-  settings: Record<string, string>
-): CompactionSettings {
+export function parseCompactionSettings(settings: Record<string, string>): CompactionSettings {
   return {
     enabled: settings.auto_compaction !== "false",
-    reserveTokens: Number.parseInt(
-      settings.compaction_reserve_tokens ?? "16384",
-      10
-    ),
-    keepRecentTokens: Number.parseInt(
-      settings.compaction_keep_recent_tokens ?? "20000",
-      10
-    ),
+    reserveTokens: Number.parseInt(settings.compaction_reserve_tokens ?? "16384", 10),
+    keepRecentTokens: Number.parseInt(settings.compaction_keep_recent_tokens ?? "20000", 10),
   };
 }

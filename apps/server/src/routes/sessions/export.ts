@@ -7,7 +7,7 @@ function renderHtmlExport(
   sessionTitle: string | null,
   projectName: string,
   sessionCreatedAt: number,
-  messages: Array<{ role: string; content: string; createdAt: number }>
+  messages: Array<{ role: string; content: string; createdAt: number }>,
 ): string {
   const title = sessionTitle || "Session Export";
   const date = new Date(sessionCreatedAt).toISOString().slice(0, 10);
@@ -25,9 +25,7 @@ function renderHtmlExport(
       const dateStr = new Date(m.createdAt).toLocaleString();
       const collapsed = m.role === "tool" ? " collapsed" : "";
       const copyBtn =
-        m.role === "assistant"
-          ? `<button class="copy-btn" type="button">Copy</button>`
-          : "";
+        m.role === "assistant" ? `<button class="copy-btn" type="button">Copy</button>` : "";
 
       return `
         <div class="message ${roleClass}">
@@ -127,36 +125,29 @@ function flattenContent(content: unknown): string {
   return "";
 }
 
-export const exportRoutes = new Hono()
-  .basePath("/sessions")
-  .get("/:id/export-html", async (c) => {
-    const ctx = getCtx(c);
-    const id = c.req.param("id");
-    const session = ctx.repos.sessions.findById(id);
-    if (!session) {
-      return c.json({ error: "Not found" }, 404);
-    }
+export const exportRoutes = new Hono().basePath("/sessions").get("/:id/export-html", async (c) => {
+  const ctx = getCtx(c);
+  const id = c.req.param("id");
+  const session = ctx.repos.sessions.findById(id);
+  if (!session) {
+    return c.json({ error: "Not found" }, 404);
+  }
 
-    const project = ctx.repos.projects.findById(session.projectId);
-    const projectName = project?.name ?? "Unknown";
+  const project = ctx.repos.projects.findById(session.projectId);
+  const projectName = project?.name ?? "Unknown";
 
-    const storage = createSessionStorage(ctx, id);
-    const leafId = await Effect.runPromise(storage.getLeafId());
-    const entries = await Effect.runPromise(storage.getPathToRoot(leafId));
-    const { messages: agentMessages } = buildSessionContextFromEntries(entries);
+  const storage = createSessionStorage(ctx, id);
+  const leafId = await Effect.runPromise(storage.getLeafId());
+  const entries = await Effect.runPromise(storage.getPathToRoot(leafId));
+  const { messages: agentMessages } = buildSessionContextFromEntries(entries);
 
-    const messagesData = agentMessages.map((m) => ({
-      role: m.role,
-      content: flattenContent((m as { content: unknown }).content),
-      createdAt: (m as { timestamp: number }).timestamp ?? session.createdAt,
-    }));
+  const messagesData = agentMessages.map((m) => ({
+    role: m.role,
+    content: flattenContent((m as { content: unknown }).content),
+    createdAt: (m as { timestamp: number }).timestamp ?? session.createdAt,
+  }));
 
-    const html = renderHtmlExport(
-      session.title,
-      projectName,
-      session.createdAt,
-      messagesData
-    );
+  const html = renderHtmlExport(session.title, projectName, session.createdAt, messagesData);
 
-    return c.html(html);
-  });
+  return c.html(html);
+});

@@ -1,13 +1,6 @@
 import { render } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { ReplayState } from "../../../stores/workspace/ui-signals.ts";
 import { DevToolbar } from "../dev-toolbar.tsx";
 

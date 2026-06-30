@@ -5,7 +5,7 @@ import { renderToolInventory } from "./tool-inventory";
 
 export function formatSkillsForSystemPrompt(
   skills: Skill[],
-  skillsInstructions: SkillsInstructions
+  skillsInstructions: SkillsInstructions,
 ): string {
   const visibleSkills = skills.filter((skill) => !skill.disableModelInvocation);
   if (visibleSkills.length === 0) {
@@ -17,9 +17,7 @@ export function formatSkillsForSystemPrompt(
   for (const skill of visibleSkills) {
     lines.push("  <skill>");
     lines.push(`    <name>${escapeXml(skill.name)}</name>`);
-    lines.push(
-      `    <description>${escapeXml(skill.description)}</description>`
-    );
+    lines.push(`    <description>${escapeXml(skill.description)}</description>`);
     lines.push(`    <location>${escapeXml(skill.filePath)}</location>`);
     lines.push("  </skill>");
   }
@@ -41,7 +39,7 @@ export function appendSkillsBlock(
   baseSystemPrompt: string,
   skills: readonly Skill[],
   hasRead: boolean,
-  skillsInstructions: SkillsInstructions
+  skillsInstructions: SkillsInstructions,
 ): string {
   if (!hasRead) {
     return baseSystemPrompt;
@@ -65,7 +63,7 @@ export function appendSkillsBlock(
  */
 export function stripSkillsBlock(
   composedSystemPrompt: string,
-  skillsInstructions: SkillsInstructions
+  skillsInstructions: SkillsInstructions,
 ): string {
   if (!skillsInstructions) {
     return composedSystemPrompt;
@@ -119,7 +117,7 @@ export function composeSystemPrompt(
   tools: readonly AgentTool[],
   skills: readonly Skill[],
   hasRead: boolean,
-  skillsInstructions: SkillsInstructions
+  skillsInstructions: SkillsInstructions,
 ): string {
   const parts: string[] = [baseSystemPrompt];
 
@@ -129,10 +127,7 @@ export function composeSystemPrompt(
   }
 
   if (hasRead) {
-    const skillsBlock = formatSkillsForSystemPrompt(
-      [...skills],
-      skillsInstructions
-    );
+    const skillsBlock = formatSkillsForSystemPrompt([...skills], skillsInstructions);
     if (skillsBlock) {
       parts.push(skillsBlock);
     }

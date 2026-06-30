@@ -1,9 +1,6 @@
 import type { AgentDefinition } from "@sakti-code/agent";
 import { describe, expect, it } from "vite-plus/test";
-import {
-  resolveAgentByName,
-  resolveSessionAgentForKind,
-} from "../resolve-agent.ts";
+import { resolveAgentByName, resolveSessionAgentForKind } from "../resolve-agent.ts";
 
 // Sample loaded-from-project agents for the override tests.
 const PROJECT_AGENTS: AgentDefinition[] = [
@@ -46,11 +43,7 @@ describe("resolveSessionAgentForKind", () => {
   });
 
   it("per-session override to 'custom' (loaded from project) wins", () => {
-    const { agent } = resolveSessionAgentForKind(
-      "task",
-      PROJECT_AGENTS,
-      "custom"
-    );
+    const { agent } = resolveSessionAgentForKind("task", PROJECT_AGENTS, "custom");
     expect(agent.name).toBe("custom");
     expect(agent.systemPrompt).toBe("PROJECT CUSTOM");
   });

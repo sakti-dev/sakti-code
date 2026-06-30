@@ -49,11 +49,7 @@ describe("LLMError", () => {
     const result = await Effect.runPromise(
       Effect.gen(function* () {
         return yield* new LLMError({ message: "yielded" });
-      }).pipe(
-        Effect.catchTag("LLMError", (e) =>
-          Effect.succeed(`caught: ${e.message}`)
-        )
-      )
+      }).pipe(Effect.catchTag("LLMError", (e) => Effect.succeed(`caught: ${e.message}`))),
     );
     expect(result).toBe("caught: yielded");
   });
@@ -84,9 +80,7 @@ describe("streamEffect", () => {
   it("fails with LLMError when underlying stream rejects", async () => {
     vi.mocked(mockedStream).mockRejectedValueOnce(new Error("network down"));
 
-    const error = await Effect.runPromise(
-      Effect.flip(streamEffect(makeStreamRequest()))
-    );
+    const error = await Effect.runPromise(Effect.flip(streamEffect(makeStreamRequest())));
     expect(error._tag).toBe("LLMError");
     expect(error.message).toContain("stream failed");
   });
@@ -108,18 +102,14 @@ describe("completeEffect", () => {
     };
     vi.mocked(mockedComplete).mockResolvedValueOnce(fakeResult);
 
-    const result = await Effect.runPromise(
-      completeEffect(makeCompleteRequest())
-    );
+    const result = await Effect.runPromise(completeEffect(makeCompleteRequest()));
     expect(result).toBe(fakeResult);
   });
 
   it("fails with LLMError when underlying complete rejects", async () => {
     vi.mocked(mockedComplete).mockRejectedValueOnce(new Error("provider 500"));
 
-    const error = await Effect.runPromise(
-      Effect.flip(completeEffect(makeCompleteRequest()))
-    );
+    const error = await Effect.runPromise(Effect.flip(completeEffect(makeCompleteRequest())));
     expect(error._tag).toBe("LLMError");
     expect(error.message).toContain("complete failed");
   });

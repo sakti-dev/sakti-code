@@ -1,9 +1,4 @@
-import {
-  createContext,
-  onCleanup,
-  type ParentComponent,
-  useContext,
-} from "solid-js";
+import { createContext, onCleanup, type ParentComponent, useContext } from "solid-js";
 import { api, type Client } from "~/lib/api";
 import { type Actions, createActions } from "./server/actions.ts";
 import { createServerStore, type ServerStore } from "./server/server-store.ts";
@@ -47,9 +42,7 @@ export const StoreProvider: ParentComponent = (props) => {
   });
 
   return (
-    <StoreContext.Provider
-      value={{ server, ws, actions, sessions, terminals, api: client }}
-    >
+    <StoreContext.Provider value={{ server, ws, actions, sessions, terminals, api: client }}>
       {props.children}
     </StoreContext.Provider>
   );

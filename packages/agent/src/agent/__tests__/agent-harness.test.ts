@@ -18,11 +18,7 @@ import { calculateTool } from "../../__tests__/utils/calculate";
 import { getCurrentTimeTool } from "../../__tests__/utils/get-current-time";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
 import { AgentHarness } from "../../agent/agent-harness";
-import type {
-  AgentHarnessEvent,
-  PromptTemplate,
-  Skill,
-} from "../../harness-types";
+import type { AgentHarnessEvent, PromptTemplate, Skill } from "../../harness-types";
 import { composeSystemPrompt } from "../../resources/system-prompt";
 import { createTestSession } from "../../session/__tests__/session-test-utils";
 import type { AgentMessage, AgentTool } from "../../types";
@@ -37,21 +33,13 @@ interface AppPromptTemplate extends PromptTemplate {
 
 const registrations: FauxProviderRegistration[] = [];
 
-function textFromUserMessages(
-  messages: Array<{ role: string; content: unknown }>
-): string[] {
+function textFromUserMessages(messages: Array<{ role: string; content: unknown }>): string[] {
   return messages.flatMap((message) => {
     if (message.role !== "user") return [];
     if (typeof message.content === "string") return [message.content];
     if (!Array.isArray(message.content)) return [];
     return message.content.flatMap((part) => {
-      if (
-        !part ||
-        typeof part !== "object" ||
-        !("type" in part) ||
-        part.type !== "text"
-      )
-        return [];
+      if (!part || typeof part !== "object" || !("type" in part) || part.type !== "text") return [];
       return "text" in part && typeof part.text === "string" ? [part.text] : [];
     });
   });
@@ -105,21 +93,15 @@ describe("AgentHarness", () => {
     const userCounts: number[] = [];
     registration.setResponses([
       (req: StreamRequest) => {
-        userCounts.push(
-          req.messages.filter((message) => message.role === "user").length
-        );
+        userCounts.push(req.messages.filter((message) => message.role === "user").length);
         return fauxAssistantMessage("first");
       },
       (req: StreamRequest) => {
-        userCounts.push(
-          req.messages.filter((message) => message.role === "user").length
-        );
+        userCounts.push(req.messages.filter((message) => message.role === "user").length);
         return fauxAssistantMessage("second");
       },
       (req: StreamRequest) => {
-        userCounts.push(
-          req.messages.filter((message) => message.role === "user").length
-        );
+        userCounts.push(req.messages.filter((message) => message.role === "user").length);
         return fauxAssistantMessage("third");
       },
     ]);
@@ -139,11 +121,7 @@ describe("AgentHarness", () => {
       if (event.type === "queue_update") {
         steerQueueLengths.push(event.steer.length);
       }
-      if (
-        event.type === "message_start" &&
-        event.message.role === "assistant" &&
-        !queued
-      ) {
+      if (event.type === "message_start" && event.message.role === "assistant" && !queued) {
         queued = true;
         harness.steer("one");
         harness.steer("two");
@@ -188,15 +166,11 @@ describe("AgentHarness", () => {
 
     await harness.prompt("hello");
 
-    const persistedText = (
-      await Effect.runPromise(session.getEntries())
-    ).flatMap((entry) => {
+    const persistedText = (await Effect.runPromise(session.getEntries())).flatMap((entry) => {
       if (entry.type !== "message" || entry.message.role !== "user") return [];
       const content = entry.message.content;
       if (typeof content === "string") return [content];
-      return content.flatMap((part) =>
-        part.type === "text" ? [part.text] : []
-      );
+      return content.flatMap((part) => (part.type === "text" ? [part.text] : []));
     });
     expect(requestText).toEqual(["hello", "hook"]);
     expect(persistedText).toEqual(["hello", "hook"]);
@@ -271,21 +245,15 @@ describe("AgentHarness", () => {
     const userCounts: number[] = [];
     registration.setResponses([
       (req: StreamRequest) => {
-        userCounts.push(
-          req.messages.filter((message) => message.role === "user").length
-        );
+        userCounts.push(req.messages.filter((message) => message.role === "user").length);
         return fauxAssistantMessage("first");
       },
       (req: StreamRequest) => {
-        userCounts.push(
-          req.messages.filter((message) => message.role === "user").length
-        );
+        userCounts.push(req.messages.filter((message) => message.role === "user").length);
         return fauxAssistantMessage("second");
       },
       (req: StreamRequest) => {
-        userCounts.push(
-          req.messages.filter((message) => message.role === "user").length
-        );
+        userCounts.push(req.messages.filter((message) => message.role === "user").length);
         return fauxAssistantMessage("third");
       },
     ]);
@@ -305,11 +273,7 @@ describe("AgentHarness", () => {
       if (event.type === "queue_update") {
         followUpQueueLengths.push(event.followUp.length);
       }
-      if (
-        event.type === "message_start" &&
-        event.message.role === "assistant" &&
-        !queued
-      ) {
+      if (event.type === "message_start" && event.message.role === "assistant" && !queued) {
         queued = true;
         harness.followUp("one");
         harness.followUp("two");
@@ -325,9 +289,7 @@ describe("AgentHarness", () => {
   it("settles thrown hook failures with persisted assistant error messages", async () => {
     const registration = registerFauxStreamProvider();
     registrations.push(registration);
-    registration.setResponses([
-      () => fauxAssistantMessage("should not be used"),
-    ]);
+    registration.setResponses([() => fauxAssistantMessage("should not be used")]);
     const session = await createTestSession();
     const harness = new AgentHarness({
       compactionPrompts: TEST_COMPACTION_PROMPTS,
@@ -352,9 +314,7 @@ describe("AgentHarness", () => {
     });
 
     const entries = await Effect.runPromise(session.getEntries());
-    const messages = entries.flatMap((entry) =>
-      entry.type === "message" ? [entry.message] : []
-    );
+    const messages = entries.flatMap((entry) => (entry.type === "message" ? [entry.message] : []));
     expect(response.stopReason).toBe("error");
     expect(response.errorMessage).toBe("context exploded");
     expect(messages[0]?.role).toBe("user");
@@ -386,14 +346,8 @@ describe("AgentHarness", () => {
           tools: Object.keys(req.tools ?? {}),
         });
         return fauxAssistantMessageWithContent(
-          [
-            fauxToolCall(
-              "calculate",
-              { expression: "1 + 1" },
-              { id: "call-1" }
-            ),
-          ],
-          "toolUse"
+          [fauxToolCall("calculate", { expression: "1 + 1" }, { id: "call-1" })],
+          "toolUse",
         );
       },
       (req: StreamRequest) => {
@@ -425,8 +379,7 @@ describe("AgentHarness", () => {
           },
         ],
       },
-      systemPrompt: ({ resources }) =>
-        resources.skills?.[0]?.content ?? "missing prompt",
+      systemPrompt: ({ resources }) => resources.skills?.[0]?.content ?? "missing prompt",
       tools: [calculateTool],
     });
     harness.subscribe((event) => {
@@ -443,10 +396,7 @@ describe("AgentHarness", () => {
             },
           ],
         });
-        void harness.setTools(
-          [calculateTool, getCurrentTimeTool],
-          [getCurrentTimeTool.name]
-        );
+        void harness.setTools([calculateTool, getCurrentTimeTool], [getCurrentTimeTool.name]);
       }
     });
 
@@ -504,7 +454,7 @@ describe("AgentHarness", () => {
 
     const entries = await Effect.runPromise(session.getEntries());
     const roles = entries.flatMap((entry) =>
-      entry.type === "message" ? [entry.message.role] : []
+      entry.type === "message" ? [entry.message.role] : [],
     );
     expect(roles).toEqual(["user", "assistant", "custom"]);
   });
@@ -551,14 +501,8 @@ describe("AgentHarness", () => {
     registration.setResponses([
       () =>
         fauxAssistantMessageWithContent(
-          [
-            fauxToolCall(
-              "calculate",
-              { expression: "2 + 2" },
-              { id: "call-1" }
-            ),
-          ],
-          "toolUse"
+          [fauxToolCall("calculate", { expression: "2 + 2" }, { id: "call-1" })],
+          "toolUse",
         ),
     ]);
     const session = await createTestSession();
@@ -598,11 +542,9 @@ describe("AgentHarness", () => {
     await harness.prompt("hello");
 
     const toolResult = (await Effect.runPromise(session.getEntries())).find(
-      (entry) => entry.type === "message" && entry.message.role === "toolResult"
+      (entry) => entry.type === "message" && entry.message.role === "toolResult",
     );
-    expect(seenToolCalls).toEqual([
-      { id: "call-1", name: "calculate", expression: "2 + 2" },
-    ]);
+    expect(seenToolCalls).toEqual([{ id: "call-1", name: "calculate", expression: "2 + 2" }]);
     expect(toolResult).toMatchObject({
       type: "message",
       message: {
@@ -656,9 +598,7 @@ describe("AgentHarness", () => {
           previousActiveToolNames: event.previousActiveToolNames,
           source: event.source,
         });
-        expect(harness.getActiveTools().map((tool) => tool.name)).toEqual(
-          event.activeToolNames
-        );
+        expect(harness.getActiveTools().map((tool) => tool.name)).toEqual(event.activeToolNames);
       }
     });
 
@@ -666,30 +606,21 @@ describe("AgentHarness", () => {
     const activeTools = harness.getActiveTools();
     tools.pop();
     activeTools.pop();
-    expect(harness.getTools().map((tool) => tool.name)).toEqual([
-      "inspect",
-      "search",
-    ]);
-    expect(harness.getActiveTools().map((tool) => tool.source)).toEqual([
-      "builtin",
-    ]);
+    expect(harness.getTools().map((tool) => tool.name)).toEqual(["inspect", "search"]);
+    expect(harness.getActiveTools().map((tool) => tool.source)).toEqual(["builtin"]);
 
     await harness.setActiveTools(["search"]);
     await harness.setTools([searchTool], ["search"]);
     await expect(harness.setActiveTools(["missing"])).rejects.toMatchObject({
       code: "invalid_argument",
     });
-    await expect(
-      harness.setActiveTools(["search", "search"])
-    ).rejects.toMatchObject({
+    await expect(harness.setActiveTools(["search", "search"])).rejects.toMatchObject({
       code: "invalid_argument",
     });
     await expect(harness.setTools([inspectTool])).rejects.toMatchObject({
       code: "invalid_argument",
     });
-    await expect(
-      harness.setTools([inspectTool, inspectTool], ["inspect"])
-    ).rejects.toMatchObject({
+    await expect(harness.setTools([inspectTool, inspectTool], ["inspect"])).rejects.toMatchObject({
       code: "invalid_argument",
     });
 
@@ -709,15 +640,9 @@ describe("AgentHarness", () => {
         source: "set",
       },
     ]);
-    expect(harness.getTools().map((tool) => tool.source)).toEqual([
-      "extension",
-    ]);
-    expect(harness.getActiveTools().map((tool) => tool.name)).toEqual([
-      "search",
-    ]);
-    expect(
-      (await Effect.runPromise(session.buildContext())).activeToolNames
-    ).toEqual(["search"]);
+    expect(harness.getTools().map((tool) => tool.source)).toEqual(["extension"]);
+    expect(harness.getActiveTools().map((tool) => tool.name)).toEqual(["search"]);
+    expect((await Effect.runPromise(session.buildContext())).activeToolNames).toEqual(["search"]);
   });
 
   it("validates constructor tool names", async () => {
@@ -735,7 +660,7 @@ describe("AgentHarness", () => {
           model,
           tools: [calculateTool],
           activeToolNames: ["missing"],
-        })
+        }),
     ).toThrow(/Unknown tool/);
     expect(
       () =>
@@ -748,7 +673,7 @@ describe("AgentHarness", () => {
           model,
           tools: [calculateTool, calculateTool],
           activeToolNames: [calculateTool.name],
-        })
+        }),
     ).toThrow(/Duplicate tool/);
     expect(
       () =>
@@ -761,7 +686,7 @@ describe("AgentHarness", () => {
           model,
           tools: [calculateTool],
           activeToolNames: [calculateTool.name, calculateTool.name],
-        })
+        }),
     ).toThrow(/Duplicate active tool/);
   });
 
@@ -877,9 +802,7 @@ describe("AgentHarness", () => {
     const inFlight = harness.prompt("first");
     // Microtask let the run start.
     await Promise.resolve();
-    const secondResult = await Effect.runPromise(
-      harness.promptEffect("second").pipe(Effect.exit)
-    );
+    const secondResult = await Effect.runPromise(harness.promptEffect("second").pipe(Effect.exit));
     expect(secondResult._tag).toBe("Failure");
     // Clean up: let the in-flight turn finish so the harness settles.
     await inFlight;
@@ -907,9 +830,7 @@ describe("AgentHarness", () => {
     // published before the subscription exists and we'd miss it. This is the
     // documented PubSub semantics, not a bug in the harness.
     const drainFiber = Effect.runFork(
-      Stream.runForEach(stream, (e) =>
-        Effect.sync(() => events.push(e as AgentHarnessEvent))
-      )
+      Stream.runForEach(stream, (e) => Effect.sync(() => events.push(e as AgentHarnessEvent))),
     );
     // Yield a microtask so the drain's subscription is registered before the
     // prompt starts publishing.
@@ -1023,7 +944,7 @@ describe("scheduleSystemPromptRefresh", () => {
         role: "user",
         content: [{ type: "text", text: "seed message" }],
         timestamp: Date.now(),
-      })
+      }),
     );
     const entries = await Effect.runPromise(session.getEntries());
     const firstKeptEntryId = entries[0]!.id;
@@ -1111,7 +1032,7 @@ describe("announceSkillAdded", () => {
     registration.setResponses([
       (req: StreamRequest) => {
         const userText = textFromUserMessages(
-          req.messages as Array<{ role: string; content: unknown }>
+          req.messages as Array<{ role: string; content: unknown }>,
         ).join("\n");
         captured.push(userText);
         return fauxAssistantMessage("ok");
@@ -1157,7 +1078,7 @@ describe("softDisableTool", () => {
         capturedRequests.push(req);
         return fauxAssistantMessageWithContent(
           [fauxToolCall("calculate", { expression: "1+1" }, { id: "c1" })],
-          "toolUse"
+          "toolUse",
         );
       },
       () => fauxAssistantMessage("done"),
@@ -1176,9 +1097,7 @@ describe("softDisableTool", () => {
 
     harness.subscribe((event) => {
       if (event.type === "tool_execution_end" && event.isError) {
-        const text = (
-          event.result.content as Array<{ type: string; text?: string }>
-        )
+        const text = (event.result.content as Array<{ type: string; text?: string }>)
           .map((c) => (c.type === "text" ? (c.text ?? "") : ""))
           .join("");
         blockedResults.push(text);
@@ -1191,9 +1110,7 @@ describe("softDisableTool", () => {
 
     // Schema is still in the request (cache stays warm)
     expect(capturedRequests[0]?.tools).toBeDefined();
-    expect(Object.keys(capturedRequests[0]!.tools!).includes("calculate")).toBe(
-      true
-    );
+    expect(Object.keys(capturedRequests[0]!.tools!).includes("calculate")).toBe(true);
 
     // Execution was blocked with a clear reason
     expect(blockedResults.length).toBeGreaterThanOrEqual(1);
@@ -1220,9 +1137,7 @@ describe("softDisableTool", () => {
 
     harness.subscribe((event) => {
       if (event.type === "tool_result") {
-        const text = event.content
-          .map((c) => (c.type === "text" ? c.text : ""))
-          .join("");
+        const text = event.content.map((c) => (c.type === "text" ? c.text : "")).join("");
         toolResults.push(text);
       }
     });
@@ -1246,7 +1161,7 @@ describe("softDisableTool prompt refresh", () => {
       [calculateTool, getCurrentTimeTool],
       [],
       false,
-      TEST_SKILLS_INSTRUCTIONS
+      TEST_SKILLS_INSTRUCTIONS,
     );
 
     const harness = new AgentHarness({
@@ -1283,7 +1198,7 @@ describe("softDisableTool prompt refresh", () => {
       [calculateTool, getCurrentTimeTool],
       [],
       false,
-      TEST_SKILLS_INSTRUCTIONS
+      TEST_SKILLS_INSTRUCTIONS,
     );
 
     const harness = new AgentHarness({
@@ -1299,9 +1214,7 @@ describe("softDisableTool prompt refresh", () => {
     });
 
     harness.softDisableTool("calculate", "temporarily off");
-    expect(harness.getPendingSystemPromptRefresh()).not.toContain(
-      "# Tool: calculate"
-    );
+    expect(harness.getPendingSystemPromptRefresh()).not.toContain("# Tool: calculate");
 
     harness.softEnableTool("calculate");
     const pending = harness.getPendingSystemPromptRefresh();
@@ -1318,7 +1231,7 @@ describe("softDisableTool prompt refresh", () => {
       [calculateTool],
       [],
       false,
-      TEST_SKILLS_INSTRUCTIONS
+      TEST_SKILLS_INSTRUCTIONS,
     );
 
     const harness = new AgentHarness({
@@ -1362,7 +1275,7 @@ describe("softDisableTool prompt refresh", () => {
       [calculateTool, getCurrentTimeTool],
       [skill],
       true,
-      TEST_SKILLS_INSTRUCTIONS
+      TEST_SKILLS_INSTRUCTIONS,
     );
 
     const harness = new AgentHarness({
@@ -1418,7 +1331,7 @@ describe("softDisableTool prompt refresh", () => {
       allTools,
       [skill],
       true,
-      TEST_SKILLS_INSTRUCTIONS
+      TEST_SKILLS_INSTRUCTIONS,
     );
 
     const harness = new AgentHarness({
@@ -1482,10 +1395,7 @@ describe("swapTool", () => {
 
     // activeToolNames preserved
     const active = harness.getActiveTools();
-    expect(active.map((t) => t.name)).toEqual([
-      "calculate",
-      "get_current_time",
-    ]);
+    expect(active.map((t) => t.name)).toEqual(["calculate", "get_current_time"]);
   });
 
   it("schedules prompt refresh with the new tool description", async () => {
@@ -1498,7 +1408,7 @@ describe("swapTool", () => {
       [calculateTool, getCurrentTimeTool],
       [],
       false,
-      TEST_SKILLS_INSTRUCTIONS
+      TEST_SKILLS_INSTRUCTIONS,
     );
 
     const harness = new AgentHarness({
@@ -1539,9 +1449,9 @@ describe("swapTool", () => {
     registration.setResponses([
       (req: StreamRequest) => {
         capturedUserText.push(
-          textFromUserMessages(
-            req.messages as Array<{ role: string; content: unknown }>
-          ).join("\n")
+          textFromUserMessages(req.messages as Array<{ role: string; content: unknown }>).join(
+            "\n",
+          ),
         );
         return fauxAssistantMessage("ok");
       },
@@ -1588,10 +1498,7 @@ describe("swapTool", () => {
     });
 
     await expect(
-      harness.swapTool(
-        "calculate",
-        getCurrentTimeTool as unknown as typeof calculateTool
-      )
+      harness.swapTool("calculate", getCurrentTimeTool as unknown as typeof calculateTool),
     ).rejects.toThrow("must match");
   });
 
@@ -1615,9 +1522,7 @@ describe("swapTool", () => {
       name: "nonexistent",
     } as typeof calculateTool;
 
-    await expect(harness.swapTool("nonexistent", ghostTool)).rejects.toThrow(
-      "not found"
-    );
+    await expect(harness.swapTool("nonexistent", ghostTool)).rejects.toThrow("not found");
   });
 
   it("emits tools_update event with source swap", async () => {
@@ -1646,9 +1551,7 @@ describe("swapTool", () => {
 
     await harness.swapTool("calculate", newTool);
 
-    const update = events.find(
-      (e) => e.type === "tools_update" && e.source === "swap"
-    );
+    const update = events.find((e) => e.type === "tools_update" && e.source === "swap");
     expect(update).toBeDefined();
     expect(update?.type).toBe("tools_update");
     if (update?.type === "tools_update") {
@@ -1665,9 +1568,9 @@ describe("addSkill / removeSkill", () => {
     registration.setResponses([
       (req: StreamRequest) => {
         capturedUserText.push(
-          textFromUserMessages(
-            req.messages as Array<{ role: string; content: unknown }>
-          ).join("\n")
+          textFromUserMessages(req.messages as Array<{ role: string; content: unknown }>).join(
+            "\n",
+          ),
         );
         return fauxAssistantMessage("ok");
       },
@@ -1692,9 +1595,7 @@ describe("addSkill / removeSkill", () => {
       filePath: "/skills/new/SKILL.md",
     });
 
-    expect(harness.getResources().skills?.map((s) => s.name)).toEqual([
-      "new-skill",
-    ]);
+    expect(harness.getResources().skills?.map((s) => s.name)).toEqual(["new-skill"]);
 
     await harness.prompt("hello");
 
@@ -1896,7 +1797,7 @@ describe("*Effect cores (Phase H1)", () => {
         role: "user",
         content: [{ type: "text", text: "seed message" }],
         timestamp: Date.now(),
-      })
+      }),
     );
     const entries = await Effect.runPromise(session.getEntries());
     const firstKeptEntryId = entries[0]!.id;
@@ -1929,7 +1830,7 @@ describe("*Effect cores (Phase H1)", () => {
         role: "user",
         content: [{ type: "text", text: "seed message" }],
         timestamp: Date.now(),
-      })
+      }),
     );
     const harness = new AgentHarness({
       compactionPrompts: TEST_COMPACTION_PROMPTS,
@@ -1989,8 +1890,6 @@ describe("Effect-native prompt emit ordering (Phase H2 regression)", () => {
 
     expect(fromEffect).toEqual(fromPromise);
     // Sanity: canonical sequence present
-    expect(fromEffect).toEqual(
-      expect.arrayContaining(["agent_start", "turn_start", "agent_end"])
-    );
+    expect(fromEffect).toEqual(expect.arrayContaining(["agent_start", "turn_start", "agent_end"]));
   });
 });

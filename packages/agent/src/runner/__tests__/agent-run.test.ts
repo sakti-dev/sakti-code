@@ -18,15 +18,9 @@ import { parseCompactionSettings } from "../../compaction/auto-compaction.ts";
 import type { StuckGuardState } from "../../compaction/retry-loop.ts";
 import { parseRetrySettings } from "../../compaction/retry-loop.ts";
 import type { SessionShape } from "../../session/session.ts";
-import {
-  PromiseSession,
-  promiseSessionAsShape,
-} from "../../session/session.ts";
+import { PromiseSession, promiseSessionAsShape } from "../../session/session.ts";
 import type { SessionStorageShape } from "../../session/storage.ts";
-import {
-  InMemorySessionStorageLive,
-  SessionStorage,
-} from "../../session/storage.ts";
+import { InMemorySessionStorageLive, SessionStorage } from "../../session/storage.ts";
 import { type AgentRunDeps, runAgentRunEffect } from "../agent-run.ts";
 
 /**
@@ -41,7 +35,7 @@ async function makeSession(): Promise<{
   const storage = await Effect.runPromise(
     Effect.gen(function* () {
       return yield* SessionStorage;
-    }).pipe(Effect.provide(InMemorySessionStorageLive()))
+    }).pipe(Effect.provide(InMemorySessionStorageLive())),
   );
   const sessionInstance = new PromiseSession(storage);
   const sessionShape = promiseSessionAsShape(sessionInstance);
@@ -76,9 +70,7 @@ async function makeHarnessWithResponse(resources?: {
 }> {
   const registration = registerFauxStreamProvider();
   registrations.push(registration);
-  registration.setResponses([
-    (_req: StreamRequest) => fauxAssistantMessage("hi"),
-  ]);
+  registration.setResponses([(_req: StreamRequest) => fauxAssistantMessage("hi")]);
   const { sessionShape, storage } = await makeSession();
   const harness = new AgentHarness({
     env: new TestExecutionEnv("/tmp"),
@@ -92,12 +84,8 @@ async function makeHarnessWithResponse(resources?: {
       ? {}
       : {
           resources: {
-            ...(resources.skills === undefined
-              ? {}
-              : { skills: resources.skills }),
-            ...(resources.templates === undefined
-              ? {}
-              : { promptTemplates: resources.templates }),
+            ...(resources.skills === undefined ? {} : { skills: resources.skills }),
+            ...(resources.templates === undefined ? {} : { promptTemplates: resources.templates }),
           },
         }),
   });
@@ -139,16 +127,11 @@ function baseDeps(overrides: BaseDepsOverrides) {
     templates: overrides.templates ?? [],
     cwd: "/tmp",
     loadStuckGuard:
-      overrides.loadStuckGuard ??
-      (() => Effect.succeed({ consecutiveCompacts: 0, paused: false })),
+      overrides.loadStuckGuard ?? (() => Effect.succeed({ consecutiveCompacts: 0, paused: false })),
     persistStuckGuard: overrides.persistStuckGuard ?? (() => Effect.void),
     emit: overrides.emit ?? (() => {}),
-    ...(overrides.registerRun === undefined
-      ? {}
-      : { registerRun: overrides.registerRun }),
-    ...(overrides.unregisterRun === undefined
-      ? {}
-      : { unregisterRun: overrides.unregisterRun }),
+    ...(overrides.registerRun === undefined ? {} : { registerRun: overrides.registerRun }),
+    ...(overrides.unregisterRun === undefined ? {} : { unregisterRun: overrides.unregisterRun }),
   };
 }
 
@@ -164,8 +147,8 @@ describe("runAgentRunEffect", () => {
           sessionShape,
           storage,
           emit: (e) => events.push(e),
-        })
-      )
+        }),
+      ),
     );
 
     expect(events.length).toBeGreaterThan(0);
@@ -181,7 +164,7 @@ describe("runAgentRunEffect registerRun / unregisterRun hooks", () => {
         harness: AgentHarnessType;
         retryAbort: AbortController;
         unsubscribe: () => void;
-      }) => true
+      }) => true,
     );
     const unregistered = vi.fn();
 
@@ -193,8 +176,8 @@ describe("runAgentRunEffect registerRun / unregisterRun hooks", () => {
           storage,
           registerRun: registered,
           unregisterRun: unregistered,
-        })
-      )
+        }),
+      ),
     );
 
     expect(registered).toHaveBeenCalledOnce();
@@ -218,8 +201,8 @@ describe("runAgentRunEffect registerRun / unregisterRun hooks", () => {
           storage,
           registerRun: () => false,
           unregisterRun: unregistered,
-        })
-      )
+        }),
+      ),
     );
 
     await expect(promise).rejects.toThrow(/already active/);
@@ -234,9 +217,7 @@ describe("runAgentRunEffect planFirstTurn dispatch", () => {
     const spy = vi.spyOn(harness, "promptEffect");
 
     await Effect.runPromise(
-      runAgentRunEffect(
-        baseDeps({ harness, sessionShape, storage, message: "hello world" })
-      )
+      runAgentRunEffect(baseDeps({ harness, sessionShape, storage, message: "hello world" })),
     );
 
     expect(spy).toHaveBeenCalled();
@@ -257,8 +238,8 @@ describe("runAgentRunEffect planFirstTurn dispatch", () => {
           storage,
           message: "/review",
           templates,
-        })
-      )
+        }),
+      ),
     );
 
     expect(spy).toHaveBeenCalledWith("review", []);
@@ -286,8 +267,8 @@ describe("runAgentRunEffect planFirstTurn dispatch", () => {
           storage,
           message: "skill:brainstorm hello",
           skills,
-        })
-      )
+        }),
+      ),
     );
 
     expect(spy).toHaveBeenCalledWith("brainstorm", "hello");
@@ -302,7 +283,7 @@ describe("runAgentRunEffect stuck-guard", () => {
         Effect.succeed({
           consecutiveCompacts: 0,
           paused: false,
-        }) as Effect.Effect<StuckGuardState, Error>
+        }) as Effect.Effect<StuckGuardState, Error>,
     );
 
     await Effect.runPromise(
@@ -312,8 +293,8 @@ describe("runAgentRunEffect stuck-guard", () => {
           sessionShape,
           storage,
           loadStuckGuard: loadSpy,
-        })
-      )
+        }),
+      ),
     );
 
     expect(loadSpy).toHaveBeenCalledOnce();

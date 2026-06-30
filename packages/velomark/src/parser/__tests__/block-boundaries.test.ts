@@ -87,7 +87,7 @@ describe("parseBlockBoundaries", () => {
 
   it("preserves quoted paragraph boundaries", () => {
     const blocks = parseBlockBoundaries(
-      ["> First quoted paragraph", ">", "> Second quoted paragraph"].join("\n")
+      ["> First quoted paragraph", ">", "> Second quoted paragraph"].join("\n"),
     );
 
     expect(blocks).toHaveLength(1);
@@ -99,9 +99,7 @@ describe("parseBlockBoundaries", () => {
   });
 
   it("parses task list item state", () => {
-    const blocks = parseBlockBoundaries(
-      ["- [ ] Todo", "- [x] Done"].join("\n")
-    );
+    const blocks = parseBlockBoundaries(["- [ ] Todo", "- [x] Done"].join("\n"));
 
     expect(blocks).toHaveLength(1);
     expect(blocks[0]?.kind).toBe("list");
@@ -116,7 +114,7 @@ describe("parseBlockBoundaries", () => {
 
   it("parses nested unordered lists inside list items", () => {
     const blocks = parseBlockBoundaries(
-      ["- Parent", "  - Child A", "  - Child B", "- Sibling"].join("\n")
+      ["- Parent", "  - Child A", "  - Child B", "- Sibling"].join("\n"),
     );
 
     expect(blocks).toHaveLength(1);
@@ -143,11 +141,7 @@ describe("parseBlockBoundaries", () => {
 
   it("parses table column alignment from the separator row", () => {
     const blocks = parseBlockBoundaries(
-      [
-        "| Left | Center | Right |",
-        "| :--- | :----: | ---: |",
-        "| A | B | C |",
-      ].join("\n")
+      ["| Left | Center | Right |", "| :--- | :----: | ---: |", "| A | B | C |"].join("\n"),
     );
 
     expect(blocks).toHaveLength(1);

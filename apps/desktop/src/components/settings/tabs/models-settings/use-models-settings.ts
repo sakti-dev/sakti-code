@@ -11,11 +11,7 @@ interface ProviderItem {
 
 const EMPTY_PROVIDERS: ProviderItem[] = [];
 
-async function setApiKey(
-  client: Client,
-  provider: string,
-  key: string
-): Promise<boolean> {
+async function setApiKey(client: Client, provider: string, key: string): Promise<boolean> {
   try {
     const res = await client.api.auth[":provider"].$post({
       param: { provider },
@@ -27,10 +23,7 @@ async function setApiKey(
   }
 }
 
-async function deleteApiKey(
-  client: Client,
-  provider: string
-): Promise<boolean> {
+async function deleteApiKey(client: Client, provider: string): Promise<boolean> {
   try {
     const res = await client.api.auth[":provider"].$delete({
       param: { provider },
@@ -44,41 +37,32 @@ async function deleteApiKey(
 export function useModelsSettings() {
   const { api: client } = useStore();
   const [isModalOpen, setIsModalOpen] = createSignal(false);
-  const [initialProviderId, setInitialProviderId] = createSignal<
-    string | undefined
-  >();
+  const [initialProviderId, setInitialProviderId] = createSignal<string | undefined>();
   const [hybridEnabled, setHybridEnabled] = createSignal(true);
 
-  const [providerList, { mutate: mutateProviders }] = createResource(
-    async () => {
-      const res = await client.api.models.available.$get();
-      if (!res.ok) {
-        return EMPTY_PROVIDERS;
-      }
-      return (await res.json()) as ProviderItem[];
+  const [providerList, { mutate: mutateProviders }] = createResource(async () => {
+    const res = await client.api.models.available.$get();
+    if (!res.ok) {
+      return EMPTY_PROVIDERS;
     }
-  );
+    return (await res.json()) as ProviderItem[];
+  });
 
   const catalogProviders = createMemo(() => providerList() ?? EMPTY_PROVIDERS);
 
   const hasLoaded = createMemo(() => providerList() !== undefined);
 
   const connectedProviders = createMemo(() =>
-    catalogProviders().filter((provider) => provider.connected)
+    catalogProviders().filter((provider) => provider.connected),
   );
 
-  const handleConnect = async (
-    providerId: string,
-    key: string
-  ): Promise<boolean> => {
+  const handleConnect = async (providerId: string, key: string): Promise<boolean> => {
     const ok = await setApiKey(client, providerId, key);
     if (ok) {
       mutateProviders((prev) =>
         (prev ?? EMPTY_PROVIDERS).map((provider) =>
-          provider.id === providerId
-            ? { ...provider, connected: true }
-            : provider
-        )
+          provider.id === providerId ? { ...provider, connected: true } : provider,
+        ),
       );
     }
     return ok;
@@ -89,10 +73,8 @@ export function useModelsSettings() {
     if (ok) {
       mutateProviders((prev) =>
         (prev ?? EMPTY_PROVIDERS).map((provider) =>
-          provider.id === providerId
-            ? { ...provider, connected: false }
-            : provider
-        )
+          provider.id === providerId ? { ...provider, connected: false } : provider,
+        ),
       );
     }
     return ok;

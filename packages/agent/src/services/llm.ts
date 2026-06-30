@@ -15,9 +15,7 @@ import { Context, type Effect, Layer } from "effect";
  * {@link LLMError} (catchable via `Effect.catchTag("LLMError", ...)`).
  */
 export interface StreamProviderShape {
-  readonly stream: (
-    req: StreamRequest
-  ) => Effect.Effect<StreamResult, LLMError>;
+  readonly stream: (req: StreamRequest) => Effect.Effect<StreamResult, LLMError>;
 }
 
 /**
@@ -25,19 +23,16 @@ export interface StreamProviderShape {
  * non-streaming completions.
  */
 export interface CompletionProviderShape {
-  readonly complete: (
-    req: CompleteRequest
-  ) => Effect.Effect<CompleteResult, LLMError>;
+  readonly complete: (req: CompleteRequest) => Effect.Effect<CompleteResult, LLMError>;
 }
 
 /**
  * Service Tag for the streaming provider. Consumers require it via
  * `yield* StreamProvider` and call `.stream(req)`.
  */
-export class StreamProvider extends Context.Service<
-  StreamProvider,
-  StreamProviderShape
->()("@sakti-code/agent/StreamProvider") {}
+export class StreamProvider extends Context.Service<StreamProvider, StreamProviderShape>()(
+  "@sakti-code/agent/StreamProvider",
+) {}
 
 /**
  * Service Tag for the completion provider. Consumers require it via

@@ -43,10 +43,7 @@ describe("config-dirs", () => {
     it("returns the global agent dir followed by the project .agents dir", () => {
       delete process.env.SAKTI_AGENT_DIR;
       const dirs = enumerateAgentConfigDirs("/proj");
-      expect(dirs).toEqual([
-        join(homedir(), ".sakti", "agent"),
-        join("/proj", ".agents"),
-      ]);
+      expect(dirs).toEqual([join(homedir(), ".sakti", "agent"), join("/proj", ".agents")]);
     });
 
     it("honors SAKTI_AGENT_DIR for the global entry", () => {

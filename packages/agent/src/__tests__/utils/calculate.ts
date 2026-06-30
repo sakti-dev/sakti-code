@@ -31,6 +31,5 @@ export const calculateTool: AgentTool<typeof calculateSchema, undefined> = {
   name: "calculate",
   description: "Evaluate mathematical expressions",
   parameters: calculateSchema,
-  execute: async (_toolCallId: string, args: CalculateParams) =>
-    calculate(args.expression),
+  execute: async (_toolCallId: string, args: CalculateParams) => calculate(args.expression),
 };

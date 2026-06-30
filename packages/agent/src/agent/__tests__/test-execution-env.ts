@@ -72,19 +72,14 @@ export class TestExecutionEnv implements ExecutionEnv {
     return this.rootDir;
   }
 
-  async absolutePath(
-    path: string,
-    _abortSignal?: AbortSignal
-  ): Promise<Result<string, FileError>> {
-    return Promise.resolve(
-      ok(isAbsolute(path) ? path : resolve(this.rootDir, path))
-    );
+  async absolutePath(path: string, _abortSignal?: AbortSignal): Promise<Result<string, FileError>> {
+    return Promise.resolve(ok(isAbsolute(path) ? path : resolve(this.rootDir, path)));
   }
 
   async appendFile(
     path: string,
     content: string | Uint8Array,
-    _abortSignal?: AbortSignal
+    _abortSignal?: AbortSignal,
   ): Promise<Result<void, FileError>> {
     try {
       appendFileSync(resolve(this.rootDir, path), content);
@@ -96,7 +91,7 @@ export class TestExecutionEnv implements ExecutionEnv {
 
   async canonicalPath(
     path: string,
-    _abortSignal?: AbortSignal
+    _abortSignal?: AbortSignal,
   ): Promise<Result<string, FileError>> {
     try {
       return Promise.resolve(ok(realpathSync(resolve(this.rootDir, path))));
@@ -111,7 +106,7 @@ export class TestExecutionEnv implements ExecutionEnv {
 
   async createDir(
     path: string,
-    options?: { recursive?: boolean; abortSignal?: AbortSignal }
+    options?: { recursive?: boolean; abortSignal?: AbortSignal },
   ): Promise<Result<void, FileError>> {
     try {
       mkdirSync(resolve(this.rootDir, path), { recursive: options?.recursive });
@@ -123,12 +118,9 @@ export class TestExecutionEnv implements ExecutionEnv {
 
   async createTempDir(
     _prefix?: string,
-    _abortSignal?: AbortSignal
+    _abortSignal?: AbortSignal,
   ): Promise<Result<string, FileError>> {
-    const dir = join(
-      this.rootDir,
-      `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    );
+    const dir = join(this.rootDir, `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     mkdirSync(dir, { recursive: true });
     return Promise.resolve(ok(dir));
   }
@@ -140,18 +132,12 @@ export class TestExecutionEnv implements ExecutionEnv {
   }): Promise<Result<string, FileError>> {
     const dir = join(this.rootDir, `tmp-${Date.now()}`);
     mkdirSync(dir, { recursive: true });
-    const file = join(
-      dir,
-      `${options?.prefix ?? ""}${Date.now()}${options?.suffix ?? ""}`
-    );
+    const file = join(dir, `${options?.prefix ?? ""}${Date.now()}${options?.suffix ?? ""}`);
     await writeFile(file, "");
     return Promise.resolve(ok(file));
   }
 
-  async exists(
-    path: string,
-    _abortSignal?: AbortSignal
-  ): Promise<Result<boolean, FileError>> {
+  async exists(path: string, _abortSignal?: AbortSignal): Promise<Result<boolean, FileError>> {
     try {
       return Promise.resolve(ok(existsSync(resolve(this.rootDir, path))));
     } catch {
@@ -161,10 +147,8 @@ export class TestExecutionEnv implements ExecutionEnv {
 
   async exec(
     command: string,
-    options?: ExecutionEnvExecOptions
-  ): Promise<
-    Result<{ stdout: string; stderr: string; exitCode: number }, ExecutionError>
-  > {
+    options?: ExecutionEnvExecOptions,
+  ): Promise<Result<{ stdout: string; stderr: string; exitCode: number }, ExecutionError>> {
     return new Promise((resolve) => {
       let stdout = "";
       let stderr = "";
@@ -181,16 +165,11 @@ export class TestExecutionEnv implements ExecutionEnv {
         stderr += chunk;
       });
       proc.on("error", () => resolve(ok({ stdout, stderr, exitCode: 1 })));
-      proc.on("close", (code) =>
-        resolve(ok({ stdout, stderr, exitCode: code ?? 0 }))
-      );
+      proc.on("close", (code) => resolve(ok({ stdout, stderr, exitCode: code ?? 0 })));
     });
   }
 
-  async fileInfo(
-    path: string,
-    _abortSignal?: AbortSignal
-  ): Promise<Result<FileInfo, FileError>> {
+  async fileInfo(path: string, _abortSignal?: AbortSignal): Promise<Result<FileInfo, FileError>> {
     try {
       const fullPath = resolve(this.rootDir, path);
       const name = path.split("/").pop() ?? path;
@@ -200,23 +179,15 @@ export class TestExecutionEnv implements ExecutionEnv {
     }
   }
 
-  async joinPath(
-    parts: string[],
-    _abortSignal?: AbortSignal
-  ): Promise<Result<string, FileError>> {
+  async joinPath(parts: string[], _abortSignal?: AbortSignal): Promise<Result<string, FileError>> {
     return Promise.resolve(ok(resolve(this.rootDir, ...parts)));
   }
 
-  async listDir(
-    path: string,
-    _abortSignal?: AbortSignal
-  ): Promise<Result<FileInfo[], FileError>> {
+  async listDir(path: string, _abortSignal?: AbortSignal): Promise<Result<FileInfo[], FileError>> {
     try {
       const dirPath = resolve(this.rootDir, path);
       const entries = readdirSync(dirPath, { withFileTypes: true });
-      return Promise.resolve(
-        ok(entries.map((e) => statToFileInfo(join(dirPath, e.name), e.name)))
-      );
+      return Promise.resolve(ok(entries.map((e) => statToFileInfo(join(dirPath, e.name), e.name))));
     } catch (e) {
       return Promise.resolve(err(toFileError(e)));
     }
@@ -224,7 +195,7 @@ export class TestExecutionEnv implements ExecutionEnv {
 
   async readBinaryFile(
     path: string,
-    _abortSignal?: AbortSignal
+    _abortSignal?: AbortSignal,
   ): Promise<Result<Uint8Array, FileError>> {
     try {
       const data = await readFile(resolve(this.rootDir, path));
@@ -234,14 +205,9 @@ export class TestExecutionEnv implements ExecutionEnv {
     }
   }
 
-  async readTextFile(
-    path: string,
-    _abortSignal?: AbortSignal
-  ): Promise<Result<string, FileError>> {
+  async readTextFile(path: string, _abortSignal?: AbortSignal): Promise<Result<string, FileError>> {
     try {
-      return Promise.resolve(
-        ok(await readFile(resolve(this.rootDir, path), "utf8"))
-      );
+      return Promise.resolve(ok(await readFile(resolve(this.rootDir, path), "utf8")));
     } catch (e) {
       return Promise.resolve(err(toFileError(e)));
     }
@@ -249,16 +215,14 @@ export class TestExecutionEnv implements ExecutionEnv {
 
   async readTextLines(
     path: string,
-    options?: { maxLines?: number; abortSignal?: AbortSignal }
+    options?: { maxLines?: number; abortSignal?: AbortSignal },
   ): Promise<Result<string[], FileError>> {
     const result = await this.readTextFile(path);
     if (isFailure(result)) {
       return result;
     }
     const lines = result.success.split("\n");
-    return Promise.resolve(
-      ok(options?.maxLines ? lines.slice(0, options.maxLines) : lines)
-    );
+    return Promise.resolve(ok(options?.maxLines ? lines.slice(0, options.maxLines) : lines));
   }
 
   async remove(
@@ -267,7 +231,7 @@ export class TestExecutionEnv implements ExecutionEnv {
       recursive?: boolean;
       force?: boolean;
       abortSignal?: AbortSignal;
-    }
+    },
   ): Promise<Result<void, FileError>> {
     try {
       rmSync(resolve(this.rootDir, path), {
@@ -283,7 +247,7 @@ export class TestExecutionEnv implements ExecutionEnv {
   async writeFile(
     path: string,
     content: string | Uint8Array,
-    _abortSignal?: AbortSignal
+    _abortSignal?: AbortSignal,
   ): Promise<Result<void, FileError>> {
     try {
       await writeFile(resolve(this.rootDir, path), content);

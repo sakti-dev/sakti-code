@@ -13,7 +13,7 @@ describe("sessions routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ projectId: project.id }),
-      })
+      }),
     );
     expect(created.status).toBe(200);
     const session = await created.json();
@@ -21,11 +21,7 @@ describe("sessions routes", () => {
     expect(session.profileId).toBeNull();
 
     const list = await (
-      await app.request(
-        new Request(
-          `http://localhost:3001/api/sessions?projectId=${project.id}`
-        )
-      )
+      await app.request(new Request(`http://localhost:3001/api/sessions?projectId=${project.id}`))
     ).json();
     expect(list).toHaveLength(1);
   });
@@ -40,7 +36,7 @@ describe("sessions routes", () => {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ profileId: "fast" }),
-      })
+      }),
     );
     expect(res.status).toBe(200);
     const updated = await res.json();
@@ -53,7 +49,7 @@ describe("sessions routes", () => {
     const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
-      new Request(`http://localhost:3001/api/sessions/${session.id}/messages`)
+      new Request(`http://localhost:3001/api/sessions/${session.id}/messages`),
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([]);

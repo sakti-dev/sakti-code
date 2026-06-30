@@ -1,9 +1,7 @@
 import type { VelomarkTheme } from "./types";
 
 type DeepPartial<T> = {
-  [K in keyof T]?: T[K] extends Record<string, unknown>
-    ? DeepPartial<T[K]>
-    : T[K];
+  [K in keyof T]?: T[K] extends Record<string, unknown> ? DeepPartial<T[K]> : T[K];
 };
 
 export type PartialVelomarkTheme = DeepPartial<VelomarkTheme>;
@@ -13,7 +11,7 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 
 const mergeRecords = (
   base: Record<string, unknown>,
-  override: Record<string, unknown>
+  override: Record<string, unknown>,
 ): Record<string, unknown> => {
   const result: Record<string, unknown> = { ...base };
 
@@ -33,11 +31,8 @@ const mergeRecords = (
   return result;
 };
 
-export const mergeTheme = (
-  base: VelomarkTheme,
-  override: PartialVelomarkTheme
-): VelomarkTheme =>
+export const mergeTheme = (base: VelomarkTheme, override: PartialVelomarkTheme): VelomarkTheme =>
   mergeRecords(
     base as unknown as Record<string, unknown>,
-    override as Record<string, unknown>
+    override as Record<string, unknown>,
   ) as unknown as VelomarkTheme;

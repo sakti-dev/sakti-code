@@ -1,9 +1,4 @@
-import {
-  integer,
-  sqliteTable,
-  text,
-  uniqueIndex,
-} from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const projects = sqliteTable("projects", {
   id: text("id").primaryKey(),
@@ -51,11 +46,8 @@ export const sessionEntries = sqliteTable(
     createdAt: integer("created_at").notNull(),
   },
   (table) => [
-    uniqueIndex("session_entries_session_id_sequence_idx").on(
-      table.sessionId,
-      table.sequence
-    ),
-  ]
+    uniqueIndex("session_entries_session_id_sequence_idx").on(table.sessionId, table.sequence),
+  ],
 );
 
 export const turns = sqliteTable(
@@ -70,10 +62,5 @@ export const turns = sqliteTable(
     endedAt: integer("ended_at"),
     createdAt: integer("created_at").notNull(),
   },
-  (table) => [
-    uniqueIndex("turns_session_id_sequence_idx").on(
-      table.sessionId,
-      table.sequence
-    ),
-  ]
+  (table) => [uniqueIndex("turns_session_id_sequence_idx").on(table.sessionId, table.sequence)],
 );

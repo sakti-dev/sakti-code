@@ -22,12 +22,8 @@ describe("playground theme contract", () => {
 
     expect(entrySource).toContain("./main.css");
     expect(mainCssSource).toContain('@import "tailwindcss";');
-    expect(mainCssSource).toContain(
-      "../../../apps/desktop/src/assets/styles/tokens.css"
-    );
-    expect(mainCssSource).toContain(
-      "../../../apps/desktop/src/assets/styles/markdown.css"
-    );
+    expect(mainCssSource).toContain("../../../apps/desktop/src/assets/styles/tokens.css");
+    expect(mainCssSource).toContain("../../../apps/desktop/src/assets/styles/markdown.css");
     expect(mainCssSource).toContain("../src/theme/styles.css");
   });
 
@@ -38,7 +34,7 @@ describe("playground theme contract", () => {
     const dispose = render(() => <App />, container);
 
     const markdownRoot = container.querySelector(
-      '.renderer-surface .markdown-content[data-component="markdown"]'
+      '.renderer-surface .markdown-content[data-component="markdown"]',
     );
 
     expect(markdownRoot).not.toBeNull();
@@ -58,7 +54,7 @@ describe("playground theme contract", () => {
     expect(
       (
         container.querySelector("[data-velomark-root]") as HTMLDivElement | null
-      )?.style.getPropertyValue("--velomark-color-surface-code")
+      )?.style.getPropertyValue("--velomark-color-surface-code"),
     ).toBe(darkTheme.color.surface.code);
 
     dispose();
@@ -72,10 +68,10 @@ describe("playground theme contract", () => {
     const dispose = render(() => <App />, container);
 
     const lightButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "Light"
+      (button) => button.textContent?.trim() === "Light",
     );
     const darkButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "Dark"
+      (button) => button.textContent?.trim() === "Dark",
     );
 
     expect(lightButton).toBeDefined();
@@ -87,7 +83,7 @@ describe("playground theme contract", () => {
     expect(
       (
         container.querySelector("[data-velomark-root]") as HTMLDivElement | null
-      )?.style.getPropertyValue("--velomark-color-surface-code")
+      )?.style.getPropertyValue("--velomark-color-surface-code"),
     ).toBe(defaultTheme.color.surface.code);
 
     darkButton?.click();
@@ -96,7 +92,7 @@ describe("playground theme contract", () => {
     expect(
       (
         container.querySelector("[data-velomark-root]") as HTMLDivElement | null
-      )?.style.getPropertyValue("--velomark-color-surface-code")
+      )?.style.getPropertyValue("--velomark-color-surface-code"),
     ).toBe(darkTheme.color.surface.code);
 
     dispose();

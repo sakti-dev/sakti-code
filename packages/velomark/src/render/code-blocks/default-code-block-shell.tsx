@@ -13,7 +13,7 @@ const DEFAULT_CODE_BLOCK_OPTIONS: Required<VelomarkCodeBlockOptions> = {
 };
 
 export const resolveCodeBlockOptions = (
-  options?: VelomarkCodeBlockOptions
+  options?: VelomarkCodeBlockOptions,
 ): Required<VelomarkCodeBlockOptions> => ({
   ...DEFAULT_CODE_BLOCK_OPTIONS,
   ...options,
@@ -89,24 +89,19 @@ export const CopyCodeButton: Component<{
 export const CodeBlockLanguageBadge: Component<{
   language?: string;
 }> = (props) =>
-  props.language ? (
-    <div data-velomark-code-language="">{props.language}</div>
-  ) : null;
+  props.language ? <div data-velomark-code-language="">{props.language}</div> : null;
 
 export const CodeBlockOverlayControls: Component<{
   code: string;
   language?: string;
   options?: VelomarkCodeBlockOptions;
 }> = (props) => {
-  const options = (): Required<VelomarkCodeBlockOptions> =>
-    resolveCodeBlockOptions(props.options);
+  const options = (): Required<VelomarkCodeBlockOptions> => resolveCodeBlockOptions(props.options);
 
   return (
     <>
       {options().copyButton ? <CopyCodeButton code={props.code} /> : null}
-      {options().languageLabel ? (
-        <CodeBlockLanguageBadge language={props.language} />
-      ) : null}
+      {options().languageLabel ? <CodeBlockLanguageBadge language={props.language} /> : null}
     </>
   );
 };
@@ -119,11 +114,7 @@ export const DefaultCodeBlockShell: Component<{
   source: JSX.Element;
 }> = (props) => (
   <>
-    <CodeBlockOverlayControls
-      code={props.code}
-      language={props.language}
-      options={props.options}
-    />
+    <CodeBlockOverlayControls code={props.code} language={props.language} options={props.options} />
     {props.preview ?? props.source}
   </>
 );

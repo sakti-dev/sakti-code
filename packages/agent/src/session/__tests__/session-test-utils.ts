@@ -35,15 +35,13 @@ export function createAssistantMessage(text: string): AgentMessage {
   };
 }
 
-export const TestSessionLayer = SessionLive.pipe(
-  Layer.provide(InMemorySessionStorageLive())
-);
+export const TestSessionLayer = SessionLive.pipe(Layer.provide(InMemorySessionStorageLive()));
 
 export async function createTestSession(): Promise<SessionShape> {
   return Effect.runPromise(
     Effect.gen(function* () {
       return yield* Session;
-    }).pipe(Effect.provide(TestSessionLayer))
+    }).pipe(Effect.provide(TestSessionLayer)),
   );
 }
 
@@ -52,7 +50,7 @@ const tempDirs: string[] = [];
 export function createTempDir(): string {
   const dir = join(
     tmpdir(),
-    `pi-agent-session-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    `pi-agent-session-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   );
   mkdirSync(dir, { recursive: true });
   tempDirs.push(dir);

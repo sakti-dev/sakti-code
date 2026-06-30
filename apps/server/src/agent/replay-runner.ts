@@ -18,9 +18,7 @@ function splitIntoChunks(text: string): string[] {
   return text.match(/\S+\s*/g) ?? [text];
 }
 
-function isMessageEntry(
-  entry: ReplayEntry
-): entry is ReplayEntry & { message: AgentMessage } {
+function isMessageEntry(entry: ReplayEntry): entry is ReplayEntry & { message: AgentMessage } {
   return entry.type === "message" && entry.message !== undefined;
 }
 
@@ -45,7 +43,7 @@ export class ReplayRunner {
     entries: ReplayEntry[],
     ws: WsHandle,
     sessionId: string,
-    options: ReplayOptions = {}
+    options: ReplayOptions = {},
   ) {
     this.entries = entries;
     this.ws = ws;
@@ -90,7 +88,7 @@ export class ReplayRunner {
 
   private async emitAssistantTurn(
     entries: Array<ReplayEntry & { message: AgentMessage }>,
-    startIndex: number
+    startIndex: number,
   ): Promise<number> {
     const entry = entries.at(startIndex);
     if (!entry) {
@@ -108,24 +106,14 @@ export class ReplayRunner {
     } as AgentHarnessEvent);
 
     for (const part of content) {
-      if (
-        part !== null &&
-        typeof part === "object" &&
-        "type" in part &&
-        part.type === "thinking"
-      ) {
+      if (part !== null && typeof part === "object" && "type" in part && part.type === "thinking") {
         const thinking = (part as { thinking?: string }).thinking ?? "";
         await this.streamDeltas("thinking", thinking);
       }
     }
 
     for (const part of content) {
-      if (
-        part !== null &&
-        typeof part === "object" &&
-        "type" in part &&
-        part.type === "text"
-      ) {
+      if (part !== null && typeof part === "object" && "type" in part && part.type === "text") {
         const text = (part as { text?: string }).text ?? "";
         await this.streamDeltas("text", text);
       }
@@ -134,12 +122,7 @@ export class ReplayRunner {
     this.emit({ type: "message_end", message } as AgentHarnessEvent);
 
     for (const part of content) {
-      if (
-        part !== null &&
-        typeof part === "object" &&
-        "type" in part &&
-        part.type === "toolCall"
-      ) {
+      if (part !== null && typeof part === "object" && "type" in part && part.type === "toolCall") {
         const tc = part as unknown as {
           id: string;
           name: string;
@@ -183,9 +166,7 @@ export class ReplayRunner {
         toolName: toolResult.toolName,
         result: {
           content: resultContent,
-          ...(toolResult.details === undefined
-            ? {}
-            : { details: toolResult.details }),
+          ...(toolResult.details === undefined ? {} : { details: toolResult.details }),
         },
         isError: toolResult.isError ?? false,
       } as AgentHarnessEvent);
@@ -205,10 +186,7 @@ export class ReplayRunner {
     return i;
   }
 
-  private async streamDeltas(
-    deltaType: "thinking" | "text",
-    text: string
-  ): Promise<void> {
+  private async streamDeltas(deltaType: "thinking" | "text", text: string): Promise<void> {
     const chunks = splitIntoChunks(text);
     const delay = this.options.wordDelayMs ?? 15;
 

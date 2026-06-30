@@ -1,10 +1,4 @@
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { PROVIDERS } from "@sakti-code/llm";
 import lockfile from "proper-lockfile";
@@ -85,11 +79,7 @@ function readRaw(filePath: string): Record<string, string> {
 }
 
 function writeRaw(filePath: string, data: Record<string, string>): void {
-  writeFileSync(
-    filePath,
-    JSON.stringify(data, null, 2),
-    AUTH_FILE_WRITE_OPTIONS
-  );
+  writeFileSync(filePath, JSON.stringify(data, null, 2), AUTH_FILE_WRITE_OPTIONS);
   chmodSync(filePath, 0o600);
 }
 
@@ -98,7 +88,7 @@ export function createAuthStore(authPath: string): AuthStore {
     fn: (current: Record<string, string>) => {
       result: T;
       next?: Record<string, string>;
-    }
+    },
   ): T {
     ensureParentDir(authPath);
     ensureFileExists(authPath);

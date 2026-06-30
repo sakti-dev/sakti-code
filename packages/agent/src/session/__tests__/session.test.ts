@@ -10,14 +10,9 @@ describe("Session with in-memory storage", () => {
   it("appends messages and builds context in order", async () => {
     const session = await createTestSession();
     await Effect.runPromise(session.appendMessage(createUserMessage("one")));
-    await Effect.runPromise(
-      session.appendMessage(createAssistantMessage("two"))
-    );
+    await Effect.runPromise(session.appendMessage(createAssistantMessage("two")));
     const context = await Effect.runPromise(session.buildContext());
-    expect(context.messages.map((message) => message.role)).toEqual([
-      "user",
-      "assistant",
-    ]);
+    expect(context.messages.map((message) => message.role)).toEqual(["user", "assistant"]);
   });
 
   it("tracks model and thinking level changes", async () => {
@@ -32,25 +27,18 @@ describe("Session with in-memory storage", () => {
 
   it("supports branching by moving the leaf and appending a new branch", async () => {
     const session = await createTestSession();
-    const user1 = await Effect.runPromise(
-      session.appendMessage(createUserMessage("one"))
-    );
+    const user1 = await Effect.runPromise(session.appendMessage(createUserMessage("one")));
     const assistant1 = await Effect.runPromise(
-      session.appendMessage(createAssistantMessage("two"))
+      session.appendMessage(createAssistantMessage("two")),
     );
     await Effect.runPromise(session.appendMessage(createUserMessage("three")));
     await Effect.runPromise(session.moveTo(user1));
-    await Effect.runPromise(
-      session.appendMessage(createAssistantMessage("branched"))
-    );
+    await Effect.runPromise(session.appendMessage(createAssistantMessage("branched")));
     const branch = await Effect.runPromise(session.getBranch());
     expect(branch.map((entry) => entry.id)).toContain(user1);
     expect(branch.map((entry) => entry.id)).not.toContain(assistant1);
     const context = await Effect.runPromise(session.buildContext());
-    expect(context.messages.map((message) => message.role)).toEqual([
-      "user",
-      "assistant",
-    ]);
+    expect(context.messages.map((message) => message.role)).toEqual(["user", "assistant"]);
   });
 
   it("supports moving the leaf to root", async () => {
@@ -58,23 +46,15 @@ describe("Session with in-memory storage", () => {
     await Effect.runPromise(session.appendMessage(createUserMessage("one")));
     await Effect.runPromise(session.moveTo(null));
     expect(await Effect.runPromise(session.getLeafId())).toBeNull();
-    expect((await Effect.runPromise(session.buildContext())).messages).toEqual(
-      []
-    );
+    expect((await Effect.runPromise(session.buildContext())).messages).toEqual([]);
   });
 
   it("reconstructs compaction summaries in context", async () => {
     const session = await createTestSession();
     await Effect.runPromise(session.appendMessage(createUserMessage("one")));
-    await Effect.runPromise(
-      session.appendMessage(createAssistantMessage("two"))
-    );
-    const user2 = await Effect.runPromise(
-      session.appendMessage(createUserMessage("three"))
-    );
-    await Effect.runPromise(
-      session.appendMessage(createAssistantMessage("four"))
-    );
+    await Effect.runPromise(session.appendMessage(createAssistantMessage("two")));
+    const user2 = await Effect.runPromise(session.appendMessage(createUserMessage("three")));
+    await Effect.runPromise(session.appendMessage(createAssistantMessage("four")));
     await Effect.runPromise(session.appendCompaction("summary", user2, 1234));
     await Effect.runPromise(session.appendMessage(createUserMessage("five")));
     const context = await Effect.runPromise(session.buildContext());
@@ -84,12 +64,8 @@ describe("Session with in-memory storage", () => {
 
   it("supports moving with branch summary entries in context", async () => {
     const session = await createTestSession();
-    const user1 = await Effect.runPromise(
-      session.appendMessage(createUserMessage("one"))
-    );
-    const summaryId = await Effect.runPromise(
-      session.moveTo(user1, { summary: "summary text" })
-    );
+    const user1 = await Effect.runPromise(session.appendMessage(createUserMessage("one")));
+    const summaryId = await Effect.runPromise(session.moveTo(user1, { summary: "summary text" }));
     expect(summaryId).toBeTruthy();
     const summaryEntry = await Effect.runPromise(session.getEntry(summaryId!));
     expect(summaryEntry).toMatchObject({
@@ -105,7 +81,7 @@ describe("Session with in-memory storage", () => {
     const session = await createTestSession();
     await Effect.runPromise(session.appendMessage(createUserMessage("one")));
     await Effect.runPromise(
-      session.appendCustomMessageEntry("custom", "hello", true, { ok: true })
+      session.appendCustomMessageEntry("custom", "hello", true, { ok: true }),
     );
     const context = await Effect.runPromise(session.buildContext());
     expect(context.messages[1]?.role).toBe("custom");
@@ -113,9 +89,7 @@ describe("Session with in-memory storage", () => {
 
   it("supports labels and session info entries without affecting context", async () => {
     const session = await createTestSession();
-    const user1 = await Effect.runPromise(
-      session.appendMessage(createUserMessage("one"))
-    );
+    const user1 = await Effect.runPromise(session.appendMessage(createUserMessage("one")));
     await Effect.runPromise(session.appendLabel(user1, "checkpoint"));
     await Effect.runPromise(session.appendSessionName("name"));
     const entries = await Effect.runPromise(session.getEntries());
@@ -123,37 +97,26 @@ describe("Session with in-memory storage", () => {
     expect(entries.some((entry) => entry.type === "session_info")).toBe(true);
     expect(await Effect.runPromise(session.getLabel(user1))).toBe("checkpoint");
     expect(await Effect.runPromise(session.getSessionName())).toBe("name");
-    expect(
-      (await Effect.runPromise(session.buildContext())).messages
-    ).toHaveLength(1);
+    expect((await Effect.runPromise(session.buildContext())).messages).toHaveLength(1);
   });
 
   it("rejects labels for missing entries", async () => {
     const session = await createTestSession();
-    await expect(
-      Effect.runPromise(session.appendLabel("missing", "checkpoint"))
-    ).rejects.toThrow("Entry missing not found");
+    await expect(Effect.runPromise(session.appendLabel("missing", "checkpoint"))).rejects.toThrow(
+      "Entry missing not found",
+    );
   });
 
   it("persists leaf changes and appended entries via shared storage", async () => {
     const session = await createTestSession();
-    const user1 = await Effect.runPromise(
-      session.appendMessage(createUserMessage("one"))
-    );
-    await Effect.runPromise(
-      session.appendMessage(createAssistantMessage("two"))
-    );
+    const user1 = await Effect.runPromise(session.appendMessage(createUserMessage("one")));
+    await Effect.runPromise(session.appendMessage(createAssistantMessage("two")));
     await Effect.runPromise(session.appendLabel(user1, "checkpoint"));
     await Effect.runPromise(session.appendSessionName("name"));
     await Effect.runPromise(session.moveTo(user1));
-    await Effect.runPromise(
-      session.appendMessage(createAssistantMessage("branched"))
-    );
+    await Effect.runPromise(session.appendMessage(createAssistantMessage("branched")));
     const context = await Effect.runPromise(session.buildContext());
-    expect(context.messages.map((message) => message.role)).toEqual([
-      "user",
-      "assistant",
-    ]);
+    expect(context.messages.map((message) => message.role)).toEqual(["user", "assistant"]);
     expect(await Effect.runPromise(session.getLabel(user1))).toBe("checkpoint");
     expect(await Effect.runPromise(session.getSessionName())).toBe("name");
   });

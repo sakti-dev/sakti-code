@@ -103,8 +103,7 @@ interface LineInfo {
   text: string;
 }
 
-const CONTAINER_START_RE =
-  /^:::\s*([A-Za-z][A-Za-z0-9_-]*)(?:\{([^}]*)\})?\s*$/;
+const CONTAINER_START_RE = /^:::\s*([A-Za-z][A-Za-z0-9_-]*)(?:\{([^}]*)\})?\s*$/;
 const LEAF_DIRECTIVE_RE = /^::\s*([A-Za-z][A-Za-z0-9_-]*)(?:\{([^}]*)\})?\s*$/;
 const TABLE_ALIGN_LEADING_PIPE_RE = /^\|/;
 const TABLE_ALIGN_TRAILING_PIPE_RE = /\|$/;
@@ -130,16 +129,13 @@ function buildLineInfos(markdown: string): LineInfo[] {
   return lines;
 }
 
-function parseDirectiveAttributes(
-  attributes: string | undefined
-): Record<string, string> {
+function parseDirectiveAttributes(attributes: string | undefined): Record<string, string> {
   if (!attributes) {
     return {};
   }
 
   const result: Record<string, string> = {};
-  const attributeRe =
-    /([A-Za-z][A-Za-z0-9_-]*)(?:=(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+  const attributeRe = /([A-Za-z][A-Za-z0-9_-]*)(?:=(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
 
   for (const match of attributes.matchAll(attributeRe)) {
     const key = match[1];
@@ -184,8 +180,7 @@ function countLeadingSpaces(text: string): number {
 function fingerprintListItems(items: ListItemData[]): string {
   return items
     .map((item) => {
-      const taskPrefix =
-        item.checked === undefined ? "" : `[${item.checked ? "x" : " "}]`;
+      const taskPrefix = item.checked === undefined ? "" : `[${item.checked ? "x" : " "}]`;
       const childFingerprint = item.children
         ?.map((child) => `list(${fingerprintListItems(child.data.items)})`)
         .join(",");
@@ -203,7 +198,7 @@ function buildBlock<TData extends ParsedBlockData>(
   sourceEnd: number,
   atDocumentEnd: boolean,
   fingerprint: string,
-  data: TData
+  data: TData,
 ): DraftRenderBlock<TData> {
   return {
     kind,
@@ -216,9 +211,7 @@ function buildBlock<TData extends ParsedBlockData>(
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Block parsing is intentionally implemented as a single streaming-oriented state machine.
-export function parseBlockBoundaries(
-  markdown: string
-): DraftRenderBlock<ParsedBlockData>[] {
+export function parseBlockBoundaries(markdown: string): DraftRenderBlock<ParsedBlockData>[] {
   const blocks: ParsedDraftBlock[] = [];
   const lines = buildLineInfos(markdown);
   let lineIndex = 0;
@@ -246,8 +239,8 @@ export function parseBlockBoundaries(
           {
             depth: headingMatch[1]?.length ?? 1,
             text: headingMatch[2] ?? "",
-          }
-        )
+          },
+        ),
       );
       lineIndex += 1;
       continue;
@@ -306,8 +299,8 @@ export function parseBlockBoundaries(
             line.end,
             lineIndex === lines.length - 1,
             `math:${value}`,
-            { value }
-          )
+            { value },
+          ),
         );
         lineIndex += 1;
         continue;
@@ -367,8 +360,8 @@ export function parseBlockBoundaries(
             attributes,
             directiveType: "leaf",
             children: [],
-          }
-        )
+          },
+        ),
       );
       lineIndex += 1;
       continue;
@@ -424,10 +417,7 @@ export function parseBlockBoundaries(
       !trimmedLine.startsWith("<!--")
     ) {
       const structuredElement = parseSimpleHtmlElement(trimmedLine);
-      if (
-        structuredElement &&
-        structuredElement.length === trimmedLine.length
-      ) {
+      if (structuredElement && structuredElement.length === trimmedLine.length) {
         blocks.push(
           buildBlock(
             "html-element",
@@ -439,8 +429,8 @@ export function parseBlockBoundaries(
               tagName: structuredElement.node.tagName,
               attributes: structuredElement.node.attributes,
               children: structuredElement.node.children,
-            }
-          )
+            },
+          ),
         );
         lineIndex += 1;
         continue;
@@ -453,8 +443,8 @@ export function parseBlockBoundaries(
           line.end,
           lineIndex === lines.length - 1,
           `html:${trimmedLine}`,
-          { value: trimmedLine }
-        )
+          { value: trimmedLine },
+        ),
       );
       lineIndex += 1;
       continue;
@@ -510,8 +500,8 @@ export function parseBlockBoundaries(
           {
             paragraphs,
             text,
-          }
-        )
+          },
+        ),
       );
       lineIndex = scanIndex;
       continue;
@@ -534,12 +524,8 @@ export function parseBlockBoundaries(
         if (!scanLine) {
           break;
         }
-        const orderedMatch = ordered
-          ? matchOrderedListDetail(scanLine.text)
-          : null;
-        const unorderedMatch = ordered
-          ? null
-          : matchUnorderedListDetail(scanLine.text);
+        const orderedMatch = ordered ? matchOrderedListDetail(scanLine.text) : null;
+        const unorderedMatch = ordered ? null : matchUnorderedListDetail(scanLine.text);
         const match = ordered ? orderedMatch : unorderedMatch;
         if (!match || match.indent !== baseIndent) {
           break;
@@ -574,11 +560,7 @@ export function parseBlockBoundaries(
             break;
           }
 
-          childLines.push(
-            childLine.text.slice(
-              Math.min(baseIndent + 2, childLine.text.length)
-            )
-          );
+          childLines.push(childLine.text.slice(Math.min(baseIndent + 2, childLine.text.length)));
           childSourceEnd = childLine.end;
           scanIndex += 1;
         }
@@ -612,8 +594,8 @@ export function parseBlockBoundaries(
           sourceEnd,
           scanIndex >= lines.length,
           `list:${ordered ? "ordered" : "unordered"}:${fingerprintListItems(items)}`,
-          { ordered, items }
-        )
+          { ordered, items },
+        ),
       );
       lineIndex = scanIndex;
       continue;
@@ -627,19 +609,15 @@ export function parseBlockBoundaries(
           line.end,
           lineIndex === lines.length - 1,
           "thematic-break",
-          {}
-        )
+          {},
+        ),
       );
       lineIndex += 1;
       continue;
     }
 
     const nextLine = lines[lineIndex + 1];
-    if (
-      nextLine &&
-      looksLikeTableRow(line.text) &&
-      isTableSeparator(nextLine.text)
-    ) {
+    if (nextLine && looksLikeTableRow(line.text) && isTableSeparator(nextLine.text)) {
       const sourceStart = line.start;
       const align = parseTableAlignments(nextLine.text);
       const rows: string[][] = [
@@ -660,7 +638,7 @@ export function parseBlockBoundaries(
           scanLine.text
             .split("|")
             .map((cell) => cell.trim())
-            .filter((cell) => cell.length > 0)
+            .filter((cell) => cell.length > 0),
         );
         sourceEnd = scanLine.end;
         scanIndex += 1;
@@ -676,8 +654,8 @@ export function parseBlockBoundaries(
           {
             align,
             rows,
-          }
-        )
+          },
+        ),
       );
       lineIndex = scanIndex;
       continue;
@@ -726,8 +704,8 @@ export function parseBlockBoundaries(
         sourceEnd,
         scanIndex >= lines.length,
         `paragraph:${text}`,
-        { text }
-      )
+        { text },
+      ),
     );
     lineIndex = scanIndex;
   }

@@ -8,12 +8,7 @@ import type {
   Skill,
   SkillDiagnostic,
 } from "@sakti-code/agent";
-import {
-  isSuccess,
-  loadAgents,
-  loadCommands,
-  loadSkills,
-} from "@sakti-code/agent";
+import { isSuccess, loadAgents, loadCommands, loadSkills } from "@sakti-code/agent";
 import { NodeExecutionEnv } from "../agent/execution-env.ts";
 import { enumerateAgentConfigDirs } from "./config-dirs.ts";
 
@@ -42,9 +37,7 @@ const SKILL_SUBTREE_NAMES = ["skill", "skills"];
  * here — name collisions resolve last-wins inside each loader. UI/merge policy
  * is applied by the caller.
  */
-export async function loadAgentContext(
-  projectCwd: string
-): Promise<AgentContext> {
+export async function loadAgentContext(projectCwd: string): Promise<AgentContext> {
   const env = new NodeExecutionEnv(projectCwd);
   const configDirs = enumerateAgentConfigDirs(projectCwd);
   const skillDirs = await resolveSkillSubtrees(env, configDirs);
@@ -67,10 +60,7 @@ export async function loadAgentContext(
   };
 }
 
-async function resolveSkillSubtrees(
-  env: ExecutionEnv,
-  configDirs: string[]
-): Promise<string[]> {
+async function resolveSkillSubtrees(env: ExecutionEnv, configDirs: string[]): Promise<string[]> {
   const skillDirs: string[] = [];
   for (const configDir of configDirs) {
     for (const name of SKILL_SUBTREE_NAMES) {
@@ -79,10 +69,7 @@ async function resolveSkillSubtrees(
       if (!isSuccess(info)) {
         continue;
       }
-      if (
-        info.success.kind === "directory" ||
-        info.success.kind === "symlink"
-      ) {
+      if (info.success.kind === "directory" || info.success.kind === "symlink") {
         skillDirs.push(candidate);
       }
     }

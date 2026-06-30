@@ -118,7 +118,7 @@ describe("useModelsSettings", () => {
   describe("hasLoaded", () => {
     it("is false before resource resolves", () => {
       mocks.availableGet.mockImplementation(
-        () => new Promise(() => {}) // never resolves
+        () => new Promise(() => {}), // never resolves
       );
       const { hasLoaded, dispose } = setupHook();
       expect(hasLoaded()).toBe(false);
@@ -191,8 +191,7 @@ describe("useModelsSettings", () => {
   describe("modal state", () => {
     it("openModal sets isModalOpen and initialProviderId", () => {
       mocks.availableGet.mockImplementation(() => okRes(providers()));
-      const { openModal, isModalOpen, initialProviderId, dispose } =
-        setupHook();
+      const { openModal, isModalOpen, initialProviderId, dispose } = setupHook();
       expect(isModalOpen()).toBe(false);
       openModal("anthropic");
       expect(isModalOpen()).toBe(true);
@@ -210,8 +209,7 @@ describe("useModelsSettings", () => {
 
     it("closeModal resets isModalOpen and initialProviderId", () => {
       mocks.availableGet.mockImplementation(() => okRes(providers()));
-      const { openModal, closeModal, isModalOpen, initialProviderId, dispose } =
-        setupHook();
+      const { openModal, closeModal, isModalOpen, initialProviderId, dispose } = setupHook();
       openModal("anthropic");
       closeModal();
       expect(isModalOpen()).toBe(false);

@@ -28,7 +28,7 @@ export const Card: Component<CardProps> = (props) => {
         "relative overflow-hidden rounded-xl border",
         "transition-all duration-200",
         variantStyles[variant()],
-        local.class
+        local.class,
       )}
       {...others}
     />

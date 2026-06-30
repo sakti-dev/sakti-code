@@ -11,10 +11,7 @@ export interface TooltipProps {
 }
 
 export const Tooltip: ParentComponent<TooltipProps> = (props) => (
-  <TooltipPrimitive.Root
-    openDelay={props.openDelay ?? 300}
-    placement={props.placement ?? "top"}
-  >
+  <TooltipPrimitive.Root openDelay={props.openDelay ?? 300} placement={props.placement ?? "top"}>
     <TooltipPrimitive.Trigger>{props.children}</TooltipPrimitive.Trigger>
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
@@ -26,7 +23,7 @@ export const Tooltip: ParentComponent<TooltipProps> = (props) => (
           "data-[side=bottom]:slide-in-from-top-2",
           "data-[side=left]:slide-in-from-right-2",
           "data-[side=right]:slide-in-from-left-2",
-          props.class
+          props.class,
         )}
       >
         {props.content}

@@ -39,8 +39,7 @@ export const logger: Logger = createForwardingLogger(transport, {
 });
 
 /** Derive a child logger that pins the given context (e.g. `{ module }`). */
-export const createLogger = (context: LogContext = {}): Logger =>
-  logger.child(context);
+export const createLogger = (context: LogContext = {}): Logger => logger.child(context);
 
 /** Pin a domain upfront (convenience over `{ domain }`). */
 export const createDomainLogger = _createDomainLogger;

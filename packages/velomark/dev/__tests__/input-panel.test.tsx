@@ -12,8 +12,8 @@ describe("playground preset controls", () => {
     expect(container.textContent).toContain("🚀 Incremark SolidJS Example");
     expect(
       Array.from(container.querySelectorAll("button")).some((button) =>
-        button.textContent?.includes("Incremark Example")
-      )
+        button.textContent?.includes("Incremark Example"),
+      ),
     ).toBe(false);
 
     dispose();

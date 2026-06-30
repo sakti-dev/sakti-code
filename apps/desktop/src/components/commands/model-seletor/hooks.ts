@@ -1,10 +1,4 @@
-import {
-  createEffect,
-  createMemo,
-  createResource,
-  createSignal,
-  onCleanup,
-} from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, onCleanup } from "solid-js";
 import { createLogger } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
 
@@ -127,7 +121,7 @@ export function useModelSelector(props: {
       .map((section) => ({
         ...section,
         models: section.models.filter((m) =>
-          `${m.id} ${m.name} ${section.providerId}`.toLowerCase().includes(q)
+          `${m.id} ${m.name} ${section.providerId}`.toLowerCase().includes(q),
         ),
       }))
       .filter((section) => section.models.length > 0);
@@ -147,8 +141,8 @@ export function useModelSelector(props: {
         title: model.name,
         subtitle: section.providerName,
         reasoning: model.reasoning,
-      }))
-    )
+      })),
+    ),
   );
 
   const modelRows = createMemo<ModelRow[]>(() => {
@@ -176,14 +170,10 @@ export function useModelSelector(props: {
 
   const visibleModelRows = createMemo(() => {
     const rows = modelRows();
-    const start = Math.max(
-      0,
-      Math.floor(modelScrollTop() / MODEL_ROW_HEIGHT) - MODEL_OVERSCAN
-    );
+    const start = Math.max(0, Math.floor(modelScrollTop() / MODEL_ROW_HEIGHT) - MODEL_OVERSCAN);
     const end = Math.min(
       rows.length,
-      Math.ceil((modelScrollTop() + modelViewportHeight()) / MODEL_ROW_HEIGHT) +
-        MODEL_OVERSCAN
+      Math.ceil((modelScrollTop() + modelViewportHeight()) / MODEL_ROW_HEIGHT) + MODEL_OVERSCAN,
     );
     return rows.slice(start, end).map((row, localIndex) => ({
       row,
@@ -211,9 +201,7 @@ export function useModelSelector(props: {
       setActiveIndex(0);
       return;
     }
-    const selectedIndex = props.selectedModelId
-      ? ids.indexOf(props.selectedModelId)
-      : -1;
+    const selectedIndex = props.selectedModelId ? ids.indexOf(props.selectedModelId) : -1;
     setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
   });
 
@@ -283,11 +271,7 @@ export function useModelSelector(props: {
     }
   });
 
-  const handlePick = (
-    modelId: string,
-    providerId: string,
-    reasoning: boolean
-  ) => {
+  const handlePick = (modelId: string, providerId: string, reasoning: boolean) => {
     _log.info("model selected", {
       modelId,
       providerId,

@@ -1,11 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { CATALOG, PROVIDERS } from "@sakti-code/llm";
 import Type from "typebox";
@@ -30,7 +23,7 @@ const hybridSchema = Type.Object({
     Type.Object({
       provider: Type.String(),
       model: Type.String(),
-    })
+    }),
   ),
 });
 
@@ -106,13 +99,13 @@ function validateModelRefs(profiles: Profiles): void {
       }
       if (!PROVIDERS.includes(ref.provider)) {
         throw new Error(
-          `Profile "${profileId}" mode "${mode}": unknown provider "${ref.provider}"`
+          `Profile "${profileId}" mode "${mode}": unknown provider "${ref.provider}"`,
         );
       }
       const models = CATALOG[ref.provider];
       if (models && !models.some((m) => m.id === ref.model)) {
         throw new Error(
-          `Profile "${profileId}" mode "${mode}": model "${ref.model}" not found for provider "${ref.provider}"`
+          `Profile "${profileId}" mode "${mode}": model "${ref.model}" not found for provider "${ref.provider}"`,
         );
       }
     }
@@ -125,7 +118,7 @@ function validate(profiles: unknown): asserts profiles is Profiles {
   }
   if (!(profiles.defaultProfile in profiles.profiles)) {
     throw new Error(
-      `Invalid profiles: defaultProfile "${profiles.defaultProfile}" not found in profiles`
+      `Invalid profiles: defaultProfile "${profiles.defaultProfile}" not found in profiles`,
     );
   }
   validateModelRefs(profiles);

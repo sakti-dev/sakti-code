@@ -31,10 +31,7 @@ import type { AssistantMessage } from "@sakti-code/llm";
 import { isRetryableAssistantError } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
 import { Effect } from "effect";
-import type {
-  CompactionDecision,
-  RunCompactionOutcome,
-} from "../compaction/auto-compaction";
+import type { CompactionDecision, RunCompactionOutcome } from "../compaction/auto-compaction";
 import type { AgentEvent } from "../types";
 
 // ─── pure decision helpers (unit-tested in isolation) ────────────────────────
@@ -75,10 +72,7 @@ export function shouldRetry(input: RetryDecisionInput): boolean {
  * @param baseDelayMs - base delay from settings (e.g. 2000).
  * @returns `baseDelayMs * 2^(attempt - 1)` — so 2000 → 2s, 4s, 8s.
  */
-export function computeRetryDelay(
-  attempt: number,
-  baseDelayMs: number
-): number {
+export function computeRetryDelay(attempt: number, baseDelayMs: number): number {
   return baseDelayMs * 2 ** (attempt - 1);
 }
 
@@ -93,9 +87,7 @@ export interface RetrySettings {
  * Parse retry settings from the session settings map, applying pi's defaults
  * (maxRetries 3, baseDelayMs 2000) when keys are absent.
  */
-export function parseRetrySettings(
-  settings: Record<string, string>
-): RetrySettings {
+export function parseRetrySettings(settings: Record<string, string>): RetrySettings {
   return {
     enabled: settings.auto_retry === "true",
     baseDelayMs: Number.parseInt(settings.base_delay_ms ?? "2000", 10),
@@ -110,10 +102,7 @@ export function parseRetrySettings(
  * signal aborts (either before or during the sleep). Used by the retry loop so
  * a user abort interrupts the backoff without rejecting the promise.
  */
-export function abortableSleep(
-  ms: number,
-  signal: AbortSignal
-): Promise<boolean> {
+export function abortableSleep(ms: number, signal: AbortSignal): Promise<boolean> {
   return new Promise((resolve) => {
     // Already aborted before sleeping — resolve immediately.
     if (signal.aborted) {
@@ -161,7 +150,7 @@ export interface StuckGuardState {
  */
 export interface RetryRunnerDepsEffect {
   readonly checkCompaction?: (
-    message: AssistantMessage
+    message: AssistantMessage,
   ) => Effect.Effect<CompactionDecision, Error>;
   readonly emit: (event: AgentEvent) => void;
   readonly logger?: Logger;
@@ -183,7 +172,7 @@ export interface RetryRunnerDepsEffect {
  */
 export const executeWithRetryEffect = (
   deps: RetryRunnerDepsEffect,
-  settings: RetrySettings
+  settings: RetrySettings,
 ): Effect.Effect<void, Error> =>
   Effect.gen(function* () {
     deps.logger?.debug("turn attempt", {
@@ -212,7 +201,7 @@ export const executeWithRetryEffect = (
       deps.logger?.error(
         "turn error",
         message.errorMessage ? new Error(message.errorMessage) : undefined,
-        { attempt }
+        { attempt },
       );
       deps.logger?.debug("should retry", {
         attempt,
@@ -232,18 +221,14 @@ export const executeWithRetryEffect = (
       yield* deps.rollbackLeaf();
 
       deps.logger?.debug("backoff", { delayMs, attempt });
-      const slept = yield* Effect.promise(() =>
-        abortableSleep(delayMs, deps.signal)
-      );
+      const slept = yield* Effect.promise(() => abortableSleep(delayMs, deps.signal));
       if (!slept || deps.signal.aborted) {
         deps.logger?.warn("retry aborted", { attempt });
         deps.emit({
           type: "auto_retry_end",
           success: false,
           attempt,
-          ...(message.errorMessage === undefined
-            ? {}
-            : { finalError: message.errorMessage }),
+          ...(message.errorMessage === undefined ? {} : { finalError: message.errorMessage }),
         });
         return;
       }
@@ -269,9 +254,7 @@ export const executeWithRetryEffect = (
         type: "auto_retry_end",
         success,
         attempt,
-        ...(success
-          ? {}
-          : { finalError: message.errorMessage ?? "Unknown error" }),
+        ...(success ? {} : { finalError: message.errorMessage ?? "Unknown error" }),
       });
     }
 
@@ -284,13 +267,10 @@ export const executeWithRetryEffect = (
  */
 const runCompactionPhaseEffect = (
   deps: RetryRunnerDepsEffect,
-  initialMessage: AssistantMessage
+  initialMessage: AssistantMessage,
 ): Effect.Effect<void, Error> =>
   Effect.gen(function* () {
-    if (
-      deps.checkCompaction === undefined ||
-      deps.runCompaction === undefined
-    ) {
+    if (deps.checkCompaction === undefined || deps.runCompaction === undefined) {
       return;
     }
     let message = initialMessage;

@@ -2,9 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 describe("WS welcome push", () => {
   it("createWelcomeFrame returns valid welcome frame", async () => {
-    const { createWelcomeFrame, SERVER_VERSION } = await import(
-      "../agent/ws.ts"
-    );
+    const { createWelcomeFrame, SERVER_VERSION } = await import("../agent/ws.ts");
 
     const frame = createWelcomeFrame();
     expect(frame).toHaveProperty("type", "welcome");

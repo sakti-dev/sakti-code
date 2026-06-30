@@ -11,9 +11,7 @@ export default function BannerConnection() {
       <div
         class={cn(
           "flex items-center justify-center gap-2 px-4 py-1.5 font-medium text-xs",
-          status() === "closed"
-            ? "bg-error/10 text-error"
-            : "bg-warning/10 text-warning"
+          status() === "closed" ? "bg-error/10 text-error" : "bg-warning/10 text-warning",
         )}
       >
         <Show when={status() === "connecting"}>

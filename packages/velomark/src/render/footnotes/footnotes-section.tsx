@@ -10,10 +10,7 @@ import type {
 import { RenderBlockView } from "../render-block";
 
 export const FootnotesSection: Component<{
-  codeBlockRenderers?: Record<
-    string,
-    Component<VelomarkCodeBlockRendererProps>
-  >;
+  codeBlockRenderers?: Record<string, Component<VelomarkCodeBlockRendererProps>>;
   containers?: Record<string, Component<VelomarkContainerRendererProps>>;
   definitions: ReferenceDefinitionMap;
   footnoteDefinitions: Record<string, RenderBlock<ParsedBlockData>[]>;

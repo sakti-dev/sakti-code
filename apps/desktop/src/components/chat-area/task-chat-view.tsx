@@ -26,7 +26,7 @@ export function TaskChatView(props: TaskChatViewProps): JSX.Element {
       session.store.messageOrder,
       session.store.messages,
       session.store.streaming.phase,
-      session.store.turnTimings
+      session.store.turnTimings,
     );
   });
 

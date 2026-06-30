@@ -23,31 +23,27 @@ describe("context routes", () => {
     mkdirSync(join(projectDir, ".agents", "commands"), { recursive: true });
     writeFileSync(
       join(projectDir, ".agents", "commands", "commit.md"),
-      "---\ndescription: commit and push\n---\ncommit body"
+      "---\ndescription: commit and push\n---\ncommit body",
     );
     mkdirSync(join(projectDir, ".agents", "skills", "lint"), {
       recursive: true,
     });
     writeFileSync(
       join(projectDir, ".agents", "skills", "lint", "SKILL.md"),
-      "---\ndescription: lint the repo\n---\nlint body"
+      "---\ndescription: lint the repo\n---\nlint body",
     );
     mkdirSync(join(projectDir, ".agents", "agents"), { recursive: true });
     writeFileSync(
       join(projectDir, ".agents", "agents", "scout.md"),
-      "---\nmode: subagent\ndescription: scout\n---\nscout prompt"
+      "---\nmode: subagent\ndescription: scout\n---\nscout prompt",
     );
     const project = await ctx.repos.projects.create("p", projectDir);
 
     const app = buildApp(ctx);
-    const res = await app.request(
-      `http://localhost:3001/api/projects/${project.id}/context`
-    );
+    const res = await app.request(`http://localhost:3001/api/projects/${project.id}/context`);
     const body = await res.json();
     expect(res.status).toBe(200);
-    expect(body.commands.map((c: { name: string }) => c.name)).toEqual([
-      "commit",
-    ]);
+    expect(body.commands.map((c: { name: string }) => c.name)).toEqual(["commit"]);
     expect(body.commands[0]).toMatchObject({
       name: "commit",
       description: "commit and push",
@@ -62,9 +58,7 @@ describe("context routes", () => {
     process.env.SAKTI_AGENT_DIR = mkdtempSync(join(tmpdir(), "sakti-ctx-g3-"));
     const { ctx } = await makeContext();
     const app = buildApp(ctx);
-    const res = await app.request(
-      "http://localhost:3001/api/projects/nope/context"
-    );
+    const res = await app.request("http://localhost:3001/api/projects/nope/context");
     expect(res.status).toBe(404);
   });
 });

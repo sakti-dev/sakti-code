@@ -6,14 +6,7 @@ import type {
   ThemedToken,
   ThemeRegistrationAny,
 } from "shiki";
-import {
-  type Component,
-  createEffect,
-  createSignal,
-  For,
-  on,
-  Show,
-} from "solid-js";
+import { type Component, createEffect, createSignal, For, on, Show } from "solid-js";
 import { getShikiManager } from "./shiki-manager";
 
 const DEFAULT_HIGHLIGHT_THEME = "github-dark";
@@ -34,15 +27,13 @@ export const HighlightedCodeBlock: Component<{
 }> = (props) => {
   type ResolvedTheme = BundledTheme | ThemeRegistrationAny | "none";
 
-  const [highlightedTokens, setHighlightedTokens] = createSignal<
-    ThemedToken[][]
-  >([]);
+  const [highlightedTokens, setHighlightedTokens] = createSignal<ThemedToken[][]>([]);
   const [streamError, setStreamError] = createSignal(false);
-  const [resolvedLanguage, setResolvedLanguage] = createSignal<
-    BundledLanguage | SpecialLanguage
-  >("text");
+  const [resolvedLanguage, setResolvedLanguage] = createSignal<BundledLanguage | SpecialLanguage>(
+    "text",
+  );
   const [resolvedTheme, setResolvedTheme] = createSignal<ResolvedTheme>(
-    DEFAULT_HIGHLIGHT_THEME as BundledTheme
+    DEFAULT_HIGHLIGHT_THEME as BundledTheme,
   );
   const [highlighter, setHighlighter] = createSignal<HighlighterGeneric<
     BundledLanguage,
@@ -94,7 +85,7 @@ export const HighlightedCodeBlock: Component<{
         try {
           const resolved = await getShikiManager().ensureLanguage(
             nextTheme as BundledTheme,
-            nextLanguage
+            nextLanguage,
           );
           setResolvedLanguage(resolved.language);
           setResolvedTheme(nextTheme as BundledTheme);
@@ -106,8 +97,8 @@ export const HighlightedCodeBlock: Component<{
           setStreamError(true);
         }
       },
-      { defer: false }
-    )
+      { defer: false },
+    ),
   );
 
   createEffect(
@@ -115,28 +106,21 @@ export const HighlightedCodeBlock: Component<{
       () => props.code,
       () => {
         highlightCode();
-      }
-    )
+      },
+    ),
   );
 
   return (
     <pre>
       <code data-velomark-code-highlighted={streamError() ? undefined : ""}>
-        <Show
-          fallback={props.code}
-          when={!streamError() && highlightedTokens().length > 0}
-        >
+        <Show fallback={props.code} when={!streamError() && highlightedTokens().length > 0}>
           <For each={highlightedTokens()}>
             {(line, lineIndex) => (
               <>
                 <For each={line}>
-                  {(token) => (
-                    <span style={buildTokenStyle(token)}>{token.content}</span>
-                  )}
+                  {(token) => <span style={buildTokenStyle(token)}>{token.content}</span>}
                 </For>
-                <Show when={lineIndex() < highlightedTokens().length - 1}>
-                  {"\n"}
-                </Show>
+                <Show when={lineIndex() < highlightedTokens().length - 1}>{"\n"}</Show>
               </>
             )}
           </For>

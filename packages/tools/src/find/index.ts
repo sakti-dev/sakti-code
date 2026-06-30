@@ -16,18 +16,17 @@ function toPosixPath(value: string): string {
 
 const findSchema = Type.Object({
   pattern: Type.String({
-    description:
-      "Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'",
+    description: "Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'",
   }),
   path: Type.Optional(
     Type.String({
       description: "Directory to search in (default: current directory)",
-    })
+    }),
   ),
   limit: Type.Optional(
     Type.Number({
       description: "Maximum number of results (default: 1000)",
-    })
+    }),
   ),
 });
 
@@ -44,7 +43,7 @@ export interface FindOperations {
   glob: (
     pattern: string,
     cwd: string,
-    options: { ignore: string[]; limit: number }
+    options: { ignore: string[]; limit: number },
   ) => Promise<string[]> | string[];
 }
 
@@ -60,7 +59,7 @@ export interface FindToolOptions {
 
 export function createFindTool(
   cwd: string,
-  options?: FindToolOptions
+  options?: FindToolOptions,
 ): AgentTool<typeof findSchema, FindToolDetails | undefined> {
   const customOps = options?.operations;
   return {
@@ -75,7 +74,7 @@ export function createFindTool(
       _toolCallId: string,
       { pattern, path: searchDir, limit }: FindToolInput,
       signal?: AbortSignal,
-      _onUpdate?: AgentToolUpdateCallback<FindToolDetails | undefined>
+      _onUpdate?: AgentToolUpdateCallback<FindToolDetails | undefined>,
     ) {
       if (signal?.aborted) {
         throw new Error("Operation aborted");
@@ -159,10 +158,7 @@ export function createFindTool(
       let effectivePattern = pattern;
       if (pattern.includes("/")) {
         args.push("--full-path");
-        if (
-          !(pattern.startsWith("/") || pattern.startsWith("**/")) &&
-          pattern !== "**"
-        ) {
+        if (!(pattern.startsWith("/") || pattern.startsWith("**/")) && pattern !== "**") {
           effectivePattern = `**/${pattern}`;
         }
       }
@@ -227,7 +223,7 @@ export function createFindTool(
       const notices: string[] = [];
       if (resultLimitReached) {
         notices.push(
-          `${effectiveLimit} results limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`
+          `${effectiveLimit} results limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`,
         );
         details.resultLimitReached = effectiveLimit;
       }

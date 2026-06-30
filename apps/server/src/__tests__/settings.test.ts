@@ -18,7 +18,7 @@ describe("session settings routes", () => {
     const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/settings`)
+      new Request(`http://localhost/api/sessions/${session.id}/settings`),
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(DEFAULTS);
@@ -34,12 +34,12 @@ describe("session settings routes", () => {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ auto_compaction: true }),
-      })
+      }),
     );
     expect(patch.status).toBe(204);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/settings`)
+      new Request(`http://localhost/api/sessions/${session.id}/settings`),
     );
     expect(await res.json()).toEqual({ ...DEFAULTS, auto_compaction: true });
   });
@@ -57,11 +57,11 @@ describe("session settings routes", () => {
           max_retries: 7,
           steering_mode: "one-at-a-time",
         }),
-      })
+      }),
     );
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/settings`)
+      new Request(`http://localhost/api/sessions/${session.id}/settings`),
     );
     expect(await res.json()).toEqual({
       ...DEFAULTS,
@@ -72,9 +72,7 @@ describe("session settings routes", () => {
 
   it("GET unknown session returns 404", async () => {
     const { app } = await makeApp([sessionSettingsRoutes]);
-    const res = await app.request(
-      new Request("http://localhost/api/sessions/nope/settings")
-    );
+    const res = await app.request(new Request("http://localhost/api/sessions/nope/settings"));
     expect(res.status).toBe(404);
   });
 
@@ -85,7 +83,7 @@ describe("session settings routes", () => {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ auto_retry: false }),
-      })
+      }),
     );
     expect(res.status).toBe(404);
   });
@@ -100,11 +98,9 @@ describe("session settings routes", () => {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ auto_retry: false }),
-      })
+      }),
     );
 
-    expect(ctx.repos.settings.get(`session:${session.id}:auto_retry`)).toBe(
-      "false"
-    );
+    expect(ctx.repos.settings.get(`session:${session.id}:auto_retry`)).toBe("false");
   });
 });

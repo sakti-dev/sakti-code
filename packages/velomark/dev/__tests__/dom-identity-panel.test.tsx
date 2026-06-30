@@ -19,16 +19,10 @@ describe("playground diagnostics strip", () => {
     expect(container.textContent).toContain("Diagnostics");
     expect(container.textContent).toContain("Total Blocks");
     expect(container.textContent).toContain("Reused");
-    expect(Number(getMetricValue(container, "Total Blocks"))).toBeGreaterThan(
-      0
-    );
-    expect(Number(getMetricValue(container, "Reused"))).toBeGreaterThanOrEqual(
-      0
-    );
+    expect(Number(getMetricValue(container, "Total Blocks"))).toBeGreaterThan(0);
+    expect(Number(getMetricValue(container, "Reused"))).toBeGreaterThanOrEqual(0);
     expect(Number(getMetricValue(container, "Replaced"))).toBe(0);
-    expect(
-      Number(getMetricValue(container, "Appended"))
-    ).toBeGreaterThanOrEqual(0);
+    expect(Number(getMetricValue(container, "Appended"))).toBeGreaterThanOrEqual(0);
 
     dispose();
     container.remove();

@@ -1,11 +1,4 @@
-import {
-  globSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { AgentToolResult } from "@sakti-code/agent";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
@@ -48,7 +41,7 @@ describe("ReadTool", () => {
   it("supports offset and limit", async () => {
     writeFileSync(
       join(tmpDir, "lines.txt"),
-      Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join("\n")
+      Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join("\n"),
     );
     const tool = createReadTool(tmpDir);
     const result = await tool.execute("tc_1", {
@@ -61,9 +54,7 @@ describe("ReadTool", () => {
 
   it("returns error for missing file", async () => {
     const tool = createReadTool(tmpDir);
-    await expect(
-      tool.execute("tc_1", { path: "nonexistent.txt" })
-    ).rejects.toThrow();
+    await expect(tool.execute("tc_1", { path: "nonexistent.txt" })).rejects.toThrow();
   });
 
   it("truncates large files", async () => {
@@ -79,7 +70,7 @@ describe("ReadTool", () => {
   it("reads image files as base64 data URL", async () => {
     const minimalPng = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
-      "base64"
+      "base64",
     );
     writeFileSync(join(tmpDir, "test.png"), minimalPng);
     const tool = createReadTool(tmpDir);
@@ -87,18 +78,14 @@ describe("ReadTool", () => {
     const text = getTextContent(result);
     expect(text).toContain("image/png");
     expect(result.content).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ type: "image", mimeType: "image/png" }),
-      ])
+      expect.arrayContaining([expect.objectContaining({ type: "image", mimeType: "image/png" })]),
     );
   });
 
   it("emits [path#HASH] header and numbered lines when snapshotStore is provided", async () => {
     const content = "line1\nline2\nline3\n";
     writeFileSync(join(tmpDir, "hashed.txt"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tool = createReadTool(tmpDir, { snapshotStore });
     const result = await tool.execute("tc_1", { path: "hashed.txt" });
@@ -112,9 +99,7 @@ describe("ReadTool", () => {
   it("records snapshot under absolute path when snapshotStore is provided", async () => {
     const content = "a\nb\n";
     writeFileSync(join(tmpDir, "snap.ts"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tool = createReadTool(tmpDir, { snapshotStore });
     const result = await tool.execute("tc_1", { path: "snap.ts" });
@@ -129,9 +114,7 @@ describe("ReadTool", () => {
   it("hashes full file content even for partial reads", async () => {
     const content = `${Array.from({ length: 10 }, (_, i) => `line${i + 1}`).join("\n")}\n`;
     writeFileSync(join(tmpDir, "partial.txt"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const { computeFileHash } = await import("../lib/hashline-utils/format");
     const snapshotStore = new InMemorySnapshotStore();
     const tool = createReadTool(tmpDir, { snapshotStore });
@@ -182,9 +165,7 @@ describe("WriteTool", () => {
   });
 
   it("records snapshot and emits [path#HASH] when snapshotStore provided", async () => {
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tool = createWriteTool(tmpDir, { snapshotStore });
     const result = await tool.execute("tc_1", {
@@ -197,9 +178,7 @@ describe("WriteTool", () => {
     expect(match).not.toBeNull();
     const hash = match?.[1];
     expect(hash).toBeDefined();
-    expect(
-      snapshotStore.byHash(join(tmpDir, "snap-write.ts"), hash!)
-    ).not.toBeNull();
+    expect(snapshotStore.byHash(join(tmpDir, "snap-write.ts"), hash!)).not.toBeNull();
   });
 
   it("does not emit hash header when no snapshotStore", async () => {
@@ -222,9 +201,7 @@ describe("EditTool", () => {
       edits: [{ oldText: "const x = 1", newText: "const x = 42" }],
     });
     expect(getTextContent(result)).toContain("Successfully");
-    expect(readFileSync(join(tmpDir, "edit.txt"), "utf-8")).toContain(
-      "const x = 42"
-    );
+    expect(readFileSync(join(tmpDir, "edit.txt"), "utf-8")).toContain("const x = 42");
   });
 
   it("applies multiple edits atomically", async () => {
@@ -250,7 +227,7 @@ describe("EditTool", () => {
       tool.execute("tc_1", {
         path: "fail.txt",
         edits: [{ oldText: "nonexistent", newText: "xxx" }],
-      })
+      }),
     ).rejects.toThrow();
     expect(readFileSync(join(tmpDir, "fail.txt"), "utf-8")).toBe("hello");
   });
@@ -261,7 +238,7 @@ describe("EditTool", () => {
       tool.execute("tc_1", {
         path: "nope.txt",
         edits: [{ oldText: "x", newText: "y" }],
-      })
+      }),
     ).rejects.toThrow();
   });
 
@@ -298,19 +275,15 @@ describe("EditTool", () => {
       tool.execute("tc_1", {
         path: "dup.txt",
         edits: [{ oldText: "const x", newText: "const y" }],
-      })
+      }),
     ).rejects.toThrow("unique");
-    expect(readFileSync(join(tmpDir, "dup.txt"), "utf-8")).toBe(
-      "const x = 1;\nconst x = 2;\n"
-    );
+    expect(readFileSync(join(tmpDir, "dup.txt"), "utf-8")).toBe("const x = 1;\nconst x = 2;\n");
   });
 
   it("rejects empty edits array", async () => {
     writeFileSync(join(tmpDir, "empty.txt"), "hello");
     const tool = createEditTool(tmpDir);
-    await expect(
-      tool.execute("tc_1", { path: "empty.txt", edits: [] })
-    ).rejects.toThrow();
+    await expect(tool.execute("tc_1", { path: "empty.txt", edits: [] })).rejects.toThrow();
   });
 });
 
@@ -318,9 +291,7 @@ describe("EditTool (hashline mode)", () => {
   it("applies a SWAP patch via hashline mode", async () => {
     const content = "line1\nline2\nline3\n";
     writeFileSync(join(tmpDir, "hl-swap.txt"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tag = snapshotStore.record(join(tmpDir, "hl-swap.txt"), content);
     const tool = createEditTool(tmpDir, {
@@ -331,17 +302,13 @@ describe("EditTool (hashline mode)", () => {
       input: `[hl-swap.txt#${tag}]\nSWAP 2.=2:\n+REPLACED`,
     });
     expect(getTextContent(result)).toContain("[hl-swap.txt#");
-    expect(readFileSync(join(tmpDir, "hl-swap.txt"), "utf-8")).toBe(
-      "line1\nREPLACED\nline3\n"
-    );
+    expect(readFileSync(join(tmpDir, "hl-swap.txt"), "utf-8")).toBe("line1\nREPLACED\nline3\n");
   });
 
   it("populates result details with a compact diff preview in hashline mode", async () => {
     const content = "line1\nline2\nline3\n";
     writeFileSync(join(tmpDir, "hl-preview.txt"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tag = snapshotStore.record(join(tmpDir, "hl-preview.txt"), content);
     const tool = createEditTool(tmpDir, {
@@ -361,17 +328,13 @@ describe("EditTool (hashline mode)", () => {
     expect(details).toBeDefined();
     expect(details?.diff).toContain("REPLACED");
     expect(details?.firstChangedLine).toBe(2);
-    expect(readFileSync(join(tmpDir, "hl-preview.txt"), "utf-8")).toBe(
-      "line1\nREPLACED\nline3\n"
-    );
+    expect(readFileSync(join(tmpDir, "hl-preview.txt"), "utf-8")).toBe("line1\nREPLACED\nline3\n");
   });
 
   it("applies a DEL patch via hashline mode", async () => {
     const content = "a\nb\nc\n";
     writeFileSync(join(tmpDir, "hl-del.txt"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tag = snapshotStore.record(join(tmpDir, "hl-del.txt"), content);
     const tool = createEditTool(tmpDir, {
@@ -386,9 +349,7 @@ describe("EditTool (hashline mode)", () => {
 
   it("rejects with mismatch when hash is stale", async () => {
     writeFileSync(join(tmpDir, "hl-stale.txt"), "a\nb\n");
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tool = createEditTool(tmpDir, {
       mode: "hashline",
@@ -397,15 +358,13 @@ describe("EditTool (hashline mode)", () => {
     await expect(
       tool.execute("tc_1", {
         input: "[hl-stale.txt#0000]\nSWAP 1.=1:\n+X",
-      })
+      }),
     ).rejects.toThrow();
   });
 
   it("read + edit roundtrip via snapshot store", async () => {
     writeFileSync(join(tmpDir, "roundtrip.ts"), "old line\n");
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const readTool = createReadTool(tmpDir, { snapshotStore });
     const editTool = createEditTool(tmpDir, {
@@ -419,9 +378,7 @@ describe("EditTool (hashline mode)", () => {
     await editTool.execute("tc_1", {
       input: `[roundtrip.ts#${tag}]\nSWAP 1.=1:\n+new line`,
     });
-    expect(readFileSync(join(tmpDir, "roundtrip.ts"), "utf-8")).toBe(
-      "new line\n"
-    );
+    expect(readFileSync(join(tmpDir, "roundtrip.ts"), "utf-8")).toBe("new line\n");
   });
 });
 
@@ -429,9 +386,7 @@ describe("EditTool (hashline noop-loop-guard)", () => {
   it("escalates to a thrown error after 3 consecutive identical no-op edits", async () => {
     const content = "line1\nline2\nline3\n";
     writeFileSync(join(tmpDir, "hl-noop.txt"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tag = snapshotStore.record(join(tmpDir, "hl-noop.txt"), content);
     const tool = createEditTool(tmpDir, {
@@ -447,9 +402,7 @@ describe("EditTool (hashline noop-loop-guard)", () => {
     const second = await tool.execute("tc_1", { input: noopInput });
     expect(getTextContent(second)).toContain("re-read");
 
-    await expect(tool.execute("tc_1", { input: noopInput })).rejects.toThrow(
-      "in a row"
-    );
+    await expect(tool.execute("tc_1", { input: noopInput })).rejects.toThrow("in a row");
 
     expect(readFileSync(join(tmpDir, "hl-noop.txt"), "utf-8")).toBe(content);
   });
@@ -457,9 +410,7 @@ describe("EditTool (hashline noop-loop-guard)", () => {
   it("resets the counter when a non-noop edit lands on the same path", async () => {
     const content = "line1\nline2\nline3\n";
     writeFileSync(join(tmpDir, "hl-reset.txt"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tool = createEditTool(tmpDir, {
       mode: "hashline",
@@ -479,9 +430,7 @@ describe("EditTool (hashline noop-loop-guard)", () => {
     await tool.execute("tc_1", {
       input: `[hl-reset.txt#${tag}]\nSWAP 2.=2:\n+CHANGED`,
     });
-    expect(readFileSync(join(tmpDir, "hl-reset.txt"), "utf-8")).toBe(
-      "line1\nCHANGED\nline3\n"
-    );
+    expect(readFileSync(join(tmpDir, "hl-reset.txt"), "utf-8")).toBe("line1\nCHANGED\nline3\n");
 
     const reread = await readTool.execute("tc_1", { path: "hl-reset.txt" });
     const newTag = getTextContent(reread).match(/#([0-9A-F]{4})/)?.[1];
@@ -490,17 +439,13 @@ describe("EditTool (hashline noop-loop-guard)", () => {
 
     await tool.execute("tc_1", { input: newNoopInput });
     await tool.execute("tc_1", { input: newNoopInput });
-    await expect(tool.execute("tc_1", { input: newNoopInput })).rejects.toThrow(
-      "in a row"
-    );
+    await expect(tool.execute("tc_1", { input: newNoopInput })).rejects.toThrow("in a row");
   });
 
   it("does not escalate when no noopOwner is provided", async () => {
     const content = "line1\nline2\nline3\n";
     writeFileSync(join(tmpDir, "hl-noowner.txt"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tag = snapshotStore.record(join(tmpDir, "hl-noowner.txt"), content);
     const tool = createEditTool(tmpDir, {
@@ -518,12 +463,9 @@ describe("EditTool (hashline noop-loop-guard)", () => {
 
 describe("EditTool (hashline block edits)", () => {
   it("applies SWAP.BLK via the native block resolver", async () => {
-    const content =
-      "function f() {\n  const a = 1\n  const b = 2\n}\n// trailer\n";
+    const content = "function f() {\n  const a = 1\n  const b = 2\n}\n// trailer\n";
     writeFileSync(join(tmpDir, "fn-blk-swap.ts"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tag = snapshotStore.record(join(tmpDir, "fn-blk-swap.ts"), content);
     const tool = createEditTool(tmpDir, {
@@ -535,17 +477,14 @@ describe("EditTool (hashline block edits)", () => {
     });
     expect(getTextContent(result)).toContain("[fn-blk-swap.ts#");
     expect(readFileSync(join(tmpDir, "fn-blk-swap.ts"), "utf-8")).toBe(
-      "function g() {\n  return 42\n}\n// trailer\n"
+      "function g() {\n  return 42\n}\n// trailer\n",
     );
   });
 
   it("applies DEL.BLK via the native block resolver", async () => {
-    const content =
-      "function f() {\n  const a = 1\n  const b = 2\n}\n// trailer\n";
+    const content = "function f() {\n  const a = 1\n  const b = 2\n}\n// trailer\n";
     writeFileSync(join(tmpDir, "fn-blk-del.ts"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tag = snapshotStore.record(join(tmpDir, "fn-blk-del.ts"), content);
     const tool = createEditTool(tmpDir, {
@@ -555,18 +494,13 @@ describe("EditTool (hashline block edits)", () => {
     await tool.execute("tc_1", {
       input: `[fn-blk-del.ts#${tag}]\nDEL.BLK 1`,
     });
-    expect(readFileSync(join(tmpDir, "fn-blk-del.ts"), "utf-8")).toBe(
-      "// trailer\n"
-    );
+    expect(readFileSync(join(tmpDir, "fn-blk-del.ts"), "utf-8")).toBe("// trailer\n");
   });
 
   it("applies INS.BLK.POST after the resolved block", async () => {
-    const content =
-      "function f() {\n  const a = 1\n  const b = 2\n}\n// trailer\n";
+    const content = "function f() {\n  const a = 1\n  const b = 2\n}\n// trailer\n";
     writeFileSync(join(tmpDir, "fn-blk-ins.ts"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tag = snapshotStore.record(join(tmpDir, "fn-blk-ins.ts"), content);
     const tool = createEditTool(tmpDir, {
@@ -577,16 +511,14 @@ describe("EditTool (hashline block edits)", () => {
       input: `[fn-blk-ins.ts#${tag}]\nINS.BLK.POST 1:\n+export const x = 1`,
     });
     expect(readFileSync(join(tmpDir, "fn-blk-ins.ts"), "utf-8")).toBe(
-      "function f() {\n  const a = 1\n  const b = 2\n}\nexport const x = 1\n// trailer\n"
+      "function f() {\n  const a = 1\n  const b = 2\n}\nexport const x = 1\n// trailer\n",
     );
   });
 
   it("rejects SWAP.BLK on a single-line statement", async () => {
     const content = "const x = 1\n";
     writeFileSync(join(tmpDir, "fn-blk-single.ts"), content);
-    const { InMemorySnapshotStore } = await import(
-      "../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
     const snapshotStore = new InMemorySnapshotStore();
     const tag = snapshotStore.record(join(tmpDir, "fn-blk-single.ts"), content);
     const tool = createEditTool(tmpDir, {
@@ -596,11 +528,9 @@ describe("EditTool (hashline block edits)", () => {
     await expect(
       tool.execute("tc_1", {
         input: `[fn-blk-single.ts#${tag}]\nSWAP.BLK 1:\n+const y = 2`,
-      })
+      }),
     ).rejects.toThrow(/single-line block/);
-    expect(readFileSync(join(tmpDir, "fn-blk-single.ts"), "utf-8")).toBe(
-      content
-    );
+    expect(readFileSync(join(tmpDir, "fn-blk-single.ts"), "utf-8")).toBe(content);
   });
 });
 
@@ -613,16 +543,14 @@ describe("BashTool", () => {
 
   it("returns error on non-zero exit", async () => {
     const tool = createBashTool(tmpDir);
-    await expect(tool.execute("tc_1", { command: "exit 1" })).rejects.toThrow(
-      "exited with code 1"
-    );
+    await expect(tool.execute("tc_1", { command: "exit 1" })).rejects.toThrow("exited with code 1");
   });
 
   it("times out", async () => {
     const tool = createBashTool(tmpDir);
-    await expect(
-      tool.execute("tc_1", { command: "sleep 10", timeout: 0.1 })
-    ).rejects.toThrow("timed out");
+    await expect(tool.execute("tc_1", { command: "sleep 10", timeout: 0.1 })).rejects.toThrow(
+      "timed out",
+    );
   });
 
   it("streams output via onUpdate callback", async () => {
@@ -637,7 +565,7 @@ describe("BashTool", () => {
         if (text) {
           updates.push(text);
         }
-      }
+      },
     );
     expect(getTextContent(result)).toContain("3");
     expect(updates.length).toBeGreaterThanOrEqual(2);
@@ -647,11 +575,7 @@ describe("BashTool", () => {
     const controller = new AbortController();
     const tool = createBashTool(tmpDir);
     const start = Date.now();
-    const promise = tool.execute(
-      "tc_1",
-      { command: "sleep 30" },
-      controller.signal
-    );
+    const promise = tool.execute("tc_1", { command: "sleep 30" }, controller.signal);
     setTimeout(() => controller.abort(), 100);
     await expect(promise).rejects.toThrow();
     const elapsed = Date.now() - start;
@@ -671,10 +595,7 @@ describe("BashTool", () => {
 
 describe("GrepTool", () => {
   it("searches for a pattern in files", async () => {
-    writeFileSync(
-      join(tmpDir, "grep-test.ts"),
-      "const TODO = 1;\nconst done = 2;\n"
-    );
+    writeFileSync(join(tmpDir, "grep-test.ts"), "const TODO = 1;\nconst done = 2;\n");
     const tool = createGrepTool(tmpDir);
     const result = await tool.execute("tc_1", { pattern: "TODO" });
     expect(getTextContent(result)).toContain("TODO");
@@ -712,14 +633,8 @@ describe("FindTool", () => {
             return false;
           }
         },
-        glob: (
-          pattern: string,
-          cwd: string,
-          _opts: { ignore: string[]; limit: number }
-        ) =>
-          globSync(pattern, { cwd, exclude: _opts.ignore }).map((p) =>
-            resolve(cwd, p)
-          ),
+        glob: (pattern: string, cwd: string, _opts: { ignore: string[]; limit: number }) =>
+          globSync(pattern, { cwd, exclude: _opts.ignore }).map((p) => resolve(cwd, p)),
       },
     });
 
@@ -775,7 +690,7 @@ describe("Tool Argument Validation", () => {
     await expect(
       tool.execute("tc_1", {
         edits: [{ oldText: "x", newText: "y" }],
-      } as any)
+      } as any),
     ).rejects.toThrow();
   });
 
@@ -793,7 +708,7 @@ describe("Tool Safety", () => {
   it("detects image by magic bytes regardless of extension", async () => {
     const minimalPng = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
-      "base64"
+      "base64",
     );
     writeFileSync(join(tmpDir, "image.dat"), minimalPng);
     const tool = createReadTool(tmpDir);
@@ -801,9 +716,7 @@ describe("Tool Safety", () => {
     const text = getTextContent(result);
     expect(text).toContain("image/png");
     expect(result.content).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ type: "image", mimeType: "image/png" }),
-      ])
+      expect.arrayContaining([expect.objectContaining({ type: "image", mimeType: "image/png" })]),
     );
   });
 
@@ -826,7 +739,7 @@ describe("Tool Safety", () => {
           { oldText: "alpha", newText: "ALPHA" },
           { oldText: "nonexistent", newText: "fail" },
         ],
-      })
+      }),
     ).rejects.toThrow();
     expect(readFileSync(join(tmpDir, "atomic.txt"), "utf-8")).toBe(original);
   });

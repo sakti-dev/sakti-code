@@ -120,8 +120,7 @@ describe("session store — appendThinkingToken", () => {
       text: "I should ",
     });
     expect(
-      (session.store.messages["msg-1"]!.parts[0] as { startedAt?: number })
-        .startedAt
+      (session.store.messages["msg-1"]!.parts[0] as { startedAt?: number }).startedAt,
     ).toBeTypeOf("number");
   });
 
@@ -162,8 +161,7 @@ describe("session store — appendThinkingToken", () => {
       text: "Wait ",
     });
     expect(
-      (session.store.messages["msg-1"]!.parts[1] as { startedAt?: number })
-        .startedAt
+      (session.store.messages["msg-1"]!.parts[1] as { startedAt?: number }).startedAt,
     ).toBeTypeOf("number");
   });
 });
@@ -236,9 +234,7 @@ describe("session store — thinking timing", () => {
 
   it("sets endedAt on thinking part when message is finalized", () => {
     const session = createSessionStore();
-    session.actions.addMessage(
-      makeMessage({ id: "m1", isStreaming: true, parts: [] })
-    );
+    session.actions.addMessage(makeMessage({ id: "m1", isStreaming: true, parts: [] }));
 
     session.actions.appendThinkingToken("m1", "Only thinking, no text");
     const before = Date.now();
@@ -258,15 +254,11 @@ describe("session store — thinking timing", () => {
 
     session.actions.appendThinkingToken("m1", "Thinking...");
     session.actions.appendToken("m1", "Answer");
-    const firstEndedAt = (
-      session.store.messages.m1!.parts[0] as { endedAt?: number }
-    ).endedAt;
+    const firstEndedAt = (session.store.messages.m1!.parts[0] as { endedAt?: number }).endedAt;
 
     session.actions.finalizeMessage("m1");
 
-    const finalEndedAt = (
-      session.store.messages.m1!.parts[0] as { endedAt?: number }
-    ).endedAt;
+    const finalEndedAt = (session.store.messages.m1!.parts[0] as { endedAt?: number }).endedAt;
     expect(finalEndedAt).toBe(firstEndedAt);
   });
 });
@@ -456,13 +448,7 @@ describe("session store — completeToolCall with details", () => {
     });
 
     const diff = "--- old\n+++ new";
-    session.actions.completeToolCall(
-      "msg-1",
-      "call-1",
-      "Edited /test.ts",
-      false,
-      diff
-    );
+    session.actions.completeToolCall("msg-1", "call-1", "Edited /test.ts", false, diff);
 
     const part = session.store.messages["msg-1"]!.parts[0]!;
     expect(part.type).toBe("tool_call");

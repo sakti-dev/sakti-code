@@ -20,7 +20,7 @@ export function toPinoCall(
   message: string,
   context: LogContext | undefined,
   error: unknown | undefined,
-  layer: string
+  layer: string,
 ): [Record<string, unknown>, string] {
   const obj: Record<string, unknown> = { ...context, layer };
   if (error !== undefined) {

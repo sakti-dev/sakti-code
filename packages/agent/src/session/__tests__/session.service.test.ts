@@ -8,16 +8,14 @@ import { Session, SessionLive, type SessionShape } from "../../session/session";
 import { InMemorySessionStorageLive } from "../../session/storage";
 
 describe("Session (Context.Service)", () => {
-  const TestSessionLayer = SessionLive.pipe(
-    Layer.provide(InMemorySessionStorageLive())
-  );
+  const TestSessionLayer = SessionLive.pipe(Layer.provide(InMemorySessionStorageLive()));
 
   it.effect("is accessible via yield* Session", () =>
     Effect.gen(function* () {
       const session = yield* Session;
       const metadata = yield* session.getMetadata();
       expect(typeof metadata.id).toBe("string");
-    }).pipe(Effect.provide(TestSessionLayer))
+    }).pipe(Effect.provide(TestSessionLayer)),
   );
 
   it.effect("appends a message and updates leaf", () =>
@@ -26,7 +24,7 @@ describe("Session (Context.Service)", () => {
       yield* session.appendMessage(createUserMessage("hello"));
       const leaf = yield* session.getLeafId();
       expect(leaf).not.toBeNull();
-    }).pipe(Effect.provide(TestSessionLayer))
+    }).pipe(Effect.provide(TestSessionLayer)),
   );
 
   it.effect("reads messages back via getBranch", () =>
@@ -36,7 +34,7 @@ describe("Session (Context.Service)", () => {
       yield* session.appendMessage(createAssistantMessage("second"));
       const branch = yield* session.getBranch();
       expect(branch.length).toBeGreaterThanOrEqual(2);
-    }).pipe(Effect.provide(TestSessionLayer))
+    }).pipe(Effect.provide(TestSessionLayer)),
   );
 
   it.effect("builds context from current branch", () =>
@@ -45,7 +43,7 @@ describe("Session (Context.Service)", () => {
       yield* session.appendMessage(createUserMessage("hello"));
       const ctx = yield* session.buildContext();
       expect(ctx.messages.length).toBeGreaterThanOrEqual(1);
-    }).pipe(Effect.provide(TestSessionLayer))
+    }).pipe(Effect.provide(TestSessionLayer)),
   );
 
   it.effect("supports moveTo with branch summary", () =>
@@ -57,7 +55,7 @@ describe("Session (Context.Service)", () => {
         summary: "branched here",
       });
       expect(summaryId).toBeDefined();
-    }).pipe(Effect.provide(TestSessionLayer))
+    }).pipe(Effect.provide(TestSessionLayer)),
   );
 
   it("satisfies SessionShape interface", () => {

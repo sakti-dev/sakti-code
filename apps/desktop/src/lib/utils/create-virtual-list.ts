@@ -1,10 +1,4 @@
-import {
-  type Accessor,
-  createEffect,
-  createMemo,
-  createSignal,
-  onCleanup,
-} from "solid-js";
+import { type Accessor, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 
 export interface VirtualListItem {
   index: number;
@@ -71,7 +65,7 @@ function computeVisibleRange(
   items: ItemLayout[],
   scrollTop: number,
   viewport: number,
-  overscan: number
+  overscan: number,
 ): VisibleRange {
   const top = scrollTop - overscan * 300;
   const bottom = scrollTop + viewport + overscan * 300;
@@ -100,16 +94,11 @@ function computeVisibleRange(
   return { first, last: Math.min(items.length, last + overscan) };
 }
 
-export function createVirtualList<T>(
-  options: CreateVirtualListOptions<T>
-): VirtualListControls {
+export function createVirtualList<T>(options: CreateVirtualListOptions<T>): VirtualListControls {
   const overscan = options.overscan ?? 4;
-  const followEnabled =
-    options.follow !== undefined && options.follow !== false;
+  const followEnabled = options.follow !== undefined && options.follow !== false;
   const followThreshold =
-    typeof options.follow === "object"
-      ? (options.follow.threshold ?? 150)
-      : 150;
+    typeof options.follow === "object" ? (options.follow.threshold ?? 150) : 150;
 
   const [scrollEl, setScrollEl] = createSignal<HTMLElement | null>(null);
   const [scrollTop, setScrollTop] = createSignal(0);
@@ -121,10 +110,7 @@ export function createVirtualList<T>(
   // Measured actual sizes from ResizeObserver, keyed by item key.
   const measuredSizes = new Map<string, number>();
   // Cached VirtualListItem objects so <For> sees stable references.
-  const itemCache = new Map<
-    string,
-    { index: number; key: string; size: number; start: number }
-  >();
+  const itemCache = new Map<string, { index: number; key: string; size: number; start: number }>();
   let itemObserver: ResizeObserver | undefined;
 
   // Layout: accumulated starts for all items.
@@ -171,12 +157,7 @@ export function createVirtualList<T>(
         continue;
       }
       const cached = itemCache.get(key);
-      if (
-        cached &&
-        cached.index === i &&
-        cached.start === l.start &&
-        cached.size === l.size
-      ) {
+      if (cached && cached.index === i && cached.start === l.start && cached.size === l.size) {
         slice.push(cached);
       } else {
         const obj: VirtualListItem = {
@@ -204,8 +185,7 @@ export function createVirtualList<T>(
           continue;
         }
         const key = options.getItemKey(item, index);
-        const height =
-          entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
+        const height = entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
         if (height > 0 && measuredSizes.get(key) !== height) {
           measuredSizes.set(key, height);
           changed = true;

@@ -7,10 +7,7 @@ import { DEFAULT_AGENT_NAME, SERVER_AGENTS } from "./server-agents.ts";
  * A user-defined agent with the same name overrides the server default.
  * Falls back to the default (`build`) agent when the name is unknown.
  */
-export function resolveAgentByName(
-  name: string,
-  loadedAgents: AgentDefinition[]
-): AgentDefinition {
+export function resolveAgentByName(name: string, loadedAgents: AgentDefinition[]): AgentDefinition {
   const byName = new Map<string, AgentDefinition>();
   for (const agent of SERVER_AGENTS) {
     byName.set(agent.name, agent);
@@ -41,17 +38,16 @@ export function resolveAgentByName(
 export function resolveSessionAgentForKind(
   kind: string,
   loadedAgents: AgentDefinition[],
-  perSessionOverride?: string
+  perSessionOverride?: string,
 ): { agent: AgentDefinition } {
-  const name =
-    perSessionOverride ?? (kind === "intake" ? "intake" : DEFAULT_AGENT_NAME);
+  const name = perSessionOverride ?? (kind === "intake" ? "intake" : DEFAULT_AGENT_NAME);
   return { agent: resolveAgentByName(name, loadedAgents) };
 }
 
 /** Load project agents and resolve the active agent by name. */
 export async function resolveSessionAgent(
   projectCwd: string,
-  agentName: string
+  agentName: string,
 ): Promise<AgentDefinition> {
   const { agents } = await loadAgentContext(projectCwd);
   return resolveAgentByName(agentName, agents);

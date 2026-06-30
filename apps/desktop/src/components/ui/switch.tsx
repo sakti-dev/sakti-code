@@ -14,24 +14,21 @@ type SwitchControlProps = SwitchPrimitive.SwitchControlProps & {
 };
 
 export const SwitchControl = <T extends ValidComponent = "button">(
-  props: PolymorphicProps<T, SwitchControlProps>
+  props: PolymorphicProps<T, SwitchControlProps>,
 ) => {
-  const [local, others] = splitProps(props as SwitchControlProps, [
-    "class",
-    "children",
-  ]);
+  const [local, others] = splitProps(props as SwitchControlProps, ["class", "children"]);
   return (
     <>
       <SwitchPrimitive.Input
         class={cn(
           "[&:focus-visible+div]:outline-none [&:focus-visible+div]:ring-2 [&:focus-visible+div]:ring-ring [&:focus-visible+div]:ring-offset-2 [&:focus-visible+div]:ring-offset-background",
-          local.class
+          local.class,
         )}
       />
       <SwitchPrimitive.Control
         class={cn(
           "inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-muted-foreground/25 transition-colors duration-200 data-[disabled]:cursor-not-allowed data-[checked]:bg-primary/60 data-[disabled]:opacity-50",
-          local.class
+          local.class,
         )}
         {...others}
       >
@@ -46,14 +43,14 @@ type SwitchThumbProps = SwitchPrimitive.SwitchThumbProps & {
 };
 
 export const SwitchThumb = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, SwitchThumbProps>
+  props: PolymorphicProps<T, SwitchThumbProps>,
 ) => {
   const [local, others] = splitProps(props as SwitchThumbProps, ["class"]);
   return (
     <SwitchPrimitive.Thumb
       class={cn(
         "pointer-events-none block size-5 rounded-full bg-white shadow-lg ring-0 transition-transform duration-200 data-[checked]:translate-x-5",
-        local.class
+        local.class,
       )}
       {...others}
     />
@@ -65,14 +62,14 @@ type SwitchLabelProps = SwitchPrimitive.SwitchLabelProps & {
 };
 
 export const SwitchLabel = <T extends ValidComponent = "label">(
-  props: PolymorphicProps<T, SwitchLabelProps>
+  props: PolymorphicProps<T, SwitchLabelProps>,
 ) => {
   const [local, others] = splitProps(props as SwitchLabelProps, ["class"]);
   return (
     <SwitchPrimitive.Label
       class={cn(
         "font-medium text-sm leading-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-70",
-        local.class
+        local.class,
       )}
       {...others}
     />

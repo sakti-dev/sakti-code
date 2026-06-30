@@ -1,10 +1,6 @@
 import { createSignal, type JSX, onMount, Show } from "solid-js";
 import { cn } from "~/lib/utils";
-import {
-  createChipElement,
-  isAtEditorStart,
-  serializeEditor,
-} from "./chip-model";
+import { createChipElement, isAtEditorStart, serializeEditor } from "./chip-model";
 
 export interface ChipTrigger {
   char: "/" | "@";
@@ -149,7 +145,7 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
           "scrollbar-default w-full resize-none bg-transparent px-1 py-2 outline-none",
           "max-h-[200px] min-h-6 overflow-y-auto whitespace-pre-wrap break-words",
           "text-foreground",
-          props.class
+          props.class,
         )}
         contenteditable={props.disabled ? "false" : "true"}
         data-component="chip-input"

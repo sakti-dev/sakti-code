@@ -138,7 +138,7 @@ describe("SettingsRepo", () => {
         "session:sess_1:auto_compaction",
         "session:sess_1:auto_retry",
         "session:sess_1:max_retries",
-      ].sort()
+      ].sort(),
     );
     // Each row carries its value.
     const byKey = Object.fromEntries(rows.map((r) => [r.key, r.value]));

@@ -5,12 +5,7 @@ import { hydrateSessionMessages } from "../session/hydrate-messages.ts";
 import type { SessionRegistry } from "../session/session-registry.ts";
 import type { UIMessage } from "../types.ts";
 import { setLastError, setReplayState } from "../workspace/ui-signals.ts";
-import type {
-  Project,
-  ServerActions,
-  ServerStoreData,
-  SessionMeta,
-} from "./server-store.ts";
+import type { Project, ServerActions, ServerStoreData, SessionMeta } from "./server-store.ts";
 import type { WsClient } from "./ws-client.ts";
 
 const log = createLogger({ module: "actions" });
@@ -25,10 +20,7 @@ export interface ActionsDeps {
 export interface Actions {
   abortRun: (sessionId: string) => void;
   addProject: (cwd: string) => Promise<Project | undefined>;
-  createSession: (
-    projectId: string,
-    title?: string
-  ) => Promise<SessionMeta | undefined>;
+  createSession: (projectId: string, title?: string) => Promise<SessionMeta | undefined>;
   followUpRun: (sessionId: string, text: string) => void;
   loadMessages: (sessionId: string) => Promise<void>;
   loadProjects: () => Promise<void>;
@@ -37,22 +29,14 @@ export interface Actions {
   replayReset: (sessionId: string) => void;
   replayResume: (sessionId: string) => void;
   replayStart: (sessionId: string) => void;
-  replyPermission: (
-    sessionId: string,
-    id: string,
-    reply: PermissionReply
-  ) => void;
+  replyPermission: (sessionId: string, id: string, reply: PermissionReply) => void;
   selectProfile: (sessionId: string | null, profileId: string) => Promise<void>;
   sendPrompt: (sessionId: string, text: string) => void;
   steerRun: (sessionId: string, text: string) => void;
   upsertIntakeSession: (projectId: string) => Promise<SessionMeta | undefined>;
 }
 
-export function createActions(
-  api: ApiClient,
-  ws: WsClient,
-  deps: ActionsDeps
-): Actions {
+export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): Actions {
   const { serverStore: server, sessionRegistry } = deps;
 
   return {
@@ -67,9 +51,7 @@ export function createActions(
         server.actions.addProject(project);
         return project;
       } catch (error) {
-        setLastError(
-          error instanceof Error ? error.message : "Failed to add project"
-        );
+        setLastError(error instanceof Error ? error.message : "Failed to add project");
       }
     },
 
@@ -81,9 +63,7 @@ export function createActions(
         }
         server.actions.setProjects((await res.json()) as Project[]);
       } catch (error) {
-        setLastError(
-          error instanceof Error ? error.message : "Failed to load projects"
-        );
+        setLastError(error instanceof Error ? error.message : "Failed to load projects");
       }
     },
 
@@ -95,9 +75,7 @@ export function createActions(
         }
         server.actions.setSessions((await res.json()) as SessionMeta[]);
       } catch (error) {
-        setLastError(
-          error instanceof Error ? error.message : "Failed to load sessions"
-        );
+        setLastError(error instanceof Error ? error.message : "Failed to load sessions");
       }
     },
 
@@ -116,9 +94,7 @@ export function createActions(
         server.actions.addSession(session);
         return session;
       } catch (error) {
-        setLastError(
-          error instanceof Error ? error.message : "Failed to create session"
-        );
+        setLastError(error instanceof Error ? error.message : "Failed to create session");
       }
     },
 
@@ -134,11 +110,7 @@ export function createActions(
         server.actions.addSession(session);
         return session;
       } catch (error) {
-        setLastError(
-          error instanceof Error
-            ? error.message
-            : "Failed to upsert intake session"
-        );
+        setLastError(error instanceof Error ? error.message : "Failed to upsert intake session");
       }
     },
 
@@ -168,16 +140,14 @@ export function createActions(
               turns.map((t) => ({
                 startedAt: t.startedAt,
                 endedAt: t.endedAt,
-              }))
+              })),
             );
           }
         } catch {
           // turns endpoint not available (older server)
         }
       } catch (error) {
-        setLastError(
-          error instanceof Error ? error.message : "Failed to load messages"
-        );
+        setLastError(error instanceof Error ? error.message : "Failed to load messages");
       }
     },
 
@@ -188,9 +158,7 @@ export function createActions(
       log.info("user prompt", { sessionId, messageLength: text.length });
       log.debug("prompt submitted", {
         ...(sessionMeta?.modelId ? { modelId: sessionMeta.modelId } : {}),
-        ...(sessionMeta?.thinkingLevel
-          ? { thinkingLevel: sessionMeta.thinkingLevel }
-          : {}),
+        ...(sessionMeta?.thinkingLevel ? { thinkingLevel: sessionMeta.thinkingLevel } : {}),
       });
 
       const userMsg: UIMessage = {
@@ -228,9 +196,7 @@ export function createActions(
           profileId: updated.profileId,
         });
       } catch (error) {
-        setLastError(
-          error instanceof Error ? error.message : "Failed to select profile"
-        );
+        setLastError(error instanceof Error ? error.message : "Failed to select profile");
       }
     },
 

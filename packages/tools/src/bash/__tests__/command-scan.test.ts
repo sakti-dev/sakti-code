@@ -23,9 +23,7 @@ describe("scanCommand", () => {
   });
 
   it("ignores plain tokens that are not paths", () => {
-    expect(
-      scanCommand("echo hello world", "/proj").externalDirectories
-    ).toEqual([]);
+    expect(scanCommand("echo hello world", "/proj").externalDirectories).toEqual([]);
   });
 
   it("handles quoted path arguments", () => {

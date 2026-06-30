@@ -45,7 +45,7 @@ describe("zai-anthropic wire schemas (minimal subset)", () => {
           },
         ],
         usage: { input_tokens: 1, output_tokens: 1 },
-      })
+      }),
     ).toThrow();
   });
 });

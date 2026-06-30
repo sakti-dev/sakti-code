@@ -95,10 +95,7 @@ describe("AgentHarness.switchAgent", () => {
       systemPrompt: "base prompt",
       tools: [readTool, writeTool],
     });
-    expect(harness.getActiveTools().map((tool) => tool.name)).toEqual([
-      "read",
-      "write",
-    ]);
+    expect(harness.getActiveTools().map((tool) => tool.name)).toEqual(["read", "write"]);
 
     const explore: AgentDefinition = {
       name: "explore",
@@ -125,7 +122,7 @@ describe("AgentHarness.switchAgent", () => {
       () =>
         fauxAssistantMessageWithContent(
           [fauxToolCall("write", { path: "secret.env", content: "x" })],
-          "toolUse"
+          "toolUse",
         ),
       () => fauxAssistantMessage("done"),
     ]);
@@ -141,9 +138,7 @@ describe("AgentHarness.switchAgent", () => {
       thinkingLevel: "off",
       tools: [readTool, writeTool],
     });
-    harness.setPermissionEvaluator((permission) =>
-      permission === "edit" ? "deny" : "allow"
-    );
+    harness.setPermissionEvaluator((permission) => (permission === "edit" ? "deny" : "allow"));
 
     const toolResults: Array<{ name: string; isError: boolean }> = [];
     harness.subscribe((event) => {
@@ -163,10 +158,7 @@ describe("AgentHarness.switchAgent", () => {
     registrations.push(registration);
     registration.setResponses([
       () =>
-        fauxAssistantMessageWithContent(
-          [fauxToolCall("read", { path: "secret.env" })],
-          "toolUse"
-        ),
+        fauxAssistantMessageWithContent([fauxToolCall("read", { path: "secret.env" })], "toolUse"),
       () => fauxAssistantMessage("done"),
     ]);
     const { readTool } = buildReadWriteTools();
@@ -200,10 +192,7 @@ describe("AgentHarness.switchAgent", () => {
     registrations.push(registration);
     registration.setResponses([
       () =>
-        fauxAssistantMessageWithContent(
-          [fauxToolCall("read", { path: "secret.env" })],
-          "toolUse"
-        ),
+        fauxAssistantMessageWithContent([fauxToolCall("read", { path: "secret.env" })], "toolUse"),
       () => fauxAssistantMessage("done"),
     ]);
     const { readTool, executed } = buildReadWriteTools();

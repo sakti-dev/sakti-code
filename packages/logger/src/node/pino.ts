@@ -1,12 +1,6 @@
 import { join } from "node:path";
 import pino from "pino";
-import type {
-  LogContext,
-  LogEntry,
-  Logger,
-  LogLevel,
-  TelemetrySink,
-} from "../types.ts";
+import type { LogContext, LogEntry, Logger, LogLevel, TelemetrySink } from "../types.ts";
 import { noopTelemetrySink } from "../types.ts";
 import { toPinoCall } from "./pino-args.ts";
 
@@ -64,7 +58,7 @@ export interface PinoLoggerOptions {
 /** Merge a child's pinned context with a per-call context (undefined when neither is present). */
 const mergeCtx = (
   defaultCtx: LogContext | undefined,
-  context?: LogContext
+  context?: LogContext,
 ): LogContext | undefined => {
   if (defaultCtx === undefined && context === undefined) {
     return;
@@ -79,11 +73,7 @@ const mergeCtx = (
  * Only reachable via the `./node` subpath — the renderer imports `"."` only, so
  * pino/pino-roll never enter the renderer bundle.
  */
-function createRealPino(
-  opts: PinoOptions,
-  logDir: string,
-  dest: string
-): PinoLike {
+function createRealPino(opts: PinoOptions, logDir: string, dest: string): PinoLike {
   const instance = pino(
     { level: opts.level, redact: opts.redact },
     pino.transport({
@@ -94,7 +84,7 @@ function createRealPino(
         size: "10m",
         mkdir: true,
       },
-    })
+    }),
   );
   return instance as unknown as PinoLike;
 }
@@ -124,7 +114,7 @@ export function createPinoLogger(opts: PinoLoggerOptions): Logger {
       level: LogLevel,
       message: string,
       context?: LogContext,
-      error?: unknown
+      error?: unknown,
     ): void => {
       const merged = mergeCtx(defaultCtx, context);
       const [obj, msg] = toPinoCall(message, merged, error, layer);
@@ -140,8 +130,7 @@ export function createPinoLogger(opts: PinoLoggerOptions): Logger {
     return {
       child: (context) => make({ ...defaultCtx, ...context }),
       debug: (message, context) => send("debug", message, context),
-      error: (message, error, context) =>
-        send("error", message, context, error),
+      error: (message, error, context) => send("error", message, context, error),
       info: (message, context) => send("info", message, context),
       warn: (message, context) => send("warn", message, context),
     };

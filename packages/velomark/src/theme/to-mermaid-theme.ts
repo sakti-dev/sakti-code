@@ -34,9 +34,7 @@ const relativeLuminance = (hexColor: string): number => {
 
   const linearized = rgb.map((channel) => {
     const normalized = channel / 255;
-    return normalized <= 0.039_28
-      ? normalized / 12.92
-      : ((normalized + 0.055) / 1.055) ** 2.4;
+    return normalized <= 0.039_28 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
   });
   const red = linearized[0] ?? 1;
   const green = linearized[1] ?? 1;
@@ -77,9 +75,7 @@ export interface VelomarkMermaidThemeVariables {
   textColor: string;
 }
 
-export const toMermaidThemeVariables = (
-  theme: VelomarkTheme
-): VelomarkMermaidThemeVariables => {
+export const toMermaidThemeVariables = (theme: VelomarkTheme): VelomarkMermaidThemeVariables => {
   const darkMode = isDarkSurface(theme);
 
   return {

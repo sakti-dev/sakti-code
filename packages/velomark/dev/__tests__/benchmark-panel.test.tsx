@@ -14,8 +14,8 @@ describe("playground benchmark panel", () => {
     document.body.append(container);
 
     const dispose = render(() => <App />, container);
-    const runButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent?.includes("Run benchmark")
+    const runButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Run benchmark"),
     ) as HTMLButtonElement;
 
     expect(runButton).toBeTruthy();

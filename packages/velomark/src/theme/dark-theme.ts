@@ -53,10 +53,8 @@ export const darkTheme: VelomarkTheme = {
     },
   },
   typography: {
-    bodyFont:
-      '"IBM Plex Sans", "Iosevka Aile", ui-sans-serif, system-ui, sans-serif',
-    monoFont:
-      '"Iosevka Term", "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, monospace',
+    bodyFont: '"IBM Plex Sans", "Iosevka Aile", ui-sans-serif, system-ui, sans-serif',
+    monoFont: '"Iosevka Term", "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, monospace',
     lineHeight: "1.6",
   },
   radius: {

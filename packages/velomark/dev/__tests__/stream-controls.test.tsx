@@ -2,10 +2,7 @@ import { render } from "solid-js/web";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import App from "../app";
 
-function getNumericInputByLabel(
-  container: HTMLElement,
-  label: string
-): HTMLInputElement | null {
+function getNumericInputByLabel(container: HTMLElement, label: string): HTMLInputElement | null {
   const labels = Array.from(container.querySelectorAll("label"));
   const entry = labels.find((node) => node.textContent?.includes(label));
   return entry?.querySelector("input") ?? null;
@@ -37,10 +34,8 @@ describe("playground stream controls", () => {
     intervalInput.value = "1";
     intervalInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
 
-    const simulateButton = Array.from(
-      container.querySelectorAll("button")
-    ).find((button) =>
-      button.textContent?.includes("Simulate stream")
+    const simulateButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Simulate stream"),
     ) as HTMLButtonElement;
     expect(simulateButton).toBeTruthy();
 

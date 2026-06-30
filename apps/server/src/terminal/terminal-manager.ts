@@ -8,16 +8,12 @@ export interface ManagedTerminal {
   terminalId: string;
 }
 
-export type TerminalDataCallback = (
-  terminalId: string,
-  connectionId: string,
-  data: string
-) => void;
+export type TerminalDataCallback = (terminalId: string, connectionId: string, data: string) => void;
 export type TerminalExitCallback = (
   terminalId: string,
   connectionId: string,
   exitCode: number,
-  signal?: number | string
+  signal?: number | string,
 ) => void;
 
 let ptySpawnFn:
@@ -30,7 +26,7 @@ let ptySpawnFn:
         rows?: number;
         name: string;
         env?: Record<string, string>;
-      }
+      },
     ) => IPty)
   | null = null;
 let ptyLoadError: string | null = null;
@@ -45,8 +41,7 @@ async function loadPty(): Promise<void> {
       const ptyMod = await import("node-pty");
       ptySpawnFn = ptyMod.spawn;
     } catch (err) {
-      ptyLoadError =
-        err instanceof Error ? err.message : "Failed to load node-pty";
+      ptyLoadError = err instanceof Error ? err.message : "Failed to load node-pty";
     }
   })();
   await ptyLoadPromise;
@@ -83,12 +78,10 @@ export class TerminalManager {
 
   create(
     connectionId: string,
-    opts: { cwd?: string; cols?: number; rows?: number } = {}
+    opts: { cwd?: string; cols?: number; rows?: number } = {},
   ): { terminalId: string; pid: number } {
     if (!ptySpawnFn) {
-      throw new Error(
-        `Terminal unavailable: ${ptyLoadError ?? "node-pty not loaded"}`
-      );
+      throw new Error(`Terminal unavailable: ${ptyLoadError ?? "node-pty not loaded"}`);
     }
 
     const terminalId = crypto.randomUUID();
@@ -118,12 +111,7 @@ export class TerminalManager {
     pty.onExit((event) => {
       this.terminals.delete(terminalId);
       if (this.onExitCallback) {
-        this.onExitCallback(
-          terminalId,
-          connectionId,
-          event.exitCode,
-          event.signal
-        );
+        this.onExitCallback(terminalId, connectionId, event.exitCode, event.signal);
       }
     });
 

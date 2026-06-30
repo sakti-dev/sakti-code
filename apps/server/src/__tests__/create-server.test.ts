@@ -10,7 +10,7 @@ beforeAll(() => {
   staticDir = mkdtempSync(join(tmpdir(), "sakti-static-"));
   writeFileSync(
     join(staticDir, "index.html"),
-    '<!DOCTYPE html><html><body><div id="app"></div></body></html>'
+    '<!DOCTYPE html><html><body><div id="app"></div></body></html>',
   );
   writeFileSync(join(staticDir, "test.txt"), "hello world");
   mkdirSync(join(staticDir, "assets"), { recursive: true });

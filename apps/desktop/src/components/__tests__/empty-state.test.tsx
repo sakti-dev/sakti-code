@@ -9,9 +9,7 @@ describe("EmptyState", () => {
   });
 
   it("renders icon when provided", () => {
-    const { getByText } = render(() => (
-      <EmptyState icon="📂" title="No projects yet" />
-    ));
+    const { getByText } = render(() => <EmptyState icon="📂" title="No projects yet" />);
     expect(getByText("📂")).toBeTruthy();
   });
 
@@ -23,9 +21,7 @@ describe("EmptyState", () => {
   });
 
   it("hides subtitle when not provided", () => {
-    const { queryByText } = render(() => (
-      <EmptyState title="No projects yet" />
-    ));
+    const { queryByText } = render(() => <EmptyState title="No projects yet" />);
     expect(queryByText("Open a folder")).toBeNull();
   });
 });

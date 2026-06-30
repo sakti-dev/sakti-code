@@ -43,11 +43,7 @@ describe("event reducer — individual events", () => {
 
   it("message_start for assistant creates streaming message", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage(""))
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
 
     expect(session.store.messageOrder).toHaveLength(1);
     const msgId = session.store.messageOrder[0]!;
@@ -66,9 +62,7 @@ describe("event reducer — individual events", () => {
     } as AgentMessage;
     dispatchEvent(session.actions, batcher, makeMessageStartEvent(userMsg));
     expect(session.store.messageOrder).toHaveLength(1);
-    expect(session.store.messages[session.store.messageOrder[0]!]!.role).toBe(
-      "user"
-    );
+    expect(session.store.messages[session.store.messageOrder[0]!]!.role).toBe("user");
   });
 
   it("message_start for user skips when sendPrompt already added it", () => {
@@ -98,11 +92,7 @@ describe("event reducer — individual events", () => {
     dispatchEvent(session.actions, batcher, makeMessageStartEvent(msg));
     const msgId = session.store.streaming.currentMessageId!;
 
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageUpdateTextDeltaEvent("Hello")
-    );
+    dispatchEvent(session.actions, batcher, makeMessageUpdateTextDeltaEvent("Hello"));
     await Promise.resolve();
 
     expect(session.store.messages[msgId]!.content).toBe("Hello");
@@ -114,16 +104,8 @@ describe("event reducer — individual events", () => {
     dispatchEvent(session.actions, batcher, makeMessageStartEvent(msg));
     const msgId = session.store.streaming.currentMessageId!;
 
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageUpdateThinkingDeltaEvent("Let me think ")
-    );
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageUpdateThinkingDeltaEvent("about this")
-    );
+    dispatchEvent(session.actions, batcher, makeMessageUpdateThinkingDeltaEvent("Let me think "));
+    dispatchEvent(session.actions, batcher, makeMessageUpdateThinkingDeltaEvent("about this"));
 
     const parts = session.store.messages[msgId]!.parts;
     expect(parts).toHaveLength(1);
@@ -133,18 +115,10 @@ describe("event reducer — individual events", () => {
 
   it("message_end finalizes message but does NOT clear currentMessageId", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage(""))
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
     const msgId = session.store.streaming.currentMessageId!;
 
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageEndEvent(makeAssistantMessage(""))
-    );
+    dispatchEvent(session.actions, batcher, makeMessageEndEvent(makeAssistantMessage("")));
 
     expect(session.store.messages[msgId]!.isStreaming).toBe(false);
     expect(session.store.streaming.currentMessageId).toBe(msgId);
@@ -152,17 +126,13 @@ describe("event reducer — individual events", () => {
 
   it("tool_execution_start adds tool call part", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage(""))
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
     const msgId = session.store.streaming.currentMessageId!;
 
     dispatchEvent(
       session.actions,
       batcher,
-      makeToolExecutionStartEvent("tc1", "bash", { command: "ls" })
+      makeToolExecutionStartEvent("tc1", "bash", { command: "ls" }),
     );
 
     expect(session.store.messages[msgId]!.parts).toHaveLength(1);
@@ -176,22 +146,18 @@ describe("event reducer — individual events", () => {
 
   it("tool_execution_end completes tool call", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage(""))
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
     const msgId = session.store.streaming.currentMessageId!;
     dispatchEvent(
       session.actions,
       batcher,
-      makeToolExecutionStartEvent("tc1", "bash", { command: "ls" })
+      makeToolExecutionStartEvent("tc1", "bash", { command: "ls" }),
     );
 
     dispatchEvent(
       session.actions,
       batcher,
-      makeToolExecutionEndEvent("tc1", "bash", "file1\nfile2")
+      makeToolExecutionEndEvent("tc1", "bash", "file1\nfile2"),
     );
 
     expect(session.store.messages[msgId]!.parts[0]).toMatchObject({
@@ -203,22 +169,18 @@ describe("event reducer — individual events", () => {
 
   it("tool_execution_end with isError sets error status", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage(""))
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
     const msgId = session.store.streaming.currentMessageId!;
     dispatchEvent(
       session.actions,
       batcher,
-      makeToolExecutionStartEvent("tc1", "bash", { command: "ls" })
+      makeToolExecutionStartEvent("tc1", "bash", { command: "ls" }),
     );
 
     dispatchEvent(
       session.actions,
       batcher,
-      makeToolExecutionEndEvent("tc1", "bash", "command not found", true)
+      makeToolExecutionEndEvent("tc1", "bash", "command not found", true),
     );
 
     expect(session.store.messages[msgId]!.parts[0]).toMatchObject({
@@ -239,7 +201,7 @@ describe("event reducer — individual events", () => {
     dispatchEvent(
       session.actions,
       batcher,
-      makeToolExecutionStartEvent("call-1", "bash", { command: "echo hello" })
+      makeToolExecutionStartEvent("call-1", "bash", { command: "echo hello" }),
     );
 
     dispatchEvent(
@@ -248,11 +210,10 @@ describe("event reducer — individual events", () => {
       makeToolExecutionEndEvent("call-1", "bash", {
         content: [{ type: "text", text: "hello\n" }],
         details: { truncation: false },
-      })
+      }),
     );
 
-    const part =
-      session.store.messages[session.store.messageOrder[0]!]!.parts[0]!;
+    const part = session.store.messages[session.store.messageOrder[0]!]!.parts[0]!;
     expect(part.type).toBe("tool_call");
     expect((part as { result?: string }).result).toBe("hello\n");
     expect((part as { details?: unknown }).details).toEqual({
@@ -271,32 +232,23 @@ describe("event reducer — individual events", () => {
     dispatchEvent(
       session.actions,
       batcher,
-      makeToolExecutionStartEvent("call-1", "bash", { command: "echo" })
+      makeToolExecutionStartEvent("call-1", "bash", { command: "echo" }),
     );
 
     dispatchEvent(
       session.actions,
       batcher,
-      makeToolExecutionEndEvent("call-1", "bash", "plain string result")
+      makeToolExecutionEndEvent("call-1", "bash", "plain string result"),
     );
 
-    const part =
-      session.store.messages[session.store.messageOrder[0]!]!.parts[0]!;
+    const part = session.store.messages[session.store.messageOrder[0]!]!.parts[0]!;
     expect((part as { result?: string }).result).toBe("plain string result");
   });
 
   it("turn_end clears currentMessageId and sets idle", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage(""))
-    );
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeTurnEndEvent(makeAssistantMessage("done"))
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
+    dispatchEvent(session.actions, batcher, makeTurnEndEvent(makeAssistantMessage("done")));
 
     expect(session.store.streaming.currentMessageId).toBeNull();
     expect(session.store.streaming.phase).toBe("idle");
@@ -304,11 +256,7 @@ describe("event reducer — individual events", () => {
 
   it("agent_end clears state and sets idle", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage(""))
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
     dispatchEvent(session.actions, batcher, makeAgentEndEvent());
 
     expect(session.store.streaming.phase).toBe("idle");
@@ -318,11 +266,7 @@ describe("event reducer — individual events", () => {
 
   it("abort clears state and sets idle", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage(""))
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
     dispatchEvent(session.actions, batcher, makeAbortEvent());
 
     expect(session.store.streaming.phase).toBe("idle");

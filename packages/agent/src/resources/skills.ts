@@ -38,14 +38,9 @@ interface SkillFrontmatter {
 }
 
 /** Format a skill invocation prompt, optionally appending additional user instructions. */
-export function formatSkillInvocation(
-  skill: Skill,
-  additionalInstructions?: string
-): string {
+export function formatSkillInvocation(skill: Skill, additionalInstructions?: string): string {
   const skillBlock = `<skill name="${skill.name}" location="${skill.filePath}">\nThis skill is already loaded in full below — do not read its file again.\nReferences are relative to ${dirnameEnvPath(skill.filePath)}.\n\n${skill.content}\n</skill>`;
-  return additionalInstructions
-    ? `${skillBlock}\n\n${additionalInstructions}`
-    : skillBlock;
+  return additionalInstructions ? `${skillBlock}\n\n${additionalInstructions}` : skillBlock;
 }
 
 /**
@@ -58,7 +53,7 @@ export function formatSkillInvocation(
  */
 export async function loadSkills(
   env: ExecutionEnv,
-  dirs: string | string[]
+  dirs: string | string[],
 ): Promise<{ skills: Skill[]; diagnostics: SkillDiagnostic[] }> {
   const skills: Skill[] = [];
   const diagnostics: SkillDiagnostic[] = [];
@@ -79,12 +74,7 @@ export async function loadSkills(
     if ((await resolveKind(env, rootInfo, diagnostics)) !== "directory") {
       continue;
     }
-    const result = await loadSkillsFromDirInternal(
-      env,
-      rootInfo.path,
-      true,
-      rootInfo.path
-    );
+    const result = await loadSkillsFromDirInternal(env, rootInfo.path, true, rootInfo.path);
     skills.push(...result.skills);
     diagnostics.push(...result.diagnostics);
   }
@@ -100,7 +90,7 @@ export async function loadSkills(
 export async function loadSourcedSkills<TSource, TSkill extends Skill = Skill>(
   env: ExecutionEnv,
   inputs: Array<{ path: string; source: TSource }>,
-  mapSkill?: (skill: Skill, source: TSource) => TSkill
+  mapSkill?: (skill: Skill, source: TSource) => TSkill,
 ): Promise<{
   skills: Array<{ skill: TSkill; source: TSource }>;
   diagnostics: Array<SkillDiagnostic & { source: TSource }>;
@@ -126,7 +116,7 @@ async function loadSkillsFromDirInternal(
   env: ExecutionEnv,
   dir: string,
   includeRootFiles: boolean,
-  rootDir: string
+  rootDir: string,
 ): Promise<{ skills: Skill[]; diagnostics: SkillDiagnostic[] }> {
   const skills: Skill[] = [];
   const diagnostics: SkillDiagnostic[] = [];
@@ -189,12 +179,7 @@ async function loadSkillsFromDirInternal(
     }
 
     if (kind === "directory") {
-      const result = await loadSkillsFromDirInternal(
-        env,
-        fullPath,
-        false,
-        rootDir
-      );
+      const result = await loadSkillsFromDirInternal(env, fullPath, false, rootDir);
       skills.push(...result.skills);
       diagnostics.push(...result.diagnostics);
       continue;
@@ -215,7 +200,7 @@ async function loadSkillsFromDirInternal(
 
 async function loadSkillFromFile(
   env: ExecutionEnv,
-  filePath: string
+  filePath: string,
 ): Promise<{ skill: Skill | null; diagnostics: SkillDiagnostic[] }> {
   const diagnostics: SkillDiagnostic[] = [];
   const rawContent = await env.readTextFile(filePath);
@@ -244,9 +229,7 @@ async function loadSkillFromFile(
   const skillDir = dirnameEnvPath(filePath);
   const parentDirName = basenameEnvPath(skillDir);
   const description =
-    typeof frontmatter.description === "string"
-      ? frontmatter.description
-      : undefined;
+    typeof frontmatter.description === "string" ? frontmatter.description : undefined;
 
   for (const error of validateDescription(description)) {
     diagnostics.push({
@@ -257,8 +240,7 @@ async function loadSkillFromFile(
     });
   }
 
-  const frontmatterName =
-    typeof frontmatter.name === "string" ? frontmatter.name : undefined;
+  const frontmatterName = typeof frontmatter.name === "string" ? frontmatter.name : undefined;
   const name = frontmatterName || parentDirName;
   for (const error of validateName(name, parentDirName)) {
     diagnostics.push({
@@ -288,17 +270,13 @@ async function loadSkillFromFile(
 function validateName(name: string, parentDirName: string): string[] {
   const errors: string[] = [];
   if (name !== parentDirName) {
-    errors.push(
-      `name "${name}" does not match parent directory "${parentDirName}"`
-    );
+    errors.push(`name "${name}" does not match parent directory "${parentDirName}"`);
   }
   if (name.length > MAX_NAME_LENGTH) {
     errors.push(`name exceeds ${MAX_NAME_LENGTH} characters (${name.length})`);
   }
   if (!/^[a-z0-9-]+$/.test(name)) {
-    errors.push(
-      "name contains invalid characters (must be lowercase a-z, 0-9, hyphens only)"
-    );
+    errors.push("name contains invalid characters (must be lowercase a-z, 0-9, hyphens only)");
   }
   if (name.startsWith("-") || name.endsWith("-")) {
     errors.push("name must not start or end with a hyphen");
@@ -314,9 +292,7 @@ function validateDescription(description: string | undefined): string[] {
   if (!description || description.trim() === "") {
     errors.push("description is required");
   } else if (description.length > MAX_DESCRIPTION_LENGTH) {
-    errors.push(
-      `description exceeds ${MAX_DESCRIPTION_LENGTH} characters (${description.length})`
-    );
+    errors.push(`description exceeds ${MAX_DESCRIPTION_LENGTH} characters (${description.length})`);
   }
   return errors;
 }
@@ -325,6 +301,5 @@ function validateDescription(description: string | undefined): string[] {
 export const loadSkillsEffect = (...args: Parameters<typeof loadSkills>) =>
   Effect.promise(() => loadSkills(...args));
 
-export const loadSourcedSkillsEffect = (
-  ...args: Parameters<typeof loadSourcedSkills>
-) => Effect.promise(() => loadSourcedSkills(...args));
+export const loadSourcedSkillsEffect = (...args: Parameters<typeof loadSourcedSkills>) =>
+  Effect.promise(() => loadSourcedSkills(...args));

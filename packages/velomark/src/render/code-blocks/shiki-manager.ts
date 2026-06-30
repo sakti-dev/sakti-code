@@ -1,9 +1,4 @@
-import type {
-  BundledLanguage,
-  BundledTheme,
-  HighlighterGeneric,
-  SpecialLanguage,
-} from "shiki";
+import type { BundledLanguage, BundledTheme, HighlighterGeneric, SpecialLanguage } from "shiki";
 
 interface ShikiHighlighterInfo {
   highlighter: HighlighterGeneric<BundledLanguage, BundledTheme>;
@@ -17,10 +12,7 @@ interface ResolvedShikiHighlighter {
 
 class ShikiManager {
   private static instance: ShikiManager | null = null;
-  private readonly highlighters = new Map<
-    BundledTheme,
-    Promise<ShikiHighlighterInfo>
-  >();
+  private readonly highlighters = new Map<BundledTheme, Promise<ShikiHighlighterInfo>>();
 
   static getInstance(): ShikiManager {
     if (ShikiManager.instance === null) {
@@ -54,10 +46,7 @@ class ShikiManager {
     return pending;
   }
 
-  async ensureLanguage(
-    theme: BundledTheme,
-    language: string
-  ): Promise<ResolvedShikiHighlighter> {
+  async ensureLanguage(theme: BundledTheme, language: string): Promise<ResolvedShikiHighlighter> {
     const info = await this.getHighlighter(theme);
 
     if (!language || language === "text") {
@@ -68,10 +57,8 @@ class ShikiManager {
     }
 
     const { bundledLanguages, bundledLanguagesAlias } = await import("shiki");
-    const aliasCandidate =
-      bundledLanguagesAlias[language as keyof typeof bundledLanguagesAlias];
-    const resolvedLanguage =
-      typeof aliasCandidate === "string" ? aliasCandidate : language;
+    const aliasCandidate = bundledLanguagesAlias[language as keyof typeof bundledLanguagesAlias];
+    const resolvedLanguage = typeof aliasCandidate === "string" ? aliasCandidate : language;
     const bundledLanguage = resolvedLanguage as BundledLanguage;
 
     if (!Object.hasOwn(bundledLanguages, bundledLanguage)) {

@@ -75,7 +75,7 @@ const ENV_VAR_PATTERN = /\$\{([^}]+)\}/g;
  */
 export function resolveBaseURL(
   url: string,
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
 ): string | undefined {
   if (!url) {
     return;
@@ -96,7 +96,7 @@ export function resolveBaseURL(
  */
 function mergeHeaders(
   modelHeaders: Record<string, string> | undefined,
-  optionsHeaders: Record<string, string> | undefined
+  optionsHeaders: Record<string, string> | undefined,
 ): Record<string, string> | undefined {
   if (!(modelHeaders || optionsHeaders)) {
     return;
@@ -108,18 +108,13 @@ function mergeHeaders(
  * Build the options object passed to the provider factory, applying base URL
  * resolution, apiKey, and header merge.
  */
-function buildFactoryOptions(
-  model: Model,
-  options: ResolveOptions
-): ProviderFactoryOptions {
+function buildFactoryOptions(model: Model, options: ResolveOptions): ProviderFactoryOptions {
   const env = options.env ?? processEnvRecord();
   // Empty string is treated as "unset" (not a real override): `??` alone would
   // keep "" (not nullish), then resolveBaseURL("") → undefined, silently
   // discarding the model's real base URL.
   const rawBaseURL =
-    options.baseURL !== "" && options.baseURL !== undefined
-      ? options.baseURL
-      : model.baseUrl;
+    options.baseURL !== "" && options.baseURL !== undefined ? options.baseURL : model.baseUrl;
   const baseURL = resolveBaseURL(rawBaseURL, env);
 
   const headers = mergeHeaders(model.headers, options.headers);
@@ -137,9 +132,7 @@ function buildFactoryOptions(
     // ignore this setting. Mirrors opencode's openai-compatible plugin
     // (plugin/provider/openai-compatible.ts: `if (options.includeUsage !==
     // false) options.includeUsage = true`).
-    ...(model.npm === "@ai-sdk/openai-compatible"
-      ? { includeUsage: true }
-      : {}),
+    ...(model.npm === "@ai-sdk/openai-compatible" ? { includeUsage: true } : {}),
   };
 }
 
@@ -188,14 +181,14 @@ export function clearResolveCache(): void {
  */
 async function loadFactoryFromNpm(
   npm: string,
-  factoryOpts: ProviderFactoryOptions
+  factoryOpts: ProviderFactoryOptions,
 ): Promise<ProviderSDK> {
   const mod = (await import(npm)) as Record<string, unknown>;
   const createKey = Object.keys(mod).find((key) => key.startsWith("create"));
   if (!createKey) {
     throw new Error(
       `Provider package ${npm} has no create* export. ` +
-        "Ensure the package is installed and exports a factory function."
+        "Ensure the package is installed and exports a factory function.",
     );
   }
   const factory = mod[createKey] as ProviderFactory;
@@ -224,13 +217,13 @@ async function loadFactoryFromNpm(
 export async function resolveLanguageModel(
   model: Model,
   options: ResolveOptions,
-  factoryMap: Record<string, ProviderFactoryLoader> = BUNDLED_PROVIDERS
+  factoryMap: Record<string, ProviderFactoryLoader> = BUNDLED_PROVIDERS,
 ): Promise<LanguageModelV4> {
   const npm = model.npm;
   if (!npm) {
     throw new Error(
       `Model ${model.provider}/${model.id} has no npm provider factory — ` +
-        "the catalog must set Model.npm for @ai-sdk routing."
+        "the catalog must set Model.npm for @ai-sdk routing.",
     );
   }
 
@@ -272,7 +265,5 @@ export async function resolveLanguageModel(
  * except for `specificationVersion`).
  */
 function ensureV4(model: LanguageModelV4 | LanguageModelV3): LanguageModelV4 {
-  return model.specificationVersion === "v4"
-    ? model
-    : wrapLanguageModel({ model, middleware: [] });
+  return model.specificationVersion === "v4" ? model : wrapLanguageModel({ model, middleware: [] });
 }

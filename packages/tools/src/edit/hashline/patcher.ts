@@ -1,8 +1,5 @@
 import * as path from "node:path";
-import {
-  computeFileHash,
-  formatHashlineHeader,
-} from "../../lib/hashline-utils/format";
+import { computeFileHash, formatHashlineHeader } from "../../lib/hashline-utils/format";
 import {
   detectLineEnding,
   type LineEnding,
@@ -79,7 +76,7 @@ export class PreparedSection {
     normalized: string,
     applyResult: ApplyResult,
     parseWarnings: readonly string[],
-    fileOp: FileOp | undefined
+    fileOp: FileOp | undefined,
   ) {
     this.section = section;
     this.canonicalPath = canonicalPath;
@@ -94,9 +91,7 @@ export class PreparedSection {
   }
 
   get isNoop(): boolean {
-    return (
-      this.fileOp === undefined && this.applyResult.text === this.normalized
-    );
+    return this.fileOp === undefined && this.applyResult.text === this.normalized;
   }
 }
 
@@ -108,17 +103,11 @@ function hasAnchorScopedEdit(edits: readonly Edit[]): boolean {
     if (edit.kind === "block") {
       return true;
     }
-    return (
-      edit.cursor.kind === "before_anchor" ||
-      edit.cursor.kind === "after_anchor"
-    );
+    return edit.cursor.kind === "before_anchor" || edit.cursor.kind === "after_anchor";
   });
 }
 
-function assertSectionHashPresent(
-  sectionPath: string,
-  fileHash: string | undefined
-): void {
+function assertSectionHashPresent(sectionPath: string, fileHash: string | undefined): void {
   if (fileHash !== undefined) {
     return;
   }
@@ -128,16 +117,12 @@ function assertSectionHashPresent(
 function recoveryToApplyResult(result: RecoveryResult): ApplyResult {
   return {
     text: result.text,
-    ...(result.firstChangedLine === undefined
-      ? {}
-      : { firstChangedLine: result.firstChangedLine }),
+    ...(result.firstChangedLine === undefined ? {} : { firstChangedLine: result.firstChangedLine }),
     warnings: result.warnings,
   };
 }
 
-function mergeWarnings(
-  ...sources: ReadonlyArray<readonly string[] | undefined>
-): string[] {
+function mergeWarnings(...sources: ReadonlyArray<readonly string[] | undefined>): string[] {
   const out: string[] = [];
   for (const source of sources) {
     if (!source) {
@@ -150,15 +135,13 @@ function mergeWarnings(
   return out;
 }
 
-function assertUniqueCanonicalPaths(
-  prepared: readonly PreparedSection[]
-): void {
+function assertUniqueCanonicalPaths(prepared: readonly PreparedSection[]): void {
   const seen = new Map<string, string>();
   for (const entry of prepared) {
     const previous = seen.get(entry.canonicalPath);
     if (previous !== undefined) {
       throw new Error(
-        `Multiple hashline sections resolve to the same file (${previous} and ${entry.section.path}). Merge their ops under one header before applying.`
+        `Multiple hashline sections resolve to the same file (${previous} and ${entry.section.path}). Merge their ops under one header before applying.`,
       );
     }
     seen.set(entry.canonicalPath, entry.section.path);
@@ -174,7 +157,7 @@ export class Patcher {
   constructor(options: PatcherOptions) {
     if (!options.snapshots) {
       throw new Error(
-        "Hashline Patcher requires a SnapshotStore; section tags are opaque store pointers."
+        "Hashline Patcher requires a SnapshotStore; section tags are opaque store pointers.",
       );
     }
     this.fs = options.fs;
@@ -187,9 +170,7 @@ export class Patcher {
     if (patch.sections.length === 1) {
       const section = patch.sections[0];
       if (!section) {
-        throw new Error(
-          "Patch has no sections. Start with a [path#HASH] header followed by ops."
-        );
+        throw new Error("Patch has no sections. Start with a [path#HASH] header followed by ops.");
       }
       const prepared = await this.prepare(section);
       return { sections: [await this.commit(prepared)] };
@@ -203,7 +184,7 @@ export class Patcher {
     for (const entry of prepared) {
       if (entry.isNoop) {
         throw new Error(
-          `Edits to ${entry.section.path} produced no changes — the body rows are byte-identical to the file at the targeted lines. Re-read the file to verify current content.`
+          `Edits to ${entry.section.path} produced no changes — the body rows are byte-identical to the file at the targeted lines. Re-read the file to verify current content.`,
         );
       }
     }
@@ -228,13 +209,9 @@ export class Patcher {
         const message = error instanceof Error ? error.message : String(error);
         throw new Error(
           `Failed to write ${entry.section.path}: ${message}` +
-            (written.length > 0
-              ? ` Sections already written: ${written.join(", ")}.`
-              : "") +
-            (notWritten.length > 0
-              ? ` Sections not written: ${notWritten.join(", ")}.`
-              : ""),
-          { cause: error }
+            (written.length > 0 ? ` Sections already written: ${written.join(", ")}.` : "") +
+            (notWritten.length > 0 ? ` Sections not written: ${notWritten.join(", ")}.` : ""),
+          { cause: error },
         );
       }
     }
@@ -250,7 +227,7 @@ export class Patcher {
     for (const entry of prepared) {
       if (entry.isNoop) {
         throw new Error(
-          `Edits to ${entry.section.path} produced no changes — the body rows are byte-identical to the file at the targeted lines. Re-read the file to verify current content.`
+          `Edits to ${entry.section.path} produced no changes — the body rows are byte-identical to the file at the targeted lines. Re-read the file to verify current content.`,
         );
       }
     }
@@ -268,16 +245,13 @@ export class Patcher {
 
     if (!read.exists) {
       const recovered = this.#recoverSectionPathFromTag(target, canonicalPath);
-      if (
-        recovered &&
-        this.fs.allowTagPathRecovery(target.path, recovered.section.path)
-      ) {
+      if (recovered && this.fs.allowTagPathRecovery(target.path, recovered.section.path)) {
         parseWarnings.push(
           pathRecoveredFromTagMessage(
             target.path,
             recovered.section.path,
-            target.fileHash as string
-          )
+            target.fileHash as string,
+          ),
         );
         target = recovered.section;
         canonicalPath = recovered.canonicalPath;
@@ -285,21 +259,13 @@ export class Patcher {
       }
     }
 
-    await this.fs.preflightWrite(
-      target.path,
-      fileOp === undefined ? {} : { fileOp }
-    );
+    await this.fs.preflightWrite(target.path, fileOp === undefined ? {} : { fileOp });
 
     if (!read.exists) {
-      throw new Error(
-        `File not found: ${target.path}. Use the write tool to create new files.`
-      );
+      throw new Error(`File not found: ${target.path}. Use the write tool to create new files.`);
     }
 
-    if (
-      fileOp?.kind === "move" &&
-      this.fs.canonicalPath(fileOp.dest) === canonicalPath
-    ) {
+    if (fileOp?.kind === "move" && this.fs.canonicalPath(fileOp.dest) === canonicalPath) {
       throw new Error(`MV destination is the same as ${target.path}.`);
     }
 
@@ -334,13 +300,13 @@ export class Patcher {
       normalized,
       applyResult,
       parseWarnings,
-      fileOp
+      fileOp,
     );
   }
 
   #recoverSectionPathFromTag(
     section: PatchSection,
-    originalCanonicalPath: string
+    originalCanonicalPath: string,
   ): { section: PatchSection; canonicalPath: string } | null {
     if (section.fileHash === undefined) {
       return null;
@@ -351,11 +317,9 @@ export class Patcher {
         this.snapshots
           .findByHash(section.fileHash)
           .filter((snapshot) => path.basename(snapshot.path) === authoredName)
-          .map((snapshot) => snapshot.path)
+          .map((snapshot) => snapshot.path),
       ),
-    ].filter(
-      (candidate) => this.fs.canonicalPath(candidate) !== originalCanonicalPath
-    );
+    ].filter((candidate) => this.fs.canonicalPath(candidate) !== originalCanonicalPath);
     if (candidates.length !== 1) {
       return null;
     }
@@ -471,9 +435,7 @@ export class Patcher {
     };
   }
 
-  async #tryRead(
-    path: string
-  ): Promise<{ exists: boolean; rawContent: string }> {
+  async #tryRead(path: string): Promise<{ exists: boolean; rawContent: string }> {
     try {
       const content = await this.fs.readText(path);
       return { exists: true, rawContent: content };
@@ -489,18 +451,12 @@ export class Patcher {
     return this.snapshots.record(canonicalPath, normalized);
   }
 
-  #assertSeenLines(
-    section: PatchSection,
-    canonicalPath: string,
-    expected: string
-  ): void {
+  #assertSeenLines(section: PatchSection, canonicalPath: string, expected: string): void {
     const seen = this.snapshots.byHash(canonicalPath, expected)?.seenLines;
     if (!seen || seen.size === 0) {
       return;
     }
-    const unseen = section
-      .collectAnchorLines()
-      .filter((line) => !seen.has(line));
+    const unseen = section.collectAnchorLines().filter((line) => !seen.has(line));
     if (unseen.length === 0) {
       return;
     }
@@ -512,7 +468,7 @@ export class Patcher {
     canonicalPath: string,
     normalized: string,
     expected: string,
-    hashRecognized: boolean
+    hashRecognized: boolean,
   ): MismatchError {
     const actualFileHash = this.#recordFullSnapshot(canonicalPath, normalized);
     return new MismatchError({
@@ -534,8 +490,7 @@ export class Patcher {
   }): ApplyResult {
     const { section, canonicalPath, exists, normalized, edits } = args;
     const expected = exists ? section.fileHash : undefined;
-    const liveMatches =
-      expected !== undefined && computeFileHash(normalized) === expected;
+    const liveMatches = expected !== undefined && computeFileHash(normalized) === expected;
 
     const blockResolutions: BlockResolution[] = [];
     const resolveWarnings: string[] = [];
@@ -546,25 +501,13 @@ export class Patcher {
           ? normalized
           : this.snapshots.byHash(canonicalPath, expected)?.text;
       if (baseText === undefined) {
-        throw this.#mismatchError(
-          section,
-          canonicalPath,
-          normalized,
-          expected ?? "",
-          false
-        );
+        throw this.#mismatchError(section, canonicalPath, normalized, expected ?? "", false);
       }
-      resolved = resolveBlockEdits(
-        edits,
-        baseText,
-        section.path,
-        this.blockResolver,
-        {
-          onUnresolved: "throw",
-          onResolved: (resolution) => blockResolutions.push(resolution),
-          onWarning: (warning) => resolveWarnings.push(warning),
-        }
-      );
+      resolved = resolveBlockEdits(edits, baseText, section.path, this.blockResolver, {
+        onUnresolved: "throw",
+        onResolved: (resolution) => blockResolutions.push(resolution),
+        onWarning: (warning) => resolveWarnings.push(warning),
+      });
     }
     const withResolveWarnings = (result: ApplyResult): ApplyResult =>
       resolveWarnings.length === 0
@@ -580,7 +523,7 @@ export class Patcher {
       }
       const result = applyEdits(normalized, resolved);
       return withResolveWarnings(
-        blockResolutions.length > 0 ? { ...result, blockResolutions } : result
+        blockResolutions.length > 0 ? { ...result, blockResolutions } : result,
       );
     }
 
@@ -601,14 +544,7 @@ export class Patcher {
     if (recovered) {
       return withResolveWarnings(recoveryToApplyResult(recovered));
     }
-    const hashRecognized =
-      this.snapshots.byHash(canonicalPath, expected) !== null;
-    throw this.#mismatchError(
-      section,
-      canonicalPath,
-      normalized,
-      expected,
-      hashRecognized
-    );
+    const hashRecognized = this.snapshots.byHash(canonicalPath, expected) !== null;
+    throw this.#mismatchError(section, canonicalPath, normalized, expected, hashRecognized);
   }
 }

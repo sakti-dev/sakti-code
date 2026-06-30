@@ -7,14 +7,13 @@ export type DrizzleDB = NodeSQLiteDatabase<typeof schema>;
 
 export async function initDatabase(
   sqlite: DatabaseSync,
-  options?: { migrationsFolder?: string }
+  options?: { migrationsFolder?: string },
 ): Promise<DrizzleDB> {
   sqlite.exec("PRAGMA journal_mode = WAL");
   sqlite.exec("PRAGMA foreign_keys = ON");
 
   const db = drizzle({ client: sqlite, schema });
-  const migrationsFolder =
-    options?.migrationsFolder ?? `${import.meta.dirname}/../migrations`;
+  const migrationsFolder = options?.migrationsFolder ?? `${import.meta.dirname}/../migrations`;
   migrate(db, { migrationsFolder });
 
   return db;

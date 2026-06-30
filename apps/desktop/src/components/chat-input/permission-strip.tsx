@@ -31,25 +31,13 @@ export function PermissionStrip(props: PermissionStripProps): JSX.Element {
         </span>
       </div>
       <div class="flex shrink-0 gap-2">
-        <Button
-          onClick={() => props.onReply("reject")}
-          size="sm"
-          variant="ghost"
-        >
+        <Button onClick={() => props.onReply("reject")} size="sm" variant="ghost">
           Deny
         </Button>
-        <Button
-          onClick={() => props.onReply("always")}
-          size="sm"
-          variant="secondary"
-        >
+        <Button onClick={() => props.onReply("always")} size="sm" variant="secondary">
           Always
         </Button>
-        <Button
-          onClick={() => props.onReply("once")}
-          size="sm"
-          variant="primary"
-        >
+        <Button onClick={() => props.onReply("once")} size="sm" variant="primary">
           Allow
         </Button>
       </div>

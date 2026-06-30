@@ -13,9 +13,7 @@ import { OutputAccumulator } from "./output-accumulator.ts";
 
 const bashSchema = Type.Object({
   command: Type.String({ description: "Bash command to execute" }),
-  timeout: Type.Optional(
-    Type.Number({ description: "Timeout in seconds (optional)" })
-  ),
+  timeout: Type.Optional(Type.Number({ description: "Timeout in seconds (optional)" })),
 });
 
 export type BashToolInput = Static<typeof bashSchema>;
@@ -34,7 +32,7 @@ export interface BashOperations {
       signal?: AbortSignal;
       timeout?: number;
       env?: NodeJS.ProcessEnv;
-    }
+    },
   ) => Promise<{ exitCode: number | null }>;
 }
 
@@ -55,9 +53,7 @@ function createLocalBashOperations(): BashOperations {
   return {
     exec: async (command, cwd, { onData, signal, timeout, env }) => {
       if (!existsSync(cwd)) {
-        throw new Error(
-          `Working directory does not exist: ${cwd}\nCannot execute bash commands.`
-        );
+        throw new Error(`Working directory does not exist: ${cwd}\nCannot execute bash commands.`);
       }
       if (signal?.aborted) {
         throw new BashAbortedError();
@@ -104,7 +100,7 @@ function createLocalBashOperations(): BashOperations {
         await Promise.all([readStream(proc.stdout), readStream(proc.stderr)]);
 
         const exitCode = await new Promise<number>((resolve) =>
-          proc.once("close", (code) => resolve(code ?? 0))
+          proc.once("close", (code) => resolve(code ?? 0)),
         );
         if (signal?.aborted) {
           throw new Error("aborted");
@@ -134,7 +130,7 @@ const BASH_UPDATE_THROTTLE_MS = 100;
 
 export function createBashTool(
   cwd: string,
-  options?: BashToolOptions
+  options?: BashToolOptions,
 ): AgentTool<typeof bashSchema, BashToolDetails | undefined> {
   const ops = options?.operations ?? createLocalBashOperations();
   const commandPrefix = options?.commandPrefix;
@@ -162,11 +158,9 @@ export function createBashTool(
       _toolCallId: string,
       { command, timeout }: BashToolInput,
       signal?: AbortSignal,
-      onUpdate?: AgentToolUpdateCallback<BashToolDetails | undefined>
+      onUpdate?: AgentToolUpdateCallback<BashToolDetails | undefined>,
     ) {
-      const resolvedCommand = commandPrefix
-        ? `${commandPrefix}\n${command}`
-        : command;
+      const resolvedCommand = commandPrefix ? `${commandPrefix}\n${command}` : command;
       const output = new OutputAccumulator();
       let acceptingOutput = true;
       let updateTimer: NodeJS.Timeout | undefined;
@@ -183,9 +177,7 @@ export function createBashTool(
         onUpdate({
           content: [{ type: "text", text: snapshot.content || "" }],
           details: {
-            ...(snapshot.truncation.truncated
-              ? { truncation: snapshot.truncation }
-              : {}),
+            ...(snapshot.truncation.truncated ? { truncation: snapshot.truncation } : {}),
             ...(snapshot.fullOutputPath === undefined
               ? {}
               : { fullOutputPath: snapshot.fullOutputPath }),
@@ -241,7 +233,7 @@ export function createBashTool(
 
       const formatOutput = (
         snapshot: Awaited<ReturnType<typeof finishOutput>>,
-        emptyText = "(no output)"
+        emptyText = "(no output)",
       ) => {
         const truncation = snapshot.truncation;
         let text = snapshot.content || emptyText;
@@ -288,10 +280,7 @@ export function createBashTool(
           }
           if (err instanceof BashTimeoutError) {
             throw new Error(
-              appendStatus(
-                text,
-                `Command timed out after ${err.timeoutSeconds} seconds`
-              )
+              appendStatus(text, `Command timed out after ${err.timeoutSeconds} seconds`),
             );
           }
           throw err;

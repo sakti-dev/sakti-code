@@ -19,9 +19,7 @@ export class LLMError extends Schema.TaggedErrorClass<LLMError>()("LLMError", {
  * Wraps the Promise-based stream in `Effect.tryPromise`, mapping any
  * rejection to {@link LLMError}.
  */
-export const streamEffect = (
-  req: StreamRequest
-): Effect.Effect<StreamResult, LLMError, never> =>
+export const streamEffect = (req: StreamRequest): Effect.Effect<StreamResult, LLMError, never> =>
   Effect.tryPromise({
     try: () => stream(req),
     catch: (e) =>
@@ -37,7 +35,7 @@ export const streamEffect = (
  * rejection to {@link LLMError}.
  */
 export const completeEffect = (
-  req: CompleteRequest
+  req: CompleteRequest,
 ): Effect.Effect<CompleteResult, LLMError, never> =>
   Effect.tryPromise({
     try: () => complete(req),

@@ -15,7 +15,7 @@ describe("ThinkingPart", () => {
   it("shows 'Thinking...' while streaming with no endedAt", () => {
     const { getByText } = renderThinking(
       { type: "thinking", text: "Let me think...", startedAt: Date.now() },
-      true
+      true,
     );
     expect(getByText("Thinking...")).toBeTruthy();
   });
@@ -45,9 +45,7 @@ describe("ThinkingPart", () => {
       type: "thinking",
       text: "   ",
     });
-    expect(
-      container.querySelector("[data-component='thinking-part']")
-    ).toBeNull();
+    expect(container.querySelector("[data-component='thinking-part']")).toBeNull();
   });
 
   it("toggles content visibility on header click", () => {
@@ -60,45 +58,35 @@ describe("ThinkingPart", () => {
       endedAt,
     });
 
-    const header = container.querySelector(
-      "[data-slot='thinking-header']"
-    ) as HTMLElement;
+    const header = container.querySelector("[data-slot='thinking-header']") as HTMLElement;
     expect(header).toBeTruthy();
 
-    const content = container.querySelector(
-      "[data-slot='thinking-content']"
-    ) as HTMLElement | null;
+    const content = container.querySelector("[data-slot='thinking-content']") as HTMLElement | null;
     expect(content).not.toBeNull();
     expect(content!.style.getPropertyValue("grid-template-rows")).toBe("0fr");
 
     header.click();
 
     const contentAfter = container.querySelector(
-      "[data-slot='thinking-content']"
+      "[data-slot='thinking-content']",
     ) as HTMLElement | null;
-    expect(contentAfter!.style.getPropertyValue("grid-template-rows")).toBe(
-      "1fr"
-    );
+    expect(contentAfter!.style.getPropertyValue("grid-template-rows")).toBe("1fr");
 
     header.click();
 
     const contentFinal = container.querySelector(
-      "[data-slot='thinking-content']"
+      "[data-slot='thinking-content']",
     ) as HTMLElement | null;
-    expect(contentFinal!.style.getPropertyValue("grid-template-rows")).toBe(
-      "0fr"
-    );
+    expect(contentFinal!.style.getPropertyValue("grid-template-rows")).toBe("0fr");
   });
 
   it("auto-expands while streaming", () => {
     const { container } = renderThinking(
       { type: "thinking", text: "Thinking...", startedAt: Date.now() },
-      true
+      true,
     );
 
-    const content = container.querySelector(
-      "[data-slot='thinking-content']"
-    ) as HTMLElement | null;
+    const content = container.querySelector("[data-slot='thinking-content']") as HTMLElement | null;
     expect(content).not.toBeNull();
     expect(content!.style.getPropertyValue("grid-template-rows")).toBe("1fr");
   });
@@ -109,9 +97,7 @@ describe("ThinkingPart", () => {
       text: "Old thinking",
     });
 
-    const content = container.querySelector(
-      "[data-slot='thinking-content']"
-    ) as HTMLElement | null;
+    const content = container.querySelector("[data-slot='thinking-content']") as HTMLElement | null;
     expect(content).not.toBeNull();
     expect(content!.style.getPropertyValue("grid-template-rows")).toBe("0fr");
   });

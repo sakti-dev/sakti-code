@@ -3,9 +3,7 @@ import { computeFileHash, computeRawHash } from "../format";
 
 describe("computeRawHash", () => {
   it("is deterministic", () => {
-    expect(computeRawHash("hello\nworld\n")).toBe(
-      computeRawHash("hello\nworld\n")
-    );
+    expect(computeRawHash("hello\nworld\n")).toBe(computeRawHash("hello\nworld\n"));
   });
 
   it("returns a lowercase hex string up to 8 chars (32-bit)", () => {

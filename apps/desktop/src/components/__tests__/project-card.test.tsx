@@ -60,11 +60,7 @@ describe("ProjectCard", () => {
 
   it("renders session titles", () => {
     const { getByText } = render(() => (
-      <ProjectCard
-        onOpen={vi.fn()}
-        project={mockProject}
-        sessions={mockSessions}
-      />
+      <ProjectCard onOpen={vi.fn()} project={mockProject} sessions={mockSessions} />
     ));
     expect(getByText("Session 1")).toBeTruthy();
     expect(getByText("Untitled session")).toBeTruthy();

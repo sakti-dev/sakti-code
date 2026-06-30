@@ -81,15 +81,9 @@ function validateFrame(parsed: unknown): WindowFrame {
       ? Math.max(obj.height, MIN_HEIGHT)
       : DEFAULT_FRAME.height;
 
-  const x =
-    typeof obj.x === "number" && Number.isFinite(obj.x)
-      ? obj.x
-      : DEFAULT_FRAME.x;
+  const x = typeof obj.x === "number" && Number.isFinite(obj.x) ? obj.x : DEFAULT_FRAME.x;
 
-  const y =
-    typeof obj.y === "number" && Number.isFinite(obj.y)
-      ? obj.y
-      : DEFAULT_FRAME.y;
+  const y = typeof obj.y === "number" && Number.isFinite(obj.y) ? obj.y : DEFAULT_FRAME.y;
 
   return { x, y, width, height };
 }

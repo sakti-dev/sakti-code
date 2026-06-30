@@ -16,12 +16,8 @@ describe("server store — setProjects", () => {
 
   it("replaces previous projects on second call", () => {
     const { store, actions } = createServerStore();
-    actions.setProjects([
-      { id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 },
-    ]);
-    actions.setProjects([
-      { id: "p2", name: "B", cwd: "/b", createdAt: 2, updatedAt: 2 },
-    ]);
+    actions.setProjects([{ id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 }]);
+    actions.setProjects([{ id: "p2", name: "B", cwd: "/b", createdAt: 2, updatedAt: 2 }]);
 
     expect(store.projects.p1).toBeUndefined();
     expect(store.projects.p2).toBeDefined();

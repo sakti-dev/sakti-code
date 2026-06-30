@@ -30,9 +30,7 @@ export function matchUnorderedList(line: string): RegExpMatchArray | null {
   return line.match(UNORDERED_LIST_RE);
 }
 
-export function matchOrderedListDetail(
-  line: string
-): { indent: number; text: string } | null {
+export function matchOrderedListDetail(line: string): { indent: number; text: string } | null {
   const match = line.match(ORDERED_LIST_DETAIL_RE);
   if (!match) {
     return null;
@@ -43,9 +41,7 @@ export function matchOrderedListDetail(
   };
 }
 
-export function matchUnorderedListDetail(
-  line: string
-): { indent: number; text: string } | null {
+export function matchUnorderedListDetail(line: string): { indent: number; text: string } | null {
   const match = line.match(UNORDERED_LIST_DETAIL_RE);
   if (!match) {
     return null;
@@ -60,9 +56,7 @@ export function matchFence(line: string): RegExpMatchArray | null {
   return line.match(FENCE_RE);
 }
 
-export function matchTaskListItem(
-  text: string
-): { checked: boolean; text: string } | null {
+export function matchTaskListItem(text: string): { checked: boolean; text: string } | null {
   const match = text.match(TASK_LIST_RE);
   if (!match) {
     return null;
@@ -84,7 +78,5 @@ export function isTableSeparator(line: string): boolean {
 
 export function looksLikeTableRow(line: string): boolean {
   const trimmed = line.trim();
-  return (
-    trimmed.includes("|") && trimmed.replace(PIPE_RE, "").trim().length > 0
-  );
+  return trimmed.includes("|") && trimmed.replace(PIPE_RE, "").trim().length > 0;
 }

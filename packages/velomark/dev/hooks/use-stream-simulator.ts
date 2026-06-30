@@ -17,10 +17,7 @@ function splitChunks(content: string, chunkSize: number): string[] {
   return chunks;
 }
 
-function buildSnapshots(
-  chunks: string[],
-  mode: PlaygroundStreamMode
-): string[] {
+function buildSnapshots(chunks: string[], mode: PlaygroundStreamMode): string[] {
   const snapshots: string[] = [];
   let current = "";
 
