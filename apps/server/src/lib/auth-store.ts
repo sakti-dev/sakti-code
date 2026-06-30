@@ -12,6 +12,10 @@ import lockfile from "proper-lockfile";
 /** Known provider ids from the catalog. Static per process. */
 const KNOWN_PROVIDERS: readonly string[] = PROVIDERS;
 
+/** Accepts known LLM provider ids or namespaced service keys like "websearch:exa". */
+const isAllowedKey = (provider: string): boolean =>
+  KNOWN_PROVIDERS.includes(provider) || /^websearch:[a-z]+$/.test(provider);
+
 export interface AuthEntry {
   hasKey: boolean;
   /** Last 4 characters of the key prefixed by `...`, or null if not set. */
@@ -129,7 +133,7 @@ export function createAuthStore(authPath: string): AuthStore {
     },
 
     set(provider, key) {
-      if (!KNOWN_PROVIDERS.includes(provider)) {
+      if (!isAllowedKey(provider)) {
         return false;
       }
       const trimmed = key.trim();
@@ -143,7 +147,7 @@ export function createAuthStore(authPath: string): AuthStore {
     },
 
     delete(provider) {
-      if (!KNOWN_PROVIDERS.includes(provider)) {
+      if (!isAllowedKey(provider)) {
         return false;
       }
       return withLock((current) => {

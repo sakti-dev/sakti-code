@@ -84,6 +84,23 @@ describe("AuthStore", () => {
     expect(existsSync(authPath) ? readFileSync(authPath, "utf-8") : "{}").toBe("{}");
   });
 
+  it("set accepts namespaced websearch: keys", () => {
+    expect(store.set("websearch:exa", "exa-key")).toBe(true);
+    expect(store.getApiKey("websearch:exa")).toBe("exa-key");
+    expect(store.set("websearch:tavily", "tv-key")).toBe(true);
+    expect(store.getApiKey("websearch:tavily")).toBe("tv-key");
+  });
+
+  it("set rejects a bare websearch: prefix with no provider suffix", () => {
+    expect(store.set("websearch:", "k")).toBe(false);
+  });
+
+  it("delete removes namespaced websearch: keys", () => {
+    store.set("websearch:exa", "exa-key");
+    expect(store.delete("websearch:exa")).toBe(true);
+    expect(store.getApiKey("websearch:exa")).toBeUndefined();
+  });
+
   it("empty key is rejected", () => {
     const ok = store.set("openai", "   ");
     expect(ok).toBe(false);
