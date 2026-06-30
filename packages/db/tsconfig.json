@@ -4,5 +4,6 @@
     "strictNullChecks": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/test-*XXXXXX*/**"]
 }
