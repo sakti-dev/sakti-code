@@ -141,7 +141,7 @@ export function createFindTool(
   return {
     name: "find",
     label: "find",
-    description: `Search for files by glob pattern (or a bare name fragment). Returns matching file paths relative to the search directory. Searches all files including gitignored ones, excluding .git and node_modules. Output is truncated to ${DEFAULT_LIMIT} results or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first); if truncated, refine your pattern.`,
+    description: `Find files by glob pattern or a bare name fragment (matched as a substring across the whole path, e.g. 'Button' -> '**/*Button*'). Returns file paths relative to 'path' (default: cwd). Searches all files including gitignored ones; excludes .git, node_modules, target, dist, build, .next, out.\nTips: pass 'path' to scope to a subdirectory (faster, fewer false positives); pass 'limit' (default ${DEFAULT_LIMIT}) to cap results.\nIf nothing is found, do NOT retry with minor glob variations — broaden the pattern, search a shorter fragment (the file may use snake_case or kebab-case), or list the parent directory with the read or bash tool. A directory name like 'foo' does not match files inside it; use path='foo' instead.`,
     parameters: findSchema,
     permissions: (params) => [
       { permission: "glob", patterns: [resolveGlobPattern((params as FindToolInput).pattern)] },

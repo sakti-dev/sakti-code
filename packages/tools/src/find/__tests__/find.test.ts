@@ -422,3 +422,31 @@ describe("find: build artifacts and deps are excluded even when they match the p
     expect(text).toContain("app.ts");
   });
 });
+
+describe("find: description teaches recovery, not retry", () => {
+  const tool = createFindTool(process.cwd());
+  const d = tool.description;
+
+  it("states the exclude list", () => {
+    expect(d).toContain("target");
+    expect(d).toContain("node_modules");
+    expect(d).toContain("dist");
+  });
+
+  it("documents the bare-name -> substring behavior", () => {
+    expect(d).toMatch(/bare name|substring/i);
+  });
+
+  it("documents path= and limit=", () => {
+    expect(d).toContain("path");
+    expect(d).toContain("limit");
+  });
+
+  it("tells the model NOT to retry minor glob variations (circuit-breaker)", () => {
+    expect(d).toMatch(/do not.*retry|don't.*retry/i);
+  });
+
+  it("hints at snake_case/kebab-case naming", () => {
+    expect(d).toMatch(/snake_case|kebab-case/i);
+  });
+});
