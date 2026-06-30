@@ -7,21 +7,20 @@
     "crates/*"
   ],
   "scripts": {
-    "typecheck": "turbo run typecheck",
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "start": "turbo run start",
-    "hmr": "turbo run hmr",
-    "build:canary": "turbo run build:canary",
-    "check": "ultracite check",
-    "fix": "ultracite fix",
-    "dev:server": "pnpm --filter @sakti-code/server dev",
+    "typecheck": "vp run -r typecheck",
+    "build": "vp run -r build",
+    "dev": "vp run desktop#dev",
+    "start": "vp run @sakti-code/server#start",
+    "test": "vp run -r test",
+    "dev:server": "vp run @sakti-code/server#dev",
+    "check": "vp check",
+    "fix": "vp check --fix",
     "velomark:pull": "git subtree pull --prefix=packages/velomark https://github.com/sakti-dev/velomark.git main --squash",
     "velomark:push": "git subtree push --prefix=packages/velomark https://github.com/sakti-dev/velomark.git main",
     "pi:sync": "nix-shell -p git-filter-repo --run \"bash scripts/sync-pi-crates.sh\"",
     "pi:pull": "git subtree pull --prefix=vendor/pi-crates https://github.com/sakti-dev/oh-my-pi.git crates-only --squash",
     "pi:push": "git subtree push --prefix=vendor/pi-crates https://github.com/sakti-dev/oh-my-pi.git crates-only",
-    "prepare": "husky"
+    "prepare": "vp config"
   },
   "dependencies": {
     "ignore": "^7.0.5",
@@ -30,15 +29,19 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.16",
     "@types/node": "^26.0.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^17.0.7",
-    "tsup": "^8.5.1",
-    "turbo": "2.9.18",
     "typescript": "^6.0.3",
-    "ultracite": "7.8.3",
     "vite-plus": "catalog:"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^10",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": ">=22.18.0"
   },
   "packageManager": "pnpm@10.18.0"
 }

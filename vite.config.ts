@@ -11,4 +11,10 @@ export default defineConfig({
       typeCheck: false,
     },
   },
+  run: {
+    cache: true,
+  },
+  staged: {
+    "*": "vp check --fix",
+  },
 });
