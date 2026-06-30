@@ -25,9 +25,7 @@ import {
 import type { SessionStorageShape } from "./storage.ts";
 import { SessionStorage } from "./storage.ts";
 
-export function buildSessionContextFromEntries(
-  pathEntries: SessionTreeEntry[]
-): SessionContext {
+export function buildSessionContextFromEntries(pathEntries: SessionTreeEntry[]): SessionContext {
   let thinkingLevel = "off";
   let model: { provider: string; modelId: string } | null = null;
   let activeToolNames: string[] | null = null;
@@ -61,13 +59,11 @@ export function buildSessionContextFromEntries(
           entry.content as string | (TextContent | ImageContent)[],
           entry.display,
           entry.details,
-          entry.timestamp
-        )
+          entry.timestamp,
+        ),
       );
     } else if (entry.type === "branch_summary" && entry.summary) {
-      messages.push(
-        createBranchSummaryMessage(entry.summary, entry.fromId, entry.timestamp)
-      );
+      messages.push(createBranchSummaryMessage(entry.summary, entry.fromId, entry.timestamp));
     }
   };
 
@@ -76,11 +72,11 @@ export function buildSessionContextFromEntries(
       createCompactionSummaryMessage(
         compaction.summary,
         compaction.tokensBefore,
-        compaction.timestamp
-      )
+        compaction.timestamp,
+      ),
     );
     const compactionIdx = pathEntries.findIndex(
-      (e) => e.type === "compaction" && e.id === compaction!.id
+      (e) => e.type === "compaction" && e.id === compaction!.id,
     );
     let foundFirstKept = false;
     for (let i = 0; i < compactionIdx; i++) {
@@ -106,333 +102,302 @@ export function buildSessionContextFromEntries(
 
 export interface SessionShape {
   readonly appendActiveToolsChange: (
-    activeToolNames: string[]
+    activeToolNames: string[],
   ) => Effect.Effect<string, SessionError>;
   readonly appendCompaction: <T = unknown>(
     summary: string,
     firstKeptEntryId: string,
     tokensBefore: number,
     details?: T,
-    fromHook?: boolean
+    fromHook?: boolean,
   ) => Effect.Effect<string, SessionError>;
   readonly appendCustomEntry: (
     customType: string,
-    data?: unknown
+    data?: unknown,
   ) => Effect.Effect<string, SessionError>;
   readonly appendCustomMessageEntry: <T = unknown>(
     customType: string,
     content: string | (TextContent | ImageContent)[],
     display: boolean,
-    details?: T
+    details?: T,
   ) => Effect.Effect<string, SessionError>;
   readonly appendLabel: (
     targetId: string,
-    label: string | undefined
+    label: string | undefined,
   ) => Effect.Effect<string, SessionError>;
-  readonly appendMessage: (
-    message: AgentMessage
-  ) => Effect.Effect<string, SessionError>;
+  readonly appendMessage: (message: AgentMessage) => Effect.Effect<string, SessionError>;
   readonly appendModelChange: (
     provider: string,
-    modelId: string
+    modelId: string,
   ) => Effect.Effect<string, SessionError>;
-  readonly appendSessionName: (
-    name: string
-  ) => Effect.Effect<string, SessionError>;
+  readonly appendSessionName: (name: string) => Effect.Effect<string, SessionError>;
   readonly appendThinkingLevelChange: (
-    thinkingLevel: string
+    thinkingLevel: string,
   ) => Effect.Effect<string, SessionError>;
   readonly buildContext: () => Effect.Effect<SessionContext, SessionError>;
-  readonly getBranch: (
-    fromId?: string
-  ) => Effect.Effect<SessionTreeEntry[], SessionError>;
+  readonly getBranch: (fromId?: string) => Effect.Effect<SessionTreeEntry[], SessionError>;
   readonly getEntries: () => Effect.Effect<SessionTreeEntry[], SessionError>;
-  readonly getEntry: (
-    id: string
-  ) => Effect.Effect<SessionTreeEntry | undefined, SessionError>;
-  readonly getLabel: (
-    id: string
-  ) => Effect.Effect<string | undefined, SessionError>;
+  readonly getEntry: (id: string) => Effect.Effect<SessionTreeEntry | undefined, SessionError>;
+  readonly getLabel: (id: string) => Effect.Effect<string | undefined, SessionError>;
   readonly getLeafId: () => Effect.Effect<string | null, SessionError>;
   readonly getMetadata: () => Effect.Effect<SessionMetadata, SessionError>;
-  readonly getSessionName: () => Effect.Effect<
-    string | undefined,
-    SessionError
-  >;
+  readonly getSessionName: () => Effect.Effect<string | undefined, SessionError>;
   readonly moveTo: (
     entryId: string | null,
     summary?: {
       summary: string;
       details?: unknown;
       fromHook?: boolean;
-    }
+    },
   ) => Effect.Effect<string | undefined, SessionError>;
 }
 
 export class Session extends Context.Service<Session, SessionShape>()(
-  "@sakti-code/agent/Session"
+  "@sakti-code/agent/Session",
 ) {}
 
-export const SessionLive: Layer.Layer<Session, SessionError, SessionStorage> =
-  Layer.effect(
-    Session,
-    Effect.gen(function* () {
-      const storage = yield* SessionStorage;
+export const SessionLive: Layer.Layer<Session, SessionError, SessionStorage> = Layer.effect(
+  Session,
+  Effect.gen(function* () {
+    const storage = yield* SessionStorage;
 
-      const getMetadata = () => storage.getMetadata();
-      const getLeafId = () => storage.getLeafId();
-      const getEntry = (id: string) => storage.getEntry(id);
-      const getEntries = () => storage.getEntries();
-      const getLabel = (id: string) => storage.getLabel(id);
+    const getMetadata = () => storage.getMetadata();
+    const getLeafId = () => storage.getLeafId();
+    const getEntry = (id: string) => storage.getEntry(id);
+    const getEntries = () => storage.getEntries();
+    const getLabel = (id: string) => storage.getLabel(id);
 
-      const getBranch = Effect.fnUntraced(function* (fromId?: string) {
-        const leafId = fromId ?? (yield* storage.getLeafId());
-        return yield* storage.getPathToRoot(leafId);
-      });
+    const getBranch = Effect.fnUntraced(function* (fromId?: string) {
+      const leafId = fromId ?? (yield* storage.getLeafId());
+      return yield* storage.getPathToRoot(leafId);
+    });
 
-      const buildContext = Effect.fnUntraced(function* () {
-        const branch = yield* getBranch();
-        return buildSessionContextFromEntries(branch);
-      });
+    const buildContext = Effect.fnUntraced(function* () {
+      const branch = yield* getBranch();
+      return buildSessionContextFromEntries(branch);
+    });
 
-      const getSessionName = Effect.fnUntraced(function* () {
-        const entries = yield* storage.findEntries("session_info");
-        return entries[entries.length - 1]?.name?.trim() || undefined;
-      });
+    const getSessionName = Effect.fnUntraced(function* () {
+      const entries = yield* storage.findEntries("session_info");
+      return entries[entries.length - 1]?.name?.trim() || undefined;
+    });
 
-      const appendMessage = Effect.fnUntraced(function* (
-        message: AgentMessage
-      ) {
-        const id = yield* storage.createEntryId();
-        const parentId = yield* storage.getLeafId();
-        const entry: MessageEntry = {
-          type: "message",
-          id,
-          parentId,
-          timestamp: new Date().toISOString(),
-          message,
-        };
-        yield* storage.appendEntry(entry);
-        return id;
-      });
+    const appendMessage = Effect.fnUntraced(function* (message: AgentMessage) {
+      const id = yield* storage.createEntryId();
+      const parentId = yield* storage.getLeafId();
+      const entry: MessageEntry = {
+        type: "message",
+        id,
+        parentId,
+        timestamp: new Date().toISOString(),
+        message,
+      };
+      yield* storage.appendEntry(entry);
+      return id;
+    });
 
-      const appendThinkingLevelChange = Effect.fnUntraced(function* (
-        thinkingLevel: string
-      ) {
-        const id = yield* storage.createEntryId();
-        const parentId = yield* storage.getLeafId();
-        const entry: ThinkingLevelChangeEntry = {
-          type: "thinking_level_change",
-          id,
-          parentId,
-          timestamp: new Date().toISOString(),
-          thinkingLevel,
-        };
-        yield* storage.appendEntry(entry);
-        return id;
-      });
+    const appendThinkingLevelChange = Effect.fnUntraced(function* (thinkingLevel: string) {
+      const id = yield* storage.createEntryId();
+      const parentId = yield* storage.getLeafId();
+      const entry: ThinkingLevelChangeEntry = {
+        type: "thinking_level_change",
+        id,
+        parentId,
+        timestamp: new Date().toISOString(),
+        thinkingLevel,
+      };
+      yield* storage.appendEntry(entry);
+      return id;
+    });
 
-      const appendModelChange = Effect.fnUntraced(function* (
-        provider: string,
-        modelId: string
-      ) {
-        const id = yield* storage.createEntryId();
-        const parentId = yield* storage.getLeafId();
-        const entry: ModelChangeEntry = {
-          type: "model_change",
-          id,
-          parentId,
-          timestamp: new Date().toISOString(),
-          provider,
-          modelId,
-        };
-        yield* storage.appendEntry(entry);
-        return id;
-      });
+    const appendModelChange = Effect.fnUntraced(function* (provider: string, modelId: string) {
+      const id = yield* storage.createEntryId();
+      const parentId = yield* storage.getLeafId();
+      const entry: ModelChangeEntry = {
+        type: "model_change",
+        id,
+        parentId,
+        timestamp: new Date().toISOString(),
+        provider,
+        modelId,
+      };
+      yield* storage.appendEntry(entry);
+      return id;
+    });
 
-      const appendActiveToolsChange = Effect.fnUntraced(function* (
-        activeToolNames: string[]
-      ) {
-        const id = yield* storage.createEntryId();
-        const parentId = yield* storage.getLeafId();
-        const entry: ActiveToolsChangeEntry = {
-          type: "active_tools_change",
-          id,
-          parentId,
-          timestamp: new Date().toISOString(),
-          activeToolNames: [...activeToolNames],
-        };
-        yield* storage.appendEntry(entry);
-        return id;
-      });
+    const appendActiveToolsChange = Effect.fnUntraced(function* (activeToolNames: string[]) {
+      const id = yield* storage.createEntryId();
+      const parentId = yield* storage.getLeafId();
+      const entry: ActiveToolsChangeEntry = {
+        type: "active_tools_change",
+        id,
+        parentId,
+        timestamp: new Date().toISOString(),
+        activeToolNames: [...activeToolNames],
+      };
+      yield* storage.appendEntry(entry);
+      return id;
+    });
 
-      const appendCompaction = Effect.fnUntraced(function* <T = unknown>(
-        summary: string,
-        firstKeptEntryId: string,
-        tokensBefore: number,
-        details?: T,
-        fromHook?: boolean
-      ) {
-        const id = yield* storage.createEntryId();
-        const parentId = yield* storage.getLeafId();
-        const entry: CompactionEntry<T> = {
-          type: "compaction",
-          id,
-          parentId,
-          timestamp: new Date().toISOString(),
-          summary,
-          firstKeptEntryId,
-          tokensBefore,
-          details,
-          fromHook,
-        };
-        yield* storage.appendEntry(entry);
-        return id;
-      });
+    const appendCompaction = Effect.fnUntraced(function* <T = unknown>(
+      summary: string,
+      firstKeptEntryId: string,
+      tokensBefore: number,
+      details?: T,
+      fromHook?: boolean,
+    ) {
+      const id = yield* storage.createEntryId();
+      const parentId = yield* storage.getLeafId();
+      const entry: CompactionEntry<T> = {
+        type: "compaction",
+        id,
+        parentId,
+        timestamp: new Date().toISOString(),
+        summary,
+        firstKeptEntryId,
+        tokensBefore,
+        details,
+        fromHook,
+      };
+      yield* storage.appendEntry(entry);
+      return id;
+    });
 
-      const appendCustomEntry = Effect.fnUntraced(function* (
-        customType: string,
-        data?: unknown
-      ) {
-        const id = yield* storage.createEntryId();
-        const parentId = yield* storage.getLeafId();
-        const entry: CustomEntry = {
-          type: "custom",
-          id,
-          parentId,
-          timestamp: new Date().toISOString(),
-          customType,
-          data,
-        };
-        yield* storage.appendEntry(entry);
-        return id;
-      });
+    const appendCustomEntry = Effect.fnUntraced(function* (customType: string, data?: unknown) {
+      const id = yield* storage.createEntryId();
+      const parentId = yield* storage.getLeafId();
+      const entry: CustomEntry = {
+        type: "custom",
+        id,
+        parentId,
+        timestamp: new Date().toISOString(),
+        customType,
+        data,
+      };
+      yield* storage.appendEntry(entry);
+      return id;
+    });
 
-      const appendCustomMessageEntry = Effect.fnUntraced(function* <
-        T = unknown,
-      >(
-        customType: string,
-        content: string | (TextContent | ImageContent)[],
-        display: boolean,
-        details?: T
-      ) {
-        const id = yield* storage.createEntryId();
-        const parentId = yield* storage.getLeafId();
-        const entry: CustomMessageEntry<T> = {
-          type: "custom_message",
-          id,
-          parentId,
-          timestamp: new Date().toISOString(),
-          customType,
-          content,
-          display,
-          details,
-        };
-        yield* storage.appendEntry(entry);
-        return id;
-      });
+    const appendCustomMessageEntry = Effect.fnUntraced(function* <T = unknown>(
+      customType: string,
+      content: string | (TextContent | ImageContent)[],
+      display: boolean,
+      details?: T,
+    ) {
+      const id = yield* storage.createEntryId();
+      const parentId = yield* storage.getLeafId();
+      const entry: CustomMessageEntry<T> = {
+        type: "custom_message",
+        id,
+        parentId,
+        timestamp: new Date().toISOString(),
+        customType,
+        content,
+        display,
+        details,
+      };
+      yield* storage.appendEntry(entry);
+      return id;
+    });
 
-      const appendLabel = Effect.fnUntraced(function* (
-        targetId: string,
-        label: string | undefined
-      ) {
-        const target = yield* storage.getEntry(targetId);
+    const appendLabel = Effect.fnUntraced(function* (targetId: string, label: string | undefined) {
+      const target = yield* storage.getEntry(targetId);
+      if (!target) {
+        return yield* new SessionError({
+          code: "not_found",
+          message: `Entry ${targetId} not found`,
+        });
+      }
+      const id = yield* storage.createEntryId();
+      const parentId = yield* storage.getLeafId();
+      const entry: LabelEntry = {
+        type: "label",
+        id,
+        parentId,
+        timestamp: new Date().toISOString(),
+        targetId,
+        label,
+      };
+      yield* storage.appendEntry(entry);
+      return id;
+    });
+
+    const appendSessionName = Effect.fnUntraced(function* (name: string) {
+      const id = yield* storage.createEntryId();
+      const parentId = yield* storage.getLeafId();
+      const entry: SessionInfoEntry = {
+        type: "session_info",
+        id,
+        parentId,
+        timestamp: new Date().toISOString(),
+        name: name.trim(),
+      };
+      yield* storage.appendEntry(entry);
+      return id;
+    });
+
+    const moveTo = Effect.fnUntraced(function* (
+      entryId: string | null,
+      summary?: {
+        summary: string;
+        details?: unknown;
+        fromHook?: boolean;
+      },
+    ) {
+      if (entryId !== null) {
+        const target = yield* storage.getEntry(entryId);
         if (!target) {
           return yield* new SessionError({
             code: "not_found",
-            message: `Entry ${targetId} not found`,
+            message: `Entry ${entryId} not found`,
           });
         }
-        const id = yield* storage.createEntryId();
-        const parentId = yield* storage.getLeafId();
-        const entry: LabelEntry = {
-          type: "label",
-          id,
-          parentId,
-          timestamp: new Date().toISOString(),
-          targetId,
-          label,
-        };
-        yield* storage.appendEntry(entry);
-        return id;
-      });
-
-      const appendSessionName = Effect.fnUntraced(function* (name: string) {
-        const id = yield* storage.createEntryId();
-        const parentId = yield* storage.getLeafId();
-        const entry: SessionInfoEntry = {
-          type: "session_info",
-          id,
-          parentId,
-          timestamp: new Date().toISOString(),
-          name: name.trim(),
-        };
-        yield* storage.appendEntry(entry);
-        return id;
-      });
-
-      const moveTo = Effect.fnUntraced(function* (
-        entryId: string | null,
-        summary?: {
-          summary: string;
-          details?: unknown;
-          fromHook?: boolean;
-        }
-      ) {
-        if (entryId !== null) {
-          const target = yield* storage.getEntry(entryId);
-          if (!target) {
-            return yield* new SessionError({
-              code: "not_found",
-              message: `Entry ${entryId} not found`,
-            });
-          }
-        }
-        yield* storage.setLeafId(entryId);
-        if (!summary) {
-          return;
-        }
-        const id = yield* storage.createEntryId();
-        const entry: BranchSummaryEntry = {
-          type: "branch_summary",
-          id,
-          parentId: entryId,
-          timestamp: new Date().toISOString(),
-          fromId: entryId ?? "root",
-          summary: summary.summary,
-          details: summary.details,
-          fromHook: summary.fromHook,
-        };
-        yield* storage.appendEntry(entry);
-        return id;
-      });
-
-      const shape: SessionShape = {
-        getMetadata,
-        getLeafId,
-        getEntry,
-        getEntries,
-        getLabel,
-        getBranch,
-        buildContext,
-        getSessionName,
-        appendMessage,
-        appendThinkingLevelChange,
-        appendModelChange,
-        appendActiveToolsChange,
-        appendCompaction,
-        appendCustomEntry,
-        appendCustomMessageEntry,
-        appendLabel,
-        appendSessionName,
-        moveTo,
+      }
+      yield* storage.setLeafId(entryId);
+      if (!summary) {
+        return;
+      }
+      const id = yield* storage.createEntryId();
+      const entry: BranchSummaryEntry = {
+        type: "branch_summary",
+        id,
+        parentId: entryId,
+        timestamp: new Date().toISOString(),
+        fromId: entryId ?? "root",
+        summary: summary.summary,
+        details: summary.details,
+        fromHook: summary.fromHook,
       };
-      return shape;
-    })
-  );
+      yield* storage.appendEntry(entry);
+      return id;
+    });
+
+    const shape: SessionShape = {
+      getMetadata,
+      getLeafId,
+      getEntry,
+      getEntries,
+      getLabel,
+      getBranch,
+      buildContext,
+      getSessionName,
+      appendMessage,
+      appendThinkingLevelChange,
+      appendModelChange,
+      appendActiveToolsChange,
+      appendCompaction,
+      appendCustomEntry,
+      appendCustomMessageEntry,
+      appendLabel,
+      appendSessionName,
+      moveTo,
+    };
+    return shape;
+  }),
+);
 
 export const buildSessionContext = (
-  fromId?: string
+  fromId?: string,
 ): Effect.Effect<SessionContext, SessionError, Session> =>
   Effect.gen(function* () {
     const session = yield* Session;
@@ -440,9 +405,7 @@ export const buildSessionContext = (
     return buildSessionContextFromEntries(branch);
   });
 
-export class PromiseSession<
-  TMetadata extends SessionMetadata = SessionMetadata,
-> {
+export class PromiseSession<TMetadata extends SessionMetadata = SessionMetadata> {
   private readonly storage: SessionStorageShape;
 
   constructor(storage: SessionStorageShape) {
@@ -492,9 +455,7 @@ export class PromiseSession<
     return entries[entries.length - 1]?.name?.trim() || undefined;
   }
 
-  private async appendTypedEntry<TEntry extends SessionTreeEntry>(
-    entry: TEntry
-  ): Promise<string> {
+  private async appendTypedEntry<TEntry extends SessionTreeEntry>(entry: TEntry): Promise<string> {
     await this.run(this.storage.appendEntry(entry));
     return entry.id;
   }
@@ -545,7 +506,7 @@ export class PromiseSession<
     firstKeptEntryId: string,
     tokensBefore: number,
     details?: T,
-    fromHook?: boolean
+    fromHook?: boolean,
   ): Promise<string> {
     return this.appendTypedEntry({
       type: "compaction",
@@ -575,7 +536,7 @@ export class PromiseSession<
     customType: string,
     content: string | (TextContent | ImageContent)[],
     display: boolean,
-    details?: T
+    details?: T,
   ): Promise<string> {
     return this.appendTypedEntry({
       type: "custom_message",
@@ -589,10 +550,7 @@ export class PromiseSession<
     } satisfies CustomMessageEntry<T>);
   }
 
-  async appendLabel(
-    targetId: string,
-    label: string | undefined
-  ): Promise<string> {
+  async appendLabel(targetId: string, label: string | undefined): Promise<string> {
     if (!(await this.run(this.storage.getEntry(targetId)))) {
       throw new SessionError({
         code: "not_found",
@@ -625,7 +583,7 @@ export class PromiseSession<
       summary: string;
       details?: unknown;
       fromHook?: boolean;
-    }
+    },
   ): Promise<string | undefined> {
     if (entryId !== null && !(await this.run(this.storage.getEntry(entryId)))) {
       throw new SessionError({
@@ -673,36 +631,19 @@ export function promiseSessionAsShape(session: PromiseSession): SessionShape {
     getLabel: (id) => wrap(() => session.getLabel(id)),
     getSessionName: () => wrap(() => session.getSessionName()),
     appendMessage: (msg) => wrap(() => session.appendMessage(msg)),
-    appendThinkingLevelChange: (level) =>
-      wrap(() => session.appendThinkingLevelChange(level)),
+    appendThinkingLevelChange: (level) => wrap(() => session.appendThinkingLevelChange(level)),
     appendModelChange: (provider, modelId) =>
       wrap(() => session.appendModelChange(provider, modelId)),
-    appendActiveToolsChange: (names) =>
-      wrap(() => session.appendActiveToolsChange(names)),
-    appendCompaction: (
-      summary,
-      firstKeptEntryId,
-      tokensBefore,
-      details,
-      fromHook
-    ) =>
+    appendActiveToolsChange: (names) => wrap(() => session.appendActiveToolsChange(names)),
+    appendCompaction: (summary, firstKeptEntryId, tokensBefore, details, fromHook) =>
       wrap(() =>
-        session.appendCompaction(
-          summary,
-          firstKeptEntryId,
-          tokensBefore,
-          details,
-          fromHook
-        )
+        session.appendCompaction(summary, firstKeptEntryId, tokensBefore, details, fromHook),
       ),
     appendCustomEntry: (customType, data) =>
       wrap(() => session.appendCustomEntry(customType, data)),
     appendCustomMessageEntry: (customType, content, display, details) =>
-      wrap(() =>
-        session.appendCustomMessageEntry(customType, content, display, details)
-      ),
-    appendLabel: (targetId, label) =>
-      wrap(() => session.appendLabel(targetId, label)),
+      wrap(() => session.appendCustomMessageEntry(customType, content, display, details)),
+    appendLabel: (targetId, label) => wrap(() => session.appendLabel(targetId, label)),
     appendSessionName: (name) => wrap(() => session.appendSessionName(name)),
     moveTo: (entryId, summary) => wrap(() => session.moveTo(entryId, summary)),
   };

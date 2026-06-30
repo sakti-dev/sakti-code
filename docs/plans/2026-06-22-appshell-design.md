@@ -16,12 +16,12 @@ ColorMode setup (Kobalte) + AppShell layout shell. No features inside — just t
 
 ## Components
 
-| File | Purpose |
-|------|---------|
-| `components/AppShell.tsx` | Top-level flex layout: sidebar + main |
-| `components/Sidebar.tsx` | Left panel (stub) |
-| `components/Toolbar.tsx` | Top toolbar (stub) |
-| `components/ContentTabBar.tsx` | Chat + terminal tab bar (stub) |
+| File                           | Purpose                               |
+| ------------------------------ | ------------------------------------- |
+| `components/AppShell.tsx`      | Top-level flex layout: sidebar + main |
+| `components/Sidebar.tsx`       | Left panel (stub)                     |
+| `components/Toolbar.tsx`       | Top toolbar (stub)                    |
+| `components/ContentTabBar.tsx` | Chat + terminal tab bar (stub)        |
 
 ## Layout
 

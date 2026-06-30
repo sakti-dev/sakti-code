@@ -14,17 +14,17 @@ repeated cases auto-allow.
 
 ## Cross-compare outcome (opencode proven path)
 
-| Aspect | opencode | sakti decision |
-| :--- | :--- | :--- |
-| Reply vocabulary | `"once" \| "always" \| "reject"` | **Adopt verbatim** (UI: Allow=once, Always, Deny=reject). |
-| Request fields | `{id, sessionID, permission, patterns[], metadata, always[], tool:{callID}}` | **Adopt**; `always = patterns` (set by the loop from `tool.permissions()`). |
-| Grants store | in-memory `approved: Rule[]` (InstanceState-scoped, **not** DB) | **In-memory per session** — confirmed the proven path; DB persistence is a follow-up. |
-| deny short-circuit | `deny` throws immediately, never asks | Already correct (Phase 2). |
-| Sibling cascade | reject/always cascades to same-session pending | **Drop** — sakti prepares tool calls sequentially (`agent-loop.ts:622`/`:693`; only *execution* is parallel via `Promise.all:753`), so never >1 pending ask. |
-| ID | `"per_" + ascending()` | Adopt `per_`-prefixed ascending id. |
-| Events | `permission.asked` / `permission.replied` | Match field-for-field over WS. |
-| Cleanup | reject all pending on disposal (`index.ts:54-61`) | **Adopt** — reject pending on run end/abort. |
-| Loop hook | tools call `permission.ask()` inline | Keep central declarator (Phase 2); resolver returns `Promise<"allow"|"deny">`. |
+| Aspect             | opencode                                                                     | sakti decision                                                                                                                                               |
+| :----------------- | :--------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| Reply vocabulary   | `"once" \| "always" \| "reject"`                                             | **Adopt verbatim** (UI: Allow=once, Always, Deny=reject).                                                                                                    |
+| Request fields     | `{id, sessionID, permission, patterns[], metadata, always[], tool:{callID}}` | **Adopt**; `always = patterns` (set by the loop from `tool.permissions()`).                                                                                  |
+| Grants store       | in-memory `approved: Rule[]` (InstanceState-scoped, **not** DB)              | **In-memory per session** — confirmed the proven path; DB persistence is a follow-up.                                                                        |
+| deny short-circuit | `deny` throws immediately, never asks                                        | Already correct (Phase 2).                                                                                                                                   |
+| Sibling cascade    | reject/always cascades to same-session pending                               | **Drop** — sakti prepares tool calls sequentially (`agent-loop.ts:622`/`:693`; only _execution_ is parallel via `Promise.all:753`), so never >1 pending ask. |
+| ID                 | `"per_" + ascending()`                                                       | Adopt `per_`-prefixed ascending id.                                                                                                                          |
+| Events             | `permission.asked` / `permission.replied`                                    | Match field-for-field over WS.                                                                                                                               |
+| Cleanup            | reject all pending on disposal (`index.ts:54-61`)                            | **Adopt** — reject pending on run end/abort.                                                                                                                 |
+| Loop hook          | tools call `permission.ask()` inline                                         | Keep central declarator (Phase 2); resolver returns `Promise<"allow"                                                                                         | "deny">`. |
 
 ## Architecture & data flow
 
@@ -66,6 +66,7 @@ WS in: {type:"permission.reply", sessionId, id, reply: "once"|"always"|"reject"}
 ## Component breakdown
 
 ### `packages/agent` (loop hook)
+
 - `AgentLoopConfig.resolvePermissionAsk?: (req: PermissionAskRequest) => Promise<"allow" | "deny">`
   - `PermissionAskRequest = {id; sessionId; permission; patterns; always; tool: {callID}; toolName}`
 - `agent-loop.ts:844`: when sync `evaluatePermission` yields `"ask"` for any
@@ -74,14 +75,15 @@ WS in: {type:"permission.reply", sessionId, id, reply: "once"|"always"|"reject"}
 - Export `PermissionAskRequest` + a `PermissionReply = "once"|"always"|"reject"` type.
 
 ### `apps/server` (the bridge + grants)
+
 - `lib/permission-channel.ts` (new): per-session `pending: Map<id, {request, deferred}>`
-  + `grants: Map<sessionId, PermissionRule[]>` (the in-memory `approved`).
-  - `ask(sessionId, request)`: re-check grants; if all-allowed resolve
+  - `grants: Map<sessionId, PermissionRule[]>` (the in-memory `approved`).
+  * `ask(sessionId, request)`: re-check grants; if all-allowed resolve
     `"allow"`; else create Deferred, store, emit `permission.asked`, return promise.
-  - `reply(sessionId, id, reply)`: resolve the Deferred (`once`→allow,
+  * `reply(sessionId, id, reply)`: resolve the Deferred (`once`→allow,
     `always`→grant+allow, `reject`→deny); emit `permission.replied`.
-  - `rejectPendingForSession(sessionId)`: reject all (run end/abort finalizer).
-  - `grantsFor(sessionId)`: snapshot merged into the harness evaluator.
+  * `rejectPendingForSession(sessionId)`: reject all (run end/abort finalizer).
+  * `grantsFor(sessionId)`: snapshot merged into the harness evaluator.
 - `runner.ts`: the harness evaluator closure becomes
   `evaluate(perm, pat, merge(agentRuleset, grantsFor(sessionId)))` so "always"
   auto-allows on the next sync eval. Wire `resolvePermissionAsk` to
@@ -92,6 +94,7 @@ WS in: {type:"permission.reply", sessionId, id, reply: "once"|"always"|"reject"}
   `external_directory: { "*": "ask" }` (opencode defaults) so the strip fires.
 
 ### `apps/desktop` (the strip)
+
 - New session-store slice `store.permission: PermissionPending | null` where
   `PermissionPending = {id, toolName, permission, patterns}`.
 - `stores/server/ws-client.ts`: on `permission.asked` frame → reducer sets the
@@ -103,11 +106,13 @@ WS in: {type:"permission.reply", sessionId, id, reply: "once"|"always"|"reject"}
 - Mount in `chat-input.tsx` next to the `<Show when={retry()}>` block.
 
 ## Testing
+
 - **agent**: loop `ask` calls `resolvePermissionAsk` and awaits; absent resolver → deny; allow proceeds, deny blocks.
 - **server**: grants merge makes a prior "always" skip the next ask (no UI frame); `once` doesn't persist; `reject` denies; run-end finalizer rejects pending; ruleset flip (.env → ask).
 - **desktop**: `PermissionStrip` renders from the slice; buttons emit the correct `permission.reply`; slice clears on `permission.replied`.
 
 ## Out of scope (tracked follow-ups)
+
 - DB persistence of "always" grants (opencode runtime is in-memory; cross-session save is separate).
 - Sibling-cascade (not needed — sequential preparation).
 - Tool-exposure filtering (exclude denied tools from the LLM request) — opencode `session/llm.ts:149`.

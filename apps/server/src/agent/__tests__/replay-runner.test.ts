@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { type ReplayEntry, ReplayRunner } from "../replay-runner.ts";
 
 interface FakeWs {
@@ -166,8 +166,8 @@ describe("ReplayRunner", () => {
     const userStarts = ws.sent.filter(
       (f) =>
         (f as { type?: string }).type === "event" &&
-        (f as { event?: { type?: string; message?: { role?: string } } }).event
-          ?.message?.role === "user"
+        (f as { event?: { type?: string; message?: { role?: string } } }).event?.message?.role ===
+          "user",
     );
     expect(userStarts.length).toBeGreaterThan(0);
   });
@@ -181,14 +181,8 @@ describe("ReplayRunner", () => {
     await runner.run();
 
     const deltas = ws.sent
-      .filter(
-        (f) =>
-          (f as { event?: { type?: string } }).event?.type === "message_update"
-      )
-      .map(
-        (f) =>
-          (f as { event?: { delta?: { kind?: string } } }).event?.delta?.kind
-      );
+      .filter((f) => (f as { event?: { type?: string } }).event?.type === "message_update")
+      .map((f) => (f as { event?: { delta?: { kind?: string } } }).event?.delta?.kind);
 
     const firstDelta = deltas[0];
     const lastDelta = deltas.at(-1);
@@ -218,14 +212,10 @@ describe("ReplayRunner", () => {
     await runner.run();
 
     const endEvent = ws.sent.find(
-      (f) =>
-        (f as { event?: { type?: string } }).event?.type ===
-        "tool_execution_end"
+      (f) => (f as { event?: { type?: string } }).event?.type === "tool_execution_end",
     ) as { event?: { result?: { details?: unknown } } } | undefined;
     expect(endEvent?.event?.result).toBeDefined();
-    expect(
-      (endEvent!.event!.result as { details?: unknown }).details
-    ).toBeDefined();
+    expect((endEvent!.event!.result as { details?: unknown }).details).toBeDefined();
   });
 
   it("can be aborted mid-run", async () => {

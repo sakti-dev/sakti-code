@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { intakeSessionRoutes } from "../routes/projects/intake-session.ts";
 import { projectsRoutes } from "../routes/projects/projects.ts";
 import { makeApp, seedProfile } from "./helpers.ts";
@@ -10,12 +10,9 @@ describe("POST /api/projects/:id/intake-session", () => {
     const project = await ctx.repos.projects.create("demo", "/tmp/demo");
 
     const first = await app.request(
-      new Request(
-        `http://localhost:3001/api/projects/${project.id}/intake-session`,
-        {
-          method: "POST",
-        }
-      )
+      new Request(`http://localhost:3001/api/projects/${project.id}/intake-session`, {
+        method: "POST",
+      }),
     );
     expect(first.status).toBe(201);
     const firstSession = await first.json();
@@ -24,12 +21,9 @@ describe("POST /api/projects/:id/intake-session", () => {
     expect(firstSession.title).toBe("Intake");
 
     const second = await app.request(
-      new Request(
-        `http://localhost:3001/api/projects/${project.id}/intake-session`,
-        {
-          method: "POST",
-        }
-      )
+      new Request(`http://localhost:3001/api/projects/${project.id}/intake-session`, {
+        method: "POST",
+      }),
     );
     expect(second.status).toBe(200);
     const secondSession = await second.json();
@@ -40,12 +34,9 @@ describe("POST /api/projects/:id/intake-session", () => {
     const { app } = await makeApp([projectsRoutes, intakeSessionRoutes]);
 
     const res = await app.request(
-      new Request(
-        "http://localhost:3001/api/projects/nonexistent/intake-session",
-        {
-          method: "POST",
-        }
-      )
+      new Request("http://localhost:3001/api/projects/nonexistent/intake-session", {
+        method: "POST",
+      }),
     );
     expect(res.status).toBe(404);
   });
@@ -55,12 +46,9 @@ describe("POST /api/projects/:id/intake-session", () => {
     const project = await ctx.repos.projects.create("demo", "/tmp/demo");
 
     const res = await app.request(
-      new Request(
-        `http://localhost:3001/api/projects/${project.id}/intake-session`,
-        {
-          method: "POST",
-        }
-      )
+      new Request(`http://localhost:3001/api/projects/${project.id}/intake-session`, {
+        method: "POST",
+      }),
     );
     expect(res.status).toBe(201);
     const session = await res.json();

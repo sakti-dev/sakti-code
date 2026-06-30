@@ -6,9 +6,7 @@ interface ProposedSessionCardProps {
   proposal: { message: string; title: string };
 }
 
-export function ProposedSessionCard(
-  props: ProposedSessionCardProps
-): JSX.Element {
+export function ProposedSessionCard(props: ProposedSessionCardProps): JSX.Element {
   const [expanded, setExpanded] = createSignal(false);
 
   return (

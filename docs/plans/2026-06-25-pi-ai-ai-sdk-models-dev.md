@@ -2,9 +2,10 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Make `@earendil-works/pi-ai` (`packages/ai/`) data-driven from models.dev so every provider is selectable with zero per-provider code, by adopting the opencode method (dynamic `@ai-sdk/*` loading driven by each model's `npm` field) — porting opencode's *proven logic* into pi-ai's existing plain-TS structure, while preserving pi-ai's compat fixes as model metadata.
+**Goal:** Make `@earendil-works/pi-ai` (`packages/ai/`) data-driven from models.dev so every provider is selectable with zero per-provider code, by adopting the opencode method (dynamic `@ai-sdk/*` loading driven by each model's `npm` field) — porting opencode's _proven logic_ into pi-ai's existing plain-TS structure, while preserving pi-ai's compat fixes as model metadata.
 
 **Architecture:** Keep pi-ai's plain-TS shape (`Provider` interface, `createProvider`, `Models`, `EventStream`, `async`/`AsyncIterable`) that `packages/agent` and `apps/desktop` already consume. Do **not** adopt Effect-TS. Add three new seams inside `packages/ai/`, each a port of proven opencode logic:
+
 1. **`api/ai-sdk.ts`** — converts `streamText().fullStream` → pi-ai's `AssistantMessageEvent`. Template: opencode `session/llm/ai-sdk.ts` (`toLLMEvents`), reshaped to pi-ai's protocol.
 2. **`providers/ai-sdk-loader.ts`** — `BUNDLED_PROVIDERS` + `resolveSdk`. Near-verbatim port of opencode `provider/provider.ts:107-134` and `:1639-1771`.
 3. **`providers/ai-sdk-transform.ts`** — compat middleware reading `model.compat`. Branch-by-branch port of pi-ai `openai-completions.ts:594-666` (the fixes), structured like opencode `provider/transform.ts:1257` (`providerOptions`).
@@ -14,6 +15,7 @@ models.dev's `provider.npm` field is the routing key. Existing hand-written API 
 **Tech Stack:** TypeScript, `vitest`, `@ai-sdk/*` packages, existing pi-ai `typebox` + `EventStream`. **No Effect-TS. No new event layer.**
 
 **Constraints (from `AGENTS.md`):**
+
 - `exactOptionalPropertyTypes: true` → conditional spread `...(x !== undefined ? { x } : {})`, never pass `undefined`.
 - TS 6.0 → `include`/`references` top-level; `shell` in `execSync` is a string.
 - Tests in `packages/ai/test/*.test.ts`, vitest `globals: true`, node env.
@@ -24,12 +26,14 @@ models.dev's `provider.npm` field is the routing key. Existing hand-written API 
 
 ## ⚠️ Port Discipline Guardrails — READ BEFORE EVERY TASK
 
-These rules apply to **every** task below. They exist because LLM executors tend to *reinvent* instead of *port*, which introduces slop. Violating any rule requires a written justification in the task's Lineage Map.
+These rules apply to **every** task below. They exist because LLM executors tend to _reinvent_ instead of _port_, which introduces slop. Violating any rule requires a written justification in the task's Lineage Map.
 
 ### Rule R1 — Read-before-write (mandatory, blocking)
+
 Before writing any code in a task whose title contains "Port" or "Verbatim", the executor MUST first use the Read tool on the exact opencode/pi-ai reference cited in that task's **Reference** block, and quote the relevant lines into its working context. No writing may begin until the reference has been read in the current task. If the reference is unread, the task is incomplete by definition.
 
 ### Rule R2 — Lineage Map artifact (mandatory per porting task)
+
 Every task tagged `[PORT]` must produce a **Lineage Map** table appended as a comment block at the top of the new file (or in the test if the file is too small). Format:
 
 ```ts
@@ -44,9 +48,11 @@ Every task tagged `[PORT]` must produce a **Lineage Map** table appended as a co
 The `identical?` column is one of: `yes` | `logic-only` (control flow copied, types/Effect stripped) | `adapted` (semantics preserved, shape changed — divergence column MUST explain why).
 
 ### Rule R3 — Diff gate before commit
-Before the commit step in any `[PORT]` task, the executor must explicitly state in its final message: *"No logic was added that is not present in the cited reference."* If any logic was added, it must either (a) be removed, or (b) be listed in the Lineage Map with a justification. The executing-plans reviewer treats an unjustified addition as a failure.
+
+Before the commit step in any `[PORT]` task, the executor must explicitly state in its final message: _"No logic was added that is not present in the cited reference."_ If any logic was added, it must either (a) be removed, or (b) be listed in the Lineage Map with a justification. The executing-plans reviewer treats an unjustified addition as a failure.
 
 ### Rule R4 — Hard bans
+
 - **No `effect` imports.** No `Layer`, `Effect.gen`, `Context.Service`, `Schema.brand`, `InstanceState`. The words `yield*` may not appear in any new file. If a ported function seems to need Effect, it must be rewritten to plain `async`/`Promise`/`AsyncIterable` — that rewrite IS the task.
 - **No new fields on pi-ai's `Model` beyond `npm` and the existing ones.** Do not invent `capabilities`, `variants`, `status` (those are opencode's shape). pi-ai's `Model` stays as defined in `types.ts:660`.
 - **No new API wire code.** The `@ai-sdk/*` package IS the wire layer for `api: "ai-sdk"` models. There must be no hand-written `fetch("/v1/messages")`, no SSE parser, no request-body builder for ai-sdk models. (The existing 9 impls are untouched and keep their wire code for non-ai-sdk models.)
@@ -54,9 +60,11 @@ Before the commit step in any `[PORT]` task, the executor must explicitly state 
 - **No `console.log`, `any`, `debugger`.** `unknown` over `any`.
 
 ### Rule R5 — Test intent preservation
+
 When migrating an existing pi-ai test (Phase 5), the executor MUST cite the original test file + the assertion being preserved, and the new assertion must test the **same intent** (e.g. "ZAI sends `thinking.type: "enabled"`"). Only the exact request field paths may shift to match what `@ai-sdk/openai-compatible` emits. A migration that weakens the assertion is a failure.
 
 ### Rule R6 — Single source of truth for "what opencode does"
+
 If, during a port, the executor is unsure how opencode handles a case, the answer is **read the reference again**, not reason about it. Cite the line you relied on. If opencode and pi-ai genuinely conflict (e.g. a thinkingFormat value opencode lacks), the pi-ai behavior wins (we're preserving pi-ai's fixes) and the Lineage Map records the conflict.
 
 ---
@@ -65,32 +73,32 @@ If, during a port, the executor is unsure how opencode handles a case, the answe
 
 One place to find every source the plan cites. **Verify each path exists before relying on it.**
 
-| ID | Path | What it is | Used by |
-|----|------|-----------|---------|
-| OC-LOADER | `openspec/references/opencode/packages/opencode/src/provider/provider.ts:107-134` | `BUNDLED_PROVIDERS` map | Task 2.1 |
-| OC-RESOLVE | `…/provider/provider.ts:1639-1771` | `resolveSDK` (options/baseURL/apiKey/headers + dynamic import) | Task 2.2 |
-| OC-GETLANG | `…/provider/provider.ts:1801-1830` | `getLanguage` (sdk → languageModel dispatch) | Task 2.2 |
-| OC-MD-MODEL | `…/provider/provider.ts:1188-1237` | `fromModelsDevModel` (field mapping) | Task 4.2 |
-| OC-MD-PROV | `…/provider/provider.ts:1239-1271` | `fromModelsDevProvider` (loop over models) | Task 4.2 |
-| OC-ADAPTER | `openspec/references/opencode/packages/opencode/src/session/llm/ai-sdk.ts` (whole, 288 lines) | `toLLMEvents` — fullStream → LLMEvent switch | Task 1.1-1.3 |
-| OC-STREAM | `…/session/llm.ts:280-353` | `streamText` call + options | Task 2.3, 3.3 |
-| OC-WRAP | `…/session/llm.ts:325-343` | `wrapLanguageModel` + `transformParams` middleware | Task 3.3 |
-| OC-TRANSFORM | `openspec/references/opencode/packages/opencode/src/provider/transform.ts:1257-1170` region | `providerOptions`, reasoning translation, `switch(model.api.npm):731`, cache_control `:329-344`, enable_thinking `:1109,1166` | Task 3.1-3.2 |
-| OC-MD-SVC | `openspec/references/opencode/packages/core/src/models-dev.ts` | fetch/cache/TTL (Effect — **reference only, do not port**) | Task 4.3 |
-| PI-COMPAT | `packages/ai/src/api/openai-completions.ts:594-666` | `thinkingFormat` switch (the fixes — **primary port source**) | Task 3.1 |
-| PI-CACHE | `packages/ai/src/api/openai-completions.ts:731` | `cacheControlFormat` handling | Task 3.2 |
-| PI-MODEL | `packages/ai/src/types.ts:660-690` | pi-ai `Model` interface | Task 0.2 |
-| PI-EVENT | `packages/ai/src/types.ts:447-459` | `AssistantMessageEvent` protocol | Task 1.1 |
-| PI-USAGE | `packages/ai/src/types.ts:352-367` | `Usage` shape | Task 1.1 |
-| PI-COST | `packages/ai/src/models.ts:385-395` | `calculateCost` | Task 1.3 |
-| PI-EVSTREAM | `packages/ai/src/utils/event-stream.ts` | `AssistantMessageEventStream` | Task 1.1 |
-| PI-LAZY | `packages/ai/src/api/lazy.ts` | `lazyStream`, `lazyApi` | Task 2.3 |
-| PI-PROVIDER | `packages/ai/src/models.ts:32-72, 295-369` | `Provider` interface + `createProvider` | Task 5.1 |
-| PI-AUTH | `packages/ai/src/auth/types.ts` | `ProviderAuth`, `AuthResult`, `ModelAuth` | Task 2.2, 5.1 |
-| PI-GENMODEL | `packages/ai/scripts/generate-models.ts` | current per-provider ingestion | Task 4.3 |
-| PI-ALL | `packages/ai/src/providers/all.ts` | `builtinProviders` | Task 5.2 |
-| AG-STREAM | `packages/agent/src/types.ts:24-26` | `StreamFn` | Task 6.1 |
-| AG-AGENT | `packages/agent/src/agent.ts:270` | `streamFn ?? streamSimple` | Task 6.1 |
+| ID           | Path                                                                                          | What it is                                                                                                                    | Used by       |
+| ------------ | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| OC-LOADER    | `openspec/references/opencode/packages/opencode/src/provider/provider.ts:107-134`             | `BUNDLED_PROVIDERS` map                                                                                                       | Task 2.1      |
+| OC-RESOLVE   | `…/provider/provider.ts:1639-1771`                                                            | `resolveSDK` (options/baseURL/apiKey/headers + dynamic import)                                                                | Task 2.2      |
+| OC-GETLANG   | `…/provider/provider.ts:1801-1830`                                                            | `getLanguage` (sdk → languageModel dispatch)                                                                                  | Task 2.2      |
+| OC-MD-MODEL  | `…/provider/provider.ts:1188-1237`                                                            | `fromModelsDevModel` (field mapping)                                                                                          | Task 4.2      |
+| OC-MD-PROV   | `…/provider/provider.ts:1239-1271`                                                            | `fromModelsDevProvider` (loop over models)                                                                                    | Task 4.2      |
+| OC-ADAPTER   | `openspec/references/opencode/packages/opencode/src/session/llm/ai-sdk.ts` (whole, 288 lines) | `toLLMEvents` — fullStream → LLMEvent switch                                                                                  | Task 1.1-1.3  |
+| OC-STREAM    | `…/session/llm.ts:280-353`                                                                    | `streamText` call + options                                                                                                   | Task 2.3, 3.3 |
+| OC-WRAP      | `…/session/llm.ts:325-343`                                                                    | `wrapLanguageModel` + `transformParams` middleware                                                                            | Task 3.3      |
+| OC-TRANSFORM | `openspec/references/opencode/packages/opencode/src/provider/transform.ts:1257-1170` region   | `providerOptions`, reasoning translation, `switch(model.api.npm):731`, cache_control `:329-344`, enable_thinking `:1109,1166` | Task 3.1-3.2  |
+| OC-MD-SVC    | `openspec/references/opencode/packages/core/src/models-dev.ts`                                | fetch/cache/TTL (Effect — **reference only, do not port**)                                                                    | Task 4.3      |
+| PI-COMPAT    | `packages/ai/src/api/openai-completions.ts:594-666`                                           | `thinkingFormat` switch (the fixes — **primary port source**)                                                                 | Task 3.1      |
+| PI-CACHE     | `packages/ai/src/api/openai-completions.ts:731`                                               | `cacheControlFormat` handling                                                                                                 | Task 3.2      |
+| PI-MODEL     | `packages/ai/src/types.ts:660-690`                                                            | pi-ai `Model` interface                                                                                                       | Task 0.2      |
+| PI-EVENT     | `packages/ai/src/types.ts:447-459`                                                            | `AssistantMessageEvent` protocol                                                                                              | Task 1.1      |
+| PI-USAGE     | `packages/ai/src/types.ts:352-367`                                                            | `Usage` shape                                                                                                                 | Task 1.1      |
+| PI-COST      | `packages/ai/src/models.ts:385-395`                                                           | `calculateCost`                                                                                                               | Task 1.3      |
+| PI-EVSTREAM  | `packages/ai/src/utils/event-stream.ts`                                                       | `AssistantMessageEventStream`                                                                                                 | Task 1.1      |
+| PI-LAZY      | `packages/ai/src/api/lazy.ts`                                                                 | `lazyStream`, `lazyApi`                                                                                                       | Task 2.3      |
+| PI-PROVIDER  | `packages/ai/src/models.ts:32-72, 295-369`                                                    | `Provider` interface + `createProvider`                                                                                       | Task 5.1      |
+| PI-AUTH      | `packages/ai/src/auth/types.ts`                                                               | `ProviderAuth`, `AuthResult`, `ModelAuth`                                                                                     | Task 2.2, 5.1 |
+| PI-GENMODEL  | `packages/ai/scripts/generate-models.ts`                                                      | current per-provider ingestion                                                                                                | Task 4.3      |
+| PI-ALL       | `packages/ai/src/providers/all.ts`                                                            | `builtinProviders`                                                                                                            | Task 5.2      |
+| AG-STREAM    | `packages/agent/src/types.ts:24-26`                                                           | `StreamFn`                                                                                                                    | Task 6.1      |
+| AG-AGENT     | `packages/agent/src/agent.ts:270`                                                             | `streamFn ?? streamSimple`                                                                                                    | Task 6.1      |
 
 ---
 
@@ -117,11 +125,13 @@ One place to find every source the plan cites. **Verify each path exists before 
 **Files:** Modify `packages/ai/src/types.ts`; Create `packages/ai/test/ai-sdk-model-type.test.ts`
 
 **Port rules:**
+
 - Add `"ai-sdk"` to the `KnownApi` union (PI-EVENT region `:15-24`). Do not reorder existing members.
 - Add `npm?: string;` as the **last** field of `Model`. Do not add any other field.
 - For `compat` on `Model<"ai-sdk">`, reuse `OpenAICompletionsCompat` (the fixes are authored against it). Add the conditional branch `TApi extends "ai-sdk" ? OpenAICompletionsCompat : …` to the existing `compat` ternary. Do not invent a new compat shape.
 
 **Step 1 — failing test:**
+
 ```ts
 import { describe, expect, it } from "vitest";
 import type { Api, Model } from "../src/types.ts";
@@ -129,11 +139,16 @@ import type { Api, Model } from "../src/types.ts";
 describe("Model ai-sdk support", () => {
   it("accepts api 'ai-sdk' with npm + OpenAICompletionsCompat", () => {
     const model: Model<"ai-sdk"> = {
-      id: "claude-sonnet-4-5", name: "Claude Sonnet 4.5",
-      api: "ai-sdk", provider: "anthropic", baseUrl: "https://api.anthropic.com",
-      reasoning: true, input: ["text", "image"],
+      id: "claude-sonnet-4-5",
+      name: "Claude Sonnet 4.5",
+      api: "ai-sdk",
+      provider: "anthropic",
+      baseUrl: "https://api.anthropic.com",
+      reasoning: true,
+      input: ["text", "image"],
       cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
-      contextWindow: 200000, maxTokens: 64000,
+      contextWindow: 200000,
+      maxTokens: 64000,
       npm: "@ai-sdk/anthropic",
       compat: { thinkingFormat: "openai" },
     };
@@ -170,6 +185,7 @@ describe("Model ai-sdk support", () => {
 **Files:** Create `packages/ai/src/api/ai-sdk.ts`, `packages/ai/test/ai-sdk-adapter.test.ts`
 
 **Port rules:**
+
 - The switch over `event.type` MUST enumerate the **same cases** as opencode's `toLLMEvents` (OC-ADAPTER `:80-285`): `start, start-step, finish-step, finish, text-start/delta/end, reasoning-start/delta/end, tool-input-start/delta/end, tool-call, tool-result, tool-error, error, abort, source, file, raw`. Do not drop cases. Cases with no pi-ai equivalent (`start-step`, `source`, `file`, `raw`, `tool-output-denied`, `tool-approval-request`) are matched and produce no events (mirror opencode returning `Effect.succeed([])`).
 - `usageFrom` MUST port opencode's `usage()` field reads verbatim: `inputTokens`, `outputTokens`, `totalTokens`, `reasoningTokens`, `cachedInputTokens`, `inputTokenDetails.cacheReadTokens`, `inputTokenDetails.cacheWriteTokens`, `outputTokenDetails.reasoningTokens`. Assign into pi-ai's `Usage` (PI-USAGE).
 - **Critical difference to implement (not port):** pi-ai events carry an accumulated **partial `AssistantMessage`** on every event (PI-EVENT). opencode's LLMEvent does not. So the adapter maintains an accumulator and clones the partial onto each emitted event. This is the sole structural divergence — record it in the Lineage Map as `adapted: partial-message accumulation, required by PI-EVENT protocol`.
@@ -179,30 +195,60 @@ describe("Model ai-sdk support", () => {
 **Lineage Map (R2)** at top of `api/ai-sdk.ts`: map each opencode case line to your handler line.
 
 **Step 1 — failing test** (text streaming, full happy path):
+
 ```ts
 import { describe, expect, it } from "vitest";
 import { streamEventsFromFullStream } from "../src/api/ai-sdk.ts";
 import type { Model } from "../src/types.ts";
 
 const baseModel: Model<"ai-sdk"> = {
-  id: "m", name: "M", api: "ai-sdk", provider: "p", baseUrl: "",
-  reasoning: false, input: ["text"],
+  id: "m",
+  name: "M",
+  api: "ai-sdk",
+  provider: "p",
+  baseUrl: "",
+  reasoning: false,
+  input: ["text"],
   cost: { input: 3, output: 15, cacheRead: 0, cacheWrite: 0 },
-  contextWindow: 0, maxTokens: 0, npm: "@ai-sdk/openai-compatible",
+  contextWindow: 0,
+  maxTokens: 0,
+  npm: "@ai-sdk/openai-compatible",
 };
-async function* fake(parts: any[]) { for (const p of parts) yield p; }
-async function collect<T>(s: AsyncIterable<T>): Promise<T[]> { const o: T[] = []; for await (const e of s) o.push(e); return o; }
+async function* fake(parts: any[]) {
+  for (const p of parts) yield p;
+}
+async function collect<T>(s: AsyncIterable<T>): Promise<T[]> {
+  const o: T[] = [];
+  for await (const e of s) o.push(e);
+  return o;
+}
 
 describe("ai-sdk adapter text", () => {
   it("emits start -> text_* -> done with accumulated partial + cost", async () => {
-    const events = await collect(streamEventsFromFullStream(baseModel, fake([
-      { type: "text-start", id: "t1" },
-      { type: "text-delta", id: "t1", text: "Hel" },
-      { type: "text-delta", id: "t1", text: "lo" },
-      { type: "text-end", id: "t1" },
-      { type: "finish", finishReason: "stop", totalUsage: { inputTokens: 1000000, outputTokens: 1000000 } },
-    ])));
-    expect(events.map((e) => e.type)).toEqual(["start","text_start","text_delta","text_delta","text_end","done"]);
+    const events = await collect(
+      streamEventsFromFullStream(
+        baseModel,
+        fake([
+          { type: "text-start", id: "t1" },
+          { type: "text-delta", id: "t1", text: "Hel" },
+          { type: "text-delta", id: "t1", text: "lo" },
+          { type: "text-end", id: "t1" },
+          {
+            type: "finish",
+            finishReason: "stop",
+            totalUsage: { inputTokens: 1000000, outputTokens: 1000000 },
+          },
+        ]),
+      ),
+    );
+    expect(events.map((e) => e.type)).toEqual([
+      "start",
+      "text_start",
+      "text_delta",
+      "text_delta",
+      "text_end",
+      "done",
+    ]);
     const done = events.at(-1)!;
     if (done.type === "done") {
       expect(done.message.content).toEqual([{ type: "text", text: "Hello" }]);
@@ -217,6 +263,7 @@ describe("ai-sdk adapter text", () => {
 **Step 2:** Run → FAIL (module missing).
 
 **Step 3:** Implement `api/ai-sdk.ts`. Skeleton:
+
 ```ts
 import type { Api, AssistantMessage, AssistantMessageEvent, Model, StopReason, TextContent, ThinkingContent, ToolCall, Usage } from "../types.ts";
 import { calculateCost } from "../models.ts";
@@ -251,8 +298,12 @@ export async function* streamEventsFromFullStream(model: Model<Api>, fullStream:
 **Port rules:** Add one test per opencode case. Each test's input parts mirror the opencode case's event shape.
 
 ```ts
-it("reasoning-* -> thinking_*", async () => { /* reasoning-start/delta/end */ });
-it("tool-call -> toolcall_end with input object", async () => { /* toolCallId/toolName/input */ });
+it("reasoning-* -> thinking_*", async () => {
+  /* reasoning-start/delta/end */
+});
+it("tool-call -> toolcall_end with input object", async () => {
+  /* toolCallId/toolName/input */
+});
 it("error part -> error event + stopReason 'error'", async () => {});
 it("length finishReason -> stopReason 'length'", async () => {});
 it("tool-calls finishReason -> stopReason 'toolUse'", async () => {});
@@ -269,6 +320,7 @@ Run → PASS. Commit `test(ai): cover thinking/tool/error/length in ai-sdk adapt
 **Reference (R1):** PI-COST (`models.ts:385-395`) and OC-ADAPTER `usage()` (`:44-64`).
 
 **Port rules:**
+
 - The adapter must read `inputTokenDetails.cacheReadTokens`/`cacheWriteTokens` (opencode's `usage()` does) and assign to `Usage.cacheRead`/`cacheWrite`.
 - `calculateCost` must run on `finish` so `cost.total` is set. Add a test that asserts `cost.cacheRead` is populated when the stream reports `inputTokenDetails.cacheReadTokens`.
 
@@ -285,6 +337,7 @@ Run → PASS. Commit `test(ai): verify cost + cache token accounting in adapter`
 **Files:** Create `packages/ai/src/providers/ai-sdk-loader.ts`, `packages/ai/test/ai-sdk-loader.test.ts`
 
 **Port rules:**
+
 - This is the closest-to-verbatim port in the plan. Copy the registry **entry-for-entry**: `@ai-sdk/amazon-bedrock, @ai-sdk/amazon-bedrock/mantle, @ai-sdk/anthropic, @ai-sdk/azure, @ai-sdk/google, @ai-sdk/google-vertex, @ai-sdk/google-vertex/anthropic, @ai-sdk/openai, @ai-sdk/openai-compatible, @openrouter/ai-sdk-provider, @ai-sdk/xai, @ai-sdk/mistral, @ai-sdk/groq, @ai-sdk/deepinfra, @ai-sdk/cerebras, @ai-sdk/cohere, @ai-sdk/gateway, @ai-sdk/togetherai, @ai-sdk/perplexity, @ai-sdk/vercel, @ai-sdk/alibaba, gitlab-ai-provider, @ai-sdk/github-copilot, venice-ai-sdk-provider`. Each maps to `() => import(NPM).then(m => m.createX)`. Keep the same `createX` export names.
 - **Type-only divergence (record in Lineage Map as `logic-only`):** opencode types the factory as `(opts: any) => BundledSDK`. Use `(opts: Record<string, unknown>) => { languageModel(modelId: string): unknown }`. The `unknown` is intentional — pi-ai doesn't need @ai-sdk's `LanguageModelV3` type at this layer; the adapter (Phase 1) consumes the runtime via `streamText`, not the typed object.
 - Drop opencode-only entries that pull internal paths (`@opencode-ai/core/github-copilot/copilot-provider`) — leave a `// TODO` and skip; covered by runtime-install fallback (Task 6.2).
@@ -308,6 +361,7 @@ Run → PASS. Commit `test(ai): verify cost + cache token accounting in adapter`
 **Files:** Modify `packages/ai/src/providers/ai-sdk-loader.ts`, `packages/ai/test/ai-sdk-loader.test.ts`
 
 **Port rules (logic-only — strip Effect):**
+
 - Port the **options-building logic** from OC-RESOLVE verbatim into plain TS:
   - `baseURL` resolution: prefer an explicit `options.baseURL`, else `model.baseUrl`; variable substitution `${VAR}` from env (OC-RESOLVE `:1664-1683`) — keep this.
   - `apiKey` assignment: `options.apiKey === undefined && provider.key → options.apiKey = provider.key` (OC-RESOLVE `:1686`). In pi-ai, the key comes from `AuthResult.auth.apiKey` (PI-AUTH) — pass it in as `provider.key`.
@@ -334,6 +388,7 @@ Run → PASS. Commit `test(ai): verify cost + cache token accounting in adapter`
 **Files:** Create `packages/ai/src/providers/ai-sdk-streams.ts`, `packages/ai/test/ai-sdk-streams.test.ts`
 
 **Port rules:**
+
 - Implement `createAISdkStreams({ resolveLanguage, runStreamText })` returning pi-ai `ProviderStreams` (PI types `:222`). Both `stream` and `streamSimple` use `lazyStream` (PI-LAZY) to return synchronously while `resolveLanguage` (Task 2.2) resolves, then pipe `runStreamText()` (which wraps the real `streamText`) through `streamEventsFromFullStream` (Phase 1).
 - Port the `streamText` option set from OC-STREAM `:280-353`: `model` (the resolved language, wrapped — Task 3.3 adds `wrapLanguageModel`), `messages`, `tools`, `toolChoice`, `temperature`, `topP`, `topK`, `maxOutputTokens`, `abortSignal`, `headers`, `providerOptions`, `maxRetries: 0`. Convert pi-ai `Context` → `streamText` messages (pi-ai `Message` → `ai` `ModelMessage` — write a small `toModelMessages` helper; this is glue, not ported).
 - **Inject `runStreamText` for tests** so the adapter can be tested without real API calls (the test feeds fake parts).
@@ -350,7 +405,7 @@ Run → PASS. Commit `test(ai): verify cost + cache token accounting in adapter`
 
 ## Phase 3 — Compat middleware (preserving the fixes)
 
-> This is where pi-ai's years of provider fixes survive. The fixes are **data** (`model.compat.thinkingFormat`, `model.thinkingLevelMap`, `cacheControlFormat`). Phase 0.2 kept that data on `Model<"ai-sdk">`. Now port the **consumption** logic so the data still drives behavior — only the *sink* changes (from raw request fields in `openai-completions.ts` to `providerOptions`/headers in `streamText`).
+> This is where pi-ai's years of provider fixes survive. The fixes are **data** (`model.compat.thinkingFormat`, `model.thinkingLevelMap`, `cacheControlFormat`). Phase 0.2 kept that data on `Model<"ai-sdk">`. Now port the **consumption** logic so the data still drives behavior — only the _sink_ changes (from raw request fields in `openai-completions.ts` to `providerOptions`/headers in `streamText`).
 
 ### Task 3.1: thinkingFormat → providerOptions `[PORT]`
 
@@ -359,6 +414,7 @@ Run → PASS. Commit `test(ai): verify cost + cache token accounting in adapter`
 **Files:** Create `packages/ai/src/providers/ai-sdk-transform.ts`, `packages/ai/test/ai-sdk-transform.test.ts`
 
 **Port rules:**
+
 - Implement `buildProviderOptions(model: Model<"ai-sdk">, level: ModelThinkingLevel): Record<string, unknown>`.
 - **Branch-by-branch port of PI-COMPAT `:594-666`.** For each `thinkingFormat` value, reproduce the exact request-field semantics opencode-completions built, but emit them as `providerOptions` keys (which `@ai-sdk/openai-compatible` merges into the request body). One row per value in the Lineage Map:
   - `zai` → `thinking: { type: "enabled" }` + `reasoning_effort` (PI-COMPAT `:594-606`)
@@ -378,10 +434,13 @@ Run → PASS. Commit `test(ai): verify cost + cache token accounting in adapter`
 **Lineage Map:** one row per `thinkingFormat` value above, citing the PI-COMPAT line range and the transform.ts line you used as the providerOptions-shape reference.
 
 **Step 1 — failing tests:** one per `thinkingFormat` value (10 tests), each asserting the exact `providerOptions` keys. Example for `zai`:
+
 ```ts
 it("zai -> thinking.type enabled + reasoning_effort", () => {
-  expect(buildProviderOptions(model({ compat: { thinkingFormat: "zai" } }), "high"))
-    .toMatchObject({ thinking: { type: "enabled" }, reasoning_effort: "high" });
+  expect(buildProviderOptions(model({ compat: { thinkingFormat: "zai" } }), "high")).toMatchObject({
+    thinking: { type: "enabled" },
+    reasoning_effort: "high",
+  });
 });
 ```
 
@@ -400,6 +459,7 @@ it("zai -> thinking.type enabled + reasoning_effort", () => {
 **Files:** Modify `packages/ai/src/providers/ai-sdk-transform.ts`
 
 **Port rules:**
+
 - `buildHeaders(model, options)`: when `compat.sendSessionAffinityHeaders` and `options.sessionId`, emit `x-session-affinity`/`session_id`/`x-client-request-id` headers — mirror PI-COMPAT's header logic.
 - `applyCacheControl(messages, model, options)`: when `compat.cacheControlFormat === "anthropic"` and `cacheRetention !== "none"`, attach `cache_control: { type: "ephemeral" }` to system prompt / last user message — mirror OC-TRANSFORM `:329-344` (that's the structural template) and PI-CACHE's gating condition.
 
@@ -418,6 +478,7 @@ Commit `feat(ai): port cacheControlFormat + session affinity (openai-completions
 **Files:** Modify `packages/ai/src/providers/ai-sdk-streams.ts`
 
 **Port rules:**
+
 - Wire `buildProviderOptions` (3.1) → `streamText({ providerOptions })`.
 - Wire `buildHeaders` (3.2) → `streamText({ headers })`.
 - Wire `applyCacheControl` (3.2) via a `wrapLanguageModel` middleware whose `transformParams` mutates `args.params.prompt` (mirror OC-WRAP `:330-338`). `specificationVersion: "v3"`.
@@ -447,6 +508,7 @@ Commit `feat(ai): wire compat middleware via wrapLanguageModel (port llm.ts:325-
 **Files:** Create `packages/ai/scripts/models-dev-generic.ts`, test.
 
 **Port rules:**
+
 - One function: `convertModelsDev(data: ModelsDevJson): Record<string, Model<"ai-sdk">[]>`.
 - **Loop structure** ported from OC-MD-PROV (`:1239-1271`): iterate providers → iterate `provider.models` → emit a `Model<"ai-sdk">`.
 - **Field mapping** from OC-MD-MODEL (`:1188-1237`) into pi-ai's `Model` shape (PI-MODEL):
@@ -475,6 +537,7 @@ Commit `feat(ai): generic models.dev -> Model<ai-sdk> converter (port provider.t
 **Files:** Modify `packages/ai/scripts/generate-models.ts`
 
 **Port rules:**
+
 - Replace the body of `loadModelsDevData()` with a call to `convertModelsDev(data)` (Task 4.2). Delete the ~30 per-provider `if (data.X?.models)` blocks (PI-GENMODEL `:723-1480`).
 - **Keep** the dynamic-fetch blocks for OpenRouter / Vercel AI Gateway / NVIDIA NIM (those fetch live catalogs, not models.dev — PI-GENMODEL `:598-712`). They now emit `Model<"ai-sdk">` with `npm: "@ai-sdk/openai-compatible"` and their existing compat (carried via `COMPAT_OVERRIDES`).
 - **Keep** all the thinking-level-map / anthropic-adaptive / opencode-go-quirk fixups (PI-GENMODEL `:225-551`, `:1293-1321`) — these become `COMPAT_OVERRIDES` / `thinkingLevelMap` data consumed by Task 3.1. Move them into the override table from 4.2.
@@ -523,6 +586,7 @@ Commit `feat(ai): register ai-sdk providers from generated catalog`.
 **Files:** `packages/ai/test/*.test.ts` (one provider per commit)
 
 **Port rules (R5):**
+
 - For each test: cite the original file + assertion at the top of the migrated test in a comment.
 - Switch the model under test to `api: "ai-sdk"` + the appropriate `npm` + the same `compat` it had.
 - Preserve the assertion **intent**. Update only the exact request field paths if `@ai-sdk/openai-compatible` emits a different shape (e.g. nested differently). If a field is now in `providerOptions`, assert against the captured `streamText` providerOptions instead of the raw body.
@@ -571,9 +635,11 @@ Commit `test(server): models.dev providers selectable`.
 ## Phase 7 — End-to-end verification
 
 ### Task 7.1: Per-provider smoke matrix
+
 For anthropic, openai, google, xai, groq — live API calls through the @ai-sdk path (gated by `SAKTI_SMOKE=1`). Each returns text + correct usage/cost. Commit `test(ai): e2e smoke matrix`.
 
 ### Task 7.2: Workspace lint + typecheck
+
 `nubx ultracite fix && nub run typecheck` → clean. Fix `exactOptionalPropertyTypes` violations with conditional spread. Commit `chore(ai): lint/typecheck ai-sdk migration`.
 
 ---
@@ -590,6 +656,7 @@ For anthropic, openai, google, xai, groq — live API calls through the @ai-sdk 
 ```
 
 `status` meanings:
+
 - `yes` — byte-for-byte equivalent (types only differ).
 - `logic-only` — control flow copied; Effect/branded-schema stripped to plain TS.
 - `adapted` — semantics preserved; shape changed. **Divergence column must explain.**

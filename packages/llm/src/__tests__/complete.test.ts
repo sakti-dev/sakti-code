@@ -1,6 +1,6 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type { FinishReason, LanguageModelUsage } from "ai";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { CompleteResult } from "../complete.ts";
 import { completeWithModel } from "../complete.ts";
 import type { Model } from "../types.ts";
@@ -78,13 +78,8 @@ const fakeLanguage: LanguageModelV4 = {
 
 describe("completeWithModel()", () => {
   it("returns content text + mapped finishReason + usage with cost", async () => {
-    const fake = () =>
-      Promise.resolve(fakeGenerateResult({ text: "Summary!" }));
-    const result = await completeWithModel(
-      { messages: [], model },
-      fakeLanguage,
-      fake as never
-    );
+    const fake = () => Promise.resolve(fakeGenerateResult({ text: "Summary!" }));
+    const result = await completeWithModel({ messages: [], model }, fakeLanguage, fake as never);
     expect(result.content).toEqual([{ type: "text", text: "Summary!" }]);
     expect(result.finishReason).toBe("stop");
     expect(result.usage.input).toBe(100);
@@ -93,23 +88,14 @@ describe("completeWithModel()", () => {
   });
 
   it("maps tool-calls finishReason to toolUse", async () => {
-    const fake = () =>
-      Promise.resolve(fakeGenerateResult({ finishReason: "tool-calls" }));
-    const result = await completeWithModel(
-      { messages: [], model },
-      fakeLanguage,
-      fake as never
-    );
+    const fake = () => Promise.resolve(fakeGenerateResult({ finishReason: "tool-calls" }));
+    const result = await completeWithModel({ messages: [], model }, fakeLanguage, fake as never);
     expect(result.finishReason).toBe("toolUse");
   });
 
   it("catches generateText errors and returns error finishReason + errorMessage", async () => {
     const fake = () => Promise.reject(new Error("provider exploded"));
-    const result = await completeWithModel(
-      { messages: [], model },
-      fakeLanguage,
-      fake as never
-    );
+    const result = await completeWithModel({ messages: [], model }, fakeLanguage, fake as never);
     expect(result.finishReason).toBe("error");
     expect(result.errorMessage).toBe("provider exploded");
     expect(result.content).toEqual([]);
@@ -119,11 +105,7 @@ describe("completeWithModel()", () => {
     const abortError = new Error("Aborted");
     abortError.name = "AbortError";
     const fake = () => Promise.reject(abortError);
-    const result = await completeWithModel(
-      { messages: [], model },
-      fakeLanguage,
-      fake as never
-    );
+    const result = await completeWithModel({ messages: [], model }, fakeLanguage, fake as never);
     expect(result.finishReason).toBe("error");
     expect(result.errorMessage).toBe("Aborted");
   });

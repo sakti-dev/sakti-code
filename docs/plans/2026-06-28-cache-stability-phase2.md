@@ -9,6 +9,7 @@
 **Tech Stack:** TypeScript, Effect, vitest, `@sakti-code/llm` StreamRequest, AgentEvent union type.
 
 **Design references (read before starting):**
+
 - `openspec/references/DeepSeek-Reasonix/internal/agent/cache_shape.go` — §10 PrefixShape pattern
 - `openspec/references/DeepSeek-Reasonix/internal/agent/compact.go:359-384` — §5.1 pinnedPrefixLen + pinnableUserTurn
 - `packages/agent/src/core/__tests__/cache-stability-helpers.ts` — Phase 1 measurement helpers (test-only)
@@ -18,6 +19,7 @@
 - `packages/agent/src/compaction/compaction.ts:684-760` — `compactEffect` summary generation (§5.1)
 
 **Conventions (from repo `AGENTS.md`):**
+
 - TDD: failing test → implement → pass → commit.
 - Tests colocated in `__tests__/`. `vitest`. No `.only`/`.skip`.
 - `exactOptionalPropertyTypes: true` → conditional spread, never pass `undefined`.
@@ -36,6 +38,7 @@
 ### Task A1: Sort tools in `toStreamTools` + regression test
 
 **Files:**
+
 - Modify: `packages/agent/src/core/agent-loop.ts` — `toStreamTools` function (~line 680)
 - Test: `packages/agent/src/core/__tests__/cache-stability.test.ts` — append test
 
@@ -153,6 +156,7 @@ connects mid-session and shifts indices."
 **Why:** Without observability, cache misses are invisible. A regression that adds a timestamp to the system prompt, reorders tools, or stops preserving message order shows up as silent cost bleed. Per-turn diagnostics explain WHY a miss happened; session-cumulative counters give a steady cost-oriented hit rate.
 
 **What Reasonix does** (`cache_shape.go`):
+
 - `PrefixShape` = SHA-8 of system + sorted tools + combined prefix.
 - `CompareShape(prev, cur, usage)` → `["system" | "tools" | "log_rewrite"]` reasons + actual `CacheHitTokens`/`CacheMissTokens` from provider usage.
 - Session-cumulative `sessCacheHit`/`sessCacheMiss` survive compaction.
@@ -162,6 +166,7 @@ connects mid-session and shifts indices."
 ### Task B1: `captureShape` + `compareShape` runtime helpers
 
 **Files:**
+
 - Create: `packages/agent/src/core/cache-shape.ts`
 - Test: `packages/agent/src/core/__tests__/cache-shape.test.ts`
 
@@ -196,9 +201,7 @@ const usage = (cacheRead = 0, cacheWrite = 0): Usage => ({
 
 describe("captureShape", () => {
   it("hashes system + tools into a stable PrefixShape", () => {
-    const shape = captureShape(
-      req({ system: "prompt", tools: { read: { description: "r" } } })
-    );
+    const shape = captureShape(req({ system: "prompt", tools: { read: { description: "r" } } }));
     expect(shape.systemHash).toMatch(/^[0-9a-f]{8}$/);
     expect(shape.toolsHash).toMatch(/^[0-9a-f]{8}$/);
     expect(shape.prefixHash).toMatch(/^[0-9a-f]{8}$/);
@@ -319,9 +322,7 @@ export interface CacheDiagnostics {
 /** Capture a {@link StreamRequest}'s prefix shape. */
 export function captureShape(req: StreamRequest): PrefixShape {
   const system = req.system ?? "";
-  const toolsSorted = req.tools
-    ? JSON.stringify(req.tools, Object.keys(req.tools).sort())
-    : "{}";
+  const toolsSorted = req.tools ? JSON.stringify(req.tools, Object.keys(req.tools).sort()) : "{}";
   const prefix = JSON.stringify({ system, tools: toolsSorted });
   return {
     systemHash: shortHash(system),
@@ -337,7 +338,7 @@ export function captureShape(req: StreamRequest): PrefixShape {
 export function compareShape(
   prev: PrefixShape | undefined,
   cur: PrefixShape,
-  usage: Usage | undefined
+  usage: Usage | undefined,
 ): CacheDiagnostics {
   const reasons: string[] = [];
   if (prev !== undefined) {
@@ -384,6 +385,7 @@ git commit -m "feat(agent): cache-shape diagnostics helpers (§10 foundation)"
 ### Task B2: Add `cache_shape` event to AgentEvent + emit from loop
 
 **Files:**
+
 - Modify: `packages/agent/src/types.ts` — add `cache_shape` variant to `AgentEvent`
 - Modify: `packages/agent/src/core/agent-loop.ts` — wrap streamFn in `runLoopEffect`, emit event
 - Test: `packages/agent/src/core/__tests__/agent-loop.test.ts` — add test for emission
@@ -413,13 +415,7 @@ it("emits a cache_shape event with hit/miss tokens from usage", async () => {
   });
 
   const events: AgentEvent[] = [];
-  const stream = agentLoop(
-    [userPrompt],
-    context,
-    config,
-    undefined,
-    streamFn
-  );
+  const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
   for await (const event of stream) {
     events.push(event);
     if (event.type === "agent_end") break;
@@ -461,35 +457,32 @@ Expected: FAIL — `cache_shape` is not a known event type / no event emitted.
 3b. In `packages/agent/src/core/agent-loop.ts`, import the helpers at the top:
 
 ```ts
-import {
-  captureShape,
-  compareShape,
-} from "./cache-shape";
+import { captureShape, compareShape } from "./cache-shape";
 ```
 
 3c. In `runLoopEffect` (~line 265), wrap `streamFn` to capture the request shape and emit diagnostics. Add this BEFORE the `while (true)` loop, after the `pendingMessages` initialization:
 
 ```ts
-    // §10: wrap streamFn to capture prefix shape for cache diagnostics.
-    let prevShape: ReturnType<typeof captureShape> | undefined;
-    let lastShape: ReturnType<typeof captureShape> | undefined;
-    const diagnosticStreamFn: StreamFn | undefined = streamFn
-      ? async (req) => {
-          lastShape = captureShape(req);
-          return streamFn!(req);
-        }
-      : undefined;
+// §10: wrap streamFn to capture prefix shape for cache diagnostics.
+let prevShape: ReturnType<typeof captureShape> | undefined;
+let lastShape: ReturnType<typeof captureShape> | undefined;
+const diagnosticStreamFn: StreamFn | undefined = streamFn
+  ? async (req) => {
+      lastShape = captureShape(req);
+      return streamFn!(req);
+    }
+  : undefined;
 ```
 
 3d. After `streamAssistantResponse` returns (inside the inner while loop, after `const message = yield* Effect.promise(...)` and after `step++` / `newMessages.push(message)`), emit the diagnostics:
 
 ```ts
-        // §10: emit cache-shape diagnostics for the just-completed turn.
-        if (lastShape) {
-          const diagnostics = compareShape(prevShape, lastShape, message.usage);
-          yield* emitEffect(emit, { type: "cache_shape", diagnostics });
-          prevShape = lastShape;
-        }
+// §10: emit cache-shape diagnostics for the just-completed turn.
+if (lastShape) {
+  const diagnostics = compareShape(prevShape, lastShape, message.usage);
+  yield * emitEffect(emit, { type: "cache_shape", diagnostics });
+  prevShape = lastShape;
+}
 ```
 
 3e. Pass `diagnosticStreamFn` to `streamAssistantResponse` instead of `streamFn`. Find every call to `streamAssistantResponse` inside `runLoopEffect` and change the last argument from `streamFn` to `diagnosticStreamFn`.
@@ -521,6 +514,7 @@ forwards it to subscribers automatically via emitAny."
 ### Task B3: Session-cumulative cache hit/miss counters in harness
 
 **Files:**
+
 - Modify: `packages/agent/src/agent/agent-harness.ts` — accumulate counters, expose getter
 - Test: `packages/agent/src/agent/__tests__/agent-harness.test.ts` — append test
 
@@ -587,13 +581,13 @@ In `agent-harness.ts`, add fields + accumulation in `handleAgentEvent`:
 3c. In `handleAgentEvent`, add accumulation for `cache_shape` events (near the top, before the `message_end`/`turn_end`/`agent_end` special cases):
 
 ```ts
-    if (event.type === "cache_shape") {
-      this.cacheHitTokens += event.diagnostics.cacheHitTokens;
-      this.cacheMissTokens += event.diagnostics.cacheMissTokens;
-      this.cacheShapeTurnCount++;
-      await this.emitAny(event, signal);
-      return;
-    }
+if (event.type === "cache_shape") {
+  this.cacheHitTokens += event.diagnostics.cacheHitTokens;
+  this.cacheMissTokens += event.diagnostics.cacheMissTokens;
+  this.cacheShapeTurnCount++;
+  await this.emitAny(event, signal);
+  return;
+}
 ```
 
 **Step 4: Run — verify it passes**
@@ -615,6 +609,7 @@ git commit -m "feat(agent): session-cumulative cache hit/miss counters (§10)"
 ### Task B4: Export cache-shape types + diagnostics from package index
 
 **Files:**
+
 - Modify: `packages/agent/src/index.ts` — export public types/helpers
 
 **Step 1: Add exports**
@@ -622,10 +617,7 @@ git commit -m "feat(agent): session-cumulative cache hit/miss counters (§10)"
 In `packages/agent/src/index.ts`, add:
 
 ```ts
-export type {
-  CacheDiagnostics,
-  PrefixShape,
-} from "./core/cache-shape.ts";
+export type { CacheDiagnostics, PrefixShape } from "./core/cache-shape.ts";
 export { captureShape, compareShape } from "./core/cache-shape.ts";
 ```
 
@@ -656,6 +648,7 @@ git commit -m "feat(agent): export cache-shape diagnostics from package index (�
 ### Task C1: `isPinnableUserTurn` predicate + partition
 
 **Files:**
+
 - Create: `packages/agent/src/compaction/pinned-turns.ts`
 - Test: `packages/agent/src/compaction/__tests__/pinned-turns.test.ts`
 
@@ -685,8 +678,14 @@ function asstMsg(text: string): AgentMessage {
     api: "openai",
     provider: "p",
     model: "m",
-    usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
-      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+    usage: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
     stopReason: "stop",
     timestamp: 1,
   };
@@ -710,10 +709,10 @@ describe("isPinnableUserTurn", () => {
 describe("partitionPinnedTurns", () => {
   it("separates small user turns into pinned, rest into foldable", () => {
     const messages: AgentMessage[] = [
-      userMsg("use pnpm always"),   // pinnable
-      asstMsg("ok"),                // foldable
-      userMsg("now do X"),          // pinnable
-      asstMsg("doing X"),           // foldable
+      userMsg("use pnpm always"), // pinnable
+      asstMsg("ok"), // foldable
+      userMsg("now do X"), // pinnable
+      asstMsg("doing X"), // foldable
     ];
     const { pinned, foldable } = partitionPinnedTurns(messages, { maxTokens: 1500 });
     expect(pinned).toHaveLength(2);
@@ -765,10 +764,7 @@ export interface PinnableOptions {
 }
 
 /** Whether a message is a small-enough user turn to pin through compaction. */
-export function isPinnableUserTurn(
-  message: AgentMessage,
-  options: PinnableOptions = {}
-): boolean {
+export function isPinnableUserTurn(message: AgentMessage, options: PinnableOptions = {}): boolean {
   if (message.role !== "user") {
     return false;
   }
@@ -779,7 +775,7 @@ export function isPinnableUserTurn(
 /** Split messages into pinned (small user turns) and foldable (the rest). */
 export function partitionPinnedTurns(
   messages: AgentMessage[],
-  options: PinnableOptions = {}
+  options: PinnableOptions = {},
 ): { pinned: AgentMessage[]; foldable: AgentMessage[] } {
   const pinned: AgentMessage[] = [];
   const foldable: AgentMessage[] = [];
@@ -805,11 +801,11 @@ export function renderPinnedTurns(pinned: AgentMessage[]): string {
     .map((m) => {
       const text =
         typeof (m as { content: unknown }).content === "string"
-          ? ((m as { content: string }).content)
-          : ((m as { content: Array<{ type: string; text?: string }> }).content
+          ? (m as { content: string }).content
+          : (m as { content: Array<{ type: string; text?: string }> }).content
               .filter((p) => p.type === "text" && typeof p.text === "string")
               .map((p) => p.text)
-              .join("\n"));
+              .join("\n");
       return `<pinned-user-turn>\n${text}\n</pinned-user-turn>`;
     })
     .join("\n\n");
@@ -836,6 +832,7 @@ git commit -m "feat(agent): isPinnableUserTurn + partitionPinnedTurns (§5.1)"
 ### Task C2: Integrate pinned turns into `prepareCompaction` + `compactEffect`
 
 **Files:**
+
 - Modify: `packages/agent/src/compaction/compaction.ts` — partition in `prepareCompaction`, embed in `compactEffect`
 - Modify: `packages/agent/src/compaction/__tests__/compaction.test.ts` — add integration test
 - Test: `packages/agent/src/compaction/__tests__/prune.test.ts` — update fixtures that assert `CompactionPreparation` shape (add `pinnedUserTurns: []`)
@@ -851,7 +848,7 @@ describe("prepareCompaction pinned user turns (§5.1)", () => {
     const a1 = createMessageEntry(createAssistantMessage("ok"), u1.id);
     const u2 = createMessageEntry(
       createUserMessage("x".repeat(8000)), // large → foldable
-      a1.id
+      a1.id,
     );
     const a2 = createMessageEntry(createAssistantMessage("done"), u2.id);
 
@@ -859,14 +856,14 @@ describe("prepareCompaction pinned user turns (§5.1)", () => {
       prepareCompaction([u1, a1, u2, a2], {
         ...DEFAULT_COMPACTION_SETTINGS,
         keepRecentTokens: 1,
-      })
+      }),
     );
     expect(preparation).toBeDefined();
     // u1 ("always use pnpm") is small → pinned
     const pinned = preparation?.pinnedUserTurns ?? [];
     expect(pinned.length).toBe(1);
-    const pinnedText = (pinned[0] as { content: Array<{ type: string; text?: string }> })
-      .content[0]?.text;
+    const pinnedText = (pinned[0] as { content: Array<{ type: string; text?: string }> }).content[0]
+      ?.text;
     expect(pinnedText).toBe("always use pnpm");
     // The pinned turn is NOT in messagesToSummarize (it's in pinnedUserTurns)
     const summarizeTexts = (preparation?.messagesToSummarize ?? [])
@@ -890,10 +887,7 @@ Expected: FAIL — `pinnedUserTurns` does not exist on `CompactionPreparation`.
 3a. In `packages/agent/src/compaction/compaction.ts`, import the helpers:
 
 ```ts
-import {
-  partitionPinnedTurns,
-  renderPinnedTurns,
-} from "./pinned-turns";
+import { partitionPinnedTurns, renderPinnedTurns } from "./pinned-turns";
 ```
 
 3b. Add `pinnedUserTurns` to `CompactionPreparation`:
@@ -917,43 +911,45 @@ export interface CompactionPreparation {
 3c. In `prepareCompaction`, after the prune pass and BEFORE the return, partition the pruned messages:
 
 ```ts
-  // §5.1: pin small user turns out of the summarize range — a user-stated
-  // fact survives compaction verbatim rather than being summarized away.
-  const { pinned: pinnedUserTurns, foldable: foldableMessages } =
-    partitionPinnedTurns(prunedSummarize);
+// §5.1: pin small user turns out of the summarize range — a user-stated
+// fact survives compaction verbatim rather than being summarized away.
+const { pinned: pinnedUserTurns, foldable: foldableMessages } =
+  partitionPinnedTurns(prunedSummarize);
 ```
 
 3d. Change the return to use `foldableMessages` as `messagesToSummarize` and include `pinnedUserTurns`:
 
 ```ts
-  return ok({
-    firstKeptEntryId,
-    messagesToSummarize: foldableMessages,
-    pinnedUserTurns,
-    turnPrefixMessages,
-    isSplitTurn: cutPoint.isSplitTurn,
-    tokensBefore,
-    previousSummary,
-    fileOps,
-    pruneStats,
-    settings,
-  });
+return ok({
+  firstKeptEntryId,
+  messagesToSummarize: foldableMessages,
+  pinnedUserTurns,
+  turnPrefixMessages,
+  isSplitTurn: cutPoint.isSplitTurn,
+  tokensBefore,
+  previousSummary,
+  fileOps,
+  pruneStats,
+  settings,
+});
 ```
 
 3e. In `compactEffect`, after the summary is generated, prepend the pinned turns. Find the line where `summary` is assigned (after the summarizer call(s)), and add BEFORE the file-ops formatting:
 
 ```ts
-    // §5.1: embed pinned user turns verbatim at the top of the summary.
-    if (preparation.pinnedUserTurns.length > 0) {
-      const pinnedBlock = renderPinnedTurns(preparation.pinnedUserTurns);
-      summary = `${pinnedBlock}\n\n${summary}`;
-    }
+// §5.1: embed pinned user turns verbatim at the top of the summary.
+if (preparation.pinnedUserTurns.length > 0) {
+  const pinnedBlock = renderPinnedTurns(preparation.pinnedUserTurns);
+  summary = `${pinnedBlock}\n\n${summary}`;
+}
 ```
 
 > The destructuring at the top of `compactEffect` also needs `pinnedUserTurns`:
+>
 > ```ts
 > const { ..., pinnedUserTurns, ... } = preparation;
 > ```
+>
 > Then reference `pinnedUserTurns` instead of `preparation.pinnedUserTurns` in the condition.
 
 3f. Update existing test fixtures in `compaction.test.ts` that build `CompactionPreparation` objects inline — they now need `pinnedUserTurns: []`. Search for `const preparation: CompactionPreparation` and add the field:

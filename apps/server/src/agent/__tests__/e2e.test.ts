@@ -1,9 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import {
-  fauxAssistantMessage,
-  teardownFauxLlm,
-  useFauxLlm,
-} from "../../__tests__/llm-helpers.ts";
+import { afterEach, describe, expect, it } from "vite-plus/test";
+import { fauxAssistantMessage, teardownFauxLlm, useFauxLlm } from "../../__tests__/llm-helpers.ts";
 import { createMockStore, createMultiSessionCtx } from "./helpers.ts";
 
 const { handleMessage } = await import("../ws-handler.ts");
@@ -23,10 +19,7 @@ describe("Multi-session e2e", () => {
     "two concurrent sessions produce frames with correct sessionId and no cross-contamination",
     async () => {
       // Two concurrent sessions — each gets its own frame stream.
-      useFauxLlm([
-        fauxAssistantMessage("response"),
-        fauxAssistantMessage("response"),
-      ]);
+      useFauxLlm([fauxAssistantMessage("response"), fauxAssistantMessage("response")]);
 
       const ctx = createMultiSessionCtx({
         "sess-a": "proj-1",
@@ -59,18 +52,10 @@ describe("Multi-session e2e", () => {
       // settle within a microtask. Wait one macrotask for safety.
       await new Promise((r) => setTimeout(r, 50));
 
-      expect(
-        framesA.every(
-          (f) => (f as { sessionId: string }).sessionId === "sess-a"
-        )
-      ).toBe(true);
-      expect(
-        framesB.every(
-          (f) => (f as { sessionId: string }).sessionId === "sess-b"
-        )
-      ).toBe(true);
+      expect(framesA.every((f) => (f as { sessionId: string }).sessionId === "sess-a")).toBe(true);
+      expect(framesB.every((f) => (f as { sessionId: string }).sessionId === "sess-b")).toBe(true);
       expect(framesA.length).toBeGreaterThan(0);
       expect(framesB.length).toBeGreaterThan(0);
-    }
+    },
   );
 });

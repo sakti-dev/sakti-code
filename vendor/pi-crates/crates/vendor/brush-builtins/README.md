@@ -66,26 +66,26 @@ More detailed installation instructions are available below.
 
 ### 🐚 `bash` Compatibility
 
-| | Feature | Description |
-|--|---------|-------------|
-| ✅ | **50+ builtins** | `echo`, `declare`, `read`, `complete`, `trap`, `ulimit`, ... |
-| ✅ | **Full expansions** | brace, parameter, arithmetic, command/process substitution, globs, `extglob`, `globstar` |
-| ✅ | **Control flow** | `if`/`for`/`while`/`until`/`case`, `&&`/`\|\|`, subshells, pipelines, etc. |
-| ✅ | **Redirection** | here docs, here strings, fd duplication, process substitution redirects |
-| ✅ | **Arrays & variables** | indexed/associative arrays, dynamic variables, standard well-known variables, etc. |
-| ✅ | **Programmable completion** | Works with [bash-completion](https://github.com/scop/bash-completion) out of the box |
-| ✅ | **Job control** | background jobs, suspend/resume, `fg`/`bg`/`jobs` |
-| 🔷 | **Traps & options** | `DEBUG`/`ERR`/`EXIT` traps work; signal traps and options in progress |
+|     | Feature                     | Description                                                                              |
+| --- | --------------------------- | ---------------------------------------------------------------------------------------- |
+| ✅  | **50+ builtins**            | `echo`, `declare`, `read`, `complete`, `trap`, `ulimit`, ...                             |
+| ✅  | **Full expansions**         | brace, parameter, arithmetic, command/process substitution, globs, `extglob`, `globstar` |
+| ✅  | **Control flow**            | `if`/`for`/`while`/`until`/`case`, `&&`/`\|\|`, subshells, pipelines, etc.               |
+| ✅  | **Redirection**             | here docs, here strings, fd duplication, process substitution redirects                  |
+| ✅  | **Arrays & variables**      | indexed/associative arrays, dynamic variables, standard well-known variables, etc.       |
+| ✅  | **Programmable completion** | Works with [bash-completion](https://github.com/scop/bash-completion) out of the box     |
+| ✅  | **Job control**             | background jobs, suspend/resume, `fg`/`bg`/`jobs`                                        |
+| 🔷  | **Traps & options**         | `DEBUG`/`ERR`/`EXIT` traps work; signal traps and options in progress                    |
 
 ### ⌨️ User Experience
 
-| | Feature | Description |
-|--|---------|-------------|
-| ✅ | **Syntax highlighting** | Real-time as you type ([reedline](https://github.com/nushell/reedline)) |
-| ✅ | **Auto-suggestions** | History-based hints as you type ([reedline](https://github.com/nushell/reedline)) |
-| ✅ | **Rich prompts** | `PS1`/`PROMPT_COMMAND`, right prompts, [starship](https://starship.rs) compatible |
-| ✅ | **TOML config** | `~/.config/brush/config.toml` for persistent settings |
-| 🧪 | **Extras** | `fzf`/`atuin` support, zsh-style `precmd`/`preexec` hooks (experimental), VS Code terminal integration |
+|     | Feature                 | Description                                                                                            |
+| --- | ----------------------- | ------------------------------------------------------------------------------------------------------ |
+| ✅  | **Syntax highlighting** | Real-time as you type ([reedline](https://github.com/nushell/reedline))                                |
+| ✅  | **Auto-suggestions**    | History-based hints as you type ([reedline](https://github.com/nushell/reedline))                      |
+| ✅  | **Rich prompts**        | `PS1`/`PROMPT_COMMAND`, right prompts, [starship](https://starship.rs) compatible                      |
+| ✅  | **TOML config**         | `~/.config/brush/config.toml` for persistent settings                                                  |
+| 🧪  | **Extras**              | `fzf`/`atuin` support, zsh-style `precmd`/`preexec` hooks (experimental), VS Code terminal integration |
 
 ## Installation
 
@@ -169,33 +169,33 @@ cargo install --locked brush-shell
 
 This project started out of curiosity and a desire to learn—we're keeping that attitude. If something doesn't work the way you'd expect, [let us know](https://github.com/reubeno/brush/issues)!
 
-* [Discord server](https://discord.gg/kPRgC9j3Tj) — chat with the community
-* [Building from source](docs/how-to/build.md) — development workflow
-* [Contribution guidelines](CONTRIBUTING.md) — how to submit changes
-* [Technical docs](docs/README.md) — architecture and reference
+- [Discord server](https://discord.gg/kPRgC9j3Tj) — chat with the community
+- [Building from source](docs/how-to/build.md) — development workflow
+- [Contribution guidelines](CONTRIBUTING.md) — how to submit changes
+- [Technical docs](docs/README.md) — architecture and reference
 
 ## Related Projects
 
 Other POSIX-ish shells implemented in non-C/C++ languages:
 
-* [`nushell`](https://www.nushell.sh/) — modern Rust shell (provides `reedline`)
-* [`fish`](https://fishshell.com) — user-friendly shell ([Rust port in 4.0](https://fishshell.com/blog/rustport/))
-* [`Oils`](https://github.com/oils-for-unix/oils) — bash-compatible with new Oil language
-* [`mvdan/sh`](https://github.com/mvdan/sh) — Go implementation
-* [`rusty_bash`](https://github.com/shellgei/rusty_bash) — another Rust bash-like shell
+- [`nushell`](https://www.nushell.sh/) — modern Rust shell (provides `reedline`)
+- [`fish`](https://fishshell.com) — user-friendly shell ([Rust port in 4.0](https://fishshell.com/blog/rustport/))
+- [`Oils`](https://github.com/oils-for-unix/oils) — bash-compatible with new Oil language
+- [`mvdan/sh`](https://github.com/mvdan/sh) — Go implementation
+- [`rusty_bash`](https://github.com/shellgei/rusty_bash) — another Rust bash-like shell
 
 <details>
 <summary><b>🙏 Credits</b></summary>
 
 This project relies on many excellent OSS crates:
 
-* [`reedline`](https://github.com/nushell/reedline) — readline-like input and interactive features
-* [`clap`](https://github.com/clap-rs/clap) — command-line parsing
-* [`fancy-regex`](https://github.com/fancy-regex/fancy-regex) — regex support
-* [`tokio`](https://github.com/tokio-rs/tokio) — async runtime
-* [`nix`](https://github.com/nix-rust/nix) — Unix/POSIX APIs
-* [`criterion.rs`](https://github.com/bheisler/criterion.rs) — benchmarking
-* [`bash-completion`](https://github.com/scop/bash-completion) — completion test suite
+- [`reedline`](https://github.com/nushell/reedline) — readline-like input and interactive features
+- [`clap`](https://github.com/clap-rs/clap) — command-line parsing
+- [`fancy-regex`](https://github.com/fancy-regex/fancy-regex) — regex support
+- [`tokio`](https://github.com/tokio-rs/tokio) — async runtime
+- [`nix`](https://github.com/nix-rust/nix) — Unix/POSIX APIs
+- [`criterion.rs`](https://github.com/bheisler/criterion.rs) — benchmarking
+- [`bash-completion`](https://github.com/scop/bash-completion) — completion test suite
 
 </details>
 

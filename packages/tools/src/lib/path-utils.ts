@@ -34,7 +34,7 @@ function normalizePath(input: string, options: PathInputOptions = {}): string {
     }
   }
 
-  if (/^file:\/\//.test(normalized)) {
+  if (normalized.startsWith("file://")) {
     return decodeURIComponent(new URL(normalized).pathname);
   }
 
@@ -44,7 +44,7 @@ function normalizePath(input: string, options: PathInputOptions = {}): string {
 function resolvePath(
   input: string,
   baseDir: string = process.cwd(),
-  options: PathInputOptions = {}
+  options: PathInputOptions = {},
 ): string {
   const normalized = normalizePath(input, options);
   const normalizedBaseDir = normalizePath(baseDir);
@@ -85,10 +85,7 @@ export function resolveToCwd(filePath: string, cwd: string): string {
   });
 }
 
-export async function resolveReadPathAsync(
-  filePath: string,
-  cwd: string
-): Promise<string> {
+export async function resolveReadPathAsync(filePath: string, cwd: string): Promise<string> {
   const resolved = resolveToCwd(filePath, cwd);
 
   if (await pathExists(resolved)) {

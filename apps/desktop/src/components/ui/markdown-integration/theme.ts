@@ -1,8 +1,7 @@
 import type { PartialVelomarkTheme } from "velomark";
 
 const desktopColor = (token: string) => `var(${token})`;
-const desktopAlpha = (token: string, alpha: number) =>
-  `oklch(from var(${token}) l c h / ${alpha})`;
+const desktopAlpha = (token: string, alpha: number) => `oklch(from var(${token}) l c h / ${alpha})`;
 
 export const createDesktopVelomarkTheme = (): PartialVelomarkTheme => ({
   color: {

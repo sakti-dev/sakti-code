@@ -30,7 +30,7 @@ export interface SeedMessage {
 export async function seedEntries(
   db: DrizzleDB,
   sessionId: string,
-  messages: SeedMessage[]
+  messages: SeedMessage[],
 ): Promise<SqliteSessionStorage> {
   const storage = new SqliteSessionStorage(db, sessionId, {
     id: sessionId,
@@ -50,7 +50,7 @@ export async function seedEntries(
           timestamp: new Date(timestamp).toISOString(),
           type: "message",
           message: { role: "user", content: msg.content, timestamp },
-        })
+        }),
       );
     } else if (msg.role === "assistant") {
       await Effect.runPromise(
@@ -82,7 +82,7 @@ export async function seedEntries(
             api: "responses",
             timestamp,
           },
-        })
+        }),
       );
     } else {
       await Effect.runPromise(
@@ -99,7 +99,7 @@ export async function seedEntries(
             isError: false,
             timestamp,
           },
-        })
+        }),
       );
     }
     parentId = id;
@@ -111,10 +111,7 @@ export async function seedEntries(
 /**
  * Create a SqliteSessionStorage for a session, useful in route tests.
  */
-export function makeStorage(
-  db: DrizzleDB,
-  sessionId: string
-): SqliteSessionStorage {
+export function makeStorage(db: DrizzleDB, sessionId: string): SqliteSessionStorage {
   return new SqliteSessionStorage(db, sessionId, {
     id: sessionId,
     createdAt: new Date().toISOString(),

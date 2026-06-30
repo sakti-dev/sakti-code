@@ -1,15 +1,12 @@
 import type { AssistantMessage, Usage } from "@sakti-code/llm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   type CheckCompactionInput,
   type CompactionDecision,
   checkCompaction,
   parseCompactionSettings,
 } from "../../compaction/auto-compaction";
-import {
-  type CompactionSettings,
-  DEFAULT_COMPACTION_SETTINGS,
-} from "../../compaction/compaction";
+import { type CompactionSettings, DEFAULT_COMPACTION_SETTINGS } from "../../compaction/compaction";
 
 const usage = (over: Partial<Usage> = {}): Usage => ({
   input: 0,
@@ -23,7 +20,7 @@ const usage = (over: Partial<Usage> = {}): Usage => ({
 
 function asst(
   stopReason: AssistantMessage["stopReason"],
-  over: Partial<AssistantMessage> = {}
+  over: Partial<AssistantMessage> = {},
 ): AssistantMessage {
   return {
     role: "assistant",
@@ -40,7 +37,7 @@ function asst(
 
 const baseInput = (
   message: AssistantMessage,
-  over: Partial<CheckCompactionInput> = {}
+  over: Partial<CheckCompactionInput> = {},
 ): CheckCompactionInput => ({
   message,
   messages: [message],
@@ -60,9 +57,7 @@ describe("parseCompactionSettings", () => {
   });
 
   it("resurrects the auto_compaction key as the enabled toggle (default true)", () => {
-    expect(parseCompactionSettings({ auto_compaction: "false" }).enabled).toBe(
-      false
-    );
+    expect(parseCompactionSettings({ auto_compaction: "false" }).enabled).toBe(false);
     expect(parseCompactionSettings({}).enabled).toBe(true);
   });
 
@@ -87,7 +82,7 @@ describe("checkCompaction", () => {
     const d = checkCompaction(
       baseInput(asst("stop", { usage: usage({ totalTokens: 9999 }) }), {
         settings: { ...settings, enabled: false },
-      })
+      }),
     );
     expect(d.action).toBe("none");
   });
@@ -102,7 +97,7 @@ describe("checkCompaction", () => {
     const d = checkCompaction(
       baseInput(asst("stop", { usage: usage({ totalTokens: 950 }) }), {
         settings,
-      })
+      }),
     );
     expect(d).toEqual({
       action: "compact",
@@ -115,7 +110,7 @@ describe("checkCompaction", () => {
     const d = checkCompaction(
       baseInput(asst("stop", { usage: usage({ totalTokens: 100 }) }), {
         settings,
-      })
+      }),
     );
     expect(d.action).toBe("none");
   });
@@ -125,7 +120,7 @@ describe("checkCompaction", () => {
       baseInput(asst("stop", { usage: usage({ totalTokens: 99_999 }) }), {
         contextWindow: 0,
         settings,
-      })
+      }),
     );
     expect(d.action).toBe("none");
   });
@@ -140,7 +135,7 @@ describe("checkCompaction", () => {
       baseInput(message, {
         messages: [message, { role: "user", content: big, timestamp: 200 }],
         settings,
-      })
+      }),
     );
     expect(d.action).toBe("compact");
     expect(d.reason).toBe("threshold");
@@ -152,7 +147,7 @@ describe("checkCompaction", () => {
       baseInput(message, {
         messages: [message],
         settings,
-      })
+      }),
     );
     expect(d.action).toBe("none");
   });
@@ -161,7 +156,7 @@ describe("checkCompaction", () => {
     const d = checkCompaction(
       baseInput(asst("error", { errorMessage: "prompt is too long" }), {
         settings,
-      })
+      }),
     );
     expect(d).toEqual({
       action: "compact",
@@ -176,7 +171,7 @@ describe("checkCompaction", () => {
     const d = checkCompaction(
       baseInput(asst("stop", { usage: usage({ input: 2000 }) }), {
         settings,
-      })
+      }),
     );
     expect(d).toEqual({
       action: "compact",
@@ -187,10 +182,10 @@ describe("checkCompaction", () => {
 
   it("stale-usage guard: skips when the message predates the latest compaction", () => {
     const d = checkCompaction(
-      baseInput(
-        asst("stop", { usage: usage({ totalTokens: 950 }), timestamp: 50 }),
-        { settings, latestCompactionTimestamp: 100 }
-      )
+      baseInput(asst("stop", { usage: usage({ totalTokens: 950 }), timestamp: 50 }), {
+        settings,
+        latestCompactionTimestamp: 100,
+      }),
     );
     expect(d.action).toBe("none");
   });
@@ -202,8 +197,8 @@ describe("checkCompaction", () => {
           errorMessage: "prompt is too long",
           usage: usage({ totalTokens: 950 }),
         }),
-        { settings }
-      )
+        { settings },
+      ),
     );
     expect(d.reason).toBe("overflow");
   });
@@ -227,7 +222,7 @@ describe("stuck guard", () => {
         contextWindow: 1000,
         settings,
         consecutiveCompacts: 1,
-      })
+      }),
     );
     expect(decision.action).toBe("compact");
     expect(decision.reason).toBe("threshold");
@@ -244,7 +239,7 @@ describe("stuck guard", () => {
         contextWindow: 1000,
         settings,
         consecutiveCompacts: 2,
-      })
+      }),
     );
     expect(decision.action).toBe("none");
     expect(decision.pauseAutoCompaction).toBe(true);
@@ -261,7 +256,7 @@ describe("stuck guard", () => {
         contextWindow: 1000,
         settings,
         consecutiveCompacts: 2, // was stuck, but now below threshold
-      })
+      }),
     );
     expect(decision.action).toBe("none");
     expect(decision.pauseAutoCompaction).toBeUndefined();
@@ -277,7 +272,7 @@ describe("stuck guard", () => {
       baseInput(message, {
         contextWindow: 1000,
         settings,
-      })
+      }),
     );
     expect(decision.action).toBe("none");
     expect(decision.resetStuckGuard).toBeUndefined();
@@ -293,7 +288,7 @@ describe("stuck guard", () => {
         contextWindow: 1000,
         settings,
         consecutiveCompacts: 5,
-      })
+      }),
     );
     expect(decision.action).toBe("compact");
     expect(decision.reason).toBe("overflow");
@@ -316,7 +311,7 @@ describe("stuck guard lifecycle (§4 + §11)", () => {
   function decide(
     totalTokens: number,
     consecutiveCompacts: number,
-    paused: boolean
+    paused: boolean,
   ): {
     decision: CompactionDecision;
     nextCompacts: number;
@@ -334,7 +329,7 @@ describe("stuck guard lifecycle (§4 + §11)", () => {
         contextWindow,
         settings,
         ...(consecutiveCompacts > 0 ? { consecutiveCompacts } : {}),
-      })
+      }),
     );
     let nextCompacts = consecutiveCompacts;
     let nextPaused = paused;
@@ -359,11 +354,7 @@ describe("stuck guard lifecycle (§4 + §11)", () => {
 
     // Turns 1–2: over threshold, guard not yet latched → compact each time.
     for (let turn = 1; turn <= 2; turn++) {
-      const { decision, nextCompacts } = decide(
-        950,
-        consecutiveCompacts,
-        paused
-      );
+      const { decision, nextCompacts } = decide(950, consecutiveCompacts, paused);
       expect(decision.action, `turn ${turn} should compact`).toBe("compact");
       consecutiveCompacts = nextCompacts;
       compactCount.value++;

@@ -1,6 +1,6 @@
 import type { AgentTool } from "@sakti-code/agent";
 import { composeSystemPrompt } from "@sakti-code/agent";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { SKILLS_INSTRUCTIONS } from "../config/index.ts";
 
 function mockTool(name: string, description: string): AgentTool {
@@ -20,7 +20,7 @@ describe("runner system prompt composition", () => {
   it("includes the edit tool description when edit is in the toolset", () => {
     const editTool = mockTool(
       "edit",
-      "Edit files using hashline patches. Use SWAP N.=M: to replace lines."
+      "Edit files using hashline patches. Use SWAP N.=M: to replace lines.",
     );
     const readTool = mockTool("read", "Read a file from the local filesystem.");
 
@@ -29,7 +29,7 @@ describe("runner system prompt composition", () => {
       [editTool, readTool],
       [],
       true,
-      SKILLS_INSTRUCTIONS
+      SKILLS_INSTRUCTIONS,
     );
 
     expect(prompt).toContain("# Tool: edit");
@@ -45,17 +45,9 @@ describe("runner system prompt composition", () => {
       mockTool("bash", "Bash."),
     ];
     const activeToolNames = ["read", "bash"];
-    const activeTools = allTools.filter((t) =>
-      activeToolNames.includes(t.name)
-    );
+    const activeTools = allTools.filter((t) => activeToolNames.includes(t.name));
 
-    const prompt = composeSystemPrompt(
-      "Base.",
-      activeTools,
-      [],
-      false,
-      SKILLS_INSTRUCTIONS
-    );
+    const prompt = composeSystemPrompt("Base.", activeTools, [], false, SKILLS_INSTRUCTIONS);
     expect(prompt).toContain("# Tool: read");
     expect(prompt).toContain("# Tool: bash");
     expect(prompt).not.toContain("# Tool: edit");
@@ -63,17 +55,8 @@ describe("runner system prompt composition", () => {
 
   it("composes intake prompt with tool inventory but no skills", () => {
     const intakeBase = "You are the project's intake agent.";
-    const tools = [
-      mockTool("read", "Read."),
-      mockTool("propose_session", "Propose a session."),
-    ];
-    const prompt = composeSystemPrompt(
-      intakeBase,
-      tools,
-      [],
-      false,
-      SKILLS_INSTRUCTIONS
-    );
+    const tools = [mockTool("read", "Read."), mockTool("propose_session", "Propose a session.")];
+    const prompt = composeSystemPrompt(intakeBase, tools, [], false, SKILLS_INSTRUCTIONS);
     expect(prompt).toContain(intakeBase);
     expect(prompt).toContain("# Tool: propose_session");
     expect(prompt).not.toContain("<available_skills>");

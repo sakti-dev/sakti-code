@@ -8,12 +8,12 @@ Make `read` auto-detect file vs directory paths (like opencode's `read` tool), r
 
 Cross-reference these during implementation:
 
-| Reference | Purpose |
-|-----------|---------|
-| `openspec/references/opencode/packages/core/src/tool/read.ts` | Read tool layer — permission, path resolution, inspect→branch→read/list |
-| `openspec/references/opencode/packages/core/src/tool/read-filesystem.ts` | Implementation of `inspect`, `read`, `list` — the three core functions |
-| `openspec/references/opencode/packages/core/src/filesystem.ts` | `FileSystem.Entry` struct (`{ path, type }`), `ListPage`, `TextPage` types |
-| `openspec/references/opencode/packages/schema/src/filesystem.ts` | `Entry` schema definition |
+| Reference                                                                | Purpose                                                                    |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `openspec/references/opencode/packages/core/src/tool/read.ts`            | Read tool layer — permission, path resolution, inspect→branch→read/list    |
+| `openspec/references/opencode/packages/core/src/tool/read-filesystem.ts` | Implementation of `inspect`, `read`, `list` — the three core functions     |
+| `openspec/references/opencode/packages/core/src/filesystem.ts`           | `FileSystem.Entry` struct (`{ path, type }`), `ListPage`, `TextPage` types |
+| `openspec/references/opencode/packages/schema/src/filesystem.ts`         | `Entry` schema definition                                                  |
 
 ## Plan
 
@@ -30,6 +30,7 @@ Straightforward `fs.stat` → check `isFile()`/`isDirectory()`. Throw if neither
 Where `ListPage = { entries: Entry[], truncated: boolean, next?: number }` and `Entry = { path: string; type: "file" | "directory" }`.
 
 Logic (mirror opencode `read-filesystem.ts:323-351`):
+
 1. `readdir` → parallel stat each entry (16 concurrency, like opencode line 343)
 2. Filter out unresolvable entries (symlink loop, permission denied)
 3. Sort: directories first, then case-insensitive by name
@@ -48,6 +49,7 @@ This is the **existing** file-reading logic extracted from `read/index.ts` lines
 **Schema**: Already has `path`, `offset`, `limit` — no changes needed.
 
 **Description**: Update to mention directory listing. Model after opencode's read.ts:42-43:
+
 > "Read a text file or supported image, page through a large UTF-8 text file by line offset, or list a directory page."
 
 **`execute()`** — add directory detection at the top, between path resolution and the existing image/text logic (mirror opencode read.ts:54-100):
@@ -69,6 +71,7 @@ This is the **existing** file-reading logic extracted from `read/index.ts` lines
 ### Step 3: Deprecate `packages/tools/src/ls/index.ts`
 
 Add a comment at the top:
+
 ```ts
 // DEPRECATED: Use createReadTool instead — read now handles directories.
 ```
@@ -92,15 +95,16 @@ Update `createLsTool`'s description to say "prefer read for directory listing" s
 ### Step 7 (future): Remove `ls`
 
 After verifying nothing depends on `ls` (search for `createLsTool` imports across the monorepo), remove:
+
 - `packages/tools/src/ls/` directory
 - `ls` exports from `packages/tools/src/index.ts`
 - Any references in agent loop tool registration
 
 ## Key Differences from OpenCode (Why)
 
-| OpenCode approach | Our adaptation | Rationale |
-|------------------|----------------|-----------|
-| Effect-TS services (`ReadToolFileSystem.Service`) | Plain async functions in a module | No Effect DI in our codebase |
-| `ListPage`/`TextPage` Schema classes | Plain TypeScript interfaces + text output | Our `AgentTool` returns `{ content: TextContent[], details }`, not structured types |
-| `Image.Service` for image normalization | Existing photon-based resize inline | Our image logic is already working — no reason to extract |
-| `PermissionV2.assert()` everywhere | Existing `permissions()` callback | Our permission model is simpler and stays that way |
+| OpenCode approach                                 | Our adaptation                            | Rationale                                                                           |
+| ------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------- |
+| Effect-TS services (`ReadToolFileSystem.Service`) | Plain async functions in a module         | No Effect DI in our codebase                                                        |
+| `ListPage`/`TextPage` Schema classes              | Plain TypeScript interfaces + text output | Our `AgentTool` returns `{ content: TextContent[], details }`, not structured types |
+| `Image.Service` for image normalization           | Existing photon-based resize inline       | Our image logic is already working — no reason to extract                           |
+| `PermissionV2.assert()` everywhere                | Existing `permissions()` callback         | Our permission model is simpler and stays that way                                  |

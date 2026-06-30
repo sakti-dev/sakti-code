@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { buildApp } from "../app.ts";
 import { makeContext } from "./helpers.ts";
 
@@ -6,13 +6,9 @@ describe("built server", () => {
   it("responds to /api/health and /api/projects", async () => {
     const { ctx } = await makeContext();
     const server = buildApp(ctx);
-    const health = await (
-      await server.request("http://localhost:3001/api/health")
-    ).json();
+    const health = await (await server.request("http://localhost:3001/api/health")).json();
     expect(health.status).toBe("ok");
-    const projects = await (
-      await server.request("http://localhost:3001/api/projects")
-    ).json();
+    const projects = await (await server.request("http://localhost:3001/api/projects")).json();
     expect(projects).toEqual([]);
   });
 });

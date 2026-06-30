@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { sessionsRoutes } from "../routes/sessions/sessions.ts";
 import { seedEntries } from "./entry-helpers.ts";
 import { makeApp } from "./helpers.ts";
@@ -15,7 +15,7 @@ describe("GET /api/sessions/:id/messages", () => {
     ]);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/messages`)
+      new Request(`http://localhost/api/sessions/${session.id}/messages`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -30,7 +30,7 @@ describe("GET /api/sessions/:id/messages", () => {
     const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/messages`)
+      new Request(`http://localhost/api/sessions/${session.id}/messages`),
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([]);

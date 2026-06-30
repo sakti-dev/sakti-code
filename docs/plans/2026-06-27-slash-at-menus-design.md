@@ -9,12 +9,14 @@
 ## Scope
 
 **In scope (v1):**
+
 - `/` menu → **Commands** (`/name`) + **Skills** (`skill:name`).
 - `@` menu → **Files** (`@relative/path`).
 - A server-side **prompt preprocessor** that interprets the three token types.
 - A new `GET /api/projects/:id/skills` route + wiring skills/commands into the harness `resources`.
 
 **Out of scope (deferred):**
+
 - **`@agent` (custom/builtin agents)** — deferred. No per-turn agent semantics designed yet; the `@` menu is files-only for now. The data plumbing (builtins constant, `GET /api/projects/:id/agents`, WS `switchAgent`) already exists server-side and can be wired later without rework.
 - Token chips / rich inline rendering in the textarea (tokens are plain editable text).
 
@@ -28,26 +30,27 @@
 
 **Trigger detection (in `chat-input.tsx`):** the textarea's input/keydown handler watches for the trigger char, with **position-dependent rules:**
 
-| Trigger | Fires when typed at |
-| :--- | :--- |
-| `/` | caret position **0 only** (slash commands are start-of-message) |
-| `@` | **any** caret position (inline file mentions mid-sentence) |
+| Trigger | Fires when typed at                                             |
+| :------ | :-------------------------------------------------------------- |
+| `/`     | caret position **0 only** (slash commands are start-of-message) |
+| `@`     | **any** caret position (inline file mentions mid-sentence)      |
 
 > Note: `@` at any position means email-like `user@host` will also open the menu. Accepted trade-off — the file search returns nothing useful and the user Esc-dismisses. (Whitespace-preceding rules are deliberately NOT applied to `@`.)
 
 **Open/close lifecycle:**
-- On trigger: record the trigger char's index, open `CommandDialog`, focus its `CommandInput` (starts empty — the user filters *inside* the dialog, not in the textarea).
+
+- On trigger: record the trigger char's index, open `CommandDialog`, focus its `CommandInput` (starts empty — the user filters _inside_ the dialog, not in the textarea).
 - **Pick:** replace the trigger char in the textarea with the produced token, close the dialog, refocus the textarea with the caret placed after the token.
 - **Esc / click-outside:** cancel, leave the textarea exactly as the user left it (the lone trigger char stays; user backspaces if unwanted).
 - **Keyboard nav:** ↑↓ move, Enter picks, Esc closes. Lives in a shared `useListNavigation` hook, because `CommandItem` only exposes `onClick`/`onPick` (`command.tsx:142`) — no built-in arrow-key handling. The model-selector already implements this nav in `model-seletor/hooks.ts`; extract/reuse that pattern (no virtualization needed unless a group exceeds ~100 items; files endpoint is capped at 20).
 
 **Menu contents & grouping:**
 
-| Mode | Group | Items | Token inserted |
-| :--- | :--- | :--- | :--- |
-| `/` | Commands | from `GET /api/projects/:id/context` → `.commands` | `/name` |
-| `/` | Skills | from `GET /api/projects/:id/context` → `.skills` | `skill:name` |
-| `@` | Files | from `GET /api/projects/:id/files?query=<dialog query>&limit=20` | `@relative/path` |
+| Mode | Group    | Items                                                            | Token inserted   |
+| :--- | :------- | :--------------------------------------------------------------- | :--------------- |
+| `/`  | Commands | from `GET /api/projects/:id/context` → `.commands`               | `/name`          |
+| `/`  | Skills   | from `GET /api/projects/:id/context` → `.skills`                 | `skill:name`     |
+| `@`  | Files    | from `GET /api/projects/:id/files?query=<dialog query>&limit=20` | `@relative/path` |
 
 - `/` filtering is client-side over `name` + `description`.
 - `@` (files) filtering is **server-side** (the frecency endpoint takes the query); the dialog query is debounced before each fetch.
@@ -56,13 +59,13 @@
 
 ## Data sources
 
-| Need | Source | Status |
-| :--- | :--- | :--- |
+| Need                                 | Source                                                                                                                                               | Status                                                                                    |
+| :----------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
 | Catalog (commands + skills + agents) | `GET /api/projects/:id/context` (NEW) ← one `loadAgentContext()` (`context-loader.ts:40`) returning `{ commands, skills, agents }` in a single fetch | **create** — replaces existing `/commands` + `/agents` (both have zero desktop consumers) |
-| Files | `GET /api/projects/:id/files?query=&limit=` (`routes/projects/search-files.ts`) ← fff/fd/find frecency | **exists** (unchanged) |
-| Project cwd | `server.store.sessions[id]` → project → `cwd` | **exists** in desktop store |
+| Files                                | `GET /api/projects/:id/files?query=&limit=` (`routes/projects/search-files.ts`) ← fff/fd/find frecency                                               | **exists** (unchanged)                                                                    |
+| Project cwd                          | `server.store.sessions[id]` → project → `cwd`                                                                                                        | **exists** in desktop store                                                               |
 
-**One catalog endpoint, not three.** Commands, skills, and agents share a shape (loaded-from-disk config items with `name` + `description`), are produced by a single `loadAgentContext()` call, and the `/` menu renders commands + skills together — so one fetch is cheaper than `?type=` filtering and matches the loader's return shape. Files stays its own endpoint because it's a frecency *search* (query-essential, ranked, capped), not a catalog list — folding it under `?type=files` would give the unified route a branch with different param semantics without removing any code.
+**One catalog endpoint, not three.** Commands, skills, and agents share a shape (loaded-from-disk config items with `name` + `description`), are produced by a single `loadAgentContext()` call, and the `/` menu renders commands + skills together — so one fetch is cheaper than `?type=` filtering and matches the loader's return shape. Files stays its own endpoint because it's a frecency _search_ (query-essential, ranked, capped), not a catalog list — folding it under `?type=files` would give the unified route a branch with different param semantics without removing any code.
 
 The new `/context` route and the existing `/files` route are composed into the app via `app.ts` and typed through the Hono RPC client (`hc<App>` in `apps/desktop/src/lib/api.ts`) — no client codegen.
 
@@ -72,11 +75,11 @@ The new `/context` route and the existing `/files` route are composed into the a
 
 Picking an item inserts a plain-text token into the message. A new **prompt preprocessor** in `apps/server/src/agent/runner.ts` (run before `harness.prompt(raw)`, which today at `runner.ts:458` sends text straight through) scans the message and resolves tokens:
 
-| Token | Preprocessor action |
-| :--- | :--- |
-| `/name [args]` | `harness.promptFromTemplate(name, args)` — `$1`/`$@`/`$ARGUMENTS` substitution already implemented (`agent-harness.ts:970`, `prompt-templates.ts:264`) |
-| `skill:name` | `harness.skill(name)` (`agent-harness.ts:938`) |
-| `@relative/path` | read the file from the project `cwd`, attach its content to the turn as context |
+| Token            | Preprocessor action                                                                                                                                    |
+| :--------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/name [args]`   | `harness.promptFromTemplate(name, args)` — `$1`/`$@`/`$ARGUMENTS` substitution already implemented (`agent-harness.ts:970`, `prompt-templates.ts:264`) |
+| `skill:name`     | `harness.skill(name)` (`agent-harness.ts:938`)                                                                                                         |
+| `@relative/path` | read the file from the project `cwd`, attach its content to the turn as context                                                                        |
 
 **`@file` semantics (default, unless overridden):** attach the file's **content** to the turn (like Claude Code's `@file`), not a mere path hint. Size-capped (e.g. truncate past N lines/bytes with a `[truncated]` note) so a huge file can't blow context. Path resolution is relative to the project `cwd`; unreadable/missing files produce a user-visible error note in the turn rather than crashing the prompt.
 
@@ -94,16 +97,16 @@ Tokens may appear anywhere in the message; the preprocessor scans the whole text
 
 ## Decisions log
 
-| Decision | Rationale |
-| :--- | :--- |
-| `CommandDialog` (centered modal), not a popover | Reuses the existing component + the one proven consumer (`model-selector`); removes caret-anchoring math. User direction. |
-| `/` at caret 0 only; `@` anywhere | Slash = command mode (start of message); `@` = inline mention. User direction. |
-| All picks insert **text tokens**, server interprets later | Symmetric across menus; keeps the textarea a plain editable string; one preprocessor serves all token types. |
-| `@file` attaches content (capped), not a hint | Matches user expectation from other tools; a bare path hint is too weak to be useful. |
-| `@agent` deferred | No per-turn agent semantics wanted yet; avoids a new runtime path in the harness. Data plumbing stays ready for later. |
-| Skills listed with `skill:` prefix | Distinguishes skill tokens from `/command` tokens in the preprocessor; user direction. |
+| Decision                                                                         | Rationale                                                                                                                                                                                                                                           |
+| :------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CommandDialog` (centered modal), not a popover                                  | Reuses the existing component + the one proven consumer (`model-selector`); removes caret-anchoring math. User direction.                                                                                                                           |
+| `/` at caret 0 only; `@` anywhere                                                | Slash = command mode (start of message); `@` = inline mention. User direction.                                                                                                                                                                      |
+| All picks insert **text tokens**, server interprets later                        | Symmetric across menus; keeps the textarea a plain editable string; one preprocessor serves all token types.                                                                                                                                        |
+| `@file` attaches content (capped), not a hint                                    | Matches user expectation from other tools; a bare path hint is too weak to be useful.                                                                                                                                                               |
+| `@agent` deferred                                                                | No per-turn agent semantics wanted yet; avoids a new runtime path in the harness. Data plumbing stays ready for later.                                                                                                                              |
+| Skills listed with `skill:` prefix                                               | Distinguishes skill tokens from `/command` tokens in the preprocessor; user direction.                                                                                                                                                              |
 | One `/context` endpoint for the catalog (commands+skills+agents), files separate | Catalog types share a shape + are loaded together + the `/` menu needs commands+skills at once → one fetch beats `?type=`. Files is a frecency search (query-essential) → stays its own route. No consumers yet → consolidation is nearly free now. |
-| Keyboard nav in a shared `useListNavigation` hook | `CommandItem` has no built-in nav; model-selector already hand-rolls it — extract once rather than duplicate. |
+| Keyboard nav in a shared `useListNavigation` hook                                | `CommandItem` has no built-in nav; model-selector already hand-rolls it — extract once rather than duplicate.                                                                                                                                       |
 
 ---
 

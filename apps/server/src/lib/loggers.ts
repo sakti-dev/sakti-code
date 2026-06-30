@@ -1,9 +1,5 @@
 import { mkdirSync } from "node:fs";
-import {
-  createConsoleLogger,
-  type Logger,
-  type LogLevel,
-} from "@sakti-code/logger";
+import { createConsoleLogger, type Logger, type LogLevel } from "@sakti-code/logger";
 import { createPinoLogger } from "@sakti-code/logger/node";
 import { getLogDir } from "./config-dirs.ts";
 
@@ -26,17 +22,12 @@ const VALID_LEVELS: readonly LogLevel[] = ["debug", "info", "warn", "error"];
  *
  * Pure + env-injected so the resolution is unit-testable without touching disk.
  */
-export function resolveLogLevel(
-  option: LogLevel | undefined,
-  env: string | undefined
-): LogLevel {
+export function resolveLogLevel(option: LogLevel | undefined, env: string | undefined): LogLevel {
   const candidate = option ?? env;
   if (candidate === undefined) {
     return "info";
   }
-  return VALID_LEVELS.includes(candidate as LogLevel)
-    ? (candidate as LogLevel)
-    : "info";
+  return VALID_LEVELS.includes(candidate as LogLevel) ? (candidate as LogLevel) : "info";
 }
 
 /**

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { generateNumberedDiff } from "../../edit-diff";
 import { buildCompactDiffPreview } from "../diff-preview";
 
@@ -14,9 +14,7 @@ describe("buildCompactDiffPreview", () => {
     });
 
     it("elides the middle of a long added run (> threshold), keeping head and tail", () => {
-      const result = buildCompactDiffPreview(
-        "+1|a\n+2|b\n+3|c\n+4|d\n+5|e\n+6|f\n+7|g"
-      );
+      const result = buildCompactDiffPreview("+1|a\n+2|b\n+3|c\n+4|d\n+5|e\n+6|f\n+7|g");
 
       expect(result.preview).toBe("1:a\n2:b\n…\n6:f\n7:g");
       expect(result.addedLines).toBe(7);
@@ -31,9 +29,7 @@ describe("buildCompactDiffPreview", () => {
       expect(at.preview).toBe("1:a\n2:b\n3:c\n4:d\n5:e");
       expect(at.preview).not.toContain("…");
 
-      const over = buildCompactDiffPreview(
-        "+1|a\n+2|b\n+3|c\n+4|d\n+5|e\n+6|f"
-      );
+      const over = buildCompactDiffPreview("+1|a\n+2|b\n+3|c\n+4|d\n+5|e\n+6|f");
       expect(over.preview).toBe("1:a\n2:b\n…\n5:e\n6:f");
     });
 
@@ -86,9 +82,7 @@ describe("buildCompactDiffPreview", () => {
       const rows = result.preview.split("\n");
       const adjacent = rows.some(
         (row, i) =>
-          i > 0 &&
-          (row === "…" || row === "") &&
-          (rows[i - 1] === "…" || rows[i - 1] === "")
+          i > 0 && (row === "…" || row === "") && (rows[i - 1] === "…" || rows[i - 1] === ""),
       );
       expect(adjacent).toBe(false);
       expect(result.preview).toBe("1:a\n…\n9:z");

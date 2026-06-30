@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { nativeBlockResolver } from "../block-resolver";
 
 describe("nativeBlockResolver", () => {
@@ -36,7 +36,7 @@ describe("nativeBlockResolver", () => {
         path: "x.unknownext",
         text: "function x() {}",
         line: 1,
-      })
+      }),
     ).toBeNull();
   });
 });

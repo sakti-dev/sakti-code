@@ -1,12 +1,12 @@
-import { render } from "@solidjs/testing-library";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@solidjs/testing-library";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { SessionItem } from "../layout/sidebar/session-item.tsx";
 
 const agoRegex = /ago/;
 
 describe("SessionItem", () => {
   it("renders session title", () => {
-    const { getByText } = render(() => (
+    render(() => (
       <SessionItem
         isActive={false}
         onClick={vi.fn()}
@@ -15,12 +15,12 @@ describe("SessionItem", () => {
         updatedAt={Date.now()}
       />
     ));
-    expect(getByText("Test Session")).toBeTruthy();
+    expect(screen.getByText("Test Session")).toBeTruthy();
   });
 
   it("renders relative time", () => {
     const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-    const { getByText } = render(() => (
+    render(() => (
       <SessionItem
         isActive={false}
         onClick={vi.fn()}
@@ -29,7 +29,7 @@ describe("SessionItem", () => {
         updatedAt={fiveMinAgo}
       />
     ));
-    expect(getByText(agoRegex)).toBeTruthy();
+    expect(screen.getByText(agoRegex)).toBeTruthy();
   });
 
   it("applies active styles when isActive", () => {
@@ -48,7 +48,7 @@ describe("SessionItem", () => {
 
   it("calls onClick with sessionId", async () => {
     const onClick = vi.fn();
-    const { getByText } = render(() => (
+    render(() => (
       <SessionItem
         isActive={false}
         onClick={onClick}
@@ -57,12 +57,12 @@ describe("SessionItem", () => {
         updatedAt={Date.now()}
       />
     ));
-    getByText("Test").click();
+    screen.getByText("Test").click();
     expect(onClick).toHaveBeenCalledWith("s1");
   });
 
   it("renders 'Untitled session' when title is null", () => {
-    const { getByText } = render(() => (
+    render(() => (
       <SessionItem
         isActive={false}
         onClick={vi.fn()}
@@ -71,6 +71,6 @@ describe("SessionItem", () => {
         updatedAt={Date.now()}
       />
     ));
-    expect(getByText("Untitled session")).toBeTruthy();
+    expect(screen.getByText("Untitled session")).toBeTruthy();
   });
 });

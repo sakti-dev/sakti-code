@@ -31,9 +31,7 @@ export interface ModelSelectorDialogProps {
   selectedModelId?: string;
 }
 
-function statusBadge(
-  status: "active" | "alpha" | "beta" | "deprecated" | undefined
-) {
+function statusBadge(status: "active" | "alpha" | "beta" | "deprecated" | undefined) {
   if (status === undefined || status === "active") {
     return null;
   }
@@ -112,19 +110,13 @@ export function ModelSelectorDialog(props: ModelSelectorDialogProps) {
         class="scrollbar-default !max-h-none h-[420px] overflow-y-auto overflow-x-hidden bg-background/35 px-1.5 py-1.5"
       >
         <Show
-          fallback={
-            <CommandEmpty class="text-muted-foreground">
-              No results found.
-            </CommandEmpty>
-          }
+          fallback={<CommandEmpty class="text-muted-foreground">No results found.</CommandEmpty>}
           when={modelEntries().length > 0}
         >
           <div
             class="scrollbar-emphasis h-[404px] overflow-y-auto"
             data-component="model-selector-virtual-list"
-            onScroll={(event) =>
-              setModelScrollTop(event.currentTarget.scrollTop)
-            }
+            onScroll={(event) => setModelScrollTop(event.currentTarget.scrollTop)}
             ref={registerModelList}
           >
             <div
@@ -145,33 +137,23 @@ export function ModelSelectorDialog(props: ModelSelectorDialogProps) {
                         <div class="px-1 py-0.5">
                           <CommandItem
                             aria-selected={
-                              props.selectedModelId ===
-                              (entry.row as ModelItemRow).model.id
+                              props.selectedModelId === (entry.row as ModelItemRow).model.id
                             }
                             class={cn(
                               "group relative h-9 rounded-md border border-transparent px-2.5 text-popover-foreground transition-all duration-200 hover:border-border/90 hover:bg-muted/70",
-                              props.selectedModelId ===
-                                (entry.row as ModelItemRow).model.id &&
+                              props.selectedModelId === (entry.row as ModelItemRow).model.id &&
                                 "border-primary/35 bg-primary/10 text-primary",
                               isActive((entry.row as ModelItemRow).model.id) &&
-                                "border-primary/45 bg-accent/70 shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-primary)_45%,transparent),0_8px_24px_color-mix(in_oklch,var(--color-primary)_18%,transparent)]"
+                                "border-primary/45 bg-accent/70 shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-primary)_45%,transparent),0_8px_24px_color-mix(in_oklch,var(--color-primary)_18%,transparent)]",
                             )}
                             onPick={() => {
                               const row = entry.row as ModelItemRow;
-                              handlePick(
-                                row.model.id,
-                                row.model.providerId,
-                                row.model.reasoning
-                              );
+                              handlePick(row.model.id, row.model.providerId, row.model.reasoning);
                             }}
                             value={(entry.row as ModelItemRow).model.id}
                           >
-                            <span class="truncate">
-                              {(entry.row as ModelItemRow).model.name}
-                            </span>
-                            {statusBadge(
-                              (entry.row as ModelItemRow).model.status
-                            )}
+                            <span class="truncate">{(entry.row as ModelItemRow).model.name}</span>
+                            {statusBadge((entry.row as ModelItemRow).model.status)}
                           </CommandItem>
                         </div>
                       }

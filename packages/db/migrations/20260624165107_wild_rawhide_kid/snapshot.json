@@ -2,9 +2,7 @@
   "version": "7",
   "dialect": "sqlite",
   "id": "63510de0-0bf4-4003-8bf0-1795b261300c",
-  "prevIds": [
-    "bd9d7bdb-d6bb-40f7-a54e-2a66f91b4028"
-  ],
+  "prevIds": ["bd9d7bdb-d6bb-40f7-a54e-2a66f91b4028"],
   "ddl": [
     {
       "name": "projects",
@@ -357,13 +355,9 @@
       "table": "turns"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "tableTo": "sessions",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -372,13 +366,9 @@
       "table": "session_entries"
     },
     {
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "nameExplicit": false,
@@ -387,13 +377,9 @@
       "table": "sessions"
     },
     {
-      "columns": [
-        "parent_session_id"
-      ],
+      "columns": ["parent_session_id"],
       "tableTo": "sessions",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "nameExplicit": false,
@@ -402,13 +388,9 @@
       "table": "sessions"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "tableTo": "sessions",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -417,45 +399,35 @@
       "table": "turns"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "projects_pk",
       "table": "projects",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "session_entries_pk",
       "table": "session_entries",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "sessions_pk",
       "table": "sessions",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "key"
-      ],
+      "columns": ["key"],
       "nameExplicit": false,
       "name": "settings_pk",
       "table": "settings",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "turns_pk",
       "table": "turns",
@@ -498,9 +470,7 @@
       "table": "turns"
     },
     {
-      "columns": [
-        "cwd"
-      ],
+      "columns": ["cwd"],
       "nameExplicit": false,
       "name": "projects_cwd_unique",
       "entityType": "uniques",

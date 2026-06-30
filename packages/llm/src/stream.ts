@@ -6,13 +6,7 @@ import { calculateCost } from "./cost.ts";
 import { toModelMessages } from "./messages.ts";
 import { resolveLanguageModel } from "./provider/resolve.ts";
 import { buildHeaders, buildProviderOptions } from "./provider/transform.ts";
-import type {
-  Message,
-  Model,
-  ModelThinkingLevel,
-  StopReason,
-  Usage,
-} from "./types.ts";
+import type { Message, Model, ModelThinkingLevel, StopReason, Usage } from "./types.ts";
 
 /**
  * # Stream entry point
@@ -130,9 +124,7 @@ function promptCacheKeyFor(sessionId: string | undefined): string | undefined {
   if (sessionId === undefined) {
     return;
   }
-  return OPENAI_SESSION_ID_PATTERN.test(sessionId)
-    ? sessionId.slice(4)
-    : sessionId;
+  return OPENAI_SESSION_ID_PATTERN.test(sessionId) ? sessionId.slice(4) : sessionId;
 }
 
 /**
@@ -163,8 +155,7 @@ export function mapUsage(raw: LanguageModelUsage, model: Model): Usage {
     input: noCache ?? raw.inputTokens ?? 0,
     output: raw.outputTokens ?? 0,
     ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
-    totalTokens:
-      raw.totalTokens ?? (raw.inputTokens ?? 0) + (raw.outputTokens ?? 0),
+    totalTokens: raw.totalTokens ?? (raw.inputTokens ?? 0) + (raw.outputTokens ?? 0),
   };
   calculateCost(model, usage);
   return usage;
@@ -204,7 +195,7 @@ export function mapFinishReason(reason: FinishReason): StopReason {
  */
 export async function stream(
   req: StreamRequest,
-  runStreamText?: RunStreamText
+  runStreamText?: RunStreamText,
 ): Promise<StreamResult> {
   const language = await resolveLanguageModel(req.model, {
     ...(req.apiKey ? { apiKey: req.apiKey } : {}),
@@ -223,7 +214,7 @@ export async function stream(
 export function streamWithModel(
   req: StreamRequest,
   language: LanguageModelV4,
-  runStreamText?: RunStreamText
+  runStreamText?: RunStreamText,
 ): StreamResult {
   // Hint the OpenAI prompt cache with a stable per-session key so cached
   // prefixes reuse across turns. opencode derives this from session.id
@@ -234,10 +225,7 @@ export function streamWithModel(
     level: req.thinkingLevel ?? "off",
     model: req.model,
   });
-  const mergedProviderOptions = mergeProviderOptions(
-    reasoningOptions,
-    req.providerOptions
-  );
+  const mergedProviderOptions = mergeProviderOptions(reasoningOptions, req.providerOptions);
   const providerOptions =
     promptCacheKey === undefined
       ? mergedProviderOptions
@@ -276,13 +264,9 @@ export function streamWithModel(
     maxRetries: 0,
     // Pass the target model so reasoning signatures are only forwarded when
     // they were produced by the same model (cross-model guard, B4).
-    messages: toModelMessages(req.messages, {
-      ...(req.model.id ? { targetModel: req.model.id } : {}),
-    }),
+    messages: toModelMessages(req.messages, req.model.id ? { targetModel: req.model.id } : {}),
     model: language,
-    ...(providerOptions && Object.keys(providerOptions).length > 0
-      ? { providerOptions }
-      : {}),
+    ...(providerOptions && Object.keys(providerOptions).length > 0 ? { providerOptions } : {}),
     ...(req.abortSignal ? { abortSignal: req.abortSignal } : {}),
     ...(req.maxOutputTokens ? { maxOutputTokens: req.maxOutputTokens } : {}),
     ...(req.system ? { instructions: req.system } : {}),
@@ -294,9 +278,7 @@ export function streamWithModel(
 
   return {
     fullStream:
-      req.logger === undefined
-        ? raw.fullStream
-        : logStream(raw.fullStream, req.logger, req.model),
+      req.logger === undefined ? raw.fullStream : logStream(raw.fullStream, req.logger, req.model),
     result: mapStreamResult(req.model, raw, req.logger),
   };
 }
@@ -310,14 +292,10 @@ export function streamWithModel(
 async function* logStream(
   inner: AsyncIterable<unknown>,
   logger: Logger,
-  model: Model
+  model: Model,
 ): AsyncIterable<unknown> {
   for await (const part of inner) {
-    if (
-      typeof part === "object" &&
-      part !== null &&
-      (part as { type?: string }).type === "error"
-    ) {
+    if (typeof part === "object" && part !== null && (part as { type?: string }).type === "error") {
       logger.error("stream error", (part as { error?: unknown }).error, {
         baseURL: model.baseUrl,
         model: model.id,
@@ -331,7 +309,7 @@ async function* logStream(
 /** Merge session-affinity headers with caller headers (caller wins on conflict). */
 function mergeRequestHeaders(
   session: Record<string, string> | undefined,
-  caller: Record<string, string> | undefined
+  caller: Record<string, string> | undefined,
 ): Record<string, string> | undefined {
   if (!(session || caller)) {
     return;
@@ -352,7 +330,7 @@ function mergeRequestHeaders(
  */
 function mergeProviderOptions(
   auto: Record<string, unknown>,
-  caller: Record<string, unknown> | undefined
+  caller: Record<string, unknown> | undefined,
 ): Record<string, unknown> {
   if (caller === undefined) {
     return auto;
@@ -384,7 +362,7 @@ function mergeProviderOptions(
 function mapStreamResult(
   model: Model,
   raw: StreamTextStream,
-  logger?: Logger
+  logger?: Logger,
 ): Promise<FinishResult> {
   return (async () => {
     const [usage, finishReason, response] = await Promise.all([

@@ -32,7 +32,7 @@ const OPENAI_COMPATIBLE_NPM = "@ai-sdk/openai-compatible";
  */
 export function convertModelsDevModel(
   provider: ModelsDevProvider,
-  model: ModelsDevModel
+  model: ModelsDevModel,
 ): Model | null {
   // Gate: the agent loop requires tool support, so drop any model that isn't
   // confirmed tool-capable. models.dev always emits tool_call (verified
@@ -115,10 +115,7 @@ function applyZaiAnthropicOverride(providerId: string, model: Model): Model {
  *
  * Returns `undefined` when no compat is needed (first-party providers).
  */
-function resolveCompat(
-  providerId: string,
-  npm: string
-): OpenAICompletionsCompat | undefined {
+function resolveCompat(providerId: string, npm: string): OpenAICompletionsCompat | undefined {
   if (npm !== OPENAI_COMPATIBLE_NPM) {
     return;
   }

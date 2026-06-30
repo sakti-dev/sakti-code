@@ -1,5 +1,5 @@
-import { render } from "@solidjs/testing-library";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@solidjs/testing-library";
+import { describe, expect, it, vi } from "vite-plus/test";
 import type { SessionMeta } from "~/stores/server/server-store";
 import { ProjectCard } from "../home/project-card.tsx";
 
@@ -38,44 +38,30 @@ const mockSessions: SessionMeta[] = [
 
 describe("ProjectCard", () => {
   it("renders project name", () => {
-    const { getByText } = render(() => (
-      <ProjectCard onOpen={vi.fn()} project={mockProject} sessions={[]} />
-    ));
-    expect(getByText("My Project")).toBeTruthy();
+    render(() => <ProjectCard onOpen={vi.fn()} project={mockProject} sessions={[]} />);
+    expect(screen.getByText("My Project")).toBeTruthy();
   });
 
   it("renders project path", () => {
-    const { getByText } = render(() => (
-      <ProjectCard onOpen={vi.fn()} project={mockProject} sessions={[]} />
-    ));
-    expect(getByText("/home/user/projects/my-project")).toBeTruthy();
+    render(() => <ProjectCard onOpen={vi.fn()} project={mockProject} sessions={[]} />);
+    expect(screen.getByText("/home/user/projects/my-project")).toBeTruthy();
   });
 
   it("shows 'No sessions yet' when empty", () => {
-    const { getByText } = render(() => (
-      <ProjectCard onOpen={vi.fn()} project={mockProject} sessions={[]} />
-    ));
-    expect(getByText("No sessions yet")).toBeTruthy();
+    render(() => <ProjectCard onOpen={vi.fn()} project={mockProject} sessions={[]} />);
+    expect(screen.getByText("No sessions yet")).toBeTruthy();
   });
 
   it("renders session titles", () => {
-    const { getByText } = render(() => (
-      <ProjectCard
-        onOpen={vi.fn()}
-        project={mockProject}
-        sessions={mockSessions}
-      />
-    ));
-    expect(getByText("Session 1")).toBeTruthy();
-    expect(getByText("Untitled session")).toBeTruthy();
+    render(() => <ProjectCard onOpen={vi.fn()} project={mockProject} sessions={mockSessions} />);
+    expect(screen.getByText("Session 1")).toBeTruthy();
+    expect(screen.getByText("Untitled session")).toBeTruthy();
   });
 
   it("calls onOpen when clicked", async () => {
     const onOpen = vi.fn();
-    const { getByText } = render(() => (
-      <ProjectCard onOpen={onOpen} project={mockProject} sessions={[]} />
-    ));
-    getByText("My Project").click();
+    render(() => <ProjectCard onOpen={onOpen} project={mockProject} sessions={[]} />);
+    screen.getByText("My Project").click();
     expect(onOpen).toHaveBeenCalled();
   });
 });

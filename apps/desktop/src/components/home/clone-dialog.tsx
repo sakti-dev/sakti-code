@@ -6,11 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import {
-  TextField,
-  TextFieldInput,
-  TextFieldLabel,
-} from "~/components/ui/text-field";
+import { TextField, TextFieldInput, TextFieldLabel } from "~/components/ui/text-field";
 
 interface CloneDialogProps {
   isOpen: boolean;
@@ -37,9 +33,7 @@ export function CloneDialog(props: CloneDialogProps) {
       await props.onClone(url());
       handleClose();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to clone repository"
-      );
+      setError(err instanceof Error ? err.message : "Failed to clone repository");
     } finally {
       setIsCloning(false);
     }
@@ -52,11 +46,7 @@ export function CloneDialog(props: CloneDialogProps) {
   };
 
   return (
-    <Dialog
-      modal
-      onOpenChange={(open: boolean) => !open && handleClose()}
-      open={props.isOpen}
-    >
+    <Dialog modal onOpenChange={(open: boolean) => !open && handleClose()} open={props.isOpen}>
       <DialogContent class="max-w-xl">
         <DialogHeader>
           <DialogTitle>Clone Repository</DialogTitle>

@@ -1,17 +1,12 @@
 import { DatabaseSync } from "node:sqlite";
 import type { AgentMessage } from "@sakti-code/agent";
-import {
-  initDatabase,
-  ProjectRepo,
-  SessionRepo,
-  SqliteSessionStorage,
-} from "@sakti-code/db";
+import { initDatabase, ProjectRepo, SessionRepo, SqliteSessionStorage } from "@sakti-code/db";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 async function seedConversation(
   storage: SqliteSessionStorage,
-  messages: Array<{ role: string; content: string }>
+  messages: Array<{ role: string; content: string }>,
 ): Promise<string[]> {
   let parentId: string | null = null;
   const ids: string[] = [];
@@ -29,7 +24,7 @@ async function seedConversation(
           content: msg.content,
           timestamp: Date.now(),
         } as unknown as AgentMessage,
-      })
+      }),
     );
     parentId = id;
   }
@@ -74,9 +69,7 @@ describe("SqliteSessionStorage.forkFrom", () => {
     // Verify the tree structure is preserved
     const forkedLeaf = await Effect.runPromise(forkedStorage.getLeafId());
     expect(forkedLeaf).not.toBeNull();
-    const forkedPath = await Effect.runPromise(
-      forkedStorage.getPathToRoot(forkedLeaf)
-    );
+    const forkedPath = await Effect.runPromise(forkedStorage.getPathToRoot(forkedLeaf));
     expect(forkedPath.length).toBe(sourceEntries.length);
 
     // Verify the IDs were regenerated (not pointing at the source session's entries)
@@ -112,9 +105,7 @@ describe("SqliteSessionStorage.forkFrom", () => {
     });
 
     // Fork up to entryIds[1] (include first 2 entries)
-    await Effect.runPromise(
-      forkedStorage.forkFrom(sourceSession.id, entryIds[1])
-    );
+    await Effect.runPromise(forkedStorage.forkFrom(sourceSession.id, entryIds[1]));
 
     const forkedEntries = await Effect.runPromise(forkedStorage.getEntries());
     expect(forkedEntries).toHaveLength(2);
@@ -122,9 +113,7 @@ describe("SqliteSessionStorage.forkFrom", () => {
     // Leaf should be the last copied entry (entryIds[1] equivalent)
     const forkedLeaf = await Effect.runPromise(forkedStorage.getLeafId());
     expect(forkedLeaf).not.toBeNull();
-    const forkedPath = await Effect.runPromise(
-      forkedStorage.getPathToRoot(forkedLeaf)
-    );
+    const forkedPath = await Effect.runPromise(forkedStorage.getPathToRoot(forkedLeaf));
     expect(forkedPath).toHaveLength(2);
   });
 

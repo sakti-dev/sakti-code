@@ -34,7 +34,7 @@ export async function makeContext() {
       auth: createAuthStore(join(tmpDir, "auth.json")),
       profiles: createProfilesStore(join(tmpDir, "profiles.json")),
       settingsFile: createSettingsFileStore(join(tmpDir, "settings.json")),
-    }
+    },
   );
   return { ctx, db, tmpDir };
 }
@@ -46,7 +46,7 @@ export function seedProfile(
     provider: string;
     model: string;
     thinkingLevel?: string;
-  }
+  },
 ) {
   ctx.profiles.writeAll({
     defaultProfile: "default",

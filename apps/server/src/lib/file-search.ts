@@ -11,7 +11,7 @@ interface FffPicker {
   isScanning(): boolean;
   mixedSearch(
     query: string,
-    opts?: { pageSize?: number }
+    opts?: { pageSize?: number },
   ): {
     ok: boolean;
     value?: {
@@ -69,7 +69,7 @@ function getPicker(cwd: string): Promise<PickerEntry> {
 export async function searchProjectFiles(
   cwd: string,
   query: string | null,
-  limit: number
+  limit: number,
 ): Promise<FileEntry[]> {
   const picker = await getPicker(cwd);
   if (picker.ok) {
@@ -82,10 +82,7 @@ export async function searchProjectFiles(
       scored.sort((a, b) => b.score - a.score || 0);
       return scored.slice(0, limit).map(({ item }) => ({
         path: item.item.relativePath,
-        kind:
-          item.type === "directory"
-            ? ("directory" as const)
-            : ("file" as const),
+        kind: item.type === "directory" ? ("directory" as const) : ("file" as const),
       }));
     }
   }
@@ -97,11 +94,7 @@ export async function searchProjectFiles(
   return runFind(query, cwd, limit);
 }
 
-async function runFd(
-  query: string | null,
-  cwd: string,
-  limit: number
-): Promise<FileEntry[]> {
+async function runFd(query: string | null, cwd: string, limit: number): Promise<FileEntry[]> {
   try {
     const args: string[] = [
       "--type",
@@ -131,11 +124,7 @@ async function runFd(
   }
 }
 
-async function runFind(
-  query: string | null,
-  cwd: string,
-  limit: number
-): Promise<FileEntry[]> {
+async function runFind(query: string | null, cwd: string, limit: number): Promise<FileEntry[]> {
   try {
     const ignoreDirs = [
       "node_modules",
@@ -147,11 +136,7 @@ async function runFind(
       "__pycache__",
       ".DS_Store",
     ];
-    const ignoreDirsExpr = ignoreDirs.flatMap((d) => [
-      "-not",
-      "-path",
-      `*/${d}/*`,
-    ]);
+    const ignoreDirsExpr = ignoreDirs.flatMap((d) => ["-not", "-path", `*/${d}/*`]);
 
     const args: string[] = [".", "-type", "f"];
     if (query) {

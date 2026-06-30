@@ -11,9 +11,7 @@ export class ProjectRepo {
   async create(name: string, cwd: string) {
     const id = crypto.randomUUID();
     const now = Date.now();
-    await this.db
-      .insert(projects)
-      .values({ id, name, cwd, createdAt: now, updatedAt: now });
+    await this.db.insert(projects).values({ id, name, cwd, createdAt: now, updatedAt: now });
     const created = this.findById(id);
     if (!created) {
       throw new Error(`Not found after write: ${id}`);
@@ -30,17 +28,10 @@ export class ProjectRepo {
   }
 
   list() {
-    return this.db
-      .select()
-      .from(projects)
-      .orderBy(desc(projects.createdAt))
-      .all();
+    return this.db.select().from(projects).orderBy(desc(projects.createdAt)).all();
   }
 
-  async update(
-    id: string,
-    data: Partial<Pick<typeof projects.$inferInsert, "name" | "cwd">>
-  ) {
+  async update(id: string, data: Partial<Pick<typeof projects.$inferInsert, "name" | "cwd">>) {
     await this.db
       .update(projects)
       .set({ ...data, updatedAt: Date.now() })
@@ -72,7 +63,7 @@ export class SessionRepo {
       thinkingLevel?: string;
       parentSessionId?: string;
       kind?: string;
-    }
+    },
   ) {
     const id = crypto.randomUUID();
     const now = Date.now();
@@ -84,9 +75,7 @@ export class SessionRepo {
         : { parentSessionId: options.parentSessionId }),
       title: options?.title ?? null,
       ...(options?.modelId === undefined ? {} : { modelId: options.modelId }),
-      ...(options?.profileId === undefined
-        ? {}
-        : { profileId: options.profileId }),
+      ...(options?.profileId === undefined ? {} : { profileId: options.profileId }),
       kind: options?.kind ?? "task",
       thinkingLevel: options?.thinkingLevel ?? "off",
       createdAt: now,
@@ -107,9 +96,7 @@ export class SessionRepo {
     return this.db
       .select()
       .from(sessions)
-      .where(
-        and(eq(sessions.projectId, projectId), eq(sessions.kind, "intake"))
-      )
+      .where(and(eq(sessions.projectId, projectId), eq(sessions.kind, "intake")))
       .get();
   }
 
@@ -129,7 +116,7 @@ export class SessionRepo {
         typeof sessions.$inferInsert,
         "title" | "modelId" | "thinkingLevel" | "kind" | "profileId"
       >
-    >
+    >,
   ) {
     await this.db
       .update(sessions)
@@ -163,11 +150,7 @@ export class SettingsRepo {
   }
 
   get(key: string) {
-    const row = this.db
-      .select()
-      .from(settings)
-      .where(eq(settings.key, key))
-      .get();
+    const row = this.db.select().from(settings).where(eq(settings.key, key)).get();
     return row?.value ?? null;
   }
 

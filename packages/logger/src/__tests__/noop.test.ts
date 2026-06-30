@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vite-plus/test";
 import { noopLogger } from "../noop.ts";
 import type { Logger } from "../types.ts";
 

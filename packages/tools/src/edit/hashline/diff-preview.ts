@@ -1,26 +1,17 @@
-import type {
-  CompactDiffOptions,
-  CompactDiffPreview,
-} from "../../lib/hashline-utils/types";
+import type { CompactDiffOptions, CompactDiffPreview } from "../../lib/hashline-utils/types";
 
 const DEFAULT_ADDED_RUN_CONTEXT_LINES = 2;
 
 const PREVIEW_ELISION_MARKER = "…";
 const PREVIEW_GAP_ROW = "";
-const RAW_ELISION_MARKERS = new Set([
-  "...",
-  PREVIEW_ELISION_MARKER,
-  `+${PREVIEW_ELISION_MARKER}`,
-]);
+const RAW_ELISION_MARKERS = new Set(["...", PREVIEW_ELISION_MARKER, `+${PREVIEW_ELISION_MARKER}`]);
 
 function isPreviewSeparator(line: string | undefined): boolean {
   return line === PREVIEW_ELISION_MARKER || line === PREVIEW_GAP_ROW;
 }
 
 function appendPreviewLine(output: string[], line: string): void {
-  const normalized = RAW_ELISION_MARKERS.has(line)
-    ? PREVIEW_ELISION_MARKER
-    : line;
+  const normalized = RAW_ELISION_MARKERS.has(line) ? PREVIEW_ELISION_MARKER : line;
   if (
     isPreviewSeparator(normalized) &&
     (output.length === 0 || isPreviewSeparator(output[output.length - 1]))
@@ -63,11 +54,7 @@ function parseNumberedDiffLine(line: string): ParsedDiffLine | undefined {
   return { kind, lineNumber, content: body.slice(sep + 1) };
 }
 
-function appendAddedRun(
-  output: string[],
-  run: string[],
-  edgeLines: number
-): void {
+function appendAddedRun(output: string[], run: string[], edgeLines: number): void {
   if (run.length === 0) {
     return;
   }
@@ -91,11 +78,11 @@ function appendAddedRun(
 
 export function buildCompactDiffPreview(
   diff: string,
-  options: CompactDiffOptions = {}
+  options: CompactDiffOptions = {},
 ): CompactDiffPreview {
   const lines = diff.length === 0 ? [] : diff.split("\n");
   const addedRunContext = normalizeAddedRunContext(
-    options.maxAddedRunContext ?? options.maxUnchangedRun
+    options.maxAddedRunContext ?? options.maxUnchangedRun,
   );
   let addedLines = 0;
   let removedLines = 0;
@@ -134,10 +121,7 @@ export function buildCompactDiffPreview(
     }
   }
   flushAddedRun();
-  while (
-    formatted.length > 0 &&
-    isPreviewSeparator(formatted[formatted.length - 1])
-  ) {
+  while (formatted.length > 0 && isPreviewSeparator(formatted[formatted.length - 1])) {
     formatted.pop();
   }
 

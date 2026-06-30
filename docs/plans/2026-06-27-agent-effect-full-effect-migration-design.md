@@ -19,14 +19,14 @@ Migrate `packages/agent-effect` from a verbatim structural port (no Effect in bu
 
 ## Constraints
 
-| Constraint | Decision |
-|------------|----------|
-| Plan granularity | Whole migration in one plan (matches Tier 5 precedent) |
-| Backward compat | None required — `agent-effect` has no production consumers wired yet |
-| `@sakti-code/llm` | Can be modified to add Effect-native variants (`streamEffect`, `completeEffect`) |
-| Test discipline | Always-green TDD — every commit keeps the full test suite passing |
-| `packages/agent` | Stays as-is, Promise-based, in use by `apps/server` + `apps/desktop`. Retired in a future plan after the server rewires to `agent-effect`. No compat shim between them. |
-| Approach | Vertical Slice + Horizontal Phases (Approach C) |
+| Constraint        | Decision                                                                                                                                                                |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Plan granularity  | Whole migration in one plan (matches Tier 5 precedent)                                                                                                                  |
+| Backward compat   | None required — `agent-effect` has no production consumers wired yet                                                                                                    |
+| `@sakti-code/llm` | Can be modified to add Effect-native variants (`streamEffect`, `completeEffect`)                                                                                        |
+| Test discipline   | Always-green TDD — every commit keeps the full test suite passing                                                                                                       |
+| `packages/agent`  | Stays as-is, Promise-based, in use by `apps/server` + `apps/desktop`. Retired in a future plan after the server rewires to `agent-effect`. No compat shim between them. |
+| Approach          | Vertical Slice + Horizontal Phases (Approach C)                                                                                                                         |
 
 ## Non-goals
 
@@ -48,12 +48,12 @@ Unchanged: still `packages/agent-effect/src/` with the same 17 source files. Mod
 
 Every function that today returns `Promise<T>` or `Promise<Result<T, E>>` returns `Effect<T, E, R>` instead. The `R` channel carries service requirements; consumers provide them via `Layer`.
 
-| Today | End state |
-|-------|-----------|
-| `buildSessionContext(...): Promise<SessionContext>` | `Effect<SessionContext, SessionError, SessionStorage>` |
+| Today                                                           | End state                                                                      |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `buildSessionContext(...): Promise<SessionContext>`             | `Effect<SessionContext, SessionError, SessionStorage>`                         |
 | `compact(...): Promise<Result<CompactResult, CompactionError>>` | `Effect<CompactResult, CompactionError, CompletionProvider \| SessionStorage>` |
-| `runWithRetry(...): Promise<RunOutcome>` | `Effect<RunOutcome, RetryError, AgentLoopDeps>` |
-| `new Session(storage)` (constructor) | `Session.Service` consumed via `yield* Session` |
+| `runWithRetry(...): Promise<RunOutcome>`                        | `Effect<RunOutcome, RetryError, AgentLoopDeps>`                                |
+| `new Session(storage)` (constructor)                            | `Session.Service` consumed via `yield* Session`                                |
 
 ### Layer composition tree
 
@@ -112,6 +112,7 @@ Tests are also consumers: they use `@effect/vitest`'s `it.effect` + `Effect.prov
 ### `@sakti-code/llm` additions
 
 Add Effect-native variants alongside the existing Promise API:
+
 - `streamEffect(req: StreamRequest): Effect.Effect<StreamResult, LLMError, never>` using `Stream` internally
 - `completeEffect(req: CompletionRequest): Effect.Effect<CompletionResult, LLMError, never>`
 
@@ -135,14 +136,14 @@ Convert `harness/session.ts` end-to-end first. Establishes **6 reusable patterns
 
 ### Patterns the slice establishes
 
-| # | Pattern | Established by |
-|---|---------|----------------|
-| 1 | **TaggedError template** — `Schema.TaggedErrorClass<X>()("X", { fields })` | `SessionError` conversion |
-| 2 | **Service Tag** — `class X extends Context.Service<X, Shape>()("@scope/X") {}` | `SessionStorage` interface |
-| 3 | **Layer template** — `Layer.effect(Tag, Effect.gen(...))` + `Layer.provideMerge` composition | `InMemorySessionStorageLive`, `SessionLive` |
-| 4 | **Effect-returning function** — `Effect.fn("X.method")(function* () { ... })`; deps in `R`, data in args | `buildSessionContext` |
-| 5 | **Test pattern** — `it.effect` + `Effect.provide(Layer)` per test | `session.test.ts` rewrite |
-| 6 | **Caller adapter** — `// @migration`-tagged `async` wrapper calling `Effect.runPromise` | `compaction.ts`, `branch-summarization.ts`, `auto-compaction.ts`, `agent-harness.ts` (temporary) |
+| #   | Pattern                                                                                                  | Established by                                                                                   |
+| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 1   | **TaggedError template** — `Schema.TaggedErrorClass<X>()("X", { fields })`                               | `SessionError` conversion                                                                        |
+| 2   | **Service Tag** — `class X extends Context.Service<X, Shape>()("@scope/X") {}`                           | `SessionStorage` interface                                                                       |
+| 3   | **Layer template** — `Layer.effect(Tag, Effect.gen(...))` + `Layer.provideMerge` composition             | `InMemorySessionStorageLive`, `SessionLive`                                                      |
+| 4   | **Effect-returning function** — `Effect.fn("X.method")(function* () { ... })`; deps in `R`, data in args | `buildSessionContext`                                                                            |
+| 5   | **Test pattern** — `it.effect` + `Effect.provide(Layer)` per test                                        | `session.test.ts` rewrite                                                                        |
+| 6   | **Caller adapter** — `// @migration`-tagged `async` wrapper calling `Effect.runPromise`                  | `compaction.ts`, `branch-summarization.ts`, `auto-compaction.ts`, `agent-harness.ts` (temporary) |
 
 Detailed pattern templates with v4 canonical code live in `docs/patterns/agent-effect-migration-patterns.md`.
 
@@ -161,34 +162,34 @@ Detailed pattern templates live in the implementation plan.
 
 ## Horizontal Phases (after the slice)
 
-| Phase | Scope | Patterns applied | Bug fixed | Perf fixed | Effort |
-|-------|-------|------------------|-----------|------------|--------|
-| **A** | Remaining 5 error classes → TaggedError (`FileError`, `ExecutionError`, `CompactionError`, `BranchSummaryError`, `AgentHarnessError`) | Pattern 1 | — | — | ~1 day |
-| **B** | `Result<T,E>` / `ok` / `err` → `Either<E,T>` everywhere (compaction, branch-summarization, loader-shared, harness) | Patterns 1, 4 | Loader error chain | — | ~1 day |
-| **LLM** | Add `streamEffect` / `completeEffect` to `@sakti-code/llm`; introduce `StreamProvider` + `CompletionProvider` tags in `agent-effect` | Pattern 2 | — | — | ~1 day |
-| **C1+C2 vanilla** | Add error path to `EventStream`; add `.catch` to fire-and-forget loop wrappers | (vanilla fix, no Effect) | **C1, C2** | — | ~2 hours |
-| **Retry** | Convert `retry-loop.ts` → `Effect.retry` + `Schedule.exponential`; `abortableSleep` → `Clock.sleep` (interruptible) | Patterns 1, 4, 5 | (cleaner abort) | — | ~1–2 days |
-| **Loaders** | Convert `loader-shared.ts` + 4 entity loaders + `builtin-agents.ts` to Effect; introduce `FileSystem` Layer | Patterns 1–6 | — | P6 (parallel I/O at startup) | ~2 days |
-| **Compaction** | Convert `compaction.ts` + `auto-compaction.ts` + `branch-summarization.ts` to Effect; delete caller adapters from slice | Patterns 1–5 | — | P4 (token count without full tree), P5 (no re-fetch) | ~3 days |
-| **D** | Convert `loop/agent-loop.ts` — `EventStream` → `Queue`+`Stream`; `runLoop` → `Effect.gen`; `AgentLoopConfig`'s ~15 callbacks → individual services | Patterns 1–5 + new Stream/Queue pattern | **C1, C2, C4, C6** | P1 (skip rebuild when no writes), P2 (delta `convertToLlm`) | ~1–2 weeks |
-| **E** | Convert `agent.ts` → Effect with `Fiber`-based lifecycle; `subscribe` → `Stream<AgentEvent>` | Patterns 1–5 | — | — | ~3 days |
-| **Harness** | Convert `harness/agent-harness.ts` — ~20 mutable fields → `Ref`/`Queue`/`PubSub`; event multiplexer → `PubSub` + request/reply service; every public method → scoped `Effect` sharing one cancelable fiber | Patterns 1–5 | **C3** (abort reaches compact) | P3 (one cloneStreamOptions), P7, P8 | ~1 week |
-| **F** | Migrate remaining tests to `@effect/vitest` (those not already converted inline by each phase) | Pattern 5 | — | — | ongoing |
-| **FS** | Replace custom `FileSystem`/`Shell`/`ExecutionEnv` with `@effect/platform` | Pattern 2 | — | — | ~2–3 days (independent, can run anytime after Loaders) |
-| **Cleanup** | Final PR: remove all `// @migration` adapters; delete dead code (M1–M4 from review); restore remaining JSDoc | — | — | — | ~1 day |
+| Phase             | Scope                                                                                                                                                                                                      | Patterns applied                        | Bug fixed                      | Perf fixed                                                  | Effort                                                 |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------ |
+| **A**             | Remaining 5 error classes → TaggedError (`FileError`, `ExecutionError`, `CompactionError`, `BranchSummaryError`, `AgentHarnessError`)                                                                      | Pattern 1                               | —                              | —                                                           | ~1 day                                                 |
+| **B**             | `Result<T,E>` / `ok` / `err` → `Either<E,T>` everywhere (compaction, branch-summarization, loader-shared, harness)                                                                                         | Patterns 1, 4                           | Loader error chain             | —                                                           | ~1 day                                                 |
+| **LLM**           | Add `streamEffect` / `completeEffect` to `@sakti-code/llm`; introduce `StreamProvider` + `CompletionProvider` tags in `agent-effect`                                                                       | Pattern 2                               | —                              | —                                                           | ~1 day                                                 |
+| **C1+C2 vanilla** | Add error path to `EventStream`; add `.catch` to fire-and-forget loop wrappers                                                                                                                             | (vanilla fix, no Effect)                | **C1, C2**                     | —                                                           | ~2 hours                                               |
+| **Retry**         | Convert `retry-loop.ts` → `Effect.retry` + `Schedule.exponential`; `abortableSleep` → `Clock.sleep` (interruptible)                                                                                        | Patterns 1, 4, 5                        | (cleaner abort)                | —                                                           | ~1–2 days                                              |
+| **Loaders**       | Convert `loader-shared.ts` + 4 entity loaders + `builtin-agents.ts` to Effect; introduce `FileSystem` Layer                                                                                                | Patterns 1–6                            | —                              | P6 (parallel I/O at startup)                                | ~2 days                                                |
+| **Compaction**    | Convert `compaction.ts` + `auto-compaction.ts` + `branch-summarization.ts` to Effect; delete caller adapters from slice                                                                                    | Patterns 1–5                            | —                              | P4 (token count without full tree), P5 (no re-fetch)        | ~3 days                                                |
+| **D**             | Convert `loop/agent-loop.ts` — `EventStream` → `Queue`+`Stream`; `runLoop` → `Effect.gen`; `AgentLoopConfig`'s ~15 callbacks → individual services                                                         | Patterns 1–5 + new Stream/Queue pattern | **C1, C2, C4, C6**             | P1 (skip rebuild when no writes), P2 (delta `convertToLlm`) | ~1–2 weeks                                             |
+| **E**             | Convert `agent.ts` → Effect with `Fiber`-based lifecycle; `subscribe` → `Stream<AgentEvent>`                                                                                                               | Patterns 1–5                            | —                              | —                                                           | ~3 days                                                |
+| **Harness**       | Convert `harness/agent-harness.ts` — ~20 mutable fields → `Ref`/`Queue`/`PubSub`; event multiplexer → `PubSub` + request/reply service; every public method → scoped `Effect` sharing one cancelable fiber | Patterns 1–5                            | **C3** (abort reaches compact) | P3 (one cloneStreamOptions), P7, P8                         | ~1 week                                                |
+| **F**             | Migrate remaining tests to `@effect/vitest` (those not already converted inline by each phase)                                                                                                             | Pattern 5                               | —                              | —                                                           | ongoing                                                |
+| **FS**            | Replace custom `FileSystem`/`Shell`/`ExecutionEnv` with `@effect/platform`                                                                                                                                 | Pattern 2                               | —                              | —                                                           | ~2–3 days (independent, can run anytime after Loaders) |
+| **Cleanup**       | Final PR: remove all `// @migration` adapters; delete dead code (M1–M4 from review); restore remaining JSDoc                                                                                               | —                                       | —                              | —                                                           | ~1 day                                                 |
 
 ---
 
 ## Bug fix integration
 
-| Bug | Description | Fixed by |
-|-----|-------------|----------|
-| **C1** | Fire-and-forget `runAgentLoop().then()` has no `.catch` — consumer hangs on rejection | Phase C1+C2 vanilla (standalone, ~2 hrs) AND naturally by Phase D (`Effect.fork`) |
-| **C2** | `EventStream` has no error path — only `end(result?)` | Phase C1+C2 vanilla AND Phase D (replaced by `Stream`) |
-| **C3** | `abort()` cannot reach `compact()` / `navigateTree()` — they never register `runAbortController` | Phase Harness (scoped `Effect` + `Fiber.interrupt`) |
-| **C4** | Phase-reentrancy window: `phase = "idle"` set inside run; `runPromise` cleared only in outer `finally` | Phase D (`Ref<AgentHarnessPhase>` + scoped `Effect`) + Phase Harness |
-| **C5** | `Session.appendMessage` read-then-write race on `leafId` | **Slice** (storage state → `Ref`) |
-| **C6** | `executePreparedToolCall` catch block uses `Promise.all` — emit error masks tool error | Phase D (`Effect.gen` — no such footgun) |
+| Bug    | Description                                                                                            | Fixed by                                                                          |
+| ------ | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| **C1** | Fire-and-forget `runAgentLoop().then()` has no `.catch` — consumer hangs on rejection                  | Phase C1+C2 vanilla (standalone, ~2 hrs) AND naturally by Phase D (`Effect.fork`) |
+| **C2** | `EventStream` has no error path — only `end(result?)`                                                  | Phase C1+C2 vanilla AND Phase D (replaced by `Stream`)                            |
+| **C3** | `abort()` cannot reach `compact()` / `navigateTree()` — they never register `runAbortController`       | Phase Harness (scoped `Effect` + `Fiber.interrupt`)                               |
+| **C4** | Phase-reentrancy window: `phase = "idle"` set inside run; `runPromise` cleared only in outer `finally` | Phase D (`Ref<AgentHarnessPhase>` + scoped `Effect`) + Phase Harness              |
+| **C5** | `Session.appendMessage` read-then-write race on `leafId`                                               | **Slice** (storage state → `Ref`)                                                 |
+| **C6** | `executePreparedToolCall` catch block uses `Promise.all` — emit error masks tool error                 | Phase D (`Effect.gen` — no such footgun)                                          |
 
 **Only C1+C2 are worth fixing standalone** (2 hours, prevents real hangs during the longer migration). The rest come for free as side-effects of their phase.
 
@@ -196,15 +197,15 @@ Detailed pattern templates live in the implementation plan.
 
 ## Performance opportunities addressed
 
-| ID | Issue | Fixed by |
-|----|-------|----------|
+| ID     | Issue                                                                                                   | Fixed by                                                                                                                                       |
+| ------ | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | **P1** | O(n²) per-turn context rebuild — `prepareNextTurn` calls `session.buildContext()` after every tool turn | Phase D: skip rebuild when no pending writes were flushed (the `hadPendingMutations` flag already exists at `agent-harness.ts:660` — reuse it) |
-| **P2** | Full-list `convertToLlm` every turn | Phase D: cache converted prefix `[0..k-1]`, convert only the delta |
-| **P4** | `prepareCompaction` builds full message tree just to count tokens | Phase Compaction: add `estimateTokensFromEntries(pathEntries)` that iterates entries directly |
-| **P5** | `collectEntriesForBranchSummary` re-fetches entries already in `oldPath` array | Phase Compaction: iterate the already-fetched array |
-| **P6** | Loader I/O fully sequential at startup | Phase Loaders: `Effect.all({concurrency: 8})` |
-| **P7** | `cloneStreamOptions` called 3× per provider request | Phase Harness: one clone per request |
-| **P8** | Debug-log argument objects allocated every turn even when no logger | Phase D: `if (config.logger)` guards |
+| **P2** | Full-list `convertToLlm` every turn                                                                     | Phase D: cache converted prefix `[0..k-1]`, convert only the delta                                                                             |
+| **P4** | `prepareCompaction` builds full message tree just to count tokens                                       | Phase Compaction: add `estimateTokensFromEntries(pathEntries)` that iterates entries directly                                                  |
+| **P5** | `collectEntriesForBranchSummary` re-fetches entries already in `oldPath` array                          | Phase Compaction: iterate the already-fetched array                                                                                            |
+| **P6** | Loader I/O fully sequential at startup                                                                  | Phase Loaders: `Effect.all({concurrency: 8})`                                                                                                  |
+| **P7** | `cloneStreamOptions` called 3× per provider request                                                     | Phase Harness: one clone per request                                                                                                           |
+| **P8** | Debug-log argument objects allocated every turn even when no logger                                     | Phase D: `if (config.logger)` guards                                                                                                           |
 
 **Deferred:** P3 (`structuredClone` per tool call) — wait for Phase D, address during the loop rewrite.
 
@@ -244,6 +245,7 @@ Phase F (tests → `@effect/vitest`) happens **inline with each phase**, not as 
 ## Verification gates (every phase)
 
 Before a phase is considered done:
+
 1. All 233+ tests pass (`pnpm run test` from `packages/agent-effect`).
 2. `pnpm exec tsc --noEmit` is clean.
 3. `pnpm run fix` (Biome) is clean.

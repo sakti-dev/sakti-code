@@ -41,12 +41,7 @@ export const PartFooter: Component<PartFooterProps> = (props) => {
   };
 
   return (
-    <div
-      class={cn(
-        "flex items-center gap-1.5 text-muted-foreground/50 text-xs",
-        props.class
-      )}
-    >
+    <div class={cn("flex items-center gap-1.5 text-muted-foreground/50 text-xs", props.class)}>
       <Show when={props.copyText}>
         <button
           class="cursor-pointer transition-colors hover:text-muted-foreground"

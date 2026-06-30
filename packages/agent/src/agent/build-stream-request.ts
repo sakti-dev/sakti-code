@@ -8,7 +8,7 @@ export function buildHarnessStreamRequest(
     logger?: Logger;
     sessionId: string;
     apiKey?: string;
-  }
+  },
 ): StreamRequest {
   const apiKey = opts.apiKey ?? req.apiKey;
   return {

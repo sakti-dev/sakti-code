@@ -8,6 +8,7 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: resolve(import.meta.dirname, "electron/main/index.ts"),
+        external: ["electron", "@sakti-code/pi-natives", "@ff-labs/fff-node"],
       },
     },
   },

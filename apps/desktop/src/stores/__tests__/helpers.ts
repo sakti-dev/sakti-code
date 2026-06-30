@@ -3,12 +3,7 @@ import type { AssistantMessage, Usage } from "@sakti-code/llm";
 
 // ── Usage factory ─────────────────────────────────────────────────
 
-export function createMockUsage(
-  input = 100,
-  output = 50,
-  cacheRead = 0,
-  cacheWrite = 0
-): Usage {
+export function createMockUsage(input = 100, output = 50, cacheRead = 0, cacheWrite = 0): Usage {
   return {
     input,
     output,
@@ -29,7 +24,7 @@ export function createMockUsage(
 
 export function makeAssistantMessage(
   text: string,
-  overrides: Partial<AssistantMessage> = {}
+  overrides: Partial<AssistantMessage> = {},
 ): AssistantMessage {
   return {
     role: "assistant",
@@ -54,7 +49,7 @@ export function makeUserMessage(text: string): AgentMessage {
 
 export function makeAssistantMessageWithToolCall(
   text: string,
-  toolCall: { id: string; name: string; args: Record<string, unknown> }
+  toolCall: { id: string; name: string; args: Record<string, unknown> },
 ): AssistantMessage {
   return {
     ...makeAssistantMessage(text),
@@ -71,10 +66,7 @@ export function makeAssistantMessageWithToolCall(
   };
 }
 
-export function makeAssistantMessageWithThinking(
-  text: string,
-  thinking: string
-): AssistantMessage {
+export function makeAssistantMessageWithThinking(text: string, thinking: string): AssistantMessage {
   return {
     ...makeAssistantMessage(text),
     content: [
@@ -90,9 +82,7 @@ export function makeAgentStartEvent(): AgentHarnessEvent {
   return { type: "agent_start" } as AgentHarnessEvent;
 }
 
-export function makeAgentEndEvent(
-  messages: AgentMessage[] = []
-): AgentHarnessEvent {
+export function makeAgentEndEvent(messages: AgentMessage[] = []): AgentHarnessEvent {
   return { type: "agent_end", messages } as AgentHarnessEvent;
 }
 
@@ -108,24 +98,18 @@ export function makeTurnEndEvent(message: AgentMessage): AgentHarnessEvent {
   } as AgentHarnessEvent;
 }
 
-export function makeMessageStartEvent(
-  message: AgentMessage
-): AgentHarnessEvent {
+export function makeMessageStartEvent(message: AgentMessage): AgentHarnessEvent {
   return { type: "message_start", message } as AgentHarnessEvent;
 }
 
-export function makeMessageUpdateTextDeltaEvent(
-  delta: string
-): AgentHarnessEvent {
+export function makeMessageUpdateTextDeltaEvent(delta: string): AgentHarnessEvent {
   return {
     type: "message_update",
     delta: { kind: "text", text: delta },
   } as AgentHarnessEvent;
 }
 
-export function makeMessageUpdateThinkingDeltaEvent(
-  delta: string
-): AgentHarnessEvent {
+export function makeMessageUpdateThinkingDeltaEvent(delta: string): AgentHarnessEvent {
   return {
     type: "message_update",
     delta: { kind: "thinking", text: delta },
@@ -139,7 +123,7 @@ export function makeMessageEndEvent(message: AgentMessage): AgentHarnessEvent {
 export function makeToolExecutionStartEvent(
   toolCallId: string,
   toolName: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
 ): AgentHarnessEvent {
   return {
     type: "tool_execution_start",
@@ -153,7 +137,7 @@ export function makeToolExecutionEndEvent(
   toolCallId: string,
   toolName: string,
   result: unknown,
-  isError = false
+  isError = false,
 ): AgentHarnessEvent {
   return {
     type: "tool_execution_end",
@@ -207,16 +191,9 @@ export function makeFullTurnSequence(options: {
   events.push(makeMessageEndEvent(finalMsg));
 
   for (const tool of options.tools ?? []) {
+    events.push(makeToolExecutionStartEvent(tool.toolCallId, tool.toolName, tool.args));
     events.push(
-      makeToolExecutionStartEvent(tool.toolCallId, tool.toolName, tool.args)
-    );
-    events.push(
-      makeToolExecutionEndEvent(
-        tool.toolCallId,
-        tool.toolName,
-        tool.result,
-        tool.isError
-      )
+      makeToolExecutionEndEvent(tool.toolCallId, tool.toolName, tool.result, tool.isError),
     );
   }
 

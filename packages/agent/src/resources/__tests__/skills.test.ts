@@ -1,6 +1,6 @@
 import { symlink } from "node:fs/promises";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
 import { loadSkills, loadSourcedSkills } from "../../resources/skills";
 import { createTempDir } from "../../session/__tests__/session-test-utils";
@@ -18,7 +18,7 @@ description: Example skill
 disable-model-invocation: true
 ---
 Use this skill.
-`
+`,
     );
 
     const { skills, diagnostics } = await loadSkills(env, ".agents/skills");
@@ -41,16 +41,14 @@ Use this skill.
     await env.createDir("actual/example", { recursive: true });
     await env.writeFile(
       "actual/example/SKILL.md",
-      "---\nname: example\ndescription: Example skill\n---\nUse this skill."
+      "---\nname: example\ndescription: Example skill\n---\nUse this skill.",
     );
     await symlink(join(root, "actual"), join(root, "skills-link"));
 
     const { skills } = await loadSkills(env, "skills-link");
 
     expect(skills.map((skill) => skill.name)).toEqual(["example"]);
-    expect(skills[0]?.filePath).toBe(
-      join(root, "skills-link/example/SKILL.md")
-    );
+    expect(skills[0]?.filePath).toBe(join(root, "skills-link/example/SKILL.md"));
   });
 
   it("preserves source info for sourced skills", async () => {
@@ -59,7 +57,7 @@ Use this skill.
     await env.createDir("user/example", { recursive: true });
     await env.writeFile(
       "user/example/SKILL.md",
-      "---\nname: example\ndescription: Example skill\n---\nUse this skill."
+      "---\nname: example\ndescription: Example skill\n---\nUse this skill.",
     );
 
     const { skills, diagnostics } = await loadSourcedSkills(env, [
@@ -85,10 +83,7 @@ Use this skill.
     const root = createTempDir();
     const env = new TestExecutionEnv(root);
     await env.createDir("user/broken", { recursive: true });
-    await env.writeFile(
-      "user/broken/SKILL.md",
-      "---\nname: broken\n---\nMissing description."
-    );
+    await env.writeFile("user/broken/SKILL.md", "---\nname: broken\n---\nMissing description.");
 
     const { skills, diagnostics } = await loadSourcedSkills(env, [
       { path: "user", source: { type: "user" as const } },
@@ -110,13 +105,10 @@ Use this skill.
     const root = createTempDir();
     const env = new TestExecutionEnv(root);
     await env.createDir("skills/nested", { recursive: true });
-    await env.writeFile(
-      "skills/root.md",
-      "---\ndescription: Root skill\n---\nRoot content"
-    );
+    await env.writeFile("skills/root.md", "---\ndescription: Root skill\n---\nRoot content");
     await env.writeFile(
       "skills/nested/ignored.md",
-      "---\ndescription: Ignored\n---\nIgnored content"
+      "---\ndescription: Ignored\n---\nIgnored content",
     );
 
     const { skills } = await loadSkills(env, "skills");
@@ -132,7 +124,7 @@ Use this skill.
     await env.writeFile(".agents/skills/.gitignore", "excluded/\n");
     await env.writeFile(
       ".agents/skills/excluded/SKILL.md",
-      "---\nname: excluded\ndescription: Excluded skill\n---\nContent"
+      "---\nname: excluded\ndescription: Excluded skill\n---\nContent",
     );
 
     const { skills } = await loadSkills(env, ".agents/skills");

@@ -40,13 +40,7 @@ export { jsonSchema } from "ai";
 // Auth: env-key resolution. Full login/OAuth orchestration is server-owned.
 export type { AuthResult, ModelAuth } from "./auth/types.ts";
 // Generated model catalog from models.dev (142 providers, matches opencode).
-export {
-  ALL_MODELS,
-  CATALOG,
-  getModel,
-  PROVIDER_INFO,
-  PROVIDERS,
-} from "./catalog/index.ts";
+export { ALL_MODELS, CATALOG, getModel, PROVIDER_INFO, PROVIDERS } from "./catalog/index.ts";
 export type { ProviderInfo } from "./catalog/types.ts";
 export type { CompleteRequest, CompleteResult } from "./complete.ts";
 // Non-streaming completion (generateText wrapper) for compaction and one-shots.
@@ -56,11 +50,7 @@ export { isContextOverflow } from "./context-overflow.ts";
 // Cost computation (mutates usage.cost in place; Anthropic 1h cache premium).
 export { calculateCost } from "./cost.ts";
 // Effect-native variants of stream/complete (v4 TaggedErrorClass + Effect).
-export {
-  completeEffect,
-  LLMError,
-  streamEffect,
-} from "./effect.ts";
+export { completeEffect, LLMError, streamEffect } from "./effect.ts";
 // Message conversion: Message[] → @ai-sdk ModelMessage[].
 export { toModelMessages } from "./messages.ts";
 export type {
@@ -72,22 +62,13 @@ export type {
 // Provider resolution: Model + auth → @ai-sdk LanguageModelV4.
 export { BUNDLED_PROVIDERS } from "./provider/registry.ts";
 export type { ResolveOptions } from "./provider/resolve.ts";
-export {
-  clearResolveCache,
-  resolveBaseURL,
-  resolveLanguageModel,
-} from "./provider/resolve.ts";
+export { clearResolveCache, resolveBaseURL, resolveLanguageModel } from "./provider/resolve.ts";
 // Compat transform: thinkingFormat → providerOptions + session-affinity headers.
 export { buildHeaders, buildProviderOptions } from "./provider/transform.ts";
 // Transient error classifier — decides if a failed turn is worth retrying.
 export { isRetryableAssistantError } from "./retry.ts";
 export type { FinishResult, StreamRequest, StreamResult } from "./stream.ts";
 // Stream entry point: the single function the agent loop calls.
-export {
-  mapFinishReason,
-  mapUsage,
-  stream,
-  streamWithModel,
-} from "./stream.ts";
+export { mapFinishReason, mapUsage, stream, streamWithModel } from "./stream.ts";
 // Message contract + Model descriptor (the shapes ~20 consumers depend on).
 export * from "./types.ts";

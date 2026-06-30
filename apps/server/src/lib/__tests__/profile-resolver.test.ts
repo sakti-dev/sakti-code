@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { resolveModelRef } from "../profile-resolver.ts";
 import type { Profiles } from "../profiles-store.ts";
 
@@ -60,9 +60,7 @@ describe("resolveModelRef", () => {
   });
 
   it("throws on missing profile", () => {
-    expect(() => resolveModelRef(PROFILES, "nonexistent", "default")).toThrow(
-      MISSING_PROFILE_RE
-    );
+    expect(() => resolveModelRef(PROFILES, "nonexistent", "default")).toThrow(MISSING_PROFILE_RE);
   });
 
   it("throws on missing default model", () => {
@@ -75,9 +73,7 @@ describe("resolveModelRef", () => {
         },
       },
     };
-    expect(() => resolveModelRef(broken, null, "default")).toThrow(
-      MISSING_DEFAULT_RE
-    );
+    expect(() => resolveModelRef(broken, null, "default")).toThrow(MISSING_DEFAULT_RE);
   });
 
   it("throws on empty provider/model with a clear message", () => {
@@ -92,9 +88,7 @@ describe("resolveModelRef", () => {
         },
       },
     };
-    expect(() => resolveModelRef(unconfigured, null, "default")).toThrow(
-      NO_MODEL_CONFIGURED_RE
-    );
+    expect(() => resolveModelRef(unconfigured, null, "default")).toThrow(NO_MODEL_CONFIGURED_RE);
   });
 
   it("thinkingLevel defaults to 'off' when not specified", () => {

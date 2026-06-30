@@ -22,10 +22,7 @@ function newTurn(userMessage: UIMessage | null, id: string): ChatTurn {
   };
 }
 
-function handleAssistantMessage(
-  currentTurn: ChatTurn | null,
-  msg: UIMessage
-): ChatTurn {
+function handleAssistantMessage(currentTurn: ChatTurn | null, msg: UIMessage): ChatTurn {
   const turn = currentTurn ?? newTurn(null, msg.id);
   turn.assistantMessages.push(msg);
   if (msg.isStreaming) {
@@ -41,7 +38,7 @@ export function buildChatTurns(
   messageOrder: string[],
   messages: Record<string, UIMessage>,
   streamingPhase: string,
-  turnTimings: TurnTiming[] = []
+  turnTimings: TurnTiming[] = [],
 ): ChatTurn[] {
   const turns: ChatTurn[] = [];
   let currentTurn: ChatTurn | null = null;

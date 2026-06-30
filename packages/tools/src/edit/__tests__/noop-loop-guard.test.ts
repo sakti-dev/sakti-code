@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   hashPatchInput,
   NOOP_HARD_LIMIT,
@@ -56,14 +56,10 @@ describe("noop-loop-guard", () => {
   });
 
   it("hashPatchInput does not normalize trailing whitespace (progress is detected)", () => {
-    expect(hashPatchInput("SWAP 1.=1:\nfoo")).not.toBe(
-      hashPatchInput("SWAP 1.=1:\nfoo   ")
-    );
+    expect(hashPatchInput("SWAP 1.=1:\nfoo")).not.toBe(hashPatchInput("SWAP 1.=1:\nfoo   "));
   });
 
   it("hashPatchInput is deterministic for identical payloads", () => {
-    expect(hashPatchInput("SWAP 1.=1:\nfoo")).toBe(
-      hashPatchInput("SWAP 1.=1:\nfoo")
-    );
+    expect(hashPatchInput("SWAP 1.=1:\nfoo")).toBe(hashPatchInput("SWAP 1.=1:\nfoo"));
   });
 });

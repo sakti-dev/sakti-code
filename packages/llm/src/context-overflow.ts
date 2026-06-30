@@ -67,16 +67,11 @@ const NON_OVERFLOW_PATTERNS = [
  * @param contextWindow - The model's context window. Required for cases 2 & 3;
  *   omit to only detect case 1 (error-message patterns).
  */
-export function isContextOverflow(
-  message: AssistantMessage,
-  contextWindow?: number
-): boolean {
+export function isContextOverflow(message: AssistantMessage, contextWindow?: number): boolean {
   // Case 1: error message patterns.
   if (message.stopReason === "error" && message.errorMessage) {
     const errorMessage = message.errorMessage;
-    const isNonOverflow = NON_OVERFLOW_PATTERNS.some((p) =>
-      p.test(errorMessage)
-    );
+    const isNonOverflow = NON_OVERFLOW_PATTERNS.some((p) => p.test(errorMessage));
     if (!isNonOverflow && OVERFLOW_PATTERNS.some((p) => p.test(errorMessage))) {
       return true;
     }
@@ -92,11 +87,7 @@ export function isContextOverflow(
 
   // Case 3: length-stop overflow (Xiaomi MiMo) — truncated input fills the
   // window leaving no room for output.
-  if (
-    contextWindow &&
-    message.stopReason === "length" &&
-    message.usage.output === 0
-  ) {
+  if (contextWindow && message.stopReason === "length" && message.usage.output === 0) {
     const inputTokens = message.usage.input + message.usage.cacheRead;
     if (inputTokens >= contextWindow * 0.99) {
       return true;

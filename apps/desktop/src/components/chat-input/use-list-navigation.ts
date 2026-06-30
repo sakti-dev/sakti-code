@@ -13,7 +13,7 @@ export interface ListNavigationOptions<T> {
  */
 export function useListNavigation<T extends { id: string }>(
   items: () => T[],
-  options: ListNavigationOptions<T> = {}
+  options: ListNavigationOptions<T> = {},
 ) {
   const [activeIndex, setActiveIndex] = createSignal(0);
 

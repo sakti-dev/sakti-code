@@ -27,10 +27,7 @@ function isJsonSchemaObject(value: unknown): value is JsonSchemaObject {
 }
 
 function hasTypeBoxMetadata(schema: unknown): boolean {
-  return (
-    isRecord(schema) &&
-    Object.getOwnPropertySymbols(schema).includes(TYPEBOX_KIND)
-  );
+  return isRecord(schema) && Object.getOwnPropertySymbols(schema).includes(TYPEBOX_KIND);
 }
 
 function getSchemaTypes(schema: JsonSchemaObject): string[] {
@@ -38,9 +35,7 @@ function getSchemaTypes(schema: JsonSchemaObject): string[] {
     return [schema.type];
   }
   if (Array.isArray(schema.type)) {
-    return schema.type.filter(
-      (type): type is string => typeof type === "string"
-    );
+    return schema.type.filter((type): type is string => typeof type === "string");
   }
   return [];
 }
@@ -70,9 +65,7 @@ function isValidatorSchema(value: unknown): value is Tool["parameters"] {
   return isRecord(value);
 }
 
-function getSubSchemaValidator(
-  schema: JsonSchemaObject
-): ReturnType<typeof Compile> | undefined {
+function getSubSchemaValidator(schema: JsonSchemaObject): ReturnType<typeof Compile> | undefined {
   if (!isValidatorSchema(schema)) {
     return;
   }
@@ -157,14 +150,9 @@ function coercePrimitiveByType(value: unknown, type: string): unknown {
   }
 }
 
-function applySchemaObjectCoercion(
-  value: Record<string, unknown>,
-  schema: JsonSchemaObject
-): void {
+function applySchemaObjectCoercion(value: Record<string, unknown>, schema: JsonSchemaObject): void {
   const properties = schema.properties;
-  const definedKeys = new Set<string>(
-    properties ? Object.keys(properties) : []
-  );
+  const definedKeys = new Set<string>(properties ? Object.keys(properties) : []);
 
   if (properties) {
     for (const [key, propertySchema] of Object.entries(properties)) {
@@ -175,26 +163,17 @@ function applySchemaObjectCoercion(
     }
   }
 
-  if (
-    schema.additionalProperties &&
-    isJsonSchemaObject(schema.additionalProperties)
-  ) {
+  if (schema.additionalProperties && isJsonSchemaObject(schema.additionalProperties)) {
     for (const [key, propertyValue] of Object.entries(value)) {
       if (definedKeys.has(key)) {
         continue;
       }
-      value[key] = coerceWithJsonSchema(
-        propertyValue,
-        schema.additionalProperties
-      );
+      value[key] = coerceWithJsonSchema(propertyValue, schema.additionalProperties);
     }
   }
 }
 
-function applySchemaArrayCoercion(
-  value: unknown[],
-  schema: JsonSchemaObject
-): void {
+function applySchemaArrayCoercion(value: unknown[], schema: JsonSchemaObject): void {
   if (Array.isArray(schema.items)) {
     for (let index = 0; index < value.length; index++) {
       const itemSchema = schema.items[index];
@@ -213,10 +192,7 @@ function applySchemaArrayCoercion(
   }
 }
 
-function coerceWithUnionSchema(
-  value: unknown,
-  schemas: JsonSchemaObject[]
-): unknown {
+function coerceWithUnionSchema(value: unknown, schemas: JsonSchemaObject[]): unknown {
   for (const schema of schemas) {
     const validator = getSubSchemaValidator(schema);
     if (validator?.Check(value)) {
@@ -235,10 +211,7 @@ function coerceWithUnionSchema(
   return value;
 }
 
-function coerceWithJsonSchema(
-  value: unknown,
-  schema: JsonSchemaObject
-): unknown {
+function coerceWithJsonSchema(value: unknown, schema: JsonSchemaObject): unknown {
   let nextValue = value;
 
   if (Array.isArray(schema.allOf)) {
@@ -269,11 +242,7 @@ function coerceWithJsonSchema(
     }
   }
 
-  if (
-    schemaTypes.includes("object") &&
-    isRecord(nextValue) &&
-    !Array.isArray(nextValue)
-  ) {
+  if (schemaTypes.includes("object") && isRecord(nextValue) && !Array.isArray(nextValue)) {
     applySchemaObjectCoercion(nextValue, schema);
   }
 
@@ -297,37 +266,26 @@ function getValidator(schema: Tool["parameters"]): ReturnType<typeof Compile> {
 
 function formatValidationPath(error: TLocalizedValidationError): string {
   if (error.keyword === "required") {
-    const requiredProperties = (
-      error.params as { requiredProperties?: string[] }
-    ).requiredProperties;
+    const requiredProperties = (error.params as { requiredProperties?: string[] })
+      .requiredProperties;
     const requiredProperty = requiredProperties?.[0];
     if (requiredProperty) {
-      const basePath = error.instancePath
-        .replace(LEADING_SLASH, "")
-        .replace(PATH_SEPARATOR, ".");
+      const basePath = error.instancePath.replace(LEADING_SLASH, "").replace(PATH_SEPARATOR, ".");
       return basePath ? `${basePath}.${requiredProperty}` : requiredProperty;
     }
   }
-  const path = error.instancePath
-    .replace(LEADING_SLASH, "")
-    .replace(PATH_SEPARATOR, ".");
+  const path = error.instancePath.replace(LEADING_SLASH, "").replace(PATH_SEPARATOR, ".");
   return path || "root";
 }
 
-export function validateToolArguments(
-  tool: Tool,
-  toolCall: ToolCall
-): Record<string, unknown> {
+export function validateToolArguments(tool: Tool, toolCall: ToolCall): Record<string, unknown> {
   const args = structuredClone(toolCall.arguments) as Record<string, unknown>;
   Value.Convert(tool.parameters, args);
 
   const validator = getValidator(tool.parameters);
 
   let finalArgs: Record<string, unknown> = args;
-  if (
-    !hasTypeBoxMetadata(tool.parameters) &&
-    isJsonSchemaObject(tool.parameters)
-  ) {
+  if (!hasTypeBoxMetadata(tool.parameters) && isJsonSchemaObject(tool.parameters)) {
     const coerced = coerceWithJsonSchema(args, tool.parameters);
     if (coerced !== args) {
       finalArgs = coerced as Record<string, unknown>;

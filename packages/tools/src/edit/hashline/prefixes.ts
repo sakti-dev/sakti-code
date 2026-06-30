@@ -2,9 +2,7 @@ import { HL_FILE_HASH_LENGTH } from "../../lib/hashline-utils/format";
 
 const HL_PREFIX_RE = /^\s*(?:>>>|>>)?\s*(?:[+*-]\s*)?\d+:/;
 const HL_PREFIX_PLUS_RE = /^\s*(?:>>>|>>)?\s*\+\s*\d+:/;
-const HL_HEADER_RE = new RegExp(
-  `^\\s*\\[[^#\\r\\n]+#[0-9a-fA-F]{${HL_FILE_HASH_LENGTH}}\\]\\s*$`
-);
+const HL_HEADER_RE = new RegExp(`^\\s*\\[[^#\\r\\n]+#[0-9a-fA-F]{${HL_FILE_HASH_LENGTH}}\\]\\s*$`);
 const DIFF_PLUS_RE = /^[+](?![+])/;
 const READ_TRUNCATION_NOTICE_RE =
   /^\[(?:Showing lines \d+-\d+ of \d+|\d+ more lines? in (?:file|\S+))\b.*\bUse :L?\d+/;
@@ -66,8 +64,7 @@ export function stripNewLinePrefixes(lines: string[]): string[] {
   }
 
   const contentLineCount = stats.nonEmpty - stats.headerCount;
-  const stripHash =
-    contentLineCount > 0 && stats.hashPrefixCount === contentLineCount;
+  const stripHash = contentLineCount > 0 && stats.hashPrefixCount === contentLineCount;
   const stripPlus =
     !stripHash &&
     stats.diffPlusHashPrefixCount === 0 &&
@@ -80,11 +77,7 @@ export function stripNewLinePrefixes(lines: string[]): string[] {
 
   return lines
     .filter(
-      (line) =>
-        !(
-          READ_TRUNCATION_NOTICE_RE.test(line) ||
-          (stripHash && HL_HEADER_RE.test(line))
-        )
+      (line) => !(READ_TRUNCATION_NOTICE_RE.test(line) || (stripHash && HL_HEADER_RE.test(line))),
     )
     .map((line) => {
       if (stripHash) {
@@ -110,10 +103,7 @@ export function stripHashlinePrefixes(lines: string[]): string[] {
     return lines;
   }
   return lines
-    .filter(
-      (line) =>
-        !(READ_TRUNCATION_NOTICE_RE.test(line) || HL_HEADER_RE.test(line))
-    )
+    .filter((line) => !(READ_TRUNCATION_NOTICE_RE.test(line) || HL_HEADER_RE.test(line)))
     .map((line) => stripLeadingHashlinePrefixes(line));
 }
 
@@ -127,17 +117,13 @@ function stripLeadingHashlinePrefixes(line: string): string {
   return result;
 }
 
-export function hashlineParseText(
-  edit: string[] | string | null | undefined
-): string[] {
+export function hashlineParseText(edit: string[] | string | null | undefined): string[] {
   if (edit == null) {
     return [];
   }
   const lines =
     typeof edit === "string"
-      ? (edit.endsWith("\n") ? edit.slice(0, -1) : edit)
-          .replaceAll("\r", "")
-          .split("\n")
+      ? (edit.endsWith("\n") ? edit.slice(0, -1) : edit).replaceAll("\r", "").split("\n")
       : edit;
   return stripNewLinePrefixes(lines);
 }

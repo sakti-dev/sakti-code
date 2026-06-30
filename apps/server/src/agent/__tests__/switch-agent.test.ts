@@ -1,5 +1,5 @@
 import { type AgentDefinition, fromConfig } from "@sakti-code/agent";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   getPermissionChannel,
   resetPermissionChannelsForTesting,
@@ -76,10 +76,7 @@ describe("switchAgentForSession", () => {
     const ctx = createMockCtx();
     const ok = await switchAgentForSession(ctx, "sess-1", "explore");
     expect(ok).toBe(true);
-    expect(ctx.repos.settings.set).toHaveBeenCalledWith(
-      "session:sess-1:agent",
-      "explore"
-    );
+    expect(ctx.repos.settings.set).toHaveBeenCalledWith("session:sess-1:agent", "explore");
   });
 
   it("returns false for an unknown session", async () => {

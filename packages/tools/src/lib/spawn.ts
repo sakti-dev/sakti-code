@@ -13,7 +13,7 @@ export interface RunProcessOptions {
 export async function runProcess(
   command: string,
   args: string[],
-  options: RunProcessOptions = {}
+  options: RunProcessOptions = {},
 ): Promise<{ exitCode: number; stderr: string; stdout: string }> {
   return new Promise((resolve) => {
     const proc = spawn(command, args, {

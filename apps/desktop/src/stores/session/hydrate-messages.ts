@@ -3,9 +3,7 @@ import type { Message } from "@sakti-code/llm";
 import type { MessagePart, UIMessage } from "../types.ts";
 import { extractUsage } from "./usage-stats.ts";
 
-function hasContent(
-  msg: AgentMessage
-): msg is AgentMessage & { content: Message["content"] } {
+function hasContent(msg: AgentMessage): msg is AgentMessage & { content: Message["content"] } {
   return "content" in msg;
 }
 
@@ -21,10 +19,7 @@ function extractText(msg: AgentMessage): string {
     return content
       .filter(
         (c): c is { type: "text"; text: string } =>
-          c !== null &&
-          typeof c === "object" &&
-          "type" in c &&
-          c.type === "text"
+          c !== null && typeof c === "object" && "type" in c && c.type === "text",
       )
       .map((c) => c.text)
       .join("");
@@ -43,12 +38,7 @@ function convertAssistantMessage(msg: AgentMessage): UIMessage {
   const rawContent = hasContent(msg) ? msg.content : undefined;
   const content = Array.isArray(rawContent) ? rawContent : [];
   for (const part of content) {
-    if (
-      part !== null &&
-      typeof part === "object" &&
-      "type" in part &&
-      part.type === "thinking"
-    ) {
+    if (part !== null && typeof part === "object" && "type" in part && part.type === "thinking") {
       const thinking = (part as { thinking?: string }).thinking;
       if (thinking) {
         parts.push({ type: "thinking", text: thinking });
@@ -112,9 +102,7 @@ function mergeToolResult(result: UIMessage[], msg: AgentMessage): void {
     if (uiMsg?.role !== "assistant") {
       break;
     }
-    const part = uiMsg.parts.find(
-      (p) => p.type === "tool_call" && p.toolCallId === toolCallId
-    );
+    const part = uiMsg.parts.find((p) => p.type === "tool_call" && p.toolCallId === toolCallId);
     if (part && part.type === "tool_call") {
       part.status = isError ? "error" : "done";
       part.result = resultText;

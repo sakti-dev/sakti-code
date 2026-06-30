@@ -6,12 +6,12 @@ description = "Compact mise version manager output"
 match_command = "^(mise|rtx)$"
 strip_ansi = true
 strip_lines_matching = [
-	"^\\s*$",
-	"^mise\\s+hint\\s",
-	"^mise\\s+.*already installed",
-	"^mise\\s+Downloading\\s",
-	"^mise\\s+Extracting\\s",
-	"^mise\\s+(trust|install|upgrade).*✓",
+  "^\\s*$",
+  "^mise\\s+hint\\s",
+  "^mise\\s+.*already installed",
+  "^mise\\s+Downloading\\s",
+  "^mise\\s+Extracting\\s",
+  "^mise\\s+(trust|install|upgrade).*✓",
 ]
 truncate_lines_at = 250
 max_lines = 80

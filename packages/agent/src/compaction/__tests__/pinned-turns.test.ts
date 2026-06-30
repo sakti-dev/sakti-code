@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { AgentMessage } from "../../types";
 import {
   DEFAULT_MAX_PINNED_USER_TOKENS,
@@ -36,9 +36,7 @@ function asstMsg(text: string): AgentMessage {
 
 describe("isPinnableUserTurn", () => {
   it("returns true for a small user turn", () => {
-    expect(
-      isPinnableUserTurn(userMsg("remember: use pnpm"), { maxTokens: 1500 })
-    ).toBe(true);
+    expect(isPinnableUserTurn(userMsg("remember: use pnpm"), { maxTokens: 1500 })).toBe(true);
   });
 
   it("returns false for a large user turn (over the token budget)", () => {
@@ -47,9 +45,7 @@ describe("isPinnableUserTurn", () => {
   });
 
   it("returns false for a non-user message", () => {
-    expect(
-      isPinnableUserTurn(asstMsg("assistant text"), { maxTokens: 1500 })
-    ).toBe(false);
+    expect(isPinnableUserTurn(asstMsg("assistant text"), { maxTokens: 1500 })).toBe(false);
   });
 
   it("uses DEFAULT_MAX_PINNED_USER_TOKENS when no options given", () => {
@@ -93,8 +89,7 @@ describe("partitionPinnedTurns", () => {
       asstMsg("fold 2"),
     ];
     const { pinned, foldable } = partitionPinnedTurns(messages);
-    const text = (m: AgentMessage) =>
-      (m as { content: Array<{ text: string }> }).content[0]!.text;
+    const text = (m: AgentMessage) => (m as { content: Array<{ text: string }> }).content[0]!.text;
     expect(pinned.map(text)).toEqual(["first pin", "second pin"]);
     expect(foldable.map(text)).toEqual(["fold 1", "fold 2"]);
   });

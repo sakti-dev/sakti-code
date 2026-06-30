@@ -25,6 +25,7 @@
 ## Task 1: DevToolbar replay controls (TDD)
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat-area/dev-toolbar.tsx`
 - Create: `apps/desktop/src/components/__tests__/dev-toolbar.test.tsx`
 
@@ -179,6 +180,7 @@ git commit -m "feat(desktop): dev toolbar scaffold + replay controls"
 ## Task 2: Retry simulator (TDD, fake timers)
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/chat-area/dev-toolbar.tsx`
 - Modify: `apps/desktop/src/components/__tests__/dev-toolbar.test.tsx`
 
@@ -438,6 +440,7 @@ in production. Stop + unmount clear pending timers."
 ## Task 3: Wire into task-chat-view with DEV gate + verify
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/chat-area/task-chat-view.tsx`
 
 ### Step 1: Mount the toolbar gated by `import.meta.env.DEV`
@@ -531,6 +534,7 @@ Confirm the DEV gate tree-shakes. Run a production build (optional sanity):
 ```bash
 cd apps/desktop && nub run build 2>&1 | tail -20
 ```
+
 Expected: build succeeds (the DevToolbar import remains but the `{import.meta.env.DEV && ...}` branch is dead in prod).
 
 ### Step 4: Commit

@@ -9,6 +9,7 @@
 **Tech Stack:** TypeScript-only (no Rust). TypeBox schemas. Works with the existing `AgentTool` interface. Snapshot store is an in-memory LRU cache (matching the oh-my-pi `InMemorySnapshotStore` pattern).
 
 **Key concepts:**
+
 - **Hashline patch language** — `SWAP N.=M:`, `DEL N..M`, `INS.PRE N:`, `INS.POST N:`, `INS.HEAD:`, `INS.TAIL:`, `REM`, `MV DEST`
 - **4-hex content hash** — derived from the full normalized file content, anchors edits to a specific file version
 - **Snapshot store** — records `path → { hash, fullText, seenLines }` so stale-tag edits can recover via 3-way merge
@@ -68,6 +69,7 @@
 ### Task 1: Hashline Core Types (`packages/tools/src/lib/hashline/types.ts`)
 
 **Files:**
+
 - Create: `packages/tools/src/lib/hashline/types.ts`
 - Test: `packages/tools/src/lib/__tests__/hashline.test.ts`
 
@@ -93,7 +95,13 @@ describe("Hashline types", () => {
   });
 
   it("Edit can be insert, delete, or block", () => {
-    const insert: Edit = { kind: "insert", cursor: { kind: "bof" }, text: "hello", lineNum: 1, index: 0 };
+    const insert: Edit = {
+      kind: "insert",
+      cursor: { kind: "bof" },
+      text: "hello",
+      lineNum: 1,
+      index: 0,
+    };
     expect(insert.kind).toBe("insert");
 
     const del: Edit = { kind: "delete", anchor: { line: 3 }, lineNum: 2, index: 1 };
@@ -127,9 +135,24 @@ export type Cursor =
   | { kind: "after_anchor"; anchor: Anchor };
 
 export type Edit =
-  | { kind: "insert"; cursor: Cursor; text: string; lineNum: number; index: number; mode?: "replacement"; blockStart?: number }
+  | {
+      kind: "insert";
+      cursor: Cursor;
+      text: string;
+      lineNum: number;
+      index: number;
+      mode?: "replacement";
+      blockStart?: number;
+    }
   | { kind: "delete"; anchor: Anchor; lineNum: number; index: number }
-  | { kind: "block"; anchor: Anchor; payloads: string[]; mode?: "insert_after"; lineNum: number; index: number };
+  | {
+      kind: "block";
+      anchor: Anchor;
+      payloads: string[];
+      mode?: "insert_after";
+      lineNum: number;
+      index: number;
+    };
 
 export type FileOp = { kind: "rem" } | { kind: "move"; dest: string };
 
@@ -175,6 +198,7 @@ git commit -m "feat(hashline): add core types (Anchor, Cursor, Edit, ApplyResult
 ### Task 2: File Hash Computation (`packages/tools/src/lib/hashline/format.ts`)
 
 **Files:**
+
 - Create: `packages/tools/src/lib/hashline/format.ts`
 - Modify: `packages/tools/src/lib/__tests__/hashline.test.ts`
 
@@ -222,12 +246,12 @@ const HL_FILE_HASH_SEP = "#";
 const HL_FILE_HASH_LENGTH = 4;
 
 export function computeFileHash(text: string): string {
-  let hash = 0x811C9DC5;
+  let hash = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) {
     hash ^= text.charCodeAt(i);
     hash = Math.imul(hash, 0x01000193);
   }
-  return (hash & 0xFFFF).toString(16).toUpperCase().padStart(4, "0");
+  return (hash & 0xffff).toString(16).toUpperCase().padStart(4, "0");
 }
 
 export function formatHashlineHeader(path: string, hash: string): string {
@@ -242,10 +266,12 @@ export function formatHashlineHeader(path: string, hash: string): string {
 ### Task 3: Hashline Tokenizer (`packages/tools/src/lib/hashline/tokenizer.ts`)
 
 **Files:**
+
 - Create: `packages/tools/src/lib/hashline/tokenizer.ts`
 - Modify: `packages/tools/src/lib/__tests__/hashline.test.ts`
 
 The tokenizer classifies each line of a hashline patch into tokens:
+
 - `header` — `[path#HASH]` or `[path]`
 - `op-block` — `SWAP 5.=7:`, `DEL 10..12`, `INS.PRE 3:`, `INS.POST 3:`, `INS.HEAD:`, `INS.TAIL:`, `REM`, `MV "dest.ts"`
 - `payload-literal` — `+literal body`
@@ -285,12 +311,14 @@ Step 3: implement `Tokenizer` class with `feed(chunk)`, `end()`, `tokenize(line)
 ### Task 4: Hashline Parser (`packages/tools/src/lib/hashline/parser.ts`)
 
 **Files:**
+
 - Create: `packages/tools/src/lib/hashline/parser.ts`
 - Modify: `packages/tools/src/lib/__tests__/hashline.test.ts`
 
 The `Executor` class is a state machine consuming tokens and producing `Edit[]`.
 
 State transitions:
+
 ```
 op-block token → flush pending → start new pending op
 payload-literal token → add to pending payload
@@ -308,18 +336,21 @@ Step 1 test: parse streaming input with incomplete trailing op.
 ### Task 5: Hashline Applier (`packages/tools/src/lib/hashline/apply.ts`)
 
 **Files:**
+
 - Create: `packages/tools/src/lib/hashline/apply.ts`
 - Modify: `packages/tools/src/lib/__tests__/hashline.test.ts`
 
 Pure function: `applyEdits(text, edits) → { text, firstChangedLine, warnings }`.
 
 Applies edits bottom-up (by anchor line) so earlier deletes don't shift later anchors.
+
 - BOF inserts first, EOF inserts last
 - Per-line: before-inserts, replacement inserts, keep-line / delete, after-inserts
 - Drops phantom deletes (trailing "" of newline-terminated file)
 - Validates line bounds
 
 Step 1 tests:
+
 - Single line replace
 - Multi-line replace (range)
 - Delete lines
@@ -332,6 +363,7 @@ Step 1 tests:
 ### Task 6: Patch/PatchSection (`packages/tools/src/lib/hashline/input.ts`)
 
 **Files:**
+
 - Create: `packages/tools/src/lib/hashline/input.ts`
 - Modify: `packages/tools/src/lib/__tests__/hashline.test.ts`
 
@@ -339,6 +371,7 @@ Step 1 tests:
 Each `PatchSection` lazily parses its diff body.
 
 Step 1 tests:
+
 - Single section patch
 - Multi-section patch (two `[path]` headers)
 - Section with tagged hash
@@ -350,6 +383,7 @@ Step 1 tests:
 ### Task 7: Snapshot Store (`packages/tools/src/lib/hashline/snapshots.ts`)
 
 **Files:**
+
 - Create: `packages/tools/src/lib/hashline/snapshots.ts`
 - Modify: `packages/tools/src/lib/__tests__/hashline.test.ts`
 
@@ -369,6 +403,7 @@ export class InMemorySnapshotStore extends SnapshotStore {
 ```
 
 Step 1 tests:
+
 - Record and retrieve by hash
 - Record same content twice → same hash, no duplicate
 - RecordSeenLines merges into existing snapshot
@@ -381,10 +416,12 @@ Step 1 tests:
 ### Task 8: Read Tool Changes (`packets/tools/src/tools/read.ts`)
 
 **Files:**
+
 - Modify: `packages/tools/src/tools/read.ts`
 - Modify: `packages/tools/src/__tests__/tools.test.ts`
 
 When a snapshot store is provided via `ReadToolOptions`, the read tool:
+
 1. Computes `computeFileHash()` on the full file content
 2. Formats output as:
    ```
@@ -402,11 +439,12 @@ For partial reads (offset/limit), only the displayed lines are recorded as `seen
 export interface ReadToolOptions {
   autoResizeImages?: boolean;
   operations?: ReadOperations;
-  snapshotStore?: SnapshotStore;  // new
+  snapshotStore?: SnapshotStore; // new
 }
 ```
 
 Step 1 tests:
+
 - Read without snapshot store → unchanged format
 - Read with snapshot store → output includes `[path#HASH]` header and line numbers
 - Partial read → header still has full-file hash, only displayed lines in seenLines
@@ -417,6 +455,7 @@ Step 1 tests:
 ### Task 9: Hashline Edit Executor (`packages/tools/src/tools/edit-hashline-executor.ts`)
 
 **Files:**
+
 - Create: `packages/tools/src/lib/hashline/execute.ts`
 - Create: `packages/tools/src/lib/hashline/fs.ts` (abstract Filesystem seam)
 - Modify: `packages/tools/src/lib/__tests__/hashline.test.ts`
@@ -455,10 +494,12 @@ The concrete `NodeFilesystem` implementation uses `node:fs/promises`.
 ### Task 10: Recovery (`packages/tools/src/lib/hashline/recovery.ts`)
 
 **Files:**
+
 - Create: `packages/tools/src/lib/hashline/recovery.ts`
 - Modify: `packages/tools/src/lib/__tests__/hashline.test.ts`
 
 When a section tag doesn't match the live file hash:
+
 1. Look up the tagged snapshot via `store.byHash(path, hash)`
 2. Apply edits against the snapshot text
 3. Compute a `diff` between snapshot-before and snapshot-after
@@ -471,6 +512,7 @@ When a section tag doesn't match the live file hash:
 ### Task 11: Edit Tool Adapter (`packages/tools/src/tools/edit.ts` refactor)
 
 **Files:**
+
 - Modify: `packages/tools/src/tools/edit.ts` — major refactor
 - Modify: `packages/tools/src/__tests__/tools.test.ts`
 - Modify: `packages/tools/src/index.ts`
@@ -525,11 +567,12 @@ export function createEditTool(
 ```
 
 **For hashline mode schema:**
+
 ```typescript
 const hashlineEditSchema = Type.Object({
   input: Type.String({
-    description: "Hashline patch with SWAP/DEL/INS/REM/MV operations"
-  })
+    description: "Hashline patch with SWAP/DEL/INS/REM/MV operations",
+  }),
 });
 ```
 
@@ -540,6 +583,7 @@ const hashlineEditSchema = Type.Object({
 ### Task 12: Integration — tools-builder.ts + runner.ts
 
 **Files:**
+
 - Modify: `apps/server/src/agent/tools-builder.ts`
 - Modify: `apps/server/src/agent/runner.ts`
 
@@ -570,6 +614,7 @@ The mode setting should come from the session's profile/settings. For now, bake 
 ### Task 13: Write Tool Snapshot Recording (`packages/tools/src/tools/write.ts`)
 
 **Files:**
+
 - Modify: `packages/tools/src/tools/write.ts`
 
 After a successful write, record the snapshot so the next hashline edit validates against the fresh content. The write tool must also format its output with `[path#HASH]` header when a snapshot store is configured.
@@ -579,9 +624,11 @@ After a successful write, record the snapshot so the next hashline edit validate
 ### Task 14: End-to-End Tests
 
 **Files:**
+
 - Modify: `packages/tools/src/__tests__/tools.test.ts`
 
 Add tests for:
+
 - Hashline edit: single replace (SWAP)
 - Hashline edit: delete lines (DEL)
 - Hashline edit: insert (INS.PRE, INS.POST, INS.HEAD, INS.TAIL)
@@ -617,25 +664,25 @@ Add tests for:
 
 ## Files Summary
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `packages/tools/src/lib/hashline/types.ts` | Create | Core type definitions |
-| `packages/tools/src/lib/hashline/format.ts` | Create | Hash computation + header formatting |
-| `packages/tools/src/lib/hashline/tokenizer.ts` | Create | Line classifier |
-| `packages/tools/src/lib/hashline/parser.ts` | Create | Token state machine → Edit[] |
-| `packages/tools/src/lib/hashline/apply.ts` | Create | applyEdits() pure function |
-| `packages/tools/src/lib/hashline/input.ts` | Create | Patch/PatchSection parsing |
-| `packages/tools/src/lib/hashline/snapshots.ts` | Create | SnapshotStore (abstract + in-memory) |
-| `packages/tools/src/lib/hashline/recovery.ts` | Create | 3-way-merge stale-tag recovery |
-| `packages/tools/src/lib/hashline/execute.ts` | Create | Hashline executor (FS + snapshots) |
-| `packages/tools/src/lib/hashline/fs.ts` | Create | Abstract Filesystem seam |
-| `packages/tools/src/tools/edit.ts` | Modify | Add mode dispatch + hashline schema |
-| `packages/tools/src/tools/read.ts` | Modify | Add `[path#HASH]` + line numbers |
-| `packages/tools/src/tools/write.ts` | Modify | Record snapshot after write |
-| `packages/tools/src/index.ts` | Modify | Export new types |
-| `apps/server/src/agent/tools-builder.ts` | Modify | Create + share SnapshotStore |
-| `packages/tools/src/lib/__tests__/hashline.test.ts` | Create | Core lib tests |
-| `packages/tools/src/__tests__/tools.test.ts` | Modify | Tool-level tests |
+| File                                                | Action | Purpose                              |
+| --------------------------------------------------- | ------ | ------------------------------------ |
+| `packages/tools/src/lib/hashline/types.ts`          | Create | Core type definitions                |
+| `packages/tools/src/lib/hashline/format.ts`         | Create | Hash computation + header formatting |
+| `packages/tools/src/lib/hashline/tokenizer.ts`      | Create | Line classifier                      |
+| `packages/tools/src/lib/hashline/parser.ts`         | Create | Token state machine → Edit[]         |
+| `packages/tools/src/lib/hashline/apply.ts`          | Create | applyEdits() pure function           |
+| `packages/tools/src/lib/hashline/input.ts`          | Create | Patch/PatchSection parsing           |
+| `packages/tools/src/lib/hashline/snapshots.ts`      | Create | SnapshotStore (abstract + in-memory) |
+| `packages/tools/src/lib/hashline/recovery.ts`       | Create | 3-way-merge stale-tag recovery       |
+| `packages/tools/src/lib/hashline/execute.ts`        | Create | Hashline executor (FS + snapshots)   |
+| `packages/tools/src/lib/hashline/fs.ts`             | Create | Abstract Filesystem seam             |
+| `packages/tools/src/tools/edit.ts`                  | Modify | Add mode dispatch + hashline schema  |
+| `packages/tools/src/tools/read.ts`                  | Modify | Add `[path#HASH]` + line numbers     |
+| `packages/tools/src/tools/write.ts`                 | Modify | Record snapshot after write          |
+| `packages/tools/src/index.ts`                       | Modify | Export new types                     |
+| `apps/server/src/agent/tools-builder.ts`            | Modify | Create + share SnapshotStore         |
+| `packages/tools/src/lib/__tests__/hashline.test.ts` | Create | Core lib tests                       |
+| `packages/tools/src/__tests__/tools.test.ts`        | Modify | Tool-level tests                     |
 
 ---
 

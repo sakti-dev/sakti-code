@@ -1,11 +1,4 @@
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  on,
-  onCleanup,
-  untrack,
-} from "solid-js";
+import { createEffect, createMemo, createSignal, on, onCleanup, untrack } from "solid-js";
 
 interface ProviderItem {
   connected: boolean;
@@ -34,15 +27,9 @@ function isEditableElement(target: EventTarget | null) {
 
 export function useProviderConnect(options: UseProviderConnectOptions) {
   const [searchQuery, setSearchQuery] = createSignal("");
-  const [selectedProviderId, setSelectedProviderId] = createSignal<
-    string | null
-  >(null);
-  const [tokenByProvider, setTokenByProvider] = createSignal<
-    Record<string, string>
-  >({});
-  const [errorByProvider, setErrorByProvider] = createSignal<
-    Record<string, string>
-  >({});
+  const [selectedProviderId, setSelectedProviderId] = createSignal<string | null>(null);
+  const [tokenByProvider, setTokenByProvider] = createSignal<Record<string, string>>({});
+  const [errorByProvider, setErrorByProvider] = createSignal<Record<string, string>>({});
   let providerSearchInputRef: HTMLInputElement | undefined;
 
   const setProviderSearchInputRef = (element: HTMLInputElement) => {
@@ -67,7 +54,7 @@ export function useProviderConnect(options: UseProviderConnectOptions) {
           ? initialId
           : (providers[0]?.id ?? null);
       setSelectedProviderId(targetId);
-    })
+    }),
   );
 
   const focusProviderSearchInput = () => {
@@ -92,7 +79,7 @@ export function useProviderConnect(options: UseProviderConnectOptions) {
       onCleanup(() => {
         cancelAnimationFrame(frame);
       });
-    })
+    }),
   );
 
   const filteredProviders = createMemo(() => {
@@ -107,9 +94,7 @@ export function useProviderConnect(options: UseProviderConnectOptions) {
     });
   });
 
-  const visibleProviderIds = createMemo(() =>
-    filteredProviders().map((p) => p.id)
-  );
+  const visibleProviderIds = createMemo(() => filteredProviders().map((p) => p.id));
 
   const selectedProvider = createMemo(() => {
     const selectedId = selectedProviderId();

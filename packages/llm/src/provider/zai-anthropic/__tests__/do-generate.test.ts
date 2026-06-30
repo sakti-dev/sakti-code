@@ -1,14 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { ZaiLanguageModel } from "../zai-language-model.ts";
 
 describe("ZaiLanguageModel.doGenerate", () => {
   it("POSTs to {baseURL}/messages and maps the response", async () => {
     let postedUrl = "";
     let postedBody: unknown;
-    const fakeFetch = (async (
-      url: string,
-      init: { body?: string }
-    ): Promise<Response> => {
+    const fakeFetch = (async (url: string, init: { body?: string }): Promise<Response> => {
       postedUrl = url;
       postedBody = JSON.parse(init.body ?? "{}");
       return new Response(
@@ -19,7 +16,7 @@ describe("ZaiLanguageModel.doGenerate", () => {
           content: [{ type: "text", text: "hello" }],
           usage: { input_tokens: 10, output_tokens: 3 },
         }),
-        { status: 200, headers: { "content-type": "application/json" } }
+        { status: 200, headers: { "content-type": "application/json" } },
       );
     }) as unknown as typeof fetch;
 

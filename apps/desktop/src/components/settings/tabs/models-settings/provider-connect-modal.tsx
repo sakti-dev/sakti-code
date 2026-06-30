@@ -63,9 +63,7 @@ export const ProviderConnectModal = (props: ProviderConnectModalProps) => {
           <div class="flex items-center justify-between gap-3">
             <div>
               <DialogTitle>Connect a provider</DialogTitle>
-              <DialogDescription>
-                Search providers and connect with API key
-              </DialogDescription>
+              <DialogDescription>Search providers and connect with API key</DialogDescription>
             </div>
           </div>
 
@@ -87,9 +85,7 @@ export const ProviderConnectModal = (props: ProviderConnectModalProps) => {
             <div class="h-full min-h-0 overflow-y-auto overscroll-contain bg-background/35 px-2 py-2 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2.5">
               <Show
                 fallback={
-                  <p class="px-3 py-4 text-muted-foreground text-sm">
-                    No providers found.
-                  </p>
+                  <p class="px-3 py-4 text-muted-foreground text-sm">No providers found.</p>
                 }
                 when={filteredProviders().length > 0}
               >
@@ -100,8 +96,7 @@ export const ProviderConnectModal = (props: ProviderConnectModalProps) => {
                   <div class="space-y-1">
                     <For each={filteredProviders()}>
                       {(provider) => {
-                        const isSelected = () =>
-                          selectedProviderId() === provider.id;
+                        const isSelected = () => selectedProviderId() === provider.id;
                         const isConnected = () => provider.connected;
                         return (
                           <button
@@ -109,28 +104,24 @@ export const ProviderConnectModal = (props: ProviderConnectModalProps) => {
                               "group w-full rounded-md border px-2.5 py-2 text-left transition-all duration-120",
                               isSelected()
                                 ? "border-primary/45 bg-accent/70 shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-primary)_45%,transparent),0_8px_24px_color-mix(in_oklch,var(--color-primary)_18%,transparent)]"
-                                : "border-transparent hover:border-border/90 hover:bg-muted/70"
+                                : "border-transparent hover:border-border/90 hover:bg-muted/70",
                             )}
                             data-testid={`provider-option-${provider.id}`}
                             onClick={() => setSelectedProviderId(provider.id)}
                             type="button"
                           >
                             <div class="flex items-center justify-between gap-2">
-                              <span class="truncate font-medium text-sm">
-                                {provider.name}
-                              </span>
+                              <span class="truncate font-medium text-sm">{provider.name}</span>
                               <div class="flex items-center gap-1">
                                 <span
                                   class={cn(
                                     "rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide",
                                     isConnected()
                                       ? "border-primary/30 bg-primary/10 text-primary"
-                                      : "border-border bg-background text-muted-foreground"
+                                      : "border-border bg-background text-muted-foreground",
                                   )}
                                 >
-                                  {isConnected()
-                                    ? "Connected"
-                                    : "Not Connected"}
+                                  {isConnected() ? "Connected" : "Not Connected"}
                                 </span>
                               </div>
                             </div>
@@ -154,9 +145,7 @@ export const ProviderConnectModal = (props: ProviderConnectModalProps) => {
 
           <div class="h-full min-h-0 overflow-y-auto overscroll-contain bg-background/30 px-4 py-4 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2.5">
             <Show
-              fallback={
-                <p class="text-muted-foreground text-sm">Select a provider.</p>
-              }
+              fallback={<p class="text-muted-foreground text-sm">Select a provider.</p>}
               when={selectedProvider()}
             >
               {(provider) => {
@@ -172,9 +161,7 @@ export const ProviderConnectModal = (props: ProviderConnectModalProps) => {
                           <p class="truncate font-semibold text-sm tracking-tight">
                             {provider().name}
                           </p>
-                          <p class="truncate text-muted-foreground text-xs">
-                            {provider().id}
-                          </p>
+                          <p class="truncate text-muted-foreground text-xs">{provider().id}</p>
                         </div>
                         <div class="flex items-center gap-2">
                           <span class="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wide">
@@ -201,10 +188,7 @@ export const ProviderConnectModal = (props: ProviderConnectModalProps) => {
                                 <TextFieldInput
                                   class="min-w-[220px] flex-1"
                                   onInput={(event) => {
-                                    setTokenDraft(
-                                      providerId(),
-                                      event.currentTarget.value
-                                    );
+                                    setTokenDraft(providerId(), event.currentTarget.value);
                                   }}
                                   placeholder="API key"
                                   type="password"
@@ -214,8 +198,7 @@ export const ProviderConnectModal = (props: ProviderConnectModalProps) => {
                               <button
                                 class="rounded-md border border-border/90 bg-muted/70 px-2.5 py-2 font-medium text-foreground text-xs transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
                                 disabled={
-                                  (tokenByProvider()[providerId()] ?? "").trim()
-                                    .length === 0
+                                  (tokenByProvider()[providerId()] ?? "").trim().length === 0
                                 }
                                 onClick={() => connectToken(providerId())}
                                 type="button"
@@ -230,16 +213,13 @@ export const ProviderConnectModal = (props: ProviderConnectModalProps) => {
                     >
                       <div class="rounded-lg border border-primary/30 bg-primary/10 p-3">
                         <div class="flex items-center justify-between gap-2">
-                          <p class="font-semibold text-primary text-xs tracking-wide">
-                            Connected
-                          </p>
+                          <p class="font-semibold text-primary text-xs tracking-wide">Connected</p>
                           <span class="rounded-full border border-primary/35 px-1.5 py-0.5 text-[10px] text-primary uppercase tracking-wide">
                             Active
                           </span>
                         </div>
                         <p class="mt-1 text-muted-foreground text-xs">
-                          This provider is connected. You can disconnect it from
-                          here.
+                          This provider is connected. You can disconnect it from here.
                         </p>
                         <div class="mt-3">
                           <button

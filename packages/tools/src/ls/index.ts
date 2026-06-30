@@ -14,12 +14,12 @@ const lsSchema = Type.Object({
   path: Type.Optional(
     Type.String({
       description: "Directory to list (default: current directory)",
-    })
+    }),
   ),
   limit: Type.Optional(
     Type.Number({
       description: "Maximum number of entries to return (default: 500)",
-    })
+    }),
   ),
 });
 
@@ -53,7 +53,7 @@ export interface LsToolOptions {
 
 export function createLsTool(
   cwd: string,
-  options?: LsToolOptions
+  options?: LsToolOptions,
 ): AgentTool<typeof lsSchema, LsToolDetails | undefined> {
   const ops = options?.operations ?? defaultLsOperations;
   return {
@@ -71,7 +71,7 @@ export function createLsTool(
       _toolCallId: string,
       { path, limit }: LsToolInput,
       signal?: AbortSignal,
-      _onUpdate?: AgentToolUpdateCallback<LsToolDetails | undefined>
+      _onUpdate?: AgentToolUpdateCallback<LsToolDetails | undefined>,
     ) {
       return new Promise((resolve, reject) => {
         if (signal?.aborted) {
@@ -107,9 +107,7 @@ export function createLsTool(
               return;
             }
 
-            entries.sort((a, b) =>
-              a.toLowerCase().localeCompare(b.toLowerCase())
-            );
+            entries.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 
             const results: string[] = [];
             let entryLimitReached = false;
@@ -151,7 +149,7 @@ export function createLsTool(
             const notices: string[] = [];
             if (entryLimitReached) {
               notices.push(
-                `${effectiveLimit} entries limit reached. Use limit=${effectiveLimit * 2} for more`
+                `${effectiveLimit} entries limit reached. Use limit=${effectiveLimit * 2} for more`,
               );
               details.entryLimitReached = effectiveLimit;
             }
@@ -171,7 +169,7 @@ export function createLsTool(
             signal?.removeEventListener("abort", onAbort);
             reject(e);
           }
-        })();
+        })().catch(reject);
       });
     },
   };

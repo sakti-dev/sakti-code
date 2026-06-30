@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { InMemorySnapshotStore } from "../../../lib/hashline-utils/snapshots";
 import { RECOVERY_SESSION_REPLAY_WARNING } from "../messages";
 import { parsePatch } from "../parser";

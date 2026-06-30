@@ -37,22 +37,12 @@ export function ConnectedProvidersList(props: ConnectedProvidersListProps) {
 
       <div class="mb-3 border-border/60 border-b" />
 
-      <Show
-        fallback={<p class="text-sm">Loading providers...</p>}
-        when={props.hasLoaded}
-      >
+      <Show fallback={<p class="text-sm">Loading providers...</p>} when={props.hasLoaded}>
         <Show
           fallback={
             <div class="py-4 text-center">
-              <p class="text-muted-foreground text-sm">
-                No provider connected yet.
-              </p>
-              <Button
-                class="mt-3"
-                onClick={() => props.onOpenModal()}
-                size="sm"
-                variant="primary"
-              >
+              <p class="text-muted-foreground text-sm">No provider connected yet.</p>
+              <Button class="mt-3" onClick={() => props.onOpenModal()} size="sm" variant="primary">
                 Select provider
               </Button>
             </div>
@@ -65,9 +55,7 @@ export function ConnectedProvidersList(props: ConnectedProvidersListProps) {
                 <>
                   <div class="flex items-center justify-between gap-3 px-4 py-3">
                     <div class="min-w-0 flex-1">
-                      <p class="truncate font-medium text-sm">
-                        {provider.name}
-                      </p>
+                      <p class="truncate font-medium text-sm">{provider.name}</p>
                       <p class="truncate text-muted-foreground text-xs">
                         {provider.modelCount} models
                       </p>
@@ -91,12 +79,7 @@ export function ConnectedProvidersList(props: ConnectedProvidersListProps) {
                       </Button>
                     </div>
                   </div>
-                  <Show
-                    when={
-                      props.providers.indexOf(provider) <
-                      props.providers.length - 1
-                    }
-                  >
+                  <Show when={props.providers.indexOf(provider) < props.providers.length - 1}>
                     <div class="mx-4 border-border/60 border-b" />
                   </Show>
                 </>

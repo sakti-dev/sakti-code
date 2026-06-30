@@ -1,6 +1,6 @@
 import type { StreamRequest } from "@sakti-code/llm";
 import { Type } from "typebox";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import {
   type FauxProviderRegistration,
   fauxAssistantMessage,
@@ -64,7 +64,7 @@ describe("cache-stability: prefix stable across turns", () => {
       () =>
         fauxAssistantMessageWithContent(
           [fauxToolCall("calculate", { expression: "1+1" }, { id: "c1" })],
-          "toolUse"
+          "toolUse",
         ),
       () => fauxAssistantMessage("done"),
     ]);
@@ -92,10 +92,7 @@ describe("cache-stability: prefix stable across turns", () => {
       const prev = captureRequest(captures[i - 1]!);
       const cur = captureRequest(captures[i]!);
       const result = measureCacheHit(prev, cur);
-      expect(
-        result.prefixStable,
-        `prefix broke at request ${i}: ${result.breakReason}`
-      ).toBe(true);
+      expect(result.prefixStable, `prefix broke at request ${i}: ${result.breakReason}`).toBe(true);
     }
   });
 
@@ -104,16 +101,12 @@ describe("cache-stability: prefix stable across turns", () => {
     registrations.push(registration);
     const captures: StreamRequest[] = [];
 
-    const turnText = (n: number) =>
-      `Turn ${n}: ${"please consider this requirement. ".repeat(6)}`;
+    const turnText = (n: number) => `Turn ${n}: ${"please consider this requirement. ".repeat(6)}`;
 
     // 14 short responses — one per prompt, no tool calls so each prompt is a
     // single streamFn call.
     registration.setResponses(
-      Array.from(
-        { length: 14 },
-        (_, i) => () => fauxAssistantMessage(`answer ${i}`)
-      )
+      Array.from({ length: 14 }, (_, i) => () => fauxAssistantMessage(`answer ${i}`)),
     );
 
     const harness = new AgentHarness({
@@ -140,13 +133,10 @@ describe("cache-stability: prefix stable across turns", () => {
     for (let i = 1; i < captures.length; i++) {
       const result = measureCacheHit(
         captureRequest(captures[i - 1]!),
-        captureRequest(captures[i]!)
+        captureRequest(captures[i]!),
       );
       // Every pair must remain prefix-stable (no cache busts).
-      expect(
-        result.prefixStable,
-        `prefix broke at prompt ${i}: ${result.breakReason}`
-      ).toBe(true);
+      expect(result.prefixStable, `prefix broke at prompt ${i}: ${result.breakReason}`).toBe(true);
       rates.push(result.hitRate);
     }
 
@@ -188,9 +178,7 @@ describe("cache-stability: prefix stable across turns", () => {
     await harness.prompt("run once");
 
     expect(captures.length).toBeGreaterThanOrEqual(1);
-    const toolsKeys = captures[0]!.tools
-      ? Object.keys(captures[0]!.tools!)
-      : [];
+    const toolsKeys = captures[0]!.tools ? Object.keys(captures[0]!.tools!) : [];
     expect(toolsKeys).toEqual(["alpha", "middle", "zeta"]);
   });
 });

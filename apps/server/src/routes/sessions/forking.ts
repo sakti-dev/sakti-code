@@ -71,10 +71,7 @@ export const forkingRoutes = new Hono()
       .filter((m) => m.role === "user" || m.role === "assistant")
       .map((m) => ({
         role: m.role,
-        textPreview: flattenContent((m as { content: unknown }).content).slice(
-          0,
-          200
-        ),
+        textPreview: flattenContent((m as { content: unknown }).content).slice(0, 200),
       }));
 
     return c.json(forkable);

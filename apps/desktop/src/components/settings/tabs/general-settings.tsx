@@ -7,12 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import {
-  Switch,
-  SwitchControl,
-  SwitchLabel,
-  SwitchThumb,
-} from "~/components/ui/switch";
+import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "~/components/ui/switch";
 
 export function GeneralSettings() {
   const { colorMode, setColorMode } = useColorMode();
@@ -21,21 +16,17 @@ export function GeneralSettings() {
   type ThemeLabel = (typeof THEMES)[number];
 
   const [sessionNotifications, setSessionNotifications] = createSignal(true);
-  const [completionSoundEffects, setCompletionSoundEffects] =
-    createSignal(true);
+  const [completionSoundEffects, setCompletionSoundEffects] = createSignal(true);
   const [stripConfirmation, setStripConfirmation] = createSignal(true);
 
-  const currentTheme = (): ThemeLabel =>
-    colorMode() === "dark" ? "Dark" : "Light";
+  const currentTheme = (): ThemeLabel => (colorMode() === "dark" ? "Dark" : "Light");
 
   const handleSelectTheme = (value: ThemeLabel | null) => {
     if (!value) {
       return;
     }
     if (value === "System") {
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       setColorMode(prefersDark ? "dark" : "light");
     } else {
       setColorMode(value.toLowerCase() as "light" | "dark");
@@ -69,9 +60,7 @@ export function GeneralSettings() {
 
       <div class="flex items-center justify-between border-border/70 border-b px-0 py-4">
         <div class="flex-1">
-          <p class="font-medium text-foreground text-sm">
-            Session notifications
-          </p>
+          <p class="font-medium text-foreground text-sm">Session notifications</p>
           <p class="text-muted-foreground text-xs">
             Get notified when AI finishes working in a session.
           </p>
@@ -92,9 +81,7 @@ export function GeneralSettings() {
 
       <div class="flex items-center justify-between border-border/70 border-b px-0 py-4">
         <div class="flex-1">
-          <p class="font-medium text-foreground text-sm">
-            Completion sound effects
-          </p>
+          <p class="font-medium text-foreground text-sm">Completion sound effects</p>
           <p class="text-muted-foreground text-xs">
             Play a sound when AI finishes working in a session.
           </p>
@@ -115,9 +102,7 @@ export function GeneralSettings() {
 
       <div class="flex items-center justify-between border-border/70 border-b px-0 py-4">
         <div class="flex-1">
-          <p class="font-medium text-foreground text-sm">
-            Strip confirmation messages
-          </p>
+          <p class="font-medium text-foreground text-sm">Strip confirmation messages</p>
           <p class="text-muted-foreground text-xs">
             Strip "You're absolutely right!" from AI messages
           </p>

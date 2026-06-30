@@ -5,6 +5,7 @@
 **Goal:** Move the SolidJS renderer from `apps/app` (Electrobun) into `apps/desktop` (Electron) and delete `apps/app`, with the renderer talking to the embedded Hono server.
 
 **Architecture:** The renderer is already process-agnostic — `store-context.tsx` sets `API_URL = window.location.origin` and the WS client derives its URL from the same base. So we keep that code **unchanged** and make Electron serve the renderer **same-origin** in both modes:
+
 - **Dev:** embedded server on fixed port `3001`; electron-vite's renderer dev server proxies `/api` and `/ws` to it → `window.location.origin` (the vite dev server) routes to the embedded server.
 - **Prod:** `createServer({ staticDir: out/renderer })` serves the built renderer; the window `loadURL(server.url)` → same-origin.
 
@@ -19,6 +20,7 @@ No CORS, no renderer rewiring, no `window.sakti` needed for the API. The Electro
 ## Task 1: Add renderer dependencies to `apps/desktop`
 
 **Files:**
+
 - Modify: `apps/desktop/package.json`
 
 **Step 1: Add the renderer deps**
@@ -26,6 +28,7 @@ No CORS, no renderer rewiring, no `window.sakti` needed for the API. The Electro
 These are carried over from `apps/app/package.json` (known-good versions; do NOT chase latest — electron-vite caps Vite at 7 and Solid needs vite-plugin-solid).
 
 Add to `dependencies`:
+
 ```jsonc
 "@kobalte/core": "^0.13.11",
 "@corvu/resizable": "^0.2.5",
@@ -44,6 +47,7 @@ Add to `dependencies`:
 ```
 
 Add to `devDependencies`:
+
 ```jsonc
 "@earendil-works/pi-ai": "^0.79.9",
 "@solidjs/testing-library": "^0.8.10",
@@ -56,6 +60,7 @@ Add to `devDependencies`:
 ```
 
 Also add a `test` script:
+
 ```jsonc
 "test": "vitest run"
 ```
@@ -77,6 +82,7 @@ git commit -m "chore(desktop): add SolidJS renderer dependencies"
 ## Task 2: Wire the renderer build config
 
 **Files:**
+
 - Modify: `apps/desktop/electron.vite.config.ts`
 - Modify: `apps/desktop/tsconfig.json`
 
@@ -145,6 +151,7 @@ git commit -m "build(desktop): wire solid+tailwind+dev proxy in renderer config"
 ## Task 3: Serve the renderer same-origin from Electron main
 
 **Files:**
+
 - Modify: `apps/desktop/electron/main/index.ts`
 - Modify: `apps/desktop/electron/main/lifecycle.ts`
 
@@ -153,24 +160,29 @@ This is what makes `window.location.origin` resolve to the embedded server, so t
 **Step 1: `main/index.ts` — fixed dev port, static dir in prod**
 
 At top, add:
+
 ```ts
 import { resolve } from "node:path";
 ```
+
 In the `app.on("ready")` handler, change the `createServer` call:
+
 ```ts
-  const isDev = !app.isPackaged();
-  server = await createServer({
-    port: isDev ? 3001 : 0,
-    hostname: "127.0.0.1",
-    staticDir: isDev ? null : resolve(import.meta.dirname, "../renderer"),
-    hooks: createDialogHooks(),
-  });
+const isDev = !app.isPackaged();
+server = await createServer({
+  port: isDev ? 3001 : 0,
+  hostname: "127.0.0.1",
+  staticDir: isDev ? null : resolve(import.meta.dirname, "../renderer"),
+  hooks: createDialogHooks(),
+});
 ```
+
 Then pass `server.url` into the window creation: change `createWindow()` → `createWindow(server.url)`.
 
 **Step 2: `lifecycle.ts` — load the server URL in prod**
 
 Change the signature and the load logic:
+
 ```ts
 export function createWindow(serverUrl: string): BrowserWindow {
   // ... BrowserWindow opts unchanged ...
@@ -182,6 +194,7 @@ export function createWindow(serverUrl: string): BrowserWindow {
   return win;
 }
 ```
+
 (Delete the `PROD_INDEX` constant — no longer used.)
 
 **Step 3: Verify it boots**
@@ -201,6 +214,7 @@ git commit -m "feat(desktop): serve renderer same-origin (dev proxy / prod stati
 ## Task 4: Move the renderer source into `apps/desktop/src`
 
 **Files:**
+
 - Move: `apps/app/src/**` → `apps/desktop/src/**`
 - Delete: `apps/app/src/lib/bun/index.ts` (Electrobun main — replaced by `electron/main`)
 - Keep: `apps/desktop/src/lib/electron.ts` (the type bridge already there)
@@ -246,6 +260,7 @@ git commit -m "feat(desktop): migrate SolidJS renderer from apps/app"
 ## Task 5: Port window-state persistence to Electron main
 
 **Files:**
+
 - Modify: `apps/desktop/electron/main/lifecycle.ts`
 - Uses: `apps/desktop/src/lib/window-state.ts` (moved in Task 4 — but it uses `node:fs`; main can import it)
 
@@ -254,9 +269,11 @@ git commit -m "feat(desktop): migrate SolidJS renderer from apps/app"
 **Step 1: Move `window-state.ts` to the electron side**
 
 It's a main-process concern now, not renderer. Move it:
+
 ```bash
 git mv apps/desktop/src/lib/window-state.ts apps/desktop/electron/main/lib/window-state.ts
 ```
+
 No code changes inside it (it's pure fs + validation).
 
 **Step 2: Restore + persist the frame in `lifecycle.ts`**
@@ -264,13 +281,23 @@ No code changes inside it (it's pure fs + validation).
 ```ts
 import { getCurrentWindowBounds, ... } from "./lib/window-state";
 ```
+
 In `createWindow`:
+
 ```ts
-import { DEFAULT_FRAME, debouncedSaveWindowState, flushWindowState, loadWindowState } from "./lib/window-state";
+import {
+  DEFAULT_FRAME,
+  debouncedSaveWindowState,
+  flushWindowState,
+  loadWindowState,
+} from "./lib/window-state";
 
 const frame = loadWindowState();
 const win = new BrowserWindow({
-  width: frame.width, height: frame.height, x: frame.x, y: frame.y,
+  width: frame.width,
+  height: frame.height,
+  x: frame.x,
+  y: frame.y,
   // ...rest unchanged
 });
 const save = () => debouncedSaveWindowState(win.getBounds());
@@ -296,6 +323,7 @@ git commit -m "feat(desktop): persist window state across restarts"
 ## Task 6: Migrate the test suite + get typecheck green
 
 **Files:**
+
 - Create: `apps/desktop/vitest.config.ts`
 - Modify: `apps/desktop/tsconfig.json` (test types)
 - Uses: existing tests moved in Task 4 (`apps/desktop/src/**/__tests__/**`)
@@ -326,7 +354,9 @@ export default defineConfig({
 ```bash
 git mv apps/app/src/test-setup.ts apps/desktop/src/test-setup.ts 2>/dev/null || true
 ```
+
 If `apps/app` had no `test-setup.ts`, create a minimal `apps/desktop/src/test-setup.ts`:
+
 ```ts
 import "@testing-library/jest-dom/vitest";
 ```
@@ -334,6 +364,7 @@ import "@testing-library/jest-dom/vitest";
 **Step 3: Add test types to tsconfig**
 
 In `apps/desktop/tsconfig.json` `compilerOptions`:
+
 ```jsonc
 "types": ["node", "bun", "vitest/globals", "@testing-library/jest-dom"],
 ```
@@ -391,6 +422,7 @@ git commit -m "chore(desktop): verify renderer migration end-to-end"
 ## Task 8: Delete `apps/app` + cleanup
 
 **Files:**
+
 - Delete: `apps/app/` (entire package)
 - Modify: nothing else (workspaces auto-discover `apps/*`; turbo auto-drops it)
 

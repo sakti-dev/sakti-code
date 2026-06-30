@@ -35,14 +35,13 @@ const SCROLL_IDLE_MS = 120;
 export const observeShimmerActive = (
   el: Element,
   { pauseOnScroll, pauseWhenOffscreen }: GateOptions,
-  onChange: (active: boolean) => void
+  onChange: (active: boolean) => void,
 ): (() => void) => {
   if (typeof window === "undefined") {
     return () => undefined;
   }
 
-  let inViewport =
-    !pauseWhenOffscreen || typeof IntersectionObserver === "undefined";
+  let inViewport = !pauseWhenOffscreen || typeof IntersectionObserver === "undefined";
   let pageVisible = typeof document === "undefined" ? true : !document.hidden;
   let notScrolling = true;
   const compute = () => onChange(inViewport && pageVisible && notScrolling);
@@ -58,7 +57,7 @@ export const observeShimmerActive = (
         inViewport = entry.isIntersecting;
         compute();
       },
-      { rootMargin: VIEWPORT_ROOT_MARGIN }
+      { rootMargin: VIEWPORT_ROOT_MARGIN },
     );
     io.observe(el);
   }

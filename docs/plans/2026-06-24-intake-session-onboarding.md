@@ -12,32 +12,32 @@
 
 ## Import mapping (old → new)
 
-| Old import | New import |
-|---|---|
-| `@/utils` (cn) | `~/lib/utils` |
-| `@/components/ui/command` | `~/components/ui/command` (already exists) |
-| `@/components/ui/collapsible` | `~/components/ui/collapsible` (already exists) |
-| `lucide-solid` | `solid-icons/fi` or `solid-icons/io5` |
-| `useChatContext()` / `chat.sendMessage()` | `useStore()` + `actions.sendPrompt(sessionId, text)` |
-| `chat.streaming.status()` | `sessionStore.streaming.phase` (`"thinking" \| "writing" \| "tool_running" \| ...`) |
-| `useWorkspace()` | `useStore()` (server store has `activeProjectId`, `activeSessionId`) |
-| `ProviderClient` API | Hono RPC `api.api.models.available.$get()`, `api.api.auth.$get()` |
-| `useSessionTurns()` | New turn projection from `SessionStoreData` (see Phase 3) |
+| Old import                                | New import                                                                          |
+| ----------------------------------------- | ----------------------------------------------------------------------------------- |
+| `@/utils` (cn)                            | `~/lib/utils`                                                                       |
+| `@/components/ui/command`                 | `~/components/ui/command` (already exists)                                          |
+| `@/components/ui/collapsible`             | `~/components/ui/collapsible` (already exists)                                      |
+| `lucide-solid`                            | `solid-icons/fi` or `solid-icons/io5`                                               |
+| `useChatContext()` / `chat.sendMessage()` | `useStore()` + `actions.sendPrompt(sessionId, text)`                                |
+| `chat.streaming.status()`                 | `sessionStore.streaming.phase` (`"thinking" \| "writing" \| "tool_running" \| ...`) |
+| `useWorkspace()`                          | `useStore()` (server store has `activeProjectId`, `activeSessionId`)                |
+| `ProviderClient` API                      | Hono RPC `api.api.models.available.$get()`, `api.api.auth.$get()`                   |
+| `useSessionTurns()`                       | New turn projection from `SessionStoreData` (see Phase 3)                           |
 
 ## Icon mapping (lucide-solid → solid-icons)
 
-| lucide-solid | solid-icons |
-|---|---|
-| `Send` | `FiSend` |
-| `Loader2` | `FiLoader` (with `animate-spin` class) |
-| `AtSign` | `FiAtSign` |
-| `Paperclip` | `FiPaperclip` |
-| `FileText` | `FiFileText` |
-| `Folder` / `FolderSearch` | `FiFolder` |
-| `Terminal` | `FiTerminal` |
-| `Search` | `FiSearch` |
-| `Shield` | `FiShield` |
-| `Help` | `FiHelpCircle` |
+| lucide-solid              | solid-icons                            |
+| ------------------------- | -------------------------------------- |
+| `Send`                    | `FiSend`                               |
+| `Loader2`                 | `FiLoader` (with `animate-spin` class) |
+| `AtSign`                  | `FiAtSign`                             |
+| `Paperclip`               | `FiPaperclip`                          |
+| `FileText`                | `FiFileText`                           |
+| `Folder` / `FolderSearch` | `FiFolder`                             |
+| `Terminal`                | `FiTerminal`                           |
+| `Search`                  | `FiSearch`                             |
+| `Shield`                  | `FiShield`                             |
+| `Help`                    | `FiHelpCircle`                         |
 
 ---
 
@@ -50,6 +50,7 @@
 ### Task 1.1: DB migration — add `kind` column to sessions
 
 **Files:**
+
 - Modify: `packages/db/src/schema.ts:17-30`
 
 **Step 1:** Add the `kind` column to the sessions table:
@@ -114,6 +115,7 @@ cd packages/db && nub run test
 ### Task 1.2: SessionRepo — support `kind` in create + add `findIntakeByProject`
 
 **Files:**
+
 - Modify: `packages/db/src/repos/index.ts:68-96` (create method)
 - Modify: `packages/db/src/repos/index.ts:111-126` (update Pick list)
 
@@ -168,6 +170,7 @@ git commit -m "feat(db): add kind column to sessions + findIntakeByProject"
 ### Task 1.3: Server — intake upsert endpoint
 
 **Files:**
+
 - Create: `apps/server/src/routes/projects/intake-session.ts`
 - Modify: `apps/server/src/app.ts` (register route)
 
@@ -199,15 +202,11 @@ export const intakeSessionRoutes = new Hono()
     const profiles = await ctx.profiles.read();
     const modelRef = resolveModelRef(profiles, project.profileId, "default");
 
-    const created = await ctx.repos.sessions.create(
-      projectId,
-      modelRef.modelId,
-      {
-        kind: "intake",
-        title: "Intake",
-        thinkingLevel: modelRef.thinkingLevel ?? "off",
-      }
-    );
+    const created = await ctx.repos.sessions.create(projectId, modelRef.modelId, {
+      kind: "intake",
+      title: "Intake",
+      thinkingLevel: modelRef.thinkingLevel ?? "off",
+    });
     return c.json(created, 201);
   });
 ```
@@ -244,6 +243,7 @@ git commit -m "feat(server): add POST /api/projects/:id/intake-session upsert en
 ### Task 1.4: Server — session creation accepts `kind` + `parentSessionId`
 
 **Files:**
+
 - Modify: `apps/server/src/routes/sessions/sessions.ts:24-70` (POST handler)
 
 **Step 1:** Update the TypeBox schema for POST `/sessions` to accept optional `kind` and `parentSessionId`:
@@ -286,6 +286,7 @@ git commit -m "feat(server): accept kind + parentSessionId in POST /sessions"
 ### Task 1.5: Desktop — actions.upsertIntakeSession
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/server/actions.ts` (add method)
 - Modify: `apps/desktop/src/stores/server/server-store.ts` (add SessionMeta.kind)
 
@@ -296,7 +297,7 @@ git commit -m "feat(server): accept kind + parentSessionId in POST /sessions"
 export interface SessionMeta {
   createdAt: number;
   id: string;
-  kind: "intake" | "task";  // <-- add this
+  kind: "intake" | "task"; // <-- add this
   modelId: string;
   projectId: string;
   thinkingLevel: string;
@@ -348,6 +349,7 @@ git commit -m "feat(desktop): add upsertIntakeSession action + kind on SessionMe
 ### Task 1.6: Desktop — workspace integration (upsert on project open)
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/layout/workspace-layout.tsx`
 
 **Step 1:** Add an effect that upserts the intake session when a project is active:
@@ -394,6 +396,7 @@ const showOnboarding = () => {
 ### Task 1.7: Desktop — onboarding panel shell
 
 **Files:**
+
 - Create: `apps/desktop/src/components/onboarding/onboarding-panel.tsx`
 - Create: `apps/desktop/src/components/onboarding/welcome-panel.tsx`
 
@@ -440,12 +443,9 @@ export function WelcomePanel() {
     <div class="flex flex-1 flex-col items-center justify-center px-4">
       <div class="w-full max-w-md text-center">
         <div class="mb-3 text-4xl">{"\u{1F967}"}</div>
-        <h2 class="mb-1 font-semibold text-foreground text-lg">
-          How can I help?
-        </h2>
+        <h2 class="mb-1 font-semibold text-foreground text-lg">How can I help?</h2>
         <p class="mb-6 text-muted-foreground text-sm">
-          Describe a feature, bug, or question. We'll plan it together before
-          starting a session.
+          Describe a feature, bug, or question. We'll plan it together before starting a session.
         </p>
         <div class="grid grid-cols-1 gap-2">
           <For each={SUGGESTIONS}>
@@ -485,6 +485,7 @@ git commit -m "feat(desktop): intake session onboarding panel shell + workspace 
 ### Task 2.1: Velomark workspace package setup
 
 **Files:**
+
 - Modify: `packages/velomark/package.json` (exports)
 - Modify: `apps/desktop/package.json` (add dependency)
 - Run: `pnpm install`
@@ -544,6 +545,7 @@ git commit -m "chore: wire velomark as workspace package + add minisearch"
 **Strategy:** Copy `provider-selection-store.ts` from reference, adapt to current API.
 
 **Files:**
+
 - Create: `apps/desktop/src/stores/model/provider-selection-store.ts`
 
 **Step 1:** Copy from reference:
@@ -556,6 +558,7 @@ cp openspec/references/sakti-code-old/apps/desktop/src/core/state/providers/prov
 **Step 2:** Edit — replace `ProviderClient` API calls with Hono RPC calls:
 
 Old:
+
 ```ts
 const [providers, auth, models, preferences] = await Promise.all([
   client.listProviders(),
@@ -566,6 +569,7 @@ const [providers, auth, models, preferences] = await Promise.all([
 ```
 
 New — adapt to current endpoints:
+
 ```ts
 // Fetch available providers + models
 const providersRes = await api.api.models.available.$get();
@@ -609,6 +613,7 @@ git commit -m "feat(desktop): provider selection store with MiniSearch model ran
 ### Task 2.3: ModelSelector dialog (model mode only)
 
 **Files:**
+
 - Create: `apps/desktop/src/components/model-selector/model-selector.tsx`
 - Create: `apps/desktop/src/components/model-selector/model-selector.css` (aurora/grain effects)
 
@@ -667,6 +672,7 @@ git commit -m "feat(desktop): model selector dialog with virtual list + keyboard
 ### Task 2.4: ModelSelectorButton
 
 **Files:**
+
 - Create: `apps/desktop/src/components/model-selector/model-selector-button.tsx`
 
 **Step 1:** Copy from reference:
@@ -690,6 +696,7 @@ cp openspec/references/sakti-code-old/apps/desktop/src/views/workspace-view/chat
 ### Task 2.5: SendButton + InputFooter
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat-input/send-button.tsx`
 - Create: `apps/desktop/src/components/chat-input/input-footer.tsx`
 
@@ -719,6 +726,7 @@ import { FiLoader, FiSend } from "solid-icons/fi";
 ### Task 2.6: ChatInput component
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat-input/chat-input.tsx`
 - Create: `apps/desktop/src/components/chat-input/use-chat-input.ts`
 
@@ -734,6 +742,7 @@ cp openspec/references/sakti-code-old/apps/desktop/src/views/workspace-view/chat
 **Step 2:** Edit `use-chat-input.ts` — major rewrite of data wiring:
 
 Remove all of these (not needed for MVP):
+
 - `usePermissionStore`, `useQuestionStore`, `usePermissions`
 - `currentPendingPermission`, `currentPendingQuestion`, `isPromptBlocked`
 - `pendingPermissionBanner`, `handleApprovePermission`, `handleDenyPermission`
@@ -761,9 +770,11 @@ Replace `chat.streaming.status()` with:
 ```ts
 const isGenerating = () => {
   const session = sessionRegistry.get(sessionId);
-  return session.store.streaming.phase === "thinking" ||
-         session.store.streaming.phase === "writing" ||
-         session.store.streaming.phase === "tool_running";
+  return (
+    session.store.streaming.phase === "thinking" ||
+    session.store.streaming.phase === "writing" ||
+    session.store.streaming.phase === "tool_running"
+  );
 };
 ```
 
@@ -811,6 +822,7 @@ git commit -m "feat(desktop): chat input with textarea + model selector + send b
 ### Task 2.7: Integrate chat input into onboarding panel
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/onboarding/onboarding-panel.tsx`
 
 **Step 1:** Replace the ChatInput placeholder with the real component:
@@ -837,7 +849,7 @@ const [inputValue, setInputValue] = createSignal("");
       server.actions.updateSession(intakeSessionId()!, { modelId });
     }
   }}
-/>
+/>;
 ```
 
 **Step 2:** Add basic message display (temporary — Phase 3 replaces with full timeline):
@@ -856,18 +868,20 @@ const sessionStore = () => {
       const msg = () => sessionStore()!.store.messages[msgId];
       return (
         <div class={`mb-3 ${msg().role === "user" ? "text-right" : ""}`}>
-          <div class={`inline-block rounded-lg px-3 py-2 text-sm ${
-            msg().role === "user"
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-foreground"
-          }`}>
+          <div
+            class={`inline-block rounded-lg px-3 py-2 text-sm ${
+              msg().role === "user"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-foreground"
+            }`}
+          >
             {msg().content || "..."}
           </div>
         </div>
       );
     }}
   </For>
-</div>
+</div>;
 ```
 
 **Step 3:** Run typecheck + tests + lint.
@@ -890,6 +904,7 @@ git commit -m "feat(desktop): wire chat input + basic message display into onboa
 ### Task 3.1: Velomark theme integration
 
 **Files:**
+
 - Create: `apps/desktop/src/components/ui/markdown.tsx`
 - Create: `apps/desktop/src/components/ui/markdown-integration/theme.ts`
 - Create: `apps/desktop/src/components/ui/markdown-integration/contract.ts`
@@ -916,6 +931,7 @@ cp openspec/references/sakti-code-old/apps/desktop/src/components/ui/markdown-in
 ### Task 3.2: Turn projection (UIMessage[] → ChatTurn[])
 
 **Files:**
+
 - Create: `apps/desktop/src/stores/session/turn-projection.ts`
 
 **Step 1:** Create a turn projection function that groups messages into user+assistant pairs.
@@ -935,7 +951,7 @@ export interface ChatTurn {
 export function buildChatTurns(
   messageOrder: string[],
   messages: Record<string, UIMessage>,
-  streamingPhase: string
+  streamingPhase: string,
 ): ChatTurn[] {
   const turns: ChatTurn[] = [];
   let currentTurn: ChatTurn | null = null;
@@ -980,6 +996,7 @@ export function buildChatTurns(
 ### Task 3.3: Parts registry + Part dispatcher
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat/parts/part-registry.ts`
 - Create: `apps/desktop/src/components/chat/parts/message-part.tsx`
 - Create: `apps/desktop/src/components/chat/parts/register-parts.ts`
@@ -1008,11 +1025,7 @@ export interface PartProps {
 
 export const Part: Component<PartProps> = (props) => {
   const Component = () => getPartComponent(props.part.type);
-  return (
-    <Show when={Component()}>
-      {(Comp) => <Comp {...props} />}
-    </Show>
-  );
+  return <Show when={Component()}>{(Comp) => <Comp {...props} />}</Show>;
 };
 ```
 
@@ -1023,6 +1036,7 @@ export const Part: Component<PartProps> = (props) => {
 ### Task 3.4: TextPart + ReasoningPart
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat/parts/text-part.tsx`
 - Create: `apps/desktop/src/components/chat/parts/reasoning-part.tsx`
 
@@ -1034,6 +1048,7 @@ cp openspec/references/sakti-code-old/apps/desktop/src/views/workspace-view/chat
 ```
 
 **Step 2:** Edit imports:
+
 - `@/components/ui/markdown` → `~/components/ui/markdown`
 - `@/utils` → `~/lib/utils`
 - Keep the hover copy button
@@ -1047,6 +1062,7 @@ Copy and adapt — change the part type check from `"reasoning"` to `"thinking"`
 ### Task 3.5: ToolPart + tool rendering subsystem
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat/parts/tool-part.tsx`
 - Create: `apps/desktop/src/components/chat/tools/tool-summary-row.tsx`
 - Create: `apps/desktop/src/components/chat/tools/tool-summary-formatters.ts`
@@ -1099,6 +1115,7 @@ Map `status: "running"` → tool is active, `status: "done"` → success, `statu
 ### Task 3.6: SessionTurn component
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat/timeline/session-turn.tsx`
 
 **Step 1:** Copy from reference:
@@ -1124,6 +1141,7 @@ cp openspec/references/sakti-code-old/apps/desktop/src/views/workspace-view/chat
 ### Task 3.7: MessageTimeline + auto-scroll
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat/timeline/message-timeline.tsx`
 - Create: `apps/desktop/src/lib/utils/create-auto-scroll.ts`
 
@@ -1162,6 +1180,7 @@ cp openspec/references/sakti-code-old/apps/desktop/src/views/workspace-view/chat
 ### Task 3.8: Integrate timeline into onboarding panel
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/onboarding/onboarding-panel.tsx`
 
 **Step 1:** Replace the basic message list (from Task 2.7) with the full MessageTimeline:
@@ -1177,17 +1196,14 @@ const turns = createMemo(() => {
   return buildChatTurns(
     session.store.messageOrder,
     session.store.messages,
-    session.store.streaming.phase
+    session.store.streaming.phase,
   );
 });
 
 const isGenerating = () => sessionStore()?.store.streaming.phase !== "idle";
 
 // Replace the basic message list with:
-<MessageTimeline
-  turns={turns()}
-  isStreaming={isGenerating}
-/>
+<MessageTimeline turns={turns()} isStreaming={isGenerating} />;
 ```
 
 **Step 2:** Remove the old basic message list code.
@@ -1212,6 +1228,7 @@ git commit -m "feat(desktop): full message rendering system with velomark + part
 ### Task 4.1: propose_session tool
 
 **Files:**
+
 - Create: `packages/tools/src/tools/propose-session.ts`
 - Modify: `packages/tools/src/index.ts` (export)
 
@@ -1223,7 +1240,10 @@ import { type Static, Type } from "typebox";
 
 const proposeSessionSchema = Type.Object({
   title: Type.String({ description: "A short title for the task session" }),
-  message: Type.String({ description: "The pre-filled first message for the task session. This should contain the full context, requirements, and rough plan discussed with the user." }),
+  message: Type.String({
+    description:
+      "The pre-filled first message for the task session. This should contain the full context, requirements, and rough plan discussed with the user.",
+  }),
 });
 
 export type ProposeSessionToolInput = Static<typeof proposeSessionSchema>;
@@ -1264,6 +1284,7 @@ git commit -m "feat(tools): add propose_session tool with terminate: true"
 ### Task 4.2: Intake agent system prompt
 
 **Files:**
+
 - Create: `packages/agent/src/prompts/intake-system-prompt.ts`
 - Modify: `apps/server/src/agent/runner.ts` (resolve prompt by session kind)
 
@@ -1296,9 +1317,7 @@ const session = await ctx.repos.sessions.findById(sessionId);
 // ... existing code ...
 
 // Resolve system prompt by kind
-const systemPrompt = session.kind === "intake"
-  ? INTAKE_SYSTEM_PROMPT
-  : undefined; // undefined = use default prompt from harness
+const systemPrompt = session.kind === "intake" ? INTAKE_SYSTEM_PROMPT : undefined; // undefined = use default prompt from harness
 
 // When building tools, add propose_session for intake sessions:
 const tools = buildTools(project.cwd);
@@ -1325,6 +1344,7 @@ git commit -m "feat(agent): intake agent system prompt + propose_session tool fo
 ### Task 5.1: Event reducer — detect propose_session tool calls
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/session/event-reducer.ts`
 
 **Step 1:** When a tool call event comes in with `toolName === "propose_session"`, store the proposal data:
@@ -1347,6 +1367,7 @@ if (toolName === "propose_session") {
 ### Task 5.2: ProposedSessionCard inline confirm UI
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat/parts/proposed-session-card.tsx`
 
 **Step 1:** Create the component:
@@ -1366,17 +1387,23 @@ export function ProposedSessionCard(props: Props) {
   const [expanded, setExpanded] = createSignal(false);
 
   return (
-    <div class="rounded-lg border border-primary/30 bg-primary/5 p-4" data-component="proposed-session-card">
+    <div
+      class="rounded-lg border border-primary/30 bg-primary/5 p-4"
+      data-component="proposed-session-card"
+    >
       <div class="mb-2 flex items-center gap-2">
         <span class="text-lg">{"\u{1F4CB}"}</span>
         <span class="font-semibold text-sm">Proposed Session</span>
       </div>
       <h3 class="mb-2 font-medium text-foreground">{props.proposal.title}</h3>
-      <Show when={expanded()} fallback={
-        <button class="text-xs text-primary hover:underline" onClick={() => setExpanded(true)}>
-          Show brief →
-        </button>
-      }>
+      <Show
+        when={expanded()}
+        fallback={
+          <button class="text-xs text-primary hover:underline" onClick={() => setExpanded(true)}>
+            Show brief →
+          </button>
+        }
+      >
         <pre class="mb-3 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs text-muted-foreground">
           {props.proposal.message}
         </pre>
@@ -1409,6 +1436,7 @@ export function ProposedSessionCard(props: Props) {
 ### Task 5.3: Integrate confirm flow into onboarding panel
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/onboarding/onboarding-panel.tsx`
 
 **Step 1:** Render the ProposedSessionCard when `proposedSession` is set:
@@ -1426,7 +1454,7 @@ import { ProposedSessionCard } from "~/components/chat/parts/proposed-session-ca
       onReject={() => sessionStore()!.actions.clearProposedSession()}
     />
   )}
-</Show>
+</Show>;
 ```
 
 **Step 2:** Implement the confirm handler:
@@ -1465,6 +1493,7 @@ git commit -m "feat(desktop): propose_session confirm flow with inline card + ta
 ### Task 5.4: Sidebar shows task sessions
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/layout/sidebar/sidebar.tsx`
 
 **Step 1:** Filter sessions in the sidebar to show only `kind === "task"` (hide intake sessions):
@@ -1473,9 +1502,7 @@ git commit -m "feat(desktop): propose_session confirm flow with inline card + ta
 const sessions = createMemo(() => {
   return server.store.sessionOrder
     .map((id) => server.store.sessions[id])
-    .filter((s): s is SessionMeta =>
-      !!s && s.projectId === activeProjectId && s.kind === "task"
-    );
+    .filter((s): s is SessionMeta => !!s && s.projectId === activeProjectId && s.kind === "task");
 });
 ```
 
@@ -1486,6 +1513,7 @@ const sessions = createMemo(() => {
 ### Task 5.5: Task session chat view stub
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/layout/workspace-layout.tsx`
 
 **Step 1:** When a task session is active (not intake), show a task chat view. For now, this can be a minimal stub that reuses the MessageTimeline + ChatInput components:
@@ -1499,11 +1527,17 @@ function TaskChatView(props: { sessionId: string }) {
   return (
     <div class="flex min-h-0 flex-1 flex-col">
       <MessageTimeline
-        turns={buildChatTurns(session.store.messageOrder, session.store.messages, session.store.streaming.phase)}
+        turns={buildChatTurns(
+          session.store.messageOrder,
+          session.store.messages,
+          session.store.streaming.phase,
+        )}
         isStreaming={() => session.store.streaming.phase !== "idle"}
       />
       <ChatInput
-        onSend={() => { /* sendPrompt logic */ }}
+        onSend={() => {
+          /* sendPrompt logic */
+        }}
         placeholder="Continue working..."
       />
     </div>
@@ -1536,6 +1570,7 @@ cd apps/desktop && nub run dev             # full app test
 ```
 
 **Manual test flow:**
+
 1. Open a project → intake session created → onboarding panel shows
 2. Type a message → agent responds → messages render with markdown + tool calls
 3. Change model via command center dialog → model switches

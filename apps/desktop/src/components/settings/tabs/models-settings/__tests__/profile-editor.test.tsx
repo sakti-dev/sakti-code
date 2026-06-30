@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@solidjs/testing-library";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ProfileEditor } from "../profile-editor";
 
 const mocks = vi.hoisted(() => ({
@@ -95,9 +95,7 @@ describe("ProfileEditor", () => {
     mocks.profilesGet.mockImplementation(() => okRes(defaultProfiles));
     mocks.profilesPut.mockImplementation(() => okPut());
     render(() => <ProfileEditor />);
-    const nameInput = (await screen.findByDisplayValue(
-      "Default"
-    )) as HTMLInputElement;
+    const nameInput = (await screen.findByDisplayValue("Default")) as HTMLInputElement;
     nameInput.value = "My Default";
     nameInput.dispatchEvent(new Event("input", { bubbles: true }));
     vi.advanceTimersByTime(1000);
@@ -117,9 +115,7 @@ describe("ProfileEditor", () => {
     });
     const putCall = mocks.profilesPut.mock.calls[0];
     const body = putCall?.[0]?.json;
-    expect(
-      Object.keys((body as Record<string, unknown>)?.profiles ?? {}).length
-    ).toBe(2);
+    expect(Object.keys((body as Record<string, unknown>)?.profiles ?? {}).length).toBe(2);
   });
 
   it("shows default badge on the default profile", async () => {

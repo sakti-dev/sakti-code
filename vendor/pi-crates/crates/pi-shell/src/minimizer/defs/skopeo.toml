@@ -7,12 +7,12 @@ description = "Compact skopeo copy/inspect output"
 match_command = "^skopeo$"
 strip_ansi = true
 strip_lines_matching = [
-	"^\\s*$",
-	"^Getting image source signatures$",
-	"^Copying blob ",
-	"^Copying config ",
-	"^Writing manifest to image destination",
-	"^Storing signatures$",
+  "^\\s*$",
+  "^Getting image source signatures$",
+  "^Copying blob ",
+  "^Copying config ",
+  "^Writing manifest to image destination",
+  "^Storing signatures$",
 ]
 truncate_lines_at = 300
 max_lines = 80

@@ -1,6 +1,6 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type { LogContext, Logger } from "@sakti-code/logger";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { streamWithModel } from "../stream.ts";
 import type { Model } from "../types.ts";
 
@@ -30,13 +30,11 @@ function spyLogger() {
     error: unknown;
     context: LogContext | undefined;
   }> = [];
-  const debugs: Array<{ message: string; context: LogContext | undefined }> =
-    [];
+  const debugs: Array<{ message: string; context: LogContext | undefined }> = [];
   const rec: Logger = {
     child: () => rec,
     debug: (message, context) => debugs.push({ message, context }),
-    error: (message, error, context) =>
-      errors.push({ message, error, context }),
+    error: (message, error, context) => errors.push({ message, error, context }),
     info: () => {},
     warn: () => {},
   };
@@ -64,7 +62,7 @@ describe("streamWithModel logging", () => {
     const { fullStream, result } = streamWithModel(
       { messages: [], model, logger },
       fakeLanguage,
-      fake as never
+      fake as never,
     );
 
     // Drain the stream — the wrapper must still yield the error part through.
@@ -106,7 +104,7 @@ describe("streamWithModel logging", () => {
     const { fullStream, result } = streamWithModel(
       { messages: [], model },
       fakeLanguage,
-      fake as never
+      fake as never,
     );
     // Identity preserved: nothing to instrument when there's no logger.
     expect(fullStream).toBe(okResult.fullStream);
@@ -146,7 +144,7 @@ describe("streamWithModel logging", () => {
         maxOutputTokens: 4096,
       },
       fakeLanguage,
-      fake as never
+      fake as never,
     );
 
     const req = debugs.find((d) => d.message === "stream request");
@@ -186,7 +184,7 @@ describe("streamWithModel logging", () => {
     const { result } = streamWithModel(
       { messages: [], model, logger },
       fakeLanguage,
-      fake as never
+      fake as never,
     );
     const finish = await result;
 

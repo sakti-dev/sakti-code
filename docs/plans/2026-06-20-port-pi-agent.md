@@ -14,34 +14,34 @@
 
 Pi source lives at `openspec/references/pi/packages/`. Key paths:
 
-| Pi Source | Our Target | Action |
-|-----------|-----------|--------|
-| `agent/src/types.ts` | `packages/agent/src/types.ts` | Replace |
-| `agent/src/agent-loop.ts` | `packages/agent/src/loop/agent-loop.ts` | New file |
-| `agent/src/agent.ts` | `packages/agent/src/agent.ts` | New file |
-| `agent/src/harness/types.ts` | `packages/agent/src/harness/types.ts` | New file |
-| `agent/src/harness/messages.ts` | `packages/agent/src/harness/messages.ts` | New file |
-| `agent/src/harness/agent-harness.ts` | `packages/agent/src/harness/agent-harness.ts` | New file |
-| `agent/src/harness/system-prompt.ts` | `packages/agent/src/harness/system-prompt.ts` | New file |
-| `agent/src/harness/skills.ts` | `packages/agent/src/harness/skills.ts` | New file |
-| `agent/src/harness/session/session.ts` | `packages/agent/src/harness/session.ts` | New file |
-| `agent/src/harness/compaction/compaction.ts` | `packages/agent/src/compaction/compaction.ts` | Replace |
+| Pi Source                                              | Our Target                                              | Action   |
+| ------------------------------------------------------ | ------------------------------------------------------- | -------- |
+| `agent/src/types.ts`                                   | `packages/agent/src/types.ts`                           | Replace  |
+| `agent/src/agent-loop.ts`                              | `packages/agent/src/loop/agent-loop.ts`                 | New file |
+| `agent/src/agent.ts`                                   | `packages/agent/src/agent.ts`                           | New file |
+| `agent/src/harness/types.ts`                           | `packages/agent/src/harness/types.ts`                   | New file |
+| `agent/src/harness/messages.ts`                        | `packages/agent/src/harness/messages.ts`                | New file |
+| `agent/src/harness/agent-harness.ts`                   | `packages/agent/src/harness/agent-harness.ts`           | New file |
+| `agent/src/harness/system-prompt.ts`                   | `packages/agent/src/harness/system-prompt.ts`           | New file |
+| `agent/src/harness/skills.ts`                          | `packages/agent/src/harness/skills.ts`                  | New file |
+| `agent/src/harness/session/session.ts`                 | `packages/agent/src/harness/session.ts`                 | New file |
+| `agent/src/harness/compaction/compaction.ts`           | `packages/agent/src/compaction/compaction.ts`           | Replace  |
 | `agent/src/harness/compaction/branch-summarization.ts` | `packages/agent/src/compaction/branch-summarization.ts` | New file |
-| `agent/src/harness/compaction/utils.ts` | `packages/agent/src/compaction/utils.ts` | New file |
-| `agent/src/harness/utils/truncate.ts` | `packages/agent/src/lib/truncate.ts` | New file |
-| `agent/src/harness/utils/shell-output.ts` | `packages/agent/src/lib/shell-output.ts` | New file |
-| `coding-agent/src/core/tools/truncate.ts` | `packages/tools/src/lib/truncate.ts` | Replace |
-| `coding-agent/src/core/tools/output-accumulator.ts` | `packages/tools/src/lib/output-accumulator.ts` | Replace |
-| `coding-agent/src/core/tools/path-utils.ts` | `packages/tools/src/lib/path-utils.ts` | Replace |
-| `coding-agent/src/core/tools/file-mutation-queue.ts` | `packages/tools/src/lib/file-mutation-queue.ts` | New file |
-| `coding-agent/src/core/tools/edit-diff.ts` | `packages/tools/src/lib/edit-diff.ts` | New file |
-| `coding-agent/src/core/tools/read.ts` | `packages/tools/src/tools/read.ts` | Replace |
-| `coding-agent/src/core/tools/write.ts` | `packages/tools/src/tools/write.ts` | Replace |
-| `coding-agent/src/core/tools/edit.ts` | `packages/tools/src/tools/edit.ts` | Replace |
-| `coding-agent/src/core/tools/bash.ts` | `packages/tools/src/tools/bash.ts` | Replace |
-| `coding-agent/src/core/tools/grep.ts` | `packages/tools/src/tools/grep.ts` | Replace |
-| `coding-agent/src/core/tools/find.ts` | `packages/tools/src/tools/find.ts` | Replace |
-| `coding-agent/src/core/tools/ls.ts` | `packages/tools/src/tools/ls.ts` | Replace |
+| `agent/src/harness/compaction/utils.ts`                | `packages/agent/src/compaction/utils.ts`                | New file |
+| `agent/src/harness/utils/truncate.ts`                  | `packages/agent/src/lib/truncate.ts`                    | New file |
+| `agent/src/harness/utils/shell-output.ts`              | `packages/agent/src/lib/shell-output.ts`                | New file |
+| `coding-agent/src/core/tools/truncate.ts`              | `packages/tools/src/lib/truncate.ts`                    | Replace  |
+| `coding-agent/src/core/tools/output-accumulator.ts`    | `packages/tools/src/lib/output-accumulator.ts`          | Replace  |
+| `coding-agent/src/core/tools/path-utils.ts`            | `packages/tools/src/lib/path-utils.ts`                  | Replace  |
+| `coding-agent/src/core/tools/file-mutation-queue.ts`   | `packages/tools/src/lib/file-mutation-queue.ts`         | New file |
+| `coding-agent/src/core/tools/edit-diff.ts`             | `packages/tools/src/lib/edit-diff.ts`                   | New file |
+| `coding-agent/src/core/tools/read.ts`                  | `packages/tools/src/tools/read.ts`                      | Replace  |
+| `coding-agent/src/core/tools/write.ts`                 | `packages/tools/src/tools/write.ts`                     | Replace  |
+| `coding-agent/src/core/tools/edit.ts`                  | `packages/tools/src/tools/edit.ts`                      | Replace  |
+| `coding-agent/src/core/tools/bash.ts`                  | `packages/tools/src/tools/bash.ts`                      | Replace  |
+| `coding-agent/src/core/tools/grep.ts`                  | `packages/tools/src/tools/grep.ts`                      | Replace  |
+| `coding-agent/src/core/tools/find.ts`                  | `packages/tools/src/tools/find.ts`                      | Replace  |
+| `coding-agent/src/core/tools/ls.ts`                    | `packages/tools/src/tools/ls.ts`                        | Replace  |
 
 ## Skip List (do not port)
 
@@ -131,6 +131,7 @@ git commit -m "chore: add typebox dependency for pi agent port"
 ### Task 2: Port `types.ts` (agent core types)
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/agent/src/types.ts`
 - Target: `packages/agent/src/types.ts` (replace existing)
 
@@ -149,6 +150,7 @@ cp openspec/references/pi/packages/agent/src/types.ts packages/agent/src/types.t
 **Step 3:** Fix imports — all internal pi imports become relative within our package
 
 Read the file and fix any `@earendil-works/pi-agent-core` imports (shouldn't have any — this is a leaf file). Verify pi-ai imports resolve:
+
 - `@earendil-works/pi-ai/base` → keep as-is
 - `typebox` → keep as-is (now installed)
 
@@ -172,6 +174,7 @@ git commit -m "feat(agent): port pi agent-core types"
 ### Task 3: Port `harness/types.ts` (Result, SessionTreeEntry, SessionStorage)
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/agent/src/harness/types.ts`
 - Target: `packages/agent/src/harness/types.ts` (new file)
 
@@ -186,6 +189,7 @@ cp openspec/references/pi/packages/agent/src/harness/types.ts packages/agent/src
 ```
 
 Fix imports:
+
 - `../../types.ts` → `../types.ts` (relative to new location)
 - Any `@earendil-works/pi-agent-core` → not expected (this references sibling types.ts)
 
@@ -207,6 +211,7 @@ git commit -m "feat(agent): port pi harness types (Result, SessionTreeEntry, Ses
 ### Task 4: Port utility modules
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/agent/src/harness/utils/truncate.ts`
 - Target: `packages/agent/src/lib/truncate.ts` (new file, for agent-internal use)
 - Reference: `openspec/references/pi/packages/agent/src/harness/utils/shell-output.ts`
@@ -219,6 +224,7 @@ cp openspec/references/pi/packages/agent/src/harness/utils/truncate.ts packages/
 ```
 
 Fix imports:
+
 - `../../types.ts` → `../types.ts` (adjust relative path based on new location)
 
 **Step 2:** Copy shell-output.ts
@@ -261,6 +267,7 @@ git commit -m "feat(agent): port truncate and shell-output utilities"
 ### Task 5: Port `messages.ts` (convertToLlm, custom message types)
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/agent/src/harness/messages.ts`
 - Target: `packages/agent/src/harness/messages.ts` (new file)
 
@@ -271,12 +278,14 @@ cp openspec/references/pi/packages/agent/src/harness/messages.ts packages/agent/
 ```
 
 **Step 2:** Fix imports
+
 - `../types.ts` → keep (same relative position within harness/)
 - `../../types.ts` → `../types.ts`
 
 **Step 3:** Verify it references the right types from our ported `types.ts`
 
 Key things to check:
+
 - `AgentMessage` union includes custom message types
 - `CustomAgentMessages` declaration merging works
 - `convertToLlm` handles all message types
@@ -299,6 +308,7 @@ git commit -m "feat(agent): port messages.ts (convertToLlm, custom message types
 ### Task 6: Port `session.ts` (Session class)
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/agent/src/harness/session/session.ts`
 - Target: `packages/agent/src/harness/session.ts` (new file)
 
@@ -309,6 +319,7 @@ cp openspec/references/pi/packages/agent/src/harness/session/session.ts packages
 ```
 
 **Step 2:** Fix imports
+
 - All `../types.ts` → keep
 - `../messages.ts` → keep
 
@@ -334,6 +345,7 @@ git commit -m "feat(agent): port Session class"
 ### Task 7: SQLite schema for entry tree
 
 **Files:**
+
 - Modify: `packages/db/src/schema.ts`
 - Create: `packages/db/src/repos/entry-repo.ts`
 - Test: `packages/db/src/__tests__/entry-repo.test.ts`
@@ -345,14 +357,18 @@ Add a `session_entries` table to the existing schema. Each row is one `SessionTr
 ```ts
 session_entries: sqliteTable("session_entries", {
   id: text("id").primaryKey(),
-  sessionId: text("session_id").notNull().references(() => sessions.id, { onDelete: "cascade" }),
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => sessions.id, { onDelete: "cascade" }),
   parentId: text("parent_id"), // null for root entries
   sequence: integer("sequence").notNull(), // ordering within session
   kind: text("kind").notNull(), // "message", "compaction", "model_change", etc.
   content: text("content").notNull(), // JSON blob — shape depends on kind
   timestamp: integer("timestamp").notNull(),
-  createdAt: integer("created_at").notNull().default(sql`(unixepoch())`),
-})
+  createdAt: integer("created_at")
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
 ```
 
 Also add `leafId` to the existing `sessions` table:
@@ -397,10 +413,12 @@ class SqliteSessionStorage {
 ```
 
 Key implementation detail: `appendEntry` must:
+
 1. INSERT the entry row
 2. If entry has `type !== "leaf"`, UPDATE sessions SET leaf_id = entry.id
 
 `getPathToRoot` must:
+
 1. Start from leafId
 2. Walk parentId up to root
 3. Return entries in root→leaf order
@@ -429,6 +447,7 @@ git commit -m "feat(db): add session_entries table and SqliteSessionStorage"
 ### Task 8: Port `compaction/utils.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/agent/src/harness/compaction/utils.ts`
 - Target: `packages/agent/src/compaction/utils.ts` (new file)
 
@@ -458,6 +477,7 @@ git commit -m "feat(agent): port compaction utils (file ops, serialize)"
 ### Task 9: Port `compaction.ts` + `branch-summarization.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/agent/src/harness/compaction/compaction.ts`
 - Target: `packages/agent/src/compaction.ts` (replace existing)
 - Reference: `openspec/references/pi/packages/agent/src/harness/compaction/branch-summarization.ts`
@@ -473,6 +493,7 @@ cp openspec/references/pi/packages/agent/src/harness/compaction/branch-summariza
 **Step 2:** Fix imports in both files
 
 The compaction files reference:
+
 - `../../types.ts` → `../types.ts`
 - `../messages.ts` → `../harness/messages.ts`
 - `../session/session.ts` → `../harness/session.ts`
@@ -512,6 +533,7 @@ git commit -m "feat(agent): port pi compaction (iterative summary, split-turn, f
 ### Task 10: Port `agent-loop.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/agent/src/agent-loop.ts`
 - Target: `packages/agent/src/loop/agent-loop.ts` (new file)
 
@@ -559,6 +581,7 @@ git commit -m "feat(agent): port pi agent-loop (pure stateless loop)"
 ### Task 11: Port `agent.ts` (stateful Agent class)
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/agent/src/agent.ts`
 - Target: `packages/agent/src/agent.ts` (new file)
 
@@ -606,6 +629,7 @@ git commit -m "feat(agent): port pi Agent class (state wrapper, prompt/steer/fol
 ### Task 12: Port `agent-harness.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/agent/src/harness/agent-harness.ts`
 - Target: `packages/agent/src/harness/agent-harness.ts` (new file)
 
@@ -632,6 +656,7 @@ cp openspec/references/pi/packages/agent/src/harness/agent-harness.ts packages/a
 **Step 3:** Verify key methods
 
 Check that:
+
 - `createTurnState()` calls `session.buildContext()` (through SessionStorage interface)
 - `createStreamFn()` wires auth correctly
 - `createLoopConfig()` sets up all hooks (beforeToolCall, afterToolCall, validateToolArguments, prepareNextTurn, shouldStopAfterTurn, transformContext)
@@ -670,6 +695,7 @@ git commit -m "feat(agent): port pi agent-harness (hooks, state machine, queues)
 ### Task 13: Port `system-prompt.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/agent/src/harness/system-prompt.ts`
 - Target: `packages/agent/src/harness/system-prompt.ts` (new file)
 
@@ -702,6 +728,7 @@ git commit -m "feat(agent): port pi system prompt builder"
 ### Task 14: Port `skills.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/agent/src/harness/skills.ts`
 - Target: `packages/agent/src/harness/skills.ts` (new file)
 
@@ -728,36 +755,38 @@ git commit -m "feat(agent): port pi skills system"
 ### Task 15: Update agent package exports
 
 **Files:**
+
 - Modify: `packages/agent/src/index.ts`
 
 **Step 1:** Update exports to include all ported modules
 
 ```ts
 // Core
-export * from "./types.ts"
-export * from "./agent.ts"
-export * from "./loop/agent-loop.ts"
+export * from "./types.ts";
+export * from "./agent.ts";
+export * from "./loop/agent-loop.ts";
 
 // Harness
-export * from "./harness/types.ts"
-export * from "./harness/agent-harness.ts"
-export * from "./harness/messages.ts"
-export * from "./harness/session.ts"
-export * from "./harness/system-prompt.ts"
-export * from "./harness/skills.ts"
+export * from "./harness/types.ts";
+export * from "./harness/agent-harness.ts";
+export * from "./harness/messages.ts";
+export * from "./harness/session.ts";
+export * from "./harness/system-prompt.ts";
+export * from "./harness/skills.ts";
 
 // Compaction
-export * from "./compaction.ts"
-export * from "./compaction/branch-summarization.ts"
-export * from "./compaction/utils.ts"
+export * from "./compaction.ts";
+export * from "./compaction/branch-summarization.ts";
+export * from "./compaction/utils.ts";
 
 // Lib
-export * from "./lib/truncate.ts"
+export * from "./lib/truncate.ts";
 ```
 
 **Step 2:** Remove or archive old files
 
 The old agent loop and compaction files are replaced:
+
 - `packages/agent/src/loop/index.ts` → replaced by `agent-loop.ts`
 - `packages/agent/src/loop/streaming.ts` → logic now in `agent-loop.ts`
 - `packages/agent/src/loop/tool-execution.ts` → logic now in `agent-loop.ts`
@@ -794,6 +823,7 @@ git commit -m "refactor(agent): update exports, archive legacy loop"
 ### Task 16: Port tool utility modules
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/coding-agent/src/core/tools/truncate.ts`
 - Target: `packages/tools/src/lib/truncate.ts` (replace existing)
 - Reference: `openspec/references/pi/packages/coding-agent/src/core/tools/output-accumulator.ts`
@@ -818,6 +848,7 @@ cp openspec/references/pi/packages/coding-agent/src/core/tools/edit-diff.ts pack
 **Step 2:** Fix imports in each file
 
 These utility files should have minimal imports (mostly `node:path`, `node:fs`). Fix:
+
 - `../../../config.ts` → remove or inline the needed value
 - `../../utils/paths.ts` → extract needed functions inline
 - `../render-utils.ts` → remove TUI imports
@@ -842,6 +873,7 @@ git commit -m "feat(tools): port pi tool utilities (truncate, accumulator, path-
 ### Task 17: Port `read.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/coding-agent/src/core/tools/read.ts`
 - Target: `packages/tools/src/tools/read.ts` (replace existing)
 
@@ -854,6 +886,7 @@ cp openspec/references/pi/packages/coding-agent/src/core/tools/read.ts packages/
 **Step 2:** Strip TUI (follow TUI Stripping Rules from top of this doc)
 
 Remove:
+
 - All `@earendil-works/pi-tui` imports
 - All `modes/interactive/*` imports
 - All `utils/image-resize.ts` import
@@ -865,6 +898,7 @@ Remove:
 - `keyHint`, `highlightCode`, `getLanguageFromPath`, `theme` usage
 
 Replace:
+
 - `resizeImage(buf, maxW, maxH)` → `await Bun.Image(buf).resize(maxW, maxH, { fit: "inside" }).png().bytes()`
 - Make the tool factory return `AgentTool` directly (imported from `@sakti-code/agent`)
 
@@ -886,6 +920,7 @@ git commit -m "feat(tools): port pi read tool (byte-accurate truncation, structu
 ### Task 18: Port `write.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/coding-agent/src/core/tools/write.ts`
 - Target: `packages/tools/src/tools/write.ts` (replace existing)
 
@@ -910,6 +945,7 @@ git commit -m "feat(tools): port pi write tool (mutation queue, proper dirname)"
 ### Task 19: Port `edit.ts` + `edit-diff.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/coding-agent/src/core/tools/edit.ts`
 - Target: `packages/tools/src/tools/edit.ts` (replace existing)
 - `edit-diff.ts` already ported in Task 16
@@ -921,6 +957,7 @@ cp openspec/references/pi/packages/coding-agent/src/core/tools/edit.ts packages/
 ```
 
 Strip TUI. Key features gained:
+
 - `prepareArguments` — legacy `oldText`/`newText` → `edits[]` conversion
 - Fuzzy matching via `edit-diff.ts`
 - Safety checks (empty oldText, no-op, overlap detection)
@@ -941,6 +978,7 @@ git commit -m "feat(tools): port pi edit tool (fuzzy match, safety checks, legac
 ### Task 20: Port `bash.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/coding-agent/src/core/tools/bash.ts`
 - Target: `packages/tools/src/tools/bash.ts` (replace existing)
 - `output-accumulator.ts` already ported in Task 16
@@ -952,6 +990,7 @@ cp openspec/references/pi/packages/coding-agent/src/core/tools/bash.ts packages/
 ```
 
 Strip TUI. Key features gained:
+
 - Tail truncation (keeps last N lines, not first)
 - Process tree kill (`detached: true` + `killProcessTree`)
 - No forced 30s timeout
@@ -963,6 +1002,7 @@ Strip TUI. Key features gained:
 **Step 2:** Replace `waitForChildProcess` utility
 
 Pi imports this from `../../utils/child-process.ts`. Either:
+
 - Port that utility (it's small — just promisifies child exit + cleanup)
 - Or inline the logic: `await new Promise(r => child.on("exit", r))`
 
@@ -979,6 +1019,7 @@ git commit -m "feat(tools): port pi bash tool (tail truncation, tree kill, UTF-8
 ### Task 21: Port `grep.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/coding-agent/src/core/tools/grep.ts`
 - Target: `packages/tools/src/tools/grep.ts` (replace existing)
 
@@ -989,6 +1030,7 @@ cp openspec/references/pi/packages/coding-agent/src/core/tools/grep.ts packages/
 ```
 
 Strip TUI. Key features gained:
+
 - Async `spawn` instead of `execSync` (no event loop blocking)
 - `rg --json` structured output (colon-parse bug eliminated)
 - Global match counting (not per-file `--max-count`)
@@ -1012,6 +1054,7 @@ git commit -m "feat(tools): port pi grep tool (async, rg --json, global count)"
 ### Task 22: Port `find.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/coding-agent/src/core/tools/find.ts`
 - Target: `packages/tools/src/tools/find.ts` (replace existing)
 
@@ -1022,6 +1065,7 @@ cp openspec/references/pi/packages/coding-agent/src/core/tools/find.ts packages/
 ```
 
 Strip TUI. Key features gained:
+
 - Async `spawn` instead of `execSync`
 - `--full-path` when pattern contains `/`
 - POSIX path normalization
@@ -1042,6 +1086,7 @@ git commit -m "feat(tools): port pi find tool (async, path globs, POSIX normaliz
 ### Task 23: Port `ls.ts`
 
 **Files:**
+
 - Reference: `openspec/references/pi/packages/coding-agent/src/core/tools/ls.ts`
 - Target: `packages/tools/src/tools/ls.ts` (replace existing)
 
@@ -1052,6 +1097,7 @@ cp openspec/references/pi/packages/coding-agent/src/core/tools/ls.ts packages/to
 ```
 
 Strip TUI. Key features gained:
+
 - Exists + isDir precheck
 - "(empty directory)" notice
 - Entry limit notice
@@ -1071,6 +1117,7 @@ git commit -m "feat(tools): port pi ls tool (precheck, notices, case-insensitive
 ### Task 24: Update tools package exports + types
 
 **Files:**
+
 - Modify: `packages/tools/src/index.ts`
 - Modify: `packages/tools/src/lib/types.ts`
 - Remove: `packages/tools/src/lib/shared.ts` (replaced by pi's patterns)
@@ -1108,40 +1155,53 @@ git commit -m "refactor(tools): update exports and types for pi agent compatibil
 ### Task 25: Server integration — ExecutionEnv + runner wiring
 
 **Files:**
+
 - Create: `apps/server/src/agent/execution-env.ts`
 - Modify: `apps/server/src/agent/runner.ts`
 
 **Step 1:** Implement `BunExecutionEnv`
 
 ```ts
-import type { ExecutionEnv } from "@sakti-code/agent"
-import { access, constants, readFile, readdir, stat, writeFile, mkdir, rm } from "node:fs/promises"
-import { execSync, spawn } from "node:child_process"
-import { resolve, dirname, basename } from "node:path"
+import type { ExecutionEnv } from "@sakti-code/agent";
+import { access, constants, readFile, readdir, stat, writeFile, mkdir, rm } from "node:fs/promises";
+import { execSync, spawn } from "node:child_process";
+import { resolve, dirname, basename } from "node:path";
 
 export class BunExecutionEnv implements ExecutionEnv {
   async readTextFile(path: string): Promise<string> {
-    return readFile(path, "utf-8")
+    return readFile(path, "utf-8");
   }
   async listDir(path: string): Promise<string[]> {
-    return readdir(path).then(entries => entries.map(e => e.name))
+    return readdir(path).then((entries) => entries.map((e) => e.name));
   }
   async fileInfo(path: string) {
-    const s = await stat(path)
-    return { exists: true, isDirectory: s.isDirectory(), size: s.size, mtime: s.mtimeMs }
+    const s = await stat(path);
+    return { exists: true, isDirectory: s.isDirectory(), size: s.size, mtime: s.mtimeMs };
   }
   canonicalPath(path: string): string {
-    return resolve(path)
+    return resolve(path);
   }
   async exists(path: string): Promise<boolean> {
-    try { await access(path, constants.F_OK); return true }
-    catch { return false }
+    try {
+      await access(path, constants.F_OK);
+      return true;
+    } catch {
+      return false;
+    }
   }
-  exec(command: string, options?: { cwd?: string; timeout?: number; env?: Record<string, string> }) {
-    return execSync(command, { cwd: options?.cwd, timeout: options?.timeout ?? 30000, env: { ...process.env, ...options?.env }, encoding: "utf-8" })
+  exec(
+    command: string,
+    options?: { cwd?: string; timeout?: number; env?: Record<string, string> },
+  ) {
+    return execSync(command, {
+      cwd: options?.cwd,
+      timeout: options?.timeout ?? 30000,
+      env: { ...process.env, ...options?.env },
+      encoding: "utf-8",
+    });
   }
   spawn(command: string, args: string[], options?: { cwd?: string; env?: Record<string, string> }) {
-    return spawn(command, args, { cwd: options?.cwd, env: { ...process.env, ...options?.env } })
+    return spawn(command, args, { cwd: options?.cwd, env: { ...process.env, ...options?.env } });
   }
 }
 ```
@@ -1149,6 +1209,7 @@ export class BunExecutionEnv implements ExecutionEnv {
 **Step 2:** Update `runner.ts` to use `AgentHarness` + `SqliteSessionStorage` + `BunExecutionEnv`
 
 Key changes to `runPrompt()`:
+
 1. Create `SqliteSessionStorage` for the session
 2. Create `BunExecutionEnv`
 3. Create `AgentHarness` with all config
@@ -1193,6 +1254,7 @@ curl http://localhost:3001/health
 **Step 3:** Create a test session via WS and send a prompt
 
 Use a test script or the existing app to send a prompt and verify:
+
 - System prompt is sent to LLM
 - Tools execute correctly
 - Streaming events flow correctly

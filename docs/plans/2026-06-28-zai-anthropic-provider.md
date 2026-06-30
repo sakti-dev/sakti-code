@@ -11,7 +11,8 @@
 **Design doc:** `docs/plans/2026-06-28-zai-anthropic-provider-design.md` (read first).
 
 **Porting source (read these before each task that references them):**
-- `openspec/references/ai/packages/anthropic/src/anthropic-api.ts` — wire schemas (port a *minimal subset*)
+
+- `openspec/references/ai/packages/anthropic/src/anthropic-api.ts` — wire schemas (port a _minimal subset_)
 - `.../anthropic-language-model.ts` — `getArgs` / `doGenerate` / `doStream` structure
 - `.../convert-to-anthropic-prompt.ts` — message conversion
 - `.../convert-anthropic-usage.ts` — usage mapper
@@ -22,6 +23,7 @@
 - `.../anthropic-provider.ts` — factory shape
 
 **Conventions (from repo `AGENTS.md`):**
+
 - TDD: failing test → implement → pass → commit.
 - Tests colocated in `__tests__/`. `vitest`. No `.only`/`.skip`.
 - `exactOptionalPropertyTypes: true` → use conditional spread `...(x !== undefined ? { x } : {})`, never pass `undefined`.
@@ -37,6 +39,7 @@
 ### Task 1: Scaffold the package + registry entry + factory stub
 
 **Files:**
+
 - Create: `packages/llm/src/provider/zai-anthropic/index.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/zai-anthropic-language-model.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/__tests__/registry.test.ts`
@@ -45,6 +48,7 @@
 **Step 1: Write the failing test**
 
 `packages/llm/src/provider/zai-anthropic/__tests__/registry.test.ts`:
+
 ```ts
 import { describe, expect, it } from "vitest";
 import { BUNDLED_PROVIDERS } from "../../registry.ts";
@@ -71,6 +75,7 @@ Expected: FAIL — `loader is undefined` / module not found.
 **Step 3: Minimal implementation**
 
 `packages/llm/src/provider/zai-anthropic/zai-anthropic-language-model.ts`:
+
 ```ts
 import type {
   LanguageModelV4,
@@ -111,21 +116,18 @@ export class ZaiAnthropicLanguageModel implements LanguageModelV4 {
     };
   }
 
-  async doGenerate(
-    _options: LanguageModelV4CallOptions,
-  ): Promise<LanguageModelV4GenerateResult> {
+  async doGenerate(_options: LanguageModelV4CallOptions): Promise<LanguageModelV4GenerateResult> {
     throw new Error("ZaiAnthropicLanguageModel.doGenerate: not implemented");
   }
 
-  async doStream(
-    _options: LanguageModelV4CallOptions,
-  ): Promise<LanguageModelV4StreamResult> {
+  async doStream(_options: LanguageModelV4CallOptions): Promise<LanguageModelV4StreamResult> {
     throw new Error("ZaiAnthropicLanguageModel.doStream: not implemented");
   }
 }
 ```
 
 `packages/llm/src/provider/zai-anthropic/index.ts`:
+
 ```ts
 import { withUserAgentSuffix, type FetchFunction } from "@ai-sdk/provider-utils";
 import type { ProviderFactory, ProviderFactoryOptions, ProviderSDK } from "../registry.ts";
@@ -138,9 +140,7 @@ export interface ZaiAnthropicProviderSettings extends ProviderFactoryOptions {
   fetch?: FetchFunction;
 }
 
-export function createZaiAnthropic(
-  options: ZaiAnthropicProviderSettings,
-): ProviderSDK {
+export function createZaiAnthropic(options: ZaiAnthropicProviderSettings): ProviderSDK {
   const baseURL = (options.baseURL ?? "").replace(/\/+$/, "");
   const apiKey = options.apiKey ?? "";
   const headers = async () =>
@@ -166,6 +166,7 @@ export function createZaiAnthropic(
 ```
 
 In `packages/llm/src/provider/registry.ts`, add to `BUNDLED_PROVIDERS` (after the `"@ai-sdk/xai"` entry, before the third-party block):
+
 ```ts
   // Hand-rolled Z.ai Anthropic Messages provider (target zai/zai-coding-plan).
   "@sakti-code/zai-anthropic": () =>
@@ -174,7 +175,9 @@ In `packages/llm/src/provider/registry.ts`, add to `BUNDLED_PROVIDERS` (after th
         createZaiAnthropic(opts)) as ProviderFactory,
     ),
 ```
+
 and add the import at the top:
+
 ```ts
 import { createZaiAnthropic } from "./zai-anthropic/index.ts";
 ```
@@ -185,6 +188,7 @@ import { createZaiAnthropic } from "./zai-anthropic/index.ts";
 Expected: PASS.
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/provider/zai-anthropic/ packages/llm/src/provider/registry.ts
 git commit -m "feat(llm): scaffold zai-anthropic provider + registry entry"
@@ -195,6 +199,7 @@ git commit -m "feat(llm): scaffold zai-anthropic provider + registry entry"
 ### Task 2: `providerOptions.zai` schema
 
 **Files:**
+
 - Create: `packages/llm/src/provider/zai-anthropic/zai-anthropic-options.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/__tests__/options.test.ts`
 
@@ -250,6 +255,7 @@ describe("zai-anthropic options schema", () => {
 **Step 3: Implement**
 
 `packages/llm/src/provider/zai-anthropic/zai-anthropic-options.ts`:
+
 ```ts
 import { zodSchema } from "@ai-sdk/provider-utils";
 import { z } from "zod";
@@ -297,6 +303,7 @@ export const zaiAnthropicOptions = zodSchema(schema);
 **Step 4: Run — PASS.**
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/provider/zai-anthropic/zai-anthropic-options.ts packages/llm/src/provider/zai-anthropic/__tests__/options.test.ts
 git commit -m "feat(llm): zai-anthropic providerOptions.zai schema"
@@ -309,6 +316,7 @@ git commit -m "feat(llm): zai-anthropic providerOptions.zai schema"
 Port a **strict subset** of `anthropic-api.ts` — only what Z.ai surfaces. Do NOT port mcp/container/code-exec/web tools/advisor/tool-search/fallback/compaction/citations.
 
 **Files:**
+
 - Create: `packages/llm/src/provider/zai-anthropic/zai-anthropic-api.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/zai-anthropic-error.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/__tests__/api-schema.test.ts`
@@ -364,6 +372,7 @@ describe("zai-anthropic wire schemas (minimal subset)", () => {
 **Step 3: Implement** — port from `anthropic-api.ts` but keep only: response content variants `text` | `thinking` | `redacted_thinking` | `tool_use`; stream events `message_start`, `content_block_start` (same 4 block types + `text_delta`/`thinking_delta`/`signature_delta`/`input_json_delta` deltas), `content_block_delta`, `content_block_stop`, `message_delta`, `message_stop`, `error`, `ping`; usage `{input_tokens, output_tokens, cache_creation_input_tokens?, cache_read_input_tokens?}`. Use `z.lazy(() => ...)`/`lazySchema` + `zodSchema` exactly as the reference does.
 
 `packages/llm/src/provider/zai-anthropic/zai-anthropic-api.ts`:
+
 ```ts
 import { lazySchema, zodSchema } from "@ai-sdk/provider-utils";
 import { z } from "zod";
@@ -384,7 +393,12 @@ export const zaiResponseSchema = lazySchema(() =>
           z.object({ type: z.literal("text"), text: z.string() }),
           z.object({ type: z.literal("thinking"), thinking: z.string(), signature: z.string() }),
           z.object({ type: z.literal("redacted_thinking"), data: z.string() }),
-          z.object({ type: z.literal("tool_use"), id: z.string(), name: z.string(), input: z.unknown() }),
+          z.object({
+            type: z.literal("tool_use"),
+            id: z.string(),
+            name: z.string(),
+            input: z.unknown(),
+          }),
         ]),
       ),
       usage: z.object({
@@ -462,17 +476,26 @@ export const zaiChunkSchema = lazySchema(() =>
   ),
 );
 
-export type ZaiResponse = typeof zaiResponseSchema extends { parse: (v: unknown) => infer T } ? T : never;
+export type ZaiResponse = typeof zaiResponseSchema extends { parse: (v: unknown) => infer T }
+  ? T
+  : never;
 ```
+
 > NOTE: derive concrete types via `z.infer<typeof schema>` on a locally-bound zod schema if the `infer` helper above is awkward — match how `@ai-sdk/anthropic` exports `InferSchema<typeof anthropicResponseSchema>`. Prefer the explicit `export type ZaiResponse = { id: string | null; ...; content: Array<...>; usage: {...} }` hand-written type (as the old `packages/zai` did) for clarity.
 
 `packages/llm/src/provider/zai-anthropic/zai-anthropic-error.ts`:
+
 ```ts
 import { createJsonErrorResponseHandler, lazySchema, zodSchema } from "@ai-sdk/provider-utils";
 import { z } from "zod";
 
 export const zaiErrorDataSchema = lazySchema(() =>
-  zodSchema(z.object({ type: z.literal("error"), error: z.object({ type: z.string(), message: z.string() }) })),
+  zodSchema(
+    z.object({
+      type: z.literal("error"),
+      error: z.object({ type: z.string(), message: z.string() }),
+    }),
+  ),
 );
 
 export const zaiFailedResponseHandler = createJsonErrorResponseHandler({
@@ -484,6 +507,7 @@ export const zaiFailedResponseHandler = createJsonErrorResponseHandler({
 **Step 4: Run — PASS.**
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/provider/zai-anthropic/zai-anthropic-api.ts packages/llm/src/provider/zai-anthropic/zai-anthropic-error.ts packages/llm/src/provider/zai-anthropic/__tests__/api-schema.test.ts
 git commit -m "feat(llm): zai-anthropic minimal wire schemas + error handler"
@@ -496,10 +520,12 @@ git commit -m "feat(llm): zai-anthropic minimal wire schemas + error handler"
 Port from `convert-to-anthropic-prompt.ts`, but the input is the project's `Message[]` (`packages/llm/src/types.ts`) — the project already converts these to `CoreMessage[]` via `messages.ts:toModelMessages`. **Consume `LanguageModelV4Prompt`** (the V4 prompt type the model receives), not the project `Message[]`, so the converter stays SDK-shaped. (The V4 call options carry `prompt: LanguageModelV4Prompt`.)
 
 **Files:**
+
 - Create: `packages/llm/src/provider/zai-anthropic/convert-to-zai-messages.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/__tests__/convert-to-zai-messages.test.ts`
 
 **Step 1: Write the failing test** — one case per branch:
+
 - system → `{ role:"system", content:[{type:"text",text}] }`
 - single-text user → `content` as a string OR single text block (pick one; match `@ai-sdk/anthropic` which emits an array)
 - user image → `{type:"image", source:{type:"base64", media_type, data}}`
@@ -513,7 +539,10 @@ import { convertToZaiMessages } from "../convert-to-zai-messages.ts";
 describe("convertToZaiMessages", () => {
   it("lifts system to top-level", () => {
     const { system, messages } = convertToZaiMessages({
-      prompt: [{ role: "system", content: "you are helpful" }, { role: "user", content: [{ type: "text", text: "hi" }] }],
+      prompt: [
+        { role: "system", content: "you are helpful" },
+        { role: "user", content: [{ type: "text", text: "hi" }] },
+      ],
     });
     expect(system?.[0]).toMatchObject({ type: "text", text: "you are helpful" });
     expect(messages[0].role).toBe("user");
@@ -543,13 +572,21 @@ describe("convertToZaiMessages", () => {
         {
           role: "assistant",
           content: [
-            { type: "reasoning", text: "hmm", providerOptions: { anthropic: { signature: "sig" } } },
+            {
+              type: "reasoning",
+              text: "hmm",
+              providerOptions: { anthropic: { signature: "sig" } },
+            },
             { type: "text", text: "ans" },
           ],
         },
       ],
     });
-    expect(messages[0].content[0]).toMatchObject({ type: "thinking", thinking: "hmm", signature: "sig" });
+    expect(messages[0].content[0]).toMatchObject({
+      type: "thinking",
+      thinking: "hmm",
+      signature: "sig",
+    });
   });
 });
 ```
@@ -559,12 +596,19 @@ describe("convertToZaiMessages", () => {
 **Step 3: Implement** — port the dispatch logic from `convert-to-anthropic-prompt.ts`. Emit a `cache_control` slot on each text block (filled later by the `CacheControlValidator` pass in `getArgs`). Keep `sendReasoning:true` default: include `thinking` blocks in assistant messages only when the reasoning part carries a signature AND `sendReasoning !== false`.
 
 Signature for the converter:
+
 ```ts
 export function convertToZaiMessages(input: {
   prompt: LanguageModelV4Prompt;
   sendReasoning?: boolean;
 }): {
-  system: Array<{ type: "text"; text: string; cache_control?: { type: "ephemeral"; ttl?: "5m" | "1h" } }> | undefined;
+  system:
+    | Array<{
+        type: "text";
+        text: string;
+        cache_control?: { type: "ephemeral"; ttl?: "5m" | "1h" };
+      }>
+    | undefined;
   messages: Array<ZaiMessage>;
 };
 ```
@@ -572,6 +616,7 @@ export function convertToZaiMessages(input: {
 **Step 4: Run — PASS** (extend with the remaining branches: user image, assistant text+tool_use, tool-result error/isError).
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/provider/zai-anthropic/convert-to-zai-messages.ts packages/llm/src/provider/zai-anthropic/__tests__/convert-to-zai-messages.test.ts
 git commit -m "feat(llm): zai-anthropic message converter (system/image/thinking/tool_result)"
@@ -584,6 +629,7 @@ git commit -m "feat(llm): zai-anthropic message converter (system/image/thinking
 Port both verbatim from `@ai-sdk/anthropic` (`get-cache-control.ts`, `sanitize-json-schema.ts`). They are small, well-tested, and exactly what we need.
 
 **Files:**
+
 - Create: `packages/llm/src/provider/zai-anthropic/get-cache-control.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/sanitize-json-schema.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/__tests__/get-cache-control.test.ts`
@@ -614,6 +660,7 @@ describe("CacheControlValidator", () => {
 **Step 4: Run — PASS.**
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/provider/zai-anthropic/get-cache-control.ts packages/llm/src/provider/zai-anthropic/sanitize-json-schema.ts packages/llm/src/provider/zai-anthropic/__tests__/get-cache-control.test.ts
 git commit -m "feat(llm): port CacheControlValidator + sanitizeJsonSchema for zai-anthropic"
@@ -624,6 +671,7 @@ git commit -m "feat(llm): port CacheControlValidator + sanitizeJsonSchema for za
 ### Task 6: `getArgs` — request body builder (the heart of Section 2)
 
 **Files:**
+
 - Modify: `packages/llm/src/provider/zai-anthropic/zai-anthropic-language-model.ts` (add private `getArgs`)
 - Create: `packages/llm/src/provider/zai-anthropic/__tests__/get-args.test.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/__tests__/__fixtures__/get-args-base.json` (snapshot)
@@ -649,27 +697,35 @@ const baseOpts = (overrides: Record<string, unknown> = {}) => ({
 describe("ZaiAnthropicLanguageModel.getArgs", () => {
   it("emits thinking enabled with budget from providerOptions.zai", async () => {
     const m = make();
-    const { args } = await m.getArgs(baseOpts({
-      providerOptions: { zai: { thinking: { type: "enabled", budgetTokens: 16000 } } },
-    }));
+    const { args } = await m.getArgs(
+      baseOpts({
+        providerOptions: { zai: { thinking: { type: "enabled", budgetTokens: 16000 } } },
+      }),
+    );
     expect(args.thinking).toEqual({ type: "enabled", budget_tokens: 16000 });
   });
 
   it("defaults budget to 1024 when enabled without budgetTokens", async () => {
     const m = make();
-    const { args, warnings } = await m.getArgs(baseOpts({
-      providerOptions: { zai: { thinking: { type: "enabled" } } },
-    }));
+    const { args, warnings } = await m.getArgs(
+      baseOpts({
+        providerOptions: { zai: { thinking: { type: "enabled" } } },
+      }),
+    );
     expect(args.thinking).toEqual({ type: "enabled", budget_tokens: 1024 });
     expect(warnings.some((w) => w.feature === "extended thinking")).toBe(true);
   });
 
   it("strips temperature/topP/topK when thinking enabled", async () => {
     const m = make();
-    const { args, warnings } = await m.getArgs(baseOpts({
-      temperature: 0.5, topP: 0.9, topK: 40,
-      providerOptions: { zai: { thinking: { type: "enabled", budgetTokens: 16000 } } },
-    }));
+    const { args, warnings } = await m.getArgs(
+      baseOpts({
+        temperature: 0.5,
+        topP: 0.9,
+        topK: 40,
+        providerOptions: { zai: { thinking: { type: "enabled", budgetTokens: 16000 } } },
+      }),
+    );
     expect(args.temperature).toBeUndefined();
     expect(args.top_p).toBeUndefined();
     expect(args.top_k).toBeUndefined();
@@ -678,32 +734,38 @@ describe("ZaiAnthropicLanguageModel.getArgs", () => {
 
   it("emits speed + output_config only when set", async () => {
     const m = make();
-    const { args } = await m.getArgs(baseOpts({
-      providerOptions: { zai: { speed: "fast", outputConfig: { effort: "high" } } },
-    }));
+    const { args } = await m.getArgs(
+      baseOpts({
+        providerOptions: { zai: { speed: "fast", outputConfig: { effort: "high" } } },
+      }),
+    );
     expect(args.speed).toBe("fast");
     expect(args.output_config).toEqual({ effort: "high" });
   });
 
   it("puts cache_control on last system block + last tool", async () => {
     const m = make();
-    const { args } = await m.getArgs(baseOpts({
-      prompt: [
-        { role: "system", content: "sys" },
-        { role: "user", content: [{ type: "text", text: "hi" }] },
-      ],
-      tools: [{ type: "function", name: "Read", inputSchema: { type: "object" } }],
-    }));
+    const { args } = await m.getArgs(
+      baseOpts({
+        prompt: [
+          { role: "system", content: "sys" },
+          { role: "user", content: [{ type: "text", text: "hi" }] },
+        ],
+        tools: [{ type: "function", name: "Read", inputSchema: { type: "object" } }],
+      }),
+    );
     expect(args.system.at(-1).cache_control).toEqual({ type: "ephemeral" });
     expect(args.tools.at(-1).cache_control).toEqual({ type: "ephemeral" });
   });
 
   it("max_tokens = requested + thinkingBudget", async () => {
     const m = make();
-    const { args } = await m.getArgs(baseOpts({
-      maxOutputTokens: 4096,
-      providerOptions: { zai: { thinking: { type: "enabled", budgetTokens: 32000 } } },
-    }));
+    const { args } = await m.getArgs(
+      baseOpts({
+        maxOutputTokens: 4096,
+        providerOptions: { zai: { thinking: { type: "enabled", budgetTokens: 32000 } } },
+      }),
+    );
     expect(args.max_tokens).toBe(4096 + 32000);
   });
 });
@@ -714,6 +776,7 @@ describe("ZaiAnthropicLanguageModel.getArgs", () => {
 **Step 2: Run — fails.**
 
 **Step 3: Implement `getArgs`** — mirror the structure of `anthropic-language-model.ts:203-780`, stripped to v1 scope:
+
 - warnings for `frequencyPenalty` / `presencePenalty` / `seed` / `topK` (topK only stripped when thinking on).
 - `parseProviderOptions({ provider:"zai", schema: zaiAnthropicOptions })`.
 - resolve `thinking` (enabled/adaptive/disabled), default budget 1024.
@@ -723,6 +786,7 @@ describe("ZaiAnthropicLanguageModel.getArgs", () => {
 - return `{ args, warnings }`.
 
 Hand-written `ZaiRequest` type at the top of the file (snake_case wire shape), e.g.:
+
 ```ts
 interface ZaiRequest {
   model: string;
@@ -731,12 +795,29 @@ interface ZaiRequest {
   top_p?: number;
   top_k?: number;
   stop_sequences?: string[];
-  thinking?: { type: "enabled" | "disabled" | "adaptive"; budget_tokens?: number; display?: "omitted" | "summarized" };
+  thinking?: {
+    type: "enabled" | "disabled" | "adaptive";
+    budget_tokens?: number;
+    display?: "omitted" | "summarized";
+  };
   speed?: "fast" | "standard";
-  output_config?: { effort?: string; task_budget?: { type: "tokens"; total: number; remaining?: number }; format?: { type: "json_schema"; schema: unknown } };
-  system: Array<{ type: "text"; text: string; cache_control?: { type: "ephemeral"; ttl?: "5m" | "1h" } }>;
+  output_config?: {
+    effort?: string;
+    task_budget?: { type: "tokens"; total: number; remaining?: number };
+    format?: { type: "json_schema"; schema: unknown };
+  };
+  system: Array<{
+    type: "text";
+    text: string;
+    cache_control?: { type: "ephemeral"; ttl?: "5m" | "1h" };
+  }>;
   messages: Array<ZaiMessage>;
-  tools?: Array<{ name: string; description?: string; input_schema: object; cache_control?: { type: "ephemeral" } }>;
+  tools?: Array<{
+    name: string;
+    description?: string;
+    input_schema: object;
+    cache_control?: { type: "ephemeral" };
+  }>;
   tool_choice?: { type: "auto" | "any" | "tool"; name?: string };
   stream?: true;
 }
@@ -745,6 +826,7 @@ interface ZaiRequest {
 **Step 4: Run — PASS** (iterate per-rule; commit incrementally if helpful).
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/provider/zai-anthropic/zai-anthropic-language-model.ts packages/llm/src/provider/zai-anthropic/__tests__/get-args.test.ts
 git commit -m "feat(llm): zai-anthropic getArgs (thinking/cache_control/speed/output_config/max_tokens)"
@@ -755,12 +837,14 @@ git commit -m "feat(llm): zai-anthropic getArgs (thinking/cache_control/speed/ou
 ### Task 7: `convert-zai-usage` + `map-zai-response` (non-stream mapping)
 
 **Files:**
+
 - Create: `packages/llm/src/provider/zai-anthropic/convert-zai-usage.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/map-zai-response.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/map-zai-stop-reason.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/__tests__/map-zai-response.test.ts`
 
 **Step 1: Failing test**
+
 ```ts
 import { describe, expect, it } from "vitest";
 import { mapZaiResponse } from "../map-zai-response.ts";
@@ -769,13 +853,20 @@ describe("mapZaiResponse", () => {
   it("maps text + thinking + tool_use content + usage", () => {
     const result = mapZaiResponse({
       response: {
-        id: "msg_1", model: "glm-5.2", stop_reason: "tool_use",
+        id: "msg_1",
+        model: "glm-5.2",
+        stop_reason: "tool_use",
         content: [
           { type: "thinking", thinking: "hmm", signature: "sig" },
           { type: "text", text: "ans" },
           { type: "tool_use", id: "tu_1", name: "Read", input: { path: "a" } },
         ],
-        usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 20, cache_read_input_tokens: 5 },
+        usage: {
+          input_tokens: 100,
+          output_tokens: 50,
+          cache_creation_input_tokens: 20,
+          cache_read_input_tokens: 5,
+        },
       },
     });
     expect(result.content.map((c) => c.type)).toEqual(["reasoning", "text", "tool-call"]);
@@ -794,6 +885,7 @@ describe("mapZaiResponse", () => {
 **Step 4: Run — PASS.**
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/provider/zai-anthropic/convert-zai-usage.ts packages/llm/src/provider/zai-anthropic/map-zai-response.ts packages/llm/src/provider/zai-anthropic/map-zai-stop-reason.ts packages/llm/src/provider/zai-anthropic/__tests__/map-zai-response.test.ts
 git commit -m "feat(llm): zai-anthropic non-stream response mapper + usage/stop-reason"
@@ -804,6 +896,7 @@ git commit -m "feat(llm): zai-anthropic non-stream response mapper + usage/stop-
 ### Task 8: `doGenerate`
 
 **Files:**
+
 - Modify: `packages/llm/src/provider/zai-anthropic/zai-anthropic-language-model.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/__tests__/do-generate.test.ts`
 
@@ -820,11 +913,16 @@ describe("ZaiAnthropicLanguageModel.doGenerate", () => {
     const fakeFetch = (async (url: string, init: { body?: string }) => {
       postedUrl = url;
       postedBody = JSON.parse(init.body ?? "{}");
-      return new Response(JSON.stringify({
-        id: "msg_1", model: "glm-5.2", stop_reason: "end_turn",
-        content: [{ type: "text", text: "hello" }],
-        usage: { input_tokens: 10, output_tokens: 3 },
-      }), { status: 200, headers: { "content-type": "application/json" } });
+      return new Response(
+        JSON.stringify({
+          id: "msg_1",
+          model: "glm-5.2",
+          stop_reason: "end_turn",
+          content: [{ type: "text", text: "hello" }],
+          usage: { input_tokens: 10, output_tokens: 3 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
     }) as unknown as typeof fetch;
 
     const model = new ZaiAnthropicLanguageModel("glm-5.2", {
@@ -853,6 +951,7 @@ describe("ZaiAnthropicLanguageModel.doGenerate", () => {
 **Step 4: Run — PASS.**
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/provider/zai-anthropic/zai-anthropic-language-model.ts packages/llm/src/provider/zai-anthropic/__tests__/do-generate.test.ts
 git commit -m "feat(llm): zai-anthropic doGenerate"
@@ -863,6 +962,7 @@ git commit -m "feat(llm): zai-anthropic doGenerate"
 ### Task 9: `doStream` — text + reasoning (interleaved)
 
 **Files:**
+
 - Modify: `packages/llm/src/provider/zai-anthropic/zai-anthropic-language-model.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/__tests__/do-stream.test.ts`
 - Create: `packages/llm/src/provider/zai-anthropic/__tests__/__fixtures__/stream-text-thinking.sse.json`
@@ -880,7 +980,11 @@ describe("ZaiAnthropicLanguageModel.doStream — text + thinking", () => {
       { type: "message_start", message: { id: "m", model: "glm-5.2", usage: { input_tokens: 5 } } },
       { type: "content_block_start", index: 0, content_block: { type: "thinking", thinking: "" } },
       { type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "hmm" } },
-      { type: "content_block_delta", index: 0, delta: { type: "signature_delta", signature: "sig" } },
+      {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "signature_delta", signature: "sig" },
+      },
       { type: "content_block_stop", index: 0 },
       { type: "content_block_start", index: 1, content_block: { type: "text", text: "" } },
       { type: "content_block_delta", index: 1, delta: { type: "text_delta", text: "he" } },
@@ -891,16 +995,27 @@ describe("ZaiAnthropicLanguageModel.doStream — text + thinking", () => {
     ];
     const fakeFetch = (async () => sseResponse(events)) as unknown as typeof fetch;
     const model = new ZaiAnthropicLanguageModel("glm-5.2", {
-      baseURL: "https://api.z.ai/api/anthropic", provider: "zai.messages",
-      headers: async () => ({}), fetch: fakeFetch,
+      baseURL: "https://api.z.ai/api/anthropic",
+      provider: "zai.messages",
+      headers: async () => ({}),
+      fetch: fakeFetch,
     });
-    const { stream } = await model.doStream({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as never);
+    const { stream } = await model.doStream({
+      prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+    } as never);
     const parts: unknown[] = [];
     for await (const p of stream) parts.push(p);
     const types = (parts as { type: string }[]).map((p) => p.type);
     expect(types).toEqual([
-      "stream-start", "reasoning-start", "reasoning-delta", "reasoning-end",
-      "text-start", "text-delta", "text-delta", "text-end", "finish",
+      "stream-start",
+      "reasoning-start",
+      "reasoning-delta",
+      "reasoning-end",
+      "text-start",
+      "text-delta",
+      "text-delta",
+      "text-end",
+      "finish",
     ]);
   });
 });
@@ -911,6 +1026,7 @@ Add a helper `__fixtures__/sse-helper.ts` that turns an events array into a `Res
 **Step 2: Run — fails.**
 
 **Step 3: Implement `doStream`** — port the `TransformStream` from `anthropic-language-model.ts:1540-1800`, stripped to v1 events. Maintain per-index block state:
+
 ```ts
 type Block =
   | { type: "text" }
@@ -918,11 +1034,13 @@ type Block =
   | { type: "tool-call"; id: string; name: string; inputChunks: string[] };
 const blocks = new Map<number, Block>();
 ```
+
 Map events per the table in the design doc (Section 3). Emit `stream-start` with warnings on `start`; `finish` on `flush` with `{ finishReason:{unified,raw}, usage, providerMetadata:{ zai: { usage: raw } } }`. Use `safeParseJSON` from `@ai-sdk/provider-utils` to parse accumulated tool input (Task 10).
 
 **Step 4: Run — PASS.**
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/provider/zai-anthropic/zai-anthropic-language-model.ts packages/llm/src/provider/zai-anthropic/__tests__/do-stream.test.ts packages/llm/src/provider/zai-anthropic/__tests__/__fixtures__/
 git commit -m "feat(llm): zai-anthropic doStream (text + interleaved reasoning)"
@@ -933,6 +1051,7 @@ git commit -m "feat(llm): zai-anthropic doStream (text + interleaved reasoning)"
 ### Task 10: `doStream` — tool_use assembly
 
 **Files:**
+
 - Modify: the doStream test file + implementation.
 
 **Step 1: Failing test** — events: `content_block_start` tool_use (id, name), 2× `input_json_delta`, `content_block_stop`. Assert: `tool-input-start` {id, toolName}, two `tool-input-delta`, `tool-input-end`, `tool-call` with `input` = parsed JSON.
@@ -941,16 +1060,32 @@ git commit -m "feat(llm): zai-anthropic doStream (text + interleaved reasoning)"
 it("assembles tool_use input from input_json_delta and emits tool-call", async () => {
   const events = [
     { type: "message_start", message: { id: "m", model: "glm-5.2", usage: { input_tokens: 5 } } },
-    { type: "content_block_start", index: 0, content_block: { type: "tool_use", id: "tu_1", name: "Read" } },
-    { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: '{"path":"a' } },
-    { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: '.ts"}' } },
+    {
+      type: "content_block_start",
+      index: 0,
+      content_block: { type: "tool_use", id: "tu_1", name: "Read" },
+    },
+    {
+      type: "content_block_delta",
+      index: 0,
+      delta: { type: "input_json_delta", partial_json: '{"path":"a' },
+    },
+    {
+      type: "content_block_delta",
+      index: 0,
+      delta: { type: "input_json_delta", partial_json: '.ts"}' },
+    },
     { type: "content_block_stop", index: 0 },
     { type: "message_delta", delta: { stop_reason: "tool_use" }, usage: { output_tokens: 6 } },
     { type: "message_stop" },
   ];
   // … fake fetch + collect parts …
   const toolCall = parts.find((p) => p.type === "tool-call");
-  expect(toolCall).toMatchObject({ toolCallId: "tu_1", toolName: "Read", input: '{"path":"a.ts"}' });
+  expect(toolCall).toMatchObject({
+    toolCallId: "tu_1",
+    toolName: "Read",
+    input: '{"path":"a.ts"}',
+  });
 });
 ```
 
@@ -961,6 +1096,7 @@ it("assembles tool_use input from input_json_delta and emits tool-call", async (
 **Step 4: Run — PASS.**
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/provider/zai-anthropic/zai-anthropic-language-model.ts packages/llm/src/provider/zai-anthropic/__tests__/do-stream.test.ts
 git commit -m "feat(llm): zai-anthropic doStream tool_use assembly"
@@ -971,9 +1107,11 @@ git commit -m "feat(llm): zai-anthropic doStream tool_use assembly"
 ### Task 11: `doStream` — error event, finish, usage accumulation
 
 **Files:**
+
 - Modify: test + impl.
 
 **Step 1: Failing tests**
+
 - error event → emits `{type:"error"}` and the stream ends (finishReason.unified = "error").
 - usage: `cache_creation_input_tokens`/`cache_read_input_tokens` from `message_start.message.usage` + `message_delta.usage` populate `finish.usage` correctly (cacheWrite = cache_creation, cacheRead = cache_read, noCache = input_tokens).
 - redacted_thinking block → reasoning content with empty text + `providerOptions.zai.redactedData`.
@@ -985,6 +1123,7 @@ git commit -m "feat(llm): zai-anthropic doStream tool_use assembly"
 **Step 4: Run — PASS.**
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/provider/zai-anthropic/zai-anthropic-language-model.ts packages/llm/src/provider/zai-anthropic/__tests__/do-stream.test.ts
 git commit -m "feat(llm): zai-anthropic doStream error/finish/usage/redacted_thinking"
@@ -995,11 +1134,13 @@ git commit -m "feat(llm): zai-anthropic doStream error/finish/usage/redacted_thi
 ### Task 12: `ZAI_THINKING_BUDGETS` + `buildProviderOptions` zai-anthropic branch
 
 **Files:**
+
 - Create: `packages/llm/src/provider/zai-anthropic/thinking-budgets.ts`
 - Modify: `packages/llm/src/provider/transform.ts` (add branch)
 - Create: `packages/llm/src/provider/__tests__/transform-zai.test.ts`
 
 **Step 1: Failing test**
+
 ```ts
 import { describe, expect, it } from "vitest";
 import { buildProviderOptions } from "../transform.ts";
@@ -1034,7 +1175,9 @@ describe("buildProviderOptions — zai-anthropic branch", () => {
   });
 
   it("returns {} for a non-reasoning zai model", () => {
-    expect(buildProviderOptions({ level: "high", model: zaiModel({ reasoning: false }) })).toEqual({});
+    expect(buildProviderOptions({ level: "high", model: zaiModel({ reasoning: false }) })).toEqual(
+      {},
+    );
   });
 });
 ```
@@ -1044,6 +1187,7 @@ describe("buildProviderOptions — zai-anthropic branch", () => {
 **Step 3: Implement**
 
 `packages/llm/src/provider/zai-anthropic/thinking-budgets.ts`:
+
 ```ts
 import type { ThinkingLevel } from "../../types.ts";
 
@@ -1057,6 +1201,7 @@ export const ZAI_THINKING_BUDGETS: Record<ThinkingLevel, number> = {
 ```
 
 In `packages/llm/src/provider/transform.ts`, at the top of `buildProviderOptions` (before the existing `if (!(model.compat && model.reasoning))` guard):
+
 ```ts
 if (model.npm === "@sakti-code/zai-anthropic" && model.reasoning) {
   return level === "off"
@@ -1064,11 +1209,13 @@ if (model.npm === "@sakti-code/zai-anthropic" && model.reasoning) {
     : { zai: { thinking: { type: "enabled", budget_tokens: ZAI_THINKING_BUDGETS[level] } } };
 }
 ```
+
 Add the import: `import { ZAI_THINKING_BUDGETS } from "./zai-anthropic/thinking-budgets.ts";` and `ModelThinkingLevel`/`ThinkingLevel` are already imported.
 
 **Step 4: Run — PASS** (also rerun the existing transform tests to confirm no regression).
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/provider/zai-anthropic/thinking-budgets.ts packages/llm/src/provider/transform.ts packages/llm/src/provider/__tests__/transform-zai.test.ts
 git commit -m "feat(llm): buildProviderOptions zai-anthropic branch + thinking budgets"
@@ -1079,10 +1226,12 @@ git commit -m "feat(llm): buildProviderOptions zai-anthropic branch + thinking b
 ### Task 13: `StreamRequest.providerOptions` passthrough
 
 **Files:**
+
 - Modify: `packages/llm/src/stream.ts` (`StreamRequest` + `streamWithModel` merge)
 - Create: `packages/llm/src/__tests__/stream-provider-options.test.ts`
 
 **Step 1: Failing test** — using `streamWithModel` with an injected fake runner, assert the caller's `providerOptions.zai.speed` reaches the runner merged with the auto-derived thinking.
+
 ```ts
 import { describe, expect, it } from "vitest";
 import { streamWithModel } from "../stream.ts";
@@ -1090,10 +1239,17 @@ import type { Model } from "../types.ts";
 import type { LanguageModelV4 } from "@ai-sdk/provider";
 
 const zaiModel: Model = {
-  api: "ai-sdk", baseUrl: "https://api.z.ai/api/anthropic", contextWindow: 200000,
+  api: "ai-sdk",
+  baseUrl: "https://api.z.ai/api/anthropic",
+  contextWindow: 200000,
   cost: { cacheRead: 0, cacheWrite: 0, input: 0, output: 0 },
-  id: "glm-5.2", input: ["text"], maxTokens: 64000, name: "GLM-5.2",
-  npm: "@sakti-code/zai-anthropic", provider: "zai", reasoning: true,
+  id: "glm-5.2",
+  input: ["text"],
+  maxTokens: 64000,
+  name: "GLM-5.2",
+  npm: "@sakti-code/zai-anthropic",
+  provider: "zai",
+  reasoning: true,
 };
 
 describe("streamWithModel providerOptions passthrough", () => {
@@ -1132,17 +1288,21 @@ describe("streamWithModel providerOptions passthrough", () => {
 **Step 2: Run — fails.**
 
 **Step 3: Implement** — add `providerOptions?: Record<string, unknown>` to `StreamRequest`. In `streamWithModel`, after `reasoningOptions` is computed, deep-merge:
+
 ```ts
 const callerOpts = req.providerOptions;
-const providerOptions = callerOpts === undefined
-  ? reasoningOptions
-  : deepMergeProviderOptions(reasoningOptions, callerOpts);
+const providerOptions =
+  callerOpts === undefined
+    ? reasoningOptions
+    : deepMergeProviderOptions(reasoningOptions, callerOpts);
 ```
+
 where `deepMergeProviderOptions` merges `{ zai: { ...auto, ...caller.zai } }` style — auto-derived keys win for `thinking` (it is the authority), caller wins for everything else. Implement a small 2-level merge: for each top-level ns, `{...auto[ns], ...caller[ns]}` but force `thinking` back to the auto value. Keep it simple and tested.
 
 **Step 4: Run — PASS.**
 
 **Step 5: Commit**
+
 ```bash
 git add packages/llm/src/stream.ts packages/llm/src/__tests__/stream-provider-options.test.ts
 git commit -m "feat(llm): StreamRequest.providerOptions passthrough (speed/outputConfig)"
@@ -1153,25 +1313,32 @@ git commit -m "feat(llm): StreamRequest.providerOptions passthrough (speed/outpu
 ### Task 14: Catalog converter override + regenerate
 
 **Files:**
+
 - Modify: `packages/llm/src/catalog/convert.ts`
 - Modify: `packages/llm/scripts/generate-models.ts` (`BUNDLED_NPM` set)
 - Modify: `packages/llm/src/catalog/generated.ts` (regenerated)
 - Create: `packages/llm/src/catalog/__tests__/convert-zai-override.test.ts`
 
 **Step 1: Failing test**
+
 ```ts
 import { describe, expect, it } from "vitest";
 import { convertModelsDevModel } from "../convert.ts";
 import type { ModelsDevModel, ModelsDevProvider } from "../types.ts";
 
 const zaiProvider: ModelsDevProvider = {
-  id: "zai", name: "Z.ai", npm: "@ai-sdk/openai-compatible",
+  id: "zai",
+  name: "Z.ai",
+  npm: "@ai-sdk/openai-compatible",
   api: "https://api.z.ai/api/paas/v4",
   models: {},
 };
 
 const glmModel: ModelsDevModel = {
-  id: "glm-5.2", name: "GLM-5.2", tool_call: true, reasoning: true,
+  id: "glm-5.2",
+  name: "GLM-5.2",
+  tool_call: true,
+  reasoning: true,
   modalities: { input: ["text"], output: ["text"] },
   limit: { context: 200000, output: 64000 },
   cost: { input: 1.4, output: 4.4, cache_read: 0.26 },
@@ -1179,10 +1346,7 @@ const glmModel: ModelsDevModel = {
 
 describe("convertModelsDevModel zai override", () => {
   it("repoints zai to @sakti-code/zai-anthropic + anthropic baseURL, drops compat", () => {
-    const converted = convertModelsDevModel(
-      { ...zaiProvider, id: "zai" },
-      glmModel,
-    )!;
+    const converted = convertModelsDevModel({ ...zaiProvider, id: "zai" }, glmModel)!;
     expect(converted.npm).toBe("@sakti-code/zai-anthropic");
     expect(converted.baseUrl).toBe("https://api.z.ai/api/anthropic");
     expect(converted.compat).toBeUndefined();
@@ -1205,6 +1369,7 @@ describe("convertModelsDevModel zai override", () => {
 **Step 2: Run — fails.**
 
 **Step 3: Implement** — in `convert.ts`, after the `converted: Model` object is built (before `return converted;`), apply the override:
+
 ```ts
 const overridden = applyZaiAnthropicOverride(provider.id, converted);
 return overridden;
@@ -1222,20 +1387,25 @@ function applyZaiAnthropicOverride(providerId: string, model: Model): Model {
   return { ...rest, npm: "@sakti-code/zai-anthropic", baseUrl: baseURL };
 }
 ```
+
 In `generate-models.ts`, add `"@sakti-code/zai-anthropic"` to the `BUNDLED_NPM` set (after the `@ai-sdk/xai` line).
 
 **Step 4: Run the converter test — PASS.**
 
 **Step 5: Regenerate the catalog** (needs network):
+
 ```bash
 cd packages/llm && pnpm run generate-models
 ```
+
 Verify `src/catalog/generated.ts` now shows `zai` models with `"npm":"@sakti-code/zai-anthropic"` and `"baseUrl":"https://api.z.ai/api/anthropic"`. Spot-check via:
+
 ```bash
 rg '"provider":"zai"' packages/llm/src/catalog/generated.ts | head -3
 ```
 
 **Step 6: Commit**
+
 ```bash
 git add packages/llm/src/catalog/convert.ts packages/llm/scripts/generate-models.ts packages/llm/src/catalog/generated.ts packages/llm/src/catalog/__tests__/convert-zai-override.test.ts
 git commit -m "feat(llm): repoint zai/zai-coding-plan catalog to zai-anthropic provider"
@@ -1246,29 +1416,37 @@ git commit -m "feat(llm): repoint zai/zai-coding-plan catalog to zai-anthropic p
 ### Task 15: Full verification + formatting
 
 **Step 1: Typecheck**
+
 ```bash
 cd packages/llm && pnpm run typecheck
 ```
+
 Expected: 0 errors. Fix any `exactOptionalPropertyTypes` violations with conditional spread.
 
 **Step 2: Tests**
+
 ```bash
 cd packages/llm && pnpm run test
 ```
+
 Expected: all green. Pay attention to the existing transform tests (Task 12 must not regress them) and the existing stream tests (Task 13 must not regress them).
 
 **Step 3: Format + lint**
+
 ```bash
 pnpm run fix
 ```
 
 **Step 4: Workspace-wide sanity**
+
 ```bash
 pnpm run typecheck
 ```
+
 Expected: 0 errors across packages (the catalog change is types-stable; `Model.npm` is `string`, so the new value is fine).
 
 **Step 5: Final commit** if `pnpm run fix` changed anything:
+
 ```bash
 git add -A
 git commit -m "chore(llm): format + typecheck zai-anthropic provider"

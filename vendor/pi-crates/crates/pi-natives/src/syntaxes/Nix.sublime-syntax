@@ -20,7 +20,7 @@ contexts:
     - include: identifiers
 
   comments:
-    - match: '#.*$'
+    - match: "#.*$"
       scope: comment.line.number-sign.nix
     - match: /\*
       scope: punctuation.definition.comment.begin.nix

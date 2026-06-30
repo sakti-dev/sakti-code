@@ -1,8 +1,4 @@
-import type {
-  AgentHarnessEvent,
-  PermissionReply,
-  SessionStorageShape,
-} from "@sakti-code/agent";
+import type { AgentHarnessEvent, PermissionReply, SessionStorageShape } from "@sakti-code/agent";
 import Type from "typebox";
 import type { ServerContext } from "../context.ts";
 import { getPermissionChannel } from "../lib/permission-channel.ts";
@@ -155,11 +151,7 @@ export const wsBodySchema = Type.Union([
   Type.Object({
     type: Type.Literal("replay"),
     sessionId: Type.String(),
-    action: Type.Union([
-      Type.Literal("start"),
-      Type.Literal("pause"),
-      Type.Literal("resume"),
-    ]),
+    action: Type.Union([Type.Literal("start"), Type.Literal("pause"), Type.Literal("resume")]),
   }),
   Type.Object({
     type: Type.Literal("switchAgent"),
@@ -170,11 +162,7 @@ export const wsBodySchema = Type.Union([
     type: Type.Literal("permission.reply"),
     sessionId: Type.String(),
     id: Type.String(),
-    reply: Type.Union([
-      Type.Literal("once"),
-      Type.Literal("always"),
-      Type.Literal("reject"),
-    ]),
+    reply: Type.Union([Type.Literal("once"), Type.Literal("always"), Type.Literal("reject")]),
   }),
 ]);
 
@@ -215,7 +203,7 @@ async function runAgentStream(
   sessionId: string,
   message: string,
   storage: SessionStorageShape,
-  ws: WsHandle
+  ws: WsHandle,
 ) {
   const log = ctx.log?.server;
   ctx.repos.turns.create(sessionId, Date.now());
@@ -246,7 +234,7 @@ async function runAgentStream(
           toolName: frame.toolName,
           toolCallId: frame.toolCallId,
         } satisfies PermissionAskedFrame);
-      }
+      },
     );
     log?.info("agent run finished", { sessionId });
   } catch (err) {
@@ -274,11 +262,10 @@ export function handleMessage(
   ctx: ServerContext,
   storage: SessionStorageShape,
   ws: WsHandle,
-  msg: WsIn
+  msg: WsIn,
 ) {
   const log = ctx.log?.server;
-  const hasMessage =
-    msg.type === "prompt" || msg.type === "steer" || msg.type === "followUp";
+  const hasMessage = msg.type === "prompt" || msg.type === "steer" || msg.type === "followUp";
   log?.info("incoming message", {
     type: msg.type,
     sessionId: msg.sessionId,
@@ -291,11 +278,7 @@ export function handleMessage(
     if (msg.action === "start") {
       startReplay(msg.sessionId, ws).catch((err) => {
         log?.warn("replay start failed", { sessionId: msg.sessionId });
-        sendError(
-          ws,
-          msg.sessionId,
-          err instanceof Error ? err.message : String(err)
-        );
+        sendError(ws, msg.sessionId, err instanceof Error ? err.message : String(err));
       });
     } else if (msg.action === "pause") {
       pauseReplay(msg.sessionId);
@@ -311,11 +294,7 @@ export function handleMessage(
     }
     abortRun(msg.sessionId).catch((err) => {
       log?.warn("abort failed", { sessionId: msg.sessionId });
-      sendError(
-        ws,
-        msg.sessionId,
-        err instanceof Error ? err.message : String(err)
-      );
+      sendError(ws, msg.sessionId, err instanceof Error ? err.message : String(err));
     });
     return;
   }
@@ -326,24 +305,14 @@ export function handleMessage(
       log?.warn("no active harness for steer/followUp", {
         sessionId: msg.sessionId,
       });
-      sendError(
-        ws,
-        msg.sessionId,
-        `No active run for session ${msg.sessionId}`
-      );
+      sendError(ws, msg.sessionId, `No active run for session ${msg.sessionId}`);
       return;
     }
     const action =
-      msg.type === "steer"
-        ? harness.steer(msg.message)
-        : harness.followUp(msg.message);
+      msg.type === "steer" ? harness.steer(msg.message) : harness.followUp(msg.message);
     action.catch((err) => {
       log?.warn("steer/followUp action failed", { sessionId: msg.sessionId });
-      sendError(
-        ws,
-        msg.sessionId,
-        err instanceof Error ? err.message : String(err)
-      );
+      sendError(ws, msg.sessionId, err instanceof Error ? err.message : String(err));
     });
     return;
   }
@@ -351,11 +320,7 @@ export function handleMessage(
   if (msg.type === "switchAgent") {
     switchAgentForSession(ctx, msg.sessionId, msg.name).catch((err) => {
       log?.warn("switchAgent failed", { sessionId: msg.sessionId });
-      sendError(
-        ws,
-        msg.sessionId,
-        err instanceof Error ? err.message : String(err)
-      );
+      sendError(ws, msg.sessionId, err instanceof Error ? err.message : String(err));
     });
     return;
   }
@@ -388,10 +353,6 @@ export function handleMessage(
     log?.warn("runAgentStream failed unexpectedly", {
       sessionId: msg.sessionId,
     });
-    sendError(
-      ws,
-      msg.sessionId,
-      err instanceof Error ? err.message : String(err)
-    );
+    sendError(ws, msg.sessionId, err instanceof Error ? err.message : String(err));
   });
 }

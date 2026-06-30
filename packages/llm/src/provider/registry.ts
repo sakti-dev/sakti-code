@@ -72,105 +72,69 @@ export type ProviderFactoryLoader = () => Promise<ProviderFactory>;
  */
 export const BUNDLED_PROVIDERS: Record<string, ProviderFactoryLoader> = {
   "@ai-sdk/amazon-bedrock": () =>
-    import("@ai-sdk/amazon-bedrock").then(
-      (m) => m.createAmazonBedrock as ProviderFactory
-    ),
+    import("@ai-sdk/amazon-bedrock").then((m) => m.createAmazonBedrock as ProviderFactory),
   "@ai-sdk/amazon-bedrock/mantle": () =>
-    import("@ai-sdk/amazon-bedrock/mantle").then(
-      (m) => m.createBedrockMantle as ProviderFactory
-    ),
+    import("@ai-sdk/amazon-bedrock/mantle").then((m) => m.createBedrockMantle as ProviderFactory),
   "@ai-sdk/anthropic": () =>
-    import("@ai-sdk/anthropic").then(
-      (m) => m.createAnthropic as ProviderFactory
-    ),
-  "@ai-sdk/azure": () =>
-    import("@ai-sdk/azure").then((m) => m.createAzure as ProviderFactory),
+    import("@ai-sdk/anthropic").then((m) => m.createAnthropic as ProviderFactory),
+  "@ai-sdk/azure": () => import("@ai-sdk/azure").then((m) => m.createAzure as ProviderFactory),
   "@ai-sdk/cerebras": () =>
-    import("@ai-sdk/cerebras").then(
-      (m) => m.createCerebras as unknown as ProviderFactory
-    ),
+    import("@ai-sdk/cerebras").then((m) => m.createCerebras as unknown as ProviderFactory),
   "@ai-sdk/cohere": () =>
-    import("@ai-sdk/cohere").then(
-      (m) => m.createCohere as unknown as ProviderFactory
-    ),
+    import("@ai-sdk/cohere").then((m) => m.createCohere as unknown as ProviderFactory),
   "@ai-sdk/deepinfra": () =>
-    import("@ai-sdk/deepinfra").then(
-      (m) => m.createDeepInfra as unknown as ProviderFactory
-    ),
+    import("@ai-sdk/deepinfra").then((m) => m.createDeepInfra as unknown as ProviderFactory),
   // Vercel AI Gateway — createGateway is the package's alias for createGatewayProvider.
   "@ai-sdk/gateway": () =>
     import("@ai-sdk/gateway").then((m) => m.createGateway as ProviderFactory),
   "@ai-sdk/google": () =>
-    import("@ai-sdk/google").then(
-      (m) => m.createGoogleGenerativeAI as ProviderFactory
-    ),
+    import("@ai-sdk/google").then((m) => m.createGoogleGenerativeAI as ProviderFactory),
   "@ai-sdk/google-vertex": () =>
-    import("@ai-sdk/google-vertex").then(
-      (m) => m.createVertex as ProviderFactory
-    ),
+    import("@ai-sdk/google-vertex").then((m) => m.createVertex as ProviderFactory),
   // Vertex Anthropic models (Claude on GCP) — separate subpath export.
   "@ai-sdk/google-vertex/anthropic": () =>
     import("@ai-sdk/google-vertex/anthropic").then(
-      (m) => m.createVertexAnthropic as ProviderFactory
+      (m) => m.createVertexAnthropic as ProviderFactory,
     ),
   "@ai-sdk/groq": () =>
-    import("@ai-sdk/groq").then(
-      (m) => m.createGroq as unknown as ProviderFactory
-    ),
+    import("@ai-sdk/groq").then((m) => m.createGroq as unknown as ProviderFactory),
   "@ai-sdk/mistral": () =>
     import("@ai-sdk/mistral").then((m) => m.createMistral as ProviderFactory),
-  "@ai-sdk/openai": () =>
-    import("@ai-sdk/openai").then((m) => m.createOpenAI as ProviderFactory),
+  "@ai-sdk/openai": () => import("@ai-sdk/openai").then((m) => m.createOpenAI as ProviderFactory),
   // The generic OpenAI-compatible factory — used by ~100 providers in the catalog
   // (deepseek, groq, zai, togetherai, etc.) that don't have a first-party @ai-sdk package.
   "@ai-sdk/openai-compatible": () =>
-    import("@ai-sdk/openai-compatible").then(
-      (m) => m.createOpenAICompatible as ProviderFactory
-    ),
+    import("@ai-sdk/openai-compatible").then((m) => m.createOpenAICompatible as ProviderFactory),
   "@ai-sdk/togetherai": () =>
-    import("@ai-sdk/togetherai").then(
-      (m) => m.createTogetherAI as unknown as ProviderFactory
-    ),
+    import("@ai-sdk/togetherai").then((m) => m.createTogetherAI as unknown as ProviderFactory),
   "@ai-sdk/vercel": () =>
-    import("@ai-sdk/vercel").then(
-      (m) => m.createVercel as unknown as ProviderFactory
-    ),
-  "@ai-sdk/xai": () =>
-    import("@ai-sdk/xai").then((m) => m.createXai as ProviderFactory),
+    import("@ai-sdk/vercel").then((m) => m.createVercel as unknown as ProviderFactory),
+  "@ai-sdk/xai": () => import("@ai-sdk/xai").then((m) => m.createXai as ProviderFactory),
 
   // Hand-rolled Z.ai Anthropic Messages provider (target zai/zai-coding-plan).
   // Local code (not a dynamic import) — speak Anthropic Messages to Z.ai's
   // anthropic-compatible endpoint with Z.ai-native speed/output_config.
-  "@sakti-code/zai-anthropic": () =>
-    Promise.resolve(createZai as ProviderFactory),
+  "@sakti-code/zai-anthropic": () => Promise.resolve(createZai as ProviderFactory),
 
   // Third-party provider packages
   "@openrouter/ai-sdk-provider": () =>
     import("@openrouter/ai-sdk-provider").then(
-      (m) => m.createOpenRouter as unknown as ProviderFactory
+      (m) => m.createOpenRouter as unknown as ProviderFactory,
     ),
   "merge-gateway-ai-sdk-provider": () =>
     import("merge-gateway-ai-sdk-provider").then(
-      (m) => m.createMergeGateway as unknown as ProviderFactory
+      (m) => m.createMergeGateway as unknown as ProviderFactory,
     ),
   "venice-ai-sdk-provider": () =>
-    import("venice-ai-sdk-provider").then(
-      (m) => m.createVenice as unknown as ProviderFactory
-    ),
+    import("venice-ai-sdk-provider").then((m) => m.createVenice as unknown as ProviderFactory),
   "@aihubmix/ai-sdk-provider": () =>
-    import("@aihubmix/ai-sdk-provider").then(
-      (m) => m.createAihubmix as unknown as ProviderFactory
-    ),
+    import("@aihubmix/ai-sdk-provider").then((m) => m.createAihubmix as unknown as ProviderFactory),
   "ai-gateway-provider": () =>
-    import("ai-gateway-provider").then(
-      (m) => m.createAiGateway as unknown as ProviderFactory
-    ),
+    import("ai-gateway-provider").then((m) => m.createAiGateway as unknown as ProviderFactory),
   "@jerome-benoit/sap-ai-provider-v2": () =>
     import("@jerome-benoit/sap-ai-provider-v2").then(
-      (m) => m.createSAPAIProvider as unknown as ProviderFactory
+      (m) => m.createSAPAIProvider as unknown as ProviderFactory,
     ),
   "gitlab-ai-provider": () =>
-    import("gitlab-ai-provider").then(
-      (m) => m.createGitLab as unknown as ProviderFactory
-    ),
+    import("gitlab-ai-provider").then((m) => m.createGitLab as unknown as ProviderFactory),
 };

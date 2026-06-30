@@ -1,8 +1,4 @@
-import {
-  BiSolidDownArrow,
-  BiSolidRightArrow,
-  BiSolidUpArrow,
-} from "solid-icons/bi";
+import { BiSolidDownArrow, BiSolidRightArrow, BiSolidUpArrow } from "solid-icons/bi";
 import { Kbd, KbdGroup } from "~/components/ui/kbd";
 
 export function KeyboardShortcutsFooter() {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { toModelMessages } from "../messages.ts";
 import type {
   AssistantMessage,
@@ -15,17 +15,11 @@ function userText(text: string, timestamp = 0): UserMessage {
   return { content: text, role: "user", timestamp };
 }
 
-function userMulti(
-  parts: (TextContent | ImageContent)[],
-  timestamp = 0
-): UserMessage {
+function userMulti(parts: (TextContent | ImageContent)[], timestamp = 0): UserMessage {
   return { content: parts, role: "user", timestamp };
 }
 
-function assistant(
-  content: AssistantMessage["content"],
-  timestamp = 0
-): AssistantMessage {
+function assistant(content: AssistantMessage["content"], timestamp = 0): AssistantMessage {
   return {
     api: "ai-sdk",
     content,
@@ -48,7 +42,7 @@ function assistant(
 function toolResult(
   content: (TextContent | ImageContent)[],
   toolCallId: string,
-  toolName: string
+  toolName: string,
 ): ToolResultMessage {
   return {
     content,
@@ -90,9 +84,7 @@ describe("toModelMessages — UserMessage", () => {
 
 describe("toModelMessages — AssistantMessage", () => {
   it("converts text content to TextPart", () => {
-    const messages = toModelMessages([
-      assistant([{ text: "response", type: "text" }]),
-    ]);
+    const messages = toModelMessages([assistant([{ text: "response", type: "text" }])]);
     expect(messages[0]).toEqual({
       content: [{ text: "response", type: "text" }],
       role: "assistant",
@@ -100,9 +92,7 @@ describe("toModelMessages — AssistantMessage", () => {
   });
 
   it("converts thinking content to ReasoningPart", () => {
-    const messages = toModelMessages([
-      assistant([{ thinking: "let me think", type: "thinking" }]),
-    ]);
+    const messages = toModelMessages([assistant([{ thinking: "let me think", type: "thinking" }])]);
     expect(messages[0]).toEqual({
       content: [{ text: "let me think", type: "reasoning" }],
       role: "assistant",
@@ -111,9 +101,7 @@ describe("toModelMessages — AssistantMessage", () => {
 
   it("converts toolCall to ToolCallPart", () => {
     const messages = toModelMessages([
-      assistant([
-        { arguments: { x: 1 }, id: "tc1", name: "doThing", type: "toolCall" },
-      ]),
+      assistant([{ arguments: { x: 1 }, id: "tc1", name: "doThing", type: "toolCall" }]),
     ]);
     expect(messages[0]).toEqual({
       content: [
@@ -138,12 +126,7 @@ describe("toModelMessages — AssistantMessage", () => {
       ]),
     ]);
     const content = (messages[0] as { content: { type: string }[] }).content;
-    expect(content.map((p) => p.type)).toEqual([
-      "text",
-      "reasoning",
-      "tool-call",
-      "text",
-    ]);
+    expect(content.map((p) => p.type)).toEqual(["text", "reasoning", "tool-call", "text"]);
   });
 });
 
@@ -177,8 +160,7 @@ describe("toModelMessages — ToolResultMessage", () => {
       toolName: "search",
     };
     const messages = toModelMessages([msg]);
-    const content = (messages[0] as { content: Record<string, unknown>[] })
-      .content;
+    const content = (messages[0] as { content: Record<string, unknown>[] }).content;
     const part = content[0]!;
     expect(part.isError).toBe(true);
   });
@@ -190,12 +172,10 @@ describe("toModelMessages — reasoning signature guard", () => {
   function assistantWithSignature(
     model: string,
     thinking: string,
-    signature: string
+    signature: string,
   ): AssistantMessage {
     return {
-      ...assistant([
-        { thinking, thinkingSignature: signature, type: "thinking" },
-      ]),
+      ...assistant([{ thinking, thinkingSignature: signature, type: "thinking" }]),
       model,
     };
   }
@@ -203,7 +183,7 @@ describe("toModelMessages — reasoning signature guard", () => {
   it("forwards thinkingSignature when targetModel matches the producing model", () => {
     const messages = toModelMessages(
       [assistantWithSignature("claude-sonnet-4.5", "hmm", "sig-123")],
-      { targetModel: "claude-sonnet-4.5" }
+      { targetModel: "claude-sonnet-4.5" },
     );
     const part = (
       messages[0] as {
@@ -219,7 +199,7 @@ describe("toModelMessages — reasoning signature guard", () => {
     // opencode's `sameModel` guard (session/runner/to-llm-message.ts:71-87).
     const messages = toModelMessages(
       [assistantWithSignature("claude-sonnet-4.5", "hmm", "sig-123")],
-      { targetModel: "gpt-4o" }
+      { targetModel: "gpt-4o" },
     );
     const part = (
       messages[0] as {
@@ -248,20 +228,13 @@ describe("toModelMessages — mixed arrays", () => {
   it("converts a full conversation (user → assistant → toolResult → user)", () => {
     const messages: Message[] = [
       userText("search for X"),
-      assistant([
-        { arguments: { q: "X" }, id: "tc1", name: "search", type: "toolCall" },
-      ]),
+      assistant([{ arguments: { q: "X" }, id: "tc1", name: "search", type: "toolCall" }]),
       toolResult([{ text: "found X", type: "text" }], "tc1", "search"),
       userText("thanks"),
     ];
     const result = toModelMessages(messages);
     expect(result).toHaveLength(4);
-    expect(result.map((m) => m.role)).toEqual([
-      "user",
-      "assistant",
-      "tool",
-      "user",
-    ]);
+    expect(result.map((m) => m.role)).toEqual(["user", "assistant", "tool", "user"]);
   });
 
   it("returns ModelMessage[] type", () => {

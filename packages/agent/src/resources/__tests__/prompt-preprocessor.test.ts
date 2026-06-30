@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   expandFileMentions,
   parseLeadingInvocation,
@@ -29,9 +29,7 @@ describe("parseLeadingInvocation", () => {
   });
 
   it("detects a leading skill: invocation with instructions", () => {
-    expect(
-      parseLeadingInvocation("skill:graphify do the thing", resources)
-    ).toEqual({
+    expect(parseLeadingInvocation("skill:graphify do the thing", resources)).toEqual({
       kind: "skill",
       name: "graphify",
       args: "do the thing",
@@ -76,9 +74,7 @@ describe("parseLeadingInvocation", () => {
     expect(parseLeadingInvocation("see /commit later", resources)).toEqual({
       kind: "prompt",
     });
-    expect(parseLeadingInvocation("run skill:graphify now", resources)).toEqual(
-      { kind: "prompt" }
-    );
+    expect(parseLeadingInvocation("run skill:graphify now", resources)).toEqual({ kind: "prompt" });
   });
 });
 
@@ -87,7 +83,7 @@ describe("expandFileMentions", () => {
     const out = await expandFileMentions(
       "see @foo.txt please",
       "/proj",
-      readerFor({ "foo.txt": enc.encode("hello file") })
+      readerFor({ "foo.txt": enc.encode("hello file") }),
     );
     expect(out).toContain('<file path="foo.txt">');
     expect(out).toContain("hello file");
@@ -98,26 +94,18 @@ describe("expandFileMentions", () => {
     const out = await expandFileMentions(
       "@src/a.ts",
       "/proj",
-      readerFor({ "src/a.ts": enc.encode("export const x = 1;") })
+      readerFor({ "src/a.ts": enc.encode("export const x = 1;") }),
     );
     expect(out).toContain("export const x = 1;");
   });
 
   it("leaves non-file @tokens untouched (e.g. emails)", async () => {
-    const out = await expandFileMentions(
-      "email me@host.com ok",
-      "/proj",
-      readerFor({})
-    );
+    const out = await expandFileMentions("email me@host.com ok", "/proj", readerFor({}));
     expect(out).toBe("email me@host.com ok");
   });
 
   it("leaves a non-existent path untouched (no error note)", async () => {
-    const out = await expandFileMentions(
-      "@nope/missing.txt",
-      "/proj",
-      readerFor({})
-    );
+    const out = await expandFileMentions("@nope/missing.txt", "/proj", readerFor({}));
     expect(out).toBe("@nope/missing.txt");
   });
 
@@ -125,7 +113,7 @@ describe("expandFileMentions", () => {
     const out = await expandFileMentions(
       "@big.txt",
       "/proj",
-      readerFor({ "big.txt": enc.encode("x".repeat(70_000)) })
+      readerFor({ "big.txt": enc.encode("x".repeat(70_000)) }),
     );
     expect(out).toContain("[truncated:");
     expect(out.length).toBeLessThan(70_000);
@@ -139,22 +127,12 @@ describe("planFirstTurn", () => {
   };
 
   it("plans a template turn for a leading /name", async () => {
-    const plan = await planFirstTurn(
-      "/commit feat: x",
-      loaded,
-      "/tmp",
-      readerFor({})
-    );
+    const plan = await planFirstTurn("/commit feat: x", loaded, "/tmp", readerFor({}));
     expect(plan).toEqual({ kind: "template", name: "commit", args: "feat: x" });
   });
 
   it("plans a skill turn for a leading skill:name", async () => {
-    const plan = await planFirstTurn(
-      "skill:graphify go",
-      loaded,
-      "/tmp",
-      readerFor({})
-    );
+    const plan = await planFirstTurn("skill:graphify go", loaded, "/tmp", readerFor({}));
     expect(plan).toEqual({ kind: "skill", name: "graphify", args: "go" });
   });
 
@@ -163,7 +141,7 @@ describe("planFirstTurn", () => {
       "look at @f.txt",
       loaded,
       "/proj",
-      readerFor({ "f.txt": enc.encode("DATA") })
+      readerFor({ "f.txt": enc.encode("DATA") }),
     );
     expect(plan.kind).toBe("prompt");
     if (plan.kind === "prompt") {
@@ -172,12 +150,7 @@ describe("planFirstTurn", () => {
   });
 
   it("plans a prompt turn leaving unknown @tokens untouched", async () => {
-    const plan = await planFirstTurn(
-      "email me@host.com",
-      loaded,
-      "/tmp",
-      readerFor({})
-    );
+    const plan = await planFirstTurn("email me@host.com", loaded, "/tmp", readerFor({}));
     expect(plan.kind).toBe("prompt");
     if (plan.kind === "prompt") {
       expect(plan.text).toBe("email me@host.com");

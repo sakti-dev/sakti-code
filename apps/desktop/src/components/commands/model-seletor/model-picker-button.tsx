@@ -6,24 +6,14 @@ import { useModelPicker } from "./hooks";
 const pickerLog = createLogger({ module: "ModelPickerButton" });
 
 export interface ModelPickerButtonProps {
-  onSelect: (model: {
-    id: string;
-    provider: string;
-    reasoning: boolean;
-  }) => void;
+  onSelect: (model: { id: string; provider: string; reasoning: boolean }) => void;
   triggerLabel: () => string;
   value: string;
 }
 
 export function ModelPickerButton(props: ModelPickerButtonProps) {
-  const {
-    isOpen,
-    setIsOpen,
-    searchQuery,
-    setSearchQuery,
-    modelSections,
-    rawModelSections,
-  } = useModelPicker();
+  const { isOpen, setIsOpen, searchQuery, setSearchQuery, modelSections, rawModelSections } =
+    useModelPicker();
 
   return (
     <Show when={rawModelSections().some((s) => s.models.length > 0)}>
@@ -61,10 +51,7 @@ export function ModelPickerButton(props: ModelPickerButtonProps) {
           onOpenChange={(v) => {
             pickerLog.info("onOpenChange", {
               to: v,
-              stack: new Error("trace").stack
-                ?.split("\n")
-                .slice(2, 5)
-                .join(" | "),
+              stack: new Error("trace").stack?.split("\n").slice(2, 5).join(" | "),
             });
             setIsOpen(v);
           }}

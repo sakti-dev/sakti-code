@@ -1,6 +1,6 @@
 import type { AgentHarnessEvent } from "@sakti-code/agent";
 import type { WsIn } from "@sakti-code/server/ws";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 describe("type imports", () => {
   it("can reference agent types", () => {

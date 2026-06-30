@@ -1,9 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  createConsoleLogger,
-  createDomainLogger,
-  createLogger,
-} from "../console.ts";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { createConsoleLogger, createDomainLogger, createLogger } from "../console.ts";
 
 const UI_CLICKED_PREFIX_PATTERN = /^\[UI:USER_CLICKED\] User clicked/;
 
@@ -15,9 +11,7 @@ describe("createConsoleLogger", () => {
   it("info prints to console.info with [DOMAIN:ACTION] prefix", () => {
     const spy = vi.spyOn(console, "info").mockImplementation(() => {});
     createConsoleLogger({ domain: "UI" }).info("User clicked");
-    expect(spy).toHaveBeenCalledWith(
-      expect.stringMatching(UI_CLICKED_PREFIX_PATTERN)
-    );
+    expect(spy).toHaveBeenCalledWith(expect.stringMatching(UI_CLICKED_PREFIX_PATTERN));
   });
 
   it("error prints to console.error and folds describeError into context", () => {

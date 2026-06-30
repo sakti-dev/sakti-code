@@ -1,9 +1,5 @@
 import { Effect } from "effect";
-import {
-  basenameEnvPath,
-  parseFrontmatter,
-  resolveKind,
-} from "../agents/loader-shared";
+import { basenameEnvPath, parseFrontmatter, resolveKind } from "../agents/loader-shared";
 import type { ExecutionEnv, PromptTemplate } from "../harness-types";
 import { isFailure } from "../harness-types";
 
@@ -39,7 +35,7 @@ interface PromptTemplateFrontmatter {
  */
 export async function loadPromptTemplates(
   env: ExecutionEnv,
-  paths: string | string[]
+  paths: string | string[],
 ): Promise<{
   promptTemplates: PromptTemplate[];
   diagnostics: PromptTemplateDiagnostic[];
@@ -88,10 +84,7 @@ export async function loadSourcedPromptTemplates<
 >(
   env: ExecutionEnv,
   inputs: Array<{ path: string; source: TSource }>,
-  mapPromptTemplate?: (
-    promptTemplate: PromptTemplate,
-    source: TSource
-  ) => TPromptTemplate
+  mapPromptTemplate?: (promptTemplate: PromptTemplate, source: TSource) => TPromptTemplate,
 ): Promise<{
   promptTemplates: Array<{ promptTemplate: TPromptTemplate; source: TSource }>;
   diagnostics: Array<PromptTemplateDiagnostic & { source: TSource }>;
@@ -120,7 +113,7 @@ export async function loadSourcedPromptTemplates<
 
 async function loadTemplatesFromDir(
   env: ExecutionEnv,
-  dir: string
+  dir: string,
 ): Promise<{
   promptTemplates: PromptTemplate[];
   diagnostics: PromptTemplateDiagnostic[];
@@ -155,7 +148,7 @@ async function loadTemplatesFromDir(
 
 async function loadTemplateFromFile(
   env: ExecutionEnv,
-  filePath: string
+  filePath: string,
 ): Promise<{
   promptTemplate: PromptTemplate | null;
   diagnostics: PromptTemplateDiagnostic[];
@@ -172,9 +165,7 @@ async function loadTemplateFromFile(
     return { promptTemplate: null, diagnostics };
   }
 
-  const parsed = parseFrontmatter<PromptTemplateFrontmatter>(
-    rawContent.success
-  );
+  const parsed = parseFrontmatter<PromptTemplateFrontmatter>(rawContent.success);
   if (isFailure(parsed)) {
     diagnostics.push({
       type: "warning",
@@ -187,8 +178,7 @@ async function loadTemplateFromFile(
 
   const { frontmatter, body } = parsed.success;
   const firstLine = body.split("\n").find((line) => line.trim());
-  let description =
-    typeof frontmatter.description === "string" ? frontmatter.description : "";
+  let description = typeof frontmatter.description === "string" ? frontmatter.description : "";
   if (!description && firstLine) {
     description = firstLine.slice(0, 60);
     if (firstLine.length > 60) {
@@ -239,10 +229,7 @@ export function parseCommandArgs(argsString: string): string[] {
 /** Substitute prompt template placeholders (`$1`, `$@`, `$ARGUMENTS`, `${@:N}`, `${@:N:L}`) with command arguments. */
 export function substituteArgs(content: string, args: string[]): string {
   let result = content;
-  result = result.replace(
-    /\$(\d+)/g,
-    (_, num: string) => args[Number.parseInt(num, 10) - 1] ?? ""
-  );
+  result = result.replace(/\$(\d+)/g, (_, num: string) => args[Number.parseInt(num, 10) - 1] ?? "");
   result = result.replace(
     /\$\{@:(\d+)(?::(\d+))?\}/g,
     (_, startStr: string, lengthStr?: string) => {
@@ -251,12 +238,10 @@ export function substituteArgs(content: string, args: string[]): string {
         start = 0;
       }
       if (lengthStr) {
-        return args
-          .slice(start, start + Number.parseInt(lengthStr, 10))
-          .join(" ");
+        return args.slice(start, start + Number.parseInt(lengthStr, 10)).join(" ");
       }
       return args.slice(start).join(" ");
-    }
+    },
   );
   const allArgs = args.join(" ");
   result = result.replace(/\$ARGUMENTS/g, allArgs);
@@ -267,15 +252,14 @@ export function substituteArgs(content: string, args: string[]): string {
 /** Format a prompt template invocation with positional arguments. */
 export function formatPromptTemplateInvocation(
   template: PromptTemplate,
-  args: string[] = []
+  args: string[] = [],
 ): string {
   return substituteArgs(template.content, args);
 }
 
 /** Effect-native variants of {@link loadPromptTemplates} and {@link loadSourcedPromptTemplates}. */
-export const loadPromptTemplatesEffect = (
-  ...args: Parameters<typeof loadPromptTemplates>
-) => Effect.promise(() => loadPromptTemplates(...args));
+export const loadPromptTemplatesEffect = (...args: Parameters<typeof loadPromptTemplates>) =>
+  Effect.promise(() => loadPromptTemplates(...args));
 
 export const loadSourcedPromptTemplatesEffect = (
   ...args: Parameters<typeof loadSourcedPromptTemplates>

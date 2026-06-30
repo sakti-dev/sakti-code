@@ -8,11 +8,7 @@ import { dispatchEvent } from "~/stores/session/event-reducer";
 import { createTokenBatcher } from "~/stores/session/token-batcher";
 import { useStore } from "~/stores/store-context";
 import { activeTab, filterStaleProjects } from "~/stores/workspace/tab-store";
-import {
-  replayState,
-  setActiveIntakeSessionId,
-  sidebarOpen,
-} from "~/stores/workspace/ui-signals";
+import { replayState, setActiveIntakeSessionId, sidebarOpen } from "~/stores/workspace/ui-signals";
 import BannerConnection from "./banners/banner-connection";
 import { BannerError, BannerHealth } from "./banners/banner-error";
 import BannerUpdate from "./banners/banner-update";
@@ -24,7 +20,7 @@ const devBatcher = createTokenBatcher(
   () => {
     /* no-op */
   },
-  { batch: false }
+  { batch: false },
 );
 
 export default function WorkspaceLayout(): JSX.Element {
@@ -40,9 +36,7 @@ export default function WorkspaceLayout(): JSX.Element {
   });
 
   // Upsert intake session when a project becomes active
-  const [intakeSessionId, setIntakeSessionId] = createSignal<string | null>(
-    null
-  );
+  const [intakeSessionId, setIntakeSessionId] = createSignal<string | null>(null);
   createEffect(() => {
     const projectId = server.store.activeProjectId;
     if (!projectId) {
@@ -50,12 +44,15 @@ export default function WorkspaceLayout(): JSX.Element {
       setActiveIntakeSessionId(null);
       return;
     }
-    actions.upsertIntakeSession(projectId).then((session) => {
-      if (session && server.store.activeProjectId === projectId) {
-        setIntakeSessionId(session.id);
-        setActiveIntakeSessionId(session.id);
-      }
-    });
+    actions
+      .upsertIntakeSession(projectId)
+      .then((session) => {
+        if (session && server.store.activeProjectId === projectId) {
+          setIntakeSessionId(session.id);
+          setActiveIntakeSessionId(session.id);
+        }
+      })
+      .catch(() => {});
   });
 
   // Load projects on mount, then filter stale tab entries
@@ -69,7 +66,7 @@ export default function WorkspaceLayout(): JSX.Element {
 
   // Load projects on mount
   onMount(() => {
-    actions.loadProjects();
+    actions.loadProjects().catch(() => {});
   });
 
   const activeProject = () => {
@@ -101,18 +98,10 @@ export default function WorkspaceLayout(): JSX.Element {
             <BannerUpdate />
             {import.meta.env.DEV && (
               <DevToolbar
-                onReplayPause={() =>
-                  actions.replayPause(currentSessionId() ?? "")
-                }
-                onReplayReset={() =>
-                  actions.replayReset(currentSessionId() ?? "")
-                }
-                onReplayResume={() =>
-                  actions.replayResume(currentSessionId() ?? "")
-                }
-                onReplayStart={() =>
-                  actions.replayStart(currentSessionId() ?? "")
-                }
+                onReplayPause={() => actions.replayPause(currentSessionId() ?? "")}
+                onReplayReset={() => actions.replayReset(currentSessionId() ?? "")}
+                onReplayResume={() => actions.replayResume(currentSessionId() ?? "")}
+                onReplayStart={() => actions.replayStart(currentSessionId() ?? "")}
                 onRetryEvent={(event: AgentHarnessEvent) => {
                   const sId = currentSessionId();
                   if (sId) {
@@ -127,11 +116,7 @@ export default function WorkspaceLayout(): JSX.Element {
               <div class="absolute inset-0 flex flex-col overflow-hidden">
                 <Show
                   fallback={
-                    <Show
-                      fallback={<NoProjectSelected />}
-                      keyed
-                      when={activeProject()}
-                    >
+                    <Show fallback={<NoProjectSelected />} keyed when={activeProject()}>
                       {(project) => (
                         <OnboardingPanel
                           intakeSessionId={intakeSessionId()}
@@ -158,12 +143,8 @@ function NoProjectSelected() {
     <div class="flex flex-1 flex-col items-center justify-center px-4">
       <div class="w-full max-w-md text-center">
         <div class="mb-3 text-3xl">{"\u{1F967}"}</div>
-        <p class="text-foreground text-sm">
-          Pick a project from the sidebar to start
-        </p>
-        <p class="mt-1 text-muted-foreground text-xs">
-          Or add a new project to begin a session
-        </p>
+        <p class="text-foreground text-sm">Pick a project from the sidebar to start</p>
+        <p class="mt-1 text-muted-foreground text-xs">Or add a new project to begin a session</p>
       </div>
     </div>
   );

@@ -1,22 +1,13 @@
-import type {
-  AssistantMessage,
-  Model,
-  StreamRequest,
-  ToolCall,
-} from "@sakti-code/llm";
+import type { AssistantMessage, Model, StreamRequest, ToolCall } from "@sakti-code/llm";
 import type { StreamFn } from "../../types";
-import {
-  createAssistantMessage,
-  createUsage,
-  fakeStreamResult,
-} from "./stream-mock.ts";
+import { createAssistantMessage, createUsage, fakeStreamResult } from "./stream-mock.ts";
 
 export { createAssistantMessage as fauxAssistantMessage };
 
 export function fauxToolCall(
   name: string,
   args: Record<string, unknown>,
-  opts?: { id?: string }
+  opts?: { id?: string },
 ): ToolCall {
   return {
     type: "toolCall",
@@ -28,7 +19,7 @@ export function fauxToolCall(
 
 export function fauxAssistantMessageWithContent(
   content: AssistantMessage["content"],
-  stopReason?: AssistantMessage["stopReason"]
+  stopReason?: AssistantMessage["stopReason"],
 ): AssistantMessage {
   return {
     role: "assistant",
@@ -44,7 +35,7 @@ export function fauxAssistantMessageWithContent(
 
 export type FauxResponse = (
   req: StreamRequest,
-  callIndex: number
+  callIndex: number,
 ) => AssistantMessage | Promise<AssistantMessage>;
 
 export interface FauxProviderRegistration {
@@ -69,9 +60,7 @@ function createFauxModel(id = "faux-model"): Model {
   };
 }
 
-export function registerFauxStreamProvider(
-  modelId?: string
-): FauxProviderRegistration {
+export function registerFauxStreamProvider(modelId?: string): FauxProviderRegistration {
   let responses: FauxResponse[] = [];
   let callIndex = 0;
   const model = createFauxModel(modelId);

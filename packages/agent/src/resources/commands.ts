@@ -1,10 +1,6 @@
 import { Effect } from "effect";
 import { configEntryNameFromPath } from "../agents/config-entry-name";
-import {
-  type LoaderDiagnostic,
-  parseFrontmatter,
-  resolveKind,
-} from "../agents/loader-shared";
+import { type LoaderDiagnostic, parseFrontmatter, resolveKind } from "../agents/loader-shared";
 import type { ExecutionEnv, PromptTemplate } from "../harness-types";
 import { isFailure } from "../harness-types";
 
@@ -42,7 +38,7 @@ const COMMAND_PREFIXES = ["command/", "commands/"];
  */
 export async function loadCommands(
   env: ExecutionEnv,
-  dirs: string | string[]
+  dirs: string | string[],
 ): Promise<{ commands: PromptTemplate[]; diagnostics: CommandDiagnostic[] }> {
   const commands: PromptTemplate[] = [];
   const diagnostics: CommandDiagnostic[] = [];
@@ -73,9 +69,7 @@ export async function loadCommands(
       });
       continue;
     }
-    for (const entry of entriesResult.success.sort((a, b) =>
-      a.name.localeCompare(b.name)
-    )) {
+    for (const entry of entriesResult.success.sort((a, b) => a.name.localeCompare(b.name))) {
       if (entry.name !== "command" && entry.name !== "commands") {
         continue;
       }
@@ -95,7 +89,7 @@ async function collectCommands(
   dir: string,
   relFromConfig: string,
   commands: PromptTemplate[],
-  diagnostics: CommandDiagnostic[]
+  diagnostics: CommandDiagnostic[],
 ): Promise<void> {
   const entriesResult = await env.listDir(dir);
   if (isFailure(entriesResult)) {
@@ -107,9 +101,7 @@ async function collectCommands(
     });
     return;
   }
-  for (const entry of entriesResult.success.sort((a, b) =>
-    a.name.localeCompare(b.name)
-  )) {
+  for (const entry of entriesResult.success.sort((a, b) => a.name.localeCompare(b.name))) {
     const childRel = `${relFromConfig}/${entry.name}`;
     const kind = await resolveKind(env, entry, diagnostics);
     if (kind === "directory") {
@@ -130,7 +122,7 @@ async function collectCommands(
 
 async function loadCommandFromFile(
   env: ExecutionEnv,
-  filePath: string
+  filePath: string,
 ): Promise<{
   command: Omit<PromptTemplate, "name"> | null;
   diagnostics: CommandDiagnostic[];
@@ -160,9 +152,7 @@ async function loadCommandFromFile(
 
   const { frontmatter, body } = parsed.success;
   const description =
-    typeof frontmatter.description === "string"
-      ? frontmatter.description
-      : undefined;
+    typeof frontmatter.description === "string" ? frontmatter.description : undefined;
 
   return {
     command: {
@@ -176,7 +166,7 @@ async function loadCommandFromFile(
 /** Effect-native variant of {@link loadCommands}. */
 export const loadCommandsEffect = (
   env: ExecutionEnv,
-  dirs: string | string[]
+  dirs: string | string[],
 ): Effect.Effect<{
   commands: PromptTemplate[];
   diagnostics: CommandDiagnostic[];

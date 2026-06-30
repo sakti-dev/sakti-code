@@ -1,13 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { MessageEntry, SessionTreeEntry } from "../../harness-types";
 import { getOrThrow } from "../../harness-types";
 import type { AgentMessage } from "../../types";
 import { DEFAULT_COMPACTION_SETTINGS, prepareCompaction } from "../compaction";
-import {
-  canSkipSummarizer,
-  DEFAULT_MIN_PRUNE_BYTES,
-  pruneStaleToolResults,
-} from "../prune";
+import { canSkipSummarizer, DEFAULT_MIN_PRUNE_BYTES, pruneStaleToolResults } from "../prune";
 
 function textBlock(text: string) {
   return { type: "text" as const, text };
@@ -17,7 +13,7 @@ function toolResultMessage(
   name: string,
   content: string,
   toolCallId = "call-1",
-  isError = false
+  isError = false,
 ): AgentMessage {
   return {
     role: "toolResult",
@@ -65,10 +61,7 @@ describe("pruneStaleToolResults", () => {
 
   it("does NOT prune tool results inside the tail", () => {
     const largeContent = "x".repeat(2048);
-    const messages: AgentMessage[] = [
-      userMessage("old"),
-      toolResultMessage("read", largeContent),
-    ];
+    const messages: AgentMessage[] = [userMessage("old"), toolResultMessage("read", largeContent)];
 
     const { pruned, stats } = pruneStaleToolResults(messages, {
       tailStartIndex: 1,
@@ -92,9 +85,7 @@ describe("pruneStaleToolResults", () => {
 
   it("does NOT prune error tool results", () => {
     const largeContent = "x".repeat(2048);
-    const messages: AgentMessage[] = [
-      toolResultMessage("bash", largeContent, "call-1", true),
-    ];
+    const messages: AgentMessage[] = [toolResultMessage("bash", largeContent, "call-1", true)];
 
     const { stats } = pruneStaleToolResults(messages, {
       tailStartIndex: 1,
@@ -105,8 +96,7 @@ describe("pruneStaleToolResults", () => {
   });
 
   it("is idempotent — does not re-prune already-elided results", () => {
-    const alreadyElided =
-      "[elided tool result — read, 2048 bytes dropped to save context]";
+    const alreadyElided = "[elided tool result — read, 2048 bytes dropped to save context]";
     const messages: AgentMessage[] = [toolResultMessage("read", alreadyElided)];
 
     const { stats } = pruneStaleToolResults(messages, {
@@ -180,7 +170,7 @@ describe("prepareCompaction integration", () => {
   function msgEntry(
     message: AgentMessage,
     parentId: string | null = null,
-    id = `e-${Math.random().toString(36).slice(2)}`
+    id = `e-${Math.random().toString(36).slice(2)}`,
   ): MessageEntry {
     return {
       type: "message",
@@ -245,7 +235,7 @@ describe("prepareCompaction integration", () => {
         stopReason: "stop",
         timestamp: 2,
       },
-      u2.id
+      u2.id,
     );
 
     const entries: SessionTreeEntry[] = [u1, a1, tr1, u2, a2];
@@ -253,7 +243,7 @@ describe("prepareCompaction integration", () => {
       prepareCompaction(entries, {
         ...DEFAULT_COMPACTION_SETTINGS,
         keepRecentTokens: 1,
-      })
+      }),
     );
 
     expect(preparation).toBeDefined();
@@ -261,9 +251,7 @@ describe("prepareCompaction integration", () => {
     // The toolResult message must be present and pruned.
     const prunedToolResult = toSummarize.find((m) => m.role === "toolResult");
     expect(prunedToolResult).toBeDefined();
-    const content = (
-      prunedToolResult as unknown as { content: { text: string }[] }
-    ).content;
+    const content = (prunedToolResult as unknown as { content: { text: string }[] }).content;
     expect(content[0]!.text).toContain("[elided tool result");
     expect(content[0]!.text).toContain("read");
     expect(content[0]!.text).toContain("2048 bytes dropped");
@@ -272,10 +260,7 @@ describe("prepareCompaction integration", () => {
   it("prepareCompaction keeps small tool results in messagesToSummarize verbatim", () => {
     const u1 = msgEntry(userMessage("first turn"));
     const a1 = msgEntry(asstWithToolCall("c1"), u1.id);
-    const tr1 = msgEntry(
-      toolResultMessage("read", "small output", "c1"),
-      a1.id
-    );
+    const tr1 = msgEntry(toolResultMessage("read", "small output", "c1"), a1.id);
     const u2 = msgEntry(userMessage("second turn"), tr1.id);
     const a2 = msgEntry(
       {
@@ -295,7 +280,7 @@ describe("prepareCompaction integration", () => {
         stopReason: "stop",
         timestamp: 2,
       },
-      u2.id
+      u2.id,
     );
 
     const entries: SessionTreeEntry[] = [u1, a1, tr1, u2, a2];
@@ -303,14 +288,13 @@ describe("prepareCompaction integration", () => {
       prepareCompaction(entries, {
         ...DEFAULT_COMPACTION_SETTINGS,
         keepRecentTokens: 1,
-      })
+      }),
     );
 
     const toSummarize = preparation?.messagesToSummarize ?? [];
     const toolResult = toSummarize.find((m) => m.role === "toolResult");
     expect(toolResult).toBeDefined();
-    const content = (toolResult as unknown as { content: { text: string }[] })
-      .content;
+    const content = (toolResult as unknown as { content: { text: string }[] }).content;
     expect(content[0]!.text).toBe("small output");
   });
 });
@@ -326,7 +310,7 @@ describe("canSkipSummarizer", () => {
         pruneStats: { results: 1, savedChars: 800 },
         contextWindow: 1000,
         reserveTokens: 100,
-      })
+      }),
     ).toBe(true);
   });
 
@@ -340,7 +324,7 @@ describe("canSkipSummarizer", () => {
         pruneStats: { results: 1, savedChars: 100 },
         contextWindow: 1000,
         reserveTokens: 100,
-      })
+      }),
     ).toBe(false);
   });
 
@@ -351,7 +335,7 @@ describe("canSkipSummarizer", () => {
         pruneStats: { results: 0, savedChars: 0 },
         contextWindow: 1000,
         reserveTokens: 100,
-      })
+      }),
     ).toBe(false);
   });
 
@@ -362,7 +346,7 @@ describe("canSkipSummarizer", () => {
         pruneStats: { results: 5, savedChars: 10_000 },
         contextWindow: 0,
         reserveTokens: 100,
-      })
+      }),
     ).toBe(false);
   });
 });

@@ -26,14 +26,14 @@ type DialogOverlayProps<T extends ValidComponent = "div"> =
   DialogPrimitive.DialogOverlayProps<T> & { class?: string | undefined };
 
 const DialogOverlay = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, DialogOverlayProps<T>>
+  props: PolymorphicProps<T, DialogOverlayProps<T>>,
 ) => {
   const [, rest] = splitProps(props as DialogOverlayProps, ["class"]);
   return (
     <DialogPrimitive.Overlay
       class={cn(
         "data-[closed]:fade-out-0 data-[expanded]:fade-in-0 fixed inset-0 z-50 bg-black/80 backdrop-blur-sm data-[closed]:animate-out data-[expanded]:animate-in",
-        props.class
+        props.class,
       )}
       {...rest}
     />
@@ -48,7 +48,7 @@ type DialogContentProps<T extends ValidComponent = "div"> =
   };
 
 export const DialogContent = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, DialogContentProps<T>>
+  props: PolymorphicProps<T, DialogContentProps<T>>,
 ) => {
   const [local, rest] = splitProps(props as DialogContentProps, [
     "class",
@@ -61,17 +61,14 @@ export const DialogContent = <T extends ValidComponent = "div">(
   return (
     <DialogPortal>
       <DialogOverlay
-        class={cn(
-          !isTopmost() && "pointer-events-none opacity-0",
-          local.overlayClass
-        )}
+        class={cn(!isTopmost() && "pointer-events-none opacity-0", local.overlayClass)}
         data-stack-overlay={stackId}
       />
       <DialogPrimitive.Content
         class={cn(
           "model-selector-shell data-[closed]:fade-out-0 data-[expanded]:fade-in-0 relative z-50 w-full max-w-4xl overflow-hidden rounded-xl border border-border/70 bg-popover text-popover-foreground shadow-[0_28px_80px_rgba(0,0,0,0.6)] duration-200 data-[closed]:animate-out data-[expanded]:animate-in",
           !isTopmost() && "pointer-events-none opacity-0",
-          local.class
+          local.class,
         )}
         data-stack-content={stackId}
         ref={(el: HTMLDivElement) => {
@@ -106,7 +103,7 @@ export const DialogHeader: Component<ComponentProps<"div">> = (props) => {
     <div
       class={cn(
         "relative border-border/70 border-b bg-muted/45 px-3.5 pt-3 pb-2.5 backdrop-blur-xl",
-        props.class
+        props.class,
       )}
       {...rest}
     />
@@ -119,28 +116,24 @@ export const DialogFooter: Component<ComponentProps<"div">> = (props) => {
     <div
       class={cn(
         "flex items-center justify-end gap-2 border-border/80 border-t bg-muted/55 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-xl",
-        props.class
+        props.class,
       )}
       {...rest}
     />
   );
 };
 
-type DialogTitleProps<T extends ValidComponent = "h2"> =
-  DialogPrimitive.DialogTitleProps<T> & {
-    class?: string | undefined;
-  };
+type DialogTitleProps<T extends ValidComponent = "h2"> = DialogPrimitive.DialogTitleProps<T> & {
+  class?: string | undefined;
+};
 
 export const DialogTitle = <T extends ValidComponent = "h2">(
-  props: PolymorphicProps<T, DialogTitleProps<T>>
+  props: PolymorphicProps<T, DialogTitleProps<T>>,
 ) => {
   const [, rest] = splitProps(props as DialogTitleProps, ["class"]);
   return (
     <DialogPrimitive.Title
-      class={cn(
-        "font-semibold text-[13px] text-popover-foreground tracking-tight",
-        props.class
-      )}
+      class={cn("font-semibold text-[13px] text-popover-foreground tracking-tight", props.class)}
       {...rest}
     />
   );
@@ -152,7 +145,7 @@ type DialogDescriptionProps<T extends ValidComponent = "p"> =
   };
 
 export const DialogDescription = <T extends ValidComponent = "p">(
-  props: PolymorphicProps<T, DialogDescriptionProps<T>>
+  props: PolymorphicProps<T, DialogDescriptionProps<T>>,
 ) => {
   const [, rest] = splitProps(props as DialogDescriptionProps, ["class"]);
   return (

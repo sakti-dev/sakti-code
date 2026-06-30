@@ -31,12 +31,7 @@ export const CommandDialog: ParentComponent<{
   contentClass?: string;
   children: JSX.Element;
 }> = (props) => {
-  const [local] = splitProps(props, [
-    "open",
-    "onOpenChange",
-    "children",
-    "contentClass",
-  ]);
+  const [local] = splitProps(props, ["open", "onOpenChange", "children", "contentClass"]);
 
   createEffect(() => {
     cmdLog.info("open state changed", { open: local.open });
@@ -48,9 +43,7 @@ export const CommandDialog: ParentComponent<{
 
   return (
     <Dialog modal onOpenChange={handleOpenChange} open={local.open}>
-      <DialogContent
-        class={cn("w-[680px] max-w-[calc(100vw-2rem)]", local.contentClass)}
-      >
+      <DialogContent class={cn("w-[680px] max-w-[calc(100vw-2rem)]", local.contentClass)}>
         <CommandRoot class="flex size-full flex-col overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg blur-none">
           {local.children}
         </CommandRoot>
@@ -73,7 +66,7 @@ export const CommandInput: Component<
         autocomplete="off"
         class={cn(
           "flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
-          local.class
+          local.class,
         )}
         cmdk-input=""
         onInput={(event) => local.onValueChange?.(event.currentTarget.value)}
@@ -98,20 +91,14 @@ export const CommandList: ParentComponent<ComponentProps<"div">> = (props) => {
   );
 };
 
-export const CommandGroup: ParentComponent<
-  { heading?: string } & ComponentProps<"div">
-> = (props) => {
+export const CommandGroup: ParentComponent<{ heading?: string } & ComponentProps<"div">> = (
+  props,
+) => {
   const [local, others] = splitProps(props, ["class", "children", "heading"]);
   return (
-    <div
-      class={cn("overflow-hidden p-1 text-foreground", local.class)}
-      {...others}
-    >
+    <div class={cn("overflow-hidden p-1 text-foreground", local.class)} {...others}>
       {local.heading ? (
-        <p
-          class="px-2 py-1.5 font-medium text-muted-foreground text-xs"
-          cmdk-group-heading=""
-        >
+        <p class="px-2 py-1.5 font-medium text-muted-foreground text-xs" cmdk-group-heading="">
           {local.heading}
         </p>
       ) : null}
@@ -126,17 +113,12 @@ export const CommandItem: ParentComponent<
     onPick?: (value: string) => void;
   } & ComponentProps<"button">
 > = (props) => {
-  const [local, others] = splitProps(props, [
-    "class",
-    "children",
-    "value",
-    "onPick",
-  ]);
+  const [local, others] = splitProps(props, ["class", "children", "value", "onPick"]);
   return (
     <button
       class={cn(
         "relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-left text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50",
-        local.class
+        local.class,
       )}
       cmdk-item=""
       onClick={() => local.onPick?.(local.value)}
@@ -152,13 +134,7 @@ export const CommandItem: ParentComponent<
 export const CommandEmpty: ParentComponent<ComponentProps<"div">> = (props) => {
   const [local, others] = splitProps(props, ["class", "children"]);
   return (
-    <div
-      class={cn(
-        "px-2 py-3 text-center text-muted-foreground text-xs",
-        local.class
-      )}
-      {...others}
-    >
+    <div class={cn("px-2 py-3 text-center text-muted-foreground text-xs", local.class)} {...others}>
       {local.children}
     </div>
   );

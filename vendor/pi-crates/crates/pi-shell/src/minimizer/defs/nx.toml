@@ -6,15 +6,15 @@ description = "Compact Nx task runner output"
 match_command = "^nx$"
 strip_ansi = true
 strip_lines_matching = [
-	"^\\s*$",
-	"^\\s*>\\s+NX\\s+Running target",
-	"^\\s*>\\s+NX\\s+Successfully ran target",
-	"^\\s*>\\s+NX\\s+Cloud",
-	"^\\s*>\\s+NX\\s+Distributed",
-	"^\\s*>\\s+NX\\s+View logs",
-	"^———————",
-	"^\\s*>\\s*NX\\s+Nx read the output",
-	"^\\s+Nx \\(powered by",
+  "^\\s*$",
+  "^\\s*>\\s+NX\\s+Running target",
+  "^\\s*>\\s+NX\\s+Successfully ran target",
+  "^\\s*>\\s+NX\\s+Cloud",
+  "^\\s*>\\s+NX\\s+Distributed",
+  "^\\s*>\\s+NX\\s+View logs",
+  "^———————",
+  "^\\s*>\\s*NX\\s+Nx read the output",
+  "^\\s+Nx \\(powered by",
 ]
 truncate_lines_at = 250
 max_lines = 80
@@ -45,15 +45,15 @@ match_command = "^(pnpm|npx|yarn)$"
 match_subcommand = "^nx$"
 strip_ansi = true
 strip_lines_matching = [
-	"^\\s*$",
-	"^\\s*>\\s+NX\\s+Running target",
-	"^\\s*>\\s+NX\\s+Successfully ran target",
-	"^\\s*>\\s+NX\\s+Cloud",
-	"^\\s*>\\s+NX\\s+Distributed",
-	"^\\s*>\\s+NX\\s+View logs",
-	"^———————",
-	"^\\s*>\\s*NX\\s+Nx read the output",
-	"^\\s+Nx \\(powered by",
+  "^\\s*$",
+  "^\\s*>\\s+NX\\s+Running target",
+  "^\\s*>\\s+NX\\s+Successfully ran target",
+  "^\\s*>\\s+NX\\s+Cloud",
+  "^\\s*>\\s+NX\\s+Distributed",
+  "^\\s*>\\s+NX\\s+View logs",
+  "^———————",
+  "^\\s*>\\s*NX\\s+Nx read the output",
+  "^\\s+Nx \\(powered by",
 ]
 truncate_lines_at = 250
 max_lines = 80

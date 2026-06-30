@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@solidjs/testing-library";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ModelsSettings } from "../index.tsx";
 
 const mocks = vi.hoisted(() => ({
@@ -96,9 +96,7 @@ describe("ModelsSettings", () => {
   });
 
   it("lists connected providers", async () => {
-    mocks.availableGet.mockImplementation(() =>
-      okRes(availableProviders(["anthropic"]))
-    );
+    mocks.availableGet.mockImplementation(() => okRes(availableProviders(["anthropic"])));
     render(() => <ModelsSettings />);
     expect(await screen.findByText("Anthropic")).toBeTruthy();
     expect(screen.queryByText("No provider connected yet.")).toBeNull();
@@ -111,9 +109,7 @@ describe("ModelsSettings", () => {
     await screen.findByText("No provider connected yet.");
     fireEvent.click(await screen.findByText("Connect a provider"));
 
-    const input = (await screen.findByPlaceholderText(
-      "API key"
-    )) as HTMLInputElement;
+    const input = (await screen.findByPlaceholderText("API key")) as HTMLInputElement;
     input.value = "sk-test-key";
     input.dispatchEvent(new Event("input", { bubbles: true }));
 
@@ -129,9 +125,7 @@ describe("ModelsSettings", () => {
   });
 
   it("disconnects via DELETE /api/auth/:provider", async () => {
-    mocks.availableGet.mockImplementation(() =>
-      okRes(availableProviders(["anthropic"]))
-    );
+    mocks.availableGet.mockImplementation(() => okRes(availableProviders(["anthropic"])));
     render(() => <ModelsSettings />);
 
     mocks.$delete.mockImplementation(() => okRes(null));
@@ -151,9 +145,7 @@ describe("ModelsSettings", () => {
     await screen.findByText("No provider connected yet.");
     fireEvent.click(await screen.findByText("Connect a provider"));
 
-    const input = (await screen.findByPlaceholderText(
-      "API key"
-    )) as HTMLInputElement;
+    const input = (await screen.findByPlaceholderText("API key")) as HTMLInputElement;
     input.value = "sk-test";
     input.dispatchEvent(new Event("input", { bubbles: true }));
 

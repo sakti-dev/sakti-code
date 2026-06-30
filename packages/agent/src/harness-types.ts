@@ -71,15 +71,7 @@ export { SessionStorage } from "./session/storage";
 import type { FileError } from "./session/entries";
 
 export type { Result } from "./lib/result";
-export {
-  err,
-  getOrThrow,
-  getOrUndefined,
-  isFailure,
-  isSuccess,
-  ok,
-  toError,
-} from "./lib/result";
+export { err, getOrThrow, getOrUndefined, isFailure, isSuccess, ok, toError } from "./lib/result";
 export { FileError, FileErrorCode, SessionError } from "./session/entries";
 export { InMemorySessionStorageLive } from "./session/storage";
 
@@ -137,14 +129,11 @@ export const ExecutionErrorCode = Schema.Literals([
 ]);
 export type ExecutionErrorCode = typeof ExecutionErrorCode.Type;
 
-export class ExecutionError extends Schema.TaggedErrorClass<ExecutionError>()(
-  "ExecutionError",
-  {
-    code: ExecutionErrorCode,
-    message: Schema.String,
-    cause: Schema.optional(Schema.Defect()),
-  }
-) {}
+export class ExecutionError extends Schema.TaggedErrorClass<ExecutionError>()("ExecutionError", {
+  code: ExecutionErrorCode,
+  message: Schema.String,
+  cause: Schema.optional(Schema.Defect()),
+}) {}
 
 export const CompactionErrorCode = Schema.Literals([
   "aborted",
@@ -154,14 +143,11 @@ export const CompactionErrorCode = Schema.Literals([
 ]);
 export type CompactionErrorCode = typeof CompactionErrorCode.Type;
 
-export class CompactionError extends Schema.TaggedErrorClass<CompactionError>()(
-  "CompactionError",
-  {
-    code: CompactionErrorCode,
-    message: Schema.String,
-    cause: Schema.optional(Schema.Defect()),
-  }
-) {}
+export class CompactionError extends Schema.TaggedErrorClass<CompactionError>()("CompactionError", {
+  code: CompactionErrorCode,
+  message: Schema.String,
+  cause: Schema.optional(Schema.Defect()),
+}) {}
 
 export const BranchSummaryErrorCode = Schema.Literals([
   "aborted",
@@ -176,7 +162,7 @@ export class BranchSummaryError extends Schema.TaggedErrorClass<BranchSummaryErr
     code: BranchSummaryErrorCode,
     message: Schema.String,
     cause: Schema.optional(Schema.Defect()),
-  }
+  },
 ) {}
 
 export const AgentHarnessErrorCode = Schema.Literals([
@@ -198,7 +184,7 @@ export class AgentHarnessError extends Schema.TaggedErrorClass<AgentHarnessError
     code: AgentHarnessErrorCode,
     message: Schema.String,
     cause: Schema.optional(Schema.Defect()),
-  }
+  },
 ) {}
 
 export const AgentErrorCode = Schema.Literals([
@@ -208,14 +194,11 @@ export const AgentErrorCode = Schema.Literals([
 ]);
 export type AgentErrorCode = typeof AgentErrorCode.Type;
 
-export class AgentError extends Schema.TaggedErrorClass<AgentError>()(
-  "AgentError",
-  {
-    code: AgentErrorCode,
-    message: Schema.String,
-    cause: Schema.optional(Schema.Defect()),
-  }
-) {}
+export class AgentError extends Schema.TaggedErrorClass<AgentError>()("AgentError", {
+  code: AgentErrorCode,
+  message: Schema.String,
+  cause: Schema.optional(Schema.Defect()),
+}) {}
 
 export interface ExecutionEnvExecOptions {
   abortSignal?: AbortSignal;
@@ -227,62 +210,35 @@ export interface ExecutionEnvExecOptions {
 }
 
 export interface FileSystem {
-  absolutePath(
-    path: string,
-    abortSignal?: AbortSignal
-  ): Promise<Result<string, FileError>>;
+  absolutePath(path: string, abortSignal?: AbortSignal): Promise<Result<string, FileError>>;
   appendFile(
     path: string,
     content: string | Uint8Array,
-    abortSignal?: AbortSignal
+    abortSignal?: AbortSignal,
   ): Promise<Result<void, FileError>>;
-  canonicalPath(
-    path: string,
-    abortSignal?: AbortSignal
-  ): Promise<Result<string, FileError>>;
+  canonicalPath(path: string, abortSignal?: AbortSignal): Promise<Result<string, FileError>>;
 
   cleanup(): Promise<void>;
   createDir(
     path: string,
-    options?: { recursive?: boolean; abortSignal?: AbortSignal }
+    options?: { recursive?: boolean; abortSignal?: AbortSignal },
   ): Promise<Result<void, FileError>>;
-  createTempDir(
-    prefix?: string,
-    abortSignal?: AbortSignal
-  ): Promise<Result<string, FileError>>;
+  createTempDir(prefix?: string, abortSignal?: AbortSignal): Promise<Result<string, FileError>>;
   createTempFile(options?: {
     prefix?: string;
     suffix?: string;
     abortSignal?: AbortSignal;
   }): Promise<Result<string, FileError>>;
   cwd: string;
-  exists(
-    path: string,
-    abortSignal?: AbortSignal
-  ): Promise<Result<boolean, FileError>>;
-  fileInfo(
-    path: string,
-    abortSignal?: AbortSignal
-  ): Promise<Result<FileInfo, FileError>>;
-  joinPath(
-    parts: string[],
-    abortSignal?: AbortSignal
-  ): Promise<Result<string, FileError>>;
-  listDir(
-    path: string,
-    abortSignal?: AbortSignal
-  ): Promise<Result<FileInfo[], FileError>>;
-  readBinaryFile(
-    path: string,
-    abortSignal?: AbortSignal
-  ): Promise<Result<Uint8Array, FileError>>;
-  readTextFile(
-    path: string,
-    abortSignal?: AbortSignal
-  ): Promise<Result<string, FileError>>;
+  exists(path: string, abortSignal?: AbortSignal): Promise<Result<boolean, FileError>>;
+  fileInfo(path: string, abortSignal?: AbortSignal): Promise<Result<FileInfo, FileError>>;
+  joinPath(parts: string[], abortSignal?: AbortSignal): Promise<Result<string, FileError>>;
+  listDir(path: string, abortSignal?: AbortSignal): Promise<Result<FileInfo[], FileError>>;
+  readBinaryFile(path: string, abortSignal?: AbortSignal): Promise<Result<Uint8Array, FileError>>;
+  readTextFile(path: string, abortSignal?: AbortSignal): Promise<Result<string, FileError>>;
   readTextLines(
     path: string,
-    options?: { maxLines?: number; abortSignal?: AbortSignal }
+    options?: { maxLines?: number; abortSignal?: AbortSignal },
   ): Promise<Result<string[], FileError>>;
   remove(
     path: string,
@@ -290,12 +246,12 @@ export interface FileSystem {
       recursive?: boolean;
       force?: boolean;
       abortSignal?: AbortSignal;
-    }
+    },
   ): Promise<Result<void, FileError>>;
   writeFile(
     path: string,
     content: string | Uint8Array,
-    abortSignal?: AbortSignal
+    abortSignal?: AbortSignal,
   ): Promise<Result<void, FileError>>;
 }
 
@@ -303,19 +259,13 @@ export interface Shell {
   cleanup(): Promise<void>;
   exec(
     command: string,
-    options?: ExecutionEnvExecOptions
-  ): Promise<
-    Result<{ stdout: string; stderr: string; exitCode: number }, ExecutionError>
-  >;
+    options?: ExecutionEnvExecOptions,
+  ): Promise<Result<{ stdout: string; stderr: string; exitCode: number }, ExecutionError>>;
 }
 
 export interface ExecutionEnv extends FileSystem, Shell {}
 
-export type AgentHarnessPhase =
-  | "idle"
-  | "turn"
-  | "compaction"
-  | "branch_summary";
+export type AgentHarnessPhase = "idle" | "turn" | "compaction" | "branch_summary";
 
 export interface QueueUpdateEvent {
   followUp: AgentMessage[];
@@ -567,10 +517,8 @@ export interface AgentHarnessOptions<
   env: ExecutionEnv;
   followUpMode?: QueueMode;
   getApiKeyAndHeaders?: (
-    model: Model
-  ) => Promise<
-    { apiKey: string; headers?: Record<string, string> } | undefined
-  >;
+    model: Model,
+  ) => Promise<{ apiKey: string; headers?: Record<string, string> } | undefined>;
   logger?: Logger;
   maxSteps?: number;
   model: Model;

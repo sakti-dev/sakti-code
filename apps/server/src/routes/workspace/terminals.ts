@@ -29,10 +29,7 @@ export const terminalRoutes = new Hono()
     const body = c.req.valid("json");
     await ctx.terminalManager.ensureLoaded();
     if (!hasWsConnection(body.connectionId)) {
-      return c.json(
-        { error: "Unknown connectionId; open a WS connection first" },
-        400
-      );
+      return c.json({ error: "Unknown connectionId; open a WS connection first" }, 400);
     }
     if (!ctx.terminalManager.ptyAvailable) {
       const msg = ctx.terminalManager.loadError ?? "node-pty not available";

@@ -1,5 +1,5 @@
-import { render } from "@solidjs/testing-library";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@solidjs/testing-library";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { ProjectGroup } from "../layout/sidebar/project-group.tsx";
 
 const mockSessions = [
@@ -27,7 +27,7 @@ const mockSessions = [
 
 describe("ProjectGroup", () => {
   it("renders project name", () => {
-    const { getByText } = render(() => (
+    render(() => (
       <ProjectGroup
         isActive={false}
         isExpanded={false}
@@ -38,11 +38,11 @@ describe("ProjectGroup", () => {
         sessions={mockSessions}
       />
     ));
-    expect(getByText("My Project")).toBeTruthy();
+    expect(screen.getByText("My Project")).toBeTruthy();
   });
 
   it("renders session count badge", () => {
-    const { getByText } = render(() => (
+    render(() => (
       <ProjectGroup
         isActive={false}
         isExpanded={false}
@@ -53,11 +53,11 @@ describe("ProjectGroup", () => {
         sessions={mockSessions}
       />
     ));
-    expect(getByText("2")).toBeTruthy();
+    expect(screen.getByText("2")).toBeTruthy();
   });
 
   it("shows sessions when expanded", () => {
-    const { getByText } = render(() => (
+    render(() => (
       <ProjectGroup
         isActive={false}
         isExpanded={true}
@@ -68,12 +68,12 @@ describe("ProjectGroup", () => {
         sessions={mockSessions}
       />
     ));
-    expect(getByText("Session 1")).toBeTruthy();
-    expect(getByText("Session 2")).toBeTruthy();
+    expect(screen.getByText("Session 1")).toBeTruthy();
+    expect(screen.getByText("Session 2")).toBeTruthy();
   });
 
   it("hides sessions when collapsed", () => {
-    const { queryByText } = render(() => (
+    render(() => (
       <ProjectGroup
         isActive={false}
         isExpanded={false}
@@ -84,12 +84,12 @@ describe("ProjectGroup", () => {
         sessions={mockSessions}
       />
     ));
-    expect(queryByText("Session 1")).toBeNull();
+    expect(screen.queryByText("Session 1")).toBeNull();
   });
 
   it("calls onToggle when header clicked", async () => {
     const onToggle = vi.fn();
-    const { getByText } = render(() => (
+    render(() => (
       <ProjectGroup
         isActive={false}
         isExpanded={false}
@@ -100,12 +100,12 @@ describe("ProjectGroup", () => {
         sessions={[]}
       />
     ));
-    getByText("My Project").click();
+    screen.getByText("My Project").click();
     expect(onToggle).toHaveBeenCalledWith("p1");
   });
 
   it("shows 'No sessions' when expanded with empty list", () => {
-    const { getByText } = render(() => (
+    render(() => (
       <ProjectGroup
         isActive={false}
         isExpanded={true}
@@ -116,6 +116,6 @@ describe("ProjectGroup", () => {
         sessions={[]}
       />
     ));
-    expect(getByText("No sessions")).toBeTruthy();
+    expect(screen.getByText("No sessions")).toBeTruthy();
   });
 });

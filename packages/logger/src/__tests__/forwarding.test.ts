@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { createForwardingLogger } from "../forwarding.ts";
 import type { LogEntry } from "../types.ts";
 
@@ -26,7 +26,7 @@ describe("createForwardingLogger", () => {
       got.push(e);
     });
     log.error("boom", new Error("x"));
-    expect((got[0]?.context as { error: string }).error).toBe("x");
+    expect((got[0]!.context as { error: string }).error).toBe("x");
   });
 
   it("drops circular refs from context without throwing", () => {

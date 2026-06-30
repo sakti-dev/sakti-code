@@ -1,9 +1,6 @@
 import { parseCompactionSettings } from "../compaction/auto-compaction.ts";
 import type { CompactionSettings } from "../compaction/compaction.ts";
-import {
-  parseRetrySettings,
-  type RetrySettings,
-} from "../compaction/retry-loop.ts";
+import { parseRetrySettings, type RetrySettings } from "../compaction/retry-loop.ts";
 import type { QueueMode, ThinkingLevel } from "../types.ts";
 
 /**
@@ -56,9 +53,7 @@ export interface SessionSettings {
  * the raw KV rows from the DB; defaults are merged in here so callers don't
  * have to. Accessors parse on demand — cheap because the maps are tiny.
  */
-export function parseSessionSettings(
-  raw: Record<string, string>
-): SessionSettings {
+export function parseSessionSettings(raw: Record<string, string>): SessionSettings {
   const merged: Record<string, string> = {
     ...DEFAULT_SESSION_SETTINGS,
     ...raw,
@@ -69,10 +64,8 @@ export function parseSessionSettings(
     autoCompaction: () => merged.auto_compaction === "true",
     autoRetry: () => merged.auto_retry !== "false",
     editMode: () => (merged.edit_mode === "replace" ? "replace" : "hashline"),
-    followUpMode: () =>
-      merged.follow_up_mode === "one-at-a-time" ? "one-at-a-time" : "all",
-    steeringMode: () =>
-      merged.steering_mode === "one-at-a-time" ? "one-at-a-time" : "all",
+    followUpMode: () => (merged.follow_up_mode === "one-at-a-time" ? "one-at-a-time" : "all"),
+    steeringMode: () => (merged.steering_mode === "one-at-a-time" ? "one-at-a-time" : "all"),
     retry: () => parseRetrySettings(merged),
     compaction: () => parseCompactionSettings(merged),
     thinkingLevelOverride: () => {

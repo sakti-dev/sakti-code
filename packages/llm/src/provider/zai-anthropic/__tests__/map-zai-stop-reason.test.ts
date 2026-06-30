@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { mapZaiStopReason } from "../map-zai-stop-reason.ts";
 
 describe("mapZaiStopReason", () => {
@@ -14,15 +14,11 @@ describe("mapZaiStopReason", () => {
 
   it("maps max_tokens + model_context_window_exceeded to length", () => {
     expect(mapZaiStopReason({ finishReason: "max_tokens" })).toBe("length");
-    expect(
-      mapZaiStopReason({ finishReason: "model_context_window_exceeded" })
-    ).toBe("length");
+    expect(mapZaiStopReason({ finishReason: "model_context_window_exceeded" })).toBe("length");
   });
 
   it("maps refusal to content-filter", () => {
-    expect(mapZaiStopReason({ finishReason: "refusal" })).toBe(
-      "content-filter"
-    );
+    expect(mapZaiStopReason({ finishReason: "refusal" })).toBe("content-filter");
   });
 
   it("maps unknown to other", () => {

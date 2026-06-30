@@ -36,12 +36,7 @@ export interface SessionStoreData {
 
 export interface SessionActions {
   addMessage: (msg: UIMessage) => void;
-  addToolCall: (
-    msgId: string,
-    toolCallId: string,
-    toolName: string,
-    input: unknown
-  ) => void;
+  addToolCall: (msgId: string, toolCallId: string, toolName: string, input: unknown) => void;
   appendThinkingToken: (msgId: string, delta: string) => void;
   appendToken: (msgId: string, delta: string) => void;
   clearCurrentMessage: () => void;
@@ -52,7 +47,7 @@ export interface SessionActions {
     toolCallId: string,
     result: string,
     isError?: boolean,
-    details?: unknown
+    details?: unknown,
   ) => void;
   finalizeMessage: (msgId: string, usage?: UIMessage["usage"]) => void;
   finalizeTurn: (endedAt: number) => void;
@@ -104,7 +99,7 @@ export function createSessionStore(): SessionStore {
       setStore("messages", reconcile(newMessages));
       setStore(
         "messageOrder",
-        msgs.map((m) => m.id)
+        msgs.map((m) => m.id),
       );
     },
 
@@ -133,11 +128,7 @@ export function createSessionStore(): SessionStore {
           isStreaming: true,
         };
         if (last !== undefined) {
-          return [
-            ...prev.slice(0, -1),
-            { ...last, isStreaming: false },
-            newPart,
-          ];
+          return [...prev.slice(0, -1), { ...last, isStreaming: false }, newPart];
         }
         return [newPart];
       });
@@ -157,11 +148,7 @@ export function createSessionStore(): SessionStore {
           isStreaming: true,
         };
         if (last !== undefined) {
-          return [
-            ...prev.slice(0, -1),
-            { ...last, isStreaming: false },
-            newPart,
-          ];
+          return [...prev.slice(0, -1), { ...last, isStreaming: false }, newPart];
         }
         return [newPart];
       });
@@ -226,11 +213,7 @@ export function createSessionStore(): SessionStore {
           return [part];
         }
         if (last.type === "thinking" && last.endedAt === undefined) {
-          return [
-            ...prev.slice(0, -1),
-            { ...last, endedAt: Date.now(), isStreaming: false },
-            part,
-          ];
+          return [...prev.slice(0, -1), { ...last, endedAt: Date.now(), isStreaming: false }, part];
         }
         return [...prev.slice(0, -1), { ...last, isStreaming: false }, part];
       });
@@ -250,8 +233,8 @@ export function createSessionStore(): SessionStore {
                 isStreaming: false,
                 ...(details === undefined ? {} : { details }),
               }
-            : p
-        )
+            : p,
+        ),
       );
       setStore("streaming", "currentToolName", null);
     },
@@ -268,10 +251,7 @@ export function createSessionStore(): SessionStore {
           return prev;
         }
         if (last.type === "thinking" && last.endedAt === undefined) {
-          return [
-            ...prev.slice(0, -1),
-            { ...last, endedAt: Date.now(), isStreaming: false },
-          ];
+          return [...prev.slice(0, -1), { ...last, endedAt: Date.now(), isStreaming: false }];
         }
         return [...prev.slice(0, -1), { ...last, isStreaming: false }];
       });
@@ -285,10 +265,7 @@ export function createSessionStore(): SessionStore {
     },
 
     startTurn(startedAt) {
-      setStore("turnTimings", (prev) => [
-        ...prev,
-        { startedAt, endedAt: null },
-      ]);
+      setStore("turnTimings", (prev) => [...prev, { startedAt, endedAt: null }]);
     },
 
     finalizeTurn(endedAt) {
@@ -314,7 +291,7 @@ export function createSessionStore(): SessionStore {
           s.permission = null;
           s.retry = null;
           s.streaming = { ...idleStreamState };
-        })
+        }),
       );
     },
 

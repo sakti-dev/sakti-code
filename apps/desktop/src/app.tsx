@@ -1,8 +1,4 @@
-import {
-  ColorModeProvider,
-  ColorModeScript,
-  createLocalStorageManager,
-} from "@kobalte/core";
+import { ColorModeProvider, ColorModeScript, createLocalStorageManager } from "@kobalte/core";
 import "./index.css";
 import { render } from "solid-js/web";
 import WorkspaceLayout from "./components/layout/workspace-layout";
@@ -17,19 +13,13 @@ if (!root) {
 render(
   () => (
     <>
-      <ColorModeScript
-        initialColorMode="dark"
-        storageType={colorModeStorage.type}
-      />
-      <ColorModeProvider
-        initialColorMode="dark"
-        storageManager={colorModeStorage}
-      >
+      <ColorModeScript initialColorMode="dark" storageType={colorModeStorage.type} />
+      <ColorModeProvider initialColorMode="dark" storageManager={colorModeStorage}>
         <StoreProvider>
           <WorkspaceLayout />
         </StoreProvider>
       </ColorModeProvider>
     </>
   ),
-  root
+  root,
 );

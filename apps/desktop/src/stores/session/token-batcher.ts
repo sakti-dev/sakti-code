@@ -18,7 +18,7 @@ export interface TokenBatcherOptions {
  */
 export function createTokenBatcher(
   onFlush: (messageId: string, accumulatedText: string) => void,
-  options?: TokenBatcherOptions
+  options?: TokenBatcherOptions,
 ): TokenBatcher {
   const batch = options?.batch ?? true;
 

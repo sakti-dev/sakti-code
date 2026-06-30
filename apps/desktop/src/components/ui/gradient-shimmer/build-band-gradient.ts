@@ -13,10 +13,7 @@ const BAND_CORE_RATIO = 0.44;
  * `--gs-spread-mid` (set by the component after measuring), so it scales with
  * font size. Pure and DOM-free — safe to call on the server or unit-test.
  */
-export const buildBandGradient = (
-  stops: GradientStop[],
-  angle: number
-): string => {
+export const buildBandGradient = (stops: GradientStop[], angle: number): string => {
   const sorted = [...stops].sort((a, b) => a.position - b.position);
   const first = sorted[0]?.color ?? "white";
   const last = sorted.at(-1)?.color ?? "white";

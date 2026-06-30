@@ -1,11 +1,4 @@
-import {
-  createEffect,
-  createSignal,
-  For,
-  onCleanup,
-  onMount,
-  Show,
-} from "solid-js";
+import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Separator } from "~/components/ui/separator";
 import { Tooltip } from "~/components/ui/tooltip";
@@ -19,9 +12,7 @@ import { ProjectGroup } from "./project-group.tsx";
 
 export default function Sidebar() {
   const { server, actions } = useStore();
-  const [expandedProjects, setExpandedProjects] = createSignal<Set<string>>(
-    new Set()
-  );
+  const [expandedProjects, setExpandedProjects] = createSignal<Set<string>>(new Set());
   const [showAddInput, setShowAddInput] = createSignal(false);
   const [contextMenu, setContextMenu] = createSignal<{
     projectId: string;
@@ -30,7 +21,7 @@ export default function Sidebar() {
   } | null>(null);
 
   onMount(() => {
-    actions.loadProjects();
+    void actions.loadProjects();
     document.addEventListener("keydown", handleKeyDown);
   });
 
@@ -41,7 +32,7 @@ export default function Sidebar() {
   createEffect(() => {
     const projectId = server.store.activeProjectId;
     if (projectId) {
-      actions.loadSessions(projectId);
+      void actions.loadSessions(projectId);
       setExpandedProjects((prev) => {
         const next = new Set(prev);
         next.add(projectId);
@@ -126,7 +117,7 @@ export default function Sidebar() {
   const handleCopyPath = (projectId: string) => {
     const project = server.store.projects[projectId];
     if (project) {
-      navigator.clipboard.writeText(project.cwd);
+      void navigator.clipboard.writeText(project.cwd).catch(() => {});
     }
   };
 
@@ -134,8 +125,7 @@ export default function Sidebar() {
     server.store.sessionOrder
       .map((id) => server.store.sessions[id])
       .filter(
-        (s): s is NonNullable<typeof s> =>
-          !!s && s.projectId === projectId && s.kind === "task"
+        (s): s is NonNullable<typeof s> => !!s && s.projectId === projectId && s.kind === "task",
       )
       .sort((a, b) => b.updatedAt - a.updatedAt);
 
@@ -165,7 +155,7 @@ export default function Sidebar() {
           "flex w-64 shrink-0 flex-col border-border border-r bg-card",
           "fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-in-out",
           "md:relative md:z-auto md:transition-none",
-          sidebarOpen() ? "translate-x-0" : "-translate-x-full md:hidden"
+          sidebarOpen() ? "translate-x-0" : "-translate-x-full md:hidden",
         )}
       >
         {/* Projects section header */}
@@ -196,7 +186,9 @@ export default function Sidebar() {
             <Tooltip content="Refresh">
               <button
                 class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-                onClick={() => actions.loadProjects()}
+                onClick={() => {
+                  void actions.loadProjects();
+                }}
                 type="button"
               >
                 <svg
@@ -256,9 +248,7 @@ export default function Sidebar() {
                   <title>No projects</title>
                   <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
                 </svg>
-                <span class="text-muted-foreground text-xs">
-                  No projects yet
-                </span>
+                <span class="text-muted-foreground text-xs">No projects yet</span>
               </div>
             }
             when={projectCount() > 0}
@@ -268,8 +258,7 @@ export default function Sidebar() {
                 const project = () => server.store.projects[projectId];
                 const sessions = () => sessionsForProject(projectId);
                 const isExpanded = () => expandedProjects().has(projectId);
-                const isActive = () =>
-                  server.store.activeProjectId === projectId;
+                const isActive = () => server.store.activeProjectId === projectId;
 
                 return (
                   <Show when={project()}>
@@ -299,7 +288,7 @@ export default function Sidebar() {
             <AddProjectInput
               onAdd={(cwd) => {
                 setShowAddInput(false);
-                actions.addProject(cwd);
+                void actions.addProject(cwd);
               }}
               onCancel={() => setShowAddInput(false)}
             />
@@ -324,9 +313,7 @@ export default function Sidebar() {
             setContextMenu(null);
           }}
           projectId={contextMenu()?.projectId ?? ""}
-          projectName={
-            server.store.projects[contextMenu()?.projectId ?? ""]?.name ?? ""
-          }
+          projectName={server.store.projects[contextMenu()?.projectId ?? ""]?.name ?? ""}
           x={contextMenu()?.x ?? 0}
           y={contextMenu()?.y ?? 0}
         />

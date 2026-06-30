@@ -7,12 +7,12 @@ description = "Compact gcloud CLI output with update notices stripped"
 match_command = "^gcloud$"
 strip_ansi = true
 strip_lines_matching = [
-	"^Updates are available for some Google Cloud CLI components",
-	"^To install them, please run:",
-	"^\\s*\\$ gcloud components update",
-	"^Your current Cloud SDK version is:",
-	"^The latest available version is:",
-	"^\\s*$",
+  "^Updates are available for some Google Cloud CLI components",
+  "^To install them, please run:",
+  "^\\s*\\$ gcloud components update",
+  "^Your current Cloud SDK version is:",
+  "^The latest available version is:",
+  "^\\s*$",
 ]
 truncate_lines_at = 300
 max_lines = 120

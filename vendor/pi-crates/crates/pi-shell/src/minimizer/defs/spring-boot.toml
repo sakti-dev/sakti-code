@@ -6,17 +6,17 @@ description = "Compact Spring Boot startup output"
 match_command = "^spring-boot$"
 strip_ansi = true
 strip_lines_matching = [
-	"^\\s*$",
-	" INFO \\d+ --- ",
-	" DEBUG \\d+ --- ",
-	" TRACE \\d+ --- ",
-	"^\\s*:: Spring Boot ::",
-	"^\\s*\\.\\s+____",
-	"^\\s*/\\\\\\\\\\s*/",
-	"^\\s*\\( \\( \\)",
-	"^\\s*\\\\\\\\/\\s+___",
-	"^\\s*'\\s+\\|____\\|",
-	"^\\s*=+\\|_\\|=+",
+  "^\\s*$",
+  " INFO \\d+ --- ",
+  " DEBUG \\d+ --- ",
+  " TRACE \\d+ --- ",
+  "^\\s*:: Spring Boot ::",
+  "^\\s*\\.\\s+____",
+  "^\\s*/\\\\\\\\\\s*/",
+  "^\\s*\\( \\( \\)",
+  "^\\s*\\\\\\\\/\\s+___",
+  "^\\s*'\\s+\\|____\\|",
+  "^\\s*=+\\|_\\|=+",
 ]
 truncate_lines_at = 300
 max_lines = 80

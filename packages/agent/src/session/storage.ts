@@ -1,44 +1,28 @@
 import { Context, Effect, Layer, Ref } from "effect";
 import { v7 as uuidv7 } from "uuid";
-import type {
-  LeafEntry,
-  SessionMetadata,
-  SessionTreeEntry,
-} from "./entries.ts";
+import type { LeafEntry, SessionMetadata, SessionTreeEntry } from "./entries.ts";
 import { SessionError } from "./entries.ts";
 
 export interface SessionStorageShape {
-  readonly appendEntry: (
-    entry: SessionTreeEntry
-  ) => Effect.Effect<void, SessionError>;
+  readonly appendEntry: (entry: SessionTreeEntry) => Effect.Effect<void, SessionError>;
   readonly createEntryId: () => Effect.Effect<string, SessionError>;
   readonly findEntries: <TType extends SessionTreeEntry["type"]>(
-    type: TType
-  ) => Effect.Effect<
-    Array<Extract<SessionTreeEntry, { type: TType }>>,
-    SessionError
-  >;
+    type: TType,
+  ) => Effect.Effect<Array<Extract<SessionTreeEntry, { type: TType }>>, SessionError>;
   readonly getEntries: () => Effect.Effect<SessionTreeEntry[], SessionError>;
-  readonly getEntry: (
-    id: string
-  ) => Effect.Effect<SessionTreeEntry | undefined, SessionError>;
-  readonly getLabel: (
-    id: string
-  ) => Effect.Effect<string | undefined, SessionError>;
+  readonly getEntry: (id: string) => Effect.Effect<SessionTreeEntry | undefined, SessionError>;
+  readonly getLabel: (id: string) => Effect.Effect<string | undefined, SessionError>;
   readonly getLeafId: () => Effect.Effect<string | null, SessionError>;
   readonly getMetadata: () => Effect.Effect<SessionMetadata, SessionError>;
   readonly getPathToRoot: (
-    leafId: string | null
+    leafId: string | null,
   ) => Effect.Effect<SessionTreeEntry[], SessionError>;
-  readonly setLeafId: (
-    leafId: string | null
-  ) => Effect.Effect<void, SessionError>;
+  readonly setLeafId: (leafId: string | null) => Effect.Effect<void, SessionError>;
 }
 
-export class SessionStorage extends Context.Service<
-  SessionStorage,
-  SessionStorageShape
->()("@sakti-code/agent/SessionStorage") {}
+export class SessionStorage extends Context.Service<SessionStorage, SessionStorageShape>()(
+  "@sakti-code/agent/SessionStorage",
+) {}
 
 interface InMemoryState {
   byId: Map<string, SessionTreeEntry>;
@@ -48,10 +32,7 @@ interface InMemoryState {
   metadata: SessionMetadata;
 }
 
-function updateLabelCache(
-  labelsById: Map<string, string>,
-  entry: SessionTreeEntry
-): void {
+function updateLabelCache(labelsById: Map<string, string>, entry: SessionTreeEntry): void {
   if (entry.type !== "label") {
     return;
   }
@@ -103,8 +84,7 @@ function computeInitialState(options?: {
     });
   }
   const metadata =
-    options?.metadata ??
-    ({ id: uuidv7(), createdAt: new Date().toISOString() } as SessionMetadata);
+    options?.metadata ?? ({ id: uuidv7(), createdAt: new Date().toISOString() } as SessionMetadata);
   return { entries, byId, labelsById, leafId, metadata };
 }
 
@@ -123,9 +103,7 @@ export const InMemorySessionStorageLive = (options?: {
         return generateEntryId(state.byId);
       });
 
-      const appendEntry = Effect.fnUntraced(function* (
-        entry: SessionTreeEntry
-      ) {
+      const appendEntry = Effect.fnUntraced(function* (entry: SessionTreeEntry) {
         yield* Ref.update(stateRef, (state) => {
           state.entries.push(entry);
           state.byId.set(entry.id, entry);
@@ -140,13 +118,12 @@ export const InMemorySessionStorageLive = (options?: {
         return state.byId.get(id);
       });
 
-      const findEntries = Effect.fnUntraced(function* <
-        TType extends SessionTreeEntry["type"],
-      >(type: TType) {
+      const findEntries = Effect.fnUntraced(function* <TType extends SessionTreeEntry["type"]>(
+        type: TType,
+      ) {
         const state = yield* Ref.get(stateRef);
         return state.entries.filter(
-          (entry): entry is Extract<SessionTreeEntry, { type: TType }> =>
-            entry.type === type
+          (entry): entry is Extract<SessionTreeEntry, { type: TType }> => entry.type === type,
         );
       });
 
@@ -199,9 +176,7 @@ export const InMemorySessionStorageLive = (options?: {
         });
       });
 
-      const getPathToRoot = Effect.fnUntraced(function* (
-        leafId: string | null
-      ) {
+      const getPathToRoot = Effect.fnUntraced(function* (leafId: string | null) {
         if (leafId === null) {
           return [];
         }
@@ -244,5 +219,5 @@ export const InMemorySessionStorageLive = (options?: {
         setLeafId,
       };
       return shape;
-    })
+    }),
   );

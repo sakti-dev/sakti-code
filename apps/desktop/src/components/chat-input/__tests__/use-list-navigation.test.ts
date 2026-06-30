@@ -1,5 +1,5 @@
 import { renderHook } from "@solidjs/testing-library";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { useListNavigation } from "../use-list-navigation.ts";
 
 const items = [{ id: "a" }, { id: "b" }, { id: "c" }];
@@ -24,7 +24,7 @@ describe("useListNavigation", () => {
   it("Enter calls onPick with the active item id", () => {
     let picked: string | undefined;
     const { result } = renderHook(() =>
-      useListNavigation(() => items, { onPick: (item) => (picked = item.id) })
+      useListNavigation(() => items, { onPick: (item) => (picked = item.id) }),
     );
     result.handleKeyDown(new KeyboardEvent("keydown", { key: "ArrowDown" }));
     result.handleKeyDown(new KeyboardEvent("keydown", { key: "Enter" }));
@@ -34,7 +34,7 @@ describe("useListNavigation", () => {
   it("Escape calls onClose", () => {
     let closed = false;
     const { result } = renderHook(() =>
-      useListNavigation(() => items, { onClose: () => (closed = true) })
+      useListNavigation(() => items, { onClose: () => (closed = true) }),
     );
     result.handleKeyDown(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(closed).toBe(true);
@@ -43,7 +43,7 @@ describe("useListNavigation", () => {
   it("ignores keys when the list is empty", () => {
     const { result } = renderHook(() => useListNavigation(() => []));
     expect(() =>
-      result.handleKeyDown(new KeyboardEvent("keydown", { key: "Enter" }))
+      result.handleKeyDown(new KeyboardEvent("keydown", { key: "Enter" })),
     ).not.toThrow();
   });
 });

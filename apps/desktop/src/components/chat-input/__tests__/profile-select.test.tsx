@@ -1,5 +1,5 @@
 import { render, screen } from "@solidjs/testing-library";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ProfileSelect } from "../profile-select";
 
 const mocks = vi.hoisted(() => ({
@@ -54,7 +54,7 @@ describe("ProfileSelect", () => {
             models: { default: { provider: "openai", model: "gpt-4o-mini" } },
           },
         },
-      })
+      }),
     );
     render(() => <ProfileSelect sessionId={null} />);
     expect(await screen.findByText("Select profile")).toBeTruthy();
@@ -73,7 +73,7 @@ describe("ProfileSelect", () => {
             },
           },
         },
-      })
+      }),
     );
     render(() => <ProfileSelect sessionId="sess-1" />);
     expect(await screen.findByText("Default")).toBeTruthy();
@@ -91,7 +91,7 @@ describe("ProfileSelect", () => {
             },
           },
         },
-      })
+      }),
     );
     render(() => <ProfileSelect sessionId={null} />);
     const trigger = await screen.findByText("Select profile");

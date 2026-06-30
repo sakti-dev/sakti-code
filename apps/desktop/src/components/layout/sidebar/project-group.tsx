@@ -31,7 +31,7 @@ export const ProjectGroup: ParentComponent<ProjectGroupProps> = (props) => (
       class={cn(
         "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors",
         "hover:bg-secondary/50",
-        props.isActive && "bg-secondary/30"
+        props.isActive && "bg-secondary/30",
       )}
       onClick={() => props.onToggle(props.projectId)}
       type="button"
@@ -40,7 +40,7 @@ export const ProjectGroup: ParentComponent<ProjectGroupProps> = (props) => (
         aria-label={props.isExpanded ? "Collapse" : "Expand"}
         class={cn(
           "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
-          props.isExpanded && "rotate-90"
+          props.isExpanded && "rotate-90",
         )}
         fill="none"
         role="img"
@@ -69,22 +69,14 @@ export const ProjectGroup: ParentComponent<ProjectGroupProps> = (props) => (
         <title>Project</title>
         <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
       </svg>
-      <span class="min-w-0 flex-1 truncate font-medium text-foreground text-xs">
-        {props.name}
-      </span>
-      <span class="shrink-0 text-[10px] text-muted-foreground">
-        {props.sessions.length}
-      </span>
+      <span class="min-w-0 flex-1 truncate font-medium text-foreground text-xs">{props.name}</span>
+      <span class="shrink-0 text-[10px] text-muted-foreground">{props.sessions.length}</span>
     </button>
 
     <Show when={props.isExpanded}>
       <div class="border-border border-t bg-background/50">
         <Show
-          fallback={
-            <div class="px-6 py-2 text-muted-foreground text-xs">
-              No sessions
-            </div>
-          }
+          fallback={<div class="px-6 py-2 text-muted-foreground text-xs">No sessions</div>}
           when={props.sessions.length > 0}
         >
           <For each={props.sessions}>

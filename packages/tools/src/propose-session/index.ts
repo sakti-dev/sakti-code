@@ -13,10 +13,7 @@ const proposeSessionSchema = Type.Object({
 
 export type ProposeSessionToolInput = Static<typeof proposeSessionSchema>;
 
-export function createProposeSessionTool(): AgentTool<
-  typeof proposeSessionSchema,
-  undefined
-> {
+export function createProposeSessionTool(): AgentTool<typeof proposeSessionSchema, undefined> {
   return {
     name: "propose_session",
     label: "propose_session",

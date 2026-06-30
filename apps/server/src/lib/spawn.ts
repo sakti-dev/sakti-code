@@ -21,7 +21,7 @@ export interface SpawnHandle {
 export function spawnPiped(
   command: string,
   args: string[],
-  opts: { cwd?: string; env?: Record<string, string | undefined> } = {}
+  opts: { cwd?: string; env?: Record<string, string | undefined> } = {},
 ): SpawnHandle {
   const child = spawn(command, args, {
     cwd: opts.cwd,
@@ -38,10 +38,7 @@ export function spawnPiped(
       spawnError = err.message;
     });
     child.on("close", async (exitCode) => {
-      const [stdout, stderr] = await Promise.all([
-        stdoutPromise,
-        stderrPromise,
-      ]);
+      const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise]);
       resolve({
         exitCode,
         stderr,

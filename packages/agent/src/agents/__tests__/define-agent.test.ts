@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { defineAgent } from "../define-agent.ts";
 import { fromConfig } from "../permission.ts";
 
@@ -34,7 +34,7 @@ describe("defineAgent", () => {
         mode: "primary",
         description: "x",
         systemPrompt: "x",
-      })
+      }),
     ).toThrow(/name/);
   });
 
@@ -45,7 +45,7 @@ describe("defineAgent", () => {
         mode: "primary",
         description: "x",
         systemPrompt: "",
-      })
+      }),
     ).toThrow(/systemPrompt/);
   });
 });

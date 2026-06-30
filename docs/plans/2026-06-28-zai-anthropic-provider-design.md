@@ -79,7 +79,7 @@ Additional capabilities in scope for v1:
   `type:"enabled"` but no budget.
 - Prompt caching — `cache_control:{type:"ephemeral"}` on the stable system
   prefix and the last tool definition; send `anthropic-beta:
-  prompt-caching-2024-07-31`.
+prompt-caching-2024-07-31`.
 - Interleaved reasoning stream — parse `thinking` / `redacted_thinking` blocks
   and surface them as reasoning (signature-bearing for multi-turn continuity),
   never echoed back as user content.
@@ -91,16 +91,16 @@ Deferred: OAuth subscription flow (the API-key path via `auth.json` covers v1).
 
 ## Module layout (`packages/llm/src/provider/zai-anthropic/`)
 
-| File | Role |
-| --- | --- |
-| `index.ts` | `createZaiAnthropic(opts): ProviderSDK` factory returning `{ languageModel(id) }`. Registered in `BUNDLED_PROVIDERS`. |
-| `zai-anthropic-language-model.ts` | `ZaiAnthropicLanguageModel implements LanguageModelV4` — `doGenerate` / `doStream` / `getArgs`. |
-| `convert-to-zai-messages.ts` | `CoreMessage[]` → Anthropic Messages body (top-level `system`, role messages, content blocks, `tool_result`, `cache_control`). |
-| `map-zai-response.ts` | non-stream response → `LanguageModelV4GenerateResult`. |
-| `zai-anthropic-api.ts` | Zod schemas for request / stream-chunk / error (Anthropic Messages shapes, **minimal subset** + Z.ai extensions). |
-| `zai-anthropic-options.ts` | `providerOptions.zai` schema (thinking, speed, outputConfig, cacheControl, sendReasoning). |
-| `zai-anthropic-error.ts` | `{type:"error",error:{type,message}}` → `createJsonErrorResponseHandler`. |
-| `__tests__/` | fixtures + SSE-replay tests (no network). |
+| File                              | Role                                                                                                                           |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `index.ts`                        | `createZaiAnthropic(opts): ProviderSDK` factory returning `{ languageModel(id) }`. Registered in `BUNDLED_PROVIDERS`.          |
+| `zai-anthropic-language-model.ts` | `ZaiAnthropicLanguageModel implements LanguageModelV4` — `doGenerate` / `doStream` / `getArgs`.                                |
+| `convert-to-zai-messages.ts`      | `CoreMessage[]` → Anthropic Messages body (top-level `system`, role messages, content blocks, `tool_result`, `cache_control`). |
+| `map-zai-response.ts`             | non-stream response → `LanguageModelV4GenerateResult`.                                                                         |
+| `zai-anthropic-api.ts`            | Zod schemas for request / stream-chunk / error (Anthropic Messages shapes, **minimal subset** + Z.ai extensions).              |
+| `zai-anthropic-options.ts`        | `providerOptions.zai` schema (thinking, speed, outputConfig, cacheControl, sendReasoning).                                     |
+| `zai-anthropic-error.ts`          | `{type:"error",error:{type,message}}` → `createJsonErrorResponseHandler`.                                                      |
+| `__tests__/`                      | fixtures + SSE-replay tests (no network).                                                                                      |
 
 ## Integration
 
@@ -221,17 +221,17 @@ SSE event → `LanguageModelV4StreamPart` mapping (standard Anthropic Messages
 protocol; reasoning arrives as `thinking` blocks, **not** as
 `delta.reasoning_content`):
 
-| SSE event | Emission |
-| --- | --- |
-| `message_start` | `response-metadata` `{id, modelId}`; seed usage (`input_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`) |
-| `content_block_start` | open block by index → `text-start` / `reasoning-start` / `tool-input-start` `{id, toolName}`. `redacted_thinking` → reasoning with `redactedData` metadata |
+| SSE event             | Emission                                                                                                                                                                                            |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `message_start`       | `response-metadata` `{id, modelId}`; seed usage (`input_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`)                                                                          |
+| `content_block_start` | open block by index → `text-start` / `reasoning-start` / `tool-input-start` `{id, toolName}`. `redacted_thinking` → reasoning with `redactedData` metadata                                          |
 | `content_block_delta` | `text_delta`→`text-delta`; `thinking_delta`→`reasoning-delta`; `signature_delta`→stash onto reasoning's `providerMetadata.signature`; `input_json_delta`→`tool-input-delta` (append `partial_json`) |
-| `content_block_stop` | close block → `text-end` / `reasoning-end` / `tool-input-end` + `tool-call` (safe-parse accumulated JSON via `parseJSON` — **never** raw `JSON.parse`, per repo AGENTS) |
-| `message_delta` | update `stop_reason`; accumulate `output_tokens` + cache tokens |
-| `message_stop` | no-op (finish emitted in `flush`) |
-| `error` | emit `error`; `finishReason.unified = "error"` |
-| `ping` | ignore |
-| `flush` | emit `finish` `{finishReason:{unified,raw}, usage, providerMetadata}` |
+| `content_block_stop`  | close block → `text-end` / `reasoning-end` / `tool-input-end` + `tool-call` (safe-parse accumulated JSON via `parseJSON` — **never** raw `JSON.parse`, per repo AGENTS)                             |
+| `message_delta`       | update `stop_reason`; accumulate `output_tokens` + cache tokens                                                                                                                                     |
+| `message_stop`        | no-op (finish emitted in `flush`)                                                                                                                                                                   |
+| `error`               | emit `error`; `finishReason.unified = "error"`                                                                                                                                                      |
+| `ping`                | ignore                                                                                                                                                                                              |
+| `flush`               | emit `finish` `{finishReason:{unified,raw}, usage, providerMetadata}`                                                                                                                               |
 
 Per-index block state `Map<number, {type, id, toolName?, inputChunks?:string[]}>`
 (pattern from `anthropic-language-model.ts:1488-1579`). `includeRawChunks`
@@ -257,11 +257,11 @@ call site passes it through).
 
 ```ts
 const ZAI_THINKING_BUDGETS: Record<ThinkingLevel, number> = {
-  minimal: 2000,   // ≥ Anthropic floor of 1024
-  low:      8000,
-  medium:  16000,  // zcode "high"
-  high:    16000,
-  xhigh:   32000,  // zcode "max"
+  minimal: 2000, // ≥ Anthropic floor of 1024
+  low: 8000,
+  medium: 16000, // zcode "high"
+  high: 16000,
+  xhigh: 32000, // zcode "max"
 };
 // level === "off"            → { type:"disabled" }
 // level === ThinkingLevel    → { type:"enabled", budget_tokens: ZAI_THINKING_BUDGETS[level] }

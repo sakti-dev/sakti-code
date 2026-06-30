@@ -32,9 +32,7 @@ function getPartCopyText(part: MessagePart): string | undefined {
     return part.text || undefined;
   }
   if (part.type === "tool_call") {
-    return typeof part.result === "string" && part.result
-      ? part.result
-      : undefined;
+    return typeof part.result === "string" && part.result ? part.result : undefined;
   }
   return;
 }
@@ -61,10 +59,7 @@ function MessageContent(msg: UIMessage, isStreaming: boolean): JSX.Element {
           <div class="flex flex-col gap-1">
             <Part isStreaming={isStreaming} part={part()} />
             <Show when={!part().isStreaming}>
-              <PartFooter
-                copyText={getPartCopyText(part())}
-                timestamp={msg.timestamp}
-              />
+              <PartFooter copyText={getPartCopyText(part())} timestamp={msg.timestamp} />
             </Show>
           </div>
         )}
@@ -97,8 +92,8 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
       () => turn().endedAt,
       (endedAt) => {
         setExpanded(endedAt === null);
-      }
-    )
+      },
+    ),
   );
 
   const durationLabel = createMemo(() => {
@@ -138,14 +133,9 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
       data-slot="session-turn-root"
     >
       <Show when={turn().userMessage}>
-        <div
-          class="flex flex-col items-end gap-1 px-3"
-          data-slot="session-turn-user"
-        >
+        <div class="flex flex-col items-end gap-1 px-3" data-slot="session-turn-user">
           <div class="@2xl:max-w-[450px] @4xl:max-w-[800px] max-w-[80%] rounded-2xl rounded-br-none bg-primary px-4 py-2 text-primary-foreground text-sm">
-            <div class="mb-1 font-medium text-primary-foreground/70 text-xs">
-              You
-            </div>
+            <div class="mb-1 font-medium text-primary-foreground/70 text-xs">You</div>
             {getUserText(turn())}
           </div>
           <PartFooter

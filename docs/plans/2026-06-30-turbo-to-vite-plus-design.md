@@ -56,12 +56,12 @@ Instead:
 
 Vite+ requires **Vite 8+** and **Vitest 4.1+**. Current repo state:
 
-| Package        | vitest    | vite      | Action |
-|----------------|-----------|-----------|--------|
-| agent, db, llm, logger, tools | `^3` | — | bump vitest → `4.1.x` (catalog) |
-| apps/server    | `^4.1.9`  | — | already OK; move to catalog |
-| apps/desktop   | `^4.1.9`  | `^7.3.5` (via electron-vite) | verify electron-vite's bundled vite; renderer vitest OK |
-| velomark       | `^3`      | `^5.2.11` | bump vitest → 4.1.x; vite → 8 (velomark dev uses `vp dev`) |
+| Package                       | vitest   | vite                         | Action                                                     |
+| ----------------------------- | -------- | ---------------------------- | ---------------------------------------------------------- |
+| agent, db, llm, logger, tools | `^3`     | —                            | bump vitest → `4.1.x` (catalog)                            |
+| apps/server                   | `^4.1.9` | —                            | already OK; move to catalog                                |
+| apps/desktop                  | `^4.1.9` | `^7.3.5` (via electron-vite) | verify electron-vite's bundled vite; renderer vitest OK    |
+| velomark                      | `^3`     | `^5.2.11`                    | bump vitest → 4.1.x; vite → 8 (velomark dev uses `vp dev`) |
 
 Also confirm: no tsconfig uses `baseUrl` (verified 2026-06-30 — none do), so type-aware
 linting is not silently disabled.
@@ -86,7 +86,7 @@ linting is not silently disabled.
 > when running `vp check`. Because we run `ultracite check`/`fix`, overrides live in
 > `oxlint.config.ts` / `oxfmt.config.ts`. Optionally compose them via
 > `tooling/lint/*.ts` modules typed with `import type { OxlintOverride } from
-> 'vite-plus/lint'`, spread into the `oxlint.config.ts` overrides.
+'vite-plus/lint'`, spread into the `oxlint.config.ts` overrides.
 
 ### Root files — removed
 
@@ -102,18 +102,18 @@ linting is not silently disabled.
 - Keep `engines.node`; add `devEngines.runtime` for documentation.
 - Scripts (vp surface):
 
-  | old | new |
-  |-----|-----|
-  | `typecheck: turbo run typecheck` | `vp run -r typecheck` |
-  | `build: turbo run build` | `vp run -r build` |
-  | `dev: turbo run dev` | `vp run desktop#dev` |
-  | `start: turbo run start` | `vp run @sakti-code/server#start` |
-  | `hmr: turbo run hmr` | (drop if unused; see tasks) |
-  | `build:canary: turbo run build:canary` | (drop if unused; see tasks) |
-  | `check: ultracite check` | keep |
-  | `fix: ultracite fix` | keep |
-  | `dev:server: pnpm --filter @sakti-code/server dev` | `vp run @sakti-code/server#dev` |
-  | `prepare: husky` | `vp config` |
+  | old                                                | new                               |
+  | -------------------------------------------------- | --------------------------------- |
+  | `typecheck: turbo run typecheck`                   | `vp run -r typecheck`             |
+  | `build: turbo run build`                           | `vp run -r build`                 |
+  | `dev: turbo run dev`                               | `vp run desktop#dev`              |
+  | `start: turbo run start`                           | `vp run @sakti-code/server#start` |
+  | `hmr: turbo run hmr`                               | (drop if unused; see tasks)       |
+  | `build:canary: turbo run build:canary`             | (drop if unused; see tasks)       |
+  | `check: ultracite check`                           | keep                              |
+  | `fix: ultracite fix`                               | keep                              |
+  | `dev:server: pnpm --filter @sakti-code/server dev` | `vp run @sakti-code/server#dev`   |
+  | `prepare: husky`                                   | `vp config`                       |
 
   Keep the `velomark:*` / `pi:*` subtree sync scripts unchanged (plain git).
 
@@ -153,19 +153,19 @@ source of Node + Electron runtime libs + python3/gnumake (for node-pty rebuilds)
 Each gains a **`vite.config.ts`** with:
 
 ```ts
-import { defineConfig } from 'vite-plus';
+import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   fmt: {},
   lint: { options: { typeAware: true, typeCheck: true } },
-  pack: { entry: ['src/index.ts'], dts: true, format: ['esm'] },
+  pack: { entry: ["src/index.ts"], dts: true, format: ["esm"] },
 });
 ```
 
 `package.json` changes:
 
 - `build` → `vp pack` (replaces `tsup && node ../../scripts/restore-node-protocol.mjs
-  dist`). The `restore-node-protocol.mjs` post-step is kept **only** for the
+dist`). The `restore-node-protocol.mjs` post-step is kept **only** for the
   `node:sqlite` packages if the spike shows tsdown mangles it (see §Risks).
 - `dev` → `vp pack --watch` (where useful).
 - `test` → `vp test` (replaces `vitest run`).
@@ -182,14 +182,14 @@ export default defineConfig({
 is no turbo-style `^build`. Recursive runs (`vp run -r build`) already build upstream
 deps first.
 
-| turbo task | becomes | notes |
-|------------|----------|-------|
-| `build` (`^build`, `dist/**`) | `vp run -r build` | topological order automatic. Workspace imports resolve to `src/` via the `development` condition, so cross-package dist is **not** needed to build. |
-| `test` (`^build`) | `vp run -r test` | drop the `^build` dep — tests import `src/`, no build needed. |
-| `typecheck` (`^typecheck`) | `vp run -r typecheck` | per-package `tsc --noEmit`. |
-| `dev` / `start` / `hmr` (persistent) | `vp run <pkg>#dev` etc. | no `persistent` concept; dev servers just run (package.json scripts are not cached by default). |
-| `build:electron` (`^build`, `out/**`,`dist/**`) | `vp run -r build && vp run desktop#build:electron` | desktop's `package` script chains these + `electron-builder`. |
-| `build:canary` | **verify it exists per-package first**; likely dead (only in `turbo.json`, no script seen). Drop if unused. |
+| turbo task                                      | becomes                                                                                                     | notes                                                                                                                                               |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `build` (`^build`, `dist/**`)                   | `vp run -r build`                                                                                           | topological order automatic. Workspace imports resolve to `src/` via the `development` condition, so cross-package dist is **not** needed to build. |
+| `test` (`^build`)                               | `vp run -r test`                                                                                            | drop the `^build` dep — tests import `src/`, no build needed.                                                                                       |
+| `typecheck` (`^typecheck`)                      | `vp run -r typecheck`                                                                                       | per-package `tsc --noEmit`.                                                                                                                         |
+| `dev` / `start` / `hmr` (persistent)            | `vp run <pkg>#dev` etc.                                                                                     | no `persistent` concept; dev servers just run (package.json scripts are not cached by default).                                                     |
+| `build:electron` (`^build`, `out/**`,`dist/**`) | `vp run -r build && vp run desktop#build:electron`                                                          | desktop's `package` script chains these + `electron-builder`.                                                                                       |
+| `build:canary`                                  | **verify it exists per-package first**; likely dead (only in `turbo.json`, no script seen). Drop if unused. |
 
 **Caching:** leave `run.cache` at default `{ scripts: false, tasks: true }`. Do not chase
 build-output caching in phase 1 — rolldown builds are fast and workspace imports don't
@@ -207,7 +207,7 @@ Each tier ends GREEN (`vp pack` / `vp test` / `ultracite check` pass) before the
   `test: vp test`, drop tsup + direct vitest, add `vite-plus: catalog:`.
 - **Tier 2 — `node:sqlite` libs (`agent`, `db`, `tools`)**: same as Tier 1 **plus** the
   node:sqlite spike. If tsdown mangles it, keep `build: "vp pack && node
-  ../../scripts/restore-node-protocol.mjs dist"` (the fixup is tool-agnostic).
+../../scripts/restore-node-protocol.mjs dist"` (the fixup is tool-agnostic).
 - **Tier 3 — `apps/server`**: `build: vp pack`; keep `dev`/`start` as
   `NODE_OPTIONS=--conditions=development tsx src/index.ts` (a process, not a vite app),
   orchestrated via `vp run @sakti-code/server#dev`. Inherits the node:sqlite fixup if
@@ -232,16 +232,16 @@ Each tier ends GREEN (`vp pack` / `vp test` / `ultracite check` pass) before the
 
 1. **node:sqlite under tsdown** — tsup mangles `node:sqlite` → bare `sqlite` (hence the
    existing `restore-node-protocol.mjs`). Does tsdown/Rolldown preserve `node:`?
-   *Spike:* `vp pack packages/db`, grep `dist/` for bare `sqlite`. If broken, keep the
+   _Spike:_ `vp pack packages/db`, grep `dist/` for bare `sqlite`. If broken, keep the
    post-pack fixup. Falsifiable in ~30s. (The Vite+ `vp pack` doc defers to upstream
    tsdown docs and gives no answer.)
 2. **velomark Solid conditional output** — `tsup-preset-solid` has no direct tsdown
-   equivalent. *Spike:* `vp pack packages/velomark`, verify `dist/dev.js` +
+   equivalent. _Spike:_ `vp pack packages/velomark`, verify `dist/dev.js` +
    `dist/index.js` + the `solid` condition survive. Highest-uncertainty item; may need a
    tsdown plugin or a custom multi-entry config.
 3. **catalog resolution** — confirm `vp install` honors `pnpm-workspace.yaml` `catalog:`
-   + the `vite: npm:@voidzero-dev/vite-plus-core@latest` alias. vite-plus delegates to
-   pnpm, so it should — verify once.
+   - the `vite: npm:@voidzero-dev/vite-plus-core@latest` alias. vite-plus delegates to
+     pnpm, so it should — verify once.
 4. **`vp env off` defers to nix** — `vp env doctor` shows system Node winning; pin via
    `.node-version` or `devEngines.runtime`.
 

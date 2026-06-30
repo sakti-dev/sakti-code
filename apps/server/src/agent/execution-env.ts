@@ -20,13 +20,7 @@ import type {
   FileKind,
   Result,
 } from "@sakti-code/agent";
-import {
-  ExecutionError,
-  err,
-  FileError,
-  isSuccess,
-  ok,
-} from "@sakti-code/agent";
+import { ExecutionError, err, FileError, isSuccess, ok } from "@sakti-code/agent";
 import { spawnPiped } from "../lib/spawn.ts";
 
 function mapFsErrorCode(code: string | undefined): FileErrorCode {
@@ -88,14 +82,9 @@ export class NodeExecutionEnv implements ExecutionEnv {
     return this._cwd;
   }
 
-  async absolutePath(
-    path: string,
-    signal?: AbortSignal
-  ): Promise<Result<string, FileError>> {
+  async absolutePath(path: string, signal?: AbortSignal): Promise<Result<string, FileError>> {
     if (signal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     return ok(resolve(this._cwd, path));
   }
@@ -103,12 +92,10 @@ export class NodeExecutionEnv implements ExecutionEnv {
   async appendFile(
     path: string,
     content: string | Uint8Array,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<Result<void, FileError>> {
     if (signal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       const fullPath = resolve(this._cwd, path);
@@ -119,14 +106,9 @@ export class NodeExecutionEnv implements ExecutionEnv {
     }
   }
 
-  async canonicalPath(
-    path: string,
-    signal?: AbortSignal
-  ): Promise<Result<string, FileError>> {
+  async canonicalPath(path: string, signal?: AbortSignal): Promise<Result<string, FileError>> {
     if (signal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       const fullPath = resolve(this._cwd, path);
@@ -141,12 +123,10 @@ export class NodeExecutionEnv implements ExecutionEnv {
 
   async createDir(
     path: string,
-    options?: { recursive?: boolean; abortSignal?: AbortSignal }
+    options?: { recursive?: boolean; abortSignal?: AbortSignal },
   ): Promise<Result<void, FileError>> {
     if (options?.abortSignal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       const fullPath = resolve(this._cwd, path);
@@ -157,14 +137,9 @@ export class NodeExecutionEnv implements ExecutionEnv {
     }
   }
 
-  async createTempDir(
-    prefix?: string,
-    signal?: AbortSignal
-  ): Promise<Result<string, FileError>> {
+  async createTempDir(prefix?: string, signal?: AbortSignal): Promise<Result<string, FileError>> {
     if (signal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       const dirPath = await mkdtempAsync(join(tmpdir(), prefix ?? "tmp-"));
@@ -180,15 +155,13 @@ export class NodeExecutionEnv implements ExecutionEnv {
     abortSignal?: AbortSignal;
   }): Promise<Result<string, FileError>> {
     if (options?.abortSignal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       const dirPath = await mkdtempAsync(join(tmpdir(), "tmp-"));
       const filePath = join(
         dirPath,
-        `${options?.prefix ?? ""}${Date.now()}${options?.suffix ?? ""}`
+        `${options?.prefix ?? ""}${Date.now()}${options?.suffix ?? ""}`,
       );
       await writeFile(filePath, new Uint8Array(0));
       return ok(filePath);
@@ -197,14 +170,9 @@ export class NodeExecutionEnv implements ExecutionEnv {
     }
   }
 
-  async exists(
-    path: string,
-    signal?: AbortSignal
-  ): Promise<Result<boolean, FileError>> {
+  async exists(path: string, signal?: AbortSignal): Promise<Result<boolean, FileError>> {
     if (signal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       const fullPath = resolve(this._cwd, path);
@@ -219,14 +187,9 @@ export class NodeExecutionEnv implements ExecutionEnv {
     }
   }
 
-  async fileInfo(
-    path: string,
-    signal?: AbortSignal
-  ): Promise<Result<FileInfo, FileError>> {
+  async fileInfo(path: string, signal?: AbortSignal): Promise<Result<FileInfo, FileError>> {
     if (signal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       const fullPath = resolve(this._cwd, path);
@@ -237,14 +200,9 @@ export class NodeExecutionEnv implements ExecutionEnv {
     }
   }
 
-  async joinPath(
-    parts: string[],
-    signal?: AbortSignal
-  ): Promise<Result<string, FileError>> {
+  async joinPath(parts: string[], signal?: AbortSignal): Promise<Result<string, FileError>> {
     if (signal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       return ok(join(this._cwd, ...parts));
@@ -253,14 +211,9 @@ export class NodeExecutionEnv implements ExecutionEnv {
     }
   }
 
-  async listDir(
-    path: string,
-    signal?: AbortSignal
-  ): Promise<Result<FileInfo[], FileError>> {
+  async listDir(path: string, signal?: AbortSignal): Promise<Result<FileInfo[], FileError>> {
     if (signal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       const dirPath = resolve(this._cwd, path);
@@ -276,14 +229,9 @@ export class NodeExecutionEnv implements ExecutionEnv {
     }
   }
 
-  async readBinaryFile(
-    path: string,
-    signal?: AbortSignal
-  ): Promise<Result<Uint8Array, FileError>> {
+  async readBinaryFile(path: string, signal?: AbortSignal): Promise<Result<Uint8Array, FileError>> {
     if (signal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       const fullPath = resolve(this._cwd, path);
@@ -294,14 +242,9 @@ export class NodeExecutionEnv implements ExecutionEnv {
     }
   }
 
-  async readTextFile(
-    path: string,
-    signal?: AbortSignal
-  ): Promise<Result<string, FileError>> {
+  async readTextFile(path: string, signal?: AbortSignal): Promise<Result<string, FileError>> {
     if (signal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       const fullPath = resolve(this._cwd, path);
@@ -314,12 +257,10 @@ export class NodeExecutionEnv implements ExecutionEnv {
 
   async readTextLines(
     path: string,
-    options?: { maxLines?: number; abortSignal?: AbortSignal }
+    options?: { maxLines?: number; abortSignal?: AbortSignal },
   ): Promise<Result<string[], FileError>> {
     if (options?.abortSignal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     const result = await this.readTextFile(path, options?.abortSignal);
     if (!isSuccess(result)) {
@@ -335,12 +276,10 @@ export class NodeExecutionEnv implements ExecutionEnv {
       recursive?: boolean;
       force?: boolean;
       abortSignal?: AbortSignal;
-    }
+    },
   ): Promise<Result<void, FileError>> {
     if (options?.abortSignal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       const fullPath = resolve(this._cwd, path);
@@ -357,12 +296,10 @@ export class NodeExecutionEnv implements ExecutionEnv {
   async writeFile(
     path: string,
     content: string | Uint8Array,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<Result<void, FileError>> {
     if (signal?.aborted) {
-      return err(
-        new FileError({ code: "aborted", message: "Operation aborted" })
-      );
+      return err(new FileError({ code: "aborted", message: "Operation aborted" }));
     }
     try {
       const fullPath = resolve(this._cwd, path);
@@ -375,14 +312,10 @@ export class NodeExecutionEnv implements ExecutionEnv {
 
   async exec(
     command: string,
-    options?: ExecutionEnvExecOptions
-  ): Promise<
-    Result<{ stdout: string; stderr: string; exitCode: number }, ExecutionError>
-  > {
+    options?: ExecutionEnvExecOptions,
+  ): Promise<Result<{ stdout: string; stderr: string; exitCode: number }, ExecutionError>> {
     if (options?.abortSignal?.aborted) {
-      return err(
-        new ExecutionError({ code: "aborted", message: "Command aborted" })
-      );
+      return err(new ExecutionError({ code: "aborted", message: "Command aborted" }));
     }
 
     const timeoutMs = options?.timeout ? options.timeout * 1000 : undefined;
@@ -399,7 +332,7 @@ export class NodeExecutionEnv implements ExecutionEnv {
           code: "shell_unavailable",
           message: e instanceof Error ? e.message : String(e),
           ...(e instanceof Error ? { cause: e } : {}),
-        })
+        }),
       );
     }
     const { child: proc, done } = spawned;
@@ -423,20 +356,18 @@ export class NodeExecutionEnv implements ExecutionEnv {
           new ExecutionError({
             code: "shell_unavailable",
             message: result.spawnError,
-          })
+          }),
         );
       }
       if (options?.abortSignal?.aborted) {
-        return err(
-          new ExecutionError({ code: "aborted", message: "Command aborted" })
-        );
+        return err(new ExecutionError({ code: "aborted", message: "Command aborted" }));
       }
       if (timedOut) {
         return err(
           new ExecutionError({
             code: "timeout",
             message: result.stderr || "Command timed out",
-          })
+          }),
         );
       }
 
@@ -453,7 +384,7 @@ export class NodeExecutionEnv implements ExecutionEnv {
             code: "aborted",
             message: msg,
             ...(e instanceof Error ? { cause: e } : {}),
-          })
+          }),
         );
       }
       if (timedOut) {
@@ -462,7 +393,7 @@ export class NodeExecutionEnv implements ExecutionEnv {
             code: "timeout",
             message: msg,
             ...(e instanceof Error ? { cause: e } : {}),
-          })
+          }),
         );
       }
       return err(
@@ -470,7 +401,7 @@ export class NodeExecutionEnv implements ExecutionEnv {
           code: "unknown",
           message: msg,
           ...(e instanceof Error ? { cause: e } : {}),
-        })
+        }),
       );
     } finally {
       if (timeoutId) {

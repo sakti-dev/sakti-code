@@ -4,9 +4,7 @@ import type { SessionActions } from "./session-store.ts";
 import type { TokenBatcher } from "./token-batcher.ts";
 import { extractUsage } from "./usage-stats.ts";
 
-function isMessageWithContent(
-  msg: AgentMessage
-): msg is Message & { content: Message["content"] } {
+function isMessageWithContent(msg: AgentMessage): msg is Message & { content: Message["content"] } {
   return "content" in msg;
 }
 
@@ -27,10 +25,7 @@ function extractTextContent(msg: AgentMessage): string {
   return "";
 }
 
-function handleMessageStart(
-  actions: SessionActions,
-  message: AgentMessage
-): void {
+function handleMessageStart(actions: SessionActions, message: AgentMessage): void {
   if (message.role === "user") {
     const text = extractTextContent(message);
     if (actions.wasLastUserMessage(text)) {
@@ -42,8 +37,7 @@ function handleMessageStart(
       content: text,
       parts: [{ type: "text", text }],
       isStreaming: false,
-      timestamp:
-        typeof message.timestamp === "number" ? message.timestamp : Date.now(),
+      timestamp: typeof message.timestamp === "number" ? message.timestamp : Date.now(),
     });
     return;
   }
@@ -67,7 +61,7 @@ function handleMessageStart(
 
 function handleToolExecutionEnd(
   actions: SessionActions,
-  event: Extract<AgentHarnessEvent, { type: "tool_execution_end" }>
+  event: Extract<AgentHarnessEvent, { type: "tool_execution_end" }>,
 ): void {
   const msgId = actions.getCurrentMessageId();
   if (!msgId) {
@@ -88,10 +82,7 @@ function handleToolExecutionEnd(
     resultText = content
       .filter(
         (c): c is { type: "text"; text: string } =>
-          c !== null &&
-          typeof c === "object" &&
-          "type" in c &&
-          c.type === "text"
+          c !== null && typeof c === "object" && "type" in c && c.type === "text",
       )
       .map((c) => c.text)
       .join("");
@@ -102,19 +93,13 @@ function handleToolExecutionEnd(
     resultText = String(result);
   }
 
-  actions.completeToolCall(
-    msgId,
-    event.toolCallId,
-    resultText,
-    event.isError,
-    details
-  );
+  actions.completeToolCall(msgId, event.toolCallId, resultText, event.isError, details);
 }
 
 function handleTurnTiming(
   actions: SessionActions,
   event: AgentHarnessEvent,
-  skipTiming: boolean
+  skipTiming: boolean,
 ): void {
   if (skipTiming) {
     return;
@@ -130,7 +115,7 @@ export function dispatchEvent(
   actions: SessionActions,
   batcher: TokenBatcher,
   event: AgentHarnessEvent,
-  options?: { skipTiming?: boolean }
+  options?: { skipTiming?: boolean },
 ): void {
   handleTurnTiming(actions, event, options?.skipTiming ?? false);
 
@@ -175,19 +160,11 @@ export function dispatchEvent(
     case "tool_execution_start": {
       const msgId = actions.getCurrentMessageId();
       if (msgId) {
-        actions.addToolCall(
-          msgId,
-          event.toolCallId,
-          event.toolName,
-          event.args
-        );
+        actions.addToolCall(msgId, event.toolCallId, event.toolName, event.args);
       }
       if (event.toolName === "propose_session") {
         const args = event.args as { title?: unknown; message?: unknown };
-        if (
-          typeof args.title === "string" &&
-          typeof args.message === "string"
-        ) {
+        if (typeof args.title === "string" && typeof args.message === "string") {
           actions.setProposedSession({
             title: args.title,
             message: args.message,

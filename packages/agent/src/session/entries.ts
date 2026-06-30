@@ -127,10 +127,7 @@ export interface SessionRepo<
 > {
   create(options: TCreateOptions): Promise<SessionShape>;
   delete(metadata: TMetadata): Promise<void>;
-  fork(
-    source: TMetadata,
-    options: SessionForkOptions & TCreateOptions
-  ): Promise<SessionShape>;
+  fork(source: TMetadata, options: SessionForkOptions & TCreateOptions): Promise<SessionShape>;
   list(options?: TListOptions): Promise<TMetadata[]>;
   open(metadata: TMetadata): Promise<SessionShape>;
 }
@@ -144,12 +141,11 @@ export interface JsonlSessionListOptions {
   cwd?: string;
 }
 
-export interface JsonlSessionRepoApi
-  extends SessionRepo<
-    JsonlSessionMetadata,
-    JsonlSessionCreateOptions,
-    JsonlSessionListOptions
-  > {}
+export interface JsonlSessionRepoApi extends SessionRepo<
+  JsonlSessionMetadata,
+  JsonlSessionCreateOptions,
+  JsonlSessionListOptions
+> {}
 
 export type PendingSessionWrite = SessionTreeEntry extends infer TEntry
   ? TEntry extends SessionTreeEntry
@@ -173,15 +169,12 @@ export type FileErrorCode = typeof FileErrorCode.Type;
 
 import { Schema } from "effect";
 
-export class FileError extends Schema.TaggedErrorClass<FileError>()(
-  "FileError",
-  {
-    code: FileErrorCode,
-    message: Schema.String,
-    path: Schema.optional(Schema.String),
-    cause: Schema.optional(Schema.Defect()),
-  }
-) {}
+export class FileError extends Schema.TaggedErrorClass<FileError>()("FileError", {
+  code: FileErrorCode,
+  message: Schema.String,
+  path: Schema.optional(Schema.String),
+  cause: Schema.optional(Schema.Defect()),
+}) {}
 
 export interface FileInfo {
   kind: FileKind;
@@ -201,14 +194,11 @@ export const SessionErrorCode = Schema.Literals([
 ]);
 export type SessionErrorCode = typeof SessionErrorCode.Type;
 
-export class SessionError extends Schema.TaggedErrorClass<SessionError>()(
-  "SessionError",
-  {
-    code: SessionErrorCode,
-    message: Schema.String,
-    cause: Schema.optional(Schema.Defect()),
-  }
-) {}
+export class SessionError extends Schema.TaggedErrorClass<SessionError>()("SessionError", {
+  code: SessionErrorCode,
+  message: Schema.String,
+  cause: Schema.optional(Schema.Defect()),
+}) {}
 
 export interface CompactResult {
   details?: unknown;

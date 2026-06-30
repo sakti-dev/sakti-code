@@ -28,8 +28,7 @@ interface SettingsDialogProps {
 export function SettingsDialog(props: SettingsDialogProps) {
   const [activeTab, setActiveTab] = createSignal("general");
 
-  const activeTabLabel = () =>
-    SETTINGS_TABS.find((t) => t.id === activeTab())?.label ?? "Settings";
+  const activeTabLabel = () => SETTINGS_TABS.find((t) => t.id === activeTab())?.label ?? "Settings";
 
   const activeTabDescription = () => {
     if (activeTab() === "general") {
@@ -70,10 +69,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
       default:
         return (
           <div class="flex h-full items-center justify-center text-muted-foreground">
-            <p>
-              {SETTINGS_TABS.find((t) => t.id === activeTab())?.label} settings
-              coming soon
-            </p>
+            <p>{SETTINGS_TABS.find((t) => t.id === activeTab())?.label} settings coming soon</p>
           </div>
         );
     }
@@ -111,10 +107,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
         <div class="flex flex-1 overflow-hidden">
           <div class="w-56 shrink-0 border-border/80 border-r bg-background/35">
             <ScrollArea class="h-full">
-              <SettingsSidebar
-                activeTab={activeTab()}
-                onTabChange={setActiveTab}
-              />
+              <SettingsSidebar activeTab={activeTab()} onTabChange={setActiveTab} />
             </ScrollArea>
           </div>
 

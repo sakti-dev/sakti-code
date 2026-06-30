@@ -11,7 +11,7 @@ export interface LoaderDiagnostic {
 }
 
 export function parseFrontmatter<T extends Record<string, unknown>>(
-  content: string
+  content: string,
 ): Result<{ frontmatter: T; body: string }, Error> {
   try {
     const normalized = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
@@ -33,7 +33,7 @@ export function parseFrontmatter<T extends Record<string, unknown>>(
 export async function resolveKind(
   env: ExecutionEnv,
   info: FileInfo,
-  diagnostics: LoaderDiagnostic[]
+  diagnostics: LoaderDiagnostic[],
 ): Promise<"file" | "directory" | undefined> {
   if (info.kind === "file" || info.kind === "directory") {
     return info.kind;

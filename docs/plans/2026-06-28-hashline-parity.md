@@ -5,29 +5,33 @@
 **Goal:** Bring the hashline edit tool to full parity with the oh-my-pi reference — bounded snapshot store (lru-cache), no-op loop guard, tree-sitter block resolution via our own napi crate, missing test coverage, and diff preview — closing the gaps found in the 2026-06-28 deep-dive review.
 
 **Architecture:**
+
 - A new Rust crate `crates/pi-natives/` (napi-rs cdylib) path-depends on the vendored `vendor/pi-crates/crates/pi-ast` and exposes `block_range_at` (+ AST ops later) to Node as the `@sakti-code/pi-natives` workspace package. napi-rs addons are N-API ABI-stable, so they load under Electron **without** rebuild (unlike node-pty).
 - The hashline TS layer (`packages/tools/src/edit/hashline/`) gains: `block.ts` (language-agnostic block-edit resolver), a `block-resolver.ts` wrapper over `@sakti-code/pi-natives`, a bounded `InMemorySnapshotStore` (lru-cache), and a no-op loop guard. The patcher/input wires the resolver; the edit tool wires the guard and diff preview.
 
 **Tech Stack:** Rust (edition 2024, napi-rs 3.x), TypeScript (exactOptionalPropertyTypes + noUncheckedIndexedAccess), vitest, pnpm workspace, node:sqlite unaffected.
 
 **Reference sources (now vendored in our repo):**
+
 - `vendor/pi-crates/crates/pi-ast/src/{block.rs,summary.rs,ops.rs,language/,lib.rs}` — the Rust algorithms
 - `openspec/references/oh-my-pi/packages/hashline/src/` — the TS reference (block.ts, diff-preview.ts, snapshots.ts, etc.)
 - `openspec/references/oh-my-pi/packages/hashline/test/` — reference unit tests (~205 tests)
 - `openspec/references/oh-my-pi/packages/coding-agent/src/edit/hashline/` — wrapper layer (noop-loop-guard.ts, block-resolver.ts, execute.ts, diff.ts)
 
 **Status of foundation (DONE before this plan):**
+
 - ✅ Fork branch `crates-only` on `sakti-dev/oh-my-pi` (filter-repo, ~8MB)
 - ✅ Subtree at `vendor/pi-crates/` (workspace globs intact, pi-ast resolves with zero Cargo surgery)
 - ✅ `scripts/sync-pi-crates.sh` + `pi:sync`/`pi:pull`/`pi:push` scripts
 
 **Conventions (from AGENTS.md):**
+
 - TDD: failing test first (RED), implement to green, refactor. Verify RED before implementing.
 - `exactOptionalPropertyTypes: true` + `noUncheckedIndexedAccess: true` — guard all optional spreads and array accesses.
 - Tests in `__tests__/` colocated with source; vitest throughout.
 - `pnpm run fix` before committing; `pnpm run typecheck` to verify.
 - No `console.log` in production code; use the structured logger where logs are needed.
-- Port discipline: copy from reference then adapt (Bun.* → node:*, `#private` is fine to keep, catalog deps → concrete versions). Do not rewrite from scratch.
+- Port discipline: copy from reference then adapt (Bun._ → node:_, `#private` is fine to keep, catalog deps → concrete versions). Do not rewrite from scratch.
 
 ---
 
@@ -38,6 +42,7 @@ Expose `block_range_at` to Node. This is the highest-risk phase (new toolchain).
 ### Task 1.1: Scaffold the Rust workspace + napi crate skeleton
 
 **Files:**
+
 - Create: `Cargo.toml` (repo-root Rust workspace manifest — NOT part of the pnpm workspace)
 - Create: `crates/pi-natives/Cargo.toml`
 - Create: `crates/pi-natives/build.rs`
@@ -81,6 +86,7 @@ napi-build = "3"
 ```
 
 **Step 3: `crates/pi-natives/build.rs`**
+
 ```rust
 fn main() {
     napi_build::setup();
@@ -88,12 +94,14 @@ fn main() {
 ```
 
 **Step 4: `crates/pi-natives/src/lib.rs`** (skeleton — no napi fns yet, just proves it builds)
+
 ```rust
 #[macro_use]
 extern crate napi_derive;
 ```
 
 **Step 5: `crates/pi-natives/package.json`**
+
 ```json
 {
   "name": "@sakti-code/pi-natives",
@@ -114,6 +122,7 @@ extern crate napi_derive;
 ```
 
 **Step 6: `crates/pi-natives/.gitignore`**
+
 ```
 index.js
 index.d.ts
@@ -124,12 +133,15 @@ target/
 **Step 7: Verify it compiles (no Node binding yet)**
 
 Run (from repo root, in `nix-shell -p rustc cargo` or after `rustup default stable`):
+
 ```bash
 cd crates/pi-natives && cargo check
 ```
+
 Expected: compiles (pi-ast + 62 grammars fetched + built; first run is slow ~3-5 min, cached after).
 
 **Step 8: Commit**
+
 ```bash
 git add Cargo.toml crates/pi-natives/ && git commit -m "feat(natives): scaffold pi-natives napi crate path-depending on pi-ast"
 ```
@@ -139,12 +151,14 @@ git add Cargo.toml crates/pi-natives/ && git commit -m "feat(natives): scaffold 
 ### Task 1.2: Expose `blockRangeAt` via napi + smoke test
 
 **Files:**
+
 - Modify: `crates/pi-natives/src/lib.rs` (add the napi fn)
 - Test: `crates/pi-natives/__tests__/smoke.test.ts`
 
 **Step 1: Write the failing smoke test (RED)**
 
 `crates/pi-natives/__tests__/smoke.test.ts`:
+
 ```ts
 import { describe, expect, it } from "vitest";
 import { blockRangeAt } from "../index.js";
@@ -167,11 +181,16 @@ describe("blockRangeAt (napi)", () => {
   });
 
   it("returns null for a blank line", () => {
-    expect(blockRangeAt({ code: "function f() {\n\n  return 1;\n}\n", path: "f.ts", line: 2 })).toBeNull();
+    expect(
+      blockRangeAt({ code: "function f() {\n\n  return 1;\n}\n", path: "f.ts", line: 2 }),
+    ).toBeNull();
   });
 
   it("resolves a python def (indentation language)", () => {
-    expect(blockRangeAt({ code: "def greet():\n    return 1\n", path: "g.py", line: 1 })).toEqual({ startLine: 1, endLine: 2 });
+    expect(blockRangeAt({ code: "def greet():\n    return 1\n", path: "g.py", line: 1 })).toEqual({
+      startLine: 1,
+      endLine: 2,
+    });
   });
 
   it("returns null for an unrecognized extension", () => {
@@ -181,14 +200,17 @@ describe("blockRangeAt (napi)", () => {
 ```
 
 **Step 2: Run it (RED — import fails because no binding built yet)**
+
 ```bash
 cd crates/pi-natives && pnpm vitest run
 ```
+
 Expected: FAIL — cannot find `../index.js`.
 
 **Step 3: Add the napi binding**
 
 `crates/pi-natives/src/lib.rs`:
+
 ```rust
 #[macro_use]
 extern crate napi_derive;
@@ -235,18 +257,23 @@ pub fn block_range_at(options: BlockRangeOptions) -> Result<Option<BlockRange>> 
 > This mirrors `vendor/pi-crates/crates/pi-ast/src/block.rs`'s public `block_range_at` exactly. The `BlockRange`/`BlockRangeOptions` in pi-ast are `pub` structs with `pub start_line`/`end_line` — confirm field names by reading `vendor/pi-crates/crates/pi-ast/src/block.rs:18-38`.
 
 **Step 4: Build the binding**
+
 ```bash
 cd crates/pi-natives && pnpm run build:debug
 ```
+
 Expected: produces `index.js`, `index.d.ts`, `*.node`. If `pi_ast::block::block_range_at` isn't public, check `vendor/pi-crates/crates/pi-ast/src/lib.rs` — it must `pub mod block;` (it does: `pub use`/`pub mod`).
 
 **Step 5: Run the test (GREEN)**
+
 ```bash
 cd crates/pi-natives && pnpm vitest run
 ```
+
 Expected: 6 tests pass.
 
 **Step 6: Commit**
+
 ```bash
 git add crates/pi-natives/src/lib.rs crates/pi-natives/__tests__/ && git commit -m "feat(natives): expose blockRangeAt via napi, port pi-ast block tests"
 ```
@@ -256,24 +283,29 @@ git add crates/pi-natives/src/lib.rs crates/pi-natives/__tests__/ && git commit 
 ### Task 1.3: Wire `@sakti-code/pi-natives` into the pnpm workspace + typecheck gate
 
 **Files:**
+
 - Modify: root `package.json` `workspaces` → add `"crates/*"`
 - Modify: `turbo.json` (add a `build:natives` pipeline if you want it in `turbo run build`; otherwise document `pnpm --filter @sakti-code/pi-natives build`)
 
 **Step 1: Add to workspace**
 
 Root `package.json`:
+
 ```json
 "workspaces": ["apps/*", "packages/*", "crates/*"],
 ```
 
 **Step 2: Verify resolution**
+
 ```bash
 pnpm install
 node -e "import('@sakti-code/pi-natives').then(m => console.log(Object.keys(m)))"
 ```
+
 Expected: prints `[ 'blockRangeAt' ]` (after `pnpm --filter @sakti-code/pi-natives build:debug`).
 
 **Step 3: Commit**
+
 ```bash
 git add package.json pnpm-lock.yaml && git commit -m "chore(natives): add @sakti-code/pi-natives to pnpm workspace"
 ```
@@ -327,7 +359,7 @@ describe("InMemorySnapshotStore eviction", () => {
     store.record("/f", "v1");
     store.record("/f", "v2");
     store.record("/f", "v3");
-    expect(store.byHash("/f", /* hash of v1 */ )).toBeNull(); // v1 dropped
+    expect(store.byHash("/f" /* hash of v1 */)).toBeNull(); // v1 dropped
   });
 
   it("relocates history preserving seenLines", () => {
@@ -362,9 +394,11 @@ describe("InMemorySnapshotStore eviction", () => {
 > Compute the v1/v2/v3 hashes with the actual `computeFileHash` from `format.ts` (don't hardcode — import and compute). Adjust the `maxTotalBytes` test threshold if `sizeCalculation` semantics differ.
 
 **Step: Run RED**
+
 ```bash
 cd packages/tools && pnpm vitest run src/lib/hashline-utils/__tests__/snapshots.test.ts
 ```
+
 Expected: FAIL — `maxPaths`/`maxTotalBytes` options don't exist on our `InMemorySnapshotStoreOptions`.
 
 ### Task 2.3: Refactor to LRUCache (GREEN)
@@ -372,27 +406,33 @@ Expected: FAIL — `maxPaths`/`maxTotalBytes` options don't exist on our `InMemo
 **File:** `packages/tools/src/lib/hashline-utils/snapshots.ts`
 
 Port from `openspec/references/oh-my-pi/packages/hashline/src/snapshots.ts:23-230`. Key changes:
+
 - `import { LRUCache } from "lru-cache"` (use the main export, not `/raw` — main is fine for our usage; the reference uses `/raw` for a lower-level API we don't need)
 - `#versions: LRUCache<string, Snapshot[]>` with `{ max, maxSize, sizeCalculation }`
 - Add `maxPaths` and `maxTotalBytes` to `InMemorySnapshotStoreOptions` (defaults 30 and `64 * 1024 * 1024`)
 - `record()` calls `this.#versions.get(path)` (refreshes LRU recency) instead of plain Map get
 
 The full reference impl is at `openspec/references/oh-my-pi/packages/hashline/src/snapshots.ts:138-230` — copy lines 138-230 verbatim, then:
+
 - Change `import { LRUCache } from "lru-cache/raw"` → `import { LRUCache } from "lru-cache"`
 - Keep `#private` fields (our codebase already uses them)
 
 **Step: Run GREEN**
+
 ```bash
 cd packages/tools && pnpm vitest run src/lib/hashline-utils/__tests__/snapshots.test.ts
 ```
+
 Expected: 6 tests pass.
 
 **Step: Run full suite + typecheck**
+
 ```bash
 cd packages/tools && pnpm vitest run && pnpm run typecheck
 ```
 
 **Step: Commit**
+
 ```bash
 git add packages/tools/src/lib/hashline-utils/ packages/tools/package.json
 git commit -m "fix(tools): bound InMemorySnapshotStore with lru-cache (maxPaths, maxTotalBytes)"
@@ -407,13 +447,20 @@ Prevents infinite loops on byte-identical no-op edits (reference issue #2081: 18
 ### Task 3.1: Port the guard (RED)
 
 **Files:**
+
 - Create: `packages/tools/src/edit/noop-loop-guard.ts`
 - Test: `packages/tools/src/edit/__tests__/noop-loop-guard.test.ts`
 
 **Step 1: Failing test**
+
 ```ts
 import { describe, expect, it } from "vitest";
-import { NOOP_HARD_LIMIT, type NoopLoopGuardOwner, recordNoopEdit, resetNoopEdit } from "../noop-loop-guard";
+import {
+  NOOP_HARD_LIMIT,
+  type NoopLoopGuardOwner,
+  recordNoopEdit,
+  resetNoopEdit,
+} from "../noop-loop-guard";
 
 describe("noop-loop-guard", () => {
   it("does not escalate on the first identical no-op", () => {
@@ -461,19 +508,31 @@ describe("noop-loop-guard", () => {
 ### Task 3.2: Implement (GREEN)
 
 Port from `openspec/references/oh-my-pi/packages/coding-agent/src/edit/hashline/noop-loop-guard.ts`. Adaptations:
+
 - `hashPatchInput`: reference uses `Bun.hash(input).toString(16)` (xxHash64). Replace with our existing FNV-1a `computeFileHash` from `lib/hashline-utils/format.ts` (reuse — it's a stable hash of the bytes, which is all we need for "same payload?").
 - Keep `NoopLoopGuardOwner` as `{ noopLoopGuard?: NoopLoopGuard }` — but our "session" is the tools-builder's per-agent context, not a `ToolSession`. The owner shape is just a mutable holder; we'll attach it in tools-builder (Task 3.3).
 
 ```ts
 import { computeFileHash } from "../../lib/hashline-utils/format";
 
-export interface NoopLoopEntry { hash: string; count: number; }
-export interface NoopLoopGuard { entries: Map<string, NoopLoopEntry>; }
-export interface NoopLoopGuardOwner { noopLoopGuard?: NoopLoopGuard; }
+export interface NoopLoopEntry {
+  hash: string;
+  count: number;
+}
+export interface NoopLoopGuard {
+  entries: Map<string, NoopLoopEntry>;
+}
+export interface NoopLoopGuardOwner {
+  noopLoopGuard?: NoopLoopGuard;
+}
 
 export const NOOP_HARD_LIMIT = 3;
 
-export function recordNoopEdit(session: NoopLoopGuardOwner, canonicalPath: string, inputHash: string) {
+export function recordNoopEdit(
+  session: NoopLoopGuardOwner,
+  canonicalPath: string,
+  inputHash: string,
+) {
   if (!session.noopLoopGuard) session.noopLoopGuard = { entries: new Map() };
   const prev = session.noopLoopGuard.entries.get(canonicalPath);
   const count = prev && prev.hash === inputHash ? prev.count + 1 : 1;
@@ -491,6 +550,7 @@ export function hashPatchInput(input: string): string {
 ```
 
 **Step: Run GREEN** → all 5 pass. Commit:
+
 ```bash
 git add packages/tools/src/edit/noop-loop-guard.ts packages/tools/src/edit/__tests__/
 git commit -m "feat(tools): port noop-loop-guard (3-strike escalation on identical no-ops)"
@@ -499,12 +559,14 @@ git commit -m "feat(tools): port noop-loop-guard (3-strike escalation on identic
 ### Task 3.3: Wire the guard into `executeHashlineEdit`
 
 **Files:**
+
 - Modify: `packages/tools/src/edit/index.ts` (`executeHashlineEdit` + `createEditTool` signature)
 - Modify: `apps/server/src/agent/tools-builder.ts` (create the owner, inject)
 
 **Step 1: Extend `executeHashlineEdit`** to accept a `noopOwner: NoopLoopGuardOwner` and escalate per-section:
 
 After each section's result, if `s.op === "noop"`:
+
 - compute `inputHash = hashPatchInput(input)`, call `recordNoopEdit(noopOwner, canonicalPath, inputHash)`
 - if `escalate`, throw an `Error` with a message like `"Repeated identical no-op edit on ${s.path} (${count}x) — re-read the file before editing again."`
 - if a section is NOT a noop, call `resetNoopEdit(noopOwner, canonicalPath)` for that path.
@@ -514,6 +576,7 @@ Reference behavior: `openspec/references/oh-my-pi/packages/coding-agent/src/edit
 **Step 2: Thread the owner through `createEditTool`** — add `noopOwner?: NoopLoopGuardOwner` to `EditToolOptions`, pass to `executeHashlineEdit`.
 
 **Step 3: In `tools-builder.ts`**, create one owner per agent build and inject:
+
 ```ts
 const noopOwner: NoopLoopGuardOwner = {};
 // ...
@@ -523,6 +586,7 @@ createEditTool(cwd, { mode: "hashline", snapshotStore, noopOwner }),
 **Step 4: Test** — add an integration test in `packages/tools/src/__tests__/tools.test.ts` that drives 3 identical no-op edits through the edit tool and asserts the 3rd throws. (Use the existing real-file fixture pattern in that file.)
 
 **Step 5: Verify** — `cd packages/tools && pnpm vitest run && pnpm run typecheck` && `cd apps/server && pnpm run typecheck`. Commit:
+
 ```bash
 git commit -am "feat(tools): wire noop-loop-guard into hashline edit (3-strike escalation)"
 ```
@@ -536,6 +600,7 @@ Wire `SWAP.BLK` / `DEL.BLK` / `INS.BLK.POST` end-to-end. The native primitive ex
 ### Task 4.1: Port `block.ts` (language-agnostic resolver) (RED)
 
 **Files:**
+
 - Create: `packages/tools/src/edit/hashline/block.ts`
 - Test: `packages/tools/src/edit/hashline/__tests__/block.test.ts`
 
@@ -546,6 +611,7 @@ Port `openspec/references/oh-my-pi/packages/hashline/src/block.ts` (168 lines) *
 **Step 2: Implement** — copy `block.ts`, fix imports. Run GREEN.
 
 **Step 3: Commit**:
+
 ```bash
 git commit -am "feat(tools): port hashline block.ts (resolveBlockEdits, language-agnostic)"
 ```
@@ -555,6 +621,7 @@ git commit -am "feat(tools): port hashline block.ts (resolveBlockEdits, language
 **File:** Create `packages/tools/src/edit/hashline/block-resolver.ts`
 
 Port `openspec/references/oh-my-pi/packages/coding-agent/src/edit/hashline/block-resolver.ts`. Adaptations:
+
 - `import { blockRangeAt } from "@sakti-code/pi-natives"` (not `@oh-my-pi/pi-natives`)
 - Memo key: reference uses `Bun.hash(text).toString(36)`. Replace with `computeFileHash(text)` from `lib/hashline-utils/format.ts`.
 - Keep the FIFO-bounded `resolutionCache` (Map, cap 512, delete oldest on overflow).
@@ -589,6 +656,7 @@ export const nativeBlockResolver: BlockResolver = ({ path, text, line }) => {
 ### Task 4.3: Wire the resolver into the Patcher + input.ts
 
 **Files:**
+
 - Modify: `packages/tools/src/edit/hashline/patcher.ts`
 - Modify: `packages/tools/src/edit/hashline/input.ts`
 - Modify: `packages/tools/src/edit/index.ts` (`executeHashLineEdit` constructs `Patcher({ fs, snapshots, blockResolver: nativeBlockResolver })`)
@@ -600,12 +668,14 @@ export const nativeBlockResolver: BlockResolver = ({ path, text, line }) => {
 **Step 3: `executeHashLineEdit`** — pass `blockResolver: nativeBlockResolver` to `new Patcher({ ... })`.
 
 **Step 4: Integration test (RED→GREEN)** — in `packages/tools/src/__tests__/tools.test.ts`, add tests:
+
 - `SWAP.BLK 1:` rewrites a whole function block (write a fixture file with a 4-line function, read it, edit `SWAP.BLK 1:` with a 2-line body, assert the function was replaced lines 1-4).
 - `DEL.BLK 1` deletes the block.
 - `INS.BLK.POST 1:` inserts after the block's closing line.
 - `SWAP.BLK` on a single-line statement is rejected with `blockSingleLineMessage`.
 
 **Step 5: Verify** — `cd packages/tools && pnpm vitest run && pnpm run typecheck`. Commit:
+
 ```bash
 git commit -am "feat(tools): wire block resolution (SWAP.BLK/DEL.BLK/INS.BLK.POST) via nativeBlockResolver"
 ```
@@ -613,12 +683,14 @@ git commit -am "feat(tools): wire block resolution (SWAP.BLK/DEL.BLK/INS.BLK.POS
 ### Task 4.4: Teach block ops in the edit-tool description + system prompt
 
 **Files:**
+
 - Modify: `packages/tools/src/edit/index.ts` `HASHLINE_DESCRIPTION` — append block op docs.
 - Modify: the agent system prompt that documents edit ops (search `packages/agent/src/` for where hashline ops are taught).
 
 Port the block-op section from `openspec/references/oh-my-pi/packages/hashline/src/prompt.md` (lines 9-39): the `SWAP.BLK N:` / `DEL.BLK N` / `INS.BLK.POST N:` semantics, the "anchor the opening line", "single-statement rejected", markdown-heading-as-block rules.
 
 **Verify:** no test (prompt text), but `pnpm run typecheck`. Commit:
+
 ```bash
 git commit -am "feat(tools): document SWAP.BLK/DEL.BLK/INS.BLK.POST in edit description + prompt"
 ```
@@ -648,6 +720,7 @@ Port from `openspec/references/oh-my-pi/packages/hashline/test/leniency.test.ts`
 **File:** extend `packages/tools/src/edit/hashline/__tests__/hashline.test.ts` or new `patcher.test.ts`
 
 Port from `openspec/references/oh-my-pi/packages/hashline/test/patcher.test.ts`:
+
 - Seen-line provenance (4 tests): Patcher rejects edits on lines the read never displayed. **Requires** the read tool to record `seenLines` — verify `packages/tools/src/read/index.ts` calls `snapshotStore.record(path, text, seenLines)` with the displayed line set; if not, add it (small change).
 - Tag-based path recovery (7 tests): basename → full-path rebind via `findByHash`. Our `SnapshotStore` and `Patcher` already have `findByHash` — verify the patcher's path-recovery path uses it (reference: `patcher.ts` `allowTagPathRecovery` + `findByHash`).
 - `HEADTAIL_DRIFT_WARNING` on stale head/tail tag.
@@ -668,6 +741,7 @@ Port from `openspec/references/oh-my-pi/packages/hashline/test/recovery-session-
 ### Task 6.1: Port `diff-preview.ts` + populate `details`
 
 **Files:**
+
 - Create: `packages/tools/src/edit/hashline/diff-preview.ts`
 - Modify: `packages/tools/src/edit/index.ts` (`executeHashlineEdit` result + `EditToolDetails`)
 
@@ -680,6 +754,7 @@ In `executeHashlineEdit`, change the result to populate `details.diff` (the comp
 ### Task 6.2: Missing API surface + dead-code cleanup
 
 **Files:**
+
 - Modify: `packages/tools/src/edit/hashline/mismatch.ts` — add `displayMessage` getter + static `formatDisplayMessage` (reference: `mismatch.ts`).
 - Modify: `packages/tools/src/lib/hashline-utils/format.ts` — export `HL_LINE_BODY_SEP_RE_RAW` (reference: `format.ts`).
 - Modify: `packages/tools/src/edit/hashline/recovery.ts` — remove the unused top-level `recoverWithThreeWayMerge` export IF no caller uses it (grep first: `rg "recoverWithThreeWayMerge"`; if only its own test references it, drop the test too).

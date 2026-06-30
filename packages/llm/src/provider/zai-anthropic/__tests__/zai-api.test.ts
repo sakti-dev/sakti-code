@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { zaiChunkZod, zaiResponseZod } from "../zai-api.ts";
 
 describe("zai-anthropic wire schemas (minimal subset)", () => {
@@ -45,7 +45,7 @@ describe("zai-anthropic wire schemas (minimal subset)", () => {
           },
         ],
         usage: { input_tokens: 1, output_tokens: 1 },
-      })
+      }),
     ).toThrow();
   });
 });

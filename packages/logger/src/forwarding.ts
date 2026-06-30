@@ -41,7 +41,7 @@ function cloneSafe(value: LogContext): LogContext {
       }
       seen.add(raw);
       return raw;
-    })
+    }),
   );
 }
 
@@ -60,17 +60,16 @@ function cloneSafe(value: LogContext): LogContext {
  */
 export function createForwardingLogger(
   transport: (entry: LogEntry) => void,
-  options?: { minLevel?: LogLevel }
+  options?: { minLevel?: LogLevel },
 ): Logger {
-  const minRank =
-    options?.minLevel === undefined ? 0 : LEVEL_RANK[options.minLevel];
+  const minRank = options?.minLevel === undefined ? 0 : LEVEL_RANK[options.minLevel];
 
   const make = (defaultContext: LogContext): Logger => {
     const send = (
       level: LogLevel,
       message: string,
       context?: LogContext,
-      error?: unknown
+      error?: unknown,
     ): void => {
       const merged = mergeContext(defaultContext, context, error);
       const sanitized = cloneSafe(merged);
@@ -97,8 +96,7 @@ export function createForwardingLogger(
     return {
       child: (context) => make({ ...defaultContext, ...context }),
       debug: (message, context) => send("debug", message, context),
-      error: (message, error, context) =>
-        send("error", message, context, error),
+      error: (message, error, context) => send("error", message, context, error),
       info: (message, context) => send("info", message, context),
       warn: (message, context) => send("warn", message, context),
     };

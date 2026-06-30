@@ -1,8 +1,5 @@
 import { resolve } from "node:path";
-import {
-  createServer,
-  type SaktiServer,
-} from "@sakti-code/server/create-server";
+import { createServer, type SaktiServer } from "@sakti-code/server/create-server";
 import { getLogDir } from "@sakti-code/server/dirs";
 import { app, BrowserWindow, screen } from "electron";
 import { createDialogHooks } from "./ipc/dialog";
@@ -30,6 +27,9 @@ app.on("ready", async () => {
     port: isDev ? 3001 : 0,
     hostname: "127.0.0.1",
     staticDir: isDev ? null : resolve(import.meta.dirname, "../renderer"),
+    migrationsFolder: isDev
+      ? resolve(import.meta.dirname, "../../../../packages/db/migrations")
+      : resolve(import.meta.dirname, "../migrations"),
     hooks: createDialogHooks(),
   });
   logger.info("embedded server on", server.url);

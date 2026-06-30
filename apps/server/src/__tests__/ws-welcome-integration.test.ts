@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import pkg from "../../package.json" with { type: "json" };
 import { buildWsApp, createWelcomeFrame, SERVER_VERSION } from "../agent/ws.ts";
 import { makeContext } from "./helpers.ts";

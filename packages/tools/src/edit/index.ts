@@ -23,10 +23,7 @@ import { nativeBlockResolver } from "./hashline/block-resolver.ts";
 import { buildCompactDiffPreview } from "./hashline/diff-preview.ts";
 import { NodeFilesystem } from "./hashline/fs.ts";
 import { Patch } from "./hashline/input.ts";
-import {
-  noChangeDiagnostic,
-  noChangeLoopDiagnostic,
-} from "./hashline/messages.ts";
+import { noChangeDiagnostic, noChangeLoopDiagnostic } from "./hashline/messages.ts";
 import { Patcher } from "./hashline/patcher.ts";
 import {
   hashPatchInput,
@@ -45,7 +42,7 @@ const replaceEditSchema = Type.Object(
       description: "Replacement text for this targeted edit.",
     }),
   },
-  { additionalProperties: false }
+  { additionalProperties: false },
 );
 
 const editSchema = Type.Object(
@@ -58,7 +55,7 @@ const editSchema = Type.Object(
         "One or more targeted replacements. Each edit is matched against the original file, not incrementally. Do not include overlapping or nested edits. If two changes touch the same block or nearby lines, merge them into one edit instead.",
     }),
   },
-  { additionalProperties: false }
+  { additionalProperties: false },
 );
 
 export type EditToolInput = Static<typeof editSchema>;
@@ -128,10 +125,7 @@ function prepareEditArguments(input: unknown): EditToolInput {
   }
 
   const legacy = args as LegacyEditToolInput;
-  if (
-    typeof legacy.oldText !== "string" ||
-    typeof legacy.newText !== "string"
-  ) {
+  if (typeof legacy.oldText !== "string" || typeof legacy.newText !== "string") {
     return args as EditToolInput;
   }
 
@@ -146,9 +140,7 @@ function validateEditInput(input: EditToolInput): {
   edits: Edit[];
 } {
   if (!Array.isArray(input.edits) || input.edits.length === 0) {
-    throw new Error(
-      "Edit tool input is invalid. edits must contain at least one replacement."
-    );
+    throw new Error("Edit tool input is invalid. edits must contain at least one replacement.");
   }
   return { path: input.path, edits: input.edits };
 }
@@ -200,20 +192,20 @@ async function executeHashlineEdit(
   input: string,
   snapshotStore: SnapshotStore | undefined,
   noopOwner: NoopLoopGuardOwner | undefined,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<{
   content: [{ type: "text"; text: string }];
   details: EditToolDetails;
 }> {
   if (!snapshotStore) {
     throw new Error(
-      "Hashline edit mode requires a snapshotStore. Ensure the edit tool is configured with one."
+      "Hashline edit mode requires a snapshotStore. Ensure the edit tool is configured with one.",
     );
   }
   const patch = Patch.parse(input, { cwd });
   if (patch.sections.length === 0) {
     throw new Error(
-      "No editable sections found. Each section needs a [path#HASH] header followed by at least one op (SWAP/DEL/INS) below it."
+      "No editable sections found. Each section needs a [path#HASH] header followed by at least one op (SWAP/DEL/INS) below it.",
     );
   }
   const fs = new NodeFilesystem(cwd);
@@ -233,15 +225,10 @@ async function executeHashlineEdit(
   // #2081. A multi-section noop still fails the tool (breaking the loop), but
   // without graduated counting.
   const rendered = result.sections.map((s) => {
-    const warnings =
-      s.warnings.length > 0 ? `\n\nWarnings:\n${s.warnings.join("\n")}` : "";
+    const warnings = s.warnings.length > 0 ? `\n\nWarnings:\n${s.warnings.join("\n")}` : "";
     if (s.op === "noop") {
       if (noopOwner) {
-        const { count, escalate } = recordNoopEdit(
-          noopOwner,
-          s.canonicalPath,
-          inputHash
-        );
+        const { count, escalate } = recordNoopEdit(noopOwner, s.canonicalPath, inputHash);
         if (escalate) {
           throw new Error(noChangeLoopDiagnostic(s.path, count));
         }
@@ -288,7 +275,7 @@ async function executeHashlineEdit(
 
 export function createEditTool(
   cwd: string,
-  options?: EditToolOptions
+  options?: EditToolOptions,
 ): AgentTool<TSchema, EditToolDetails | undefined> {
   const mode: EditMode = options?.mode ?? "replace";
   const ops = options?.operations ?? defaultEditOperations;
@@ -310,7 +297,7 @@ export function createEditTool(
         _toolCallId: string,
         params: unknown,
         signal?: AbortSignal,
-        _onUpdate?: AgentToolUpdateCallback<EditToolDetails | undefined>
+        _onUpdate?: AgentToolUpdateCallback<EditToolDetails | undefined>,
       ) {
         const { input } = params as HashlineEditInput;
         const result = await executeHashlineEdit(
@@ -318,7 +305,7 @@ export function createEditTool(
           input,
           options?.snapshotStore,
           options?.noopOwner,
-          signal
+          signal,
         );
         return result;
       },
@@ -330,15 +317,13 @@ export function createEditTool(
     label: "edit",
     description: REPLACE_DESCRIPTION,
     parameters: editSchema,
-    permissions: (params) => [
-      { permission: "edit", patterns: [(params as EditToolInput).path] },
-    ],
+    permissions: (params) => [{ permission: "edit", patterns: [(params as EditToolInput).path] }],
     prepareArguments: prepareEditArguments,
     async execute(
       _toolCallId: string,
       params: unknown,
       signal?: AbortSignal,
-      _onUpdate?: AgentToolUpdateCallback<EditToolDetails | undefined>
+      _onUpdate?: AgentToolUpdateCallback<EditToolDetails | undefined>,
     ) {
       const input = params as Static<typeof editSchema>;
       const { path, edits } = validateEditInput(input);
@@ -359,7 +344,7 @@ export function createEditTool(
           throwIfAborted();
           const errorMessage =
             error instanceof Error && "code" in error
-              ? `Error code: ${error.code}`
+              ? `Error code: ${String(error.code)}`
               : String(error);
           throw new Error(`Could not edit file: ${path}. ${errorMessage}.`);
         }
@@ -375,12 +360,11 @@ export function createEditTool(
         const { baseContent, newContent } = applyEditsToNormalizedContent(
           normalizedContent,
           edits,
-          path
+          path,
         );
         throwIfAborted();
 
-        const finalContent =
-          bom + restoreLineEndings(newContent, originalEnding);
+        const finalContent = bom + restoreLineEndings(newContent, originalEnding);
         await ops.writeFile(absolutePath, finalContent);
         throwIfAborted();
 

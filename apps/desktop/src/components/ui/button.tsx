@@ -14,8 +14,7 @@ const variantStyles: Record<ButtonVariant, string> = {
     "bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:bg-primary/90 active:shadow-md active:scale-[0.98]",
   secondary:
     "bg-secondary text-secondary-foreground shadow-md shadow-secondary/50 hover:shadow-lg hover:bg-secondary/80 active:shadow-sm active:scale-[0.98]",
-  ghost:
-    "text-muted-foreground hover:bg-accent hover:text-accent-foreground active:scale-[0.98]",
+  ghost: "text-muted-foreground hover:bg-accent hover:text-accent-foreground active:scale-[0.98]",
   danger:
     "bg-destructive text-destructive-foreground shadow-lg shadow-destructive/20 hover:shadow-xl hover:shadow-destructive/30 hover:bg-destructive/90 active:shadow-md active:scale-[0.98]",
 };
@@ -29,20 +28,19 @@ const sizeStyles: Record<ButtonSize, string> = {
   "icon-lg": "size-11 rounded-xl",
 };
 
-type ButtonProps<T extends ValidComponent = "button"> =
-  ButtonPrimitive.ButtonRootProps<T> & {
-    class?: string;
-    children?: JSX.Element;
-    variant?: ButtonVariant;
-    size?: ButtonSize;
-    loading?: boolean;
-    square?: boolean;
-  };
+type ButtonProps<T extends ValidComponent = "button"> = ButtonPrimitive.ButtonRootProps<T> & {
+  class?: string;
+  children?: JSX.Element;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  loading?: boolean;
+  square?: boolean;
+};
 
 const ButtonLoader = () => <FiLoader class="size-4 animate-spin" />;
 
 export const Button = <T extends ValidComponent = "button">(
-  props: PolymorphicProps<T, ButtonProps<T>>
+  props: PolymorphicProps<T, ButtonProps<T>>,
 ) => {
   const [local, others] = splitProps(props as ButtonProps, [
     "variant",
@@ -68,7 +66,7 @@ export const Button = <T extends ValidComponent = "button">(
         variantStyles[variant()],
         sizeStyles[size()],
         local.loading && "cursor-wait before:animate-pulse",
-        local.class
+        local.class,
       )}
       disabled={local.loading || others.disabled}
       {...others}

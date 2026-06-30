@@ -1,6 +1,6 @@
 import { symlink } from "node:fs/promises";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
 import {
   formatPromptTemplateInvocation,
@@ -15,17 +15,11 @@ describe("loadPromptTemplates", () => {
     const env = new TestExecutionEnv(root);
     await env.createDir("a/nested", { recursive: true });
     await env.createDir("b", { recursive: true });
-    await env.writeFile(
-      "a/one.md",
-      "---\ndescription: One template\n---\nHello $1"
-    );
+    await env.writeFile("a/one.md", "---\ndescription: One template\n---\nHello $1");
     await env.writeFile("a/nested/ignored.md", "Ignored");
     await env.writeFile("b/two.md", "First line description\nBody");
 
-    const { promptTemplates, diagnostics } = await loadPromptTemplates(env, [
-      "a",
-      "b",
-    ]);
+    const { promptTemplates, diagnostics } = await loadPromptTemplates(env, ["a", "b"]);
 
     expect(diagnostics).toEqual([]);
     expect(promptTemplates).toEqual([
@@ -42,15 +36,11 @@ describe("loadPromptTemplates", () => {
     const root = createTempDir();
     const env = new TestExecutionEnv(root);
     await env.createDir("prompts", { recursive: true });
-    await env.writeFile(
-      "prompts/example.md",
-      "---\ndescription: Example\n---\nExample body"
-    );
+    await env.writeFile("prompts/example.md", "---\ndescription: Example\n---\nExample body");
 
-    const { promptTemplates, diagnostics } = await loadSourcedPromptTemplates(
-      env,
-      [{ path: "prompts", source: { type: "project" as const } }]
-    );
+    const { promptTemplates, diagnostics } = await loadSourcedPromptTemplates(env, [
+      { path: "prompts", source: { type: "project" as const } },
+    ]);
 
     expect(diagnostics).toEqual([]);
     expect(promptTemplates).toEqual([
@@ -68,15 +58,11 @@ describe("loadPromptTemplates", () => {
   it("attaches source info to diagnostics", async () => {
     const root = createTempDir();
     const env = new TestExecutionEnv(root);
-    await env.writeFile(
-      "broken.md",
-      "---\ndescription: [unterminated\n---\nBody"
-    );
+    await env.writeFile("broken.md", "---\ndescription: [unterminated\n---\nBody");
 
-    const { promptTemplates, diagnostics } = await loadSourcedPromptTemplates(
-      env,
-      [{ path: "broken.md", source: { type: "user" as const } }]
-    );
+    const { promptTemplates, diagnostics } = await loadSourcedPromptTemplates(env, [
+      { path: "broken.md", source: { type: "user" as const } },
+    ]);
 
     expect(promptTemplates).toEqual([]);
     expect(diagnostics).toHaveLength(1);
@@ -90,16 +76,10 @@ describe("loadPromptTemplates", () => {
   it("loads explicit markdown files and symlinked files", async () => {
     const root = createTempDir();
     const env = new TestExecutionEnv(root);
-    await env.writeFile(
-      "target.md",
-      "---\ndescription: Target\n---\nTarget body"
-    );
+    await env.writeFile("target.md", "---\ndescription: Target\n---\nTarget body");
     await symlink(join(root, "target.md"), join(root, "link.md"));
 
-    const { promptTemplates } = await loadPromptTemplates(env, [
-      "target.md",
-      "link.md",
-    ]);
+    const { promptTemplates } = await loadPromptTemplates(env, ["target.md", "link.md"]);
 
     expect(promptTemplates).toEqual([
       { name: "target", description: "Target", content: "Target body" },
@@ -111,11 +91,8 @@ describe("loadPromptTemplates", () => {
 describe("formatPromptTemplateInvocation", () => {
   it("substitutes command arguments", () => {
     const content = "$1 ${@:2} $ARGUMENTS";
-    expect(
-      formatPromptTemplateInvocation({ name: "one", content }, [
-        "hello world",
-        "test",
-      ])
-    ).toBe("hello world test hello world test");
+    expect(formatPromptTemplateInvocation({ name: "one", content }, ["hello world", "test"])).toBe(
+      "hello world test hello world test",
+    );
   });
 });

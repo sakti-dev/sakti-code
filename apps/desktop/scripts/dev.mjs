@@ -3,9 +3,8 @@
 //
 // Why: Chromium picks the ozone platform at C++ init — before our main entry's
 // `app.commandLine.appendSwitch` runs, so appendSwitch can't force Wayland.
-// electron-vite reads ELECTRON_CLI_ARGS (JSON array) and forwards it to the
-// Electron binary (see openspec/references/electron-vite/src/electron.ts).
-// We set it here in-process so turbo's env handling can't strip it.
+// electron-vite reads args after `--` and forwards them to the Electron binary.
+// We pass them via the `--` separator so electron-vite forwards them correctly.
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
@@ -17,8 +16,7 @@ function resolveLogDir() {
   if (process.env.SAKTI_LOG_DIR) {
     return process.env.SAKTI_LOG_DIR;
   }
-  const agentDir =
-    process.env.SAKTI_AGENT_DIR ?? join(homedir(), ".sakti", "agent");
+  const agentDir = process.env.SAKTI_AGENT_DIR ?? join(homedir(), ".sakti", "agent");
   return join(dirname(agentDir), "logs");
 }
 
@@ -48,11 +46,14 @@ function cleanLogs() {
 
 cleanLogs();
 
+const electronArgs = [];
+
 if (process.platform === "linux") {
-  process.env.ELECTRON_CLI_ARGS = JSON.stringify([
+  electronArgs.push(
     "--ozone-platform=wayland",
     "--enable-features=WaylandFractionalScaleV1",
-  ]);
+    "--no-sandbox",
+  );
 }
 
 // Verbose diagnostics for dev: capture the agent/llm request+response traces
@@ -63,9 +64,13 @@ if (process.platform === "linux") {
 process.env.SAKTI_LOG_LEVEL ??= "debug";
 process.env.SAKTI_LOG_SECRETS ??= "true";
 
-const ps = spawn("electron-vite", ["dev", ...process.argv.slice(2)], {
-  stdio: "inherit",
-  shell: true,
-});
+const ps = spawn(
+  "electron-vite",
+  ["dev", ...(electronArgs.length > 0 ? ["--", ...electronArgs] : []), ...process.argv.slice(2)],
+  {
+    stdio: "inherit",
+    shell: true,
+  },
+);
 
 ps.on("exit", (code) => process.exit(code ?? 0));

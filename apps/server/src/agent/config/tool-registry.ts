@@ -55,15 +55,12 @@ export const TOOL_FACTORIES: Readonly<Record<string, ToolFactory>> = {
  * typo in an agent's `toolNames` fails loudly at run start, not silently at
  * the first missing-tool call site.
  */
-export function buildAgentTools(
-  toolNames: readonly string[],
-  ctx: ToolContext
-): AgentTool[] {
+export function buildAgentTools(toolNames: readonly string[], ctx: ToolContext): AgentTool[] {
   return toolNames.map((name) => {
     const factory = TOOL_FACTORIES[name];
     if (!factory) {
       throw new Error(
-        `Unknown tool "${name}" — not in server registry. Registered: ${Object.keys(TOOL_FACTORIES).join(", ")}`
+        `Unknown tool "${name}" — not in server registry. Registered: ${Object.keys(TOOL_FACTORIES).join(", ")}`,
       );
     }
     return factory(ctx);
@@ -75,7 +72,7 @@ export function rebuildTool(name: string, ctx: ToolContext): AgentTool {
   const factory = TOOL_FACTORIES[name];
   if (!factory) {
     throw new Error(
-      `Unknown tool "${name}" — not in server registry. Registered: ${Object.keys(TOOL_FACTORIES).join(", ")}`
+      `Unknown tool "${name}" — not in server registry. Registered: ${Object.keys(TOOL_FACTORIES).join(", ")}`,
     );
   }
   return factory(ctx);

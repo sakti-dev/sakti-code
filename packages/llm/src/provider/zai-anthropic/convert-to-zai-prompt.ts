@@ -33,10 +33,7 @@ export interface ZaiUserContent {
 
 export interface ZaiMessage {
   content: Array<
-    | ZaiTextBlock
-    | ZaiContentBlock
-    | { type: "image"; source: ZaiUserContent }
-    | ZaiToolResultBlock
+    ZaiTextBlock | ZaiContentBlock | { type: "image"; source: ZaiUserContent } | ZaiToolResultBlock
   >;
   role: "user" | "assistant" | "system";
 }
@@ -95,7 +92,7 @@ export function convertToZaiPrompt(input: {
 
 function buildAssistantContent(
   messages: AssistantBlock["messages"],
-  sendReasoning: boolean
+  sendReasoning: boolean,
 ): ZaiMessage["content"] {
   const content: ZaiMessage["content"] = [];
   for (const message of messages) {
@@ -131,9 +128,7 @@ function buildAssistantContent(
   return content;
 }
 
-function buildUserContent(
-  messages: UserBlock["messages"]
-): ZaiMessage["content"] {
+function buildUserContent(messages: UserBlock["messages"]): ZaiMessage["content"] {
   const content: ZaiMessage["content"] = [];
   for (const message of messages) {
     if (message.role === "user") {
@@ -147,7 +142,7 @@ function buildUserContent(
 
 function pushUserMessageContent(
   out: ZaiMessage["content"],
-  parts: Extract<LanguageModelV4Prompt[number], { role: "user" }>["content"]
+  parts: Extract<LanguageModelV4Prompt[number], { role: "user" }>["content"],
 ): void {
   for (const part of parts) {
     if (part.type === "text") {
@@ -163,7 +158,7 @@ function pushUserMessageContent(
 
 function pushToolMessageContent(
   out: ZaiMessage["content"],
-  parts: Extract<LanguageModelV4Prompt[number], { role: "tool" }>["content"]
+  parts: Extract<LanguageModelV4Prompt[number], { role: "tool" }>["content"],
 ): void {
   for (const part of parts) {
     if (part.type !== "tool-result") {
@@ -198,12 +193,12 @@ interface UserBlock {
 }
 
 function groupIntoBlocks(
-  prompt: LanguageModelV4Prompt
+  prompt: LanguageModelV4Prompt,
 ): Array<SystemBlock | AssistantBlock | UserBlock> {
   const blocks: Array<SystemBlock | AssistantBlock | UserBlock> = [];
 
   function openBlock(
-    type: "system" | "assistant" | "user"
+    type: "system" | "assistant" | "user",
   ): SystemBlock | AssistantBlock | UserBlock {
     let block: SystemBlock | AssistantBlock | UserBlock;
     if (type === "system") {
@@ -221,24 +216,19 @@ function groupIntoBlocks(
     const role = message.role;
     const blockType = role === "tool" ? "user" : role;
     const current = blocks.at(-1);
-    const block =
-      current && current.type === blockType ? current : openBlock(blockType);
+    const block = current && current.type === blockType ? current : openBlock(blockType);
     block.messages.push(message as never);
   }
   return blocks;
 }
 
-function readSignature(
-  providerOptions: Record<string, unknown> | undefined
-): string | undefined {
-  const zaiSig = (providerOptions?.zai as { signature?: unknown } | undefined)
-    ?.signature;
+function readSignature(providerOptions: Record<string, unknown> | undefined): string | undefined {
+  const zaiSig = (providerOptions?.zai as { signature?: unknown } | undefined)?.signature;
   if (typeof zaiSig === "string") {
     return zaiSig;
   }
-  const anthropicSig = (
-    providerOptions?.anthropic as { signature?: unknown } | undefined
-  )?.signature;
+  const anthropicSig = (providerOptions?.anthropic as { signature?: unknown } | undefined)
+    ?.signature;
   if (typeof anthropicSig === "string") {
     return anthropicSig;
   }
@@ -254,9 +244,7 @@ interface FilePart {
   mediaType: string;
 }
 
-function fileToImageBlock(
-  part: FilePart
-): { source: ZaiUserContent; type: "image" } | undefined {
+function fileToImageBlock(part: FilePart): { source: ZaiUserContent; type: "image" } | undefined {
   // Only emit an image block for image/* media. PDFs / other docs are out of
   // scope for v1 (Z.ai's Anthropic endpoint accepts images, not documents).
   if (!part.mediaType.startsWith("image/")) {
@@ -268,10 +256,7 @@ function fileToImageBlock(
       source: {
         type: "base64",
         media_type: part.mediaType,
-        data:
-          typeof part.data.data === "string"
-            ? part.data.data
-            : convertToBase64(part.data.data),
+        data: typeof part.data.data === "string" ? part.data.data : convertToBase64(part.data.data),
       },
     };
   }
@@ -280,13 +265,7 @@ function fileToImageBlock(
 
 interface ToolResultOutput {
   reason?: string;
-  type:
-    | "text"
-    | "json"
-    | "error-text"
-    | "error-json"
-    | "execution-denied"
-    | "content";
+  type: "text" | "json" | "error-text" | "error-json" | "execution-denied" | "content";
   value?: unknown;
 }
 
@@ -296,8 +275,10 @@ function serializeToolResult(output: ToolResultOutput): {
 } {
   switch (output.type) {
     case "text":
+      // oxlint-disable-next-line typescript/no-base-to-string -- value is a string for text output
       return { content: String(output.value ?? ""), isError: false };
     case "error-text":
+      // oxlint-disable-next-line typescript/no-base-to-string -- value is a string for error-text output
       return { content: String(output.value ?? ""), isError: true };
     case "json":
       return {
@@ -317,8 +298,7 @@ function serializeToolResult(output: ToolResultOutput): {
     case "content": {
       // Concatenate text parts of a `content`-typed result; images / files
       // in tool results are out of scope for v1.
-      const parts =
-        (output.value as Array<{ type: string; text?: string }>) ?? [];
+      const parts = (output.value as Array<{ type: string; text?: string }>) ?? [];
       const text = parts
         .filter((p) => p.type === "text" && typeof p.text === "string")
         .map((p) => p.text as string)

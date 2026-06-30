@@ -11,16 +11,19 @@
 **Design doc:** `docs/plans/2026-06-30-agent-loop-factory-design.md` (commit `4044d483`, renamed `15f6b752`).
 
 **Conventions:**
+
 - Tests in `__tests__/` colocated with source, vitest, jsdom not needed.
 - TDD per phase: write failing test → verify RED → implement → verify GREEN → commit.
 - Each phase leaves workspace green (`pnpm run typecheck` + `pnpm run test`).
 - Use the existing test pattern from `packages/agent/src/compaction/__tests__/retry-loop.test.ts` as the style reference.
 
 **Baseline test counts** (must not regress):
+
 - `packages/agent`: 359/359
 - `apps/server`: 313/315 (2 pre-existing API-key failures in compaction route + e2e two-concurrent-sessions — must remain identical, not worse)
 
 **Key files to read before starting:**
+
 - `apps/server/src/agent/runner.ts:461-822` — the orchestration block being moved (verbatim target)
 - `packages/agent/src/compaction/retry-loop.ts` — `RetryRunnerDepsEffect`, `executeWithRetryEffect`, `parseRetrySettings` (already exists)
 - `packages/agent/src/compaction/auto-compaction.ts` — `checkCompaction`, `parseCompactionSettings`, `runAutoCompationEffect`, `CompactionDecision`
@@ -41,6 +44,7 @@
 ### Task I1.1: Create `packages/agent/src/runner/session-settings.ts` with tests
 
 **Files:**
+
 - Create: `packages/agent/src/runner/session-settings.ts`
 - Create: `packages/agent/src/runner/__tests__/session-settings.test.ts`
 
@@ -49,10 +53,7 @@
 ```ts
 // packages/agent/src/runner/__tests__/session-settings.test.ts
 import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_SESSION_SETTINGS,
-  parseSessionSettings,
-} from "../session-settings";
+import { DEFAULT_SESSION_SETTINGS, parseSessionSettings } from "../session-settings";
 
 describe("DEFAULT_SESSION_SETTINGS", () => {
   it("includes all keys used by the runner", () => {
@@ -100,15 +101,11 @@ describe("parseSessionSettings", () => {
   });
 
   it("editMode falls back to hashline for unknown values", () => {
-    expect(parseSessionSettings({ edit_mode: "garbage" }).editMode()).toBe(
-      "hashline",
-    );
+    expect(parseSessionSettings({ edit_mode: "garbage" }).editMode()).toBe("hashline");
   });
 
   it("thinkingLevelOverride returns null for 'off' (delegate to profile)", () => {
-    expect(
-      parseSessionSettings({ thinking_level: "off" }).thinkingLevelOverride(),
-    ).toBeNull();
+    expect(parseSessionSettings({ thinking_level: "off" }).thinkingLevelOverride()).toBeNull();
   });
 
   it("retry() parses base_delay_ms + max_retries + auto_retry", () => {
@@ -145,6 +142,7 @@ describe("parseSessionSettings", () => {
 ```bash
 cd packages/agent && pnpm run test -- session-settings 2>&1 | tail -20
 ```
+
 Expected: FAIL with "Failed to resolve import" or "parseSessionSettings is not exported".
 
 **Step 3: Implement `session-settings.ts`**
@@ -153,14 +151,8 @@ Look at `apps/server/src/agent/runner.ts:189-213` for the `DEFAULT_SETTINGS` map
 
 ```ts
 // packages/agent/src/runner/session-settings.ts
-import {
-  parseCompactionSettings,
-  type CompactionSettings,
-} from "../compaction/auto-compaction.ts";
-import {
-  parseRetrySettings,
-  type RetrySettings,
-} from "../compaction/retry-loop.ts";
+import { parseCompactionSettings, type CompactionSettings } from "../compaction/auto-compaction.ts";
+import { parseRetrySettings, type RetrySettings } from "../compaction/retry-loop.ts";
 import type { QueueMode, ThinkingLevel } from "../types.ts";
 
 /**
@@ -202,25 +194,16 @@ export interface SessionSettings {
   thinkingLevelOverride(): ThinkingLevel | null;
 }
 
-export function parseSessionSettings(
-  raw: Record<string, string>,
-): SessionSettings {
+export function parseSessionSettings(raw: Record<string, string>): SessionSettings {
   const merged = { ...DEFAULT_SESSION_SETTINGS, ...raw };
   return {
     raw: merged,
     agent: () => merged.agent ?? DEFAULT_AGENT_NAME,
     autoCompaction: () => merged.auto_compaction === "true",
     autoRetry: () => merged.auto_retry !== "false",
-    editMode: () =>
-      merged.edit_mode === "replace" ? "replace" : "hashline",
-    followUpMode: () =>
-      merged.follow_up_mode === "one-at-a-time"
-        ? "one-at-a-time"
-        : "all",
-    steeringMode: () =>
-      merged.steering_mode === "one-at-a-time"
-        ? "one-at-a-time"
-        : "all",
+    editMode: () => (merged.edit_mode === "replace" ? "replace" : "hashline"),
+    followUpMode: () => (merged.follow_up_mode === "one-at-a-time" ? "one-at-a-time" : "all"),
+    steeringMode: () => (merged.steering_mode === "one-at-a-time" ? "one-at-a-time" : "all"),
     retry: () => parseRetrySettings(merged),
     compaction: () => parseCompactionSettings(merged),
     thinkingLevelOverride: () => {
@@ -237,6 +220,7 @@ export function parseSessionSettings(
 ```bash
 cd packages/agent && pnpm run test -- session-settings 2>&1 | tail -20
 ```
+
 Expected: PASS — all 8 tests.
 
 **Step 5: Typecheck + lint**
@@ -244,16 +228,19 @@ Expected: PASS — all 8 tests.
 ```bash
 cd packages/agent && pnpm run typecheck 2>&1 | tail -5
 ```
+
 Expected: exit 0.
 
 ```bash
 pnpm run fix 2>&1 | tail -3
 ```
+
 Expected: exit 0; no diagnostics.
 
 ### Task I1.2: Export `SessionSettings` from `packages/agent/src/index.ts`
 
 **Files:**
+
 - Modify: `packages/agent/src/index.ts`
 
 **Step 1: Add exports**
@@ -276,17 +263,20 @@ Note: `EditMode` is renamed to `SessionEditMode` on export to avoid clashing wit
 ```bash
 cd packages/agent && pnpm run typecheck 2>&1 | tail -3 && pnpm run test 2>&1 | grep "Tests " | head -2
 ```
+
 Expected: typecheck exit 0; tests 367 passed (359 + 8 new). No regressions.
 
 ### Task I1.3: Migrate `apps/server` to use `parseSessionSettings`
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts:189-213` — delete `DEFAULT_SETTINGS` constant; `loadSessionSettings` keeps returning `Record<string,string>` but no longer merges defaults (the typed view does that).
 - Modify: any callers that read from `loadSessionSettings(...)` directly to wrap with `parseSessionSettings`.
 
 **Step 1: Update `loadSessionSettings`**
 
 Find (around line 201-213):
+
 ```ts
 const DEFAULT_SETTINGS: Record<string, string> = { ... };
 
@@ -306,11 +296,9 @@ export function loadSessionSettings(
 ```
 
 Replace with (delete `DEFAULT_SETTINGS` entirely):
+
 ```ts
-export function loadSessionSettings(
-  ctx: ServerContext,
-  sessionId: string
-): Record<string, string> {
+export function loadSessionSettings(ctx: ServerContext, sessionId: string): Record<string, string> {
   const prefix = `session:${sessionId}:`;
   const rows = ctx.repos.settings.getByPrefix(prefix);
   const overrides: Record<string, string> = {};
@@ -327,11 +315,13 @@ export function loadSessionSettings(
 At each call site that does `const settings = loadSessionSettings(ctx, sessionId);` and then reads `settings.foo`, wrap with `parseSessionSettings`:
 
 In `runPromptEffect` (around line 502):
+
 ```ts
 const settings = parseSessionSettings(loadSessionSettings(ctx, sessionId));
 ```
 
 Then update downstream reads:
+
 - `settings.follow_up_mode` → `settings.followUpMode()`
 - `settings.steering_mode` → `settings.steeringMode()`
 - `parseCompactionSettings(settings)` → `settings.compaction()`
@@ -339,6 +329,7 @@ Then update downstream reads:
 - `settings.agent ?? DEFAULT_AGENT_NAME` → `settings.agent()`
 
 Add the import at the top:
+
 ```ts
 import { parseSessionSettings } from "@sakti-code/agent";
 ```
@@ -350,6 +341,7 @@ Keep `parseCompactionSettings`/`parseRetrySettings`/`DEFAULT_AGENT_NAME` imports
 ```bash
 cd apps/server && pnpm run typecheck 2>&1 | tail -3 && pnpm run test 2>&1 | grep -E "Tests |FAIL " | head -5
 ```
+
 Expected: typecheck exit 0; tests 313 passed, 2 failed (the pre-existing API-key failures). No new failures.
 
 **Step 4: Lint fix**
@@ -382,6 +374,7 @@ EditMode defined locally (string union) to avoid circular dep on
 ### Task I2.1: Add `StuckGuardState` to `packages/agent`
 
 **Files:**
+
 - Modify: `packages/agent/src/compaction/retry-loop.ts` — add the interface near the existing `RetryRunnerDepsEffect` (it's used by `checkCompaction` callbacks).
 - Modify: `packages/agent/src/index.ts` — export the type.
 - Modify: `apps/server/src/agent/runner.ts:286-289` — delete the local interface, import from `@sakti-code/agent`.
@@ -424,6 +417,7 @@ export type {
 **Step 3: Migrate server to use the exported type**
 
 In `apps/server/src/agent/runner.ts`:
+
 - Add `StuckGuardState` to the existing `import type { ... } from "@sakti-code/agent";` block (line 4-12).
 - Delete the local interface at lines 286-289.
 
@@ -434,6 +428,7 @@ cd packages/agent && pnpm run typecheck 2>&1 | tail -3
 cd apps/server && pnpm run typecheck 2>&1 | tail -3
 pnpm run fix 2>&1 | tail -3
 ```
+
 Expected: all exit 0.
 
 **Step 5: Commit**
@@ -457,6 +452,7 @@ persistStuckGuard will return Effect<StuckGuardState, Error>)."
 ### Task I3.1: Create the factory skeleton + first test (event drain)
 
 **Files:**
+
 - Create: `packages/agent/src/runner/agent-run.ts`
 - Create: `packages/agent/src/runner/__tests__/agent-run.test.ts`
 
@@ -530,6 +526,7 @@ describe("runAgentRunEffect", () => {
 ```bash
 cd packages/agent && pnpm run test -- agent-run 2>&1 | tail -10
 ```
+
 Expected: FAIL — `runAgentRunEffect` not found.
 
 **Step 3: Implement the skeleton**
@@ -548,14 +545,8 @@ import type {
   StuckGuardState,
 } from "../compaction/retry-loop.ts";
 import type { Skill, PromptTemplate, ThinkingLevel } from "../harness-types.ts";
-import {
-  executeWithRetryEffect,
-  type RetryRunnerDepsEffect,
-} from "../compaction/retry-loop.ts";
-import {
-  checkCompaction,
-  runAutoCompationEffect,
-} from "../compaction/auto-compaction.ts";
+import { executeWithRetryEffect, type RetryRunnerDepsEffect } from "../compaction/retry-loop.ts";
+import { checkCompaction, runAutoCompationEffect } from "../compaction/auto-compaction.ts";
 import { planFirstTurn } from "../resources/prompt-preprocessor.ts";
 import type { Model } from "@sakti-code/llm";
 import type { AssistantMessage } from "@sakti-code/llm";
@@ -580,9 +571,7 @@ export interface AgentRunDeps {
   readonly readFile?: (path: string) => Promise<string | null>;
 
   readonly loadStuckGuard: () => Effect.Effect<StuckGuardState, Error>;
-  readonly persistStuckGuard: (
-    state: StuckGuardState,
-  ) => Effect.Effect<void, Error>;
+  readonly persistStuckGuard: (state: StuckGuardState) => Effect.Effect<void, Error>;
 
   readonly emit: (event: AgentHarnessEvent) => void;
 
@@ -606,9 +595,7 @@ export interface AgentRunDeps {
  * `apps/server/src/agent/runner.ts:runPromptEffect`. The caller builds the
  * harness and provides I/O via callbacks.
  */
-export function runAgentRunEffect(
-  deps: AgentRunDeps,
-): Effect.Effect<void, Error> {
+export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error> {
   return Effect.gen(function* () {
     const {
       harness,
@@ -638,9 +625,7 @@ export function runAgentRunEffect(
     // ── Event drain (Phase F: PubSub-backed subscribeStream) ─────
     const eventStream = harness.subscribeStream();
     const drainFiber = Effect.runFork(
-      Stream.runForEach(eventStream, (event) =>
-        Effect.sync(() => emit(event)),
-      ),
+      Stream.runForEach(eventStream, (event) => Effect.sync(() => emit(event))),
     );
 
     // ── Retry abort (covers backoff sleep between turns) ────────
@@ -657,9 +642,7 @@ export function runAgentRunEffect(
       });
       if (!ok) {
         unsubscribe();
-        return yield* Effect.fail(
-          new Error("A run is already active for this session"),
-        );
+        return yield* Effect.fail(new Error("A run is already active for this session"));
       }
     }
 
@@ -686,20 +669,11 @@ export function runAgentRunEffect(
             firstTurn = false;
             log?.info("turn prompt", { messageLength: message.length });
             const plan = yield* Effect.tryPromise({
-              try: () =>
-                planFirstTurn(
-                  message,
-                  { skills, templates },
-                  cwd,
-                  readFile,
-                ),
-              catch: (e: unknown) =>
-                new Error(`planFirstTurn failed: ${String(e)}`),
+              try: () => planFirstTurn(message, { skills, templates }, cwd, readFile),
+              catch: (e: unknown) => new Error(`planFirstTurn failed: ${String(e)}`),
             });
             if (plan.kind === "template") {
-              const argv = plan.args.trim()
-                ? plan.args.trim().split(PROMPT_ARG_SPLIT)
-                : [];
+              const argv = plan.args.trim() ? plan.args.trim().split(PROMPT_ARG_SPLIT) : [];
               return yield* harness.promptFromTemplateEffect(plan.name, argv);
             }
             if (plan.kind === "skill") {
@@ -731,9 +705,7 @@ export function runAgentRunEffect(
             messages,
             contextWindow: model.contextWindow ?? 0,
             settings: compactionSettings,
-            ...(latestCompactionTimestamp === undefined
-              ? {}
-              : { latestCompactionTimestamp }),
+            ...(latestCompactionTimestamp === undefined ? {} : { latestCompactionTimestamp }),
             ...(stuckGuard.consecutiveCompacts > 0
               ? { consecutiveCompacts: stuckGuard.consecutiveCompacts }
               : {}),
@@ -796,6 +768,7 @@ export function runAgentRunEffect(
 ```bash
 cd packages/agent && pnpm run test -- agent-run 2>&1 | tail -15
 ```
+
 Expected: PASS — the first test asserts events are drained + agent_stop is emitted.
 
 If `fakeStreamResponse` / `fakeExecEnv` helpers don't exist in the test, look at existing harness tests in `packages/agent/src/agent/__tests__/` to find the pattern for fake streamFn + fake env. Reuse those helpers.
@@ -859,10 +832,14 @@ describe("runAgentRunEffect registerRun/unregisterRun", () => {
         registerRun: () => true,
         unregisterRun: unregistered,
         // Override message to one that planFirstTurn rejects on:
-        message: "",  // or whatever forces a failure
+        message: "", // or whatever forces a failure
       }),
     );
-    try { await promise; } catch { /* expected */ }
+    try {
+      await promise;
+    } catch {
+      /* expected */
+    }
     expect(unregistered).toHaveBeenCalledOnce();
   });
 });
@@ -978,6 +955,7 @@ git commit -m "test(agent): stuck-guard callback wiring (Phase I3.4)"
 ### Task I3.5: Export factory from index.ts
 
 **Files:**
+
 - Modify: `packages/agent/src/index.ts`
 
 **Step 1: Add exports**
@@ -995,6 +973,7 @@ export { runAgentRunEffect } from "./runner/agent-run.ts";
 cd packages/agent && pnpm run typecheck 2>&1 | tail -3 && pnpm run test 2>&1 | grep "Tests " | head -2
 pnpm run fix 2>&1 | tail -3
 ```
+
 Expected: typecheck exit 0; tests pass (359 + new agent-run tests, ~10-15 new). No regressions.
 
 **Step 3: Commit**
@@ -1013,11 +992,13 @@ git commit -m "feat(agent): export runAgentRunEffect (Phase I3.5)"
 ### Task I4.1: Replace the retry-deps block with factory call
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts:461-822` — replace lines 620-822 (everything from `// Phase F: event delivery via PubSub` through `executeWithRetryEffect(depsEffect, retrySettings);` and the `.pipe(Effect.ensuring(...), Effect.mapError(...))`) with a `runAgentRunEffect({...})` call.
 
 **Step 1: Update imports**
 
 Add to the `@sakti-code/agent` import block:
+
 ```ts
 import {
   ...,
@@ -1026,6 +1007,7 @@ import {
 ```
 
 Remove now-unused imports:
+
 - `executeWithRetryEffect` — moved into factory
 - `RetryRunnerDepsEffect` — moved into factory
 - `checkCompaction` — moved into factory
@@ -1093,6 +1075,7 @@ Note: `run finished` log + `rejectPending` + `mapError` stay in the server — t
 ```bash
 cd apps/server && pnpm run typecheck 2>&1 | tail -5
 ```
+
 Expected: exit 0. If errors about unused imports, clean them up.
 
 **Step 4: Run server tests**
@@ -1100,6 +1083,7 @@ Expected: exit 0. If errors about unused imports, clean them up.
 ```bash
 cd apps/server && pnpm run test 2>&1 | grep -E "Tests |FAIL " | head -5
 ```
+
 Expected: 313 passed, 2 failed (pre-existing API-key failures). No new failures.
 
 If new failures appear, the migration has changed behavior — diff the failing test against the factory's wiring. Most likely cause: the `run finished` log moved or the `rejectPending` timing shifted.
@@ -1146,7 +1130,9 @@ If `routes/sessions/compaction.ts` still uses `runAutoCompationEffect` directly 
 ```bash
 rg -n "^export" packages/agent/src/index.ts | wc -l
 ```
+
 Confirm no duplicate exports. The new runner exports should be there:
+
 - `parseSessionSettings`, `SessionSettings`, `DEFAULT_SESSION_SETTINGS`, `SessionEditMode`
 - `StuckGuardState`
 - `runAgentRunEffect`, `AgentRunDeps`
@@ -1158,6 +1144,7 @@ Confirm no duplicate exports. The new runner exports should be there:
 ```bash
 pnpm run typecheck 2>&1 | tail -5
 ```
+
 Expected: exit 0.
 
 **Step 2: Full workspace test**
@@ -1168,7 +1155,9 @@ cd packages/db && pnpm run test 2>&1 | grep "Tests " | head -2
 cd apps/server && pnpm run test 2>&1 | grep -E "Tests |FAIL " | head -5
 cd apps/desktop && pnpm run test 2>&1 | grep "Tests " | head -2
 ```
+
 Expected counts:
+
 - agent: 359 + ~10-15 new = ~370+
 - db: 36
 - server: 313 passed, 2 failed (pre-existing, unchanged)
@@ -1179,6 +1168,7 @@ Expected counts:
 ```bash
 pnpm run fix 2>&1 | tail -3
 ```
+
 Expected: exit 0; no diagnostics.
 
 **Step 4: Commit (if any cleanup)**

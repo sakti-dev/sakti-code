@@ -20,33 +20,30 @@ const grepSchema = Type.Object({
   path: Type.Optional(
     Type.String({
       description: "Directory or file to search (default: current directory)",
-    })
+    }),
   ),
   glob: Type.Optional(
     Type.String({
-      description:
-        "Filter files by glob pattern, e.g. '*.ts' or '**/*.spec.ts'",
-    })
+      description: "Filter files by glob pattern, e.g. '*.ts' or '**/*.spec.ts'",
+    }),
   ),
   ignoreCase: Type.Optional(
-    Type.Boolean({ description: "Case-insensitive search (default: false)" })
+    Type.Boolean({ description: "Case-insensitive search (default: false)" }),
   ),
   literal: Type.Optional(
     Type.Boolean({
-      description:
-        "Treat pattern as literal string instead of regex (default: false)",
-    })
+      description: "Treat pattern as literal string instead of regex (default: false)",
+    }),
   ),
   context: Type.Optional(
     Type.Number({
-      description:
-        "Number of lines to show before and after each match (default: 0)",
-    })
+      description: "Number of lines to show before and after each match (default: 0)",
+    }),
   ),
   limit: Type.Optional(
     Type.Number({
       description: "Maximum number of matches to return (default: 100)",
-    })
+    }),
   ),
 });
 
@@ -76,7 +73,7 @@ export interface GrepToolOptions {
 
 export function createGrepTool(
   cwd: string,
-  options?: GrepToolOptions
+  options?: GrepToolOptions,
 ): AgentTool<typeof grepSchema, GrepToolDetails | undefined> {
   const customOps = options?.operations;
   return {
@@ -89,17 +86,9 @@ export function createGrepTool(
     ],
     async execute(
       _toolCallId: string,
-      {
-        pattern,
-        path: searchDir,
-        glob,
-        ignoreCase,
-        literal,
-        context,
-        limit,
-      }: GrepToolInput,
+      { pattern, path: searchDir, glob, ignoreCase, literal, context, limit }: GrepToolInput,
       signal?: AbortSignal,
-      _onUpdate?: AgentToolUpdateCallback<GrepToolDetails | undefined>
+      _onUpdate?: AgentToolUpdateCallback<GrepToolDetails | undefined>,
     ) {
       if (signal?.aborted) {
         throw new Error("Operation aborted");
@@ -133,10 +122,7 @@ export function createGrepTool(
         if (!lines) {
           try {
             const content = await ops.readFile(filePath);
-            lines = content
-              .replace(/\r\n/g, "\n")
-              .replace(/\r/g, "")
-              .split("\n");
+            lines = content.replace(/\r\n/g, "\n").replace(/\r/g, "").split("\n");
           } catch {
             lines = [];
           }
@@ -145,12 +131,7 @@ export function createGrepTool(
         return lines;
       };
 
-      const args: string[] = [
-        "--json",
-        "--line-number",
-        "--color=never",
-        "--hidden",
-      ];
+      const args: string[] = ["--json", "--line-number", "--color=never", "--hidden"];
       if (ignoreCase) {
         args.push("--ignore-case");
       }
@@ -172,9 +153,7 @@ export function createGrepTool(
         throw new Error("Operation aborted");
       }
       if (exitCode !== 0 && exitCode !== 1) {
-        throw new Error(
-          stderrText.trim() || `ripgrep exited with code ${exitCode}`
-        );
+        throw new Error(stderrText.trim() || `ripgrep exited with code ${exitCode}`);
       }
 
       const lines = stdoutText.split("\n").filter(Boolean);
@@ -186,24 +165,16 @@ export function createGrepTool(
       let matchLimitReached = false;
       let matchCount = 0;
 
-      const formatBlock = async (
-        filePath: string,
-        lineNumber: number
-      ): Promise<string[]> => {
+      const formatBlock = async (filePath: string, lineNumber: number): Promise<string[]> => {
         const relativePath = formatPath(filePath);
         const fileLines = await getFileLines(filePath);
         if (!fileLines.length) {
           return [`${relativePath}:${lineNumber}: (unable to read file)`];
         }
         const block: string[] = [];
-        const start =
-          contextValue > 0
-            ? Math.max(1, lineNumber - contextValue)
-            : lineNumber;
+        const start = contextValue > 0 ? Math.max(1, lineNumber - contextValue) : lineNumber;
         const end =
-          contextValue > 0
-            ? Math.min(fileLines.length, lineNumber + contextValue)
-            : lineNumber;
+          contextValue > 0 ? Math.min(fileLines.length, lineNumber + contextValue) : lineNumber;
         for (let current = start; current <= end; current++) {
           const lineText = fileLines[current - 1] ?? "";
           const sanitized = lineText.replace(/\r/g, "");
@@ -243,8 +214,9 @@ export function createGrepTool(
                 }
               )?.text
             : undefined;
-          const lineNumber = (event.data as Record<string, unknown>)
-            ?.line_number as number | undefined;
+          const lineNumber = (event.data as Record<string, unknown>)?.line_number as
+            | number
+            | undefined;
           const lineText = (event.data as Record<string, unknown>)?.lines
             ? (
                 (event.data as Record<string, unknown>)?.lines as {
@@ -282,9 +254,7 @@ export function createGrepTool(
           if (wasTruncated) {
             linesTruncated = true;
           }
-          outputLines.push(
-            `${relativePath}:${match.lineNumber}: ${truncatedText}`
-          );
+          outputLines.push(`${relativePath}:${match.lineNumber}: ${truncatedText}`);
         } else {
           const block = await formatBlock(match.filePath, match.lineNumber);
           outputLines.push(...block);
@@ -300,7 +270,7 @@ export function createGrepTool(
       const notices: string[] = [];
       if (matchLimitReached) {
         notices.push(
-          `${effectiveLimit} matches limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`
+          `${effectiveLimit} matches limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`,
         );
         details.matchLimitReached = effectiveLimit;
       }
@@ -310,7 +280,7 @@ export function createGrepTool(
       }
       if (linesTruncated) {
         notices.push(
-          `Some lines truncated to ${GREP_MAX_LINE_LENGTH} chars. Use read tool to see full lines`
+          `Some lines truncated to ${GREP_MAX_LINE_LENGTH} chars. Use read tool to see full lines`,
         );
         details.linesTruncated = true;
       }

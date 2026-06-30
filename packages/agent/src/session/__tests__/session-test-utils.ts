@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Layer } from "effect";
-import { afterEach } from "vitest";
+import { afterEach } from "vite-plus/test";
 import { Session, SessionLive, type SessionShape } from "../../session/session";
 import { InMemorySessionStorageLive } from "../../session/storage";
 import type { AgentMessage } from "../../types";
@@ -35,15 +35,13 @@ export function createAssistantMessage(text: string): AgentMessage {
   };
 }
 
-export const TestSessionLayer = SessionLive.pipe(
-  Layer.provide(InMemorySessionStorageLive())
-);
+export const TestSessionLayer = SessionLive.pipe(Layer.provide(InMemorySessionStorageLive()));
 
 export async function createTestSession(): Promise<SessionShape> {
   return Effect.runPromise(
     Effect.gen(function* () {
       return yield* Session;
-    }).pipe(Effect.provide(TestSessionLayer))
+    }).pipe(Effect.provide(TestSessionLayer)),
   );
 }
 
@@ -52,7 +50,7 @@ const tempDirs: string[] = [];
 export function createTempDir(): string {
   const dir = join(
     tmpdir(),
-    `pi-agent-session-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    `pi-agent-session-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   );
   mkdirSync(dir, { recursive: true });
   tempDirs.push(dir);

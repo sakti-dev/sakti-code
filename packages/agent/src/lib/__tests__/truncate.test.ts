@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { truncateHead, truncateTail } from "../../lib/truncate";
 
 const encoder = new TextEncoder();
@@ -20,26 +20,21 @@ function bufferTail(content: string, maxBytes: number): string {
   return decoder.decode(bytes.subarray(start));
 }
 
-function assertMatchesBufferTail(
-  input: string,
-  maxByteValues?: readonly number[]
-): void {
+function assertMatchesBufferTail(input: string, maxByteValues?: readonly number[]): void {
   const totalBytes = byteLength(input);
-  const values =
-    maxByteValues ??
-    Array.from({ length: totalBytes + 5 }, (_, maxBytes) => maxBytes);
+  const values = maxByteValues ?? Array.from({ length: totalBytes + 5 }, (_, maxBytes) => maxBytes);
   for (const maxBytes of values) {
     const result = truncateTail(input, { maxBytes, maxLines: 10 });
     const expected = bufferTail(input, maxBytes);
     if (result.content !== expected) {
       throw new Error(
-        `tail mismatch input=${JSON.stringify(input)} maxBytes=${maxBytes} expected=${JSON.stringify(expected)} actual=${JSON.stringify(result.content)}`
+        `tail mismatch input=${JSON.stringify(input)} maxBytes=${maxBytes} expected=${JSON.stringify(expected)} actual=${JSON.stringify(result.content)}`,
       );
     }
     const outputBytes = byteLength(result.content);
     if (outputBytes > maxBytes) {
       throw new Error(
-        `tail output exceeded byte limit input=${JSON.stringify(input)} maxBytes=${maxBytes} outputBytes=${outputBytes}`
+        `tail output exceeded byte limit input=${JSON.stringify(input)} maxBytes=${maxBytes} outputBytes=${outputBytes}`,
       );
     }
   }
@@ -68,9 +63,7 @@ function sampledByteLimits(input: string): number[] {
     totalBytes + 1,
     totalBytes + 4,
   ];
-  return [...new Set(candidates.filter((value) => value >= 0))].sort(
-    (a, b) => a - b
-  );
+  return [...new Set(candidates.filter((value) => value >= 0))].sort((a, b) => a - b);
 }
 
 describe("truncate utilities", () => {

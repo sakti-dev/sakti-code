@@ -44,17 +44,13 @@ function tryParseRecoveryHeader(line: string, cwd?: string): RawSection | null {
     return null;
   }
   const body = stripApplyPatchPathNoise(
-    line
-      .slice(HL_FILE_PREFIX.length, line.length - HL_FILE_SUFFIX.length)
-      .trim()
+    line.slice(HL_FILE_PREFIX.length, line.length - HL_FILE_SUFFIX.length).trim(),
   );
   if (body.length === 0) {
     return null;
   }
 
-  const trailing = new RegExp(
-    `#([0-9A-Fa-f]{${HL_FILE_HASH_LENGTH}})\\s*$`
-  ).exec(body);
+  const trailing = new RegExp(`#([0-9A-Fa-f]{${HL_FILE_HASH_LENGTH}})\\s*$`).exec(body);
   let pathText: string;
   let fileHash: string | undefined;
   if (trailing === null) {
@@ -81,17 +77,13 @@ function tryParseRecoveryHeader(line: string, cwd?: string): RawSection | null {
 }
 
 function normalizeHashlinePath(rawPath: string, cwd?: string): string {
-  const unquoted = stripApplyPatchPathNoise(
-    unquoteHashlinePath(rawPath.trim())
-  );
+  const unquoted = stripApplyPatchPathNoise(unquoteHashlinePath(rawPath.trim()));
   if (!(cwd && path.isAbsolute(unquoted))) {
     return unquoted;
   }
   const relative = path.relative(path.resolve(cwd), path.resolve(unquoted));
   const normalizedRelative = relative.split(path.sep).join("/");
-  const isWithinCwd =
-    relative === "" ||
-    !(relative.startsWith("..") || path.isAbsolute(relative));
+  const isWithinCwd = relative === "" || !(relative.startsWith("..") || path.isAbsolute(relative));
   return isWithinCwd ? normalizedRelative || "." : unquoted;
 }
 
@@ -101,10 +93,7 @@ interface RawSection {
   path: string;
 }
 
-function parseHashlineHeaderLine(
-  line: string,
-  cwd?: string
-): RawSection | null {
+function parseHashlineHeaderLine(line: string, cwd?: string): RawSection | null {
   const trimmed = line.trimEnd();
   if (!trimmed.startsWith(HL_FILE_PREFIX)) {
     return null;
@@ -117,14 +106,14 @@ function parseHashlineHeaderLine(
       return recovered;
     }
     throw new Error(
-      `Input header must be ${HL_FILE_PREFIX}PATH${HL_FILE_SUFFIX} or ${HL_FILE_PREFIX}PATH${HL_FILE_HASH_SEP}TAG${HL_FILE_SUFFIX} with a ${HL_FILE_HASH_LENGTH}-hex content-hash tag; got ${JSON.stringify(trimmed)}.`
+      `Input header must be ${HL_FILE_PREFIX}PATH${HL_FILE_SUFFIX} or ${HL_FILE_PREFIX}PATH${HL_FILE_HASH_SEP}TAG${HL_FILE_SUFFIX} with a ${HL_FILE_HASH_LENGTH}-hex content-hash tag; got ${JSON.stringify(trimmed)}.`,
     );
   }
 
   const parsedPath = normalizeHashlinePath(token.path, cwd);
   if (parsedPath.length === 0) {
     throw new Error(
-      `Input header "${HL_FILE_PREFIX}${HL_FILE_SUFFIX}" is empty; provide a file path.`
+      `Input header "${HL_FILE_PREFIX}${HL_FILE_SUFFIX}" is empty; provide a file path.`,
     );
   }
   return token.fileHash === undefined
@@ -137,10 +126,7 @@ function stripLeadingBlankLines(input: string): string {
   const lines = stripped.split("\n");
   while (lines.length > 0) {
     const head = (lines[0] ?? "").replace(/\r$/, "");
-    if (
-      head.trim().length === 0 ||
-      TOKENIZER.tokenize(head).kind === "envelope-begin"
-    ) {
+    if (head.trim().length === 0 || TOKENIZER.tokenize(head).kind === "envelope-begin") {
       lines.shift();
       continue;
     }
@@ -177,13 +163,8 @@ function normalizeFallbackInput(input: string, options: SplitOptions): string {
   return `${HL_FILE_PREFIX}${fallbackPath}${HL_FILE_SUFFIX}\n${input}`;
 }
 
-function splitRawSections(
-  input: string,
-  options: SplitOptions = {}
-): RawSection[] {
-  const stripped = stripLeadingBlankLines(
-    normalizeFallbackInput(input, options)
-  );
+function splitRawSections(input: string, options: SplitOptions = {}): RawSection[] {
+  const stripped = stripLeadingBlankLines(normalizeFallbackInput(input, options));
   const lines = stripped.split(/\r?\n/);
   const firstLine = lines[0] ?? "";
 
@@ -192,13 +173,13 @@ function splitRawSections(
     if (/^@@\s+[-+]?\d+,\d+\s+[-+]?\d+,\d+\s+@@/.test(firstTrimmed)) {
       throw new Error(
         "unified-diff hunk header (`@@ -N,M +N,M @@`) is not valid in hashline. " +
-          `File sections start with \`${HL_FILE_PREFIX}path${HL_FILE_HASH_SEP}HASH${HL_FILE_SUFFIX}\`; use \`replace\`, \`delete\`, or \`insert\` ops.`
+          `File sections start with \`${HL_FILE_PREFIX}path${HL_FILE_HASH_SEP}HASH${HL_FILE_SUFFIX}\`; use \`replace\`, \`delete\`, or \`insert\` ops.`,
       );
     }
     const preview = JSON.stringify(firstLine.slice(0, 120));
     throw new Error(
       `input must begin with "${HL_FILE_PREFIX}PATH${HL_FILE_HASH_SEP}HASH${HL_FILE_SUFFIX}" on the first non-blank line for anchored edits; got: ${preview}. ` +
-        `Example: "${HL_FILE_PREFIX}src/foo.ts${HL_FILE_HASH_SEP}${HL_FILE_HASH_EXAMPLES[0]}${HL_FILE_SUFFIX}" then edit ops.`
+        `Example: "${HL_FILE_PREFIX}src/foo.ts${HL_FILE_HASH_SEP}${HL_FILE_HASH_EXAMPLES[0]}${HL_FILE_SUFFIX}" then edit ops.`,
     );
   }
 
@@ -215,12 +196,10 @@ function splitRawSections(
       sections.push({ ...current, diff: currentLines.join("\n") });
     } else {
       const hashPart =
-        current.fileHash === undefined
-          ? ""
-          : `${HL_FILE_HASH_SEP}${current.fileHash}`;
+        current.fileHash === undefined ? "" : `${HL_FILE_HASH_SEP}${current.fileHash}`;
       throw new Error(
         `Header ${HL_FILE_PREFIX}${current.path}${hashPart}${HL_FILE_SUFFIX} has no operations below it. ` +
-          "Add at least one op (e.g. `SWAP 1.=1:` then `+body`, or `DEL 1`) on the lines below the header."
+          "Add at least one op (e.g. `SWAP 1.=1:` then `+body`, or `DEL 1`) on the lines below the header.",
       );
     }
     currentLines = [];
@@ -304,10 +283,7 @@ export class PatchSection {
       if (edit.kind === "block") {
         return true;
       }
-      return (
-        edit.cursor.kind === "before_anchor" ||
-        edit.cursor.kind === "after_anchor"
-      );
+      return edit.cursor.kind === "before_anchor" || edit.cursor.kind === "after_anchor";
     });
   }
 
@@ -322,10 +298,7 @@ export class PatchSection {
         lines.add(edit.anchor.line);
         continue;
       }
-      if (
-        edit.cursor.kind === "before_anchor" ||
-        edit.cursor.kind === "after_anchor"
-      ) {
+      if (edit.cursor.kind === "before_anchor" || edit.cursor.kind === "after_anchor") {
         lines.add(edit.cursor.anchor.line);
       }
     }
@@ -340,11 +313,7 @@ export class PatchSection {
       onWarning: (warning) => resolveWarnings.push(warning),
     });
     const result = applyEdits(text, resolved);
-    const merged = [
-      ...warnings,
-      ...resolveWarnings,
-      ...(result.warnings ?? []),
-    ];
+    const merged = [...warnings, ...resolveWarnings, ...(result.warnings ?? [])];
     if (merged.length > 0) {
       return { ...result, warnings: merged };
     }
@@ -364,11 +333,7 @@ export class PatchSection {
       onWarning: (warning) => resolveWarnings.push(warning),
     });
     const result = applyEdits(text, resolved);
-    const merged = [
-      ...warnings,
-      ...resolveWarnings,
-      ...(result.warnings ?? []),
-    ];
+    const merged = [...warnings, ...resolveWarnings, ...(result.warnings ?? [])];
     if (merged.length > 0) {
       return { ...result, warnings: merged };
     }
@@ -408,7 +373,7 @@ export class Patch {
     const first = patch.sections[0];
     if (!first) {
       throw new Error(
-        "Input did not produce any sections. Start with a file header like [path#HASH] and add at least one op below it."
+        "Input did not produce any sections. Start with a file header like [path#HASH] and add at least one op below it.",
       );
     }
     return first;
@@ -426,7 +391,7 @@ function mergeSamePathSections(sections: RawSection[]): RawSection[] {
         existing.fileHash !== section.fileHash
       ) {
         throw new Error(
-          `Conflicting hashline snapshot tags for ${section.path}: #${existing.fileHash} and #${section.fileHash}. Re-read the file and retry with one current header.`
+          `Conflicting hashline snapshot tags for ${section.path}: #${existing.fileHash} and #${section.fileHash}. Re-read the file and retry with one current header.`,
         );
       }
       if (existing.fileHash === undefined && section.fileHash !== undefined) {

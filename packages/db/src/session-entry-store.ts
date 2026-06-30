@@ -1,8 +1,4 @@
-import type {
-  SessionError,
-  SessionMetadata,
-  SessionTreeEntry,
-} from "@sakti-code/agent";
+import type { SessionError, SessionMetadata, SessionTreeEntry } from "@sakti-code/agent";
 import { eq, sql } from "drizzle-orm";
 import { Effect } from "effect";
 import type { DrizzleDB } from "./init.ts";
@@ -17,9 +13,7 @@ import { sessionEntries, sessions } from "./schema.ts";
  * the agent's `SessionStorage` Context tag and the `SessionLive` layer
  * consume it via `yield* SessionStorage`.
  */
-export class SqliteSessionStorage<
-  TMetadata extends SessionMetadata = SessionMetadata,
-> {
+export class SqliteSessionStorage<TMetadata extends SessionMetadata = SessionMetadata> {
   private readonly db: DrizzleDB;
   private readonly sessionId: string;
   private readonly metadata: TMetadata;
@@ -47,11 +41,7 @@ export class SqliteSessionStorage<
 
   setLeafId(leafId: string | null): Effect.Effect<void, SessionError> {
     return Effect.sync(() => {
-      this.db
-        .update(sessions)
-        .set({ leafId })
-        .where(eq(sessions.id, this.sessionId))
-        .run();
+      this.db.update(sessions).set({ leafId }).where(eq(sessions.id, this.sessionId)).run();
     });
   }
 
@@ -94,25 +84,16 @@ export class SqliteSessionStorage<
     });
   }
 
-  getEntry(
-    id: string
-  ): Effect.Effect<SessionTreeEntry | undefined, SessionError> {
+  getEntry(id: string): Effect.Effect<SessionTreeEntry | undefined, SessionError> {
     return Effect.sync(() => {
-      const row = this.db
-        .select()
-        .from(sessionEntries)
-        .where(eq(sessionEntries.id, id))
-        .get();
+      const row = this.db.select().from(sessionEntries).where(eq(sessionEntries.id, id)).get();
       return row ? parseEntry(row.content) : undefined;
     });
   }
 
   findEntries<TType extends SessionTreeEntry["type"]>(
-    type: TType
-  ): Effect.Effect<
-    Array<Extract<SessionTreeEntry, { type: TType }>>,
-    SessionError
-  > {
+    type: TType,
+  ): Effect.Effect<Array<Extract<SessionTreeEntry, { type: TType }>>, SessionError> {
     return Effect.sync(() => {
       const rows = this.db
         .select()
@@ -120,20 +101,13 @@ export class SqliteSessionStorage<
         .where(eq(sessionEntries.kind, type))
         .orderBy(sessionEntries.sequence)
         .all();
-      return rows.map(
-        (r) =>
-          parseEntry(r.content) as Extract<SessionTreeEntry, { type: TType }>
-      );
+      return rows.map((r) => parseEntry(r.content) as Extract<SessionTreeEntry, { type: TType }>);
     });
   }
 
   getLabel(id: string): Effect.Effect<string | undefined, SessionError> {
     return Effect.sync(() => {
-      const row = this.db
-        .select()
-        .from(sessionEntries)
-        .where(eq(sessionEntries.id, id))
-        .get();
+      const row = this.db.select().from(sessionEntries).where(eq(sessionEntries.id, id)).get();
       if (!row) {
         return;
       }
@@ -145,9 +119,7 @@ export class SqliteSessionStorage<
     });
   }
 
-  getPathToRoot(
-    leafId: string | null
-  ): Effect.Effect<SessionTreeEntry[], SessionError> {
+  getPathToRoot(leafId: string | null): Effect.Effect<SessionTreeEntry[], SessionError> {
     return Effect.sync(() => {
       if (!leafId) {
         return this.getAllEntriesSync();
@@ -188,10 +160,7 @@ export class SqliteSessionStorage<
    * If upToEntryId is provided, only copies entries up to and including that entry.
    * Entry IDs and parentIds are regenerated so the fork is independent.
    */
-  forkFrom(
-    sourceSessionId: string,
-    upToEntryId?: string
-  ): Effect.Effect<void, SessionError> {
+  forkFrom(sourceSessionId: string, upToEntryId?: string): Effect.Effect<void, SessionError> {
     return Effect.sync(() => this.forkFromSync(sourceSessionId, upToEntryId));
   }
 
@@ -240,9 +209,7 @@ export class SqliteSessionStorage<
         if (!newId) {
           continue;
         }
-        const newParentId = src.parentId
-          ? (idMap.get(src.parentId) ?? null)
-          : null;
+        const newParentId = src.parentId ? (idMap.get(src.parentId) ?? null) : null;
 
         const entry = JSON.parse(src.content) as SessionTreeEntry;
         const forkedEntry = {
@@ -270,15 +237,10 @@ export class SqliteSessionStorage<
         newLeafId = idMap.get(sourceLeafId) ?? null;
       } else {
         const lastSourceRow = entriesToCopy.at(-1);
-        newLeafId = lastSourceRow
-          ? (idMap.get(lastSourceRow.id) ?? null)
-          : null;
+        newLeafId = lastSourceRow ? (idMap.get(lastSourceRow.id) ?? null) : null;
       }
 
-      tx.update(sessions)
-        .set({ leafId: newLeafId })
-        .where(eq(sessions.id, this.sessionId))
-        .run();
+      tx.update(sessions).set({ leafId: newLeafId }).where(eq(sessions.id, this.sessionId)).run();
     });
   }
 }

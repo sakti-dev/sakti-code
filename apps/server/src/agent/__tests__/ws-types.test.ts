@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { WsIn, WsOut } from "../ws-handler.ts";
 
 describe("WS frame types", () => {

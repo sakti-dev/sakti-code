@@ -27,10 +27,7 @@ function loadFromStorage(): StoredState {
       projectId: t?.projectId ?? null,
       sessionId: t?.sessionId ?? null,
     }));
-    const activeIndex = Math.min(
-      Math.max(0, parsed.activeIndex ?? 0),
-      validated.length - 1
-    );
+    const activeIndex = Math.min(Math.max(0, parsed.activeIndex ?? 0), validated.length - 1);
     return { tabs: validated, activeIndex };
   } catch {
     return seedState();
@@ -57,9 +54,7 @@ function saveToStorage(tabs: WorkspaceTab[], activeIndex: number): void {
 const initial = loadFromStorage();
 
 const [openTabs, setOpenTabs] = createSignal<WorkspaceTab[]>(initial.tabs);
-const [activeTabIndex, setActiveTabIndex] = createSignal<number>(
-  initial.activeIndex
-);
+const [activeTabIndex, setActiveTabIndex] = createSignal<number>(initial.activeIndex);
 
 createRoot(() => {
   createEffect(() => {
@@ -68,9 +63,7 @@ createRoot(() => {
 });
 
 function updateTab(index: number, patch: Partial<WorkspaceTab>): void {
-  setOpenTabs((prev) =>
-    prev.map((t, i) => (i === index ? { ...t, ...patch } : t))
-  );
+  setOpenTabs((prev) => prev.map((t, i) => (i === index ? { ...t, ...patch } : t)));
 }
 
 export function activeTab(): WorkspaceTab | null {
@@ -82,10 +75,7 @@ export function activeTab(): WorkspaceTab | null {
   return tabs[idx] ?? null;
 }
 
-export function openProjectTab(
-  projectId: string,
-  sessionId: string | null = null
-): void {
+export function openProjectTab(projectId: string, sessionId: string | null = null): void {
   const tabs = openTabs();
 
   const existingIdx = tabs.findIndex((t) => t.projectId === projectId);
@@ -117,7 +107,7 @@ export function newTab(): void {
 export function transformTab(
   index: number,
   projectId: string,
-  sessionId: string | null = null
+  sessionId: string | null = null,
 ): void {
   const tabs = openTabs();
 
@@ -167,10 +157,7 @@ export function switchTab(index: number): void {
   }
 }
 
-export function setTabSession(
-  projectId: string,
-  sessionId: string | null
-): void {
+export function setTabSession(projectId: string, sessionId: string | null): void {
   const tabs = openTabs();
   const idx = tabs.findIndex((t) => t.projectId === projectId);
   if (idx >= 0) {

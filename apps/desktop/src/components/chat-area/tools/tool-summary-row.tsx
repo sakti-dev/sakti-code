@@ -26,17 +26,15 @@ function ToolIcon_(props: { icon: ToolIcon }) {
 }
 
 export const ToolSummaryRow: Component<ToolSummaryRowProps> = (props) => {
-  const mainText = () =>
-    typeof props.summary === "string" ? props.summary : props.summary.main;
-  const mutedText = () =>
-    typeof props.summary === "string" ? undefined : props.summary.muted;
+  const mainText = () => (typeof props.summary === "string" ? props.summary : props.summary.main);
+  const mutedText = () => (typeof props.summary === "string" ? undefined : props.summary.muted);
 
   return (
     <div
       class={cn(
         "flex items-center gap-2 py-1.5 text-sm",
         props.status === "error" && "text-destructive",
-        props.class
+        props.class,
       )}
       data-component="tool-summary-row"
       data-status={props.status}
@@ -48,10 +46,7 @@ export const ToolSummaryRow: Component<ToolSummaryRowProps> = (props) => {
       </span>
 
       <Show when={mutedText()}>
-        <span
-          class="shrink-0 text-muted-foreground text-xs"
-          data-slot="summary-muted"
-        >
+        <span class="shrink-0 text-muted-foreground text-xs" data-slot="summary-muted">
           {mutedText()}
         </span>
       </Show>

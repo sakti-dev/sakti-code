@@ -32,16 +32,19 @@
 ### Task 1.1: Revert maxRetries from packages/llm
 
 **Files:**
+
 - Modify: `packages/llm/src/stream.ts` (revert `maxRetries` field + pass-through)
 - Modify: `packages/llm/src/complete.ts` (same)
 
 **Step 1: Revert the changes**
 
 In `stream.ts`:
+
 - Remove the `maxRetries?: number` field from `StreamRequest`.
 - Change `maxRetries: req.maxRetries ?? 0` back to `maxRetries: 0` in the `runner({...})` call.
 
 In `complete.ts`:
+
 - Remove the `maxRetries?: number` field from `CompleteRequest`.
 - Change `maxRetries: req.maxRetries ?? 0` back to `maxRetries: 0` in the `runner({...})` call.
 
@@ -63,6 +66,7 @@ errors with UI visibility (see docs/plans/2026-06-25-application-level-retry.md)
 ### Task 1.2: Revert maxRetries from packages/agent
 
 **Files:**
+
 - Modify: `packages/agent/src/types.ts` (remove `maxRetries` from `AgentLoopConfig`)
 - Modify: `packages/agent/src/loop/agent-loop.ts` (remove the pass-through line)
 
@@ -93,6 +97,7 @@ git commit -m "revert(agent): remove maxRetries from AgentLoopConfig"
 ### Task 2.1: Write failing tests for isRetryableAssistantError
 
 **Files:**
+
 - Create: `packages/llm/src/__tests__/retry.test.ts`
 
 **Step 1: Write the failing test**
@@ -201,6 +206,7 @@ Expected: FAIL — module `../retry.ts` not found.
 ### Task 2.2: Implement isRetryableAssistantError
 
 **Files:**
+
 - Create: `packages/llm/src/retry.ts`
 
 **Step 1: Write the implementation**
@@ -347,6 +353,7 @@ Expected: PASS (all tests green)
 **Step 3: Export from index.ts**
 
 Add to `packages/llm/src/index.ts`:
+
 ```typescript
 // Transient error classifier for retry decisions.
 export { isRetryableAssistantError } from "./retry.ts";
@@ -378,6 +385,7 @@ stream failures) against a curated regex table."
 ### Task 3.1: Add auto_retry event types
 
 **Files:**
+
 - Modify: `packages/agent/src/types.ts`
 
 **Step 1: Add the event variants**
@@ -410,6 +418,7 @@ Expected: PASS (types compile clean)
 ### Task 3.2: Write failing test for harness.continue()
 
 **Files:**
+
 - Create or modify: `packages/agent/src/__tests__/harness/agent-harness-continue.test.ts`
 
 **Step 1: Write the failing test**
@@ -451,11 +460,13 @@ Expected: FAIL — `harness.continue is not a function`.
 ### Task 3.3: Implement harness.continue()
 
 **Files:**
+
 - Modify: `packages/agent/src/harness/agent-harness.ts`
 
 **Step 1: Implement the method**
 
 Add a `continue()` method to `AgentHarness` that:
+
 1. Checks `this.phase === "idle"` (throw if busy)
 2. Calls `this.session.getBranch()` to get the current path
 3. Checks the last entry is not an assistant message (throw if it is)
@@ -465,6 +476,7 @@ Add a `continue()` method to `AgentHarness` that:
 7. Returns the last `AssistantMessage`
 
 The method mirrors `prompt()` but:
+
 - Does NOT create a new user message
 - Does NOT emit `before_agent_start` hook (the prompt hasn't changed)
 - Calls `runAgentLoopContinue()` instead of `runAgentLoop()`
@@ -566,6 +578,7 @@ git commit -m "feat(agent): add auto_retry events + harness.continue()
 ### Task 4.1: Add `base_delay_ms` to DEFAULT_SETTINGS
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts:151-158`
 
 **Step 1: Add the setting**
@@ -585,11 +598,13 @@ const DEFAULT_SETTINGS: Record<string, string> = {
 ### Task 4.2: Write failing test for the retry loop
 
 **Files:**
+
 - Create: `apps/server/src/__tests__/retry-runner.test.ts`
 
 **Step 1: Write the failing test**
 
 The test needs to:
+
 1. Create a harness mock where `prompt()` returns an error message on first call, success on `continue()`
 2. Capture emitted events
 3. Verify `auto_retry_start` is emitted with correct fields
@@ -661,6 +676,7 @@ Expected: FAIL — module not found.
 ### Task 4.3: Implement the retry helper + loop
 
 **Files:**
+
 - Create: `apps/server/src/agent/retry-loop.ts` — pure helper (shouldRetry, computeDelay)
 - Modify: `apps/server/src/agent/runner.ts` — integrate retry loop into `runPrompt()`
 
@@ -707,10 +723,7 @@ export function shouldRetry(input: RetryDecisionInput): boolean {
  * @param baseDelayMs - base delay from settings (default 2000)
  * @returns delay in milliseconds: baseDelayMs * 2^(attempt-1)
  */
-export function computeRetryDelay(
-  attempt: number,
-  baseDelayMs: number
-): number {
+export function computeRetryDelay(attempt: number, baseDelayMs: number): number {
   return baseDelayMs * 2 ** (attempt - 1);
 }
 
@@ -722,9 +735,7 @@ export interface RetrySettings {
 }
 
 /** Parse retry settings from the session settings map. */
-export function parseRetrySettings(
-  settings: Record<string, string>
-): RetrySettings {
+export function parseRetrySettings(settings: Record<string, string>): RetrySettings {
   return {
     enabled: settings.auto_retry === "true",
     baseDelayMs: Number.parseInt(settings.base_delay_ms ?? "2000", 10),
@@ -741,6 +752,7 @@ Expected: PASS
 ### Task 4.4: Integrate retry loop into runPrompt()
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts:194-261` (the `runPrompt` function)
 
 **Step 1: Add the retry loop**
@@ -794,6 +806,7 @@ if (retryAttempt > 0) {
 ```
 
 **Key changes to `runPrompt()`:**
+
 1. Capture the return value of `harness.prompt(message)` (it returns `AssistantMessage`).
 2. Change `harness.prompt(message)` call to `await` instead of fire-and-forget.
 3. The existing `harness.subscribe(callback)` stays — events still flow during each attempt.
@@ -802,6 +815,7 @@ if (retryAttempt > 0) {
 **Step 2: Write integration test**
 
 Test the full retry flow:
+
 - Mock harness where `prompt()` returns error message (429), `continue()` returns success
 - Verify `auto_retry_start` then `auto_retry_end { success: true }` are emitted
 - Verify `setLeafId` was called to roll back
@@ -835,6 +849,7 @@ base_delay_ms (default 2000) from session settings."
 ### Task 5.1: Add retry state to event reducer
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/session/event-reducer.ts`
 - Modify: `apps/desktop/src/stores/session/types.ts` (or wherever the session state type lives)
 
@@ -862,16 +877,22 @@ describe("event-reducer — auto_retry", () => {
 
   it("clears retry state on auto_retry_end", () => {
     const state = reducer(
-      { ...initialState, retry: { attempt: 2, delayMs: 4000, errorMessage: "err", maxAttempts: 3 } },
-      { attempt: 2, success: true, type: "auto_retry_end" }
+      {
+        ...initialState,
+        retry: { attempt: 2, delayMs: 4000, errorMessage: "err", maxAttempts: 3 },
+      },
+      { attempt: 2, success: true, type: "auto_retry_end" },
     );
     expect(state.retry).toBeUndefined();
   });
 
   it("clears retry state on auto_retry_end with finalError", () => {
     const state = reducer(
-      { ...initialState, retry: { attempt: 3, delayMs: 8000, errorMessage: "err", maxAttempts: 3 } },
-      { attempt: 3, finalError: "Still rate limited", success: false, type: "auto_retry_end" }
+      {
+        ...initialState,
+        retry: { attempt: 3, delayMs: 8000, errorMessage: "err", maxAttempts: 3 },
+      },
+      { attempt: 3, finalError: "Still rate limited", success: false, type: "auto_retry_end" },
     );
     expect(state.retry).toBeUndefined();
   });
@@ -921,11 +942,13 @@ Expected: PASS
 ### Task 5.2: Create retry banner component
 
 **Files:**
+
 - Create: `apps/desktop/src/components/session/retry-banner.tsx`
 
 **Step 1: Implement the component**
 
 A SolidJS component that reads `retry` from the session store and shows:
+
 - Error message: "Rate limited (429)"
 - Attempt counter: "Attempt 2 of 3"
 - Delay: "Retrying in 4s…"
@@ -945,13 +968,8 @@ export function RetryBanner() {
           <span class="retry-banner__attempt">
             Attempt {retry().attempt} of {retry().maxAttempts}
           </span>
-          <span class="retry-banner__delay">
-            Retrying in {retry().delayMs / 1000}s…
-          </span>
-          <button
-            class="retry-banner__cancel"
-            onClick={() => store.abort()}
-          >
+          <span class="retry-banner__delay">Retrying in {retry().delayMs / 1000}s…</span>
+          <button class="retry-banner__cancel" onClick={() => store.abort()}>
             Cancel
           </button>
         </div>
@@ -989,6 +1007,7 @@ the server emits auto_retry_start. Clears on auto_retry_end."
 ### Task 6.1: Full workspace typecheck + tests
 
 Run:
+
 ```bash
 nub run typecheck           # all 6 packages
 cd packages/llm && nub run test

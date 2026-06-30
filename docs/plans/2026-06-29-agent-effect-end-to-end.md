@@ -19,6 +19,7 @@
 Smallest, independent, immediate user-visible win (the "LLM isn't stalling, it's writing a big tool call" feedback). No other phase depends on it; ship first.
 
 **Files:**
+
 - Modify: `packages/agent/src/types.ts` (extend `message_update` delta union)
 - Modify: `packages/agent/src/core/agent-loop.ts` (handle `tool-input-delta` in `streamAssistantResponse`)
 - Test: `packages/agent/src/core/__tests__/agent-loop.test.ts`
@@ -26,6 +27,7 @@ Smallest, independent, immediate user-visible win (the "LLM isn't stalling, it's
 ### Task A1: Extend the delta type
 
 **Step 1:** In `packages/agent/src/types.ts`, change the `message_update` delta:
+
 ```ts
 // before
 delta: { kind: "text" | "thinking"; text: string };
@@ -39,6 +41,7 @@ delta:
 ### Task A2: Write the failing test
 
 **Step 1:** In `packages/agent/src/core/__tests__/agent-loop.test.ts`, add a test next to the existing streaming tests. Use the existing `makeStreamFn`/`fauxAssistantMessage` helpers to produce a `fullStream` that yields `tool-input-delta` parts then a `tool-call`:
+
 ```ts
 it("emits tool_input deltas as message_update while the tool call is being written", async () => {
   const streamFn: StreamFn = () =>
@@ -58,15 +61,22 @@ it("emits tool_input deltas as message_update while the tool call is being writt
 
   const config: AgentLoopConfig = { model: createModel(), convertToLlm: identityConverter };
   const events: AgentEvent[] = [];
-  for await (const e of agentLoop([createUserMessage("edit")], { messages: [], tools: [], systemPrompt: "" }, config, undefined, streamFn)) {
+  for await (const e of agentLoop(
+    [createUserMessage("edit")],
+    { messages: [], tools: [], systemPrompt: "" },
+    config,
+    undefined,
+    streamFn,
+  )) {
     events.push(e);
   }
   const toolInputDeltas = events.filter(
-    (e) => e.type === "message_update" && e.delta.kind === ("tool_input" as never)
+    (e) => e.type === "message_update" && e.delta.kind === ("tool_input" as never),
   );
   expect(toolInputDeltas.length).toBe(2);
 });
 ```
+
 (Use `as never`/`as any` only if the union isn't yet widened; remove once A1 lands.)
 
 **Step 2:** Run `cd packages/agent && pnpm run test -- src/core/__tests__/agent-loop.test.ts -t "tool_input deltas"` → expect FAIL (no `tool_input` deltas emitted).
@@ -74,6 +84,7 @@ it("emits tool_input deltas as message_update while the tool call is being writt
 ### Task A3: Implement the handler
 
 **Step 1:** In `packages/agent/src/core/agent-loop.ts`, in `streamAssistantResponse`'s `Stream.runForEach` switch (next to the existing `tool-call` case), add:
+
 ```ts
 case "tool-input-delta": {
   yield* ensureMessageStarted();
@@ -88,6 +99,7 @@ case "tool-input-delta": {
   break;
 }
 ```
+
 Note: the complete `tool-call` case (which finalizes `toolCallBlocks` from the full parsed `input`) is unchanged — deltas are pure UI feed.
 
 **Step 2:** Run the test → expect PASS.
@@ -105,6 +117,7 @@ Note: the complete `tool-call` case (which finalizes `toolCallBlocks` from the f
 Foundation. `SqliteSessionStorage` ops become Effects; the `SessionStorage` interface moves to Effect-typed. Callers wrap with `Effect.runPromise` at their boundary for now (the harness migration in later phases will consume them natively).
 
 **Files:**
+
 - Modify: `packages/agent/src/session/storage.ts` (the `SessionStorage`/`PromiseSessionStorage` interface)
 - Modify: `packages/db/src/session-entry-store.ts` (`SqliteSessionStorage`)
 - Test: `packages/db/src/__tests__/session-entry-store.test.ts`, `session-entry-store-fork.test.ts`
@@ -112,6 +125,7 @@ Foundation. `SqliteSessionStorage` ops become Effects; the `SessionStorage` inte
 ### Task B1: Define the Effect-native storage interface
 
 **Step 1:** In `packages/agent/src/session/storage.ts`, add an Effect-typed interface (keep the old `PromiseSessionStorage` temporarily for migration; remove at end of phase):
+
 ```ts
 import type { Effect } from "effect";
 import type { SessionMetadata, SessionTreeEntry } from "../types";
@@ -127,11 +141,13 @@ export interface SessionStorage<TMetadata extends SessionMetadata = SessionMetad
   // …mirror every method currently on PromiseSessionStorage, Effect-returning
 }
 ```
+
 (Mirror the exact method set of the current `PromiseSessionStorage` — read that interface first and copy its methods, changing `Promise<X>` → `Effect.Effect<X>`.)
 
 ### Task B2: Rewrite tests first (TDD)
 
 **Step 1:** In `packages/db/src/__tests__/session-entry-store.test.ts`, convert each test to call storage via `Effect.runPromise`:
+
 ```ts
 import { Effect } from "effect";
 // before: await storage.appendEntry(entry);
@@ -139,40 +155,61 @@ import { Effect } from "effect";
 // before: await storage.getLeafId();
 // after:  const id = await Effect.runPromise(storage.getLeafId());
 ```
+
 Do the same mechanical conversion across `session-entry-store-fork.test.ts`. Run → expect FAIL (methods still return Promises / signatures mismatch).
 
 ### Task B3: Make `SqliteSessionStorage` Effect-native
 
 **Step 1:** In `packages/db/src/session-entry-store.ts`, change the class to `implements SessionStorage<TMetadata>` (the new interface) and convert each method. node:sqlite is sync, so wrap with `Effect.sync` / `Effect.fn`; transactions with `Effect.gen`:
+
 ```ts
 import { Effect } from "effect";
 
-export class SqliteSessionStorage<TMetadata extends SessionMetadata = SessionMetadata>
-  implements SessionStorage<TMetadata> {
+export class SqliteSessionStorage<
+  TMetadata extends SessionMetadata = SessionMetadata,
+> implements SessionStorage<TMetadata> {
   // …ctor unchanged…
 
-  getMetadata() { return Effect.succeed(this.metadata); }
+  getMetadata() {
+    return Effect.succeed(this.metadata);
+  }
 
   getLeafId() {
     return Effect.sync(() => {
-      const row = this.db.select({ leafId: sessions.leafId }).from(sessions).where(eq(sessions.id, this.sessionId)).get();
+      const row = this.db
+        .select({ leafId: sessions.leafId })
+        .from(sessions)
+        .where(eq(sessions.id, this.sessionId))
+        .get();
       return row?.leafId ?? null;
     });
   }
 
   setLeafId(leafId: string | null) {
-    return Effect.sync(() => { this.db.update(sessions).set({ leafId }).where(eq(sessions.id, this.sessionId)).run(); });
+    return Effect.sync(() => {
+      this.db.update(sessions).set({ leafId }).where(eq(sessions.id, this.sessionId)).run();
+    });
   }
 
-  createEntryId() { return Effect.sync(() => crypto.randomUUID()); }
+  createEntryId() {
+    return Effect.sync(() => crypto.randomUUID());
+  }
 
   appendEntry(entry: SessionTreeEntry) {
     return Effect.sync(() => {
       const content = JSON.stringify(entry);
       this.db.transaction((tx) => {
-        const row = tx.select({ max: sql<number>`coalesce(max(sequence), -1)` }).from(sessionEntries).where(eq(sessionEntries.sessionId, this.sessionId)).get();
+        const row = tx
+          .select({ max: sql<number>`coalesce(max(sequence), -1)` })
+          .from(sessionEntries)
+          .where(eq(sessionEntries.sessionId, this.sessionId))
+          .get();
         const sequence = (row?.max ?? -1) + 1;
-        tx.insert(sessionEntries).values({ /* …existing… */ }).run();
+        tx.insert(sessionEntries)
+          .values({
+            /* …existing… */
+          })
+          .run();
         tx.update(sessions).set({ leafId: entry.id }).where(eq(sessions.id, this.sessionId)).run();
       });
     });
@@ -180,6 +217,7 @@ export class SqliteSessionStorage<TMetadata extends SessionMetadata = SessionMet
   // …convert forkFrom + every remaining method the same way…
 }
 ```
+
 Note: Drizzle's `.run()` is sync for node:sqlite; `.get()` is sync. Keep the transaction logic byte-identical — only wrap in `Effect.sync`.
 
 **Step 2:** Remove the old `PromiseSessionStorage` interface + its usages once nothing imports it.
@@ -202,12 +240,14 @@ Note: Drizzle's `.run()` is sync for node:sqlite; `.get()` is sync. Keep the tra
 Make `prompt`/`continue` Effect-typed; run as a Fiber in a Scope; `waitForIdle`/`abort` via Fiber; AbortController bridged via finalizer. The server caller wraps with `Effect.runPromise` at the boundary (Phase F removes that wrapper by making the edge native).
 
 **Files:**
+
 - Modify: `packages/agent/src/agent/agent-harness.ts` (lifecycle)
 - Test: `packages/agent/src/agent/__tests__/agent-harness.test.ts`, `agent-harness-continue.test.ts`
 
 ### Task C1: Write failing Effect-API tests
 
 **Step 1:** In `agent-harness.test.ts`, add/convert tests to the new API:
+
 ```ts
 import { Effect, Fiber, Scope } from "effect";
 
@@ -223,17 +263,19 @@ it("abort interrupts the run fiber and aborts the @ai-sdk signal", async () => {
   // streamFn that blocks until abortSignal.aborted, like the existing abort test
   const harness = makeHarness({ streamFn: blockingStreamFn });
   const fiber = Effect.runFork(harness.prompt("x"));
-  await Effect.runPromise(harness.abort());          // Effect-typed now
+  await Effect.runPromise(harness.abort()); // Effect-typed now
   const exit = await Effect.runPromise(Effect.exit(Fiber.join(fiber)));
-  expect(Exit.isFailure(exit)).toBe(true);           // interrupted
-  expect(receivedSignal?.aborted).toBe(true);        // finalizer aborted @ai-sdk
+  expect(Exit.isFailure(exit)).toBe(true); // interrupted
+  expect(receivedSignal?.aborted).toBe(true); // finalizer aborted @ai-sdk
 });
 ```
+
 Run → FAIL (API still Promise-based).
 
 ### Task C2: Make `runWithLifecycle`-equivalent Effect-native
 
 **Step 1:** In `agent-harness.ts`, convert the run lifecycle. Replace `runAsTurn` + `startRunPromise` + the async IIFE with an Effect-gen that forks the run in a scope and joins:
+
 ```ts
 private readonly promptEffect = Effect.fn("AgentHarness.prompt")(function* (this: AgentHarness, text: string, options?: { images?: ImageContent[] }) {
   if (this.phase !== "idle") return yield* new AgentHarnessError({ code: "busy", message: "AgentHarness is busy" });
@@ -266,6 +308,7 @@ private executeTurnEffect = Effect.fn("AgentHarness.executeTurn")(function* (thi
   }
 });
 ```
+
 - `prompt(text)` → `this.promptEffect(text)` (returns `Effect<AssistantMessage>`).
 - `continue()` → analogous `continueEffect`.
 - `waitForIdle()` → `Effect.gen(function* () { if (this.runFiber) yield* Fiber.join(this.runFiber).pipe(Effect.exit); })`.
@@ -294,6 +337,7 @@ private executeTurnEffect = Effect.fn("AgentHarness.executeTurn")(function* (thi
 Now that the run is Effect, event publishing is a native `yield* pubsub.publish(event)`. Replace the async-callback `subscribe` path; split `handleAgentEvent` into reduce/persist/notify.
 
 **Files:**
+
 - Modify: `packages/agent/src/agent/agent-harness.ts`
 - Test: `packages/agent/src/agent/__tests__/agent-harness.test.ts`
 
@@ -311,16 +355,18 @@ it("subscribeStream yields events as a Stream", async () => {
       const fiber = yield* Effect.fork(harness.prompt("hi"));
       yield* Stream.runForEach(stream, (e) => Effect.sync(() => events.push(e)));
       yield* Fiber.join(fiber);
-    })
+    }),
   );
   expect(events.find((e) => e.type === "agent_start")).toBeDefined();
 });
 ```
+
 Run → FAIL (`subscribeStream` doesn't exist).
 
 ### Task D2: Add PubSub + subscribeStream
 
 **Step 1:** In `agent-harness.ts`:
+
 ```ts
 import { PubSub, Stream } from "effect";
 
@@ -336,6 +382,7 @@ subscribeStream(): Stream.Stream<AgentHarnessEvent> {
   return Stream.fromPubSub(this.events);
 }
 ```
+
 - The `emit` passed to `runAgentLoopEffect` becomes `(event) => this.publishEvent(event)` (fires-and-forgets the publish; PubSub is non-blocking broadcast).
 - **Split `handleAgentEvent`**: the state reducer runs synchronously inside `publishEvent`'s closure BEFORE the publish (so state is consistent); persistence becomes a separate internal subscriber: `Effect.runPromise(Stream.runForEach(this.subscribeStream(), (e) => this.persistEffect(e)))` forked per run; the WS subscriber is the external `subscribeStream()` consumer (Phase F).
 - Keep `subscribe(cb)` as a thin adapter over `subscribeStream()` during migration (or remove if all callers move).
@@ -354,6 +401,7 @@ subscribeStream(): Stream.Stream<AgentHarnessEvent> {
 ## Phase E — Retry → Effect.retry + Schedule (Section 3)
 
 **Files:**
+
 - Modify: `packages/agent/src/compaction/retry-loop.ts`
 - Modify: `apps/server/src/agent/runner.ts` (caller — `deps.runTurn` becomes Effect)
 - Test: `packages/agent/src/compaction/__tests__/retry-loop.test.ts`
@@ -361,12 +409,16 @@ subscribeStream(): Stream.Stream<AgentHarnessEvent> {
 ### Task E1: Define the transient-error + failing tests
 
 **Step 1:** In `retry-loop.ts`:
+
 ```ts
 import { Schema } from "effect";
 export class TurnTransientError extends Schema.TaggedErrorClass<TurnTransientError>()(
-  "TurnTransientError", "TurnTransientError", { message: Schema.String }
+  "TurnTransientError",
+  "TurnTransientError",
+  { message: Schema.String },
 ) {}
 ```
+
 **Step 2:** Add tests: retryable turn → retries N times with jittered backoff; emits `auto_retry_start` per retry (delayMs from schedule); non-retryable → no retry; abort interrupts backoff. Use `deps.runTurn: () => Effect<AssistantMessage>` and `TestClock` for deterministic timing where possible. Run → FAIL.
 
 ### Task E2: Rewrite `executeWithRetryEffect`
@@ -378,23 +430,35 @@ export const executeWithRetryEffect = (deps, settings) =>
   Effect.gen(function* () {
     const turnOrFail = Effect.gen(function* () {
       const msg = yield* deps.runTurn();
-      if (shouldRetryValue(msg, settings)) return yield* new TurnTransientError({ message: msg.errorMessage ?? "transient" });
+      if (shouldRetryValue(msg, settings))
+        return yield* new TurnTransientError({ message: msg.errorMessage ?? "transient" });
       return msg;
     });
     const schedule = Schedule.exponential(settings.baseDelayMs).pipe(
       Schedule.jittered,
-      Schedule.tap((out) => Effect.gen(function* () {
-        deps.emit({ type: "auto_retry_start", attempt: out.iterations, delayMs: out.delay, errorMessage: "…", maxAttempts: settings.maxRetries });
-        yield* deps.rollbackLeaf();
-      }))
+      Schedule.tap((out) =>
+        Effect.gen(function* () {
+          deps.emit({
+            type: "auto_retry_start",
+            attempt: out.iterations,
+            delayMs: out.delay,
+            errorMessage: "…",
+            maxAttempts: settings.maxRetries,
+          });
+          yield* deps.rollbackLeaf();
+        }),
+      ),
     );
     const message = yield* turnOrFail.pipe(
       Effect.retry({ while: (_) => true, times: settings.maxRetries, schedule }),
-      Effect.onExit((exit) => deps.emit({ type: "auto_retry_end", success: Exit.isSuccess(exit), /* … */ }))
+      Effect.onExit((exit) =>
+        deps.emit({ type: "auto_retry_end", success: Exit.isSuccess(exit) /* … */ }),
+      ),
     );
     yield* runCompactionPhaseEffect(deps, message);
   });
 ```
+
 Delete `abortableSleep` + `computeRetryDelay` once nothing imports them. The retry is interruptible as a unit (the run fiber's interruption propagates).
 
 ### Task E3: Caller + verify + commit
@@ -409,6 +473,7 @@ Delete `abortableSleep` + `computeRetryDelay` once nothing imports them. The ret
 ## Phase F — WS/REST edge: single Effect boundary (Section 4)
 
 **Files:**
+
 - Modify: `apps/server/src/agent/ws-handler.ts`, `apps/server/src/agent/runner.ts`
 - Modify: `apps/server/src/routes/*` (one `Effect.runPromise` per route that invokes agent ops)
 - Test: `apps/server/src/agent/__tests__/ws.test.ts`, `e2e.test.ts`
@@ -416,20 +481,25 @@ Delete `abortableSleep` + `computeRetryDelay` once nothing imports them. The ret
 ### Task F1: Rewrite `agentStream` as the edge Effect
 
 **Step 1:** In `runner.ts`, replace the fire-and-forget Promise with the single-boundary Effect:
+
 ```ts
 Effect.runPromise(
   Effect.gen(function* () {
     const events = harness.subscribeStream();
-    const fiber = yield* Effect.fork(executeWithRetryEffect(deps, settings).pipe(Effect.provide(/* runtime/ctx */)));
+    const fiber = yield* Effect.fork(
+      executeWithRetryEffect(deps, settings).pipe(Effect.provide(/* runtime/ctx */)),
+    );
     registerRun(sessionId, harness, /* runFiber */ fiber);
     yield* Stream.runForEach(events, (e) =>
-      Effect.sync(() => ws.send(JSON.stringify(toFrame(e, sessionId))))
+      Effect.sync(() => ws.send(JSON.stringify(toFrame(e, sessionId)))),
     );
     yield* Fiber.join(fiber).pipe(Effect.exit);
-  })
-).catch((err) => ws.send(errorFrame(sessionId, err)))
- .finally(() => unregisterRun(sessionId));
+  }),
+)
+  .catch((err) => ws.send(errorFrame(sessionId, err)))
+  .finally(() => unregisterRun(sessionId));
 ```
+
 - `activeRuns` now stores `{ harness, runFiber }`; `abortRun(sessionId)` → `Effect.runPromise(Fiber.interrupt(runFiber))`.
 - `ws-handler.ts`: `agentStream(...)` is this `Effect.runPromise` (the single edge).
 
@@ -455,6 +525,7 @@ For each route in `apps/server/src/routes/*` that calls a harness/storage op, wr
 ### Task G1: Delete the `Agent` class
 
 Now redundant (zero production consumers; harness is a strict superset; `runAgentLoopEffect` is consumed by the harness).
+
 - Delete `packages/agent/src/agent/agent.ts` + `packages/agent/src/agent/__tests__/agent.test.ts`.
 - Remove `export { Agent }` from `packages/agent/src/index.ts`.
 - `runAgentLoop`/`runAgentLoopContinue` (Promise wrappers) + `agentLoop`/`agentLoopContinue`/`AgentEventStream` (test-facing) — `rg` for consumers; delete if dead.

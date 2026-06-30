@@ -14,17 +14,18 @@
 
 ## Reference map (pi → sakti)
 
-| Concern | pi location | sakti target |
-| :--- | :--- | :--- |
-| overflow detection | `packages/ai/src/utils/overflow.ts:126` | `packages/llm/src/context-overflow.ts` `[PORT]` |
-| decision (overflow+threshold+zero-usage fallback) | `agent-session.ts:1816 _checkCompaction` | `apps/server/src/agent/auto-compaction.ts checkCompaction` `[PORT]` |
-| execution (prepare+compact+persist+emit) | `agent-session.ts:1907 _runAutoCompaction` | `apps/server/src/agent/auto-compaction.ts runAutoCompaction` `[PORT]` |
-| turn-loop hook | `agent-session.ts:947 _runAgentPrompt`/`_handlePostAgentRun` | `apps/server/src/agent/retry-loop.ts executeWithRetry` `[NEW]` |
-| compaction events | `agent-session.ts:137` (`compaction_start`/`compaction_end`) | `packages/agent/src/types.ts AgentEvent` `[PORT]` |
-| one-retry-per-overflow guard | `agent-session.ts:286 _overflowRecoveryAttempted` | local var in the compaction phase `[PORT]` |
-| settings | `settings-manager.ts:754` (enabled/reserve/keep, defaults true/16384/20000) | `parseCompactionSettings` from session KV `[PORT]` |
+| Concern                                           | pi location                                                                 | sakti target                                                          |
+| :------------------------------------------------ | :-------------------------------------------------------------------------- | :-------------------------------------------------------------------- |
+| overflow detection                                | `packages/ai/src/utils/overflow.ts:126`                                     | `packages/llm/src/context-overflow.ts` `[PORT]`                       |
+| decision (overflow+threshold+zero-usage fallback) | `agent-session.ts:1816 _checkCompaction`                                    | `apps/server/src/agent/auto-compaction.ts checkCompaction` `[PORT]`   |
+| execution (prepare+compact+persist+emit)          | `agent-session.ts:1907 _runAutoCompaction`                                  | `apps/server/src/agent/auto-compaction.ts runAutoCompaction` `[PORT]` |
+| turn-loop hook                                    | `agent-session.ts:947 _runAgentPrompt`/`_handlePostAgentRun`                | `apps/server/src/agent/retry-loop.ts executeWithRetry` `[NEW]`        |
+| compaction events                                 | `agent-session.ts:137` (`compaction_start`/`compaction_end`)                | `packages/agent/src/types.ts AgentEvent` `[PORT]`                     |
+| one-retry-per-overflow guard                      | `agent-session.ts:286 _overflowRecoveryAttempted`                           | local var in the compaction phase `[PORT]`                            |
+| settings                                          | `settings-manager.ts:754` (enabled/reserve/keep, defaults true/16384/20000) | `parseCompactionSettings` from session KV `[PORT]`                    |
 
 **Key pi behavior to preserve:**
+
 - `isContextOverflow` has 3 cases: (1) error msg matching `OVERFLOW_PATTERNS` and not `NON_OVERFLOW_PATTERNS`; (2) silent z.ai overflow — `stopReason:"stop"` + `input+cacheRead > contextWindow`; (3) MiMo length-stop — `stopReason:"length"` + `output===0` + `input+cacheRead >= contextWindow*0.99`.
 - Threshold check falls back to `estimateContextTokens(messages)` when `stopReason==="error"` OR `calculateContextTokens(usage)===0` — **this is the z.ai fix** (empty usage → 0 → fall back to local chars/4 estimate). `lastUsageIndex===null` → bail (no usage data).
 - Overflow allows ONE compact-and-retry per episode; `willRetry=false` when `stopReason==="stop"` (silent overflow can't `continue()` from a completed assistant message).
@@ -36,6 +37,7 @@
 ### Task 1: Port `isContextOverflow` (pure, with tests)
 
 **Files:**
+
 - Create: `packages/llm/src/context-overflow.ts`
 - Test: `packages/llm/src/__tests__/context-overflow.test.ts`
 - Modify: `packages/llm/src/index.ts` (export)
@@ -49,21 +51,37 @@ import { isContextOverflow } from "../context-overflow.ts";
 import type { AssistantMessage } from "../types.ts";
 
 const usage = (input: number, output = 1) => ({
-  input, output, cacheRead: 0, cacheWrite: 0, totalTokens: input + output,
+  input,
+  output,
+  cacheRead: 0,
+  cacheWrite: 0,
+  totalTokens: input + output,
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 });
 
-function asst(stopReason: AssistantMessage["stopReason"], over: Partial<AssistantMessage> = {}): AssistantMessage {
+function asst(
+  stopReason: AssistantMessage["stopReason"],
+  over: Partial<AssistantMessage> = {},
+): AssistantMessage {
   return {
-    role: "assistant", content: [], api: "openai", provider: "p", model: "m",
-    usage: usage(10), stopReason, timestamp: 0, ...over,
+    role: "assistant",
+    content: [],
+    api: "openai",
+    provider: "p",
+    model: "m",
+    usage: usage(10),
+    stopReason,
+    timestamp: 0,
+    ...over,
   } as AssistantMessage;
 }
 
 describe("isContextOverflow", () => {
   it("Case 1: error whose message matches an overflow pattern", () => {
     expect(isContextOverflow(asst("error", { errorMessage: "prompt is too long" }))).toBe(true);
-    expect(isContextOverflow(asst("error", { errorMessage: "context_length_exceeded" }))).toBe(true);
+    expect(isContextOverflow(asst("error", { errorMessage: "context_length_exceeded" }))).toBe(
+      true,
+    );
   });
   it("Case 1: rate-limit errors are NOT overflow even if pattern matches", () => {
     expect(isContextOverflow(asst("error", { errorMessage: "rate limit exceeded" }))).toBe(false);
@@ -95,6 +113,7 @@ describe("isContextOverflow", () => {
 ### Task 2: Add compaction events to `AgentEvent`
 
 **Files:**
+
 - Modify: `packages/agent/src/types.ts:563` (the `AgentEvent` union)
 
 **Step 1: Add the two variants** `[PORT]` from `agent-session.ts:137-147`:
@@ -126,6 +145,7 @@ describe("isContextOverflow", () => {
 ### Task 3: `auto-compaction.ts` — decision + execution + tests
 
 **Files:**
+
 - Create: `apps/server/src/agent/auto-compaction.ts`
 - Test: `apps/server/src/agent/__tests__/auto-compaction.test.ts`
 
@@ -155,7 +175,7 @@ export interface CheckCompactionInput {
   contextWindow: number;
   settings: CompactionSettings;
 }
-export function checkCompaction(input: CheckCompactionInput): CompactionDecision
+export function checkCompaction(input: CheckCompactionInput): CompactionDecision;
 ```
 
 Mirror pi exactly: enabled guard → skip aborted → overflow (`isContextOverflow` → `willRetry = stopReason !== "stop"`) → threshold with the zero-usage fallback (`calculateContextTokens(usage)===0 || stopReason==="error"` → `estimateContextTokens`; `lastUsageIndex===null` → none) → `shouldCompact`.
@@ -165,15 +185,18 @@ Mirror pi exactly: enabled guard → skip aborted → overflow (`isContextOverfl
 ```ts
 export interface RunCompactionDeps {
   ctx: ServerContext;
-  session: Session;            // has getBranch() + appendCompaction()
+  session: Session; // has getBranch() + appendCompaction()
   model: Model;
   apiKey: string;
   settings: CompactionSettings;
   thinkingLevel?: ThinkingLevel;
 }
 export async function runAutoCompaction(
-  deps: RunCompactionDeps
-): Promise<{ ok: true; summary: string; firstKeptEntryId: string; tokensBefore: number } | { ok: false; errorMessage: string }>
+  deps: RunCompactionDeps,
+): Promise<
+  | { ok: true; summary: string; firstKeptEntryId: string; tokensBefore: number }
+  | { ok: false; errorMessage: string }
+>;
 ```
 
 Body: `entries = await session.getBranch()`; `prepareCompaction(entries, settings)` (bail if undefined); `compact(preparation, model, apiKey, undefined, undefined, undefined, thinkingLevel)`; on `!ok` return error; `await session.appendCompaction(summary, firstKeptEntryId, tokensBefore, details)`; return result. (`harness.state.messages` mutation is not needed — our harness rebuilds context from storage each turn via `createTurnState`, so persisting the compaction entry is sufficient.)
@@ -197,6 +220,7 @@ export function parseCompactionSettings(settings: Record<string, string>): Compa
 ### Task 4: Wire the compaction phase into `executeWithRetry`
 
 **Files:**
+
 - Modify: `apps/server/src/agent/retry-loop.ts`
 - Test: `apps/server/src/__tests__/retry-loop.test.ts`
 
@@ -212,7 +236,10 @@ export interface RetryRunnerDeps {
   /** Decide whether the just-finished turn needs compaction. Optional. */
   checkCompaction?: (message: AssistantMessage) => Promise<CompactionDecision>;
   /** Run one compaction. Optional (required iff checkCompaction is). */
-  runCompaction?: () => Promise<{ ok: true; result: { summary: string; firstKeptEntryId: string; tokensBefore: number } } | { ok: false; errorMessage: string }>;
+  runCompaction?: () => Promise<
+    | { ok: true; result: { summary: string; firstKeptEntryId: string; tokensBefore: number } }
+    | { ok: false; errorMessage: string }
+  >;
 }
 ```
 
@@ -225,6 +252,7 @@ Add a `runCompactionPhase(message)` after the retry while-loop (and after the di
 ### Task 5: Wire compaction deps into `runPrompt`
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts:415-459` (the `executeWithRetry` call)
 
 **Step 1:** After `settings` is loaded (~line 336), compute `const compactionSettings = parseCompactionSettings(settings);`
@@ -254,6 +282,7 @@ runCompaction: async () => runAutoCompaction({ ctx, session: sessionInstance, mo
 ---
 
 ## Out of scope (follow-ups)
+
 - Desktop "compacting…" UI indicator (events already flow; desktop ignores them today).
 - DB persistence of "always" permission grants.
 - Extension hooks (`session_before_compact` / `session_compact`) — sakti has no extension system.

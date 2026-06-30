@@ -12,24 +12,24 @@
 
 ## Key Files Reference
 
-| File | Role |
-|------|------|
-| `apps/desktop/src/stores/session/session-store.ts` | UI message state + actions |
-| `apps/desktop/src/stores/session/event-reducer.ts` | Converts AgentHarnessEvents → store actions |
-| `apps/desktop/src/stores/types.ts` | `UIMessage`, `MessagePart`, `StreamState`, `agentMessageToUI` |
-| `apps/desktop/src/stores/__tests__/helpers.ts` | Test factories for events/messages |
-| `apps/desktop/src/stores/server/actions.ts` | `loadMessages`, `sendPrompt`, WS actions |
-| `apps/desktop/src/stores/server/ws-client.ts` | WS client, `handleFrame` |
-| `apps/desktop/src/stores/store-context.tsx` | Store wiring |
-| `apps/desktop/src/components/chat/task-chat-view.tsx` | Session chat view (needs loadMessages on mount) |
-| `apps/desktop/src/components/chat/tools/tool-summary-formatters.ts` | Per-tool summary text |
-| `apps/desktop/src/components/layout/toolbar/toolbar.tsx` | Toolbar (add replay button) |
-| `apps/server/src/agent/ws-handler.ts` | WS message types + `handleMessage` |
-| `apps/server/src/agent/runner.ts` | Agent run lifecycle, `activeRuns` map |
-| `apps/server/src/agent/ws.ts` | WS app, connection management |
-| `apps/server/src/routes/sessions/sessions.ts` | `GET /:id/messages` endpoint |
-| `packages/agent/src/harness/session.ts` | `buildSessionContext` (entry tree → messages) |
-| `packages/agent/src/harness/types.ts` | `AgentHarnessEvent`, `SessionTreeEntry` types |
+| File                                                                | Role                                                          |
+| ------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `apps/desktop/src/stores/session/session-store.ts`                  | UI message state + actions                                    |
+| `apps/desktop/src/stores/session/event-reducer.ts`                  | Converts AgentHarnessEvents → store actions                   |
+| `apps/desktop/src/stores/types.ts`                                  | `UIMessage`, `MessagePart`, `StreamState`, `agentMessageToUI` |
+| `apps/desktop/src/stores/__tests__/helpers.ts`                      | Test factories for events/messages                            |
+| `apps/desktop/src/stores/server/actions.ts`                         | `loadMessages`, `sendPrompt`, WS actions                      |
+| `apps/desktop/src/stores/server/ws-client.ts`                       | WS client, `handleFrame`                                      |
+| `apps/desktop/src/stores/store-context.tsx`                         | Store wiring                                                  |
+| `apps/desktop/src/components/chat/task-chat-view.tsx`               | Session chat view (needs loadMessages on mount)               |
+| `apps/desktop/src/components/chat/tools/tool-summary-formatters.ts` | Per-tool summary text                                         |
+| `apps/desktop/src/components/layout/toolbar/toolbar.tsx`            | Toolbar (add replay button)                                   |
+| `apps/server/src/agent/ws-handler.ts`                               | WS message types + `handleMessage`                            |
+| `apps/server/src/agent/runner.ts`                                   | Agent run lifecycle, `activeRuns` map                         |
+| `apps/server/src/agent/ws.ts`                                       | WS app, connection management                                 |
+| `apps/server/src/routes/sessions/sessions.ts`                       | `GET /:id/messages` endpoint                                  |
+| `packages/agent/src/harness/session.ts`                             | `buildSessionContext` (entry tree → messages)                 |
+| `packages/agent/src/harness/types.ts`                               | `AgentHarnessEvent`, `SessionTreeEntry` types                 |
 
 ## Data Profile (from `replay.jsonl`)
 
@@ -48,6 +48,7 @@ These fixes are prerequisites for both replay AND real agent runs. Thinking is s
 ### Task 1: Add `appendThinkingToken` action to session store
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/session/session-store.ts`
 - Test: `apps/desktop/src/stores/session/__tests__/session-store.test.ts`
 
@@ -159,6 +160,7 @@ git commit -m "feat(desktop): add appendThinkingToken action to session store"
 ### Task 2: Add `wasLastUserMessage` action to session store
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/session/session-store.ts`
 - Test: `apps/desktop/src/stores/session/__tests__/session-store.test.ts`
 
@@ -260,6 +262,7 @@ git commit -m "feat(desktop): add wasLastUserMessage guard to session store"
 ### Task 3: Handle `thinking_delta` in event-reducer
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/session/event-reducer.ts:79-84`
 - Modify: `apps/desktop/src/stores/__tests__/helpers.ts` (add thinking_delta factory)
 - Test: `apps/desktop/src/stores/session/__tests__/event-reducer.test.ts`
@@ -271,7 +274,7 @@ In `apps/desktop/src/stores/__tests__/helpers.ts`, add after `makeMessageUpdateT
 ```typescript
 export function makeMessageUpdateThinkingDeltaEvent(
   message: AgentMessage,
-  delta: string
+  delta: string,
 ): AgentHarnessEvent {
   return {
     type: "message_update",
@@ -309,13 +312,9 @@ it("message_update thinking_delta appends to thinking part", () => {
   dispatchEvent(
     session.actions,
     batcher,
-    makeMessageUpdateThinkingDeltaEvent(msg, "Let me think ")
+    makeMessageUpdateThinkingDeltaEvent(msg, "Let me think "),
   );
-  dispatchEvent(
-    session.actions,
-    batcher,
-    makeMessageUpdateThinkingDeltaEvent(msg, "about this")
-  );
+  dispatchEvent(session.actions, batcher, makeMessageUpdateThinkingDeltaEvent(msg, "about this"));
 
   const parts = session.store.messages[msgId]!.parts;
   expect(parts).toHaveLength(1);
@@ -365,6 +364,7 @@ git commit -m "feat(desktop): handle thinking_delta events in event-reducer"
 ### Task 4: Handle user `message_start` in event-reducer
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/session/event-reducer.ts:29-48`
 - Test: `apps/desktop/src/stores/session/__tests__/event-reducer.test.ts`
 
@@ -422,10 +422,7 @@ Expected: FAIL — user messages are still skipped
 In `apps/desktop/src/stores/session/event-reducer.ts`, modify `handleMessageStart` (line 29):
 
 ```typescript
-function handleMessageStart(
-  actions: SessionActions,
-  message: AgentMessage
-): void {
+function handleMessageStart(actions: SessionActions, message: AgentMessage): void {
   if (message.role === "user") {
     const text = extractTextContent(message);
     if (actions.wasLastUserMessage(text)) {
@@ -437,8 +434,7 @@ function handleMessageStart(
       content: text,
       parts: [{ type: "text", text }],
       isStreaming: false,
-      timestamp:
-        typeof message.timestamp === "number" ? message.timestamp : Date.now(),
+      timestamp: typeof message.timestamp === "number" ? message.timestamp : Date.now(),
     });
     return;
   }
@@ -485,9 +481,7 @@ it("message_start for user adds user message from event stream", () => {
   } as AgentMessage;
   dispatchEvent(session.actions, batcher, makeMessageStartEvent(userMsg));
   expect(session.store.messageOrder).toHaveLength(1);
-  expect(
-    session.store.messages[session.store.messageOrder[0]!]!.role
-  ).toBe("user");
+  expect(session.store.messages[session.store.messageOrder[0]!]!.role).toBe("user");
 });
 ```
 
@@ -508,6 +502,7 @@ git commit -m "feat(desktop): handle user message_start in event-reducer with du
 ### Task 5: Add `details` to tool_call MessagePart + `completeToolCall`
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/types.ts:8-17` (MessagePart type)
 - Modify: `apps/desktop/src/stores/session/session-store.ts:33-38,143-156`
 - Test: `apps/desktop/src/stores/session/__tests__/session-store.test.ts`
@@ -538,13 +533,7 @@ describe("session store — completeToolCall with details", () => {
     });
 
     const diff = "--- old\n+++ new";
-    session.actions.completeToolCall(
-      "msg-1",
-      "call-1",
-      "Edited /test.ts",
-      false,
-      diff
-    );
+    session.actions.completeToolCall("msg-1", "call-1", "Edited /test.ts", false, diff);
 
     const part = session.store.messages["msg-1"]!.parts[0]!;
     expect(part.type).toBe("tool_call");
@@ -652,6 +641,7 @@ git commit -m "feat(desktop): add details field to tool_call MessagePart"
 ### Task 6: Extract details in `handleToolExecutionEnd`
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/session/event-reducer.ts:50-63`
 - Test: `apps/desktop/src/stores/session/__tests__/event-reducer.test.ts`
 
@@ -671,7 +661,7 @@ it("tool_execution_end extracts content text from structured result", () => {
   dispatchEvent(
     session.actions,
     batcher,
-    makeToolExecutionStartEvent("call-1", "bash", { command: "echo hello" })
+    makeToolExecutionStartEvent("call-1", "bash", { command: "echo hello" }),
   );
 
   dispatchEvent(
@@ -680,7 +670,7 @@ it("tool_execution_end extracts content text from structured result", () => {
     makeToolExecutionEndEvent("call-1", "bash", {
       content: [{ type: "text", text: "hello\n" }],
       details: { truncation: false },
-    })
+    }),
   );
 
   const part = session.store.messages[session.store.messageOrder[0]!]!.parts[0]!;
@@ -702,13 +692,13 @@ it("tool_execution_end falls back to stringify for primitive result", () => {
   dispatchEvent(
     session.actions,
     batcher,
-    makeToolExecutionStartEvent("call-1", "bash", { command: "echo" })
+    makeToolExecutionStartEvent("call-1", "bash", { command: "echo" }),
   );
 
   dispatchEvent(
     session.actions,
     batcher,
-    makeToolExecutionEndEvent("call-1", "bash", "plain string result")
+    makeToolExecutionEndEvent("call-1", "bash", "plain string result"),
   );
 
   const part = session.store.messages[session.store.messageOrder[0]!]!.parts[0]!;
@@ -728,7 +718,7 @@ In `apps/desktop/src/stores/session/event-reducer.ts`, replace `handleToolExecut
 ```typescript
 function handleToolExecutionEnd(
   actions: SessionActions,
-  event: Extract<AgentHarnessEvent, { type: "tool_execution_end" }>
+  event: Extract<AgentHarnessEvent, { type: "tool_execution_end" }>,
 ): void {
   const msgId = actions.getCurrentMessageId();
   if (!msgId) {
@@ -749,10 +739,7 @@ function handleToolExecutionEnd(
     resultText = content
       .filter(
         (c): c is { type: "text"; text: string } =>
-          c !== null &&
-          typeof c === "object" &&
-          "type" in c &&
-          c.type === "text"
+          c !== null && typeof c === "object" && "type" in c && c.type === "text",
       )
       .map((c) => c.text)
       .join("");
@@ -763,13 +750,7 @@ function handleToolExecutionEnd(
     resultText = String(result);
   }
 
-  actions.completeToolCall(
-    msgId,
-    event.toolCallId,
-    resultText,
-    event.isError,
-    details
-  );
+  actions.completeToolCall(msgId, event.toolCallId, resultText, event.isError, details);
 }
 ```
 
@@ -799,6 +780,7 @@ Fix the hydration path so reopening a project shows full message history with th
 ### Task 7: Create `hydrateSessionMessages` function
 
 **Files:**
+
 - Create: `apps/desktop/src/stores/session/hydrate-messages.ts`
 - Test: `apps/desktop/src/stores/session/__tests__/hydrate-messages.test.ts`
 
@@ -825,9 +807,7 @@ describe("hydrateSessionMessages", () => {
     expect(result).toHaveLength(1);
     expect(result[0]!.role).toBe("user");
     expect(result[0]!.content).toBe("hello world");
-    expect(result[0]!.parts).toEqual([
-      { type: "text", text: "hello world" },
-    ]);
+    expect(result[0]!.parts).toEqual([{ type: "text", text: "hello world" }]);
   });
 
   it("converts assistant message with thinking + text + toolCall", () => {
@@ -989,7 +969,7 @@ function extractText(msg: AgentMessage): string {
     return content
       .filter(
         (c): c is { type: "text"; text: string } =>
-          c !== null && typeof c === "object" && "type" in c && c.type === "text"
+          c !== null && typeof c === "object" && "type" in c && c.type === "text",
       )
       .map((c) => c.text)
       .join("");
@@ -1007,12 +987,7 @@ function convertAssistantMessage(msg: AgentMessage): UIMessage {
 
   const content = Array.isArray(msg.content) ? msg.content : [];
   for (const part of content) {
-    if (
-      part !== null &&
-      typeof part === "object" &&
-      "type" in part &&
-      part.type === "thinking"
-    ) {
+    if (part !== null && typeof part === "object" && "type" in part && part.type === "thinking") {
       const thinking = (part as { thinking?: string }).thinking;
       if (thinking) {
         parts.push({ type: "thinking", text: thinking });
@@ -1102,9 +1077,7 @@ export function hydrateSessionMessages(messages: AgentMessage[]): UIMessage[] {
         if (uiMsg.role !== "assistant") {
           break;
         }
-        const part = uiMsg.parts.find(
-          (p) => p.type === "tool_call" && p.toolCallId === toolCallId
-        );
+        const part = uiMsg.parts.find((p) => p.type === "tool_call" && p.toolCallId === toolCallId);
         if (part && part.type === "tool_call") {
           part.status = isError ? "error" : "done";
           part.result = resultText;
@@ -1143,6 +1116,7 @@ git commit -m "feat(desktop): add hydrateSessionMessages for full message hydrat
 ### Task 8: Wire `hydrateSessionMessages` into `loadMessages` + call on session open
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/server/actions.ts:138-155`
 - Modify: `apps/desktop/src/components/chat/task-chat-view.tsx`
 - Test: `apps/desktop/src/stores/server/__tests__/actions.test.ts`
@@ -1182,8 +1156,8 @@ it("loadMessages hydrates thinking + tool calls + tool results", async () => {
           timestamp: 3,
         },
       ]),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    )
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    ),
   );
 
   await actions.loadMessages("sess-1");
@@ -1310,6 +1284,7 @@ shows thinking, tool calls, and tool results."
 ### Task 9: Move `replay.jsonl` to server fixtures
 
 **Files:**
+
 - Move: `apps/desktop/src/stores/replay.jsonl` → `apps/server/fixtures/replay.jsonl`
 
 **Step 1: Move the file**
@@ -1331,6 +1306,7 @@ git commit -m "refactor: move replay.jsonl to server fixtures"
 ### Task 10: Create `ReplayRunner` class
 
 **Files:**
+
 - Create: `apps/server/src/agent/replay-runner.ts`
 - Test: `apps/server/src/agent/__tests__/replay-runner.test.ts`
 
@@ -1507,8 +1483,8 @@ describe("ReplayRunner", () => {
     const userStarts = ws.sent.filter(
       (f) =>
         (f as { type?: string }).type === "event" &&
-        (f as { event?: { type?: string; message?: { role?: string } } }).event
-          ?.message?.role === "user"
+        (f as { event?: { type?: string; message?: { role?: string } } }).event?.message?.role ===
+          "user",
     );
     expect(userStarts.length).toBeGreaterThan(0);
   });
@@ -1522,16 +1498,11 @@ describe("ReplayRunner", () => {
     await runner.run();
 
     const deltas = ws.sent
-      .filter(
-        (f) =>
-          (f as { event?: { type?: string } }).event?.type === "message_update"
-      )
+      .filter((f) => (f as { event?: { type?: string } }).event?.type === "message_update")
       .map(
         (f) =>
-          (
-            (f as { event?: { assistantMessageEvent?: { type?: string } } }).event
-              ?.assistantMessageEvent?.type
-          )
+          (f as { event?: { assistantMessageEvent?: { type?: string } } }).event
+            ?.assistantMessageEvent?.type,
       );
 
     const firstDelta = deltas[0];
@@ -1562,13 +1533,10 @@ describe("ReplayRunner", () => {
     await runner.run();
 
     const endEvent = ws.sent.find(
-      (f) =>
-        (f as { event?: { type?: string } }).event?.type === "tool_execution_end"
+      (f) => (f as { event?: { type?: string } }).event?.type === "tool_execution_end",
     ) as { event?: { result?: { details?: unknown } } } | undefined;
     expect(endEvent?.event?.result).toBeDefined();
-    expect(
-      (endEvent!.event!.result as { details?: unknown }).details
-    ).toBeDefined();
+    expect((endEvent!.event!.result as { details?: unknown }).details).toBeDefined();
   });
 
   it("can be aborted mid-run", async () => {
@@ -1654,9 +1622,7 @@ function splitIntoChunks(text: string): string[] {
   return text.match(/\S+\s*/g) ?? [text];
 }
 
-function isMessageEntry(
-  entry: ReplayEntry
-): entry is ReplayEntry & { message: AgentMessage } {
+function isMessageEntry(entry: ReplayEntry): entry is ReplayEntry & { message: AgentMessage } {
   return entry.type === "message" && entry.message !== undefined;
 }
 
@@ -1669,7 +1635,7 @@ export class ReplayRunner {
     private readonly entries: ReplayEntry[],
     private readonly ws: WsHandle,
     private readonly sessionId: string,
-    private readonly options: ReplayOptions = {}
+    private readonly options: ReplayOptions = {},
   ) {}
 
   async run(): Promise<void> {
@@ -1706,7 +1672,7 @@ export class ReplayRunner {
 
   private async emitAssistantTurn(
     entries: Array<ReplayEntry & { message: AgentMessage }>,
-    startIndex: number
+    startIndex: number,
   ): Promise<number> {
     const entry = entries[startIndex]!;
     const message = entry.message;
@@ -1723,12 +1689,7 @@ export class ReplayRunner {
     // Stream thinking deltas first
     const content = Array.isArray(message.content) ? message.content : [];
     for (const part of content) {
-      if (
-        part !== null &&
-        typeof part === "object" &&
-        "type" in part &&
-        part.type === "thinking"
-      ) {
+      if (part !== null && typeof part === "object" && "type" in part && part.type === "thinking") {
         const thinking = (part as { thinking?: string }).thinking ?? "";
         await this.streamDeltas(message, "thinking_delta", thinking);
       }
@@ -1736,12 +1697,7 @@ export class ReplayRunner {
 
     // Stream text deltas
     for (const part of content) {
-      if (
-        part !== null &&
-        typeof part === "object" &&
-        "type" in part &&
-        part.type === "text"
-      ) {
+      if (part !== null && typeof part === "object" && "type" in part && part.type === "text") {
         const text = (part as { text?: string }).text ?? "";
         await this.streamDeltas(message, "text_delta", text);
       }
@@ -1752,12 +1708,7 @@ export class ReplayRunner {
 
     // tool_execution_start for each toolCall
     for (const part of content) {
-      if (
-        part !== null &&
-        typeof part === "object" &&
-        "type" in part &&
-        part.type === "toolCall"
-      ) {
+      if (part !== null && typeof part === "object" && "type" in part && part.type === "toolCall") {
         const tc = part as {
           id: string;
           name: string;
@@ -1774,10 +1725,7 @@ export class ReplayRunner {
 
     // Collect following toolResult entries and emit tool_execution_end
     let i = startIndex + 1;
-    while (
-      i < entries.length &&
-      entries[i]!.message.role === "toolResult"
-    ) {
+    while (i < entries.length && entries[i]!.message.role === "toolResult") {
       await this.checkPause();
       if (this.aborted) {
         break;
@@ -1798,9 +1746,7 @@ export class ReplayRunner {
           content: Array.isArray(toolResult.content)
             ? toolResult.content
             : [{ type: "text" as const, text: String(toolResult.content) }],
-          ...(toolResult.details !== undefined
-            ? { details: toolResult.details }
-            : {}),
+          ...(toolResult.details !== undefined ? { details: toolResult.details } : {}),
         },
         isError: toolResult.isError ?? false,
       });
@@ -1819,7 +1765,7 @@ export class ReplayRunner {
   private async streamDeltas(
     message: AgentMessage,
     deltaType: "thinking_delta" | "text_delta",
-    text: string
+    text: string,
   ): Promise<void> {
     const chunks = splitIntoChunks(text);
     const delay = this.options.wordDelayMs ?? 15;
@@ -1897,6 +1843,7 @@ git commit -m "feat(server): add ReplayRunner for JSONL session replay"
 ### Task 11: Add WS replay message types + handler
 
 **Files:**
+
 - Modify: `apps/server/src/agent/ws-handler.ts:35-39,77-97,163-220`
 - Modify: `apps/server/src/agent/runner.ts` (add replay registration)
 - Test: `apps/server/src/agent/__tests__/ws.test.ts`
@@ -1909,10 +1856,7 @@ Add to `apps/server/src/agent/__tests__/ws.test.ts`:
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const REPLAY_FIXTURE = resolve(
-  import.meta.dirname,
-  "../../../fixtures/replay.jsonl"
-);
+const REPLAY_FIXTURE = resolve(import.meta.dirname, "../../../fixtures/replay.jsonl");
 
 function parseFixture(): ReplayEntry[] {
   const data = readFileSync(REPLAY_FIXTURE, "utf-8");
@@ -1939,9 +1883,7 @@ describe("WS replay handler", () => {
     const eventFrames = asEventFrames(sent);
     expect(eventFrames.length).toBeGreaterThan(0);
 
-    const startFrame = eventFrames.find(
-      (f) => f.event?.type === "agent_start"
-    );
+    const startFrame = eventFrames.find((f) => f.event?.type === "agent_start");
     expect(startFrame).toBeDefined();
   });
 
@@ -1999,9 +1941,7 @@ describe("WS replay handler", () => {
 
     await new Promise((r) => setTimeout(r, 200));
 
-    const eventTypes = asEventFrames(sent).map(
-      (f) => f.event?.type
-    );
+    const eventTypes = asEventFrames(sent).map((f) => f.event?.type);
     expect(eventTypes.at(-1)).toBe("agent_end");
   });
 });
@@ -2023,12 +1963,7 @@ export interface ReplayMessage {
   type: "replay";
 }
 
-export type WsIn =
-  | PromptMessage
-  | AbortMessage
-  | SteerMessage
-  | FollowUpMessage
-  | ReplayMessage;
+export type WsIn = PromptMessage | AbortMessage | SteerMessage | FollowUpMessage | ReplayMessage;
 ```
 
 Add replay handling to the `wsBodySchema` TypeBox union:
@@ -2053,8 +1988,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const REPLAY_PATH =
-  process.env.SAKTI_REPLAY_PATH ??
-  resolve(import.meta.dirname, "../../fixtures/replay.jsonl");
+  process.env.SAKTI_REPLAY_PATH ?? resolve(import.meta.dirname, "../../fixtures/replay.jsonl");
 
 const activeReplays = new Map<string, ReplayRunner>();
 
@@ -2065,10 +1999,7 @@ export function clearReplaysForTesting(): void {
   activeReplays.clear();
 }
 
-export async function startReplay(
-  sessionId: string,
-  ws: WsHandle
-): Promise<void> {
+export async function startReplay(sessionId: string, ws: WsHandle): Promise<void> {
   if (activeReplays.has(sessionId)) {
     return;
   }
@@ -2191,6 +2122,7 @@ git commit -m "feat(server): add WS replay message types and handler"
 ### Task 12: Add replay actions to frontend
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/server/actions.ts`
 - Modify: `apps/desktop/src/stores/workspace/ui-signals.ts` (add replay state signal)
 - Test: `apps/desktop/src/stores/server/__tests__/actions.test.ts`
@@ -2329,6 +2261,7 @@ git commit -m "feat(desktop): add replay start/pause/resume/reset actions"
 ### Task 13: Also reset replayState on agent_end
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/server/ws-client.ts:59-65`
 
 **Step 1: Write the test (or verify manually)**
@@ -2373,6 +2306,7 @@ git commit -m "feat(desktop): reset replayState on agent_end/abort"
 ### Task 14: Create replay button component
 
 **Files:**
+
 - Create: `apps/desktop/src/components/layout/toolbar/replay-button.tsx`
 - Modify: `apps/desktop/src/components/layout/toolbar/toolbar.tsx`
 - Test: `apps/desktop/src/components/__tests__/replay-button.test.tsx`
@@ -2546,6 +2480,7 @@ git commit -m "feat(desktop): add dev-only replay button with start/pause/reset"
 ### Task 15: Add missing tool formatters
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/chat/tools/tool-summary-formatters.ts`
 - Modify: `apps/desktop/src/components/chat/parts/tool-part.tsx:85-99`
 - Test: `apps/desktop/src/components/chat/tools/__tests__/tool-summary-formatters.test.ts`
@@ -2615,8 +2550,7 @@ In `apps/desktop/src/components/chat/tools/tool-summary-formatters.ts`, add:
 ```typescript
 export function formatTaskCreateSummary(part: ToolPartData): string {
   const args = getArgs(part);
-  const subject =
-    typeof args.subject === "string" ? args.subject : "untitled";
+  const subject = typeof args.subject === "string" ? args.subject : "untitled";
   return `Created task: ${subject}`;
 }
 

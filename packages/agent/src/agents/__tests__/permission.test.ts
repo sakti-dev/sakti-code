@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   disabled,
   evaluate,
@@ -22,17 +22,13 @@ describe("match", () => {
   });
 
   it("normalizes backslashes for cross-platform globbing", () => {
-    expect(
-      match("C:\\Windows\\System32\\drivers", "C:/Windows/System32/*")
-    ).toBe(true);
+    expect(match("C:\\Windows\\System32\\drivers", "C:/Windows/System32/*")).toBe(true);
   });
 });
 
 describe("evaluate", () => {
   it("returns deny when a matching deny rule exists", () => {
-    const rs: PermissionRule[] = [
-      { permission: "bash", pattern: "*", action: "deny" },
-    ];
+    const rs: PermissionRule[] = [{ permission: "bash", pattern: "*", action: "deny" }];
     expect(evaluate("bash", "/tmp/x", rs).action).toBe("deny");
   });
 
@@ -50,12 +46,8 @@ describe("evaluate", () => {
   });
 
   it("accepts multiple rulesets flattened together", () => {
-    const base: PermissionRule[] = [
-      { permission: "read", pattern: "*", action: "allow" },
-    ];
-    const session: PermissionRule[] = [
-      { permission: "read", pattern: "*.env", action: "deny" },
-    ];
+    const base: PermissionRule[] = [{ permission: "read", pattern: "*", action: "allow" }];
+    const session: PermissionRule[] = [{ permission: "read", pattern: "*.env", action: "deny" }];
     expect(evaluate("read", "a.env", base, session).action).toBe("deny");
     expect(evaluate("read", "a.ts", base, session).action).toBe("allow");
   });
@@ -99,12 +91,8 @@ describe("fromConfig", () => {
 
 describe("merge", () => {
   it("concatenates rulesets (later wins via evaluate)", () => {
-    const a: PermissionRule[] = [
-      { permission: "read", pattern: "*", action: "allow" },
-    ];
-    const b: PermissionRule[] = [
-      { permission: "read", pattern: "*.env", action: "deny" },
-    ];
+    const a: PermissionRule[] = [{ permission: "read", pattern: "*", action: "allow" }];
+    const b: PermissionRule[] = [{ permission: "read", pattern: "*.env", action: "deny" }];
     expect(merge(a, b)).toEqual([...a, ...b]);
   });
 });
@@ -112,8 +100,6 @@ describe("merge", () => {
 describe("disabled", () => {
   it("lists tools whose whole-permission rule is denied", () => {
     const rs = fromConfig({ "*": "deny", read: "allow" });
-    expect(disabled(["read", "bash", "write"], rs)).toEqual(
-      new Set(["bash", "write"])
-    );
+    expect(disabled(["read", "bash", "write"], rs)).toEqual(new Set(["bash", "write"]));
   });
 });

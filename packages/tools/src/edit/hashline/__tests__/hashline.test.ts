@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   computeFileHash,
   formatHashlineHeader,
@@ -11,12 +11,7 @@ import {
   stripBom,
 } from "../../../lib/hashline-utils/normalize";
 import { InMemorySnapshotStore } from "../../../lib/hashline-utils/snapshots";
-import type {
-  Anchor,
-  ApplyResult,
-  Cursor,
-  Edit,
-} from "../../../lib/hashline-utils/types";
+import type { Anchor, ApplyResult, Cursor, Edit } from "../../../lib/hashline-utils/types";
 import { InMemoryFilesystem, isNotFound, NotFoundError } from "../fs";
 import { Patch } from "../input";
 import { MismatchError } from "../mismatch";
@@ -55,9 +50,7 @@ describe("computeFileHash", () => {
 
 describe("formatHashlineHeader", () => {
   it("formats [path#HASH]", () => {
-    expect(formatHashlineHeader("src/foo.ts", "A1B2")).toBe(
-      "[src/foo.ts#A1B2]"
-    );
+    expect(formatHashlineHeader("src/foo.ts", "A1B2")).toBe("[src/foo.ts#A1B2]");
   });
 });
 
@@ -70,9 +63,7 @@ describe("formatNumberedLine", () => {
 describe("Tokenizer", () => {
   const importTokenizer = () => import("../tokenizer");
   const tok = (...lines: string[]) =>
-    importTokenizer().then((m) =>
-      new m.Tokenizer().tokenizeAll(lines.join("\n"))
-    );
+    importTokenizer().then((m) => new m.Tokenizer().tokenizeAll(lines.join("\n")));
 
   it("tokenizes header line with hash", async () => {
     const { Tokenizer } = await importTokenizer();
@@ -318,9 +309,7 @@ describe("applyEdits", () => {
     const { applyEdits } = await import("../apply");
     const { parsePatch } = await import("../parser");
     const result = parsePatch("SWAP 10.=10:\n+x");
-    expect(() => applyEdits("a\nb\n", result.edits)).toThrow(
-      "Line 10 does not exist"
-    );
+    expect(() => applyEdits("a\nb\n", result.edits)).toThrow("Line 10 does not exist");
   });
 
   it("returns noop for empty edits", async () => {
@@ -342,9 +331,7 @@ describe("Patch", () => {
 
   it("parses a multi-section patch", async () => {
     const { Patch } = await import("../input");
-    const patch = Patch.parse(
-      "[a.ts#1A2B]\nSWAP 1.=1:\n+x\n[b.ts#3C4D]\nDEL 2\n"
-    );
+    const patch = Patch.parse("[a.ts#1A2B]\nSWAP 1.=1:\n+x\n[b.ts#3C4D]\nDEL 2\n");
     expect(patch.sections).toHaveLength(2);
     expect(patch.sections[0]?.path).toBe("a.ts");
     expect(patch.sections[1]?.path).toBe("b.ts");
@@ -378,9 +365,7 @@ describe("Patch", () => {
 
 describe("InMemorySnapshotStore", () => {
   it("records and retrieves by hash", async () => {
-    const { InMemorySnapshotStore } = await import(
-      "../../../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../../../lib/hashline-utils/snapshots");
     const store = new InMemorySnapshotStore();
     const hash = store.record("foo.ts", "hello\nworld\n");
     expect(hash).toMatch(/^[0-9A-F]{4}$/);
@@ -390,9 +375,7 @@ describe("InMemorySnapshotStore", () => {
   });
 
   it("returns head snapshot", async () => {
-    const { InMemorySnapshotStore } = await import(
-      "../../../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../../../lib/hashline-utils/snapshots");
     const store = new InMemorySnapshotStore();
     store.record("foo.ts", "version1\n");
     store.record("foo.ts", "version2\n");
@@ -401,9 +384,7 @@ describe("InMemorySnapshotStore", () => {
   });
 
   it("deduplicates identical content", async () => {
-    const { InMemorySnapshotStore } = await import(
-      "../../../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../../../lib/hashline-utils/snapshots");
     const store = new InMemorySnapshotStore();
     const a = store.record("foo.ts", "hello\n");
     const b = store.record("foo.ts", "hello\n");
@@ -411,9 +392,7 @@ describe("InMemorySnapshotStore", () => {
   });
 
   it("recordSeenLines merges into existing snapshot", async () => {
-    const { InMemorySnapshotStore } = await import(
-      "../../../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../../../lib/hashline-utils/snapshots");
     const store = new InMemorySnapshotStore();
     const hash = store.record("foo.ts", "a\nb\nc\n", [1, 2]);
     store.recordSeenLines("foo.ts", hash, [3]);
@@ -423,9 +402,7 @@ describe("InMemorySnapshotStore", () => {
   });
 
   it("findByHash returns snapshots across paths", async () => {
-    const { InMemorySnapshotStore } = await import(
-      "../../../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../../../lib/hashline-utils/snapshots");
     const store = new InMemorySnapshotStore();
     const hash = store.record("a.ts", "shared\n");
     store.record("b.ts", "other\n");
@@ -435,9 +412,7 @@ describe("InMemorySnapshotStore", () => {
   });
 
   it("invalidate clears path history", async () => {
-    const { InMemorySnapshotStore } = await import(
-      "../../../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../../../lib/hashline-utils/snapshots");
     const store = new InMemorySnapshotStore();
     store.record("foo.ts", "content\n");
     expect(store.head("foo.ts")).not.toBeNull();
@@ -446,9 +421,7 @@ describe("InMemorySnapshotStore", () => {
   });
 
   it("relocate moves history to new path", async () => {
-    const { InMemorySnapshotStore } = await import(
-      "../../../lib/hashline-utils/snapshots"
-    );
+    const { InMemorySnapshotStore } = await import("../../../lib/hashline-utils/snapshots");
     const store = new InMemorySnapshotStore();
     const hash = store.record("old.ts", "content\n");
     store.relocate("old.ts", "new.ts");
@@ -557,9 +530,7 @@ describe("InMemoryFilesystem", () => {
 
   it("throws NotFoundError for missing files", async () => {
     const fs = new InMemoryFilesystem();
-    await expect(fs.readText("missing.txt")).rejects.toBeInstanceOf(
-      NotFoundError
-    );
+    await expect(fs.readText("missing.txt")).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("isNotFound returns true for NotFoundError", () => {
@@ -620,9 +591,7 @@ describe("Patcher", () => {
     const { fs, snapshots, patcher } = setupPatcher([["a.ts", content]]);
     const tag = snapshots.record("a.ts", content);
 
-    const result = await patcher.apply(
-      Patch.parse(`[a.ts#${tag}]\nSWAP 2.=2:\n+replaced`)
-    );
+    const result = await patcher.apply(Patch.parse(`[a.ts#${tag}]\nSWAP 2.=2:\n+replaced`));
 
     expect(result.sections[0]?.op).toBe("update");
     expect(result.sections[0]?.fileHash).toMatch(/^[0-9A-F]{4}$/);
@@ -636,9 +605,7 @@ describe("Patcher", () => {
     const tag = computeFileHash(content);
     expect(snapshots.byHash("a.ts", tag)).toBeNull();
 
-    const result = await patcher.apply(
-      Patch.parse(`[a.ts#${tag}]\nSWAP 3.=3:\n+L3`)
-    );
+    const result = await patcher.apply(Patch.parse(`[a.ts#${tag}]\nSWAP 3.=3:\n+L3`));
 
     expect(result.sections[0]?.op).toBe("update");
     expect(fs.get("a.ts")).toBe("l1\nl2\nL3\nl4\nl5\n");
@@ -649,9 +616,7 @@ describe("Patcher", () => {
     const { snapshots, patcher } = setupPatcher([["f.ts", content]]);
     const tag = snapshots.record("f.ts", content);
 
-    const result = await patcher.apply(
-      Patch.parse(`[f.ts#${tag}]\nSWAP 2.=2:\n+B`)
-    );
+    const result = await patcher.apply(Patch.parse(`[f.ts#${tag}]\nSWAP 2.=2:\n+B`));
     const newHash = result.sections[0]!.fileHash;
     expect(newHash).toBeDefined();
     expect(snapshots.byHash("f.ts", newHash)).not.toBeNull();
@@ -664,7 +629,7 @@ describe("Patcher", () => {
     const oldHash = snapshots.record("f.ts", oldContent);
 
     await expect(
-      patcher.apply(Patch.parse(`[f.ts#${oldHash}]\nSWAP 2.=2:\n+B`))
+      patcher.apply(Patch.parse(`[f.ts#${oldHash}]\nSWAP 2.=2:\n+B`)),
     ).rejects.toBeInstanceOf(MismatchError);
   });
 
@@ -673,9 +638,7 @@ describe("Patcher", () => {
     const { snapshots, patcher } = setupPatcher([["f.ts", oldContent]]);
     const oldHash = snapshots.record("f.ts", oldContent);
 
-    const result = await patcher.apply(
-      Patch.parse(`[f.ts#${oldHash}]\nSWAP 3.=3:\n+CHANGED`)
-    );
+    const result = await patcher.apply(Patch.parse(`[f.ts#${oldHash}]\nSWAP 3.=3:\n+CHANGED`));
     expect(result.sections[0]!.after).toBe("a\nb\nCHANGED\nd\ne\n");
   });
 
@@ -684,9 +647,7 @@ describe("Patcher", () => {
     const { snapshots, patcher } = setupPatcher([["f.ts", content]]);
     const tag = snapshots.record("f.ts", content);
 
-    const result = await patcher.apply(
-      Patch.parse(`[f.ts#${tag}]\nSWAP 2.=2:\n+b`)
-    );
+    const result = await patcher.apply(Patch.parse(`[f.ts#${tag}]\nSWAP 2.=2:\n+b`));
     expect(result.sections[0]!.op).toBe("noop");
   });
 
@@ -705,9 +666,7 @@ describe("Patcher", () => {
     const { fs, snapshots, patcher } = setupPatcher([["old.ts", content]]);
     const tag = snapshots.record("old.ts", content);
 
-    const result = await patcher.apply(
-      Patch.parse(`[old.ts#${tag}]\nMV "new.ts"`)
-    );
+    const result = await patcher.apply(Patch.parse(`[old.ts#${tag}]\nMV "new.ts"`));
     expect(result.sections[0]!.op).toBe("update");
     expect(result.sections[0]!.moveDest).toBe("new.ts");
     expect(await fs.exists("old.ts")).toBe(false);
@@ -723,9 +682,7 @@ describe("Patcher", () => {
     const hashB = snapshots.record("b.ts", "2\n");
 
     const result = await patcher.apply(
-      Patch.parse(
-        `[a.ts#${hashA}]\nSWAP 1.=1:\n+A\n[b.ts#${hashB}]\nSWAP 1.=1:\n+B`
-      )
+      Patch.parse(`[a.ts#${hashA}]\nSWAP 1.=1:\n+A\n[b.ts#${hashB}]\nSWAP 1.=1:\n+B`),
     );
     expect(result.sections).toHaveLength(2);
     expect(result.sections[0]!.after).toBe("A\n");
@@ -734,16 +691,14 @@ describe("Patcher", () => {
 
   it("rejects when section has no hash tag", async () => {
     const { patcher } = setupPatcher([["f.ts", "x\n"]]);
-    await expect(
-      patcher.apply(Patch.parse("[f.ts]\nSWAP 1.=1:\n+y"))
-    ).rejects.toThrow(/hash/i);
+    await expect(patcher.apply(Patch.parse("[f.ts]\nSWAP 1.=1:\n+y"))).rejects.toThrow(/hash/i);
   });
 
   it("rejects when target file does not exist", async () => {
     const { snapshots, patcher } = setupPatcher();
     const tag = snapshots.record("ghost.ts", "x\n");
-    await expect(
-      patcher.apply(Patch.parse(`[ghost.ts#${tag}]\nSWAP 1.=1:\n+y`))
-    ).rejects.toThrow(/not found/i);
+    await expect(patcher.apply(Patch.parse(`[ghost.ts#${tag}]\nSWAP 1.=1:\n+y`))).rejects.toThrow(
+      /not found/i,
+    );
   });
 });

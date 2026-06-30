@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { Model } from "../../types.ts";
 import { buildProviderOptions } from "../transform.ts";
 
@@ -20,27 +20,21 @@ const zaiModel = (overrides: Partial<Model> = {}): Model => ({
 describe("buildProviderOptions — zai-anthropic branch", () => {
   it("maps each ThinkingLevel to zcode's high/max budgets", () => {
     // Lower 4 tiers map to zcode "high" (16000); xhigh escalates to "max" (32000).
-    expect(
-      buildProviderOptions({ level: "minimal", model: zaiModel() })
-    ).toEqual({
+    expect(buildProviderOptions({ level: "minimal", model: zaiModel() })).toEqual({
       zai: { thinking: { type: "enabled", budget_tokens: 16_000 } },
     });
     expect(buildProviderOptions({ level: "low", model: zaiModel() })).toEqual({
       zai: { thinking: { type: "enabled", budget_tokens: 16_000 } },
     });
-    expect(
-      buildProviderOptions({ level: "medium", model: zaiModel() })
-    ).toEqual({
+    expect(buildProviderOptions({ level: "medium", model: zaiModel() })).toEqual({
       zai: { thinking: { type: "enabled", budget_tokens: 16_000 } },
     });
     expect(buildProviderOptions({ level: "high", model: zaiModel() })).toEqual({
       zai: { thinking: { type: "enabled", budget_tokens: 16_000 } },
     });
-    expect(buildProviderOptions({ level: "xhigh", model: zaiModel() })).toEqual(
-      {
-        zai: { thinking: { type: "enabled", budget_tokens: 32_000 } },
-      }
-    );
+    expect(buildProviderOptions({ level: "xhigh", model: zaiModel() })).toEqual({
+      zai: { thinking: { type: "enabled", budget_tokens: 32_000 } },
+    });
   });
 
   it("maps off to disabled", () => {
@@ -53,15 +47,13 @@ describe("buildProviderOptions — zai-anthropic branch", () => {
       buildProviderOptions({
         level: "high",
         model: zaiModel({ reasoning: false }),
-      })
+      }),
     ).toEqual({});
   });
 
   it("returns {} for a non-zai model", () => {
     const otherModel = zaiModel({ npm: "@ai-sdk/anthropic" });
-    expect(buildProviderOptions({ level: "high", model: otherModel })).toEqual(
-      {}
-    );
+    expect(buildProviderOptions({ level: "high", model: otherModel })).toEqual({});
   });
 
   it("auto-emits speed:'fast' for turbo / flash / highspeed variants", () => {

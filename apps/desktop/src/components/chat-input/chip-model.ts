@@ -62,11 +62,7 @@ export function createChipElement(token: string): HTMLSpanElement {
 }
 
 /** True if a caret point `(node, offset)` sits at the very beginning of `editor`. Pure. */
-export function isPointAtEditorStart(
-  editor: HTMLElement,
-  node: Node,
-  offset: number
-): boolean {
+export function isPointAtEditorStart(editor: HTMLElement, node: Node, offset: number): boolean {
   // Point directly on the editor at offset 0 (before its first child).
   if (node === editor) {
     return offset === 0;

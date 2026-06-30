@@ -1,6 +1,6 @@
-import { render } from "@solidjs/testing-library";
+import { render, screen } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { ReplayState } from "../../../stores/workspace/ui-signals.ts";
 import { DevToolbar } from "../dev-toolbar.tsx";
 
@@ -33,28 +33,28 @@ function setup(initial: ReplayState = "idle") {
 
 describe("DevToolbar — replay controls", () => {
   it("shows only 'Replay session' when idle", () => {
-    const { queryByRole } = setup("idle");
-    expect(queryByRole("button", { name: "Replay session" })).toBeTruthy();
-    expect(queryByRole("button", { name: "Pause" })).toBeNull();
-    expect(queryByRole("button", { name: "Reset" })).toBeNull();
+    setup("idle");
+    expect(screen.queryByRole("button", { name: "Replay session" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Pause" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
   });
 
   it("shows Pause + Reset when playing", () => {
-    const { queryByRole } = setup("playing");
-    expect(queryByRole("button", { name: "Pause" })).toBeTruthy();
-    expect(queryByRole("button", { name: "Reset" })).toBeTruthy();
-    expect(queryByRole("button", { name: "Replay session" })).toBeNull();
+    setup("playing");
+    expect(screen.queryByRole("button", { name: "Pause" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Reset" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Replay session" })).toBeNull();
   });
 
   it("shows Resume + Reset when paused", () => {
-    const { queryByRole } = setup("paused");
-    expect(queryByRole("button", { name: "Resume" })).toBeTruthy();
-    expect(queryByRole("button", { name: "Reset" })).toBeTruthy();
+    setup("paused");
+    expect(screen.queryByRole("button", { name: "Resume" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Reset" })).toBeTruthy();
   });
 
   it("calls the matching replay callback on click", () => {
-    const { getByRole, spies } = setup("playing");
-    getByRole("button", { name: "Pause" }).click();
+    const { spies } = setup("playing");
+    screen.getByRole("button", { name: "Pause" }).click();
     expect(spies.onReplayPause).toHaveBeenCalledTimes(1);
   });
 });
@@ -72,13 +72,13 @@ describe("DevToolbar — retry simulator", () => {
   });
 
   it("starts idle showing 'Trigger retry'", () => {
-    const { queryByRole } = setup("idle");
-    expect(queryByRole("button", { name: "Trigger retry" })).toBeTruthy();
+    setup("idle");
+    expect(screen.queryByRole("button", { name: "Trigger retry" })).toBeTruthy();
   });
 
   it("plays the 2s/4s/8s sequence then ends in failure", () => {
-    const { getByRole, spies } = setup("idle");
-    getByRole("button", { name: "Trigger retry" }).click();
+    const { spies } = setup("idle");
+    screen.getByRole("button", { name: "Trigger retry" }).click();
 
     // Attempt 1 fires immediately.
     expect(LAST_EVENT(spies.onRetryEvent)).toMatchObject({
@@ -110,15 +110,15 @@ describe("DevToolbar — retry simulator", () => {
       finalError: expect.any(String),
     });
     // Button reverts to the trigger label.
-    expect(getByRole("button", { name: "Trigger retry" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Trigger retry" })).toBeTruthy();
   });
 
   it("'Stop retry' aborts mid-sequence and emits end with the current attempt", () => {
-    const { getByRole, spies } = setup("idle");
-    getByRole("button", { name: "Trigger retry" }).click();
+    const { spies } = setup("idle");
+    screen.getByRole("button", { name: "Trigger retry" }).click();
     vi.advanceTimersByTime(2000); // attempt 2 has fired; current attempt = 2
 
-    getByRole("button", { name: "Stop retry" }).click();
+    screen.getByRole("button", { name: "Stop retry" }).click();
     expect(LAST_EVENT(spies.onRetryEvent)).toMatchObject({
       type: "auto_retry_end",
       success: false,
@@ -132,8 +132,8 @@ describe("DevToolbar — retry simulator", () => {
   });
 
   it("clears pending timers on unmount (no stray dispatches)", () => {
-    const { getByRole, unmount, spies } = setup("idle");
-    getByRole("button", { name: "Trigger retry" }).click();
+    const { unmount, spies } = setup("idle");
+    screen.getByRole("button", { name: "Trigger retry" }).click();
     const callsBefore = spies.onRetryEvent.mock.calls.length;
 
     unmount();

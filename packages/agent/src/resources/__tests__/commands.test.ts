@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
 import { loadCommands } from "../../resources/commands";
 import { createTempDir } from "../../session/__tests__/session-test-utils";
@@ -11,11 +11,11 @@ describe("loadCommands", () => {
     await env.createDir(".agents/commands/git", { recursive: true });
     await env.writeFile(
       ".agents/command/commit.md",
-      "---\ndescription: git commit and push\n---\ncommit and push"
+      "---\ndescription: git commit and push\n---\ncommit and push",
     );
     await env.writeFile(
       ".agents/commands/git/push.md",
-      "---\ndescription: push commits\n---\ngit push"
+      "---\ndescription: push commits\n---\ngit push",
     );
 
     const { commands, diagnostics } = await loadCommands(env, [".agents"]);

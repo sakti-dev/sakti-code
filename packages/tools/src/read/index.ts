@@ -1,8 +1,4 @@
-import {
-  access as fsAccess,
-  readFile as fsReadFile,
-  open as openFile,
-} from "node:fs/promises";
+import { access as fsAccess, readFile as fsReadFile, open as openFile } from "node:fs/promises";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import type { ImageContent, TextContent } from "@sakti-code/llm";
 import { type Static, Type } from "typebox";
@@ -30,11 +26,9 @@ const readSchema = Type.Object({
   offset: Type.Optional(
     Type.Number({
       description: "Line number to start reading from (1-indexed)",
-    })
+    }),
   ),
-  limit: Type.Optional(
-    Type.Number({ description: "Maximum number of lines to read" })
-  ),
+  limit: Type.Optional(Type.Number({ description: "Maximum number of lines to read" })),
 });
 
 export type ReadToolInput = Static<typeof readSchema>;
@@ -45,9 +39,7 @@ export interface ReadToolDetails {
 
 export interface ReadOperations {
   access: (absolutePath: string) => Promise<void>;
-  detectImageMimeType?: (
-    absolutePath: string
-  ) => Promise<string | null | undefined>;
+  detectImageMimeType?: (absolutePath: string) => Promise<string | null | undefined>;
   readFile: (absolutePath: string) => Promise<Buffer>;
 }
 
@@ -82,27 +74,19 @@ function detectSupportedImageMimeType(buffer: Uint8Array): string | null {
   if (startsWithAscii(buffer, 0, "GIF")) {
     return "image/gif";
   }
-  if (
-    startsWithAscii(buffer, 0, "RIFF") &&
-    startsWithAscii(buffer, 8, "WEBP")
-  ) {
+  if (startsWithAscii(buffer, 0, "RIFF") && startsWithAscii(buffer, 8, "WEBP")) {
     return "image/webp";
   }
   return null;
 }
 
 async function detectSupportedImageMimeTypeFromFile(
-  filePath: string
+  filePath: string,
 ): Promise<string | null | undefined> {
   const handle = await openFile(filePath);
   try {
     const buffer = Buffer.alloc(IMAGE_TYPE_SNIFF_BYTES);
-    const { bytesRead } = await handle.read(
-      buffer,
-      0,
-      IMAGE_TYPE_SNIFF_BYTES,
-      0
-    );
+    const { bytesRead } = await handle.read(buffer, 0, IMAGE_TYPE_SNIFF_BYTES, 0);
     return detectSupportedImageMimeType(buffer.subarray(0, bytesRead));
   } finally {
     await handle.close();
@@ -154,11 +138,7 @@ function startsWith(buffer: Uint8Array, bytes: readonly number[]): boolean {
   return bytes.every((byte, index) => buffer[index] === byte);
 }
 
-function startsWithAscii(
-  buffer: Uint8Array,
-  offset: number,
-  text: string
-): boolean {
+function startsWithAscii(buffer: Uint8Array, offset: number, text: string): boolean {
   if (buffer.length < offset + text.length) {
     return false;
   }
@@ -174,7 +154,7 @@ const MAX_IMAGE_BASE64_BYTES = 4.5 * 1024 * 1024;
 
 export function createReadTool(
   cwd: string,
-  options?: ReadToolOptions
+  options?: ReadToolOptions,
 ): AgentTool<typeof readSchema, ReadToolDetails | undefined> {
   const ops = options?.operations ?? defaultReadOperations;
   return {
@@ -182,14 +162,12 @@ export function createReadTool(
     label: "read",
     description: `Read the contents of a file. Supports text files and images (jpg, png, gif, webp). Images are sent as attachments. For text files, output is truncated to ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.`,
     parameters: readSchema,
-    permissions: (params) => [
-      { permission: "read", patterns: [(params as ReadToolInput).path] },
-    ],
+    permissions: (params) => [{ permission: "read", patterns: [(params as ReadToolInput).path] }],
     async execute(
       _toolCallId: string,
       { path, offset, limit }: ReadToolInput,
       signal?: AbortSignal,
-      _onUpdate?: AgentToolUpdateCallback<ReadToolDetails | undefined>
+      _onUpdate?: AgentToolUpdateCallback<ReadToolDetails | undefined>,
     ): Promise<{
       content: (TextContent | ImageContent)[];
       details: ReadToolDetails | undefined;
@@ -270,7 +248,7 @@ export function createReadTool(
 
         if (startLine >= allLines.length) {
           throw new Error(
-            `Offset ${offset} is beyond end of file (${allLines.length} lines total)`
+            `Offset ${offset} is beyond end of file (${allLines.length} lines total)`,
           );
         }
 
@@ -292,9 +270,7 @@ export function createReadTool(
         const notices: string[] = [];
 
         if (truncation.firstLineExceedsLimit) {
-          const firstLineSize = formatSize(
-            Buffer.byteLength(allLines[startLine]!, "utf-8")
-          );
+          const firstLineSize = formatSize(Buffer.byteLength(allLines[startLine]!, "utf-8"));
           if (hashline) {
             displayText = `[Line ${startLineDisplay} is ${firstLineSize}, exceeds ${formatSize(DEFAULT_MAX_BYTES)} limit. Hashline output requires full lines; cannot emit an editable numbered preview for a truncated line.]`;
           } else {
@@ -307,11 +283,11 @@ export function createReadTool(
           const nextOffset = endLineDisplay + 1;
           if (truncation.truncatedBy === "lines") {
             notices.push(
-              `[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines}. Use offset=${nextOffset} to continue.]`
+              `[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines}. Use offset=${nextOffset} to continue.]`,
             );
           } else {
             notices.push(
-              `[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Use offset=${nextOffset} to continue.]`
+              `[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Use offset=${nextOffset} to continue.]`,
             );
           }
           details = { truncation };
@@ -322,9 +298,7 @@ export function createReadTool(
           displayContent = truncation.content;
           const remaining = allLines.length - (startLine + userLimitedLines);
           const nextOffset = startLine + userLimitedLines + 1;
-          notices.push(
-            `[${remaining} more lines in file. Use offset=${nextOffset} to continue.]`
-          );
+          notices.push(`[${remaining} more lines in file. Use offset=${nextOffset} to continue.]`);
         } else {
           displayContent = truncation.content;
         }
@@ -333,10 +307,7 @@ export function createReadTool(
           const normalized = normalizeToLF(textContent);
           const fileHash = computeFileHash(normalized);
           const header = formatHashlineHeader(path, fileHash);
-          const numbered = formatNumberedLines(
-            displayContent,
-            startLineDisplay
-          );
+          const numbered = formatNumberedLines(displayContent, startLineDisplay);
           const outputLineCount = displayContent.split("\n").length;
           const seenLines = new Set<number>();
           for (let i = 0; i < outputLineCount; i++) {

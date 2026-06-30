@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   createBashTool,
   createEditTool,
@@ -30,7 +30,7 @@ describe("tool permissions declarators", () => {
       tool.permissions?.({
         path: "out.txt",
         edits: [{ oldText: "a", newText: "b" }],
-      })
+      }),
     ).toEqual([{ permission: "edit", patterns: ["out.txt"] }]);
   });
 
@@ -53,9 +53,7 @@ describe("tool permissions declarators", () => {
     expect(tool.permissions?.({ path: "src" })).toEqual([
       { permission: "list", patterns: ["src"] },
     ]);
-    expect(tool.permissions?.({})).toEqual([
-      { permission: "list", patterns: ["*"] },
-    ]);
+    expect(tool.permissions?.({})).toEqual([{ permission: "list", patterns: ["*"] }]);
   });
 });
 

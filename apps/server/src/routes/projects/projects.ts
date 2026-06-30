@@ -15,27 +15,19 @@ export const projectsRoutes = new Hono()
   })
   .post(
     "/",
-    tbValidator(
-      "json",
-      Type.Object({ name: Type.String(), cwd: Type.String() })
-    ),
+    tbValidator("json", Type.Object({ name: Type.String(), cwd: Type.String() })),
     async (c) => {
       const body = c.req.valid("json");
       return c.json(await getCtx(c).repos.projects.create(body.name, body.cwd));
-    }
+    },
   )
   .put(
     "/:id",
-    tbValidator(
-      "json",
-      Type.Partial(Type.Object({ name: Type.String(), cwd: Type.String() }))
-    ),
+    tbValidator("json", Type.Partial(Type.Object({ name: Type.String(), cwd: Type.String() }))),
     async (c) => {
       const body = c.req.valid("json");
-      return c.json(
-        await getCtx(c).repos.projects.update(c.req.param("id"), body)
-      );
-    }
+      return c.json(await getCtx(c).repos.projects.update(c.req.param("id"), body));
+    },
   )
   .delete("/:id", async (c) => {
     await getCtx(c).repos.projects.delete(c.req.param("id"));

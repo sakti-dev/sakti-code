@@ -54,9 +54,7 @@ export function ContextMenu(props: ContextMenuProps): JSX.Element {
   const commandRows = createMemo<Row[]>(() => {
     const q = query().trim().toLowerCase();
     return props.commands
-      .filter((c) =>
-        q ? `${c.name} ${c.description ?? ""}`.toLowerCase().includes(q) : true
-      )
+      .filter((c) => (q ? `${c.name} ${c.description ?? ""}`.toLowerCase().includes(q) : true))
       .map((c) => ({
         id: `cmd:${c.name}`,
         label: c.name,
@@ -67,9 +65,7 @@ export function ContextMenu(props: ContextMenuProps): JSX.Element {
   const skillRows = createMemo<Row[]>(() => {
     const q = query().trim().toLowerCase();
     return props.skills
-      .filter((s) =>
-        q ? `${s.name} ${s.description ?? ""}`.toLowerCase().includes(q) : true
-      )
+      .filter((s) => (q ? `${s.name} ${s.description ?? ""}`.toLowerCase().includes(q) : true))
       .map((s) => ({
         id: `skl:${s.name}`,
         label: s.name,
@@ -82,7 +78,7 @@ export function ContextMenu(props: ContextMenuProps): JSX.Element {
       id: `file:${f.path}`,
       label: f.path,
       token: `@${f.path}`,
-    }))
+    })),
   );
 
   // @ mode: when the server search returns nothing and the user has typed a
@@ -149,10 +145,7 @@ export function ContextMenu(props: ContextMenuProps): JSX.Element {
         value={query()}
       />
       <CommandList>
-        <Show
-          fallback={<CommandEmpty>No matches</CommandEmpty>}
-          when={rows().length > 0}
-        >
+        <Show fallback={<CommandEmpty>No matches</CommandEmpty>} when={rows().length > 0}>
           <Show when={props.mode === "/"}>
             <CommandGroup heading="Commands">
               <For each={commandRows()}>

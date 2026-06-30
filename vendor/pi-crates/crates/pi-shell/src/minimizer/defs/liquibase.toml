@@ -9,22 +9,22 @@ description = "Compact liquibase output"
 match_command = "^liquibase$"
 strip_ansi = true
 strip_lines_matching = [
-	"^\\s*$",
-	"^INFO ",
-	"^FINE ",
-	"^FINER ",
-	"^FINEST ",
-	"^\\[\\S+\\] INFO ",
-	"^\\[\\S+\\] FINE ",
-	"^Starting Liquibase",
-	"^Liquibase (Community|Open Source)",
-	"^Liquibase Home:",
-	"^Running Changeset:",
-	"^\\s*##",
-	"^\\[INFO\\]\\s*#+$",
-	"^Java Home",
-	"^Libraries:",
-	"^\\s*-\\s+\\S+\\.jar",
+  "^\\s*$",
+  "^INFO ",
+  "^FINE ",
+  "^FINER ",
+  "^FINEST ",
+  "^\\[\\S+\\] INFO ",
+  "^\\[\\S+\\] FINE ",
+  "^Starting Liquibase",
+  "^Liquibase (Community|Open Source)",
+  "^Liquibase Home:",
+  "^Running Changeset:",
+  "^\\s*##",
+  "^\\[INFO\\]\\s*#+$",
+  "^Java Home",
+  "^Libraries:",
+  "^\\s*-\\s+\\S+\\.jar",
 ]
 truncate_lines_at = 300
 max_lines = 80

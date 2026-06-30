@@ -1,12 +1,5 @@
 import { FiFolder, FiGitBranch } from "solid-icons/fi";
-import {
-  createEffect,
-  createSignal,
-  For,
-  onCleanup,
-  onMount,
-  Show,
-} from "solid-js";
+import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { CloneDialog } from "~/components/home/clone-dialog";
 import { EmptyState } from "~/components/home/empty-state";
 import { KeyboardShortcutsFooter } from "~/components/home/keyboard-shortcuts-footer";
@@ -23,10 +16,7 @@ import {
   transformTab,
 } from "~/stores/workspace/tab-store";
 
-function filterProjects<T extends { name: string }>(
-  projects: T[],
-  query: string
-): T[] {
+function filterProjects<T extends { name: string }>(projects: T[], query: string): T[] {
   if (!query.trim()) {
     return projects;
   }
@@ -47,9 +37,7 @@ export default function Home() {
   };
 
   const [projects, setProjects] = createSignal<Project[]>([]);
-  const [sessionsMap, setSessionsMap] = createSignal<
-    Record<string, SessionMeta[]>
-  >({});
+  const [sessionsMap, setSessionsMap] = createSignal<Record<string, SessionMeta[]>>({});
   const [searchQuery, setSearchQuery] = createSignal("");
   const [isCloneOpen, setIsCloneOpen] = createSignal(false);
 
@@ -150,9 +138,7 @@ export default function Home() {
                       </svg>
                     </div>
                     <div>
-                      <h1 class="font-bold text-foreground text-lg tracking-tight">
-                        sakti
-                      </h1>
+                      <h1 class="font-bold text-foreground text-lg tracking-tight">sakti</h1>
                       <p class="text-muted-foreground text-xs">
                         Privacy-focused local AI coding agent
                       </p>
@@ -170,12 +156,8 @@ export default function Home() {
                   >
                     <FiFolder class="h-6 w-6 text-muted-foreground" />
                     <div>
-                      <div class="font-medium text-foreground text-sm">
-                        Open Folder
-                      </div>
-                      <div class="text-muted-foreground text-xs">
-                        Browse files
-                      </div>
+                      <div class="font-medium text-foreground text-sm">Open Folder</div>
+                      <div class="text-muted-foreground text-xs">Browse files</div>
                     </div>
                   </button>
                   <button
@@ -185,12 +167,8 @@ export default function Home() {
                   >
                     <FiGitBranch class="h-6 w-6 text-muted-foreground" />
                     <div>
-                      <div class="font-medium text-foreground text-sm">
-                        Clone Repository
-                      </div>
-                      <div class="text-muted-foreground text-xs">
-                        From Git URL
-                      </div>
+                      <div class="font-medium text-foreground text-sm">Clone Repository</div>
+                      <div class="text-muted-foreground text-xs">From Git URL</div>
                     </div>
                   </button>
                 </div>
@@ -201,9 +179,7 @@ export default function Home() {
             <div class="flex flex-col">
               <div class="border-border/50 border-b p-3">
                 <div class="mb-2 flex items-center justify-between">
-                  <h2 class="font-semibold text-foreground text-sm">
-                    Projects
-                  </h2>
+                  <h2 class="font-semibold text-foreground text-sm">Projects</h2>
                   <span class="rounded-full bg-muted px-2.5 py-0.5 font-medium text-muted-foreground text-xs">
                     {filteredProjects().length}
                   </span>

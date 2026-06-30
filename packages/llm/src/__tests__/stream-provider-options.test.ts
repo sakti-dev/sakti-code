@@ -1,5 +1,5 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { streamWithModel } from "../stream.ts";
 import type { Model } from "../types.ts";
 
@@ -50,7 +50,7 @@ describe("streamWithModel providerOptions passthrough", () => {
         providerOptions: { zai: { speed: "fast" } },
       },
       {} as LanguageModelV4,
-      fakeRunner
+      fakeRunner,
     );
 
     expect(captured?.providerOptions?.zai).toMatchObject({
@@ -86,7 +86,7 @@ describe("streamWithModel providerOptions passthrough", () => {
         thinkingLevel: "xhigh",
       },
       {} as LanguageModelV4,
-      fakeRunner
+      fakeRunner,
     );
 
     expect(captured?.providerOptions?.zai).toEqual({

@@ -15,12 +15,7 @@ export const Part: Component<MessagePartProps> = (props) => {
 
   return (
     <Show keyed when={partComponent()}>
-      {(Registered) => (
-        <Registered
-          isStreaming={props.isStreaming}
-          part={props.part as never}
-        />
-      )}
+      {(Registered) => <Registered isStreaming={props.isStreaming} part={props.part as never} />}
     </Show>
   );
 };

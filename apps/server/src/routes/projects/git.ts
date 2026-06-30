@@ -54,7 +54,7 @@ export interface GitResult {
 export async function runGit(
   args: string[],
   cwd: string,
-  timeoutMs: number = GIT_TIMEOUT_MS
+  timeoutMs: number = GIT_TIMEOUT_MS,
 ): Promise<GitResult> {
   const spawned = trySpawnGit(args, cwd);
   if (spawned === null) {
@@ -91,7 +91,7 @@ export async function runGit(
 async function runGitTimed(
   args: string[],
   cwd: string,
-  timeoutMs: number = GIT_TIMEOUT_MS
+  timeoutMs: number = GIT_TIMEOUT_MS,
 ): Promise<string> {
   const result = await runGit(args, cwd, timeoutMs);
   return result.kind === "ok" ? result.output : "";
@@ -111,7 +111,7 @@ function handleResult(c: Context, result: GitResult) {
 
 async function findProject(c: Context, id: string) {
   const ctx = getCtx(c);
-  const project = await ctx.repos.projects.findById(id);
+  const project = ctx.repos.projects.findById(id);
   if (!project) {
     return null;
   }
@@ -132,10 +132,7 @@ export const gitRoutes = new Hono()
     if (!project) {
       return c.text("Not found", 404);
     }
-    return handleResult(
-      c,
-      await runGit(["branch", "--show-current"], project.cwd)
-    );
+    return handleResult(c, await runGit(["branch", "--show-current"], project.cwd));
   })
   .get("/:id/git/diff", async (c) => {
     const project = await findProject(c, c.req.param("id"));
@@ -163,10 +160,7 @@ export const gitRoutes = new Hono()
     if (!Number.isFinite(limit) || limit < 0) {
       return c.text("Invalid limit", 400);
     }
-    return handleResult(
-      c,
-      await runGit(["log", "-n", String(limit), "--oneline"], project.cwd)
-    );
+    return handleResult(c, await runGit(["log", "-n", String(limit), "--oneline"], project.cwd));
   })
   .get("/:id/git/turn-diff", async (c) => {
     const project = await findProject(c, c.req.param("id"));

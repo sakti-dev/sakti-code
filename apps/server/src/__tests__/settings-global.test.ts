@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { settingsRoutes } from "../routes/settings.ts";
 import { makeApp } from "./helpers.ts";
 
@@ -18,7 +18,7 @@ describe("global settings routes (file-backed)", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ theme: "dark" }),
-      })
+      }),
     );
     expect(put.status).toBe(204);
 
@@ -34,14 +34,14 @@ describe("global settings routes (file-backed)", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ui: { theme: "dark" } }),
-      })
+      }),
     );
     await app.request(
       new Request("http://localhost/api/settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ui: { fontSize: 14 } }),
-      })
+      }),
     );
 
     const res = await app.request(new Request("http://localhost/api/settings"));
@@ -56,7 +56,7 @@ describe("global settings routes (file-backed)", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: "{ broken",
-      })
+      }),
     );
     expect(res.status).toBe(400);
   });
@@ -68,7 +68,7 @@ describe("global settings routes (file-backed)", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify([1, 2, 3]),
-      })
+      }),
     );
     expect(res.status).toBe(400);
   });

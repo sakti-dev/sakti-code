@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   hasWsConnection,
   pushToConnection,
@@ -70,9 +70,7 @@ describe("terminal push channels (real pushToConnection path)", () => {
       channel: "terminal.exit",
       data: { terminalId: "t1", exitCode: 9, signal: 9 },
     });
-    expect(
-      "signal" in (received[1] as { data: Record<string, unknown> }).data
-    ).toBe(false);
+    expect("signal" in (received[1] as { data: Record<string, unknown> }).data).toBe(false);
 
     unregisterTestConnection("conn-3");
   });

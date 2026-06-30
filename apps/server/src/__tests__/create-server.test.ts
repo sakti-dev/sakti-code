@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { createServer } from "../create-server.ts";
 
 let staticDir: string;
@@ -10,7 +10,7 @@ beforeAll(() => {
   staticDir = mkdtempSync(join(tmpdir(), "sakti-static-"));
   writeFileSync(
     join(staticDir, "index.html"),
-    '<!DOCTYPE html><html><body><div id="app"></div></body></html>'
+    '<!DOCTYPE html><html><body><div id="app"></div></body></html>',
   );
   writeFileSync(join(staticDir, "test.txt"), "hello world");
   mkdirSync(join(staticDir, "assets"), { recursive: true });

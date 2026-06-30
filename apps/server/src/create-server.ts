@@ -41,9 +41,7 @@ export interface SaktiServer {
   url: string;
 }
 
-export async function createServer(
-  options?: CreateServerOptions
-): Promise<SaktiServer> {
+export async function createServer(options?: CreateServerOptions): Promise<SaktiServer> {
   const {
     port = Number(process.env.SAKTI_PORT ?? 3001),
     hostname = process.env.SAKTI_HOST ?? "localhost",
@@ -64,11 +62,9 @@ export async function createServer(
   try {
     const row = rawDb
       .prepare(
-        "SELECT provider, model_id, thinking_level FROM model_configs WHERE project_id IS NULL LIMIT 1"
+        "SELECT provider, model_id, thinking_level FROM model_configs WHERE project_id IS NULL LIMIT 1",
       )
-      .get() as
-      | { provider: string; model_id: string; thinking_level: string }
-      | undefined;
+      .get() as { provider: string; model_id: string; thinking_level: string } | undefined;
     if (row) {
       globalModelConfig = {
         provider: row.provider,
@@ -80,9 +76,7 @@ export async function createServer(
     // Table doesn't exist (fresh install or already migrated)
   }
 
-  const db = await initDatabase(rawDb, {
-    ...(migrationsFolder === undefined ? {} : { migrationsFolder }),
-  });
+  const db = await initDatabase(rawDb, migrationsFolder === undefined ? {} : { migrationsFolder });
 
   const authPath = getAuthPath();
   const profilesPath = getProfilesPath();
@@ -98,7 +92,7 @@ export async function createServer(
       join(
         process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"),
         "sakti-code",
-        "api-keys.json"
+        "api-keys.json",
       ),
     authPath,
     profilesPath,
@@ -155,7 +149,7 @@ export async function createServer(
               server.close(() => resolveStop());
             }),
         });
-      }
+      },
     );
   });
 }

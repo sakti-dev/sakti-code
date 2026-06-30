@@ -1,7 +1,4 @@
-import type {
-  BranchSummaryPrompts,
-  CompactionPrompts,
-} from "@sakti-code/agent";
+import type { BranchSummaryPrompts, CompactionPrompts } from "@sakti-code/agent";
 
 /**
  * Sakti house-style compaction prompts. Reference implementation for

@@ -68,7 +68,7 @@ export function ProfileSelect(props: { sessionId: string | null }) {
 
   const handleChange = (value: string | null) => {
     if (value !== null) {
-      actions.selectProfile(props.sessionId, value);
+      void actions.selectProfile(props.sessionId, value);
     }
   };
 
@@ -76,9 +76,7 @@ export function ProfileSelect(props: { sessionId: string | null }) {
     <Show when={profileEntries().length > 0}>
       <Select
         disabled={!props.sessionId}
-        itemComponent={(props) => (
-          <SelectItem item={props.item}>{props.item.rawValue}</SelectItem>
-        )}
+        itemComponent={(props) => <SelectItem item={props.item}>{props.item.rawValue}</SelectItem>}
         onChange={handleChange}
         options={profileIds()}
         placeholder="Select profile"

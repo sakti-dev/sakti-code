@@ -8,9 +8,7 @@ export interface AddProjectInputProps {
   onCancel: () => void;
 }
 
-export const AddProjectInput: ParentComponent<AddProjectInputProps> = (
-  props
-) => {
+export const AddProjectInput: ParentComponent<AddProjectInputProps> = (props) => {
   const [value, setValue] = createSignal("");
 
   const handleSubmit = () => {
@@ -50,7 +48,7 @@ export const AddProjectInput: ParentComponent<AddProjectInputProps> = (
             "rounded px-2 py-1 font-medium text-xs transition-colors",
             value().trim()
               ? "bg-primary text-primary-foreground hover:bg-primary/80"
-              : "cursor-not-allowed bg-muted text-muted-foreground"
+              : "cursor-not-allowed bg-muted text-muted-foreground",
           )}
           disabled={!value().trim()}
           onClick={handleSubmit}

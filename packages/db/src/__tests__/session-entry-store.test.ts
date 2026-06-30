@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { SessionMetadata, SessionTreeEntry } from "@sakti-code/agent";
 import { Effect } from "effect";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 import type { DrizzleDB } from "../init";
 import { initDatabase } from "../init";
 import { SqliteSessionStorage } from "../session-entry-store";
@@ -26,12 +26,12 @@ describe("SqliteSessionStorage", () => {
 
     sqlite
       .prepare(
-        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)"
+        "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES ('p1', 'P', '/tmp', 1, 1)",
       )
       .run();
     sqlite
       .prepare(
-        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'claude', 1, 1)"
+        "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES ('s1', 'p1', 'claude', 1, 1)",
       )
       .run();
 
@@ -135,7 +135,7 @@ describe("SqliteSessionStorage", () => {
         timestamp: new Date().toISOString(),
         targetId: "e1",
         label: "my-label",
-      })
+      }),
     );
 
     const label = await Effect.runPromise(storage.getLabel(id));

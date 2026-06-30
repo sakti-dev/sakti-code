@@ -13,6 +13,7 @@
 ### Task 1: Create directory structure and settings dialog shell
 
 **Files:**
+
 - Create: `apps/app/src/components/settings/settings-dialog.tsx`
 - Create: `apps/app/src/components/settings/settings-sidebar.tsx`
 
@@ -39,8 +40,7 @@ interface SettingsDialogProps {
 export function SettingsDialog(props: SettingsDialogProps) {
   const [activeTab, setActiveTab] = createSignal("general");
 
-  const activeTabLabel = () =>
-    SETTINGS_TABS.find((t) => t.id === activeTab())?.label ?? "Settings";
+  const activeTabLabel = () => SETTINGS_TABS.find((t) => t.id === activeTab())?.label ?? "Settings";
 
   const activeTabDescription = () => {
     if (activeTab() === "general") return "Configure your preferences";
@@ -60,10 +60,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
         <div class="flex flex-1 overflow-hidden">
           <div class="w-56 shrink-0 border-border/80 border-r bg-background/35">
             <ScrollArea class="h-full">
-              <SettingsSidebar
-                activeTab={activeTab()}
-                onTabChange={setActiveTab}
-              />
+              <SettingsSidebar activeTab={activeTab()} onTabChange={setActiveTab} />
             </ScrollArea>
           </div>
 
@@ -157,7 +154,7 @@ export function SettingsSidebar(props: SettingsSidebarProps) {
                 "group w-full rounded-md border px-2.5 py-2 text-left transition-all duration-120",
                 isActive()
                   ? "border-primary/45 bg-accent/70 shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-primary)_45%,transparent),0_8px_24px_color-mix(in_oklch,var(--color-primary)_18%,transparent)]"
-                  : "border-transparent hover:border-border/90 hover:bg-muted/70"
+                  : "border-transparent hover:border-border/90 hover:bg-muted/70",
               )}
               onClick={() => {
                 if (tab.external && tab.href) {
@@ -172,7 +169,7 @@ export function SettingsSidebar(props: SettingsSidebarProps) {
                 <Icon
                   class={cn(
                     "size-4 shrink-0",
-                    isActive() ? "text-foreground" : "text-muted-foreground"
+                    isActive() ? "text-foreground" : "text-muted-foreground",
                   )}
                 />
                 <span class="truncate font-medium text-sm">{tab.label}</span>
@@ -206,6 +203,7 @@ git commit -m "feat(settings): add settings dialog shell with sidebar navigation
 ### Task 2: Create placeholder tabs
 
 **Files:**
+
 - Create: `apps/app/src/components/settings/tabs/git-settings.tsx`
 - Create: `apps/app/src/components/settings/tabs/terminal-settings.tsx`
 - Create: `apps/app/src/components/settings/tabs/mcp-settings.tsx`
@@ -299,9 +297,7 @@ export function HooksSettings() {
 export function ExperimentalSettings() {
   return (
     <div class="border-border/70 px-0 py-8 text-center">
-      <p class="text-muted-foreground text-sm">
-        Experimental settings coming soon
-      </p>
+      <p class="text-muted-foreground text-sm">Experimental settings coming soon</p>
     </div>
   );
 }
@@ -324,6 +320,7 @@ git commit -m "feat(settings): add placeholder tabs"
 ### Task 3: Create general settings tab
 
 **Files:**
+
 - Create: `apps/app/src/components/settings/tabs/general-settings.tsx`
 
 **Step 1: Create general settings with theme selector**
@@ -375,9 +372,7 @@ export function GeneralSettings() {
   const handleSelectTheme = (choice: ThemeChoice) => {
     if (choice === "system") {
       localStorage.setItem("sakti-theme", '"system"');
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       setColorMode(prefersDark ? "dark" : "light");
     } else {
       localStorage.setItem("sakti-theme", `"${choice}"`);
@@ -401,7 +396,7 @@ export function GeneralSettings() {
                     "flex items-center gap-3 rounded-lg border px-3 py-2 transition-all",
                     currentChoice() === opt.value
                       ? "border-primary bg-secondary"
-                      : "border-border hover:border-muted-foreground hover:bg-secondary"
+                      : "border-border hover:border-muted-foreground hover:bg-secondary",
                   )}
                   onClick={() => handleSelectTheme(opt.value)}
                   type="button"
@@ -409,9 +404,7 @@ export function GeneralSettings() {
                   <span
                     class={cn(
                       "font-medium text-xs",
-                      currentChoice() === opt.value
-                        ? "text-foreground"
-                        : "text-muted-foreground"
+                      currentChoice() === opt.value ? "text-foreground" : "text-muted-foreground",
                     )}
                   >
                     {opt.label}
@@ -438,9 +431,7 @@ export function GeneralSettings() {
 
       <div class="flex items-center justify-between border-border/70 border-b px-0 py-4">
         <div class="flex-1">
-          <p class="font-medium text-foreground text-sm">
-            Completion sound effects
-          </p>
+          <p class="font-medium text-foreground text-sm">Completion sound effects</p>
           <p class="text-muted-foreground text-xs">
             Play a sound when AI finishes working in a session.
           </p>
@@ -452,9 +443,7 @@ export function GeneralSettings() {
 
       <div class="flex items-center justify-between border-border/70 border-b px-0 py-4">
         <div class="flex-1">
-          <p class="font-medium text-foreground text-sm">
-            Strip confirmation messages
-          </p>
+          <p class="font-medium text-foreground text-sm">Strip confirmation messages</p>
           <p class="text-muted-foreground text-xs">
             Strip "You're absolutely right!" from AI messages
           </p>
@@ -485,6 +474,7 @@ git commit -m "feat(settings): add general settings tab with theme selector"
 ### Task 4: Create models settings tab with API key management
 
 **Files:**
+
 - Create: `apps/app/src/components/settings/tabs/models-settings.tsx`
 - Modify: `apps/app/src/components/settings/settings-dialog.tsx:1-50` (add tab content routing)
 
@@ -524,7 +514,7 @@ function StatusDot(props: { hasKey: boolean }) {
     <span
       class={cn(
         "h-2 w-2 shrink-0 rounded-full",
-        props.hasKey ? "bg-green-500" : "bg-muted-foreground/30"
+        props.hasKey ? "bg-green-500" : "bg-muted-foreground/30",
       )}
       title={props.hasKey ? "Key set" : "No key"}
     />
@@ -540,8 +530,7 @@ const ApiKeyRow: Component<{
   const [value, setValue] = createSignal("");
   const [saving, setSaving] = createSignal(false);
 
-  const label = () =>
-    PROVIDER_LABELS[props.apiKey.provider] ?? props.apiKey.provider;
+  const label = () => PROVIDER_LABELS[props.apiKey.provider] ?? props.apiKey.provider;
 
   const handleSave = async () => {
     const key = value().trim();
@@ -659,9 +648,7 @@ export function ModelsSettings() {
         <div class="mb-3 flex items-center justify-between">
           <h3 class="font-semibold text-foreground text-sm">Providers</h3>
           <Show
-            fallback={
-              <span class="text-[10px] text-yellow-500">No keys configured</span>
-            }
+            fallback={<span class="text-[10px] text-yellow-500">No keys configured</span>}
             when={hasAnyKey()}
           >
             <span class="text-[10px] text-green-500">
@@ -678,11 +665,7 @@ export function ModelsSettings() {
         <div class="rounded-lg border border-border p-3">
           <For each={keys() ?? []}>
             {(keyInfo) => (
-              <ApiKeyRow
-                apiKey={keyInfo}
-                onDelete={handleDeleteKey}
-                onSave={handleSaveKey}
-              />
+              <ApiKeyRow apiKey={keyInfo} onDelete={handleDeleteKey} onSave={handleSaveKey} />
             )}
           </For>
         </div>
@@ -725,8 +708,7 @@ interface SettingsDialogProps {
 export function SettingsDialog(props: SettingsDialogProps) {
   const [activeTab, setActiveTab] = createSignal("general");
 
-  const activeTabLabel = () =>
-    SETTINGS_TABS.find((t) => t.id === activeTab())?.label ?? "Settings";
+  const activeTabLabel = () => SETTINGS_TABS.find((t) => t.id === activeTab())?.label ?? "Settings";
 
   const activeTabDescription = () => {
     if (activeTab() === "general") return "Configure your preferences";
@@ -765,10 +747,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
       default:
         return (
           <div class="flex h-full items-center justify-center text-muted-foreground">
-            <p>
-              {SETTINGS_TABS.find((t) => t.id === activeTab())?.label} settings
-              coming soon
-            </p>
+            <p>{SETTINGS_TABS.find((t) => t.id === activeTab())?.label} settings coming soon</p>
           </div>
         );
     }
@@ -787,17 +766,12 @@ export function SettingsDialog(props: SettingsDialogProps) {
         <div class="flex flex-1 overflow-hidden">
           <div class="w-56 shrink-0 border-border/80 border-r bg-background/35">
             <ScrollArea class="h-full">
-              <SettingsSidebar
-                activeTab={activeTab()}
-                onTabChange={setActiveTab}
-              />
+              <SettingsSidebar activeTab={activeTab()} onTabChange={setActiveTab} />
             </ScrollArea>
           </div>
 
           <div class="flex-1 overflow-y-auto px-4 pb-0">
-            <div class="max-h-full overflow-y-auto pr-2">
-              {activeTabContent()}
-            </div>
+            <div class="max-h-full overflow-y-auto pr-2">{activeTabContent()}</div>
           </div>
         </div>
       </DialogContent>
@@ -823,6 +797,7 @@ git commit -m "feat(settings): add models settings tab with API key management"
 ### Task 5: Update home page to use new settings dialog
 
 **Files:**
+
 - Modify: `apps/app/src/pages/home.tsx:1-50` (update import)
 
 **Step 1: Update import in home page**
@@ -865,6 +840,7 @@ git commit -m "feat(settings): update home page to use new settings dialog"
 ### Task 6: Clean up old settings dialog
 
 **Files:**
+
 - Delete: `apps/app/src/components/toolbar/settings-dialog.tsx`
 
 **Step 1: Delete old settings dialog**
@@ -926,6 +902,7 @@ Expected: PASS
 ## Summary
 
 **Files Created:**
+
 - `apps/app/src/components/settings/settings-dialog.tsx`
 - `apps/app/src/components/settings/settings-sidebar.tsx`
 - `apps/app/src/components/settings/tabs/general-settings.tsx`
@@ -940,12 +917,15 @@ Expected: PASS
 - `apps/app/src/components/settings/tabs/experimental-settings.tsx`
 
 **Files Modified:**
+
 - `apps/app/src/pages/home.tsx` (updated import)
 
 **Files Deleted:**
+
 - `apps/app/src/components/toolbar/settings-dialog.tsx`
 
 **Commits:**
+
 1. `feat(settings): add settings dialog shell with sidebar navigation`
 2. `feat(settings): add placeholder tabs`
 3. `feat(settings): add general settings tab with theme selector`

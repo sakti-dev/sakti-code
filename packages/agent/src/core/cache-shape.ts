@@ -52,9 +52,7 @@ export interface CacheDiagnostics {
 /** Capture a {@link StreamRequest}'s prefix shape. */
 export function captureShape(req: StreamRequest): PrefixShape {
   const system = req.system ?? "";
-  const toolsSorted = req.tools
-    ? JSON.stringify(req.tools, Object.keys(req.tools).sort())
-    : "{}";
+  const toolsSorted = req.tools ? JSON.stringify(req.tools, Object.keys(req.tools).sort()) : "{}";
   const prefix = JSON.stringify({ system, tools: toolsSorted });
   return {
     systemHash: shortHash(system),
@@ -70,7 +68,7 @@ export function captureShape(req: StreamRequest): PrefixShape {
 export function compareShape(
   prev: PrefixShape | undefined,
   cur: PrefixShape,
-  usage: Usage | undefined
+  usage: Usage | undefined,
 ): CacheDiagnostics {
   const reasons: string[] = [];
   if (prev !== undefined) {

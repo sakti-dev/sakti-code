@@ -1,10 +1,4 @@
-import type {
-  AssistantMessage,
-  ImageContent,
-  Model,
-  TextContent,
-  Usage,
-} from "@sakti-code/llm";
+import type { AssistantMessage, ImageContent, Model, TextContent, Usage } from "@sakti-code/llm";
 import { complete } from "@sakti-code/llm";
 import { Effect } from "effect";
 import {
@@ -54,7 +48,7 @@ function safeJsonStringify(value: unknown): string {
 function extractFileOperations(
   messages: AgentMessage[],
   entries: SessionTreeEntry[],
-  prevCompactionIndex: number
+  prevCompactionIndex: number,
 ): FileOperations {
   const fileOps = createFileOps();
   if (prevCompactionIndex >= 0) {
@@ -79,9 +73,7 @@ function extractFileOperations(
 
   return fileOps;
 }
-function getMessageFromEntry(
-  entry: SessionTreeEntry
-): AgentMessage | undefined {
+function getMessageFromEntry(entry: SessionTreeEntry): AgentMessage | undefined {
   if (entry.type === "message") {
     return entry.message as AgentMessage;
   }
@@ -91,29 +83,19 @@ function getMessageFromEntry(
       entry.content as string | (TextContent | ImageContent)[],
       entry.display,
       entry.details,
-      entry.timestamp
+      entry.timestamp,
     );
   }
   if (entry.type === "branch_summary") {
-    return createBranchSummaryMessage(
-      entry.summary,
-      entry.fromId,
-      entry.timestamp
-    );
+    return createBranchSummaryMessage(entry.summary, entry.fromId, entry.timestamp);
   }
   if (entry.type === "compaction") {
-    return createCompactionSummaryMessage(
-      entry.summary,
-      entry.tokensBefore,
-      entry.timestamp
-    );
+    return createCompactionSummaryMessage(entry.summary, entry.tokensBefore, entry.timestamp);
   }
   return;
 }
 
-function getMessageFromEntryForCompaction(
-  entry: SessionTreeEntry
-): AgentMessage | undefined {
+function getMessageFromEntryForCompaction(entry: SessionTreeEntry): AgentMessage | undefined {
   if (entry.type === "compaction") {
     return;
   }
@@ -151,10 +133,7 @@ export const DEFAULT_COMPACTION_SETTINGS: CompactionSettings = {
 
 /** Calculate total context tokens from provider usage. */
 export function calculateContextTokens(usage: Usage): number {
-  return (
-    usage.totalTokens ||
-    usage.input + usage.output + usage.cacheRead + usage.cacheWrite
-  );
+  return usage.totalTokens || usage.input + usage.output + usage.cacheRead + usage.cacheWrite;
 }
 function getAssistantUsage(msg: AgentMessage): Usage | undefined {
   if (msg.role === "assistant" && "usage" in msg) {
@@ -171,9 +150,7 @@ function getAssistantUsage(msg: AgentMessage): Usage | undefined {
 }
 
 /** Return usage from the last successful assistant message in session entries. */
-export function getLastAssistantUsage(
-  entries: SessionTreeEntry[]
-): Usage | undefined {
+export function getLastAssistantUsage(entries: SessionTreeEntry[]): Usage | undefined {
   for (let i = entries.length - 1; i >= 0; i--) {
     const entry = entries[i]!;
     if (entry.type === "message") {
@@ -199,7 +176,7 @@ export interface ContextUsageEstimate {
 }
 
 function getLastAssistantUsageInfo(
-  messages: AgentMessage[]
+  messages: AgentMessage[],
 ): { usage: Usage; index: number } | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
     const usage = getAssistantUsage(messages[i]!);
@@ -211,9 +188,7 @@ function getLastAssistantUsageInfo(
 }
 
 /** Estimate context tokens for messages using provider usage when available. */
-export function estimateContextTokens(
-  messages: AgentMessage[]
-): ContextUsageEstimate {
+export function estimateContextTokens(messages: AgentMessage[]): ContextUsageEstimate {
   const usageInfo = getLastAssistantUsageInfo(messages);
 
   if (!usageInfo) {
@@ -247,7 +222,7 @@ export function estimateContextTokens(
 export function shouldCompact(
   contextTokens: number,
   contextWindow: number,
-  settings: CompactionSettings
+  settings: CompactionSettings,
 ): boolean {
   if (!settings.enabled) {
     return false;
@@ -258,7 +233,7 @@ export function shouldCompact(
 const ESTIMATED_IMAGE_CHARS = 4800;
 
 function estimateTextAndImageContentChars(
-  content: string | Array<{ type: string; text?: string }>
+  content: string | Array<{ type: string; text?: string }>,
 ): number {
   if (typeof content === "string") {
     return content.length;
@@ -286,7 +261,7 @@ export function estimateTokens(message: AgentMessage): number {
           message as {
             content: string | Array<{ type: string; text?: string }>;
           }
-        ).content
+        ).content,
       );
       return Math.ceil(chars / 4);
     }
@@ -298,8 +273,7 @@ export function estimateTokens(message: AgentMessage): number {
         } else if (block.type === "thinking") {
           chars += block.thinking.length;
         } else if (block.type === "toolCall") {
-          chars +=
-            block.name.length + safeJsonStringify(block.arguments).length;
+          chars += block.name.length + safeJsonStringify(block.arguments).length;
         }
       }
       return Math.ceil(chars / 4);
@@ -325,7 +299,7 @@ export function estimateTokens(message: AgentMessage): number {
 function findValidCutPoints(
   entries: SessionTreeEntry[],
   startIndex: number,
-  endIndex: number
+  endIndex: number,
 ): number[] {
   const cutPoints: number[] = [];
   for (let i = startIndex; i < endIndex; i++) {
@@ -370,7 +344,7 @@ function findValidCutPoints(
 export function findTurnStartIndex(
   entries: SessionTreeEntry[],
   entryIndex: number,
-  startIndex: number
+  startIndex: number,
 ): number {
   for (let i = entryIndex; i >= startIndex; i--) {
     const entry = entries[i]!;
@@ -402,7 +376,7 @@ export function findCutPoint(
   entries: SessionTreeEntry[],
   startIndex: number,
   endIndex: number,
-  keepRecentTokens: number
+  keepRecentTokens: number,
 ): CutPointResult {
   const cutPoints = findValidCutPoints(entries, startIndex, endIndex);
 
@@ -444,11 +418,8 @@ export function findCutPoint(
     cutIndex--;
   }
   const cutEntry = entries[cutIndex]!;
-  const isUserMessage =
-    cutEntry.type === "message" && cutEntry.message.role === "user";
-  const turnStartIndex = isUserMessage
-    ? -1
-    : findTurnStartIndex(entries, cutIndex, startIndex);
+  const isUserMessage = cutEntry.type === "message" && cutEntry.message.role === "user";
+  const turnStartIndex = isUserMessage ? -1 : findTurnStartIndex(entries, cutIndex, startIndex);
 
   return {
     firstKeptEntryIndex: cutIndex,
@@ -474,16 +445,14 @@ export const generateSummaryEffect = (
   model: Model,
   reserveTokens: number,
   apiKey: string,
-  opts: GenerateSummaryOptions
+  opts: GenerateSummaryOptions,
 ): Effect.Effect<Result<string, CompactionError>> =>
   Effect.gen(function* () {
     const maxTokens = Math.min(
       Math.floor(0.8 * reserveTokens),
-      model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY
+      model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY,
     );
-    let basePrompt = opts.previousSummary
-      ? opts.prompts.update
-      : opts.prompts.summarization;
+    let basePrompt = opts.previousSummary ? opts.prompts.update : opts.prompts.summarization;
     if (opts.customInstructions) {
       basePrompt = `${basePrompt}\n\nAdditional focus: ${opts.customInstructions}`;
     }
@@ -518,27 +487,21 @@ export const generateSummaryEffect = (
         model,
         messages: summarizationMessages,
         system: opts.prompts.summarizationSystem,
-        ...(completionOptions.maxTokens
-          ? { maxOutputTokens: completionOptions.maxTokens }
-          : {}),
-        ...(completionOptions.signal
-          ? { abortSignal: completionOptions.signal }
-          : {}),
+        ...(completionOptions.maxTokens ? { maxOutputTokens: completionOptions.maxTokens } : {}),
+        ...(completionOptions.signal ? { abortSignal: completionOptions.signal } : {}),
         apiKey: completionOptions.apiKey,
-        ...(completionOptions.headers
-          ? { headers: completionOptions.headers }
-          : {}),
+        ...(completionOptions.headers ? { headers: completionOptions.headers } : {}),
         ...(completionOptions.thinkingLevel
           ? { thinkingLevel: completionOptions.thinkingLevel }
           : {}),
-      })
+      }),
     );
     if (response.finishReason === "error") {
       return err(
         new CompactionError({
           code: "summarization_failed",
           message: `Summarization failed: ${response.errorMessage || "Unknown error"}`,
-        })
+        }),
       );
     }
 
@@ -574,12 +537,9 @@ export interface CompactionPreparation {
 /** Prepare session entries for compaction, or return undefined when compaction is not applicable. */
 export function prepareCompaction(
   pathEntries: SessionTreeEntry[],
-  settings: CompactionSettings
+  settings: CompactionSettings,
 ): Result<CompactionPreparation | undefined, CompactionError> {
-  if (
-    pathEntries.length === 0 ||
-    pathEntries[pathEntries.length - 1]!.type === "compaction"
-  ) {
+  if (pathEntries.length === 0 || pathEntries[pathEntries.length - 1]!.type === "compaction") {
     return ok(undefined);
   }
 
@@ -597,37 +557,29 @@ export function prepareCompaction(
     const prevCompaction = pathEntries[prevCompactionIndex] as CompactionEntry;
     previousSummary = prevCompaction.summary;
     const firstKeptEntryIndex = pathEntries.findIndex(
-      (entry) => entry.id === prevCompaction.firstKeptEntryId
+      (entry) => entry.id === prevCompaction.firstKeptEntryId,
     );
-    boundaryStart =
-      firstKeptEntryIndex >= 0 ? firstKeptEntryIndex : prevCompactionIndex + 1;
+    boundaryStart = firstKeptEntryIndex >= 0 ? firstKeptEntryIndex : prevCompactionIndex + 1;
   }
   const boundaryEnd = pathEntries.length;
 
   const tokensBefore = estimateContextTokens(
-    buildSessionContextFromEntries(pathEntries).messages
+    buildSessionContextFromEntries(pathEntries).messages,
   ).tokens;
 
-  const cutPoint = findCutPoint(
-    pathEntries,
-    boundaryStart,
-    boundaryEnd,
-    settings.keepRecentTokens
-  );
+  const cutPoint = findCutPoint(pathEntries, boundaryStart, boundaryEnd, settings.keepRecentTokens);
   const firstKeptEntry = pathEntries[cutPoint.firstKeptEntryIndex];
   if (!firstKeptEntry?.id) {
     return err(
       new CompactionError({
         code: "invalid_session",
         message: "First kept entry has no UUID - session may need migration",
-      })
+      }),
     );
   }
   const firstKeptEntryId = firstKeptEntry.id;
 
-  const historyEnd = cutPoint.isSplitTurn
-    ? cutPoint.turnStartIndex
-    : cutPoint.firstKeptEntryIndex;
+  const historyEnd = cutPoint.isSplitTurn ? cutPoint.turnStartIndex : cutPoint.firstKeptEntryIndex;
   const messagesToSummarize: AgentMessage[] = [];
   for (let i = boundaryStart; i < historyEnd; i++) {
     const msg = getMessageFromEntryForCompaction(pathEntries[i]!);
@@ -645,26 +597,18 @@ export function prepareCompaction(
     messagesToSummarize,
     {
       tailStartIndex: messagesToSummarize.length,
-    }
+    },
   );
   const turnPrefixMessages: AgentMessage[] = [];
   if (cutPoint.isSplitTurn) {
-    for (
-      let i = cutPoint.turnStartIndex;
-      i < cutPoint.firstKeptEntryIndex;
-      i++
-    ) {
+    for (let i = cutPoint.turnStartIndex; i < cutPoint.firstKeptEntryIndex; i++) {
       const msg = getMessageFromEntryForCompaction(pathEntries[i]!);
       if (msg) {
         turnPrefixMessages.push(msg);
       }
     }
   }
-  const fileOps = extractFileOperations(
-    prunedSummarize,
-    pathEntries,
-    prevCompactionIndex
-  );
+  const fileOps = extractFileOperations(prunedSummarize, pathEntries, prevCompactionIndex);
   if (cutPoint.isSplitTurn) {
     for (const msg of turnPrefixMessages) {
       extractFileOpsFromMessage(msg, fileOps);
@@ -707,7 +651,7 @@ export const compactEffect = (
   preparation: CompactionPreparation,
   model: Model,
   apiKey: string,
-  opts: CompactEffectOptions
+  opts: CompactEffectOptions,
 ): Effect.Effect<Result<CompactionResult, CompactionError>> =>
   Effect.gen(function* () {
     const {
@@ -727,7 +671,7 @@ export const compactEffect = (
         new CompactionError({
           code: "invalid_session",
           message: "First kept entry has no UUID - session may need migration",
-        })
+        }),
       );
     }
 
@@ -736,41 +680,23 @@ export const compactEffect = (
     if (isSplitTurn && turnPrefixMessages.length > 0) {
       const [historyResult, turnPrefixResult] = yield* Effect.all([
         messagesToSummarize.length > 0
-          ? generateSummaryEffect(
-              messagesToSummarize,
-              model,
-              settings.reserveTokens,
-              apiKey,
-              {
-                ...(opts.headers === undefined
-                  ? {}
-                  : { headers: opts.headers }),
-                ...(opts.signal === undefined ? {} : { signal: opts.signal }),
-                ...(opts.customInstructions === undefined
-                  ? {}
-                  : { customInstructions: opts.customInstructions }),
-                ...(previousSummary === undefined ? {} : { previousSummary }),
-                ...(opts.thinkingLevel === undefined
-                  ? {}
-                  : { thinkingLevel: opts.thinkingLevel }),
-                prompts: opts.prompts,
-              }
-            )
+          ? generateSummaryEffect(messagesToSummarize, model, settings.reserveTokens, apiKey, {
+              ...(opts.headers === undefined ? {} : { headers: opts.headers }),
+              ...(opts.signal === undefined ? {} : { signal: opts.signal }),
+              ...(opts.customInstructions === undefined
+                ? {}
+                : { customInstructions: opts.customInstructions }),
+              ...(previousSummary === undefined ? {} : { previousSummary }),
+              ...(opts.thinkingLevel === undefined ? {} : { thinkingLevel: opts.thinkingLevel }),
+              prompts: opts.prompts,
+            })
           : Effect.succeed(ok<string, CompactionError>("No prior history.")),
-        generateTurnPrefixSummaryEffect(
-          turnPrefixMessages,
-          model,
-          settings.reserveTokens,
-          apiKey,
-          {
-            ...(opts.headers === undefined ? {} : { headers: opts.headers }),
-            ...(opts.signal === undefined ? {} : { signal: opts.signal }),
-            ...(opts.thinkingLevel === undefined
-              ? {}
-              : { thinkingLevel: opts.thinkingLevel }),
-            prompts: opts.prompts,
-          }
-        ),
+        generateTurnPrefixSummaryEffect(turnPrefixMessages, model, settings.reserveTokens, apiKey, {
+          ...(opts.headers === undefined ? {} : { headers: opts.headers }),
+          ...(opts.signal === undefined ? {} : { signal: opts.signal }),
+          ...(opts.thinkingLevel === undefined ? {} : { thinkingLevel: opts.thinkingLevel }),
+          prompts: opts.prompts,
+        }),
       ]);
       if (isFailure(historyResult)) {
         return err(historyResult.failure);
@@ -792,11 +718,9 @@ export const compactEffect = (
             ? {}
             : { customInstructions: opts.customInstructions }),
           ...(previousSummary === undefined ? {} : { previousSummary }),
-          ...(opts.thinkingLevel === undefined
-            ? {}
-            : { thinkingLevel: opts.thinkingLevel }),
+          ...(opts.thinkingLevel === undefined ? {} : { thinkingLevel: opts.thinkingLevel }),
           prompts: opts.prompts,
-        }
+        },
       );
       if (isFailure(summaryResult)) {
         return err(summaryResult.failure);
@@ -840,12 +764,12 @@ const generateTurnPrefixSummaryEffect = (
   model: Model,
   reserveTokens: number,
   apiKey: string,
-  opts: TurnPrefixSummaryOptions
+  opts: TurnPrefixSummaryOptions,
 ): Effect.Effect<Result<string, CompactionError>> =>
   Effect.gen(function* () {
     const maxTokens = Math.min(
       Math.floor(0.5 * reserveTokens),
-      model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY
+      model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY,
     );
     const llmMessages = convertToLlm(messages);
     const conversationText = serializeConversation(llmMessages);
@@ -867,19 +791,17 @@ const generateTurnPrefixSummaryEffect = (
         ...(opts.signal ? { abortSignal: opts.signal } : {}),
         apiKey,
         ...(opts.headers ? { headers: opts.headers } : {}),
-        ...(model.reasoning &&
-        opts.thinkingLevel &&
-        opts.thinkingLevel !== "off"
+        ...(model.reasoning && opts.thinkingLevel && opts.thinkingLevel !== "off"
           ? { thinkingLevel: opts.thinkingLevel }
           : {}),
-      })
+      }),
     );
     if (response.finishReason === "error") {
       return err(
         new CompactionError({
           code: "summarization_failed",
           message: `Turn prefix summarization failed: ${response.errorMessage || "Unknown error"}`,
-        })
+        }),
       );
     }
 

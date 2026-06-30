@@ -18,8 +18,7 @@ export function demoteHeaders(description: string): string {
   for (const line of lines) {
     const marker = FENCE_RE.exec(line)?.[1]?.[0];
     if (marker) {
-      fence =
-        fence === undefined ? marker : fence === marker ? undefined : fence;
+      fence = fence === undefined ? marker : fence === marker ? undefined : fence;
     } else if (fence === undefined && TOP_LEVEL_RE.test(line)) {
       collides = true;
       break;
@@ -37,8 +36,7 @@ export function demoteHeaders(description: string): string {
     }
     const marker = FENCE_RE.exec(line)?.[1]?.[0];
     if (marker) {
-      fence =
-        fence === undefined ? marker : fence === marker ? undefined : fence;
+      fence = fence === undefined ? marker : fence === marker ? undefined : fence;
     } else if (fence === undefined && ATX_RE.test(line)) {
       lines[i] = line.replace(/^( {0,3})#/, "$1##");
     }

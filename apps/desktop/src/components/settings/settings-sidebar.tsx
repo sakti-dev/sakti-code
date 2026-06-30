@@ -68,7 +68,7 @@ export function SettingsSidebar(props: SettingsSidebarProps) {
                 "group w-full rounded-md border px-2.5 py-2 text-left transition-all duration-120",
                 isActive()
                   ? "border-primary/45 bg-accent/70 shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-primary)_45%,transparent),0_8px_24px_color-mix(in_oklch,var(--color-primary)_18%,transparent)]"
-                  : "border-transparent hover:border-border/90 hover:bg-muted/70"
+                  : "border-transparent hover:border-border/90 hover:bg-muted/70",
               )}
               onClick={() => {
                 if (tab.external && tab.href) {
@@ -83,7 +83,7 @@ export function SettingsSidebar(props: SettingsSidebarProps) {
                 <Icon
                   class={cn(
                     "size-4 shrink-0",
-                    isActive() ? "text-foreground" : "text-muted-foreground"
+                    isActive() ? "text-foreground" : "text-muted-foreground",
                   )}
                 />
                 <span class="truncate font-medium text-sm">{tab.label}</span>

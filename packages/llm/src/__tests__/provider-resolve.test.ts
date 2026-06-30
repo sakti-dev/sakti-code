@@ -1,5 +1,5 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import type {
   ProviderFactory,
   ProviderFactoryLoader,
@@ -8,11 +8,7 @@ import type {
 } from "../provider/registry.ts";
 import { BUNDLED_PROVIDERS } from "../provider/registry.ts";
 import type { ResolveOptions } from "../provider/resolve.ts";
-import {
-  clearResolveCache,
-  resolveBaseURL,
-  resolveLanguageModel,
-} from "../provider/resolve.ts";
+import { clearResolveCache, resolveBaseURL, resolveLanguageModel } from "../provider/resolve.ts";
 import type { Model } from "../types.ts";
 
 // ─── test helpers ───────────────────────────────────────────────────────────
@@ -118,11 +114,7 @@ describe("resolveLanguageModel", () => {
     const factories: Record<string, ProviderFactoryLoader> = {
       "@ai-sdk/anthropic": () => Promise.resolve(rec.factory),
     };
-    const result = await resolveLanguageModel(
-      baseModel,
-      { apiKey: "sk-test" },
-      factories
-    );
+    const result = await resolveLanguageModel(baseModel, { apiKey: "sk-test" }, factories);
     expect(rec.languageModelIds).toEqual(["claude-sonnet-4.5"]);
     expect(result.modelId).toBe("claude-sonnet-4.5");
     expect(result.provider).toBe("anthropic");
@@ -144,18 +136,13 @@ describe("resolveLanguageModel", () => {
     };
     const model: Model = {
       ...baseModel,
-      baseUrl:
-        "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+      baseUrl: "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/v1",
       npm: "@ai-sdk/openai-compatible",
       provider: "cloudflare-workers-ai",
     };
-    await resolveLanguageModel(
-      model,
-      { env: { CLOUDFLARE_ACCOUNT_ID: "abc123" } },
-      factories
-    );
+    await resolveLanguageModel(model, { env: { CLOUDFLARE_ACCOUNT_ID: "abc123" } }, factories);
     expect(rec.calls[0]?.baseURL).toBe(
-      "https://api.cloudflare.com/client/v4/accounts/abc123/ai/v1"
+      "https://api.cloudflare.com/client/v4/accounts/abc123/ai/v1",
     );
   });
 
@@ -164,11 +151,7 @@ describe("resolveLanguageModel", () => {
     const factories = {
       "@ai-sdk/anthropic": () => Promise.resolve(rec.factory),
     };
-    await resolveLanguageModel(
-      baseModel,
-      { baseURL: "https://custom.example.com" },
-      factories
-    );
+    await resolveLanguageModel(baseModel, { baseURL: "https://custom.example.com" }, factories);
     expect(rec.calls[0]?.baseURL).toBe("https://custom.example.com");
   });
 
@@ -267,9 +250,7 @@ describe("resolveLanguageModel", () => {
       reasoning: false,
     };
     const factories: Record<string, ProviderFactoryLoader> = {};
-    await expect(resolveLanguageModel(model, {}, factories)).rejects.toThrow(
-      "npm"
-    );
+    await expect(resolveLanguageModel(model, {}, factories)).rejects.toThrow("npm");
   });
 
   it("throws when the npm package is not in the registry and can't be imported", async () => {

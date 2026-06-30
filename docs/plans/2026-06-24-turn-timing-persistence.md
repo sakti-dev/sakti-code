@@ -23,6 +23,7 @@
 ### Task 1: Add `turns` table to Drizzle schema
 
 **Files:**
+
 - Modify: `packages/db/src/schema.ts`
 - Test: `packages/db/src/__tests__/turns-schema.test.ts`
 
@@ -53,14 +54,16 @@ describe("turns table schema", () => {
   });
 
   it("creates the turns table", () => {
-    const tables = db.all(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='turns'"
-    );
+    const tables = db.all("SELECT name FROM sqlite_master WHERE type='table' AND name='turns'");
     expect(tables).toHaveLength(1);
   });
 
   it("has expected columns", () => {
-    const cols = db.all("PRAGMA table_info(turns)") as { name: string; type: string; notnull: number }[];
+    const cols = db.all("PRAGMA table_info(turns)") as {
+      name: string;
+      type: string;
+      notnull: number;
+    }[];
     const colMap = new Map(cols.map((c) => [c.name, c]));
     expect(colMap.get("id")?.type).toBe("text");
     expect(colMap.get("session_id")?.type).toBe("text");
@@ -78,6 +81,7 @@ describe("turns table schema", () => {
 ```bash
 cd packages/db && nub run test -- --reporter=verbose turns-schema 2>&1 | head -20
 ```
+
 Expected: FAIL — table `turns` does not exist.
 
 **Step 3: Add the table to schema.ts**
@@ -89,20 +93,17 @@ export const turns = sqliteTable(
   "turns",
   {
     id: text("id").primaryKey(),
-    sessionId: text("session_id").notNull().references(() => sessions.id, {
-      onDelete: "cascade",
-    }),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessions.id, {
+        onDelete: "cascade",
+      }),
     sequence: integer("sequence").notNull(),
     startedAt: integer("started_at").notNull(),
     endedAt: integer("ended_at"),
     createdAt: integer("created_at").notNull(),
   },
-  (table) => [
-    uniqueIndex("turns_session_id_sequence_idx").on(
-      table.sessionId,
-      table.sequence
-    ),
-  ]
+  (table) => [uniqueIndex("turns_session_id_sequence_idx").on(table.sessionId, table.sequence)],
 );
 ```
 
@@ -111,6 +112,7 @@ export const turns = sqliteTable(
 ```bash
 cd packages/db && nub run db:generate
 ```
+
 Expected: A new migration folder appears under `packages/db/migrations/` with a `CREATE TABLE turns` SQL file.
 
 **Step 5: Run test to verify it passes**
@@ -118,6 +120,7 @@ Expected: A new migration folder appears under `packages/db/migrations/` with a 
 ```bash
 cd packages/db && nub run test -- turns-schema
 ```
+
 Expected: PASS
 
 **Step 6: Commit**
@@ -132,6 +135,7 @@ git commit -m "feat(db): add turns table for turn timing persistence"
 ### Task 2: Implement TurnRepo
 
 **Files:**
+
 - Create: `packages/db/src/repos/turns.ts`
 - Test: `packages/db/src/repos/__tests__/turns.test.ts`
 
@@ -238,6 +242,7 @@ describe("TurnRepo", () => {
 ```bash
 cd packages/db && nub run test -- turns.test
 ```
+
 Expected: FAIL — module not found.
 
 **Step 3: Implement TurnRepo**
@@ -269,10 +274,7 @@ export class TurnRepo {
     const sequence = (row?.max ?? -1) + 1;
     const id = crypto.randomUUID();
     const createdAt = Date.now();
-    this.db
-      .insert(turns)
-      .values({ id, sessionId, sequence, startedAt, createdAt })
-      .run();
+    this.db.insert(turns).values({ id, sessionId, sequence, startedAt, createdAt }).run();
     return { id, sessionId, sequence, startedAt, endedAt: null, createdAt };
   }
 
@@ -321,6 +323,7 @@ export class TurnRepo {
 ```bash
 cd packages/db && nub run test -- turns.test
 ```
+
 Expected: PASS
 
 **Step 5: Export from index.ts**
@@ -343,6 +346,7 @@ git commit -m "feat(db): add TurnRepo for turn timing CRUD"
 ### Task 3: Inject TurnRepo into server context
 
 **Files:**
+
 - Modify: `apps/server/src/context.ts`
 
 **Step 1: Add TurnRepo to ServerContext and createContext**
@@ -350,6 +354,7 @@ git commit -m "feat(db): add TurnRepo for turn timing CRUD"
 In `apps/server/src/context.ts`:
 
 1. Add import:
+
 ```ts
 import {
   type DrizzleDB,
@@ -362,16 +367,18 @@ import {
 ```
 
 2. Add to `ServerContext.repos`:
+
 ```ts
-  repos: {
-    projects: ProjectRepo;
-    sessions: SessionRepo;
-    settings: SettingsRepo;
-    turns: TurnRepo;
-  };
+repos: {
+  projects: ProjectRepo;
+  sessions: SessionRepo;
+  settings: SettingsRepo;
+  turns: TurnRepo;
+}
 ```
 
 3. Add to `createContext` return:
+
 ```ts
     repos: {
       projects: new ProjectRepo(db),
@@ -386,6 +393,7 @@ import {
 ```bash
 cd apps/server && nub run typecheck
 ```
+
 Expected: PASS
 
 **Step 3: Commit**
@@ -400,6 +408,7 @@ git commit -m "feat(server): inject TurnRepo into server context"
 ### Task 4: WS handler creates and finalizes turns
 
 **Files:**
+
 - Modify: `apps/server/src/agent/ws-handler.ts:151-173` (the `runAgentStream` function)
 - Test: `apps/server/src/agent/__tests__/ws-turn-timing.test.ts`
 
@@ -436,6 +445,7 @@ describe("WS turn timing persistence", () => {
 ```bash
 cd apps/server && nub run test -- ws-turn-timing
 ```
+
 Expected: FAIL — `ctx.repos.turns` does not exist (if Task 3 not yet committed) or test setup issue.
 
 **Step 3: Modify `runAgentStream` to create/finalize turns**
@@ -448,7 +458,7 @@ async function runAgentStream(
   sessionId: string,
   message: string,
   storage: SessionStorage,
-  ws: WsHandle
+  ws: WsHandle,
 ) {
   const turn = ctx.repos.turns.create(sessionId, Date.now());
   try {
@@ -476,6 +486,7 @@ async function runAgentStream(
 ```bash
 cd apps/server && nub run test -- ws-turn-timing
 ```
+
 Expected: PASS
 
 **Step 5: Commit**
@@ -490,6 +501,7 @@ git commit -m "feat(server): persist turn timing in WS handler"
 ### Task 5: REST endpoint for turns
 
 **Files:**
+
 - Create: `apps/server/src/routes/sessions/turns.ts`
 - Modify: `apps/server/src/app.ts`
 - Test: `apps/server/src/__tests__/turns-routes.test.ts`
@@ -511,9 +523,7 @@ describe("GET /api/sessions/:id/turns", () => {
     ctx.repos.turns.create(session.id, 1000);
     ctx.repos.turns.create(session.id, 2000);
 
-    const res = await app.request(
-      `http://localhost/api/sessions/${session.id}/turns`
-    );
+    const res = await app.request(`http://localhost/api/sessions/${session.id}/turns`);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveLength(2);
@@ -527,9 +537,7 @@ describe("GET /api/sessions/:id/turns", () => {
     const project = await ctx.repos.projects.create("p", "/tmp");
     const session = await ctx.repos.sessions.create(project.id, "m");
 
-    const res = await app.request(
-      `http://localhost/api/sessions/${session.id}/turns`
-    );
+    const res = await app.request(`http://localhost/api/sessions/${session.id}/turns`);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([]);
   });
@@ -541,6 +549,7 @@ describe("GET /api/sessions/:id/turns", () => {
 ```bash
 cd apps/server && nub run test -- turns-routes
 ```
+
 Expected: FAIL — module not found.
 
 **Step 3: Create the route module**
@@ -550,13 +559,11 @@ Expected: FAIL — module not found.
 import { Hono } from "hono";
 import { getCtx } from "../../context.ts";
 
-export const turnsRoutes = new Hono()
-  .basePath("/sessions")
-  .get("/:id/turns", (c) => {
-    const ctx = getCtx(c);
-    const turns = ctx.repos.turns.listBySession(c.req.param("id"));
-    return c.json(turns);
-  });
+export const turnsRoutes = new Hono().basePath("/sessions").get("/:id/turns", (c) => {
+  const ctx = getCtx(c);
+  const turns = ctx.repos.turns.listBySession(c.req.param("id"));
+  return c.json(turns);
+});
 ```
 
 **Step 4: Mount in app.ts**
@@ -564,6 +571,7 @@ export const turnsRoutes = new Hono()
 In `apps/server/src/app.ts`:
 
 1. Add import:
+
 ```ts
 import { turnsRoutes } from "./routes/sessions/turns.ts";
 ```
@@ -575,6 +583,7 @@ import { turnsRoutes } from "./routes/sessions/turns.ts";
 ```bash
 cd apps/server && nub run test -- turns-routes
 ```
+
 Expected: PASS
 
 **Step 6: Commit**
@@ -589,6 +598,7 @@ git commit -m "feat(server): add GET /sessions/:id/turns endpoint"
 ### Task 6: Fork copies turns
 
 **Files:**
+
 - Modify: `apps/server/src/routes/sessions/forking.ts:45-50` (after `forkedStorage.forkFrom`)
 - Test: `apps/server/src/__tests__/fork-turns.test.ts`
 
@@ -610,14 +620,11 @@ describe("Fork copies turns", () => {
     // Seed a turn
     ctx.repos.turns.create(session.id, 1000);
     ctx.repos.turns.finalizeLatest(session.id, 5000);
-    await seedEntries(ctx.db, session.id, [
-      { role: "user", content: "hi" },
-    ]);
+    await seedEntries(ctx.db, session.id, [{ role: "user", content: "hi" }]);
 
-    const res = await app.request(
-      `http://localhost/api/sessions/${session.id}/fork`,
-      { method: "POST" }
-    );
+    const res = await app.request(`http://localhost/api/sessions/${session.id}/fork`, {
+      method: "POST",
+    });
     expect(res.status).toBe(200);
     const forked = await res.json();
 
@@ -635,6 +642,7 @@ describe("Fork copies turns", () => {
 ```bash
 cd apps/server && nub run test -- fork-turns
 ```
+
 Expected: FAIL — forked session has no turns.
 
 **Step 3: Add turn copy to forking route**
@@ -642,7 +650,7 @@ Expected: FAIL — forked session has no turns.
 In `apps/server/src/routes/sessions/forking.ts`, after `await forkedStorage.forkFrom(id)` (line 46) and before the `return c.json(newSession)`:
 
 ```ts
-    ctx.repos.turns.copyForFork(id, newSession.id);
+ctx.repos.turns.copyForFork(id, newSession.id);
 ```
 
 **Step 4: Run test to verify it passes**
@@ -650,6 +658,7 @@ In `apps/server/src/routes/sessions/forking.ts`, after `await forkedStorage.fork
 ```bash
 cd apps/server && nub run test -- fork-turns
 ```
+
 Expected: PASS
 
 **Step 5: Commit**
@@ -664,6 +673,7 @@ git commit -m "feat(server): copy turn timings on session fork"
 ### Task 7: Desktop types and session store changes
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/types.ts` — add `TurnTiming`
 - Modify: `apps/desktop/src/stores/session/session-store.ts` — add `turnTimings` + actions
 - Test: `apps/desktop/src/stores/session/__tests__/session-store.test.ts`
@@ -735,6 +745,7 @@ describe("session store — turn timings", () => {
 ```bash
 cd apps/desktop && nub run test -- session-store.test
 ```
+
 Expected: FAIL — `turnTimings` and `startTurn` do not exist.
 
 **Step 3: Add `TurnTiming` to types.ts**
@@ -751,6 +762,7 @@ export interface TurnTiming {
 **Step 4: Add to session-store.ts**
 
 1. Import `TurnTiming`:
+
 ```ts
 import {
   idleStreamState,
@@ -762,6 +774,7 @@ import {
 ```
 
 2. Add `turnTimings` to `SessionStoreData`:
+
 ```ts
 export interface SessionStoreData {
   messageOrder: string[];
@@ -773,6 +786,7 @@ export interface SessionStoreData {
 ```
 
 3. Add actions to `SessionActions`:
+
 ```ts
   loadTurnTimings: (timings: TurnTiming[]) => void;
   startTurn: (startedAt: number) => void;
@@ -782,6 +796,7 @@ export interface SessionStoreData {
 4. Initialize `turnTimings: []` in `createStore`.
 
 5. Implement the actions:
+
 ```ts
     startTurn(startedAt) {
       setStore("turnTimings", (prev) => [
@@ -815,6 +830,7 @@ export interface SessionStoreData {
 ```bash
 cd apps/desktop && nub run test -- session-store.test
 ```
+
 Expected: PASS
 
 **Step 6: Commit**
@@ -829,6 +845,7 @@ git commit -m "feat(desktop): add turn timing state to session store"
 ### Task 8: Wire turn timing into event reducer and WS client
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/session/event-reducer.ts` — `agent_start`/`agent_end`/`abort` cases
 - Modify: `apps/desktop/src/stores/server/ws-client.ts` — error frame handler
 - Test: `apps/desktop/src/stores/session/__tests__/event-reducer.test.ts`
@@ -849,11 +866,7 @@ describe("event reducer — turn timing", () => {
   it("turn_end does NOT finalize (only agent_end does)", () => {
     const { session, batcher } = setup();
     dispatchEvent(session.actions, batcher, makeAgentStartEvent());
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeTurnEndEvent(makeAssistantMessage("done"))
-    );
+    dispatchEvent(session.actions, batcher, makeTurnEndEvent(makeAssistantMessage("done")));
     expect(session.store.turnTimings[0]?.endedAt).toBeNull();
   });
 
@@ -894,11 +907,13 @@ describe("event reducer — turn timing", () => {
 ```bash
 cd apps/desktop && nub run test -- event-reducer.test
 ```
+
 Expected: FAIL — `turnTimings` not modified by events.
 
 **Step 3: Modify event-reducer.ts**
 
 In the `agent_start` case:
+
 ```ts
     case "agent_start":
       actions.setPhase("thinking");
@@ -907,6 +922,7 @@ In the `agent_start` case:
 ```
 
 In the `agent_end` and `abort` case:
+
 ```ts
     case "agent_end":
     case "abort":
@@ -941,6 +957,7 @@ In `apps/desktop/src/stores/server/ws-client.ts`, in the `"error"` case of `hand
 ```bash
 cd apps/desktop && nub run test -- event-reducer.test
 ```
+
 Expected: PASS
 
 **Step 6: Commit**
@@ -955,6 +972,7 @@ git commit -m "feat(desktop): wire turn timing into event reducer"
 ### Task 9: Attach timing to ChatTurn via buildChatTurns
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/session/turn-projection.ts`
 - Test: `apps/desktop/src/stores/session/__tests__/turn-projection.test.ts`
 
@@ -982,12 +1000,9 @@ describe("buildChatTurns — turn timing", () => {
       timestamp: 2000,
     };
 
-    const turns = buildChatTurns(
-      ["u1", "a1"],
-      { u1: userMsg, a1: asstMsg },
-      "idle",
-      [{ startedAt: 1000, endedAt: 5000 }]
-    );
+    const turns = buildChatTurns(["u1", "a1"], { u1: userMsg, a1: asstMsg }, "idle", [
+      { startedAt: 1000, endedAt: 5000 },
+    ]);
 
     expect(turns).toHaveLength(1);
     expect(turns[0]!.startedAt).toBe(1000);
@@ -1013,20 +1028,25 @@ describe("buildChatTurns — turn timing", () => {
 
   it("handles more turns than timings (partial hydration)", () => {
     const userMsg1: UIMessage = {
-      id: "u1", role: "user", content: "a", parts: [],
-      isStreaming: false, timestamp: 1000,
+      id: "u1",
+      role: "user",
+      content: "a",
+      parts: [],
+      isStreaming: false,
+      timestamp: 1000,
     };
     const userMsg2: UIMessage = {
-      id: "u2", role: "user", content: "b", parts: [],
-      isStreaming: false, timestamp: 2000,
+      id: "u2",
+      role: "user",
+      content: "b",
+      parts: [],
+      isStreaming: false,
+      timestamp: 2000,
     };
 
-    const turns = buildChatTurns(
-      ["u1", "u2"],
-      { u1: userMsg1, u2: userMsg2 },
-      "idle",
-      [{ startedAt: 1000, endedAt: 1500 }]
-    );
+    const turns = buildChatTurns(["u1", "u2"], { u1: userMsg1, u2: userMsg2 }, "idle", [
+      { startedAt: 1000, endedAt: 1500 },
+    ]);
 
     expect(turns).toHaveLength(2);
     expect(turns[0]!.startedAt).toBe(1000);
@@ -1041,16 +1061,19 @@ describe("buildChatTurns — turn timing", () => {
 ```bash
 cd apps/desktop && nub run test -- turn-projection.test
 ```
+
 Expected: FAIL — `buildChatTurns` doesn't accept 4th arg, `ChatTurn` has no timing fields.
 
 **Step 3: Modify turn-projection.ts**
 
 1. Import `TurnTiming`:
+
 ```ts
 import type { MessagePart, TurnTiming, UIMessage } from "../types.ts";
 ```
 
 2. Add timing fields to `ChatTurn`:
+
 ```ts
 export interface ChatTurn {
   assistantMessages: UIMessage[];
@@ -1064,6 +1087,7 @@ export interface ChatTurn {
 ```
 
 3. Update `newTurn`:
+
 ```ts
 function newTurn(userMessage: UIMessage | null, id: string): ChatTurn {
   return {
@@ -1079,12 +1103,13 @@ function newTurn(userMessage: UIMessage | null, id: string): ChatTurn {
 ```
 
 4. Add `turnTimings` parameter to `buildChatTurns` and attach:
+
 ```ts
 export function buildChatTurns(
   messageOrder: string[],
   messages: Record<string, UIMessage>,
   streamingPhase: string,
-  turnTimings: TurnTiming[] = []
+  turnTimings: TurnTiming[] = [],
 ): ChatTurn[] {
   // ... existing turn-building logic unchanged ...
 
@@ -1104,6 +1129,7 @@ export function buildChatTurns(
 ```bash
 cd apps/desktop && nub run test -- turn-projection.test
 ```
+
 Expected: PASS
 
 **Step 5: Update callers to pass turnTimings**
@@ -1111,18 +1137,18 @@ Expected: PASS
 In `apps/desktop/src/components/chat/task-chat-view.tsx`, update the `turns` memo:
 
 ```ts
-  const turns = createMemo(() => {
-    const session = sessionStore();
-    if (!session) {
-      return [];
-    }
-    return buildChatTurns(
-      session.store.messageOrder,
-      session.store.messages,
-      session.store.streaming.phase,
-      session.store.turnTimings
-    );
-  });
+const turns = createMemo(() => {
+  const session = sessionStore();
+  if (!session) {
+    return [];
+  }
+  return buildChatTurns(
+    session.store.messageOrder,
+    session.store.messages,
+    session.store.streaming.phase,
+    session.store.turnTimings,
+  );
+});
 ```
 
 Also update `apps/desktop/src/components/onboarding/onboarding-panel.tsx` if it calls `buildChatTurns` — pass `session.store.turnTimings` or `[]`.
@@ -1132,6 +1158,7 @@ Also update `apps/desktop/src/components/onboarding/onboarding-panel.tsx` if it 
 ```bash
 cd apps/desktop && nub run typecheck && nub run test
 ```
+
 Expected: PASS (all tests)
 
 **Step 7: Commit**
@@ -1146,6 +1173,7 @@ git commit -m "feat(desktop): attach turn timing to ChatTurn in buildChatTurns"
 ### Task 10: Load turn timings on message hydration
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/server/actions.ts` — `loadMessages` function
 
 **Step 1: Modify `loadMessages` to also fetch turns**
@@ -1197,6 +1225,7 @@ In `apps/desktop/src/stores/server/actions.ts`, replace the `loadMessages` actio
 ```bash
 cd apps/desktop && nub run typecheck
 ```
+
 Expected: PASS (the `App` type from server includes the turns route automatically via Hono RPC)
 
 **Step 3: Commit**
@@ -1211,6 +1240,7 @@ git commit -m "feat(desktop): load turn timings alongside messages"
 ### Task 11: SessionTurn UI — "Worked for" header with live timer
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/chat/timeline/session-turn.tsx`
 - Test: `apps/desktop/src/components/chat/parts/__tests__/session-turn-timing.test.tsx`
 
@@ -1239,9 +1269,7 @@ function makeTurn(overrides: Partial<ChatTurn> = {}): ChatTurn {
 
 describe("SessionTurn timing header", () => {
   it("shows 'Worked for' when turn has startedAt and endedAt", () => {
-    const [turn] = createSignal<ChatTurn>(
-      makeTurn({ startedAt: 1000, endedAt: 62000 })
-    );
+    const [turn] = createSignal<ChatTurn>(makeTurn({ startedAt: 1000, endedAt: 62000 }));
     const [streaming] = createSignal(false);
     const div = document.createElement("div");
     render(() => <SessionTurn turn={turn} isStreaming={streaming} />, div);
@@ -1265,6 +1293,7 @@ describe("SessionTurn timing header", () => {
 ```bash
 cd apps/desktop && nub run test -- session-turn-timing
 ```
+
 Expected: FAIL — no timing header rendered.
 
 **Step 3: Implement the timing header in SessionTurn**
@@ -1272,6 +1301,7 @@ Expected: FAIL — no timing header rendered.
 In `apps/desktop/src/components/chat/timeline/session-turn.tsx`:
 
 1. Add imports:
+
 ```ts
 import {
   type Accessor,
@@ -1287,6 +1317,7 @@ import {
 ```
 
 2. Add duration formatter:
+
 ```ts
 function formatWorkDuration(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -1304,6 +1335,7 @@ function formatWorkDuration(ms: number): string {
 ```
 
 3. Add live timer + duration memo inside the component:
+
 ```ts
 export function SessionTurn(props: SessionTurnProps): JSX.Element {
   const turn = props.turn;
@@ -1338,27 +1370,28 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
 4. Add the timing header JSX between the user message `<Show>` and the assistant messages `<Show>`:
 
 ```tsx
-      <Show when={durationLabel()}>
-        <div class="flex items-center gap-2 border-border/50 border-b px-3 py-1.5 text-muted-foreground text-xs">
-          <Show when={turn().endedAt === null}>
-            <div class="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          </Show>
-          <span>
-            {turn().endedAt !== null ? "Worked for " : "Working for "}
-            {durationLabel()}
-          </span>
-        </div>
-      </Show>
+<Show when={durationLabel()}>
+  <div class="flex items-center gap-2 border-border/50 border-b px-3 py-1.5 text-muted-foreground text-xs">
+    <Show when={turn().endedAt === null}>
+      <div class="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+    </Show>
+    <span>
+      {turn().endedAt !== null ? "Worked for " : "Working for "}
+      {durationLabel()}
+    </span>
+  </div>
+</Show>
 ```
 
 5. Remove the old "Waiting for response…" block:
+
 ```tsx
-      // DELETE this entire Show block:
-      // <Show when={turn().assistantMessages.length === 0 && turn().working}>
-      //   <div class="flex items-center justify-center py-8 ...">
-      //     Waiting for response…
-      //   </div>
-      // </Show>
+// DELETE this entire Show block:
+// <Show when={turn().assistantMessages.length === 0 && turn().working}>
+//   <div class="flex items-center justify-center py-8 ...">
+//     Waiting for response…
+//   </div>
+// </Show>
 ```
 
 **Step 4: Run test to verify it passes**
@@ -1366,6 +1399,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
 ```bash
 cd apps/desktop && nub run test -- session-turn-timing
 ```
+
 Expected: PASS
 
 **Step 5: Full typecheck + all tests**
@@ -1373,6 +1407,7 @@ Expected: PASS
 ```bash
 cd apps/desktop && nub run typecheck && nub run test
 ```
+
 Expected: ALL PASS
 
 **Step 6: Commit**
@@ -1414,17 +1449,17 @@ git commit -m "chore: format and lint fixes"
 
 ## Summary
 
-| Task | Package | What |
-|------|---------|------|
-| 1 | db | `turns` table + migration |
-| 2 | db | TurnRepo (create, finalize, listBySession, copyForFork) |
-| 3 | server | Inject TurnRepo into context |
-| 4 | server | WS handler creates/finalizes turns around `runPrompt` |
-| 5 | server | REST `GET /sessions/:id/turns` |
-| 6 | server | Fork copies turns |
-| 7 | desktop | TurnTiming type + session store actions |
-| 8 | desktop | Event reducer: `agent_start` → startTurn, `agent_end`/`abort` → finalizeTurn |
-| 9 | desktop | buildChatTurns attaches timing by sequence |
-| 10 | desktop | loadMessages fetches `/turns` alongside `/messages` |
-| 11 | desktop | SessionTurn "Worked for" header with live timer |
-| 12 | all | Final verification |
+| Task | Package | What                                                                         |
+| ---- | ------- | ---------------------------------------------------------------------------- |
+| 1    | db      | `turns` table + migration                                                    |
+| 2    | db      | TurnRepo (create, finalize, listBySession, copyForFork)                      |
+| 3    | server  | Inject TurnRepo into context                                                 |
+| 4    | server  | WS handler creates/finalizes turns around `runPrompt`                        |
+| 5    | server  | REST `GET /sessions/:id/turns`                                               |
+| 6    | server  | Fork copies turns                                                            |
+| 7    | desktop | TurnTiming type + session store actions                                      |
+| 8    | desktop | Event reducer: `agent_start` → startTurn, `agent_end`/`abort` → finalizeTurn |
+| 9    | desktop | buildChatTurns attaches timing by sequence                                   |
+| 10   | desktop | loadMessages fetches `/turns` alongside `/messages`                          |
+| 11   | desktop | SessionTurn "Worked for" header with live timer                              |
+| 12   | all     | Final verification                                                           |

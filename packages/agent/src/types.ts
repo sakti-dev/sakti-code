@@ -13,18 +13,13 @@ import type { Logger } from "@sakti-code/logger";
 import type { Static, TSchema } from "typebox";
 import type { CacheDiagnostics } from "./core/cache-shape";
 
-export type StreamFn = (
-  req: StreamRequest
-) => Promise<StreamResult> | StreamResult;
+export type StreamFn = (req: StreamRequest) => Promise<StreamResult> | StreamResult;
 
 export type ToolExecutionMode = "sequential" | "parallel";
 
 export type QueueMode = "all" | "one-at-a-time";
 
-export type AgentToolCall = Extract<
-  AssistantMessage["content"][number],
-  { type: "toolCall" }
->;
+export type AgentToolCall = Extract<AssistantMessage["content"][number], { type: "toolCall" }>;
 
 export interface BeforeToolCallResult {
   block?: boolean | undefined;
@@ -73,7 +68,7 @@ export interface AgentLoopConfig {
   afterToolCall?:
     | ((
         context: AfterToolCallContext,
-        signal?: AbortSignal
+        signal?: AbortSignal,
       ) => Promise<AfterToolCallResult | undefined>)
     | undefined;
 
@@ -82,20 +77,15 @@ export interface AgentLoopConfig {
   beforeToolCall?:
     | ((
         context: BeforeToolCallContext,
-        signal?: AbortSignal
+        signal?: AbortSignal,
       ) => Promise<BeforeToolCallResult | undefined>)
     | undefined;
 
   convertToLlm: (messages: AgentMessage[]) => Message[] | Promise<Message[]>;
 
-  evaluatePermission?: (
-    permission: string,
-    pattern: string
-  ) => "allow" | "deny" | "ask";
+  evaluatePermission?: (permission: string, pattern: string) => "allow" | "deny" | "ask";
 
-  getApiKey?:
-    | ((provider: string) => Promise<string | undefined> | string | undefined)
-    | undefined;
+  getApiKey?: ((provider: string) => Promise<string | undefined> | string | undefined) | undefined;
 
   getFollowUpMessages?: (() => Promise<AgentMessage[]>) | undefined;
 
@@ -107,18 +97,13 @@ export interface AgentLoopConfig {
 
   prepareNextTurn?:
     | ((
-        context: PrepareNextTurnContext
-      ) =>
-        | AgentLoopTurnUpdate
-        | undefined
-        | Promise<AgentLoopTurnUpdate | undefined>)
+        context: PrepareNextTurnContext,
+      ) => AgentLoopTurnUpdate | undefined | Promise<AgentLoopTurnUpdate | undefined>)
     | undefined;
 
   reasoning?: ThinkingLevel | undefined;
 
-  resolvePermissionAsk?: (
-    req: PermissionAskRequest
-  ) => Promise<"allow" | "deny">;
+  resolvePermissionAsk?: (req: PermissionAskRequest) => Promise<"allow" | "deny">;
   sessionId?: string | undefined;
 
   shouldStopAfterTurn?:
@@ -128,20 +113,11 @@ export interface AgentLoopConfig {
   toolExecution?: ToolExecutionMode | undefined;
 
   transformContext?:
-    | ((
-        messages: AgentMessage[],
-        signal?: AbortSignal
-      ) => Promise<AgentMessage[]>)
+    | ((messages: AgentMessage[], signal?: AbortSignal) => Promise<AgentMessage[]>)
     | undefined;
 }
 
-export type ThinkingLevel =
-  | "off"
-  | "minimal"
-  | "low"
-  | "medium"
-  | "high"
-  | "xhigh";
+export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
 export type CustomAgentMessages = Record<string, never>;
 
@@ -185,8 +161,7 @@ export type AgentMessage =
   | CustomMessage
   | BashExecutionMessage
   | BranchSummaryMessage
-  | CompactionSummaryMessage
-  | CustomAgentMessages[keyof CustomAgentMessages];
+  | CompactionSummaryMessage;
 
 export interface AgentState {
   readonly errorMessage?: string | undefined;
@@ -224,9 +199,7 @@ export interface PermissionAskRequest {
 
 export type PermissionReply = "once" | "always" | "reject";
 
-export type AgentToolUpdateCallback<T = any> = (
-  partialResult: AgentToolResult<T>
-) => void;
+export type AgentToolUpdateCallback<T = any> = (partialResult: AgentToolResult<T>) => void;
 
 export interface AgentTool<
   TParameters extends TSchema = TSchema,
@@ -236,7 +209,7 @@ export interface AgentTool<
     toolCallId: string,
     params: Static<TParameters>,
     signal?: AbortSignal,
-    onUpdate?: AgentToolUpdateCallback<TDetails>
+    onUpdate?: AgentToolUpdateCallback<TDetails>,
   ) => Promise<AgentToolResult<TDetails>>;
   executionMode?: ToolExecutionMode | undefined;
   label: string;

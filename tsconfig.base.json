@@ -17,7 +17,6 @@
     "resolveJsonModule": true,
     "sourceMap": true,
     "noEmit": true,
-    "ignoreDeprecations": "6.0",
     "types": ["node"],
     "allowImportingTsExtensions": true
   }

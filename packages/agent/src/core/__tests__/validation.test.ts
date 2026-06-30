@@ -1,6 +1,6 @@
 import type { Tool, ToolCall } from "@sakti-code/llm";
 import { Type } from "typebox";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { validateToolArguments } from "../../core/validation";
 
 describe("validateToolArguments", () => {
@@ -49,7 +49,7 @@ describe("validateToolArguments", () => {
       arguments: { count: "abc" },
     };
     expect(() => validateToolArguments(tool, toolCall)).toThrow(
-      'Validation failed for tool "test"'
+      'Validation failed for tool "test"',
     );
   });
 

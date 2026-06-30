@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { spawnPiped } from "../lib/spawn.ts";
 import { gitRoutes, runGit } from "../routes/projects/git.ts";
 import { makeApp } from "./helpers.ts";
@@ -46,7 +46,7 @@ describe("git routes", () => {
 
   it("GET /api/projects/:id/git/status returns modified file name", async () => {
     const res = await app.request(
-      new Request(`http://localhost/api/projects/${projectId}/git/status`)
+      new Request(`http://localhost/api/projects/${projectId}/git/status`),
     );
     expect(res.status).toBe(200);
     const body = await res.text();
@@ -55,7 +55,7 @@ describe("git routes", () => {
 
   it("GET /api/projects/:id/git/branch returns current branch", async () => {
     const res = await app.request(
-      new Request(`http://localhost/api/projects/${projectId}/git/branch`)
+      new Request(`http://localhost/api/projects/${projectId}/git/branch`),
     );
     expect(res.status).toBe(200);
     const body = await res.text();
@@ -64,7 +64,7 @@ describe("git routes", () => {
 
   it("GET /api/projects/:id/git/log returns commit message", async () => {
     const res = await app.request(
-      new Request(`http://localhost/api/projects/${projectId}/git/log?limit=5`)
+      new Request(`http://localhost/api/projects/${projectId}/git/log?limit=5`),
     );
     expect(res.status).toBe(200);
     const body = await res.text();
@@ -73,7 +73,7 @@ describe("git routes", () => {
 
   it("GET /api/projects/:id/git/status returns 404 for unknown project", async () => {
     const res = await app.request(
-      new Request("http://localhost/api/projects/nonexistent/git/status")
+      new Request("http://localhost/api/projects/nonexistent/git/status"),
     );
     expect(res.status).toBe(404);
   });
@@ -81,16 +81,14 @@ describe("git routes", () => {
   it("gitRoutes is composable via makeApp", async () => {
     const built = await makeApp([gitRoutes]);
     const res = await built.app.request(
-      new Request("http://localhost/api/projects/nonexistent/git/status")
+      new Request("http://localhost/api/projects/nonexistent/git/status"),
     );
     expect(res.status).toBe(404);
   });
 
   it("diff with shell metacharacters in path is treated literally", async () => {
     const res = await app.request(
-      new Request(
-        `http://localhost/api/projects/${projectId}/git/diff?path=foo%3Brm`
-      )
+      new Request(`http://localhost/api/projects/${projectId}/git/diff?path=foo%3Brm`),
     );
     expect(res.status).toBe(200);
     const body = await res.text();
@@ -101,9 +99,7 @@ describe("git routes", () => {
     await execGit(tempDir, "add", "hello.txt");
     try {
       const res = await app.request(
-        new Request(
-          `http://localhost/api/projects/${projectId}/git/diff?staged=true`
-        )
+        new Request(`http://localhost/api/projects/${projectId}/git/diff?staged=true`),
       );
       expect(res.status).toBe(200);
       const body = await res.text();
@@ -116,16 +112,14 @@ describe("git routes", () => {
 
   it("GET /api/projects/:id/git/diff on non-existent path returns 200 with git output", async () => {
     const res = await app.request(
-      new Request(
-        `http://localhost/api/projects/${projectId}/git/diff?path=nope.txt`
-      )
+      new Request(`http://localhost/api/projects/${projectId}/git/diff?path=nope.txt`),
     );
     expect(res.status).toBe(200);
   });
 
   it("GET /api/projects/:id/git/log rejects negative limit with 400", async () => {
     const res = await app.request(
-      new Request(`http://localhost/api/projects/${projectId}/git/log?limit=-5`)
+      new Request(`http://localhost/api/projects/${projectId}/git/log?limit=-5`),
     );
     expect(res.status).toBe(400);
   });
@@ -135,7 +129,7 @@ describe("git routes", () => {
     process.env.PATH = "/nonexistent";
     try {
       const res = await app.request(
-        new Request(`http://localhost/api/projects/${projectId}/git/status`)
+        new Request(`http://localhost/api/projects/${projectId}/git/status`),
       );
       expect(res.status).toBe(500);
     } finally {
@@ -145,15 +139,13 @@ describe("git routes", () => {
 
   it("GET /api/projects/:id/git/turn-diff returns structured diff against HEAD", async () => {
     const res = await app.request(
-      new Request(`http://localhost/api/projects/${projectId}/git/turn-diff`)
+      new Request(`http://localhost/api/projects/${projectId}/git/turn-diff`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.files)).toBe(true);
     expect(body.files.length).toBeGreaterThan(0);
-    const hello = body.files.find(
-      (f: { path: string }) => f.path === "hello.txt"
-    );
+    const hello = body.files.find((f: { path: string }) => f.path === "hello.txt");
     expect(hello).toBeDefined();
     expect(hello.additions).toBeGreaterThanOrEqual(1);
     expect(typeof body.diff).toBe("string");
@@ -163,9 +155,7 @@ describe("git routes", () => {
 
   it("GET /api/projects/:id/git/turn-diff?files[]=hello.txt scopes the diff", async () => {
     const res = await app.request(
-      new Request(
-        `http://localhost/api/projects/${projectId}/git/turn-diff?files[]=hello.txt`
-      )
+      new Request(`http://localhost/api/projects/${projectId}/git/turn-diff?files[]=hello.txt`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -174,9 +164,7 @@ describe("git routes", () => {
   });
 
   it("GET /api/projects/:id/git/turn-diff returns 404 for unknown project", async () => {
-    const res = await app.request(
-      new Request("http://localhost/api/projects/nope/git/turn-diff")
-    );
+    const res = await app.request(new Request("http://localhost/api/projects/nope/git/turn-diff"));
     expect(res.status).toBe(404);
   });
 
@@ -188,7 +176,7 @@ describe("git routes", () => {
       const built = await makeApp([gitRoutes]);
       const p = await built.ctx.repos.projects.create("empty", emptyDir);
       const res = await built.app.request(
-        new Request(`http://localhost/api/projects/${p.id}/git/turn-diff`)
+        new Request(`http://localhost/api/projects/${p.id}/git/turn-diff`),
       );
       expect(res.status).toBe(200);
       const body = await res.json();

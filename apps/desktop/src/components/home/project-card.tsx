@@ -27,8 +27,7 @@ export function ProjectCard(props: ProjectCardProps) {
     return `${days}d ago`;
   };
 
-  const sortedSessions = () =>
-    [...props.sessions].sort((a, b) => b.updatedAt - a.updatedAt);
+  const sortedSessions = () => [...props.sessions].sort((a, b) => b.updatedAt - a.updatedAt);
 
   const latestSessionTime = () => {
     const sessions = sortedSessions();
@@ -68,21 +67,15 @@ export function ProjectCard(props: ProjectCardProps) {
           </div>
           <div>
             <h3 class="font-semibold text-foreground">{props.project.name}</h3>
-            <p class="max-w-[200px] truncate text-muted-foreground text-xs">
-              {props.project.cwd}
-            </p>
+            <p class="max-w-[200px] truncate text-muted-foreground text-xs">{props.project.cwd}</p>
           </div>
         </div>
-        <span class="text-muted-foreground text-xs">
-          {formatRelativeTime(latestSessionTime())}
-        </span>
+        <span class="text-muted-foreground text-xs">{formatRelativeTime(latestSessionTime())}</span>
       </div>
 
       <div class="border-border/50 border-t pt-3">
         <Show
-          fallback={
-            <p class="py-2 text-muted-foreground text-sm">No sessions yet</p>
-          }
+          fallback={<p class="py-2 text-muted-foreground text-sm">No sessions yet</p>}
           when={sortedSessions().length > 0}
         >
           <div class="space-y-1.5">
@@ -92,9 +85,7 @@ export function ProjectCard(props: ProjectCardProps) {
                   <span class="text-muted-foreground">
                     <FaRegularClock class="h-4 w-4" />
                   </span>
-                  <span class="flex-1 truncate">
-                    {session.title ?? "Untitled session"}
-                  </span>
+                  <span class="flex-1 truncate">{session.title ?? "Untitled session"}</span>
                   <span class="text-muted-foreground text-xs">
                     {formatRelativeTime(session.updatedAt)}
                   </span>

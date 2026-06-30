@@ -104,16 +104,10 @@ export function buildProviderOptions(input: {
     return {};
   }
 
-  const reasoningEffort: ThinkingLevel | undefined =
-    level === "off" ? undefined : level;
+  const reasoningEffort: ThinkingLevel | undefined = level === "off" ? undefined : level;
   const format = compatThinkingFormat(model.compat);
 
-  const params = buildReasoningParams(
-    model,
-    reasoningEffort,
-    format,
-    model.compat
-  );
+  const params = buildReasoningParams(model, reasoningEffort, format, model.compat);
 
   if (Object.keys(params).length === 0) {
     return {};
@@ -123,7 +117,7 @@ export function buildProviderOptions(input: {
 
 /** Extract the thinkingFormat from compat, defaulting to "openai". */
 function compatThinkingFormat(
-  compat: OpenAICompletionsCompat
+  compat: OpenAICompletionsCompat,
 ): NonNullable<OpenAICompletionsCompat["thinkingFormat"]> {
   return compat.thinkingFormat ?? "openai";
 }
@@ -136,7 +130,7 @@ function buildReasoningParams(
   model: Model,
   reasoningEffort: ThinkingLevel | undefined,
   format: NonNullable<OpenAICompletionsCompat["thinkingFormat"]>,
-  compat: OpenAICompletionsCompat
+  compat: OpenAICompletionsCompat,
 ): Record<string, unknown> {
   switch (format) {
     case "zai":
@@ -160,7 +154,7 @@ function resolveEffort(model: Model, level: ThinkingLevel): string | null {
 function zaiParams(
   model: Model,
   reasoningEffort: ThinkingLevel | undefined,
-  compat: OpenAICompletionsCompat
+  compat: OpenAICompletionsCompat,
 ): Record<string, unknown> {
   const params: Record<string, unknown> = {
     thinking: { type: reasoningEffort ? "enabled" : "disabled" },
@@ -178,7 +172,7 @@ function zaiParams(
 function deepseekParams(
   model: Model,
   reasoningEffort: ThinkingLevel | undefined,
-  compat: OpenAICompletionsCompat
+  compat: OpenAICompletionsCompat,
 ): Record<string, unknown> {
   const params: Record<string, unknown> = {};
   if (reasoningEffort) {
@@ -199,7 +193,7 @@ function deepseekParams(
 function openaiParams(
   model: Model,
   reasoningEffort: ThinkingLevel | undefined,
-  compat: OpenAICompletionsCompat
+  compat: OpenAICompletionsCompat,
 ): Record<string, unknown> {
   const params: Record<string, unknown> = {};
   if (reasoningEffort && compat.supportsReasoningEffort) {

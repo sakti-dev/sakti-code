@@ -15,10 +15,7 @@ export function createFileOps(): FileOperations {
   };
 }
 
-export function extractFileOpsFromMessage(
-  message: AgentMessage,
-  fileOps: FileOperations
-): void {
+export function extractFileOpsFromMessage(message: AgentMessage, fileOps: FileOperations): void {
   if (message.role !== "assistant") {
     return;
   }
@@ -71,18 +68,13 @@ export function computeFileLists(fileOps: FileOperations): {
   return { readFiles: readOnly, modifiedFiles };
 }
 
-export function formatFileOperations(
-  readFiles: string[],
-  modifiedFiles: string[]
-): string {
+export function formatFileOperations(readFiles: string[], modifiedFiles: string[]): string {
   const sections: string[] = [];
   if (readFiles.length > 0) {
     sections.push(`<read-files>\n${readFiles.join("\n")}\n</read-files>`);
   }
   if (modifiedFiles.length > 0) {
-    sections.push(
-      `<modified-files>\n${modifiedFiles.join("\n")}\n</modified-files>`
-    );
+    sections.push(`<modified-files>\n${modifiedFiles.join("\n")}\n</modified-files>`);
   }
   if (sections.length === 0) {
     return "";
@@ -117,9 +109,7 @@ export function serializeConversation(messages: Message[]): string {
         typeof msg.content === "string"
           ? msg.content
           : msg.content
-              .filter(
-                (c): c is { type: "text"; text: string } => c.type === "text"
-              )
+              .filter((c): c is { type: "text"; text: string } => c.type === "text")
               .map((c) => c.text)
               .join("");
       if (content) {
@@ -159,9 +149,7 @@ export function serializeConversation(messages: Message[]): string {
         .map((c) => c.text)
         .join("");
       if (content) {
-        parts.push(
-          `[Tool result]: ${truncateForSummary(content, TOOL_RESULT_MAX_CHARS)}`
-        );
+        parts.push(`[Tool result]: ${truncateForSummary(content, TOOL_RESULT_MAX_CHARS)}`);
       }
     }
   }

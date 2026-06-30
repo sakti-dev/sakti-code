@@ -1,9 +1,4 @@
-import type {
-  BlockResolution,
-  BlockResolver,
-  Cursor,
-  Edit,
-} from "../../lib/hashline-utils/types";
+import type { BlockResolution, BlockResolver, Cursor, Edit } from "../../lib/hashline-utils/types";
 import { STRUCTURAL_CLOSER_RE } from "./apply";
 import {
   BLOCK_RESOLVER_UNAVAILABLE,
@@ -28,7 +23,7 @@ export function resolveBlockEdits(
   text: string,
   path: string,
   resolver: BlockResolver | undefined,
-  options: ResolveBlockEditsOptions = {}
+  options: ResolveBlockEditsOptions = {},
 ): readonly Edit[] {
   if (!hasBlockEdit(edits)) {
     return edits;
@@ -47,18 +42,15 @@ export function resolveBlockEdits(
         : edit.payloads.length === 0
           ? "delete"
           : "replace";
-    const span = resolver
-      ? resolver({ path, text, line: edit.anchor.line })
-      : null;
+    const span = resolver ? resolver({ path, text, line: edit.anchor.line }) : null;
     if (span === null) {
       if (op === "insert_after") {
         const anchorText = text.split("\n")[edit.anchor.line - 1];
-        const isCloser =
-          anchorText !== undefined && STRUCTURAL_CLOSER_RE.test(anchorText);
+        const isCloser = anchorText !== undefined && STRUCTURAL_CLOSER_RE.test(anchorText);
         options.onWarning?.(
           isCloser
             ? insertAfterBlockCloserLoweredWarning(edit.anchor.line)
-            : insertAfterBlockUnresolvedLoweredWarning(edit.anchor.line)
+            : insertAfterBlockUnresolvedLoweredWarning(edit.anchor.line),
         );
         for (const payload of edit.payloads) {
           const cursor: Cursor = {
@@ -83,16 +75,14 @@ export function resolveBlockEdits(
           resolver
             ? blockUnresolvedMessage(edit.anchor.line, op, text.split("\n"))
             : BLOCK_RESOLVER_UNAVAILABLE
-        }`
+        }`,
       );
     }
     if (span.start === span.end) {
       if (onUnresolved === "drop") {
         continue;
       }
-      throw new Error(
-        `line ${edit.lineNum}: ${blockSingleLineMessage(edit.anchor.line, op)}`
-      );
+      throw new Error(`line ${edit.lineNum}: ${blockSingleLineMessage(edit.anchor.line, op)}`);
     }
     options.onResolved?.({
       anchorLine: edit.anchor.line,

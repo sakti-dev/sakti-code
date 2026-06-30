@@ -94,6 +94,7 @@ bun x ultracite fix                               # lint + format
 ### Task 1: Fix event-reducer — don't clear currentMessageId on message_end
 
 **Files:**
+
 - Modify: `apps/app/src/stores/event-reducer.ts:87-94`
 
 **Step 1: Write the failing test**
@@ -179,6 +180,7 @@ Expected: FAIL — the first test fails because `currentMessageId` is null after
 In `apps/app/src/stores/event-reducer.ts`, change the `message_end` case:
 
 Replace:
+
 ```typescript
     case "message_end": {
       const msgId = actions.getCurrentMessageId();
@@ -191,6 +193,7 @@ Replace:
 ```
 
 With:
+
 ```typescript
     case "message_end": {
       const msgId = actions.getCurrentMessageId();
@@ -204,6 +207,7 @@ With:
 And change the `turn_end` case:
 
 Replace:
+
 ```typescript
     case "turn_end":
       actions.setPhase("idle");
@@ -211,6 +215,7 @@ Replace:
 ```
 
 With:
+
 ```typescript
     case "turn_end":
       actions.setPhase("idle");
@@ -250,6 +255,7 @@ ordering is message_end → tool_execution_start → turn_end."
 ### Task 2: Refactor server-store from singleton to factory
 
 **Files:**
+
 - Modify: `apps/app/src/stores/server-store.ts` (remove singleton, keep factory)
 - Modify: `apps/app/src/stores/__tests__/server-store.test.ts` (already uses factory)
 
@@ -294,6 +300,7 @@ create or receive a store instance via StoreProvider context."
 ### Task 3: Refactor session-registry and terminal-registry from module-level to instance
 
 **Files:**
+
 - Modify: `apps/app/src/stores/session-registry.ts`
 - Modify: `apps/app/src/stores/terminal-registry.ts`
 - Modify: `apps/app/src/stores/__tests__/session-registry.test.ts`
@@ -443,6 +450,7 @@ test pollution, no HMR breakage."
 ### Task 4: Update ws-client to accept stores as dependencies
 
 **Files:**
+
 - Modify: `apps/app/src/stores/ws-client.ts`
 - Modify: `apps/app/src/stores/__tests__/ws-client.test.ts`
 
@@ -451,6 +459,7 @@ test pollution, no HMR breakage."
 Replace the top of `createWsClient` in `apps/app/src/stores/ws-client.ts`:
 
 Replace:
+
 ```typescript
 export function createWsClient(
   url: string,
@@ -460,6 +469,7 @@ export function createWsClient(
 ```
 
 With:
+
 ```typescript
 export interface WsClientDeps {
   serverStore: { store: ServerStoreData; actions: ServerActions };
@@ -478,6 +488,7 @@ export function createWsClient(
 Update the imports at the top of the file:
 
 Replace:
+
 ```typescript
 import { dispatchEvent } from "./event-reducer.ts";
 import { getServerStore } from "./server-store.ts";
@@ -487,6 +498,7 @@ import { createTokenBatcher } from "./token-batcher.ts";
 ```
 
 With:
+
 ```typescript
 import { dispatchEvent } from "./event-reducer.ts";
 import type { ServerActions, ServerStoreData } from "./server-store.ts";
@@ -498,27 +510,33 @@ import { createTokenBatcher } from "./token-batcher.ts";
 Update all `getSessionStore(...)` calls to `sessionRegistry.get(...)` and `getTerminalStore(...)` to `terminalRegistry.get(...)`:
 
 In `getBatcher`:
+
 ```typescript
-      const session = sessionRegistry.get(sessionId);
+const session = sessionRegistry.get(sessionId);
 ```
 
 In `handleFrame`, `case "event"`:
+
 ```typescript
-        const session = sessionRegistry.get(data.sessionId);
+const session = sessionRegistry.get(data.sessionId);
 ```
 
 In `handleFrame`, `case "error"`:
+
 ```typescript
-        const session = sessionRegistry.get(data.sessionId);
+const session = sessionRegistry.get(data.sessionId);
 ```
 
 In `handleFrame`, `case "push"`:
+
 ```typescript
-          terminalRegistry.get(d.terminalId).appendData(d.data);
+terminalRegistry.get(d.terminalId).appendData(d.data);
 ```
+
 and:
+
 ```typescript
-          terminalRegistry.get(d.terminalId).setExit(d.exitCode);
+terminalRegistry.get(d.terminalId).setExit(d.exitCode);
 ```
 
 **Step 2: Rewrite ws-client.test.ts**
@@ -841,6 +859,7 @@ WsClientDeps. Tests create fresh instances per test."
 ### Task 5: Update store-context and actions to use new factory pattern
 
 **Files:**
+
 - Modify: `apps/app/src/stores/store-context.tsx`
 - Modify: `apps/app/src/stores/actions.ts`
 - Modify: `apps/app/src/stores/__tests__/actions.test.ts`
@@ -850,12 +869,14 @@ WsClientDeps. Tests create fresh instances per test."
 In `apps/app/src/stores/actions.ts`, change `createActions` signature:
 
 Replace:
+
 ```typescript
 export function createActions(api: ApiClient, ws: WsClient): Actions {
   const server = getServerStore();
 ```
 
 With:
+
 ```typescript
 export interface ActionsDeps {
   serverStore: { store: ServerStoreData; actions: ServerActions };
@@ -873,23 +894,16 @@ export function createActions(
 Update imports:
 
 Replace:
+
 ```typescript
-import {
-  getServerStore,
-  type Project,
-  type SessionMeta,
-} from "./server-store.ts";
+import { getServerStore, type Project, type SessionMeta } from "./server-store.ts";
 import { getSessionStore } from "./session-registry.ts";
 ```
 
 With:
+
 ```typescript
-import type {
-  Project,
-  ServerActions,
-  ServerStoreData,
-  SessionMeta,
-} from "./server-store.ts";
+import type { Project, ServerActions, ServerStoreData, SessionMeta } from "./server-store.ts";
 import { SessionRegistry } from "./session-registry.ts";
 ```
 
@@ -1005,7 +1019,7 @@ describe("actions", () => {
                 },
               ],
               error: null,
-            })
+            }),
           ),
         },
       },
@@ -1025,11 +1039,9 @@ describe("actions", () => {
         projects: {
           get: vi.fn(() =>
             Promise.resolve({
-              data: [
-                { id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 },
-              ],
+              data: [{ id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 }],
               error: null,
-            })
+            }),
           ),
         },
       },
@@ -1049,11 +1061,9 @@ describe("actions", () => {
         projects: {
           get: vi.fn(() =>
             Promise.resolve({
-              data: [
-                { id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 },
-              ],
+              data: [{ id: "p1", name: "A", cwd: "/a", createdAt: 1, updatedAt: 1 }],
               error: null,
-            })
+            }),
           ),
         },
       },
@@ -1083,7 +1093,7 @@ describe("actions", () => {
                 },
               ],
               error: null,
-            })
+            }),
           ),
         },
       },
@@ -1166,7 +1176,7 @@ describe("actions", () => {
             Promise.resolve({
               data: null,
               error: { status: 500, value: "server down" },
-            })
+            }),
           ),
         },
       },
@@ -1207,6 +1217,7 @@ followUpRun coverage, error path coverage."
 ### Task 6: Create shared test helpers
 
 **Files:**
+
 - Create: `apps/app/src/stores/__tests__/helpers.ts`
 
 **Step 1: Create the helpers file**
@@ -1219,12 +1230,7 @@ import type { AssistantMessage, Usage } from "@earendil-works/pi-ai/base";
 
 // ── Usage factory ─────────────────────────────────────────────────
 
-export function createMockUsage(
-  input = 100,
-  output = 50,
-  cacheRead = 0,
-  cacheWrite = 0,
-): Usage {
+export function createMockUsage(input = 100, output = 50, cacheRead = 0, cacheWrite = 0): Usage {
   return {
     input,
     output,
@@ -1290,10 +1296,7 @@ export function makeAssistantMessageWithToolCall(
 export function makeAssistantMessageWithThinking(text: string, thinking: string): AssistantMessage {
   return {
     ...makeAssistantMessage(text),
-    content: [
-      { type: "thinking", thinking },
-      ...(text ? [{ type: "text", text }] : []),
-    ],
+    content: [{ type: "thinking", thinking }, ...(text ? [{ type: "text", text }] : [])],
   };
 }
 
@@ -1406,16 +1409,9 @@ export function makeFullTurnSequence(options: {
   events.push(makeMessageEndEvent(assistantMsg));
 
   for (const tool of options.tools ?? []) {
+    events.push(makeToolExecutionStartEvent(tool.toolCallId, tool.toolName, tool.args));
     events.push(
-      makeToolExecutionStartEvent(tool.toolCallId, tool.toolName, tool.args),
-    );
-    events.push(
-      makeToolExecutionEndEvent(
-        tool.toolCallId,
-        tool.toolName,
-        tool.result,
-        tool.isError,
-      ),
+      makeToolExecutionEndEvent(tool.toolCallId, tool.toolName, tool.result, tool.isError),
     );
   }
 
@@ -1438,6 +1434,7 @@ git commit -m "test: add shared test helpers for messages, events, and lifecycle
 ### Task 7: Update event-reducer tests to use helpers and add full lifecycle test
 
 **Files:**
+
 - Modify: `apps/app/src/stores/__tests__/event-reducer.test.ts`
 
 **Step 1: Rewrite event-reducer.test.ts using helpers**
@@ -1489,11 +1486,7 @@ describe("event reducer — individual events", () => {
 
   it("message_start for assistant creates streaming message", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage("")),
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
 
     expect(session.store.messageOrder).toHaveLength(1);
     const msgId = session.store.messageOrder[0]!;
@@ -1523,11 +1516,7 @@ describe("event reducer — individual events", () => {
     dispatchEvent(session.actions, batcher, makeMessageStartEvent(msg));
     const msgId = session.store.streaming.currentMessageId!;
 
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageUpdateTextDeltaEvent(msg, "Hello"),
-    );
+    dispatchEvent(session.actions, batcher, makeMessageUpdateTextDeltaEvent(msg, "Hello"));
     await Promise.resolve();
 
     expect(session.store.messages[msgId]!.content).toBe("Hello");
@@ -1535,18 +1524,10 @@ describe("event reducer — individual events", () => {
 
   it("message_end finalizes message but does NOT clear currentMessageId", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage("")),
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
     const msgId = session.store.streaming.currentMessageId!;
 
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageEndEvent(makeAssistantMessage("")),
-    );
+    dispatchEvent(session.actions, batcher, makeMessageEndEvent(makeAssistantMessage("")));
 
     expect(session.store.messages[msgId]!.isStreaming).toBe(false);
     expect(session.store.streaming.currentMessageId).toBe(msgId);
@@ -1554,11 +1535,7 @@ describe("event reducer — individual events", () => {
 
   it("tool_execution_start adds tool call part", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage("")),
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
     const msgId = session.store.streaming.currentMessageId!;
 
     dispatchEvent(
@@ -1578,11 +1555,7 @@ describe("event reducer — individual events", () => {
 
   it("tool_execution_end completes tool call", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage("")),
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
     const msgId = session.store.streaming.currentMessageId!;
     dispatchEvent(
       session.actions,
@@ -1605,11 +1578,7 @@ describe("event reducer — individual events", () => {
 
   it("tool_execution_end with isError sets error status", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage("")),
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
     const msgId = session.store.streaming.currentMessageId!;
     dispatchEvent(
       session.actions,
@@ -1632,16 +1601,8 @@ describe("event reducer — individual events", () => {
 
   it("turn_end clears currentMessageId and sets idle", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage("")),
-    );
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeTurnEndEvent(makeAssistantMessage("done")),
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
+    dispatchEvent(session.actions, batcher, makeTurnEndEvent(makeAssistantMessage("done")));
 
     expect(session.store.streaming.currentMessageId).toBeNull();
     expect(session.store.streaming.phase).toBe("idle");
@@ -1649,11 +1610,7 @@ describe("event reducer — individual events", () => {
 
   it("agent_end clears state and sets idle", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage("")),
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
     dispatchEvent(session.actions, batcher, makeAgentEndEvent());
 
     expect(session.store.streaming.phase).toBe("idle");
@@ -1663,11 +1620,7 @@ describe("event reducer — individual events", () => {
 
   it("abort clears state and sets idle", () => {
     const { session, batcher } = setup();
-    dispatchEvent(
-      session.actions,
-      batcher,
-      makeMessageStartEvent(makeAssistantMessage("")),
-    );
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("")));
     dispatchEvent(session.actions, batcher, makeAbortEvent());
 
     expect(session.store.streaming.phase).toBe("idle");
@@ -1815,6 +1768,7 @@ ordering fix."
 ### Task 8: Comprehensive types.ts tests
 
 **Files:**
+
 - Modify: `apps/app/src/stores/__tests__/types.test.ts`
 
 **Step 1: Rewrite types.test.ts**
@@ -1825,7 +1779,11 @@ Replace entire contents of `apps/app/src/stores/__tests__/types.test.ts`:
 import type { AgentMessage } from "@sakti-code/agent";
 import { describe, expect, it } from "vitest";
 import { agentMessageToUI, idleStreamState } from "../types.ts";
-import { makeAssistantMessage, makeAssistantMessageWithToolCall, makeAssistantMessageWithThinking } from "./helpers.ts";
+import {
+  makeAssistantMessage,
+  makeAssistantMessageWithToolCall,
+  makeAssistantMessageWithThinking,
+} from "./helpers.ts";
 
 describe("agentMessageToUI — user messages", () => {
   it("converts a user text message", () => {
@@ -1975,6 +1933,7 @@ git commit -m "test(types): cover user, assistant, toolResult, bashExecution, ed
 ### Task 9: Comprehensive session-store.ts tests
 
 **Files:**
+
 - Modify: `apps/app/src/stores/__tests__/session-store.test.ts`
 
 **Step 1: Rewrite session-store.test.ts**
@@ -2258,6 +2217,7 @@ git commit -m "test(session-store): cover all 14 actions + reactivity verificati
 ### Task 10: Comprehensive server-store.ts tests
 
 **Files:**
+
 - Modify: `apps/app/src/stores/__tests__/server-store.test.ts`
 
 **Step 1: Rewrite server-store.test.ts**
@@ -2304,7 +2264,15 @@ describe("server store — setSessions", () => {
   it("populates sessions", () => {
     const { store, actions } = createServerStore();
     actions.setSessions([
-      { id: "s1", projectId: "p1", title: "Sess", modelId: "gpt-4", thinkingLevel: "off", createdAt: 1, updatedAt: 1 },
+      {
+        id: "s1",
+        projectId: "p1",
+        title: "Sess",
+        modelId: "gpt-4",
+        thinkingLevel: "off",
+        createdAt: 1,
+        updatedAt: 1,
+      },
     ]);
 
     expect(store.sessions.s1).toBeDefined();
@@ -2314,10 +2282,26 @@ describe("server store — setSessions", () => {
   it("replaces previous sessions on second call", () => {
     const { store, actions } = createServerStore();
     actions.setSessions([
-      { id: "s1", projectId: "p1", title: "Old", modelId: "gpt-4", thinkingLevel: "off", createdAt: 1, updatedAt: 1 },
+      {
+        id: "s1",
+        projectId: "p1",
+        title: "Old",
+        modelId: "gpt-4",
+        thinkingLevel: "off",
+        createdAt: 1,
+        updatedAt: 1,
+      },
     ]);
     actions.setSessions([
-      { id: "s2", projectId: "p1", title: "New", modelId: "gpt-4", thinkingLevel: "off", createdAt: 2, updatedAt: 2 },
+      {
+        id: "s2",
+        projectId: "p1",
+        title: "New",
+        modelId: "gpt-4",
+        thinkingLevel: "off",
+        createdAt: 2,
+        updatedAt: 2,
+      },
     ]);
 
     expect(store.sessions.s1).toBeUndefined();
@@ -2329,8 +2313,13 @@ describe("server store — addSession", () => {
   it("adds a single session", () => {
     const { store, actions } = createServerStore();
     actions.addSession({
-      id: "s1", projectId: "p1", title: null, modelId: "gpt-4",
-      thinkingLevel: "off", createdAt: 1, updatedAt: 1,
+      id: "s1",
+      projectId: "p1",
+      title: null,
+      modelId: "gpt-4",
+      thinkingLevel: "off",
+      createdAt: 1,
+      updatedAt: 1,
     });
     expect(store.sessions.s1).toBeDefined();
   });
@@ -2338,11 +2327,24 @@ describe("server store — addSession", () => {
   it("appends to sessionOrder", () => {
     const { store, actions } = createServerStore();
     actions.setSessions([
-      { id: "s1", projectId: "p1", title: "A", modelId: "gpt-4", thinkingLevel: "off", createdAt: 1, updatedAt: 1 },
+      {
+        id: "s1",
+        projectId: "p1",
+        title: "A",
+        modelId: "gpt-4",
+        thinkingLevel: "off",
+        createdAt: 1,
+        updatedAt: 1,
+      },
     ]);
     actions.addSession({
-      id: "s2", projectId: "p1", title: "B", modelId: "gpt-4",
-      thinkingLevel: "off", createdAt: 2, updatedAt: 2,
+      id: "s2",
+      projectId: "p1",
+      title: "B",
+      modelId: "gpt-4",
+      thinkingLevel: "off",
+      createdAt: 2,
+      updatedAt: 2,
     });
 
     expect(store.sessionOrder).toEqual(["s1", "s2"]);
@@ -2353,7 +2355,15 @@ describe("server store — updateSession", () => {
   it("merges partial patch into session", () => {
     const { store, actions } = createServerStore();
     actions.setSessions([
-      { id: "s1", projectId: "p1", title: "Old", modelId: "gpt-4", thinkingLevel: "off", createdAt: 1, updatedAt: 1 },
+      {
+        id: "s1",
+        projectId: "p1",
+        title: "Old",
+        modelId: "gpt-4",
+        thinkingLevel: "off",
+        createdAt: 1,
+        updatedAt: 1,
+      },
     ]);
 
     actions.updateSession("s1", { title: "New" });
@@ -2367,8 +2377,24 @@ describe("server store — removeSession", () => {
   it("removes from sessions and sessionOrder", () => {
     const { store, actions } = createServerStore();
     actions.setSessions([
-      { id: "s1", projectId: "p1", title: "A", modelId: "gpt-4", thinkingLevel: "off", createdAt: 1, updatedAt: 1 },
-      { id: "s2", projectId: "p1", title: "B", modelId: "gpt-4", thinkingLevel: "off", createdAt: 2, updatedAt: 2 },
+      {
+        id: "s1",
+        projectId: "p1",
+        title: "A",
+        modelId: "gpt-4",
+        thinkingLevel: "off",
+        createdAt: 1,
+        updatedAt: 1,
+      },
+      {
+        id: "s2",
+        projectId: "p1",
+        title: "B",
+        modelId: "gpt-4",
+        thinkingLevel: "off",
+        createdAt: 2,
+        updatedAt: 2,
+      },
     ]);
 
     actions.removeSession("s1");
@@ -2423,6 +2449,7 @@ git commit -m "test(server-store): cover all actions including updateSession, re
 ### Task 11: Comprehensive terminal-store.ts and terminal-registry.ts tests
 
 **Files:**
+
 - Modify: `apps/app/src/stores/__tests__/terminal-store.test.ts`
 - Create: `apps/app/src/stores/__tests__/terminal-registry.test.ts`
 
@@ -2546,6 +2573,7 @@ git commit -m "test(terminal): cover all store methods + registry lifecycle"
 ### Task 12: Comprehensive token-batcher.ts tests
 
 **Files:**
+
 - Modify: `apps/app/src/stores/__tests__/token-batcher.test.ts`
 
 **Step 1: Rewrite token-batcher.test.ts**

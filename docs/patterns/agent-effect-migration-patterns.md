@@ -26,22 +26,22 @@ Converts a project-specific `class FooError extends Error { code; constructor(co
 
 ```typescript
 // BEFORE
-export type FooErrorCode = "not_found" | "invalid" | "unknown"
+export type FooErrorCode = "not_found" | "invalid" | "unknown";
 
 export class FooError extends Error {
-  public code: FooErrorCode
+  public code: FooErrorCode;
   constructor(code: FooErrorCode, message: string, cause?: Error) {
-    super(message, cause === undefined ? undefined : { cause })
-    this.name = "FooError"
-    this.code = code
+    super(message, cause === undefined ? undefined : { cause });
+    this.name = "FooError";
+    this.code = code;
   }
 }
 
 // AFTER (v4)
-import { Schema } from "effect"
+import { Schema } from "effect";
 
-export const FooErrorCode = Schema.Literals(["not_found", "invalid", "unknown"])
-export type FooErrorCode = typeof FooErrorCode.Type
+export const FooErrorCode = Schema.Literals(["not_found", "invalid", "unknown"]);
+export type FooErrorCode = typeof FooErrorCode.Type;
 
 export class FooError extends Schema.TaggedErrorClass<FooError>()("FooError", {
   code: FooErrorCode,
@@ -54,17 +54,19 @@ export class FooError extends Schema.TaggedErrorClass<FooError>()("FooError", {
 
 ```typescript
 // BEFORE
-throw new FooError("not_found", "missing", underlyingError)
+throw new FooError("not_found", "missing", underlyingError);
 
 // AFTER
-yield* new FooError({
-  code: "not_found",
-  message: "missing",
-  ...(underlyingError !== undefined ? { cause: underlyingError } : {}),
-})
+yield *
+  new FooError({
+    code: "not_found",
+    message: "missing",
+    ...(underlyingError !== undefined ? { cause: underlyingError } : {}),
+  });
 ```
 
 Notes:
+
 - **Yieldable** — `yield* new FooError({...})` is preferred over `Effect.fail(new FooError({...}))`. The skill calls these "yieldable errors."
 - The conditional spread on `cause` satisfies `exactOptionalPropertyTypes: true`.
 - `Schema.Defect()` wraps any unknown error value; the resulting `cause` field is serializable.
@@ -90,6 +92,7 @@ Effect.catchTags({
 **`instanceof` still works** but is not the idiomatic v4 form. Leave existing `instanceof` sites alone during the conversion; they'll naturally migrate when their enclosing function becomes Effect-typed.
 
 ### Canonical references
+
 - `openspec/references/effect-v4/packages/effect/src/Schema.ts` — search `TaggedErrorClass`
 - `openspec/references/opencode/packages/opencode/src/account/schema.ts:39-60` — `AccountServiceError`, `AccountTransportError` with `Schema.Defect` cause
 - `.opencode/skills/effect-ts/references/error-handling.md`
@@ -105,20 +108,20 @@ Defines a service as a `Context.Service` class (Tag) plus a separate `Layer` imp
 ```typescript
 // BEFORE
 export interface MyService {
-  doThing(id: string): Promise<void>
+  doThing(id: string): Promise<void>;
 }
 
 // AFTER (v4)
-import { Context, Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect";
 
 // 1. Define the interface (the Shape)
 interface MyServiceShape {
-  readonly doThing: (id: string) => Effect.Effect<void, MyError>
+  readonly doThing: (id: string) => Effect.Effect<void, MyError>;
 }
 
 // 2. Define the Tag (the Service class)
 class MyService extends Context.Service<MyService, MyServiceShape>()(
-  "@sakti-code/MyService"  // globally-unique identifier
+  "@sakti-code/MyService", // globally-unique identifier
 ) {}
 
 // 3. Define the Layer implementation (separately)
@@ -130,17 +133,18 @@ const MyServiceLive = Layer.effect(
       doThing: Effect.fn("MyService.doThing")(function* (id: string) {
         // ...
       }),
-    }
-  })
-)
+    };
+  }),
+);
 
 // Optional: test layer
 const MyServiceTest = Layer.sync(MyService, () => ({
   doThing: () => Effect.void,
-}))
+}));
 ```
 
 ### Rules
+
 - **Tag identifiers must be unique.** Use `"@sakti-code/<Service>"` for our packages, `"@app/<Service>"` for application code.
 - **Shape methods return `Effect`** with `R = never` (no service requirements — dependencies are wired via Layer composition, not method signatures).
 - **Layer naming:** camelCase with suffix — `layer` (live), `testLayer` (in-memory test), `Live` (constant), etc.
@@ -148,6 +152,7 @@ const MyServiceTest = Layer.sync(MyService, () => ({
 - **Parameterized layers are stored in module-level constants** (Effect memoizes layers by reference identity — see Pattern 4).
 
 ### Canonical references
+
 - `openspec/references/effect-v4/packages/effect/src/Context.ts:99,200` — `Service` interface + `Service` factory
 - `openspec/references/effect-v4/packages/effect/src/Tracer.ts:168`, `DateTime.ts:1889` — `class X extends Context.Service<X, Shape>()("Id") {}` usage
 - `openspec/references/opencode/packages/core/src/fs-util.ts:48` — `export class Service extends Context.Service<Service, Interface>()("@opencode/FileSystem") {}`
@@ -163,44 +168,45 @@ Layers compose by satisfying each other's requirements. Use `Layer.provideMerge`
 
 ```typescript
 // Single dependency
-const MyServiceLive = MyService.layer.pipe(Layer.provideMerge(DepService.layer))
+const MyServiceLive = MyService.layer.pipe(Layer.provideMerge(DepService.layer));
 
 // Multiple dependencies (incremental chain)
 const MyServiceLive = MyService.layer.pipe(
   Layer.provideMerge(DepA.layer),
   Layer.provideMerge(DepB.layer),
   Layer.provideMerge(DepC.layer),
-)
+);
 
 // Top-level app composition
 const appLayer = MyServiceLive.pipe(
   Layer.provideMerge(Config.layer),
   Layer.provideMerge(Logger.layer),
   Layer.provideMerge(Database.layer),
-)
+);
 ```
 
 ### `provide` vs `provideMerge` vs `mergeAll`
 
 The three are NOT interchangeable — this is the most common Effect type-error source:
 
-| Method | Deps satisfied? | Available to program? | Use when |
-|--------|----------------|----------------------|----------|
-| `Layer.provide` | Yes | **No** (hidden) | Internal layer building — hide impl details |
-| `Layer.provideMerge` | Yes | Yes | Tests needing setup access, incremental composition |
-| `Layer.mergeAll` | No (just combines) | Yes | Combining independent layers at the same level |
+| Method               | Deps satisfied?    | Available to program? | Use when                                            |
+| -------------------- | ------------------ | --------------------- | --------------------------------------------------- |
+| `Layer.provide`      | Yes                | **No** (hidden)       | Internal layer building — hide impl details         |
+| `Layer.provideMerge` | Yes                | Yes                   | Tests needing setup access, incremental composition |
+| `Layer.mergeAll`     | No (just combines) | Yes                   | Combining independent layers at the same level      |
 
 ```typescript
 // provide: hides Database from the program
-const internal = MyService.layer.pipe(Layer.provide(DatabaseLayer))
+const internal = MyService.layer.pipe(Layer.provide(DatabaseLayer));
 // Result type: Layer<MyService> — Database NOT available to consumers
 
 // provideMerge: keeps Database accessible (use this in tests!)
-const testLayer = MyService.layer.pipe(Layer.provideMerge(Database.testLayer))
+const testLayer = MyService.layer.pipe(Layer.provideMerge(Database.testLayer));
 // Result type: Layer<MyService | Database> — both available for setup/assertion
 ```
 
 ### Canonical references
+
 - `openspec/references/opencode/packages/opencode/src/account/account.ts:459` — `defaultLayer = layer.pipe(Layer.provideMerge(X.defaultLayer), Layer.provideMerge(Y.layer))`
 - `.opencode/skills/effect-ts/references/services-and-layers.md` (table at line 248)
 
@@ -215,42 +221,47 @@ Service methods are defined with `Effect.fn("Name")(function* () {...})`. Pure h
 ```typescript
 // BEFORE
 async function loadX(env: ExecutionEnv, path: string): Promise<Result<X, Error>> {
-  const content = await env.readTextFile(path)
-  return parse(content)
+  const content = await env.readTextFile(path);
+  return parse(content);
 }
 
 // AFTER (v4)
-import { Effect } from "effect"
+import { Effect } from "effect";
 
 // Plain Effect-returning function (no service required)
 const loadX = (path: string): Effect.Effect<X, FileError, FileSystem> =>
   Effect.gen(function* () {
-    const fs = yield* FileSystem  // require the FileSystem service
-    const content = yield* fs.readFileString(path)
-    return parse(content)
-  })
+    const fs = yield* FileSystem; // require the FileSystem service
+    const content = yield* fs.readFileString(path);
+    return parse(content);
+  });
 
 // Service method (named for tracing)
 class MyService extends Context.Service<MyService, Shape>()("@scope/MyService") {
-  static readonly layer = Layer.effect(MyService, Effect.gen(function* () {
-    const fs = yield* FileSystem
-    return {
-      loadThing: Effect.fn("MyService.loadThing")(function* (id: string) {
-        const content = yield* fs.readFileString(`things/${id}`)
-        return parse(content)
-      }),
-    }
-  }))
+  static readonly layer = Layer.effect(
+    MyService,
+    Effect.gen(function* () {
+      const fs = yield* FileSystem;
+      return {
+        loadThing: Effect.fn("MyService.loadThing")(function* (id: string) {
+          const content = yield* fs.readFileString(`things/${id}`);
+          return parse(content);
+        }),
+      };
+    }),
+  );
 }
 ```
 
 ### Rules
+
 - **Inputs that were "things with behavior" (env, storage, deps)** → become `R` (requirements) via `yield* Service`.
 - **Inputs that were data (paths, options, ids)** → stay as function arguments.
 - **Errors** → typed in the `E` channel.
 - **Use `Effect.fn("name")` for service methods** — gives tracing spans. **Use plain `Effect.gen` for one-off functions** — no name needed.
 
 ### Canonical references
+
 - `openspec/references/effect-v4/packages/effect/src/Effect.ts:1870,5845` — `Effect.fn` definitions
 - `openspec/references/opencode/packages/core/src/fs-util.ts:55-60` — `Effect.fn("FileSystem.existsSafe")(function* (path) {...})`
 - `.opencode/skills/effect-ts/SKILL.md:28-62` — `Effect.gen` + `Effect.fn` syntax
@@ -264,38 +275,38 @@ class MyService extends Context.Service<MyService, Shape>()("@scope/MyService") 
 Tests use `@effect/vitest`'s `it.effect` (provides `TestContext` automatically — `TestClock`, `TestRandom`, etc.). Each test provides its own fresh layer.
 
 ```typescript
-import { describe, it, expect } from "@effect/vitest"
-import { Effect } from "effect"
+import { describe, it, expect } from "@effect/vitest";
+import { Effect } from "effect";
 
 describe("MyService", () => {
   // Happy path
   it.effect("does the thing", () =>
     Effect.gen(function* () {
-      const svc = yield* MyService
-      yield* svc.doThing("id")
+      const svc = yield* MyService;
+      yield* svc.doThing("id");
       // ...assertions
-    }).pipe(Effect.provide(MyService.testLayer))
-  )
+    }).pipe(Effect.provide(MyService.testLayer)),
+  );
 
   // Error path: swap channels with Effect.flip
   it.effect("fails with NotFoundError", () =>
     Effect.gen(function* () {
-      const svc = yield* MyService
-      const error = yield* svc.findById("missing").pipe(Effect.flip)
-      expect(error._tag).toBe("NotFoundError")
-    }).pipe(Effect.provide(MyService.testLayer))
-  )
-})
+      const svc = yield* MyService;
+      const error = yield* svc.findById("missing").pipe(Effect.flip);
+      expect(error._tag).toBe("NotFoundError");
+    }).pipe(Effect.provide(MyService.testLayer)),
+  );
+});
 ```
 
 ### Variants
 
-| Variant | When to use |
-|---------|-------------|
-| `it.effect` | Default. Provides `TestContext` (Clock starts at 0, deterministic Random). Most Effect tests. |
-| `it.live` | When you need the real system clock or actual time delays. |
-| `it.scoped` | When the test itself needs a `Scope` (rare — scoping is automatic in v4). |
-| `it.layer(Layer)("describe name", (it) => {...})` | Only for **expensive shared resources** (DB connections). Default is fresh layer per test. |
+| Variant                                           | When to use                                                                                   |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `it.effect`                                       | Default. Provides `TestContext` (Clock starts at 0, deterministic Random). Most Effect tests. |
+| `it.live`                                         | When you need the real system clock or actual time delays.                                    |
+| `it.scoped`                                       | When the test itself needs a `Scope` (rare — scoping is automatic in v4).                     |
+| `it.layer(Layer)("describe name", (it) => {...})` | Only for **expensive shared resources** (DB connections). Default is fresh layer per test.    |
 
 ### Providing layers
 
@@ -327,6 +338,7 @@ it.effect("uses both deps", () =>
 ```
 
 ### Canonical references
+
 - `.opencode/skills/effect-ts/references/testing.md` — full worked example
 - `openspec/references/opencode/packages/opencode/test/` — real test files
 
@@ -377,6 +389,7 @@ Effect.runPromise(compactEffect(args).pipe(Effect.provide(SessionLive)))
 ```
 
 ### Rules
+
 - Every `// @migration` adapter must have a `TODO: remove when X migrates (Phase Y)` comment.
 - `grep "@migration" packages/agent-effect/src/` shows all outstanding adapters. Final cleanup is one PR.
 - Adapters wrap Effect via `Effect.runPromise` (the only place inside `agent-effect` where it's OK to call `runPromise`).
@@ -384,11 +397,14 @@ Effect.runPromise(compactEffect(args).pipe(Effect.provide(SessionLive)))
 - **Do NOT use `Effect.provideService(Session, shapeInstance)`** — the shapeInstance is already the built Shape, not a Tag. The simpler `Effect.runPromise(shape.method())` is correct.
 
 ### Cleanup verification
+
 - At end of migration: `rg "@migration" packages/agent-effect/src/ | wc -l` must be 0.
 - Phase 0 records a baseline count after the slice lands.
 
 ### Phase 0 baseline
+
 After Phase 0, `@migration` adapters exist in 3 source files (test files excluded — they use `Effect.runPromise` directly without tags):
+
 - `harness/agent-harness.ts` — 26 `Effect.runPromise` wrappers around `this.session.x()` (1 file-level `@migration` tag; Phase Harness removes)
 - `compaction/branch-summarization.ts` — 3 wrappers (1 tag; Phase Compaction removes)
 - `compaction/auto-compaction.ts` — 2 wrappers (1 tag; Phase Compaction removes)
@@ -401,17 +417,17 @@ Total: 31 `Effect.runPromise` call sites across 3 files. `rg "@migration"` retur
 
 ## Anti-patterns to avoid (from skill, verified against v4 source)
 
-| Do not | Do instead |
-|--------|-----------|
-| `class X extends Data.TaggedError("X")<{...}>() {}` | `class X extends Schema.TaggedErrorClass<X>()("X", { fields }) {}` |
+| Do not                                                             | Do instead                                                                              |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `class X extends Data.TaggedError("X")<{...}>() {}`                | `class X extends Schema.TaggedErrorClass<X>()("X", { fields }) {}`                      |
 | `Effect.Service<T>()("T", { effect, deps }) {}` (v3 combined form) | `class T extends Context.Service<T, Shape>()("T") {}` + separate `Layer.effect(T, ...)` |
-| `ServiceMap.Service<...>` (skill typo) | `Context.Service<...>` (canonical) |
-| `throw new Error("...")` inside `Effect.gen` | `yield* new FooError({...})` or `Effect.fail(...)` |
-| `Effect.catchAll(() => ...)` losing type info | `Effect.catchTag("X", ...)` / `Effect.catchTags({...})` |
-| Scatter `Effect.provide` calls | Provide once at app entry |
-| Call parameterized layer constructors inline | Store layers in constants (memoization by reference identity) |
-| `console.log(...)` | `Effect.log(...)` with structured data |
-| `process.env.KEY` | `Config.string("KEY")` or `Config.redacted("KEY")` |
-| `instanceof FooError` (when inside Effect code) | `Effect.catchTag("FooError", ...)` |
-| `new Promise((resolve, reject) => ...)` executors | `Effect.async` / `Effect.tryPromise` |
-| Direct mutable class fields for shared state | `Ref<T>` / `SynchronizedRef<T>` |
+| `ServiceMap.Service<...>` (skill typo)                             | `Context.Service<...>` (canonical)                                                      |
+| `throw new Error("...")` inside `Effect.gen`                       | `yield* new FooError({...})` or `Effect.fail(...)`                                      |
+| `Effect.catchAll(() => ...)` losing type info                      | `Effect.catchTag("X", ...)` / `Effect.catchTags({...})`                                 |
+| Scatter `Effect.provide` calls                                     | Provide once at app entry                                                               |
+| Call parameterized layer constructors inline                       | Store layers in constants (memoization by reference identity)                           |
+| `console.log(...)`                                                 | `Effect.log(...)` with structured data                                                  |
+| `process.env.KEY`                                                  | `Config.string("KEY")` or `Config.redacted("KEY")`                                      |
+| `instanceof FooError` (when inside Effect code)                    | `Effect.catchTag("FooError", ...)`                                                      |
+| `new Promise((resolve, reject) => ...)` executors                  | `Effect.async` / `Effect.tryPromise`                                                    |
+| Direct mutable class fields for shared state                       | `Ref<T>` / `SynchronizedRef<T>`                                                         |

@@ -12,10 +12,8 @@ export interface ProjectContextMenuProps {
   y: number;
 }
 
-export const ProjectContextMenu: ParentComponent<ProjectContextMenuProps> = (
-  props
-) => {
-  // biome-ignore lint/suspicious/noUnassignedVariables: SolidJS ref pattern
+export const ProjectContextMenu: ParentComponent<ProjectContextMenuProps> = (props) => {
+  // oxlint-disable-next-line no-unassigned-vars -- ref assigned by SolidJS JSX transform
   let menuRef: HTMLDivElement | undefined;
 
   const handleClick = (e: MouseEvent) => {
@@ -53,9 +51,7 @@ export const ProjectContextMenu: ParentComponent<ProjectContextMenuProps> = (
     >
       <button
         class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-foreground text-xs transition-colors hover:bg-secondary"
-        onClick={() =>
-          handleAction(() => props.onOpenInTerminal(props.projectId))
-        }
+        onClick={() => handleAction(() => props.onOpenInTerminal(props.projectId))}
         type="button"
       >
         <svg
@@ -72,9 +68,7 @@ export const ProjectContextMenu: ParentComponent<ProjectContextMenuProps> = (
 
       <button
         class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-foreground text-xs transition-colors hover:bg-secondary"
-        onClick={() =>
-          handleAction(() => props.onOpenInEditor(props.projectId))
-        }
+        onClick={() => handleAction(() => props.onOpenInEditor(props.projectId))}
         type="button"
       >
         <svg

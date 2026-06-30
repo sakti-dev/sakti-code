@@ -1,14 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const MISSING_FIELDS_RE = /Missing sessionId or message/;
 const NO_ACTIVE_RUN_RE = /No active run/;
 const BUSY_RE = /A run is already active.*steer.*followUp.*abort/;
 
-import {
-  fauxAssistantMessage,
-  teardownFauxLlm,
-  useFauxLlm,
-} from "../../__tests__/llm-helpers.ts";
+import { fauxAssistantMessage, teardownFauxLlm, useFauxLlm } from "../../__tests__/llm-helpers.ts";
 import { getPermissionChannel } from "../../lib/permission-channel.ts";
 import { clearReplaysForTesting, clearRunsForTesting } from "../runner.ts";
 import { handleMessage } from "../ws-handler.ts";
@@ -26,20 +22,20 @@ function makeFakeWs(): { sent: unknown[]; ws: FakeWsHandle } {
   };
 }
 
-function asErrorFrames(
-  frames: unknown[]
-): Array<{ error?: string; sessionId?: string }> {
-  return frames.filter(
-    (f) => (f as { type?: string }).type === "error"
-  ) as Array<{ error?: string; sessionId?: string }>;
+function asErrorFrames(frames: unknown[]): Array<{ error?: string; sessionId?: string }> {
+  return frames.filter((f) => (f as { type?: string }).type === "error") as Array<{
+    error?: string;
+    sessionId?: string;
+  }>;
 }
 
 function asEventFrames(
-  frames: unknown[]
+  frames: unknown[],
 ): Array<{ event?: { type?: string }; sessionId?: string }> {
-  return frames.filter(
-    (f) => (f as { type?: string }).type === "event"
-  ) as Array<{ event?: { type?: string }; sessionId?: string }>;
+  return frames.filter((f) => (f as { type?: string }).type === "event") as Array<{
+    event?: { type?: string };
+    sessionId?: string;
+  }>;
 }
 
 interface MockHarness {
@@ -50,7 +46,7 @@ interface MockHarness {
 
 function makeMockHarness(
   testActiveRuns: Set<string>,
-  getPromptResolve: () => (() => void) | null
+  getPromptResolve: () => (() => void) | null,
 ): MockHarness {
   return {
     steer: vi.fn(async () => {}),
@@ -142,8 +138,7 @@ describe("WS message handler", () => {
     expect(await pending).toBe("allow");
     const replied = sent.find(
       (f) =>
-        (f as { type?: string }).type === "permission.replied" &&
-        (f as { id?: string }).id === id
+        (f as { type?: string }).type === "permission.replied" && (f as { id?: string }).id === id,
     );
     expect(replied).toBeDefined();
   });
@@ -152,12 +147,7 @@ describe("WS message handler", () => {
     const ctx = createMockCtx();
     const storage = createMockStore();
 
-    handleMessage(
-      ctx,
-      storage,
-      { send: () => {} },
-      { type: "abort", sessionId: "sess-1" }
-    );
+    handleMessage(ctx, storage, { send: () => {} }, { type: "abort", sessionId: "sess-1" });
   });
 
   it("prompt with missing sessionId sends error frame", () => {
@@ -221,9 +211,7 @@ describe("WS message handler", () => {
     const getActiveHarnessSpy = vi.spyOn(runnerMod, "getActiveHarness");
 
     try {
-      isRunActiveSpy.mockImplementation((sessionId: string) =>
-        testActiveRuns.has(sessionId)
-      );
+      isRunActiveSpy.mockImplementation((sessionId: string) => testActiveRuns.has(sessionId));
       abortRunSpy.mockImplementation(async (sessionId: string) => {
         if (testActiveRuns.has(sessionId)) {
           testActiveRuns.delete(sessionId);
@@ -240,7 +228,7 @@ describe("WS message handler", () => {
           return new Promise<void>((resolve) => {
             promptResolve = () => resolve();
           });
-        }
+        },
       );
 
       const { ws: ws1 } = makeFakeWs();
@@ -291,9 +279,7 @@ describe("WS message handler", () => {
     const getActiveHarnessSpy = vi.spyOn(runnerMod, "getActiveHarness");
 
     try {
-      isRunActiveSpy.mockImplementation((sessionId: string) =>
-        testActiveRuns.has(sessionId)
-      );
+      isRunActiveSpy.mockImplementation((sessionId: string) => testActiveRuns.has(sessionId));
       abortRunSpy.mockImplementation(async (sessionId: string) => {
         if (testActiveRuns.has(sessionId)) {
           testActiveRuns.delete(sessionId);
@@ -311,7 +297,7 @@ describe("WS message handler", () => {
           return new Promise<void>((resolve) => {
             promptResolve = () => resolve();
           });
-        }
+        },
       );
 
       const { sent: sent1, ws: ws1 } = makeFakeWs();
@@ -338,8 +324,7 @@ describe("WS message handler", () => {
       const allErrors = [...errors1, ...errors2];
       expect(allErrors[0]?.error).toMatch(BUSY_RE);
 
-      const totalEvents =
-        asEventFrames(sent1).length + asEventFrames(sent2).length;
+      const totalEvents = asEventFrames(sent1).length + asEventFrames(sent2).length;
       expect(totalEvents).toBeGreaterThan(0);
 
       const resolve: (() => void) | null = promptResolve;
@@ -366,9 +351,7 @@ describe("WS message handler", () => {
     const getActiveHarnessSpy = vi.spyOn(runnerMod, "getActiveHarness");
 
     try {
-      isRunActiveSpy.mockImplementation((sessionId: string) =>
-        testActiveRuns.has(sessionId)
-      );
+      isRunActiveSpy.mockImplementation((sessionId: string) => testActiveRuns.has(sessionId));
       getActiveHarnessSpy.mockImplementation(() => mockHarness as never);
       runPromptSpy.mockImplementation(async () => {
         testActiveRuns.add("sess-1");
@@ -431,9 +414,7 @@ describe("WS message handler", () => {
     const getActiveHarnessSpy = vi.spyOn(runnerMod, "getActiveHarness");
 
     try {
-      isRunActiveSpy.mockImplementation((sessionId: string) =>
-        testActiveRuns.has(sessionId)
-      );
+      isRunActiveSpy.mockImplementation((sessionId: string) => testActiveRuns.has(sessionId));
       abortRunSpy.mockImplementation(async (sessionId: string) => {
         if (testActiveRuns.has(sessionId)) {
           testActiveRuns.delete(sessionId);
@@ -450,7 +431,7 @@ describe("WS message handler", () => {
           return new Promise<void>((resolve) => {
             promptResolve = () => resolve();
           });
-        }
+        },
       );
 
       const { ws: ws1 } = makeFakeWs();
@@ -470,7 +451,7 @@ describe("WS message handler", () => {
         async (_ctx, _sessionId, _message, _storage, eventCallback) => {
           eventCallback({ type: "agent_start" });
           eventCallback({ type: "agent_end", messages: [] });
-        }
+        },
       );
 
       const { sent, ws: ws2 } = makeFakeWs();

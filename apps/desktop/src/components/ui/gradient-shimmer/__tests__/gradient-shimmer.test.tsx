@@ -1,5 +1,5 @@
 import { render } from "@solidjs/testing-library";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { GradientShimmer } from "../gradient-shimmer";
 
 vi.mock("../visibility", async (importOriginal) => {
@@ -16,9 +16,7 @@ vi.mock("../visibility", async (importOriginal) => {
 
 describe("GradientShimmer", () => {
   it("renders children text content", () => {
-    const { container } = render(() => (
-      <GradientShimmer>Hello</GradientShimmer>
-    ));
+    const { container } = render(() => <GradientShimmer>Hello</GradientShimmer>);
     expect(container.textContent).toContain("Hello");
   });
 
@@ -56,9 +54,7 @@ describe("GradientShimmer", () => {
     const { container } = render(() => <GradientShimmer>Test</GradientShimmer>);
     const el = container.querySelector("span");
     expect(el).toBeTruthy();
-    expect(el!.style.getPropertyValue("background-image")).toContain(
-      "linear-gradient"
-    );
+    expect(el!.style.getPropertyValue("background-image")).toContain("linear-gradient");
   });
 
   it("sets background-clip to text", () => {
@@ -72,38 +68,28 @@ describe("GradientShimmer", () => {
     const { container } = render(() => <GradientShimmer>Test</GradientShimmer>);
     const el = container.querySelector("span");
     expect(el).toBeTruthy();
-    expect(el!.style.getPropertyValue("-webkit-text-fill-color")).toBe(
-      "transparent"
-    );
+    expect(el!.style.getPropertyValue("-webkit-text-fill-color")).toBe("transparent");
   });
 
   it("applies custom class", () => {
-    const { container } = render(() => (
-      <GradientShimmer class="my-shimmer">Test</GradientShimmer>
-    ));
+    const { container } = render(() => <GradientShimmer class="my-shimmer">Test</GradientShimmer>);
     const el = container.querySelector("span");
     expect(el).toBeTruthy();
     expect(el!.className).toContain("my-shimmer");
   });
 
   it("accepts custom baseColor", () => {
-    const { container } = render(() => (
-      <GradientShimmer baseColor="#ff0000">Test</GradientShimmer>
-    ));
+    const { container } = render(() => <GradientShimmer baseColor="#ff0000">Test</GradientShimmer>);
     const el = container.querySelector("span");
     expect(el).toBeTruthy();
     expect(el!.style.getPropertyValue("--gs-base")).toBe("#ff0000");
   });
 
   it("renders gradient with preset name", () => {
-    const { container } = render(() => (
-      <GradientShimmer gradient="mint">Test</GradientShimmer>
-    ));
+    const { container } = render(() => <GradientShimmer gradient="mint">Test</GradientShimmer>);
     const el = container.querySelector("span");
     expect(el).toBeTruthy();
-    expect(el!.style.getPropertyValue("background-image")).toContain(
-      "linear-gradient"
-    );
+    expect(el!.style.getPropertyValue("background-image")).toContain("linear-gradient");
   });
 
   it("renders gradient with explicit stops", () => {

@@ -30,11 +30,7 @@ export function canonicalizeMessage(msg: unknown): string {
  * Count the number of byte-identical leading items between two arrays,
  * using `canonicalize` to produce the comparison key.
  */
-export function commonPrefixLength<T>(
-  a: T[],
-  b: T[],
-  canonicalize: (item: T) => string
-): number {
+export function commonPrefixLength<T>(a: T[], b: T[], canonicalize: (item: T) => string): number {
   const n = Math.min(a.length, b.length);
   let i = 0;
   while (i < n) {
@@ -70,7 +66,7 @@ export interface CacheHitMeasurement {
  */
 export function measureCacheHit(
   prev: StreamRequestCapture,
-  cur: StreamRequestCapture
+  cur: StreamRequestCapture,
 ): CacheHitMeasurement {
   let prefixStable = true;
   let breakReason: CacheHitMeasurement["breakReason"];
@@ -86,11 +82,7 @@ export function measureCacheHit(
     breakReason = "tools";
   }
 
-  const prefixMsgCount = commonPrefixLength(
-    prev.messages,
-    cur.messages,
-    canonicalizeMessage
-  );
+  const prefixMsgCount = commonPrefixLength(prev.messages, cur.messages, canonicalizeMessage);
 
   if (prefixMsgCount < prev.messages.length) {
     prefixStable = false;
@@ -105,13 +97,9 @@ export function measureCacheHit(
   const totalChars =
     cur.system.length +
     cur.toolsJson.length +
-    cur.messages.reduce<number>(
-      (sum, m) => sum + canonicalizeMessage(m).length,
-      0
-    );
+    cur.messages.reduce<number>((sum, m) => sum + canonicalizeMessage(m).length, 0);
 
-  const hitRate =
-    totalChars === 0 ? 0 : Math.floor((hitChars * 100) / totalChars);
+  const hitRate = totalChars === 0 ? 0 : Math.floor((hitChars * 100) / totalChars);
 
   return { prefixStable, breakReason, hitChars, totalChars, hitRate };
 }

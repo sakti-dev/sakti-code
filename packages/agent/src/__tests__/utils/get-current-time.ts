@@ -1,12 +1,9 @@
 import { type Static, Type } from "typebox";
 import type { AgentTool, AgentToolResult } from "../../types";
 
-export interface GetCurrentTimeResult
-  extends AgentToolResult<{ utcTimestamp: number }> {}
+export interface GetCurrentTimeResult extends AgentToolResult<{ utcTimestamp: number }> {}
 
-export async function getCurrentTime(
-  timezone?: string
-): Promise<GetCurrentTimeResult> {
+export async function getCurrentTime(timezone?: string): Promise<GetCurrentTimeResult> {
   const date = new Date();
   if (timezone) {
     try {
@@ -20,9 +17,7 @@ export async function getCurrentTime(
         details: { utcTimestamp: date.getTime() },
       };
     } catch {
-      throw new Error(
-        `Invalid timezone: ${timezone}. Current UTC time: ${date.toISOString()}`
-      );
+      throw new Error(`Invalid timezone: ${timezone}. Current UTC time: ${date.toISOString()}`);
     }
   }
   const timeStr = date.toLocaleString("en-US", {
@@ -38,22 +33,19 @@ export async function getCurrentTime(
 const getCurrentTimeSchema = Type.Object({
   timezone: Type.Optional(
     Type.String({
-      description:
-        "Optional timezone (e.g., 'America/New_York', 'Europe/London')",
-    })
+      description: "Optional timezone (e.g., 'America/New_York', 'Europe/London')",
+    }),
   ),
 });
 
 type GetCurrentTimeParams = Static<typeof getCurrentTimeSchema>;
 
-export const getCurrentTimeTool: AgentTool<
-  typeof getCurrentTimeSchema,
-  { utcTimestamp: number }
-> = {
-  label: "Current Time",
-  name: "get_current_time",
-  description: "Get the current date and time",
-  parameters: getCurrentTimeSchema,
-  execute: async (_toolCallId: string, args: GetCurrentTimeParams) =>
-    getCurrentTime(args.timezone),
-};
+export const getCurrentTimeTool: AgentTool<typeof getCurrentTimeSchema, { utcTimestamp: number }> =
+  {
+    label: "Current Time",
+    name: "get_current_time",
+    description: "Get the current date and time",
+    parameters: getCurrentTimeSchema,
+    execute: async (_toolCallId: string, args: GetCurrentTimeParams) =>
+      getCurrentTime(args.timezone),
+  };

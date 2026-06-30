@@ -1,9 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  clearProfileCache,
-  resolveAuth,
-  resolveModel,
-} from "../model-resolver.ts";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { clearProfileCache, resolveAuth, resolveModel } from "../model-resolver.ts";
 import { resolveThinkingLevel } from "../runner.ts";
 
 const TEST_MODEL_ID = "gpt-4";
@@ -14,7 +10,7 @@ const NO_MODEL_CONFIGURED_RE = /no model configured/;
 
 function makeProfilesMock(
   profiles: unknown,
-  mtimeMs: number
+  mtimeMs: number,
 ): { read: ReturnType<typeof vi.fn>; getMtimeMs: ReturnType<typeof vi.fn> } {
   return {
     read: vi.fn(() => profiles),
@@ -29,7 +25,7 @@ function makeCtx(
     projectId: string;
     profileId: string | null;
   } | null,
-  auth?: { getApiKey: (provider: string) => string | undefined }
+  auth?: { getApiKey: (provider: string) => string | undefined },
 ) {
   return {
     auth: auth ?? { getApiKey: () => undefined },
@@ -39,7 +35,7 @@ function makeCtx(
         findById: vi.fn((id: string) =>
           session && session.projectId === id
             ? { id, name: "test", cwd: "/tmp", createdAt: 0, updatedAt: 0 }
-            : null
+            : null,
         ),
       },
       sessions: {
@@ -56,7 +52,7 @@ function makeCtx(
                 createdAt: 0,
                 updatedAt: 0,
               }
-            : null
+            : null,
         ),
       },
     },
@@ -86,7 +82,7 @@ describe("resolveModel / resolveAuth", () => {
             },
           },
         },
-        1000
+        1000,
       );
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
@@ -126,7 +122,7 @@ describe("resolveModel / resolveAuth", () => {
             },
           },
         },
-        1000
+        1000,
       );
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
@@ -158,7 +154,7 @@ describe("resolveModel / resolveAuth", () => {
             },
           },
         },
-        1000
+        1000,
       );
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
@@ -195,7 +191,7 @@ describe("resolveModel / resolveAuth", () => {
             },
           },
         },
-        1000
+        1000,
       );
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
@@ -252,7 +248,7 @@ describe("resolveModel / resolveAuth", () => {
             },
           },
         },
-        1000
+        1000,
       );
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
@@ -266,7 +262,7 @@ describe("resolveModel / resolveAuth", () => {
           projectId: "proj-1",
           profileId: "nonexistent",
           kind: "task",
-        })
+        }),
       ).toThrow(PROFILE_NOT_FOUND_RE);
     });
 
@@ -281,7 +277,7 @@ describe("resolveModel / resolveAuth", () => {
             },
           },
         },
-        1000
+        1000,
       );
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
@@ -295,7 +291,7 @@ describe("resolveModel / resolveAuth", () => {
           projectId: "proj-1",
           profileId: null,
           kind: "task",
-        })
+        }),
       ).toThrow(MISSING_DEFAULT_RE);
     });
 
@@ -312,7 +308,7 @@ describe("resolveModel / resolveAuth", () => {
             },
           },
         },
-        1000
+        1000,
       );
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
@@ -326,7 +322,7 @@ describe("resolveModel / resolveAuth", () => {
           projectId: "proj-1",
           profileId: null,
           kind: "task",
-        })
+        }),
       ).toThrow(NO_MODEL_CONFIGURED_RE);
     });
 
@@ -347,7 +343,7 @@ describe("resolveModel / resolveAuth", () => {
             },
           },
         },
-        1000
+        1000,
       );
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
@@ -378,7 +374,7 @@ describe("resolveModel / resolveAuth", () => {
             },
           },
         },
-        1000
+        1000,
       );
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
@@ -413,7 +409,7 @@ describe("resolveModel / resolveAuth", () => {
             },
           },
         },
-        1000
+        1000,
       );
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
@@ -446,7 +442,7 @@ describe("resolveModel / resolveAuth", () => {
             },
           },
         },
-        1000
+        1000,
       );
       const ctx = makeCtx(profilesMock, {
         projectId: "proj-1",
@@ -476,15 +472,14 @@ describe("resolveModel / resolveAuth", () => {
             },
           },
         },
-        1000
+        1000,
       );
       const ctx = makeCtx(
         profilesMock,
         { projectId: "proj-1", profileId: null },
         {
-          getApiKey: (provider) =>
-            provider === "openai" ? "sk-test-key-1234567890" : undefined,
-        }
+          getApiKey: (provider) => (provider === "openai" ? "sk-test-key-1234567890" : undefined),
+        },
       );
 
       const result = resolveAuth(ctx, {
@@ -515,7 +510,7 @@ describe("resolveModel / resolveAuth", () => {
               },
             },
           },
-          1000
+          1000,
         );
         // auth store has no key for openai → resolveAuth returns undefined
         // even though process.env.OPENAI_API_KEY is set
@@ -562,7 +557,7 @@ describe("resolveThinkingLevel with profile fallback", () => {
       {
         thinkingLevel: "off",
       },
-      "high"
+      "high",
     );
 
     expect(result).toBe("high");
@@ -577,7 +572,7 @@ describe("resolveThinkingLevel with profile fallback", () => {
       {
         thinkingLevel: "off",
       },
-      "high"
+      "high",
     );
 
     expect(result).toBe("low");
@@ -592,7 +587,7 @@ describe("resolveThinkingLevel with profile fallback", () => {
       {
         thinkingLevel: "medium",
       },
-      "high"
+      "high",
     );
 
     expect(result).toBe("medium");
@@ -607,7 +602,7 @@ describe("resolveThinkingLevel with profile fallback", () => {
       {
         thinkingLevel: "off",
       },
-      "off"
+      "off",
     );
 
     expect(result).toBe("off");

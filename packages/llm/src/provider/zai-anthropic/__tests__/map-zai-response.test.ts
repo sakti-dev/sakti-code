@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { mapZaiResponse } from "../map-zai-response.ts";
 
 describe("mapZaiResponse", () => {
@@ -21,11 +21,7 @@ describe("mapZaiResponse", () => {
         },
       },
     });
-    expect(result.content.map((c) => c.type)).toEqual([
-      "reasoning",
-      "text",
-      "tool-call",
-    ]);
+    expect(result.content.map((c) => c.type)).toEqual(["reasoning", "text", "tool-call"]);
     expect(result.finishReason.unified).toBe("tool-calls");
     expect(result.finishReason.raw).toBe("tool_use");
     expect(result.usage.inputTokens.noCache).toBe(100);
@@ -81,9 +77,7 @@ describe("mapZaiResponse", () => {
         id: "m",
         model: "glm-5.2",
         stop_reason: "tool_use",
-        content: [
-          { type: "tool_use", id: "tu", name: "Read", input: { path: "x" } },
-        ],
+        content: [{ type: "tool_use", id: "tu", name: "Read", input: { path: "x" } }],
         usage: { input_tokens: 1, output_tokens: 1 },
       },
     });

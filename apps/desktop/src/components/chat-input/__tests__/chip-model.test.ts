@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   chipKind,
   createChipElement,
@@ -20,14 +20,14 @@ describe("serializeEditor", () => {
 
   it("emits the token for chip spans", () => {
     const ed = editorWith(
-      '<span class="chip" contenteditable="false" data-token="/commit">/commit</span>'
+      '<span class="chip" contenteditable="false" data-token="/commit">/commit</span>',
     );
     expect(serializeEditor(ed)).toBe("/commit");
   });
 
   it("mixes text and chips in order", () => {
     const ed = editorWith(
-      'fix <span class="chip" contenteditable="false" data-token="@src/a.ts">@src/a.ts</span> now'
+      'fix <span class="chip" contenteditable="false" data-token="@src/a.ts">@src/a.ts</span> now',
     );
     expect(serializeEditor(ed)).toBe("fix @src/a.ts now");
   });
@@ -87,7 +87,7 @@ describe("isPointAtEditorStart", () => {
 
   it("is false when a chip precedes the caret", () => {
     const ed = editorWith(
-      '<span class="chip" contenteditable="false" data-token="/x">/x</span>tail'
+      '<span class="chip" contenteditable="false" data-token="/x">/x</span>tail',
     );
     // Caret at offset 0 of the trailing text node → a chip precedes it.
     const tail = ed.childNodes[1] as Text;

@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 import { initDatabase } from "../../init.ts";
 import { ProjectRepo, SessionRepo, SettingsRepo } from "..";
 
@@ -138,7 +138,7 @@ describe("SettingsRepo", () => {
         "session:sess_1:auto_compaction",
         "session:sess_1:auto_retry",
         "session:sess_1:max_retries",
-      ].sort()
+      ].sort(),
     );
     // Each row carries its value.
     const byKey = Object.fromEntries(rows.map((r) => [r.key, r.value]));

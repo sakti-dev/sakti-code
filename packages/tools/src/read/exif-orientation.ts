@@ -20,17 +20,11 @@ function readOrientationFromTiff(bytes: Uint8Array, tiffStart: number): number {
   const read32 = (pos: number): number => {
     if (le) {
       return (
-        bytes[pos]! |
-        (bytes[pos + 1]! << 8) |
-        (bytes[pos + 2]! << 16) |
-        (bytes[pos + 3]! << 24)
+        bytes[pos]! | (bytes[pos + 1]! << 8) | (bytes[pos + 2]! << 16) | (bytes[pos + 3]! << 24)
       );
     }
     return (
-      ((bytes[pos]! << 24) |
-        (bytes[pos + 1]! << 16) |
-        (bytes[pos + 2]! << 8) |
-        bytes[pos + 3]!) >>>
+      ((bytes[pos]! << 24) | (bytes[pos + 1]! << 16) | (bytes[pos + 2]! << 8) | bytes[pos + 3]!) >>>
       0
     );
   };
@@ -100,7 +94,7 @@ function findWebpTiffOffset(bytes: Uint8Array): number {
       bytes[offset]!,
       bytes[offset + 1]!,
       bytes[offset + 2]!,
-      bytes[offset + 3]!
+      bytes[offset + 3]!,
     );
     const chunkSize =
       bytes[offset + 4]! |
@@ -114,9 +108,7 @@ function findWebpTiffOffset(bytes: Uint8Array): number {
         return -1;
       }
       const tiffStart =
-        chunkSize >= 6 && hasExifHeader(bytes, dataStart)
-          ? dataStart + 6
-          : dataStart;
+        chunkSize >= 6 && hasExifHeader(bytes, dataStart) ? dataStart + 6 : dataStart;
       return tiffStart;
     }
 
@@ -164,11 +156,7 @@ function getExifOrientation(bytes: Uint8Array): number {
 
 type DstIndexFn = (x: number, y: number, w: number, h: number) => number;
 
-function rotate90(
-  photon: Photon,
-  image: PhotonImageType,
-  dstIndex: DstIndexFn
-): PhotonImageType {
+function rotate90(photon: Photon, image: PhotonImageType, dstIndex: DstIndexFn): PhotonImageType {
   const w = image.get_width();
   const h = image.get_height();
   const src = image.get_raw_pixels();
@@ -191,7 +179,7 @@ function rotate90(
 export function applyExifOrientation(
   photon: Photon,
   image: PhotonImageType,
-  originalBytes: Uint8Array
+  originalBytes: Uint8Array,
 ): PhotonImageType {
   const orientation = getExifOrientation(originalBytes);
   if (orientation === 1) {
@@ -210,22 +198,14 @@ export function applyExifOrientation(
       photon.flipv(image);
       return image;
     case 5: {
-      const rotated = rotate90(
-        photon,
-        image,
-        (x, y, _w, h) => x * h + (h - 1 - y)
-      );
+      const rotated = rotate90(photon, image, (x, y, _w, h) => x * h + (h - 1 - y));
       photon.fliph(rotated);
       return rotated;
     }
     case 6:
       return rotate90(photon, image, (x, y, _w, h) => x * h + (h - 1 - y));
     case 7: {
-      const rotated = rotate90(
-        photon,
-        image,
-        (x, y, w, h) => (w - 1 - x) * h + y
-      );
+      const rotated = rotate90(photon, image, (x, y, w, h) => (w - 1 - x) * h + y);
       photon.fliph(rotated);
       return rotated;
     }

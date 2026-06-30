@@ -16,45 +16,45 @@ Every divergence below was verified directly against both codebases. Citations: 
 
 ### Phase 1 — Verified Correctness Bugs (fix now)
 
-| # | Bug | OUR evidence | PI evidence |
-|---|-----|-------------|-------------|
-| 1 | `thinkingLevel` silently dropped; reasoning never runs | `streaming.ts:169` passes `{ thinkingLevel }` | pi-ai `types.d.ts:147-148` reads `reasoning?`; PI `agent-loop.ts:232` uses `config.reasoning` |
-| 2 | Compaction cut-point orphans tool results | `compaction.ts:148-159` walks all messages, no role guard; `:167` slices `recentMessages` | PI `compaction.ts:300-318` `findValidCutPoints` excludes `toolResult` |
-| 3 | Same-session concurrency race | `ws-handler.ts:137` fire-and-forget, no busy guard; `runner.ts:14-23` `registerRun` overwrites; `ws.ts:37,40` store keyed by wsId not sessionId | PI `agent-session.ts:1042-1046` throws "already processing"; per-session Agent |
-| 4 | `terminate` semantics inverted (OR vs AND) | `tool-execution.ts:86` any-result terminate | PI `agent-loop.ts:544` all-results terminate |
-| 5 | Aborted/error usage not skipped in token estimate | `compaction.ts:57-66` takes last assistant usage unconditionally | PI `compaction.ts:128-135` skips `stopReason==="aborted"\|"error"` |
-| 6 | Parallel tool exec is dead config | `tool-execution.ts:28` always sequential `for…of` despite `toolExecutionMode:"parallel"` default | PI `agent-loop.ts:382-387` dispatches parallel/sequential |
-| 7 | `stopReason` + provider metadata lost on AssistantMessage | `streaming.ts:118-127` keeps only content/usage/timestamp; `types.ts:27-31` no `stopReason` field | PI preserves `stopReason`/`errorMessage`/`api`/`provider` |
+| #   | Bug                                                       | OUR evidence                                                                                                                                    | PI evidence                                                                                   |
+| --- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 1   | `thinkingLevel` silently dropped; reasoning never runs    | `streaming.ts:169` passes `{ thinkingLevel }`                                                                                                   | pi-ai `types.d.ts:147-148` reads `reasoning?`; PI `agent-loop.ts:232` uses `config.reasoning` |
+| 2   | Compaction cut-point orphans tool results                 | `compaction.ts:148-159` walks all messages, no role guard; `:167` slices `recentMessages`                                                       | PI `compaction.ts:300-318` `findValidCutPoints` excludes `toolResult`                         |
+| 3   | Same-session concurrency race                             | `ws-handler.ts:137` fire-and-forget, no busy guard; `runner.ts:14-23` `registerRun` overwrites; `ws.ts:37,40` store keyed by wsId not sessionId | PI `agent-session.ts:1042-1046` throws "already processing"; per-session Agent                |
+| 4   | `terminate` semantics inverted (OR vs AND)                | `tool-execution.ts:86` any-result terminate                                                                                                     | PI `agent-loop.ts:544` all-results terminate                                                  |
+| 5   | Aborted/error usage not skipped in token estimate         | `compaction.ts:57-66` takes last assistant usage unconditionally                                                                                | PI `compaction.ts:128-135` skips `stopReason==="aborted"\|"error"`                            |
+| 6   | Parallel tool exec is dead config                         | `tool-execution.ts:28` always sequential `for…of` despite `toolExecutionMode:"parallel"` default                                                | PI `agent-loop.ts:382-387` dispatches parallel/sequential                                     |
+| 7   | `stopReason` + provider metadata lost on AssistantMessage | `streaming.ts:118-127` keeps only content/usage/timestamp; `types.ts:27-31` no `stopReason` field                                               | PI preserves `stopReason`/`errorMessage`/`api`/`provider`                                     |
 
 ### Phase 2 — High-Impact Missing Patterns (adopt now)
 
-| # | Pattern | OUR gap | PI evidence |
-|---|---------|---------|-------------|
-| 8 | Tool-result truncation in serialization | `compaction.ts messageToText` dumps full output | PI `utils.ts:89,156` caps at ~2000 chars |
-| 9 | Error/abort persisted to transcript | `streaming.ts:128` emits bare `error`, persists nothing | PI `agent-loop.ts:196` materializes error AssistantMessage |
-| 10 | Abort breaks the tool batch | `tool-execution.ts` no `signal?.aborted` check between tools | PI `agent-loop.ts:440,478,497` checks + emits aborted results |
-| 11 | Event lifecycle (message_start/end around prompt + steers + tool results) | `index.ts` emits message_start/end only around the assistant stream (`:133,157`) | PI `agent-loop.ts:112-113` (prompt), `:184-185` (steers), `:746-747` (tool results) |
+| #   | Pattern                                                                   | OUR gap                                                                          | PI evidence                                                                         |
+| --- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 8   | Tool-result truncation in serialization                                   | `compaction.ts messageToText` dumps full output                                  | PI `utils.ts:89,156` caps at ~2000 chars                                            |
+| 9   | Error/abort persisted to transcript                                       | `streaming.ts:128` emits bare `error`, persists nothing                          | PI `agent-loop.ts:196` materializes error AssistantMessage                          |
+| 10  | Abort breaks the tool batch                                               | `tool-execution.ts` no `signal?.aborted` check between tools                     | PI `agent-loop.ts:440,478,497` checks + emits aborted results                       |
+| 11  | Event lifecycle (message_start/end around prompt + steers + tool results) | `index.ts` emits message_start/end only around the assistant stream (`:133,157`) | PI `agent-loop.ts:112-113` (prompt), `:184-185` (steers), `:746-747` (tool results) |
 
 ### Phase 3 — Complete Missing Patterns Catalog (deferred / YAGNI / out-of-scope, each with explicit rationale)
 
-| # | Pattern | Category | PI evidence |
-|---|---------|----------|-------------|
-| 12 | Split-turn cuts in compaction | DEFERRED (trigger-based) | PI `compaction.ts:442-447` `isSplitTurn` + `TURN_PREFIX_SUMMARIZATION` |
-| 13 | Previous-summary chaining | DEFERRED (trigger-based) | PI `compaction.ts:663-675,579-592` `UPDATE_SUMMARIZATION_PROMPT` |
-| 14 | Cumulative file-ops tracking | DEFERRED (trigger-based) | PI `utils.ts extractFileOpsFromMessage` → `<read-files>`/`<modified-files>` |
-| 15 | Default `steeringMode`/`followUpMode` | NEEDS PRODUCT DECISION | PI `agent.ts:212-213` defaults `"one-at-a-time"`; ours `"all"` |
-| 16 | Extension hooks (7: beforeToolCall/afterToolCall/prepareNextTurn/shouldStopAfterTurn/transformContext/getApiKey/validateToolArguments) | YAGNI (no extension system) | PI `agent-loop.ts:226,242,284,302,581,684,580` |
-| 17 | `message_update` carries full assembled message | STRUCTURAL DIVERGENCE (documented) | PI `types.ts:418` carries `message` + raw event; ours narrow delta |
-| 18 | Provider auth layering (keychain/OAuth/headers) | OUT OF SCOPE (no auth infra) | PI `model-registry.ts:685-704` `getApiKeyAndHeaders` |
+| #   | Pattern                                                                                                                                | Category                           | PI evidence                                                                 |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------- |
+| 12  | Split-turn cuts in compaction                                                                                                          | DEFERRED (trigger-based)           | PI `compaction.ts:442-447` `isSplitTurn` + `TURN_PREFIX_SUMMARIZATION`      |
+| 13  | Previous-summary chaining                                                                                                              | DEFERRED (trigger-based)           | PI `compaction.ts:663-675,579-592` `UPDATE_SUMMARIZATION_PROMPT`            |
+| 14  | Cumulative file-ops tracking                                                                                                           | DEFERRED (trigger-based)           | PI `utils.ts extractFileOpsFromMessage` → `<read-files>`/`<modified-files>` |
+| 15  | Default `steeringMode`/`followUpMode`                                                                                                  | NEEDS PRODUCT DECISION             | PI `agent.ts:212-213` defaults `"one-at-a-time"`; ours `"all"`              |
+| 16  | Extension hooks (7: beforeToolCall/afterToolCall/prepareNextTurn/shouldStopAfterTurn/transformContext/getApiKey/validateToolArguments) | YAGNI (no extension system)        | PI `agent-loop.ts:226,242,284,302,581,684,580`                              |
+| 17  | `message_update` carries full assembled message                                                                                        | STRUCTURAL DIVERGENCE (documented) | PI `types.ts:418` carries `message` + raw event; ours narrow delta          |
+| 18  | Provider auth layering (keychain/OAuth/headers)                                                                                        | OUT OF SCOPE (no auth infra)       | PI `model-registry.ts:685-704` `getApiKeyAndHeaders`                        |
 
 ### Phase 3 — Medium-Impact Missing Patterns (needs design decision)
 
-| # | Pattern | Notes |
-|---|---------|-------|
-| 11 | Split-turn cuts | PI `findCutPoint isSplitTurn`; ours `cutIndex<=1` short-circuits huge turns. Changes compaction output shape. |
-| 12 | Previous-summary chaining | PI `UPDATE_SUMMARIZATION_PROMPT`; ours re-summarizes from scratch. Quality/cost improvement. |
-| 13 | Cumulative file-ops tracking | PI `<read-files>`/`<modified-files>` tags. Adds file extraction to summary. |
-| 14 | Default steeringMode/followUpMode | Ours `"all"` (loop/index.ts:59); PI `"one-at-a-time"` (agent.ts:212). **Product decision** — may be intentional. |
+| #   | Pattern                           | Notes                                                                                                            |
+| --- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 11  | Split-turn cuts                   | PI `findCutPoint isSplitTurn`; ours `cutIndex<=1` short-circuits huge turns. Changes compaction output shape.    |
+| 12  | Previous-summary chaining         | PI `UPDATE_SUMMARIZATION_PROMPT`; ours re-summarizes from scratch. Quality/cost improvement.                     |
+| 13  | Cumulative file-ops tracking      | PI `<read-files>`/`<modified-files>` tags. Adds file extraction to summary.                                      |
+| 14  | Default steeringMode/followUpMode | Ours `"all"` (loop/index.ts:59); PI `"one-at-a-time"` (agent.ts:212). **Product decision** — may be intentional. |
 
 ---
 
@@ -63,6 +63,7 @@ Every divergence below was verified directly against both codebases. Citations: 
 ### Task 1: Fix `thinkingLevel` → `reasoning` field mapping (Bug #1)
 
 **Files:**
+
 - Modify: `packages/agent/src/loop/streaming.ts:157-169`
 - Test: `packages/agent/src/__tests__/streaming.test.ts` (or nearest existing)
 
@@ -129,6 +130,7 @@ git commit -m "fix(agent-loop): map thinkingLevel to pi-ai 'reasoning' option (p
 ### Task 2: Fix compaction cut-point orphaning tool results (Bug #2)
 
 **Files:**
+
 - Modify: `packages/agent/src/compaction.ts:145-170` (the cut-point loop)
 - Test: `packages/agent/src/__tests__/compaction-execution.test.ts`
 
@@ -179,41 +181,37 @@ Expected: FAIL — recent messages start with a tool result
 ```typescript
 // packages/agent/src/compaction.ts — replace the cut-point loop (lines 148-159)
 // BEFORE:
-  let cutIndex = messages.length;
-  let recentTokens = 0;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (!msg) continue;
-    recentTokens += estimateTokens([msg]);
-    if (recentTokens >= keepRecentTokens) {
-      cutIndex = i;
-      break;
-    }
+let cutIndex = messages.length;
+let recentTokens = 0;
+for (let i = messages.length - 1; i >= 0; i--) {
+  const msg = messages[i];
+  if (!msg) continue;
+  recentTokens += estimateTokens([msg]);
+  if (recentTokens >= keepRecentTokens) {
+    cutIndex = i;
+    break;
   }
+}
 
 // AFTER:
-  let cutIndex = messages.length;
-  let recentTokens = 0;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (!msg) continue;
-    recentTokens += estimateTokens([msg]);
-    if (recentTokens >= keepRecentTokens) {
-      cutIndex = i;
-      break;
-    }
+let cutIndex = messages.length;
+let recentTokens = 0;
+for (let i = messages.length - 1; i >= 0; i--) {
+  const msg = messages[i];
+  if (!msg) continue;
+  recentTokens += estimateTokens([msg]);
+  if (recentTokens >= keepRecentTokens) {
+    cutIndex = i;
+    break;
   }
-  // Advance cutIndex past any tool results at the cut boundary so
-  // recentMessages never starts with an orphaned tool result (no
-  // preceding tool call). Matches pi's findValidCutPoints which excludes
-  // toolResult ("they must follow their tool call").
-  while (
-    cutIndex < messages.length &&
-    messages[cutIndex]?.role === "tool" &&
-    cutIndex > 1
-  ) {
-    cutIndex++;
-  }
+}
+// Advance cutIndex past any tool results at the cut boundary so
+// recentMessages never starts with an orphaned tool result (no
+// preceding tool call). Matches pi's findValidCutPoints which excludes
+// toolResult ("they must follow their tool call").
+while (cutIndex < messages.length && messages[cutIndex]?.role === "tool" && cutIndex > 1) {
+  cutIndex++;
+}
 ```
 
 **Step 4: Run test to verify it passes**
@@ -238,6 +236,7 @@ git commit -m "fix(compaction): advance cut past tool results to avoid orphaning
 ### Task 3: Fix `terminate` semantics — AND not OR (Bug #4)
 
 **Files:**
+
 - Modify: `packages/agent/src/loop/tool-execution.ts:26,86-88`
 - Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
 
@@ -250,21 +249,25 @@ git commit -m "fix(compaction): advance cut past tool results to avoid orphaning
 it("does NOT terminate when one of multiple tools sets terminate:true (AND semantics)", async () => {
   const store = createMockStore();
   const toolA: AgentTool = {
-    name: "toolA", description: "A",
+    name: "toolA",
+    description: "A",
     parameters: { type: "object", properties: {} },
     execute: async () => ({ content: "a", terminate: true }),
   };
   const toolB: AgentTool = {
-    name: "toolB", description: "B",
+    name: "toolB",
+    description: "B",
     parameters: { type: "object", properties: {} },
     execute: async () => ({ content: "b", terminate: false }),
   };
 
   // Stream returns two tool calls
-  vi.mocked(streamSimple).mockReturnValue(multiToolCallStream([
-    { name: "toolA", args: {}, id: "tc1" },
-    { name: "toolB", args: {}, id: "tc2" },
-  ]));
+  vi.mocked(streamSimple).mockReturnValue(
+    multiToolCallStream([
+      { name: "toolA", args: {}, id: "tc1" },
+      { name: "toolB", args: {}, id: "tc2" },
+    ]),
+  );
 
   const loop = createAgentLoop({ sessionId: "s1", model: testModel, tools: [toolA, toolB], store });
   const events = await collectEvents(loop.prompt("run both"));
@@ -286,18 +289,18 @@ Expected: FAIL — loop stops after first turn (OR semantics)
 // packages/agent/src/loop/tool-execution.ts — replace lines 26 + 86-88
 
 // BEFORE (line 26):
-  let shouldTerminate = false;
+let shouldTerminate = false;
 // BEFORE (lines 86-88):
-    if (result.terminate) {
-      shouldTerminate = true;
-    }
+if (result.terminate) {
+  shouldTerminate = true;
+}
 
 // AFTER (line 26):
-  const terminates: boolean[] = [];
+const terminates: boolean[] = [];
 // AFTER (lines 86-88):
-    terminates.push(result.terminate ?? false);
+terminates.push(result.terminate ?? false);
 // And change the return (line 91):
-  return { toolResultMessages, shouldTerminate: terminates.length > 0 && terminates.every(Boolean) };
+return { toolResultMessages, shouldTerminate: terminates.length > 0 && terminates.every(Boolean) };
 ```
 
 **Step 4: Run test to verify it passes**
@@ -322,6 +325,7 @@ git commit -m "fix(agent-loop): terminate requires ALL tools to request it (AND,
 ### Task 4: Skip aborted/error usage in `estimateContextTokens` (Bug #5)
 
 **Files:**
+
 - Modify: `packages/agent/src/compaction.ts:57-66` (`estimateContextTokens`)
 - Test: `packages/agent/src/__tests__/compaction.test.ts`
 
@@ -336,11 +340,9 @@ git commit -m "fix(agent-loop): terminate requires ALL tools to request it (AND,
 it("ignores an assistant message with zero usage and keeps scanning back", () => {
   const messages: AgentMessage[] = [
     // Old assistant with real usage
-    { role: "assistant", content: [{ type: "text", text: "ok" }], timestamp: 1,
-      usage: usage(500) },
+    { role: "assistant", content: [{ type: "text", text: "ok" }], timestamp: 1, usage: usage(500) },
     // Recent assistant with garbage/zero usage (simulating error/abort)
-    { role: "assistant", content: [{ type: "text", text: "" }], timestamp: 2,
-      usage: usage(0) },
+    { role: "assistant", content: [{ type: "text", text: "" }], timestamp: 2, usage: usage(0) },
   ];
   // Should use the 500 from the older message, not the 0 from the recent one
   expect(estimateContextTokens(messages)).toBe(500);
@@ -363,8 +365,7 @@ export function estimateContextTokens(messages: AgentMessage[]): number {
     if (m && m.role === "assistant") {
       const u = m.usage;
       const usageTokens =
-        u?.totalTokens ||
-        (u ? u.input + u.output + u.cacheRead + u.cacheWrite : 0);
+        u?.totalTokens || (u ? u.input + u.output + u.cacheRead + u.cacheWrite : 0);
       if (usageTokens > 0) {
         return usageTokens + estimateTokens(messages.slice(i + 1));
       }
@@ -381,8 +382,7 @@ export function estimateContextTokens(messages: AgentMessage[]): number {
     if (m && m.role === "assistant") {
       const u = m.usage;
       const usageTokens =
-        u?.totalTokens ||
-        (u ? u.input + u.output + u.cacheRead + u.cacheWrite : 0);
+        u?.totalTokens || (u ? u.input + u.output + u.cacheRead + u.cacheWrite : 0);
       // Skip assistant messages with no usable usage (error/abort/garbage).
       // pi's getAssistantUsage skips stopReason==="aborted"|"error" explicitly;
       // we proxy via usageTokens===0 until stopReason lands on AssistantMessage.
@@ -418,6 +418,7 @@ git commit -m "fix(compaction): skip error/abort usage in estimateContextTokens 
 ### Task 5: Fix same-session concurrency race (Bug #3)
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts:14-23` (add busy guard to `registerRun`)
 - Modify: `apps/server/src/agent/ws-handler.ts:136-137` (check busy before firing)
 - Test: `apps/server/src/agent/__tests__/ws.test.ts`
@@ -441,7 +442,7 @@ it("rejects a second prompt on the same session while one is active (busy guard)
   await waitForFrame();
   const frames = sentFrames();
   // Should get an error frame for the second prompt
-  const errorFrame = frames.find(f => f.type === "error");
+  const errorFrame = frames.find((f) => f.type === "error");
   expect(errorFrame).toBeDefined();
   expect(errorFrame.message).toMatch(/already.*running|busy|active/i);
 });
@@ -460,7 +461,7 @@ Expected: FAIL — second prompt silently overwrites
 export function registerRun(
   sessionId: string,
   controller: AbortController,
-  loop: AgentLoop
+  loop: AgentLoop,
 ): boolean {
   if (activeRuns.has(sessionId)) {
     return false; // a run is already active for this session
@@ -479,11 +480,13 @@ export function isRunActive(sessionId: string): boolean {
 ```typescript
 // apps/server/src/agent/ws-handler.ts — before the fire-and-forget call (line 136)
 if (isRunActive(msg.sessionId)) {
-  ws.send(JSON.stringify({
-    type: "error",
-    sessionId: msg.sessionId,
-    message: "A run is already active for this session. Send 'abort' first.",
-  }));
+  ws.send(
+    JSON.stringify({
+      type: "error",
+      sessionId: msg.sessionId,
+      message: "A run is already active for this session. Send 'abort' first.",
+    }),
+  );
   return;
 }
 // Fire-and-forget — does NOT await the stream
@@ -522,6 +525,7 @@ git commit -m "fix(server): reject concurrent prompts on same session with busy 
 ### Task 6: Add `stopReason` + provider metadata to AssistantMessage (Bug #7)
 
 **Files:**
+
 - Modify: `packages/agent/src/types.ts:27-31` (AssistantMessage interface)
 - Modify: `packages/agent/src/loop/streaming.ts:118-127` (done handler)
 - Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
@@ -539,7 +543,7 @@ it("AssistantMessage carries stopReason from the stream", async () => {
   const loop = createAgentLoop({ sessionId: "s1", model: testModel, tools: [], store });
   const events = await collectEvents(loop.prompt("hi"));
 
-  const turnEnd = events.find(e => e.type === "turn_end") as any;
+  const turnEnd = events.find((e) => e.type === "turn_end") as any;
   expect(turnEnd.message.stopReason).toBe("stop");
 });
 ```
@@ -593,8 +597,7 @@ export function estimateContextTokens(messages: AgentMessage[]): number {
       }
       const u = m.usage;
       const usageTokens =
-        u?.totalTokens ||
-        (u ? u.input + u.output + u.cacheRead + u.cacheWrite : 0);
+        u?.totalTokens || (u ? u.input + u.output + u.cacheRead + u.cacheWrite : 0);
       if (usageTokens > 0) {
         return usageTokens + estimateTokens(messages.slice(i + 1));
       }
@@ -622,6 +625,7 @@ git commit -m "fix(agent-loop): preserve stopReason on AssistantMessage (pi-alig
 ### Task 7: Implement parallel tool execution (Bug #6)
 
 **Files:**
+
 - Modify: `packages/agent/src/loop/tool-execution.ts` (full rewrite of the dispatch loop)
 - Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
 
@@ -727,15 +731,17 @@ export async function* executeToolCalls(
 
 ```typescript
 // packages/agent/src/loop/index.ts — modify the executeToolCalls call
-      const toolExec = yield* executeToolCalls(
-        streamResult.toolCalls,
-        tools,
-        toolSignal,
-        store,
-        sessionId,
-        messages,
-        resolved.toolExecutionMode  // ADD THIS
-      );
+const toolExec =
+  yield *
+  executeToolCalls(
+    streamResult.toolCalls,
+    tools,
+    toolSignal,
+    store,
+    sessionId,
+    messages,
+    resolved.toolExecutionMode, // ADD THIS
+  );
 ```
 
 **Step 5: Run test to verify it passes**
@@ -762,6 +768,7 @@ git commit -m "feat(agent-loop): implement parallel tool execution (pi-alignment
 ### Task 8: Truncate tool results in compaction serialization (Pattern #8)
 
 **Files:**
+
 - Modify: `packages/agent/src/compaction.ts` (`messageToText` function)
 - Test: `packages/agent/src/__tests__/compaction-execution.test.ts`
 
@@ -771,8 +778,14 @@ git commit -m "feat(agent-loop): implement parallel tool execution (pi-alignment
 it("truncates tool results to ~2000 chars in summarization text", async () => {
   const messages: AgentMessage[] = [
     ...longConversation(20),
-    { role: "tool", content: [{ type: "text", text: "x".repeat(5000) }],
-      isError: false, toolCallId: "tc1", toolName: "bash", timestamp: 20 },
+    {
+      role: "tool",
+      content: [{ type: "text", text: "x".repeat(5000) }],
+      isError: false,
+      toolCallId: "tc1",
+      toolName: "bash",
+      timestamp: 20,
+    },
   ];
   await compactMessages({ model: testModel, apiKey: "key", messages, contextWindow: 200_000 });
   const callArgs = vi.mocked(completeSimple).mock.calls[0];
@@ -818,6 +831,7 @@ git commit -m "feat(compaction): truncate tool results in summarization text (pi
 ### Task 9: Persist error/abort as AssistantMessage in transcript (Pattern #9)
 
 **Files:**
+
 - Modify: `packages/agent/src/loop/streaming.ts` (error handler — build an error AssistantMessage)
 - Modify: `packages/agent/src/loop/index.ts` (persist the error message on stream failure)
 - Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
@@ -834,9 +848,7 @@ it("persists an error AssistantMessage when the LLM stream errors", async () => 
   await collectEvents(loop.prompt("hi"));
 
   const messages = await store.loadMessages("s1");
-  const errorMessages = messages.filter(
-    m => m.role === "assistant" && m.stopReason === "error"
-  );
+  const errorMessages = messages.filter((m) => m.role === "assistant" && m.stopReason === "error");
   expect(errorMessages.length).toBe(1);
 });
 ```
@@ -862,11 +874,13 @@ it("persists an error AssistantMessage when the LLM stream errors", async () => 
 
 ```typescript
 // packages/agent/src/loop/index.ts — after streamResult, if finalAssistant exists with stopReason error, persist it
-      if (streamResult.finalAssistant?.stopReason === "error" ||
-          streamResult.finalAssistant?.stopReason === "aborted") {
-        messages.push(streamResult.finalAssistant);
-        await store.appendMessage(sessionId, streamResult.finalAssistant);
-      }
+if (
+  streamResult.finalAssistant?.stopReason === "error" ||
+  streamResult.finalAssistant?.stopReason === "aborted"
+) {
+  messages.push(streamResult.finalAssistant);
+  await store.appendMessage(sessionId, streamResult.finalAssistant);
+}
 ```
 
 **Step 4: Run test → PASS. Gate + commit.**
@@ -876,6 +890,7 @@ it("persists an error AssistantMessage when the LLM stream errors", async () => 
 ### Task 10: Abort breaks the tool batch (Pattern #10)
 
 **Files:**
+
 - Modify: `packages/agent/src/loop/tool-execution.ts` (check `signal?.aborted` between tools)
 - Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
 
@@ -894,6 +909,7 @@ it("stops executing remaining tools when abort signal fires mid-batch", async ()
 ### Task 11: Emit message_start/message_end around every message (Pattern #11)
 
 **Files:**
+
 - Modify: `packages/agent/src/loop/index.ts` (emit lifecycle around prompt, each steer, each tool result)
 - Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
 
@@ -924,9 +940,9 @@ it("wraps the user prompt in message_start/message_end", async () => {
 // packages/agent/src/loop/index.ts — wrap injectMessage call for the prompt
 // BEFORE (line ~89): await injectMessage(messages, message);
 // AFTER:
-  yield evt("message_start");
-  await injectMessage(messages, message);
-  yield evt("message_end");
+yield evt("message_start");
+await injectMessage(messages, message);
+yield evt("message_end");
 
 // Same pattern in drainSteers (each steer) — drainSteers must yield events,
 // or the loop wraps each steer injection.
@@ -1024,14 +1040,14 @@ bun x ultracite check
 
 ### Expected results
 
-| Suite | Current | After Phase 1+2 |
-|-------|---------|-----------------|
-| agent (vitest) | 72 pass | ~85+ pass (new tests per fix) |
-| server agent layer (vitest) | 18 pass | ~22+ pass |
-| server routes (bun:test) | 111 pass | 111+ pass |
-| db (bun:test) | 23 pass | 23 pass |
-| typecheck | clean | clean |
-| lint | clean | clean |
+| Suite                       | Current  | After Phase 1+2               |
+| --------------------------- | -------- | ----------------------------- |
+| agent (vitest)              | 72 pass  | ~85+ pass (new tests per fix) |
+| server agent layer (vitest) | 18 pass  | ~22+ pass                     |
+| server routes (bun:test)    | 111 pass | 111+ pass                     |
+| db (bun:test)               | 23 pass  | 23 pass                       |
+| typecheck                   | clean    | clean                         |
+| lint                        | clean    | clean                         |
 
 ---
 
@@ -1039,20 +1055,20 @@ bun x ultracite check
 
 After implementing, slice into OpenSpec changes for spec sync:
 
-| Slice | Tasks | Spec capability |
-|-------|-------|----------------|
-| `agent-runtime-bugfixes` | 1–6 (Phase 1) | `agent-loop`, `agent-streaming` |
-| `compaction-serialization` | 8, 9 | `agent-loop` |
-| `parallel-tool-execution` | 7 | `agent-loop` |
-| `session-concurrency-guard` | 5 | `agent-streaming` |
-| `event-lifecycle-completeness` | 11 | `agent-loop` |
-| `compaction-split-turn` (deferred) | 12 | `agent-loop` |
-| `compaction-summary-chaining` (deferred) | 13 | `agent-loop` |
-| `compaction-file-ops` (deferred) | 14 | `agent-loop` |
-| `agent-loop-controls` (amend default) | 15 | `per-session-settings` |
-| `extension-hooks` (YAGNI — deferred) | 16 | (new capability if built) |
-| `stream-message-shape` (structural) | 17 | `agent-streaming` |
-| `provider-auth-layering` (out of scope) | 18 | (new capability if built) |
+| Slice                                    | Tasks         | Spec capability                 |
+| ---------------------------------------- | ------------- | ------------------------------- |
+| `agent-runtime-bugfixes`                 | 1–6 (Phase 1) | `agent-loop`, `agent-streaming` |
+| `compaction-serialization`               | 8, 9          | `agent-loop`                    |
+| `parallel-tool-execution`                | 7             | `agent-loop`                    |
+| `session-concurrency-guard`              | 5             | `agent-streaming`               |
+| `event-lifecycle-completeness`           | 11            | `agent-loop`                    |
+| `compaction-split-turn` (deferred)       | 12            | `agent-loop`                    |
+| `compaction-summary-chaining` (deferred) | 13            | `agent-loop`                    |
+| `compaction-file-ops` (deferred)         | 14            | `agent-loop`                    |
+| `agent-loop-controls` (amend default)    | 15            | `per-session-settings`          |
+| `extension-hooks` (YAGNI — deferred)     | 16            | (new capability if built)       |
+| `stream-message-shape` (structural)      | 17            | `agent-streaming`               |
+| `provider-auth-layering` (out of scope)  | 18            | (new capability if built)       |
 
 ---
 

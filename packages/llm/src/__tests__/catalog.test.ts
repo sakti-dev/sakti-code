@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vite-plus/test";
 import { convertModelsDevModel } from "../catalog/convert.ts";
 import type { ModelsDevModel, ModelsDevProvider } from "../catalog/types.ts";
 import type { Model } from "../types.ts";
@@ -73,7 +73,7 @@ describe("convertModelsDevModel — field mapping", () => {
     };
     const model = convertModelsDevModel(
       { ...anthropicProvider, npm: "@ai-sdk/openai-compatible" },
-      modelWithPerModelNpm
+      modelWithPerModelNpm,
     );
     expect(model?.npm).toBe("@ai-sdk/openai");
   });
@@ -194,15 +194,10 @@ describe("convertModelsDevModel — compat assignment", () => {
 
 describe("generated catalog — provider info", () => {
   it("exports PROVIDER_INFO with a name for every provider", async () => {
-    const { PROVIDER_INFO, PROVIDERS } = await import(
-      "../catalog/generated.ts"
-    );
+    const { PROVIDER_INFO, PROVIDERS } = await import("../catalog/generated.ts");
     for (const providerId of PROVIDERS) {
       const info = PROVIDER_INFO[providerId];
-      expect(
-        info,
-        `provider ${providerId} missing from PROVIDER_INFO`
-      ).toBeDefined();
+      expect(info, `provider ${providerId} missing from PROVIDER_INFO`).toBeDefined();
       if (!info) continue;
       expect(typeof info.name).toBe("string");
       expect(info.name.length).toBeGreaterThan(0);

@@ -1,9 +1,5 @@
 import type { AgentDefinition } from "@sakti-code/agent";
-import {
-  defineAgent,
-  fromConfig,
-  type PermissionRuleset,
-} from "@sakti-code/agent";
+import { defineAgent, fromConfig, type PermissionRuleset } from "@sakti-code/agent";
 import {
   BUILD_PROMPT,
   EXPLORE_PROMPT,
@@ -70,8 +66,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
   defineAgent({
     name: "build",
     mode: "primary",
-    description:
-      "The default agent. Executes tools based on configured permissions.",
+    description: "The default agent. Executes tools based on configured permissions.",
     systemPrompt: BUILD_PROMPT,
     permission: buildRuleset(),
     activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "ls"],
@@ -110,16 +105,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "PM-style planning agent for scoping work before implementation. Calls propose_session to hand off to a task session.",
     systemPrompt: INTAKE_SYSTEM_PROMPT,
     permission: intakeRuleset(),
-    activeToolNames: [
-      "read",
-      "write",
-      "edit",
-      "bash",
-      "grep",
-      "find",
-      "ls",
-      "propose_session",
-    ],
+    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "ls", "propose_session"],
   }),
 ];
 

@@ -1,9 +1,6 @@
 /** Agent configuration: catalog, prompts, tool registry, resolution helpers. */
 
-export {
-  BRANCH_SUMMARY_PROMPTS,
-  COMPACTION_PROMPTS,
-} from "./compaction-prompts.ts";
+export { BRANCH_SUMMARY_PROMPTS, COMPACTION_PROMPTS } from "./compaction-prompts.ts";
 
 export {
   BUILD_PROMPT,
@@ -19,11 +16,7 @@ export {
   resolveSessionAgent,
   resolveSessionAgentForKind,
 } from "./resolve-agent.ts";
-export {
-  DEFAULT_AGENT_NAME,
-  resolveServerAgent,
-  SERVER_AGENTS,
-} from "./server-agents.ts";
+export { DEFAULT_AGENT_NAME, resolveServerAgent, SERVER_AGENTS } from "./server-agents.ts";
 export { SKILLS_INSTRUCTIONS } from "./skills-instructions.ts";
 export {
   buildAgentTools,

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { toPinoCall } from "../../node/pino-args.ts";
 import type { LogContext } from "../../types.ts";
 
@@ -11,12 +11,7 @@ describe("toPinoCall", () => {
   });
 
   it("maps error by folding describeError into obj.error", () => {
-    const [obj, msg] = toPinoCall(
-      "boom",
-      { domain: "LLM" },
-      new Error("x"),
-      "llm"
-    );
+    const [obj, msg] = toPinoCall("boom", { domain: "LLM" }, new Error("x"), "llm");
     expect((obj as { error: string }).error).toBe("x");
     expect((obj as { layer: string }).layer).toBe("llm");
     expect(msg).toBe("boom");

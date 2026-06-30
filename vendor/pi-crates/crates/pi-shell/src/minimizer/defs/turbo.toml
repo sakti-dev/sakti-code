@@ -6,13 +6,13 @@ description = "Compact Turborepo task output"
 match_command = "^turbo$"
 strip_ansi = true
 strip_lines_matching = [
-	"^\\s*$",
-	"^•\\s+Packages in scope",
-	"^•\\s+Running ",
-	"^•\\s+Remote caching",
-	"cache hit, replaying logs",
-	"cache (miss, executing|bypass, force executing)",
-	"^\\s*\\d+ packages in scope",
+  "^\\s*$",
+  "^•\\s+Packages in scope",
+  "^•\\s+Running ",
+  "^•\\s+Remote caching",
+  "cache hit, replaying logs",
+  "cache (miss, executing|bypass, force executing)",
+  "^\\s*\\d+ packages in scope",
 ]
 truncate_lines_at = 250
 max_lines = 80

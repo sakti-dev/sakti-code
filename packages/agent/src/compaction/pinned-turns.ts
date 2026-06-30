@@ -20,10 +20,7 @@ export interface PinnableOptions {
 }
 
 /** Whether a message is a small-enough user turn to pin through compaction. */
-export function isPinnableUserTurn(
-  message: AgentMessage,
-  options: PinnableOptions = {}
-): boolean {
+export function isPinnableUserTurn(message: AgentMessage, options: PinnableOptions = {}): boolean {
   if (message.role !== "user") {
     return false;
   }
@@ -34,7 +31,7 @@ export function isPinnableUserTurn(
 /** Split messages into pinned (small user turns) and foldable (the rest). */
 export function partitionPinnedTurns(
   messages: AgentMessage[],
-  options: PinnableOptions = {}
+  options: PinnableOptions = {},
 ): { pinned: AgentMessage[]; foldable: AgentMessage[] } {
   const pinned: AgentMessage[] = [];
   const foldable: AgentMessage[] = [];

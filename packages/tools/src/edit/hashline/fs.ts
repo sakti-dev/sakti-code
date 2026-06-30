@@ -26,10 +26,7 @@ export function isNotFound(error: unknown): boolean {
   if (error instanceof NotFoundError) {
     return true;
   }
-  if (
-    error instanceof Error &&
-    (error as Error & { code?: string }).code === "ENOENT"
-  ) {
+  if (error instanceof Error && (error as Error & { code?: string }).code === "ENOENT") {
     return true;
   }
   return false;
@@ -38,10 +35,7 @@ export function isNotFound(error: unknown): boolean {
 export abstract class Filesystem {
   abstract readText(path: string): Promise<string>;
 
-  async preflightWrite(
-    _path: string,
-    _options?: PreflightWriteOptions
-  ): Promise<void> {}
+  async preflightWrite(_path: string, _options?: PreflightWriteOptions): Promise<void> {}
 
   abstract writeText(path: string, content: string): Promise<WriteResult>;
 

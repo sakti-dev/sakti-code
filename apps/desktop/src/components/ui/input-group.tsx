@@ -27,7 +27,7 @@ export function InputGroup(props: JSX.HTMLAttributes<HTMLDivElement>) {
         "has-[>[data-align=block-start]]:[&>input]:pb-3",
         "has-[>[data-align=inline-end]]:[&>input]:pr-1.5",
         "has-[>[data-align=inline-start]]:[&>input]:pl-1.5",
-        local.class
+        local.class,
       )}
       data-slot="input-group"
       role="group"
@@ -69,7 +69,7 @@ const inputGroupAddonVariants = cva(
       align: "inline-start",
       separator: false,
     },
-  }
+  },
 );
 
 type InputGroupAddonProps = JSX.HTMLAttributes<HTMLDivElement> &
@@ -84,7 +84,7 @@ export function InputGroupAddon(props: InputGroupAddonProps) {
           align: local.align,
           separator: local.separator,
         }),
-        local.class
+        local.class,
       )}
       data-align={local.align ?? "inline-start"}
       data-slot="input-group-addon"
@@ -116,7 +116,7 @@ const inputGroupButtonVariants = cva(
     defaultVariants: {
       size: "xs",
     },
-  }
+  },
 );
 
 type InputGroupButtonProps = Omit<ButtonProps, "size"> &
@@ -126,13 +126,7 @@ type InputGroupButtonProps = Omit<ButtonProps, "size"> &
   };
 
 export function InputGroupButton(props: InputGroupButtonProps) {
-  const [local, others] = splitProps(props, [
-    "class",
-    "size",
-    "variant",
-    "type",
-    "onClick",
-  ]);
+  const [local, others] = splitProps(props, ["class", "size", "variant", "type", "onClick"]);
   return (
     <Button
       class={cn(inputGroupButtonVariants({ size: local.size }), local.class)}
@@ -153,7 +147,7 @@ export function InputGroupText(props: JSX.HTMLAttributes<HTMLSpanElement>) {
     <span
       class={cn(
         "flex items-center gap-2 text-muted-foreground text-sm [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none",
-        local.class
+        local.class,
       )}
       {...others}
     />
@@ -162,15 +156,13 @@ export function InputGroupText(props: JSX.HTMLAttributes<HTMLSpanElement>) {
 
 /* ── InputGroupInput ────────────────────────────────────────────── */
 
-export function InputGroupInput(
-  props: JSX.InputHTMLAttributes<HTMLInputElement>
-) {
+export function InputGroupInput(props: JSX.InputHTMLAttributes<HTMLInputElement>) {
   const [local, others] = splitProps(props, ["class"]);
   return (
     <input
       class={cn(
         "min-w-0 flex-1 rounded-none border-0 bg-transparent text-sm shadow-none outline-none ring-0 focus-visible:outline-none focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0",
-        local.class
+        local.class,
       )}
       data-slot="input-group-control"
       {...others}
@@ -180,15 +172,13 @@ export function InputGroupInput(
 
 /* ── InputGroupTextarea ─────────────────────────────────────────── */
 
-export function InputGroupTextarea(
-  props: JSX.TextareaHTMLAttributes<HTMLTextAreaElement>
-) {
+export function InputGroupTextarea(props: JSX.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   const [local, others] = splitProps(props, ["class"]);
   return (
     <textarea
       class={cn(
         "flex-1 resize-none rounded-none border-0 bg-transparent py-2 shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0",
-        local.class
+        local.class,
       )}
       data-slot="input-group-control"
       {...others}

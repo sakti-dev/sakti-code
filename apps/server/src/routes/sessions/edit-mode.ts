@@ -20,7 +20,7 @@ export const editModeRoutes = new Hono()
     const ctx = getCtx(c);
     const id = c.req.param("id");
     const { mode } = c.req.valid("json");
-    const session = await ctx.repos.sessions.findById(id);
+    const session = ctx.repos.sessions.findById(id);
     if (!session) {
       return c.json({ error: "Not found" }, 404);
     }

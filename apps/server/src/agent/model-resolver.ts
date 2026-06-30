@@ -54,7 +54,7 @@ export function resolveModel(
     kind: string;
     projectId: string;
     profileId: string | null;
-  }
+  },
 ): ResolvedModel {
   const profiles = getCachedProfiles(ctx);
   const mode = kindToMode(session.kind);
@@ -81,7 +81,7 @@ export function resolveAuth(
     kind: string;
     projectId: string;
     profileId: string | null;
-  }
+  },
 ): ResolvedAuth | undefined {
   const resolved = resolveModel(ctx, session);
   const apiKey = ctx.auth.getApiKey(resolved.provider);

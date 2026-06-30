@@ -7,12 +7,14 @@
 **Architecture:** Keep sakti's descriptive core schema (`projects`, `sessions`, `session_entries`) untouched. Add one new table that speaks **Mastra's vocabulary at the boundary**: its `resource_id`/`thread_id` columns foreign-key into `projects.id`/`sessions.id`. A glossary comment in `schema.ts` documents the mapping. This is the minimal, additive, no-data-loss path; the OM storage adapter and processor are a separate later effort.
 
 **Scope (decided upfront):**
+
 - Session-scoped only (`lookupKey = thread:{sessionId}`). Project/resource scope is deferred and will be a purely additive change later.
 - DB readiness only — schema + migration + glossary + tests. No repo class, no OM adapter, no processor.
 
 **Tech Stack:** `node:sqlite`, Drizzle ORM + drizzle-kit (sqlite dialect), vitest, pnpm.
 
 **Key references in the Mastra source of truth:**
+
 - Shape: `openspec/references/mastra/packages/core/src/storage/constants.ts:472` (`OBSERVATIONAL_MEMORY_SCHEMA`)
 - Record type: `openspec/references/mastra/packages/core/src/storage/types.ts:1129` (`ObservationalMemoryRecord`)
 - Adapter contract (next effort): `openspec/references/mastra/packages/core/src/storage/domains/memory/base.ts:175`
@@ -33,6 +35,7 @@
 ## Task 1: Add glossary + `observationalMemory` table (TDD — existence)
 
 **Files:**
+
 - Modify: `packages/db/src/schema.ts` (add `index` to imports; add glossary block; add `observationalMemory` table after `turns`)
 - Create: `packages/db/src/__tests__/observational-memory-schema.test.ts`
 - Generated: `packages/db/migrations/<new-timestamped-folder>/migration.sql` (via `pnpm db:generate`)
@@ -65,9 +68,7 @@ describe("observational_memory table", () => {
   test("table exists after migration", async () => {
     await initDatabase(db);
     const tables = db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-      )
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
       .all() as Array<{ name: string }>;
     expect(tables.map((t) => t.name)).toContain("observational_memory");
   });
@@ -84,13 +85,7 @@ Expected: FAIL — `expected […] to contain "observational_memory"` (table not
 In `packages/db/src/schema.ts`, update the drizzle import (top of file) to include `index`:
 
 ```ts
-import {
-  index,
-  integer,
-  sqliteTable,
-  text,
-  uniqueIndex,
-} from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 ```
 
 Append this block **after** the `turns` table definition (so `projects` and `sessions`, which it references, are already declared):
@@ -138,18 +133,12 @@ export const observationalMemory = sqliteTable(
 
     // content
     activeObservations: text("active_observations").notNull(),
-    activeObservationsPendingUpdate: text(
-      "active_observations_pending_update"
-    ),
+    activeObservationsPendingUpdate: text("active_observations_pending_update"),
     bufferedObservationChunks: text("buffered_observation_chunks"), // JSON
     bufferedReflection: text("buffered_reflection"),
     bufferedReflectionTokens: integer("buffered_reflection_tokens"),
-    bufferedReflectionInputTokens: integer(
-      "buffered_reflection_input_tokens"
-    ),
-    reflectedObservationLineCount: integer(
-      "reflected_observation_line_count"
-    ),
+    bufferedReflectionInputTokens: integer("buffered_reflection_input_tokens"),
+    reflectedObservationLineCount: integer("reflected_observation_line_count"),
     observedMessageIds: text("observed_message_ids"), // JSON array of session_entries.id
     observedTimezone: text("observed_timezone"),
 
@@ -164,12 +153,8 @@ export const observationalMemory = sqliteTable(
     observationTokenCount: integer("observation_token_count").notNull(),
 
     // state flags
-    isObserving: integer("is_observing", { mode: "boolean" })
-      .notNull()
-      .default(false),
-    isReflecting: integer("is_reflecting", { mode: "boolean" })
-      .notNull()
-      .default(false),
+    isObserving: integer("is_observing", { mode: "boolean" }).notNull().default(false),
+    isReflecting: integer("is_reflecting", { mode: "boolean" }).notNull().default(false),
     isBufferingObservation: integer("is_buffering_observation", {
       mode: "boolean",
     })
@@ -180,9 +165,7 @@ export const observationalMemory = sqliteTable(
     })
       .notNull()
       .default(false),
-    lastBufferedAtTokens: integer("last_buffered_at_tokens")
-      .notNull()
-      .default(0),
+    lastBufferedAtTokens: integer("last_buffered_at_tokens").notNull().default(0),
 
     // cursors / timestamps (epoch-ms integers, consistent with the schema)
     lastObservedAt: integer("last_observed_at"),
@@ -192,16 +175,14 @@ export const observationalMemory = sqliteTable(
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
   },
-  (table) => [
-    index("observational_memory_lookup_key_idx").on(table.lookupKey),
-  ]
+  (table) => [index("observational_memory_lookup_key_idx").on(table.lookupKey)],
 );
 ```
 
 ### Step 4: Generate the migration
 
 Run: `cd packages/db && pnpm db:generate`
-Expected: a new timestamped folder under `packages/db/migrations/` containing `migration.sql` (a `CREATE TABLE \`observational_memory\` …` + `CREATE INDEX … observational_memory_lookup_key_idx …`) and an updated `snapshot.json`. Note the folder name for the commit.
+Expected: a new timestamped folder under `packages/db/migrations/` containing `migration.sql` (a `CREATE TABLE \`observational_memory\` …`+`CREATE INDEX … observational_memory_lookup_key_idx …`) and an updated `snapshot.json`. Note the folder name for the commit.
 
 Verify the generated SQL actually creates the table and index (open `migration.sql` and eyeball it). If drizzle emitted a drop/recreate of existing tables instead of a clean additive `CREATE TABLE`, stop — that means the snapshot drifted; do not commit a destructive migration.
 
@@ -226,6 +207,7 @@ git commit -m "feat(db): add observational_memory table (session-scoped)"
 Validates that every column type (JSON-in-text, boolean-mode flags, epoch-ms, nullable FKs) persists correctly, and that multiple rows may share a `lookup_key` (history) with latest-by-`updatedAt` semantics.
 
 **Files:**
+
 - Modify: `packages/db/src/__tests__/observational-memory-schema.test.ts` (add tests inside the existing `describe`)
 
 ### Step 1: Extend imports in the test file
@@ -258,11 +240,15 @@ Add inside the same `describe`:
 ```ts
 test("round-trips a fully-populated record (JSON, booleans, epoch-ms) and keeps history by lookupKey", () => {
   // FK parents
+  db.prepare("INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?,?,?,?,?)").run(
+    "proj1",
+    "P",
+    "/tmp/p",
+    1,
+    1,
+  );
   db.prepare(
-    "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?,?,?,?,?)"
-  ).run("proj1", "P", "/tmp/p", 1, 1);
-  db.prepare(
-    "INSERT INTO sessions (id, project_id, kind, thinking_level, created_at, updated_at) VALUES (?,?,?,?,?,?)"
+    "INSERT INTO sessions (id, project_id, kind, thinking_level, created_at, updated_at) VALUES (?,?,?,?,?,?)",
   ).run("sess1", "proj1", "task", "off", 1, 1);
 
   const now = Date.now();
@@ -277,9 +263,7 @@ test("round-trips a fully-populated record (JSON, booleans, epoch-ms) and keeps 
       resourceId: "proj1",
       threadId: "sess1",
       activeObservations: "observed: user wants X",
-      bufferedObservationChunks: JSON.stringify([
-        { text: "chunk", tokens: 10 },
-      ]),
+      bufferedObservationChunks: JSON.stringify([{ text: "chunk", tokens: 10 }]),
       observedMessageIds: JSON.stringify(["e1", "e2"]),
       observedTimezone: "America/Los_Angeles",
       originType: "observation",
@@ -373,6 +357,7 @@ git commit -m "test(db): cover observational_memory round-trip and history"
 Update the canonical "tables exist" assertion so the new table is part of the documented contract, then run the full verification suite.
 
 **Files:**
+
 - Modify: `packages/db/src/__tests__/init.test.ts` (one line)
 
 ### Step 1: Add the new table to the canonical list

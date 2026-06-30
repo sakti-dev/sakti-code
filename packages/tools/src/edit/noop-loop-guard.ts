@@ -30,7 +30,7 @@ export interface NoopRecordResult {
 export function recordNoopEdit(
   session: NoopLoopGuardOwner,
   canonicalPath: string,
-  inputHash: string
+  inputHash: string,
 ): NoopRecordResult {
   const guard = getNoopLoopGuard(session);
   const prev = guard.entries.get(canonicalPath);
@@ -39,10 +39,7 @@ export function recordNoopEdit(
   return { count, escalate: count >= NOOP_HARD_LIMIT };
 }
 
-export function resetNoopEdit(
-  session: NoopLoopGuardOwner,
-  canonicalPath: string
-): void {
+export function resetNoopEdit(session: NoopLoopGuardOwner, canonicalPath: string): void {
   const guard = session.noopLoopGuard;
   if (!guard) {
     return;

@@ -62,10 +62,7 @@ export function BannerError() {
   );
 }
 
-const HEALTH_ICONS: Record<
-  string,
-  { label: string; severity: "error" | "warning" }
-> = {
+const HEALTH_ICONS: Record<string, { label: string; severity: "error" | "warning" }> = {
   process_crashed: { label: "Pi process crashed", severity: "error" },
   session_start_failed: { label: "Session failed to start", severity: "error" },
   repeated_model_errors: { label: "Model errors", severity: "warning" },
@@ -93,9 +90,7 @@ export function BannerHealth() {
             <div
               class={cn(
                 "flex items-center gap-2 px-4 py-1.5 font-medium text-xs",
-                isError()
-                  ? "bg-error/10 text-error"
-                  : "bg-warning/10 text-warning"
+                isError() ? "bg-error/10 text-error" : "bg-warning/10 text-warning",
               )}
             >
               <Show

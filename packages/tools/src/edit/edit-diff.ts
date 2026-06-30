@@ -18,10 +18,7 @@ export function normalizeToLF(text: string): string {
   return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
-export function restoreLineEndings(
-  text: string,
-  ending: "\r\n" | "\n"
-): string {
+export function restoreLineEndings(text: string, ending: "\r\n" | "\n"): string {
   return ending === "\r\n" ? text.replace(/\n/g, "\r\n") : text;
 }
 
@@ -53,10 +50,7 @@ interface MatchedEdit {
   newText: string;
 }
 
-type TextReplacement = Pick<
-  MatchedEdit,
-  "matchIndex" | "matchLength" | "newText"
->;
+type TextReplacement = Pick<MatchedEdit, "matchIndex" | "matchLength" | "newText">;
 
 function getLineSpans(content: string): LineSpan[] {
   let offset = 0;
@@ -67,10 +61,7 @@ function getLineSpans(content: string): LineSpan[] {
   });
 }
 
-function getReplacementLineRange(
-  lines: LineSpan[],
-  replacement: TextReplacement
-) {
+function getReplacementLineRange(lines: LineSpan[], replacement: TextReplacement) {
   const replacementStart = replacement.matchIndex;
   const replacementEnd = replacement.matchIndex + replacement.matchLength;
 
@@ -97,11 +88,7 @@ function getReplacementLineRange(
   return { startLine, endLine: endLine + 1 };
 }
 
-function applyReplacements(
-  content: string,
-  replacements: TextReplacement[],
-  offset = 0
-): string {
+function applyReplacements(content: string, replacements: TextReplacement[], offset = 0): string {
   let result = content;
   for (let i = replacements.length - 1; i >= 0; i--) {
     const replacement = replacements[i]!;
@@ -117,13 +104,13 @@ function applyReplacements(
 export function applyReplacementsPreservingUnchangedLines(
   originalContent: string,
   baseContent: string,
-  replacements: TextReplacement[]
+  replacements: TextReplacement[],
 ): string {
   const originalLines = splitLinesWithEndings(originalContent);
   const baseLines = getLineSpans(baseContent);
   if (originalLines.length !== baseLines.length) {
     throw new Error(
-      "Cannot preserve unchanged lines because the base content has a different line count."
+      "Cannot preserve unchanged lines because the base content has a different line count.",
     );
   }
 
@@ -132,9 +119,7 @@ export function applyReplacementsPreservingUnchangedLines(
     endLine: number;
     replacements: TextReplacement[];
   }> = [];
-  const sortedReplacements = [...replacements].sort(
-    (a, b) => a.matchIndex - b.matchIndex
-  );
+  const sortedReplacements = [...replacements].sort((a, b) => a.matchIndex - b.matchIndex);
   for (const replacement of sortedReplacements) {
     const range = getReplacementLineRange(baseLines, replacement);
     const current = groups[groups.length - 1];
@@ -156,7 +141,7 @@ export function applyReplacementsPreservingUnchangedLines(
     result += applyReplacements(
       baseContent.slice(groupStartOffset, groupEndOffset),
       group.replacements,
-      groupStartOffset
+      groupStartOffset,
     );
     originalLineIndex = group.endLine;
   }
@@ -183,10 +168,7 @@ export interface AppliedEditsResult {
   newContent: string;
 }
 
-export function fuzzyFindText(
-  content: string,
-  oldText: string
-): FuzzyMatchResult {
+export function fuzzyFindText(content: string, oldText: string): FuzzyMatchResult {
   const exactIndex = content.indexOf(oldText);
   if (exactIndex !== -1) {
     return {
@@ -233,18 +215,14 @@ function countOccurrences(content: string, oldText: string): number {
   return fuzzyContent.split(fuzzyOldText).length - 1;
 }
 
-function getNotFoundError(
-  path: string,
-  editIndex: number,
-  totalEdits: number
-): Error {
+function getNotFoundError(path: string, editIndex: number, totalEdits: number): Error {
   if (totalEdits === 1) {
     return new Error(
-      `Could not find the exact text in ${path}. The old text must match exactly including all whitespace and newlines.`
+      `Could not find the exact text in ${path}. The old text must match exactly including all whitespace and newlines.`,
     );
   }
   return new Error(
-    `Could not find edits[${editIndex}] in ${path}. The oldText must match exactly including all whitespace and newlines.`
+    `Could not find edits[${editIndex}] in ${path}. The oldText must match exactly including all whitespace and newlines.`,
   );
 }
 
@@ -252,23 +230,19 @@ function getDuplicateError(
   path: string,
   editIndex: number,
   totalEdits: number,
-  occurrences: number
+  occurrences: number,
 ): Error {
   if (totalEdits === 1) {
     return new Error(
-      `Found ${occurrences} occurrences of the text in ${path}. The text must be unique. Please provide more context to make it unique.`
+      `Found ${occurrences} occurrences of the text in ${path}. The text must be unique. Please provide more context to make it unique.`,
     );
   }
   return new Error(
-    `Found ${occurrences} occurrences of edits[${editIndex}] in ${path}. Each oldText must be unique. Please provide more context to make it unique.`
+    `Found ${occurrences} occurrences of edits[${editIndex}] in ${path}. Each oldText must be unique. Please provide more context to make it unique.`,
   );
 }
 
-function getEmptyOldTextError(
-  path: string,
-  editIndex: number,
-  totalEdits: number
-): Error {
+function getEmptyOldTextError(path: string, editIndex: number, totalEdits: number): Error {
   if (totalEdits === 1) {
     return new Error(`oldText must not be empty in ${path}.`);
   }
@@ -278,18 +252,16 @@ function getEmptyOldTextError(
 function getNoChangeError(path: string, totalEdits: number): Error {
   if (totalEdits === 1) {
     return new Error(
-      `No changes made to ${path}. The replacement produced identical content. This might indicate an issue with special characters or the text not existing as expected.`
+      `No changes made to ${path}. The replacement produced identical content. This might indicate an issue with special characters or the text not existing as expected.`,
     );
   }
-  return new Error(
-    `No changes made to ${path}. The replacements produced identical content.`
-  );
+  return new Error(`No changes made to ${path}. The replacements produced identical content.`);
 }
 
 export function applyEditsToNormalizedContent(
   normalizedContent: string,
   edits: Edit[],
-  path: string
+  path: string,
 ): AppliedEditsResult {
   const normalizedEdits = edits.map((edit) => ({
     oldText: normalizeToLF(edit.oldText),
@@ -303,7 +275,7 @@ export function applyEditsToNormalizedContent(
   }
 
   const initialMatches = normalizedEdits.map((edit) =>
-    fuzzyFindText(normalizedContent, edit.oldText)
+    fuzzyFindText(normalizedContent, edit.oldText),
   );
   const usedFuzzyMatch = initialMatches.some((match) => match.usedFuzzyMatch);
   const replacementBaseContent = usedFuzzyMatch
@@ -337,7 +309,7 @@ export function applyEditsToNormalizedContent(
     const current = matchedEdits[i]!;
     if (previous.matchIndex + previous.matchLength > current.matchIndex) {
       throw new Error(
-        `edits[${previous.editIndex}] and edits[${current.editIndex}] overlap in ${path}. Merge them into one edit or target disjoint regions.`
+        `edits[${previous.editIndex}] and edits[${current.editIndex}] overlap in ${path}. Merge them into one edit or target disjoint regions.`,
       );
     }
   }
@@ -347,7 +319,7 @@ export function applyEditsToNormalizedContent(
     ? applyReplacementsPreservingUnchangedLines(
         normalizedContent,
         replacementBaseContent,
-        matchedEdits
+        matchedEdits,
       )
     : applyReplacements(replacementBaseContent, matchedEdits);
 
@@ -362,26 +334,18 @@ export function generateUnifiedPatch(
   path: string,
   oldContent: string,
   newContent: string,
-  contextLines = 4
+  contextLines = 4,
 ): string {
-  return Diff.createTwoFilesPatch(
-    path,
-    path,
-    oldContent,
-    newContent,
-    undefined,
-    undefined,
-    {
-      context: contextLines,
-      headerOptions: Diff.FILE_HEADERS_ONLY,
-    }
-  );
+  return Diff.createTwoFilesPatch(path, path, oldContent, newContent, undefined, undefined, {
+    context: contextLines,
+    headerOptions: Diff.FILE_HEADERS_ONLY,
+  });
 }
 
 export function generateDiffString(
   oldContent: string,
   newContent: string,
-  contextLines = 4
+  contextLines = 4,
 ): { diff: string; firstChangedLine: number | undefined } {
   const parts = Diff.diffLines(oldContent, newContent);
   const output: string[] = [];
@@ -437,8 +401,7 @@ export function generateDiffString(
         } else {
           const leadingLines = raw.slice(0, contextLines);
           const trailingLines = raw.slice(raw.length - contextLines);
-          const skippedLines =
-            raw.length - leadingLines.length - trailingLines.length;
+          const skippedLines = raw.length - leadingLines.length - trailingLines.length;
 
           for (const line of leadingLines) {
             const lineNum = String(oldLineNum).padStart(lineNumWidth, " ");
@@ -503,7 +466,7 @@ export function generateDiffString(
 export function generateNumberedDiff(
   oldContent: string,
   newContent: string,
-  contextLines = 2
+  contextLines = 2,
 ): { diff: string; firstChangedLine: number | undefined } {
   const parts = Diff.diffLines(oldContent, newContent);
   const output: string[] = [];
@@ -548,8 +511,7 @@ export function generateNumberedDiff(
           if (raw.length > limit * 2) {
             const leadingContext = raw.slice(0, limit);
             const trailingContext = raw.slice(raw.length - limit);
-            middleSkip =
-              raw.length - leadingContext.length - trailingContext.length;
+            middleSkip = raw.length - leadingContext.length - trailingContext.length;
             linesToShow = [...leadingContext, ...trailingContext];
           } else {
             linesToShow = raw;
@@ -611,7 +573,7 @@ export interface EditDiffError {
 export async function computeEditsDiff(
   path: string,
   edits: Edit[],
-  cwd: string
+  cwd: string,
 ): Promise<EditDiffResult | EditDiffError> {
   const absolutePath = resolveToCwd(path, cwd);
 
@@ -630,7 +592,7 @@ export async function computeEditsDiff(
     const { baseContent, newContent } = applyEditsToNormalizedContent(
       normalizedContent,
       edits,
-      path
+      path,
     );
 
     return generateDiffString(baseContent, newContent);
@@ -643,7 +605,7 @@ export async function computeEditDiff(
   path: string,
   oldText: string,
   newText: string,
-  cwd: string
+  cwd: string,
 ): Promise<EditDiffResult | EditDiffError> {
   return computeEditsDiff(path, [{ oldText, newText }], cwd);
 }

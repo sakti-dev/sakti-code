@@ -3,7 +3,7 @@
 **Date:** 2026-06-29
 **Status:** Approved
 **Follows:** `2026-06-29-agent-effect-end-to-end.md` (Phases A–G shipped)
-**Goal:** Deliver the plan's stated goal — *single `Effect.runPromise` boundary at the WS edge* — by converting `runPrompt`, the harness internals, and `RetryRunnerDeps` to Effect-native.
+**Goal:** Deliver the plan's stated goal — _single `Effect.runPromise` boundary at the WS edge_ — by converting `runPrompt`, the harness internals, and `RetryRunnerDeps` to Effect-native.
 
 ## Context
 
@@ -20,6 +20,7 @@ Phases A–G delivered: tool-input-delta streaming, Effect-native `SessionStorag
 ## Scope
 
 **In scope:**
+
 - Harness: 11 internal `Effect.runPromise` → 4 (one per public method).
 - `promptEffect`/`continueEffect`/`abortEffect`/`waitForIdleEffect`: drop `tryPromise`, become the true core.
 - `RetryRunnerDepsEffect` (Effect-typed); `executeWithRetryEffect` consumes it.
@@ -28,6 +29,7 @@ Phases A–G delivered: tool-input-delta streaming, Effect-native `SessionStorag
 - ws/e2e tests rewritten to deterministic `Stream` draining (drop `setTimeout` pattern).
 
 **Out of scope (deferred):**
+
 - REST routes under `apps/server/src/routes/sessions/*` — 10 `Effect.runPromise` wrappers. Latency-dominated by DB/JSON; converting requires Effect-native Hono middleware. Negligible UX payoff.
 - Compaction Promise wrappers (`compact`/`runAutoCompaction`/`generateBranchSummary`) — they become dead once H4 lands; deletion is H5 cleanup.
 
@@ -46,11 +48,13 @@ Phases A–G delivered: tool-input-delta streaming, Effect-native `SessionStorag
 Convert 7 mechanical `Effect.runPromise(Effect.gen(...))` patterns to private `*Effect` methods + Promise wrappers.
 
 **Affected methods (agent-harness.ts):**
+
 - `appendMessage`, `appendFollowUp` (queued-writes pattern)
 - `setLabel`, `setModel`, `setThinkingLevel`, `setTools` (setter pattern)
 - `flushPendingSessionWrites` (helper used by H2 — must land first)
 
 **Pattern:**
+
 ```ts
 private XEffect(...): Effect.Effect<ReturnType, SessionError | AgentHarnessError> {
   return Effect.gen(this, function* (self) { /* yield* self.session.X() */ });
@@ -72,14 +76,16 @@ Convert `executeTurn`, `runAsTurn`, `createTurnState`, `handleAgentEvent` to Eff
 **Critical move — kill the flake root cause:**
 
 The previous flake (1/3 runs in `ws.test.ts`) traced to emit-timing divergence:
+
 - `runAgentLoopEffect` emits via `Effect.promise(() => emit(event))` — lazy, runs when scheduler reaches it.
 - `runAgentLoop` emits via `await emit(event)` — eager, runs immediately.
 
-Result: with `runAgentLoopEffect`, `agent_start` could fire *after* subsequent emits queued up in the same gen, breaking `ws.test.ts` frame ordering.
+Result: with `runAgentLoopEffect`, `agent_start` could fire _after_ subsequent emits queued up in the same gen, breaking `ws.test.ts` frame ordering.
 
 **Fix:** introduce a single `emitEffect(event): Effect<void>` helper. Both `runAgentLoopEffect` and `executeTurnEffect` use `yield* emitEffect(event)`. Promise callers use `await Effect.runPromise(emitEffect(event))`. Exactly one emit semantics, not two. This makes `executeTurnEffect`'s emit ordering byte-identical to today's `executeTurn`.
 
 `executeTurnEffect` calls `runAgentLoopEffect` directly (instead of `runAgentLoop`). The `Effect.gen` body mirrors the current Promise body, with:
+
 - `yield* emitHookEffect(...)` instead of `await this.emitHook(...)`
 - `yield* runAgentLoopEffect(...)` instead of `await runAgentLoop(...)`
 - `yield* self.flushPendingSessionWritesEffect()` instead of `await this.flushPendingSessionWrites()`
@@ -87,6 +93,7 @@ Result: with `runAgentLoopEffect`, `agent_start` could fire *after* subsequent e
 - A `finally` via `Effect.ensuring` instead of `try/finally`
 
 **Tests:**
+
 - 37+ existing harness tests stay Promise-based (they call `await harness.prompt(...)`); the Promise wrappers route through `promptEffect` so behavior is identical.
 - 3 PubSub tests from Phase C+D stay.
 - **2 new tests (RED-first):**
@@ -102,12 +109,12 @@ New interface alongside the existing one (or replacing, if all callers migrate i
 ```ts
 export interface RetryRunnerDepsEffect {
   readonly checkCompaction?: (message: AssistantMessage) => Effect.Effect<CompactionDecision>;
-  readonly emit: (event: AgentEvent) => Effect.Effect<void>;  // or sync, see below
+  readonly emit: (event: AgentEvent) => Effect.Effect<void>; // or sync, see below
   readonly logger?: Logger;
   readonly rollbackLeaf: () => Effect.Effect<void>;
   readonly runCompaction?: () => Effect.Effect<RunCompactionOutcome>;
   readonly runTurn: () => Effect.Effect<AssistantMessage>;
-  readonly signal: AbortSignal;  // kept for abortableSleep backoff
+  readonly signal: AbortSignal; // kept for abortableSleep backoff
 }
 ```
 
@@ -150,6 +157,7 @@ function runPromptEffect(ctx, sessionId, message): Effect.Effect<void, Error> {
 ```
 
 Retry callbacks become Effect-returning:
+
 - `runTurn: () => Effect.gen(...)` → `yield* harness.promptEffect(text)` / `harness.continueEffect()` / `harness.skillEffect(name)` / `harness.promptFromTemplateEffect(name, argv)`.
 - `rollbackLeaf: () => Effect.gen(...)` → `yield* session.getBranch()`, `yield* storage.setLeafId(parentId)`. No more `Effect.runPromise` wrapper inside.
 - `checkCompaction: () => Effect.gen(...)` → `yield* session.getBranch()`, `yield* session.buildContext()`, sync `checkCompaction()` call, sync stuck-guard mutation.
@@ -159,14 +167,16 @@ Retry callbacks become Effect-returning:
 **WS handler (`ws-handler.ts`):** single `Effect.runPromise(runPromptEffect(...))` at the edge. `.catch((err) => sendErrorFrame(sessionId, err))` for top-level error framing.
 
 **`activeRuns` Map:** stores `{ harness, runFiber, retryAbort }`. `abortRun(sessionId)` becomes:
+
 ```ts
 const run = activeRuns.get(sessionId);
 if (!run) return;
-retryAbort.abort();  // unblocks abortableSleep
-Effect.runPromise(Fiber.interrupt(run.runFiber));  // cancels the Effect
+retryAbort.abort(); // unblocks abortableSleep
+Effect.runPromise(Fiber.interrupt(run.runFiber)); // cancels the Effect
 ```
 
 **Tests:**
+
 - `runner.test.ts` (if exists) — update assertions.
 - `ws.test.ts` — if any test breaks, rewrite per the rule.
 - `e2e.test.ts` — the 50ms `setTimeout` is the false positive; rewrite to deterministic Stream draining.

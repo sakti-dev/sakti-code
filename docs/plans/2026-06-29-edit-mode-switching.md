@@ -29,6 +29,7 @@
 ## Task 1: Commit `renderToolSection` refactor
 
 **Files:**
+
 - Already modified: `packages/agent/src/resources/tool-inventory.ts`
 - Already modified: `packages/agent/src/index.ts`
 
@@ -59,6 +60,7 @@ renderToolInventory now delegates to renderToolSection per tool."
 ## Task 2: Add `swapTool` method to AgentHarness
 
 **Files:**
+
 - Modify: `packages/agent/src/agent/agent-harness.ts`
 - Test: `packages/agent/src/agent/__tests__/agent-harness.test.ts`
 
@@ -184,6 +186,7 @@ using renderToolSection for content consistency with the system prompt."
 ## Task 3: Add `EditMode` parameter to `buildTools`
 
 **Files:**
+
 - Modify: `apps/server/src/agent/tools-builder.ts`
 - Test: `apps/server/src/agent/__tests__/tools-builder.test.ts` (new file)
 
@@ -278,6 +281,7 @@ git commit -m "feat(server): accept editMode parameter in buildTools"
 ## Task 4: Add `resolveEditMode` helper + reorder `runPrompt`
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts`
 - Test: `apps/server/src/agent/__tests__/runner.test.ts`
 
@@ -318,10 +322,7 @@ In `runner.ts`, add near `resolveThinkingLevel` (after line 345):
 ```ts
 import type { EditMode } from "@sakti-code/tools";
 
-export function resolveEditMode(
-  ctx: ServerContext,
-  sessionId: string
-): EditMode {
+export function resolveEditMode(ctx: ServerContext, sessionId: string): EditMode {
   const row = ctx.repos.settings.get(`session:${sessionId}:edit_mode`);
   if (row === "hashline" || row === "replace") {
     return row;
@@ -357,6 +358,7 @@ git commit -m "feat(server): resolveEditMode + wire into runPrompt"
 ## Task 5: Add `setEditModeForSession` dual-layer helper
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts`
 - Test: `apps/server/src/agent/__tests__/runner.test.ts`
 
@@ -398,7 +400,7 @@ In `runner.ts`, add near `switchAgentForSession` (after line 417):
 export async function setEditModeForSession(
   ctx: ServerContext,
   sessionId: string,
-  mode: EditMode
+  mode: EditMode,
 ): Promise<boolean> {
   const session = await ctx.repos.sessions.findById(sessionId);
   if (!session) {
@@ -446,6 +448,7 @@ stays frozen until compaction."
 ## Task 6: Create edit-mode route module
 
 **Files:**
+
 - Create: `apps/server/src/routes/sessions/edit-mode.ts`
 - Modify: `apps/server/src/app.ts`
 - Test: `apps/server/src/routes/sessions/__tests__/edit-mode.test.ts` (new file)
@@ -524,21 +527,17 @@ export const editModeRoutes = new Hono()
     const row = ctx.repos.settings.get(`session:${id}:edit_mode`);
     return c.json({ mode: row ?? "hashline" });
   })
-  .put(
-    "/:id/edit-mode",
-    tbValidator("json", body),
-    async (c) => {
-      const ctx = getCtx(c);
-      const id = c.req.param("id");
-      const { mode } = c.req.valid("json");
-      const session = await ctx.repos.sessions.findById(id);
-      if (!session) {
-        return c.json({ error: "Not found" }, 404);
-      }
-      const ok = await setEditModeForSession(ctx, id, mode);
-      return ok ? c.json({ mode }) : c.json({ error: "Not found" }, 404);
+  .put("/:id/edit-mode", tbValidator("json", body), async (c) => {
+    const ctx = getCtx(c);
+    const id = c.req.param("id");
+    const { mode } = c.req.valid("json");
+    const session = await ctx.repos.sessions.findById(id);
+    if (!session) {
+      return c.json({ error: "Not found" }, 404);
     }
-  );
+    const ok = await setEditModeForSession(ctx, id, mode);
+    return ok ? c.json({ mode }) : c.json({ error: "Not found" }, 404);
+  });
 ```
 
 Register in `app.ts`:

@@ -63,10 +63,12 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
     }
 
     if (typeof document !== "undefined" && document.fonts) {
-      document.fonts.ready.then(() => {
-        clearPretextCache();
-        virtual.bumpMeasure();
-      });
+      document.fonts.ready
+        .then(() => {
+          clearPretextCache();
+          virtual.bumpMeasure();
+        })
+        .catch(() => {});
     }
   });
 
@@ -115,12 +117,7 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
                   <Show when={item()}>
                     {(i) => (
                       <Show when={props.turns()[i().index]}>
-                        {(turn) => (
-                          <SessionTurn
-                            isStreaming={props.isStreaming}
-                            turn={turn}
-                          />
-                        )}
+                        {(turn) => <SessionTurn isStreaming={props.isStreaming} turn={turn} />}
                       </Show>
                     )}
                   </Show>

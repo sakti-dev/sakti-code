@@ -1,5 +1,5 @@
 import type { LanguageModelV4CallOptions } from "@ai-sdk/provider";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { ZaiLanguageModel } from "../zai-language-model.ts";
 
 const make = (maxTokens?: number) =>
@@ -11,7 +11,7 @@ const make = (maxTokens?: number) =>
   });
 
 const baseOpts = (
-  overrides: Partial<LanguageModelV4CallOptions> = {}
+  overrides: Partial<LanguageModelV4CallOptions> = {},
 ): LanguageModelV4CallOptions => ({
   prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
   ...overrides,
@@ -24,22 +24,22 @@ describe("ZaiLanguageModel.getArgs", () => {
         providerOptions: {
           zai: { thinking: { type: "enabled", budgetTokens: 16_000 } },
         },
-      })
+      }),
     );
     expect(args.thinking).toEqual({ type: "enabled", budget_tokens: 16_000 });
   });
 
   it("defaults budget to 1024 when enabled without budgetTokens", async () => {
     const { args, warnings } = await make().getArgs(
-      baseOpts({ providerOptions: { zai: { thinking: { type: "enabled" } } } })
+      baseOpts({ providerOptions: { zai: { thinking: { type: "enabled" } } } }),
     );
     expect(args.thinking).toEqual({ type: "enabled", budget_tokens: 1024 });
     expect(
       warnings.some(
         (w) =>
           (w.type === "unsupported" || w.type === "compatibility") &&
-          w.feature === "extended thinking"
-      )
+          w.feature === "extended thinking",
+      ),
     ).toBe(true);
   });
 
@@ -52,16 +52,14 @@ describe("ZaiLanguageModel.getArgs", () => {
         providerOptions: {
           zai: { thinking: { type: "enabled", budgetTokens: 16_000 } },
         },
-      })
+      }),
     );
     expect(args.temperature).toBeUndefined();
     expect(args.top_p).toBeUndefined();
     expect(args.top_k).toBeUndefined();
-    expect(
-      warnings.some(
-        (w) => w.type === "unsupported" && w.feature === "temperature"
-      )
-    ).toBe(true);
+    expect(warnings.some((w) => w.type === "unsupported" && w.feature === "temperature")).toBe(
+      true,
+    );
   });
 
   it("emits speed + output_config only when set", async () => {
@@ -70,7 +68,7 @@ describe("ZaiLanguageModel.getArgs", () => {
         providerOptions: {
           zai: { speed: "fast", outputConfig: { effort: "high" } },
         },
-      })
+      }),
     );
     expect(args.speed).toBe("fast");
     expect(args.output_config).toEqual({ effort: "high" });
@@ -90,7 +88,7 @@ describe("ZaiLanguageModel.getArgs", () => {
             inputSchema: { type: "object" as const },
           },
         ],
-      })
+      }),
     );
     expect(args.system?.at(-1)?.cache_control).toEqual({ type: "ephemeral" });
     expect(args.tools?.at(-1)?.cache_control).toEqual({ type: "ephemeral" });
@@ -103,7 +101,7 @@ describe("ZaiLanguageModel.getArgs", () => {
         providerOptions: {
           zai: { thinking: { type: "enabled", budgetTokens: 32_000 } },
         },
-      })
+      }),
     );
     // Anthropic semantics: thinking.budget_tokens is a portion of max_tokens.
     // Z.ai enforces 1..131072 and rejects `requested + budget`.
@@ -118,7 +116,7 @@ describe("ZaiLanguageModel.getArgs", () => {
         providerOptions: {
           zai: { thinking: { type: "enabled", budgetTokens: 16_000 } },
         },
-      })
+      }),
     );
     expect(args.max_tokens).toBe(131_072);
   });
@@ -127,7 +125,7 @@ describe("ZaiLanguageModel.getArgs", () => {
     const { args } = await make(131_072).getArgs(
       baseOpts({
         maxOutputTokens: 131_072,
-      })
+      }),
     );
     expect(args.max_tokens).toBe(131_072 - 4000);
   });
@@ -139,7 +137,7 @@ describe("ZaiLanguageModel.getArgs", () => {
         providerOptions: {
           zai: { thinking: { type: "enabled", budgetTokens: 16_000 } },
         },
-      })
+      }),
     );
     expect(args.max_tokens).toBe(64_000 - 4000);
   });
@@ -148,7 +146,7 @@ describe("ZaiLanguageModel.getArgs", () => {
     const { args } = await make(64_000).getArgs(
       baseOpts({
         maxOutputTokens: 10_000,
-      })
+      }),
     );
     expect(args.max_tokens).toBe(10_000);
   });
@@ -159,13 +157,10 @@ describe("ZaiLanguageModel.getArgs", () => {
         frequencyPenalty: 0.5,
         presencePenalty: 0.3,
         seed: 42,
-      } as Partial<LanguageModelV4CallOptions>)
+      } as Partial<LanguageModelV4CallOptions>),
     );
     const features = warnings
-      .filter(
-        (w): w is Extract<typeof w, { type: "unsupported" }> =>
-          w.type === "unsupported"
-      )
+      .filter((w): w is Extract<typeof w, { type: "unsupported" }> => w.type === "unsupported")
       .map((w) => w.feature);
     expect(features).toContain("frequencyPenalty");
     expect(features).toContain("presencePenalty");
@@ -179,7 +174,7 @@ describe("ZaiLanguageModel.getArgs", () => {
           { role: "system", content: "sys" },
           { role: "user", content: [{ type: "text", text: "hi" }] },
         ],
-      })
+      }),
     );
     expect(betas.has("prompt-caching-2024-07-31")).toBe(true);
   });

@@ -33,9 +33,9 @@ Main process own logs ───────────────────�
 - **One Pino instance per layer**, each writing its own rotating file. Pino is
   the sole writer; every log from every layer lands in a file.
 - The renderer is sandboxed (no `fs`), so it **forwards** `{level, message,
-  context}` over IPC to main, which re-emits through the **desktop** Pino
+context}` over IPC to main, which re-emits through the **desktop** Pino
   instance. Renderer logs fold into `desktop.log`, tagged `origin:
-  "renderer"|"main"`.
+"renderer"|"main"`.
 - In embedded (Electron) mode the server/agent/tools/llm run **inside** the
   main process, so they receive their Pino logger **directly** (no IPC). In
   standalone `nub run dev:server` mode, the server entry builds the
@@ -43,20 +43,20 @@ Main process own logs ───────────────────�
 
 ### Resulting files in `logDir/`
 
-| File | Written by | How it gets the logger |
-|------|-----------|------------------------|
-| `desktop.log` | Electron main + renderer (via IPC) | main keeps it; renderer forwarded over IPC |
-| `server.log` | Hono routes, ws-handler, retry-loop, runner | injected into `ServerContext.log.server` |
-| `agent.log` | agent loop / harness | `AgentHarnessOptions.logger` |
-| `tools.log` | read/write/edit/bash/grep/find tools | closed over in `buildTools(cwd, logger)` |
-| `llm.log` | stream / complete / provider resolve | `logger?` on `StreamRequest` / `CompleteRequest` |
+| File          | Written by                                  | How it gets the logger                           |
+| ------------- | ------------------------------------------- | ------------------------------------------------ |
+| `desktop.log` | Electron main + renderer (via IPC)          | main keeps it; renderer forwarded over IPC       |
+| `server.log`  | Hono routes, ws-handler, retry-loop, runner | injected into `ServerContext.log.server`         |
+| `agent.log`   | agent loop / harness                        | `AgentHarnessOptions.logger`                     |
+| `tools.log`   | read/write/edit/bash/grep/find tools        | closed over in `buildTools(cwd, logger)`         |
+| `llm.log`     | stream / complete / provider resolve        | `logger?` on `StreamRequest` / `CompleteRequest` |
 
 ## Decisions locked (approved during brainstorm)
 
 1. **New `packages/logger` (`@sakti-code/logger`)** owns the logger contract +
    implementations. Logging is cross-cutting infrastructure; it must be
    importable by the root package `packages/llm` (which nothing can depend
-   *upward* into), so the contract cannot live in `agent` or `llm`.
+   _upward_ into), so the contract cannot live in `agent` or `llm`.
 2. **Subpath split** — `"."` exports types + `createConsoleLogger` +
    `createForwardingLogger` + `noopLogger` + `describeError` (safe for the
    sandboxed renderer; no Pino in the bundle). `"./node"` exports
@@ -83,7 +83,7 @@ Main process own logs ───────────────────�
   `...(x !== undefined ? { x } : {})`, never pass `undefined`.
 - TS 6.0 quirks; `nub` tooling (not Bun runtime).
 - No `console.log`/`any`/`debugger` in production code; `unknown` over `any`.
-  (Logging *implementations* call `console.*` deliberately — that is their job;
+  (Logging _implementations_ call `console.*` deliberately — that is their job;
   the ban is on scattered ad-hoc debugging, which this replaces.)
 - Tests in `__tests__/` colocated with source; **vitest** throughout; TDD
   (failing test → RED → implement → GREEN → commit).
@@ -119,7 +119,7 @@ directly), so no build step.
 export type LogLevel = "debug" | "error" | "info" | "warn";
 
 export interface LogContext extends Record<string, unknown> {
-  domain?: string;   // "LLM" | "AGENT" | "TOOL" | "SERVER" | "WS" | "UI" | ...
+  domain?: string; // "LLM" | "AGENT" | "TOOL" | "SERVER" | "WS" | "UI" | ...
   module?: string;
   scope?: string;
 }
@@ -146,23 +146,23 @@ export interface Logger {
 ```ts
 // packages/logger/src/node/pino.ts
 export interface PinoLoggerOptions {
-  dest: string;            // basename e.g. "agent.log" (placed in logDir)
-  layer: string;           // tag written on every record
-  logDir: string;          // resolved by the composition root
-  level?: LogLevel;        // default "info" (dev: "debug")
-  redactPaths?: string[];  // shared secret-redaction list
+  dest: string; // basename e.g. "agent.log" (placed in logDir)
+  layer: string; // tag written on every record
+  logDir: string; // resolved by the composition root
+  level?: LogLevel; // default "info" (dev: "debug")
+  redactPaths?: string[]; // shared secret-redaction list
   telemetry?: TelemetrySink; // no-op by default (Section 5)
 }
-export function createPinoLogger(opts: PinoLoggerOptions): Logger
+export function createPinoLogger(opts: PinoLoggerOptions): Logger;
 ```
 
 - Each call constructs a **separate Pino + separate `pino-roll` target**
   writing `logDir/dest`. No custom routing transport.
 - **Adapter** maps `logger.info("msg", ctx)` → `pino.info({ ...ctx, layer },
-  "msg")`; `error(msg, err, ctx)` folds `describeError(err)` into context.
+"msg")`; `error(msg, err, ctx)` folds `describeError(err)` into context.
 - **Shared defaults** (overridable per call): rotation = daily + 10 MB size
   cap; redaction list = `["*.apiKey", "*.authorization", "*.cookie",
-  "apiKey", "headers.authorization", "headers.cookie"]` + known env-key field
+"apiKey", "headers.authorization", "headers.cookie"]` + known env-key field
   names; `level` from composition root.
 
 ### Composition root owns the layer map
@@ -172,10 +172,10 @@ export function createPinoLogger(opts: PinoLoggerOptions): Logger
 package), calling the factory 5 times.
 
 - **Electron** (`apps/desktop/electron/main`): `logDir =
-  app.getPath('userData')/logs`; builds all 5; keeps `desktop`; passes
+app.getPath('userData')/logs`; builds all 5; keeps `desktop`; passes
   `{ server, agent, tools, llm }` into `createServer(ctx)`.
 - **Standalone server** (`apps/server/src/index.ts`): `logDir =
-  process.env.SAKTI_LOG_DIR ?? ~/.sakti/logs`; builds the 4 server-side ones
+process.env.SAKTI_LOG_DIR ?? ~/.sakti/logs`; builds the 4 server-side ones
   (no `desktop`). Falls back to `createConsoleLogger()` if the dir is not
   writable.
 
@@ -187,14 +187,17 @@ package), calling the factory 5 times.
 // packages/agent — AgentHarnessOptions gains:
 logger?: Logger;                       // default noopLogger; threaded into AgentLoopConfig
 ```
+
 ```ts
 // packages/tools
 buildTools(cwd: string, logger?: Logger): AgentTool[]   // tools close over logger
 ```
+
 ```ts
 // packages/llm — StreamRequest + CompleteRequest gain:
 logger?: Logger;                       // passed through to the stream-consumption path
 ```
+
 ```ts
 // apps/server — ServerContext gains:
 interface ServerContext {
@@ -209,7 +212,7 @@ interface ServerContext {
 `ctx.log.server`.
 
 **The `llm.log` layer is the one that surfaces the current bug:** on a stream
-`error` part it logs the *full* error object (not just `.message`), the
+`error` part it logs the _full_ error object (not just `.message`), the
 resolved model, baseURL, provider, and providerOptions — everything that is
 currently invisible.
 
@@ -241,7 +244,7 @@ currently invisible.
 ```ts
 // packages/logger/src/types.ts
 export interface TelemetrySink {
-  record(entry: LogEntry): void;   // fire-and-forget; must never throw
+  record(entry: LogEntry): void; // fire-and-forget; must never throw
   flush?(): Promise<void>;
 }
 export const noopTelemetrySink: TelemetrySink = { record() {} };

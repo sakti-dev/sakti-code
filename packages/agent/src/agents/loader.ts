@@ -1,16 +1,8 @@
 import { Effect } from "effect";
-import type {
-  AgentDefinition,
-  AgentMode,
-  ExecutionEnv,
-} from "../harness-types";
+import type { AgentDefinition, AgentMode, ExecutionEnv } from "../harness-types";
 import { isFailure } from "../harness-types";
 import { configEntryNameFromPath } from "./config-entry-name.ts";
-import {
-  type LoaderDiagnostic,
-  parseFrontmatter,
-  resolveKind,
-} from "./loader-shared.ts";
+import { type LoaderDiagnostic, parseFrontmatter, resolveKind } from "./loader-shared.ts";
 
 export type AgentDiagnosticCode =
   | "file_info_failed"
@@ -33,11 +25,7 @@ interface AgentFrontmatter {
 }
 
 const AGENT_PREFIXES = ["agent/", "agents/"];
-const VALID_MODES: ReadonlySet<AgentMode> = new Set([
-  "primary",
-  "subagent",
-  "all",
-]);
+const VALID_MODES: ReadonlySet<AgentMode> = new Set(["primary", "subagent", "all"]);
 
 /**
  * Load agent definitions from one or more config directories.
@@ -56,7 +44,7 @@ const VALID_MODES: ReadonlySet<AgentMode> = new Set([
  */
 export async function loadAgents(
   env: ExecutionEnv,
-  dirs: string | string[]
+  dirs: string | string[],
 ): Promise<{ agents: AgentDefinition[]; diagnostics: AgentDiagnostic[] }> {
   const agents: AgentDefinition[] = [];
   const diagnostics: AgentDiagnostic[] = [];
@@ -87,9 +75,7 @@ export async function loadAgents(
       });
       continue;
     }
-    for (const entry of entriesResult.success.sort((a, b) =>
-      a.name.localeCompare(b.name)
-    )) {
+    for (const entry of entriesResult.success.sort((a, b) => a.name.localeCompare(b.name))) {
       if (entry.name !== "agent" && entry.name !== "agents") {
         continue;
       }
@@ -109,7 +95,7 @@ async function collectAgents(
   dir: string,
   relFromConfig: string,
   agents: AgentDefinition[],
-  diagnostics: AgentDiagnostic[]
+  diagnostics: AgentDiagnostic[],
 ): Promise<void> {
   const entriesResult = await env.listDir(dir);
   if (isFailure(entriesResult)) {
@@ -121,9 +107,7 @@ async function collectAgents(
     });
     return;
   }
-  for (const entry of entriesResult.success.sort((a, b) =>
-    a.name.localeCompare(b.name)
-  )) {
+  for (const entry of entriesResult.success.sort((a, b) => a.name.localeCompare(b.name))) {
     const childRel = `${relFromConfig}/${entry.name}`;
     const kind = await resolveKind(env, entry, diagnostics);
     if (kind === "directory") {
@@ -144,7 +128,7 @@ async function collectAgents(
 async function loadAgentFromFile(
   env: ExecutionEnv,
   filePath: string,
-  relFromConfig: string
+  relFromConfig: string,
 ): Promise<{ agent: AgentDefinition | null; diagnostics: AgentDiagnostic[] }> {
   const diagnostics: AgentDiagnostic[] = [];
   const rawContent = await env.readTextFile(filePath);
@@ -173,11 +157,8 @@ async function loadAgentFromFile(
   const name = configEntryNameFromPath(relFromConfig, AGENT_PREFIXES);
   const mode = resolveMode(frontmatter.mode);
   const description =
-    typeof frontmatter.description === "string"
-      ? frontmatter.description
-      : undefined;
-  const hidden =
-    typeof frontmatter.hidden === "boolean" ? frontmatter.hidden : undefined;
+    typeof frontmatter.description === "string" ? frontmatter.description : undefined;
+  const hidden = typeof frontmatter.hidden === "boolean" ? frontmatter.hidden : undefined;
   const model = resolveModel(frontmatter.model);
 
   const agent: AgentDefinition = {
@@ -197,9 +178,7 @@ function resolveMode(value: unknown): AgentMode {
     : "all";
 }
 
-function resolveModel(
-  value: unknown
-): { providerId: string; modelId: string } | undefined {
+function resolveModel(value: unknown): { providerId: string; modelId: string } | undefined {
   if (typeof value !== "string" || value.trim() === "") {
     return;
   }

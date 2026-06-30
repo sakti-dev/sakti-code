@@ -6,21 +6,21 @@ description = "Strip ssh login banner and motd"
 match_command = "^ssh$"
 strip_ansi = true
 strip_lines_matching = [
-	"^Welcome to .*(LTS|GNU/Linux|UNIX|Fedora|Debian|CentOS|AlmaLinux|Rocky Linux)",
-	"^Last login:",
-	"^Last failed login:",
-	"^ \\* Documentation:",
-	"^ \\* Management:",
-	"^ \\* Support:",
-	"^The programs included with ",
-	"^Ubuntu comes with ABSOLUTELY NO WARRANTY",
-	"^This system has been minimized",
-	"^Warning: Permanently added",
-	"^Connection to .+ closed",
-	"^Authenticated to",
-	"^debug1:",
-	"^OpenSSH_",
-	"^Pseudo-terminal",
+  "^Welcome to .*(LTS|GNU/Linux|UNIX|Fedora|Debian|CentOS|AlmaLinux|Rocky Linux)",
+  "^Last login:",
+  "^Last failed login:",
+  "^ \\* Documentation:",
+  "^ \\* Management:",
+  "^ \\* Support:",
+  "^The programs included with ",
+  "^Ubuntu comes with ABSOLUTELY NO WARRANTY",
+  "^This system has been minimized",
+  "^Warning: Permanently added",
+  "^Connection to .+ closed",
+  "^Authenticated to",
+  "^debug1:",
+  "^OpenSSH_",
+  "^Pseudo-terminal",
 ]
 max_lines = 200
 

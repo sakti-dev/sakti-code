@@ -51,7 +51,7 @@ export default function ProjectTabBar(): JSX.Element {
                   "chrome-tab group flex h-8 shrink-0 cursor-pointer items-center px-3 text-xs transition-colors",
                   isActive()
                     ? "z-10 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
                 )}
                 onClick={() => switchTab(index())}
                 onKeyDown={(e) => {
@@ -93,7 +93,7 @@ export default function ProjectTabBar(): JSX.Element {
                       "ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded transition-opacity",
                       isActive()
                         ? "opacity-60 hover:bg-secondary hover:opacity-100"
-                        : "opacity-0 hover:bg-secondary group-hover:opacity-60"
+                        : "opacity-0 hover:bg-secondary group-hover:opacity-60",
                     )}
                     onClick={(e) => handleClose(e, index())}
                     tabIndex={-1}

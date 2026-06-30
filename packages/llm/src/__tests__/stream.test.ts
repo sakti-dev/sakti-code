@@ -1,6 +1,6 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type { FinishReason, LanguageModelUsage } from "ai";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { mapFinishReason, mapUsage, streamWithModel } from "../stream.ts";
 import type { Model, StopReason } from "../types.ts";
 
@@ -17,9 +17,7 @@ const model: Model = {
   reasoning: true,
 };
 
-function sampleUsage(
-  over: Partial<LanguageModelUsage> = {}
-): LanguageModelUsage {
+function sampleUsage(over: Partial<LanguageModelUsage> = {}): LanguageModelUsage {
   return {
     inputTokenDetails: {
       cacheReadTokens: 10,
@@ -63,7 +61,7 @@ describe("mapUsage", () => {
     expect(usage.cost.output).toBeCloseTo(0.000_75, 10);
     expect(usage.cost.total).toBeCloseTo(
       0.000_255 + 0.000_75 + usage.cost.cacheRead + usage.cost.cacheWrite,
-      10
+      10,
     );
   });
 
@@ -106,7 +104,7 @@ describe("mapUsage", () => {
         (15 / 1_000_000) * 500 +
         (0.3 / 1_000_000) * 150 +
         (3.75 / 1_000_000) * 50,
-      8
+      8,
     );
   });
 
@@ -205,19 +203,15 @@ function fakeStreamResult(
     usage?: LanguageModelUsage;
     finishReason?: FinishReason;
     response?: { id?: string; modelId?: string };
-  } = {}
+  } = {},
 ) {
   const chunks = [{ id: "t1", text: "hello", type: "text-delta" as const }];
   return {
     fullStream: (async function* () {
       for (const chunk of chunks) yield chunk;
     })(),
-    finishReason: Promise.resolve(
-      over.finishReason ?? ("stop" as FinishReason)
-    ),
-    response: Promise.resolve(
-      over.response ?? { id: "resp-1", modelId: "test-model" }
-    ),
+    finishReason: Promise.resolve(over.finishReason ?? ("stop" as FinishReason)),
+    response: Promise.resolve(over.response ?? { id: "resp-1", modelId: "test-model" }),
     usage: Promise.resolve(over.usage ?? sampleUsage()),
   };
 }
@@ -235,7 +229,7 @@ describe("streamWithModel()", () => {
     const { fullStream, result } = streamWithModel(
       { messages: [], model },
       fakeLanguage,
-      fake as never
+      fake as never,
     );
     expect(fullStream).toBeDefined();
     return expect(result).resolves.toMatchObject({
@@ -247,11 +241,7 @@ describe("streamWithModel()", () => {
 
   it("result maps usage with cost", async () => {
     const fake = () => fakeStreamResult();
-    const { result } = streamWithModel(
-      { messages: [], model },
-      fakeLanguage,
-      fake as never
-    );
+    const { result } = streamWithModel({ messages: [], model }, fakeLanguage, fake as never);
     const finish = await result;
     expect(finish.usage.input).toBe(85);
     expect(finish.usage.output).toBe(50);
@@ -261,21 +251,13 @@ describe("streamWithModel()", () => {
   it("fullStream is the same iterable returned by runStreamText", () => {
     const fakeResult = fakeStreamResult();
     const fake = () => fakeResult;
-    const { fullStream } = streamWithModel(
-      { messages: [], model },
-      fakeLanguage,
-      fake as never
-    );
+    const { fullStream } = streamWithModel({ messages: [], model }, fakeLanguage, fake as never);
     expect(fullStream).toBe(fakeResult.fullStream);
   });
 
   it("maps error finishReason through", async () => {
     const fake = () => fakeStreamResult({ finishReason: "error" });
-    const { result } = streamWithModel(
-      { messages: [], model },
-      fakeLanguage,
-      fake as never
-    );
+    const { result } = streamWithModel({ messages: [], model }, fakeLanguage, fake as never);
     const finish = await result;
     expect(finish.finishReason).toBe("error");
   });
@@ -293,9 +275,13 @@ describe("streamWithModel()", () => {
   it("passes toolChoice through to streamText (M1)", () => {
     const { calls, runner } = capturingRunner();
     streamWithModel(
-      { ...{ messages: [], model }, toolChoice: "none" },
+      {
+        messages: [],
+        model,
+        toolChoice: "none",
+      },
       fakeLanguage,
-      runner
+      runner,
     );
     expect(calls[0]?.toolChoice).toBe("none");
   });
@@ -308,11 +294,7 @@ describe("streamWithModel()", () => {
 
   it("hints openai.promptCacheKey from sessionId (M2)", () => {
     const { calls, runner } = capturingRunner();
-    streamWithModel(
-      { messages: [], model, sessionId: "sess-abc-123" },
-      fakeLanguage,
-      runner
-    );
+    streamWithModel({ messages: [], model, sessionId: "sess-abc-123" }, fakeLanguage, runner);
     const providerOptions = calls[0]?.providerOptions as
       | { openai?: { promptCacheKey?: string } }
       | undefined;
@@ -323,11 +305,7 @@ describe("streamWithModel()", () => {
     // opencode: /^ses_[0-9a-f]{64}$/ → slice(4). Matches its cache-key derivation.
     const { calls, runner } = capturingRunner();
     const sesId = `ses_${"0".repeat(64)}`;
-    streamWithModel(
-      { messages: [], model, sessionId: sesId },
-      fakeLanguage,
-      runner
-    );
+    streamWithModel({ messages: [], model, sessionId: sesId }, fakeLanguage, runner);
     const providerOptions = calls[0]?.providerOptions as
       | { openai?: { promptCacheKey?: string } }
       | undefined;

@@ -19,7 +19,7 @@ export interface ResolvedModelRef {
 export function resolveModelRef(
   profiles: Profiles,
   profileId: string | null,
-  mode: "default" | "intake" | "plan" | "build"
+  mode: "default" | "intake" | "plan" | "build",
 ): ResolvedModelRef {
   const activeId = profileId ?? profiles.defaultProfile;
   const profile = profiles.profiles[activeId];
@@ -30,14 +30,12 @@ export function resolveModelRef(
   const modeRef = profile.models[mode];
   const ref = modeRef ?? profile.models.default;
   if (!ref) {
-    throw new Error(
-      `Profile "${activeId}" has no models.default — cannot resolve model`
-    );
+    throw new Error(`Profile "${activeId}" has no models.default — cannot resolve model`);
   }
 
   if (!(ref.provider && ref.model)) {
     throw new Error(
-      `Profile "${activeId}" has no model configured — set a provider and model in profiles.json`
+      `Profile "${activeId}" has no model configured — set a provider and model in profiles.json`,
     );
   }
 

@@ -10,8 +10,7 @@ const api: SaktiDesktopAPI = {
     getConfig: () => ipcRenderer.invoke(IPC.getServerConfig),
   },
   shell: {
-    openExternal: (url: string) =>
-      ipcRenderer.invoke(IPC.shellOpenExternal, url),
+    openExternal: (url: string) => ipcRenderer.invoke(IPC.shellOpenExternal, url),
   },
 };
 

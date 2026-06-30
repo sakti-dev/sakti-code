@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   type FauxProviderRegistration,
   fauxAssistantMessage,
@@ -29,7 +29,7 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 /** Build a harness backed by a faux stream provider. */
 async function makeHarness(
   registration: FauxProviderRegistration,
-  session?: SessionShape
+  session?: SessionShape,
 ): Promise<AgentHarness> {
   return new AgentHarness({
     env: new TestExecutionEnv(process.cwd()),
@@ -83,9 +83,7 @@ describe("AgentHarness.continue()", () => {
 
     // 3. continue() must re-enter the loop and return the new assistant message.
     const continued = await harness.continue();
-    expect(continued.content).toEqual([
-      { type: "text", text: "continued response" },
-    ]);
+    expect(continued.content).toEqual([{ type: "text", text: "continued response" }]);
 
     // 4. The faux provider should have been called twice total.
     expect(registration.callCount).toBe(2);
@@ -93,9 +91,7 @@ describe("AgentHarness.continue()", () => {
     // 5. The continue run emitted its own agent_start/agent_end pair (after the
     //    prompt's). Counting agent_start events is a robust way to assert the
     //    loop actually re-ran.
-    const agentStartCount = eventTypes.filter(
-      (t) => t === "agent_start"
-    ).length;
+    const agentStartCount = eventTypes.filter((t) => t === "agent_start").length;
     expect(agentStartCount).toBe(2);
   });
 

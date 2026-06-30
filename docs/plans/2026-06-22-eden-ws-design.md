@@ -28,10 +28,16 @@ const wsResponseSchema = t.Union([
   t.Object({ type: t.Literal("welcome"), version: t.String(), cwd: t.String() }),
   t.Object({ type: t.Literal("event"), sessionId: t.String(), event: t.Unknown() }),
   t.Object({ type: t.Literal("error"), sessionId: t.String(), error: t.String() }),
-  t.Object({ type: t.Literal("push"), channel: t.Literal("terminal.data"),
-             data: t.Object({ terminalId: t.String(), data: t.String() }) }),
-  t.Object({ type: t.Literal("push"), channel: t.Literal("terminal.exit"),
-             data: t.Object({ terminalId: t.String(), exitCode: t.Number() }) }),
+  t.Object({
+    type: t.Literal("push"),
+    channel: t.Literal("terminal.data"),
+    data: t.Object({ terminalId: t.String(), data: t.String() }),
+  }),
+  t.Object({
+    type: t.Literal("push"),
+    channel: t.Literal("terminal.exit"),
+    data: t.Object({ terminalId: t.String(), exitCode: t.Number() }),
+  }),
 ]);
 ```
 
@@ -49,10 +55,10 @@ The TS interfaces (`WsIn`, `WsOut`, `WelcomeFrame`, etc.) stay as source of trut
 
 ```typescript
 // Before
-export function createWsClient(url: string, deps: WsClientDeps, WebSocketCtor: typeof WebSocket)
+export function createWsClient(url: string, deps: WsClientDeps, WebSocketCtor: typeof WebSocket);
 
 // After
-export function createWsClient(api: TreatyClient, deps: WsClientDeps)
+export function createWsClient(api: TreatyClient, deps: WsClientDeps);
 ```
 
 Where `TreatyClient` is `ReturnType<typeof treaty<App>>`.
@@ -70,20 +76,21 @@ Where `TreatyClient` is `ReturnType<typeof treaty<App>>`.
 ### Reconnection
 
 EdenWS does not reconnect. The existing reconnection state machine stays:
+
 - On `close` event, schedule `setTimeout(connect, RECONNECT_DELAY_MS)`
 - On reconnect, call `api.ws.subscribe()` again and re-wire handlers
 - `disconnect()` sets `shouldReconnect = false` and closes
 
 ### What EdenWS eliminates
 
-| Current code | Replaced by |
-|---|---|
-| `new WebSocketCtor(url)` | `api.ws.subscribe()` |
+| Current code                      | Replaced by                          |
+| --------------------------------- | ------------------------------------ |
+| `new WebSocketCtor(url)`          | `api.ws.subscribe()`                 |
 | `JSON.parse(event.data) as WsOut` | Eden auto-parses, `event.data` typed |
-| `ws.send(JSON.stringify(msg))` | `edenWs.send(msg)` auto-serializes |
-| `url` parameter | Derived from treaty client domain |
-| `WebSocketCtor` parameter | EdenWS creates WebSocket internally |
-| Direct `WsIn`/`WsOut` imports | Types flow through Eden's `App` type |
+| `ws.send(JSON.stringify(msg))`    | `edenWs.send(msg)` auto-serializes   |
+| `url` parameter                   | Derived from treaty client domain    |
+| `WebSocketCtor` parameter         | EdenWS creates WebSocket internally  |
+| Direct `WsIn`/`WsOut` imports     | Types flow through Eden's `App` type |
 
 ### What stays
 
@@ -99,7 +106,11 @@ EdenWS does not reconnect. The existing reconnection state machine stays:
 No more hardcoded `WS_URL`. The treaty client is passed directly:
 
 ```typescript
-const ws = createWsClient(api, { serverStore: server, sessionRegistry: sessions, terminalRegistry: terminals });
+const ws = createWsClient(api, {
+  serverStore: server,
+  sessionRegistry: sessions,
+  terminalRegistry: terminals,
+});
 ```
 
 ---

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   canonicalizeMessage,
   captureRequest,
@@ -19,15 +19,11 @@ describe("commonPrefixLength", () => {
   });
 
   it("returns full length when one is a prefix of the other", () => {
-    expect(
-      commonPrefixLength(["a", "b"], ["a", "b", "c"], canonicalizeMessage)
-    ).toBe(2);
+    expect(commonPrefixLength(["a", "b"], ["a", "b", "c"], canonicalizeMessage)).toBe(2);
   });
 
   it("returns the shorter length when both are identical", () => {
-    expect(
-      commonPrefixLength(["a", "b"], ["a", "b"], canonicalizeMessage)
-    ).toBe(2);
+    expect(commonPrefixLength(["a", "b"], ["a", "b"], canonicalizeMessage)).toBe(2);
   });
 });
 

@@ -17,20 +17,18 @@ export function getOrThrow<A, E>(result: Result<A, E>): A {
   return result.success;
 }
 
-export function getOrUndefined<A extends object, E>(
-  result: Result<A, E>
-): A | undefined {
+export function getOrUndefined<A extends object, E>(result: Result<A, E>): A | undefined {
   return result._tag === "Success" ? result.success : undefined;
 }
 
 export function isSuccess<A, E>(
-  result: Result<A, E>
+  result: Result<A, E>,
 ): result is { readonly _tag: "Success"; readonly success: A } {
   return result._tag === "Success";
 }
 
 export function isFailure<A, E>(
-  result: Result<A, E>
+  result: Result<A, E>,
 ): result is { readonly _tag: "Failure"; readonly failure: E } {
   return result._tag === "Failure";
 }

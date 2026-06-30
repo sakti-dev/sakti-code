@@ -13,6 +13,7 @@
 ## Task 1: Extract `SessionItem` sub-component
 
 **Files:**
+
 - Create: `apps/app/src/components/layout/session-item.tsx`
 - Create: `apps/app/src/components/__tests__/session-item.test.tsx`
 
@@ -126,17 +127,13 @@ export const SessionItem: ParentComponent<SessionItemProps> = (props) => (
       "flex w-full items-center gap-2 border-l-2 px-3 py-1.5 text-left text-sm transition-colors",
       props.isActive
         ? "border-l-primary bg-secondary text-foreground"
-        : "border-l-transparent text-muted-foreground hover:bg-secondary/50"
+        : "border-l-transparent text-muted-foreground hover:bg-secondary/50",
     )}
     onClick={() => props.onClick(props.sessionId)}
     type="button"
   >
-    <span class="min-w-0 flex-1 truncate text-xs">
-      {props.title || "Untitled session"}
-    </span>
-    <span class="shrink-0 text-[10px] opacity-60">
-      {dayjs(props.updatedAt).fromNow()}
-    </span>
+    <span class="min-w-0 flex-1 truncate text-xs">{props.title || "Untitled session"}</span>
+    <span class="shrink-0 text-[10px] opacity-60">{dayjs(props.updatedAt).fromNow()}</span>
   </button>
 );
 ```
@@ -158,6 +155,7 @@ git commit -m "feat(sidebar): extract SessionItem sub-component"
 ## Task 2: Extract `ProjectGroup` sub-component
 
 **Files:**
+
 - Create: `apps/app/src/components/layout/project-group.tsx`
 - Create: `apps/app/src/components/__tests__/project-group.test.tsx`
 
@@ -170,8 +168,24 @@ import { describe, expect, it, vi } from "vitest";
 import { ProjectGroup } from "../layout/project-group.tsx";
 
 const mockSessions = [
-  { id: "s1", title: "Session 1", projectId: "p1", modelId: "gpt-4", thinkingLevel: "off", createdAt: 1, updatedAt: 1 },
-  { id: "s2", title: "Session 2", projectId: "p1", modelId: "gpt-4", thinkingLevel: "off", createdAt: 2, updatedAt: 2 },
+  {
+    id: "s1",
+    title: "Session 1",
+    projectId: "p1",
+    modelId: "gpt-4",
+    thinkingLevel: "off",
+    createdAt: 1,
+    updatedAt: 1,
+  },
+  {
+    id: "s2",
+    title: "Session 2",
+    projectId: "p1",
+    modelId: "gpt-4",
+    thinkingLevel: "off",
+    createdAt: 2,
+    updatedAt: 2,
+  },
 ];
 
 describe("ProjectGroup", () => {
@@ -286,7 +300,15 @@ import { SessionItem } from "./session-item.tsx";
 export interface ProjectGroupProps {
   projectId: string;
   name: string;
-  sessions: Array<{ id: string; title: string | null; projectId: string; modelId: string; thinkingLevel: string; createdAt: number; updatedAt: number }>;
+  sessions: Array<{
+    id: string;
+    title: string | null;
+    projectId: string;
+    modelId: string;
+    thinkingLevel: string;
+    createdAt: number;
+    updatedAt: number;
+  }>;
   isExpanded: boolean;
   isActive: boolean;
   onToggle: (projectId: string) => void;
@@ -299,7 +321,7 @@ export const ProjectGroup: ParentComponent<ProjectGroupProps> = (props) => (
       class={cn(
         "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors",
         "hover:bg-secondary/50",
-        props.isActive && "bg-secondary/30"
+        props.isActive && "bg-secondary/30",
       )}
       onClick={() => props.onToggle(props.projectId)}
       type="button"
@@ -308,7 +330,7 @@ export const ProjectGroup: ParentComponent<ProjectGroupProps> = (props) => (
         aria-label={props.isExpanded ? "Collapse" : "Expand"}
         class={cn(
           "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
-          props.isExpanded && "rotate-90"
+          props.isExpanded && "rotate-90",
         )}
         fill="none"
         role="img"
@@ -337,12 +359,8 @@ export const ProjectGroup: ParentComponent<ProjectGroupProps> = (props) => (
         <title>Project</title>
         <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
       </svg>
-      <span class="min-w-0 flex-1 truncate font-medium text-foreground text-xs">
-        {props.name}
-      </span>
-      <span class="shrink-0 text-[10px] text-muted-foreground">
-        {props.sessions.length}
-      </span>
+      <span class="min-w-0 flex-1 truncate font-medium text-foreground text-xs">{props.name}</span>
+      <span class="shrink-0 text-[10px] text-muted-foreground">{props.sessions.length}</span>
     </button>
 
     <Show when={props.isExpanded}>
@@ -386,6 +404,7 @@ git commit -m "feat(sidebar): extract ProjectGroup sub-component"
 ## Task 3: Extract `AddProjectInput` sub-component
 
 **Files:**
+
 - Create: `apps/app/src/components/layout/add-project-input.tsx`
 - Create: `apps/app/src/components/__tests__/add-project-input.test.tsx`
 
@@ -423,15 +442,13 @@ describe("AddProjectInput", () => {
       <AddProjectInput onAdd={vi.fn()} onCancel={onCancel} />
     ));
     getByPlaceholderText("/path/to/project").dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape" })
+      new KeyboardEvent("keydown", { key: "Escape" }),
     );
     expect(onCancel).toHaveBeenCalled();
   });
 
   it("disables Add button when empty", () => {
-    const { getByText } = render(() => (
-      <AddProjectInput onAdd={vi.fn()} onCancel={vi.fn()} />
-    ));
+    const { getByText } = render(() => <AddProjectInput onAdd={vi.fn()} onCancel={vi.fn()} />);
     const btn = getByText("Add") as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
   });
@@ -493,7 +510,7 @@ export const AddProjectInput: ParentComponent<AddProjectInputProps> = (props) =>
             "rounded px-2 py-1 text-xs font-medium transition-colors",
             value().trim()
               ? "bg-primary text-primary-foreground hover:bg-primary/80"
-              : "cursor-not-allowed bg-muted text-muted-foreground"
+              : "cursor-not-allowed bg-muted text-muted-foreground",
           )}
           disabled={!value().trim()}
           onClick={handleSubmit}
@@ -531,6 +548,7 @@ git commit -m "feat(sidebar): extract AddProjectInput sub-component"
 ## Task 4: Add `removeProject` action to server store
 
 **Files:**
+
 - Modify: `apps/app/src/stores/server-store.ts:33-44` (add `removeProject` to `ServerActions`)
 - Modify: `apps/app/src/stores/server-store.ts:112-117` (implement `removeProject`)
 - Modify: `apps/app/src/stores/__tests__/server-store.test.ts` (add test)
@@ -570,11 +588,13 @@ Expected: FAIL — `removeProject` is not a function
 **Step 3: Write minimal implementation**
 
 Add to `ServerActions` interface in `server-store.ts`:
+
 ```ts
 removeProject: (projectId: string) => void;
 ```
 
 Add implementation in `createServerStore`:
+
 ```ts
 removeProject(projectId) {
   // biome-ignore lint/suspicious/noExplicitAny: SolidJS store deletion requires any cast
@@ -606,6 +626,7 @@ git commit -m "feat(store): add removeProject action"
 ## Task 6: Add keyboard shortcut `Ctrl+B` for sidebar toggle
 
 **Files:**
+
 - Modify: `apps/app/src/components/layout/sidebar.tsx`
 
 **Step 1: Write the failing test**
@@ -619,7 +640,9 @@ import { describe, expect, it, vi } from "vitest";
 describe("sidebar keyboard shortcut", () => {
   it("Ctrl+B toggles sidebar", () => {
     let open = true;
-    const toggle = () => { open = !open; };
+    const toggle = () => {
+      open = !open;
+    };
 
     const event = new KeyboardEvent("keydown", { key: "b", ctrlKey: true });
     if (event.key === "b" && event.ctrlKey) {
@@ -677,6 +700,7 @@ git commit -m "feat(sidebar): add Ctrl+B keyboard shortcut"
 ## Task 7: Add responsive mobile overlay behavior
 
 **Files:**
+
 - Modify: `apps/app/src/components/layout/sidebar.tsx`
 
 **Step 1: Write the failing test**
@@ -730,19 +754,21 @@ Replace the `<aside>` in `sidebar.tsx` with:
     tabIndex={-1}
     aria-label="Close sidebar"
   />
-</Show>
+</Show>;
 
-{/* Sidebar panel */}
+{
+  /* Sidebar panel */
+}
 <aside
   class={cn(
     "flex w-64 shrink-0 flex-col border-border border-r bg-card",
     "fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-in-out",
     "md:relative md:z-auto md:transition-none",
-    sidebarOpen() ? "translate-x-0" : "-translate-x-full md:hidden"
+    sidebarOpen() ? "translate-x-0" : "-translate-x-full md:hidden",
   )}
 >
   {/* ... existing content ... */}
-</aside>
+</aside>;
 ```
 
 **Step 4: Run test to verify it passes**
@@ -762,6 +788,7 @@ git commit -m "feat(sidebar): add responsive mobile overlay with backdrop"
 ## Task 8: Add project context menu (HTML fallback)
 
 **Files:**
+
 - Create: `apps/app/src/components/layout/project-context-menu.tsx`
 - Create: `apps/app/src/components/__tests__/project-context-menu.test.tsx`
 
@@ -914,8 +941,17 @@ export const ProjectContextMenu: ParentComponent<ProjectContextMenuProps> = (pro
         onClick={() => handleAction(() => props.onOpenInTerminal(props.projectId))}
         type="button"
       >
-        <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-          <path fillRule="evenodd" d="M2 4.25A2.25 2.25 0 0 1 4.25 2h7.5A2.25 2.25 0 0 1 14 4.25v7.5A2.25 2.25 0 0 1 11.75 14h-7.5A2.25 2.25 0 0 1 2 11.75v-7.5Zm3.03.47a.75.75 0 0 0-1.06 1.06L5.69 7.5 3.97 9.22a.75.75 0 1 0 1.06 1.06l2.25-2.25a.75.75 0 0 0 0-1.06L5.03 4.72ZM7.75 10a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5h-3.5Z" clipRule="evenodd" />
+        <svg
+          class="h-3.5 w-3.5"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            fillRule="evenodd"
+            d="M2 4.25A2.25 2.25 0 0 1 4.25 2h7.5A2.25 2.25 0 0 1 14 4.25v7.5A2.25 2.25 0 0 1 11.75 14h-7.5A2.25 2.25 0 0 1 2 11.75v-7.5Zm3.03.47a.75.75 0 0 0-1.06 1.06L5.69 7.5 3.97 9.22a.75.75 0 1 0 1.06 1.06l2.25-2.25a.75.75 0 0 0 0-1.06L5.03 4.72ZM7.75 10a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5h-3.5Z"
+            clipRule="evenodd"
+          />
         </svg>
         Open in Terminal
       </button>
@@ -925,7 +961,12 @@ export const ProjectContextMenu: ParentComponent<ProjectContextMenuProps> = (pro
         onClick={() => handleAction(() => props.onOpenInEditor(props.projectId))}
         type="button"
       >
-        <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          class="h-3.5 w-3.5"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <path d="M13.488 2.513a1.75 1.75 0 0 0-2.475 0L3.22 10.303a1 1 0 0 0-.258.442l-.96 3.425a.25.25 0 0 0 .305.305l3.425-.96a1 1 0 0 0 .442-.258l7.79-7.79a1.75 1.75 0 0 0 0-2.475l-.476-.479z" />
         </svg>
         Open in Editor
@@ -938,7 +979,12 @@ export const ProjectContextMenu: ParentComponent<ProjectContextMenuProps> = (pro
         onClick={() => handleAction(() => props.onCopyPath(props.projectId))}
         type="button"
       >
-        <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          class="h-3.5 w-3.5"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h2.879a1.5 1.5 0 0 1 1.06.44l1.122 1.12A1.5 1.5 0 0 0 9.62 4H12.5A1.5 1.5 0 0 1 14 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12.5v-9z" />
         </svg>
         Copy Path
@@ -951,7 +997,12 @@ export const ProjectContextMenu: ParentComponent<ProjectContextMenuProps> = (pro
         onClick={() => handleAction(() => props.onRemove(props.projectId))}
         type="button"
       >
-        <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          class="h-3.5 w-3.5"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22z" />
         </svg>
         Remove Project
@@ -978,6 +1029,7 @@ git commit -m "feat(sidebar): add project context menu with HTML fallback"
 ## Task 9: Add `[+]` new session button per project
 
 **Files:**
+
 - Modify: `apps/app/src/components/layout/project-group.tsx`
 
 **Step 1: Write the failing test**
@@ -1014,11 +1066,13 @@ Expected: FAIL — `onNewSession` prop not defined
 **Step 3: Write minimal implementation**
 
 Add to `ProjectGroupProps`:
+
 ```ts
 onNewSession?: (projectId: string) => void;
 ```
 
 Add to the project header row in `project-group.tsx` (after the session count badge):
+
 ```tsx
 <Show when={props.onNewSession}>
   <button
@@ -1054,6 +1108,7 @@ git commit -m "feat(sidebar): add [+] new session button per project"
 ## Task 10: Add `[×]` remove project button (hover-reveal)
 
 **Files:**
+
 - Modify: `apps/app/src/components/layout/project-group.tsx`
 
 **Step 1: Write the failing test**
@@ -1090,11 +1145,13 @@ Expected: FAIL — `onRemove` prop not defined
 **Step 3: Write minimal implementation**
 
 Add to `ProjectGroupProps`:
+
 ```ts
 onRemove?: (projectId: string) => void;
 ```
 
 Add to the project header row in `project-group.tsx` (after the new session button):
+
 ```tsx
 <Show when={props.onRemove}>
   <button
@@ -1131,6 +1188,7 @@ git commit -m "feat(sidebar): add [×] remove project button with hover reveal"
 ## Task 11: Wire everything together in `sidebar.tsx`
 
 **Files:**
+
 - Modify: `apps/app/src/components/layout/sidebar.tsx` (full rewrite)
 
 **Step 1: Write the failing test**
@@ -1336,7 +1394,7 @@ export default function Sidebar() {
           "flex w-64 shrink-0 flex-col border-border border-r bg-card",
           "fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-in-out",
           "md:relative md:z-auto md:transition-none",
-          sidebarOpen() ? "translate-x-0" : "-translate-x-full md:hidden"
+          sidebarOpen() ? "translate-x-0" : "-translate-x-full md:hidden",
         )}
       >
         {/* Header */}
@@ -1450,9 +1508,7 @@ export default function Sidebar() {
 
                 return (
                   <Show when={project()}>
-                    <div
-                      onContextMenu={(e) => handleContextMenu(projectId, e)}
-                    >
+                    <div onContextMenu={(e) => handleContextMenu(projectId, e)}>
                       <ProjectGroup
                         isActive={isActive()}
                         isExpanded={isExpanded()}
@@ -1559,19 +1615,19 @@ git commit -m "fix(sidebar): lint and typecheck fixes"
 
 ## Summary
 
-| Task | Component | Lines Added | Tests |
-|------|-----------|-------------|-------|
-| 1 | SessionItem | ~40 | 5 |
-| 2 | ProjectGroup | ~80 | 6 |
-| 3 | AddProjectInput | ~60 | 4 |
-| 4 | removeProject action | ~10 | 2 |
-| 5 | (skip) | 0 | 0 |
-| 6 | Keyboard shortcut | ~15 | 1 |
-| 7 | Responsive overlay | ~20 | 2 |
-| 8 | ProjectContextMenu | ~100 | 4 |
-| 9 | New session button | ~20 | 1 |
-| 10 | Remove project button | ~20 | 1 |
-| 11 | Sidebar rewrite | ~200 | 3 |
-| 12 | Verification | 0 | 0 |
+| Task | Component             | Lines Added | Tests |
+| ---- | --------------------- | ----------- | ----- |
+| 1    | SessionItem           | ~40         | 5     |
+| 2    | ProjectGroup          | ~80         | 6     |
+| 3    | AddProjectInput       | ~60         | 4     |
+| 4    | removeProject action  | ~10         | 2     |
+| 5    | (skip)                | 0           | 0     |
+| 6    | Keyboard shortcut     | ~15         | 1     |
+| 7    | Responsive overlay    | ~20         | 2     |
+| 8    | ProjectContextMenu    | ~100        | 4     |
+| 9    | New session button    | ~20         | 1     |
+| 10   | Remove project button | ~20         | 1     |
+| 11   | Sidebar rewrite       | ~200        | 3     |
+| 12   | Verification          | 0           | 0     |
 
 **Total:** ~565 lines, 29 tests, 11 commits

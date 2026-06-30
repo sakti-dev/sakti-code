@@ -81,14 +81,14 @@ export interface GenerateBranchSummaryOptions {
 export const collectEntriesForBranchSummaryEffect = (
   session: SessionShape,
   oldLeafId: string | null,
-  targetId: string
+  targetId: string,
 ): Effect.Effect<CollectEntriesResult, SessionError> =>
   Effect.gen(function* () {
     if (!oldLeafId) {
       return { entries: [], commonAncestorId: null };
     }
     const oldPath = new Set(
-      (yield* session.getBranch(oldLeafId)).map((e: SessionTreeEntry) => e.id)
+      (yield* session.getBranch(oldLeafId)).map((e: SessionTreeEntry) => e.id),
     );
     const targetPath = yield* session.getBranch(targetId);
     let commonAncestorId: string | null = null;
@@ -102,8 +102,7 @@ export const collectEntriesForBranchSummaryEffect = (
     let current: string | null = oldLeafId;
 
     while (current && current !== commonAncestorId) {
-      const entry: SessionTreeEntry | undefined =
-        yield* session.getEntry(current);
+      const entry: SessionTreeEntry | undefined = yield* session.getEntry(current);
       if (!entry) {
         return yield* new SessionError({
           code: "invalid_session",
@@ -122,15 +121,11 @@ export const collectEntriesForBranchSummaryEffect = (
 export async function collectEntriesForBranchSummary(
   session: SessionShape,
   oldLeafId: string | null,
-  targetId: string
+  targetId: string,
 ): Promise<CollectEntriesResult> {
-  return Effect.runPromise(
-    collectEntriesForBranchSummaryEffect(session, oldLeafId, targetId)
-  );
+  return Effect.runPromise(collectEntriesForBranchSummaryEffect(session, oldLeafId, targetId));
 }
-function getMessageFromEntry(
-  entry: SessionTreeEntry
-): AgentMessage | undefined {
+function getMessageFromEntry(entry: SessionTreeEntry): AgentMessage | undefined {
   switch (entry.type) {
     case "message":
       if (entry.message.role === "toolResult") {
@@ -144,22 +139,14 @@ function getMessageFromEntry(
         entry.content,
         entry.display,
         entry.details,
-        entry.timestamp
+        entry.timestamp,
       );
 
     case "branch_summary":
-      return createBranchSummaryMessage(
-        entry.summary,
-        entry.fromId,
-        entry.timestamp
-      );
+      return createBranchSummaryMessage(entry.summary, entry.fromId, entry.timestamp);
 
     case "compaction":
-      return createCompactionSummaryMessage(
-        entry.summary,
-        entry.tokensBefore,
-        entry.timestamp
-      );
+      return createCompactionSummaryMessage(entry.summary, entry.tokensBefore, entry.timestamp);
     case "thinking_level_change":
     case "model_change":
     case "active_tools_change":
@@ -174,7 +161,7 @@ function getMessageFromEntry(
 /** Prepare branch entries for summarization within an optional token budget. */
 export function prepareBranchEntries(
   entries: SessionTreeEntry[],
-  tokenBudget = 0
+  tokenBudget = 0,
 ): BranchPreparation {
   const messages: AgentMessage[] = [];
   const fileOps = createFileOps();
@@ -224,7 +211,7 @@ export function prepareBranchEntries(
 /** Generate a summary for abandoned branch entries. */
 export const generateBranchSummaryEffect = (
   entries: SessionTreeEntry[],
-  options: GenerateBranchSummaryOptions
+  options: GenerateBranchSummaryOptions,
 ): Effect.Effect<Result<BranchSummaryResult, BranchSummaryError>> =>
   Effect.gen(function* () {
     const {
@@ -277,14 +264,14 @@ export const generateBranchSummaryEffect = (
         ...(headers === undefined ? {} : { headers }),
         ...(signal ? { abortSignal: signal } : {}),
         maxOutputTokens: Math.min(model.maxTokens, 4096),
-      })
+      }),
     );
     if (response.finishReason === "error") {
       return err(
         new BranchSummaryError({
           code: "summarization_failed",
           message: `Branch summary failed: ${response.errorMessage || "Unknown error"}`,
-        })
+        }),
       );
     }
 
@@ -303,7 +290,7 @@ export const generateBranchSummaryEffect = (
 /** @migration Promise wrapper — removes when callers migrate to Effect. */
 export async function generateBranchSummary(
   entries: SessionTreeEntry[],
-  options: GenerateBranchSummaryOptions
+  options: GenerateBranchSummaryOptions,
 ): Promise<Result<BranchSummaryResult, BranchSummaryError>> {
   return Effect.runPromise(generateBranchSummaryEffect(entries, options));
 }

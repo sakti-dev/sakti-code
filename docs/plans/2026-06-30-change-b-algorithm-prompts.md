@@ -25,11 +25,12 @@
 - Renaming `compactEffect`/`generateSummaryEffect`/etc.
 - Changing the compaction algorithm (token math, message selection, merge strategy).
 - Adding new prompt variants (e.g. terse-vs-verbose toggle).
-- Removing the `customInstructions` parameter (it still exists as an *additional* focus on top of the prompts).
+- Removing the `customInstructions` parameter (it still exists as an _additional_ focus on top of the prompts).
 
 ## Conventions
 
 Same as Change A:
+
 - TDD per-phase: RED → GREEN → commit.
 - `exactOptionalPropertyTypes: true` — conditional spread for optional fields.
 - Effect v4.
@@ -173,6 +174,7 @@ Verify RED: typecheck fails on the `prompts: CompactionPrompts` requirement.
 ### B2.2 GREEN — refactor `compactEffect` + `generateSummaryEffect`
 
 **Current signature:**
+
 ```ts
 export const compactEffect = (
   preparation: CompactionPreparation,
@@ -205,11 +207,13 @@ export const compactEffect = (
 ```
 
 Apply the same shape to:
+
 - `generateSummaryEffect` → takes `SummarizeOptions` bag including `prompts: CompactionPrompts`.
 - `generateTurnPrefixSummaryEffect` (internal) → takes prompts from caller.
 - `compact` (Promise wrapper) → forwards opts.
 
 **Inside the body:**
+
 - Replace `UPDATE_SUMMARIZATION_PROMPT` → `opts.prompts.update`.
 - Replace `SUMMARIZATION_PROMPT` → `opts.prompts.summarization`.
 - Replace `TURN_PREFIX_SUMMARIZATION_PROMPT` → `opts.prompts.turnPrefix`.
@@ -315,9 +319,7 @@ it("requires skillsInstructions in composeSystemPrompt", () => {
 });
 
 it("uses provided skillsInstructions in the skills block", () => {
-  const result = composeSystemPrompt("base", [], [skill], true, [
-    "MINE INSTRUCTIONS",
-  ]);
+  const result = composeSystemPrompt("base", [], [skill], true, ["MINE INSTRUCTIONS"]);
   expect(result).toContain("MINE INSTRUCTIONS");
   expect(result).toContain("<available_skills>");
 });
@@ -340,7 +342,7 @@ import type { SkillsInstructions } from "../compaction/prompt-bundles.ts";
 
 export function formatSkillsForSystemPrompt(
   skills: Skill[],
-  skillsInstructions: SkillsInstructions
+  skillsInstructions: SkillsInstructions,
 ): string {
   const visibleSkills = skills.filter((skill) => !skill.disableModelInvocation);
   if (visibleSkills.length === 0) {
@@ -354,12 +356,14 @@ export function appendSkillsBlock(
   baseSystemPrompt: string,
   skills: readonly Skill[],
   hasRead: boolean,
-  skillsInstructions: SkillsInstructions
-): string { /* ... */ }
+  skillsInstructions: SkillsInstructions,
+): string {
+  /* ... */
+}
 
 export function stripSkillsBlock(
   composedSystemPrompt: string,
-  skillsInstructions: SkillsInstructions
+  skillsInstructions: SkillsInstructions,
 ): string {
   const marker = `\n\n${skillsInstructions[0]}`;
   // ... rest unchanged
@@ -370,8 +374,10 @@ export function composeSystemPrompt(
   tools: readonly AgentTool[],
   skills: readonly Skill[],
   hasRead: boolean,
-  skillsInstructions: SkillsInstructions
-): string { /* ... */ }
+  skillsInstructions: SkillsInstructions,
+): string {
+  /* ... */
+}
 ```
 
 Delete the import of `../prompts/skills-instructions`.
@@ -482,13 +488,13 @@ factories only.
 
 ## Risk register
 
-| Risk | Mitigation |
-|---|---|
-| Changing function signatures breaks many callers. | Each function migrated in its own commit; typecheck catches all call sites. |
-| `stripSkillsBlock` sentinel contract is subtle. | Documented in JSDoc; test asserts marker-based stripping. |
-| Harness constructor change is breaking for any consumer. | Yes — intentional. Per Pattern X philosophy, consumers must opt in to providing content. Server consumer updated in same phase. |
-| `auto-compaction.ts`/`runAgentRunEffect` threading is complex. | Phase I3 plan documents the deps chain; this just adds one more required field. Symmetric with how `skills`/`templates` are already passed. |
-| Behavior drift from copy-paste errors when moving prompt strings. | B2.5/B3/B4.3 mandate verbatim copies; existing tests asserting prompt content (if any) catch drift. |
+| Risk                                                              | Mitigation                                                                                                                                  |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Changing function signatures breaks many callers.                 | Each function migrated in its own commit; typecheck catches all call sites.                                                                 |
+| `stripSkillsBlock` sentinel contract is subtle.                   | Documented in JSDoc; test asserts marker-based stripping.                                                                                   |
+| Harness constructor change is breaking for any consumer.          | Yes — intentional. Per Pattern X philosophy, consumers must opt in to providing content. Server consumer updated in same phase.             |
+| `auto-compaction.ts`/`runAgentRunEffect` threading is complex.    | Phase I3 plan documents the deps chain; this just adds one more required field. Symmetric with how `skills`/`templates` are already passed. |
+| Behavior drift from copy-paste errors when moving prompt strings. | B2.5/B3/B4.3 mandate verbatim copies; existing tests asserting prompt content (if any) catch drift.                                         |
 
 ## Manual smoke test (post-merge)
 

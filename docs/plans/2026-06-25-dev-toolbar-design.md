@@ -21,11 +21,11 @@
 
 Pure wiring to existing actions in `stores/server/actions.ts`, driven by the `replayState()` signal:
 
-| `replayState()` | Buttons shown |
-| :-- | :-- |
-| `idle` | `[ Replay session ]` |
-| `playing` | `[ Pause ] [ Reset ]` |
-| `paused` | `[ Resume ] [ Reset ]` |
+| `replayState()` | Buttons shown          |
+| :-------------- | :--------------------- |
+| `idle`          | `[ Replay session ]`   |
+| `playing`       | `[ Pause ] [ Reset ]`  |
+| `paused`        | `[ Resume ] [ Reset ]` |
 
 Calls `actions.replayStart / replayPause / replayResume / replayReset(sessionId)`. No new logic.
 
@@ -49,6 +49,7 @@ end{success:false, attempt:3, finalError:"429 …"}
 You watch the delay **2s → 4s → 8s** double across attempts, exactly as a sustained rate limit would show.
 
 **Decisions:**
+
 - **Fixed production defaults** (3 attempts, 2000ms base) rather than reading the session's live retry settings — keeps the preview predictable.
 - **Same error message** across all 3 attempts (`"429 Too Many Requests — rate limited"`) — realistic for a sustained throttle.
 
@@ -62,6 +63,7 @@ You watch the delay **2s → 4s → 8s** double across attempts, exactly as a su
 ## Testing
 
 Component test (`@solidjs/testing-library`) with `vi.useFakeTimers`:
+
 - Click "Trigger retry" → start event for attempt 1 dispatched.
 - Advancing timers 2s / 4s / 8s → attempts 2, 3, then the end event (assert dispatched payloads + resulting `store.retry`).
 - "Stop retry" mid-sequence → aborts and dispatches end.

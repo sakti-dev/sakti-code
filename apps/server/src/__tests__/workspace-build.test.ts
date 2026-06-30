@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 /**
  * Guards the workspace build pipeline (change: packageable-desktop-build).
@@ -28,9 +28,7 @@ type Exports = Record<string, Cond | string | undefined>;
 for (const pkg of PACKAGES) {
   const dir = resolve(root, pkg);
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const json = JSON.parse(
-    readFileSync(resolve(dir, "package.json"), "utf8")
-  ) as {
+  const json = JSON.parse(readFileSync(resolve(dir, "package.json"), "utf8")) as {
     exports?: Exports;
   };
 
@@ -54,9 +52,7 @@ for (const pkg of PACKAGES) {
         for (const target of [cond.default, cond.types]) {
           if (!target) continue;
           const file = resolve(dir, target);
-          expect(existsSync(file), `${target} missing — run pnpm build`).toBe(
-            true
-          );
+          expect(existsSync(file), `${target} missing — run pnpm build`).toBe(true);
         }
       });
     }

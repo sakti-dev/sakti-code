@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { projectsRoutes } from "../routes/projects/projects.ts";
 import { makeApp } from "./helpers.ts";
 
@@ -10,7 +10,7 @@ describe("projects routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: "demo", cwd: "/tmp/demo" }),
-      })
+      }),
     );
     expect(created.status).toBe(200);
     const project = await created.json();
@@ -27,9 +27,7 @@ describe("projects routes", () => {
 
   it("GET /:id returns 404 for unknown id", async () => {
     const { app } = await makeApp([projectsRoutes]);
-    const res = await app.request(
-      new Request("http://localhost:3001/api/projects/nope")
-    );
+    const res = await app.request(new Request("http://localhost:3001/api/projects/nope"));
     expect(res.status).toBe(404);
   });
 });

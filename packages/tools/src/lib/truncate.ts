@@ -42,10 +42,7 @@ export function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
-export function truncateHead(
-  content: string,
-  options: TruncationOptions = {}
-): TruncationResult {
+export function truncateHead(content: string, options: TruncationOptions = {}): TruncationResult {
   const maxLines = options.maxLines ?? DEFAULT_MAX_LINES;
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
 
@@ -70,10 +67,7 @@ export function truncateHead(
   }
 
   const firstLine = lines[0];
-  if (
-    firstLine !== undefined &&
-    Buffer.byteLength(firstLine, "utf-8") > maxBytes
-  ) {
+  if (firstLine !== undefined && Buffer.byteLength(firstLine, "utf-8") > maxBytes) {
     return {
       content: "",
       truncated: true,
@@ -128,10 +122,7 @@ export function truncateHead(
   };
 }
 
-export function truncateTail(
-  content: string,
-  options: TruncationOptions = {}
-): TruncationResult {
+export function truncateTail(content: string, options: TruncationOptions = {}): TruncationResult {
   const maxLines = options.maxLines ?? DEFAULT_MAX_LINES;
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
 
@@ -160,14 +151,9 @@ export function truncateTail(
   let truncatedBy: "lines" | "bytes" = "lines";
   let lastLinePartial = false;
 
-  for (
-    let i = lines.length - 1;
-    i >= 0 && outputLinesArr.length < maxLines;
-    i--
-  ) {
+  for (let i = lines.length - 1; i >= 0 && outputLinesArr.length < maxLines; i--) {
     const line = lines[i]!;
-    const lineBytes =
-      Buffer.byteLength(line, "utf-8") + (outputLinesArr.length > 0 ? 1 : 0);
+    const lineBytes = Buffer.byteLength(line, "utf-8") + (outputLinesArr.length > 0 ? 1 : 0);
 
     if (outputBytesCount + lineBytes > maxBytes) {
       truncatedBy = "bytes";
@@ -223,7 +209,7 @@ function truncateStringToBytesFromEnd(str: string, maxBytes: number): string {
 
 export function truncateLine(
   line: string,
-  maxChars: number = GREP_MAX_LINE_LENGTH
+  maxChars: number = GREP_MAX_LINE_LENGTH,
 ): { text: string; wasTruncated: boolean } {
   if (line.length <= maxChars) {
     return { text: line, wasTruncated: false };

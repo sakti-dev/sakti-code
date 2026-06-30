@@ -22,10 +22,7 @@ export function match(input: string, pattern: string): boolean {
     escaped = `${escaped.slice(0, -3)}( .*)?`;
   }
 
-  return new RegExp(
-    `^${escaped}$`,
-    process.platform === "win32" ? "si" : "s"
-  ).test(normalized);
+  return new RegExp(`^${escaped}$`, process.platform === "win32" ? "si" : "s").test(normalized);
 }
 
 export function evaluate(
@@ -36,10 +33,7 @@ export function evaluate(
   return (
     rulesets
       .flat()
-      .findLast(
-        (rule) =>
-          match(permission, rule.permission) && match(pattern, rule.pattern)
-      ) ?? {
+      .findLast((rule) => match(permission, rule.permission) && match(pattern, rule.pattern)) ?? {
       action: "ask",
       permission,
       pattern: "*",
@@ -60,10 +54,7 @@ function expand(pattern: string): string {
   return pattern;
 }
 
-export type PermissionConfig = Record<
-  string,
-  PermissionAction | Record<string, PermissionAction>
->;
+export type PermissionConfig = Record<string, PermissionAction | Record<string, PermissionAction>>;
 
 export function fromConfig(permission: PermissionConfig): PermissionRuleset {
   const ruleset: PermissionRuleset = [];
@@ -83,14 +74,11 @@ export function merge(...rulesets: PermissionRuleset[]): PermissionRuleset {
   return rulesets.flat();
 }
 
-export function disabled(
-  tools: string[],
-  ruleset: PermissionRuleset
-): Set<string> {
+export function disabled(tools: string[], ruleset: PermissionRuleset): Set<string> {
   return new Set(
     tools.filter((tool) => {
       const rule = ruleset.findLast((r) => match(tool, r.permission));
       return rule?.pattern === "*" && rule.action === "deny";
-    })
+    }),
   );
 }

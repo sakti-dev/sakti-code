@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { ContextMenu } from "../context-menu.tsx";
 
 const commands = [{ name: "commit", description: "commit and push" }];

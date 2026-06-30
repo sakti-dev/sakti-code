@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { formatDimensionNote, resizeImage } from "../image-resize.ts";
 
 // Small 2x2 red PNG image (base64) - from pi's test fixtures
@@ -55,15 +55,11 @@ describe("resizeImage", () => {
   });
 
   it("resizes image exceeding dimension limits", async () => {
-    const result = await resizeImage(
-      imageBytes(MEDIUM_PNG_100x100),
-      "image/png",
-      {
-        maxWidth: 50,
-        maxHeight: 50,
-        maxBytes: 1024 * 1024,
-      }
-    );
+    const result = await resizeImage(imageBytes(MEDIUM_PNG_100x100), "image/png", {
+      maxWidth: 50,
+      maxHeight: 50,
+      maxBytes: 1024 * 1024,
+    });
 
     expect(result).not.toBeNull();
     expect(result!.wasResized).toBe(true);
@@ -77,15 +73,11 @@ describe("resizeImage", () => {
     const originalBuffer = Buffer.from(LARGE_PNG_200x200, "base64");
     const originalSize = originalBuffer.length;
 
-    const result = await resizeImage(
-      imageBytes(LARGE_PNG_200x200),
-      "image/png",
-      {
-        maxWidth: 2000,
-        maxHeight: 2000,
-        maxBytes: Math.floor(LARGE_PNG_200x200.length * 0.9),
-      }
-    );
+    const result = await resizeImage(imageBytes(LARGE_PNG_200x200), "image/png", {
+      maxWidth: 2000,
+      maxHeight: 2000,
+      maxBytes: Math.floor(LARGE_PNG_200x200.length * 0.9),
+    });
 
     expect(result).not.toBeNull();
     const resultBuffer = Buffer.from(result!.data, "base64");
@@ -94,15 +86,11 @@ describe("resizeImage", () => {
   });
 
   it("returns null when image cannot be resized below maxBytes", async () => {
-    const result = await resizeImage(
-      imageBytes(LARGE_PNG_200x200),
-      "image/png",
-      {
-        maxWidth: 2000,
-        maxHeight: 2000,
-        maxBytes: 1,
-      }
-    );
+    const result = await resizeImage(imageBytes(LARGE_PNG_200x200), "image/png", {
+      maxWidth: 2000,
+      maxHeight: 2000,
+      maxBytes: 1,
+    });
 
     expect(result).toBeNull();
   });

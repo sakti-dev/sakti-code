@@ -32,7 +32,7 @@ export function fauxAssistantMessage(
     stopReason?: string;
     errorMessage?: string;
     usage?: Record<string, number>;
-  }
+  },
 ): FauxResponseStep {
   return { text };
 }
@@ -41,7 +41,7 @@ export function fauxAssistantMessage(
 export function fauxToolCall(
   name: string,
   arguments_: Record<string, unknown>,
-  options: { id?: string } = {}
+  options: { id?: string } = {},
 ): FauxResponseStep {
   return {
     toolCalls: [
@@ -71,7 +71,7 @@ const activeRegistrations: FauxProviderRegistration[] = [];
  */
 export function useFauxLlm(
   responses?: FauxResponseStep[],
-  _options: { api?: string } = {}
+  _options: { api?: string } = {},
 ): FauxProviderRegistration {
   process.env.OPENAI_API_KEY = "test-key";
   const registration = registerFauxProvider();

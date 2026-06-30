@@ -1,8 +1,5 @@
-import { describe, expect, it } from "vitest";
-import {
-  registerTestConnection,
-  unregisterTestConnection,
-} from "../agent/ws.ts";
+import { describe, expect, it } from "vite-plus/test";
+import { registerTestConnection, unregisterTestConnection } from "../agent/ws.ts";
 import { terminalRoutes } from "../routes/workspace/terminals.ts";
 import { makeApp } from "./helpers.ts";
 
@@ -13,16 +10,13 @@ type TestApp = Awaited<ReturnType<typeof makeApp>>["app"];
 // Helper: create a terminal against a registered test connection.
 // Terminals push their data/exit frames over WS keyed by connectionId, so a
 // connection MUST be open before a terminal can be created.
-async function createTerminal(
-  app: TestApp,
-  bodyChanges: Record<string, unknown> = {}
-) {
+async function createTerminal(app: TestApp, bodyChanges: Record<string, unknown> = {}) {
   return app.request(
     new Request("http://localhost/api/workspace/terminals", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ connectionId: CONN_ID, ...bodyChanges }),
-    })
+    }),
   );
 }
 
@@ -50,7 +44,7 @@ describe("terminal routes", () => {
       expect(body).toHaveProperty("pid");
       expect(typeof body.terminalId).toBe("string");
       expect(typeof body.pid).toBe("number");
-    })
+    }),
   );
 
   it("C3: POST /api/workspace/terminals without a valid connectionId is rejected (400)", async () => {
@@ -61,7 +55,7 @@ describe("terminal routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ connectionId: "bogus", cwd: "/tmp" }),
-      })
+      }),
     );
     expect(res.status).toBe(400);
   });
@@ -74,17 +68,14 @@ describe("terminal routes", () => {
       const { terminalId } = await createRes.json();
 
       const res = await app.request(
-        new Request(
-          `http://localhost/api/workspace/terminals/${terminalId}/write`,
-          {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ data: "echo hello\n" }),
-          }
-        )
+        new Request(`http://localhost/api/workspace/terminals/${terminalId}/write`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ data: "echo hello\n" }),
+        }),
       );
       expect(res.status).toBe(200);
-    })
+    }),
   );
 
   it("POST /api/workspace/terminals/nope/write returns 404", async () => {
@@ -94,7 +85,7 @@ describe("terminal routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ data: "echo hello\n" }),
-      })
+      }),
     );
     expect(res.status).toBe(404);
   });
@@ -111,17 +102,14 @@ describe("terminal routes", () => {
       const { terminalId } = await createRes.json();
 
       const res = await app.request(
-        new Request(
-          `http://localhost/api/workspace/terminals/${terminalId}/resize`,
-          {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ cols: 120, rows: 40 }),
-          }
-        )
+        new Request(`http://localhost/api/workspace/terminals/${terminalId}/resize`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ cols: 120, rows: 40 }),
+        }),
       );
       expect(res.status).toBe(200);
-    })
+    }),
   );
 
   it(
@@ -134,10 +122,10 @@ describe("terminal routes", () => {
       const res = await app.request(
         new Request(`http://localhost/api/workspace/terminals/${terminalId}`, {
           method: "DELETE",
-        })
+        }),
       );
       expect(res.status).toBe(200);
-    })
+    }),
   );
 
   it("DELETE /api/workspace/terminals/nope returns 404", async () => {
@@ -145,7 +133,7 @@ describe("terminal routes", () => {
     const res = await app.request(
       new Request("http://localhost/api/workspace/terminals/nope", {
         method: "DELETE",
-      })
+      }),
     );
     expect(res.status).toBe(404);
   });

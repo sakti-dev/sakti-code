@@ -1,7 +1,7 @@
 import { buildSessionContextFromEntries } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { exportRoutes } from "../routes/sessions/export.ts";
 import { forkingRoutes } from "../routes/sessions/forking.ts";
 import { seedEntries } from "./entry-helpers.ts";
@@ -22,7 +22,7 @@ describe("fork routes", () => {
       new Request(`http://localhost/api/sessions/${session.id}/fork`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-      })
+      }),
     );
     expect(res.status).toBe(200);
     const forked = await res.json();
@@ -36,9 +36,7 @@ describe("fork routes", () => {
       createdAt: new Date().toISOString(),
     });
     const leafId = await Effect.runPromise(forkedStorage.getLeafId());
-    const entries = await Effect.runPromise(
-      forkedStorage.getPathToRoot(leafId)
-    );
+    const entries = await Effect.runPromise(forkedStorage.getPathToRoot(leafId));
     const { messages } = buildSessionContextFromEntries(entries);
     expect(messages).toHaveLength(2);
     expect((messages[0] as { content: unknown }).content).toBe("Hello");
@@ -50,17 +48,14 @@ describe("fork routes", () => {
       new Request("http://localhost/api/sessions/nope/fork", {
         method: "POST",
         headers: { "content-type": "application/json" },
-      })
+      }),
     );
     expect(res.status).toBe(404);
   });
 
   it("POST /api/sessions/:id/fork preserves session kind", async () => {
     const { app, ctx } = await makeApp([forkingRoutes]);
-    const project = await ctx.repos.projects.create(
-      "fork-kind",
-      "/tmp/fork-kind"
-    );
+    const project = await ctx.repos.projects.create("fork-kind", "/tmp/fork-kind");
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "intake",
     });
@@ -69,7 +64,7 @@ describe("fork routes", () => {
       new Request(`http://localhost/api/sessions/${session.id}/fork`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-      })
+      }),
     );
     expect(res.status).toBe(200);
     const forked = await res.json();
@@ -95,7 +90,7 @@ describe("fork-messages route", () => {
     ]);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/fork-messages`)
+      new Request(`http://localhost/api/sessions/${session.id}/fork-messages`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -108,14 +103,11 @@ describe("fork-messages route", () => {
 
   it("empty session returns []", async () => {
     const { app, ctx } = await makeApp([forkingRoutes]);
-    const project = await ctx.repos.projects.create(
-      "fm-empty",
-      "/tmp/fm-empty"
-    );
+    const project = await ctx.repos.projects.create("fm-empty", "/tmp/fm-empty");
     const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/fork-messages`)
+      new Request(`http://localhost/api/sessions/${session.id}/fork-messages`),
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([]);
@@ -123,9 +115,7 @@ describe("fork-messages route", () => {
 
   it("unknown session returns 404", async () => {
     const { app } = await makeApp([forkingRoutes]);
-    const res = await app.request(
-      new Request("http://localhost/api/sessions/nope/fork-messages")
-    );
+    const res = await app.request(new Request("http://localhost/api/sessions/nope/fork-messages"));
     expect(res.status).toBe(404);
   });
 });
@@ -133,10 +123,7 @@ describe("fork-messages route", () => {
 describe("export route", () => {
   it("returns HTML with messages rendered", async () => {
     const { app, ctx } = await makeApp([exportRoutes]);
-    const project = await ctx.repos.projects.create(
-      "export-test",
-      "/tmp/export"
-    );
+    const project = await ctx.repos.projects.create("export-test", "/tmp/export");
     const session = await ctx.repos.sessions.create(project.id, {
       title: "ExportMe",
     });
@@ -147,12 +134,10 @@ describe("export route", () => {
     ]);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/export-html`)
+      new Request(`http://localhost/api/sessions/${session.id}/export-html`),
     );
     expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
-      "text/html; charset=utf-8"
-    );
+    expect(res.headers.get("content-type")?.toLowerCase()).toBe("text/html; charset=utf-8");
     const html = await res.text();
     expect(html).toContain("ExportMe");
     expect(html).toContain("Hello");
@@ -162,14 +147,11 @@ describe("export route", () => {
 
   it("empty session returns HTML with no messages", async () => {
     const { app, ctx } = await makeApp([exportRoutes]);
-    const project = await ctx.repos.projects.create(
-      "export-empty",
-      "/tmp/export-empty"
-    );
+    const project = await ctx.repos.projects.create("export-empty", "/tmp/export-empty");
     const session = await ctx.repos.sessions.create(project.id);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/export-html`)
+      new Request(`http://localhost/api/sessions/${session.id}/export-html`),
     );
     expect(res.status).toBe(200);
     const html = await res.text();
@@ -178,9 +160,7 @@ describe("export route", () => {
 
   it("unknown session returns 404", async () => {
     const { app } = await makeApp([exportRoutes]);
-    const res = await app.request(
-      new Request("http://localhost/api/sessions/nope/export-html")
-    );
+    const res = await app.request(new Request("http://localhost/api/sessions/nope/export-html"));
     expect(res.status).toBe(404);
   });
 
@@ -189,12 +169,10 @@ describe("export route", () => {
     const project = await ctx.repos.projects.create("w7", "/tmp/w7");
     const session = await ctx.repos.sessions.create(project.id);
 
-    await seedEntries(ctx.db, session.id, [
-      { role: "assistant", content: "hi" },
-    ]);
+    await seedEntries(ctx.db, session.id, [{ role: "assistant", content: "hi" }]);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/export-html`)
+      new Request(`http://localhost/api/sessions/${session.id}/export-html`),
     );
     const html = await res.text();
     const matches = html.match(/class="copy-btn"/g);
@@ -209,7 +187,7 @@ describe("export route", () => {
     const created = new Date(session.createdAt).toISOString().slice(0, 10);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/export-html`)
+      new Request(`http://localhost/api/sessions/${session.id}/export-html`),
     );
     const html = await res.text();
     expect(html).toContain(created);

@@ -21,9 +21,7 @@ export interface OutputSnapshot {
 }
 
 function defaultTempFilePath(prefix: string): string {
-  const id = Buffer.from(crypto.getRandomValues(new Uint8Array(8))).toString(
-    "hex"
-  );
+  const id = Buffer.from(crypto.getRandomValues(new Uint8Array(8))).toString("hex");
   return join(tmpdir(), `${prefix}-${id}.log`);
 }
 
@@ -94,11 +92,9 @@ export class OutputAccumulator {
       maxLines: this.maxLines,
       maxBytes: this.maxBytes,
     });
-    const truncated =
-      this.totalLines > this.maxLines || this.totalDecodedBytes > this.maxBytes;
+    const truncated = this.totalLines > this.maxLines || this.totalDecodedBytes > this.maxBytes;
     const truncatedBy = truncated
-      ? (tailTruncation.truncatedBy ??
-        (this.totalDecodedBytes > this.maxBytes ? "bytes" : "lines"))
+      ? (tailTruncation.truncatedBy ?? (this.totalDecodedBytes > this.maxBytes ? "bytes" : "lines"))
       : null;
     const truncation: TruncationResult = {
       ...tailTruncation,
@@ -117,9 +113,7 @@ export class OutputAccumulator {
     return {
       content: truncation.content,
       truncation,
-      ...(this.tempFilePath === undefined
-        ? {}
-        : { fullOutputPath: this.tempFilePath }),
+      ...(this.tempFilePath === undefined ? {} : { fullOutputPath: this.tempFilePath }),
     };
   }
 
@@ -191,9 +185,7 @@ export class OutputAccumulator {
     }
 
     const firstNewline = this.tailText.indexOf("\n");
-    return firstNewline === -1
-      ? this.tailText
-      : this.tailText.slice(firstNewline + 1);
+    return firstNewline === -1 ? this.tailText : this.tailText.slice(firstNewline + 1);
   }
 
   private shouldUseTempFile(): boolean {

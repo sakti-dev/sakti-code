@@ -2,18 +2,18 @@
   "name": "@sakti-code/agent",
   "version": "0.0.0",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
       "development": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
     }
   },
   "scripts": {
-    "build": "tsup && node ../../scripts/restore-node-protocol.mjs dist",
-    "test": "vitest run",
+    "build": "vp pack",
+    "test": "vp test run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -28,6 +28,7 @@
     "@effect/vitest": "4.0.0-beta.90",
     "@types/node": "^26.0.0",
     "@types/uuid": "^10",
-    "vitest": "^3"
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
   }
 }

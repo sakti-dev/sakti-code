@@ -25,8 +25,7 @@ function* walk(dir) {
   }
 }
 
-const re =
-  /(\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*)["']([a-z][\w-]*(?:\/[\w-]+)*)["']/g;
+const re = /(\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*)["']([a-z][\w-]*(?:\/[\w-]+)*)["']/g;
 
 let touched = 0;
 for (const file of walk(dist)) {
