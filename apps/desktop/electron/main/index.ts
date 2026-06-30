@@ -27,6 +27,9 @@ app.on("ready", async () => {
     port: isDev ? 3001 : 0,
     hostname: "127.0.0.1",
     staticDir: isDev ? null : resolve(import.meta.dirname, "../renderer"),
+    migrationsFolder: isDev
+      ? resolve(import.meta.dirname, "../../../../packages/db/migrations")
+      : resolve(import.meta.dirname, "../migrations"),
     hooks: createDialogHooks(),
   });
   logger.info("embedded server on", server.url);
