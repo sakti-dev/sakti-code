@@ -1,3 +1,20 @@
+<!--VITE PLUS START-->
+
+# Using Vite+, the Unified Toolchain for the Web
+
+This project is using Vite+, a unified toolchain built on top of Vite, Rolldown, Vitest, tsdown, Oxlint, Oxfmt, and Vite Task. Vite+ wraps runtime management, package management, and frontend tooling in a single global CLI called `vp`. Day-to-day: `vp install`, `vp check` (format + lint), `vp run -r test`/`vp run -r build`, `vp run <pkg>#<task>`. Docs: `node_modules/vite-plus/docs` or https://viteplus.dev/guide/.
+
+> nix provides Node (run `vp env off` once so vp prefers system Node). Lint/format gate is `vp check`; typecheck is `vp run -r typecheck`.
+
+## Review Checklist
+
+- [ ] Run `vp install` after pulling remote changes and before getting started.
+- [ ] Run `vp check` and `vp run -r test` to format, lint, and test changes.
+- [ ] Run `vp run -r typecheck` for the canonical tsc typecheck.
+- [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
+
+<!--VITE PLUS END-->
+
 ## Project
 
 sakti-code: desktop app (Electron + SolidJS) running multiple AI coding agents concurrently on different codebases. The agent core lives here as a TypeScript monorepo.
@@ -19,21 +36,23 @@ sakti-code: desktop app (Electron + SolidJS) running multiple AI coding agents c
 ## Commands
 
 ```
-pnpm run fix                                      # format + lint fix + diagnostics (ultracite; run before committing). `npx biome check` is a lint-only alternative.
-pnpm run typecheck                                # typecheck all packages via turbo (agent, db, tools, server, desktop) — each package owns its tsconfig
-cd apps/server && pnpm run typecheck              # typecheck server incl. tests (tsc --noEmit with apps/server/tsconfig.json)
-cd packages/tools && pnpm run test                # tool tests (vitest)
-cd packages/agent && pnpm run test                # agent tests (vitest)
-cd packages/db && pnpm run test                   # db tests (vitest, node:sqlite)
-cd apps/server && pnpm run test                   # server tests (vitest)
-cd apps/desktop && pnpm run test                  # desktop renderer + electron tests (vitest)
-pnpm run dev:server                               # start Hono server standalone on port 3001 (SAKTI_PORT env override); runs .ts directly via tsx watch
-cd apps/desktop && pnpm run dev                   # run the Electron app (electron-vite dev: renderer HMR + embedded server on fixed dev port 3001)
-cd apps/desktop && pnpm run spike                 # headless Electron spike: verifies node:sqlite + embedded createServer + /api/health
-cd apps/desktop && pnpm run rebuild               # rebuild native modules (node-pty) against Electron's ABI — run once after install (in nix develop)
-cd apps/desktop && pnpm run package               # build + package a Linux app into release/ (run in `nix develop`; python3 needed for node-pty)
-nix develop                                       # enter dev shell: Electron runtime libs (libEGL/libGL…) + python3/gnumake for native rebuild
+vp install                                         # install dependencies (replaces pnpm install)
+vp check                                           # format + lint (run before committing); `vp check --fix` autofixes
+vp check --fix                                     # format + autofix lint (run before committing)
+vp run -r typecheck                                # typecheck all packages via tsc --noEmit (each package owns its tsconfig)
+vp run -r test                                     # run tests across all packages (vitest via vite-plus/test)
+vp run -r build                                    # build all packages (vp pack; electron-vite for desktop)
+vp run @sakti-code/agent#test                      # single-package test (same pattern for any workspace package)
+vp run @sakti-code/server#dev                      # start Hono server standalone on port 3001 (SAKTI_PORT env override); tsx watch
+vp run desktop#dev                                 # run the Electron app (electron-vite dev: renderer HMR + embedded server on dev port 3001)
+vp run desktop#spike                               # headless Electron spike: verifies node:sqlite + embedded createServer + /api/health
+vp run desktop#rebuild                             # rebuild native modules (node-pty) against Electron's ABI — run once after install (in nix develop)
+vp run desktop#package                             # build + package a Linux app into release/ (run in `nix develop`; python3 needed for node-pty)
+vp env off                                         # run once after install so nix (not vp) stays the Node source
+nix develop                                        # enter dev shell: Electron runtime libs (libEGL/libGL…) + python3/gnumake for native rebuild
 ```
+
+> Tasks run through `vp run` (Vite Task). `vp run -r <task>` runs across all workspace packages in dependency order; `vp run <pkg>#<task>` targets one. There is no turbo-style `^task` — order comes from the `package.json` dependency graph.
 
 ## Conventions
 
@@ -44,9 +63,9 @@ nix develop                                       # enter dev shell: Electron ru
 - Workspace `package.json` exports point to `./src/index.ts` (not `./dist/`) so the dev tooling resolves `.ts` directly.
 - Before editing unfamiliar code: read `openspec/changes/*/specs/` and the file you're changing.
 
-## Code style (Ultracite / Biome)
+## Code style (Oxlint / Oxfmt via `vp`)
 
-Write code that is **accessible, performant, type-safe, and maintainable**. Focus on clarity and explicit intent over brevity. Run `pnpm run fix` — it applies formatting and lint fixes and reports any remaining diagnostics.
+Write code that is **accessible, performant, type-safe, and maintainable**. Focus on clarity and explicit intent over brevity. Run `vp check --fix` — it applies formatting (oxfmt) and lint fixes (oxlint) and reports any remaining diagnostics. `vp check` is the read-only gate; lint config lives in the root `vite.config.ts` `lint`/`fmt` blocks (type-aware on; full typecheck off — typecheck is `vp run -r typecheck`).
 
 - Explicit types for params/returns when they aid clarity; prefer `unknown` over `any`.
 - `const` by default, `let` only when reassigning, never `var`. Const assertions (`as const`) for immutable values.
@@ -101,9 +120,9 @@ The Hono REST server lives in `apps/server/` (served by `@hono/node-server`) and
 ### Running the server
 
 ```bash
-pnpm run dev:server                          # starts on port 3001
-SAKTI_PORT=4000 pnpm run dev:server          # override port
-SAKTI_DB_PATH=/custom/path/sakti-code.db pnpm run dev:server   # custom db path
+vp run @sakti-code/server#dev                # starts on port 3001
+SAKTI_PORT=4000 vp run @sakti-code/server#dev          # override port
+SAKTI_DB_PATH=/custom/path/sakti-code.db vp run @sakti-code/server#dev   # custom db path
 ```
 
 ### Environment & configuration
