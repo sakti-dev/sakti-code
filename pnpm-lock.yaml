@@ -52,6 +52,9 @@ importers:
       '@corvu/resizable':
         specifier: ^0.2.5
         version: 0.2.5(solid-js@1.9.13)
+      '@ff-labs/fff-node':
+        specifier: ^0.9.6
+        version: 0.9.6
       '@kobalte/core':
         specifier: ^0.13.11
         version: 0.13.11(solid-js@1.9.13)
@@ -64,6 +67,9 @@ importers:
       '@sakti-code/logger':
         specifier: workspace:*
         version: link:../../packages/logger
+      '@sakti-code/pi-natives':
+        specifier: workspace:*
+        version: link:../../crates/pi-natives
       '@sakti-code/server':
         specifier: workspace:*
         version: link:../server
