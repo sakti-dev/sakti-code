@@ -143,7 +143,7 @@ export function createFindTool(
       }
 
       const searchPath = resolveToCwd(searchDir || ".", cwd);
-      const effectiveLimit = limit && limit > 0 ? limit : DEFAULT_LIMIT;
+      const effectiveLimit = limit && limit > 0 ? Math.max(1, Math.floor(limit)) : DEFAULT_LIMIT;
       const ops = customOps ?? defaultFindOperations;
 
       // Pre-flight: reject a missing search path once, for both branches,
@@ -262,7 +262,7 @@ function formatFindResults(
   const notices: string[] = [];
   if (resultLimitReached) {
     notices.push(
-      `${effectiveLimit} results limit reached. Use limit=${effectiveLimit * 2} for more, or refine pattern`,
+      `${effectiveLimit} results limit reached. Try a larger limit (e.g. limit=${effectiveLimit * 2}) for more, or refine the pattern`,
     );
     details.resultLimitReached = effectiveLimit;
   }

@@ -324,11 +324,18 @@ describe("find: limit is enforced as a hard cap", () => {
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it("returns at most `limit` results", async () => {
+  it("returns exactly `limit` results when more exist", async () => {
     const tool = createFindTool(dir);
     const text = getTextContent(await tool.execute("tc", { pattern: "*.ts", limit: 5 }));
     const fileLines = text.split("\n").filter((l) => /^f\d+\.ts$/.test(l));
-    expect(fileLines.length).toBeLessThanOrEqual(5);
+    expect(fileLines.length).toBe(5);
+  });
+
+  it("floors a fractional limit to a whole number >= 1", async () => {
+    const tool = createFindTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "*.ts", limit: 5.9 }));
+    const fileLines = text.split("\n").filter((l) => /^f\d+\.ts$/.test(l));
+    expect(fileLines.length).toBe(5);
   });
 
   it("returns at most 1 result when limit=1", async () => {
@@ -352,12 +359,13 @@ describe("find: limit is enforced as a hard cap", () => {
 
   it("treats limit <= 0 as the default (does not crash, does not return zero)", async () => {
     const tool = createFindTool(dir);
-    const text = getTextContent(await tool.execute("tc", { pattern: "*.ts", limit: 0 }));
-    const fileLines = text.split("\n").filter((l) => /^f\d+\.ts$/.test(l));
-    expect(fileLines.length).toBe(12); // default applies
+    const zeroText = getTextContent(await tool.execute("tc", { pattern: "*.ts", limit: 0 }));
+    expect(zeroText.split("\n").filter((l) => /^f\d+\.ts$/.test(l)).length).toBe(12);
+    const negText = getTextContent(await tool.execute("tc", { pattern: "*.ts", limit: -1 }));
+    expect(negText.split("\n").filter((l) => /^f\d+\.ts$/.test(l)).length).toBe(12);
   });
 
-  it("still applies the 50KB byte truncation independently of limit", async () => {
+  it("does not crash and returns all files when limit is large", async () => {
     const tool = createFindTool(dir);
     const text = getTextContent(await tool.execute("tc", { pattern: "*.ts", limit: 100000 }));
     expect(text).toContain("f0.ts");
