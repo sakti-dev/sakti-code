@@ -12,4 +12,12 @@ export default defineConfig({
     entry: ["src/index.ts"],
     dts: true,
   },
+  run: {
+    tasks: {
+      test: {
+        command: "vp test run",
+        input: [{ auto: true }, "!**/test-workdir-*/**"],
+      },
+    },
+  },
 });
