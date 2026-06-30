@@ -84,26 +84,36 @@ The bash tool SHALL accept `{ command, timeout? }` parameters, spawn a shell sub
 - **THEN** the result includes the exit code and stderr, with `isError: true`
 
 ### Requirement: Grep tool searches file contents
-The grep tool SHALL accept `{ pattern, path?, glob?, ignoreCase?, limit? }` parameters and use ripgrep (`rg`) to search. Default limit SHALL be 100 matches. Results SHALL be formatted as `file:line: text`.
+The grep tool SHALL accept `{ pattern, path?, glob?, literal?, context?, limit? }` parameters and use the bundled ripgrep (`rg`) to search. Default limit SHALL be 100 matches. Smart-case SHALL be on by default (case-insensitive for all-lowercase patterns, case-sensitive otherwise). Results SHALL be formatted as `file:line: text` for matches and `file-line- text` for context lines, parsed in a single pass from `rg --json` (no separate file read). The search SHALL reach gitignored content (via `--no-ignore`) so it never falsely reports "no matches" when matches exist but are gitignored; `.git` and `node_modules` SHALL be excluded.
 
 #### Scenario: Search for a pattern
 - **WHEN** the grep tool is called with `{ pattern: "TODO" }`
 - **THEN** all lines containing "TODO" in `{cwd}` are returned, up to 100 matches
 
-#### Scenario: Case-insensitive search
-- **WHEN** the grep tool is called with `{ pattern: "todo", ignoreCase: true }`
-- **THEN** lines matching "TODO", "todo", "Todo" etc. are returned
+#### Scenario: Smart-case search
+- **WHEN** the grep tool is called with `{ pattern: "todo" }` (all-lowercase)
+- **THEN** lines matching "TODO", "todo", "Todo" etc. are returned (case-insensitive, automatically)
+- **WHEN** the grep tool is called with `{ pattern: "Todo" }` (mixed-case)
+- **THEN** only lines matching "Todo" exactly are returned (case-sensitive)
+
+#### Scenario: Context lines
+- **WHEN** the grep tool is called with `{ pattern: "foo", context: 3 }`
+- **THEN** each match is accompanied by 3 lines before and after, drawn from `rg`'s own context records in a single pass
 
 #### Scenario: Search within specific directory
 - **WHEN** the grep tool is called with `{ pattern: "import", path: "src/" }`
 - **THEN** only files under `{cwd}/src/` are searched
 
 ### Requirement: Find tool locates files by pattern
-The find tool SHALL accept `{ pattern, path?, limit? }` parameters and use `fd` to locate files. Default limit SHALL be 1000 results. Results SHALL be relative paths from `cwd`.
+The find tool SHALL accept `{ pattern, path?, limit? }` parameters and use the bundled ripgrep (`rg --files`) to locate files. Default limit SHALL be 1000 results. A bare name fragment (no glob metacharacters) SHALL be dispatched as a substring glob (`Button` → `**/*Button*`); a real glob pattern SHALL pass through unchanged. The search SHALL reach gitignored content (via `--no-ignore`) so it never falsely reports "no files found" when files exist but are gitignored; `.git` and `node_modules` SHALL be excluded. Results SHALL be paths relative to the search directory.
 
 #### Scenario: Find TypeScript files
 - **WHEN** the find tool is called with `{ pattern: "*.ts" }`
 - **THEN** all `.ts` files under `{cwd}` are returned, up to 1000 results
+
+#### Scenario: Find by bare name fragment
+- **WHEN** the find tool is called with `{ pattern: "Button" }`
+- **THEN** all files whose path contains "Button" are returned (e.g. `src/Button.tsx`, `components/ButtonGroup.ts`)
 
 #### Scenario: Find within specific directory
 - **WHEN** the find tool is called with `{ pattern: "*.test.ts", path: "src/" }`
