@@ -30,7 +30,8 @@
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
-    "typescript": "rc",
+    "typescript": "npm:@typescript/typescript6@^6.0.0",
+    "typescript-7": "npm:typescript@rc",
     "vite-plus": "catalog:"
   },
   "devEngines": {
