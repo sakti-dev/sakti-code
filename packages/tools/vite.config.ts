@@ -18,6 +18,10 @@ export default defineConfig({
         command: "vp test run",
         input: [{ auto: true }, "!**/test-workdir-*/**"],
       },
+      typecheck: {
+        command: "tsc --noEmit",
+        input: [{ auto: true }, "!**/test-workdir-*/**"],
+      },
     },
   },
 });
