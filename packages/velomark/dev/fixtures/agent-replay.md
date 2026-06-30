@@ -75,13 +75,13 @@ function resumeFromSnapshot(snapshot: WorkflowSnapshot): string {
 
 ## Comparative Table
 
-| Concern | Naive Snapshot Renderer | Stable Block Renderer |
-| --- | --- | --- |
-| Early block hover | Often lost | Preserved |
-| Text selection | Often reset | Preserved on append |
-| Tail rewrite cost | Full subtree churn | Suffix-only replacement |
-| Streaming feel | Janky under long output | Predictable and incremental |
-| Packaged consumer compatibility | Toolchain-dependent | Explicitly validated |
+| Concern                         | Naive Snapshot Renderer | Stable Block Renderer       |
+| ------------------------------- | ----------------------- | --------------------------- |
+| Early block hover               | Often lost              | Preserved                   |
+| Text selection                  | Often reset             | Preserved on append         |
+| Tail rewrite cost               | Full subtree churn      | Suffix-only replacement     |
+| Streaming feel                  | Janky under long output | Predictable and incremental |
+| Packaged consumer compatibility | Toolchain-dependent     | Explicitly validated        |
 
 ## Extended Discussion
 
@@ -109,12 +109,12 @@ The most important behavioral checks are not abstract microbenchmarks. They are 
 
 ### Additional Table
 
-| Metric | Append Path | Rewrite Tail |
-| --- | --- | --- |
-| Reused Blocks | High | Medium |
-| Replaced Blocks | Low | Medium |
-| Appended Blocks | High | Low |
-| Selection Stability | Strong | Depends on rewrite location |
+| Metric              | Append Path | Rewrite Tail                |
+| ------------------- | ----------- | --------------------------- |
+| Reused Blocks       | High        | Medium                      |
+| Replaced Blocks     | Low         | Medium                      |
+| Appended Blocks     | High        | Low                         |
+| Selection Stability | Strong      | Depends on rewrite location |
 
 ## Final Notes
 

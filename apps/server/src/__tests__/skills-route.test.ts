@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { loadDisabledSkills } from "../agent/runner.ts";
 import { makeApp } from "./helpers.ts";
 
@@ -13,7 +13,9 @@ describe("skills routes", () => {
     const res = await app.request(
       new Request(
         `http://localhost/api/sessions/${session.id}/skills/graphify/disable`,
-        { method: "POST" }
+        {
+          method: "POST",
+        }
       )
     );
 
@@ -31,14 +33,18 @@ describe("skills routes", () => {
     await app.request(
       new Request(
         `http://localhost/api/sessions/${session.id}/skills/foo/disable`,
-        { method: "POST" }
+        {
+          method: "POST",
+        }
       )
     );
     // Second disable — should not error
     const res = await app.request(
       new Request(
         `http://localhost/api/sessions/${session.id}/skills/foo/disable`,
-        { method: "POST" }
+        {
+          method: "POST",
+        }
       )
     );
 
@@ -59,7 +65,9 @@ describe("skills routes", () => {
     const res = await app.request(
       new Request(
         `http://localhost/api/sessions/${session.id}/skills/graphify/disable`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+        }
       )
     );
 
@@ -76,7 +84,9 @@ describe("skills routes", () => {
     const res = await app.request(
       new Request(
         `http://localhost/api/sessions/${session.id}/skills/never-disabled/disable`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+        }
       )
     );
 
@@ -111,7 +121,9 @@ describe("skills routes", () => {
     const res = await app.request(
       new Request(
         "http://localhost/api/sessions/nonexistent/skills/foo/disable",
-        { method: "POST" }
+        {
+          method: "POST",
+        }
       )
     );
 

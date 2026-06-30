@@ -494,7 +494,9 @@ export function runPromptEffect(
       _model: unknown
     ): Promise<
       { apiKey: string; headers?: Record<string, string> } | undefined
-    > => ({ apiKey: auth.apiKey });
+    > => ({
+      apiKey: auth.apiKey,
+    });
 
     // Load the project's full agent context once: used both to wire the harness
     // resources (skills + command templates, so harness.skill/promptFromTemplate

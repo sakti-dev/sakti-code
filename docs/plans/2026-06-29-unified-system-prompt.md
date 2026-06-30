@@ -15,18 +15,21 @@
 The edit tool has a rich description (HASHLINE_DESCRIPTION) explaining the hashline patch format. This description is passed to the AI SDK as part of the tool JSON Schema. But smaller LLMs (glm-5-turbo, Qwen 35B) **don't read tool schemas carefully** before first use — they default to patterns from training data (e.g., `old_string/new_string`). The system prompt is what they read carefully. Pi solves this by embedding tool descriptions directly into the system prompt via `renderToolInventory()`. Sakti currently only embeds skills (via `appendSkillsBlock`), not tools.
 
 ### Current flow (broken):
+
 ```
 runner.ts:539  appendSkillsBlock(agent.systemPrompt, skills, hasRead)
                ↑ skills: embedded ✓    tools: NOT embedded ✗
 ```
 
 ### Target flow:
+
 ```
 runner.ts      composeSystemPrompt(agent.systemPrompt, activeTools, skills, hasRead)
                ↑ skills: embedded ✓    tools: embedded ✓
 ```
 
 ### Mid-session skill changes (unchanged):
+
 ```
 harness        stripSkillsBlock(prompt)  → strips only skills suffix, tools stay
                appendSkillsBlock(...)    → re-appends skills after tools
@@ -37,10 +40,12 @@ harness        stripSkillsBlock(prompt)  → strips only skills suffix, tools st
 ## Files Overview
 
 **Create:**
+
 - `packages/agent/src/resources/tool-inventory.ts` — `renderToolInventory()` + `demoteHeaders()`
 - `packages/agent/src/resources/__tests__/tool-inventory.test.ts` — comprehensive unit tests
 
 **Modify:**
+
 - `packages/agent/src/resources/system-prompt.ts` — add `composeSystemPrompt()`
 - `packages/agent/src/resources/__tests__/system-prompt.test.ts` — add composition tests
 - `packages/agent/src/index.ts` — export new functions
@@ -54,12 +59,13 @@ harness        stripSkillsBlock(prompt)  → strips only skills suffix, tools st
 When a tool description contains `#`-level headers, they collide with the `# Tool: <name>` wrapper. This utility demotes all ATX headers by one level (unless they're inside fenced code blocks).
 
 **Files:**
+
 - Create: `packages/agent/src/resources/tool-inventory.ts`
 - Test: `packages/agent/src/resources/__tests__/tool-inventory.test.ts`
 
 ### Step 1: Write failing tests
 
-```typescript
+````typescript
 // packages/agent/src/resources/__tests__/tool-inventory.test.ts
 import { describe, expect, it } from "vitest";
 import { demoteHeaders } from "../tool-inventory";
@@ -109,13 +115,14 @@ describe("demoteHeaders", () => {
     expect(demoteHeaders("")).toBe("");
   });
 });
-```
+````
 
 ### Step 2: Run tests to verify they fail
 
 ```bash
 cd packages/agent && npx vitest run src/resources/__tests__/tool-inventory.test.ts
 ```
+
 Expected: FAIL — `demoteHeaders` is not defined (module not found).
 
 ### Step 3: Implement `demoteHeaders`
@@ -168,6 +175,7 @@ export function demoteHeaders(description: string): string {
 ```bash
 cd packages/agent && npx vitest run src/resources/__tests__/tool-inventory.test.ts
 ```
+
 Expected: PASS — all 8 tests.
 
 ### Step 5: Commit
@@ -184,6 +192,7 @@ git commit -m "feat(agent): add demoteHeaders utility for tool inventory renderi
 Renders each tool as a `# Tool: <name>` section with its (header-demoted) description. Tools are sorted alphabetically by name for cache stability.
 
 **Files:**
+
 - Modify: `packages/agent/src/resources/tool-inventory.ts`
 - Modify: `packages/agent/src/resources/__tests__/tool-inventory.test.ts`
 
@@ -191,7 +200,7 @@ Renders each tool as a `# Tool: <name>` section with its (header-demoted) descri
 
 Append to the test file:
 
-```typescript
+````typescript
 import { renderToolInventory } from "../tool-inventory";
 import type { AgentTool } from "../../types";
 
@@ -233,10 +242,7 @@ describe("renderToolInventory", () => {
   });
 
   it("separates tool sections with double newline", () => {
-    const tools = [
-      mockTool("edit", "Edit."),
-      mockTool("read", "Read."),
-    ];
+    const tools = [mockTool("edit", "Edit."), mockTool("read", "Read.")];
     const result = renderToolInventory(tools);
     expect(result).toContain("# Tool: edit\nEdit.\n\n# Tool: read");
   });
@@ -267,7 +273,8 @@ describe("renderToolInventory", () => {
   });
 
   it("renders a realistic edit tool description", () => {
-    const desc = "Edit files using hashline patches. Line numbers are 1-indexed.\n\nLine ops:\n- SWAP N.=M: replace lines\n- DEL N.=M: delete lines";
+    const desc =
+      "Edit files using hashline patches. Line numbers are 1-indexed.\n\nLine ops:\n- SWAP N.=M: replace lines\n- DEL N.=M: delete lines";
     const tool = mockTool("edit", desc);
     const result = renderToolInventory([tool]);
     expect(result).toContain("# Tool: edit");
@@ -275,13 +282,14 @@ describe("renderToolInventory", () => {
     expect(result).toContain("SWAP N.=M");
   });
 });
-```
+````
 
 ### Step 2: Run tests to verify they fail
 
 ```bash
 cd packages/agent && npx vitest run src/resources/__tests__/tool-inventory.test.ts
 ```
+
 Expected: FAIL — `renderToolInventory` is not exported.
 
 ### Step 3: Implement `renderToolInventory`
@@ -317,6 +325,7 @@ export function renderToolInventory(tools: readonly AgentTool[]): string {
 ```bash
 cd packages/agent && npx vitest run src/resources/__tests__/tool-inventory.test.ts
 ```
+
 Expected: PASS — all tests (8 demoteHeaders + 9 renderToolInventory = 17).
 
 ### Step 5: Commit
@@ -333,6 +342,7 @@ git commit -m "feat(agent): add renderToolInventory for system prompt embedding"
 Combines base agent prompt + tool inventory + skills block into a single system prompt string. Replaces the ad-hoc `appendSkillsBlock` call in the runner.
 
 **Files:**
+
 - Modify: `packages/agent/src/resources/system-prompt.ts`
 - Modify: `packages/agent/src/resources/__tests__/system-prompt.test.ts`
 
@@ -407,11 +417,7 @@ describe("composeSystemPrompt", () => {
   });
 
   it("handles multiple tools and skills together", () => {
-    const tools = [
-      mockTool("edit", "Edit."),
-      mockTool("read", "Read."),
-      mockTool("bash", "Run."),
-    ];
+    const tools = [mockTool("edit", "Edit."), mockTool("read", "Read."), mockTool("bash", "Run.")];
     const skills = [
       mockSkill("tdd", "TDD", "/tdd/SKILL.md"),
       mockSkill("debug", "Debug", "/debug/SKILL.md"),
@@ -443,6 +449,7 @@ describe("composeSystemPrompt", () => {
 ```bash
 cd packages/agent && npx vitest run src/resources/__tests__/system-prompt.test.ts
 ```
+
 Expected: FAIL — `composeSystemPrompt` is not exported.
 
 ### Step 3: Implement `composeSystemPrompt`
@@ -494,6 +501,7 @@ export function composeSystemPrompt(
 ```bash
 cd packages/agent && npx vitest run src/resources/__tests__/system-prompt.test.ts
 ```
+
 Expected: PASS — all existing tests + new composition tests.
 
 ### Step 5: Commit
@@ -508,6 +516,7 @@ git commit -m "feat(agent): add composeSystemPrompt for unified prompt compositi
 ## Task 4: Export new functions from agent package
 
 **Files:**
+
 - Modify: `packages/agent/src/index.ts`
 
 ### Step 1: Add exports
@@ -538,6 +547,7 @@ export { demoteHeaders, renderToolInventory } from "./resources/tool-inventory";
 ```bash
 cd packages/agent && npx tsc --noEmit
 ```
+
 Expected: clean (no errors).
 
 ### Step 3: Commit
@@ -554,11 +564,13 @@ git commit -m "feat(agent): export composeSystemPrompt and tool-inventory functi
 Replace the `appendSkillsBlock` call in the runner with `composeSystemPrompt`. This is the critical integration point — tool descriptions now appear in the system prompt for ALL agents.
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts`
 
 ### Step 1: Read the current runner code
 
 Read `apps/server/src/agent/runner.ts` lines 455-549 to understand the exact composition flow:
+
 - Line 455: `const tools = buildTools(project.cwd)` — builds all tools
 - Lines 481-490: skills loaded and filtered
 - Lines 492-509: harness constructed (intake gets systemPrompt here)
@@ -567,6 +579,7 @@ Read `apps/server/src/agent/runner.ts` lines 455-549 to understand the exact com
 ### Step 2: Understand what needs to change
 
 The change:
+
 1. Replace the `appendSkillsBlock` import with `composeSystemPrompt`
 2. Filter tools by `agent.activeToolNames` to get the active subset
 3. Call `composeSystemPrompt` with `(agent.systemPrompt, activeTools, activeSkills, hasRead)` for ALL agents
@@ -600,12 +613,7 @@ describe("runner system prompt composition", () => {
       execute: async () => ({ content: [{ type: "text", text: "" }], details: undefined }),
     } as unknown as AgentTool;
 
-    const prompt = composeSystemPrompt(
-      "You are a coding agent.",
-      [editTool, readTool],
-      [],
-      true,
-    );
+    const prompt = composeSystemPrompt("You are a coding agent.", [editTool, readTool], [], true);
 
     // Tool inventory is embedded
     expect(prompt).toContain("# Tool: edit");
@@ -617,12 +625,30 @@ describe("runner system prompt composition", () => {
 
   it("respects activeToolNames filtering", () => {
     const allTools: AgentTool[] = [
-      { name: "read", description: "Read.", label: "Read", parameters: { type: "object", properties: {} }, execute: async () => ({ content: [{ type: "text", text: "" }], details: undefined }) } as unknown as AgentTool,
-      { name: "edit", description: "Edit.", label: "Edit", parameters: { type: "object", properties: {} }, execute: async () => ({ content: [{ type: "text", text: "" }], details: undefined }) } as unknown as AgentTool,
-      { name: "bash", description: "Bash.", label: "Bash", parameters: { type: "object", properties: {} }, execute: async () => ({ content: [{ type: "text", text: "" }], details: undefined }) } as unknown as AgentTool,
+      {
+        name: "read",
+        description: "Read.",
+        label: "Read",
+        parameters: { type: "object", properties: {} },
+        execute: async () => ({ content: [{ type: "text", text: "" }], details: undefined }),
+      } as unknown as AgentTool,
+      {
+        name: "edit",
+        description: "Edit.",
+        label: "Edit",
+        parameters: { type: "object", properties: {} },
+        execute: async () => ({ content: [{ type: "text", text: "" }], details: undefined }),
+      } as unknown as AgentTool,
+      {
+        name: "bash",
+        description: "Bash.",
+        label: "Bash",
+        parameters: { type: "object", properties: {} },
+        execute: async () => ({ content: [{ type: "text", text: "" }], details: undefined }),
+      } as unknown as AgentTool,
     ];
     const activeToolNames = ["read", "bash"];
-    const activeTools = allTools.filter(t => activeToolNames.includes(t.name));
+    const activeTools = allTools.filter((t) => activeToolNames.includes(t.name));
 
     const prompt = composeSystemPrompt("Base.", activeTools, [], false);
     expect(prompt).toContain("# Tool: read");
@@ -637,6 +663,7 @@ describe("runner system prompt composition", () => {
 ```bash
 cd apps/server && npx vitest run src/agent/__tests__/system-prompt-composition.test.ts
 ```
+
 Expected: FAIL — `composeSystemPrompt` not yet imported from `@sakti-code/agent` at the server level (or test setup issue).
 
 Actually — this should pass already since `composeSystemPrompt` is exported from the agent package (Task 4). The test verifies the composition logic the runner will use, not the runner itself. It should PASS if Tasks 1-4 are done.
@@ -650,6 +677,7 @@ In `apps/server/src/agent/runner.ts`:
 **Change the import:**
 
 Find:
+
 ```typescript
 import {
   appendSkillsBlock,
@@ -658,9 +686,10 @@ import {
 ```
 
 Add `composeSystemPrompt`:
+
 ```typescript
 import {
-  appendSkillsBlock,  // keep for mid-session use in harness
+  appendSkillsBlock, // keep for mid-session use in harness
   composeSystemPrompt,
   // ...
 } from "@sakti-code/agent";
@@ -669,30 +698,24 @@ import {
 **Replace the composition logic (lines ~530-549):**
 
 Find:
+
 ```typescript
 if (!isIntake) {
-  const hasRead =
-    agent.activeToolNames === undefined ||
-    agent.activeToolNames.includes("read");
-  const composedSystemPrompt = appendSkillsBlock(
-    agent.systemPrompt,
-    activeSkills,
-    hasRead
-  );
+  const hasRead = agent.activeToolNames === undefined || agent.activeToolNames.includes("read");
+  const composedSystemPrompt = appendSkillsBlock(agent.systemPrompt, activeSkills, hasRead);
   await harness.switchAgent(
     composedSystemPrompt === agent.systemPrompt
       ? agent
-      : { ...agent, systemPrompt: composedSystemPrompt }
+      : { ...agent, systemPrompt: composedSystemPrompt },
   );
 }
 ```
 
 Replace with:
+
 ```typescript
 {
-  const hasRead =
-    agent.activeToolNames === undefined ||
-    agent.activeToolNames.includes("read");
+  const hasRead = agent.activeToolNames === undefined || agent.activeToolNames.includes("read");
   const activeTools =
     agent.activeToolNames !== undefined
       ? tools.filter((t) => agent.activeToolNames!.includes(t.name))
@@ -727,9 +750,7 @@ Note: Both branches do the same thing — the `if (isIntake)` can be collapsed. 
 
 ```typescript
 {
-  const hasRead =
-    agent.activeToolNames === undefined ||
-    agent.activeToolNames.includes("read");
+  const hasRead = agent.activeToolNames === undefined || agent.activeToolNames.includes("read");
   const activeTools =
     agent.activeToolNames !== undefined
       ? tools.filter((t) => agent.activeToolNames!.includes(t.name))
@@ -751,12 +772,14 @@ Note: Both branches do the same thing — the `if (isIntake)` can be collapsed. 
 ### Step 6: Also update intake path
 
 For intake, the harness is constructed with `systemPrompt: INTAKE_SYSTEM_PROMPT`. Since we now compose in the block above, we need to either:
+
 - Remove the `systemPrompt` from the constructor (let `switchAgent` set it), OR
 - Keep the constructor value and let `switchAgent` overwrite it
 
 Since `switchAgent` overwrites `this.systemPrompt`, keeping the constructor value is harmless (it gets replaced immediately). But for clarity, remove the conditional from the constructor:
 
 Find:
+
 ```typescript
 const harness = new HarnessClass({
   env,
@@ -769,6 +792,7 @@ const harness = new HarnessClass({
 ```
 
 Change to:
+
 ```typescript
 const harness = new HarnessClass({
   env,
@@ -788,6 +812,7 @@ The `switchAgent` call below will set the composed system prompt.
 ```bash
 cd apps/server && npx vitest run src/agent/__tests__/system-prompt-composition.test.ts
 ```
+
 Expected: PASS.
 
 ### Step 8: Run full server test suite
@@ -795,6 +820,7 @@ Expected: PASS.
 ```bash
 cd apps/server && npx vitest run
 ```
+
 Expected: PASS — all existing tests + new test.
 
 ### Step 9: Run agent test suite
@@ -802,6 +828,7 @@ Expected: PASS — all existing tests + new test.
 ```bash
 cd packages/agent && npx vitest run
 ```
+
 Expected: PASS — all existing tests + new tests.
 
 ### Step 10: Commit
@@ -818,6 +845,7 @@ git commit -m "feat(server): wire composeSystemPrompt into runner for all agents
 The harness's `addSkill()` and `removeSkill()` use `stripSkillsBlock` + `appendSkillsBlock`. With the tool inventory now in the system prompt (between base prompt and skills block), verify these operations still work correctly.
 
 **Files:**
+
 - Test: `packages/agent/src/resources/__tests__/system-prompt.test.ts`
 
 ### Step 1: Write tests for the strip + re-append cycle
@@ -829,10 +857,7 @@ import { appendSkillsBlock, stripSkillsBlock } from "../system-prompt";
 
 describe("mid-session skill changes with tool inventory present", () => {
   const BASE = "You are a coding agent.";
-  const tools = [
-    mockTool("edit", "Edit files."),
-    mockTool("read", "Read files."),
-  ];
+  const tools = [mockTool("edit", "Edit files."), mockTool("read", "Read files.")];
   const skill1 = mockSkill("tdd", "TDD", "/tdd/SKILL.md");
   const skill2 = mockSkill("debug", "Debug", "/debug/SKILL.md");
 
@@ -976,6 +1001,7 @@ Tools are sorted alphabetically by name before rendering, ensuring byte-identica
 ### Why not render parameter schemas?
 
 Pi renders `jsonSchemaToTypeScript(toolWireSchema(tool))` for the Parameters section. We skip this because:
+
 1. The tool description already includes parameter usage (e.g., "Body rows go on lines BELOW the op header, each prefixed with +")
 2. Parameter schemas are already sent via the AI SDK tool definitions
 3. Adding JSON Schema → TypeScript conversion adds complexity for minimal benefit

@@ -39,6 +39,7 @@
 ## Task A1: `PermissionAskRequest` type + `resolvePermissionAsk` on `AgentLoopConfig` `[NEW]`
 
 **Files:**
+
 - Modify: `packages/agent/src/types.ts` (add types + the optional config field, near `evaluatePermission` at `:211`)
 - Test: `packages/agent/src/__tests__/agent-loop.test.ts` (add a case next to the `:580` deny test)
 
@@ -73,11 +74,15 @@ it("calls resolvePermissionAsk and proceeds when the ask is allowed", async () =
     },
   };
   const { fn: streamFn } = makeStreamFn(
-    { content: [{ type: "toolCall", id: "t-1", name: "read", arguments: { path: "a.env" } }], finishReason: "toolUse" },
+    {
+      content: [{ type: "toolCall", id: "t-1", name: "read", arguments: { path: "a.env" } }],
+      finishReason: "toolUse",
+    },
     { content: [{ type: "text", text: "done" }] },
   );
   const events: AgentEvent[] = [];
-  for await (const e of agentLoop([createUserMessage("x")], context, config, undefined, streamFn)) events.push(e);
+  for await (const e of agentLoop([createUserMessage("x")], context, config, undefined, streamFn))
+    events.push(e);
   expect(asked).toEqual(["read:a.env"]);
   expect(executed).toEqual(["a.env"]);
 });
@@ -91,6 +96,7 @@ it("calls resolvePermissionAsk and blocks when the ask is denied", async () => {
 **Step 2 (verify RED):** `cd packages/agent && pnpm run test src/__tests__/agent-loop.test.ts -t "resolvePermissionAsk"` → FAIL (`resolvePermissionAsk` not on type / not honored).
 
 **Step 3 (GREEN):** in `types.ts` add:
+
 ```ts
 export interface PermissionAskRequest {
   always: string[];
@@ -102,7 +108,9 @@ export interface PermissionAskRequest {
 }
 export type PermissionReply = "once" | "always" | "reject";
 ```
+
 and on `AgentLoopConfig` (near `evaluatePermission`):
+
 ```ts
 resolvePermissionAsk?: (
   req: PermissionAskRequest
@@ -116,9 +124,11 @@ resolvePermissionAsk?: (
 **PORT source:** `openspec/references/opencode/packages/opencode/src/permission/index.ts:67-107` — deny short-circuits (no ask); `ask` triggers the prompt; `allow` continues. sakti awaits `resolvePermissionAsk` **sequentially** (one pending at a time).
 
 **Files:**
+
 - Modify: `packages/agent/src/loop/agent-loop.ts:844-861` (replace the single `blocked` check)
 
 **Step 1 (GREEN):** replace the existing block:
+
 ```ts
 if (config.evaluatePermission && tool.permissions) {
   const requests = tool.permissions(validatedArgs) ?? [];
@@ -128,7 +138,10 @@ if (config.evaluatePermission && tool.permissions) {
     if (deny) break;
     for (const pattern of request.patterns) {
       const action = config.evaluatePermission!(request.permission, pattern);
-      if (action === "deny") { deny = true; break; }
+      if (action === "deny") {
+        deny = true;
+        break;
+      }
       if (action === "ask") {
         askQueue.push({
           sessionId: currentContext.sessionId ?? "",
@@ -143,7 +156,11 @@ if (config.evaluatePermission && tool.permissions) {
     }
   }
   if (deny) {
-    return { kind: "immediate", result: createErrorToolResult(`Permission denied for tool "${tool.name}"`), isError: true };
+    return {
+      kind: "immediate",
+      result: createErrorToolResult(`Permission denied for tool "${tool.name}"`),
+      isError: true,
+    };
   }
   if (askQueue.length > 0) {
     const resolver = config.resolvePermissionAsk;
@@ -152,16 +169,25 @@ if (config.evaluatePermission && tool.permissions) {
         if (signal?.aborted) break;
         const verdict = await resolver(ask);
         if (verdict === "deny") {
-          return { kind: "immediate", result: createErrorToolResult(`Permission denied for tool "${tool.name}"`), isError: true };
+          return {
+            kind: "immediate",
+            result: createErrorToolResult(`Permission denied for tool "${tool.name}"`),
+            isError: true,
+          };
         }
       }
     } else {
       // No resolver: ask behaves as deny (Phase 2 behavior preserved).
-      return { kind: "immediate", result: createErrorToolResult(`Permission denied for tool "${tool.name}"`), isError: true };
+      return {
+        kind: "immediate",
+        result: createErrorToolResult(`Permission denied for tool "${tool.name}"`),
+        isError: true,
+      };
     }
   }
 }
 ```
+
 > Note: if `currentContext` has no `sessionId` field, read it from the turn/session context that is in scope at `:844` (check the `AgentContext` shape and the surrounding `prepareToolCall` signature; pass an empty string only as last resort — prefer the real id since the server needs it to route the frame).
 
 **Step 2 (verify GREEN):** both A1 tests pass.
@@ -177,6 +203,7 @@ if (config.evaluatePermission && tool.permissions) {
 The runner sets the resolver on the harness (parallel to Phase 3's `setPermissionEvaluator`). `createLoopConfig` must forward it.
 
 **Files:**
+
 - Modify: `packages/agent/src/harness/agent-harness.ts` (add field + setter, forward in `createLoopConfig` next to the `evaluatePermission` spread added in Phase 3)
 - Test: `packages/agent/src/__tests__/harness/agent-switch.test.ts` (add a case)
 
@@ -185,9 +212,11 @@ The runner sets the resolver on the harness (parallel to Phase 3's `setPermissio
 **Step 2 (verify RED).**
 
 **Step 3 (GREEN):**
+
 - field: `private permissionAskResolver?: (req: PermissionAskRequest) => Promise<"allow" | "deny">;`
 - `setPermissionAskResolver(fn) { this.permissionAskResolver = fn; }`
 - in `createLoopConfig`, next to the `evaluatePermission` spread:
+
 ```ts
 ...(this.permissionAskResolver === undefined
   ? {}
@@ -205,6 +234,7 @@ The runner sets the resolver on the harness (parallel to Phase 3's `setPermissio
 **PORT source:** `openspec/references/opencode/packages/opencode/src/permission/index.ts:42-167` — the `pending: Map<id, {info, deferred}>` + `approved: Rule[]`, `ask` (re-check approved, else create Deferred + publish + await), `reply` (once/always/reject), and the disposal finalizer (`:54-61`). **Drop the sibling-cascade** (`:129-138`, `:153-166`) — sakti prepares tools sequentially.
 
 **Files:**
+
 - Create: `apps/server/src/lib/permission-channel.ts`
 - Test: `apps/server/src/lib/__tests__/permission-channel.test.ts`
 
@@ -218,13 +248,30 @@ describe("permission channel", () => {
   it("asks, then resolves allow on 'once' without persisting", async () => {
     const asked: any[] = [];
     const ch = createPermissionChannel({ onAsked: (f) => asked.push(f) });
-    const p = ch.ask("s1", { permission: "read", patterns: ["a.env"], always: ["a.env"], toolName: "read", toolCallId: "c1" });
+    const p = ch.ask("s1", {
+      permission: "read",
+      patterns: ["a.env"],
+      always: ["a.env"],
+      toolName: "read",
+      toolCallId: "c1",
+    });
     expect(asked).toHaveLength(1);
-    expect(asked[0]).toMatchObject({ sessionId: "s1", permission: "read", patterns: ["a.env"], toolName: "read" });
+    expect(asked[0]).toMatchObject({
+      sessionId: "s1",
+      permission: "read",
+      patterns: ["a.env"],
+      toolName: "read",
+    });
     ch.reply("s1", asked[0].id, "once");
     expect(await p).toBe("allow");
     // no grant persisted: a second ask for the same pattern asks again
-    const p2 = ch.ask("s1", { permission: "read", patterns: ["a.env"], always: ["a.env"], toolName: "read", toolCallId: "c2" });
+    const p2 = ch.ask("s1", {
+      permission: "read",
+      patterns: ["a.env"],
+      always: ["a.env"],
+      toolName: "read",
+      toolCallId: "c2",
+    });
     expect(asked).toHaveLength(2);
     ch.reply("s1", asked[1].id, "reject");
     expect(await p2).toBe("deny");
@@ -233,17 +280,35 @@ describe("permission channel", () => {
   it("'always' persists a grant so the next ask auto-allows (no frame)", async () => {
     const asked: any[] = [];
     const ch = createPermissionChannel({ onAsked: (f) => asked.push(f) });
-    const p = ch.ask("s1", { permission: "read", patterns: ["*.env"], always: ["*.env"], toolName: "read", toolCallId: "c1" });
+    const p = ch.ask("s1", {
+      permission: "read",
+      patterns: ["*.env"],
+      always: ["*.env"],
+      toolName: "read",
+      toolCallId: "c1",
+    });
     ch.reply("s1", asked[0].id, "always");
     expect(await p).toBe("allow");
-    const p2 = ch.ask("s1", { permission: "read", patterns: ["x.env"], always: ["x.env"], toolName: "read", toolCallId: "c2" });
+    const p2 = ch.ask("s1", {
+      permission: "read",
+      patterns: ["x.env"],
+      always: ["x.env"],
+      toolName: "read",
+      toolCallId: "c2",
+    });
     expect(asked).toHaveLength(1); // no new ask
     expect(await p2).toBe("allow");
   });
 
   it("rejectPendingForSession denies all pending", async () => {
     const ch = createPermissionChannel({ onAsked: () => {} });
-    const p = ch.ask("s1", { permission: "read", patterns: ["a"], always: ["a"], toolName: "read", toolCallId: "c1" });
+    const p = ch.ask("s1", {
+      permission: "read",
+      patterns: ["a"],
+      always: ["a"],
+      toolName: "read",
+      toolCallId: "c1",
+    });
     ch.rejectPendingForSession("s1");
     expect(await p).toBe("deny");
   });
@@ -253,6 +318,7 @@ describe("permission channel", () => {
 **Step 2 (verify RED).**
 
 **Step 3 (GREEN, PORT):** implement `createPermissionChannel({ onAsked })`:
+
 - `grants: Map<sessionId, PermissionRule[]>`, `pending: Map<id, { request, resolve }>`.
 - `ask(sessionId, req)`: evaluate each pattern against `merge([], grantsFor(sessionId))` using the agent package's `evaluate`; if all `allow` → resolve `"allow"` immediately; else generate `id = "per_" + (++seq)`, store pending, call `onAsked({ id, sessionId, ...req })`, return a promise resolved by `reply`.
 - `reply(sessionId, id, reply)`: lookup pending; `"once"`→resolve allow; `"always"`→push grant `{permission, pattern:"*", action:"allow"}` per pattern in `req.always` (use the specific patterns, not `"*"`), resolve allow; `"reject"`→resolve deny.
@@ -267,6 +333,7 @@ describe("permission channel", () => {
 ## Task B2: Runner wires evaluator (with grants) + ask resolver + run-end finalizer `[NEW]`
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts` (harness evaluator closure + `setPermissionAskResolver` + finalizer)
 
 **Step 1 (RED):** extend `apps/server/src/agent/__tests__/switch-agent.test.ts` (or a new `runner-permission.test.ts`) — unit-test `buildPermissionEvaluatorWithGrants` (a thin wrapper) so that after a grant is added, a previously-`ask` pattern evaluates `allow`. (The full ask round-trip is covered by B1; here we only assert the evaluator reads live grants.)
@@ -274,6 +341,7 @@ describe("permission channel", () => {
 **Step 2 (verify RED).**
 
 **Step 3 (GREEN):** in `runPrompt`, after resolving the agent:
+
 - create one `permissionChannel` per run (or per session — a module-level `Map<sessionId, channel>` so WS replies route correctly; simplest correct: module-level `getPermissionChannel(sessionId)` singleton per session).
 - evaluator closure: `(permission, pattern) => evaluate(permission, pattern, merge(agentRuleset, channel.grantsFor(sessionId))).action`
 - `harness.setPermissionEvaluator(evaluator)`
@@ -286,6 +354,7 @@ describe("permission channel", () => {
 **PORT source:** wire shapes — `schema/v1/permission.ts:61-65` (`Asked` = Request fields; `Replied` = `{sessionID, requestID, reply}`).
 
 **Files:**
+
 - Modify: `apps/server/src/agent/ws-handler.ts` (`WsIn` + `WsOut` + `wsBodySchema` + `handleMessage`)
 - Modify: `apps/server/src/agent/runner.ts` (`runPrompt` signature + `runAgentStream` sink)
 - Test: `apps/server/src/agent/__tests__/ws-types.test.ts` (add schema cases)
@@ -295,6 +364,7 @@ describe("permission channel", () => {
 **Step 2 (verify RED).**
 
 **Step 3 (GREEN):**
+
 - `WsIn`: add `{ type:"permission.reply"; sessionId:string; id:string; reply:"once"|"always"|"reject" }`.
 - `wsBodySchema`: add the matching `Type.Object`.
 - `WsOut`: add `PermissionAskedFrame { type:"permission_asked"; sessionId; id; permission; patterns:string[]; toolName; toolCallId }` and `PermissionRepliedFrame { type:"permission_replied"; sessionId; id; reply }`.
@@ -308,12 +378,14 @@ describe("permission channel", () => {
 **PORT source:** `agent/agent.ts:119-135` (opencode defaults: `read *.env → ask`, `external_directory * → ask`).
 
 **Files:**
+
 - Modify: `apps/server/src/agent/builtin-agents.ts` (`buildRuleset`)
 - Test: `apps/server/src/agent/__tests__/builtin-agents.test.ts` (update the build `.env` expectation from `deny` to `ask`)
 
 **Step 1 (RED):** change the build `.env` assertion to `toBe("ask")` → FAIL (currently `deny`).
 
 **Step 2 (GREEN):** in `buildRuleset()`:
+
 ```ts
 return fromConfig({
   "*": "allow",
@@ -331,6 +403,7 @@ return fromConfig({
 ## Task C1: Session-store `permission` slice + ws-client wiring `[NEW]`
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/session/session-store.ts` (add `permission` slice; mirror `retry`)
 - Modify: `apps/desktop/src/stores/session/event-reducer.ts` (or `ws-client.ts` — wherever non-event frames are handled) — handle `permission_asked` (set slice) + `permission_replied` (clear slice)
 - Test: `apps/desktop/src/stores/session/__tests__/event-reducer.test.ts` (add cases)
@@ -340,6 +413,7 @@ return fromConfig({
 **Step 2 (verify RED).**
 
 **Step 3 (GREEN):**
+
 - slice: `permission: { id:string; toolName:string; permission:string; patterns:string[] } | null`
 - actions: `setPermission(req)`, `clearPermission()`
 - ws-client `handleFrame`: add `case "permission_asked"` → dispatch set; `case "permission_replied"` → dispatch clear.
@@ -349,6 +423,7 @@ return fromConfig({
 ## Task C2: `PermissionStrip` component `[NEW]`
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat-input/permission-strip.tsx`
 - Test: `apps/desktop/src/components/chat-input/__tests__/permission-strip.test.tsx`
 
@@ -365,7 +440,12 @@ it("sends permission.reply allow on Allow click", async () => {
     />
   ));
   await fireEvent.click(screen.getByText("Allow"));
-  expect(sent[0]).toMatchObject({ type: "permission.reply", sessionId: "s1", id: "per_1", reply: "once" });
+  expect(sent[0]).toMatchObject({
+    type: "permission.reply",
+    sessionId: "s1",
+    id: "per_1",
+    reply: "once",
+  });
 });
 ```
 
@@ -378,17 +458,20 @@ it("sends permission.reply allow on Allow click", async () => {
 ## Task C3: Mount the strip in `chat-input.tsx` `[NEW]`
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/chat-input/chat-input.tsx` (read `sessionStore()?.store.permission`; render `<PermissionStrip>` next to the retry `<Show>`)
 - Test: `apps/desktop/src/components/chat-input/__tests__/chat-input.test.tsx` (add a case asserting the strip renders when the slice is set)
 
 **Step 1 (RED) → Step 2 (verify) → Step 3 (GREEN):** add:
+
 ```tsx
 const permission = () => sessionStore()?.store.permission ?? null;
 // ...inside the layout, above the input box, after the retry <Show>:
 <Show when={permission()}>
   {(req) => <PermissionStrip sessionId={props.sessionId} request={req()} send={actions.sendWs} />}
-</Show>
+</Show>;
 ```
+
 > If `actions` has no `sendWs`, use the existing ws send path used elsewhere in the app (check `stores/server/ws-client.ts` for the exposed sender and thread it via the store/actions — mirror how `sendPrompt` reaches the ws).
 
 **Step 4 (verify GREEN). Step 5:** fix + typecheck. **Step 6 (commit):** `feat(desktop): mount PermissionStrip in chat input`
@@ -411,6 +494,7 @@ const permission = () => sessionStore()?.store.permission ?? null;
 ---
 
 ## Open Follow-ups (out of scope)
+
 - DB persistence of "always" grants (opencode runtime is in-memory).
 - Sibling-cascade (not needed — sequential preparation).
 - Tool-exposure filtering (exclude denied tools from the LLM request) — opencode `session/llm.ts:149`.

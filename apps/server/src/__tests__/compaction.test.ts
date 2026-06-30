@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { Effect } from "effect";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vite-plus/test";
 import { clearProfileCache } from "../agent/model-resolver.ts";
 import {
   fauxAssistantMessage,

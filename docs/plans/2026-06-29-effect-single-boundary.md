@@ -46,6 +46,7 @@ cd apps/desktop && pnpm run test 2>&1 | grep "Tests "     # expect 402 passed
 **Goal:** Convert 7 `Effect.runPromise(Effect.gen(...))` patterns to private `*Effect` methods + thin Promise wrappers. Zero observable behavior change. Sets the pattern for H2.
 
 **Files:**
+
 - Modify: `packages/agent/src/agent/agent-harness.ts` (lines 1231-1246, 1248-1359, 1361-1564, 1577-1606, 1612-1639, 1645-1700, 1794-1830)
 - Test: `packages/agent/src/agent/__tests__/agent-harness.test.ts`
 
@@ -130,7 +131,8 @@ Apply the identical extraction to (find each by line number above):
 - `navigateTree` (line 1361) → `navigateTreeEffect`
 
 For each:
-1. Extract `Effect.gen(...) body → new `*Effect` method that returns the Effect.
+
+1. Extract `Effect.gen(...) body → new `\*Effect` method that returns the Effect.
 2. The Promise method becomes `await Effect.runPromise(this.XEffect(...))`.
 3. Drop the `try/catch` — replace with `.pipe(Effect.mapError((e) => normalizeHarnessError(e, "session")))` on the Effect (or `"compaction"` / `"unknown"` to match the original `catch`).
 4. Preserve the `this.phase =` mutations: they go inside the Effect.gen body where the original code had them (e.g. `compact` sets `phase = "compaction"` before, `phase = "idle"` in `finally` — convert the `finally` to `Effect.ensuring`).
@@ -206,6 +208,7 @@ Phase H1 of docs/plans/2026-06-29-effect-single-boundary.md"
 **Goal:** Convert `executeTurn`, `runAsTurn`, `createTurnState`, `handleAgentEvent`, `emitOwn`, `emitAny`, `emitHook`, `emitBeforeProviderRequest`, `emitQueueUpdate` to Effect-native. Drop the 4 `tryPromise` wrappers from Phase C — `promptEffect`/`continueEffect`/`abortEffect`/`waitForIdleEffect` become the true cores. Kill the emit-timing flake root cause by routing everything through `emitEffect`.
 
 **Files:**
+
 - Modify: `packages/agent/src/agent/agent-harness.ts` (lines 347-440 emit helpers, 785-879 handleAgentEvent + emitRunFailure, 881-972 executeTurn, 452-480 runAsTurn, 974-1110 prompt/continue, 1112-1152 skill/promptFromTemplate, 1981-1991 switchAgent, 2051-2086 abort/waitForIdle, 2148-2202 Phase C Effect variants)
 - Test: `packages/agent/src/agent/__tests__/agent-harness.test.ts` + `packages/agent/src/agent/__tests__/harness-effect-ordering.test.ts` (new)
 
@@ -274,11 +277,17 @@ Append to `packages/agent/src/agent/__tests__/agent-harness.test.ts`:
 ```ts
 describe("handleAgentEventEffect", () => {
   it("runs message_end via Effect and persists to session", async () => {
-    const harness = new AgentHarness({ session: await createTestSession(), ...(await minimalHarnessOptions()) });
+    const harness = new AgentHarness({
+      session: await createTestSession(),
+      ...(await minimalHarnessOptions()),
+    });
     const assistant = createAssistantMessage({ text: "hi" });
-    await Effect.runPromise(harness.handleAgentEventEffect({ type: "message_end", message: assistant }));
+    await Effect.runPromise(
+      harness.handleAgentEventEffect({ type: "message_end", message: assistant }),
+    );
     // Assert: session branch contains the message
-    const branch = await Effect.runPromise(/* harness.session.getBranch() — exposed via test util or buildContext */);
+    const branch =
+      await Effect.runPromise(/* harness.session.getBranch() — exposed via test util or buildContext */);
     expect(branch.some((e) => e.type === "assistant")).toBe(true);
   });
 });
@@ -378,7 +387,10 @@ describe("Effect-native harness emit ordering", () => {
         session: await createTestSession(),
         ...(await minimalHarnessOptions()),
       });
-      harnessEffect.subscribe((event) => { eventsEffect.push(event.type); return Promise.resolve(); });
+      harnessEffect.subscribe((event) => {
+        eventsEffect.push(event.type);
+        return Promise.resolve();
+      });
       useFauxLlm([fauxAssistantMessage("ok")]);
       await Effect.runPromise(harnessEffect.promptEffect("hello"));
       await Effect.runPromise(harnessEffect.waitForIdleEffect());
@@ -388,7 +400,10 @@ describe("Effect-native harness emit ordering", () => {
         session: await createTestSession(),
         ...(await minimalHarnessOptions()),
       });
-      harnessPromise.subscribe((event) => { eventsPromise.push(event.type); return Promise.resolve(); });
+      harnessPromise.subscribe((event) => {
+        eventsPromise.push(event.type);
+        return Promise.resolve();
+      });
       useFauxLlm([fauxAssistantMessage("ok")]);
       await harnessPromise.prompt("hello");
       await harnessPromise.waitForIdle();
@@ -398,7 +413,9 @@ describe("Effect-native harness emit ordering", () => {
     const { eventsEffect, eventsPromise } = await collectBoth();
     expect(eventsEffect).toEqual(eventsPromise);
     // Sanity: at least the canonical sequence is present
-    expect(eventsEffect).toEqual(expect.arrayContaining(["agent_start", "turn_start", "agent_end"]));
+    expect(eventsEffect).toEqual(
+      expect.arrayContaining(["agent_start", "turn_start", "agent_end"]),
+    );
   });
 });
 ```
@@ -414,6 +431,7 @@ Expected: FAIL — `promptEffect` is currently `Effect.tryPromise(() => this.pro
 **Step 3: Extract `executeTurnEffect`.**
 
 Convert `executeTurn` (lines 881-972) to return an Effect. The current body has:
+
 - `await this.emitQueueUpdate()` → `yield* this.emitQueueUpdateEffect()`
 - `await this.emitHook(...)` → `yield* this.emitHookEffect(...)`
 - `await runAgentLoop(...)` → `yield* runAgentLoopEffect(...)` — switch to the Effect variant
@@ -521,6 +539,7 @@ private emitRunFailureEffect(model, error, aborted, signal): Effect.Effect<Agent
 ```
 
 The Promise `executeTurn` becomes:
+
 ```ts
 private async executeTurn(turnState, text, options): Promise<AssistantMessage> {
   return Effect.runPromise(this.executeTurnEffect(turnState, text, options));
@@ -679,6 +698,7 @@ Phase H2 of docs/plans/2026-06-29-effect-single-boundary.md"
 **Goal:** Introduce `RetryRunnerDepsEffect` (Effect-typed callbacks); `executeWithRetryEffect` consumes it directly. Drop the `Effect.promise(() => deps.X())` bridges inside the retry loop.
 
 **Files:**
+
 - Modify: `packages/agent/src/compaction/retry-loop.ts` (lines 143-164 interface, 176-271 `executeWithRetryEffect`, 288-370 `runCompactionPhaseEffect`)
 - Modify: `packages/agent/src/compaction/__tests__/retry-loop.test.ts` (5 cases — fake construction only)
 - Modify: `packages/agent/src/index.ts` (export new type)
@@ -691,9 +711,7 @@ In `packages/agent/src/compaction/retry-loop.ts` at line ~143:
 
 ```ts
 export interface RetryRunnerDepsEffect {
-  readonly checkCompaction?: (
-    message: AssistantMessage
-  ) => Effect.Effect<CompactionDecision>;
+  readonly checkCompaction?: (message: AssistantMessage) => Effect.Effect<CompactionDecision>;
   readonly emit: (event: AgentEvent) => Effect.Effect<void>;
   readonly logger?: Logger;
   readonly rollbackLeaf: () => Effect.Effect<void>;
@@ -710,15 +728,19 @@ export interface RetryRunnerDepsEffect {
 export function retryDepsFromPromise(deps: RetryRunnerDeps): RetryRunnerDepsEffect {
   return {
     signal: deps.signal,
-    ...(deps.checkCompaction === undefined ? {} : {
-      checkCompaction: (m) => Effect.promise(() => deps.checkCompaction!(m)),
-    }),
-    emit: (event) => Effect.sync(() => deps.emit(event)),  // emit is sync-fire-and-forget
+    ...(deps.checkCompaction === undefined
+      ? {}
+      : {
+          checkCompaction: (m) => Effect.promise(() => deps.checkCompaction!(m)),
+        }),
+    emit: (event) => Effect.sync(() => deps.emit(event)), // emit is sync-fire-and-forget
     ...(deps.logger === undefined ? {} : { logger: deps.logger }),
     rollbackLeaf: () => Effect.promise(() => deps.rollbackLeaf()),
-    ...(deps.runCompaction === undefined ? {} : {
-      runCompaction: () => Effect.promise(() => deps.runCompaction!()),
-    }),
+    ...(deps.runCompaction === undefined
+      ? {}
+      : {
+          runCompaction: () => Effect.promise(() => deps.runCompaction!()),
+        }),
     runTurn: () => Effect.promise(() => deps.runTurn()),
   };
 }
@@ -731,7 +753,7 @@ Simpler: keep `emit: (event: AgentEvent) => void` (sync) in `RetryRunnerDepsEffe
 ```ts
 export interface RetryRunnerDepsEffect {
   readonly checkCompaction?: (message: AssistantMessage) => Effect.Effect<CompactionDecision>;
-  readonly emit: (event: AgentEvent) => void;  // sync fire-and-forget
+  readonly emit: (event: AgentEvent) => void; // sync fire-and-forget
   readonly logger?: Logger;
   readonly rollbackLeaf: () => Effect.Effect<void>;
   readonly runCompaction?: () => Effect.Effect<RunCompactionOutcome>;
@@ -748,12 +770,12 @@ Replace all `Effect.promise(() => deps.X())` with `yield* deps.X()`. Touch lines
 
 ```ts
 export const executeWithRetryEffect = (
-  deps: RetryRunnerDepsEffect,  // ← was RetryRunnerDeps
-  settings: RetrySettings
+  deps: RetryRunnerDepsEffect, // ← was RetryRunnerDeps
+  settings: RetrySettings,
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
     deps.logger?.debug("turn attempt", { attempt: 0, maxRetries: settings.maxRetries });
-    let message = yield* deps.runTurn();  // ← was Effect.promise(() => deps.runTurn())
+    let message = yield* deps.runTurn(); // ← was Effect.promise(() => deps.runTurn())
     if (!settings.enabled) {
       yield* runCompactionPhaseEffect(deps, message);
       return;
@@ -769,7 +791,7 @@ Update `runCompactionPhaseEffect` (lines 288-370) the same way. Touch lines 305,
 ```ts
 export async function executeWithRetry(
   deps: RetryRunnerDeps,
-  settings: RetrySettings
+  settings: RetrySettings,
 ): Promise<void> {
   return Effect.runPromise(executeWithRetryEffect(retryDepsFromPromise(deps), settings));
 }
@@ -784,12 +806,13 @@ const deps: RetryRunnerDepsEffect = {
   signal: controller.signal,
   emit: (event) => emitCalls.push(event),
   rollbackLeaf: () => Effect.void,
-  runTurn: () => Effect.sync(() => {
-    const message = turns[turnIndex]!;
-    turnIndex++;
-    if (turnIndex === 2) controller.abort();
-    return message;
-  }),
+  runTurn: () =>
+    Effect.sync(() => {
+      const message = turns[turnIndex]!;
+      turnIndex++;
+      if (turnIndex === 2) controller.abort();
+      return message;
+    }),
 };
 await Effect.runPromise(executeWithRetryEffect(deps, enabledSettings));
 ```
@@ -812,7 +835,7 @@ In `packages/agent/src/index.ts`, add to the `compaction/retry-loop.ts` re-expor
 export type {
   RetryDecisionInput,
   RetryRunnerDeps,
-  RetryRunnerDepsEffect,  // ← new
+  RetryRunnerDepsEffect, // ← new
   RetrySettings,
 } from "./compaction/retry-loop.ts";
 ```
@@ -842,6 +865,7 @@ Phase H3 of docs/plans/2026-06-29-effect-single-boundary.md"
 **Goal:** Convert `runPrompt` to `runPromptEffect` returning `Effect<void, Error>`. WS handler becomes the single `Effect.runPromise` boundary. `activeRuns` stores the run Fiber; `abortRun` calls `Fiber.interrupt`.
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts` (lines 510-793, the `runPrompt` function)
 - Modify: `apps/server/src/agent/ws-handler.ts` (the WS edge — single `Effect.runPromise`)
 - Modify: `apps/server/src/agent/runner.ts` (the `activeRuns` Map + `abortRun`)
@@ -854,7 +878,7 @@ The retry callbacks (`runTurn`/`rollbackLeaf`/`checkCompaction`/`runCompaction`)
 ```ts
 const depsEffect: RetryRunnerDepsEffect = {
   signal: retryAbort.signal,
-  emit: (event) => eventCallback(event),  // sync
+  emit: (event) => eventCallback(event), // sync
   ...(ctx.log === undefined ? {} : { logger: ctx.log.agent }),
   rollbackLeaf: () =>
     Effect.gen(function* () {
@@ -870,7 +894,13 @@ const depsEffect: RetryRunnerDepsEffect = {
         firstTurn = false;
         ctx.log?.agent.info("turn prompt", { sessionId, messageLength: message.length });
         const plan = yield* Effect.tryPromise({
-          try: () => planFirstTurn(message, { skills: activeSkills, templates: loadedContext.commands }, project.cwd, (p) => readFile(p).catch(() => null)),
+          try: () =>
+            planFirstTurn(
+              message,
+              { skills: activeSkills, templates: loadedContext.commands },
+              project.cwd,
+              (p) => readFile(p).catch(() => null),
+            ),
           catch: (e) => new Error(String(e)),
         });
         if (plan.kind === "template") {
@@ -878,7 +908,10 @@ const depsEffect: RetryRunnerDepsEffect = {
           return yield* harness.promptFromTemplateEffect(plan.name, argv);
         }
         if (plan.kind === "skill") {
-          return yield* harness.skillEffect(plan.name, plan.args.length > 0 ? plan.args : undefined);
+          return yield* harness.skillEffect(
+            plan.name,
+            plan.args.length > 0 ? plan.args : undefined,
+          );
         }
         return yield* harness.promptEffect(plan.text);
       }
@@ -904,16 +937,27 @@ const depsEffect: RetryRunnerDepsEffect = {
         contextWindow: model.contextWindow ?? 0,
         settings: compactionSettings,
         ...(latestCompactionTimestamp === undefined ? {} : { latestCompactionTimestamp }),
-        ...(stuckGuard.consecutiveCompacts > 0 ? { consecutiveCompacts: stuckGuard.consecutiveCompacts } : {}),
+        ...(stuckGuard.consecutiveCompacts > 0
+          ? { consecutiveCompacts: stuckGuard.consecutiveCompacts }
+          : {}),
       });
       if (decision.pauseAutoCompaction) {
         stuckGuard.paused = true;
-        yield* Effect.tryPromise({ try: () => persistStuckGuardState(ctx, sessionId, stuckGuard), catch: (e) => new Error(String(e)) });
-        ctx.log?.agent.warn("auto-compaction paused (stuck guard)", { sessionId, consecutiveCompacts: stuckGuard.consecutiveCompacts });
+        yield* Effect.tryPromise({
+          try: () => persistStuckGuardState(ctx, sessionId, stuckGuard),
+          catch: (e) => new Error(String(e)),
+        });
+        ctx.log?.agent.warn("auto-compaction paused (stuck guard)", {
+          sessionId,
+          consecutiveCompacts: stuckGuard.consecutiveCompacts,
+        });
       } else if (decision.resetStuckGuard) {
         stuckGuard.consecutiveCompacts = 0;
         stuckGuard.paused = false;
-        yield* Effect.tryPromise({ try: () => persistStuckGuardState(ctx, sessionId, stuckGuard), catch: (e) => new Error(String(e)) });
+        yield* Effect.tryPromise({
+          try: () => persistStuckGuardState(ctx, sessionId, stuckGuard),
+          catch: (e) => new Error(String(e)),
+        });
       }
       return decision;
     }),
@@ -931,7 +975,10 @@ const depsEffect: RetryRunnerDepsEffect = {
       });
       if (result.ok) {
         stuckGuard.consecutiveCompacts += 1;
-        yield* Effect.tryPromise({ try: () => persistStuckGuardState(ctx, sessionId, stuckGuard), catch: (e) => new Error(String(e)) });
+        yield* Effect.tryPromise({
+          try: () => persistStuckGuardState(ctx, sessionId, stuckGuard),
+          catch: (e) => new Error(String(e)),
+        });
       }
       return result;
     }),
@@ -1011,12 +1058,14 @@ Note the `Scope` — need to manage it. Either accept a `Scope` parameter or cre
 ```ts
 return Effect.gen(function* () {
   // ...
-}).pipe(
+})
+  .pipe
   // Use Effect.scope / Scope-managed variant if available, else provide a Scope via provideService
-);
+  ();
 ```
 
 Per v4 limits, `Effect.forkIn(scope)` needs a `Scope`. Either:
+
 - Use `Effect.forkScoped` (if available — check v4 reference) which uses the current scope
 - Or wrap with `Effect.scoped(...)` and use `Effect.forkIn` with the implicit scope
 
@@ -1031,7 +1080,7 @@ function registerRun(
   sessionId: string,
   harness: AgentHarness,
   retryAbort: AbortController,
-  runFiber: Runtime.Runtime.Default.Fiber<void, Error>
+  runFiber: Runtime.Runtime.Default.Fiber<void, Error>,
 ): boolean {
   if (activeRuns.has(sessionId)) return false;
   activeRuns.set(sessionId, { harness, runFiber, retryAbort });
@@ -1041,7 +1090,7 @@ function registerRun(
 function abortRun(sessionId: string): void {
   const run = activeRuns.get(sessionId);
   if (!run) return;
-  run.retryAbort.abort();  // unblocks abortableSleep inside executeWithRetryEffect
+  run.retryAbort.abort(); // unblocks abortableSleep inside executeWithRetryEffect
   Effect.runPromise(Fiber.interrupt(run.runFiber).pipe(Effect.exit)).catch(() => {});
 }
 ```
@@ -1103,6 +1152,7 @@ Phase H4 of docs/plans/2026-06-29-effect-single-boundary.md"
 **Goal:** Delete `PromiseSession`. Migrate the two production callers (`runner.ts:512`, `routes/sessions/compaction.ts:62`) to use `SessionShape` directly. Drop dead code (old `RetryRunnerDeps` if all migrated, `executeWithRetry` Promise wrapper if all migrated). Rewrite remaining `setTimeout`-based ws/e2e tests to `Stream`-based deterministic draining.
 
 **Files:**
+
 - Modify: `packages/agent/src/session/session.ts` (delete `PromiseSession` lines 443-652, `promiseSessionAsShape` line 653)
 - Modify: `packages/agent/src/index.ts`, `packages/agent/src/harness-types.ts` (remove `PromiseSession` export)
 - Modify: `apps/server/src/agent/runner.ts` (line 512 — construct `SessionShape` from storage)
@@ -1130,6 +1180,7 @@ If a small adapter is needed (`storage` has `getEntries`/`getPathToRoot` but `Se
 In `packages/agent/src/session/session.ts`, delete lines 443-653 (`PromiseSession` class + `promiseSessionAsShape`).
 
 Remove from `packages/agent/src/index.ts`:
+
 ```ts
 // remove:
 PromiseSession,
@@ -1149,6 +1200,7 @@ Expected: clean (no consumers of `PromiseSession` remain).
 ### Task H5.2: Delete dead Promise wrappers (if all callers migrated)
 
 After H4, check whether anything still calls:
+
 - `executeWithRetry` (Promise wrapper) — `rg "executeWithRetry\b" --type ts | grep -v Effect`
 - Old `RetryRunnerDeps` (Promise interface) — `rg "RetryRunnerDeps\b" --type ts | grep -v Effect`
 
@@ -1175,7 +1227,7 @@ await Effect.runPromise(
     yield* harness.waitForIdleEffect();
     // Or: drain the stream until a specific terminal event
     // yield* Stream.runCollect(harness.subscribeStream().pipe(Stream.takeUntil((e) => e.type === "settled")));
-  })
+  }),
 );
 ```
 
@@ -1218,6 +1270,7 @@ pnpm run fix                                    # biome
 ```
 
 **Accepted pre-existing failures (do not fix):**
+
 - `apps/server` compaction route "summarizes and persists" — needs real OpenAI key.
 - `apps/server` e2e "two concurrent sessions" — needs real OpenAI key.
 

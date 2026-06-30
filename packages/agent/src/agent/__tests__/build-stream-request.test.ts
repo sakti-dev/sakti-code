@@ -52,7 +52,9 @@ describe("buildHarnessStreamRequest", () => {
   it("forwards temperature and topP when set", () => {
     const req = buildHarnessStreamRequest(
       loopRequest({ temperature: 0.7, topP: 0.9 }),
-      { sessionId: "s" }
+      {
+        sessionId: "s",
+      }
     );
     expect(req.temperature).toBe(0.7);
     expect(req.topP).toBe(0.9);

@@ -17,6 +17,7 @@
 ### EdenWS API (confirmed from source)
 
 `api.ws.subscribe()` returns an `EdenWS` instance synchronously:
+
 - `.ws` — public field, the underlying native `WebSocket` (use for `readyState`)
 - `.send(obj)` — auto-`JSON.stringify` for objects
 - `.on("message", handler)` — auto-`JSON.parse`, `event.data` is typed as `Schema['response'][200]`
@@ -27,6 +28,7 @@
 ### Current state (after Phase 1 refactor)
 
 The ws-client already uses dependency injection:
+
 ```typescript
 createWsClient(url: string, deps: WsClientDeps, WebSocketCtor: typeof WebSocket)
 ```
@@ -51,6 +53,7 @@ bun x ultracite fix                                # lint + format
 ## Task 1: Server — Add TypeBox WS schemas to ws-handler.ts
 
 **Files:**
+
 - Modify: `apps/server/src/agent/ws-handler.ts` (add schema exports)
 
 **Step 1: Add TypeBox schemas**
@@ -135,6 +138,7 @@ git commit -m "feat(server): add TypeBox WS body/response schemas"
 ## Task 2: Server — Wire schemas into .ws() and remove manual cast
 
 **Files:**
+
 - Modify: `apps/server/src/agent/ws.ts:106-138`
 
 **Step 1: Update imports**
@@ -142,6 +146,7 @@ git commit -m "feat(server): add TypeBox WS body/response schemas"
 In `apps/server/src/agent/ws.ts`, add `t` import and schema imports:
 
 Replace:
+
 ```typescript
 import { Elysia } from "elysia";
 import type { ErrorFrame, WsHandle, WsIn } from "./ws-handler.ts";
@@ -149,6 +154,7 @@ import { handleMessage } from "./ws-handler.ts";
 ```
 
 With:
+
 ```typescript
 import { Elysia } from "elysia";
 import type { WsHandle } from "./ws-handler.ts";
@@ -160,45 +166,46 @@ import { handleMessage, wsBodySchema, wsResponseSchema } from "./ws-handler.ts";
 Replace the `.ws("/ws", { ... })` block:
 
 ```typescript
-  return new Elysia({ name: "ws" }).ws("/ws", {
-    body: wsBodySchema,
-    response: wsResponseSchema,
-    open(ws) {
-      const wsId = getWsId(ws);
-      wsConnections.set(wsId, ws);
-      if (!terminalCallbacksWired) {
-        wireTerminalCallbacks(ctx);
-        terminalCallbacksWired = true;
-      }
+return new Elysia({ name: "ws" }).ws("/ws", {
+  body: wsBodySchema,
+  response: wsResponseSchema,
+  open(ws) {
+    const wsId = getWsId(ws);
+    wsConnections.set(wsId, ws);
+    if (!terminalCallbacksWired) {
+      wireTerminalCallbacks(ctx);
+      terminalCallbacksWired = true;
+    }
+    ws.send({
+      type: "welcome",
+      version: SERVER_VERSION,
+      cwd: process.cwd(),
+    });
+  },
+  close(ws) {
+    const wsId = getWsId(ws);
+    clearStorageForConnection(wsId);
+    wsConnections.delete(wsId);
+    ctx.terminalManager.closeByConnection(wsId);
+  },
+  message(ws, msg) {
+    const wsId = getWsId(ws);
+    if (!msg.sessionId) {
       ws.send({
-        type: "welcome",
-        version: SERVER_VERSION,
-        cwd: process.cwd(),
+        error: "Missing sessionId",
+        sessionId: "",
+        type: "error",
       });
-    },
-    close(ws) {
-      const wsId = getWsId(ws);
-      clearStorageForConnection(wsId);
-      wsConnections.delete(wsId);
-      ctx.terminalManager.closeByConnection(wsId);
-    },
-    message(ws, msg) {
-      const wsId = getWsId(ws);
-      if (!msg.sessionId) {
-        ws.send({
-          error: "Missing sessionId",
-          sessionId: "",
-          type: "error",
-        });
-        return;
-      }
-      const storage = getOrCreateStorage(wsId, ctx, msg.sessionId);
-      handleMessage(ctx, storage, ws, msg);
-    },
-  });
+      return;
+    }
+    const storage = getOrCreateStorage(wsId, ctx, msg.sessionId);
+    handleMessage(ctx, storage, ws, msg);
+  },
+});
 ```
 
 Key changes:
+
 - Added `body: wsBodySchema` and `response: wsResponseSchema`
 - `ws.send()` calls now send objects (not `JSON.stringify` strings) — Elysia serializes them
 - `createWelcomeFrame()` function removed — send the object directly in `open()`
@@ -225,6 +232,7 @@ export function createWelcomeFrame(): string {
 In the same file, update `pushToConnection`:
 
 Replace:
+
 ```typescript
 export function pushToConnection(connectionId: string, data: unknown) {
   const ws = wsConnections.get(connectionId);
@@ -235,6 +243,7 @@ export function pushToConnection(connectionId: string, data: unknown) {
 ```
 
 With:
+
 ```typescript
 export function pushToConnection(connectionId: string, data: unknown) {
   const ws = wsConnections.get(connectionId);
@@ -286,6 +295,7 @@ Elysia validates and types the body automatically."
 ## Task 3: Client — Refactor ws-client to use Eden WS
 
 **Files:**
+
 - Modify: `apps/app/src/stores/ws-client.ts`
 - Modify: `apps/app/src/stores/__tests__/ws-client.test.ts`
 
@@ -333,7 +343,7 @@ export interface EdenWSLike {
   send: (data: unknown) => void;
   on: (
     type: "open" | "message" | "close" | "error",
-    listener: (event: { data?: unknown }) => void
+    listener: (event: { data?: unknown }) => void,
   ) => void;
   close: () => void;
 }
@@ -345,10 +355,7 @@ type WsInMessage =
   | { type: "steer"; sessionId: string; message: string }
   | { type: "followUp"; sessionId: string; message: string };
 
-export function createWsClient(
-  api: WsSubscribeApi,
-  deps: WsClientDeps
-): WsClient {
+export function createWsClient(api: WsSubscribeApi, deps: WsClientDeps): WsClient {
   const { serverStore: server, sessionRegistry, terminalRegistry } = deps;
   let conn: EdenWSLike | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -386,11 +393,7 @@ export function createWsClient(
       case "event": {
         const session = sessionRegistry.get(frame.sessionId!);
         const batcher = getBatcher(frame.sessionId!);
-        dispatchEvent(
-          session.actions,
-          batcher,
-          frame.event as AgentHarnessEvent
-        );
+        dispatchEvent(session.actions, batcher, frame.event as AgentHarnessEvent);
         break;
       }
 
@@ -702,6 +705,7 @@ for testability. Reconnection logic stays on the client side."
 ## Task 4: Client — Update store-context.tsx to pass treaty api
 
 **Files:**
+
 - Modify: `apps/app/src/stores/store-context.tsx`
 
 **Step 1: Update createWsClient call**
@@ -709,32 +713,36 @@ for testability. Reconnection logic stays on the client side."
 In `apps/app/src/stores/store-context.tsx`, update the ws-client creation:
 
 Replace:
+
 ```typescript
 const API_URL = "http://localhost:3001";
 const WS_URL = "ws://localhost:3001/ws";
 ```
 
 With:
+
 ```typescript
 const API_URL = "http://localhost:3001";
 ```
 
 Replace:
+
 ```typescript
-  const ws = createWsClient(WS_URL, {
-    serverStore: server,
-    sessionRegistry: sessions,
-    terminalRegistry: terminals,
-  });
+const ws = createWsClient(WS_URL, {
+  serverStore: server,
+  sessionRegistry: sessions,
+  terminalRegistry: terminals,
+});
 ```
 
 With:
+
 ```typescript
-  const ws = createWsClient(api, {
-    serverStore: server,
-    sessionRegistry: sessions,
-    terminalRegistry: terminals,
-  });
+const ws = createWsClient(api, {
+  serverStore: server,
+  sessionRegistry: sessions,
+  terminalRegistry: terminals,
+});
 ```
 
 **Step 2: Run typecheck**

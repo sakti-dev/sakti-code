@@ -6,22 +6,22 @@ match_command = "^swift$"
 match_subcommand = "^(build|test)$"
 strip_ansi = true
 strip_lines_matching = [
-	"^\\s*$",
-	"^Fetching ",
-	"^Cloning ",
-	"^Resolving ",
-	"^Computing version",
-	"^Resolved source packages",
-	"^Compiling \\S",
-	"^Building for ",
-	"^Linking ",
-	"^\\[\\d+/\\d+\\] Compiling ",
-	"^\\[\\d+/\\d+\\] Emitting ",
-	"^\\[\\d+/\\d+\\] Write ",
-	"^\\[\\d+/\\d+\\] Linking ",
+  "^\\s*$",
+  "^Fetching ",
+  "^Cloning ",
+  "^Resolving ",
+  "^Computing version",
+  "^Resolved source packages",
+  "^Compiling \\S",
+  "^Building for ",
+  "^Linking ",
+  "^\\[\\d+/\\d+\\] Compiling ",
+  "^\\[\\d+/\\d+\\] Emitting ",
+  "^\\[\\d+/\\d+\\] Write ",
+  "^\\[\\d+/\\d+\\] Linking ",
 ]
 match_output = [
-	{ pattern = "Build complete!", message = "ok (build complete)", unless = "warning:|error:|Test Suite|failed" },
+  { pattern = "Build complete!", message = "ok (build complete)", unless = "warning:|error:|Test Suite|failed" },
 ]
 truncate_lines_at = 300
 max_lines = 80

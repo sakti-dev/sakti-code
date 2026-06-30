@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { buildApp } from "../app.ts";
 import { makeContext } from "./helpers.ts";
 

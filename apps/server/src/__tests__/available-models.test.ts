@@ -1,5 +1,5 @@
 import { PROVIDER_INFO } from "@sakti-code/llm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { makeApp } from "./helpers.ts";
 
 const { availableModelsRoutes } = await import(

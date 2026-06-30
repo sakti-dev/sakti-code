@@ -28,6 +28,7 @@
 **Why:** `PATCH /api/sessions/:id` in `apps/server/src/routes/sessions.ts:53-67` already accepts `{ title }` via `t.Partial(...)`. `PATCH /api/sessions/:id/name` in `naming.ts` does the same thing with a narrower body.
 
 **Files:**
+
 - Delete: `apps/server/src/routes/naming.ts`
 - Delete: `apps/server/src/__tests__/naming.test.ts` (if present — `ls` first)
 - Delete: `openspec/specs/session-naming/spec.md` and the folder
@@ -55,16 +56,19 @@ rm -f apps/server/src/__tests__/naming.test.ts
 **Step 4: Remove the import and registration from `index.ts`**
 
 In `apps/server/src/index.ts`:
+
 - Delete line 16: `import { namingRoutes } from "./routes/naming.ts";`
 - Delete line 52: `  namingRoutes,` from the `defaultRoutes` array.
 
 **Step 5: Verify everything still passes**
 
 Run:
+
 ```bash
 cd apps/server && bun run test 2>&1 | tail -5
 bun typecheck && bun x ultracite check 2>&1 | tail -3
 ```
+
 Expected: 111 tests pass (or the new count minus any naming tests that existed). 0 type errors. 0 lint errors.
 
 **Step 6: Commit**
@@ -80,6 +84,7 @@ git add -A && git commit -m "refactor(server): delete redundant naming route (su
 **Why:** `GET /api/commands` returns a hardcoded list (`search`, `clear`, `compact`, `help`). Slash commands are a client/agent concern, not server state. The server has no business curating this catalog.
 
 **Files:**
+
 - Delete: `apps/server/src/routes/commands.ts`
 - Delete: `apps/server/src/__tests__/commands.test.ts`
 - Delete: `openspec/specs/session-commands/spec.md` and the folder
@@ -101,16 +106,19 @@ rm -rf openspec/specs/session-commands/
 **Step 3: Remove import and registration from `index.ts`**
 
 In `apps/server/src/index.ts`:
+
 - Delete line 8: `import { commandsRoutes } from "./routes/commands.ts";`
 - Delete line 41: `  commandsRoutes,` from the `defaultRoutes` array.
 
 **Step 4: Verify**
 
 Run:
+
 ```bash
 cd apps/server && bun run test 2>&1 | tail -5
 bun typecheck && bun x ultracite check 2>&1 | tail -3
 ```
+
 Expected: test count drops by 2 (commands test had 2 `it` blocks). 0 type errors. 0 lint errors.
 
 **Step 5: Commit**
@@ -126,6 +134,7 @@ git add -A && git commit -m "refactor(server): delete commands route (slash comm
 **Why:** `POST /api/sessions/:id/bash` with `{ injectToContext: true }` writes a `toolResult` entry with `toolName: "user_bash"` via `Session.appendMessage()` (`bash.ts:139-158`). This reinvents agent tool calls alongside the real `BashTool` in `packages/tools/`. Without it, `bash.ts` becomes a clean host-execution endpoint (same flavor as `terminals.ts`). Users who want the agent to see command output paste it as a user message.
 
 **Files:**
+
 - Modify: `apps/server/src/routes/bash.ts:1-3, 111-115, 139-158`
 - Modify: `apps/server/src/__tests__/bash.test.ts:56-85` (delete the inject test)
 - Modify: `openspec/specs/user-bash/spec.md:3, 8, 41-47`
@@ -151,13 +160,16 @@ Expected: 6 bash tests pass (down from 7). If any test mentions `injectToContext
 In `apps/server/src/routes/bash.ts`:
 
 3a. Remove unused imports (line 1-2):
+
 ```ts
 import { Session } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
 ```
+
 Both become unused after step 3b.
 
 3b. Remove `injectToContext` from the body schema (around line 111-115):
+
 ```ts
 const bashBody = t.Object({
   command: t.String(),
@@ -165,7 +177,9 @@ const bashBody = t.Object({
   timeout: t.Optional(t.Number()),
 });
 ```
+
 becomes:
+
 ```ts
 const bashBody = t.Object({
   command: t.String(),
@@ -174,36 +188,39 @@ const bashBody = t.Object({
 ```
 
 3c. Delete the entire inject-to-context block inside the POST handler (around lines 139-158):
+
 ```ts
-      if (body.injectToContext) {
-        const content = JSON.stringify({
-          command: body.command,
-          exitCode: result.exitCode,
-          output: result.output,
-        });
-        const storage = new SqliteSessionStorage(ctx.db, session.id, {
-          id: session.id,
-          createdAt: new Date(session.createdAt).toISOString(),
-        });
-        const sessionInstance = new Session(storage);
-        await sessionInstance.appendMessage({
-          role: "toolResult",
-          content: [{ type: "text", text: content }],
-          toolCallId: crypto.randomUUID(),
-          toolName: "user_bash",
-          isError: false,
-          timestamp: Date.now(),
-        });
-      }
+if (body.injectToContext) {
+  const content = JSON.stringify({
+    command: body.command,
+    exitCode: result.exitCode,
+    output: result.output,
+  });
+  const storage = new SqliteSessionStorage(ctx.db, session.id, {
+    id: session.id,
+    createdAt: new Date(session.createdAt).toISOString(),
+  });
+  const sessionInstance = new Session(storage);
+  await sessionInstance.appendMessage({
+    role: "toolResult",
+    content: [{ type: "text", text: content }],
+    toolCallId: crypto.randomUUID(),
+    toolName: "user_bash",
+    isError: false,
+    timestamp: Date.now(),
+  });
+}
 ```
 
 **Step 4: Verify tests pass and lint is clean**
 
 Run:
+
 ```bash
 cd apps/server && bun run test 2>&1 | tail -5
 bun typecheck && bun x ultracite check 2>&1 | tail -3
 ```
+
 Expected: test count drops by 1 (from 111 to 110, or from 109 to 108 if Task 1/2 already ran). 0 type errors. 0 lint errors.
 
 **Step 5: Update spec**
@@ -211,10 +228,13 @@ Expected: test count drops by 1 (from 111 to 110, or from 109 to 108 if Task 1/2
 In `openspec/specs/user-bash/spec.md`:
 
 5a. Replace the Purpose line (line 3):
+
 ```md
 User bash allows executing shell commands independently from the agent loop, with optional result injection into session context.
 ```
+
 becomes:
+
 ```md
 User bash allows executing shell commands independently from the agent loop. The output is shown in the UI; users who want the agent to see it paste it as a user message.
 ```
@@ -236,6 +256,7 @@ git add -A && git commit -m "refactor(server): drop injectToContext from user-ba
 **Why:** `GET /api/sessions/:id/turn-diff` overlaps with `GET /api/git/diff`. Move it under the `/api/git/*` prefix as `GET /api/git/turn-diff?projectId=...&files[]=...` (project-scoped, consistent with siblings).
 
 **Files:**
+
 - Delete: `apps/server/src/routes/turn-diff.ts`
 - Delete: `apps/server/src/__tests__/turn-diff.test.ts`
 - Modify: `apps/server/src/routes/git.ts` (add `parseNumstat` + new route)
@@ -248,73 +269,63 @@ git add -A && git commit -m "refactor(server): drop injectToContext from user-ba
 Append to `apps/server/src/__tests__/git.test.ts`, inside the existing `describe("git routes", ...)` block (after the last `it`), using the `tempDir` and `projectId` already set up in `beforeAll`. Note: the existing `beforeAll` creates a repo with a modified `hello.txt` — that's enough to show a turn-diff.
 
 ```ts
-  it("GET /api/git/turn-diff returns structured diff against HEAD", async () => {
-    const res = await app.handle(
-      new Request(
-        `http://localhost/api/git/turn-diff?projectId=${projectId}`
-      )
+it("GET /api/git/turn-diff returns structured diff against HEAD", async () => {
+  const res = await app.handle(
+    new Request(`http://localhost/api/git/turn-diff?projectId=${projectId}`),
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(Array.isArray(body.files)).toBe(true);
+  expect(body.files.length).toBeGreaterThan(0);
+  const hello = body.files.find((f: { path: string }) => f.path === "hello.txt");
+  expect(hello).toBeDefined();
+  expect(hello.additions).toBeGreaterThanOrEqual(1);
+  expect(typeof body.diff).toBe("string");
+  expect(body.diff).toContain("hello.txt");
+  expect(body.cwd).toBe(tempDir);
+});
+
+it("GET /api/git/turn-diff?files[]=hello.txt scopes the diff", async () => {
+  const res = await app.handle(
+    new Request(`http://localhost/api/git/turn-diff?projectId=${projectId}&files[]=hello.txt`),
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.files).toHaveLength(1);
+  expect(body.files[0].path).toBe("hello.txt");
+});
+
+it("GET /api/git/turn-diff returns 404 for unknown project", async () => {
+  const res = await app.handle(new Request("http://localhost/api/git/turn-diff?projectId=nope"));
+  expect(res.status).toBe(404);
+});
+
+it("GET /api/git/turn-diff returns empty files for a repo with no commits", async () => {
+  const emptyDir = mkdtempSync(join(tmpdir(), "sakti-git-empty-"));
+  try {
+    await execGit(emptyDir, "init", "-b", "main");
+    writeFileSync(join(emptyDir, "x.txt"), "x\n");
+    const built = await makeApp([gitRoutes]);
+    const p = await built.ctx.repos.projects.create("empty", emptyDir);
+    const res = await built.app.handle(
+      new Request(`http://localhost/api/git/turn-diff?projectId=${p.id}`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(Array.isArray(body.files)).toBe(true);
-    expect(body.files.length).toBeGreaterThan(0);
-    const hello = body.files.find(
-      (f: { path: string }) => f.path === "hello.txt"
-    );
-    expect(hello).toBeDefined();
-    expect(hello.additions).toBeGreaterThanOrEqual(1);
-    expect(typeof body.diff).toBe("string");
-    expect(body.diff).toContain("hello.txt");
-    expect(body.cwd).toBe(tempDir);
-  });
-
-  it("GET /api/git/turn-diff?files[]=hello.txt scopes the diff", async () => {
-    const res = await app.handle(
-      new Request(
-        `http://localhost/api/git/turn-diff?projectId=${projectId}&files[]=hello.txt`
-      )
-    );
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.files).toHaveLength(1);
-    expect(body.files[0].path).toBe("hello.txt");
-  });
-
-  it("GET /api/git/turn-diff returns 404 for unknown project", async () => {
-    const res = await app.handle(
-      new Request(
-        "http://localhost/api/git/turn-diff?projectId=nope"
-      )
-    );
-    expect(res.status).toBe(404);
-  });
-
-  it("GET /api/git/turn-diff returns empty files for a repo with no commits", async () => {
-    const emptyDir = mkdtempSync(join(tmpdir(), "sakti-git-empty-"));
-    try {
-      await execGit(emptyDir, "init", "-b", "main");
-      writeFileSync(join(emptyDir, "x.txt"), "x\n");
-      const built = await makeApp([gitRoutes]);
-      const p = await built.ctx.repos.projects.create("empty", emptyDir);
-      const res = await built.app.handle(
-        new Request(
-          `http://localhost/api/git/turn-diff?projectId=${p.id}`
-        )
-      );
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.files).toEqual([]);
-      expect(body.diff).toBe("");
-    } finally {
-      rmSync(emptyDir, { recursive: true, force: true });
-    }
-  });
+    expect(body.files).toEqual([]);
+    expect(body.diff).toBe("");
+  } finally {
+    rmSync(emptyDir, { recursive: true, force: true });
+  }
+});
 ```
 
 Also add to the top of `git.test.ts` the missing imports if not already there:
+
 ```ts
 import { tmpdir } from "node:os";
 ```
+
 (`join` and `mkdtempSync`/`rmSync`/`writeFileSync` are already imported per the file header.)
 
 **Step 2: Run the new tests — verify they FAIL**
@@ -372,7 +383,7 @@ async function hasHead(cwd: string): Promise<boolean> {
 async function runGitTimed(
   args: string[],
   cwd: string,
-  timeoutMs: number = GIT_TIMEOUT_MS
+  timeoutMs: number = GIT_TIMEOUT_MS,
 ): Promise<string> {
   const result = await runGit(args, cwd, timeoutMs);
   // runGit returns spawn-error / timeout as `kind`; treat both as empty string
@@ -441,6 +452,7 @@ rm -rf openspec/specs/turn-diff/
 **Step 6: Remove the import and registration from `index.ts`**
 
 In `apps/server/src/index.ts`:
+
 - Delete line 25: `import { turnDiffRoutes } from "./routes/turn-diff.ts";`
 - Delete line 43: `  turnDiffRoutes,` from the `defaultRoutes` array.
 
@@ -449,10 +461,12 @@ In `apps/server/src/index.ts`:
 **Step 7: Full verification**
 
 Run:
+
 ```bash
 cd apps/server && bun run test 2>&1 | tail -5
 bun typecheck && bun x ultracite check 2>&1 | tail -3
 ```
+
 Expected: total server test count increases by 4 (new git tests) and decreases by 5 (turn-diff had 5 `it` blocks: 3 + 2). Net: -1 from the previous task's count. 0 type errors. 0 lint errors.
 
 **Step 8: Commit**
@@ -468,6 +482,7 @@ git add -A && git commit -m "refactor(server): merge turn-diff into git.ts as /a
 **Why:** `apps/server/src/agent/ws-handler.ts:14-26` defines `SteerMessage` and `FollowUpMessage` inbound frame types. Lines 88-101 of `handleMessage` already route them to the active harness via `getActiveHarness()` and push an `error` frame if no run is active. The REST routes at `/api/sessions/:id/steer` and `/api/sessions/:id/follow-up` are a redundant second control plane. The spec at `openspec/specs/session-controls/spec.md:47-56` already documents the WS path; only the REST fallback section (lines 58-67) needs removal.
 
 **Files:**
+
 - Delete: `apps/server/src/routes/session-controls.ts`
 - Delete: `apps/server/src/__tests__/session-controls.test.ts`
 - Modify: `apps/server/src/index.ts:19, 55`
@@ -486,6 +501,7 @@ rm apps/server/src/__tests__/session-controls.test.ts
 ```
 
 In `apps/server/src/index.ts`:
+
 - Delete line 19: `import { sessionControlRoutes } from "./routes/session-controls.ts";`
 - Delete line 55: `  sessionControlRoutes,` from the `defaultRoutes` array.
 
@@ -503,8 +519,11 @@ Session controls let a client interact with an active agent-loop run mid-flight:
 
 ```md
 ### Requirement: Steer/follow-up routes via REST (fallback)
+
 ...
+
 #### Scenario: REST steer without active run
+
 - **WHEN** `POST /api/sessions/:id/steer` is called for a session with no active run
 - **THEN** the response status is 404
 ```
@@ -512,10 +531,12 @@ Session controls let a client interact with an active agent-loop run mid-flight:
 **Step 4: Verify**
 
 Run:
+
 ```bash
 cd apps/server && bun run test 2>&1 | tail -5
 bun typecheck && bun x ultracite check 2>&1 | tail -3
 ```
+
 Expected: test count drops by 3 (the 3 `it` blocks in `session-controls.test.ts`). 0 type errors. 0 lint errors.
 
 **Step 5: Commit**
@@ -531,6 +552,7 @@ git add -A && git commit -m "refactor(server): drop REST steer/follow-up (WS han
 **Why:** `AGENTS.md`'s route-modules table is the canonical map of what the server exposes. It needs to reflect the post-cleanup reality.
 
 **Files:**
+
 - Modify: `AGENTS.md` (the route-modules table around lines 84-95)
 
 **Step 1: Update the route table**
@@ -571,6 +593,7 @@ cd ../../apps/server && bun run test 2>&1 | tail -5
 ```
 
 Expected:
+
 - `tsconfig.json`: 0 errors.
 - Biome: 0 errors.
 - Vitest (agent+tools): 148 tests pass.

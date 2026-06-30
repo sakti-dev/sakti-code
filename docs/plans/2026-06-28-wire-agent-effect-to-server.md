@@ -13,6 +13,7 @@
 ### Task 1: Swap dependency + tsconfig in apps/server
 
 **Files:**
+
 - Modify: `apps/server/package.json:33`
 - Modify: `apps/server/tsconfig.json:7`
 
@@ -23,13 +24,17 @@ Replace `"@sakti-code/agent": "workspace:*"` with `"@sakti-code/agent-effect": "
 **Step 2: Update tsconfig path mapping**
 
 Replace:
+
 ```
 "@sakti-code/agent": ["../../packages/agent/src/index.ts"]
 ```
+
 with:
+
 ```
 "@sakti-code/agent-effect": ["../../packages/agent-effect/src/index.ts"]
 ```
+
 in `apps/server/tsconfig.json:7`.
 
 **Step 3: Install**
@@ -49,6 +54,7 @@ git commit -m "chore(server): swap @sakti-code/agent → @sakti-code/agent-effec
 ### Task 2: Rename all imports in apps/server/src (production code)
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts` (lines 12, 28 — two import blocks)
 - Modify: `apps/server/src/agent/ws-handler.ts` (line 5)
 - Modify: `apps/server/src/agent/execution-env.ts` (lines 22, 23)
@@ -84,6 +90,7 @@ git commit -m "chore(server): update all imports to @sakti-code/agent-effect"
 ### Task 3: Rename all imports in apps/server/src (test code)
 
 **Files:**
+
 - Modify: `apps/server/src/__tests__/forking.test.ts` (line 1)
 - Modify: `apps/server/src/agent/__tests__/runner.test.ts` (line 6)
 - Modify: `apps/server/src/agent/__tests__/helpers.ts` (line 1)
@@ -110,6 +117,7 @@ git commit -m "chore(server): update test imports to @sakti-code/agent-effect"
 ### Task 4: Swap dependency + tsconfig in apps/desktop
 
 **Files:**
+
 - Modify: `apps/desktop/package.json:25`
 - Modify: `apps/desktop/tsconfig.json:15`
 
@@ -120,13 +128,17 @@ Replace `"@sakti-code/agent": "workspace:*"` with `"@sakti-code/agent-effect": "
 **Step 2: Update tsconfig path mapping**
 
 Replace:
+
 ```
 "@sakti-code/agent": ["../../packages/agent/src/index.ts"]
 ```
+
 with:
+
 ```
 "@sakti-code/agent-effect": ["../../packages/agent-effect/src/index.ts"]
 ```
+
 in `apps/desktop/tsconfig.json:15`.
 
 **Step 3: Commit**
@@ -141,6 +153,7 @@ git commit -m "chore(desktop): swap @sakti-code/agent → @sakti-code/agent-effe
 ### Task 5: Rename all imports in apps/desktop/src
 
 **Files:**
+
 - Modify: 16 files importing `@sakti-code/agent` (all type-only imports) — see Task 6 exploration output for full list.
 
 **Step 1: Batch rename all imports**

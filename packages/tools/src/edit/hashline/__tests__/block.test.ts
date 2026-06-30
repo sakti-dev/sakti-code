@@ -242,7 +242,9 @@ describe("INS.BLK.POST resolveBlockEdits", () => {
       "ignored",
       PATH,
       stubResolver,
-      { onResolved: (resolution) => seen.push(resolution) }
+      {
+        onResolved: (resolution) => seen.push(resolution),
+      }
     );
     expect(seen).toEqual([
       { anchorLine: 2, start: 2, end: 3, op: "insert_after" },

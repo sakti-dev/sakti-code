@@ -155,7 +155,7 @@ function applyStreamOptionsPatch(
     if (patch.headers === undefined) {
       result.headers = undefined;
     } else {
-      const headers = { ...(result.headers ?? {}) };
+      const headers = { ...result.headers };
       for (const [key, value] of Object.entries(patch.headers)) {
         if (value === undefined) {
           delete headers[key];

@@ -1,12 +1,11 @@
 {
   "name": "desktop",
-  "productName": "sakti-code",
   "version": "0.1.0",
-  "description": "Sakti desktop coding agent (Electron + SolidJS)",
-  "author": "Ardian Eka Candra <ardianoption@gmail.com>",
-  "license": "MIT",
-  "homepage": "https://github.com/sakti-dev/sakti-code",
   "private": true,
+  "description": "Sakti desktop coding agent (Electron + SolidJS)",
+  "homepage": "https://github.com/sakti-dev/sakti-code",
+  "license": "MIT",
+  "author": "Ardian Eka Candra <ardianoption@gmail.com>",
   "type": "module",
   "main": "out/main/index.js",
   "scripts": {
@@ -42,10 +41,6 @@
     "tailwindcss-animate": "^1.0.7",
     "velomark": "workspace:*"
   },
-  "optionalDependencies": {
-    "@ff-labs/fff-bin-linux-x64-gnu": "^0.9.6",
-    "node-pty": "^1.1.0"
-  },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
@@ -61,7 +56,12 @@
     "jsdom": "^29.1.1",
     "vite": "catalog:",
     "vite-plugin-solid": "^2.11.0",
-    "vitest": "catalog:",
-    "vite-plus": "catalog:"
-  }
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  },
+  "optionalDependencies": {
+    "@ff-labs/fff-bin-linux-x64-gnu": "^0.9.6",
+    "node-pty": "^1.1.0"
+  },
+  "productName": "sakti-code"
 }

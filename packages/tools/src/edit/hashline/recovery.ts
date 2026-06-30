@@ -49,7 +49,9 @@ function applyEditsToSnapshot(
     applied.text,
     "",
     "",
-    { context: 3 }
+    {
+      context: 3,
+    }
   );
   const merged = Diff.applyPatch(currentText, patch, {
     fuzzFactor: RECOVERY_FUZZ_FACTOR,

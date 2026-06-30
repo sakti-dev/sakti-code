@@ -5,7 +5,7 @@
 **Follows:** `2026-06-29-effect-single-boundary.md` (Phases H1–H5 shipped — single `Effect.runPromise` boundary at the WS edge)
 **Goal:** Move the agent run-loop orchestration out of `apps/server/src/agent/runner.ts` into `packages/agent`, so a second consumer (CLI, test harness) can drive the same orchestration without duplicating it.
 
-> **Naming note:** The factory is named `runAgentRunEffect` (file: `runner/agent-run.ts`). The existing `runAgentLoop` in `core/agent-loop.ts` is the *inner* LLM-call loop — distinct concept, distinct name.
+> **Naming note:** The factory is named `runAgentRunEffect` (file: `runner/agent-run.ts`). The existing `runAgentLoop` in `core/agent-loop.ts` is the _inner_ LLM-call loop — distinct concept, distinct name.
 
 ## Context
 
@@ -29,7 +29,7 @@ Concrete symptoms:
 **Out of scope (deferred):**
 
 - Promoting to a "fat factory" that owns harness construction too. Approach 3 in the brainstorm — design a `AgentRunnerPrimitives` plugin contract. Deferred until a real second consumer exists; current Approaches 1 cut is the responsible YAGNI line.
-- Moving the settings-key-prefix storage helpers (`loadSessionSettings`, `loadDisabledSkills`, `loadStuckGuardState`, `persistStuckGuardState`, `persistSkill*`) to `packages/db` as a typed `SessionSettingsRepo`. They use `ctx.repos.settings` (a server/db concern); the typed *view* over the resulting record lives in the agent package. Storage layer can move later without disturbing the factory.
+- Moving the settings-key-prefix storage helpers (`loadSessionSettings`, `loadDisabledSkills`, `loadStuckGuardState`, `persistStuckGuardState`, `persistSkill*`) to `packages/db` as a typed `SessionSettingsRepo`. They use `ctx.repos.settings` (a server/db concern); the typed _view_ over the resulting record lives in the agent package. Storage layer can move later without disturbing the factory.
 - Run registry (`activeRuns` Map, `registerRun`/`unregisterRun`/`abortRun`/`getActiveHarness`). Server-owned concept; the factory invokes it via callbacks.
 - WS handler / replay / model-resolver / execution-env / tools-builder. All server-specific; untouched.
 
@@ -115,9 +115,7 @@ export interface AgentRunDeps {
 
   // ── stuck-guard: factory owns policy+mutation, caller owns persistence
   readonly loadStuckGuard: () => Effect.Effect<StuckGuardState, Error>;
-  readonly persistStuckGuard: (
-    state: StuckGuardState,
-  ) => Effect.Effect<void, Error>;
+  readonly persistStuckGuard: (state: StuckGuardState) => Effect.Effect<void, Error>;
 
   // ── output sink ───────────────────────────────────────────────
   readonly emit: (event: AgentHarnessEvent) => void;
@@ -136,9 +134,7 @@ export interface AgentRunDeps {
   readonly log?: Logger;
 }
 
-export function runAgentRunEffect(
-  deps: AgentRunDeps,
-): Effect.Effect<void, Error>;
+export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error>;
 ```
 
 ### `packages/agent/src/runner/session-settings.ts`
@@ -172,9 +168,7 @@ export interface SessionSettings {
   thinkingLevelOverride(): ThinkingLevel | null;
 }
 
-export function parseSessionSettings(
-  raw: Record<string, string>,
-): SessionSettings;
+export function parseSessionSettings(raw: Record<string, string>): SessionSettings;
 ```
 
 ### `StuckGuardState` (already implicitly defined; promote to typed export)
@@ -230,7 +224,9 @@ export function runPromptEffect(
 
     const sessionInstance = new PromiseSession(storage);
     const sessionShape = promiseSessionAsShape(sessionInstance);
-    const harness = new HarnessClass({ /* …same as today… */ });
+    const harness = new HarnessClass({
+      /* …same as today… */
+    });
 
     // ── Resolve agent + wire permission + switchAgent ───────────
     const agent = resolveAgentByName(settings.agent(), loadedContext.agents);
@@ -259,8 +255,7 @@ export function runPromptEffect(
       templates: loadedContext.commands,
       cwd: project.cwd,
       loadStuckGuard: () => Effect.sync(() => loadStuckGuardState(ctx, sessionId)),
-      persistStuckGuard: (s) =>
-        Effect.tryPromise(() => persistStuckGuardState(ctx, sessionId, s)),
+      persistStuckGuard: (s) => Effect.tryPromise(() => persistStuckGuardState(ctx, sessionId, s)),
       emit: eventCallback,
       registerRun: ({ harness: h, retryAbort, unsubscribe }) =>
         registerRun(sessionId, h, unsubscribe, retryAbort),

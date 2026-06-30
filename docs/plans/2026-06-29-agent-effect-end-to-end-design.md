@@ -8,7 +8,7 @@ The agent package is half-Effect: the hot loop (`runLoopEffect`) is Effect-nativ
 (FiberSet for parallel tools, Stream for the LLM token stream), but the
 **harness** that wraps it (`AgentHarness`) and the **server agent layer**
 (`apps/server/src/agent`) are Promise/async. The Promise↔Effect boundary sits
-*inside* the event path:
+_inside_ the event path:
 
 ```
 runLoopEffect (Effect) → emit callback → handleAgentEvent (async) → subscribe(callback) → ws.send
@@ -19,7 +19,7 @@ This causes real problems:
 1. **A timing flake.** Swapping `runAgentLoop` (Promise; emits `agent_start` via
    `await emit`) for `runAgentLoopEffect` (Effect; emits via `Effect.promise`,
    eager) shifted event timing across the async-callback boundary and flaked the
-   WS event-frame test ~1/3 runs. Root cause: a boundary *inside* the event
+   WS event-frame test ~1/3 runs. Root cause: a boundary _inside_ the event
    chain, not the Effect APIs.
 2. **Per-token serialization.** `handleAgentEvent` does
    `for (listener of handlers) await listener(event)` — every token waits for
@@ -57,6 +57,7 @@ at the Hono WS/REST edge. Mirror opencode's model (`PubSub` event bus, `Fiber`/
 ## Scope
 
 In:
+
 - `packages/agent/src/agent/agent-harness.ts` — run, lifecycle, event bus.
 - `packages/agent/src/compaction/retry-loop.ts` — `Effect.retry` + `Schedule`.
 - `packages/agent/src/core/agent-loop.ts` — emit `tool-input-delta` (Section 6).
@@ -68,6 +69,7 @@ In:
 - `apps/server/src/routes/*` — one `Effect.runPromise` per REST route at the edge.
 
 Out:
+
 - The Hono server itself (we keep Hono + `@hono/node-server` + `ws`; we do **not**
   migrate to `@effect/platform`'s `HttpServer` — that's a separate future migration).
 - The desktop (`apps/desktop`) — consumes via Hono RPC + WS frames; the frame
@@ -161,7 +163,7 @@ Replace `runAsTurn` + `startRunPromise` (stored-resolve latch) +
 
 Replace the manual `while` + `abortableSleep` loop.
 
-- **Turn returns `Effect<AssistantMessage>`**. A *retryable* failure (the
+- **Turn returns `Effect<AssistantMessage>`**. A _retryable_ failure (the
   value-encoded `stopReason: "error"` matching `isRetryableAssistantError`)
   becomes a typed failure: `Effect.fail(new TurnTransientError(message))`.
   Non-retryable errors and successes pass through.
@@ -198,13 +200,14 @@ One `Effect.runPromise` at the edge; two concurrent fibers inside.
 // Hono WS message handler — the only Effect→Promise boundary for the agent path
 Effect.runPromise(
   Effect.gen(function* () {
-    const events = harness.subscribeStream();                 // Stream from PubSub
-    const fiber = yield* Effect.fork(harness.prompt(text));   // publishes events as it runs
-    yield* Stream.runForEach(events, (e) =>
-      Effect.sync(() => ws.send(JSON.stringify(toFrame(e, sessionId))))   // ← the edge handoff
+    const events = harness.subscribeStream(); // Stream from PubSub
+    const fiber = yield* Effect.fork(harness.prompt(text)); // publishes events as it runs
+    yield* Stream.runForEach(
+      events,
+      (e) => Effect.sync(() => ws.send(JSON.stringify(toFrame(e, sessionId)))), // ← the edge handoff
     );
-    yield* Fiber.join(fiber);                                 // surface run failure → error frame
-  })
+    yield* Fiber.join(fiber); // surface run failure → error frame
+  }),
 ).catch((err) => ws.send(errorFrame(sessionId, err)));
 ```
 
@@ -228,6 +231,7 @@ Keep: event ordering + `sessionId`; `abort` cancels; `waitForIdle` resolves;
 attempt/delay; persistence correctness.
 
 Change:
+
 - **Event consumption → Stream, not callback+setTimeout.** The ws "prompt
   produces event frames" test becomes deterministic: consume
   `harness.subscribeStream()` via `Stream.runCollect`/`runForEach` raced with the
@@ -238,6 +242,7 @@ Change:
 - **Retry tests**: value-based → typed-failure (`Effect.catchTag("TurnTransientError")`).
 
 Churn:
+
 - `packages/agent/src/agent/__tests__/agent-harness.test.ts` (37) +
   `-continue.test.ts` (4): rewritten to Effect API + Stream consumption.
 - `apps/server/src/agent/__tests__/ws.test.ts`, `e2e.test.ts`: Stream-based.
@@ -290,6 +295,7 @@ args still come from the complete `tool-call` part, so loop logic is unaffected 
 the deltas are pure UI feed.
 
 **UI lifecycle (for the planned "Writing toolcall…" component):**
+
 - First `message_update` (`kind: tool_input`, `toolCallId=X`) → mount placeholder,
   append on each subsequent delta.
 - `message_end` (assistant message with the complete tool-call block) → tool call
@@ -307,22 +313,22 @@ placeholder is generic until `tool_execution_start`. Verify during implementatio
 The `@ai-sdk` read rate is unchanged (already `Stream.runForEach` since the
 earlier Phase 2a). The wins are in **delivery** (no per-token serialization;
 fast subscriber decoupled) **+ the tool-input-delta gap** (new live streaming).
-Net: lower per-token latency to the UI *and* visible progress during tool-call
+Net: lower per-token latency to the UI _and_ visible progress during tool-call
 generation.
 
 ---
 
 ## File map
 
-| Section | Files | Package |
-|---|---|---|
-| 1 event bus | `packages/agent/src/agent/agent-harness.ts` | agent |
-| 1 persistence | `packages/db/src/session-entry-store.ts` + storage interface in `packages/agent` | db + agent |
-| 2 lifecycle | `packages/agent/src/agent/agent-harness.ts` | agent |
-| 3 retry | `packages/agent/src/compaction/retry-loop.ts` + `apps/server/src/agent/runner.ts` (caller) | agent + server |
-| 4 WS edge | `apps/server/src/agent/ws-handler.ts`, `apps/server/src/agent/runner.ts` | server |
-| 4 REST edge | `apps/server/src/routes/*` | server |
-| 6b tool-input | `packages/agent/src/core/agent-loop.ts`, `packages/agent/src/types.ts` | agent |
+| Section       | Files                                                                                      | Package        |
+| ------------- | ------------------------------------------------------------------------------------------ | -------------- |
+| 1 event bus   | `packages/agent/src/agent/agent-harness.ts`                                                | agent          |
+| 1 persistence | `packages/db/src/session-entry-store.ts` + storage interface in `packages/agent`           | db + agent     |
+| 2 lifecycle   | `packages/agent/src/agent/agent-harness.ts`                                                | agent          |
+| 3 retry       | `packages/agent/src/compaction/retry-loop.ts` + `apps/server/src/agent/runner.ts` (caller) | agent + server |
+| 4 WS edge     | `apps/server/src/agent/ws-handler.ts`, `apps/server/src/agent/runner.ts`                   | server         |
+| 4 REST edge   | `apps/server/src/routes/*`                                                                 | server         |
+| 6b tool-input | `packages/agent/src/core/agent-loop.ts`, `packages/agent/src/types.ts`                     | agent          |
 
 ## Non-goals / future
 

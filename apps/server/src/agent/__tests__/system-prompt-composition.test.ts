@@ -1,6 +1,6 @@
 import type { AgentTool } from "@sakti-code/agent";
 import { composeSystemPrompt } from "@sakti-code/agent";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { SKILLS_INSTRUCTIONS } from "../config/index.ts";
 
 function mockTool(name: string, description: string): AgentTool {

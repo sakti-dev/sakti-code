@@ -1,7 +1,18 @@
 {
   "name": "velomark",
   "version": "0.1.0",
+  "private": false,
   "description": "Solid-only markdown rendering tuned for streamed AI responses.",
+  "keywords": [
+    "ai",
+    "markdown",
+    "solid",
+    "streaming"
+  ],
+  "homepage": "https://github.com/sakti-dev/velomark#readme",
+  "bugs": {
+    "url": "https://github.com/sakti-dev/velomark/issues"
+  },
   "license": "MIT",
   "author": "sakti-dev",
   "contributors": [],
@@ -9,18 +20,18 @@
     "type": "git",
     "url": "git+https://github.com/sakti-dev/velomark.git"
   },
-  "homepage": "https://github.com/sakti-dev/velomark#readme",
-  "bugs": {
-    "url": "https://github.com/sakti-dev/velomark/issues"
-  },
-  "private": false,
   "files": [
     "dist"
   ],
+  "type": "module",
   "sideEffects": [
     "*.css"
   ],
-  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "browser": {},
+  "types": "./dist/index.d.ts",
+  "typesVersions": {},
   "exports": {
     ".": {
       "solid": {
@@ -57,9 +68,6 @@
     "check": "ultracite check",
     "fix": "ultracite fix"
   },
-  "peerDependencies": {
-    "solid-js": "^1.9.10"
-  },
   "dependencies": {
     "@shikijs/core": "^3.22.0",
     "katex": "^0.16.38",
@@ -94,23 +102,15 @@
     "ultracite": "7.2.5",
     "vite": "catalog:",
     "vite-plugin-solid": "^2.10.2",
-    "vitest": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
   },
-  "keywords": [
-    "markdown",
-    "solid",
-    "streaming",
-    "ai"
-  ],
-  "packageManager": "pnpm@9.1.1",
+  "peerDependencies": {
+    "solid-js": "^1.9.10"
+  },
   "engines": {
     "node": ">=18",
     "pnpm": ">=9.0.0"
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "browser": {},
-  "typesVersions": {}
+  "packageManager": "pnpm@9.1.1"
 }

@@ -1,5 +1,12 @@
 import { type AgentDefinition, fromConfig } from "@sakti-code/agent";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 import {
   getPermissionChannel,
   resetPermissionChannelsForTesting,

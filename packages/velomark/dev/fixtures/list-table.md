@@ -9,8 +9,8 @@
 
 ## Comparison
 
-| Mode | Reused Blocks | Replaced Blocks |
-| --- | --- | --- |
-| Append | High | Low |
-| Rewrite Tail | Medium | Medium |
-| Full Reset | Low | High |
+| Mode         | Reused Blocks | Replaced Blocks |
+| ------------ | ------------- | --------------- |
+| Append       | High          | Low             |
+| Rewrite Tail | Medium        | Medium          |
+| Full Reset   | Low           | High            |

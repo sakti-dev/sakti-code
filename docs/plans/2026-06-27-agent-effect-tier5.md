@@ -7,6 +7,7 @@
 **Architecture:** Copy each module and its test file verbatim. No Effect patterns applied to business logic yet — this is a structural port to establish the dependency graph in the new package. Effect-native refactoring is a future phase (see "Future Effect-native Phases" at end).
 
 **Tech Stack:**
+
 - TypeScript, vitest, biome (via ultracite)
 - `effect@^3.21.4` (already installed) — dependency only, not used in business logic yet
 - `@sakti-code/llm`, `@sakti-code/logger`, `typebox`, `uuid` (already installed)
@@ -14,6 +15,7 @@
 - Available but NOT used yet (future): `@effect/vitest@0.29.0`, `@effect/platform@0.96.2`
 
 ---
+
 ## Dependency Order (topological)
 
 ```
@@ -45,11 +47,13 @@ harness/types.ts (depends on types.ts, permission.ts — already ported)
 ```
 
 ---
+
 ## Phase 0: Type Foundation
 
 ### Task 0a: Port `src/types.ts` (652 lines → ~45 currently)
 
 **Files:**
+
 - Modify: `packages/agent-effect/src/types.ts`
 
 **Scope:** Currently has `CustomMessage`, `BashExecutionMessage`, `BranchSummaryMessage`, `CompactionSummaryMessage`, `AgentMessage`. Must add all types from original `packages/agent/src/types.ts`:
@@ -57,6 +61,7 @@ harness/types.ts (depends on types.ts, permission.ts — already ported)
 - `StreamFn`, `ToolExecutionMode`, `QueueMode`, `AgentToolCall`, `BeforeToolCallResult`, `AfterToolCallResult`, `BeforeToolCallContext`, `AfterToolCallContext`, `ShouldStopAfterTurnContext`, `AgentLoopTurnUpdate`, `PrepareNextTurnContext`, `AgentLoopConfig`, `ThinkingLevel`, `AgentState`, `AgentToolResult<T>`, `PermissionRequest`, `PermissionAskRequest`, `PermissionReply`, `AgentToolUpdateCallback`, `AgentTool<TParams, TDetails>`, `AgentContext`, `AgentEvent`
 
 **Exact imports for this file:**
+
 ```
 @/sakti-code/llm: AssistantMessage, ImageContent, Message, Model, StreamRequest, StreamResult, TextContent, Tool, ToolResultMessage
 @sakti-code/logger: Logger
@@ -74,9 +79,11 @@ typebox: Static, TSchema
 ### Task 0b: Expand `src/harness/types.ts` (~169 lines → 963 lines)
 
 **Files:**
+
 - Modify: `packages/agent-effect/src/harness/types.ts`
 
 **Exact imports for this file:**
+
 ```
 @/sakti-code/llm: ImageContent, Model, TextContent
 @sakti-code/logger: Logger
@@ -91,6 +98,7 @@ typebox: Static, TSchema
 **Entity types:** `PromptTemplate`, `AgentMode`, `AgentDefinition`, `AgentHarnessResources`, `AgentHarnessStreamOptions`, `AgentHarnessStreamOptionsPatch`
 
 **Error types:**
+
 ```
 FileKind, FileErrorCode, FileError
 ExecutionErrorCode, ExecutionError
@@ -98,9 +106,11 @@ CompactionErrorCode, CompactionError
 BranchSummaryErrorCode, BranchSummaryError
 AgentHarnessErrorCode, AgentHarnessError
 ```
+
 These are all `class extends Error { code: ... }` — keep as-is for now.
 
 **Infrastructure interfaces:**
+
 ```
 FileInfo, ExecutionEnvExecOptions
 FileSystem (~30 methods: absolutePath, appendFile, canonicalPath, cleanup, createDir, createTempDir,
@@ -115,6 +125,7 @@ ExecutionEnv = FileSystem & Shell  (interface merge, not type intersection)
 **Harness types:** `AgentHarnessPhase`, `PendingSessionWrite`
 
 **Event types (~30 interfaces):**
+
 ```
 QueueUpdateEvent, SavePointEvent, AbortEvent, SettledEvent
 BeforeAgentStartEvent<TSkill, TPromptTemplate>
@@ -127,6 +138,7 @@ AgentHarnessOwnEvent (union of all above), AgentHarnessEvent (AgentEvent | Agent
 ```
 
 **Result types:**
+
 ```
 BeforeAgentStartResult, ContextResult, BeforeProviderRequestResult, BeforeProviderPayloadResult
 ToolCallResult, ToolResultPatch, SessionBeforeCompactResult, SessionBeforeTreeResult
@@ -134,6 +146,7 @@ AgentHarnessEventResultMap (mapped type)
 ```
 
 **Configuration types:**
+
 ```
 AgentHarnessPromptOptions, AbortResult, CompactResult, NavigateTreeResult
 CompactionSettings, CompactionPreparation, FileOperations, TreePreparation
@@ -142,6 +155,7 @@ AgentHarnessOptions<TSkill, TPromptTemplate, TTool>  (~25 fields)
 ```
 
 **Re-exports (added after those modules exist):**
+
 - `export type { ThinkingLevel } from "../types.ts"` — add now
 - `export type { Session } from "./session.ts"` — add in Phase 2
 - `export type { AgentHarness } from "./agent-harness.ts"` — add in Phase 4
@@ -152,6 +166,7 @@ AgentHarnessOptions<TSkill, TPromptTemplate, TTool>  (~25 fields)
 **Step 4:** Commit
 
 **Future migration path:**
+
 - `Result<TValue, TError>` → `Either<E, A>` from `effect/Either`. The `ok`/`err` helpers map directly to `Either.right`/`Either.left`.
 - Error classes (`SessionError`, `CompactionError`, `FileError`, `ExecutionError`, `BranchSummaryError`, `AgentHarnessError`) → `Data.TaggedError` with `_tag` discriminant. Example future pattern:
   ```ts
@@ -167,6 +182,7 @@ AgentHarnessOptions<TSkill, TPromptTemplate, TTool>  (~25 fields)
 - `AgentHarnessEvent` union + `AgentHarnessEventResultMap` → Effect `Channel` / `Stream` + `Schema.TaggedError` for serializabile typed events.
 
 ---
+
 ## Phase 1: Loader + Entity Loaders
 
 All modules in this phase are pure parsing/formatting functions with no IO. Copy as-is.
@@ -174,10 +190,12 @@ All modules in this phase are pure parsing/formatting functions with no IO. Copy
 ### Task 1a: `harness/loader-shared.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/harness/loader-shared.ts`
 - Modify: `packages/agent-effect/package.json` — add `"yaml": "^2"` to dependencies
 
 **Exact imports:**
+
 ```
 yaml: parse
 ./types.ts: type ExecutionEnv, type FileInfo, type Result, toError
@@ -197,6 +215,7 @@ yaml: parse
 ### Task 1b: `harness/commands.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/harness/commands.ts`
 - Create: `packages/agent-effect/src/harness/__tests__/commands.test.ts`
 
@@ -212,6 +231,7 @@ yaml: parse
 ### Task 1c: `harness/agents.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/harness/agents.ts`
 - Create: `packages/agent-effect/src/harness/__tests__/agents.test.ts`
 
@@ -225,6 +245,7 @@ yaml: parse
 ### Task 1d: `harness/prompt-templates.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/harness/prompt-templates.ts`
 - Create: `packages/agent-effect/src/harness/__tests__/prompt-templates.test.ts`
 
@@ -238,6 +259,7 @@ yaml: parse
 ### Task 1e: `harness/skills.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/harness/skills.ts`
 - Create: `packages/agent-effect/src/harness/__tests__/skills.test.ts`
 
@@ -249,16 +271,19 @@ yaml: parse
 **Step 4:** Commit
 
 ---
+
 ## Phase 2: Session + Builtin Agents
 
 ### Task 2a: `harness/session.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/harness/session.ts`
 - Create: `packages/agent-effect/src/harness/__tests__/session.test.ts`
 - Modify: `packages/agent-effect/src/harness/types.ts` — add `export type { Session } from "./session.ts"`
 
 **Exact imports:**
+
 ```
 @sakti-code/llm: type ImageContent, type TextContent
 ../types.ts: type AgentMessage
@@ -279,6 +304,7 @@ yaml: parse
 **Step 5:** Commit
 
 **Future migration path:** `Session` class is currently a thin wrapper around `SessionStorage` — pure delegation methods (`getMetadata`, `getLeafId`, `getEntry`, etc.) and helper methods (`appendMessage`, `appendCompaction`, `moveTo`). Future: `Session` becomes an Effect `Service`:
+
 ```ts
 class Session extends Effect.Service<Session>()("Session", {
   effect: Effect.gen(function* () {
@@ -293,11 +319,13 @@ class Session extends Effect.Service<Session>()("Session", {
   dependencies: [SessionStorage.Default]
 }) {}
 ```
+
 This would change all `Session` method signatures from `Promise<T>` to `Effect<T, SessionError>`, and every module that injects `Session` would declare it as a requirement instead of receiving a constructed instance.
 
 ### Task 2b: `harness/builtin-agents.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/harness/builtin-agents.ts`
 - Create: `packages/agent-effect/src/harness/__tests__/builtin-agents.test.ts`
 
@@ -309,15 +337,18 @@ This would change all `Session` method signatures from `Promise<T>` to `Effect<T
 **Step 4:** Commit
 
 ---
+
 ## Phase 3: Compaction Pipeline
 
 ### Task 3a: `compaction.ts` (root-level, 886 lines)
 
 **Files:**
+
 - Create: `packages/agent-effect/src/compaction.ts`
 - Create: `packages/agent-effect/src/__tests__/compaction.test.ts`
 
 **Exact imports:**
+
 ```
 @sakti-code/llm: type AssistantMessage, type ImageContent, type Model, type TextContent, type Usage, complete
 ./compaction/utils.ts: computeFileLists, createFileOps, extractFileOpsFromMessage, type FileOperations,
@@ -331,6 +362,7 @@ This would change all `Session` method signatures from `Promise<T>` to `Effect<T
 **Exports:** `CompactionDetails`, `DEFAULT_COMPACTION_SETTINGS`, `calculateContextTokens`, `compact`, `estimateContextTokens`, `estimateTokens`, `prepareCompaction`, `shouldCompact`, `SUMMARIZATION_SYSTEM_PROMPT`, `serializeConversation` (re-export from utils)
 
 **Original test:** `packages/agent/src/__tests__/harness/compaction.test.ts` (20 tests)
+
 - Tests mocks `complete` from `@sakti-code/llm` with `vi.mock(...)` — port the same mock setup.
 - `prepareCompaction` and `compact` return `Result<...>` — test both `ok` and `err` paths.
 
@@ -340,6 +372,7 @@ This would change all `Session` method signatures from `Promise<T>` to `Effect<T
 **Step 4:** Commit
 
 **Future migration path:** Key refactors:
+
 - `complete()` call → `Effect.tryPromise({ try: () => complete(...), catch: (e) => new CompactionError("summarization_failed", ...) })`, then composed with `Effect.retry(Schedule.exponential(...))`.
 - `Result<CompactResult, CompactionError>` → `Effect<CompactResult, CompactionError>` — callers use `Effect.catchTag("CompactionError", ...)` instead of `if (!result.ok)`.
 - `estimateTokens` is a pure function; fine as-is or wrapped in `Effect.sync`.
@@ -347,10 +380,12 @@ This would change all `Session` method signatures from `Promise<T>` to `Effect<T
 ### Task 3b: `compaction/auto-compaction.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/compaction/auto-compaction.ts`
 - Create: `packages/agent-effect/src/compaction/__tests__/auto-compaction.test.ts`
 
 **Exact imports:**
+
 ```
 @sakti-code/llm: type AssistantMessage, isContextOverflow, type Model
 ../compaction.ts: type CompactionSettings, calculateContextTokens, compact, estimateContextTokens,
@@ -374,9 +409,11 @@ This would change all `Session` method signatures from `Promise<T>` to `Effect<T
 ### Task 3c: `compaction/branch-summarization.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/compaction/branch-summarization.ts`
 
 **Exact imports:**
+
 ```
 @sakti-code/llm: type Model, complete
 ../compaction.ts: estimateTokens, SUMMARIZATION_SYSTEM_PROMPT
@@ -397,15 +434,18 @@ This would change all `Session` method signatures from `Promise<T>` to `Effect<T
 **Future migration path:** Same as compaction.ts — `complete()` → `Effect.tryPromise` + retry, `Result` → `Effect`.
 
 ---
+
 ## Phase 4: Agent Loop + Harness (most complex)
 
 ### Task 4a: `loop/agent-loop.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/loop/agent-loop.ts`
 - Create: `packages/agent-effect/src/loop/__tests__/agent-loop.test.ts`
 
 **Exact imports:**
+
 ```
 @sakti-code/llm: type AssistantMessage, type TextContent, type ThinkingContent, type ToolCall,
   type ToolResultMessage, type Usage, stream
@@ -420,6 +460,7 @@ This would change all `Session` method signatures from `Promise<T>` to `Effect<T
 **Key complexity:** This is the core loop — ~likes 500+. It orchestrates: LLM stream → tool preflight → tool execution → permission checking → event emission → follow-up/steering → loop decision. The `stream()` import from `@sakti-code/llm` is a lazy dynamic import (`() => import(...)`) in `defaultStreamFn`.
 
 **Original test:** `packages/agent/src/__tests__/agent-loop.test.ts` (27 tests)
+
 - Tests create `mockStreamFn` that yields fake stream parts.
 - Tests create `AgentLoopConfig` with mock `stream.start`/`stream.update`/`stream.end` hooks.
 - Tests verify event sequence: tool_call → tool_result → turn_end → agent_end.
@@ -430,6 +471,7 @@ This would change all `Session` method signatures from `Promise<T>` to `Effect<T
 **Step 4:** Commit
 
 **Future migration path:** The entire agent loop is the most natural candidate for Effect conversion:
+
 - `EventStream` class → Effect `Queue` + `Stream` for typed event emission.
 - `stream()` call → `Effect.tryPromise` wrapping the lazy import.
 - `AgentLoopConfig` callbacks (`beforeToolCall`, `afterToolCall`, `getFollowUpMessages`, etc.) → Effect services provided via `Layer`.
@@ -438,12 +480,14 @@ This would change all `Session` method signatures from `Promise<T>` to `Effect<T
 ### Task 4b: `retry-loop.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/retry-loop.ts`
 - Create: `packages/agent-effect/src/__tests__/retry-loop.test.ts`
 
 **Note:** This is root-level (`src/retry-loop.ts`), NOT under `loop/`.
 
 **Exact imports:**
+
 ```
 @sakti-code/llm: type AssistantMessage, isRetryableAssistantError
 @sakti-code/logger: type Logger
@@ -461,25 +505,27 @@ This would change all `Session` method signatures from `Promise<T>` to `Effect<T
 **Step 4:** Commit
 
 **Future migration path:** The retry loop's backoff logic is a natural fit for Effect's `Schedule`:
+
 ```ts
 // Current: manual setTimeout + counter
 // Future:
 Effect.retry(agentLoop, {
   while: (e) => isRetryableAssistantError(e),
-  schedule: Schedule.exponential("1 second").pipe(
-    Schedule.compose(Schedule.recurs(3))
-  )
-})
+  schedule: Schedule.exponential("1 second").pipe(Schedule.compose(Schedule.recurs(3))),
+});
 ```
+
 The `isRetryableAssistantError` check maps directly to `while`. The `auto_retry_start` / `auto_retry_end` events become `Effect.tap` on the retry schedule.
 
 ### Task 4c: `agent.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/agent.ts`
 - Create: `packages/agent-effect/src/__tests__/agent.test.ts`
 
 **Exact imports:**
+
 ```
 @sakti-code/llm: type ImageContent, type Message, type Model, type TextContent
 ./loop/agent-loop.ts: runAgentLoop, runAgentLoopContinue
@@ -498,6 +544,7 @@ The `isRetryableAssistantError` check maps directly to `while`. The `auto_retry_
 **Step 4:** Commit
 
 **Future migration path:** `Agent` class with `subscribe`/`start`/`continue`/`stop` methods becomes:
+
 - `Agent` as an Effect `Service` (requirements: `AgentLoopConfig`, `Logger`).
 - `subscribe()` → `Stream` of `AgentEvent` (subscribers consume via `Stream.runForEach`).
 - `start()` / `continue()` → `Effect<void, AgentError>` with `Fork` for lifecycle management.
@@ -506,6 +553,7 @@ The `isRetryableAssistantError` check maps directly to `while`. The `auto_retry_
 ### Task 4d: `harness/agent-harness.ts`
 
 **Files:**
+
 - Create: `packages/agent-effect/src/harness/agent-harness.ts`
 - Create: `packages/agent-effect/src/harness/__tests__/agent-harness.test.ts`
 - Create: `packages/agent-effect/src/harness/__tests__/agent-harness-continue.test.ts`
@@ -514,6 +562,7 @@ The `isRetryableAssistantError` check maps directly to `while`. The `auto_retry_
 - Modify: `packages/agent-effect/src/harness/types.ts` — add `export type { AgentHarness } from "./agent-harness.ts"`
 
 **Exact imports (largest set in project):**
+
 ```
 @sakti-code/llm: type AssistantMessage, type ImageContent, type Model, type UserMessage, stream, complete
 @sakti-code/logger: type Logger
@@ -536,6 +585,7 @@ The `isRetryableAssistantError` check maps directly to `while`. The `auto_retry_
 **This is the orchestrator — 2000+ lines.** It composes: resource loading → session creation → agent loop wiring → compaction → branch summarization → event forwarding.
 
 **Original tests (4 files, 24 tests total):**
+
 - `packages/agent/src/__tests__/harness/agent-harness.test.ts` (13 tests)
 - `packages/agent/src/__tests__/harness/agent-harness-continue.test.ts` (4 tests)
 - `packages/agent/src/__tests__/harness/agent-switch.test.ts` (4 tests)
@@ -548,11 +598,13 @@ The `isRetryableAssistantError` check maps directly to `while`. The `auto_retry_
 **Step 5:** Commit
 
 **Future migration path:** This is the largest refactoring target. The `AgentHarness` class manages mutable state (phase, session, env, hooks). Future:
+
 - State → `Ref<AgentHarnessPhase>` for phase tracking, `SynchronizedRef` for hooks.
 - Each method (`startAgent`, `switchAgent`, `continueAgent`, `compact`, `navigateTree`, `abort`) → independent `Effect` functions, composed via `Effect.gen`.
 - `getApiKeyAndHeaders` callback → `Config` / `Context.Tag`-provided service.
 
 ---
+
 ## Phase 5: Final Verification & Index Update
 
 ### Task 5: Everything together
@@ -565,27 +617,28 @@ The `isRetryableAssistantError` check maps directly to `while`. The `auto_retry_
 **Step 6:** Commit
 
 ---
+
 ## Cross-Comparison Summary
 
-| # | Module | Original tests | Ported tests | Strategy |
-|---|--------|:-:|:-:|----------|
-| 0a | `types.ts` | barrel | barrel | Copy as-is |
-| 0b | `harness/types.ts` | type-only | type-only | Copy as-is |
-| 1a | `harness/loader-shared.ts` | 0 (indirect) | 0 | Copy as-is |
-| 1b | `harness/commands.ts` | 3 | 3 | Copy as-is |
-| 1c | `harness/agents.ts` | 3 | 3 | Copy as-is |
-| 1d | `harness/prompt-templates.ts` | 5 | 5 | Copy as-is |
-| 1e | `harness/skills.ts` | 6 | 6 | Copy as-is |
-| 2a | `harness/session.ts` | 10 | 10 | Copy as-is |
-| 2b | `harness/builtin-agents.ts` | 6 | 6 | Copy as-is |
-| 3a | `compaction.ts` | 20 | 20 | Copy as-is |
-| 3b | `compaction/auto-compaction.ts` | 14 | 14 | Copy as-is |
-| 3c | `compaction/branch-summarization.ts` | 0 (indirect) | 0 | Copy as-is |
-| 4a | `loop/agent-loop.ts` | 27 | 27 | Copy as-is |
-| 4b | `retry-loop.ts` | 24 | 24 | Copy as-is |
-| 4c | `agent.ts` | 18 | 18 | Copy as-is |
-| 4d | `harness/agent-harness.ts` | 24 (4 test files) | 24 | Copy as-is |
-| **Total** | | **157** | **157** | |
+| #         | Module                               |  Original tests   | Ported tests | Strategy   |
+| --------- | ------------------------------------ | :---------------: | :----------: | ---------- |
+| 0a        | `types.ts`                           |      barrel       |    barrel    | Copy as-is |
+| 0b        | `harness/types.ts`                   |     type-only     |  type-only   | Copy as-is |
+| 1a        | `harness/loader-shared.ts`           |   0 (indirect)    |      0       | Copy as-is |
+| 1b        | `harness/commands.ts`                |         3         |      3       | Copy as-is |
+| 1c        | `harness/agents.ts`                  |         3         |      3       | Copy as-is |
+| 1d        | `harness/prompt-templates.ts`        |         5         |      5       | Copy as-is |
+| 1e        | `harness/skills.ts`                  |         6         |      6       | Copy as-is |
+| 2a        | `harness/session.ts`                 |        10         |      10      | Copy as-is |
+| 2b        | `harness/builtin-agents.ts`          |         6         |      6       | Copy as-is |
+| 3a        | `compaction.ts`                      |        20         |      20      | Copy as-is |
+| 3b        | `compaction/auto-compaction.ts`      |        14         |      14      | Copy as-is |
+| 3c        | `compaction/branch-summarization.ts` |   0 (indirect)    |      0       | Copy as-is |
+| 4a        | `loop/agent-loop.ts`                 |        27         |      27      | Copy as-is |
+| 4b        | `retry-loop.ts`                      |        24         |      24      | Copy as-is |
+| 4c        | `agent.ts`                           |        18         |      18      | Copy as-is |
+| 4d        | `harness/agent-harness.ts`           | 24 (4 test files) |      24      | Copy as-is |
+| **Total** |                                      |      **157**      |   **157**    |            |
 
 ## Key Risks & Mitigations
 
@@ -606,23 +659,27 @@ The `isRetryableAssistantError` check maps directly to `while`. The `auto_retry_
 After all 157 tests pass, the following refactoring phases are possible:
 
 ### Phase A: Error Types → Data.TaggedError
+
 - **Files:** `harness/types.ts`, `types.ts`
 - Replace: `class SessionError extends Error { code }` → `class SessionError extends Data.TaggedError("SessionError")<{ code, message, cause? }>`
 - Same for: `CompactionError`, `BranchSummaryError`, `FileError`, `ExecutionError`, `AgentHarnessError`
 - Impact: Enables `Effect.catchTag("SessionError", ...)` at every call site.
 
 ### Phase B: Result<Either> Adoption
+
 - **Files:** `harness/types.ts`, `harness/loader-shared.ts`, `compaction.ts`, `compaction/branch-summarization.ts`
 - Replace: `Result<T, E>` pattern → `Either<E, T>` from `effect/Either`
 - Replace: `ok(v)` → `Either.right(v)`, `err(e)` → `Either.left(e)`
 - Impact: Enables `Effect.fromEither` at adapter boundaries, `Effect.either` for effect composition.
 
 ### Phase C: FileSystem → @effect/platform
+
 - **Files:** `harness/types.ts` (swap interface), `harness/agent-harness.ts` (use), all test files
 - Replace: Custom `FileSystem`, `Shell`, `ExecutionEnv` → `@effect/platform` `FileSystem`, `Command`, `CommandExecutor`
 - Impact: Filesystem operations become `Effect<A, PlatformError>` — composable with retry, timeout, scoped resources.
 
 ### Phase D: Agent Loop → Effect-native
+
 - **Files:** `loop/agent-loop.ts`, `agent.ts`, `harness/agent-harness.ts`
 - Replace: `EventStream` class → `Queue<AgentEvent>` + `Stream` for typed event emission
 - Replace: async `AgentLoopConfig` callbacks → Effect services via `Layer`
@@ -630,11 +687,13 @@ After all 157 tests pass, the following refactoring phases are possible:
 - Impact: Full composability with Effect concurrency, interruption, and scoping.
 
 ### Phase E: Session → Effect Service
+
 - **Files:** `harness/session.ts`
 - Convert `Session` class → `Effect.Service<Session>()("Session", { effect: ... })`
 - Impact: Every module that uses `Session` declares it as an Effect requirement instead of receiving a constructed instance.
 
 ### Phase F: Tests → @effect/vitest
+
 - **Files:** Add `@effect/vitest` as devDependency
 - Migrate tests from `it("...", async () => { ... })` to `it.effect("...", () => Effect.gen(function* () { ... }))`
 - Impact: Tests gain access to `TestClock`, `TestServices`, fiber supervision, and built-in `Layer` composition.

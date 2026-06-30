@@ -25,6 +25,7 @@
 ### Task 1: DB schema — add `profile_id` to sessions, drop `profile_id` from projects
 
 **Files:**
+
 - Modify: `packages/db/src/schema.ts`
 - Modify: `packages/db/src/__tests__/init.test.ts`
 - Create: migration via `drizzle-kit generate`
@@ -34,6 +35,7 @@
 In `packages/db/src/schema.ts`:
 
 1. Remove `profileId` from the `projects` table (line 12):
+
 ```ts
 export const projects = sqliteTable("projects", {
   id: text("id").primaryKey(),
@@ -46,6 +48,7 @@ export const projects = sqliteTable("projects", {
 ```
 
 2. Make `modelId` nullable and add `profileId` to the `sessions` table (around line 25):
+
 ```ts
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),
@@ -55,8 +58,8 @@ export const sessions = sqliteTable("sessions", {
   // biome-ignore lint/suspicious/noExplicitAny: Drizzle self-referencing FK needs any return type
   parentSessionId: text("parent_session_id").references((): any => sessions.id),
   title: text("title"),
-  modelId: text("model_id"),  // nullable now — display cache, not source of truth
-  profileId: text("profile_id"),  // NEW — references profiles.json key
+  modelId: text("model_id"), // nullable now — display cache, not source of truth
+  profileId: text("profile_id"), // NEW — references profiles.json key
   kind: text("kind").notNull().default("task"),
   thinkingLevel: text("thinking_level").notNull().default("off"),
   leafId: text("leaf_id"),
@@ -80,27 +83,29 @@ If drizzle-kit generates a SQLite table recreation (because SQLite can't ALTER C
 In `packages/db/src/__tests__/init.test.ts`, update the raw INSERT statements (lines 53-58) to match the new schema:
 
 ```ts
-    // profile_id removed from projects
-    db.prepare(
-      "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
-    ).run("p1", "Test", "/tmp/test", 1, 1);
-    db.prepare(
-      "INSERT INTO sessions (id, project_id, model_id, profile_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run("s1", "p1", "claude-sonnet", null, 1, 1);
+// profile_id removed from projects
+db.prepare(
+  "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+).run("p1", "Test", "/tmp/test", 1, 1);
+db.prepare(
+  "INSERT INTO sessions (id, project_id, model_id, profile_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+).run("s1", "p1", "claude-sonnet", null, 1, 1);
 ```
 
 Remove the `profile_id` assertion block (lines 63-67) that checked `projects.profile_id`:
+
 ```ts
-    // REMOVED: profile_id column exists and is nullable block for projects
+// REMOVED: profile_id column exists and is nullable block for projects
 ```
 
 Add a check that `sessions.profile_id` exists and is nullable:
+
 ```ts
-    // profile_id column on sessions exists and is nullable
-    const session = db
-      .prepare("SELECT profile_id FROM sessions WHERE id = ?")
-      .get("s1") as { profile_id: string | null };
-    expect(session.profile_id).toBeNull();
+// profile_id column on sessions exists and is nullable
+const session = db.prepare("SELECT profile_id FROM sessions WHERE id = ?").get("s1") as {
+  profile_id: string | null;
+};
+expect(session.profile_id).toBeNull();
 ```
 
 **Step 4: Run tests to verify**
@@ -108,6 +113,7 @@ Add a check that `sessions.profile_id` exists and is nullable:
 ```bash
 cd packages/db && nub run test -- init
 ```
+
 Expected: PASS
 
 **Step 5: Commit**
@@ -122,6 +128,7 @@ git commit -m "feat(db): add profile_id to sessions, drop profile_id from projec
 ### Task 2: Update SessionRepo and ProjectRepo
 
 **Files:**
+
 - Modify: `packages/db/src/repos/index.ts`
 - Modify: `packages/db/src/repos/__tests__/repos.test.ts`
 
@@ -130,61 +137,64 @@ git commit -m "feat(db): add profile_id to sessions, drop profile_id from projec
 Update `packages/db/src/repos/__tests__/repos.test.ts`:
 
 1. In the `ProjectRepo` describe block, remove the `profileId` tests (lines 44-53):
+
 ```ts
-  // REMOVED:
-  // test("created project has null profileId", ...)
-  // test("update can set profileId", ...)
+// REMOVED:
+// test("created project has null profileId", ...)
+// test("update can set profileId", ...)
 ```
 
 2. Remove `profileId` from the `ProjectRepo.update` Pick assertion. The update test doesn't need profileId anymore.
 
 3. In the `SessionRepo` describe block, add tests for the new `profileId` field:
+
 ```ts
-  test("create with profileId", async () => {
-    const proj = await projectRepo.create("p-prof", "/tmp/p-prof");
-    const s = await repo.create(proj.id, {
-      profileId: "fast",
-    });
-    expect(s.profileId).toBe("fast");
-    expect(s.modelId).toBeNull();
+test("create with profileId", async () => {
+  const proj = await projectRepo.create("p-prof", "/tmp/p-prof");
+  const s = await repo.create(proj.id, {
+    profileId: "fast",
   });
+  expect(s.profileId).toBe("fast");
+  expect(s.modelId).toBeNull();
+});
 
-  test("create without profileId defaults to null", async () => {
-    const proj = await projectRepo.create("p-noprof", "/tmp/p-noprof");
-    const s = await repo.create(proj.id);
-    expect(s.profileId).toBeNull();
-  });
+test("create without profileId defaults to null", async () => {
+  const proj = await projectRepo.create("p-noprof", "/tmp/p-noprof");
+  const s = await repo.create(proj.id);
+  expect(s.profileId).toBeNull();
+});
 
-  test("update can set profileId", async () => {
-    const proj = await projectRepo.create("p-upd", "/tmp/p-upd");
-    const s = await repo.create(proj.id);
-    const updated = await repo.update(s.id, { profileId: "balanced" });
-    expect(updated.profileId).toBe("balanced");
-  });
+test("update can set profileId", async () => {
+  const proj = await projectRepo.create("p-upd", "/tmp/p-upd");
+  const s = await repo.create(proj.id);
+  const updated = await repo.update(s.id, { profileId: "balanced" });
+  expect(updated.profileId).toBe("balanced");
+});
 
-  test("update can clear profileId", async () => {
-    const proj = await projectRepo.create("p-clear", "/tmp/p-clear");
-    const s = await repo.create(proj.id, { profileId: "fast" });
-    const updated = await repo.update(s.id, { profileId: null });
-    expect(updated.profileId).toBeNull();
-  });
+test("update can clear profileId", async () => {
+  const proj = await projectRepo.create("p-clear", "/tmp/p-clear");
+  const s = await repo.create(proj.id, { profileId: "fast" });
+  const updated = await repo.update(s.id, { profileId: null });
+  expect(updated.profileId).toBeNull();
+});
 ```
 
 4. Update the existing create test (lines 75-89) to use the new signature:
+
 ```ts
-  test("create + findById + listByProject", async () => {
-    const proj = await projectRepo.create("p", "/tmp/p");
-    const s = await repo.create(proj.id, { title: "First session" });
-    expect(s.id).toBeDefined();
-    expect(s.modelId).toBeNull();
-    expect(s.title).toBe("First session");
+test("create + findById + listByProject", async () => {
+  const proj = await projectRepo.create("p", "/tmp/p");
+  const s = await repo.create(proj.id, { title: "First session" });
+  expect(s.id).toBeDefined();
+  expect(s.modelId).toBeNull();
+  expect(s.title).toBe("First session");
 
-    const found = repo.findById(s.id);
-    expect(found?.id).toBe(s.id);
+  const found = repo.findById(s.id);
+  expect(found?.id).toBe(s.id);
 
-    const list = repo.listByProject(proj.id);
-    expect(list.length).toBe(1);
-  });
+  const list = repo.listByProject(proj.id);
+  expect(list.length).toBe(1);
+});
 ```
 
 **Step 2: Run tests to verify they fail**
@@ -192,6 +202,7 @@ Update `packages/db/src/repos/__tests__/repos.test.ts`:
 ```bash
 cd packages/db && nub run test -- repos.test
 ```
+
 Expected: FAIL — `SessionRepo.create` signature doesn't match, `profileId` not in update Pick.
 
 **Step 3: Update ProjectRepo**
@@ -266,6 +277,7 @@ Update `SessionRepo.update` (lines 123-141) — replace `modelId`/`thinkingLevel
 ```bash
 cd packages/db && nub run test
 ```
+
 Expected: ALL PASS
 
 **Step 6: Commit**
@@ -280,6 +292,7 @@ git commit -m "feat(db): update SessionRepo for per-session profileId"
 ### Task 3: Update profile-resolver — accept session-level profileId
 
 **Files:**
+
 - Modify: `apps/server/src/lib/profile-resolver.ts` (no change needed — already accepts `profileId: string | null`)
 - Modify: `apps/server/src/lib/__tests__/profile-resolver.test.ts` (no change needed — already tests this)
 
@@ -290,6 +303,7 @@ The `resolveModelRef` function already accepts `profileId: string | null` and fa
 ```bash
 cd apps/server && nub run test -- profile-resolver
 ```
+
 Expected: PASS (no changes needed)
 
 ---
@@ -297,6 +311,7 @@ Expected: PASS (no changes needed)
 ### Task 4: Update resolveModel — use session.profileId, drop project lookup
 
 **Files:**
+
 - Modify: `apps/server/src/agent/model-resolver.ts`
 - Modify: `apps/server/src/agent/__tests__/model-resolver.test.ts`
 - Modify: `apps/server/src/agent/__tests__/helpers.ts`
@@ -311,7 +326,7 @@ Update `apps/server/src/agent/__tests__/model-resolver.test.ts`:
 function makeCtx(
   profilesMock: ReturnType<typeof makeProfilesMock>,
   session: { projectId: string; profileId: string | null } | null,
-  auth?: { getApiKey: (provider: string) => string | undefined }
+  auth?: { getApiKey: (provider: string) => string | undefined },
 ) {
   return {
     auth: auth ?? { getApiKey: () => undefined },
@@ -321,7 +336,7 @@ function makeCtx(
         findById: vi.fn((id: string) =>
           session && session.projectId === id
             ? { id, name: "test", cwd: "/tmp", createdAt: 0, updatedAt: 0 }
-            : null
+            : null,
         ),
       },
       sessions: {
@@ -338,7 +353,7 @@ function makeCtx(
                 createdAt: 0,
                 updatedAt: 0,
               }
-            : null
+            : null,
         ),
       },
     },
@@ -349,19 +364,20 @@ function makeCtx(
 2. Change all `resolveModel(ctx, { projectId: "proj-1" })` calls to `resolveModel(ctx, { id: "sess-1", projectId: "proj-1" })`. The function now needs the session's `profileId`, so it takes a session-like object.
 
 3. Update the "resolves via project.profileId override" test (line 81) to "resolves via session.profileId override":
+
 ```ts
-    it("resolves via session.profileId override", () => {
-      // ... same profiles setup ...
-      const ctx = makeCtx(profilesMock, {
-        projectId: "proj-1",
-        profileId: "fast",  // session-level override
-      });
+it("resolves via session.profileId override", () => {
+  // ... same profiles setup ...
+  const ctx = makeCtx(profilesMock, {
+    projectId: "proj-1",
+    profileId: "fast", // session-level override
+  });
 
-      const result = resolveModel(ctx, { id: "sess-1", projectId: "proj-1" });
+  const result = resolveModel(ctx, { id: "sess-1", projectId: "proj-1" });
 
-      expect(result.provider).toBe("groq");
-      expect(result.modelId).toBe("llama-3.1-8b-instant");
-    });
+  expect(result.provider).toBe("groq");
+  expect(result.modelId).toBe("llama-3.1-8b-instant");
+});
 ```
 
 4. Update all other tests similarly — `profileId: null` on sessions instead of projects.
@@ -371,6 +387,7 @@ function makeCtx(
 ```bash
 cd apps/server && nub run test -- model-resolver
 ```
+
 Expected: FAIL — `resolveModel` still looks up `project.profileId`.
 
 **Step 3: Update resolveModel**
@@ -380,7 +397,7 @@ In `apps/server/src/agent/model-resolver.ts`, change `resolveModel` (lines 52-69
 ```ts
 export function resolveModel(
   ctx: ServerContext,
-  session: { id: string; projectId: string; profileId: string | null }
+  session: { id: string; projectId: string; profileId: string | null },
 ): ResolvedModel {
   const profiles = getCachedProfiles(ctx);
   const ref = resolveModelRef(profiles, session.profileId, "default");
@@ -394,6 +411,7 @@ export function resolveModel(
 ```
 
 Key changes:
+
 - **Removed** `ctx.repos.projects.findById` lookup — no longer needed
 - **Uses** `session.profileId` directly instead of `project.profileId`
 - **Accepts** the full session object (with `id`, `projectId`, `profileId`)
@@ -403,7 +421,7 @@ Also update `resolveAuth` (lines 71-81) to pass through the same session shape:
 ```ts
 export function resolveAuth(
   ctx: ServerContext,
-  session: { id: string; projectId: string; profileId: string | null }
+  session: { id: string; projectId: string; profileId: string | null },
 ): ResolvedAuth | undefined {
   const resolved = resolveModel(ctx, session);
   const apiKey = ctx.auth.getApiKey(resolved.provider);
@@ -419,6 +437,7 @@ export function resolveAuth(
 In `apps/server/src/agent/__tests__/helpers.ts`:
 
 1. `createMockCtx` — update the mock session (lines 62-73) to include `profileId`:
+
 ```ts
       sessions: {
         findById: vi.fn(async (id: string) =>
@@ -442,6 +461,7 @@ In `apps/server/src/agent/__tests__/helpers.ts`:
 Change the `createMockCtx` overrides type from `profileId?: string | null` (which was for the project) to still work — it now sets the session's `profileId`.
 
 2. Remove `profileId` from the mock project (lines 77-88):
+
 ```ts
       projects: {
         findById: vi.fn(async (id: string) =>
@@ -459,6 +479,7 @@ Change the `createMockCtx` overrides type from `profileId?: string | null` (whic
 ```
 
 3. `createMultiSessionCtx` — update mock sessions (lines 169-180) to include `profileId: null`:
+
 ```ts
         sessions: {
           findById: vi.fn(async (id: string) =>
@@ -486,6 +507,7 @@ Remove `profileId` from mock projects (lines 117-139).
 ```bash
 cd apps/server && nub run test -- model-resolver
 ```
+
 Expected: PASS
 
 **Step 6: Commit**
@@ -500,6 +522,7 @@ git commit -m "feat(server): resolveModel uses session.profileId"
 ### Task 5: Update runner.ts — pass session to resolveModel/resolveAuth
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts`
 
 **Step 1: Update runPrompt**
@@ -513,19 +536,18 @@ const auth = resolveAuth(ctx, session);
 Where `session` is the DB row. Now `resolveAuth` expects `{ id, projectId, profileId }`. The DB session row already has these fields after Task 2. Verify the `findById` return includes `profileId`.
 
 Update line 211:
+
 ```ts
-  const auth = resolveAuth(ctx, session);
+const auth = resolveAuth(ctx, session);
 ```
 
 This should work as-is if `session` has `profileId` from the DB row. But also update the error message line (line 214) which calls `resolveModel`:
 
 ```ts
-  if (!auth) {
-    const resolved = resolveModel(ctx, session);
-    throw new Error(
-      `No API key for ${resolved.provider} in env`
-    );
-  }
+if (!auth) {
+  const resolved = resolveModel(ctx, session);
+  throw new Error(`No API key for ${resolved.provider} in env`);
+}
 ```
 
 No signature change needed — `session` already has `id`, `projectId`, and `profileId` from the DB.
@@ -539,6 +561,7 @@ No signature change needed — `session` already has `id`, `projectId`, and `pro
 ```bash
 cd apps/server && nub run test -- runner
 ```
+
 Expected: PASS
 
 **Step 4: Commit**
@@ -553,6 +576,7 @@ git commit -m "refactor(server): runner passes session to resolveAuth"
 ### Task 6: Update session routes — POST and PATCH
 
 **Files:**
+
 - Modify: `apps/server/src/routes/sessions/sessions.ts`
 - Modify: `apps/server/src/__tests__/sessions.test.ts`
 
@@ -561,62 +585,61 @@ git commit -m "refactor(server): runner passes session to resolveAuth"
 Update `apps/server/src/__tests__/sessions.test.ts`:
 
 1. Change the POST test to not pass `modelId`:
+
 ```ts
-  it("creates a session under a project and lists it", async () => {
-    const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes]);
-    const project = await ctx.repos.projects.create("demo", "/tmp/demo");
+it("creates a session under a project and lists it", async () => {
+  const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes]);
+  const project = await ctx.repos.projects.create("demo", "/tmp/demo");
 
-    const created = await app.request(
-      new Request("http://localhost:3001/api/sessions", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ projectId: project.id }),
-      })
-    );
-    expect(created.status).toBe(200);
-    const session = await created.json();
-    expect(session.projectId).toBe(project.id);
-    expect(session.profileId).toBeNull();
+  const created = await app.request(
+    new Request("http://localhost:3001/api/sessions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ projectId: project.id }),
+    }),
+  );
+  expect(created.status).toBe(200);
+  const session = await created.json();
+  expect(session.projectId).toBe(project.id);
+  expect(session.profileId).toBeNull();
 
-    const list = await (
-      await app.request(
-        new Request(
-          `http://localhost:3001/api/sessions?projectId=${project.id}`
-        )
-      )
-    ).json();
-    expect(list).toHaveLength(1);
-  });
+  const list = await (
+    await app.request(new Request(`http://localhost:3001/api/sessions?projectId=${project.id}`))
+  ).json();
+  expect(list).toHaveLength(1);
+});
 ```
 
 2. Add a test for PATCH with profileId:
-```ts
-  it("PATCH /api/sessions/:id updates profileId", async () => {
-    const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes]);
-    const project = await ctx.repos.projects.create("demo", "/tmp/demo-patch");
-    const session = await ctx.repos.sessions.create(project.id);
 
-    const res = await app.request(
-      new Request(`http://localhost:3001/api/sessions/${session.id}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ profileId: "fast" }),
-      })
-    );
-    expect(res.status).toBe(200);
-    const updated = await res.json();
-    expect(updated.profileId).toBe("fast");
-  });
+```ts
+it("PATCH /api/sessions/:id updates profileId", async () => {
+  const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes]);
+  const project = await ctx.repos.projects.create("demo", "/tmp/demo-patch");
+  const session = await ctx.repos.sessions.create(project.id);
+
+  const res = await app.request(
+    new Request(`http://localhost:3001/api/sessions/${session.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ profileId: "fast" }),
+    }),
+  );
+  expect(res.status).toBe(200);
+  const updated = await res.json();
+  expect(updated.profileId).toBe("fast");
+});
 ```
 
 3. Update the messages test to use the new create signature:
+
 ```ts
-  it("GET /api/sessions/:id/messages returns history (empty initially)", async () => {
-    const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes]);
-    const project = await ctx.repos.projects.create("demo", "/tmp/demo");
-    const session = await ctx.repos.sessions.create(project.id);
-    // ... rest unchanged
-  });
+it("GET /api/sessions/:id/messages returns history (empty initially)", async () => {
+  const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes]);
+  const project = await ctx.repos.projects.create("demo", "/tmp/demo");
+  const session = await ctx.repos.sessions.create(project.id);
+  // ... rest unchanged
+});
 ```
 
 **Step 2: Run tests to verify they fail**
@@ -624,6 +647,7 @@ Update `apps/server/src/__tests__/sessions.test.ts`:
 ```bash
 cd apps/server && nub run test -- sessions.test
 ```
+
 Expected: FAIL — POST route still requires/expects `modelId`, PATCH doesn't accept `profileId`.
 
 **Step 3: Update POST route**
@@ -661,6 +685,7 @@ In `apps/server/src/routes/sessions/sessions.ts`, update the POST handler (lines
 ```
 
 Key changes:
+
 - **Removed** `modelId` from body schema
 - **Removed** the entire profile-resolution-on-create block (lines 40-64) — session starts with `profileId: null`, falls back to `defaultProfile` at runtime
 - **Added** optional `profileId` to body
@@ -693,6 +718,7 @@ In the same file, update the PATCH handler (lines 77-96):
 ```
 
 Key changes:
+
 - **Replaced** `modelId` with `profileId` in the schema
 - `thinkingLevel` stays (used by per-session thinking selector UI)
 
@@ -701,6 +727,7 @@ Key changes:
 ```bash
 cd apps/server && nub run test -- sessions.test
 ```
+
 Expected: PASS
 
 **Step 6: Commit**
@@ -715,6 +742,7 @@ git commit -m "feat(server): session routes accept profileId"
 ### Task 7: Update intake-session route
 
 **Files:**
+
 - Modify: `apps/server/src/routes/projects/intake-session.ts`
 - Modify: `apps/server/src/__tests__/intake-session.test.ts`
 
@@ -723,23 +751,20 @@ git commit -m "feat(server): session routes accept profileId"
 In `apps/server/src/__tests__/intake-session.test.ts`, update the "empty modelId" test (lines 53-69):
 
 ```ts
-  it("creates session with null profileId when no profile is configured", async () => {
-    const { app, ctx } = await makeApp([projectsRoutes, intakeSessionRoutes]);
-    const project = await ctx.repos.projects.create("demo", "/tmp/demo");
+it("creates session with null profileId when no profile is configured", async () => {
+  const { app, ctx } = await makeApp([projectsRoutes, intakeSessionRoutes]);
+  const project = await ctx.repos.projects.create("demo", "/tmp/demo");
 
-    const res = await app.request(
-      new Request(
-        `http://localhost:3001/api/projects/${project.id}/intake-session`,
-        {
-          method: "POST",
-        }
-      )
-    );
-    expect(res.status).toBe(201);
-    const session = await res.json();
-    expect(session.kind).toBe("intake");
-    expect(session.profileId).toBeNull();
-  });
+  const res = await app.request(
+    new Request(`http://localhost:3001/api/projects/${project.id}/intake-session`, {
+      method: "POST",
+    }),
+  );
+  expect(res.status).toBe(201);
+  const session = await res.json();
+  expect(session.kind).toBe("intake");
+  expect(session.profileId).toBeNull();
+});
 ```
 
 The first test (lines 7-37) should keep working — it seeds a profile and creates an intake session. Remove the `modelId`/`thinkingLevel` resolution expectations.
@@ -749,6 +774,7 @@ The first test (lines 7-37) should keep working — it seeds a profile and creat
 ```bash
 cd apps/server && nub run test -- intake-session
 ```
+
 Expected: FAIL — route still resolves modelId from profiles.
 
 **Step 3: Update the route**
@@ -784,6 +810,7 @@ export const intakeSessionRoutes = new Hono()
 ```
 
 Key changes:
+
 - **Removed** `resolveModelRef` import and usage
 - **Removed** `ctx.profiles.read()` call
 - **Removed** `modelId`/`thinkingLevel` resolution — session starts with `profileId: null`
@@ -793,6 +820,7 @@ Key changes:
 ```bash
 cd apps/server && nub run test -- intake-session
 ```
+
 Expected: PASS
 
 **Step 5: Commit**
@@ -807,6 +835,7 @@ git commit -m "refactor(server): intake session no longer resolves model on crea
 ### Task 8: Update fork route
 
 **Files:**
+
 - Modify: `apps/server/src/routes/sessions/forking.ts`
 
 **Step 1: Update the fork handler**
@@ -814,18 +843,15 @@ git commit -m "refactor(server): intake session no longer resolves model on crea
 In `apps/server/src/routes/sessions/forking.ts`, update the fork POST (lines 33-41). The `SessionRepo.create` signature changed — `modelId` is no longer a positional arg:
 
 ```ts
-    const newSession = await ctx.repos.sessions.create(
-      session.projectId,
-      {
-        title: forkedTitle,
-        parentSessionId: id,
-        ...(session.profileId === null ? {} : { profileId: session.profileId }),
-        ...(session.modelId === null || session.modelId === undefined
-          ? {}
-          : { modelId: session.modelId }),
-        thinkingLevel: session.thinkingLevel,
-      }
-    );
+const newSession = await ctx.repos.sessions.create(session.projectId, {
+  title: forkedTitle,
+  parentSessionId: id,
+  ...(session.profileId === null ? {} : { profileId: session.profileId }),
+  ...(session.modelId === null || session.modelId === undefined
+    ? {}
+    : { modelId: session.modelId }),
+  thinkingLevel: session.thinkingLevel,
+});
 ```
 
 **Step 2: Run tests**
@@ -833,6 +859,7 @@ In `apps/server/src/routes/sessions/forking.ts`, update the fork POST (lines 33-
 ```bash
 cd apps/server && nub run test -- fork
 ```
+
 Expected: PASS
 
 **Step 3: Commit**
@@ -847,6 +874,7 @@ git commit -m "refactor(server): fork copies session.profileId"
 ### Task 9: Update compaction route (resolveModel call)
 
 **Files:**
+
 - Modify: `apps/server/src/routes/sessions/compaction.ts`
 
 **Step 1: Check the resolveModel call**
@@ -854,6 +882,7 @@ git commit -m "refactor(server): fork copies session.profileId"
 In `apps/server/src/routes/sessions/compaction.ts`, the `resolveModel(ctx, session)` call (around line 24) now requires the session object to have `profileId`. The `session` from `findById` will have `profileId` from the DB, so this should work as-is.
 
 Verify by running:
+
 ```bash
 cd apps/server && nub run test -- compaction
 ```
@@ -872,6 +901,7 @@ git commit -m "refactor(server): compaction uses session.profileId"
 ### Task 10: Update desktop store types — SessionMeta
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/server/server-store.ts`
 
 **Step 1: Update SessionMeta**
@@ -883,8 +913,8 @@ export interface SessionMeta {
   createdAt: number;
   id: string;
   kind: "intake" | "task";
-  modelId: string | null;  // nullable now — display cache
-  profileId: string | null;  // NEW
+  modelId: string | null; // nullable now — display cache
+  profileId: string | null; // NEW
   projectId: string;
   thinkingLevel: string;
   title: string | null;
@@ -911,6 +941,7 @@ Do NOT commit yet — wait until all type errors are resolved.
 ### Task 11: Update desktop actions — selectModel → selectProfile
 
 **Files:**
+
 - Modify: `apps/desktop/src/stores/server/actions.ts`
 - Modify: `apps/desktop/src/stores/server/__tests__/actions.test.ts`
 
@@ -921,55 +952,62 @@ Update `apps/desktop/src/stores/server/__tests__/actions.test.ts`:
 1. Replace the `selectModel` describe block (lines 195+) with `selectProfile`:
 
 ```ts
-  describe("selectProfile", () => {
-    it("PATCHes session profileId on server", async () => {
-      const { actions, api, deps } = makeActions();
-      vi.mocked(api.api.sessions[":id"].$patch).mockResolvedValue(
-        new Response(JSON.stringify({
+describe("selectProfile", () => {
+  it("PATCHes session profileId on server", async () => {
+    const { actions, api, deps } = makeActions();
+    vi.mocked(api.api.sessions[":id"].$patch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
           ...deps.serverStore.store.sessions.s1!,
           profileId: "fast",
-        }), { status: 200 })
-      );
+        }),
+        { status: 200 },
+      ),
+    );
 
-      await actions.selectProfile("s1", "fast");
+    await actions.selectProfile("s1", "fast");
 
-      expect(api.api.sessions[":id"].$patch).toHaveBeenCalledWith({
-        param: { id: "s1" },
-        json: { profileId: "fast" },
-      });
-      expect(deps.serverStore.store.sessions.s1?.profileId).toBe("fast");
+    expect(api.api.sessions[":id"].$patch).toHaveBeenCalledWith({
+      param: { id: "s1" },
+      json: { profileId: "fast" },
     });
-
-    it("does nothing when sessionId is null", async () => {
-      const { actions, api } = makeActions();
-      await actions.selectProfile(null, "fast");
-      expect(api.api.sessions[":id"].$patch).not.toHaveBeenCalled();
-    });
+    expect(deps.serverStore.store.sessions.s1?.profileId).toBe("fast");
   });
+
+  it("does nothing when sessionId is null", async () => {
+    const { actions, api } = makeActions();
+    await actions.selectProfile(null, "fast");
+    expect(api.api.sessions[":id"].$patch).not.toHaveBeenCalled();
+  });
+});
 ```
 
 2. Remove the old `selectModel` tests entirely.
 
 3. Update `createSession` tests to not pass `modelId`:
-```ts
-    it("creates a session", async () => {
-      const { actions, api, deps } = makeActions();
-      vi.mocked(api.api.sessions.$post).mockResolvedValue(
-        new Response(JSON.stringify({
-          id: "new-session",
-          projectId: "p1",
-          profileId: null,
-          modelId: null,
-          // ... other fields
-        }), { status: 200 })
-      );
 
-      const result = await actions.createSession("p1");
-      expect(result).toBeDefined();
-      expect(api.api.sessions.$post).toHaveBeenCalledWith({
-        json: { projectId: "p1" },
-      });
-    });
+```ts
+it("creates a session", async () => {
+  const { actions, api, deps } = makeActions();
+  vi.mocked(api.api.sessions.$post).mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        id: "new-session",
+        projectId: "p1",
+        profileId: null,
+        modelId: null,
+        // ... other fields
+      }),
+      { status: 200 },
+    ),
+  );
+
+  const result = await actions.createSession("p1");
+  expect(result).toBeDefined();
+  expect(api.api.sessions.$post).toHaveBeenCalledWith({
+    json: { projectId: "p1" },
+  });
+});
 ```
 
 **Step 2: Run tests to verify they fail**
@@ -977,6 +1015,7 @@ Update `apps/desktop/src/stores/server/__tests__/actions.test.ts`:
 ```bash
 cd apps/desktop && nub run test -- actions.test
 ```
+
 Expected: FAIL — `selectProfile` doesn't exist.
 
 **Step 3: Update the Actions interface**
@@ -984,28 +1023,21 @@ Expected: FAIL — `selectProfile` doesn't exist.
 In `apps/desktop/src/stores/server/actions.ts`, update the `Actions` interface (lines 22-46):
 
 Replace:
+
 ```ts
-  selectModel: (
-    sessionId: string | null,
-    provider: string,
-    model: string
-  ) => Promise<void>;
+selectModel: (sessionId: string | null, provider: string, model: string) => Promise<void>;
 ```
 
 With:
+
 ```ts
-  selectProfile: (
-    sessionId: string | null,
-    profileId: string
-  ) => Promise<void>;
+selectProfile: (sessionId: string | null, profileId: string) => Promise<void>;
 ```
 
 Update `createSession` signature:
+
 ```ts
-  createSession: (
-    projectId: string,
-    title?: string
-  ) => Promise<SessionMeta | undefined>;
+createSession: (projectId: string, title?: string) => Promise<SessionMeta | undefined>;
 ```
 
 **Step 4: Update createSession implementation**
@@ -1067,6 +1099,7 @@ In the same file, replace the entire `selectModel` implementation (lines 203-253
 **Step 6: Update test fixtures**
 
 Update all `SessionMeta` fixtures in test files to include `profileId: null` and make `modelId` nullable. Files to update:
+
 - `apps/desktop/src/stores/server/__tests__/server-store.test.ts`
 - `apps/desktop/src/stores/server/__tests__/actions.test.ts`
 - `apps/desktop/src/components/__tests__/project-group.test.tsx`
@@ -1080,6 +1113,7 @@ Add `profileId: null` to every `SessionMeta` literal. Change `modelId: "gpt-4"` 
 ```bash
 cd apps/desktop && nub run test -- actions.test
 ```
+
 Expected: PASS
 
 **Step 8: Commit**
@@ -1094,6 +1128,7 @@ git commit -m "feat(desktop): replace selectModel with selectProfile"
 ### Task 12: Update remaining desktop callers
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/chat-input/model-selector-button.tsx`
 - Modify: `apps/desktop/src/components/layout/toolbar/model-selector.tsx`
 - Modify: `apps/desktop/src/components/onboarding/onboarding-panel.tsx`
@@ -1106,24 +1141,24 @@ These files read `session.modelId` for display. Since `modelId` is now `string |
 In `apps/desktop/src/components/chat-input/model-selector-button.tsx`, update `modelLabel()` (lines 128-140):
 
 ```ts
-  const modelLabel = () => {
-    const s = session();
-    if (!s?.modelId) {
-      return "Select profile";
-    }
-    const found = modelOptions().find((m) => m.id === s.modelId);
-    return found ? (found.name ?? found.id) : s.modelId;
-  };
+const modelLabel = () => {
+  const s = session();
+  if (!s?.modelId) {
+    return "Select profile";
+  }
+  const found = modelOptions().find((m) => m.id === s.modelId);
+  return found ? (found.name ?? found.id) : s.modelId;
+};
 ```
 
 Change `handleSelect` (lines 142-149) to call `selectProfile` instead of `selectModel`. For now, it still picks a model — but in the follow-up UI plan this becomes a profile picker. Keep it working:
 
 ```ts
-  const handleSelect = async (modelId: string, providerId: string) => {
-    // TODO: replace with profile selector in follow-up plan
-    // For now this is a no-op — selectModel is removed
-    log.debug("handleSelect", { modelId, providerId, sessionId: props.sessionId });
-  };
+const handleSelect = async (modelId: string, providerId: string) => {
+  // TODO: replace with profile selector in follow-up plan
+  // For now this is a no-op — selectModel is removed
+  log.debug("handleSelect", { modelId, providerId, sessionId: props.sessionId });
+};
 ```
 
 Remove the `actions.selectModel` import — it no longer exists.
@@ -1133,10 +1168,10 @@ Remove the `actions.selectModel` import — it no longer exists.
 In `apps/desktop/src/components/layout/toolbar/model-selector.tsx`, update `session.modelId` reads to handle null:
 
 ```ts
-    const modelId = activeSession()?.modelId;
-    if (!modelId) {
-      return "Select profile";
-    }
+const modelId = activeSession()?.modelId;
+if (!modelId) {
+  return "Select profile";
+}
 ```
 
 **Step 3: onboarding-panel.tsx**
@@ -1144,7 +1179,7 @@ In `apps/desktop/src/components/layout/toolbar/model-selector.tsx`, update `sess
 In `apps/desktop/src/components/onboarding/onboarding-panel.tsx` (line 50), handle null:
 
 ```ts
-    const modelId = server.store.sessions[props.intakeSessionId]?.modelId ?? null;
+const modelId = server.store.sessions[props.intakeSessionId]?.modelId ?? null;
 ```
 
 **Step 4: project-group.tsx**
@@ -1152,8 +1187,8 @@ In `apps/desktop/src/components/onboarding/onboarding-panel.tsx` (line 50), hand
 In `apps/desktop/src/components/layout/sidebar/project-group.tsx`, update the local type (lines 8-10):
 
 ```ts
-  modelId: string | null;
-  profileId: string | null;
+modelId: string | null;
+profileId: string | null;
 ```
 
 **Step 5: Run typecheck + tests**
@@ -1161,6 +1196,7 @@ In `apps/desktop/src/components/layout/sidebar/project-group.tsx`, update the lo
 ```bash
 cd apps/desktop && nub run typecheck && nub run test
 ```
+
 Expected: ALL PASS
 
 **Step 6: Commit**
@@ -1179,6 +1215,7 @@ git commit -m "fix(desktop): handle nullable modelId, wire selectProfile"
 ```bash
 nub run typecheck
 ```
+
 Expected: PASS (all packages)
 
 **Step 2: Run all tests**
@@ -1190,6 +1227,7 @@ cd packages/tools && nub run test
 cd apps/server && nub run test
 cd apps/desktop && nub run test
 ```
+
 Expected: ALL PASS
 
 **Step 3: Format + lint**
@@ -1209,21 +1247,21 @@ git commit -m "chore: format and lint"
 
 ## Summary
 
-| Task | Package | What |
-|------|---------|------|
-| 1 | db | Add `profile_id` to sessions, drop from projects, generate migration |
-| 2 | db | Update SessionRepo/ProjectRepo signatures |
-| 3 | server | Verify profile-resolver unchanged (already works) |
-| 4 | server | resolveModel uses `session.profileId` instead of `project.profileId` |
-| 5 | server | Runner passes session to resolveAuth |
-| 6 | server | Session POST/PATCH routes accept profileId |
-| 7 | server | Intake session no longer resolves model on create |
-| 8 | server | Fork copies session.profileId |
-| 9 | server | Compaction route verification |
-| 10 | desktop | SessionMeta type: add profileId, modelId nullable |
-| 11 | desktop | Replace selectModel → selectProfile action |
-| 12 | desktop | Handle nullable modelId in UI components |
-| 13 | all | Final verification |
+| Task | Package | What                                                                 |
+| ---- | ------- | -------------------------------------------------------------------- |
+| 1    | db      | Add `profile_id` to sessions, drop from projects, generate migration |
+| 2    | db      | Update SessionRepo/ProjectRepo signatures                            |
+| 3    | server  | Verify profile-resolver unchanged (already works)                    |
+| 4    | server  | resolveModel uses `session.profileId` instead of `project.profileId` |
+| 5    | server  | Runner passes session to resolveAuth                                 |
+| 6    | server  | Session POST/PATCH routes accept profileId                           |
+| 7    | server  | Intake session no longer resolves model on create                    |
+| 8    | server  | Fork copies session.profileId                                        |
+| 9    | server  | Compaction route verification                                        |
+| 10   | desktop | SessionMeta type: add profileId, modelId nullable                    |
+| 11   | desktop | Replace selectModel → selectProfile action                           |
+| 12   | desktop | Handle nullable modelId in UI components                             |
+| 13   | all     | Final verification                                                   |
 
 ## What's NOT in this plan (follow-up)
 

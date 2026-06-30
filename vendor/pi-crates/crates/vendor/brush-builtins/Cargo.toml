@@ -22,17 +22,8 @@ autotests = false
 autobenches = false
 description = "Builtins for a POSIX/bash shell (used by brush-shell)"
 readme = "README.md"
-keywords = [
-    "cli",
-    "shell",
-    "sh",
-    "bash",
-    "script",
-]
-categories = [
-    "command-line-utilities",
-    "development-tools",
-]
+keywords = ["cli", "shell", "sh", "bash", "script"]
+categories = ["command-line-utilities", "development-tools"]
 license = "MIT"
 repository = "https://github.com/reubeno/brush"
 
@@ -91,59 +82,59 @@ repository = "https://github.com/reubeno/brush"
 "builtin.unset" = []
 "builtin.wait" = []
 default = [
-    "builtin.alias",
-    "builtin.bg",
-    "builtin.bind",
-    "builtin.break",
-    "builtin.builtin",
-    "builtin.caller",
-    "builtin.cd",
-    "builtin.colon",
-    "builtin.command",
-    "builtin.compgen",
-    "builtin.compopt",
-    "builtin.complete",
-    "builtin.continue",
-    "builtin.declare",
-    "builtin.dirs",
-    "builtin.dot",
-    "builtin.echo",
-    "builtin.enable",
-    "builtin.eval",
-    "builtin.exec",
-    "builtin.exit",
-    "builtin.export",
-    "builtin.false",
-    "builtin.fc",
-    "builtin.fg",
-    "builtin.getopts",
-    "builtin.hash",
-    "builtin.help",
-    "builtin.history",
-    "builtin.jobs",
-    "builtin.kill",
-    "builtin.let",
-    "builtin.mapfile",
-    "builtin.popd",
-    "builtin.printf",
-    "builtin.pushd",
-    "builtin.pwd",
-    "builtin.read",
-    "builtin.return",
-    "builtin.set",
-    "builtin.shift",
-    "builtin.shopt",
-    "builtin.suspend",
-    "builtin.test",
-    "builtin.times",
-    "builtin.trap",
-    "builtin.true",
-    "builtin.type",
-    "builtin.ulimit",
-    "builtin.umask",
-    "builtin.unalias",
-    "builtin.unset",
-    "builtin.wait",
+  "builtin.alias",
+  "builtin.bg",
+  "builtin.bind",
+  "builtin.break",
+  "builtin.builtin",
+  "builtin.caller",
+  "builtin.cd",
+  "builtin.colon",
+  "builtin.command",
+  "builtin.compgen",
+  "builtin.compopt",
+  "builtin.complete",
+  "builtin.continue",
+  "builtin.declare",
+  "builtin.dirs",
+  "builtin.dot",
+  "builtin.echo",
+  "builtin.enable",
+  "builtin.eval",
+  "builtin.exec",
+  "builtin.exit",
+  "builtin.export",
+  "builtin.false",
+  "builtin.fc",
+  "builtin.fg",
+  "builtin.getopts",
+  "builtin.hash",
+  "builtin.help",
+  "builtin.history",
+  "builtin.jobs",
+  "builtin.kill",
+  "builtin.let",
+  "builtin.mapfile",
+  "builtin.popd",
+  "builtin.printf",
+  "builtin.pushd",
+  "builtin.pwd",
+  "builtin.read",
+  "builtin.return",
+  "builtin.set",
+  "builtin.shift",
+  "builtin.shopt",
+  "builtin.suspend",
+  "builtin.test",
+  "builtin.times",
+  "builtin.trap",
+  "builtin.true",
+  "builtin.type",
+  "builtin.ulimit",
+  "builtin.umask",
+  "builtin.unalias",
+  "builtin.unset",
+  "builtin.wait",
 ]
 
 [lib]
@@ -165,10 +156,7 @@ version = "0.4.44"
 
 [dependencies.clap]
 version = "4.6.0"
-features = [
-    "derive",
-    "wrap_help",
-]
+features = ["derive", "wrap_help"]
 
 [dependencies.fancy-regex]
 version = "0.17.0"
@@ -203,15 +191,7 @@ version = "0.18.0"
 
 [target."cfg(any(unix, windows))".dependencies.tokio]
 version = "1.50.0"
-features = [
-    "io-util",
-    "macros",
-    "process",
-    "rt",
-    "rt-multi-thread",
-    "signal",
-    "sync",
-]
+features = ["io-util", "macros", "process", "rt", "rt-multi-thread", "signal", "sync"]
 
 [target."cfg(any(unix, windows))".dependencies.uucore]
 version = "0.8.0"
@@ -220,23 +200,11 @@ default-features = false
 
 [target.'cfg(target_family = "wasm")'.dependencies.tokio]
 version = "1.52.1"
-features = [
-    "io-util",
-    "macros",
-    "rt",
-]
+features = ["io-util", "macros", "rt"]
 
 [target."cfg(unix)".dependencies.nix]
 version = "0.31.2"
-features = [
-    "fs",
-    "process",
-    "resource",
-    "poll",
-    "signal",
-    "term",
-    "user",
-]
+features = ["fs", "process", "resource", "poll", "signal", "term", "user"]
 
 [target."cfg(unix)".dependencies.rlimit]
 version = "0.11.0"

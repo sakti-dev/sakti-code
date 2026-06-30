@@ -6,14 +6,14 @@
 
 **Architecture:** Two layers, kept separate:
 
-- **Layer 1 (persistent state — Task 1)**: *which skills are disabled for this session*. Lives in the existing `settings` table under the keyed prefix `session:<id>:disabled_skill:<name>`. On restart, `loadAgentContext` rescans disk and the runner filters out disabled names before `appendSkillsBlock` recomposes the prompt — so the harness is built in the correct state with no in-memory pending swap needed.
+- **Layer 1 (persistent state — Task 1)**: _which skills are disabled for this session_. Lives in the existing `settings` table under the keyed prefix `session:<id>:disabled_skill:<name>`. On restart, `loadAgentContext` rescans disk and the runner filters out disabled names before `appendSkillsBlock` recomposes the prompt — so the harness is built in the correct state with no in-memory pending swap needed.
 - **Layer 2 (in-session cache optimization — Tasks 2-7)**: primitives on `AgentHarness` itself. These have the lifespan of "until the next compaction OR restart, whichever comes first". If restart comes first, they're correctly a no-op because Layer 1 has already produced the right prompt.
 
 The harness already stores `systemPrompt` as a frozen string per session (Reasonix §1 — satisfied). The new Layer-2 mechanisms are:
 
 1. **Pending system-prompt refresh** — schedule a prompt swap; drained automatically when compaction runs (compaction busts cache anyway). For "disable skill" / "change agent policy" / "change locale" — anything that mutates the system-prompt bytes.
-2. **`<skills-added>` turn-tail notice** — push a steering message advertising newly-installed skills. Cache stays warm because skill *bodies* aren't in the prompt (only the advertisement is, and the model can read the body on-demand via `read`).
-3. **Soft-disable tool gate** — keep the tool's schema in `activeToolNames` (cache stays warm) but block execution via the existing `beforeToolCall` hook. For MCP / side-effecting tools the user wants gone *now*.
+2. **`<skills-added>` turn-tail notice** — push a steering message advertising newly-installed skills. Cache stays warm because skill _bodies_ aren't in the prompt (only the advertisement is, and the model can read the body on-demand via `read`).
+3. **Soft-disable tool gate** — keep the tool's schema in `activeToolNames` (cache stays warm) but block execution via the existing `beforeToolCall` hook. For MCP / side-effecting tools the user wants gone _now_.
 4. **`cache_bust_pending` event** — emitted whenever a change would bust the cache, so the UI can show "compact recommended" alerts.
 
 The "apply now (cache bust)" path needs no new code — it's just `switchAgent`/`setResources` as today.
@@ -21,6 +21,7 @@ The "apply now (cache bust)" path needs no new code — it's just `switchAgent`/
 **Tech Stack:** TypeScript (ESM), `effect`, `vitest`, existing `AgentHarness`. No new dependencies.
 
 **Design references (read before starting):**
+
 - `openspec/references/reasonix-cache-design.md` — the §1-§13 conceptual map. This plan implements a subset: §1 (verified), §2 (turn-tail notice), §4 (drain on compaction), §9 (execute-time gate).
 - `packages/agent/src/agent/agent-harness.ts` — the harness. Key spots:
   - `createTurnStateEffect` (line 445-488) — reads `this.systemPrompt` verbatim every turn (string is frozen ✓).
@@ -33,6 +34,7 @@ The "apply now (cache bust)" path needs no new code — it's just `switchAgent`/
 - `packages/agent/src/resources/system-prompt.ts` — `appendSkillsBlock` composes skills advertisement into the prompt.
 
 **Conventions (from repo `AGENTS.md`):**
+
 - TDD: failing test → implement → pass → commit.
 - Tests colocated in `__tests__/`. `vitest`. No `.only`/`.skip`.
 - `exactOptionalPropertyTypes: true` → use conditional spread `...(x !== undefined ? { x } : {})`, never pass `undefined`.
@@ -40,6 +42,7 @@ The "apply now (cache bust)" path needs no new code — it's just `switchAgent`/
 - Verify each task: `cd packages/agent && pnpm run typecheck && pnpm run test`.
 
 **Scope (v1 — DO implement):**
+
 - **Persistent `disabled_skills` per session** (Layer 1) — keyed-prefix DB entries + filter in `loadAgentContext`/`runPrompt`.
 - Pending refresh + drain on compact
 - `<skills-added>` steering notice
@@ -50,6 +53,7 @@ The "apply now (cache bust)" path needs no new code — it's just `switchAgent`/
 - Server routes that write to DB AND call the harness methods
 
 **Scope (v1 — do NOT implement):**
+
 - UI alert rendering (separate desktop task — user explicitly deferred).
 - MCP server integration (no MCP exists yet; when added, use these primitives).
 - Cache-shape diagnostics / PrefixShape hashing (separate future plan, see reasonix doc §10).
@@ -63,6 +67,7 @@ The "apply now (cache bust)" path needs no new code — it's just `switchAgent`/
 The foundation. Without this, every "disable skill" action is forgotten on restart. The mechanism is deliberately simple: keyed-prefix entries in the existing `settings` table + a filter in `runPrompt`. All other tasks build on top.
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts` — add `loadDisabledSkills` helper, add filter between `loadAgentContext` and `appendSkillsBlock`
 - Test: `apps/server/src/agent/__tests__/runner.test.ts` — add unit test for the helper
 
@@ -79,19 +84,10 @@ describe("loadDisabledSkills", () => {
   it("returns the set of disabled skill names for a session", async () => {
     const { ctx, cleanup } = await makeTestContext();
     try {
-      await ctx.repos.settings.set(
-        "session:sess-1:disabled_skill:graphify",
-        "1"
-      );
-      await ctx.repos.settings.set(
-        "session:sess-1:disabled_skill:old-thing",
-        "1"
-      );
+      await ctx.repos.settings.set("session:sess-1:disabled_skill:graphify", "1");
+      await ctx.repos.settings.set("session:sess-1:disabled_skill:old-thing", "1");
       // Unrelated session — must not leak
-      await ctx.repos.settings.set(
-        "session:sess-2:disabled_skill:graphify",
-        "1"
-      );
+      await ctx.repos.settings.set("session:sess-2:disabled_skill:graphify", "1");
 
       const result = loadDisabledSkills(ctx, "sess-1");
       expect(result).toEqual(new Set(["graphify", "old-thing"]));
@@ -142,10 +138,7 @@ In `apps/server/src/agent/runner.ts`, near `loadSessionSettings` (line 199-211):
  * Keyed-prefix (not JSON array) so each enable/disable is a single key
  * write/delete — atomic, no read-modify-write cycle.
  */
-export function loadDisabledSkills(
-  ctx: ServerContext,
-  sessionId: string
-): Set<string> {
+export function loadDisabledSkills(ctx: ServerContext, sessionId: string): Set<string> {
   const prefix = `session:${sessionId}:disabled_skill:`;
   const rows = ctx.repos.settings.getByPrefix(prefix);
   const names = new Set<string>();
@@ -163,23 +156,18 @@ export function loadDisabledSkills(
 export async function persistSkillDisabled(
   ctx: ServerContext,
   sessionId: string,
-  skillName: string
+  skillName: string,
 ): Promise<void> {
-  await ctx.repos.settings.set(
-    `session:${sessionId}:disabled_skill:${skillName}`,
-    "1"
-  );
+  await ctx.repos.settings.set(`session:${sessionId}:disabled_skill:${skillName}`, "1");
 }
 
 /** Remove a skill-disable for this session (idempotent). */
 export async function persistSkillEnabled(
   ctx: ServerContext,
   sessionId: string,
-  skillName: string
+  skillName: string,
 ): Promise<void> {
-  await ctx.repos.settings.delete(
-    `session:${sessionId}:disabled_skill:${skillName}`
-  );
+  await ctx.repos.settings.delete(`session:${sessionId}:disabled_skill:${skillName}`);
 }
 ```
 
@@ -200,13 +188,11 @@ In `apps/server/src/agent/runner.ts`, locate the prompt-composition block (`runn
 ```ts
 const loadedContext = await loadAgentContext(project.cwd);
 // ...
-const hasRead =
-  agent.activeToolNames === undefined ||
-  agent.activeToolNames.includes("read");
+const hasRead = agent.activeToolNames === undefined || agent.activeToolNames.includes("read");
 const composedSystemPrompt = appendSkillsBlock(
   agent.systemPrompt,
-  loadedContext.skills,   // ← currently passes ALL loaded skills
-  hasRead
+  loadedContext.skills, // ← currently passes ALL loaded skills
+  hasRead,
 );
 ```
 
@@ -217,17 +203,13 @@ const loadedContext = await loadAgentContext(project.cwd);
 // Layer 1: filter out skills disabled for this session (persistent state).
 // Layer 2 (harness.scheduleSystemPromptRefresh) handles in-session disables.
 const disabledSkills = loadDisabledSkills(ctx, sessionId);
-const activeSkills = loadedContext.skills.filter(
-  (s) => !disabledSkills.has(s.name)
-);
+const activeSkills = loadedContext.skills.filter((s) => !disabledSkills.has(s.name));
 // ...
-const hasRead =
-  agent.activeToolNames === undefined ||
-  agent.activeToolNames.includes("read");
+const hasRead = agent.activeToolNames === undefined || agent.activeToolNames.includes("read");
 const composedSystemPrompt = appendSkillsBlock(
   agent.systemPrompt,
-  activeSkills,   // ← filtered
-  hasRead
+  activeSkills, // ← filtered
+  hasRead,
 );
 ```
 
@@ -237,7 +219,7 @@ Also pass `activeSkills` (not `loadedContext.skills`) into the `harness` constru
 const harness = new HarnessClass({
   // ...
   resources: {
-    skills: activeSkills,           // ← was loadedContext.skills
+    skills: activeSkills, // ← was loadedContext.skills
     promptTemplates: loadedContext.commands,
   },
 });
@@ -270,6 +252,7 @@ git commit -m "feat(server): persist disabled_skills per session + filter at loa
 This is the defer-mechanism (Layer 2). It just stores a pending string; nothing drains it yet (that's Task 3).
 
 **Files:**
+
 - Modify: `packages/agent/src/agent/agent-harness.ts` — add field, method, and clearing on `switchAgent`/`setResources`-induced prompt changes
 - Test: `packages/agent/src/agent/__tests__/agent-harness.test.ts`
 
@@ -416,6 +399,7 @@ git commit -m "feat(agent): scheduleSystemPromptRefresh defers prompt swap"
 Wire the drain into `compact()` so the next turn after compaction picks up the new prompt automatically.
 
 **Files:**
+
 - Modify: `packages/agent/src/agent/agent-harness.ts` — drain in the `compact()` method
 - Test: `packages/agent/src/agent/__tests__/agent-harness.test.ts`
 
@@ -471,25 +455,26 @@ Expected: FAIL — `harness.state.systemPrompt` is still "original".
 In `packages/agent/src/agent/agent-harness.ts`, locate the `compact()` method (around line 1140). Find the spot just before `return result;` (around line 1225) and add the drain:
 
 ```ts
-          const entry = yield* self.session.getEntry(entryId);
-          if (entry?.type === "compaction") {
-            yield* Effect.promise(() =>
-              self.emitOwn({
-                type: "session_compact",
-                compactionEntry: entry,
-                fromHook: provided !== undefined,
-              })
-            );
-          }
+const entry = yield * self.session.getEntry(entryId);
+if (entry?.type === "compaction") {
+  yield *
+    Effect.promise(() =>
+      self.emitOwn({
+        type: "session_compact",
+        compactionEntry: entry,
+        fromHook: provided !== undefined,
+      }),
+    );
+}
 
-          // Drain pending system-prompt refresh: compaction busts the cache
-          // anyway, so this is the free moment to swap the prefix bytes.
-          if (self.pendingSystemPromptRefresh !== undefined) {
-            self.systemPrompt = self.pendingSystemPromptRefresh;
-            self.clearPendingSystemPromptRefresh();
-          }
+// Drain pending system-prompt refresh: compaction busts the cache
+// anyway, so this is the free moment to swap the prefix bytes.
+if (self.pendingSystemPromptRefresh !== undefined) {
+  self.systemPrompt = self.pendingSystemPromptRefresh;
+  self.clearPendingSystemPromptRefresh();
+}
 
-          return result;
+return result;
 ```
 
 Also add a public getter on `state.systemPrompt` if not already present (check the `get state()` accessor — it should already expose `systemPrompt` from `_state`; for `AgentHarness` the field is read directly as `this.systemPrompt`, so the test should adjust to read `harness.systemPrompt` if `state.systemPrompt` is not exposed). Verify by checking existing tests — if `state.systemPrompt` doesn't work, change the assertion to:
@@ -520,6 +505,7 @@ git commit -m "feat(agent): drain pending prompt refresh on compaction"
 This is what the UI will subscribe to in order to show "compact recommended" alerts.
 
 **Files:**
+
 - Modify: `packages/agent/src/harness-types.ts` — add event type + result
 - Modify: `packages/agent/src/agent/agent-harness.ts` — emit event in `scheduleSystemPromptRefresh`
 - Test: `packages/agent/src/agent/__tests__/agent-harness.test.ts`
@@ -572,10 +558,7 @@ Expected: FAIL — TS error: `cache_bust_pending` not assignable to `AgentHarnes
 ```ts
 export interface CacheBustPendingEvent {
   /** What kind of change is pending. */
-  reason:
-    | "system_prompt_refresh"
-    | "tools_refresh"
-    | "skills_refresh";
+  reason: "system_prompt_refresh" | "tools_refresh" | "skills_refresh";
   /** Human-readable detail for UI alerts. */
   message: string;
   type: "cache_bust_pending";
@@ -606,7 +589,7 @@ export type AgentHarnessOwnEvent<
   | ThinkingLevelUpdateEvent
   | ResourcesUpdateEvent<TSkill, TPromptTemplate>
   | ToolsUpdateEvent
-  | CacheBustPendingEvent;  // ← new
+  | CacheBustPendingEvent; // ← new
 ```
 
 3c. Add to `AgentHarnessEventResultMap` (around line 518):
@@ -614,7 +597,7 @@ export type AgentHarnessOwnEvent<
 ```ts
 export type AgentHarnessEventResultMap = {
   // ... existing entries ...
-  cache_bust_pending: undefined;  // ← new (no handler result)
+  cache_bust_pending: undefined; // ← new (no handler result)
   // ...
 };
 ```
@@ -663,6 +646,7 @@ git commit -m "feat(agent): cache_bust_pending event on scheduled refresh"
 For newly-installed skills. The skill body is loaded on-demand via `read`, so we only need to advertise `{name, description, location}` in a transient user message. No prompt mutation, no cache cost.
 
 **Files:**
+
 - Modify: `packages/agent/src/agent/agent-harness.ts` — add `announceSkillAdded` method
 - Test: `packages/agent/src/agent/__tests__/agent-harness.test.ts`
 
@@ -684,11 +668,9 @@ describe("announceSkillAdded", () => {
           .flatMap((m) =>
             Array.isArray(m.content)
               ? m.content
-                  .filter((c): c is { type: "text"; text: string } =>
-                    c.type === "text"
-                  )
+                  .filter((c): c is { type: "text"; text: string } => c.type === "text")
                   .map((c) => c.text)
-              : []
+              : [],
           )
           .join("\n");
         captured.push(userText);
@@ -755,9 +737,7 @@ export function formatSkillsAddedNotice(skills: readonly Skill[]): string {
   for (const skill of skills) {
     lines.push("  <skill>");
     lines.push(`    <name>${escapeXml(skill.name)}</name>`);
-    lines.push(
-      `    <description>${escapeXml(skill.description)}</description>`
-    );
+    lines.push(`    <description>${escapeXml(skill.description)}</description>`);
     lines.push(`    <location>${escapeXml(skill.filePath)}</location>`);
     lines.push("  </skill>");
   }
@@ -845,9 +825,10 @@ git commit -m "feat(agent): announceSkillAdded pushes transient skills-added not
 
 ### Task 6: Soft-disable tool gate (`softDisableTool`)
 
-For tools/MCP the user wants gone *now* but whose schema must stay in the request to keep the cache warm. Uses the existing `beforeToolCall` hook chain.
+For tools/MCP the user wants gone _now_ but whose schema must stay in the request to keep the cache warm. Uses the existing `beforeToolCall` hook chain.
 
 **Files:**
+
 - Modify: `packages/agent/src/agent/agent-harness.ts` — add field, method, gate middleware
 - Test: `packages/agent/src/agent/__tests__/agent-harness.test.ts`
 
@@ -880,7 +861,7 @@ describe("softDisableTool", () => {
         capturedRequests.push(req);
         return fauxAssistantMessageWithContent(
           [fauxToolCall("calculate", { expression: "1+1" }, { id: "c1" })],
-          "toolUse"
+          "toolUse",
         );
       },
       () => fauxAssistantMessage("done"),
@@ -898,9 +879,7 @@ describe("softDisableTool", () => {
     harness.subscribe((event) => {
       if (event.type === "tool_result" && event.isError) {
         // ToolResultEvent content is an array; extract text for the assertion.
-        const text = event.content
-          .map((c) => (c.type === "text" ? c.text : ""))
-          .join("");
+        const text = event.content.map((c) => (c.type === "text" ? c.text : "")).join("");
         blockedResults.push(text);
       }
     });
@@ -910,9 +889,7 @@ describe("softDisableTool", () => {
     await harness.prompt("compute 1+1");
 
     // Schema is still in the request (cache stays warm)
-    expect(
-      capturedRequests[0]?.tools && "calculate" in capturedRequests[0]!.tools!
-    ).toBe(true);
+    expect(capturedRequests[0]?.tools && "calculate" in capturedRequests[0]!.tools!).toBe(true);
 
     // Execution was blocked with a clear reason
     expect(blockedResults.length).toBeGreaterThanOrEqual(1);
@@ -1017,6 +994,7 @@ git commit -m "feat(agent): softDisableTool gates execution without busting cach
 Compose the primitives from Tasks 1-5 into the user-facing API. `addSkill` updates resources + pushes a `<skills-added>` notice; `removeSkill` updates resources + schedules prompt refresh + soft-disables `read` on the skill path.
 
 **Files:**
+
 - Modify: `packages/agent/src/agent/agent-harness.ts` — add `addSkill`, `removeSkill`, `removeSkills` methods
 - Modify: `packages/agent/src/agent/agent-harness.ts` — extend `beforeToolCall` gate to honor skill-path soft-disable on the `read` tool
 - Test: `packages/agent/src/agent/__tests__/agent-harness.test.ts`
@@ -1039,14 +1017,11 @@ describe("addSkill / removeSkill", () => {
             .flatMap((m) =>
               Array.isArray(m.content)
                 ? m.content
-                    .filter(
-                      (c): c is { type: "text"; text: string } =>
-                        c.type === "text"
-                    )
+                    .filter((c): c is { type: "text"; text: string } => c.type === "text")
                     .map((c) => c.text)
-                : []
+                : [],
             )
-            .join("\n")
+            .join("\n"),
         );
         return fauxAssistantMessage("ok");
       },
@@ -1068,9 +1043,7 @@ describe("addSkill / removeSkill", () => {
       filePath: "/skills/new/SKILL.md",
     });
 
-    expect(harness.getResources().skills?.map((s) => s.name)).toEqual([
-      "new-skill",
-    ]);
+    expect(harness.getResources().skills?.map((s) => s.name)).toEqual(["new-skill"]);
 
     await harness.prompt("hello");
 
@@ -1119,9 +1092,7 @@ describe("addSkill / removeSkill", () => {
 
     // read on the skill's path is gated (the model shouldn't reload a
     // disabled skill's body)
-    expect(
-      harness.isToolPathSoftDisabled("/skills/old/SKILL.md")
-    ).toBe(true);
+    expect(harness.isToolPathSoftDisabled("/skills/old/SKILL.md")).toBe(true);
   });
 });
 ```
@@ -1222,8 +1193,7 @@ Check if a base prompt is stored separately. If not, add a field `private baseSy
 In the constructor (line 270-304), after `this.systemPrompt = options.systemPrompt`:
 
 ```ts
-    this.baseSystemPrompt =
-      typeof options.systemPrompt === "string" ? options.systemPrompt : "";
+this.baseSystemPrompt = typeof options.systemPrompt === "string" ? options.systemPrompt : "";
 ```
 
 In `switchAgent` (line 1665-1674):
@@ -1308,15 +1278,16 @@ The desktop UI hits these routes to toggle skills. Each route coordinates the tw
 
 **Three endpoints** (REST verbs chosen so the UI can curl them naturally):
 
-| Method + path | Effect |
-|---|---|
-| `POST /api/sessions/:id/skills` | Announce a brand-new skill mid-session (file just dropped on disk). Calls `harness.addSkill` only — disk is source of truth, no DB write. |
-| `POST /api/sessions/:id/skills/:name/disable` | Persist `disabled_skill:<name>` (Task 1) + call `harness.removeSkill(name)` (Task 7). Idempotent. |
-| `DELETE /api/sessions/:id/skills/:name/disable` | Remove `disabled_skill:<name>` + call `harness.addSkill(skillData)` re-using the on-disk skill data from `loadAgentContext`. Idempotent. |
+| Method + path                                   | Effect                                                                                                                                    |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/sessions/:id/skills`                 | Announce a brand-new skill mid-session (file just dropped on disk). Calls `harness.addSkill` only — disk is source of truth, no DB write. |
+| `POST /api/sessions/:id/skills/:name/disable`   | Persist `disabled_skill:<name>` (Task 1) + call `harness.removeSkill(name)` (Task 7). Idempotent.                                         |
+| `DELETE /api/sessions/:id/skills/:name/disable` | Remove `disabled_skill:<name>` + call `harness.addSkill(skillData)` re-using the on-disk skill data from `loadAgentContext`. Idempotent.  |
 
 The disable/enable pair uses a sub-resource (`/disable`) so a future `DELETE /skills/:name` could mean "fully uninstall" (delete the file) without collision.
 
 **Files:**
+
 - Create: `apps/server/src/routes/sessions/skills.ts` — new route module
 - Modify: `apps/server/src/app.ts` — register the new route
 - Test: `apps/server/src/__tests__/skills-route.test.ts`
@@ -1342,10 +1313,9 @@ describe("skills routes", () => {
     });
 
     const res = await app.request(
-      new Request(
-        `http://localhost/api/sessions/${session.id}/skills/graphify/disable`,
-        { method: "POST" }
-      )
+      new Request(`http://localhost/api/sessions/${session.id}/skills/graphify/disable`, {
+        method: "POST",
+      }),
     );
 
     expect(res.status).toBe(204);
@@ -1361,16 +1331,12 @@ describe("skills routes", () => {
       projectId: "proj-1",
       kind: "standard",
     });
-    await ctx.repos.settings.set(
-      `session:${session.id}:disabled_skill:graphify`,
-      "1"
-    );
+    await ctx.repos.settings.set(`session:${session.id}:disabled_skill:graphify`, "1");
 
     const res = await app.request(
-      new Request(
-        `http://localhost/api/sessions/${session.id}/skills/graphify/disable`,
-        { method: "DELETE" }
-      )
+      new Request(`http://localhost/api/sessions/${session.id}/skills/graphify/disable`, {
+        method: "DELETE",
+      }),
     );
 
     expect(res.status).toBe(204);
@@ -1394,7 +1360,7 @@ describe("skills routes", () => {
           filePath: "/skills/brand-new/SKILL.md",
         }),
         headers: { "content-type": "application/json" },
-      })
+      }),
     );
 
     expect(res.status).toBe(204);
@@ -1434,11 +1400,7 @@ Expected: FAIL — module not found.
 ```ts
 import { Hono } from "hono";
 import { loadAgentContext } from "../../agent/loader.ts"; // adjust path
-import {
-  getActiveHarness,
-  persistSkillDisabled,
-  persistSkillEnabled,
-} from "../../agent/runner.ts";
+import { getActiveHarness, persistSkillDisabled, persistSkillEnabled } from "../../agent/runner.ts";
 import { getCtx } from "../../context.ts";
 
 interface SkillAnnouncePayload {
@@ -1556,6 +1518,7 @@ git commit -m "feat(server): skill toggle routes coordinate DB persistence + har
 Document what got built and what remains.
 
 **Files:**
+
 - Modify: `openspec/references/reasonix-cache-design.md` — add a "Status" subsection to each implemented point
 
 **Step 1: Edit the doc**
@@ -1565,19 +1528,20 @@ At the top of the file, after the existing intro, add:
 ```markdown
 ## Implementation status (sakti-code)
 
-| § | Behavior | Status | Where |
-|---|---|---|---|
-| 1 | Frozen system prompt | ✅ Already (string, not function) | `agent-harness.ts:460-461` |
-| 2 | `Compose(text)` turn-tail wrapper | ✅ Partial — `<skills-added>` notices via `announceSkillAdded` | `agent-harness.ts` `announceSkillAdded` |
-| 4 | Three-tier compaction + stuck guard | ⚠ Single threshold today | `compaction/auto-compaction.ts` — future work |
-| 5 | Compaction invariants (user turns, digests, boundary) | ⚠ Audit needed | future work |
-| 6 | Drop `reasoning_content` round-trip | ⚠ Open — profile on Z.ai | future work |
-| 7 | Tool schemas sorted before hashing | ❌ Not implemented | future work |
-| 9 | Plan mode as runtime gate (not prompt change) | ✅ Soft-disable gate via `beforeToolCall` | `agent-harness.ts` `softDisableTool` |
-| 10 | Cache-shape diagnostics | ❌ Not implemented | future work |
-| 11 | Byte-stability regression tests | ❌ Not implemented | future work |
+| §   | Behavior                                              | Status                                                         | Where                                         |
+| --- | ----------------------------------------------------- | -------------------------------------------------------------- | --------------------------------------------- |
+| 1   | Frozen system prompt                                  | ✅ Already (string, not function)                              | `agent-harness.ts:460-461`                    |
+| 2   | `Compose(text)` turn-tail wrapper                     | ✅ Partial — `<skills-added>` notices via `announceSkillAdded` | `agent-harness.ts` `announceSkillAdded`       |
+| 4   | Three-tier compaction + stuck guard                   | ⚠ Single threshold today                                       | `compaction/auto-compaction.ts` — future work |
+| 5   | Compaction invariants (user turns, digests, boundary) | ⚠ Audit needed                                                 | future work                                   |
+| 6   | Drop `reasoning_content` round-trip                   | ⚠ Open — profile on Z.ai                                       | future work                                   |
+| 7   | Tool schemas sorted before hashing                    | ❌ Not implemented                                             | future work                                   |
+| 9   | Plan mode as runtime gate (not prompt change)         | ✅ Soft-disable gate via `beforeToolCall`                      | `agent-harness.ts` `softDisableTool`          |
+| 10  | Cache-shape diagnostics                               | ❌ Not implemented                                             | future work                                   |
+| 11  | Byte-stability regression tests                       | ❌ Not implemented                                             | future work                                   |
 
 **Cache-stable mid-session changes (new — not in Reasonix doc):**
+
 - `loadDisabledSkills` + filter at `runPrompt` (Layer 1, persistent).
 - `persistSkillDisabled` / `persistSkillEnabled` (Layer 1, keyed-prefix DB).
 - `scheduleSystemPromptRefresh(prompt)` — defer prompt swap to compaction (Layer 2, in-memory).

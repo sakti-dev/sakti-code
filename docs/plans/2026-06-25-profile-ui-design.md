@@ -13,15 +13,16 @@
 ## Context
 
 ### Profiles data shape (`GET /api/profiles`)
+
 ```typescript
 interface Profiles {
-  defaultProfile: string;                     // key into profiles map
+  defaultProfile: string; // key into profiles map
   profiles: Record<string, Profile>;
 }
 interface Profile {
   name: string;
   models: {
-    default: ModelRef;                        // required
+    default: ModelRef; // required
     intake?: ModelRef;
     plan?: ModelRef;
     build?: ModelRef;
@@ -29,25 +30,29 @@ interface Profile {
   hybrid?: { enabled: boolean; vision?: { provider: string; model: string } };
 }
 interface ModelRef {
-  provider: string;                           // e.g. "anthropic"
-  model: string;                              // e.g. "claude-sonnet-4-20250514"
-  thinkingLevel?: string;                     // "off" | "low" | "medium" | "high"
+  provider: string; // e.g. "anthropic"
+  model: string; // e.g. "claude-sonnet-4-20250514"
+  thinkingLevel?: string; // "off" | "low" | "medium" | "high"
 }
 ```
 
 ### Available models catalog
+
 - `GET /api/models/available` → `string[]` (provider names)
 - `GET /api/models/available/:provider` → `Model[]` (`{ id, name, provider, contextWindow, reasoning, input }`)
 - `GET /api/auth` → `ApiKeyInfo[]` (`{ hasKey, maskedKey, provider }`) to determine connected providers
 
 ### Store actions
+
 - `selectProfile(sessionId, profileId)` — PATCHes `/api/sessions/:id` with `{ profileId }`, updates local store
 - `updateSession(sessionId, patch)` — merges partial `SessionMeta` updates locally
 
 ### `SessionMeta.profileId`
+
 - `string | null` — when null, server falls back to `profiles.defaultProfile`
 
 ### Existing UI components to reuse
+
 - `Select`, `SelectTrigger`, `SelectContent`, `SelectItem`, `SelectLabel`, `SelectValue` from `~/components/ui/select`
 - `Card` from `~/components/ui/card`
 - `Button` from `~/components/ui/button`
@@ -57,15 +62,19 @@ interface ModelRef {
 ### Task 1: Hide the toolbar
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/layout/workspace-layout.tsx:88`
 
 **Step 1: Wrap `<Toolbar />` in a `Show when={false}`**
 
 In `workspace-layout.tsx` line 88, change:
+
 ```tsx
 <Toolbar />
 ```
+
 to:
+
 ```tsx
 <Show when={false}>
   <Toolbar />
@@ -89,6 +98,7 @@ git commit -m "chore(desktop): hide top toolbar (planned for removal)"
 ### Task 2: Create `ProfileSelect` component
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat-input/profile-select.tsx`
 - Test: `apps/desktop/src/components/chat-input/__tests__/profile-select.test.tsx`
 
@@ -318,11 +328,13 @@ git commit -m "feat(desktop): add ProfileSelect dropdown component"
 ### Task 3: Wire `ProfileSelect` into chat input
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/chat-input/chat-input.tsx:5,99`
 
 **Step 1: Replace `ModelSelectorButton` import and usage**
 
 In `chat-input.tsx`:
+
 - Change line 5 from `import { ModelSelectorButton } from "./model-selector-button"` to `import { ProfileSelect } from "./profile-select"`
 - Change line 99 from `<ModelSelectorButton sessionId={props.sessionId} />` to `<ProfileSelect sessionId={props.sessionId} />`
 
@@ -343,10 +355,12 @@ git commit -m "feat(desktop): replace ModelSelectorButton with ProfileSelect in 
 ### Task 4: Create `ProfileEditor` component for settings
 
 **Files:**
+
 - Create: `apps/desktop/src/components/settings/tabs/profile-editor.tsx`
 - Create: `apps/desktop/src/components/settings/tabs/__tests__/profile-editor.test.tsx`
 
 A form component that displays a list of profile cards. Each card has:
+
 - Editable name input
 - "Default" badge for the default profile
 - 4 mode rows: mode label + model `<Select>` + thinking level `<Select>`
@@ -488,6 +502,7 @@ Expected: FAIL — module not found
 **Step 3: Implement `ProfileEditor`**
 
 This is the largest component. Key implementation notes:
+
 - Fetches profiles, available models, and auth states on mount via `createResource`
 - Stores a local reactive copy of the `Profiles` object; mutations edit in-memory, then debounced save via `PUT /api/profiles`
 - Model selects use a flat list of `{ modelId, modelName, providerId }` for all connected providers, grouped by `<SelectLabel>` per provider
@@ -527,7 +542,9 @@ interface ModelInfo {
 
 export function ProfileEditor() {
   const { api } = useStore();
-  const [localProfiles, setLocalProfiles] = createSignal<Awaited<ReturnType<typeof fetchProfiles>> | null>(null);
+  const [localProfiles, setLocalProfiles] = createSignal<Awaited<
+    ReturnType<typeof fetchProfiles>
+  > | null>(null);
 
   const [profilesResource] = createResource(fetchProfiles);
   const [availableModels] = createResource(fetchAvailableModels);
@@ -569,9 +586,7 @@ export function ProfileEditor() {
     return map;
   });
 
-  const sortedProviders = createMemo(() =>
-    Array.from(modelsByProvider().keys()).sort()
-  );
+  const sortedProviders = createMemo(() => Array.from(modelsByProvider().keys()).sort());
 
   // Sync resource → local signal
   createEffect(() => {
@@ -670,9 +685,10 @@ export function ProfileEditor() {
     setLocalProfiles((prev) => {
       if (!prev) return prev;
       const { [profileId]: _, ...rest } = prev.profiles;
-      const newDefault = prev.defaultProfile === profileId
-        ? Object.keys(rest)[0] ?? "default"
-        : prev.defaultProfile;
+      const newDefault =
+        prev.defaultProfile === profileId
+          ? (Object.keys(rest)[0] ?? "default")
+          : prev.defaultProfile;
       return { defaultProfile: newDefault, profiles: rest };
     });
     scheduleSave();
@@ -725,9 +741,7 @@ export function ProfileEditor() {
                   <div class="flex items-center gap-2 min-w-0 flex-1">
                     <input
                       class="w-full min-w-0 rounded-md border border-border/70 bg-background px-2 py-1 text-sm font-medium outline-none focus:border-primary/45"
-                      onInput={(e) =>
-                        updateProfile(profileId, { name: e.currentTarget.value })
-                      }
+                      onInput={(e) => updateProfile(profileId, { name: e.currentTarget.value })}
                       type="text"
                       value={profile.name}
                     />
@@ -772,9 +786,7 @@ export function ProfileEditor() {
                             {MODE_LABELS[mode]}
                           </span>
                           <Select
-                            onChange={(value: string) =>
-                              updateModeModel(profileId, mode, value)
-                            }
+                            onChange={(value: string) => updateModeModel(profileId, mode, value)}
                             options={modelList().map((m) => m.id)}
                             value={modelId()}
                           >
@@ -790,9 +802,7 @@ export function ProfileEditor() {
                                     </SelectLabel>
                                     <For each={modelsByProvider().get(provider) ?? []}>
                                       {(model) => (
-                                        <SelectItem value={model.id}>
-                                          {model.name}
-                                        </SelectItem>
+                                        <SelectItem value={model.id}>{model.name}</SelectItem>
                                       )}
                                     </For>
                                   </>
@@ -801,9 +811,7 @@ export function ProfileEditor() {
                             </SelectContent>
                           </Select>
                           <Select
-                            onChange={(value: string) =>
-                              updateModeThinking(profileId, mode, value)
-                            }
+                            onChange={(value: string) => updateModeThinking(profileId, mode, value)}
                             options={[...THINKING_LEVELS]}
                             value={thinkingLevel()}
                           >
@@ -840,7 +848,7 @@ type ProfileEntry = {
 };
 
 async function fetchProfiles() {
-  const res = await api.api.profiles.$get();  // this won't work — need to pass client
+  const res = await api.api.profiles.$get(); // this won't work — need to pass client
   if (!res.ok) return null;
   return (await res.json()) as {
     defaultProfile: string;
@@ -856,7 +864,11 @@ async function fetchAvailableModels(client: Client) {
   for (const provider of providers) {
     const res = await client.api.models.available[":provider"].$get({ param: { provider } });
     if (res.ok) {
-      result[provider] = (await res.json()) as Array<{ id: string; name: string; provider: string }>;
+      result[provider] = (await res.json()) as Array<{
+        id: string;
+        name: string;
+        provider: string;
+      }>;
     }
   }
   return result;
@@ -882,11 +894,13 @@ git commit -m "feat(desktop): add ProfileEditor card-based form for settings"
 ### Task 5: Wire `ProfileEditor` into `ModelsSettings`
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/settings/tabs/models-settings.tsx`
 
 **Step 1: Add import and render `ProfileEditor`**
 
 In `models-settings.tsx`:
+
 - Add import: `import { ProfileEditor } from "./profile-editor";`
 - Insert `<ProfileEditor />` between the closing `</Card>` of the Providers section (line 548) and the Hybrid Vision `<Card>` (line 550):
 
@@ -916,17 +930,22 @@ vi.mock("~/stores/store-context", () => ({
         profiles: {
           $get: vi.fn().mockResolvedValue({
             ok: true,
-            json: () => Promise.resolve({
-              defaultProfile: "default",
-              profiles: { default: { name: "Default", models: { default: { provider: "", model: "" } } } },
-            }),
+            json: () =>
+              Promise.resolve({
+                defaultProfile: "default",
+                profiles: {
+                  default: { name: "Default", models: { default: { provider: "", model: "" } } },
+                },
+              }),
           }),
           $put: vi.fn().mockResolvedValue({ ok: true }),
         },
         models: {
           available: {
             $get: vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) }),
-            ":provider": { $get: vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) }) },
+            ":provider": {
+              $get: vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) }),
+            },
           },
         },
       },
@@ -980,12 +999,12 @@ No additional code changes — just verify everything is green.
 
 ## Summary
 
-| Task | What | Files |
-|------|------|-------|
-| 1 | Hide toolbar | `workspace-layout.tsx` |
-| 2 | Create `ProfileSelect` component + tests | `chat-input/profile-select.tsx`, test |
-| 3 | Wire `ProfileSelect` into chat input | `chat-input.tsx` |
-| 4 | Create `ProfileEditor` component + tests | `settings/tabs/profile-editor.tsx`, test |
-| 5 | Wire `ProfileEditor` into ModelsSettings | `settings/tabs/models-settings.tsx`, test |
-| 6 | Typecheck + all tests + format | All |
-| 7 | Final verification checkpoint | — |
+| Task | What                                     | Files                                     |
+| ---- | ---------------------------------------- | ----------------------------------------- |
+| 1    | Hide toolbar                             | `workspace-layout.tsx`                    |
+| 2    | Create `ProfileSelect` component + tests | `chat-input/profile-select.tsx`, test     |
+| 3    | Wire `ProfileSelect` into chat input     | `chat-input.tsx`                          |
+| 4    | Create `ProfileEditor` component + tests | `settings/tabs/profile-editor.tsx`, test  |
+| 5    | Wire `ProfileEditor` into ModelsSettings | `settings/tabs/models-settings.tsx`, test |
+| 6    | Typecheck + all tests + format           | All                                       |
+| 7    | Final verification checkpoint            | —                                         |

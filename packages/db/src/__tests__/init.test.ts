@@ -63,7 +63,9 @@ describe("initDatabase", () => {
     // profile_id column on sessions exists and is nullable
     const session = db
       .prepare("SELECT profile_id FROM sessions WHERE id = ?")
-      .get("s1") as { profile_id: string | null };
+      .get("s1") as {
+      profile_id: string | null;
+    };
     expect(session.profile_id).toBeNull();
 
     expect(drizzleDb).toBeDefined();

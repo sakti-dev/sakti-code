@@ -15,8 +15,8 @@ Next, build the `head` binary under the release profile:
 cargo build --release -p uu_head
 ```
 
-Now, get a text file to test `head` on. I used the *Complete Works of
-William Shakespeare*, which is in the public domain in the United States
+Now, get a text file to test `head` on. I used the _Complete Works of
+William Shakespeare_, which is in the public domain in the United States
 and most other parts of the world.
 
 ```shell

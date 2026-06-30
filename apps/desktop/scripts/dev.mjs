@@ -17,8 +17,7 @@ function resolveLogDir() {
   if (process.env.SAKTI_LOG_DIR) {
     return process.env.SAKTI_LOG_DIR;
   }
-  const agentDir =
-    process.env.SAKTI_AGENT_DIR ?? join(homedir(), ".sakti", "agent");
+  const agentDir = process.env.SAKTI_AGENT_DIR ?? join(homedir(), ".sakti", "agent");
   return join(dirname(agentDir), "logs");
 }
 

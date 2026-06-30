@@ -5,14 +5,14 @@ description = "Compact Elixir mix output"
 match_command = "^mix$"
 strip_ansi = true
 strip_lines_matching = [
-	"^\\s*$",
-	"^Compiling \\d+ files? \\(\\.ex\\)",
-	"^Compiling \\d+ files? \\(\\.erl\\)",
-	"^Generated \\S+ app$",
-	"^==> \\S+$",
-	"^Resolving Hex dependencies",
-	"^Dependency resolution completed",
-	"^  \\S+ \\d+\\.\\d+",
+  "^\\s*$",
+  "^Compiling \\d+ files? \\(\\.ex\\)",
+  "^Compiling \\d+ files? \\(\\.erl\\)",
+  "^Generated \\S+ app$",
+  "^==> \\S+$",
+  "^Resolving Hex dependencies",
+  "^Dependency resolution completed",
+  "^  \\S+ \\d+\\.\\d+",
 ]
 truncate_lines_at = 300
 max_lines = 80

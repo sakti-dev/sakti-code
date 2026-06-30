@@ -1,6 +1,6 @@
 import type { SessionStorageShape } from "@sakti-code/agent";
 import { Effect } from "effect";
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 
 /** Real model id that exists in pi-ai's registry so `getModel("openai", id)` resolves. */
 const TEST_MODEL_ID = "gpt-4";

@@ -40,7 +40,7 @@ export function createZai(options: ZaiProviderSettings): ProviderSDK {
       {
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
-        ...(options.headers ?? {}),
+        ...options.headers,
       },
       `ai-sdk/zai-anthropic/${VERSION}`
     );

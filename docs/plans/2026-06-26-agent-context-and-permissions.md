@@ -24,6 +24,7 @@ This plan ports heavily from the opencode reference at `openspec/references/open
 **Verification gate per task:** before writing implementation, open the cited opencode source and confirm the logic matches what the test asserts. If the opencode source differs from the plan's description, **the opencode source wins** — update the task note, do not hand-wave.
 
 **Anti-hallulination checklist (per `[PORT]` task):**
+
 1. Read the cited opencode file fully.
 2. Write the sakti test asserting the ported behavior.
 3. Watch it fail.
@@ -92,6 +93,7 @@ Derives a config entry name (slash trigger / agent name) from a file path by str
 **PORT source:** `openspec/references/opencode/packages/opencode/src/config/entry-name.ts:1-19` (plain TS, 19 lines).
 
 **Files:**
+
 - Create: `packages/agent/src/harness/config-entry-name.ts`
 - Test: `packages/agent/src/harness/__tests__/config-entry-name.test.ts`
 
@@ -107,7 +109,9 @@ describe("configEntryNameFromPath", () => {
     expect(configEntryNameFromPath("command/commit.md", ["command/", "commands/"])).toBe("commit");
   });
   it("strips plural commands/ prefix", () => {
-    expect(configEntryNameFromPath("commands/foo/bar.md", ["command/", "commands/"])).toBe("foo/bar");
+    expect(configEntryNameFromPath("commands/foo/bar.md", ["command/", "commands/"])).toBe(
+      "foo/bar",
+    );
   });
   it("falls back to basename when no prefix matches", () => {
     expect(configEntryNameFromPath("agents/triage.md", ["command/", "commands/"])).toBe("triage");
@@ -142,6 +146,7 @@ Loads `{command,commands}/**/*.md` → `PromptTemplate[]` (the `PromptTemplate` 
 **Cross-compare decision `[NEW]`-ish adaptation:** opencode uses `Glob.scan` + `ConfigMarkdown.parse` (gray-matter). sakti has no glob util in the agent package and must stay FS-abstract. **Decision:** take an `ExecutionEnv` + a list of already-resolved directory paths (the server enumerates dirs — see Task 1.5), walk each dir via `env.listDir` for `.md` files under `command/`|`commands/`, parse with the **existing `parseFrontmatter`** from `skills.ts:411` (not gray-matter). This keeps the agent package Effect-free and consistent with `loadSkills`.
 
 **Files:**
+
 - Create: `packages/agent/src/harness/commands.ts`
 - Test: `packages/agent/src/harness/__tests__/commands.test.ts`
 
@@ -151,7 +156,11 @@ Loads `{command,commands}/**/*.md` → `PromptTemplate[]` (the `PromptTemplate` 
 // Assert shape (adapt to the real ExecutionEnv fake used by skills.test.ts)
 const result = await loadCommands(env, [rootDir]);
 expect(result.commands).toHaveLength(1);
-expect(result.commands[0]).toMatchObject({ name: "commit", description: "git commit", content: "commit and push" });
+expect(result.commands[0]).toMatchObject({
+  name: "commit",
+  description: "git commit",
+  content: "commit and push",
+});
 expect(result.diagnostics).toEqual([]);
 ```
 
@@ -174,6 +183,7 @@ Also test: both `command/` and `commands/` roots; nested paths derive compound n
 opencode's `Agent.Info` (`openspec/references/opencode/packages/opencode/src/agent/agent.ts:35-55`) is heavy (permission ruleset, model struct, color, steps, options). **Decision for sakti Phase 1:** a leaner type — name, mode, hidden, description, systemPrompt, optional model/thinkingLevel, and `activeToolNames?` (placeholder until Phase 2 adds the ruleset). This is the `PromptTemplate`-plus-mode shape. Cross-compare: opencode `mode` literals are `subagent|primary|all` — keep exactly.
 
 **Files:**
+
 - Modify: `packages/agent/src/harness/types.ts` (add `Agent` interface + `AgentMode`)
 - Test: `packages/agent/src/harness/__tests__/agent-type.test.ts` (compile/type test + a factory if added)
 
@@ -196,6 +206,7 @@ describe("Agent type", () => {
 ```
 
 **Step 2–4 (RED→GREEN):** add to `types.ts`:
+
 ```ts
 export type AgentMode = "primary" | "subagent" | "all";
 export interface Agent {
@@ -204,9 +215,9 @@ export interface Agent {
   hidden?: boolean;
   description?: string;
   systemPrompt: string;
-  model?: { providerId: string; modelId: string };  // sakti shape, not opencode's branded IDs
+  model?: { providerId: string; modelId: string }; // sakti shape, not opencode's branded IDs
   thinkingLevel?: ThinkingLevel;
-  activeToolNames?: string[];       // Phase 1 placeholder; Phase 2 adds `permission?: Ruleset`
+  activeToolNames?: string[]; // Phase 1 placeholder; Phase 2 adds `permission?: Ruleset`
 }
 ```
 
@@ -223,6 +234,7 @@ Loads `{agent,agents}/**/*.md` → `Agent[]`.
 **Adaptation:** same as Task 1.2 — `ExecutionEnv` + dir list, recursive `.md` walk under `agent`/`agents`, `parseFrontmatter`, name via `configEntryNameFromPath(rel, ["agent/","agents/"])`, body → `systemPrompt`, frontmatter → `mode`/`hidden`/`description`/`model`. Default `mode: "all"` for custom agents (matches opencode `agent.ts:276`). Return `{ agents, diagnostics }`.
 
 **Files:**
+
 - Create: `packages/agent/src/harness/agents.ts`
 - Test: `packages/agent/src/harness/__tests__/agents.test.ts`
 
@@ -239,6 +251,7 @@ Loads `{agent,agents}/**/*.md` → `Agent[]`.
 **Cross-compare decision:** opencode walks up to a git worktree root and scans `~/.config/opencode` + `~/.opencode`. **For sakti:** scan two scopes — global `getAgentDir()` (`~/.sakti/agent/`, already in `apps/server/src/lib/config-dirs.ts:8`) and project `<cwd>/.agents/` (decided in brainstorming). **Defer** the full walk-up-to-worktree until monorepo support is needed — `project.cwd` is the single project scan point for now (noted as a follow-up). This is simpler than opencode and sufficient.
 
 **Files:**
+
 - Modify: `apps/server/src/lib/config-dirs.ts`
 - Test: `apps/server/src/lib/__tests__/config-dirs.test.ts`
 
@@ -263,6 +276,7 @@ it("returns global + project .agents dirs", () => {
 `loadSkills`/`loadCommands`/`loadAgents` take an `ExecutionEnv`. The server needs a real-FS `ExecutionEnv` (it has `apps/server/src/agent/execution-env.ts` — check it covers `fileInfo`/`listDir`/`readTextFile`/`canonicalPath`; extend if not).
 
 **Files:**
+
 - Modify: `apps/server/src/agent/execution-env.ts` (ensure all `ExecutionEnv` methods)
 - Create: `apps/server/src/lib/context-loader.ts` (loads commands+agents+skills for a project cwd)
 - Test: `apps/server/src/lib/__tests__/context-loader.test.ts` (uses a tmpdir fixture)
@@ -278,6 +292,7 @@ it("returns global + project .agents dirs", () => {
 ## Task 1.7: `GET /api/commands` + `GET /api/agents` endpoints `[NEW]`
 
 **Files:**
+
 - Create: `apps/server/src/routes/commands.ts`, `apps/server/src/routes/agents.ts`
 - Modify: `apps/server/src/app.ts` (mount)
 - Test: `apps/server/src/routes/__tests__/commands.test.ts`, `agents.test.ts` (follow the existing route-test pattern — see `apps/server/src/routes/__tests__/` or `sessions` route tests for the Hono test client setup)
@@ -295,6 +310,7 @@ it("returns global + project .agents dirs", () => {
 Replace the body of `runFd`/`runFind` with `@ff-labs/fff-node` frecency search, keeping `fd`/`find` as the fallback when `FileFinder.isAvailable()` is false (mirrors opencode `search.ts:232` dispatch).
 
 **Files:**
+
 - Modify: `apps/server/src/routes/projects/search-files.ts`
 - Modify: `apps/server/package.json` (add `@ff-labs/fff-node`)
 - Test: `apps/server/src/routes/projects/__tests__/search-files.test.ts`
@@ -318,10 +334,12 @@ Replace the body of `runFd`/`runFind` with `@ff-labs/fff-node` frecency search, 
 **PORT source:** `openspec/references/opencode/packages/opencode/src/permission/index.ts:28-38` (`evaluate`) + the `Rule`/`Ruleset`/`Wildcard.match` definitions in `@opencode-ai/schema/permission-v1` (locate via `permission-v1.ts` re-export → `./v1/permission`). Also `Wildcard.match` from `openspec/references/opencode/packages/core/src/util/wildcard.ts`.
 
 **Files:**
+
 - Create: `packages/agent/src/harness/permission/rule.ts` (Rule, Ruleset, PermissionAction, evaluate, wildcard match)
 - Test: `packages/agent/src/harness/permission/__tests__/rule.test.ts`
 
 **Step 1 (RED):** port the exact `evaluate` behavior — `findLast` rule where `match(permission, rule.permission) && match(pattern, rule.pattern)`, default `{ action: "ask", permission, pattern: "*" }`. Tests (assert against opencode semantics):
+
 ```ts
 it("deny wins when matched", () => {
   const rs = [{ permission: "bash", pattern: "*", action: "deny" as const }];
@@ -338,7 +356,9 @@ it("last matching rule wins", () => {
 it("defaults to ask when nothing matches", () => {
   expect(evaluate("webfetch", "http://x", []).action).toBe("ask");
 });
-it("glob matches * and ** segments", () => { /* port wildcard cases from opencode wildcard tests */ });
+it("glob matches * and ** segments", () => {
+  /* port wildcard cases from opencode wildcard tests */
+});
 ```
 
 **Step 2 (verify RED). Step 3 (GREEN, PORT):** read opencode `permission/index.ts:28-38` + `util/wildcard.ts`; port `evaluate` + `match` verbatim (plain TS; drop Effect). **Step 4 (verify GREEN). Step 5 (fix+typecheck). Step 6 (commit):** `feat(agent): port permission Rule/Ruleset/evaluate`.
@@ -350,6 +370,7 @@ it("glob matches * and ** segments", () => { /* port wildcard cases from opencod
 **PORT source:** `Permission.fromConfig` in `@opencode-ai/schema/permission-v1` (the nested `{ "*": "allow", read: { "*.env": "ask" } }` → flat `Rule[]` flattener). Locate and read it fully before porting.
 
 **Files:**
+
 - Modify: `packages/agent/src/harness/permission/rule.ts`
 - Test: `.../__tests__/rule.test.ts` (add cases)
 
@@ -371,15 +392,18 @@ it("glob matches * and ** segments", () => { /* port wildcard cases from opencod
 
 Add the optional declarator to the tool interface.
 
-**Cross-compare:** opencode tools call `permission.ask(...)` *inside* execute (coupling tool → permission service). **Decision for sakti:** a declarative `permissions?(params) → PermissionRequest[]` evaluated *before* execute — keeps tools decoupled from any permission service and maps directly onto the loop's `beforeToolCall`. This is the cleaner seam; bash still works because `permissions(params)` can parse the command param to extract dirs.
+**Cross-compare:** opencode tools call `permission.ask(...)` _inside_ execute (coupling tool → permission service). **Decision for sakti:** a declarative `permissions?(params) → PermissionRequest[]` evaluated _before_ execute — keeps tools decoupled from any permission service and maps directly onto the loop's `beforeToolCall`. This is the cleaner seam; bash still works because `permissions(params)` can parse the command param to extract dirs.
 
 **Files:**
+
 - Modify: `packages/agent/src/types.ts` (`AgentTool` interface) — add:
+
 ```ts
 export interface PermissionRequest { permission: string; patterns: string[] }
 // on AgentTool:
 permissions?: (params: Static<TParameters>) => PermissionRequest[] | undefined;
 ```
+
 - Test: `packages/agent/src/__tests__/tool-permissions.test.ts` (type + a stub tool declaring permissions).
 
 **Step 1 (RED):** a stub tool with `permissions: (p) => [{ permission: "read", patterns: [p.path] }]`; assert calling it returns the request. **Step 2–4 (RED→GREEN). Step 5. Step 6 (commit):** `feat(agent): add AgentTool.permissions declarator`.
@@ -393,6 +417,7 @@ Wire evaluation into the existing `beforeToolCall` path at `packages/agent/src/l
 **Cross-compare:** opencode evaluates at both tool-exposure (`session/llm.ts:149`) and execution (`session/processor.ts:544`). **Decision for sakti Phase 2:** execution-time `deny` via `beforeToolCall` (the loop already has it). Tool-exposure filtering (excluding denied tools from the LLM request) is a **follow-up** — note it; do not implement now (keeps Phase 2 focused on the security-critical deny).
 
 **Files:**
+
 - Modify: `packages/agent/src/loop/agent-loop.ts` (insert permission eval between `validateToolArguments` at :843 and the existing `beforeToolCall` at :844)
 - Add an optional `config.evaluatePermission?: (req) => "allow"|"deny"|"ask"` to `AgentLoopConfig` (`packages/agent/src/types.ts`) — Phase 2 treats `"ask"` as `"deny"` (no UI yet) and logs it.
 - Test: `packages/agent/src/loop/__tests__/permission-eval.test.ts` (use the existing loop test harness — see `packages/agent/src/__tests__/` for the fake-stream pattern)
@@ -407,22 +432,24 @@ Wire evaluation into the existing `beforeToolCall` path at `packages/agent/src/l
 
 Each tool declares what it touches. **PORT source per tool:** the `{ permission, patterns }` opencode declares at the cited lines — copy the permission/pattern semantics, adapt to sakti's param names.
 
-| Task | Tool | PORT source (opencode) | Declaration |
-|---|---|---|---|
-| 2.6 | read | `tool/read.ts:256-257` | `[{ permission:"read", patterns:[relPath] }]` |
-| 2.7 | write | `tool/write.ts:55-56` | `[{ permission:"edit", patterns:[relPath] }]` |
-| 2.8 | edit | `tool/write.ts:55-56` (edit ≈ write) | `[{ permission:"edit", patterns:[relPath] }]` |
-| 2.9 | grep | `tool/grep.ts:40-41` | `[{ permission:"grep", patterns:[pattern] }]` |
-| 2.10 | find | `tool/glob.ts:29-30` | `[{ permission:"glob", patterns:[pattern] }]` (+ `ls` → `permission:"list"` from `tool/lsp.ts`-ish; check opencode list tool) |
-| 2.11 | bash | `tool/shell.ts:75-285` | `[{ permission:"external_directory", patterns:<dir-globs> }, { permission:"bash", patterns:[...] }]` |
+| Task | Tool  | PORT source (opencode)               | Declaration                                                                                                                   |
+| ---- | ----- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| 2.6  | read  | `tool/read.ts:256-257`               | `[{ permission:"read", patterns:[relPath] }]`                                                                                 |
+| 2.7  | write | `tool/write.ts:55-56`                | `[{ permission:"edit", patterns:[relPath] }]`                                                                                 |
+| 2.8  | edit  | `tool/write.ts:55-56` (edit ≈ write) | `[{ permission:"edit", patterns:[relPath] }]`                                                                                 |
+| 2.9  | grep  | `tool/grep.ts:40-41`                 | `[{ permission:"grep", patterns:[pattern] }]`                                                                                 |
+| 2.10 | find  | `tool/glob.ts:29-30`                 | `[{ permission:"glob", patterns:[pattern] }]` (+ `ls` → `permission:"list"` from `tool/lsp.ts`-ish; check opencode list tool) |
+| 2.11 | bash  | `tool/shell.ts:75-285`               | `[{ permission:"external_directory", patterns:<dir-globs> }, { permission:"bash", patterns:[...] }]`                          |
 
 **Per-task TDD steps (same shape):**
+
 1. **RED:** test `createXTool(cwd).permissions?.(params)` returns the expected `PermissionRequest[]` for a representative param (e.g. read of `src/a.ts` → `[{permission:"read",patterns:["src/a.ts"]}]`).
 2. verify RED.
 3. **GREEN:** add `permissions(params)` to the returned tool object. For bash, **Task 2.11 is the long pole** — see below.
 4. verify GREEN. 5. fix+typecheck. 6. commit `feat(tools): declare permissions for <tool>`.
 
 **Task 2.11 (bash) detail — command→directory extractor `[PORT]`:**
+
 - Create `packages/tools/src/lib/command-scan.ts`.
 - **PORT source:** `openspec/references/opencode/packages/opencode/src/tool/shell.ts:75-285` (the command scanner that extracts directory globs and detects out-of-cwd access). Read it fully; this is the riskiest port.
 - Test first (`packages/tools/src/lib/__tests__/command-scan.test.ts`): `cd /outside && ls` → detects `external_directory: /outside`; `rm src/x.ts` → in-cwd, no external; `cat ../../etc/passwd` → external traversal. Port the cases from opencode's shell tool tests if present.
@@ -441,6 +468,7 @@ Each tool declares what it touches. **PORT source per tool:** the `{ permission,
 The harness already has `setModel` (`agent-harness.ts:1281`), `setResources` (`:1425`), `setTools`/`setActiveToolNames` (`ToolsUpdateEvent`), `setThinkingLevel`, and a dynamic `systemPrompt` callback (`types.ts:908`). `switchAgent` is sugar.
 
 **Files:**
+
 - Modify: `packages/agent/src/harness/agent-harness.ts` (add `switchAgent(agent: Agent)`)
 - Test: `packages/agent/src/harness/__tests__/agent-switch.test.ts`
 
@@ -449,6 +477,7 @@ The harness already has `setModel` (`agent-harness.ts:1281`), `setResources` (`:
 ## Task 3.2: Server WS `switchAgent` message + active ruleset `[NEW]`
 
 **Files:**
+
 - Modify: `apps/server/src/agent/ws-handler.ts` (new message type), `apps/server/src/agent/runner.ts` (resolve agent by name, compute `activeRuleset = merge(agent.permission ?? fromActiveToolNames(agent), sessionPermission)`, call `harness.switchAgent`, wire `config.evaluatePermission`).
 - Create: `apps/server/src/agent/builtin-agents.ts` (`build`: allow-all + `read *.env: deny`; `explore`: deny-default + read-only set; `plan`/`general`). `[PORT]` the ruleset values from opencode `agent/agent.ts:140-265`.
 - Test: `apps/server/src/agent/__tests__/switch-agent.test.ts`.

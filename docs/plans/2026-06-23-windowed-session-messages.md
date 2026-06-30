@@ -4,7 +4,7 @@
 
 **Goal:** Make the renderer hold only a bounded window of messages per session (latest-N first, older loaded on demand) instead of mirroring the entire history — directly killing the dominant 800MB memory culprit (sessions + tool results retained forever).
 
-**Architecture:** The server becomes the sole source of truth and serves messages through a cursor-paginated endpoint (`?limit&skip` → `{ messages, hasOlder }`). The renderer's `SessionStore` becomes a bounded cache with two operations: `loadLatest` (hydrate the newest window) and `loadOlder` (prepend on scroll-up). Tab *close* disposes the session store (tab *switch* keeps it, so a quick switch-back is instant). An `unread` counter on the store gives the future UI what it needs for the "stay-put + badge" behavior. Big tool results are size-capped at store time so a fixed count of 5 messages can never be tens of MB.
+**Architecture:** The server becomes the sole source of truth and serves messages through a cursor-paginated endpoint (`?limit&skip` → `{ messages, hasOlder }`). The renderer's `SessionStore` becomes a bounded cache with two operations: `loadLatest` (hydrate the newest window) and `loadOlder` (prepend on scroll-up). Tab _close_ disposes the session store (tab _switch_ keeps it, so a quick switch-back is instant). An `unread` counter on the store gives the future UI what it needs for the "stay-put + badge" behavior. Big tool results are size-capped at store time so a fixed count of 5 messages can never be tens of MB.
 
 **Tech Stack:** Hono + `@hono/typebox-validator` (server), SolidJS stores + `vitest` (jsdom) (app), `bun:sqlite` via Drizzle (db). Agent entry tree via `@sakti-code/agent`'s `buildSessionContext`.
 
@@ -13,13 +13,15 @@
 ## Scope
 
 **In scope (state management + server only — NO UI):**
+
 - Server: windowed `GET /api/sessions/:id/messages`.
 - Renderer `SessionStore`: windowing (`loadLatest`/`loadOlder`/`hasOlder`/`tailLoaded`) + `unread` state + size cap.
 - Renderer `actions`: `loadLatest`/`loadOlder` (replace `loadMessages`).
 - Tab-close → dispose session store wiring.
 
 **Out of scope (deferred to the Electron/UI phase):**
-- The message-list component, scroll detection, the "↓ N new" badge DOM, and auto-follow wiring. The store exposes the state (`unread`, `hasOlder`, `tailLoaded`) these will read; the *rendering* is not built here.
+
+- The message-list component, scroll detection, the "↓ N new" badge DOM, and auto-follow wiring. The store exposes the state (`unread`, `hasOlder`, `tailLoaded`) these will read; the _rendering_ is not built here.
 - `appendToken` O(n) realloc optimization, terminal buffer cap, list virtualization, and server-side "stop streaming for non-visible sessions." Documented as follow-ups.
 
 ## Conventions
@@ -30,7 +32,7 @@
   - App: `cd apps/app && bun x vitest run <path>`
 - **Typecheck after each task:** `cd apps/server && bun run typecheck` and `cd apps/app && bun run typecheck`.
 - **Lint/format before committing:** `bun x ultracite fix` (run from repo root).
-- **Commit style:** conventional commits, scoped (`feat(server): ...`, `feat(app): ...`). If the repo pre-commit hook fails on *unrelated* packages, re-run with `--no-verify` (the project keeps cross-package hooks; this is the established workaround).
+- **Commit style:** conventional commits, scoped (`feat(server): ...`, `feat(app): ...`). If the repo pre-commit hook fails on _unrelated_ packages, re-run with `--no-verify` (the project keeps cross-package hooks; this is the established workaround).
 - **`exactOptionalPropertyTypes: true` is on** → use conditional spread `...(x === undefined ? {} : { x })` for optional fields, never pass `undefined`.
 - **No `any` in new code** — the existing `undefined as any` casts for SolidJS store key-deletion are pre-approved (kept as-is with their biome-ignore comments).
 
@@ -41,6 +43,7 @@
 Add `?limit` and `?skip` query params. The response changes from a bare `AgentMessage[]` to `{ messages: AgentMessage[]; hasOlder: boolean }`. `skip` = number of newest messages to skip (cursor = "how many from the tail are already loaded"). The route still builds the full context server-side (cheap; the memory win is in the renderer) and slices the projected array.
 
 **Files:**
+
 - Modify: `apps/server/src/routes/sessions/sessions.ts:65-71` (the `GET /:id/messages` handler) + add a `clampInt` helper near the top of the file.
 - Modify: `apps/server/src/__tests__/session-messages.test.ts` (update existing 2 tests to the new shape + add 3 pagination tests).
 
@@ -84,7 +87,7 @@ describe("GET /api/sessions/:id/messages", () => {
     ]);
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/messages`)
+      new Request(`http://localhost/api/sessions/${session.id}/messages`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -99,7 +102,7 @@ describe("GET /api/sessions/:id/messages", () => {
     const session = await ctx.repos.sessions.create(project.id, "test-model");
 
     const res = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/messages`)
+      new Request(`http://localhost/api/sessions/${session.id}/messages`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -110,29 +113,19 @@ describe("GET /api/sessions/:id/messages", () => {
   it("returns the latest <limit> messages with hasOlder=true", async () => {
     const { app, sessionId } = await seedSeven();
     const res = await app.request(
-      new Request(
-        `http://localhost/api/sessions/${sessionId}/messages?limit=5`
-      )
+      new Request(`http://localhost/api/sessions/${sessionId}/messages?limit=5`),
     );
     const body = await res.json();
     expect(body.messages).toHaveLength(5);
     // latest 5 of [u1,a1,u2,a2,u3,a3,u4] = [u2,a2,u3,a3,u4]
-    expect(roles(body.messages)).toEqual([
-      "user",
-      "assistant",
-      "user",
-      "assistant",
-      "user",
-    ]);
+    expect(roles(body.messages)).toEqual(["user", "assistant", "user", "assistant", "user"]);
     expect(body.hasOlder).toBe(true);
   });
 
   it("returns older messages when skip is provided", async () => {
     const { app, sessionId } = await seedSeven();
     const res = await app.request(
-      new Request(
-        `http://localhost/api/sessions/${sessionId}/messages?limit=5&skip=5`
-      )
+      new Request(`http://localhost/api/sessions/${sessionId}/messages?limit=5&skip=5`),
     );
     const body = await res.json();
     // skip 5 newest → remaining oldest 2 = [u1,a1]
@@ -144,9 +137,7 @@ describe("GET /api/sessions/:id/messages", () => {
   it("respects a smaller limit", async () => {
     const { app, sessionId } = await seedSeven();
     const res = await app.request(
-      new Request(
-        `http://localhost/api/sessions/${sessionId}/messages?limit=2`
-      )
+      new Request(`http://localhost/api/sessions/${sessionId}/messages?limit=2`),
     );
     const body = await res.json();
     expect(body.messages).toHaveLength(2);
@@ -169,12 +160,7 @@ In `apps/server/src/routes/sessions/sessions.ts`:
 Add this helper near the top (after the imports):
 
 ```ts
-function clampInt(
-  raw: string | undefined,
-  min: number,
-  max: number,
-  fallback: number
-): number {
+function clampInt(raw: string | undefined, min: number, max: number, fallback: number): number {
   if (raw === undefined || raw === "") {
     return fallback;
   }
@@ -236,6 +222,7 @@ Add `loadLatest`, `loadOlder`, `markAllRead`, and the `hasOlder` / `tailLoaded` 
 **Keep `loadMessages` for now** — it is removed in Task 3 alongside the `actions` switch, so each task ends compilable.
 
 **Files:**
+
 - Modify: `apps/app/src/stores/session-store.ts` (data shape + new actions + `addMessage`/`reset` changes).
 - Modify: `apps/app/src/stores/__tests__/session-store.test.ts` (add new describe blocks).
 
@@ -249,10 +236,7 @@ describe("session store — loadLatest", () => {
     const session = createSessionStore("s1");
     session.actions.addMessage(makeMessage({ id: "stale" }));
 
-    session.actions.loadLatest(
-      [makeMessage({ id: "m1" }), makeMessage({ id: "m2" })],
-      true
-    );
+    session.actions.loadLatest([makeMessage({ id: "m1" }), makeMessage({ id: "m2" })], true);
 
     expect(session.store.messageOrder).toEqual(["m1", "m2"]);
     expect(session.store.messages.stale).toBeUndefined();
@@ -274,15 +258,9 @@ describe("session store — loadLatest", () => {
 describe("session store — loadOlder", () => {
   it("prepends older ids and bumps tailLoaded", () => {
     const session = createSessionStore("s1");
-    session.actions.loadLatest(
-      [makeMessage({ id: "m3" }), makeMessage({ id: "m4" })],
-      true
-    );
+    session.actions.loadLatest([makeMessage({ id: "m3" }), makeMessage({ id: "m4" })], true);
 
-    session.actions.loadOlder(
-      [makeMessage({ id: "m1" }), makeMessage({ id: "m2" })],
-      false
-    );
+    session.actions.loadOlder([makeMessage({ id: "m1" }), makeMessage({ id: "m2" })], false);
 
     expect(session.store.messageOrder).toEqual(["m1", "m2", "m3", "m4"]);
     expect(session.store.tailLoaded).toBe(4);
@@ -343,21 +321,11 @@ Update `SessionActions` — add the three new actions (keep `loadMessages` for n
 ```ts
 export interface SessionActions {
   addMessage: (msg: UIMessage) => void;
-  addToolCall: (
-    msgId: string,
-    toolCallId: string,
-    toolName: string,
-    input: unknown
-  ) => void;
+  addToolCall: (msgId: string, toolCallId: string, toolName: string, input: unknown) => void;
   appendToken: (msgId: string, delta: string) => void;
   clearCurrentMessage: () => void;
   clearCurrentTool: () => void;
-  completeToolCall: (
-    msgId: string,
-    toolCallId: string,
-    result: string,
-    isError?: boolean
-  ) => void;
+  completeToolCall: (msgId: string, toolCallId: string, result: string, isError?: boolean) => void;
   finalizeMessage: (msgId: string) => void;
   getCurrentMessageId: () => string | null;
   loadLatest: (msgs: UIMessage[], hasOlder: boolean) => void;
@@ -475,6 +443,7 @@ git commit -m "feat(app): windowed SessionStore (loadLatest/loadOlder/unread)"
 Switch the actions layer to the new server shape and remove the now-unused `loadMessages` from both the store and its test.
 
 **Files:**
+
 - Modify: `apps/app/src/stores/actions.ts` (replace `loadMessages` with `loadLatest` + `loadOlder`).
 - Modify: `apps/app/src/stores/session-store.ts` (remove `loadMessages` action + its interface line).
 - Modify: `apps/app/src/stores/__tests__/session-store.test.ts` (remove the `loadMessages` describe block).
@@ -491,79 +460,75 @@ import { makeUserMessage } from "./helpers.ts";
 Add these two tests inside the existing `describe("actions", () => { ... })`:
 
 ```ts
-  it("loadLatest fetches the latest window and loads it into the store", async () => {
-    const deps = makeDeps();
-    const mockApi = {
-      api: {
-        sessions: {
-          [":id"]: {
-            messages: {
-              $get: vi.fn(() =>
-                okRes({
-                  messages: [makeUserMessage("hi")],
-                  hasOlder: false,
-                })
-              ),
-            },
+it("loadLatest fetches the latest window and loads it into the store", async () => {
+  const deps = makeDeps();
+  const mockApi = {
+    api: {
+      sessions: {
+        [":id"]: {
+          messages: {
+            $get: vi.fn(() =>
+              okRes({
+                messages: [makeUserMessage("hi")],
+                hasOlder: false,
+              }),
+            ),
           },
         },
       },
-    };
-    const actions = createActions(mockApi as never, makeMockWs(), deps);
+    },
+  };
+  const actions = createActions(mockApi as never, makeMockWs(), deps);
 
-    await actions.loadLatest("s1");
+  await actions.loadLatest("s1");
 
-    const session = deps.sessionRegistry.get("s1");
-    expect(session.store.messageOrder).toHaveLength(1);
-    expect(session.store.hasOlder).toBe(false);
-    expect(mockApi.api.sessions[":id"].messages.$get).toHaveBeenCalledWith({
-      param: { id: "s1" },
-      query: { limit: "5" },
-    });
+  const session = deps.sessionRegistry.get("s1");
+  expect(session.store.messageOrder).toHaveLength(1);
+  expect(session.store.hasOlder).toBe(false);
+  expect(mockApi.api.sessions[":id"].messages.$get).toHaveBeenCalledWith({
+    param: { id: "s1" },
+    query: { limit: "5" },
   });
+});
 
-  it("loadOlder requests the older window using tailLoaded as skip", async () => {
-    const deps = makeDeps();
-    const session = deps.sessionRegistry.get("s1");
-    const ui = (n: number) => ({
-      id: `m${n}`,
-      role: "user" as const,
-      content: `m${n}`,
-      parts: [],
-      isStreaming: false,
-      timestamp: 0,
-    });
-    // Preload the latest 5 so tailLoaded === 5.
-    session.actions.loadLatest([ui(1), ui(2), ui(3), ui(4), ui(5)], true);
+it("loadOlder requests the older window using tailLoaded as skip", async () => {
+  const deps = makeDeps();
+  const session = deps.sessionRegistry.get("s1");
+  const ui = (n: number) => ({
+    id: `m${n}`,
+    role: "user" as const,
+    content: `m${n}`,
+    parts: [],
+    isStreaming: false,
+    timestamp: 0,
+  });
+  // Preload the latest 5 so tailLoaded === 5.
+  session.actions.loadLatest([ui(1), ui(2), ui(3), ui(4), ui(5)], true);
 
-    const mockApi = {
-      api: {
-        sessions: {
-          [":id"]: {
-            messages: {
-              $get: vi.fn(() =>
-                okRes({ messages: [makeUserMessage("old")], hasOlder: false })
-              ),
-            },
+  const mockApi = {
+    api: {
+      sessions: {
+        [":id"]: {
+          messages: {
+            $get: vi.fn(() => okRes({ messages: [makeUserMessage("old")], hasOlder: false })),
           },
         },
       },
-    };
-    const actions = createActions(mockApi as never, makeMockWs(), deps);
+    },
+  };
+  const actions = createActions(mockApi as never, makeMockWs(), deps);
 
-    await actions.loadOlder("s1");
+  await actions.loadOlder("s1");
 
-    expect(mockApi.api.sessions[":id"].messages.$get).toHaveBeenCalledWith({
-      param: { id: "s1" },
-      query: { limit: "5", skip: "5" },
-    });
-    // prepended → 5 existing + 1 older
-    expect(session.store.messageOrder).toHaveLength(6);
-    expect(session.store.messageOrder[0]).toBe(
-      session.store.messageOrder[0]
-    );
-    expect(session.store.hasOlder).toBe(false);
+  expect(mockApi.api.sessions[":id"].messages.$get).toHaveBeenCalledWith({
+    param: { id: "s1" },
+    query: { limit: "5", skip: "5" },
   });
+  // prepended → 5 existing + 1 older
+  expect(session.store.messageOrder).toHaveLength(6);
+  expect(session.store.messageOrder[0]).toBe(session.store.messageOrder[0]);
+  expect(session.store.hasOlder).toBe(false);
+});
 ```
 
 ### Step 2: Run the tests to verify they fail
@@ -578,8 +543,8 @@ In `apps/app/src/stores/actions.ts`:
 Update the `Actions` interface — replace the `loadMessages` line with:
 
 ```ts
-  loadLatest: (sessionId: string) => Promise<void>;
-  loadOlder: (sessionId: string) => Promise<void>;
+loadLatest: (sessionId: string) => Promise<void>;
+loadOlder: (sessionId: string) => Promise<void>;
 ```
 
 Replace the `loadMessages` method body (currently lines 87-98) with:
@@ -625,10 +590,12 @@ Replace the `loadMessages` method body (currently lines 87-98) with:
 ### Step 4: Remove the now-unused `loadMessages`
 
 In `apps/app/src/stores/session-store.ts`:
+
 - Delete the `loadMessages: (msgs: UIMessage[]) => void;` line from `SessionActions`.
 - Delete the `loadMessages(msgs) { ... }` method body from the `actions` object.
 
 In `apps/app/src/stores/__tests__/session-store.test.ts`:
+
 - Delete the entire `describe("session store — loadMessages", () => { ... })` block (the `loadLatest` tests added in Task 2 supersede it).
 
 ### Step 5: Run the tests to verify they pass
@@ -656,6 +623,7 @@ git commit -m "feat(app): actions loadLatest/loadOlder against windowed endpoint
 A fixed page size of 5 is only memory-safe if a single message can't be tens of MB. Cap tool `result` strings (the dominant bytes — file reads, grep, bash output) and any loaded text at store time. Full text stays on the server.
 
 **Files:**
+
 - Modify: `apps/app/src/stores/types.ts` (add `MAX_RENDER_TEXT` + `capForRender`; apply in `agentMessageToUI`).
 - Modify: `apps/app/src/stores/session-store.ts` (cap `result` in `completeToolCall`).
 - Modify: `apps/app/src/stores/__tests__/types.test.ts` (add a cap test).
@@ -687,20 +655,20 @@ describe("agentMessageToUI — size cap", () => {
 In `apps/app/src/stores/__tests__/session-store.test.ts`, add to the existing `describe("session store — completeToolCall", ...)`:
 
 ```ts
-  it("caps an oversized tool result", () => {
-    const session = createSessionStore("s1");
-    session.actions.addMessage(makeMessage({ id: "m1" }));
-    session.actions.addToolCall("m1", "tc1", "read", {});
-    const huge = "y".repeat(15_000);
+it("caps an oversized tool result", () => {
+  const session = createSessionStore("s1");
+  session.actions.addMessage(makeMessage({ id: "m1" }));
+  session.actions.addToolCall("m1", "tc1", "read", {});
+  const huge = "y".repeat(15_000);
 
-    session.actions.completeToolCall("m1", "tc1", huge);
+  session.actions.completeToolCall("m1", "tc1", huge);
 
-    const part = session.store.messages.m1!.parts[0] as {
-      result?: string;
-    };
-    expect(part.result!.length).toBeLessThan(huge.length);
-    expect(part.result).toContain("truncated");
-  });
+  const part = session.store.messages.m1!.parts[0] as {
+    result?: string;
+  };
+  expect(part.result!.length).toBeLessThan(huge.length);
+  expect(part.result).toContain("truncated");
+});
 ```
 
 ### Step 2: Run the tests to verify they fail
@@ -781,6 +749,7 @@ git commit -m "feat(app): cap rendered tool results and text"
 Closing a workspace tab (not switching — switching keeps the window alive so a quick switch-back is instant) disposes that tab's session store so its bounded window + tool results are reclaimable. This is a pure wiring task between `tab-store` (which is decoupled from the registries) and `store-context` (which owns them).
 
 **Files:**
+
 - Modify: `apps/app/src/stores/tab-store.ts` (add an `onTabClose` subscriber hook; fire it from `closeTab`).
 - Create: `apps/app/src/stores/__tests__/tab-store.test.ts`.
 - Modify: `apps/app/src/stores/store-context.tsx` (subscribe → `sessionRegistry.dispose`).
@@ -791,13 +760,7 @@ Create `apps/app/src/stores/__tests__/tab-store.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import {
-  closeTab,
-  newTab,
-  onTabClose,
-  openProjectTab,
-  switchTab,
-} from "../tab-store.ts";
+import { closeTab, newTab, onTabClose, openProjectTab, switchTab } from "../tab-store.ts";
 
 describe("tab-store — onTabClose", () => {
   it("fires subscribers with the closed tab's sessionId", () => {
@@ -864,9 +827,7 @@ In `apps/app/src/stores/tab-store.ts`, add a subscriber set and export, near the
 ```ts
 const closeListeners = new Set<(sessionId: string | null) => void>();
 
-export function onTabClose(
-  cb: (sessionId: string | null) => void
-): () => void {
+export function onTabClose(cb: (sessionId: string | null) => void): () => void {
   closeListeners.add(cb);
   return () => {
     closeListeners.delete(cb);
@@ -925,22 +886,22 @@ import { onTabClose } from "./tab-store.ts";
 Inside `StoreProvider`, alongside the existing `onCleanup`, subscribe and dispose. Add after the `actions`/`ws` are constructed and before `return`:
 
 ```ts
-  const unsubscribeTabClose = onTabClose((sessionId) => {
-    if (sessionId) {
-      sessions.dispose(sessionId);
-    }
-  });
+const unsubscribeTabClose = onTabClose((sessionId) => {
+  if (sessionId) {
+    sessions.dispose(sessionId);
+  }
+});
 ```
 
 And add `unsubscribeTabClose()` to the existing `onCleanup`:
 
 ```ts
-  onCleanup(() => {
-    unsubscribeTabClose();
-    ws.disconnect();
-    sessions.disposeAll();
-    terminals.disposeAll();
-  });
+onCleanup(() => {
+  unsubscribeTabClose();
+  ws.disconnect();
+  sessions.disposeAll();
+  terminals.disposeAll();
+});
 ```
 
 ### Step 5: Run the tests to verify they pass

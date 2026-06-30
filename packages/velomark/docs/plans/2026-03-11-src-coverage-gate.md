@@ -13,6 +13,7 @@
 ### Task 1: Add coverage tooling and project-level test configs
 
 **Files:**
+
 - Create: `vitest.shared.ts`
 - Create: `vitest.ssr.config.ts`
 - Create: `vitest.workspace.ts`
@@ -45,11 +46,7 @@ export function createVitestConfig(testSSR: boolean) {
         provider: "v8",
         all: true,
         include: ["src/**/*.{ts,tsx}"],
-        exclude: [
-          "src/**/__tests__/**",
-          "src/**/*.test.{ts,tsx}",
-          "src/**/*.d.ts",
-        ],
+        exclude: ["src/**/__tests__/**", "src/**/*.test.{ts,tsx}", "src/**/*.d.ts"],
         thresholds: {
           lines: 80,
           functions: 80,
@@ -119,6 +116,7 @@ git commit -m "test: add src coverage harness"
 ### Task 2: Cover parser extraction and HTML parsing branches
 
 **Files:**
+
 - Create: `src/parser/__tests__/block-parser.test.ts`
 - Create: `src/parser/__tests__/html-element.test.ts`
 - Modify: `src/parser/__tests__/inline-parser.test.ts`
@@ -182,6 +180,7 @@ git commit -m "test: cover parser extraction branches"
 ### Task 3: Cover render-document reuse and footnote ordering
 
 **Files:**
+
 - Create: `src/model/__tests__/render-document.test.ts`
 - Modify: `src/model/__tests__/render-metrics.test.ts`
 
@@ -240,6 +239,7 @@ git commit -m "test: cover render document reuse paths"
 ### Task 4: Cover render routing and code-block fallback branches
 
 **Files:**
+
 - Create: `src/render/code-blocks/__tests__/shiki-manager.test.ts`
 - Create: `src/render/directives/__tests__/directive-attribute-props.test.ts`
 - Modify: `src/render/__tests__/render-blocks.test.tsx`
@@ -314,6 +314,7 @@ git commit -m "test: cover render routing and shiki fallbacks"
 ### Task 5: Turn on the global coverage gate and wire CI to it
 
 **Files:**
+
 - Modify: `.github/workflows/tests.yml`
 - Modify: `package.json`
 - Modify: `vitest.shared.ts`
@@ -389,6 +390,7 @@ git commit -m "ci: enforce src coverage gate"
 ### Task 6: Close the loop with a final repo check
 
 **Files:**
+
 - Review only: `docs/plans/2026-03-11-src-coverage-gate-design.md`
 - Review only: `docs/plans/2026-03-11-src-coverage-gate.md`
 

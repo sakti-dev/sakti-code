@@ -8,14 +8,14 @@ match_command = "^helm$"
 match_subcommand = "^(repo|search|list|history)$"
 strip_ansi = true
 strip_lines_matching = [
-	"^\\s*$",
-	"^W\\d{4}",
-	"^Hang tight while we grab the latest",
-	"^\\.\\.\\.Successfully got an update from",
-	"^\\.\\.\\.Unable to get an update from",
-	"^Update Complete\\.",
-	"^Happy Helming",
-	"^WARNING: Kubernetes configuration file is",
+  "^\\s*$",
+  "^W\\d{4}",
+  "^Hang tight while we grab the latest",
+  "^\\.\\.\\.Successfully got an update from",
+  "^\\.\\.\\.Unable to get an update from",
+  "^Update Complete\\.",
+  "^Happy Helming",
+  "^WARNING: Kubernetes configuration file is",
 ]
 truncate_lines_at = 250
 max_lines = 80

@@ -26,4 +26,6 @@ uucore = { version = "0.8.0", features = ["safe-traversal"] }
 libc = "0.2.172"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61.0", default-features = false, features = ["Win32_Storage_FileSystem"] }
+windows-sys = { version = "0.61.0", default-features = false, features = [
+  "Win32_Storage_FileSystem",
+] }

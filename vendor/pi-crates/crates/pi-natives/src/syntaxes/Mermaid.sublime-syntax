@@ -53,7 +53,7 @@ contexts:
 
   inside-preprocessor-comment:
     - meta_scope: comment.line.percentage.mermaid
-    - match: ''
+    - match: ""
       embed: scope:source.js
       escape: (%%)?$
       escape_captures:

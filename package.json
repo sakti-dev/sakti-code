@@ -1,16 +1,11 @@
 {
-  "devDependencies": {
-    "@biomejs/biome": "2.4.16",
-    "@types/node": "^26.0.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^17.0.7",
-    "tsup": "^8.5.1",
-    "turbo": "2.9.18",
-    "typescript": "^6.0.3",
-    "ultracite": "7.8.3",
-    "vite-plus": "catalog:"
-  },
   "name": "sakti-code",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "crates/*"
+  ],
   "scripts": {
     "typecheck": "turbo run typecheck",
     "build": "turbo run build",
@@ -28,17 +23,22 @@
     "pi:push": "git subtree push --prefix=vendor/pi-crates https://github.com/sakti-dev/oh-my-pi.git crates-only",
     "prepare": "husky"
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*",
-    "crates/*"
-  ],
-  "private": true,
-  "packageManager": "pnpm@10.18.0",
   "dependencies": {
     "ignore": "^7.0.5",
     "typebox": "^1.2.18",
     "uuid": "^14.0.1",
     "yaml": "^2.9.0"
-  }
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.16",
+    "@types/node": "^26.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
+    "tsup": "^8.5.1",
+    "turbo": "2.9.18",
+    "typescript": "^6.0.3",
+    "ultracite": "7.8.3",
+    "vite-plus": "catalog:"
+  },
+  "packageManager": "pnpm@10.18.0"
 }

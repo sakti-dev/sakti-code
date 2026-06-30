@@ -56,11 +56,7 @@ export { isContextOverflow } from "./context-overflow.ts";
 // Cost computation (mutates usage.cost in place; Anthropic 1h cache premium).
 export { calculateCost } from "./cost.ts";
 // Effect-native variants of stream/complete (v4 TaggedErrorClass + Effect).
-export {
-  completeEffect,
-  LLMError,
-  streamEffect,
-} from "./effect.ts";
+export { completeEffect, LLMError, streamEffect } from "./effect.ts";
 // Message conversion: Message[] → @ai-sdk ModelMessage[].
 export { toModelMessages } from "./messages.ts";
 export type {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { Profiles } from "../lib/profiles-store.ts";
 import { profilesRoutes } from "../routes/profiles.ts";
 import { makeApp } from "./helpers.ts";

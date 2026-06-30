@@ -14,9 +14,7 @@ strip_lines_matching = [
   "^###",
   "^==> Fetching",
 ]
-match_output = [
-  { pattern = "already installed", message = "ok (already installed)" },
-]
+match_output = [{ pattern = "already installed", message = "ok (already installed)" }]
 max_lines = 20
 
 [[tests.brew-install]]

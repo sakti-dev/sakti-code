@@ -29,6 +29,7 @@ The premise "drizzle supports node:sqlite" is **only true in Drizzle's 1.0 pre-r
 `StatementSync` (returned by `.prepare()`) methods: `get`, `all`, `run`, `iterate`, `columns`, `setAllowBareNamedParameters`, `setAllowUnknownNamedParameters`, `setReadBigInts`, `setReturnArrays`. These mirror bun:sqlite's prepared statement, so `.prepare(sql).get()` / `.all()` / `.run(...params)` calls are unchanged.
 
 Concretely, every `bun:sqlite` → `node:sqlite` edit in this plan is one of:
+
 - `import { Database } from "bun:sqlite"` → `import { DatabaseSync } from "node:sqlite"`
 - `new Database(path)` → `new DatabaseSync(path)` (constructor signature identical; `:memory:` works)
 - `let db: Database` → `let db: DatabaseSync` (`DatabaseSync` is usable as both value and type)
@@ -40,7 +41,7 @@ Everything else (`.prepare(sql).run(...)`, `.close()`, `db.$client.*`) is identi
 ### The drizzle-orm/node-sqlite adapter API (verified from driver.d.ts at rc.3)
 
 ```ts
-import { DatabaseSync } from "node:sqlite";          // node built-in
+import { DatabaseSync } from "node:sqlite"; // node built-in
 import { drizzle, type NodeSQLiteDatabase } from "drizzle-orm/node-sqlite";
 
 // Pass an existing driver instance:
@@ -49,7 +50,7 @@ const db = drizzle({ client: sqlite, schema });
 
 // The migrator lives under the same subpath:
 import { migrate } from "drizzle-orm/node-sqlite/migrator";
-migrate(db, { migrationsFolder });                   // signature unchanged vs bun-sqlite
+migrate(db, { migrationsFolder }); // signature unchanged vs bun-sqlite
 ```
 
 ### Scope & out-of-scope (IMPORTANT)
@@ -57,6 +58,7 @@ migrate(db, { migrationsFolder });                   // signature unchanged vs b
 **In scope:** `packages/db` only — source, tests, package.json, tsconfig, vitest config.
 
 **Out of scope but will break (accepted):** `apps/server` has **5 call sites** that do `initDatabase(new Database(":memory:"))` / `initDatabase(new Database(dbPath))` using `bun:sqlite`'s `Database`:
+
 - `apps/server/src/create-server.ts:1,67`
 - `apps/server/src/__tests__/helpers.ts:1,11`
 - `apps/server/src/__tests__/wiring.test.ts:1,11,31`
@@ -96,6 +98,7 @@ cd packages/db && bunx vitest run src/__tests__/init.test.ts
 **Goal:** Install drizzle rc + vitest + @types/node into `packages/db`, point the db package at Node types, add a vitest config, and switch the test script. After this task `bun install` succeeds and `vitest` runs (tests still reference `bun:test`/`bun:sqlite`, so they will fail — that's expected; we fix them in later tasks).
 
 **Files:**
+
 - Modify: `packages/db/package.json`
 - Modify: `packages/db/tsconfig.json`
 - Create: `packages/db/vitest.config.ts`
@@ -209,6 +212,7 @@ git commit -m "chore(db): switch to drizzle-orm rc, vitest, and node types"
 **Goal:** Convert the foundational test and its source. This is the seed change; everything else is mechanical copies of the same patterns.
 
 **Files:**
+
 - Modify: `packages/db/src/__tests__/init.test.ts`
 - Modify: `packages/db/src/init.ts`
 
@@ -241,24 +245,16 @@ describe("initDatabase", () => {
     const drizzleDb = await initDatabase(db);
 
     // WAL mode
-    const journalMode = db.prepare("PRAGMA journal_mode").get() as Record<
-      string,
-      string
-    >;
+    const journalMode = db.prepare("PRAGMA journal_mode").get() as Record<string, string>;
     expect(journalMode.journal_mode).toBe("wal");
 
     // Foreign keys
-    const fk = db.prepare("PRAGMA foreign_keys").get() as Record<
-      string,
-      number
-    >;
+    const fk = db.prepare("PRAGMA foreign_keys").get() as Record<string, number>;
     expect(fk.foreign_keys).toBe(1);
 
     // Tables exist
     const tables = db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-      )
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
       .all() as Array<{ name: string }>;
     const names = tables.map((t) => t.name);
 
@@ -270,16 +266,18 @@ describe("initDatabase", () => {
 
     // Can insert into each table
     db.prepare(
-      "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
     ).run("p1", "Test", "/tmp/test", 1, 1);
     db.prepare(
-      "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO sessions (id, project_id, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
     ).run("s1", "p1", "claude-sonnet", 1, 1);
+    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)").run(
+      "theme",
+      "dark",
+      1,
+    );
     db.prepare(
-      "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)"
-    ).run("theme", "dark", 1);
-    db.prepare(
-      "INSERT INTO model_configs (id, project_id, provider, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+      "INSERT INTO model_configs (id, project_id, provider, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
     ).run("mc1", "p1", "anthropic", "claude-sonnet", 1, 1);
 
     expect(drizzleDb).toBeDefined();
@@ -297,7 +295,7 @@ cd packages/db && bunx vitest run src/__tests__/init.test.ts
 
 Expected: **FAIL.** The failure will be a module/resolve or type error because `src/init.ts` still imports `bun:sqlite` and `drizzle-orm/bun-sqlite` (which is no longer installed at the expected version / incompatible), and passes a `DatabaseSync` where `init.ts` expects bun's `Database`. e.g. errors mentioning `drizzle-orm/bun-sqlite`, or `DatabaseSync` is not assignable to `Database`, or `bun:sqlite` cannot be resolved under Node.
 
-If it somehow *passes* here, stop — something is wrong with the RED assumption (e.g. bun is still resolving `bun:sqlite`). Re-check Task 1's tsconfig/script changes.
+If it somehow _passes_ here, stop — something is wrong with the RED assumption (e.g. bun is still resolving `bun:sqlite`). Re-check Task 1's tsconfig/script changes.
 
 ### Step 3: Rewrite `packages/db/src/init.ts` (GREEN)
 
@@ -313,14 +311,13 @@ export type DrizzleDB = NodeSQLiteDatabase<typeof schema>;
 
 export async function initDatabase(
   sqlite: DatabaseSync,
-  options?: { migrationsFolder?: string }
+  options?: { migrationsFolder?: string },
 ): Promise<DrizzleDB> {
   sqlite.exec("PRAGMA journal_mode = WAL");
   sqlite.exec("PRAGMA foreign_keys = ON");
 
   const db = drizzle({ client: sqlite, schema });
-  const migrationsFolder =
-    options?.migrationsFolder ?? `${import.meta.dirname}/../migrations`;
+  const migrationsFolder = options?.migrationsFolder ?? `${import.meta.dirname}/../migrations`;
   migrate(db, { migrationsFolder });
 
   return db;
@@ -352,9 +349,10 @@ git commit -m "refactor(db): port init.ts and init.test.ts to node:sqlite"
 
 ## Task 3: Fix the async-in-sync transaction in `session-entry-store.ts`
 
-**Goal:** Satisfy drizzle-orm 1.0-rc's "sync drivers can't use async functions in transactions" type constraint. This is a one-word change but it is a *source* change required for the package to typecheck, so it gets its own commit.
+**Goal:** Satisfy drizzle-orm 1.0-rc's "sync drivers can't use async functions in transactions" type constraint. This is a one-word change but it is a _source_ change required for the package to typecheck, so it gets its own commit.
 
 **Files:**
+
 - Modify: `packages/db/src/session-entry-store.ts:187`
 
 ### Step 1: Drop `async` from the `forkFrom` transaction callback
@@ -385,7 +383,7 @@ Rationale for also dropping `await`: a sync driver's `transaction()` returns `T`
 cd packages/db && bunx tsc --noEmit src/session-entry-store.ts 2>&1 | head -20 || true
 ```
 
-This standalone check may emit unrelated errors (it doesn't pick up the full project config); the authoritative typecheck runs in Task 7. The goal here is just to confirm no *new* syntax errors were introduced at line 187.
+This standalone check may emit unrelated errors (it doesn't pick up the full project config); the authoritative typecheck runs in Task 7. The goal here is just to confirm no _new_ syntax errors were introduced at line 187.
 
 ### Step 3: Commit
 
@@ -401,6 +399,7 @@ git commit -m "refactor(db): make forkFrom transaction synchronous for node:sqli
 **Goal:** Mechanical port — same patterns as Task 2. The test body uses only `storage.*` methods (no direct `Database` calls beyond setup), so only the imports and the `new Database(...)` constructor change.
 
 **Files:**
+
 - Modify: `packages/db/src/__tests__/session-entry-store.test.ts`
 
 ### Step 1: Edit the imports (lines 1–2)
@@ -424,13 +423,13 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 `oldString`:
 
 ```ts
-  let sqlite: Database;
+let sqlite: Database;
 ```
 
 `newString`:
 
 ```ts
-  let sqlite: DatabaseSync;
+let sqlite: DatabaseSync;
 ```
 
 ### Step 3: Edit the constructor (line 23)
@@ -438,13 +437,13 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 `oldString`:
 
 ```ts
-    sqlite = new Database(join(tmpDir, "test.db"));
+sqlite = new Database(join(tmpDir, "test.db"));
 ```
 
 `newString`:
 
 ```ts
-    sqlite = new DatabaseSync(join(tmpDir, "test.db"));
+sqlite = new DatabaseSync(join(tmpDir, "test.db"));
 ```
 
 No other changes. Lines 26–35 (`.prepare(…).run()`) and line 41 (`sqlite.close()`) already match the node:sqlite API.
@@ -471,6 +470,7 @@ git commit -m "test(db): port session-entry-store.test.ts to node:sqlite and vit
 **Goal:** Port the fork tests. This file is the one that exercises the Task 3 fix (`forkFrom`'s now-sync transaction). There are **three** `new Database(":memory:")` sites (lines 38, 84, 123) that all need changing.
 
 **Files:**
+
 - Modify: `packages/db/src/__tests__/session-entry-store-fork.test.ts`
 
 ### Step 1: Edit the imports (lines 1–2)
@@ -496,13 +496,13 @@ Use `replaceAll` semantics — the string `new Database(":memory:")` appears ide
 `oldString` (applied via `replaceAll: true`):
 
 ```ts
-new Database(":memory:")
+new Database(":memory:");
 ```
 
 `newString` (applied via `replaceAll: true`):
 
 ```ts
-new DatabaseSync(":memory:")
+new DatabaseSync(":memory:");
 ```
 
 ### Step 3: Run the test — verify GREEN (this is the real proof of Task 3)
@@ -529,6 +529,7 @@ git commit -m "test(db): port session-entry-store-fork.test.ts to node:sqlite an
 **Goal:** Port the repository tests. These use `db.$client.prepare(…).run()` and `db.$client.close?.()` — both already node:sqlite-compatible (the drizzle node-sqlite adapter exposes `$client` as the `DatabaseSync`). So only imports and the four `new Database(...)` constructors change.
 
 **Files:**
+
 - Modify: `packages/db/src/repos/__tests__/repos.test.ts`
 
 ### Step 1: Edit the imports (lines 1–2)
@@ -614,6 +615,7 @@ cd packages/db && bun run typecheck
 Expected: `tsc --noEmit` exits 0 with no output. This is the check that catches: stale `bun:sqlite` type imports, the `async`-in-sync-transaction constraint (Task 3), `import.meta.dirname` typing, and any drizzle 1.0-rc API drift in `repos/*.ts`.
 
 If this fails, the most likely causes and their fixes:
+
 - `"Sync drivers can't use async functions in transactions!"` → there is still an `async` transaction callback somewhere; Task 3 covered `session-entry-store.ts:187`. Grep `transaction(async` and fix.
 - `Cannot find module 'bun:sqlite'` or `'bun:test'` → a test file wasn't ported; revisit Tasks 4–6.
 - `Cannot find module 'node:sqlite'` → `@types/node` not installed or `tsconfig.json` `types` not set to `["node"]`; revisit Task 1.
@@ -637,7 +639,7 @@ git commit -m "style(db): ultracite fix after node:sqlite migration" || echo "no
 
 ## Task 8: Verify drizzle-kit still generates / applies migrations
 
-**Goal:** Guard against the drizzle-kit `0.31.4` → `1.0.0-rc.3` bump silently changing the migration file/journal format. The runtime `init.ts` already re-applies migrations (Task 2's passing test proves existing migrations apply), but we must also confirm `drizzle-kit generate` still works for *future* schema changes.
+**Goal:** Guard against the drizzle-kit `0.31.4` → `1.0.0-rc.3` bump silently changing the migration file/journal format. The runtime `init.ts` already re-applies migrations (Task 2's passing test proves existing migrations apply), but we must also confirm `drizzle-kit generate` still works for _future_ schema changes.
 
 **Files:** none modified (this is verification; if it surfaces a real problem, that becomes a follow-up).
 
@@ -668,6 +670,7 @@ rm -rf /tmp/sakti-migration-check
 ## Done — definition of done
 
 `packages/db` is fully migrated when ALL hold:
+
 1. `rg "bun:sqlite|bun:test|Bun\." packages/db/src` → no matches.
 2. `cd packages/db && bun run test` → all green.
 3. `cd packages/db && bun run typecheck` → exit 0.
@@ -681,10 +684,12 @@ rm -rf /tmp/sakti-migration-check
 ## Rollback
 
 If the migration needs to be abandoned before completion:
+
 ```bash
 git revert <commit-sha-of-task-1>..<HEAD>   # revert tasks 2..8
 git checkout HEAD~ -- packages/db/package.json packages/db/tsconfig.json   # restore task 1 configs
 ```
+
 Then `bun install` to restore `drizzle-orm@0.44.2`. The source/test files revert with the `git revert` range.
 
 ---
@@ -694,6 +699,7 @@ Then `bun install` to restore `drizzle-orm@0.44.2`. The source/test files revert
 ### `packages/db/src/init.ts`
 
 **Before:**
+
 ```ts
 import type { Database } from "bun:sqlite";
 import { type BunSQLiteDatabase, drizzle } from "drizzle-orm/bun-sqlite";
@@ -704,14 +710,13 @@ export type DrizzleDB = BunSQLiteDatabase<typeof schema>;
 
 export async function initDatabase(
   sqlite: Database,
-  options?: { migrationsFolder?: string }
+  options?: { migrationsFolder?: string },
 ): Promise<DrizzleDB> {
   sqlite.run("PRAGMA journal_mode = WAL");
   sqlite.run("PRAGMA foreign_keys = ON");
 
   const db = drizzle(sqlite, { schema });
-  const migrationsFolder =
-    options?.migrationsFolder ?? `${import.meta.dir}/../migrations`;
+  const migrationsFolder = options?.migrationsFolder ?? `${import.meta.dir}/../migrations`;
   migrate(db, { migrationsFolder });
 
   return db;
@@ -722,13 +727,13 @@ export async function initDatabase(
 
 ### node:sqlite quick-reference (verified on Node v24.15.0)
 
-| bun:sqlite | node:sqlite |
-|---|---|
+| bun:sqlite                              | node:sqlite                                  |
+| --------------------------------------- | -------------------------------------------- |
 | `import { Database } from "bun:sqlite"` | `import { DatabaseSync } from "node:sqlite"` |
-| `new Database(path)` | `new DatabaseSync(path)` |
-| `db.query(sql).get()` | `db.prepare(sql).get()` |
-| `db.query(sql).all()` | `db.prepare(sql).all()` |
-| `db.run("PRAGMA …")` | `db.exec("PRAGMA …")` |
-| `db.prepare(sql).run(...params)` | `db.prepare(sql).run(...params)` (unchanged) |
-| `db.close()` | `db.close()` (unchanged) |
-| `import.meta.dir` | `import.meta.dirname` |
+| `new Database(path)`                    | `new DatabaseSync(path)`                     |
+| `db.query(sql).get()`                   | `db.prepare(sql).get()`                      |
+| `db.query(sql).all()`                   | `db.prepare(sql).all()`                      |
+| `db.run("PRAGMA …")`                    | `db.exec("PRAGMA …")`                        |
+| `db.prepare(sql).run(...params)`        | `db.prepare(sql).run(...params)` (unchanged) |
+| `db.close()`                            | `db.close()` (unchanged)                     |
+| `import.meta.dir`                       | `import.meta.dirname`                        |

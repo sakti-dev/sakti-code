@@ -1,6 +1,6 @@
-import { defineProject, defineWorkspace } from "vite-plus";
+import { defineProject } from "vitest/config";
 
-export default defineWorkspace([
+export default [
   defineProject({
     extends: "./vitest.config.ts",
     test: {
@@ -14,4 +14,4 @@ export default defineWorkspace([
       name: "ssr",
     },
   }),
-]);
+];

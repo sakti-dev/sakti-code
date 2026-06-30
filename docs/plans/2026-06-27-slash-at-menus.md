@@ -11,6 +11,7 @@
 **TDD discipline:** Every task writes the failing test FIRST, watches it fail, implements minimal code, watches it pass. No production code without a failing test. Run `pnpm run fix` before committing; `pnpm run typecheck` must stay green (7 tasks).
 
 **Key locations:**
+
 - Chat input: `apps/desktop/src/components/chat-input/chat-input.tsx:107` (`handleKeyDown`, Enter-only), `:188` (`onInput`), `:28` (`value` signal).
 - Command UI: `apps/desktop/src/components/ui/command.tsx` (no built-in nav — `CommandItem` is `onClick`/`onPick` only, l.142).
 - Reference palette: `apps/desktop/src/components/commands/model-seletor/{index.tsx,hooks.ts}` (dialog + hand-rolled nav + `createResource` fetch).
@@ -21,6 +22,7 @@
 - Harness methods: `agent-harness.ts:970` `promptFromTemplate(name,args)`, `:938` `skill(name,instructions?)`, constructor `:246` takes `resources: { skills?, promptTemplates? }`.
 
 **Token semantics (refined from design):**
+
 - `/name [args]` and `skill:name [args]` are detected **only when leading** (start of trimmed message) — since `/` triggers at caret 0, these tokens are always leading. Unknown names fall through to a plain prompt (robust: a literal `/foo` that isn't a command just becomes text).
 - `@path` is scanned **anywhere**; only expanded when the path resolves to a readable file under the project `cwd` (so emails are naturally skipped).
 
@@ -29,6 +31,7 @@
 ### Task 1: Consolidate catalog into `GET /api/projects/:id/context`
 
 **Files:**
+
 - Modify: `apps/server/src/routes/projects/context.ts` (replace the two `.get`s with one)
 - Modify: `apps/server/src/__tests__/context-routes.test.ts` (migrate tests)
 
@@ -43,25 +46,23 @@ it("GET /api/projects/:id/context returns commands, skills, and agents", async (
   mkdirSync(join(projectDir, ".agents", "commands"), { recursive: true });
   writeFileSync(
     join(projectDir, ".agents", "commands", "commit.md"),
-    "---\ndescription: commit and push\n---\ncommit body"
+    "---\ndescription: commit and push\n---\ncommit body",
   );
   mkdirSync(join(projectDir, ".agents", "skills"), { recursive: true });
   mkdirSync(join(projectDir, ".agents", "skills", "lint"), { recursive: true });
   writeFileSync(
     join(projectDir, ".agents", "skills", "lint", "SKILL.md"),
-    "---\ndescription: lint the repo\n---\nlint body"
+    "---\ndescription: lint the repo\n---\nlint body",
   );
   mkdirSync(join(projectDir, ".agents", "agents"), { recursive: true });
   writeFileSync(
     join(projectDir, ".agents", "agents", "scout.md"),
-    "---\nmode: subagent\ndescription: scout\n---\nscout prompt"
+    "---\nmode: subagent\ndescription: scout\n---\nscout prompt",
   );
   const project = await ctx.repos.projects.create("p", projectDir);
 
   const app = buildApp(ctx);
-  const res = await app.request(
-    `http://localhost:3001/api/projects/${project.id}/context`
-  );
+  const res = await app.request(`http://localhost:3001/api/projects/${project.id}/context`);
   const body = await res.json();
   expect(res.status).toBe(200);
   expect(body.commands.map((c: { name: string }) => c.name)).toEqual(["commit"]);
@@ -79,9 +80,11 @@ it("returns 404 for an unknown project", async () => {
 ```
 
 **Step 2: Run to verify RED.**
+
 ```bash
 cd apps/server && pnpm run test src/__tests__/context-routes.test.ts
 ```
+
 Expected: FAIL — `GET /:id/context` returns 404 (route doesn't exist).
 
 **Step 3: Implement.** Rewrite `context.ts` to expose one route returning the full catalog:
@@ -97,36 +100,39 @@ import { loadAgentContext } from "../../lib/context-loader.ts";
  * and `@`-mentionable agents in a single fetch (one `loadAgentContext` call).
  * Files stay on `/projects/:id/files` (frecency search, query-essential).
  */
-export const contextRoutes = new Hono()
-  .basePath("/projects")
-  .get("/:id/context", async (c) => {
-    const ctx = getCtx(c);
-    const project = await ctx.repos.projects.findById(c.req.param("id"));
-    if (!project) {
-      return c.json({ error: "Not found" }, 404);
-    }
-    const loaded = await loadAgentContext(project.cwd);
-    return c.json({
-      commands: loaded.commands,
-      skills: loaded.skills,
-      agents: loaded.agents,
-    });
+export const contextRoutes = new Hono().basePath("/projects").get("/:id/context", async (c) => {
+  const ctx = getCtx(c);
+  const project = await ctx.repos.projects.findById(c.req.param("id"));
+  if (!project) {
+    return c.json({ error: "Not found" }, 404);
+  }
+  const loaded = await loadAgentContext(project.cwd);
+  return c.json({
+    commands: loaded.commands,
+    skills: loaded.skills,
+    agents: loaded.agents,
   });
+});
 
 export type ContextRoutes = typeof contextRoutes;
 ```
 
 **Step 4: Run to verify GREEN.**
+
 ```bash
 cd apps/server && pnpm run test src/__tests__/context-routes.test.ts
 ```
+
 Expected: PASS (2 tests). Grep to confirm no stale `/commands` or `/agents` consumers remain:
+
 ```bash
 rg -n "/(commands|agents)" apps/server/src apps/desktop/src --glob '!*.test.ts'
 ```
+
 Expected: no matches referencing the removed routes (the desktop doesn't consume them yet).
 
 **Step 5: Commit.**
+
 ```bash
 git add apps/server/src/routes/projects/context.ts apps/server/src/__tests__/context-routes.test.ts
 git commit -m "feat(server): consolidate catalog routes into GET /projects/:id/context"
@@ -137,6 +143,7 @@ git commit -m "feat(server): consolidate catalog routes into GET /projects/:id/c
 ### Task 2: Prompt preprocessor — `parseLeadingInvocation` (pure, with tests)
 
 **Files:**
+
 - Create: `apps/server/src/agent/prompt-preprocessor.ts`
 - Test: `apps/server/src/agent/__tests__/prompt-preprocessor.test.ts`
 
@@ -202,9 +209,11 @@ describe("parseLeadingInvocation", () => {
 ```
 
 **Step 2: Run to verify RED.**
+
 ```bash
 cd apps/server && pnpm run test src/agent/__tests__/prompt-preprocessor.test.ts
 ```
+
 Expected: FAIL — module not found.
 
 **Step 3: Implement.**
@@ -244,12 +253,15 @@ export function parseLeadingInvocation(message: string, resources: Resources): L
 ```
 
 **Step 4: Run to verify GREEN.**
+
 ```bash
 cd apps/server && pnpm run test src/agent/__tests__/prompt-preprocessor.test.ts
 ```
+
 Expected: PASS (7 tests).
 
 **Step 5: Commit.**
+
 ```bash
 git add apps/server/src/agent/prompt-preprocessor.ts apps/server/src/agent/__tests__/prompt-preprocessor.test.ts
 git commit -m "feat(server): parseLeadingInvocation for /command and skill: tokens"
@@ -260,6 +272,7 @@ git commit -m "feat(server): parseLeadingInvocation for /command and skill: toke
 ### Task 3: Prompt preprocessor — `expandFileMentions` (pure, with tests)
 
 **Files:**
+
 - Modify: `apps/server/src/agent/prompt-preprocessor.ts` (add `expandFileMentions`)
 - Test: `apps/server/src/agent/__tests__/prompt-preprocessor.test.ts` (add cases)
 
@@ -312,9 +325,11 @@ describe("expandFileMentions", () => {
 ```
 
 **Step 2: Run to verify RED.**
+
 ```bash
 cd apps/server && pnpm run test src/agent/__tests__/prompt-preprocessor.test.ts
 ```
+
 Expected: FAIL — `expandFileMentions` not exported.
 
 **Step 3: Implement.** Append to `prompt-preprocessor.ts`:
@@ -354,12 +369,15 @@ export async function expandFileMentions(text: string, cwd: string): Promise<str
 ```
 
 **Step 4: Run to verify GREEN.**
+
 ```bash
 cd apps/server && pnpm run test src/agent/__tests__/prompt-preprocessor.test.ts
 ```
+
 Expected: PASS (7 + 5 = 12 tests).
 
 **Step 5: Commit.**
+
 ```bash
 git add apps/server/src/agent/prompt-preprocessor.ts apps/server/src/agent/__tests__/prompt-preprocessor.test.ts
 git commit -m "feat(server): expandFileMentions inlines @path file content"
@@ -370,6 +388,7 @@ git commit -m "feat(server): expandFileMentions inlines @path file content"
 ### Task 4: Wire harness `resources` + preprocessor dispatch into `runner.ts`
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts` (load full context once, pass `resources`, dispatch on first turn)
 
 **Step 1: Write the failing test.** This is an integration test over `runPrompt`; assert that a `/name` message routes to `promptFromTemplate` and a plain message expands `@path`. Use a fake harness to avoid a real LLM. Place next to existing runner tests; if `runPrompt` isn't unit-tested today (it may require heavy context), instead unit-test a small extracted dispatcher and wire it in. **Preferred:** extract the dispatch decision into a thin helper and test that, leaving the `runner.ts` edit mechanical.
@@ -404,9 +423,11 @@ describe("planFirstTurn", () => {
 ```
 
 **Step 2: Run to verify RED.**
+
 ```bash
 cd apps/server && pnpm run test src/agent/__tests__/prompt-preprocessor.test.ts
 ```
+
 Expected: FAIL — `planFirstTurn` not exported.
 
 **Step 3a: Implement `planFirstTurn`.** Append to `prompt-preprocessor.ts`:
@@ -427,7 +448,7 @@ export type FirstTurnPlan =
 export async function planFirstTurn(
   message: string,
   loaded: LoadedResources,
-  cwd: string
+  cwd: string,
 ): Promise<FirstTurnPlan> {
   const lead = parseLeadingInvocation(message, loaded);
   if (lead.kind === "template" || lead.kind === "skill") {
@@ -440,28 +461,35 @@ export async function planFirstTurn(
 **Step 3b: Wire into `runner.ts`.** Two edits:
 
 (1) Load the full context once and pass `resources` into the harness. Replace `apps/server/src/agent/runner.ts:378-379`:
+
 ```ts
 const agentName = settings.agent ?? DEFAULT_AGENT_NAME;
 const agent = await resolveSessionAgent(project.cwd, agentName);
 ```
+
 with:
+
 ```ts
 const agentName = settings.agent ?? DEFAULT_AGENT_NAME;
 const loadedContext = await loadAgentContext(project.cwd);
 const agent = resolveAgentByName(agentName, loadedContext.agents);
 ```
+
 (`resolveAgentByName` is already exported at `runner.ts:233`; `resolveSessionAgent` becomes unused — delete its definition at l.252-259 if nothing else calls it; grep first.)
 
 Then add `resources` to the harness constructor at l.358-371 — insert before `tools,`:
+
 ```ts
     resources: {
       skills: loadedContext.skills,
       promptTemplates: loadedContext.commands,
     },
 ```
+
 **Note ordering:** `loadedContext` must be computed before the `new HarnessClass({...})` block. Move the `const loadedContext = ...` line above the harness construction (it has no dependency on the harness). Keep `const agent = resolveAgentByName(...)` where `agent` is currently used.
 
 (2) Dispatch the first turn. Replace the `runTurn` first-turn body at l.451-459:
+
 ```ts
 runTurn: async () => {
   if (firstTurn) {
@@ -471,7 +499,9 @@ runTurn: async () => {
   }
   ...
 ```
+
 with:
+
 ```ts
 runTurn: async () => {
   if (firstTurn) {
@@ -488,17 +518,21 @@ runTurn: async () => {
   }
   ...
 ```
+
 Add the import: `import { planFirstTurn } from "./prompt-preprocessor.ts";`
 
 **Step 4: Run to verify GREEN + no regressions.**
+
 ```bash
 cd apps/server && pnpm run test src/agent/__tests__/prompt-preprocessor.test.ts
 cd apps/server && pnpm run typecheck
 cd apps/server && pnpm run test
 ```
+
 Expected: preprocessor tests PASS; typecheck clean; full server suite shows only the known pre-existing failures (terminal ×4, compaction-route ×1).
 
 **Step 5: Commit.**
+
 ```bash
 git add apps/server/src/agent/runner.ts apps/server/src/agent/prompt-preprocessor.ts apps/server/src/agent/__tests__/prompt-preprocessor.test.ts
 git commit -m "feat(server): wire harness resources + prompt preprocessor dispatch"
@@ -509,6 +543,7 @@ git commit -m "feat(server): wire harness resources + prompt preprocessor dispat
 ### Task 5: Desktop — `detectTrigger` (pure, with tests)
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat-input/detect-trigger.ts`
 - Test: `apps/desktop/src/components/chat-input/__tests__/detect-trigger.test.ts`
 
@@ -547,9 +582,11 @@ describe("detectTrigger", () => {
 ```
 
 **Step 2: Run to verify RED.**
+
 ```bash
 cd apps/desktop && pnpm run test src/components/chat-input/__tests__/detect-trigger.test.ts
 ```
+
 Expected: FAIL — module not found.
 
 **Step 3: Implement.**
@@ -581,12 +618,15 @@ export function detectTrigger(value: string, caret: number): Trigger | null {
 ```
 
 **Step 4: Run to verify GREEN.**
+
 ```bash
 cd apps/desktop && pnpm run test src/components/chat-input/__tests__/detect-trigger.test.ts
 ```
+
 Expected: PASS (5 tests).
 
 **Step 5: Commit.**
+
 ```bash
 git add apps/desktop/src/components/chat-input/detect-trigger.ts apps/desktop/src/components/chat-input/__tests__/detect-trigger.test.ts
 git commit -m "feat(desktop): detectTrigger for / and @ chars"
@@ -597,6 +637,7 @@ git commit -m "feat(desktop): detectTrigger for / and @ chars"
 ### Task 6: Desktop — `useListNavigation` hook (extracted, with tests)
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat-input/use-list-navigation.ts`
 - Test: `apps/desktop/src/components/chat-input/__tests__/use-list-navigation.test.ts`
 
@@ -632,7 +673,7 @@ describe("useListNavigation", () => {
   it("Enter calls onPick with the active item id", () => {
     let picked: string | undefined;
     const { result } = renderHook(() =>
-      useListNavigation(() => items, { onPick: (id) => (picked = id) })
+      useListNavigation(() => items, { onPick: (id) => (picked = id) }),
     );
     result.handleKeyDown(new KeyboardEvent("keydown", { key: "ArrowDown" }));
     result.handleKeyDown(new KeyboardEvent("keydown", { key: "Enter" }));
@@ -642,7 +683,7 @@ describe("useListNavigation", () => {
   it("Escape calls onClose", () => {
     let closed = false;
     const { result } = renderHook(() =>
-      useListNavigation(() => items, { onClose: () => (closed = true) })
+      useListNavigation(() => items, { onClose: () => (closed = true) }),
     );
     result.handleKeyDown(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(closed).toBe(true);
@@ -651,16 +692,18 @@ describe("useListNavigation", () => {
   it("ignores keys when the list is empty", () => {
     const { result } = renderHook(() => useListNavigation(() => []));
     expect(() =>
-      result.handleKeyDown(new KeyboardEvent("keydown", { key: "Enter" }))
+      result.handleKeyDown(new KeyboardEvent("keydown", { key: "Enter" })),
     ).not.toThrow();
   });
 });
 ```
 
 **Step 2: Run to verify RED.**
+
 ```bash
 cd apps/desktop && pnpm run test src/components/chat-input/__tests__/use-list-navigation.test.ts
 ```
+
 Expected: FAIL — module not found. (If `@solidjs/testing-library` isn't a dep, check `apps/desktop/package.json` devDeps; the model-selector tests already use it — confirm before relying on `renderHook`.)
 
 **Step 3: Implement.**
@@ -676,7 +719,7 @@ export interface ListNavigationOptions<T> {
 
 export function useListNavigation<T extends { id: string }>(
   items: () => T[],
-  options: ListNavigationOptions<T> = {}
+  options: ListNavigationOptions<T> = {},
 ) {
   const [activeIndex, setActiveIndex] = createSignal(0);
 
@@ -723,12 +766,15 @@ export function useListNavigation<T extends { id: string }>(
 ```
 
 **Step 4: Run to verify GREEN.**
+
 ```bash
 cd apps/desktop && pnpm run test src/components/chat-input/__tests__/use-list-navigation.test.ts
 ```
+
 Expected: PASS (5 tests).
 
 **Step 5: Commit.**
+
 ```bash
 git add apps/desktop/src/components/chat-input/use-list-navigation.ts apps/desktop/src/components/chat-input/__tests__/use-list-navigation.test.ts
 git commit -m "feat(desktop): useListNavigation hook for command palettes"
@@ -739,12 +785,14 @@ git commit -m "feat(desktop): useListNavigation hook for command palettes"
 ### Task 7: Desktop — context menu dialog component
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat-input/context-menu.tsx`
 - Test: `apps/desktop/src/components/chat-input/__tests__/context-menu.test.tsx`
 
 A mode-aware `CommandDialog`. `/` mode fetches `GET /api/projects/:id/context` once (cached) and shows Commands + Skills groups, filtered client-side by the dialog query. `@` mode fetches `GET /api/projects/:id/files?query=<q>&limit=20` (debounced) and shows a Files group. On pick → calls `onPick(token)` with `/name`, `skill:name`, or `@relative/path`.
 
 **Step 1: Write the failing tests.** Render the dialog open, assert groups render from mocked fetches, and that picking emits the right token. Mock the RPC via the existing desktop test harness (see how `model-seletor` tests stub `api`). Key behaviors to assert:
+
 - `/` mode renders a Commands group with `/commit` and a Skills group with `skill:graphify` from a mocked `/context` payload.
 - `@` mode renders file rows from a mocked `/files` payload, picking emits `@src/a.ts`.
 - Typing in the search filters the `/` groups client-side.
@@ -752,9 +800,11 @@ A mode-aware `CommandDialog`. `/` mode fetches `GET /api/projects/:id/context` o
 (Write the test against the component's props: `{ open, mode, projectId, cwd, onPick, onClose }`. Use `@solidjs/testing-library` `render` + `fireEvent`; mock `useStore().api` the way sibling tests do.)
 
 **Step 2: Run to verify RED.**
+
 ```bash
 cd apps/desktop && pnpm run test src/components/chat-input/__tests__/context-menu.test.tsx
 ```
+
 Expected: FAIL — component not found.
 
 **Step 3: Implement.** Skeleton (fill fetch + rendering following `model-seletor/index.tsx`):
@@ -787,7 +837,11 @@ export interface ContextMenuProps {
   onClose: () => void;
 }
 
-interface Row { id: string; label: string; token: string; }
+interface Row {
+  id: string;
+  label: string;
+  token: string;
+}
 
 export function ContextMenu(props: ContextMenuProps): JSX.Element {
   const { api } = useStore();
@@ -798,15 +852,21 @@ export function ContextMenu(props: ContextMenuProps): JSX.Element {
     if (!props.projectId) return null;
     const res = await api.api.projects[":id"].context.$get({ param: { id: props.projectId } });
     if (!res.ok) return null;
-    return await res.json() as { commands: { name: string; description?: string }[]; skills: { name: string; description?: string }[] };
+    return (await res.json()) as {
+      commands: { name: string; description?: string }[];
+      skills: { name: string; description?: string }[];
+    };
   });
 
   // Files — debounced query fetch (/@ mode only).
   const [files, { mutate: setFiles }] = createResource(async (q: string = "") => {
     if (!props.projectId || props.mode !== "@") return [];
-    const res = await api.api.projects[":id"].files.$get({ param: { id: props.projectId }, query: { query: q, limit: 20 } });
+    const res = await api.api.projects[":id"].files.$get({
+      param: { id: props.projectId },
+      query: { query: q, limit: 20 },
+    });
     if (!res.ok) return [];
-    const body = await res.json() as { files: { kind: "file" | "directory"; path: string }[] };
+    const body = (await res.json()) as { files: { kind: "file" | "directory"; path: string }[] };
     return body.files;
   });
   let debounce: ReturnType<typeof setTimeout> | undefined;
@@ -831,11 +891,17 @@ export function ContextMenu(props: ContextMenuProps): JSX.Element {
         .map((s) => ({ id: `skl:${s.name}`, label: s.name, token: `skill:${s.name}` }));
       return [...cmd, ...skl];
     }
-    return (files() ?? []).map((f) => ({ id: `file:${f.path}`, label: f.path, token: `@${f.path}` }));
+    return (files() ?? []).map((f) => ({
+      id: `file:${f.path}`,
+      label: f.path,
+      token: `@${f.path}`,
+    }));
   });
 
   const nav = useListNavigation(rows, {
-    onPick: (row) => { props.onPick(row.token); },
+    onPick: (row) => {
+      props.onPick(row.token);
+    },
     onClose: () => props.onClose(),
   });
 
@@ -845,39 +911,68 @@ export function ContextMenu(props: ContextMenuProps): JSX.Element {
   const fileRows = createMemo(() => rows().filter((r) => r.id.startsWith("file:")));
 
   return (
-    <CommandDialog open={props.open} onOpenChange={(o) => { if (!o) props.onClose(); }}>
+    <CommandDialog
+      open={props.open}
+      onOpenChange={(o) => {
+        if (!o) props.onClose();
+      }}
+    >
       <CommandDialogHeader>
-        <CommandDialogTitle>{props.mode === "/" ? "Commands & Skills" : "Files"}</CommandDialogTitle>
+        <CommandDialogTitle>
+          {props.mode === "/" ? "Commands & Skills" : "Files"}
+        </CommandDialogTitle>
       </CommandDialogHeader>
-      <CommandInput onValueChange={onQueryChange} onKeyDown={nav.handleKeyDown} placeholder="Filter…" />
+      <CommandInput
+        onValueChange={onQueryChange}
+        onKeyDown={nav.handleKeyDown}
+        placeholder="Filter…"
+      />
       <CommandList>
         <CommandEmpty>No matches</CommandEmpty>
         <Show when={props.mode === "/"}>
           <CommandGroup heading="Commands">
-            <For each={commandRows()}>{(r) => (
-              <CommandItem value={r.id} data-active={nav.isActive(r.id)} onPick={() => props.onPick(r.token)}>
-                {r.label}
-              </CommandItem>
-            )}</For>
+            <For each={commandRows()}>
+              {(r) => (
+                <CommandItem
+                  value={r.id}
+                  data-active={nav.isActive(r.id)}
+                  onPick={() => props.onPick(r.token)}
+                >
+                  {r.label}
+                </CommandItem>
+              )}
+            </For>
           </CommandGroup>
           <Show when={skillRows().length > 0}>
             <CommandSeparator />
             <CommandGroup heading="Skills">
-              <For each={skillRows()}>{(r) => (
-                <CommandItem value={r.id} data-active={nav.isActive(r.id)} onPick={() => props.onPick(r.token)}>
-                  {r.label}
-                </CommandItem>
-              )}</For>
+              <For each={skillRows()}>
+                {(r) => (
+                  <CommandItem
+                    value={r.id}
+                    data-active={nav.isActive(r.id)}
+                    onPick={() => props.onPick(r.token)}
+                  >
+                    {r.label}
+                  </CommandItem>
+                )}
+              </For>
             </CommandGroup>
           </Show>
         </Show>
         <Show when={props.mode === "@"}>
           <CommandGroup heading="Files">
-            <For each={fileRows()}>{(r) => (
-              <CommandItem value={r.id} data-active={nav.isActive(r.id)} onPick={() => props.onPick(r.token)}>
-                {r.label}
-              </CommandItem>
-            )}</For>
+            <For each={fileRows()}>
+              {(r) => (
+                <CommandItem
+                  value={r.id}
+                  data-active={nav.isActive(r.id)}
+                  onPick={() => props.onPick(r.token)}
+                >
+                  {r.label}
+                </CommandItem>
+              )}
+            </For>
           </CommandGroup>
         </Show>
       </CommandList>
@@ -889,12 +984,15 @@ export function ContextMenu(props: ContextMenuProps): JSX.Element {
 > **Implementer note:** the `data-active` attribute is what visually highlights the active row (the global `aria-selected` is for click-focus). If the existing `command.tsx` styling keys off `aria-selected`, add `aria-selected={nav.isActive(r.id)}` instead — verify against `command.tsx:138`. Match `model-seletor`'s styling for the active row.
 
 **Step 4: Run to verify GREEN.**
+
 ```bash
 cd apps/desktop && pnpm run test src/components/chat-input/__tests__/context-menu.test.tsx
 ```
+
 Expected: PASS.
 
 **Step 5: Commit.**
+
 ```bash
 git add apps/desktop/src/components/chat-input/context-menu.tsx apps/desktop/src/components/chat-input/__tests__/context-menu.test.tsx
 git commit -m "feat(desktop): context menu dialog (commands/skills/files)"
@@ -905,30 +1003,38 @@ git commit -m "feat(desktop): context menu dialog (commands/skills/files)"
 ### Task 8: Wire the menus into `chat-input.tsx`
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/chat-input/chat-input.tsx`
 
 **Step 1: Write the failing test.** A jsdom test rendering `ChatInput`, simulating typing `/` at caret 0, asserting the `ContextMenu` opens in `/` mode; typing `@` mid-text opens `@` mode; and that picking a token inserts it into the textarea at the trigger index and closes the dialog. Mock `useStore` to provide a session → project mapping and a no-op `actions.sendPrompt`.
 
 **Step 2: Run to verify RED.**
+
 ```bash
 cd apps/desktop && pnpm run test src/components/chat-input/__tests__/chat-input.test.tsx
 ```
+
 Expected: FAIL — no menu opens on `/`.
 
 **Step 3: Implement.** Edits to `chat-input.tsx`:
 
 1. Add state + derive project id/cwd:
+
 ```ts
 import { ContextMenu, type ContextMenuMode } from "./context-menu.tsx";
 import { detectTrigger } from "./detect-trigger.ts";
 
 // inside ChatInput():
 const [menu, setMenu] = createSignal<{ mode: ContextMenuMode; index: number } | null>(null);
-const project = createMemo(() => props.sessionId ? sessions.get(props.sessionId).store.project : null);
+const project = createMemo(() =>
+  props.sessionId ? sessions.get(props.sessionId).store.project : null,
+);
 ```
+
 (Adjust `project` accessor to the real session→project shape in the store; confirm against `server-store.ts` / how `ProfileSelect` resolves the session.)
 
 2. In `onInput`, after `setValue(...)`:
+
 ```ts
 onInput={(e) => {
   const el = e.currentTarget;
@@ -940,6 +1046,7 @@ onInput={(e) => {
 ```
 
 3. Render the menu (inside the component's returned JSX, e.g. after the input container):
+
 ```tsx
 <ContextMenu
   open={menu() !== null}
@@ -970,13 +1077,16 @@ onInput={(e) => {
 4. Stop Enter-from-textarea from sending while the menu is open (optional polish): in `handleKeyDown`, if `menu()` is set, let the menu's input own the keys — the menu's `CommandInput` is focused, so the textarea won't receive Enter anyway. No change needed unless focus leaks.
 
 **Step 4: Run to verify GREEN + full desktop suite.**
+
 ```bash
 cd apps/desktop && pnpm run test src/components/chat-input/__tests__/chat-input.test.tsx
 cd apps/desktop && pnpm run test
 ```
+
 Expected: chat-input test PASS; full desktop suite green (353 prior + new).
 
 **Step 5: Commit.**
+
 ```bash
 git add apps/desktop/src/components/chat-input/chat-input.tsx apps/desktop/src/components/chat-input/__tests__/chat-input.test.tsx
 git commit -m "feat(desktop): wire / and @ context menus into chat input"
@@ -987,11 +1097,13 @@ git commit -m "feat(desktop): wire / and @ context menus into chat input"
 ### Task 9: Final verification
 
 **Step 1:** Typecheck everything.
+
 ```bash
 pnpm run typecheck   # 7 tasks, all green
 ```
 
 **Step 2:** Run every package's suite; confirm only known pre-existing server failures (terminal ×4, compaction-route ×1).
+
 ```bash
 for pkg in llm agent db tools; do (cd packages/$pkg && pnpm run test); done
 (cd apps/server && pnpm run test)
@@ -999,6 +1111,7 @@ for pkg in llm agent db tools; do (cd packages/$pkg && pnpm run test); done
 ```
 
 **Step 3:** Lint + format the touched files.
+
 ```bash
 pnpm run fix
 ```
@@ -1006,6 +1119,7 @@ pnpm run fix
 **Step 4:** Sanity-check the RPC typing — the new `api.api.projects[":id"].context.$get(...)` resolves (it's auto-typed from `ContextRoutes`). If TS complains, confirm `contextRoutes` is still mounted in `apps/server/src/app.ts` (it is — l.35) and `export type ContextRoutes` is present.
 
 **Step 5:** Commit any `pnpm run fix` formatting.
+
 ```bash
 git add -A && git commit -m "chore: format" --allow-empty || true
 ```

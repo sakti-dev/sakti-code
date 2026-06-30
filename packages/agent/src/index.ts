@@ -2,10 +2,7 @@ export { AgentHarness } from "./agent/agent-harness.ts";
 export { buildHarnessStreamRequest } from "./agent/build-stream-request.ts";
 export { configEntryNameFromPath } from "./agents/config-entry-name.ts";
 export { defineAgent } from "./agents/define-agent.ts";
-export type {
-  AgentDiagnostic,
-  AgentDiagnosticCode,
-} from "./agents/loader.ts";
+export type { AgentDiagnostic, AgentDiagnosticCode } from "./agents/loader.ts";
 export { loadAgents, loadAgentsEffect } from "./agents/loader.ts";
 export type {
   PermissionAction,
@@ -71,14 +68,8 @@ export {
 } from "./compaction/retry-loop.ts";
 export type { FileOperations } from "./compaction/utils.ts";
 export { serializeConversation } from "./compaction/utils.ts";
-export {
-  runAgentLoop,
-  runAgentLoopContinue,
-} from "./core/agent-loop.ts";
-export type {
-  CacheDiagnostics,
-  PrefixShape,
-} from "./core/cache-shape.ts";
+export { runAgentLoop, runAgentLoopContinue } from "./core/agent-loop.ts";
+export type { CacheDiagnostics, PrefixShape } from "./core/cache-shape.ts";
 export { captureShape, compareShape } from "./core/cache-shape.ts";
 export { validateToolArguments } from "./core/validation.ts";
 export type {

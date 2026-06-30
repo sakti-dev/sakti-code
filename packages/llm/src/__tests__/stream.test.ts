@@ -293,7 +293,11 @@ describe("streamWithModel()", () => {
   it("passes toolChoice through to streamText (M1)", () => {
     const { calls, runner } = capturingRunner();
     streamWithModel(
-      { ...{ messages: [], model }, toolChoice: "none" },
+      {
+        messages: [],
+        model,
+        toolChoice: "none",
+      },
       fakeLanguage,
       runner
     );

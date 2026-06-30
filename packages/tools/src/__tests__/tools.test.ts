@@ -127,10 +127,7 @@ describe("ReadTool", () => {
   });
 
   it("hashes full file content even for partial reads", async () => {
-    const content = `${Array.from(
-      { length: 10 },
-      (_, i) => `line${i + 1}`
-    ).join("\n")}\n`;
+    const content = `${Array.from({ length: 10 }, (_, i) => `line${i + 1}`).join("\n")}\n`;
     writeFileSync(join(tmpDir, "partial.txt"), content);
     const { InMemorySnapshotStore } = await import(
       "../lib/hashline-utils/snapshots"

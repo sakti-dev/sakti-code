@@ -75,7 +75,7 @@ describe("defineAgent", () => {
         mode: "primary",
         description: "x",
         systemPrompt: "x",
-      })
+      }),
     ).toThrow(/name/);
   });
 
@@ -86,7 +86,7 @@ describe("defineAgent", () => {
         mode: "primary",
         description: "x",
         systemPrompt: "",
-      })
+      }),
     ).toThrow(/systemPrompt/);
   });
 });
@@ -162,9 +162,17 @@ New file `apps/server/src/agents/tool-registry.ts`:
 ```ts
 import type { AgentTool } from "@sakti-code/agent";
 import {
-  createBashTool, createEditTool, createFindTool, createGrepTool,
-  createLsTool, createProposeSessionTool, createReadTool, createWriteTool,
-  type EditMode, InMemorySnapshotStore, type NoopLoopGuardOwner,
+  createBashTool,
+  createEditTool,
+  createFindTool,
+  createGrepTool,
+  createLsTool,
+  createProposeSessionTool,
+  createReadTool,
+  createWriteTool,
+  type EditMode,
+  InMemorySnapshotStore,
+  type NoopLoopGuardOwner,
 } from "@sakti-code/tools";
 
 export interface ToolContext {
@@ -177,25 +185,28 @@ export interface ToolContext {
 export type ToolFactory = (ctx: ToolContext) => AgentTool;
 
 export const TOOL_FACTORIES: Readonly<Record<string, ToolFactory>> = {
-  read:            (ctx) => createReadTool(ctx.cwd, { autoResizeImages: true, snapshotStore: ctx.snapshotStore }),
-  write:           (ctx) => createWriteTool(ctx.cwd, { snapshotStore: ctx.snapshotStore }),
-  edit:            (ctx) => createEditTool(ctx.cwd, { mode: ctx.editMode, snapshotStore: ctx.snapshotStore, noopOwner: ctx.noopOwner }),
-  bash:            (ctx) => createBashTool(ctx.cwd),
-  grep:            (ctx) => createGrepTool(ctx.cwd),
-  find:            (ctx) => createFindTool(ctx.cwd),
-  ls:              (ctx) => createLsTool(ctx.cwd),
+  read: (ctx) =>
+    createReadTool(ctx.cwd, { autoResizeImages: true, snapshotStore: ctx.snapshotStore }),
+  write: (ctx) => createWriteTool(ctx.cwd, { snapshotStore: ctx.snapshotStore }),
+  edit: (ctx) =>
+    createEditTool(ctx.cwd, {
+      mode: ctx.editMode,
+      snapshotStore: ctx.snapshotStore,
+      noopOwner: ctx.noopOwner,
+    }),
+  bash: (ctx) => createBashTool(ctx.cwd),
+  grep: (ctx) => createGrepTool(ctx.cwd),
+  find: (ctx) => createFindTool(ctx.cwd),
+  ls: (ctx) => createLsTool(ctx.cwd),
   propose_session: () => createProposeSessionTool() as AgentTool,
 };
 
-export function buildAgentTools(
-  toolNames: readonly string[],
-  ctx: ToolContext
-): AgentTool[] {
+export function buildAgentTools(toolNames: readonly string[], ctx: ToolContext): AgentTool[] {
   return toolNames.map((name) => {
     const factory = TOOL_FACTORIES[name];
     if (!factory) {
       throw new Error(
-        `Unknown tool "${name}" — not in server registry. Registered: ${Object.keys(TOOL_FACTORIES).join(", ")}`
+        `Unknown tool "${name}" — not in server registry. Registered: ${Object.keys(TOOL_FACTORIES).join(", ")}`,
       );
     }
     return factory(ctx);
@@ -213,6 +224,7 @@ export function rebuildTool(name: string, ctx: ToolContext): AgentTool {
 ```
 
 `apps/server/src/agents/server-agents.ts` — copy of `builtin-agents.ts` with these changes:
+
 - Rename export `BUILTIN_AGENTS` → `SERVER_AGENTS`.
 - Rename `resolveBuiltinAgent` → `resolveServerAgent`.
 - Update import paths to local (`./prompts.ts`).
@@ -293,10 +305,7 @@ import { SERVER_AGENTS } from "./server-agents.ts";
  * A user-defined agent with the same name overrides the server builtin.
  * Falls back to the default (`build`) agent when the name is unknown.
  */
-export function resolveAgentByName(
-  name: string,
-  loadedAgents: AgentDefinition[]
-): AgentDefinition {
+export function resolveAgentByName(name: string, loadedAgents: AgentDefinition[]): AgentDefinition {
   const byName = new Map<string, AgentDefinition>();
   for (const agent of SERVER_AGENTS) {
     byName.set(agent.name, agent);
@@ -399,7 +408,7 @@ New helper in `apps/server/src/agents/resolve-agent.ts`:
 export function resolveSessionAgentForKind(
   kind: string,
   loadedAgents: AgentDefinition[],
-  perSessionOverride?: string
+  perSessionOverride?: string,
 ): { agent: AgentDefinition } {
   const name = perSessionOverride ?? defaultAgentNameForKind(kind);
   return { agent: resolveAgentByName(name, loadedAgents) };
@@ -413,6 +422,7 @@ function defaultAgentNameForKind(kind: string): string {
 ### A3.3 Rewrite runner.ts (lines 482-599)
 
 **Delete:**
+
 - Line 482: `const isIntake = session.kind === "intake";`
 - Lines 486-488: the `if (isIntake) tools.push(createProposeSessionTool())` block.
 - Lines 529-538: the `...(isIntake ? { systemPrompt: … } : {})` block.
@@ -427,7 +437,7 @@ const settings = parseSessionSettings(loadSessionSettings(ctx, sessionId));
 const { agent } = resolveSessionAgentForKind(
   session.kind,
   loadedContext.agents,
-  settings.agent() === DEFAULT_AGENT_NAME ? undefined : settings.agent()
+  settings.agent() === DEFAULT_AGENT_NAME ? undefined : settings.agent(),
 );
 
 // Build only the agent's declared tools — no global buildTools() + filter.
@@ -460,28 +470,25 @@ const agentRuleset = agent.permission ?? fromConfig({ "*": "allow" });
 const permissionChannel = getPermissionChannel(sessionId);
 permissionChannel.setSink(permissionAskedSink);
 harness.setPermissionEvaluator((permission, pattern) =>
-  permissionChannel.evaluate(permission, pattern, agentRuleset)
+  permissionChannel.evaluate(permission, pattern, agentRuleset),
 );
 harness.setPermissionAskResolver((req) => permissionChannel.ask(req));
 
 // Compose system prompt with tool inventory + skills. The tool list passed
 // here matches what's already on the harness (agent.toolNames).
 const hasRead = agent.toolNames?.includes("read") ?? true;
-const composedSystemPrompt = composeSystemPrompt(
-  agent.systemPrompt,
-  tools,
-  activeSkills,
-  hasRead
-);
-yield* harness.switchAgentEffect(
-  composedSystemPrompt === agent.systemPrompt
-    ? agent
-    : { ...agent, systemPrompt: composedSystemPrompt }
-);
+const composedSystemPrompt = composeSystemPrompt(agent.systemPrompt, tools, activeSkills, hasRead);
+yield *
+  harness.switchAgentEffect(
+    composedSystemPrompt === agent.systemPrompt
+      ? agent
+      : { ...agent, systemPrompt: composedSystemPrompt },
+  );
 ctx.log?.agent.debug("agent resolved", { sessionId, agent: agent.name });
 ```
 
 **Behavior changes:**
+
 1. Intake now resolves to the `intake` agent — gets its own `intakeRuleset()` and its declared `toolNames` (including `propose_session`).
 2. `explore` and `plan` agents now actually only see their declared tools (today their `activeToolNames` is undefined, so they get everything but rely on the ruleset to deny edits — defense in depth was missing).
 3. `propose_session` is built only when an agent declares it in `toolNames` (just intake). No more "always registered, filtered later."
@@ -492,6 +499,7 @@ ctx.log?.agent.debug("agent resolved", { sessionId, agent: agent.name });
 ### A3.4 Update existing runner tests + edit-mode swap path
 
 Audit `apps/server/src/agent/__tests__/runner.test.ts` for any test that:
+
 - Asserts intake sessions use `INTAKE_SYSTEM_PROMPT` directly — should now go through `resolveSessionAgentForKind`.
 - Asserts intake tools include `propose_session` via the old "appended" path — should now assert it via `agent.toolNames`.
 - Mocks `BUILTIN_AGENTS` from `@sakti-code/agent` — should now mock `SERVER_AGENTS` from `../agents/server-agents.ts`.
@@ -537,6 +545,7 @@ Behavior changes:
 ### A4.2 Update `packages/agent/src/index.ts`
 
 Remove exports:
+
 - `BUILTIN_AGENTS`, `DEFAULT_AGENT_NAME`, `resolveBuiltinAgent` (lines 3-7)
 - `INTAKE_SYSTEM_PROMPT` (line 126)
 
@@ -578,13 +587,13 @@ server in Phase A2).
 
 ## Risk register
 
-| Risk | Mitigation |
-|---|---|
-| Project-loaded `.sakti/agents/intake.md` could now collide with builtin intake. | Documented behavior: project override wins (same as before for build/explore/plan). |
-| Per-session override interacting with kind-based default is subtle. | Documented in `resolveSessionAgentForKind` JSDoc. Test covers "intake kind + per-session explore override → explore agent". |
-| `propose_session` tool now always registered — wasted memory? | Negligible (one tool object per run). Worth the simplification. |
-| `intakeRuleset` too permissive — same as build? | v1 is intentionally close to build (intake writes docs). Tighten later via separate change; the resolution path is decoupled. |
-| Desktop UI has intake-specific rendering — does it still trigger? | Yes — UI keys off `session.kind === "intake"` (DB field), unchanged. Runner no longer has intake-specific branches but the session kind is still set/persisted as before. |
+| Risk                                                                            | Mitigation                                                                                                                                                                |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project-loaded `.sakti/agents/intake.md` could now collide with builtin intake. | Documented behavior: project override wins (same as before for build/explore/plan).                                                                                       |
+| Per-session override interacting with kind-based default is subtle.             | Documented in `resolveSessionAgentForKind` JSDoc. Test covers "intake kind + per-session explore override → explore agent".                                               |
+| `propose_session` tool now always registered — wasted memory?                   | Negligible (one tool object per run). Worth the simplification.                                                                                                           |
+| `intakeRuleset` too permissive — same as build?                                 | v1 is intentionally close to build (intake writes docs). Tighten later via separate change; the resolution path is decoupled.                                             |
+| Desktop UI has intake-specific rendering — does it still trigger?               | Yes — UI keys off `session.kind === "intake"` (DB field), unchanged. Runner no longer has intake-specific branches but the session kind is still set/persisted as before. |
 
 ## Manual smoke test (post-merge)
 

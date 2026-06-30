@@ -2,9 +2,7 @@
   "version": "7",
   "dialect": "sqlite",
   "id": "3913088f-4fe4-4d5e-ab8d-65e56d33371b",
-  "prevIds": [
-    "4206f102-4277-4c9c-843d-e8b0f7728e7c"
-  ],
+  "prevIds": ["4206f102-4277-4c9c-843d-e8b0f7728e7c"],
   "ddl": [
     {
       "name": "projects",
@@ -283,13 +281,9 @@
       "table": "settings"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "tableTo": "sessions",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -298,13 +292,9 @@
       "table": "session_entries"
     },
     {
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "nameExplicit": false,
@@ -313,13 +303,9 @@
       "table": "sessions"
     },
     {
-      "columns": [
-        "parent_session_id"
-      ],
+      "columns": ["parent_session_id"],
       "tableTo": "sessions",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "nameExplicit": false,
@@ -328,36 +314,28 @@
       "table": "sessions"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "projects_pk",
       "table": "projects",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "session_entries_pk",
       "table": "session_entries",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "sessions_pk",
       "table": "sessions",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "key"
-      ],
+      "columns": ["key"],
       "nameExplicit": false,
       "name": "settings_pk",
       "table": "settings",
@@ -382,9 +360,7 @@
       "table": "session_entries"
     },
     {
-      "columns": [
-        "cwd"
-      ],
+      "columns": ["cwd"],
       "nameExplicit": false,
       "name": "projects_cwd_unique",
       "entityType": "uniques",

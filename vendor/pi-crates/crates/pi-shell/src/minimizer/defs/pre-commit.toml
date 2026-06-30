@@ -3,13 +3,13 @@ description = "pre-commit run output"
 match_command = "^pre-commit$"
 strip_ansi = true
 strip_lines_matching = [
-	"^\\s*$",
-	"^\\[INFO\\] Installing environment for",
-	"^\\[INFO\\] Initializing environment for",
-	"^\\[INFO\\] Once installed this environment will be reused",
-	"^\\[INFO\\] This may take a few minutes",
-	"\\.\\.\\.\\.\\.*Passed$",
-	"\\.\\.\\.\\.\\.*Skipped$",
+  "^\\s*$",
+  "^\\[INFO\\] Installing environment for",
+  "^\\[INFO\\] Initializing environment for",
+  "^\\[INFO\\] Once installed this environment will be reused",
+  "^\\[INFO\\] This may take a few minutes",
+  "\\.\\.\\.\\.\\.*Passed$",
+  "\\.\\.\\.\\.\\.*Skipped$",
 ]
 truncate_lines_at = 250
 max_lines = 60

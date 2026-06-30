@@ -22,10 +22,10 @@ const metrics = {
 };
 ```
 
-| Metric | Meaning |
-| --- | --- |
-| `reusedBlockCount` | Earlier blocks preserved |
-| `replacedBlockCount` | Blocks that lost identity |
+| Metric               | Meaning                      |
+| -------------------- | ---------------------------- |
+| `reusedBlockCount`   | Earlier blocks preserved     |
+| `replacedBlockCount` | Blocks that lost identity    |
 | `appendedBlockCount` | New blocks added at the tail |
 
 Final note: this sample is intentionally long enough to make replay and selection feel meaningful in the playground.

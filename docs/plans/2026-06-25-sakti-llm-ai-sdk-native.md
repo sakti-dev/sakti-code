@@ -66,13 +66,13 @@ apps/desktop   event-reducer reads slim delta instead of assistantMessageEvent (
 
 The audit that justified the pivot. `AssistantMessageEvent` reaches only:
 
-| Layer | File:lines | Role | Lines touched |
-|---|---|---|---|
-| Consumer | `packages/agent/src/loop/agent-loop.ts:330-358` | the one real consumer (switch over events) | ~30 (replaced) |
-| Type leak | `packages/agent/src/types.ts:506-511` | `AgentEvent.message_update.assistantMessageEvent` | 1 field (changed) |
-| Synthesizer | `apps/server/src/agent/replay-runner.ts:~225` | replays a stored message as a stream | ~10 (changed) |
-| UI reader | `apps/desktop/src/stores/session/event-reducer.ts:150-153` | reads only `type` + `.delta` | 4 (changed) |
-| Callers | `agent.ts:270`, `agent-harness.ts:484`, `agent-loop.ts:313` | call the stream entry point | 3 sites (retarget) |
+| Layer       | File:lines                                                  | Role                                              | Lines touched      |
+| ----------- | ----------------------------------------------------------- | ------------------------------------------------- | ------------------ |
+| Consumer    | `packages/agent/src/loop/agent-loop.ts:330-358`             | the one real consumer (switch over events)        | ~30 (replaced)     |
+| Type leak   | `packages/agent/src/types.ts:506-511`                       | `AgentEvent.message_update.assistantMessageEvent` | 1 field (changed)  |
+| Synthesizer | `apps/server/src/agent/replay-runner.ts:~225`               | replays a stored message as a stream              | ~10 (changed)      |
+| UI reader   | `apps/desktop/src/stores/session/event-reducer.ts:150-153`  | reads only `type` + `.delta`                      | 4 (changed)        |
+| Callers     | `agent.ts:270`, `agent-harness.ts:484`, `agent-loop.ts:313` | call the stream entry point                       | 3 sites (retarget) |
 
 `AssistantMessage` (the final type) stays; ~20 files keep working unchanged.
 
@@ -82,26 +82,26 @@ The audit that justified the pivot. `AssistantMessageEvent` reaches only:
 
 Verify each path exists before relying on it.
 
-| ID | Path | What | Phase |
-|----|------|------|-------|
-| OC-LOADER | `openspec/references/opencode/.../provider/provider.ts:107-134` | `BUNDLED_PROVIDERS` map | 2 |
-| OC-RESOLVE | `…provider.ts:1639-1771` | `resolveSDK` (options/baseURL/apiKey + dynamic import) | 2 |
-| OC-GETLANG | `…provider.ts:1801-1830` | languageModel dispatch | 2 |
-| OC-FALLBACK | `…provider.ts:1747-1767` | runtime `import()` fallback for unlisted npm | 2 |
-| OC-MD | `…provider.ts:1188-1271` | `fromModelsDev*` field mapping | 1 |
-| OC-TRANSFORM | `…provider/transform.ts:329-344, 731, 1067-1170, 1257` | providerOptions, cache_control, reasoning | 3 |
-| OC-STREAM | `…session/llm.ts:280-353` | `streamText` call + `wrapLanguageModel` | 4 |
-| OC-MDSVC | `…core/src/models-dev.ts` | fetch/cache (Effect — **reference only**) | 1 |
-| PI-COMPAT | `packages/ai/src/api/openai-completions.ts:594-666` | thinkingFormat **data values** (primary for the per-provider assignments) | 3 |
-| PI-CACHE | `packages/ai/src/api/openai-completions.ts:731` | cacheControlFormat gating | 3 |
-| PI-COST | `packages/ai/src/models.ts:385-395` | `calculateCost` | 1 |
-| PI-GENMODEL | `packages/ai/scripts/generate-models.ts` | current per-provider ingestion + `COMPAT_OVERRIDES` values | 1 |
-| PI-AUTH | `packages/ai/src/auth/types.ts` | `ProviderAuth`/`AuthResult`/`ModelAuth` | 1 |
-| AG-LOOP | `packages/agent/src/loop/agent-loop.ts:300-365` | current stream consumption (replaced) | 5 |
-| AG-STREAMFN | `packages/agent/src/types.ts:24-26` | `StreamFn` type | 5 |
-| AG-EVENT | `packages/agent/src/types.ts:493-535` | `AgentEvent` shape (`message_update` field changed) | 5 |
-| UI-REDUCER | `apps/desktop/src/stores/session/event-reducer.ts:145-156` | UI delta consumer | 6 |
-| SRV-REPLAY | `apps/server/src/agent/replay-runner.ts:215-235` | event synthesizer | 6 |
+| ID           | Path                                                            | What                                                                      | Phase |
+| ------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------- | ----- |
+| OC-LOADER    | `openspec/references/opencode/.../provider/provider.ts:107-134` | `BUNDLED_PROVIDERS` map                                                   | 2     |
+| OC-RESOLVE   | `…provider.ts:1639-1771`                                        | `resolveSDK` (options/baseURL/apiKey + dynamic import)                    | 2     |
+| OC-GETLANG   | `…provider.ts:1801-1830`                                        | languageModel dispatch                                                    | 2     |
+| OC-FALLBACK  | `…provider.ts:1747-1767`                                        | runtime `import()` fallback for unlisted npm                              | 2     |
+| OC-MD        | `…provider.ts:1188-1271`                                        | `fromModelsDev*` field mapping                                            | 1     |
+| OC-TRANSFORM | `…provider/transform.ts:329-344, 731, 1067-1170, 1257`          | providerOptions, cache_control, reasoning                                 | 3     |
+| OC-STREAM    | `…session/llm.ts:280-353`                                       | `streamText` call + `wrapLanguageModel`                                   | 4     |
+| OC-MDSVC     | `…core/src/models-dev.ts`                                       | fetch/cache (Effect — **reference only**)                                 | 1     |
+| PI-COMPAT    | `packages/ai/src/api/openai-completions.ts:594-666`             | thinkingFormat **data values** (primary for the per-provider assignments) | 3     |
+| PI-CACHE     | `packages/ai/src/api/openai-completions.ts:731`                 | cacheControlFormat gating                                                 | 3     |
+| PI-COST      | `packages/ai/src/models.ts:385-395`                             | `calculateCost`                                                           | 1     |
+| PI-GENMODEL  | `packages/ai/scripts/generate-models.ts`                        | current per-provider ingestion + `COMPAT_OVERRIDES` values                | 1     |
+| PI-AUTH      | `packages/ai/src/auth/types.ts`                                 | `ProviderAuth`/`AuthResult`/`ModelAuth`                                   | 1     |
+| AG-LOOP      | `packages/agent/src/loop/agent-loop.ts:300-365`                 | current stream consumption (replaced)                                     | 5     |
+| AG-STREAMFN  | `packages/agent/src/types.ts:24-26`                             | `StreamFn` type                                                           | 5     |
+| AG-EVENT     | `packages/agent/src/types.ts:493-535`                           | `AgentEvent` shape (`message_update` field changed)                       | 5     |
+| UI-REDUCER   | `apps/desktop/src/stores/session/event-reducer.ts:145-156`      | UI delta consumer                                                         | 6     |
+| SRV-REPLAY   | `apps/server/src/agent/replay-runner.ts:215-235`                | event synthesizer                                                         | 6     |
 
 ---
 
@@ -111,17 +111,20 @@ Verify each path exists before relying on it.
 > Catalog: 4147 models / 142 providers (matches opencode's models.dev set).
 >
 > Three deviations from the original plan text (approved during execution):
+>
 > 1. **Task 1.3 trimmed** — skipped `ProviderAuth`/`ApiKeyAuth`/`OAuthAuth`/`CredentialStore` (login/OAuth orchestration is server-owned). packages/llm only resolves env keys + carries `ModelAuth`/`AuthResult`.
 > 2. **Task 1.4 target changed** — source is **opencode's models.dev set, NOT pi-ai's count** (user directive: "provider count should match opencode, this is the sole reason we wrote our own"). pi-ai's per-model compat sprawl collapsed to a 4-entry provider-level `PROVIDER_COMPAT` table.
 > 3. **`any` → `unknown`** on `ToolCall.arguments` + `ToolResultMessage<TDetails>` (per "no any" guardrail).
 
 ### Task 1.1 — Scaffold package ✓
+
 - `packages/llm/{package.json,tsconfig.json,vitest.config.ts,src/index.ts}` following the `packages/tools` convention (exports → `./src/index.ts`).
 - Deps added per-phase (Phase 1 only needs `typebox`; `@ai-sdk/*` + `ai` arrive in Phase 2/4 when first imported).
 - `tsconfig.json` includes `src/**/*.ts` + `scripts/**/*.ts`.
 - `vitest.config.ts` — node env, `src/**/__tests__/**/*.test.ts`.
 
 ### Task 1.2 — Message + Model types ✓ (TDD: 12 tests)
+
 - `src/types.ts` — kept: content blocks, messages, `Usage`, `StopReason`, `OpenAICompletionsCompat` (verbatim, 10 thinkingFormat values), `ThinkingLevelMap`, `Tool`, `Context`, `KnownProvider`.
 - **`Model` is non-generic** (not `Model<"ai-sdk">` with a type param) — `api: "ai-sdk"` literal. The old `Model<TApi extends Api>` generic is gone.
 - **`AssistantMessage.api: string`** (NOT literal `"ai-sdk"`) — widened for DB compat (historical rows carry legacy api values).
@@ -130,10 +133,12 @@ Verify each path exists before relying on it.
 - `AssistantMessageDiagnostic` inlined (small, tightly coupled to `AssistantMessage`).
 
 ### Task 1.3 — Auth resolution ✓ (TDD: 13 tests)
+
 - `src/auth/types.ts` — `ModelAuth`, `AuthResult` only. **Skipped** `ProviderAuth`/`ApiKeyAuth`/`OAuthAuth`/`CredentialStore` (server-owned login flow; packages/llm's stream layer receives a resolved `apiKey` string).
 - `src/auth/env.ts` — `getEnvApiKey`/`findEnvKeys` + the 30-provider env-var map. Dropped: Bun sandbox `/proc/self/environ` fallback (Node-only); Vertex ADC + Bedrock ambient checks (`@ai-sdk/google-vertex` + `@ai-sdk/amazon-bedrock` handle those internally).
 
 ### Task 1.4 — models.dev build-time ingestion ✓ (TDD: 16 tests on converter)
+
 - **Target: opencode's models.dev provider set** (NOT pi-ai's count). Result: 142 providers, 4147 tool-capable models, 1152 non-tool dropped.
 - `src/catalog/types.ts` — `ModelsDevProvider`/`ModelsDevModel`/`ModelsDevCatalog` (minimal typed view of the API JSON).
 - `src/catalog/convert.ts` — `convertModelsDevModel(provider, model): Model | null`. Ports opencode's `fromModelsDevModel` (`provider.ts:1188-1231`) field mapping: `id/name` verbatim, `api: "ai-sdk"`, `baseUrl ← provider.api`, `npm ← model.provider?.npm ?? provider.npm ?? "@ai-sdk/openai-compatible"`, cost snake→camelCase, limits, modalities. Drops `tool_call !== true`.
@@ -144,6 +149,7 @@ Verify each path exists before relying on it.
 - **Verification gate (revised):** provider set matches models.dev = opencode's set. ✓ (142 providers with ≥1 tool-capable model).
 
 ### Task 1.5 — `calculateCost` ✓ (TDD: 6 tests)
+
 - `src/cost.ts` — ported verbatim from PI-COST (`models.ts:385-395`), incl. Anthropic `cacheWrite1h` 2× premium. Signature: `calculateCost(model: Model, usage: Usage): Usage["cost"]` (non-generic; mutates in place).
 
 ---
@@ -155,6 +161,7 @@ Verify each path exists before relying on it.
 > real API setup.
 
 ### Task 2.1 — `BUNDLED_PROVIDERS` registry ✓
+
 - `src/provider/registry.ts` — 11-entry map (the @ai-sdk packages installed in
   the workspace: anthropic, openai, google, google-vertex + /anthropic subpath,
   azure, amazon-bedrock, mistral, openai-compatible, xai, gateway). Each maps
@@ -167,6 +174,7 @@ Verify each path exists before relying on it.
   dynamic-import fallback in the resolver. They work when the user installs them.
 
 ### Task 2.2 — `resolveLanguageModel` ✓ (TDD: 15 tests)
+
 - `src/provider/resolve.ts` — `resolveLanguageModel(model, options, factoryMap?)`.
   Ports opencode's `resolveSDK` + `getLanguage` to plain TS.
 - `resolveBaseURL(url, env)` — pure `${VAR}` substitution helper (extracted,
@@ -191,8 +199,9 @@ Verify each path exists before relying on it.
 > `wrapLanguageModel` — naturally lives with `stream()`).
 
 ### Task 3.1 — `buildProviderOptions` ✓ (TDD: 22 tests)
+
 - `src/provider/transform.ts` — `buildProviderOptions({ model, level }):
-  Record<string, unknown>`. Returns `{ [model.provider]: { ...fields } }` —
+Record<string, unknown>`. Returns `{ [model.provider]: { ...fields } }` —
   the flat thinkingFormat fields scoped under the provider name (matches how
   `@ai-sdk/openai-compatible` reads `providerOptions[name]`).
 - **10 thinkingFormat branches** ported verbatim from pi-ai's
@@ -211,6 +220,7 @@ Verify each path exists before relying on it.
   openai no-supportsReasoningEffort (1).
 
 ### Task 3.2 — `buildHeaders` + cache-control ✓ / ⏭
+
 - `buildHeaders({ model, sessionId })` — emits session-affinity headers
   (`session_id`, `x-client-request-id`, `x-session-affinity`) when
   `compat.sendSessionAffinityHeaders && sessionId`. 4 tests.
@@ -229,6 +239,7 @@ Verify each path exists before relying on it.
 > LanguageModelV3, no async resolution needed).
 
 ### Task 4.1 — Message conversion ✓ (TDD: 10 tests)
+
 - `src/messages.ts` — `toModelMessages(messages: Message[]): ModelMessage[]`.
   Converts UserMessage/AssistantMessage/ToolResultMessage to @ai-sdk's
   UserModelMessage/AssistantModelMessage/ToolModelMessage.
@@ -240,6 +251,7 @@ Verify each path exists before relying on it.
 - Deferred: thinkingSignature/thoughtSignature (provider metadata), image tool results.
 
 ### Task 4.2 — `stream()` ✓ (TDD: 14 tests)
+
 - `src/stream.ts` — `stream(req: StreamRequest): Promise<StreamResult>`.
   Wires: resolveLanguageModel → toModelMessages → buildProviderOptions →
   buildHeaders → streamText → mapStreamResult.
@@ -268,6 +280,7 @@ Verify each path exists before relying on it.
 > per-token deltas (`{ kind: "text"|"thinking", text }`).
 
 ### Added to `@sakti-code/llm`
+
 - `src/complete.ts` — `complete(req): Promise<CompleteResult>` wraps
   `generateText` for compaction. Errors caught → `finishReason: "error"`,
   never thrown. `completeWithModel` for tests.
@@ -275,17 +288,20 @@ Verify each path exists before relying on it.
 - 5 new tests (117 total in llm).
 
 ### Moved into `@sakti-code/agent` (agent-internal utilities)
+
 - `src/utils/event-stream.ts` — `EventStream<T, R>` class (async queue).
 - `src/utils/validation.ts` — `validateToolArguments` (TypeBox validation
-  + JSON Schema coercion, ~350 lines ported verbatim).
+  - JSON Schema coercion, ~350 lines ported verbatim).
 
 ### Task 5.1 — Retarget deps ✓
+
 - `packages/agent/package.json`: `@earendil-works/pi-ai` → `@sakti-code/llm`
   (workspace) + `typebox`.
 - Every import in `packages/agent/src/**` swapped to `@sakti-code/llm` or
   the local `utils/` modules.
 
 ### Task 5.2 — Replace stream consumption ✓
+
 - `agent-loop.ts:streamAssistantResponse` rewritten (~100 lines):
   - Builds `StreamRequest` from `AgentContext` + `AgentLoopConfig`.
   - Iterates `fullStream`: `text-delta` → accumulate text + emit slim
@@ -297,6 +313,7 @@ Verify each path exists before relying on it.
   - `defaultStreamFn` lazily imports `stream` from `@sakti-code/llm`.
 
 ### Task 5.3 — Slim UI seam ✓
+
 - `AgentEvent.message_update` now carries `{ delta: { kind: "text"|"thinking"; text: string } }`.
 - Removed `assistantMessageEvent: AssistantMessageEvent`.
 - Removed per-token `message: {...partialMessage}` clone (perf invariant).
@@ -309,6 +326,7 @@ Verify each path exists before relying on it.
   (bypasses real LLM calls for testing).
 
 ### Task 5.4 — Tests ✓
+
 - `agent-loop.test.ts` (19 tests): full rewrite — `fakeStreamResult`
   helper replaces `MockAssistantStream`. All tests inject `StreamFn`
   that returns synthetic `StreamResult`.
@@ -334,14 +352,16 @@ Verify each path exists before relying on it.
 > are Phase 7 scope.
 
 ### Infrastructure
+
 - `apps/desktop/tsconfig.json` — replaced `@earendil-works/pi-ai` path
   mappings with `@sakti-code/llm` (workspace source).
 - `apps/server/tsconfig.json` — added `@sakti-code/llm` path mappings.
 - Both `package.json` files — added `@sakti-code/llm: workspace:*` dep.
 
 ### Task 6.1 — Server WS + replay ✓
+
 - `replay-runner.ts:streamDeltas` — now emits `{ type: "message_update",
-  delta: { kind: "text"|"thinking", text: chunk } }`. Dropped
+delta: { kind: "text"|"thinking", text: chunk } }`. Dropped
   `assistantMessageEvent` wrapper, `message` field, `contentIndex`,
   `partial`. `streamDeltas` lost its unused `message` parameter.
 - `replay-runner.test.ts` — assertions check `event.delta.kind` instead
@@ -355,6 +375,7 @@ Verify each path exists before relying on it.
   generic from local type annotation.
 
 ### Task 6.2 — Desktop UI reducer ✓
+
 - `event-reducer.ts:message_update` case — reads `event.delta.kind` /
   `event.delta.text` (4 lines, as planned). Swapped `Message` import
   from `@earendil-works/pi-ai/base` → `@sakti-code/llm`.
@@ -368,6 +389,7 @@ Verify each path exists before relying on it.
   to "text delta"/"thinking delta".
 
 ### Pre-existing test failures (not introduced by Phase 6)
+
 - Server: 4 terminal tests (node-pty native module), 1 compaction test
   (needs live LLM). Identical to Phase 5 commit.
 - Desktop: 44 SolidJS HMR errors in onboarding-panel.test.tsx. Identical
@@ -381,6 +403,7 @@ Verify each path exists before relying on it.
 > package.json + tsconfig + imports · zero stale code references.**
 
 ### Task 7.1 — Swap remaining server pi-ai imports ✓
+
 - `routes/models/available-models.ts` — `getProviders()` → `PROVIDERS`,
   `getModels(provider)` → `CATALOG[provider] ?? []`.
 - `lib/auth-store.ts` — `getProviders()` → `PROVIDERS as KnownProvider[]`.
@@ -390,20 +413,24 @@ Verify each path exists before relying on it.
   Tests needing real LLM mocking should use `vi.mock("@sakti-code/llm")`.
 
 ### Task 7.2 — Remove stale imports from tools ✓
+
 - `packages/tools/package.json` — swapped `@earendil-works/pi-ai` →
   `@sakti-code/llm` workspace dep.
 - `packages/tools/src/tools/read.ts` — swapped `ImageContent, TextContent`
   import to `@sakti-code/llm`.
 
 ### Task 7.3 — Remove deps ✓
+
 - `apps/server/package.json` — removed `@earendil-works/pi-ai`.
 - `apps/desktop/package.json` — removed `@earendil-works/pi-ai` (devDep).
 
 ### Task 7.4 — Delete old package ✓
+
 - `git rm -r packages/ai` (150+ files — the entire pi-ai subtree).
 - `git rm scripts/sync-pi-ai.sh`.
 
 ### Task 7.5 — Zero stale references ✓
+
 - `rg "@earendil-works/pi-ai|AssistantMessageEvent|streamSimple|ProviderStreams"`
   across `packages/` + `apps/` → 5 hits, all in JSDoc migration notes in
   `packages/llm/src/{index,types}.ts` (documentation, not code).
@@ -413,11 +440,13 @@ Verify each path exists before relying on it.
 ## Phase 8 — Verification ✓ DONE
 
 ### Task 8.1 — Workspace lint + typecheck ✓
+
 - `nubx ultracite fix` — clean across all packages.
 - `nub run typecheck` — **6/6 packages clean** (agent, llm, tools, db,
   server, desktop).
 
 ### Task 8.2 — Test suite ✓
+
 - **llm**: 117/117 passed.
 - **agent**: 111/111 passed.
 - **tools**: 48/48 passed.
@@ -429,10 +458,12 @@ Verify each path exists before relying on it.
 - **No regressions** introduced by the migration.
 
 ### Task 8.3 — Per-provider smoke matrix
+
 - Deferred (requires `SAKTI_SMOKE=1` + live API keys). The infrastructure
   is in place via `@sakti-code/llm`'s `stream()` / `complete()`.
 
 ### Task 8.4 — Streaming perf check
+
 - Confirmed architecturally: `AgentEvent.message_update` carries only
   `{ delta: { kind, text } }` — no per-token message clone. The perf
   invariant is structural.
@@ -442,11 +473,11 @@ Verify each path exists before relying on it.
 ## Risk register
 
 - **The old plan's #1 risk (the adapter) is ELIMINATED.** There is no adapter; the agent consumes `fullStream` directly.
-- **Provider resolution correctness (Phase 2).** Dynamic import + factory dispatch must match `@ai-sdk`'s expected options. *Mitigation:* per-provider smoke (8.3).
-- **Compat regression (Phase 3).** `thinkingFormat` ported wrong → silent reasoning breakage. *Mitigation:* one test per value (10 cases) + smoke.
-- **Agent loop cutover (Phase 5).** The loop is ~825 lines; the stream seam is ~30 lines but accumulation logic is real. *Mitigation:* full agent test suite green; do a vertical slice (anthropic only) first before genericizing.
-- **models.dev count regression (Phase 1).** *Resolved:* catalog targets opencode's models.dev set (142 providers / 4147 models), not pi-ai's count. Provider-level compat table (`PROVIDER_COMPAT`) covers the 4 openai-compatible providers needing non-default reasoning encoding; first-party `@ai-sdk/*` factories handle the rest.
-- **Message conversion bugs (Phase 4.1).** *Mitigation:* round-trip tests for every content type.
+- **Provider resolution correctness (Phase 2).** Dynamic import + factory dispatch must match `@ai-sdk`'s expected options. _Mitigation:_ per-provider smoke (8.3).
+- **Compat regression (Phase 3).** `thinkingFormat` ported wrong → silent reasoning breakage. _Mitigation:_ one test per value (10 cases) + smoke.
+- **Agent loop cutover (Phase 5).** The loop is ~825 lines; the stream seam is ~30 lines but accumulation logic is real. _Mitigation:_ full agent test suite green; do a vertical slice (anthropic only) first before genericizing.
+- **models.dev count regression (Phase 1).** _Resolved:_ catalog targets opencode's models.dev set (142 providers / 4147 models), not pi-ai's count. Provider-level compat table (`PROVIDER_COMPAT`) covers the 4 openai-compatible providers needing non-default reasoning encoding; first-party `@ai-sdk/*` factories handle the rest.
+- **Message conversion bugs (Phase 4.1).** _Mitigation:_ round-trip tests for every content type.
 
 ## Out of scope
 

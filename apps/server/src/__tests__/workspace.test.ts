@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { workspaceRoutes } from "../routes/workspace/workspace.ts";
 import { makeApp } from "./helpers.ts";
 
@@ -76,7 +76,9 @@ describe("workspace routes", () => {
     const res = await app.request(
       new Request(
         `http://localhost/api/workspace/sessions/${encodeURIComponent("/tmp/nope")}`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+        }
       )
     );
     expect(res.status).toBe(200);

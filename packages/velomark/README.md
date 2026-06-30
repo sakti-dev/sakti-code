@@ -66,7 +66,7 @@ export function StreamingExample() {
   const [markdown, setMarkdown] = createSignal("# Thinking");
 
   const append = (chunk: string) => {
-    setMarkdown(current => current + chunk);
+    setMarkdown((current) => current + chunk);
   };
 
   return (

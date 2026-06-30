@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { resolveModelRef } from "../profile-resolver.ts";
 import type { Profiles } from "../profiles-store.ts";
 

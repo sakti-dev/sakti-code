@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { lastAssistantTextRoutes } from "../routes/sessions/last-assistant-text.ts";
 import { seedEntries } from "./entry-helpers.ts";
 import { makeApp } from "./helpers.ts";

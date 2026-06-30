@@ -22,16 +22,16 @@ description = "Compact rustc output — keep diagnostics, ICE/panic, and failure
 match_command = "^rustc$"
 strip_ansi = true
 keep_lines_matching = [
-	"^error",
-	"^warning",
-	"^\\s*-->",
-	"aborting due to",
-	"For more information",
-	"could not compile",
-	"^rustc \\d",
-	"^thread '",
-	"internal compiler error",
-	"panicked at",
+  "^error",
+  "^warning",
+  "^\\s*-->",
+  "aborting due to",
+  "For more information",
+  "could not compile",
+  "^rustc \\d",
+  "^thread '",
+  "internal compiler error",
+  "panicked at",
 ]
 truncate_lines_at = 300
 max_lines = 80

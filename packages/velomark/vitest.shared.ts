@@ -1,5 +1,4 @@
 import solidPlugin from "vite-plugin-solid";
-import type { UserConfig } from "vite-plus";
 
 const WEB_TRANSFORM_GLOBS = ["**/*.{js,jsx,ts,tsx}"];
 const CLIENT_TEST_GLOBS = [
@@ -21,7 +20,7 @@ const COVERAGE_CONFIG = {
   },
 };
 
-export function createVitestConfig(testSSR: boolean): UserConfig {
+export function createVitestConfig(testSSR: boolean) {
   return {
     mode: testSSR ? "ssr" : "test",
     plugins: [

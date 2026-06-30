@@ -173,13 +173,13 @@ Incremark supports all GitHub Flavored Markdown (GFM) features.
 
 ### Tables
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Incremental Parsing | ✅ | Core feature |
-| Mermaid Charts | ✅ | Built-in support |
-| Math Formulas | ✅ | LaTeX support |
-| Custom Containers | ✅ | Fully supported |
-| Custom Code Blocks | ✅ | Fully supported |
+| Feature             | Status | Description      |
+| ------------------- | ------ | ---------------- |
+| Incremental Parsing | ✅     | Core feature     |
+| Mermaid Charts      | ✅     | Built-in support |
+| Math Formulas       | ✅     | LaTeX support    |
+| Custom Containers   | ✅     | Fully supported  |
+| Custom Code Blocks  | ✅     | Fully supported  |
 
 ### Task Lists
 
@@ -224,7 +224,7 @@ This is the second paragraph. You can include:
 
 - Lists
 - **Bold text**
-- *Italic text*
+- _Italic text_
 - Even `inline code`
 
 All of these can be in the same container!
@@ -235,30 +235,25 @@ All of these can be in the same container!
 In SolidJS, you can create custom container components and pass them to `Incremark`:
 
 ```tsx
-import { useIncremark, Incremark } from '@incremark/solid'
-import { CustomWarningContainer } from './CustomWarningContainer'
-import { CustomInfoContainer } from './CustomInfoContainer'
-import { CustomTipContainer } from './CustomTipContainer'
+import { useIncremark, Incremark } from "@incremark/solid";
+import { CustomWarningContainer } from "./CustomWarningContainer";
+import { CustomInfoContainer } from "./CustomInfoContainer";
+import { CustomTipContainer } from "./CustomTipContainer";
 
 function App() {
   const incremark = useIncremark({
     gfm: true,
-    containers: true  // Enable container support
-  })
+    containers: true, // Enable container support
+  });
 
   // Define custom container mapping
   const customContainers = {
     warning: CustomWarningContainer,
     info: CustomInfoContainer,
     tip: CustomTipContainer,
-  }
+  };
 
-  return (
-    <Incremark
-      incremark={incremark}
-      customContainers={customContainers}
-    />
-  )
+  return <Incremark incremark={incremark} customContainers={customContainers} />;
 }
 ```
 
@@ -266,32 +261,28 @@ Custom container components receive `name` and `options` props, and use `childre
 
 ```tsx
 // CustomWarningContainer.tsx
-import React from 'react'
+import React from "react";
 
 export interface CustomWarningContainerProps {
-  name: string
-  options?: Record<string, any>
-  children?: React.ReactNode
+  name: string;
+  options?: Record<string, any>;
+  children?: React.ReactNode;
 }
 
 export const CustomWarningContainer: React.FC<CustomWarningContainerProps> = ({
   options,
-  children
+  children,
 }) => {
   return (
     <div className="custom-warning-container">
       <div className="custom-warning-header">
         <span className="custom-warning-icon">⚠️</span>
-        <span className="custom-warning-title">
-          {options?.title || 'Warning'}
-        </span>
+        <span className="custom-warning-title">{options?.title || "Warning"}</span>
       </div>
-      <div className="custom-warning-content">
-        {children}
-      </div>
+      <div className="custom-warning-content">{children}</div>
     </div>
-  )
-}
+  );
+};
 ```
 
 ## 📊 Custom Code Blocks
@@ -322,23 +313,18 @@ Incremark supports custom code block rendering components. For example, you can 
 In SolidJS, you can create custom code block components and pass them to `Incremark`:
 
 ```tsx
-import { useIncremark, Incremark } from '@incremark/solid'
-import { CustomEchartCodeBlock } from './CustomEchartCodeBlock'
+import { useIncremark, Incremark } from "@incremark/solid";
+import { CustomEchartCodeBlock } from "./CustomEchartCodeBlock";
 
 function App() {
-  const incremark = useIncremark({ gfm: true })
+  const incremark = useIncremark({ gfm: true });
 
   // Define custom code block mapping
   const customCodeBlocks = {
     echarts: CustomEchartCodeBlock,
-  }
+  };
 
-  return (
-    <Incremark
-      incremark={incremark}
-      customCodeBlocks={customCodeBlocks}
-    />
-  )
+  return <Incremark incremark={incremark} customCodeBlocks={customCodeBlocks} />;
 }
 ```
 
@@ -346,47 +332,45 @@ Custom code block components receive `codeStr` and `lang` props:
 
 ```tsx
 // CustomEchartCodeBlock.tsx
-import SolidJS, { useEffect, useRef, useState } from 'react'
-import * as echarts from 'echarts'
+import SolidJS, { useEffect, useRef, useState } from "react";
+import * as echarts from "echarts";
 
 export interface CustomEchartCodeBlockProps {
-  codeStr: string
-  lang?: string
+  codeStr: string;
+  lang?: string;
 }
 
-export const CustomEchartCodeBlock: React.FC<CustomEchartCodeBlockProps> = ({
-  codeStr
-}) => {
-  const chartRef = useRef<HTMLDivElement>(null)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+export const CustomEchartCodeBlock: React.FC<CustomEchartCodeBlockProps> = ({ codeStr }) => {
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!codeStr) return
+    if (!codeStr) return;
 
-    setError('')
-    setLoading(true)
+    setError("");
+    setLoading(true);
 
     try {
-      const option = JSON.parse(codeStr)
+      const option = JSON.parse(codeStr);
       if (!chartRef.current) {
-        setLoading(false)
-        return
+        setLoading(false);
+        return;
       }
 
-      const chart = echarts.getInstanceByDom(chartRef.current)
+      const chart = echarts.getInstanceByDom(chartRef.current);
       if (chart) {
-        chart.setOption(option)
+        chart.setOption(option);
       } else {
-        const newChart = echarts.init(chartRef.current)
-        newChart.setOption(option)
+        const newChart = echarts.init(chartRef.current);
+        newChart.setOption(option);
       }
     } catch (e: any) {
-      setError(e.message || 'Render failed')
+      setError(e.message || "Render failed");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [codeStr])
+  }, [codeStr]);
 
   return (
     <div className="custom-echart-code-block">
@@ -399,12 +383,16 @@ export const CustomEchartCodeBlock: React.FC<CustomEchartCodeBlockProps> = ({
         ) : error ? (
           <div className="echart-error">{error}</div>
         ) : (
-          <div ref={chartRef} className="echart-chart" style={{ width: '100%', height: '400px' }}></div>
+          <div
+            ref={chartRef}
+            className="echart-chart"
+            style={{ width: "100%", height: "400px" }}
+          ></div>
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 ```
 
 ## 🔗 HTML Support
@@ -470,11 +458,11 @@ Incremark has built-in typewriter effect support for character-by-character disp
 
 Incremark's incremental parsing strategy brings significant performance improvements:
 
-| Metric | Traditional | Incremark | Improvement |
-|--------|-------------|-----------|-------------|
-| Parse Volume | ~500K chars | ~50K chars | 90% ↓ |
-| CPU Usage | High | Low | 80% ↓ |
-| Frame Rate | Laggy | Smooth | ✅ |
+| Metric       | Traditional | Incremark  | Improvement |
+| ------------ | ----------- | ---------- | ----------- |
+| Parse Volume | ~500K chars | ~50K chars | 90% ↓       |
+| CPU Usage    | High        | Low        | 80% ↓       |
+| Frame Rate   | Laggy       | Smooth     | ✅          |
 
 ## 📝 Blockquote Example
 
@@ -490,7 +478,7 @@ This is a [link example](https://www.incremark.com/) pointing to the Incremark w
 
 Incremark supports complete footnote functionality[^1], including footnote references and definitions.
 
-[^1]: This is the footnote content. Footnotes can contain any Markdown content, including **bold**, *italic*, and `code`.
+[^1]: This is the footnote content. Footnotes can contain any Markdown content, including **bold**, _italic_, and `code`.
 
 ## 💡 More Features
 

@@ -69,7 +69,7 @@ const mergeCtx = (
   if (defaultCtx === undefined && context === undefined) {
     return;
   }
-  return { ...(defaultCtx ?? {}), ...(context ?? {}) };
+  return { ...defaultCtx, ...context };
 };
 
 /**
@@ -138,7 +138,7 @@ export function createPinoLogger(opts: PinoLoggerOptions): Logger {
     };
 
     return {
-      child: (context) => make({ ...(defaultCtx ?? {}), ...context }),
+      child: (context) => make({ ...defaultCtx, ...context }),
       debug: (message, context) => send("debug", message, context),
       error: (message, error, context) =>
         send("error", message, context, error),

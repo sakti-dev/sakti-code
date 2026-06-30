@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 const MISSING_FIELDS_RE = /Missing sessionId or message/;
 const NO_ACTIVE_RUN_RE = /No active run/;
@@ -31,7 +38,10 @@ function asErrorFrames(
 ): Array<{ error?: string; sessionId?: string }> {
   return frames.filter(
     (f) => (f as { type?: string }).type === "error"
-  ) as Array<{ error?: string; sessionId?: string }>;
+  ) as Array<{
+    error?: string;
+    sessionId?: string;
+  }>;
 }
 
 function asEventFrames(
@@ -39,7 +49,10 @@ function asEventFrames(
 ): Array<{ event?: { type?: string }; sessionId?: string }> {
   return frames.filter(
     (f) => (f as { type?: string }).type === "event"
-  ) as Array<{ event?: { type?: string }; sessionId?: string }>;
+  ) as Array<{
+    event?: { type?: string };
+    sessionId?: string;
+  }>;
 }
 
 interface MockHarness {

@@ -6,17 +6,17 @@ match_command = "^shopify$"
 match_subcommand = "^theme$"
 strip_ansi = true
 strip_lines_matching = [
-	"^\\s*$",
-	"^✓ ",
-	"^Synced ",
-	"^Uploaded ",
-	"^Downloaded ",
-	"^\\s*Downloading",
-	"^Fetching ",
-	"^\\s*Uploading",
-	"^Hashing ",
-	"^Processing ",
-	"^Preview your theme: ",
+  "^\\s*$",
+  "^✓ ",
+  "^Synced ",
+  "^Uploaded ",
+  "^Downloaded ",
+  "^\\s*Downloading",
+  "^Fetching ",
+  "^\\s*Uploading",
+  "^Hashing ",
+  "^Processing ",
+  "^Preview your theme: ",
 ]
 truncate_lines_at = 300
 max_lines = 80

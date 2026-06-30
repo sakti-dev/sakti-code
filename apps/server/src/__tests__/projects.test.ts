@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { projectsRoutes } from "../routes/projects/projects.ts";
 import { makeApp } from "./helpers.ts";
 

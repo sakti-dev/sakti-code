@@ -15,6 +15,7 @@ I'll dispatch parallel agents to compare each subsystem against pi. This is the 
 **Tool: task**
 
 **Input:**
+
 ```json
 {
   "description": "Compare agent-loop core",
@@ -24,6 +25,7 @@ I'll dispatch parallel agents to compare each subsystem against pi. This is the 
 ```
 
 **Output:**
+
 ```
 <task id="ses_11b11fe7affe0kQTPPHIBQw3e3" state="completed">
 <task_result>
@@ -285,6 +287,7 @@ The two P0s (dead retry + missing system prompt) are the highest-leverage fixes.
 **Tool: task**
 
 **Input:**
+
 ```json
 {
   "description": "Compare compaction logic",
@@ -294,7 +297,8 @@ The two P0s (dead retry + missing system prompt) are the highest-leverage fixes.
 ```
 
 **Output:**
-```
+
+````
 <task id="ses_11b11fe4cffeUWYkrRkBwh2q5f" state="completed">
 <task_result>
 I have everything needed. Here is the structured comparison.
@@ -341,7 +345,8 @@ The already-fixed items (cut-point orphaning, `cutIndex >= messages.length`, ser
 - **We do** (`compaction.ts:260-264`): emit a plain `user` message:
   ```ts
   { role: "user", content: `[Session Summary]\n\n${summaryText}`, timestamp: Date.now() }
-  ```
+````
+
 - **Impact** (three separate harms):
   1. No closing marker / XML tag, and the prefix does not explain what the block is. Pi's framing signals "this is compacted context, do not treat as a request"; ours looks like a user turn.
   2. The LLM may interpret `[Session Summary]…` as a user instruction to act on.
@@ -389,7 +394,7 @@ The already-fixed items (cut-point orphaning, `cutIndex >= messages.length`, ser
 ### P2-3. `tokensBefore` reported via `estimateTokens` (char/4) instead of `estimateContextTokens`
 
 - **Pi does** (`compaction.ts:673`): `tokensBefore = estimateContextTokens(...).tokens` — uses provider-reported `usage.totalTokens` when available.
-- **We do** (`compaction.ts:202`): `tokensBefore = estimateTokens(messages)` — pure char/4. (We *have* `estimateContextTokens` at `:57-76` and even use it for the trigger in `loop/index.ts:111`, but not for the reported `tokensBefore`.)
+- **We do** (`compaction.ts:202`): `tokensBefore = estimateTokens(messages)` — pure char/4. (We _have_ `estimateContextTokens` at `:57-76` and even use it for the trigger in `loop/index.ts:111`, but not for the reported `tokensBefore`.)
 - **Impact**: The `tokensBefore` we return to the UI / persist for stats is a crude estimate, not the real provider token count, even though the real number is what drove the compaction decision. `tokensAfter` (`:267`) has the same issue.
 - **Severity**: **P2** (reporting inaccuracy; does not affect trigger correctness).
 
@@ -455,9 +460,10 @@ The already-fixed items (cut-point orphaning, `cutIndex >= messages.length`, ser
 3. **P1-1 + P1-5** prompt template/system-prompt text alignment — trivial edits, immediate quality win.
 4. P2-2 (`maxTokens` clamp) and P2-7 (route config) — small, low-risk fixes worth doing now.
 5. P2-1 split-turn, P2-3 tokensBefore, P2-4 reasoning, P2-5 customInstructions, P2-6 streamFn — defer or batch.
-</task_result>
-</task>
-```
+   </task_result>
+   </task>
+
+````
 
 **Tool: task**
 
@@ -468,9 +474,10 @@ The already-fixed items (cut-point orphaning, `cutIndex >= messages.length`, ser
   "subagent_type": "explore",
   "prompt": "Thoroughness: very thorough\n\nCompare pi's type definitions and message models against ours to find structural divergences.\n\n**Pi reference** (source of truth):\n- `openspec/references/pi/packages/agent/src/types.ts` — core agent types\n- `openspec/references/pi/packages/agent/src/base.ts` — base message types\n- `openspec/references/pi/packages/coding-agent/src/core/messages.ts` — coding-agent message extensions\n\n**Our implementation**:\n- `packages/agent/src/types.ts` — all types\n- `packages/agent/src/loop/events.ts` — event types\n\nFor each divergence:\n1. **What pi's type looks like** (cite file:line)\n2. **What our type looks like** (cite file:line)\n3. **Impact** (what information is lost or misinterpreted)\n4. **Severity** (P0/P1/P2)\n\nAreas to examine:\n- Message types: UserMessage, AssistantMessage, ToolMessage — field-by-field comparison\n- AssistantMessage: does pi have fields we lack? (thinking, toolCalls, attribution fields like api/provider/model/responseModel/responseId/diagnostics)\n- ToolMessage: does pi carry more than content? (tool name, call ID, error flag)\n- AgentEvent types: are all pi event types present in our model?\n- AgentConfig: field-by-field comparison (what config options does pi support that we don't?)\n- AgentTool interface: does pi's tool interface have methods/fields we lack?\n- SessionStore interface: method signatures compared\n- Any pi-specific types that map to concepts we should have\n\nReturn a structured list of findings, sorted by severity."
 }
-```
+````
 
 **Output:**
+
 ```
 <task id="ses_11b11fe2bffebZB76PM3GsSdDa" state="completed">
 <task_result>
@@ -667,6 +674,7 @@ Severity scale: **P0** = correctness/data-loss for core flows; **P1** = capabili
 **Tool: task**
 
 **Input:**
+
 ```json
 {
   "description": "Compare tools implementation",
@@ -676,6 +684,7 @@ Severity scale: **P0** = correctness/data-loss for core flows; **P1** = capabili
 ```
 
 **Output:**
+
 ```
 <task id="ses_11b11fe10ffely7Du5tNiixvdF" state="completed">
 <task_result>
@@ -718,15 +727,17 @@ This single structural mismatch underpins many per-tool divergences.
 ### 2. Read: `limit` silently discarded on large files without `offset`
 - **Pi:** Honors user `limit` first, then applies truncation with an actionable `[N more lines in file. Use offset=…]` continuation (`read.ts:291-321`).
 - **Ours:** `read.ts:127-137`:
-  ```
-  const endLine = limit ? startLine + limit : maxLines;   // L128
-  const sliced = lines.slice(startLine, endLine);         // L129
-  ...
-  if (lines.length > maxLines && !offset) {               // L134
-    content = lines.slice(0, maxLines).join("\n");        // L135  ← re-slices from 0
-  }
-  ```
-  `read({path, limit: 5})` on a 3000-line file: L129 slices `[0,5)`, then L134–135 (true because `!offset`) overwrites `content` with the first 2000 lines. The user's `limit: 5` is discarded.
+```
+
+const endLine = limit ? startLine + limit : maxLines; // L128
+const sliced = lines.slice(startLine, endLine); // L129
+...
+if (lines.length > maxLines && !offset) { // L134
+content = lines.slice(0, maxLines).join("\n"); // L135 ← re-slices from 0
+}
+
+```
+`read({path, limit: 5})` on a 3000-line file: L129 slices `[0,5)`, then L134–135 (true because `!offset`) overwrites `content` with the first 2000 lines. The user's `limit: 5` is discarded.
 - **Impact:** Model asks for 5 lines, gets 2000. Token blowup / wrong data.
 - **Severity:** P0
 
@@ -938,6 +949,7 @@ The most leveraged single fix is the **tool-result type** (`types.ts`) — adopt
 **Tool: task**
 
 **Input:**
+
 ```json
 {
   "description": "Compare server/session layer",
@@ -947,6 +959,7 @@ The most leveraged single fix is the **tool-result type** (`types.ts`) — adopt
 ```
 
 **Output:**
+
 ```
 <task id="ses_11b11fdf2ffetJk5Oamk5Tem09" state="completed">
 <task_result>

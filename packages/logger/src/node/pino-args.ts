@@ -22,7 +22,7 @@ export function toPinoCall(
   error: unknown | undefined,
   layer: string
 ): [Record<string, unknown>, string] {
-  const obj: Record<string, unknown> = { ...(context ?? {}), layer };
+  const obj: Record<string, unknown> = { ...context, layer };
   if (error !== undefined) {
     // `error`: one-line message for greppability / the console sink.
     obj.error = describeError(error);

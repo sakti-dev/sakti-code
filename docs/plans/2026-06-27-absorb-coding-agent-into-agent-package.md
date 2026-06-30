@@ -4,21 +4,22 @@
 
 **Goal:** Move the pure / interface-bound coding-agent logic that currently lives in `apps/server/src/agent/` down into `packages/agent/`, so `apps/server` shrinks to a thin transport + config + DB layer (REST/WS, model/auth resolution, tools, persistence).
 
-**Architecture:** We followed pi's split of "generic agent loop" (`packages/agent`) vs "coding-agent app" (pi's separate `coding-agent` package) by collapsing the latter into `apps/server/src/agent/`. That dir grew large. The AGENTS.md boundary for `packages/agent` is **"no persistence, no DB"** (it talks to storage via the `SessionStorage` interface), *not* "no coding logic." By that rule, five modules are misplaced — they are pure or interface-bound with no app config:
+**Architecture:** We followed pi's split of "generic agent loop" (`packages/agent`) vs "coding-agent app" (pi's separate `coding-agent` package) by collapsing the latter into `apps/server/src/agent/`. That dir grew large. The AGENTS.md boundary for `packages/agent` is **"no persistence, no DB"** (it talks to storage via the `SessionStorage` interface), _not_ "no coding logic." By that rule, five modules are misplaced — they are pure or interface-bound with no app config:
 
-| Module | Why it can move |
-| :--- | :--- |
-| `system-prompt.ts` (`appendSkillsBlock`) | Pure string composition; its sibling `formatSkillsForSystemPrompt` is **already** in `packages/agent/src/harness/system-prompt.ts`. |
-| `prompt-preprocessor.ts` | `parseLeadingInvocation` is pure; `expandFileMentions` only needs a `readFile` callback injected to become pure. |
-| `builtin-agents.ts` | Pure `AgentDefinition[]` + helper; zero I/O. |
-| `auto-compaction.ts` | Compaction is an AGENTS.md-listed `packages/agent` responsibility; persists via `deps.session` (`SessionStorage`), not DB; model/apiKey injected. |
-| `retry-loop.ts` | Pure decision helpers + a dep-injected orchestrator (`emit`, `runTurn`, etc. are callbacks); no direct I/O. |
+| Module                                   | Why it can move                                                                                                                                   |
+| :--------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `system-prompt.ts` (`appendSkillsBlock`) | Pure string composition; its sibling `formatSkillsForSystemPrompt` is **already** in `packages/agent/src/harness/system-prompt.ts`.               |
+| `prompt-preprocessor.ts`                 | `parseLeadingInvocation` is pure; `expandFileMentions` only needs a `readFile` callback injected to become pure.                                  |
+| `builtin-agents.ts`                      | Pure `AgentDefinition[]` + helper; zero I/O.                                                                                                      |
+| `auto-compaction.ts`                     | Compaction is an AGENTS.md-listed `packages/agent` responsibility; persists via `deps.session` (`SessionStorage`), not DB; model/apiKey injected. |
+| `retry-loop.ts`                          | Pure decision helpers + a dep-injected orchestrator (`emit`, `runTurn`, etc. are callbacks); no direct I/O.                                       |
 
 **Stays in `apps/server/src/agent/`** (genuine I/O / config / transport): `runner.ts`, `model-resolver.ts`, `execution-env.ts`, `tools-builder.ts`, `ws.ts`, `ws-handler.ts`, `replay-runner.ts`.
 
 **Decision (already made):** absorb into `packages/agent` (no new package). Reassess whether a separate `packages/coding-agent` is warranted only if the server is still heavy after this.
 
 **Key facts verified during planning (do not re-verify):**
+
 - `packages/agent` already depends on `@sakti-code/llm`, `@sakti-code/logger`, `typebox`. **No new dependency is introduced by any task.**
 - `apps/server/src/agent/runner.ts` is the **only** production importer of all five modules.
 - `apps/server/src/agent/__tests__/switch-agent.test.ts` also imports `resolveBuiltinAgent` from `./builtin-agents.ts`.
@@ -29,6 +30,7 @@
 **Tech Stack:** TypeScript (monorepo, pnpm + turbo), vitest, `@sakti-code/agent` + `@sakti-code/llm` + `@sakti-code/logger` workspace packages, Biome (Ultracite) for lint/format.
 
 **Conventions to honor (from AGENTS.md):**
+
 - `exactOptionalPropertyTypes: true` → spread conditionally (`...(x !== undefined ? { x } : {})`), never pass `undefined`.
 - `noUncheckedIndexedAccess: true` → guard indexed access (`arr[i]` is `T | undefined`).
 - Biome: no non-null `!`; regex only at module top level; `readonly T[]` over `ReadonlyArray<T>`; `for...of` over `.forEach`; arrow callbacks; `class`/`for` in SolidJS (N/A here).
@@ -43,6 +45,7 @@
 The simplest move — `appendSkillsBlock` wraps `formatSkillsForSystemPrompt`, which already lives in the target file.
 
 **Files:**
+
 - Modify: `packages/agent/src/harness/system-prompt.ts` (append function)
 - Modify: `packages/agent/src/index.ts:53` (export it)
 - Modify: `packages/agent/src/__tests__/harness/system-prompt.test.ts` (merge 3 tests)
@@ -68,7 +71,7 @@ In `packages/agent/src/harness/system-prompt.ts`, append after the existing `esc
 export function appendSkillsBlock(
   baseSystemPrompt: string,
   skills: readonly Skill[],
-  hasRead: boolean
+  hasRead: boolean,
 ): string {
   if (!hasRead) {
     return baseSystemPrompt;
@@ -89,22 +92,17 @@ export { formatSkillsForSystemPrompt } from "./harness/system-prompt.ts";
 with:
 
 ```ts
-export {
-  appendSkillsBlock,
-  formatSkillsForSystemPrompt,
-} from "./harness/system-prompt.ts";
+export { appendSkillsBlock, formatSkillsForSystemPrompt } from "./harness/system-prompt.ts";
 ```
 
 **Step 3: Merge the 3 unit tests into the existing harness test**
 
 In `packages/agent/src/__tests__/harness/system-prompt.test.ts`:
+
 - Update the import (line 2) to also import `appendSkillsBlock`:
 
 ```ts
-import {
-  appendSkillsBlock,
-  formatSkillsForSystemPrompt,
-} from "../../harness/system-prompt.ts";
+import { appendSkillsBlock, formatSkillsForSystemPrompt } from "../../harness/system-prompt.ts";
 ```
 
 - Append this `describe` block at the end of the file (after the existing `formatSkillsForSystemPrompt` block):
@@ -149,6 +147,7 @@ describe("appendSkillsBlock", () => {
 **Step 4: Re-point the server import**
 
 In `apps/server/src/agent/runner.ts`:
+
 - Delete line 37: `import { appendSkillsBlock } from "./system-prompt.ts";`
 - Add `appendSkillsBlock` to the existing `@sakti-code/agent` named-import block (lines 12–18, the value import). Place it alphabetically:
 
@@ -172,10 +171,12 @@ rm apps/server/src/agent/system-prompt.ts apps/server/src/agent/__tests__/system
 **Step 6: Verify**
 
 Run (both must pass):
+
 ```bash
 cd packages/agent && pnpm run test -- system-prompt
 cd apps/server && pnpm run typecheck
 ```
+
 Expected: agent `system-prompt` tests pass (now 4 `it`s in the `appendSkillsBlock` describe + the pre-existing `formatSkillsForSystemPrompt` tests); server typecheck clean.
 
 **Step 7: Commit**
@@ -195,6 +196,7 @@ git commit -m "refactor(agent): move appendSkillsBlock into packages/agent"
 `parseLeadingInvocation` is pure. `expandFileMentions` does `readFile` — we inject a `ReadFile` callback so the agent package imports **no** `node:fs`. The server supplies the real reader; tests use a fake in-memory reader (no temp dirs).
 
 **Files:**
+
 - Create: `packages/agent/src/harness/prompt-preprocessor.ts`
 - Create: `packages/agent/src/__tests__/harness/prompt-preprocessor.test.ts`
 - Modify: `packages/agent/src/index.ts` (export symbols)
@@ -240,9 +242,7 @@ describe("parseLeadingInvocation", () => {
   });
 
   it("detects a leading skill: invocation with instructions", () => {
-    expect(
-      parseLeadingInvocation("skill:graphify do the thing", resources)
-    ).toEqual({
+    expect(parseLeadingInvocation("skill:graphify do the thing", resources)).toEqual({
       kind: "skill",
       name: "graphify",
       args: "do the thing",
@@ -287,9 +287,7 @@ describe("parseLeadingInvocation", () => {
     expect(parseLeadingInvocation("see /commit later", resources)).toEqual({
       kind: "prompt",
     });
-    expect(
-      parseLeadingInvocation("run skill:graphify now", resources)
-    ).toEqual({ kind: "prompt" });
+    expect(parseLeadingInvocation("run skill:graphify now", resources)).toEqual({ kind: "prompt" });
   });
 });
 
@@ -298,7 +296,7 @@ describe("expandFileMentions", () => {
     const out = await expandFileMentions(
       "see @foo.txt please",
       "/proj",
-      readerFor({ "foo.txt": enc.encode("hello file") })
+      readerFor({ "foo.txt": enc.encode("hello file") }),
     );
     expect(out).toContain('<file path="foo.txt">');
     expect(out).toContain("hello file");
@@ -309,26 +307,18 @@ describe("expandFileMentions", () => {
     const out = await expandFileMentions(
       "@src/a.ts",
       "/proj",
-      readerFor({ "src/a.ts": enc.encode("export const x = 1;") })
+      readerFor({ "src/a.ts": enc.encode("export const x = 1;") }),
     );
     expect(out).toContain("export const x = 1;");
   });
 
   it("leaves non-file @tokens untouched (e.g. emails)", async () => {
-    const out = await expandFileMentions(
-      "email me@host.com ok",
-      "/proj",
-      readerFor({})
-    );
+    const out = await expandFileMentions("email me@host.com ok", "/proj", readerFor({}));
     expect(out).toBe("email me@host.com ok");
   });
 
   it("leaves a non-existent path untouched (no error note)", async () => {
-    const out = await expandFileMentions(
-      "@nope/missing.txt",
-      "/proj",
-      readerFor({})
-    );
+    const out = await expandFileMentions("@nope/missing.txt", "/proj", readerFor({}));
     expect(out).toBe("@nope/missing.txt");
   });
 
@@ -336,7 +326,7 @@ describe("expandFileMentions", () => {
     const out = await expandFileMentions(
       "@big.txt",
       "/proj",
-      readerFor({ "big.txt": enc.encode("x".repeat(70_000)) })
+      readerFor({ "big.txt": enc.encode("x".repeat(70_000)) }),
     );
     expect(out).toContain("[truncated:");
     expect(out.length).toBeLessThan(70_000);
@@ -364,7 +354,7 @@ describe("planFirstTurn", () => {
       "look at @f.txt",
       loaded,
       "/proj",
-      readerFor({ "f.txt": enc.encode("DATA") })
+      readerFor({ "f.txt": enc.encode("DATA") }),
     );
     expect(plan.kind).toBe("prompt");
     if (plan.kind === "prompt") {
@@ -373,12 +363,7 @@ describe("planFirstTurn", () => {
   });
 
   it("plans a prompt turn leaving unknown @tokens untouched", async () => {
-    const plan = await planFirstTurn(
-      "email me@host.com",
-      loaded,
-      "/tmp",
-      readerFor({})
-    );
+    const plan = await planFirstTurn("email me@host.com", loaded, "/tmp", readerFor({}));
     expect(plan.kind).toBe("prompt");
     if (plan.kind === "prompt") {
       expect(plan.text).toBe("email me@host.com");
@@ -392,6 +377,7 @@ describe("planFirstTurn", () => {
 ```bash
 cd packages/agent && pnpm run test -- prompt-preprocessor
 ```
+
 Expected: FAIL — `Cannot find module '../../harness/prompt-preprocessor.ts'`.
 
 **Step 3: Create the source file**
@@ -423,7 +409,7 @@ const TEMPLATE_LEADING = /^\/([^\s/]+)\s*(.*)$/s;
  */
 export function parseLeadingInvocation(
   message: string,
-  resources: LoadedResources
+  resources: LoadedResources,
 ): LeadingInvocation {
   const trimmed = message.trimStart();
   const skillMatch = SKILL_LEADING.exec(trimmed);
@@ -433,10 +419,7 @@ export function parseLeadingInvocation(
   }
   const templateMatch = TEMPLATE_LEADING.exec(trimmed);
   const templateName = templateMatch?.[1];
-  if (
-    templateName &&
-    resources.templates.some((t) => t.name === templateName)
-  ) {
+  if (templateName && resources.templates.some((t) => t.name === templateName)) {
     return {
       kind: "template",
       name: templateName,
@@ -461,7 +444,7 @@ const FILE_MENTION = /@(\S+)/g;
 export async function expandFileMentions(
   text: string,
   cwd: string,
-  readFile: ReadFile
+  readFile: ReadFile,
 ): Promise<string> {
   const seen = new Set<string>();
   let out = text;
@@ -499,7 +482,7 @@ export async function planFirstTurn(
   message: string,
   loaded: LoadedResources,
   cwd: string,
-  readFile: ReadFile
+  readFile: ReadFile,
 ): Promise<FirstTurnPlan> {
   const lead = parseLeadingInvocation(message, loaded);
   if (lead.kind === "template" || lead.kind === "skill") {
@@ -514,6 +497,7 @@ export async function planFirstTurn(
 ```bash
 cd packages/agent && pnpm run test -- prompt-preprocessor
 ```
+
 Expected: PASS (all `it`s green).
 
 **Step 5: Export the symbols from the package barrel**
@@ -537,6 +521,7 @@ export type {
 **Step 6: Wire the real reader into the server**
 
 In `apps/server/src/agent/runner.ts`:
+
 - Add `readFile` to the existing `node:fs` import on line 1 (which currently imports `readFileSync`):
 
 ```ts
@@ -569,15 +554,17 @@ const plan = await planFirstTurn(
     templates: loadedContext.commands,
   },
   project.cwd,
-  (p) => readFile(p).catch(() => null)
+  (p) => readFile(p).catch(() => null),
 );
 ```
 
 > Note: `readFile` from `node:fs` (callback-style) vs `node:fs/promises` (promise-style). Use the **promises** version. Adjust the import to:
+>
 > ```ts
 > import { readFileSync } from "node:fs";
 > import { readFile } from "node:fs/promises";
 > ```
+>
 > (Keep `readFileSync` from `node:fs` for the existing replay path on line 123; add the promise `readFile` separately. Do not mix them into one import.)
 
 **Step 7: Delete the old server files**
@@ -593,6 +580,7 @@ rm apps/server/src/agent/prompt-preprocessor.ts \
 cd packages/agent && pnpm run test -- prompt-preprocessor
 cd apps/server && pnpm run typecheck
 ```
+
 Expected: agent tests green; server typecheck clean.
 
 **Step 9: Commit**
@@ -613,6 +601,7 @@ git commit -m "refactor(agent): move prompt-preprocessor into packages/agent (in
 Pure `AgentDefinition[]` + resolver, no I/O. Only adjusts its imports to internal paths.
 
 **Files:**
+
 - Create: `packages/agent/src/harness/builtin-agents.ts`
 - Create: `packages/agent/src/__tests__/harness/builtin-agents.test.ts`
 - Modify: `packages/agent/src/index.ts`
@@ -626,11 +615,7 @@ Pure `AgentDefinition[]` + resolver, no I/O. Only adjusts its imports to interna
 Create `packages/agent/src/harness/builtin-agents.ts` with the **exact body** of the current `apps/server/src/agent/builtin-agents.ts`, but change only the top import (lines 1–5) from:
 
 ```ts
-import {
-  type AgentDefinition,
-  fromConfig,
-  type PermissionRuleset,
-} from "@sakti-code/agent";
+import { type AgentDefinition, fromConfig, type PermissionRuleset } from "@sakti-code/agent";
 ```
 
 to internal relative imports:
@@ -667,6 +652,7 @@ import {
 ```bash
 cd packages/agent && pnpm run test -- builtin-agents
 ```
+
 Expected: PASS.
 
 **Step 4: Export from the package barrel**
@@ -684,6 +670,7 @@ export {
 **Step 5: Re-point server imports**
 
 In `apps/server/src/agent/runner.ts`:
+
 - Delete line 31: `import { BUILTIN_AGENTS, DEFAULT_AGENT_NAME } from "./builtin-agents.ts";`
 - Add `BUILTIN_AGENTS` and `DEFAULT_AGENT_NAME` to the `@sakti-code/agent` value import (now holding `appendSkillsBlock`, `planFirstTurn`, etc.):
 
@@ -727,6 +714,7 @@ cd packages/agent && pnpm run test -- builtin-agents
 cd apps/server && pnpm run typecheck
 cd apps/server && pnpm run test -- switch-agent
 ```
+
 Expected: all green.
 
 **Step 8: Commit**
@@ -750,6 +738,7 @@ Compaction is an AGENTS.md-listed `packages/agent` responsibility; the policy mo
 > **Do this Task before Task 5** — `retry-loop.ts` imports `CompactionDecision`/`RunCompactionOutcome` from here.
 
 **Files:**
+
 - Create: `packages/agent/src/compaction/auto-compaction.ts`
 - Create: `packages/agent/src/__tests__/compaction/auto-compaction.test.ts` (new `__tests__/compaction/` dir)
 - Modify: `packages/agent/src/index.ts`
@@ -762,6 +751,7 @@ Compaction is an AGENTS.md-listed `packages/agent` responsibility; the policy mo
 Create `packages/agent/src/compaction/auto-compaction.ts` with the **exact body** of the current `apps/server/src/agent/auto-compaction.ts`, with these import changes:
 
 Original top imports:
+
 ```ts
 import type { ThinkingLevel } from "@sakti-code/agent";
 import {
@@ -775,14 +765,11 @@ import {
   type SessionTreeEntry,
   shouldCompact,
 } from "@sakti-code/agent";
-import {
-  type AssistantMessage,
-  isContextOverflow,
-  type Model,
-} from "@sakti-code/llm";
+import { type AssistantMessage, isContextOverflow, type Model } from "@sakti-code/llm";
 ```
 
 New (resolve to internal paths; keep `@sakti-code/llm` as-is):
+
 ```ts
 import type { AgentMessage } from "../types.ts";
 import {
@@ -795,14 +782,10 @@ import {
 } from "../compaction.ts";
 import type { Session, SessionTreeEntry } from "../harness/session.ts";
 import type { ThinkingLevel } from "../harness/types.ts";
-import {
-  type AssistantMessage,
-  isContextOverflow,
-  type Model,
-} from "@sakti-code/llm";
+import { type AssistantMessage, isContextOverflow, type Model } from "@sakti-code/llm";
 ```
 
-> **Verify `Session`/`SessionTreeEntry` source paths:** `Session` (class) is in `src/harness/session.ts`; `SessionTreeEntry` and `ThinkingLevel` are in `src/harness/types.ts`. If the compiler reports a type-only vs value mismatch, import `Session` as a value (`import { Session } from "../harness/session.ts"`) — but since `auto-compaction.ts` only uses it as a *type* (`session: Session` in `RunCompactionDeps`), `import type` is correct. Keep everything else in the file identical.
+> **Verify `Session`/`SessionTreeEntry` source paths:** `Session` (class) is in `src/harness/session.ts`; `SessionTreeEntry` and `ThinkingLevel` are in `src/harness/types.ts`. If the compiler reports a type-only vs value mismatch, import `Session` as a value (`import { Session } from "../harness/session.ts"`) — but since `auto-compaction.ts` only uses it as a _type_ (`session: Session` in `RunCompactionDeps`), `import type` is correct. Keep everything else in the file identical.
 
 **Also update the module header comment** (lines 19–39): it currently says "Ports pi's … into the server layer. The agent loop deliberately does not compact … the decision + execution live here." Rewrite the opening to reflect the new home, e.g.:
 
@@ -835,11 +818,9 @@ import {
 Create `packages/agent/src/__tests__/compaction/auto-compaction.test.ts` (create the `compaction/` dir) with the **exact body** of `apps/server/src/agent/__tests__/auto-compaction.test.ts`, changing only the imports (lines 1–11):
 
 Original:
+
 ```ts
-import {
-  type CompactionSettings,
-  DEFAULT_COMPACTION_SETTINGS,
-} from "@sakti-code/agent";
+import { type CompactionSettings, DEFAULT_COMPACTION_SETTINGS } from "@sakti-code/agent";
 import type { AssistantMessage, Usage } from "@sakti-code/llm";
 import { describe, expect, it } from "vitest";
 import {
@@ -850,11 +831,9 @@ import {
 ```
 
 New:
+
 ```ts
-import {
-  type CompactionSettings,
-  DEFAULT_COMPACTION_SETTINGS,
-} from "../../compaction.ts";
+import { type CompactionSettings, DEFAULT_COMPACTION_SETTINGS } from "../../compaction.ts";
 import type { AssistantMessage, Usage } from "@sakti-code/llm";
 import { describe, expect, it } from "vitest";
 import {
@@ -871,6 +850,7 @@ Keep every test case unchanged.
 ```bash
 cd packages/agent && pnpm run test -- auto-compaction
 ```
+
 Expected: PASS.
 
 **Step 4: Export from the package barrel**
@@ -895,13 +875,11 @@ export type {
 **Step 5: Re-point the server import**
 
 In `apps/server/src/agent/runner.ts`, delete lines 26–30:
+
 ```ts
-import {
-  checkCompaction,
-  parseCompactionSettings,
-  runAutoCompaction,
-} from "./auto-compaction.ts";
+import { checkCompaction, parseCompactionSettings, runAutoCompaction } from "./auto-compaction.ts";
 ```
+
 and add `checkCompaction`, `parseCompactionSettings`, `runAutoCompaction` to the growing `@sakti-code/agent` value import.
 
 **Step 6: Delete the old server files**
@@ -917,6 +895,7 @@ rm apps/server/src/agent/auto-compaction.ts \
 cd packages/agent && pnpm run test -- auto-compaction
 cd apps/server && pnpm run typecheck
 ```
+
 Expected: green.
 
 **Step 8: Commit**
@@ -937,6 +916,7 @@ git commit -m "refactor(agent): move auto-compaction policy into packages/agent"
 **Depends on Task 4** (imports `CompactionDecision`/`RunCompactionOutcome` from `auto-compaction`). No dedicated unit test exists — this is pure relocation; correctness is covered by `apps/server` `runner.test.ts`.
 
 **Files:**
+
 - Create: `packages/agent/src/retry-loop.ts`
 - Modify: `packages/agent/src/index.ts`
 - Modify: `apps/server/src/agent/runner.ts:36`
@@ -947,27 +927,23 @@ git commit -m "refactor(agent): move auto-compaction policy into packages/agent"
 Create `packages/agent/src/retry-loop.ts` with the **exact body** of `apps/server/src/agent/retry-loop.ts`, with these import changes:
 
 Original imports (lines 29–36):
+
 ```ts
 import type { AgentEvent } from "@sakti-code/agent";
 import type { AssistantMessage } from "@sakti-code/llm";
 import { isRetryableAssistantError } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
-import type {
-  CompactionDecision,
-  RunCompactionOutcome,
-} from "./auto-compaction.ts";
+import type { CompactionDecision, RunCompactionOutcome } from "./auto-compaction.ts";
 ```
 
 New:
+
 ```ts
 import type { AgentEvent } from "./types.ts";
 import type { AssistantMessage } from "@sakti-code/llm";
 import { isRetryableAssistantError } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
-import type {
-  CompactionDecision,
-  RunCompactionOutcome,
-} from "./compaction/auto-compaction.ts";
+import type { CompactionDecision, RunCompactionOutcome } from "./compaction/auto-compaction.ts";
 ```
 
 **Update the module header comment** (lines 1–27): it explicitly says "Lives in the server layer (not the agent loop, not the SDK) so that retry state can surface to the user via typed `auto_retry_*` events." Rewrite to reflect that it now lives in the agent package but remains **dep-injected** (the server supplies `emit`/`runTurn`/`rollbackLeaf`/`signal`), so it still owns no transport. Suggested opening:
@@ -1017,11 +993,7 @@ export {
   parseRetrySettings,
   shouldRetry,
 } from "./retry-loop.ts";
-export type {
-  RetryDecisionInput,
-  RetryRunnerDeps,
-  RetrySettings,
-} from "./retry-loop.ts";
+export type { RetryDecisionInput, RetryRunnerDeps, RetrySettings } from "./retry-loop.ts";
 ```
 
 **Step 3: Re-point the server import**
@@ -1041,6 +1013,7 @@ cd packages/agent && pnpm run typecheck
 cd apps/server && pnpm run typecheck
 cd apps/server && pnpm run test -- runner
 ```
+
 Expected: both typecheck clean; `runner` tests green (this is where `executeWithRetry` is exercised end-to-end).
 
 **Step 6: Commit**
@@ -1060,6 +1033,7 @@ git commit -m "refactor(agent): move retry-loop into packages/agent"
 ```bash
 rg -n "from \"\./(system-prompt|prompt-preprocessor|builtin-agents|auto-compaction|retry-loop)\.ts\"" apps/server/src
 ```
+
 Expected: **no matches** (all five now come from `@sakti-code/agent`).
 
 **Step 2: Full typecheck (all packages via turbo)**
@@ -1067,6 +1041,7 @@ Expected: **no matches** (all five now come from `@sakti-code/agent`).
 ```bash
 pnpm run typecheck
 ```
+
 Expected: clean across agent, db, tools, server, desktop.
 
 **Step 3: Full test suites**
@@ -1075,7 +1050,9 @@ Expected: clean across agent, db, tools, server, desktop.
 cd packages/agent && pnpm run test
 cd apps/server && pnpm run test
 ```
+
 Expected:
+
 - agent: all green (now includes the 5 moved/resident test files).
 - server: 321 pass / 6 fail is the known baseline — the 6 are pre-existing (4 terminal/node-pty, 1 compaction-route LLM-needs-key, 1 flaky e2e). **No new failures**, and the moved-module counts moved from server to agent.
 
@@ -1095,14 +1072,17 @@ npx @biomejs/biome check --write \
   apps/server/src/agent/runner.ts \
   apps/server/src/agent/__tests__/switch-agent.test.ts
 ```
+
 Expected: no remaining diagnostics on these files. (If biome reformats, `git add` the result.)
 
 **Step 5: Update AGENTS.md (accuracy)**
 
 In `AGENTS.md`, the `packages/agent/` bullet currently reads:
+
 > `packages/agent/` — pure agent loop, types, compaction. **No persistence, no DB.** Talks to storage via the `SessionStore` interface.
 
 Append a clause noting it also hosts the coding-agent policy layer:
+
 > `packages/agent/` — pure agent loop, types, compaction, plus the coding-agent policy layer (system-prompt composition, prompt preprocessor, builtin agents, auto-compaction policy, application-level retry). **No persistence, no DB, no app config.** Talks to storage via the `SessionStore` interface; model + API key are injected by the caller.
 
 **Step 6: Commit the sweep**

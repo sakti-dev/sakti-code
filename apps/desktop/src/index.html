@@ -1,24 +1,20 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>sakti-code</title>
     <script>
-    "use strict";
-    // CEF/Electron on Linux may ignore the OS DPI scale factor. If a real OS scale
-    // is passed via ?dpr= and the webview's devicePixelRatio is lower, apply a CSS
-    // zoom to compensate. Runs synchronously in <head> to prevent an unscaled flash.
-    (() => {
-      const dpr = Number.parseFloat(
-        new URLSearchParams(location.search).get("dpr") || "1"
-      );
-      if (dpr > 1 && window.devicePixelRatio < dpr - 0.01) {
-        document.documentElement.style.zoom = String(
-          dpr / window.devicePixelRatio
-        );
-      }
-    })();
+      "use strict";
+      // CEF/Electron on Linux may ignore the OS DPI scale factor. If a real OS scale
+      // is passed via ?dpr= and the webview's devicePixelRatio is lower, apply a CSS
+      // zoom to compensate. Runs synchronously in <head> to prevent an unscaled flash.
+      (() => {
+        const dpr = Number.parseFloat(new URLSearchParams(location.search).get("dpr") || "1");
+        if (dpr > 1 && window.devicePixelRatio < dpr - 0.01) {
+          document.documentElement.style.zoom = String(dpr / window.devicePixelRatio);
+        }
+      })();
     </script>
   </head>
   <body>

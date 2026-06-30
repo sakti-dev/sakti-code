@@ -60,7 +60,7 @@ export const mergeContext = (
 ): LogContext => {
   const merged: LogContext = {
     ...defaultContext,
-    ...(context ?? {}),
+    ...context,
   };
 
   if (error !== undefined) {
@@ -79,9 +79,7 @@ const formatContextTail = (merged: LogContext): string => {
     return "";
   }
 
-  return ` ${entries
-    .map(([key, value]) => `${toSnakeCase(key)}=${formatValue(value)}`)
-    .join(" ")}`;
+  return ` ${entries.map(([key, value]) => `${toSnakeCase(key)}=${formatValue(value)}`).join(" ")}`;
 };
 
 /**

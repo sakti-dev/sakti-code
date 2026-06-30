@@ -12,9 +12,10 @@
 
 ## Task 1: Event-lifecycle — close unmatched `message_start` on error/abort (P0 CRITICAL)
 
-**Problem:** `index.ts:155` emits `message_start` for the assistant *before* calling `streamLLMResponse`. On error (`!streamResult.ok` at line 171) and abort (line 179), the code returns without `message_end`. Pi emits both inside `streamAssistantResponse` (`agent-loop.ts:319,342-355,364-366`), guaranteeing pairing.
+**Problem:** `index.ts:155` emits `message_start` for the assistant _before_ calling `streamLLMResponse`. On error (`!streamResult.ok` at line 171) and abort (line 179), the code returns without `message_end`. Pi emits both inside `streamAssistantResponse` (`agent-loop.ts:319,342-355,364-366`), guaranteeing pairing.
 
 **Files:**
+
 - Modify: `packages/agent/src/loop/index.ts:141-182`
 - Modify: `packages/agent/src/loop/streaming.ts:100-172`
 - Test: `packages/agent/src/__tests__/loop-behavior.test.ts:485-578`
@@ -32,7 +33,11 @@ it("error path: assistant message_start and message_end are paired", async () =>
     role: "assistant",
     content: [{ type: "text", text: "billing exceeded" }],
     usage: {
-      input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
     },
     stopReason: "error",
@@ -47,15 +52,18 @@ it("error path: assistant message_start and message_end are paired", async () =>
 
   vi.mocked(streamSimple).mockReturnValue(s);
   const loop = createAgentLoop({
-    sessionId: "s1", model: testModel, tools: [], store,
+    sessionId: "s1",
+    model: testModel,
+    tools: [],
+    store,
   });
   const events = await collectEvents(loop.prompt("hi"));
 
   const assistantStarts = events.filter(
-    (e) => e.type === "message_start" && e.message?.role === "assistant"
+    (e) => e.type === "message_start" && e.message?.role === "assistant",
   );
   const assistantEnds = events.filter(
-    (e) => e.type === "message_end" && e.message?.role === "assistant"
+    (e) => e.type === "message_end" && e.message?.role === "assistant",
   );
   expect(assistantStarts.length).toBe(1);
   expect(assistantEnds.length).toBe(1);
@@ -78,7 +86,11 @@ it("abort path: assistant message_start and message_end are paired", async () =>
     role: "assistant",
     content: [{ type: "text", text: "" }],
     usage: {
-      input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
     },
     stopReason: "aborted",
@@ -93,15 +105,18 @@ it("abort path: assistant message_start and message_end are paired", async () =>
 
   vi.mocked(streamSimple).mockReturnValue(s);
   const loop = createAgentLoop({
-    sessionId: "s1", model: testModel, tools: [], store,
+    sessionId: "s1",
+    model: testModel,
+    tools: [],
+    store,
   });
   const events = await collectEvents(loop.prompt("hi"));
 
   const assistantStarts = events.filter(
-    (e) => e.type === "message_start" && e.message?.role === "assistant"
+    (e) => e.type === "message_start" && e.message?.role === "assistant",
   );
   const assistantEnds = events.filter(
-    (e) => e.type === "message_end" && e.message?.role === "assistant"
+    (e) => e.type === "message_end" && e.message?.role === "assistant",
   );
   expect(assistantStarts.length).toBe(1);
   expect(assistantEnds.length).toBe(1);
@@ -208,6 +223,7 @@ agent-loop.ts:196-199. All 104 agent tests pass."
 **Problem:** `injectMessage` at `index.ts:216` and `:261` silently injects follow-up messages without `message_start`/`message_end`. Pi's `runLoop` processes follow-ups via `pendingMessages` with full lifecycle at `agent-loop.ts:182-189`.
 
 **Files:**
+
 - Modify: `packages/agent/src/loop/index.ts:214-222, 259-265`
 - Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
 
@@ -226,7 +242,10 @@ it("wraps each followUp message in message_start/message_end with payload", asyn
   });
 
   const loop = createAgentLoop({
-    sessionId: "s1", model: testModel, tools: [], store,
+    sessionId: "s1",
+    model: testModel,
+    tools: [],
+    store,
   });
 
   loop.followUp("follow up message");
@@ -236,13 +255,13 @@ it("wraps each followUp message in message_start/message_end with payload", asyn
     (e) =>
       e.type === "message_start" &&
       e.message?.role === "user" &&
-      (e.message as any).content === "follow up message"
+      (e.message as any).content === "follow up message",
   );
   const followUpEnds = events.filter(
     (e) =>
       e.type === "message_end" &&
       e.message?.role === "user" &&
-      (e.message as any).content === "follow up message"
+      (e.message as any).content === "follow up message",
   );
   expect(followUpStarts.length).toBe(1);
   expect(followUpEnds.length).toBe(1);
@@ -324,11 +343,13 @@ No separate commit needed — this is part of Task 1.
 ## Task 4: Event-lifecycle — update misleading comment (SUGGESTION)
 
 **Files:**
+
 - Modify: `packages/agent/src/__tests__/loop-behavior.test.ts:237`
 
 **Step 1: Fix comment**
 
 Replace line 237:
+
 ```typescript
 // Tool execution events occur after the assistant message_end and before the tool-result message_start
 ```
@@ -347,6 +368,7 @@ git commit -m "fix(tests): clarify comment about tool execution event ordering"
 **Problem:** `executeOneTool` only emits `tool_execution_update` in the success path (line 40-46). If the tool throws after accumulating partial output, the accumulated content is used for the error result (line 49-50) but no update event is emitted. Pi flushes queued updates on error (`agent-loop.ts:659`).
 
 **Files:**
+
 - Modify: `packages/agent/src/loop/tool-execution.ts:36-61`
 - Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
 
@@ -371,18 +393,21 @@ it("tool with partial output then error emits tool_execution_update with accumul
   });
 
   const loop = createAgentLoop({
-    sessionId: "s1", model: testModel, tools: [tool], store,
+    sessionId: "s1",
+    model: testModel,
+    tools: [tool],
+    store,
   });
   const events = await collectEvents(loop.prompt("use flaky"));
 
   const updateEvents = events.filter(
-    (e) => e.type === "tool_execution_update" && (e as any).toolCallId
+    (e) => e.type === "tool_execution_update" && (e as any).toolCallId,
   );
   expect(updateEvents.length).toBe(1);
   expect((updateEvents[0] as any).accumulated).toBe("partial one partial two");
 
   const errorEnds = events.filter(
-    (e) => e.type === "tool_execution_end" && (e as any).toolName === "flaky"
+    (e) => e.type === "tool_execution_end" && (e as any).toolName === "flaky",
   );
   expect(errorEnds.length).toBe(1);
   expect((errorEnds[0] as any).result.content).toBe("partial one partial two");
@@ -452,6 +477,7 @@ in the catch block before the error tool_execution_end."
 **Problem:** No test verifies sequential mode runs tools one-at-a-time with ordering guarantees. Pi has explicit slow-tool gate tests (`agent-loop.test.ts:653-734`).
 
 **Files:**
+
 - Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
 
 **Step 1: Write the failing test**
@@ -494,7 +520,10 @@ it("sequential mode: tools run one at a time in call order", async () => {
   });
 
   const loop = createAgentLoop({
-    sessionId: "s1", model: testModel, tools: [toolA, toolB], store,
+    sessionId: "s1",
+    model: testModel,
+    tools: [toolA, toolB],
+    store,
     toolExecutionMode: "sequential",
   });
   const events = await collectEvents(loop.prompt("run sequential"));
@@ -504,9 +533,7 @@ it("sequential mode: tools run one at a time in call order", async () => {
   expect(startTimes[1]!).toBeGreaterThan(startTimes[0]! + 20);
 
   // Verify call order in persisted messages
-  const toolMsgs = events.filter(
-    (e) => e.type === "message_start" && e.message?.role === "tool"
-  );
+  const toolMsgs = events.filter((e) => e.type === "message_start" && e.message?.role === "tool");
   expect(toolMsgs.length).toBe(2);
   expect((toolMsgs[0]!.message as any).toolCallId).toBe("tc_1");
   expect((toolMsgs[1]!.message as any).toolCallId).toBe("tc_2");
@@ -533,6 +560,7 @@ Verifies tool B starts after tool A completes when mode is sequential."
 ## Task 7: Tool-batch — add all-false-terminate regression test (P1)
 
 **Files:**
+
 - Test: `packages/agent/src/__tests__/loop-behavior.test.ts`
 
 **Step 1: Write the test**
@@ -560,7 +588,10 @@ it("all-false terminate batch continues the loop to a second turn", async () => 
   });
 
   const loop = createAgentLoop({
-    sessionId: "s1", model: testModel, tools: [tool], store,
+    sessionId: "s1",
+    model: testModel,
+    tools: [tool],
+    store,
   });
   const events = await collectEvents(loop.prompt("all go"));
 
@@ -587,6 +618,7 @@ git commit -m "test(tool-execution): all-false terminate batch continues loop"
 ## Task 8: Tool-batch — mark task 1.6 complete in tasks.md
 
 **Files:**
+
 - Modify: `openspec/changes/agent-tool-batch-semantics/tasks.md`
 
 **Step 1: Check and mark**
@@ -600,6 +632,7 @@ The gate (`bun typecheck && bun x ultracite check`) passes. Mark task 1.6 as `[x
 **Problem:** `messageToText` returns `""` for empty messages, causing spurious `\n\n` in the join. Pi uses conditional push in a `parts[]` array (`utils.ts:110-162`).
 
 **Files:**
+
 - Modify: `packages/agent/src/compaction.ts:230`
 - Test: `packages/agent/src/__tests__/compaction.test.ts`
 
@@ -618,8 +651,12 @@ describe("messageToText", () => {
 
   it("returns empty string for tool message with empty text", () => {
     const msg: AgentMessage = {
-      role: "tool", content: [{ type: "text", text: "" }],
-      toolCallId: "tc_1", toolName: "read", isError: false, timestamp: 1,
+      role: "tool",
+      content: [{ type: "text", text: "" }],
+      toolCallId: "tc_1",
+      toolName: "read",
+      isError: false,
+      timestamp: 1,
     };
     expect(messageToText(msg)).toBe("");
   });
@@ -627,8 +664,14 @@ describe("messageToText", () => {
   it("join with empty messages should not produce double separators", () => {
     const msgs: AgentMessage[] = [
       { role: "user", content: "hello", timestamp: 1 },
-      { role: "tool", content: [{ type: "text", text: "" }],
-        toolCallId: "tc_1", toolName: "read", isError: false, timestamp: 2 },
+      {
+        role: "tool",
+        content: [{ type: "text", text: "" }],
+        toolCallId: "tc_1",
+        toolName: "read",
+        isError: false,
+        timestamp: 2,
+      },
       { role: "user", content: "world", timestamp: 3 },
     ];
     const text = msgs.map(messageToText).filter(Boolean).join("\n\n");
@@ -672,15 +715,19 @@ Our messageToText returns '' for empty content, producing spurious
 **Problem:** Spec says error frames use `message` field, implementation uses `error`. Pi has no WS server so this is a self-consistency fix.
 
 **Files:**
+
 - Modify: `openspec/specs/agent-streaming/spec.md:62,85`
 
 **Step 1: Update spec line 62**
 
 Change:
+
 ```
 or `{type:"error", sessionId, message}`.
 ```
+
 To:
+
 ```
 or `{type:"error", sessionId, error}`.
 ```
@@ -688,10 +735,13 @@ or `{type:"error", sessionId, error}`.
 **Step 2: Update spec line 85**
 
 Change:
+
 ```
 { type: "error", sessionId, message: "No active run" }` frame.
 ```
+
 To:
+
 ```
 { type: "error", sessionId, error: "No active run" }` frame.
 ```
@@ -710,6 +760,7 @@ git commit -m "docs(spec): align error frame field name with implementation ('er
 **Problem:** `runner.ts:104` calls `ctx.repos.models.getForProject(session.projectId)` again to get the provider for `getEnvApiKey`, even though `resolveModel` already called it. If repo behavior changes, the provider string could be wrong.
 
 **Files:**
+
 - Modify: `apps/server/src/agent/model-resolver.ts:8-23`
 - Modify: `apps/server/src/agent/runner.ts:98-106`
 
@@ -751,10 +802,7 @@ export interface ResolvedModel {
   provider: string;
 }
 
-export function resolveModel(
-  ctx: ServerContext,
-  session: { projectId: string }
-): ResolvedModel {
+export function resolveModel(ctx: ServerContext, session: { projectId: string }): ResolvedModel {
   const config = ctx.repos.models.getForProject(session.projectId);
   if (config) {
     return {
@@ -769,9 +817,7 @@ export function resolveModel(
       provider: global.provider,
     };
   }
-  throw new Error(
-    `No model config found for project ${session.projectId} and no global default`
-  );
+  throw new Error(`No model config found for project ${session.projectId} and no global default`);
 }
 ```
 
@@ -815,6 +861,7 @@ fragility if repo fallback behavior changes."
 **Problem:** `ws-handler.ts:147` fires `runAgentStream(...)` without awaiting. If the catch block inside somehow fails (e.g., `ws.send` throws after WS close), the promise becomes unhandled.
 
 **Files:**
+
 - Modify: `apps/server/src/agent/ws-handler.ts:147`
 
 **Step 1: Implement — add `.catch()`**
@@ -844,6 +891,7 @@ git commit -m "fix(server): add unhandled rejection guard on fire-and-forget run
 ## Task 13: Server — add "unknown project" test (P1)
 
 **Files:**
+
 - Test: `apps/server/src/agent/__tests__/runner.test.ts`
 
 **Step 1: Write the test**
@@ -856,7 +904,7 @@ it("unknown project throws Project not found", async () => {
     async (id: string) => {
       if (id === "proj-1") return null; // the session's project
       return createMockCtx().repos.projects.findById(id);
-    }
+    },
   );
   const store = createMockStore();
   getModelMock.mockReturnValue(createTestModel());
@@ -866,7 +914,7 @@ it("unknown project throws Project not found", async () => {
       for await (const _event of runPrompt(ctx, "sess-1", "test", store)) {
         // consume
       }
-    })()
+    })(),
   ).rejects.toThrow(/Project not found/);
 });
 ```
@@ -912,19 +960,19 @@ Run: `cd apps/server && bun test src/__tests__/`
 
 ## Execution Checklist
 
-| # | Task | Status |
-|---|------|--------|
-| 1 | Close unmatched `message_start` on error/abort | pending |
-| 2 | Emit lifecycle events for followUp | pending |
-| 3 | Emit `turn_end` on error/abort (part of Task 1) | pending |
-| 4 | Fix misleading comment | pending |
-| 5 | Emit `tool_execution_update` on error path | pending |
-| 6 | Sequential ordering test with timing | pending |
-| 7 | All-false terminate regression test | pending |
-| 8 | Mark task 1.6 complete | pending |
-| 9 | `.filter(Boolean)` before compaction join | pending |
-| 10 | Update spec `error` field name | pending |
-| 11 | Eliminate redundant `getForProject` re-query | pending |
-| 12 | Unhandled rejection guard on fire-and-forget | pending |
-| 13 | Unknown project test | pending |
-| 14 | Final gate — all packages | pending |
+| #   | Task                                            | Status  |
+| --- | ----------------------------------------------- | ------- |
+| 1   | Close unmatched `message_start` on error/abort  | pending |
+| 2   | Emit lifecycle events for followUp              | pending |
+| 3   | Emit `turn_end` on error/abort (part of Task 1) | pending |
+| 4   | Fix misleading comment                          | pending |
+| 5   | Emit `tool_execution_update` on error path      | pending |
+| 6   | Sequential ordering test with timing            | pending |
+| 7   | All-false terminate regression test             | pending |
+| 8   | Mark task 1.6 complete                          | pending |
+| 9   | `.filter(Boolean)` before compaction join       | pending |
+| 10  | Update spec `error` field name                  | pending |
+| 11  | Eliminate redundant `getForProject` re-query    | pending |
+| 12  | Unhandled rejection guard on fire-and-forget    | pending |
+| 13  | Unknown project test                            | pending |
+| 14  | Final gate — all packages                       | pending |

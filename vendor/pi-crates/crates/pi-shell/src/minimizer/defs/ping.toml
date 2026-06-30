@@ -13,19 +13,19 @@ match_command = "^ping6?$"
 strip_ansi = true
 only_on_exit = [0]
 keep_lines_matching = [
-	"^PING ",
-	"^--- .* ping statistics ---$",
-	"packet loss",
-	"^rtt min",
-	"^round-trip min",
-	"timeout",
-	"[Uu]nreachable",
-	"^ping:",
-	"^From ",
-	"^Ping statistics for",
-	"Packets: Sent",
-	"^\\s*Minimum =",
-	"^Approximate round trip",
+  "^PING ",
+  "^--- .* ping statistics ---$",
+  "packet loss",
+  "^rtt min",
+  "^round-trip min",
+  "timeout",
+  "[Uu]nreachable",
+  "^ping:",
+  "^From ",
+  "^Ping statistics for",
+  "Packets: Sent",
+  "^\\s*Minimum =",
+  "^Approximate round trip",
 ]
 tail_lines = 6
 on_empty = "ping: ok"

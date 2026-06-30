@@ -13,7 +13,7 @@ export function registerLogHandler(desktopLogger: Logger): void {
     const level = entry.level as LogLevel;
     const fn = desktopLogger[level];
     fn.call(desktopLogger, entry.message, {
-      ...(entry.context ?? {}),
+      ...entry.context,
       origin: "renderer",
     });
   });

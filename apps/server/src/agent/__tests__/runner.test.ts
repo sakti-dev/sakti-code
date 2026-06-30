@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 const SESSION_NOT_FOUND_RE = /Session not found/;
 const PROJECT_NOT_FOUND_RE = /Project not found/;

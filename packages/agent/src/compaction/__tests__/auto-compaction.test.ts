@@ -189,7 +189,10 @@ describe("checkCompaction", () => {
     const d = checkCompaction(
       baseInput(
         asst("stop", { usage: usage({ totalTokens: 950 }), timestamp: 50 }),
-        { settings, latestCompactionTimestamp: 100 }
+        {
+          settings,
+          latestCompactionTimestamp: 100,
+        }
       )
     );
     expect(d.action).toBe("none");

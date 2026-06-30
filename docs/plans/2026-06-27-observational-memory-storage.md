@@ -6,12 +6,14 @@
 **Goal:** Implement sakti's Observational Memory **storage adapter** — the DB-facing class that owns all reads/writes to the `observational_memory` table, mirroring Mastra's `MemoryStorage` OM contract so the future OM processor (Observer/Reflector loop) ports with minimal friction.
 
 **Architecture:** Two packages, matching sakti's existing storage split (interface in agent, impl in db):
+
 - `packages/agent` — owns the `ObservationalMemoryStorage` **interface** + `ObservationalMemoryRecord`/input types (parallel to how `SessionStorage` lives in `harness/types.ts`).
 - `packages/db` — owns `SqliteObservationalMemoryStorage`, a Drizzle impl over `node:sqlite` (parallel to `SqliteSessionStorage`).
 
 The adapter speaks **Mastra's method names and signatures verbatim** (e.g. `getObservationalMemory(threadId, resourceId)`) so the processor port is mechanical. The glossary already maps: `threadId` = a sakti session id, `resourceId` = a sakti project id. The table columns (`thread_id`/`resource_id`) are the same mapping.
 
 **Scope decisions (decided upfront, do not re-litigate during execution):**
+
 1. **OM-record table only.** This adapter owns the `observational_memory` table — it does **NOT** implement Mastra's `listMessages*`. The future processor obtains messages-to-observe via the existing `SessionStorage.getPathToRoot(leafId)` + filtering `kind === "message"`. This avoids coupling the adapter to `session_entries` and reuses the recursive-CTE leaf-path logic that already exists.
 2. **Session-scoped (thread) only**, matching the schema plan. `resourceId` is still stored (always present, per Mastra) but lookups are by `thread:{sessionId}`. Resource-scope is a later additive change.
 3. **Full contract (17 methods)** ported, but phased so execution can pause between phases. The synchronous path (Phase A–C) is what a minimal processor needs; async buffering (Phase D–E) is the optimization.
@@ -23,6 +25,7 @@ The adapter speaks **Mastra's method names and signatures verbatim** (e.g. `getO
 **Tech Stack:** `node:sqlite`, Drizzle ORM (node-sqlite dialect), vitest, pnpm. `exactOptionalPropertyTypes: true` is on.
 
 **Mastra source of truth (verify shapes against these if uncertain):**
+
 - Record type: `openspec/references/mastra/packages/core/src/storage/types.ts:1129`
 - Input types: `openspec/references/mastra/packages/core/src/storage/types.ts:1255` onward (`CreateObservationalMemoryInput`, `UpdateActiveObservationsInput`, `SwapBufferedToActiveInput`, `CreateReflectionGenerationInput`, etc.)
 - Abstract contract: `openspec/references/mastra/packages/core/src/storage/domains/memory/base.ts:175`
@@ -47,6 +50,7 @@ function omLookupKey(threadId: string | null, resourceId: string): string {
 ## Task 1: Types + interface in `packages/agent`
 
 **Files:**
+
 - Create: `packages/agent/src/harness/observational-memory-storage.ts`
 - Modify: `packages/agent/src/index.ts` (re-export)
 
@@ -203,54 +207,38 @@ export interface UpdateObservationalMemoryConfigInput {
 export interface ObservationalMemoryStorage {
   getObservationalMemory(
     threadId: string | null,
-    resourceId: string
+    resourceId: string,
   ): Promise<ObservationalMemoryRecord | null>;
   getObservationalMemoryHistory(
     threadId: string | null,
     resourceId: string,
     limit?: number,
-    options?: ObservationalMemoryHistoryOptions
+    options?: ObservationalMemoryHistoryOptions,
   ): Promise<ObservationalMemoryRecord[]>;
   initializeObservationalMemory(
-    input: CreateObservationalMemoryInput
+    input: CreateObservationalMemoryInput,
   ): Promise<ObservationalMemoryRecord>;
-  insertObservationalMemoryRecord(
-    record: ObservationalMemoryRecord
-  ): Promise<void>;
+  insertObservationalMemoryRecord(record: ObservationalMemoryRecord): Promise<void>;
   updateActiveObservations(input: UpdateActiveObservationsInput): Promise<void>;
   createReflectionGeneration(
-    input: CreateReflectionGenerationInput
+    input: CreateReflectionGenerationInput,
   ): Promise<ObservationalMemoryRecord>;
   setReflectingFlag(id: string, isReflecting: boolean): Promise<void>;
   setObservingFlag(id: string, isObserving: boolean): Promise<void>;
   setBufferingObservationFlag(
     id: string,
     isBuffering: boolean,
-    lastBufferedAtTokens?: number
+    lastBufferedAtTokens?: number,
   ): Promise<void>;
-  setBufferingReflectionFlag(
-    id: string,
-    isBuffering: boolean
-  ): Promise<void>;
-  clearObservationalMemory(
-    threadId: string | null,
-    resourceId: string
-  ): Promise<void>;
+  setBufferingReflectionFlag(id: string, isBuffering: boolean): Promise<void>;
+  clearObservationalMemory(threadId: string | null, resourceId: string): Promise<void>;
   setPendingMessageTokens(id: string, tokenCount: number): Promise<void>;
-  updateObservationalMemoryConfig(
-    input: UpdateObservationalMemoryConfigInput
-  ): Promise<void>;
-  updateBufferedObservations(
-    input: UpdateBufferedObservationsInput
-  ): Promise<void>;
-  swapBufferedToActive(
-    input: SwapBufferedToActiveInput
-  ): Promise<SwapBufferedToActiveResult>;
-  updateBufferedReflection(
-    input: UpdateBufferedReflectionInput
-  ): Promise<void>;
+  updateObservationalMemoryConfig(input: UpdateObservationalMemoryConfigInput): Promise<void>;
+  updateBufferedObservations(input: UpdateBufferedObservationsInput): Promise<void>;
+  swapBufferedToActive(input: SwapBufferedToActiveInput): Promise<SwapBufferedToActiveResult>;
+  updateBufferedReflection(input: UpdateBufferedReflectionInput): Promise<void>;
   swapBufferedReflectionToActive(
-    input: SwapBufferedReflectionToActiveInput
+    input: SwapBufferedReflectionToActiveInput,
   ): Promise<ObservationalMemoryRecord>;
 }
 ```
@@ -294,6 +282,7 @@ git commit -m "feat(agent): add ObservationalMemoryStorage interface and types"
 ## Task 2: Impl skeleton + read methods (`getObservationalMemory`, `getObservationalMemoryHistory`)
 
 **Files:**
+
 - Create: `packages/db/src/observational-memory-store.ts`
 - Create: `packages/db/src/__tests__/observational-memory-store.test.ts`
 - Modify: `packages/db/src/index.ts` (export the class)
@@ -321,10 +310,10 @@ describe("SqliteObservationalMemoryStorage — reads", () => {
     const drizzle = await initDatabase(db);
     // FK parents
     db.prepare(
-      "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?,?,?,?,?)"
+      "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?,?,?,?,?)",
     ).run("proj1", "P", "/tmp/p", 1, 1);
     db.prepare(
-      "INSERT INTO sessions (id, project_id, kind, thinking_level, created_at, updated_at) VALUES (?,?,?,?,?,?)"
+      "INSERT INTO sessions (id, project_id, kind, thinking_level, created_at, updated_at) VALUES (?,?,?,?,?,?)",
     ).run("sess1", "proj1", "task", "off", 1, 1);
     store = new SqliteObservationalMemoryStorage(drizzle);
   });
@@ -439,7 +428,7 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
 
   async getObservationalMemory(
     threadId: string | null,
-    resourceId: string
+    resourceId: string,
   ): Promise<ObservationalMemoryRecord | null> {
     const row = this.db
       .select()
@@ -455,11 +444,9 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
     threadId: string | null,
     resourceId: string,
     limit = 10,
-    options?: ObservationalMemoryHistoryOptions
+    options?: ObservationalMemoryHistoryOptions,
   ): Promise<ObservationalMemoryRecord[]> {
-    const conditions = [
-      eq(observationalMemory.lookupKey, omLookupKey(threadId, resourceId)),
-    ];
+    const conditions = [eq(observationalMemory.lookupKey, omLookupKey(threadId, resourceId))];
     if (options?.from) conditions.push(gte(observationalMemory.createdAt, options.from.getTime()));
     if (options?.to) conditions.push(lte(observationalMemory.createdAt, options.to.getTime()));
     let query = this.db
@@ -473,7 +460,7 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
   }
 
   async initializeObservationalMemory(
-    input: CreateObservationalMemoryInput
+    input: CreateObservationalMemoryInput,
   ): Promise<ObservationalMemoryRecord> {
     const id = crypto.randomUUID();
     const now = Date.now();
@@ -586,6 +573,7 @@ git commit -m "feat(db): add SqliteObservationalMemoryStorage skeleton with read
 ## Task 3: Mutation core — `updateActiveObservations`, `createReflectionGeneration`, `insertObservationalMemoryRecord`
 
 **Files:**
+
 - Modify: `packages/db/src/observational-memory-store.ts` (replace the 3 stubs)
 - Modify: `packages/db/src/__tests__/observational-memory-store.test.ts` (add a `describe("mutations")` block)
 
@@ -626,7 +614,7 @@ describe("SqliteObservationalMemoryStorage — mutations (sync path)", () => {
         observations: "x",
         lastObservedAt: new Date(),
         tokenCount: 1,
-      })
+      }),
     ).rejects.toThrow(/not found/i);
   });
 
@@ -653,7 +641,7 @@ describe("SqliteObservationalMemoryStorage — mutations (sync path)", () => {
     const history = await store.getObservationalMemoryHistory("sess-mut", "proj1");
     expect(history.length).toBeGreaterThanOrEqual(2);
     expect(history[0]!.generationCount).toBeGreaterThan(
-      history[history.length - 1]!.generationCount
+      history[history.length - 1]!.generationCount,
     );
   });
 
@@ -868,12 +856,14 @@ git commit -m "feat(db): OM storage sync mutations (updateActive, reflection gen
 ## Task 4: Flags, clear, pending tokens, config
 
 **Files:**
+
 - Modify: `packages/db/src/observational-memory-store.ts` (replace 7 stubs)
 - Modify: `packages/db/src/__tests__/observational-memory-store.test.ts`
 
 ### Step 1: Write failing tests
 
 Add a `describe("SqliteObservationalMemoryStorage — flags & maintenance")` block covering:
+
 - `setObservingFlag(id, true)` → `getObservationalMemory` reflects `isObserving: true`; `updatedAt` advanced.
 - same for `setReflectingFlag`.
 - `setBufferingObservationFlag(id, true, 1234)` → `isBufferingObservation: true`, `lastBufferedAtTokens: 1234`; then `setBufferingObservationFlag(id, false)` leaves `lastBufferedAtTokens` at 1234 (only set when turning on).
@@ -992,7 +982,7 @@ function isPlainObj(v: unknown): v is Record<string, unknown> {
 }
 function deepMerge(
   target: Record<string, unknown>,
-  source: Record<string, unknown>
+  source: Record<string, unknown>,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { ...target };
   for (const key of Object.keys(source)) {
@@ -1023,6 +1013,7 @@ git commit -m "feat(db): OM storage flags, clear, pending tokens, config merge"
 These are the non-trivial ones. `swapBufferedToActive` ports Mastra's chunk-boundary selection math (`stores/libsql/.../memory/index.ts:2254-2386`), but uses `db.transaction()` instead of optimistic concurrency.
 
 **Files:**
+
 - Modify: `packages/db/src/observational-memory-store.ts` (replace 2 stubs)
 - Modify: `packages/db/src/__tests__/observational-memory-store.test.ts`
 
@@ -1240,12 +1231,14 @@ git commit -m "feat(db): OM storage buffered-observation update + swap-to-active
 ## Task 6: Async reflection — `updateBufferedReflection`, `swapBufferedReflectionToActive`
 
 **Files:**
+
 - Modify: `packages/db/src/observational-memory-store.ts` (replace last 2 stubs)
 - Modify: `packages/db/src/__tests__/observational-memory-store.test.ts`
 
 ### Step 1: Write failing tests
 
 Add `describe("SqliteObservationalMemoryStorage — buffered reflection")`:
+
 - `updateBufferedReflection({ id, reflection, reflectionTokens, reflectionInputTokens, reflectedObservationLineCount })` → fields persisted.
 - `swapBufferedReflectionToActive` → creates a NEW generation (`generationCount+1`, `originType: "reflection"`) whose `activeObservations` is the buffered reflection, `pendingMessageTokens: 0`, `observationTokenCount: tokenCount`, and clears `bufferedReflection` / `bufferedReflectionTokens` / `bufferedReflectionInputTokens` / `reflectedObservationLineCount` on the resulting current record. Assert `getObservationalMemory` returns the new generation.
 
@@ -1330,7 +1323,7 @@ async swapBufferedReflectionToActive(
 }
 ```
 
-Note: the buffered reflection fields live on the *previous* generation row; the new generation starts clean (matching Mastra, which leaves the old row as history). The `c` (currentRecord) param is used by the caller for context; here we read live row state inside the transaction to stay consistent. Import `UpdateBufferedReflectionInput`, `SwapBufferedReflectionToActiveInput`.
+Note: the buffered reflection fields live on the _previous_ generation row; the new generation starts clean (matching Mastra, which leaves the old row as history). The `c` (currentRecord) param is used by the caller for context; here we read live row state inside the transaction to stay consistent. Import `UpdateBufferedReflectionInput`, `SwapBufferedReflectionToActiveInput`.
 
 ### Step 4: Run + commit
 
@@ -1392,22 +1385,22 @@ git commit -m "style(db): format observational-memory-store"
 
 ## Reference: method → Mastra source line
 
-| Method | Mastra LibSQL line |
-|---|---|
-| getObservationalMemory | `memory/index.ts:1536` |
-| getObservationalMemoryHistory | `:1559` |
-| initializeObservationalMemory | `:1604` |
-| insertObservationalMemoryRecord | `:1685` |
-| updateActiveObservations | `:1748` |
-| createReflectionGeneration | `:1799` |
-| setReflectingFlag | `:1882` |
-| setObservingFlag | `:1914` |
-| setBufferingObservationFlag | `:1946` |
-| setBufferingReflectionFlag | `:1988` |
-| clearObservationalMemory | `:2020` |
-| setPendingMessageTokens | `:2040` |
-| updateObservationalMemoryConfig | `:2075` |
-| updateBufferedObservations | `:2121` |
-| swapBufferedToActive | `:2207` |
-| updateBufferedReflection | `:2423` |
-| swapBufferedReflectionToActive | `:2475` |
+| Method                          | Mastra LibSQL line     |
+| ------------------------------- | ---------------------- |
+| getObservationalMemory          | `memory/index.ts:1536` |
+| getObservationalMemoryHistory   | `:1559`                |
+| initializeObservationalMemory   | `:1604`                |
+| insertObservationalMemoryRecord | `:1685`                |
+| updateActiveObservations        | `:1748`                |
+| createReflectionGeneration      | `:1799`                |
+| setReflectingFlag               | `:1882`                |
+| setObservingFlag                | `:1914`                |
+| setBufferingObservationFlag     | `:1946`                |
+| setBufferingReflectionFlag      | `:1988`                |
+| clearObservationalMemory        | `:2020`                |
+| setPendingMessageTokens         | `:2040`                |
+| updateObservationalMemoryConfig | `:2075`                |
+| updateBufferedObservations      | `:2121`                |
+| swapBufferedToActive            | `:2207`                |
+| updateBufferedReflection        | `:2423`                |
+| swapBufferedReflectionToActive  | `:2475`                |

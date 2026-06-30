@@ -34,7 +34,7 @@ function normalizePath(input: string, options: PathInputOptions = {}): string {
     }
   }
 
-  if (/^file:\/\//.test(normalized)) {
+  if (normalized.startsWith("file://")) {
     return decodeURIComponent(new URL(normalized).pathname);
   }
 

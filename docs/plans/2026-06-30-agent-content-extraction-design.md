@@ -2,6 +2,7 @@
 
 **Status:** Approved (Pattern X chosen 2026-06-30)
 **Scope:** Two sequential changes (A then B) covered by separate TDD plans.
+
 - Plan A: `docs/plans/2026-06-30-change-a-agent-registry.md`
 - Plan B: `docs/plans/2026-06-30-change-b-algorithm-prompts.md`
 
@@ -18,13 +19,14 @@ This causes two concrete problems:
 
 `INTAKE_SYSTEM_PROMPT` is **not** an entry in `BUILTIN_AGENTS`. There is no `intake` agent definition with its own permission ruleset and tool allowlist. The server makes intake work via **three `isIntake` branches** in `apps/server/src/agent/runner.ts:482-599`:
 
-| Line | Branch | What it does |
-|---|---|---|
-| 486-488 | `if (isIntake) tools.push(createProposeSessionTool())` | Side-inject the propose_session tool |
-| 529-538 | `...(isIntake ? { systemPrompt: composeSystemPrompt(INTAKE_SYSTEM_PROMPT, …) } : {})` | Hand-compose prompt at construction |
-| 572-599 | `if (!isIntake) { …switchAgentEffect… }` | Skip agent switch entirely |
+| Line    | Branch                                                                                | What it does                         |
+| ------- | ------------------------------------------------------------------------------------- | ------------------------------------ |
+| 486-488 | `if (isIntake) tools.push(createProposeSessionTool())`                                | Side-inject the propose_session tool |
+| 529-538 | `...(isIntake ? { systemPrompt: composeSystemPrompt(INTAKE_SYSTEM_PROMPT, …) } : {})` | Hand-compose prompt at construction  |
+| 572-599 | `if (!isIntake) { …switchAgentEffect… }`                                              | Skip agent switch entirely           |
 
 Concrete consequences:
+
 - Intake inherits `build`'s permission ruleset (`agentRuleset` at line 560 comes from `resolveAgentByName("build")`), so edits/destructive bash are allowed — contradicts the prompt's "do NOT implement features."
 - Intake's `thinkingLevel` is never set via `switchAgentEffect`'s `setThinkingLevelEffect`.
 - `propose_session` is appended unconditionally rather than enabled via an agent's `activeToolNames` allowlist.
@@ -33,11 +35,13 @@ Concrete consequences:
 ### Problem 2: the agent package has product opinions
 
 The `## Goal / ## Constraints & Preferences / ## Progress / ## Key Decisions` summary structure is sakti's house style. A different consumer (CLI, test harness, different product) might reasonably want:
+
 - A terse one-paragraph summary (CLI)
 - A different section structure (different product)
 - A different skills-advertisement wording
 
 The agent package shouldn't have house-style opinions. Currently:
+
 - `compactEffect` / `generateSummaryEffect` hardcode the sakti-style template.
 - `generateBranchSummaryEffect` hardcodes `BRANCH_SUMMARY_PROMPT` + `SUMMARIZATION_SYSTEM_PROMPT`.
 - `composeSystemPrompt` / `formatSkillsForSystemPrompt` / `stripSkillsBlock` hardcode `SKILLS_INSTRUCTIONS` (and worse, `stripSkillsBlock` uses `SKILLS_INSTRUCTIONS[0]` as a sentinel for re-parsing — meaning the instructions text is part of an algorithmic contract, not just configuration).
@@ -60,17 +64,18 @@ When an algorithm needs a prompt, the prompt is a **required parameter** — no 
 
 Doing all five moves (agent registry, intake, compaction prompts, branch prompts, skills instructions) in one plan balloons the diff. The actual bug (intake confusion) is fixable in Change A. Change B is pure parameterization with no behavior change.
 
-| # | Move | Plan | Behavior change? |
-|---|---|---|---|
-| 1 | `BUILTIN_AGENTS` + `prompts/agents.ts` → server | A | No (resolution path identical) |
-| 2 | `INTAKE_SYSTEM_PROMPT` → server; add `intake` agent entry; kill `isIntake` branches | A | **Yes — intake becomes a real agent** |
-| 3 | Compaction prompts → server; add `prompts` param to `compact`/`generateSummaryEffect` | B | No (server passes same strings) |
-| 4 | Branch summarizer prompts → server; add to `generateBranchSummaryEffect` options | B | No |
-| 5 | `SKILLS_INSTRUCTIONS` → server; add to `composeSystemPrompt` signature | B | Subtle — see "Skills instructions sentinel" below |
+| #   | Move                                                                                  | Plan | Behavior change?                                  |
+| --- | ------------------------------------------------------------------------------------- | ---- | ------------------------------------------------- |
+| 1   | `BUILTIN_AGENTS` + `prompts/agents.ts` → server                                       | A    | No (resolution path identical)                    |
+| 2   | `INTAKE_SYSTEM_PROMPT` → server; add `intake` agent entry; kill `isIntake` branches   | A    | **Yes — intake becomes a real agent**             |
+| 3   | Compaction prompts → server; add `prompts` param to `compact`/`generateSummaryEffect` | B    | No (server passes same strings)                   |
+| 4   | Branch summarizer prompts → server; add to `generateBranchSummaryEffect` options      | B    | No                                                |
+| 5   | `SKILLS_INSTRUCTIONS` → server; add to `composeSystemPrompt` signature                | B    | Subtle — see "Skills instructions sentinel" below |
 
 ## What stays in `packages/agent`
 
 After both changes:
+
 - **Algorithms:** `compactEffect`, `generateSummaryEffect`, `generateBranchSummaryEffect`, `prepareCompaction`, `checkCompaction`, `runAutoCompactionEffect`, retry loop, agent loop.
 - **Helpers:** `composeSystemPrompt` (with skills-instructions param), `defineAgent` (new — validates shape), `formatSkillsAddedNotice`, `stripSkillsBlock` (with marker param), `serializeConversation`.
 - **Types:** `AgentDefinition`, `AgentHarnessOptions`, `PermissionRuleset`, `CompactionPrompts` (new), `BranchSummaryPrompts` (new), `SkillsInstructions` (new), etc.

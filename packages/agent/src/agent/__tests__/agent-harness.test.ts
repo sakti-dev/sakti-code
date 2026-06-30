@@ -681,7 +681,9 @@ describe("AgentHarness", () => {
     });
     await expect(
       harness.setActiveTools(["search", "search"])
-    ).rejects.toMatchObject({ code: "invalid_argument" });
+    ).rejects.toMatchObject({
+      code: "invalid_argument",
+    });
     await expect(harness.setTools([inspectTool])).rejects.toMatchObject({
       code: "invalid_argument",
     });

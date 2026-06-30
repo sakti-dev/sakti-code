@@ -4,7 +4,7 @@ import {
   merge,
   type PermissionRuleset,
 } from "@sakti-code/agent";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { resolveServerAgent, SERVER_AGENTS } from "../server-agents.ts";
 
 function decision(

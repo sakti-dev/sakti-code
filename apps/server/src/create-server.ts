@@ -80,9 +80,10 @@ export async function createServer(
     // Table doesn't exist (fresh install or already migrated)
   }
 
-  const db = await initDatabase(rawDb, {
-    ...(migrationsFolder === undefined ? {} : { migrationsFolder }),
-  });
+  const db = await initDatabase(
+    rawDb,
+    migrationsFolder === undefined ? {} : { migrationsFolder }
+  );
 
   const authPath = getAuthPath();
   const profilesPath = getProfilesPath();

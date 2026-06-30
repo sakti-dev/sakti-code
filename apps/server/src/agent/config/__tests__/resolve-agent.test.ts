@@ -1,5 +1,5 @@
 import type { AgentDefinition } from "@sakti-code/agent";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   resolveAgentByName,
   resolveSessionAgentForKind,

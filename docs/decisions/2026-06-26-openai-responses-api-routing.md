@@ -49,6 +49,7 @@ Responses API.
 
 Add a `Model.api.method` catalog field (`"chat" | "responses"`) and route on it
 **only if** a concrete need appears:
+
 - An OpenAI model requires a Responses-only feature (hosted tools that don't
   have a Chat Completions equivalent), or
 - Prompt-cache hit rates on OpenAI are measurably worse than opencode's and the

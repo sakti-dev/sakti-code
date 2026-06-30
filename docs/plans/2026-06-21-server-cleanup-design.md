@@ -51,13 +51,13 @@ The handler looks up the active run via `getActiveHarness(sessionId)` and calls 
 
 ## Spec Impact Summary
 
-| Spec | Action |
-|---|---|
-| `openspec/specs/session-commands/` | Delete folder |
-| `openspec/specs/turn-diff/` | Delete folder |
-| `openspec/specs/user-bash/spec.md` | Remove "Bash result injection" requirement + scenario |
-| `openspec/specs/session-controls/spec.md` | Rewrite: REST endpoints → WS frame types |
-| `AGENTS.md` route table | Drop `commandsRoutes`, `sessionControlRoutes`; merge turn-diff row into `gitRoutes`; drop `injectToContext` mention |
+| Spec                                      | Action                                                                                                              |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `openspec/specs/session-commands/`        | Delete folder                                                                                                       |
+| `openspec/specs/turn-diff/`               | Delete folder                                                                                                       |
+| `openspec/specs/user-bash/spec.md`        | Remove "Bash result injection" requirement + scenario                                                               |
+| `openspec/specs/session-controls/spec.md` | Rewrite: REST endpoints → WS frame types                                                                            |
+| `AGENTS.md` route table                   | Drop `commandsRoutes`, `sessionControlRoutes`; merge turn-diff row into `gitRoutes`; drop `injectToContext` mention |
 
 ## Out of Scope
 

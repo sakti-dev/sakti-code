@@ -31,11 +31,13 @@ The `messages` table is **blind to real agent traffic**. Stats always returns 0.
 ### Key types and interfaces
 
 **`AgentMessage`** (from `@sakti-code/agent`) — discriminated union:
+
 - `{ role: "user", content: string | Content[], timestamp: number }`
 - `{ role: "assistant", content: ContentBlock[], usage: Usage, stopReason: string, provider: string, model: string, api: string, timestamp: number }`
 - `{ role: "toolResult", content: Content[], toolCallId: string, toolName: string, isError: boolean, timestamp: number }`
 
 **`Usage`** shape (from pi-ai):
+
 ```ts
 { input: number, output: number, cacheRead: number, cacheWrite: number, totalTokens: number,
   cost: { input: number, output: number, cacheRead: number, cacheWrite: number, total: number } }
@@ -44,6 +46,7 @@ The `messages` table is **blind to real agent traffic**. Stats always returns 0.
 **`SessionTreeEntry`** — discriminated union of entry kinds (`message`, `compaction`, `branch_summary`, `custom_message`, `leaf`, `label`, etc.). The `message` kind has a `message: AgentMessage` field.
 
 **`SqliteSessionStorage`** (`packages/db/src/session-entry-store.ts`) — implements `SessionStorage` from `@sakti-code/agent`. Stores each entry as a JSON blob in `session_entries.content`. Key methods:
+
 - `getEntries()` — all entries for the session, ordered by sequence
 - `getPathToRoot(leafId)` — walks parent chain from leaf to root, returns root-to-leaf order
 - `getLeafId()` / `setLeafId()` — reads/writes `sessions.leafId` column
@@ -52,6 +55,7 @@ The `messages` table is **blind to real agent traffic**. Stats always returns 0.
 ### How to seed entries in tests
 
 **Pattern** (from `apps/server/src/__tests__/compaction.test.ts:28-48`):
+
 ```ts
 import { SqliteSessionStorage } from "@sakti-code/db";
 
@@ -82,8 +86,14 @@ await storage.appendEntry({
   message: {
     role: "assistant",
     content: [{ type: "text", text: "Hi there!" }],
-    usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15,
-             cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 } },
+    usage: {
+      input: 10,
+      output: 5,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 15,
+      cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+    },
     stopReason: "stop",
     provider: "openai",
     model: "gpt-4o",
@@ -117,6 +127,7 @@ Array indexing returns `T | undefined`. Use `!` assertion or guards after `.find
 ## Task 1: Export `buildSessionContext` from agent barrel
 
 **Files:**
+
 - Modify: `packages/agent/src/index.ts:22`
 
 **Step 1: Write a test verifying the export exists**
@@ -174,6 +185,7 @@ git commit -m "feat(agent): export buildSessionContext from barrel"
 ## Task 2: Create test helper for seeding entry-tree sessions
 
 **Files:**
+
 - Create: `apps/server/src/__tests__/entry-helpers.ts`
 
 **Step 1: Write the helper**
@@ -212,7 +224,7 @@ export interface SeedMessage {
 export async function seedEntries(
   db: DrizzleDB,
   sessionId: string,
-  messages: SeedMessage[]
+  messages: SeedMessage[],
 ): Promise<SqliteSessionStorage> {
   const storage = new SqliteSessionStorage(db, sessionId, {
     id: sessionId,
@@ -287,10 +299,7 @@ export async function seedEntries(
 /**
  * Create a SqliteSessionStorage for a session, useful in route tests.
  */
-export function makeStorage(
-  db: DrizzleDB,
-  sessionId: string
-): SqliteSessionStorage {
+export function makeStorage(db: DrizzleDB, sessionId: string): SqliteSessionStorage {
   return new SqliteSessionStorage(db, sessionId, {
     id: sessionId,
     createdAt: new Date().toISOString(),
@@ -315,6 +324,7 @@ git commit -m "test(server): add entry-tree test helpers for seeding sessions"
 ## Task 3: Migrate stats route to derive from entry tree
 
 **Files:**
+
 - Modify: `apps/server/src/routes/stats.ts` (complete rewrite)
 - Modify: `apps/server/src/__tests__/stats.test.ts` (complete rewrite)
 
@@ -357,9 +367,7 @@ describe("stats routes", () => {
       },
     ]);
 
-    const res = await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/stats`)
-    );
+    const res = await app.handle(new Request(`http://localhost/api/sessions/${session.id}/stats`));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.messageCount).toBe(2);
@@ -375,9 +383,7 @@ describe("stats routes", () => {
     const project = await ctx.repos.projects.create("empty", "/tmp/empty");
     const session = await ctx.repos.sessions.create(project.id, "test-model");
 
-    const res = await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/stats`)
-    );
+    const res = await app.handle(new Request(`http://localhost/api/sessions/${session.id}/stats`));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.messageCount).toBe(0);
@@ -388,9 +394,7 @@ describe("stats routes", () => {
 
   it("GET /api/sessions/nope/stats returns 404", async () => {
     const { app } = await makeApp([statsRoutes]);
-    const res = await app.handle(
-      new Request("http://localhost/api/sessions/nope/stats")
-    );
+    const res = await app.handle(new Request("http://localhost/api/sessions/nope/stats"));
     expect(res.status).toBe(404);
   });
 });
@@ -451,9 +455,7 @@ export const statsRoutes = new Elysia({ name: "routes.stats" }).get(
       id: params.id,
       createdAt: new Date(session.createdAt).toISOString(),
     });
-    const entries = await storage.getPathToRoot(
-      await storage.getLeafId()
-    );
+    const entries = await storage.getPathToRoot(await storage.getLeafId());
     const { messages } = buildSessionContext(entries);
     const stats = deriveStats(messages);
 
@@ -472,7 +474,7 @@ export const statsRoutes = new Elysia({ name: "routes.stats" }).get(
       createdAt: t.Number(),
       durationMs: t.Number(),
     }),
-  }
+  },
 );
 ```
 
@@ -493,6 +495,7 @@ git commit -m "feat(server): derive stats from entry tree instead of legacy mess
 ## Task 4: Migrate sessions/:id/messages route to entry tree
 
 **Files:**
+
 - Modify: `apps/server/src/routes/sessions.ts:66-68` (the `GET /:id/messages` endpoint)
 
 **Step 1: Write the failing test**
@@ -517,7 +520,7 @@ describe("GET /api/sessions/:id/messages", () => {
     ]);
 
     const res = await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/messages`)
+      new Request(`http://localhost/api/sessions/${session.id}/messages`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -532,7 +535,7 @@ describe("GET /api/sessions/:id/messages", () => {
     const session = await ctx.repos.sessions.create(project.id, "test-model");
 
     const res = await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/messages`)
+      new Request(`http://localhost/api/sessions/${session.id}/messages`),
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([]);
@@ -599,6 +602,7 @@ git commit -m "feat(server): read session messages from entry tree"
 ## Task 5: Migrate last-assistant-text route to entry tree
 
 **Files:**
+
 - Modify: `apps/server/src/routes/last-assistant-text.ts` (complete rewrite)
 - Modify: `apps/server/src/__tests__/last-assistant-text.test.ts` (rewrite tests)
 
@@ -624,9 +628,7 @@ describe("last assistant text route", () => {
     ]);
 
     const res = await app.handle(
-      new Request(
-        `http://localhost/api/sessions/${session.id}/last-assistant-text`
-      )
+      new Request(`http://localhost/api/sessions/${session.id}/last-assistant-text`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -641,9 +643,7 @@ describe("last assistant text route", () => {
     await seedEntries(ctx.db, session.id, [{ role: "user", content: "Hello" }]);
 
     const res = await app.handle(
-      new Request(
-        `http://localhost/api/sessions/${session.id}/last-assistant-text`
-      )
+      new Request(`http://localhost/api/sessions/${session.id}/last-assistant-text`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -653,7 +653,7 @@ describe("last assistant text route", () => {
   it("unknown session returns 404", async () => {
     const { app } = await makeApp([lastAssistantTextRoutes]);
     const res = await app.handle(
-      new Request("http://localhost/api/sessions/nope/last-assistant-text")
+      new Request("http://localhost/api/sessions/nope/last-assistant-text"),
     );
     expect(res.status).toBe(404);
   });
@@ -675,9 +675,7 @@ import { SqliteSessionStorage } from "@sakti-code/db";
 import { Elysia } from "elysia";
 import { getCtx } from "../context.ts";
 
-function extractAssistantText(
-  messages: Array<{ role: string; content: unknown }>
-): string | null {
+function extractAssistantText(messages: Array<{ role: string; content: unknown }>): string | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i]!;
     if (msg.role !== "assistant") {
@@ -689,9 +687,7 @@ function extractAssistantText(
     }
     if (Array.isArray(content)) {
       const text = content
-        .filter(
-          (c): c is { type: "text"; text: string } => c.type === "text"
-        )
+        .filter((c): c is { type: "text"; text: string } => c.type === "text")
         .map((c) => c.text)
         .join("");
       return text.length > 0 ? text : null;
@@ -738,6 +734,7 @@ git commit -m "feat(server): read last-assistant-text from entry tree"
 ## Task 6: Migrate export-html route to entry tree
 
 **Files:**
+
 - Modify: `apps/server/src/routes/export.ts:115-139` (the route handler only)
 - Modify: `apps/server/src/__tests__/forking.test.ts:222-307` (the export tests)
 
@@ -766,7 +763,7 @@ describe("export route", () => {
     ]);
 
     const res = await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/export-html`)
+      new Request(`http://localhost/api/sessions/${session.id}/export-html`),
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
@@ -783,7 +780,7 @@ describe("export route", () => {
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
 
     const res = await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/export-html`)
+      new Request(`http://localhost/api/sessions/${session.id}/export-html`),
     );
     expect(res.status).toBe(200);
     const html = await res.text();
@@ -792,9 +789,7 @@ describe("export route", () => {
 
   it("unknown session returns 404", async () => {
     const { app } = await makeApp([exportRoutes]);
-    const res = await app.handle(
-      new Request("http://localhost/api/sessions/nope/export-html")
-    );
+    const res = await app.handle(new Request("http://localhost/api/sessions/nope/export-html"));
     expect(res.status).toBe(404);
   });
 
@@ -806,7 +801,7 @@ describe("export route", () => {
     await seedEntries(ctx.db, session.id, [{ role: "assistant", content: "hi" }]);
 
     const res = await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/export-html`)
+      new Request(`http://localhost/api/sessions/${session.id}/export-html`),
     );
     const html = await res.text();
     const matches = html.match(/class="copy-btn"/g);
@@ -821,7 +816,7 @@ describe("export route", () => {
     const created = new Date(session.createdAt).toISOString().slice(0, 10);
 
     const res = await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/export-html`)
+      new Request(`http://localhost/api/sessions/${session.id}/export-html`),
     );
     const html = await res.text();
     expect(html).toContain(created);
@@ -859,17 +854,12 @@ export const exportRoutes = new Elysia({ name: "routes.export" }).get(
     const projectName = project?.name ?? "Unknown";
 
     const messagesData = ctx.repos.messages.loadBySession(params.id);
-    const html = renderHtmlExport(
-      session.title,
-      projectName,
-      session.createdAt,
-      messagesData
-    );
+    const html = renderHtmlExport(session.title, projectName, session.createdAt, messagesData);
 
     return new Response(html, {
       headers: { "content-type": "text/html; charset=utf-8" },
     });
-  }
+  },
 );
 ```
 
@@ -882,9 +872,7 @@ function flattenContent(content: unknown): string {
   }
   if (Array.isArray(content)) {
     return content
-      .filter(
-        (c): c is { type: "text"; text: string } => c.type === "text"
-      )
+      .filter((c): c is { type: "text"; text: string } => c.type === "text")
       .map((c) => c.text)
       .join("");
   }
@@ -912,24 +900,16 @@ export const exportRoutes = new Elysia({ name: "routes.export" }).get(
 
     const messagesData = agentMessages.map((m) => ({
       role: m.role,
-      content: flattenContent(
-        (m as { content: unknown }).content
-      ),
-      createdAt:
-        (m as { timestamp: number }).timestamp ?? session.createdAt,
+      content: flattenContent((m as { content: unknown }).content),
+      createdAt: (m as { timestamp: number }).timestamp ?? session.createdAt,
     }));
 
-    const html = renderHtmlExport(
-      session.title,
-      projectName,
-      session.createdAt,
-      messagesData
-    );
+    const html = renderHtmlExport(session.title, projectName, session.createdAt, messagesData);
 
     return new Response(html, {
       headers: { "content-type": "text/html; charset=utf-8" },
     });
-  }
+  },
 );
 ```
 
@@ -950,6 +930,7 @@ git commit -m "feat(server): read export-html from entry tree"
 ## Task 7: Migrate bash inject-to-context to entry tree
 
 **Files:**
+
 - Modify: `apps/server/src/routes/bash.ts:137-148` (the inject block)
 - Modify: `apps/server/src/__tests__/bash.test.ts:54-72` (the inject test)
 
@@ -965,38 +946,36 @@ import { buildSessionContext } from "@sakti-code/agent";
 Replace the test body:
 
 ```ts
-  it("POST /api/sessions/:id/bash with injectToContext appends a toolResult entry", async () => {
-    const { app, ctx } = await makeApp([bashRoutes]);
-    const project = await ctx.repos.projects.create("bash-inject", "/tmp");
-    const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
+it("POST /api/sessions/:id/bash with injectToContext appends a toolResult entry", async () => {
+  const { app, ctx } = await makeApp([bashRoutes]);
+  const project = await ctx.repos.projects.create("bash-inject", "/tmp");
+  const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
 
-    await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/bash`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ command: "echo hello", injectToContext: true }),
-      })
-    );
+  await app.handle(
+    new Request(`http://localhost/api/sessions/${session.id}/bash`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ command: "echo hello", injectToContext: true }),
+    }),
+  );
 
-    // Verify the entry was written to session_entries
-    const storage = new SqliteSessionStorage(ctx.db, session.id, {
-      id: session.id,
-      createdAt: new Date().toISOString(),
-    });
-    const entries = await storage.getPathToRoot(await storage.getLeafId());
-    const { messages } = buildSessionContext(entries);
-
-    const toolMsg = messages.find((m) => m.role === "toolResult");
-    expect(toolMsg).toBeDefined();
-    expect(toolMsg!.toolName).toBe("user_bash");
-    const text = toolMsg!.content
-      .filter(
-        (c): c is { type: "text"; text: string } => c.type === "text"
-      )
-      .map((c) => c.text)
-      .join("");
-    expect(text).toContain("hello");
+  // Verify the entry was written to session_entries
+  const storage = new SqliteSessionStorage(ctx.db, session.id, {
+    id: session.id,
+    createdAt: new Date().toISOString(),
   });
+  const entries = await storage.getPathToRoot(await storage.getLeafId());
+  const { messages } = buildSessionContext(entries);
+
+  const toolMsg = messages.find((m) => m.role === "toolResult");
+  expect(toolMsg).toBeDefined();
+  expect(toolMsg!.toolName).toBe("user_bash");
+  const text = toolMsg!.content
+    .filter((c): c is { type: "text"; text: string } => c.type === "text")
+    .map((c) => c.text)
+    .join("");
+  expect(text).toContain("hello");
+});
 ```
 
 **Step 2: Run test to verify it fails**
@@ -1016,44 +995,44 @@ import { SqliteSessionStorage } from "@sakti-code/db";
 Change the inject block (lines 137-148) from:
 
 ```ts
-      if (body.injectToContext) {
-        const content = JSON.stringify({
-          command: body.command,
-          exitCode: result.exitCode,
-          output: result.output,
-        });
-        await ctx.repos.messages.append(session.id, {
-          content,
-          role: "tool",
-          toolCallId: crypto.randomUUID(),
-          toolName: "user_bash",
-        });
-      }
+if (body.injectToContext) {
+  const content = JSON.stringify({
+    command: body.command,
+    exitCode: result.exitCode,
+    output: result.output,
+  });
+  await ctx.repos.messages.append(session.id, {
+    content,
+    role: "tool",
+    toolCallId: crypto.randomUUID(),
+    toolName: "user_bash",
+  });
+}
 ```
 
 to:
 
 ```ts
-      if (body.injectToContext) {
-        const content = JSON.stringify({
-          command: body.command,
-          exitCode: result.exitCode,
-          output: result.output,
-        });
-        const storage = new SqliteSessionStorage(ctx.db, session.id, {
-          id: session.id,
-          createdAt: new Date(session.createdAt).toISOString(),
-        });
-        const sessionInstance = new Session(storage);
-        await sessionInstance.appendMessage({
-          role: "toolResult",
-          content: [{ type: "text", text: content }],
-          toolCallId: crypto.randomUUID(),
-          toolName: "user_bash",
-          isError: false,
-          timestamp: Date.now(),
-        });
-      }
+if (body.injectToContext) {
+  const content = JSON.stringify({
+    command: body.command,
+    exitCode: result.exitCode,
+    output: result.output,
+  });
+  const storage = new SqliteSessionStorage(ctx.db, session.id, {
+    id: session.id,
+    createdAt: new Date(session.createdAt).toISOString(),
+  });
+  const sessionInstance = new Session(storage);
+  await sessionInstance.appendMessage({
+    role: "toolResult",
+    content: [{ type: "text", text: content }],
+    toolCallId: crypto.randomUUID(),
+    toolName: "user_bash",
+    isError: false,
+    timestamp: Date.now(),
+  });
+}
 ```
 
 **Step 4: Run test to verify it passes**
@@ -1073,6 +1052,7 @@ git commit -m "feat(server): inject bash results into entry tree via Session"
 ## Task 8: Implement entry-tree forking in SqliteSessionStorage
 
 **Files:**
+
 - Modify: `packages/db/src/session-entry-store.ts` (add `fork` method)
 - Create: `packages/db/src/__tests__/session-entry-store-fork.test.ts`
 
@@ -1088,7 +1068,7 @@ import { SessionRepo } from "@sakti-code/db";
 
 async function seedConversation(
   storage: SqliteSessionStorage,
-  messages: Array<{ role: string; content: string }>
+  messages: Array<{ role: string; content: string }>,
 ): Promise<void> {
   let parentId: string | null = null;
   for (const msg of messages) {
@@ -1117,20 +1097,17 @@ describe("SqliteSessionStorage.fork", () => {
       async create(db: any) {
         const id = crypto.randomUUID();
         const now = Date.now();
-        await db
-          .insert({} as any)
-          .values({} as any);
+        await db.insert({} as any).values({} as any);
         return id;
       }
-    })().create(db).catch(async () => {
-      const { ProjectRepo } = await import("@sakti-code/db");
-      return new ProjectRepo(db).create("test", "/tmp");
-    });
+    })()
+      .create(db)
+      .catch(async () => {
+        const { ProjectRepo } = await import("@sakti-code/db");
+        return new ProjectRepo(db).create("test", "/tmp");
+      });
 
-    const sourceSession = await sessionRepo.create(
-      project.id,
-      "test-model"
-    );
+    const sourceSession = await sessionRepo.create(project.id, "test-model");
 
     const sourceStorage = new SqliteSessionStorage(db, sourceSession.id, {
       id: sourceSession.id,
@@ -1142,11 +1119,9 @@ describe("SqliteSessionStorage.fork", () => {
       { role: "user", content: "How are you?" },
     ]);
 
-    const forkedSession = await sessionRepo.create(
-      project.id,
-      "test-model",
-      { parentSessionId: sourceSession.id }
-    );
+    const forkedSession = await sessionRepo.create(project.id, "test-model", {
+      parentSessionId: sourceSession.id,
+    });
 
     const forkedStorage = new SqliteSessionStorage(db, forkedSession.id, {
       id: forkedSession.id,
@@ -1322,6 +1297,7 @@ git commit -m "feat(db): add forkFrom to SqliteSessionStorage for entry-tree for
 ## Task 9: Migrate forking route to entry tree
 
 **Files:**
+
 - Modify: `apps/server/src/routes/forking.ts` (complete rewrite)
 - Modify: `apps/server/src/__tests__/forking.test.ts:1-171` (the fork and fork-messages tests)
 
@@ -1356,7 +1332,7 @@ describe("fork routes", () => {
       new Request(`http://localhost/api/sessions/${session.id}/fork`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-      })
+      }),
     );
     expect(res.status).toBe(200);
     const forked = await res.json();
@@ -1369,9 +1345,7 @@ describe("fork routes", () => {
       id: forked.id,
       createdAt: new Date().toISOString(),
     });
-    const entries = await forkedStorage.getPathToRoot(
-      await forkedStorage.getLeafId()
-    );
+    const entries = await forkedStorage.getPathToRoot(await forkedStorage.getLeafId());
     const { messages } = buildSessionContext(entries);
     expect(messages).toHaveLength(2);
     expect((messages[0] as { content: unknown }).content).toBe("Hello");
@@ -1383,7 +1357,7 @@ describe("fork routes", () => {
       new Request("http://localhost/api/sessions/nope/fork", {
         method: "POST",
         headers: { "content-type": "application/json" },
-      })
+      }),
     );
     expect(res.status).toBe(404);
   });
@@ -1402,7 +1376,7 @@ describe("fork-messages route", () => {
     ]);
 
     const res = await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/fork-messages`)
+      new Request(`http://localhost/api/sessions/${session.id}/fork-messages`),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -1419,7 +1393,7 @@ describe("fork-messages route", () => {
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
 
     const res = await app.handle(
-      new Request(`http://localhost/api/sessions/${session.id}/fork-messages`)
+      new Request(`http://localhost/api/sessions/${session.id}/fork-messages`),
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([]);
@@ -1427,9 +1401,7 @@ describe("fork-messages route", () => {
 
   it("unknown session returns 404", async () => {
     const { app } = await makeApp([forkingRoutes]);
-    const res = await app.handle(
-      new Request("http://localhost/api/sessions/nope/fork-messages")
-    );
+    const res = await app.handle(new Request("http://localhost/api/sessions/nope/fork-messages"));
     expect(res.status).toBe(404);
   });
 });
@@ -1458,9 +1430,7 @@ function flattenContent(content: unknown): string {
   }
   if (Array.isArray(content)) {
     return content
-      .filter(
-        (c): c is { type: "text"; text: string } => c.type === "text"
-      )
+      .filter((c): c is { type: "text"; text: string } => c.type === "text")
       .map((c) => c.text)
       .join("");
   }
@@ -1477,19 +1447,13 @@ export const forkingRoutes = new Elysia({ name: "routes.forking" })
         return new Response("Not found", { status: 404 });
       }
 
-      const forkedTitle = session.title
-        ? `Fork of ${session.title}`
-        : "Fork";
+      const forkedTitle = session.title ? `Fork of ${session.title}` : "Fork";
 
-      const newSession = await ctx.repos.sessions.create(
-        session.projectId,
-        session.modelId,
-        {
-          title: forkedTitle,
-          thinkingLevel: session.thinkingLevel,
-          parentSessionId: params.id,
-        }
-      );
+      const newSession = await ctx.repos.sessions.create(session.projectId, session.modelId, {
+        title: forkedTitle,
+        thinkingLevel: session.thinkingLevel,
+        parentSessionId: params.id,
+      });
 
       const forkedStorage = new SqliteSessionStorage(ctx.db, newSession.id, {
         id: newSession.id,
@@ -1504,9 +1468,9 @@ export const forkingRoutes = new Elysia({ name: "routes.forking" })
       body: t.Optional(
         t.Object({
           messageIndex: t.Optional(t.Number()),
-        })
+        }),
       ),
-    }
+    },
   )
   .get("/api/sessions/:id/fork-messages", async ({ params, store }) => {
     const ctx = getCtx(store);
@@ -1526,9 +1490,7 @@ export const forkingRoutes = new Elysia({ name: "routes.forking" })
       .filter((m) => m.role === "user" || m.role === "assistant")
       .map((m) => ({
         role: m.role,
-        textPreview: flattenContent(
-          (m as { content: unknown }).content
-        ).slice(0, 200),
+        textPreview: flattenContent((m as { content: unknown }).content).slice(0, 200),
       }));
 
     return Response.json(forkable);
@@ -1554,6 +1516,7 @@ git commit -m "feat(server): fork sessions via entry tree (forkFrom)"
 ## Task 10: Remove MessageRepo and SqliteSessionStore from context
 
 **Files:**
+
 - Modify: `apps/server/src/context.ts` (remove `messages` and `costs` from repos)
 - Modify: `apps/server/src/index.ts:10` (remove costsRoutes from default routes)
 - Modify: `apps/server/src/routes/costs.ts` (delete file)
@@ -1614,25 +1577,25 @@ import {
 Change the `repos` interface (lines 14-21) from:
 
 ```ts
-  repos: {
-    projects: ProjectRepo;
-    sessions: SessionRepo;
-    messages: MessageRepo;
-    costs: CostRepo;
-    settings: SettingsRepo;
-    models: ModelConfigRepo;
-  };
+repos: {
+  projects: ProjectRepo;
+  sessions: SessionRepo;
+  messages: MessageRepo;
+  costs: CostRepo;
+  settings: SettingsRepo;
+  models: ModelConfigRepo;
+}
 ```
 
 to:
 
 ```ts
-  repos: {
-    projects: ProjectRepo;
-    sessions: SessionRepo;
-    settings: SettingsRepo;
-    models: ModelConfigRepo;
-  };
+repos: {
+  projects: ProjectRepo;
+  sessions: SessionRepo;
+  settings: SettingsRepo;
+  models: ModelConfigRepo;
+}
 ```
 
 Change the `createContext` body (lines 28-35) from:
@@ -1662,6 +1625,7 @@ to:
 Delete `apps/server/src/routes/costs.ts`.
 
 In `apps/server/src/index.ts`, remove:
+
 - Line 10: `import { costsRoutes } from "./routes/costs.ts";`
 - Line 41: `costsRoutes,` from the `defaultRoutes` array.
 
@@ -1693,6 +1657,7 @@ git commit -m "refactor(server): remove MessageRepo, CostRepo, and costs route f
 ## Task 11: Delete legacy db code and update exports
 
 **Files:**
+
 - Delete: `packages/db/src/session-store.ts`
 - Delete: `packages/db/src/__tests__/session-store.test.ts`
 - Modify: `packages/db/src/repos/index.ts` (remove `MessageRepo` class, lines 147-242; remove `CostRepo` class, lines 244-293)
@@ -1714,6 +1679,7 @@ rm packages/db/src/__tests__/session-store.test.ts
 **Step 3: Remove MessageRepo and CostRepo from repos/index.ts**
 
 In `packages/db/src/repos/index.ts`:
+
 - Remove the `MessageRepo` class (lines 147-242)
 - Remove the `CostRepo` class (lines 244-293)
 - Remove the `messages` import if it's no longer used (keep `costs` import if referenced elsewhere — check first)
@@ -1742,12 +1708,7 @@ to:
 
 ```ts
 export { type DrizzleDB, initDatabase } from "./init.ts";
-export {
-  ModelConfigRepo,
-  ProjectRepo,
-  SessionRepo,
-  SettingsRepo,
-} from "./repos/index.ts";
+export { ModelConfigRepo, ProjectRepo, SessionRepo, SettingsRepo } from "./repos/index.ts";
 export * from "./schema.ts";
 export { SqliteSessionStorage } from "./session-entry-store.ts";
 ```
@@ -1778,6 +1739,7 @@ git commit -m "refactor(db): delete legacy SqliteSessionStore, MessageRepo, and 
 ## Task 12: Run full verification and update specs
 
 **Files:**
+
 - Modify: `openspec/specs/session-utils/spec.md` (update stats spec)
 - Modify: `openspec/specs/server-rest-api/spec.md` (remove MessageRepo from requirements)
 - Modify: `AGENTS.md` (update route table, remove costs route)
@@ -1801,6 +1763,7 @@ In `openspec/specs/session-utils/spec.md`, update the "Session stats route" requ
 In `openspec/specs/server-rest-api/spec.md`, remove any requirement mentioning `MessageRepo`.
 
 In `AGENTS.md`, update the route modules table:
+
 - Remove the `costsRoutes` row
 - Update `statsRoutes` notes to say "derived from entry tree"
 - Update `forkingRoutes` notes to say "entry-tree fork via `SqliteSessionStorage.forkFrom`"
@@ -1816,13 +1779,13 @@ git commit -m "docs: update specs and AGENTS.md for unified entry-tree persisten
 
 ## Summary of changes
 
-| Before | After |
-|---|---|
-| `messages` table (legacy, flat) | **deleted** — all data in `session_entries` |
-| `MessageRepo` | **deleted** |
-| `SqliteSessionStore` | **deleted** |
-| `CostRepo` / `costs` table | **deleted** — stats derived from `usage` fields |
-| Stats reads `messages` + `costs` | Stats derives from `buildSessionContext` + `usage` |
-| Forking copies `messages` rows | Forking copies entries via `forkFrom()` |
-| Bash inject writes `messages` | Bash inject writes entry via `Session.appendMessage()` |
-| Export/messages/last-text read `messages` | All read via `buildSessionContext(entries)` |
+| Before                                    | After                                                  |
+| ----------------------------------------- | ------------------------------------------------------ |
+| `messages` table (legacy, flat)           | **deleted** — all data in `session_entries`            |
+| `MessageRepo`                             | **deleted**                                            |
+| `SqliteSessionStore`                      | **deleted**                                            |
+| `CostRepo` / `costs` table                | **deleted** — stats derived from `usage` fields        |
+| Stats reads `messages` + `costs`          | Stats derives from `buildSessionContext` + `usage`     |
+| Forking copies `messages` rows            | Forking copies entries via `forkFrom()`                |
+| Bash inject writes `messages`             | Bash inject writes entry via `Session.appendMessage()` |
+| Export/messages/last-text read `messages` | All read via `buildSessionContext(entries)`            |

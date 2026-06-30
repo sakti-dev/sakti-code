@@ -7,6 +7,7 @@
 **Architecture:** These are three independent changes, ordered by dependency: §11 first (measurement infrastructure), then §13 (prune, which §4's stuck guard interacts with), then §4 (stuck guard).
 
 **Design references (read before starting):**
+
 - `openspec/references/DeepSeek-Reasonix/internal/agent/cachehit_e2e_test.go` — §11 mock-DeepSeek pattern
 - `openspec/references/DeepSeek-Reasonix/internal/agent/cache_shape.go` — §11 PrefixShape diagnostics
 - `openspec/references/DeepSeek-Reasonix/internal/agent/prune.go` — §13 pre-compaction prune
@@ -16,6 +17,7 @@
 - `packages/agent/src/core/agent-loop.ts:120-140` — `runAgentLoop` (the loop under test in §11)
 
 **Conventions (from repo `AGENTS.md`):**
+
 - TDD: failing test → implement → pass → commit.
 - Tests colocated in `__tests__/`. `vitest`. No `.only`/`.skip`.
 - `exactOptionalPropertyTypes: true` → conditional spread, never pass `undefined`.
@@ -37,6 +39,7 @@ Our `registerFauxStreamProvider` (from `packages/agent/src/__tests__/helpers/fau
 ### What "byte-stable" means for us
 
 Between consecutive `streamFn` calls within one turn loop:
+
 1. **System prompt** (`req.system`) — must be byte-identical.
 2. **Tools** (`req.tools` keys + JSON) — must be byte-identical.
 3. **Message prefix** (`req.messages[0..N-1]`) — turn N's message array must start with all of turn N-1's messages, byte-identical.
@@ -46,6 +49,7 @@ If any of these change between turns (without a compaction in between), that's a
 ### Task A1: Create the cache-stability test harness
 
 **Files:**
+
 - Create: `packages/agent/src/core/__tests__/cache-stability-helpers.ts`
 - Test: `packages/agent/src/core/__tests__/cache-stability-helpers.test.ts`
 
@@ -89,7 +93,7 @@ describe("measureCacheHit", () => {
     const cur: StreamRequestCapture = {
       system: "prompt", // identical
       messages: [
-        { role: "user", content: "hello" },  // identical
+        { role: "user", content: "hello" }, // identical
         { role: "assistant", content: "hi" }, // new
       ],
       toolsKeys: ["read", "write"],
@@ -153,11 +157,7 @@ export function canonicalizeMessage(msg: unknown): string {
  * Count the number of byte-identical leading items between two arrays,
  * using `canonicalize` to produce the comparison key.
  */
-export function commonPrefixLength<T>(
-  a: T[],
-  b: T[],
-  canonicalize: (item: T) => string
-): number {
+export function commonPrefixLength<T>(a: T[], b: T[], canonicalize: (item: T) => string): number {
   let n = 0;
   while (n < a.length && n < b.length) {
     if (canonicalize(a[n]!) !== canonicalize(b[n]!)) {
@@ -189,7 +189,7 @@ export interface CacheHitMeasurement {
  */
 export function measureCacheHit(
   prev: StreamRequestCapture,
-  cur: StreamRequestCapture
+  cur: StreamRequestCapture,
 ): CacheHitMeasurement {
   let prefixStable = true;
   let breakReason: CacheHitMeasurement["breakReason"] = undefined;
@@ -205,11 +205,7 @@ export function measureCacheHit(
     breakReason = "tools";
   }
 
-  const prefixMsgCount = commonPrefixLength(
-    prev.messages,
-    cur.messages,
-    canonicalizeMessage
-  );
+  const prefixMsgCount = commonPrefixLength(prev.messages, cur.messages, canonicalizeMessage);
 
   if (prefixMsgCount < prev.messages.length) {
     prefixStable = false;
@@ -226,13 +222,9 @@ export function measureCacheHit(
   const totalChars =
     (cur.system?.length ?? 0) +
     (cur.toolsJson?.length ?? 0) +
-    cur.messages.reduce(
-      (sum, m) => sum + canonicalizeMessage(m).length,
-      0
-    );
+    cur.messages.reduce((sum, m) => sum + canonicalizeMessage(m).length, 0);
 
-  const hitRate =
-    totalChars === 0 ? 0 : Math.floor((hitChars * 100) / totalChars);
+  const hitRate = totalChars === 0 ? 0 : Math.floor((hitChars * 100) / totalChars);
 
   return { prefixStable, breakReason, hitChars, totalChars, hitRate };
 }
@@ -272,6 +264,7 @@ git commit -m "feat(agent): cache-stability measurement helpers (§11 foundation
 The core invariant: turn N's request prefix must equal all of turn N-1's request. If not, something broke byte-stability.
 
 **Files:**
+
 - Test: `packages/agent/src/core/__tests__/cache-stability.test.ts`
 
 **Step 1: Write the failing test**
@@ -286,10 +279,7 @@ import {
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
 import { AgentHarness } from "../../agent/agent-harness";
 import { createTestSession } from "../../session/__tests__/session-test-utils";
-import {
-  captureRequest,
-  measureCacheHit,
-} from "./cache-stability-helpers";
+import { captureRequest, measureCacheHit } from "./cache-stability-helpers";
 import type { StreamRequest } from "@sakti-code/llm";
 
 const registrations: FauxProviderRegistration[] = [];
@@ -310,7 +300,7 @@ describe("cache-stability: prefix stable across turns", () => {
       () =>
         fauxAssistantMessageWithContent(
           [fauxToolCall("calculate", { expression: "1+1" }, { id: "c1" })],
-          "toolUse"
+          "toolUse",
         ),
       () => fauxAssistantMessage("done"),
     ]);
@@ -367,6 +357,7 @@ git commit -m "test(agent): byte-stability regression test — prefix stable acr
 Run a long dialogue (14 turns, no compaction) and verify the hit rate climbs past 90% as the history dwarfs each turn's fresh tail.
 
 **Files:**
+
 - Test: append to `packages/agent/src/core/__tests__/cache-stability.test.ts`
 
 **Step 1: Write the test**
@@ -377,15 +368,14 @@ it("hit rate climbs past 90% as history grows (no compaction)", async () => {
   registrations.push(registration);
   const captures: StreamRequest[] = [];
 
-  const turnText = (n: number) =>
-    `Turn ${n}: ${"please consider this requirement. ".repeat(6)}`;
+  const turnText = (n: number) => `Turn ${n}: ${"please consider this requirement. ".repeat(6)}`;
 
   // 14 turns, each returns a short response
   registration.setResponses(
     Array.from({ length: 14 }, (_, i) => () => {
       const fn = registration.streamFn;
       return fauxAssistantMessage(`answer ${i}`);
-    })
+    }),
   );
 
   // Override streamFn to capture
@@ -407,10 +397,7 @@ it("hit rate climbs past 90% as history grows (no compaction)", async () => {
   // Compute hit rate curve
   const rates: number[] = [];
   for (let i = 1; i < captures.length; i++) {
-    const result = measureCacheHit(
-      captureRequest(captures[i - 1]!),
-      captureRequest(captures[i]!)
-    );
+    const result = measureCacheHit(captureRequest(captures[i - 1]!), captureRequest(captures[i]!));
     rates.push(result.hitRate);
   }
 
@@ -435,6 +422,7 @@ cd packages/agent && pnpm run test -- "hit rate climbs"
 This test depends on Task B (stuck guard) landing first. It asserts that when the context window is too small, collapses are capped at ≤2 and the tail recovers.
 
 **Files:**
+
 - Test: append to `packages/agent/src/core/__tests__/cache-stability.test.ts`
 
 **Note:** Write this test as a pending skeleton now; it will pass after Task B (stuck guard) is implemented. Mark it `it.skip` with a comment pointing to Task B.
@@ -452,6 +440,7 @@ This test depends on Task B (stuck guard) landing first. It asserts that when th
 The stuck guard lives in the **policy layer** (`auto-compaction.ts`), not in the pure primitives (`compaction.ts`). The state (counter + latch) needs to persist across turns within a session run.
 
 The current flow in `runner.ts`:
+
 1. `checkCompaction(input)` — pure decision: `{ action: "compact" | "none" }`
 2. `runAutoCompaction(deps)` — execute the compaction
 
@@ -467,6 +456,7 @@ The stuck guard adds state between these: if latched, skip even when `checkCompa
 ### Task B1: Add stuck guard to `checkCompaction`
 
 **Files:**
+
 - Modify: `packages/agent/src/compaction/auto-compaction.ts`
 - Test: `packages/agent/src/compaction/__tests__/auto-compaction.test.ts`
 
@@ -492,7 +482,7 @@ describe("stuck guard", () => {
         contextWindow: 1000,
         settings,
         consecutiveCompacts: 1,
-      })
+      }),
     );
     expect(decision.action).toBe("compact");
     expect(decision.pauseAutoCompaction).toBeUndefined();
@@ -508,7 +498,7 @@ describe("stuck guard", () => {
         contextWindow: 1000,
         settings,
         consecutiveCompacts: 2,
-      })
+      }),
     );
     expect(decision.action).toBe("none");
     expect(decision.pauseAutoCompaction).toBe(true);
@@ -525,7 +515,7 @@ describe("stuck guard", () => {
         contextWindow: 1000,
         settings,
         consecutiveCompacts: 2, // was stuck, but now below threshold
-      })
+      }),
     );
     expect(decision.action).toBe("none");
     expect(decision.pauseAutoCompaction).toBeUndefined();
@@ -576,30 +566,31 @@ export interface CompactionDecision {
 3c. Add stuck guard logic to `checkCompaction`, right before the `shouldCompact` check:
 
 ```ts
-  // Stuck guard: if we've compacted twice in a row and the prompt is STILL
-  // over threshold, the context window is too small for compaction to help.
-  // Pause auto-compaction to avoid rewriting the prefix every turn.
-  const isOverThreshold = shouldCompact(contextTokens, input.contextWindow, settings);
-  if (isOverThreshold && (input.consecutiveCompacts ?? 0) >= 2) {
-    return {
-      action: "none",
-      reason: "stuck_guard",
-      pauseAutoCompaction: true,
-    };
-  }
+// Stuck guard: if we've compacted twice in a row and the prompt is STILL
+// over threshold, the context window is too small for compaction to help.
+// Pause auto-compaction to avoid rewriting the prefix every turn.
+const isOverThreshold = shouldCompact(contextTokens, input.contextWindow, settings);
+if (isOverThreshold && (input.consecutiveCompacts ?? 0) >= 2) {
+  return {
+    action: "none",
+    reason: "stuck_guard",
+    pauseAutoCompaction: true,
+  };
+}
 
-  // Sub-threshold turn: reset the stuck guard counter.
-  if (!isOverThreshold) {
-    if ((input.consecutiveCompacts ?? 0) > 0) {
-      return { action: "none", resetStuckGuard: true };
-    }
-    return { action: "none" };
+// Sub-threshold turn: reset the stuck guard counter.
+if (!isOverThreshold) {
+  if ((input.consecutiveCompacts ?? 0) > 0) {
+    return { action: "none", resetStuckGuard: true };
   }
+  return { action: "none" };
+}
 ```
 
 Wait — the existing code returns `{ action: "none" }` when NOT over threshold. The reset flag needs to be returned in that path. Let me restructure:
 
 Actually, the existing flow is:
+
 1. Various guards (disabled, aborted, stale, overflow) → early returns
 2. Compute `contextTokens`
 3. `shouldCompact(contextTokens, contextWindow, settings)` → if true, return compact; else return none
@@ -607,30 +598,26 @@ Actually, the existing flow is:
 The stuck guard inserts BETWEEN steps 2 and 3:
 
 ```ts
-  // After computing contextTokens, before shouldCompact:
-  const overThreshold = shouldCompact(
-    contextTokens,
-    input.contextWindow,
-    settings
-  );
+// After computing contextTokens, before shouldCompact:
+const overThreshold = shouldCompact(contextTokens, input.contextWindow, settings);
 
-  // Stuck guard: 2+ consecutive compactions + still over threshold = pause.
-  if (overThreshold && (input.consecutiveCompacts ?? 0) >= 2) {
-    return {
-      action: "none",
-      reason: "stuck_guard",
-      pauseAutoCompaction: true,
-    };
-  }
+// Stuck guard: 2+ consecutive compactions + still over threshold = pause.
+if (overThreshold && (input.consecutiveCompacts ?? 0) >= 2) {
+  return {
+    action: "none",
+    reason: "stuck_guard",
+    pauseAutoCompaction: true,
+  };
+}
 
-  if (!overThreshold) {
-    // Sub-threshold turn: signal counter reset if it was non-zero.
-    return (input.consecutiveCompacts ?? 0) > 0
-      ? { action: "none", resetStuckGuard: true }
-      : { action: "none" };
-  }
+if (!overThreshold) {
+  // Sub-threshold turn: signal counter reset if it was non-zero.
+  return (input.consecutiveCompacts ?? 0) > 0
+    ? { action: "none", resetStuckGuard: true }
+    : { action: "none" };
+}
 
-  return { action: "compact", reason: "threshold", willRetry: false };
+return { action: "compact", reason: "threshold", willRetry: false };
 ```
 
 **Step 4: Run — verify it passes**
@@ -654,6 +641,7 @@ git commit -m "feat(agent): stuck guard pauses auto-compaction on too-small wind
 The runner needs to track `consecutiveCompacts` across turns and pass it to `checkCompaction`.
 
 **Files:**
+
 - Modify: `apps/server/src/agent/runner.ts` — track counter, pass to `checkCompaction`, honor `pauseAutoCompaction` / `resetStuckGuard`
 
 **Step 1: Write the failing test**
@@ -740,6 +728,7 @@ git commit -m "feat(server): wire stuck guard state into runPrompt (§4)"
 **Why:** Before paying for a summarizer LLM call, elide stale tool results ≥1024 bytes. Tool output is re-derivable (re-read the file, re-run the command); the summarizer costs a network round-trip and tokens. Pruning is free and often sufficient.
 
 **What Reasonix does:**
+
 1. Identify tool results outside the "recent tail" window.
 2. Replace their content with `[elided tool result — <name>, <N> bytes dropped to save context; re-run the tool if the data is needed again]`.
 3. If pruning alone clears the compaction trigger, skip the summarizer call entirely.
@@ -762,6 +751,7 @@ For us, the equivalent would be: **before the compaction summarizer call**, prun
 BUT — our compaction doesn't send messages to the summarizer from the live session; it sends them from the `prepareCompaction` result. And `prepareCompaction` determines which messages to summarize based on the `keepRecentTokens` cut point.
 
 Let me think about this differently. The prune pass has two goals:
+
 1. **Save tokens on the summarizer call** — prune stale tool results before sending to the summarizer.
 2. **Skip the summarizer entirely** if pruning alone clears the trigger.
 
@@ -788,6 +778,7 @@ Actually, that's complex. Let me simplify:
 ### Task C1: `pruneStaleToolResults` pure function
 
 **Files:**
+
 - Create: `packages/agent/src/compaction/prune.ts`
 - Test: `packages/agent/src/compaction/__tests__/prune.test.ts`
 
@@ -798,11 +789,7 @@ import { describe, expect, it } from "vitest";
 import { pruneStaleToolResults } from "../prune";
 import type { AgentMessage } from "../../types";
 
-function toolResultMessage(
-  name: string,
-  content: string,
-  toolCallId = "call-1"
-): AgentMessage {
+function toolResultMessage(name: string, content: string, toolCallId = "call-1"): AgentMessage {
   return {
     role: "toolResult",
     toolCallId,
@@ -854,9 +841,7 @@ describe("pruneStaleToolResults", () => {
   });
 
   it("does NOT prune small tool results", () => {
-    const messages: AgentMessage[] = [
-      toolResultMessage("read", "small"),
-    ];
+    const messages: AgentMessage[] = [toolResultMessage("read", "small")];
 
     const { stats } = pruneStaleToolResults(messages, {
       tailStartIndex: 1,
@@ -938,7 +923,7 @@ export interface PruneStats {
  */
 export function pruneStaleToolResults(
   messages: AgentMessage[],
-  options: PruneOptions
+  options: PruneOptions,
 ): { pruned: AgentMessage[]; stats: PruneStats } {
   const minPruneBytes = options.minPruneBytes ?? DEFAULT_MIN_PRUNE_BYTES;
   const stats: PruneStats = { results: 0, savedChars: 0 };
@@ -995,7 +980,7 @@ function extractTextContent(msg: AgentMessage): string {
           typeof part === "object" &&
           part !== null &&
           part.type === "text" &&
-          typeof part.text === "string"
+          typeof part.text === "string",
       )
       .map((part) => part.text)
       .join("");
@@ -1025,6 +1010,7 @@ git commit -m "feat(agent): pruneStaleToolResults elides large stale tool output
 Run the prune pass on `messagesToSummarize` before they go to the summarizer.
 
 **Files:**
+
 - Modify: `packages/agent/src/compaction/compaction.ts` — call prune inside `prepareCompaction`
 - Test: `packages/agent/src/compaction/__tests__/prune.test.ts` — add integration test
 
@@ -1052,7 +1038,7 @@ import { pruneStaleToolResults } from "./prune";
 // doesn't need the full content.
 const { pruned: prunedMessages, stats: pruneStats } = pruneStaleToolResults(
   messagesToSummarize,
-  { tailStartIndex: 0 } // messagesToSummarize is ALL outside the kept tail
+  { tailStartIndex: 0 }, // messagesToSummarize is ALL outside the kept tail
 );
 ```
 
@@ -1073,9 +1059,11 @@ For us, the integration is different: `prepareCompaction` already determines `me
 This is the "free win" part: if pruning brings the estimated token count under the threshold, skip the summarizer call entirely and just drop the old messages (they're already elided).
 
 **Files:**
+
 - Modify: `packages/agent/src/compaction/auto-compaction.ts` — add prune-before-compact logic to `runAutoCompactionEffect`
 
 This is the more complex integration. The flow:
+
 1. Before calling `compactEffect`, run prune on the full message list.
 2. Estimate the token savings.
 3. If `promptTokens - estimatedSavings < threshold`, skip the summarizer and instead create a compaction entry with a generic summary ("Pruned N stale tool results — no summary needed").
@@ -1090,10 +1078,9 @@ In `runAutoCompactionEffect`, after `prepareCompaction`:
 
 ```ts
 // Pre-compaction prune: try to clear the threshold without an LLM call.
-const { pruned, stats } = pruneStaleToolResults(
-  buildSessionContextFromEntries(entries).messages,
-  { tailStartIndex: cutPointTailStart }
-);
+const { pruned, stats } = pruneStaleToolResults(buildSessionContextFromEntries(entries).messages, {
+  tailStartIndex: cutPointTailStart,
+});
 
 if (stats.results > 0) {
   // Estimate token savings (~4 chars/token heuristic).
@@ -1101,12 +1088,13 @@ if (stats.results > 0) {
   // If pruning alone brings us under the threshold, skip the summarizer.
   if (currentTokens - estimatedTokensSaved < threshold) {
     // Persist a compaction entry with a prune-only summary.
-    yield* deps.session.appendCompaction(
-      `[pruned] Elided ${stats.results} stale tool results (${estimatedTokensSaved} tokens est.). No summary needed.`,
-      firstKeptEntryId,
-      tokensBefore,
-      { pruneOnly: true, ...stats }
-    );
+    yield *
+      deps.session.appendCompaction(
+        `[pruned] Elided ${stats.results} stale tool results (${estimatedTokensSaved} tokens est.). No summary needed.`,
+        firstKeptEntryId,
+        tokensBefore,
+        { pruneOnly: true, ...stats },
+      );
     return { ok: true, summary: "pruned", firstKeptEntryId, tokensBefore };
   }
 }
@@ -1131,6 +1119,7 @@ C1 (prune function) → C2 (integrate into prepareCompaction) → C3 (skip summa
 A and B and C are independent — they can be done in any order. But A should land first because B2's "too small window" test (A4) depends on the stuck guard being in place. C is fully independent.
 
 **Recommended commit sequence:**
+
 1. A1 — cache-stability helpers
 2. A2 — prefix-stable test (verify existing behavior)
 3. A3 — hit-rate-climbs test

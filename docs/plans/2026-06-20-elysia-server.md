@@ -6,7 +6,7 @@
 
 **Goal:** Build an Elysia REST + WebSocket server (`apps/server`) that exposes the existing agent/db/tools packages — CRUD state over typed REST, agent-loop streaming over a minimal WebSocket.
 
-**Architecture:** One Bun process runs the server. Elysia routes call the existing repo classes directly (no service layer — repos *are* the service layer) via an injected `ServerContext` in `.state()`. The agent loop runs **in-process** as an async generator: `agent/runner.ts` builds fresh tools+store+loop per prompt from the session's project cwd, streams `AgentEvent`s to the WebSocket. The loop is ephemeral (dies when the stream ends); only a `Map<sessionId, AbortController>` is long-lived. Eden treaty gives the SolidJS app a zero-codegen typed client for the REST routes.
+**Architecture:** One Bun process runs the server. Elysia routes call the existing repo classes directly (no service layer — repos _are_ the service layer) via an injected `ServerContext` in `.state()`. The agent loop runs **in-process** as an async generator: `agent/runner.ts` builds fresh tools+store+loop per prompt from the session's project cwd, streams `AgentEvent`s to the WebSocket. The loop is ephemeral (dies when the stream ends); only a `Map<sessionId, AbortController>` is long-lived. Eden treaty gives the SolidJS app a zero-codegen typed client for the REST routes.
 
 **Structure (hybrid, not dogmatic DDD):** REST routes are flat in `routes/` — they're thin transport adapters that rhyme, so a folder per resource would be ceremony. The one domain with real complexity (model resolution + tool building + the loop bridge + WS transport — 4 mutually-dependent files) is promoted to an `agent/` folder because cohesion pays off there. `context.ts` stays flat at the root — it's a single injected object, not a library, so there is no `lib/` directory. **Messages are part of the Session aggregate** — there's no standalone message route file; `GET /api/sessions/:id/messages` lives in `sessions.ts` (messages have no existence outside a session). Costs keep their own thin `costs.ts` because they span project- and session-level aggregation (a read projection, not part of either aggregate).
 
@@ -17,6 +17,7 @@
 ## Grounded facts (verified before writing this plan — do not re-derive)
 
 **DB layer** (`packages/db`):
+
 - `initDatabase(sqlite: Database): Promise<DrizzleDB>` — takes a `bun:sqlite` `Database` **instance** (not a path). Enables WAL + foreign keys internally. Create with `new Database(":memory:")` (tests) or `new Database(path)` (prod).
 - `SqliteSessionStore(db)` implements `SessionStore` (`loadMessages`/`appendMessage`/`replaceMessages`). No cache.
 - `ProjectRepo(db)`: `create(name, cwd)` async→row · `findById(id)` → row|undefined · `findByCwd(cwd)` · `list()` · `update(id, data)` async · `delete(id)` async
@@ -28,6 +29,7 @@
 - `drizzle .get()` returns `undefined` (not `null`) for no match.
 
 **Agent layer** (`packages/agent`):
+
 - `createAgentLoop(AgentConfigInput): AgentLoop` where `AgentLoop.prompt(message, signal?): AsyncIterable<AgentEvent>`. Stream with `for await…of`.
 - `AgentConfigInput` required: `model: AnyModel`, `sessionId: string`, `store: SessionStore`, `tools: AgentTool[]`. Optional (w/ defaults): `maxRetries`(3), `retryBaseDelayMs`(1000), `reserveTokens`(16000), `keepRecentTokens`(20000), `toolExecutionMode`("parallel").
 - `AgentEvent`: 14-variant union; each has `type` + `timestamp`. The loop yields it directly — it **is** the WS wire payload.
@@ -35,6 +37,7 @@
 **Tools** (`packages/tools`): `createReadTool(cwd)`, `createWriteTool(cwd)`, `createEditTool(cwd)`, `createBashTool(cwd)`, `createGrepTool(cwd)`, `createFindTool(cwd)`, `createLsTool(cwd)` — all take `cwd: string`.
 
 **Model resolution** (`@earendil-works/pi-ai`):
+
 - `getModel(provider, modelId): Model<...>` — static registry lookup. **API keys come from env** (`OPENAI_API_KEY` etc., read by pi-ai internally). No key arg.
 - `getProviders()`, `getModels(provider)` — for a model-listing endpoint.
 - Generic signature won't accept runtime `string`s cleanly; cast at the boundary → `AnyModel`.
@@ -48,7 +51,7 @@
 ## Conventions for every task
 
 - **TDD**: write failing test → run (RED) → implement → run (GREEN) → commit.
-- **Run tests**: `bun vitest run apps/server/` (vitest). The root `vitest.config.ts` includes `packages/**/__tests__/**` — **add `apps/**/__tests__/**` to `include`** in Task 1.
+- **Run tests**: `bun vitest run apps/server/` (vitest). The root `vitest.config.ts` includes `packages/**/__tests__/**` — **add `apps/**/**tests**/**`to`include`** in Task 1.
 - **Typecheck**: `bun typecheck` (runs `tsc --project tsconfig.json` — the root config already `include`s `packages/*/src`; **add `apps/*/src` in Task 1**).
 - **Lint/format**: `bun x ultracite fix` before each commit.
 - **`exactOptionalPropertyTypes: true` is on** — use conditional spread `...(x !== undefined ? { x } : {})` instead of passing `undefined`.
@@ -85,6 +88,7 @@ No `lib/` directory. `context.ts` is the DI root, not a library. If a genuinely 
 ### Task 1: Scaffold `apps/server` package
 
 **Files:**
+
 - Create: `apps/server/package.json`
 - Create: `apps/server/tsconfig.json`
 - Create: `apps/server/src/index.ts`
@@ -181,6 +185,7 @@ git commit -m "chore(server): scaffold apps/server with elysia + eden deps"
 ### Task 2: ServerContext + health route (TDD)
 
 **Files:**
+
 - Create: `apps/server/src/context.ts`
 - Create: `apps/server/src/routes/health.ts`
 - Create: `apps/server/src/__tests__/health.test.ts`
@@ -262,12 +267,11 @@ export function createContext(db: DrizzleDB): ServerContext {
 import { Elysia, t } from "elysia";
 import type { ServerContext } from "../context.ts";
 
-export const healthRoutes = new Elysia({ name: "routes.health" })
-  .get(
-    "/health",
-    () => ({ status: "ok" as const, uptime: process.uptime() }),
-    { response: t.Object({ status: t.Literal("ok"), uptime: t.Number() }) },
-  );
+export const healthRoutes = new Elysia({ name: "routes.health" }).get(
+  "/health",
+  () => ({ status: "ok" as const, uptime: process.uptime() }),
+  { response: t.Object({ status: t.Literal("ok"), uptime: t.Number() }) },
+);
 
 // Re-export the context type for convenience.
 export type { ServerContext };
@@ -281,6 +285,7 @@ Expected: PASS (1 test).
 **Step 6: Typecheck + lint + commit**
 
 Run: `bun typecheck && bun x ultracite fix`
+
 ```bash
 git add -A
 git commit -m "feat(server): ServerContext + /health route"
@@ -291,6 +296,7 @@ git commit -m "feat(server): ServerContext + /health route"
 ### Task 3: Projects REST routes (TDD)
 
 **Files:**
+
 - Create: `apps/server/src/routes/projects.ts`
 - Create: `apps/server/src/__tests__/projects.test.ts`
 
@@ -361,14 +367,18 @@ export const projectsRoutes = new Elysia({ name: "routes.projects" })
   .get("/api/projects", ({ store }) => store.ctx.repos.projects.list(), {
     response: t.Array(t.Ref("project")),
   })
-  .get("/api/projects/:id", ({ params, store, set }) => {
-    const p = store.ctx.repos.projects.findById(params.id);
-    if (!p) {
-      set.status = 404;
-      return "Not found";
-    }
-    return p;
-  }, { response: t.Ref("project") })
+  .get(
+    "/api/projects/:id",
+    ({ params, store, set }) => {
+      const p = store.ctx.repos.projects.findById(params.id);
+      if (!p) {
+        set.status = 404;
+        return "Not found";
+      }
+      return p;
+    },
+    { response: t.Ref("project") },
+  )
   .post(
     "/api/projects",
     ({ body, store }) => store.ctx.repos.projects.create(body.name, body.cwd),
@@ -379,16 +389,13 @@ export const projectsRoutes = new Elysia({ name: "routes.projects" })
   )
   .put(
     "/api/projects/:id",
-    ({ params, body, store }) =>
-      store.ctx.repos.projects.update(params.id, body),
+    ({ params, body, store }) => store.ctx.repos.projects.update(params.id, body),
     {
       body: t.Partial(t.Object({ name: t.String(), cwd: t.String() })),
       response: t.Ref("project"),
     },
   )
-  .delete("/api/projects/:id", ({ params, store }) =>
-    store.ctx.repos.projects.delete(params.id),
-  );
+  .delete("/api/projects/:id", ({ params, store }) => store.ctx.repos.projects.delete(params.id));
 ```
 
 **Step 4: Run → GREEN**
@@ -409,6 +416,7 @@ git commit -m "feat(server): projects CRUD routes"
 ### Task 4: Sessions + Messages REST routes (TDD)
 
 **Files:**
+
 - Create: `apps/server/src/routes/sessions.ts`
 - Create: `apps/server/src/__tests__/sessions.test.ts`
 
@@ -426,7 +434,11 @@ async function makeApp() {
   return sessionsRoutes.state("ctx", createContext(db));
 }
 
-async function seedProject(app: ReturnType<Awaited<ReturnType<typeof makeApp>>["handle"]> extends never ? never : Awaited<ReturnType<typeof makeApp>>) {
+async function seedProject(
+  app: ReturnType<Awaited<ReturnType<typeof makeApp>>["handle"]> extends never
+    ? never
+    : Awaited<ReturnType<typeof makeApp>>,
+) {
   // helper to create a project so FK is valid
 }
 
@@ -460,9 +472,7 @@ describe("sessions routes", () => {
     const project = await ctx.repos.projects.create("demo", "/tmp/demo");
     const session = await ctx.repos.sessions.create(project.id, "gpt-4o");
 
-    const res = await app.handle(
-      new Request(`http://x/api/sessions/${session.id}/messages`),
-    );
+    const res = await app.handle(new Request(`http://x/api/sessions/${session.id}/messages`));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([]);
   });
@@ -488,21 +498,26 @@ const sessionModel = t.Object({
 
 export const sessionsRoutes = new Elysia({ name: "routes.sessions" })
   .model({ session: sessionModel })
-  .get("/api/sessions", ({ query, store }) =>
-    store.ctx.repos.sessions.listByProject(query.projectId),
+  .get(
+    "/api/sessions",
+    ({ query, store }) => store.ctx.repos.sessions.listByProject(query.projectId),
     {
       query: t.Object({ projectId: t.String() }),
       response: t.Array(t.Ref("session")),
     },
   )
-  .get("/api/sessions/:id", ({ params, store, set }) => {
-    const s = store.ctx.repos.sessions.findById(params.id);
-    if (!s) {
-      set.status = 404;
-      return "Not found";
-    }
-    return s;
-  }, { response: t.Ref("session") })
+  .get(
+    "/api/sessions/:id",
+    ({ params, store, set }) => {
+      const s = store.ctx.repos.sessions.findById(params.id);
+      if (!s) {
+        set.status = 404;
+        return "Not found";
+      }
+      return s;
+    },
+    { response: t.Ref("session") },
+  )
   .post(
     "/api/sessions",
     ({ body, store }) =>
@@ -520,8 +535,7 @@ export const sessionsRoutes = new Elysia({ name: "routes.sessions" })
   )
   .patch(
     "/api/sessions/:id",
-    ({ params, body, store }) =>
-      store.ctx.repos.sessions.update(params.id, body),
+    ({ params, body, store }) => store.ctx.repos.sessions.update(params.id, body),
     {
       body: t.Partial(
         t.Object({
@@ -558,6 +572,7 @@ git commit -m "feat(server): sessions + message-history routes"
 ### Task 5: Settings + Model-configs + Costs routes (TDD)
 
 **Files:**
+
 - Create: `apps/server/src/routes/settings.ts`
 - Create: `apps/server/src/routes/models.ts`
 - Create: `apps/server/src/routes/costs.ts`
@@ -619,6 +634,7 @@ describe("costs routes", () => {
 **Step 3: Create the three route files**
 
 `apps/server/src/routes/settings.ts`:
+
 ```ts
 import { Elysia, t } from "elysia";
 
@@ -643,12 +659,14 @@ export const settingsRoutes = new Elysia({ name: "routes.settings" })
 ```
 
 `apps/server/src/routes/costs.ts`:
+
 ```ts
 import { Elysia, t } from "elysia";
 
 export const costsRoutes = new Elysia({ name: "routes.costs" })
-  .get("/api/costs/projects/:projectId", ({ params, store }) =>
-    store.ctx.repos.costs.aggregateByProject(params.projectId),
+  .get(
+    "/api/costs/projects/:projectId",
+    ({ params, store }) => store.ctx.repos.costs.aggregateByProject(params.projectId),
     {
       response: t.Object({
         totalInputTokens: t.Number(),
@@ -663,6 +681,7 @@ export const costsRoutes = new Elysia({ name: "routes.costs" })
 ```
 
 `apps/server/src/routes/models.ts` (DB-backed model-config CRUD, **not** the pi-ai registry):
+
 ```ts
 import { Elysia, t } from "elysia";
 
@@ -678,24 +697,18 @@ const modelConfigModel = t.Object({
 
 export const modelConfigRoutes = new Elysia({ name: "routes.modelConfigs" })
   .model({ modelConfig: modelConfigModel })
-  .get("/api/model-configs/global", ({ store }) =>
-    store.ctx.repos.models.getGlobalDefault(),
-  )
+  .get("/api/model-configs/global", ({ store }) => store.ctx.repos.models.getGlobalDefault())
   .get("/api/model-configs/projects/:projectId", ({ params, store }) =>
     store.ctx.repos.models.getForProject(params.projectId),
   )
-  .post(
-    "/api/model-configs",
-    ({ body, store }) => store.ctx.repos.models.set(body),
-    {
-      body: t.Object({
-        provider: t.String(),
-        modelId: t.String(),
-        thinkingLevel: t.Optional(t.String()),
-        projectId: t.Optional(t.String()),
-      }),
-    },
-  );
+  .post("/api/model-configs", ({ body, store }) => store.ctx.repos.models.set(body), {
+    body: t.Object({
+      provider: t.String(),
+      modelId: t.String(),
+      thinkingLevel: t.Optional(t.String()),
+      projectId: t.Optional(t.String()),
+    }),
+  });
 ```
 
 **Step 4: Run → GREEN**
@@ -716,6 +729,7 @@ git commit -m "feat(server): settings, costs, model-config routes"
 ### Task 6: Available-models endpoint (pi-ai registry) (TDD)
 
 **Files:**
+
 - Create: `apps/server/src/routes/available-models.ts`
 - Create: `apps/server/src/__tests__/available-models.test.ts`
 
@@ -743,9 +757,7 @@ describe("GET /api/available-models", () => {
   });
   it("lists models for a provider", async () => {
     const app = availableModelsRoutes;
-    const res = await app.handle(
-      new Request("http://x/api/available-models/openai"),
-    );
+    const res = await app.handle(new Request("http://x/api/available-models/openai"));
     const body = await res.json();
     expect(body[0].id).toBe("gpt-4o");
   });
@@ -764,9 +776,7 @@ export const availableModelsRoutes = new Elysia({
   name: "routes.availableModels",
 })
   .get("/api/available-models", () => getProviders())
-  .get("/api/available-models/:provider", ({ params }) =>
-    getModels(params.provider),
-  );
+  .get("/api/available-models/:provider", ({ params }) => getModels(params.provider));
 ```
 
 **Step 4: Run → GREEN**
@@ -789,6 +799,7 @@ git commit -m "feat(server): available-models endpoint (pi-ai registry)"
 This is the one domain promoted to its own folder. It holds 4 mutually-dependent files that change together: how a stored model config becomes a pi-ai `Model`, how a project cwd becomes 7 tools, the per-prompt loop bridge that wires them, and (Task 8) the WS transport. `model-resolver.ts` and `tools-builder.ts` are currently small seams — they exist for conceptual clarity and the growth paths they unlock (per-provider key handling, custom tool registration), not because 8-line files need their own module.
 
 **Files:**
+
 - Create: `apps/server/src/agent/model-resolver.ts`
 - Create: `apps/server/src/agent/tools-builder.ts`
 - Create: `apps/server/src/agent/runner.ts`
@@ -808,10 +819,16 @@ vi.mock("@earendil-works/pi-ai", async () => {
     ...actual,
     streamSimple: vi.fn(),
     getModel: (provider: string, modelId: string) => ({
-      id: modelId, name: modelId, provider,
-      api: "openai-completions", baseUrl: "", reasoning: false,
-      input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: 200000, maxTokens: 4096,
+      id: modelId,
+      name: modelId,
+      provider,
+      api: "openai-completions",
+      baseUrl: "",
+      reasoning: false,
+      input: ["text"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 200000,
+      maxTokens: 4096,
     }),
   };
 });
@@ -822,9 +839,32 @@ const { createContext } = await import("../../context.ts");
 
 function textStream(text: string) {
   const events = [
-    { type: "done", message: { role: "assistant", content: [{ type: "text", text }], usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", api: "openai-completions", provider: "openai", model: "gpt-4o", timestamp: Date.now() } },
+    {
+      type: "done",
+      message: {
+        role: "assistant",
+        content: [{ type: "text", text }],
+        usage: {
+          input: 1,
+          output: 1,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 2,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: "stop",
+        api: "openai-completions",
+        provider: "openai",
+        model: "gpt-4o",
+        timestamp: Date.now(),
+      },
+    },
   ];
-  return { async *[Symbol.asyncIterator]() { for (const e of events) yield e; } };
+  return {
+    async *[Symbol.asyncIterator]() {
+      for (const e of events) yield e;
+    },
+  };
 }
 
 describe("runPrompt", () => {
@@ -873,17 +913,11 @@ import { getModel } from "@earendil-works/pi-ai";
 import type { ServerContext } from "../context.ts";
 
 /** Resolve a pi-ai Model from a session's model config. API keys come from env. */
-export function resolveModel(
-  ctx: ServerContext,
-  session: { projectId: string },
-): AnyModel {
+export function resolveModel(ctx: ServerContext, session: { projectId: string }): AnyModel {
   const cfg =
-    ctx.repos.models.getForProject(session.projectId) ??
-    ctx.repos.models.getGlobalDefault();
+    ctx.repos.models.getForProject(session.projectId) ?? ctx.repos.models.getGlobalDefault();
   if (!cfg) {
-    throw new Error(
-      `No model config for project ${session.projectId} and no global default`,
-    );
+    throw new Error(`No model config for project ${session.projectId} and no global default`);
   }
   // getModel is generic over literal provider/modelId types; cast at this runtime boundary.
   return getModel(cfg.provider as never, cfg.modelId as never) as AnyModel;
@@ -990,6 +1024,7 @@ git commit -m "feat(server): agent/ folder — model-resolver, tools-builder, ru
 The WS transport lives in `agent/` alongside the runner it calls — transport + execution are one cohesive domain, which is the whole reason `agent/` is a folder.
 
 **Files:**
+
 - Create: `apps/server/src/agent/ws.ts`
 - Create: `apps/server/src/agent/__tests__/ws.test.ts`
 
@@ -1009,10 +1044,16 @@ vi.mock("@earendil-works/pi-ai", async () => {
     ...actual,
     streamSimple: vi.fn(),
     getModel: (provider: string, modelId: string) => ({
-      id: modelId, name: modelId, provider, api: "openai-completions",
-      baseUrl: "", reasoning: false, input: ["text"],
+      id: modelId,
+      name: modelId,
+      provider,
+      api: "openai-completions",
+      baseUrl: "",
+      reasoning: false,
+      input: ["text"],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: 200000, maxTokens: 4096,
+      contextWindow: 200000,
+      maxTokens: 4096,
     }),
   };
 });
@@ -1028,7 +1069,26 @@ describe("WS /ws", () => {
 
     vi.mocked(streamSimple).mockReturnValue({
       async *[Symbol.asyncIterator]() {
-        yield { type: "done", message: { role: "assistant", content: [{ type: "text", text: "hi" }], usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", api: "openai-completions", provider: "openai", model: "gpt-4o", timestamp: Date.now() } };
+        yield {
+          type: "done",
+          message: {
+            role: "assistant",
+            content: [{ type: "text", text: "hi" }],
+            usage: {
+              input: 1,
+              output: 1,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 2,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: "stop",
+            api: "openai-completions",
+            provider: "openai",
+            model: "gpt-4o",
+            timestamp: Date.now(),
+          },
+        };
       },
     } as any);
 
@@ -1039,9 +1099,14 @@ describe("WS /ws", () => {
     const send = (m: string) => received.push(JSON.parse(m));
     const ws = { send, subscribe: () => {}, data: { ctx } } as any;
 
-    await app.config.websocket.message(ws, JSON.stringify({
-      type: "prompt", sessionId: session.id, message: "hello",
-    }));
+    await app.config.websocket.message(
+      ws,
+      JSON.stringify({
+        type: "prompt",
+        sessionId: session.id,
+        message: "hello",
+      }),
+    );
 
     // Fire-and-forget stream — poll briefly for the first frame.
     await new Promise((r) => setTimeout(r, 50));
@@ -1152,6 +1217,7 @@ git commit -m "feat(server): WebSocket prompt/abort handler (concurrent)"
 ### Task 9: Wire everything in `index.ts` + listen
 
 **Files:**
+
 - Modify: `apps/server/src/index.ts`
 - Create: `apps/server/src/__tests__/wiring.test.ts`
 
@@ -1218,7 +1284,7 @@ if (import.meta.main) {
 export { app } from "elysia";
 ```
 
-> **Note:** `import.meta.main` is the Bun idiom for "run directly, not imported." If the final `export { app }` line conflicts, drop it — it exists only to expose the app type for Eden. The Eden client imports the *type* via `import type`. Adjust per TS resolution once the file exists.
+> **Note:** `import.meta.main` is the Bun idiom for "run directly, not imported." If the final `export { app }` line conflicts, drop it — it exists only to expose the app type for Eden. The Eden client imports the _type_ via `import type`. Adjust per TS resolution once the file exists.
 
 **Step 4: Run → GREEN**
 
@@ -1243,16 +1309,19 @@ git commit -m "feat(server): wire all routes + WS into buildServer, listen on 30
 ### Task 10: Eden treaty client for the SolidJS app
 
 **Files:**
+
 - Modify: `apps/app/package.json` (add `@elysiajs/eden` + workspace dep)
 - Create: `apps/app/src/lib/api.ts`
 
 **Step 1: Add deps**
 
 In `apps/app/package.json`, add to `dependencies`:
+
 ```json
 "@elysiajs/eden": "^1.4.9",
 "@sakti-code/server": "workspace:*"
 ```
+
 Run: `bun install`
 
 **Step 2: Create `apps/app/src/lib/api.ts`**
@@ -1288,9 +1357,10 @@ git commit -m "feat(app): Eden treaty client for typed server access"
 ### Task 11: End-to-end integration test (real loop → WS → events → persistence)
 
 **Files:**
+
 - Create: `apps/server/src/__tests__/e2e.test.ts`
 
-**Step 1: Write the test** — a full multi-turn scenario through the built server: create project+session, send two prompts over the WS, assert both streams produce events and both persist messages, and that a third concurrent session on a *different* project runs independently.
+**Step 1: Write the test** — a full multi-turn scenario through the built server: create project+session, send two prompts over the WS, assert both streams produce events and both persist messages, and that a third concurrent session on a _different_ project runs independently.
 
 ```ts
 import { Database } from "bun:sqlite";
@@ -1304,14 +1374,39 @@ vi.mock("@earendil-works/pi-ai", async () => {
     ...actual,
     streamSimple: vi.fn(() => ({
       async *[Symbol.asyncIterator]() {
-        yield { type: "done", message: { role: "assistant", content: [{ type: "text", text: "ok" }], usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", api: "openai-completions", provider: "openai", model: "gpt-4o", timestamp: Date.now() } };
+        yield {
+          type: "done",
+          message: {
+            role: "assistant",
+            content: [{ type: "text", text: "ok" }],
+            usage: {
+              input: 1,
+              output: 1,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 2,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: "stop",
+            api: "openai-completions",
+            provider: "openai",
+            model: "gpt-4o",
+            timestamp: Date.now(),
+          },
+        };
       },
     })),
     getModel: (provider: string, modelId: string) => ({
-      id: modelId, name: modelId, provider, api: "openai-completions",
-      baseUrl: "", reasoning: false, input: ["text"],
+      id: modelId,
+      name: modelId,
+      provider,
+      api: "openai-completions",
+      baseUrl: "",
+      reasoning: false,
+      input: ["text"],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: 200000, maxTokens: 4096,
+      contextWindow: 200000,
+      maxTokens: 4096,
     }),
   };
 });
@@ -1380,13 +1475,16 @@ git commit -m "test(server): e2e multi-session concurrency"
 ### Task 12: Documentation update
 
 **Files:**
+
 - Modify: `AGENTS.md` (add server commands + architecture note)
 
 **Step 1: Update AGENTS.md** — add to the Commands section:
+
 ```
 bun dev:server                              # run server with watch (port 3001)
 SAKTI_DB_PATH=./sakti.db SAKTI_PORT=3001 bun run apps/server/src/index.ts
 ```
+
 And add a one-paragraph "Server" note: REST for state (Elysia routes over `@sakti-code/db` repos), WS `/ws` for agent streaming (`prompt`/`abort` in, `event` out), Eden treaty client for typed frontend access. API keys from env; model config (provider+modelId) in DB.
 
 **Step 2: Commit**
@@ -1409,6 +1507,7 @@ The first 12 tasks deliver a working server with CRUD + agent streaming. The nex
 Every coding agent shows git state. Shells to `git` in the project cwd — no new schema, no subprocess lifecycle (each call is one-shot). Reuses the tools package's shell helper pattern but calls `git` directly via `Bun.spawn`/`execSync` to avoid importing tool internals.
 
 **Files:**
+
 - Create: `apps/server/src/routes/git.ts`
 - Create: `apps/server/src/__tests__/git.test.ts`
 
@@ -1445,20 +1544,26 @@ describe("git routes", () => {
   it("status shows modified file", async () => {
     const cwd = tempRepo();
     const app = await appAt(cwd);
-    const res = await app.handle(new Request(`http://x/api/git/status?cwd=${encodeURIComponent(cwd)}`));
+    const res = await app.handle(
+      new Request(`http://x/api/git/status?cwd=${encodeURIComponent(cwd)}`),
+    );
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("a.txt");
   });
   it("branch returns current branch", async () => {
     const cwd = tempRepo();
     const app = await appAt(cwd);
-    const res = await app.handle(new Request(`http://x/api/git/branch?cwd=${encodeURIComponent(cwd)}`));
+    const res = await app.handle(
+      new Request(`http://x/api/git/branch?cwd=${encodeURIComponent(cwd)}`),
+    );
     expect(res.status).toBe(200);
   });
   it("log returns at least one commit", async () => {
     const cwd = tempRepo();
     const app = await appAt(cwd);
-    const res = await app.handle(new Request(`http://x/api/git/log?cwd=${encodeURIComponent(cwd)}&limit=5`));
+    const res = await app.handle(
+      new Request(`http://x/api/git/log?cwd=${encodeURIComponent(cwd)}&limit=5`),
+    );
     const body = await res.text();
     expect(body).toContain("init");
   });
@@ -1475,7 +1580,13 @@ import { Elysia, t } from "elysia";
 
 function git(args: string, cwd: string, timeout = 10_000): string {
   try {
-    return execSync(`git ${args}`, { cwd, encoding: "utf-8", timeout, maxBuffer: 1024 * 1024, shell: "/bin/sh" });
+    return execSync(`git ${args}`, {
+      cwd,
+      encoding: "utf-8",
+      timeout,
+      maxBuffer: 1024 * 1024,
+      shell: "/bin/sh",
+    });
   } catch (err) {
     // Non-zero exit (e.g. nothing to commit) — return stderr so UI can show it.
     const e = err as { stdout?: string; stderr?: string; message: string };
@@ -1484,19 +1595,16 @@ function git(args: string, cwd: string, timeout = 10_000): string {
 }
 
 export const gitRoutes = new Elysia({ name: "routes.git" })
-  .get(
-    "/api/git/status",
-    ({ query }) => git("status --short", query.cwd),
-    { query: t.Object({ cwd: t.String() }) },
-  )
-  .get(
-    "/api/git/branch",
-    ({ query }) => git("branch --show-current", query.cwd),
-    { query: t.Object({ cwd: t.String() }) },
-  )
+  .get("/api/git/status", ({ query }) => git("status --short", query.cwd), {
+    query: t.Object({ cwd: t.String() }),
+  })
+  .get("/api/git/branch", ({ query }) => git("branch --show-current", query.cwd), {
+    query: t.Object({ cwd: t.String() }),
+  })
   .get(
     "/api/git/diff",
-    ({ query }) => git(`diff ${query.staged ? "--cached" : ""} ${query.path ?? ""}`.trim(), query.cwd),
+    ({ query }) =>
+      git(`diff ${query.staged ? "--cached" : ""} ${query.path ?? ""}`.trim(), query.cwd),
     {
       query: t.Object({
         cwd: t.String(),
@@ -1505,11 +1613,9 @@ export const gitRoutes = new Elysia({ name: "routes.git" })
       }),
     },
   )
-  .get(
-    "/api/git/log",
-    ({ query }) => git(`log -n ${query.limit ?? 20} --oneline`, query.cwd),
-    { query: t.Object({ cwd: t.String(), limit: t.Optional(t.Number()) }) },
-  );
+  .get("/api/git/log", ({ query }) => git(`log -n ${query.limit ?? 20} --oneline`, query.cwd), {
+    query: t.Object({ cwd: t.String(), limit: t.Optional(t.Number()) }),
+  });
 ```
 
 **Step 4: Run → GREEN**
@@ -1533,9 +1639,10 @@ git commit -m "feat(server): git status/branch/diff/log routes"
 
 Closes a single gap: `compactMessages()` exists in the agent package but has no server route. This task adds ONLY the route — a thin server-layer concern that calls the already-built agent function.
 
-**Scope correction (important):** An earlier draft of this task bundled in two agent-package concerns — wiring `thinkingLevel` through to `streamSimple`, and threading per-session `maxRetries` into `createAgentLoop`. That bundling was wrong: those are *agent-layer* capability extensions, not server routes. They cross package boundaries (`packages/agent/src/types.ts` + `streaming.ts`) and deserve their own OpenSpec change in the agent domain. They are **out of scope here** and tracked in the v1.5 roadmap below. Mixing them into a server route task muddies the change's story and risks ballooning into an agent-package refactor. **This task does the route only.**
+**Scope correction (important):** An earlier draft of this task bundled in two agent-package concerns — wiring `thinkingLevel` through to `streamSimple`, and threading per-session `maxRetries` into `createAgentLoop`. That bundling was wrong: those are _agent-layer_ capability extensions, not server routes. They cross package boundaries (`packages/agent/src/types.ts` + `streaming.ts`) and deserve their own OpenSpec change in the agent domain. They are **out of scope here** and tracked in the v1.5 roadmap below. Mixing them into a server route task muddies the change's story and risks ballooning into an agent-package refactor. **This task does the route only.**
 
 **Files:**
+
 - Create: `apps/server/src/routes/compaction.ts`
 - Create: `apps/server/src/__tests__/compaction.test.ts`
 
@@ -1575,7 +1682,9 @@ describe("compaction route", () => {
   it("returns 404 for unknown session", async () => {
     const db = await initDatabase(new Database(":memory:"));
     const app = compactionRoutes.state("ctx", createContext(db));
-    const res = await app.handle(new Request("http://x/api/sessions/nope/compact", { method: "POST" }));
+    const res = await app.handle(
+      new Request("http://x/api/sessions/nope/compact", { method: "POST" }),
+    );
     expect(res.status).toBe(404);
   });
 });
@@ -1590,8 +1699,9 @@ import { Elysia } from "elysia";
 import { compactMessages, estimateTokens, type AgentMessage } from "@sakti-code/agent";
 import { SqliteSessionStore } from "@sakti-code/db";
 
-export const compactionRoutes = new Elysia({ name: "routes.compaction" })
-  .post("/api/sessions/:id/compact", async ({ params, store, set }) => {
+export const compactionRoutes = new Elysia({ name: "routes.compaction" }).post(
+  "/api/sessions/:id/compact",
+  async ({ params, store, set }) => {
     const ctx = store.ctx;
     const session = ctx.repos.sessions.findById(params.id);
     if (!session) {
@@ -1609,7 +1719,8 @@ export const compactionRoutes = new Elysia({ name: "routes.compaction" })
     await store2.replaceMessages(params.id, compacted);
     const tokensAfter = estimateTokens(compacted as AgentMessage[]);
     return { tokensBefore, tokensAfter };
-  });
+  },
+);
 ```
 
 > **Note on `compactMessages` signature:** verify the exact signature in `packages/agent/src/compaction.ts` before implementing. The plan assumes `(messages, opts?)` returning `AgentMessage[]`, with `opts.summarize` optional (defaults to `completeSimple`). If the real signature differs (e.g. requires a model), pass `resolveModel(ctx, session)` — the route already has access to it. The test asserts `tokensBefore > tokensAfter`, which is the real behavioral contract regardless of signature shape.
@@ -1634,6 +1745,7 @@ git commit -m "feat(server): compaction route"
 PiBun's `session.getStats` returns a unified summary (message count, token totals, duration). We have cost aggregation but not a single stats object. This is a thin read-only projection — no new schema, just composing existing repo calls.
 
 **Files:**
+
 - Create: `apps/server/src/routes/stats.ts`
 - Create: `apps/server/src/__tests__/stats.test.ts`
 
@@ -1679,8 +1791,9 @@ describe("session stats", () => {
 ```ts
 import { Elysia, t } from "elysia";
 
-export const statsRoutes = new Elysia({ name: "routes.stats" })
-  .get("/api/sessions/:id/stats", ({ params, store, set }) => {
+export const statsRoutes = new Elysia({ name: "routes.stats" }).get(
+  "/api/sessions/:id/stats",
+  ({ params, store, set }) => {
     const ctx = store.ctx;
     const session = ctx.repos.sessions.findById(params.id);
     if (!session) {
@@ -1697,7 +1810,8 @@ export const statsRoutes = new Elysia({ name: "routes.stats" })
       createdAt: session.createdAt,
       durationMs: Date.now() - session.createdAt,
     };
-  }, {
+  },
+  {
     response: t.Object({
       messageCount: t.Number(),
       totalInputTokens: t.Number(),
@@ -1706,7 +1820,8 @@ export const statsRoutes = new Elysia({ name: "routes.stats" })
       createdAt: t.Number(),
       durationMs: t.Number(),
     }),
-  });
+  },
+);
 ```
 
 **Step 4: Run → GREEN**
@@ -1727,6 +1842,7 @@ git commit -m "feat(server): session stats + wire new routes into buildServer"
 ---
 
 ## Done criteria
+
 - `bun vitest run apps/server/` — all route + WS + e2e + parity tests pass
 - `bun typecheck` — 0 errors
 - `bun x ultracite check` — 0 errors
@@ -1739,6 +1855,7 @@ git commit -m "feat(server): session stats + wire new routes into buildServer"
 ## Out of scope (v1.5 roadmap)
 
 Deferred from PiBun parity — each needs new schema, loop-model changes, or OS integration:
+
 - **Session forking** (`session.fork` + `getForkMessages`) — needs `parentSessionId` column
 - **Steering / follow-up** (`session.steer`, `.followUp` + modes) — inject guidance mid-run; loop-model change
 - **User bash** (`session.bash`/`abortBash`) — user-run commands separate from the agent tool
@@ -1749,6 +1866,7 @@ Deferred from PiBun parity — each needs new schema, loop-model changes, or OS 
 - **Workspace sidebar persistence** (`workspace.getLoaded/addLoaded/removeLoaded`) — fold into settings when needed
 
 ## Open risks the executor should watch
+
 - **Elysia WS internals** (`ws.data.store.ctx`, `app.config.websocket.message` in tests, `import.meta.main`) — verify against the installed version; the TDD tests catch mismatches. The plan marks these with "Note" callouts.
 - **Eden import path** (`@elysia/eden` vs `@elysiajs/eden`) — verify which the installed `@elysiajs/eden@^1.4.9` resolves; use whichever the package exports.
 - **`getModel` generic cast** — `getModel(provider as never, modelId as never) as AnyModel` is intentional at the runtime-value boundary; biome may want a `noExplicitAny`-style ignore on `AnyModel` (already covered in the agent package).
@@ -1771,7 +1889,7 @@ This plan is decomposed into **4 OpenSpec changes**. They form a clean DAG: one 
 
 ### Why these boundaries
 
-Split by **capability boundary**, not by task. The test for each change: *could this ship on its own and be valuable?*
+Split by **capability boundary**, not by task. The test for each change: _could this ship on its own and be valuable?_
 
 - **`server-rest-api`** — Tasks 1–6 + 10 (+ the REST-wiring half of Task 9). Independently shippable: a fully-typed CRUD API over the DB; the frontend can start building immediately. Splitting it smaller (e.g. "scaffold" alone) would ship an empty shell.
 - **`server-agent-streaming`** — Tasks 7, 8, the WS-wiring half of Task 9, and Task 11 (e2e). The WS layer is architecturally distinct from REST (stateful vs stateless, streaming, mock-stream tests). It's the change that makes the agent come alive. Runner + WS only make sense together — splitting them yields a runner nothing calls and a WS with nothing to stream. Needs a `design.md` (fire-and-forget concurrency, ephemeral loop, abort registry).
@@ -1780,23 +1898,23 @@ Split by **capability boundary**, not by task. The test for each change: *could 
 
 ### Task → change mapping
 
-| Plan task | Change |
-|---|---|
-| 1 Scaffold | `server-rest-api` |
-| 2 Health | `server-rest-api` |
-| 3 Projects | `server-rest-api` |
-| 4 Sessions + Messages | `server-rest-api` |
-| 5 Settings/Models/Costs | `server-rest-api` |
-| 6 Available-models | `server-rest-api` |
-| 7 agent/ folder | `server-agent-streaming` |
-| 8 WS handler | `server-agent-streaming` |
+| Plan task                | Change                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| 1 Scaffold               | `server-rest-api`                                                               |
+| 2 Health                 | `server-rest-api`                                                               |
+| 3 Projects               | `server-rest-api`                                                               |
+| 4 Sessions + Messages    | `server-rest-api`                                                               |
+| 5 Settings/Models/Costs  | `server-rest-api`                                                               |
+| 6 Available-models       | `server-rest-api`                                                               |
+| 7 agent/ folder          | `server-agent-streaming`                                                        |
+| 8 WS handler             | `server-agent-streaming`                                                        |
 | 9 Wire index.ts + listen | split — REST wiring in `server-rest-api`, WS wiring in `server-agent-streaming` |
-| 10 Eden client | `server-rest-api` |
-| 11 e2e concurrency | `server-agent-streaming` |
-| 12 Docs | last change to land (or its own small change) |
-| 13 Git routes | `server-git-integration` |
-| 14 Compaction route | `server-session-utils` |
-| 15 Stats route | `server-session-utils` |
+| 10 Eden client           | `server-rest-api`                                                               |
+| 11 e2e concurrency       | `server-agent-streaming`                                                        |
+| 12 Docs                  | last change to land (or its own small change)                                   |
+| 13 Git routes            | `server-git-integration`                                                        |
+| 14 Compaction route      | `server-session-utils`                                                          |
+| 15 Stats route           | `server-session-utils`                                                          |
 
 ### Cross-cutting coordination points (handle in `server-rest-api`, the foundation)
 
@@ -1806,4 +1924,4 @@ Split by **capability boundary**, not by task. The test for each change: *could 
 
 ### Explicitly NOT a server change (deferred to a separate agent-domain change, v1.5)
 
-**Thinking-level / per-session retry wiring** is an *agent-layer* capability extension, not a server route. It crosses `packages/agent` (`AgentConfigInput` + `streaming.ts`'s `streamSimple` call) and deserves its own OpenSpec change in the agent domain. The server stores `thinkingLevel` today and the `server-session-utils` compaction route works without it — so it's correctly deferred, not bundled into a server change.
+**Thinking-level / per-session retry wiring** is an _agent-layer_ capability extension, not a server route. It crosses `packages/agent` (`AgentConfigInput` + `streaming.ts`'s `streamSimple` call) and deserves its own OpenSpec change in the agent domain. The server stores `thinkingLevel` today and the `server-session-utils` compaction route works without it — so it's correctly deferred, not bundled into a server change.

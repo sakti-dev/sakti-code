@@ -94,7 +94,9 @@ export function createWsClient(
           sessionRegistry.get(data.sessionId).actions,
           batcher,
           evt,
-          { skipTiming: replayState() !== "idle" }
+          {
+            skipTiming: replayState() !== "idle",
+          }
         );
         break;
       }

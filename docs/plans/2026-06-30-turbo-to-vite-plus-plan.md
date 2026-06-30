@@ -19,6 +19,7 @@
 This is a build-system migration, not feature code. The "test" for each task is the **existing test suite + build + lint staying green**. Each task follows: make the change → run the package's existing tests/build → verify GREEN → commit. Do not introduce new tests; the existing suites are the safety net.
 
 **Per-task verification commands** (run from repo root unless noted):
+
 - build: `vp run <pkg>#build` (after conversion) or `pnpm --filter <pkg> build` (before)
 - test: `vp run <pkg>#test` (after) or `pnpm --filter <pkg> test` (before)
 - lint: `ultracite check` (run from repo root, checks everything)
@@ -34,6 +35,7 @@ Vite+ requires Vite 8+ and Vitest 4.1+. Bump versions first, while still on turb
 ### Task 0.1: Bump Vitest 3 → 4.1 in the lib packages
 
 **Files:**
+
 - Modify: `packages/agent/package.json`
 - Modify: `packages/db/package.json`
 - Modify: `packages/llm/package.json`
@@ -59,6 +61,7 @@ git commit -m "build: bump vitest to 4.1.9 across packages (vite+ precondition)"
 ### Task 0.2: Bump Vite 5 → 8 in velomark
 
 **Files:**
+
 - Modify: `packages/velomark/package.json` (`"vite": "^5.2.11"` → `"vite": "^8"`; also `@tailwindcss/vite`, `vite-plugin-solid` may need bumps if they peer-reject Vite 8)
 
 **Step 1:** Bump the vite version; run `pnpm install`. If peer warnings block, bump the Solid/Tailwind vite plugins to their Vite-8-compatible versions.
@@ -79,6 +82,7 @@ git commit -m "build(velomark): bump vite to 8 (vite+ precondition)"
 ### Task 0.3: Note dead turbo tasks
 
 `build:canary` and `hmr` appear **only** in `turbo.json` — no `package.json` defines them. They are dead and will simply vanish when `turbo.json` is deleted in Task 17. No action now; record the decision here:
+
 - ✅ `build:canary` — drop (dead)
 - ✅ `hmr` — drop (dead)
 - `start` — keep (server), becomes `vp run @sakti-code/server#start`
@@ -99,6 +103,7 @@ Run: `cd packages/logger && vp migrate --no-interactive --no-hooks` then `cd -`
 > If `vp migrate` refuses to run on a non-root dir, copy `packages/logger` to `/tmp/opencode/logger-spike`, run `vp migrate` there, and diff the result. The goal is to observe what `vp migrate` does to: `package.json` scripts/exports, `vite.config.ts` creation, import rewrites in `src/`, `vitest` dep removal.
 
 **Step 2:** Record the transforms (do not commit yet). Note specifically:
+
 - what the generated `vite.config.ts` `pack` block looks like
 - whether `vitest` was removed from devDeps and `vite-plus` added
 - whether `build` script became `vp pack`
@@ -114,13 +119,14 @@ Run: `git checkout -- packages/logger && git clean -fd packages/logger`
 ### Task 2: Convert logger by hand from the reference template
 
 **Files:**
+
 - Create: `packages/logger/vite.config.ts`
 - Modify: `packages/logger/package.json`
 
 **Step 1:** Create `packages/logger/vite.config.ts` (multi-entry — both `index.ts` and `node.ts`):
 
 ```ts
-import { defineConfig } from 'vite-plus';
+import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   fmt: {},
@@ -131,7 +137,7 @@ export default defineConfig({
     },
   },
   pack: {
-    entry: ['src/index.ts', 'src/node.ts'],
+    entry: ["src/index.ts", "src/node.ts"],
     dts: true,
     exports: true,
   },
@@ -139,6 +145,7 @@ export default defineConfig({
 ```
 
 **Step 2:** Edit `packages/logger/package.json`:
+
 - `scripts.build`: `"tsup && node ../../scripts/restore-node-protocol.mjs dist"` → `"vp pack"`
 - `scripts.test`: `"vitest run"` → `"vp test"`
 - `devDependencies`: remove `vitest`; add `"vite-plus": "catalog:"`.
@@ -180,6 +187,7 @@ git commit -m "build(logger): migrate to vp pack + vp test (vite+ template)"
 ### Task 3: Convert llm using the logger template
 
 **Files:**
+
 - Create: `packages/llm/vite.config.ts`
 - Modify: `packages/llm/package.json`
 
@@ -210,9 +218,9 @@ These use `node:sqlite` (directly or transitively). tsup mangles `node:sqlite` �
 **Step 1:** Temporarily build `db` with vp pack to observe. Create a throwaway `packages/db/vite.config.ts`:
 
 ```ts
-import { defineConfig } from 'vite-plus';
+import { defineConfig } from "vite-plus";
 export default defineConfig({
-  pack: { entry: ['src/index.ts'], dts: true },
+  pack: { entry: ["src/index.ts"], dts: true },
 });
 ```
 
@@ -223,6 +231,7 @@ Add `vite-plus: catalog:` to `packages/db/package.json` devDeps if not resolvabl
 Run: `cd packages/db && vp pack && cd -`
 Run: `rg -n "node:sqlite|\bsqlite\b" packages/db/dist` (use Bash with `rg`)
 Expected/decision:
+
 - If output shows `node:sqlite` preserved (no bare `sqlite`) → **tsdown is safe; drop the fixup** for all node:sqlite packages. Delete the throwaway config.
 - If output shows bare `sqlite` (mangled) → **keep the fixup**: these packages' `build` script becomes `"vp pack && node ../../scripts/restore-node-protocol.mjs dist"`.
 
@@ -235,12 +244,14 @@ Run: `rm packages/db/vite.config.ts && git checkout -- packages/db/package.json 
 ### Task 5: Convert agent
 
 **Files:**
+
 - Create: `packages/agent/vite.config.ts`
 - Modify: `packages/agent/package.json`
 
 **Step 1:** Create `packages/agent/vite.config.ts` (single entry `src/index.ts`, same shape as Task 2's lint/fmt/pack blocks).
 
 **Step 2:** Edit `packages/agent/package.json`:
+
 - `build` → `"vp pack"` **or** `"vp pack && node ../../scripts/restore-node-protocol.mjs dist"` per Task 4's decision.
 - `test` → `"vp test"`.
 - Drop `vitest`, `@effect/vitest` stays (it's a test integration, not vitest itself — confirm it resolves against vite-plus/test; if it hard-depends on `vitest`, keep `vitest` only if required).
@@ -279,23 +290,24 @@ Commit: `build(tools): migrate to vp pack + vp test`
 ### Task 8: Convert server
 
 **Files:**
+
 - Create: `apps/server/vite.config.ts`
 - Modify: `apps/server/package.json`
 
 **Step 1:** Create `apps/server/vite.config.ts`. Server exports multiple subpaths (`.`/`./create-server`/`./dirs`/`./ws`) — the `pack.entry` must list each entry source: `src/app.ts`, `src/create-server.ts`, `src/lib/config-dirs.ts`, `src/agent/ws-handler.ts`.
 
 ```ts
-import { defineConfig } from 'vite-plus';
+import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   fmt: {},
   lint: { options: { typeAware: true, typeCheck: true } },
   pack: {
     entry: [
-      'src/app.ts',
-      'src/create-server.ts',
-      'src/lib/config-dirs.ts',
-      'src/agent/ws-handler.ts',
+      "src/app.ts",
+      "src/create-server.ts",
+      "src/lib/config-dirs.ts",
+      "src/agent/ws-handler.ts",
     ],
     dts: true,
     exports: true,
@@ -304,6 +316,7 @@ export default defineConfig({
 ```
 
 **Step 2:** Edit `apps/server/package.json`:
+
 - `build` → `"vp pack"` **or** with the `restore-node-protocol.mjs` fixup (server inherits node:sqlite via db — confirm via Task 4 decision; if unsure, run the spike grep on server dist too).
 - Keep `dev`/`start` as `NODE_OPTIONS=--conditions=development tsx src/index.ts` (a process, not a vite app — do NOT use `vp dev` here).
 - `test` → `"vp test"`.
@@ -338,17 +351,17 @@ Expected: `dist/index.js`, `dist/dev.js`, `dist/index.d.ts`, `dist/styles.css`; 
 **Step 2:** Prototype a `packages/velomark/vite.config.ts` with tsdown producing both entries:
 
 ```ts
-import { defineConfig, lazyPlugins } from 'vite-plus';
+import { defineConfig, lazyPlugins } from "vite-plus";
 
 export default defineConfig({
   fmt: {},
   lint: { options: { typeAware: true, typeCheck: true } },
   plugins: lazyPlugins(async () => {
-    const solid = await import('vite-plugin-solid');
+    const solid = await import("vite-plugin-solid");
     return [solid.default()];
   }),
   pack: {
-    entry: { index: 'src/index.tsx', dev: 'src/index.tsx' },
+    entry: { index: "src/index.tsx", dev: "src/index.tsx" },
     dts: true,
     // tsdown output options to produce the solid condition go here;
     // consult https://tsdown.dev for multi-condition output
@@ -357,12 +370,14 @@ export default defineConfig({
 ```
 
 **Step 3:** Decision gate (be honest — verify, don't theorize):
+
 - If tsdown can emit both `index.js` (prod, `drop_console`) and `dev.js` (dev) with the `solid` condition → proceed to Task 10.
 - If tsdown **cannot** faithfully reproduce the Solid conditional output → **fallback**: keep `tsup` for velomark's `build` only (`build: "tsup && cp src/theme/styles.css dist/styles.css"`), but still move lint/test to `vp check`/`vp test` and `dev` to `vp dev`. Document this exception in the design doc and AGENTS.md. (This is acceptable; the user's "convert velomark" intent is met for everything except the packer, and faithful Solid output > toolchain purity.)
 
 ### Task 10: Convert velomark per Task 9's decision
 
 **Files:**
+
 - Create: `packages/velomark/vite.config.ts`
 - Modify: `packages/velomark/package.json`
 - Delete (if tsdown branch): `packages/velomark/tsup.config.ts`
@@ -370,6 +385,7 @@ export default defineConfig({
 **Step 1:** Apply the chosen build config (tsdown multi-condition OR tsup-retained-for-build).
 
 **Step 2:** Edit `packages/velomark/package.json`:
+
 - `dev`: `"vite serve dev"` → `"vp dev"`.
 - `build`: per Task 9 decision (`vp pack` with `&& cp src/theme/styles.css dist/styles.css`, OR keep tsup).
 - `test`: collapse the three-config dance. The `test` script currently runs `concurrently pnpm:test:client pnpm:test:ssr pnpm:test:packed-consumer`. Move per-mode config into a `test` block in `vite.config.ts` (projects) OR keep the three scripts but invoke via `vp test --config <file>`. Keep `test:packed-consumer` as `node ./scripts/pack-and-test-consumer.mjs` (it's a node script, not vitest).
@@ -379,11 +395,12 @@ export default defineConfig({
 **Step 3:** Verify all three test modes.
 
 Run each test mode and confirm PASS:
+
 - client: `vp test --config vitest.config.ts` (or the collapsed equivalent)
 - ssr: `vp test --config vitest.ssr.config.ts --mode ssr`
 - packed-consumer: `pnpm --filter velomark test:packed-consumer`
-Run: `pnpm --filter velomark build` → `dist/` shape matches the original (index.js, dev.js, styles.css).
-Run: `pnpm --filter velomark dev` (smoke).
+  Run: `pnpm --filter velomark build` → `dist/` shape matches the original (index.js, dev.js, styles.css).
+  Run: `pnpm --filter velomark dev` (smoke).
 
 **Step 4:** Commit + push upstream.
 
@@ -403,13 +420,14 @@ Internals untouched. Only add lint config + rewire scripts so `vp` orchestrates 
 ### Task 11: Desktop — lint config + script rewire
 
 **Files:**
+
 - Create: `apps/desktop/vite.config.ts` (fmt/lint only — NOT a pack or vite-app config)
 - Modify: `apps/desktop/package.json`
 
 **Step 1:** Create `apps/desktop/vite.config.ts`:
 
 ```ts
-import { defineConfig } from 'vite-plus';
+import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   fmt: {},
@@ -425,6 +443,7 @@ export default defineConfig({
 > Do NOT add a `pack` block or Vite plugins here — desktop builds via `electron-vite` (its own config). The `vite.config.ts` exists only so `ultracite check`/`fix` reach desktop sources.
 
 **Step 2:** Edit `apps/desktop/package.json` scripts:
+
 - `package`: `"turbo run build:electron && electron-builder"` → `"vp run -r build && electron-vite build && electron-builder"` (build all lib dists first, then electron-vite, then package). Confirm `build:electron` script stays `"electron-vite build"`.
 - `rebuild`: keep `"electron-builder install-app-deps"` (Electron-ABI-aware — do NOT switch to `vp rebuild`).
 - `build:electron`, `dev`, `spike`, `test`, `typecheck`: keep as-is (they invoke electron-vite / electron / vitest / tsc directly; `vp run desktop#<script>` orchestrates them).
@@ -452,6 +471,7 @@ git commit -m "build(desktop): wire vp orchestration + ultracite lint (electron-
 ### Task 12: pi-natives test → `vp test`
 
 **Files:**
+
 - Modify: `crates/pi-natives/package.json`
 
 **Step 1:** pi-natives is a Cargo-built native addon (prebuilt `index.linux-x64-gnu.node` + `index.js` + `index.d.ts`). It is **not** a `vp pack` target. Only switch its test script.
@@ -479,6 +499,7 @@ Now that every package is individually green under vp/ultracite, rewire the root
 ### Task 13: Create root `vite.config.ts` + lint/fmt configs
 
 **Files:**
+
 - Create: `vite.config.ts` (repo root)
 - Create: `oxlint.config.ts`
 - Create: `oxfmt.config.ts`
@@ -486,20 +507,20 @@ Now that every package is individually green under vp/ultracite, rewire the root
 **Step 1:** Create root `vite.config.ts` (minimal lint/fmt — source of truth is the standalone files; this is for anyone who runs `vp check`):
 
 ```ts
-import { defineConfig } from 'vite-plus';
+import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   fmt: {},
   lint: {
-    jsPlugins: [{ name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }],
+    jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
     options: { typeAware: true, typeCheck: true },
-    rules: { 'vite-plus/prefer-vite-plus-imports': 'error' },
+    rules: { "vite-plus/prefer-vite-plus-imports": "error" },
   },
   run: {
     cache: true,
   },
   staged: {
-    '*': 'ultracite fix',
+    "*": "ultracite fix",
   },
 });
 ```
@@ -507,27 +528,27 @@ export default defineConfig({
 **Step 2:** Create `oxlint.config.ts` (source of truth for lint — ports `biome.jsonc` overrides):
 
 ```ts
-import { defineConfig } from 'oxlint';
-import core from 'ultracite/oxlint/core';
+import { defineConfig } from "oxlint";
+import core from "ultracite/oxlint/core";
 
 export default defineConfig({
   extends: [core],
-  ignorePatterns: [...core.ignorePatterns, 'openspec/**'],
+  ignorePatterns: [...core.ignorePatterns, "openspec/**"],
   overrides: [
     // Port the meaningful biome overrides:
     // - test files: relax no-explicit-any, no-non-null-assertion, etc.
     // - velomark/desktop: solid rules
     // - server: node env
     {
-      files: ['**/__tests__/**'],
+      files: ["**/__tests__/**"],
       rules: {
-        '@typescript-eslint/no-explicit-any': 'off',
-        '@typescript-eslint/no-non-null-assertion': 'off',
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-non-null-assertion": "off",
       },
     },
     {
-      files: ['packages/velomark/**', 'apps/desktop/**'],
-      plugins: ['typescript', 'solid'],
+      files: ["packages/velomark/**", "apps/desktop/**"],
+      plugins: ["typescript", "solid"],
     },
   ],
 });
@@ -538,8 +559,8 @@ export default defineConfig({
 **Step 3:** Create `oxfmt.config.ts`:
 
 ```ts
-import { defineConfig } from 'oxfmt';
-import ultracite from 'ultracite/oxfmt';
+import { defineConfig } from "oxfmt";
+import ultracite from "ultracite/oxfmt";
 
 export default defineConfig({
   ...ultracite,
@@ -560,6 +581,7 @@ git commit -m "build: add root vite-plus config (vite.config.ts, oxlint, oxfmt)"
 ### Task 14: Add pnpm catalog
 
 **Files:**
+
 - Modify: `pnpm-workspace.yaml`
 
 **Step 1:** Replace `pnpm-workspace.yaml` with (keep `packages`, add catalog):
@@ -612,9 +634,11 @@ git commit -m "build: add pnpm catalog for vite-plus/vite/vitest (ts types)"
 ### Task 15: Rewrite root `package.json`
 
 **Files:**
+
 - Modify: `package.json` (root)
 
 **Step 1:** Edit root `package.json`:
+
 - `scripts` — replace the turbo scripts:
 
 ```json
@@ -636,7 +660,7 @@ git commit -m "build: add pnpm catalog for vite-plus/vite/vitest (ts types)"
 }
 ```
 
-  (Drop `hmr`, `build:canary`, and the old turbo-based aliases — confirmed dead/renamed.)
+(Drop `hmr`, `build:canary`, and the old turbo-based aliases — confirmed dead/renamed.)
 
 - `devDependencies`: remove `@biomejs/biome`, `turbo`, `tsup`, `husky`, `lint-staged`; add `"oxfmt": "latest"`, `"oxlint": "latest"`, `"vite-plus": "catalog:"`; keep `ultracite`, `typescript`, `@types/node`.
 - Keep `packageManager: pnpm@10.18.0`. Add:
@@ -669,6 +693,7 @@ git commit -m "build: rewrite root scripts for vp + ultracite; drop turbo/tsup/b
 ### Task 16: Replace `.husky` with `.vite-hooks`
 
 **Files:**
+
 - Create: `.vite-hooks/pre-commit`
 - Delete: `.husky/` (in Task 17)
 
@@ -690,6 +715,7 @@ Expected: `.vite-hooks/` hooks activated; `core.hooksPath` pointed at `.vite-hoo
 ### Task 17: Delete legacy orchestrator files + retired devDeps
 
 **Files:**
+
 - Delete: `turbo.json`
 - Delete: `biome.jsonc`
 - Delete: `.husky/` (whole dir)
@@ -734,9 +760,11 @@ Expected: system Node (nix) winning; no conflicts with `devEngines.runtime`/`eng
 ## Task 19: Rewrite AGENTS.md
 
 **Files:**
+
 - Modify: `AGENTS.md`
 
 **Step 1:** In the **Commands** section, replace the turbo/pnpm commands with the vp surface:
+
 - `pnpm run fix` → `ultracite fix` (or `pnpm run fix`)
 - `pnpm run typecheck` → `vp run -r typecheck`
 - `pnpm run dev:server` → `vp run @sakti-code/server#dev`
@@ -775,6 +803,7 @@ ultracite check          # oxlint + oxfmt, all packages
 vp run -r test           # vitest via vite-plus/test, all packages
 vp run -r build          # vp pack (or electron-vite for desktop), all dists produced
 ```
+
 Expected: every command PASS.
 
 **Step 3:** Packaging smoke.

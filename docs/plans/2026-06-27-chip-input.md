@@ -21,6 +21,7 @@
 The testable core. Everything else is thin glue over these.
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat-input/chip-model.ts`
 - Test: `apps/desktop/src/components/chat-input/__tests__/chip-model.test.ts`
 
@@ -44,14 +45,14 @@ describe("serializeEditor", () => {
 
   it("emits the token for chip spans", () => {
     const ed = editorWith(
-      '<span class="chip" contenteditable="false" data-token="/commit">/commit</span>'
+      '<span class="chip" contenteditable="false" data-token="/commit">/commit</span>',
     );
     expect(serializeEditor(ed)).toBe("/commit");
   });
 
   it("mixes text and chips in order", () => {
     const ed = editorWith(
-      'fix <span class="chip" contenteditable="false" data-token="@src/a.ts">@src/a.ts</span> now'
+      'fix <span class="chip" contenteditable="false" data-token="@src/a.ts">@src/a.ts</span> now',
     );
     expect(serializeEditor(ed)).toBe("fix @src/a.ts now");
   });
@@ -103,9 +104,11 @@ describe("isAtEditorStart", () => {
 ```
 
 **Step 2: Run to verify RED.**
+
 ```bash
 cd apps/desktop && pnpm run test src/components/chat-input/__tests__/chip-model.test.ts
 ```
+
 Expected: FAIL — module not found.
 
 **Step 3: Implement.**
@@ -166,6 +169,7 @@ export function isAtEditorStart(editor: HTMLElement): boolean {
 
 **Step 4: Run to verify GREEN.** Expected: 9 tests pass.
 **Step 5: Commit.**
+
 ```bash
 git add apps/desktop/src/components/chat-input/chip-model.ts apps/desktop/src/components/chat-input/__tests__/chip-model.test.ts
 git commit -m "feat(desktop): chip editor serialization + helpers"
@@ -176,6 +180,7 @@ git commit -m "feat(desktop): chip editor serialization + helpers"
 ### Task 2: `ChipInput` component — core editing surface
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat-input/chip-input.tsx`
 - Test: `apps/desktop/src/components/chat-input/__tests__/chip-input.test.tsx`
 
@@ -313,7 +318,7 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
           "scrollbar-default w-full resize-none bg-transparent px-1 py-2 outline-none",
           "max-h-[200px] min-h-6 whitespace-pre-wrap break-words overflow-y-auto",
           "text-foreground",
-          props.class
+          props.class,
         )}
         data-component="chip-input"
         contenteditable={props.disabled ? "false" : "true"}
@@ -344,12 +349,14 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
 ```
 
 > **Implementer notes:**
+>
 > - `whitespace-pre-wrap` makes `\n` render as line breaks (so Shift+Enter's default newline behaves like the old textarea).
 > - `document.execCommand("insertText", …)` is deprecated but still the most reliable cross-engine plain-text paste insert; if Biome flags it, there is no lint rule against it (it's a runtime API, not syntax). Verify paste manually in Task 6.
 > - If `onCleanup`'s `registerApi?.(undefined …)` offends types, instead have chat-input null its own stored api on unmount — pick whichever is cleaner.
 
 **Step 4: Run to verify GREEN.** Expected: 5 tests pass.
 **Step 5: Commit.**
+
 ```bash
 git add apps/desktop/src/components/chat-input/chip-input.tsx apps/desktop/src/components/chat-input/__tests__/chip-input.test.tsx
 git commit -m "feat(desktop): ChipInput contenteditable editing surface"
@@ -360,6 +367,7 @@ git commit -m "feat(desktop): ChipInput contenteditable editing surface"
 ### Task 3: trigger detection + `insertChip` + atomic backspace
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/chat-input/chip-input.tsx` (add trigger + chip insertion)
 - Modify: `apps/desktop/src/components/chat-input/__tests__/chip-input.test.tsx` (add cases)
 
@@ -429,7 +437,11 @@ export interface ChipInputApi {
 
 const onKeyDown = (e: KeyboardEvent) => {
   if (composing) return;
-  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); props.onSubmit?.(); return; }
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    props.onSubmit?.();
+    return;
+  }
   if (e.key === "/" && editorRef && isAtEditorStart(editorRef)) {
     pendingTrigger = saveCaret();
     props.onTrigger?.({ char: "/" });
@@ -462,6 +474,7 @@ Add a `beforeinput` handler that, on `inputType === "deleteContentBackward"`, ju
 
 **Step 4: Run to verify GREEN.** Expected: all chip-input tests pass.
 **Step 5: Commit.**
+
 ```bash
 git add apps/desktop/src/components/chat-input/chip-input.tsx apps/desktop/src/components/chat-input/__tests__/chip-input.test.tsx
 git commit -m "feat(desktop): trigger detection + chip insertion + atomic backspace"
@@ -472,10 +485,12 @@ git commit -m "feat(desktop): trigger detection + chip insertion + atomic backsp
 ### Task 4: Wire `ChipInput` into `chat-input.tsx`
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/chat-input/chat-input.tsx`
 - Modify: `apps/desktop/src/components/chat-input/__tests__/chat-input.test.tsx`
 
 **What changes:**
+
 - Replace the `<textarea>` with `<ChipInput>`.
 - Keep the menu (`ContextMenu`) + catalog/files fetching **as-is**.
 - `onTrigger={({ char }) => setMenu({ mode: char, index: 0 })}` (index is vestigial now — chips locate themselves via the saved Range; drop `index` from menu state if unused).
@@ -487,6 +502,7 @@ git commit -m "feat(desktop): trigger detection + chip insertion + atomic backsp
 - **Remove:** `detectTrigger` import + `detect-trigger.ts` (and its test) — superseded by ChipInput's `onTrigger`; the old `insertToken`, `textareaRef`/`selectionStart`/`autoResize` textarea logic; the `value` signal stays (driven by `onChange`) but `setValue` calls shrink to clear-after-send.
 
 **Step 1: Write/update the failing tests.** Adapt the existing chat-input menu tests to the chip input:
+
 - Typing `/` at start (fire `keyDown` `/` on the chip editor) → menu opens.
 - `@` → menu opens in Files mode.
 - Picking `/commit` → a `.chip[data-token="/commit"]` exists and `value` (sent on submit) contains `/commit`.
@@ -497,6 +513,7 @@ git commit -m "feat(desktop): trigger detection + chip insertion + atomic backsp
 **Step 3: Implement** the wiring per "What changes" above. Delete `detect-trigger.ts` + `detect-trigger.test.ts` and the `value`/textarea logic that's no longer used.
 **Step 4: Run to verify GREEN** + full desktop suite.
 **Step 5: Commit.**
+
 ```bash
 git add -A apps/desktop/src/components/chat-input
 git commit -m "feat(desktop): wire ChipInput into chat input (chips for menu picks)"
@@ -507,10 +524,12 @@ git commit -m "feat(desktop): wire ChipInput into chat input (chips for menu pic
 ### Task 5: Chip styling (badge look)
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/chat-input/chip-input.tsx` (add classes / data attrs)
 - Modify/create: the app's CSS (find the existing global stylesheet / `index.css`; add `.chip` rules)
 
 **What:** distinguish the three token kinds visually via `data-token` prefix:
+
 - `/command` → e.g. primary/accent badge.
 - `skill:name` → a distinct hue (e.g. violet).
 - `@path` → muted/neutral file badge.
@@ -518,6 +537,7 @@ git commit -m "feat(desktop): wire ChipInput into chat input (chips for menu pic
 Add a helper to derive a `data-chip-kind` attribute (`"command" | "skill" | "file"`) from the token when building the chip (extend `createChipElement` to set it). Style `.chip[data-chip-kind="…"]` with background, border, rounded corners, small padding, and `user-select: all` (so a single click selects the whole chip, reinforcing atomicity). No logic change — pure presentation. Verify visually in `pnpm run dev` (manual).
 
 **Commit:**
+
 ```bash
 git commit -m "feat(desktop): badge styling for /command, skill:, and @file chips"
 ```
@@ -527,6 +547,7 @@ git commit -m "feat(desktop): badge styling for /command, skill:, and @file chip
 ### Task 6: Final verification + manual contenteditable checks
 
 **Automated:**
+
 ```bash
 pnpm run typecheck          # 7/7
 for pkg in llm agent db tools; do (cd packages/$pkg && pnpm run test); done
@@ -536,6 +557,7 @@ pnpm run fix
 ```
 
 **Manual (contenteditable edge cases jsdom can't cover) — run the app (`cd apps/desktop && pnpm run dev`):**
+
 - [ ] Pick `/command` + `skill:` + `@file` chips; confirm badges render and the three colors differ.
 - [ ] Backspace at end of a chip removes it in **one** keystroke.
 - [ ] Caret lands cleanly after an inserted chip; typing continues in the right place.

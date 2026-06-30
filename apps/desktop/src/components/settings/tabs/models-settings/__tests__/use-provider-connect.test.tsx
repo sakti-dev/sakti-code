@@ -197,7 +197,9 @@ describe("useProviderConnect", () => {
         tokenByProvider,
         errorByProvider,
         dispose,
-      } = setupHook({ onConnect });
+      } = setupHook({
+        onConnect,
+      });
       setTokenDraft("openai", "sk-test-key");
       await connectToken("openai");
       expect(onConnect).toHaveBeenCalledWith("openai", "sk-test-key");
@@ -259,7 +261,9 @@ describe("useProviderConnect", () => {
         setSelectedProviderId,
         setProviders,
         dispose,
-      } = setupHook({ isOpen: true });
+      } = setupHook({
+        isOpen: true,
+      });
       await vi.waitFor(() => {
         expect(selectedProviderId()).toBeTruthy();
       });
