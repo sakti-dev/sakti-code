@@ -8,7 +8,7 @@ export default defineConfig({
     ignorePatterns: ["openspec/**"],
     options: {
       typeAware: true,
-      typeCheck: false,
+      typeCheck: true,
     },
     rules: {
       "no-this-alias": "off",
