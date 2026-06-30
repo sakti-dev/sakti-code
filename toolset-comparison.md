@@ -23,15 +23,15 @@
 
 ### sakti (`packages/tools/src/`)
 
-| Tool              | File                       | What it does                                                                                     |
-| ----------------- | -------------------------- | ------------------------------------------------------------------------------------------------ |
-| `bash`            | `bash/index.ts`            | Shell exec via `child_process.spawn()`, throttled streaming, temp file output                    |
-| `edit`            | `edit/index.ts`            | 2 modes: **replace** (oldText/newText) and **hashline** (content-addressed line-anchored edits)  |
-| `find`            | `find/index.ts`            | Glob search via `fd` CLI or custom glob; skips `node_modules`/`.git`                             |
-| `grep`            | `grep/index.ts`            | Regex search via `rg` (ripgrep) with JSON streaming + context lines                              |
-| `read`            | `read/index.ts`            | Text reading (offset/limit), image reading (photon resize), hashline mode, **directory listing** |
-| `write`           | `write/index.ts`           | Write file with parent dir creation, hashline snapshot                                           |
-| `propose-session` | `propose-session/index.ts` | Terminates agent turn with a self-contained task brief                                           |
+| Tool              | File                       | What it does                                                                                                                             |
+| ----------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `bash`            | `bash/index.ts`            | Shell exec via `child_process.spawn()`, throttled streaming, temp file output                                                            |
+| `edit`            | `edit/index.ts`            | 2 modes: **replace** (oldText/newText) and **hashline** (content-addressed line-anchored edits)                                          |
+| `find`            | `find/index.ts`            | Glob search via bundled `rg --files`; `--no-ignore` (reaches gitignored content); excludes `.git`/`node_modules`; bare-fragment dispatch |
+| `grep`            | `grep/index.ts`            | Regex search via bundled `rg`; single-pass `--json` match+context (no separate read); `--smart-case`; `--no-ignore`                      |
+| `read`            | `read/index.ts`            | Text reading (offset/limit), image reading (photon resize), hashline mode, **directory listing**                                         |
+| `write`           | `write/index.ts`           | Write file with parent dir creation, hashline snapshot                                                                                   |
+| `propose-session` | `propose-session/index.ts` | Terminates agent turn with a self-contained task brief                                                                                   |
 
 ### opencode (`openspec/references/opencode/packages/core/src/tool/`)
 
@@ -113,23 +113,24 @@
 
 ### 3.5 Find / Glob
 
-| Aspect             | sakti (`find`)                                                                               | opencode (`glob`)                          |
-| ------------------ | -------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| **Engine**         | `fd` CLI (default) or custom glob (opt-out)                                                  | `Ripgrep.Service.glob()`                   |
-| **Defaults**       | Ignores `node_modules`/`.git`                                                                | No built-in exclude                        |
-| **Limit**          | Default 1000                                                                                 | No default (uses `MAX_SAFE_INTEGER`)       |
-| **Operations API** | `FindOperations` interface for testing                                                       | No test abstraction (uses Effect services) |
-| **Permission**     | Declares `glob` permission (`permissions()` → `{ permission: "glob", patterns: [pattern] }`) | `PermissionV2.assert()` + metadata         |
+| Aspect                | sakti (`find`)                                                                                                                        | opencode (`glob`)                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| **Engine**            | Bundled `rg --files` via `@vscode/ripgrep` (absolute path injected); custom glob via DI seam                                          | `Ripgrep.Service.glob()`                   |
+| **Defaults**          | `--no-ignore` (reaches gitignored content so it never falsely reports empty); excludes `.git`/`node_modules`                          | No built-in exclude                        |
+| **Fragment dispatch** | Bare name fragment (`Button`) → `**/*Button*` substring glob; real glob passthrough                                                   | Pattern passed through verbatim            |
+| **Limit**             | Default 1000                                                                                                                          | No default (uses `MAX_SAFE_INTEGER`)       |
+| **Operations API**    | `FindOperations` interface (DI seam) for testing                                                                                      | No test abstraction (uses Effect services) |
+| **Permission**        | Declares `glob` permission with dispatched glob (`permissions()` → `{ permission: "glob", patterns: [resolveGlobPattern(pattern)] }`) | `PermissionV2.assert()` + metadata         |
 
 ### 3.6 Grep
 
-| Aspect              | sakti                                         | opencode                        |
-| ------------------- | --------------------------------------------- | ------------------------------- |
-| **Engine**          | `rg` CLI with `--json` streaming              | `Ripgrep.Service.grep()`        |
-| **Context**         | Reads file directly to show surrounding lines | Not in tool (just match + line) |
-| **Line truncation** | 500 chars max                                 | Not explicitly in this tool     |
-| **Dedup**           | Yes + context-aware formatting (`:` vs `-`)   | No dedup (raw matches)          |
-| **Operations API**  | `GrepOperations` (isDirectory, readFile)      | No test abstraction             |
+| Aspect              | sakti                                                                                                    | opencode                        |
+| ------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| **Engine**          | Bundled `rg` via `@vscode/ripgrep`; `--json` + `--smart-case` + `--no-ignore`                            | `Ripgrep.Service.grep()`        |
+| **Context**         | Single-pass from rg's own `context` JSON records (no separate `readFile` — that was the garbling source) | Not in tool (just match + line) |
+| **Line truncation** | 500 chars max, tool-side (`--max-columns` ignored under `--json`)                                        | Not explicitly in this tool     |
+| **Dedup**           | Match vs context separators (`:` vs `-`) in one stream                                                   | No dedup (raw matches)          |
+| **Operations API**  | None — `GrepOperations` removed (the separate-read seam was the bug)                                     | No test abstraction             |
 
 ### 3.7 Directory listing
 
