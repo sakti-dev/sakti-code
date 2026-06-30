@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentToolResult } from "@sakti-code/agent";
@@ -173,5 +173,33 @@ describe("grep: file-scope search (report 1.5 — path as a file)", () => {
       await tool.execute("tc", { pattern: "import { b }", path: "routes.ts", literal: true }),
     );
     expect(text).toContain("routes.ts:2:");
+  });
+});
+
+describe("grep: build artifacts are excluded even when a user glob matches them", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sakti-grep-excl-"));
+    mkdirSync(join(dir, "target", "debug"), { recursive: true });
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "target", "debug", "build.rs"), "fn run_process() {}\n");
+    writeFileSync(join(dir, "src", "main.rs"), "fn run_process() {}\n");
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("excludes target/ despite glob='*.rs' matching its file (ordering fix)", async () => {
+    const tool = createGrepTool(dir);
+    const text = getTextContent(await tool.execute("tc", { pattern: "run_process", glob: "*.rs" }));
+    expect(text).toContain("main.rs");
+    expect(text).not.toContain("target");
+    expect(text).not.toContain("build.rs");
+  });
+
+  it("glob + path still returns real matches", async () => {
+    const tool = createGrepTool(dir);
+    const text = getTextContent(
+      await tool.execute("tc", { pattern: "run_process", glob: "*.rs", path: "src" }),
+    );
+    expect(text).toContain("main.rs");
   });
 });

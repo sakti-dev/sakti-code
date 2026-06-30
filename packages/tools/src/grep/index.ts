@@ -3,6 +3,7 @@ import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
 import { resolveToCwd } from "../lib/path-utils.ts";
 import { runProcess } from "../lib/spawn.ts";
+import { EXCLUDE_GLOBS } from "../lib/excludes.ts";
 import {
   DEFAULT_MAX_BYTES,
   formatSize,
@@ -159,15 +160,14 @@ export function createGrepTool(
       const contextValue = context && context > 0 ? context : 0;
       const effectiveLimit = Math.max(1, limit ?? DEFAULT_LIMIT);
 
-      const args: string[] = [
-        "--no-config",
-        "--json",
-        "--smart-case",
-        "--hidden",
-        "--no-ignore",
-        "--glob=!**/.git/**",
-        "--glob=!**/node_modules/**",
-      ];
+      const args: string[] = ["--no-config", "--json", "--smart-case", "--hidden", "--no-ignore"];
+      if (glob) {
+        // Include glob FIRST: rg multi-glob is last-match-wins, so a later
+        // include would override the exclude globs below and re-include
+        // build artifacts that match the glob.
+        args.push("--glob", glob);
+      }
+      args.push(...EXCLUDE_GLOBS.map((g) => `--glob=!${g}`));
       if (literal) {
         args.push("--fixed-strings");
       }
