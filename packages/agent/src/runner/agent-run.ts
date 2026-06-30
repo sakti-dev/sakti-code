@@ -101,7 +101,7 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
     // ── Retry abort (covers the gap between turns — backoff sleep) ──
     const retryAbort = new AbortController();
     const unsubscribe = () => {
-      Effect.runPromise(Fiber.interrupt(drainFiber).pipe(Effect.exit));
+      void Effect.runPromise(Fiber.interrupt(drainFiber).pipe(Effect.exit));
     };
 
     if (deps.registerRun) {

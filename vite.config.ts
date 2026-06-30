@@ -10,6 +10,9 @@ export default defineConfig({
       typeAware: true,
       typeCheck: false,
     },
+    rules: {
+      "no-this-alias": "off",
+    },
   },
   run: {
     cache: true,

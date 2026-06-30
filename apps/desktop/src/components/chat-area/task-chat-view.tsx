@@ -14,7 +14,7 @@ export function TaskChatView(props: TaskChatViewProps): JSX.Element {
   const sessionStore = createMemo(() => sessions.get(props.sessionId));
 
   onMount(() => {
-    actions.loadMessages(props.sessionId);
+    void actions.loadMessages(props.sessionId);
   });
 
   const turns = createMemo(() => {

@@ -6,7 +6,7 @@ console.log(`sakti-code server on ${sakti.url}`);
 
 function shutdown(signal: string): void {
   console.log(`\n${signal} received — shutting down...`);
-  sakti.stop();
+  void sakti.stop();
   process.exit(0);
 }
 

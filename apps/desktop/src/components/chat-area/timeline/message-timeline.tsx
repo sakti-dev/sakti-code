@@ -63,10 +63,12 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
     }
 
     if (typeof document !== "undefined" && document.fonts) {
-      document.fonts.ready.then(() => {
-        clearPretextCache();
-        virtual.bumpMeasure();
-      });
+      document.fonts.ready
+        .then(() => {
+          clearPretextCache();
+          virtual.bumpMeasure();
+        })
+        .catch(() => {});
     }
   });
 

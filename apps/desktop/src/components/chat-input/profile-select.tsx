@@ -68,7 +68,7 @@ export function ProfileSelect(props: { sessionId: string | null }) {
 
   const handleChange = (value: string | null) => {
     if (value !== null) {
-      actions.selectProfile(props.sessionId, value);
+      void actions.selectProfile(props.sessionId, value);
     }
   };
 

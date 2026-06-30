@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, waitFor } from "@solidjs/testing-library";
+import { cleanup, fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { ChatInput } from "../chat-input";
 import type { ContextMenuMode } from "../context-menu";
@@ -141,19 +141,19 @@ afterEach(() => {
 
 describe("ChatInput", () => {
   it("renders the chip editor with a placeholder overlay", () => {
-    const { getByText } = render(() => <ChatInput placeholder="Type here…" sessionId="s1" />);
-    expect(getByText("Type here…")).toBeTruthy();
+    render(() => <ChatInput placeholder="Type here…" sessionId="s1" />);
+    expect(screen.getByText("Type here…")).toBeTruthy();
   });
 
   it("keeps input enabled when sessionId is null", () => {
-    const { getByRole } = render(() => <ChatInput sessionId={null} />);
-    const editor = getByRole("textbox") as HTMLElement;
+    render(() => <ChatInput sessionId={null} />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
     expect(editor.getAttribute("contenteditable")).toBe("true");
   });
 
   it("sends message on Enter, clears the editor", () => {
-    const { getByRole } = render(() => <ChatInput sessionId="s1" />);
-    const editor = getByRole("textbox") as HTMLElement;
+    render(() => <ChatInput sessionId="s1" />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
     typeInto(editor, "hello world");
     fireEvent.keyDown(editor, { key: "Enter" });
     expect(mockSendPrompt).toHaveBeenCalledWith("s1", "hello world");
@@ -161,16 +161,16 @@ describe("ChatInput", () => {
   });
 
   it("does not send on Shift+Enter", () => {
-    const { getByRole } = render(() => <ChatInput sessionId="s1" />);
-    const editor = getByRole("textbox") as HTMLElement;
+    render(() => <ChatInput sessionId="s1" />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
     typeInto(editor, "line break");
     fireEvent.keyDown(editor, { key: "Enter", shiftKey: true });
     expect(mockSendPrompt).not.toHaveBeenCalled();
   });
 
   it("does not send when empty", () => {
-    const { getByRole } = render(() => <ChatInput sessionId="s1" />);
-    const editor = getByRole("textbox") as HTMLElement;
+    render(() => <ChatInput sessionId="s1" />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
     fireEvent.keyDown(editor, { key: "Enter" });
     expect(mockSendPrompt).not.toHaveBeenCalled();
   });
@@ -188,37 +188,37 @@ describe("ChatInput", () => {
         toolCallId: "c1",
       },
     };
-    const { getByRole } = render(() => <ChatInput sessionId="s1" />);
-    await fireEvent.click(getByRole("button", { name: "Allow" }));
+    render(() => <ChatInput sessionId="s1" />);
+    await fireEvent.click(screen.getByRole("button", { name: "Allow" }));
     expect(mockReplyPermission).toHaveBeenCalledWith("s1", "per_1", "once");
   });
 });
 
 describe("ChatInput context menus", () => {
   it("opens the / menu when / is typed at the editor start", async () => {
-    const { getByRole, findByText } = render(() => <ChatInput placeholder="p" sessionId="s1" />);
-    const editor = getByRole("textbox") as HTMLElement;
+    render(() => <ChatInput placeholder="p" sessionId="s1" />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
     fireEvent.keyDown(editor, { key: "/" });
-    expect(await findByText("Commands & Skills")).toBeTruthy();
+    expect(await screen.findByText("Commands & Skills")).toBeTruthy();
   });
 
   it("opens the @ menu when @ is typed mid-text", async () => {
-    const { getByRole, findByText } = render(() => <ChatInput placeholder="p" sessionId="s1" />);
-    const editor = getByRole("textbox") as HTMLElement;
+    render(() => <ChatInput placeholder="p" sessionId="s1" />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
     typeInto(editor, "see ");
     fireEvent.keyDown(editor, { key: "@" });
-    expect(await findByText("Files")).toBeTruthy();
+    expect(await screen.findByText("Files")).toBeTruthy();
   });
 
   it("inserts the picked token as a chip and refocuses on close (/ mode)", async () => {
-    const { getByRole, findByText } = render(() => <ChatInput placeholder="p" sessionId="s1" />);
-    const editor = getByRole("textbox") as HTMLElement;
+    render(() => <ChatInput placeholder="p" sessionId="s1" />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
     // Picking closes the menu → closeMenu refocuses the editor. jsdom won't
     // move activeElement to a contenteditable div, so assert the wiring: the
     // editor's focus() is invoked on close.
     const focusSpy = vi.spyOn(editor, "focus");
     fireEvent.keyDown(editor, { key: "/" });
-    const item = await findByText("commit");
+    const item = await screen.findByText("commit");
     fireEvent.click(item);
     const chip = editor.querySelector('.chip[data-token="/commit"]');
     expect(chip).toBeTruthy();
@@ -231,10 +231,10 @@ describe("ChatInput context menus", () => {
   });
 
   it("does not open a menu for / typed mid-text", async () => {
-    const { getByRole, queryByText } = render(() => <ChatInput placeholder="p" sessionId="s1" />);
-    const editor = getByRole("textbox") as HTMLElement;
+    render(() => <ChatInput placeholder="p" sessionId="s1" />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
     typeInto(editor, "hi ");
     fireEvent.keyDown(editor, { key: "/" });
-    expect(queryByText("Commands & Skills")).toBeNull();
+    expect(screen.queryByText("Commands & Skills")).toBeNull();
   });
 });

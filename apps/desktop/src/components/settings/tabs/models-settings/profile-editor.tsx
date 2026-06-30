@@ -66,7 +66,7 @@ export function ProfileEditor() {
       if (!p) {
         return;
       }
-      api.api.profiles.$put({ json: p });
+      void api.api.profiles.$put({ json: p }).catch(() => {});
     }, 800);
   };
 

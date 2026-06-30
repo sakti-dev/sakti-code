@@ -1,4 +1,4 @@
-import { render } from "@solidjs/testing-library";
+import { render, screen } from "@solidjs/testing-library";
 import { describe, expect, it } from "vite-plus/test";
 import type { MessagePart } from "~/stores/types.ts";
 import type { PartProps } from "../part-registry.ts";
@@ -13,31 +13,28 @@ function renderThinking(part: MessagePart, isStreaming = false) {
 
 describe("ThinkingPart", () => {
   it("shows 'Thinking...' while streaming with no endedAt", () => {
-    const { getByText } = renderThinking(
-      { type: "thinking", text: "Let me think...", startedAt: Date.now() },
-      true,
-    );
-    expect(getByText("Thinking...")).toBeTruthy();
+    renderThinking({ type: "thinking", text: "Let me think...", startedAt: Date.now() }, true);
+    expect(screen.getByText("Thinking...")).toBeTruthy();
   });
 
   it("shows 'Thought for Xs' when endedAt is set with startedAt", () => {
     const startedAt = Date.now() - 5000;
     const endedAt = Date.now();
-    const { getByText } = renderThinking({
+    renderThinking({
       type: "thinking",
       text: "Hmm",
       startedAt,
       endedAt,
     });
-    expect(getByText(thoughtForRegex)).toBeTruthy();
+    expect(screen.getByText(thoughtForRegex)).toBeTruthy();
   });
 
   it("shows 'Thought' with no timing info when hydrated", () => {
-    const { getByText } = renderThinking({
+    renderThinking({
       type: "thinking",
       text: "Hmm",
     });
-    expect(getByText("Thought")).toBeTruthy();
+    expect(screen.getByText("Thought")).toBeTruthy();
   });
 
   it("does not render when thinking text is empty", () => {

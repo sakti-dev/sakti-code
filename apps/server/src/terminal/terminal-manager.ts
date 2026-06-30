@@ -47,7 +47,7 @@ async function loadPty(): Promise<void> {
   await ptyLoadPromise;
 }
 
-loadPty();
+void loadPty();
 
 export class TerminalManager {
   private readonly terminals = new Map<string, ManagedTerminal>();

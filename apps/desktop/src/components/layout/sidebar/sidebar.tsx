@@ -21,7 +21,7 @@ export default function Sidebar() {
   } | null>(null);
 
   onMount(() => {
-    actions.loadProjects();
+    void actions.loadProjects();
     document.addEventListener("keydown", handleKeyDown);
   });
 
@@ -32,7 +32,7 @@ export default function Sidebar() {
   createEffect(() => {
     const projectId = server.store.activeProjectId;
     if (projectId) {
-      actions.loadSessions(projectId);
+      void actions.loadSessions(projectId);
       setExpandedProjects((prev) => {
         const next = new Set(prev);
         next.add(projectId);
@@ -117,7 +117,7 @@ export default function Sidebar() {
   const handleCopyPath = (projectId: string) => {
     const project = server.store.projects[projectId];
     if (project) {
-      navigator.clipboard.writeText(project.cwd);
+      void navigator.clipboard.writeText(project.cwd).catch(() => {});
     }
   };
 
@@ -286,7 +286,7 @@ export default function Sidebar() {
             <AddProjectInput
               onAdd={(cwd) => {
                 setShowAddInput(false);
-                actions.addProject(cwd);
+                void actions.addProject(cwd);
               }}
               onCancel={() => setShowAddInput(false)}
             />

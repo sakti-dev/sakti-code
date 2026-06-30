@@ -1,21 +1,17 @@
-import { render } from "@solidjs/testing-library";
+import { render, screen } from "@solidjs/testing-library";
 import { describe, expect, it, vi } from "vite-plus/test";
 import { AddProjectInput } from "../layout/sidebar/add-project-input.tsx";
 
 describe("AddProjectInput", () => {
   it("renders input with placeholder", () => {
-    const { getByPlaceholderText } = render(() => (
-      <AddProjectInput onAdd={vi.fn()} onCancel={vi.fn()} />
-    ));
-    expect(getByPlaceholderText("/path/to/project")).toBeTruthy();
+    render(() => <AddProjectInput onAdd={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByPlaceholderText("/path/to/project")).toBeTruthy();
   });
 
   it("calls onAdd with value on Enter", async () => {
     const onAdd = vi.fn();
-    const { getByPlaceholderText } = render(() => (
-      <AddProjectInput onAdd={onAdd} onCancel={vi.fn()} />
-    ));
-    const input = getByPlaceholderText("/path/to/project") as HTMLInputElement;
+    render(() => <AddProjectInput onAdd={onAdd} onCancel={vi.fn()} />);
+    const input = screen.getByPlaceholderText("/path/to/project") as HTMLInputElement;
     input.value = "/my/project";
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
@@ -24,18 +20,16 @@ describe("AddProjectInput", () => {
 
   it("calls onCancel on Escape", async () => {
     const onCancel = vi.fn();
-    const { getByPlaceholderText } = render(() => (
-      <AddProjectInput onAdd={vi.fn()} onCancel={onCancel} />
-    ));
-    getByPlaceholderText("/path/to/project").dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-    );
+    render(() => <AddProjectInput onAdd={vi.fn()} onCancel={onCancel} />);
+    screen
+      .getByPlaceholderText("/path/to/project")
+      .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     expect(onCancel).toHaveBeenCalled();
   });
 
   it("disables Add button when empty", () => {
-    const { getByText } = render(() => <AddProjectInput onAdd={vi.fn()} onCancel={vi.fn()} />);
-    const btn = getByText("Add") as HTMLButtonElement;
+    render(() => <AddProjectInput onAdd={vi.fn()} onCancel={vi.fn()} />);
+    const btn = screen.getByText("Add") as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
   });
 });
