@@ -1,6 +1,18 @@
 import { execFileSync } from "node:child_process";
-import { describe, expect, it } from "vite-plus/test";
-import { formatRgJsonStream } from "../index.ts";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { AgentToolResult } from "@sakti-code/agent";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { createGrepTool, formatRgJsonStream } from "../index.ts";
+
+function getTextContent(result: AgentToolResult<unknown>): string {
+  const first = result.content[0];
+  if (first && "text" in first) {
+    return first.text;
+  }
+  return "";
+}
 
 describe("grep: single-pass JSON formatting", () => {
   it("emits path:line:text for matches and path-line-text for context", () => {
@@ -83,5 +95,26 @@ describe("grep: rg argv validity", () => {
     expect(() => {
       execFileSync("rg", [...flags, "--", "x", "."], { stdio: "ignore" });
     }).not.toThrow();
+  });
+});
+
+describe("grep: gitignore regression (--no-ignore reaches gitignored content)", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sakti-grep-gitignore-"));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("finds matches inside a gitignored file instead of a false 'no matches'", async () => {
+    writeFileSync(join(dir, ".gitignore"), "secret.ts\n");
+    writeFileSync(join(dir, "secret.ts"), "UNIQUE_MARKER_TOKEN\n");
+    const tool = createGrepTool(dir);
+    const result = await tool.execute("tc", { pattern: "UNIQUE_MARKER_TOKEN" });
+    const text = getTextContent(result);
+    expect(text).toContain("secret.ts");
   });
 });

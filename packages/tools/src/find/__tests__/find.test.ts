@@ -75,3 +75,24 @@ describe("find: rg argv validity", () => {
     });
   });
 });
+
+describe("find: gitignore regression (--no-ignore reaches gitignored content)", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sakti-find-gitignore-"));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("returns a gitignored .ts file instead of a false 'no files found'", async () => {
+    writeFileSync(join(dir, ".gitignore"), "secret.ts\n");
+    writeFileSync(join(dir, "secret.ts"), "export const SECRET = 1;\n");
+    const tool = createFindTool(dir);
+    const result = await tool.execute("tc", { pattern: "*.ts" });
+    const text = getTextContent(result);
+    expect(text).toContain("secret.ts");
+  });
+});

@@ -186,7 +186,7 @@ export function createGrepTool(
         throw new Error(stderr.trim() || `ripgrep exited with code ${exitCode}`);
       }
 
-      const { output, linesTruncated, limitReached } = formatRgJsonStream(stdout, cwd, {
+      const { output, linesTruncated, limitReached } = formatRgJsonStream(stdout, searchPath, {
         matchLimit: effectiveLimit,
       });
 
