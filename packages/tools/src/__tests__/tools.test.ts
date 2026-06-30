@@ -600,12 +600,11 @@ describe("GrepTool", () => {
     expect(getTextContent(result)).toContain("TODO");
   });
 
-  it("supports ignoreCase", async () => {
-    writeFileSync(join(tmpDir, "case.ts"), "hello HELLO Hello");
+  it("smart-case: all-lowercase pattern matches case-insensitively", async () => {
+    writeFileSync(join(tmpDir, "case.ts"), "hello HELLO Hello\n");
     const tool = createGrepTool(tmpDir);
     const result = await tool.execute("tc_1", {
       pattern: "hello",
-      ignoreCase: true,
     });
     const text = getTextContent(result);
     expect(text).toContain("hello");

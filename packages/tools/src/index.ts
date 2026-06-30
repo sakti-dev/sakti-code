@@ -12,7 +12,7 @@ export { createEditTool, hashlineEditSchema } from "./edit/index";
 export type { NoopLoopGuardOwner } from "./edit/noop-loop-guard.ts";
 export type { FindOperations, FindToolDetails, FindToolInput, FindToolOptions } from "./find/index";
 export { createFindTool } from "./find/index";
-export type { GrepOperations, GrepToolDetails, GrepToolInput, GrepToolOptions } from "./grep/index";
+export type { GrepToolDetails, GrepToolInput, GrepToolOptions } from "./grep/index";
 export { createGrepTool } from "./grep/index";
 export type { Snapshot, SnapshotStore } from "./lib/hashline-utils/snapshots.ts";
 export { InMemorySnapshotStore } from "./lib/hashline-utils/snapshots.ts";
