@@ -189,7 +189,7 @@ describe("ChatInput", () => {
       },
     };
     render(() => <ChatInput sessionId="s1" />);
-    await fireEvent.click(screen.getByRole("button", { name: "Allow" }));
+    fireEvent.click(screen.getByRole("button", { name: "Allow" }));
     expect(mockReplyPermission).toHaveBeenCalledWith("s1", "per_1", "once");
   });
 });

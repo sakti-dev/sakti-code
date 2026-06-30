@@ -11,7 +11,7 @@ describe("turns table schema", () => {
   beforeAll(() => {
     tmpDir = mkdtempSync(join(import.meta.dirname!, "test-XXXXXX"));
     rawDb = new DatabaseSync(join(tmpDir, "test.db"));
-    initDatabase(rawDb);
+    void initDatabase(rawDb);
   });
 
   afterAll(() => {

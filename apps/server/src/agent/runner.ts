@@ -343,14 +343,14 @@ export async function switchAgentForSession(
   sessionId: string,
   agentName: string,
 ): Promise<boolean> {
-  const session = await ctx.repos.sessions.findById(sessionId);
+  const session = ctx.repos.sessions.findById(sessionId);
   if (!session) {
     return false;
   }
   await ctx.repos.settings.set(`session:${sessionId}:agent`, agentName);
   const harness = getActiveHarness(sessionId);
   if (harness) {
-    const project = await ctx.repos.projects.findById(session.projectId);
+    const project = ctx.repos.projects.findById(session.projectId);
     if (project) {
       const agent = await resolveSessionAgent(project.cwd, agentName);
       const ruleset = agent.permission ?? fromConfig({ "*": "allow" });
@@ -371,7 +371,7 @@ export async function setEditModeForSession(
   sessionId: string,
   mode: EditMode,
 ): Promise<boolean> {
-  const session = await ctx.repos.sessions.findById(sessionId);
+  const session = ctx.repos.sessions.findById(sessionId);
   if (!session) {
     return false;
   }
@@ -385,7 +385,7 @@ export async function setEditModeForSession(
   // instance; the new instance starts clean for the new edit mode.
   const harness = getActiveHarness(sessionId);
   if (harness) {
-    const project = await ctx.repos.projects.findById(session.projectId);
+    const project = ctx.repos.projects.findById(session.projectId);
     if (project) {
       const editCtx: ToolContext = {
         cwd: project.cwd,

@@ -168,10 +168,7 @@ const SUBSCRIBER_EVENT_TYPE = "*";
  */
 const HARNESS_DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
 
-type AgentHarnessHandler = (
-  event: AgentHarnessEvent,
-  signal?: AbortSignal,
-) => Promise<unknown> | unknown;
+type AgentHarnessHandler = (event: AgentHarnessEvent, signal?: AbortSignal) => unknown;
 
 function normalizeHarnessError(
   error: unknown,

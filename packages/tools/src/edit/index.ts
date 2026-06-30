@@ -343,7 +343,9 @@ export function createEditTool(
         } catch (error: unknown) {
           throwIfAborted();
           const errorMessage =
-            error instanceof Error && "code" in error ? `Error code: ${error.code}` : String(error);
+            error instanceof Error && "code" in error
+              ? `Error code: ${String(error.code)}`
+              : String(error);
           throw new Error(`Could not edit file: ${path}. ${errorMessage}.`);
         }
         throwIfAborted();

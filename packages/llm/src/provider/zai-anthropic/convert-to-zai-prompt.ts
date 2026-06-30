@@ -275,8 +275,10 @@ function serializeToolResult(output: ToolResultOutput): {
 } {
   switch (output.type) {
     case "text":
+      // oxlint-disable-next-line typescript/no-base-to-string -- value is a string for text output
       return { content: String(output.value ?? ""), isError: false };
     case "error-text":
+      // oxlint-disable-next-line typescript/no-base-to-string -- value is a string for error-text output
       return { content: String(output.value ?? ""), isError: true };
     case "json":
       return {

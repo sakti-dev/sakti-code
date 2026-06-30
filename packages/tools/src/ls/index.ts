@@ -169,7 +169,7 @@ export function createLsTool(
             signal?.removeEventListener("abort", onAbort);
             reject(e);
           }
-        })();
+        })().catch(reject);
       });
     },
   };

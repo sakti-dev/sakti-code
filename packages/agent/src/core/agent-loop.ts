@@ -816,7 +816,7 @@ async function executeToolCallsSequential(
         config.logger.debug("tool result", {
           toolName: finalized.toolCall.name,
           isError: finalized.isError,
-          resultLength: String(finalized.result.content).length,
+          resultLength: JSON.stringify(finalized.result.content).length,
         });
       }
     }
@@ -908,7 +908,7 @@ const executeToolCallsParallel = Effect.fn("agent-loop.executeToolCallsParallel"
         config.logger.debug("tool result", {
           toolName: finalized.toolCall.name,
           isError: finalized.isError,
-          resultLength: String(finalized.result.content).length,
+          resultLength: JSON.stringify(finalized.result.content).length,
         });
       }
       yield* Effect.promise(() => emitToolExecutionEnd(finalized, emit));

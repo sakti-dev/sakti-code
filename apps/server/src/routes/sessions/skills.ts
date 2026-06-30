@@ -16,7 +16,7 @@ export const skillsRoutes = new Hono()
   .post("/:id/skills", async (c) => {
     const ctx = getCtx(c);
     const id = c.req.param("id");
-    const session = await ctx.repos.sessions.findById(id);
+    const session = ctx.repos.sessions.findById(id);
     if (!session) {
       return c.json({ error: "Not found" }, 404);
     }
@@ -41,7 +41,7 @@ export const skillsRoutes = new Hono()
     const ctx = getCtx(c);
     const id = c.req.param("id");
     const name = c.req.param("name");
-    const session = await ctx.repos.sessions.findById(id);
+    const session = ctx.repos.sessions.findById(id);
     if (!session) {
       return c.json({ error: "Not found" }, 404);
     }
@@ -63,7 +63,7 @@ export const skillsRoutes = new Hono()
     const ctx = getCtx(c);
     const id = c.req.param("id");
     const name = c.req.param("name");
-    const session = await ctx.repos.sessions.findById(id);
+    const session = ctx.repos.sessions.findById(id);
     if (!session) {
       return c.json({ error: "Not found" }, 404);
     }
@@ -72,7 +72,7 @@ export const skillsRoutes = new Hono()
     await persistSkillEnabled(ctx, id, name);
 
     // Layer 2: re-add to live harness using on-disk skill data.
-    const project = await ctx.repos.projects.findById(session.projectId);
+    const project = ctx.repos.projects.findById(session.projectId);
     if (project) {
       const loadedContext = await loadAgentContext(project.cwd);
       const skill = loadedContext.skills.find((s) => s.name === name);

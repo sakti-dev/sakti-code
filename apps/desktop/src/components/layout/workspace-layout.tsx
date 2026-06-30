@@ -44,12 +44,15 @@ export default function WorkspaceLayout(): JSX.Element {
       setActiveIntakeSessionId(null);
       return;
     }
-    actions.upsertIntakeSession(projectId).then((session) => {
-      if (session && server.store.activeProjectId === projectId) {
-        setIntakeSessionId(session.id);
-        setActiveIntakeSessionId(session.id);
-      }
-    });
+    actions
+      .upsertIntakeSession(projectId)
+      .then((session) => {
+        if (session && server.store.activeProjectId === projectId) {
+          setIntakeSessionId(session.id);
+          setActiveIntakeSessionId(session.id);
+        }
+      })
+      .catch(() => {});
   });
 
   // Load projects on mount, then filter stale tab entries
@@ -63,7 +66,7 @@ export default function WorkspaceLayout(): JSX.Element {
 
   // Load projects on mount
   onMount(() => {
-    actions.loadProjects();
+    actions.loadProjects().catch(() => {});
   });
 
   const activeProject = () => {

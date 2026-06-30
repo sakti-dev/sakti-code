@@ -81,8 +81,8 @@ describe("AgentHarness", () => {
     expect(harness.getThinkingLevel()).toBe("high");
     expect(harness.getSteeringMode()).toBe("all");
     expect(harness.getFollowUpMode()).toBe("all");
-    harness.setSteeringMode("one-at-a-time");
-    harness.setFollowUpMode("one-at-a-time");
+    await harness.setSteeringMode("one-at-a-time");
+    await harness.setFollowUpMode("one-at-a-time");
     expect(harness.getSteeringMode()).toBe("one-at-a-time");
     expect(harness.getFollowUpMode()).toBe("one-at-a-time");
   });
@@ -123,8 +123,8 @@ describe("AgentHarness", () => {
       }
       if (event.type === "message_start" && event.message.role === "assistant" && !queued) {
         queued = true;
-        harness.steer("one");
-        harness.steer("two");
+        void harness.steer("one");
+        void harness.steer("two");
       }
     });
 
@@ -222,9 +222,9 @@ describe("AgentHarness", () => {
 
     const firstPrompt = harness.prompt("first");
     await new Promise((resolve) => setTimeout(resolve, 0));
-    harness.steer("steer");
-    harness.followUp("follow");
-    harness.nextTurn("next");
+    void harness.steer("steer");
+    void harness.followUp("follow");
+    void harness.nextTurn("next");
     const abortResultPromise = harness.abort();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(abortedSignal?.aborted).toBe(true);
@@ -275,8 +275,8 @@ describe("AgentHarness", () => {
       }
       if (event.type === "message_start" && event.message.role === "assistant" && !queued) {
         queued = true;
-        harness.followUp("one");
-        harness.followUp("two");
+        void harness.followUp("one");
+        void harness.followUp("two");
       }
     });
 

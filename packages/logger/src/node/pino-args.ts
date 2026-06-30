@@ -19,7 +19,7 @@ import type { LogContext } from "../types.ts";
 export function toPinoCall(
   message: string,
   context: LogContext | undefined,
-  error: unknown | undefined,
+  error: unknown,
   layer: string,
 ): [Record<string, unknown>, string] {
   const obj: Record<string, unknown> = { ...context, layer };

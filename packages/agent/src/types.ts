@@ -161,8 +161,7 @@ export type AgentMessage =
   | CustomMessage
   | BashExecutionMessage
   | BranchSummaryMessage
-  | CompactionSummaryMessage
-  | CustomAgentMessages[keyof CustomAgentMessages];
+  | CompactionSummaryMessage;
 
 export interface AgentState {
   readonly errorMessage?: string | undefined;

@@ -9,7 +9,7 @@ import { loadAgentContext } from "../../lib/context-loader.ts";
  */
 export const contextRoutes = new Hono().basePath("/projects").get("/:id/context", async (c) => {
   const ctx = getCtx(c);
-  const project = await ctx.repos.projects.findById(c.req.param("id"));
+  const project = ctx.repos.projects.findById(c.req.param("id"));
   if (!project) {
     return c.json({ error: "Not found" }, 404);
   }

@@ -13,7 +13,7 @@ export interface ProjectContextMenuProps {
 }
 
 export const ProjectContextMenu: ParentComponent<ProjectContextMenuProps> = (props) => {
-  // biome-ignore lint/suspicious/noUnassignedVariables: SolidJS ref pattern
+  // oxlint-disable-next-line no-unassigned-vars -- ref assigned by SolidJS JSX transform
   let menuRef: HTMLDivElement | undefined;
 
   const handleClick = (e: MouseEvent) => {

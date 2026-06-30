@@ -32,7 +32,7 @@ describe("PermissionStrip", () => {
   ])("sends %s -> %s on click", async (label, reply) => {
     const onReply = vi.fn();
     render(() => <PermissionStrip onReply={onReply} request={makeRequest()} />);
-    await fireEvent.click(screen.getByRole("button", { name: label }));
+    fireEvent.click(screen.getByRole("button", { name: label }));
     expect(onReply).toHaveBeenCalledWith(reply);
   });
 });

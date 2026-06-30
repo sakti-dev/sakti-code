@@ -15,7 +15,7 @@ export const searchFilesRoutes = new Hono().basePath("/projects").get(
   ),
   async (c) => {
     const ctx = getCtx(c);
-    const project = await ctx.repos.projects.findById(c.req.param("id"));
+    const project = ctx.repos.projects.findById(c.req.param("id"));
     if (!project) {
       return c.json({ error: "Not found" }, 404);
     }

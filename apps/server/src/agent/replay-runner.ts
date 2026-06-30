@@ -69,7 +69,7 @@ export class ReplayRunner {
       }
 
       if (entry.message.role === "user") {
-        await this.emitUserMessage(entry.message);
+        this.emitUserMessage(entry.message);
         i++;
       } else if (entry.message.role === "assistant") {
         i = await this.emitAssistantTurn(messageEntries, i);

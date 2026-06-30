@@ -38,14 +38,14 @@ export function createWindow(serverUrl: string): BrowserWindow {
   });
 
   win.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
+    shell.openExternal(details.url).catch(() => {});
     return { action: "deny" };
   });
 
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
-    win.loadURL(process.env.ELECTRON_RENDERER_URL);
+    win.loadURL(process.env.ELECTRON_RENDERER_URL).catch(() => {});
   } else {
-    win.loadURL(serverUrl);
+    win.loadURL(serverUrl).catch(() => {});
   }
 
   return win;

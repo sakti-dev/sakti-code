@@ -123,11 +123,11 @@ function copyDefinitionsFields(schema: JSONSchema7, result: JSONSchema7): void {
       ]),
     );
   }
-  const schemaWithDefs = schema as JSONSchema7 & {
+  const schemaWithDefs = schema as unknown as {
     $defs?: Record<string, JSONSchema7Definition>;
   };
   if (schemaWithDefs.$defs != null) {
-    const resultWithDefs = result as JSONSchema7 & {
+    const resultWithDefs = result as unknown as {
       $defs?: Record<string, JSONSchema7Definition>;
     };
     resultWithDefs.$defs = Object.fromEntries(

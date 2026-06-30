@@ -54,8 +54,8 @@ describe("createPinoLogger", () => {
       pinoFactory: factory,
     });
     log.error("boom", new Error("upstream down"), { domain: "LLM" });
-    expect((calls[0]?.obj as { error: string }).error).toBe("upstream down");
-    expect((calls[0]?.obj as { layer: string }).layer).toBe("llm");
+    expect((calls[0]!.obj as { error: string }).error).toBe("upstream down");
+    expect((calls[0]!.obj as { layer: string }).layer).toBe("llm");
   });
 
   it("child() preserves layer and merges context", () => {

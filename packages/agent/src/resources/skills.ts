@@ -74,7 +74,7 @@ export async function loadSkills(
     if ((await resolveKind(env, rootInfo, diagnostics)) !== "directory") {
       continue;
     }
-    const result = await loadSkillsFromDirInternal(env, rootInfo.path, true, rootInfo.path);
+    const result = await loadSkillsFromDirInternal(env, rootInfo.path, true);
     skills.push(...result.skills);
     diagnostics.push(...result.diagnostics);
   }
@@ -116,7 +116,6 @@ async function loadSkillsFromDirInternal(
   env: ExecutionEnv,
   dir: string,
   includeRootFiles: boolean,
-  rootDir: string,
 ): Promise<{ skills: Skill[]; diagnostics: SkillDiagnostic[] }> {
   const skills: Skill[] = [];
   const diagnostics: SkillDiagnostic[] = [];
@@ -179,7 +178,7 @@ async function loadSkillsFromDirInternal(
     }
 
     if (kind === "directory") {
-      const result = await loadSkillsFromDirInternal(env, fullPath, false, rootDir);
+      const result = await loadSkillsFromDirInternal(env, fullPath, false);
       skills.push(...result.skills);
       diagnostics.push(...result.diagnostics);
       continue;

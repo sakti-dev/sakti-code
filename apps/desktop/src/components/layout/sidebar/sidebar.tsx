@@ -186,7 +186,9 @@ export default function Sidebar() {
             <Tooltip content="Refresh">
               <button
                 class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-                onClick={() => actions.loadProjects()}
+                onClick={() => {
+                  void actions.loadProjects();
+                }}
                 type="button"
               >
                 <svg

@@ -53,7 +53,7 @@ export const TextFieldInput = <T extends ValidComponent = "input">(
   const props = mergeProps<TextFieldInputProps<T>[]>({ type: "text" }, rawProps);
   const [local, others] = splitProps(props as TextFieldInputProps, ["type", "class", "autofocus"]);
 
-  // biome-ignore lint/suspicious/noUnassignedVariables: ref assigned by SolidJS compiler transform
+  // oxlint-disable-next-line no-unassigned-vars -- ref assigned by SolidJS JSX transform
   let ref: HTMLInputElement | undefined;
 
   onMount(() => {

@@ -111,7 +111,7 @@ function handleResult(c: Context, result: GitResult) {
 
 async function findProject(c: Context, id: string) {
   const ctx = getCtx(c);
-  const project = await ctx.repos.projects.findById(id);
+  const project = ctx.repos.projects.findById(id);
   if (!project) {
     return null;
   }
