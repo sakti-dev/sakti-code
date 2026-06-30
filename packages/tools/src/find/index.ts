@@ -121,7 +121,13 @@ export function createFindTool(
         if (signal?.aborted) {
           throw new Error("Operation aborted");
         }
-        return formatFindResults(results, searchPath, effectiveLimit, results.length === 0);
+        return formatFindResults(
+          results,
+          searchPath,
+          effectiveLimit,
+          results.length === 0,
+          pattern,
+        );
       }
 
       // Production branch: rg --files (replaces the absent fd binary).
@@ -147,8 +153,12 @@ export function createFindTool(
           [...baseArgs, searchPath],
           signal ? { signal } : {},
         );
-        if (exitCode !== 0 && stdout.trim().length === 0) {
-          throw new Error(stderr.trim() || `rg exited with code ${exitCode}`);
+        const outcome = classifyRgExitCode(exitCode, stdout, stderr);
+        if (outcome.kind === "error") {
+          throw new Error(outcome.message);
+        }
+        if (outcome.kind === "empty") {
+          return [];
         }
         return stdout.split("\n").filter((l) => l.length > 0);
       };
@@ -158,7 +168,7 @@ export function createFindTool(
       if (signal?.aborted) {
         throw new Error("Operation aborted");
       }
-      return formatFindResults(files, searchPath, effectiveLimit, files.length === 0);
+      return formatFindResults(files, searchPath, effectiveLimit, files.length === 0, pattern);
     },
   };
 }
@@ -169,10 +179,16 @@ function formatFindResults(
   searchPath: string,
   effectiveLimit: number,
   empty: boolean,
+  pattern: string,
 ): { content: [{ type: "text"; text: string }]; details: FindToolDetails | undefined } {
   if (empty) {
     return {
-      content: [{ type: "text", text: "No files found matching pattern" }],
+      content: [
+        {
+          type: "text",
+          text: `No files found matching '${pattern}'. Broaden the pattern, try snake_case/kebab-case variants, or list the parent directory with the read or bash tool.`,
+        },
+      ],
       details: undefined,
     };
   }

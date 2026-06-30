@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentToolResult } from "@sakti-code/agent";
@@ -133,5 +133,57 @@ describe("find: gitignore regression (--no-ignore reaches gitignored content)", 
     const result = await tool.execute("tc", { pattern: "*.ts" });
     const text = getTextContent(result);
     expect(text).toContain("secret.ts");
+  });
+});
+
+describe("find: no matches returns a friendly message, never 'rg exited with code'", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sakti-find-empty-"));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("returns a friendly message for a pattern that matches nothing (report 1.6)", async () => {
+    writeFileSync(join(dir, "real.ts"), "x");
+    const tool = createFindTool(dir);
+    const result = await tool.execute("tc", { pattern: "zzz_nonexistent_xyz" });
+    const text = getTextContent(result);
+    expect(text).not.toContain("rg exited with code");
+    expect(text).not.toContain("os error");
+    expect(text.toLowerCase()).toContain("no files found");
+    expect(text).toContain("zzz_nonexistent_xyz");
+  });
+
+  it("returns the same friendly message when a path is given (report 1.7)", async () => {
+    const tool = createFindTool(dir);
+    const result = await tool.execute("tc", { pattern: "*.md", path: dir });
+    expect(getTextContent(result).toLowerCase()).toContain("no files found");
+  });
+
+  it("treats character-class patterns gracefully instead of crashing (report 1.12)", async () => {
+    const tool = createFindTool(dir);
+    const result = await tool.execute("tc", { pattern: "[Cc]onfig" });
+    expect(getTextContent(result)).not.toContain("rg exited with code");
+  });
+
+  it("treats a prefix-only wildcard that matches nothing gracefully (report 1.13)", async () => {
+    const tool = createFindTool(dir);
+    const result = await tool.execute("tc", { pattern: "config*" });
+    expect(getTextContent(result)).not.toContain("rg exited with code");
+  });
+
+  it("treats a '.*' pattern gracefully (report 1.18)", async () => {
+    writeFileSync(join(dir, ".env"), "x");
+    const tool = createFindTool(dir);
+    const result = await tool.execute("tc", { pattern: ".*" });
+    expect(getTextContent(result)).not.toContain("rg exited with code");
+  });
+
+  it("bare name + path that matches nothing is friendly, not a crash (report 1.19)", async () => {
+    mkdirSync(join(dir, "baresync"), { recursive: true });
+    writeFileSync(join(dir, "baresync", "package.json"), "{}");
+    const tool = createFindTool(dir);
+    const result = await tool.execute("tc", { pattern: "baresync*", path: "baresync" });
+    expect(getTextContent(result)).not.toContain("rg exited with code");
   });
 });
