@@ -6,6 +6,7 @@ import {
   createGrepTool,
   createProposeSessionTool,
   createReadTool,
+  createWebFetchTool,
   createWriteTool,
   type EditMode,
   type InMemorySnapshotStore,
@@ -49,6 +50,7 @@ export const TOOL_FACTORIES: Readonly<Record<string, ToolFactory>> = {
   bash: (ctx) => createBashTool(ctx.cwd) as AgentTool,
   grep: (ctx) => createGrepTool(ctx.cwd, { rgPath: rgBinPath() }) as AgentTool,
   find: (ctx) => createFindTool(ctx.cwd, { rgPath: rgBinPath() }) as AgentTool,
+  webfetch: () => createWebFetchTool() as AgentTool,
   propose_session: () => createProposeSessionTool() as AgentTool,
 };
 

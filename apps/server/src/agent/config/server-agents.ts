@@ -23,6 +23,7 @@ function buildRuleset(): PermissionRuleset {
       "*.env.*": "ask",
       "*.env.example": "allow",
     },
+    webfetch: "allow",
   });
 }
 
@@ -33,6 +34,7 @@ function exploreRuleset(): PermissionRuleset {
     grep: "allow",
     glob: "allow",
     bash: "allow",
+    webfetch: "allow",
   });
 }
 
@@ -40,6 +42,7 @@ function planRuleset(): PermissionRuleset {
   return fromConfig({
     "*": "allow",
     edit: { "*": "deny" },
+    webfetch: "allow",
   });
 }
 
@@ -48,6 +51,7 @@ function intakeRuleset(): PermissionRuleset {
   return fromConfig({
     "*": "allow",
     bash: { "rm *": "ask", "git push*": "ask", "git reset --hard*": "ask" },
+    webfetch: "allow",
   });
 }
 
@@ -68,7 +72,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
     description: "The default agent. Executes tools based on configured permissions.",
     systemPrompt: BUILD_PROMPT,
     permission: buildRuleset(),
-    activeToolNames: ["read", "write", "edit", "bash", "grep", "find"],
+    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "webfetch"],
   }),
   defineAgent({
     name: "explore",
@@ -77,7 +81,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "Fast read-only agent specialized for exploring codebases: find files by pattern, search code for keywords, answer questions about the codebase.",
     systemPrompt: EXPLORE_PROMPT,
     permission: exploreRuleset(),
-    activeToolNames: ["read", "grep", "find", "bash"],
+    activeToolNames: ["read", "grep", "find", "bash", "webfetch"],
   }),
   defineAgent({
     name: "plan",
@@ -86,7 +90,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "Plan mode. Researches the codebase and produces a plan; disallows all edit tools.",
     systemPrompt: PLAN_PROMPT,
     permission: planRuleset(),
-    activeToolNames: ["read", "grep", "find", "bash"],
+    activeToolNames: ["read", "grep", "find", "bash", "webfetch"],
   }),
   defineAgent({
     name: "general",
@@ -95,7 +99,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "General-purpose agent for researching complex questions and executing multi-step tasks.",
     systemPrompt: GENERAL_PROMPT,
     permission: allowAllRuleset(),
-    activeToolNames: ["read", "write", "edit", "bash", "grep", "find"],
+    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "webfetch"],
   }),
   defineAgent({
     name: "intake",
@@ -104,7 +108,16 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "PM-style planning agent for scoping work before implementation. Calls propose_session to hand off to a task session.",
     systemPrompt: INTAKE_SYSTEM_PROMPT,
     permission: intakeRuleset(),
-    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "propose_session"],
+    activeToolNames: [
+      "read",
+      "write",
+      "edit",
+      "bash",
+      "grep",
+      "find",
+      "propose_session",
+      "webfetch",
+    ],
   }),
 ];
 
