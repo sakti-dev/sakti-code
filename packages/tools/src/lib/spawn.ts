@@ -9,10 +9,12 @@ export interface RunProcessOptions {
 export class EngineBinaryError extends Error {
   readonly code = "ENGINE_BINARY_NOT_FOUND" as const;
   constructor(command: string, cause: NodeJS.ErrnoException) {
-    super(`Engine binary not found: "${command}" (${cause.code ?? "unknown"})`);
+    super(`Engine binary not found: "${command}" (${cause.code ?? "unknown"})`, { cause });
     this.name = "EngineBinaryError";
   }
 }
+
+const SPAWN_FAILURE_CODES = new Set(["ENOENT", "EACCES"]);
 
 /**
  * Spawn a process, collect stdout/stderr as strings, and resolve its exit code.
@@ -60,7 +62,11 @@ export async function runProcess(
 
     proc.on("error", (err: NodeJS.ErrnoException) => {
       options.signal?.removeEventListener("abort", onAbort);
-      reject(new EngineBinaryError(command, err));
+      if (err.code !== undefined && SPAWN_FAILURE_CODES.has(err.code)) {
+        reject(new EngineBinaryError(command, err));
+      } else {
+        reject(err);
+      }
     });
     proc.on("close", (code) => finalize(code ?? 0));
   });
