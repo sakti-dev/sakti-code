@@ -4,12 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentToolResult } from "@sakti-code/agent";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import {
-  buildPathNotFoundMessage,
-  classifyRgExitCode,
-  createFindTool,
-  resolveGlobPattern,
-} from "../index.ts";
+import { buildPathNotFoundMessage } from "../../lib/path-errors.ts";
+import { classifyRgExitCode, createFindTool, resolveGlobPattern } from "../index.ts";
 
 function getTextContent(result: AgentToolResult<unknown>): string {
   const first = result.content[0];

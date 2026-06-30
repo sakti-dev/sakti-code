@@ -1,9 +1,11 @@
-import nodePath, { basename, dirname } from "node:path";
+import nodePath, { dirname } from "node:path";
 import { readdir } from "node:fs/promises";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
 import { pathExists, resolveToCwd } from "../lib/path-utils.ts";
 import { runProcess } from "../lib/spawn.ts";
+import { EXCLUDE_GLOBS } from "../lib/excludes.ts";
+import { buildPathNotFoundMessage } from "../lib/path-errors.ts";
 import {
   DEFAULT_MAX_BYTES,
   formatSize,
@@ -64,26 +66,6 @@ export function resolveGlobPattern(inputPattern: string): string {
   return `**/*${inputPattern}*`;
 }
 
-/**
- * Directories never useful in file-search results (VCS, deps, build output).
- * Single source of truth — consumed by both the DI and production branches.
- * NOTE: rg multi-glob is last-match-wins, so the include glob MUST be passed
- * BEFORE these negation globs, or matching files inside these dirs get
- * re-included.
- */
-const EXCLUDE_GLOBS = [
-  "**/.git/**",
-  "**/node_modules/**",
-  "**/target/**", // Rust
-  "**/dist/**", // generic build output / TS
-  "**/build/**", // generic
-  "**/.next/**", // Next.js
-  "**/out/**", // Next.js export / generic
-];
-
-const LISTING_CAP = 20;
-const SIMILAR_CAP = 5;
-
 export type RgOutcome =
   | { kind: "results" }
   | { kind: "empty" }
@@ -98,39 +80,6 @@ export function classifyRgExitCode(exitCode: number, _stdout: string, stderr: st
   if (exitCode === 0) return { kind: "results" };
   if (exitCode === 1) return { kind: "empty" };
   return { kind: "error", message: stderr.trim() || `rg failed (exit ${exitCode})` };
-}
-
-/**
- * Build a friendly "path not found" message, optionally enriched with the
- * parent directory's entries and similar names. Pure: takes the entry list
- * (or null), does no I/O.
- */
-export function buildPathNotFoundMessage(
-  searchPath: string,
-  parentEntries: string[] | null,
-): string {
-  let msg = `Path not found: ${searchPath}`;
-  if (!parentEntries || parentEntries.length === 0) return msg;
-
-  const base = basename(searchPath).toLowerCase();
-  const listing = parentEntries.slice(0, LISTING_CAP);
-  const overflow = parentEntries.length - LISTING_CAP;
-
-  if (base) {
-    const similar = parentEntries
-      .filter((e) => e.toLowerCase().includes(base))
-      .slice(0, SIMILAR_CAP);
-    if (similar.length > 0) {
-      msg += `\n\nDid you mean: ${similar.map((e) => `'${e}'`).join(", ")}?`;
-    }
-  }
-
-  const dir = dirname(searchPath);
-  msg += `\n\nEntries in ${dir}:\n` + listing.map((e) => `  ${e}`).join("\n");
-  if (overflow > 0) {
-    msg += `\n  ... (${overflow} more)`;
-  }
-  return msg;
 }
 
 export function createFindTool(
