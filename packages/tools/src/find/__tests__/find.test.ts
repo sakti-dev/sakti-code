@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentToolResult } from "@sakti-code/agent";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import { createFindTool, isWholeProjectSearch, resolveGlobPattern } from "../index.ts";
+import { createFindTool, resolveGlobPattern } from "../index.ts";
 
 function getTextContent(result: AgentToolResult<unknown>): string {
   const first = result.content[0];
@@ -27,19 +27,6 @@ describe("find: fragment dispatch (resolveGlobPattern)", () => {
   });
 });
 
-describe("find: whole-project detection (isWholeProjectSearch)", () => {
-  it("treats '.', './', and undefined as whole-project (resolved absolutely)", () => {
-    const root = "/proj";
-    expect(isWholeProjectSearch(root, undefined)).toBe(true);
-    expect(isWholeProjectSearch(root, ".")).toBe(true);
-    expect(isWholeProjectSearch(root, "./")).toBe(true);
-  });
-
-  it("treats an explicit subdirectory as NOT whole-project", () => {
-    expect(isWholeProjectSearch("/proj", "src/components")).toBe(false);
-  });
-});
-
 describe("find: rg argv validity", () => {
   // Guards against hallucinated rg flags (e.g. the earlier --binary-rules mistake).
   it("uses only flags the real rg binary accepts for the --files invocation", () => {
@@ -47,9 +34,10 @@ describe("find: rg argv validity", () => {
       "--no-config",
       "--files",
       "--hidden",
-      "--glob=*.ts",
-      "--glob=!**/.git/**",
       "--no-ignore",
+      "--glob=!**/.git/**",
+      "--glob=!**/node_modules/**",
+      "--glob=*.ts",
     ];
     expect(() => {
       execFileSync("rg", [...flags, "."], { stdio: "ignore" });

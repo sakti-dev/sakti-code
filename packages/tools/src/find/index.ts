@@ -63,13 +63,6 @@ export function resolveGlobPattern(inputPattern: string): string {
   return `**/*${inputPattern}*`;
 }
 
-/** Whole-project iff the resolved search path equals the resolved project root. */
-export function isWholeProjectSearch(projectRoot: string, pathArg: string | undefined): boolean {
-  const rootAbs = nodePath.resolve(projectRoot);
-  const searchAbs = nodePath.resolve(rootAbs, pathArg ?? ".");
-  return searchAbs === rootAbs;
-}
-
 export function createFindTool(
   cwd: string,
   options?: FindToolOptions,
@@ -78,10 +71,10 @@ export function createFindTool(
   return {
     name: "find",
     label: "find",
-    description: `Search for files by glob pattern (or a bare name fragment). Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to ${DEFAULT_LIMIT} results or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
+    description: `Search for files by glob pattern (or a bare name fragment). Returns matching file paths relative to the search directory. Searches all files including gitignored ones, excluding .git and node_modules. Output is truncated to ${DEFAULT_LIMIT} results or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first); if truncated, refine your pattern.`,
     parameters: findSchema,
     permissions: (params) => [
-      { permission: "glob", patterns: [(params as FindToolInput).pattern] },
+      { permission: "glob", patterns: [resolveGlobPattern((params as FindToolInput).pattern)] },
     ],
     async execute(
       _toolCallId: string,
@@ -122,45 +115,34 @@ export function createFindTool(
         "--no-config",
         "--files",
         "--hidden",
-        `--glob=${effectivePattern}`,
+        "--no-ignore",
         "--glob=!**/.git/**",
+        "--glob=!**/node_modules/**",
+        `--glob=${effectivePattern}`,
       ];
 
       if (signal?.aborted) {
         throw new Error("Operation aborted");
       }
 
-      const runList = (extra: string[]): Promise<string[]> =>
-        runProcess(rgPath, [...baseArgs, ...extra, searchPath], signal ? { signal } : {}).then(
-          ({ stdout }) => stdout.split("\n").filter((l) => l.length > 0),
+      const runList = async (): Promise<string[]> => {
+        const { exitCode, stderr, stdout } = await runProcess(
+          rgPath,
+          [...baseArgs, searchPath],
+          signal ? { signal } : {},
         );
-
-      let files = await runList([]);
-      let retriedNoIgnore = false;
-
-      // Repair-layer - whole-project search returned nothing -> maybe the matches
-      // live in a gitignored tree (e.g. vendored references). rg --files already
-      // honors an explicit gitignored PATH argument, so this retry only helps
-      // the whole-project case (verified: 42==42 with/without --no-ignore for
-      // an explicit gitignored dir).
-      if (files.length === 0 && isWholeProjectSearch(cwd, searchDir)) {
-        const retry = await runList(["--no-ignore"]);
-        if (retry.length > 0) {
-          files = retry;
-          retriedNoIgnore = true;
+        if (exitCode !== 0 && stdout.trim().length === 0) {
+          throw new Error(stderr.trim() || `rg exited with code ${exitCode}`);
         }
-      }
+        return stdout.split("\n").filter((l) => l.length > 0);
+      };
+
+      const files = await runList();
 
       if (signal?.aborted) {
         throw new Error("Operation aborted");
       }
-      return formatFindResults(
-        files,
-        searchPath,
-        effectiveLimit,
-        files.length === 0,
-        retriedNoIgnore,
-      );
+      return formatFindResults(files, searchPath, effectiveLimit, files.length === 0);
     },
   };
 }
@@ -171,7 +153,6 @@ function formatFindResults(
   searchPath: string,
   effectiveLimit: number,
   empty: boolean,
-  _retriedNoIgnore = false,
 ): { content: [{ type: "text"; text: string }]; details: FindToolDetails | undefined } {
   if (empty) {
     return {
