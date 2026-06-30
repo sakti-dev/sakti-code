@@ -7,7 +7,6 @@ import {
   createEditTool,
   createFindTool,
   createGrepTool,
-  createLsTool,
   createReadTool,
   createWriteTool,
 } from "../index";
@@ -657,10 +656,10 @@ describe("FindTool", () => {
   });
 });
 
-describe("LsTool", () => {
-  it("lists current directory", async () => {
-    const tool = createLsTool(tmpDir);
-    const result = await tool.execute("tc_1", {});
+describe("ReadTool directory listing", () => {
+  it("lists current directory via path: '.'", async () => {
+    const tool = createReadTool(tmpDir);
+    const result = await tool.execute("tc_1", { path: "." });
     const text = getTextContent(result);
     expect(text).toContain("hello.txt");
   });
@@ -668,9 +667,39 @@ describe("LsTool", () => {
   it("lists subdirectory with / suffix for dirs", async () => {
     mkdirSync(join(tmpDir, "subdir"));
     writeFileSync(join(tmpDir, "subdir", "file.txt"), "x");
-    const tool = createLsTool(tmpDir);
+    const tool = createReadTool(tmpDir);
     const result = await tool.execute("tc_1", { path: "subdir" });
     expect(getTextContent(result)).toContain("file.txt");
+  });
+
+  it("includes dotfiles in directory listings", async () => {
+    writeFileSync(join(tmpDir, ".hidden"), "secret");
+    const tool = createReadTool(tmpDir);
+    const result = await tool.execute("tc_1", { path: "." });
+    const text = getTextContent(result);
+    expect(text).toContain(".hidden");
+  });
+
+  it("supports offset and limit for directory pages", async () => {
+    for (let i = 1; i <= 5; i++) {
+      writeFileSync(join(tmpDir, `file${i}.txt`), "x");
+    }
+    const tool = createReadTool(tmpDir);
+    const result = await tool.execute("tc_1", { path: ".", offset: 2, limit: 2 });
+    const text = getTextContent(result);
+    expect(text).toContain("Use offset=4 to continue");
+  });
+
+  it("does not use hashline mode for directories even with snapshotStore", async () => {
+    mkdirSync(join(tmpDir, "hashdir"));
+    writeFileSync(join(tmpDir, "hashdir", "a.txt"), "x");
+    const { InMemorySnapshotStore } = await import("../lib/hashline-utils/snapshots");
+    const snapshotStore = new InMemorySnapshotStore();
+    const tool = createReadTool(tmpDir, { snapshotStore });
+    const result = await tool.execute("tc_1", { path: "hashdir" });
+    const text = getTextContent(result);
+    expect(text).not.toMatch(/^\[.*#/m);
+    expect(text).toContain("a.txt");
   });
 });
 

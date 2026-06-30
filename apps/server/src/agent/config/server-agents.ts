@@ -32,7 +32,6 @@ function exploreRuleset(): PermissionRuleset {
     read: "allow",
     grep: "allow",
     glob: "allow",
-    list: "allow",
     bash: "allow",
   });
 }
@@ -69,7 +68,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
     description: "The default agent. Executes tools based on configured permissions.",
     systemPrompt: BUILD_PROMPT,
     permission: buildRuleset(),
-    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "ls"],
+    activeToolNames: ["read", "write", "edit", "bash", "grep", "find"],
   }),
   defineAgent({
     name: "explore",
@@ -78,7 +77,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "Fast read-only agent specialized for exploring codebases: find files by pattern, search code for keywords, answer questions about the codebase.",
     systemPrompt: EXPLORE_PROMPT,
     permission: exploreRuleset(),
-    activeToolNames: ["read", "grep", "find", "ls", "bash"],
+    activeToolNames: ["read", "grep", "find", "bash"],
   }),
   defineAgent({
     name: "plan",
@@ -87,7 +86,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "Plan mode. Researches the codebase and produces a plan; disallows all edit tools.",
     systemPrompt: PLAN_PROMPT,
     permission: planRuleset(),
-    activeToolNames: ["read", "grep", "find", "ls", "bash"],
+    activeToolNames: ["read", "grep", "find", "bash"],
   }),
   defineAgent({
     name: "general",
@@ -96,7 +95,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "General-purpose agent for researching complex questions and executing multi-step tasks.",
     systemPrompt: GENERAL_PROMPT,
     permission: allowAllRuleset(),
-    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "ls"],
+    activeToolNames: ["read", "write", "edit", "bash", "grep", "find"],
   }),
   defineAgent({
     name: "intake",
@@ -105,7 +104,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "PM-style planning agent for scoping work before implementation. Calls propose_session to hand off to a task session.",
     systemPrompt: INTAKE_SYSTEM_PROMPT,
     permission: intakeRuleset(),
-    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "ls", "propose_session"],
+    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "propose_session"],
   }),
 ];
 

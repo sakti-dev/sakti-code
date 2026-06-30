@@ -15,9 +15,9 @@ import {
   DEFAULT_MAX_LINES,
   formatSize,
   type TruncationResult,
-  truncateHead,
 } from "../lib/truncate.ts";
 import { formatDimensionNote, resizeImage } from "./image-resize.ts";
+import { formatListPage, inspect, list, readText } from "./read-filesystem.ts";
 
 const readSchema = Type.Object({
   path: Type.String({
@@ -160,7 +160,7 @@ export function createReadTool(
   return {
     name: "read",
     label: "read",
-    description: `Read the contents of a file. Supports text files and images (jpg, png, gif, webp). Images are sent as attachments. For text files, output is truncated to ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.`,
+    description: `Read a text file or supported image, page through a large UTF-8 text file by line offset, or list a directory page. Supports images (jpg, png, gif, webp) sent as attachments. For text files, output is truncated to ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Use offset/limit for large files or directory pages. When you need the full file or directory, continue with offset until complete.`,
     parameters: readSchema,
     permissions: (params) => [{ permission: "read", patterns: [(params as ReadToolInput).path] }],
     async execute(
@@ -184,11 +184,35 @@ export function createReadTool(
       await ops.access(absolutePath);
       throwIfAborted();
 
+      const type = await inspect(absolutePath);
+      if (type === "directory") {
+        const page = await list(
+          absolutePath,
+          offset !== undefined || limit !== undefined
+            ? {
+                ...(offset !== undefined ? { offset } : {}),
+                ...(limit !== undefined ? { limit } : {}),
+              }
+            : undefined,
+        );
+        return {
+          content: [
+            {
+              type: "text",
+              text: formatListPage(page, {
+                ...(offset !== undefined ? { offset } : {}),
+                ...(limit !== undefined ? { limit } : {}),
+              }),
+            },
+          ],
+          details: undefined,
+        };
+      }
+
       const mimeType = ops.detectImageMimeType
         ? await ops.detectImageMimeType(absolutePath)
         : undefined;
       let content: (TextContent | ImageContent)[];
-      let details: ReadToolDetails | undefined;
 
       if (mimeType) {
         const buffer = await ops.readFile(absolutePath);
@@ -237,96 +261,41 @@ export function createReadTool(
         }
         content = imageContent;
       } else {
-        const buffer = await ops.readFile(absolutePath);
-        throwIfAborted();
-        const textContent = buffer.toString("utf-8");
-        const allLines = textContent.split("\n");
-        const totalFileLines = allLines.length;
-
-        const startLine = offset ? Math.max(0, offset - 1) : 0;
-        const startLineDisplay = startLine + 1;
-
-        if (startLine >= allLines.length) {
-          throw new Error(
-            `Offset ${offset} is beyond end of file (${allLines.length} lines total)`,
-          );
-        }
-
-        let selectedContent: string;
-        let userLimitedLines: number | undefined;
-
-        if (limit === undefined) {
-          selectedContent = allLines.slice(startLine).join("\n");
-        } else {
-          const endLine = Math.min(startLine + limit, allLines.length);
-          selectedContent = allLines.slice(startLine, endLine).join("\n");
-          userLimitedLines = endLine - startLine;
-        }
-
-        const truncation = truncateHead(selectedContent);
+        const textPage = await readText(
+          absolutePath,
+          offset !== undefined || limit !== undefined
+            ? {
+                ...(offset !== undefined ? { offset } : {}),
+                ...(limit !== undefined ? { limit } : {}),
+              }
+            : undefined,
+        );
         const hashline = !!options?.snapshotStore;
-        let displayContent = "";
         let displayText = "";
-        const notices: string[] = [];
 
-        if (truncation.firstLineExceedsLimit) {
-          const firstLineSize = formatSize(Buffer.byteLength(allLines[startLine]!, "utf-8"));
-          if (hashline) {
-            displayText = `[Line ${startLineDisplay} is ${firstLineSize}, exceeds ${formatSize(DEFAULT_MAX_BYTES)} limit. Hashline output requires full lines; cannot emit an editable numbered preview for a truncated line.]`;
-          } else {
-            displayText = `[Line ${startLineDisplay} is ${firstLineSize}, exceeds ${formatSize(DEFAULT_MAX_BYTES)} limit. Use bash: sed -n '${startLineDisplay}p' ${path} | head -c ${DEFAULT_MAX_BYTES}]`;
-          }
-          details = { truncation };
-        } else if (truncation.truncated) {
-          displayContent = truncation.content;
-          const endLineDisplay = startLineDisplay + truncation.outputLines - 1;
-          const nextOffset = endLineDisplay + 1;
-          if (truncation.truncatedBy === "lines") {
-            notices.push(
-              `[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines}. Use offset=${nextOffset} to continue.]`,
-            );
-          } else {
-            notices.push(
-              `[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Use offset=${nextOffset} to continue.]`,
-            );
-          }
-          details = { truncation };
-        } else if (
-          userLimitedLines !== undefined &&
-          startLine + userLimitedLines < allLines.length
-        ) {
-          displayContent = truncation.content;
-          const remaining = allLines.length - (startLine + userLimitedLines);
-          const nextOffset = startLine + userLimitedLines + 1;
-          notices.push(`[${remaining} more lines in file. Use offset=${nextOffset} to continue.]`);
-        } else {
-          displayContent = truncation.content;
-        }
-
-        if (hashline && displayContent) {
+        if (hashline) {
+          const buffer = await ops.readFile(absolutePath);
+          const textContent = buffer.toString("utf-8");
           const normalized = normalizeToLF(textContent);
           const fileHash = computeFileHash(normalized);
           const header = formatHashlineHeader(path, fileHash);
-          const numbered = formatNumberedLines(displayContent, startLineDisplay);
-          const outputLineCount = displayContent.split("\n").length;
+          const numbered = formatNumberedLines(textPage.content, textPage.offset);
+          const outputLineCount = textPage.content.split("\n").length;
           const seenLines = new Set<number>();
           for (let i = 0; i < outputLineCount; i++) {
-            seenLines.add(startLineDisplay + i);
+            seenLines.add(textPage.offset + i);
           }
           options!.snapshotStore!.record(absolutePath, normalized, seenLines);
           displayText = `${header}\n${numbered}`;
-        } else if (!hashline) {
-          displayText = displayContent;
+        } else {
+          displayText = textPage.content;
         }
 
-        if (notices.length > 0) {
-          displayText = `${displayText}\n\n${notices.join("\n")}`;
-        }
         content = [{ type: "text", text: displayText }];
       }
 
       throwIfAborted();
-      return { content, details };
+      return { content, details: undefined };
     },
   };
 }

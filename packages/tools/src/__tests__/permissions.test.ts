@@ -4,7 +4,6 @@ import {
   createEditTool,
   createFindTool,
   createGrepTool,
-  createLsTool,
   createReadTool,
   createWriteTool,
 } from "../index.ts";
@@ -48,12 +47,11 @@ describe("tool permissions declarators", () => {
     ]);
   });
 
-  it("ls declares list + the path (defaulting to * when absent)", () => {
-    const tool = createLsTool("/proj");
+  it("read declares read + the path for directories too", () => {
+    const tool = createReadTool("/proj");
     expect(tool.permissions?.({ path: "src" })).toEqual([
-      { permission: "list", patterns: ["src"] },
+      { permission: "read", patterns: ["src"] },
     ]);
-    expect(tool.permissions?.({})).toEqual([{ permission: "list", patterns: ["*"] }]);
   });
 });
 

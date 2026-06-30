@@ -31,26 +31,27 @@ Where `ListPage = { entries: Entry[], truncated: boolean, next?: number }` and `
 
 Logic (mirror opencode `read-filesystem.ts:323-351`):
 
-1. `readdir` → parallel stat each entry (16 concurrency, like opencode line 343)
-2. Filter out unresolvable entries (symlink loop, permission denied)
-3. Sort: directories first, then case-insensitive by name
-4. Slice by `offset` (1-based) and `limit`
-5. Compute `truncated` and `next` if there are more entries after the slice
-6. Return `{ entries, truncated, next }`
+1. `readdir` with default flags so dotfiles are included (matches current `ls` behavior)
+2. Parallel stat each entry (16 concurrency, like opencode line 343)
+3. Filter out unresolvable entries (symlink loop, permission denied) and any entry whose resolved path escapes `absolutePath`
+4. Sort: directories first, then case-insensitive by name (matches current `ls` behavior)
+5. Slice by `offset` (1-based) and `limit`
+6. Compute `truncated` and `next` if there are more entries after the slice
+7. Return `{ entries, truncated, next }`
 
 **`readText(absolutePath: string, page?: { offset?: number; limit?: number }): Promise<TextPage>`**
 
 Where `TextPage = { content: string; offset: number; truncated: boolean; next?: number }`.
 
-This is the **existing** file-reading logic extracted from `read/index.ts` lines 262-354 (the text path of execute). No change in behavior — just move it into this module. The offset/limit/truncate logic stays as-is.
+This is the **existing** file-reading logic extracted from `read/index.ts` (the text path of `execute()`, starting after image handling and ending before the final `return { content, details }`). No change in behavior — just move it into this module. The offset/limit/truncate logic stays as-is. Do not rely on the exact line numbers from this plan; extract the full text-only branch as it exists in the file at implementation time.
 
 ### Step 2: Modify `packages/tools/src/read/index.ts`
 
-**Schema**: Already has `path`, `offset`, `limit` — no changes needed.
+**Schema**: Already has `path`, `offset`, `limit` — no changes needed. Note that `path` remains required (no default). To list the current working directory, callers must pass `path: "."`. This matches OpenCode's `read` schema and differs from the old `ls` tool, where `path` defaulted to `.`.
 
 **Description**: Update to mention directory listing. Model after opencode's read.ts:42-43:
 
-> "Read a text file or supported image, page through a large UTF-8 text file by line offset, or list a directory page."
+> "Read a text file or supported image, page through a large UTF-8 text file by line offset, or list a directory page. Relative paths resolve from the current working directory; absolute paths are read directly."
 
 **`execute()`** — add directory detection at the top, between path resolution and the existing image/text logic (mirror opencode read.ts:54-100):
 
@@ -66,7 +67,9 @@ This is the **existing** file-reading logic extracted from `read/index.ts` lines
      → existing image/text logic (unchanged)
 ```
 
-**Output format for directories**: Format as text (matching current `ls` style), not structured entries. This keeps consistency with how the rest of our tool outputs work (plain text in `content[0].text`). Include continuation notices when truncated.
+**Output format for directories**: Format as text (matching current `ls` style), not structured entries. This keeps consistency with how the rest of our tool outputs work (plain text in `content[0].text`). Include continuation notices when truncated. Directory listings do not use hashline mode; the `snapshotStore` option applies only to file reads.
+
+**Permissions for directories**: Keep the existing `permissions()` callback unchanged. A directory read will declare `permission: "read"` on the directory path, matching OpenCode's behavior (`action: name` where `name` is `"read"`). This differs from the old `ls` tool, which declared `permission: "list"`. After `ls` is fully removed, the `list` permission type will become unused.
 
 ### Step 3: Deprecate `packages/tools/src/ls/index.ts`
 
@@ -89,7 +92,12 @@ Update `createLsTool`'s description to say "prefer read for directory listing" s
 ### Step 6: Tests
 
 - `read/__tests__/read-filesystem.test.ts` — tests for `inspect`, `list`, `readText`
-- `read/__tests__/read.test.ts` — existing tests updated to cover directory paths
+- `read/__tests__/read.test.ts` — existing tests updated to cover directory paths, including:
+  - listing a directory returns entries with `/` suffix for subdirectories
+  - listing with `offset`/`limit` returns continuation notices and `next`-style offsets
+  - listing the current directory via `path: "."`
+  - dotfiles are included in directory listings
+  - directory listings do not use hashline mode even when `snapshotStore` is provided
 - `ls/__tests__/ls.test.ts` — no changes (ls still works), but mark as deprecated
 
 ### Step 7 (future): Remove `ls`
@@ -98,7 +106,10 @@ After verifying nothing depends on `ls` (search for `createLsTool` imports acros
 
 - `packages/tools/src/ls/` directory
 - `ls` exports from `packages/tools/src/index.ts`
-- Any references in agent loop tool registration
+- `"ls"` from `DEFAULT_TOOL_NAMES` in `apps/server/src/agent/runner.ts`
+- `"ls"` from every `activeToolNames` array in `apps/server/src/agent/config/server-agents.ts`
+- The `list: "allow"` entry from `exploreRuleset()` in `apps/server/src/agent/config/server-agents.ts` (the `list` permission type becomes unused once `ls` is gone)
+- Any remaining references in agent loop tool registration
 
 ## Key Differences from OpenCode (Why)
 
@@ -108,3 +119,10 @@ After verifying nothing depends on `ls` (search for `createLsTool` imports acros
 | `ListPage`/`TextPage` Schema classes              | Plain TypeScript interfaces + text output | Our `AgentTool` returns `{ content: TextContent[], details }`, not structured types |
 | `Image.Service` for image normalization           | Existing photon-based resize inline       | Our image logic is already working — no reason to extract                           |
 | `PermissionV2.assert()` everywhere                | Existing `permissions()` callback         | Our permission model is simpler and stays that way                                  |
+| `list` action for directory reads                 | Reuse `read` action                       | Aligns with OpenCode's `action: name` and lets `read` cover both files and dirs     |
+
+## Migration Notes
+
+- **Callers must pass `path` explicitly.** `read({ path: "." })` replaces `ls({})` for the current directory.
+- **Permission rulesets should use `read` for directory access.** Once `ls` is removed, `list` grants in rulesets have no effect.
+- **Tool descriptions should guide the model toward `read`.** The `ls` description (Step 5) and the `read` description (Step 2) both need to advertise the new pattern so the model stops calling `ls`.

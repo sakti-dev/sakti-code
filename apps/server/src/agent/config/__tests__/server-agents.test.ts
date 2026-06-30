@@ -30,7 +30,7 @@ describe("server agents", () => {
     expect(decision(rs, "external_directory", "/etc/passwd")).toBe("ask");
   });
 
-  it("explore is read-only: denies edit/write but allows read/grep/glob/list/bash", () => {
+  it("explore is read-only: denies edit/write but allows read/grep/glob/bash", () => {
     const explore = resolveServerAgent("explore");
     expect(explore).toBeDefined();
     const rs = explore!.permission!;
@@ -38,7 +38,6 @@ describe("server agents", () => {
     expect(decision(rs, "read", "src/a.ts")).toBe("allow");
     expect(decision(rs, "grep", "foo")).toBe("allow");
     expect(decision(rs, "glob", "**/*.ts")).toBe("allow");
-    expect(decision(rs, "list", "src")).toBe("allow");
     expect(decision(rs, "bash", "ls")).toBe("allow");
   });
 

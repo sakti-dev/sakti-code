@@ -46,15 +46,7 @@ import type { WsHandle } from "./ws-handler.ts";
  * catalog entries (SERVER_AGENTS) all declare explicit lists, so this only
  * applies to user-defined agents that don't.
  */
-const DEFAULT_TOOL_NAMES: readonly string[] = [
-  "read",
-  "write",
-  "edit",
-  "bash",
-  "grep",
-  "find",
-  "ls",
-];
+const DEFAULT_TOOL_NAMES: readonly string[] = ["read", "write", "edit", "bash", "grep", "find"];
 
 interface ActiveRun {
   harness: AgentHarness;

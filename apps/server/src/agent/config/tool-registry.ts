@@ -4,7 +4,6 @@ import {
   createEditTool,
   createFindTool,
   createGrepTool,
-  createLsTool,
   createProposeSessionTool,
   createReadTool,
   createWriteTool,
@@ -46,7 +45,6 @@ export const TOOL_FACTORIES: Readonly<Record<string, ToolFactory>> = {
   bash: (ctx) => createBashTool(ctx.cwd) as AgentTool,
   grep: (ctx) => createGrepTool(ctx.cwd) as AgentTool,
   find: (ctx) => createFindTool(ctx.cwd) as AgentTool,
-  ls: (ctx) => createLsTool(ctx.cwd) as AgentTool,
   propose_session: () => createProposeSessionTool() as AgentTool,
 };
 

@@ -16,8 +16,6 @@ export type { GrepOperations, GrepToolDetails, GrepToolInput, GrepToolOptions } 
 export { createGrepTool } from "./grep/index";
 export type { Snapshot, SnapshotStore } from "./lib/hashline-utils/snapshots.ts";
 export { InMemorySnapshotStore } from "./lib/hashline-utils/snapshots.ts";
-export type { LsOperations, LsToolDetails, LsToolInput, LsToolOptions } from "./ls/index";
-export { createLsTool } from "./ls/index";
 export type { ProposeSessionToolInput } from "./propose-session/index";
 export { createProposeSessionTool } from "./propose-session/index";
 export type { ReadOperations, ReadToolDetails, ReadToolInput, ReadToolOptions } from "./read/index";

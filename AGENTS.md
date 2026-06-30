@@ -29,7 +29,7 @@ sakti-code: desktop app (Electron + SolidJS) running multiple AI coding agents c
 
 - `packages/agent/` — pure agent loop, types, compaction, coding-agent policy layer (system-prompt composition, prompt preprocessor, builtin agents, auto-compaction, retry). **No persistence, no DB, no app config.** Storage via `SessionStore` interface; model + API key injected by caller.
 - `packages/db/` — Drizzle schema, repos, `SqliteSessionStorage`.
-- `packages/tools/` — coding tools (read, write, edit, bash, grep, find, ls).
+- `packages/tools/` — coding tools (read, write, edit, bash, grep, find). `read` also handles directory listings; the old `ls` tool was removed.
 - `apps/server/` — Hono REST server. Route modules are `factory.createApp()` sub-apps with `.basePath()`, composed via chained `.route()` in `buildApp(ctx)`. Context injected via `ctxMiddleware` (`c.var.ctx`); routes access it through `getCtx(c)`. UI consumes via Hono RPC (`hcWithType<App>`).
 - `apps/desktop/` — Electron shell (electron-vite + electron-builder). `src/` is SolidJS/Vite renderer, `electron/{main,preload,shared}` is the shell. Main embeds the Hono server in-process (`createServer`); renderer is **same-origin** (no CORS, no `window.sakti` for API). Preload sandboxed (`contextBridge` exposes only `window.sakti`).
 - `openspec/` — change specs + Pi reference implementation under `references/`.
@@ -51,7 +51,7 @@ vp env off                  # run once after install so nix stays the Node sourc
 nix develop                 # dev shell: Electron runtime libs + python3/gnumake for native rebuild
 ```
 
-> `vp run -r <task>` runs across all workspace packages in dependency order; `vp run <pkg>#<task>` targets one. Order comes from the `package.json` dependency graph.
+> `vp run -r <task>` runs across all workspace packages in dependency order; `vp run <pkg>#<task>` targets one. Order comes from the `package.json` dependency graph. Because the workspace uses zsh, always quote the package target: `vp run '@sakti-code/tools#test'`.
 
 ## Conventions
 
