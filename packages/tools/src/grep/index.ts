@@ -124,6 +124,11 @@ function relativize(rawPath: string, projectRoot: string): string {
   if (nodePath.isAbsolute(rel)) {
     rel = nodePath.relative(projectRoot, rel);
   }
+  // When the search target is a single file, projectRoot == rawPath and
+  // relative() returns "" — fall back to the basename so records survive.
+  if (rel === "") {
+    rel = nodePath.basename(rawPath);
+  }
   return rel.replace(/\\/g, "/");
 }
 

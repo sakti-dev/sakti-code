@@ -77,6 +77,19 @@ describe("grep: single-pass JSON formatting", () => {
     expect(out).toContain("a.ts:1: x");
     expect(out).not.toContain("begin");
   });
+
+  it("uses the basename when projectRoot IS the file (file-scope search, report 1.5)", () => {
+    const stream = JSON.stringify({
+      type: "match",
+      data: {
+        path: { text: "/p/src/a.ts" },
+        line_number: 4,
+        lines: { text: "import { z } from 'z';\n" },
+      },
+    });
+    const { output: out } = formatRgJsonStream(stream, "/p/src/a.ts");
+    expect(out).toContain("a.ts:4: import { z } from 'z';");
+  });
 });
 
 describe("grep: rg argv validity", () => {
@@ -116,5 +129,49 @@ describe("grep: gitignore regression (--no-ignore reaches gitignored content)", 
     const result = await tool.execute("tc", { pattern: "UNIQUE_MARKER_TOKEN" });
     const text = getTextContent(result);
     expect(text).toContain("secret.ts");
+  });
+});
+
+describe("grep: file-scope search (report 1.5 — path as a file)", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sakti-grep-file-"));
+    writeFileSync(join(dir, "routes.ts"), "import { a } from 'a';\nimport { b } from 'b';\n");
+    writeFileSync(join(dir, "other.ts"), "import { c } from 'c';\n");
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("returns matches when path points to a FILE (not 'No matches found')", async () => {
+    const tool = createGrepTool(dir);
+    const result = await tool.execute("tc", { pattern: "import", path: "routes.ts" });
+    const text = getTextContent(result);
+    expect(text).not.toContain("No matches found");
+    expect(text).toContain("routes.ts");
+  });
+
+  it("file scope is a subset of dir scope for that file", async () => {
+    const tool = createGrepTool(dir);
+    const fileText = getTextContent(
+      await tool.execute("tc", { pattern: "import", path: "routes.ts" }),
+    );
+    const dirText = getTextContent(await tool.execute("tc", { pattern: "import", path: "." }));
+    expect(fileText).toContain("routes.ts:1:");
+    expect(dirText).toContain("routes.ts:1:");
+    expect(fileText).not.toContain("other.ts");
+  });
+
+  it("works with an absolute file path", async () => {
+    const tool = createGrepTool(dir);
+    const abs = join(dir, "routes.ts");
+    const text = getTextContent(await tool.execute("tc", { pattern: "import", path: abs }));
+    expect(text).toContain("routes.ts:1:");
+  });
+
+  it("works across patterns and with literal mode on a file", async () => {
+    const tool = createGrepTool(dir);
+    const text = getTextContent(
+      await tool.execute("tc", { pattern: "import { b }", path: "routes.ts", literal: true }),
+    );
+    expect(text).toContain("routes.ts:2:");
   });
 });
