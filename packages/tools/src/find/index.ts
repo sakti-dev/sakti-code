@@ -192,8 +192,7 @@ export function createFindTool(
         "--files",
         "--hidden",
         "--no-ignore",
-        "--glob=!**/.git/**",
-        "--glob=!**/node_modules/**",
+        ...EXCLUDE_GLOBS.map((g) => `--glob=!${g}`),
         `--glob=${effectivePattern}`,
       ];
 

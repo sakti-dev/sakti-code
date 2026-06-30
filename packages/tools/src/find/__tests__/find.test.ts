@@ -298,7 +298,7 @@ describe("find: missing path raises a friendly error (report 1.9)", () => {
   it("suggests similar entries when the parent exists", async () => {
     const tool = createFindTool(dir);
     await expect(tool.execute("tc", { pattern: "*.ts", path: "alp" })).rejects.toThrow(
-      /Did you mean.*alpha\.ts|alfred\.ts/,
+      /Did you mean.*(alpha\.ts|alfred\.ts)/,
     );
   });
 
