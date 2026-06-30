@@ -6,16 +6,26 @@ export interface RunProcessOptions {
   signal?: AbortSignal;
 }
 
+export class EngineBinaryError extends Error {
+  readonly code = "ENGINE_BINARY_NOT_FOUND" as const;
+  constructor(command: string, cause: NodeJS.ErrnoException) {
+    super(`Engine binary not found: "${command}" (${cause.code ?? "unknown"})`);
+    this.name = "EngineBinaryError";
+  }
+}
+
 /**
  * Spawn a process, collect stdout/stderr as strings, and resolve its exit code.
- * On abort, the child is killed with SIGKILL.
+ * On abort, the child is killed with SIGKILL. Spawn-time failures (e.g. the
+ * binary is missing / ENOENT) reject with an {@link EngineBinaryError} so the
+ * caller can surface a clear root-cause instead of a misleading "exit code 1".
  */
 export async function runProcess(
   command: string,
   args: string[],
   options: RunProcessOptions = {},
 ): Promise<{ exitCode: number; stderr: string; stdout: string }> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const proc = spawn(command, args, {
       cwd: options.cwd,
       env: options.env,
@@ -48,7 +58,10 @@ export async function runProcess(
       resolve({ exitCode: code, stderr, stdout });
     };
 
-    proc.on("error", () => finalize(1));
+    proc.on("error", (err: NodeJS.ErrnoException) => {
+      options.signal?.removeEventListener("abort", onAbort);
+      reject(new EngineBinaryError(command, err));
+    });
     proc.on("close", (code) => finalize(code ?? 0));
   });
 }
