@@ -1,4 +1,5 @@
-import nodePath from "node:path";
+import nodePath, { basename, dirname } from "node:path";
+import { readdir } from "node:fs/promises";
 import type { AgentTool, AgentToolUpdateCallback } from "@sakti-code/agent";
 import { type Static, Type } from "typebox";
 import { pathExists, resolveToCwd } from "../lib/path-utils.ts";
@@ -63,6 +64,12 @@ export function resolveGlobPattern(inputPattern: string): string {
   return `**/*${inputPattern}*`;
 }
 
+/** Directories excluded from results. Single source of truth (expanded in a later task). */
+const EXCLUDE_GLOBS = ["**/.git/**", "**/node_modules/**"];
+
+const LISTING_CAP = 20;
+const SIMILAR_CAP = 5;
+
 export type RgOutcome =
   | { kind: "results" }
   | { kind: "empty" }
@@ -77,6 +84,39 @@ export function classifyRgExitCode(exitCode: number, _stdout: string, stderr: st
   if (exitCode === 0) return { kind: "results" };
   if (exitCode === 1) return { kind: "empty" };
   return { kind: "error", message: stderr.trim() || `rg failed (exit ${exitCode})` };
+}
+
+/**
+ * Build a friendly "path not found" message, optionally enriched with the
+ * parent directory's entries and similar names. Pure: takes the entry list
+ * (or null), does no I/O.
+ */
+export function buildPathNotFoundMessage(
+  searchPath: string,
+  parentEntries: string[] | null,
+): string {
+  let msg = `Path not found: ${searchPath}`;
+  if (!parentEntries || parentEntries.length === 0) return msg;
+
+  const base = basename(searchPath).toLowerCase();
+  const listing = parentEntries.slice(0, LISTING_CAP);
+  const overflow = parentEntries.length - LISTING_CAP;
+
+  if (base) {
+    const similar = parentEntries
+      .filter((e) => e.toLowerCase().includes(base))
+      .slice(0, SIMILAR_CAP);
+    if (similar.length > 0) {
+      msg += `\n\nDid you mean: ${similar.map((e) => `'${e}'`).join(", ")}?`;
+    }
+  }
+
+  const dir = dirname(searchPath);
+  msg += `\n\nEntries in ${dir}:\n` + listing.map((e) => `  ${e}`).join("\n");
+  if (overflow > 0) {
+    msg += `\n  ... (${overflow} more)`;
+  }
+  return msg;
 }
 
 export function createFindTool(
@@ -106,16 +146,30 @@ export function createFindTool(
       const effectiveLimit = limit ?? DEFAULT_LIMIT;
       const ops = customOps ?? defaultFindOperations;
 
+      // Pre-flight: reject a missing search path once, for both branches,
+      // with a friendly message enriched from the parent dir. Keeps the raw
+      // rg IO error (os error 2) from leaking to callers (report 1.9).
+      if (!(await ops.exists(searchPath))) {
+        let parentEntries: string[] | null = null;
+        const parent = dirname(searchPath);
+        if (await ops.exists(parent)) {
+          try {
+            parentEntries = await readdir(parent);
+          } catch {
+            parentEntries = null;
+          }
+        }
+        throw new Error(buildPathNotFoundMessage(searchPath, parentEntries));
+      }
+
+      if (signal?.aborted) {
+        throw new Error("Operation aborted");
+      }
+
       if (customOps?.glob) {
         // DI branch (tests inject a fake)
-        if (!(await ops.exists(searchPath))) {
-          throw new Error(`Path not found: ${searchPath}`);
-        }
-        if (signal?.aborted) {
-          throw new Error("Operation aborted");
-        }
         const results = await ops.glob(pattern, searchPath, {
-          ignore: ["**/node_modules/**", "**/.git/**"],
+          ignore: EXCLUDE_GLOBS,
           limit: effectiveLimit,
         });
         if (signal?.aborted) {

@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentToolResult } from "@sakti-code/agent";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import { classifyRgExitCode, createFindTool, resolveGlobPattern } from "../index.ts";
+import {
+  buildPathNotFoundMessage,
+  classifyRgExitCode,
+  createFindTool,
+  resolveGlobPattern,
+} from "../index.ts";
 
 function getTextContent(result: AgentToolResult<unknown>): string {
   const first = result.content[0];
@@ -217,5 +222,96 @@ describe("find: abort prevents partial results from leaking", () => {
     const run = tool.execute("tc", { pattern: "*.ts" }, ac.signal);
     ac.abort();
     await expect(run).rejects.toThrow(/aborted/i);
+  });
+});
+
+describe("find: buildPathNotFoundMessage (pure)", () => {
+  it("includes the missing path verbatim", () => {
+    const msg = buildPathNotFoundMessage("/x/y/missing", null);
+    expect(msg).toContain("Path not found: /x/y/missing");
+  });
+
+  it("does not mention raw OS errors", () => {
+    const msg = buildPathNotFoundMessage("/x/y/missing", null);
+    expect(msg).not.toContain("os error");
+    expect(msg).not.toContain("IO error");
+  });
+
+  it("lists up to 20 parent entries when parent exists", () => {
+    const entries = Array.from({ length: 25 }, (_, i) => `f${i}.ts`);
+    const msg = buildPathNotFoundMessage("/d/missing", entries);
+    expect(msg).toContain("f0.ts");
+    expect(msg).toContain("f19.ts");
+    expect(msg).toContain("more"); // "... (N more)" suffix
+    expect(msg).not.toContain("f20.ts"); // 21st omitted
+  });
+
+  it("surfaces up to 5 similar entries (case-insensitive)", () => {
+    const entries = [
+      "Config.ts",
+      "conf.ts",
+      "Configuration.ts",
+      "config.json",
+      "my-config.ts",
+      "extra.ts",
+    ];
+    const msg = buildPathNotFoundMessage("/d/config", entries);
+    expect(msg).toContain("Did you mean");
+    expect(msg).toContain("Config.ts");
+    expect(msg).toContain("config.json");
+  });
+
+  it("omits the 'did you mean' line when nothing is similar", () => {
+    const msg = buildPathNotFoundMessage("/d/zzz", ["alpha.ts", "beta.ts"]);
+    expect(msg).not.toContain("Did you mean");
+  });
+
+  it("omits the listing when parent is null", () => {
+    const msg = buildPathNotFoundMessage("/d/zzz", null);
+    expect(msg).not.toContain("Entries in");
+  });
+});
+
+describe("find: missing path raises a friendly error (report 1.9)", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sakti-find-path-"));
+    writeFileSync(join(dir, "alpha.ts"), "x");
+    writeFileSync(join(dir, "alfred.ts"), "x");
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("rejects with 'Path not found', not a raw OS error", async () => {
+    const tool = createFindTool(dir);
+    await expect(tool.execute("tc", { pattern: "*.ts", path: "does-not-exist" })).rejects.toThrow(
+      /Path not found/,
+    );
+  });
+
+  it("the error message contains no raw OS error text", async () => {
+    const tool = createFindTool(dir);
+    await expect(tool.execute("tc", { pattern: "*.ts", path: "no-such-dir" })).rejects.toSatisfy(
+      (err: Error) => !err.message.includes("os error") && !err.message.includes("IO error"),
+    );
+  });
+
+  it("suggests similar entries when the parent exists", async () => {
+    const tool = createFindTool(dir);
+    await expect(tool.execute("tc", { pattern: "*.ts", path: "alp" })).rejects.toThrow(
+      /Did you mean.*alpha\.ts|alfred\.ts/,
+    );
+  });
+
+  it("does not false-positive on an existing path", async () => {
+    const tool = createFindTool(dir);
+    const result = await tool.execute("tc", { pattern: "*.ts", path: "." });
+    expect(getTextContent(result)).toContain("alpha.ts");
+  });
+
+  it("works for an absolute non-existent path", async () => {
+    const tool = createFindTool(dir);
+    await expect(
+      tool.execute("tc", { pattern: "*.ts", path: "/definitely/not/here" }),
+    ).rejects.toThrow(/Path not found/);
   });
 });
