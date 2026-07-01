@@ -59,4 +59,20 @@ describe("parseOmSettings", () => {
       }),
     ).toThrow();
   });
+
+  it("accepts scope: 'resource'", () => {
+    const result = parseOmSettings({ observationalMemory: { enabled: true, scope: "resource" } });
+    expect(result?.scope).toBe("resource");
+  });
+
+  it("scope is absent by default (deps builder defaults to 'thread')", () => {
+    const result = parseOmSettings({ observationalMemory: { enabled: true } });
+    expect(result?.scope).toBeUndefined();
+  });
+
+  it("rejects an invalid scope value", () => {
+    expect(() =>
+      parseOmSettings({ observationalMemory: { enabled: true, scope: "banana" } }),
+    ).toThrow();
+  });
 });

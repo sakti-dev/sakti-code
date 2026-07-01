@@ -12,6 +12,7 @@ export const OmSettingsSchema = Type.Object({
   observationThreshold: Type.Optional(Type.Number()),
   reflectionThreshold: Type.Optional(Type.Number()),
   instruction: Type.Optional(Type.String()),
+  scope: Type.Optional(Type.Union([Type.Literal("thread"), Type.Literal("resource")])),
   buffering: Type.Optional(omBufferingSchema),
 });
 
@@ -20,6 +21,7 @@ export interface ParsedOmSettings {
   observationThreshold?: number;
   reflectionThreshold?: number;
   instruction?: string;
+  scope?: "thread" | "resource";
   buffering?: {
     observationBufferTokens: number;
     observationBufferActivation?: number;
@@ -32,6 +34,7 @@ const OM_ALLOWED_KEYS = new Set([
   "observationThreshold",
   "reflectionThreshold",
   "instruction",
+  "scope",
   "buffering",
 ]);
 

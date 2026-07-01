@@ -9,7 +9,10 @@
 import type { Model, ThinkingLevel } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
 
-import type { ObservationalMemoryStorage } from "../observational-memory-storage.ts";
+import type {
+  ObservationalMemoryScope,
+  ObservationalMemoryStorage,
+} from "../observational-memory-storage.ts";
 import type { SessionStorageShape } from "../session/storage.ts";
 import type { TokenCounter } from "./token-counter.ts";
 
@@ -40,6 +43,12 @@ export interface ObservationalMemoryDeps {
   readonly storage: ObservationalMemoryStorage;
   readonly sessionId: string;
   readonly projectId: string;
+  /**
+   * Lookup scope: 'thread' = one record per session (default);
+   * 'resource' = one record per project, shared across all sessions in it
+   * (stored with threadId=null, keyed by resource:{projectId}).
+   */
+  readonly scope: ObservationalMemoryScope;
   readonly observeModel: Model;
   readonly observeApiKey: string;
   readonly observeThinkingLevel?: ThinkingLevel | undefined;

@@ -56,7 +56,7 @@ export class ObservationalMemoryEngine {
     this.tokenCounter = options.deps.tokenCounter;
     this.logger = options.deps.logger;
     this.bufferingCoordinator = new BufferingCoordinator({
-      threadId: this.sessionId,
+      lookupKey: this.computeLookupKey(),
       observationBufferTokens: resolveBufferTokens(
         options.deps.buffering?.observationBufferTokens,
         options.deps.thresholds.observation,
@@ -65,15 +65,36 @@ export class ObservationalMemoryEngine {
     });
   }
 
+  /**
+   * Resolve the storage ids for the active scope. Mirrors Mastra's
+   * `getStorageIds`: under `resource` scope the record is keyed by
+   * `resource:{projectId}` with threadId=null (one record per project,
+   * shared across sessions); under `thread` scope it is keyed by
+   * `thread:{sessionId}`.
+   */
+  private getStorageIds(): { threadId: string | null; resourceId: string } {
+    return this.deps.scope === "resource"
+      ? { threadId: null, resourceId: this.projectId }
+      : { threadId: this.sessionId, resourceId: this.projectId };
+  }
+
+  /** The lookup-key string used for storage and buffer-coordinator namespacing. */
+  private computeLookupKey(): string {
+    return this.deps.scope === "resource"
+      ? `resource:${this.projectId}`
+      : `thread:${this.sessionId}`;
+  }
+
   /** Current record, creating an initial one if absent. */
   async getOrCreateRecord(): Promise<ObservationalMemoryRecord> {
-    const existing = await this.storage.getObservationalMemory(this.sessionId, this.projectId);
+    const ids = this.getStorageIds();
+    const existing = await this.storage.getObservationalMemory(ids.threadId, ids.resourceId);
     if (existing) return existing;
 
     return this.storage.initializeObservationalMemory({
-      threadId: this.sessionId,
-      resourceId: this.projectId,
-      scope: "thread",
+      threadId: ids.threadId,
+      resourceId: ids.resourceId,
+      scope: this.deps.scope,
       config: {},
     });
   }

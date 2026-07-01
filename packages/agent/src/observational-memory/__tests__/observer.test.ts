@@ -72,6 +72,7 @@ function createDeps(overrides: Partial<ObservationalMemoryDeps> = {}): Observati
     storage: noopStorage,
     sessionId: "sess-1",
     projectId: "proj-1",
+    scope: "thread",
     observeModel: createFauxModel(),
     observeApiKey: "observe-key",
     reflectModel: createFauxModel(),

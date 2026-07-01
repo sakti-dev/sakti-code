@@ -81,49 +81,50 @@ export function resolveRetentionFloor(
 export class BufferingCoordinator {
   /**
    * Track in-flight async buffering operations per thread.
-   * Key format: "obs:{threadId}" or "refl:{threadId}".
+   * Key format: "obs:{lookupKey}" or "refl:{lookupKey}".
    */
   static asyncBufferingOps = new Map<string, Promise<void>>();
 
   /**
    * Track the last token boundary at which we started buffering.
-   * Key format: "obs:{threadId}" or "refl:{threadId}".
+   * Key format: "obs:{lookupKey}" or "refl:{lookupKey}".
    */
   static lastBufferedBoundary = new Map<string, number>();
 
   /**
    * Track the timestamp cursor for buffered messages.
-   * Key format: "obs:{threadId}".
+   * Key format: "obs:{lookupKey}".
    */
   static lastBufferedAtTime = new Map<string, Date>();
 
   /**
    * Tracks cycleId for in-flight buffered reflections.
-   * Key format: "refl:{threadId}".
+   * Key format: "refl:{lookupKey}".
    */
   static reflectionBufferCycleIds = new Map<string, string>();
 
   private readonly observationBufferTokensInternal: number | undefined;
   private readonly reflectionBufferActivation: number;
-  private readonly threadId: string;
+  private readonly lookupKey: string;
 
   constructor(opts: {
-    threadId: string;
+    /** Namespacing key — `thread:{sessionId}` or `resource:{projectId}`. */
+    lookupKey: string;
     observationBufferTokens?: number | undefined;
     observationBufferActivation?: number | undefined;
     reflectionBufferActivation: number;
   }) {
-    this.threadId = opts.threadId;
+    this.lookupKey = opts.lookupKey;
     this.observationBufferTokensInternal = opts.observationBufferTokens;
     this.reflectionBufferActivation = opts.reflectionBufferActivation;
   }
 
   get observationBufferKey(): string {
-    return `obs:${this.threadId}`;
+    return `obs:${this.lookupKey}`;
   }
 
   get reflectionBufferKey(): string {
-    return `refl:${this.threadId}`;
+    return `refl:${this.lookupKey}`;
   }
 
   get observationBufferTokens(): number | undefined {

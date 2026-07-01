@@ -58,6 +58,7 @@ function createDeps(thresholds: {
     storage: noopStorage,
     sessionId: "sess-1",
     projectId: "proj-1",
+    scope: "thread",
     observeModel: fauxModel(),
     observeApiKey: "k",
     reflectModel: fauxModel(),

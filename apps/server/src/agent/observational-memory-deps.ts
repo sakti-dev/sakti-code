@@ -4,6 +4,7 @@ import type {
   TokenCounter,
   ObservationalMemoryThresholds,
   ObservationalMemoryBuffering,
+  ObservationalMemoryScope,
 } from "@sakti-code/agent";
 import { TokenCounter as TokenCounterImpl } from "@sakti-code/agent";
 import type { ServerContext } from "../context.ts";
@@ -25,6 +26,7 @@ export interface ResolvedOmConfig {
   thresholds: ObservationalMemoryThresholds;
   buffering?: ObservationalMemoryBuffering | undefined;
   tokenCounter: TokenCounter;
+  scope: ObservationalMemoryScope;
   instruction?: string | undefined;
 }
 
@@ -128,6 +130,7 @@ export function resolveOmConfig(
     thresholds,
     ...(buffering ? { buffering } : {}),
     tokenCounter: getTokenCounter(observeModel),
+    scope: omSettings.scope ?? "thread",
     ...(ctx.log?.agent === undefined ? {} : { logger: ctx.log.agent }),
     ...(omSettings.instruction !== undefined ? { instruction: omSettings.instruction } : {}),
   };

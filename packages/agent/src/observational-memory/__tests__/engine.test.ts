@@ -241,12 +241,16 @@ function createDeps(
   overrides: {
     thresholds?: { observation: number; reflection: number };
     logger?: ObservationalMemoryDeps["logger"];
+    scope?: ObservationalMemoryDeps["scope"];
+    sessionId?: string;
+    projectId?: string;
   } = {},
 ): ObservationalMemoryDeps {
   return {
     storage,
-    sessionId: "sess-1",
-    projectId: "proj-1",
+    sessionId: overrides.sessionId ?? "sess-1",
+    projectId: overrides.projectId ?? "proj-1",
+    scope: overrides.scope ?? "thread",
     observeModel: createFauxModel(),
     observeApiKey: "observe-key",
     reflectModel: createFauxModel(),
@@ -280,6 +284,36 @@ describe("ObservationalMemoryEngine (sync)", () => {
     expect(first.originType).toBe("initial");
     const second = await engine.getOrCreateRecord();
     expect(second.id).toBe(first.id);
+  });
+
+  it("resource scope: two sessions in the same project share one record", async () => {
+    const sharedStorage = new SyncOmStorage();
+    const sessionA = new TreeSessionStorage();
+    const sessionB = new TreeSessionStorage();
+
+    const engineA = new ObservationalMemoryEngine({
+      deps: createDeps(sharedStorage, sessionA, {
+        scope: "resource",
+        sessionId: "sess-a",
+        projectId: "proj-1",
+      }),
+    });
+    const engineB = new ObservationalMemoryEngine({
+      deps: createDeps(sharedStorage, sessionB, {
+        scope: "resource",
+        sessionId: "sess-b",
+        projectId: "proj-1",
+      }),
+    });
+
+    const recA = await engineA.getOrCreateRecord();
+    const recB = await engineB.getOrCreateRecord();
+
+    // Same project record — not a per-session one.
+    expect(recB.id).toBe(recA.id);
+    expect(recA.threadId).toBeNull();
+    expect(recA.scope).toBe("resource");
+    expect(recA.resourceId).toBe("proj-1");
   });
 
   it("sees messages appended AFTER engine construction (leaf refresh — C2)", async () => {

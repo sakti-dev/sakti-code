@@ -425,6 +425,7 @@ function createDeps(
     storage,
     sessionId: "sess-1",
     projectId: "proj-1",
+    scope: "thread",
     observeModel: createFauxModel(),
     observeApiKey: "observe-key",
     reflectModel: createFauxModel(),
