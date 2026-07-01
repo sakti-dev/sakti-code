@@ -213,5 +213,60 @@ export function dispatchEvent(
       // Retry resolved (success or final failure) — hide the banner.
       actions.setRetry(null);
       break;
+
+    case "om_start": {
+      const msgId = actions.getCurrentMessageId() ?? actions.getLastAssistantMessageId();
+      if (msgId) {
+        actions.addOmMarker(msgId, {
+          cycleId: event.cycleId,
+          operationType: event.operationType,
+          status: event.operationType === "buffering" ? "buffering" : "loading",
+          tokensProcessed: event.tokenCount,
+        });
+      }
+      break;
+    }
+
+    case "om_end": {
+      const msgId = actions.getCurrentMessageId() ?? actions.getLastAssistantMessageId();
+      if (msgId) {
+        actions.updateOmMarker(msgId, event.cycleId, {
+          status: "complete",
+          durationMs: event.durationMs,
+          tokensProcessed: event.tokensProcessed,
+          tokensProduced: event.tokensProduced,
+          ...(event.observations !== undefined ? { observations: event.observations } : {}),
+          ...(event.currentTask !== undefined ? { currentTask: event.currentTask } : {}),
+          ...(event.suggestedResponse !== undefined
+            ? { suggestedResponse: event.suggestedResponse }
+            : {}),
+        });
+      }
+      break;
+    }
+
+    case "om_failed": {
+      const msgId = actions.getCurrentMessageId() ?? actions.getLastAssistantMessageId();
+      if (msgId) {
+        actions.updateOmMarker(msgId, event.cycleId, {
+          status: "failed",
+          error: event.error,
+          durationMs: event.durationMs,
+        });
+      }
+      break;
+    }
+
+    case "om_activation": {
+      const msgId = actions.getCurrentMessageId() ?? actions.getLastAssistantMessageId();
+      if (msgId) {
+        actions.updateOmMarker(msgId, event.cycleId, { status: "activated" });
+      }
+      break;
+    }
+
+    case "om_status":
+      actions.updateOmStatus(event.windows);
+      break;
   }
 }

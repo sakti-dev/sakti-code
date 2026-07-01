@@ -480,3 +480,149 @@ describe("event reducer — auto_retry", () => {
     expect(session.store.retry).toBeNull();
   });
 });
+
+describe("event reducer — OM events", () => {
+  function setupWithAssistantMessage() {
+    const { session, batcher } = setup();
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("hello")));
+    return { session, batcher };
+  }
+
+  it("om_start adds a loading om_marker to current message", () => {
+    const { session, batcher } = setupWithAssistantMessage();
+    dispatchEvent(session.actions, batcher, {
+      type: "om_start",
+      cycleId: "c1",
+      operationType: "observation",
+      tokenCount: 5000,
+    });
+
+    const msgId = session.store.streaming.currentMessageId!;
+    const marker = session.store.messages[msgId]!.parts.find((p) => p.type === "om_marker");
+    expect(marker).toBeDefined();
+    expect(marker!.status).toBe("loading");
+  });
+
+  it("om_start with buffering operationType sets buffering status", () => {
+    const { session, batcher } = setupWithAssistantMessage();
+    dispatchEvent(session.actions, batcher, {
+      type: "om_start",
+      cycleId: "c1",
+      operationType: "buffering",
+      tokenCount: 5000,
+    });
+
+    const msgId = session.store.streaming.currentMessageId!;
+    const marker = session.store.messages[msgId]!.parts.find(
+      (p): p is Extract<typeof p, { type: "om_marker" }> => p.type === "om_marker",
+    );
+    expect(marker!.status).toBe("buffering");
+  });
+
+  it("om_end updates marker to complete", () => {
+    const { session, batcher } = setupWithAssistantMessage();
+    dispatchEvent(session.actions, batcher, {
+      type: "om_start",
+      cycleId: "c1",
+      operationType: "observation",
+      tokenCount: 5000,
+    });
+    dispatchEvent(session.actions, batcher, {
+      type: "om_end",
+      cycleId: "c1",
+      operationType: "observation",
+      durationMs: 3000,
+      tokensProcessed: 5000,
+      tokensProduced: 1000,
+      observations: "test obs",
+    });
+
+    const msgId = session.store.streaming.currentMessageId!;
+    const marker = session.store.messages[msgId]!.parts.find(
+      (p): p is Extract<typeof p, { type: "om_marker" }> => p.type === "om_marker",
+    );
+    expect(marker!.status).toBe("complete");
+    expect(marker!.observations).toBe("test obs");
+    expect(marker!.tokensProduced).toBe(1000);
+  });
+
+  it("om_failed updates marker to failed", () => {
+    const { session, batcher } = setupWithAssistantMessage();
+    dispatchEvent(session.actions, batcher, {
+      type: "om_start",
+      cycleId: "c1",
+      operationType: "observation",
+      tokenCount: 5000,
+    });
+    dispatchEvent(session.actions, batcher, {
+      type: "om_failed",
+      cycleId: "c1",
+      operationType: "observation",
+      error: "boom",
+      durationMs: 100,
+    });
+
+    const msgId = session.store.streaming.currentMessageId!;
+    const marker = session.store.messages[msgId]!.parts.find(
+      (p): p is Extract<typeof p, { type: "om_marker" }> => p.type === "om_marker",
+    );
+    expect(marker!.status).toBe("failed");
+    expect(marker!.error).toBe("boom");
+  });
+
+  it("om_activation updates marker to activated", () => {
+    const { session, batcher } = setupWithAssistantMessage();
+    dispatchEvent(session.actions, batcher, {
+      type: "om_start",
+      cycleId: "c1",
+      operationType: "buffering",
+      tokenCount: 5000,
+    });
+    dispatchEvent(session.actions, batcher, {
+      type: "om_activation",
+      cycleId: "c1",
+      operationType: "observation",
+      chunksActivated: 2,
+      tokensActivated: 8000,
+      observationTokens: 2000,
+    });
+
+    const msgId = session.store.streaming.currentMessageId!;
+    const marker = session.store.messages[msgId]!.parts.find(
+      (p): p is Extract<typeof p, { type: "om_marker" }> => p.type === "om_marker",
+    );
+    expect(marker!.status).toBe("activated");
+  });
+
+  it("om_status updates omStatus", () => {
+    const { session, batcher } = setup();
+    dispatchEvent(session.actions, batcher, {
+      type: "om_status",
+      windows: {
+        messages: { tokens: 18000, threshold: 30000 },
+        observations: { tokens: 11000, threshold: 40000 },
+      },
+      recordId: "r1",
+    });
+    expect(session.store.omStatus).toBeDefined();
+    expect(session.store.omStatus!.messages.tokens).toBe(18000);
+    expect(session.store.omStatus!.observations.threshold).toBe(40000);
+  });
+
+  it("om_start targets last assistant message when currentMessageId is null", () => {
+    const { session, batcher } = setupWithAssistantMessage();
+    session.actions.clearCurrentMessage();
+
+    dispatchEvent(session.actions, batcher, {
+      type: "om_start",
+      cycleId: "c1",
+      operationType: "observation",
+      tokenCount: 5000,
+    });
+
+    const lastId = session.actions.getLastAssistantMessageId();
+    expect(lastId).not.toBeNull();
+    const marker = session.store.messages[lastId!]!.parts.find((p) => p.type === "om_marker");
+    expect(marker).toBeDefined();
+  });
+});
