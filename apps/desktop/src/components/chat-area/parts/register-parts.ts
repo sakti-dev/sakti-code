@@ -1,3 +1,4 @@
+import { OmMarkerPart } from "./om-marker-part.tsx";
 import { registerPartComponent } from "./part-registry.ts";
 import { TextPart } from "./text-part.tsx";
 import { ThinkingPart } from "./thinking-part.tsx";
@@ -13,6 +14,7 @@ export function registerDefaultPartComponents(): void {
   registerPartComponent("text", TextPart);
   registerPartComponent("thinking", ThinkingPart);
   registerPartComponent("tool_call", ToolPart);
+  registerPartComponent("om_marker", OmMarkerPart);
 
   registered = true;
 }
