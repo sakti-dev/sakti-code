@@ -29,6 +29,7 @@ export type {
 export { createWebFetchTool } from "./webfetch/index";
 export { buildExaOperations } from "./websearch/adapters/exa";
 export { buildTavilyOperations } from "./websearch/adapters/tavily";
+export { buildZaiOperations } from "./websearch/adapters/zai";
 export type {
   SearchOperations,
   SearchResult,

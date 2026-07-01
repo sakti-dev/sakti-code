@@ -1,6 +1,7 @@
 import {
   buildExaOperations,
   buildTavilyOperations,
+  buildZaiOperations,
   type SearchOperations,
 } from "@sakti-code/tools";
 import type { AuthStore } from "../../lib/auth-store.ts";
@@ -34,6 +35,10 @@ export function resolveWebSearchOperations(
   if (provider === "tavily") {
     const key = auth.getApiKey("websearch:tavily");
     return key ? buildTavilyOperations(key) : undefined;
+  }
+  if (provider === "zai") {
+    const key = auth.getApiKey("websearch:zai");
+    return key ? buildZaiOperations(key) : undefined;
   }
   return undefined;
 }

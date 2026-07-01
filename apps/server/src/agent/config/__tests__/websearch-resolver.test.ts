@@ -51,4 +51,14 @@ describe("resolveWebSearchOperations", () => {
     const { auth, settings } = setup({ provider: "brave" });
     expect(resolveWebSearchOperations(auth, settings)).toBeUndefined();
   });
+
+  it("returns z.ai operations when provider=zai and a key is present", () => {
+    const { auth, settings } = setup({ provider: "zai" }, { "websearch:zai": "k" });
+    expect(resolveWebSearchOperations(auth, settings)).toBeDefined();
+  });
+
+  it("returns undefined when provider=zai but no key", () => {
+    const { auth, settings } = setup({ provider: "zai" });
+    expect(resolveWebSearchOperations(auth, settings)).toBeUndefined();
+  });
 });
