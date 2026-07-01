@@ -39,6 +39,7 @@ describe("initDatabase", () => {
     expect(names).toContain("sessions");
     expect(names).toContain("settings");
     expect(names).toContain("session_entries");
+    expect(names).toContain("observational_memory");
     expect(names).not.toContain("model_configs");
 
     // Can insert into each table
