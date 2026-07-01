@@ -1,4 +1,4 @@
-export type ProfileMode = "build" | "default" | "intake" | "plan";
+export type ProfileMode = "build" | "default" | "intake" | "observe" | "plan" | "reflect";
 
 /**
  * Map a session kind to a profile mode for model resolution.

@@ -19,7 +19,7 @@ export interface ResolvedModelRef {
 export function resolveModelRef(
   profiles: Profiles,
   profileId: string | null,
-  mode: "default" | "intake" | "plan" | "build",
+  mode: "default" | "intake" | "observe" | "plan" | "reflect" | "build",
 ): ResolvedModelRef {
   const activeId = profileId ?? profiles.defaultProfile;
   const profile = profiles.profiles[activeId];

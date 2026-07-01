@@ -52,6 +52,55 @@ describe("resolveModelRef", () => {
     expect(ref.model).toBe("llama-fast");
   });
 
+  it("resolves observe to default when absent from profile", () => {
+    const ref = resolveModelRef(PROFILES, null, "observe");
+    expect(ref.provider).toBe("anthropic");
+    expect(ref.model).toBe("claude-sonnet");
+  });
+
+  it("resolves reflect to default when absent from profile", () => {
+    const ref = resolveModelRef(PROFILES, null, "reflect");
+    expect(ref.provider).toBe("anthropic");
+    expect(ref.model).toBe("claude-sonnet");
+  });
+
+  it("resolves observe to explicit entry when present", () => {
+    const withObserve: Profiles = {
+      defaultProfile: "default",
+      profiles: {
+        default: {
+          name: "Default",
+          models: {
+            default: { provider: "anthropic", model: "claude-sonnet" },
+            observe: { provider: "groq", model: "llama-fast" },
+          },
+        },
+      },
+    };
+    const ref = resolveModelRef(withObserve, "default", "observe");
+    expect(ref.provider).toBe("groq");
+    expect(ref.model).toBe("llama-fast");
+  });
+
+  it("resolves reflect to explicit entry when present", () => {
+    const withReflect: Profiles = {
+      defaultProfile: "default",
+      profiles: {
+        default: {
+          name: "Default",
+          models: {
+            default: { provider: "anthropic", model: "claude-sonnet" },
+            reflect: { provider: "openai", model: "gpt-4o", thinkingLevel: "high" },
+          },
+        },
+      },
+    };
+    const ref = resolveModelRef(withReflect, "default", "reflect");
+    expect(ref.provider).toBe("openai");
+    expect(ref.model).toBe("gpt-4o");
+    expect(ref.thinkingLevel).toBe("high");
+  });
+
   it("uses mode override when available", () => {
     const ref = resolveModelRef(PROFILES, "balanced", "plan");
     expect(ref.provider).toBe("openai");

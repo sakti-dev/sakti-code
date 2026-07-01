@@ -87,4 +87,57 @@ describe("profiles store — referential validation", () => {
       }),
     ).not.toThrow();
   });
+
+  it("accepts profile with observe/reflect modes", () => {
+    const store = createProfilesStore(profilesPath);
+    expect(() =>
+      store.writeAll({
+        defaultProfile: "default",
+        profiles: {
+          default: {
+            name: "Default",
+            models: {
+              default: { provider: "anthropic", model: "claude-sonnet-4-20250514" },
+              observe: { provider: "openai", model: "gpt-4o" },
+              reflect: { provider: "openai", model: "gpt-4o", thinkingLevel: "high" },
+            },
+          },
+        },
+      }),
+    ).not.toThrow();
+  });
+
+  it("accepts profile without observe/reflect keys (migration)", () => {
+    const store = createProfilesStore(profilesPath);
+    const legacy = {
+      defaultProfile: "default",
+      profiles: {
+        default: {
+          name: "Default",
+          models: {
+            default: { provider: "anthropic", model: "claude-sonnet-4-20250514" },
+          },
+        },
+      },
+    };
+    expect(() => store.writeAll(legacy)).not.toThrow();
+  });
+
+  it("validates observe/reflect model refs against catalog", () => {
+    const store = createProfilesStore(profilesPath);
+    expect(() =>
+      store.writeAll({
+        defaultProfile: "default",
+        profiles: {
+          default: {
+            name: "Default",
+            models: {
+              default: { provider: "anthropic", model: "claude-sonnet-4-20250514" },
+              observe: { provider: "openai", model: "does-not-exist-xyz" },
+            },
+          },
+        },
+      }),
+    ).toThrow(MODEL_NOT_FOUND_RE);
+  });
 });
