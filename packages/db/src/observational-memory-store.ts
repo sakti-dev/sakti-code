@@ -1,12 +1,15 @@
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import type {
+  BufferedObservationChunk,
   CreateObservationalMemoryInput,
   CreateReflectionGenerationInput,
   ObservationalMemoryHistoryOptions,
   ObservationalMemoryRecord,
   ObservationalMemoryStorage,
+  SwapBufferedToActiveInput,
   SwapBufferedToActiveResult,
   UpdateActiveObservationsInput,
+  UpdateBufferedObservationsInput,
   UpdateObservationalMemoryConfigInput,
 } from "@sakti-code/agent";
 import type { DrizzleDB } from "./init.ts";
@@ -415,11 +418,157 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
       .where(eq(observationalMemory.id, input.id))
       .run();
   }
-  async updateBufferedObservations(): Promise<void> {
-    throw new Error("not implemented");
+  async updateBufferedObservations(input: UpdateBufferedObservationsInput): Promise<void> {
+    const row = this.db
+      .select({ chunks: observationalMemory.bufferedObservationChunks })
+      .from(observationalMemory)
+      .where(eq(observationalMemory.id, input.id))
+      .get();
+    if (!row) throw new Error(`OM record not found: ${input.id}`);
+
+    const existing = parseJson<BufferedObservationChunk[]>(row.chunks, []);
+    const updatedChunks = input.mode === "replace" ? input.chunks : [...existing, ...input.chunks];
+
+    const setData: Record<string, unknown> = {
+      bufferedObservationChunks: JSON.stringify(updatedChunks),
+      updatedAt: Date.now(),
+    };
+    if (input.lastBufferedAtTokens !== undefined) {
+      setData.lastBufferedAtTokens = input.lastBufferedAtTokens;
+    }
+    if (input.lastBufferedAtTime !== undefined) {
+      setData.lastBufferedAtTime = input.lastBufferedAtTime;
+    }
+
+    this.db
+      .update(observationalMemory)
+      .set(setData)
+      .where(eq(observationalMemory.id, input.id))
+      .run();
   }
-  async swapBufferedToActive(): Promise<SwapBufferedToActiveResult> {
-    throw new Error("not implemented");
+
+  async swapBufferedToActive(
+    input: SwapBufferedToActiveInput,
+  ): Promise<SwapBufferedToActiveResult> {
+    const row = this.db
+      .select()
+      .from(observationalMemory)
+      .where(eq(observationalMemory.id, input.id))
+      .get();
+    if (!row) throw new Error(`OM record not found: ${input.id}`);
+
+    const chunks = parseJson<BufferedObservationChunk[]>(row.bufferedObservationChunks, []);
+    if (chunks.length === 0) {
+      return {
+        chunksActivated: 0,
+        messageTokensActivated: 0,
+        observationTokensActivated: 0,
+        messagesActivated: 0,
+        activatedCycleIds: [],
+        activatedMessageIds: [],
+      };
+    }
+
+    // STEP 1: Compute target
+    const retentionFloor = input.messageTokensThreshold * (1 - input.activationRatio);
+    const targetMessageTokens = Math.max(0, input.currentPendingTokens - retentionFloor);
+
+    // STEP 2: Find best chunk boundary
+    let cumulativeMessageTokens = 0;
+    let bestOverBoundary = 0;
+    let bestOverTokens = 0;
+    let bestUnderBoundary = 0;
+    let bestUnderTokens = 0;
+
+    for (let i = 0; i < chunks.length; i++) {
+      cumulativeMessageTokens += chunks[i]!.messageTokens ?? 0;
+      const boundary = i + 1;
+
+      if (cumulativeMessageTokens >= targetMessageTokens) {
+        if (bestOverBoundary === 0 || cumulativeMessageTokens < bestOverTokens) {
+          bestOverBoundary = boundary;
+          bestOverTokens = cumulativeMessageTokens;
+        }
+      } else {
+        if (cumulativeMessageTokens > bestUnderTokens) {
+          bestUnderBoundary = boundary;
+          bestUnderTokens = cumulativeMessageTokens;
+        }
+      }
+    }
+
+    // STEP 3: Safeguard selection
+    const maxOvershoot = retentionFloor * 0.95;
+    const overshoot = bestOverTokens - targetMessageTokens;
+    const remainingAfterOver = input.currentPendingTokens - bestOverTokens;
+    const remainingAfterUnder = input.currentPendingTokens - bestUnderTokens;
+    const minRemaining = Math.min(1000, retentionFloor);
+
+    let chunksToActivate: number;
+    if (input.forceMaxActivation && bestOverBoundary > 0 && remainingAfterOver >= minRemaining) {
+      chunksToActivate = bestOverBoundary;
+    } else if (
+      bestOverBoundary > 0 &&
+      overshoot <= maxOvershoot &&
+      remainingAfterOver >= minRemaining
+    ) {
+      chunksToActivate = bestOverBoundary;
+    } else if (bestUnderBoundary > 0 && remainingAfterUnder >= minRemaining) {
+      chunksToActivate = bestUnderBoundary;
+    } else if (bestOverBoundary > 0) {
+      chunksToActivate = bestOverBoundary;
+    } else {
+      chunksToActivate = 1;
+    }
+
+    // STEP 4: Split
+    const activatedChunks = chunks.slice(0, chunksToActivate);
+    const remainingChunks = chunks.slice(chunksToActivate);
+
+    // STEP 5: Compute aggregates
+    const activatedContent = activatedChunks.map((c) => c.observations).join("\n\n");
+    const activatedTokens = activatedChunks.reduce((sum, c) => sum + c.tokenCount, 0);
+    const activatedMessageTokens = activatedChunks.reduce(
+      (sum, c) => sum + (c.messageTokens ?? 0),
+      0,
+    );
+    const activatedMessageCount = activatedChunks.reduce((sum, c) => sum + c.messageIds.length, 0);
+    const activatedMessageIds = [...new Set(activatedChunks.flatMap((c) => c.messageIds))];
+
+    // STEP 6: Merge into activeObservations
+    const now = Date.now();
+    const existingActive = row.activeObservations ?? "";
+    const boundary = existingActive
+      ? `\n\n--- message boundary (${new Date(now).toISOString()}) ---\n\n`
+      : "";
+    const newActive = `${existingActive}${boundary}${activatedContent}`;
+
+    const setData: Record<string, unknown> = {
+      activeObservations: newActive,
+      observationTokenCount: (row.observationTokenCount ?? 0) + activatedTokens,
+      pendingMessageTokens: Math.max(0, (row.pendingMessageTokens ?? 0) - activatedMessageTokens),
+      updatedAt: now,
+    };
+    if (remainingChunks.length > 0) {
+      setData.bufferedObservationChunks = JSON.stringify(remainingChunks);
+    } else {
+      setData.bufferedObservationChunks = null;
+    }
+
+    this.db
+      .update(observationalMemory)
+      .set(setData)
+      .where(eq(observationalMemory.id, input.id))
+      .run();
+
+    return {
+      chunksActivated: activatedChunks.length,
+      messageTokensActivated: activatedMessageTokens,
+      observationTokensActivated: activatedTokens,
+      messagesActivated: activatedMessageCount,
+      activatedCycleIds: [],
+      activatedMessageIds,
+    };
   }
   async updateBufferedReflection(): Promise<void> {
     throw new Error("not implemented");

@@ -320,3 +320,160 @@ describe("SqliteObservationalMemoryStorage — flags & maintenance", () => {
     expect(history).toEqual([]);
   });
 });
+
+describe("SqliteObservationalMemoryStorage — buffered observations", () => {
+  let db: DatabaseSync;
+  let tmpDir: string;
+  let store: SqliteObservationalMemoryStorage;
+
+  beforeAll(async () => {
+    tmpDir = mkdtempSync(join(import.meta.dirname!, "om-buf-XXXXXX"));
+    db = new DatabaseSync(join(tmpDir, "test.db"));
+    const drizzle = await initDatabase(db);
+    db.prepare(
+      "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?,?,?,?,?)",
+    ).run("proj1", "P", "/tmp/p", 1, 1);
+    for (const sid of [
+      "sess-bufobs-rpl",
+      "sess-bufobs-app",
+      "sess-bufobs-swap",
+      "sess-bufobs-zero",
+      "sess-bufobs-un",
+    ]) {
+      db.prepare(
+        "INSERT INTO sessions (id, project_id, kind, thinking_level, created_at, updated_at) VALUES (?,?,?,?,?,?)",
+      ).run(sid, "proj1", "task", "off", 1, 1);
+    }
+    store = new SqliteObservationalMemoryStorage(drizzle);
+  });
+
+  afterAll(() => {
+    db?.close();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test("updateBufferedObservations with replace sets chunks", async () => {
+    const created = await store.initializeObservationalMemory({
+      threadId: "sess-bufobs-rpl",
+      resourceId: "proj1",
+      scope: "thread",
+      config: {},
+    });
+    const chunkA = {
+      observations: "chunk A",
+      tokenCount: 5,
+      messageIds: ["m1"],
+      messageTokens: 100,
+    };
+    await store.updateBufferedObservations({ id: created.id, chunks: [chunkA], mode: "replace" });
+    const got = await store.getObservationalMemory("sess-bufobs-rpl", "proj1");
+    expect(got!.bufferedObservationChunks).toEqual([chunkA]);
+  });
+
+  test("updateBufferedObservations with append adds to existing", async () => {
+    const created = await store.initializeObservationalMemory({
+      threadId: "sess-bufobs-app",
+      resourceId: "proj1",
+      scope: "thread",
+      config: {},
+    });
+    const chunkA = {
+      observations: "chunk A",
+      tokenCount: 5,
+      messageIds: ["m1"],
+      messageTokens: 100,
+    };
+    await store.updateBufferedObservations({ id: created.id, chunks: [chunkA], mode: "replace" });
+    const chunkB = {
+      observations: "chunk B",
+      tokenCount: 3,
+      messageIds: ["m2"],
+      messageTokens: 50,
+    };
+    await store.updateBufferedObservations({
+      id: created.id,
+      chunks: [chunkB],
+      mode: "append",
+      lastBufferedAtTokens: 200,
+    });
+    const got = await store.getObservationalMemory("sess-bufobs-app", "proj1");
+    expect(got!.bufferedObservationChunks).toEqual([chunkA, chunkB]);
+    expect(got!.lastBufferedAtTokens).toBe(200);
+  });
+
+  test("swapBufferedToActive activates partial chunks and leaves remainder", async () => {
+    const created = await store.initializeObservationalMemory({
+      threadId: "sess-bufobs-swap",
+      resourceId: "proj1",
+      scope: "thread",
+      config: {},
+    });
+    const chunkA = {
+      observations: "chunk A",
+      tokenCount: 5,
+      messageIds: ["m1", "m2"],
+      messageTokens: 300,
+    };
+    const chunkB = {
+      observations: "chunk B",
+      tokenCount: 7,
+      messageIds: ["m3"],
+      messageTokens: 500,
+    };
+    await store.updateBufferedObservations({
+      id: created.id,
+      chunks: [chunkA, chunkB],
+      mode: "replace",
+    });
+    await store.setPendingMessageTokens(created.id, 1000);
+
+    const result = await store.swapBufferedToActive({
+      id: created.id,
+      messageTokensThreshold: 800,
+      activationRatio: 0.8,
+      currentPendingTokens: 1000,
+      forceMaxActivation: false,
+    });
+    expect(result.chunksActivated).toBe(2);
+    expect(result.observationTokensActivated).toBe(12);
+    expect(result.messagesActivated).toBe(3);
+    expect(result.activatedMessageIds).toEqual(["m1", "m2", "m3"]);
+
+    const got = await store.getObservationalMemory("sess-bufobs-swap", "proj1");
+    expect(got!.activeObservations).toContain("chunk A");
+    expect(got!.activeObservations).toContain("chunk B");
+    expect(got!.bufferedObservationChunks).toBeUndefined();
+    expect(got!.pendingMessageTokens).toBe(200); // 1000 - 800
+  });
+
+  test("swapBufferedToActive with no chunks returns zeroes", async () => {
+    const created = await store.initializeObservationalMemory({
+      threadId: "sess-bufobs-zero",
+      resourceId: "proj1",
+      scope: "thread",
+      config: {},
+    });
+    const result = await store.swapBufferedToActive({
+      id: created.id,
+      messageTokensThreshold: 800,
+      activationRatio: 0.8,
+      currentPendingTokens: 0,
+      forceMaxActivation: false,
+    });
+    expect(result.chunksActivated).toBe(0);
+    expect(result.observationTokensActivated).toBe(0);
+    expect(result.activatedMessageIds).toEqual([]);
+  });
+
+  test("swapBufferedToActive throws on unknown id", async () => {
+    await expect(
+      store.swapBufferedToActive({
+        id: "nope",
+        messageTokensThreshold: 800,
+        activationRatio: 0.8,
+        currentPendingTokens: 0,
+        forceMaxActivation: false,
+      }),
+    ).rejects.toThrow(/not found/i);
+  });
+});
