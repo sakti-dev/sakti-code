@@ -105,6 +105,14 @@ export type {
   UpdateBufferedReflectionInput,
   UpdateObservationalMemoryConfigInput,
 } from "./observational-memory-storage.ts";
+export type {
+  ObservationalMemoryBuffering,
+  ObservationalMemoryDeps,
+  ObservationalMemoryOptions,
+  ObservationalMemoryThresholds,
+} from "./observational-memory/config.ts";
+export { TokenCounter } from "./observational-memory/token-counter.ts";
+export type { TokenCounterModelContext } from "./observational-memory/token-counter.ts";
 export {
   ExecutionError,
   err,
