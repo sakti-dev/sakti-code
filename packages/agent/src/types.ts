@@ -304,4 +304,53 @@ export type AgentEvent =
       willRetry: boolean;
       errorMessage?: string;
     }
-  | { type: "cache_shape"; diagnostics: CacheDiagnostics };
+  | { type: "cache_shape"; diagnostics: CacheDiagnostics }
+  // --- Observational Memory lifecycle events ---
+  // Fired by ObservationalMemoryEngine via onOmEvent callback.
+  // cycleId joins start/end/failed/activation for the same operation.
+  | {
+      type: "om_start";
+      cycleId: string;
+      operationType: "observation" | "reflection" | "buffering";
+      tokenCount: number;
+    }
+  | {
+      type: "om_end";
+      cycleId: string;
+      operationType: "observation" | "reflection" | "buffering";
+      durationMs: number;
+      tokensProcessed: number;
+      tokensProduced: number;
+      observations?: string;
+      currentTask?: string;
+      suggestedResponse?: string;
+    }
+  | {
+      type: "om_failed";
+      cycleId: string;
+      operationType: "observation" | "reflection" | "buffering";
+      error: string;
+      durationMs: number;
+    }
+  | {
+      type: "om_activation";
+      cycleId: string;
+      operationType: "observation" | "reflection";
+      chunksActivated: number;
+      tokensActivated: number;
+      observationTokens: number;
+    }
+  | {
+      type: "om_status";
+      windows: {
+        messages: { tokens: number; threshold: number };
+        observations: { tokens: number; threshold: number };
+      };
+      recordId: string;
+    };
+
+/** Extract just the OM events from AgentEvent. */
+export type OmAgentEvent = Extract<
+  AgentEvent,
+  { type: "om_start" | "om_end" | "om_failed" | "om_activation" | "om_status" }
+>;
