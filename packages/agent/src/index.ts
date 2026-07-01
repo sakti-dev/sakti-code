@@ -89,6 +89,7 @@ export type {
 } from "./harness-types.ts";
 export type {
   BufferedObservationChunk,
+  BufferedObservationChunkInput,
   CreateObservationalMemoryInput,
   CreateReflectionGenerationInput,
   ObservationalMemoryHistoryOptions,

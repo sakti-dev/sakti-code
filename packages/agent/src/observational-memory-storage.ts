@@ -23,12 +23,44 @@ export type ObservationalMemoryOriginType =
   | "reflection";
 
 export interface BufferedObservationChunk {
-  cycleId?: string;
+  /** Unique identifier for this chunk (assigned by the adapter on insert) */
+  id: string;
+  /** Cycle ID for linking to UI buffering markers */
+  cycleId: string;
+  /** The observation text content */
+  observations: string;
+  /** Token count of this chunk's observations */
+  tokenCount: number;
+  /** Message IDs that were observed in this chunk */
+  messageIds: string[];
+  /** Token count of the messages that were observed (for activation calculation) */
+  messageTokens: number;
+  /** When the messages were last observed */
+  lastObservedAt: Date;
+  /** When this chunk was created (assigned by the adapter on insert) */
+  createdAt: Date;
+  /** Optional suggested continuation from the observer */
+  suggestedContinuation?: string;
+  /** Optional current task context */
+  currentTask?: string;
+  /** Optional thread title from observer output */
+  threadTitle?: string;
+}
+
+/**
+ * Input for creating a new buffered observation chunk.
+ * The adapter assigns `id` and `createdAt` before persisting.
+ */
+export interface BufferedObservationChunkInput {
+  cycleId: string;
   observations: string;
   tokenCount: number;
-  messageTokens?: number;
   messageIds: string[];
-  lastObservedAt?: string; // ISO
+  messageTokens: number;
+  lastObservedAt: Date;
+  suggestedContinuation?: string;
+  currentTask?: string;
+  threadTitle?: string;
 }
 
 export interface ObservationalMemoryRecord {
@@ -118,23 +150,32 @@ export interface SwapBufferedToActiveResult {
 
 export interface UpdateBufferedObservationsInput {
   id: string;
-  chunks: BufferedObservationChunk[];
-  mode: "replace" | "append";
-  lastBufferedAtTokens?: number;
-  lastBufferedAtTime?: Date | null;
+  /** The observation chunk to append to the buffer */
+  chunk: BufferedObservationChunkInput;
+  /** Timestamp cursor for the last buffered message boundary. Set to max message timestamp + 1ms. */
+  lastBufferedAtTime?: Date;
 }
 
 export interface UpdateBufferedReflectionInput {
   id: string;
   reflection: string;
-  reflectionTokens?: number;
-  reflectionInputTokens?: number;
-  reflectedObservationLineCount?: number;
+  /** Token count of the buffered reflection (post-compression output) */
+  tokenCount: number;
+  /** Observation tokens that were fed into the reflector (pre-compression input) */
+  inputTokenCount: number;
+  /**
+   * The number of lines in activeObservations at the time of reflection.
+   * Used at activation time to know which observations were already reflected on.
+   */
+  reflectedObservationLineCount: number;
 }
 
 export interface SwapBufferedReflectionToActiveInput {
-  id: string;
   currentRecord: ObservationalMemoryRecord;
+  /**
+   * Token count for the combined new activeObservations (bufferedReflection + unreflected).
+   * Computed by the processor using its token counter before calling the adapter.
+   */
   tokenCount: number;
 }
 

@@ -232,21 +232,28 @@ describe("SqliteObservationalMemoryStorage — flags & maintenance", () => {
     expect(got!.isReflecting).toBe(true);
   });
 
-  test("setBufferingObservationFlag sets flag and lastBufferedAtTokens when turning on", async () => {
+  test("setBufferingObservationFlag writes lastBufferedAtTokens whenever provided (Mastra semantics)", async () => {
     const created = await store.initializeObservationalMemory({
       threadId: "sess-bufobs",
       resourceId: "proj1",
       scope: "thread",
       config: {},
     });
+    // turning on with token
     await store.setBufferingObservationFlag(created.id, true, 1234);
     let got = await store.getObservationalMemory("sess-bufobs", "proj1");
     expect(got!.isBufferingObservation).toBe(true);
     expect(got!.lastBufferedAtTokens).toBe(1234);
+    // turning off WITHOUT token → token unchanged
     await store.setBufferingObservationFlag(created.id, false);
     got = await store.getObservationalMemory("sess-bufobs", "proj1");
     expect(got!.isBufferingObservation).toBe(false);
-    expect(got!.lastBufferedAtTokens).toBe(1234); // unchanged
+    expect(got!.lastBufferedAtTokens).toBe(1234);
+    // turning off WITH token → token updated (Mastra writes it regardless of flag value)
+    await store.setBufferingObservationFlag(created.id, false, 5678);
+    got = await store.getObservationalMemory("sess-bufobs", "proj1");
+    expect(got!.isBufferingObservation).toBe(false);
+    expect(got!.lastBufferedAtTokens).toBe(5678);
   });
 
   test("setBufferingReflectionFlag flips isBufferingReflection", async () => {
@@ -334,9 +341,10 @@ describe("SqliteObservationalMemoryStorage — buffered observations", () => {
       "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?,?,?,?,?)",
     ).run("proj1", "P", "/tmp/p", 1, 1);
     for (const sid of [
-      "sess-bufobs-rpl",
-      "sess-bufobs-app",
-      "sess-bufobs-swap",
+      "sess-bufobs-add",
+      "sess-bufobs-accum",
+      "sess-bufobs-partial",
+      "sess-bufobs-over",
       "sess-bufobs-zero",
       "sess-bufobs-un",
     ]) {
@@ -352,78 +360,104 @@ describe("SqliteObservationalMemoryStorage — buffered observations", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  test("updateBufferedObservations with replace sets chunks", async () => {
+  test("updateBufferedObservations appends a chunk (single-chunk API) and enriches id/createdAt", async () => {
     const created = await store.initializeObservationalMemory({
-      threadId: "sess-bufobs-rpl",
+      threadId: "sess-bufobs-add",
       resourceId: "proj1",
       scope: "thread",
       config: {},
     });
-    const chunkA = {
-      observations: "chunk A",
-      tokenCount: 5,
-      messageIds: ["m1"],
-      messageTokens: 100,
-    };
-    await store.updateBufferedObservations({ id: created.id, chunks: [chunkA], mode: "replace" });
-    const got = await store.getObservationalMemory("sess-bufobs-rpl", "proj1");
-    expect(got!.bufferedObservationChunks).toEqual([chunkA]);
-  });
-
-  test("updateBufferedObservations with append adds to existing", async () => {
-    const created = await store.initializeObservationalMemory({
-      threadId: "sess-bufobs-app",
-      resourceId: "proj1",
-      scope: "thread",
-      config: {},
-    });
-    const chunkA = {
-      observations: "chunk A",
-      tokenCount: 5,
-      messageIds: ["m1"],
-      messageTokens: 100,
-    };
-    await store.updateBufferedObservations({ id: created.id, chunks: [chunkA], mode: "replace" });
-    const chunkB = {
-      observations: "chunk B",
-      tokenCount: 3,
-      messageIds: ["m2"],
-      messageTokens: 50,
-    };
     await store.updateBufferedObservations({
       id: created.id,
-      chunks: [chunkB],
-      mode: "append",
-      lastBufferedAtTokens: 200,
+      chunk: {
+        cycleId: "cyc-A",
+        observations: "chunk A",
+        tokenCount: 5,
+        messageIds: ["m1"],
+        messageTokens: 100,
+        lastObservedAt: new Date(1_000),
+      },
     });
-    const got = await store.getObservationalMemory("sess-bufobs-app", "proj1");
-    expect(got!.bufferedObservationChunks).toEqual([chunkA, chunkB]);
-    expect(got!.lastBufferedAtTokens).toBe(200);
+    const got = await store.getObservationalMemory("sess-bufobs-add", "proj1");
+    const chunks = got!.bufferedObservationChunks!;
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]!.observations).toBe("chunk A");
+    expect(chunks[0]!.cycleId).toBe("cyc-A");
+    expect(chunks[0]!.messageTokens).toBe(100);
+    expect(chunks[0]!.id).toMatch(/^ombuf-/);
+    expect(chunks[0]!.createdAt).toBeInstanceOf(Date);
+    expect(chunks[0]!.lastObservedAt).toEqual(new Date(1_000));
   });
 
-  test("swapBufferedToActive activates partial chunks and leaves remainder", async () => {
+  test("updateBufferedObservations accumulates across calls and persists lastBufferedAtTime (epoch-ms)", async () => {
     const created = await store.initializeObservationalMemory({
-      threadId: "sess-bufobs-swap",
+      threadId: "sess-bufobs-accum",
       resourceId: "proj1",
       scope: "thread",
       config: {},
     });
-    const chunkA = {
-      observations: "chunk A",
-      tokenCount: 5,
-      messageIds: ["m1", "m2"],
-      messageTokens: 300,
-    };
-    const chunkB = {
-      observations: "chunk B",
-      tokenCount: 7,
-      messageIds: ["m3"],
-      messageTokens: 500,
-    };
     await store.updateBufferedObservations({
       id: created.id,
-      chunks: [chunkA, chunkB],
-      mode: "replace",
+      chunk: {
+        cycleId: "cyc-A",
+        observations: "chunk A",
+        tokenCount: 5,
+        messageIds: ["m1"],
+        messageTokens: 100,
+        lastObservedAt: new Date(1_000),
+      },
+    });
+    const bufferedAt = new Date(9_999);
+    await store.updateBufferedObservations({
+      id: created.id,
+      chunk: {
+        cycleId: "cyc-B",
+        observations: "chunk B",
+        tokenCount: 3,
+        messageIds: ["m2"],
+        messageTokens: 50,
+        lastObservedAt: new Date(2_000),
+      },
+      lastBufferedAtTime: bufferedAt,
+    });
+    const got = await store.getObservationalMemory("sess-bufobs-accum", "proj1");
+    const chunks = got!.bufferedObservationChunks!;
+    expect(chunks).toHaveLength(2);
+    expect(chunks.map((c) => c.observations)).toEqual(["chunk A", "chunk B"]);
+    // lastBufferedAtTime persisted as epoch-ms and revived to a Date
+    expect(got!.lastBufferedAtTime).toEqual(bufferedAt);
+  });
+
+  test("swapBufferedToActive partial-activation: activates best-under boundary, leaves remainder, advances lastObservedAt, reports cycleIds", async () => {
+    const created = await store.initializeObservationalMemory({
+      threadId: "sess-bufobs-partial",
+      resourceId: "proj1",
+      scope: "thread",
+      config: {},
+    });
+    // chunkA=300 (under target), chunkB=900 (pushes over target with too much overshoot)
+    // → algorithm picks best-under (chunkA only); chunkB stays buffered.
+    await store.updateBufferedObservations({
+      id: created.id,
+      chunk: {
+        cycleId: "cyc-A",
+        observations: "chunk A",
+        tokenCount: 5,
+        messageIds: ["m1", "m2"],
+        messageTokens: 300,
+        lastObservedAt: new Date(1_000),
+      },
+    });
+    await store.updateBufferedObservations({
+      id: created.id,
+      chunk: {
+        cycleId: "cyc-B",
+        observations: "chunk B",
+        tokenCount: 7,
+        messageIds: ["m3"],
+        messageTokens: 900,
+        lastObservedAt: new Date(2_000),
+      },
     });
     await store.setPendingMessageTokens(created.id, 1000);
 
@@ -434,16 +468,60 @@ describe("SqliteObservationalMemoryStorage — buffered observations", () => {
       currentPendingTokens: 1000,
       forceMaxActivation: false,
     });
-    expect(result.chunksActivated).toBe(2);
-    expect(result.observationTokensActivated).toBe(12);
-    expect(result.messagesActivated).toBe(3);
-    expect(result.activatedMessageIds).toEqual(["m1", "m2", "m3"]);
+    expect(result.chunksActivated).toBe(1);
+    expect(result.observationTokensActivated).toBe(5);
+    expect(result.messagesActivated).toBe(2);
+    expect(result.activatedMessageIds).toEqual(["m1", "m2"]);
+    expect(result.activatedCycleIds).toEqual(["cyc-A"]);
 
-    const got = await store.getObservationalMemory("sess-bufobs-swap", "proj1");
+    const got = await store.getObservationalMemory("sess-bufobs-partial", "proj1");
     expect(got!.activeObservations).toContain("chunk A");
-    expect(got!.activeObservations).toContain("chunk B");
+    expect(got!.activeObservations).not.toContain("chunk B");
+    // remainder kept
+    expect(got!.bufferedObservationChunks).toHaveLength(1);
+    expect(got!.bufferedObservationChunks![0]!.cycleId).toBe("cyc-B");
+    expect(got!.pendingMessageTokens).toBe(700); // 1000 - 300
+    // lastObservedAt advanced to the latest activated chunk's timestamp
+    expect(got!.lastObservedAt).toEqual(new Date(1_000));
+  });
+
+  test("swapBufferedToActive over-path: selects best-over boundary when overshoot is within budget", async () => {
+    const created = await store.initializeObservationalMemory({
+      threadId: "sess-bufobs-over",
+      resourceId: "proj1",
+      scope: "thread",
+      config: {},
+    });
+    // retentionFloor=5000, target=5000, one chunk=5200 crosses target with small overshoot
+    // and leaves enough remaining → best-over branch (branch 2) is taken.
+    await store.updateBufferedObservations({
+      id: created.id,
+      chunk: {
+        cycleId: "cyc-O",
+        observations: "over chunk",
+        tokenCount: 20,
+        messageIds: ["m1"],
+        messageTokens: 5200,
+        lastObservedAt: new Date(5_000),
+      },
+    });
+    await store.setPendingMessageTokens(created.id, 10000);
+
+    const result = await store.swapBufferedToActive({
+      id: created.id,
+      messageTokensThreshold: 10000,
+      activationRatio: 0.5,
+      currentPendingTokens: 10000,
+      forceMaxActivation: false,
+    });
+    expect(result.chunksActivated).toBe(1);
+    expect(result.activatedCycleIds).toEqual(["cyc-O"]);
+
+    const got = await store.getObservationalMemory("sess-bufobs-over", "proj1");
+    expect(got!.activeObservations).toContain("over chunk");
     expect(got!.bufferedObservationChunks).toBeUndefined();
-    expect(got!.pendingMessageTokens).toBe(200); // 1000 - 800
+    expect(got!.pendingMessageTokens).toBe(4800); // 10000 - 5200
+    expect(got!.lastObservedAt).toEqual(new Date(5_000));
   });
 
   test("swapBufferedToActive with no chunks returns zeroes", async () => {
@@ -490,7 +568,7 @@ describe("SqliteObservationalMemoryStorage — buffered reflection", () => {
     db.prepare(
       "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?,?,?,?,?)",
     ).run("proj1", "P", "/tmp/p", 1, 1);
-    for (const sid of ["sess-ref-ubr", "sess-ref-ubr-thr", "sess-ref-swap"]) {
+    for (const sid of ["sess-ref-set", "sess-ref-accum", "sess-ref-thr", "sess-ref-swap"]) {
       db.prepare(
         "INSERT INTO sessions (id, project_id, kind, thinking_level, created_at, updated_at) VALUES (?,?,?,?,?,?)",
       ).run(sid, "proj1", "task", "off", 1, 1);
@@ -505,7 +583,7 @@ describe("SqliteObservationalMemoryStorage — buffered reflection", () => {
 
   test("updateBufferedReflection sets reflection fields", async () => {
     const created = await store.initializeObservationalMemory({
-      threadId: "sess-ref-ubr",
+      threadId: "sess-ref-set",
       resourceId: "proj1",
       scope: "thread",
       config: {},
@@ -513,24 +591,58 @@ describe("SqliteObservationalMemoryStorage — buffered reflection", () => {
     await store.updateBufferedReflection({
       id: created.id,
       reflection: "my reflection",
-      reflectionTokens: 50,
-      reflectionInputTokens: 200,
+      tokenCount: 50,
+      inputTokenCount: 200,
       reflectedObservationLineCount: 10,
     });
-    const got = await store.getObservationalMemory("sess-ref-ubr", "proj1");
+    const got = await store.getObservationalMemory("sess-ref-set", "proj1");
     expect(got!.bufferedReflection).toBe("my reflection");
     expect(got!.bufferedReflectionTokens).toBe(50);
     expect(got!.bufferedReflectionInputTokens).toBe(200);
     expect(got!.reflectedObservationLineCount).toBe(10);
   });
 
-  test("updateBufferedReflection throws on unknown id", async () => {
-    await expect(store.updateBufferedReflection({ id: "nope", reflection: "x" })).rejects.toThrow(
-      /not found/i,
-    );
+  test("updateBufferedReflection accumulates across calls (appends reflection, adds tokens)", async () => {
+    const created = await store.initializeObservationalMemory({
+      threadId: "sess-ref-accum",
+      resourceId: "proj1",
+      scope: "thread",
+      config: {},
+    });
+    await store.updateBufferedReflection({
+      id: created.id,
+      reflection: "part one",
+      tokenCount: 50,
+      inputTokenCount: 200,
+      reflectedObservationLineCount: 2,
+    });
+    await store.updateBufferedReflection({
+      id: created.id,
+      reflection: "part two",
+      tokenCount: 30,
+      inputTokenCount: 100,
+      reflectedObservationLineCount: 2,
+    });
+    const got = await store.getObservationalMemory("sess-ref-accum", "proj1");
+    expect(got!.bufferedReflection).toBe("part one\n\npart two");
+    expect(got!.bufferedReflectionTokens).toBe(80); // 50 + 30
+    expect(got!.bufferedReflectionInputTokens).toBe(300); // 200 + 100
+    expect(got!.reflectedObservationLineCount).toBe(2); // last write wins
   });
 
-  test("swapBufferedReflectionToActive swaps reflection into active and creates new generation", async () => {
+  test("updateBufferedReflection throws on unknown id", async () => {
+    await expect(
+      store.updateBufferedReflection({
+        id: "nope",
+        reflection: "x",
+        tokenCount: 1,
+        inputTokenCount: 1,
+        reflectedObservationLineCount: 0,
+      }),
+    ).rejects.toThrow(/not found/i);
+  });
+
+  test("swapBufferedReflectionToActive swaps reflection into active, creates new generation, and clears old record", async () => {
     const created = await store.initializeObservationalMemory({
       threadId: "sess-ref-swap",
       resourceId: "proj1",
@@ -548,11 +660,12 @@ describe("SqliteObservationalMemoryStorage — buffered reflection", () => {
     await store.updateBufferedReflection({
       id: created.id,
       reflection: "reflected content",
+      tokenCount: 8,
+      inputTokenCount: 20,
       reflectedObservationLineCount: 2,
     });
 
     const newRecord = await store.swapBufferedReflectionToActive({
-      id: created.id,
       currentRecord: initial!,
       tokenCount: 30,
     });
@@ -563,8 +676,17 @@ describe("SqliteObservationalMemoryStorage — buffered reflection", () => {
     expect(newRecord.activeObservations).toContain("line3");
     expect(newRecord.activeObservations).toContain("line4");
     expect(newRecord.bufferedReflection).toBeUndefined();
-    // Old record should remain unchanged (historical) — get by lookup still returns newest
+    // Current (latest generation) is the new record
     const got = await store.getObservationalMemory("sess-ref-swap", "proj1");
     expect(got!.id).toBe(newRecord.id);
+
+    // #13: the OLD record's buffered fields were cleared
+    const history = await store.getObservationalMemoryHistory("sess-ref-swap", "proj1");
+    const oldRecord = history.find((r) => r.id === created.id);
+    expect(oldRecord).toBeDefined();
+    expect(oldRecord!.bufferedReflection).toBeUndefined();
+    expect(oldRecord!.bufferedReflectionTokens).toBeUndefined();
+    expect(oldRecord!.bufferedReflectionInputTokens).toBeUndefined();
+    expect(oldRecord!.reflectedObservationLineCount).toBeUndefined();
   });
 });

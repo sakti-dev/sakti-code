@@ -70,7 +70,15 @@ function parseRecord(row: typeof observationalMemory.$inferSelect): Observationa
     ...(row.bufferedObservationChunks == null
       ? {}
       : {
-          bufferedObservationChunks: parseJson(row.bufferedObservationChunks, undefined as never),
+          bufferedObservationChunks: parseJson<BufferedObservationChunk[]>(
+            row.bufferedObservationChunks,
+            [],
+          ).map((c) => ({
+            ...c,
+            // JSON round-trips Dates as ISO strings; revive them to match the type.
+            lastObservedAt: new Date(c.lastObservedAt),
+            createdAt: new Date(c.createdAt),
+          })),
         }),
     ...(row.bufferedReflection == null ? {} : { bufferedReflection: row.bufferedReflection }),
     ...(row.bufferedReflectionTokens == null
@@ -84,7 +92,7 @@ function parseRecord(row: typeof observationalMemory.$inferSelect): Observationa
       : { reflectedObservationLineCount: row.reflectedObservationLineCount }),
     ...(row.observedMessageIds == null
       ? {}
-      : { observedMessageIds: parseJson(row.observedMessageIds, undefined as never) }),
+      : { observedMessageIds: parseJson<string[]>(row.observedMessageIds, []) }),
     ...(row.observedTimezone == null ? {} : { observedTimezone: row.observedTimezone }),
     totalTokensObserved: row.totalTokensObserved,
     observationTokenCount: row.observationTokenCount,
@@ -96,7 +104,9 @@ function parseRecord(row: typeof observationalMemory.$inferSelect): Observationa
     lastBufferedAtTokens: row.lastBufferedAtTokens,
     lastBufferedAtTime: toDate(row.lastBufferedAtTime ?? null) ?? null,
     config: parseJson(row.config, {}),
-    ...(row.metadata == null ? {} : { metadata: parseJson(row.metadata, {} as never) }),
+    ...(row.metadata == null
+      ? {}
+      : { metadata: parseJson<Record<string, unknown>>(row.metadata, {}) }),
   };
 }
 
@@ -180,7 +190,6 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
     return parseRecord(row);
   }
 
-  // Stub methods — implemented in later tasks
   async insertObservationalMemoryRecord(record: ObservationalMemoryRecord): Promise<void> {
     this.db
       .insert(observationalMemory)
@@ -357,7 +366,7 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
       .update(observationalMemory)
       .set({
         isBufferingObservation: isBuffering,
-        ...(isBuffering && lastBufferedAtTokens !== undefined ? { lastBufferedAtTokens } : {}),
+        ...(lastBufferedAtTokens !== undefined ? { lastBufferedAtTokens } : {}),
         updatedAt: Date.now(),
       })
       .where(eq(observationalMemory.id, id))
@@ -421,47 +430,58 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
       .run();
   }
   async updateBufferedObservations(input: UpdateBufferedObservationsInput): Promise<void> {
-    const row = this.db
-      .select({ chunks: observationalMemory.bufferedObservationChunks })
-      .from(observationalMemory)
-      .where(eq(observationalMemory.id, input.id))
-      .get();
-    if (!row) throw new Error(`OM record not found: ${input.id}`);
+    this.db.transaction((tx) => {
+      const row = tx
+        .select({ chunks: observationalMemory.bufferedObservationChunks })
+        .from(observationalMemory)
+        .where(eq(observationalMemory.id, input.id))
+        .get();
+      if (!row) throw new Error(`OM record not found: ${input.id}`);
 
-    const existing = parseJson<BufferedObservationChunk[]>(row.chunks, []);
-    const updatedChunks = input.mode === "replace" ? input.chunks : [...existing, ...input.chunks];
+      const existing = parseJson<BufferedObservationChunk[]>(row.chunks, []);
+      // Adapter assigns id + createdAt before persisting (matches Mastra).
+      const newChunk: BufferedObservationChunk = {
+        id: `ombuf-${crypto.randomUUID()}`,
+        cycleId: input.chunk.cycleId,
+        observations: input.chunk.observations,
+        tokenCount: input.chunk.tokenCount,
+        messageIds: input.chunk.messageIds,
+        messageTokens: input.chunk.messageTokens,
+        lastObservedAt: input.chunk.lastObservedAt,
+        createdAt: new Date(),
+        ...(input.chunk.suggestedContinuation === undefined
+          ? {}
+          : { suggestedContinuation: input.chunk.suggestedContinuation }),
+        ...(input.chunk.currentTask === undefined ? {} : { currentTask: input.chunk.currentTask }),
+        ...(input.chunk.threadTitle === undefined ? {} : { threadTitle: input.chunk.threadTitle }),
+      };
+      const updated = [...existing, newChunk];
 
-    const setData: Record<string, unknown> = {
-      bufferedObservationChunks: JSON.stringify(updatedChunks),
-      updatedAt: Date.now(),
-    };
-    if (input.lastBufferedAtTokens !== undefined) {
-      setData.lastBufferedAtTokens = input.lastBufferedAtTokens;
-    }
-    if (input.lastBufferedAtTime !== undefined) {
-      setData.lastBufferedAtTime = input.lastBufferedAtTime;
-    }
+      const setData: Record<string, unknown> = {
+        bufferedObservationChunks: JSON.stringify(updated),
+        updatedAt: Date.now(),
+      };
+      if (input.lastBufferedAtTime !== undefined) {
+        setData.lastBufferedAtTime = input.lastBufferedAtTime.getTime();
+      }
 
-    this.db
-      .update(observationalMemory)
-      .set(setData)
-      .where(eq(observationalMemory.id, input.id))
-      .run();
+      tx.update(observationalMemory).set(setData).where(eq(observationalMemory.id, input.id)).run();
+    });
   }
 
   async swapBufferedToActive(
     input: SwapBufferedToActiveInput,
   ): Promise<SwapBufferedToActiveResult> {
-    const row = this.db
-      .select()
-      .from(observationalMemory)
-      .where(eq(observationalMemory.id, input.id))
-      .get();
-    if (!row) throw new Error(`OM record not found: ${input.id}`);
+    return this.db.transaction((tx) => {
+      const row = tx
+        .select()
+        .from(observationalMemory)
+        .where(eq(observationalMemory.id, input.id))
+        .get();
+      if (!row) throw new Error(`OM record not found: ${input.id}`);
 
-    const chunks = parseJson<BufferedObservationChunk[]>(row.bufferedObservationChunks, []);
-    if (chunks.length === 0) {
-      return {
+      const chunks = parseJson<BufferedObservationChunk[]>(row.bufferedObservationChunks, []);
+      const empty: SwapBufferedToActiveResult = {
         chunksActivated: 0,
         messageTokensActivated: 0,
         observationTokensActivated: 0,
@@ -469,182 +489,227 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
         activatedCycleIds: [],
         activatedMessageIds: [],
       };
-    }
+      if (chunks.length === 0) return empty;
 
-    // STEP 1: Compute target
-    const retentionFloor = input.messageTokensThreshold * (1 - input.activationRatio);
-    const targetMessageTokens = Math.max(0, input.currentPendingTokens - retentionFloor);
+      // STEP 1: Compute target
+      const retentionFloor = input.messageTokensThreshold * (1 - input.activationRatio);
+      const targetMessageTokens = Math.max(0, input.currentPendingTokens - retentionFloor);
 
-    // STEP 2: Find best chunk boundary
-    let cumulativeMessageTokens = 0;
-    let bestOverBoundary = 0;
-    let bestOverTokens = 0;
-    let bestUnderBoundary = 0;
-    let bestUnderTokens = 0;
+      // STEP 2: Find best chunk boundary
+      let cumulativeMessageTokens = 0;
+      let bestOverBoundary = 0;
+      let bestOverTokens = 0;
+      let bestUnderBoundary = 0;
+      let bestUnderTokens = 0;
 
-    for (let i = 0; i < chunks.length; i++) {
-      cumulativeMessageTokens += chunks[i]!.messageTokens ?? 0;
-      const boundary = i + 1;
+      for (let i = 0; i < chunks.length; i++) {
+        cumulativeMessageTokens += chunks[i]!.messageTokens ?? 0;
+        const boundary = i + 1;
 
-      if (cumulativeMessageTokens >= targetMessageTokens) {
-        if (bestOverBoundary === 0 || cumulativeMessageTokens < bestOverTokens) {
-          bestOverBoundary = boundary;
-          bestOverTokens = cumulativeMessageTokens;
-        }
-      } else {
-        if (cumulativeMessageTokens > bestUnderTokens) {
-          bestUnderBoundary = boundary;
-          bestUnderTokens = cumulativeMessageTokens;
+        if (cumulativeMessageTokens >= targetMessageTokens) {
+          if (bestOverBoundary === 0 || cumulativeMessageTokens < bestOverTokens) {
+            bestOverBoundary = boundary;
+            bestOverTokens = cumulativeMessageTokens;
+          }
+        } else {
+          if (cumulativeMessageTokens > bestUnderTokens) {
+            bestUnderBoundary = boundary;
+            bestUnderTokens = cumulativeMessageTokens;
+          }
         }
       }
-    }
 
-    // STEP 3: Safeguard selection
-    const maxOvershoot = retentionFloor * 0.95;
-    const overshoot = bestOverTokens - targetMessageTokens;
-    const remainingAfterOver = input.currentPendingTokens - bestOverTokens;
-    const remainingAfterUnder = input.currentPendingTokens - bestUnderTokens;
-    const minRemaining = Math.min(1000, retentionFloor);
+      // STEP 3: Safeguard selection
+      const maxOvershoot = retentionFloor * 0.95;
+      const overshoot = bestOverTokens - targetMessageTokens;
+      const remainingAfterOver = input.currentPendingTokens - bestOverTokens;
+      const remainingAfterUnder = input.currentPendingTokens - bestUnderTokens;
+      const minRemaining = Math.min(1000, retentionFloor);
 
-    let chunksToActivate: number;
-    if (input.forceMaxActivation && bestOverBoundary > 0 && remainingAfterOver >= minRemaining) {
-      chunksToActivate = bestOverBoundary;
-    } else if (
-      bestOverBoundary > 0 &&
-      overshoot <= maxOvershoot &&
-      remainingAfterOver >= minRemaining
-    ) {
-      chunksToActivate = bestOverBoundary;
-    } else if (bestUnderBoundary > 0 && remainingAfterUnder >= minRemaining) {
-      chunksToActivate = bestUnderBoundary;
-    } else if (bestOverBoundary > 0) {
-      chunksToActivate = bestOverBoundary;
-    } else {
-      chunksToActivate = 1;
-    }
+      let chunksToActivate: number;
+      if (input.forceMaxActivation && bestOverBoundary > 0 && remainingAfterOver >= minRemaining) {
+        chunksToActivate = bestOverBoundary;
+      } else if (
+        bestOverBoundary > 0 &&
+        overshoot <= maxOvershoot &&
+        remainingAfterOver >= minRemaining
+      ) {
+        chunksToActivate = bestOverBoundary;
+      } else if (bestUnderBoundary > 0 && remainingAfterUnder >= minRemaining) {
+        chunksToActivate = bestUnderBoundary;
+      } else if (bestOverBoundary > 0) {
+        chunksToActivate = bestOverBoundary;
+      } else {
+        chunksToActivate = 1;
+      }
 
-    // STEP 4: Split
-    const activatedChunks = chunks.slice(0, chunksToActivate);
-    const remainingChunks = chunks.slice(chunksToActivate);
+      // STEP 4: Split
+      const activatedChunks = chunks.slice(0, chunksToActivate);
+      const remainingChunks = chunks.slice(chunksToActivate);
 
-    // STEP 5: Compute aggregates
-    const activatedContent = activatedChunks.map((c) => c.observations).join("\n\n");
-    const activatedTokens = activatedChunks.reduce((sum, c) => sum + c.tokenCount, 0);
-    const activatedMessageTokens = activatedChunks.reduce(
-      (sum, c) => sum + (c.messageTokens ?? 0),
-      0,
-    );
-    const activatedMessageCount = activatedChunks.reduce((sum, c) => sum + c.messageIds.length, 0);
-    const activatedMessageIds = [...new Set(activatedChunks.flatMap((c) => c.messageIds))];
+      // STEP 5: Compute aggregates
+      const activatedContent = activatedChunks.map((c) => c.observations).join("\n\n");
+      const activatedTokens = activatedChunks.reduce((sum, c) => sum + c.tokenCount, 0);
+      const activatedMessageTokens = activatedChunks.reduce(
+        (sum, c) => sum + (c.messageTokens ?? 0),
+        0,
+      );
+      const activatedMessageCount = activatedChunks.reduce(
+        (sum, c) => sum + c.messageIds.length,
+        0,
+      );
+      const activatedCycleIds = activatedChunks
+        .map((c) => c.cycleId)
+        .filter((id): id is string => !!id);
+      const activatedMessageIds = activatedChunks.flatMap((c) => c.messageIds);
 
-    // STEP 6: Merge into activeObservations
-    const now = Date.now();
-    const existingActive = row.activeObservations ?? "";
-    const boundary = existingActive
-      ? `\n\n--- message boundary (${new Date(now).toISOString()}) ---\n\n`
-      : "";
-    const newActive = `${existingActive}${boundary}${activatedContent}`;
+      // Derive lastObservedAt from the latest activated chunk, or use provided value
+      const latestChunk = activatedChunks[activatedChunks.length - 1];
+      const lastObservedAt =
+        input.lastObservedAt ??
+        (latestChunk?.lastObservedAt ? new Date(latestChunk.lastObservedAt) : new Date());
 
-    const setData: Record<string, unknown> = {
-      activeObservations: newActive,
-      observationTokenCount: (row.observationTokenCount ?? 0) + activatedTokens,
-      pendingMessageTokens: Math.max(0, (row.pendingMessageTokens ?? 0) - activatedMessageTokens),
-      updatedAt: now,
-    };
-    if (remainingChunks.length > 0) {
-      setData.bufferedObservationChunks = JSON.stringify(remainingChunks);
-    } else {
-      setData.bufferedObservationChunks = null;
-    }
+      // STEP 6: Merge into activeObservations
+      const now = Date.now();
+      const existingActive = row.activeObservations ?? "";
+      const boundary = existingActive
+        ? `\n\n--- message boundary (${lastObservedAt.toISOString()}) ---\n\n`
+        : "";
+      const newActive = `${existingActive}${boundary}${activatedContent}`;
 
-    this.db
-      .update(observationalMemory)
-      .set(setData)
-      .where(eq(observationalMemory.id, input.id))
-      .run();
+      const setData: Record<string, unknown> = {
+        activeObservations: newActive,
+        observationTokenCount: (row.observationTokenCount ?? 0) + activatedTokens,
+        pendingMessageTokens: Math.max(0, (row.pendingMessageTokens ?? 0) - activatedMessageTokens),
+        lastObservedAt: lastObservedAt.getTime(),
+        updatedAt: now,
+      };
+      if (remainingChunks.length > 0) {
+        setData.bufferedObservationChunks = JSON.stringify(remainingChunks);
+      } else {
+        setData.bufferedObservationChunks = null;
+      }
 
-    return {
-      chunksActivated: activatedChunks.length,
-      messageTokensActivated: activatedMessageTokens,
-      observationTokensActivated: activatedTokens,
-      messagesActivated: activatedMessageCount,
-      activatedCycleIds: [],
-      activatedMessageIds,
-    };
+      tx.update(observationalMemory).set(setData).where(eq(observationalMemory.id, input.id)).run();
+
+      return {
+        chunksActivated: activatedChunks.length,
+        messageTokensActivated: activatedMessageTokens,
+        observationTokensActivated: activatedTokens,
+        messagesActivated: activatedMessageCount,
+        activatedCycleIds,
+        activatedMessageIds,
+      };
+    });
   }
   async updateBufferedReflection(input: UpdateBufferedReflectionInput): Promise<void> {
-    if (
-      !this.db
-        .select({ id: observationalMemory.id })
+    this.db.transaction((tx) => {
+      const row = tx
+        .select({
+          reflection: observationalMemory.bufferedReflection,
+          tokens: observationalMemory.bufferedReflectionTokens,
+          inputTokens: observationalMemory.bufferedReflectionInputTokens,
+        })
         .from(observationalMemory)
         .where(eq(observationalMemory.id, input.id))
-        .get()
-    ) {
-      throw new Error(`OM record not found: ${input.id}`);
-    }
-    const setData: Record<string, unknown> = {
-      bufferedReflection: input.reflection,
-      updatedAt: Date.now(),
-    };
-    if (input.reflectionTokens !== undefined) {
-      setData.bufferedReflectionTokens = input.reflectionTokens;
-    }
-    if (input.reflectionInputTokens !== undefined) {
-      setData.bufferedReflectionInputTokens = input.reflectionInputTokens;
-    }
-    if (input.reflectedObservationLineCount !== undefined) {
-      setData.reflectedObservationLineCount = input.reflectedObservationLineCount;
-    }
-    this.db
-      .update(observationalMemory)
-      .set(setData)
-      .where(eq(observationalMemory.id, input.id))
-      .run();
+        .get();
+      if (!row) throw new Error(`OM record not found: ${input.id}`);
+
+      // Accumulate (matches Mastra): append to existing reflection, add to token totals.
+      const existingReflection = row.reflection ?? "";
+      const newReflection =
+        existingReflection !== ""
+          ? `${existingReflection}\n\n${input.reflection}`
+          : input.reflection;
+      const newTokens = (row.tokens ?? 0) + input.tokenCount;
+      const newInputTokens = (row.inputTokens ?? 0) + input.inputTokenCount;
+
+      tx.update(observationalMemory)
+        .set({
+          bufferedReflection: newReflection,
+          bufferedReflectionTokens: newTokens,
+          bufferedReflectionInputTokens: newInputTokens,
+          reflectedObservationLineCount: input.reflectedObservationLineCount,
+          updatedAt: Date.now(),
+        })
+        .where(eq(observationalMemory.id, input.id))
+        .run();
+    });
   }
 
   async swapBufferedReflectionToActive(
     input: SwapBufferedReflectionToActiveInput,
   ): Promise<ObservationalMemoryRecord> {
-    const row = this.db
-      .select()
-      .from(observationalMemory)
-      .where(eq(observationalMemory.id, input.id))
-      .get();
-    if (!row) throw new Error(`OM record not found: ${input.id}`);
-    if (!row.bufferedReflection) throw new Error("No buffered reflection to swap");
+    return this.db.transaction((tx) => {
+      const id = input.currentRecord.id;
+      const row = tx.select().from(observationalMemory).where(eq(observationalMemory.id, id)).get();
+      if (!row) throw new Error(`OM record not found: ${id}`);
+      if (!row.bufferedReflection) throw new Error("No buffered reflection to swap");
 
-    const bufferedReflection = row.bufferedReflection;
-    const reflectedLineCount = row.reflectedObservationLineCount ?? 0;
+      const bufferedReflection = row.bufferedReflection;
+      const reflectedLineCount = row.reflectedObservationLineCount ?? 0;
 
-    // Lines 0..reflectedLineCount were reflected on → replaced by bufferedReflection.
-    // Lines after reflectedLineCount were added after reflection started → kept as-is.
-    const allLines = (row.activeObservations ?? "").split("\n");
-    const unreflectedLines = allLines.slice(reflectedLineCount);
-    const unreflectedContent = unreflectedLines.join("\n").trim();
+      // Lines 0..reflectedLineCount were reflected on → replaced by bufferedReflection.
+      // Lines after reflectedLineCount were added after reflection started → kept as-is.
+      const allLines = (row.activeObservations ?? "").split("\n");
+      const unreflectedLines = allLines.slice(reflectedLineCount);
+      const unreflectedContent = unreflectedLines.join("\n").trim();
 
-    const newObservations = unreflectedContent
-      ? `${bufferedReflection}\n\n${unreflectedContent}`
-      : bufferedReflection;
+      const newObservations = unreflectedContent
+        ? `${bufferedReflection}\n\n${unreflectedContent}`
+        : bufferedReflection;
 
-    const newRecord = await this.createReflectionGeneration({
-      currentRecord: input.currentRecord,
-      reflection: newObservations,
-      tokenCount: input.tokenCount,
+      // Create new generation inside the same transaction (inlined so it shares `tx`).
+      const c = input.currentRecord;
+      const newId = crypto.randomUUID();
+      const now = Date.now();
+      tx.insert(observationalMemory)
+        .values({
+          id: newId,
+          lookupKey: omLookupKey(c.threadId, c.resourceId),
+          scope: c.scope,
+          resourceId: c.resourceId,
+          threadId: c.threadId,
+          activeObservations: newObservations,
+          originType: "reflection",
+          generationCount: c.generationCount + 1,
+          config: JSON.stringify(c.config),
+          pendingMessageTokens: 0,
+          totalTokensObserved: c.totalTokensObserved,
+          observationTokenCount: input.tokenCount,
+          isObserving: false,
+          isReflecting: false,
+          isBufferingObservation: false,
+          isBufferingReflection: false,
+          lastBufferedAtTokens: 0,
+          ...(c.lastObservedAt === undefined ? {} : { lastObservedAt: c.lastObservedAt.getTime() }),
+          lastReflectionAt: now,
+          ...(c.observedTimezone === undefined ? {} : { observedTimezone: c.observedTimezone }),
+          ...(c.metadata === undefined ? {} : { metadata: JSON.stringify(c.metadata) }),
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      // Clear buffered state on the old (current) record
+      tx.update(observationalMemory)
+        .set({
+          bufferedReflection: null,
+          bufferedReflectionTokens: null,
+          bufferedReflectionInputTokens: null,
+          reflectedObservationLineCount: null,
+          updatedAt: now,
+        })
+        .where(eq(observationalMemory.id, id))
+        .run();
+
+      const created = tx
+        .select()
+        .from(observationalMemory)
+        .where(eq(observationalMemory.id, newId))
+        .get();
+      if (!created) throw new Error(`OM record not found after insert: ${newId}`);
+      return parseRecord(created);
     });
-
-    // Clear buffered state on the old (current) record
-    this.db
-      .update(observationalMemory)
-      .set({
-        bufferedReflection: null,
-        bufferedReflectionTokens: null,
-        bufferedReflectionInputTokens: null,
-        reflectedObservationLineCount: null,
-        updatedAt: Date.now(),
-      })
-      .where(eq(observationalMemory.id, input.id))
-      .run();
-
-    return newRecord;
   }
 }
