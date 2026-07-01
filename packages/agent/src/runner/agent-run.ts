@@ -13,6 +13,7 @@ import {
   type StuckGuardState,
 } from "../compaction/retry-loop.ts";
 import type { AgentHarnessEvent, PromptTemplate, Skill, ThinkingLevel } from "../harness-types.ts";
+import type { ObservationalMemoryOptions } from "../observational-memory/config.ts";
 import { planFirstTurn, type ReadFile } from "../resources/prompt-preprocessor.ts";
 import type { SessionShape } from "../session/session.ts";
 import type { SessionStorageShape } from "../session/storage.ts";
@@ -34,6 +35,7 @@ export interface AgentRunDeps {
 
   readonly message: string;
   readonly model: Model;
+  readonly observationalMemory?: ObservationalMemoryOptions | undefined;
   readonly persistStuckGuard: (state: StuckGuardState) => Effect.Effect<void, Error>;
   /** Override node:fs readFile (used by planFirstTurn for @file expansion). */
   readonly readFile?: ReadFile;

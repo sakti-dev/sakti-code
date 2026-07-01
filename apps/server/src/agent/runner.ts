@@ -18,6 +18,8 @@ import {
   promiseSessionAsShape,
   runAgentRunEffect,
 } from "@sakti-code/agent";
+import type { ObservationalMemoryOptions } from "@sakti-code/agent";
+import { SqliteObservationalMemoryStorage } from "@sakti-code/db";
 import { type EditMode, InMemorySnapshotStore } from "@sakti-code/tools";
 import { Effect } from "effect";
 import type { ServerContext } from "../context.ts";
@@ -37,6 +39,7 @@ import {
 import { resolveWebSearchOperations } from "./config/websearch-resolver.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
+import { resolveOmConfig } from "./observational-memory-deps.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
 import type { WsHandle } from "./ws-handler.ts";
 
@@ -546,6 +549,36 @@ export function runPromptEffect(
       agent: agent.name,
     });
 
+    // ── Observational Memory deps (optional) ──────────────────────
+    let omOptions: ObservationalMemoryOptions | undefined;
+    const omConfig = resolveOmConfig(ctx, {
+      id: sessionId,
+      kind: session.kind,
+      projectId: session.projectId,
+      profileId: session.profileId,
+    });
+    if (omConfig) {
+      const leafId = yield* storage.getLeafId();
+      const omStorage = new SqliteObservationalMemoryStorage(ctx.db);
+      omOptions = {
+        enabled: true,
+        deps: {
+          ...omConfig,
+          storage: omStorage,
+          sessionId,
+          projectId: session.projectId,
+          sessionStorage: storage,
+          leafId,
+        },
+      };
+      ctx.log?.agent.debug("om deps assembled", {
+        observeProvider: omConfig.observeModel.provider,
+        reflectProvider: omConfig.reflectModel.provider,
+        observationThreshold: omConfig.thresholds.observation,
+        reflectionThreshold: omConfig.thresholds.reflection,
+      });
+    }
+
     // Delegate the orchestration (event drain, retry abort, retry-deps
     // assembly, planFirstTurn dispatch, stuck-guard policy, compaction
     // callbacks, ensuring cleanup) to the factory in @sakti-code/agent.
@@ -560,6 +593,7 @@ export function runPromptEffect(
       model,
       apiKey: auth.apiKey,
       ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
+      ...(omOptions ? { observationalMemory: omOptions } : {}),
       skills: activeSkills,
       templates: loadedContext.commands,
       cwd: project.cwd,
