@@ -1,4 +1,4 @@
-import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Separator } from "~/components/ui/separator";
 import { Tooltip } from "~/components/ui/tooltip";
@@ -7,13 +7,20 @@ import { useStore } from "~/stores/store-context";
 import { openProjectTab } from "~/stores/workspace/tab-store";
 import { setSidebarOpen, sidebarOpen } from "~/stores/workspace/ui-signals";
 import { AddProjectInput } from "./add-project-input.tsx";
+import { MemorySidebarCard } from "./memory-sidebar-card.tsx";
 import { ProjectContextMenu } from "./project-context-menu.tsx";
 import { ProjectGroup } from "./project-group.tsx";
 
 export default function Sidebar() {
-  const { server, actions } = useStore();
+  const { server, actions, sessions } = useStore();
   const [expandedProjects, setExpandedProjects] = createSignal<Set<string>>(new Set());
   const [showAddInput, setShowAddInput] = createSignal(false);
+
+  const activeOmStatus = createMemo(() => {
+    const id = server.store.activeSessionId;
+    if (!id) return null;
+    return sessions.get(id).store.omStatus;
+  });
   const [contextMenu, setContextMenu] = createSignal<{
     projectId: string;
     x: number;
@@ -294,6 +301,8 @@ export default function Sidebar() {
             />
           </Show>
         </ScrollArea>
+
+        <MemorySidebarCard omStatus={activeOmStatus()} />
 
         {/* Footer */}
         <div class="border-border border-t px-3 py-2">
