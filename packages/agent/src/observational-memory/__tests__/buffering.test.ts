@@ -14,7 +14,7 @@ import type {
 } from "../../observational-memory-storage.ts";
 import type { MessageEntry, SessionTreeEntry } from "../../session/entries.ts";
 import type { SessionStorageShape } from "../../session/storage.ts";
-import type { AgentMessage } from "../../types.ts";
+import type { AgentEvent, AgentMessage } from "../../types.ts";
 import type { ObservationalMemoryDeps } from "../config.ts";
 import { ObservationalMemoryEngine } from "../engine.ts";
 import { BufferingCoordinator } from "../buffering-coordinator.ts";
@@ -898,6 +898,168 @@ describe("ObservationalMemoryEngine buffering", () => {
       expect(updated.id).toBe(record.id);
       expect(updated.bufferedObservationChunks).toBeUndefined();
       expect(updated.isBufferingObservation).toBe(false);
+    });
+  });
+
+  describe("onOmEvent callback", () => {
+    it("fires om_start + om_end + om_status on sync observe", async () => {
+      const deps = createDeps(storage, sessionStorage);
+      const events: AgentEvent[] = [];
+      const engine = new ObservationalMemoryEngine({
+        deps,
+        onOmEvent: (e) => events.push(e),
+      });
+
+      const record = await engine.getOrCreateRecord();
+      const t0 = Date.now();
+      const messages: AgentMessage[] = [
+        { role: "user", content: "a".repeat(500), timestamp: t0 },
+        { role: "user", content: "b".repeat(500), timestamp: t0 + 1000 },
+      ];
+      sessionStorage.setEntries([
+        createMessageEntry(messages[0]!),
+        createMessageEntry(messages[1]!, null),
+      ]);
+      vi.mocked(complete).mockResolvedValue(
+        completeTextResult("<observations>\n* 🔴 P1: test\n</observations>"),
+      );
+
+      await engine.maybeObserve(record);
+
+      const start = events.find((e) => e.type === "om_start");
+      const end = events.find((e) => e.type === "om_end");
+      const status = events.find((e) => e.type === "om_status");
+      expect(start).toBeDefined();
+      expect(start!.operationType).toBe("observation");
+      expect(end).toBeDefined();
+      expect(end!.operationType).toBe("observation");
+      expect(end!.observations).toContain("P1");
+      expect(status).toBeDefined();
+      expect(status!.windows.messages).toBeDefined();
+    });
+
+    it("fires om_failed when sync observe errors", async () => {
+      const deps = createDeps(storage, sessionStorage);
+      const events: AgentEvent[] = [];
+      const engine = new ObservationalMemoryEngine({
+        deps,
+        onOmEvent: (e) => events.push(e),
+      });
+
+      const record = await engine.getOrCreateRecord();
+      const t0 = Date.now();
+      sessionStorage.setEntries([
+        createMessageEntry({ role: "user", content: "a".repeat(500), timestamp: t0 }),
+        createMessageEntry({ role: "user", content: "b".repeat(500), timestamp: t0 + 1000 }, null),
+      ]);
+      vi.mocked(complete).mockRejectedValue(new Error("LLM down"));
+
+      await engine.maybeObserve(record);
+
+      const failed = events.find((e) => e.type === "om_failed");
+      expect(failed).toBeDefined();
+      expect(failed!.error).toContain("LLM down");
+    });
+
+    it("fires om_start + om_end on sync reflect", async () => {
+      const deps = createDeps(storage, sessionStorage);
+      const events: AgentEvent[] = [];
+      const engine = new ObservationalMemoryEngine({
+        deps,
+        onOmEvent: (e) => events.push(e),
+      });
+
+      const record = await engine.getOrCreateRecord();
+      await storage.updateActiveObservations({
+        id: record.id,
+        observations: "test observations",
+        lastObservedAt: new Date(),
+        tokenCount: 250,
+      });
+      const seeded = await engine.getOrCreateRecord();
+      vi.mocked(complete).mockResolvedValue(completeTextResult("reflected observations"));
+
+      await engine.maybeReflect(seeded);
+
+      const start = events.find((e) => e.type === "om_start" && e.operationType === "reflection");
+      const end = events.find((e) => e.type === "om_end" && e.operationType === "reflection");
+      expect(start).toBeDefined();
+      expect(end).toBeDefined();
+    });
+
+    it("fires om_start/om_end with buffering operationType on buffer observation", async () => {
+      const deps = createDeps(storage, sessionStorage, {
+        observationBufferTokens: 20,
+        observationBufferActivation: 0.5,
+        reflectionBufferActivation: 1,
+      });
+      const events: AgentEvent[] = [];
+      const engine = new ObservationalMemoryEngine({
+        deps,
+        onOmEvent: (e) => events.push(e),
+      });
+
+      const record = await engine.getOrCreateRecord();
+      const messages: AgentMessage[] = [
+        { role: "user", content: "Hello world test message", timestamp: Date.now() },
+      ];
+      const entry = createMessageEntry(messages[0]!);
+      sessionStorage.setEntries([entry]);
+      setCompleteResponse("<observations>\n* x\n</observations>");
+
+      await engine.maybeBufferObservation(record, [entry], 50);
+
+      const start = events.find((e) => e.type === "om_start" && e.operationType === "buffering");
+      const end = events.find((e) => e.type === "om_end" && e.operationType === "buffering");
+      expect(start).toBeDefined();
+      expect(end).toBeDefined();
+    });
+
+    it("fires om_activation when buffered observations activate", async () => {
+      const deps = createDeps(storage, sessionStorage, {
+        observationBufferTokens: 20,
+        observationBufferActivation: 0.5,
+        reflectionBufferActivation: 1,
+      });
+      const events: AgentEvent[] = [];
+      const engine = new ObservationalMemoryEngine({
+        deps,
+        onOmEvent: (e) => events.push(e),
+      });
+
+      const record = await engine.getOrCreateRecord();
+      const entry = createMessageEntry({
+        role: "user",
+        content: "Hello world test",
+        timestamp: Date.now(),
+      });
+      sessionStorage.setEntries([entry]);
+      setCompleteResponse("<observations>\n* x\n</observations>");
+
+      await engine.maybeBufferObservation(record, [entry], 50);
+      const buffered = await engine.getOrCreateRecord();
+
+      await engine.maybeActivateBufferedObservations(buffered);
+
+      const activation = events.find((e) => e.type === "om_activation");
+      expect(activation).toBeDefined();
+    });
+
+    it("does not throw when onOmEvent is undefined", async () => {
+      const deps = createDeps(storage, sessionStorage);
+      const engine = new ObservationalMemoryEngine({ deps });
+
+      const record = await engine.getOrCreateRecord();
+      const t0 = Date.now();
+      sessionStorage.setEntries([
+        createMessageEntry({ role: "user", content: "a".repeat(500), timestamp: t0 }),
+        createMessageEntry({ role: "user", content: "b".repeat(500), timestamp: t0 + 1000 }, null),
+      ]);
+      vi.mocked(complete).mockResolvedValue(
+        completeTextResult("<observations>\n* x\n</observations>"),
+      );
+
+      await engine.maybeObserve(record);
     });
   });
 });

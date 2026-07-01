@@ -14,7 +14,7 @@
  */
 
 import { Effect } from "effect";
-import type { AgentMessage } from "../types.ts";
+import type { AgentMessage, OmAgentEvent } from "../types.ts";
 import { buildSessionContextFromEntries } from "../session/session.ts";
 import type { MessageEntry } from "../session/entries.ts";
 import type {
@@ -37,6 +37,8 @@ export interface ObservationalMemoryEngineOptions {
   readonly deps: ObservationalMemoryDeps;
   /** Run-level abort signal (user-cancel channel). Threaded to observer/reflector. */
   readonly abortSignal?: AbortSignal;
+  /** OM lifecycle callback — forwarded to the WS bridge by agent-run.ts. */
+  readonly onOmEvent?: (event: OmAgentEvent) => void;
 }
 
 export class ObservationalMemoryEngine {
@@ -49,6 +51,7 @@ export class ObservationalMemoryEngine {
   private readonly logger: ObservationalMemoryDeps["logger"];
   private readonly bufferingCoordinator: BufferingCoordinator;
   private readonly abortSignal: AbortSignal | undefined;
+  private readonly onOmEvent: ((event: OmAgentEvent) => void) | undefined;
 
   constructor(options: ObservationalMemoryEngineOptions) {
     this.deps = options.deps;
@@ -59,6 +62,7 @@ export class ObservationalMemoryEngine {
     this.tokenCounter = options.deps.tokenCounter;
     this.logger = options.deps.logger;
     this.abortSignal = options.abortSignal;
+    this.onOmEvent = options.onOmEvent;
     this.bufferingCoordinator = new BufferingCoordinator({
       lookupKey: this.computeLookupKey(),
       observationBufferTokens: resolveBufferTokens(
@@ -151,6 +155,7 @@ export class ObservationalMemoryEngine {
     const pendingTokens = this.tokenCounter.countMessages(unobserved);
     const threshold = this.deps.thresholds.observation;
 
+    let result: ObservationalMemoryRecord;
     try {
       if (this.bufferingCoordinator.isAsyncObservationEnabled()) {
         // Over threshold: try to activate any buffered chunks first, then sync observe.
@@ -162,31 +167,37 @@ export class ObservationalMemoryEngine {
           const afterUnobserved = buildSessionContextFromEntries(afterEntries).messages;
           const afterPending = this.tokenCounter.countMessages(afterUnobserved);
           if (afterPending >= threshold) {
-            return await this.runSyncObserve(afterActivate, afterEntries);
+            result = await this.runSyncObserve(afterActivate, afterEntries);
+          } else {
+            result = afterActivate;
           }
-          return afterActivate;
-        }
-
-        // Below threshold but crossed buffer interval: detach buffer observation.
-        if (
+        } else if (
           this.bufferingCoordinator.shouldTriggerAsyncObservation(pendingTokens, record, threshold)
         ) {
+          // Below threshold but crossed buffer interval: detach buffer observation.
           this.detach(
             "buffer observation",
             this.maybeBufferObservation(record, entries, pendingTokens),
           );
+          result = record;
+        } else {
+          result = record;
         }
-
-        return record;
+      } else {
+        // Sync-only path
+        if (pendingTokens <= threshold) {
+          result = record;
+        } else {
+          result = await this.runSyncObserve(record, entries);
+        }
       }
-
-      // Sync-only path
-      if (pendingTokens <= threshold) return record;
-      return await this.runSyncObserve(record, entries);
     } catch (error) {
       this.logError("observe failed", error);
-      return record;
+      result = record;
     }
+
+    this.emitOmStatus(result);
+    return result;
   }
 
   /**
@@ -198,6 +209,7 @@ export class ObservationalMemoryEngine {
     const observationTokens = record.observationTokenCount;
     const threshold = this.deps.thresholds.reflection;
 
+    let result: ObservationalMemoryRecord;
     try {
       if (this.bufferingCoordinator.isAsyncReflectionEnabled()) {
         // Over threshold: try to activate buffered reflection first.
@@ -206,32 +218,38 @@ export class ObservationalMemoryEngine {
           const afterActivate =
             activated.id === record.id ? activated : await this.getOrCreateRecord();
           if (afterActivate.observationTokenCount >= threshold) {
-            return await this.runSyncReflect(afterActivate);
+            result = await this.runSyncReflect(afterActivate);
+          } else {
+            result = afterActivate;
           }
-          return afterActivate;
-        }
-
-        // At activation point but below threshold: detach buffer reflection.
-        if (
+        } else if (
           this.bufferingCoordinator.shouldTriggerAsyncReflection(
             observationTokens,
             record,
             threshold,
           )
         ) {
+          // At activation point but below threshold: detach buffer reflection.
           this.detach("buffer reflection", this.maybeBufferReflection(record));
+          result = record;
+        } else {
+          result = record;
         }
-
-        return record;
+      } else {
+        // Sync-only path
+        if (observationTokens <= threshold) {
+          result = record;
+        } else {
+          result = await this.runSyncReflect(record);
+        }
       }
-
-      // Sync-only path
-      if (observationTokens <= threshold) return record;
-      return await this.runSyncReflect(record);
     } catch (error) {
       this.logError("reflect failed", error);
-      return record;
+      result = record;
     }
+
+    this.emitOmStatus(result);
+    return result;
   }
 
   /**
@@ -261,6 +279,15 @@ export class ObservationalMemoryEngine {
 
     this.bufferingCoordinator.registerOp(currentTokens, "observation");
 
+    const cycleId = `buffer-obs-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const startTime = Date.now();
+    this.emitOmEvent({
+      type: "om_start",
+      cycleId,
+      operationType: "buffering",
+      tokenCount: currentTokens,
+    });
+
     let flagCleared = false;
     let resolveOp: () => void;
     const opPromise = new Promise<void>((resolve) => {
@@ -283,7 +310,6 @@ export class ObservationalMemoryEngine {
         return record;
       }
 
-      const cycleId = `buffer-obs-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
       const observerResult = await runObserver({
         messagesToObserve: candidateMessages,
         existingObservations: record.activeObservations,
@@ -316,9 +342,26 @@ export class ObservationalMemoryEngine {
       await this.storage.setBufferingObservationFlag(record.id, false, newTokens);
       this.bufferingCoordinator.setLastBufferedAtTime(lastObservedAt);
 
+      this.emitOmEvent({
+        type: "om_end",
+        cycleId,
+        operationType: "buffering",
+        durationMs: Date.now() - startTime,
+        tokensProcessed: newTokens,
+        tokensProduced: observerResult.tokenCount,
+        ...(observerResult.observations ? { observations: observerResult.observations } : {}),
+      });
+
       return this.getOrCreateRecord();
     } catch (error) {
       this.logError("buffer observation failed", error);
+      this.emitOmEvent({
+        type: "om_failed",
+        cycleId,
+        operationType: "buffering",
+        error: error instanceof Error ? error.message : String(error),
+        durationMs: Date.now() - startTime,
+      });
       return record;
     } finally {
       this.bufferingCoordinator.unregisterOp("observation");
@@ -358,6 +401,15 @@ export class ObservationalMemoryEngine {
       forceMaxActivation: false,
     });
 
+    this.emitOmEvent({
+      type: "om_activation",
+      cycleId: `activation-obs-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+      operationType: "observation",
+      chunksActivated: chunks.length,
+      tokensActivated: totalChunkMessageTokens,
+      observationTokens: 0,
+    });
+
     await this.storage.setBufferingObservationFlag(record.id, false).catch(() => {});
     this.bufferingCoordinator.cleanupStaticMaps([]);
 
@@ -383,7 +435,15 @@ export class ObservationalMemoryEngine {
     }
 
     const cycleId = `reflect-buf-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const startTime = Date.now();
     this.bufferingCoordinator.registerOp(observationTokens, "reflection", cycleId);
+
+    this.emitOmEvent({
+      type: "om_start",
+      cycleId,
+      operationType: "buffering",
+      tokenCount: observationTokens,
+    });
 
     let resolveOp: () => void;
     const opPromise = new Promise<void>((resolve) => {
@@ -423,9 +483,27 @@ export class ObservationalMemoryEngine {
       });
 
       await this.storage.setBufferingReflectionFlag(record.id, false);
+
+      this.emitOmEvent({
+        type: "om_end",
+        cycleId,
+        operationType: "buffering",
+        durationMs: Date.now() - startTime,
+        tokensProcessed: sliceTokenEstimate,
+        tokensProduced: reflectorResult.tokenCount,
+        observations: reflectorResult.reflection,
+      });
+
       return this.getOrCreateRecord();
     } catch (error) {
       this.logError("buffer reflection failed", error);
+      this.emitOmEvent({
+        type: "om_failed",
+        cycleId,
+        operationType: "buffering",
+        error: error instanceof Error ? error.message : String(error),
+        durationMs: Date.now() - startTime,
+      });
       this.bufferingCoordinator.clearBoundary("reflection");
       return record;
     } finally {
@@ -460,6 +538,15 @@ export class ObservationalMemoryEngine {
       tokenCount: combinedTokenCount,
     });
 
+    this.emitOmEvent({
+      type: "om_activation",
+      cycleId: `activation-refl-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+      operationType: "reflection",
+      chunksActivated: 1,
+      tokensActivated: combinedTokenCount,
+      observationTokens: combinedTokenCount,
+    });
+
     this.bufferingCoordinator.clearBoundary("reflection");
     return newRecord;
   }
@@ -481,6 +568,38 @@ export class ObservationalMemoryEngine {
   }
 
   /**
+   * Fire an OM lifecycle event via the callback. Best-effort: errors in the
+   * callback are caught and logged, never propagated to the caller.
+   */
+  private emitOmEvent(event: OmAgentEvent): void {
+    try {
+      this.onOmEvent?.(event);
+    } catch (error) {
+      this.logError("onOmEvent callback", error);
+    }
+  }
+
+  /**
+   * Fire an om_status window snapshot from the current record state.
+   */
+  private emitOmStatus(record: ObservationalMemoryRecord): void {
+    this.emitOmEvent({
+      type: "om_status",
+      windows: {
+        messages: {
+          tokens: record.pendingMessageTokens,
+          threshold: this.deps.thresholds.observation,
+        },
+        observations: {
+          tokens: record.observationTokenCount,
+          threshold: this.deps.thresholds.reflection,
+        },
+      },
+      recordId: record.id,
+    });
+  }
+
+  /**
    * Fire-and-forget a detached op, guarding against unhandled rejections.
    * Detached failures are best-effort (already logged inside the op body).
    */
@@ -492,35 +611,69 @@ export class ObservationalMemoryEngine {
     record: ObservationalMemoryRecord,
     entries: MessageEntry[],
   ): Promise<ObservationalMemoryRecord> {
+    const cycleId = crypto.randomUUID();
+    const startTime = Date.now();
     const unobserved = buildSessionContextFromEntries(entries).messages;
-    const observerResult = await runObserver({
-      messagesToObserve: unobserved,
-      existingObservations: record.activeObservations,
-      deps: this.deps,
-      ...(this.abortSignal ? { abortSignal: this.abortSignal } : {}),
-    });
+    const tokenCount = this.tokenCounter.countMessages(unobserved);
 
-    const now = new Date();
-    const observedMessageIds = this.extractObservedMessageIds(entries);
+    this.emitOmEvent({ type: "om_start", cycleId, operationType: "observation", tokenCount });
 
-    await this.storage.updateActiveObservations({
-      id: record.id,
-      observations: record.activeObservations
-        ? `${record.activeObservations}\n\n${observerResult.observations}`
-        : observerResult.observations,
-      lastObservedAt: now,
-      tokenCount: observerResult.tokenCount,
-      ...(observedMessageIds.length > 0 ? { observedMessageIds } : {}),
-    });
+    try {
+      const observerResult = await runObserver({
+        messagesToObserve: unobserved,
+        existingObservations: record.activeObservations,
+        deps: this.deps,
+        ...(this.abortSignal ? { abortSignal: this.abortSignal } : {}),
+      });
 
-    return this.getOrCreateRecord();
+      const now = new Date();
+      const observedMessageIds = this.extractObservedMessageIds(entries);
+
+      await this.storage.updateActiveObservations({
+        id: record.id,
+        observations: record.activeObservations
+          ? `${record.activeObservations}\n\n${observerResult.observations}`
+          : observerResult.observations,
+        lastObservedAt: now,
+        tokenCount: observerResult.tokenCount,
+        ...(observedMessageIds.length > 0 ? { observedMessageIds } : {}),
+      });
+
+      this.emitOmEvent({
+        type: "om_end",
+        cycleId,
+        operationType: "observation",
+        durationMs: Date.now() - startTime,
+        tokensProcessed: tokenCount,
+        tokensProduced: observerResult.tokenCount,
+        ...(observerResult.observations ? { observations: observerResult.observations } : {}),
+        ...(observerResult.suggestedContinuation
+          ? { suggestedResponse: observerResult.suggestedContinuation }
+          : {}),
+      });
+
+      return this.getOrCreateRecord();
+    } catch (error) {
+      this.emitOmEvent({
+        type: "om_failed",
+        cycleId,
+        operationType: "observation",
+        error: error instanceof Error ? error.message : String(error),
+        durationMs: Date.now() - startTime,
+      });
+      throw error;
+    }
   }
 
   private async runSyncReflect(
     record: ObservationalMemoryRecord,
   ): Promise<ObservationalMemoryRecord> {
-    // Errors propagate to maybeReflect's best-effort boundary (M3); the finally
-    // guarantees the reflecting flag is cleared on success OR failure.
+    const cycleId = crypto.randomUUID();
+    const startTime = Date.now();
+    const tokenCount = record.observationTokenCount;
+
+    this.emitOmEvent({ type: "om_start", cycleId, operationType: "reflection", tokenCount });
+
     await this.storage.setReflectingFlag(record.id, true);
     try {
       const reflectorResult = await runReflector({
@@ -535,7 +688,26 @@ export class ObservationalMemoryEngine {
         tokenCount: reflectorResult.tokenCount,
       });
 
+      this.emitOmEvent({
+        type: "om_end",
+        cycleId,
+        operationType: "reflection",
+        durationMs: Date.now() - startTime,
+        tokensProcessed: tokenCount,
+        tokensProduced: reflectorResult.tokenCount,
+        observations: reflectorResult.reflection,
+      });
+
       return this.getOrCreateRecord();
+    } catch (error) {
+      this.emitOmEvent({
+        type: "om_failed",
+        cycleId,
+        operationType: "reflection",
+        error: error instanceof Error ? error.message : String(error),
+        durationMs: Date.now() - startTime,
+      });
+      throw error;
     } finally {
       await this.storage.setReflectingFlag(record.id, false).catch(() => {});
     }
