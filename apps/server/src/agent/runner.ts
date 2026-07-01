@@ -558,7 +558,6 @@ export function runPromptEffect(
       profileId: session.profileId,
     });
     if (omConfig) {
-      const leafId = yield* storage.getLeafId();
       const omStorage = new SqliteObservationalMemoryStorage(ctx.db);
       omOptions = {
         enabled: true,
@@ -568,7 +567,6 @@ export function runPromptEffect(
           sessionId,
           projectId: session.projectId,
           sessionStorage: storage,
-          leafId,
         },
       };
       ctx.log?.agent.debug("om deps assembled", {

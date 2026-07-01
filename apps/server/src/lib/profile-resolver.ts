@@ -1,9 +1,24 @@
+import type { ThinkingLevel } from "@sakti-code/llm";
+
 import type { Profiles } from "./profiles-store.ts";
 
 export interface ResolvedModelRef {
   model: string;
   provider: string;
-  thinkingLevel: string;
+  thinkingLevel: ThinkingLevel | "off";
+}
+
+const VALID_THINKING_LEVELS: ReadonlySet<string> = new Set<ThinkingLevel | "off">([
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+]);
+
+function normalizeThinkingLevel(value: string | undefined): ThinkingLevel | "off" {
+  return value && VALID_THINKING_LEVELS.has(value) ? (value as ThinkingLevel | "off") : "off";
 }
 
 /**
@@ -42,6 +57,6 @@ export function resolveModelRef(
   return {
     provider: ref.provider,
     model: ref.model,
-    thinkingLevel: ref.thinkingLevel ?? "off",
+    thinkingLevel: normalizeThinkingLevel(ref.thinkingLevel),
   };
 }

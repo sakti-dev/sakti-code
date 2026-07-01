@@ -7,63 +7,13 @@ import type {
 } from "@sakti-code/agent";
 import { TokenCounter as TokenCounterImpl } from "@sakti-code/agent";
 import type { ServerContext } from "../context.ts";
+import { parseOmSettings } from "../lib/observational-memory-settings.ts";
 import { resolveModelRef } from "../lib/profile-resolver.ts";
 
 const DEFAULT_OBSERVATION_THRESHOLD = 30_000;
 const DEFAULT_REFLECTION_THRESHOLD = 40_000;
-
-interface OmSettings {
-  enabled: boolean;
-  observationThreshold?: number | undefined;
-  reflectionThreshold?: number | undefined;
-  instruction?: string | undefined;
-}
-
-function readOmSettings(ctx: ServerContext): OmSettings | undefined {
-  const raw = ctx.settingsFile.read() as Record<string, unknown>;
-  const om = raw.observationalMemory as Record<string, unknown> | undefined;
-  if (!om || typeof om !== "object") {
-    return undefined;
-  }
-  const enabled = om.enabled === true;
-  if (!enabled) {
-    return undefined;
-  }
-  return {
-    enabled,
-    ...(typeof om.observationThreshold === "number"
-      ? { observationThreshold: om.observationThreshold }
-      : {}),
-    ...(typeof om.reflectionThreshold === "number"
-      ? { reflectionThreshold: om.reflectionThreshold }
-      : {}),
-    ...(typeof om.instruction === "string" ? { instruction: om.instruction } : {}),
-  };
-}
-
-function readBufferingSettings(ctx: ServerContext): ObservationalMemoryBuffering | undefined {
-  const raw = ctx.settingsFile.read() as Record<string, unknown>;
-  const om = raw.observationalMemory as Record<string, unknown> | undefined;
-  if (!om || typeof om !== "object") {
-    return undefined;
-  }
-  const buf = om.buffering as Record<string, unknown> | undefined;
-  if (!buf || typeof buf !== "object") {
-    return undefined;
-  }
-  const observationBufferTokens =
-    typeof buf.observationBufferTokens === "number" ? buf.observationBufferTokens : 0;
-  if (observationBufferTokens <= 0) {
-    return undefined;
-  }
-  return {
-    observationBufferTokens,
-    observationBufferActivation:
-      typeof buf.observationBufferActivation === "number" ? buf.observationBufferActivation : 0.8,
-    reflectionBufferActivation:
-      typeof buf.reflectionBufferActivation === "number" ? buf.reflectionBufferActivation : 0.5,
-  };
-}
+const DEFAULT_OBSERVATION_BUFFER_ACTIVATION = 0.8;
+const DEFAULT_REFLECTION_BUFFER_ACTIVATION = 0.5;
 
 export interface ResolvedOmConfig {
   observeModel: Model;
@@ -78,13 +28,16 @@ export interface ResolvedOmConfig {
   instruction?: string | undefined;
 }
 
-let tokenCounterSingleton: TokenCounter | null = null;
-
-function getTokenCounter(): TokenCounter {
-  if (!tokenCounterSingleton) {
-    tokenCounterSingleton = new TokenCounterImpl();
-  }
-  return tokenCounterSingleton;
+/**
+ * Construct a TokenCounter scoped to the observe model's provider so image
+ * token estimation uses the right provider table (Anthropic/Google/OpenAI)
+ * instead of the OpenAI/default fallback. Per-run, not cached — correctness
+ * over the micro-savings of a shared instance.
+ */
+function getTokenCounter(observeModel: Model): TokenCounter {
+  return new TokenCounterImpl({
+    model: { provider: observeModel.provider, modelId: observeModel.id },
+  });
 }
 
 /**
@@ -98,7 +51,8 @@ export function resolveOmConfig(
   ctx: ServerContext,
   session: { id: string; kind: string; projectId: string; profileId: string | null },
 ): ResolvedOmConfig | undefined {
-  const omSettings = readOmSettings(ctx);
+  const raw = ctx.settingsFile.read() as Record<string, unknown>;
+  const omSettings = parseOmSettings(raw);
   if (!omSettings) {
     return undefined;
   }
@@ -150,22 +104,31 @@ export function resolveOmConfig(
     reflection: omSettings.reflectionThreshold ?? DEFAULT_REFLECTION_THRESHOLD,
   };
 
-  const buffering = readBufferingSettings(ctx);
+  const buffering: ObservationalMemoryBuffering | undefined = omSettings.buffering
+    ? {
+        observationBufferTokens: omSettings.buffering.observationBufferTokens,
+        observationBufferActivation:
+          omSettings.buffering.observationBufferActivation ?? DEFAULT_OBSERVATION_BUFFER_ACTIVATION,
+        reflectionBufferActivation:
+          omSettings.buffering.reflectionBufferActivation ?? DEFAULT_REFLECTION_BUFFER_ACTIVATION,
+      }
+    : undefined;
 
   return {
     observeModel,
     observeApiKey,
     ...(observeRef.thinkingLevel !== "off"
-      ? { observeThinkingLevel: observeRef.thinkingLevel as ThinkingLevel }
+      ? { observeThinkingLevel: observeRef.thinkingLevel }
       : {}),
     reflectModel,
     reflectApiKey,
     ...(reflectRef.thinkingLevel !== "off"
-      ? { reflectThinkingLevel: reflectRef.thinkingLevel as ThinkingLevel }
+      ? { reflectThinkingLevel: reflectRef.thinkingLevel }
       : {}),
     thresholds,
     ...(buffering ? { buffering } : {}),
-    tokenCounter: getTokenCounter(),
+    tokenCounter: getTokenCounter(observeModel),
+    ...(ctx.log?.agent === undefined ? {} : { logger: ctx.log.agent }),
     ...(omSettings.instruction !== undefined ? { instruction: omSettings.instruction } : {}),
   };
 }

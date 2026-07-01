@@ -282,6 +282,29 @@ const runLoopEffect = (
 
       while (hasMoreToolCalls || pendingMessages.length > 0) {
         if (firstTurn) {
+          // §OM: inject <observations> from the existing record into the very
+          // first model call. Cheap (read-only — no observe/reflect) so prior
+          // session memory is available before the agent responds. Best-effort;
+          // failures are logged and never abort the run.
+          if (config.observationalMemory) {
+            const omInitial = yield* Effect.tryPromise({
+              try: async () => {
+                const om = config.observationalMemory!;
+                const record = await om.engine.getOrCreateRecord();
+                const observations = om.engine.buildContextSystemMessage(record);
+                return observations ? `${om.getBaseSystemPrompt()}\n\n${observations}` : undefined;
+              },
+              catch: (error: unknown) => {
+                config.logger?.error("om initial inject failed", error, {
+                  sessionId: config.sessionId,
+                });
+                return undefined;
+              },
+            });
+            if (omInitial !== undefined) {
+              currentContext = { ...currentContext, systemPrompt: omInitial };
+            }
+          }
           firstTurn = false;
         } else {
           yield* emitEffect(emit, { type: "turn_start" });

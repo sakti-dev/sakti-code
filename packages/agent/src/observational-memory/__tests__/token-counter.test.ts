@@ -75,6 +75,36 @@ describe("TokenCounter", () => {
       expect(count).toBeGreaterThan(0);
     });
 
+    it("never returns a negative count for many parallel tool calls (M7)", () => {
+      // Each toolCall subtracts 12 from the message overhead; with enough
+      // parallel calls the overhead goes negative and the estimate must
+      // still floor at 0 rather than report nonsense negative tokens.
+      const toolCalls = Array.from({ length: 12 }, (_, i) => ({
+        type: "toolCall" as const,
+        id: `tc-${i}`,
+        name: "read_file",
+        arguments: { path: `/tmp/${i}.ts` },
+      }));
+      const msg: AgentMessage = {
+        role: "assistant",
+        content: toolCalls,
+        api: "ai-sdk",
+        model: "test-model",
+        provider: "test",
+        stopReason: "toolUse",
+        timestamp: Date.now(),
+        usage: {
+          input: 0,
+          output: 0,
+          totalTokens: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+      };
+      expect(counter.countMessage(msg)).toBeGreaterThanOrEqual(0);
+    });
+
     it("counts tool result message", () => {
       const msg: AgentMessage = {
         role: "toolResult",

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vite-plus/test";
+import { TokenCounter } from "@sakti-code/agent";
 import { resolveOmConfig } from "../observational-memory-deps.ts";
 
 function makeCtx(
@@ -192,7 +193,7 @@ describe("resolveOmConfig", () => {
     expect(result!.instruction).toBeUndefined();
   });
 
-  it("tokenCounter is a singleton", () => {
+  it("tokenCounter is constructed fresh per call, scoped to the observe model (M5)", () => {
     const ctx = makeCtx(
       PROFILES,
       { observationalMemory: { enabled: true } },
@@ -202,6 +203,9 @@ describe("resolveOmConfig", () => {
     );
     const a = resolveOmConfig(ctx, SESSION);
     const b = resolveOmConfig(ctx, SESSION);
-    expect(a!.tokenCounter).toBe(b!.tokenCounter);
+    expect(a!.tokenCounter).toBeInstanceOf(TokenCounter);
+    // Per-run, not cached — two resolves yield distinct instances so the
+    // model context always matches the current observe model.
+    expect(a!.tokenCounter).not.toBe(b!.tokenCounter);
   });
 });

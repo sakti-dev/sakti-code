@@ -79,7 +79,6 @@ function createDeps(overrides: Partial<ObservationalMemoryDeps> = {}): Observati
     thresholds: { observation: 100, reflection: 200 },
     tokenCounter: new TokenCounter(),
     sessionStorage: noopSessionStorage,
-    leafId: null,
     ...overrides,
   };
 }

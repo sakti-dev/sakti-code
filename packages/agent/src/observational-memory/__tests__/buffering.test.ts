@@ -12,7 +12,7 @@ import type {
   UpdateBufferedObservationsInput,
   UpdateBufferedReflectionInput,
 } from "../../observational-memory-storage.ts";
-import type { SessionTreeEntry } from "../../session/entries.ts";
+import type { MessageEntry, SessionTreeEntry } from "../../session/entries.ts";
 import type { SessionStorageShape } from "../../session/storage.ts";
 import type { AgentMessage } from "../../types.ts";
 import type { ObservationalMemoryDeps } from "../config.ts";
@@ -406,10 +406,7 @@ class FakeSessionStorage implements SessionStorageShape {
   };
 }
 
-function createMessageEntry(
-  message: AgentMessage,
-  parentId: string | null = null,
-): SessionTreeEntry {
+function createMessageEntry(message: AgentMessage, parentId: string | null = null): MessageEntry {
   return {
     type: "message",
     id: `entry-${Math.random().toString(36).slice(2, 11)}`,
@@ -435,7 +432,6 @@ function createDeps(
     thresholds: { observation: 100, reflection: 200 },
     tokenCounter: new TokenCounter(),
     sessionStorage,
-    leafId: null,
     ...(buffering !== undefined ? { buffering } : {}),
   };
 }
@@ -470,10 +466,11 @@ describe("ObservationalMemoryEngine buffering", () => {
       const messages: AgentMessage[] = [
         { role: "user", content: "Hello world this is a test message", timestamp: Date.now() },
       ];
-      sessionStorage.setEntries([createMessageEntry(messages[0]!)]);
+      const entry = createMessageEntry(messages[0]!);
+      sessionStorage.setEntries([entry]);
       setCompleteResponse(`<observations>\n* 🔴 User said hello\n</observations>`);
 
-      const updated = await engine.maybeBufferObservation(record, messages, 50);
+      const updated = await engine.maybeBufferObservation(record, [entry], 50);
 
       expect(updated.id).toBe(record.id);
       expect(updated.bufferedObservationChunks).toHaveLength(1);
@@ -490,8 +487,9 @@ describe("ObservationalMemoryEngine buffering", () => {
       const messages: AgentMessage[] = [
         { role: "user", content: "Hello world this is a test message", timestamp: Date.now() },
       ];
+      const entry = createMessageEntry(messages[0]!);
 
-      const updated = await engine.maybeBufferObservation(record, messages, 50);
+      const updated = await engine.maybeBufferObservation(record, [entry], 50);
 
       expect(updated.bufferedObservationChunks).toBeUndefined();
       expect(vi.mocked(complete)).not.toHaveBeenCalled();
@@ -510,10 +508,11 @@ describe("ObservationalMemoryEngine buffering", () => {
       const messages: AgentMessage[] = [
         { role: "user", content: "First message content", timestamp: t0 },
       ];
-      sessionStorage.setEntries([createMessageEntry(messages[0]!)]);
+      const entry = createMessageEntry(messages[0]!);
+      sessionStorage.setEntries([entry]);
       setCompleteResponse(`<observations>\n* 🔴 First observation\n</observations>`);
 
-      const buffered = await engine.maybeBufferObservation(record, messages, 50);
+      const buffered = await engine.maybeBufferObservation(record, [entry], 50);
       expect(buffered.bufferedObservationChunks).toHaveLength(1);
 
       const activated = await engine.maybeActivateBufferedObservations(buffered);
@@ -672,10 +671,11 @@ describe("ObservationalMemoryEngine buffering", () => {
       const messages: AgentMessage[] = [
         { role: "user", content: "Hello world this is a test message", timestamp: Date.now() },
       ];
-      sessionStorage.setEntries([createMessageEntry(messages[0]!)]);
+      const entry = createMessageEntry(messages[0]!);
+      sessionStorage.setEntries([entry]);
       vi.mocked(complete).mockImplementation(async () => completeErrorResult("provider error"));
 
-      const updated = await engine.maybeBufferObservation(record, messages, 50);
+      const updated = await engine.maybeBufferObservation(record, [entry], 50);
 
       expect(updated.id).toBe(record.id);
       expect(updated.bufferedObservationChunks).toBeUndefined();

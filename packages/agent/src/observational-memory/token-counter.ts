@@ -661,7 +661,10 @@ export class TokenCounter {
       }
     }
 
-    return Math.round(payloadTokens + overhead);
+    // Floor at 0: the per-toolCall `overhead -= 12` can drive overhead
+    // negative for assistant turns with many parallel tool calls, and a
+    // negative token estimate is never meaningful.
+    return Math.max(0, Math.round(payloadTokens + overhead));
   }
 
   /**

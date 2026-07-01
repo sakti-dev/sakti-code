@@ -64,6 +64,27 @@ describe("resolveModelRef", () => {
     expect(ref.model).toBe("claude-sonnet");
   });
 
+  it("clamps an invalid thinkingLevel to 'off' (M6)", () => {
+    const withBad: Profiles = {
+      defaultProfile: "default",
+      profiles: {
+        default: {
+          name: "Default",
+          models: {
+            default: { provider: "openai", model: "gpt-4", thinkingLevel: "banana" },
+          },
+        },
+      },
+    };
+    const ref = resolveModelRef(withBad, null, "default");
+    expect(ref.thinkingLevel).toBe("off");
+  });
+
+  it("clamps an unset thinkingLevel to 'off' (M6)", () => {
+    const ref = resolveModelRef(PROFILES, "fast", "default");
+    expect(ref.thinkingLevel).toBe("off");
+  });
+
   it("resolves observe to explicit entry when present", () => {
     const withObserve: Profiles = {
       defaultProfile: "default",

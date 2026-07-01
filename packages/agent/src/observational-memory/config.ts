@@ -7,6 +7,7 @@
  */
 
 import type { Model, ThinkingLevel } from "@sakti-code/llm";
+import type { Logger } from "@sakti-code/logger";
 
 import type { ObservationalMemoryStorage } from "../observational-memory-storage.ts";
 import type { SessionStorageShape } from "../session/storage.ts";
@@ -49,7 +50,8 @@ export interface ObservationalMemoryDeps {
   readonly buffering?: ObservationalMemoryBuffering | undefined;
   readonly tokenCounter: TokenCounter;
   readonly sessionStorage: SessionStorageShape;
-  readonly leafId: string | null;
+  /** Structured logger for best-effort failure reporting. Optional. */
+  readonly logger?: Logger | undefined;
   /** Custom observer/reflector instruction overlay (e.g. caveman). Optional. */
   readonly instruction?: string | undefined;
 }

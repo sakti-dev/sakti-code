@@ -16,7 +16,7 @@
 import { Effect } from "effect";
 import type { AgentMessage } from "../types.ts";
 import { buildSessionContextFromEntries } from "../session/session.ts";
-import type { SessionTreeEntry } from "../session/entries.ts";
+import type { MessageEntry } from "../session/entries.ts";
 import type {
   BufferedObservationChunkInput,
   ObservationalMemoryRecord,
@@ -43,8 +43,8 @@ export class ObservationalMemoryEngine {
   private readonly sessionStorage: SessionStorageShape;
   private readonly sessionId: string;
   private readonly projectId: string;
-  private readonly leafId: string | null;
   private readonly tokenCounter: ObservationalMemoryDeps["tokenCounter"];
+  private readonly logger: ObservationalMemoryDeps["logger"];
   private readonly bufferingCoordinator: BufferingCoordinator;
 
   constructor(options: ObservationalMemoryEngineOptions) {
@@ -53,8 +53,8 @@ export class ObservationalMemoryEngine {
     this.sessionStorage = options.deps.sessionStorage;
     this.sessionId = options.deps.sessionId;
     this.projectId = options.deps.projectId;
-    this.leafId = options.deps.leafId;
     this.tokenCounter = options.deps.tokenCounter;
+    this.logger = options.deps.logger;
     this.bufferingCoordinator = new BufferingCoordinator({
       threadId: this.sessionId,
       observationBufferTokens: resolveBufferTokens(
@@ -81,23 +81,36 @@ export class ObservationalMemoryEngine {
   /**
    * Load message-kind entries since record.lastObservedAt as AgentMessage[].
    *
+   * The leaf is resolved fresh on every call via `sessionStorage.getLeafId()`
+   * (NOT a value captured at run start) — otherwise messages appended during
+   * the current run would be invisible to observe/reflect.
+   *
    * Filters to `type === "message"` and `createdAt > lastObservedAt`, then
    * converts via buildSessionContextFromEntries.
    */
   async loadUnobservedMessages(record: ObservationalMemoryRecord): Promise<AgentMessage[]> {
-    const pathEntries = await Effect.runPromise(this.sessionStorage.getPathToRoot(this.leafId));
-    const messageEntries = pathEntries.filter((entry) => entry.type === "message");
+    const entries = await this.loadUnobservedMessageEntries(record);
+    return buildSessionContextFromEntries(entries).messages;
+  }
 
-    const unobservedEntries: SessionTreeEntry[] = messageEntries.filter((entry) => {
-      if (record.lastObservedAt === undefined) return true;
-      const messageTimestamp =
-        entry.type === "message" && entry.message.timestamp
-          ? new Date(entry.message.timestamp)
-          : undefined;
-      return messageTimestamp !== undefined && messageTimestamp > record.lastObservedAt;
+  /**
+   * Same filter as {@link loadUnobservedMessages} but returns the raw message
+   * entries (with their ids) so observe can populate `observedMessageIds`.
+   */
+  private async loadUnobservedMessageEntries(
+    record: ObservationalMemoryRecord,
+  ): Promise<MessageEntry[]> {
+    const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
+    const pathEntries = await Effect.runPromise(this.sessionStorage.getPathToRoot(leafId));
+    const messageEntries = pathEntries.filter(
+      (entry): entry is MessageEntry => entry.type === "message",
+    );
+    if (record.lastObservedAt === undefined) return messageEntries;
+    const lastObservedAt = record.lastObservedAt;
+    return messageEntries.filter((entry) => {
+      const ts = entry.message.timestamp ? new Date(entry.message.timestamp) : undefined;
+      return ts !== undefined && ts > lastObservedAt;
     });
-
-    return buildSessionContextFromEntries(unobservedEntries).messages;
   }
 
   /**
@@ -106,9 +119,10 @@ export class ObservationalMemoryEngine {
    * Returns the updated record (or the original if no observe happened).
    */
   async maybeObserve(record: ObservationalMemoryRecord): Promise<ObservationalMemoryRecord> {
-    const unobserved = await this.loadUnobservedMessages(record);
-    if (unobserved.length === 0) return record;
+    const entries = await this.loadUnobservedMessageEntries(record);
+    if (entries.length === 0) return record;
 
+    const unobserved = buildSessionContextFromEntries(entries).messages;
     const pendingTokens = this.tokenCounter.countMessages(unobserved);
     const threshold = this.deps.thresholds.observation;
 
@@ -119,10 +133,11 @@ export class ObservationalMemoryEngine {
           const activated = await this.maybeActivateBufferedObservations(record);
           const afterActivate =
             activated.id === record.id ? activated : await this.getOrCreateRecord();
-          const afterUnobserved = await this.loadUnobservedMessages(afterActivate);
+          const afterEntries = await this.loadUnobservedMessageEntries(afterActivate);
+          const afterUnobserved = buildSessionContextFromEntries(afterEntries).messages;
           const afterPending = this.tokenCounter.countMessages(afterUnobserved);
           if (afterPending >= threshold) {
-            return this.runSyncObserve(afterActivate, afterUnobserved);
+            return await this.runSyncObserve(afterActivate, afterEntries);
           }
           return afterActivate;
         }
@@ -131,7 +146,7 @@ export class ObservationalMemoryEngine {
         if (
           this.bufferingCoordinator.shouldTriggerAsyncObservation(pendingTokens, record, threshold)
         ) {
-          return this.maybeBufferObservation(record, unobserved, pendingTokens);
+          return await this.maybeBufferObservation(record, entries, pendingTokens);
         }
 
         return record;
@@ -139,7 +154,7 @@ export class ObservationalMemoryEngine {
 
       // Sync-only path
       if (pendingTokens <= threshold) return record;
-      return this.runSyncObserve(record, unobserved);
+      return await this.runSyncObserve(record, entries);
     } catch (error) {
       this.logError("observe failed", error);
       return record;
@@ -163,7 +178,7 @@ export class ObservationalMemoryEngine {
           const afterActivate =
             activated.id === record.id ? activated : await this.getOrCreateRecord();
           if (afterActivate.observationTokenCount >= threshold) {
-            return this.runSyncReflect(afterActivate);
+            return await this.runSyncReflect(afterActivate);
           }
           return afterActivate;
         }
@@ -176,7 +191,7 @@ export class ObservationalMemoryEngine {
             threshold,
           )
         ) {
-          return this.maybeBufferReflection(record);
+          return await this.maybeBufferReflection(record);
         }
 
         return record;
@@ -184,7 +199,7 @@ export class ObservationalMemoryEngine {
 
       // Sync-only path
       if (observationTokens <= threshold) return record;
-      return this.runSyncReflect(record);
+      return await this.runSyncReflect(record);
     } catch (error) {
       this.logError("reflect failed", error);
       return record;
@@ -198,14 +213,15 @@ export class ObservationalMemoryEngine {
    */
   async maybeBufferObservation(
     record: ObservationalMemoryRecord,
-    unobservedMessages?: AgentMessage[],
+    entries?: MessageEntry[],
     pendingTokens?: number,
   ): Promise<ObservationalMemoryRecord> {
     if (!this.bufferingCoordinator.isAsyncObservationEnabled()) return record;
 
-    const messages = unobservedMessages ?? (await this.loadUnobservedMessages(record));
-    if (messages.length === 0) return record;
+    const allEntries = entries ?? (await this.loadUnobservedMessageEntries(record));
+    if (allEntries.length === 0) return record;
 
+    const messages = buildSessionContextFromEntries(allEntries).messages;
     const currentTokens = pendingTokens ?? this.tokenCounter.countMessages(messages);
     const threshold = this.deps.thresholds.observation;
 
@@ -227,7 +243,8 @@ export class ObservationalMemoryEngine {
     try {
       await this.storage.setBufferingObservationFlag(record.id, true, currentTokens);
 
-      const candidateMessages = this.filterMessagesAfterCursor(messages, record);
+      const candidateEntries = this.filterEntriesAfterCursor(allEntries, record);
+      const candidateMessages = buildSessionContextFromEntries(candidateEntries).messages;
       const bufferTokens = this.bufferingCoordinator.observationBufferTokens!;
       const minNewTokens = bufferTokens / 2;
       const newTokens = this.tokenCounter.countMessages(candidateMessages);
@@ -252,7 +269,7 @@ export class ObservationalMemoryEngine {
         cycleId,
         observations: observerResult.observations,
         tokenCount: observerResult.tokenCount,
-        messageIds: this.extractObservedMessageIds(candidateMessages),
+        messageIds: this.extractObservedMessageIds(candidateEntries),
         messageTokens: newTokens,
         lastObservedAt,
         ...(observerResult.suggestedContinuation !== undefined
@@ -426,8 +443,9 @@ export class ObservationalMemoryEngine {
 
   private async runSyncObserve(
     record: ObservationalMemoryRecord,
-    unobserved: AgentMessage[],
+    entries: MessageEntry[],
   ): Promise<ObservationalMemoryRecord> {
+    const unobserved = buildSessionContextFromEntries(entries).messages;
     const observerResult = await runObserver({
       messagesToObserve: unobserved,
       existingObservations: record.activeObservations,
@@ -435,7 +453,7 @@ export class ObservationalMemoryEngine {
     });
 
     const now = new Date();
-    const observedMessageIds = this.extractObservedMessageIds(unobserved);
+    const observedMessageIds = this.extractObservedMessageIds(entries);
 
     await this.storage.updateActiveObservations({
       id: record.id,
@@ -453,8 +471,9 @@ export class ObservationalMemoryEngine {
   private async runSyncReflect(
     record: ObservationalMemoryRecord,
   ): Promise<ObservationalMemoryRecord> {
+    // Errors propagate to maybeReflect's best-effort boundary (M3); the finally
+    // guarantees the reflecting flag is cleared on success OR failure.
     await this.storage.setReflectingFlag(record.id, true);
-
     try {
       const reflectorResult = await runReflector({
         observations: record.activeObservations,
@@ -468,18 +487,15 @@ export class ObservationalMemoryEngine {
       });
 
       return this.getOrCreateRecord();
-    } catch (error) {
-      this.logError("reflect failed", error);
-      return record;
     } finally {
       await this.storage.setReflectingFlag(record.id, false).catch(() => {});
     }
   }
 
-  private filterMessagesAfterCursor(
-    messages: AgentMessage[],
+  private filterEntriesAfterCursor(
+    entries: MessageEntry[],
     record: ObservationalMemoryRecord,
-  ): AgentMessage[] {
+  ): MessageEntry[] {
     const lastBufferedAtTime = record.lastBufferedAtTime ?? undefined;
     let bufferCursor = this.bufferingCoordinator.getLastBufferedAtTime() ?? lastBufferedAtTime;
     if (record.lastObservedAt) {
@@ -488,12 +504,13 @@ export class ObservationalMemoryEngine {
       }
     }
 
-    if (!bufferCursor) return messages;
+    if (!bufferCursor) return entries;
+    const cursorMs = bufferCursor.getTime();
 
-    return messages.filter((msg) => {
-      const ts = "timestamp" in msg ? msg.timestamp : undefined;
+    return entries.filter((entry) => {
+      const ts = entry.message.timestamp;
       if (ts === undefined) return true;
-      return ts > bufferCursor.getTime();
+      return ts > cursorMs;
     });
   }
 
@@ -508,15 +525,15 @@ export class ObservationalMemoryEngine {
     return maxTime > 0 ? new Date(maxTime) : new Date();
   }
 
-  private extractObservedMessageIds(_messages: AgentMessage[]): string[] {
-    // The storage adapter owns entry ids; the processor only knows messages.
-    // For now we return an empty array — the storage plan's observedMessageIds
-    // is a safeguard and is not required for the sync path.
-    return [];
+  private extractObservedMessageIds(entries: MessageEntry[]): string[] {
+    return entries.map((entry) => entry.id);
   }
 
-  private logError(_message: string, _error: unknown): void {
+  private logError(phase: string, error: unknown): void {
     // Best-effort logging only; OM failures must never abort the run.
-    // Logger is not part of deps currently; keep this hook for future use.
+    this.logger?.warn("observational-memory failure (best-effort)", {
+      phase,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
