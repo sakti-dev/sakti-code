@@ -146,6 +146,28 @@ export class BufferingCoordinator {
   }
 
   /**
+   * The in-flight detached promise for a kind, if any. Drain surface used by
+   * {@link awaitInFlight} and the engine's `waitForBuffering`.
+   */
+  getInFlightOp(kind: "observation" | "reflection"): Promise<void> | undefined {
+    const bufferKey = kind === "observation" ? this.observationBufferKey : this.reflectionBufferKey;
+    return BufferingCoordinator.asyncBufferingOps.get(bufferKey);
+  }
+
+  /**
+   * Await both in-flight ops (obs + refl) for this lookup key, with a timeout.
+   * Used at run end so a slow detached observe completes before teardown.
+   */
+  async awaitInFlight(timeoutMs: number): Promise<void> {
+    const ops = [this.getInFlightOp("observation"), this.getInFlightOp("reflection")].filter(
+      (p): p is Promise<void> => p !== undefined,
+    );
+    if (ops.length === 0) return;
+    const timeout = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
+    await Promise.race([Promise.allSettled(ops), timeout]);
+  }
+
+  /**
    * Check if we've crossed a new bufferTokens interval boundary for async observation.
    */
   shouldTriggerAsyncObservation(

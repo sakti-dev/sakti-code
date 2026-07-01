@@ -35,6 +35,8 @@ import {
 
 export interface ObservationalMemoryEngineOptions {
   readonly deps: ObservationalMemoryDeps;
+  /** Run-level abort signal (user-cancel channel). Threaded to observer/reflector. */
+  readonly abortSignal?: AbortSignal;
 }
 
 export class ObservationalMemoryEngine {
@@ -46,6 +48,7 @@ export class ObservationalMemoryEngine {
   private readonly tokenCounter: ObservationalMemoryDeps["tokenCounter"];
   private readonly logger: ObservationalMemoryDeps["logger"];
   private readonly bufferingCoordinator: BufferingCoordinator;
+  private readonly abortSignal: AbortSignal | undefined;
 
   constructor(options: ObservationalMemoryEngineOptions) {
     this.deps = options.deps;
@@ -55,6 +58,7 @@ export class ObservationalMemoryEngine {
     this.projectId = options.deps.projectId;
     this.tokenCounter = options.deps.tokenCounter;
     this.logger = options.deps.logger;
+    this.abortSignal = options.abortSignal;
     this.bufferingCoordinator = new BufferingCoordinator({
       lookupKey: this.computeLookupKey(),
       observationBufferTokens: resolveBufferTokens(
@@ -163,11 +167,14 @@ export class ObservationalMemoryEngine {
           return afterActivate;
         }
 
-        // Below threshold but crossed buffer interval: buffer observations.
+        // Below threshold but crossed buffer interval: detach buffer observation.
         if (
           this.bufferingCoordinator.shouldTriggerAsyncObservation(pendingTokens, record, threshold)
         ) {
-          return await this.maybeBufferObservation(record, entries, pendingTokens);
+          this.detach(
+            "buffer observation",
+            this.maybeBufferObservation(record, entries, pendingTokens),
+          );
         }
 
         return record;
@@ -204,7 +211,7 @@ export class ObservationalMemoryEngine {
           return afterActivate;
         }
 
-        // At activation point but below threshold: start async buffered reflection.
+        // At activation point but below threshold: detach buffer reflection.
         if (
           this.bufferingCoordinator.shouldTriggerAsyncReflection(
             observationTokens,
@@ -212,7 +219,7 @@ export class ObservationalMemoryEngine {
             threshold,
           )
         ) {
-          return await this.maybeBufferReflection(record);
+          this.detach("buffer reflection", this.maybeBufferReflection(record));
         }
 
         return record;
@@ -281,6 +288,7 @@ export class ObservationalMemoryEngine {
         messagesToObserve: candidateMessages,
         existingObservations: record.activeObservations,
         deps: this.deps,
+        ...(this.abortSignal ? { abortSignal: this.abortSignal } : {}),
       });
 
       const maxTs = this.getMaxMessageTimestamp(candidateMessages);
@@ -403,6 +411,7 @@ export class ObservationalMemoryEngine {
       const reflectorResult = await runReflector({
         observations: activeObservations,
         deps: this.deps,
+        ...(this.abortSignal ? { abortSignal: this.abortSignal } : {}),
       });
 
       await this.storage.updateBufferedReflection({
@@ -462,6 +471,23 @@ export class ObservationalMemoryEngine {
     return formatObservationsForContext(record.activeObservations);
   }
 
+  /**
+   * Await any in-flight detached buffering ops (obs + refl) for this engine's
+   * lookup key, with a timeout. Called at run end so a slow detached observe
+   * completes before teardown rather than being orphaned.
+   */
+  async waitForBuffering(timeoutMs: number): Promise<void> {
+    await this.bufferingCoordinator.awaitInFlight(timeoutMs);
+  }
+
+  /**
+   * Fire-and-forget a detached op, guarding against unhandled rejections.
+   * Detached failures are best-effort (already logged inside the op body).
+   */
+  private detach(phase: string, op: Promise<unknown>): void {
+    void op.catch((error) => this.logError(`${phase} (detached)`, error));
+  }
+
   private async runSyncObserve(
     record: ObservationalMemoryRecord,
     entries: MessageEntry[],
@@ -471,6 +497,7 @@ export class ObservationalMemoryEngine {
       messagesToObserve: unobserved,
       existingObservations: record.activeObservations,
       deps: this.deps,
+      ...(this.abortSignal ? { abortSignal: this.abortSignal } : {}),
     });
 
     const now = new Date();
@@ -499,6 +526,7 @@ export class ObservationalMemoryEngine {
       const reflectorResult = await runReflector({
         observations: record.activeObservations,
         deps: this.deps,
+        ...(this.abortSignal ? { abortSignal: this.abortSignal } : {}),
       });
 
       await this.storage.createReflectionGeneration({

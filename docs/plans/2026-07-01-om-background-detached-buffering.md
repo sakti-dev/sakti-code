@@ -22,28 +22,28 @@
 
 ## Mastra source of truth (port targets)
 
-| What | Mastra file:line |
-| ---- | ---------------- |
-| Detach the buffered observe (`void`) | `observational-memory.ts:2202` (`void this.startAsyncBufferedObservation(...)`) |
-| Block on sync observe (`await`) | `observational-memory.ts:2835` (`const obsResult = await this.observe(...)`) |
-| Drain API | `observational-memory.ts:644` / `:400` (`waitForBuffering(threadId, resourceId, timeoutMs)`) |
-| Re-entry / lifecycle registry | `operation-registry.ts` (`registerOp`/`unregisterOp`/`isOpActiveInProcess`) — sakti analog is `BufferingCoordinator.asyncBufferingOps` |
+| What                                 | Mastra file:line                                                                                                                       |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Detach the buffered observe (`void`) | `observational-memory.ts:2202` (`void this.startAsyncBufferedObservation(...)`)                                                        |
+| Block on sync observe (`await`)      | `observational-memory.ts:2835` (`const obsResult = await this.observe(...)`)                                                           |
+| Drain API                            | `observational-memory.ts:644` / `:400` (`waitForBuffering(threadId, resourceId, timeoutMs)`)                                           |
+| Re-entry / lifecycle registry        | `operation-registry.ts` (`registerOp`/`unregisterOp`/`isOpActiveInProcess`) — sakti analog is `BufferingCoordinator.asyncBufferingOps` |
 
 ## sakti integration anchors (verified)
 
-| Concern | File:line |
-| ------- | --------- |
-| Buffer call that must become `void` (observe) | `packages/agent/src/observational-memory/engine.ts:170` (`return await this.maybeBufferObservation(...)`) |
-| Buffer call that must become `void` (reflect) | `packages/agent/src/observational-memory/engine.ts:215` (`return await this.maybeBufferReflection(...)`) |
-| `maybeBufferObservation` body (self-registers op, clears flag in finally) | `engine.ts:235` |
-| `maybeBufferReflection` body | `engine.ts:363` |
-| Re-entry guard (already correct, now actually exercised) | `buffering-coordinator.ts:144` (`isAsyncBufferingInProgress`), `:161`/`:189` (`shouldTrigger*` consult it) |
-| In-flight promise storage | `buffering-coordinator.ts:86` (`static asyncBufferingOps`), `:219` (`setAsyncOp`), `:211` (`unregisterOp`) |
-| `runObserver` / `runReflector` accept `abortSignal` already | `observer.ts:21`, `reflector.ts:21` (currently never passed one) |
-| Engine construction site | `packages/agent/src/runner/agent-run.ts:101` (`new ObservationalMemoryEngine({ deps: om.deps })`) |
-| Run abort controller | `agent-run.ts:123` (`const retryAbort = new AbortController();`) |
-| Run-end ensuring block (drain site) | `agent-run.ts:246` (`Effect.ensuring(...)`) |
-| Existing detach-aware test fakes to reuse | `packages/agent/src/observational-memory/__tests__/buffering.test.ts` (mocks `complete`) |
+| Concern                                                                   | File:line                                                                                                  |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Buffer call that must become `void` (observe)                             | `packages/agent/src/observational-memory/engine.ts:170` (`return await this.maybeBufferObservation(...)`)  |
+| Buffer call that must become `void` (reflect)                             | `packages/agent/src/observational-memory/engine.ts:215` (`return await this.maybeBufferReflection(...)`)   |
+| `maybeBufferObservation` body (self-registers op, clears flag in finally) | `engine.ts:235`                                                                                            |
+| `maybeBufferReflection` body                                              | `engine.ts:363`                                                                                            |
+| Re-entry guard (already correct, now actually exercised)                  | `buffering-coordinator.ts:144` (`isAsyncBufferingInProgress`), `:161`/`:189` (`shouldTrigger*` consult it) |
+| In-flight promise storage                                                 | `buffering-coordinator.ts:86` (`static asyncBufferingOps`), `:219` (`setAsyncOp`), `:211` (`unregisterOp`) |
+| `runObserver` / `runReflector` accept `abortSignal` already               | `observer.ts:21`, `reflector.ts:21` (currently never passed one)                                           |
+| Engine construction site                                                  | `packages/agent/src/runner/agent-run.ts:101` (`new ObservationalMemoryEngine({ deps: om.deps })`)          |
+| Run abort controller                                                      | `agent-run.ts:123` (`const retryAbort = new AbortController();`)                                           |
+| Run-end ensuring block (drain site)                                       | `agent-run.ts:246` (`Effect.ensuring(...)`)                                                                |
+| Existing detach-aware test fakes to reuse                                 | `packages/agent/src/observational-memory/__tests__/buffering.test.ts` (mocks `complete`)                   |
 
 ---
 
@@ -52,6 +52,7 @@
 ### Task 1: `getInFlightOp` + `awaitInFlight`
 
 **Files:**
+
 - Modify: `packages/agent/src/observational-memory/buffering-coordinator.ts` (add getters)
 - Test: `packages/agent/src/observational-memory/__tests__/buffering.test.ts` (already constructs the coordinator via the engine)
 
@@ -116,6 +117,7 @@ async awaitInFlight(timeoutMs: number): Promise<void> {
 ### Task 2: Engine accepts `abortSignal`; threads it to observer/reflector
 
 **Files:**
+
 - Modify: `packages/agent/src/observational-memory/engine.ts` (`ObservationalMemoryEngineOptions`, constructor, all `runObserver`/`runReflector` call sites)
 
 **Step 1: Write the failing test** (new file or extend `engine.test.ts`):
@@ -146,6 +148,7 @@ it("passes the engine abortSignal to runObserver (cancellation plumbing)", async
 **Step 2: Run — verify fail.** `captured` is `undefined` (no signal threaded yet).
 
 **Step 3: Implement.**
+
 - `ObservationalMemoryEngineOptions`: add `readonly abortSignal?: AbortSignal;`
 - constructor: `this.abortSignal = options.abortSignal;` (new private field)
 - In `maybeBufferObservation`, `maybeBufferReflection`, `runSyncObserve`, `runSyncReflect`: pass `...(this.abortSignal ? { abortSignal: this.abortSignal } : {})` into every `runObserver({ … })` / `runReflector({ … })` call. (The sync path gets it too — symmetric token savings on user cancel.)
@@ -160,6 +163,7 @@ it("passes the engine abortSignal to runObserver (cancellation plumbing)", async
 ### Task 3: `maybeObserve` fires-and-forgets the buffer call
 
 **Files:**
+
 - Modify: `packages/agent/src/observational-memory/engine.ts:170` (the buffer branch of `maybeObserve`)
 
 **Step 1: Write the failing test** (`buffering.test.ts`, `describe("detached buffering")`):
@@ -177,11 +181,17 @@ it("maybeObserve returns immediately while the buffer observe runs detached", as
 
   // Slow observer: resolves only when we release the deferred.
   let releaseObserver!: () => void;
-  const deferred = new Promise<CompleteResult>((resolve) => (releaseObserver = () => resolve(completeTextResult("<observations>\n* detached\n</observations>"))));
+  const deferred = new Promise<CompleteResult>(
+    (resolve) =>
+      (releaseObserver = () =>
+        resolve(completeTextResult("<observations>\n* detached\n</observations>"))),
+  );
   vi.mocked(complete).mockImplementation(async () => deferred);
 
   const record = await engine.getOrCreateRecord();
-  session.setEntries([createMessageEntry({ role: "user", content: "x".repeat(200), timestamp: Date.now() })]);
+  session.setEntries([
+    createMessageEntry({ role: "user", content: "x".repeat(200), timestamp: Date.now() }),
+  ]);
 
   // Turn hook fires detached and returns the UNCHANGED record immediately.
   const before = Date.now();
@@ -208,10 +218,7 @@ it("maybeObserve returns immediately while the buffer observe runs detached", as
 //   return await this.maybeBufferObservation(record, entries, pendingTokens);
 // After:
 if (this.bufferingCoordinator.shouldTriggerAsyncObservation(pendingTokens, record, threshold)) {
-  this.detach(
-    "buffer observation",
-    this.maybeBufferObservation(record, entries, pendingTokens),
-  );
+  this.detach("buffer observation", this.maybeBufferObservation(record, entries, pendingTokens));
 }
 return record;
 ```
@@ -225,6 +232,7 @@ private detach(phase: string, op: Promise<unknown>): void {
 ```
 
 > Also add the public `waitForBuffering(timeoutMs)` passthrough used by the test:
+>
 > ```ts
 > async waitForBuffering(timeoutMs: number): Promise<void> {
 >   await this.bufferingCoordinator.awaitInFlight(timeoutMs);
@@ -282,10 +290,15 @@ it("a second maybeObserve while the buffer op is in flight does not double-fire"
 
   let release!: () => void;
   vi.mocked(complete).mockImplementation(
-    async () => new Promise<CompleteResult>((r) => (release = () => r(completeTextResult("<observations>x</observations>")))),
+    async () =>
+      new Promise<CompleteResult>(
+        (r) => (release = () => r(completeTextResult("<observations>x</observations>"))),
+      ),
   );
   const record = await engine.getOrCreateRecord();
-  session.setEntries([createMessageEntry({ role: "user", content: "x".repeat(200), timestamp: Date.now() })]);
+  session.setEntries([
+    createMessageEntry({ role: "user", content: "x".repeat(200), timestamp: Date.now() }),
+  ]);
 
   await engine.maybeObserve(record); // fires detached op #1
   await engine.maybeObserve(record); // in flight → guard skips
@@ -318,7 +331,10 @@ it("a second maybeObserve while the buffer op is in flight does not double-fire"
   let omEngine: ObservationalMemoryEngine | undefined;
   if (deps.observationalMemory?.enabled) {
     omEngine = new ObservationalMemoryEngine({ deps: deps.observationalMemory.deps });
-    harness.setObservationalMemory({ engine: omEngine, getBaseSystemPrompt: () => harness.getSystemPrompt() ?? "" });
+    harness.setObservationalMemory({
+      engine: omEngine,
+      getBaseSystemPrompt: () => harness.getSystemPrompt() ?? "",
+    });
   }
   ```
 - Pass the abort signal:

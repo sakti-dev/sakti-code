@@ -539,10 +539,13 @@ describe("ObservationalMemoryEngine buffering", () => {
       sessionStorage.setEntries([createMessageEntry(messages[0]!)]);
       setCompleteResponse(`<observations>\n* 🔴 First observation\n</observations>`);
 
-      // Below observation threshold (100) but above buffer interval (20)
-      const buffered = await engine.maybeObserve(record);
-      expect(buffered.bufferedObservationChunks).toHaveLength(1);
-      expect(buffered.activeObservations).toBe("");
+      // Below observation threshold (100) but above buffer interval (20).
+      // Detached: the chunk lands asynchronously, so drain before asserting.
+      await engine.maybeObserve(record);
+      await engine.waitForBuffering(2_000);
+      const afterBuffer = await engine.getOrCreateRecord();
+      expect(afterBuffer.bufferedObservationChunks).toHaveLength(1);
+      expect(afterBuffer.activeObservations).toBe("");
 
       // Add more messages to push pending tokens over the observation threshold
       const t1 = t0 + 1000;
@@ -554,7 +557,7 @@ describe("ObservationalMemoryEngine buffering", () => {
         createMessageEntry(moreMessages[0]!, null),
       ]);
 
-      const activated = await engine.maybeObserve(buffered);
+      const activated = await engine.maybeObserve(afterBuffer);
       expect(activated.activeObservations).toContain("First observation");
       expect(activated.bufferedObservationChunks).toBeUndefined();
     });
@@ -639,8 +642,10 @@ describe("ObservationalMemoryEngine buffering", () => {
 
       setCompleteResponse(`<observations>\n* 🔴 Reflected observation\n</observations>`);
 
-      // First call starts async buffered reflection
-      const afterBuffer = await engine.maybeReflect(seeded);
+      // First call starts detached buffered reflection; drain to let it land.
+      await engine.maybeReflect(seeded);
+      await engine.waitForBuffering(2_000);
+      const afterBuffer = await engine.getOrCreateRecord();
       expect(afterBuffer.bufferedReflection).toBeDefined();
 
       // Manually bump observation tokens above reflection threshold so activation triggers
@@ -656,6 +661,218 @@ describe("ObservationalMemoryEngine buffering", () => {
 
       expect(activated.activeObservations).toContain("Reflected observation");
       expect(activated.bufferedReflection).toBeUndefined();
+    });
+  });
+
+  describe("detached buffering", () => {
+    it("getInFlightOp exposes the stored promise per kind", async () => {
+      const deps = createDeps(storage, sessionStorage, {
+        observationBufferTokens: 20,
+        observationBufferActivation: 0.5,
+        reflectionBufferActivation: 1,
+      });
+      const engine = new ObservationalMemoryEngine({ deps });
+      const coord = engine["bufferingCoordinator"];
+
+      // Before any op: nothing in flight.
+      expect(coord.getInFlightOp("observation")).toBeUndefined();
+
+      // Plant a promise directly and confirm the getter returns it.
+      let resolveOp!: () => void;
+      const p = new Promise<void>((r) => {
+        resolveOp = r;
+      });
+      coord.setAsyncOp("observation", p);
+      expect(coord.getInFlightOp("observation")).toBe(p);
+      resolveOp();
+      await p;
+    });
+
+    it("passes the engine abortSignal to runObserver (cancellation plumbing)", async () => {
+      const ac = new AbortController();
+      const deps = createDeps(storage, sessionStorage, {
+        observationBufferTokens: 20,
+        observationBufferActivation: 0.5,
+        reflectionBufferActivation: 1,
+      });
+      const engine = new ObservationalMemoryEngine({
+        deps,
+        ...(ac ? { abortSignal: ac.signal } : {}),
+      });
+
+      const messages: AgentMessage[] = [
+        { role: "user", content: "Hello world this is a test message", timestamp: Date.now() },
+      ];
+      const entry = createMessageEntry(messages[0]!);
+      sessionStorage.setEntries([entry]);
+      setCompleteResponse(`<observations>\n* x\n</observations>`);
+
+      const record = await engine.getOrCreateRecord();
+      await engine.maybeBufferObservation(record, [entry], 50);
+
+      const lastCall = vi.mocked(complete).mock.lastCall?.[0];
+      expect(lastCall?.abortSignal).toBe(ac.signal);
+    });
+
+    it("passes the engine abortSignal to runReflector (cancellation plumbing)", async () => {
+      const ac = new AbortController();
+      const deps = createDeps(storage, sessionStorage, {
+        observationBufferTokens: 20,
+        observationBufferActivation: 0.5,
+        reflectionBufferActivation: 0.5,
+      });
+      const engine = new ObservationalMemoryEngine({
+        deps,
+        ...(ac ? { abortSignal: ac.signal } : {}),
+      });
+
+      const record = await engine.getOrCreateRecord();
+      await storage.updateActiveObservations({
+        id: record.id,
+        observations: "* Observation one\n* Observation two",
+        lastObservedAt: new Date(),
+        tokenCount: 120,
+      });
+      const seeded = await engine.getOrCreateRecord();
+
+      setCompleteResponse(`<observations>\n* Reflected\n</observations>`);
+      await engine.maybeBufferReflection(seeded);
+
+      const lastCall = vi.mocked(complete).mock.lastCall?.[0];
+      expect(lastCall?.abortSignal).toBe(ac.signal);
+    });
+
+    it("maybeObserve returns immediately while the buffer observe runs detached", async () => {
+      const deps = createDeps(storage, sessionStorage, {
+        observationBufferTokens: 20,
+        observationBufferActivation: 0.5,
+        reflectionBufferActivation: 1,
+      });
+      const engine = new ObservationalMemoryEngine({ deps });
+
+      // Slow observer: resolves only when we release the deferred.
+      let releaseObserver!: () => void;
+      const deferred = new Promise<CompleteResult>((resolve) => {
+        releaseObserver = () =>
+          resolve(completeTextResult(`<observations>\n* detached\n</observations>`));
+      });
+      vi.mocked(complete).mockImplementation(async () => deferred);
+
+      const record = await engine.getOrCreateRecord();
+      const messages: AgentMessage[] = [
+        { role: "user", content: "Hello world this is a test message", timestamp: Date.now() },
+      ];
+      sessionStorage.setEntries([createMessageEntry(messages[0]!)]);
+
+      // Turn hook fires detached and returns the UNCHANGED record immediately.
+      const before = Date.now();
+      const returned = await engine.maybeObserve(record);
+      const elapsed = Date.now() - before;
+      expect(returned.id).toBe(record.id);
+      expect(returned.bufferedObservationChunks).toBeUndefined();
+      expect(elapsed).toBeLessThan(50);
+
+      // Now let the detached op finish and drain it.
+      releaseObserver();
+      await engine.waitForBuffering(2_000);
+      const after = await engine.getOrCreateRecord();
+      expect(after.bufferedObservationChunks?.[0]?.observations).toContain("detached");
+    });
+
+    it("maybeReflect returns immediately while the buffer reflect runs detached", async () => {
+      const deps = createDeps(storage, sessionStorage, {
+        observationBufferTokens: 20,
+        observationBufferActivation: 0.5,
+        reflectionBufferActivation: 0.5,
+      });
+      const engine = new ObservationalMemoryEngine({ deps });
+
+      const record = await engine.getOrCreateRecord();
+      await storage.updateActiveObservations({
+        id: record.id,
+        observations: "* Observation one\n* Observation two",
+        lastObservedAt: new Date(),
+        tokenCount: 120,
+      });
+      const seeded = await engine.getOrCreateRecord();
+
+      // Slow reflector: resolves only when we release the deferred.
+      let releaseReflector!: () => void;
+      const deferred = new Promise<CompleteResult>((resolve) => {
+        releaseReflector = () =>
+          resolve(completeTextResult(`<observations>\n* detached reflection\n</observations>`));
+      });
+      vi.mocked(complete).mockImplementation(async () => deferred);
+
+      // Turn hook fires detached and returns the UNCHANGED record immediately.
+      const before = Date.now();
+      const returned = await engine.maybeReflect(seeded);
+      const elapsed = Date.now() - before;
+      expect(returned.id).toBe(seeded.id);
+      expect(returned.bufferedReflection).toBeUndefined();
+      expect(elapsed).toBeLessThan(50);
+
+      // Now let the detached op finish and drain it.
+      releaseReflector();
+      await engine.waitForBuffering(2_000);
+      const after = await engine.getOrCreateRecord();
+      expect(after.bufferedReflection).toContain("detached reflection");
+    });
+
+    it("a second maybeObserve while the buffer op is in flight does not double-fire", async () => {
+      const deps = createDeps(storage, sessionStorage, {
+        observationBufferTokens: 20,
+        observationBufferActivation: 0.5,
+        reflectionBufferActivation: 1,
+      });
+      const engine = new ObservationalMemoryEngine({ deps });
+
+      let release!: () => void;
+      const deferred = new Promise<CompleteResult>((resolve) => {
+        release = () => resolve(completeTextResult(`<observations>x</observations>`));
+      });
+      vi.mocked(complete).mockImplementation(async () => deferred);
+
+      const record = await engine.getOrCreateRecord();
+      const messages: AgentMessage[] = [
+        { role: "user", content: "Hello world this is a test message", timestamp: Date.now() },
+      ];
+      sessionStorage.setEntries([createMessageEntry(messages[0]!)]);
+
+      await engine.maybeObserve(record); // fires detached op #1
+      await engine.maybeObserve(record); // in flight → guard skips
+      expect(vi.mocked(complete)).toHaveBeenCalledTimes(1);
+      release!();
+      await engine.waitForBuffering(2_000);
+    });
+
+    it("waitForBuffering blocks until a planted in-flight promise resolves", async () => {
+      const deps = createDeps(storage, sessionStorage, {
+        observationBufferTokens: 20,
+        observationBufferActivation: 0.5,
+        reflectionBufferActivation: 1,
+      });
+      const engine = new ObservationalMemoryEngine({ deps });
+      const coord = engine["bufferingCoordinator"];
+
+      let resolveOp!: () => void;
+      const p = new Promise<void>((r) => {
+        resolveOp = r;
+      });
+      coord.setAsyncOp("observation", p);
+
+      let drainResolved = false;
+      const drainPromise = engine.waitForBuffering(2_000).then(() => {
+        drainResolved = true;
+      });
+
+      // Drain should NOT resolve while the planted promise is pending.
+      await new Promise((r) => setTimeout(r, 20));
+      expect(drainResolved).toBe(false);
+
+      resolveOp();
+      await drainPromise;
+      expect(drainResolved).toBe(true);
     });
   });
 

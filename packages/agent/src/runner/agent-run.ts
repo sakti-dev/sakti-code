@@ -73,6 +73,8 @@ export interface AgentRunDeps {
  * harness and provides I/O via callbacks.
  */
 export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error> {
+  // Hoisted so the Effect.ensuring finalizer (outside the gen body) can drain it.
+  let omEngine: ObservationalMemoryEngine | undefined;
   return Effect.gen(function* () {
     const {
       harness,
@@ -95,12 +97,19 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
     const log = deps.log;
     const readFile = deps.readFile ?? ((p: string) => readFileAsync(p).catch(() => null));
 
+    // ── Retry abort (covers the gap between turns — backoff sleep) ──
+    // Hoisted above the OM wiring so the engine can share the signal.
+    const retryAbort = new AbortController();
+
     // Wire observational memory into the harness when enabled.
     if (deps.observationalMemory?.enabled) {
       const om = deps.observationalMemory;
-      const engine = new ObservationalMemoryEngine({ deps: om.deps });
+      omEngine = new ObservationalMemoryEngine({
+        deps: om.deps,
+        abortSignal: retryAbort.signal,
+      });
       harness.setObservationalMemory({
-        engine,
+        engine: omEngine,
         getBaseSystemPrompt: () => {
           // Deliberately read the harness's stable composed base prompt
           // (NOT currentContext.systemPrompt) so appended <observations>
@@ -118,9 +127,6 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
     const drainFiber = Effect.runFork(
       Stream.runForEach(eventStream, (event) => Effect.sync(() => emit(event))),
     );
-
-    // ── Retry abort (covers the gap between turns — backoff sleep) ──
-    const retryAbort = new AbortController();
     const unsubscribe = () => {
       void Effect.runPromise(Fiber.interrupt(drainFiber).pipe(Effect.exit));
     };
@@ -244,7 +250,13 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
     yield* executeWithRetryEffect(depsEffect, retrySettings);
   }).pipe(
     Effect.ensuring(
-      Effect.sync(() => {
+      Effect.gen(function* () {
+        // Drain detached OM buffering so a slow observe/reflector completes
+        // before the run tears down. Best-effort: waitForBuffering can't
+        // reject (uses allSettled + timeout), but catch as defense-in-depth.
+        if (omEngine) {
+          yield* Effect.promise(() => omEngine!.waitForBuffering(30_000).catch(() => {}));
+        }
         deps.unregisterRun?.();
       }),
     ),
