@@ -87,6 +87,23 @@ export type {
   Skill,
   ThinkingLevel,
 } from "./harness-types.ts";
+export type {
+  BufferedObservationChunk,
+  CreateObservationalMemoryInput,
+  CreateReflectionGenerationInput,
+  ObservationalMemoryHistoryOptions,
+  ObservationalMemoryOriginType,
+  ObservationalMemoryRecord,
+  ObservationalMemoryScope,
+  ObservationalMemoryStorage,
+  SwapBufferedReflectionToActiveInput,
+  SwapBufferedToActiveInput,
+  SwapBufferedToActiveResult,
+  UpdateActiveObservationsInput,
+  UpdateBufferedObservationsInput,
+  UpdateBufferedReflectionInput,
+  UpdateObservationalMemoryConfigInput,
+} from "./observational-memory-storage.ts";
 export {
   ExecutionError,
   err,
