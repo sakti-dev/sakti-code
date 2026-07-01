@@ -1,5 +1,4 @@
 import {
-  buildDdgOperations,
   buildExaOperations,
   buildTavilyOperations,
   type SearchOperations,
@@ -13,15 +12,16 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 /**
  * Resolve the active websearch adapter from settings.json (provider) and the
- * matching key in auth.json (namespaced `websearch:<provider>`). When the
- * chosen provider has no key, or the provider is absent/unknown, falls back to
- * the keyless DuckDuckGo adapter. This is the only module that imports all
- * three adapter builders.
+ * matching key in auth.json (namespaced `websearch:<provider>`). Returns
+ * `undefined` when the provider is absent/unknown or has no stored key — in
+ * that case the tool is built without operations and surfaces an actionable
+ * "not configured" error if the agent calls it. This is the only module that
+ * imports the adapter builders.
  */
 export function resolveWebSearchOperations(
   auth: AuthStore,
   settingsFile: SettingsFileStore,
-): SearchOperations {
+): SearchOperations | undefined {
   const raw = settingsFile.read().websearch;
   const cfg = isPlainObject(raw) ? raw : undefined;
   const providerRaw = cfg?.provider;
@@ -29,11 +29,11 @@ export function resolveWebSearchOperations(
 
   if (provider === "exa") {
     const key = auth.getApiKey("websearch:exa");
-    return key ? buildExaOperations(key) : buildDdgOperations();
+    return key ? buildExaOperations(key) : undefined;
   }
   if (provider === "tavily") {
     const key = auth.getApiKey("websearch:tavily");
-    return key ? buildTavilyOperations(key) : buildDdgOperations();
+    return key ? buildTavilyOperations(key) : undefined;
   }
-  return buildDdgOperations();
+  return undefined;
 }

@@ -81,10 +81,10 @@ describe("websearch tool", () => {
     ]);
   });
 
-  it("throws when no operations configured", async () => {
+  it("throws an actionable error when no operations configured", async () => {
     const tool = createWebSearchTool();
     await expect(tool.execute("c1", { query: "q" }, undefined!)).rejects.toThrow(
-      /provider not configured/,
+      /not configured.*auth\.json/i,
     );
   });
 

@@ -27,7 +27,6 @@ export type {
   WebFetchToolOptions,
 } from "./webfetch/index";
 export { createWebFetchTool } from "./webfetch/index";
-export { buildDdgOperations } from "./websearch/adapters/ddg";
 export { buildExaOperations } from "./websearch/adapters/exa";
 export { buildTavilyOperations } from "./websearch/adapters/tavily";
 export type {

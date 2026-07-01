@@ -66,7 +66,11 @@ export function createWebSearchTool(
     ],
     async execute(_toolCallId, input, signal) {
       const operations = options?.operations;
-      if (!operations) throw new Error("websearch provider not configured");
+      if (!operations) {
+        throw new Error(
+          'websearch is not configured — set a provider key ("websearch:exa" or "websearch:tavily") in auth.json and pick it in settings.json (e.g. { "websearch": { "provider": "exa" } })',
+        );
+      }
       const query = (input.query ?? "").trim();
       if (!query) throw new Error("query must be a non-empty string");
       const numResults = clampNumResults(input.numResults);
