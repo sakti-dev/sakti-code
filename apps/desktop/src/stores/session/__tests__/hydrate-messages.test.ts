@@ -179,3 +179,130 @@ describe("hydrateSessionMessages", () => {
     expect(result[0]!.usage).toEqual({ input: 100, output: 50, cost: 3 });
   });
 });
+
+describe("hydrateSessionMessages — OM markers", () => {
+  it("converts CustomMessage(om_marker) to om_marker part on preceding assistant", () => {
+    const messages: AgentMessage[] = [
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "hello" }],
+        timestamp: 1000,
+      } as unknown as AgentMessage,
+      {
+        role: "custom",
+        customType: "om_marker",
+        content: "",
+        display: false,
+        timestamp: 2000,
+        details: {
+          cycleId: "c1",
+          operationType: "observation",
+          status: "complete",
+          durationMs: 3000,
+          tokensProcessed: 5000,
+          tokensProduced: 1000,
+          observations: "test",
+        },
+      } as unknown as AgentMessage,
+    ];
+
+    const result = hydrateSessionMessages(messages);
+    expect(result).toHaveLength(1);
+    const marker = result[0]!.parts.find((p) => p.type === "om_marker");
+    expect(marker).toBeDefined();
+    expect(marker!.cycleId).toBe("c1");
+    expect(marker!.status).toBe("complete");
+  });
+
+  it("stamps loading markers as disconnected on reload", () => {
+    const messages: AgentMessage[] = [
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "hello" }],
+        timestamp: 1000,
+      } as unknown as AgentMessage,
+      {
+        role: "custom",
+        customType: "om_marker",
+        content: "",
+        display: false,
+        timestamp: 2000,
+        details: {
+          cycleId: "c1",
+          operationType: "observation",
+          status: "loading",
+          tokensProcessed: 5000,
+        },
+      } as unknown as AgentMessage,
+    ];
+
+    const result = hydrateSessionMessages(messages);
+    const marker = result[0]!.parts.find(
+      (p): p is Extract<typeof p, { type: "om_marker" }> => p.type === "om_marker",
+    );
+    expect(marker!.status).toBe("disconnected");
+  });
+
+  it("stamps buffering markers as disconnected on reload", () => {
+    const messages: AgentMessage[] = [
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "hello" }],
+        timestamp: 1000,
+      } as unknown as AgentMessage,
+      {
+        role: "custom",
+        customType: "om_marker",
+        content: "",
+        display: false,
+        timestamp: 2000,
+        details: {
+          cycleId: "c1",
+          operationType: "buffering",
+          status: "buffering",
+        },
+      } as unknown as AgentMessage,
+    ];
+
+    const result = hydrateSessionMessages(messages);
+    const marker = result[0]!.parts.find(
+      (p): p is Extract<typeof p, { type: "om_marker" }> => p.type === "om_marker",
+    );
+    expect(marker!.status).toBe("disconnected");
+  });
+
+  it("skips orphan om_marker with no preceding assistant", () => {
+    const messages: AgentMessage[] = [
+      {
+        role: "custom",
+        customType: "om_marker",
+        content: "",
+        display: false,
+        timestamp: 1000,
+        details: {
+          cycleId: "c1",
+          operationType: "observation",
+          status: "complete",
+        },
+      } as unknown as AgentMessage,
+    ];
+
+    const result = hydrateSessionMessages(messages);
+    expect(result).toHaveLength(0);
+  });
+
+  it("skips non-om_marker custom messages", () => {
+    const messages: AgentMessage[] = [
+      {
+        role: "custom",
+        customType: "other_type",
+        content: "",
+        display: false,
+        timestamp: 1000,
+      } as unknown as AgentMessage,
+    ];
+
+    const result = hydrateSessionMessages(messages);
+    expect(result).toHaveLength(0);
+  });
+});
