@@ -7,6 +7,7 @@ import type {
   ObservationalMemoryStorage,
   SwapBufferedToActiveResult,
   UpdateActiveObservationsInput,
+  UpdateObservationalMemoryConfigInput,
 } from "@sakti-code/agent";
 import type { DrizzleDB } from "./init.ts";
 import { observationalMemory } from "./schema.ts";
@@ -27,6 +28,22 @@ function parseJson<T>(value: unknown, fallback: T): T {
 
 function toDate(value: number | null | undefined): Date | undefined {
   return value == null ? undefined : new Date(value);
+}
+
+function isPlainObj(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+function deepMerge(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...target };
+  for (const key of Object.keys(source)) {
+    const t = target[key];
+    const s = source[key];
+    out[key] = isPlainObj(t) && isPlainObj(s) ? deepMerge(t, s) : s;
+  }
+  return out;
 }
 
 function parseRecord(row: typeof observationalMemory.$inferSelect): ObservationalMemoryRecord {
@@ -286,26 +303,117 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
     if (!row) throw new Error(`OM record not found after insert: ${id}`);
     return parseRecord(row);
   }
-  async setReflectingFlag(): Promise<void> {
-    throw new Error("not implemented");
+  async setReflectingFlag(id: string, isReflecting: boolean): Promise<void> {
+    if (
+      !this.db
+        .select({ id: observationalMemory.id })
+        .from(observationalMemory)
+        .where(eq(observationalMemory.id, id))
+        .get()
+    )
+      throw new Error(`OM record not found: ${id}`);
+    this.db
+      .update(observationalMemory)
+      .set({ isReflecting, updatedAt: Date.now() })
+      .where(eq(observationalMemory.id, id))
+      .run();
   }
-  async setObservingFlag(): Promise<void> {
-    throw new Error("not implemented");
+
+  async setObservingFlag(id: string, isObserving: boolean): Promise<void> {
+    if (
+      !this.db
+        .select({ id: observationalMemory.id })
+        .from(observationalMemory)
+        .where(eq(observationalMemory.id, id))
+        .get()
+    )
+      throw new Error(`OM record not found: ${id}`);
+    this.db
+      .update(observationalMemory)
+      .set({ isObserving, updatedAt: Date.now() })
+      .where(eq(observationalMemory.id, id))
+      .run();
   }
-  async setBufferingObservationFlag(): Promise<void> {
-    throw new Error("not implemented");
+
+  async setBufferingObservationFlag(
+    id: string,
+    isBuffering: boolean,
+    lastBufferedAtTokens?: number,
+  ): Promise<void> {
+    if (
+      !this.db
+        .select({ id: observationalMemory.id })
+        .from(observationalMemory)
+        .where(eq(observationalMemory.id, id))
+        .get()
+    )
+      throw new Error(`OM record not found: ${id}`);
+    this.db
+      .update(observationalMemory)
+      .set({
+        isBufferingObservation: isBuffering,
+        ...(isBuffering && lastBufferedAtTokens !== undefined ? { lastBufferedAtTokens } : {}),
+        updatedAt: Date.now(),
+      })
+      .where(eq(observationalMemory.id, id))
+      .run();
   }
-  async setBufferingReflectionFlag(): Promise<void> {
-    throw new Error("not implemented");
+
+  async setBufferingReflectionFlag(id: string, isBuffering: boolean): Promise<void> {
+    if (
+      !this.db
+        .select({ id: observationalMemory.id })
+        .from(observationalMemory)
+        .where(eq(observationalMemory.id, id))
+        .get()
+    )
+      throw new Error(`OM record not found: ${id}`);
+    this.db
+      .update(observationalMemory)
+      .set({ isBufferingReflection: isBuffering, updatedAt: Date.now() })
+      .where(eq(observationalMemory.id, id))
+      .run();
   }
-  async clearObservationalMemory(): Promise<void> {
-    throw new Error("not implemented");
+
+  async clearObservationalMemory(threadId: string | null, resourceId: string): Promise<void> {
+    this.db
+      .delete(observationalMemory)
+      .where(eq(observationalMemory.lookupKey, omLookupKey(threadId, resourceId)))
+      .run();
   }
-  async setPendingMessageTokens(): Promise<void> {
-    throw new Error("not implemented");
+
+  async setPendingMessageTokens(id: string, tokenCount: number): Promise<void> {
+    if (
+      !this.db
+        .select({ id: observationalMemory.id })
+        .from(observationalMemory)
+        .where(eq(observationalMemory.id, id))
+        .get()
+    )
+      throw new Error(`OM record not found: ${id}`);
+    this.db
+      .update(observationalMemory)
+      .set({ pendingMessageTokens: tokenCount, updatedAt: Date.now() })
+      .where(eq(observationalMemory.id, id))
+      .run();
   }
-  async updateObservationalMemoryConfig(): Promise<void> {
-    throw new Error("not implemented");
+
+  async updateObservationalMemoryConfig(
+    input: UpdateObservationalMemoryConfigInput,
+  ): Promise<void> {
+    const row = this.db
+      .select({ config: observationalMemory.config })
+      .from(observationalMemory)
+      .where(eq(observationalMemory.id, input.id))
+      .get();
+    if (!row) throw new Error(`OM record not found: ${input.id}`);
+    const existing = parseJson<Record<string, unknown>>(row.config, {});
+    const merged = deepMerge(existing, input.config);
+    this.db
+      .update(observationalMemory)
+      .set({ config: JSON.stringify(merged), updatedAt: Date.now() })
+      .where(eq(observationalMemory.id, input.id))
+      .run();
   }
   async updateBufferedObservations(): Promise<void> {
     throw new Error("not implemented");
