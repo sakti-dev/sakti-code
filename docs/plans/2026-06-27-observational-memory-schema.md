@@ -204,7 +204,7 @@ git commit -m "feat(db): add observational_memory table (session-scoped)"
 
 ## Task 2: Behavior — full round-trip + history-by-lookupKey
 
-Validates that every column type (JSON-in-text, boolean-mode flags, epoch-ms, nullable FKs) persists correctly, and that multiple rows may share a `lookup_key` (history) with latest-by-`updatedAt` semantics.
+Validates that every column type (JSON-in-text, boolean-mode flags, epoch-ms, nullable FKs) persists correctly, and that multiple rows may share a `lookup_key` (history) with latest-by-`generationCount` semantics (matching Mastra and the storage adapter — not `updatedAt`).
 
 **Files:**
 
@@ -325,12 +325,14 @@ test("round-trips a fully-populated record (JSON, booleans, epoch-ms) and keeps 
     })
     .run();
 
-  // latest by updatedAt wins (DESC → first)
+  // "current" = latest generationCount DESC (NOT updatedAt). Mastra orders by
+  // generationCount; the storage adapter follows the same convention so that
+  // "current record" means the same thing at every layer.
   const latest = drizzleDb
     .select()
     .from(observationalMemory)
     .where(eq(observationalMemory.lookupKey, "thread:sess1"))
-    .orderBy(desc(observationalMemory.updatedAt))
+    .orderBy(desc(observationalMemory.generationCount))
     .all()[0];
 
   expect(latest!.id).toBe("om2");
