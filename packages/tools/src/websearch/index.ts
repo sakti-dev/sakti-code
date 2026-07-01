@@ -68,7 +68,7 @@ export function createWebSearchTool(
       const operations = options?.operations;
       if (!operations) {
         throw new Error(
-          'websearch is not configured — set a provider key ("websearch:exa" or "websearch:tavily") in auth.json and pick it in settings.json (e.g. { "websearch": { "provider": "exa" } })',
+          "Web search is not available — no search provider is configured. Ask the user to set up a web search provider (Exa or Tavily) with an API key in the app settings, then retry.",
         );
       }
       const query = (input.query ?? "").trim();
