@@ -17,20 +17,20 @@ export type {
   CompactionReason,
   RunCompactionDeps,
   RunCompactionOutcome,
-} from "./compaction/auto-compaction.ts";
+} from "./memory/compaction/auto-compaction.ts";
 export {
   checkCompaction,
   parseCompactionSettings,
   runAutoCompaction,
   runAutoCompactionEffect,
-} from "./compaction/auto-compaction.ts";
+} from "./memory/compaction/auto-compaction.ts";
 export {
   collectEntriesForBranchSummary,
   collectEntriesForBranchSummaryEffect,
   generateBranchSummary,
   generateBranchSummaryEffect,
-} from "./compaction/branch-summarization.ts";
-export type { CompactionSettings } from "./compaction/compaction.ts";
+} from "./memory/compaction/branch-summarization.ts";
+export type { CompactionSettings } from "./memory/compaction/compaction.ts";
 export {
   calculateContextTokens,
   compact,
@@ -41,27 +41,27 @@ export {
   generateSummaryEffect,
   prepareCompaction,
   shouldCompact,
-} from "./compaction/compaction.ts";
+} from "./memory/compaction/compaction.ts";
 export type {
   BranchSummaryPrompts,
   CompactionPrompts,
   SkillsInstructions,
-} from "./compaction/prompt-bundles.ts";
+} from "./memory/compaction/prompt-bundles.ts";
 export type {
   RetryDecisionInput,
   RetryRunnerDepsEffect,
   RetrySettings,
   StuckGuardState,
-} from "./compaction/retry-loop.ts";
+} from "./memory/compaction/retry-loop.ts";
 export {
   abortableSleep,
   computeRetryDelay,
   executeWithRetryEffect,
   parseRetrySettings,
   shouldRetry,
-} from "./compaction/retry-loop.ts";
-export type { FileOperations } from "./compaction/utils.ts";
-export { serializeConversation } from "./compaction/utils.ts";
+} from "./memory/compaction/retry-loop.ts";
+export type { FileOperations } from "./memory/compaction/utils.ts";
+export { serializeConversation } from "./memory/compaction/utils.ts";
 export { runAgentLoop, runAgentLoopContinue } from "./core/agent-loop.ts";
 export type { CacheDiagnostics, PrefixShape } from "./core/cache-shape.ts";
 export { captureShape, compareShape } from "./core/cache-shape.ts";
@@ -110,12 +110,12 @@ export type {
   ObservationalMemoryDeps,
   ObservationalMemoryOptions,
   ObservationalMemoryThresholds,
-} from "./observational-memory/config.ts";
-export { TokenCounter } from "./observational-memory/token-counter.ts";
-export type { TokenCounterModelContext } from "./observational-memory/token-counter.ts";
-export { ObservationalMemoryEngine } from "./observational-memory/engine.ts";
-export { runObserver, ObservationError } from "./observational-memory/observer.ts";
-export { runReflector, ReflectionError } from "./observational-memory/reflector.ts";
+} from "./memory/observational-memory/config.ts";
+export { TokenCounter } from "./memory/observational-memory/token-counter.ts";
+export type { TokenCounterModelContext } from "./memory/observational-memory/token-counter.ts";
+export { ObservationalMemoryEngine } from "./memory/observational-memory/engine.ts";
+export { runObserver, ObservationError } from "./memory/observational-memory/observer.ts";
+export { runReflector, ReflectionError } from "./memory/observational-memory/reflector.ts";
 export {
   ExecutionError,
   err,

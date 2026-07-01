@@ -2,14 +2,14 @@ import type { AssistantMessage, Model, Usage } from "@sakti-code/llm";
 import { Type } from "typebox";
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { agentLoop } from "../../core/agent-loop.ts";
+import { agentLoop } from "../../../core/agent-loop.ts";
 import type {
   AgentContext,
   AgentLoopConfig,
   AgentMessage,
   AgentTool,
   StreamFn,
-} from "../../types.ts";
+} from "../../../types.ts";
 
 // ─── helpers (mirrors core/__tests__/agent-loop.test.ts) ─────────────────────
 

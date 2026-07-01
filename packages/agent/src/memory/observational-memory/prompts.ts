@@ -10,7 +10,7 @@
  *   - `safeSlice` is inlined (single call site)
  */
 
-import type { AgentMessage } from "../types.ts";
+import type { AgentMessage } from "../../types.ts";
 
 // ─── safeSlice (ported from string-utils.ts) ─────────────────────────────────
 

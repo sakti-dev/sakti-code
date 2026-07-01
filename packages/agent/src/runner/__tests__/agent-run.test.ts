@@ -14,9 +14,9 @@ import {
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env.ts";
 import type { AgentHarness as AgentHarnessType } from "../../agent/agent-harness.ts";
 import { AgentHarness } from "../../agent/agent-harness.ts";
-import { parseCompactionSettings } from "../../compaction/auto-compaction.ts";
-import type { StuckGuardState } from "../../compaction/retry-loop.ts";
-import { parseRetrySettings } from "../../compaction/retry-loop.ts";
+import { parseCompactionSettings } from "../../memory/compaction/auto-compaction.ts";
+import type { StuckGuardState } from "../../memory/compaction/retry-loop.ts";
+import { parseRetrySettings } from "../../memory/compaction/retry-loop.ts";
 import type { SessionShape } from "../../session/session.ts";
 import { PromiseSession, promiseSessionAsShape } from "../../session/session.ts";
 import type { SessionStorageShape } from "../../session/storage.ts";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { AgentMessage } from "../../types.ts";
+import type { AgentMessage } from "../../../types.ts";
 import { TokenCounter } from "../token-counter.ts";
 
 describe("TokenCounter", () => {

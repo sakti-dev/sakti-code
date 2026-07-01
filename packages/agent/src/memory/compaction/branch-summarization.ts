@@ -10,15 +10,15 @@ import {
   type Result,
   SessionError,
   type SessionTreeEntry,
-} from "../harness-types";
+} from "../../harness-types";
 import {
   convertToLlm,
   createBranchSummaryMessage,
   createCompactionSummaryMessage,
   createCustomMessage,
-} from "../session/messages";
-import type { SessionShape } from "../session/session";
-import type { AgentMessage } from "../types";
+} from "../../session/messages";
+import type { SessionShape } from "../../session/session";
+import type { AgentMessage } from "../../types";
 import type { BranchSummaryPrompts } from "./prompt-bundles";
 import {
   computeFileLists,

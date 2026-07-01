@@ -32,7 +32,7 @@ import { isRetryableAssistantError } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
 import { Effect } from "effect";
 import type { CompactionDecision, RunCompactionOutcome } from "../compaction/auto-compaction";
-import type { AgentEvent } from "../types";
+import type { AgentEvent } from "../../types";
 
 // ─── pure decision helpers (unit-tested in isolation) ────────────────────────
 

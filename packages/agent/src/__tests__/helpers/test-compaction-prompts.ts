@@ -2,7 +2,7 @@ import type {
   BranchSummaryPrompts,
   CompactionPrompts,
   SkillsInstructions,
-} from "../../compaction/prompt-bundles.ts";
+} from "../../memory/compaction/prompt-bundles.ts";
 
 /**
  * Test-only compaction prompts fixture. Tests don't exercise the prompt

@@ -11,7 +11,7 @@ import {
   type RetrySettings,
   shouldRetry,
 } from "../../compaction/retry-loop";
-import type { AgentEvent } from "../../types";
+import type { AgentEvent } from "../../../types";
 
 /** Build a minimal assistant message for retry tests. */
 function assistantMessage(opts: {

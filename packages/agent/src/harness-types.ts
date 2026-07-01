@@ -18,7 +18,7 @@ import type {
   BranchSummaryPrompts,
   CompactionPrompts,
   SkillsInstructions,
-} from "./compaction/prompt-bundles";
+} from "./memory/compaction/prompt-bundles";
 import type {
   BranchSummaryEntry,
   CompactionEntry,

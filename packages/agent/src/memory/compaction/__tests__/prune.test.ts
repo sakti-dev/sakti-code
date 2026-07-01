@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
-import type { MessageEntry, SessionTreeEntry } from "../../harness-types";
-import { getOrThrow } from "../../harness-types";
-import type { AgentMessage } from "../../types";
+import type { MessageEntry, SessionTreeEntry } from "../../../harness-types";
+import { getOrThrow } from "../../../harness-types";
+import type { AgentMessage } from "../../../types";
 import { DEFAULT_COMPACTION_SETTINGS, prepareCompaction } from "../compaction";
 import { canSkipSummarizer, DEFAULT_MIN_PRUNE_BYTES, pruneStaleToolResults } from "../prune";
 

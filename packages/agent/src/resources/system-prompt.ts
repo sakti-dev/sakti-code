@@ -1,4 +1,4 @@
-import type { SkillsInstructions } from "../compaction/prompt-bundles";
+import type { SkillsInstructions } from "../memory/compaction/prompt-bundles";
 import type { Skill } from "../harness-types";
 import type { AgentTool } from "../types";
 import { renderToolInventory } from "./tool-inventory";

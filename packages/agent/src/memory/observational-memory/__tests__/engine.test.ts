@@ -11,10 +11,10 @@ import type {
   SwapBufferedToActiveInput,
   SwapBufferedToActiveResult,
   UpdateActiveObservationsInput,
-} from "../../observational-memory-storage.ts";
-import type { SessionTreeEntry } from "../../session/entries.ts";
-import type { SessionStorageShape } from "../../session/storage.ts";
-import type { AgentMessage } from "../../types.ts";
+} from "../../../observational-memory-storage.ts";
+import type { SessionTreeEntry } from "../../../session/entries.ts";
+import type { SessionStorageShape } from "../../../session/storage.ts";
+import type { AgentMessage } from "../../../types.ts";
 import { ObservationalMemoryEngine } from "../engine.ts";
 import { BufferingCoordinator } from "../buffering-coordinator.ts";
 import { TokenCounter } from "../token-counter.ts";

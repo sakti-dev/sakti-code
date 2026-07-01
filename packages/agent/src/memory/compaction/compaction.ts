@@ -9,15 +9,15 @@ import {
   ok,
   type Result,
   type SessionTreeEntry,
-} from "../harness-types";
+} from "../../harness-types";
 import {
   convertToLlm,
   createBranchSummaryMessage,
   createCompactionSummaryMessage,
   createCustomMessage,
-} from "../session/messages";
-import { buildSessionContextFromEntries } from "../session/session";
-import type { AgentMessage, ThinkingLevel } from "../types";
+} from "../../session/messages";
+import { buildSessionContextFromEntries } from "../../session/session";
+import type { AgentMessage, ThinkingLevel } from "../../types";
 import { partitionPinnedTurns, renderPinnedTurns } from "./pinned-turns";
 import type { CompactionPrompts } from "./prompt-bundles.ts";
 import { type PruneStats, pruneStaleToolResults } from "./prune";

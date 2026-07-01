@@ -1,4 +1,4 @@
-import type { AgentMessage } from "../types";
+import type { AgentMessage } from "../../types";
 import { estimateTokens } from "./compaction";
 
 /**

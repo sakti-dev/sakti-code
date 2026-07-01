@@ -14,10 +14,10 @@ import {
   type SessionError,
   type SessionTreeEntry,
   type ThinkingLevel,
-} from "../harness-types";
-import { convertToLlm } from "../session/messages";
-import type { SessionShape } from "../session/session";
-import type { AgentMessage } from "../types";
+} from "../../harness-types";
+import { convertToLlm } from "../../session/messages";
+import type { SessionShape } from "../../session/session";
+import type { AgentMessage } from "../../types";
 import type { CompactionPrompts } from "./prompt-bundles";
 import { canSkipSummarizer } from "./prune";
 

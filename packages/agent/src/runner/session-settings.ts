@@ -1,6 +1,6 @@
-import { parseCompactionSettings } from "../compaction/auto-compaction.ts";
-import type { CompactionSettings } from "../compaction/compaction.ts";
-import { parseRetrySettings, type RetrySettings } from "../compaction/retry-loop.ts";
+import { parseCompactionSettings } from "../memory/compaction/auto-compaction.ts";
+import type { CompactionSettings } from "../memory/compaction/compaction.ts";
+import { parseRetrySettings, type RetrySettings } from "../memory/compaction/retry-loop.ts";
 import type { QueueMode, ThinkingLevel } from "../types.ts";
 
 /**

@@ -5,17 +5,17 @@ import { buildHarnessStreamRequest } from "../agent/build-stream-request";
 import {
   collectEntriesForBranchSummaryEffect,
   generateBranchSummaryEffect,
-} from "../compaction/branch-summarization";
+} from "../memory/compaction/branch-summarization";
 import {
   DEFAULT_COMPACTION_SETTINGS,
   prepareCompaction,
   compactEffect as runCompactEffect,
-} from "../compaction/compaction";
+} from "../memory/compaction/compaction";
 import type {
   BranchSummaryPrompts,
   CompactionPrompts,
   SkillsInstructions,
-} from "../compaction/prompt-bundles";
+} from "../memory/compaction/prompt-bundles";
 import { runAgentLoopContinueEffect, runAgentLoopEffect } from "../core/agent-loop";
 import {
   type AbortResult,

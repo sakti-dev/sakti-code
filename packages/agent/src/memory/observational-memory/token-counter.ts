@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import imageSize from "image-size";
 import { estimateTokenCount } from "tokenx";
 
-import type { AgentMessage } from "../types.ts";
+import type { AgentMessage } from "../../types.ts";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

@@ -3,18 +3,18 @@ import type { AssistantMessage, Model } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
 import { Effect, Fiber, Stream } from "effect";
 import type { AgentHarness } from "../agent/agent-harness.ts";
-import { checkCompaction, runAutoCompactionEffect } from "../compaction/auto-compaction.ts";
-import type { CompactionSettings } from "../compaction/compaction.ts";
-import type { CompactionPrompts } from "../compaction/prompt-bundles.ts";
+import { checkCompaction, runAutoCompactionEffect } from "../memory/compaction/auto-compaction.ts";
+import type { CompactionSettings } from "../memory/compaction/compaction.ts";
+import type { CompactionPrompts } from "../memory/compaction/prompt-bundles.ts";
 import {
   executeWithRetryEffect,
   type RetryRunnerDepsEffect,
   type RetrySettings,
   type StuckGuardState,
-} from "../compaction/retry-loop.ts";
+} from "../memory/compaction/retry-loop.ts";
 import type { AgentHarnessEvent, PromptTemplate, Skill, ThinkingLevel } from "../harness-types.ts";
-import type { ObservationalMemoryOptions } from "../observational-memory/config.ts";
-import { ObservationalMemoryEngine } from "../observational-memory/engine.ts";
+import type { ObservationalMemoryOptions } from "../memory/observational-memory/config.ts";
+import { ObservationalMemoryEngine } from "../memory/observational-memory/engine.ts";
 import { planFirstTurn, type ReadFile } from "../resources/prompt-preprocessor.ts";
 import type { SessionShape } from "../session/session.ts";
 import type { SessionStorageShape } from "../session/storage.ts";

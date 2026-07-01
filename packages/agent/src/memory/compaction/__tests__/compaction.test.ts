@@ -20,7 +20,7 @@ vi.mock("@sakti-code/llm", async (importOriginal) => {
   };
 });
 
-import { TEST_COMPACTION_PROMPTS } from "../../__tests__/helpers/test-compaction-prompts.ts";
+import { TEST_COMPACTION_PROMPTS } from "../../../__tests__/helpers/test-compaction-prompts.ts";
 import {
   type CompactionPreparation,
   calculateContextTokens,
@@ -45,10 +45,10 @@ import type {
   ModelChangeEntry,
   SessionTreeEntry,
   ThinkingLevelChangeEntry,
-} from "../../harness-types";
-import { getOrThrow } from "../../harness-types";
-import { buildSessionContextFromEntries } from "../../session/session";
-import type { AgentMessage } from "../../types";
+} from "../../../harness-types";
+import { getOrThrow } from "../../../harness-types";
+import { buildSessionContextFromEntries } from "../../../session/session";
+import type { AgentMessage } from "../../../types";
 
 let nextId = 0;
 function createId(): string {
