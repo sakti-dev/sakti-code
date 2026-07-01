@@ -598,3 +598,84 @@ describe("session store — permission slice", () => {
     expect(session.store.permission).toBeNull();
   });
 });
+
+describe("session store — OM markers", () => {
+  it("addOmMarker appends om_marker part to a message", () => {
+    const session = createSessionStore();
+    session.actions.addMessage(makeMessage({ id: "m1", content: "hello" }));
+
+    session.actions.addOmMarker("m1", {
+      cycleId: "c1",
+      operationType: "observation",
+      status: "loading",
+      tokensProcessed: 5000,
+    });
+
+    const marker = session.store.messages.m1!.parts.find((p) => p.type === "om_marker");
+    expect(marker).toBeDefined();
+  });
+
+  it("addOmMarker skips if cycleId already exists (re-entry guard)", () => {
+    const session = createSessionStore();
+    session.actions.addMessage(makeMessage({ id: "m1" }));
+
+    session.actions.addOmMarker("m1", {
+      cycleId: "c1",
+      operationType: "observation",
+      status: "loading",
+    });
+    session.actions.addOmMarker("m1", {
+      cycleId: "c1",
+      operationType: "observation",
+      status: "loading",
+    });
+
+    const markers = session.store.messages.m1!.parts.filter((p) => p.type === "om_marker");
+    expect(markers).toHaveLength(1);
+  });
+
+  it("updateOmMarker updates by cycleId", () => {
+    const session = createSessionStore();
+    session.actions.addMessage(makeMessage({ id: "m1" }));
+    session.actions.addOmMarker("m1", {
+      cycleId: "c1",
+      operationType: "observation",
+      status: "loading",
+    });
+
+    session.actions.updateOmMarker("m1", "c1", {
+      status: "complete",
+      durationMs: 3000,
+      tokensProcessed: 5000,
+      tokensProduced: 1000,
+      observations: "test obs",
+    });
+
+    const marker = session.store.messages.m1!.parts.find(
+      (p): p is Extract<typeof p, { type: "om_marker" }> => p.type === "om_marker",
+    );
+    expect(marker!.status).toBe("complete");
+    expect(marker!.observations).toBe("test obs");
+    expect(marker!.durationMs).toBe(3000);
+  });
+
+  it("updateOmStatus sets the omStatus field", () => {
+    const session = createSessionStore();
+    session.actions.updateOmStatus({
+      messages: { tokens: 5000, threshold: 30000 },
+      observations: { tokens: 2000, threshold: 40000 },
+    });
+    expect(session.store.omStatus).toBeDefined();
+    expect(session.store.omStatus!.messages.tokens).toBe(5000);
+  });
+
+  it("reset clears omStatus", () => {
+    const session = createSessionStore();
+    session.actions.updateOmStatus({
+      messages: { tokens: 5000, threshold: 30000 },
+      observations: { tokens: 2000, threshold: 40000 },
+    });
+    session.actions.reset();
+    expect(session.store.omStatus).toBeNull();
+  });
+});

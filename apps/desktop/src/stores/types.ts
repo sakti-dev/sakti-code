@@ -17,6 +17,27 @@ export type MessagePart = { isStreaming?: boolean } & (
       details?: unknown;
     }
   | { type: "thinking"; text: string; startedAt?: number; endedAt?: number }
+  | {
+      type: "om_marker";
+      cycleId: string;
+      operationType: "observation" | "reflection" | "buffering";
+      status:
+        | "loading"
+        | "complete"
+        | "failed"
+        | "buffering"
+        | "buffering-complete"
+        | "buffering-failed"
+        | "activated"
+        | "disconnected";
+      durationMs?: number;
+      tokensProcessed?: number;
+      tokensProduced?: number;
+      observations?: string;
+      currentTask?: string;
+      suggestedResponse?: string;
+      error?: string;
+    }
 );
 
 /**
@@ -55,6 +76,11 @@ export interface StreamState {
 export interface TurnTiming {
   endedAt: number | null;
   startedAt: number;
+}
+
+export interface OmWindowState {
+  messages: { tokens: number; threshold: number };
+  observations: { tokens: number; threshold: number };
 }
 
 /**

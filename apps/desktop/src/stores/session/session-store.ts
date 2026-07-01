@@ -2,6 +2,7 @@ import { createStore, produce, reconcile } from "solid-js/store";
 import {
   idleStreamState,
   type MessagePart,
+  type OmWindowState,
   type RetryState,
   type StreamState,
   type TurnTiming,
@@ -32,10 +33,34 @@ export interface SessionStoreData {
   retry: RetryState | null;
   streaming: StreamState;
   turnTimings: TurnTiming[];
+  /** OM window state for sidebar progress bars; `null` when no OM status received. */
+  omStatus: OmWindowState | null;
+}
+
+export interface OmMarkerInput {
+  cycleId: string;
+  operationType: "observation" | "reflection" | "buffering";
+  status:
+    | "loading"
+    | "complete"
+    | "failed"
+    | "buffering"
+    | "buffering-complete"
+    | "buffering-failed"
+    | "activated"
+    | "disconnected";
+  durationMs?: number;
+  tokensProcessed?: number;
+  tokensProduced?: number;
+  observations?: string;
+  currentTask?: string;
+  suggestedResponse?: string;
+  error?: string;
 }
 
 export interface SessionActions {
   addMessage: (msg: UIMessage) => void;
+  addOmMarker: (msgId: string, marker: OmMarkerInput) => void;
   addToolCall: (msgId: string, toolCallId: string, toolName: string, input: unknown) => void;
   appendThinkingToken: (msgId: string, delta: string) => void;
   appendToken: (msgId: string, delta: string) => void;
@@ -52,6 +77,7 @@ export interface SessionActions {
   finalizeMessage: (msgId: string, usage?: UIMessage["usage"]) => void;
   finalizeTurn: (endedAt: number) => void;
   getCurrentMessageId: () => string | null;
+  getLastAssistantMessageId: () => string | null;
   loadMessages: (msgs: UIMessage[]) => void;
   loadTurnTimings: (timings: TurnTiming[]) => void;
   reset: () => void;
@@ -66,6 +92,8 @@ export interface SessionActions {
   /** Set or clear the retry banner state (null clears it). */
   setRetry: (retry: RetryState | null) => void;
   startTurn: (startedAt: number) => void;
+  updateOmMarker: (msgId: string, cycleId: string, updates: Partial<OmMarkerInput>) => void;
+  updateOmStatus: (status: OmWindowState) => void;
   wasLastUserMessage: (text: string) => boolean;
 }
 
@@ -83,12 +111,22 @@ export function createSessionStore(): SessionStore {
     retry: null,
     streaming: { ...idleStreamState },
     turnTimings: [],
+    omStatus: null,
   });
 
   const actions: SessionActions = {
     addMessage(msg) {
       setStore("messages", msg.id, msg);
       setStore("messageOrder", (prev) => [...prev, msg.id]);
+    },
+
+    addOmMarker(msgId, marker) {
+      setStore("messages", msgId, "parts", (prev) => {
+        if (prev.some((p) => p.type === "om_marker" && p.cycleId === marker.cycleId)) {
+          return prev;
+        }
+        return [...prev, { type: "om_marker", ...marker } as MessagePart];
+      });
     },
 
     loadMessages(msgs) {
@@ -188,6 +226,14 @@ export function createSessionStore(): SessionStore {
 
     getCurrentMessageId() {
       return store.streaming.currentMessageId;
+    },
+
+    getLastAssistantMessageId() {
+      for (let i = store.messageOrder.length - 1; i >= 0; i--) {
+        const id = store.messageOrder[i]!;
+        if (store.messages[id]?.role === "assistant") return id;
+      }
+      return null;
     },
 
     setCurrentTool(toolName) {
@@ -291,8 +337,26 @@ export function createSessionStore(): SessionStore {
           s.permission = null;
           s.retry = null;
           s.streaming = { ...idleStreamState };
+          s.omStatus = null;
         }),
       );
+    },
+
+    updateOmMarker(msgId, cycleId, updates) {
+      setStore("messages", msgId, "parts", (prev) => {
+        const idx = prev.findIndex((p) => p.type === "om_marker" && p.cycleId === cycleId);
+        if (idx < 0) return prev;
+        const existing = prev[idx]!;
+        return [
+          ...prev.slice(0, idx),
+          { ...existing, ...updates, type: "om_marker" } as MessagePart,
+          ...prev.slice(idx + 1),
+        ];
+      });
+    },
+
+    updateOmStatus(status) {
+      setStore("omStatus", status);
     },
 
     wasLastUserMessage(text) {

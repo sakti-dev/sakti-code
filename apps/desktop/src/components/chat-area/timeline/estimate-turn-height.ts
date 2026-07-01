@@ -97,6 +97,8 @@ function estimatePartHeight(
       );
     case "tool_call":
       return TOOL_ROW_HEIGHT;
+    case "om_marker":
+      return TOOL_ROW_HEIGHT;
   }
 }
 
