@@ -21,43 +21,43 @@
 
 ## Review issues → task map
 
-| Finding | Severity | Task | File(s) |
-| ------- | -------- | ---- | ------- |
-| C1 — observer drops `existingObservations` | Critical | 1 | `observer.ts`, `prompts.ts` |
-| C2 — engine freezes `leafId`; run messages invisible | Critical | 2 | `engine.ts`, `config.ts`, `runner.ts` |
-| I3 — missing `observer.test.ts` / `engine.test.ts` | Important | 1, 2 | `__tests__/` |
-| I1 — no first-turn `<observations>` injection | Important | 3 | `agent-loop.ts` |
-| I3 — missing `loop-integration.test.ts` | Important | 4 | `__tests__/` |
-| I2 — `logError` is a no-op | Important | 5 | `config.ts`, `engine.ts`, deps builder |
-| I4 — `settings.json` OM schema not added | Important | 6 | `observational-memory-deps.ts` |
-| M1 — "async" buffering misnamed / dead op-tracking | Minor | 7 | `buffering-coordinator.ts`, `engine.ts` |
-| M2 — `extractObservedMessageIds` stub | Minor | 8 | `engine.ts` |
-| M3 — error-handling asymmetry / dead catch | Minor | 9 | `engine.ts` |
-| M4 — `getBaseSystemPrompt` latent gotcha | Minor | 10 | `agent-run.ts` |
-| M5/M6/M7 — token-counter model context, type narrow, overhead floor | Minor | 11 | `token-counter.ts`, deps builder, `profile-resolver.ts` |
+| Finding                                                             | Severity  | Task | File(s)                                                 |
+| ------------------------------------------------------------------- | --------- | ---- | ------------------------------------------------------- |
+| C1 — observer drops `existingObservations`                          | Critical  | 1    | `observer.ts`, `prompts.ts`                             |
+| C2 — engine freezes `leafId`; run messages invisible                | Critical  | 2    | `engine.ts`, `config.ts`, `runner.ts`                   |
+| I3 — missing `observer.test.ts` / `engine.test.ts`                  | Important | 1, 2 | `__tests__/`                                            |
+| I1 — no first-turn `<observations>` injection                       | Important | 3    | `agent-loop.ts`                                         |
+| I3 — missing `loop-integration.test.ts`                             | Important | 4    | `__tests__/`                                            |
+| I2 — `logError` is a no-op                                          | Important | 5    | `config.ts`, `engine.ts`, deps builder                  |
+| I4 — `settings.json` OM schema not added                            | Important | 6    | `observational-memory-deps.ts`                          |
+| M1 — "async" buffering misnamed / dead op-tracking                  | Minor     | 7    | `buffering-coordinator.ts`, `engine.ts`                 |
+| M2 — `extractObservedMessageIds` stub                               | Minor     | 8    | `engine.ts`                                             |
+| M3 — error-handling asymmetry / dead catch                          | Minor     | 9    | `engine.ts`                                             |
+| M4 — `getBaseSystemPrompt` latent gotcha                            | Minor     | 10   | `agent-run.ts`                                          |
+| M5/M6/M7 — token-counter model context, type narrow, overhead floor | Minor     | 11   | `token-counter.ts`, deps builder, `profile-resolver.ts` |
 
 ## Verified anchors
 
-| Concern | File:line |
-| ------- | --------- |
-| Observer destructure that drops `existingObservations` | `packages/agent/src/observational-memory/observer.ts:45` |
-| `buildObserverHistoryMessage` hardcoded task prompt | `packages/agent/src/observational-memory/prompts.ts:540` |
-| `buildObserverTaskPrompt(existingObservations)` works | `packages/agent/src/observational-memory/prompts.ts:384-412` (test at `prompts.test.ts:59`) |
-| Engine frozen `leafId` field + usage | `packages/agent/src/observational-memory/engine.ts:46,56,88` |
-| `ObservationalMemoryDeps.leafId` decl | `packages/agent/src/observational-memory/config.ts:52` |
-| Runner leaf capture (before user msg append) | `apps/server/src/agent/runner.ts:561,571` |
-| `getPathToRoot` walks ancestors only | `packages/agent/src/session/storage.ts:179-207` |
-| `getLeafId` returns current leaf | `packages/agent/src/session/storage.ts:145-154` |
-| `logError` no-op | `packages/agent/src/observational-memory/engine.ts:518-521` |
-| Loop OM hook (post-turn only) | `packages/agent/src/core/agent-loop.ts:385-409` |
-| Loop `firstTurn` branch (inject point for I1) | `packages/agent/src/core/agent-loop.ts:289-291` |
-| `getBaseSystemPrompt` reads harness, not context | `packages/agent/src/runner/agent-run.ts:104-107` |
-| Settings store is freeform `Record<string,unknown>` | `apps/server/src/lib/settings-file-store.ts:4` |
-| Manual `typeof` OM cast | `apps/server/src/agent/observational-memory-deps.ts:22-42` |
-| `Logger` type export | `@sakti-code/logger` (`export type { Logger }`) |
-| typebox usage pattern | `apps/server/src/lib/profiles-store.ts:7-41` |
-| Existing loop test harness to mirror | `packages/agent/src/core/__tests__/agent-loop.test.ts` |
-| Existing buffering test fakes | `packages/agent/src/observational-memory/__tests__/buffering.test.ts:78-441` |
+| Concern                                                | File:line                                                                                   |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| Observer destructure that drops `existingObservations` | `packages/agent/src/observational-memory/observer.ts:45`                                    |
+| `buildObserverHistoryMessage` hardcoded task prompt    | `packages/agent/src/observational-memory/prompts.ts:540`                                    |
+| `buildObserverTaskPrompt(existingObservations)` works  | `packages/agent/src/observational-memory/prompts.ts:384-412` (test at `prompts.test.ts:59`) |
+| Engine frozen `leafId` field + usage                   | `packages/agent/src/observational-memory/engine.ts:46,56,88`                                |
+| `ObservationalMemoryDeps.leafId` decl                  | `packages/agent/src/observational-memory/config.ts:52`                                      |
+| Runner leaf capture (before user msg append)           | `apps/server/src/agent/runner.ts:561,571`                                                   |
+| `getPathToRoot` walks ancestors only                   | `packages/agent/src/session/storage.ts:179-207`                                             |
+| `getLeafId` returns current leaf                       | `packages/agent/src/session/storage.ts:145-154`                                             |
+| `logError` no-op                                       | `packages/agent/src/observational-memory/engine.ts:518-521`                                 |
+| Loop OM hook (post-turn only)                          | `packages/agent/src/core/agent-loop.ts:385-409`                                             |
+| Loop `firstTurn` branch (inject point for I1)          | `packages/agent/src/core/agent-loop.ts:289-291`                                             |
+| `getBaseSystemPrompt` reads harness, not context       | `packages/agent/src/runner/agent-run.ts:104-107`                                            |
+| Settings store is freeform `Record<string,unknown>`    | `apps/server/src/lib/settings-file-store.ts:4`                                              |
+| Manual `typeof` OM cast                                | `apps/server/src/agent/observational-memory-deps.ts:22-42`                                  |
+| `Logger` type export                                   | `@sakti-code/logger` (`export type { Logger }`)                                             |
+| typebox usage pattern                                  | `apps/server/src/lib/profiles-store.ts:7-41`                                                |
+| Existing loop test harness to mirror                   | `packages/agent/src/core/__tests__/agent-loop.test.ts`                                      |
+| Existing buffering test fakes                          | `packages/agent/src/observational-memory/__tests__/buffering.test.ts:78-441`                |
 
 ---
 
@@ -66,6 +66,7 @@
 ### Task 1: Observer passes `existingObservations` (C1) + `observer.test.ts` (I3)
 
 **Files:**
+
 - Modify: `packages/agent/src/observational-memory/observer.ts:44-81`
 - Modify: `packages/agent/src/observational-memory/prompts.ts:530-542`
 - Create: `packages/agent/src/observational-memory/__tests__/observer.test.ts`
@@ -157,6 +158,7 @@ export async function runObserver(input: ObserverInput): Promise<ObserverResult>
 ### Task 2: Engine refreshes leaf per turn (C2) + `engine.test.ts` (I3)
 
 **Files:**
+
 - Modify: `packages/agent/src/observational-memory/engine.ts:46,56,87-101`
 - Modify: `packages/agent/src/observational-memory/config.ts:52` (remove `leafId`)
 - Modify: `apps/server/src/agent/runner.ts:561,565-573` (drop capture)
@@ -170,15 +172,23 @@ export async function runObserver(input: ObserverInput): Promise<ObserverResult>
 class TreeSessionStorage {
   private entries = new Map<string, SessionTreeEntry>();
   private leafId: string | null = null;
-  appendEntry = (e: SessionTreeEntry) => Effect.sync(() => { this.entries.set(e.id, e); this.leafId = e.id; });
+  appendEntry = (e: SessionTreeEntry) =>
+    Effect.sync(() => {
+      this.entries.set(e.id, e);
+      this.leafId = e.id;
+    });
   getLeafId = () => Effect.succeed(this.leafId);
-  getPathToRoot = (leafId: string | null) => Effect.gen(function* () {
-    if (!leafId) return [] as SessionTreeEntry[];
-    const path: SessionTreeEntry[] = [];
-    let cur = this.entries.get(leafId);
-    while (cur) { path.unshift(cur); cur = cur.parentId ? this.entries.get(cur.parentId) : undefined; }
-    return path;
-  });
+  getPathToRoot = (leafId: string | null) =>
+    Effect.gen(function* () {
+      if (!leafId) return [] as SessionTreeEntry[];
+      const path: SessionTreeEntry[] = [];
+      let cur = this.entries.get(leafId);
+      while (cur) {
+        path.unshift(cur);
+        cur = cur.parentId ? this.entries.get(cur.parentId) : undefined;
+      }
+      return path;
+    });
   // ... other methods returning Effect.succeed/Effect.void
 }
 
@@ -217,6 +227,7 @@ async loadUnobservedMessages(record: ObservationalMemoryRecord): Promise<AgentMe
 ```
 
 **Step 5: Update call sites.**
+
 - `apps/server/src/agent/runner.ts:561` — delete `const leafId = yield* storage.getLeafId();` and remove `leafId,` from the deps object (`:571`).
 - `buffering.test.ts:438` — remove `leafId: null,` from `createDeps`.
 
@@ -231,6 +242,7 @@ async loadUnobservedMessages(record: ObservationalMemoryRecord): Promise<AgentMe
 ### Task 3: First-turn `<observations>` injection (I1)
 
 **Files:**
+
 - Modify: `packages/agent/src/core/agent-loop.ts:289-291` (the `if (firstTurn)` branch)
 - Modify: `packages/agent/src/observational-memory/__tests__/loop-integration.test.ts` (created in Task 4 — write the assertion there now, implement the fix here)
 
@@ -242,24 +254,26 @@ async loadUnobservedMessages(record: ObservationalMemoryRecord): Promise<AgentMe
 if (firstTurn) {
   if (config.observationalMemory) {
     const om = config.observationalMemory;
-    const injected = yield* Effect.tryPromise({
-      try: async () => {
-        const record = await om.engine.getOrCreateRecord();
-        const observations = om.engine.buildContextSystemMessage(record);
-        return observations ? `${om.getBaseSystemPrompt()}\n\n${observations}` : undefined;
-      },
-      catch: (error: unknown) => {
-        config.logger?.error("om initial inject failed", error, { sessionId: config.sessionId });
-        return undefined;
-      },
-    });
+    const injected =
+      yield *
+      Effect.tryPromise({
+        try: async () => {
+          const record = await om.engine.getOrCreateRecord();
+          const observations = om.engine.buildContextSystemMessage(record);
+          return observations ? `${om.getBaseSystemPrompt()}\n\n${observations}` : undefined;
+        },
+        catch: (error: unknown) => {
+          config.logger?.error("om initial inject failed", error, { sessionId: config.sessionId });
+          return undefined;
+        },
+      });
     if (injected !== undefined) {
       currentContext = { ...currentContext, systemPrompt: injected };
     }
   }
   firstTurn = false;
 } else {
-  yield* emitEffect(emit, { type: "turn_start" });
+  yield * emitEffect(emit, { type: "turn_start" });
 }
 ```
 
@@ -272,6 +286,7 @@ if (firstTurn) {
 ### Task 4: `loop-integration.test.ts` (I3) — drives Task 3 + covers the per-turn hook
 
 **Files:**
+
 - Create: `packages/agent/src/observational-memory/__tests__/loop-integration.test.ts`
 
 **Step 1: Write the failing tests.** Mirror the minimal loop-config setup in `packages/agent/src/core/__tests__/agent-loop.test.ts`. Use a **fake engine** that records calls and returns canned observations — do not hit `complete`:
@@ -279,7 +294,10 @@ if (firstTurn) {
 ```ts
 const fakeEngine = {
   getOrCreateRecord: vi.fn(async () => ({ activeObservations: "* 🔴 prior", id: "r1" })),
-  maybeObserve: vi.fn(async (r) => { (r as any).observed = true; return r; }),
+  maybeObserve: vi.fn(async (r) => {
+    (r as any).observed = true;
+    return r;
+  }),
   maybeReflect: vi.fn(async (r) => r),
   buildContextSystemMessage: vi.fn(() => "<observations>* 🔴 prior</observations>"),
 };
@@ -311,6 +329,7 @@ it("without observationalMemory config, the loop is byte-for-byte unchanged", as
 ### Task 5: Real logging through deps (I2)
 
 **Files:**
+
 - Modify: `packages/agent/src/observational-memory/config.ts` (add `logger?`)
 - Modify: `packages/agent/src/observational-memory/engine.ts:47-66,518-521`
 - Modify: `apps/server/src/agent/observational-memory-deps.ts` (pass `ctx.log?.agent`)
@@ -353,6 +372,7 @@ private logError(phase: string, error: unknown): void {
 ### Task 6: `settings.json` OM schema (I4)
 
 **Files:**
+
 - Create: `apps/server/src/lib/observational-memory-settings.ts`
 - Modify: `apps/server/src/agent/observational-memory-deps.ts:22-66` (use the schema)
 - Create: `apps/server/src/lib/__tests__/observational-memory-settings.test.ts`
@@ -361,12 +381,14 @@ private logError(phase: string, error: unknown): void {
 
 ```ts
 it("rejects a typo'd threshold key", () => {
-  expect(() => parseOmSettings({ observationalMemory: { enabled: true, obserationThreshold: 100 } }))
-    .toThrow();
+  expect(() =>
+    parseOmSettings({ observationalMemory: { enabled: true, obserationThreshold: 100 } }),
+  ).toThrow();
 });
 it("rejects a non-number observationThreshold", () => {
-  expect(() => parseOmSettings({ observationalMemory: { enabled: true, observationThreshold: "30000" } }))
-    .toThrow();
+  expect(() =>
+    parseOmSettings({ observationalMemory: { enabled: true, observationThreshold: "30000" } }),
+  ).toThrow();
 });
 it("accepts a minimal enabled-only config", () => {
   expect(parseOmSettings({ observationalMemory: { enabled: true } })?.enabled).toBe(true);
@@ -404,7 +426,11 @@ export interface ParsedOmSettings {
   observationThreshold?: number;
   reflectionThreshold?: number;
   instruction?: string;
-  buffering?: { observationBufferTokens: number; observationBufferActivation?: number; reflectionBufferActivation?: number };
+  buffering?: {
+    observationBufferTokens: number;
+    observationBufferActivation?: number;
+    reflectionBufferActivation?: number;
+  };
 }
 
 export function parseOmSettings(raw: Record<string, unknown>): ParsedOmSettings | undefined {
@@ -430,12 +456,14 @@ export function parseOmSettings(raw: Record<string, unknown>): ParsedOmSettings 
 ### Task 7: Buffering terminology honesty (M1)
 
 **Files:**
+
 - Modify: `packages/agent/src/observational-memory/buffering-coordinator.ts:64-96` (doc comment)
 - Modify: `packages/agent/src/observational-memory/engine.ts:194-389` (doc comments on `maybeBufferObservation` / `maybeBufferReflection`)
 
 **Step 1: Verify the op-tracking is reachable or dead.** `rg -n "isAsyncBufferingInProgress|setAsyncOp|asyncBufferingOps" packages/agent/src/observational-memory/`. Confirm `shouldTriggerAsyncObservation`/`shouldTriggerAsyncReflection` consult it for re-entry guarding.
 
 **Step 2: Decision.**
+
 - If reachable (re-entry guard for the inline-awaited path): **keep it**, add a doc comment on `BufferingCoordinator` (`:64-71`) clarifying "buffered = incremental chunking within the awaited turn; the in-flight Promise is a re-entry guard, not a background task. True background detach is deferred."
 - If a map is written but never read after Step 1: remove that map and its setters/getters. Do not rename the storage API.
 
@@ -448,6 +476,7 @@ export function parseOmSettings(raw: Record<string, unknown>): ParsedOmSettings 
 ### Task 8: Real `extractObservedMessageIds` (M2)
 
 **Files:**
+
 - Modify: `packages/agent/src/observational-memory/engine.ts:479-516`
 
 **Step 1: Write the failing test** in `engine.test.ts`: after a sync observe over known messages, assert `storage.updateActiveObservations` was called with `observedMessageIds` containing the message entry ids (not `[]`). Use the tree-honoring fake from Task 2 and spy on `updateActiveObservations`.
@@ -473,6 +502,7 @@ Adjust `loadUnobservedMessages` to also return the filtered entries (or add a pa
 ### Task 9: Error-handling symmetry (M3)
 
 **Files:**
+
 - Modify: `packages/agent/src/observational-memory/engine.ts:108-147,154-192,427-477`
 
 **Step 1: Decide the invariant.** Recommendation: **inner methods (`runSyncObserve`, `runSyncReflect`) do NOT catch** — they let errors propagate; the public `maybeObserve`/`maybeReflect` are the single best-effort boundary (log + return original record). This removes the dead outer catch and makes the two paths symmetric.
@@ -490,6 +520,7 @@ Adjust `loadUnobservedMessages` to also return the filtered entries (or add a pa
 ### Task 10: `getBaseSystemPrompt` gotcha comment (M4)
 
 **Files:**
+
 - Modify: `packages/agent/src/runner/agent-run.ts:99-109`
 
 **Step 1.** Add a doc comment on `getBaseSystemPrompt` explaining: it deliberately reads `harness.getSystemPrompt()` (the stable composed base) rather than `currentContext.systemPrompt`, so observations don't accumulate across turns; the trade-off is that any `prepareNextTurn` edit to the system prompt is overwritten when OM is on (no such editor exists today).
@@ -503,6 +534,7 @@ Adjust `loadUnobservedMessages` to also return the filtered entries (or add a pa
 ### Task 11: Token-counter polish (M5, M6, M7)
 
 **Files:**
+
 - Modify: `packages/agent/src/observational-memory/token-counter.ts:530-533,594-601,664`
 - Modify: `apps/server/src/agent/observational-memory-deps.ts:83-88,158-165`
 - Modify: `apps/server/src/lib/profile-resolver.ts:6` (`ResolvedModelRef.thinkingLevel`)
@@ -518,7 +550,9 @@ return Math.max(0, Math.round(payloadTokens + overhead));
 
 ```ts
 function getTokenCounter(observeModel: Model): TokenCounter {
-  return new TokenCounterImpl({ model: { provider: observeModel.provider, modelId: observeModel.id } });
+  return new TokenCounterImpl({
+    model: { provider: observeModel.provider, modelId: observeModel.id },
+  });
 }
 ```
 
@@ -527,6 +561,7 @@ Drop the module singleton (or key the cache by `provider/modelId`). Pass per-run
 **M6 — thinkingLevel type.** In `profile-resolver.ts:3-7`, narrow `ResolvedModelRef.thinkingLevel: string` → `ThinkingLevel | "off"`, and return `ref.thinkingLevel ?? "off"` already satisfies it. Then in `observational-memory-deps.ts:158-165` drop the `as ThinkingLevel` casts.
 
 **Step 1: Tests.**
+
 - M7: add to `token-counter.test.ts` — an assistant message with 10 tool calls returns `>= 0`.
 - M5: add to `observational-memory-deps.test.ts` — TokenCounter is constructed with the observe model's provider (spy on `new TokenCounterImpl` or assert via a `runWithModelContext`-observable effect). If hard to assert, assert the constructed config shape via a thin factory seam.
 - M6: add to `profile-resolver.test.ts` — `resolveModelRef(...).thinkingLevel` is assignable to `ThinkingLevel | "off"` (compile-time; a `satisfies` test is enough).
@@ -548,13 +583,15 @@ refactor(server): narrow ResolvedModelRef.thinkingLevel to ThinkingLevel|'off'
 **Step 1.** `vp run -r test` — all packages green.
 **Step 2.** `vp check` — format + lint + typecheck clean.
 **Step 3.** Confirm the four previously-missing test files now exist and assert real data flow (not just mocks):
-   ```
-   packages/agent/src/observational-memory/__tests__/observer.test.ts
-   packages/agent/src/observational-memory/__tests__/engine.test.ts
-   packages/agent/src/observational-memory/__tests__/loop-integration.test.ts
-   packages/agent/src/observational-memory/__tests__/reflector.test.ts   ← if not created above, add a minimal one covering escalation + cap (mirror Task 1's structure)
-   ```
-   If `reflector.test.ts` is still absent after Task 11, add it here (escalation retry until `MAX_COMPRESSION_LEVEL`, cap returns whatever it has, `ReflectionError` on `finishReason:"error"`).
+
+```
+packages/agent/src/observational-memory/__tests__/observer.test.ts
+packages/agent/src/observational-memory/__tests__/engine.test.ts
+packages/agent/src/observational-memory/__tests__/loop-integration.test.ts
+packages/agent/src/observational-memory/__tests__/reflector.test.ts   ← if not created above, add a minimal one covering escalation + cap (mirror Task 1's structure)
+```
+
+If `reflector.test.ts` is still absent after Task 11, add it here (escalation retry until `MAX_COMPRESSION_LEVEL`, cap returns whatever it has, `ReflectionError` on `finishReason:"error"`).
 **Step 4.** Re-confirm vestigial storage methods still have no production callers: `rg -n "insertObservationalMemoryRecord|setObservingFlag" packages/ apps/ --glob '!**/__tests__/**'` → only the interface + DB adapter.
 **Step 5.** Manual dogfood (optional but recommended): enable OM in `settings.json`, run a session past the observation threshold in the desktop app, confirm (a) `<observations>` appears in the **first** turn's system prompt via the dev toolbar, (b) the observer does not duplicate prior observations, (c) the `getObservationalMemory` record grows within the same run.
 **Step 6.** Commit any `vp check --fix` reformats: `style(agent): format observational-memory review fixes`.

@@ -42,10 +42,10 @@ export class ObservationError extends Error {
  * history message, so the user message is just the formatted history.
  */
 export async function runObserver(input: ObserverInput): Promise<ObserverResult> {
-  const { messagesToObserve, deps, abortSignal } = input;
+  const { messagesToObserve, existingObservations, deps, abortSignal } = input;
 
   const system = buildObserverSystemPrompt(deps.instruction);
-  const historyMessage = buildObserverHistoryMessage(messagesToObserve);
+  const historyMessage = buildObserverHistoryMessage(messagesToObserve, existingObservations);
   const messages = [
     { role: "user" as const, content: historyMessage.content, timestamp: Date.now() },
   ];

@@ -526,8 +526,14 @@ function formatAgentMessageForObserver(msg: AgentMessage): string {
 /**
  * Build the history message for the Observer agent.
  * Consumes sakti's AgentMessage[] instead of Mastra's MastraDBMessage[].
+ *
+ * `existingObservations` is threaded into the task prompt so the observer
+ * avoids repeating prior observations (ports Mastra observer-runner.ts:250).
  */
-export function buildObserverHistoryMessage(messages: AgentMessage[]): {
+export function buildObserverHistoryMessage(
+  messages: AgentMessage[],
+  existingObservations?: string,
+): {
   role: "user";
   content: string;
 } {
@@ -537,7 +543,7 @@ export function buildObserverHistoryMessage(messages: AgentMessage[]): {
     .join("\n\n");
   return {
     role: "user",
-    content: `## New Message History to Observe\n\n${formatted}\n\n---\n\n${buildObserverTaskPrompt(undefined)}`,
+    content: `## New Message History to Observe\n\n${formatted}\n\n---\n\n${buildObserverTaskPrompt(existingObservations)}`,
   };
 }
 
