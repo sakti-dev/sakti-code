@@ -8,8 +8,10 @@ import type {
   ObservationalMemoryStorage,
   SwapBufferedToActiveInput,
   SwapBufferedToActiveResult,
+  SwapBufferedReflectionToActiveInput,
   UpdateActiveObservationsInput,
   UpdateBufferedObservationsInput,
+  UpdateBufferedReflectionInput,
   UpdateObservationalMemoryConfigInput,
 } from "@sakti-code/agent";
 import type { DrizzleDB } from "./init.ts";
@@ -570,10 +572,79 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
       activatedMessageIds,
     };
   }
-  async updateBufferedReflection(): Promise<void> {
-    throw new Error("not implemented");
+  async updateBufferedReflection(input: UpdateBufferedReflectionInput): Promise<void> {
+    if (
+      !this.db
+        .select({ id: observationalMemory.id })
+        .from(observationalMemory)
+        .where(eq(observationalMemory.id, input.id))
+        .get()
+    ) {
+      throw new Error(`OM record not found: ${input.id}`);
+    }
+    const setData: Record<string, unknown> = {
+      bufferedReflection: input.reflection,
+      updatedAt: Date.now(),
+    };
+    if (input.reflectionTokens !== undefined) {
+      setData.bufferedReflectionTokens = input.reflectionTokens;
+    }
+    if (input.reflectionInputTokens !== undefined) {
+      setData.bufferedReflectionInputTokens = input.reflectionInputTokens;
+    }
+    if (input.reflectedObservationLineCount !== undefined) {
+      setData.reflectedObservationLineCount = input.reflectedObservationLineCount;
+    }
+    this.db
+      .update(observationalMemory)
+      .set(setData)
+      .where(eq(observationalMemory.id, input.id))
+      .run();
   }
-  async swapBufferedReflectionToActive(): Promise<ObservationalMemoryRecord> {
-    throw new Error("not implemented");
+
+  async swapBufferedReflectionToActive(
+    input: SwapBufferedReflectionToActiveInput,
+  ): Promise<ObservationalMemoryRecord> {
+    const row = this.db
+      .select()
+      .from(observationalMemory)
+      .where(eq(observationalMemory.id, input.id))
+      .get();
+    if (!row) throw new Error(`OM record not found: ${input.id}`);
+    if (!row.bufferedReflection) throw new Error("No buffered reflection to swap");
+
+    const bufferedReflection = row.bufferedReflection;
+    const reflectedLineCount = row.reflectedObservationLineCount ?? 0;
+
+    // Lines 0..reflectedLineCount were reflected on → replaced by bufferedReflection.
+    // Lines after reflectedLineCount were added after reflection started → kept as-is.
+    const allLines = (row.activeObservations ?? "").split("\n");
+    const unreflectedLines = allLines.slice(reflectedLineCount);
+    const unreflectedContent = unreflectedLines.join("\n").trim();
+
+    const newObservations = unreflectedContent
+      ? `${bufferedReflection}\n\n${unreflectedContent}`
+      : bufferedReflection;
+
+    const newRecord = await this.createReflectionGeneration({
+      currentRecord: input.currentRecord,
+      reflection: newObservations,
+      tokenCount: input.tokenCount,
+    });
+
+    // Clear buffered state on the old (current) record
+    this.db
+      .update(observationalMemory)
+      .set({
+        bufferedReflection: null,
+        bufferedReflectionTokens: null,
+        bufferedReflectionInputTokens: null,
+        reflectedObservationLineCount: null,
+        updatedAt: Date.now(),
+      })
+      .where(eq(observationalMemory.id, input.id))
+      .run();
+
+    return newRecord;
   }
 }

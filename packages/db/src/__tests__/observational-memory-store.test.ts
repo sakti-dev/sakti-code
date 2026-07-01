@@ -477,3 +477,94 @@ describe("SqliteObservationalMemoryStorage — buffered observations", () => {
     ).rejects.toThrow(/not found/i);
   });
 });
+
+describe("SqliteObservationalMemoryStorage — buffered reflection", () => {
+  let db: DatabaseSync;
+  let tmpDir: string;
+  let store: SqliteObservationalMemoryStorage;
+
+  beforeAll(async () => {
+    tmpDir = mkdtempSync(join(import.meta.dirname!, "om-ref-XXXXXX"));
+    db = new DatabaseSync(join(tmpDir, "test.db"));
+    const drizzle = await initDatabase(db);
+    db.prepare(
+      "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?,?,?,?,?)",
+    ).run("proj1", "P", "/tmp/p", 1, 1);
+    for (const sid of ["sess-ref-ubr", "sess-ref-ubr-thr", "sess-ref-swap"]) {
+      db.prepare(
+        "INSERT INTO sessions (id, project_id, kind, thinking_level, created_at, updated_at) VALUES (?,?,?,?,?,?)",
+      ).run(sid, "proj1", "task", "off", 1, 1);
+    }
+    store = new SqliteObservationalMemoryStorage(drizzle);
+  });
+
+  afterAll(() => {
+    db?.close();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test("updateBufferedReflection sets reflection fields", async () => {
+    const created = await store.initializeObservationalMemory({
+      threadId: "sess-ref-ubr",
+      resourceId: "proj1",
+      scope: "thread",
+      config: {},
+    });
+    await store.updateBufferedReflection({
+      id: created.id,
+      reflection: "my reflection",
+      reflectionTokens: 50,
+      reflectionInputTokens: 200,
+      reflectedObservationLineCount: 10,
+    });
+    const got = await store.getObservationalMemory("sess-ref-ubr", "proj1");
+    expect(got!.bufferedReflection).toBe("my reflection");
+    expect(got!.bufferedReflectionTokens).toBe(50);
+    expect(got!.bufferedReflectionInputTokens).toBe(200);
+    expect(got!.reflectedObservationLineCount).toBe(10);
+  });
+
+  test("updateBufferedReflection throws on unknown id", async () => {
+    await expect(store.updateBufferedReflection({ id: "nope", reflection: "x" })).rejects.toThrow(
+      /not found/i,
+    );
+  });
+
+  test("swapBufferedReflectionToActive swaps reflection into active and creates new generation", async () => {
+    const created = await store.initializeObservationalMemory({
+      threadId: "sess-ref-swap",
+      resourceId: "proj1",
+      scope: "thread",
+      config: {},
+    });
+    const initial = await store.getObservationalMemory("sess-ref-swap", "proj1");
+    // Set some active observations and buffered reflection
+    await store.updateActiveObservations({
+      id: created.id,
+      observations: "line1\nline2\nline3\nline4",
+      lastObservedAt: new Date(),
+      tokenCount: 20,
+    });
+    await store.updateBufferedReflection({
+      id: created.id,
+      reflection: "reflected content",
+      reflectedObservationLineCount: 2,
+    });
+
+    const newRecord = await store.swapBufferedReflectionToActive({
+      id: created.id,
+      currentRecord: initial!,
+      tokenCount: 30,
+    });
+    expect(newRecord.generationCount).toBe(1);
+    expect(newRecord.originType).toBe("reflection");
+    expect(newRecord.activeObservations).toContain("reflected content");
+    // Lines 1-2 replaced, lines 3-4 remain
+    expect(newRecord.activeObservations).toContain("line3");
+    expect(newRecord.activeObservations).toContain("line4");
+    expect(newRecord.bufferedReflection).toBeUndefined();
+    // Old record should remain unchanged (historical) — get by lookup still returns newest
+    const got = await store.getObservationalMemory("sess-ref-swap", "proj1");
+    expect(got!.id).toBe(newRecord.id);
+  });
+});
