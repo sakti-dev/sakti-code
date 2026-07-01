@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const projects = sqliteTable("projects", {
   id: text("id").primaryKey(),
@@ -63,4 +63,91 @@ export const turns = sqliteTable(
     createdAt: integer("created_at").notNull(),
   },
   (table) => [uniqueIndex("turns_session_id_sequence_idx").on(table.sessionId, table.sequence)],
+);
+
+// =============================================================================
+// Observational Memory (OM) — vocabulary glossary
+// -----------------------------------------------------------------------------
+// This table stores Observational Memory state, porting Mastra's
+// `mastra_observational_memory` shape. OM is a separate concern from the core
+// transcript and is keyed by Mastra's vocabulary AT THIS BOUNDARY:
+//
+//   Mastra "resource"  ==  sakti `projects`        (the codebase being worked on)
+//   Mastra "thread"    ==  sakti `sessions`        (one conversation)
+//   Mastra "messages"  ==  sakti `session_entries` (rows with kind = "message")
+//
+// Column mapping at this boundary:
+//   observational_memory.resource_id        ->  projects.id
+//   observational_memory.thread_id           ->  sessions.id
+//   observational_memory.observed_message_ids -> session_entries.id (message kind)
+//
+// v1 scope: SESSION-scoped (thread) only. lookupKey = `thread:{sessionId}`.
+// Project/resource scope is DEFERRED — when added it will use
+// `resource:{projectId}` and is a purely additive change (no rewrites).
+//
+// lookup_key is a REGULAR (non-unique) index: Mastra keeps previous generations
+// as history rows; the "current" record is the latest by generationCount.
+//
+// Source of truth for the shape:
+//   openspec/references/mastra/packages/core/src/storage/constants.ts:472
+//   openspec/references/mastra/packages/core/src/storage/types.ts:1129
+// =============================================================================
+export const observationalMemory = sqliteTable(
+  "observational_memory",
+  {
+    id: text("id").primaryKey(),
+    lookupKey: text("lookup_key").notNull(),
+    scope: text("scope").notNull(), // 'thread' | 'resource'
+    resourceId: text("resource_id").references(() => projects.id, {
+      onDelete: "cascade",
+    }),
+    threadId: text("thread_id").references(() => sessions.id, {
+      onDelete: "cascade",
+    }),
+
+    // content
+    activeObservations: text("active_observations").notNull(),
+    activeObservationsPendingUpdate: text("active_observations_pending_update"),
+    bufferedObservationChunks: text("buffered_observation_chunks"), // JSON
+    bufferedReflection: text("buffered_reflection"),
+    bufferedReflectionTokens: integer("buffered_reflection_tokens"),
+    bufferedReflectionInputTokens: integer("buffered_reflection_input_tokens"),
+    reflectedObservationLineCount: integer("reflected_observation_line_count"),
+    observedMessageIds: text("observed_message_ids"), // JSON array of session_entries.id
+    observedTimezone: text("observed_timezone"),
+
+    // generation
+    originType: text("origin_type").notNull(), // 'initialization' | 'observation' | 'reflection'
+    generationCount: integer("generation_count").notNull(),
+    config: text("config").notNull(), // JSON snapshot of OM config
+
+    // token accounting
+    pendingMessageTokens: integer("pending_message_tokens").notNull(),
+    totalTokensObserved: integer("total_tokens_observed").notNull(),
+    observationTokenCount: integer("observation_token_count").notNull(),
+
+    // state flags
+    isObserving: integer("is_observing", { mode: "boolean" }).notNull().default(false),
+    isReflecting: integer("is_reflecting", { mode: "boolean" }).notNull().default(false),
+    isBufferingObservation: integer("is_buffering_observation", {
+      mode: "boolean",
+    })
+      .notNull()
+      .default(false),
+    isBufferingReflection: integer("is_buffering_reflection", {
+      mode: "boolean",
+    })
+      .notNull()
+      .default(false),
+    lastBufferedAtTokens: integer("last_buffered_at_tokens").notNull().default(0),
+
+    // cursors / timestamps (epoch-ms integers, consistent with the schema)
+    lastObservedAt: integer("last_observed_at"),
+    lastReflectionAt: integer("last_reflection_at"),
+    lastBufferedAtTime: integer("last_buffered_at_time"),
+    metadata: text("metadata"), // JSON
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("observational_memory_lookup_key_idx").on(table.lookupKey)],
 );
