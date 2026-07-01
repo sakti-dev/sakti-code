@@ -74,6 +74,23 @@ export interface AgentLoopConfig {
 
   apiKey?: string | undefined;
 
+  /**
+   * Optional observational-memory hook. When present, the loop runs
+   * maybeObserve/maybeReflect at turn boundaries and injects <observations>
+   * into the system prompt.
+   */
+  observationalMemory?:
+    | {
+        readonly engine: {
+          getOrCreateRecord(): Promise<unknown>;
+          maybeObserve(record: unknown): Promise<unknown>;
+          maybeReflect(record: unknown): Promise<unknown>;
+          buildContextSystemMessage(record: unknown): string | undefined;
+        };
+        readonly getBaseSystemPrompt: () => string;
+      }
+    | undefined;
+
   beforeToolCall?:
     | ((
         context: BeforeToolCallContext,

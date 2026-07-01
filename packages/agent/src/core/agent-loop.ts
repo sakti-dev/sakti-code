@@ -199,7 +199,7 @@ export const runAgentLoopEffect = (
   emit: AgentEventSink,
   signal?: AbortSignal,
   streamFn?: StreamFn,
-): Effect.Effect<AgentMessage[]> =>
+): Effect.Effect<AgentMessage[], undefined, never> =>
   Effect.gen(function* () {
     const newMessages: AgentMessage[] = [...prompts];
     const currentContext: AgentContext = {
@@ -227,7 +227,7 @@ export const runAgentLoopContinueEffect = (
   emit: AgentEventSink,
   signal?: AbortSignal,
   streamFn?: StreamFn,
-): Effect.Effect<AgentMessage[], Error> =>
+): Effect.Effect<AgentMessage[], Error | undefined, never> =>
   Effect.gen(function* () {
     if (context.messages.length === 0) {
       return yield* Effect.fail(new Error("Cannot continue: no messages in context"));
@@ -257,7 +257,7 @@ const runLoopEffect = (
   signal: AbortSignal | undefined,
   emit: AgentEventSink,
   streamFn?: StreamFn,
-): Effect.Effect<void> =>
+): Effect.Effect<void, undefined, never> =>
   Effect.gen(function* () {
     let currentContext = initialContext;
     let config = initialConfig;
@@ -377,6 +377,35 @@ const runLoopEffect = (
             model: nextTurnSnapshot.model ?? config.model,
             ...(reasoning === undefined ? {} : { reasoning }),
           };
+        }
+
+        // §OM: run observational-memory observe/reflect at turn boundary and
+        // inject <observations> into the next turn's system prompt. Failures
+        // are best-effort and logged; they never abort the run.
+        if (config.observationalMemory) {
+          const omResult = yield* Effect.tryPromise({
+            try: async () => {
+              const om = config.observationalMemory!;
+              const record = await om.engine.getOrCreateRecord();
+              const observedRecord = await om.engine.maybeObserve(record);
+              const reflectedRecord = await om.engine.maybeReflect(observedRecord);
+              const observations = om.engine.buildContextSystemMessage(reflectedRecord);
+              const base = om.getBaseSystemPrompt();
+              return observations ? `${base}\n\n${observations}` : base;
+            },
+            catch: (error: unknown) => {
+              config.logger?.error("observational memory turn hook failed", error, {
+                sessionId: config.sessionId,
+              });
+              return undefined;
+            },
+          });
+          if (omResult !== undefined) {
+            currentContext = {
+              ...currentContext,
+              systemPrompt: omResult,
+            };
+          }
         }
 
         const shouldStop = yield* Effect.promise(() =>

@@ -14,6 +14,7 @@ import {
 } from "../compaction/retry-loop.ts";
 import type { AgentHarnessEvent, PromptTemplate, Skill, ThinkingLevel } from "../harness-types.ts";
 import type { ObservationalMemoryOptions } from "../observational-memory/config.ts";
+import { ObservationalMemoryEngine } from "../observational-memory/engine.ts";
 import { planFirstTurn, type ReadFile } from "../resources/prompt-preprocessor.ts";
 import type { SessionShape } from "../session/session.ts";
 import type { SessionStorageShape } from "../session/storage.ts";
@@ -93,6 +94,19 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
     const thinkingLevel = deps.thinkingLevel;
     const log = deps.log;
     const readFile = deps.readFile ?? ((p: string) => readFileAsync(p).catch(() => null));
+
+    // Wire observational memory into the harness when enabled.
+    if (deps.observationalMemory?.enabled) {
+      const om = deps.observationalMemory;
+      const engine = new ObservationalMemoryEngine({ deps: om.deps });
+      harness.setObservationalMemory({
+        engine,
+        getBaseSystemPrompt: () => {
+          const current = harness.getSystemPrompt();
+          return current ?? "";
+        },
+      });
+    }
 
     // ── Event drain (Phase F: PubSub-backed subscribeStream) ─────
     const eventStream = harness.subscribeStream();

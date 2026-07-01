@@ -48,8 +48,8 @@ import {
   stripSkillsBlock,
   stripToolInventory,
 } from "../resources/system-prompt";
-import { renderToolSection } from "../resources/tool-inventory";
 import { convertToLlm } from "../session/messages";
+import { renderToolSection } from "../resources/tool-inventory";
 import type { SessionShape } from "../session/session";
 import type {
   AgentContext,
@@ -648,6 +648,12 @@ export class AgentHarness<
     }
   }
 
+  private observationalMemory?: AgentLoopConfig["observationalMemory"];
+
+  setObservationalMemory(options: AgentLoopConfig["observationalMemory"]): void {
+    this.observationalMemory = options;
+  }
+
   private createLoopConfig(
     getTurnState: () => AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>,
     setTurnState: (turnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>) => void,
@@ -671,6 +677,7 @@ export class AgentHarness<
             resolvePermissionAsk: (req: PermissionAskRequest): Promise<"allow" | "deny"> =>
               this.permissionAskResolver!(req),
           }),
+      ...(this.observationalMemory ? { observationalMemory: this.observationalMemory } : {}),
       convertToLlm,
       transformContext: async (messages) => {
         const result = await this.emitHook({
