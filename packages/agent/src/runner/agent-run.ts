@@ -107,6 +107,36 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
       omEngine = new ObservationalMemoryEngine({
         deps: om.deps,
         abortSignal: retryAbort.signal,
+        onOmEvent: (event) => {
+          emit(event);
+
+          // Persist completed/failed markers as CustomMessage entries for reload.
+          if (event.type === "om_end" || event.type === "om_failed") {
+            void Effect.runPromise(
+              sessionShape.appendCustomMessageEntry("om_marker", "", false, {
+                cycleId: event.cycleId,
+                operationType: event.operationType,
+                status: event.type === "om_end" ? "complete" : "failed",
+                durationMs: event.durationMs,
+                ...(event.type === "om_end"
+                  ? {
+                      tokensProcessed: event.tokensProcessed,
+                      tokensProduced: event.tokensProduced,
+                      ...(event.observations !== undefined
+                        ? { observations: event.observations }
+                        : {}),
+                      ...(event.currentTask !== undefined
+                        ? { currentTask: event.currentTask }
+                        : {}),
+                      ...(event.suggestedResponse !== undefined
+                        ? { suggestedResponse: event.suggestedResponse }
+                        : {}),
+                    }
+                  : { error: event.error }),
+              }),
+            ).catch(() => {});
+          }
+        },
       });
       harness.setObservationalMemory({
         engine: omEngine,
