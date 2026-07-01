@@ -20,6 +20,8 @@
     "@sakti-code/llm": "workspace:*",
     "@sakti-code/logger": "workspace:*",
     "effect": "4.0.0-beta.90",
+    "image-size": "^1.2.0",
+    "tokenx": "^1.3.0",
     "typebox": "1.1.38",
     "uuid": "^11",
     "yaml": "^2.9.0"
