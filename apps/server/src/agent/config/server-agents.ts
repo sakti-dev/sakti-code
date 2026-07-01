@@ -24,6 +24,7 @@ function buildRuleset(): PermissionRuleset {
       "*.env.example": "allow",
     },
     webfetch: "allow",
+    websearch: "allow",
   });
 }
 
@@ -35,6 +36,7 @@ function exploreRuleset(): PermissionRuleset {
     glob: "allow",
     bash: "allow",
     webfetch: "allow",
+    websearch: "allow",
   });
 }
 
@@ -43,6 +45,7 @@ function planRuleset(): PermissionRuleset {
     "*": "allow",
     edit: { "*": "deny" },
     webfetch: "allow",
+    websearch: "allow",
   });
 }
 
@@ -52,6 +55,7 @@ function intakeRuleset(): PermissionRuleset {
     "*": "allow",
     bash: { "rm *": "ask", "git push*": "ask", "git reset --hard*": "ask" },
     webfetch: "allow",
+    websearch: "allow",
   });
 }
 
@@ -72,7 +76,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
     description: "The default agent. Executes tools based on configured permissions.",
     systemPrompt: BUILD_PROMPT,
     permission: buildRuleset(),
-    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "webfetch"],
+    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "webfetch", "websearch"],
   }),
   defineAgent({
     name: "explore",
@@ -81,7 +85,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "Fast read-only agent specialized for exploring codebases: find files by pattern, search code for keywords, answer questions about the codebase.",
     systemPrompt: EXPLORE_PROMPT,
     permission: exploreRuleset(),
-    activeToolNames: ["read", "grep", "find", "bash", "webfetch"],
+    activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch"],
   }),
   defineAgent({
     name: "plan",
@@ -90,7 +94,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "Plan mode. Researches the codebase and produces a plan; disallows all edit tools.",
     systemPrompt: PLAN_PROMPT,
     permission: planRuleset(),
-    activeToolNames: ["read", "grep", "find", "bash", "webfetch"],
+    activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch"],
   }),
   defineAgent({
     name: "general",
@@ -99,7 +103,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "General-purpose agent for researching complex questions and executing multi-step tasks.",
     systemPrompt: GENERAL_PROMPT,
     permission: allowAllRuleset(),
-    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "webfetch"],
+    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "webfetch", "websearch"],
   }),
   defineAgent({
     name: "intake",
@@ -117,6 +121,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "find",
       "propose_session",
       "webfetch",
+      "websearch",
     ],
   }),
 ];

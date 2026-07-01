@@ -34,6 +34,7 @@ import {
   SKILLS_INSTRUCTIONS,
   type ToolContext,
 } from "./config/index.ts";
+import { resolveWebSearchOperations } from "./config/websearch-resolver.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
@@ -466,11 +467,13 @@ export function runPromptEffect(
     // Build only the agent's declared tools via the server registry. Each agent
     // entry is fully self-contained — propose_session is built only when the
     // intake agent declares it; build/explore/plan/general never see it.
+    const websearchOperations = resolveWebSearchOperations(ctx.auth, ctx.settingsFile);
     const toolCtx: ToolContext = {
       cwd: project.cwd,
       editMode,
       snapshotStore: new InMemorySnapshotStore(),
       noopOwner: {},
+      ...(websearchOperations ? { websearchOperations } : {}),
     };
     const tools = buildAgentTools(agent.activeToolNames ?? DEFAULT_TOOL_NAMES, toolCtx);
 

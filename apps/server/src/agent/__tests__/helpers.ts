@@ -42,6 +42,10 @@ export function createMockCtx(overrides?: { projectId?: string; profileId?: stri
       delete: vi.fn(() => true),
       list: vi.fn(() => []),
     },
+    settingsFile: {
+      read: vi.fn(() => ({})),
+      update: vi.fn(() => {}),
+    },
     profiles: {
       read: vi.fn(() => ({
         defaultProfile: "default",
@@ -145,6 +149,10 @@ export function createMultiSessionCtx(sessionIdToProjectId: Record<string, strin
       set: vi.fn(() => true),
       delete: vi.fn(() => true),
       list: vi.fn(() => []),
+    },
+    settingsFile: {
+      read: vi.fn(() => ({})),
+      update: vi.fn(() => {}),
     },
     db: {},
     profiles: {

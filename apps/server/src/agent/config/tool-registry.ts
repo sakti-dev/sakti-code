@@ -7,10 +7,12 @@ import {
   createProposeSessionTool,
   createReadTool,
   createWebFetchTool,
+  createWebSearchTool,
   createWriteTool,
   type EditMode,
   type InMemorySnapshotStore,
   type NoopLoopGuardOwner,
+  type SearchOperations,
 } from "@sakti-code/tools";
 import { rgPath } from "@vscode/ripgrep";
 
@@ -19,6 +21,7 @@ export interface ToolContext {
   readonly editMode: EditMode;
   readonly noopOwner: NoopLoopGuardOwner;
   readonly snapshotStore: InMemorySnapshotStore;
+  readonly websearchOperations?: SearchOperations;
 }
 
 export type ToolFactory = (ctx: ToolContext) => AgentTool;
@@ -51,6 +54,10 @@ export const TOOL_FACTORIES: Readonly<Record<string, ToolFactory>> = {
   grep: (ctx) => createGrepTool(ctx.cwd, { rgPath: rgBinPath() }) as AgentTool,
   find: (ctx) => createFindTool(ctx.cwd, { rgPath: rgBinPath() }) as AgentTool,
   webfetch: () => createWebFetchTool() as AgentTool,
+  websearch: (ctx) =>
+    createWebSearchTool(
+      ctx.websearchOperations ? { operations: ctx.websearchOperations } : {},
+    ) as AgentTool,
   propose_session: () => createProposeSessionTool() as AgentTool,
 };
 
