@@ -278,6 +278,7 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
             settings: compactionSettings,
             prompts: compactionPrompts,
             ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
+            onDelta: (text) => emit({ type: "compaction_delta", text }),
           });
           if (result.ok) {
             stuckGuard.consecutiveCompacts += 1;
