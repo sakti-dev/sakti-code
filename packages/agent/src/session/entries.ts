@@ -79,6 +79,16 @@ export interface LeafEntry extends SessionTreeEntryBase {
   type: "leaf";
 }
 
+export interface ObservationPruneEntry extends SessionTreeEntryBase {
+  /** Cumulative set of session entry IDs whose messages have been observed.
+   * The context builder skips these — their content is available as
+   * compressed observations in the system prompt. */
+  observedEntryIds: string[];
+  /** Link to the OM record for cross-referencing. */
+  observationRecordId: string;
+  type: "observation_prune";
+}
+
 export type SessionTreeEntry =
   | MessageEntry
   | ThinkingLevelChangeEntry
@@ -90,7 +100,8 @@ export type SessionTreeEntry =
   | CustomMessageEntry
   | LabelEntry
   | SessionInfoEntry
-  | LeafEntry;
+  | LeafEntry
+  | ObservationPruneEntry;
 
 export interface SessionContext {
   activeToolNames: string[] | null;

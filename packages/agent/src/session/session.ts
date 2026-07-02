@@ -48,8 +48,21 @@ export function buildSessionContextFromEntries(pathEntries: SessionTreeEntry[]):
     }
   }
 
+  // Find the latest observation_prune entry (cumulative observed set).
+  // The builder skips messages whose entry IDs are in this set — their
+  // content is available as compressed observations in the system prompt.
+  let observedEntryIds: Set<string> | undefined;
+  for (let i = pathEntries.length - 1; i >= 0; i--) {
+    const entry = pathEntries[i]!;
+    if (entry.type === "observation_prune") {
+      observedEntryIds = new Set(entry.observedEntryIds);
+      break;
+    }
+  }
+
   const messages: AgentMessage[] = [];
   const appendMessage = (entry: SessionTreeEntry) => {
+    if (observedEntryIds?.has(entry.id)) return;
     if (entry.type === "message") {
       messages.push(entry.message as AgentMessage);
     } else if (entry.type === "custom_message") {
