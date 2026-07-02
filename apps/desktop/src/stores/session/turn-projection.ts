@@ -1,3 +1,4 @@
+import type { TurnMeta } from "./hydrate-chat.ts";
 import type { MessagePart, TurnTiming, UIMessage } from "../types.ts";
 
 export interface ChatTurn {
@@ -5,6 +6,10 @@ export interface ChatTurn {
   endedAt: number | null;
   error: string | null;
   id: string;
+  /** Server turn id — non-null for turns loaded via /chat (lazy), null for live. */
+  turnId: string | null;
+  /** Total intermediate entries (from server). Drives the collapse badge + canCollapse. */
+  intermediateCount: number;
   startedAt: number | null;
   userMessage: UIMessage | null;
   working: boolean;
@@ -13,6 +18,8 @@ export interface ChatTurn {
 function newTurn(userMessage: UIMessage | null, id: string): ChatTurn {
   return {
     id,
+    intermediateCount: 0,
+    turnId: null,
     userMessage,
     assistantMessages: [],
     working: false,
@@ -39,9 +46,17 @@ export function buildChatTurns(
   messages: Record<string, UIMessage>,
   streamingPhase: string,
   turnTimings: TurnTiming[] = [],
+  turnsMeta: Record<string, TurnMeta> = {},
 ): ChatTurn[] {
   const turns: ChatTurn[] = [];
   let currentTurn: ChatTurn | null = null;
+
+  const metaByUserMsg = new Map<string, TurnMeta>();
+  for (const meta of Object.values(turnsMeta)) {
+    if (meta.userMessageId) {
+      metaByUserMsg.set(meta.userMessageId, meta);
+    }
+  }
 
   for (const msgId of messageOrder) {
     const msg = messages[msgId];
@@ -54,6 +69,13 @@ export function buildChatTurns(
         turns.push(currentTurn);
       }
       currentTurn = newTurn(msg, msg.id);
+      const meta = metaByUserMsg.get(msg.id);
+      if (meta) {
+        currentTurn.turnId = meta.id;
+        currentTurn.startedAt = meta.startedAt;
+        currentTurn.endedAt = meta.endedAt;
+        currentTurn.intermediateCount = meta.intermediateIds.length;
+      }
     } else if (msg.role === "assistant") {
       currentTurn = handleAssistantMessage(currentTurn, msg);
     }
@@ -68,14 +90,19 @@ export function buildChatTurns(
     lastTurn.working = true;
   }
 
-  const count = Math.min(turns.length, turnTimings.length);
-  for (let i = 0; i < count; i++) {
-    const turn = turns[i];
-    const timing = turnTimings[i];
-    if (turn && timing) {
-      turn.startedAt = timing.startedAt;
-      turn.endedAt = timing.endedAt;
+  let timingIdx = 0;
+  for (const turn of turns) {
+    if (turn.turnId !== null) {
+      continue;
     }
+    if (timingIdx < turnTimings.length) {
+      const timing = turnTimings[timingIdx];
+      if (timing) {
+        turn.startedAt = timing.startedAt;
+        turn.endedAt = timing.endedAt;
+      }
+    }
+    timingIdx++;
   }
 
   return turns;

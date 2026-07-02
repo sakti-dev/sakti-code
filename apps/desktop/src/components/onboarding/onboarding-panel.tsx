@@ -25,7 +25,7 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
     const id = props.intakeSessionId;
     if (id && id !== lastLoadedId) {
       lastLoadedId = id;
-      void actions.loadMessages(id);
+      void actions.loadChat(id);
     }
   });
 
@@ -48,6 +48,7 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
       session.store.messages,
       session.store.streaming.phase,
       session.store.turnTimings,
+      session.store.turns,
     );
   });
 
@@ -73,7 +74,13 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
   return (
     <div class="flex min-h-0 flex-1 flex-col">
       <Show
-        fallback={<MessageTimeline isStreaming={isGenerating} turns={turns} />}
+        fallback={
+          <MessageTimeline
+            isStreaming={isGenerating}
+            sessionId={props.intakeSessionId ?? ""}
+            turns={turns}
+          />
+        }
         when={!hasMessages()}
       >
         <EmptyState />

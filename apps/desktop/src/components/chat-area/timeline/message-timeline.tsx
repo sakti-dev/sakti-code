@@ -19,6 +19,7 @@ import { SessionTurn } from "./session-turn";
 export interface MessageTimelineProps {
   class?: string;
   isStreaming: Accessor<boolean>;
+  sessionId: string;
   turns: Accessor<ChatTurn[]>;
 }
 
@@ -117,7 +118,14 @@ export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
                   <Show when={item()}>
                     {(i) => (
                       <Show when={props.turns()[i().index]}>
-                        {(turn) => <SessionTurn isStreaming={props.isStreaming} turn={turn} />}
+                        {(turn) => (
+                          <SessionTurn
+                            isStreaming={props.isStreaming}
+                            onHeightChanged={virtual.bumpMeasure}
+                            sessionId={props.sessionId}
+                            turn={turn}
+                          />
+                        )}
                       </Show>
                     )}
                   </Show>

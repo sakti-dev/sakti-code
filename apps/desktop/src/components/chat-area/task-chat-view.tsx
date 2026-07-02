@@ -14,7 +14,7 @@ export function TaskChatView(props: TaskChatViewProps): JSX.Element {
   const sessionStore = createMemo(() => sessions.get(props.sessionId));
 
   onMount(() => {
-    void actions.loadMessages(props.sessionId);
+    void actions.loadChat(props.sessionId);
   });
 
   const turns = createMemo(() => {
@@ -27,6 +27,7 @@ export function TaskChatView(props: TaskChatViewProps): JSX.Element {
       session.store.messages,
       session.store.streaming.phase,
       session.store.turnTimings,
+      session.store.turns,
     );
   });
 
@@ -34,7 +35,7 @@ export function TaskChatView(props: TaskChatViewProps): JSX.Element {
 
   return (
     <div class="flex min-h-0 flex-1 flex-col">
-      <MessageTimeline isStreaming={isGenerating} turns={turns} />
+      <MessageTimeline isStreaming={isGenerating} sessionId={props.sessionId} turns={turns} />
       <ChatInput placeholder="Continue working…" sessionId={props.sessionId} />
     </div>
   );

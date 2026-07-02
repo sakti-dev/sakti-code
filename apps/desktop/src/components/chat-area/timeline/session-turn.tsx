@@ -13,6 +13,7 @@ import {
 } from "solid-js";
 import type { ChatTurn } from "~/stores/session/turn-projection";
 import { getUserText } from "~/stores/session/turn-projection";
+import { useStore } from "~/stores/store-context";
 import type { MessagePart, UIMessage } from "~/stores/types.ts";
 import { CHAT_COMPACT_STACK_GAP_CLASS, CHAT_STACK_GAP_CLASS } from "../layout";
 import { Part } from "../parts/message-part";
@@ -21,6 +22,9 @@ import { PartFooter } from "../parts/part-footer";
 export interface SessionTurnProps {
   class?: string;
   isStreaming: Accessor<boolean>;
+  /** Called when this turn's height changes (intermediates loaded/evicted). */
+  onHeightChanged?: () => void;
+  sessionId: string;
   turn: Accessor<ChatTurn>;
 }
 
@@ -69,6 +73,7 @@ function MessageContent(msg: UIMessage, isStreaming: () => boolean): JSX.Element
 }
 
 export function SessionTurn(props: SessionTurnProps): JSX.Element {
+  const { actions } = useStore();
   const turn = props.turn;
   const [liveMs, setLiveMs] = createSignal(0);
   const [expanded, setExpanded] = createSignal(false);
@@ -90,9 +95,40 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
   createEffect(
     on(
       () => turn().endedAt,
-      (endedAt) => {
-        setExpanded(endedAt === null);
+      (endedAt, prevEndedAt) => {
+        const collapsed = endedAt !== null;
+        setExpanded(!collapsed);
+        if (collapsed && prevEndedAt === null) {
+          const tid = turn().turnId;
+          if (tid) {
+            actions.evictIntermediates(props.sessionId, tid);
+          }
+        }
       },
+    ),
+  );
+
+  const handleToggle = () => {
+    setExpanded((e) => {
+      const next = !e;
+      const tid = turn().turnId;
+      if (tid) {
+        if (next) {
+          void actions.loadIntermediates(props.sessionId, tid);
+        } else {
+          actions.evictIntermediates(props.sessionId, tid);
+        }
+      }
+      return next;
+    });
+  };
+
+  // Re-measure the virtual list when this turn's message count changes
+  // (intermediates loaded on expand / evicted on collapse).
+  createEffect(
+    on(
+      () => turn().assistantMessages.length,
+      () => props.onHeightChanged?.(),
     ),
   );
 
@@ -109,7 +145,10 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
 
   const canCollapse = createMemo(() => {
     const t = turn();
-    return t.endedAt !== null && !t.error && t.assistantMessages.length > 1;
+    if (t.endedAt === null || t.error) {
+      return false;
+    }
+    return t.assistantMessages.length > 1 || t.intermediateCount > 0;
   });
 
   const intermediateMessages = createMemo(() => {
@@ -150,7 +189,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
           class="flex w-full items-center gap-2 border-border/50 border-b px-3 py-1.5 text-left text-muted-foreground text-xs transition-colors hover:bg-muted/30 disabled:cursor-default disabled:hover:bg-transparent"
           data-slot="turn-header"
           disabled={!canCollapse()}
-          onClick={() => setExpanded((e) => !e)}
+          onClick={handleToggle}
           type="button"
         >
           <Show when={canCollapse()}>
