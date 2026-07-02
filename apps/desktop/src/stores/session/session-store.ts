@@ -143,33 +143,44 @@ export function createSessionStore(): SessionStore {
 
     appendToken(msgId, delta) {
       setStore("messages", msgId, "content", (prev) => prev + delta);
-      setStore("messages", msgId, "parts", (prev) => {
-        const last = prev.at(-1);
-        if (last !== undefined && last.type === "thinking") {
-          const finalized: MessagePart = {
-            ...last,
-            endedAt: Date.now(),
-            isStreaming: false,
-          };
-          return [
-            ...prev.slice(0, -1),
-            finalized,
-            { type: "text" as const, text: delta, isStreaming: true },
-          ];
-        }
-        if (last !== undefined && last.type === "text") {
-          return [...prev.slice(0, -1), { ...last, text: last.text + delta }];
-        }
-        const newPart: MessagePart = {
-          type: "text",
-          text: delta,
-          isStreaming: true,
+
+      const parts = store.messages[msgId]?.parts;
+      const last = parts?.at(-1);
+
+      if (last !== undefined && last.type === "text") {
+        setStore(
+          "messages",
+          msgId,
+          produce((msg: UIMessage) => {
+            const d = msg.parts[msg.parts.length - 1];
+            if (d !== undefined && d.type === "text") {
+              d.text += delta;
+            }
+          }),
+        );
+      } else if (last !== undefined && last.type === "thinking") {
+        const finalized: MessagePart = {
+          ...last,
+          endedAt: Date.now(),
+          isStreaming: false,
         };
-        if (last !== undefined) {
-          return [...prev.slice(0, -1), { ...last, isStreaming: false }, newPart];
-        }
-        return [newPart];
-      });
+        setStore("messages", msgId, "parts", (prev) => [
+          ...prev.slice(0, -1),
+          finalized,
+          { type: "text" as const, text: delta, isStreaming: true },
+        ]);
+      } else if (last !== undefined) {
+        setStore("messages", msgId, "parts", (prev) => [
+          ...prev.slice(0, -1),
+          { ...prev.at(-1)!, isStreaming: false },
+          { type: "text" as const, text: delta, isStreaming: true },
+        ]);
+      } else {
+        setStore("messages", msgId, "parts", [
+          { type: "text" as const, text: delta, isStreaming: true },
+        ]);
+      }
+
       setStore("streaming", "tokenCount", (n) => n + 1);
     },
 

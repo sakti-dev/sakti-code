@@ -1,11 +1,18 @@
-import { type Component, createMemo, Show } from "solid-js";
-import { Velomark } from "velomark";
+import type { Component } from "solid-js";
+import { Show } from "solid-js";
+import { createCodePlugin } from "@velomark/code";
+import { Velomark } from "@velomark/core";
+import { createMathPlugin } from "@velomark/math";
+import { createMermaidPlugin } from "@velomark/mermaid";
 import { cn } from "~/lib/utils";
 import {
   DESKTOP_MARKDOWN_COMPONENT,
   DESKTOP_MARKDOWN_SCOPE_CLASS,
 } from "./markdown-integration/contract";
-import { createDesktopVelomarkTheme } from "./markdown-integration/theme";
+
+const codePlugin = createCodePlugin();
+const mathPlugin = createMathPlugin();
+const mermaidPlugin = createMermaidPlugin();
 
 export interface MarkdownProps {
   class?: string;
@@ -14,15 +21,19 @@ export interface MarkdownProps {
 }
 
 export const Markdown: Component<MarkdownProps> = (props) => {
-  const theme = createMemo(() => createDesktopVelomarkTheme());
-
   return (
     <div
       class={cn(`${DESKTOP_MARKDOWN_SCOPE_CLASS} max-w-none text-[0.95rem]`, props.class)}
       data-component={DESKTOP_MARKDOWN_COMPONENT}
     >
       <Show when={props.text}>
-        <Velomark markdown={props.text} theme={theme()} />
+        <Velomark
+          animated
+          caret={props.isStreaming ? "block" : undefined}
+          markdown={props.text}
+          plugins={{ code: codePlugin, math: mathPlugin, mermaid: mermaidPlugin }}
+          remend={{}}
+        />
       </Show>
     </div>
   );

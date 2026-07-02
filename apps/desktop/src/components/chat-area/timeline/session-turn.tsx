@@ -51,13 +51,13 @@ function formatWorkDuration(ms: number): string {
   return `${seconds}s`;
 }
 
-function MessageContent(msg: UIMessage, isStreaming: boolean): JSX.Element {
+function MessageContent(msg: UIMessage, isStreaming: () => boolean): JSX.Element {
   return (
     <div class={CHAT_COMPACT_STACK_GAP_CLASS}>
       <Index each={msg.parts}>
         {(part) => (
           <div class="flex flex-col gap-1">
-            <Part isStreaming={isStreaming} part={part()} />
+            <Part isStreaming={isStreaming()} part={part()} />
             <Show when={!part().isStreaming}>
               <PartFooter copyText={getPartCopyText(part())} timestamp={msg.timestamp} />
             </Show>
@@ -181,7 +181,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
             </div>
           </Show>
           <For each={turn().assistantMessages}>
-            {(msg) => MessageContent(msg, props.isStreaming())}
+            {(msg) => MessageContent(msg, props.isStreaming)}
           </For>
         </div>
       </Show>
@@ -197,7 +197,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
           <div class="min-h-0 overflow-hidden">
             <div class="flex flex-col gap-3 px-3 py-2 opacity-50 [overflow-anchor:none]">
               <For each={intermediateMessages()}>
-                {(msg) => MessageContent(msg, props.isStreaming())}
+                {(msg) => MessageContent(msg, props.isStreaming)}
               </For>
             </div>
           </div>
@@ -209,7 +209,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               class="flex flex-col gap-3 px-3 [overflow-anchor:none]"
               data-slot="session-turn-stream"
             >
-              {MessageContent(msg(), props.isStreaming())}
+              {MessageContent(msg(), props.isStreaming)}
             </div>
           )}
         </Show>

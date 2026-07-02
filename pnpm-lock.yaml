@@ -1,97 +1,3 @@
----
-lockfileVersion: '9.0'
-
-importers:
-
-  .:
-    configDependencies: {}
-    packageManagerDependencies:
-      '@pnpm/exe':
-        specifier: ^10
-        version: 10.34.4
-      pnpm:
-        specifier: ^10
-        version: 10.34.4
-
-packages:
-
-  '@pnpm/exe@10.34.4':
-    resolution: {integrity: sha512-rBg+fjbO68KlFi3bNEnedyBUW5nu+fJdjiA5BmGFeQaRyRkyt0cvm6MBT65ZEP5fplh/Y6M1tmir9Oz09NYxHQ==}
-    hasBin: true
-
-  '@pnpm/linux-arm64@10.34.4':
-    resolution: {integrity: sha512-PCBpbcneXjKwrp86scDasphilTY4ZwWN6KjidudD8H08zHKzqDBJOwYClqUSjvAQzfwTr8wjpGxInLIApdkqEg==}
-    cpu: [arm64]
-    os: [linux]
-    hasBin: true
-
-  '@pnpm/linux-x64@10.34.4':
-    resolution: {integrity: sha512-6gsJT9HUs1kBsJANC5SEJNRGAMzjGMKgxEtCvPLYd7NIktbh1GH5Ktcu7nLYcbxX8SirCHHzhZiMolW0mvzoqA==}
-    cpu: [x64]
-    os: [linux]
-    hasBin: true
-
-  '@pnpm/macos-arm64@10.34.4':
-    resolution: {integrity: sha512-K2quNi8GEwI6INshDRN48G4VprYwKfOJFB5VXwNB2V41j65Ck5LJRjB44AYGaaoOPqDWrVPpxf5SdqjvxaAVaA==}
-    cpu: [arm64]
-    os: [darwin]
-    hasBin: true
-
-  '@pnpm/macos-x64@10.34.4':
-    resolution: {integrity: sha512-JhKmfB3tCrk6OV0GbpDjZWoQP1EGHO7UZdhYO3SW1j/Jp2sM5w1A4sPW3L8QTF3GftUUaX1UfPzS1+XJ2t0KBw==}
-    cpu: [x64]
-    os: [darwin]
-    hasBin: true
-
-  '@pnpm/win-arm64@10.34.4':
-    resolution: {integrity: sha512-Do6YuBNDFP8wmh1a6lXBwPHb73vROg6IFIWZUNRQMG00QngBptN/LGz/oUv1czy62zH7w4D/7MPEhx8yb9nFHA==}
-    cpu: [arm64]
-    os: [win32]
-    hasBin: true
-
-  '@pnpm/win-x64@10.34.4':
-    resolution: {integrity: sha512-KNUojrj5+c6Wk0yYPIr6/LQ3fToLeNq1istUtRPNFW5XjRXEw8ZQ2jw01ipwXMKFC46hHOMxV8dfZ8d2/YPfeQ==}
-    cpu: [x64]
-    os: [win32]
-    hasBin: true
-
-  pnpm@10.34.4:
-    resolution: {integrity: sha512-h2i+VSAK4/Iia2Un/Momh+FLxOXxLXchoPJdo99HkVF3BYZI20F3uvNIEg+guidS2NjZP2vq8f5krhjajelhrw==}
-    engines: {node: '>=18.12'}
-    hasBin: true
-
-snapshots:
-
-  '@pnpm/exe@10.34.4':
-    optionalDependencies:
-      '@pnpm/linux-arm64': 10.34.4
-      '@pnpm/linux-x64': 10.34.4
-      '@pnpm/macos-arm64': 10.34.4
-      '@pnpm/macos-x64': 10.34.4
-      '@pnpm/win-arm64': 10.34.4
-      '@pnpm/win-x64': 10.34.4
-
-  '@pnpm/linux-arm64@10.34.4':
-    optional: true
-
-  '@pnpm/linux-x64@10.34.4':
-    optional: true
-
-  '@pnpm/macos-arm64@10.34.4':
-    optional: true
-
-  '@pnpm/macos-x64@10.34.4':
-    optional: true
-
-  '@pnpm/win-arm64@10.34.4':
-    optional: true
-
-  '@pnpm/win-x64@10.34.4':
-    optional: true
-
-  pnpm@10.34.4: {}
-
----
 lockfileVersion: '9.0'
 
 settings:
@@ -176,6 +82,18 @@ importers:
       '@tanstack/solid-virtual':
         specifier: ^3.13.29
         version: 3.13.29(solid-js@1.9.13)
+      '@velomark/code':
+        specifier: 1.0.4
+        version: 1.0.4
+      '@velomark/core':
+        specifier: 1.0.5
+        version: 1.0.5(solid-js@1.9.13)(tailwindcss@4.3.1)
+      '@velomark/math':
+        specifier: 1.0.4
+        version: 1.0.4
+      '@velomark/mermaid':
+        specifier: 1.0.4
+        version: 1.0.4
       '@vscode/ripgrep':
         specifier: ^1.18.0
         version: 1.18.0
@@ -200,6 +118,9 @@ importers:
       pino-roll:
         specifier: ^4.0.0
         version: 4.0.0
+      remend:
+        specifier: ^1.3.0
+        version: 1.3.0
       solid-icons:
         specifier: ^1.2.0
         version: 1.2.0(solid-js@1.9.13)
@@ -215,9 +136,6 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@4.3.1)
-      velomark:
-        specifier: ^0.1.1
-        version: 0.1.1(solid-js@1.9.13)
     devDependencies:
       '@electron-toolkit/preload':
         specifier: ^3.0.2
@@ -2614,10 +2532,6 @@ packages:
   '@shikijs/core@3.23.0':
     resolution: {integrity: sha512-NSWQz0riNb67xthdm5br6lAkvpDJRTgB36fxlo37ZzM2yq0PQFFzbd8psqC2XMPgCzo1fW6cVi18+ArJ44wqgA==}
 
-  '@shikijs/core@4.2.0':
-    resolution: {integrity: sha512-Hc87Ab1Ld/vEbZRCbwx344I5v+4RU8CVToUTRkqXL1+TjbuOp9U5Xa0M23V4GEWHxVn+yO5otb+HkQVm3ptWQQ==}
-    engines: {node: '>=20'}
-
   '@shikijs/engine-javascript@3.23.0':
     resolution: {integrity: sha512-aHt9eiGFobmWR5uqJUViySI1bHMqrAgamWE1TYSUoftkAeCCAiGawPMwM+VCadylQtF4V3VNOZ5LmfItH5f3yA==}
 
@@ -2627,34 +2541,11 @@ packages:
   '@shikijs/langs@3.23.0':
     resolution: {integrity: sha512-2Ep4W3Re5aB1/62RSYQInK9mM3HsLeB91cHqznAJMuylqjzNVAVCMnNWRHFtcNHXsoNRayP9z1qj4Sq3nMqYXg==}
 
-  '@shikijs/primitive@4.2.0':
-    resolution: {integrity: sha512-NOq+DtUkVBJtZMVXL5A0vI0Xk8nvDYaXetFHSJFlOqjDZIVhIPRYFdGkSoElDqNuegikcc3A76SNUa8dTqtAYA==}
-    engines: {node: '>=20'}
-
-  '@shikijs/stream@4.2.0':
-    resolution: {integrity: sha512-OaMUUStdIZ+l1GJad9uVACR3Xvgwo4y+RmEuDMU62cgFMMg1IBCaIFmvzAR2HiCpGtwoc/qPfpNnP+ivgrPXZg==}
-    engines: {node: '>=20'}
-    peerDependencies:
-      react: ^19.0.0
-      solid-js: ^1.9.0
-      vue: ^3.2.0
-    peerDependenciesMeta:
-      react:
-        optional: true
-      solid-js:
-        optional: true
-      vue:
-        optional: true
-
   '@shikijs/themes@3.23.0':
     resolution: {integrity: sha512-5qySYa1ZgAT18HR/ypENL9cUSGOeI2x+4IvYJu4JgVJdizn6kG4ia5Q1jDEOi7gTbN4RbuYtmHh0W3eccOrjMA==}
 
   '@shikijs/types@3.23.0':
     resolution: {integrity: sha512-3JZ5HXOZfYjsYSk0yPwBrkupyYSLpAE26Qc0HLghhZNGTZg/SKxXIIgoxOpmmeQP0RRSDJTk1/vPfw9tbw+jSQ==}
-
-  '@shikijs/types@4.2.0':
-    resolution: {integrity: sha512-VT/MKtlpOhEPZloSH3Pb9WCZEBDoQVMa9jedp5UAwmJOar1DVc9DRODAxmYPW9M93IK4ryuqRejFfmlvlVDemw==}
-    engines: {node: '>=20'}
 
   '@shikijs/vscode-textmate@10.0.2':
     resolution: {integrity: sha512-83yeghZ2xxin3Nj8z1NMd/NCuca+gsYXswywDy5bHvwlWL8tpTQmzGeUuHd9FC3E/SBEMvzJRwWEOz5gGes9Qg==}
@@ -3302,6 +3193,21 @@ packages:
   '@upsetjs/venn.js@2.0.0':
     resolution: {integrity: sha512-WbBhLrooyePuQ1VZxrJjtLvTc4NVfpOyKx0sKqioq9bX1C1m7Jgykkn8gLrtwumBioXIqam8DLxp88Adbue6Hw==}
 
+  '@velomark/code@1.0.4':
+    resolution: {integrity: sha512-YyLJ8S3vio/ub6wDak8Do9xryEsZgeg4kLY+pb8zPnvH5xqW9dOT3Xc8WjYInENMwKQdx+Rd7D4MQvbUH6h/yg==}
+
+  '@velomark/core@1.0.5':
+    resolution: {integrity: sha512-DzFNsQtSCgTdE2SP6pfivVeDiz/EGUQRH+LnADj12GF63trYSp8ajZNPlouV3RPopZBoXP6M474t2CKU5MeLfg==}
+    peerDependencies:
+      solid-js: ^1.9.10
+      tailwindcss: ^4.1.18
+
+  '@velomark/math@1.0.4':
+    resolution: {integrity: sha512-ljdmLcarHmNplhNJc5RNrr5aNY0mpMpucAAHaYdfTJ+f7vrOvep2WSLv5ltnSoe5LKqvDM3XoLaa48P6AXwY/A==}
+
+  '@velomark/mermaid@1.0.4':
+    resolution: {integrity: sha512-2D7hIOdA8gxmoiFJne1YpTBPoO0RYuG71mppafAleVVUhYg+KZC2nyhioKFFnA4VKdZI217QIZy4aRl+Uqyhow==}
+
   '@vercel/oidc@3.2.0':
     resolution: {integrity: sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug==}
     engines: {node: '>= 20'}
@@ -3882,6 +3788,10 @@ packages:
   clsx@2.1.1:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
+
+  cnfast@0.0.8:
+    resolution: {integrity: sha512-EjXKMfGfdwtV4AcNSQ6AwQaVzpC1B7IxeiwA3FlhTXz+YFlMKVi4c1JX9tgD2QOlahQXjB8KUXrBaYG+3v871Q==}
+    hasBin: true
 
   color-convert@2.0.1:
     resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
@@ -5658,6 +5568,9 @@ packages:
   regex@6.1.0:
     resolution: {integrity: sha512-6VwtthbV4o/7+OaAF9I5L5V3llLEsoPyq9P1JVXkedTP33c7MfCG0/5NOPcSJn0TzXcG9YUrR0gQSWioew3LDg==}
 
+  remend@1.3.0:
+    resolution: {integrity: sha512-iIhggPkhW3hFImKtB10w0dz4EZbs28mV/dmbcYVonWEJ6UGHHpP+bFZnTh6GNWJONg5m+U56JrL+8IxZRdgWjw==}
+
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
     engines: {node: '>=0.10.0'}
@@ -5776,21 +5689,6 @@ packages:
   shebang-regex@3.0.0:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
-
-  shiki-stream@0.1.5:
-    resolution: {integrity: sha512-DzkqVlqf02Tp4zTFNgJp+3rOG2RkuoONBq+Pm2sHslAlJ5M0QbR1devn4dr9SgcBTrtHTf6Rqyj3wVJi0g16Bw==}
-    deprecated: shiki-stream is now @shikijs/stream, please migrate by renaming the package
-    peerDependencies:
-      react: ^19.0.0
-      solid-js: ^1.9.0
-      vue: ^3.2.0
-    peerDependenciesMeta:
-      react:
-        optional: true
-      solid-js:
-        optional: true
-      vue:
-        optional: true
 
   shiki@3.23.0:
     resolution: {integrity: sha512-55Dj73uq9ZXL5zyeRPzHQsK7Nbyt6Y10k5s7OjuFZGMhpp4r/rsLBH0o/0fstIzX1Lep9VxefWljK/SKCzygIA==}
@@ -6141,12 +6039,6 @@ packages:
   uuid@14.0.1:
     resolution: {integrity: sha512-6ZxzVpzDXDa3bJWaHilVayA+BH/1zmxCJoVgvmqJnid/gPoKHxUrS/aC/T6LGQtNHT+XHG9fXPJB4d+IrU30Ew==}
     hasBin: true
-
-  velomark@0.1.1:
-    resolution: {integrity: sha512-3il4GB5prDizr3gkN5AVM4WapA7CkyGZAr5w4STTU2AJ3Pfb7sAOV3en3ppzMEjlfQszxx9FqiVXzP19manL3g==}
-    engines: {node: '>=18', pnpm: '>=9.0.0'}
-    peerDependencies:
-      solid-js: ^1.9.10
 
   venice-ai-sdk-provider@2.1.1:
     resolution: {integrity: sha512-w3OHkuzzKZ3r2TOxER6myBYzZJNoDqol+DUHu3NnfBN/GETnUVxecZJab0CHQQ8GZc0jjzpFymepjcLDPS4SQg==}
@@ -8271,14 +8163,6 @@ snapshots:
       '@types/hast': 3.0.4
       hast-util-to-html: 9.0.5
 
-  '@shikijs/core@4.2.0':
-    dependencies:
-      '@shikijs/primitive': 4.2.0
-      '@shikijs/types': 4.2.0
-      '@shikijs/vscode-textmate': 10.0.2
-      '@types/hast': 3.0.4
-      hast-util-to-html: 9.0.5
-
   '@shikijs/engine-javascript@3.23.0':
     dependencies:
       '@shikijs/types': 3.23.0
@@ -8294,28 +8178,11 @@ snapshots:
     dependencies:
       '@shikijs/types': 3.23.0
 
-  '@shikijs/primitive@4.2.0':
-    dependencies:
-      '@shikijs/types': 4.2.0
-      '@shikijs/vscode-textmate': 10.0.2
-      '@types/hast': 3.0.4
-
-  '@shikijs/stream@4.2.0(solid-js@1.9.13)':
-    dependencies:
-      '@shikijs/core': 4.2.0
-    optionalDependencies:
-      solid-js: 1.9.13
-
   '@shikijs/themes@3.23.0':
     dependencies:
       '@shikijs/types': 3.23.0
 
   '@shikijs/types@3.23.0':
-    dependencies:
-      '@shikijs/vscode-textmate': 10.0.2
-      '@types/hast': 3.0.4
-
-  '@shikijs/types@4.2.0':
     dependencies:
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.4
@@ -8909,6 +8776,24 @@ snapshots:
     optionalDependencies:
       d3-selection: 3.0.0
       d3-transition: 3.0.1(d3-selection@3.0.0)
+
+  '@velomark/code@1.0.4':
+    dependencies:
+      shiki: 3.23.0
+
+  '@velomark/core@1.0.5(solid-js@1.9.13)(tailwindcss@4.3.1)':
+    dependencies:
+      cnfast: 0.0.8
+      solid-js: 1.9.13
+      tailwindcss: 4.3.1
+
+  '@velomark/math@1.0.4':
+    dependencies:
+      katex: 0.16.47
+
+  '@velomark/mermaid@1.0.4':
+    dependencies:
+      mermaid: 11.15.0
 
   '@vercel/oidc@3.2.0': {}
 
@@ -9628,6 +9513,8 @@ snapshots:
   clone@2.1.2: {}
 
   clsx@2.1.1: {}
+
+  cnfast@0.0.8: {}
 
   color-convert@2.0.1:
     dependencies:
@@ -11682,6 +11569,8 @@ snapshots:
     dependencies:
       regex-utilities: 2.3.0
 
+  remend@1.3.0: {}
+
   require-directory@2.1.1: {}
 
   require-from-string@2.0.2: {}
@@ -11793,12 +11682,6 @@ snapshots:
       shebang-regex: 3.0.0
 
   shebang-regex@3.0.0: {}
-
-  shiki-stream@0.1.5(solid-js@1.9.13):
-    dependencies:
-      '@shikijs/stream': 4.2.0(solid-js@1.9.13)
-    optionalDependencies:
-      solid-js: 1.9.13
 
   shiki@3.23.0:
     dependencies:
@@ -12171,18 +12054,6 @@ snapshots:
   uuid@11.1.1: {}
 
   uuid@14.0.1: {}
-
-  velomark@0.1.1(solid-js@1.9.13):
-    dependencies:
-      '@shikijs/core': 3.23.0
-      katex: 0.16.47
-      mermaid: 11.15.0
-      shiki: 3.23.0
-      shiki-stream: 0.1.5(solid-js@1.9.13)
-      solid-js: 1.9.13
-    transitivePeerDependencies:
-      - react
-      - vue
 
   venice-ai-sdk-provider@2.1.1(ai@7.0.4(zod@4.4.3))(zod@4.4.3):
     dependencies:
