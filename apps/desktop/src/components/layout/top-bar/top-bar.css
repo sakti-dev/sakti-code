@@ -1,0 +1,28 @@
+.tab-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 0%,
+    color-mix(in oklch, var(--primary) 14%, transparent) 0%,
+    transparent 50%
+  );
+  border-radius: inherit;
+  animation: tabGlowPulse 6s ease-in-out infinite;
+}
+
+@keyframes tabGlowPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-glow {
+    animation: none;
+  }
+}

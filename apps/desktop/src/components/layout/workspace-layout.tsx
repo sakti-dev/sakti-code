@@ -13,7 +13,7 @@ import BannerConnection from "./banners/banner-connection";
 import { BannerError, BannerHealth } from "./banners/banner-error";
 import BannerUpdate from "./banners/banner-update";
 import Sidebar from "./sidebar/sidebar";
-import ProjectTabBar from "./tab-bar/project-tab-bar";
+import TopBar from "./top-bar/top-bar";
 
 // Dev-only no-op batcher for retry simulator events (no text tokens to flush).
 const devBatcher = createTokenBatcher(
@@ -85,7 +85,7 @@ export default function WorkspaceLayout(): JSX.Element {
 
   return (
     <div class="flex h-screen flex-col bg-background text-foreground">
-      <ProjectTabBar />
+      <TopBar />
       <div class="flex min-h-0 flex-1">
         <Show when={sidebarOpen() && !isNewTab()}>
           <Sidebar />

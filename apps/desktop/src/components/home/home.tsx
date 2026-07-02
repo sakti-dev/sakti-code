@@ -4,7 +4,7 @@ import { CloneDialog } from "~/components/home/clone-dialog";
 import { EmptyState } from "~/components/home/empty-state";
 import { KeyboardShortcutsFooter } from "~/components/home/keyboard-shortcuts-footer";
 import { ProjectCard } from "~/components/home/project-card";
-import { SettingsDialog } from "~/components/settings/settings-dialog";
+
 import { Kbd } from "~/components/ui/kbd";
 import { SearchBar } from "~/components/ui/search-bar";
 import type { Project, SessionMeta } from "~/stores/server/server-store";
@@ -144,7 +144,6 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                  <SettingsDialog />
                 </div>
 
                 {/* Action Cards */}
