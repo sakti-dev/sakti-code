@@ -44,4 +44,24 @@ describe("SessionRegistry", () => {
     expect(registry.has("s1")).toBe(false);
     expect(registry.has("s2")).toBe(false);
   });
+
+  it("evicts the least-recently-used store beyond the cap", () => {
+    const registry = new SessionRegistry({ cap: 2 });
+    registry.get("a");
+    registry.get("b");
+    registry.get("c");
+    expect(registry.has("a")).toBe(false);
+    expect(registry.has("b")).toBe(true);
+    expect(registry.has("c")).toBe(true);
+  });
+
+  it("re-getting a session refreshes its recency", () => {
+    const registry = new SessionRegistry({ cap: 2 });
+    registry.get("a");
+    registry.get("b");
+    registry.get("a");
+    registry.get("c");
+    expect(registry.has("a")).toBe(true);
+    expect(registry.has("b")).toBe(false);
+  });
 });
