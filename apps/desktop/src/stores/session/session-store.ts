@@ -60,8 +60,10 @@ export interface OmMarkerInput {
 
 export interface SessionActions {
   addMessage: (msg: UIMessage) => void;
+  addCompactionMarker: (msgId: string) => void;
   addOmMarker: (msgId: string, marker: OmMarkerInput) => void;
   addToolCall: (msgId: string, toolCallId: string, toolName: string, input: unknown) => void;
+  appendCompactionToken: (msgId: string, delta: string) => void;
   appendThinkingToken: (msgId: string, delta: string) => void;
   appendToken: (msgId: string, delta: string) => void;
   clearCurrentMessage: () => void;
@@ -92,6 +94,10 @@ export interface SessionActions {
   /** Set or clear the retry banner state (null clears it). */
   setRetry: (retry: RetryState | null) => void;
   startTurn: (startedAt: number) => void;
+  updateCompactionMarker: (
+    msgId: string,
+    updates: Partial<Extract<MessagePart, { type: "compaction" }>>,
+  ) => void;
   updateOmMarker: (msgId: string, cycleId: string, updates: Partial<OmMarkerInput>) => void;
   updateOmStatus: (status: OmWindowState) => void;
   wasLastUserMessage: (text: string) => boolean;
@@ -126,6 +132,23 @@ export function createSessionStore(): SessionStore {
           return prev;
         }
         return [...prev, { type: "om_marker", ...marker } as MessagePart];
+      });
+    },
+
+    addCompactionMarker(msgId) {
+      setStore("messages", msgId, "parts", (prev) => {
+        if (prev.some((p) => p.type === "compaction")) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            type: "compaction",
+            status: "loading",
+            text: "",
+            startedAt: Date.now(),
+          } as MessagePart,
+        ];
       });
     },
 
@@ -182,6 +205,19 @@ export function createSessionStore(): SessionStore {
       }
 
       setStore("streaming", "tokenCount", (n) => n + 1);
+    },
+
+    appendCompactionToken(msgId, delta) {
+      setStore("messages", msgId, "parts", (prev) => {
+        const idx = prev.findIndex((p) => p.type === "compaction");
+        if (idx < 0) return prev;
+        const existing = prev[idx] as Extract<MessagePart, { type: "compaction" }>;
+        return [
+          ...prev.slice(0, idx),
+          { ...existing, text: existing.text + delta } as MessagePart,
+          ...prev.slice(idx + 1),
+        ];
+      });
     },
 
     appendThinkingToken(msgId, delta) {
@@ -361,6 +397,19 @@ export function createSessionStore(): SessionStore {
         return [
           ...prev.slice(0, idx),
           { ...existing, ...updates, type: "om_marker" } as MessagePart,
+          ...prev.slice(idx + 1),
+        ];
+      });
+    },
+
+    updateCompactionMarker(msgId, updates) {
+      setStore("messages", msgId, "parts", (prev) => {
+        const idx = prev.findIndex((p) => p.type === "compaction");
+        if (idx < 0) return prev;
+        const existing = prev[idx] as Extract<MessagePart, { type: "compaction" }>;
+        return [
+          ...prev.slice(0, idx),
+          { ...existing, ...updates, type: "compaction" } as MessagePart,
           ...prev.slice(idx + 1),
         ];
       });
