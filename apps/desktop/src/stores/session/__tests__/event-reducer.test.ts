@@ -626,3 +626,112 @@ describe("event reducer — OM events", () => {
     expect(marker).toBeDefined();
   });
 });
+
+describe("event reducer — compaction events", () => {
+  function setupWithAssistantMessage() {
+    const { session, batcher } = setup();
+    dispatchEvent(session.actions, batcher, makeMessageStartEvent(makeAssistantMessage("hello")));
+    return { session, batcher };
+  }
+
+  it("compaction_start adds a loading compaction marker", () => {
+    const { session, batcher } = setupWithAssistantMessage();
+    dispatchEvent(session.actions, batcher, {
+      type: "compaction_start",
+      reason: "manual",
+    });
+
+    const msgId = session.store.streaming.currentMessageId!;
+    const marker = session.store.messages[msgId]!.parts.find(
+      (p): p is Extract<typeof p, { type: "compaction" }> => p.type === "compaction",
+    );
+    expect(marker).toBeDefined();
+    expect(marker!.status).toBe("loading");
+    expect(session.store.streaming.phase).toBe("thinking");
+  });
+
+  it("compaction_delta appends text to the marker", () => {
+    const { session, batcher } = setupWithAssistantMessage();
+    dispatchEvent(session.actions, batcher, { type: "compaction_start", reason: "manual" });
+    dispatchEvent(session.actions, batcher, { type: "compaction_delta", text: "Hello " });
+    dispatchEvent(session.actions, batcher, { type: "compaction_delta", text: "world" });
+
+    const msgId = session.store.streaming.currentMessageId!;
+    const marker = session.store.messages[msgId]!.parts.find(
+      (p): p is Extract<typeof p, { type: "compaction" }> => p.type === "compaction",
+    );
+    expect(marker!.text).toBe("Hello world");
+  });
+
+  it("compaction_end with result marks marker complete", () => {
+    const { session, batcher } = setupWithAssistantMessage();
+    dispatchEvent(session.actions, batcher, { type: "compaction_start", reason: "manual" });
+    dispatchEvent(session.actions, batcher, {
+      type: "compaction_end",
+      reason: "manual",
+      result: { summary: "...", firstKeptEntryId: "x", tokensBefore: 5000 },
+      aborted: false,
+      willRetry: false,
+    });
+
+    const msgId = session.store.streaming.currentMessageId!;
+    const marker = session.store.messages[msgId]!.parts.find(
+      (p): p is Extract<typeof p, { type: "compaction" }> => p.type === "compaction",
+    );
+    expect(marker!.status).toBe("complete");
+    expect(marker!.tokensBefore).toBe(5000);
+    expect(marker!.endedAt).toBeDefined();
+    expect(session.store.streaming.phase).toBe("idle");
+  });
+
+  it("compaction_end with errorMessage marks marker failed", () => {
+    const { session, batcher } = setupWithAssistantMessage();
+    dispatchEvent(session.actions, batcher, { type: "compaction_start", reason: "manual" });
+    dispatchEvent(session.actions, batcher, {
+      type: "compaction_end",
+      reason: "manual",
+      aborted: false,
+      willRetry: false,
+      errorMessage: "LLM failed",
+    });
+
+    const msgId = session.store.streaming.currentMessageId!;
+    const marker = session.store.messages[msgId]!.parts.find(
+      (p): p is Extract<typeof p, { type: "compaction" }> => p.type === "compaction",
+    );
+    expect(marker!.status).toBe("failed");
+    expect(marker!.error).toBe("LLM failed");
+  });
+
+  it("compaction_end without result or error marks as skipped", () => {
+    const { session, batcher } = setupWithAssistantMessage();
+    dispatchEvent(session.actions, batcher, { type: "compaction_start", reason: "manual" });
+    dispatchEvent(session.actions, batcher, {
+      type: "compaction_end",
+      reason: "manual",
+      aborted: false,
+      willRetry: false,
+    });
+
+    const msgId = session.store.streaming.currentMessageId!;
+    const marker = session.store.messages[msgId]!.parts.find(
+      (p): p is Extract<typeof p, { type: "compaction" }> => p.type === "compaction",
+    );
+    expect(marker!.status).toBe("failed");
+    expect(marker!.error).toBe("Nothing to compact");
+  });
+
+  it("compaction_start targets last assistant message when currentMessageId is null", () => {
+    const { session, batcher } = setupWithAssistantMessage();
+    session.actions.clearCurrentMessage();
+
+    dispatchEvent(session.actions, batcher, { type: "compaction_start", reason: "manual" });
+
+    const lastId = session.actions.getLastAssistantMessageId();
+    expect(lastId).not.toBeNull();
+    const marker = session.store.messages[lastId!]!.parts.find(
+      (p): p is Extract<typeof p, { type: "compaction" }> => p.type === "compaction",
+    );
+    expect(marker).toBeDefined();
+  });
+});
