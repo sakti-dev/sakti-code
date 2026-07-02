@@ -59,13 +59,13 @@ function assertNoUnknownKeys(
 /**
  * Parse + validate the `observationalMemory` block from settings.json.
  *
- * Returns `undefined` when OM is absent or explicitly disabled. Throws on a
- * present-but-malformed block — including unknown/typo'd keys, which typebox's
- * default additional-properties-permissive mode would otherwise silently drop.
+ * Returns `{ enabled: true }` when OM is absent (default-on).
+ * Returns `undefined` only when explicitly disabled (`enabled: false`).
+ * Throws on a present-but-malformed block — including unknown/typo'd keys.
  */
 export function parseOmSettings(raw: Record<string, unknown>): ParsedOmSettings | undefined {
   const om = raw.observationalMemory;
-  if (!om || typeof om !== "object") return undefined;
+  if (!om || typeof om !== "object") return { enabled: true };
   const omRecord = om as Record<string, unknown>;
   assertNoUnknownKeys(omRecord, OM_ALLOWED_KEYS, "observationalMemory");
   if (omRecord.buffering && typeof omRecord.buffering === "object") {

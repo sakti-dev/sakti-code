@@ -12,12 +12,15 @@ import {
 import { TextField, TextFieldInput } from "~/components/ui/text-field";
 import { useStore } from "~/stores/store-context";
 
-const MODES = ["default", "intake", "plan", "build"] as const;
+const CORE_MODES = ["default", "intake", "plan", "build"] as const;
+const OM_MODES = ["observe", "reflect"] as const;
 const MODE_LABELS: Record<string, string> = {
   default: "Default",
   intake: "Intake",
   plan: "Plan",
   build: "Build",
+  observe: "Observe",
+  reflect: "Reflect",
 };
 const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
 
@@ -205,6 +208,43 @@ export function ProfileEditor() {
     return p?.profiles[profileId]?.models[mode]?.thinkingLevel ?? "off";
   };
 
+  const renderModeRow = (profileId: string, mode: string) => {
+    const modelId = () => getModeModelId(profileId, mode);
+    const thinkingLevel = () => getModeThinking(profileId, mode);
+    const placeholder = mode === "default" ? "Select model" : "Uses Default";
+    return (
+      <div class="flex items-center gap-2">
+        <span class="w-16 shrink-0 font-medium text-muted-foreground text-xs">
+          {MODE_LABELS[mode]}
+        </span>
+        <ModelPickerButton
+          onSelect={(model) => updateModeModel(profileId, mode, model)}
+          triggerLabel={() => modelId() || placeholder}
+          value={modelId()}
+        />
+        <Select
+          itemComponent={(props) => (
+            <SelectItem class="capitalize" item={props.item}>
+              {props.item.rawValue}
+            </SelectItem>
+          )}
+          onChange={(value) => {
+            if (value !== null) {
+              updateModeThinking(profileId, mode, value);
+            }
+          }}
+          options={thinkingOptionIds()}
+          value={thinkingLevel()}
+        >
+          <SelectTrigger class="h-7 w-20 shrink-0 gap-1 rounded-md border-border/60 bg-background/70 px-2 py-1 text-xs capitalize">
+            <SelectValue<string>>{thinkingLevel()}</SelectValue>
+          </SelectTrigger>
+          <SelectContent />
+        </Select>
+      </div>
+    );
+  };
+
   return (
     <Show keyed when={localProfiles()}>
       <Card class="mt-4 p-4">
@@ -275,43 +315,16 @@ export function ProfileEditor() {
                 </div>
 
                 <div class="space-y-2">
-                  <For each={[...MODES]}>
-                    {(mode) => {
-                      const modelId = () => getModeModelId(profileId, mode);
-                      const thinkingLevel = () => getModeThinking(profileId, mode);
-                      return (
-                        <div class="flex items-center gap-2">
-                          <span class="w-16 shrink-0 font-medium text-muted-foreground text-xs">
-                            {MODE_LABELS[mode]}
-                          </span>
-                          <ModelPickerButton
-                            onSelect={(model) => updateModeModel(profileId, mode, model)}
-                            triggerLabel={() => modelId() || "Select model"}
-                            value={modelId()}
-                          />
-                          <Select
-                            itemComponent={(props) => (
-                              <SelectItem class="capitalize" item={props.item}>
-                                {props.item.rawValue}
-                              </SelectItem>
-                            )}
-                            onChange={(value) => {
-                              if (value !== null) {
-                                updateModeThinking(profileId, mode, value);
-                              }
-                            }}
-                            options={thinkingOptionIds()}
-                            value={thinkingLevel()}
-                          >
-                            <SelectTrigger class="h-7 w-20 shrink-0 gap-1 rounded-md border-border/60 bg-background/70 px-2 py-1 text-xs capitalize">
-                              <SelectValue<string>>{thinkingLevel()}</SelectValue>
-                            </SelectTrigger>
-                            <SelectContent />
-                          </Select>
-                        </div>
-                      );
-                    }}
-                  </For>
+                  <For each={[...CORE_MODES]}>{(mode) => renderModeRow(profileId, mode)}</For>
+                </div>
+
+                <div class="mt-3 border-border/40 border-t pt-2">
+                  <p class="mb-2 text-muted-foreground text-[10px] uppercase tracking-wide">
+                    Observational Memory
+                  </p>
+                  <div class="space-y-2">
+                    <For each={[...OM_MODES]}>{(mode) => renderModeRow(profileId, mode)}</For>
+                  </div>
                 </div>
               </div>
             )}

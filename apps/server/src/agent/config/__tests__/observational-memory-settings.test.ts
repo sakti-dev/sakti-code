@@ -3,8 +3,9 @@ import { describe, expect, it } from "vite-plus/test";
 import { parseOmSettings } from "../observational-memory-settings.ts";
 
 describe("parseOmSettings", () => {
-  it("returns undefined when absent", () => {
-    expect(parseOmSettings({})).toBeUndefined();
+  it("returns enabled by default when absent", () => {
+    const result = parseOmSettings({});
+    expect(result?.enabled).toBe(true);
   });
 
   it("returns undefined when disabled", () => {

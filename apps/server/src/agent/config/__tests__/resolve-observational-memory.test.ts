@@ -49,16 +49,16 @@ const PROFILES = {
 const SESSION = { id: "sess-1", kind: "task", projectId: "proj-1", profileId: null };
 
 describe("resolveOmConfig", () => {
-  it("returns undefined when OM is disabled", () => {
-    const ctx = makeCtx(PROFILES, {});
+  it("returns undefined when OM is explicitly disabled", () => {
+    const ctx = makeCtx(PROFILES, { observationalMemory: { enabled: false } });
     const result = resolveOmConfig(ctx, SESSION);
     expect(result).toBeUndefined();
   });
 
-  it("returns undefined when settings have no OM key", () => {
-    const ctx = makeCtx(PROFILES, { other: "value" });
+  it("returns config when OM key is absent (default enabled)", () => {
+    const ctx = makeCtx(PROFILES, { other: "value" }, { getApiKey: () => "sk-test" });
     const result = resolveOmConfig(ctx, SESSION);
-    expect(result).toBeUndefined();
+    expect(result).toBeDefined();
   });
 
   it("returns undefined when enabled is false", () => {

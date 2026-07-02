@@ -31,7 +31,16 @@ vi.mock("~/stores/store-context", () => ({
           connected: {
             $get: vi.fn().mockResolvedValue({
               ok: true,
-              json: () => Promise.resolve([]),
+              json: () =>
+                Promise.resolve([
+                  {
+                    providerId: "anthropic",
+                    providerName: "Anthropic",
+                    models: [
+                      { id: "claude-sonnet-4-5", name: "Claude Sonnet 4.5", reasoning: true },
+                    ],
+                  },
+                ]),
             }),
           },
         },
@@ -89,6 +98,29 @@ describe("ProfileEditor", () => {
     expect(screen.getByText("Intake")).toBeTruthy();
     expect(screen.getByText("Plan")).toBeTruthy();
     expect(screen.getByText("Build")).toBeTruthy();
+  });
+
+  it("shows observational memory mode labels", async () => {
+    mocks.profilesGet.mockImplementation(() => okRes(defaultProfiles));
+    render(() => <ProfileEditor />);
+    await screen.findByDisplayValue("Default");
+    expect(screen.getByText("Observe")).toBeTruthy();
+    expect(screen.getByText("Reflect")).toBeTruthy();
+  });
+
+  it("shows 'Uses Default' placeholder for unset non-default modes", async () => {
+    mocks.profilesGet.mockImplementation(() => okRes(defaultProfiles));
+    render(() => <ProfileEditor />);
+    await screen.findByDisplayValue("Default");
+    const placeholders = await screen.findAllByText("Uses Default");
+    expect(placeholders.length).toBe(5);
+  });
+
+  it("shows Observational Memory section label", async () => {
+    mocks.profilesGet.mockImplementation(() => okRes(defaultProfiles));
+    render(() => <ProfileEditor />);
+    await screen.findByDisplayValue("Default");
+    expect(screen.getByText("Observational Memory")).toBeTruthy();
   });
 
   it("saves via PUT when profile name is edited", async () => {
