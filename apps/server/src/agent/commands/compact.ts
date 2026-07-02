@@ -21,6 +21,7 @@ export async function runCompact(
   ctx: ServerContext,
   sessionId: string,
   customInstructions?: string,
+  onDelta?: (text: string) => void,
 ): Promise<CompactResult | { skipped: true } | { notFound: true } | { error: string }> {
   const log = ctx.log?.agent;
   const session = ctx.repos.sessions.findById(sessionId);
@@ -111,6 +112,7 @@ export async function runCompact(
   const result = await compact(prep, auth.model, auth.apiKey, {
     prompts: COMPACTION_PROMPTS,
     ...(customInstructions !== undefined ? { customInstructions } : {}),
+    ...(onDelta === undefined ? {} : { onDelta }),
   });
   if (isFailure(result)) {
     log?.error("runCompact: compact LLM call failed", new Error(result.failure.message), {

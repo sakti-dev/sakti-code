@@ -347,7 +347,13 @@ async function handleCompactCommand(
     type: "event",
   } satisfies EventFrame);
 
-  const result = await runCompact(ctx, sessionId, customInstructions);
+  const result = await runCompact(ctx, sessionId, customInstructions, (text) => {
+    ws.send({
+      event: { type: "compaction_delta", text },
+      sessionId,
+      type: "event",
+    } satisfies EventFrame);
+  });
 
   if ("notFound" in result) {
     sendError(ws, sessionId, "Session not found");
