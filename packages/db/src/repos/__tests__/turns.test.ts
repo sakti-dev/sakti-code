@@ -77,18 +77,6 @@ describe("TurnRepo", () => {
     expect(turns.listBySession("nonexistent")).toEqual([]);
   });
 
-  it("copyForFork copies all turns to a new session", async () => {
-    const project2 = await projects.create("p2", "/tmp/test2");
-    const session2 = await sessions.create(project2.id);
-    turns.copyForFork(sessionId, session2.id);
-    const sourceTurns = turns.listBySession(sessionId);
-    const forkedTurns = turns.listBySession(session2.id);
-    expect(forkedTurns).toHaveLength(sourceTurns.length);
-    expect(forkedTurns[0]!.sequence).toBe(sourceTurns[0]!.sequence);
-    expect(forkedTurns[0]!.startedAt).toBe(sourceTurns[0]!.startedAt);
-    expect(forkedTurns[0]!.id).not.toBe(sourceTurns[0]!.id);
-  });
-
   it("markSummary sets isTurnSummary on the turn's last assistant entry", async () => {
     const project3 = await projects.create("p3", "/tmp/test3");
     const session3 = await sessions.create(project3.id);

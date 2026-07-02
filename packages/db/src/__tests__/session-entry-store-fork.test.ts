@@ -1,6 +1,16 @@
 import { DatabaseSync } from "node:sqlite";
 import type { AgentMessage } from "@sakti-code/agent";
-import { initDatabase, ProjectRepo, SessionRepo, SqliteSessionStorage } from "@sakti-code/db";
+import {
+  initDatabase,
+  type DrizzleDB,
+  ProjectRepo,
+  SessionRepo,
+  SqliteSessionStorage,
+  TurnRepo,
+  sessionEntries,
+  turns,
+} from "@sakti-code/db";
+import { eq } from "drizzle-orm";
 import { Effect } from "effect";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -135,5 +145,51 @@ describe("SqliteSessionStorage.forkFrom", () => {
 
     const forkedEntries = await Effect.runPromise(forkedStorage.getEntries());
     expect(forkedEntries).toEqual([]);
+  });
+
+  it("forkFrom remaps turnId on copied entries and copies turns", async () => {
+    const db = (await initDatabase(new DatabaseSync(":memory:"))) as DrizzleDB;
+    const projectRepo = new ProjectRepo(db);
+    const sessionRepo = new SessionRepo(db);
+    const turnRepo = new TurnRepo(db);
+
+    const project = await projectRepo.create("turn-fork", "/tmp/turn-fork");
+    const sourceSession = await sessionRepo.create(project.id);
+    const forkedSession = await sessionRepo.create(project.id);
+
+    const sourceStorage = new SqliteSessionStorage(db, sourceSession.id, {
+      id: sourceSession.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    const sourceTurn = turnRepo.create(sourceSession.id, 1000);
+    sourceStorage.setCurrentTurnId(sourceTurn.id);
+    await seedConversation(sourceStorage, [
+      { role: "user", content: "hello" },
+      { role: "assistant", content: "hi" },
+    ]);
+    sourceStorage.setCurrentTurnId(null);
+
+    const forkedStorage = new SqliteSessionStorage(db, forkedSession.id, {
+      id: forkedSession.id,
+      createdAt: new Date().toISOString(),
+    });
+    await Effect.runPromise(forkedStorage.forkFrom(sourceSession.id));
+
+    const forkedEntries = db
+      .select()
+      .from(sessionEntries)
+      .where(eq(sessionEntries.sessionId, forkedSession.id))
+      .all();
+    expect(forkedEntries).toHaveLength(2);
+
+    const forkedTurns = db.select().from(turns).where(eq(turns.sessionId, forkedSession.id)).all();
+    expect(forkedTurns).toHaveLength(1);
+
+    // Every forked entry's turnId must point at the FORKED turn, not the source.
+    for (const entry of forkedEntries) {
+      expect(entry.turnId).toBe(forkedTurns[0]!.id);
+      expect(entry.turnId).not.toBe(sourceTurn.id);
+    }
   });
 });

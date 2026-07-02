@@ -46,7 +46,8 @@ export const forkingRoutes = new Hono()
 
     try {
       await Effect.runPromise(forkedStorage.forkFrom(id));
-      ctx.repos.turns.copyForFork(id, newSession.id);
+      // turns are copied inside forkFrom with a shared turnIdMap so forked
+      // entries point at forked turn ids.
     } catch (err) {
       await ctx.repos.sessions.delete(newSession.id);
       throw err;

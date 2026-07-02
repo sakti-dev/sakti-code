@@ -88,21 +88,4 @@ export class TurnRepo {
         .run();
     }
   }
-
-  copyForFork(sourceSessionId: string, targetSessionId: string): void {
-    const source = this.listBySession(sourceSessionId);
-    for (const turn of source) {
-      this.db
-        .insert(turns)
-        .values({
-          id: crypto.randomUUID(),
-          sessionId: targetSessionId,
-          sequence: turn.sequence,
-          startedAt: turn.startedAt,
-          endedAt: turn.endedAt,
-          createdAt: Date.now(),
-        })
-        .run();
-    }
-  }
 }

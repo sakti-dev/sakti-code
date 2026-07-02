@@ -2,7 +2,7 @@ import type { SessionError, SessionMetadata, SessionTreeEntry } from "@sakti-cod
 import { eq, sql } from "drizzle-orm";
 import { Effect } from "effect";
 import type { DrizzleDB } from "./init.ts";
-import { sessionEntries, sessions } from "./schema.ts";
+import { sessionEntries, sessions, turns } from "./schema.ts";
 
 /**
  * Effect-native SQLite-backed session storage. node:sqlite is fully
@@ -210,6 +210,45 @@ export class SqliteSessionStorage<TMetadata extends SessionMetadata = SessionMet
       .get();
     const sourceLeafId = sourceSessionRow?.leafId ?? null;
 
+    // Build a turn-id map for turns referenced by the copied entries. Only
+    // turns whose entries survive the (optional) cut are copied, so partial
+    // forks don't leave dangling turn rows.
+    const referencedTurnIds = new Set<string>();
+    for (const row of entriesToCopy) {
+      if (row.turnId) {
+        referencedTurnIds.add(row.turnId);
+      }
+    }
+    const turnIdMap = new Map<string, string>();
+    const turnsToCopy: Array<{
+      id: string;
+      newId: string;
+      sequence: number;
+      startedAt: number;
+      endedAt: number | null;
+    }> = [];
+    if (referencedTurnIds.size > 0) {
+      const sourceTurnRows = this.db
+        .select()
+        .from(turns)
+        .where(eq(turns.sessionId, sourceSessionId))
+        .orderBy(turns.sequence)
+        .all();
+      for (const t of sourceTurnRows) {
+        if (referencedTurnIds.has(t.id)) {
+          const newId = crypto.randomUUID();
+          turnIdMap.set(t.id, newId);
+          turnsToCopy.push({
+            id: t.id,
+            newId,
+            sequence: t.sequence,
+            startedAt: t.startedAt,
+            endedAt: t.endedAt,
+          });
+        }
+      }
+    }
+
     this.db.transaction((tx) => {
       const row = tx
         .select({ max: sql<number>`coalesce(max(sequence), -1)` })
@@ -217,6 +256,20 @@ export class SqliteSessionStorage<TMetadata extends SessionMetadata = SessionMet
         .where(eq(sessionEntries.sessionId, this.sessionId))
         .get();
       let nextSequence = (row?.max ?? -1) + 1;
+
+      // Copy turns first so the entry FK (turn_id -> turns.id) is satisfied.
+      for (const t of turnsToCopy) {
+        tx.insert(turns)
+          .values({
+            id: t.newId,
+            sessionId: this.sessionId,
+            sequence: t.sequence,
+            startedAt: t.startedAt,
+            endedAt: t.endedAt,
+            createdAt: Date.now(),
+          })
+          .run();
+      }
 
       for (const src of entriesToCopy) {
         const newId = idMap.get(src.id);
@@ -242,6 +295,8 @@ export class SqliteSessionStorage<TMetadata extends SessionMetadata = SessionMet
             content: JSON.stringify(forkedEntry),
             timestamp: forkedEntry.timestamp,
             createdAt: Date.now(),
+            turnId: src.turnId ? (turnIdMap.get(src.turnId) ?? null) : null,
+            isTurnSummary: src.isTurnSummary,
           })
           .run();
       }
