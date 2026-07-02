@@ -4,7 +4,7 @@ import {
   type PermissionReply,
   type SessionStorageShape,
 } from "@sakti-code/agent";
-import { SqliteObservationalMemoryStorage } from "@sakti-code/db";
+import { SqliteObservationalMemoryStorage, SqliteSessionStorage } from "@sakti-code/db";
 import Type from "typebox";
 import { runCompact } from "./commands/compact.ts";
 import { resolveOmConfig } from "./config/index.ts";
@@ -223,7 +223,7 @@ export const wsResponseSchema = Type.Union([
   }),
 ]);
 
-async function runAgentStream(
+export async function runAgentStream(
   ctx: ServerContext,
   sessionId: string,
   message: string,
@@ -231,9 +231,13 @@ async function runAgentStream(
   ws: WsHandle,
 ) {
   const log = ctx.log?.server;
-  ctx.repos.turns.create(sessionId, Date.now());
+  const turn = ctx.repos.turns.create(sessionId, Date.now());
+  if (storage instanceof SqliteSessionStorage) {
+    storage.setCurrentTurnId(turn.id);
+  }
   log?.info("agent run started", {
     sessionId,
+    turnId: turn.id,
     messageLength: message.length ?? 0,
   });
   try {
@@ -270,8 +274,12 @@ async function runAgentStream(
       type: "error",
     } satisfies ErrorFrame);
   } finally {
-    ctx.repos.turns.finalizeLatest(sessionId, Date.now());
-    log?.debug("turn finalized", { sessionId });
+    ctx.repos.turns.finalize(turn.id, Date.now());
+    ctx.repos.turns.markSummary(turn.id);
+    if (storage instanceof SqliteSessionStorage) {
+      storage.setCurrentTurnId(null);
+    }
+    log?.debug("turn finalized + summary marked", { sessionId, turnId: turn.id });
   }
 }
 

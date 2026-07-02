@@ -159,6 +159,42 @@ export class SqliteSessionStorage<TMetadata extends SessionMetadata = SessionMet
     return Effect.sync(() => this.getAllEntriesSync());
   }
 
+  /**
+   * Like {@link getEntries} but also returns the DB-level `turnId` and
+   * `isTurnSummary` columns that aren't part of the parsed entry shape.
+   * Used by the `/chat` and `/turns/:id/intermediates` endpoints to build
+   * the lazy turn view without shipping intermediate content.
+   */
+  getEntriesWithMeta(): Effect.Effect<
+    Array<{
+      entry: SessionTreeEntry;
+      turnId: string | null;
+      isTurnSummary: boolean;
+      sequence: number;
+    }>,
+    SessionError
+  > {
+    return Effect.sync(() => {
+      const rows = this.db
+        .select({
+          content: sessionEntries.content,
+          turnId: sessionEntries.turnId,
+          isTurnSummary: sessionEntries.isTurnSummary,
+          sequence: sessionEntries.sequence,
+        })
+        .from(sessionEntries)
+        .where(eq(sessionEntries.sessionId, this.sessionId))
+        .orderBy(sessionEntries.sequence)
+        .all();
+      return rows.map((r) => ({
+        entry: parseEntry(r.content),
+        turnId: r.turnId,
+        isTurnSummary: r.isTurnSummary,
+        sequence: r.sequence,
+      }));
+    });
+  }
+
   private getAllEntriesSync(): SessionTreeEntry[] {
     const rows = this.db
       .select()

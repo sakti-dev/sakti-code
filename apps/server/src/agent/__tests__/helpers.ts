@@ -114,7 +114,8 @@ export function createMockCtx(overrides?: { projectId?: string; profileId?: stri
         finalize: vi.fn(),
         finalizeLatest: vi.fn(),
         listBySession: vi.fn(() => []),
-        copyForFork: vi.fn(),
+        markSummary: vi.fn(),
+        getLatest: vi.fn(() => null),
       },
     },
   } as any;
@@ -213,7 +214,8 @@ export function createMultiSessionCtx(sessionIdToProjectId: Record<string, strin
         finalize: vi.fn(),
         finalizeLatest: vi.fn(),
         listBySession: vi.fn(() => []),
-        copyForFork: vi.fn(),
+        markSummary: vi.fn(),
+        getLatest: vi.fn(() => null),
       },
     },
   } as any;
