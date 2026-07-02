@@ -268,5 +268,49 @@ export function dispatchEvent(
     case "om_status":
       actions.updateOmStatus(event.windows);
       break;
+
+    case "compaction_start": {
+      const msgId = actions.getCurrentMessageId() ?? actions.getLastAssistantMessageId();
+      if (msgId) {
+        actions.addCompactionMarker(msgId);
+      }
+      actions.setPhase("thinking");
+      break;
+    }
+
+    case "compaction_delta": {
+      const msgId = actions.getCurrentMessageId() ?? actions.getLastAssistantMessageId();
+      if (msgId) {
+        actions.appendCompactionToken(msgId, event.text);
+      }
+      break;
+    }
+
+    case "compaction_end": {
+      const msgId = actions.getCurrentMessageId() ?? actions.getLastAssistantMessageId();
+      if (msgId) {
+        if (event.errorMessage !== undefined) {
+          actions.updateCompactionMarker(msgId, {
+            status: "failed",
+            error: event.errorMessage,
+            endedAt: Date.now(),
+          });
+        } else if (event.result) {
+          actions.updateCompactionMarker(msgId, {
+            status: "complete",
+            tokensBefore: event.result.tokensBefore,
+            endedAt: Date.now(),
+          });
+        } else {
+          actions.updateCompactionMarker(msgId, {
+            status: "failed",
+            error: "Nothing to compact",
+            endedAt: Date.now(),
+          });
+        }
+      }
+      actions.setPhase("idle");
+      break;
+    }
   }
 }
