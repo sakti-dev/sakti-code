@@ -13,6 +13,7 @@ import type {
   UpdateBufferedReflectionInput,
 } from "../../../observational-memory-storage.ts";
 import type { MessageEntry, SessionTreeEntry } from "../../../session/entries.ts";
+import { buildSessionContextFromEntries } from "../../../session/session.ts";
 import type { SessionStorageShape } from "../../../session/storage.ts";
 import type { AgentEvent, AgentMessage } from "../../../types.ts";
 import type { ObservationalMemoryDeps } from "../config.ts";
@@ -1060,6 +1061,75 @@ describe("ObservationalMemoryEngine buffering", () => {
       );
 
       await engine.maybeObserve(record);
+    });
+  });
+
+  describe("context pruning", () => {
+    it("appends ObservationPruneEntry after sync observe", async () => {
+      const deps = createDeps(storage, sessionStorage);
+      const engine = new ObservationalMemoryEngine({ deps });
+
+      const record = await engine.getOrCreateRecord();
+      const t0 = Date.now();
+      const messages: AgentMessage[] = [
+        { role: "user", content: "a".repeat(500), timestamp: t0 },
+        { role: "user", content: "b".repeat(500), timestamp: t0 + 1000 },
+      ];
+      const entries = [createMessageEntry(messages[0]!), createMessageEntry(messages[1]!, null)];
+      sessionStorage.setEntries(entries);
+      vi.mocked(complete).mockResolvedValue(
+        completeTextResult("<observations>\n* 🔴 P1: test\n</observations>"),
+      );
+
+      await engine.maybeObserve(record);
+
+      // Verify a prune entry was appended to the session tree
+      const allEntries = await Effect.runPromise(sessionStorage.getPathToRoot());
+      const pruneEntry = allEntries.find((e) => e.type === "observation_prune");
+      expect(pruneEntry).toBeDefined();
+      expect(pruneEntry!.type).toBe("observation_prune");
+    });
+
+    it("does not append prune entry when no observation happened", async () => {
+      const deps = createDeps(storage, sessionStorage);
+      const engine = new ObservationalMemoryEngine({ deps });
+
+      const record = await engine.getOrCreateRecord();
+      // No messages → no observation → no prune
+      sessionStorage.setEntries([]);
+
+      await engine.maybeObserve(record);
+
+      const allEntries = await Effect.runPromise(sessionStorage.getPathToRoot());
+      const pruneEntry = allEntries.find((e) => e.type === "observation_prune");
+      expect(pruneEntry).toBeUndefined();
+    });
+
+    it("pruned messages disappear from buildSessionContextFromEntries", async () => {
+      const deps = createDeps(storage, sessionStorage);
+      const engine = new ObservationalMemoryEngine({ deps });
+
+      const record = await engine.getOrCreateRecord();
+      const t0 = Date.now();
+      const messages: AgentMessage[] = [
+        { role: "user", content: "a".repeat(500), timestamp: t0 },
+        { role: "user", content: "b".repeat(500), timestamp: t0 + 1000 },
+      ];
+      const entries = [createMessageEntry(messages[0]!), createMessageEntry(messages[1]!, null)];
+      sessionStorage.setEntries(entries);
+      vi.mocked(complete).mockResolvedValue(
+        completeTextResult("<observations>\n* x\n</observations>"),
+      );
+
+      await engine.maybeObserve(record);
+
+      // After pruning, the builder should filter observed messages
+      const allEntries = await Effect.runPromise(sessionStorage.getPathToRoot());
+      const ctx = buildSessionContextFromEntries(allEntries);
+      // The observed messages should be filtered out (replaced by observations in system prompt)
+      // Since both messages were observed and no retention floor with bufferActivation=1 (no buffering)
+      // all observed messages are pruned
+      expect(ctx.messages.length).toBeLessThan(messages.length);
     });
   });
 });

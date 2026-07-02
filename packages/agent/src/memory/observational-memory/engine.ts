@@ -16,7 +16,7 @@
 import { Effect } from "effect";
 import type { AgentMessage, OmAgentEvent } from "../../types.ts";
 import { buildSessionContextFromEntries } from "../../session/session.ts";
-import type { MessageEntry } from "../../session/entries.ts";
+import type { MessageEntry, ObservationPruneEntry } from "../../session/entries.ts";
 import type {
   BufferedObservationChunkInput,
   ObservationalMemoryRecord,
@@ -24,6 +24,7 @@ import type {
 } from "../../observational-memory-storage.ts";
 import type { SessionStorageShape } from "../../session/storage.ts";
 import type { ObservationalMemoryDeps } from "./config.ts";
+import { getObservedEntryIdsForCleanup, resolveRetentionFloor } from "./cleanup.ts";
 import { formatObservationsForContext } from "./prompts.ts";
 import { runObserver } from "./observer.ts";
 import { runReflector } from "./reflector.ts";
@@ -196,6 +197,7 @@ export class ObservationalMemoryEngine {
       result = record;
     }
 
+    await this.pruneObservedMessages(result);
     this.emitOmStatus(result);
     return result;
   }
@@ -556,6 +558,59 @@ export class ObservationalMemoryEngine {
    */
   buildContextSystemMessage(record: ObservationalMemoryRecord): string | undefined {
     return formatObservationsForContext(record.activeObservations);
+  }
+
+  /**
+   * Prune observed messages from the active context by appending an
+   * ObservationPruneEntry to the session tree. The context builder honors
+   * this entry — skipping observed messages whose content is available as
+   * compressed observations in the system prompt.
+   *
+   * Port of Mastra's cleanupMessages (observational-memory.ts:2327-2416).
+   * Two-pass retention-aware: per-message floor check + LIFO aggregate
+   * restore.
+   */
+  async pruneObservedMessages(record: ObservationalMemoryRecord): Promise<void> {
+    const observedIds = record.observedMessageIds ?? [];
+    if (observedIds.length === 0) return;
+
+    try {
+      const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
+      const pathEntries = await Effect.runPromise(this.sessionStorage.getPathToRoot(leafId));
+      const messageEntries = pathEntries.filter((e): e is MessageEntry => e.type === "message");
+
+      // Skip if no observed entries are still present in the tree.
+      const observedSet = new Set(observedIds);
+      const presentObserved = messageEntries.filter((e) => observedSet.has(e.id));
+      if (presentObserved.length === 0) return;
+
+      const floor = resolveRetentionFloor(
+        this.deps.buffering?.observationBufferActivation ?? 1,
+        this.deps.thresholds.observation,
+      );
+
+      const toRemove = getObservedEntryIdsForCleanup({
+        entries: messageEntries,
+        observedEntryIds: observedIds,
+        retentionFloor: floor,
+        tokenCounter: this.tokenCounter,
+      });
+
+      if (toRemove.length === 0) return;
+
+      const id = await Effect.runPromise(this.sessionStorage.createEntryId());
+      const pruneEntry: ObservationPruneEntry = {
+        type: "observation_prune",
+        id,
+        parentId: leafId,
+        timestamp: new Date().toISOString(),
+        observedEntryIds: toRemove,
+        observationRecordId: record.id,
+      };
+      await Effect.runPromise(this.sessionStorage.appendEntry(pruneEntry));
+    } catch (error) {
+      this.logError("prune observed messages", error);
+    }
   }
 
   /**
