@@ -12,6 +12,7 @@ import { gitRoutes } from "./routes/projects/git.ts";
 import { intakeSessionRoutes } from "./routes/projects/intake-session.ts";
 import { projectsRoutes } from "./routes/projects/projects.ts";
 import { searchFilesRoutes } from "./routes/projects/search-files.ts";
+import { chatRoutes } from "./routes/sessions/chat.ts";
 import { compactionRoutes } from "./routes/sessions/compaction.ts";
 import { editModeRoutes } from "./routes/sessions/edit-mode.ts";
 import { exportRoutes } from "./routes/sessions/export.ts";
@@ -21,6 +22,7 @@ import { sessionSettingsRoutes } from "./routes/sessions/session-settings.ts";
 import { sessionsRoutes } from "./routes/sessions/sessions.ts";
 import { skillsRoutes } from "./routes/sessions/skills.ts";
 import { statsRoutes } from "./routes/sessions/stats.ts";
+import { turnIntermediatesRoutes } from "./routes/sessions/turn-intermediates.ts";
 import { turnsRoutes } from "./routes/sessions/turns.ts";
 import { settingsRoutes } from "./routes/settings.ts";
 import { terminalRoutes } from "./routes/workspace/terminals.ts";
@@ -36,9 +38,11 @@ export function buildApp(ctx: ServerContext) {
     .route("/", searchFilesRoutes)
     .route("/", contextRoutes)
     .route("/", sessionsRoutes)
+    .route("/", chatRoutes)
     .route("/", compactionRoutes)
     .route("/", statsRoutes)
     .route("/", turnsRoutes)
+    .route("/", turnIntermediatesRoutes)
     .route("/", forkingRoutes)
     .route("/", exportRoutes)
     .route("/", lastAssistantTextRoutes)
