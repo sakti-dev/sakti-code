@@ -304,6 +304,17 @@ const runLoopEffect = (
             if (omInitial !== undefined) {
               currentContext = { ...currentContext, systemPrompt: omInitial };
             }
+          } else if (config.observationalMemoryReadOnly) {
+            const omReadOnly = yield* Effect.tryPromise({
+              try: async () => config.observationalMemoryReadOnly!.getObservationsBlock(),
+              catch: () => undefined,
+            });
+            if (omReadOnly !== undefined) {
+              currentContext = {
+                ...currentContext,
+                systemPrompt: `${currentContext.systemPrompt ?? ""}\n\n${omReadOnly}`,
+              };
+            }
           }
           firstTurn = false;
         } else {
@@ -427,6 +438,17 @@ const runLoopEffect = (
             currentContext = {
               ...currentContext,
               systemPrompt: omResult,
+            };
+          }
+        } else if (config.observationalMemoryReadOnly) {
+          const omReadOnlyResult = yield* Effect.tryPromise({
+            try: async () => config.observationalMemoryReadOnly!.getObservationsBlock(),
+            catch: () => undefined,
+          });
+          if (omReadOnlyResult !== undefined) {
+            currentContext = {
+              ...currentContext,
+              systemPrompt: `${currentContext.systemPrompt ?? ""}\n\n${omReadOnlyResult}`,
             };
           }
         }

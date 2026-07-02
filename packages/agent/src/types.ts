@@ -91,6 +91,18 @@ export interface AgentLoopConfig {
       }
     | undefined;
 
+  /**
+   * Read-only OM: inject <observations> from existing history without
+   * running observe/reflect. Set when OM is disabled but prior history exists.
+   * The callback reads the latest OM record and returns the formatted
+   * observations block, or undefined if no history.
+   */
+  observationalMemoryReadOnly?:
+    | {
+        readonly getObservationsBlock: () => Promise<string | undefined>;
+      }
+    | undefined;
+
   beforeToolCall?:
     | ((
         context: BeforeToolCallContext,

@@ -654,6 +654,12 @@ export class AgentHarness<
     this.observationalMemory = options;
   }
 
+  private observationalMemoryReadOnly?: AgentLoopConfig["observationalMemoryReadOnly"];
+
+  setObservationalMemoryReadOnly(options: AgentLoopConfig["observationalMemoryReadOnly"]): void {
+    this.observationalMemoryReadOnly = options;
+  }
+
   private createLoopConfig(
     getTurnState: () => AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>,
     setTurnState: (turnState: AgentHarnessTurnState<TSkill, TPromptTemplate, TTool>) => void,
@@ -678,6 +684,9 @@ export class AgentHarness<
               this.permissionAskResolver!(req),
           }),
       ...(this.observationalMemory ? { observationalMemory: this.observationalMemory } : {}),
+      ...(this.observationalMemoryReadOnly
+        ? { observationalMemoryReadOnly: this.observationalMemoryReadOnly }
+        : {}),
       convertToLlm,
       transformContext: async (messages) => {
         const result = await this.emitHook({

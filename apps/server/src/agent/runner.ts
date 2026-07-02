@@ -9,6 +9,7 @@ import type {
   ThinkingLevel,
 } from "@sakti-code/agent";
 import {
+  buildObservationsBlock,
   composeSystemPrompt,
   evaluate,
   fromConfig,
@@ -551,6 +552,7 @@ export function runPromptEffect(
 
     // ── Observational Memory deps (optional) ──────────────────────
     let omOptions: ObservationalMemoryOptions | undefined;
+    let omReadOnly: { getObservationsBlock: () => Promise<string | undefined> } | undefined;
     const omConfig = resolveOmConfig(ctx, {
       id: sessionId,
       kind: session.kind,
@@ -575,6 +577,16 @@ export function runPromptEffect(
         observationThreshold: omConfig.thresholds.observation,
         reflectionThreshold: omConfig.thresholds.reflection,
       });
+    } else {
+      // OM disabled — check for prior history and set up read-only injection.
+      const roStorage = new SqliteObservationalMemoryStorage(ctx.db);
+      const threadId = session.projectId ? sessionId : null;
+      omReadOnly = {
+        getObservationsBlock: async () => {
+          const record = await roStorage.getObservationalMemory(threadId, session.projectId);
+          return buildObservationsBlock(record);
+        },
+      };
     }
 
     // Delegate the orchestration (event drain, retry abort, retry-deps
@@ -592,6 +604,7 @@ export function runPromptEffect(
       apiKey: auth.apiKey,
       ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
       ...(omOptions ? { observationalMemory: omOptions } : {}),
+      ...(omReadOnly ? { observationalMemoryReadOnly: omReadOnly } : {}),
       skills: activeSkills,
       templates: loadedContext.commands,
       cwd: project.cwd,

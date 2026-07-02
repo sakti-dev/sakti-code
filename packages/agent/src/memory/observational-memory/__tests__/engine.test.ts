@@ -162,6 +162,7 @@ class SyncOmStorage implements ObservationalMemoryStorage {
     throw new Error("buffering not supported in sync-only fake");
   }
   async clearObservationalMemory() {}
+  async pruneHistory() {}
   async setPendingMessageTokens() {}
   async updateObservationalMemoryConfig() {}
   async updateBufferedObservations() {

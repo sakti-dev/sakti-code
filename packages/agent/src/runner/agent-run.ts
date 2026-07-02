@@ -37,6 +37,11 @@ export interface AgentRunDeps {
   readonly message: string;
   readonly model: Model;
   readonly observationalMemory?: ObservationalMemoryOptions | undefined;
+  readonly observationalMemoryReadOnly?:
+    | {
+        readonly getObservationsBlock: () => Promise<string | undefined>;
+      }
+    | undefined;
   readonly persistStuckGuard: (state: StuckGuardState) => Effect.Effect<void, Error>;
   /** Override node:fs readFile (used by planFirstTurn for @file expansion). */
   readonly readFile?: ReadFile;
@@ -150,6 +155,11 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
           return current ?? "";
         },
       });
+    }
+
+    // Wire read-only OM injection when OM is disabled but prior history may exist.
+    if (!deps.observationalMemory?.enabled && deps.observationalMemoryReadOnly) {
+      harness.setObservationalMemoryReadOnly(deps.observationalMemoryReadOnly);
     }
 
     // ── Event drain (Phase F: PubSub-backed subscribeStream) ─────
