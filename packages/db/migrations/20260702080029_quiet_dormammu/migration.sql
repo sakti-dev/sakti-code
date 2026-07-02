@@ -1,0 +1,1 @@
+CREATE INDEX `session_entries_session_id_kind_idx` ON `session_entries` (`session_id`,`kind`);

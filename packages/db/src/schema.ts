@@ -47,6 +47,7 @@ export const sessionEntries = sqliteTable(
   },
   (table) => [
     uniqueIndex("session_entries_session_id_sequence_idx").on(table.sessionId, table.sequence),
+    index("session_entries_session_id_kind_idx").on(table.sessionId, table.kind),
   ],
 );
 
