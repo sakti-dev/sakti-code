@@ -7,9 +7,9 @@ import type {
   ObservationalMemoryScope,
 } from "@sakti-code/agent";
 import { TokenCounter as TokenCounterImpl } from "@sakti-code/agent";
-import type { ServerContext } from "../context.ts";
-import { parseOmSettings } from "../lib/observational-memory-settings.ts";
-import { resolveModelRef } from "../lib/profile-resolver.ts";
+import type { ServerContext } from "../../context.ts";
+import { parseOmSettings } from "./observational-memory-settings.ts";
+import { resolveModelRef } from "../../lib/profile-resolver.ts";
 
 const DEFAULT_OBSERVATION_THRESHOLD = 30_000;
 const DEFAULT_REFLECTION_THRESHOLD = 40_000;

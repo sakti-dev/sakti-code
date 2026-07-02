@@ -11,6 +11,12 @@ export {
   PLAN_PROMPT,
 } from "./prompts.ts";
 
+export { resolveOmConfig } from "./resolve-observational-memory.ts";
+export {
+  OmSettingsSchema,
+  parseOmSettings,
+  type ParsedOmSettings,
+} from "./observational-memory-settings.ts";
 export {
   resolveAgentByName,
   resolveSessionAgent,

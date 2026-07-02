@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import { TokenCounter } from "@sakti-code/agent";
-import { resolveOmConfig } from "../observational-memory-deps.ts";
+import { resolveOmConfig } from "../resolve-observational-memory.ts";
 
 function makeCtx(
   profiles: unknown,

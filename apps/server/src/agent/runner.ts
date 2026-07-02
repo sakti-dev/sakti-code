@@ -39,7 +39,7 @@ import {
 import { resolveWebSearchOperations } from "./config/websearch-resolver.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
-import { resolveOmConfig } from "./observational-memory-deps.ts";
+import { resolveOmConfig } from "./config/resolve-observational-memory.ts";
 import { type ReplayEntry, ReplayRunner } from "./replay-runner.ts";
 import type { WsHandle } from "./ws-handler.ts";
 
