@@ -55,6 +55,12 @@ export function MemorySidebarCard(props: { omStatus: OmWindowState | null }) {
           />
         </div>
       </Show>
+
+      <Show when={expanded() && !props.omStatus}>
+        <div class="px-3 pb-3 text-xs text-muted-foreground/60">
+          Observational Memory is not enabled.
+        </div>
+      </Show>
     </div>
   );
 }
