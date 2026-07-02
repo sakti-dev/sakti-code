@@ -32,6 +32,7 @@ import {
   COMPACTION_PROMPTS,
   DEFAULT_AGENT_NAME,
   rebuildTool,
+  resolveOmScope,
   resolveSessionAgent,
   resolveSessionAgentForKind,
   SKILLS_INSTRUCTIONS,
@@ -580,10 +581,12 @@ export function runPromptEffect(
     } else {
       // OM disabled — check for prior history and set up read-only injection.
       const roStorage = new SqliteObservationalMemoryStorage(ctx.db);
-      const threadId = session.projectId ? sessionId : null;
+      const omRaw = ctx.settingsFile.read() as Record<string, unknown>;
+      const roScope = resolveOmScope(omRaw);
+      const roThreadId = roScope === "resource" ? null : sessionId;
       omReadOnly = {
         getObservationsBlock: async () => {
-          const record = await roStorage.getObservationalMemory(threadId, session.projectId);
+          const record = await roStorage.getObservationalMemory(roThreadId, session.projectId);
           return buildObservationsBlock(record);
         },
       };

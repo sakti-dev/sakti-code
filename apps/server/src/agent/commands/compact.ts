@@ -27,10 +27,9 @@ export async function runCompact(
     return { notFound: true };
   }
 
-  let model: { model: ReturnType<typeof resolveModel>["model"]; provider: string };
+  let model: ReturnType<typeof resolveModel>;
   try {
-    const resolved = resolveModel(ctx, session);
-    model = resolved;
+    model = resolveModel(ctx, session);
   } catch (e) {
     return { error: `Model resolution failed: ${e instanceof Error ? e.message : String(e)}` };
   }

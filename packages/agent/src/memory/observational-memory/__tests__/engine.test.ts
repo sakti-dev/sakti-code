@@ -459,3 +459,141 @@ describe("ObservationalMemoryEngine (sync)", () => {
     expect(msg).toContain("obs");
   });
 });
+
+describe("ObservationalMemoryEngine — pruneHistory after reflection", () => {
+  let storage: SyncOmStorage;
+  let session: TreeSessionStorage;
+
+  beforeEach(() => {
+    storage = new SyncOmStorage();
+    session = new TreeSessionStorage();
+    BufferingCoordinator.asyncBufferingOps.clear();
+    BufferingCoordinator.lastBufferedBoundary.clear();
+    BufferingCoordinator.lastBufferedAtTime.clear();
+    BufferingCoordinator.reflectionBufferCycleIds.clear();
+  });
+  afterEach(() => {
+    vi.mocked(complete).mockReset();
+  });
+
+  it("calls pruneHistory after runSyncReflect (triggered via maybeReflect)", async () => {
+    const pruneSpy = vi.spyOn(storage, "pruneHistory");
+    const deps = createDeps(storage, session, {
+      thresholds: { observation: 100, reflection: 1 },
+    });
+    session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
+    setComplete("<observations>\n* 🔴 obs line one\n</observations>");
+    const engine = new ObservationalMemoryEngine({ deps });
+    let record = await engine.getOrCreateRecord();
+    record = await engine.maybeObserve(record);
+    expect(record.observationTokenCount).toBeGreaterThan(1);
+
+    setComplete("<observations>\n* reflected compact obs\n</observations>");
+    await engine.maybeReflect(record);
+
+    expect(pruneSpy).toHaveBeenCalledTimes(1);
+    const callArgs = pruneSpy.mock.calls[0] as unknown as [string | null, string, string];
+    const [threadId, resourceId, keepId] = callArgs;
+    expect(threadId).toBe("sess-1");
+    expect(resourceId).toBe("proj-1");
+    // The new generation is om-2 (om-1 is the initial record).
+    expect(keepId).toBe("om-2");
+  });
+
+  it("calls pruneHistory with null threadId for resource scope", async () => {
+    const pruneSpy = vi.spyOn(storage, "pruneHistory");
+    const deps = createDeps(storage, session, {
+      thresholds: { observation: 100, reflection: 1 },
+      scope: "resource",
+      sessionId: "sess-r",
+      projectId: "proj-r",
+    });
+    session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
+    setComplete("<observations>\n* 🔴 obs\n</observations>");
+    const engine = new ObservationalMemoryEngine({ deps });
+    let record = await engine.getOrCreateRecord();
+    record = await engine.maybeObserve(record);
+
+    setComplete("<observations>\n* reflected\n</observations>");
+    await engine.maybeReflect(record);
+
+    expect(pruneSpy).toHaveBeenCalledTimes(1);
+    const callArgs = pruneSpy.mock.calls[0] as unknown as [string | null, string, string];
+    expect(callArgs[0]).toBeNull();
+    expect(callArgs[1]).toBe("proj-r");
+  });
+});
+
+describe("ObservationalMemoryEngine — forceReflect", () => {
+  let storage: SyncOmStorage;
+  let session: TreeSessionStorage;
+
+  beforeEach(() => {
+    storage = new SyncOmStorage();
+    session = new TreeSessionStorage();
+    BufferingCoordinator.asyncBufferingOps.clear();
+    BufferingCoordinator.lastBufferedBoundary.clear();
+    BufferingCoordinator.lastBufferedAtTime.clear();
+    BufferingCoordinator.reflectionBufferCycleIds.clear();
+  });
+  afterEach(() => {
+    vi.mocked(complete).mockReset();
+  });
+
+  it("reflects when observations exist, ignoring threshold", async () => {
+    const pruneSpy = vi.spyOn(storage, "pruneHistory");
+    // Set up: observe with low observation threshold, high reflection threshold.
+    const deps = createDeps(storage, session, {
+      thresholds: { observation: 100, reflection: 999_999 },
+    });
+    session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
+    setComplete("<observations>\n* 🔴 obs line\n</observations>");
+    const engine = new ObservationalMemoryEngine({ deps });
+    let record = await engine.getOrCreateRecord();
+    record = await engine.maybeObserve(record);
+    expect(record.observationTokenCount).toBeGreaterThan(0);
+    // observationTokenCount is way below the 999_999 reflection threshold.
+    expect(record.observationTokenCount).toBeLessThan(999_999);
+
+    // forceReflect should still reflect.
+    setComplete("<observations>\n* reflected compact obs\n</observations>");
+    const result = await engine.forceReflect();
+
+    expect(result.reflected).toBe(true);
+    expect(result.reason).toBeUndefined();
+    expect(storage.reflectionCalls).toHaveLength(1);
+    expect(pruneSpy).toHaveBeenCalled();
+  });
+
+  it("returns nothing-to-reflect when no observations exist", async () => {
+    const engine = new ObservationalMemoryEngine({ deps: createDeps(storage, session) });
+    const result = await engine.forceReflect();
+    expect(result.reflected).toBe(false);
+    expect(result.reason).toBe("nothing-to-reflect");
+    expect(storage.reflectionCalls).toHaveLength(0);
+  });
+
+  it("emits om_start and om_end events", async () => {
+    const omEvents: Array<{ type: string; operationType?: string }> = [];
+    const deps = createDeps(storage, session, {
+      thresholds: { observation: 100, reflection: 999_999 },
+    });
+    session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
+    setComplete("<observations>\n* 🔴 obs line\n</observations>");
+    const engine = new ObservationalMemoryEngine({
+      deps,
+      onOmEvent: (event) => omEvents.push(event),
+    });
+    let record = await engine.getOrCreateRecord();
+    record = await engine.maybeObserve(record);
+
+    setComplete("<observations>\n* reflected\n</observations>");
+    await engine.forceReflect();
+
+    const types = omEvents.map((e) => e.type);
+    expect(types).toContain("om_start");
+    expect(types).toContain("om_end");
+    const starts = omEvents.filter((e) => e.type === "om_start");
+    expect(starts.some((e) => e.operationType === "reflection")).toBe(true);
+  });
+});

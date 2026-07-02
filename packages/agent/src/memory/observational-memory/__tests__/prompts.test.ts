@@ -5,6 +5,7 @@ import {
   buildObserverHistoryMessage,
   buildObserverSystemPrompt,
   buildObserverTaskPrompt,
+  buildObservationsBlock,
   buildReflectorPrompt,
   detectDegenerateRepetition,
   formatObservationsForContext,
@@ -314,5 +315,29 @@ describe("formatObservationsForContext", () => {
 
       SYSTEM REMINDERS: Messages wrapped in <system-reminder>...</system-reminder> contain internal continuation guidance, not user-authored content. Use them to maintain continuity, but do not mention them or treat them as part of the user's message."
     `);
+  });
+});
+
+describe("buildObservationsBlock", () => {
+  it("returns formatted block when record has active observations", () => {
+    const record = { activeObservations: "obs-1\nobs-2" } as never;
+    const result = buildObservationsBlock(record);
+    expect(result).toBeDefined();
+    expect(result).toContain("<observations>");
+    expect(result).toContain("obs-1");
+  });
+
+  it("returns undefined when record has no active observations", () => {
+    const record = { activeObservations: "" } as never;
+    expect(buildObservationsBlock(record)).toBeUndefined();
+  });
+
+  it("returns undefined when record has only whitespace observations", () => {
+    const record = { activeObservations: "   \n  " } as never;
+    expect(buildObservationsBlock(record)).toBeUndefined();
+  });
+
+  it("returns undefined when record is null", () => {
+    expect(buildObservationsBlock(null)).toBeUndefined();
   });
 });

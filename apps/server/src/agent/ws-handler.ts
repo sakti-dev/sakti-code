@@ -310,6 +310,7 @@ async function handleCompactCommand(
   if (omConfig) {
     const omStorage = new SqliteObservationalMemoryStorage(ctx.db);
     const storage = createSessionStorage(ctx, sessionId);
+    const abortController = new AbortController();
     const engine = new ObservationalMemoryEngine({
       deps: {
         ...omConfig,
@@ -318,6 +319,7 @@ async function handleCompactCommand(
         projectId: session.projectId,
         sessionStorage: storage,
       },
+      abortSignal: abortController.signal,
       onOmEvent: (event) => {
         ws.send({ event, sessionId, type: "event" } satisfies EventFrame);
       },

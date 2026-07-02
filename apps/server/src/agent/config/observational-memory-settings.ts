@@ -57,6 +57,20 @@ function assertNoUnknownKeys(
 }
 
 /**
+ * Resolve the OM scope from raw settings, even when OM is disabled.
+ * Used by the read-only injection path to look up existing records
+ * with the correct lookup key.
+ */
+export function resolveOmScope(raw: Record<string, unknown>): "thread" | "resource" {
+  const om = raw.observationalMemory;
+  if (om && typeof om === "object") {
+    const scope = (om as Record<string, unknown>).scope;
+    if (scope === "resource") return "resource";
+  }
+  return "thread";
+}
+
+/**
  * Parse + validate the `observationalMemory` block from settings.json.
  *
  * Returns `{ enabled: true }` when OM is absent (default-on).

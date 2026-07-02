@@ -270,7 +270,7 @@ export class ObservationalMemoryEngine {
     // Activate buffered reflection if present.
     const activated = await this.maybeActivateBufferedReflection(record);
     if (activated.id !== record.id) {
-      record = await this.getOrCreateRecord();
+      record = activated;
     }
 
     // Nothing to reflect on.
