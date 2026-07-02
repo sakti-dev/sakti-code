@@ -117,7 +117,7 @@ export const observationalMemory = sqliteTable(
     observedTimezone: text("observed_timezone"),
 
     // generation
-    originType: text("origin_type").notNull(), // 'initialization' | 'observation' | 'reflection'
+    originType: text("origin_type").notNull(), // 'initial' | 'observation' | 'reflection'
     generationCount: integer("generation_count").notNull(),
     config: text("config").notNull(), // JSON snapshot of OM config
 
