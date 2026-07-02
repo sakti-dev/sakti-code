@@ -220,4 +220,10 @@ export interface ObservationalMemoryStorage {
   swapBufferedReflectionToActive(
     input: SwapBufferedReflectionToActiveInput,
   ): Promise<ObservationalMemoryRecord>;
+  /**
+   * Delete all OM generations for the given lookup key except the one with
+   * `keepId`. Called after reflection to prune superseded observation
+   * generations that are no longer accessible (engine always reads latest).
+   */
+  pruneHistory(threadId: string | null, resourceId: string, keepId: string): Promise<void>;
 }
