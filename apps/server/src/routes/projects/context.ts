@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { getCtx } from "../../context.ts";
 import { loadAgentContext } from "../../lib/context-loader.ts";
+import { BUILTIN_COMMANDS } from "../../agent/commands/builtin.ts";
 
 /**
  * Project-scoped agent context for the autocomplete: slash commands, skills,
@@ -15,7 +16,7 @@ export const contextRoutes = new Hono().basePath("/projects").get("/:id/context"
   }
   const loaded = await loadAgentContext(project.cwd);
   return c.json({
-    commands: loaded.commands,
+    commands: [...BUILTIN_COMMANDS, ...loaded.commands],
     skills: loaded.skills,
     agents: loaded.agents,
   });
