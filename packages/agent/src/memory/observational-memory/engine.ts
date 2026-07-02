@@ -540,6 +540,9 @@ export class ObservationalMemoryEngine {
       tokenCount: combinedTokenCount,
     });
 
+    const ids = this.getStorageIds();
+    await this.storage.pruneHistory(ids.threadId, ids.resourceId, newRecord.id);
+
     this.emitOmEvent({
       type: "om_activation",
       cycleId: `activation-refl-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
@@ -737,11 +740,14 @@ export class ObservationalMemoryEngine {
         ...(this.abortSignal ? { abortSignal: this.abortSignal } : {}),
       });
 
-      await this.storage.createReflectionGeneration({
+      const newRecord = await this.storage.createReflectionGeneration({
         currentRecord: record,
         reflection: reflectorResult.reflection,
         tokenCount: reflectorResult.tokenCount,
       });
+
+      const ids = this.getStorageIds();
+      await this.storage.pruneHistory(ids.threadId, ids.resourceId, newRecord.id);
 
       this.emitOmEvent({
         type: "om_end",

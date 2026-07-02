@@ -201,6 +201,14 @@ class FakeObservationalMemoryStorage implements ObservationalMemoryStorage {
     // not used
   }
 
+  async pruneHistory(threadId: string | null, resourceId: string, keepId: string): Promise<void> {
+    for (const [id, record] of this.records) {
+      if (id === keepId) continue;
+      const matches = threadId ? record.threadId === threadId : record.resourceId === resourceId;
+      if (matches) this.records.delete(id);
+    }
+  }
+
   async setPendingMessageTokens(id: string, tokenCount: number): Promise<void> {
     const record = this.records.get(id);
     if (!record) throw new Error(`Record not found: ${id}`);
