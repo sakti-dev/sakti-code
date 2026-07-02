@@ -1,4 +1,5 @@
 import { createStore, produce, reconcile } from "solid-js/store";
+import type { TurnMeta } from "./hydrate-chat.ts";
 import {
   idleStreamState,
   type MessagePart,
@@ -33,6 +34,8 @@ export interface SessionStoreData {
   retry: RetryState | null;
   streaming: StreamState;
   turnTimings: TurnTiming[];
+  /** Per-turn lazy-load metadata keyed by turn id. */
+  turns: Record<string, TurnMeta>;
   /** OM window state for sidebar progress bars; `null` when no OM status received. */
   omStatus: OmWindowState | null;
 }
@@ -80,8 +83,11 @@ export interface SessionActions {
   finalizeTurn: (endedAt: number) => void;
   getCurrentMessageId: () => string | null;
   getLastAssistantMessageId: () => string | null;
+  loadChatTurns: (turns: TurnMeta[], messages: UIMessage[]) => void;
   loadMessages: (msgs: UIMessage[]) => void;
+  loadTurnIntermediates: (turnId: string, messages: UIMessage[]) => void;
   loadTurnTimings: (timings: TurnTiming[]) => void;
+  evictTurnIntermediates: (turnId: string) => void;
   reset: () => void;
   setContent: (msgId: string, content: string) => void;
   setCurrentMessage: (msgId: string) => void;
@@ -117,6 +123,7 @@ export function createSessionStore(): SessionStore {
     retry: null,
     streaming: { ...idleStreamState },
     turnTimings: [],
+    turns: {},
     omStatus: null,
   });
 
@@ -162,6 +169,67 @@ export function createSessionStore(): SessionStore {
         "messageOrder",
         msgs.map((m) => m.id),
       );
+    },
+
+    loadChatTurns(turns, messages) {
+      const newMessages: Record<string, UIMessage> = {};
+      for (const msg of messages) {
+        newMessages[msg.id] = msg;
+      }
+      setStore("messages", reconcile(newMessages));
+      setStore(
+        "messageOrder",
+        messages.map((m) => m.id),
+      );
+      const newTurns: Record<string, TurnMeta> = {};
+      for (const t of turns) {
+        newTurns[t.id] = t;
+      }
+      setStore("turns", reconcile(newTurns));
+    },
+
+    loadTurnIntermediates(turnId, messages) {
+      const turn = store.turns[turnId];
+      if (!turn) {
+        return;
+      }
+      const ids = messages.map((m) => m.id);
+      for (const msg of messages) {
+        setStore("messages", msg.id, msg);
+      }
+      const summaryIdx = turn.summaryMessageId
+        ? store.messageOrder.indexOf(turn.summaryMessageId)
+        : -1;
+      if (summaryIdx >= 0) {
+        setStore("messageOrder", (prev) => [
+          ...prev.slice(0, summaryIdx),
+          ...ids,
+          ...prev.slice(summaryIdx),
+        ]);
+      } else {
+        setStore("messageOrder", (prev) => [...prev, ...ids]);
+      }
+      setStore("turns", turnId, "intermediatesLoaded", true);
+      setStore("turns", turnId, "loadedMessageIds", ids);
+    },
+
+    evictTurnIntermediates(turnId) {
+      const turn = store.turns[turnId];
+      if (!turn || turn.loadedMessageIds.length === 0) {
+        return;
+      }
+      const idsToRemove = new Set(turn.loadedMessageIds);
+      setStore("messageOrder", (prev) => prev.filter((id) => !idsToRemove.has(id)));
+      setStore(
+        "messages",
+        produce((msgs: Record<string, UIMessage>) => {
+          for (const id of turn.loadedMessageIds) {
+            delete msgs[id];
+          }
+        }),
+      );
+      setStore("turns", turnId, "intermediatesLoaded", false);
+      setStore("turns", turnId, "loadedMessageIds", []);
     },
 
     appendToken(msgId, delta) {
@@ -384,6 +452,7 @@ export function createSessionStore(): SessionStore {
           s.permission = null;
           s.retry = null;
           s.streaming = { ...idleStreamState };
+          s.turns = {};
           s.omStatus = null;
         }),
       );

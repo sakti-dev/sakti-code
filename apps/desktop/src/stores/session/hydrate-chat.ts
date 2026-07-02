@@ -19,6 +19,8 @@ export interface TurnMeta {
   id: string;
   intermediateIds: string[];
   intermediatesLoaded: boolean;
+  /** UIMessage ids of loaded intermediates (for eviction). Empty when not loaded. */
+  loadedMessageIds: string[];
   sequence: number;
   startedAt: number;
   summaryMessageId: string | null;
@@ -75,6 +77,7 @@ export function hydrateChatSummaries(chatTurns: ChatTurnDTO[]): HydratedChat {
       id: ct.id,
       intermediateIds: ct.intermediateIds,
       intermediatesLoaded: false,
+      loadedMessageIds: [],
       sequence: ct.sequence,
       startedAt: ct.startedAt,
       summaryMessageId,

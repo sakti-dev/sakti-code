@@ -1,6 +1,11 @@
 import type { AgentMessage, PermissionReply } from "@sakti-code/agent";
 import type { Client } from "~/lib/api";
 import { createLogger } from "~/lib/utils";
+import {
+  type ChatTurnDTO,
+  hydrateChatSummaries,
+  hydrateIntermediates,
+} from "../session/hydrate-chat.ts";
 import { hydrateSessionMessages } from "../session/hydrate-messages.ts";
 import type { SessionRegistry } from "../session/session-registry.ts";
 import type { UIMessage } from "../types.ts";
@@ -21,7 +26,10 @@ export interface Actions {
   abortRun: (sessionId: string) => void;
   addProject: (cwd: string) => Promise<Project | undefined>;
   createSession: (projectId: string, title?: string) => Promise<SessionMeta | undefined>;
+  evictIntermediates: (sessionId: string, turnId: string) => void;
   followUpRun: (sessionId: string, text: string) => void;
+  loadChat: (sessionId: string) => Promise<void>;
+  loadIntermediates: (sessionId: string, turnId: string) => Promise<void>;
   loadMessages: (sessionId: string) => Promise<void>;
   loadProjects: () => Promise<void>;
   loadSessions: (projectId: string) => Promise<void>;
@@ -149,6 +157,43 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
       } catch (error) {
         setLastError(error instanceof Error ? error.message : "Failed to load messages");
       }
+    },
+
+    async loadChat(sessionId) {
+      try {
+        const res = await api.api.sessions[":id"].chat.$get({ param: { id: sessionId } });
+        if (!res.ok) {
+          return;
+        }
+        const body = (await res.json()) as { turns: ChatTurnDTO[] };
+        const { messages, turns } = hydrateChatSummaries(body.turns);
+        const session = sessionRegistry.get(sessionId);
+        session.actions.loadChatTurns(turns, messages);
+      } catch (error) {
+        setLastError(error instanceof Error ? error.message : "Failed to load chat");
+      }
+    },
+
+    async loadIntermediates(sessionId, turnId) {
+      try {
+        const res = await api.api.sessions[":id"].turns[":turnId"].intermediates.$get({
+          param: { id: sessionId, turnId },
+        });
+        if (!res.ok) {
+          return;
+        }
+        const body = (await res.json()) as { entries: Array<Record<string, unknown>> };
+        const messages = hydrateIntermediates(body.entries);
+        const session = sessionRegistry.get(sessionId);
+        session.actions.loadTurnIntermediates(turnId, messages);
+      } catch (error) {
+        setLastError(error instanceof Error ? error.message : "Failed to load intermediates");
+      }
+    },
+
+    evictIntermediates(sessionId, turnId) {
+      const session = sessionRegistry.get(sessionId);
+      session.actions.evictTurnIntermediates(turnId);
     },
 
     sendPrompt(sessionId, text) {

@@ -679,3 +679,91 @@ describe("session store — OM markers", () => {
     expect(session.store.omStatus).toBeNull();
   });
 });
+
+describe("session store — lazy turn actions", () => {
+  function makeTurnMeta(
+    id: string,
+    overrides: Partial<import("../hydrate-chat.ts").TurnMeta> = {},
+  ) {
+    return {
+      endedAt: 2000,
+      id,
+      intermediateIds: ["im1"],
+      intermediatesLoaded: false,
+      loadedMessageIds: [],
+      sequence: 0,
+      startedAt: 1000,
+      summaryMessageId: `${id}-summary`,
+      userMessageId: `${id}-user`,
+      ...overrides,
+    };
+  }
+
+  it("loadChatTurns sets messages, order, and turns metadata", () => {
+    const session = createSessionStore();
+    const turns = [makeTurnMeta("t1")];
+    const messages = [
+      makeMessage({ id: "t1-user", role: "user", content: "hi" }),
+      makeMessage({ id: "t1-summary", role: "assistant", content: "hello" }),
+    ];
+
+    session.actions.loadChatTurns(turns, messages);
+
+    expect(session.store.messageOrder).toEqual(["t1-user", "t1-summary"]);
+    expect(session.store.turns.t1).toBeDefined();
+    expect(session.store.turns.t1!.intermediatesLoaded).toBe(false);
+    expect(session.store.turns.t1!.summaryMessageId).toBe("t1-summary");
+  });
+
+  it("loadTurnIntermediates splices before the summary", () => {
+    const session = createSessionStore();
+    session.actions.loadChatTurns(
+      [makeTurnMeta("t1")],
+      [
+        makeMessage({ id: "t1-user", role: "user" }),
+        makeMessage({ id: "t1-summary", role: "assistant" }),
+      ],
+    );
+
+    session.actions.loadTurnIntermediates("t1", [
+      makeMessage({ id: "im1", role: "assistant", content: "step1" }),
+      makeMessage({ id: "im2", role: "assistant", content: "step2" }),
+    ]);
+
+    expect(session.store.messageOrder).toEqual(["t1-user", "im1", "im2", "t1-summary"]);
+    expect(session.store.messages.im1).toBeDefined();
+    expect(session.store.turns.t1!.intermediatesLoaded).toBe(true);
+    expect(session.store.turns.t1!.loadedMessageIds).toEqual(["im1", "im2"]);
+  });
+
+  it("evictTurnIntermediates removes intermediates and resets flag", () => {
+    const session = createSessionStore();
+    session.actions.loadChatTurns(
+      [makeTurnMeta("t1")],
+      [
+        makeMessage({ id: "t1-user", role: "user" }),
+        makeMessage({ id: "t1-summary", role: "assistant" }),
+      ],
+    );
+    session.actions.loadTurnIntermediates("t1", [makeMessage({ id: "im1", role: "assistant" })]);
+
+    session.actions.evictTurnIntermediates("t1");
+
+    expect(session.store.messageOrder).toEqual(["t1-user", "t1-summary"]);
+    expect(session.store.messages.im1).toBeUndefined();
+    expect(session.store.turns.t1!.intermediatesLoaded).toBe(false);
+    expect(session.store.turns.t1!.loadedMessageIds).toEqual([]);
+  });
+
+  it("evictTurnIntermediates is a no-op when nothing loaded", () => {
+    const session = createSessionStore();
+    session.actions.loadChatTurns(
+      [makeTurnMeta("t1")],
+      [makeMessage({ id: "t1-user", role: "user" })],
+    );
+
+    session.actions.evictTurnIntermediates("t1");
+
+    expect(session.store.messageOrder).toEqual(["t1-user"]);
+  });
+});
