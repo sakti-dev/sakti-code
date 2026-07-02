@@ -303,10 +303,10 @@ export type AgentEvent =
       attempt: number;
       finalError?: string;
     }
-  | { type: "compaction_start"; reason: "threshold" | "overflow" }
+  | { type: "compaction_start"; reason: "threshold" | "overflow" | "manual" }
   | {
       type: "compaction_end";
-      reason: "threshold" | "overflow";
+      reason: "threshold" | "overflow" | "manual";
       result?: {
         summary: string;
         firstKeptEntryId: string;
