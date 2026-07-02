@@ -1,5 +1,6 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { DrizzleDB } from "../init.ts";
+import { sessionEntries } from "../schema.ts";
 import { turns } from "../schema.ts";
 
 export interface TurnRow {
@@ -50,6 +51,42 @@ export class TurnRepo {
       .where(eq(turns.sessionId, sessionId))
       .orderBy(turns.sequence)
       .all();
+  }
+
+  getLatest(sessionId: string): TurnRow | null {
+    return this.listBySession(sessionId).at(-1) ?? null;
+  }
+
+  /**
+   * Mark the turn's final assistant message entry as the summary (the
+   * "is_turn_summary" flag). Walks the turn's entries newest-first and
+   * picks the last assistant message. No-op if the turn has no assistant
+   * entry (e.g. aborted before any model response).
+   */
+  markSummary(turnId: string): void {
+    const rows = this.db
+      .select({ id: sessionEntries.id, content: sessionEntries.content })
+      .from(sessionEntries)
+      .where(eq(sessionEntries.turnId, turnId))
+      .orderBy(desc(sessionEntries.sequence))
+      .all();
+
+    const lastAssistant = rows.find((r) => {
+      try {
+        const parsed = JSON.parse(r.content) as { message?: { role?: string } };
+        return parsed.message?.role === "assistant";
+      } catch {
+        return false;
+      }
+    });
+
+    if (lastAssistant) {
+      this.db
+        .update(sessionEntries)
+        .set({ isTurnSummary: true })
+        .where(eq(sessionEntries.id, lastAssistant.id))
+        .run();
+    }
   }
 
   copyForFork(sourceSessionId: string, targetSessionId: string): void {

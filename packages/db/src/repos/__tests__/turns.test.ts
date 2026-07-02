@@ -88,4 +88,54 @@ describe("TurnRepo", () => {
     expect(forkedTurns[0]!.startedAt).toBe(sourceTurns[0]!.startedAt);
     expect(forkedTurns[0]!.id).not.toBe(sourceTurns[0]!.id);
   });
+
+  it("markSummary sets isTurnSummary on the turn's last assistant entry", async () => {
+    const project3 = await projects.create("p3", "/tmp/test3");
+    const session3 = await sessions.create(project3.id);
+    const turn = turns.create(session3.id, 1000);
+
+    const seed = (id: string, role: string, seq: number): void => {
+      rawDb
+        .prepare(
+          "INSERT INTO session_entries (id, session_id, parent_id, sequence, kind, content, timestamp, created_at, turn_id, is_turn_summary) VALUES (?, ?, NULL, ?, 'message', ?, '1', 1, ?, 0)",
+        )
+        .run(
+          id,
+          session3.id,
+          seq,
+          JSON.stringify({ type: "message", message: { role, content: "x" } }),
+          turn.id,
+        );
+    };
+    seed("u1", "user", 0);
+    seed("a1", "assistant", 1);
+    seed("a2", "assistant", 2);
+
+    turns.markSummary(turn.id);
+
+    const summaries = rawDb
+      .prepare("SELECT id FROM session_entries WHERE is_turn_summary = 1")
+      .all() as { id: string }[];
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]!.id).toBe("a2");
+  });
+
+  it("markSummary is a no-op when the turn has no assistant entry", () => {
+    const turn = turns.create(sessionId, 9000);
+    turns.markSummary(turn.id);
+    const summaries = rawDb
+      .prepare("SELECT id FROM session_entries WHERE is_turn_summary = 1 AND turn_id = ?")
+      .all(turn.id);
+    expect(summaries).toHaveLength(0);
+  });
+
+  it("getLatest returns the highest-sequence turn", () => {
+    const latest = turns.getLatest(sessionId);
+    const list = turns.listBySession(sessionId);
+    expect(latest?.id).toBe(list.at(-1)?.id);
+  });
+
+  it("getLatest returns null for unknown session", () => {
+    expect(turns.getLatest("nonexistent")).toBeNull();
+  });
 });
