@@ -2,6 +2,7 @@ import type { AgentHarnessEvent } from "@sakti-code/agent";
 import { createEffect, createSignal, type JSX, onMount, Show } from "solid-js";
 import { TaskChatView } from "~/components/chat-area/task-chat-view";
 import Home from "~/components/home/home";
+import { SettingsPage } from "~/components/settings/settings-page";
 import { DevToolbar } from "~/components/layout/dev-toolbar";
 import { OnboardingPanel } from "~/components/onboarding/onboarding-panel";
 import { dispatchEvent } from "~/stores/session/event-reducer";
@@ -80,6 +81,7 @@ export default function WorkspaceLayout(): JSX.Element {
   };
 
   const isNewTab = () => activeTab()?.projectId === null;
+  const isSettingsTab = () => activeTab()?.page === "settings";
 
   const currentSessionId = () => activeSession()?.id ?? intakeSessionId();
 
@@ -87,50 +89,55 @@ export default function WorkspaceLayout(): JSX.Element {
     <div class="flex h-screen flex-col bg-background text-foreground">
       <TopBar />
       <div class="flex min-h-0 flex-1">
-        <Show when={sidebarOpen() && !isNewTab()}>
+        <Show when={sidebarOpen() && !isNewTab() && !isSettingsTab()}>
           <Sidebar />
         </Show>
         <main class="flex min-w-0 flex-1 flex-col">
-          <Show fallback={<Home />} when={!isNewTab()}>
-            <BannerConnection />
-            <BannerError />
-            <BannerHealth />
-            <BannerUpdate />
-            {import.meta.env.DEV && (
-              <DevToolbar
-                onReplayPause={() => actions.replayPause(currentSessionId() ?? "")}
-                onReplayReset={() => actions.replayReset(currentSessionId() ?? "")}
-                onReplayResume={() => actions.replayResume(currentSessionId() ?? "")}
-                onReplayStart={() => actions.replayStart(currentSessionId() ?? "")}
-                onRetryEvent={(event: AgentHarnessEvent) => {
-                  const sId = currentSessionId();
-                  if (sId) {
-                    const session = sessions.get(sId);
-                    dispatchEvent(session.actions, devBatcher, event);
-                  }
-                }}
-                replayState={replayState}
-              />
-            )}
-            <div class="relative min-h-0 flex-1">
-              <div class="absolute inset-0 flex flex-col overflow-hidden">
-                <Show
-                  fallback={
-                    <Show fallback={<NoProjectSelected />} keyed when={activeProject()}>
-                      {(project) => (
-                        <OnboardingPanel
-                          intakeSessionId={intakeSessionId()}
-                          projectId={project.id}
-                        />
-                      )}
-                    </Show>
-                  }
-                  when={activeSession()}
-                >
-                  {(session) => <TaskChatView sessionId={session().id} />}
-                </Show>
+          <Show when={isSettingsTab()}>
+            <SettingsPage />
+          </Show>
+          <Show when={!isSettingsTab()}>
+            <Show fallback={<Home />} when={!isNewTab()}>
+              <BannerConnection />
+              <BannerError />
+              <BannerHealth />
+              <BannerUpdate />
+              {import.meta.env.DEV && (
+                <DevToolbar
+                  onReplayPause={() => actions.replayPause(currentSessionId() ?? "")}
+                  onReplayReset={() => actions.replayReset(currentSessionId() ?? "")}
+                  onReplayResume={() => actions.replayResume(currentSessionId() ?? "")}
+                  onReplayStart={() => actions.replayStart(currentSessionId() ?? "")}
+                  onRetryEvent={(event: AgentHarnessEvent) => {
+                    const sId = currentSessionId();
+                    if (sId) {
+                      const session = sessions.get(sId);
+                      dispatchEvent(session.actions, devBatcher, event);
+                    }
+                  }}
+                  replayState={replayState}
+                />
+              )}
+              <div class="relative min-h-0 flex-1">
+                <div class="absolute inset-0 flex flex-col overflow-hidden">
+                  <Show
+                    fallback={
+                      <Show fallback={<NoProjectSelected />} keyed when={activeProject()}>
+                        {(project) => (
+                          <OnboardingPanel
+                            intakeSessionId={intakeSessionId()}
+                            projectId={project.id}
+                          />
+                        )}
+                      </Show>
+                    }
+                    when={activeSession()}
+                  >
+                    {(session) => <TaskChatView sessionId={session().id} />}
+                  </Show>
+                </div>
               </div>
-            </div>
+            </Show>
           </Show>
         </main>
       </div>

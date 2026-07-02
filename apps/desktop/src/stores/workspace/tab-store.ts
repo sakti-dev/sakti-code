@@ -1,8 +1,11 @@
 import { createEffect, createRoot, createSignal } from "solid-js";
 
+export type PageType = "home" | "settings";
+
 export interface WorkspaceTab {
   projectId: string | null;
   sessionId: string | null;
+  page?: PageType;
 }
 
 const STORAGE_KEY = "sakti-workspace-tabs";
@@ -26,6 +29,7 @@ function loadFromStorage(): StoredState {
     const validated: WorkspaceTab[] = tabs.map((t) => ({
       projectId: t?.projectId ?? null,
       sessionId: t?.sessionId ?? null,
+      ...(t?.page !== undefined ? { page: t.page as PageType } : {}),
     }));
     const activeIndex = Math.min(Math.max(0, parsed.activeIndex ?? 0), validated.length - 1);
     return { tabs: validated, activeIndex };
@@ -102,6 +106,18 @@ export function newTab(): void {
   const tabs = openTabs();
   setOpenTabs([...tabs, { projectId: null, sessionId: null }]);
   setActiveTabIndex(tabs.length);
+}
+
+export function openSettingsTab(): void {
+  const tabs = openTabs();
+  const existingIdx = tabs.findIndex((t) => t.page === "settings");
+  if (existingIdx >= 0) {
+    setActiveTabIndex(existingIdx);
+    return;
+  }
+  const newIdx = tabs.length;
+  setOpenTabs([...tabs, { projectId: null, sessionId: null, page: "settings" }]);
+  setActiveTabIndex(newIdx);
 }
 
 export function transformTab(

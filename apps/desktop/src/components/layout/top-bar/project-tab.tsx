@@ -1,8 +1,10 @@
 import { motion } from "motion-solidjs";
-import { FiFolder, FiPlus, FiX } from "solid-icons/fi";
-import { For, type JSX, Show } from "solid-js";
+import { FiFolder, FiPlus, FiSettings, FiX } from "solid-icons/fi";
+import { For, type JSX, Match, Switch } from "solid-js";
+import { Show } from "solid-js";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
+import type { PageType } from "~/stores/workspace/tab-store";
 import {
   activeTabIndex,
   closeTab,
@@ -13,6 +15,7 @@ import {
 
 interface ProjectTabProps {
   projectId: string | null;
+  page?: PageType;
   label: string;
   index: number;
   isActive: boolean;
@@ -58,7 +61,14 @@ function ProjectTab(props: ProjectTabProps): JSX.Element {
         </motion.div>
       </Show>
       <span class="relative z-10 flex items-center gap-1.5">
-        <FiFolder class="h-3 w-3 shrink-0 opacity-70" />
+        <Switch>
+          <Match when={props.page === "settings"}>
+            <FiSettings class="h-3 w-3 shrink-0 opacity-70" />
+          </Match>
+          <Match when={true}>
+            <FiFolder class="h-3 w-3 shrink-0 opacity-70" />
+          </Match>
+        </Switch>
         <span class="max-w-[140px] truncate">{props.label}</span>
         <button
           aria-label={`Close ${props.label} tab`}
@@ -84,11 +94,14 @@ export default function ProjectTabBar(): JSX.Element {
   const tabs = openTabs;
   const currentIdx = activeTabIndex;
 
-  const tabLabel = (projectId: string | null): string => {
-    if (projectId === null) {
+  const tabLabel = (tab: { projectId: string | null; page?: PageType }): string => {
+    if (tab.page === "settings") {
+      return "Settings";
+    }
+    if (tab.projectId === null) {
       return "New Workspace";
     }
-    return server.store.projects[projectId]?.name ?? "Unknown";
+    return server.store.projects[tab.projectId]?.name ?? "Unknown";
   };
 
   return (
@@ -98,7 +111,8 @@ export default function ProjectTabBar(): JSX.Element {
           {(tab, index) => (
             <ProjectTab
               projectId={tab.projectId}
-              label={tabLabel(tab.projectId)}
+              page={tab.page}
+              label={tabLabel(tab)}
               index={index()}
               isActive={index() === currentIdx()}
             />
