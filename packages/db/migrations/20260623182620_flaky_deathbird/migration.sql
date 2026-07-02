@@ -1,1 +1,0 @@
-ALTER TABLE `sessions` ADD `kind` text DEFAULT 'task' NOT NULL;

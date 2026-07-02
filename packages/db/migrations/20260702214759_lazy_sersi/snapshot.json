@@ -1,9 +1,13 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "63510de0-0bf4-4003-8bf0-1795b261300c",
-  "prevIds": ["bd9d7bdb-d6bb-40f7-a54e-2a66f91b4028"],
+  "id": "42529180-626d-4300-9f87-057e951f6495",
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
+    {
+      "name": "observational_memory",
+      "entityType": "tables"
+    },
     {
       "name": "projects",
       "entityType": "tables"
@@ -23,6 +27,316 @@
     {
       "name": "turns",
       "entityType": "tables"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "lookup_key",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "scope",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "resource_id",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "thread_id",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "active_observations",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "active_observations_pending_update",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "buffered_observation_chunks",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "buffered_reflection",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "buffered_reflection_tokens",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "buffered_reflection_input_tokens",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "reflected_observation_line_count",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "observed_message_ids",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "observed_timezone",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "origin_type",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "generation_count",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "config",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "pending_message_tokens",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "total_tokens_observed",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "observation_token_count",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "false",
+      "generated": null,
+      "name": "is_observing",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "false",
+      "generated": null,
+      "name": "is_reflecting",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "false",
+      "generated": null,
+      "name": "is_buffering_observation",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "false",
+      "generated": null,
+      "name": "is_buffering_reflection",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "last_buffered_at_tokens",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "last_observed_at",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "last_reflection_at",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "last_buffered_at_time",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "metadata",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "observational_memory"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "observational_memory"
     },
     {
       "type": "text",
@@ -151,6 +465,26 @@
       "default": null,
       "generated": null,
       "name": "created_at",
+      "entityType": "columns",
+      "table": "session_entries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "turn_id",
+      "entityType": "columns",
+      "table": "session_entries"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "false",
+      "generated": null,
+      "name": "is_turn_summary",
       "entityType": "columns",
       "table": "session_entries"
     },
@@ -355,6 +689,28 @@
       "table": "turns"
     },
     {
+      "columns": ["resource_id"],
+      "tableTo": "projects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_observational_memory_resource_id_projects_id_fk",
+      "entityType": "fks",
+      "table": "observational_memory"
+    },
+    {
+      "columns": ["thread_id"],
+      "tableTo": "sessions",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_observational_memory_thread_id_sessions_id_fk",
+      "entityType": "fks",
+      "table": "observational_memory"
+    },
+    {
       "columns": ["session_id"],
       "tableTo": "sessions",
       "columnsTo": ["id"],
@@ -362,6 +718,17 @@
       "onDelete": "CASCADE",
       "nameExplicit": false,
       "name": "fk_session_entries_session_id_sessions_id_fk",
+      "entityType": "fks",
+      "table": "session_entries"
+    },
+    {
+      "columns": ["turn_id"],
+      "tableTo": "turns",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_session_entries_turn_id_turns_id_fk",
       "entityType": "fks",
       "table": "session_entries"
     },
@@ -401,6 +768,13 @@
     {
       "columns": ["id"],
       "nameExplicit": false,
+      "name": "observational_memory_pk",
+      "table": "observational_memory",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
       "name": "projects_pk",
       "table": "projects",
       "entityType": "pks"
@@ -436,6 +810,20 @@
     {
       "columns": [
         {
+          "value": "lookup_key",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "observational_memory_lookup_key_idx",
+      "entityType": "indexes",
+      "table": "observational_memory"
+    },
+    {
+      "columns": [
+        {
           "value": "session_id",
           "isExpression": false
         },
@@ -448,6 +836,52 @@
       "where": null,
       "origin": "manual",
       "name": "session_entries_session_id_sequence_idx",
+      "entityType": "indexes",
+      "table": "session_entries"
+    },
+    {
+      "columns": [
+        {
+          "value": "session_id",
+          "isExpression": false
+        },
+        {
+          "value": "kind",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "session_entries_session_id_kind_idx",
+      "entityType": "indexes",
+      "table": "session_entries"
+    },
+    {
+      "columns": [
+        {
+          "value": "turn_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "session_entries_turn_id_idx",
+      "entityType": "indexes",
+      "table": "session_entries"
+    },
+    {
+      "columns": [
+        {
+          "value": "turn_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": "is_turn_summary = 1",
+      "origin": "manual",
+      "name": "session_entries_turn_id_summary_idx",
       "entityType": "indexes",
       "table": "session_entries"
     },

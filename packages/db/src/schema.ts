@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const projects = sqliteTable("projects", {
@@ -44,10 +45,16 @@ export const sessionEntries = sqliteTable(
     content: text("content").notNull(),
     timestamp: text("timestamp").notNull(),
     createdAt: integer("created_at").notNull(),
+    turnId: text("turn_id").references(() => turns.id, { onDelete: "cascade" }),
+    isTurnSummary: integer("is_turn_summary", { mode: "boolean" }).notNull().default(false),
   },
   (table) => [
     uniqueIndex("session_entries_session_id_sequence_idx").on(table.sessionId, table.sequence),
     index("session_entries_session_id_kind_idx").on(table.sessionId, table.kind),
+    index("session_entries_turn_id_idx").on(table.turnId),
+    uniqueIndex("session_entries_turn_id_summary_idx")
+      .on(table.turnId)
+      .where(sql`is_turn_summary = 1`),
   ],
 );
 
