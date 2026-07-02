@@ -255,6 +255,34 @@ export class ObservationalMemoryEngine {
   }
 
   /**
+   * Force a reflection cycle regardless of the reflection threshold.
+   * Activates any buffered observations/reflections first so nothing
+   * is stranded. Used by the /compact command when OM is enabled.
+   *
+   * Returns whether a reflection actually occurred.
+   */
+  async forceReflect(): Promise<{ reflected: boolean; reason?: string }> {
+    let record = await this.getOrCreateRecord();
+
+    // Activate buffered observations so nothing is stranded.
+    record = await this.maybeActivateBufferedObservations(record);
+
+    // Activate buffered reflection if present.
+    const activated = await this.maybeActivateBufferedReflection(record);
+    if (activated.id !== record.id) {
+      record = await this.getOrCreateRecord();
+    }
+
+    // Nothing to reflect on.
+    if (!record.activeObservations?.trim() || record.observationTokenCount === 0) {
+      return { reflected: false, reason: "nothing-to-reflect" };
+    }
+
+    await this.runSyncReflect(record);
+    return { reflected: true };
+  }
+
+  /**
    * Buffer a chunk of observations without merging into active observations.
    * Runs the Observer over messages newer than the buffer cursor and stores
    * the result as a pending buffered chunk.
