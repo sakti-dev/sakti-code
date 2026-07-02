@@ -1,4 +1,4 @@
-import { createMemo, type JSX, Show } from "solid-js";
+import { createEffect, createMemo, type JSX, Show } from "solid-js";
 import { ProposedSessionCard } from "~/components/chat-area/parts/proposed-session-card";
 import { MessageTimeline } from "~/components/chat-area/timeline/message-timeline";
 import { ChatInput } from "~/components/chat-input/chat-input";
@@ -14,6 +14,20 @@ interface OnboardingPanelProps {
 
 export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
   const { sessions, actions } = useStore();
+
+  // Hydrate intake history when the intake session becomes available.
+  // intakeSessionId is set asynchronously by upsertIntakeSession()
+  // (workspace-layout.tsx), so onMount would fire while it's still null —
+  // react to the id becoming non-null instead. The lastLoadedId guard
+  // prevents refetching the same session on unrelated re-renders.
+  let lastLoadedId: string | null = null;
+  createEffect(() => {
+    const id = props.intakeSessionId;
+    if (id && id !== lastLoadedId) {
+      lastLoadedId = id;
+      void actions.loadMessages(id);
+    }
+  });
 
   const sessionStore = createMemo(() => {
     if (!props.intakeSessionId) {

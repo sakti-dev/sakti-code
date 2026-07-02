@@ -1,5 +1,5 @@
 import { render, screen } from "@solidjs/testing-library";
-import { describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { OnboardingPanel } from "../onboarding-panel";
 
 // Hoisted so the same fn instance is shared between the mocked useStore and
@@ -42,6 +42,12 @@ vi.mock("~/stores/store-context", () => ({
 }));
 
 describe("OnboardingPanel", () => {
+  // mocks.loadMessages is a single hoisted instance shared across tests —
+  // clear call history between cases so "not called" assertions are honest.
+  beforeEach(() => {
+    mocks.loadMessages.mockClear();
+  });
+
   it("renders welcome state when no messages", () => {
     render(() => <OnboardingPanel intakeSessionId="s1" projectId="p1" />);
     expect(screen.getByText("No messages yet")).toBeTruthy();
