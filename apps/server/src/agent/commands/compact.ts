@@ -48,10 +48,21 @@ export async function runCompact(
 
   const storage = createSessionStorage(ctx, sessionId);
   const entries = await Effect.runPromise(storage.getEntries());
+
+  const entryTypes: Record<string, number> = {};
+  const messageRoles: Record<string, number> = {};
+  for (const e of entries) {
+    entryTypes[e.type] = (entryTypes[e.type] ?? 0) + 1;
+    if (e.type === "message") {
+      messageRoles[e.message.role] = (messageRoles[e.message.role] ?? 0) + 1;
+    }
+  }
   log?.info("runCompact: entries loaded", {
     sessionId,
     entryCount: entries.length,
     lastEntryType: entries.length > 0 ? entries[entries.length - 1]!.type : "none",
+    entryTypes,
+    messageRoles,
   });
 
   const preparation = prepareCompaction(entries, DEFAULT_COMPACTION_SETTINGS);
@@ -77,7 +88,10 @@ export async function runCompact(
     sessionId,
     tokensBefore: prep.tokensBefore,
     messagesToSummarize: prep.messagesToSummarize.length,
+    pinnedUserTurns: prep.pinnedUserTurns.length,
     firstKeptEntryId: prep.firstKeptEntryId,
+    isSplitTurn: prep.isSplitTurn,
+    previousSummary: prep.previousSummary ? `${prep.previousSummary.length} chars` : "none",
   });
 
   const result = await compact(prep, auth.model, auth.apiKey, {
