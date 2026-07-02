@@ -84,6 +84,20 @@ export async function runCompact(
   }
 
   const prep = preparation.success;
+
+  if (
+    prep.messagesToSummarize.length === 0 &&
+    prep.pinnedUserTurns.length === 0 &&
+    prep.turnPrefixMessages.length === 0
+  ) {
+    log?.info("runCompact: nothing new to compact since last compaction", {
+      sessionId,
+      tokensBefore: prep.tokensBefore,
+      previousSummary: prep.previousSummary ? `${prep.previousSummary.length} chars` : "none",
+    });
+    return { skipped: true };
+  }
+
   log?.info("runCompact: compacting", {
     sessionId,
     tokensBefore: prep.tokensBefore,
