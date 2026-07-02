@@ -148,6 +148,37 @@ describe("actions", () => {
     });
   });
 
+  it("sendPrompt with /compact sends command instead of prompt", () => {
+    const ws = makeMockWs();
+    const deps = makeDeps();
+    const actions = createActions({} as never, ws, deps);
+
+    actions.sendPrompt("s1", "/compact");
+
+    expect(ws.send).toHaveBeenCalledWith({
+      type: "command",
+      sessionId: "s1",
+      name: "compact",
+    });
+    const session = deps.sessionRegistry.get("s1");
+    expect(session.store.messageOrder).toHaveLength(0);
+  });
+
+  it("sendPrompt with /compact + instructions passes customInstructions", () => {
+    const ws = makeMockWs();
+    const deps = makeDeps();
+    const actions = createActions({} as never, ws, deps);
+
+    actions.sendPrompt("s1", "/compact focus on API layer");
+
+    expect(ws.send).toHaveBeenCalledWith({
+      type: "command",
+      sessionId: "s1",
+      name: "compact",
+      customInstructions: "focus on API layer",
+    });
+  });
+
   it("abortRun sends abort via WS", () => {
     const ws = makeMockWs();
     const deps = makeDeps();

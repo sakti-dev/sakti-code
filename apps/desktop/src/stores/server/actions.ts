@@ -152,6 +152,19 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
     },
 
     sendPrompt(sessionId, text) {
+      if (text === "/compact" || text.startsWith("/compact ")) {
+        const customInstructions = text.startsWith("/compact ")
+          ? text.slice("/compact ".length).trim()
+          : undefined;
+        ws.send({
+          type: "command",
+          sessionId,
+          name: "compact",
+          ...(customInstructions !== undefined ? { customInstructions } : {}),
+        });
+        return;
+      }
+
       const session = sessionRegistry.get(sessionId);
       const sessionMeta = server.store.sessions[sessionId];
 
