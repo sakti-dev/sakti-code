@@ -195,6 +195,8 @@ export function checkCompaction(input: CheckCompactionInput): CompactionDecision
 export interface RunCompactionDeps {
   apiKey: string;
   model: Model;
+  /** Streamed delta callback — forwarded to compactEffect. */
+  readonly onDelta?: (text: string) => void;
   /** Required prompt bundle — caller supplies, no defaults. */
   prompts: CompactionPrompts;
   session: SessionShape;
@@ -266,6 +268,7 @@ export const runAutoCompactionEffect = (
     const result = yield* compactEffect(preparation.success, deps.model, deps.apiKey, {
       prompts: deps.prompts,
       ...(deps.thinkingLevel === undefined ? {} : { thinkingLevel: deps.thinkingLevel }),
+      ...(deps.onDelta === undefined ? {} : { onDelta: deps.onDelta }),
     });
     if (isFailure(result)) {
       return { ok: false, errorMessage: result.failure.message };
