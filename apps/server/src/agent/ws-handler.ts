@@ -289,7 +289,11 @@ async function handleCompactCommand(
   customInstructions: string | undefined,
   ws: WsHandle,
 ): Promise<void> {
+  const log = ctx.log?.agent;
+  log?.info("compact command received", { sessionId, omEnabled: "unknown" });
+
   if (isRunActive(sessionId)) {
+    log?.warn("compact blocked — run active", { sessionId });
     sendError(ws, sessionId, busyMessage(sessionId));
     return;
   }
@@ -305,6 +309,11 @@ async function handleCompactCommand(
     kind: session.kind,
     projectId: session.projectId,
     profileId: session.profileId,
+  });
+
+  log?.info("compact resolved", {
+    sessionId,
+    omEnabled: omConfig !== undefined,
   });
 
   if (omConfig) {
@@ -342,6 +351,20 @@ async function handleCompactCommand(
 
   if ("notFound" in result) {
     sendError(ws, sessionId, "Session not found");
+    return;
+  }
+  if ("skipped" in result) {
+    sendError(ws, sessionId, "Nothing to compact — session is empty or already compacted");
+    ws.send({
+      event: {
+        type: "compaction_end",
+        reason: "manual",
+        aborted: false,
+        willRetry: false,
+      },
+      sessionId,
+      type: "event",
+    } satisfies EventFrame);
     return;
   }
   if ("error" in result) {
