@@ -99,6 +99,8 @@ function estimatePartHeight(
       return TOOL_ROW_HEIGHT;
     case "om_marker":
       return TOOL_ROW_HEIGHT;
+    case "compaction":
+      return TOOL_ROW_HEIGHT;
   }
 }
 
