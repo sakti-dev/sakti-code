@@ -2,11 +2,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { SessionMetadata, SessionTreeEntry } from "@sakti-code/agent";
+import { eq } from "drizzle-orm";
 import { Effect } from "effect";
 import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 import type { DrizzleDB } from "../init";
 import { initDatabase } from "../init";
 import { SqliteSessionStorage } from "../session-entry-store";
+import { sessionEntries } from "../schema";
 
 describe("SqliteSessionStorage", () => {
   let sqlite: DatabaseSync;
@@ -168,5 +170,56 @@ describe("SqliteSessionStorage", () => {
       expect(retrieved.summary).toBe("Previous work summarized");
       expect(retrieved.tokensBefore).toBe(5000);
     }
+  });
+
+  test("appendEntry stamps currentTurnId when set", async () => {
+    sqlite
+      .prepare(
+        "INSERT INTO turns (id, session_id, sequence, started_at, ended_at, created_at) VALUES ('turn-stamp', 's1', 0, 1000, NULL, 1)",
+      )
+      .run();
+    storage.setCurrentTurnId("turn-stamp");
+
+    const id = await Effect.runPromise(storage.createEntryId());
+    await Effect.runPromise(
+      storage.appendEntry({
+        type: "message",
+        id,
+        parentId: null,
+        timestamp: new Date().toISOString(),
+        message: {
+          role: "user",
+          content: "stamped",
+          timestamp: Date.now(),
+        },
+      }),
+    );
+
+    const row = db.select().from(sessionEntries).where(eq(sessionEntries.id, id)).get();
+    expect(row?.turnId).toBe("turn-stamp");
+    expect(row?.isTurnSummary).toBe(false);
+
+    storage.setCurrentTurnId(null);
+  });
+
+  test("appendEntry leaves turnId null when no current turn", async () => {
+    storage.setCurrentTurnId(null);
+    const id = await Effect.runPromise(storage.createEntryId());
+    await Effect.runPromise(
+      storage.appendEntry({
+        type: "message",
+        id,
+        parentId: null,
+        timestamp: new Date().toISOString(),
+        message: {
+          role: "user",
+          content: "unattributed",
+          timestamp: Date.now(),
+        },
+      }),
+    );
+
+    const row = db.select().from(sessionEntries).where(eq(sessionEntries.id, id)).get();
+    expect(row?.turnId).toBeNull();
   });
 });

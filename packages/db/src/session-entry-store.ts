@@ -17,11 +17,24 @@ export class SqliteSessionStorage<TMetadata extends SessionMetadata = SessionMet
   private readonly db: DrizzleDB;
   private readonly sessionId: string;
   private readonly metadata: TMetadata;
+  private currentTurnId: string | null = null;
 
   constructor(db: DrizzleDB, sessionId: string, metadata: TMetadata) {
     this.db = db;
     this.sessionId = sessionId;
     this.metadata = metadata;
+  }
+
+  /**
+   * Set the turn id that subsequent {@link appendEntry} calls stamp onto their
+   * rows. Set to `null` to leave entries unattributed (e.g. after a run ends
+   * or during out-of-run appends like command compaction).
+   *
+   * Turns are a server/DB concept — the agent never calls this. The server
+   * sets it at run start and clears it at run finalize.
+   */
+  setCurrentTurnId(turnId: string | null): void {
+    this.currentTurnId = turnId;
   }
 
   getMetadata(): Effect.Effect<TMetadata, SessionError> {
@@ -71,6 +84,7 @@ export class SqliteSessionStorage<TMetadata extends SessionMetadata = SessionMet
             content,
             timestamp: entry.timestamp,
             createdAt: Date.now(),
+            turnId: this.currentTurnId,
           })
           .run();
 
