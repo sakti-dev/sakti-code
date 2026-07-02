@@ -11,6 +11,7 @@
  */
 
 import type { AgentMessage } from "../../types.ts";
+import type { ObservationalMemoryRecord } from "../../observational-memory-storage.ts";
 
 // ─── safeSlice (ported from string-utils.ts) ─────────────────────────────────
 
@@ -820,4 +821,20 @@ SYSTEM REMINDERS: Messages wrapped in <system-reminder>...</system-reminder> con
 export function formatObservationsForContext(activeObservations: string): string | undefined {
   if (!activeObservations?.trim()) return undefined;
   return `${OBSERVATION_CONTEXT_PROMPT}\n\n<observations>\n${activeObservations}\n</observations>\n\n${OBSERVATION_CONTEXT_INSTRUCTIONS}`;
+}
+
+/**
+ * Read-only: build the <observations> system-message suffix from an
+ * existing OM record, or undefined if there are no observations.
+ *
+ * This is the "read-only" path used when OM is disabled but prior
+ * history exists — the observations block must still be injected so
+ * the LLM has the accumulated memory, even though no new
+ * observe/reflect cycles run.
+ */
+export function buildObservationsBlock(
+  record: ObservationalMemoryRecord | null,
+): string | undefined {
+  if (!record) return undefined;
+  return formatObservationsForContext(record.activeObservations);
 }

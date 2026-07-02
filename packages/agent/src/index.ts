@@ -114,6 +114,7 @@ export type {
 export { TokenCounter } from "./memory/observational-memory/token-counter.ts";
 export type { TokenCounterModelContext } from "./memory/observational-memory/token-counter.ts";
 export { ObservationalMemoryEngine } from "./memory/observational-memory/engine.ts";
+export { buildObservationsBlock } from "./memory/observational-memory/prompts.ts";
 export { runObserver, ObservationError } from "./memory/observational-memory/observer.ts";
 export { runReflector, ReflectionError } from "./memory/observational-memory/reflector.ts";
 export {
