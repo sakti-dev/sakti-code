@@ -1,6 +1,15 @@
-import type { AgentHarnessEvent, PermissionReply, SessionStorageShape } from "@sakti-code/agent";
+import {
+  ObservationalMemoryEngine,
+  type AgentHarnessEvent,
+  type PermissionReply,
+  type SessionStorageShape,
+} from "@sakti-code/agent";
+import { SqliteObservationalMemoryStorage } from "@sakti-code/db";
 import Type from "typebox";
+import { runCompact } from "./commands/compact.ts";
+import { resolveOmConfig } from "./config/index.ts";
 import type { ServerContext } from "../context.ts";
+import { createSessionStorage } from "../context.ts";
 import { getPermissionChannel } from "../lib/permission-channel.ts";
 import {
   abortRun,
@@ -58,6 +67,15 @@ export interface PermissionReplyMessage {
   type: "permission.reply";
 }
 
+export interface CommandMessage {
+  /** Command name (currently only "compact"). */
+  name: "compact";
+  /** Optional custom instructions passed to compaction summarizer. */
+  customInstructions?: string;
+  sessionId: string;
+  type: "command";
+}
+
 export type WsIn =
   | PromptMessage
   | AbortMessage
@@ -65,7 +83,8 @@ export type WsIn =
   | FollowUpMessage
   | ReplayMessage
   | SwitchAgentMessage
-  | PermissionReplyMessage;
+  | PermissionReplyMessage
+  | CommandMessage;
 
 export interface EventFrame {
   event: AgentHarnessEvent;
@@ -164,6 +183,12 @@ export const wsBodySchema = Type.Union([
     id: Type.String(),
     reply: Type.Union([Type.Literal("once"), Type.Literal("always"), Type.Literal("reject")]),
   }),
+  Type.Object({
+    type: Type.Literal("command"),
+    sessionId: Type.String(),
+    name: Type.Literal("compact"),
+    customInstructions: Type.Optional(Type.String()),
+  }),
 ]);
 
 export const wsResponseSchema = Type.Union([
@@ -258,6 +283,101 @@ export function sendError(ws: WsHandle, sessionId: string, message: string) {
   } satisfies ErrorFrame);
 }
 
+async function handleCompactCommand(
+  ctx: ServerContext,
+  sessionId: string,
+  customInstructions: string | undefined,
+  ws: WsHandle,
+): Promise<void> {
+  if (isRunActive(sessionId)) {
+    sendError(ws, sessionId, busyMessage(sessionId));
+    return;
+  }
+
+  const session = ctx.repos.sessions.findById(sessionId);
+  if (!session) {
+    sendError(ws, sessionId, "Session not found");
+    return;
+  }
+
+  const omConfig = resolveOmConfig(ctx, {
+    id: sessionId,
+    kind: session.kind,
+    projectId: session.projectId,
+    profileId: session.profileId,
+  });
+
+  if (omConfig) {
+    const omStorage = new SqliteObservationalMemoryStorage(ctx.db);
+    const storage = createSessionStorage(ctx, sessionId);
+    const engine = new ObservationalMemoryEngine({
+      deps: {
+        ...omConfig,
+        storage: omStorage,
+        sessionId,
+        projectId: session.projectId,
+        sessionStorage: storage,
+      },
+      onOmEvent: (event) => {
+        ws.send({ event, sessionId, type: "event" } satisfies EventFrame);
+      },
+    });
+
+    const result = await engine.forceReflect();
+    if (!result.reflected) {
+      sendError(ws, sessionId, `Nothing to reflect: ${result.reason ?? "unknown"}`);
+    }
+    return;
+  }
+
+  ws.send({
+    event: { type: "compaction_start", reason: "manual" },
+    sessionId,
+    type: "event",
+  } satisfies EventFrame);
+
+  const result = await runCompact(ctx, sessionId, customInstructions);
+
+  if ("notFound" in result) {
+    sendError(ws, sessionId, "Session not found");
+    return;
+  }
+  if ("error" in result) {
+    ws.send({
+      event: {
+        type: "compaction_end",
+        reason: "manual",
+        aborted: false,
+        willRetry: false,
+        errorMessage: result.error,
+      },
+      sessionId,
+      type: "event",
+    } satisfies EventFrame);
+    return;
+  }
+
+  ws.send({
+    event: {
+      type: "compaction_end",
+      reason: "manual",
+      ...("skipped" in result
+        ? {}
+        : {
+            result: {
+              summary: result.summary,
+              firstKeptEntryId: result.firstKeptEntryId,
+              tokensBefore: result.tokensBefore,
+            },
+          }),
+      aborted: false,
+      willRetry: false,
+    },
+    sessionId,
+    type: "event",
+  } satisfies EventFrame);
+}
+
 export function handleMessage(
   ctx: ServerContext,
   storage: SessionStorageShape,
@@ -333,6 +453,14 @@ export function handleMessage(
       sessionId: msg.sessionId,
       type: "permission.replied",
     } satisfies PermissionRepliedFrame);
+    return;
+  }
+
+  if (msg.type === "command") {
+    handleCompactCommand(ctx, msg.sessionId, msg.customInstructions, ws).catch((err) => {
+      log?.warn("compact command failed", { sessionId: msg.sessionId });
+      sendError(ws, msg.sessionId, err instanceof Error ? err.message : String(err));
+    });
     return;
   }
 
