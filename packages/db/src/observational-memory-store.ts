@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
 import type {
   BufferedObservationChunk,
   CreateObservationalMemoryInput,
@@ -393,6 +393,18 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
     this.db
       .delete(observationalMemory)
       .where(eq(observationalMemory.lookupKey, omLookupKey(threadId, resourceId)))
+      .run();
+  }
+
+  async pruneHistory(threadId: string | null, resourceId: string, keepId: string): Promise<void> {
+    this.db
+      .delete(observationalMemory)
+      .where(
+        and(
+          eq(observationalMemory.lookupKey, omLookupKey(threadId, resourceId)),
+          ne(observationalMemory.id, keepId),
+        ),
+      )
       .run();
   }
 

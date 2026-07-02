@@ -690,3 +690,78 @@ describe("SqliteObservationalMemoryStorage — buffered reflection", () => {
     expect(oldRecord!.reflectedObservationLineCount).toBeUndefined();
   });
 });
+
+describe("SqliteObservationalMemoryStorage — pruneHistory", () => {
+  let db: DatabaseSync;
+  let tmpDir: string;
+  let store: SqliteObservationalMemoryStorage;
+
+  beforeAll(async () => {
+    tmpDir = mkdtempSync(join(import.meta.dirname!, "om-prune-XXXXXX"));
+    db = new DatabaseSync(join(tmpDir, "test.db"));
+    const drizzle = await initDatabase(db);
+    db.prepare(
+      "INSERT INTO projects (id, name, cwd, created_at, updated_at) VALUES (?,?,?,?,?)",
+    ).run("proj-prune", "P", "/tmp/prune", 1, 1);
+    db.prepare(
+      "INSERT INTO sessions (id, project_id, kind, thinking_level, created_at, updated_at) VALUES (?,?,?,?,?,?)",
+    ).run("sess-prune-a", "proj-prune", "task", "off", 1, 1);
+    db.prepare(
+      "INSERT INTO sessions (id, project_id, kind, thinking_level, created_at, updated_at) VALUES (?,?,?,?,?,?)",
+    ).run("sess-prune-b", "proj-prune", "task", "off", 1, 1);
+    store = new SqliteObservationalMemoryStorage(drizzle);
+  });
+
+  afterAll(() => {
+    db?.close();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test("deletes old generations, keeps the specified one", async () => {
+    const initial = await store.initializeObservationalMemory({
+      threadId: "sess-prune-a",
+      resourceId: "proj-prune",
+      scope: "thread",
+      config: {},
+    });
+    // Simulate two reflections to create 3 total generations
+    let current = initial;
+    for (let i = 0; i < 2; i++) {
+      current = await store.createReflectionGeneration({
+        currentRecord: current,
+        reflection: `gen-${i + 1}`,
+        tokenCount: 10,
+      });
+    }
+
+    const history = await store.getObservationalMemoryHistory("sess-prune-a", "proj-prune");
+    expect(history.length).toBe(3);
+
+    await store.pruneHistory("sess-prune-a", "proj-prune", current.id);
+
+    const remaining = await store.getObservationalMemoryHistory("sess-prune-a", "proj-prune");
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]!.id).toBe(current.id);
+  });
+
+  test("does nothing when only one generation exists", async () => {
+    const initial = await store.initializeObservationalMemory({
+      threadId: "sess-prune-b",
+      resourceId: "proj-prune",
+      scope: "thread",
+      config: {},
+    });
+
+    await store.pruneHistory("sess-prune-b", "proj-prune", initial.id);
+
+    const remaining = await store.getObservationalMemoryHistory("sess-prune-b", "proj-prune");
+    expect(remaining).toHaveLength(1);
+  });
+
+  test("only prunes for the matching lookupKey", async () => {
+    const remainingA = await store.getObservationalMemoryHistory("sess-prune-a", "proj-prune");
+    const remainingB = await store.getObservationalMemoryHistory("sess-prune-b", "proj-prune");
+    expect(remainingA).toHaveLength(1);
+    expect(remainingB).toHaveLength(1);
+  });
+});
