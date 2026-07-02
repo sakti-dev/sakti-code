@@ -1,5 +1,5 @@
 import type { AssistantMessage, ImageContent, Model, TextContent, Usage } from "@sakti-code/llm";
-import { complete } from "@sakti-code/llm";
+import { complete, stream } from "@sakti-code/llm";
 import { Effect } from "effect";
 import {
   type CompactionEntry,
@@ -432,6 +432,8 @@ export function findCutPoint(
 export interface GenerateSummaryOptions {
   readonly customInstructions?: string;
   readonly headers?: Record<string, string>;
+  /** Called for each text delta during streaming. When set, uses `stream()` instead of `complete()`. */
+  readonly onDelta?: (text: string) => void;
   readonly previousSummary?: string;
   /** Required prompt bundle — caller supplies, no defaults. */
   readonly prompts: CompactionPrompts;
@@ -481,6 +483,50 @@ export const generateSummaryEffect = (
         ? { thinkingLevel: opts.thinkingLevel }
         : {}),
     };
+
+    if (opts.onDelta) {
+      const onDelta = opts.onDelta;
+      const result = yield* Effect.promise(async () => {
+        const streamResult = await stream({
+          model,
+          messages: summarizationMessages,
+          system: opts.prompts.summarizationSystem,
+          ...(completionOptions.maxTokens ? { maxOutputTokens: completionOptions.maxTokens } : {}),
+          ...(completionOptions.signal ? { abortSignal: completionOptions.signal } : {}),
+          apiKey: completionOptions.apiKey,
+          ...(completionOptions.headers ? { headers: completionOptions.headers } : {}),
+          ...(completionOptions.thinkingLevel
+            ? { thinkingLevel: completionOptions.thinkingLevel }
+            : {}),
+        });
+
+        let textContent = "";
+        let streamError: Error | undefined;
+        for await (const part of streamResult.fullStream as AsyncIterable<
+          Record<string, unknown>
+        >) {
+          const ptype = part.type as string;
+          if (ptype === "text-delta") {
+            const delta = (part.text as string) ?? "";
+            textContent += delta;
+            onDelta(delta);
+          } else if (ptype === "error") {
+            streamError = part.error instanceof Error ? part.error : new Error(String(part.error));
+          }
+        }
+        const finish = await streamResult.result;
+        if (streamError || finish.finishReason === "error") {
+          return err<string, CompactionError>(
+            new CompactionError({
+              code: "summarization_failed",
+              message: `Summarization failed: ${streamError?.message ?? "Unknown error"}`,
+            }),
+          );
+        }
+        return ok<string, CompactionError>(textContent);
+      });
+      return result;
+    }
 
     const response = yield* Effect.promise(() =>
       complete({
@@ -640,6 +686,8 @@ export { serializeConversation } from "./utils.ts";
 export interface CompactEffectOptions {
   readonly customInstructions?: string;
   readonly headers?: Record<string, string>;
+  /** Streamed delta callback — forwarded to generateSummaryEffect. */
+  readonly onDelta?: (text: string) => void;
   /** Required prompt bundle — caller supplies, no defaults. */
   readonly prompts: CompactionPrompts;
   readonly signal?: AbortSignal;
@@ -688,6 +736,7 @@ export const compactEffect = (
                 : { customInstructions: opts.customInstructions }),
               ...(previousSummary === undefined ? {} : { previousSummary }),
               ...(opts.thinkingLevel === undefined ? {} : { thinkingLevel: opts.thinkingLevel }),
+              ...(opts.onDelta === undefined ? {} : { onDelta: opts.onDelta }),
               prompts: opts.prompts,
             })
           : Effect.succeed(ok<string, CompactionError>("No prior history.")),
@@ -719,6 +768,7 @@ export const compactEffect = (
             : { customInstructions: opts.customInstructions }),
           ...(previousSummary === undefined ? {} : { previousSummary }),
           ...(opts.thinkingLevel === undefined ? {} : { thinkingLevel: opts.thinkingLevel }),
+          ...(opts.onDelta === undefined ? {} : { onDelta: opts.onDelta }),
           prompts: opts.prompts,
         },
       );
