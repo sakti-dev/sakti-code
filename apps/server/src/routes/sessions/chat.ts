@@ -8,8 +8,8 @@ export interface ChatTurnDTO {
   intermediateIds: string[];
   sequence: number;
   startedAt: number;
-  summaryMessage: unknown | null;
-  userMessage: unknown | null;
+  summaryMessage: Record<string, unknown> | null;
+  userMessage: Record<string, unknown> | null;
 }
 
 export const chatRoutes = new Hono().basePath("/sessions").get("/:id/chat", async (c) => {
@@ -22,14 +22,21 @@ export const chatRoutes = new Hono().basePath("/sessions").get("/:id/chat", asyn
 
   const byTurn = new Map<
     string,
-    { intermediateIds: string[]; summary: unknown | null; user: unknown | null }
+    {
+      intermediateIds: string[];
+      summary: Record<string, unknown> | null;
+      user: Record<string, unknown> | null;
+    }
   >();
 
   for (const e of entriesWithMeta) {
     if (e.turnId === null) {
       continue;
     }
-    const parsed = e.entry as { id?: string; message?: { role?: string } };
+    const parsed = e.entry as unknown as Record<string, unknown> & {
+      id?: string;
+      message?: { role?: string };
+    };
     const role = parsed.message?.role;
     const slot = byTurn.get(e.turnId) ?? {
       intermediateIds: [],

@@ -1,7 +1,7 @@
-import type { AgentMessage, SessionTreeEntry } from "@sakti-code/agent";
+import type { AgentMessage, SessionStorageShape, SessionTreeEntry } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { makeContext } from "../../__tests__/helpers.ts";
 import { clearRunsForTesting } from "../runner.ts";
 import * as runnerMod from "../runner.ts";
@@ -27,15 +27,8 @@ function messageEntry(
 }
 
 describe("runAgentStream turn stamping", () => {
-  let runPromptSpy: ReturnType<typeof vi.spyOn> | null = null;
-
   beforeEach(() => {
     clearRunsForTesting();
-  });
-
-  afterEach(() => {
-    runPromptSpy?.mockRestore();
-    runPromptSpy = null;
   });
 
   it("stamps turnId on entries and marks the last assistant as summary", async () => {
@@ -48,30 +41,34 @@ describe("runAgentStream turn stamping", () => {
       createdAt: new Date().toISOString(),
     });
 
-    runPromptSpy = vi.spyOn(runnerMod, "runPrompt");
-    runPromptSpy.mockImplementation(
-      async (_ctx: unknown, _sid: string, _msg: string, stor: SqliteSessionStorage) => {
-        await Effect.runPromise(stor.appendEntry(messageEntry("ru1", null, "user", "hello")));
-        await Effect.runPromise(
-          stor.appendEntry(messageEntry("ra1", "ru1", "assistant", "hi there")),
-        );
-      },
-    );
+    const runPromptSpy = vi.spyOn(runnerMod, "runPrompt");
+    try {
+      runPromptSpy.mockImplementation(
+        async (_ctx: unknown, _sid: string, _msg: string, stor: SessionStorageShape) => {
+          await Effect.runPromise(stor.appendEntry(messageEntry("ru1", null, "user", "hello")));
+          await Effect.runPromise(
+            stor.appendEntry(messageEntry("ra1", "ru1", "assistant", "hi there")),
+          );
+        },
+      );
 
-    await runAgentStream(ctx, session.id, "hello", storage, { send: () => {} });
+      await runAgentStream(ctx, session.id, "hello", storage, { send: () => {} });
 
-    const turnRows = ctx.repos.turns.listBySession(session.id);
-    expect(turnRows).toHaveLength(1);
+      const turnRows = ctx.repos.turns.listBySession(session.id);
+      expect(turnRows).toHaveLength(1);
 
-    const entries = await Effect.runPromise(storage.getEntriesWithMeta());
-    expect(entries).toHaveLength(2);
-    for (const e of entries) {
-      expect(e.turnId).toBe(turnRows[0]!.id);
+      const entries = await Effect.runPromise(storage.getEntriesWithMeta());
+      expect(entries).toHaveLength(2);
+      for (const e of entries) {
+        expect(e.turnId).toBe(turnRows[0]!.id);
+      }
+
+      const summary = entries.find((e) => e.isTurnSummary);
+      expect(summary).toBeDefined();
+      expect(summary?.entry.id).toBe("ra1");
+      expect(turnRows[0]!.endedAt).not.toBeNull();
+    } finally {
+      runPromptSpy.mockRestore();
     }
-
-    const summary = entries.find((e) => e.isTurnSummary);
-    expect(summary).toBeDefined();
-    expect(summary?.entry.id).toBe("ra1");
-    expect(turnRows[0]!.endedAt).not.toBeNull();
   });
 });
