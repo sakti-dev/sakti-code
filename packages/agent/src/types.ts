@@ -304,6 +304,7 @@ export type AgentEvent =
       finalError?: string;
     }
   | { type: "compaction_start"; reason: "threshold" | "overflow" | "manual" }
+  | { type: "compaction_delta"; text: string }
   | {
       type: "compaction_end";
       reason: "threshold" | "overflow" | "manual";
