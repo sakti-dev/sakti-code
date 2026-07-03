@@ -8,8 +8,7 @@ const mockReplyPermission = vi.fn();
 const mockSessionStore = {
   current: {
     streaming: { phase: "idle" },
-    messages: {},
-    messageOrder: [],
+    turns: [],
   } as Record<string, unknown>,
 };
 
@@ -133,8 +132,7 @@ afterEach(() => {
   cleanup();
   mockSessionStore.current = {
     streaming: { phase: "idle" },
-    messages: {},
-    messageOrder: [],
+    turns: [],
   };
   mockSendPrompt.mockClear();
   mockReplyPermission.mockClear();
@@ -179,8 +177,7 @@ describe("ChatInput", () => {
   it("renders the permission strip and wires replyPermission when a request is pending", async () => {
     mockSessionStore.current = {
       streaming: { phase: "idle" },
-      messages: {},
-      messageOrder: [],
+      turns: [],
       permission: {
         id: "per_1",
         permission: "read",

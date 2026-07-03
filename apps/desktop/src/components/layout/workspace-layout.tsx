@@ -5,7 +5,7 @@ import Home from "~/components/home/home";
 import { SettingsPage } from "~/components/settings/settings-page";
 import { DevToolbar } from "~/components/layout/dev-toolbar";
 import { OnboardingPanel } from "~/components/onboarding/onboarding-panel";
-import { dispatchEvent } from "~/stores/session/event-reducer";
+import { dispatchEvent as dispatchDevEvent } from "~/stores/session/event-handler";
 import { createTokenBatcher } from "~/stores/session/token-batcher";
 import { useStore } from "~/stores/store-context";
 import { activeTab, filterStaleProjects } from "~/stores/workspace/tab-store";
@@ -112,7 +112,11 @@ export default function WorkspaceLayout(): JSX.Element {
                     const sId = currentSessionId();
                     if (sId) {
                       const session = sessions.get(sId);
-                      dispatchEvent(session.actions, devBatcher, event);
+                      dispatchDevEvent(event, {
+                        actions: session.actions,
+                        batcher: devBatcher,
+                        store: session.store,
+                      });
                     }
                   }}
                   replayState={replayState}

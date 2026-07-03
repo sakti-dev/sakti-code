@@ -14,10 +14,8 @@ vi.mock("~/stores/store-context", () => ({
     sessions: {
       get: () => ({
         store: {
-          messageOrder: [],
-          messages: {},
           streaming: { phase: "idle" },
-          turns: {},
+          turns: [],
         },
       }),
     },

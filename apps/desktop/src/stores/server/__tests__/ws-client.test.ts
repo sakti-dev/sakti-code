@@ -157,19 +157,19 @@ describe("WS client", () => {
     fake.fireOpen();
 
     const session = deps.sessionRegistry.get("s1");
-    session.actions.addMessage({
-      id: "m1",
-      role: "assistant",
+    session.actions.startTurn(null);
+    session.actions.addAssistantMessage({
       content: "",
-      parts: [],
+      id: "m1",
       isStreaming: true,
+      parts: [],
+      role: "assistant",
       timestamp: Date.now(),
     });
-    session.actions.setCurrentMessage("m1");
 
     fake.fireMessage({ type: "error", sessionId: "s1", error: "boom" });
 
-    expect(session.store.messages.m1!.error).toBe("boom");
+    expect(session.store.turns[0]!.messages[0]!.error).toBe("boom");
     expect(session.store.streaming.phase).toBe("error");
 
     ws.disconnect();

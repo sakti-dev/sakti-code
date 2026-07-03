@@ -3,10 +3,10 @@ import type { Client } from "~/lib/api";
 import { createLogger } from "~/lib/utils";
 import {
   type ChatTurnDTO,
-  hydrateChatSummaries,
+  hydrateChatTurns,
   hydrateIntermediates,
 } from "../session/hydrate-chat.ts";
-import { hydrateSessionMessages } from "../session/hydrate-messages.ts";
+import { hydrateSessionTurns } from "../session/hydrate-messages.ts";
 import type { SessionRegistry } from "../session/session-registry.ts";
 import type { UIMessage } from "../types.ts";
 import { setLastError, setReplayState } from "../workspace/ui-signals.ts";
@@ -131,29 +131,9 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
           return;
         }
         const messages = (await res.json()) as AgentMessage[];
-        const uiMessages = hydrateSessionMessages(messages);
+        const turns = hydrateSessionTurns(messages);
         const session = sessionRegistry.get(sessionId);
-        session.actions.loadMessages(uiMessages);
-
-        try {
-          const turnsRes = await api.api.sessions[":id"].turns.$get({
-            param: { id: sessionId },
-          });
-          if (turnsRes.ok) {
-            const turns = (await turnsRes.json()) as Array<{
-              startedAt: number;
-              endedAt: number | null;
-            }>;
-            session.actions.loadTurnTimings(
-              turns.map((t) => ({
-                startedAt: t.startedAt,
-                endedAt: t.endedAt,
-              })),
-            );
-          }
-        } catch {
-          // turns endpoint not available (older server)
-        }
+        session.actions.loadTurns(turns);
       } catch (error) {
         setLastError(error instanceof Error ? error.message : "Failed to load messages");
       }
@@ -166,9 +146,9 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
           return;
         }
         const body = (await res.json()) as { turns: ChatTurnDTO[] };
-        const { messages, turns } = hydrateChatSummaries(body.turns);
+        const turns = hydrateChatTurns(body.turns);
         const session = sessionRegistry.get(sessionId);
-        session.actions.loadChatTurns(turns, messages);
+        session.actions.loadTurns(turns);
       } catch (error) {
         setLastError(error instanceof Error ? error.message : "Failed to load chat");
       }
@@ -188,7 +168,7 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
         const messages = hydrateIntermediates(body.entries);
         log.info("loadIntermediates resolved", { sessionId, turnId, count: messages.length });
         const session = sessionRegistry.get(sessionId);
-        session.actions.loadTurnIntermediates(turnId, messages);
+        session.actions.loadIntermediates(turnId, messages);
       } catch (error) {
         setLastError(error instanceof Error ? error.message : "Failed to load intermediates");
       }
@@ -197,7 +177,7 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
     evictIntermediates(sessionId, turnId) {
       log.info("evictIntermediates called", { sessionId, turnId });
       const session = sessionRegistry.get(sessionId);
-      session.actions.evictTurnIntermediates(turnId);
+      session.actions.evictIntermediates(turnId);
     },
 
     sendPrompt(sessionId, text) {
@@ -224,14 +204,14 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
       });
 
       const userMsg: UIMessage = {
-        id: crypto.randomUUID(),
-        role: "user",
         content: text,
-        parts: [{ type: "text", text }],
+        id: crypto.randomUUID(),
         isStreaming: false,
+        parts: [{ type: "text", text }],
+        role: "user",
         timestamp: Date.now(),
       };
-      session.actions.addMessage(userMsg);
+      session.actions.startTurn(userMsg);
       session.actions.setPhase("thinking");
 
       ws.send({ type: "prompt", sessionId, message: text });

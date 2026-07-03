@@ -1,5 +1,5 @@
 import type { AgentMessage } from "@sakti-code/agent";
-import type { UIMessage } from "../types.ts";
+import type { Turn, UIMessage } from "../types.ts";
 
 /**
  * Extract our flat {@link UIMessage.usage} from an agent AssistantMessage's
@@ -35,19 +35,21 @@ export interface SessionUsageStats {
   reasoningTokens: number;
 }
 
-export function aggregateUsage(messages: Record<string, UIMessage>): SessionUsageStats {
+export function aggregateUsage(turns: Turn[]): SessionUsageStats {
   let cost = 0;
   let input = 0;
   let output = 0;
   let reasoningTokens = 0;
-  for (const msg of Object.values(messages)) {
-    if (msg.role !== "assistant" || !msg.usage) {
-      continue;
+  for (const turn of turns) {
+    for (const msg of turn.messages) {
+      if (msg.role !== "assistant" || !msg.usage) {
+        continue;
+      }
+      cost += msg.usage.cost;
+      input += msg.usage.input;
+      output += msg.usage.output;
+      reasoningTokens += msg.usage.reasoningTokens ?? 0;
     }
-    cost += msg.usage.cost;
-    input += msg.usage.input;
-    output += msg.usage.output;
-    reasoningTokens += msg.usage.reasoningTokens ?? 0;
   }
   return { cost, input, output, reasoningTokens };
 }

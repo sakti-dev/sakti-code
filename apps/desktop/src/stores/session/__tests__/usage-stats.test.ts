@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import type { UIMessage } from "../../types.ts";
+import type { Turn, UIMessage } from "../../types.ts";
 import { aggregateUsage, formatCost, formatTokens } from "../usage-stats.ts";
 
 function assistant(over: Partial<NonNullable<UIMessage["usage"]>>): UIMessage {
@@ -19,44 +19,63 @@ function assistant(over: Partial<NonNullable<UIMessage["usage"]>>): UIMessage {
   };
 }
 
+function makeTurn(msgs: UIMessage[]): Turn {
+  return {
+    endedAt: null,
+    error: null,
+    id: crypto.randomUUID(),
+    intermediateCount: 0,
+    intermediatesLoaded: false,
+    loadedMessageIds: [],
+    messages: msgs,
+    startedAt: null,
+    turnId: null,
+    userMessage: null,
+    working: false,
+  };
+}
+
 describe("aggregateUsage", () => {
   it("sums cost/input/output across assistant messages", () => {
-    const messages: Record<string, UIMessage> = {
-      a: assistant({ cost: 0.001, input: 100, output: 50 }),
-      b: assistant({ cost: 0.002, input: 200, output: 80 }),
-    };
-    const totals = aggregateUsage(messages);
+    const turns: Turn[] = [
+      makeTurn([
+        assistant({ cost: 0.001, input: 100, output: 50 }),
+        assistant({ cost: 0.002, input: 200, output: 80 }),
+      ]),
+    ];
+    const totals = aggregateUsage(turns);
     expect(totals.cost).toBeCloseTo(0.003, 10);
     expect(totals.input).toBe(300);
     expect(totals.output).toBe(130);
   });
 
   it("sums reasoningTokens (defaults to 0 when absent)", () => {
-    const totals = aggregateUsage({
-      a: assistant({ reasoningTokens: 300 }),
-      b: assistant({}), // no reasoningTokens
-    });
+    const turns: Turn[] = [makeTurn([assistant({ reasoningTokens: 300 }), assistant({})])];
+    const totals = aggregateUsage(turns);
     expect(totals.reasoningTokens).toBe(300);
   });
 
   it("ignores non-assistant messages and messages without usage", () => {
-    const totals = aggregateUsage({
-      u: {
-        content: "hi",
-        id: "u",
-        isStreaming: false,
-        parts: [{ text: "hi", type: "text" }],
-        role: "user",
-        timestamp: 0,
-      },
-      a: assistant({ cost: 0.01, input: 5, output: 5 }),
-    });
+    const turns: Turn[] = [
+      makeTurn([
+        {
+          content: "hi",
+          id: "u",
+          isStreaming: false,
+          parts: [{ text: "hi", type: "text" }],
+          role: "user",
+          timestamp: 0,
+        },
+        assistant({ cost: 0.01, input: 5, output: 5 }),
+      ]),
+    ];
+    const totals = aggregateUsage(turns);
     expect(totals.cost).toBeCloseTo(0.01, 10);
     expect(totals.input).toBe(5);
   });
 
-  it("returns zeros for an empty message map", () => {
-    const totals = aggregateUsage({});
+  it("returns zeros for empty turns", () => {
+    const totals = aggregateUsage([]);
     expect(totals).toEqual({
       cost: 0,
       input: 0,

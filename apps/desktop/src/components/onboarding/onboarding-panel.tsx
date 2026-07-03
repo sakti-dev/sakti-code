@@ -2,7 +2,6 @@ import { createEffect, createMemo, type JSX, Show } from "solid-js";
 import { ProposedSessionCard } from "~/components/chat-area/parts/proposed-session-card";
 import { MessageTimeline } from "~/components/chat-area/timeline/message-timeline";
 import { ChatInput } from "~/components/chat-input/chat-input";
-import { buildChatTurns } from "~/stores/session/turn-projection";
 import { useStore } from "~/stores/store-context";
 import { setTabSession } from "~/stores/workspace/tab-store";
 import { EmptyState } from "./empty-state";
@@ -36,21 +35,9 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
     return sessions.get(props.intakeSessionId);
   });
 
-  const hasMessages = () => (sessionStore()?.store.messageOrder.length ?? 0) > 0;
+  const hasMessages = () => (sessionStore()?.store.turns.length ?? 0) > 0;
 
-  const turns = createMemo(() => {
-    const session = sessionStore();
-    if (!session) {
-      return [];
-    }
-    return buildChatTurns(
-      session.store.messageOrder,
-      session.store.messages,
-      session.store.streaming.phase,
-      session.store.turnTimings,
-      session.store.turns,
-    );
-  });
+  const turns = createMemo(() => sessionStore()?.store.turns ?? []);
 
   const handleConfirmSession = async () => {
     const session = sessionStore();

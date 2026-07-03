@@ -11,7 +11,7 @@ import {
 import { cn } from "~/lib/utils";
 import type { VirtualListItem } from "~/lib/utils/create-virtual-list";
 import { createVirtualList } from "~/lib/utils/create-virtual-list";
-import type { ChatTurn } from "~/stores/session/turn-projection";
+import type { Turn } from "~/stores/types";
 import { CHAT_TIMELINE_CLASS } from "../layout";
 import { clearPretextCache, estimateTurnHeight } from "./estimate-turn-height";
 import { SessionTurn } from "./session-turn";
@@ -19,13 +19,13 @@ import { SessionTurn } from "./session-turn";
 export interface MessageTimelineProps {
   class?: string;
   sessionId: string;
-  turns: Accessor<ChatTurn[]>;
+  turns: Accessor<Turn[]>;
 }
 
 export function MessageTimeline(props: MessageTimelineProps): JSX.Element {
   const [containerWidth, setContainerWidth] = createSignal(0);
 
-  const virtual = createVirtualList<ChatTurn>({
+  const virtual = createVirtualList<Turn>({
     follow: { threshold: 150 },
     estimateSize: (turn) => estimateTurnHeight(turn, containerWidth()),
     getItemKey: (turn) => turn.id,

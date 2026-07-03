@@ -129,7 +129,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     if (!s) {
       return;
     }
-    const totals = aggregateUsage(s.store.messages);
+    const totals = aggregateUsage(s.store.turns);
     // Hide the line entirely until there's at least one assistant turn.
     return totals.cost === 0 && totals.input === 0 && totals.output === 0 ? undefined : totals;
   });

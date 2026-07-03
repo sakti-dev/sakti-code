@@ -1,5 +1,5 @@
 import { clearCache, layout, type PreparedText, prepare } from "@chenglou/pretext";
-import type { ChatTurn } from "~/stores/session/turn-projection";
+import type { Turn } from "~/stores/types";
 import type { MessagePart, UIMessage } from "~/stores/types";
 
 // ── Font constants ──────────────────────────────────────────────────
@@ -121,8 +121,8 @@ function estimateAssistantMessageHeight(
   return height;
 }
 
-function estimateAssistantBlockHeight(turn: ChatTurn, contentWidth: number): number {
-  if (turn.assistantMessages.length === 0) {
+function estimateAssistantBlockHeight(turn: Turn, contentWidth: number): number {
+  if (turn.messages.length === 0) {
     return turn.working ? WAITING_HEIGHT : 0;
   }
 
@@ -131,7 +131,7 @@ function estimateAssistantBlockHeight(turn: ChatTurn, contentWidth: number): num
 
   let height = 0;
   let first = true;
-  for (const msg of turn.assistantMessages) {
+  for (const msg of turn.messages) {
     if (!first) {
       height += ASSISTANT_MSG_GAP;
     }
@@ -153,7 +153,7 @@ function estimateUserMessageHeight(content: string, contentWidth: number): numbe
 
 // ── Turn height estimation ──────────────────────────────────────────
 
-export function estimateTurnHeight(turn: ChatTurn, scrollWidth: number): number {
+export function estimateTurnHeight(turn: Turn, scrollWidth: number): number {
   const contentWidth = Math.max(1, scrollWidth - TIMELINE_PADDING_X);
   let height = TURN_SPACING;
 

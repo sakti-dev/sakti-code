@@ -135,10 +135,9 @@ describe("actions", () => {
     actions.sendPrompt("s1", "hello world");
 
     const session = deps.sessionRegistry.get("s1");
-    expect(session.store.messageOrder).toHaveLength(1);
-    const msg = session.store.messages[session.store.messageOrder[0]!]!;
-    expect(msg.role).toBe("user");
-    expect(msg.content).toBe("hello world");
+    expect(session.store.turns).toHaveLength(1);
+    expect(session.store.turns[0]!.userMessage?.role).toBe("user");
+    expect(session.store.turns[0]!.userMessage?.content).toBe("hello world");
     expect(session.store.streaming.phase).toBe("thinking");
 
     expect(ws.send).toHaveBeenCalledWith({
@@ -161,7 +160,7 @@ describe("actions", () => {
       name: "compact",
     });
     const session = deps.sessionRegistry.get("s1");
-    expect(session.store.messageOrder).toHaveLength(0);
+    expect(session.store.turns).toHaveLength(0);
   });
 
   it("sendPrompt with /compact + instructions passes customInstructions", () => {
@@ -345,9 +344,9 @@ describe("actions", () => {
     await actions.loadMessages("sess-1");
 
     const store = deps.sessionRegistry.get("sess-1").store;
-    expect(store.messageOrder).toHaveLength(2); // user + assistant (toolResult merged)
+    expect(store.turns).toHaveLength(1); // one turn with user + assistant
 
-    const assistantMsg = store.messages[store.messageOrder[1]!]!;
+    const assistantMsg = store.turns[0]!.messages[0]!;
     expect(assistantMsg.parts).toHaveLength(3); // thinking + text + tool_call(done)
     const toolPart = assistantMsg.parts[2]!;
     expect(toolPart.type).toBe("tool_call");
@@ -360,12 +359,12 @@ describe("replay actions", () => {
     const ws = makeMockWs();
     const deps = makeDeps();
     const session = deps.sessionRegistry.get("sess-1");
-    session.actions.addMessage({
-      id: "m1",
-      role: "user",
+    session.actions.startTurn({
       content: "old",
-      parts: [{ type: "text", text: "old" }],
+      id: "m1",
       isStreaming: false,
+      parts: [{ type: "text", text: "old" }],
+      role: "user",
       timestamp: 0,
     });
 
@@ -377,7 +376,7 @@ describe("replay actions", () => {
       sessionId: "sess-1",
       action: "start",
     });
-    expect(session.store.messageOrder).toHaveLength(0);
+    expect(session.store.turns).toHaveLength(0);
   });
 
   it("replayPause sends WS replay pause", () => {
@@ -412,12 +411,12 @@ describe("replay actions", () => {
     const ws = makeMockWs();
     const deps = makeDeps();
     const session = deps.sessionRegistry.get("sess-1");
-    session.actions.addMessage({
-      id: "m1",
-      role: "user",
+    session.actions.startTurn({
       content: "old",
-      parts: [{ type: "text", text: "old" }],
+      id: "m1",
       isStreaming: false,
+      parts: [{ type: "text", text: "old" }],
+      role: "user",
       timestamp: 0,
     });
 
@@ -428,6 +427,6 @@ describe("replay actions", () => {
       type: "abort",
       sessionId: "sess-1",
     });
-    expect(session.store.messageOrder).toHaveLength(0);
+    expect(session.store.turns).toHaveLength(0);
   });
 });

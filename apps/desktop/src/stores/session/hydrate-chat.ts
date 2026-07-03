@@ -1,5 +1,5 @@
 import type { AgentMessage } from "@sakti-code/agent";
-import type { UIMessage } from "../types.ts";
+import type { Turn, UIMessage } from "../types.ts";
 import { convertAssistantMessage, convertUserMessage, mergeToolResult } from "./hydrate-helpers.ts";
 
 /** Shape of one turn returned by GET /sessions/:id/chat. */
@@ -11,20 +11,6 @@ export interface ChatTurnDTO {
   startedAt: number;
   summaryMessage: Record<string, unknown> | null;
   userMessage: Record<string, unknown> | null;
-}
-
-/** Per-turn metadata stored alongside the resident summary messages. */
-export interface TurnMeta {
-  endedAt: number | null;
-  id: string;
-  intermediateIds: string[];
-  intermediatesLoaded: boolean;
-  /** UIMessage ids of loaded intermediates (for eviction). Empty when not loaded. */
-  loadedMessageIds: string[];
-  sequence: number;
-  startedAt: number;
-  summaryMessageId: string | null;
-  userMessageId: string | null;
 }
 
 interface ParsedEntry {
@@ -44,48 +30,48 @@ function asEntry(raw: Record<string, unknown> | null): ParsedEntry | null {
   return { id, message };
 }
 
-export interface HydratedChat {
-  messages: UIMessage[];
-  turns: TurnMeta[];
-}
-
 /**
- * Convert the summaries-only `/chat` response into resident UIMessages
- * (user + summary per turn) plus turn metadata. Intermediate content is
- * NOT included — loaded on expand via {@link hydrateIntermediates}.
+ * Convert the summaries-only `/chat` response into Turn[] for the store.
+ * Each turn gets its user message + summary assistant message.
  */
-export function hydrateChatSummaries(chatTurns: ChatTurnDTO[]): HydratedChat {
-  const messages: UIMessage[] = [];
-  const turns: TurnMeta[] = [];
+export function hydrateChatTurns(chatTurns: ChatTurnDTO[]): Turn[] {
+  const turns: Turn[] = [];
 
   for (const ct of chatTurns) {
     const userEntry = asEntry(ct.userMessage);
     const summaryEntry = asEntry(ct.summaryMessage);
 
     const userMessageId = userEntry?.id ?? null;
-    const summaryMessageId = summaryEntry?.id ?? null;
 
+    let userMessage: UIMessage | null = null;
     if (userEntry) {
-      messages.push(convertUserMessage(userEntry.id, userEntry.message));
+      userMessage = convertUserMessage(userEntry.id, userEntry.message);
     }
+
+    const messages: UIMessage[] = [];
     if (summaryEntry) {
       messages.push(convertAssistantMessage(summaryEntry.id, summaryEntry.message));
     }
 
     turns.push({
       endedAt: ct.endedAt,
+      error: null,
       id: ct.id,
-      intermediateIds: ct.intermediateIds,
+      intermediateCount: ct.intermediateIds.length,
       intermediatesLoaded: false,
       loadedMessageIds: [],
-      sequence: ct.sequence,
+      messages,
       startedAt: ct.startedAt,
-      summaryMessageId,
-      userMessageId,
+      turnId: ct.id,
+      userMessage,
+      working: false,
     });
+
+    // Suppress unused var warning
+    void userMessageId;
   }
 
-  return { messages, turns };
+  return turns;
 }
 
 /**
@@ -93,7 +79,7 @@ export function hydrateChatSummaries(chatTurns: ChatTurnDTO[]): HydratedChat {
  * `/turns/:turnId/intermediates`) into UIMessages. User messages are
  * skipped (shipped via `/chat`); tool results are merged into preceding
  * assistant tool-call parts. Entry ids are reused as UIMessage ids so
- * {@link evictTurnIntermediates} can remove them precisely.
+ * {@link evictIntermediates} can remove them precisely.
  */
 export function hydrateIntermediates(entries: Array<Record<string, unknown>>): UIMessage[] {
   const result: UIMessage[] = [];

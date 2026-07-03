@@ -11,8 +11,8 @@ import {
   onCleanup,
   Show,
 } from "solid-js";
-import type { ChatTurn } from "~/stores/session/turn-projection";
-import { getUserText } from "~/stores/session/turn-projection";
+import type { Turn } from "~/stores/types";
+
 import { useStore } from "~/stores/store-context";
 import type { MessagePart, UIMessage } from "~/stores/types.ts";
 import { createLogger } from "~/lib/utils";
@@ -25,7 +25,11 @@ export interface SessionTurnProps {
   /** Called when this turn's height changes (intermediates loaded/evicted). */
   onHeightChanged?: () => void;
   sessionId: string;
-  turn: Accessor<ChatTurn>;
+  turn: Accessor<Turn>;
+}
+
+function getUserText(turn: Turn): string {
+  return turn.userMessage?.content ?? "";
 }
 
 function getPartCopyText(part: MessagePart): string | undefined {
@@ -122,7 +126,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
       turnId: tid,
       wasExpanded,
       endedAt: turn().endedAt,
-      msgCount: turn().assistantMessages.length,
+      msgCount: turn().messages.length,
     });
     setExpanded(!wasExpanded);
     if (tid) {
@@ -138,7 +142,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
   // (intermediates loaded on expand / evicted on collapse).
   createEffect(
     on(
-      () => turn().assistantMessages.length,
+      () => turn().messages.length,
       () => props.onHeightChanged?.(),
     ),
   );
@@ -159,7 +163,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
     if (t.endedAt === null || t.error) {
       return false;
     }
-    return t.assistantMessages.length > 1 || t.intermediateCount > 0;
+    return t.messages.length > 1 || t.intermediateCount > 0;
   });
 
   createEffect(
@@ -173,7 +177,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
           prevCanCollapse: prev?.[1],
           endedAt: turn().endedAt,
           turnId: turn().turnId,
-          msgCount: turn().assistantMessages.length,
+          msgCount: turn().messages.length,
           intermediateCount: turn().intermediateCount,
         });
       },
@@ -181,7 +185,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
   );
 
   const intermediateMessages = createMemo(() => {
-    const msgs = turn().assistantMessages;
+    const msgs = turn().messages;
     if (msgs.length <= 1) {
       return [];
     }
@@ -189,7 +193,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
   });
 
   const summaryMessage = createMemo(() => {
-    const msgs = turn().assistantMessages;
+    const msgs = turn().messages;
     return msgs.at(-1) ?? null;
   });
 
@@ -238,7 +242,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
       </Show>
 
       {/* Can't collapse (streaming, replay, error, single msg): show ALL messages */}
-      <Show when={!canCollapse() && turn().assistantMessages.length > 0}>
+      <Show when={!canCollapse() && turn().messages.length > 0}>
         <div
           class="flex flex-col gap-3 px-3 [overflow-anchor:none]"
           data-slot="session-turn-stream"
@@ -248,7 +252,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               {turn().error}
             </div>
           </Show>
-          <For each={turn().assistantMessages}>{(msg) => MessageContent(msg)}</For>
+          <For each={turn().messages}>{(msg) => MessageContent(msg)}</For>
         </div>
       </Show>
 

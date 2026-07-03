@@ -1,17 +1,18 @@
 import type { AgentHarnessEvent } from "@sakti-code/agent";
 import type { WsIn, WsOut } from "@sakti-code/server/ws";
 import { createLogger } from "~/lib/utils";
-import { dispatchEvent } from "../session/event-reducer.ts";
+import {
+  dispatchEvent,
+  ensureHandlersRegistered,
+  type HandlerContext,
+} from "../session/event-handler.ts";
 import type { SessionRegistry } from "../session/session-registry.ts";
 import { createTokenBatcher } from "../session/token-batcher.ts";
 import type { TerminalRegistry } from "../terminal/terminal-registry.ts";
-import {
-  replayState,
-  setIsStreaming,
-  setLastError,
-  setReplayState,
-} from "../workspace/ui-signals.ts";
+import { setIsStreaming, setLastError, setReplayState } from "../workspace/ui-signals.ts";
 import type { ServerActions, ServerStoreData } from "./server-store.ts";
+
+ensureHandlersRegistered();
 
 const log = createLogger({ module: "ws-client" });
 
@@ -51,7 +52,7 @@ export function createWsClient(api: WsConnectable, deps: WsClientDeps): WsClient
       const batch = globalThis.localStorage?.getItem("sakti:token-batch") !== "off";
       b = createTokenBatcher(
         (msgId, text) => {
-          session.actions.appendToken(msgId, text);
+          session.actions.appendTextToken(msgId, text);
         },
         { batch },
       );
@@ -85,10 +86,14 @@ export function createWsClient(api: WsConnectable, deps: WsClientDeps): WsClient
           eventType: evt.type,
         });
         updateStreamingState(evt);
+        const session = sessionRegistry.get(data.sessionId);
         const batcher = getBatcher(data.sessionId);
-        dispatchEvent(sessionRegistry.get(data.sessionId).actions, batcher, evt, {
-          skipTiming: replayState() !== "idle",
-        });
+        const ctx: HandlerContext = {
+          actions: session.actions,
+          batcher,
+          store: session.store,
+        };
+        dispatchEvent(evt, ctx);
         break;
       }
 

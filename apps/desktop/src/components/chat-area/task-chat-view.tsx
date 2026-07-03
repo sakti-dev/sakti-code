@@ -1,7 +1,6 @@
 import { createMemo, type JSX, onMount } from "solid-js";
 import { MessageTimeline } from "~/components/chat-area/timeline/message-timeline";
 import { ChatInput } from "~/components/chat-input/chat-input";
-import { buildChatTurns } from "~/stores/session/turn-projection";
 import { useStore } from "~/stores/store-context";
 
 interface TaskChatViewProps {
@@ -17,19 +16,7 @@ export function TaskChatView(props: TaskChatViewProps): JSX.Element {
     void actions.loadChat(props.sessionId);
   });
 
-  const turns = createMemo(() => {
-    const session = sessionStore();
-    if (!session) {
-      return [];
-    }
-    return buildChatTurns(
-      session.store.messageOrder,
-      session.store.messages,
-      session.store.streaming.phase,
-      session.store.turnTimings,
-      session.store.turns,
-    );
-  });
+  const turns = createMemo(() => sessionStore()?.store.turns ?? []);
 
   return (
     <div class="flex min-h-0 flex-1 flex-col">

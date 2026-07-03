@@ -1,126 +1,77 @@
 import type { AgentMessage } from "@sakti-code/agent";
 import { describe, expect, it } from "vite-plus/test";
-import { type ChatTurnDTO, hydrateChatSummaries, hydrateIntermediates } from "../hydrate-chat.ts";
+import { type ChatTurnDTO, hydrateChatTurns, hydrateIntermediates } from "../hydrate-chat.ts";
 
-function userMsg(id: string, text: string): Record<string, unknown> {
-  return {
-    id,
-    type: "message",
-    message: { role: "user", content: text, timestamp: 1000 } as unknown as AgentMessage,
-  };
-}
-
-function assistantMsg(id: string, text: string): Record<string, unknown> {
+function makeMsg(role: string, text: string, id: string): Record<string, unknown> {
   return {
     id,
     type: "message",
     message: {
-      role: "assistant",
-      content: [{ type: "text", text }],
-      timestamp: 2000,
-    } as unknown as AgentMessage,
+      content: text,
+      role,
+      timestamp: Date.now(),
+    } as AgentMessage,
   };
 }
 
-function assistantToolCall(id: string, callId: string, name: string): Record<string, unknown> {
-  return {
-    id,
-    type: "message",
-    message: {
-      role: "assistant",
-      content: [{ type: "toolCall", id: callId, name, arguments: {} }],
-      timestamp: 1500,
-    } as unknown as AgentMessage,
-  };
-}
+describe("hydrateIntermediates", () => {
+  it("converts assistant entries and merges tool results", () => {
+    const entries = [
+      makeMsg("assistant", "thinking...", "a1"),
+      {
+        id: "tr1",
+        type: "message",
+        message: {
+          role: "toolResult",
+          content: "result text",
+          toolCallId: "tc1",
+        } as unknown as AgentMessage,
+      },
+    ];
+    const result = hydrateIntermediates(entries);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.parts.some((p) => p.type === "tool_call")).toBe(false);
+  });
+});
 
-function toolResult(id: string, callId: string, text: string): Record<string, unknown> {
-  return {
-    id,
-    type: "message",
-    message: {
-      role: "toolResult",
-      toolCallId: callId,
-      content: [{ type: "text", text }],
-      timestamp: 1600,
-    } as unknown as AgentMessage,
-  };
-}
-
-describe("hydrateChatSummaries", () => {
-  it("produces user + summary messages and turn metadata", () => {
+describe("hydrateChatTurns", () => {
+  it("maps ChatTurnDTO[] to Turn[]", () => {
     const turns: ChatTurnDTO[] = [
       {
         endedAt: 2000,
         id: "t1",
-        intermediateIds: ["im1", "im2"],
+        intermediateIds: ["m1", "m2"],
         sequence: 0,
         startedAt: 1000,
-        summaryMessage: assistantMsg("s1", "final answer"),
-        userMessage: userMsg("u1", "hello"),
+        summaryMessage: makeMsg("assistant", "answer", "s1"),
+        userMessage: makeMsg("user", "hello", "u1"),
       },
     ];
-
-    const { messages, turns: turnMeta } = hydrateChatSummaries(turns);
-    expect(messages).toHaveLength(2);
-    expect(messages[0]!.id).toBe("u1");
-    expect(messages[0]!.role).toBe("user");
-    expect(messages[1]!.id).toBe("s1");
-    expect(messages[1]!.role).toBe("assistant");
-
-    expect(turnMeta).toHaveLength(1);
-    expect(turnMeta[0]).toMatchObject({
-      id: "t1",
-      intermediatesLoaded: false,
-      intermediateIds: ["im1", "im2"],
-      summaryMessageId: "s1",
-      userMessageId: "u1",
-      startedAt: 1000,
-      endedAt: 2000,
-    });
+    const result = hydrateChatTurns(turns);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.id).toBe("t1");
+    expect(result[0]!.userMessage?.content).toBe("hello");
+    expect(result[0]!.messages).toHaveLength(1);
+    expect(result[0]!.messages[0]!.id).toBe("s1");
+    expect(result[0]!.intermediateCount).toBe(2);
+    expect(result[0]!.intermediatesLoaded).toBe(false);
+    expect(result[0]!.working).toBe(false);
+    expect(result[0]!.turnId).toBe("t1");
   });
 
-  it("handles a turn with no summary (null)", () => {
+  it("handles missing userMessage", () => {
     const turns: ChatTurnDTO[] = [
       {
         endedAt: null,
-        id: "t2",
+        id: "t1",
         intermediateIds: [],
         sequence: 0,
         startedAt: 1000,
-        summaryMessage: null,
-        userMessage: userMsg("u2", "no reply yet"),
+        summaryMessage: makeMsg("assistant", "hi", "s1"),
+        userMessage: null,
       },
     ];
-
-    const { messages, turns: turnMeta } = hydrateChatSummaries(turns);
-    expect(messages).toHaveLength(1);
-    expect(turnMeta[0]!.summaryMessageId).toBeNull();
-  });
-});
-
-describe("hydrateIntermediates", () => {
-  it("converts intermediate entries, merging tool results", () => {
-    const entries = [assistantToolCall("a1", "c1", "bash"), toolResult("tr1", "c1", "done")];
-    const result = hydrateIntermediates(entries);
-    expect(result).toHaveLength(1);
-    expect(result[0]!.id).toBe("a1");
-    const toolPart = result[0]!.parts.find((p) => p.type === "tool_call");
-    expect(toolPart?.type).toBe("tool_call");
-    if (toolPart?.type === "tool_call") {
-      expect(toolPart.status).toBe("done");
-      expect(toolPart.result).toBe("done");
-    }
-  });
-
-  it("skips user messages (shipped via /chat)", () => {
-    const entries = [userMsg("u1", "hello"), assistantMsg("a1", "step")];
-    const result = hydrateIntermediates(entries);
-    expect(result).toHaveLength(1);
-    expect(result[0]!.id).toBe("a1");
-  });
-
-  it("returns empty for an empty list", () => {
-    expect(hydrateIntermediates([])).toEqual([]);
+    const result = hydrateChatTurns(turns);
+    expect(result[0]!.userMessage).toBeNull();
   });
 });

@@ -1,308 +1,86 @@
 import type { AgentMessage } from "@sakti-code/agent";
 import { describe, expect, it } from "vite-plus/test";
-import { hydrateSessionMessages } from "../hydrate-messages.ts";
+import { hydrateSessionTurns } from "../hydrate-messages.ts";
 
-describe("hydrateSessionMessages", () => {
-  it("converts user message to UIMessage", () => {
+function makeUser(text: string): AgentMessage {
+  return { content: text, role: "user", timestamp: Date.now() } as AgentMessage;
+}
+
+function makeAssistant(text: string): AgentMessage {
+  return {
+    content: text ? [{ type: "text", text }] : [],
+    provider: "faux",
+    role: "assistant",
+    api: "faux",
+    model: "faux-1",
+    stopReason: "stop",
+    timestamp: Date.now(),
+    usage: {
+      input: 100,
+      output: 50,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 150,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
+  } as AgentMessage;
+}
+
+describe("hydrateSessionTurns", () => {
+  it("groups messages into turns by user messages", () => {
     const messages: AgentMessage[] = [
-      {
-        role: "user",
-        content: "hello world",
-        timestamp: 1_700_000_000_000,
-      } as unknown as AgentMessage,
+      makeUser("hello"),
+      makeAssistant("hi there"),
+      makeUser("another question"),
+      makeAssistant("another answer"),
     ];
-
-    const result = hydrateSessionMessages(messages);
-    expect(result).toHaveLength(1);
-    expect(result[0]!.role).toBe("user");
-    expect(result[0]!.content).toBe("hello world");
-    expect(result[0]!.parts).toEqual([{ type: "text", text: "hello world" }]);
+    const turns = hydrateSessionTurns(messages);
+    expect(turns).toHaveLength(2);
+    expect(turns[0]!.userMessage?.content).toBe("hello");
+    expect(turns[0]!.messages).toHaveLength(1);
+    expect(turns[1]!.userMessage?.content).toBe("another question");
   });
 
-  it("converts assistant message with thinking + text + toolCall", () => {
-    const messages: AgentMessage[] = [
-      {
-        role: "assistant",
-        content: [
-          { type: "thinking", thinking: "Let me think" },
-          { type: "text", text: "Running bash" },
-          {
-            type: "toolCall",
-            id: "call-1",
-            name: "bash",
-            arguments: { command: "ls" },
-          },
-        ],
-        timestamp: 1_700_000_000_000,
-      } as unknown as AgentMessage,
-    ];
-
-    const result = hydrateSessionMessages(messages);
-    expect(result).toHaveLength(1);
-    const msg = result[0]!;
-    expect(msg.role).toBe("assistant");
-    expect(msg.parts).toHaveLength(3);
-    expect(msg.parts[0]!).toEqual({ type: "thinking", text: "Let me think" });
-    expect(msg.parts[1]!).toEqual({ type: "text", text: "Running bash" });
-    expect(msg.parts[2]!.type).toBe("tool_call");
-    expect((msg.parts[2] as { status: string }).status).toBe("running");
+  it("handles assistant messages before any user", () => {
+    const turns = hydrateSessionTurns([makeAssistant("orphan")]);
+    expect(turns).toHaveLength(1);
+    expect(turns[0]!.userMessage).toBeNull();
+    expect(turns[0]!.messages).toHaveLength(1);
   });
 
-  it("merges toolResult into preceding assistant tool_call part", () => {
+  it("merges tool results into preceding assistant", () => {
     const messages: AgentMessage[] = [
+      makeUser("do something"),
       {
+        content: [],
+        provider: "faux",
         role: "assistant",
-        content: [
-          {
-            type: "toolCall",
-            id: "call-1",
-            name: "edit",
-            arguments: { path: "/test.ts" },
-          },
-        ],
-        timestamp: 1_700_000_000_000,
-      } as unknown as AgentMessage,
-      {
-        role: "toolResult",
-        toolCallId: "call-1",
-        toolName: "edit",
-        content: [{ type: "text", text: "Edited /test.ts" }],
-        details: { diff: "--- old\n+++ new", firstChangedLine: 5 },
-        isError: false,
-        timestamp: 1_700_000_001_000,
-      } as unknown as AgentMessage,
-    ];
-
-    const result = hydrateSessionMessages(messages);
-    expect(result).toHaveLength(1);
-    const part = result[0]!.parts[0]!;
-    expect(part.type).toBe("tool_call");
-    expect((part as { status: string }).status).toBe("done");
-    expect((part as { result?: string }).result).toBe("Edited /test.ts");
-    expect((part as { details?: unknown }).details).toEqual({
-      diff: "--- old\n+++ new",
-      firstChangedLine: 5,
-    });
-  });
-
-  it("marks tool_call as error when toolResult has isError", () => {
-    const messages: AgentMessage[] = [
-      {
-        role: "assistant",
-        content: [
-          {
-            type: "toolCall",
-            id: "call-1",
-            name: "edit",
-            arguments: { path: "/test.ts" },
-          },
-        ],
-        timestamp: 1_700_000_000_000,
-      } as unknown as AgentMessage,
-      {
-        role: "toolResult",
-        toolCallId: "call-1",
-        toolName: "edit",
-        content: [{ type: "text", text: "Could not find text" }],
-        isError: true,
-        timestamp: 1_700_000_001_000,
-      } as unknown as AgentMessage,
-    ];
-
-    const result = hydrateSessionMessages(messages);
-    const part = result[0]!.parts[0]!;
-    expect((part as { status: string }).status).toBe("error");
-  });
-
-  it("preserves full conversation: user → assistant(toolCall) → toolResult → assistant(text)", () => {
-    const messages: AgentMessage[] = [
-      {
-        role: "user",
-        content: "list files",
-        timestamp: 1,
-      } as unknown as AgentMessage,
-      {
-        role: "assistant",
-        content: [
-          { type: "text", text: "Let me check" },
-          {
-            type: "toolCall",
-            id: "c1",
-            name: "bash",
-            arguments: { command: "ls" },
-          },
-        ],
-        timestamp: 2,
-      } as unknown as AgentMessage,
-      {
-        role: "toolResult",
-        toolCallId: "c1",
-        toolName: "bash",
-        content: [{ type: "text", text: "file1\nfile2" }],
-        isError: false,
-        timestamp: 3,
-      } as unknown as AgentMessage,
-      {
-        role: "assistant",
-        content: [{ type: "text", text: "Found 2 files" }],
-        timestamp: 4,
-      } as unknown as AgentMessage,
-    ];
-
-    const result = hydrateSessionMessages(messages);
-    expect(result).toHaveLength(3); // user, assistant(with tool), assistant(text)
-    expect(result[0]!.role).toBe("user");
-    expect(result[1]!.role).toBe("assistant");
-    expect(result[1]!.parts).toHaveLength(2); // text + tool_call(done)
-    expect(result[2]!.role).toBe("assistant");
-    expect(result[2]!.parts).toHaveLength(1); // text only
-  });
-
-  it("preserves usage on assistant messages", () => {
-    const messages: AgentMessage[] = [
-      {
-        role: "assistant",
-        content: [{ type: "text", text: "hi" }],
+        api: "faux",
+        model: "faux-1",
+        stopReason: "toolUse",
+        timestamp: Date.now(),
         usage: {
-          input: 100,
-          output: 50,
+          input: 0,
+          output: 0,
           cacheRead: 0,
           cacheWrite: 0,
-          totalTokens: 150,
-          cost: { input: 1, output: 2, cacheRead: 0, cacheWrite: 0, total: 3 },
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
         },
-        timestamp: 1_700_000_000_000,
+      } as AgentMessage,
+      {
+        content: "tool result",
+        role: "toolResult",
+        toolCallId: "tc1",
+        timestamp: Date.now(),
       } as unknown as AgentMessage,
     ];
-
-    const result = hydrateSessionMessages(messages);
-    expect(result[0]!.usage).toEqual({ input: 100, output: 50, cost: 3 });
-  });
-});
-
-describe("hydrateSessionMessages — OM markers", () => {
-  it("converts CustomMessage(om_marker) to om_marker part on preceding assistant", () => {
-    const messages: AgentMessage[] = [
-      {
-        role: "assistant",
-        content: [{ type: "text", text: "hello" }],
-        timestamp: 1000,
-      } as unknown as AgentMessage,
-      {
-        role: "custom",
-        customType: "om_marker",
-        content: "",
-        display: false,
-        timestamp: 2000,
-        details: {
-          cycleId: "c1",
-          operationType: "observation",
-          status: "complete",
-          durationMs: 3000,
-          tokensProcessed: 5000,
-          tokensProduced: 1000,
-          observations: "test",
-        },
-      } as unknown as AgentMessage,
-    ];
-
-    const result = hydrateSessionMessages(messages);
-    expect(result).toHaveLength(1);
-    const marker = result[0]!.parts.find((p) => p.type === "om_marker");
-    expect(marker).toBeDefined();
-    expect(marker!.cycleId).toBe("c1");
-    expect(marker!.status).toBe("complete");
+    const turns = hydrateSessionTurns(messages);
+    expect(turns).toHaveLength(1);
+    expect(turns[0]!.messages).toHaveLength(1);
   });
 
-  it("stamps loading markers as disconnected on reload", () => {
-    const messages: AgentMessage[] = [
-      {
-        role: "assistant",
-        content: [{ type: "text", text: "hello" }],
-        timestamp: 1000,
-      } as unknown as AgentMessage,
-      {
-        role: "custom",
-        customType: "om_marker",
-        content: "",
-        display: false,
-        timestamp: 2000,
-        details: {
-          cycleId: "c1",
-          operationType: "observation",
-          status: "loading",
-          tokensProcessed: 5000,
-        },
-      } as unknown as AgentMessage,
-    ];
-
-    const result = hydrateSessionMessages(messages);
-    const marker = result[0]!.parts.find(
-      (p): p is Extract<typeof p, { type: "om_marker" }> => p.type === "om_marker",
-    );
-    expect(marker!.status).toBe("disconnected");
-  });
-
-  it("stamps buffering markers as disconnected on reload", () => {
-    const messages: AgentMessage[] = [
-      {
-        role: "assistant",
-        content: [{ type: "text", text: "hello" }],
-        timestamp: 1000,
-      } as unknown as AgentMessage,
-      {
-        role: "custom",
-        customType: "om_marker",
-        content: "",
-        display: false,
-        timestamp: 2000,
-        details: {
-          cycleId: "c1",
-          operationType: "buffering",
-          status: "buffering",
-        },
-      } as unknown as AgentMessage,
-    ];
-
-    const result = hydrateSessionMessages(messages);
-    const marker = result[0]!.parts.find(
-      (p): p is Extract<typeof p, { type: "om_marker" }> => p.type === "om_marker",
-    );
-    expect(marker!.status).toBe("disconnected");
-  });
-
-  it("skips orphan om_marker with no preceding assistant", () => {
-    const messages: AgentMessage[] = [
-      {
-        role: "custom",
-        customType: "om_marker",
-        content: "",
-        display: false,
-        timestamp: 1000,
-        details: {
-          cycleId: "c1",
-          operationType: "observation",
-          status: "complete",
-        },
-      } as unknown as AgentMessage,
-    ];
-
-    const result = hydrateSessionMessages(messages);
-    expect(result).toHaveLength(0);
-  });
-
-  it("skips non-om_marker custom messages", () => {
-    const messages: AgentMessage[] = [
-      {
-        role: "custom",
-        customType: "other_type",
-        content: "",
-        display: false,
-        timestamp: 1000,
-      } as unknown as AgentMessage,
-    ];
-
-    const result = hydrateSessionMessages(messages);
-    expect(result).toHaveLength(0);
+  it("returns empty array for empty input", () => {
+    expect(hydrateSessionTurns([])).toEqual([]);
   });
 });

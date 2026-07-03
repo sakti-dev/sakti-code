@@ -1,30 +1,65 @@
 import type { AgentMessage } from "@sakti-code/agent";
-import type { MessagePart, UIMessage } from "../types.ts";
+import type { MessagePart, Turn } from "../types.ts";
 import { convertAssistantMessage, convertUserMessage, mergeToolResult } from "./hydrate-helpers.ts";
 
-export function hydrateSessionMessages(messages: AgentMessage[]): UIMessage[] {
-  const result: UIMessage[] = [];
+/**
+ * Convert a flat AgentMessage[] (from GET /sessions/:id/messages) into
+ * Turn[] by grouping on user messages. Each user message starts a new
+ * turn; subsequent assistant/toolResult messages belong to that turn.
+ */
+export function hydrateSessionTurns(messages: AgentMessage[]): Turn[] {
+  const turns: Turn[] = [];
+  let current: Turn | null = null;
 
   for (const msg of messages) {
     if (msg.role === "user") {
-      result.push(convertUserMessage(crypto.randomUUID(), msg));
+      if (current) {
+        turns.push(current);
+      }
+      current = {
+        endedAt: null,
+        error: null,
+        id: crypto.randomUUID(),
+        intermediateCount: 0,
+        intermediatesLoaded: false,
+        loadedMessageIds: [],
+        messages: [],
+        startedAt: typeof msg.timestamp === "number" ? msg.timestamp : Date.now(),
+        turnId: null,
+        userMessage: convertUserMessage(crypto.randomUUID(), msg),
+        working: false,
+      };
     } else if (msg.role === "assistant") {
-      result.push(convertAssistantMessage(crypto.randomUUID(), msg));
+      if (!current) {
+        current = {
+          endedAt: null,
+          error: null,
+          id: crypto.randomUUID(),
+          intermediateCount: 0,
+          intermediatesLoaded: false,
+          loadedMessageIds: [],
+          messages: [],
+          startedAt: null,
+          turnId: null,
+          userMessage: null,
+          working: false,
+        };
+      }
+      current.messages.push(convertAssistantMessage(crypto.randomUUID(), msg));
     } else if (msg.role === "toolResult") {
-      mergeToolResult(result, msg);
+      if (current && current.messages.length > 0) {
+        mergeToolResult(current.messages, msg);
+      }
     } else if (msg.role === "custom" && "customType" in msg && msg.customType === "om_marker") {
       const details = (msg as { details?: Record<string, unknown> }).details;
-      if (!details) continue;
-
-      // Find the last assistant UIMessage to attach the marker to.
-      let lastAssistant: UIMessage | undefined;
-      for (let i = result.length - 1; i >= 0; i--) {
-        if (result[i]!.role === "assistant") {
-          lastAssistant = result[i];
-          break;
-        }
+      if (!details || !current) {
+        continue;
       }
-      if (!lastAssistant) continue;
+
+      const lastAssistant = current.messages.at(-1);
+      if (!lastAssistant) {
+        continue;
+      }
 
       const rawStatus = details.status as string;
       const status =
@@ -56,5 +91,9 @@ export function hydrateSessionMessages(messages: AgentMessage[]): UIMessage[] {
     }
   }
 
-  return result;
+  if (current) {
+    turns.push(current);
+  }
+
+  return turns;
 }
