@@ -1,14 +1,6 @@
 import { TbOutlineSearch } from "solid-icons/tb";
 import { type Component, createMemo, createSignal, For } from "solid-js";
-import {
-  formatFindSummary,
-  formatGenericToolSummary,
-  formatGlobSummary,
-  formatGrepSummary,
-  formatLsSummary,
-  formatReadSummary,
-} from "../tools/tool-summary-formatters.ts";
-import { normalizeToolName } from "../tools/tool-name.ts";
+import { getToolDescriptor, normalizeToolName, toToolPartData } from "../tools/index.ts";
 import { ToolSummaryRow } from "../tools/tool-summary-row.tsx";
 import { CollapsibleStep } from "./collapsible-step.tsx";
 import type { ToolCallPart } from "./timeline-grouping.ts";
@@ -20,44 +12,9 @@ export interface ExploreStepProps {
   parts: ToolCallPart[];
 }
 
-const TOOL_ICON_MAP: Record<string, "file" | "search" | "folder"> = {
-  find: "folder",
-  glob: "folder",
-  grep: "search",
-  ls: "folder",
-  read: "file",
-};
-
-function formatExploreSummary(part: ToolCallPart): string {
-  const name = normalizeToolName(part.toolName);
-  const input =
-    part.input && typeof part.input === "object" ? (part.input as Record<string, unknown>) : {};
-  const toolPart = { args: input, output: part.result, tool: name };
-  switch (name) {
-    case "read": {
-      return formatReadSummary(toolPart);
-    }
-    case "grep": {
-      return formatGrepSummary(toolPart);
-    }
-    case "glob": {
-      return formatGlobSummary(toolPart);
-    }
-    case "find": {
-      return formatFindSummary(toolPart);
-    }
-    case "ls": {
-      return formatLsSummary(toolPart);
-    }
-    default: {
-      return formatGenericToolSummary(toolPart);
-    }
-  }
-}
-
 /**
- * A group of consecutive explore tools (read/grep/glob/find/ls) collapsed into
- * one "Explored N files" step. Shares the same auto-expand formula as
+ * A group of consecutive explore tools (read/grep/find) collapsed into one
+ * "Explored N files" step. Shares the same auto-expand formula as
  * ThinkingStep: `userToggled ?? (isStreaming && isLast)`.
  */
 export const ExploreStep: Component<ExploreStepProps> = (props) => {
@@ -81,13 +38,14 @@ export const ExploreStep: Component<ExploreStepProps> = (props) => {
         <div class="flex flex-col">
           <For each={props.parts}>
             {(part) => {
-              const name = normalizeToolName(part.toolName);
-              const icon = TOOL_ICON_MAP[name] ?? "file";
+              const pd = toToolPartData(part);
+              const d = getToolDescriptor(normalizeToolName(part.toolName));
               return (
                 <ToolSummaryRow
-                  icon={icon}
+                  icon={d.icon}
+                  part={pd}
                   status={part.status === "running" ? "running" : "completed"}
-                  summary={formatExploreSummary(part)}
+                  summary={d.summary(pd)}
                 />
               );
             }}
