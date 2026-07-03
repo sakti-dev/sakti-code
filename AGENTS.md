@@ -77,7 +77,7 @@ Run `vp check --fix` — it applies formatting (oxfmt) and lint fixes (oxlint) a
 
 ## Logging (renderer / `@sakti-code/logger`)
 
-Use the structured logger from `~/lib/utils` (`createLogger({ module })`). Keep permanent logs — don't add for debugging then remove.
+Use the structured logger from `~/lib/utils` (`createLogger({ module })`). **Logs are permanent — never remove, strip, or suggest cleaning up existing log statements.** They are not debug leftovers; the logger is designed to stay.
 
 **Levels:** `error` (bugs/failures, always stays) > `warn` (recoverable edge cases) > `info` (user actions/state transitions, permanent) > `debug` (internal flow, suppressed in production via `minLevel: import.meta.env.DEV ? "debug" : "info"`).
 
@@ -88,6 +88,8 @@ log.debug("filteredSections", { query, counts }); // context as object, never in
 ```
 
 Pass data as context object (`{ key: value }`), never interpolate into the message string. For expensive debug logs, wrap in `if (import.meta.env.DEV) { ... }`.
+
+**Never suggest removing logs as a cleanup step.** `log.debug`/`log.info` calls are intentional, permanent instrumentation — not noise to clean up during refactors or bug fixes.
 
 ## Server
 

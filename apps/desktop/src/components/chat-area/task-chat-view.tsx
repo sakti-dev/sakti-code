@@ -31,11 +31,9 @@ export function TaskChatView(props: TaskChatViewProps): JSX.Element {
     );
   });
 
-  const isGenerating = () => sessionStore()?.store.streaming.phase !== "idle";
-
   return (
     <div class="flex min-h-0 flex-1 flex-col">
-      <MessageTimeline isStreaming={isGenerating} sessionId={props.sessionId} turns={turns} />
+      <MessageTimeline sessionId={props.sessionId} turns={turns} />
       <ChatInput placeholder="Continue working…" sessionId={props.sessionId} />
     </div>
   );

@@ -52,8 +52,6 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
     );
   });
 
-  const isGenerating = () => sessionStore()?.store.streaming.phase !== "idle";
-
   const handleConfirmSession = async () => {
     const session = sessionStore();
     const proposal = session?.store.proposedSession;
@@ -74,13 +72,7 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
   return (
     <div class="flex min-h-0 flex-1 flex-col">
       <Show
-        fallback={
-          <MessageTimeline
-            isStreaming={isGenerating}
-            sessionId={props.intakeSessionId ?? ""}
-            turns={turns}
-          />
-        }
+        fallback={<MessageTimeline sessionId={props.intakeSessionId ?? ""} turns={turns} />}
         when={!hasMessages()}
       >
         <EmptyState />

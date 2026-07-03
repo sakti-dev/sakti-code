@@ -17,12 +17,11 @@ import { useStore } from "~/stores/store-context";
 import type { MessagePart, UIMessage } from "~/stores/types.ts";
 import { createLogger } from "~/lib/utils";
 import { CHAT_COMPACT_STACK_GAP_CLASS, CHAT_STACK_GAP_CLASS } from "../layout";
-import { Part } from "../parts/message-part";
+import { Part, resolvePartStreaming } from "../parts/message-part";
 import { PartFooter } from "../parts/part-footer";
 
 export interface SessionTurnProps {
   class?: string;
-  isStreaming: Accessor<boolean>;
   /** Called when this turn's height changes (intermediates loaded/evicted). */
   onHeightChanged?: () => void;
   sessionId: string;
@@ -56,13 +55,13 @@ function formatWorkDuration(ms: number): string {
   return `${seconds}s`;
 }
 
-function MessageContent(msg: UIMessage, isStreaming: () => boolean): JSX.Element {
+function MessageContent(msg: UIMessage): JSX.Element {
   return (
     <div class={CHAT_COMPACT_STACK_GAP_CLASS}>
       <Index each={msg.parts}>
         {(part) => (
           <div class="flex flex-col gap-1">
-            <Part isStreaming={isStreaming()} part={part()} />
+            <Part isStreaming={resolvePartStreaming(part(), msg.isStreaming)} part={part()} />
             <Show when={!part().isStreaming}>
               <PartFooter copyText={getPartCopyText(part())} timestamp={msg.timestamp} />
             </Show>
@@ -249,9 +248,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               {turn().error}
             </div>
           </Show>
-          <For each={turn().assistantMessages}>
-            {(msg) => MessageContent(msg, props.isStreaming)}
-          </For>
+          <For each={turn().assistantMessages}>{(msg) => MessageContent(msg)}</For>
         </div>
       </Show>
 
@@ -265,9 +262,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
         >
           <div class="min-h-0 overflow-hidden">
             <div class="flex flex-col gap-3 px-3 py-2 opacity-50 [overflow-anchor:none]">
-              <For each={intermediateMessages()}>
-                {(msg) => MessageContent(msg, props.isStreaming)}
-              </For>
+              <For each={intermediateMessages()}>{(msg) => MessageContent(msg)}</For>
             </div>
           </div>
         </div>
@@ -278,7 +273,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               class="flex flex-col gap-3 px-3 [overflow-anchor:none]"
               data-slot="session-turn-stream"
             >
-              {MessageContent(msg(), props.isStreaming)}
+              {MessageContent(msg())}
             </div>
           )}
         </Show>
