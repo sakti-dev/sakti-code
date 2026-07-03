@@ -63,6 +63,7 @@ export class SessionRepo {
       thinkingLevel?: string;
       parentSessionId?: string;
       kind?: string;
+      status?: string;
     },
   ) {
     const id = crypto.randomUUID();
@@ -77,6 +78,7 @@ export class SessionRepo {
       ...(options?.modelId === undefined ? {} : { modelId: options.modelId }),
       ...(options?.profileId === undefined ? {} : { profileId: options.profileId }),
       kind: options?.kind ?? "task",
+      ...(options?.status === undefined ? {} : { status: options.status }),
       thinkingLevel: options?.thinkingLevel ?? "off",
       createdAt: now,
       updatedAt: now,
@@ -114,7 +116,7 @@ export class SessionRepo {
     data: Partial<
       Pick<
         typeof sessions.$inferInsert,
-        "title" | "modelId" | "thinkingLevel" | "kind" | "profileId"
+        "title" | "modelId" | "thinkingLevel" | "kind" | "profileId" | "status"
       >
     >,
   ) {

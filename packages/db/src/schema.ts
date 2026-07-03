@@ -20,6 +20,9 @@ export const sessions = sqliteTable("sessions", {
   modelId: text("model_id"),
   profileId: text("profile_id"),
   kind: text("kind").notNull().default("task"),
+  // SDD task lifecycle: planning → building → review → merged.
+  // Intake sessions are unaffected; only task sessions use this column.
+  status: text("status").notNull().default("planning"),
   thinkingLevel: text("thinking_level").notNull().default("off"),
   leafId: text("leaf_id"),
   createdAt: integer("created_at").notNull(),
