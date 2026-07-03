@@ -461,7 +461,7 @@ export function runPromptEffect(
 
     // Resolve the agent: per-session override first (when it differs from the
     // default), then kind-based default. Intake sessions resolve to the intake
-    // agent entry — own permission ruleset + own tool list (incl. propose_session).
+    // agent entry — own permission ruleset + own tool list (incl. ask).
     // No isIntake branches anywhere: intake flows through the same path as build.
     const { agent } = resolveSessionAgentForKind(
       session.kind,
@@ -470,8 +470,8 @@ export function runPromptEffect(
     );
 
     // Build only the agent's declared tools via the server registry. Each agent
-    // entry is fully self-contained — propose_session is built only when the
-    // intake agent declares it; build/explore/plan/general never see it.
+    // entry is fully self-contained — ask is built only for agents that
+    // declare it; explore/general never see it.
     const websearchOperations = resolveWebSearchOperations(ctx.auth, ctx.settingsFile);
     const toolCtx: ToolContext = {
       cwd: project.cwd,

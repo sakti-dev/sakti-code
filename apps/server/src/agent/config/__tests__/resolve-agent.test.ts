@@ -22,7 +22,7 @@ describe("resolveSessionAgentForKind", () => {
   it("intake kind with no override → intake agent", () => {
     const { agent } = resolveSessionAgentForKind("intake", []);
     expect(agent.name).toBe("intake");
-    expect(agent.activeToolNames).toContain("propose_session");
+    expect(agent.activeToolNames).toContain("ask");
   });
 
   it("mission kind with no override → build agent (the default)", () => {
@@ -68,6 +68,6 @@ describe("resolveAgentByName", () => {
   it("intake agent is resolvable", () => {
     const resolved = resolveAgentByName("intake", []);
     expect(resolved.name).toBe("intake");
-    expect(resolved.activeToolNames).toContain("propose_session");
+    expect(resolved.activeToolNames).toContain("ask");
   });
 });

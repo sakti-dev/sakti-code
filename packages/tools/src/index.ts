@@ -18,8 +18,6 @@ export type { GrepToolDetails, GrepToolInput, GrepToolOptions } from "./grep/ind
 export { createGrepTool } from "./grep/index";
 export type { Snapshot, SnapshotStore } from "./lib/hashline-utils/snapshots.ts";
 export { InMemorySnapshotStore } from "./lib/hashline-utils/snapshots.ts";
-export type { ProposeSessionToolInput } from "./propose-session/index";
-export { createProposeSessionTool } from "./propose-session/index";
 export type { ReadOperations, ReadToolDetails, ReadToolInput, ReadToolOptions } from "./read/index";
 export { createReadTool } from "./read/index";
 export type {

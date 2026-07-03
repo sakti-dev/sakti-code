@@ -76,7 +76,17 @@ export const SERVER_AGENTS: AgentDefinition[] = [
     description: "The default agent. Executes tools based on configured permissions.",
     systemPrompt: BUILD_PROMPT,
     permission: buildRuleset(),
-    activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "webfetch", "websearch"],
+    activeToolNames: [
+      "read",
+      "write",
+      "edit",
+      "bash",
+      "grep",
+      "find",
+      "webfetch",
+      "websearch",
+      "ask",
+    ],
   }),
   defineAgent({
     name: "explore",
@@ -94,7 +104,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "Plan mode. Researches the codebase and produces a plan; disallows all edit tools.",
     systemPrompt: PLAN_PROMPT,
     permission: planRuleset(),
-    activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch"],
+    activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch", "ask"],
   }),
   defineAgent({
     name: "general",
@@ -109,7 +119,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
     name: "intake",
     mode: "primary",
     description:
-      "PM-style planning agent for scoping work before implementation. Calls propose_session to hand off to a task session.",
+      "PM-style planning agent for scoping work before implementation. Calls ask(kind=session) to hand off to a mission session.",
     systemPrompt: INTAKE_SYSTEM_PROMPT,
     permission: intakeRuleset(),
     activeToolNames: [
@@ -119,7 +129,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "bash",
       "grep",
       "find",
-      "propose_session",
+      "ask",
       "webfetch",
       "websearch",
     ],

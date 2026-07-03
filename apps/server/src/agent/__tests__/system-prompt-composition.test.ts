@@ -55,10 +55,10 @@ describe("runner system prompt composition", () => {
 
   it("composes intake prompt with tool inventory but no skills", () => {
     const intakeBase = "You are the project's intake agent.";
-    const tools = [mockTool("read", "Read."), mockTool("propose_session", "Propose a session.")];
+    const tools = [mockTool("read", "Read."), mockTool("ask", "Ask the user.")];
     const prompt = composeSystemPrompt(intakeBase, tools, [], false, SKILLS_INSTRUCTIONS);
     expect(prompt).toContain(intakeBase);
-    expect(prompt).toContain("# Tool: propose_session");
+    expect(prompt).toContain("# Tool: ask");
     expect(prompt).not.toContain("<available_skills>");
   });
 });

@@ -67,14 +67,14 @@ describe("server agents", () => {
     const intake = resolveServerAgent("intake");
     expect(intake).toBeDefined();
     expect(intake!.permission).toBeDefined();
-    expect(intake!.activeToolNames).toContain("propose_session");
+    expect(intake!.activeToolNames).toContain("ask");
     expect(intake!.activeToolNames).toContain("read");
 
     const build = resolveServerAgent("build")!;
     // Intake has a distinct ruleset from build (not inheriting).
     expect(intake!.permission).not.toBe(build.permission);
-    // Intake enables propose_session; build does not.
-    expect(build.activeToolNames).not.toContain("propose_session");
+    // Both intake and build carry ask (the SDD gate tool).
+    expect(build.activeToolNames).toContain("ask");
   });
 
   it("intake ruleset asks before destructive bash ops but allows research ops", () => {
