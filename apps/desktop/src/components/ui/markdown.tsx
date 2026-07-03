@@ -28,7 +28,7 @@ export const Markdown: Component<MarkdownProps> = (props) => {
     >
       <Show when={props.text}>
         <Velomark
-          animated
+          animated={props.isStreaming}
           caret={props.isStreaming ? "block" : undefined}
           markdown={props.text}
           plugins={{ code: codePlugin, math: mathPlugin, mermaid: mermaidPlugin }}
