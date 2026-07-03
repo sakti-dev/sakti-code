@@ -87,6 +87,34 @@ export interface TurnTiming {
   startedAt: number;
 }
 
+/**
+ * A single turn in the chat — the primary unit of the session store.
+ * Created when a user message arrives, accumulates assistant messages
+ * as the agent loop iterates, and is finalized when the turn ends.
+ *
+ * Live turns (during a run) have `turnId: null`. Loaded turns (from REST
+ * `/chat`) have the server-assigned turn ID and support lazy intermediate
+ * loading via `intermediateCount` / `intermediatesLoaded`.
+ */
+export interface Turn {
+  endedAt: number | null;
+  error: string | null;
+  id: string;
+  /** Count of intermediate entries on the server (for the collapse badge). */
+  intermediateCount: number;
+  /** Whether intermediates have been loaded into `messages`. */
+  intermediatesLoaded: boolean;
+  /** UIMessage ids of loaded intermediates (for eviction). */
+  loadedMessageIds: string[];
+  /** Assistant messages in this turn (1+ from agent-loop iterations). */
+  messages: UIMessage[];
+  /** Server turn ID — null for live turns, non-null for REST-loaded turns. */
+  turnId: string | null;
+  startedAt: number | null;
+  userMessage: UIMessage | null;
+  working: boolean;
+}
+
 export interface OmWindowState {
   messages: { tokens: number; threshold: number };
   observations: { tokens: number; threshold: number };
