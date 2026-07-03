@@ -1,8 +1,8 @@
-import { FiFolder } from "solid-icons/fi";
+import { FiFilter } from "solid-icons/fi";
 import { TOOL_ICON_CLASS, type ToolDescriptor, type ToolIconCmp } from "../store.tsx";
 import { getArgs } from "../shared.ts";
 
-const FindIcon: ToolIconCmp = () => <FiFolder class={TOOL_ICON_CLASS} />;
+const FindIcon: ToolIconCmp = () => <FiFilter class={TOOL_ICON_CLASS} />;
 
 export const findTool: ToolDescriptor = {
   names: ["find", "find_by_name"],
