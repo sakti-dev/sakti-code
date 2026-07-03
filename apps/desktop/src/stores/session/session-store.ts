@@ -1,4 +1,5 @@
 import { createStore, produce, reconcile } from "solid-js/store";
+import { createLogger } from "~/lib/utils";
 import type {
   MessagePart,
   OmWindowState,
@@ -9,6 +10,8 @@ import type {
   UIMessage,
 } from "../types.ts";
 import { idleStreamState } from "../types.ts";
+
+const log = createLogger({ module: "session-store" });
 
 export interface ProposedSession {
   message: string;
@@ -301,11 +304,17 @@ export function createSessionStore(): SessionStore {
     appendCompactionToken(msgId, delta) {
       const loc = findMsg(msgId);
       if (!loc) {
+        log.debug("appendCompactionToken — msgId not in location index", { msgId });
         return;
       }
       setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "parts", (prev) => {
         const idx = prev.findIndex((p) => p.type === "compaction");
         if (idx < 0) {
+          log.debug("appendCompactionToken — no compaction part in message", {
+            msgId,
+            partCount: prev.length,
+            partTypes: prev.map((p) => p.type),
+          });
           return prev;
         }
         const existing = prev[idx] as Extract<MessagePart, { type: "compaction" }>;
