@@ -15,6 +15,7 @@ export interface SessionMeta {
   modelId: string | null;
   profileId: string | null;
   projectId: string;
+  status: "planning" | "building" | "review" | "merged";
   thinkingLevel: string;
   title: string | null;
   updatedAt: number;

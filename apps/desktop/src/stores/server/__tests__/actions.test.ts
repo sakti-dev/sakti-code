@@ -230,6 +230,7 @@ describe("actions", () => {
         profileId: null,
         thinkingLevel: "off",
         kind: "task",
+        status: "building",
         createdAt: 1,
         updatedAt: 1,
       });
@@ -246,6 +247,7 @@ describe("actions", () => {
                   profileId: "fast",
                   thinkingLevel: "off",
                   kind: "task",
+                  status: "building",
                   createdAt: 1,
                   updatedAt: 1,
                 }),
