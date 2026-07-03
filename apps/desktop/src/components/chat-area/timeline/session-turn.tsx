@@ -17,9 +17,61 @@ import { useStore } from "~/stores/store-context";
 import type { MessagePart, UIMessage } from "~/stores/types.ts";
 import { createLogger } from "~/lib/utils";
 import { formatDuration } from "~/lib/format-duration";
+import { Markdown } from "~/components/ui/markdown";
 import { CHAT_COMPACT_STACK_GAP_CLASS, CHAT_STACK_GAP_CLASS } from "../layout";
 import { Part, resolvePartStreaming } from "../parts/message-part";
 import { PartFooter } from "../parts/part-footer";
+import { type ThinkingPart, getNonThinkingParts, getThinkingParts } from "./thinking-helpers.ts";
+
+export interface ThinkingBlockProps {
+  part: ThinkingPart;
+}
+
+/**
+ * Renders a single thinking block as plain muted text inside a scrollable
+ * container. Auto-scrolls to follow new tokens while the part is streaming.
+ */
+export function ThinkingBlock(props: ThinkingBlockProps): JSX.Element {
+  const text = () => props.part.text;
+  const isActive = () => props.part.isStreaming === true;
+
+  const [contentEl, setContentEl] = createSignal<HTMLDivElement | null>(null);
+  let userAtBottom = true;
+
+  const handleScroll = () => {
+    const el = contentEl();
+    if (!el) {
+      return;
+    }
+    userAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+  };
+
+  createEffect(() => {
+    text();
+    if (!isActive()) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      const el = contentEl();
+      if (el && userAtBottom) {
+        el.scrollTop = el.scrollHeight;
+      }
+    });
+  });
+
+  onCleanup(() => setContentEl(null));
+
+  return (
+    <div
+      class="max-h-[200px] overflow-y-auto rounded-lg bg-muted/30 px-4 py-2.5 italic leading-relaxed text-muted-foreground text-sm"
+      data-slot="thinking-block"
+      onScroll={handleScroll}
+      ref={setContentEl}
+    >
+      <Markdown class="prose-p:m-0" isStreaming={isActive()} text={text()} />
+    </div>
+  );
+}
 
 export interface SessionTurnProps {
   class?: string;
@@ -49,7 +101,7 @@ function getPartCopyText(part: MessagePart): string | undefined {
 function MessageContent(msg: UIMessage): JSX.Element {
   return (
     <div class={CHAT_COMPACT_STACK_GAP_CLASS}>
-      <Index each={msg.parts}>
+      <Index each={getNonThinkingParts(msg.parts)}>
         {(part) => (
           <div class="flex flex-col gap-1">
             <Part isStreaming={resolvePartStreaming(part(), msg.isStreaming)} part={part()} />
@@ -145,12 +197,14 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
     return formatDuration(liveMs());
   });
 
+  const thinkingParts = createMemo(() => getThinkingParts(turn().messages));
+
   const canCollapse = createMemo(() => {
     const t = turn();
     if (t.endedAt === null || t.error) {
       return false;
     }
-    return t.messages.length > 1 || t.intermediateCount > 0;
+    return t.messages.length > 1 || t.intermediateCount > 0 || thinkingParts().length > 0;
   });
 
   createEffect(
@@ -234,6 +288,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
           class="flex flex-col gap-3 px-3 [overflow-anchor:none]"
           data-slot="session-turn-stream"
         >
+          <For each={thinkingParts()}>{(part) => <ThinkingBlock part={part} />}</For>
           <Show when={turn().error && !turn().working}>
             <div class="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
               {turn().error}
@@ -243,7 +298,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
         </div>
       </Show>
 
-      {/* Collapsible: accordion intermediate + always-visible summary */}
+      {/* Collapsible: accordion thinking + intermediate + always-visible summary */}
       <Show when={canCollapse()}>
         <div
           class="grid transition-[grid-template-rows] duration-200 ease-in-out"
@@ -253,6 +308,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
         >
           <div class="min-h-0 overflow-hidden">
             <div class="flex flex-col gap-3 px-3 py-2 opacity-50 [overflow-anchor:none]">
+              <For each={thinkingParts()}>{(part) => <ThinkingBlock part={part} />}</For>
               <For each={intermediateMessages()}>{(msg) => MessageContent(msg)}</For>
             </div>
           </div>
