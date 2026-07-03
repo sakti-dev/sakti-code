@@ -1,10 +1,9 @@
-import { ColorModeProvider, ColorModeScript, createLocalStorageManager } from "@kobalte/core";
 import "./index.css";
 import { render } from "solid-js/web";
 import WorkspaceLayout from "./components/layout/workspace-layout";
+import { ThemeProvider } from "./lib/theme-provider";
 import { StoreProvider } from "./stores/store-context";
 
-const colorModeStorage = createLocalStorageManager("sakti-theme");
 const root = document.getElementById("app");
 if (!root) {
   throw new Error("Root element #app not found");
@@ -12,14 +11,11 @@ if (!root) {
 
 render(
   () => (
-    <>
-      <ColorModeScript initialColorMode="dark" storageType={colorModeStorage.type} />
-      <ColorModeProvider initialColorMode="dark" storageManager={colorModeStorage}>
-        <StoreProvider>
-          <WorkspaceLayout />
-        </StoreProvider>
-      </ColorModeProvider>
-    </>
+    <ThemeProvider initialColorMode="dark">
+      <StoreProvider>
+        <WorkspaceLayout />
+      </StoreProvider>
+    </ThemeProvider>
   ),
   root,
 );
