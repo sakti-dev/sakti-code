@@ -84,3 +84,27 @@ describe("hydrateSessionTurns", () => {
     expect(hydrateSessionTurns([])).toEqual([]);
   });
 });
+
+describe("hydrateSessionTurns — thinking timing", () => {
+  it("preserves startedAt/endedAt from thinking content blocks", () => {
+    const messages = [
+      {
+        role: "assistant",
+        content: [
+          { type: "thinking", thinking: "reasoning", startedAt: 1000, endedAt: 2000 },
+          { type: "text", text: "answer" },
+        ],
+        timestamp: 1500,
+      },
+    ] as AgentMessage[];
+
+    const turns = hydrateSessionTurns(messages);
+    const thinking = turns[0]!.messages[0]!.parts.find((p) => p.type === "thinking");
+    expect(thinking).toMatchObject({
+      type: "thinking",
+      text: "reasoning",
+      startedAt: 1000,
+      endedAt: 2000,
+    });
+  });
+});

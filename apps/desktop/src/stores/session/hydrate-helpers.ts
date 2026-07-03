@@ -53,9 +53,18 @@ export function convertAssistantMessage(id: string, msg: AgentMessage): UIMessag
   const content = Array.isArray(rawContent) ? rawContent : [];
   for (const part of content) {
     if (part !== null && typeof part === "object" && "type" in part && part.type === "thinking") {
-      const thinking = (part as { thinking?: string }).thinking;
-      if (thinking) {
-        parts.push({ type: "thinking", text: thinking });
+      const raw = part as {
+        thinking?: string;
+        startedAt?: number;
+        endedAt?: number;
+      };
+      if (raw.thinking) {
+        parts.push({
+          type: "thinking",
+          text: raw.thinking,
+          ...(raw.startedAt !== undefined ? { startedAt: raw.startedAt } : {}),
+          ...(raw.endedAt !== undefined ? { endedAt: raw.endedAt } : {}),
+        });
       }
     } else if (
       part !== null &&
