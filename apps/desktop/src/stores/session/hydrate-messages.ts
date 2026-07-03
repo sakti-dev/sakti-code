@@ -21,9 +21,10 @@ export function hydrateSessionTurns(messages: AgentMessage[]): Turn[] {
         error: null,
         id: crypto.randomUUID(),
         intermediateCount: 0,
+        intermediates: [],
         intermediatesLoaded: false,
         loadedMessageIds: [],
-        messages: [],
+        summary: null,
         startedAt: typeof msg.timestamp === "number" ? msg.timestamp : Date.now(),
         turnId: null,
         userMessage: convertUserMessage(crypto.randomUUID(), msg),
@@ -36,19 +37,29 @@ export function hydrateSessionTurns(messages: AgentMessage[]): Turn[] {
           error: null,
           id: crypto.randomUUID(),
           intermediateCount: 0,
+          intermediates: [],
           intermediatesLoaded: false,
           loadedMessageIds: [],
-          messages: [],
+          summary: null,
           startedAt: null,
           turnId: null,
           userMessage: null,
           working: false,
         };
       }
-      current.messages.push(convertAssistantMessage(crypto.randomUUID(), msg));
+      // Demote current summary to intermediates, set new summary
+      if (current.summary) {
+        current.intermediates.push(current.summary);
+      }
+      current.summary = convertAssistantMessage(crypto.randomUUID(), msg);
     } else if (msg.role === "toolResult") {
-      if (current && current.messages.length > 0) {
-        mergeToolResult(current.messages, msg);
+      if (current) {
+        // Try summary first, then intermediates in reverse (mergeToolResult searches backward)
+        const candidates = [
+          ...(current.summary ? [current.summary] : []),
+          ...[...current.intermediates].reverse(),
+        ];
+        mergeToolResult(candidates, msg);
       }
     } else if (msg.role === "custom" && "customType" in msg && msg.customType === "om_marker") {
       const details = (msg as { details?: Record<string, unknown> }).details;
@@ -56,7 +67,7 @@ export function hydrateSessionTurns(messages: AgentMessage[]): Turn[] {
         continue;
       }
 
-      const lastAssistant = current.messages.at(-1);
+      const lastAssistant = current.summary;
       if (!lastAssistant) {
         continue;
       }

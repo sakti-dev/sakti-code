@@ -122,7 +122,8 @@ function estimateAssistantMessageHeight(
 }
 
 function estimateAssistantBlockHeight(turn: Turn, contentWidth: number): number {
-  if (turn.messages.length === 0) {
+  const allMessages = [...turn.intermediates, ...(turn.summary ? [turn.summary] : [])];
+  if (allMessages.length === 0) {
     return turn.working ? WAITING_HEIGHT : 0;
   }
 
@@ -131,7 +132,7 @@ function estimateAssistantBlockHeight(turn: Turn, contentWidth: number): number 
 
   let height = 0;
   let first = true;
-  for (const msg of turn.messages) {
+  for (const msg of allMessages) {
     if (!first) {
       height += ASSISTANT_MSG_GAP;
     }

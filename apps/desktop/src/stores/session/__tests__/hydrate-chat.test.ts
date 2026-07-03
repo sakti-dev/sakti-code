@@ -51,8 +51,8 @@ describe("hydrateChatTurns", () => {
     expect(result).toHaveLength(1);
     expect(result[0]!.id).toBe("t1");
     expect(result[0]!.userMessage?.content).toBe("hello");
-    expect(result[0]!.messages).toHaveLength(1);
-    expect(result[0]!.messages[0]!.id).toBe("s1");
+    expect(result[0]!.summary).not.toBeNull();
+    expect(result[0]!.summary!.id).toBe("s1");
     expect(result[0]!.intermediateCount).toBe(2);
     expect(result[0]!.intermediatesLoaded).toBe(false);
     expect(result[0]!.working).toBe(false);

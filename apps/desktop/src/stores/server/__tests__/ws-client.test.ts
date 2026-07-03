@@ -169,7 +169,7 @@ describe("WS client", () => {
 
     fake.fireMessage({ type: "error", sessionId: "s1", error: "boom" });
 
-    expect(session.store.turns[0]!.messages[0]!.error).toBe("boom");
+    expect(session.store.turns[0]!.summary!.error).toBe("boom");
     expect(session.store.streaming.phase).toBe("error");
 
     ws.disconnect();

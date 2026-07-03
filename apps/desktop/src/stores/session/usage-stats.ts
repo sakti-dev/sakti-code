@@ -41,7 +41,8 @@ export function aggregateUsage(turns: Turn[]): SessionUsageStats {
   let output = 0;
   let reasoningTokens = 0;
   for (const turn of turns) {
-    for (const msg of turn.messages) {
+    const allMessages = [...turn.intermediates, ...(turn.summary ? [turn.summary] : [])];
+    for (const msg of allMessages) {
       if (msg.role !== "assistant" || !msg.usage) {
         continue;
       }

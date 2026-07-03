@@ -346,7 +346,7 @@ describe("actions", () => {
     const store = deps.sessionRegistry.get("sess-1").store;
     expect(store.turns).toHaveLength(1); // one turn with user + assistant
 
-    const assistantMsg = store.turns[0]!.messages[0]!;
+    const assistantMsg = store.turns[0]!.summary!;
     expect(assistantMsg.parts).toHaveLength(3); // thinking + text + tool_call(done)
     const toolPart = assistantMsg.parts[2]!;
     expect(toolPart.type).toBe("tool_call");

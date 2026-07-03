@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { UIMessage } from "~/stores/types.ts";
-import { getNonThinkingParts, getThinkingParts } from "../thinking-helpers.ts";
+import { flattenParts, getNonThinkingParts } from "../thinking-helpers.ts";
 
 function msg(parts: UIMessage["parts"]): UIMessage {
   return {
@@ -29,41 +29,6 @@ const toolCall = () => ({
   status: "done" as const,
 });
 
-describe("getThinkingParts", () => {
-  it("extracts thinking parts with text", () => {
-    const messages = [
-      msg([thinking("Hmm"), text("hello")]),
-      msg([thinking("Let me think"), toolCall()]),
-    ];
-    const result = getThinkingParts(messages);
-    expect(result).toHaveLength(2);
-    expect(result[0]?.text).toBe("Hmm");
-    expect(result[1]?.text).toBe("Let me think");
-  });
-
-  it("skips empty thinking parts", () => {
-    const messages = [msg([thinking("   "), text("hello")])];
-    expect(getThinkingParts(messages)).toHaveLength(0);
-  });
-
-  it("skips messages with no thinking", () => {
-    const messages = [msg([text("hello"), toolCall()])];
-    expect(getThinkingParts(messages)).toHaveLength(0);
-  });
-
-  it("preserves order across messages", () => {
-    const messages = [
-      msg([thinking("first")]),
-      msg([text("intermediate")]),
-      msg([thinking("second")]),
-    ];
-    const result = getThinkingParts(messages);
-    expect(result).toHaveLength(2);
-    expect(result[0]?.text).toBe("first");
-    expect(result[1]?.text).toBe("second");
-  });
-});
-
 describe("getNonThinkingParts", () => {
   it("filters out thinking parts", () => {
     const parts = [thinking("Hmm"), text("hello"), toolCall()];
@@ -80,5 +45,29 @@ describe("getNonThinkingParts", () => {
   it("returns empty when all thinking", () => {
     const parts = [thinking("a"), thinking("b")];
     expect(getNonThinkingParts(parts)).toHaveLength(0);
+  });
+});
+
+describe("flattenParts", () => {
+  it("flattens all parts from multiple messages in order", () => {
+    const messages = [msg([thinking("a"), text("b")]), msg([toolCall()])];
+    const result = flattenParts(messages);
+    expect(result).toHaveLength(3);
+    expect(result.map((p) => p.type)).toEqual(["thinking", "text", "tool_call"]);
+  });
+
+  it("returns empty for empty input", () => {
+    expect(flattenParts([])).toEqual([]);
+  });
+
+  it("preserves the exact part object references (no cloning)", () => {
+    const t = text("b");
+    const tc = toolCall();
+    const messages = [msg([thinking("a"), t]), msg([tc])];
+    const result = flattenParts(messages);
+    // Referential identity must hold — the timeline groups these parts and the
+    // view must not remount when the same part object is reused.
+    expect(result[1]).toBe(t);
+    expect(result[2]).toBe(tc);
   });
 });

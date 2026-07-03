@@ -8,7 +8,7 @@ describe("compaction handlers — the splitCache bug fix", () => {
 
     dispatch({ reason: "manual", type: "compaction_start" });
 
-    const parts = session.store.turns[0]!.messages[0]!.parts;
+    const parts = session.store.turns[0]!.summary!.parts;
     expect(parts.some((p) => p.type === "compaction")).toBe(true);
   });
 
@@ -27,7 +27,7 @@ describe("compaction handlers — the splitCache bug fix", () => {
     dispatch({ text: "Sum", type: "compaction_delta" });
     dispatch({ text: "mary", type: "compaction_delta" });
 
-    const compactionPart = session.store.turns[0]!.messages[0]!.parts.find(
+    const compactionPart = session.store.turns[0]!.summary!.parts.find(
       (p) => p.type === "compaction",
     );
     expect(compactionPart).toMatchObject({ type: "compaction", text: "Summary" });
@@ -44,7 +44,7 @@ describe("compaction handlers — the splitCache bug fix", () => {
       willRetry: false,
     });
 
-    const compactionPart = session.store.turns[0]!.messages[0]!.parts.find(
+    const compactionPart = session.store.turns[0]!.summary!.parts.find(
       (p) => p.type === "compaction",
     );
     expect(compactionPart).toMatchObject({
@@ -67,7 +67,7 @@ describe("compaction handlers — the splitCache bug fix", () => {
       willRetry: false,
     });
 
-    const compactionPart = session.store.turns[0]!.messages[0]!.parts.find(
+    const compactionPart = session.store.turns[0]!.summary!.parts.find(
       (p) => p.type === "compaction",
     );
     expect(compactionPart).toMatchObject({
@@ -87,7 +87,7 @@ describe("compaction handlers — the splitCache bug fix", () => {
       willRetry: false,
     });
 
-    const compactionPart = session.store.turns[0]!.messages[0]!.parts.find(
+    const compactionPart = session.store.turns[0]!.summary!.parts.find(
       (p) => p.type === "compaction",
     );
     expect(compactionPart).toMatchObject({
@@ -108,7 +108,7 @@ describe("compaction handlers — the splitCache bug fix", () => {
     });
     dispatch({ reason: "threshold", type: "compaction_start" });
 
-    const compactionParts = session.store.turns[0]!.messages[0]!.parts.filter(
+    const compactionParts = session.store.turns[0]!.summary!.parts.filter(
       (p) => p.type === "compaction",
     );
     expect(compactionParts).toHaveLength(1);

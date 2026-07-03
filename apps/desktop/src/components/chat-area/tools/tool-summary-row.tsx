@@ -8,6 +8,8 @@ export interface ToolSummaryRowProps {
   class?: string;
   error?: string;
   icon: ToolIcon;
+  /** When false, the leading icon is hidden (used when the icon lives on a parent TimelineStep). */
+  showIcon?: boolean;
   status: "running" | "completed" | "error" | "pending";
   summary: string | { main: string; muted?: string };
 }
@@ -39,7 +41,9 @@ export const ToolSummaryRow: Component<ToolSummaryRowProps> = (props) => {
       data-component="tool-summary-row"
       data-status={props.status}
     >
-      <ToolIcon_ icon={props.icon} />
+      <Show when={props.showIcon !== false}>
+        <ToolIcon_ icon={props.icon} />
+      </Show>
 
       <span class="min-w-0 truncate" data-slot="summary-main">
         {mainText()}

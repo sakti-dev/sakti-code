@@ -107,10 +107,13 @@ export interface SessionStore {
   store: SessionStoreData;
 }
 
-/** O(1) lookup: msgId → location in the turns array. */
+/** O(1) lookup: msgId → location in the store. */
 interface MsgLocation {
-  msgIdx: number;
   turnIdx: number;
+  /** true = message lives in turn.summary, false = in turn.intermediates[msgIdx] */
+  inSummary: boolean;
+  /** Index into intermediates[]. Ignored when inSummary is true. */
+  msgIdx: number;
 }
 
 export function createSessionStore(): SessionStore {
@@ -125,22 +128,73 @@ export function createSessionStore(): SessionStore {
 
   const msgLocation = new Map<string, MsgLocation>();
 
-  function indexMessage(msgId: string, turnIdx: number, msgIdx: number): void {
-    msgLocation.set(msgId, { turnIdx, msgIdx });
+  function indexMessage(msgId: string, turnIdx: number, msgIdx: number, inSummary: boolean): void {
+    msgLocation.set(msgId, { inSummary, msgIdx, turnIdx });
   }
 
   function reindexAll(): void {
     msgLocation.clear();
     for (let t = 0; t < store.turns.length; t++) {
       const turn = store.turns[t]!;
-      for (let m = 0; m < turn.messages.length; m++) {
-        indexMessage(turn.messages[m]!.id, t, m);
+      for (let m = 0; m < turn.intermediates.length; m++) {
+        indexMessage(turn.intermediates[m]!.id, t, m, false);
+      }
+      if (turn.summary) {
+        indexMessage(turn.summary.id, t, 0, true);
       }
     }
   }
 
   function findMsg(msgId: string): MsgLocation | undefined {
     return msgLocation.get(msgId);
+  }
+
+  function getMsg(loc: MsgLocation): UIMessage | undefined {
+    const turn = store.turns[loc.turnIdx];
+    if (!turn) return undefined;
+    return loc.inSummary ? (turn.summary ?? undefined) : turn.intermediates[loc.msgIdx];
+  }
+
+  /** Mutate a message in-place via produce(). */
+  function mutateMsg(loc: MsgLocation, fn: (msg: UIMessage) => void): void {
+    if (loc.inSummary) {
+      // summary is UIMessage | null at the type level, but mutateMsg is only
+      // reached after getMsg() confirmed the message exists.
+      setStore(
+        "turns",
+        loc.turnIdx,
+        "summary",
+        produce((m: UIMessage | null) => {
+          if (m) {
+            fn(m);
+          }
+        }),
+      );
+    } else {
+      setStore("turns", loc.turnIdx, "intermediates", loc.msgIdx, produce(fn));
+    }
+  }
+
+  /** Replace the parts array on a message. */
+  function setMsgParts(loc: MsgLocation, fn: (prev: MessagePart[]) => MessagePart[]): void {
+    if (loc.inSummary) {
+      setStore("turns", loc.turnIdx, "summary", "parts", fn);
+    } else {
+      setStore("turns", loc.turnIdx, "intermediates", loc.msgIdx, "parts", fn);
+    }
+  }
+
+  /** Set a single field on a message. */
+  function setMsgField<K extends keyof UIMessage>(
+    loc: MsgLocation,
+    field: K,
+    value: UIMessage[K],
+  ): void {
+    if (loc.inSummary) {
+      setStore("turns", loc.turnIdx, "summary", field, value);
+    } else {
+      setStore("turns", loc.turnIdx, "intermediates", loc.msgIdx, field, value);
+    }
   }
 
   const actions: SessionActions = {
@@ -150,9 +204,10 @@ export function createSessionStore(): SessionStore {
         error: null,
         id: crypto.randomUUID(),
         intermediateCount: 0,
+        intermediates: [],
         intermediatesLoaded: false,
         loadedMessageIds: [],
-        messages: [],
+        summary: null,
         startedAt: startedAt ?? Date.now(),
         turnId: null,
         userMessage,
@@ -166,77 +221,93 @@ export function createSessionStore(): SessionStore {
       if (turnIdx < 0) {
         return;
       }
-      const msgIdx = store.turns[turnIdx]!.messages.length;
-      setStore("turns", turnIdx, "messages", (prev) => [...prev, msg]);
-      indexMessage(msg.id, turnIdx, msgIdx);
+
+      // Demote current summary into intermediates and set the new summary in a
+      // single produce(). Doing this outside produce (capturing turn.summary
+      // into a local) captures a live store proxy bound to the summary slot, so
+      // reassigning summary afterwards crosses the values. produce lets us read
+      // the current summary value and reassign atomically.
+      setStore(
+        "turns",
+        turnIdx,
+        produce((t: Turn) => {
+          if (t.summary) {
+            t.intermediates.push(t.summary);
+          }
+          t.summary = msg;
+        }),
+      );
+
+      // Reindex this turn's messages (ids/positions may have shifted).
+      const turn = store.turns[turnIdx]!;
+      for (let m = 0; m < turn.intermediates.length; m++) {
+        indexMessage(turn.intermediates[m]!.id, turnIdx, m, false);
+      }
+      if (turn.summary) {
+        indexMessage(turn.summary.id, turnIdx, 0, true);
+      }
+
       setStore("streaming", "currentMessageId", msg.id);
       setStore("streaming", "phase", "writing");
     },
 
     appendTextToken(msgId, delta) {
       const loc = findMsg(msgId);
-      if (!loc) {
+      if (!loc || !getMsg(loc)) {
         return;
       }
-      const msg = store.turns[loc.turnIdx]?.messages[loc.msgIdx];
-      if (!msg) {
-        return;
-      }
-      setStore(
-        "turns",
-        loc.turnIdx,
-        "messages",
-        loc.msgIdx,
-        produce((m: UIMessage) => {
-          m.content += delta;
-          const parts = m.parts;
-          const last = parts[parts.length - 1];
-          if (last !== undefined && last.type === "text") {
-            last.text += delta;
-          } else if (last !== undefined) {
-            if (last.type === "thinking" && last.endedAt === undefined) {
-              last.endedAt = Date.now();
-            }
-            last.isStreaming = false;
-            parts.push({ type: "text", text: delta, isStreaming: true });
-          } else {
-            parts.push({ type: "text", text: delta, isStreaming: true });
+      mutateMsg(loc, (m) => {
+        m.content += delta;
+        const parts = m.parts;
+        const last = parts[parts.length - 1];
+        if (last !== undefined && last.type === "text") {
+          last.text += delta;
+        } else if (last !== undefined) {
+          if (last.type === "thinking" && last.endedAt === undefined) {
+            last.endedAt = Date.now();
           }
-        }),
-      );
+          last.isStreaming = false;
+          parts.push({ type: "text", text: delta, isStreaming: true });
+        } else {
+          parts.push({ type: "text", text: delta, isStreaming: true });
+        }
+      });
       setStore("streaming", "tokenCount", (n: number) => n + 1);
     },
 
     appendThinkingToken(msgId, delta) {
       const loc = findMsg(msgId);
-      if (!loc) {
+      if (!loc || !getMsg(loc)) {
         return;
       }
-      const msg = store.turns[loc.turnIdx]?.messages[loc.msgIdx];
-      if (!msg) {
-        return;
-      }
-      setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "parts", (prev) => {
-        const last = prev.at(-1);
+      // Mutate in place so the thinking part reference stays stable across
+      // streaming tokens — the timeline keys steps by part reference and would
+      // remount (replaying Markdown animation) if a new object were created
+      // on every token.
+      mutateMsg(loc, (m) => {
+        const parts = m.parts;
+        const last = parts[parts.length - 1];
         if (last !== undefined && last.type === "thinking") {
-          return [...prev.slice(0, -1), { ...last, text: last.text + delta }];
+          last.text += delta;
+          return;
         }
-        const newPart: MessagePart = {
+        // last is not a thinking part (or undefined): finalize it and append a
+        // fresh thinking part.
+        if (last !== undefined) {
+          last.isStreaming = false;
+        }
+        parts.push({
           type: "thinking",
           text: delta,
           startedAt: Date.now(),
           isStreaming: true,
-        };
-        if (last !== undefined) {
-          return [...prev.slice(0, -1), { ...last, isStreaming: false }, newPart];
-        }
-        return [newPart];
+        });
       });
     },
 
     addToolCall(msgId, toolCallId, toolName, input) {
       const loc = findMsg(msgId);
-      if (!loc) {
+      if (!loc || !getMsg(loc)) {
         return;
       }
       const part: MessagePart = {
@@ -247,15 +318,18 @@ export function createSessionStore(): SessionStore {
         toolCallId,
         toolName,
       };
-      setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "parts", (prev) => {
-        const last = prev.at(-1);
-        if (last === undefined) {
-          return [part];
+      // Mutate in place: finalize the previous part on its existing reference
+      // and push the new tool_call, so earlier parts keep stable identity.
+      mutateMsg(loc, (m) => {
+        const parts = m.parts;
+        const last = parts[parts.length - 1];
+        if (last !== undefined) {
+          if (last.type === "thinking" && last.endedAt === undefined) {
+            last.endedAt = Date.now();
+          }
+          last.isStreaming = false;
         }
-        if (last.type === "thinking" && last.endedAt === undefined) {
-          return [...prev.slice(0, -1), { ...last, endedAt: Date.now(), isStreaming: false }, part];
-        }
-        return [...prev.slice(0, -1), { ...last, isStreaming: false }, part];
+        parts.push(part);
       });
       setStore("streaming", "currentToolName", toolName);
       setStore("streaming", "phase", "tool_running");
@@ -263,23 +337,25 @@ export function createSessionStore(): SessionStore {
 
     completeToolCall(msgId, toolCallId, result, isError, details) {
       const loc = findMsg(msgId);
-      if (!loc) {
+      if (!loc || !getMsg(loc)) {
         return;
       }
       const isErr = isError ?? false;
-      setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "parts", (prev) =>
-        prev.map((p) =>
-          p.type === "tool_call" && p.toolCallId === toolCallId
-            ? {
-                ...p,
-                status: isErr ? ("error" as const) : ("done" as const),
-                result,
-                isStreaming: false,
-                ...(details === undefined ? {} : { details }),
-              }
-            : p,
-        ),
-      );
+      // Mutate the matching tool_call part in place so its reference stays
+      // stable — the timeline keys steps by part reference and would remount
+      // (flickering the ToolSummaryRow) if completion produced a new object.
+      mutateMsg(loc, (m) => {
+        for (const part of m.parts) {
+          if (part.type === "tool_call" && part.toolCallId === toolCallId) {
+            part.status = isErr ? "error" : "done";
+            part.result = result;
+            part.isStreaming = false;
+            if (details !== undefined) {
+              part.details = details;
+            }
+          }
+        }
+      });
       setStore("streaming", "currentToolName", null);
     },
 
@@ -288,7 +364,7 @@ export function createSessionStore(): SessionStore {
       if (!loc) {
         return;
       }
-      setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "parts", (prev) => {
+      setMsgParts(loc, (prev) => {
         if (prev.some((p) => p.type === "compaction")) {
           return prev;
         }
@@ -310,7 +386,7 @@ export function createSessionStore(): SessionStore {
         log.debug("appendCompactionToken — msgId not in location index", { msgId });
         return;
       }
-      setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "parts", (prev) => {
+      setMsgParts(loc, (prev) => {
         const idx = prev.findIndex((p) => p.type === "compaction");
         if (idx < 0) {
           log.debug("appendCompactionToken — no compaction part in message", {
@@ -334,7 +410,7 @@ export function createSessionStore(): SessionStore {
       if (!loc) {
         return;
       }
-      setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "parts", (prev) => {
+      setMsgParts(loc, (prev) => {
         const idx = prev.findIndex((p) => p.type === "compaction");
         if (idx < 0) {
           return prev;
@@ -353,7 +429,7 @@ export function createSessionStore(): SessionStore {
       if (!loc) {
         return;
       }
-      setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "parts", (prev) => {
+      setMsgParts(loc, (prev) => {
         if (prev.some((p) => p.type === "om_marker" && p.cycleId === marker.cycleId)) {
           return prev;
         }
@@ -366,7 +442,7 @@ export function createSessionStore(): SessionStore {
       if (!loc) {
         return;
       }
-      setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "parts", (prev) => {
+      setMsgParts(loc, (prev) => {
         const idx = prev.findIndex((p) => p.type === "om_marker" && p.cycleId === cycleId);
         if (idx < 0) {
           return prev;
@@ -382,22 +458,25 @@ export function createSessionStore(): SessionStore {
 
     finalizeMessage(msgId, usage) {
       const loc = findMsg(msgId);
-      if (!loc) {
+      if (!loc || !getMsg(loc)) {
         return;
       }
-      setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "parts", (prev) => {
-        const last = prev.at(-1);
-        if (last === undefined) {
-          return prev;
+      // Mutate the trailing part in place so its reference stays stable —
+      // finalizing must not remount the last step (which would replay Markdown's
+      // mount animation for a trailing text part). `isStreaming` lives on every
+      // MessagePart variant via the `{ isStreaming?: boolean }` intersection.
+      mutateMsg(loc, (m) => {
+        const last = m.parts[m.parts.length - 1];
+        if (last !== undefined) {
+          if (last.type === "thinking" && last.endedAt === undefined) {
+            last.endedAt = Date.now();
+          }
+          last.isStreaming = false;
         }
-        if (last.type === "thinking" && last.endedAt === undefined) {
-          return [...prev.slice(0, -1), { ...last, endedAt: Date.now(), isStreaming: false }];
-        }
-        return [...prev.slice(0, -1), { ...last, isStreaming: false }];
       });
-      setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "isStreaming", false);
+      setMsgField(loc, "isStreaming", false);
       if (usage !== undefined) {
-        setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "usage", usage);
+        setMsgField(loc, "usage", usage);
       }
     },
 
@@ -417,7 +496,7 @@ export function createSessionStore(): SessionStore {
     setError(msgId, error) {
       const loc = findMsg(msgId);
       if (loc) {
-        setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "error", error);
+        setMsgField(loc, "error", error);
       }
       setStore("streaming", "phase", "error");
     },
@@ -453,10 +532,12 @@ export function createSessionStore(): SessionStore {
     getLastAssistantMessageId() {
       for (let t = store.turns.length - 1; t >= 0; t--) {
         const turn = store.turns[t]!;
-        for (let m = turn.messages.length - 1; m >= 0; m--) {
-          if (turn.messages[m]!.role === "assistant") {
-            return turn.messages[m]!.id;
-          }
+        if (turn.summary) {
+          return turn.summary.id;
+        }
+        const lastIntermediate = turn.intermediates.at(-1);
+        if (lastIntermediate) {
+          return lastIntermediate.id;
         }
       }
       return null;
@@ -467,7 +548,7 @@ export function createSessionStore(): SessionStore {
       if (!loc) {
         return;
       }
-      setStore("turns", loc.turnIdx, "messages", loc.msgIdx, "content", content);
+      setMsgField(loc, "content", content);
     },
 
     setCurrentMessage(msgId) {
@@ -504,20 +585,17 @@ export function createSessionStore(): SessionStore {
       if (turnIdx < 0) {
         return;
       }
-      const turn = store.turns[turnIdx]!;
+
       const ids = messages.map((m) => m.id);
+      setStore("turns", turnIdx, "intermediates", messages);
 
-      // Insert before the summary (last message)
-      const summaryIdx = turn.messages.length > 0 ? turn.messages.length - 1 : 0;
-      setStore("turns", turnIdx, "messages", (prev) => [
-        ...prev.slice(0, summaryIdx),
-        ...messages,
-        ...prev.slice(summaryIdx),
-      ]);
-
-      // Re-index this turn's messages
-      for (let m = 0; m < store.turns[turnIdx]!.messages.length; m++) {
-        indexMessage(store.turns[turnIdx]!.messages[m]!.id, turnIdx, m);
+      // Re-index this turn
+      const turn = store.turns[turnIdx]!;
+      for (let m = 0; m < turn.intermediates.length; m++) {
+        indexMessage(turn.intermediates[m]!.id, turnIdx, m, false);
+      }
+      if (turn.summary) {
+        indexMessage(turn.summary.id, turnIdx, 0, true);
       }
 
       setStore("turns", turnIdx, "intermediatesLoaded", true);
@@ -533,17 +611,13 @@ export function createSessionStore(): SessionStore {
       if (turn.loadedMessageIds.length === 0) {
         return;
       }
-      const idsToRemove = new Set(turn.loadedMessageIds);
-      setStore("turns", turnIdx, "messages", (prev) => prev.filter((m) => !idsToRemove.has(m.id)));
 
-      // Re-index this turn's messages
-      for (let m = 0; m < store.turns[turnIdx]!.messages.length; m++) {
-        indexMessage(store.turns[turnIdx]!.messages[m]!.id, turnIdx, m);
-      }
       // Clean up evicted ids from location map
-      for (const id of idsToRemove) {
+      for (const id of turn.loadedMessageIds) {
         msgLocation.delete(id);
       }
+
+      setStore("turns", turnIdx, "intermediates", []);
 
       setStore("turns", turnIdx, "intermediatesLoaded", false);
       setStore("turns", turnIdx, "loadedMessageIds", []);

@@ -27,8 +27,8 @@ describe("message handlers", () => {
     const { session, dispatch } = setupHandlers();
     dispatch({ message: userMsg("hi"), type: "message_start" });
     dispatch({ message: assistantMsg(), type: "message_start" });
-    expect(session.store.turns[0]!.messages).toHaveLength(1);
-    expect(session.store.turns[0]!.messages[0]!.isStreaming).toBe(true);
+    expect(session.store.turns[0]!.summary).not.toBeNull();
+    expect(session.store.turns[0]!.summary!.isStreaming).toBe(true);
     expect(session.store.streaming.currentMessageId).not.toBeNull();
     expect(session.store.streaming.phase).toBe("writing");
   });
@@ -39,9 +39,9 @@ describe("message handlers", () => {
     dispatch({ message: assistantMsg(), type: "message_start" });
     dispatch({ delta: { kind: "text", text: "Hel" }, type: "message_update" });
     dispatch({ delta: { kind: "text", text: "lo" }, type: "message_update" });
-    const parts = session.store.turns[0]!.messages[0]!.parts;
+    const parts = session.store.turns[0]!.summary!.parts;
     expect(parts.at(-1)).toMatchObject({ type: "text", text: "Hello" });
-    expect(session.store.turns[0]!.messages[0]!.content).toBe("Hello");
+    expect(session.store.turns[0]!.summary!.content).toBe("Hello");
   });
 
   it("message_update thinking appends thinking token", () => {
@@ -50,7 +50,7 @@ describe("message handlers", () => {
     dispatch({ message: assistantMsg(), type: "message_start" });
     dispatch({ delta: { kind: "thinking", text: "hmm" }, type: "message_update" });
     dispatch({ delta: { kind: "thinking", text: " more" }, type: "message_update" });
-    const parts = session.store.turns[0]!.messages[0]!.parts;
+    const parts = session.store.turns[0]!.summary!.parts;
     expect(parts[0]).toMatchObject({ type: "thinking", text: "hmm more" });
   });
 
@@ -67,7 +67,7 @@ describe("message handlers", () => {
     dispatch({ delta: { kind: "text", text: "answer" }, type: "message_update" });
     dispatch({ message: assistantMsgWithUsage(), type: "message_end" });
 
-    const msg = session.store.turns[0]!.messages[0]!;
+    const msg = session.store.turns[0]!.summary!;
     expect(msg.isStreaming).toBe(false);
     expect(msg.usage).toMatchObject({ input: 100, output: 50, cost: 0.01 });
   });
@@ -78,7 +78,7 @@ describe("message handlers", () => {
     dispatch({ message: assistantMsg(), type: "message_start" });
     dispatch({ delta: { kind: "thinking", text: "let me think" }, type: "message_update" });
     dispatch({ delta: { kind: "text", text: "answer" }, type: "message_update" });
-    const parts = session.store.turns[0]!.messages[0]!.parts;
+    const parts = session.store.turns[0]!.summary!.parts;
     expect(parts[0]).toMatchObject({ type: "thinking", text: "let me think" });
     expect(parts[1]).toMatchObject({ type: "text", text: "answer" });
   });
@@ -90,7 +90,7 @@ describe("message handlers", () => {
     dispatch({ delta: { kind: "thinking", text: "hmm" }, type: "message_update" });
     dispatch({ delta: { kind: "text", text: "answer" }, type: "message_update" });
 
-    const parts = session.store.turns[0]!.messages[0]!.parts;
+    const parts = session.store.turns[0]!.summary!.parts;
     expect(parts[0]).toHaveProperty("endedAt");
     expect((parts[0] as { endedAt?: number }).endedAt).toBeTypeOf("number");
   });

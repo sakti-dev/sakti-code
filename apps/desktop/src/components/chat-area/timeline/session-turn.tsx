@@ -4,7 +4,6 @@ import {
   createEffect,
   createMemo,
   createSignal,
-  For,
   Index,
   type JSX,
   on,
@@ -20,8 +19,8 @@ import { formatDuration } from "~/lib/format-duration";
 import { CHAT_COMPACT_STACK_GAP_CLASS, CHAT_STACK_GAP_CLASS } from "../layout";
 import { Part, resolvePartStreaming } from "../parts/message-part";
 import { PartFooter } from "../parts/part-footer";
-import { ThinkingPart } from "../parts/thinking-part";
-import { getNonThinkingParts, getThinkingParts } from "./thinking-helpers.ts";
+import { flattenParts, getNonThinkingParts } from "./thinking-helpers.ts";
+import { TimelineRenderer } from "./timeline-renderer.tsx";
 
 export interface SessionTurnProps {
   class?: string;
@@ -115,7 +114,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
       turnId: tid,
       wasExpanded,
       endedAt: turn().endedAt,
-      msgCount: turn().messages.length,
+      msgCount: turn().intermediates.length + (turn().summary ? 1 : 0),
     });
     setExpanded(!wasExpanded);
     if (tid) {
@@ -131,7 +130,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
   // (intermediates loaded on expand / evicted on collapse).
   createEffect(
     on(
-      () => turn().messages.length,
+      () => [turn().intermediates.length, turn().summary?.id] as const,
       () => props.onHeightChanged?.(),
     ),
   );
@@ -147,14 +146,12 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
     return formatDuration(liveMs());
   });
 
-  const thinkingParts = createMemo(() => getThinkingParts(turn().messages));
-
   const canCollapse = createMemo(() => {
     const t = turn();
     if (t.endedAt === null || t.error) {
       return false;
     }
-    return t.messages.length > 1 || t.intermediateCount > 0 || thinkingParts().length > 0;
+    return t.intermediates.length > 0 || t.intermediateCount > 0;
   });
 
   createEffect(
@@ -168,25 +165,28 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
           prevCanCollapse: prev?.[1],
           endedAt: turn().endedAt,
           turnId: turn().turnId,
-          msgCount: turn().messages.length,
+          msgCount: turn().intermediates.length + (turn().summary ? 1 : 0),
           intermediateCount: turn().intermediateCount,
         });
       },
     ),
   );
 
-  const intermediateMessages = createMemo(() => {
-    const msgs = turn().messages;
-    if (msgs.length <= 1) {
-      return [];
-    }
-    return msgs.slice(0, -1);
+  const intermediateMessages = createMemo(() => turn().intermediates);
+
+  const summaryMessage = createMemo(() => turn().summary);
+
+  const allMessages = createMemo(() => {
+    const t = turn();
+    return [...t.intermediates, ...(t.summary ? [t.summary] : [])];
   });
 
-  const summaryMessage = createMemo(() => {
-    const msgs = turn().messages;
-    return msgs.at(-1) ?? null;
-  });
+  // Flattened parts feed the TimelineRenderer. The individual part references
+  // are preserved (spread does not clone), and streaming mutations happen
+  // in-place at the store level, so the renderer's <For> keeps step nodes
+  // mounted and Markdown does not replay its mount animation on each token.
+  const allParts = createMemo(() => flattenParts(allMessages()));
+  const intermediateParts = createMemo(() => flattenParts(intermediateMessages()));
 
   return (
     <div
@@ -232,25 +232,32 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
         </button>
       </Show>
 
-      {/* Can't collapse (streaming, replay, error, single msg): show ALL messages */}
-      <Show when={!canCollapse() && turn().messages.length > 0}>
-        <div
-          class="flex flex-col gap-3 px-3 [overflow-anchor:none]"
-          data-slot="session-turn-stream"
-        >
-          <For each={thinkingParts()}>
-            {(part) => <ThinkingPart isStreaming={part.isStreaming === true} part={part} />}
-          </For>
+      {/*
+        Non-collapsible turn (streaming, or finished with no intermediates):
+        show the timeline. Text parts render prominent inside the timeline, so
+        the final answer reads as the main content, not a muted footnote. A
+        footer timestamp is shown once the turn has finished.
+      */}
+      <Show when={!canCollapse() && (turn().summary || turn().intermediates.length > 0)}>
+        <div class="px-3 [overflow-anchor:none]" data-slot="session-turn-stream">
           <Show when={turn().error && !turn().working}>
-            <div class="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
+            <div class="mb-3 rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
               {turn().error}
             </div>
           </Show>
-          <For each={turn().messages}>{(msg) => MessageContent(msg)}</For>
+          <TimelineRenderer isStreaming={turn().endedAt === null} parts={allParts()} />
+          <Show when={turn().endedAt !== null && summaryMessage()}>
+            {(summary) => (
+              <PartFooter
+                copyText={summary().content || undefined}
+                timestamp={summary().timestamp}
+              />
+            )}
+          </Show>
         </div>
       </Show>
 
-      {/* Collapsible: accordion thinking + intermediate + always-visible summary */}
+      {/* Collapsible: intermediate timeline + always-visible summary */}
       <Show when={canCollapse()}>
         <div
           class="grid transition-[grid-template-rows] duration-200 ease-in-out"
@@ -259,11 +266,8 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
           }}
         >
           <div class="min-h-0 overflow-hidden">
-            <div class="flex flex-col gap-3 px-3 py-2 opacity-50 [overflow-anchor:none]">
-              <For each={thinkingParts()}>
-                {(part) => <ThinkingPart isStreaming={part.isStreaming === true} part={part} />}
-              </For>
-              <For each={intermediateMessages()}>{(msg) => MessageContent(msg, false)}</For>
+            <div class="px-3 py-2 opacity-50 [overflow-anchor:none]">
+              <TimelineRenderer isStreaming={false} parts={intermediateParts()} />
             </div>
           </div>
         </div>

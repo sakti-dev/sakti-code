@@ -37,7 +37,7 @@ describe("hydrateSessionTurns", () => {
     const turns = hydrateSessionTurns(messages);
     expect(turns).toHaveLength(2);
     expect(turns[0]!.userMessage?.content).toBe("hello");
-    expect(turns[0]!.messages).toHaveLength(1);
+    expect(turns[0]!.summary).not.toBeNull();
     expect(turns[1]!.userMessage?.content).toBe("another question");
   });
 
@@ -45,7 +45,7 @@ describe("hydrateSessionTurns", () => {
     const turns = hydrateSessionTurns([makeAssistant("orphan")]);
     expect(turns).toHaveLength(1);
     expect(turns[0]!.userMessage).toBeNull();
-    expect(turns[0]!.messages).toHaveLength(1);
+    expect(turns[0]!.summary).not.toBeNull();
   });
 
   it("merges tool results into preceding assistant", () => {
@@ -77,7 +77,7 @@ describe("hydrateSessionTurns", () => {
     ];
     const turns = hydrateSessionTurns(messages);
     expect(turns).toHaveLength(1);
-    expect(turns[0]!.messages).toHaveLength(1);
+    expect(turns[0]!.summary).not.toBeNull();
   });
 
   it("returns empty array for empty input", () => {
@@ -99,7 +99,7 @@ describe("hydrateSessionTurns — thinking timing", () => {
     ] as AgentMessage[];
 
     const turns = hydrateSessionTurns(messages);
-    const thinking = turns[0]!.messages[0]!.parts.find((p) => p.type === "thinking");
+    const thinking = turns[0]!.summary!.parts.find((p) => p.type === "thinking");
     expect(thinking).toMatchObject({
       type: "thinking",
       text: "reasoning",

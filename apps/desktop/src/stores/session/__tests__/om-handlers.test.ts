@@ -13,7 +13,7 @@ describe("om handlers", () => {
       type: "om_start",
     });
 
-    const parts = session.store.turns[0]!.messages[0]!.parts;
+    const parts = session.store.turns[0]!.summary!.parts;
     expect(parts.some((p) => p.type === "om_marker" && p.cycleId === "c1")).toBe(true);
   });
 
@@ -38,7 +38,7 @@ describe("om handlers", () => {
       type: "om_end",
     });
 
-    const marker = session.store.turns[0]!.messages[0]!.parts.find(
+    const marker = session.store.turns[0]!.summary!.parts.find(
       (p) => p.type === "om_marker" && p.cycleId === "c1",
     );
     expect(marker).toMatchObject({
@@ -70,7 +70,7 @@ describe("om handlers", () => {
       type: "om_failed",
     });
 
-    const marker = session.store.turns[0]!.messages[0]!.parts.find(
+    const marker = session.store.turns[0]!.summary!.parts.find(
       (p) => p.type === "om_marker" && p.cycleId === "c1",
     );
     expect(marker).toMatchObject({
@@ -99,7 +99,7 @@ describe("om handlers", () => {
       type: "om_activation",
     });
 
-    const marker = session.store.turns[0]!.messages[0]!.parts.find(
+    const marker = session.store.turns[0]!.summary!.parts.find(
       (p) => p.type === "om_marker" && p.cycleId === "c1",
     );
     expect(marker).toMatchObject({ type: "om_marker", status: "activated" });
@@ -133,7 +133,7 @@ describe("om handlers", () => {
       type: "om_start",
     });
 
-    const markers = session.store.turns[0]!.messages[0]!.parts.filter(
+    const markers = session.store.turns[0]!.summary!.parts.filter(
       (p) => p.type === "om_marker" && p.cycleId === "c1",
     );
     expect(markers).toHaveLength(1);

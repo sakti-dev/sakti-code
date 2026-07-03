@@ -12,7 +12,7 @@ describe("tool handlers", () => {
       toolName: "read",
       type: "tool_execution_start",
     });
-    const parts = session.store.turns[0]!.messages[0]!.parts;
+    const parts = session.store.turns[0]!.summary!.parts;
     expect(parts.at(-1)).toMatchObject({
       type: "tool_call",
       toolName: "read",
@@ -39,7 +39,7 @@ describe("tool handlers", () => {
       toolName: "read",
       type: "tool_execution_end",
     });
-    const part = session.store.turns[0]!.messages[0]!.parts.find((p) => p.type === "tool_call");
+    const part = session.store.turns[0]!.summary!.parts.find((p) => p.type === "tool_call");
     expect(part).toMatchObject({
       type: "tool_call",
       status: "done",
@@ -65,7 +65,7 @@ describe("tool handlers", () => {
       toolName: "bash",
       type: "tool_execution_end",
     });
-    const part = session.store.turns[0]!.messages[0]!.parts.find((p) => p.type === "tool_call");
+    const part = session.store.turns[0]!.summary!.parts.find((p) => p.type === "tool_call");
     expect(part).toMatchObject({ type: "tool_call", status: "error" });
   });
 

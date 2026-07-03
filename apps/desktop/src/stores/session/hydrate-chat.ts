@@ -46,19 +46,19 @@ export function hydrateChatTurns(chatTurns: ChatTurnDTO[]): Turn[] {
       userMessage = convertUserMessage(userEntry.id, userEntry.message);
     }
 
-    const messages: UIMessage[] = [];
-    if (summaryEntry) {
-      messages.push(convertAssistantMessage(summaryEntry.id, summaryEntry.message));
-    }
+    const summary = summaryEntry
+      ? convertAssistantMessage(summaryEntry.id, summaryEntry.message)
+      : null;
 
     turns.push({
       endedAt: ct.endedAt,
       error: null,
       id: ct.id,
       intermediateCount: ct.intermediateIds.length,
+      intermediates: [],
       intermediatesLoaded: false,
       loadedMessageIds: [],
-      messages,
+      summary,
       startedAt: ct.startedAt,
       turnId: ct.id,
       userMessage,

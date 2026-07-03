@@ -100,14 +100,16 @@ export interface Turn {
   endedAt: number | null;
   error: string | null;
   id: string;
+  /** Intermediate assistant messages (thinking, tool calls, text). */
+  intermediates: UIMessage[];
   /** Count of intermediate entries on the server (for the collapse badge). */
   intermediateCount: number;
-  /** Whether intermediates have been loaded into `messages`. */
+  /** Whether intermediates have been loaded into `intermediates`. */
   intermediatesLoaded: boolean;
   /** UIMessage ids of loaded intermediates (for eviction). */
   loadedMessageIds: string[];
-  /** Assistant messages in this turn (1+ from agent-loop iterations). */
-  messages: UIMessage[];
+  /** The final assistant response. Null until first message arrives. */
+  summary: UIMessage | null;
   /** Server turn ID — null for live turns, non-null for REST-loaded turns. */
   turnId: string | null;
   startedAt: number | null;
