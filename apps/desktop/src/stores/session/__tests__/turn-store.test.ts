@@ -120,6 +120,23 @@ describe("turn store — appendThinkingToken", () => {
   });
 });
 
+describe("turn store — thinking endedAt on text transition", () => {
+  it("sets endedAt on thinking part when text arrives", () => {
+    const { store, actions } = createSessionStore();
+    actions.startTurn(makeUserMsg("hi"));
+    actions.addAssistantMessage(makeAssistantMsg("a1"));
+    actions.appendThinkingToken("a1", "hmm");
+    // Text arrives — thinking should be finalized
+    actions.appendTextToken("a1", "answer");
+
+    const parts = store.turns[0]!.messages[0]!.parts;
+    expect(parts[0]).toMatchObject({ type: "thinking", text: "hmm" });
+    expect(parts[0]).toHaveProperty("endedAt");
+    expect((parts[0] as { endedAt?: number }).endedAt).toBeTypeOf("number");
+    expect(parts[1]).toMatchObject({ type: "text", text: "answer" });
+  });
+});
+
 describe("turn store — addToolCall", () => {
   it("adds tool_call part and sets phase", () => {
     const { store, actions } = createSessionStore();

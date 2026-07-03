@@ -194,6 +194,9 @@ export function createSessionStore(): SessionStore {
           if (last !== undefined && last.type === "text") {
             last.text += delta;
           } else if (last !== undefined) {
+            if (last.type === "thinking" && last.endedAt === undefined) {
+              last.endedAt = Date.now();
+            }
             last.isStreaming = false;
             parts.push({ type: "text", text: delta, isStreaming: true });
           } else {

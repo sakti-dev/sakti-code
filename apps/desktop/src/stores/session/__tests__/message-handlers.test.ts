@@ -82,4 +82,16 @@ describe("message handlers", () => {
     expect(parts[0]).toMatchObject({ type: "thinking", text: "let me think" });
     expect(parts[1]).toMatchObject({ type: "text", text: "answer" });
   });
+
+  it("text after thinking sets endedAt on thinking part", () => {
+    const { session, dispatch } = setupHandlers();
+    dispatch({ message: userMsg("hi"), type: "message_start" });
+    dispatch({ message: assistantMsg(), type: "message_start" });
+    dispatch({ delta: { kind: "thinking", text: "hmm" }, type: "message_update" });
+    dispatch({ delta: { kind: "text", text: "answer" }, type: "message_update" });
+
+    const parts = session.store.turns[0]!.messages[0]!.parts;
+    expect(parts[0]).toHaveProperty("endedAt");
+    expect((parts[0] as { endedAt?: number }).endedAt).toBeTypeOf("number");
+  });
 });
