@@ -48,14 +48,14 @@ function getPartCopyText(part: MessagePart): string | undefined {
   return;
 }
 
-function MessageContent(msg: UIMessage): JSX.Element {
+function MessageContent(msg: UIMessage, showFooter = true): JSX.Element {
   return (
     <div class={CHAT_COMPACT_STACK_GAP_CLASS}>
       <Index each={getNonThinkingParts(msg.parts)}>
         {(part) => (
           <div class="flex flex-col gap-1">
             <Part isStreaming={resolvePartStreaming(part(), msg.isStreaming)} part={part()} />
-            <Show when={!part().isStreaming}>
+            <Show when={showFooter && !part().isStreaming}>
               <PartFooter copyText={getPartCopyText(part())} timestamp={msg.timestamp} />
             </Show>
           </div>
@@ -246,7 +246,9 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               {turn().error}
             </div>
           </Show>
-          <For each={turn().messages}>{(msg) => MessageContent(msg)}</For>
+          <For each={turn().messages}>
+            {(msg, idx) => MessageContent(msg, idx() === turn().messages.length - 1)}
+          </For>
         </div>
       </Show>
 
@@ -263,7 +265,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               <For each={thinkingParts()}>
                 {(part) => <ThinkingPart isStreaming={part.isStreaming === true} part={part} />}
               </For>
-              <For each={intermediateMessages()}>{(msg) => MessageContent(msg)}</For>
+              <For each={intermediateMessages()}>{(msg) => MessageContent(msg, false)}</For>
             </div>
           </div>
         </div>
