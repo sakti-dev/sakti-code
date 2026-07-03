@@ -700,6 +700,18 @@ describe("ReadTool directory listing", () => {
     expect(text).not.toMatch(/^\[.*#/m);
     expect(text).toContain("a.txt");
   });
+
+  it("reports directory kind in details", async () => {
+    const tool = createReadTool(tmpDir);
+    const result = await tool.execute("tc_1", { path: "." });
+    expect((result as { details?: { kind?: string } }).details?.kind).toBe("directory");
+  });
+
+  it("reports file kind in details", async () => {
+    const tool = createReadTool(tmpDir);
+    const result = await tool.execute("tc_1", { path: "hello.txt" });
+    expect((result as { details?: { kind?: string } }).details?.kind).toBe("file");
+  });
 });
 
 describe("Tool Argument Validation", () => {

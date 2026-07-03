@@ -34,6 +34,7 @@ const readSchema = Type.Object({
 export type ReadToolInput = Static<typeof readSchema>;
 
 export interface ReadToolDetails {
+  kind: "file" | "directory";
   truncation?: TruncationResult;
 }
 
@@ -205,7 +206,7 @@ export function createReadTool(
               }),
             },
           ],
-          details: undefined,
+          details: { kind: "directory" },
         };
       }
 
@@ -295,7 +296,7 @@ export function createReadTool(
       }
 
       throwIfAborted();
-      return { content, details: undefined };
+      return { content, details: { kind: "file" } };
     },
   };
 }
