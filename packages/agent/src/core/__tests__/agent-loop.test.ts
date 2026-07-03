@@ -258,6 +258,81 @@ describe("agentLoop with AgentMessage", () => {
     expect((thinking as { thinkingSignature?: string }).thinkingSignature).toBe("sig-abc-123");
   });
 
+  it("annotates thinking content with startedAt and endedAt", async () => {
+    const streamFn: StreamFn = () =>
+      Promise.resolve({
+        fullStream: (async function* () {
+          yield { type: "reasoning-delta", id: "r1", text: "thinking…" };
+          yield { type: "reasoning-end", id: "r1" };
+          yield { type: "text-delta", id: "t1", text: "answer" };
+        })(),
+        result: Promise.resolve({
+          finishReason: "stop" as const,
+          usage: createUsage(),
+        }),
+      });
+
+    const context: AgentContext = {
+      systemPrompt: "x",
+      messages: [],
+      tools: [],
+    };
+    const config: AgentLoopConfig = {
+      model: createModel(),
+      convertToLlm: identityConverter,
+    };
+
+    const stream = agentLoop([createUserMessage("Hi")], context, config, undefined, streamFn);
+    for await (const _event of stream) {
+      void _event;
+    }
+    const messages = await stream.result();
+    const assistant = messages[1] as AssistantMessage;
+    const thinking = assistant.content.find(
+      (c: AssistantMessage["content"][number]) => c.type === "thinking",
+    ) as { startedAt?: number; endedAt?: number } | undefined;
+
+    expect(thinking).toBeDefined();
+    expect(thinking!.startedAt).toBeTypeOf("number");
+    expect(thinking!.endedAt).toBeTypeOf("number");
+    expect(thinking!.endedAt!).toBeGreaterThanOrEqual(thinking!.startedAt!);
+  });
+
+  it("thinking endedAt falls back when reasoning-end is absent", async () => {
+    const streamFn: StreamFn = () =>
+      Promise.resolve({
+        fullStream: (async function* () {
+          yield { type: "reasoning-delta", id: "r1", text: "thinking…" };
+          // No reasoning-end — some providers omit it
+          yield { type: "text-delta", id: "t1", text: "answer" };
+        })(),
+        result: Promise.resolve({
+          finishReason: "stop" as const,
+          usage: createUsage(),
+        }),
+      });
+
+    const context: AgentContext = { systemPrompt: "x", messages: [], tools: [] };
+    const config: AgentLoopConfig = {
+      model: createModel(),
+      convertToLlm: identityConverter,
+    };
+
+    const stream = agentLoop([createUserMessage("Hi")], context, config, undefined, streamFn);
+    for await (const _event of stream) {
+      void _event;
+    }
+    const messages = await stream.result();
+    const assistant = messages[1] as AssistantMessage;
+    const thinking = assistant.content.find(
+      (c: AssistantMessage["content"][number]) => c.type === "thinking",
+    ) as { startedAt?: number; endedAt?: number } | undefined;
+
+    expect(thinking).toBeDefined();
+    expect(thinking!.startedAt).toBeTypeOf("number");
+    expect(thinking!.endedAt).toBeTypeOf("number");
+  });
+
   it("emits tool_input deltas as message_update while the tool call is being written", async () => {
     const streamFn: StreamFn = () =>
       Promise.resolve({

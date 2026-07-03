@@ -557,6 +557,10 @@ const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(
   // ── Accumulator state ──────────────────────────────────────────────
   let textBuffer = "";
   let thinkingBuffer = "";
+  // Timestamps for the "Thought for Xm Ys" UI — set on first reasoning-delta
+  // and reasoning-end (or text-delta fallback). Persisted inside ThinkingContent.
+  let thinkingStartedAt: number | undefined;
+  let thinkingEndedAt: number | undefined;
   // Anthropic encrypted thinking signature from reasoning-end's
   // providerMetadata.anthropic.signature — captured so the messages layer can
   // replay it for multi-turn extended-thinking continuity (gated by the
@@ -609,6 +613,9 @@ const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(
         switch (type) {
           case "text-delta": {
             yield* ensureMessageStarted();
+            if (thinkingBuffer && thinkingEndedAt === undefined) {
+              thinkingEndedAt = Date.now();
+            }
             const delta = part.text as string;
             textBuffer += delta;
             yield* emitEffect(emit, {
@@ -619,6 +626,9 @@ const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(
           }
           case "reasoning-delta": {
             yield* ensureMessageStarted();
+            if (thinkingStartedAt === undefined) {
+              thinkingStartedAt = Date.now();
+            }
             const delta = part.text as string;
             thinkingBuffer += delta;
             yield* emitEffect(emit, {
@@ -628,6 +638,7 @@ const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(
             break;
           }
           case "reasoning-end": {
+            thinkingEndedAt = Date.now();
             // Capture the Anthropic encrypted thinking signature for multi-turn
             // extended-thinking continuity (forwarded by toModelMessages when
             // the target model matches — see B4 sameModel guard).
@@ -700,6 +711,8 @@ const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(
       type: "thinking",
       thinking: thinkingBuffer,
       ...(thinkingSignature ? { thinkingSignature } : {}),
+      ...(thinkingStartedAt !== undefined ? { startedAt: thinkingStartedAt } : {}),
+      ...(thinkingEndedAt !== undefined ? { endedAt: thinkingEndedAt } : {}),
     });
   }
   if (textBuffer) {
