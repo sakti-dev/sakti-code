@@ -8,21 +8,9 @@ import {
   onCleanup,
   Show,
 } from "solid-js";
+import { formatDuration } from "~/lib/format-duration";
 import { Markdown } from "~/components/ui/markdown";
 import type { PartProps } from "./part-registry.ts";
-
-function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 1) {
-    return "<1s";
-  }
-  if (seconds < 60) {
-    return `${seconds}s`;
-  }
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
-}
 
 export const ThinkingPart: Component<PartProps> = (props) => {
   const text = () => (props.part.type === "thinking" ? props.part.text : "");

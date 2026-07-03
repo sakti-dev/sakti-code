@@ -16,6 +16,7 @@ import type { Turn } from "~/stores/types";
 import { useStore } from "~/stores/store-context";
 import type { MessagePart, UIMessage } from "~/stores/types.ts";
 import { createLogger } from "~/lib/utils";
+import { formatDuration } from "~/lib/format-duration";
 import { CHAT_COMPACT_STACK_GAP_CLASS, CHAT_STACK_GAP_CLASS } from "../layout";
 import { Part, resolvePartStreaming } from "../parts/message-part";
 import { PartFooter } from "../parts/part-footer";
@@ -43,20 +44,6 @@ function getPartCopyText(part: MessagePart): string | undefined {
     return typeof part.result === "string" && part.result ? part.result : undefined;
   }
   return;
-}
-
-function formatWorkDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  if (hours > 0) {
-    return `${hours}h ${minutes}m ${seconds}s`;
-  }
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
-  }
-  return `${seconds}s`;
 }
 
 function MessageContent(msg: UIMessage): JSX.Element {
@@ -153,9 +140,9 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
       return null;
     }
     if (endedAt !== null) {
-      return formatWorkDuration(endedAt - startedAt);
+      return formatDuration(endedAt - startedAt);
     }
-    return formatWorkDuration(liveMs());
+    return formatDuration(liveMs());
   });
 
   const canCollapse = createMemo(() => {
