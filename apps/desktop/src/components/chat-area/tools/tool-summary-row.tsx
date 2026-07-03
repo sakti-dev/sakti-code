@@ -1,30 +1,16 @@
-import { FiFileText, FiFolder, FiSearch, FiTerminal } from "solid-icons/fi";
 import { type Component, Show } from "solid-js";
 import { cn } from "~/lib/utils";
-
-type ToolIcon = "file" | "folder" | "terminal" | "search";
+import type { ToolIconCmp, ToolPartData } from "./store.tsx";
 
 export interface ToolSummaryRowProps {
   class?: string;
   error?: string;
-  icon: ToolIcon;
+  icon: ToolIconCmp;
+  part: ToolPartData;
   /** When false, the leading icon is hidden (used when the icon lives on a parent TimelineStep). */
   showIcon?: boolean;
   status: "running" | "completed" | "error" | "pending";
   summary: string | { main: string; muted?: string };
-}
-
-function ToolIcon_(props: { icon: ToolIcon }) {
-  switch (props.icon) {
-    case "file":
-      return <FiFileText class="h-4 w-4 shrink-0 text-muted-foreground" />;
-    case "folder":
-      return <FiFolder class="h-4 w-4 shrink-0 text-muted-foreground" />;
-    case "terminal":
-      return <FiTerminal class="h-4 w-4 shrink-0 text-muted-foreground" />;
-    case "search":
-      return <FiSearch class="h-4 w-4 shrink-0 text-muted-foreground" />;
-  }
 }
 
 export const ToolSummaryRow: Component<ToolSummaryRowProps> = (props) => {
@@ -42,7 +28,7 @@ export const ToolSummaryRow: Component<ToolSummaryRowProps> = (props) => {
       data-status={props.status}
     >
       <Show when={props.showIcon !== false}>
-        <ToolIcon_ icon={props.icon} />
+        <props.icon part={props.part} />
       </Show>
 
       <span class="min-w-0 truncate" data-slot="summary-main">
