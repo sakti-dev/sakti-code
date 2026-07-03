@@ -1,14 +1,16 @@
 import type { MessagePart, UIMessage } from "~/stores/types.ts";
 
-export type ThinkingPart = Extract<MessagePart, { type: "thinking" }>;
+export type ThinkingMessagePart = Extract<MessagePart, { type: "thinking" }>;
 
 /**
  * Extract all thinking parts with non-empty text from a list of messages,
  * preserving message order.
  */
-export function getThinkingParts(messages: UIMessage[]): ThinkingPart[] {
+export function getThinkingParts(messages: UIMessage[]): ThinkingMessagePart[] {
   return messages.flatMap((msg) =>
-    msg.parts.filter((p): p is ThinkingPart => p.type === "thinking" && p.text.trim() !== ""),
+    msg.parts.filter(
+      (p): p is ThinkingMessagePart => p.type === "thinking" && p.text.trim() !== "",
+    ),
   );
 }
 
