@@ -83,17 +83,17 @@ importers:
         specifier: ^3.13.29
         version: 3.13.29(solid-js@1.9.13)
       '@velomark/code':
-        specifier: 1.0.4
-        version: 1.0.4
+        specifier: 1.0.6
+        version: 1.0.6
       '@velomark/core':
-        specifier: 1.0.5
-        version: 1.0.5(solid-js@1.9.13)(tailwindcss@4.3.1)
+        specifier: 1.0.6
+        version: 1.0.6(solid-js@1.9.13)(tailwindcss@4.3.1)
       '@velomark/math':
-        specifier: 1.0.4
-        version: 1.0.4
+        specifier: 1.0.6
+        version: 1.0.6
       '@velomark/mermaid':
-        specifier: 1.0.4
-        version: 1.0.4
+        specifier: 1.0.6
+        version: 1.0.6
       '@vscode/ripgrep':
         specifier: ^1.18.0
         version: 1.18.0
@@ -3193,20 +3193,20 @@ packages:
   '@upsetjs/venn.js@2.0.0':
     resolution: {integrity: sha512-WbBhLrooyePuQ1VZxrJjtLvTc4NVfpOyKx0sKqioq9bX1C1m7Jgykkn8gLrtwumBioXIqam8DLxp88Adbue6Hw==}
 
-  '@velomark/code@1.0.4':
-    resolution: {integrity: sha512-YyLJ8S3vio/ub6wDak8Do9xryEsZgeg4kLY+pb8zPnvH5xqW9dOT3Xc8WjYInENMwKQdx+Rd7D4MQvbUH6h/yg==}
+  '@velomark/code@1.0.6':
+    resolution: {integrity: sha512-Rf6B7mOag/hU9iaK3EX7mg8TxpbxHbvKnpJtIb7jbG/p/PnK7YsBfI9WeCc5rpogPVP2cL0tbeH0Go00lHKeCQ==}
 
-  '@velomark/core@1.0.5':
-    resolution: {integrity: sha512-DzFNsQtSCgTdE2SP6pfivVeDiz/EGUQRH+LnADj12GF63trYSp8ajZNPlouV3RPopZBoXP6M474t2CKU5MeLfg==}
+  '@velomark/core@1.0.6':
+    resolution: {integrity: sha512-Wz/qckkNHZ2v542e+k5pn2odZhT48NGkClpFmizlyD2l35Hj6NmslGRH+hHhcxChZSDXCIDqfQUAHM2q0uZ1WQ==}
     peerDependencies:
       solid-js: ^1.9.10
       tailwindcss: ^4.1.18
 
-  '@velomark/math@1.0.4':
-    resolution: {integrity: sha512-ljdmLcarHmNplhNJc5RNrr5aNY0mpMpucAAHaYdfTJ+f7vrOvep2WSLv5ltnSoe5LKqvDM3XoLaa48P6AXwY/A==}
+  '@velomark/math@1.0.6':
+    resolution: {integrity: sha512-inlZzg3lIYkmvHkGfmdPrqZoxyDMsZoPCAgE+JF4gdHHuIXsqOh3BFkW+jWIW1gom8ObsXcF4UxcRn4MXL9Dvg==}
 
-  '@velomark/mermaid@1.0.4':
-    resolution: {integrity: sha512-2D7hIOdA8gxmoiFJne1YpTBPoO0RYuG71mppafAleVVUhYg+KZC2nyhioKFFnA4VKdZI217QIZy4aRl+Uqyhow==}
+  '@velomark/mermaid@1.0.6':
+    resolution: {integrity: sha512-nevYHwNAPfX9LjglJRIun4THSh9DB4gCS/QiA8FxyVWPokYZrmUeHhihsJPCeNwpEot5T8M946KO9F0GFg+ywA==}
 
   '@vercel/oidc@3.2.0':
     resolution: {integrity: sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug==}
@@ -8777,21 +8777,21 @@ snapshots:
       d3-selection: 3.0.0
       d3-transition: 3.0.1(d3-selection@3.0.0)
 
-  '@velomark/code@1.0.4':
+  '@velomark/code@1.0.6':
     dependencies:
       shiki: 3.23.0
 
-  '@velomark/core@1.0.5(solid-js@1.9.13)(tailwindcss@4.3.1)':
+  '@velomark/core@1.0.6(solid-js@1.9.13)(tailwindcss@4.3.1)':
     dependencies:
       cnfast: 0.0.8
       solid-js: 1.9.13
       tailwindcss: 4.3.1
 
-  '@velomark/math@1.0.4':
+  '@velomark/math@1.0.6':
     dependencies:
       katex: 0.16.47
 
-  '@velomark/mermaid@1.0.4':
+  '@velomark/mermaid@1.0.6':
     dependencies:
       mermaid: 11.15.0
 

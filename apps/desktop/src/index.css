@@ -2,13 +2,6 @@
 @import "@velomark/core/styles.css";
 @plugin "tailwindcss-animate";
 
-/*
- * TODO: remove after upgrading @velomark/core to the version that ships
- * @source "./dist" in its own styles.css. Until then, the npm package's
- * styles.css points at ./src/render (which doesn't exist in the tarball).
- */
-@source "../node_modules/@velomark/core/dist";
-
 @custom-variant dark (&:is(.dark *, [data-kb-theme="dark"] *));
 
 :root {
@@ -268,17 +261,4 @@
 .chip[data-chip-kind="file"] {
   color: var(--muted-foreground);
   background-color: var(--muted);
-}
-
-/*
- * TODO: remove after upgrading @velomark/core — the new version moves the
- * copy/download buttons into the header row (no sticky, no -mt-10, no
- * vm-code-actions class). The current npm release (1.0.5) still uses the
- * old sticky pattern which breaks inside virtualized lists.
- */
-.markdown-content .vm-code-actions {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  margin-top: 0;
 }
