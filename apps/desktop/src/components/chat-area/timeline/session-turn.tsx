@@ -48,7 +48,7 @@ function getPartCopyText(part: MessagePart): string | undefined {
   return;
 }
 
-function MessageContent(msg: UIMessage, showFooter = true): JSX.Element {
+function MessageContent(msg: UIMessage, showFooter = false): JSX.Element {
   return (
     <div class={CHAT_COMPACT_STACK_GAP_CLASS}>
       <Index each={getNonThinkingParts(msg.parts)}>
@@ -246,9 +246,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               {turn().error}
             </div>
           </Show>
-          <For each={turn().messages}>
-            {(msg, idx) => MessageContent(msg, idx() === turn().messages.length - 1)}
-          </For>
+          <For each={turn().messages}>{(msg) => MessageContent(msg)}</For>
         </div>
       </Show>
 
@@ -276,7 +274,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
               class="flex flex-col gap-3 px-3 [overflow-anchor:none]"
               data-slot="session-turn-stream"
             >
-              {MessageContent(msg())}
+              {MessageContent(msg(), true)}
             </div>
           )}
         </Show>
