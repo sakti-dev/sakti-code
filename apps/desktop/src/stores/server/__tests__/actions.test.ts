@@ -431,4 +431,87 @@ describe("replay actions", () => {
     });
     expect(session.store.turns).toHaveLength(0);
   });
+
+  describe("confirmAsk", () => {
+    it("POSTs the confirm action and mirrors the returned status", async () => {
+      const deps = makeDeps();
+      deps.serverStore.actions.addSession({
+        id: "s1",
+        projectId: "p1",
+        title: null,
+        modelId: null,
+        profileId: null,
+        thinkingLevel: "off",
+        kind: "mission",
+        status: "planning",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const mockApi = {
+        api: {
+          sessions: {
+            ":id": {
+              confirm: {
+                $post: vi.fn(() =>
+                  okRes({
+                    id: "s1",
+                    projectId: "p1",
+                    title: null,
+                    modelId: null,
+                    profileId: null,
+                    thinkingLevel: "off",
+                    kind: "mission",
+                    status: "building",
+                    createdAt: 1,
+                    updatedAt: 2,
+                  }),
+                ),
+              },
+            },
+          },
+        },
+      };
+      const actions = createActions(mockApi as never, makeMockWs(), deps);
+
+      await actions.confirmAsk("s1", "plan", "the plan body", "approve");
+
+      expect(mockApi.api.sessions[":id"].confirm.$post).toHaveBeenCalledWith({
+        param: { id: "s1" },
+        json: { action: "approve", kind: "plan", body: "the plan body" },
+      });
+      expect(deps.serverStore.store.sessions.s1?.status).toBe("building");
+    });
+
+    it("does nothing when the server responds not ok", async () => {
+      const deps = makeDeps();
+      deps.serverStore.actions.addSession({
+        id: "s1",
+        projectId: "p1",
+        title: null,
+        modelId: null,
+        profileId: null,
+        thinkingLevel: "off",
+        kind: "mission",
+        status: "planning",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const mockApi = {
+        api: {
+          sessions: {
+            ":id": {
+              confirm: {
+                $post: vi.fn(() => errRes()),
+              },
+            },
+          },
+        },
+      };
+      const actions = createActions(mockApi as never, makeMockWs(), deps);
+
+      await actions.confirmAsk("s1", "plan", "body", "approve");
+
+      expect(deps.serverStore.store.sessions.s1?.status).toBe("planning");
+    });
+  });
 });

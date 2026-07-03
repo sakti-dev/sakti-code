@@ -14,6 +14,7 @@ import { projectsRoutes } from "./routes/projects/projects.ts";
 import { searchFilesRoutes } from "./routes/projects/search-files.ts";
 import { chatRoutes } from "./routes/sessions/chat.ts";
 import { compactionRoutes } from "./routes/sessions/compaction.ts";
+import { confirmRoutes } from "./routes/sessions/confirm.ts";
 import { editModeRoutes } from "./routes/sessions/edit-mode.ts";
 import { exportRoutes } from "./routes/sessions/export.ts";
 import { forkingRoutes } from "./routes/sessions/forking.ts";
@@ -40,6 +41,7 @@ export function buildApp(ctx: ServerContext) {
     .route("/", sessionsRoutes)
     .route("/", chatRoutes)
     .route("/", compactionRoutes)
+    .route("/", confirmRoutes)
     .route("/", statsRoutes)
     .route("/", turnsRoutes)
     .route("/", turnIntermediatesRoutes)

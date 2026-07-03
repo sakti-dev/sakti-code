@@ -25,6 +25,12 @@ export interface ActionsDeps {
 export interface Actions {
   abortRun: (sessionId: string) => void;
   addProject: (cwd: string) => Promise<Project | undefined>;
+  confirmAsk: (
+    sessionId: string,
+    kind: string,
+    body: string,
+    action: "approve" | "reject",
+  ) => Promise<void>;
   createSession: (projectId: string, title?: string) => Promise<SessionMeta | undefined>;
   evictIntermediates: (sessionId: string, turnId: string) => void;
   followUpRun: (sessionId: string, text: string) => void;
@@ -219,6 +225,22 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
 
     abortRun(sessionId) {
       ws.send({ type: "abort", sessionId });
+    },
+
+    async confirmAsk(sessionId, kind, body, action) {
+      try {
+        const res = await api.api.sessions[":id"].confirm.$post({
+          param: { id: sessionId },
+          json: { action, kind, body },
+        });
+        if (!res.ok) {
+          return;
+        }
+        const updated = (await res.json()) as SessionMeta;
+        server.actions.updateSession(sessionId, { status: updated.status });
+      } catch (error) {
+        setLastError(error instanceof Error ? error.message : "Failed to confirm ask");
+      }
     },
 
     async selectProfile(sessionId, profileId) {
