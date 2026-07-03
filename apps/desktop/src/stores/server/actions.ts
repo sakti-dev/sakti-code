@@ -175,15 +175,18 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
     },
 
     async loadIntermediates(sessionId, turnId) {
+      log.info("loadIntermediates called", { sessionId, turnId });
       try {
         const res = await api.api.sessions[":id"].turns[":turnId"].intermediates.$get({
           param: { id: sessionId, turnId },
         });
         if (!res.ok) {
+          log.warn("loadIntermediates fetch failed", { sessionId, turnId, status: res.status });
           return;
         }
         const body = (await res.json()) as { entries: Array<Record<string, unknown>> };
         const messages = hydrateIntermediates(body.entries);
+        log.info("loadIntermediates resolved", { sessionId, turnId, count: messages.length });
         const session = sessionRegistry.get(sessionId);
         session.actions.loadTurnIntermediates(turnId, messages);
       } catch (error) {
@@ -192,6 +195,7 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
     },
 
     evictIntermediates(sessionId, turnId) {
+      log.info("evictIntermediates called", { sessionId, turnId });
       const session = sessionRegistry.get(sessionId);
       session.actions.evictTurnIntermediates(turnId);
     },

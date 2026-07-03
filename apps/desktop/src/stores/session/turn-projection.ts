@@ -31,7 +31,26 @@ function newTurn(userMessage: UIMessage | null, id: string): ChatTurn {
 
 function handleAssistantMessage(currentTurn: ChatTurn | null, msg: UIMessage): ChatTurn {
   const turn = currentTurn ?? newTurn(null, msg.id);
-  turn.assistantMessages.push(msg);
+
+  // Split thinking from non-thinking parts so thinking renders inside the
+  // collapsible accordion (as an intermediate) instead of inline with the
+  // summary text. This applies uniformly to both WS-live and REST-loaded
+  // messages — the projection is the one place both paths converge.
+  const thinkingParts = msg.parts.filter((p) => p.type === "thinking");
+  const otherParts = msg.parts.filter((p) => p.type !== "thinking");
+
+  if (thinkingParts.length > 0 && otherParts.length > 0) {
+    turn.assistantMessages.push({
+      ...msg,
+      id: `${msg.id}#thinking`,
+      parts: thinkingParts,
+      content: "",
+    });
+    turn.assistantMessages.push({ ...msg, parts: otherParts });
+  } else {
+    turn.assistantMessages.push(msg);
+  }
+
   if (msg.isStreaming) {
     turn.working = true;
   }

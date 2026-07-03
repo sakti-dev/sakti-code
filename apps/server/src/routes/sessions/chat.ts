@@ -30,7 +30,7 @@ export const chatRoutes = new Hono().basePath("/sessions").get("/:id/chat", asyn
   >();
 
   for (const e of entriesWithMeta) {
-    if (e.turnId === null) {
+    if (e.turnId === null || e.entry.type !== "message") {
       continue;
     }
     const parsed = e.entry as unknown as Record<string, unknown> & {

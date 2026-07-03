@@ -15,6 +15,7 @@ import type { ChatTurn } from "~/stores/session/turn-projection";
 import { getUserText } from "~/stores/session/turn-projection";
 import { useStore } from "~/stores/store-context";
 import type { MessagePart, UIMessage } from "~/stores/types.ts";
+import { createLogger } from "~/lib/utils";
 import { CHAT_COMPACT_STACK_GAP_CLASS, CHAT_STACK_GAP_CLASS } from "../layout";
 import { Part } from "../parts/message-part";
 import { PartFooter } from "../parts/part-footer";
@@ -74,6 +75,7 @@ function MessageContent(msg: UIMessage, isStreaming: () => boolean): JSX.Element
 
 export function SessionTurn(props: SessionTurnProps): JSX.Element {
   const { actions } = useStore();
+  const log = createLogger({ module: "SessionTurn" });
   const turn = props.turn;
   const [liveMs, setLiveMs] = createSignal(0);
   const [expanded, setExpanded] = createSignal(false);
@@ -92,35 +94,45 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
     onCleanup(() => clearInterval(timer));
   });
 
+  // Auto-collapse ONLY when a streaming turn finishes (endedAt null → non-null).
+  // defer: true so loaded history turns (endedAt always non-null) don't trigger.
   createEffect(
     on(
       () => turn().endedAt,
       (endedAt, prevEndedAt) => {
-        const collapsed = endedAt !== null;
-        setExpanded(!collapsed);
-        if (collapsed && prevEndedAt === null) {
+        if (endedAt !== null && prevEndedAt === null) {
+          log.debug("auto-collapse: turn finished", {
+            endedAt,
+            turnId: turn().turnId,
+          });
+          setExpanded(false);
           const tid = turn().turnId;
           if (tid) {
             actions.evictIntermediates(props.sessionId, tid);
           }
         }
       },
+      { defer: true },
     ),
   );
 
   const handleToggle = () => {
-    setExpanded((e) => {
-      const next = !e;
-      const tid = turn().turnId;
-      if (tid) {
-        if (next) {
-          void actions.loadIntermediates(props.sessionId, tid);
-        } else {
-          actions.evictIntermediates(props.sessionId, tid);
-        }
-      }
-      return next;
+    const tid = turn().turnId;
+    const wasExpanded = expanded();
+    log.info("toggle clicked", {
+      turnId: tid,
+      wasExpanded,
+      endedAt: turn().endedAt,
+      msgCount: turn().assistantMessages.length,
     });
+    setExpanded(!wasExpanded);
+    if (tid) {
+      if (!wasExpanded) {
+        void actions.loadIntermediates(props.sessionId, tid);
+      } else {
+        actions.evictIntermediates(props.sessionId, tid);
+      }
+    }
   };
 
   // Re-measure the virtual list when this turn's message count changes
@@ -150,6 +162,24 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
     }
     return t.assistantMessages.length > 1 || t.intermediateCount > 0;
   });
+
+  createEffect(
+    on(
+      () => [expanded(), canCollapse()] as const,
+      (cur, prev) => {
+        log.debug("header state", {
+          expanded: cur[0],
+          canCollapse: cur[1],
+          prevExpanded: prev?.[0],
+          prevCanCollapse: prev?.[1],
+          endedAt: turn().endedAt,
+          turnId: turn().turnId,
+          msgCount: turn().assistantMessages.length,
+          intermediateCount: turn().intermediateCount,
+        });
+      },
+    ),
+  );
 
   const intermediateMessages = createMemo(() => {
     const msgs = turn().assistantMessages;
@@ -184,7 +214,7 @@ export function SessionTurn(props: SessionTurnProps): JSX.Element {
         </div>
       </Show>
 
-      <Show when={durationLabel()}>
+      <Show when={durationLabel() && (turn().endedAt === null || canCollapse())}>
         <button
           class="flex w-full items-center gap-2 border-border/50 border-b px-3 py-1.5 text-left text-muted-foreground text-xs transition-colors hover:bg-muted/30 disabled:cursor-default disabled:hover:bg-transparent"
           data-slot="turn-header"

@@ -12,7 +12,7 @@ export const turnIntermediatesRoutes = new Hono()
 
     const entriesWithMeta = await Effect.runPromise(storage.getEntriesWithMeta());
     const intermediates = entriesWithMeta
-      .filter((e) => e.turnId === turnId && !e.isTurnSummary)
+      .filter((e) => e.turnId === turnId && !e.isTurnSummary && e.entry.type === "message")
       .map((e) => e.entry);
 
     return c.json({ entries: intermediates });
