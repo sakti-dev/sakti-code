@@ -2,6 +2,13 @@
 @import "@velomark/core/styles.css";
 @plugin "tailwindcss-animate";
 
+/*
+ * TODO: remove after upgrading @velomark/core to the version that ships
+ * @source "./dist" in its own styles.css. Until then, the npm package's
+ * styles.css points at ./src/render (which doesn't exist in the tarball).
+ */
+@source "../node_modules/@velomark/core/dist";
+
 @custom-variant dark (&:is(.dark *, [data-kb-theme="dark"] *));
 
 :root {
@@ -24,6 +31,10 @@
   --border: oklch(0.8822 0 0);
   --input: oklch(0.8822 0 0);
   --ring: oklch(0.4341 0.0392 41.9938);
+  --sidebar: oklch(0.971 0 0);
+  --sidebar-foreground: oklch(0.2435 0 0);
+  --sidebar-border: oklch(0.8822 0 0);
+  --sidebar-ring: oklch(0.4341 0.0392 41.9938);
 
   --info: oklch(0.954 0.024 236.8);
   --info-foreground: oklch(0.678 0.148 238.1);
@@ -58,6 +69,10 @@
   --border: oklch(0.2351 0.0115 91.7467);
   --input: oklch(0.4017 0 0);
   --ring: oklch(0.9247 0.0524 66.1732);
+  --sidebar: oklch(0.2134 0 0);
+  --sidebar-foreground: oklch(0.9491 0 0);
+  --sidebar-border: oklch(0.2351 0.0115 91.7467);
+  --sidebar-ring: oklch(0.9247 0.0524 66.1732);
 
   --info: oklch(0.954 0.024 236.8);
   --info-foreground: oklch(0.678 0.148 238.1);
@@ -110,6 +125,11 @@
   --color-error-foreground: var(--error-foreground);
 
   --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -248,4 +268,17 @@
 .chip[data-chip-kind="file"] {
   color: var(--muted-foreground);
   background-color: var(--muted);
+}
+
+/*
+ * TODO: remove after upgrading @velomark/core — the new version moves the
+ * copy/download buttons into the header row (no sticky, no -mt-10, no
+ * vm-code-actions class). The current npm release (1.0.5) still uses the
+ * old sticky pattern which breaks inside virtualized lists.
+ */
+.markdown-content .vm-code-actions {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  margin-top: 0;
 }
