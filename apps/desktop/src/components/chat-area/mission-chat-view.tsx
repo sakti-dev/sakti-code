@@ -3,11 +3,11 @@ import { MessageTimeline } from "~/components/chat-area/timeline/message-timelin
 import { ChatInput } from "~/components/chat-input/chat-input";
 import { useStore } from "~/stores/store-context";
 
-interface TaskChatViewProps {
+interface MissionChatViewProps {
   sessionId: string;
 }
 
-export function TaskChatView(props: TaskChatViewProps): JSX.Element {
+export function MissionChatView(props: MissionChatViewProps): JSX.Element {
   const { sessions, actions } = useStore();
 
   const sessionStore = createMemo(() => sessions.get(props.sessionId));

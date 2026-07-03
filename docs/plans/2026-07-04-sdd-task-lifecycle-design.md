@@ -1,5 +1,11 @@
 # SDD Task Lifecycle — Design
 
+> **VOCABULARY NOTE (2026-07-04):** The domain word `task` was renamed to
+> `mission`. The `sessions.kind` value is now `'mission'` (was `'task'`);
+> `SessionMeta.kind` is `"intake" | "mission"`; `TaskChatView` is now
+> `MissionChatView`. Below, domain references to "task"/"Task" mean "mission".
+> Plan-step labels like "Task 1.1" are unchanged (they're plan meta-language).
+
 **Vision.** Make sakti-code a coding agent with a built-in spec-driven development
 (SDD) workflow. Work moves through a defined lifecycle —
 `intake → plan → build → review → merged` — gated by user approvals via a single

@@ -24,10 +24,10 @@ describe("sessions kind column", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("defaults to 'task' when not specified", async () => {
+  it("defaults to 'mission' when not specified", async () => {
     const project = await projectRepo.create("test", "/tmp/test");
     const session = await sessionRepo.create(project.id);
-    expect(session.kind).toBe("task");
+    expect(session.kind).toBe("mission");
   });
 
   it("can be set to 'intake'", async () => {

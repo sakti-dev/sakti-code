@@ -1,6 +1,6 @@
 import type { AgentHarnessEvent } from "@sakti-code/agent";
 import { createEffect, createSignal, type JSX, onMount, Show } from "solid-js";
-import { TaskChatView } from "~/components/chat-area/task-chat-view";
+import { MissionChatView } from "~/components/chat-area/mission-chat-view";
 import Home from "~/components/home/home";
 import { SettingsPage } from "~/components/settings/settings-page";
 import { DevToolbar } from "~/components/layout/dev-toolbar";
@@ -137,7 +137,7 @@ export default function WorkspaceLayout(): JSX.Element {
                     }
                     when={activeSession()}
                   >
-                    {(session) => <TaskChatView sessionId={session().id} />}
+                    {(session) => <MissionChatView sessionId={session().id} />}
                   </Show>
                 </div>
               </div>

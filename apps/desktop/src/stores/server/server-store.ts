@@ -11,7 +11,7 @@ export interface Project {
 export interface SessionMeta {
   createdAt: number;
   id: string;
-  kind: "intake" | "task";
+  kind: "intake" | "mission";
   modelId: string | null;
   profileId: string | null;
   projectId: string;

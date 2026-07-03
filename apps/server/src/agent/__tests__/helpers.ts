@@ -75,7 +75,7 @@ export function createMockCtx(overrides?: { projectId?: string; profileId?: stri
                 modelId: null,
                 title: null,
                 thinkingLevel: "off",
-                kind: "task",
+                kind: "mission",
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
               }
@@ -185,7 +185,7 @@ export function createMultiSessionCtx(sessionIdToProjectId: Record<string, strin
                 modelId: null,
                 title: null,
                 thinkingLevel: "off",
-                kind: "task",
+                kind: "mission",
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
               }

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vite-plus/test";
 import { kindToMode } from "../kind-to-mode.ts";
 
 describe("kindToMode", () => {
-  it("maps 'task' to 'default'", () => {
-    expect(kindToMode("task")).toBe("default");
+  it("maps 'mission' to 'default'", () => {
+    expect(kindToMode("mission")).toBe("default");
   });
 
   it("maps 'intake' to 'intake'", () => {

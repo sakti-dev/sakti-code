@@ -2,7 +2,7 @@ export type ProfileMode = "build" | "default" | "intake" | "observe" | "plan" | 
 
 /**
  * Map a session kind to a profile mode for model resolution.
- * `task` -> `default`; other kinds map 1:1 if they exist as modes.
+ * `mission` -> `default`; other kinds map 1:1 if they exist as modes.
  * Unknown kinds fall back to `default`.
  */
 export function kindToMode(kind: string): ProfileMode {

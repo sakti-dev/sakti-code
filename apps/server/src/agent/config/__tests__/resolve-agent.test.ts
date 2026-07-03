@@ -25,8 +25,8 @@ describe("resolveSessionAgentForKind", () => {
     expect(agent.activeToolNames).toContain("propose_session");
   });
 
-  it("task kind with no override → build agent (the default)", () => {
-    const { agent } = resolveSessionAgentForKind("task", []);
+  it("mission kind with no override → build agent (the default)", () => {
+    const { agent } = resolveSessionAgentForKind("mission", []);
     expect(agent.name).toBe("build");
   });
 
@@ -43,13 +43,13 @@ describe("resolveSessionAgentForKind", () => {
   });
 
   it("per-session override to 'custom' (loaded from project) wins", () => {
-    const { agent } = resolveSessionAgentForKind("task", PROJECT_AGENTS, "custom");
+    const { agent } = resolveSessionAgentForKind("mission", PROJECT_AGENTS, "custom");
     expect(agent.name).toBe("custom");
     expect(agent.systemPrompt).toBe("PROJECT CUSTOM");
   });
 
   it("unknown override falls back to build (default)", () => {
-    const { agent } = resolveSessionAgentForKind("task", [], "nonexistent");
+    const { agent } = resolveSessionAgentForKind("mission", [], "nonexistent");
     expect(agent.name).toBe("build");
   });
 });

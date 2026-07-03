@@ -77,7 +77,7 @@ export class SessionRepo {
       title: options?.title ?? null,
       ...(options?.modelId === undefined ? {} : { modelId: options.modelId }),
       ...(options?.profileId === undefined ? {} : { profileId: options.profileId }),
-      kind: options?.kind ?? "task",
+      kind: options?.kind ?? "mission",
       ...(options?.status === undefined ? {} : { status: options.status }),
       thinkingLevel: options?.thinkingLevel ?? "off",
       createdAt: now,

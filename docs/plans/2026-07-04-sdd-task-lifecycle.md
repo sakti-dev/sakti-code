@@ -2,6 +2,13 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+> **VOCABULARY NOTE (2026-07-04):** The domain word `task` was renamed to
+> `mission`. The `sessions.kind` value is now `'mission'` (was `'task'`);
+> `SessionMeta.kind` is `"intake" | "mission"`; `TaskChatView` → `MissionChatView`
+> (`task-chat-view.tsx` → `mission-chat-view.tsx`); `currentTask` (streaming
+> field) is UNCHANGED (unrelated concept). Below, domain references to
+> "task"/"Task" mean "mission". Plan-step labels like "Task 1.1" are unchanged.
+
 **Goal:** Replace the ad-hoc `propose_session` flow with a built-in spec-driven task lifecycle (`planning → building → review → merged`) gated by one generic `ask` tool, status-driven agent resolution, forced compaction on the plan→build switch, and a sidebar redesigned around the active project's tasks.
 
 **Architecture:** A single generic `ask({ kind?, body })` tool in `packages/tools` is wired at the server (`apps/server`) to specific transitions per `kind`. Task `status` (new `sessions` column) drives both the agent resolver (`planning`→plan agent, `building`→build agent) and the sidebar (active vs archived). The plan→build approval forces a compaction (or OM observation) before the agent switch, since the switch invalidates the prompt cache anyway.

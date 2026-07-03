@@ -46,7 +46,7 @@ const PROFILES = {
   },
 };
 
-const SESSION = { id: "sess-1", kind: "task", projectId: "proj-1", profileId: null };
+const SESSION = { id: "sess-1", kind: "mission", projectId: "proj-1", profileId: null };
 
 describe("resolveOmConfig", () => {
   it("returns undefined when OM is explicitly disabled", () => {
