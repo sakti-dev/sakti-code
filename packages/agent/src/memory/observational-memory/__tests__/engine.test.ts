@@ -597,3 +597,69 @@ describe("ObservationalMemoryEngine — forceReflect", () => {
     expect(starts.some((e) => e.operationType === "reflection")).toBe(true);
   });
 });
+
+describe("ObservationalMemoryEngine — forceObserve", () => {
+  let storage: SyncOmStorage;
+  let session: TreeSessionStorage;
+
+  beforeEach(() => {
+    storage = new SyncOmStorage();
+    session = new TreeSessionStorage();
+    BufferingCoordinator.asyncBufferingOps.clear();
+    BufferingCoordinator.lastBufferedBoundary.clear();
+    BufferingCoordinator.lastBufferedAtTime.clear();
+    BufferingCoordinator.reflectionBufferCycleIds.clear();
+  });
+  afterEach(() => {
+    vi.mocked(complete).mockReset();
+  });
+
+  it("observes when unobserved messages exist, ignoring the threshold", async () => {
+    // Observation threshold far above the message size so maybeObserve won't fire.
+    const deps = createDeps(storage, session, {
+      thresholds: { observation: 999_999, reflection: 999_999 },
+    });
+    session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
+    setComplete("<observations>\n* 🔴 obs line\n</observations>");
+    const engine = new ObservationalMemoryEngine({ deps });
+
+    let record = await engine.getOrCreateRecord();
+    // maybeObserve stays below the 999_999 threshold → no observation yet.
+    record = await engine.maybeObserve(record);
+    expect(storage.updateActiveCalls).toHaveLength(0);
+
+    // forceObserve bypasses the threshold.
+    const result = await engine.forceObserve();
+    expect(storage.updateActiveCalls).toHaveLength(1);
+    expect(result.activeObservations).toContain("obs line");
+    expect(result.observationTokenCount).toBeGreaterThan(0);
+  });
+
+  it("returns the record unchanged when no unobserved messages exist", async () => {
+    const engine = new ObservationalMemoryEngine({ deps: createDeps(storage, session) });
+    const result = await engine.forceObserve();
+    expect(storage.updateActiveCalls).toHaveLength(0);
+    expect(result.activeObservations).toBe("");
+  });
+
+  it("emits om_start and om_end events with operationType observation", async () => {
+    const omEvents: Array<{ type: string; operationType?: string }> = [];
+    const deps = createDeps(storage, session, {
+      thresholds: { observation: 999_999, reflection: 999_999 },
+    });
+    session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
+    setComplete("<observations>\n* 🔴 obs line\n</observations>");
+    const engine = new ObservationalMemoryEngine({
+      deps,
+      onOmEvent: (event) => omEvents.push(event),
+    });
+
+    await engine.forceObserve();
+
+    const types = omEvents.map((e) => e.type);
+    expect(types).toContain("om_start");
+    expect(types).toContain("om_end");
+    const starts = omEvents.filter((e) => e.type === "om_start");
+    expect(starts.some((e) => e.operationType === "observation")).toBe(true);
+  });
+});

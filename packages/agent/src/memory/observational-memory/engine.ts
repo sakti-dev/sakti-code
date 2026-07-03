@@ -283,6 +283,34 @@ export class ObservationalMemoryEngine {
   }
 
   /**
+   * Force an observation cycle regardless of the observation threshold.
+   * Activates any buffered observations first so nothing is stranded, then
+   * runs the Observer over all unobserved messages. Used on the plan→build
+   * switch (the agent swap invalidates the prompt cache anyway, so observing
+   * the planning chatter costs nothing cached and gives the build agent a
+   * clean start).
+   *
+   * Returns the updated record (or the original if there was nothing to
+   * observe).
+   */
+  async forceObserve(): Promise<ObservationalMemoryRecord> {
+    let record = await this.getOrCreateRecord();
+    // Activate buffered observations so nothing is stranded.
+    record = await this.maybeActivateBufferedObservations(record);
+
+    const entries = await this.loadUnobservedMessageEntries(record);
+    if (entries.length === 0) {
+      await this.pruneObservedMessages(record);
+      this.emitOmStatus(record);
+      return record;
+    }
+    const result = await this.runSyncObserve(record, entries);
+    await this.pruneObservedMessages(result);
+    this.emitOmStatus(result);
+    return result;
+  }
+
+  /**
    * Buffer a chunk of observations without merging into active observations.
    * Runs the Observer over messages newer than the buffer cursor and stores
    * the result as a pending buffered chunk.
