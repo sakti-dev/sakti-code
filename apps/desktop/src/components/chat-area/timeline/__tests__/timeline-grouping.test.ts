@@ -66,15 +66,15 @@ describe("groupTimelineParts", () => {
     expect(result[2]?.kind).toBe("explore");
   });
 
-  it("groups mixed explore tools (read + grep + glob)", () => {
+  it("groups mixed explore tools (read + grep + find)", () => {
     const result = groupTimelineParts([
       read("r1", "a.ts"),
       grep("g1"),
       {
         input: { pattern: "*.ts" },
         status: "done" as const,
-        toolCallId: "gl1",
-        toolName: "glob",
+        toolCallId: "f1",
+        toolName: "find",
         type: "tool_call" as const,
       },
     ]);

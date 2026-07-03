@@ -1,15 +1,10 @@
 import type { MessagePart } from "~/stores/types.ts";
-import { normalizeToolName } from "../tools/tool-name.ts";
+import { isExploreTool, normalizeToolName } from "../tools/index.ts";
 
 export type ToolCallPart = Extract<MessagePart, { type: "tool_call" }>;
 
-const EXPLORE_TOOLS = new Set(["read", "grep", "glob", "find", "ls"]);
-
-function isExploreTool(part: MessagePart): boolean {
-  if (part.type !== "tool_call") {
-    return false;
-  }
-  return EXPLORE_TOOLS.has(normalizeToolName(part.toolName));
+function isExplorePart(part: MessagePart): boolean {
+  return part.type === "tool_call" && isExploreTool(normalizeToolName(part.toolName));
 }
 
 export type TimelineItem =
@@ -17,18 +12,18 @@ export type TimelineItem =
   | { kind: "explore"; parts: ToolCallPart[] };
 
 /**
- * Group consecutive explore tools (read, grep, glob, find, ls) into a single
- * "explore" item when 2+ appear in a row. Other parts break the run and become
- * "single" items. The exact part references are preserved (no cloning).
+ * Group consecutive explore tools (read, grep, find) into a single "explore"
+ * item when 2+ appear in a row. Other parts break the run and become "single"
+ * items. Exact part references are preserved (no cloning).
  */
 export function groupTimelineParts(parts: MessagePart[]): TimelineItem[] {
   const items: TimelineItem[] = [];
   let i = 0;
 
   while (i < parts.length) {
-    if (isExploreTool(parts[i]!)) {
+    if (isExplorePart(parts[i]!)) {
       const group: ToolCallPart[] = [];
-      while (i < parts.length && isExploreTool(parts[i]!)) {
+      while (i < parts.length && isExplorePart(parts[i]!)) {
         group.push(parts[i] as ToolCallPart);
         i++;
       }
