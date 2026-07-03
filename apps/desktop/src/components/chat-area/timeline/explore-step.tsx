@@ -14,11 +14,15 @@ export interface ExploreStepProps {
 
 /**
  * A group of consecutive explore tools (read/grep/find) collapsed into one
- * "Explored N files" step. Shares the same auto-expand formula as
+ * "Explored (N tool calls)" step. Counts tool invocations (not files, since
+ * grep/find are searches). Shares the same auto-expand formula as
  * ThinkingStep: `userToggled ?? (isStreaming && isLast)`.
  */
 export const ExploreStep: Component<ExploreStepProps> = (props) => {
-  const label = createMemo(() => `Explored ${props.parts.length} files`);
+  const label = createMemo(() => {
+    const n = props.parts.length;
+    return `Explored (${n} tool call${n === 1 ? "" : "s"})`;
+  });
 
   const [userToggled, setUserToggled] = createSignal<boolean | null>(null);
   const expanded = createMemo(() => {

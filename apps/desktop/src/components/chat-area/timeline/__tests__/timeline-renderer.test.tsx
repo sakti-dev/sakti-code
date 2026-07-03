@@ -34,7 +34,7 @@ describe("TimelineRenderer", () => {
       <TimelineRenderer isStreaming={false} parts={[read("r1", "a.ts"), read("r2", "b.ts")]} />
     ));
     expect(container.querySelector("[data-component='collapsible-step']")).not.toBeNull();
-    expect(container.textContent).toContain("Explored 2 files");
+    expect(container.textContent).toContain("Explored (2 tool calls)");
   });
 
   it("renders tool steps for non-explore tools", () => {

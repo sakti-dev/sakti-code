@@ -12,7 +12,7 @@ const makeRead = (id: string, file: string): ToolCallPart => ({
 });
 
 describe("ExploreStep", () => {
-  it("renders 'Explored N files' label", () => {
+  it("renders 'Explored (N tool calls)' label", () => {
     render(() => (
       <ExploreStep
         isLast={false}
@@ -20,7 +20,7 @@ describe("ExploreStep", () => {
         parts={[makeRead("r1", "a.ts"), makeRead("r2", "b.ts"), makeRead("r3", "c.ts")]}
       />
     ));
-    expect(screen.getByText(/Explored 3 files/)).toBeTruthy();
+    expect(screen.getByText(/Explored \(3 tool calls\)/)).toBeTruthy();
   });
 
   it("expanded when streaming + last item", () => {
