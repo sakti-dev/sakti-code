@@ -1,6 +1,5 @@
-import type { ToolDescriptor } from "./store.tsx";
-import { clearToolRegistry, registerTool } from "./store.tsx";
 import * as store from "./store.tsx";
+import type { ToolDescriptor } from "./store.tsx";
 import { bashTool } from "./registry/bash.tsx";
 import { editTool } from "./registry/edit.tsx";
 import { findTool } from "./registry/find.tsx";
@@ -29,12 +28,12 @@ let initialized = false;
 export function ensureToolsRegistered(): void {
   if (initialized) return;
   initialized = true;
-  for (const descriptor of ALL) registerTool(descriptor);
+  for (const descriptor of ALL) store.registerTool(descriptor);
 }
 
 /** Clear + reset the init flag so the next access re-registers (test infra). */
 export function resetToolRegistry(): void {
-  clearToolRegistry();
+  store.clearToolRegistry();
   initialized = false;
 }
 

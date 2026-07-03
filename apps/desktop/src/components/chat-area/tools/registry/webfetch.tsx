@@ -8,7 +8,8 @@ export const webfetchTool: ToolDescriptor = {
   names: ["webfetch"],
   icon: WebfetchIcon,
   summary: (p) => {
-    const url = typeof getArgs(p).url === "string" ? (getArgs(p).url as string) : "";
+    const url = getArgs(p).url;
+    if (typeof url !== "string") return "Fetched URL";
     try {
       return `Fetched ${new URL(url).hostname}`;
     } catch {
