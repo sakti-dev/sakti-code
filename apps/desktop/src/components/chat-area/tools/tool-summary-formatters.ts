@@ -70,7 +70,7 @@ export function formatReadSummary(part: ToolPartData): string {
     (typeof args.filePath === "string" ? args.filePath : undefined) ??
     (typeof args.path === "string" ? args.path : undefined) ??
     "unknown";
-  return `Analyzed ${middleEllipsisPath(filePath, PATH_MAX_LENGTH)}`;
+  return `Read ${middleEllipsisPath(filePath, PATH_MAX_LENGTH)}`;
 }
 
 export function formatWriteSummary(part: ToolPartData): string {
