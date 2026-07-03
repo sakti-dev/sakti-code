@@ -29,24 +29,43 @@ function newTurn(userMessage: UIMessage | null, id: string): ChatTurn {
   };
 }
 
+/**
+ * Cache for thinking-split results, keyed by the original message proxy.
+ *
+ * Solid store proxies have stable references across property mutations, so a
+ * completed message (never changes) always returns the same split objects.
+ * This prevents `<For>` from seeing fresh references on every `buildChatTurns`
+ * recompute (which fires per streamed token) and avoids re-rendering markdown
+ * for messages that haven't changed.
+ */
+const splitCache = new WeakMap<UIMessage, UIMessage[]>();
+
 function handleAssistantMessage(currentTurn: ChatTurn | null, msg: UIMessage): ChatTurn {
   const turn = currentTurn ?? newTurn(null, msg.id);
 
   // Split thinking from non-thinking parts so thinking renders inside the
   // collapsible accordion (as an intermediate) instead of inline with the
-  // summary text. This applies uniformly to both WS-live and REST-loaded
-  // messages — the projection is the one place both paths converge.
-  const thinkingParts = msg.parts.filter((p) => p.type === "thinking");
-  const otherParts = msg.parts.filter((p) => p.type !== "thinking");
-
-  if (thinkingParts.length > 0 && otherParts.length > 0) {
-    turn.assistantMessages.push({
-      ...msg,
-      id: `${msg.id}#thinking`,
-      parts: thinkingParts,
-      content: "",
-    });
-    turn.assistantMessages.push({ ...msg, parts: otherParts });
+  // summary text. Skip streaming messages — the turn isn't collapsible while
+  // streaming (endedAt === null), and splitting would churn references on
+  // every token. The split is computed once when the message completes.
+  if (!msg.isStreaming) {
+    let split = splitCache.get(msg);
+    if (!split) {
+      const thinkingParts = msg.parts.filter((p) => p.type === "thinking");
+      const otherParts = msg.parts.filter((p) => p.type !== "thinking");
+      if (thinkingParts.length > 0 && otherParts.length > 0) {
+        split = [
+          { ...msg, id: `${msg.id}#thinking`, parts: thinkingParts, content: "" },
+          { ...msg, parts: otherParts },
+        ];
+      } else {
+        split = [msg];
+      }
+      splitCache.set(msg, split);
+    }
+    for (const m of split) {
+      turn.assistantMessages.push(m);
+    }
   } else {
     turn.assistantMessages.push(msg);
   }
