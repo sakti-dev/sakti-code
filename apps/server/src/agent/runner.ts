@@ -460,13 +460,14 @@ export function runPromptEffect(
     });
 
     // Resolve the agent: per-session override first (when it differs from the
-    // default), then kind-based default. Intake sessions resolve to the intake
-    // agent entry — own permission ruleset + own tool list (incl. ask).
+    // default), then kind+status routing. Intake → intake agent; mission in
+    // planning → plan agent (structurally edit-denied); everything else → build.
     // No isIntake branches anywhere: intake flows through the same path as build.
     const { agent } = resolveSessionAgentForKind(
       session.kind,
       loadedContext.agents,
       settings.agent() === DEFAULT_AGENT_NAME ? undefined : settings.agent(),
+      session.status,
     );
 
     // Build only the agent's declared tools via the server registry. Each agent

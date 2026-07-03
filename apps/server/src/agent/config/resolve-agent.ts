@@ -24,9 +24,11 @@ export function resolveAgentByName(name: string, loadedAgents: AgentDefinition[]
 }
 
 /**
- * Resolve the agent for a session based on its kind + per-session override.
- * Per-session override wins (when it differs from the default); otherwise
- * `intake` kind → intake agent, other kinds → build agent (the default).
+ * Resolve the agent for a session based on its kind + status + per-session
+ * override. Per-session override wins (when it differs from the default);
+ * otherwise `intake` kind → intake agent, `mission` kind in the `planning`
+ * phase → plan agent (structurally edit-denied), and all other mission
+ * statuses → build agent (the default, covering building/review/merged).
  *
  * The "differs from the default" check is how we detect "no override": the
  * session-settings layer returns `DEFAULT_AGENT_NAME` ("build") when no
@@ -39,8 +41,18 @@ export function resolveSessionAgentForKind(
   kind: string,
   loadedAgents: AgentDefinition[],
   perSessionOverride?: string,
+  status?: string,
 ): { agent: AgentDefinition } {
-  const name = perSessionOverride ?? (kind === "intake" ? "intake" : DEFAULT_AGENT_NAME);
+  let name: string;
+  if (perSessionOverride) {
+    name = perSessionOverride;
+  } else if (kind === "intake") {
+    name = "intake";
+  } else if (kind === "mission" && status === "planning") {
+    name = "plan";
+  } else {
+    name = DEFAULT_AGENT_NAME;
+  }
   return { agent: resolveAgentByName(name, loadedAgents) };
 }
 
