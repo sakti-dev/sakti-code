@@ -2,11 +2,14 @@ import type { SessionRepo } from "@sakti-code/db";
 
 /**
  * Minimal context the ask-kind handlers need. Phase 4 covers status
- * transitions only; Phase 5 extends this with forced compaction/observe for
- * the plan→build switch.
+ * transitions only; Phase 5 adds `forceReset` for the plan→build switch
+ * (the route binds it to forced compaction or a forced OM observe based on
+ * whether OM is enabled for the session).
  */
 export interface AskCtx {
   sessions: Pick<SessionRepo, "update">;
+  /** Force a context reset (compaction or OM observe) on plan→build. */
+  forceReset?: (sessionId: string) => Promise<void>;
 }
 
 export type AskAction = "approve" | "reject";
@@ -47,6 +50,13 @@ export const ASK_KINDS: Record<AskKind, AskKindHandlers> = {
     card: "proposed-plan",
     onApprove: async (id, _body, ctx) => {
       await ctx.sessions.update(id, { status: "building" });
+      // Force a context reset before the agent switch. The plan→build agent
+      // swap invalidates the prompt cache anyway (system prompt + tools
+      // change), so compacting/observing the planning chatter costs nothing
+      // cached and gives the build agent a clean, plan-focused start. The
+      // approved plan body survives as the most recent entry (kept by
+      // prepareCompaction).
+      await ctx.forceReset?.(id);
     },
     onReject: async () => {},
   },

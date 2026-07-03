@@ -10,6 +10,7 @@ function makeCtx(): AskCtx {
         return { id, ...data } as never;
       }),
     },
+    forceReset: vi.fn(async () => {}),
     appliedUpdates: updates,
   } as unknown as AskCtx;
 }
@@ -35,6 +36,12 @@ describe("ASK_KINDS — plan", () => {
     const ctx = makeCtx();
     await ASK_KINDS.plan.onApprove?.("s1", "the plan body", ctx);
     expect(ctx.sessions.update).toHaveBeenCalledWith("s1", { status: "building" });
+  });
+
+  it("onApprove triggers a forced context reset (compact/observe)", async () => {
+    const ctx = makeCtx();
+    await ASK_KINDS.plan.onApprove?.("s1", "the plan body", ctx);
+    expect(ctx.forceReset).toHaveBeenCalledWith("s1");
   });
 
   it("onReject is a no-op (stay in planning)", async () => {
