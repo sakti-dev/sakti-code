@@ -4,20 +4,21 @@ export function registerCompactionHandlers(): void {
   registerHandler("compaction_start", (_event, ctx) => {
     const msgId = ctx.actions.getCurrentMessageId() ?? ctx.actions.getLastAssistantMessageId();
     if (msgId) {
+      ctx.actions.setCurrentMessage(msgId);
       ctx.actions.addCompactionMarker(msgId);
     }
     ctx.actions.setPhase("thinking");
   });
 
   registerHandler("compaction_delta", (event, ctx) => {
-    const msgId = ctx.actions.getCurrentMessageId() ?? ctx.actions.getLastAssistantMessageId();
+    const msgId = ctx.actions.getCurrentMessageId();
     if (msgId) {
       ctx.actions.appendCompactionToken(msgId, event.text);
     }
   });
 
   registerHandler("compaction_end", (event, ctx) => {
-    const msgId = ctx.actions.getCurrentMessageId() ?? ctx.actions.getLastAssistantMessageId();
+    const msgId = ctx.actions.getCurrentMessageId();
     if (msgId) {
       if (event.errorMessage !== undefined) {
         ctx.actions.updateCompactionMarker(msgId, {
@@ -39,6 +40,7 @@ export function registerCompactionHandlers(): void {
         });
       }
     }
+    ctx.actions.clearCurrentMessage();
     ctx.actions.setPhase("idle");
   });
 }

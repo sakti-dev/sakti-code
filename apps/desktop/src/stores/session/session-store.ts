@@ -184,17 +184,9 @@ export function createSessionStore(): SessionStore {
         loc.turnIdx,
         "messages",
         loc.msgIdx,
-        "content",
-        (prev: string) => prev + delta,
-      );
-
-      setStore(
-        "turns",
-        loc.turnIdx,
-        "messages",
-        loc.msgIdx,
-        "parts",
-        produce((parts: MessagePart[]) => {
+        produce((m: UIMessage) => {
+          m.content += delta;
+          const parts = m.parts;
           const last = parts[parts.length - 1];
           if (last !== undefined && last.type === "text") {
             last.text += delta;
@@ -206,7 +198,6 @@ export function createSessionStore(): SessionStore {
           }
         }),
       );
-
       setStore("streaming", "tokenCount", (n: number) => n + 1);
     },
 
@@ -547,19 +538,19 @@ export function createSessionStore(): SessionStore {
     },
 
     loadTurnTimings(timings) {
-      // Apply timings to turns that don't have server turnIds (live turns)
+      // Backfill timings onto live turns (turnId === null) from oldest to newest.
       let timingIdx = 0;
-      for (const turn of store.turns) {
-        if (turn.turnId !== null) {
+      for (let i = 0; i < store.turns.length; i++) {
+        if (store.turns[i]!.turnId !== null) {
           continue;
         }
-        if (timingIdx < timings.length) {
-          const timing = timings[timingIdx];
-          if (timing) {
-            const turnIdx = store.turns.indexOf(turn);
-            setStore("turns", turnIdx, "startedAt", timing.startedAt);
-            setStore("turns", turnIdx, "endedAt", timing.endedAt);
-          }
+        if (timingIdx >= timings.length) {
+          break;
+        }
+        const timing = timings[timingIdx];
+        if (timing) {
+          setStore("turns", i, "startedAt", timing.startedAt);
+          setStore("turns", i, "endedAt", timing.endedAt);
         }
         timingIdx++;
       }

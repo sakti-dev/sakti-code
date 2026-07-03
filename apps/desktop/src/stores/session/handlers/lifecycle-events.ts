@@ -15,6 +15,7 @@ export function registerLifecycleHandlers(): void {
   });
 
   registerHandler("agent_end", (_event, ctx) => {
+    ctx.actions.finalizeTurn(Date.now());
     ctx.actions.setPhase("idle");
     ctx.actions.clearCurrentMessage();
     ctx.actions.clearCurrentTool();
@@ -22,6 +23,7 @@ export function registerLifecycleHandlers(): void {
   });
 
   registerHandler("abort", (_event, ctx) => {
+    ctx.actions.finalizeTurn(Date.now());
     ctx.actions.setPhase("idle");
     ctx.actions.clearCurrentMessage();
     ctx.actions.clearCurrentTool();

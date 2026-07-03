@@ -41,8 +41,6 @@ export function hydrateChatTurns(chatTurns: ChatTurnDTO[]): Turn[] {
     const userEntry = asEntry(ct.userMessage);
     const summaryEntry = asEntry(ct.summaryMessage);
 
-    const userMessageId = userEntry?.id ?? null;
-
     let userMessage: UIMessage | null = null;
     if (userEntry) {
       userMessage = convertUserMessage(userEntry.id, userEntry.message);
@@ -66,9 +64,6 @@ export function hydrateChatTurns(chatTurns: ChatTurnDTO[]): Turn[] {
       userMessage,
       working: false,
     });
-
-    // Suppress unused var warning
-    void userMessageId;
   }
 
   return turns;

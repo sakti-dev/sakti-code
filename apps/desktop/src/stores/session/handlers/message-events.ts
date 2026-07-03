@@ -1,36 +1,14 @@
-import type { AgentMessage } from "@sakti-code/agent";
-import type { Message } from "@sakti-code/llm";
 import { registerHandler } from "../event-handler.ts";
 import type { UIMessage } from "../../types.ts";
+import { extractText, getTimestamp } from "../hydrate-helpers.ts";
 import { extractUsage } from "../usage-stats.ts";
-
-function isMessageWithContent(msg: AgentMessage): msg is Message & { content: Message["content"] } {
-  return "content" in msg;
-}
-
-function extractTextContent(msg: AgentMessage): string {
-  if (!isMessageWithContent(msg)) {
-    return "";
-  }
-  const { content } = msg;
-  if (typeof content === "string") {
-    return content;
-  }
-  if (Array.isArray(content)) {
-    return content
-      .filter((c): c is { type: "text"; text: string } => c.type === "text")
-      .map((c) => c.text)
-      .join("");
-  }
-  return "";
-}
 
 export function registerMessageHandlers(): void {
   registerHandler("message_start", (event, ctx) => {
     const msg = event.message;
 
     if (msg.role === "user") {
-      const text = extractTextContent(msg);
+      const text = extractText(msg);
       if (ctx.actions.wasLastUserMessage(text)) {
         return;
       }
@@ -40,7 +18,7 @@ export function registerMessageHandlers(): void {
         isStreaming: false,
         parts: [{ type: "text", text }],
         role: "user",
-        timestamp: typeof msg.timestamp === "number" ? msg.timestamp : Date.now(),
+        timestamp: getTimestamp(msg),
       };
       ctx.actions.startTurn(userMsg);
       return;
@@ -50,7 +28,7 @@ export function registerMessageHandlers(): void {
       return;
     }
 
-    const text = extractTextContent(msg);
+    const text = extractText(msg);
     const assistantMsg: UIMessage = {
       content: text,
       id: crypto.randomUUID(),

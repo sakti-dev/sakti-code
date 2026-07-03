@@ -69,7 +69,7 @@ export function hydrateSessionTurns(messages: AgentMessage[]): Turn[] {
         type: "om_marker",
         cycleId: details.cycleId as string,
         operationType: details.operationType as "observation" | "reflection" | "buffering",
-        status: status as MessagePart extends { type: "om_marker" } ? MessagePart["status"] : never,
+        status: status as Extract<MessagePart, { type: "om_marker" }>["status"],
         ...(details.durationMs !== undefined ? { durationMs: details.durationMs as number } : {}),
         ...(details.tokensProcessed !== undefined
           ? { tokensProcessed: details.tokensProcessed as number }
