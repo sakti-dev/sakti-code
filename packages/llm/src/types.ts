@@ -162,7 +162,9 @@ export interface TextContent {
  *   responses) or encrypted signature (Anthropic) when present.
  */
 export interface ThinkingContent {
+  endedAt?: number;
   redacted?: boolean;
+  startedAt?: number;
   thinking: string;
   thinkingSignature?: string;
   type: "thinking";

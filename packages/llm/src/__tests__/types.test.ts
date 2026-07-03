@@ -146,6 +146,17 @@ describe("message contract types", () => {
   it("ToolCall.arguments is Record<string, unknown> not any", () => {
     expectTypeOf<ToolCall["arguments"]>().toEqualTypeOf<Record<string, unknown>>();
   });
+
+  it("ThinkingContent has optional startedAt and endedAt", () => {
+    const block: ThinkingContent = {
+      type: "thinking",
+      thinking: "reasoning text",
+      startedAt: 1000,
+      endedAt: 2000,
+    };
+    expect(block.startedAt).toBe(1000);
+    expect(block.endedAt).toBe(2000);
+  });
 });
 
 describe("Model type (ai-sdk-only)", () => {
