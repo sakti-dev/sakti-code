@@ -1,3 +1,5 @@
+export type { AskToolInput } from "./ask/index";
+export { createAskTool } from "./ask/index";
 export type { BashOperations, BashToolDetails, BashToolInput, BashToolOptions } from "./bash/index";
 export { createBashTool } from "./bash/index";
 export type {
