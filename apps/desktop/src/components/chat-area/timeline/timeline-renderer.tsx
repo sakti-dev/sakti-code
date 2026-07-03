@@ -1,108 +1,20 @@
-import { FiCircle, FiFileText, FiFolder, FiSearch, FiTerminal } from "solid-icons/fi";
+import { FiCircle } from "solid-icons/fi";
 import { type Component, createMemo, For, type JSX } from "solid-js";
 import { Markdown } from "~/components/ui/markdown";
 import { cn } from "~/lib/utils";
 import type { MessagePart } from "~/stores/types.ts";
-import { normalizeToolName } from "../tools/tool-name.ts";
-import {
-  formatBashSummary,
-  formatEditSummary,
-  formatFindSummary,
-  formatGenericToolSummary,
-  formatGlobSummary,
-  formatGrepSummary,
-  formatReadSummary,
-  formatTaskCreateSummary,
-  formatTaskUpdateSummary,
-  formatVscodeDiagnosticsSummary,
-  formatWebfetchSummary,
-  formatWriteSummary,
-} from "../tools/tool-summary-formatters.ts";
-import { ToolSummaryRow } from "../tools/tool-summary-row.tsx";
 import { Part, resolvePartStreaming } from "../parts/message-part.tsx";
+import { getToolDescriptor, normalizeToolName, toToolPartData } from "../tools/index.ts";
+import { ToolSummaryRow } from "../tools/tool-summary-row.tsx";
 import { ExploreStep } from "./explore-step.tsx";
 import { ThinkingStep } from "./thinking-step.tsx";
-import { groupTimelineParts, type TimelineItem, type ToolCallPart } from "./timeline-grouping.ts";
+import { groupTimelineParts, type TimelineItem } from "./timeline-grouping.ts";
 import { TimelineStep } from "./timeline-step.tsx";
 
 export interface TimelineRendererProps {
   class?: string;
   isStreaming: boolean;
   parts: MessagePart[];
-}
-
-type ToolIcon = "file" | "folder" | "terminal" | "search";
-const TOOL_ICON_MAP: Record<string, ToolIcon> = {
-  bash: "terminal",
-  edit: "file",
-  find: "folder",
-  glob: "folder",
-  grep: "search",
-  ls: "folder",
-  read: "file",
-  write: "file",
-};
-
-function ToolIconCmp(props: { icon: ToolIcon }) {
-  switch (props.icon) {
-    case "file": {
-      return <FiFileText class="h-4 w-4" />;
-    }
-    case "folder": {
-      return <FiFolder class="h-4 w-4" />;
-    }
-    case "terminal": {
-      return <FiTerminal class="h-4 w-4" />;
-    }
-    case "search": {
-      return <FiSearch class="h-4 w-4" />;
-    }
-  }
-}
-
-function formatToolSummary(part: ToolCallPart): string {
-  const name = normalizeToolName(part.toolName);
-  const input =
-    part.input && typeof part.input === "object" ? (part.input as Record<string, unknown>) : {};
-  const toolPart = { args: input, output: part.result, tool: name };
-  switch (name) {
-    case "read": {
-      return formatReadSummary(toolPart);
-    }
-    case "write": {
-      return formatWriteSummary(toolPart);
-    }
-    case "edit": {
-      return formatEditSummary(toolPart);
-    }
-    case "bash": {
-      return formatBashSummary(toolPart);
-    }
-    case "find": {
-      return formatFindSummary(toolPart);
-    }
-    case "glob": {
-      return formatGlobSummary(toolPart);
-    }
-    case "grep": {
-      return formatGrepSummary(toolPart);
-    }
-    case "TaskCreate": {
-      return formatTaskCreateSummary(toolPart);
-    }
-    case "TaskUpdate": {
-      return formatTaskUpdateSummary(toolPart);
-    }
-    case "webfetch": {
-      return formatWebfetchSummary(toolPart);
-    }
-    case "vscode_get_diagnostics": {
-      return formatVscodeDiagnosticsSummary(toolPart);
-    }
-    default: {
-      return formatGenericToolSummary(toolPart);
-    }
-  }
 }
 
 /**
@@ -143,23 +55,24 @@ function renderTimelineItem(
     return <ThinkingStep isLast={isLast()} isStreaming={isStreaming()} part={part} />;
   }
   if (part.type === "tool_call") {
-    // `name`/`icon` derive from toolName, which is immutable for a given part,
-    // so reading them once is fine. `status` and `summary` are read inline in
+    // `descriptor` derives from toolName, which is immutable for a given part,
+    // so reading it once is fine. `status` and `summary` are read inline in
     // the JSX below so they stay reactive to in-place mutations (the store
     // mutates status/result in place on completion — reading them through the
     // JSX attribute getter re-subscribes, updating the row without a remount).
-    const name = normalizeToolName(part.toolName);
-    const icon = TOOL_ICON_MAP[name] ?? "file";
+    const pd = toToolPartData(part);
+    const d = getToolDescriptor(normalizeToolName(part.toolName));
     return (
-      <TimelineStep icon={<ToolIconCmp icon={icon} />} isLast={isLast()}>
+      <TimelineStep icon={<d.icon part={pd} />} isLast={isLast()}>
         <ToolSummaryRow
           class="pt-0"
-          icon={icon}
+          icon={d.icon}
+          part={pd}
           showIcon={false}
           status={
             part.status === "running" ? "running" : part.status === "error" ? "error" : "completed"
           }
-          summary={formatToolSummary(part)}
+          summary={d.summary(pd)}
         />
       </TimelineStep>
     );
