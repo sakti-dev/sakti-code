@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   clearPendingAsk: vi.fn(),
 }));
 
-vi.mock("~/stores/workspace/tab-store", () => ({
+vi.mock("~/stores/workspace/project-tab-store", () => ({
   setTabSession: vi.fn(),
 }));
 

@@ -11,7 +11,7 @@ import { AskCard } from "~/components/chat-area/parts/ask-card";
 import { MessageTimeline } from "~/components/chat-area/timeline/message-timeline";
 import { ChatInput } from "~/components/chat-input/chat-input";
 import { useStore } from "~/stores/store-context";
-import { setTabSession } from "~/stores/workspace/tab-store";
+import { setTabSession } from "~/stores/workspace/project-tab-store";
 import { EmptyState } from "./empty-state";
 import { IntakeCard } from "./intake-card";
 

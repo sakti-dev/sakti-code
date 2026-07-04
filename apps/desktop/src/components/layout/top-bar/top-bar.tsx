@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { openSettingsTab } from "~/stores/workspace/tab-store";
+import { openSettingsTab } from "~/stores/workspace/project-tab-store";
 import "./top-bar.css";
 import ProjectTabBar from "./project-tab";
 

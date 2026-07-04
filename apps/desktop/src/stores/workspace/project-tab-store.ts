@@ -1,18 +1,18 @@
 import { createEffect, createRoot, createSignal } from "solid-js";
 
-export type PageType = "home" | "settings";
+export type PageType = "settings";
 
-export interface WorkspaceTab {
+export interface ProjectTab {
   projectId: string | null;
   sessionId: string | null;
   page?: PageType;
 }
 
-const STORAGE_KEY = "sakti-workspace-tabs";
+const STORAGE_KEY = "sakti-project-tabs";
 
 interface StoredState {
   activeIndex: number;
-  tabs: WorkspaceTab[];
+  tabs: ProjectTab[];
 }
 
 function loadFromStorage(): StoredState {
@@ -26,7 +26,7 @@ function loadFromStorage(): StoredState {
     if (!Array.isArray(tabs) || tabs.length === 0) {
       return seedState();
     }
-    const validated: WorkspaceTab[] = tabs.map((t) => ({
+    const validated: ProjectTab[] = tabs.map((t) => ({
       projectId: t?.projectId ?? null,
       sessionId: t?.sessionId ?? null,
       ...(t?.page !== undefined ? { page: t.page as PageType } : {}),
@@ -42,7 +42,7 @@ function seedState(): StoredState {
   return { tabs: [{ projectId: null, sessionId: null }], activeIndex: 0 };
 }
 
-function saveToStorage(tabs: WorkspaceTab[], activeIndex: number): void {
+function saveToStorage(tabs: ProjectTab[], activeIndex: number): void {
   try {
     const data: StoredState & { version: number } = {
       version: 1,
@@ -57,90 +57,83 @@ function saveToStorage(tabs: WorkspaceTab[], activeIndex: number): void {
 
 const initial = loadFromStorage();
 
-const [openTabs, setOpenTabs] = createSignal<WorkspaceTab[]>(initial.tabs);
-const [activeTabIndex, setActiveTabIndex] = createSignal<number>(initial.activeIndex);
+const [projectTabs, setProjectTabs] = createSignal<ProjectTab[]>(initial.tabs);
+const [activeProjectIndex, setActiveProjectIndex] = createSignal<number>(initial.activeIndex);
 
 createRoot(() => {
   createEffect(() => {
-    saveToStorage(openTabs(), activeTabIndex());
+    saveToStorage(projectTabs(), activeProjectIndex());
   });
 });
 
-function updateTab(index: number, patch: Partial<WorkspaceTab>): void {
-  setOpenTabs((prev) => prev.map((t, i) => (i === index ? { ...t, ...patch } : t)));
+function updateTab(index: number, patch: Partial<ProjectTab>): void {
+  setProjectTabs((prev) => prev.map((t, i) => (i === index ? { ...t, ...patch } : t)));
 }
 
-export function activeTab(): WorkspaceTab | null {
-  const tabs = openTabs();
-  const idx = activeTabIndex();
+export function activeProjectTab(): ProjectTab | null {
+  const tabs = projectTabs();
+  const idx = activeProjectIndex();
   if (idx < 0 || idx >= tabs.length) {
     return null;
   }
   return tabs[idx] ?? null;
 }
 
-export function openProjectTab(projectId: string, sessionId: string | null = null): void {
-  const tabs = openTabs();
+export function openProjectTab(projectId: string): void {
+  const tabs = projectTabs();
 
   const existingIdx = tabs.findIndex((t) => t.projectId === projectId);
   if (existingIdx >= 0) {
-    setActiveTabIndex(existingIdx);
-    if (sessionId !== null) {
-      updateTab(existingIdx, { sessionId });
-    }
+    setActiveProjectIndex(existingIdx);
     return;
   }
 
-  const idx = activeTabIndex();
+  const idx = activeProjectIndex();
   if (idx >= 0 && idx < tabs.length && tabs[idx]?.projectId === null) {
-    updateTab(idx, { projectId, sessionId });
+    updateTab(idx, { projectId });
     return;
   }
 
   const newIdx = tabs.length;
-  setOpenTabs([...tabs, { projectId, sessionId }]);
-  setActiveTabIndex(newIdx);
+  setProjectTabs([...tabs, { projectId, sessionId: null }]);
+  setActiveProjectIndex(newIdx);
 }
 
-export function newTab(): void {
-  const tabs = openTabs();
-  setOpenTabs([...tabs, { projectId: null, sessionId: null }]);
-  setActiveTabIndex(tabs.length);
+export function newProjectTab(): void {
+  const tabs = projectTabs();
+  setProjectTabs([...tabs, { projectId: null, sessionId: null }]);
+  setActiveProjectIndex(tabs.length);
 }
 
 export function openSettingsTab(): void {
-  const tabs = openTabs();
+  const tabs = projectTabs();
   const existingIdx = tabs.findIndex((t) => t.page === "settings");
   if (existingIdx >= 0) {
-    setActiveTabIndex(existingIdx);
+    setActiveProjectIndex(existingIdx);
     return;
   }
   const newIdx = tabs.length;
-  setOpenTabs([...tabs, { projectId: null, sessionId: null, page: "settings" }]);
-  setActiveTabIndex(newIdx);
+  setProjectTabs([...tabs, { projectId: null, sessionId: null, page: "settings" }]);
+  setActiveProjectIndex(newIdx);
 }
 
-export function transformTab(
-  index: number,
-  projectId: string,
-  sessionId: string | null = null,
-): void {
-  const tabs = openTabs();
+export function transformProjectTab(index: number, projectId: string): void {
+  const tabs = projectTabs();
 
   const existingIdx = tabs.findIndex((t) => t.projectId === projectId);
   if (existingIdx >= 0 && existingIdx !== index) {
     const filtered = tabs.filter((_, i) => i !== index);
     const adjustedActive = existingIdx > index ? existingIdx - 1 : existingIdx;
-    setOpenTabs(filtered);
-    setActiveTabIndex(adjustedActive);
+    setProjectTabs(filtered);
+    setActiveProjectIndex(adjustedActive);
     return;
   }
 
-  updateTab(index, { projectId, sessionId });
+  updateTab(index, { projectId });
 }
 
-export function closeTab(index: number): void {
-  const tabs = openTabs();
+export function closeProjectTab(index: number): void {
+  const tabs = projectTabs();
   if (index < 0 || index >= tabs.length) {
     return;
   }
@@ -148,12 +141,12 @@ export function closeTab(index: number): void {
   const newTabs = tabs.filter((_, i) => i !== index);
 
   if (newTabs.length === 0) {
-    setOpenTabs([{ projectId: null, sessionId: null }]);
-    setActiveTabIndex(0);
+    setProjectTabs([{ projectId: null, sessionId: null }]);
+    setActiveProjectIndex(0);
     return;
   }
 
-  const currentActive = activeTabIndex();
+  const currentActive = activeProjectIndex();
   let newActive = currentActive;
 
   if (index === currentActive) {
@@ -162,19 +155,19 @@ export function closeTab(index: number): void {
     newActive = currentActive - 1;
   }
 
-  setOpenTabs(newTabs);
-  setActiveTabIndex(newActive);
+  setProjectTabs(newTabs);
+  setActiveProjectIndex(newActive);
 }
 
-export function switchTab(index: number): void {
-  const tabs = openTabs();
+export function switchProjectTab(index: number): void {
+  const tabs = projectTabs();
   if (index >= 0 && index < tabs.length) {
-    setActiveTabIndex(index);
+    setActiveProjectIndex(index);
   }
 }
 
 export function setTabSession(projectId: string, sessionId: string | null): void {
-  const tabs = openTabs();
+  const tabs = projectTabs();
   const idx = tabs.findIndex((t) => t.projectId === projectId);
   if (idx >= 0) {
     updateTab(idx, { sessionId });
@@ -182,7 +175,7 @@ export function setTabSession(projectId: string, sessionId: string | null): void
 }
 
 export function filterStaleProjects(validProjectIds: Set<string>): void {
-  const tabs = openTabs();
+  const tabs = projectTabs();
   let changed = false;
   const newTabs = tabs.map((t) => {
     if (t.projectId !== null && !validProjectIds.has(t.projectId)) {
@@ -193,12 +186,12 @@ export function filterStaleProjects(validProjectIds: Set<string>): void {
   });
 
   if (changed) {
-    setOpenTabs(newTabs);
-    const idx = activeTabIndex();
+    setProjectTabs(newTabs);
+    const idx = activeProjectIndex();
     if (idx >= newTabs.length) {
-      setActiveTabIndex(Math.max(0, newTabs.length - 1));
+      setActiveProjectIndex(Math.max(0, newTabs.length - 1));
     }
   }
 }
 
-export { activeTabIndex, openTabs };
+export { activeProjectIndex, projectTabs };

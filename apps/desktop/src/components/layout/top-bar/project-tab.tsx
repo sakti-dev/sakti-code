@@ -4,14 +4,14 @@ import { For, type JSX, Match, Switch } from "solid-js";
 import { Show } from "solid-js";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
-import type { PageType } from "~/stores/workspace/tab-store";
+import type { PageType } from "~/stores/workspace/project-tab-store";
 import {
-  activeTabIndex,
-  closeTab,
-  newTab,
-  openTabs,
-  switchTab,
-} from "~/stores/workspace/tab-store";
+  activeProjectIndex,
+  closeProjectTab,
+  newProjectTab,
+  projectTabs,
+  switchProjectTab,
+} from "~/stores/workspace/project-tab-store";
 
 interface ProjectTabProps {
   projectId: string | null;
@@ -24,13 +24,13 @@ interface ProjectTabProps {
 function ProjectTab(props: ProjectTabProps): JSX.Element {
   const handleClose = (e: MouseEvent): void => {
     e.stopPropagation();
-    closeTab(props.index);
+    closeProjectTab(props.index);
   };
 
   const handleMiddleClick = (e: MouseEvent): void => {
     if (e.button === 1) {
       e.preventDefault();
-      closeTab(props.index);
+      closeProjectTab(props.index);
     }
   };
 
@@ -40,11 +40,11 @@ function ProjectTab(props: ProjectTabProps): JSX.Element {
         "group relative inline-flex h-7 cursor-pointer items-center justify-center whitespace-nowrap px-3 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         props.isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
       )}
-      onClick={() => switchTab(props.index)}
+      onClick={() => switchProjectTab(props.index)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          switchTab(props.index);
+          switchProjectTab(props.index);
         }
       }}
       onPointerDown={(e) => handleMiddleClick(e)}
@@ -91,8 +91,8 @@ function ProjectTab(props: ProjectTabProps): JSX.Element {
 
 export default function ProjectTabBar(): JSX.Element {
   const { server } = useStore();
-  const tabs = openTabs;
-  const currentIdx = activeTabIndex;
+  const tabs = projectTabs;
+  const currentIdx = activeProjectIndex;
 
   const tabLabel = (tab: { projectId: string | null; page?: PageType }): string => {
     if (tab.page === "settings") {
@@ -122,7 +122,7 @@ export default function ProjectTabBar(): JSX.Element {
       <button
         aria-label="New workspace"
         class="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-        onClick={() => newTab()}
+        onClick={() => newProjectTab()}
         type="button"
       >
         <FiPlus class="h-3.5 w-3.5" />

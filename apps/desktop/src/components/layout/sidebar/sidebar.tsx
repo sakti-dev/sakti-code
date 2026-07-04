@@ -4,7 +4,7 @@ import { Separator } from "~/components/ui/separator";
 import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
-import { activeTab, openProjectTab } from "~/stores/workspace/tab-store";
+import { activeProjectTab, openProjectTab } from "~/stores/workspace/project-tab-store";
 import { setSidebarOpen, sidebarOpen } from "~/stores/workspace/ui-signals";
 import { ArchivedAccordion, type ArchivedMission } from "./archived-accordion.tsx";
 import { MissionRow, type StreamPhase } from "./mission-row.tsx";
@@ -26,7 +26,7 @@ export default function Sidebar(): JSX.Element {
     }
   };
 
-  const activeProjectId = () => activeTab()?.projectId ?? null;
+  const activeProjectId = () => activeProjectTab()?.projectId ?? null;
 
   const missions = createMemo(() => {
     const pid = activeProjectId();
@@ -54,11 +54,11 @@ export default function Sidebar(): JSX.Element {
     return (reg?.store.streaming.phase ?? "idle") as StreamPhase;
   };
 
-  const activeSessionId = () => activeTab()?.sessionId ?? null;
+  const activeSessionId = () => activeProjectTab()?.sessionId ?? null;
 
-  const selectSession = (sessionId: string) => {
+  const selectSession = (_sessionId: string) => {
     const pid = activeProjectId();
-    if (pid) openProjectTab(pid, sessionId);
+    if (pid) openProjectTab(pid);
   };
 
   const handleRename = (sessionId: string, title: string) => {
@@ -78,7 +78,7 @@ export default function Sidebar(): JSX.Element {
     const pid = activeProjectId();
     if (!pid) return;
     const intake = await actions.createChildIntake(pid);
-    if (intake) openProjectTab(pid, intake.id);
+    if (intake) openProjectTab(pid);
   };
 
   return (

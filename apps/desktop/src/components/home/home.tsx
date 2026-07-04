@@ -10,11 +10,11 @@ import { SearchBar } from "~/components/ui/search-bar";
 import type { Project, SessionMeta } from "~/stores/server/server-store";
 import { useStore } from "~/stores/store-context";
 import {
-  activeTab,
-  activeTabIndex,
+  activeProjectIndex,
+  activeProjectTab,
   openProjectTab,
-  transformTab,
-} from "~/stores/workspace/tab-store";
+  transformProjectTab,
+} from "~/stores/workspace/project-tab-store";
 
 function filterProjects<T extends { name: string }>(projects: T[], query: string): T[] {
   if (!query.trim()) {
@@ -28,9 +28,9 @@ export default function Home() {
   const { server, actions } = useStore();
 
   const openProject = (projectId: string): void => {
-    const tab = activeTab();
+    const tab = activeProjectTab();
     if (tab && tab.projectId === null) {
-      transformTab(activeTabIndex(), projectId);
+      transformProjectTab(activeProjectIndex(), projectId);
     } else {
       openProjectTab(projectId);
     }

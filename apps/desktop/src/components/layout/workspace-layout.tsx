@@ -4,7 +4,7 @@ import Home from "~/components/home/home";
 import { SettingsPage } from "~/components/settings/settings-page";
 import { OnboardingPanel } from "~/components/onboarding/onboarding-panel";
 import { useStore } from "~/stores/store-context";
-import { activeTab, filterStaleProjects } from "~/stores/workspace/tab-store";
+import { activeProjectTab, filterStaleProjects } from "~/stores/workspace/project-tab-store";
 import { sidebarOpen } from "~/stores/workspace/ui-signals";
 import BannerConnection from "./banners/banner-connection";
 import { BannerError, BannerHealth } from "./banners/banner-error";
@@ -17,7 +17,7 @@ export default function WorkspaceLayout(): JSX.Element {
 
   // Sync active tab → server store
   createEffect(() => {
-    const tab = activeTab();
+    const tab = activeProjectTab();
     if (tab) {
       server.actions.setActiveProject(tab.projectId);
       server.actions.setActiveSession(tab.sessionId);
@@ -58,8 +58,8 @@ export default function WorkspaceLayout(): JSX.Element {
     return id ? server.store.sessions[id] : undefined;
   };
 
-  const isNewTab = () => activeTab()?.projectId === null;
-  const isSettingsTab = () => activeTab()?.page === "settings";
+  const isNewTab = () => activeProjectTab()?.projectId === null;
+  const isSettingsTab = () => activeProjectTab()?.page === "settings";
 
   return (
     <div class="flex h-screen flex-col bg-background text-foreground">
