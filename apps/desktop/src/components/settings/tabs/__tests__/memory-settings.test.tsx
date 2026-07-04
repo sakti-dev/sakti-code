@@ -40,59 +40,10 @@ describe("MemorySettings", () => {
     expect(await screen.findByText("Observational Memory")).toBeTruthy();
   });
 
-  it("shows checked toggle when OM is absent from settings (default enabled)", async () => {
+  it("notes OM is always on (no toggle)", async () => {
     mocks.settingsGet.mockImplementation(() => okRes({}));
     render(() => <MemorySettings />);
-    const checkbox = (await screen.findByTestId("om-enabled-toggle")) as HTMLInputElement;
-    await vi.waitFor(() => expect(checkbox.checked).toBe(true));
-  });
-
-  it("shows checked toggle when OM is enabled in settings", async () => {
-    mocks.settingsGet.mockImplementation(() => okRes({ observationalMemory: { enabled: true } }));
-    render(() => <MemorySettings />);
-    const checkbox = (await screen.findByTestId("om-enabled-toggle")) as HTMLInputElement;
-    await vi.waitFor(() => expect(checkbox.checked).toBe(true));
-  });
-
-  it("shows unchecked toggle when OM is explicitly disabled in settings", async () => {
-    mocks.settingsGet.mockImplementation(() => okRes({ observationalMemory: { enabled: false } }));
-    render(() => <MemorySettings />);
-    const checkbox = (await screen.findByTestId("om-enabled-toggle")) as HTMLInputElement;
-    await vi.waitFor(() => expect(checkbox.checked).toBe(false));
-  });
-
-  it("PUTs { observationalMemory: { enabled: true } } when toggled on", async () => {
-    mocks.settingsGet.mockImplementation(() => okRes({ observationalMemory: { enabled: false } }));
-    mocks.settingsPut.mockImplementation(() => okPut());
-    render(() => <MemorySettings />);
-    const checkbox = (await screen.findByTestId("om-enabled-toggle")) as HTMLInputElement;
-    await vi.waitFor(() => expect(checkbox.checked).toBe(false));
-    fireEvent.click(checkbox);
-    await vi.waitFor(() => {
-      expect(mocks.settingsPut).toHaveBeenCalledWith({
-        json: { observationalMemory: { enabled: true } },
-      });
-    });
-  });
-
-  it("PUTs { observationalMemory: { enabled: false } } when toggled off from default", async () => {
-    mocks.settingsGet.mockImplementation(() => okRes({}));
-    mocks.settingsPut.mockImplementation(() => okPut());
-    render(() => <MemorySettings />);
-    const checkbox = (await screen.findByTestId("om-enabled-toggle")) as HTMLInputElement;
-    await vi.waitFor(() => expect(checkbox.checked).toBe(true));
-    fireEvent.click(checkbox);
-    await vi.waitFor(() => {
-      expect(mocks.settingsPut).toHaveBeenCalledWith({
-        json: { observationalMemory: { enabled: false } },
-      });
-    });
-  });
-
-  it("shows hint to configure OM models in Models tab", async () => {
-    mocks.settingsGet.mockImplementation(() => okRes({}));
-    render(() => <MemorySettings />);
-    expect(await screen.findByText(/Configure observer/i)).toBeTruthy();
+    expect(await screen.findByText(/Always on/i)).toBeTruthy();
   });
 
   it("shows observation threshold input with default 30000 when absent", async () => {
@@ -113,7 +64,6 @@ describe("MemorySettings", () => {
     mocks.settingsGet.mockImplementation(() =>
       okRes({
         observationalMemory: {
-          enabled: true,
           observationThreshold: 50000,
           reflectionThreshold: 60000,
         },

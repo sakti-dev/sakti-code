@@ -6,7 +6,6 @@ const DEFAULT_OBSERVATION_THRESHOLD = 30_000;
 const DEFAULT_REFLECTION_THRESHOLD = 40_000;
 
 interface OmSettings {
-  enabled: boolean;
   observationThreshold?: number;
   reflectionThreshold?: number;
 }
@@ -17,7 +16,6 @@ interface SettingsData {
 
 export function MemorySettings() {
   const { api } = useStore();
-  const [omEnabled, setOmEnabled] = createSignal(true);
   const [observationThreshold, setObservationThreshold] = createSignal(
     String(DEFAULT_OBSERVATION_THRESHOLD),
   );
@@ -36,7 +34,6 @@ export function MemorySettings() {
   createEffect(() => {
     const data = settingsResource();
     if (data === null) return;
-    setOmEnabled(data?.observationalMemory?.enabled !== false);
     const om = data?.observationalMemory;
     if (om?.observationThreshold !== undefined) {
       setObservationThreshold(String(om.observationThreshold));
@@ -45,11 +42,6 @@ export function MemorySettings() {
       setReflectionThreshold(String(om.reflectionThreshold));
     }
   });
-
-  const toggleOm = (enabled: boolean) => {
-    setOmEnabled(enabled);
-    void api.api.settings.$put({ json: { observationalMemory: { enabled } } }).catch(() => {});
-  };
 
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
   const scheduleThresholdSave = (
@@ -82,23 +74,13 @@ export function MemorySettings() {
 
   return (
     <Card class="p-4">
-      <div class="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <h3 class="font-semibold text-sm tracking-tight">Observational Memory</h3>
-          <p class="mt-0.5 text-muted-foreground text-xs">
-            Background observer and reflector models that learn from the conversation and distill
-            long context into searchable observations.
-          </p>
-        </div>
-        <label class="flex shrink-0 items-center gap-2 text-xs">
-          <input
-            checked={omEnabled()}
-            data-testid="om-enabled-toggle"
-            onChange={(e) => toggleOm(e.currentTarget.checked)}
-            type="checkbox"
-          />
-          Enabled
-        </label>
+      <div class="mb-3">
+        <h3 class="font-semibold text-sm tracking-tight">Observational Memory</h3>
+        <p class="mt-0.5 text-muted-foreground text-xs">
+          Background observer and reflector models that learn from the conversation and distill long
+          context into searchable observations. Always on — configure the models per profile in the
+          Models tab.
+        </p>
       </div>
 
       <div class="mt-4 space-y-2">
@@ -129,10 +111,6 @@ export function MemorySettings() {
           />
         </div>
       </div>
-
-      <p class="mt-3 text-muted-foreground text-xs">
-        Configure observer and reflector models per profile in the Models tab.
-      </p>
     </Card>
   );
 }

@@ -81,8 +81,8 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
     // Hoisted above the OM wiring so the engine can share the signal.
     const retryAbort = new AbortController();
 
-    // Wire observational memory into the harness when enabled.
-    if (deps.observationalMemory?.enabled) {
+    // Wire observational memory into the harness when configured.
+    if (deps.observationalMemory) {
       const om = deps.observationalMemory;
       omEngine = new ObservationalMemoryEngine({
         deps: om.deps,
@@ -132,8 +132,10 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
       });
     }
 
-    // Wire read-only OM injection when OM is disabled but prior history may exist.
-    if (!deps.observationalMemory?.enabled && deps.observationalMemoryReadOnly) {
+    // Wire read-only OM injection (the project's resource-scope record).
+    // Missions get own-OM + this; intakes get only this. Both compose in the
+    // agent loop (Task 3.1).
+    if (deps.observationalMemoryReadOnly) {
       harness.setObservationalMemoryReadOnly(deps.observationalMemoryReadOnly);
     }
 

@@ -819,10 +819,10 @@ export function formatObservationsForContext(activeObservations: string): string
  * Read-only: build the <observations> system-message suffix from an
  * existing OM record, or undefined if there are no observations.
  *
- * This is the "read-only" path used when OM is disabled but prior
- * history exists — the observations block must still be injected so
- * the LLM has the accumulated memory, even though no new
- * observe/reflect cycles run.
+ * This is the "read-only" path: the observations block is injected so the LLM
+ * has the accumulated project memory, without running observe/reflect cycles
+ * (every session reads the project OM this way; missions also run their own
+ * thread OM on top).
  */
 export function buildObservationsBlock(
   record: ObservationalMemoryRecord | null,

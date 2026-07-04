@@ -30,7 +30,6 @@ import {
   buildAgentTools,
   DEFAULT_AGENT_NAME,
   rebuildTool,
-  resolveOmScope,
   resolveSessionAgent,
   resolveSessionAgentForKind,
   SKILLS_INSTRUCTIONS,
@@ -506,9 +505,13 @@ export function runPromptEffect(
       agent: agent.name,
     });
 
-    // ── Observational Memory deps (optional) ──────────────────────
+    // ── Observational Memory deps ────────────────────────────────
+    // OM is always on. Every session reads the project's resource-scope OM
+    // record read-only (the main intake's memory). Missions additionally run
+    // their own thread-scope OM (observe/reflect). Both blocks compose in the
+    // agent loop (own-OM block + appended read-only block).
+    const omStorage = new SqliteObservationalMemoryStorage(ctx.db);
     let omOptions: ObservationalMemoryOptions | undefined;
-    let omReadOnly: { getObservationsBlock: () => Promise<string | undefined> } | undefined;
     const omConfig = resolveOmConfig(ctx, {
       id: sessionId,
       kind: session.kind,
@@ -516,9 +519,7 @@ export function runPromptEffect(
       profileId: session.profileId,
     });
     if (omConfig) {
-      const omStorage = new SqliteObservationalMemoryStorage(ctx.db);
       omOptions = {
-        enabled: true,
         deps: {
           ...omConfig,
           storage: omStorage,
@@ -533,19 +534,16 @@ export function runPromptEffect(
         observationThreshold: omConfig.thresholds.observation,
         reflectionThreshold: omConfig.thresholds.reflection,
       });
-    } else {
-      // OM disabled — check for prior history and set up read-only injection.
-      const roStorage = new SqliteObservationalMemoryStorage(ctx.db);
-      const omRaw = ctx.settingsFile.read() as Record<string, unknown>;
-      const roScope = resolveOmScope(omRaw);
-      const roThreadId = roScope === "resource" ? null : sessionId;
-      omReadOnly = {
-        getObservationsBlock: async () => {
-          const record = await roStorage.getObservationalMemory(roThreadId, session.projectId);
-          return buildObservationsBlock(record);
-        },
-      };
     }
+    // The read-only project OM block — always built (resource-scope record
+    // keyed at threadId=null, resourceId=projectId). Missions get own-OM + this;
+    // intakes get only this.
+    const omReadOnly = {
+      getObservationsBlock: async () => {
+        const record = await omStorage.getObservationalMemory(null, session.projectId);
+        return buildObservationsBlock(record);
+      },
+    };
 
     // Delegate the orchestration (event drain, retry abort, retry-deps
     // assembly, planFirstTurn dispatch, stuck-guard policy, compaction
@@ -560,7 +558,7 @@ export function runPromptEffect(
       apiKey: auth.apiKey,
       ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
       ...(omOptions ? { observationalMemory: omOptions } : {}),
-      ...(omReadOnly ? { observationalMemoryReadOnly: omReadOnly } : {}),
+      observationalMemoryReadOnly: omReadOnly,
       skills: activeSkills,
       templates: loadedContext.commands,
       cwd: project.cwd,

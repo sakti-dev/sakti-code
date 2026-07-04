@@ -92,8 +92,9 @@ export interface AgentLoopConfig {
     | undefined;
 
   /**
-   * Read-only OM: inject <observations> from existing history without
-   * running observe/reflect. Set when OM is disabled but prior history exists.
+   * Read-only OM: inject <observations> from the project's resource-scope OM
+   * record without running observe/reflect. Every session gets this block
+   * (the main intake's memory); missions additionally run their own thread OM.
    * The callback reads the latest OM record and returns the formatted
    * observations block, or undefined if no history.
    */

@@ -8,7 +8,6 @@ const omBufferingSchema = Type.Object({
 });
 
 export const OmSettingsSchema = Type.Object({
-  enabled: Type.Boolean(),
   observationThreshold: Type.Optional(Type.Number()),
   reflectionThreshold: Type.Optional(Type.Number()),
   instruction: Type.Optional(Type.String()),
@@ -17,7 +16,6 @@ export const OmSettingsSchema = Type.Object({
 });
 
 export interface ParsedOmSettings {
-  enabled: boolean;
   observationThreshold?: number;
   reflectionThreshold?: number;
   instruction?: string;
@@ -30,7 +28,6 @@ export interface ParsedOmSettings {
 }
 
 const OM_ALLOWED_KEYS = new Set([
-  "enabled",
   "observationThreshold",
   "reflectionThreshold",
   "instruction",
@@ -57,29 +54,16 @@ function assertNoUnknownKeys(
 }
 
 /**
- * Resolve the OM scope from raw settings, even when OM is disabled.
- * Used by the read-only injection path to look up existing records
- * with the correct lookup key.
- */
-export function resolveOmScope(raw: Record<string, unknown>): "thread" | "resource" {
-  const om = raw.observationalMemory;
-  if (om && typeof om === "object") {
-    const scope = (om as Record<string, unknown>).scope;
-    if (scope === "resource") return "resource";
-  }
-  return "thread";
-}
-
-/**
- * Parse + validate the `observationalMemory` block from settings.json.
+ * Parse + validate the `observationalMemory` tuning block from settings.json.
  *
- * Returns `{ enabled: true }` when OM is absent (default-on).
- * Returns `undefined` only when explicitly disabled (`enabled: false`).
- * Throws on a present-but-malformed block — including unknown/typo'd keys.
+ * OM is always on — there is no on/off toggle. This only parses optional
+ * tuning (thresholds, scope, buffering, instruction). Returns defaults when
+ * the block is absent. Throws on a present-but-malformed block, including
+ * unknown/typo'd keys (and the now-removed `enabled` key).
  */
-export function parseOmSettings(raw: Record<string, unknown>): ParsedOmSettings | undefined {
+export function parseOmSettings(raw: Record<string, unknown>): ParsedOmSettings {
   const om = raw.observationalMemory;
-  if (!om || typeof om !== "object") return { enabled: true };
+  if (!om || typeof om !== "object") return {};
   const omRecord = om as Record<string, unknown>;
   assertNoUnknownKeys(omRecord, OM_ALLOWED_KEYS, "observationalMemory");
   if (omRecord.buffering && typeof omRecord.buffering === "object") {
@@ -90,7 +74,5 @@ export function parseOmSettings(raw: Record<string, unknown>): ParsedOmSettings 
     );
   }
   Value.Assert(OmSettingsSchema, omRecord);
-  const decoded = Value.Decode(OmSettingsSchema, omRecord);
-  if (!decoded.enabled) return undefined;
-  return decoded;
+  return Value.Decode(OmSettingsSchema, omRecord);
 }

@@ -16,7 +16,6 @@ export {
   OmSettingsSchema,
   parseOmSettings,
   type ParsedOmSettings,
-  resolveOmScope,
 } from "./observational-memory-settings.ts";
 export {
   resolveAgentByName,

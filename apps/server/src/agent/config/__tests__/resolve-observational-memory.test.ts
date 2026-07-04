@@ -49,28 +49,16 @@ const PROFILES = {
 const SESSION = { id: "sess-1", kind: "mission", projectId: "proj-1", profileId: null };
 
 describe("resolveOmConfig", () => {
-  it("returns undefined when OM is explicitly disabled", () => {
-    const ctx = makeCtx(PROFILES, { observationalMemory: { enabled: false } });
-    const result = resolveOmConfig(ctx, SESSION);
-    expect(result).toBeUndefined();
-  });
-
-  it("returns config when OM key is absent (default enabled)", () => {
+  it("returns config when OM key is absent (always on)", () => {
     const ctx = makeCtx(PROFILES, { other: "value" }, { getApiKey: () => "sk-test" });
     const result = resolveOmConfig(ctx, SESSION);
     expect(result).toBeDefined();
   });
 
-  it("returns undefined when enabled is false", () => {
-    const ctx = makeCtx(PROFILES, { observationalMemory: { enabled: false } });
-    const result = resolveOmConfig(ctx, SESSION);
-    expect(result).toBeUndefined();
-  });
-
   it("returns undefined when API key is missing for observe provider", () => {
     const ctx = makeCtx(
       PROFILES,
-      { observationalMemory: { enabled: true } },
+      { observationalMemory: {} },
       {
         getApiKey: (p) => (p === "openai" ? undefined : "sk-test"),
       },
@@ -82,7 +70,7 @@ describe("resolveOmConfig", () => {
   it("returns undefined when API key is missing for reflect provider", () => {
     const ctx = makeCtx(
       PROFILES,
-      { observationalMemory: { enabled: true } },
+      { observationalMemory: {} },
       {
         getApiKey: (p) => (p === "openai" ? undefined : "sk-test"),
       },
@@ -94,7 +82,7 @@ describe("resolveOmConfig", () => {
   it("returns config with default thresholds when enabled", () => {
     const ctx = makeCtx(
       PROFILES,
-      { observationalMemory: { enabled: true } },
+      { observationalMemory: {} },
       {
         getApiKey: () => "sk-test",
       },
@@ -110,7 +98,6 @@ describe("resolveOmConfig", () => {
       PROFILES,
       {
         observationalMemory: {
-          enabled: true,
           observationThreshold: 50_000,
           reflectionThreshold: 60_000,
         },
@@ -128,7 +115,7 @@ describe("resolveOmConfig", () => {
   it("resolves observe/reflect from explicit profile entry", () => {
     const ctx = makeCtx(
       PROFILES,
-      { observationalMemory: { enabled: true } },
+      { observationalMemory: {} },
       {
         getApiKey: () => "sk-test",
       },
@@ -142,7 +129,7 @@ describe("resolveOmConfig", () => {
   it("resolves observe/reflect to default when absent from profile", () => {
     const ctx = makeCtx(
       PROFILES,
-      { observationalMemory: { enabled: true } },
+      { observationalMemory: {} },
       {
         getApiKey: () => "sk-test",
       },
@@ -156,7 +143,7 @@ describe("resolveOmConfig", () => {
   it("returns undefined when profile is missing", () => {
     const ctx = makeCtx(
       PROFILES,
-      { observationalMemory: { enabled: true } },
+      { observationalMemory: {} },
       {
         getApiKey: () => "sk-test",
       },
@@ -169,7 +156,7 @@ describe("resolveOmConfig", () => {
     const ctx = makeCtx(
       PROFILES,
       {
-        observationalMemory: { enabled: true, instruction: "Be concise." },
+        observationalMemory: { instruction: "Be concise." },
       },
       {
         getApiKey: () => "sk-test",
@@ -183,7 +170,7 @@ describe("resolveOmConfig", () => {
   it("omits instruction when not set in settings", () => {
     const ctx = makeCtx(
       PROFILES,
-      { observationalMemory: { enabled: true } },
+      { observationalMemory: {} },
       {
         getApiKey: () => "sk-test",
       },
@@ -194,11 +181,7 @@ describe("resolveOmConfig", () => {
   });
 
   it("returns undefined for intake sessions (children read project OM read-only)", () => {
-    const ctx = makeCtx(
-      PROFILES,
-      { observationalMemory: { enabled: true } },
-      { getApiKey: () => "sk-test" },
-    );
+    const ctx = makeCtx(PROFILES, { observationalMemory: {} }, { getApiKey: () => "sk-test" });
     const result = resolveOmConfig(ctx, {
       id: "s1",
       kind: "intake",
@@ -209,11 +192,7 @@ describe("resolveOmConfig", () => {
   });
 
   it("returns thread-scope config for mission sessions", () => {
-    const ctx = makeCtx(
-      PROFILES,
-      { observationalMemory: { enabled: true } },
-      { getApiKey: () => "sk-test" },
-    );
+    const ctx = makeCtx(PROFILES, { observationalMemory: {} }, { getApiKey: () => "sk-test" });
     const result = resolveOmConfig(ctx, {
       id: "s1",
       kind: "mission",
@@ -227,7 +206,7 @@ describe("resolveOmConfig", () => {
   it("tokenCounter is constructed fresh per call, scoped to the observe model (M5)", () => {
     const ctx = makeCtx(
       PROFILES,
-      { observationalMemory: { enabled: true } },
+      { observationalMemory: {} },
       {
         getApiKey: () => "sk-test",
       },

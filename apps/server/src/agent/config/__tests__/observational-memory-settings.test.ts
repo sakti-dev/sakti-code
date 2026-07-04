@@ -3,25 +3,20 @@ import { describe, expect, it } from "vite-plus/test";
 import { parseOmSettings } from "../observational-memory-settings.ts";
 
 describe("parseOmSettings", () => {
-  it("returns enabled by default when absent", () => {
+  it("returns defaults when the block is absent", () => {
     const result = parseOmSettings({});
-    expect(result?.enabled).toBe(true);
+    expect(result.observationThreshold).toBeUndefined();
+    expect(result.scope).toBeUndefined();
   });
 
-  it("returns undefined when disabled", () => {
-    expect(parseOmSettings({ observationalMemory: { enabled: false } })).toBeUndefined();
-  });
-
-  it("accepts a minimal enabled-only config", () => {
-    const result = parseOmSettings({ observationalMemory: { enabled: true } });
-    expect(result?.enabled).toBe(true);
-    expect(result?.observationThreshold).toBeUndefined();
+  it("accepts an empty observationalMemory block", () => {
+    const result = parseOmSettings({ observationalMemory: {} });
+    expect(result.observationThreshold).toBeUndefined();
   });
 
   it("accepts a full config including buffering", () => {
     const result = parseOmSettings({
       observationalMemory: {
-        enabled: true,
         observationThreshold: 30000,
         reflectionThreshold: 40000,
         instruction: "be terse",
@@ -32,48 +27,43 @@ describe("parseOmSettings", () => {
         },
       },
     });
-    expect(result?.enabled).toBe(true);
-    expect(result?.observationThreshold).toBe(30000);
-    expect(result?.buffering?.observationBufferTokens).toBe(0.2);
+    expect(result.observationThreshold).toBe(30000);
+    expect(result.buffering?.observationBufferTokens).toBe(0.2);
   });
 
   it("rejects a typo'd threshold key (I4)", () => {
-    expect(() =>
-      parseOmSettings({ observationalMemory: { enabled: true, obserationThreshold: 100 } }),
-    ).toThrow();
+    expect(() => parseOmSettings({ observationalMemory: { obserationThreshold: 100 } })).toThrow();
   });
 
   it("rejects a non-number observationThreshold", () => {
     expect(() =>
-      parseOmSettings({ observationalMemory: { enabled: true, observationThreshold: "30000" } }),
+      parseOmSettings({ observationalMemory: { observationThreshold: "30000" } }),
     ).toThrow();
   });
 
-  it("rejects a non-boolean enabled", () => {
-    expect(() => parseOmSettings({ observationalMemory: { enabled: "yes" } })).toThrow();
+  it("rejects the removed `enabled` key (unknown key)", () => {
+    expect(() => parseOmSettings({ observationalMemory: { enabled: true } })).toThrow();
   });
 
   it("rejects buffering without required observationBufferTokens", () => {
     expect(() =>
       parseOmSettings({
-        observationalMemory: { enabled: true, buffering: { observationBufferActivation: 0.8 } },
+        observationalMemory: { buffering: { observationBufferActivation: 0.8 } },
       }),
     ).toThrow();
   });
 
   it("accepts scope: 'resource'", () => {
-    const result = parseOmSettings({ observationalMemory: { enabled: true, scope: "resource" } });
-    expect(result?.scope).toBe("resource");
+    const result = parseOmSettings({ observationalMemory: { scope: "resource" } });
+    expect(result.scope).toBe("resource");
   });
 
   it("scope is absent by default (deps builder defaults to 'thread')", () => {
-    const result = parseOmSettings({ observationalMemory: { enabled: true } });
-    expect(result?.scope).toBeUndefined();
+    const result = parseOmSettings({ observationalMemory: {} });
+    expect(result.scope).toBeUndefined();
   });
 
   it("rejects an invalid scope value", () => {
-    expect(() =>
-      parseOmSettings({ observationalMemory: { enabled: true, scope: "banana" } }),
-    ).toThrow();
+    expect(() => parseOmSettings({ observationalMemory: { scope: "banana" } })).toThrow();
   });
 });

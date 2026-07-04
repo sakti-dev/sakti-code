@@ -67,6 +67,5 @@ export interface ObservationalMemoryDeps {
 // ─── Options (server-facing toggle) ──────────────────────────────────────────
 
 export interface ObservationalMemoryOptions {
-  readonly enabled: boolean;
   readonly deps: ObservationalMemoryDeps;
 }
