@@ -59,6 +59,13 @@ export function resolveOmConfig(
     return undefined;
   }
 
+  // Intake children never run their own OM — they read the project's
+  // resource-scope OM read-only (the main intake's memory). Only missions
+  // observe their own thread. Graduation writes the project OM (Phase 2).
+  if (session.kind === "intake") {
+    return undefined;
+  }
+
   const profiles = ctx.profiles.read();
   const activeId = session.profileId ?? profiles.defaultProfile;
 

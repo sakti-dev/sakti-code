@@ -193,6 +193,37 @@ describe("resolveOmConfig", () => {
     expect(result!.instruction).toBeUndefined();
   });
 
+  it("returns undefined for intake sessions (children read project OM read-only)", () => {
+    const ctx = makeCtx(
+      PROFILES,
+      { observationalMemory: { enabled: true } },
+      { getApiKey: () => "sk-test" },
+    );
+    const result = resolveOmConfig(ctx, {
+      id: "s1",
+      kind: "intake",
+      projectId: "p1",
+      profileId: null,
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("returns thread-scope config for mission sessions", () => {
+    const ctx = makeCtx(
+      PROFILES,
+      { observationalMemory: { enabled: true } },
+      { getApiKey: () => "sk-test" },
+    );
+    const result = resolveOmConfig(ctx, {
+      id: "s1",
+      kind: "mission",
+      projectId: "p1",
+      profileId: null,
+    });
+    expect(result).toBeDefined();
+    expect(result!.scope).toBe("thread");
+  });
+
   it("tokenCounter is constructed fresh per call, scoped to the observe model (M5)", () => {
     const ctx = makeCtx(
       PROFILES,
