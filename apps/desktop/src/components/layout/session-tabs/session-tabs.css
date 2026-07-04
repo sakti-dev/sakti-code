@@ -1,0 +1,66 @@
+.session-tab {
+  --tab-curve: 10px;
+  position: relative;
+  border-top-left-radius: var(--tab-curve);
+  border-top-right-radius: var(--tab-curve);
+}
+
+.session-tab-active-layer {
+  position: absolute;
+  inset: 0;
+  background: var(--background);
+  border-top-left-radius: var(--tab-curve);
+  border-top-right-radius: var(--tab-curve);
+}
+
+.session-tab-active-layer::before,
+.session-tab-active-layer::after {
+  position: absolute;
+  bottom: 0;
+  width: var(--tab-curve);
+  height: var(--tab-curve);
+  pointer-events: none;
+  content: "";
+}
+
+.session-tab-active-layer::before {
+  left: calc(-1 * var(--tab-curve));
+  border-bottom-right-radius: var(--tab-curve);
+  box-shadow: 4px 4px 0 4px var(--background);
+}
+
+.session-tab-active-layer::after {
+  right: calc(-1 * var(--tab-curve));
+  border-bottom-left-radius: var(--tab-curve);
+  box-shadow: -4px 4px 0 4px var(--background);
+}
+
+.session-tab-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 0%,
+    color-mix(in oklch, var(--primary) 14%, transparent) 0%,
+    transparent 50%
+  );
+  border-top-left-radius: var(--tab-curve, 10px);
+  border-top-right-radius: var(--tab-curve, 10px);
+  animation: sessionTabGlowPulse 6s ease-in-out infinite;
+}
+
+@keyframes sessionTabGlowPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-tab-glow {
+    animation: none;
+  }
+}
