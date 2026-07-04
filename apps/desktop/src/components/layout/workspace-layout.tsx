@@ -1,5 +1,5 @@
 import type { AgentHarnessEvent } from "@sakti-code/agent";
-import { createEffect, createSignal, type JSX, onMount, Show } from "solid-js";
+import { createEffect, type JSX, onMount, Show } from "solid-js";
 import { MissionChatView } from "~/components/chat-area/mission-chat-view";
 import Home from "~/components/home/home";
 import { SettingsPage } from "~/components/settings/settings-page";
@@ -9,7 +9,7 @@ import { dispatchEvent as dispatchDevEvent } from "~/stores/session/event-handle
 import { createTokenBatcher } from "~/stores/session/token-batcher";
 import { useStore } from "~/stores/store-context";
 import { activeTab, filterStaleProjects } from "~/stores/workspace/tab-store";
-import { replayState, setActiveIntakeSessionId, sidebarOpen } from "~/stores/workspace/ui-signals";
+import { replayState, sidebarOpen } from "~/stores/workspace/ui-signals";
 import BannerConnection from "./banners/banner-connection";
 import { BannerError, BannerHealth } from "./banners/banner-error";
 import BannerUpdate from "./banners/banner-update";
@@ -36,32 +36,14 @@ export default function WorkspaceLayout(): JSX.Element {
     }
   });
 
-  // Ensure a child intake exists for the active project: list children first
-  // (idempotent across reopens), create one only if none exist yet.
-  const [intakeSessionId, setIntakeSessionId] = createSignal<string | null>(null);
+  // Ensure child intakes exist for the active project (list-only; the
+  // OnboardingPanel grid creates on demand). Used by the sidebar plus button.
   createEffect(() => {
     const projectId = server.store.activeProjectId;
     if (!projectId) {
-      setIntakeSessionId(null);
-      setActiveIntakeSessionId(null);
       return;
     }
-    actions
-      .listChildIntakes(projectId)
-      .then(async (children) => {
-        if (server.store.activeProjectId !== projectId) return;
-        if (children.length > 0) {
-          setIntakeSessionId(children[0]!.id);
-          setActiveIntakeSessionId(children[0]!.id);
-          return;
-        }
-        const created = await actions.createChildIntake(projectId);
-        if (created && server.store.activeProjectId === projectId) {
-          setIntakeSessionId(created.id);
-          setActiveIntakeSessionId(created.id);
-        }
-      })
-      .catch(() => {});
+    actions.listChildIntakes(projectId).catch(() => {});
   });
 
   // Load projects on mount, then filter stale tab entries
@@ -91,7 +73,7 @@ export default function WorkspaceLayout(): JSX.Element {
   const isNewTab = () => activeTab()?.projectId === null;
   const isSettingsTab = () => activeTab()?.page === "settings";
 
-  const currentSessionId = () => activeSession()?.id ?? intakeSessionId();
+  const currentSessionId = () => activeSession()?.id ?? null;
 
   return (
     <div class="flex h-screen flex-col bg-background text-foreground">
@@ -135,12 +117,7 @@ export default function WorkspaceLayout(): JSX.Element {
                   <Show
                     fallback={
                       <Show fallback={<NoProjectSelected />} keyed when={activeProject()}>
-                        {(project) => (
-                          <OnboardingPanel
-                            intakeSessionId={intakeSessionId()}
-                            projectId={project.id}
-                          />
-                        )}
+                        {(project) => <OnboardingPanel projectId={project.id} />}
                       </Show>
                     }
                     when={activeSession()}

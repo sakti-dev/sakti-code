@@ -2,15 +2,16 @@ import { fireEvent, render, screen } from "@solidjs/testing-library";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { OnboardingPanel } from "../onboarding-panel";
 
-// Hoisted so the same fn instance is shared between the mocked useStore and
-// the test assertions.
 const mocks = vi.hoisted(() => ({
   loadChat: vi.fn(),
+  listChildIntakes: vi.fn(
+    async () => [] as Array<{ id: string; title: string | null; updatedAt: number }>,
+  ),
+  createChildIntake: vi.fn(async () => ({ id: "new-1" })),
   confirmAsk: vi.fn(async () => true),
   createSession: vi.fn(async () => ({ id: "mission-1" })),
   sendPrompt: vi.fn(),
   clearPendingAsk: vi.fn(),
-  pendingAsk: null as { kind: string; body: string } | null,
 }));
 
 vi.mock("~/stores/workspace/tab-store", () => ({
@@ -24,108 +25,88 @@ vi.mock("~/stores/store-context", () => ({
       loadChat: mocks.loadChat,
       confirmAsk: mocks.confirmAsk,
       createSession: mocks.createSession,
+      createChildIntake: mocks.createChildIntake,
+      listChildIntakes: mocks.listChildIntakes,
     },
     sessions: {
       get: () => ({
         store: {
           streaming: { phase: "idle" },
           turns: [],
-          pendingAsk: mocks.pendingAsk,
+          pendingAsk: null,
         },
         actions: { clearPendingAsk: mocks.clearPendingAsk },
       }),
     },
     server: { store: { sessions: {} } },
-    api: {
-      api: {
-        auth: { $get: async () => ({ ok: false, json: async () => [] }) },
-        profiles: { $get: async () => ({ ok: false, json: async () => [] }) },
-        models: {
-          available: {
-            $get: async () => ({ ok: false, json: async () => [] }),
-            ":provider": {
-              $get: async () => ({ ok: false, json: async () => [] }),
-            },
-          },
-          connected: {
-            $get: async () => ({ ok: false, json: async () => [] }),
-          },
-        },
-      },
-    },
   }),
 }));
 
-describe("OnboardingPanel", () => {
-  // mocks.loadMessages is a single hoisted instance shared across tests —
-  // clear call history between cases so "not called" assertions are honest.
+const CHILD_A = { id: "child-a", title: "First intake", updatedAt: 1000, kind: "intake" } as const;
+const CHILD_B = { id: "child-b", title: "Second intake", updatedAt: 2000, kind: "intake" } as const;
+
+describe("OnboardingPanel (grid)", () => {
   beforeEach(() => {
     mocks.loadChat.mockClear();
-    mocks.confirmAsk.mockClear();
-    mocks.createSession.mockClear();
+    mocks.listChildIntakes.mockClear();
+    mocks.createChildIntake.mockClear();
     mocks.sendPrompt.mockClear();
-    mocks.clearPendingAsk.mockClear();
-    mocks.pendingAsk = null;
   });
 
-  it("renders welcome state when no messages", () => {
-    render(() => <OnboardingPanel intakeSessionId="s1" projectId="p1" />);
-    expect(screen.getByText("No messages yet")).toBeTruthy();
+  it("renders a card per child intake", async () => {
+    mocks.listChildIntakes.mockResolvedValueOnce([CHILD_A, CHILD_B]);
+    render(() => <OnboardingPanel projectId="p1" />);
+
+    await vi.waitFor(() => expect(screen.getByText("First intake")).toBeTruthy());
+    expect(screen.getByText("Second intake")).toBeTruthy();
   });
 
-  it("renders welcome state when intakeSessionId is null", () => {
-    render(() => <OnboardingPanel intakeSessionId={null} projectId="p1" />);
-    expect(screen.getByText("No messages yet")).toBeTruthy();
-  });
+  it("renders a New intake button", async () => {
+    mocks.listChildIntakes.mockResolvedValueOnce([]);
+    render(() => <OnboardingPanel projectId="p1" />);
 
-  it("renders chat input", () => {
-    render(() => <OnboardingPanel intakeSessionId="s1" projectId="p1" />);
-    expect(screen.getByText("Ask anything about this project…")).toBeTruthy();
-  });
-
-  it("loads intake messages when intakeSessionId is set", () => {
-    render(() => <OnboardingPanel intakeSessionId="s1" projectId="p1" />);
-    expect(mocks.loadChat).toHaveBeenCalledWith("s1");
-  });
-
-  it("does not load messages when intakeSessionId is null", () => {
-    render(() => <OnboardingPanel intakeSessionId={null} projectId="p1" />);
-    expect(mocks.loadChat).not.toHaveBeenCalled();
-  });
-
-  it("on Create: confirms the ask (fires graduation) before spawning the mission", async () => {
-    mocks.pendingAsk = { kind: "session", body: "Build the thing" };
-    render(() => <OnboardingPanel intakeSessionId="child-1" projectId="p1" />);
-
-    fireEvent.click(screen.getByText("Create"));
-    // The handler is async (multiple awaits); let the microtask queue drain.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    // confirmAsk is called first (server-side graduation), then createSession.
-    expect(mocks.confirmAsk).toHaveBeenCalledWith(
-      "child-1",
-      "session",
-      "Build the thing",
-      "approve",
+    await vi.waitFor(() =>
+      expect(screen.getByRole("button", { name: /New intake/i })).toBeTruthy(),
     );
-    expect(mocks.createSession).toHaveBeenCalledWith("p1", "Build the thing");
-    expect(mocks.sendPrompt).toHaveBeenCalledWith("mission-1", "Build the thing");
-    // confirmAsk must have resolved before createSession was invoked.
-    const confirmOrder = mocks.confirmAsk.mock.invocationCallOrder[0]!;
-    const createOrder = mocks.createSession.mock.invocationCallOrder[0]!;
-    expect(confirmOrder).toBeLessThan(createOrder);
   });
 
-  it("still spawns the mission when graduation (confirmAsk) fails (best-effort)", async () => {
-    mocks.pendingAsk = { kind: "session", body: "Build the thing" };
-    mocks.confirmAsk.mockResolvedValueOnce(false);
-    render(() => <OnboardingPanel intakeSessionId="child-1" projectId="p1" />);
+  it("creates a new child and opens its chat when New intake is clicked", async () => {
+    mocks.listChildIntakes.mockResolvedValueOnce([]);
+    render(() => <OnboardingPanel projectId="p1" />);
 
-    fireEvent.click(screen.getByText("Create"));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await vi.waitFor(() =>
+      expect(screen.getByRole("button", { name: /New intake/i })).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /New intake/i }));
+    await new Promise((r) => setTimeout(r, 0));
 
-    expect(mocks.confirmAsk).toHaveBeenCalled();
-    // Mission still spawned — graduation must not strand it.
-    expect(mocks.createSession).toHaveBeenCalled();
+    expect(mocks.createChildIntake).toHaveBeenCalledWith("p1");
+    // Chat view is now shown for the new child.
+    await vi.waitFor(() => expect(mocks.loadChat).toHaveBeenCalledWith("new-1"));
+  });
+
+  it("opens a child's chat when its card is clicked", async () => {
+    mocks.listChildIntakes.mockResolvedValueOnce([CHILD_A]);
+    render(() => <OnboardingPanel projectId="p1" />);
+
+    await vi.waitFor(() => expect(screen.getByText("First intake")).toBeTruthy());
+    fireEvent.click(screen.getByText("First intake"));
+    await new Promise((r) => setTimeout(r, 0));
+
+    await vi.waitFor(() => expect(mocks.loadChat).toHaveBeenCalledWith("child-a"));
+  });
+
+  it("returns to the grid when Back is clicked from a child chat", async () => {
+    mocks.listChildIntakes.mockResolvedValueOnce([CHILD_A]);
+    render(() => <OnboardingPanel projectId="p1" />);
+
+    await vi.waitFor(() => expect(screen.getByText("First intake")).toBeTruthy());
+    fireEvent.click(screen.getByText("First intake"));
+    await new Promise((r) => setTimeout(r, 0));
+    await vi.waitFor(() => expect(screen.getByText(/Back/i)).toBeTruthy());
+    fireEvent.click(screen.getByText(/Back/i));
+
+    // Grid is shown again.
+    await vi.waitFor(() => expect(screen.getByText("First intake")).toBeTruthy());
   });
 });
