@@ -31,8 +31,9 @@ describe("parseOmSettings", () => {
     expect(result.buffering?.observationBufferTokens).toBe(0.2);
   });
 
-  it("rejects a typo'd threshold key (I4)", () => {
-    expect(() => parseOmSettings({ observationalMemory: { obserationThreshold: 100 } })).toThrow();
+  it("ignores unknown/typo'd keys without crashing", () => {
+    const result = parseOmSettings({ observationalMemory: { obserationThreshold: 100 } });
+    expect(result.observationThreshold).toBeUndefined();
   });
 
   it("rejects a non-number observationThreshold", () => {
@@ -41,8 +42,9 @@ describe("parseOmSettings", () => {
     ).toThrow();
   });
 
-  it("rejects the removed `enabled` key (unknown key)", () => {
-    expect(() => parseOmSettings({ observationalMemory: { enabled: true } })).toThrow();
+  it("ignores the removed `enabled` key (stale setting)", () => {
+    const result = parseOmSettings({ observationalMemory: { enabled: true } });
+    expect(result.observationThreshold).toBeUndefined();
   });
 
   it("rejects buffering without required observationBufferTokens", () => {

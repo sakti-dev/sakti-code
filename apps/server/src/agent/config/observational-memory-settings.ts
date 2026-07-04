@@ -27,52 +27,19 @@ export interface ParsedOmSettings {
   };
 }
 
-const OM_ALLOWED_KEYS = new Set([
-  "observationThreshold",
-  "reflectionThreshold",
-  "instruction",
-  "scope",
-  "buffering",
-]);
-
-const OM_BUFFERING_ALLOWED_KEYS = new Set([
-  "observationBufferTokens",
-  "observationBufferActivation",
-  "reflectionBufferActivation",
-]);
-
-function assertNoUnknownKeys(
-  value: Record<string, unknown>,
-  allowed: Set<string>,
-  path: string,
-): void {
-  for (const key of Object.keys(value)) {
-    if (!allowed.has(key)) {
-      throw new Error(`Unknown setting "${path}.${key}" — check for typos`);
-    }
-  }
-}
-
 /**
  * Parse + validate the `observationalMemory` tuning block from settings.json.
  *
  * OM is always on — there is no on/off toggle. This only parses optional
  * tuning (thresholds, scope, buffering, instruction). Returns defaults when
- * the block is absent. Throws on a present-but-malformed block, including
- * unknown/typo'd keys (and the now-removed `enabled` key).
+ * the block is absent. Throws on a present-but-malformed value (wrong type).
+ * Unknown/stale keys are silently ignored so renaming or removing a setting
+ * can't crash the app.
  */
 export function parseOmSettings(raw: Record<string, unknown>): ParsedOmSettings {
   const om = raw.observationalMemory;
   if (!om || typeof om !== "object") return {};
   const omRecord = om as Record<string, unknown>;
-  assertNoUnknownKeys(omRecord, OM_ALLOWED_KEYS, "observationalMemory");
-  if (omRecord.buffering && typeof omRecord.buffering === "object") {
-    assertNoUnknownKeys(
-      omRecord.buffering as Record<string, unknown>,
-      OM_BUFFERING_ALLOWED_KEYS,
-      "observationalMemory.buffering",
-    );
-  }
   Value.Assert(OmSettingsSchema, omRecord);
   return Value.Decode(OmSettingsSchema, omRecord);
 }
