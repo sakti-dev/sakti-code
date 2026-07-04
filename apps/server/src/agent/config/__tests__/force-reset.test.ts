@@ -39,7 +39,7 @@ describe("buildForceReset", () => {
     vi.mocked(resolveOmConfig).mockReturnValue({
       observeModel: "m",
       reflectModel: "m",
-      config: {},
+      scope: "thread",
     } as unknown as ReturnType<typeof resolveOmConfig>);
 
     await buildForceReset(ctx, session)("s1");

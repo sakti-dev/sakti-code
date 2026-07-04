@@ -13,8 +13,10 @@ import { resolveOmConfig } from "./index.ts";
  * Extracted from the confirm route so the OM config resolution is unit-testable
  * (the route wires `AskCtx.forceReset` to this).
  *
- * Best-effort: if OM isn't configured for the session (no observe/reflect
- * models), the observe is skipped — never strand the mission on a reset failure.
+ * Best-effort: if observe/reflect models aren't configured (no API keys, no
+ * profile modes), the observe is skipped — never strand the mission on a reset
+ * failure. OM itself is always on; the skip is a configuration gap, not a
+ * toggle.
  */
 export function buildForceReset(
   ctx: ServerContext,
