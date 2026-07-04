@@ -1,0 +1,121 @@
+/* Workspace home — custom styling for the intake landing page */
+
+/* ── Blinking cursor on the primary action card ───────────────────── */
+@keyframes intake-cursor-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.intake-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-right: 0.6rem;
+  background-color: var(--primary);
+  border-radius: 1px;
+  vertical-align: text-bottom;
+  flex-shrink: 0;
+  animation: intake-cursor-blink 1.1s steps(1) infinite;
+}
+
+/* ── Primary action card (ghost input) ────────────────────────────── */
+.intake-primary-card {
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.intake-primary-card:hover {
+  border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+  background-color: color-mix(in oklch, var(--card) 95%, var(--primary) 5%);
+}
+
+.intake-primary-card:hover .intake-arrow {
+  transform: translateX(3px);
+  color: var(--primary);
+}
+
+.intake-arrow {
+  transition:
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.2s ease;
+}
+
+/* ── Entrance animation ───────────────────────────────────────────── */
+@keyframes intake-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.intake-fade-up {
+  animation: intake-fade-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Suggestion rows (empty state) ────────────────────────────────── */
+.intake-suggestion {
+  transition: background-color 0.15s ease;
+}
+
+.intake-suggestion:hover {
+  background-color: var(--accent);
+}
+
+.intake-suggestion:hover .intake-suggestion-arrow {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+.intake-suggestion-arrow {
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+/* ── Pending-ask pulse on intake cards ────────────────────────────── */
+@keyframes intake-pending-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.intake-pending-dot {
+  animation: intake-pending-pulse 2s ease-in-out infinite;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .intake-cursor {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  .intake-fade-up {
+    animation: none;
+  }
+
+  .intake-arrow,
+  .intake-suggestion-arrow {
+    transition: none;
+  }
+
+  .intake-pending-dot {
+    animation: none;
+  }
+}

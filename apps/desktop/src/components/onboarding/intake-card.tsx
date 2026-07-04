@@ -1,8 +1,9 @@
-import type { JSX } from "solid-js";
+import { Show, type JSX } from "solid-js";
 
 interface IntakeCardProps {
   title: string | null;
   updatedAt: number;
+  hasPendingAsk: boolean;
   onClick: () => void;
 }
 
@@ -20,12 +21,17 @@ function formatRelative(ts: number): string {
 export function IntakeCard(props: IntakeCardProps): JSX.Element {
   return (
     <button
-      class="flex min-h-[88px] flex-col gap-1 rounded-lg border border-border/60 bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent/40"
-      onClick={() => props.onClick()}
       type="button"
+      onClick={() => props.onClick()}
+      class="flex min-h-[68px] flex-col gap-1.5 rounded-lg border border-border/60 bg-card p-3.5 text-left transition-colors hover:border-primary/30 hover:bg-accent/50"
     >
       <span class="line-clamp-1 font-medium text-sm">{props.title ?? "Untitled intake"}</span>
-      <span class="text-muted-foreground text-xs">{formatRelative(props.updatedAt)}</span>
+      <span class="flex items-center gap-1.5 text-muted-foreground text-xs">
+        <Show when={props.hasPendingAsk} fallback={<span>{formatRelative(props.updatedAt)}</span>}>
+          <span class="intake-pending-dot inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+          <span>waiting for you</span>
+        </Show>
+      </span>
     </button>
   );
 }
