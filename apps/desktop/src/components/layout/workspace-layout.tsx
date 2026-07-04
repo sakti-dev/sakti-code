@@ -1,112 +1,115 @@
 import { createEffect, type JSX, onMount, Show } from "solid-js";
 import { MissionChatView } from "~/components/chat-area/mission-chat-view";
 import Home from "~/components/home/home";
+import { IntakeChat } from "~/components/onboarding/intake-chat";
+import { IntakeGrid } from "~/components/onboarding/intake-grid";
 import { SettingsPage } from "~/components/settings/settings-page";
-import { OnboardingPanel } from "~/components/onboarding/onboarding-panel";
 import { useStore } from "~/stores/store-context";
 import { activeProjectTab, filterStaleProjects } from "~/stores/workspace/project-tab-store";
-import { sidebarOpen } from "~/stores/workspace/ui-signals";
+import {
+  ensureProjectTabs,
+  filterStaleSessions,
+  getActiveSessionTab,
+} from "~/stores/workspace/session-tab-store";
 import BannerConnection from "./banners/banner-connection";
 import { BannerError, BannerHealth } from "./banners/banner-error";
 import BannerUpdate from "./banners/banner-update";
-import Sidebar from "./sidebar/sidebar";
 import Header from "./header/header";
+import SessionTabs from "./session-tabs/session-tabs";
+import Sidebar from "./sidebar/sidebar";
 
 export default function WorkspaceLayout(): JSX.Element {
   const { server, actions } = useStore();
 
-  // Sync active tab → server store
+  const activeProjectId = () => activeProjectTab()?.projectId ?? null;
+  const isSettings = () => activeProjectTab()?.page === "settings";
+  const isProject = () => activeProjectId() !== null;
+
   createEffect(() => {
-    const tab = activeProjectTab();
-    if (tab) {
-      server.actions.setActiveProject(tab.projectId);
-      server.actions.setActiveSession(tab.sessionId);
+    const pid = activeProjectId();
+    if (pid) {
+      ensureProjectTabs(pid);
+      actions.listChildIntakes(pid).catch(() => {});
     }
   });
 
-  // Ensure child intakes exist for the active project (list-only; the
-  // OnboardingPanel grid creates on demand). Used by the sidebar plus button.
   createEffect(() => {
-    const projectId = server.store.activeProjectId;
-    if (!projectId) {
+    const pid = activeProjectId();
+    if (!pid) {
+      server.actions.setActiveSession(null);
       return;
     }
-    actions.listChildIntakes(projectId).catch(() => {});
+    server.actions.setActiveProject(pid);
+    const innerTab = getActiveSessionTab(pid);
+    server.actions.setActiveSession(innerTab?.sessionId ?? null);
   });
 
-  // Load projects on mount, then filter stale tab entries
   createEffect(() => {
     const projectOrder = server.store.projectOrder;
     if (projectOrder.length > 0) {
-      const validIds = new Set(projectOrder);
-      filterStaleProjects(validIds);
+      filterStaleProjects(new Set(projectOrder));
     }
   });
 
-  // Load projects on mount
+  createEffect(() => {
+    const pid = activeProjectId();
+    if (!pid) return;
+    const validIds = new Set(
+      server.store.sessionOrder
+        .map((id) => server.store.sessions[id])
+        .filter((s) => !!s && s.projectId === pid)
+        .map((s) => s!.id),
+    );
+    filterStaleSessions(pid, validIds);
+  });
+
   onMount(() => {
     actions.loadProjects().catch(() => {});
   });
 
-  const activeProject = () => {
-    const id = server.store.activeProjectId;
-    return id ? server.store.projects[id] : undefined;
+  const activeInnerTab = () => {
+    const pid = activeProjectId();
+    if (!pid) return null;
+    return getActiveSessionTab(pid);
   };
 
-  const activeSession = () => {
-    const id = server.store.activeSessionId;
-    return id ? server.store.sessions[id] : undefined;
-  };
-
-  const isNewTab = () => activeProjectTab()?.projectId === null;
-  const isSettingsTab = () => activeProjectTab()?.page === "settings";
+  const activeSessionId = () => activeInnerTab()?.sessionId ?? null;
 
   return (
     <div class="flex h-screen flex-col bg-background text-foreground">
       <Header />
       <div class="flex min-h-0 flex-1">
-        <Show when={sidebarOpen() && !isNewTab() && !isSettingsTab()}>
+        <Show when={isProject() && !isSettings()}>
           <Sidebar />
         </Show>
         <main class="flex min-w-0 flex-1 flex-col">
-          <Show when={isSettingsTab()}>
+          <Show when={isSettings()}>
             <SettingsPage />
           </Show>
-          <Show when={!isSettingsTab()}>
-            <Show fallback={<Home />} when={!isNewTab()}>
-              <BannerConnection />
-              <BannerError />
-              <BannerHealth />
-              <BannerUpdate />
-              <div class="relative min-h-0 flex-1">
-                <div class="absolute inset-0 flex flex-col overflow-hidden">
-                  <Show
-                    fallback={
-                      <Show fallback={<NoProjectSelected />} keyed when={activeProject()}>
-                        {(project) => <OnboardingPanel projectId={project.id} />}
-                      </Show>
-                    }
-                    when={activeSession()}
-                  >
-                    {(session) => <MissionChatView sessionId={session().id} />}
-                  </Show>
-                </div>
+          <Show when={!isProject() && !isSettings()}>
+            <Home />
+          </Show>
+          <Show when={isProject() && !isSettings()}>
+            <SessionTabs projectId={activeProjectId()!} />
+            <BannerConnection />
+            <BannerError />
+            <BannerHealth />
+            <BannerUpdate />
+            <div class="relative min-h-0 flex-1">
+              <div class="absolute inset-0 flex flex-col overflow-hidden">
+                <Show when={activeInnerTab()?.kind === "home"}>
+                  <IntakeGrid projectId={activeProjectId()!} />
+                </Show>
+                <Show when={activeInnerTab()?.kind === "intake"}>
+                  <IntakeChat projectId={activeProjectId()!} sessionId={activeSessionId()!} />
+                </Show>
+                <Show when={activeInnerTab()?.kind === "mission"}>
+                  <MissionChatView sessionId={activeSessionId()!} />
+                </Show>
               </div>
-            </Show>
+            </div>
           </Show>
         </main>
-      </div>
-    </div>
-  );
-}
-
-function NoProjectSelected() {
-  return (
-    <div class="flex flex-1 flex-col items-center justify-center px-4">
-      <div class="w-full max-w-md text-center">
-        <div class="mb-3 text-3xl">{"\u{1F967}"}</div>
-        <p class="text-foreground text-sm">Pick a project from the sidebar to start</p>
-        <p class="mt-1 text-muted-foreground text-xs">Or add a new project to begin a session</p>
       </div>
     </div>
   );

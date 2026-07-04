@@ -4,7 +4,8 @@ import { Separator } from "~/components/ui/separator";
 import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
-import { activeProjectTab, openProjectTab } from "~/stores/workspace/project-tab-store";
+import { activeProjectTab } from "~/stores/workspace/project-tab-store";
+import { getActiveSessionTab, openSessionTab } from "~/stores/workspace/session-tab-store";
 import { setSidebarOpen, sidebarOpen } from "~/stores/workspace/ui-signals";
 import { ArchivedAccordion, type ArchivedMission } from "./archived-accordion.tsx";
 import { MissionRow, type StreamPhase } from "./mission-row.tsx";
@@ -54,11 +55,15 @@ export default function Sidebar(): JSX.Element {
     return (reg?.store.streaming.phase ?? "idle") as StreamPhase;
   };
 
-  const activeSessionId = () => activeProjectTab()?.sessionId ?? null;
-
-  const selectSession = (_sessionId: string) => {
+  const activeSessionId = () => {
     const pid = activeProjectId();
-    if (pid) openProjectTab(pid);
+    if (!pid) return null;
+    return getActiveSessionTab(pid)?.sessionId ?? null;
+  };
+
+  const selectSession = (sessionId: string) => {
+    const pid = activeProjectId();
+    if (pid) openSessionTab(pid, sessionId, "mission");
   };
 
   const handleRename = (sessionId: string, title: string) => {
@@ -78,7 +83,7 @@ export default function Sidebar(): JSX.Element {
     const pid = activeProjectId();
     if (!pid) return;
     const intake = await actions.createChildIntake(pid);
-    if (intake) openProjectTab(pid);
+    if (intake) openSessionTab(pid, intake.id, "intake");
   };
 
   return (

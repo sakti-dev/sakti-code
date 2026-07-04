@@ -37,7 +37,7 @@ function TabIcon(props: { kind: SessionTabKind }): JSX.Element {
   }
 }
 
-export function SessionTabs(props: SessionTabsProps): JSX.Element {
+export default function SessionTabs(props: SessionTabsProps): JSX.Element {
   ensureProjectTabs(props.projectId);
   const tabs = () => getSessionTabs(props.projectId);
   const activeIdx = () => getActiveSessionIndex(props.projectId);

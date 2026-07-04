@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("~/stores/workspace/session-tab-store", () => mocks);
 
-import { SessionTabs } from "../session-tabs";
+import SessionTabs from "../session-tabs";
 
 describe("SessionTabs", () => {
   beforeEach(() => {

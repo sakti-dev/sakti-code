@@ -4,7 +4,6 @@ export type PageType = "settings";
 
 export interface ProjectTab {
   projectId: string | null;
-  sessionId: string | null;
   page?: PageType;
 }
 
@@ -28,7 +27,6 @@ function loadFromStorage(): StoredState {
     }
     const validated: ProjectTab[] = tabs.map((t) => ({
       projectId: t?.projectId ?? null,
-      sessionId: t?.sessionId ?? null,
       ...(t?.page !== undefined ? { page: t.page as PageType } : {}),
     }));
     const activeIndex = Math.min(Math.max(0, parsed.activeIndex ?? 0), validated.length - 1);
@@ -39,7 +37,7 @@ function loadFromStorage(): StoredState {
 }
 
 function seedState(): StoredState {
-  return { tabs: [{ projectId: null, sessionId: null }], activeIndex: 0 };
+  return { tabs: [{ projectId: null }], activeIndex: 0 };
 }
 
 function saveToStorage(tabs: ProjectTab[], activeIndex: number): void {
@@ -95,13 +93,13 @@ export function openProjectTab(projectId: string): void {
   }
 
   const newIdx = tabs.length;
-  setProjectTabs([...tabs, { projectId, sessionId: null }]);
+  setProjectTabs([...tabs, { projectId }]);
   setActiveProjectIndex(newIdx);
 }
 
 export function newProjectTab(): void {
   const tabs = projectTabs();
-  setProjectTabs([...tabs, { projectId: null, sessionId: null }]);
+  setProjectTabs([...tabs, { projectId: null }]);
   setActiveProjectIndex(tabs.length);
 }
 
@@ -113,7 +111,7 @@ export function openSettingsTab(): void {
     return;
   }
   const newIdx = tabs.length;
-  setProjectTabs([...tabs, { projectId: null, sessionId: null, page: "settings" }]);
+  setProjectTabs([...tabs, { projectId: null, page: "settings" }]);
   setActiveProjectIndex(newIdx);
 }
 
@@ -141,7 +139,7 @@ export function closeProjectTab(index: number): void {
   const newTabs = tabs.filter((_, i) => i !== index);
 
   if (newTabs.length === 0) {
-    setProjectTabs([{ projectId: null, sessionId: null }]);
+    setProjectTabs([{ projectId: null }]);
     setActiveProjectIndex(0);
     return;
   }
@@ -166,21 +164,13 @@ export function switchProjectTab(index: number): void {
   }
 }
 
-export function setTabSession(projectId: string, sessionId: string | null): void {
-  const tabs = projectTabs();
-  const idx = tabs.findIndex((t) => t.projectId === projectId);
-  if (idx >= 0) {
-    updateTab(idx, { sessionId });
-  }
-}
-
 export function filterStaleProjects(validProjectIds: Set<string>): void {
   const tabs = projectTabs();
   let changed = false;
   const newTabs = tabs.map((t) => {
     if (t.projectId !== null && !validProjectIds.has(t.projectId)) {
       changed = true;
-      return { projectId: null, sessionId: null };
+      return { projectId: null };
     }
     return t;
   });
