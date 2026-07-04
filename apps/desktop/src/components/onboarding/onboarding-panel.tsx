@@ -46,6 +46,12 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
       return;
     }
 
+    // Fire the server confirm first so graduation runs — the child's transcript
+    // is reflected into the project's resource-scope OM before the mission
+    // (spawned next) reads it. Best-effort: a graduation failure must not strand
+    // the mission, so proceed regardless of the confirm result.
+    await actions.confirmAsk(props.intakeSessionId, ask.kind, ask.body, "approve");
+
     // Derive a short title from the brief's first non-empty line.
     const title =
       ask.body
