@@ -49,7 +49,8 @@ export interface Actions {
   selectProfile: (sessionId: string | null, profileId: string) => Promise<void>;
   sendPrompt: (sessionId: string, text: string) => void;
   steerRun: (sessionId: string, text: string) => void;
-  upsertIntakeSession: (projectId: string) => Promise<SessionMeta | undefined>;
+  createChildIntake: (projectId: string) => Promise<SessionMeta | undefined>;
+  listChildIntakes: (projectId: string) => Promise<SessionMeta[]>;
 }
 
 export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): Actions {
@@ -114,7 +115,7 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
       }
     },
 
-    async upsertIntakeSession(projectId) {
+    async createChildIntake(projectId) {
       try {
         const res = await api.api.projects[":id"]["intake-session"].$post({
           param: { id: projectId },
@@ -126,7 +127,26 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
         server.actions.addSession(session);
         return session;
       } catch (error) {
-        setLastError(error instanceof Error ? error.message : "Failed to upsert intake session");
+        setLastError(error instanceof Error ? error.message : "Failed to create child intake");
+      }
+    },
+
+    async listChildIntakes(projectId) {
+      try {
+        const res = await api.api.projects[":id"]["intake-sessions"].$get({
+          param: { id: projectId },
+        });
+        if (!res.ok) {
+          return [];
+        }
+        const list = (await res.json()) as SessionMeta[];
+        for (const session of list) {
+          server.actions.addSession(session);
+        }
+        return list;
+      } catch (error) {
+        setLastError(error instanceof Error ? error.message : "Failed to list child intakes");
+        return [];
       }
     },
 

@@ -98,14 +98,6 @@ export class SessionRepo {
     return this.db.select().from(sessions).where(eq(sessions.id, id)).get();
   }
 
-  findIntakeByProject(projectId: string) {
-    return this.db
-      .select()
-      .from(sessions)
-      .where(and(eq(sessions.projectId, projectId), eq(sessions.kind, "intake")))
-      .get();
-  }
-
   listChildIntakesByProject(projectId: string) {
     return this.db
       .select()

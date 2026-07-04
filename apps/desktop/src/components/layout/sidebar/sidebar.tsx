@@ -77,7 +77,7 @@ export default function Sidebar(): JSX.Element {
   const handleNewMission = async () => {
     const pid = activeProjectId();
     if (!pid) return;
-    const intake = await actions.upsertIntakeSession(pid);
+    const intake = await actions.createChildIntake(pid);
     if (intake) openProjectTab(pid, intake.id);
   };
 

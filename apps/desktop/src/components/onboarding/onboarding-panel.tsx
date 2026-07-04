@@ -15,7 +15,7 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
   const { sessions, actions } = useStore();
 
   // Hydrate intake history when the intake session becomes available.
-  // intakeSessionId is set asynchronously by upsertIntakeSession()
+  // intakeSessionId is set asynchronously by listChildIntakes()
   // (workspace-layout.tsx), so onMount would fire while it's still null —
   // react to the id becoming non-null instead. The lastLoadedId guard
   // prevents refetching the same session on unrelated re-renders.

@@ -36,7 +36,8 @@ export default function WorkspaceLayout(): JSX.Element {
     }
   });
 
-  // Upsert intake session when a project becomes active
+  // Ensure a child intake exists for the active project: list children first
+  // (idempotent across reopens), create one only if none exist yet.
   const [intakeSessionId, setIntakeSessionId] = createSignal<string | null>(null);
   createEffect(() => {
     const projectId = server.store.activeProjectId;
@@ -46,11 +47,18 @@ export default function WorkspaceLayout(): JSX.Element {
       return;
     }
     actions
-      .upsertIntakeSession(projectId)
-      .then((session) => {
-        if (session && server.store.activeProjectId === projectId) {
-          setIntakeSessionId(session.id);
-          setActiveIntakeSessionId(session.id);
+      .listChildIntakes(projectId)
+      .then(async (children) => {
+        if (server.store.activeProjectId !== projectId) return;
+        if (children.length > 0) {
+          setIntakeSessionId(children[0]!.id);
+          setActiveIntakeSessionId(children[0]!.id);
+          return;
+        }
+        const created = await actions.createChildIntake(projectId);
+        if (created && server.store.activeProjectId === projectId) {
+          setIntakeSessionId(created.id);
+          setActiveIntakeSessionId(created.id);
         }
       })
       .catch(() => {});
