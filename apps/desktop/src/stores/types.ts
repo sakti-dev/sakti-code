@@ -38,15 +38,6 @@ export type MessagePart = { isStreaming?: boolean } & (
       suggestedResponse?: string;
       error?: string;
     }
-  | {
-      type: "compaction";
-      status: "loading" | "complete" | "failed";
-      text: string;
-      tokensBefore?: number;
-      startedAt?: number;
-      endedAt?: number;
-      error?: string;
-    }
 );
 
 /**

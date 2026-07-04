@@ -8,7 +8,6 @@ import { fauxAssistantMessage, teardownFauxLlm, useFauxLlm } from "./llm-helpers
 
 const TEST_MODEL_ID = "gpt-4";
 
-const { compactionRoutes } = await import("../routes/sessions/compaction.ts");
 const { statsRoutes } = await import("../routes/sessions/stats.ts");
 const { makeApp, makeContext, seedProfile } = await import("./helpers.ts");
 
@@ -30,9 +29,9 @@ afterEach(() => {
 });
 
 describe("route composition", () => {
-  it("compaction and stats routes work together via makeApp", async () => {
-    useFauxLlm([fauxAssistantMessage("Compacted session summary.")]);
-    const { app, ctx } = await makeApp([compactionRoutes, statsRoutes]);
+  it("stats route works via makeApp", async () => {
+    useFauxLlm([fauxAssistantMessage("ok.")]);
+    const { app, ctx } = await makeApp([statsRoutes]);
 
     const project = await ctx.repos.projects.create("p", tempDir);
     seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
@@ -43,27 +42,13 @@ describe("route composition", () => {
       new Request(`http://localhost/api/sessions/${session.id}/stats`),
     );
     expect(statsRes.status).toBe(200);
-
-    const compactRes = await app.request(
-      new Request(`http://localhost/api/sessions/${session.id}/compact`, {
-        method: "POST",
-      }),
-    );
-    expect(compactRes.status).toBe(200);
   });
 
-  it("compaction and stats routes both return 404 for unknown sessions", async () => {
-    const { app } = await makeApp([compactionRoutes, statsRoutes]);
+  it("stats route returns 404 for unknown sessions", async () => {
+    const { app } = await makeApp([statsRoutes]);
 
     const statsRes = await app.request(new Request("http://localhost/api/sessions/nope/stats"));
     expect(statsRes.status).toBe(404);
-
-    const compactRes = await app.request(
-      new Request("http://localhost/api/sessions/nope/compact", {
-        method: "POST",
-      }),
-    );
-    expect(compactRes.status).toBe(404);
   });
 
   it("default app serves feature routes in production", async () => {

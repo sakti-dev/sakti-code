@@ -32,15 +32,6 @@ export interface ActiveToolsChangeEntry extends SessionTreeEntryBase {
   type: "active_tools_change";
 }
 
-export interface CompactionEntry<T = unknown> extends SessionTreeEntryBase {
-  details?: T | undefined;
-  firstKeptEntryId: string;
-  fromHook?: boolean | undefined;
-  summary: string;
-  tokensBefore: number;
-  type: "compaction";
-}
-
 export interface BranchSummaryEntry<T = unknown> extends SessionTreeEntryBase {
   details?: T | undefined;
   fromHook?: boolean | undefined;
@@ -94,7 +85,6 @@ export type SessionTreeEntry =
   | ThinkingLevelChangeEntry
   | ModelChangeEntry
   | ActiveToolsChangeEntry
-  | CompactionEntry
   | BranchSummaryEntry
   | CustomEntry
   | CustomMessageEntry
@@ -211,34 +201,10 @@ export class SessionError extends Schema.TaggedErrorClass<SessionError>()("Sessi
   cause: Schema.optional(Schema.Defect()),
 }) {}
 
-export interface CompactResult {
-  details?: unknown;
-  firstKeptEntryId: string;
-  summary: string;
-  tokensBefore: number;
-}
-
-export interface CompactionSettings {
-  enabled: boolean;
-  keepRecentTokens: number;
-  reserveTokens: number;
-}
-
 export interface FileOperations {
   edited: Set<string>;
   read: Set<string>;
   written: Set<string>;
-}
-
-export interface CompactionPreparation {
-  fileOps: FileOperations;
-  firstKeptEntryId: string;
-  isSplitTurn: boolean;
-  messagesToSummarize: AgentMessage[];
-  previousSummary?: string | undefined;
-  settings: CompactionSettings;
-  tokensBefore: number;
-  turnPrefixMessages: AgentMessage[];
 }
 
 export interface TreePreparation {

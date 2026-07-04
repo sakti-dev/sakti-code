@@ -3,24 +3,10 @@ import type {
   AgentMessage,
   BashExecutionMessage,
   BranchSummaryMessage,
-  CompactionSummaryMessage,
   CustomMessage,
 } from "../types";
 
-export type {
-  BashExecutionMessage,
-  BranchSummaryMessage,
-  CompactionSummaryMessage,
-  CustomMessage,
-} from "../types";
-
-export const COMPACTION_SUMMARY_PREFIX = `The conversation history before this point was compacted into the following summary:
-
-<summary>
-`;
-
-export const COMPACTION_SUMMARY_SUFFIX = `
-</summary>`;
+export type { BashExecutionMessage, BranchSummaryMessage, CustomMessage } from "../types";
 
 export const BRANCH_SUMMARY_PREFIX = `The following is a summary of a branch that this conversation came back from:
 
@@ -56,19 +42,6 @@ export function createBranchSummaryMessage(
     role: "branchSummary",
     summary,
     fromId,
-    timestamp: new Date(timestamp).getTime(),
-  };
-}
-
-export function createCompactionSummaryMessage(
-  summary: string,
-  tokensBefore: number,
-  timestamp: string,
-): CompactionSummaryMessage {
-  return {
-    role: "compactionSummary",
-    summary,
-    tokensBefore,
     timestamp: new Date(timestamp).getTime(),
   };
 }
@@ -121,17 +94,6 @@ export function convertToLlm(messages: AgentMessage[]): Message[] {
               {
                 type: "text" as const,
                 text: BRANCH_SUMMARY_PREFIX + m.summary + BRANCH_SUMMARY_SUFFIX,
-              },
-            ],
-            timestamp: m.timestamp,
-          };
-        case "compactionSummary":
-          return {
-            role: "user",
-            content: [
-              {
-                type: "text" as const,
-                text: COMPACTION_SUMMARY_PREFIX + m.summary + COMPACTION_SUMMARY_SUFFIX,
               },
             ],
             timestamp: m.timestamp,

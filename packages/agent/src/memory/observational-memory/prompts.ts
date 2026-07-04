@@ -511,14 +511,6 @@ function formatAgentMessageForObserver(msg: AgentMessage): string {
       lines.push(`${timePrefix}${role}: ${msg.summary}`);
       break;
     }
-
-    case "compactionSummary": {
-      const timePrefix = time ? `(${time}) ` : "";
-      lines.push(
-        `${timePrefix}${role}: ${msg.summary} (${msg.tokensBefore} tokens before compaction)`,
-      );
-      break;
-    }
   }
 
   return lines.join("\n");

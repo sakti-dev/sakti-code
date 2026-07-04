@@ -556,7 +556,7 @@ export class TokenCounter {
    *
    * Handles the sakti message union: UserMessage, AssistantMessage,
    * ToolResultMessage, CustomMessage, BashExecutionMessage,
-   * BranchSummaryMessage, CompactionSummaryMessage.
+   * BranchSummaryMessage.
    */
   countMessage(message: AgentMessage): number {
     const modelContext = this.getModelContext();
@@ -649,12 +649,6 @@ export class TokenCounter {
       }
 
       case "branchSummary": {
-        payloadTokens += countStringTokens(message.role);
-        payloadTokens += countStringTokens(message.summary);
-        break;
-      }
-
-      case "compactionSummary": {
         payloadTokens += countStringTokens(message.role);
         payloadTokens += countStringTokens(message.summary);
         break;

@@ -212,49 +212,6 @@ describe("turn store — finalizeTurn", () => {
   });
 });
 
-describe("turn store — compaction (the bug fix)", () => {
-  it("addCompactionMarker adds compaction part to message after turn ended", () => {
-    const { store, actions } = createSessionStore();
-    actions.startTurn(makeUserMsg("hi"));
-    actions.addAssistantMessage(makeAssistantMsg("a1"));
-    actions.appendTextToken("a1", "answer");
-    actions.finalizeMessage("a1");
-    actions.finalizeTurn(9999);
-
-    // Compaction arrives after turn ended
-    actions.addCompactionMarker("a1");
-    const parts = store.turns[0]!.summary!.parts;
-    expect(parts.some((p) => p.type === "compaction")).toBe(true);
-  });
-
-  it("appendCompactionToken appends delta to compaction part", () => {
-    const { store, actions } = createSessionStore();
-    actions.startTurn(makeUserMsg("hi"));
-    actions.addAssistantMessage(makeAssistantMsg("a1"));
-    actions.finalizeMessage("a1");
-    actions.addCompactionMarker("a1");
-    actions.appendCompactionToken("a1", "Sum");
-    actions.appendCompactionToken("a1", "mary");
-    const cp = store.turns[0]!.summary!.parts.find((p) => p.type === "compaction");
-    expect(cp).toMatchObject({ type: "compaction", text: "Summary" });
-  });
-
-  it("updateCompactionMarker marks complete with tokensBefore", () => {
-    const { store, actions } = createSessionStore();
-    actions.startTurn(makeUserMsg("hi"));
-    actions.addAssistantMessage(makeAssistantMsg("a1"));
-    actions.finalizeMessage("a1");
-    actions.addCompactionMarker("a1");
-    actions.updateCompactionMarker("a1", {
-      status: "complete",
-      tokensBefore: 50000,
-      endedAt: Date.now(),
-    });
-    const cp = store.turns[0]!.summary!.parts.find((p) => p.type === "compaction");
-    expect(cp).toMatchObject({ type: "compaction", status: "complete", tokensBefore: 50000 });
-  });
-});
-
 describe("turn store — loadTurns", () => {
   it("replaces all turns from REST hydration", () => {
     const { store, actions } = createSessionStore();
@@ -459,18 +416,6 @@ describe("turn store — referential stability (prevents <For> remounts)", () =>
     actions.addAssistantMessage(makeAssistantMsg("a1"));
     const before = store.turns[0]!.summary;
     actions.finalizeMessage("a1", { cost: 0.001, input: 1, output: 1 });
-    expect(store.turns[0]!.summary).toBe(before);
-  });
-
-  it("addCompactionMarker/appendCompactionToken keep the summary reference stable", () => {
-    const { store, actions } = createSessionStore();
-    actions.startTurn(makeUserMsg("hi"));
-    actions.addAssistantMessage(makeAssistantMsg("a1"));
-    actions.finalizeMessage("a1");
-    const before = store.turns[0]!.summary;
-    actions.addCompactionMarker("a1");
-    actions.appendCompactionToken("a1", "Sum");
-    actions.updateCompactionMarker("a1", { status: "complete" });
     expect(store.turns[0]!.summary).toBe(before);
   });
 

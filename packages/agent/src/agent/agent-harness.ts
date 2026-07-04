@@ -6,16 +6,7 @@ import {
   collectEntriesForBranchSummaryEffect,
   generateBranchSummaryEffect,
 } from "../memory/compaction/branch-summarization";
-import {
-  DEFAULT_COMPACTION_SETTINGS,
-  prepareCompaction,
-  compactEffect as runCompactEffect,
-} from "../memory/compaction/compaction";
-import type {
-  BranchSummaryPrompts,
-  CompactionPrompts,
-  SkillsInstructions,
-} from "../memory/compaction/prompt-bundles";
+import type { BranchSummaryPrompts, SkillsInstructions } from "../memory/compaction/prompt-bundles";
 import { runAgentLoopContinueEffect, runAgentLoopEffect } from "../core/agent-loop";
 import {
   type AbortResult,
@@ -33,7 +24,6 @@ import {
   type ExecutionEnv,
   isFailure,
   type NavigateTreeResult,
-  ok,
   type PendingSessionWrite,
   type PromptTemplate,
   type SessionError,
@@ -186,12 +176,6 @@ function normalizeHarnessError(
           message: cause.message,
           cause,
         });
-      case "CompactionError":
-        return new AgentHarnessError({
-          code: "compaction",
-          message: cause.message,
-          cause,
-        });
       case "BranchSummaryError":
         return new AgentHarnessError({
           code: "branch_summary",
@@ -247,7 +231,6 @@ export class AgentHarness<
   private readonly eventBus: PubSub.PubSub<AgentHarnessEvent<TSkill, TPromptTemplate>> =
     Effect.runSync(PubSub.unbounded());
   private model: Model;
-  private compactionPrompts: CompactionPrompts;
   private branchSummaryPrompts: BranchSummaryPrompts;
   private skillsInstructions: SkillsInstructions;
   private maxSteps?: number;
@@ -255,8 +238,10 @@ export class AgentHarness<
   private systemPrompt: AgentHarnessOptions<TSkill, TPromptTemplate, TTool>["systemPrompt"];
   /**
    * Pending system-prompt swap scheduled by {@link scheduleSystemPromptRefresh}.
-   * Drained by {@link compact} (compaction busts the cache anyway, so the swap
-   * is free there) and cleared by {@link switchAgent} (which supersedes it).
+   * Drained at the next turn's {@link createTurnStateEffect} (compaction used to
+   * be the drain point; with compaction removed, the turn boundary applies the
+   * swap, keeping the current turn's cached prefix warm) and cleared by
+   * {@link switchAgent} (which supersedes it).
    * Layer 2 (in-memory only); restart-safe because Layer 1 (disabled_skills
    * filter in the runner) recomposes the correct prompt at load.
    */
@@ -318,7 +303,6 @@ export class AgentHarness<
       this.tools.set(tool.name, tool);
     }
     this.model = options.model;
-    this.compactionPrompts = options.compactionPrompts;
     this.branchSummaryPrompts = options.branchSummaryPrompts;
     this.skillsInstructions = options.skillsInstructions;
     if (options.maxSteps !== undefined) {
@@ -529,6 +513,13 @@ export class AgentHarness<
   > => {
     const self = this;
     return Effect.gen(function* () {
+      // Drain a pending system-prompt refresh before reading the prompt, so a
+      // deferred swap (softDisableTool / skill toggle / etc.) applies at the
+      // next turn boundary while keeping the prior turn's cached prefix warm.
+      if (self.pendingSystemPromptRefresh !== undefined) {
+        self.systemPrompt = self.pendingSystemPromptRefresh;
+        self.clearPendingSystemPromptRefresh();
+      }
       const context = yield* self.session.buildContext();
       const resources = self.getResources();
       const sessionMetadata = yield* self.session.getMetadata();
@@ -1321,124 +1312,6 @@ export class AgentHarness<
     await Effect.runPromise(this.appendMessageEffect(message));
   }
 
-  compactEffect(customInstructions?: string): Effect.Effect<
-    {
-      summary: string;
-      firstKeptEntryId: string;
-      tokensBefore: number;
-      details?: unknown;
-    },
-    AgentHarnessError | SessionError
-  > {
-    const self = this;
-    return Effect.gen(function* () {
-      if (self.phase !== "idle") {
-        return yield* Effect.fail(
-          new AgentHarnessError({
-            code: "busy",
-            message: "compact() requires idle harness",
-          }),
-        );
-      }
-      self.phase = "compaction";
-      const auth = yield* Effect.promise(() =>
-        Promise.resolve(self.getApiKeyAndHeaders?.(self.model) ?? Promise.resolve(undefined)),
-      );
-      if (!auth) {
-        yield* new AgentHarnessError({
-          code: "auth",
-          message: "No auth available for compaction",
-        });
-      }
-      const branchEntries = yield* self.session.getBranch();
-      const preparationResult = prepareCompaction(branchEntries, DEFAULT_COMPACTION_SETTINGS);
-      if (isFailure(preparationResult)) {
-        return yield* Effect.fail(preparationResult.failure);
-      }
-      const preparation = preparationResult.success;
-      if (!preparation) {
-        yield* new AgentHarnessError({
-          code: "compaction",
-          message: "Nothing to compact",
-        });
-      }
-      const hookResult = yield* Effect.promise(() =>
-        self.emitHook({
-          type: "session_before_compact",
-          preparation: preparation!,
-          branchEntries,
-          customInstructions,
-          signal: self.runAbortController?.signal ?? new AbortController().signal,
-        }),
-      );
-      if (hookResult?.cancel) {
-        yield* new AgentHarnessError({
-          code: "compaction",
-          message: "Compaction cancelled",
-        });
-      }
-      const provided = hookResult?.compaction;
-      const compactResult = provided
-        ? ok(provided)
-        : yield* runCompactEffect(preparation!, self.model, auth!.apiKey, {
-            ...(auth?.headers === undefined ? {} : { headers: auth.headers }),
-            ...(customInstructions === undefined ? {} : { customInstructions }),
-            ...(self.thinkingLevel === undefined ? {} : { thinkingLevel: self.thinkingLevel }),
-            prompts: self.compactionPrompts,
-          });
-      if (isFailure(compactResult)) {
-        return yield* Effect.fail(compactResult.failure);
-      }
-      const result = compactResult.success;
-      const entryId = yield* self.session.appendCompaction(
-        result.summary,
-        result.firstKeptEntryId,
-        result.tokensBefore,
-        result.details,
-        provided !== undefined,
-      );
-      const entry = yield* self.session.getEntry(entryId);
-      if (entry?.type === "compaction") {
-        yield* Effect.promise(() =>
-          self.emitOwn({
-            type: "session_compact",
-            compactionEntry: entry,
-            fromHook: provided !== undefined,
-          }),
-        );
-      }
-
-      // Drain pending system-prompt refresh: compaction busts the cache
-      // anyway, so this is the free moment to swap the prefix bytes.
-      // Layer 2 only — on restart, Layer 1 (disabled_skills filter in the
-      // runner) recomposes the correct prompt at load.
-      if (self.pendingSystemPromptRefresh !== undefined) {
-        self.systemPrompt = self.pendingSystemPromptRefresh;
-        self.clearPendingSystemPromptRefresh();
-      }
-
-      return result;
-    }).pipe(
-      Effect.ensuring(
-        Effect.sync(() => {
-          if (self.phase === "compaction") {
-            self.phase = "idle";
-          }
-        }),
-      ),
-      Effect.mapError((error) => normalizeHarnessError(error, "compaction")),
-    );
-  }
-
-  async compact(customInstructions?: string): Promise<{
-    summary: string;
-    firstKeptEntryId: string;
-    tokensBefore: number;
-    details?: unknown;
-  }> {
-    return Effect.runPromise(this.compactEffect(customInstructions));
-  }
-
   navigateTreeEffect(
     targetId: string,
     options?: {
@@ -2068,25 +1941,24 @@ export class AgentHarness<
   }
 
   /**
-   * Schedule a system-prompt swap to take effect at the next compaction.
+   * Schedule a system-prompt swap to take effect at the next turn.
    *
-   * The current session's cached prefix stays warm until compaction runs
-   * (compaction busts the cache anyway, so the swap is free there). Use this
+   * The current turn's cached prefix stays warm; {@link createTurnStateEffect}
+   * drains the pending swap before building the next turn's request. Use this
    * for any change that would otherwise rewrite the prompt mid-session:
    * disabling a skill, changing locale, changing output style. For changes the
    * user wants immediately, call {@link switchAgent} directly — that applies
    * now at the cost of one cold turn.
    *
-   * Emits a `cache_bust_pending` event so the UI can show an alert recommending
-   * compaction.
+   * Emits a `cache_bust_pending` event so the UI can show an alert noting the
+   * pending swap.
    */
   scheduleSystemPromptRefresh(next: string): void {
     this.pendingSystemPromptRefresh = next;
     void this.emitOwn({
       type: "cache_bust_pending",
       reason: "system_prompt_refresh",
-      message:
-        "System prompt change pending. Compact the session to apply it without busting the cache.",
+      message: "System prompt change pending. It applies on the next turn.",
     });
   }
 
@@ -2096,8 +1968,8 @@ export class AgentHarness<
   }
 
   /**
-   * Clears the pending refresh. Internal; called when compaction drains it
-   * or when {@link switchAgent} supersedes it.
+   * Clears the pending refresh. Internal; called when the turn-start drain
+   * applies it or when {@link switchAgent} supersedes it.
    */
   clearPendingSystemPromptRefresh(): void {
     this.pendingSystemPromptRefresh = undefined;

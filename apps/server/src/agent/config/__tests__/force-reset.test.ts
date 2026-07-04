@@ -16,7 +16,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@sakti-code/agent", () => ({ ObservationalMemoryEngine: mocks.engineCtor }));
 vi.mock("@sakti-code/db", () => ({ SqliteObservationalMemoryStorage: mocks.omStorageCtor }));
-vi.mock("../../commands/compact.ts", () => ({ runCompact: vi.fn().mockResolvedValue({}) }));
 vi.mock("../index.ts", () => ({ resolveOmConfig: vi.fn().mockReturnValue(undefined) }));
 vi.mock("../../../context.ts", () => ({
   createSessionStorage: vi.fn().mockReturnValue({}),
@@ -24,7 +23,6 @@ vi.mock("../../../context.ts", () => ({
 
 import { ObservationalMemoryEngine } from "@sakti-code/agent";
 import { SqliteObservationalMemoryStorage } from "@sakti-code/db";
-import { runCompact } from "../../commands/compact.ts";
 import { resolveOmConfig } from "../index.ts";
 import { createSessionStorage } from "../../../context.ts";
 import { buildForceReset } from "../force-reset.ts";
@@ -32,21 +30,12 @@ import { buildForceReset } from "../force-reset.ts";
 const session = { id: "s1", kind: "mission", projectId: "p1", profileId: null };
 const ctx = { db: {} } as unknown as Parameters<typeof buildForceReset>[0];
 
-describe("buildForceReset — OM branch", () => {
+describe("buildForceReset", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("OM off → calls runCompact, does NOT construct the OM engine", async () => {
-    vi.mocked(resolveOmConfig).mockReturnValue(undefined);
-
-    await buildForceReset(ctx, session)("s1");
-
-    expect(runCompact).toHaveBeenCalledWith(ctx, "s1");
-    expect(ObservationalMemoryEngine).not.toHaveBeenCalled();
-  });
-
-  it("OM on → constructs the engine and calls forceObserve, does NOT runCompact", async () => {
+  it("OM configured → constructs the engine and calls forceObserve", async () => {
     vi.mocked(resolveOmConfig).mockReturnValue({
       observeModel: "m",
       reflectModel: "m",
@@ -59,6 +48,14 @@ describe("buildForceReset — OM branch", () => {
     expect(mocks.forceObserve).toHaveBeenCalledOnce();
     expect(SqliteObservationalMemoryStorage).toHaveBeenCalledWith(ctx.db);
     expect(createSessionStorage).toHaveBeenCalledWith(ctx, "s1");
-    expect(runCompact).not.toHaveBeenCalled();
+  });
+
+  it("OM not configured → skips the observe (best-effort, never strands)", async () => {
+    vi.mocked(resolveOmConfig).mockReturnValue(undefined);
+
+    await buildForceReset(ctx, session)("s1");
+
+    expect(ObservationalMemoryEngine).not.toHaveBeenCalled();
+    expect(mocks.forceObserve).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,3 @@
-import { parseCompactionSettings } from "../memory/compaction/auto-compaction.ts";
-import type { CompactionSettings } from "../memory/compaction/compaction.ts";
 import { parseRetrySettings, type RetrySettings } from "../memory/compaction/retry-loop.ts";
 import type { QueueMode, ThinkingLevel } from "../types.ts";
 
@@ -16,7 +14,6 @@ export type EditMode = "replace" | "hashline";
  * per-session DB overrides inside {@link parseSessionSettings}.
  */
 export const DEFAULT_SESSION_SETTINGS: Readonly<Record<string, string>> = {
-  auto_compaction: "false",
   auto_retry: "true",
   // Exponential backoff base for application-level retry (2s → 4s → 8s).
   // Matches pi's coding-agent defaults (settings-manager.ts:807-813).
@@ -32,9 +29,7 @@ export const DEFAULT_AGENT_NAME = "build";
 
 export interface SessionSettings {
   agent(): string;
-  autoCompaction(): boolean;
   autoRetry(): boolean;
-  compaction(): CompactionSettings;
   editMode(): EditMode;
   followUpMode(): QueueMode;
   readonly raw: Readonly<Record<string, string>>;
@@ -61,13 +56,11 @@ export function parseSessionSettings(raw: Record<string, string>): SessionSettin
   return {
     raw: merged,
     agent: () => merged.agent ?? DEFAULT_AGENT_NAME,
-    autoCompaction: () => merged.auto_compaction === "true",
     autoRetry: () => merged.auto_retry !== "false",
     editMode: () => (merged.edit_mode === "replace" ? "replace" : "hashline"),
     followUpMode: () => (merged.follow_up_mode === "one-at-a-time" ? "one-at-a-time" : "all"),
     steeringMode: () => (merged.steering_mode === "one-at-a-time" ? "one-at-a-time" : "all"),
     retry: () => parseRetrySettings(merged),
-    compaction: () => parseCompactionSettings(merged),
     thinkingLevelOverride: () => {
       const v = merged.thinking_level;
       if (v === undefined || v === "off") {

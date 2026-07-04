@@ -11,9 +11,8 @@ import {
 } from "../../__tests__/helpers/faux-provider";
 import {
   TEST_BRANCH_SUMMARY_PROMPTS,
-  TEST_COMPACTION_PROMPTS,
   TEST_SKILLS_INSTRUCTIONS,
-} from "../../__tests__/helpers/test-compaction-prompts.ts";
+} from "../../__tests__/helpers/test-prompt-bundles.ts";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
 import { AgentHarness } from "../../agent/agent-harness";
 import type { AgentDefinition } from "../../harness-types";
@@ -84,7 +83,6 @@ describe("AgentHarness.switchAgent", () => {
     ]);
     const { readTool, writeTool } = buildReadWriteTools();
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -128,7 +126,6 @@ describe("AgentHarness.switchAgent", () => {
     ]);
     const { readTool, writeTool, executed } = buildReadWriteTools();
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -164,7 +161,6 @@ describe("AgentHarness.switchAgent", () => {
     const { readTool } = buildReadWriteTools();
     const session = await createTestSession();
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -197,7 +193,6 @@ describe("AgentHarness.switchAgent", () => {
     ]);
     const { readTool, executed } = buildReadWriteTools();
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),

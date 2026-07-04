@@ -1,16 +1,12 @@
 import {
-  ObservationalMemoryEngine,
   type AgentHarnessEvent,
   type PermissionReply,
   type SessionStorageShape,
 } from "@sakti-code/agent";
-import { SqliteObservationalMemoryStorage, SqliteSessionStorage } from "@sakti-code/db";
+import { SqliteSessionStorage } from "@sakti-code/db";
 import Type from "typebox";
-import { runCompact } from "./commands/compact.ts";
 import { isKnownAskKind } from "./config/ask-kinds.ts";
-import { resolveOmConfig } from "./config/index.ts";
 import type { ServerContext } from "../context.ts";
-import { createSessionStorage } from "../context.ts";
 import { getPermissionChannel } from "../lib/permission-channel.ts";
 import {
   abortRun,
@@ -68,15 +64,6 @@ export interface PermissionReplyMessage {
   type: "permission.reply";
 }
 
-export interface CommandMessage {
-  /** Command name (currently only "compact"). */
-  name: "compact";
-  /** Optional custom instructions passed to compaction summarizer. */
-  customInstructions?: string;
-  sessionId: string;
-  type: "command";
-}
-
 export type WsIn =
   | PromptMessage
   | AbortMessage
@@ -84,8 +71,7 @@ export type WsIn =
   | FollowUpMessage
   | ReplayMessage
   | SwitchAgentMessage
-  | PermissionReplyMessage
-  | CommandMessage;
+  | PermissionReplyMessage;
 
 export interface EventFrame {
   event: AgentHarnessEvent;
@@ -183,12 +169,6 @@ export const wsBodySchema = Type.Union([
     sessionId: Type.String(),
     id: Type.String(),
     reply: Type.Union([Type.Literal("once"), Type.Literal("always"), Type.Literal("reject")]),
-  }),
-  Type.Object({
-    type: Type.Literal("command"),
-    sessionId: Type.String(),
-    name: Type.Literal("compact"),
-    customInstructions: Type.Optional(Type.String()),
   }),
 ]);
 
@@ -348,132 +328,6 @@ export function sendError(ws: WsHandle, sessionId: string, message: string) {
   } satisfies ErrorFrame);
 }
 
-async function handleCompactCommand(
-  ctx: ServerContext,
-  sessionId: string,
-  customInstructions: string | undefined,
-  ws: WsHandle,
-): Promise<void> {
-  const log = ctx.log?.agent;
-  log?.info("compact command received", { sessionId, omEnabled: "unknown" });
-
-  if (isRunActive(sessionId)) {
-    log?.warn("compact blocked — run active", { sessionId });
-    sendError(ws, sessionId, busyMessage(sessionId));
-    return;
-  }
-
-  const session = ctx.repos.sessions.findById(sessionId);
-  if (!session) {
-    sendError(ws, sessionId, "Session not found");
-    return;
-  }
-
-  const omConfig = resolveOmConfig(ctx, {
-    id: sessionId,
-    kind: session.kind,
-    projectId: session.projectId,
-    profileId: session.profileId,
-  });
-
-  log?.info("compact resolved", {
-    sessionId,
-    omEnabled: omConfig !== undefined,
-  });
-
-  if (omConfig) {
-    const omStorage = new SqliteObservationalMemoryStorage(ctx.db);
-    const storage = createSessionStorage(ctx, sessionId);
-    const abortController = new AbortController();
-    const engine = new ObservationalMemoryEngine({
-      deps: {
-        ...omConfig,
-        storage: omStorage,
-        sessionId,
-        projectId: session.projectId,
-        sessionStorage: storage,
-      },
-      abortSignal: abortController.signal,
-      onOmEvent: (event) => {
-        ws.send({ event, sessionId, type: "event" } satisfies EventFrame);
-      },
-    });
-
-    const result = await engine.forceReflect();
-    if (!result.reflected) {
-      sendError(ws, sessionId, `Nothing to reflect: ${result.reason ?? "unknown"}`);
-    }
-    return;
-  }
-
-  ws.send({
-    event: { type: "compaction_start", reason: "manual" },
-    sessionId,
-    type: "event",
-  } satisfies EventFrame);
-
-  const result = await runCompact(ctx, sessionId, customInstructions, (text) => {
-    ws.send({
-      event: { type: "compaction_delta", text },
-      sessionId,
-      type: "event",
-    } satisfies EventFrame);
-  });
-
-  if ("notFound" in result) {
-    sendError(ws, sessionId, "Session not found");
-    return;
-  }
-  if ("skipped" in result) {
-    sendError(ws, sessionId, "Nothing to compact — session is empty or already compacted");
-    ws.send({
-      event: {
-        type: "compaction_end",
-        reason: "manual",
-        aborted: false,
-        willRetry: false,
-      },
-      sessionId,
-      type: "event",
-    } satisfies EventFrame);
-    return;
-  }
-  if ("error" in result) {
-    ws.send({
-      event: {
-        type: "compaction_end",
-        reason: "manual",
-        aborted: false,
-        willRetry: false,
-        errorMessage: result.error,
-      },
-      sessionId,
-      type: "event",
-    } satisfies EventFrame);
-    return;
-  }
-
-  ws.send({
-    event: {
-      type: "compaction_end",
-      reason: "manual",
-      ...("skipped" in result
-        ? {}
-        : {
-            result: {
-              summary: result.summary,
-              firstKeptEntryId: result.firstKeptEntryId,
-              tokensBefore: result.tokensBefore,
-            },
-          }),
-      aborted: false,
-      willRetry: false,
-    },
-    sessionId,
-    type: "event",
-  } satisfies EventFrame);
-}
-
 export function handleMessage(
   ctx: ServerContext,
   storage: SessionStorageShape,
@@ -549,14 +403,6 @@ export function handleMessage(
       sessionId: msg.sessionId,
       type: "permission.replied",
     } satisfies PermissionRepliedFrame);
-    return;
-  }
-
-  if (msg.type === "command") {
-    handleCompactCommand(ctx, msg.sessionId, msg.customInstructions, ws).catch((err) => {
-      log?.warn("compact command failed", { sessionId: msg.sessionId });
-      sendError(ws, msg.sessionId, err instanceof Error ? err.message : String(err));
-    });
     return;
   }
 

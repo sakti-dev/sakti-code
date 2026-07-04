@@ -150,28 +150,6 @@ describe("SqliteSessionStorage", () => {
     expect(entries.length).toBe(allEntries.length);
   });
 
-  test("compaction entry round-trip", async () => {
-    const id = await Effect.runPromise(storage.createEntryId());
-    const entry: SessionTreeEntry = {
-      type: "compaction",
-      id,
-      parentId: "e1",
-      timestamp: new Date().toISOString(),
-      summary: "Previous work summarized",
-      firstKeptEntryId: "e1",
-      tokensBefore: 5000,
-    };
-
-    await Effect.runPromise(storage.appendEntry(entry));
-    const retrieved = await Effect.runPromise(storage.getEntry(id));
-    expect(retrieved).toBeDefined();
-    expect(retrieved!.type).toBe("compaction");
-    if (retrieved!.type === "compaction") {
-      expect(retrieved.summary).toBe("Previous work summarized");
-      expect(retrieved.tokensBefore).toBe(5000);
-    }
-  });
-
   test("appendEntry stamps currentTurnId when set", async () => {
     sqlite
       .prepare(

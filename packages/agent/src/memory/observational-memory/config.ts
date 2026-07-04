@@ -2,8 +2,7 @@
  * Observational Memory config and deps types.
  *
  * The server injects OM resources through {@link ObservationalMemoryDeps},
- * which the engine consumes. Parallel to `CompactionSettings` /
- * `CompactionPrompts` in the compaction module.
+ * which the engine consumes.
  */
 
 import type { Model, ThinkingLevel } from "@sakti-code/llm";

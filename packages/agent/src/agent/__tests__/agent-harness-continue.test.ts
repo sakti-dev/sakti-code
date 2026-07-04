@@ -6,9 +6,8 @@ import {
 } from "../../__tests__/helpers/faux-provider";
 import {
   TEST_BRANCH_SUMMARY_PROMPTS,
-  TEST_COMPACTION_PROMPTS,
   TEST_SKILLS_INSTRUCTIONS,
-} from "../../__tests__/helpers/test-compaction-prompts.ts";
+} from "../../__tests__/helpers/test-prompt-bundles.ts";
 import { AgentHarness } from "../../agent/agent-harness";
 import { createTestSession } from "../../session/__tests__/session-test-utils";
 import type { SessionShape } from "../../session/session";
@@ -38,7 +37,6 @@ async function makeHarness(
     streamFn: registration.streamFn,
     steeringMode: "all",
     followUpMode: "all",
-    compactionPrompts: TEST_COMPACTION_PROMPTS,
     branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
     skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
   });

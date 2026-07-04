@@ -28,7 +28,7 @@ export class SqliteSessionStorage<TMetadata extends SessionMetadata = SessionMet
   /**
    * Set the turn id that subsequent {@link appendEntry} calls stamp onto their
    * rows. Set to `null` to leave entries unattributed (e.g. after a run ends
-   * or during out-of-run appends like command compaction).
+   * or during out-of-run appends like an OM marker).
    *
    * Turns are a server/DB concept — the agent never calls this. The server
    * sets it at run start and clears it at run finalize.

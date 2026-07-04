@@ -3,7 +3,6 @@ import { sessionSettingsRoutes } from "../routes/sessions/session-settings.ts";
 import { makeApp } from "./helpers.ts";
 
 const DEFAULTS = {
-  auto_compaction: false,
   auto_retry: true,
   follow_up_mode: "all",
   max_retries: 3,
@@ -33,7 +32,7 @@ describe("session settings routes", () => {
       new Request(`http://localhost/api/sessions/${session.id}/settings`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ auto_compaction: true }),
+        body: JSON.stringify({ auto_retry: false }),
       }),
     );
     expect(patch.status).toBe(204);
@@ -41,7 +40,7 @@ describe("session settings routes", () => {
     const res = await app.request(
       new Request(`http://localhost/api/sessions/${session.id}/settings`),
     );
-    expect(await res.json()).toEqual({ ...DEFAULTS, auto_compaction: true });
+    expect(await res.json()).toEqual({ ...DEFAULTS, auto_retry: false });
   });
 
   it("PATCH coerces and round-trips a numeric/string key", async () => {

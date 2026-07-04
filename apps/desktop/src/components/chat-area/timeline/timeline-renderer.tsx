@@ -80,7 +80,7 @@ function renderTimelineItem(
   if (part.type === "text" && part.text.trim() !== "") {
     // Text is the assistant's prose — the answer itself, not a footnote. Render
     // it prominent (normal foreground) rather than muted. A small rounded marker
-    // (same as compaction/om) sits in the icon column for visual consistency
+    // (same as om) sits in the icon column for visual consistency
     // with the other steps; the trailing answer (isLast) gets no connector.
     return (
       <TimelineStep icon={<FiCircle class="h-2 w-2 text-muted-foreground/40" />} isLast={isLast()}>
@@ -94,11 +94,11 @@ function renderTimelineItem(
       </TimelineStep>
     );
   }
-  // compaction, om_marker, and any other registered part type: render via the
+  // om_marker and any other registered part type: render via the
   // shared part registry so they stay visible inside the timeline instead of
   // being silently dropped. (Thinking/text with empty text fall through here
   // too and render nothing, since no component is registered for "empty".)
-  if (part.type === "compaction" || part.type === "om_marker") {
+  if (part.type === "om_marker") {
     return (
       <TimelineStep icon={<FiCircle class="h-2 w-2 text-muted-foreground/40" />} isLast={isLast()}>
         <Part isStreaming={resolvePartStreaming(part, isStreaming())} part={part} />

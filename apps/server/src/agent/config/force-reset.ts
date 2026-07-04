@@ -2,17 +2,19 @@ import { ObservationalMemoryEngine } from "@sakti-code/agent";
 import { SqliteObservationalMemoryStorage } from "@sakti-code/db";
 import type { ServerContext } from "../../context.ts";
 import { createSessionStorage } from "../../context.ts";
-import { runCompact } from "../commands/compact.ts";
 import { resolveOmConfig } from "./index.ts";
 
 /**
- * Build the plan→build `forceReset` callback. Branches on whether OM is
- * enabled for the session: observe when OM is on, compact otherwise. The
- * agent swap on plan→build invalidates the prompt cache anyway, so resetting
- * first is free and gives the build agent a clean start.
+ * Build the plan→build `forceReset` callback. Forces an OM observe so the
+ * build agent starts with a clean, plan-focused context. The agent swap on
+ * plan→build invalidates the prompt cache anyway (system prompt + tools
+ * change), so resetting first is free.
  *
- * Extracted from the confirm route so the OM-on / OM-off branch is unit-testable
+ * Extracted from the confirm route so the OM config resolution is unit-testable
  * (the route wires `AskCtx.forceReset` to this).
+ *
+ * Best-effort: if OM isn't configured for the session (no observe/reflect
+ * models), the observe is skipped — never strand the mission on a reset failure.
  */
 export function buildForceReset(
   ctx: ServerContext,
@@ -25,25 +27,26 @@ export function buildForceReset(
       projectId: session.projectId,
       profileId: session.profileId,
     });
-    if (omConfig) {
-      const omStorage = new SqliteObservationalMemoryStorage(ctx.db);
-      const storage = createSessionStorage(ctx, sid);
-      const abortController = new AbortController();
-      const engine = new ObservationalMemoryEngine({
-        deps: {
-          ...omConfig,
-          storage: omStorage,
-          sessionId: sid,
-          projectId: session.projectId,
-          sessionStorage: storage,
-        },
-        abortSignal: abortController.signal,
+    if (!omConfig) {
+      ctx.log?.agent?.warn("plan→build: OM not configured, skipping forced observe", {
+        sessionId: sid,
       });
-      await engine.forceObserve();
-      ctx.log?.agent?.info("plan→build: forced OM observe", { sessionId: sid });
-    } else {
-      await runCompact(ctx, sid);
-      ctx.log?.agent?.info("plan→build: forced compaction", { sessionId: sid });
+      return;
     }
+    const omStorage = new SqliteObservationalMemoryStorage(ctx.db);
+    const storage = createSessionStorage(ctx, sid);
+    const abortController = new AbortController();
+    const engine = new ObservationalMemoryEngine({
+      deps: {
+        ...omConfig,
+        storage: omStorage,
+        sessionId: sid,
+        projectId: session.projectId,
+        sessionStorage: storage,
+      },
+      abortSignal: abortController.signal,
+    });
+    await engine.forceObserve();
+    ctx.log?.agent?.info("plan→build: forced OM observe", { sessionId: sid });
   };
 }

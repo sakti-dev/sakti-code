@@ -1,4 +1,3 @@
-import { CompactionPart } from "./compaction-part.tsx";
 import { OmMarkerPart } from "./om-marker-part.tsx";
 import { registerPartComponent } from "./part-registry.ts";
 import { TextPart } from "./text-part.tsx";
@@ -14,7 +13,6 @@ export function registerDefaultPartComponents(): void {
   registerPartComponent("text", TextPart);
   registerPartComponent("tool_call", ToolPart);
   registerPartComponent("om_marker", OmMarkerPart);
-  registerPartComponent("compaction", CompactionPart);
 
   registered = true;
 }

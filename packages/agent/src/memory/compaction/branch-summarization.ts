@@ -1,7 +1,6 @@
 import type { Model } from "@sakti-code/llm";
 import { complete } from "@sakti-code/llm";
 import { Effect } from "effect";
-import { estimateTokens } from "../compaction/compaction";
 import {
   BranchSummaryError,
   type BranchSummaryResult,
@@ -14,7 +13,6 @@ import {
 import {
   convertToLlm,
   createBranchSummaryMessage,
-  createCompactionSummaryMessage,
   createCustomMessage,
 } from "../../session/messages";
 import type { SessionShape } from "../../session/session";
@@ -23,6 +21,7 @@ import type { BranchSummaryPrompts } from "./prompt-bundles";
 import {
   computeFileLists,
   createFileOps,
+  estimateTokens,
   extractFileOpsFromMessage,
   type FileOperations,
   formatFileOperations,
@@ -145,8 +144,6 @@ function getMessageFromEntry(entry: SessionTreeEntry): AgentMessage | undefined 
     case "branch_summary":
       return createBranchSummaryMessage(entry.summary, entry.fromId, entry.timestamp);
 
-    case "compaction":
-      return createCompactionSummaryMessage(entry.summary, entry.tokensBefore, entry.timestamp);
     case "thinking_level_change":
     case "model_change":
     case "active_tools_change":
@@ -191,10 +188,7 @@ export function prepareBranchEntries(
 
     const tokens = estimateTokens(message);
     if (tokenBudget > 0 && totalTokens + tokens > tokenBudget) {
-      if (
-        (entry.type === "compaction" || entry.type === "branch_summary") &&
-        totalTokens < tokenBudget * 0.9
-      ) {
+      if (entry.type === "branch_summary" && totalTokens < tokenBudget * 0.9) {
         messages.unshift(message);
         totalTokens += tokens;
       }

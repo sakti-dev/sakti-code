@@ -43,12 +43,8 @@ describe("context routes", () => {
     const res = await app.request(`http://localhost:3001/api/projects/${project.id}/context`);
     const body = await res.json();
     expect(res.status).toBe(200);
-    expect(body.commands.map((c: { name: string }) => c.name)).toEqual(["compact", "commit"]);
+    expect(body.commands.map((c: { name: string }) => c.name)).toEqual(["commit"]);
     expect(body.commands[0]).toMatchObject({
-      name: "compact",
-      description: expect.stringContaining("Compact"),
-    });
-    expect(body.commands[1]).toMatchObject({
       name: "commit",
       description: "commit and push",
       content: "commit body",

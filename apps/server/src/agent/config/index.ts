@@ -1,6 +1,6 @@
 /** Agent configuration: catalog, prompts, tool registry, resolution helpers. */
 
-export { BRANCH_SUMMARY_PROMPTS, COMPACTION_PROMPTS } from "./compaction-prompts.ts";
+export { BRANCH_SUMMARY_PROMPTS } from "./branch-summary-prompts.ts";
 
 export {
   BUILD_PROMPT,

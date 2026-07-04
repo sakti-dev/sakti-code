@@ -49,19 +49,6 @@ describe("Session with in-memory storage", () => {
     expect((await Effect.runPromise(session.buildContext())).messages).toEqual([]);
   });
 
-  it("reconstructs compaction summaries in context", async () => {
-    const session = await createTestSession();
-    await Effect.runPromise(session.appendMessage(createUserMessage("one")));
-    await Effect.runPromise(session.appendMessage(createAssistantMessage("two")));
-    const user2 = await Effect.runPromise(session.appendMessage(createUserMessage("three")));
-    await Effect.runPromise(session.appendMessage(createAssistantMessage("four")));
-    await Effect.runPromise(session.appendCompaction("summary", user2, 1234));
-    await Effect.runPromise(session.appendMessage(createUserMessage("five")));
-    const context = await Effect.runPromise(session.buildContext());
-    expect(context.messages[0]?.role).toBe("compactionSummary");
-    expect(context.messages).toHaveLength(4);
-  });
-
   it("supports moving with branch summary entries in context", async () => {
     const session = await createTestSession();
     const user1 = await Effect.runPromise(session.appendMessage(createUserMessage("one")));

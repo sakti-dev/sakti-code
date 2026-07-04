@@ -63,11 +63,18 @@ describe("TimelineRenderer", () => {
     expect(container.querySelector("[data-component='timeline-step']")).toBeNull();
   });
 
-  it("renders compaction parts via the part registry instead of dropping them", () => {
+  it("renders om_marker parts via the part registry instead of dropping them", () => {
     const { container } = render(() => (
       <TimelineRenderer
         isStreaming={false}
-        parts={[{ type: "compaction", status: "complete", text: "summarized context" }]}
+        parts={[
+          {
+            type: "om_marker",
+            cycleId: "c1",
+            operationType: "observation",
+            status: "complete",
+          },
+        ]}
       />
     ));
     // Wrapped in a timeline step — not silently dropped.

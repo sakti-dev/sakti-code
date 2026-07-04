@@ -178,19 +178,7 @@ export interface BranchSummaryMessage {
   timestamp: number;
 }
 
-export interface CompactionSummaryMessage {
-  role: "compactionSummary";
-  summary: string;
-  timestamp: number;
-  tokensBefore: number;
-}
-
-export type AgentMessage =
-  | Message
-  | CustomMessage
-  | BashExecutionMessage
-  | BranchSummaryMessage
-  | CompactionSummaryMessage;
+export type AgentMessage = Message | CustomMessage | BashExecutionMessage | BranchSummaryMessage;
 
 export interface AgentState {
   readonly errorMessage?: string | undefined;
@@ -302,20 +290,6 @@ export type AgentEvent =
       success: boolean;
       attempt: number;
       finalError?: string;
-    }
-  | { type: "compaction_start"; reason: "threshold" | "overflow" | "manual" }
-  | { type: "compaction_delta"; text: string }
-  | {
-      type: "compaction_end";
-      reason: "threshold" | "overflow" | "manual";
-      result?: {
-        summary: string;
-        firstKeptEntryId: string;
-        tokensBefore: number;
-      };
-      aborted: boolean;
-      willRetry: boolean;
-      errorMessage?: string;
     }
   | { type: "cache_shape"; diagnostics: CacheDiagnostics }
   // --- Observational Memory lifecycle events ---

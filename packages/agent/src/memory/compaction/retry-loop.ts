@@ -31,7 +31,6 @@ import type { AssistantMessage } from "@sakti-code/llm";
 import { isRetryableAssistantError } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
 import { Effect } from "effect";
-import type { CompactionDecision, RunCompactionOutcome } from "../compaction/auto-compaction";
 import type { AgentEvent } from "../../types";
 
 // ─── pure decision helpers (unit-tested in isolation) ────────────────────────
@@ -125,21 +124,6 @@ export function abortableSleep(ms: number, signal: AbortSignal): Promise<boolean
 // ─── the orchestration loop ──────────────────────────────────────────────────
 
 /**
- * Persistent state for the auto-compaction stuck-guard. Tracks consecutive
- * auto-compactions so {@link checkCompaction} can pause when the context
- * window is too small (≥2 compacts in a row that still leave the prompt over
- * threshold).
- *
- * The pure decision lives in `checkCompaction`; callers (the runner /
- * agent-run factory) own the persistence so the counter survives across run
- * calls and app restarts.
- */
-export interface StuckGuardState {
-  consecutiveCompacts: number;
-  paused: boolean;
-}
-
-/**
  * Effect-typed retry deps. The callbacks return Effects instead of Promises,
  * so {@link executeWithRetryEffect} can `yield*` them directly without
  * `Effect.promise(() => deps.X())` bridges.
@@ -149,13 +133,9 @@ export interface StuckGuardState {
  * uses it directly (Effect sleep + abort integration is future work).
  */
 export interface RetryRunnerDepsEffect {
-  readonly checkCompaction?: (
-    message: AssistantMessage,
-  ) => Effect.Effect<CompactionDecision, Error>;
   readonly emit: (event: AgentEvent) => void;
   readonly logger?: Logger;
   readonly rollbackLeaf: () => Effect.Effect<void, Error>;
-  readonly runCompaction?: () => Effect.Effect<RunCompactionOutcome, Error>;
   readonly runTurn: () => Effect.Effect<AssistantMessage, Error>;
   readonly signal: AbortSignal;
 }
@@ -168,7 +148,6 @@ export interface RetryRunnerDepsEffect {
  *
  * Effect-native: consumes {@link RetryRunnerDepsEffect} (Effect-typed callbacks).
  * Run via `Effect.runPromise` at the edge, or composed inside another Effect.
- * {@link executeWithRetry} is the Promise-based back-compat wrapper.
  */
 export const executeWithRetryEffect = (
   deps: RetryRunnerDepsEffect,
@@ -181,7 +160,6 @@ export const executeWithRetryEffect = (
     });
     let message = yield* deps.runTurn();
     if (!settings.enabled) {
-      yield* runCompactionPhaseEffect(deps, message);
       return;
     }
 
@@ -256,90 +234,5 @@ export const executeWithRetryEffect = (
         attempt,
         ...(success ? {} : { finalError: message.errorMessage ?? "Unknown error" }),
       });
-    }
-
-    yield* runCompactionPhaseEffect(deps, message);
-  });
-
-/**
- * Post-turn compaction Effect: decide → emit start → run → emit end, retrying
- * the turn once on an overflow (`willRetry`).
- */
-const runCompactionPhaseEffect = (
-  deps: RetryRunnerDepsEffect,
-  initialMessage: AssistantMessage,
-): Effect.Effect<void, Error> =>
-  Effect.gen(function* () {
-    if (deps.checkCompaction === undefined || deps.runCompaction === undefined) {
-      return;
-    }
-    let message = initialMessage;
-    let overflowAttempts = 0;
-    for (;;) {
-      const decision = yield* deps.checkCompaction!(message);
-      if (decision.action !== "compact" || decision.reason === undefined) {
-        return;
-      }
-      // decision.action === "compact" only happens for threshold/overflow (the
-      // stuck guard returns action "none"). Narrow so the event reason type
-      // stays "threshold" | "overflow" — the stuck guard emits no event.
-      const reason: "threshold" | "overflow" =
-        decision.reason === "overflow" ? "overflow" : "threshold";
-
-      if (reason === "overflow" && overflowAttempts > 0) {
-        deps.logger?.error("overflow recovery exhausted", undefined, {
-          reason,
-        });
-        deps.emit({
-          type: "compaction_end",
-          reason,
-          aborted: false,
-          willRetry: false,
-          errorMessage:
-            "Context overflow recovery failed after one compact-and-retry attempt. Try reducing context or switching to a larger-context model.",
-        });
-        return;
-      }
-
-      deps.logger?.info("compaction start", { reason });
-      deps.emit({ type: "compaction_start", reason });
-
-      const outcome = yield* deps.runCompaction!();
-      if (outcome.ok) {
-        deps.logger?.info("compaction done", {
-          reason,
-          tokensBefore: outcome.tokensBefore,
-        });
-        deps.emit({
-          type: "compaction_end",
-          reason,
-          result: {
-            summary: outcome.summary,
-            firstKeptEntryId: outcome.firstKeptEntryId,
-            tokensBefore: outcome.tokensBefore,
-          },
-          aborted: false,
-          willRetry: decision.willRetry === true,
-        });
-      } else {
-        deps.logger?.error("compaction failed", undefined, {
-          reason,
-          errorMessage: outcome.errorMessage,
-        });
-        deps.emit({
-          type: "compaction_end",
-          reason,
-          aborted: false,
-          willRetry: false,
-          errorMessage: outcome.errorMessage,
-        });
-        return;
-      }
-
-      if (decision.willRetry !== true) {
-        return;
-      }
-      overflowAttempts++;
-      message = yield* deps.runTurn();
     }
   });

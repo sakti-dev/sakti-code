@@ -5,7 +5,6 @@ import { getCtx } from "../../context.ts";
 
 // Default per-session setting values matching runner.ts
 const DEFAULT_SETTINGS = {
-  auto_compaction: false,
   auto_retry: true,
   follow_up_mode: "all",
   max_retries: 3,
@@ -14,7 +13,6 @@ const DEFAULT_SETTINGS = {
 };
 
 const patchBody = Type.Object({
-  auto_compaction: Type.Optional(Type.Boolean()),
   auto_retry: Type.Optional(Type.Boolean()),
   follow_up_mode: Type.Optional(Type.String()),
   max_retries: Type.Optional(Type.Number()),

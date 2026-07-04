@@ -11,9 +11,8 @@ import {
 } from "../../__tests__/helpers/faux-provider";
 import {
   TEST_BRANCH_SUMMARY_PROMPTS,
-  TEST_COMPACTION_PROMPTS,
   TEST_SKILLS_INSTRUCTIONS,
-} from "../../__tests__/helpers/test-compaction-prompts.ts";
+} from "../../__tests__/helpers/test-prompt-bundles.ts";
 import { calculateTool } from "../../__tests__/utils/calculate";
 import { getCurrentTimeTool } from "../../__tests__/utils/get-current-time";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env";
@@ -65,7 +64,6 @@ describe("AgentHarness", () => {
     const env = new TestExecutionEnv(process.cwd());
     const initialModel = getModel("anthropic", "claude-sonnet-4-5");
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env,
@@ -106,7 +104,6 @@ describe("AgentHarness", () => {
       },
     ]);
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -146,7 +143,6 @@ describe("AgentHarness", () => {
     ]);
     const session = await createTestSession();
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -197,7 +193,6 @@ describe("AgentHarness", () => {
       },
     ]);
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -258,7 +253,6 @@ describe("AgentHarness", () => {
       },
     ]);
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -292,7 +286,6 @@ describe("AgentHarness", () => {
     registration.setResponses([() => fauxAssistantMessage("should not be used")]);
     const session = await createTestSession();
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -361,7 +354,6 @@ describe("AgentHarness", () => {
       },
     ]);
     const harness = new AgentHarness<Skill, PromptTemplate, AgentTool>({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -424,7 +416,6 @@ describe("AgentHarness", () => {
     registration.setResponses([() => fauxAssistantMessage("ok")]);
     const session = await createTestSession();
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -465,7 +456,6 @@ describe("AgentHarness", () => {
     registration.setResponses([() => fauxAssistantMessage("ok")]);
     const barrier = deferred();
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -507,7 +497,6 @@ describe("AgentHarness", () => {
     ]);
     const session = await createTestSession();
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -573,7 +562,6 @@ describe("AgentHarness", () => {
       source: "extension",
     };
     const harness = new AgentHarness<AppSkill, AppPromptTemplate, AppTool>({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env,
@@ -652,7 +640,6 @@ describe("AgentHarness", () => {
     expect(
       () =>
         new AgentHarness({
-          compactionPrompts: TEST_COMPACTION_PROMPTS,
           branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
           skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
           env,
@@ -665,7 +652,6 @@ describe("AgentHarness", () => {
     expect(
       () =>
         new AgentHarness({
-          compactionPrompts: TEST_COMPACTION_PROMPTS,
           branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
           skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
           env,
@@ -678,7 +664,6 @@ describe("AgentHarness", () => {
     expect(
       () =>
         new AgentHarness({
-          compactionPrompts: TEST_COMPACTION_PROMPTS,
           branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
           skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
           env,
@@ -695,7 +680,6 @@ describe("AgentHarness", () => {
     const env = new TestExecutionEnv(process.cwd());
     const model = getModel("anthropic", "claude-sonnet-4-5");
     const harness = new AgentHarness<AppSkill, AppPromptTemplate, AgentTool>({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env,
@@ -747,7 +731,6 @@ describe("AgentHarness", () => {
     registrations.push(registration);
     registration.setResponses([() => fauxAssistantMessage("done")]);
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -766,7 +749,6 @@ describe("AgentHarness", () => {
     registrations.push(registration);
     registration.setResponses([() => fauxAssistantMessage("hello back")]);
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -789,7 +771,6 @@ describe("AgentHarness", () => {
       () => fauxAssistantMessage("second"),
     ]);
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -813,7 +794,6 @@ describe("AgentHarness", () => {
     registrations.push(registration);
     registration.setResponses([() => fauxAssistantMessage("hi")]);
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -854,7 +834,6 @@ describe("AgentHarness", () => {
       () => fauxAssistantMessageWithContent([{ type: "text", text: "hi" }]),
     ]);
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -875,155 +854,6 @@ describe("AgentHarness", () => {
   });
 });
 
-describe("scheduleSystemPromptRefresh", () => {
-  it("stores a pending prompt swap without affecting the current turn", async () => {
-    const registration = registerFauxStreamProvider();
-    registrations.push(registration);
-    const captured: string[] = [];
-    registration.setResponses([
-      (req: StreamRequest) => {
-        captured.push(req.system ?? "");
-        return fauxAssistantMessage("ok");
-      },
-    ]);
-    const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
-      branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
-      skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
-      env: new TestExecutionEnv(process.cwd()),
-      session: await createTestSession(),
-      model: registration.getModel(),
-      streamFn: registration.streamFn,
-      systemPrompt: "original prompt",
-    });
-
-    harness.scheduleSystemPromptRefresh("new prompt");
-    expect(harness.getPendingSystemPromptRefresh()).toBe("new prompt");
-
-    await harness.prompt("hello");
-
-    // Current turn still uses the original prompt — refresh is deferred.
-    expect(captured).toEqual(["original prompt"]);
-  });
-
-  it("clears pending refresh when switchAgent applies a new prompt immediately", async () => {
-    const registration = registerFauxStreamProvider();
-    registrations.push(registration);
-    const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
-      branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
-      skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
-      env: new TestExecutionEnv(process.cwd()),
-      session: await createTestSession(),
-      model: registration.getModel(),
-      streamFn: registration.streamFn,
-      systemPrompt: "original",
-    });
-
-    harness.scheduleSystemPromptRefresh("pending");
-    expect(harness.getPendingSystemPromptRefresh()).toBe("pending");
-
-    await harness.switchAgent({
-      name: "x",
-      mode: "primary",
-      systemPrompt: "applied now",
-    });
-
-    expect(harness.getPendingSystemPromptRefresh()).toBeUndefined();
-  });
-
-  it("drains pending refresh during compaction (next turn uses new prompt)", async () => {
-    const registration = registerFauxStreamProvider();
-    registrations.push(registration);
-    const session = await createTestSession();
-    const capturedSystems: string[] = [];
-
-    // Seed one user message so prepareCompaction has entries to work with.
-    await Effect.runPromise(
-      session.appendMessage({
-        role: "user",
-        content: [{ type: "text", text: "seed message" }],
-        timestamp: Date.now(),
-      }),
-    );
-    const entries = await Effect.runPromise(session.getEntries());
-    const firstKeptEntryId = entries[0]!.id;
-
-    // Post-compaction turn — should see the refreshed prompt.
-    registration.setResponses([
-      (req: StreamRequest) => {
-        capturedSystems.push(req.system ?? "");
-        return fauxAssistantMessage("ok");
-      },
-    ]);
-
-    const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
-      branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
-      skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
-      env: new TestExecutionEnv(process.cwd()),
-      session,
-      model: registration.getModel(),
-      streamFn: registration.streamFn,
-      systemPrompt: "original",
-      getApiKeyAndHeaders: async () => ({ apiKey: "test-key" }),
-    });
-
-    // Inject the compaction result via the hook so we don't need an LLM
-    // summarizer call — we're testing the drain, not the summarizer.
-    harness.on("session_before_compact", () => ({
-      compaction: {
-        summary: "compact summary",
-        firstKeptEntryId,
-        tokensBefore: 100,
-      },
-    }));
-
-    harness.scheduleSystemPromptRefresh("refreshed");
-    expect(harness.getPendingSystemPromptRefresh()).toBe("refreshed");
-
-    await harness.compact();
-
-    expect(harness.getPendingSystemPromptRefresh()).toBeUndefined();
-    expect(harness.getSystemPrompt()).toBe("refreshed");
-
-    await harness.prompt("next turn after compact");
-    expect(capturedSystems).toEqual(["refreshed"]);
-  });
-
-  it("emits cache_bust_pending when a refresh is scheduled", async () => {
-    const registration = registerFauxStreamProvider();
-    registrations.push(registration);
-    const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
-      branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
-      skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
-      env: new TestExecutionEnv(process.cwd()),
-      session: await createTestSession(),
-      model: registration.getModel(),
-      streamFn: registration.streamFn,
-      systemPrompt: "original",
-    });
-
-    const events: AgentHarnessEvent[] = [];
-    harness.subscribe((event) => {
-      if (event.type === "cache_bust_pending") {
-        events.push(event);
-      }
-    });
-
-    harness.scheduleSystemPromptRefresh("new");
-    // emitOwn is async; flush the microtask before asserting.
-    await Promise.resolve();
-
-    expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({
-      type: "cache_bust_pending",
-      reason: "system_prompt_refresh",
-    });
-  });
-});
-
 describe("announceSkillAdded", () => {
   it("pushes a <skills-added> steering message on the next turn", async () => {
     const registration = registerFauxStreamProvider();
@@ -1040,7 +870,6 @@ describe("announceSkillAdded", () => {
     ]);
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1085,7 +914,6 @@ describe("softDisableTool", () => {
     ]);
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1125,7 +953,6 @@ describe("softDisableTool", () => {
     registration.setResponses([() => fauxAssistantMessage("no tool call")]);
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1165,7 +992,6 @@ describe("softDisableTool prompt refresh", () => {
     );
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1202,7 +1028,6 @@ describe("softDisableTool prompt refresh", () => {
     );
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1235,7 +1060,6 @@ describe("softDisableTool prompt refresh", () => {
     );
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1279,7 +1103,6 @@ describe("softDisableTool prompt refresh", () => {
     );
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1335,7 +1158,6 @@ describe("softDisableTool prompt refresh", () => {
     );
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1369,7 +1191,6 @@ describe("swapTool", () => {
     registration.setResponses([() => fauxAssistantMessage("ok")]);
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1412,7 +1233,6 @@ describe("swapTool", () => {
     );
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1458,7 +1278,6 @@ describe("swapTool", () => {
     ]);
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1487,7 +1306,6 @@ describe("swapTool", () => {
     registrations.push(registration);
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1507,7 +1325,6 @@ describe("swapTool", () => {
     registrations.push(registration);
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1531,7 +1348,6 @@ describe("swapTool", () => {
 
     const events: AgentHarnessEvent[] = [];
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1577,7 +1393,6 @@ describe("addSkill / removeSkill", () => {
     ]);
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1607,7 +1422,6 @@ describe("addSkill / removeSkill", () => {
     const registration = registerFauxStreamProvider();
     registrations.push(registration);
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1655,7 +1469,6 @@ describe("addSkill / removeSkill", () => {
     const registration = registerFauxStreamProvider();
     registrations.push(registration);
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1681,7 +1494,6 @@ describe("addSkill / removeSkill", () => {
     ]);
 
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1706,7 +1518,6 @@ describe("*Effect cores (Phase H1)", () => {
   it("appendMessageEffect returns an Effect that appends a message when idle", async () => {
     const session = await createTestSession();
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1730,7 +1541,6 @@ describe("*Effect cores (Phase H1)", () => {
     const registration = registerFauxStreamProvider();
     registrations.push(registration);
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1746,7 +1556,6 @@ describe("*Effect cores (Phase H1)", () => {
 
   it("setThinkingLevelEffect returns an Effect that updates the thinking level when idle", async () => {
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1762,7 +1571,6 @@ describe("*Effect cores (Phase H1)", () => {
 
   it("setToolsEffect returns an Effect that updates the tools when idle", async () => {
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1777,7 +1585,6 @@ describe("*Effect cores (Phase H1)", () => {
 
   it("setActiveToolsEffect returns an Effect that updates the active tools when idle", async () => {
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1790,39 +1597,6 @@ describe("*Effect cores (Phase H1)", () => {
     expect(harness.getActiveTools()).toEqual([]);
   });
 
-  it("compactEffect returns an Effect that compacts the session when idle", async () => {
-    const session = await createTestSession();
-    await Effect.runPromise(
-      session.appendMessage({
-        role: "user",
-        content: [{ type: "text", text: "seed message" }],
-        timestamp: Date.now(),
-      }),
-    );
-    const entries = await Effect.runPromise(session.getEntries());
-    const firstKeptEntryId = entries[0]!.id;
-    const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
-      branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
-      skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
-      env: new TestExecutionEnv(process.cwd()),
-      session,
-      model: getModel("anthropic", "claude-sonnet-4-5"),
-      getApiKeyAndHeaders: async () => ({ apiKey: "test-key" }),
-    });
-    harness.on("session_before_compact", () => ({
-      compaction: {
-        summary: "compact summary",
-        firstKeptEntryId,
-        tokensBefore: 100,
-      },
-    }));
-    const effect = harness.compactEffect();
-    expect(typeof effect).toBe("object");
-    const result = await Effect.runPromise(effect);
-    expect(result.summary).toBe("compact summary");
-  });
-
   it("navigateTreeEffect returns an Effect that resolves cancelled:false when navigating to the current leaf", async () => {
     const session = await createTestSession();
     await Effect.runPromise(
@@ -1833,7 +1607,6 @@ describe("*Effect cores (Phase H1)", () => {
       }),
     );
     const harness = new AgentHarness({
-      compactionPrompts: TEST_COMPACTION_PROMPTS,
       branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
       env: new TestExecutionEnv(process.cwd()),
@@ -1863,7 +1636,6 @@ describe("Effect-native prompt emit ordering (Phase H2 regression)", () => {
       registration.setResponses([() => fauxAssistantMessage("ok")]);
       const events: string[] = [];
       const harness = new AgentHarness({
-        compactionPrompts: TEST_COMPACTION_PROMPTS,
         branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
         skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
         env: new TestExecutionEnv(process.cwd()),

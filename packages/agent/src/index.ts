@@ -11,47 +11,20 @@ export type {
   PermissionRuleset,
 } from "./agents/permission.ts";
 export { disabled, evaluate, fromConfig, match, merge } from "./agents/permission.ts";
-export type {
-  CheckCompactionInput,
-  CompactionDecision,
-  CompactionReason,
-  RunCompactionDeps,
-  RunCompactionOutcome,
-} from "./memory/compaction/auto-compaction.ts";
-export {
-  checkCompaction,
-  parseCompactionSettings,
-  runAutoCompaction,
-  runAutoCompactionEffect,
-} from "./memory/compaction/auto-compaction.ts";
 export {
   collectEntriesForBranchSummary,
   collectEntriesForBranchSummaryEffect,
   generateBranchSummary,
   generateBranchSummaryEffect,
 } from "./memory/compaction/branch-summarization.ts";
-export type { CompactionSettings } from "./memory/compaction/compaction.ts";
-export {
-  calculateContextTokens,
-  compact,
-  compactEffect,
-  DEFAULT_COMPACTION_SETTINGS,
-  estimateContextTokens,
-  estimateTokens,
-  generateSummaryEffect,
-  prepareCompaction,
-  shouldCompact,
-} from "./memory/compaction/compaction.ts";
 export type {
   BranchSummaryPrompts,
-  CompactionPrompts,
   SkillsInstructions,
 } from "./memory/compaction/prompt-bundles.ts";
 export type {
   RetryDecisionInput,
   RetryRunnerDepsEffect,
   RetrySettings,
-  StuckGuardState,
 } from "./memory/compaction/retry-loop.ts";
 export {
   abortableSleep,
@@ -61,7 +34,7 @@ export {
   shouldRetry,
 } from "./memory/compaction/retry-loop.ts";
 export type { FileOperations } from "./memory/compaction/utils.ts";
-export { serializeConversation } from "./memory/compaction/utils.ts";
+export { estimateTokens, serializeConversation } from "./memory/compaction/utils.ts";
 export { runAgentLoop, runAgentLoopContinue } from "./core/agent-loop.ts";
 export type { CacheDiagnostics, PrefixShape } from "./core/cache-shape.ts";
 export { captureShape, compareShape } from "./core/cache-shape.ts";
@@ -196,18 +169,14 @@ export {
 export type {
   BashExecutionMessage,
   BranchSummaryMessage,
-  CompactionSummaryMessage,
   CustomMessage,
 } from "./session/messages.ts";
 export {
   BRANCH_SUMMARY_PREFIX,
   BRANCH_SUMMARY_SUFFIX,
   bashExecutionToText,
-  COMPACTION_SUMMARY_PREFIX,
-  COMPACTION_SUMMARY_SUFFIX,
   convertToLlm,
   createBranchSummaryMessage,
-  createCompactionSummaryMessage,
   createCustomMessage,
 } from "./session/messages.ts";
 export {

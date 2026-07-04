@@ -4,7 +4,6 @@ import type { AgentMessage } from "../types";
 import type {
   ActiveToolsChangeEntry,
   BranchSummaryEntry,
-  CompactionEntry,
   CustomEntry,
   CustomMessageEntry,
   LabelEntry,
@@ -17,11 +16,7 @@ import type {
   ThinkingLevelChangeEntry,
 } from "./entries.ts";
 import { SessionError } from "./entries.ts";
-import {
-  createBranchSummaryMessage,
-  createCompactionSummaryMessage,
-  createCustomMessage,
-} from "./messages.ts";
+import { createBranchSummaryMessage, createCustomMessage } from "./messages.ts";
 import type { SessionStorageShape } from "./storage.ts";
 import { SessionStorage } from "./storage.ts";
 
@@ -29,7 +24,6 @@ export function buildSessionContextFromEntries(pathEntries: SessionTreeEntry[]):
   let thinkingLevel = "off";
   let model: { provider: string; modelId: string } | null = null;
   let activeToolNames: string[] | null = null;
-  let compaction: CompactionEntry | null = null;
 
   for (const entry of pathEntries) {
     if (entry.type === "thinking_level_change") {
@@ -43,8 +37,6 @@ export function buildSessionContextFromEntries(pathEntries: SessionTreeEntry[]):
       };
     } else if (entry.type === "active_tools_change") {
       activeToolNames = [...entry.activeToolNames];
-    } else if (entry.type === "compaction") {
-      compaction = entry;
     }
   }
 
@@ -80,34 +72,8 @@ export function buildSessionContextFromEntries(pathEntries: SessionTreeEntry[]):
     }
   };
 
-  if (compaction) {
-    messages.push(
-      createCompactionSummaryMessage(
-        compaction.summary,
-        compaction.tokensBefore,
-        compaction.timestamp,
-      ),
-    );
-    const compactionIdx = pathEntries.findIndex(
-      (e) => e.type === "compaction" && e.id === compaction!.id,
-    );
-    let foundFirstKept = false;
-    for (let i = 0; i < compactionIdx; i++) {
-      const entry = pathEntries[i]!;
-      if (entry.id === compaction.firstKeptEntryId) {
-        foundFirstKept = true;
-      }
-      if (foundFirstKept) {
-        appendMessage(entry);
-      }
-    }
-    for (let i = compactionIdx + 1; i < pathEntries.length; i++) {
-      appendMessage(pathEntries[i]!);
-    }
-  } else {
-    for (const entry of pathEntries) {
-      appendMessage(entry);
-    }
+  for (const entry of pathEntries) {
+    appendMessage(entry);
   }
 
   return { messages, thinkingLevel, model, activeToolNames };
@@ -116,13 +82,6 @@ export function buildSessionContextFromEntries(pathEntries: SessionTreeEntry[]):
 export interface SessionShape {
   readonly appendActiveToolsChange: (
     activeToolNames: string[],
-  ) => Effect.Effect<string, SessionError>;
-  readonly appendCompaction: <T = unknown>(
-    summary: string,
-    firstKeptEntryId: string,
-    tokensBefore: number,
-    details?: T,
-    fromHook?: boolean,
   ) => Effect.Effect<string, SessionError>;
   readonly appendCustomEntry: (
     customType: string,
@@ -252,30 +211,6 @@ export const SessionLive: Layer.Layer<Session, SessionError, SessionStorage> = L
       return id;
     });
 
-    const appendCompaction = Effect.fnUntraced(function* <T = unknown>(
-      summary: string,
-      firstKeptEntryId: string,
-      tokensBefore: number,
-      details?: T,
-      fromHook?: boolean,
-    ) {
-      const id = yield* storage.createEntryId();
-      const parentId = yield* storage.getLeafId();
-      const entry: CompactionEntry<T> = {
-        type: "compaction",
-        id,
-        parentId,
-        timestamp: new Date().toISOString(),
-        summary,
-        firstKeptEntryId,
-        tokensBefore,
-        details,
-        fromHook,
-      };
-      yield* storage.appendEntry(entry);
-      return id;
-    });
-
     const appendCustomEntry = Effect.fnUntraced(function* (customType: string, data?: unknown) {
       const id = yield* storage.createEntryId();
       const parentId = yield* storage.getLeafId();
@@ -398,7 +333,6 @@ export const SessionLive: Layer.Layer<Session, SessionError, SessionStorage> = L
       appendThinkingLevelChange,
       appendModelChange,
       appendActiveToolsChange,
-      appendCompaction,
       appendCustomEntry,
       appendCustomMessageEntry,
       appendLabel,
@@ -512,26 +446,6 @@ export class PromiseSession<TMetadata extends SessionMetadata = SessionMetadata>
       timestamp: new Date().toISOString(),
       activeToolNames: [...activeToolNames],
     } satisfies ActiveToolsChangeEntry);
-  }
-
-  async appendCompaction<T = unknown>(
-    summary: string,
-    firstKeptEntryId: string,
-    tokensBefore: number,
-    details?: T,
-    fromHook?: boolean,
-  ): Promise<string> {
-    return this.appendTypedEntry({
-      type: "compaction",
-      id: await this.run(this.storage.createEntryId()),
-      parentId: await this.run(this.storage.getLeafId()),
-      timestamp: new Date().toISOString(),
-      summary,
-      firstKeptEntryId,
-      tokensBefore,
-      ...(details === undefined ? {} : { details }),
-      ...(fromHook === undefined ? {} : { fromHook }),
-    } satisfies CompactionEntry<T>);
   }
 
   async appendCustomEntry(customType: string, data?: unknown): Promise<string> {
@@ -648,10 +562,6 @@ export function promiseSessionAsShape(session: PromiseSession): SessionShape {
     appendModelChange: (provider, modelId) =>
       wrap(() => session.appendModelChange(provider, modelId)),
     appendActiveToolsChange: (names) => wrap(() => session.appendActiveToolsChange(names)),
-    appendCompaction: (summary, firstKeptEntryId, tokensBefore, details, fromHook) =>
-      wrap(() =>
-        session.appendCompaction(summary, firstKeptEntryId, tokensBefore, details, fromHook),
-      ),
     appendCustomEntry: (customType, data) =>
       wrap(() => session.appendCustomEntry(customType, data)),
     appendCustomMessageEntry: (customType, content, display, details) =>

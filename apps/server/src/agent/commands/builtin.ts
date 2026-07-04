@@ -5,10 +5,4 @@ import type { PromptTemplate } from "@sakti-code/agent";
  * templates). These are advertised in the context endpoint so the
  * autocomplete `/` menu shows them alongside project commands.
  */
-export const BUILTIN_COMMANDS: PromptTemplate[] = [
-  {
-    name: "compact",
-    description: "Compact context — summarize history or force-reflect observations",
-    content: "",
-  },
-];
+export const BUILTIN_COMMANDS: PromptTemplate[] = [];

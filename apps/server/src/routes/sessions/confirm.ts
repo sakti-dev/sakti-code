@@ -28,8 +28,8 @@ export const confirmRoutes = new Hono()
       return c.json({ error: `Unknown ask kind: ${kind}` }, 400);
     }
 
-    // Lazy context reset — only the plan-approve handler calls this. Branches
-    // on OM mode (observe when OM is enabled, compact otherwise).
+    // Lazy context reset — only the plan-approve handler calls this. Forces
+    // an OM observe so the build agent starts with a clean context.
     const forceReset = buildForceReset(ctx, existing);
 
     const askCtx: AskCtx = {

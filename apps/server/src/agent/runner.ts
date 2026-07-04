@@ -5,7 +5,6 @@ import type {
   AgentHarnessEvent,
   PermissionRuleset,
   SessionStorageShape,
-  StuckGuardState,
   ThinkingLevel,
 } from "@sakti-code/agent";
 import {
@@ -29,7 +28,6 @@ import { getPermissionChannel, type PermissionFrame } from "../lib/permission-ch
 import {
   BRANCH_SUMMARY_PROMPTS,
   buildAgentTools,
-  COMPACTION_PROMPTS,
   DEFAULT_AGENT_NAME,
   rebuildTool,
   resolveOmScope,
@@ -254,48 +252,6 @@ export async function persistSkillEnabled(
   await ctx.repos.settings.delete(`session:${sessionId}:disabled_skill:${skillName}`);
 }
 
-/**
- * # Stuck-guard state persistence (§4)
- *
- * {@link StuckGuardState} (typed in `@sakti-code/agent`) tracks consecutive
- * auto-compactions so `checkCompaction` can pause when the context window is
- * too small (≥2 compacts in a row that still leave the prompt over threshold).
- * The pure decision lives in `packages/agent/.../auto-compaction.ts`; this
- * module owns the persistence so the counter survives across `runPrompt`
- * calls (each of which builds a fresh harness) and across app restarts.
- *
- * Keys (settings table):
- *   `session:<id>:consecutive_compacts`   — stringified non-negative int
- *   `session:<id>:auto_compaction_paused` — present ("1") iff the guard latched
- *
- * The paused key is deleted (not set to "0") when the guard clears, so the
- * common steady state keeps the settings table clean.
- */
-
-export function loadStuckGuardState(ctx: ServerContext, sessionId: string): StuckGuardState {
-  const rawCount = ctx.repos.settings.get(`session:${sessionId}:consecutive_compacts`);
-  const parsed = Number.parseInt(rawCount ?? "0", 10);
-  const consecutiveCompacts = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-  const paused = ctx.repos.settings.get(`session:${sessionId}:auto_compaction_paused`) === "1";
-  return { consecutiveCompacts, paused };
-}
-
-export async function persistStuckGuardState(
-  ctx: ServerContext,
-  sessionId: string,
-  state: StuckGuardState,
-): Promise<void> {
-  await ctx.repos.settings.set(
-    `session:${sessionId}:consecutive_compacts`,
-    String(state.consecutiveCompacts),
-  );
-  if (state.paused) {
-    await ctx.repos.settings.set(`session:${sessionId}:auto_compaction_paused`, "1");
-  } else {
-    await ctx.repos.settings.delete(`session:${sessionId}:auto_compaction_paused`);
-  }
-}
-
 export function resolveThinkingLevel(
   ctx: ServerContext,
   sessionId: string,
@@ -440,7 +396,6 @@ export function runPromptEffect(
     const editMode = resolveEditMode(ctx, sessionId);
 
     const thinkingLevel = resolveThinkingLevel(ctx, sessionId, session, auth.thinkingLevel);
-    const compactionSettings = settings.compaction();
 
     const env = new NodeExecutionEnv(project.cwd);
     const sessionInstance = new PromiseSession(storage);
@@ -494,7 +449,6 @@ export function runPromptEffect(
       env,
       model,
       session: sessionShape,
-      compactionPrompts: COMPACTION_PROMPTS,
       branchSummaryPrompts: BRANCH_SUMMARY_PROMPTS,
       skillsInstructions: SKILLS_INSTRUCTIONS,
       ...(ctx.log === undefined ? {} : { logger: ctx.log.agent, streamLogger: ctx.log.llm }),
@@ -602,8 +556,6 @@ export function runPromptEffect(
       storage,
       message,
       retrySettings: settings.retry(),
-      compactionSettings,
-      compactionPrompts: COMPACTION_PROMPTS,
       model,
       apiKey: auth.apiKey,
       ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
@@ -612,8 +564,6 @@ export function runPromptEffect(
       skills: activeSkills,
       templates: loadedContext.commands,
       cwd: project.cwd,
-      loadStuckGuard: () => Effect.sync(() => loadStuckGuardState(ctx, sessionId)),
-      persistStuckGuard: (s) => Effect.tryPromise(() => persistStuckGuardState(ctx, sessionId, s)),
       emit: eventCallback,
       registerRun: ({ harness: h, retryAbort, unsubscribe }) =>
         registerRun(sessionId, h, unsubscribe, retryAbort),

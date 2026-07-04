@@ -1,5 +1,4 @@
 import { createStore, produce, reconcile } from "solid-js/store";
-import { createLogger } from "~/lib/utils";
 import type {
   MessagePart,
   OmWindowState,
@@ -10,8 +9,6 @@ import type {
   UIMessage,
 } from "../types.ts";
 import { idleStreamState } from "../types.ts";
-
-const log = createLogger({ module: "session-store" });
 
 export interface PendingAsk {
   kind: "session" | "plan" | "completion";
@@ -58,10 +55,8 @@ export interface SessionStoreData {
 
 export interface SessionActions {
   addAssistantMessage: (msg: UIMessage) => void;
-  addCompactionMarker: (msgId: string) => void;
   addOmMarker: (msgId: string, marker: OmMarkerInput) => void;
   addToolCall: (msgId: string, toolCallId: string, toolName: string, input: unknown) => void;
-  appendCompactionToken: (msgId: string, delta: string) => void;
   appendTextToken: (msgId: string, delta: string) => void;
   appendThinkingToken: (msgId: string, delta: string) => void;
   clearCurrentMessage: () => void;
@@ -92,10 +87,6 @@ export interface SessionActions {
   setPendingAsk: (ask: PendingAsk) => void;
   setRetry: (retry: RetryState | null) => void;
   startTurn: (userMessage: UIMessage | null, startedAt?: number) => void;
-  updateCompactionMarker: (
-    msgId: string,
-    updates: Partial<Extract<MessagePart, { type: "compaction" }>>,
-  ) => void;
   updateOmMarker: (msgId: string, cycleId: string, updates: Partial<OmMarkerInput>) => void;
   updateOmStatus: (status: OmWindowState) => void;
   wasLastUserMessage: (text: string) => boolean;
@@ -357,71 +348,6 @@ export function createSessionStore(): SessionStore {
         }
       });
       setStore("streaming", "currentToolName", null);
-    },
-
-    addCompactionMarker(msgId) {
-      const loc = findMsg(msgId);
-      if (!loc) {
-        return;
-      }
-      setMsgParts(loc, (prev) => {
-        if (prev.some((p) => p.type === "compaction")) {
-          return prev;
-        }
-        return [
-          ...prev,
-          {
-            type: "compaction",
-            status: "loading",
-            text: "",
-            startedAt: Date.now(),
-          } as MessagePart,
-        ];
-      });
-    },
-
-    appendCompactionToken(msgId, delta) {
-      const loc = findMsg(msgId);
-      if (!loc) {
-        log.debug("appendCompactionToken — msgId not in location index", { msgId });
-        return;
-      }
-      setMsgParts(loc, (prev) => {
-        const idx = prev.findIndex((p) => p.type === "compaction");
-        if (idx < 0) {
-          log.debug("appendCompactionToken — no compaction part in message", {
-            msgId,
-            partCount: prev.length,
-            partTypes: prev.map((p) => p.type),
-          });
-          return prev;
-        }
-        const existing = prev[idx] as Extract<MessagePart, { type: "compaction" }>;
-        return [
-          ...prev.slice(0, idx),
-          { ...existing, text: existing.text + delta } as MessagePart,
-          ...prev.slice(idx + 1),
-        ];
-      });
-    },
-
-    updateCompactionMarker(msgId, updates) {
-      const loc = findMsg(msgId);
-      if (!loc) {
-        return;
-      }
-      setMsgParts(loc, (prev) => {
-        const idx = prev.findIndex((p) => p.type === "compaction");
-        if (idx < 0) {
-          return prev;
-        }
-        const existing = prev[idx] as Extract<MessagePart, { type: "compaction" }>;
-        return [
-          ...prev.slice(0, idx),
-          { ...existing, ...updates, type: "compaction" } as MessagePart,
-          ...prev.slice(idx + 1),
-        ];
-      });
     },
 
     addOmMarker(msgId, marker) {

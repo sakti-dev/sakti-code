@@ -8,14 +8,11 @@ import {
 } from "../../__tests__/helpers/faux-provider.ts";
 import {
   TEST_BRANCH_SUMMARY_PROMPTS,
-  TEST_COMPACTION_PROMPTS,
   TEST_SKILLS_INSTRUCTIONS,
-} from "../../__tests__/helpers/test-compaction-prompts.ts";
+} from "../../__tests__/helpers/test-prompt-bundles.ts";
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env.ts";
 import type { AgentHarness as AgentHarnessType } from "../../agent/agent-harness.ts";
 import { AgentHarness } from "../../agent/agent-harness.ts";
-import { parseCompactionSettings } from "../../memory/compaction/auto-compaction.ts";
-import type { StuckGuardState } from "../../memory/compaction/retry-loop.ts";
 import { parseRetrySettings } from "../../memory/compaction/retry-loop.ts";
 import type { SessionShape } from "../../session/session.ts";
 import { PromiseSession, promiseSessionAsShape } from "../../session/session.ts";
@@ -77,7 +74,6 @@ async function makeHarnessWithResponse(resources?: {
     session: sessionShape,
     model: registration.getModel(),
     streamFn: registration.streamFn,
-    compactionPrompts: TEST_COMPACTION_PROMPTS,
     branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
     skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
     ...(resources === undefined
@@ -95,9 +91,7 @@ async function makeHarnessWithResponse(resources?: {
 interface BaseDepsOverrides {
   emit?: (event: unknown) => void;
   harness: AgentHarnessType;
-  loadStuckGuard?: () => Effect.Effect<StuckGuardState, Error>;
   message?: string;
-  persistStuckGuard?: () => Effect.Effect<void, Error>;
   registerRun?: AgentRunDeps["registerRun"];
   sessionShape: SessionShape;
   skills?: Array<{
@@ -119,16 +113,11 @@ function baseDeps(overrides: BaseDepsOverrides) {
     storage: overrides.storage,
     message: overrides.message ?? "hello",
     retrySettings: parseRetrySettings({ auto_retry: "false" }),
-    compactionSettings: parseCompactionSettings({ auto_compaction: "false" }),
-    compactionPrompts: TEST_COMPACTION_PROMPTS,
     model: registrations[0]!.getModel(),
     apiKey: "test",
     skills: overrides.skills ?? [],
     templates: overrides.templates ?? [],
     cwd: "/tmp",
-    loadStuckGuard:
-      overrides.loadStuckGuard ?? (() => Effect.succeed({ consecutiveCompacts: 0, paused: false })),
-    persistStuckGuard: overrides.persistStuckGuard ?? (() => Effect.void),
     emit: overrides.emit ?? (() => {}),
     ...(overrides.registerRun === undefined ? {} : { registerRun: overrides.registerRun }),
     ...(overrides.unregisterRun === undefined ? {} : { unregisterRun: overrides.unregisterRun }),
@@ -272,31 +261,5 @@ describe("runAgentRunEffect planFirstTurn dispatch", () => {
     );
 
     expect(spy).toHaveBeenCalledWith("brainstorm", "hello");
-  });
-});
-
-describe("runAgentRunEffect stuck-guard", () => {
-  it("loads stuck-guard state at run start via the callback", async () => {
-    const { harness, sessionShape, storage } = await makeHarnessWithResponse();
-    const loadSpy = vi.fn(
-      () =>
-        Effect.succeed({
-          consecutiveCompacts: 0,
-          paused: false,
-        }) as Effect.Effect<StuckGuardState, Error>,
-    );
-
-    await Effect.runPromise(
-      runAgentRunEffect(
-        baseDeps({
-          harness,
-          sessionShape,
-          storage,
-          loadStuckGuard: loadSpy,
-        }),
-      ),
-    );
-
-    expect(loadSpy).toHaveBeenCalledOnce();
   });
 });

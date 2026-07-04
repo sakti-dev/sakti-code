@@ -1,7 +1,6 @@
 import type { AgentHarnessEvent } from "@sakti-code/agent";
 import type { SessionActions, SessionStoreData } from "./session-store.ts";
 import type { TokenBatcher } from "./token-batcher.ts";
-import { registerCompactionHandlers } from "./handlers/compaction-events.ts";
 import { registerLifecycleHandlers } from "./handlers/lifecycle-events.ts";
 import { registerMessageHandlers } from "./handlers/message-events.ts";
 import { registerOmHandlers } from "./handlers/om-events.ts";
@@ -42,7 +41,6 @@ export function ensureHandlersRegistered(): void {
   registerLifecycleHandlers();
   registerMessageHandlers();
   registerToolHandlers();
-  registerCompactionHandlers();
   registerOmHandlers();
   registerRetryHandlers();
 }

@@ -1,14 +1,13 @@
 import type { SessionRepo } from "@sakti-code/db";
 
 /**
- * Minimal context the ask-kind handlers need. Phase 4 covers status
- * transitions only; Phase 5 adds `forceReset` for the plan→build switch
- * (the route binds it to forced compaction or a forced OM observe based on
- * whether OM is enabled for the session).
+ * Minimal context the ask-kind handlers need. Covers status transitions plus
+ * `forceReset` for the plan→build switch (the route binds it to a forced OM
+ * observe so the build agent starts with a clean, plan-focused context).
  */
 export interface AskCtx {
   sessions: Pick<SessionRepo, "update">;
-  /** Force a context reset (compaction or OM observe) on plan→build. */
+  /** Force a context reset (OM observe) on plan→build. */
   forceReset?: (sessionId: string) => Promise<void>;
   /** Optional structured logger (warn level used when forceReset fails). */
   log?: {
@@ -44,7 +43,7 @@ export interface AskKindHandlers {
  *              here: the card's Create button calls the session-create REST
  *              route directly (the new mission is born in `planning`).
  * plan       — a planning mission's plan is approved → status flips to
- *              `building`. Phase 5 inserts forced compaction/observe here.
+ *              `building`. A forced OM observe runs here.
  * completion — a building mission declares completion → approve merges
  *              (status `merged`); reject requests changes (status `building`).
  */
@@ -59,12 +58,11 @@ export const ASK_KINDS: Record<AskKind, AskKindHandlers> = {
       await ctx.sessions.update(id, { status: "building" });
       // Force a context reset before the agent switch. The plan→build agent
       // swap invalidates the prompt cache anyway (system prompt + tools
-      // change), so compacting/observing the planning chatter costs nothing
-      // cached and gives the build agent a clean, plan-focused start. The
-      // approved plan body survives as the most recent entry (kept by
-      // prepareCompaction). Best-effort: a reset failure must not strand the
-      // mission — the status flip above is the user's durable intent, and the
-      // build agent still works on the un-compacted context.
+      // change), so observing the planning chatter costs nothing cached and
+      // gives the build agent a clean, plan-focused start. Best-effort: a
+      // reset failure must not strand the mission — the status flip above is
+      // the user's durable intent, and the build agent still works on the
+      // un-observed context.
       try {
         await ctx.forceReset?.(id);
       } catch (err) {

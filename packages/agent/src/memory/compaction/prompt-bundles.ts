@@ -1,25 +1,8 @@
 /**
- * Required prompt strings for the compaction algorithm.
- * Consumers must provide all four — the algorithm has no defaults.
- *
- * Reference implementation: apps/server/src/compaction/prompts.ts.
- */
-export interface CompactionPrompts {
-  /** Initial summarization prompt (no previous summary exists). */
-  readonly summarization: string;
-  /** System prompt for the summarization LLM call. */
-  readonly summarizationSystem: string;
-  /** Prompt for summarizing the prefix of a split turn. */
-  readonly turnPrefix: string;
-  /** Update prompt (previous summary exists, merge new messages). */
-  readonly update: string;
-}
-
-/**
  * Required prompt strings for branch summarization.
  * Consumers must provide all three.
  *
- * Reference implementation: apps/server/src/compaction/prompts.ts.
+ * Reference implementation: apps/server/src/agent/config/branch-summary-prompts.ts.
  */
 export interface BranchSummaryPrompts {
   /** Preamble prepended to the stored branch summary message. */

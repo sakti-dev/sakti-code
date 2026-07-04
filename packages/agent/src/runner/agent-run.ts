@@ -1,16 +1,12 @@
 import { readFile as readFileAsync } from "node:fs/promises";
-import type { AssistantMessage, Model } from "@sakti-code/llm";
+import type { Model } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
 import { Effect, Fiber, Stream } from "effect";
 import type { AgentHarness } from "../agent/agent-harness.ts";
-import { checkCompaction, runAutoCompactionEffect } from "../memory/compaction/auto-compaction.ts";
-import type { CompactionSettings } from "../memory/compaction/compaction.ts";
-import type { CompactionPrompts } from "../memory/compaction/prompt-bundles.ts";
 import {
   executeWithRetryEffect,
   type RetryRunnerDepsEffect,
   type RetrySettings,
-  type StuckGuardState,
 } from "../memory/compaction/retry-loop.ts";
 import type { AgentHarnessEvent, PromptTemplate, Skill, ThinkingLevel } from "../harness-types.ts";
 import type { ObservationalMemoryOptions } from "../memory/observational-memory/config.ts";
@@ -23,14 +19,10 @@ const PROMPT_ARG_SPLIT = /\s+/;
 
 export interface AgentRunDeps {
   readonly apiKey: string;
-  readonly compactionPrompts: CompactionPrompts;
-  readonly compactionSettings: CompactionSettings;
   readonly cwd: string;
 
   readonly emit: (event: AgentHarnessEvent) => void;
   readonly harness: AgentHarness;
-
-  readonly loadStuckGuard: () => Effect.Effect<StuckGuardState, Error>;
 
   readonly log?: Logger;
 
@@ -42,7 +34,6 @@ export interface AgentRunDeps {
         readonly getObservationsBlock: () => Promise<string | undefined>;
       }
     | undefined;
-  readonly persistStuckGuard: (state: StuckGuardState) => Effect.Effect<void, Error>;
   /** Override node:fs readFile (used by planFirstTurn for @file expansion). */
   readonly readFile?: ReadFile;
 
@@ -70,8 +61,8 @@ export interface AgentRunDeps {
 /**
  * Run one agent prompt end-to-end: subscribe the harness event stream, register
  * the run (if hook provided), run `executeWithRetryEffect` with retry-deps that
- * dispatch `planFirstTurn` and apply auto-compaction policy (including the
- * stuck-guard), and clean up on exit.
+ * dispatch `planFirstTurn`, and clean up on exit. Context-window management is
+ * handled by observational memory (observe → prune), not compaction.
  *
  * This is the consumer-agnostic orchestration previously inlined in
  * `apps/server/src/agent/runner.ts:runPromptEffect`. The caller builds the
@@ -81,24 +72,8 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
   // Hoisted so the Effect.ensuring finalizer (outside the gen body) can drain it.
   let omEngine: ObservationalMemoryEngine | undefined;
   return Effect.gen(function* () {
-    const {
-      harness,
-      sessionShape,
-      storage,
-      message,
-      retrySettings,
-      compactionSettings,
-      compactionPrompts,
-      model,
-      apiKey,
-      skills,
-      templates,
-      cwd,
-      emit,
-      loadStuckGuard,
-      persistStuckGuard,
-    } = deps;
-    const thinkingLevel = deps.thinkingLevel;
+    const { harness, sessionShape, storage, message, retrySettings, skills, templates, cwd, emit } =
+      deps;
     const log = deps.log;
     const readFile = deps.readFile ?? ((p: string) => readFileAsync(p).catch(() => null));
 
@@ -179,13 +154,6 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
       }
     }
 
-    // ── Stuck-guard state (cached for this run's callbacks) ──────
-    const stuckGuard = yield* loadStuckGuard();
-    log?.debug("stuck-guard loaded", {
-      consecutiveCompacts: stuckGuard.consecutiveCompacts,
-      paused: stuckGuard.paused,
-    });
-
     // ── Build the retry deps ────────────────────────────────────
     let firstTurn = true;
     const depsEffect: RetryRunnerDepsEffect = {
@@ -226,65 +194,6 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
           }
           log?.info("turn retry");
           return yield* harness.continueEffect();
-        }),
-      checkCompaction: (assistantMessage: AssistantMessage) =>
-        Effect.gen(function* () {
-          const entries = yield* sessionShape.getBranch();
-          const messages = (yield* sessionShape.buildContext()).messages;
-          let latestCompactionTimestamp: number | undefined;
-          for (let i = entries.length - 1; i >= 0; i--) {
-            const entry = entries[i];
-            if (entry?.type === "compaction") {
-              const ts = Date.parse(entry.timestamp);
-              latestCompactionTimestamp = Number.isNaN(ts) ? undefined : ts;
-              break;
-            }
-          }
-          const decision = checkCompaction({
-            message: assistantMessage,
-            messages,
-            contextWindow: model.contextWindow ?? 0,
-            settings: compactionSettings,
-            ...(latestCompactionTimestamp === undefined ? {} : { latestCompactionTimestamp }),
-            ...(stuckGuard.consecutiveCompacts > 0
-              ? { consecutiveCompacts: stuckGuard.consecutiveCompacts }
-              : {}),
-          });
-          if (decision.pauseAutoCompaction) {
-            stuckGuard.paused = true;
-            yield* persistStuckGuard(stuckGuard);
-            log?.warn("auto-compaction paused (stuck guard)", {
-              consecutiveCompacts: stuckGuard.consecutiveCompacts,
-            });
-          } else if (decision.resetStuckGuard) {
-            stuckGuard.consecutiveCompacts = 0;
-            stuckGuard.paused = false;
-            yield* persistStuckGuard(stuckGuard);
-          }
-          return decision;
-        }),
-      runCompaction: () =>
-        Effect.gen(function* () {
-          if (stuckGuard.paused) {
-            return {
-              ok: false as const,
-              errorMessage: "Auto-compaction paused (stuck guard)",
-            };
-          }
-          const result = yield* runAutoCompactionEffect({
-            session: sessionShape,
-            model,
-            apiKey,
-            settings: compactionSettings,
-            prompts: compactionPrompts,
-            ...(thinkingLevel === undefined ? {} : { thinkingLevel }),
-            onDelta: (text) => emit({ type: "compaction_delta", text }),
-          });
-          if (result.ok) {
-            stuckGuard.consecutiveCompacts += 1;
-            yield* persistStuckGuard(stuckGuard);
-          }
-          return result;
         }),
     };
 

@@ -14,19 +14,11 @@ import type {
 export type { ThinkingLevel } from "./types";
 
 import type { PermissionRuleset } from "./agents/permission";
-import type {
-  BranchSummaryPrompts,
-  CompactionPrompts,
-  SkillsInstructions,
-} from "./memory/compaction/prompt-bundles";
+import type { BranchSummaryPrompts, SkillsInstructions } from "./memory/compaction/prompt-bundles";
 import type {
   BranchSummaryEntry,
-  CompactionEntry,
-  CompactionPreparation,
-  CompactResult,
   FileInfo,
   SessionShape,
-  SessionTreeEntry,
   TreePreparation,
 } from "./session/entries";
 
@@ -34,10 +26,6 @@ export type {
   ActiveToolsChangeEntry,
   BranchSummaryEntry,
   BranchSummaryResult,
-  CompactionEntry,
-  CompactionPreparation,
-  CompactionSettings,
-  CompactResult,
   CustomEntry,
   CustomMessageEntry,
   FileInfo,
@@ -135,20 +123,6 @@ export class ExecutionError extends Schema.TaggedErrorClass<ExecutionError>()("E
   cause: Schema.optional(Schema.Defect()),
 }) {}
 
-export const CompactionErrorCode = Schema.Literals([
-  "aborted",
-  "summarization_failed",
-  "invalid_session",
-  "unknown",
-]);
-export type CompactionErrorCode = typeof CompactionErrorCode.Type;
-
-export class CompactionError extends Schema.TaggedErrorClass<CompactionError>()("CompactionError", {
-  code: CompactionErrorCode,
-  message: Schema.String,
-  cause: Schema.optional(Schema.Defect()),
-}) {}
-
 export const BranchSummaryErrorCode = Schema.Literals([
   "aborted",
   "summarization_failed",
@@ -172,7 +146,6 @@ export const AgentHarnessErrorCode = Schema.Literals([
   "session",
   "hook",
   "auth",
-  "compaction",
   "branch_summary",
   "unknown",
 ]);
@@ -265,7 +238,7 @@ export interface Shell {
 
 export interface ExecutionEnv extends FileSystem, Shell {}
 
-export type AgentHarnessPhase = "idle" | "turn" | "compaction" | "branch_summary";
+export type AgentHarnessPhase = "idle" | "turn" | "branch_summary";
 
 export interface QueueUpdateEvent {
   followUp: AgentMessage[];
@@ -330,20 +303,6 @@ export interface ToolResultEvent {
   type: "tool_result";
 }
 
-export interface SessionBeforeCompactEvent {
-  branchEntries: SessionTreeEntry[];
-  customInstructions?: string | undefined;
-  preparation: CompactionPreparation;
-  signal: AbortSignal;
-  type: "session_before_compact";
-}
-
-export interface SessionCompactEvent {
-  compactionEntry: CompactionEntry;
-  fromHook: boolean;
-  type: "session_compact";
-}
-
 export interface SessionBeforeTreeEvent {
   preparation: TreePreparation;
   signal: AbortSignal;
@@ -381,9 +340,9 @@ export interface ToolsUpdateEvent {
 }
 
 /**
- * Emitted when a cache-busting change is pending (deferred to compaction).
- * The UI subscribes to this to show "compact recommended" alerts — the user
- * deferred the cache cost, and this event tells them a compact would apply it.
+ * Emitted when a cache-busting change is pending (applied at the next turn).
+ * The UI subscribes to this to show a "refresh pending" alert — the swap was
+ * deferred to keep the current turn's prefix warm.
  */
 export interface CacheBustPendingEvent {
   /** Human-readable detail for UI alerts. */
@@ -415,8 +374,6 @@ export type AgentHarnessOwnEvent<
   | BeforeProviderRequestEvent
   | ToolCallEvent
   | ToolResultEvent
-  | SessionBeforeCompactEvent
-  | SessionCompactEvent
   | SessionBeforeTreeEvent
   | SessionTreeEvent
   | ModelUpdateEvent
@@ -455,11 +412,6 @@ export interface ToolResultPatch {
   terminate?: boolean;
 }
 
-export interface SessionBeforeCompactResult {
-  cancel?: boolean;
-  compaction?: CompactResult;
-}
-
 export interface SessionBeforeTreeResult {
   cancel?: boolean;
   customInstructions?: string;
@@ -474,8 +426,6 @@ export type AgentHarnessEventResultMap = {
   before_provider_request: BeforeProviderRequestResult | undefined;
   tool_call: ToolCallResult | undefined;
   tool_result: ToolResultPatch | undefined;
-  session_before_compact: SessionBeforeCompactResult | undefined;
-  session_compact: undefined;
   session_before_tree: SessionBeforeTreeResult | undefined;
   session_tree: undefined;
   model_update: undefined;
@@ -512,8 +462,6 @@ export interface AgentHarnessOptions<
   activeToolNames?: string[];
   /** Required: prompt bundle for the harness's branch-summary path. */
   branchSummaryPrompts: BranchSummaryPrompts;
-  /** Required: prompt bundle for the harness's idle-time compaction path. */
-  compactionPrompts: CompactionPrompts;
   env: ExecutionEnv;
   followUpMode?: QueueMode;
   getApiKeyAndHeaders?: (

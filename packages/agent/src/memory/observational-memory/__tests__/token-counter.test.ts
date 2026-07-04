@@ -155,17 +155,6 @@ describe("TokenCounter", () => {
       expect(count).toBeGreaterThan(0);
     });
 
-    it("counts compaction summary message", () => {
-      const msg: AgentMessage = {
-        role: "compactionSummary",
-        summary: "Compacted conversation summary",
-        tokensBefore: 5000,
-        timestamp: Date.now(),
-      };
-      const count = counter.countMessage(msg);
-      expect(count).toBeGreaterThan(0);
-    });
-
     it("user message with image part yields positive token count", () => {
       // 1x1 red PNG
       const tinyPng =

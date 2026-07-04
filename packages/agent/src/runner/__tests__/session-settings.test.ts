@@ -3,7 +3,6 @@ import { DEFAULT_SESSION_SETTINGS, parseSessionSettings } from "../session-setti
 
 describe("DEFAULT_SESSION_SETTINGS", () => {
   it("includes all keys used by the runner", () => {
-    expect(DEFAULT_SESSION_SETTINGS.auto_compaction).toBe("false");
     expect(DEFAULT_SESSION_SETTINGS.auto_retry).toBe("true");
     expect(DEFAULT_SESSION_SETTINGS.base_delay_ms).toBe("2000");
     expect(DEFAULT_SESSION_SETTINGS.follow_up_mode).toBe("all");
@@ -17,7 +16,6 @@ describe("parseSessionSettings", () => {
   it("returns defaults when raw is empty", () => {
     const s = parseSessionSettings({});
     expect(s.agent()).toBe("build");
-    expect(s.autoCompaction()).toBe(false);
     expect(s.autoRetry()).toBe(true);
     expect(s.editMode()).toBe("hashline");
     expect(s.followUpMode()).toBe("all");
@@ -28,7 +26,6 @@ describe("parseSessionSettings", () => {
   it("honors overrides", () => {
     const s = parseSessionSettings({
       agent: "explore",
-      auto_compaction: "true",
       auto_retry: "false",
       base_delay_ms: "500",
       edit_mode: "replace",
@@ -38,7 +35,6 @@ describe("parseSessionSettings", () => {
       thinking_level: "high",
     });
     expect(s.agent()).toBe("explore");
-    expect(s.autoCompaction()).toBe(true);
     expect(s.autoRetry()).toBe(false);
     expect(s.editMode()).toBe("replace");
     expect(s.followUpMode()).toBe("one-at-a-time");
@@ -74,17 +70,5 @@ describe("parseSessionSettings", () => {
       baseDelayMs: 2000,
       maxRetries: 3,
     });
-  });
-
-  it("compaction() delegates to parseCompactionSettings", () => {
-    const s = parseSessionSettings({ auto_compaction: "true" });
-    expect(s.compaction().enabled).toBe(true);
-    expect(s.compaction().reserveTokens).toBe(16_384);
-    expect(s.compaction().keepRecentTokens).toBe(20_000);
-  });
-
-  it("compaction() reflects disabled by default (DEFAULT_SESSION_SETTINGS has auto_compaction=false)", () => {
-    const s = parseSessionSettings({});
-    expect(s.compaction().enabled).toBe(false);
   });
 });
