@@ -101,7 +101,7 @@ export default function WorkspaceLayout(): JSX.Element {
                   <IntakeGrid projectId={activeProjectId()!} />
                 </Show>
                 <Show when={activeInnerTab()?.kind === "intake"}>
-                  <IntakeChat projectId={activeProjectId()!} sessionId={activeSessionId()!} />
+                  <IntakeChat projectId={activeProjectId()!} sessionId={activeSessionId()} />
                 </Show>
                 <Show when={activeInnerTab()?.kind === "mission"}>
                   <MissionChatView sessionId={activeSessionId()!} />

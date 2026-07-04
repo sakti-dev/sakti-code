@@ -43,7 +43,7 @@ export default function SessionTabs(props: SessionTabsProps): JSX.Element {
   const activeIdx = () => getActiveSessionIndex(props.projectId);
 
   return (
-    <div class="relative z-0 flex h-9 shrink-0 items-end bg-card pt-1.5">
+    <div class="relative z-0 flex h-10 shrink-0 items-end overflow-hidden bg-card">
       <div class="scrollbar-none flex min-w-0 flex-1 items-stretch">
         <For each={tabs()}>
           {(tab, index) => {
@@ -62,6 +62,12 @@ export default function SessionTabs(props: SessionTabsProps): JSX.Element {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     switchSessionTab(props.projectId, index());
+                  }
+                }}
+                onPointerDown={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    if (tab.kind !== "home") closeSessionTab(props.projectId, index());
                   }
                 }}
                 role="tab"
@@ -106,8 +112,6 @@ export default function SessionTabs(props: SessionTabsProps): JSX.Element {
           }}
         </For>
       </div>
-
-      <div class="pointer-events-none absolute right-0 bottom-0 left-0 h-px bg-border" />
     </div>
   );
 }

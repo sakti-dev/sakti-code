@@ -5,7 +5,7 @@ import ProjectTabs from "./project-tabs";
 
 export default function Header(): JSX.Element {
   return (
-    <div class="flex h-10 items-center bg-card px-4">
+    <div class="flex h-10 items-center bg-card px-4 border-b border-border">
       <div class="flex-1" />
       <ProjectTabs />
       <div class="flex flex-1 justify-end">

@@ -1,6 +1,6 @@
 import { For, createResource, type JSX, Show } from "solid-js";
 import { useStore } from "~/stores/store-context";
-import { openSessionTab } from "~/stores/workspace/session-tab-store";
+import { openDraftIntakeTab, openSessionTab } from "~/stores/workspace/session-tab-store";
 import { IntakeCard } from "./intake-card";
 
 interface IntakeGridProps {
@@ -15,11 +15,8 @@ export const IntakeGrid = (props: IntakeGridProps): JSX.Element => {
     async (projectId) => actions.listChildIntakes(projectId),
   );
 
-  const handleNewIntake = async () => {
-    const created = await actions.createChildIntake(props.projectId);
-    if (created) {
-      openSessionTab(props.projectId, created.id, "intake");
-    }
+  const handleNewIntake = () => {
+    openDraftIntakeTab(props.projectId);
   };
 
   return (
@@ -33,7 +30,7 @@ export const IntakeGrid = (props: IntakeGridProps): JSX.Element => {
         </div>
         <button
           class="shrink-0 rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90"
-          onClick={() => void handleNewIntake()}
+          onClick={() => handleNewIntake()}
           type="button"
         >
           New intake

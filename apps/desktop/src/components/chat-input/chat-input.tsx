@@ -24,6 +24,7 @@ export interface ChatInputProps {
   disabled?: boolean;
   placeholder?: string;
   sessionId: string | null;
+  onSend?: (text: string) => void | Promise<void>;
 }
 
 export function ChatInput(props: ChatInputProps): JSX.Element {
@@ -166,14 +167,19 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     onCleanup(() => clearInterval(interval));
   });
 
-  const canSend = () => value().trim().length > 0 && !isGenerating() && !!props.sessionId;
+  const canSend = () =>
+    value().trim().length > 0 && !isGenerating() && (!!props.sessionId || !!props.onSend);
 
   const send = () => {
-    if (!(canSend() && props.sessionId)) {
+    if (!canSend()) {
       return;
     }
     const text = value().trim();
-    actions.sendPrompt(props.sessionId, text);
+    if (props.onSend) {
+      void props.onSend(text);
+    } else if (props.sessionId) {
+      actions.sendPrompt(props.sessionId, text);
+    }
     chipApi?.clear();
   };
 

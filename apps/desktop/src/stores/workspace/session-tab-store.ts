@@ -1,4 +1,4 @@
-import { createEffect, createRoot, createSignal } from "solid-js";
+import { createSignal } from "solid-js";
 
 export type SessionTabKind = "home" | "intake" | "mission";
 
@@ -33,7 +33,14 @@ function loadFromStorage(): Record<string, ProjectTabStrip> {
 
 function saveToStorage(data: Record<string, ProjectTabStrip>): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const filtered: Record<string, ProjectTabStrip> = {};
+    for (const [pid, state] of Object.entries(data)) {
+      const realTabs = state.tabs.filter((t) => t.kind === "home" || t.sessionId !== null);
+      if (realTabs.length === 0) continue;
+      const activeIndex = Math.min(state.activeIndex, realTabs.length - 1);
+      filtered[pid] = { tabs: realTabs, activeIndex };
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
   } catch {
     // non-fatal
   }
@@ -42,11 +49,9 @@ function saveToStorage(data: Record<string, ProjectTabStrip>): void {
 const initial = loadFromStorage();
 const [stripState, setStripState] = createSignal<Record<string, ProjectTabStrip>>(initial);
 
-createRoot(() => {
-  createEffect(() => {
-    saveToStorage(stripState());
-  });
-});
+function persist(): void {
+  saveToStorage(stripState());
+}
 
 function mutateProject(projectId: string, fn: (state: ProjectTabStrip) => ProjectTabStrip): void {
   setStripState((prev) => {
@@ -96,6 +101,28 @@ export function openSessionTab(projectId: string, sessionId: string, kind: Sessi
   });
 }
 
+export function openDraftIntakeTab(projectId: string): void {
+  ensureProjectTabs(projectId);
+  mutateProject(projectId, (state) => {
+    return {
+      tabs: [...state.tabs, { kind: "intake", sessionId: null }],
+      activeIndex: state.tabs.length,
+    };
+  });
+}
+
+export function promoteDraftIntake(projectId: string, sessionId: string): void {
+  mutateProject(projectId, (state) => {
+    const idx = state.activeIndex;
+    if (idx < 0 || idx >= state.tabs.length) return state;
+    const tab = state.tabs[idx];
+    if (!tab || tab.kind !== "intake" || tab.sessionId !== null) return state;
+    const tabs = state.tabs.map((t, i) => (i === idx ? { ...t, sessionId } : t));
+    return { ...state, tabs };
+  });
+  persist();
+}
+
 export function closeSessionTab(projectId: string, index: number): void {
   if (index === 0) return;
   mutateProject(projectId, (state) => {
@@ -108,6 +135,7 @@ export function closeSessionTab(projectId: string, index: number): void {
     }
     return { tabs: newTabs, activeIndex: newActive };
   });
+  persist();
 }
 
 export function switchSessionTab(projectId: string, index: number): void {
@@ -115,6 +143,7 @@ export function switchSessionTab(projectId: string, index: number): void {
     if (index < 0 || index >= state.tabs.length) return state;
     return { ...state, activeIndex: index };
   });
+  persist();
 }
 
 export function filterStaleSessions(projectId: string, validSessionIds: Set<string>): void {

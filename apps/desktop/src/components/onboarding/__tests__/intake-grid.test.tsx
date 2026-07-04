@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   listChildIntakes: vi.fn(
     async () => [] as Array<{ id: string; title: string | null; updatedAt: number }>,
   ),
-  createChildIntake: vi.fn(async () => ({ id: "new-1" })),
+  openDraftIntakeTab: vi.fn(),
   openSessionTab: vi.fn(),
 }));
 
@@ -13,12 +13,12 @@ vi.mock("~/stores/store-context", () => ({
   useStore: () => ({
     actions: {
       listChildIntakes: mocks.listChildIntakes,
-      createChildIntake: mocks.createChildIntake,
     },
   }),
 }));
 
 vi.mock("~/stores/workspace/session-tab-store", () => ({
+  openDraftIntakeTab: mocks.openDraftIntakeTab,
   openSessionTab: mocks.openSessionTab,
 }));
 
@@ -49,7 +49,7 @@ describe("IntakeGrid", () => {
     );
   });
 
-  it("opens intake as session tab when card is clicked", async () => {
+  it("opens existing intake as session tab when card is clicked", async () => {
     mocks.listChildIntakes.mockResolvedValueOnce([CHILD_A]);
     render(() => <IntakeGrid projectId="p1" />);
 
@@ -59,7 +59,7 @@ describe("IntakeGrid", () => {
     expect(mocks.openSessionTab).toHaveBeenCalledWith("p1", "child-a", "intake");
   });
 
-  it("creates child and opens as session tab when New intake is clicked", async () => {
+  it("opens a draft intake tab (no DB session) when New intake is clicked", async () => {
     mocks.listChildIntakes.mockResolvedValueOnce([]);
     render(() => <IntakeGrid projectId="p1" />);
 
@@ -67,9 +67,8 @@ describe("IntakeGrid", () => {
       expect(screen.getByRole("button", { name: /New intake/i })).toBeTruthy(),
     );
     fireEvent.click(screen.getByRole("button", { name: /New intake/i }));
-    await new Promise((r) => setTimeout(r, 0));
 
-    expect(mocks.createChildIntake).toHaveBeenCalledWith("p1");
-    expect(mocks.openSessionTab).toHaveBeenCalledWith("p1", "new-1", "intake");
+    expect(mocks.openDraftIntakeTab).toHaveBeenCalledWith("p1");
+    expect(mocks.openSessionTab).not.toHaveBeenCalled();
   });
 });

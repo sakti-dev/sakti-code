@@ -7,18 +7,21 @@ import {
   closeSessionTab,
   getSessionTabIndex,
   openSessionTab,
+  promoteDraftIntake,
 } from "~/stores/workspace/session-tab-store";
 import { EmptyState } from "./empty-state";
 
 interface IntakeChatProps {
   projectId: string;
-  sessionId: string;
+  sessionId: string | null;
 }
 
 export const IntakeChat = (props: IntakeChatProps): JSX.Element => {
   const { sessions, actions } = useStore();
 
-  const sessionStore = createMemo(() => sessions.get(props.sessionId));
+  const sessionStore = createMemo(() =>
+    props.sessionId ? sessions.get(props.sessionId) : undefined,
+  );
 
   let lastLoadedId: string | null = null;
   createEffect(() => {
@@ -32,12 +35,22 @@ export const IntakeChat = (props: IntakeChatProps): JSX.Element => {
   const turns = createMemo(() => sessionStore()?.store.turns ?? []);
   const hasMessages = () => turns().length > 0;
 
+  const handleDraftSend = async (text: string) => {
+    const created = await actions.createChildIntake(props.projectId);
+    if (!created) return;
+    promoteDraftIntake(props.projectId, created.id);
+    actions.sendPrompt(created.id, text);
+  };
+
   const handleConfirmSession = async () => {
     const session = sessionStore();
     const ask = session?.store.pendingAsk;
-    if (!(session && ask)) return;
+    const sid = props.sessionId;
+    if (!(session && ask && sid)) {
+      return;
+    }
 
-    await actions.confirmAsk(props.sessionId, ask.kind, ask.body, "approve");
+    await actions.confirmAsk(sid, ask.kind, ask.body, "approve");
 
     const title =
       ask.body
@@ -51,7 +64,7 @@ export const IntakeChat = (props: IntakeChatProps): JSX.Element => {
 
     session.actions.clearPendingAsk();
 
-    const intakeIdx = getSessionTabIndex(props.projectId, props.sessionId);
+    const intakeIdx = getSessionTabIndex(props.projectId, sid);
     if (intakeIdx >= 0) closeSessionTab(props.projectId, intakeIdx);
     openSessionTab(props.projectId, missionSession.id, "mission");
 
@@ -61,7 +74,9 @@ export const IntakeChat = (props: IntakeChatProps): JSX.Element => {
   return (
     <div class="flex min-h-0 flex-1 flex-col">
       <Show
-        fallback={<MessageTimeline sessionId={props.sessionId} turns={turns} />}
+        fallback={
+          props.sessionId ? <MessageTimeline sessionId={props.sessionId} turns={turns} /> : null
+        }
         when={!hasMessages()}
       >
         <EmptyState />
@@ -78,7 +93,11 @@ export const IntakeChat = (props: IntakeChatProps): JSX.Element => {
           </div>
         )}
       </Show>
-      <ChatInput placeholder="Ask anything about this project…" sessionId={props.sessionId} />
+      <ChatInput
+        placeholder="Ask anything about this project…"
+        sessionId={props.sessionId}
+        onSend={props.sessionId === null ? handleDraftSend : undefined}
+      />
     </div>
   );
 };

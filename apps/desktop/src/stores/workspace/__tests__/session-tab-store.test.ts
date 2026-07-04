@@ -156,4 +156,68 @@ describe("session-tab-store", () => {
       expect(store.getSessionTabIndex("p1", "nope")).toBe(-1);
     });
   });
+
+  describe("openDraftIntakeTab", () => {
+    it("adds an intake tab with null sessionId", async () => {
+      const store = await freshStore();
+      store.ensureProjectTabs("p1");
+      store.openDraftIntakeTab("p1");
+      const tabs = store.getSessionTabs("p1");
+      expect(tabs).toEqual([
+        { kind: "home", sessionId: null },
+        { kind: "intake", sessionId: null },
+      ]);
+      expect(store.getActiveSessionIndex("p1")).toBe(1);
+    });
+
+    it("does NOT persist to localStorage", async () => {
+      const store = await freshStore();
+      store.ensureProjectTabs("p1");
+      store.openDraftIntakeTab("p1");
+      const raw = localStorage.getItem("sakti-session-tabs");
+      expect(raw).toBeNull();
+    });
+  });
+
+  describe("promoteDraftIntake", () => {
+    it("updates the active draft tab with a real sessionId", async () => {
+      const store = await freshStore();
+      store.ensureProjectTabs("p1");
+      store.openDraftIntakeTab("p1");
+      store.promoteDraftIntake("p1", "real-1");
+      expect(store.getSessionTabs("p1")).toEqual([
+        { kind: "home", sessionId: null },
+        { kind: "intake", sessionId: "real-1" },
+      ]);
+    });
+
+    it("persists to localStorage after promotion", async () => {
+      const store = await freshStore();
+      store.ensureProjectTabs("p1");
+      store.openDraftIntakeTab("p1");
+      store.promoteDraftIntake("p1", "real-1");
+      const raw = localStorage.getItem("sakti-session-tabs");
+      expect(raw).toBeTruthy();
+    });
+
+    it("does nothing if active tab is not a draft intake", async () => {
+      const store = await freshStore();
+      store.ensureProjectTabs("p1");
+      store.promoteDraftIntake("p1", "real-1");
+      expect(store.getSessionTabs("p1")).toEqual([{ kind: "home", sessionId: null }]);
+    });
+  });
+
+  describe("saveToStorage filters draft tabs", () => {
+    it("does not persist draft intake tabs (null sessionId)", async () => {
+      const store = await freshStore();
+      store.ensureProjectTabs("p1");
+      store.openDraftIntakeTab("p1");
+      store.switchSessionTab("p1", 0);
+      const raw = localStorage.getItem("sakti-session-tabs");
+      expect(raw).toBeTruthy();
+      const parsed = JSON.parse(raw!);
+      expect(parsed["p1"].tabs).toEqual([{ kind: "home", sessionId: null }]);
+    });
+  });
 });

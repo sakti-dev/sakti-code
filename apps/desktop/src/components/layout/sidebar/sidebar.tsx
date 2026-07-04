@@ -5,7 +5,11 @@ import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
 import { activeProjectTab } from "~/stores/workspace/project-tab-store";
-import { getActiveSessionTab, openSessionTab } from "~/stores/workspace/session-tab-store";
+import {
+  getActiveSessionTab,
+  openDraftIntakeTab,
+  openSessionTab,
+} from "~/stores/workspace/session-tab-store";
 import { setSidebarOpen, sidebarOpen } from "~/stores/workspace/ui-signals";
 import { ArchivedAccordion, type ArchivedMission } from "./archived-accordion.tsx";
 import { MissionRow, type StreamPhase } from "./mission-row.tsx";
@@ -79,11 +83,10 @@ export default function Sidebar(): JSX.Element {
     void actions.deleteSession(sessionId);
   };
 
-  const handleNewMission = async () => {
+  const handleNewMission = () => {
     const pid = activeProjectId();
     if (!pid) return;
-    const intake = await actions.createChildIntake(pid);
-    if (intake) openSessionTab(pid, intake.id, "intake");
+    openDraftIntakeTab(pid);
   };
 
   return (
@@ -109,7 +112,7 @@ export default function Sidebar(): JSX.Element {
           sidebarOpen() ? "translate-x-0" : "-translate-x-full md:hidden",
         )}
       >
-        <div class="flex items-center justify-between px-3 py-2">
+        <div class="flex h-10 items-center justify-between px-3">
           <span class="font-medium text-muted-foreground text-xs uppercase tracking-wider">
             Missions
           </span>
