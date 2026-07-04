@@ -6,13 +6,15 @@ export function registerToolHandlers(): void {
     if (msgId) {
       ctx.actions.addToolCall(msgId, event.toolCallId, event.toolName, event.args);
     }
-    if (event.toolName === "propose_session") {
-      const args = event.args as { title?: unknown; message?: unknown };
-      if (typeof args.title === "string" && typeof args.message === "string") {
-        ctx.actions.setProposedSession({
-          message: args.message,
-          title: args.title,
-        });
+    if (event.toolName === "ask") {
+      const args = event.args as { kind?: unknown; body?: unknown };
+      if (typeof args.body === "string") {
+        const kind = typeof args.kind === "string" ? args.kind : undefined;
+        // Only the wired gate kinds surface a confirmation card; an ask with
+        // no/unknown kind is an open question that stays in the transcript.
+        if (kind === "session" || kind === "plan" || kind === "completion") {
+          ctx.actions.setPendingAsk({ kind, body: args.body });
+        }
       }
     }
   });

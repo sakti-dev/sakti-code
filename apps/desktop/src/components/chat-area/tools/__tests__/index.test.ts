@@ -21,7 +21,7 @@ describe("tool registry composition", () => {
       "find",
       "webfetch",
       "websearch",
-      "propose_session",
+      "ask",
     ]) {
       const d = getToolDescriptor(name);
       expect(d.names[0]).toBe(name);

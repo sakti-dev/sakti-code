@@ -1,5 +1,5 @@
 import { createEffect, createMemo, type JSX, Show } from "solid-js";
-import { ProposedSessionCard } from "~/components/chat-area/parts/proposed-session-card";
+import { AskCard } from "~/components/chat-area/parts/ask-card";
 import { MessageTimeline } from "~/components/chat-area/timeline/message-timeline";
 import { ChatInput } from "~/components/chat-input/chat-input";
 import { useStore } from "~/stores/store-context";
@@ -41,19 +41,27 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
 
   const handleConfirmSession = async () => {
     const session = sessionStore();
-    const proposal = session?.store.proposedSession;
-    if (!(session && proposal && props.intakeSessionId)) {
+    const ask = session?.store.pendingAsk;
+    if (!(session && ask && props.intakeSessionId)) {
       return;
     }
 
-    const taskSession = await actions.createSession(props.projectId, proposal.title);
-    if (!taskSession) {
+    // Derive a short title from the brief's first non-empty line.
+    const title =
+      ask.body
+        .split("\n")
+        .map((l) => l.trim())
+        .find((l) => l.length > 0)
+        ?.slice(0, 80) ?? undefined;
+
+    const missionSession = await actions.createSession(props.projectId, title);
+    if (!missionSession) {
       return;
     }
 
-    session.actions.clearProposedSession();
-    setTabSession(props.projectId, taskSession.id);
-    actions.sendPrompt(taskSession.id, proposal.message);
+    session.actions.clearPendingAsk();
+    setTabSession(props.projectId, missionSession.id);
+    actions.sendPrompt(missionSession.id, ask.body);
   };
 
   return (
@@ -64,13 +72,14 @@ export const OnboardingPanel = (props: OnboardingPanelProps): JSX.Element => {
       >
         <EmptyState />
       </Show>
-      <Show when={sessionStore()?.store.proposedSession}>
-        {(proposal) => (
+      <Show when={sessionStore()?.store.pendingAsk}>
+        {(ask) => (
           <div class="px-4 pb-2">
-            <ProposedSessionCard
-              onConfirm={handleConfirmSession}
-              onReject={() => sessionStore()?.actions.clearProposedSession()}
-              proposal={proposal()}
+            <AskCard
+              kind={ask().kind}
+              body={ask().body}
+              onApprove={handleConfirmSession}
+              onReject={() => sessionStore()?.actions.clearPendingAsk()}
             />
           </div>
         )}

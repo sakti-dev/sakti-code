@@ -1,10 +1,10 @@
 import * as store from "./store.tsx";
 import type { ToolDescriptor } from "./store.tsx";
+import { askTool } from "./registry/ask.tsx";
 import { bashTool } from "./registry/bash.tsx";
 import { editTool } from "./registry/edit.tsx";
 import { findTool } from "./registry/find.tsx";
 import { grepTool } from "./registry/grep.tsx";
-import { proposeSessionTool } from "./registry/propose-session.tsx";
 import { readTool } from "./registry/read.tsx";
 import { webfetchTool } from "./registry/webfetch.tsx";
 import { websearchTool } from "./registry/websearch.tsx";
@@ -19,7 +19,7 @@ const ALL: ToolDescriptor[] = [
   findTool,
   webfetchTool,
   websearchTool,
-  proposeSessionTool,
+  askTool,
 ];
 
 let initialized = false;

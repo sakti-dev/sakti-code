@@ -69,19 +69,32 @@ describe("tool handlers", () => {
     expect(part).toMatchObject({ type: "tool_call", status: "error" });
   });
 
-  it("propose_session tool sets proposedSession", () => {
+  it("ask tool with kind=session sets pendingAsk", () => {
     const { session, dispatch } = setupHandlers();
     dispatch({ message: userMsg("hi"), type: "message_start" });
     dispatch({ message: assistantMsg(), type: "message_start" });
     dispatch({
-      args: { title: "My Session", message: "Let's build X" },
+      args: { kind: "session", body: "Let's build X" },
       toolCallId: "tc1",
-      toolName: "propose_session",
+      toolName: "ask",
       type: "tool_execution_start",
     });
-    expect(session.store.proposedSession).toMatchObject({
-      title: "My Session",
-      message: "Let's build X",
+    expect(session.store.pendingAsk).toMatchObject({
+      kind: "session",
+      body: "Let's build X",
     });
+  });
+
+  it("ask tool without a known kind does not set pendingAsk (open question)", () => {
+    const { session, dispatch } = setupHandlers();
+    dispatch({ message: userMsg("hi"), type: "message_start" });
+    dispatch({ message: assistantMsg(), type: "message_start" });
+    dispatch({
+      args: { body: "which branch?" },
+      toolCallId: "tc1",
+      toolName: "ask",
+      type: "tool_execution_start",
+    });
+    expect(session.store.pendingAsk).toBeNull();
   });
 });
