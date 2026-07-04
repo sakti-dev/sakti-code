@@ -1,51 +1,22 @@
-import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { createMemo, For, onCleanup, onMount, type JSX, Show } from "solid-js";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Separator } from "~/components/ui/separator";
 import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
-import { openProjectTab } from "~/stores/workspace/tab-store";
+import { activeTab, openProjectTab } from "~/stores/workspace/tab-store";
 import { setSidebarOpen, sidebarOpen } from "~/stores/workspace/ui-signals";
-import { AddProjectInput } from "./add-project-input.tsx";
-import { MemorySidebarCard } from "./memory-sidebar-card.tsx";
-import { ProjectContextMenu } from "./project-context-menu.tsx";
-import { ProjectGroup } from "./project-group.tsx";
+import { ArchivedAccordion, type ArchivedMission } from "./archived-accordion.tsx";
+import { MissionRow, type StreamPhase } from "./mission-row.tsx";
 
-export default function Sidebar() {
+export default function Sidebar(): JSX.Element {
   const { server, actions, sessions } = useStore();
-  const [expandedProjects, setExpandedProjects] = createSignal<Set<string>>(new Set());
-  const [showAddInput, setShowAddInput] = createSignal(false);
-
-  const activeOmStatus = createMemo(() => {
-    const id = server.store.activeSessionId;
-    if (!id) return null;
-    return sessions.get(id).store.omStatus;
-  });
-  const [contextMenu, setContextMenu] = createSignal<{
-    projectId: string;
-    x: number;
-    y: number;
-  } | null>(null);
 
   onMount(() => {
-    void actions.loadProjects();
     document.addEventListener("keydown", handleKeyDown);
   });
-
   onCleanup(() => {
     document.removeEventListener("keydown", handleKeyDown);
-  });
-
-  createEffect(() => {
-    const projectId = server.store.activeProjectId;
-    if (projectId) {
-      void actions.loadSessions(projectId);
-      setExpandedProjects((prev) => {
-        const next = new Set(prev);
-        next.add(projectId);
-        return next;
-      });
-    }
   });
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,108 +26,63 @@ export default function Sidebar() {
     }
   };
 
-  const toggleProject = (projectId: string) => {
-    setExpandedProjects((prev) => {
-      const next = new Set(prev);
-      if (next.has(projectId)) {
-        next.delete(projectId);
-      } else {
-        next.add(projectId);
-      }
-      return next;
-    });
+  const activeProjectId = () => activeTab()?.projectId ?? null;
+
+  const missions = createMemo(() => {
+    const pid = activeProjectId();
+    if (!pid) return [];
+    return server.store.sessionOrder
+      .map((id) => server.store.sessions[id])
+      .filter((s): s is NonNullable<typeof s> => !!s && s.projectId === pid && s.kind === "mission")
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  });
+
+  const activeMissions = () => missions().filter((m) => m.status !== "merged");
+  const archivedMissions = createMemo<ArchivedMission[]>(() =>
+    missions()
+      .filter((m) => m.status === "merged")
+      .map((m) => ({
+        id: m.id,
+        title: m.title,
+        updatedAt: m.updatedAt,
+        streamPhase: phaseOf(m.id),
+      })),
+  );
+
+  const phaseOf = (sessionId: string): StreamPhase => {
+    const reg = sessions.get(sessionId);
+    return (reg?.store.streaming.phase ?? "idle") as StreamPhase;
   };
+
+  const activeSessionId = () => activeTab()?.sessionId ?? null;
 
   const selectSession = (sessionId: string) => {
-    const session = server.store.sessions[sessionId];
-    if (session) {
-      openProjectTab(session.projectId, sessionId);
-    }
+    const pid = activeProjectId();
+    if (pid) openProjectTab(pid, sessionId);
   };
 
-  const handleNewSession = async (projectId: string) => {
-    const session = await actions.createSession(projectId);
-    openProjectTab(projectId, session?.id ?? null);
+  const handleNewMission = async () => {
+    const pid = activeProjectId();
+    if (!pid) return;
+    const intake = await actions.upsertIntakeSession(pid);
+    if (intake) openProjectTab(pid, intake.id);
   };
-
-  const handleAddProject = async () => {
-    try {
-      const res = await fetch("/api/dialog/folder");
-      if (res.status === 501) {
-        setShowAddInput(true);
-        return;
-      }
-      const data = (await res.json()) as { folderPath: string | null };
-      if (data.folderPath) {
-        const project = await actions.addProject(data.folderPath);
-        if (project) {
-          openProjectTab(project.id);
-        }
-      }
-    } catch {
-      setShowAddInput(true);
-    }
-  };
-
-  const handleRemoveProject = (projectId: string) => {
-    server.actions.removeProject(projectId);
-  };
-
-  const handleContextMenu = (projectId: string, e: MouseEvent) => {
-    e.preventDefault();
-    setContextMenu({ projectId, x: e.clientX, y: e.clientY });
-  };
-
-  const handleOpenInTerminal = (projectId: string) => {
-    const project = server.store.projects[projectId];
-    if (project) {
-      // TODO: Wire to terminal store
-    }
-  };
-
-  const handleOpenInEditor = (projectId: string) => {
-    const project = server.store.projects[projectId];
-    if (project) {
-      // TODO: Wire to native API
-    }
-  };
-
-  const handleCopyPath = (projectId: string) => {
-    const project = server.store.projects[projectId];
-    if (project) {
-      void navigator.clipboard.writeText(project.cwd).catch(() => {});
-    }
-  };
-
-  const sessionsForProject = (projectId: string) =>
-    server.store.sessionOrder
-      .map((id) => server.store.sessions[id])
-      .filter(
-        (s): s is NonNullable<typeof s> => !!s && s.projectId === projectId && s.kind === "mission",
-      )
-      .sort((a, b) => b.updatedAt - a.updatedAt);
-
-  const projectCount = () => server.store.projectOrder.length;
 
   return (
     <>
-      {/* Mobile backdrop */}
       <Show when={sidebarOpen()}>
         <button
           aria-label="Close sidebar"
           class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
           onClick={() => setSidebarOpen(false)}
           onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setSidebarOpen(false);
-            }
+            if (e.key === "Escape") setSidebarOpen(false);
           }}
           tabIndex={-1}
           type="button"
         />
       </Show>
 
-      {/* Sidebar panel */}
       <aside
         class={cn(
           "flex w-64 shrink-0 flex-col border-border border-r bg-card",
@@ -165,49 +91,28 @@ export default function Sidebar() {
           sidebarOpen() ? "translate-x-0" : "-translate-x-full md:hidden",
         )}
       >
-        {/* Projects section header */}
         <div class="flex items-center justify-between px-3 py-2">
           <span class="font-medium text-muted-foreground text-xs uppercase tracking-wider">
-            Projects
+            Missions
           </span>
           <div class="flex items-center gap-0.5">
-            <Tooltip content="Add project">
+            <Tooltip content="New mission">
               <button
-                class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-                onClick={handleAddProject}
+                class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+                disabled={!activeProjectId()}
+                onClick={handleNewMission}
                 type="button"
               >
                 <svg
-                  aria-label="Add project"
+                  aria-label="New mission"
                   class="h-3.5 w-3.5"
                   fill="currentColor"
                   role="img"
                   viewBox="0 0 16 16"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  <title>Add project</title>
+                  <title>New mission</title>
                   <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2z" />
-                </svg>
-              </button>
-            </Tooltip>
-            <Tooltip content="Refresh">
-              <button
-                class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-                onClick={() => {
-                  void actions.loadProjects();
-                }}
-                type="button"
-              >
-                <svg
-                  aria-label="Refresh projects"
-                  class="h-3.5 w-3.5"
-                  fill="currentColor"
-                  role="img"
-                  viewBox="0 0 16 16"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <title>Refresh projects</title>
-                  <path d="M13.836 2.477a.75.75 0 0 1 .75.75v3.182a.75.75 0 0 1-.75.75h-3.182a.75.75 0 0 1 0-1.5h1.37A5.508 5.508 0 0 0 8 3.5a5.5 5.5 0 1 0 5.215 3.772.75.75 0 1 1 1.423-.474A7 7 0 1 1 12.12 3.16l1.716.005z" />
                 </svg>
               </button>
             </Tooltip>
@@ -235,98 +140,42 @@ export default function Sidebar() {
 
         <Separator />
 
-        {/* Project tree */}
         <ScrollArea class="flex-1">
           <Show
             fallback={
-              <div class="flex flex-col items-center justify-center px-4 py-8 text-center">
-                <svg
-                  aria-label="No projects"
-                  class="mb-2 h-8 w-8 text-muted-foreground/50"
-                  fill="none"
-                  role="img"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.5"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <title>No projects</title>
-                  <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
-                </svg>
-                <span class="text-muted-foreground text-xs">No projects yet</span>
+              <div class="px-3 py-8 text-center text-muted-foreground text-xs">
+                {activeProjectId() ? "No missions yet" : "Select a project"}
               </div>
             }
-            when={projectCount() > 0}
+            when={activeMissions().length > 0}
           >
-            <For each={server.store.projectOrder}>
-              {(projectId) => {
-                const project = () => server.store.projects[projectId];
-                const sessions = () => sessionsForProject(projectId);
-                const isExpanded = () => expandedProjects().has(projectId);
-                const isActive = () => server.store.activeProjectId === projectId;
-
-                return (
-                  <Show when={project()}>
-                    {/* biome-ignore lint/a11y/noStaticElementInteractions: context menu requires div */}
-                    {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: context menu requires div */}
-                    <div onContextMenu={(e) => handleContextMenu(projectId, e)}>
-                      <ProjectGroup
-                        isActive={isActive()}
-                        isExpanded={isExpanded()}
-                        name={project()?.name ?? "Unknown"}
-                        onNewSession={handleNewSession}
-                        onRemove={handleRemoveProject}
-                        onSelectSession={selectSession}
-                        onToggle={toggleProject}
-                        projectId={projectId}
-                        sessions={sessions()}
-                      />
-                    </div>
-                  </Show>
-                );
-              }}
+            <For each={activeMissions()}>
+              {(m) => (
+                <MissionRow
+                  isActive={activeSessionId() === m.id}
+                  status={m.status}
+                  streamPhase={phaseOf(m.id)}
+                  title={m.title}
+                  updatedAt={m.updatedAt}
+                  onClick={() => selectSession(m.id)}
+                />
+              )}
             </For>
           </Show>
 
-          {/* Add project input */}
-          <Show when={showAddInput()}>
-            <AddProjectInput
-              onAdd={(cwd) => {
-                setShowAddInput(false);
-                void actions.addProject(cwd);
-              }}
-              onCancel={() => setShowAddInput(false)}
+          <Show when={archivedMissions().length > 0}>
+            <ArchivedAccordion
+              missions={archivedMissions()}
+              activeId={activeSessionId()}
+              onSelect={selectSession}
             />
           </Show>
         </ScrollArea>
 
-        <MemorySidebarCard omStatus={activeOmStatus()} />
-
-        {/* Footer */}
         <div class="border-border border-t px-3 py-2">
           <span class="text-[10px] text-muted-foreground">v0.1.0</span>
         </div>
       </aside>
-
-      {/* Context menu */}
-      <Show when={contextMenu()}>
-        <ProjectContextMenu
-          onClose={() => setContextMenu(null)}
-          onCopyPath={handleCopyPath}
-          onOpenInEditor={handleOpenInEditor}
-          onOpenInTerminal={handleOpenInTerminal}
-          onRemove={(id) => {
-            handleRemoveProject(id);
-            setContextMenu(null);
-          }}
-          projectId={contextMenu()?.projectId ?? ""}
-          projectName={server.store.projects[contextMenu()?.projectId ?? ""]?.name ?? ""}
-          x={contextMenu()?.x ?? 0}
-          y={contextMenu()?.y ?? 0}
-        />
-      </Show>
     </>
   );
 }
