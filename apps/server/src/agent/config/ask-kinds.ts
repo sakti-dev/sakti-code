@@ -9,6 +9,12 @@ export interface AskCtx {
   sessions: Pick<SessionRepo, "update">;
   /** Force a context reset (OM observe) on plan→build. */
   forceReset?: (sessionId: string) => Promise<void>;
+  /**
+   * Graduate a child intake's transcript into the project's resource-scope OM
+   * (the main intake's memory). Bound by the confirm route only for intake
+   * sessions. Best-effort: a failure must not strand the mission spawn.
+   */
+  graduate?: (sessionId: string) => Promise<void>;
   /** Optional structured logger (warn level used when forceReset fails). */
   log?: {
     agent?: {
@@ -50,7 +56,20 @@ export interface AskKindHandlers {
 export const ASK_KINDS: Record<AskKind, AskKindHandlers> = {
   session: {
     card: "proposed-session",
-    onApprove: async () => {},
+    onApprove: async (id, _body, ctx) => {
+      // Graduate the child intake's transcript into the project's resource-scope
+      // OM so the next child/mission inherits it. Best-effort: the mission
+      // spawn (the card's Create button) is the user's durable intent and must
+      // not be blocked by a graduation failure.
+      try {
+        await ctx.graduate?.(id);
+      } catch (err) {
+        ctx.log?.agent?.warn?.("intake graduation failed (continuing)", {
+          sessionId: id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    },
   },
   plan: {
     card: "proposed-plan",

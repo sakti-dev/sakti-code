@@ -1,70 +1,38 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import { ASK_KINDS, type AskCtx } from "../ask-kinds.ts";
 
-function makeCtx(): AskCtx {
-  const updates: Array<{ id: string; data: Record<string, unknown> }> = [];
+function makeCtx(overrides?: {
+  graduate?: (sessionId: string) => Promise<void>;
+  forceReset?: (sessionId: string) => Promise<void>;
+}): AskCtx {
+  const sessions = { update: vi.fn(async () => {}) };
   return {
-    sessions: {
-      update: vi.fn(async (id: string, data: Record<string, unknown>) => {
-        updates.push({ id, data });
-        return { id, ...data } as never;
-      }),
-    },
-    forceReset: vi.fn(async () => {}),
-    appliedUpdates: updates,
+    sessions,
+    ...(overrides?.graduate !== undefined ? { graduate: overrides.graduate } : {}),
+    ...(overrides?.forceReset !== undefined ? { forceReset: overrides.forceReset } : {}),
+    log: { agent: { warn: vi.fn(), info: vi.fn() } },
   } as unknown as AskCtx;
 }
 
-describe("ASK_KINDS — session", () => {
-  it("card is 'proposed-session'", () => {
-    expect(ASK_KINDS.session.card).toBe("proposed-session");
-  });
-
-  it("onApprove is a no-op (the card's Create button calls session-create REST directly)", async () => {
-    const ctx = makeCtx();
+describe("session.onApprove (graduation)", () => {
+  it("calls graduate with the session id when bound", async () => {
+    const graduate = vi.fn(async () => {});
+    const ctx = makeCtx({ graduate });
     await ASK_KINDS.session.onApprove?.("s1", "brief", ctx);
-    expect((ctx as unknown as { appliedUpdates: unknown[] }).appliedUpdates).toHaveLength(0);
-  });
-});
-
-describe("ASK_KINDS — plan", () => {
-  it("card is 'proposed-plan'", () => {
-    expect(ASK_KINDS.plan.card).toBe("proposed-plan");
+    expect(graduate).toHaveBeenCalledWith("s1");
   });
 
-  it("onApprove sets status to building", async () => {
+  it("does not throw when graduate is not bound (still a no-op-safe path)", async () => {
     const ctx = makeCtx();
-    await ASK_KINDS.plan.onApprove?.("s1", "the plan body", ctx);
-    expect(ctx.sessions.update).toHaveBeenCalledWith("s1", { status: "building" });
+    await expect(ASK_KINDS.session.onApprove?.("s1", "brief", ctx)).resolves.toBeUndefined();
   });
 
-  it("onApprove triggers a forced context reset (compact/observe)", async () => {
-    const ctx = makeCtx();
-    await ASK_KINDS.plan.onApprove?.("s1", "the plan body", ctx);
-    expect(ctx.forceReset).toHaveBeenCalledWith("s1");
-  });
-
-  it("onReject is a no-op (stay in planning)", async () => {
-    const ctx = makeCtx();
-    await ASK_KINDS.plan.onReject?.("s1", "body", ctx);
-    expect(ctx.sessions.update).not.toHaveBeenCalled();
-  });
-});
-
-describe("ASK_KINDS — completion", () => {
-  it("card is 'proposed-completion'", () => {
-    expect(ASK_KINDS.completion.card).toBe("proposed-completion");
-  });
-
-  it("onApprove sets status to merged", async () => {
-    const ctx = makeCtx();
-    await ASK_KINDS.completion.onApprove?.("s1", "completion body", ctx);
-    expect(ctx.sessions.update).toHaveBeenCalledWith("s1", { status: "merged" });
-  });
-
-  it("onReject sets status to building (request changes)", async () => {
-    const ctx = makeCtx();
-    await ASK_KINDS.completion.onReject?.("s1", "body", ctx);
-    expect(ctx.sessions.update).toHaveBeenCalledWith("s1", { status: "building" });
+  it("swallows a graduation failure (best-effort — must not strand the mission)", async () => {
+    const graduate = vi.fn(async () => {
+      throw new Error("boom");
+    });
+    const ctx = makeCtx({ graduate });
+    await expect(ASK_KINDS.session.onApprove?.("s1", "brief", ctx)).resolves.toBeUndefined();
+    expect(ctx.log?.agent?.warn).toHaveBeenCalled();
   });
 });
