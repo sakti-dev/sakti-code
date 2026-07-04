@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import Type from "typebox";
 import { ASK_KINDS, isKnownAskKind, type AskCtx } from "../../agent/config/ask-kinds.ts";
 import { buildForceReset } from "../../agent/config/force-reset.ts";
+import { buildGraduation } from "../../agent/config/graduation.ts";
 import { getCtx } from "../../context.ts";
 
 const confirmBody = Type.Object({
@@ -31,10 +32,15 @@ export const confirmRoutes = new Hono()
     // Lazy context reset — only the plan-approve handler calls this. Forces
     // an OM observe so the build agent starts with a clean context.
     const forceReset = buildForceReset(ctx, existing);
+    // Graduation — only the session-approve handler (intake children) calls
+    // this. Reflects the child's transcript into the project's resource-scope
+    // OM. Bound only for intake sessions; missions never reach session asks.
+    const graduate = existing.kind === "intake" ? buildGraduation(ctx, existing) : undefined;
 
     const askCtx: AskCtx = {
       sessions: ctx.repos.sessions,
       forceReset,
+      ...(graduate !== undefined ? { graduate } : {}),
       ...(ctx.log !== undefined ? { log: ctx.log } : {}),
     };
     if (action === "approve") {
