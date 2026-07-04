@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "d8be8e03-f6c4-4e2b-83fd-ce62448c9741",
-  "prevIds": ["e334bb19-32ad-4e94-b224-2b962839b63f"],
+  "id": "3b190c36-7bb8-44e2-be84-02e075af92c1",
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
       "name": "observational_memory",
@@ -565,6 +565,26 @@
       "default": "'planning'",
       "generated": null,
       "name": "status",
+      "entityType": "columns",
+      "table": "sessions"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "pending_ask_kind",
+      "entityType": "columns",
+      "table": "sessions"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "pending_ask_body",
       "entityType": "columns",
       "table": "sessions"
     },
