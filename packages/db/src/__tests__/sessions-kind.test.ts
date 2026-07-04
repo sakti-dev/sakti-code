@@ -37,4 +37,27 @@ describe("sessions kind column", () => {
     });
     expect(session.kind).toBe("intake");
   });
+
+  it("listChildIntakesByProject returns all intake sessions for a project, newest first", async () => {
+    const project = await projectRepo.create("list-test", "/tmp/list-test");
+    const mission = await sessionRepo.create(project.id, { kind: "mission" });
+    const intakeA = await sessionRepo.create(project.id, { kind: "intake" });
+    const intakeB = await sessionRepo.create(project.id, { kind: "intake" });
+
+    const list = sessionRepo.listChildIntakesByProject(project.id);
+    expect(list).toHaveLength(2);
+    // newest first
+    expect(list[0]!.id).toBe(intakeB.id);
+    expect(list[1]!.id).toBe(intakeA.id);
+    // the mission is excluded
+    expect(list.find((s) => s.id === mission.id)).toBeUndefined();
+  });
+
+  it("listChildIntakesByProject returns empty array for a project with no intakes", async () => {
+    const project = await projectRepo.create("empty-test", "/tmp/empty-test");
+    await sessionRepo.create(project.id, { kind: "mission" });
+
+    const list = sessionRepo.listChildIntakesByProject(project.id);
+    expect(list).toEqual([]);
+  });
 });

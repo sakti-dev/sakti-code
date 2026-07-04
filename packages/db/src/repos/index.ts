@@ -106,6 +106,15 @@ export class SessionRepo {
       .get();
   }
 
+  listChildIntakesByProject(projectId: string) {
+    return this.db
+      .select()
+      .from(sessions)
+      .where(and(eq(sessions.projectId, projectId), eq(sessions.kind, "intake")))
+      .orderBy(desc(sessions.createdAt))
+      .all();
+  }
+
   listByProject(projectId: string) {
     return this.db
       .select()
