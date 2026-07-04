@@ -1264,7 +1264,7 @@ export class AgentHarness<
    * Push a `<tool-schema-changed>` notice onto the steer queue so the model
    * knows a tool's format has changed. The notice includes the full
    * {@link renderToolSection} output — identical to what the system prompt
-   * will show after compaction.
+   * will show after the next turn applies the scheduled refresh.
    *
    * Safe to call while idle (same as {@link announceSkillAdded}).
    */
@@ -1512,7 +1512,7 @@ export class AgentHarness<
     return this.model;
   }
 
-  /** Session-cumulative cache counters (§10). Survive compaction. */
+  /** Session-cumulative cache counters (§10). Survive across turns. */
   getCacheCounters(): {
     cacheHitTokens: number;
     cacheMissTokens: number;
@@ -1642,7 +1642,7 @@ export class AgentHarness<
    * The new tool must have the same `name` as the one being replaced. The
    * tools-tier cache busts on the next request (new parameters schema), but
    * the system prompt cache survives — the `# Tool:` description stays frozen
-   * until the next compaction applies the scheduled refresh.
+   * until the next turn applies the scheduled refresh.
    *
    * Announces the change via a `<tool-schema-changed>` user message on the
    * steer queue so the model knows the format changed.
@@ -1692,7 +1692,7 @@ export class AgentHarness<
    * Used by {@link softDisableTool}, {@link softEnableTool}, and
    * {@link removeSkill} to schedule a cache-stable prompt refresh: the
    * recomposed prompt is handed to {@link scheduleSystemPromptRefresh} and
-   * applied at the next compaction (when the cache is busted anyway).
+   * applied at the next turn (keeping the current turn's cached prefix warm).
    */
   private recomposeSystemPrompt(): string {
     const current = this.getSystemPrompt() ?? "";
@@ -1714,7 +1714,7 @@ export class AgentHarness<
    * tool-error result it can adapt to.
    *
    * Additionally schedules a {@link scheduleSystemPromptRefresh} so the tool's
-   * description is removed from the system prompt at the next compaction.
+   * description is removed from the system prompt at the next turn.
    * The live prompt stays frozen until then (cache-stable).
    *
    * Use this when the user disables an MCP server or side-effecting tool
@@ -1730,7 +1730,7 @@ export class AgentHarness<
    * Re-enable a previously soft-disabled tool.
    *
    * Removes the execution gate and schedules a prompt refresh so the tool's
-   * description reappears in the system prompt at the next compaction.
+   * description reappears in the system prompt at the next turn.
    */
   softEnableTool(toolName: string): void {
     this.softDisabledTools.delete(toolName);
@@ -1819,8 +1819,8 @@ export class AgentHarness<
    * `<available_skills>` block until the next session) — cache stays warm.
    *
    * To materialize the new skill in the prompt's `<available_skills>` block,
-   * either restart the session or trigger compaction (which is a no-op
-   * cache-wise since you'd compact anyway).
+   * either restart the session or wait for the next turn (the scheduled
+   * refresh applies then; cache stays warm until then).
    *
    * Idempotent: adding a skill whose name already exists is a no-op.
    */
@@ -1842,12 +1842,12 @@ export class AgentHarness<
    * Three effects, all cache-friendly:
    *   1. Removes the skill from `resources.skills` (in-memory only).
    *   2. Schedules a `systemPromptRefresh` with the skill removed from the
-   *      `<available_skills>` block. Applied at next compaction.
+   *      `<available_skills>` block. Applied at the next turn.
    *   3. Soft-disables the `read` tool on the skill's `filePath`, so the
-   *      model can't reload the body from disk until compaction swaps the
-   *      prompt.
+   *      model can't reload the body from disk until the next turn swaps
+   *      the prompt.
    *
-   * Emits `cache_bust_pending` so the UI can recommend compaction.
+   * Emits `cache_bust_pending` so the UI can flag the pending refresh.
    *
    * Idempotent: removing an unknown skill is a no-op.
    */
@@ -1864,7 +1864,7 @@ export class AgentHarness<
     });
 
     // Recompose the system prompt with the remaining skills and schedule it
-    // for compaction. recomposeSystemPrompt recovers the base prompt (stripping
+    // for the next turn. recomposeSystemPrompt recovers the base prompt (stripping
     // both the tool inventory and skills block), then rebuilds from the current
     // tools (minus soft-disabled) and remaining skills.
     this.scheduleSystemPromptRefresh(this.recomposeSystemPrompt());
@@ -2058,7 +2058,7 @@ export class AgentHarness<
    *
    * Returns a `Stream.Stream<AgentHarnessEvent>` whose subscribers see every
    * agent event (agent_start, message_update, message_end, turn_end, agent_end,
-   * tool_execution_*, auto_retry_*, compaction_*, cache_shape) emitted by the
+   * tool_execution_*, auto_retry_*, cache_bust_pending, cache_shape) emitted by the
    * harness. Decouples emit from persist: publishing is non-blocking, and each
    * subscriber drains at its own pace.
    *
