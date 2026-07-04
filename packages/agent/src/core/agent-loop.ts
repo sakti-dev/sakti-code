@@ -304,7 +304,11 @@ const runLoopEffect = (
             if (omInitial !== undefined) {
               currentContext = { ...currentContext, systemPrompt: omInitial };
             }
-          } else if (config.observationalMemoryReadOnly) {
+          }
+          // §OM read-only: also inject the project's resource-scope OM read-only
+          // block when set (missions get own-OM + project read-only). This is a
+          // separate `if`, not `else if`, so both blocks compose.
+          if (config.observationalMemoryReadOnly) {
             const omReadOnly = yield* Effect.tryPromise({
               try: async () => config.observationalMemoryReadOnly!.getObservationsBlock(),
               catch: () => undefined,
@@ -440,7 +444,11 @@ const runLoopEffect = (
               systemPrompt: omResult,
             };
           }
-        } else if (config.observationalMemoryReadOnly) {
+        }
+        // §OM read-only: also inject the project's resource-scope OM read-only
+        // block at the turn boundary (missions get own-OM + project read-only).
+        // Separate `if`, not `else if`, so both blocks compose.
+        if (config.observationalMemoryReadOnly) {
           const omReadOnlyResult = yield* Effect.tryPromise({
             try: async () => config.observationalMemoryReadOnly!.getObservationsBlock(),
             catch: () => undefined,
