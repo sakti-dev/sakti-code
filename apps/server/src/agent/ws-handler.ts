@@ -13,11 +13,7 @@ import {
   busyMessage,
   getActiveHarness,
   isRunActive,
-  pauseReplay,
-  resumeReplay,
   runPrompt,
-  startReplay,
-  stopReplay,
   switchAgentForSession,
 } from "./runner.ts";
 
@@ -44,12 +40,6 @@ export interface FollowUpMessage {
   type: "followUp";
 }
 
-export interface ReplayMessage {
-  action: "start" | "pause" | "resume";
-  sessionId: string;
-  type: "replay";
-}
-
 export interface SwitchAgentMessage {
   /** Agent name to activate (e.g. `build`, `explore`, `plan`). */
   name: string;
@@ -69,7 +59,6 @@ export type WsIn =
   | AbortMessage
   | SteerMessage
   | FollowUpMessage
-  | ReplayMessage
   | SwitchAgentMessage
   | PermissionReplyMessage;
 
@@ -153,11 +142,6 @@ export const wsBodySchema = Type.Union([
     type: Type.Literal("followUp"),
     sessionId: Type.String(),
     message: Type.String(),
-  }),
-  Type.Object({
-    type: Type.Literal("replay"),
-    sessionId: Type.String(),
-    action: Type.Union([Type.Literal("start"), Type.Literal("pause"), Type.Literal("resume")]),
   }),
   Type.Object({
     type: Type.Literal("switchAgent"),
@@ -339,29 +323,11 @@ export function handleMessage(
   log?.info("incoming message", {
     type: msg.type,
     sessionId: msg.sessionId,
-    ...(msg.type === "replay" ? { action: msg.action } : {}),
     ...(msg.type === "switchAgent" ? { agent: msg.name } : {}),
     ...(hasMessage ? { messageLength: msg.message.length } : {}),
   });
 
-  if (msg.type === "replay") {
-    if (msg.action === "start") {
-      startReplay(msg.sessionId, ws).catch((err) => {
-        log?.warn("replay start failed", { sessionId: msg.sessionId });
-        sendError(ws, msg.sessionId, err instanceof Error ? err.message : String(err));
-      });
-    } else if (msg.action === "pause") {
-      pauseReplay(msg.sessionId);
-    } else if (msg.action === "resume") {
-      resumeReplay(msg.sessionId);
-    }
-    return;
-  }
-
   if (msg.type === "abort") {
-    if (stopReplay(msg.sessionId)) {
-      return;
-    }
     abortRun(msg.sessionId).catch((err) => {
       log?.warn("abort failed", { sessionId: msg.sessionId });
       sendError(ws, msg.sessionId, err instanceof Error ? err.message : String(err));

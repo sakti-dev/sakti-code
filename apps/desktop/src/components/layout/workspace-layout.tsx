@@ -1,31 +1,19 @@
-import type { AgentHarnessEvent } from "@sakti-code/agent";
 import { createEffect, type JSX, onMount, Show } from "solid-js";
 import { MissionChatView } from "~/components/chat-area/mission-chat-view";
 import Home from "~/components/home/home";
 import { SettingsPage } from "~/components/settings/settings-page";
-import { DevToolbar } from "~/components/layout/dev-toolbar";
 import { OnboardingPanel } from "~/components/onboarding/onboarding-panel";
-import { dispatchEvent as dispatchDevEvent } from "~/stores/session/event-handler";
-import { createTokenBatcher } from "~/stores/session/token-batcher";
 import { useStore } from "~/stores/store-context";
 import { activeTab, filterStaleProjects } from "~/stores/workspace/tab-store";
-import { replayState, sidebarOpen } from "~/stores/workspace/ui-signals";
+import { sidebarOpen } from "~/stores/workspace/ui-signals";
 import BannerConnection from "./banners/banner-connection";
 import { BannerError, BannerHealth } from "./banners/banner-error";
 import BannerUpdate from "./banners/banner-update";
 import Sidebar from "./sidebar/sidebar";
 import TopBar from "./top-bar/top-bar";
 
-// Dev-only no-op batcher for retry simulator events (no text tokens to flush).
-const devBatcher = createTokenBatcher(
-  () => {
-    /* no-op */
-  },
-  { batch: false },
-);
-
 export default function WorkspaceLayout(): JSX.Element {
-  const { server, actions, sessions } = useStore();
+  const { server, actions } = useStore();
 
   // Sync active tab → server store
   createEffect(() => {
@@ -73,8 +61,6 @@ export default function WorkspaceLayout(): JSX.Element {
   const isNewTab = () => activeTab()?.projectId === null;
   const isSettingsTab = () => activeTab()?.page === "settings";
 
-  const currentSessionId = () => activeSession()?.id ?? null;
-
   return (
     <div class="flex h-screen flex-col bg-background text-foreground">
       <TopBar />
@@ -92,26 +78,6 @@ export default function WorkspaceLayout(): JSX.Element {
               <BannerError />
               <BannerHealth />
               <BannerUpdate />
-              {import.meta.env.DEV && (
-                <DevToolbar
-                  onReplayPause={() => actions.replayPause(currentSessionId() ?? "")}
-                  onReplayReset={() => actions.replayReset(currentSessionId() ?? "")}
-                  onReplayResume={() => actions.replayResume(currentSessionId() ?? "")}
-                  onReplayStart={() => actions.replayStart(currentSessionId() ?? "")}
-                  onRetryEvent={(event: AgentHarnessEvent) => {
-                    const sId = currentSessionId();
-                    if (sId) {
-                      const session = sessions.get(sId);
-                      dispatchDevEvent(event, {
-                        actions: session.actions,
-                        batcher: devBatcher,
-                        store: session.store,
-                      });
-                    }
-                  }}
-                  replayState={replayState}
-                />
-              )}
               <div class="relative min-h-0 flex-1">
                 <div class="absolute inset-0 flex flex-col overflow-hidden">
                   <Show

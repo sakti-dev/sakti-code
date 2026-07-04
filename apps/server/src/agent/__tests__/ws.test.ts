@@ -6,7 +6,7 @@ const BUSY_RE = /A run is already active.*steer.*followUp.*abort/;
 
 import { fauxAssistantMessage, teardownFauxLlm, useFauxLlm } from "../../__tests__/llm-helpers.ts";
 import { getPermissionChannel } from "../../lib/permission-channel.ts";
-import { clearReplaysForTesting, clearRunsForTesting } from "../runner.ts";
+import { clearRunsForTesting } from "../runner.ts";
 import { handleMessage } from "../ws-handler.ts";
 import { createMockCtx, createMockStore } from "./helpers.ts";
 
@@ -65,7 +65,6 @@ function runResolver(fn: (() => void) | null): void {
 describe("WS message handler", () => {
   beforeEach(() => {
     clearRunsForTesting();
-    clearReplaysForTesting();
   });
 
   afterEach(() => {
@@ -472,94 +471,5 @@ describe("WS message handler", () => {
       abortRunSpy.mockRestore();
       getActiveHarnessSpy.mockRestore();
     }
-  });
-});
-
-describe("WS replay handler", () => {
-  beforeEach(() => {
-    clearRunsForTesting();
-    clearReplaysForTesting();
-  });
-
-  afterEach(() => {
-    clearReplaysForTesting();
-  });
-
-  it("replay start emits event frames", async () => {
-    const ctx = createMockCtx();
-    const storage = createMockStore();
-    const { sent, ws } = makeFakeWs();
-
-    handleMessage(ctx, storage, ws, {
-      type: "replay",
-      sessionId: "sess-replay-1",
-      action: "start",
-    });
-
-    await new Promise((r) => setTimeout(r, 500));
-
-    const eventFrames = asEventFrames(sent);
-    expect(eventFrames.length).toBeGreaterThan(0);
-
-    const startFrame = eventFrames.find((f) => f.event?.type === "agent_start");
-    expect(startFrame).toBeDefined();
-  });
-
-  it("replay pause/resume controls emission", async () => {
-    const ctx = createMockCtx();
-    const storage = createMockStore();
-    const { sent, ws } = makeFakeWs();
-
-    handleMessage(ctx, storage, ws, {
-      type: "replay",
-      sessionId: "sess-pause",
-      action: "start",
-    });
-
-    await new Promise((r) => setTimeout(r, 100));
-
-    handleMessage(ctx, storage, ws, {
-      type: "replay",
-      sessionId: "sess-pause",
-      action: "pause",
-    });
-
-    await new Promise((r) => setTimeout(r, 200));
-    const countAfterPause = asEventFrames(sent).length;
-
-    handleMessage(ctx, storage, ws, {
-      type: "replay",
-      sessionId: "sess-pause",
-      action: "resume",
-    });
-
-    await new Promise((r) => setTimeout(r, 500));
-    const countAfterResume = asEventFrames(sent).length;
-
-    expect(countAfterResume).toBeGreaterThan(countAfterPause);
-  });
-
-  it("abort stops replay and emits agent_end", async () => {
-    const ctx = createMockCtx();
-    const storage = createMockStore();
-    const { sent, ws } = makeFakeWs();
-
-    handleMessage(ctx, storage, ws, {
-      type: "replay",
-      sessionId: "sess-abort-replay",
-      action: "start",
-    });
-
-    await new Promise((r) => setTimeout(r, 100));
-
-    handleMessage(ctx, storage, ws, {
-      type: "abort",
-      sessionId: "sess-abort-replay",
-    });
-
-    await new Promise((r) => setTimeout(r, 300));
-
-    const eventFrameTypes = asEventFrames(sent).map((f) => f.event?.type);
-    expect(eventFrameTypes.at(-1)).toBe("agent_end");
   });
 });

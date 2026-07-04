@@ -9,7 +9,7 @@ import {
 import { hydrateSessionTurns } from "../session/hydrate-messages.ts";
 import type { SessionRegistry } from "../session/session-registry.ts";
 import type { UIMessage } from "../types.ts";
-import { setLastError, setReplayState } from "../workspace/ui-signals.ts";
+import { setLastError } from "../workspace/ui-signals.ts";
 import type { Project, ServerActions, ServerStoreData, SessionMeta } from "./server-store.ts";
 import type { WsClient } from "./ws-client.ts";
 
@@ -40,10 +40,6 @@ export interface Actions {
   loadMessages: (sessionId: string) => Promise<void>;
   loadProjects: () => Promise<void>;
   loadSessions: (projectId: string) => Promise<void>;
-  replayPause: (sessionId: string) => void;
-  replayReset: (sessionId: string) => void;
-  replayResume: (sessionId: string) => void;
-  replayStart: (sessionId: string) => void;
   replyPermission: (sessionId: string, id: string, reply: PermissionReply) => void;
   renameSession: (sessionId: string, title: string) => Promise<boolean>;
   selectProfile: (sessionId: string | null, profileId: string) => Promise<void>;
@@ -342,32 +338,8 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
       ws.send({ type: "followUp", sessionId, message: text });
     },
 
-    replayStart(sessionId) {
-      const session = sessionRegistry.get(sessionId);
-      session.actions.reset();
-      setReplayState("playing");
-      ws.send({ type: "replay", sessionId, action: "start" });
-    },
-
     replyPermission(sessionId, id, reply) {
       ws.send({ type: "permission.reply", sessionId, id, reply });
-    },
-
-    replayPause(sessionId) {
-      setReplayState("paused");
-      ws.send({ type: "replay", sessionId, action: "pause" });
-    },
-
-    replayResume(sessionId) {
-      setReplayState("playing");
-      ws.send({ type: "replay", sessionId, action: "resume" });
-    },
-
-    replayReset(sessionId) {
-      ws.send({ type: "abort", sessionId });
-      const session = sessionRegistry.get(sessionId);
-      session.actions.reset();
-      setReplayState("idle");
     },
   };
 }

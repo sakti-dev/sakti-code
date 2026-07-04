@@ -7,10 +7,6 @@ export const [activeView, setActiveView] = createSignal<"chat" | "terminal" | "g
 // ── Streaming status ──────────────────────────────────────────────
 export const [isStreaming, setIsStreaming] = createSignal(false);
 
-// ── Replay (dev-only) ─────────────────────────────────────────────
-export type ReplayState = "idle" | "playing" | "paused";
-export const [replayState, setReplayState] = createSignal<ReplayState>("idle");
-
 // ── Error / health ────────────────────────────────────────────────
 export const [lastError, setLastError] = createSignal<string | null>(null);
 
