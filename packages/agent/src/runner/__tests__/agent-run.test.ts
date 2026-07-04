@@ -13,7 +13,7 @@ import {
 import { TestExecutionEnv } from "../../agent/__tests__/test-execution-env.ts";
 import type { AgentHarness as AgentHarnessType } from "../../agent/agent-harness.ts";
 import { AgentHarness } from "../../agent/agent-harness.ts";
-import { parseRetrySettings } from "../../memory/compaction/retry-loop.ts";
+import { parseRetrySettings } from "../retry-loop.ts";
 import type { SessionShape } from "../../session/session.ts";
 import { PromiseSession, promiseSessionAsShape } from "../../session/session.ts";
 import type { SessionStorageShape } from "../../session/storage.ts";

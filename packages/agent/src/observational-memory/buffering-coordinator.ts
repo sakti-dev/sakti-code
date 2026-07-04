@@ -9,7 +9,7 @@
  * Thread scope only — resource scope is deferred per the implementation plan.
  */
 
-import type { ObservationalMemoryRecord } from "../../observational-memory-storage.ts";
+import type { ObservationalMemoryRecord } from "../observational-memory-storage.ts";
 
 /**
  * Get the maximum value from a threshold (simple number or range).

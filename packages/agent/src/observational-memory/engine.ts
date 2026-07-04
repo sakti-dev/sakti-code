@@ -14,15 +14,15 @@
  */
 
 import { Effect } from "effect";
-import type { AgentMessage, OmAgentEvent } from "../../types.ts";
-import { buildSessionContextFromEntries } from "../../session/session.ts";
-import type { MessageEntry, ObservationPruneEntry } from "../../session/entries.ts";
+import type { AgentMessage, OmAgentEvent } from "../types.ts";
+import { buildSessionContextFromEntries } from "../session/session.ts";
+import type { MessageEntry, ObservationPruneEntry } from "../session/entries.ts";
 import type {
   BufferedObservationChunkInput,
   ObservationalMemoryRecord,
   ObservationalMemoryStorage,
-} from "../../observational-memory-storage.ts";
-import type { SessionStorageShape } from "../../session/storage.ts";
+} from "../observational-memory-storage.ts";
+import type { SessionStorageShape } from "../session/storage.ts";
 import type { ObservationalMemoryDeps } from "./config.ts";
 import { getObservedEntryIdsForCleanup, resolveRetentionFloor } from "./cleanup.ts";
 import { formatObservationsForContext } from "./prompts.ts";

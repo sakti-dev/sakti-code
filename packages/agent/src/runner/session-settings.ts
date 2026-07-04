@@ -1,4 +1,4 @@
-import { parseRetrySettings, type RetrySettings } from "../memory/compaction/retry-loop.ts";
+import { parseRetrySettings, type RetrySettings } from "./retry-loop.ts";
 import type { QueueMode, ThinkingLevel } from "../types.ts";
 
 /**

@@ -4,20 +4,16 @@ import { Effect } from "effect";
 import {
   BranchSummaryError,
   type BranchSummaryResult,
+  type BranchSummaryPrompts,
   err,
   ok,
   type Result,
   SessionError,
   type SessionTreeEntry,
-} from "../../harness-types";
-import {
-  convertToLlm,
-  createBranchSummaryMessage,
-  createCustomMessage,
-} from "../../session/messages";
-import type { SessionShape } from "../../session/session";
-import type { AgentMessage } from "../../types";
-import type { BranchSummaryPrompts } from "./prompt-bundles";
+} from "../harness-types";
+import { convertToLlm, createBranchSummaryMessage, createCustomMessage } from "./messages";
+import type { SessionShape } from "./session";
+import type { AgentMessage } from "../types";
 import {
   computeFileLists,
   createFileOps,
@@ -26,7 +22,7 @@ import {
   type FileOperations,
   formatFileOperations,
   serializeConversation,
-} from "./utils.ts";
+} from "../lib/conversation-utils.ts";
 
 /** File-operation details stored on generated branch summary entries. */
 export interface BranchSummaryDetails {
@@ -36,7 +32,7 @@ export interface BranchSummaryDetails {
   readFiles: string[];
 }
 
-export type { FileOperations } from "./utils.ts";
+export type { FileOperations } from "../lib/conversation-utils.ts";
 
 /** Prepared branch content for summarization. */
 export interface BranchPreparation {

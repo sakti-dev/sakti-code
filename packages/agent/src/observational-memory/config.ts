@@ -11,8 +11,8 @@ import type { Logger } from "@sakti-code/logger";
 import type {
   ObservationalMemoryScope,
   ObservationalMemoryStorage,
-} from "../../observational-memory-storage.ts";
-import type { SessionStorageShape } from "../../session/storage.ts";
+} from "../observational-memory-storage.ts";
+import type { SessionStorageShape } from "../session/storage.ts";
 import type { TokenCounter } from "./token-counter.ts";
 
 // ─── Thresholds ──────────────────────────────────────────────────────────────

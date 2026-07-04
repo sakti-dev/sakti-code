@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import type { MessageEntry } from "../../../session/entries.ts";
-import type { AgentMessage } from "../../../types.ts";
+import type { MessageEntry } from "../../session/entries.ts";
+import type { AgentMessage } from "../../types.ts";
 import { getObservedEntryIdsForCleanup, resolveRetentionFloor } from "../cleanup.ts";
 
 function makeMsg(content: string, timestamp = 1): AgentMessage {

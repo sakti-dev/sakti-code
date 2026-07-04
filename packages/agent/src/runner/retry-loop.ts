@@ -31,7 +31,7 @@ import type { AssistantMessage } from "@sakti-code/llm";
 import { isRetryableAssistantError } from "@sakti-code/llm";
 import type { Logger } from "@sakti-code/logger";
 import { Effect } from "effect";
-import type { AgentEvent } from "../../types";
+import type { AgentEvent } from "../types";
 
 // ─── pure decision helpers (unit-tested in isolation) ────────────────────────
 

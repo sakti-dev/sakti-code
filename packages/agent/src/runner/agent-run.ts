@@ -7,10 +7,10 @@ import {
   executeWithRetryEffect,
   type RetryRunnerDepsEffect,
   type RetrySettings,
-} from "../memory/compaction/retry-loop.ts";
+} from "./retry-loop.ts";
 import type { AgentHarnessEvent, PromptTemplate, Skill, ThinkingLevel } from "../harness-types.ts";
-import type { ObservationalMemoryOptions } from "../memory/observational-memory/config.ts";
-import { ObservationalMemoryEngine } from "../memory/observational-memory/engine.ts";
+import type { ObservationalMemoryOptions } from "../observational-memory/config.ts";
+import { ObservationalMemoryEngine } from "../observational-memory/engine.ts";
 import { planFirstTurn, type ReadFile } from "../resources/prompt-preprocessor.ts";
 import type { SessionShape } from "../session/session.ts";
 import type { SessionStorageShape } from "../session/storage.ts";

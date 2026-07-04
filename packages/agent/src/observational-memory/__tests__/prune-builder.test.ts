@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
-import { buildSessionContextFromEntries } from "../../../session/session.ts";
+import { buildSessionContextFromEntries } from "../../session/session.ts";
 import type {
   MessageEntry,
   ObservationPruneEntry,
   SessionTreeEntry,
-} from "../../../session/entries.ts";
-import type { AgentMessage } from "../../../types.ts";
+} from "../../session/entries.ts";
+import type { AgentMessage } from "../../types.ts";
 
 function makeMsg(role: "user" | "assistant", content: string, timestamp: number): AgentMessage {
   if (role === "user") {

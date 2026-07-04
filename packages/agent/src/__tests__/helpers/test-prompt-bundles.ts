@@ -1,7 +1,4 @@
-import type {
-  BranchSummaryPrompts,
-  SkillsInstructions,
-} from "../../memory/compaction/prompt-bundles.ts";
+import type { BranchSummaryPrompts, SkillsInstructions } from "../../harness-types.ts";
 
 /** Test-only branch-summary prompts fixture. */
 export const TEST_BRANCH_SUMMARY_PROMPTS: BranchSummaryPrompts = {

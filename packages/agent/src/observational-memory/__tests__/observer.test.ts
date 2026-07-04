@@ -3,8 +3,8 @@ import { complete } from "@sakti-code/llm";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { ObservationalMemoryDeps } from "../config.ts";
-import type { ObservationalMemoryStorage } from "../../../observational-memory-storage.ts";
-import type { SessionStorageShape } from "../../../session/storage.ts";
+import type { ObservationalMemoryStorage } from "../../observational-memory-storage.ts";
+import type { SessionStorageShape } from "../../session/storage.ts";
 import { TokenCounter } from "../token-counter.ts";
 import { ObservationError, runObserver } from "../observer.ts";
 

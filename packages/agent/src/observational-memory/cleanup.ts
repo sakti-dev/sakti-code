@@ -1,5 +1,5 @@
-import type { MessageEntry } from "../../session/entries.ts";
-import type { AgentMessage } from "../../types.ts";
+import type { MessageEntry } from "../session/entries.ts";
+import type { AgentMessage } from "../types.ts";
 
 /** Minimal token counter interface (decoupled from full OM deps). */
 export interface TokenCounterLike {

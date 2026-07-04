@@ -5,8 +5,8 @@ import { buildHarnessStreamRequest } from "../agent/build-stream-request";
 import {
   collectEntriesForBranchSummaryEffect,
   generateBranchSummaryEffect,
-} from "../memory/compaction/branch-summarization";
-import type { BranchSummaryPrompts, SkillsInstructions } from "../memory/compaction/prompt-bundles";
+} from "../session/branch-summarization";
+import type { BranchSummaryPrompts, SkillsInstructions } from "../harness-types";
 import { runAgentLoopContinueEffect, runAgentLoopEffect } from "../core/agent-loop";
 import {
   type AbortResult,

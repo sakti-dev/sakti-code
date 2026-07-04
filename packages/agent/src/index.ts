@@ -16,25 +16,22 @@ export {
   collectEntriesForBranchSummaryEffect,
   generateBranchSummary,
   generateBranchSummaryEffect,
-} from "./memory/compaction/branch-summarization.ts";
-export type {
-  BranchSummaryPrompts,
-  SkillsInstructions,
-} from "./memory/compaction/prompt-bundles.ts";
+} from "./session/branch-summarization.ts";
+export type { BranchSummaryPrompts, SkillsInstructions } from "./harness-types.ts";
 export type {
   RetryDecisionInput,
   RetryRunnerDepsEffect,
   RetrySettings,
-} from "./memory/compaction/retry-loop.ts";
+} from "./runner/retry-loop.ts";
 export {
   abortableSleep,
   computeRetryDelay,
   executeWithRetryEffect,
   parseRetrySettings,
   shouldRetry,
-} from "./memory/compaction/retry-loop.ts";
-export type { FileOperations } from "./memory/compaction/utils.ts";
-export { estimateTokens, serializeConversation } from "./memory/compaction/utils.ts";
+} from "./runner/retry-loop.ts";
+export type { FileOperations } from "./lib/conversation-utils.ts";
+export { estimateTokens, serializeConversation } from "./lib/conversation-utils.ts";
 export { runAgentLoop, runAgentLoopContinue } from "./core/agent-loop.ts";
 export type { CacheDiagnostics, PrefixShape } from "./core/cache-shape.ts";
 export { captureShape, compareShape } from "./core/cache-shape.ts";
@@ -83,13 +80,13 @@ export type {
   ObservationalMemoryDeps,
   ObservationalMemoryOptions,
   ObservationalMemoryThresholds,
-} from "./memory/observational-memory/config.ts";
-export { TokenCounter } from "./memory/observational-memory/token-counter.ts";
-export type { TokenCounterModelContext } from "./memory/observational-memory/token-counter.ts";
-export { ObservationalMemoryEngine } from "./memory/observational-memory/engine.ts";
-export { buildObservationsBlock } from "./memory/observational-memory/prompts.ts";
-export { runObserver, ObservationError } from "./memory/observational-memory/observer.ts";
-export { runReflector, ReflectionError } from "./memory/observational-memory/reflector.ts";
+} from "./observational-memory/config.ts";
+export { TokenCounter } from "./observational-memory/token-counter.ts";
+export type { TokenCounterModelContext } from "./observational-memory/token-counter.ts";
+export { ObservationalMemoryEngine } from "./observational-memory/engine.ts";
+export { buildObservationsBlock } from "./observational-memory/prompts.ts";
+export { runObserver, ObservationError } from "./observational-memory/observer.ts";
+export { runReflector, ReflectionError } from "./observational-memory/reflector.ts";
 export {
   ExecutionError,
   err,

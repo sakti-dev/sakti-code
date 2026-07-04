@@ -10,8 +10,8 @@
  *   - `safeSlice` is inlined (single call site)
  */
 
-import type { AgentMessage } from "../../types.ts";
-import type { ObservationalMemoryRecord } from "../../observational-memory-storage.ts";
+import type { AgentMessage } from "../types.ts";
+import type { ObservationalMemoryRecord } from "../observational-memory-storage.ts";
 
 // ─── safeSlice (ported from string-utils.ts) ─────────────────────────────────
 

@@ -6,7 +6,7 @@
  */
 
 import { complete } from "@sakti-code/llm";
-import type { AgentMessage } from "../../types.ts";
+import type { AgentMessage } from "../types.ts";
 import type { ObservationalMemoryDeps } from "./config.ts";
 import {
   buildObserverHistoryMessage,
