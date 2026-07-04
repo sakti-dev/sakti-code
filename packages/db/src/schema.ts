@@ -23,6 +23,12 @@ export const sessions = sqliteTable("sessions", {
   // SDD task lifecycle: planning → building → review → merged.
   // Intake sessions are unaffected; only task sessions use this column.
   status: text("status").notNull().default("planning"),
+  // Pending ask tool-call awaiting a user confirm/revise action. Set
+  // server-side when an agent's `ask` tool-call of a known kind completes;
+  // cleared on confirm, reject, or the next run. Nullable — null means no
+  // pending ask. Persisted (not derived) so it survives reload/compaction.
+  pendingAskKind: text("pending_ask_kind"),
+  pendingAskBody: text("pending_ask_body"),
   thinkingLevel: text("thinking_level").notNull().default("off"),
   leafId: text("leaf_id"),
   createdAt: integer("created_at").notNull(),

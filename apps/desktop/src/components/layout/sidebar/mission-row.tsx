@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { FiMoreVertical } from "solid-icons/fi";
-import { createSignal, type JSX, Show } from "solid-js";
+import { FiCheck, FiMoreVertical, FiTrash2, FiX } from "solid-icons/fi";
+import { createSignal, onCleanup, type JSX, Show } from "solid-js";
 import { cn } from "~/lib/utils";
 import type { SessionMeta } from "~/stores/server/server-store";
 
@@ -44,12 +44,41 @@ export interface MissionRowProps {
   title: string | null;
   updatedAt: number;
   onClick: () => void;
-  onRename?: () => void;
+  onRename?: (title: string) => void;
   onDelete?: () => void;
 }
 
 export function MissionRow(props: MissionRowProps): JSX.Element {
   const [menuOpen, setMenuOpen] = createSignal(false);
+  const [editing, setEditing] = createSignal(false);
+  const [draft, setDraft] = createSignal("");
+
+  const beginRename = () => {
+    setDraft(props.title ?? "");
+    setEditing(true);
+  };
+
+  const commitRename = () => {
+    const next = draft().trim();
+    if (next && next !== props.title) {
+      props.onRename?.(next);
+    }
+    setEditing(false);
+  };
+
+  const cancelRename = () => setEditing(false);
+
+  // Outside-click closes the kebab dropdown (only active while it's open).
+  const onDocClick = (e: MouseEvent) => {
+    if (!menuOpen()) return;
+    const target = e.target as HTMLElement | null;
+    if (target && !target.closest(`[data-component="mission-row"]`)) {
+      setMenuOpen(false);
+    }
+  };
+  document.addEventListener("click", onDocClick);
+  onCleanup(() => document.removeEventListener("click", onDocClick));
+
   return (
     <div
       class={cn(
@@ -61,66 +90,118 @@ export function MissionRow(props: MissionRowProps): JSX.Element {
       data-component="mission-row"
       data-status={props.status}
     >
-      <button class="flex w-full flex-col gap-0.5 text-left" onClick={props.onClick} type="button">
-        <span class="flex items-center justify-between gap-2">
-          <span class="min-w-0 flex-1 truncate text-xs text-foreground">
-            {props.title || "Untitled mission"}
-          </span>
-          <span class="shrink-0 text-[10px] text-muted-foreground/70">
-            {dayjs(props.updatedAt).fromNow()}
-          </span>
-        </span>
-        <span class="flex items-center gap-1.5">
-          <span class={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotClass(props.streamPhase))} />
-          <span
-            class={cn(
-              "rounded px-1.5 py-px text-[10px] font-medium capitalize",
-              STATUS_CLASS[props.status],
-            )}
-          >
-            {STATUS_LABEL[props.status]}
-          </span>
-        </span>
-      </button>
-      <div class="absolute right-1 top-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-        <button
-          class="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-          onClick={(e) => {
-            e.stopPropagation();
-            setMenuOpen((v) => !v);
-          }}
-          type="button"
-        >
-          <FiMoreVertical class="h-3.5 w-3.5" />
-        </button>
-        <Show when={menuOpen()}>
-          <div
-            class="absolute right-0 top-6 z-50 min-w-28 rounded-md border border-border bg-popover py-0.5 shadow-md"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              class="block w-full px-3 py-1 text-left text-xs text-foreground hover:bg-secondary"
-              onClick={() => {
-                setMenuOpen(false);
-                props.onRename?.();
+      <Show
+        when={!editing()}
+        fallback={
+          <div class="flex items-center gap-1 py-0.5">
+            <input
+              autofocus
+              class="min-w-0 flex-1 rounded border border-border bg-background px-1 py-0.5 text-xs"
+              onChange={(e) => setDraft(e.currentTarget.value)}
+              onFocusOut={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitRename();
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancelRename();
+                }
               }}
+              type="text"
+              value={draft()}
+            />
+            <button
+              class="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={commitRename}
+              title="Save"
               type="button"
             >
-              Rename
+              <FiCheck class="h-3 w-3" />
             </button>
             <button
-              class="block w-full px-3 py-1 text-left text-xs text-red-600 hover:bg-secondary"
-              onClick={() => {
-                setMenuOpen(false);
-                props.onDelete?.();
-              }}
+              class="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={cancelRename}
+              title="Cancel"
               type="button"
             >
-              Delete
+              <FiX class="h-3 w-3" />
             </button>
           </div>
-        </Show>
-      </div>
+        }
+      >
+        <button
+          class="flex w-full flex-col gap-0.5 text-left"
+          onClick={props.onClick}
+          type="button"
+        >
+          <span class="flex items-center justify-between gap-2">
+            <span class="min-w-0 flex-1 truncate text-xs text-foreground">
+              {props.title || "Untitled mission"}
+            </span>
+            <span class="shrink-0 text-[10px] text-muted-foreground/70">
+              {dayjs(props.updatedAt).fromNow()}
+            </span>
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotClass(props.streamPhase))} />
+            <span
+              class={cn(
+                "rounded px-1.5 py-px text-[10px] font-medium capitalize",
+                STATUS_CLASS[props.status],
+              )}
+            >
+              {STATUS_LABEL[props.status]}
+            </span>
+          </span>
+        </button>
+      </Show>
+
+      {/* Kebab — always visible (dim at rest, brighten on hover/active). */}
+      <Show when={!editing()}>
+        <div class="absolute right-1 top-1.5 opacity-40 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+          <button
+            class="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen((v) => !v);
+            }}
+            type="button"
+          >
+            <FiMoreVertical class="h-3.5 w-3.5" />
+          </button>
+          <Show when={menuOpen()}>
+            <div
+              class="absolute right-0 top-6 z-50 min-w-28 rounded-md border border-border bg-popover py-0.5 shadow-md"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                class="block w-full px-3 py-1 text-left text-xs text-foreground hover:bg-secondary"
+                onClick={() => {
+                  setMenuOpen(false);
+                  beginRename();
+                }}
+                type="button"
+              >
+                Rename
+              </button>
+              <button
+                class="block w-full px-3 py-1 text-left text-xs text-red-600 hover:bg-secondary"
+                onClick={() => {
+                  setMenuOpen(false);
+                  props.onDelete?.();
+                }}
+                type="button"
+              >
+                <span class="inline-flex items-center gap-1.5">
+                  <FiTrash2 class="h-3 w-3" />
+                  Delete
+                </span>
+              </button>
+            </div>
+          </Show>
+        </div>
+      </Show>
     </div>
   );
 }

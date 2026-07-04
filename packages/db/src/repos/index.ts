@@ -64,6 +64,8 @@ export class SessionRepo {
       parentSessionId?: string;
       kind?: string;
       status?: string;
+      pendingAskKind?: string | null;
+      pendingAskBody?: string | null;
     },
   ) {
     const id = crypto.randomUUID();
@@ -80,6 +82,8 @@ export class SessionRepo {
       kind: options?.kind ?? "mission",
       ...(options?.status === undefined ? {} : { status: options.status }),
       thinkingLevel: options?.thinkingLevel ?? "off",
+      ...(options?.pendingAskKind === undefined ? {} : { pendingAskKind: options.pendingAskKind }),
+      ...(options?.pendingAskBody === undefined ? {} : { pendingAskBody: options.pendingAskBody }),
       createdAt: now,
       updatedAt: now,
     });
@@ -116,7 +120,14 @@ export class SessionRepo {
     data: Partial<
       Pick<
         typeof sessions.$inferInsert,
-        "title" | "modelId" | "thinkingLevel" | "kind" | "profileId" | "status"
+        | "title"
+        | "modelId"
+        | "thinkingLevel"
+        | "kind"
+        | "profileId"
+        | "status"
+        | "pendingAskKind"
+        | "pendingAskBody"
       >
     >,
   ) {

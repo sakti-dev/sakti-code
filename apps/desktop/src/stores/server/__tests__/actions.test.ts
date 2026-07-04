@@ -230,6 +230,8 @@ describe("actions", () => {
         profileId: null,
         thinkingLevel: "off",
         kind: "mission",
+        pendingAskBody: null,
+        pendingAskKind: null,
         status: "building",
         createdAt: 1,
         updatedAt: 1,
@@ -247,6 +249,8 @@ describe("actions", () => {
                   profileId: "fast",
                   thinkingLevel: "off",
                   kind: "mission",
+                  pendingAskBody: null,
+                  pendingAskKind: null,
                   status: "building",
                   createdAt: 1,
                   updatedAt: 1,
@@ -443,6 +447,8 @@ describe("replay actions", () => {
         profileId: null,
         thinkingLevel: "off",
         kind: "mission",
+        pendingAskBody: null,
+        pendingAskKind: null,
         status: "planning",
         createdAt: 1,
         updatedAt: 1,
@@ -461,6 +467,8 @@ describe("replay actions", () => {
                     profileId: null,
                     thinkingLevel: "off",
                     kind: "mission",
+                    pendingAskBody: null,
+                    pendingAskKind: null,
                     status: "building",
                     createdAt: 1,
                     updatedAt: 2,
@@ -492,6 +500,8 @@ describe("replay actions", () => {
         profileId: null,
         thinkingLevel: "off",
         kind: "mission",
+        pendingAskBody: null,
+        pendingAskKind: null,
         status: "planning",
         createdAt: 1,
         updatedAt: 1,
@@ -512,6 +522,96 @@ describe("replay actions", () => {
       await actions.confirmAsk("s1", "plan", "body", "approve");
 
       expect(deps.serverStore.store.sessions.s1?.status).toBe("planning");
+    });
+  });
+
+  describe("renameSession", () => {
+    it("PATCHes the title and mirrors it locally", async () => {
+      const deps = makeDeps();
+      deps.serverStore.actions.addSession({
+        id: "s1",
+        projectId: "p1",
+        title: "old",
+        modelId: null,
+        profileId: null,
+        thinkingLevel: "off",
+        kind: "mission",
+        pendingAskBody: null,
+        pendingAskKind: null,
+        status: "planning",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const mockApi = {
+        api: {
+          sessions: {
+            ":id": {
+              $patch: vi.fn(() =>
+                okRes({
+                  id: "s1",
+                  projectId: "p1",
+                  title: "new title",
+                  modelId: null,
+                  profileId: null,
+                  thinkingLevel: "off",
+                  kind: "mission",
+                  pendingAskBody: null,
+                  pendingAskKind: null,
+                  status: "planning",
+                  createdAt: 1,
+                  updatedAt: 2,
+                }),
+              ),
+            },
+          },
+        },
+      };
+      const actions = createActions(mockApi as never, makeMockWs(), deps);
+
+      const ok = await actions.renameSession("s1", "new title");
+
+      expect(ok).toBe(true);
+      expect(mockApi.api.sessions[":id"].$patch).toHaveBeenCalledWith({
+        param: { id: "s1" },
+        json: { title: "new title" },
+      });
+      expect(deps.serverStore.store.sessions.s1?.title).toBe("new title");
+    });
+  });
+
+  describe("deleteSession", () => {
+    it("DELETEs and removes the session from the store", async () => {
+      const deps = makeDeps();
+      deps.serverStore.actions.addSession({
+        id: "s1",
+        projectId: "p1",
+        title: null,
+        modelId: null,
+        profileId: null,
+        thinkingLevel: "off",
+        kind: "mission",
+        pendingAskBody: null,
+        pendingAskKind: null,
+        status: "planning",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const mockApi = {
+        api: {
+          sessions: {
+            ":id": {
+              $delete: vi.fn(() => okRes({ ok: true })),
+            },
+          },
+        },
+      };
+      const actions = createActions(mockApi as never, makeMockWs(), deps);
+
+      const ok = await actions.deleteSession("s1");
+
+      expect(ok).toBe(true);
+      expect(mockApi.api.sessions[":id"].$delete).toHaveBeenCalledWith({ param: { id: "s1" } });
+      expect(deps.serverStore.store.sessions.s1).toBeUndefined();
     });
   });
 });

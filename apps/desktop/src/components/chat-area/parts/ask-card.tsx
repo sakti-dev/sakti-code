@@ -1,15 +1,20 @@
+import { FiCheckCircle, FiClipboard, FiFileText } from "solid-icons/fi";
 import { createSignal, type JSX, Show } from "solid-js";
+import { Dynamic } from "solid-js/web";
 
 export type AskKind = "session" | "plan" | "completion";
 
-const COPY: Record<AskKind, { title: string; approve: string; reject: string; icon: string }> = {
-  session: { title: "Proposed Session", approve: "Create", reject: "Revise", icon: "\u{1F4CB}" },
-  plan: { title: "Proposed Plan", approve: "Approve", reject: "Revise", icon: "\u{1F4DD}" },
+const COPY: Record<
+  AskKind,
+  { title: string; approve: string; reject: string; icon: typeof FiClipboard }
+> = {
+  session: { title: "Proposed Session", approve: "Create", reject: "Revise", icon: FiClipboard },
+  plan: { title: "Proposed Plan", approve: "Approve", reject: "Revise", icon: FiFileText },
   completion: {
     title: "Ready for Review",
     approve: "Merge",
     reject: "Request changes",
-    icon: "\u2705",
+    icon: FiCheckCircle,
   },
 };
 
@@ -31,7 +36,7 @@ export function AskCard(props: AskCardProps): JSX.Element {
       data-kind={props.kind}
     >
       <div class="mb-2 flex items-center gap-2">
-        <span class="text-lg">{copy().icon}</span>
+        <Dynamic component={copy().icon} class="h-4 w-4 text-primary" />
         <span class="font-semibold text-sm">{copy().title}</span>
       </div>
       <Show when={expanded()}>

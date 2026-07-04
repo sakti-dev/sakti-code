@@ -46,17 +46,24 @@ generic `ask` tool. The sidebar becomes the viewer for this lifecycle.
 
 ```
 intake ──ask(session)──▶ planning ──ask(plan)✓──▶ building ──ask(completion)──▶ review ──Merge──▶ merged
-                              │                      │                           │
-                              └ Revise (stay)        └ (work)                   └ Request changes ─▶ building
+                               │                      │                           │
+                               └ Revise (stay)        └ (work)                   └ Request changes ─▶ building
 ```
 
-| Transition          | Trigger                      | Who                                 |
-| ------------------- | ---------------------------- | ----------------------------------- |
-| intake → planning   | `ask(kind=session)` approved | user (Create)                       |
-| planning → building | `ask(kind=plan)` approved    | user (Approve) — **forced compact** |
-| building → review   | `ask(kind=completion)`       | agent (auto-enters review)          |
-| review → merged     | Merge button                 | user                                |
-| review → building   | Request changes              | user                                |
+| Transition          | Trigger                          | Who                                                                                               |
+| ------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| intake → planning   | `ask(kind=session)` approved     | user (Create)                                                                                     |
+| planning → building | `ask(kind=plan)` approved        | user (Approve) — **forced compact**                                                               |
+| building → review   | `ask(kind=completion)` **fires** | server (auto — the WS handler flips status on the ask tool-call event + persists the pending ask) |
+| review → merged     | Merge button                     | user                                                                                              |
+| review → building   | Request changes                  | user                                                                                              |
+
+> **Resolved (2026-07-04):** the `building → review` auto-transition is
+> authoritative on the server. The WS event handler flips status to `review`
+> and persists `pending_ask_kind`/`pending_ask_body` when an `ask(completion)`
+> tool-call completes. The desktop mirrors this; the confirm card is re-derived
+> from the persisted columns on reload (so it survives reload/compaction). The
+> `review` status is what the sidebar's amber pill keys off.
 
 ## 3. Generic `ask` tool (`packages/tools/src/ask/`)
 
@@ -192,18 +199,17 @@ bar owns it).
 ## 8. Risks / open questions
 
 - **Migration of existing task rows** (no `status`) → default `building`. Verify
-  no upstream code assumes the column is absent.
+  no upstream code assumes the column is absent. ✓ Done — `dazzling_mysterio`
+  migration adds the column + promotes task rows.
 - **`review`/`merged` agent resolution** — no active agent in those statuses.
-  Chat shows a read-only transcript + the pending merge/decided state. Confirm
-  what the resolver returns (build agent as inert fallback, or an explicit
-  "none").
-- **`ask` payload persistence** — on reload of a session in `review`, should the
-  card re-render with its `body`? v1 lean: derive card presence from
-  `status === 'review'`; the `body` lives in the transcript. Storing the payload
-  is a follow-up if reload fidelity matters.
-- **Status flip mechanism** — confirm whether the WS handler flips status on the
-  `ask` tool-call event, or whether status is derived from a persisted pending
-  flag. Lean: server flips status on the event (authoritative), desktop mirrors.
+  Chat shows a read-only transcript + the pending merge/decided state. The
+  resolver returns the build agent as an inert fallback for `review`/`merged`.
+- **`ask` payload persistence** ✓ Resolved — persisted as
+  `pending_ask_kind`/`pending_ask_body` columns; the card re-renders on reload
+  from these columns. Cleared on confirm (approve/reject) and on the next run.
+- **Status flip mechanism** ✓ Resolved — the server is authoritative: the WS
+  event handler flips status + persists the pending ask on the `ask` tool-call
+  event; the desktop mirrors.
 
 ---
 

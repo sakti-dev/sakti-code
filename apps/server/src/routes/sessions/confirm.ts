@@ -1,12 +1,9 @@
-import { ObservationalMemoryEngine } from "@sakti-code/agent";
-import { SqliteObservationalMemoryStorage } from "@sakti-code/db";
 import { tbValidator } from "@hono/typebox-validator";
 import { Hono } from "hono";
 import Type from "typebox";
-import { runCompact } from "../../agent/commands/compact.ts";
 import { ASK_KINDS, isKnownAskKind, type AskCtx } from "../../agent/config/ask-kinds.ts";
-import { resolveOmConfig } from "../../agent/config/index.ts";
-import { createSessionStorage, getCtx } from "../../context.ts";
+import { buildForceReset } from "../../agent/config/force-reset.ts";
+import { getCtx } from "../../context.ts";
 
 const confirmBody = Type.Object({
   action: Type.Union([Type.Literal("approve"), Type.Literal("reject")]),
@@ -31,46 +28,24 @@ export const confirmRoutes = new Hono()
       return c.json({ error: `Unknown ask kind: ${kind}` }, 400);
     }
 
-    // Lazy context reset — only the plan-approve handler calls this, so the
-    // OM/compaction resolution is deferred to that path. Branches on OM mode:
-    // observe when OM is enabled, compact otherwise. The agent swap on the
-    // plan→build switch invalidates the prompt cache anyway, so resetting
-    // first is free and gives the build agent a clean start.
-    const forceReset: AskCtx["forceReset"] = async (sid) => {
-      const omConfig = resolveOmConfig(ctx, {
-        id: sid,
-        kind: existing.kind,
-        projectId: existing.projectId,
-        profileId: existing.profileId,
-      });
-      if (omConfig) {
-        const omStorage = new SqliteObservationalMemoryStorage(ctx.db);
-        const storage = createSessionStorage(ctx, sid);
-        const abortController = new AbortController();
-        const engine = new ObservationalMemoryEngine({
-          deps: {
-            ...omConfig,
-            storage: omStorage,
-            sessionId: sid,
-            projectId: existing.projectId,
-            sessionStorage: storage,
-          },
-          abortSignal: abortController.signal,
-        });
-        await engine.forceObserve();
-        ctx.log?.agent.info("plan→build: forced OM observe", { sessionId: sid });
-      } else {
-        await runCompact(ctx, sid);
-        ctx.log?.agent.info("plan→build: forced compaction", { sessionId: sid });
-      }
-    };
+    // Lazy context reset — only the plan-approve handler calls this. Branches
+    // on OM mode (observe when OM is enabled, compact otherwise).
+    const forceReset = buildForceReset(ctx, existing);
 
-    const askCtx: AskCtx = { sessions: ctx.repos.sessions, forceReset };
+    const askCtx: AskCtx = {
+      sessions: ctx.repos.sessions,
+      forceReset,
+      ...(ctx.log !== undefined ? { log: ctx.log } : {}),
+    };
     if (action === "approve") {
       await handlers.onApprove?.(id, body, askCtx);
     } else if (handlers.onReject) {
       await handlers.onReject(id, body, askCtx);
     }
+
+    // The user has acted on the pending ask — clear it so a reload doesn't
+    // resurface a stale card. (session handlers above already advanced status.)
+    await ctx.repos.sessions.update(id, { pendingAskKind: null, pendingAskBody: null });
 
     return c.json(ctx.repos.sessions.findById(id) ?? existing);
   });

@@ -13,6 +13,8 @@ export interface SessionMeta {
   id: string;
   kind: "intake" | "mission";
   modelId: string | null;
+  pendingAskBody: string | null;
+  pendingAskKind: "session" | "plan" | "completion" | null;
   profileId: string | null;
   projectId: string;
   status: "planning" | "building" | "review" | "merged";

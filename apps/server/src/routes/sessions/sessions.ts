@@ -61,6 +61,16 @@ export const sessionsRoutes = new Hono()
     async (c) =>
       c.json(await getCtx(c).repos.sessions.update(c.req.param("id"), c.req.valid("json"))),
   )
+  .delete("/:id", async (c) => {
+    const ctx = getCtx(c);
+    const id = c.req.param("id");
+    const existing = ctx.repos.sessions.findById(id);
+    if (!existing) {
+      return c.json({ error: "Not found" }, 404);
+    }
+    await ctx.repos.sessions.delete(id);
+    return c.json({ ok: true });
+  })
   .get("/:id/messages", async (c) => {
     const ctx = getCtx(c);
     const storage = createSessionStorage(ctx, c.req.param("id"));

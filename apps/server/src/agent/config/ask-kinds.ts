@@ -10,6 +10,13 @@ export interface AskCtx {
   sessions: Pick<SessionRepo, "update">;
   /** Force a context reset (compaction or OM observe) on plan→build. */
   forceReset?: (sessionId: string) => Promise<void>;
+  /** Optional structured logger (warn level used when forceReset fails). */
+  log?: {
+    agent?: {
+      warn?: (msg: string, ctx?: Record<string, unknown>) => void;
+      info?: (msg: string, ctx?: Record<string, unknown>) => void;
+    };
+  };
 }
 
 export type AskAction = "approve" | "reject";
@@ -55,8 +62,17 @@ export const ASK_KINDS: Record<AskKind, AskKindHandlers> = {
       // change), so compacting/observing the planning chatter costs nothing
       // cached and gives the build agent a clean, plan-focused start. The
       // approved plan body survives as the most recent entry (kept by
-      // prepareCompaction).
-      await ctx.forceReset?.(id);
+      // prepareCompaction). Best-effort: a reset failure must not strand the
+      // mission — the status flip above is the user's durable intent, and the
+      // build agent still works on the un-compacted context.
+      try {
+        await ctx.forceReset?.(id);
+      } catch (err) {
+        ctx.log?.agent?.warn?.("plan→build: forced reset failed (continuing)", {
+          sessionId: id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     },
     onReject: async () => {},
   },

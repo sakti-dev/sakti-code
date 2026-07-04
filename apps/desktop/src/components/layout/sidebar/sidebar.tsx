@@ -37,7 +37,7 @@ export default function Sidebar(): JSX.Element {
       .sort((a, b) => b.updatedAt - a.updatedAt);
   });
 
-  const activeMissions = () => missions().filter((m) => m.status !== "merged");
+  const activeMissions = createMemo(() => missions().filter((m) => m.status !== "merged"));
   const archivedMissions = createMemo<ArchivedMission[]>(() =>
     missions()
       .filter((m) => m.status === "merged")
@@ -59,6 +59,19 @@ export default function Sidebar(): JSX.Element {
   const selectSession = (sessionId: string) => {
     const pid = activeProjectId();
     if (pid) openProjectTab(pid, sessionId);
+  };
+
+  const handleRename = (sessionId: string, title: string) => {
+    void actions.renameSession(sessionId, title);
+  };
+
+  const handleDelete = (sessionId: string) => {
+    const meta = server.store.sessions[sessionId];
+    const label = meta?.title || "this mission";
+    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) {
+      return;
+    }
+    void actions.deleteSession(sessionId);
   };
 
   const handleNewMission = async () => {
@@ -158,6 +171,8 @@ export default function Sidebar(): JSX.Element {
                   title={m.title}
                   updatedAt={m.updatedAt}
                   onClick={() => selectSession(m.id)}
+                  onRename={(title) => handleRename(m.id, title)}
+                  onDelete={() => handleDelete(m.id)}
                 />
               )}
             </For>

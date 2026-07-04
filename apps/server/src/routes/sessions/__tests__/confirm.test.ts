@@ -82,4 +82,27 @@ describe("confirm route — POST /api/sessions/:id/confirm", () => {
     });
     expect(res.status).toBe(404);
   });
+
+  it("clears the persisted pending ask on approve", async () => {
+    const { app, ctx } = await makeApp([confirmRoutes]);
+    const project = await ctx.repos.projects.create("p", "/tmp/p");
+    const session = await ctx.repos.sessions.create(project.id, {
+      kind: "mission",
+      status: "planning",
+      pendingAskKind: "plan",
+      pendingAskBody: "the plan",
+    });
+
+    const res = await app.request(`/api/sessions/${session.id}/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve", kind: "plan", body: "the plan" }),
+    });
+
+    expect(res.status).toBe(200);
+    const after = ctx.repos.sessions.findById(session.id);
+    expect(after?.status).toBe("building");
+    expect(after?.pendingAskKind).toBeNull();
+    expect(after?.pendingAskBody).toBeNull();
+  });
 });

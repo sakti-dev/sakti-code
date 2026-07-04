@@ -30,8 +30,9 @@ export interface Actions {
     kind: string,
     body: string,
     action: "approve" | "reject",
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   createSession: (projectId: string, title?: string) => Promise<SessionMeta | undefined>;
+  deleteSession: (sessionId: string) => Promise<boolean>;
   evictIntermediates: (sessionId: string, turnId: string) => void;
   followUpRun: (sessionId: string, text: string) => void;
   loadChat: (sessionId: string) => Promise<void>;
@@ -44,6 +45,7 @@ export interface Actions {
   replayResume: (sessionId: string) => void;
   replayStart: (sessionId: string) => void;
   replyPermission: (sessionId: string, id: string, reply: PermissionReply) => void;
+  renameSession: (sessionId: string, title: string) => Promise<boolean>;
   selectProfile: (sessionId: string | null, profileId: string) => Promise<void>;
   sendPrompt: (sessionId: string, text: string) => void;
   steerRun: (sessionId: string, text: string) => void;
@@ -155,6 +157,14 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
         const turns = hydrateChatTurns(body.turns);
         const session = sessionRegistry.get(sessionId);
         session.actions.loadTurns(turns);
+        // Re-derive the pending ask from persisted server state so the confirm
+        // card survives reload (the live WS event path sets it during a run).
+        const meta = server.store.sessions[sessionId];
+        if (meta?.pendingAskKind && meta?.pendingAskBody) {
+          session.actions.setPendingAsk({ kind: meta.pendingAskKind, body: meta.pendingAskBody });
+        } else {
+          session.actions.clearPendingAsk();
+        }
       } catch (error) {
         setLastError(error instanceof Error ? error.message : "Failed to load chat");
       }
@@ -203,6 +213,17 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
       const session = sessionRegistry.get(sessionId);
       const sessionMeta = server.store.sessions[sessionId];
 
+      // A new prompt supersedes any pending ask card (the user typed instead
+      // of clicking Approve/Revise). Clears both the local card and the
+      // server-side persisted state (the run starting server-side also clears).
+      session.actions.clearPendingAsk();
+      if (sessionMeta?.pendingAskKind) {
+        server.actions.updateSession(sessionId, {
+          pendingAskKind: null,
+          pendingAskBody: null,
+        });
+      }
+
       log.info("user prompt", { sessionId, messageLength: text.length });
       log.debug("prompt submitted", {
         ...(sessionMeta?.modelId ? { modelId: sessionMeta.modelId } : {}),
@@ -234,12 +255,54 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
           json: { action, kind, body },
         });
         if (!res.ok) {
-          return;
+          setLastError(`Failed to ${action} (${res.status})`);
+          return false;
         }
         const updated = (await res.json()) as SessionMeta;
-        server.actions.updateSession(sessionId, { status: updated.status });
+        // Mirror the server: status advanced + pending ask cleared.
+        server.actions.updateSession(sessionId, {
+          status: updated.status,
+          pendingAskKind: null,
+          pendingAskBody: null,
+        });
+        return true;
       } catch (error) {
         setLastError(error instanceof Error ? error.message : "Failed to confirm ask");
+        return false;
+      }
+    },
+
+    async deleteSession(sessionId) {
+      try {
+        const res = await api.api.sessions[":id"].$delete({ param: { id: sessionId } });
+        if (!res.ok) {
+          setLastError(`Failed to delete session (${res.status})`);
+          return false;
+        }
+        server.actions.removeSession(sessionId);
+        return true;
+      } catch (error) {
+        setLastError(error instanceof Error ? error.message : "Failed to delete session");
+        return false;
+      }
+    },
+
+    async renameSession(sessionId, title) {
+      try {
+        const res = await api.api.sessions[":id"].$patch({
+          param: { id: sessionId },
+          json: { title },
+        });
+        if (!res.ok) {
+          setLastError(`Failed to rename session (${res.status})`);
+          return false;
+        }
+        const updated = (await res.json()) as SessionMeta;
+        server.actions.updateSession(sessionId, { title: updated.title });
+        return true;
+      } catch (error) {
+        setLastError(error instanceof Error ? error.message : "Failed to rename session");
+        return false;
       }
     },
 
