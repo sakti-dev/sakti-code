@@ -89,7 +89,7 @@ function ProjectTab(props: ProjectTabProps): JSX.Element {
   );
 }
 
-export default function ProjectTabBar(): JSX.Element {
+export default function ProjectTabs(): JSX.Element {
   const { server } = useStore();
   const tabs = projectTabs;
   const currentIdx = activeProjectIndex;

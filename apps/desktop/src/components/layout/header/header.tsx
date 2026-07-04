@@ -1,13 +1,13 @@
 import type { JSX } from "solid-js";
 import { openSettingsTab } from "~/stores/workspace/project-tab-store";
-import "./top-bar.css";
-import ProjectTabBar from "./project-tab";
+import "./header.css";
+import ProjectTabs from "./project-tabs";
 
-export default function TopBar(): JSX.Element {
+export default function Header(): JSX.Element {
   return (
     <div class="flex h-10 items-center bg-card px-4">
       <div class="flex-1" />
-      <ProjectTabBar />
+      <ProjectTabs />
       <div class="flex flex-1 justify-end">
         <button
           class="flex items-center gap-1.5 rounded-md border-border bg-card px-2 py-1 font-medium text-foreground text-xs transition-colors hover:border-muted-foreground hover:bg-secondary"
