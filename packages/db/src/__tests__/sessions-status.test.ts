@@ -24,10 +24,10 @@ describe("sessions status column", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("defaults a new task session to 'planning'", async () => {
+  it("defaults a new task session to 'specifying'", async () => {
     const project = await projectRepo.create("status-test", "/tmp/status-test");
     const session = await sessionRepo.create(project.id);
-    expect(session.status).toBe("planning");
+    expect(session.status).toBe("specifying");
   });
 
   it("can be updated to building/review/merged", async () => {

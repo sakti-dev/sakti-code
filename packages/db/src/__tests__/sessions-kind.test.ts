@@ -30,34 +30,34 @@ describe("sessions kind column", () => {
     expect(session.kind).toBe("mission");
   });
 
-  it("can be set to 'intake'", async () => {
+  it("can be set to 'plan'", async () => {
     const project = await projectRepo.create("test2", "/tmp/test2");
     const session = await sessionRepo.create(project.id, {
-      kind: "intake",
+      kind: "plan",
     });
-    expect(session.kind).toBe("intake");
+    expect(session.kind).toBe("plan");
   });
 
-  it("listChildIntakesByProject returns all intake sessions for a project, newest first", async () => {
+  it("listChildPlansByProject returns all plan sessions for a project, newest first", async () => {
     const project = await projectRepo.create("list-test", "/tmp/list-test");
     const mission = await sessionRepo.create(project.id, { kind: "mission" });
-    const intakeA = await sessionRepo.create(project.id, { kind: "intake" });
-    const intakeB = await sessionRepo.create(project.id, { kind: "intake" });
+    const planA = await sessionRepo.create(project.id, { kind: "plan" });
+    const planB = await sessionRepo.create(project.id, { kind: "plan" });
 
-    const list = sessionRepo.listChildIntakesByProject(project.id);
+    const list = sessionRepo.listChildPlansByProject(project.id);
     expect(list).toHaveLength(2);
     // newest first
-    expect(list[0]!.id).toBe(intakeB.id);
-    expect(list[1]!.id).toBe(intakeA.id);
+    expect(list[0]!.id).toBe(planB.id);
+    expect(list[1]!.id).toBe(planA.id);
     // the mission is excluded
     expect(list.find((s) => s.id === mission.id)).toBeUndefined();
   });
 
-  it("listChildIntakesByProject returns empty array for a project with no intakes", async () => {
+  it("listChildPlansByProject returns empty array for a project with no plans", async () => {
     const project = await projectRepo.create("empty-test", "/tmp/empty-test");
     await sessionRepo.create(project.id, { kind: "mission" });
 
-    const list = sessionRepo.listChildIntakesByProject(project.id);
+    const list = sessionRepo.listChildPlansByProject(project.id);
     expect(list).toEqual([]);
   });
 });

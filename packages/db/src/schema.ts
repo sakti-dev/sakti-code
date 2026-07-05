@@ -20,9 +20,9 @@ export const sessions = sqliteTable("sessions", {
   modelId: text("model_id"),
   profileId: text("profile_id"),
   kind: text("kind").notNull().default("mission"),
-  // SDD task lifecycle: planning → building → review → merged.
-  // Intake sessions are unaffected; only task sessions use this column.
-  status: text("status").notNull().default("planning"),
+  // SDD task lifecycle: specifying → building → review → merged.
+  // Plan sessions are unaffected; only mission sessions use this column.
+  status: text("status").notNull().default("specifying"),
   // Pending ask tool-call awaiting a user confirm/revise action. Set
   // server-side when an agent's `ask` tool-call of a known kind completes;
   // cleared on confirm, reject, or the next run. Nullable — null means no

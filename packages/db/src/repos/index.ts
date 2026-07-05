@@ -98,11 +98,11 @@ export class SessionRepo {
     return this.db.select().from(sessions).where(eq(sessions.id, id)).get();
   }
 
-  listChildIntakesByProject(projectId: string) {
+  listChildPlansByProject(projectId: string) {
     return this.db
       .select()
       .from(sessions)
-      .where(and(eq(sessions.projectId, projectId), eq(sessions.kind, "intake")))
+      .where(and(eq(sessions.projectId, projectId), eq(sessions.kind, "plan")))
       .orderBy(desc(sessions.createdAt))
       .all();
   }
