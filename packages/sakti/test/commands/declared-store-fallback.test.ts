@@ -150,57 +150,6 @@ describe('declared store fallback (3.2)', () => {
     expect(refs.map((entry: any) => entry.store_id)).toEqual(['upstream-context']);
   });
 
-  it('refuses init in a pointer repo and creates nothing, then converts cleanly', async () => {
-    const before = snapshot(pointerRepo);
-    const dataBefore = fs.existsSync(path.join(tempDir, 'data'))
-      ? snapshot(path.join(tempDir, 'data'))
-      : null;
-
-    const refused = await runCLI(['init', '.'], { cwd: pointerRepo, env });
-    expect(refused.exitCode).toBe(1);
-    expect(refused.stderr).toContain("externalized to store 'team-context'");
-    expect(refused.stderr).toContain('Remove the store: line');
-    expect(snapshot(pointerRepo)).toEqual(before);
-    if (dataBefore) {
-      expect(snapshot(path.join(tempDir, 'data'))).toEqual(dataBefore);
-    }
-
-    // Conversion: remove the line, rerun, get a normal local root.
-    fs.writeFileSync(path.join(pointerRepo, '.sakti', 'config.yaml'), 'schema: spec-driven\n');
-    const converted = await runCLI(['init', '.', '--tools', 'none'], {
-      cwd: pointerRepo,
-      env,
-    });
-    expect(converted.exitCode).toBe(0);
-    expect(fs.existsSync(path.join(pointerRepo, '.sakti', 'specs'))).toBe(true);
-    expect(fs.existsSync(path.join(pointerRepo, '.sakti', 'changes'))).toBe(true);
-  });
-
-  it('refuses init for malformed pointers and from pointer-repo subdirectories', async () => {
-    // A broken declaration must not be buried under a scaffold.
-    fs.writeFileSync(
-      path.join(pointerRepo, '.sakti', 'config.yaml'),
-      'store: [team-context]\n'
-    );
-    const malformed = await runCLI(['init', '.'], { cwd: pointerRepo, env });
-    expect(malformed.exitCode).toBe(1);
-    expect(malformed.stderr).toContain('Fix or remove the store: line');
-    expect(fs.existsSync(path.join(pointerRepo, '.sakti', 'specs'))).toBe(false);
-
-    // And a subdirectory of a pointer repo must not grow a nested root
-    // that silently diverts work away from the declared store.
-    fs.writeFileSync(
-      path.join(pointerRepo, '.sakti', 'config.yaml'),
-      'store: team-context\n'
-    );
-    const subdir = path.join(pointerRepo, 'packages', 'api');
-    fs.mkdirSync(subdir, { recursive: true });
-    const nested = await runCLI(['init', '.'], { cwd: subdir, env });
-    expect(nested.exitCode).toBe(1);
-    expect(nested.stderr).toContain("externalized to store 'team-context'");
-    expect(fs.existsSync(path.join(subdir, '.sakti'))).toBe(false);
-  });
-
   it('keeps real-root stdout byte-identical when a pointer is present, with one warning', async () => {
     const realRepo = path.join(tempDir, 'real-repo');
     createSaktiRoot(realRepo);

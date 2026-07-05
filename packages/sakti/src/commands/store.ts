@@ -1,9 +1,7 @@
-import * as os from 'node:os';
-import { asErrorMessage, emitFailure, printJson } from './shared-output.js';
-import * as path from 'node:path';
-import { Command } from 'commander';
-
-
+import * as os from "node:os";
+import { asErrorMessage, emitFailure, printJson } from "./shared-output.js";
+import * as path from "node:path";
+import { Command } from "commander";
 
 import {
   StoreError,
@@ -25,8 +23,8 @@ import {
   type StoreListResult,
   type StoreMutationResult,
   type SetupStoreInput,
-} from '../core/store/index.js';
-import { isInteractive } from '../utils/interactive.js';
+} from "../core/store/index.js";
+import { isInteractive } from "../utils/interactive.js";
 
 interface StoreSetupOptions {
   path?: string;
@@ -95,13 +93,13 @@ interface StoreListOutput {
   status: StoreDiagnostic[];
 }
 
-type SaktiRootOutput = Omit<StoreInspection['saktiRoot'], 'diagnostics'> & {
+type SaktiRootOutput = Omit<StoreInspection["saktiRoot"], "diagnostics"> & {
   status: StoreDiagnostic[];
 };
 
 interface StoreDoctorStoreOutput extends StoreOutput {
   sakti_root: SaktiRootOutput;
-  metadata: StoreInspection['metadata'];
+  metadata: StoreInspection["metadata"];
   git: {
     is_repository: boolean | null;
     has_commits: boolean | null;
@@ -116,10 +114,6 @@ interface StoreDoctorOutput {
   stores: StoreDoctorStoreOutput[];
   status: StoreDiagnostic[];
 }
-
-
-
-
 
 function toStoreOutput(store: StoreInfo): StoreOutput {
   return {
@@ -170,7 +164,7 @@ function toListOutput(result: StoreListResult): StoreListOutput {
   };
 }
 
-function toSaktiRootOutput(root: StoreInspection['saktiRoot']): SaktiRootOutput {
+function toSaktiRootOutput(root: StoreInspection["saktiRoot"]): SaktiRootOutput {
   return {
     present: root.present,
     config: root.config,
@@ -205,16 +199,12 @@ function toDoctorOutput(result: StoreDoctorResult): StoreDoctorOutput {
   };
 }
 
-
-
-
-
 function formatPathForHuman(targetPath: string): string {
   const home = os.homedir();
   const normalizedHome = path.resolve(home);
   const normalizedTarget = path.resolve(targetPath);
 
-  if (normalizedTarget === normalizedHome) return '~';
+  if (normalizedTarget === normalizedHome) return "~";
   if (normalizedTarget.startsWith(`${normalizedHome}${path.sep}`)) {
     return `~${path.sep}${path.relative(normalizedHome, normalizedTarget)}`;
   }
@@ -223,10 +213,10 @@ function formatPathForHuman(targetPath: string): string {
 }
 
 async function promptStoreId(): Promise<string> {
-  const { input } = await import('@inquirer/prompts');
+  const { input } = await import("@inquirer/prompts");
 
   return input({
-    message: 'Store name',
+    message: "Store name",
     required: true,
     validate(value: string) {
       try {
@@ -240,50 +230,44 @@ async function promptStoreId(): Promise<string> {
 }
 
 async function promptStorePath(id: string): Promise<string> {
-  const { input } = await import('@inquirer/prompts');
+  const { input } = await import("@inquirer/prompts");
   // Suggest a visible, user-owned location — never the managed XDG data dir.
-  const defaultPath = ['~', 'sakti', id].join('/');
+  const defaultPath = ["~", "sakti", id].join("/");
 
   return input({
-    message: 'Where should this store live?',
+    message: "Where should this store live?",
     default: defaultPath,
-    prefill: 'editable',
+    prefill: "editable",
     required: true,
   });
 }
 
 async function resolveSetupInput(
   id: string | undefined,
-  options: StoreSetupOptions
+  options: StoreSetupOptions,
 ): Promise<ResolvedStoreSetupInput> {
   const interactive = !options.json && isInteractive();
 
   if (!id && !interactive) {
-    throw new StoreError(
-      'Pass a store name.',
-      'store_setup_id_required',
-      {
-        target: 'store.id',
-        fix: 'sakti store setup <id> --path ~/sakti/<id> --json',
-      }
-    );
+    throw new StoreError("Pass a store name.", "store_setup_id_required", {
+      target: "store.id",
+      fix: "sakti store setup <id> --path ~/sakti/<id> --json",
+    });
   }
 
   if (options.path === undefined && !interactive) {
     throw new StoreError(
-      'Pass --path with the folder where this store should live.',
-      'store_setup_path_required',
+      "Pass --path with the folder where this store should live.",
+      "store_setup_path_required",
       {
-        target: 'store.root',
-        fix: `sakti store setup ${id ?? '<id>'} --path ~/sakti/${id ?? '<id>'}`,
-      }
+        target: "store.root",
+        fix: `sakti store setup ${id ?? "<id>"} --path ~/sakti/${id ?? "<id>"}`,
+      },
     );
   }
 
   const resolvedId = id ? validateStoreId(id) : await promptStoreId();
-  const promptedPath = options.path === undefined
-    ? await promptStorePath(resolvedId)
-    : undefined;
+  const promptedPath = options.path === undefined ? await promptStorePath(resolvedId) : undefined;
 
   return {
     id: resolvedId,
@@ -292,41 +276,34 @@ async function resolveSetupInput(
   };
 }
 
-async function prepareSetupInput(
-  input: ResolvedStoreSetupInput,
-  _options: StoreSetupOptions
-) {
+async function prepareSetupInput(input: ResolvedStoreSetupInput, _options: StoreSetupOptions) {
   return prepareStoreSetup(input);
 }
 
 async function confirmSetup(
   prepared: Awaited<ReturnType<typeof prepareStoreSetup>>,
-  initGit: boolean
+  initGit: boolean,
 ): Promise<void> {
-  const { confirm } = await import('@inquirer/prompts');
+  const { confirm } = await import("@inquirer/prompts");
 
-  console.log('');
-  console.log('Sakti will create:');
-  console.log('');
+  console.log("");
+  console.log("Sakti will create:");
+  console.log("");
   console.log(`  Store: ${prepared.id}`);
   console.log(`  Location: ${formatPathForHuman(prepared.root)}`);
-  console.log(`  Git: ${initGit ? 'initialized' : 'not initialized'}`);
-  console.log('');
+  console.log(`  Git: ${initGit ? "initialized" : "not initialized"}`);
+  console.log("");
 
   const confirmed = await confirm({
-    message: 'Create this store?',
+    message: "Create this store?",
     default: true,
   });
 
   if (!confirmed) {
-    throw new StoreError(
-      'Store setup cancelled.',
-      'store_setup_cancelled',
-      {
-        target: 'store.root',
-        fix: 'Rerun setup when you are ready.',
-      }
-    );
+    throw new StoreError("Store setup cancelled.", "store_setup_cancelled", {
+      target: "store.root",
+      fix: "Rerun setup when you are ready.",
+    });
   }
 }
 
@@ -335,63 +312,55 @@ async function confirmRemove(id: string, root: string, options: StoreRemoveOptio
 
   if (options.json || !isInteractive()) {
     throw new StoreError(
-      'Pass --yes to delete store files non-interactively.',
-      'store_remove_confirmation_required',
+      "Pass --yes to delete store files non-interactively.",
+      "store_remove_confirmation_required",
       {
-        target: 'store.root',
+        target: "store.root",
         fix: `sakti store remove ${id} --yes`,
-      }
+      },
     );
   }
 
-  const { confirm } = await import('@inquirer/prompts');
+  const { confirm } = await import("@inquirer/prompts");
   const confirmed = await confirm({
     message: `Delete local store folder ${formatPathForHuman(root)}?`,
     default: false,
   });
 
   if (!confirmed) {
-    throw new StoreError(
-      'Store remove cancelled.',
-      'store_remove_cancelled',
-      {
-        target: 'store.root',
-        fix: 'Run "sakti store unregister <id>" if you only want to forget the local registration.',
-      }
-    );
+    throw new StoreError("Store remove cancelled.", "store_remove_cancelled", {
+      target: "store.root",
+      fix: 'Run "sakti store unregister <id>" if you only want to forget the local registration.',
+    });
   }
 }
 
 function isRegisterIdentityConfirmationError(error: unknown): boolean {
   return (
     error instanceof StoreError &&
-    error.diagnostic.code === 'store_register_identity_confirmation_required'
+    error.diagnostic.code === "store_register_identity_confirmation_required"
   );
 }
 
 async function confirmRegisterConversion(error: unknown): Promise<void> {
-  const { confirm } = await import('@inquirer/prompts');
+  const { confirm } = await import("@inquirer/prompts");
   const confirmed = await confirm({
     message: asErrorMessage(error),
     default: false,
   });
 
   if (!confirmed) {
-    throw new StoreError(
-      'Store register cancelled.',
-      'store_register_cancelled',
-      {
-        target: 'store.metadata',
-        fix: 'Rerun register when you are ready to create store identity metadata.',
-      }
-    );
+    throw new StoreError("Store register cancelled.", "store_register_cancelled", {
+      target: "store.metadata",
+      fix: "Rerun register when you are ready to create store identity metadata.",
+    });
   }
 }
 
 function printMutationHuman(
   title: string,
   payload: StoreMutationOutput,
-  remotes?: { canonical?: string; observed?: string }
+  remotes?: { canonical?: string; observed?: string },
 ): void {
   if (!payload.store || !payload.registry || !payload.git) {
     return;
@@ -399,20 +368,22 @@ function printMutationHuman(
 
   console.log(`${title}: ${payload.store.id}`);
   console.log(`Location: ${formatPathForHuman(payload.store.root)}`);
-  console.log('Sakti root: ready');
-  console.log(`Registry: ${payload.registry.already_registered ? 'already registered' : 'registered'}`);
+  console.log("Sakti root: ready");
+  console.log(
+    `Registry: ${payload.registry.already_registered ? "already registered" : "registered"}`,
+  );
   for (const status of payload.status) {
-    console.log(`${status.severity === 'error' ? 'Issue' : 'Note'}: ${status.message}`);
+    console.log(`${status.severity === "error" ? "Issue" : "Note"}: ${status.message}`);
   }
-  console.log('');
-  console.log('Next: run normal Sakti commands against this store, for example:');
+  console.log("");
+  console.log("Next: run normal Sakti commands against this store, for example:");
   console.log(`  sakti new change <change-id> --store ${payload.store.id}`);
   if (payload.git.is_repository) {
     const shareRemote = remotes?.canonical ?? remotes?.observed;
     console.log(
       shareRemote
         ? `Share it: teammates clone ${shareRemote} and run sakti store register <path>.`
-        : 'Share this store by committing and pushing it like any Git repo.'
+        : "Share this store by committing and pushing it like any Git repo.",
     );
   }
 }
@@ -433,61 +404,61 @@ function printCleanupHuman(title: string, payload: StoreCleanupOutput): void {
   }
 
   for (const status of payload.status) {
-    console.log(`${status.severity === 'error' ? 'Issue' : 'Note'}: ${status.message}`);
+    console.log(`${status.severity === "error" ? "Issue" : "Note"}: ${status.message}`);
   }
 }
 
 function printListHuman(payload: StoreListOutput): void {
   if (payload.stores.length === 0) {
-    console.log('No stores registered.');
-    console.log('');
-    console.log('Next:');
-    console.log('  sakti store setup team-context --path ~/sakti/team-context');
-    console.log('  sakti store register /path/to/store');
+    console.log("No stores registered.");
+    console.log("");
+    console.log("Next:");
+    console.log("  sakti store setup team-context --path ~/sakti/team-context");
+    console.log("  sakti store register /path/to/store");
     return;
   }
 
   console.log(`Sakti stores (${payload.stores.length})`);
-  console.log('');
-  console.log(`${'ID'.padEnd(16)}Location`);
+  console.log("");
+  console.log(`${"ID".padEnd(16)}Location`);
   for (const store of payload.stores) {
     console.log(`${store.id.padEnd(16)}${store.root}`);
   }
 }
 
-function formatMetadataHuman(store: StoreDoctorOutput['stores'][number]): string {
-  if (store.metadata.valid) return 'ok';
-  if (store.metadata.present === false) return 'missing';
-  if (store.metadata.present === null) return 'unknown';
-  return 'invalid';
+function formatMetadataHuman(store: StoreDoctorOutput["stores"][number]): string {
+  if (store.metadata.valid) return "ok";
+  if (store.metadata.present === false) return "missing";
+  if (store.metadata.present === null) return "unknown";
+  return "invalid";
 }
 
-function formatDoctorGitHuman(store: StoreDoctorOutput['stores'][number]): string {
-  if (store.git.is_repository === null) return 'unknown';
-  if (!store.git.is_repository) return 'not detected';
+function formatDoctorGitHuman(store: StoreDoctorOutput["stores"][number]): string {
+  if (store.git.is_repository === null) return "unknown";
+  if (!store.git.is_repository) return "not detected";
 
   const fact = (value: boolean | null, yes: string, no: string): string =>
-    value === null ? 'unknown' : value ? yes : no;
+    value === null ? "unknown" : value ? yes : no;
 
-  return `repository detected (commits: ${fact(store.git.has_commits, 'yes', 'none')}, uncommitted changes: ${fact(store.git.has_uncommitted_changes, 'yes', 'no')}, remote: ${fact(store.git.has_remote, 'yes', 'none')})`;
+  return `repository detected (commits: ${fact(store.git.has_commits, "yes", "none")}, uncommitted changes: ${fact(store.git.has_uncommitted_changes, "yes", "no")}, remote: ${fact(store.git.has_remote, "yes", "none")})`;
 }
 
-function formatSaktiRootHuman(store: StoreDoctorOutput['stores'][number]): string {
-  if (store.sakti_root.healthy) return 'ok';
-  if (store.sakti_root.present === false) return 'missing';
-  if (store.sakti_root.present === null) return 'unknown';
-  return 'incomplete';
+function formatSaktiRootHuman(store: StoreDoctorOutput["stores"][number]): string {
+  if (store.sakti_root.healthy) return "ok";
+  if (store.sakti_root.present === false) return "missing";
+  if (store.sakti_root.present === null) return "unknown";
+  return "incomplete";
 }
 
 function printDoctorHuman(payload: StoreDoctorOutput): void {
   if (payload.stores.length === 0) {
-    console.log('No stores registered.');
+    console.log("No stores registered.");
     return;
   }
 
-  console.log('Store doctor');
+  console.log("Store doctor");
   for (const store of payload.stores) {
-    console.log('');
+    console.log("");
     console.log(store.id);
     console.log(`  Location: ${store.root}`);
     console.log(`  Sakti root: ${formatSaktiRootHuman(store)}`);
@@ -499,11 +470,11 @@ function printDoctorHuman(payload: StoreDoctorOutput): void {
     console.log(`  Git: ${formatDoctorGitHuman(store)}`);
 
     if (store.status.length === 0) {
-      console.log('  Issues: none');
+      console.log("  Issues: none");
       continue;
     }
 
-    console.log('  Issues:');
+    console.log("  Issues:");
     for (const status of store.status) {
       console.log(`    - ${status.message}`);
       if (status.fix) {
@@ -530,12 +501,12 @@ class StoreCommand {
         return;
       }
 
-      printMutationHuman('Store ready', payload, result.remotes);
+      printMutationHuman("Store ready", payload, result.remotes);
     } catch (error) {
       this.handleFailure(
         options.json,
         { store: null, registry: null, git: null, created_files: [], status: [] },
-        error
+        error,
       );
     }
   }
@@ -569,12 +540,12 @@ class StoreCommand {
         return;
       }
 
-      printMutationHuman('Store registered', payload, result.remotes);
+      printMutationHuman("Store registered", payload, result.remotes);
     } catch (error) {
       this.handleFailure(
         options.json,
         { store: null, registry: null, git: null, created_files: [], status: [] },
-        error
+        error,
       );
     }
   }
@@ -588,12 +559,12 @@ class StoreCommand {
         return;
       }
 
-      printCleanupHuman('Unregistered store', payload);
+      printCleanupHuman("Unregistered store", payload);
     } catch (error) {
       this.handleFailure(
         options.json,
         { store: null, registry: null, files: null, status: [] },
-        error
+        error,
       );
     }
   }
@@ -609,12 +580,12 @@ class StoreCommand {
         return;
       }
 
-      printCleanupHuman('Removed store', payload);
+      printCleanupHuman("Removed store", payload);
     } catch (error) {
       this.handleFailure(
         options.json,
         { store: null, registry: null, files: null, status: [] },
-        error
+        error,
       );
     }
   }
@@ -652,69 +623,70 @@ class StoreCommand {
   private handleFailure<T extends { status: StoreDiagnostic[] }>(
     json: boolean | undefined,
     payload: T,
-    error: unknown
+    error: unknown,
   ): void {
-    emitFailure(json, payload, error, 'store_error');
+    emitFailure(json, payload, error, "store_error");
   }
 }
 
 export function registerStoreCommand(program: Command): void {
   const storeCommand = new StoreCommand();
-  const storeGroupDescription = 'Create and manage stores - standalone Sakti repos you register on this machine';
-  const store = program.command('store').description(storeGroupDescription);
+  const storeGroupDescription =
+    "Create and manage stores - standalone Sakti repos you register on this machine";
+  const store = program.command("store").description(storeGroupDescription);
 
   store
-    .command('setup [id]')
-    .description('Create and register a local store')
-    .option('--path <path>', 'Folder where the store should live (for example ~/sakti/<id>)')
-    .option('--init-git', 'Initialize a Git repository with an initial commit (default)')
-    .option('--no-init-git', 'Skip every Git action: no init, no initial commit')
-    .option('--remote <url>', 'Canonical clone source recorded in store.yaml')
-    .option('--json', 'Output as JSON')
+    .command("setup [id]")
+    .description("Create and register a local store")
+    .option("--path <path>", "Folder where the store should live (for example ~/sakti/<id>)")
+    .option("--init-git", "Initialize a Git repository with an initial commit (default)")
+    .option("--no-init-git", "Skip every Git action: no init, no initial commit")
+    .option("--remote <url>", "Canonical clone source recorded in store.yaml")
+    .option("--json", "Output as JSON")
     .action(async (id: string | undefined, options: StoreSetupOptions) => {
       await storeCommand.setup(id, options);
     });
 
   store
-    .command('register [path]')
-    .description('Register an existing local store')
-    .option('--id <id>', 'Store id; defaults to metadata or folder name')
-    .option('--yes', 'Confirm creating store identity metadata for a healthy Sakti root')
-    .option('--json', 'Output as JSON')
+    .command("register [path]")
+    .description("Register an existing local store")
+    .option("--id <id>", "Store id; defaults to metadata or folder name")
+    .option("--yes", "Confirm creating store identity metadata for a healthy Sakti root")
+    .option("--json", "Output as JSON")
     .action(async (inputPath: string | undefined, options: StoreRegisterOptions) => {
       await storeCommand.register(inputPath, options);
     });
 
   store
-    .command('unregister <id>')
-    .description('Forget a local store registration without deleting files')
-    .option('--json', 'Output as JSON')
+    .command("unregister <id>")
+    .description("Forget a local store registration without deleting files")
+    .option("--json", "Output as JSON")
     .action(async (id: string, options: StoreJsonOptions) => {
       await storeCommand.unregister(id, options);
     });
 
   store
-    .command('remove <id>')
-    .description('Forget a local store registration and delete its local folder')
-    .option('--yes', 'Confirm local store folder deletion')
-    .option('--json', 'Output as JSON')
+    .command("remove <id>")
+    .description("Forget a local store registration and delete its local folder")
+    .option("--yes", "Confirm local store folder deletion")
+    .option("--json", "Output as JSON")
     .action(async (id: string, options: StoreRemoveOptions) => {
       await storeCommand.remove(id, options);
     });
 
   store
-    .command('list')
-    .alias('ls')
-    .description('List locally registered stores')
-    .option('--json', 'Output as JSON')
+    .command("list")
+    .alias("ls")
+    .description("List locally registered stores")
+    .option("--json", "Output as JSON")
     .action(async (options: StoreJsonOptions) => {
       await storeCommand.list(options);
     });
 
   store
-    .command('doctor [id]')
-    .description('Check local store registration and metadata')
-    .option('--json', 'Output as JSON')
+    .command("doctor [id]")
+    .description("Check local store registration and metadata")
+    .option("--json", "Output as JSON")
     .action(async (id: string | undefined, options: StoreJsonOptions) => {
       await storeCommand.doctor(id, options);
     });
@@ -723,9 +695,11 @@ export function registerStoreCommand(program: Command): void {
   const storeSubcommandsLine = store.commands
     .map((subcommand) => {
       const aliases = subcommand.aliases();
-      return aliases.length > 0 ? `${subcommand.name()} (${aliases.join(', ')})` : subcommand.name();
+      return aliases.length > 0
+        ? `${subcommand.name()} (${aliases.join(", ")})`
+        : subcommand.name();
     })
-    .join(', ');
+    .join(", ");
   // One group action owns missing AND unknown subcommands. Known
   // subcommands dispatch above; everything else — including a bare
   // `store --json` with no operand — lands here, so the handler owns the
@@ -740,10 +714,10 @@ export function registerStoreCommand(program: Command): void {
     const operands = store.args;
     // Flag values are indistinguishable from operands without a full
     // parse, so the verbatim echo only applies to plain-operand input.
-    const attempted = operands.filter((operand) => !operand.startsWith('-'));
-    const hasFlagLikeToken = operands.some((operand) => operand.startsWith('-'));
+    const attempted = operands.filter((operand) => !operand.startsWith("-"));
+    const hasFlagLikeToken = operands.some((operand) => operand.startsWith("-"));
     // The agent contract: --json failures emit one JSON document.
-    if (operands.includes('--json')) {
+    if (operands.includes("--json")) {
       const message =
         attempted.length > 0
           ? `Unknown command '${attempted[0]}' for 'sakti store'. Store subcommands: ${storeSubcommandsLine}.`
@@ -751,35 +725,33 @@ export function registerStoreCommand(program: Command): void {
       printJson({
         status: [
           {
-            severity: 'error',
-            code: 'unknown_store_subcommand',
+            severity: "error",
+            code: "unknown_store_subcommand",
             message,
-            fix: 'Run a store subcommand, or use the lifecycle command with --store <id>.',
+            fix: "Run a store subcommand, or use the lifecycle command with --store <id>.",
           },
         ],
       });
       process.exitCode = 1;
       return;
     }
-    let example = 'sakti new change <change-id> --store <id>';
+    let example = "sakti new change <change-id> --store <id>";
     if (!hasFlagLikeToken && attempted.length > 0 && lifecycleRedirects.has(attempted[0])) {
-      if (attempted[0] === 'new') {
-        const changeId = attempted[1] === 'change' && attempted[2] ? attempted[2] : '<change-id>';
+      if (attempted[0] === "new") {
+        const changeId = attempted[1] === "change" && attempted[2] ? attempted[2] : "<change-id>";
         example = `sakti new change ${changeId} --store <id>`;
       } else {
-        example = `sakti ${attempted.join(' ')} --store <id>`;
+        example = `sakti ${attempted.join(" ")} --store <id>`;
       }
     }
     console.error(
       attempted.length > 0
         ? `Error: unknown command '${attempted[0]}' for 'sakti store'.`
-        : "Error: missing subcommand for 'sakti store'."
+        : "Error: missing subcommand for 'sakti store'.",
     );
+    console.error(`Store subcommands manage store registration: ${storeSubcommandsLine}.`);
     console.error(
-      `Store subcommands manage store registration: ${storeSubcommandsLine}.`
-    );
-    console.error(
-      'To create or work on a change in a store, use the normal command with --store, for example:'
+      "To create or work on a change in a store, use the normal command with --store, for example:",
     );
     console.error(`  ${example}`);
     process.exitCode = 1;

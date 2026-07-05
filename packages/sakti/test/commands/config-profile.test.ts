@@ -3,15 +3,7 @@ import { Command } from 'commander';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { execSync } from 'node:child_process';
 
-vi.mock('node:child_process', async () => {
-  const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process');
-  return {
-    ...actual,
-    execSync: vi.fn(),
-  };
-});
 
 vi.mock('@inquirer/prompts', () => ({
   select: vi.fn(),
@@ -149,7 +141,6 @@ describe('config profile interactive flow', () => {
 
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.mocked(execSync).mockReset();
   });
 
   afterEach(() => {
@@ -297,20 +288,6 @@ describe('config profile interactive flow', () => {
     expect(consoleLogSpy).toHaveBeenCalledWith('No config changes.');
   });
 
-  it('keep action should warn when project files drift from global config', async () => {
-    const { saveGlobalConfig } = await import('../../src/core/global-config.js');
-    const { select } = await getPromptMocks();
-
-    saveGlobalConfig({ featureFlags: {}, profile: 'core', delivery: 'both', workflows: ['propose', 'explore', 'apply', 'sync', 'archive'] });
-    setupDriftedProjectArtifacts(tempDir);
-    select.mockResolvedValueOnce('keep');
-
-    await runConfigCommand(['profile']);
-
-    expect(consoleLogSpy).toHaveBeenCalledWith('No config changes.');
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Warning: Global config is not applied to this project.'));
-  });
-
   it('keep action should not warn when project files are already synced', async () => {
     const { saveGlobalConfig } = await import('../../src/core/global-config.js');
     const { select } = await getPromptMocks();
@@ -321,11 +298,10 @@ describe('config profile interactive flow', () => {
 
     await runConfigCommand(['profile']);
 
-    const allLogs = consoleLogSpy.mock.calls.map((args) => args.map(String).join(' '));
-    expect(allLogs.some((line) => line.includes('Warning: Global config is not applied to this project.'))).toBe(false);
+    expect(consoleLogSpy).toHaveBeenCalledWith('No config changes.');
   });
 
-  it('effective no-op after prompts should warn when project files drift', async () => {
+  it('effective no-op after prompts should complete without changes', async () => {
     const { saveGlobalConfig } = await import('../../src/core/global-config.js');
     const { select, confirm } = await getPromptMocks();
 
@@ -338,10 +314,9 @@ describe('config profile interactive flow', () => {
 
     expect(consoleLogSpy).toHaveBeenCalledWith('No config changes.');
     expect(confirm).not.toHaveBeenCalled();
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Warning: Global config is not applied to this project.'));
   });
 
-  it('keep action should warn when project has extra workflows beyond global config', async () => {
+  it('keep action should not warn when project has extra workflows beyond global config', async () => {
     const { saveGlobalConfig } = await import('../../src/core/global-config.js');
     const { select } = await getPromptMocks();
 
@@ -353,10 +328,9 @@ describe('config profile interactive flow', () => {
     await runConfigCommand(['profile']);
 
     expect(consoleLogSpy).toHaveBeenCalledWith('No config changes.');
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Warning: Global config is not applied to this project.'));
   });
 
-  it('changed config should save and ask apply when inside project', async () => {
+  it('changed config should save without prompting to apply', async () => {
     const { saveGlobalConfig, getGlobalConfig } = await import('../../src/core/global-config.js');
     const { select, confirm } = await getPromptMocks();
 
@@ -365,35 +339,11 @@ describe('config profile interactive flow', () => {
 
     select.mockResolvedValueOnce('delivery');
     select.mockResolvedValueOnce('skills');
-    confirm.mockResolvedValueOnce(false);
 
     await runConfigCommand(['profile']);
 
     expect(getGlobalConfig().delivery).toBe('skills');
-    expect(confirm).toHaveBeenCalledWith({
-      message: 'Apply changes to this project now?',
-      default: true,
-    });
-  });
-
-  it('confirmed project apply should run sakti update in the project', async () => {
-    const { saveGlobalConfig, getGlobalConfig } = await import('../../src/core/global-config.js');
-    const { select, confirm } = await getPromptMocks();
-
-    saveGlobalConfig({ featureFlags: {}, profile: 'core', delivery: 'both', workflows: ['propose', 'explore', 'apply', 'sync', 'archive'] });
-    fs.mkdirSync(path.join(tempDir, '.sakti'), { recursive: true });
-
-    select.mockResolvedValueOnce('delivery');
-    select.mockResolvedValueOnce('skills');
-    confirm.mockResolvedValueOnce(true);
-
-    await runConfigCommand(['profile']);
-
-    expect(getGlobalConfig().delivery).toBe('skills');
-    expect(execSync).toHaveBeenCalledWith('npx sakti update', {
-      stdio: 'inherit',
-      cwd: fs.realpathSync(tempDir),
-    });
+    expect(confirm).not.toHaveBeenCalled();
   });
 
   it('core preset should preserve delivery setting', async () => {

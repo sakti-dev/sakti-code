@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { spawn, execSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
@@ -21,7 +21,6 @@ import {
 } from '../core/config-schema.js';
 import { CORE_WORKFLOWS, ALL_WORKFLOWS, getProfileWorkflows } from '../core/profiles.js';
 import { SAKTI_DIR_NAME } from '../core/config.js';
-import { hasProjectConfigDrift } from '../core/profile-sync-drift.js';
 import { isPromptCancellationError } from './shared-output.js';
 
 type ProfileAction = 'both' | 'delivery' | 'workflows' | 'keep';
@@ -179,25 +178,6 @@ export function diffProfileState(before: ProfileState, after: ProfileState): Pro
     hasChanges: lines.length > 0,
     lines,
   };
-}
-
-function maybeWarnProjectConfigDrift(
-  projectDir: string,
-  state: ProfileState,
-  colorize: (message: string) => string
-): void {
-  const saktiDir = path.join(projectDir, SAKTI_DIR_NAME);
-  if (!fs.existsSync(saktiDir)) {
-    return;
-  }
-  if (!hasProjectConfigDrift(projectDir, state.workflows, state.delivery)) {
-    return;
-  }
-  console.log(colorize('Warning: Global config is not applied to this project. Run `sakti update` to sync.'));
-}
-
-function printConfigProfileApplyGuidance(): void {
-  console.log('Config updated. Run `sakti update` in your projects to apply.');
 }
 
 /**
@@ -460,7 +440,7 @@ export function registerConfigCommand(program: Command): void {
         config.workflows = [...CORE_WORKFLOWS];
         // Preserve delivery setting
         saveGlobalConfig(config);
-        printConfigProfileApplyGuidance();
+        console.log('Config updated.');
         return;
       }
 
@@ -520,7 +500,6 @@ export function registerConfigCommand(program: Command): void {
 
         if (action === 'keep') {
           console.log('No config changes.');
-          maybeWarnProjectConfigDrift(process.cwd(), currentState, chalk.yellow);
           return;
         }
 
@@ -595,7 +574,6 @@ export function registerConfigCommand(program: Command): void {
         const diff = diffProfileState(currentState, nextState);
         if (!diff.hasChanges) {
           console.log('No config changes.');
-          maybeWarnProjectConfigDrift(process.cwd(), nextState, chalk.yellow);
           return;
         }
 
@@ -610,28 +588,7 @@ export function registerConfigCommand(program: Command): void {
         config.workflows = nextState.workflows;
         saveGlobalConfig(config);
 
-        // Check if inside an Sakti project
-        const projectDir = process.cwd();
-        const saktiDir = path.join(projectDir, SAKTI_DIR_NAME);
-        if (fs.existsSync(saktiDir)) {
-          const applyNow = await confirm({
-            message: 'Apply changes to this project now?',
-            default: true,
-          });
-
-          if (applyNow) {
-            try {
-              execSync('npx sakti update', { stdio: 'inherit', cwd: projectDir });
-              console.log('Run `sakti update` in your other projects to apply.');
-            } catch {
-              console.error('`sakti update` failed. Please run it manually to apply the profile changes.');
-              process.exitCode = 1;
-            }
-            return;
-          }
-        }
-
-        printConfigProfileApplyGuidance();
+        console.log('Config updated.');
       } catch (error) {
         if (isPromptCancellationError(error)) {
           console.log('Config profile cancelled.');

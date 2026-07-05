@@ -78,14 +78,13 @@ describe('legacy command groups are removed', () => {
     expect(result.stdout).not.toMatch(/^\s*initiative\s/m);
   });
 
-  it('update falls through to the standard no-project error in a view dir', async () => {
+  it('update is rejected as an unknown command', async () => {
     writeWorkspaceViewFixture(tempDir);
 
     const result = await runCLI(['update'], { cwd: tempDir, env });
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('No Sakti directory found');
-    expect(result.stderr).not.toContain('workspace');
+    expect(result.stderr).toContain("unknown command 'update'");
   });
 
   it('keeps initiative data and view state byte-identical across surviving commands', async () => {
