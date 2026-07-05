@@ -9,7 +9,7 @@ import { connectedModelsRoutes } from "./routes/models/connected.ts";
 import { profilesRoutes } from "./routes/profiles.ts";
 import { contextRoutes } from "./routes/projects/context.ts";
 import { gitRoutes } from "./routes/projects/git.ts";
-import { intakeSessionRoutes } from "./routes/projects/intake-session.ts";
+import { planSessionRoutes } from "./routes/projects/plan-session.ts";
 import { projectsRoutes } from "./routes/projects/projects.ts";
 import { searchFilesRoutes } from "./routes/projects/search-files.ts";
 import { chatRoutes } from "./routes/sessions/chat.ts";
@@ -33,7 +33,7 @@ export function buildApp(ctx: ServerContext) {
     .createApp()
     .route("/", healthRoutes)
     .route("/", projectsRoutes)
-    .route("/", intakeSessionRoutes)
+    .route("/", planSessionRoutes)
     .route("/", gitRoutes)
     .route("/", searchFilesRoutes)
     .route("/", contextRoutes)
