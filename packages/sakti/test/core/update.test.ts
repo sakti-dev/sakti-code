@@ -1001,6 +1001,7 @@ ${SAKTI_MARKERS.end}
       );
 
       // Create legacy openspec/AGENTS.md
+      await fs.mkdir(path.join(testDir, 'openspec'), { recursive: true });
       await fs.writeFile(
         path.join(testDir, 'openspec', 'AGENTS.md'),
         '# Old AGENTS.md content'

@@ -50,11 +50,11 @@ export const LEGACY_SLASH_COMMAND_PATHS: Record<string, LegacySlashCommandPatter
   'roocode': { type: 'files', pattern: '.roo/commands/openspec-*.md' },
   'auggie': { type: 'files', pattern: '.augment/commands/openspec-*.md' },
   'factory': { type: 'files', pattern: '.factory/commands/openspec-*.md' },
-  'opencode': { type: 'files', pattern: ['.opencode/command/sakti-*.md', '.opencode/command/openspec-*.md'] },
+  'opencode': { type: 'files', pattern: ['.opencode/command/opsx-*.md', '.opencode/command/openspec-*.md'] },
   'continue': { type: 'files', pattern: '.continue/prompts/openspec-*.prompt' },
   'antigravity': { type: 'files', pattern: '.agent/workflows/openspec-*.md' },
   'iflow': { type: 'files', pattern: '.iflow/commands/openspec-*.md' },
-  'junie': { type: 'files', pattern: ['.junie/commands/sakti-*.md', '.junie/commands/openspec-*.md'] },
+  'junie': { type: 'files', pattern: ['.junie/commands/opsx-*.md', '.junie/commands/openspec-*.md'] },
   'qwen': { type: 'files', pattern: '.qwen/commands/openspec-*.toml' },
   'codex': { type: 'files', pattern: '.codex/prompts/openspec-*.md' },
 };

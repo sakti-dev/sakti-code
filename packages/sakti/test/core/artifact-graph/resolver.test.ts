@@ -325,12 +325,12 @@ version: [[[invalid yaml
     it('should return correct path', () => {
       const projectRoot = '/path/to/project';
       const schemasDir = getProjectSchemasDir(projectRoot);
-      expect(schemasDir).toBe(path.join('/path/to/project', 'sakti', 'schemas'));
+      expect(schemasDir).toBe(path.join('/path/to/project', '.sakti', 'schemas'));
     });
 
     it('should work with relative-looking paths', () => {
       const schemasDir = getProjectSchemasDir('./my-project');
-      expect(schemasDir).toBe(path.join('my-project', 'sakti', 'schemas'));
+      expect(schemasDir).toBe(path.join('my-project', '.sakti', 'schemas'));
     });
   });
 
@@ -352,7 +352,7 @@ version: [[[invalid yaml
 
       // Set up project-local schema
       const projectRoot = path.join(tempDir, 'project');
-      const projectSchemaDir = path.join(projectRoot, 'sakti', 'schemas', 'my-schema');
+      const projectSchemaDir = path.join(projectRoot, '.sakti', 'schemas', 'my-schema');
       fs.mkdirSync(projectSchemaDir, { recursive: true });
       fs.writeFileSync(
         path.join(projectSchemaDir, 'schema.yaml'),
@@ -366,7 +366,7 @@ version: [[[invalid yaml
     it('should prefer project-local schema over package built-in', () => {
       // Set up project-local schema that overrides built-in
       const projectRoot = path.join(tempDir, 'project');
-      const projectSchemaDir = path.join(projectRoot, 'sakti', 'schemas', 'spec-driven');
+      const projectSchemaDir = path.join(projectRoot, '.sakti', 'schemas', 'spec-driven');
       fs.mkdirSync(projectSchemaDir, { recursive: true });
       fs.writeFileSync(
         path.join(projectSchemaDir, 'schema.yaml'),
@@ -416,7 +416,7 @@ version: [[[invalid yaml
 
       // Set up project-local schema (should be ignored when projectRoot not provided)
       const projectRoot = path.join(tempDir, 'project');
-      const projectSchemaDir = path.join(projectRoot, 'sakti', 'schemas', 'my-schema');
+      const projectSchemaDir = path.join(projectRoot, '.sakti', 'schemas', 'my-schema');
       fs.mkdirSync(projectSchemaDir, { recursive: true });
       fs.writeFileSync(
         path.join(projectSchemaDir, 'schema.yaml'),
@@ -432,7 +432,7 @@ version: [[[invalid yaml
   describe('resolveSchema with projectRoot', () => {
     it('should resolve project-local schema', () => {
       const projectRoot = path.join(tempDir, 'project');
-      const projectSchemaDir = path.join(projectRoot, 'sakti', 'schemas', 'team-workflow');
+      const projectSchemaDir = path.join(projectRoot, '.sakti', 'schemas', 'team-workflow');
       fs.mkdirSync(projectSchemaDir, { recursive: true });
       fs.writeFileSync(
         path.join(projectSchemaDir, 'schema.yaml'),
@@ -471,7 +471,7 @@ artifacts:
 
       // Set up project-local schema
       const projectRoot = path.join(tempDir, 'project');
-      const projectSchemaDir = path.join(projectRoot, 'sakti', 'schemas', 'shared-schema');
+      const projectSchemaDir = path.join(projectRoot, '.sakti', 'schemas', 'shared-schema');
       fs.mkdirSync(projectSchemaDir, { recursive: true });
       fs.writeFileSync(
         path.join(projectSchemaDir, 'schema.yaml'),
@@ -494,7 +494,7 @@ artifacts:
   describe('listSchemas with projectRoot', () => {
     it('should include project-local schemas', () => {
       const projectRoot = path.join(tempDir, 'project');
-      const projectSchemaDir = path.join(projectRoot, 'sakti', 'schemas', 'team-workflow');
+      const projectSchemaDir = path.join(projectRoot, '.sakti', 'schemas', 'team-workflow');
       fs.mkdirSync(projectSchemaDir, { recursive: true });
       fs.writeFileSync(
         path.join(projectSchemaDir, 'schema.yaml'),
@@ -518,7 +518,7 @@ artifacts:
 
       // Set up project-local schema with same name
       const projectRoot = path.join(tempDir, 'project');
-      const projectSchemaDir = path.join(projectRoot, 'sakti', 'schemas', 'my-schema');
+      const projectSchemaDir = path.join(projectRoot, '.sakti', 'schemas', 'my-schema');
       fs.mkdirSync(projectSchemaDir, { recursive: true });
       fs.writeFileSync(
         path.join(projectSchemaDir, 'schema.yaml'),
@@ -533,7 +533,7 @@ artifacts:
     it('should maintain backward compatibility when projectRoot not provided', () => {
       // Set up project-local schema
       const projectRoot = path.join(tempDir, 'project');
-      const projectSchemaDir = path.join(projectRoot, 'sakti', 'schemas', 'project-only');
+      const projectSchemaDir = path.join(projectRoot, '.sakti', 'schemas', 'project-only');
       fs.mkdirSync(projectSchemaDir, { recursive: true });
       fs.writeFileSync(
         path.join(projectSchemaDir, 'schema.yaml'),
@@ -549,7 +549,7 @@ artifacts:
   describe('listSchemasWithInfo with projectRoot', () => {
     it('should return source: project for project-local schemas', () => {
       const projectRoot = path.join(tempDir, 'project');
-      const projectSchemaDir = path.join(projectRoot, 'sakti', 'schemas', 'team-workflow');
+      const projectSchemaDir = path.join(projectRoot, '.sakti', 'schemas', 'team-workflow');
       fs.mkdirSync(projectSchemaDir, { recursive: true });
       fs.writeFileSync(
         path.join(projectSchemaDir, 'schema.yaml'),
@@ -626,7 +626,7 @@ artifacts:
 
       // Set up project-local with same name
       const projectRoot = path.join(tempDir, 'project');
-      const projectSchemaDir = path.join(projectRoot, 'sakti', 'schemas', 'shared');
+      const projectSchemaDir = path.join(projectRoot, '.sakti', 'schemas', 'shared');
       fs.mkdirSync(projectSchemaDir, { recursive: true });
       fs.writeFileSync(
         path.join(projectSchemaDir, 'schema.yaml'),
