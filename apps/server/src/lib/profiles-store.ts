@@ -12,10 +12,10 @@ const modelRefSchema = Type.Object({
 
 const modelsSchema = Type.Object({
   default: modelRefSchema,
-  intake: Type.Optional(modelRefSchema),
   observe: Type.Optional(modelRefSchema),
   plan: Type.Optional(modelRefSchema),
   reflect: Type.Optional(modelRefSchema),
+  spec: Type.Optional(modelRefSchema),
   build: Type.Optional(modelRefSchema),
 });
 
@@ -54,10 +54,10 @@ export interface Profile {
   models: {
     build?: ModelRef;
     default: ModelRef;
-    intake?: ModelRef;
     observe?: ModelRef;
     plan?: ModelRef;
     reflect?: ModelRef;
+    spec?: ModelRef;
   };
   name: string;
 }

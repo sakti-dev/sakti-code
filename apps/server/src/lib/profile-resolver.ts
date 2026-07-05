@@ -34,7 +34,7 @@ function normalizeThinkingLevel(value: string | undefined): ThinkingLevel | "off
 export function resolveModelRef(
   profiles: Profiles,
   profileId: string | null,
-  mode: "default" | "intake" | "observe" | "plan" | "reflect" | "build",
+  mode: "default" | "observe" | "plan" | "reflect" | "build" | "spec",
 ): ResolvedModelRef {
   const activeId = profileId ?? profiles.defaultProfile;
   const profile = profiles.profiles[activeId];

@@ -6,12 +6,12 @@ describe("kindToMode", () => {
     expect(kindToMode("mission")).toBe("default");
   });
 
-  it("maps 'intake' to 'intake'", () => {
-    expect(kindToMode("intake")).toBe("intake");
-  });
-
   it("maps 'plan' to 'plan'", () => {
     expect(kindToMode("plan")).toBe("plan");
+  });
+
+  it("maps 'spec' to 'spec'", () => {
+    expect(kindToMode("spec")).toBe("spec");
   });
 
   it("maps 'build' to 'build'", () => {

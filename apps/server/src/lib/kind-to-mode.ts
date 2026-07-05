@@ -1,4 +1,4 @@
-export type ProfileMode = "build" | "default" | "intake" | "observe" | "plan" | "reflect";
+export type ProfileMode = "build" | "default" | "observe" | "plan" | "reflect" | "spec";
 
 /**
  * Map a session kind to a profile mode for model resolution.
@@ -7,10 +7,10 @@ export type ProfileMode = "build" | "default" | "intake" | "observe" | "plan" | 
  */
 export function kindToMode(kind: string): ProfileMode {
   switch (kind) {
-    case "intake":
-      return "intake";
     case "plan":
       return "plan";
+    case "spec":
+      return "spec";
     case "build":
       return "build";
     default:
