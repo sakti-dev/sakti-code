@@ -8,7 +8,7 @@ export {
   EXPLORE_PROMPT,
   GENERAL_PROMPT,
   INTAKE_SYSTEM_PROMPT,
-  PLAN_PROMPT,
+  SPEC_PROMPT,
 } from "./prompts.ts";
 
 export { resolveOmConfig } from "./resolve-observational-memory.ts";

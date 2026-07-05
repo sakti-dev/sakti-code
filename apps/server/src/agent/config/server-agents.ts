@@ -5,7 +5,7 @@ import {
   EXPLORE_PROMPT,
   GENERAL_PROMPT,
   INTAKE_SYSTEM_PROMPT,
-  PLAN_PROMPT,
+  SPEC_PROMPT,
 } from "./prompts.ts";
 
 export const DEFAULT_AGENT_NAME = "build";
@@ -40,7 +40,7 @@ function exploreRuleset(): PermissionRuleset {
   });
 }
 
-function planRuleset(): PermissionRuleset {
+function specRuleset(): PermissionRuleset {
   return fromConfig({
     "*": "allow",
     edit: { "*": "deny" },
@@ -98,12 +98,12 @@ export const SERVER_AGENTS: AgentDefinition[] = [
     activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch"],
   }),
   defineAgent({
-    name: "plan",
+    name: "spec",
     mode: "primary",
     description:
-      "Plan mode. Researches the codebase and produces a plan; disallows all edit tools.",
-    systemPrompt: PLAN_PROMPT,
-    permission: planRuleset(),
+      "Spec mode. Researches the codebase and produces a specification; disallows all edit tools.",
+    systemPrompt: SPEC_PROMPT,
+    permission: specRuleset(),
     activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch", "ask"],
   }),
   defineAgent({

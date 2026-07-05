@@ -8,7 +8,7 @@ import {
   EXPLORE_PROMPT,
   GENERAL_PROMPT,
   INTAKE_SYSTEM_PROMPT,
-  PLAN_PROMPT,
+  SPEC_PROMPT,
 } from "../config/prompts.ts";
 
 function mockTool(name: string, description: string): AgentTool {
@@ -76,8 +76,8 @@ describe("base + agent section composition", () => {
     expect(BUILD_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
   });
 
-  it("PLAN_PROMPT starts with BASE_PROMPT", () => {
-    expect(PLAN_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
+  it("SPEC_PROMPT starts with BASE_PROMPT", () => {
+    expect(SPEC_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
   });
 
   it("INTAKE_SYSTEM_PROMPT starts with BASE_PROMPT", () => {
@@ -98,10 +98,10 @@ describe("base + agent section composition", () => {
     expect(section).toContain('ask({ kind: "completion"');
   });
 
-  it("PLAN_PROMPT contains plan-specific section after base", () => {
-    const section = PLAN_PROMPT.slice(BASE_PROMPT.length);
-    expect(section).toContain("Plan agent");
-    expect(section).toContain('ask({ kind: "plan"');
+  it("SPEC_PROMPT contains spec-specific section after base", () => {
+    const section = SPEC_PROMPT.slice(BASE_PROMPT.length);
+    expect(section).toContain("Spec agent");
+    expect(section).toContain('ask({ kind: "spec"');
   });
 
   it("INTAKE_SYSTEM_PROMPT contains intake-specific section after base", () => {
