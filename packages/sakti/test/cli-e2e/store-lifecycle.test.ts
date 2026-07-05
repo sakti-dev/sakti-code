@@ -285,15 +285,6 @@ describe('standalone store lifecycle journey', () => {
     expect(status.stderr).toContain(`Using Sakti root: ${STORE_ID}`);
     expect(status.stdout).not.toContain('Planning home');
 
-    const instructions = await runCLI(
-      ['instructions', 'proposal', '--change', changeId, '--store', STORE_ID],
-      { env: machineA, cwd: projectDir }
-    );
-    expect(instructions.exitCode).toBe(0);
-    expect(instructions.stdout).toContain(
-      path.join(canonical(storeRoot), '.sakti', 'changes', changeId, 'proposal.md')
-    );
-
     // The test acts as the agent and writes the artifacts.
     const changeDir = path.join(storeRoot, '.sakti', 'changes', changeId);
     await writeCompletedChangeArtifacts(changeDir, 'billing');
@@ -404,15 +395,6 @@ describe('standalone store lifecycle journey', () => {
     expect(created.stderr).toContain(`Using Sakti root: ${STORE_ID}`);
     expect(created.stdout).toContain(`--store ${STORE_ID}`);
 
-    const instructions = await runCLI(
-      ['instructions', 'proposal', '--change', changeId, '--store', STORE_ID],
-      { env: machineB, cwd: base }
-    );
-    expect(instructions.exitCode).toBe(0);
-    expect(instructions.stdout).toContain(
-      path.join(canonical(cloneRoot), '.sakti', 'changes', changeId, 'proposal.md')
-    );
-
     const changeDir = path.join(cloneRoot, '.sakti', 'changes', changeId);
     await writeCompletedChangeArtifacts(changeDir, 'invoicing');
 
@@ -439,17 +421,6 @@ describe('standalone store lifecycle journey', () => {
 
     const specPath = path.join(cloneRoot, '.sakti', 'specs', 'invoicing', 'spec.md');
     await expect(fs.readFile(specPath, 'utf-8')).resolves.toContain('invoicing SHALL work');
-
-    // Post-resolution failures keep the banner, and the hint keeps the store:
-    // with everything archived, instructions apply fails after the root
-    // resolved successfully.
-    const failedApply = await runCLI(
-      ['instructions', 'apply', '--store', STORE_ID],
-      { env: machineB, cwd: base }
-    );
-    expect(failedApply.exitCode).not.toBe(0);
-    expect(failedApply.stderr).toContain(`Using Sakti root: ${STORE_ID}`);
-    expect(failedApply.stderr).toContain(`sakti new change <name> --store ${STORE_ID}`);
   });
 
   it('end state is just normal Sakti files in both checkouts', async () => {

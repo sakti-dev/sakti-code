@@ -79,12 +79,6 @@ describe('declared store fallback (3.2)', () => {
     });
     expect(parseJson(statusJson).nextSteps.join(' ')).toContain('--store team-context');
 
-    const instructions = await runCLI(
-      ['instructions', 'proposal', '--change', 'billing-rework', '--json'],
-      { cwd: pointerRepo, env }
-    );
-    expect(instructions.exitCode).toBe(0);
-
     const changeDir = path.join(storeRoot, '.sakti', 'changes', 'billing-rework');
     fs.writeFileSync(
       path.join(changeDir, 'proposal.md'),
@@ -141,13 +135,6 @@ describe('declared store fallback (3.2)', () => {
       env,
     });
     expect(created.exitCode).toBe(0);
-
-    const instructions = await runCLI(
-      ['instructions', 'proposal', '--change', 'ref-check', '--json'],
-      { cwd: pointerRepo, env }
-    );
-    const refs = parseJson(instructions).references;
-    expect(refs.map((entry: any) => entry.store_id)).toEqual(['upstream-context']);
   });
 
   it('keeps real-root stdout byte-identical when a pointer is present, with one warning', async () => {

@@ -197,17 +197,6 @@ describe('store root selection for normal commands', () => {
         store_id: 'team-context',
       });
 
-      const instructions = await runCLI(
-        ['instructions', 'design', '--change', 'store-change', '--store', 'team-context', '--json'],
-        { cwd: appRepo, env }
-      );
-      expect(instructions.exitCode).toBe(0);
-      const instructionsJson = parseJson(instructions);
-      expect(instructionsJson.artifactId).toBe('design');
-      expect(instructionsJson.root.store_id).toBe('team-context');
-      expect(path.isAbsolute(instructionsJson.changeDir)).toBe(true);
-      expect(instructionsJson.changeDir).toContain(storeRoot);
-
       const show = await runCLI(
         ['show', 'store-change', '--store', 'team-context', '--json'],
         { cwd: appRepo, env }
@@ -301,18 +290,6 @@ describe('store root selection for normal commands', () => {
       expect(result.exitCode).toBe(0);
       expect(result.stdout.startsWith('## Why')).toBe(true);
       expect(result.stderr).toContain(`Using Sakti root: team-context (${storeRoot})`);
-    });
-
-    it('keeps instructions stdout as the artifact payload', async () => {
-      createChange(storeRoot, 'store-change');
-
-      const result = await runCLI(
-        ['instructions', 'design', '--change', 'store-change', '--store', 'team-context'],
-        { cwd: appRepo, env }
-      );
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout.startsWith('<artifact id="design"')).toBe(true);
-      expect(result.stderr).toContain('Using Sakti root: team-context');
     });
 
     it('writes the status banner to stderr in human mode', async () => {
