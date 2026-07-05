@@ -2,6 +2,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "n
 import { dirname } from "node:path";
 import type { Profiles, ProfilesStore } from "./profiles-store.ts";
 import type { SettingsFileStore } from "./settings-file-store.ts";
+import { migrateProfileKeys } from "./profile-key-migration.ts";
 
 export interface GlobalModelConfig {
   model: string;
@@ -83,6 +84,9 @@ export function runMigration(sentinelPath: string, deps: MigrationDeps): void {
   if (!existsSync(deps.profilesPath)) {
     deps.profilesStore.writeAll(buildSeedProfiles(deps.globalModelConfig));
   }
+
+  // Step 2b: migrate profile mode keys (intake→plan, plan→spec)
+  migrateProfileKeys(deps.profilesPath);
 
   // Step 3: seed settings.json from non-session DB rows (only if file does not exist)
   if (!existsSync(deps.settingsPath)) {
