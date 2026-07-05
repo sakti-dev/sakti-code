@@ -139,10 +139,12 @@ export { formatSkillsAddedNotice } from "./resources/skills-added-notice.ts";
 export {
   appendSkillsBlock,
   composeSystemPrompt,
+  formatEnvironmentBlock,
   formatSkillsForSystemPrompt,
   stripSkillsBlock,
   stripToolInventory,
 } from "./resources/system-prompt.ts";
+export type { EnvironmentInfo } from "./resources/system-prompt.ts";
 export {
   demoteHeaders,
   renderToolInventory,

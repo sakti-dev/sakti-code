@@ -3,6 +3,35 @@ import type { Skill } from "../harness-types";
 import type { AgentTool } from "../types";
 import { renderToolInventory } from "./tool-inventory";
 
+/** Runtime environment data injected into the system prompt. */
+export interface EnvironmentInfo {
+  readonly workingDirectory: string;
+  readonly isGitRepo: boolean;
+  readonly platform: string;
+  readonly date: string;
+  readonly modelId?: string;
+}
+
+/**
+ * Format an `<env>` block for the system prompt, informing the model about its
+ * working directory, git status, platform, date, and optionally model identity.
+ */
+export function formatEnvironmentBlock(env: EnvironmentInfo): string {
+  const lines = [
+    "Here is some useful information about the environment you are running in:",
+    "<env>",
+    `  Working directory: ${env.workingDirectory}`,
+    `  Is directory a git repo: ${env.isGitRepo ? "yes" : "no"}`,
+    `  Platform: ${env.platform}`,
+    `  Today's date: ${env.date}`,
+  ];
+  if (env.modelId !== undefined) {
+    lines.push(`  Model: ${env.modelId}`);
+  }
+  lines.push("</env>");
+  return lines.join("\n");
+}
+
 export function formatSkillsForSystemPrompt(
   skills: Skill[],
   skillsInstructions: SkillsInstructions,

@@ -3,6 +3,7 @@ import type { Skill } from "../../harness-types";
 import {
   appendSkillsBlock,
   composeSystemPrompt,
+  formatEnvironmentBlock,
   formatSkillsForSystemPrompt,
   stripSkillsBlock,
   stripToolInventory,
@@ -303,5 +304,57 @@ describe("stripToolInventory", () => {
     const recovered = stripToolInventory(stripSkillsBlock(composed, SKILLS_INSTRUCTIONS));
     const recomposed = composeSystemPrompt(recovered, tools, skills, true, SKILLS_INSTRUCTIONS);
     expect(recomposed).toBe(composed);
+  });
+});
+
+describe("formatEnvironmentBlock", () => {
+  it("formats a complete env block with all fields", () => {
+    const block = formatEnvironmentBlock({
+      workingDirectory: "/home/user/project",
+      isGitRepo: true,
+      platform: "linux",
+      date: "Sun Jul 05 2026",
+      modelId: "anthropic/claude-sonnet-4-5",
+    });
+    expect(block).toBe(
+      [
+        "Here is some useful information about the environment you are running in:",
+        "<env>",
+        "  Working directory: /home/user/project",
+        "  Is directory a git repo: yes",
+        "  Platform: linux",
+        "  Today's date: Sun Jul 05 2026",
+        "  Model: anthropic/claude-sonnet-4-5",
+        "</env>",
+      ].join("\n"),
+    );
+  });
+
+  it("omits modelId line when modelId is undefined", () => {
+    const block = formatEnvironmentBlock({
+      workingDirectory: "/tmp",
+      isGitRepo: false,
+      platform: "darwin",
+      date: "Mon Jan 01 2024",
+    });
+    expect(block).not.toContain("Model:");
+    expect(block).toContain("Platform: darwin");
+    expect(block).toContain("Is directory a git repo: no");
+  });
+
+  it("wraps values in <env> tags with two-space indentation", () => {
+    const block = formatEnvironmentBlock({
+      workingDirectory: "/x",
+      isGitRepo: true,
+      platform: "win32",
+      date: "D",
+    });
+    expect(block.startsWith("Here is some useful")).toBe(true);
+    expect(block.endsWith("</env>")).toBe(true);
+    const lines = block.split("\n");
+    expect(lines[1]).toBe("<env>");
+    for (const line of lines.slice(2, -1)) {
+      expect(line.startsWith("  ")).toBe(true);
+    }
   });
 });
