@@ -204,6 +204,44 @@ describe("composeSystemPrompt", () => {
     const b = composeSystemPrompt(BASE, tools, skills, true, SKILLS_INSTRUCTIONS);
     expect(a).toBe(b);
   });
+
+  it("appends environment block when provided", () => {
+    const envBlock = [
+      "Here is some useful information about the environment you are running in:",
+      "<env>",
+      "  Working directory: /home/user/project",
+      "</env>",
+    ].join("\n");
+    const result = composeSystemPrompt(BASE, [], [], false, SKILLS_INSTRUCTIONS, envBlock);
+    expect(result).toContain(BASE);
+    expect(result).toContain("<env>");
+    expect(result.endsWith("</env>")).toBe(true);
+  });
+
+  it("places environment block after tools and skills", () => {
+    const tools = [mockTool("read", "Read.")];
+    const skills = [mockSkill("tdd", "TDD", "/tdd/SKILL.md")];
+    const envBlock = "<env>\n  Working directory: /x\n</env>";
+    const result = composeSystemPrompt(BASE, tools, skills, true, SKILLS_INSTRUCTIONS, envBlock);
+    const envIdx = result.indexOf("<env>");
+    const skillsIdx = result.indexOf("<available_skills>");
+    const toolIdx = result.indexOf("# Tool:");
+    expect(toolIdx).toBeLessThan(skillsIdx);
+    expect(skillsIdx).toBeLessThan(envIdx);
+  });
+
+  it("omits environment block when undefined", () => {
+    const result = composeSystemPrompt(BASE, [], [], false, SKILLS_INSTRUCTIONS);
+    expect(result).toBe(BASE);
+  });
+
+  it("does not break stripToolInventory when environment block is present", () => {
+    const tools = [mockTool("edit", "Edit.")];
+    const envBlock = "<env>\n  Working directory: /x\n</env>";
+    const composed = composeSystemPrompt(BASE, tools, [], false, SKILLS_INSTRUCTIONS, envBlock);
+    const stripped = stripToolInventory(composed);
+    expect(stripped).toBe(BASE);
+  });
 });
 
 describe("mid-session skill changes with tool inventory present", () => {

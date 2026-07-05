@@ -147,6 +147,7 @@ export function composeSystemPrompt(
   skills: readonly Skill[],
   hasRead: boolean,
   skillsInstructions: SkillsInstructions,
+  environment?: string,
 ): string {
   const parts: string[] = [baseSystemPrompt];
 
@@ -160,6 +161,10 @@ export function composeSystemPrompt(
     if (skillsBlock) {
       parts.push(skillsBlock);
     }
+  }
+
+  if (environment) {
+    parts.push(environment);
   }
 
   return parts.join("\n\n");
