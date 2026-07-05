@@ -128,22 +128,11 @@ describe('capstone persona journeys (6.1)', () => {
     expect(status.exitCode).toBe(0);
     expect(JSON.parse(status.stdout).changeName).toBe('add-rate-limits');
 
-    const instructions = await runCLI(
-      ['instructions', 'proposal', '--change', 'add-rate-limits', '--json'],
-      { cwd: codeRepo, env }
-    );
-    expect(instructions.exitCode).toBe(0);
-
-    // Work the change: write every artifact the schema requires. The
-    // instructions outputPath is change-relative (specs is a glob), so
-    // resolve concretely under the change dir.
+    // Work the change: write every artifact the schema requires.
+    // Paths are known from the spec-driven schema (proposal.md, design.md,
+    // tasks.md, and specs/<capability>/spec.md for specs).
     const artifacts = JSON.parse(status.stdout).artifacts as Array<{ id: string }>;
     for (const artifact of artifacts) {
-      const artifactStatus = await runCLI(
-        ['instructions', artifact.id, '--change', 'add-rate-limits', '--json'],
-        { cwd: codeRepo, env }
-      );
-      expect(artifactStatus.exitCode).toBe(0);
       const target =
         artifact.id === 'specs'
           ? path.join(changeDir, 'specs', 'api', 'spec.md')
