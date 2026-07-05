@@ -9,6 +9,7 @@ import {
   buildObservationsBlock,
   composeSystemPrompt,
   evaluate,
+  formatEnvironmentBlock,
   fromConfig,
   AgentHarness as HarnessClass,
   PromiseSession,
@@ -34,6 +35,7 @@ import {
   type ToolContext,
 } from "./config/index.ts";
 import { resolveWebSearchOperations } from "./config/websearch-resolver.ts";
+import { gatherEnvironmentInfo } from "./environment.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
 import { resolveOmConfig } from "./config/resolve-observational-memory.ts";
@@ -409,12 +411,14 @@ export function runPromptEffect(
     // they're loaded by reading the SKILL.md path. The tool list passed here
     // matches what's already on the harness (agent.activeToolNames).
     const hasRead = agent.activeToolNames === undefined || agent.activeToolNames.includes("read");
+    const envBlock = formatEnvironmentBlock(gatherEnvironmentInfo(project.cwd, model.id));
     const composedSystemPrompt = composeSystemPrompt(
       agent.systemPrompt,
       tools,
       activeSkills,
       hasRead,
       SKILLS_INSTRUCTIONS,
+      envBlock,
     );
     yield* harness.switchAgentEffect(
       composedSystemPrompt === agent.systemPrompt
