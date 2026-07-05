@@ -55,9 +55,9 @@ describe("resolveSessionAgentForKind", () => {
 });
 
 describe("resolveSessionAgentForKind — status-based (SDD lifecycle)", () => {
-  it("mission + status='planning' → plan agent (structurally edit-denied)", () => {
-    const { agent } = resolveSessionAgentForKind("mission", [], undefined, "planning");
-    expect(agent.name).toBe("plan");
+  it("mission + status='specifying' → spec agent (structurally edit-denied)", () => {
+    const { agent } = resolveSessionAgentForKind("mission", [], undefined, "specifying");
+    expect(agent.name).toBe("spec");
   });
 
   it("mission + status='building' → build agent", () => {
@@ -81,12 +81,12 @@ describe("resolveSessionAgentForKind — status-based (SDD lifecycle)", () => {
   });
 
   it("intake kind ignores status (always intake)", () => {
-    const { agent } = resolveSessionAgentForKind("intake", [], undefined, "planning");
+    const { agent } = resolveSessionAgentForKind("intake", [], undefined, "specifying");
     expect(agent.name).toBe("intake");
   });
 
   it("per-session override wins over status-based routing", () => {
-    const { agent } = resolveSessionAgentForKind("mission", [], "explore", "planning");
+    const { agent } = resolveSessionAgentForKind("mission", [], "explore", "specifying");
     expect(agent.name).toBe("explore");
   });
 });
