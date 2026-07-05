@@ -123,11 +123,11 @@ describe('InitCommand', () => {
 
       // Core profile: propose, explore, apply, sync, archive
       const coreCommandNames = [
-        'opsx/propose.md',
-        'opsx/explore.md',
-        'opsx/apply.md',
-        'opsx/sync.md',
-        'opsx/archive.md',
+        'sakti/propose.md',
+        'sakti/explore.md',
+        'sakti/apply.md',
+        'sakti/sync.md',
+        'sakti/archive.md',
       ];
 
       for (const cmdName of coreCommandNames) {
@@ -137,11 +137,11 @@ describe('InitCommand', () => {
 
       // Non-core commands should NOT be created
       const nonCoreCommandNames = [
-        'opsx/new.md',
-        'opsx/continue.md',
-        'opsx/ff.md',
-        'opsx/bulk-archive.md',
-        'opsx/verify.md',
+        'sakti/new.md',
+        'sakti/continue.md',
+        'sakti/ff.md',
+        'sakti/bulk-archive.md',
+        'sakti/verify.md',
       ];
 
       for (const cmdName of nonCoreCommandNames) {

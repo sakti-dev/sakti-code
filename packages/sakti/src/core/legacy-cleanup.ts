@@ -280,7 +280,7 @@ export async function detectLegacyStructureFiles(
   hasOpenspecAgents = await FileSystemUtils.fileExists(openspecAgentsPath);
 
   // Check for openspec/project.md (for migration messaging, not deleted)
-  const projectMdPath = FileSystemUtils.joinPath(projectPath, '.sakti', 'project.md');
+  const projectMdPath = FileSystemUtils.joinPath(projectPath, 'openspec', 'project.md');
   hasProjectMd = await FileSystemUtils.fileExists(projectMdPath);
 
   // Check for root AGENTS.md with Sakti markers
@@ -639,7 +639,7 @@ export function getToolsFromLegacyArtifacts(detection: LegacyDetectionResult): s
 export function formatProjectMdMigrationHint(): string {
   const lines: string[] = [];
   lines.push(chalk.yellow.bold('Needs your attention'));
-  lines.push('  • .sakti/project.md');
+  lines.push('  • openspec/project.md');
   lines.push(chalk.dim('    We won\'t delete this file. It may contain useful project context.'));
   lines.push('');
   lines.push(chalk.dim('    The new .sakti/config.yaml has a "context:" section for planning'));
