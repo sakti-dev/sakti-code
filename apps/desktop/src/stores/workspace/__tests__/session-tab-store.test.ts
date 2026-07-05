@@ -220,4 +220,29 @@ describe("session-tab-store", () => {
       expect(parsed["p1"].tabs).toEqual([{ kind: "home", sessionId: null }]);
     });
   });
+
+  describe("filterStaleSessions", () => {
+    it("removes tabs whose sessionId is not in the valid set", async () => {
+      const store = await freshStore();
+      store.ensureProjectTabs("p1");
+      store.openSessionTab("p1", "s1", "intake");
+      store.openSessionTab("p1", "s2", "mission");
+      store.filterStaleSessions("p1", new Set(["s1"]));
+      expect(store.getSessionTabs("p1")).toEqual([
+        { kind: "home", sessionId: null },
+        { kind: "intake", sessionId: "s1" },
+      ]);
+    });
+
+    it("preserves draft intake tabs (null sessionId)", async () => {
+      const store = await freshStore();
+      store.ensureProjectTabs("p1");
+      store.openDraftIntakeTab("p1");
+      store.filterStaleSessions("p1", new Set());
+      expect(store.getSessionTabs("p1")).toEqual([
+        { kind: "home", sessionId: null },
+        { kind: "intake", sessionId: null },
+      ]);
+    });
+  });
 });

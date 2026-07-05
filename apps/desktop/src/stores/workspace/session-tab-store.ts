@@ -149,7 +149,7 @@ export function switchSessionTab(projectId: string, index: number): void {
 export function filterStaleSessions(projectId: string, validSessionIds: Set<string>): void {
   mutateProject(projectId, (state) => {
     const newTabs = state.tabs.filter(
-      (t) => t.kind === "home" || (t.sessionId !== null && validSessionIds.has(t.sessionId)),
+      (t) => t.sessionId === null || validSessionIds.has(t.sessionId),
     );
     if (newTabs.length === state.tabs.length) return state;
     const newActive = Math.min(state.activeIndex, newTabs.length - 1);
