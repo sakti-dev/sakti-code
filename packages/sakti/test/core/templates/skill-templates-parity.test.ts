@@ -61,17 +61,17 @@ const EXPECTED_FUNCTION_HASHES: Record<string, string> = {
 };
 
 const EXPECTED_GENERATED_SKILL_CONTENT_HASHES: Record<string, string> = {
-  'sakti-explore': '08f905865f86e787262fed252c59ed343ac24db8befa31e5cf8fd99af947263b',
-  'sakti-new-change': 'bdb534d6d5a00b235f63852af089f904fd20df34be526ef67990ec3183829f33',
-  'sakti-continue-change': '5d2aea621310d74d89e547d705d2e08e6d5a44da7bca93ba049ed43ebf60295e',
-  'sakti-apply-change': '54cffa61274c6a499d2b3775e9f6db29255fd8e5ad99d7352c1e3bbe2edb45ed',
-  'sakti-ff-change': 'cbb7844c130bd188319ff2b3f0c0320243b5ae5b588a0f816cd4e29408f25676',
-  'sakti-sync-specs': 'a81fd87f5e871874eab72e57c10a1949fde46d1d07d95f8ea3bc1a52b4e78c43',
-  'sakti-archive-change': '833290ade47ddaed7f5e523d07437c7cef2497340021e944096bce449e290c22',
-  'sakti-bulk-archive-change': '244b195e53d3f010a99892c1922c800fd8f02e7745d0f34ec18b5fe9b5548706',
-  'sakti-verify-change': '97d1eed5b900788706c28339e27c1d2d9c548626316253f43ebd00d8d52d02d6',
-  'sakti-onboard': 'd136b6ab7134d6bceeca73bc2f6037624506587e8df99059f77fe88874256ed1',
-  'sakti-propose': '5c350d80247722489374a49ec9853d5fda55a827f421fbb32b6b6a078fcb69ee',
+  'sakti-explore': '060c4fc81ab5d2d92c9f57d0bdd2f4345840cdb5d9980f49d656e40d59d425e7',
+  'sakti-new-change': '286be1cd2d8e540da830bb960db158bbc7ea210382ae993e828c459af7fd3225',
+  'sakti-continue-change': '4f8a09b2e67af65804e0c3968183475c4a8770dab4eb2c41dedc23330ef6e513',
+  'sakti-apply-change': '91708f4ddf5b5ab4469380dba48b1ffa06b7c25d6c64beac520bc4979b66aea8',
+  'sakti-ff-change': 'bf9651d8e978310ac412b64931592c8d58e01e59adcc8fe42aca37499f39321c',
+  'sakti-sync-specs': '274b73b0f606b9d4f209f9e23640dc1a877dc56c2685105aa7bf73e295ccf78f',
+  'sakti-archive-change': '2d722b03a941916810a940e8f9479c35e985990821d16054e10f998f096a0914',
+  'sakti-bulk-archive-change': '7e592f4458b2ec895050e529800a84c10b7107ab54e837ad6d29e2c2e959d68f',
+  'sakti-verify-change': 'ca33a873b4871dc67fde933eee411ed4c962cdf5fb4f92cea3ce43cb586f8d07',
+  'sakti-onboard': 'ff774be8f2d5f504fe8b899b5e6e03d8591c4f860ba5525efab0cd878ab624d8',
+  'sakti-propose': 'db89e2c72f5c542ac2d96a3de6fe0eef71cc6396b16318bbee8d0da7a982b512',
 };
 
 // Intentionally excludes getFeedbackSkillTemplate: this list only models templates

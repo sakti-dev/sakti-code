@@ -964,7 +964,7 @@ ${SAKTI_MARKERS.end}
       );
 
       // Create legacy slash command directory
-      const legacyCommandDir = path.join(testDir, '.claude', 'commands', '.sakti');
+      const legacyCommandDir = path.join(testDir, '.claude', 'commands', 'openspec');
       await fs.mkdir(legacyCommandDir, { recursive: true });
       await fs.writeFile(
         path.join(legacyCommandDir, 'old-command.md'),
@@ -979,7 +979,7 @@ ${SAKTI_MARKERS.end}
 
       // Should show cleanup message for directory
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Removed .claude/commands/sakti/')
+        expect.stringContaining('Removed .claude/commands/openspec/')
       );
 
       // Legacy directory should be deleted
@@ -989,7 +989,7 @@ ${SAKTI_MARKERS.end}
       consoleSpy.mockRestore();
     });
 
-    it('should cleanup legacy sakti/AGENTS.md with --force', async () => {
+    it('should cleanup legacy openspec/AGENTS.md with --force', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
       await fs.mkdir(path.join(skillsDir, 'sakti-explore'), {
@@ -1000,9 +1000,9 @@ ${SAKTI_MARKERS.end}
         'old'
       );
 
-      // Create legacy sakti/AGENTS.md
+      // Create legacy openspec/AGENTS.md
       await fs.writeFile(
-        path.join(testDir, '.sakti', 'AGENTS.md'),
+        path.join(testDir, 'openspec', 'AGENTS.md'),
         '# Old AGENTS.md content'
       );
 
@@ -1014,12 +1014,12 @@ ${SAKTI_MARKERS.end}
 
       // Should show cleanup message
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Removed sakti/AGENTS.md')
+        expect.stringContaining('Removed openspec/AGENTS.md')
       );
 
       // Legacy file should be deleted
       const legacyExists = await FileSystemUtils.fileExists(
-        path.join(testDir, '.sakti', 'AGENTS.md')
+        path.join(testDir, 'openspec', 'AGENTS.md')
       );
       expect(legacyExists).toBe(false);
 
@@ -1114,7 +1114,7 @@ More user content after markers.
   describe('legacy tool upgrade', () => {
     it('should upgrade legacy tools to new skills with --force', async () => {
       // Create legacy slash command directory (no skills exist yet)
-      const legacyCommandDir = path.join(testDir, '.claude', 'commands', '.sakti');
+      const legacyCommandDir = path.join(testDir, '.claude', 'commands', 'openspec');
       await fs.mkdir(legacyCommandDir, { recursive: true });
       await fs.writeFile(
         path.join(legacyCommandDir, 'proposal.md'),
@@ -1159,9 +1159,9 @@ More user content after markers.
 
     it('should upgrade multiple legacy tools with --force', async () => {
       // Create legacy command directories for Claude and Cursor
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', '.sakti'), { recursive: true });
+      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
       await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', '.sakti', 'proposal.md'),
+        path.join(testDir, '.claude', 'commands', 'openspec', 'proposal.md'),
         'content'
       );
 
@@ -1202,7 +1202,7 @@ More user content after markers.
       );
 
       // Also create legacy directory (simulating partial upgrade)
-      const legacyCommandDir = path.join(testDir, '.claude', 'commands', '.sakti');
+      const legacyCommandDir = path.join(testDir, '.claude', 'commands', 'openspec');
       await fs.mkdir(legacyCommandDir, { recursive: true });
       await fs.writeFile(
         path.join(legacyCommandDir, 'proposal.md'),
@@ -1217,7 +1217,7 @@ More user content after markers.
 
       // Legacy cleanup should happen
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Removed .claude/commands/sakti/')
+        expect.stringContaining('Removed .claude/commands/openspec/')
       );
 
       // Should NOT show "Tools detected from legacy artifacts" because claude is already configured
@@ -1247,9 +1247,9 @@ More user content after markers.
       );
 
       // Create legacy commands for both Claude (configured) and Cursor (not configured)
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', '.sakti'), { recursive: true });
+      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
       await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', '.sakti', 'proposal.md'),
+        path.join(testDir, '.claude', 'commands', 'openspec', 'proposal.md'),
         'content'
       );
 
@@ -1309,9 +1309,9 @@ More user content after markers.
 
     it('should create only effective profile skills when upgrading legacy tools', async () => {
       // Create legacy command directory
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', '.sakti'), { recursive: true });
+      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
       await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', '.sakti', 'proposal.md'),
+        path.join(testDir, '.claude', 'commands', 'openspec', 'proposal.md'),
         'content'
       );
 
@@ -1341,9 +1341,9 @@ More user content after markers.
 
     it('should create commands when upgrading legacy tools', async () => {
       // Create legacy command directory
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', '.sakti'), { recursive: true });
+      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
       await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', '.sakti', 'proposal.md'),
+        path.join(testDir, '.claude', 'commands', 'openspec', 'proposal.md'),
         'content'
       );
 
@@ -1366,9 +1366,9 @@ More user content after markers.
         workflows: ['explore'],
       });
 
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', '.sakti'), { recursive: true });
+      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
       await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', '.sakti', 'proposal.md'),
+        path.join(testDir, '.claude', 'commands', 'openspec', 'proposal.md'),
         'content'
       );
 
