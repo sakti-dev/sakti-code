@@ -18,7 +18,7 @@ export const KEBAB_ID_FIX =
 
 /**
  * The folder-safe-name grammar (store ids layer the kebab grammar on
- * top of it; workset member labels use it alone). Returns a problem
+ * top of it). Returns a problem
  * description, or null when valid.
  */
 export function folderStyleNameProblem(
