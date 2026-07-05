@@ -49,15 +49,15 @@ describe("persistAskSideEffect", () => {
 
   it("no-ops when body is missing", async () => {
     const { ctx, updates } = makeCtx();
-    await persistAskSideEffect(ctx, "s1", askStart({ kind: "plan" }));
+    await persistAskSideEffect(ctx, "s1", askStart({ kind: "spec" }));
     expect(updates).toHaveLength(0);
   });
 
-  it("plan ask → persists pendingAsk, leaves status untouched", async () => {
+  it("spec ask → persists pendingAsk, leaves status untouched", async () => {
     const { ctx, updates } = makeCtx();
-    await persistAskSideEffect(ctx, "s1", askStart({ kind: "plan", body: "the plan" }));
+    await persistAskSideEffect(ctx, "s1", askStart({ kind: "spec", body: "the spec" }));
     expect(updates).toHaveLength(1);
-    expect(updates[0]?.data).toEqual({ pendingAskKind: "plan", pendingAskBody: "the plan" });
+    expect(updates[0]?.data).toEqual({ pendingAskKind: "spec", pendingAskBody: "the spec" });
   });
 
   it("session ask → persists pendingAsk, leaves status untouched", async () => {
@@ -86,7 +86,7 @@ describe("persistAskSideEffect", () => {
       log: { server: { error: errorFn } },
     } as unknown as Parameters<typeof persistAskSideEffect>[0];
     await expect(
-      persistAskSideEffect(ctx, "s1", askStart({ kind: "plan", body: "x" })),
+      persistAskSideEffect(ctx, "s1", askStart({ kind: "spec", body: "x" })),
     ).resolves.toBeUndefined();
     expect(errorFn).toHaveBeenCalled();
   });

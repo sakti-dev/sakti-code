@@ -26,10 +26,10 @@ export interface AskCtx {
 
 export type AskAction = "approve" | "reject";
 
-export type AskCard = "proposed-session" | "proposed-plan" | "proposed-completion";
+export type AskCard = "proposed-session" | "proposed-spec" | "proposed-completion";
 
 /** The known ask kinds — the closed set wired to lifecycle transitions. */
-export type AskKind = "session" | "plan" | "completion";
+export type AskKind = "session" | "spec" | "completion";
 
 export interface AskKindHandlers {
   card: AskCard;
@@ -48,7 +48,7 @@ export interface AskKindHandlers {
  * session    — intake hands off to a new mission session. Approve is a no-op
  *              here: the card's Create button calls the session-create REST
  *              route directly (the new mission is born in `planning`).
- * plan       — a planning mission's plan is approved → status flips to
+ * spec       — a specifying mission's spec is approved → status flips to
  *              `building`. A forced OM observe runs here.
  * completion — a building mission declares completion → approve merges
  *              (status `merged`); reject requests changes (status `building`).
@@ -71,21 +71,21 @@ export const ASK_KINDS: Record<AskKind, AskKindHandlers> = {
       }
     },
   },
-  plan: {
-    card: "proposed-plan",
+  spec: {
+    card: "proposed-spec",
     onApprove: async (id, _body, ctx) => {
       await ctx.sessions.update(id, { status: "building" });
-      // Force a context reset before the agent switch. The plan→build agent
+      // Force a context reset before the agent switch. The spec→build agent
       // swap invalidates the prompt cache anyway (system prompt + tools
-      // change), so observing the planning chatter costs nothing cached and
-      // gives the build agent a clean, plan-focused start. Best-effort: a
+      // change), so observing the specifying chatter costs nothing cached and
+      // gives the build agent a clean, spec-focused start. Best-effort: a
       // reset failure must not strand the mission — the status flip above is
       // the user's durable intent, and the build agent still works on the
       // un-observed context.
       try {
         await ctx.forceReset?.(id);
       } catch (err) {
-        ctx.log?.agent?.warn?.("plan→build: forced reset failed (continuing)", {
+        ctx.log?.agent?.warn?.("spec→build: forced reset failed (continuing)", {
           sessionId: id,
           error: err instanceof Error ? err.message : String(err),
         });
@@ -106,5 +106,5 @@ export const ASK_KINDS: Record<AskKind, AskKindHandlers> = {
 
 /** Runtime guard for a string received over the wire. */
 export function isKnownAskKind(kind: string): kind is AskKind {
-  return kind === "session" || kind === "plan" || kind === "completion";
+  return kind === "session" || kind === "spec" || kind === "completion";
 }

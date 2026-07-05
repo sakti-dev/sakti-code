@@ -3,7 +3,7 @@ import { makeApp } from "../../../__tests__/helpers.ts";
 import { confirmRoutes } from "../confirm.ts";
 
 describe("confirm route — POST /api/sessions/:id/confirm", () => {
-  it("plan approve flips status planning → building", async () => {
+  it("spec approve flips status planning → building", async () => {
     const { app, ctx } = await makeApp([confirmRoutes]);
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
@@ -14,7 +14,7 @@ describe("confirm route — POST /api/sessions/:id/confirm", () => {
     const res = await app.request(`/api/sessions/${session.id}/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "approve", kind: "plan", body: "the plan" }),
+      body: JSON.stringify({ action: "approve", kind: "spec", body: "the spec" }),
     });
 
     expect(res.status).toBe(200);
@@ -78,7 +78,7 @@ describe("confirm route — POST /api/sessions/:id/confirm", () => {
     const res = await app.request("/api/sessions/nonexistent/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "approve", kind: "plan", body: "x" }),
+      body: JSON.stringify({ action: "approve", kind: "spec", body: "x" }),
     });
     expect(res.status).toBe(404);
   });
@@ -89,14 +89,14 @@ describe("confirm route — POST /api/sessions/:id/confirm", () => {
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "mission",
       status: "planning",
-      pendingAskKind: "plan",
-      pendingAskBody: "the plan",
+      pendingAskKind: "spec",
+      pendingAskBody: "the spec",
     });
 
     const res = await app.request(`/api/sessions/${session.id}/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "approve", kind: "plan", body: "the plan" }),
+      body: JSON.stringify({ action: "approve", kind: "spec", body: "the spec" }),
     });
 
     expect(res.status).toBe(200);
