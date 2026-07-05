@@ -7,12 +7,12 @@ function decision(ruleset: PermissionRuleset, permission: string, pattern: strin
 }
 
 describe("server agents", () => {
-  it("exposes build, explore, spec, general, intake", () => {
+  it("exposes build, explore, spec, general, plan", () => {
     expect(SERVER_AGENTS.map((a) => a.name).sort()).toEqual([
       "build",
       "explore",
       "general",
-      "intake",
+      "plan",
       "spec",
     ]);
   });
@@ -63,23 +63,23 @@ describe("server agents", () => {
     expect(decision(merged, "read", "secret.env")).toBe("allow");
   });
 
-  it("includes intake as a first-class agent with its own permission ruleset and tool list", () => {
-    const intake = resolveServerAgent("intake");
-    expect(intake).toBeDefined();
-    expect(intake!.permission).toBeDefined();
-    expect(intake!.activeToolNames).toContain("ask");
-    expect(intake!.activeToolNames).toContain("read");
+  it("includes plan as a first-class agent with its own permission ruleset and tool list", () => {
+    const plan = resolveServerAgent("plan");
+    expect(plan).toBeDefined();
+    expect(plan!.permission).toBeDefined();
+    expect(plan!.activeToolNames).toContain("ask");
+    expect(plan!.activeToolNames).toContain("read");
 
     const build = resolveServerAgent("build")!;
-    // Intake has a distinct ruleset from build (not inheriting).
-    expect(intake!.permission).not.toBe(build.permission);
-    // Both intake and build carry ask (the SDD gate tool).
+    // Plan has a distinct ruleset from build (not inheriting).
+    expect(plan!.permission).not.toBe(build.permission);
+    // Both plan and build carry ask (the SDD gate tool).
     expect(build.activeToolNames).toContain("ask");
   });
 
-  it("intake ruleset asks before destructive bash ops but allows research ops", () => {
-    const intake = resolveServerAgent("intake");
-    const rs = intake!.permission!;
+  it("plan ruleset asks before destructive bash ops but allows research ops", () => {
+    const plan = resolveServerAgent("plan");
+    const rs = plan!.permission!;
     expect(decision(rs, "bash", "rm -rf /tmp/x")).toBe("ask");
     expect(decision(rs, "bash", "git push origin main")).toBe("ask");
     expect(decision(rs, "bash", "git reset --hard HEAD~3")).toBe("ask");

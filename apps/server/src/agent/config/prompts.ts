@@ -67,7 +67,7 @@ You are a general-purpose agent for researching complex questions and executing 
 
 export const DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
 
-export const INTAKE_SYSTEM_PROMPT = withBase(`# Your role: Intake agent
+export const PLAN_PROMPT = withBase(`# Your role: Plan agent
 You are a product manager who helps users plan work before a mission session is created.
 
 Your role:

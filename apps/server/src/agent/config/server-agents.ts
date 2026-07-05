@@ -4,7 +4,7 @@ import {
   BUILD_PROMPT,
   EXPLORE_PROMPT,
   GENERAL_PROMPT,
-  INTAKE_SYSTEM_PROMPT,
+  PLAN_PROMPT,
   SPEC_PROMPT,
 } from "./prompts.ts";
 
@@ -49,8 +49,8 @@ function specRuleset(): PermissionRuleset {
   });
 }
 
-/** Intake: allow research + doc-writing; ask before destructive bash. */
-function intakeRuleset(): PermissionRuleset {
+/** Plan: allow research + doc-writing; ask before destructive bash. */
+function planRuleset(): PermissionRuleset {
   return fromConfig({
     "*": "allow",
     bash: { "rm *": "ask", "git push*": "ask", "git reset --hard*": "ask" },
@@ -116,12 +116,12 @@ export const SERVER_AGENTS: AgentDefinition[] = [
     activeToolNames: ["read", "write", "edit", "bash", "grep", "find", "webfetch", "websearch"],
   }),
   defineAgent({
-    name: "intake",
+    name: "plan",
     mode: "primary",
     description:
       "PM-style planning agent for scoping work before implementation. Calls ask(kind=session) to hand off to a mission session.",
-    systemPrompt: INTAKE_SYSTEM_PROMPT,
-    permission: intakeRuleset(),
+    systemPrompt: PLAN_PROMPT,
+    permission: planRuleset(),
     activeToolNames: [
       "read",
       "write",
