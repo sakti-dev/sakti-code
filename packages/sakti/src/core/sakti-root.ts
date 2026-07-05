@@ -8,12 +8,12 @@ import {
   type StoreDiagnostic,
 } from './store/errors.js';
 
-export const SAKTI_ROOT_DIR = 'sakti';
+export const SAKTI_ROOT_DIR = '.sakti';
 export const SAKTI_CONFIG_YAML = '.sakti/config.yaml';
-export const SAKTI_CONFIG_YML = 'sakti/config.yml';
+export const SAKTI_CONFIG_YML = '.sakti/config.yml';
 export const SAKTI_SPECS_DIR = '.sakti/specs';
 export const SAKTI_CHANGES_DIR = '.sakti/changes';
-export const SAKTI_ARCHIVE_DIR = 'sakti/changes/archive';
+export const SAKTI_ARCHIVE_DIR = '.sakti/changes/archive';
 export const DEFAULT_SAKTI_SCHEMA = 'spec-driven';
 export const DIRECTORY_ANCHOR_FILE_NAME = '.gitkeep';
 

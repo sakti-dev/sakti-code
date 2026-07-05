@@ -19,7 +19,7 @@ import {
   LEGACY_CONFIG_FILES,
   LEGACY_SLASH_COMMAND_PATHS,
 } from '../../src/core/legacy-cleanup.js';
-import { OPENSPEC_MARKERS } from '../../src/core/config.js';
+import { SAKTI_MARKERS } from '../../src/core/config.js';
 import { CommandAdapterRegistry } from '../../src/core/command-generation/registry.js';
 
 describe('legacy-cleanup', () => {
@@ -39,9 +39,9 @@ describe('legacy-cleanup', () => {
   describe('hasSaktiMarkers', () => {
     it('should return true when both markers are present', () => {
       const content = `Some content
-${OPENSPEC_MARKERS.start}
+${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}
+${SAKTI_MARKERS.end}
 More content`;
       expect(hasSaktiMarkers(content)).toBe(true);
     });
@@ -49,12 +49,12 @@ More content`;
     it('should return false when start marker is missing', () => {
       const content = `Some content
 Sakti content
-${OPENSPEC_MARKERS.end}`;
+${SAKTI_MARKERS.end}`;
       expect(hasSaktiMarkers(content)).toBe(false);
     });
 
     it('should return false when end marker is missing', () => {
-      const content = `${OPENSPEC_MARKERS.start}
+      const content = `${SAKTI_MARKERS.start}
 Sakti content
 Some content`;
       expect(hasSaktiMarkers(content)).toBe(false);
@@ -68,18 +68,18 @@ Some content`;
 
   describe('isOnlySaktiContent', () => {
     it('should return true when content is only markers and whitespace outside', () => {
-      const content = `${OPENSPEC_MARKERS.start}
+      const content = `${SAKTI_MARKERS.start}
 Sakti content here
-${OPENSPEC_MARKERS.end}`;
+${SAKTI_MARKERS.end}`;
       expect(isOnlySaktiContent(content)).toBe(true);
     });
 
     it('should return true with whitespace before and after markers', () => {
       const content = `
 
-${OPENSPEC_MARKERS.start}
+${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}
+${SAKTI_MARKERS.end}
 
 `;
       expect(isOnlySaktiContent(content)).toBe(true);
@@ -87,16 +87,16 @@ ${OPENSPEC_MARKERS.end}
 
     it('should return false when content exists before markers', () => {
       const content = `User content here
-${OPENSPEC_MARKERS.start}
+${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}`;
+${SAKTI_MARKERS.end}`;
       expect(isOnlySaktiContent(content)).toBe(false);
     });
 
     it('should return false when content exists after markers', () => {
-      const content = `${OPENSPEC_MARKERS.start}
+      const content = `${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}
+${SAKTI_MARKERS.end}
 User content here`;
       expect(isOnlySaktiContent(content)).toBe(false);
     });
@@ -107,9 +107,9 @@ User content here`;
     });
 
     it('should return false when end marker comes before start marker', () => {
-      const content = `${OPENSPEC_MARKERS.end}
+      const content = `${SAKTI_MARKERS.end}
 Content
-${OPENSPEC_MARKERS.start}`;
+${SAKTI_MARKERS.start}`;
       expect(isOnlySaktiContent(content)).toBe(false);
     });
   });
@@ -117,19 +117,19 @@ ${OPENSPEC_MARKERS.start}`;
   describe('removeMarkerBlock', () => {
     it('should remove marker block and preserve content before', () => {
       const content = `User content before
-${OPENSPEC_MARKERS.start}
+${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}`;
+${SAKTI_MARKERS.end}`;
       const result = removeMarkerBlock(content);
       expect(result).toBe('User content before\n');
-      expect(result).not.toContain(OPENSPEC_MARKERS.start);
-      expect(result).not.toContain(OPENSPEC_MARKERS.end);
+      expect(result).not.toContain(SAKTI_MARKERS.start);
+      expect(result).not.toContain(SAKTI_MARKERS.end);
     });
 
     it('should remove marker block and preserve content after', () => {
-      const content = `${OPENSPEC_MARKERS.start}
+      const content = `${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}
+${SAKTI_MARKERS.end}
 User content after`;
       const result = removeMarkerBlock(content);
       expect(result).toBe('User content after\n');
@@ -137,23 +137,23 @@ User content after`;
 
     it('should remove marker block and preserve content before and after', () => {
       const content = `User content before
-${OPENSPEC_MARKERS.start}
+${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}
+${SAKTI_MARKERS.end}
 User content after`;
       const result = removeMarkerBlock(content);
       expect(result).toContain('User content before');
       expect(result).toContain('User content after');
-      expect(result).not.toContain(OPENSPEC_MARKERS.start);
+      expect(result).not.toContain(SAKTI_MARKERS.start);
     });
 
     it('should clean up double blank lines', () => {
       const content = `Line 1
 
 
-${OPENSPEC_MARKERS.start}
+${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}
+${SAKTI_MARKERS.end}
 
 
 Line 2`;
@@ -162,9 +162,9 @@ Line 2`;
     });
 
     it('should return empty string when only markers remain', () => {
-      const content = `${OPENSPEC_MARKERS.start}
+      const content = `${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}`;
+${SAKTI_MARKERS.end}`;
       const result = removeMarkerBlock(content);
       expect(result).toBe('');
     });
@@ -177,26 +177,26 @@ ${OPENSPEC_MARKERS.end}`;
     });
 
     it('should return original content when markers are in wrong order', () => {
-      const content = `${OPENSPEC_MARKERS.end}
+      const content = `${SAKTI_MARKERS.end}
 Content
-${OPENSPEC_MARKERS.start}`;
+${SAKTI_MARKERS.start}`;
       const result = removeMarkerBlock(content);
-      expect(result).toContain(OPENSPEC_MARKERS.end);
-      expect(result).toContain(OPENSPEC_MARKERS.start);
+      expect(result).toContain(SAKTI_MARKERS.end);
+      expect(result).toContain(SAKTI_MARKERS.start);
     });
 
     it('should ignore inline mentions of markers and only remove actual block', () => {
-      const content = `Intro referencing ${OPENSPEC_MARKERS.start} and ${OPENSPEC_MARKERS.end} inline.
+      const content = `Intro referencing ${SAKTI_MARKERS.start} and ${SAKTI_MARKERS.end} inline.
 
-${OPENSPEC_MARKERS.start}
+${SAKTI_MARKERS.start}
 Managed content here
-${OPENSPEC_MARKERS.end}
+${SAKTI_MARKERS.end}
 After content`;
       const result = removeMarkerBlock(content);
       // Inline mentions preserved
       expect(result).toContain('Intro referencing');
-      expect(result).toContain(OPENSPEC_MARKERS.start);
-      expect(result).toContain(OPENSPEC_MARKERS.end);
+      expect(result).toContain(SAKTI_MARKERS.start);
+      expect(result).toContain(SAKTI_MARKERS.end);
       // Managed content removed
       expect(result).not.toContain('Managed content here');
       expect(result).toContain('After content');
@@ -206,9 +206,9 @@ After content`;
   describe('detectLegacyConfigFiles', () => {
     it('should detect CLAUDE.md with Sakti markers and put in update list', async () => {
       const claudePath = path.join(testDir, 'CLAUDE.md');
-      await fs.writeFile(claudePath, `${OPENSPEC_MARKERS.start}
+      await fs.writeFile(claudePath, `${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}`);
+${SAKTI_MARKERS.end}`);
 
       const result = await detectLegacyConfigFiles(testDir);
       expect(result.allFiles).toContain('CLAUDE.md');
@@ -219,9 +219,9 @@ ${OPENSPEC_MARKERS.end}`);
     it('should detect files with mixed content and put in update list', async () => {
       const claudePath = path.join(testDir, 'CLAUDE.md');
       await fs.writeFile(claudePath, `User instructions here
-${OPENSPEC_MARKERS.start}
+${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}`);
+${SAKTI_MARKERS.end}`);
 
       const result = await detectLegacyConfigFiles(testDir);
       expect(result.allFiles).toContain('CLAUDE.md');
@@ -238,9 +238,9 @@ ${OPENSPEC_MARKERS.end}`);
 
     it('should detect multiple config files', async () => {
       // Create multiple config files with markers
-      await fs.writeFile(path.join(testDir, 'CLAUDE.md'), `${OPENSPEC_MARKERS.start}\nContent\n${OPENSPEC_MARKERS.end}`);
-      await fs.writeFile(path.join(testDir, 'CLINE.md'), `${OPENSPEC_MARKERS.start}\nContent\n${OPENSPEC_MARKERS.end}`);
-      await fs.writeFile(path.join(testDir, 'QODER.md'), `${OPENSPEC_MARKERS.start}\nContent\n${OPENSPEC_MARKERS.end}`);
+      await fs.writeFile(path.join(testDir, 'CLAUDE.md'), `${SAKTI_MARKERS.start}\nContent\n${SAKTI_MARKERS.end}`);
+      await fs.writeFile(path.join(testDir, 'CLINE.md'), `${SAKTI_MARKERS.start}\nContent\n${SAKTI_MARKERS.end}`);
+      await fs.writeFile(path.join(testDir, 'QODER.md'), `${SAKTI_MARKERS.start}\nContent\n${SAKTI_MARKERS.end}`);
 
       const result = await detectLegacyConfigFiles(testDir);
       expect(result.allFiles).toHaveLength(3);
@@ -385,9 +385,9 @@ ${OPENSPEC_MARKERS.end}`);
 
     it('should detect root AGENTS.md with Sakti markers', async () => {
       const agentsPath = path.join(testDir, 'AGENTS.md');
-      await fs.writeFile(agentsPath, `${OPENSPEC_MARKERS.start}
+      await fs.writeFile(agentsPath, `${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}`);
+${SAKTI_MARKERS.end}`);
 
       const result = await detectLegacyStructureFiles(testDir);
       expect(result.hasRootAgentsWithMarkers).toBe(true);
@@ -416,7 +416,7 @@ ${OPENSPEC_MARKERS.end}`);
     });
 
     it('should return hasLegacyArtifacts: true when config files are found', async () => {
-      await fs.writeFile(path.join(testDir, 'CLAUDE.md'), `${OPENSPEC_MARKERS.start}\nContent\n${OPENSPEC_MARKERS.end}`);
+      await fs.writeFile(path.join(testDir, 'CLAUDE.md'), `${SAKTI_MARKERS.start}\nContent\n${SAKTI_MARKERS.end}`);
 
       const result = await detectLegacyArtifacts(testDir);
       expect(result.hasLegacyArtifacts).toBe(true);
@@ -450,7 +450,7 @@ ${OPENSPEC_MARKERS.end}`);
 
     it('should combine all detection results', async () => {
       // Create various legacy artifacts
-      await fs.writeFile(path.join(testDir, 'CLAUDE.md'), `${OPENSPEC_MARKERS.start}\nContent\n${OPENSPEC_MARKERS.end}`);
+      await fs.writeFile(path.join(testDir, 'CLAUDE.md'), `${SAKTI_MARKERS.start}\nContent\n${SAKTI_MARKERS.end}`);
       await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
       await fs.writeFile(path.join(testDir, 'openspec', 'AGENTS.md'), 'content');
       await fs.writeFile(path.join(testDir, '.sakti', 'project.md'), 'content');
@@ -467,7 +467,7 @@ ${OPENSPEC_MARKERS.end}`);
   describe('cleanupLegacyArtifacts', () => {
     it('should remove markers from config files that have only Sakti content (never delete)', async () => {
       const claudePath = path.join(testDir, 'CLAUDE.md');
-      await fs.writeFile(claudePath, `${OPENSPEC_MARKERS.start}\nContent\n${OPENSPEC_MARKERS.end}`);
+      await fs.writeFile(claudePath, `${SAKTI_MARKERS.start}\nContent\n${SAKTI_MARKERS.end}`);
 
       const detection = await detectLegacyArtifacts(testDir);
       const result = await cleanupLegacyArtifacts(testDir, detection);
@@ -479,16 +479,16 @@ ${OPENSPEC_MARKERS.end}`);
       await expect(fs.access(claudePath)).resolves.not.toThrow();
       // File should be empty or have markers removed
       const content = await fs.readFile(claudePath, 'utf-8');
-      expect(content).not.toContain(OPENSPEC_MARKERS.start);
-      expect(content).not.toContain(OPENSPEC_MARKERS.end);
+      expect(content).not.toContain(SAKTI_MARKERS.start);
+      expect(content).not.toContain(SAKTI_MARKERS.end);
     });
 
     it('should remove marker block from files with mixed content', async () => {
       const claudePath = path.join(testDir, 'CLAUDE.md');
       await fs.writeFile(claudePath, `User instructions
-${OPENSPEC_MARKERS.start}
+${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}`);
+${SAKTI_MARKERS.end}`);
 
       const detection = await detectLegacyArtifacts(testDir);
       const result = await cleanupLegacyArtifacts(testDir, detection);
@@ -496,7 +496,7 @@ ${OPENSPEC_MARKERS.end}`);
       expect(result.modifiedFiles).toContain('CLAUDE.md');
       const content = await fs.readFile(claudePath, 'utf-8');
       expect(content).toContain('User instructions');
-      expect(content).not.toContain(OPENSPEC_MARKERS.start);
+      expect(content).not.toContain(SAKTI_MARKERS.start);
     });
 
     it('should delete legacy slash command directories', async () => {
@@ -554,9 +554,9 @@ ${OPENSPEC_MARKERS.end}`);
     it('should handle root AGENTS.md with mixed content', async () => {
       const agentsPath = path.join(testDir, 'AGENTS.md');
       await fs.writeFile(agentsPath, `User content
-${OPENSPEC_MARKERS.start}
+${SAKTI_MARKERS.start}
 Sakti content
-${OPENSPEC_MARKERS.end}`);
+${SAKTI_MARKERS.end}`);
 
       const detection = await detectLegacyArtifacts(testDir);
       const result = await cleanupLegacyArtifacts(testDir, detection);
@@ -564,12 +564,12 @@ ${OPENSPEC_MARKERS.end}`);
       expect(result.modifiedFiles).toContain('AGENTS.md');
       const content = await fs.readFile(agentsPath, 'utf-8');
       expect(content).toContain('User content');
-      expect(content).not.toContain(OPENSPEC_MARKERS.start);
+      expect(content).not.toContain(SAKTI_MARKERS.start);
     });
 
     it('should remove markers from root AGENTS.md even when only Sakti content (never delete)', async () => {
       const agentsPath = path.join(testDir, 'AGENTS.md');
-      await fs.writeFile(agentsPath, `${OPENSPEC_MARKERS.start}\nSakti content\n${OPENSPEC_MARKERS.end}`);
+      await fs.writeFile(agentsPath, `${SAKTI_MARKERS.start}\nSakti content\n${SAKTI_MARKERS.end}`);
 
       const detection = await detectLegacyArtifacts(testDir);
       const result = await cleanupLegacyArtifacts(testDir, detection);

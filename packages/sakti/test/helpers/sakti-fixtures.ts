@@ -5,10 +5,10 @@ import * as path from 'node:path';
 export function createSaktiRoot(rootDir: string): void {
   fs.mkdirSync(path.join(rootDir, '.sakti', 'specs'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, '.sakti', 'changes', 'archive'), { recursive: true });
-  fs.writeFileSync(path.join(rootDir, '.sakti', 'config.yaml'), 'schema: spec-driven\n');
+  fs.writeFileSync(path.join(rootDir, 'sakti', 'config.yaml'), 'schema: spec-driven\n');
 }
 
-/** Writes a spec file under the root's .sakti/specs/<id>/spec.md. */
+/** Writes a spec file under the root's sakti/specs/<id>/spec.md. */
 export function writeSpec(rootDir: string, specId: string, body: string): void {
   const specDir = path.join(rootDir, '.sakti', 'specs', specId);
   fs.mkdirSync(specDir, { recursive: true });

@@ -6,8 +6,8 @@ import { FileSystemUtils, removeMarkerBlock } from '../../src/utils/file-system.
 
 describe('FileSystemUtils.updateFileWithMarkers', () => {
   let testDir: string;
-  const START_MARKER = '<!-- SAKTI:START -->';
-  const END_MARKER = '<!-- SAKTI:END -->';
+  const START_MARKER = '<!-- OPENSPEC:START -->';
+  const END_MARKER = '<!-- OPENSPEC:END -->';
 
   beforeEach(async () => {
     testDir = path.join(os.tmpdir(), `sakti-marker-test-${Date.now()}`);
@@ -287,8 +287,8 @@ ${END_MARKER}
 });
 
 describe('removeMarkerBlock', () => {
-  const START_MARKER = '<!-- SAKTI:START -->';
-  const END_MARKER = '<!-- SAKTI:END -->';
+  const START_MARKER = '<!-- OPENSPEC:START -->';
+  const END_MARKER = '<!-- OPENSPEC:END -->';
 
   describe('basic removal', () => {
     it('should remove marker block and preserve content before', () => {
@@ -424,8 +424,8 @@ After block content`;
   });
 
   describe('shell markers', () => {
-    const SHELL_START = '# SAKTI:START';
-    const SHELL_END = '# SAKTI:END';
+    const SHELL_START = '# OPENSPEC:START';
+    const SHELL_END = '# OPENSPEC:END';
 
     it('should work with shell-style markers', () => {
       const content = `# User config

@@ -43,12 +43,12 @@ describe('command-generation/adapters', () => {
 
     it('should generate correct file path', () => {
       const filePath = claudeAdapter.getFilePath('explore');
-      expect(filePath).toBe(path.join('.claude', 'commands', 'sakti', 'explore.md'));
+      expect(filePath).toBe(path.join('.claude', 'commands', 'opsx', 'explore.md'));
     });
 
     it('should generate correct file path for different command IDs', () => {
-      expect(claudeAdapter.getFilePath('new')).toBe(path.join('.claude', 'commands', 'sakti', 'new.md'));
-      expect(claudeAdapter.getFilePath('bulk-archive')).toBe(path.join('.claude', 'commands', 'sakti', 'bulk-archive.md'));
+      expect(claudeAdapter.getFilePath('new')).toBe(path.join('.claude', 'commands', 'opsx', 'new.md'));
+      expect(claudeAdapter.getFilePath('bulk-archive')).toBe(path.join('.claude', 'commands', 'opsx', 'bulk-archive.md'));
     });
 
     it('should format file with correct YAML frontmatter', () => {
@@ -327,9 +327,9 @@ describe('command-generation/adapters', () => {
       expect(codebuddyAdapter.toolId).toBe('codebuddy');
     });
 
-    it('should generate correct file path with nested sakti folder', () => {
+    it('should generate correct file path with nested opsx folder', () => {
       const filePath = codebuddyAdapter.getFilePath('explore');
-      expect(filePath).toBe(path.join('.codebuddy', 'commands', 'sakti', 'explore.md'));
+      expect(filePath).toBe(path.join('.codebuddy', 'commands', 'opsx', 'explore.md'));
     });
 
     it('should format file with name, description, and argument-hint', () => {
@@ -371,7 +371,7 @@ describe('command-generation/adapters', () => {
 
     it('should generate correct file path', () => {
       const filePath = costrictAdapter.getFilePath('explore');
-      expect(filePath).toBe(path.join('.cospec', '.sakti', 'commands', 'sakti-explore.md'));
+      expect(filePath).toBe(path.join('.cospec', 'sakti', 'commands', 'sakti-explore.md'));
     });
 
     it('should format file with description and argument-hint', () => {
@@ -389,9 +389,9 @@ describe('command-generation/adapters', () => {
       expect(crushAdapter.toolId).toBe('crush');
     });
 
-    it('should generate correct file path with nested sakti folder', () => {
+    it('should generate correct file path with nested opsx folder', () => {
       const filePath = crushAdapter.getFilePath('explore');
-      expect(filePath).toBe(path.join('.crush', 'commands', 'sakti', 'explore.md'));
+      expect(filePath).toBe(path.join('.crush', 'commands', 'opsx', 'explore.md'));
     });
 
     it('should format file with name, description, category, and tags', () => {
@@ -433,7 +433,7 @@ describe('command-generation/adapters', () => {
 
     it('should generate correct file path with .toml extension', () => {
       const filePath = geminiAdapter.getFilePath('explore');
-      expect(filePath).toBe(path.join('.gemini', 'commands', 'sakti', 'explore.toml'));
+      expect(filePath).toBe(path.join('.gemini', 'commands', 'opsx', 'explore.toml'));
     });
 
     it('should format file in TOML format', () => {
@@ -554,9 +554,9 @@ describe('command-generation/adapters', () => {
       expect(qoderAdapter.toolId).toBe('qoder');
     });
 
-    it('should generate correct file path with nested sakti folder', () => {
+    it('should generate correct file path with nested opsx folder', () => {
       const filePath = qoderAdapter.getFilePath('explore');
-      expect(filePath).toBe(path.join('.qoder', 'commands', 'sakti', 'explore.md'));
+      expect(filePath).toBe(path.join('.qoder', 'commands', 'opsx', 'explore.md'));
     });
 
     it('should format file with name, description, category, and tags', () => {
@@ -678,7 +678,7 @@ describe('command-generation/adapters', () => {
       // path.join handles platform-specific separators
       const filePath = claudeAdapter.getFilePath('test');
       // On any platform, path.join returns the correct separator
-      expect(filePath.split(path.sep)).toEqual(['.claude', 'commands', 'sakti', 'test.md']);
+      expect(filePath.split(path.sep)).toEqual(['.claude', 'commands', 'opsx', 'test.md']);
     });
 
     it('Cursor adapter uses path.join for paths', () => {

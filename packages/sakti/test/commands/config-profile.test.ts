@@ -115,7 +115,7 @@ describe('config profile interactive flow', () => {
 
     const coreCommands = ['propose', 'explore', 'apply', 'sync', 'archive'];
     for (const commandId of coreCommands) {
-      const commandPath = path.join(projectDir, '.claude', 'commands', 'sakti', `${commandId}.md`);
+      const commandPath = path.join(projectDir, '.claude', 'commands', 'opsx', `${commandId}.md`);
       fs.mkdirSync(path.dirname(commandPath), { recursive: true });
       fs.writeFileSync(commandPath, `# ${commandId}\n`, 'utf-8');
     }
@@ -126,7 +126,7 @@ describe('config profile interactive flow', () => {
     fs.mkdirSync(path.dirname(verifySkillPath), { recursive: true });
     fs.writeFileSync(verifySkillPath, 'name: sakti-verify-change\n', 'utf-8');
 
-    const verifyCommandPath = path.join(projectDir, '.claude', 'commands', 'sakti', 'verify.md');
+    const verifyCommandPath = path.join(projectDir, '.claude', 'commands', 'opsx', 'verify.md');
     fs.mkdirSync(path.dirname(verifyCommandPath), { recursive: true });
     fs.writeFileSync(verifyCommandPath, '# verify\n', 'utf-8');
   }

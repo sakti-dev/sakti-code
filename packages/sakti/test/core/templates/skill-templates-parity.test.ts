@@ -166,7 +166,7 @@ describe('skill templates split parity', () => {
     }
   });
 
-  it('teaches store selection in every deployed sakti command template', () => {
+  it('teaches store selection in every deployed opsx command template', () => {
     for (const entry of getCommandContents()) {
       expect(entry.body, entry.id).toContain(STORE_SELECTION_GUIDANCE);
     }

@@ -193,7 +193,7 @@ Old instructions content
   });
 
   describe('command updates', () => {
-    it('should update sakti commands for configured Claude tool', async () => {
+    it('should update opsx commands for configured Claude tool', async () => {
       // Set up a configured Claude tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
       await fs.mkdir(path.join(skillsDir, 'sakti-explore'), {
@@ -206,8 +206,8 @@ Old instructions content
 
       await updateCommand.execute(testDir);
 
-      // Check sakti command files were created
-      const commandsDir = path.join(testDir, '.claude', 'commands', 'sakti');
+      // Check opsx command files were created
+      const commandsDir = path.join(testDir, '.claude', 'commands', 'opsx');
       const exploreCmd = path.join(commandsDir, 'explore.md');
       const exists = await FileSystemUtils.fileExists(exploreCmd);
       expect(exists).toBe(true);
@@ -220,7 +220,7 @@ Old instructions content
       expect(content).toContain('tags:');
     });
 
-    it('should update core profile sakti commands when tool is configured', async () => {
+    it('should update core profile opsx commands when tool is configured', async () => {
       // Set up a configured tool
       const skillsDir = path.join(testDir, '.claude', 'skills');
       await fs.mkdir(path.join(skillsDir, 'sakti-explore'), {
@@ -235,7 +235,7 @@ Old instructions content
 
       // Verify core profile commands were created (propose, explore, apply, sync, archive)
       const coreCommandIds = ['explore', 'apply', 'sync', 'archive', 'propose'];
-      const commandsDir = path.join(testDir, '.claude', 'commands', 'sakti');
+      const commandsDir = path.join(testDir, '.claude', 'commands', 'opsx');
       for (const cmdId of coreCommandIds) {
         const cmdFile = path.join(commandsDir, `${cmdId}.md`);
         const exists = await FileSystemUtils.fileExists(cmdFile);
@@ -1351,8 +1351,8 @@ More user content after markers.
       const forceUpdateCommand = new UpdateCommand({ force: true });
       await forceUpdateCommand.execute(testDir);
 
-      // New sakti commands should be created
-      const commandsDir = path.join(testDir, '.claude', 'commands', 'sakti');
+      // New opsx commands should be created
+      const commandsDir = path.join(testDir, '.claude', 'commands', 'opsx');
       const exploreCmd = path.join(commandsDir, 'explore.md');
       const exists = await FileSystemUtils.fileExists(exploreCmd);
       expect(exists).toBe(true);
@@ -1383,7 +1383,7 @@ More user content after markers.
         path.join(skillsDir, 'sakti-propose', 'SKILL.md')
       )).toBe(false);
 
-      const commandsDir = path.join(testDir, '.claude', 'commands', 'sakti');
+      const commandsDir = path.join(testDir, '.claude', 'commands', 'opsx');
       expect(await FileSystemUtils.fileExists(
         path.join(commandsDir, 'explore.md')
       )).toBe(true);
@@ -1456,7 +1456,7 @@ More user content after markers.
         path.join(testDir, '.claude', 'skills', 'sakti-sync-specs', 'SKILL.md')
       )).toBe(false);
       expect(await FileSystemUtils.fileExists(
-        path.join(testDir, '.claude', 'commands', 'sakti', 'sync.md')
+        path.join(testDir, '.claude', 'commands', 'opsx', 'sync.md')
       )).toBe(false);
 
       consoleSpy.mockRestore();
@@ -1481,7 +1481,7 @@ More user content after markers.
       )).toBe(true);
 
       // Commands should NOT be created
-      const commandsDir = path.join(testDir, '.claude', 'commands', 'sakti');
+      const commandsDir = path.join(testDir, '.claude', 'commands', 'opsx');
       expect(await FileSystemUtils.fileExists(
         path.join(commandsDir, 'explore.md')
       )).toBe(false);
@@ -1501,7 +1501,7 @@ More user content after markers.
       await updateCommand.execute(testDir);
 
       // Commands should be created
-      const commandsDir = path.join(testDir, '.claude', 'commands', 'sakti');
+      const commandsDir = path.join(testDir, '.claude', 'commands', 'opsx');
       expect(await FileSystemUtils.fileExists(
         path.join(commandsDir, 'explore.md')
       )).toBe(true);
@@ -1560,7 +1560,7 @@ content
 `
       );
 
-      const commandsDir = path.join(testDir, '.claude', 'commands', 'sakti');
+      const commandsDir = path.join(testDir, '.claude', 'commands', 'opsx');
       await fs.mkdir(commandsDir, { recursive: true });
       await fs.writeFile(path.join(commandsDir, 'explore.md'), 'old command');
 
@@ -1579,7 +1579,7 @@ content
         delivery: 'commands',
       });
 
-      const commandsDir = path.join(testDir, '.claude', 'commands', 'sakti');
+      const commandsDir = path.join(testDir, '.claude', 'commands', 'opsx');
       await fs.mkdir(commandsDir, { recursive: true });
       await fs.writeFile(path.join(commandsDir, 'explore.md'), 'existing command');
 
@@ -1620,7 +1620,7 @@ content
       // Add a non-core workflow
       await fs.mkdir(path.join(skillsDir, 'sakti-new-change'), { recursive: true });
       await fs.writeFile(path.join(skillsDir, 'sakti-new-change', 'SKILL.md'), 'old');
-      const extraCommandFile = path.join(testDir, '.claude', 'commands', 'sakti', 'new.md');
+      const extraCommandFile = path.join(testDir, '.claude', 'commands', 'opsx', 'new.md');
       await fs.mkdir(path.dirname(extraCommandFile), { recursive: true });
       await fs.writeFile(extraCommandFile, 'old');
 
@@ -1777,7 +1777,7 @@ content
     });
 
     it('should detect installed workflows from managed command files', async () => {
-      const commandsDir = path.join(testDir, '.claude', 'commands', 'sakti');
+      const commandsDir = path.join(testDir, '.claude', 'commands', 'opsx');
       await fs.mkdir(commandsDir, { recursive: true });
       await fs.writeFile(path.join(commandsDir, 'explore.md'), 'content');
 

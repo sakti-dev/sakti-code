@@ -1,4 +1,4 @@
-export const SAKTI_DIR_NAME = 'sakti';
+export const SAKTI_DIR_NAME = '.sakti';
 
 export const SAKTI_MARKERS = {
   start: '<!-- SAKTI:START -->',
