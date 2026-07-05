@@ -57,7 +57,7 @@ describe("fork routes", () => {
     const { app, ctx } = await makeApp([forkingRoutes]);
     const project = await ctx.repos.projects.create("fork-kind", "/tmp/fork-kind");
     const session = await ctx.repos.sessions.create(project.id, {
-      kind: "intake",
+      kind: "plan",
     });
 
     const res = await app.request(
@@ -68,7 +68,7 @@ describe("fork routes", () => {
     );
     expect(res.status).toBe(200);
     const forked = await res.json();
-    expect(forked.kind).toBe("intake");
+    expect(forked.kind).toBe("plan");
   });
 });
 

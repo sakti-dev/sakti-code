@@ -346,7 +346,7 @@ export function runPromptEffect(
     // Resolve the agent: per-session override first (when it differs from the
     // default), then kind+status routing. Plan → plan agent; mission in
     // specifying → spec agent (structurally edit-denied); everything else → build.
-    // No isIntake branches anywhere: intake flows through the same path as build.
+    // No isPlan branches anywhere: plan flows through the same path as build.
     const { agent } = resolveSessionAgentForKind(
       session.kind,
       loadedContext.agents,
@@ -439,7 +439,7 @@ export function runPromptEffect(
 
     // ── Observational Memory deps ────────────────────────────────
     // OM is always on. Every session reads the project's resource-scope OM
-    // record read-only (the main intake's memory). Missions additionally run
+    // record read-only (the main plan's memory). Missions additionally run
     // their own thread-scope OM (observe/reflect). Both blocks compose in the
     // agent loop (own-OM block + appended read-only block).
     const omStorage = new SqliteObservationalMemoryStorage(ctx.db);
@@ -469,7 +469,7 @@ export function runPromptEffect(
     }
     // The read-only project OM block — always built (resource-scope record
     // keyed at threadId=null, resourceId=projectId). Missions get own-OM + this;
-    // intakes get only this.
+    // plans get only this.
     const omReadOnly = {
       getObservationsBlock: async () => {
         const record = await omStorage.getObservationalMemory(null, session.projectId);
