@@ -21,13 +21,13 @@ Current total: ~12,000 lines (down from ~18,000 at start).
 
 - [ ] **#4 Schema Command** (1,005 lines) — `schema which/validate/fork/init`. Only useful if users customize schemas. Candidate for removal if only default schema is used.
 - [ ] **#5 Store System** (3,055 lines) — `store setup/register/unregister/remove/list/doctor`. Multi-repo management. Hardest to remove — deeply entangled in `root-selection.ts`. Desktop app handles projects itself.
-- [ ] **#6 Worksets + Openers** (1,801 lines) — `workset create/list/open/remove` + IDE launchers. Fully isolated, no dependencies. Power-user CLI feature.
-- [ ] **#7 Config Command** (601 lines) — `config path/list/get/set/profile`. Profile management is vestigial (init/update deleted). Basic get/set/path may be useful.
-- [ ] **#8 Feedback** (323 lines) — `feedback <message>`. Telemetry-adjacent, no dependencies.
+- [x] **#6 Worksets + Openers** (1,801 lines) — REMOVED. Fully isolated, no dependencies. Power-user CLI feature.
+- [ ] **#7 Config Command** (601→246 lines) — `config path/list/get/set/unset/reset/edit`. Profile management stripped; basic get/set/path kept.
+- [x] **#8 Feedback** (323 lines) — REMOVED. Telemetry-adjacent, no dependencies.
 - [ ] **#9 Doctor** (211 lines) — **KEEP** per user decision.
 - [ ] **#10 Context** (208 lines) — `context` command. Outputs working-set brief for AI agents. Kills `working-set.ts` + `relationship-health.ts` if removed.
 - [ ] **#11 Planning Home** (178 lines) — Path resolution for change directories. Partially still needed by `status` command. Could inline the 2 functions.
-- [ ] **#12 Profiles + Config Prompts** (89 lines) — Vestigial profile system, only used by `config profile`.
+- [x] **#12 Profiles + Config Prompts** (89 lines) — REMOVED (profiles.ts). Note: `config-prompts.ts` kept — misnamed, contains `serializeConfig()` needed by `new change`. Stripped `config profile` subcommand + helpers from config.ts.
 - [ ] **#13 Global Config** (172 lines) — `getGlobalDataDir()` is high fan-in (keep), config file parsing could be stripped.
 
 ---
@@ -100,42 +100,26 @@ All 13 template files + `skill-templates.ts` + `index.ts` deleted (3,772 lines).
 
 ### 6. Worksets + Openers
 
-**Status:** PENDING DECISION
+**Status:** REMOVED
 
-**CLI commands:** `workset create`, `workset list`, `workset open`, `workset remove`
-
-**Files:**
-- `src/commands/workset.ts` (655 lines)
-- `src/commands/workset-prompts.ts` (188 lines)
-- `src/commands/workset-input.ts` (185 lines)
-- `src/core/worksets.ts` (401 lines)
-- `src/core/openers.ts` (372 lines)
-
-**If removed:** Fully isolated — no other code depends on worksets. 1,801 lines removed.
+Deleted all 5 source files + 4 test files (2,098 source lines + 2,005 test lines). Fully isolated — no other code depended on it.
 
 ---
 
 ### 7. Config Command
 
-**Status:** PENDING DECISION
+**Status:** SIMPLIFIED (601 → ~246 lines)
 
-**CLI commands:** `config path`, `config list`, `config get`, `config set`, `config profile`
-
-**Files:** `src/commands/config.ts` (601 lines)
-
-**If removed:** Profile management (~300 lines) is vestigial. Basic `config get/set/path` may still be useful for a bundled tool.
+**Kept:** `config path/list/get/set/unset/reset/edit` — basic config CRUD.
+**Removed:** `config profile` subcommand + all profile helper functions + profile display in `config list`.
 
 ---
 
 ### 8. Feedback Command
 
-**Status:** PENDING DECISION
+**Status:** REMOVED
 
-**CLI command:** `feedback <message>`
-
-**Files:** `src/commands/feedback.ts` (208 lines)
-
-**If removed:** 208 lines, no dependencies.
+Deleted `src/commands/feedback.ts` (208 lines) + test (429 lines). No dependencies.
 
 ---
 
@@ -175,13 +159,12 @@ All 13 template files + `skill-templates.ts` + `index.ts` deleted (3,772 lines).
 
 ### 12. Profiles + Config Prompts
 
-**Status:** PENDING DECISION
+**Status:** REMOVED (profiles.ts only)
 
-**Files:**
-- `src/core/profiles.ts` (50 lines)
-- `src/core/config-prompts.ts` (39 lines)
+**Removed:** `src/core/profiles.ts` (50 lines) + `config profile` subcommand + profile helper functions in config.ts + profile display in `config list`.
+**Kept:** `src/core/config-prompts.ts` — despite the misleading name, it contains `serializeConfig()` used by `new change` scaffolding (via `sakti-root.ts`). Not a prompt file.
 
-**If removed:** Dies with #7's profile management. 89 lines.
+**Note:** `profile`/`delivery`/`workflows` fields remain in `global-config.ts` and `config-schema.ts` as orphaned schema keys (harmless; nothing writes them now). Can be cleaned in a later pass.
 
 ---
 
@@ -208,14 +191,14 @@ All 13 template files + `skill-templates.ts` + `index.ts` deleted (3,772 lines).
 | 3 | Artifact graph | 1,224 | ✅ Partial | Removed loader, kept resolver |
 | 4 | Schema command | 1,005 | ⬜ Pending | Candidate for removal |
 | 5 | Store system | 3,055 | ⬜ Pending | Hardest — high entanglement |
-| 6 | Worksets + openers | 1,801 | ⬜ Pending | Fully isolated |
-| 7 | Config command | 601 | ⬜ Pending | Profile mgmt vestigial |
-| 8 | Feedback | 323 | ⬜ Pending | No dependencies |
+| 6 | Worksets + openers | 1,801 | ✅ Done | Fully isolated, removed |
+| 7 | Config command | 601 | ✅ Partial | Stripped profile mgmt, kept get/set/path |
+| 8 | Feedback | 323 | ✅ Done | No dependencies, removed |
 | 9 | Doctor | 211 | ✅ Keep | User decision |
 | 10 | Context | 208 | ⬜ Pending | Kills 2 more core files |
 | 11 | Planning home | 178 | ⬜ Partial | Inline into status/doctor |
-| 12 | Profiles | 89 | ⬜ Pending | Vestigial |
+| 12 | Profiles | 89 | ✅ Done | Vestigial, removed (config-prompts.ts kept) |
 | 13 | Global config | 172 | ⬜ Partial | Keep data dir, strip config parsing |
 
-**Removed so far:** ~16,279 lines deleted, ~2,055 lines added (skills)
-**Remaining candidates:** ~9,531 lines if all pending items removed
+**Removed so far:** ~21,752 lines deleted, ~2,055 lines added (skills)
+**Remaining candidates:** ~4,629 lines if all pending items removed (#4, #5, #10, #11, #13)
