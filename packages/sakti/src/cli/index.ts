@@ -24,16 +24,9 @@ import { registerContextCommand } from '../commands/context.js';
 import { registerWorksetCommand } from '../commands/workset.js';
 import {
   statusCommand,
-  instructionsCommand,
-  applyInstructionsCommand,
-  templatesCommand,
-  schemasCommand,
   newChangeCommand,
   DEFAULT_SCHEMA,
   type StatusOptions,
-  type InstructionsOptions,
-  type TemplatesOptions,
-  type SchemasOptions,
   type NewChangeOptions,
 } from '../commands/workflow/index.js';
 
@@ -324,58 +317,6 @@ program
       await statusCommand(options);
     } catch (error) {
       failWithError(error, { enabled: options.json, fallbackCode: 'change_error' });
-      process.exit(1);
-    }
-  });
-
-// Instructions command
-program
-  .command('instructions [artifact]')
-  .description('Output enriched instructions for creating an artifact or applying tasks')
-  .option('--change <id>', 'Change name')
-  .option('--schema <name>', 'Schema override (auto-detected from config.yaml)')
-  .option('--json', 'Output as JSON')
-  .option('--store <id>', STORE_OPTION_DESCRIPTION)
-  .addOption(hiddenStorePathOption())
-  .action(async (artifactId: string | undefined, options: InstructionsOptions) => {
-    try {
-      // Special case: "apply" is not an artifact, but a command to get apply instructions
-      if (artifactId === 'apply') {
-        await applyInstructionsCommand(options);
-      } else {
-        await instructionsCommand(artifactId, options);
-      }
-    } catch (error) {
-      failWithError(error, { enabled: options.json, fallbackCode: 'change_error' });
-      process.exit(1);
-    }
-  });
-
-// Templates command
-program
-  .command('templates')
-  .description('Show resolved template paths for all artifacts in a schema')
-  .option('--schema <name>', `Schema to use (default: ${DEFAULT_SCHEMA})`)
-  .option('--json', 'Output as JSON mapping artifact IDs to template paths')
-  .action(async (options: TemplatesOptions) => {
-    try {
-      await templatesCommand(options);
-    } catch (error) {
-      failWithError(error);
-      process.exit(1);
-    }
-  });
-
-// Schemas command
-program
-  .command('schemas')
-  .description('List available workflow schemas with descriptions')
-  .option('--json', 'Output as JSON (for agent use)')
-  .action(async (options: SchemasOptions) => {
-    try {
-      await schemasCommand(options);
-    } catch (error) {
-      failWithError(error);
       process.exit(1);
     }
   });
