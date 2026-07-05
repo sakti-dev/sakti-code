@@ -264,7 +264,7 @@ async function resolveSetupInput(
       'store_setup_id_required',
       {
         target: 'store.id',
-        fix: 'sakti store setup' <id> --path ~/sakti/<id> --json',
+        fix: 'sakti store setup <id> --path ~/sakti/<id> --json',
       }
     );
   }

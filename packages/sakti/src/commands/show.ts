@@ -189,11 +189,11 @@ export class ShowCommand {
 
   private printNonInteractiveHint(root: ResolvedSaktiRoot): void {
     console.error('Nothing to show. Try one of:');
-    console.error(`  ${withStoreFlag(root, 'sakti show' <item>')}`);
+    console.error(`  ${withStoreFlag(root, 'sakti show <item>')}`);
     if (isStoreSelectedRoot(root)) {
       // The noun-form commands are cwd-based and cannot reach a selected store.
-      console.error(`  ${withStoreFlag(root, 'sakti show' <item> --type change')}`);
-      console.error(`  ${withStoreFlag(root, 'sakti show' <item> --type spec')}`);
+      console.error(`  ${withStoreFlag(root, 'sakti show <item> --type change')}`);
+      console.error(`  ${withStoreFlag(root, 'sakti show <item> --type spec')}`);
     } else {
       console.error('  sakti change show');
       console.error('  sakti spec show');

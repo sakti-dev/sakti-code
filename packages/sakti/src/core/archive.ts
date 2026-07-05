@@ -205,7 +205,7 @@ export class ArchiveCommand {
         throw new ArchiveBlockedError(
           'archive_change_name_required',
           'A change name is required: archive --json is non-interactive.',
-          withStoreFlag(root, 'sakti archive' <change-name> --json')
+          withStoreFlag(root, 'sakti archive <change-name> --json')
         );
       }
       const selectedChange = await this.selectChange(changesDir);
@@ -313,7 +313,7 @@ export class ArchiveCommand {
         throw new ArchiveBlockedError(
           'archive_confirmation_required',
           'Skipping validation requires confirmation: rerun with --yes.',
-          withStoreFlag(root, 'sakti archive' <change-name> --json --no-validate --yes')
+          withStoreFlag(root, 'sakti archive <change-name> --json --no-validate --yes')
         );
       }
     } else {
@@ -397,7 +397,7 @@ export class ArchiveCommand {
             throw new ArchiveBlockedError(
               'archive_confirmation_required',
               `Updating ${specUpdates.length} spec(s) requires confirmation: rerun with --yes.`,
-              withStoreFlag(root, 'sakti archive' <change-name> --json --yes')
+              withStoreFlag(root, 'sakti archive <change-name> --json --yes')
             );
           }
           const { confirm } = await import('@inquirer/prompts');

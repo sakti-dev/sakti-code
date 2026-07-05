@@ -122,10 +122,10 @@ export class ValidateCommand {
 
   private printNonInteractiveHint(root: ResolvedSaktiRoot): void {
     console.error('Nothing to validate. Try one of:');
-    console.error(`  ${withStoreFlag(root, 'sakti validate' --all')}`);
-    console.error(`  ${withStoreFlag(root, 'sakti validate' --changes')}`);
-    console.error(`  ${withStoreFlag(root, 'sakti validate' --specs')}`);
-    console.error(`  ${withStoreFlag(root, 'sakti validate' <item-name>')}`);
+    console.error(`  ${withStoreFlag(root, 'sakti validate --all')}`);
+    console.error(`  ${withStoreFlag(root, 'sakti validate --changes')}`);
+    console.error(`  ${withStoreFlag(root, 'sakti validate --specs')}`);
+    console.error(`  ${withStoreFlag(root, 'sakti validate <item-name>')}`);
     console.error('Or run in an interactive terminal.');
   }
 
@@ -254,7 +254,7 @@ export class ValidateCommand {
 
     const DEFAULT_CONCURRENCY = 6;
     const maxSuggestions = 5; // used by nearestMatches
-    const concurrency = normalizeConcurrency(opts.concurrency) ?? normalizeConcurrency(process.env.SAKTI_CONCURRENCY) ?? DEFAULT_CONCURRENCY;
+    const concurrency = normalizeConcurrency(opts.concurrency) ?? normalizeConcurrency(process.env.OPENSPEC_CONCURRENCY) ?? DEFAULT_CONCURRENCY;
     const validator = new Validator(opts.strict);
     const queue: Array<() => Promise<BulkItemResult>> = [];
 

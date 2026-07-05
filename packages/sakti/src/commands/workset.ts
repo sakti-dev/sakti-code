@@ -266,7 +266,7 @@ class WorksetCommand {
     if (!name) {
       throw new StoreError('Pass a workset name.', 'workset_name_required', {
         target: 'workset.name',
-        fix: 'sakti workset' create <name> --member <path>',
+        fix: 'sakti workset create <name> --member <path>',
       });
     }
 
@@ -636,8 +636,8 @@ export function registerWorksetCommand(program: Command): void {
     );
     const message =
       attempted.length > 0
-        ? `Unknown command '${attempted[0]}' for 'sakti workset''. Workset subcommands: ${subcommandsLine}.`
-        : `Missing subcommand for 'sakti workset''. Workset subcommands: ${subcommandsLine}.`;
+        ? `Unknown command '${attempted[0]}' for 'sakti workset'. Workset subcommands: ${subcommandsLine}.`
+        : `Missing subcommand for 'sakti workset'. Workset subcommands: ${subcommandsLine}.`;
     if (workset.opts().json) {
       printJson({
         status: [

@@ -6,7 +6,7 @@ import { MarkdownParser } from './parsers/markdown-parser.js';
 
 export class ViewCommand {
   async execute(targetPath: string = '.'): Promise<void> {
-    const saktiDir = path.join(targetPath, '.sakti');
+    const saktiDir = path.join(targetPath, 'sakti');
     
     if (!fs.existsSync(saktiDir)) {
       console.error(chalk.red('No sakti directory found'));
@@ -75,7 +75,7 @@ export class ViewCommand {
     }
 
     console.log('\n' + '═'.repeat(60));
-    console.log(chalk.dim(`\nUse ${chalk.white('sakti list' --changes')} or ${chalk.white('sakti list' --specs')} for detailed views`));
+    console.log(chalk.dim(`\nUse ${chalk.white('sakti list --changes')} or ${chalk.white('sakti list --specs')} for detailed views`));
   }
 
   private async getChangesData(saktiDir: string): Promise<{

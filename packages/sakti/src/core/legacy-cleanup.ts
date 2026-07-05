@@ -7,7 +7,7 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import chalk from 'chalk';
 import { FileSystemUtils, removeMarkerBlock as removeMarkerBlockUtil } from '../utils/file-system.js';
-import { OPENSPEC_MARKERS } from './config.js';
+import { SAKTI_MARKERS } from './config.js';
 
 /**
  * Legacy config file names from the old ToolRegistry.
@@ -301,7 +301,7 @@ export async function detectLegacyStructureFiles(
  */
 export function hasSaktiMarkers(content: string): boolean {
   return (
-    content.includes(OPENSPEC_MARKERS.start) && content.includes(OPENSPEC_MARKERS.end)
+    content.includes(SAKTI_MARKERS.start) && content.includes(SAKTI_MARKERS.end)
   );
 }
 
@@ -312,15 +312,15 @@ export function hasSaktiMarkers(content: string): boolean {
  * @returns True if content outside markers is only whitespace
  */
 export function isOnlySaktiContent(content: string): boolean {
-  const startIndex = content.indexOf(OPENSPEC_MARKERS.start);
-  const endIndex = content.indexOf(OPENSPEC_MARKERS.end);
+  const startIndex = content.indexOf(SAKTI_MARKERS.start);
+  const endIndex = content.indexOf(SAKTI_MARKERS.end);
 
   if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
     return false;
   }
 
   const before = content.substring(0, startIndex);
-  const after = content.substring(endIndex + OPENSPEC_MARKERS.end.length);
+  const after = content.substring(endIndex + SAKTI_MARKERS.end.length);
 
   return before.trim() === '' && after.trim() === '';
 }
@@ -334,7 +334,7 @@ export function isOnlySaktiContent(content: string): boolean {
  * @returns Content with marker block removed
  */
 export function removeMarkerBlock(content: string): string {
-  return removeMarkerBlockUtil(content, OPENSPEC_MARKERS.start, OPENSPEC_MARKERS.end);
+  return removeMarkerBlockUtil(content, SAKTI_MARKERS.start, SAKTI_MARKERS.end);
 }
 
 /**
