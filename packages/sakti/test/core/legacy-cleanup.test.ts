@@ -372,7 +372,7 @@ ${SAKTI_MARKERS.end}`);
       await fs.writeFile(agentsPath, '# AGENTS.md content');
 
       const result = await detectLegacyStructureFiles(testDir);
-      expect(result.hasSaktiAgents).toBe(true);
+      expect(result.hasOpenspecAgents).toBe(true);
     });
 
     it('should detect openspec/project.md', async () => {
@@ -403,7 +403,7 @@ ${SAKTI_MARKERS.end}`);
 
     it('should handle non-existent files gracefully', async () => {
       const result = await detectLegacyStructureFiles(testDir);
-      expect(result.hasSaktiAgents).toBe(false);
+      expect(result.hasOpenspecAgents).toBe(false);
       expect(result.hasProjectMd).toBe(false);
       expect(result.hasRootAgentsWithMarkers).toBe(false);
     });
@@ -436,7 +436,7 @@ ${SAKTI_MARKERS.end}`);
 
       const result = await detectLegacyArtifacts(testDir);
       expect(result.hasLegacyArtifacts).toBe(true);
-      expect(result.hasSaktiAgents).toBe(true);
+      expect(result.hasOpenspecAgents).toBe(true);
     });
 
     it('should detect project.md for migration hint (it is preserved, not deleted)', async () => {
@@ -459,7 +459,7 @@ ${SAKTI_MARKERS.end}`);
       expect(result.hasLegacyArtifacts).toBe(true);
       expect(result.configFiles).toContain('CLAUDE.md');
       expect(result.slashCommandDirs).toContain('.claude/commands/openspec');
-      expect(result.hasSaktiAgents).toBe(true);
+      expect(result.hasOpenspecAgents).toBe(true);
       expect(result.hasProjectMd).toBe(true);
     });
   });
@@ -588,7 +588,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: ['NON_EXISTENT.md'],
         slashCommandDirs: [],
         slashCommandFiles: [],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -694,14 +694,14 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: ['CLAUDE.md'],
         slashCommandDirs: [],
         slashCommandFiles: [],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
       };
 
       const summary = formatDetectionSummary(detection);
-      expect(summary).toContain('Upgrading to the new OpenSpec');
+      expect(summary).toContain('Upgrading to the new Sakti');
       expect(summary).toContain('agent skills');
       expect(summary).toContain('keeping everything working');
     });
@@ -712,7 +712,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: ['CLAUDE.md'],
         slashCommandDirs: [],
         slashCommandFiles: [],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -732,7 +732,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: ['CLINE.md'],
         slashCommandDirs: [],
         slashCommandFiles: [],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -751,7 +751,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: ['.claude/commands/openspec'],
         slashCommandFiles: [],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -768,7 +768,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: ['.cursor/commands/openspec-proposal.md'],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -785,7 +785,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: [],
-        hasSaktiAgents: true,
+        hasOpenspecAgents: true,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -802,7 +802,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: [],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: true,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: false,
@@ -822,7 +822,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: ['CLAUDE.md'],
         slashCommandDirs: [],
         slashCommandFiles: [],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: true,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -842,7 +842,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: ['CLAUDE.md', 'CLINE.md'],
         slashCommandDirs: ['.claude/commands/openspec'],
         slashCommandFiles: [],
-        hasSaktiAgents: true,
+        hasOpenspecAgents: true,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -866,7 +866,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: [],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: false,
@@ -951,7 +951,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: ['.claude/commands/openspec'],
         slashCommandFiles: [],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -968,7 +968,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: ['.cursor/commands/openspec-proposal.md'],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -985,7 +985,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: ['.claude/commands/openspec', '.qoder/commands/openspec'],
         slashCommandFiles: ['.cursor/commands/openspec-apply.md', '.windsurf/workflows/openspec-archive.md'],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -1009,7 +1009,7 @@ ${SAKTI_MARKERS.end}`);
           '.cursor/commands/openspec-apply.md',
           '.cursor/commands/openspec-archive.md',
         ],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -1026,7 +1026,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: [],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: false,
@@ -1042,7 +1042,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: ['.qwen/commands/openspec-proposal.toml'],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -1059,7 +1059,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: ['.continue/prompts/openspec-apply.prompt'],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -1076,7 +1076,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: ['.github/prompts/openspec-apply.prompt.md'],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -1093,7 +1093,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: ['.opencode/command/opsx-propose.md'],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -1110,7 +1110,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: ['.opencode/command/openspec-new.md'],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -1130,7 +1130,7 @@ ${SAKTI_MARKERS.end}`);
           '.opencode/command/opsx-propose.md',
           '.opencode/command/openspec-new.md',
         ],
-        hasSaktiAgents: false,
+        hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
@@ -1149,7 +1149,7 @@ ${SAKTI_MARKERS.end}`);
         configFilesToUpdate: ['CLAUDE.md'],
         slashCommandDirs: [],
         slashCommandFiles: [],
-        hasSaktiAgents: true,
+        hasOpenspecAgents: true,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
         hasLegacyArtifacts: true,
