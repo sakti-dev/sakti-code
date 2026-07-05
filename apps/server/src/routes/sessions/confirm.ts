@@ -32,10 +32,10 @@ export const confirmRoutes = new Hono()
     // Lazy context reset — only the plan-approve handler calls this. Forces
     // an OM observe so the build agent starts with a clean context.
     const forceReset = buildForceReset(ctx, existing);
-    // Graduation — only the session-approve handler (intake children) calls
+    // Graduation — only the session-approve handler (plan children) calls
     // this. Reflects the child's transcript into the project's resource-scope
-    // OM. Bound only for intake sessions; missions never reach session asks.
-    const graduate = existing.kind === "intake" ? buildGraduation(ctx, existing) : undefined;
+    // OM. Bound only for plan sessions; missions never reach session asks.
+    const graduate = existing.kind === "plan" ? buildGraduation(ctx, existing) : undefined;
 
     const askCtx: AskCtx = {
       sessions: ctx.repos.sessions,

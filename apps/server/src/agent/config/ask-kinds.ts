@@ -45,7 +45,7 @@ export interface AskKindHandlers {
  * nothing about kinds — this table is the policy that turns an approved ask
  * into a lifecycle consequence.
  *
- * session    — intake hands off to a new mission session. Approve is a no-op
+ * session    — plan hands off to a new mission session. Approve is a no-op
  *              here: the card's Create button calls the session-create REST
  *              route directly (the new mission is born in `specifying`).
  * spec       — a specifying mission's spec is approved → status flips to
@@ -57,14 +57,14 @@ export const ASK_KINDS: Record<AskKind, AskKindHandlers> = {
   session: {
     card: "proposed-session",
     onApprove: async (id, _body, ctx) => {
-      // Graduate the child intake's transcript into the project's resource-scope
+      // Graduate the child plan's transcript into the project's resource-scope
       // OM so the next child/mission inherits it. Best-effort: the mission
       // spawn (the card's Create button) is the user's durable intent and must
       // not be blocked by a graduation failure.
       try {
         await ctx.graduate?.(id);
       } catch (err) {
-        ctx.log?.agent?.warn?.("intake graduation failed (continuing)", {
+        ctx.log?.agent?.warn?.("plan graduation failed (continuing)", {
           sessionId: id,
           error: err instanceof Error ? err.message : String(err),
         });

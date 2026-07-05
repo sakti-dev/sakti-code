@@ -19,9 +19,9 @@ const PROJECT_AGENTS: AgentDefinition[] = [
 ];
 
 describe("resolveSessionAgentForKind", () => {
-  it("intake kind with no override → intake agent", () => {
-    const { agent } = resolveSessionAgentForKind("intake", []);
-    expect(agent.name).toBe("intake");
+  it("plan kind with no override → plan agent", () => {
+    const { agent } = resolveSessionAgentForKind("plan", []);
+    expect(agent.name).toBe("plan");
     expect(agent.activeToolNames).toContain("ask");
   });
 
@@ -30,15 +30,15 @@ describe("resolveSessionAgentForKind", () => {
     expect(agent.name).toBe("build");
   });
 
-  it("plan kind with no override → build agent (no per-kind mapping for plan)", () => {
-    // kindToAgentName maps only intake; plan sessions use the default unless
-    // overridden — keeping the door open for plan-specific behavior later.
-    const { agent } = resolveSessionAgentForKind("plan", []);
+  it("mission kind with no override → build agent (no per-kind mapping for plan)", () => {
+    // kindToAgentName maps only plan; mission sessions use the default unless
+    // overridden.
+    const { agent } = resolveSessionAgentForKind("mission", []);
     expect(agent.name).toBe("build");
   });
 
   it("per-session override wins over kind-based default", () => {
-    const { agent } = resolveSessionAgentForKind("intake", [], "explore");
+    const { agent } = resolveSessionAgentForKind("plan", [], "explore");
     expect(agent.name).toBe("explore");
   });
 
@@ -80,9 +80,9 @@ describe("resolveSessionAgentForKind — status-based (SDD lifecycle)", () => {
     expect(agent.name).toBe("build");
   });
 
-  it("intake kind ignores status (always intake)", () => {
-    const { agent } = resolveSessionAgentForKind("intake", [], undefined, "specifying");
-    expect(agent.name).toBe("intake");
+  it("plan kind ignores status (always plan)", () => {
+    const { agent } = resolveSessionAgentForKind("plan", [], undefined, "specifying");
+    expect(agent.name).toBe("plan");
   });
 
   it("per-session override wins over status-based routing", () => {
@@ -102,9 +102,9 @@ describe("resolveAgentByName", () => {
     expect(resolved.name).toBe("explore");
   });
 
-  it("intake agent is resolvable", () => {
-    const resolved = resolveAgentByName("intake", []);
-    expect(resolved.name).toBe("intake");
+  it("plan agent is resolvable", () => {
+    const resolved = resolveAgentByName("plan", []);
+    expect(resolved.name).toBe("plan");
     expect(resolved.activeToolNames).toContain("ask");
   });
 });

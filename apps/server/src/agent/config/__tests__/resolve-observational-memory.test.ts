@@ -180,11 +180,11 @@ describe("resolveOmConfig", () => {
     expect(result!.instruction).toBeUndefined();
   });
 
-  it("returns undefined for intake sessions (children read project OM read-only)", () => {
+  it("returns undefined for plan sessions (children read project OM read-only)", () => {
     const ctx = makeCtx(PROFILES, { observationalMemory: {} }, { getApiKey: () => "sk-test" });
     const result = resolveOmConfig(ctx, {
       id: "s1",
-      kind: "intake",
+      kind: "plan",
       projectId: "p1",
       profileId: null,
     });

@@ -326,7 +326,7 @@ describe("resolveModel / resolveAuth", () => {
       ).toThrow(NO_MODEL_CONFIGURED_RE);
     });
 
-    it("resolves intake model when session kind is intake", () => {
+    it("resolves plan model when session kind is plan", () => {
       const profilesMock = makeProfilesMock(
         {
           defaultProfile: "default",
@@ -335,7 +335,7 @@ describe("resolveModel / resolveAuth", () => {
               name: "Default",
               models: {
                 default: { provider: "openai", model: TEST_MODEL_ID },
-                intake: {
+                plan: {
                   provider: "anthropic",
                   model: "claude-sonnet-4-20250514",
                 },
@@ -354,14 +354,14 @@ describe("resolveModel / resolveAuth", () => {
         id: "sess-1",
         projectId: "proj-1",
         profileId: null,
-        kind: "intake",
+        kind: "plan",
       });
 
       expect(result.provider).toBe("anthropic");
       expect(result.modelId).toBe("claude-sonnet-4-20250514");
     });
 
-    it("falls back to default when intake mode has no model configured", () => {
+    it("falls back to default when plan mode has no model configured", () => {
       const profilesMock = makeProfilesMock(
         {
           defaultProfile: "default",
@@ -385,14 +385,14 @@ describe("resolveModel / resolveAuth", () => {
         id: "sess-1",
         projectId: "proj-1",
         profileId: null,
-        kind: "intake",
+        kind: "plan",
       });
 
       expect(result.provider).toBe("openai");
       expect(result.modelId).toBe(TEST_MODEL_ID);
     });
 
-    it("uses default mode for task kind even when intake is configured", () => {
+    it("uses default mode for task kind even when plan is configured", () => {
       const profilesMock = makeProfilesMock(
         {
           defaultProfile: "default",
@@ -401,7 +401,7 @@ describe("resolveModel / resolveAuth", () => {
               name: "Default",
               models: {
                 default: { provider: "openai", model: TEST_MODEL_ID },
-                intake: {
+                plan: {
                   provider: "anthropic",
                   model: "claude-sonnet-4-20250514",
                 },

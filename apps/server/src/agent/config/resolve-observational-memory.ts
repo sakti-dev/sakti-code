@@ -46,7 +46,7 @@ function getTokenCounter(observeModel: Model): TokenCounter {
  * Build observational-memory config from profiles + settings.
  *
  * OM is always on — there is no on/off toggle. Returns `undefined` only when
- * the session is an intake child (kind gate — children read project OM
+ * the session is a plan child (kind gate — children read project OM
  * read-only) or model/API-key resolution fails. The runner assembles per-run
  * fields (storage, sessionId, etc.) into the full `ObservationalMemoryDeps`
  * at run time.
@@ -58,10 +58,10 @@ export function resolveOmConfig(
   const raw = ctx.settingsFile.read() as Record<string, unknown>;
   const omSettings = parseOmSettings(raw);
 
-  // Intake children never run their own OM — they read the project's
-  // resource-scope OM read-only (the main intake's memory). Only missions
+  // Plan children never run their own OM — they read the project's
+  // resource-scope OM read-only (the main plan's memory). Only missions
   // observe their own thread. Graduation writes the project OM (Phase 2).
-  if (session.kind === "intake") {
+  if (session.kind === "plan") {
     return undefined;
   }
 
