@@ -2,6 +2,14 @@ import type { AgentTool } from "@sakti-code/agent";
 import { composeSystemPrompt } from "@sakti-code/agent";
 import { describe, expect, it } from "vite-plus/test";
 import { SKILLS_INSTRUCTIONS } from "../config/index.ts";
+import {
+  BASE_PROMPT,
+  BUILD_PROMPT,
+  EXPLORE_PROMPT,
+  GENERAL_PROMPT,
+  INTAKE_SYSTEM_PROMPT,
+  PLAN_PROMPT,
+} from "../config/prompts.ts";
 
 function mockTool(name: string, description: string): AgentTool {
   return {
@@ -60,5 +68,69 @@ describe("runner system prompt composition", () => {
     expect(prompt).toContain(intakeBase);
     expect(prompt).toContain("# Tool: ask");
     expect(prompt).not.toContain("<available_skills>");
+  });
+});
+
+describe("base + agent section composition", () => {
+  it("BUILD_PROMPT starts with BASE_PROMPT", () => {
+    expect(BUILD_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
+  });
+
+  it("PLAN_PROMPT starts with BASE_PROMPT", () => {
+    expect(PLAN_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
+  });
+
+  it("INTAKE_SYSTEM_PROMPT starts with BASE_PROMPT", () => {
+    expect(INTAKE_SYSTEM_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
+  });
+
+  it("EXPLORE_PROMPT starts with BASE_PROMPT", () => {
+    expect(EXPLORE_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
+  });
+
+  it("GENERAL_PROMPT starts with BASE_PROMPT", () => {
+    expect(GENERAL_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
+  });
+
+  it("BUILD_PROMPT contains build-specific section after base", () => {
+    const section = BUILD_PROMPT.slice(BASE_PROMPT.length);
+    expect(section).toContain("Build agent");
+    expect(section).toContain('ask({ kind: "completion"');
+  });
+
+  it("PLAN_PROMPT contains plan-specific section after base", () => {
+    const section = PLAN_PROMPT.slice(BASE_PROMPT.length);
+    expect(section).toContain("Plan agent");
+    expect(section).toContain('ask({ kind: "plan"');
+  });
+
+  it("INTAKE_SYSTEM_PROMPT contains intake-specific section after base", () => {
+    const section = INTAKE_SYSTEM_PROMPT.slice(BASE_PROMPT.length);
+    expect(section).toContain("Intake agent");
+    expect(section).toContain('ask({ kind: "session"');
+  });
+
+  it("BASE_PROMPT contains tone and style guidance", () => {
+    expect(BASE_PROMPT).toContain("Tone and style");
+    expect(BASE_PROMPT).toContain("concise");
+  });
+
+  it("BASE_PROMPT contains following conventions guidance", () => {
+    expect(BASE_PROMPT).toContain("Following conventions");
+  });
+
+  it("BASE_PROMPT contains doing tasks guidance", () => {
+    expect(BASE_PROMPT).toContain("Doing tasks");
+    expect(BASE_PROMPT).toContain("lint");
+  });
+
+  it("BASE_PROMPT contains tool usage policy", () => {
+    expect(BASE_PROMPT).toContain("Tool usage policy");
+    expect(BASE_PROMPT).toContain("parallel");
+  });
+
+  it("BASE_PROMPT contains code references with file:line example", () => {
+    expect(BASE_PROMPT).toContain("Code references");
+    expect(BASE_PROMPT).toContain("file_path:line_number");
   });
 });
