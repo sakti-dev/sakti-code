@@ -10,9 +10,9 @@ describe("AskCard", () => {
     expect(screen.getByText("Revise")).toBeTruthy();
   });
 
-  it("renders the plan-kind copy with Approve/Revise buttons", () => {
-    render(() => <AskCard kind="plan" body="plan" onApprove={() => {}} onReject={() => {}} />);
-    expect(screen.getByText("Proposed Plan")).toBeTruthy();
+  it("renders the spec-kind copy with Approve/Revise buttons", () => {
+    render(() => <AskCard kind="spec" body="spec" onApprove={() => {}} onReject={() => {}} />);
+    expect(screen.getByText("Proposed Spec")).toBeTruthy();
     expect(screen.getByText("Approve")).toBeTruthy();
   });
 
@@ -27,14 +27,14 @@ describe("AskCard", () => {
 
   it("fires onApprove when the approve button is clicked", () => {
     const onApprove = vi.fn();
-    render(() => <AskCard kind="plan" body="p" onApprove={onApprove} onReject={() => {}} />);
+    render(() => <AskCard kind="spec" body="p" onApprove={onApprove} onReject={() => {}} />);
     fireEvent.click(screen.getByText("Approve"));
     expect(onApprove).toHaveBeenCalledTimes(1);
   });
 
   it("fires onReject when the reject button is clicked", () => {
     const onReject = vi.fn();
-    render(() => <AskCard kind="plan" body="p" onApprove={() => {}} onReject={onReject} />);
+    render(() => <AskCard kind="spec" body="p" onApprove={() => {}} onReject={onReject} />);
     fireEvent.click(screen.getByText("Revise"));
     expect(onReject).toHaveBeenCalledTimes(1);
   });

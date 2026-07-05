@@ -40,20 +40,20 @@ vi.mock("~/stores/workspace/session-tab-store", () => ({
   getSessionTabIndex: mocks.getSessionTabIndex,
 }));
 
-import { IntakeChat } from "../intake-chat";
+import { PlanChat } from "../plan-chat";
 
-describe("IntakeChat", () => {
+describe("PlanChat", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("loads chat on mount", () => {
-    render(() => <IntakeChat projectId="p1" sessionId="s1" />);
+    render(() => <PlanChat projectId="p1" sessionId="s1" />);
     expect(mocks.loadChat).toHaveBeenCalledWith("s1");
   });
 
   it("does not render a Back button", () => {
-    render(() => <IntakeChat projectId="p1" sessionId="s1" />);
+    render(() => <PlanChat projectId="p1" sessionId="s1" />);
     expect(screen.queryByText(/Back/i)).toBeNull();
   });
 });

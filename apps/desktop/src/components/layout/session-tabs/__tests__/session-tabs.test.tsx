@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   ensureProjectTabs: vi.fn(),
   getSessionTabs: vi.fn(() => [
     { kind: "home" as const, sessionId: null },
-    { kind: "intake" as const, sessionId: "s1" },
+    { kind: "plan" as const, sessionId: "s1" },
   ]),
   getActiveSessionIndex: vi.fn(() => 0),
   switchSessionTab: vi.fn(),
@@ -24,7 +24,7 @@ describe("SessionTabs", () => {
   it("renders a tab per session tab", () => {
     render(() => <SessionTabs projectId="p1" />);
     expect(screen.getByText("Home")).toBeTruthy();
-    expect(screen.getByText("Intake")).toBeTruthy();
+    expect(screen.getByText("Plan")).toBeTruthy();
   });
 
   it("does not render close button on Home tab", () => {
@@ -33,20 +33,20 @@ describe("SessionTabs", () => {
     expect(homeTab?.querySelector("button[aria-label*='Close']")).toBeNull();
   });
 
-  it("renders close button on intake tab", () => {
+  it("renders close button on plan tab", () => {
     render(() => <SessionTabs projectId="p1" />);
-    expect(screen.getByLabelText("Close Intake tab")).toBeTruthy();
+    expect(screen.getByLabelText("Close Plan tab")).toBeTruthy();
   });
 
   it("switches tab on click", () => {
     render(() => <SessionTabs projectId="p1" />);
-    fireEvent.click(screen.getByText("Intake"));
+    fireEvent.click(screen.getByText("Plan"));
     expect(mocks.switchSessionTab).toHaveBeenCalledWith("p1", 1);
   });
 
   it("closes tab on close button click", () => {
     render(() => <SessionTabs projectId="p1" />);
-    fireEvent.click(screen.getByLabelText("Close Intake tab"));
+    fireEvent.click(screen.getByLabelText("Close Plan tab"));
     expect(mocks.closeSessionTab).toHaveBeenCalledWith("p1", 1);
   });
 });

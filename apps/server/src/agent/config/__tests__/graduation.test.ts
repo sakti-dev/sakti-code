@@ -27,7 +27,7 @@ import { resolveOmConfig } from "../index.ts";
 import { createSessionStorage } from "../../../context.ts";
 import { buildGraduation } from "../graduation.ts";
 
-const childSession = { id: "child-1", kind: "intake", projectId: "proj-1", profileId: null };
+const childSession = { id: "child-1", kind: "plan", projectId: "proj-1", profileId: null };
 const ctx = { db: {} } as unknown as Parameters<typeof buildGraduation>[0];
 
 describe("buildGraduation", () => {

@@ -108,7 +108,7 @@ SAKTI_PORT=4000 vp run @sakti-code/server#dev    # override port
 
 - **API keys in `auth.json`, never the DB.** Stored in `~/.sakti/agent/auth.json` (locked `0o600`), resolved via `ctx.auth.getApiKey(provider)`. Never from `process.env`.
 - **Config home: `~/.sakti/agent/`** (overridable via `SAKTI_AGENT_DIR`). Files: `auth.json`, `profiles.json` (model selection per mode), `settings.json` (global prefs).
-- **Model selection in `profiles.json`**, not the DB. A profile maps runtime modes (`default` required; `intake`/`plan`/`build` optional) to `{ provider, model, thinkingLevel }`. Sessions reference a profile via `sessions.profileId`.
+- **Model selection in `profiles.json`**, not the DB. A profile maps runtime modes (`default` required; `plan`/`spec`/`build` optional) to `{ provider, model, thinkingLevel }`. Sessions reference a profile via `sessions.profileId`.
 
 ## Debugging: bisect before you theorize
 

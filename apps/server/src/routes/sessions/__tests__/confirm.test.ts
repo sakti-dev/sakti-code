@@ -3,12 +3,12 @@ import { makeApp } from "../../../__tests__/helpers.ts";
 import { confirmRoutes } from "../confirm.ts";
 
 describe("confirm route — POST /api/sessions/:id/confirm", () => {
-  it("spec approve flips status planning → building", async () => {
+  it("spec approve flips status specifying → building", async () => {
     const { app, ctx } = await makeApp([confirmRoutes]);
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "mission",
-      status: "planning",
+      status: "specifying",
     });
 
     const res = await app.request(`/api/sessions/${session.id}/confirm`, {
@@ -88,7 +88,7 @@ describe("confirm route — POST /api/sessions/:id/confirm", () => {
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "mission",
-      status: "planning",
+      status: "specifying",
       pendingAskKind: "spec",
       pendingAskBody: "the spec",
     });

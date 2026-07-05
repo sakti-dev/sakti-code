@@ -12,7 +12,7 @@ export function registerToolHandlers(): void {
         const kind = typeof args.kind === "string" ? args.kind : undefined;
         // Only the wired gate kinds surface a confirmation card; an ask with
         // no/unknown kind is an open question that stays in the transcript.
-        if (kind === "session" || kind === "plan" || kind === "completion") {
+        if (kind === "session" || kind === "spec" || kind === "completion") {
           ctx.actions.setPendingAsk({ kind, body: args.body });
         }
       }

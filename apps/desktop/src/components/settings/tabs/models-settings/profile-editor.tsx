@@ -12,12 +12,12 @@ import {
 import { TextField, TextFieldInput } from "~/components/ui/text-field";
 import { useStore } from "~/stores/store-context";
 
-const CORE_MODES = ["default", "intake", "plan", "build"] as const;
+const CORE_MODES = ["default", "plan", "spec", "build"] as const;
 const OM_MODES = ["observe", "reflect"] as const;
 const MODE_LABELS: Record<string, string> = {
   default: "Default",
-  intake: "Intake",
   plan: "Plan",
+  spec: "Spec",
   build: "Build",
   observe: "Observe",
   reflect: "Reflect",

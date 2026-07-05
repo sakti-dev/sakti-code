@@ -11,14 +11,14 @@ export type MissionStatus = SessionMeta["status"];
 export type StreamPhase = "idle" | "thinking" | "writing" | "tool_running" | "error";
 
 const STATUS_CLASS: Record<MissionStatus, string> = {
-  planning: "bg-muted text-muted-foreground",
+  specifying: "bg-muted text-muted-foreground",
   building: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
   review: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   merged: "bg-green-500/10 text-green-600 dark:text-green-400",
 };
 
 const STATUS_LABEL: Record<MissionStatus, string> = {
-  planning: "planning",
+  specifying: "specifying",
   building: "building",
   review: "review",
   merged: "merged",

@@ -2,14 +2,14 @@ import { FiCheckCircle, FiClipboard, FiFileText } from "solid-icons/fi";
 import { createSignal, type JSX, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
-export type AskKind = "session" | "plan" | "completion";
+export type AskKind = "session" | "spec" | "completion";
 
 const COPY: Record<
   AskKind,
   { title: string; approve: string; reject: string; icon: typeof FiClipboard }
 > = {
   session: { title: "Proposed Session", approve: "Create", reject: "Revise", icon: FiClipboard },
-  plan: { title: "Proposed Plan", approve: "Approve", reject: "Revise", icon: FiFileText },
+  spec: { title: "Proposed Spec", approve: "Approve", reject: "Revise", icon: FiFileText },
   completion: {
     title: "Ready for Review",
     approve: "Merge",

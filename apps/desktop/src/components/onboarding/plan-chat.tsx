@@ -7,16 +7,16 @@ import {
   closeSessionTab,
   getSessionTabIndex,
   openSessionTab,
-  promoteDraftIntake,
+  promoteDraftPlan,
 } from "~/stores/workspace/session-tab-store";
 import { EmptyState } from "./empty-state";
 
-interface IntakeChatProps {
+interface PlanChatProps {
   projectId: string;
   sessionId: string | null;
 }
 
-export const IntakeChat = (props: IntakeChatProps): JSX.Element => {
+export const PlanChat = (props: PlanChatProps): JSX.Element => {
   const { sessions, actions } = useStore();
 
   const sessionStore = createMemo(() =>
@@ -36,9 +36,9 @@ export const IntakeChat = (props: IntakeChatProps): JSX.Element => {
   const hasMessages = () => turns().length > 0;
 
   const handleDraftSend = async (text: string) => {
-    const created = await actions.createChildIntake(props.projectId);
+    const created = await actions.createChildPlan(props.projectId);
     if (!created) return;
-    promoteDraftIntake(props.projectId, created.id);
+    promoteDraftPlan(props.projectId, created.id);
     actions.sendPrompt(created.id, text);
   };
 
@@ -64,8 +64,8 @@ export const IntakeChat = (props: IntakeChatProps): JSX.Element => {
 
     session.actions.clearPendingAsk();
 
-    const intakeIdx = getSessionTabIndex(props.projectId, sid);
-    if (intakeIdx >= 0) closeSessionTab(props.projectId, intakeIdx);
+    const planIdx = getSessionTabIndex(props.projectId, sid);
+    if (planIdx >= 0) closeSessionTab(props.projectId, planIdx);
     openSessionTab(props.projectId, missionSession.id, "mission");
 
     actions.sendPrompt(missionSession.id, ask.body);

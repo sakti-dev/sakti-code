@@ -30,13 +30,13 @@ describe("session-tab-store", () => {
   });
 
   describe("openSessionTab", () => {
-    it("adds an intake tab after Home", async () => {
+    it("adds a plan tab after Home", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openSessionTab("p1", "s1", "intake");
+      store.openSessionTab("p1", "s1", "plan");
       expect(store.getSessionTabs("p1")).toEqual([
         { kind: "home", sessionId: null },
-        { kind: "intake", sessionId: "s1" },
+        { kind: "plan", sessionId: "s1" },
       ]);
       expect(store.getActiveSessionIndex("p1")).toBe(1);
     });
@@ -44,17 +44,17 @@ describe("session-tab-store", () => {
     it("activates existing tab instead of duplicating", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openSessionTab("p1", "s1", "intake");
+      store.openSessionTab("p1", "s1", "plan");
       store.openSessionTab("p1", "s2", "mission");
-      store.openSessionTab("p1", "s1", "intake");
+      store.openSessionTab("p1", "s1", "plan");
       expect(store.getSessionTabs("p1")).toHaveLength(3);
       expect(store.getActiveSessionIndex("p1")).toBe(1);
     });
 
-    it("updates kind if session changes kind (intake to mission morph)", async () => {
+    it("updates kind if session changes kind (plan to mission morph)", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openSessionTab("p1", "s1", "intake");
+      store.openSessionTab("p1", "s1", "plan");
       store.openSessionTab("p1", "s1", "mission");
       expect(store.getSessionTabs("p1")).toEqual([
         { kind: "home", sessionId: null },
@@ -67,7 +67,7 @@ describe("session-tab-store", () => {
     it("closes a non-Home tab", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openSessionTab("p1", "s1", "intake");
+      store.openSessionTab("p1", "s1", "plan");
       store.openSessionTab("p1", "s2", "mission");
       store.closeSessionTab("p1", 1);
       expect(store.getSessionTabs("p1")).toEqual([
@@ -86,7 +86,7 @@ describe("session-tab-store", () => {
     it("activates Home when closing the active tab", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openSessionTab("p1", "s1", "intake");
+      store.openSessionTab("p1", "s1", "plan");
       store.closeSessionTab("p1", 1);
       expect(store.getActiveSessionIndex("p1")).toBe(0);
     });
@@ -94,7 +94,7 @@ describe("session-tab-store", () => {
     it("adjusts active index when closing a tab before it", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openSessionTab("p1", "s1", "intake");
+      store.openSessionTab("p1", "s1", "plan");
       store.openSessionTab("p1", "s2", "mission");
       store.switchSessionTab("p1", 2);
       store.closeSessionTab("p1", 1);
@@ -106,7 +106,7 @@ describe("session-tab-store", () => {
     it("changes the active index", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openSessionTab("p1", "s1", "intake");
+      store.openSessionTab("p1", "s1", "plan");
       store.switchSessionTab("p1", 0);
       expect(store.getActiveSessionIndex("p1")).toBe(0);
       expect(store.getActiveSessionTab("p1")?.kind).toBe("home");
@@ -117,7 +117,7 @@ describe("session-tab-store", () => {
     it("drops tabs whose sessionId no longer exists", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openSessionTab("p1", "s1", "intake");
+      store.openSessionTab("p1", "s1", "plan");
       store.openSessionTab("p1", "s2", "mission");
       store.filterStaleSessions("p1", new Set(["s2"]));
       expect(store.getSessionTabs("p1")).toEqual([
@@ -145,7 +145,7 @@ describe("session-tab-store", () => {
     it("returns the index of a tab with matching sessionId", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openSessionTab("p1", "s1", "intake");
+      store.openSessionTab("p1", "s1", "plan");
       store.openSessionTab("p1", "s2", "mission");
       expect(store.getSessionTabIndex("p1", "s2")).toBe(2);
     });
@@ -157,15 +157,15 @@ describe("session-tab-store", () => {
     });
   });
 
-  describe("openDraftIntakeTab", () => {
-    it("adds an intake tab with null sessionId", async () => {
+  describe("openDraftPlanTab", () => {
+    it("adds a plan tab with null sessionId", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openDraftIntakeTab("p1");
+      store.openDraftPlanTab("p1");
       const tabs = store.getSessionTabs("p1");
       expect(tabs).toEqual([
         { kind: "home", sessionId: null },
-        { kind: "intake", sessionId: null },
+        { kind: "plan", sessionId: null },
       ]);
       expect(store.getActiveSessionIndex("p1")).toBe(1);
     });
@@ -173,46 +173,46 @@ describe("session-tab-store", () => {
     it("does NOT persist to localStorage", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openDraftIntakeTab("p1");
+      store.openDraftPlanTab("p1");
       const raw = localStorage.getItem("sakti-session-tabs");
       expect(raw).toBeNull();
     });
   });
 
-  describe("promoteDraftIntake", () => {
+  describe("promoteDraftPlan", () => {
     it("updates the active draft tab with a real sessionId", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openDraftIntakeTab("p1");
-      store.promoteDraftIntake("p1", "real-1");
+      store.openDraftPlanTab("p1");
+      store.promoteDraftPlan("p1", "real-1");
       expect(store.getSessionTabs("p1")).toEqual([
         { kind: "home", sessionId: null },
-        { kind: "intake", sessionId: "real-1" },
+        { kind: "plan", sessionId: "real-1" },
       ]);
     });
 
     it("persists to localStorage after promotion", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openDraftIntakeTab("p1");
-      store.promoteDraftIntake("p1", "real-1");
+      store.openDraftPlanTab("p1");
+      store.promoteDraftPlan("p1", "real-1");
       const raw = localStorage.getItem("sakti-session-tabs");
       expect(raw).toBeTruthy();
     });
 
-    it("does nothing if active tab is not a draft intake", async () => {
+    it("does nothing if active tab is not a draft plan", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.promoteDraftIntake("p1", "real-1");
+      store.promoteDraftPlan("p1", "real-1");
       expect(store.getSessionTabs("p1")).toEqual([{ kind: "home", sessionId: null }]);
     });
   });
 
   describe("saveToStorage filters draft tabs", () => {
-    it("does not persist draft intake tabs (null sessionId)", async () => {
+    it("does not persist draft plan tabs (null sessionId)", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openDraftIntakeTab("p1");
+      store.openDraftPlanTab("p1");
       store.switchSessionTab("p1", 0);
       const raw = localStorage.getItem("sakti-session-tabs");
       expect(raw).toBeTruthy();
@@ -225,23 +225,23 @@ describe("session-tab-store", () => {
     it("removes tabs whose sessionId is not in the valid set", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openSessionTab("p1", "s1", "intake");
+      store.openSessionTab("p1", "s1", "plan");
       store.openSessionTab("p1", "s2", "mission");
       store.filterStaleSessions("p1", new Set(["s1"]));
       expect(store.getSessionTabs("p1")).toEqual([
         { kind: "home", sessionId: null },
-        { kind: "intake", sessionId: "s1" },
+        { kind: "plan", sessionId: "s1" },
       ]);
     });
 
-    it("preserves draft intake tabs (null sessionId)", async () => {
+    it("preserves draft plan tabs (null sessionId)", async () => {
       const store = await freshStore();
       store.ensureProjectTabs("p1");
-      store.openDraftIntakeTab("p1");
+      store.openDraftPlanTab("p1");
       store.filterStaleSessions("p1", new Set());
       expect(store.getSessionTabs("p1")).toEqual([
         { kind: "home", sessionId: null },
-        { kind: "intake", sessionId: null },
+        { kind: "plan", sessionId: null },
       ]);
     });
   });

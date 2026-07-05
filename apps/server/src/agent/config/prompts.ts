@@ -1,5 +1,5 @@
 /**
- * Shared base system prompt. All primary agents (build, plan, intake) and
+ * Shared base system prompt. All primary agents (build, spec, plan) and
  * subagents (explore, general) compose this with their own specialization
  * section. Adapted from OpenCode's prompt structure.
  */

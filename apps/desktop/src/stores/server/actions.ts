@@ -45,8 +45,8 @@ export interface Actions {
   selectProfile: (sessionId: string | null, profileId: string) => Promise<void>;
   sendPrompt: (sessionId: string, text: string) => void;
   steerRun: (sessionId: string, text: string) => void;
-  createChildIntake: (projectId: string) => Promise<SessionMeta | undefined>;
-  listChildIntakes: (projectId: string) => Promise<SessionMeta[]>;
+  createChildPlan: (projectId: string) => Promise<SessionMeta | undefined>;
+  listChildPlans: (projectId: string) => Promise<SessionMeta[]>;
 }
 
 export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): Actions {
@@ -111,9 +111,9 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
       }
     },
 
-    async createChildIntake(projectId) {
+    async createChildPlan(projectId) {
       try {
-        const res = await api.api.projects[":id"]["intake-session"].$post({
+        const res = await api.api.projects[":id"]["plan-session"].$post({
           param: { id: projectId },
         });
         if (!res.ok) {
@@ -123,13 +123,13 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
         server.actions.addSession(session);
         return session;
       } catch (error) {
-        setLastError(error instanceof Error ? error.message : "Failed to create child intake");
+        setLastError(error instanceof Error ? error.message : "Failed to create child plan");
       }
     },
 
-    async listChildIntakes(projectId) {
+    async listChildPlans(projectId) {
       try {
-        const res = await api.api.projects[":id"]["intake-sessions"].$get({
+        const res = await api.api.projects[":id"]["plan-sessions"].$get({
           param: { id: projectId },
         });
         if (!res.ok) {
@@ -141,7 +141,7 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
         }
         return list;
       } catch (error) {
-        setLastError(error instanceof Error ? error.message : "Failed to list child intakes");
+        setLastError(error instanceof Error ? error.message : "Failed to list child plans");
         return [];
       }
     },

@@ -20,8 +20,8 @@ function tabLabel(kind: SessionTabKind): string {
   switch (kind) {
     case "home":
       return "Home";
-    case "intake":
-      return "Intake";
+    case "plan":
+      return "Plan";
     case "mission":
       return "Mission";
   }
@@ -31,7 +31,7 @@ function TabIcon(props: { kind: SessionTabKind }): JSX.Element {
   switch (props.kind) {
     case "home":
       return <FiHome class="h-3 w-3 shrink-0 opacity-70" />;
-    case "intake":
+    case "plan":
     case "mission":
       return <FiMessageSquare class="h-3 w-3 shrink-0 opacity-70" />;
   }

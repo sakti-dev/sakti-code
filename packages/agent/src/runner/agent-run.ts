@@ -133,7 +133,7 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
     }
 
     // Wire read-only OM injection (the project's resource-scope record).
-    // Missions get own-OM + this; intakes get only this. Both compose in the
+    // Missions get own-OM + this; plans get only this. Both compose in the
     // agent loop (Task 3.1).
     if (deps.observationalMemoryReadOnly) {
       harness.setObservationalMemoryReadOnly(deps.observationalMemoryReadOnly);

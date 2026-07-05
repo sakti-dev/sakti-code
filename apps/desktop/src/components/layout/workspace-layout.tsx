@@ -1,8 +1,8 @@
 import { createEffect, type JSX, onMount, Show } from "solid-js";
 import { MissionChatView } from "~/components/chat-area/mission-chat-view";
 import Home from "~/components/home/home";
-import { IntakeChat } from "~/components/onboarding/intake-chat";
-import { IntakeGrid } from "~/components/onboarding/intake-grid";
+import { PlanChat } from "~/components/onboarding/plan-chat";
+import { PlanGrid } from "~/components/onboarding/plan-grid";
 import { SettingsPage } from "~/components/settings/settings-page";
 import { useStore } from "~/stores/store-context";
 import { activeProjectTab, filterStaleProjects } from "~/stores/workspace/project-tab-store";
@@ -29,7 +29,7 @@ export default function WorkspaceLayout(): JSX.Element {
     const pid = activeProjectId();
     if (pid) {
       ensureProjectTabs(pid);
-      actions.listChildIntakes(pid).catch(() => {});
+      actions.listChildPlans(pid).catch(() => {});
     }
   });
 
@@ -98,10 +98,10 @@ export default function WorkspaceLayout(): JSX.Element {
             <div class="relative min-h-0 flex-1">
               <div class="absolute inset-0 flex flex-col overflow-hidden">
                 <Show when={activeInnerTab()?.kind === "home"}>
-                  <IntakeGrid projectId={activeProjectId()!} />
+                  <PlanGrid projectId={activeProjectId()!} />
                 </Show>
-                <Show when={activeInnerTab()?.kind === "intake"}>
-                  <IntakeChat projectId={activeProjectId()!} sessionId={activeSessionId()} />
+                <Show when={activeInnerTab()?.kind === "plan"}>
+                  <PlanChat projectId={activeProjectId()!} sessionId={activeSessionId()} />
                 </Show>
                 <Show when={activeInnerTab()?.kind === "mission"}>
                   <MissionChatView sessionId={activeSessionId()!} />

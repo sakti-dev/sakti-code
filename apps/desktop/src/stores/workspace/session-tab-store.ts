@@ -1,6 +1,6 @@
 import { createSignal } from "solid-js";
 
-export type SessionTabKind = "home" | "intake" | "mission";
+export type SessionTabKind = "home" | "plan" | "mission";
 
 export interface SessionTab {
   kind: SessionTabKind;
@@ -101,22 +101,22 @@ export function openSessionTab(projectId: string, sessionId: string, kind: Sessi
   });
 }
 
-export function openDraftIntakeTab(projectId: string): void {
+export function openDraftPlanTab(projectId: string): void {
   ensureProjectTabs(projectId);
   mutateProject(projectId, (state) => {
     return {
-      tabs: [...state.tabs, { kind: "intake", sessionId: null }],
+      tabs: [...state.tabs, { kind: "plan", sessionId: null }],
       activeIndex: state.tabs.length,
     };
   });
 }
 
-export function promoteDraftIntake(projectId: string, sessionId: string): void {
+export function promoteDraftPlan(projectId: string, sessionId: string): void {
   mutateProject(projectId, (state) => {
     const idx = state.activeIndex;
     if (idx < 0 || idx >= state.tabs.length) return state;
     const tab = state.tabs[idx];
-    if (!tab || tab.kind !== "intake" || tab.sessionId !== null) return state;
+    if (!tab || tab.kind !== "plan" || tab.sessionId !== null) return state;
     const tabs = state.tabs.map((t, i) => (i === idx ? { ...t, sessionId } : t));
     return { ...state, tabs };
   });

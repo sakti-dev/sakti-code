@@ -1,7 +1,7 @@
-/* Workspace home — custom styling for the intake landing page */
+/* Workspace home — custom styling for the plan landing page */
 
 /* ── Blinking cursor on the primary action card ───────────────────── */
-@keyframes intake-cursor-blink {
+@keyframes plan-cursor-blink {
   0%,
   49% {
     opacity: 1;
@@ -12,7 +12,7 @@
   }
 }
 
-.intake-cursor {
+.plan-cursor {
   display: inline-block;
   width: 2px;
   height: 1.1em;
@@ -21,34 +21,34 @@
   border-radius: 1px;
   vertical-align: text-bottom;
   flex-shrink: 0;
-  animation: intake-cursor-blink 1.1s steps(1) infinite;
+  animation: plan-cursor-blink 1.1s steps(1) infinite;
 }
 
 /* ── Primary action card (ghost input) ────────────────────────────── */
-.intake-primary-card {
+.plan-primary-card {
   transition:
     border-color 0.2s ease,
     background-color 0.2s ease;
 }
 
-.intake-primary-card:hover {
+.plan-primary-card:hover {
   border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
   background-color: color-mix(in oklch, var(--card) 95%, var(--primary) 5%);
 }
 
-.intake-primary-card:hover .intake-arrow {
+.plan-primary-card:hover .plan-arrow {
   transform: translateX(3px);
   color: var(--primary);
 }
 
-.intake-arrow {
+.plan-arrow {
   transition:
     transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
     color 0.2s ease;
 }
 
 /* ── Entrance animation ───────────────────────────────────────────── */
-@keyframes intake-fade-up {
+@keyframes plan-fade-up {
   from {
     opacity: 0;
     transform: translateY(6px);
@@ -59,33 +59,33 @@
   }
 }
 
-.intake-fade-up {
-  animation: intake-fade-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+.plan-fade-up {
+  animation: plan-fade-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* ── Suggestion rows (empty state) ────────────────────────────────── */
-.intake-suggestion {
+.plan-suggestion {
   transition: background-color 0.15s ease;
 }
 
-.intake-suggestion:hover {
+.plan-suggestion:hover {
   background-color: var(--accent);
 }
 
-.intake-suggestion:hover .intake-suggestion-arrow {
+.plan-suggestion:hover .plan-suggestion-arrow {
   opacity: 1;
   transform: translateX(2px);
 }
 
-.intake-suggestion-arrow {
+.plan-suggestion-arrow {
   opacity: 0;
   transition:
     opacity 0.2s ease,
     transform 0.2s ease;
 }
 
-/* ── Pending-ask pulse on intake cards ────────────────────────────── */
-@keyframes intake-pending-pulse {
+/* ── Pending-ask pulse on plan cards ──────────────────────────────── */
+@keyframes plan-pending-pulse {
   0%,
   100% {
     opacity: 1;
@@ -95,27 +95,27 @@
   }
 }
 
-.intake-pending-dot {
-  animation: intake-pending-pulse 2s ease-in-out infinite;
+.plan-pending-dot {
+  animation: plan-pending-pulse 2s ease-in-out infinite;
 }
 
 /* ── Reduced motion ───────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .intake-cursor {
+  .plan-cursor {
     animation: none;
     opacity: 0.6;
   }
 
-  .intake-fade-up {
+  .plan-fade-up {
     animation: none;
   }
 
-  .intake-arrow,
-  .intake-suggestion-arrow {
+  .plan-arrow,
+  .plan-suggestion-arrow {
     transition: none;
   }
 
-  .intake-pending-dot {
+  .plan-pending-dot {
     animation: none;
   }
 }

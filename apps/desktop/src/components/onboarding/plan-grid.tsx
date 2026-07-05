@@ -1,10 +1,10 @@
 import { For, createResource, type JSX, Show } from "solid-js";
 import { useStore } from "~/stores/store-context";
-import { openDraftIntakeTab, openSessionTab } from "~/stores/workspace/session-tab-store";
-import { IntakeCard } from "./intake-card";
-import "./intake-grid.css";
+import { openDraftPlanTab, openSessionTab } from "~/stores/workspace/session-tab-store";
+import { PlanCard } from "./plan-card";
+import "./plan-grid.css";
 
-interface IntakeGridProps {
+interface PlanGridProps {
   projectId: string;
 }
 
@@ -14,42 +14,42 @@ const SUGGESTIONS = [
   { label: "Plan a refactor", example: "Extract the database layer into a separate package" },
 ] as const;
 
-export const IntakeGrid = (props: IntakeGridProps): JSX.Element => {
+export const PlanGrid = (props: PlanGridProps): JSX.Element => {
   const { actions } = useStore();
 
   const [childrenResource] = createResource(
     () => props.projectId,
-    async (projectId) => actions.listChildIntakes(projectId),
+    async (projectId) => actions.listChildPlans(projectId),
   );
 
-  const handleNewIntake = () => {
-    openDraftIntakeTab(props.projectId);
+  const handleNewPlan = () => {
+    openDraftPlanTab(props.projectId);
   };
 
   const children = () => childrenResource() ?? [];
 
   return (
     <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div class="intake-fade-up mx-auto w-full max-w-3xl px-6 py-10">
+      <div class="plan-fade-up mx-auto w-full max-w-3xl px-6 py-10">
         <div class="mb-6">
           <h1 class="font-semibold text-2xl tracking-tight">What are we building?</h1>
           <p class="mt-1.5 text-muted-foreground text-sm leading-relaxed">
-            Start an intake to scope your next mission. Each intake shares the project's memory.
+            Start a plan to scope your next mission. Each plan shares the project's memory.
           </p>
         </div>
 
         <button
           type="button"
-          onClick={handleNewIntake}
-          aria-label="Start a new intake"
-          class="intake-primary-card flex w-full items-center gap-3 rounded-xl border border-border bg-card px-5 py-4 text-left"
+          onClick={handleNewPlan}
+          aria-label="Start a new plan"
+          class="plan-primary-card flex w-full items-center gap-3 rounded-xl border border-border bg-card px-5 py-4 text-left"
         >
-          <span class="intake-cursor" aria-hidden="true" />
+          <span class="plan-cursor" aria-hidden="true" />
           <span class="flex-1 text-base text-muted-foreground">
             Describe what you want to build…
           </span>
           <svg
-            class="intake-arrow shrink-0 text-muted-foreground"
+            class="plan-arrow shrink-0 text-muted-foreground"
             width="18"
             height="18"
             viewBox="0 0 18 18"
@@ -76,8 +76,8 @@ export const IntakeGrid = (props: IntakeGridProps): JSX.Element => {
                   {(suggestion) => (
                     <button
                       type="button"
-                      onClick={handleNewIntake}
-                      class="intake-suggestion flex items-center gap-3 rounded-lg border-b border-border/50 py-3 pr-2 text-left first:border-t"
+                      onClick={handleNewPlan}
+                      class="plan-suggestion flex items-center gap-3 rounded-lg border-b border-border/50 py-3 pr-2 text-left first:border-t"
                     >
                       <div class="min-w-0 flex-1">
                         <p class="font-medium text-sm">{suggestion.label}</p>
@@ -86,7 +86,7 @@ export const IntakeGrid = (props: IntakeGridProps): JSX.Element => {
                         </p>
                       </div>
                       <svg
-                        class="intake-suggestion-arrow shrink-0 text-muted-foreground"
+                        class="plan-suggestion-arrow shrink-0 text-muted-foreground"
                         width="14"
                         height="14"
                         viewBox="0 0 14 14"
@@ -113,11 +113,11 @@ export const IntakeGrid = (props: IntakeGridProps): JSX.Element => {
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <For each={children()}>
                 {(child) => (
-                  <IntakeCard
+                  <PlanCard
                     title={child.title}
                     updatedAt={child.updatedAt}
                     hasPendingAsk={!!child.pendingAskKind}
-                    onClick={() => openSessionTab(props.projectId, child.id, "intake")}
+                    onClick={() => openSessionTab(props.projectId, child.id, "plan")}
                   />
                 )}
               </For>

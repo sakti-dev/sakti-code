@@ -11,7 +11,7 @@ import type {
 import { idleStreamState } from "../types.ts";
 
 export interface PendingAsk {
-  kind: "session" | "plan" | "completion";
+  kind: "session" | "spec" | "completion";
   body: string;
 }
 

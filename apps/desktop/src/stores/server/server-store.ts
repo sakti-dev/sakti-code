@@ -11,13 +11,13 @@ export interface Project {
 export interface SessionMeta {
   createdAt: number;
   id: string;
-  kind: "intake" | "mission";
+  kind: "plan" | "mission";
   modelId: string | null;
   pendingAskBody: string | null;
-  pendingAskKind: "session" | "plan" | "completion" | null;
+  pendingAskKind: "session" | "spec" | "completion" | null;
   profileId: string | null;
   projectId: string;
-  status: "planning" | "building" | "review" | "merged";
+  status: "specifying" | "building" | "review" | "merged";
   thinkingLevel: string;
   title: string | null;
   updatedAt: number;

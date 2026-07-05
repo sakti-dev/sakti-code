@@ -95,8 +95,8 @@ describe("ProfileEditor", () => {
     mocks.profilesGet.mockImplementation(() => okRes(defaultProfiles));
     render(() => <ProfileEditor />);
     await screen.findByDisplayValue("Default");
-    expect(screen.getByText("Intake")).toBeTruthy();
     expect(screen.getByText("Plan")).toBeTruthy();
+    expect(screen.getByText("Spec")).toBeTruthy();
     expect(screen.getByText("Build")).toBeTruthy();
   });
 

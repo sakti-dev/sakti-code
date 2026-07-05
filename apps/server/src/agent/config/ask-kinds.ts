@@ -10,8 +10,8 @@ export interface AskCtx {
   /** Force a context reset (OM observe) on spec→build. */
   forceReset?: (sessionId: string) => Promise<void>;
   /**
-   * Graduate a child intake's transcript into the project's resource-scope OM
-   * (the main intake's memory). Bound by the confirm route only for intake
+   * Graduate a child plan's transcript into the project's resource-scope OM
+   * (the main plan's memory). Bound by the confirm route only for plan
    * sessions. Best-effort: a failure must not strand the mission spawn.
    */
   graduate?: (sessionId: string) => Promise<void>;

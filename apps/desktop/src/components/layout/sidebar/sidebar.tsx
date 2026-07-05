@@ -7,7 +7,7 @@ import { useStore } from "~/stores/store-context";
 import { activeProjectTab } from "~/stores/workspace/project-tab-store";
 import {
   getActiveSessionTab,
-  openDraftIntakeTab,
+  openDraftPlanTab,
   openSessionTab,
 } from "~/stores/workspace/session-tab-store";
 import { setSidebarOpen, sidebarOpen } from "~/stores/workspace/ui-signals";
@@ -86,7 +86,7 @@ export default function Sidebar(): JSX.Element {
   const handleNewMission = () => {
     const pid = activeProjectId();
     if (!pid) return;
-    openDraftIntakeTab(pid);
+    openDraftPlanTab(pid);
   };
 
   return (

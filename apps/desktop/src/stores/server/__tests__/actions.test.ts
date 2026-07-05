@@ -341,7 +341,7 @@ describe("actions", () => {
         kind: "mission",
         pendingAskBody: null,
         pendingAskKind: null,
-        status: "planning",
+        status: "specifying",
         createdAt: 1,
         updatedAt: 1,
       });
@@ -373,11 +373,11 @@ describe("actions", () => {
       };
       const actions = createActions(mockApi as never, makeMockWs(), deps);
 
-      await actions.confirmAsk("s1", "plan", "the plan body", "approve");
+      await actions.confirmAsk("s1", "spec", "the spec body", "approve");
 
       expect(mockApi.api.sessions[":id"].confirm.$post).toHaveBeenCalledWith({
         param: { id: "s1" },
-        json: { action: "approve", kind: "plan", body: "the plan body" },
+        json: { action: "approve", kind: "spec", body: "the spec body" },
       });
       expect(deps.serverStore.store.sessions.s1?.status).toBe("building");
     });
@@ -394,7 +394,7 @@ describe("actions", () => {
         kind: "mission",
         pendingAskBody: null,
         pendingAskKind: null,
-        status: "planning",
+        status: "specifying",
         createdAt: 1,
         updatedAt: 1,
       });
@@ -411,9 +411,9 @@ describe("actions", () => {
       };
       const actions = createActions(mockApi as never, makeMockWs(), deps);
 
-      await actions.confirmAsk("s1", "plan", "body", "approve");
+      await actions.confirmAsk("s1", "spec", "body", "approve");
 
-      expect(deps.serverStore.store.sessions.s1?.status).toBe("planning");
+      expect(deps.serverStore.store.sessions.s1?.status).toBe("specifying");
     });
   });
 
@@ -430,7 +430,7 @@ describe("actions", () => {
         kind: "mission",
         pendingAskBody: null,
         pendingAskKind: null,
-        status: "planning",
+        status: "specifying",
         createdAt: 1,
         updatedAt: 1,
       });
@@ -449,7 +449,7 @@ describe("actions", () => {
                   kind: "mission",
                   pendingAskBody: null,
                   pendingAskKind: null,
-                  status: "planning",
+                  status: "specifying",
                   createdAt: 1,
                   updatedAt: 2,
                 }),
@@ -484,7 +484,7 @@ describe("actions", () => {
         kind: "mission",
         pendingAskBody: null,
         pendingAskKind: null,
-        status: "planning",
+        status: "specifying",
         createdAt: 1,
         updatedAt: 1,
       });
