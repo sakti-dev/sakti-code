@@ -1,0 +1,48 @@
+{
+  "name": "@sakti-code/sakti",
+  "version": "0.0.0",
+  "description": "Sakti CLI",
+  "type": "module",
+  "bin": {
+    "sakti": "./bin/sakti.js"
+  },
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "bin",
+    "schemas",
+    "scripts"
+  ],
+  "scripts": {
+    "build": "node build.js",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "dependencies": {
+    "@inquirer/core": "^10.3.2",
+    "@inquirer/prompts": "^7.10.1",
+    "chalk": "^5.5.0",
+    "commander": "^14.0.0",
+    "cross-spawn": "7.0.6",
+    "fast-glob": "^3.3.3",
+    "ora": "^8.2.0",
+    "posthog-node": "^5.20.0",
+    "yaml": "^2.8.2",
+    "zod": "^4.0.17"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}
