@@ -7,13 +7,13 @@ function decision(ruleset: PermissionRuleset, permission: string, pattern: strin
 }
 
 describe("server agents", () => {
-  it("exposes build, explore, plan, general, intake", () => {
+  it("exposes build, explore, spec, general, intake", () => {
     expect(SERVER_AGENTS.map((a) => a.name).sort()).toEqual([
       "build",
       "explore",
       "general",
       "intake",
-      "plan",
+      "spec",
     ]);
   });
 
@@ -47,10 +47,10 @@ describe("server agents", () => {
     expect(decision(rs, "external_directory", "/etc/passwd")).toBe("deny");
   });
 
-  it("plan denies all edits but keeps reads", () => {
-    const plan = resolveServerAgent("plan");
-    expect(plan).toBeDefined();
-    const rs = plan!.permission!;
+  it("spec denies all edits but keeps reads", () => {
+    const spec = resolveServerAgent("spec");
+    expect(spec).toBeDefined();
+    const rs = spec!.permission!;
     expect(decision(rs, "edit", "src/a.ts")).toBe("deny");
     expect(decision(rs, "read", "src/a.ts")).toBe("allow");
   });

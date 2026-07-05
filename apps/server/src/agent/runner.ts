@@ -345,7 +345,7 @@ export function runPromptEffect(
 
     // Resolve the agent: per-session override first (when it differs from the
     // default), then kind+status routing. Intake → intake agent; mission in
-    // planning → plan agent (structurally edit-denied); everything else → build.
+    // specifying → spec agent (structurally edit-denied); everything else → build.
     // No isIntake branches anywhere: intake flows through the same path as build.
     const { agent } = resolveSessionAgentForKind(
       session.kind,

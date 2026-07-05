@@ -2,12 +2,12 @@ import type { SessionRepo } from "@sakti-code/db";
 
 /**
  * Minimal context the ask-kind handlers need. Covers status transitions plus
- * `forceReset` for the plan→build switch (the route binds it to a forced OM
+ * `forceReset` for the spec→build switch (the route binds it to a forced OM
  * observe so the build agent starts with a clean, plan-focused context).
  */
 export interface AskCtx {
   sessions: Pick<SessionRepo, "update">;
-  /** Force a context reset (OM observe) on plan→build. */
+  /** Force a context reset (OM observe) on spec→build. */
   forceReset?: (sessionId: string) => Promise<void>;
   /**
    * Graduate a child intake's transcript into the project's resource-scope OM
@@ -47,7 +47,7 @@ export interface AskKindHandlers {
  *
  * session    — intake hands off to a new mission session. Approve is a no-op
  *              here: the card's Create button calls the session-create REST
- *              route directly (the new mission is born in `planning`).
+ *              route directly (the new mission is born in `specifying`).
  * spec       — a specifying mission's spec is approved → status flips to
  *              `building`. A forced OM observe runs here.
  * completion — a building mission declares completion → approve merges

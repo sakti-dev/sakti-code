@@ -5,9 +5,9 @@ import { createSessionStorage } from "../../context.ts";
 import { resolveOmConfig } from "./index.ts";
 
 /**
- * Build the plan→build `forceReset` callback. Forces an OM observe so the
- * build agent starts with a clean, plan-focused context. The agent swap on
- * plan→build invalidates the prompt cache anyway (system prompt + tools
+ * Build the spec→build `forceReset` callback. Forces an OM observe so the
+ * build agent starts with a clean, spec-focused context. The agent swap on
+ * spec→build invalidates the prompt cache anyway (system prompt + tools
  * change), so resetting first is free.
  *
  * Extracted from the confirm route so the OM config resolution is unit-testable
@@ -30,7 +30,7 @@ export function buildForceReset(
       profileId: session.profileId,
     });
     if (!omConfig) {
-      ctx.log?.agent?.warn("plan→build: OM not configured, skipping forced observe", {
+      ctx.log?.agent?.warn("spec→build: OM not configured, skipping forced observe", {
         sessionId: sid,
       });
       return;
@@ -49,6 +49,6 @@ export function buildForceReset(
       abortSignal: abortController.signal,
     });
     await engine.forceObserve();
-    ctx.log?.agent?.info("plan→build: forced OM observe", { sessionId: sid });
+    ctx.log?.agent?.info("spec→build: forced OM observe", { sessionId: sid });
   };
 }
