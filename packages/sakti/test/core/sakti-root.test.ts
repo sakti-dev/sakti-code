@@ -50,7 +50,7 @@ describe('Sakti root helper', () => {
       healthy: true,
       config: {
         present: true,
-        path: 'sakti/config.yml',
+        path: '.sakti/config.yml',
       },
     }));
   });
@@ -76,10 +76,10 @@ describe('Sakti root helper', () => {
     const result = await ensureSaktiRoot(root);
 
     expect(result.createdArtifacts).toEqual([
-      'sakti/',
-      'sakti/specs/',
-      'sakti/changes/',
-      'sakti/changes/archive/',
+      '.sakti/',
+      '.sakti/specs/',
+      '.sakti/changes/',
+      '.sakti/changes/archive/',
       '.sakti/config.yaml',
     ]);
     expect(result.inspection.healthy).toBe(true);

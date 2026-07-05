@@ -58,7 +58,7 @@ describe('InitCommand', () => {
 
       await initCommand.execute(testDir);
 
-      const saktiPath = path.join(testDir, 'sakti');
+      const saktiPath = path.join(testDir, '.sakti');
       expect(await directoryExists(saktiPath)).toBe(true);
       expect(await directoryExists(path.join(saktiPath, 'specs'))).toBe(true);
       expect(await directoryExists(path.join(saktiPath, 'changes'))).toBe(true);
@@ -70,7 +70,7 @@ describe('InitCommand', () => {
 
       await initCommand.execute(testDir);
 
-      const configPath = path.join(testDir, 'sakti', 'config.yaml');
+      const configPath = path.join(testDir, '.sakti', 'config.yaml');
       expect(await fileExists(configPath)).toBe(true);
 
       const content = await fs.readFile(configPath, 'utf-8');
@@ -225,7 +225,7 @@ describe('InitCommand', () => {
       await initCommand.execute(testDir);
 
       // Should create Sakti structure but no skills
-      const saktiPath = path.join(testDir, 'sakti');
+      const saktiPath = path.join(testDir, '.sakti');
       expect(await directoryExists(saktiPath)).toBe(true);
 
       // No tool-specific directories should be created
@@ -261,7 +261,7 @@ describe('InitCommand', () => {
 
     it('should not create config.yaml if it already exists', async () => {
       // Pre-create config.yaml
-      const saktiDir = path.join(testDir, 'sakti');
+      const saktiDir = path.join(testDir, '.sakti');
       await fs.mkdir(saktiDir, { recursive: true });
       const configPath = path.join(saktiDir, 'config.yaml');
       const existingContent = 'schema: custom-schema\n';
@@ -280,7 +280,7 @@ describe('InitCommand', () => {
 
       await initCommand.execute(newDir);
 
-      const saktiPath = path.join(newDir, 'sakti');
+      const saktiPath = path.join(newDir, '.sakti');
       expect(await directoryExists(saktiPath)).toBe(true);
     });
 
@@ -580,7 +580,7 @@ describe('InitCommand - profile and detection features', () => {
 
   it('should preselect configured tools but not directory-detected tools in extend mode', async () => {
     // Simulate existing Sakti project (extend mode).
-    await fs.mkdir(path.join(testDir, 'sakti'), { recursive: true });
+    await fs.mkdir(path.join(testDir, '.sakti'), { recursive: true });
 
     // Configured with Sakti
     const claudeSkillDir = path.join(testDir, '.claude', 'skills', 'sakti-explore');
@@ -651,7 +651,7 @@ describe('InitCommand - profile and detection features', () => {
   });
 
   it('should migrate commands-only extend mode to custom profile without injecting propose', async () => {
-    await fs.mkdir(path.join(testDir, 'sakti'), { recursive: true });
+    await fs.mkdir(path.join(testDir, '.sakti'), { recursive: true });
     await fs.mkdir(path.join(testDir, '.claude', 'commands', 'opsx'), { recursive: true });
     await fs.writeFile(path.join(testDir, '.claude', 'commands', 'opsx', 'explore.md'), '# explore\n');
 

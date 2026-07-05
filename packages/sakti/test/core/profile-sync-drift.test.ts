@@ -42,7 +42,7 @@ describe('profile sync drift detection', () => {
 
   beforeEach(() => {
     tempDir = path.join(os.tmpdir(), `sakti-profile-sync-drift-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    fs.mkdirSync(path.join(tempDir, 'sakti'), { recursive: true });
+    fs.mkdirSync(path.join(tempDir, '.sakti'), { recursive: true });
   });
 
   afterEach(() => {

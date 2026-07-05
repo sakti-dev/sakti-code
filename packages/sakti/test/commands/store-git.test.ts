@@ -22,7 +22,7 @@ async function runStoreCommand(args: string[]): Promise<void> {
   const { registerStoreCommand } = await import('../../src/commands/store.js');
   const program = new Command();
   registerStoreCommand(program);
-  await program.parseAsync(['node', 'sakti', 'store', ...args]);
+  await program.parseAsync(['node', '.sakti', 'store', ...args]);
 }
 
 async function getPromptMocks(): Promise<{
@@ -173,9 +173,9 @@ describe('store git lifecycle', () => {
       .sort();
     expect(committedFiles).toEqual([
       '.sakti-store/store.yaml',
-      'sakti/changes/archive/.gitkeep',
+      '.sakti/changes/archive/.gitkeep',
       '.sakti/config.yaml',
-      'sakti/specs/keep-me.md',
+      '.sakti/specs/keep-me.md',
     ]);
 
     // A clone of the converted store is immediately a healthy root.
@@ -186,8 +186,8 @@ describe('store git lifecycle', () => {
     });
     for (const required of [
       '.sakti/config.yaml',
-      'sakti/specs/keep-me.md',
-      'sakti/changes/archive/.gitkeep',
+      '.sakti/specs/keep-me.md',
+      '.sakti/changes/archive/.gitkeep',
       '.sakti-store/store.yaml',
     ]) {
       expect(fs.existsSync(path.join(cloneRoot, required))).toBe(true);
@@ -223,8 +223,8 @@ describe('store git lifecycle', () => {
       .sort();
     expect(committedFiles).toEqual([
       '.sakti-store/store.yaml',
-      'sakti/changes/archive/.gitkeep',
-      'sakti/specs/.gitkeep',
+      '.sakti/changes/archive/.gitkeep',
+      '.sakti/specs/.gitkeep',
     ]);
 
     // The user's staged file stays staged and uncommitted.
@@ -277,7 +277,7 @@ describe('store git lifecycle', () => {
       expect.objectContaining({
         severity: 'warning',
         code: 'store_clone_fragile_directories',
-        message: expect.stringContaining('sakti/specs/'),
+        message: expect.stringContaining('.sakti/specs/'),
       }),
     ]);
 

@@ -279,7 +279,7 @@ describe('resolveSchemaForChange', () => {
 
   it('should use project config schema when no metadata exists', async () => {
     // Create project config
-    const configDir = path.join(testDir, 'sakti');
+    const configDir = path.join(testDir, '.sakti');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.yaml'),
@@ -293,7 +293,7 @@ describe('resolveSchemaForChange', () => {
 
   it('should prefer change metadata over project config', async () => {
     // Create project config
-    const configDir = path.join(testDir, 'sakti');
+    const configDir = path.join(testDir, '.sakti');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.yaml'),
@@ -311,7 +311,7 @@ describe('resolveSchemaForChange', () => {
 
   it('should prefer explicit schema over all config sources', async () => {
     // Create project config
-    const configDir = path.join(testDir, 'sakti');
+    const configDir = path.join(testDir, '.sakti');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.yaml'),
@@ -330,7 +330,7 @@ describe('resolveSchemaForChange', () => {
 
   it('should test full precedence order: CLI > metadata > config > default', async () => {
     // Setup all levels
-    const configDir = path.join(testDir, 'sakti');
+    const configDir = path.join(testDir, '.sakti');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.yaml'),

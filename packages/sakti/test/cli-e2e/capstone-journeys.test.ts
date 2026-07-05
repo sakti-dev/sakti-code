@@ -53,7 +53,7 @@ describe('capstone persona journeys (6.1)', () => {
     const appRepo = path.join(tempDir, 'billing-service');
     createSaktiRoot(appRepo);
     fs.writeFileSync(
-      path.join(appRepo, 'sakti', 'config.yaml'),
+      path.join(appRepo, '.sakti', 'config.yaml'),
       'schema: spec-driven\nreferences:\n  - product-requirements\n'
     );
 
@@ -85,7 +85,7 @@ describe('capstone persona journeys (6.1)', () => {
     expect(created.exitCode).toBe(0);
     const changeDir = path.join(
       appRepo,
-      'sakti',
+      '.sakti',
       'changes',
       'implement-invoice-immutability'
     );
@@ -106,9 +106,9 @@ describe('capstone persona journeys (6.1)', () => {
 
     // A code repo with NO local root, only the fallback declaration.
     const codeRepo = path.join(tempDir, 'api-server');
-    fs.mkdirSync(path.join(codeRepo, 'sakti'), { recursive: true });
+    fs.mkdirSync(path.join(codeRepo, '.sakti'), { recursive: true });
     fs.writeFileSync(
-      path.join(codeRepo, 'sakti', 'config.yaml'),
+      path.join(codeRepo, '.sakti', 'config.yaml'),
       'store: team-planning\n'
     );
 
@@ -173,6 +173,6 @@ describe('capstone persona journeys (6.1)', () => {
     expect(archivedNames.some((name) => name.endsWith('add-rate-limits'))).toBe(true);
 
     // The code repo never grew planning state.
-    expect(fs.readdirSync(path.join(codeRepo, 'sakti'))).toEqual(['config.yaml']);
+    expect(fs.readdirSync(path.join(codeRepo, '.sakti'))).toEqual(['config.yaml']);
   });
 });

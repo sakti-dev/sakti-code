@@ -209,8 +209,8 @@ describe('standalone store lifecycle journey', () => {
     expect(payload.created_files).toEqual(
       expect.arrayContaining([
         '.sakti/config.yaml',
-        'sakti/specs/.gitkeep',
-        'sakti/changes/archive/.gitkeep',
+        '.sakti/specs/.gitkeep',
+        '.sakti/changes/archive/.gitkeep',
         '.sakti-store/store.yaml',
       ])
     );
@@ -226,8 +226,8 @@ describe('standalone store lifecycle journey', () => {
       'HEAD',
     ]);
     expect(committedFiles).toContain('.sakti-store/store.yaml');
-    expect(committedFiles).toContain('sakti/specs/.gitkeep');
-    expect(committedFiles).toContain('sakti/changes/archive/.gitkeep');
+    expect(committedFiles).toContain('.sakti/specs/.gitkeep');
+    expect(committedFiles).toContain('.sakti/changes/archive/.gitkeep');
 
     const status = await git(storeRoot, machineA, ['status', '--porcelain']);
     expect(status.trim()).toBe('');
@@ -468,7 +468,7 @@ describe('standalone store lifecycle journey', () => {
     // Global state holds only registry/config metadata, no planning files.
     for (const env of [machineA, machineB]) {
       const dataEntries = await listRelativeEntries(
-        path.join(env.XDG_DATA_HOME as string, 'sakti'),
+        path.join(env.XDG_DATA_HOME as string, '.sakti'),
         new Set()
       );
       expect(dataEntries).toEqual(['stores/', 'stores/registry.yaml']);

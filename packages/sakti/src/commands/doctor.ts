@@ -23,8 +23,7 @@ import {
   type InspectRelationshipsInput,
   type RelationshipHealth,
 } from '../core/relationship-health.js';
-import { COMMAND_REGISTRY } from '../core/completions/command-registry.js';
-import { COMMON_FLAGS } from '../core/completions/shared-flags.js';
+
 import { emitFailure, printJson } from './shared-output.js';
 import * as path from 'node:path';
 
@@ -178,14 +177,12 @@ function printHumanHealth(health: RelationshipHealth, declaredReferenceCount: nu
 }
 
 export function registerDoctorCommand(program: Command): void {
-  const description =
-    COMMAND_REGISTRY.find((entry) => entry.name === 'doctor')?.description ??
-    'Report relationship health for the resolved Sakti root';
+  const description = 'Report relationship health for the resolved Sakti root';
 
   program
     .command('doctor')
     .description(description)
-    .option('--store <id>', COMMON_FLAGS.store.description)
+    .option('--store <id>', 'Specify a registered store id')
     .addOption(
       new Option('--store-path <path>', 'Removed; register the store and use --store').hideHelp()
     )

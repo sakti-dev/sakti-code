@@ -32,9 +32,9 @@ describe('declared store fallback (3.2)', () => {
     await registerStore({ id: 'team-context', localPath: storeRoot, globalDataDir });
 
     pointerRepo = path.join(tempDir, 'app-repo');
-    fs.mkdirSync(path.join(pointerRepo, 'sakti'), { recursive: true });
+    fs.mkdirSync(path.join(pointerRepo, '.sakti'), { recursive: true });
     fs.writeFileSync(
-      path.join(pointerRepo, 'sakti', 'config.yaml'),
+      path.join(pointerRepo, '.sakti', 'config.yaml'),
       'store: team-context\n'
     );
   });
@@ -132,7 +132,7 @@ describe('declared store fallback (3.2)', () => {
     writeSpec(upstreamRoot, 'platform-rules', '## Purpose\n\nPlatform rules.\n');
     await registerStore({ id: 'upstream-context', localPath: upstreamRoot, globalDataDir });
     fs.writeFileSync(
-      path.join(storeRoot, 'sakti', 'config.yaml'),
+      path.join(storeRoot, '.sakti', 'config.yaml'),
       'schema: spec-driven\nreferences:\n  - upstream-context\n'
     );
 
@@ -166,7 +166,7 @@ describe('declared store fallback (3.2)', () => {
     }
 
     // Conversion: remove the line, rerun, get a normal local root.
-    fs.writeFileSync(path.join(pointerRepo, 'sakti', 'config.yaml'), 'schema: spec-driven\n');
+    fs.writeFileSync(path.join(pointerRepo, '.sakti', 'config.yaml'), 'schema: spec-driven\n');
     const converted = await runCLI(['init', '.', '--tools', 'none'], {
       cwd: pointerRepo,
       env,
@@ -179,7 +179,7 @@ describe('declared store fallback (3.2)', () => {
   it('refuses init for malformed pointers and from pointer-repo subdirectories', async () => {
     // A broken declaration must not be buried under a scaffold.
     fs.writeFileSync(
-      path.join(pointerRepo, 'sakti', 'config.yaml'),
+      path.join(pointerRepo, '.sakti', 'config.yaml'),
       'store: [team-context]\n'
     );
     const malformed = await runCLI(['init', '.'], { cwd: pointerRepo, env });
@@ -190,7 +190,7 @@ describe('declared store fallback (3.2)', () => {
     // And a subdirectory of a pointer repo must not grow a nested root
     // that silently diverts work away from the declared store.
     fs.writeFileSync(
-      path.join(pointerRepo, 'sakti', 'config.yaml'),
+      path.join(pointerRepo, '.sakti', 'config.yaml'),
       'store: team-context\n'
     );
     const subdir = path.join(pointerRepo, 'packages', 'api');
@@ -198,7 +198,7 @@ describe('declared store fallback (3.2)', () => {
     const nested = await runCLI(['init', '.'], { cwd: subdir, env });
     expect(nested.exitCode).toBe(1);
     expect(nested.stderr).toContain("externalized to store 'team-context'");
-    expect(fs.existsSync(path.join(subdir, 'sakti'))).toBe(false);
+    expect(fs.existsSync(path.join(subdir, '.sakti'))).toBe(false);
   });
 
   it('keeps real-root stdout byte-identical when a pointer is present, with one warning', async () => {
@@ -210,7 +210,7 @@ describe('declared store fallback (3.2)', () => {
       ['without', 'schema: spec-driven\n'],
       ['with', 'schema: spec-driven\nstore: team-context\n'],
     ] as const) {
-      fs.writeFileSync(path.join(realRepo, 'sakti', 'config.yaml'), config);
+      fs.writeFileSync(path.join(realRepo, '.sakti', 'config.yaml'), config);
       const result = await runCLI(['list', '--json'], { cwd: realRepo, env });
       expect(result.exitCode).toBe(0);
       runs[label] = {

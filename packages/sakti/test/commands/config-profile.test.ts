@@ -92,14 +92,14 @@ describe('config profile interactive flow', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   function setupDriftedProjectArtifacts(projectDir: string): void {
-    fs.mkdirSync(path.join(projectDir, 'sakti'), { recursive: true });
+    fs.mkdirSync(path.join(projectDir, '.sakti'), { recursive: true });
     const exploreSkillPath = path.join(projectDir, '.claude', 'skills', 'sakti-explore', 'SKILL.md');
     fs.mkdirSync(path.dirname(exploreSkillPath), { recursive: true });
     fs.writeFileSync(exploreSkillPath, 'name: sakti-explore\n', 'utf-8');
   }
 
   function setupSyncedCoreBothArtifacts(projectDir: string): void {
-    fs.mkdirSync(path.join(projectDir, 'sakti'), { recursive: true });
+    fs.mkdirSync(path.join(projectDir, '.sakti'), { recursive: true });
     const coreSkillDirs = [
       'sakti-propose',
       'sakti-explore',
@@ -285,7 +285,7 @@ describe('config profile interactive flow', () => {
     const configPath = getGlobalConfigPath();
     const beforeContent = fs.readFileSync(configPath, 'utf-8');
 
-    fs.mkdirSync(path.join(tempDir, 'sakti'), { recursive: true });
+    fs.mkdirSync(path.join(tempDir, '.sakti'), { recursive: true });
     select.mockResolvedValueOnce('delivery');
     select.mockResolvedValueOnce('both');
 
@@ -361,7 +361,7 @@ describe('config profile interactive flow', () => {
     const { select, confirm } = await getPromptMocks();
 
     saveGlobalConfig({ featureFlags: {}, profile: 'core', delivery: 'both', workflows: ['propose', 'explore', 'apply', 'sync', 'archive'] });
-    fs.mkdirSync(path.join(tempDir, 'sakti'), { recursive: true });
+    fs.mkdirSync(path.join(tempDir, '.sakti'), { recursive: true });
 
     select.mockResolvedValueOnce('delivery');
     select.mockResolvedValueOnce('skills');
@@ -381,7 +381,7 @@ describe('config profile interactive flow', () => {
     const { select, confirm } = await getPromptMocks();
 
     saveGlobalConfig({ featureFlags: {}, profile: 'core', delivery: 'both', workflows: ['propose', 'explore', 'apply', 'sync', 'archive'] });
-    fs.mkdirSync(path.join(tempDir, 'sakti'), { recursive: true });
+    fs.mkdirSync(path.join(tempDir, '.sakti'), { recursive: true });
 
     select.mockResolvedValueOnce('delivery');
     select.mockResolvedValueOnce('skills');

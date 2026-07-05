@@ -33,7 +33,7 @@ describe('store references in instructions (3.1)', () => {
     appRepo = path.join(tempDir, 'app-repo');
     createSaktiRoot(appRepo);
     fs.writeFileSync(
-      path.join(appRepo, 'sakti', 'config.yaml'),
+      path.join(appRepo, '.sakti', 'config.yaml'),
       'schema: spec-driven\nreferences:\n  - team-context\n'
     );
   });
@@ -105,7 +105,7 @@ describe('store references in instructions (3.1)', () => {
   });
 
   it('omits the references field entirely when none are declared', async () => {
-    fs.writeFileSync(path.join(appRepo, 'sakti', 'config.yaml'), 'schema: spec-driven\n');
+    fs.writeFileSync(path.join(appRepo, '.sakti', 'config.yaml'), 'schema: spec-driven\n');
     await createChange(appRepo, 'plain-change');
 
     const result = await runCLI(
@@ -120,7 +120,7 @@ describe('store references in instructions (3.1)', () => {
     // A store whose config copy-pasted its own id: the omitted-not-empty
     // contract must hold so field presence stays a reliable signal.
     fs.writeFileSync(
-      path.join(storeRoot, 'sakti', 'config.yaml'),
+      path.join(storeRoot, '.sakti', 'config.yaml'),
       'schema: spec-driven\nreferences:\n  - team-context\n'
     );
     await createChange(appRepo, 'self-ref-change', ['--store', 'team-context']);
@@ -142,7 +142,7 @@ describe('store references in instructions (3.1)', () => {
     writeSpec(upstreamRoot, 'platform-rules', '## Purpose\n\nPlatform rules.\n');
     await registerStore({ id: 'upstream-context', localPath: upstreamRoot, globalDataDir });
     fs.writeFileSync(
-      path.join(storeRoot, 'sakti', 'config.yaml'),
+      path.join(storeRoot, '.sakti', 'config.yaml'),
       'schema: spec-driven\nreferences:\n  - upstream-context\n'
     );
 
@@ -163,7 +163,7 @@ describe('store references in instructions (3.1)', () => {
     // team-context references upstream-context; the app repo references
     // only team-context. upstream-context must not appear.
     fs.writeFileSync(
-      path.join(storeRoot, 'sakti', 'config.yaml'),
+      path.join(storeRoot, '.sakti', 'config.yaml'),
       'schema: spec-driven\nreferences:\n  - upstream-context\n'
     );
 
@@ -214,7 +214,7 @@ describe('store references in instructions (3.1)', () => {
     // No per-change link metadata in the app repo's change.
     const metadataPath = path.join(
       appRepo,
-      'sakti',
+      '.sakti',
       'changes',
       'parity-check',
       '.sakti.yaml'

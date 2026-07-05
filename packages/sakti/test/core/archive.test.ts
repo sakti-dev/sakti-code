@@ -30,7 +30,7 @@ describe('ArchiveCommand', () => {
     process.env.XDG_DATA_HOME = path.join(tempDir, 'xdg-data');
 
     // Create Sakti structure
-    const saktiDir = path.join(tempDir, 'sakti');
+    const saktiDir = path.join(tempDir, '.sakti');
     await fs.mkdir(path.join(saktiDir, 'changes'), { recursive: true });
     await fs.mkdir(path.join(saktiDir, 'specs'), { recursive: true });
     await fs.mkdir(path.join(saktiDir, 'changes', 'archive'), { recursive: true });
@@ -108,7 +108,7 @@ describe('ArchiveCommand', () => {
     it('detects incomplete tasks in nested glob tasks.md files (#1202 data-safety gate)', async () => {
       // Before the fix the gate read a fixed changes/<name>/tasks.md, saw zero
       // tasks for a glob-tasks change, and let an unfinished change archive.
-      const schemaDir = path.join(tempDir, 'sakti', 'schemas', 'glob-tasks');
+      const schemaDir = path.join(tempDir, '.sakti', 'schemas', 'glob-tasks');
       await fs.mkdir(schemaDir, { recursive: true });
       await fs.writeFile(
         path.join(schemaDir, 'schema.yaml'),
@@ -829,7 +829,7 @@ E1 updated`);
   describe('error handling', () => {
     it('should throw error when sakti directory does not exist', async () => {
       // Remove sakti directory
-      await fs.rm(path.join(tempDir, 'sakti'), { recursive: true });
+      await fs.rm(path.join(tempDir, '.sakti'), { recursive: true });
       
       await expect(
         archiveCommand.execute('any-change', { yes: true })

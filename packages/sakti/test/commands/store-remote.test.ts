@@ -368,9 +368,9 @@ describe('store canonical remote (3.3)', () => {
       // (backslashes fail isShellSafeRemote); git accepts it anywhere.
       const originRemote = originWorktree.split(path.sep).join('/');
       const appRepo = path.join(tempDir, 'app-repo');
-      fs.mkdirSync(path.join(appRepo, 'sakti'), { recursive: true });
+      fs.mkdirSync(path.join(appRepo, '.sakti'), { recursive: true });
       fs.writeFileSync(
-        path.join(appRepo, 'sakti', 'config.yaml'),
+        path.join(appRepo, '.sakti', 'config.yaml'),
         'schema: spec-driven\nreferences:\n' +
           `  - { id: team-context, remote: ${originRemote} }\n`
       );
@@ -391,7 +391,7 @@ describe('store canonical remote (3.3)', () => {
       const entry = parseJson(degraded).references[0];
       expect(entry.status[0].code).toBe('reference_unresolved');
       const fix: string = entry.status[0].fix;
-      const expectedCheckout = path.join(scratchHome, 'sakti', 'team-context');
+      const expectedCheckout = path.join(scratchHome, '.sakti', 'team-context');
       // The quote style is platform-deliberate: POSIX single quotes,
       // win32 double quotes (cmd/PowerShell treat ' as literal).
       const q = process.platform === 'win32' ? '"' : "'";

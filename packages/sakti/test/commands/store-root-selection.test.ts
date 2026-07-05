@@ -75,7 +75,7 @@ describe('store root selection for normal commands', () => {
   function createSaktiRoot(rootDir: string): void {
     fs.mkdirSync(path.join(rootDir, '.sakti', 'specs'), { recursive: true });
     fs.mkdirSync(path.join(rootDir, '.sakti', 'changes', 'archive'), { recursive: true });
-    fs.writeFileSync(path.join(rootDir, 'sakti', 'config.yaml'), 'schema: spec-driven\n');
+    fs.writeFileSync(path.join(rootDir, '.sakti', 'config.yaml'), 'schema: spec-driven\n');
   }
 
   async function registerStoreFixture(id: string): Promise<string> {
@@ -119,7 +119,7 @@ describe('store root selection for normal commands', () => {
   }
 
   function expectNoLocalSakti(): void {
-    expect(fs.existsSync(path.join(appRepo, 'sakti'))).toBe(false);
+    expect(fs.existsSync(path.join(appRepo, '.sakti'))).toBe(false);
   }
 
   describe('selecting a registered store by id', () => {
@@ -415,7 +415,7 @@ describe('store root selection for normal commands', () => {
       expect(result.exitCode).toBe(1);
       expect(result.stdout + result.stderr).toContain('store doctor');
       // No scaffolding or repair happened.
-      expect(fs.existsSync(path.join(brokenRoot, 'sakti'))).toBe(false);
+      expect(fs.existsSync(path.join(brokenRoot, '.sakti'))).toBe(false);
     });
   });
 
@@ -634,7 +634,7 @@ describe('store root selection for normal commands', () => {
       createChange(localRepo, 'existing-change');
       const metadataPath = path.join(
         localRepo,
-        'sakti',
+        '.sakti',
         'changes',
         'existing-change',
         '.sakti.yaml'

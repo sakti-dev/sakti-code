@@ -24,7 +24,7 @@ describe('reference index assembly', () => {
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-references-'));
-    globalDataDir = path.join(tempDir, 'data', 'sakti');
+    globalDataDir = path.join(tempDir, 'data', '.sakti');
     // Backstop: store calls below thread `globalDataDir`, but if a future
     // edit forgets one, the path resolver falls back to XDG_DATA_HOME and
     // then to the real ~/.local/share/sakti. Pin XDG at the temp dir so
@@ -145,7 +145,7 @@ describe('reference index assembly', () => {
   });
 
   it('renders a verbatim clone fix when the declaration carries a remote (3.3)', async () => {
-    const checkout = path.join(os.homedir(), 'sakti', 'missing-context');
+    const checkout = path.join(os.homedir(), '.sakti', 'missing-context');
     const entries = await assembleReferenceIndex({
       references: [{ id: 'missing-context', remote: 'https://192.0.2.1/team.git' }],
       resolvedRoot: appRoot(),

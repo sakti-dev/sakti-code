@@ -22,8 +22,6 @@ import {
   type WorkingSetMember,
 } from '../core/working-set.js';
 import { StoreError } from '../core/store/errors.js';
-import { COMMAND_REGISTRY } from '../core/completions/command-registry.js';
-import { COMMON_FLAGS } from '../core/completions/shared-flags.js';
 import { emitFailure, printJson } from './shared-output.js';
 import { gatherRelationshipData } from './shared-gather.js';
 
@@ -158,14 +156,12 @@ function writeCodeWorkspace(
 }
 
 export function registerContextCommand(program: Command): void {
-  const description =
-    COMMAND_REGISTRY.find((entry) => entry.name === 'context')?.description ??
-    'Print the working context for the resolved Sakti root';
+  const description = 'Print the working context for the resolved Sakti root';
 
   program
     .command('context')
     .description(description)
-    .option('--store <id>', COMMON_FLAGS.store.description)
+    .option('--store <id>', 'Specify a registered store id')
     .addOption(
       new Option('--store-path <path>', 'Removed; register the store and use --store').hideHelp()
     )

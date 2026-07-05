@@ -468,7 +468,7 @@ describe('artifact-workflow CLI commands', () => {
     });
 
     it('resolves single-star glob artifacts consistently between status and apply', async () => {
-      const schemaDir = path.join(tempDir, 'sakti', 'schemas', 'glob-test');
+      const schemaDir = path.join(tempDir, '.sakti', 'schemas', 'glob-test');
       const templatesDir = path.join(schemaDir, 'templates');
       await fs.mkdir(templatesDir, { recursive: true });
 
@@ -586,7 +586,7 @@ apply:
     it('fallback: requires all artifacts when schema has no apply block', async () => {
       // Create a minimal schema without an apply block in user schemas dir
       const userDataDir = path.join(tempDir, 'user-data');
-      const noApplySchemaDir = path.join(userDataDir, 'sakti', 'schemas', 'no-apply');
+      const noApplySchemaDir = path.join(userDataDir, '.sakti', 'schemas', 'no-apply');
       const templatesDir = path.join(noApplySchemaDir, 'templates');
       await fs.mkdir(templatesDir, { recursive: true });
 
@@ -636,7 +636,7 @@ artifacts:
     it('fallback: ready when all artifacts exist for schema without apply block', async () => {
       // Create a minimal schema without an apply block
       const userDataDir = path.join(tempDir, 'user-data-2');
-      const noApplySchemaDir = path.join(userDataDir, 'sakti', 'schemas', 'no-apply-full');
+      const noApplySchemaDir = path.join(userDataDir, '.sakti', 'schemas', 'no-apply-full');
       const templatesDir = path.join(noApplySchemaDir, 'templates');
       await fs.mkdir(templatesDir, { recursive: true });
 
@@ -786,7 +786,7 @@ artifacts:
         // Create project config with spec-driven schema
         // Note: changesDir is already at tempDir/sakti/changes (created in beforeEach)
         await fs.writeFile(
-          path.join(tempDir, 'sakti', 'config.yaml'),
+          path.join(tempDir, '.sakti', 'config.yaml'),
           'schema: spec-driven\n'
         );
 
@@ -804,7 +804,7 @@ artifacts:
         // Create project config with spec-driven schema
         // Note: sakti directory already exists (from changesDir creation in beforeEach)
         await fs.writeFile(
-          path.join(tempDir, 'sakti', 'config.yaml'),
+          path.join(tempDir, '.sakti', 'config.yaml'),
           'schema: spec-driven\n'
         );
 
@@ -827,7 +827,7 @@ artifacts:
         // Create project config with context and rules
         // Note: sakti directory already exists (from changesDir creation in beforeEach)
         await fs.writeFile(
-          path.join(tempDir, 'sakti', 'config.yaml'),
+          path.join(tempDir, '.sakti', 'config.yaml'),
           `schema: spec-driven
 context: |
   Tech stack: TypeScript, React
@@ -862,7 +862,7 @@ rules:
         // Create project config with rules only for proposal
         // Note: sakti directory already exists (from changesDir creation in beforeEach)
         await fs.writeFile(
-          path.join(tempDir, 'sakti', 'config.yaml'),
+          path.join(tempDir, '.sakti', 'config.yaml'),
           `schema: spec-driven
 rules:
   proposal:
@@ -931,7 +931,7 @@ rules:
         // Create initial config
         // Note: sakti directory already exists (from changesDir creation in beforeEach)
         await fs.writeFile(
-          path.join(tempDir, 'sakti', 'config.yaml'),
+          path.join(tempDir, '.sakti', 'config.yaml'),
           `schema: spec-driven
 context: Initial context
 `
@@ -950,7 +950,7 @@ context: Initial context
 
         // Update config
         await fs.writeFile(
-          path.join(tempDir, 'sakti', 'config.yaml'),
+          path.join(tempDir, '.sakti', 'config.yaml'),
           `schema: spec-driven
 context: Updated context
 `

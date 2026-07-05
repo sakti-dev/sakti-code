@@ -48,7 +48,7 @@ describe('UpdateCommand', () => {
     await fs.mkdir(testDir, { recursive: true });
 
     // Create sakti directory
-    const saktiDir = path.join(testDir, 'sakti');
+    const saktiDir = path.join(testDir, '.sakti');
     await fs.mkdir(saktiDir, { recursive: true });
 
     updateCommand = new UpdateCommand();
@@ -71,7 +71,7 @@ describe('UpdateCommand', () => {
   describe('basic validation', () => {
     it('should throw error if sakti directory does not exist', async () => {
       // Remove sakti directory
-      await fs.rm(path.join(testDir, 'sakti'), {
+      await fs.rm(path.join(testDir, '.sakti'), {
         recursive: true,
         force: true,
       });
@@ -964,7 +964,7 @@ ${SAKTI_MARKERS.end}
       );
 
       // Create legacy slash command directory
-      const legacyCommandDir = path.join(testDir, '.claude', 'commands', 'sakti');
+      const legacyCommandDir = path.join(testDir, '.claude', 'commands', '.sakti');
       await fs.mkdir(legacyCommandDir, { recursive: true });
       await fs.writeFile(
         path.join(legacyCommandDir, 'old-command.md'),
@@ -1002,7 +1002,7 @@ ${SAKTI_MARKERS.end}
 
       // Create legacy sakti/AGENTS.md
       await fs.writeFile(
-        path.join(testDir, 'sakti', 'AGENTS.md'),
+        path.join(testDir, '.sakti', 'AGENTS.md'),
         '# Old AGENTS.md content'
       );
 
@@ -1019,7 +1019,7 @@ ${SAKTI_MARKERS.end}
 
       // Legacy file should be deleted
       const legacyExists = await FileSystemUtils.fileExists(
-        path.join(testDir, 'sakti', 'AGENTS.md')
+        path.join(testDir, '.sakti', 'AGENTS.md')
       );
       expect(legacyExists).toBe(false);
 
@@ -1114,7 +1114,7 @@ More user content after markers.
   describe('legacy tool upgrade', () => {
     it('should upgrade legacy tools to new skills with --force', async () => {
       // Create legacy slash command directory (no skills exist yet)
-      const legacyCommandDir = path.join(testDir, '.claude', 'commands', 'sakti');
+      const legacyCommandDir = path.join(testDir, '.claude', 'commands', '.sakti');
       await fs.mkdir(legacyCommandDir, { recursive: true });
       await fs.writeFile(
         path.join(legacyCommandDir, 'proposal.md'),
@@ -1159,9 +1159,9 @@ More user content after markers.
 
     it('should upgrade multiple legacy tools with --force', async () => {
       // Create legacy command directories for Claude and Cursor
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'sakti'), { recursive: true });
+      await fs.mkdir(path.join(testDir, '.claude', 'commands', '.sakti'), { recursive: true });
       await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', 'sakti', 'proposal.md'),
+        path.join(testDir, '.claude', 'commands', '.sakti', 'proposal.md'),
         'content'
       );
 
@@ -1202,7 +1202,7 @@ More user content after markers.
       );
 
       // Also create legacy directory (simulating partial upgrade)
-      const legacyCommandDir = path.join(testDir, '.claude', 'commands', 'sakti');
+      const legacyCommandDir = path.join(testDir, '.claude', 'commands', '.sakti');
       await fs.mkdir(legacyCommandDir, { recursive: true });
       await fs.writeFile(
         path.join(legacyCommandDir, 'proposal.md'),
@@ -1247,9 +1247,9 @@ More user content after markers.
       );
 
       // Create legacy commands for both Claude (configured) and Cursor (not configured)
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'sakti'), { recursive: true });
+      await fs.mkdir(path.join(testDir, '.claude', 'commands', '.sakti'), { recursive: true });
       await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', 'sakti', 'proposal.md'),
+        path.join(testDir, '.claude', 'commands', '.sakti', 'proposal.md'),
         'content'
       );
 
@@ -1309,9 +1309,9 @@ More user content after markers.
 
     it('should create only effective profile skills when upgrading legacy tools', async () => {
       // Create legacy command directory
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'sakti'), { recursive: true });
+      await fs.mkdir(path.join(testDir, '.claude', 'commands', '.sakti'), { recursive: true });
       await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', 'sakti', 'proposal.md'),
+        path.join(testDir, '.claude', 'commands', '.sakti', 'proposal.md'),
         'content'
       );
 
@@ -1341,9 +1341,9 @@ More user content after markers.
 
     it('should create commands when upgrading legacy tools', async () => {
       // Create legacy command directory
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'sakti'), { recursive: true });
+      await fs.mkdir(path.join(testDir, '.claude', 'commands', '.sakti'), { recursive: true });
       await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', 'sakti', 'proposal.md'),
+        path.join(testDir, '.claude', 'commands', '.sakti', 'proposal.md'),
         'content'
       );
 
@@ -1366,9 +1366,9 @@ More user content after markers.
         workflows: ['explore'],
       });
 
-      await fs.mkdir(path.join(testDir, '.claude', 'commands', 'sakti'), { recursive: true });
+      await fs.mkdir(path.join(testDir, '.claude', 'commands', '.sakti'), { recursive: true });
       await fs.writeFile(
-        path.join(testDir, '.claude', 'commands', 'sakti', 'proposal.md'),
+        path.join(testDir, '.claude', 'commands', '.sakti', 'proposal.md'),
         'content'
       );
 

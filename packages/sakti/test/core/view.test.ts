@@ -127,7 +127,7 @@ describe('ViewCommand', () => {
   });
 
   it('classifies a nested glob-tasks change as Active, not Draft (#1202)', async () => {
-    const saktiDir = path.join(tempDir, 'sakti');
+    const saktiDir = path.join(tempDir, '.sakti');
     const changesDir = path.join(saktiDir, 'changes');
     await fs.mkdir(changesDir, { recursive: true });
 

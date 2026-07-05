@@ -416,7 +416,7 @@ export async function cleanupLegacyArtifacts(
     if (await FileSystemUtils.fileExists(agentsPath)) {
       try {
         await fs.unlink(agentsPath);
-        result.deletedFiles.push('.sakti/AGENTS.md');
+        result.deletedFiles.push('openspec/AGENTS.md');
       } catch (error: any) {
         result.errors.push(`Failed to delete openspec/AGENTS.md: ${error.message}`);
       }
@@ -500,7 +500,7 @@ function buildRemovalsList(detection: LegacyDetectionResult): Array<{ path: stri
 
   // openspec/AGENTS.md (inside openspec/, it's Sakti-managed)
   if (detection.hasOpenspecAgents) {
-    removals.push({ path: '.sakti/AGENTS.md', explanation: 'obsolete workflow file' });
+    removals.push({ path: 'openspec/AGENTS.md', explanation: 'obsolete workflow file' });
   }
 
   // Note: Config files (CLAUDE.md, AGENTS.md, etc.) are NEVER in the removals list
@@ -639,10 +639,10 @@ export function getToolsFromLegacyArtifacts(detection: LegacyDetectionResult): s
 export function formatProjectMdMigrationHint(): string {
   const lines: string[] = [];
   lines.push(chalk.yellow.bold('Needs your attention'));
-  lines.push('  • openspec/project.md');
+  lines.push('  • .sakti/project.md');
   lines.push(chalk.dim('    We won\'t delete this file. It may contain useful project context.'));
   lines.push('');
-  lines.push(chalk.dim('    The new openspec/config.yaml has a "context:" section for planning'));
+  lines.push(chalk.dim('    The new .sakti/config.yaml has a "context:" section for planning'));
   lines.push(chalk.dim('    context. This is included in every Sakti request and works more'));
   lines.push(chalk.dim('    reliably than the old project.md approach.'));
   lines.push('');

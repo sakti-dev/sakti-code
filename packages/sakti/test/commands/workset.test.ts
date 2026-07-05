@@ -85,7 +85,7 @@ describe('sakti workset (7.1)', () => {
   }
 
   function writeOpenersConfig(openers: unknown): void {
-    const configDir = path.join(env.XDG_CONFIG_HOME!, 'sakti');
+    const configDir = path.join(env.XDG_CONFIG_HOME!, '.sakti');
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(
       path.join(configDir, 'config.json'),
@@ -914,7 +914,7 @@ describe('interactive compose cancellation (in-process)', () => {
       expect(errorSpy).toHaveBeenCalledWith('Cancelled.');
       expect(
         fs.existsSync(
-          path.join(process.env.XDG_DATA_HOME!, 'sakti', 'worksets', 'worksets.yaml')
+          path.join(process.env.XDG_DATA_HOME!, '.sakti', 'worksets', 'worksets.yaml')
         )
       ).toBe(false);
     }
@@ -942,7 +942,7 @@ describe('interactive compose cancellation (in-process)', () => {
     expect(errorSpy).toHaveBeenCalledWith('Cancelled.');
     expect(
       fs.existsSync(
-        path.join(process.env.XDG_DATA_HOME!, 'sakti', 'worksets', 'worksets.yaml')
+        path.join(process.env.XDG_DATA_HOME!, '.sakti', 'worksets', 'worksets.yaml')
       )
     ).toBe(false);
   });
@@ -1056,7 +1056,7 @@ describe('interactive compose cancellation (in-process)', () => {
     expect(errorSpy).toHaveBeenCalledWith('Error: Workset remove cancelled.');
     expect(
       fs.existsSync(
-        path.join(process.env.XDG_DATA_HOME!, 'sakti', 'worksets', 'worksets.yaml')
+        path.join(process.env.XDG_DATA_HOME!, '.sakti', 'worksets', 'worksets.yaml')
       )
     ).toBe(true);
   });

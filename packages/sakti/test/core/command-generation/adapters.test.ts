@@ -371,7 +371,7 @@ describe('command-generation/adapters', () => {
 
     it('should generate correct file path', () => {
       const filePath = costrictAdapter.getFilePath('explore');
-      expect(filePath).toBe(path.join('.cospec', 'sakti', 'commands', 'sakti-explore.md'));
+      expect(filePath).toBe(path.join('.cospec', '.sakti', 'commands', 'sakti-explore.md'));
     });
 
     it('should format file with description and argument-hint', () => {

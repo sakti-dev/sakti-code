@@ -3,7 +3,7 @@ import { asErrorMessage, emitFailure, printJson } from './shared-output.js';
 import * as path from 'node:path';
 import { Command } from 'commander';
 
-import { COMMAND_REGISTRY } from '../core/completions/command-registry.js';
+
 
 import {
   StoreError,
@@ -660,11 +660,7 @@ class StoreCommand {
 
 export function registerStoreCommand(program: Command): void {
   const storeCommand = new StoreCommand();
-  // One source for the locked group one-liner: the completions registry
-  // entry, which shell completion scripts also consume.
-  const storeGroupDescription =
-    COMMAND_REGISTRY.find((entry) => entry.name === 'store')?.description ??
-    'Create and manage stores - standalone Sakti repos you register on this machine';
+  const storeGroupDescription = 'Create and manage stores - standalone Sakti repos you register on this machine';
   const store = program.command('store').description(storeGroupDescription);
 
   store
@@ -723,15 +719,7 @@ export function registerStoreCommand(program: Command): void {
       await storeCommand.doctor(id, options);
     });
 
-  const lifecycleRedirects = new Set(
-    COMMAND_REGISTRY.filter(
-      (entry) =>
-        entry.flags.some((flag) => flag.name === 'store') ||
-        (entry.subcommands ?? []).some((subcommand) =>
-          subcommand.flags.some((flag) => flag.name === 'store')
-        )
-    ).map((entry) => entry.name)
-  );
+  const lifecycleRedirects = new Set<string>([]);
   const storeSubcommandsLine = store.commands
     .map((subcommand) => {
       const aliases = subcommand.aliases();

@@ -55,7 +55,7 @@ describe('workset journey (7.1 e2e)', () => {
     appRepo = path.join(tempDir, 'web-app');
     createSaktiRoot(appRepo);
     fs.writeFileSync(
-      path.join(appRepo, 'sakti', 'config.yaml'),
+      path.join(appRepo, '.sakti', 'config.yaml'),
       'schema: spec-driven\nreferences:\n  - team-context\n'
     );
 

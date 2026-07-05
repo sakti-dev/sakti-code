@@ -27,7 +27,7 @@ async function runStoreCommand(args: string[]): Promise<void> {
   const { registerStoreCommand } = await import('../../src/commands/store.js');
   const program = new Command();
   registerStoreCommand(program);
-  await program.parseAsync(['node', 'sakti', 'store', ...args]);
+  await program.parseAsync(['node', '.sakti', 'store', ...args]);
 }
 
 async function getPromptMocks(): Promise<{
@@ -153,18 +153,18 @@ describe('store command', () => {
       already_registered: false,
     });
     expect(payload.created_files).toEqual([
-      'sakti/',
-      'sakti/specs/',
-      'sakti/changes/',
-      'sakti/changes/archive/',
+      '.sakti/',
+      '.sakti/specs/',
+      '.sakti/changes/',
+      '.sakti/changes/archive/',
       '.sakti/config.yaml',
-      'sakti/specs/.gitkeep',
-      'sakti/changes/archive/.gitkeep',
+      '.sakti/specs/.gitkeep',
+      '.sakti/changes/archive/.gitkeep',
       '.sakti-store/store.yaml',
     ]);
     expect(payload.status).toEqual([]);
     expectHealthySaktiRoot(storeRoot);
-    expect(fs.readFileSync(path.join(storeRoot, 'sakti', 'config.yaml'), 'utf-8')).toContain(
+    expect(fs.readFileSync(path.join(storeRoot, '.sakti', 'config.yaml'), 'utf-8')).toContain(
       `schema: ${DEFAULT_SAKTI_SCHEMA}`
     );
     expectNoGeneratedAgentOrBetaArtifacts(storeRoot);
@@ -287,13 +287,13 @@ describe('store command', () => {
       committed: false,
     });
     expect(payload.created_files).toEqual([
-      'sakti/',
-      'sakti/specs/',
-      'sakti/changes/',
-      'sakti/changes/archive/',
+      '.sakti/',
+      '.sakti/specs/',
+      '.sakti/changes/',
+      '.sakti/changes/archive/',
       '.sakti/config.yaml',
-      'sakti/specs/.gitkeep',
-      'sakti/changes/archive/.gitkeep',
+      '.sakti/specs/.gitkeep',
+      '.sakti/changes/archive/.gitkeep',
       '.sakti-store/store.yaml',
     ]);
     expect(fs.existsSync(path.join(storeRoot, '.git'))).toBe(true);
@@ -315,11 +315,11 @@ describe('store command', () => {
     // First-time accept of an existing root anchors its empty directories
     // (specs/ has user content here, so only archive/ gets an anchor).
     expect(payload.created_files).toEqual([
-      'sakti/changes/archive/.gitkeep',
+      '.sakti/changes/archive/.gitkeep',
       '.sakti-store/store.yaml',
     ]);
-    expect(fs.existsSync(path.join(storeRoot, 'sakti', 'config.yaml'))).toBe(false);
-    expect(fs.readFileSync(path.join(storeRoot, 'sakti', 'config.yml'), 'utf-8')).toBe(
+    expect(fs.existsSync(path.join(storeRoot, '.sakti', 'config.yaml'))).toBe(false);
+    expect(fs.readFileSync(path.join(storeRoot, '.sakti', 'config.yml'), 'utf-8')).toBe(
       `schema: ${DEFAULT_SAKTI_SCHEMA}\n`
     );
     expect(fs.readFileSync(path.join(storeRoot, '.sakti', 'specs', 'note.md'), 'utf-8')).toBe('keep\n');
@@ -387,7 +387,7 @@ describe('store command', () => {
       })
     );
     expect(fs.existsSync(getStoreMetadataPath(storeRoot))).toBe(false);
-    expect(fs.existsSync(path.join(storeRoot, 'sakti'))).toBe(false);
+    expect(fs.existsSync(path.join(storeRoot, '.sakti'))).toBe(false);
   });
 
   it('rejects setup paths inside git-like parents when git cannot resolve the repo', async () => {
@@ -432,7 +432,7 @@ describe('store command', () => {
 
     expect(confirm).not.toHaveBeenCalled();
     expect(fs.existsSync(getStoreMetadataPath(storeRoot))).toBe(false);
-    expect(fs.existsSync(path.join(storeRoot, 'sakti'))).toBe(false);
+    expect(fs.existsSync(path.join(storeRoot, '.sakti'))).toBe(false);
     expect(process.exitCode).toBe(1);
   });
 
@@ -577,7 +577,7 @@ describe('store command', () => {
   it('reports repeated setup and register as no-op success', async () => {
     const storeRoot = mkdir('team-context');
     createHealthySaktiRoot(storeRoot);
-    fs.writeFileSync(path.join(storeRoot, 'sakti', 'config.yaml'), 'schema: spec-driven\n# user edit\n');
+    fs.writeFileSync(path.join(storeRoot, '.sakti', 'config.yaml'), 'schema: spec-driven\n# user edit\n');
 
     const firstSetup = await runCLI(
       ['store', 'setup', 'team-context', '--path', storeRoot, '--no-init-git', '--json'],
@@ -626,7 +626,7 @@ describe('store command', () => {
         code: 'store_already_registered',
       })
     );
-    expect(fs.readFileSync(path.join(storeRoot, 'sakti', 'config.yaml'), 'utf-8')).toBe(
+    expect(fs.readFileSync(path.join(storeRoot, '.sakti', 'config.yaml'), 'utf-8')).toBe(
       'schema: spec-driven\n# user edit\n'
     );
     await expect(readStoreRegistryState({ globalDataDir })).resolves.toEqual({
@@ -979,7 +979,7 @@ describe('store command', () => {
     const storeRoot = mkdir('team-context');
     fs.mkdirSync(path.join(storeRoot, '.sakti', 'specs'), { recursive: true });
     fs.mkdirSync(path.join(storeRoot, '.sakti', 'changes'), { recursive: true });
-    fs.writeFileSync(path.join(storeRoot, 'sakti', 'config.yaml'), `schema: ${DEFAULT_SAKTI_SCHEMA}\n`);
+    fs.writeFileSync(path.join(storeRoot, '.sakti', 'config.yaml'), `schema: ${DEFAULT_SAKTI_SCHEMA}\n`);
     await writeStoreMetadataState(storeRoot, { version: 1, id: 'team-context' });
     await writeStoreRegistryState(
       {

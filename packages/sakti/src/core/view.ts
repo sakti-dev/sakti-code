@@ -6,7 +6,7 @@ import { MarkdownParser } from './parsers/markdown-parser.js';
 
 export class ViewCommand {
   async execute(targetPath: string = '.'): Promise<void> {
-    const saktiDir = path.join(targetPath, 'sakti');
+    const saktiDir = path.join(targetPath, '.sakti');
     
     if (!fs.existsSync(saktiDir)) {
       console.error(chalk.red('No sakti directory found'));

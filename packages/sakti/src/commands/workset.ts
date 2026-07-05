@@ -64,7 +64,7 @@ import {
   promptOpenNow,
   promptToolFromChoices,
 } from './workset-prompts.js';
-import { COMMAND_REGISTRY } from '../core/completions/command-registry.js';
+
 
 // cross-spawn is CJS with no types and only `workset open` needs it -
 // loaded lazily so every other CLI invocation skips its module graph.
@@ -560,9 +560,7 @@ function collectMember(value: string, previous: string[]): string[] {
 
 export function registerWorksetCommand(program: Command): void {
   const worksetCommand = new WorksetCommand();
-  const groupDescription =
-    COMMAND_REGISTRY.find((entry) => entry.name === 'workset')?.description ??
-    'Compose, keep, and open personal working views (purely local)';
+  const groupDescription = 'Compose, keep, and open personal working views (purely local)';
   const workset = program.command('workset').description(groupDescription);
   // Parsed at the group level so `sakti workset --json` keeps the
   // one-JSON-document contract instead of a raw Commander error. The

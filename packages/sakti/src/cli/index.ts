@@ -15,7 +15,7 @@ import { registerSpecCommand } from '../commands/spec.js';
 import { ChangeCommand } from '../commands/change.js';
 import { ValidateCommand } from '../commands/validate.js';
 import { ShowCommand } from '../commands/show.js';
-import { CompletionCommand } from '../commands/completion.js';
+
 import { FeedbackCommand } from '../commands/feedback.js';
 import { registerConfigCommand } from '../commands/config.js';
 import { registerSchemaCommand } from '../commands/schema.js';
@@ -38,9 +38,9 @@ import {
   type NewChangeOptions,
 } from '../commands/workflow/index.js';
 import { maybeShowTelemetryNotice, trackCommand, shutdown } from '../telemetry/index.js';
-import { COMMON_FLAGS } from '../core/completions/shared-flags.js';
 
-const STORE_OPTION_DESCRIPTION = COMMON_FLAGS.store.description;
+
+const STORE_OPTION_DESCRIPTION = 'Specify a registered store id';
 
 // Deliberate rejection path: --store-path stays registered (hidden) so the
 // resolver can explain that registering the path is the supported route,
@@ -416,66 +416,6 @@ program
     } catch (error) {
       failWithError(error);
       process.exit(1);
-    }
-  });
-
-// Completion command with subcommands
-const completionCmd = program
-  .command('completion')
-  .description('Manage shell completions for Sakti CLI');
-
-completionCmd
-  .command('generate [shell]')
-  .description('Generate completion script for a shell (outputs to stdout)')
-  .action(async (shell?: string) => {
-    try {
-      const completionCommand = new CompletionCommand();
-      await completionCommand.generate({ shell });
-    } catch (error) {
-      failWithError(error);
-      process.exit(1);
-    }
-  });
-
-completionCmd
-  .command('install [shell]')
-  .description('Install completion script for a shell')
-  .option('--verbose', 'Show detailed installation output')
-  .action(async (shell?: string, options?: { verbose?: boolean }) => {
-    try {
-      const completionCommand = new CompletionCommand();
-      await completionCommand.install({ shell, verbose: options?.verbose });
-    } catch (error) {
-      failWithError(error);
-      process.exit(1);
-    }
-  });
-
-completionCmd
-  .command('uninstall [shell]')
-  .description('Uninstall completion script for a shell')
-  .option('-y, --yes', 'Skip confirmation prompts')
-  .action(async (shell?: string, options?: { yes?: boolean }) => {
-    try {
-      const completionCommand = new CompletionCommand();
-      await completionCommand.uninstall({ shell, yes: options?.yes });
-    } catch (error) {
-      failWithError(error);
-      process.exit(1);
-    }
-  });
-
-// Hidden command for machine-readable completion data
-program
-  .command('__complete <type>', { hidden: true })
-  .description('Output completion data in machine-readable format (internal use)')
-  .action(async (type: string) => {
-    try {
-      const completionCommand = new CompletionCommand();
-      await completionCommand.complete({ type });
-    } catch (error) {
-      // Silently fail for graceful shell completion experience
-      process.exitCode = 1;
     }
   });
 

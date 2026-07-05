@@ -200,7 +200,7 @@ describe('instruction-loader', () => {
     describe('project config integration', () => {
       it('should return context as separate field for all artifacts', () => {
         // Create project config
-        const configDir = path.join(tempDir, 'sakti');
+        const configDir = path.join(tempDir, '.sakti');
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(
           path.join(configDir, 'config.yaml'),
@@ -232,7 +232,7 @@ context: |
 
       it('should preserve multi-line context', () => {
         // Create project config with multi-line context
-        const configDir = path.join(tempDir, 'sakti');
+        const configDir = path.join(tempDir, '.sakti');
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(
           path.join(configDir, 'config.yaml'),
@@ -252,7 +252,7 @@ context: |
 
       it('should preserve special characters in context', () => {
         // Create project config with special characters
-        const configDir = path.join(tempDir, 'sakti');
+        const configDir = path.join(tempDir, '.sakti');
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(
           path.join(configDir, 'config.yaml'),
@@ -270,7 +270,7 @@ context: |
 
       it('should return rules only for matching artifact', () => {
         // Create project config with rules
-        const configDir = path.join(tempDir, 'sakti');
+        const configDir = path.join(tempDir, '.sakti');
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(
           path.join(configDir, 'config.yaml'),
@@ -299,7 +299,7 @@ rules:
 
       it('should return undefined rules for non-matching artifact', () => {
         // Create project config with rules only for proposal
-        const configDir = path.join(tempDir, 'sakti');
+        const configDir = path.join(tempDir, '.sakti');
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(
           path.join(configDir, 'config.yaml'),
@@ -319,7 +319,7 @@ rules:
 
       it('should return undefined rules when empty array', () => {
         // Create project config with empty rules array
-        const configDir = path.join(tempDir, 'sakti');
+        const configDir = path.join(tempDir, '.sakti');
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(
           path.join(configDir, 'config.yaml'),
@@ -339,7 +339,7 @@ rules:
 
       it('should keep context, rules, and template as separate fields', () => {
         // Create project config with both context and rules
-        const configDir = path.join(tempDir, 'sakti');
+        const configDir = path.join(tempDir, '.sakti');
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(
           path.join(configDir, 'config.yaml'),
@@ -365,7 +365,7 @@ rules:
 
       it('should handle context without rules', () => {
         // Create project config with only context
-        const configDir = path.join(tempDir, 'sakti');
+        const configDir = path.join(tempDir, '.sakti');
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(
           path.join(configDir, 'config.yaml'),
@@ -384,7 +384,7 @@ context: Project context only
 
       it('should handle rules without context', () => {
         // Create project config with only rules
-        const configDir = path.join(tempDir, 'sakti');
+        const configDir = path.join(tempDir, '.sakti');
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(
           path.join(configDir, 'config.yaml'),
@@ -426,7 +426,7 @@ rules:
 
       it('should warn about unknown artifact IDs in rules', () => {
         // Create project config with invalid artifact ID
-        const configDir = path.join(tempDir, 'sakti');
+        const configDir = path.join(tempDir, '.sakti');
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(
           path.join(configDir, 'config.yaml'),
@@ -453,7 +453,7 @@ rules:
 
         try {
           // Create project config with a uniquely named invalid artifact ID
-          const configDir = path.join(freshTempDir, 'sakti');
+          const configDir = path.join(freshTempDir, '.sakti');
           fs.mkdirSync(configDir, { recursive: true });
           fs.writeFileSync(
             path.join(configDir, 'config.yaml'),
@@ -486,7 +486,7 @@ rules:
 
       it('should not warn for valid artifact IDs', () => {
         // Create project config with valid artifact IDs
-        const configDir = path.join(tempDir, 'sakti');
+        const configDir = path.join(tempDir, '.sakti');
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(
           path.join(configDir, 'config.yaml'),
