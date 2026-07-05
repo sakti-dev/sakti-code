@@ -5,7 +5,7 @@ import {
   resolveRootForCommand,
   toRootOutput,
   withStoreFlag,
-  type ResolvedOpenSpecRoot,
+  type ResolvedSaktiRoot,
   isStoreSelectedRoot,
 } from '../core/root-selection.js';
 import { isInteractive, resolveNoInteractive } from '../utils/interactive.js';
@@ -80,17 +80,17 @@ export class ValidateCommand {
 
   /**
    * Resolve change IDs by directory existence within the resolved root — the
-   * same rule `openspec status`/`instructions` use (`getAvailableChanges`) —
+   * same rule `sakti status`/`instructions` use (`getAvailableChanges`) —
    * rather than requiring `proposal.md`. This lets `validate` resolve a
    * scaffolded or still-authoring change that the sibling commands already
    * resolve (#1182). Sorted to preserve the prior `getActiveChangeIds` ordering.
    */
-  private async listChangeIds(root: ResolvedOpenSpecRoot): Promise<string[]> {
+  private async listChangeIds(root: ResolvedSaktiRoot): Promise<string[]> {
     const ids = await getAvailableChanges(root.path, root.changesDir);
     return ids.sort();
   }
 
-  private async runInteractiveSelector(root: ResolvedOpenSpecRoot, opts: { strict: boolean; json: boolean; concurrency?: string }): Promise<void> {
+  private async runInteractiveSelector(root: ResolvedSaktiRoot, opts: { strict: boolean; json: boolean; concurrency?: string }): Promise<void> {
     const { select } = await import('@inquirer/prompts');
     const choice = await select({
       message: 'What would you like to validate?',
@@ -120,16 +120,16 @@ export class ValidateCommand {
     await this.validateByType(root, picked.type, picked.id, opts);
   }
 
-  private printNonInteractiveHint(root: ResolvedOpenSpecRoot): void {
+  private printNonInteractiveHint(root: ResolvedSaktiRoot): void {
     console.error('Nothing to validate. Try one of:');
-    console.error(`  ${withStoreFlag(root, 'openspec validate --all')}`);
-    console.error(`  ${withStoreFlag(root, 'openspec validate --changes')}`);
-    console.error(`  ${withStoreFlag(root, 'openspec validate --specs')}`);
-    console.error(`  ${withStoreFlag(root, 'openspec validate <item-name>')}`);
+    console.error(`  ${withStoreFlag(root, 'sakti validate' --all')}`);
+    console.error(`  ${withStoreFlag(root, 'sakti validate' --changes')}`);
+    console.error(`  ${withStoreFlag(root, 'sakti validate' --specs')}`);
+    console.error(`  ${withStoreFlag(root, 'sakti validate' <item-name>')}`);
     console.error('Or run in an interactive terminal.');
   }
 
-  private async validateDirectItem(root: ResolvedOpenSpecRoot, itemName: string, opts: { typeOverride?: ItemType; strict: boolean; json: boolean }): Promise<void> {
+  private async validateDirectItem(root: ResolvedSaktiRoot, itemName: string, opts: { typeOverride?: ItemType; strict: boolean; json: boolean }): Promise<void> {
     const [changes, specs] = await Promise.all([this.listChangeIds(root), getSpecIds(root.path)]);
     const isChange = changes.includes(itemName);
     const isSpec = specs.includes(itemName);
@@ -182,7 +182,7 @@ export class ValidateCommand {
       if (isStoreSelectedRoot(root)) {
         console.error('Pass --type change|spec.');
       } else {
-        console.error('Pass --type change|spec, or use: openspec change validate / openspec spec validate');
+        console.error('Pass --type change|spec, or use: sakti change validate / sakti spec validate');
       }
       process.exitCode = 1;
       return;
@@ -191,7 +191,7 @@ export class ValidateCommand {
     await this.validateByType(root, type, itemName, opts);
   }
 
-  private async validateByType(root: ResolvedOpenSpecRoot, type: ItemType, id: string, opts: { strict: boolean; json: boolean }): Promise<void> {
+  private async validateByType(root: ResolvedSaktiRoot, type: ItemType, id: string, opts: { strict: boolean; json: boolean }): Promise<void> {
     const validator = new Validator(opts.strict);
     if (type === 'change') {
       const changeDir = path.join(root.changesDir, id);
@@ -211,7 +211,7 @@ export class ValidateCommand {
     process.exitCode = report.valid ? 0 : 1;
   }
 
-  private printReport(type: ItemType, id: string, report: { valid: boolean; issues: any[] }, durationMs: number, json: boolean, root: ResolvedOpenSpecRoot): void {
+  private printReport(type: ItemType, id: string, report: { valid: boolean; issues: any[] }, durationMs: number, json: boolean, root: ResolvedSaktiRoot): void {
     if (json) {
       const out = { items: [{ id, type, valid: report.valid, issues: report.issues, durationMs }], summary: { totals: { items: 1, passed: report.valid ? 1 : 0, failed: report.valid ? 0 : 1 }, byType: { [type]: { items: 1, passed: report.valid ? 1 : 0, failed: report.valid ? 0 : 1 } } }, version: '1.0', root: toRootOutput(root) };
       console.log(JSON.stringify(out, null, 2));
@@ -230,12 +230,12 @@ export class ValidateCommand {
     }
   }
 
-  private printNextSteps(type: ItemType, id: string, root: ResolvedOpenSpecRoot): void {
+  private printNextSteps(type: ItemType, id: string, root: ResolvedSaktiRoot): void {
     const bullets: string[] = [];
     if (type === 'change') {
       bullets.push('- Ensure change has deltas in specs/: use headers ## ADDED/MODIFIED/REMOVED/RENAMED Requirements');
       bullets.push('- Each requirement MUST include at least one #### Scenario: block');
-      bullets.push(`- Debug parsed deltas: ${withStoreFlag(root, `openspec show ${id} --json --deltas-only`)}`);
+      bullets.push(`- Debug parsed deltas: ${withStoreFlag(root, `sakti show ${id} --json --deltas-only`)}`);
     } else {
       bullets.push('- Ensure spec includes ## Purpose and ## Requirements sections');
       bullets.push('- Each requirement MUST include at least one #### Scenario: block');
@@ -245,7 +245,7 @@ export class ValidateCommand {
     bullets.forEach(b => console.error(`  ${b}`));
   }
 
-  private async runBulkValidation(root: ResolvedOpenSpecRoot, scope: { changes: boolean; specs: boolean }, opts: { strict: boolean; json: boolean; concurrency?: string; noInteractive?: boolean }): Promise<void> {
+  private async runBulkValidation(root: ResolvedSaktiRoot, scope: { changes: boolean; specs: boolean }, opts: { strict: boolean; json: boolean; concurrency?: string; noInteractive?: boolean }): Promise<void> {
     const spinner = !opts.json && !opts.noInteractive ? ora('Validating...').start() : undefined;
     const [changeIds, specIds] = await Promise.all([
       scope.changes ? this.listChangeIds(root) : Promise.resolve<string[]>([]),
@@ -254,7 +254,7 @@ export class ValidateCommand {
 
     const DEFAULT_CONCURRENCY = 6;
     const maxSuggestions = 5; // used by nearestMatches
-    const concurrency = normalizeConcurrency(opts.concurrency) ?? normalizeConcurrency(process.env.OPENSPEC_CONCURRENCY) ?? DEFAULT_CONCURRENCY;
+    const concurrency = normalizeConcurrency(opts.concurrency) ?? normalizeConcurrency(process.env.SAKTI_CONCURRENCY) ?? DEFAULT_CONCURRENCY;
     const validator = new Validator(opts.strict);
     const queue: Array<() => Promise<BulkItemResult>> = [];
 
@@ -357,7 +357,7 @@ export class ValidateCommand {
       if (firstFailure) {
         const storeFlag = isStoreSelectedRoot(root) ? ` --store ${root.storeId}` : '';
         console.log(
-          `Details: openspec validate ${firstFailure.id} --type ${firstFailure.type}${storeFlag}`
+          `Details: sakti validate ${firstFailure.id} --type ${firstFailure.type}${storeFlag}`
         );
       }
     }

@@ -9,7 +9,7 @@ import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
 
 export function getBulkArchiveChangeSkillTemplate(): SkillTemplate {
   return {
-    name: 'openspec-bulk-archive-change',
+    name: 'sakti-bulk-archive-change',
     description: 'Archive multiple completed changes at once. Use when archiving several parallel changes.',
     instructions: `Archive multiple completed changes in a single operation.
 
@@ -23,7 +23,7 @@ ${STORE_SELECTION_GUIDANCE}
 
 1. **Get active changes**
 
-   Run \`openspec list --json\` to get all active changes.
+   Run \`sakti list --json\` to get all active changes.
 
    If no active changes exist, inform user and stop.
 
@@ -40,7 +40,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    For each selected change, collect:
 
-   a. **Artifact status** - Run \`openspec status --change "<name>" --json\`
+   a. **Artifact status** - Run \`sakti status --change "<name>" --json\`
       - Parse \`schemaName\`, \`artifacts\`, \`planningHome\`, \`changeRoot\`, \`artifactPaths\`, and \`actionContext\`
       - Note which artifacts are \`done\` vs other states
 
@@ -125,7 +125,7 @@ ${STORE_SELECTION_GUIDANCE}
    Process changes in the determined order (respecting conflict resolution):
 
    a. **Sync specs** if delta specs exist:
-      - Use the openspec-sync-specs approach (agent-driven intelligent merge)
+      - Use the sakti-sync-specs approach (agent-driven intelligent merge)
       - For conflicts, apply in resolved order
       - Track if sync was done
 
@@ -245,12 +245,12 @@ No active changes found. Create a new change to get started.
 - Show clear per-change status before confirming
 - Use single confirmation for entire batch
 - Track and report all outcomes (success/skip/fail)
-- Preserve .openspec.yaml when moving to archive
+- Preserve .sakti.yaml when moving to archive
 - Archive directory target uses current date: YYYY-MM-DD-<name>
 - If archive target exists, fail that change but continue with others`,
     license: 'MIT',
-    compatibility: 'Requires openspec CLI.',
-    metadata: { author: 'openspec', version: '1.0' },
+    compatibility: 'Requires sakti CLI.',
+    metadata: { author: 'sakti', version: '1.0' },
   };
 }
 
@@ -272,7 +272,7 @@ ${STORE_SELECTION_GUIDANCE}
 
 1. **Get active changes**
 
-   Run \`openspec list --json\` to get all active changes.
+   Run \`sakti list --json\` to get all active changes.
 
    If no active changes exist, inform user and stop.
 
@@ -289,7 +289,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    For each selected change, collect:
 
-   a. **Artifact status** - Run \`openspec status --change "<name>" --json\`
+   a. **Artifact status** - Run \`sakti status --change "<name>" --json\`
       - Parse \`schemaName\`, \`artifacts\`, \`planningHome\`, \`changeRoot\`, \`artifactPaths\`, and \`actionContext\`
       - Note which artifacts are \`done\` vs other states
 
@@ -374,7 +374,7 @@ ${STORE_SELECTION_GUIDANCE}
    Process changes in the determined order (respecting conflict resolution):
 
    a. **Sync specs** if delta specs exist:
-      - Use the openspec-sync-specs approach (agent-driven intelligent merge)
+      - Use the sakti-sync-specs approach (agent-driven intelligent merge)
       - For conflicts, apply in resolved order
       - Track if sync was done
 
@@ -494,7 +494,7 @@ No active changes found. Create a new change to get started.
 - Show clear per-change status before confirming
 - Use single confirmation for entire batch
 - Track and report all outcomes (success/skip/fail)
-- Preserve .openspec.yaml when moving to archive
+- Preserve .sakti.yaml when moving to archive
 - Archive directory target uses current date: YYYY-MM-DD-<name>
 - If archive target exists, fail that change but continue with others`
   };

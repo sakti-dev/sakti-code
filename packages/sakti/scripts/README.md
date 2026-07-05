@@ -1,6 +1,6 @@
-# OpenSpec Scripts
+# Sakti Scripts
 
-Utility scripts for OpenSpec maintenance and development.
+Utility scripts for Sakti maintenance and development.
 
 ## update-flake.sh
 

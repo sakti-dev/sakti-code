@@ -58,7 +58,7 @@ function findNearestAncestor(startPath: string, predicate: (dirPath: string) => 
 
 export function findRepoPlanningRootSync(startPath = process.cwd()): string | null {
   return findNearestAncestor(startPath, (dirPath) =>
-    pathExistsAsDirectory(path.join(dirPath, 'openspec'))
+    pathExistsAsDirectory(path.join(dirPath, '.sakti'))
   );
 }
 
@@ -66,7 +66,7 @@ function repoPlanningHome(repoRoot: string): PlanningHome {
   return {
     kind: 'repo',
     root: repoRoot,
-    changesDir: path.join(repoRoot, 'openspec', 'changes'),
+    changesDir: path.join(repoRoot, '.sakti', 'changes'),
     defaultSchema: REPO_DEFAULT_SCHEMA,
   };
 }
@@ -83,7 +83,7 @@ export function resolveCurrentPlanningHomeSync(
   }
 
   if (options.allowImplicitRepoRoot === false) {
-    throw new Error('No OpenSpec planning home found from the current directory.');
+    throw new Error('No Sakti planning home found from the current directory.');
   }
 
   return repoPlanningHome(FileSystemUtils.canonicalizeExistingPath(searchStart));

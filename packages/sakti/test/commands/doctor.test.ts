@@ -5,27 +5,27 @@ import * as path from 'node:path';
 
 import { getGlobalDataDir, registerStore } from '../../src/core/index.js';
 import { runCLI, type RunCLIResult } from '../helpers/run-cli.js';
-import { createOpenSpecRoot, writeSpec } from '../helpers/openspec-fixtures.js';
+import { createSaktiRoot, writeSpec } from '../helpers/sakti-fixtures.js';
 import { snapshotDirectory as snapshot } from '../helpers/fs-snapshot.js';
 
-describe('openspec doctor (3.6)', () => {
+describe('sakti doctor (3.6)', () => {
   let tempDir: string;
   let globalDataDir: string;
   let env: NodeJS.ProcessEnv;
   let storeRoot: string;
 
   beforeEach(async () => {
-    tempDir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-doctor-')));
+    tempDir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-doctor-')));
     env = {
       XDG_DATA_HOME: path.join(tempDir, 'data'),
       XDG_CONFIG_HOME: path.join(tempDir, 'config'),
       OPEN_SPEC_INTERACTIVE: '0',
-      OPENSPEC_TELEMETRY: '0',
+      SAKTI_TELEMETRY: '0',
     };
     globalDataDir = getGlobalDataDir({ env });
 
     storeRoot = path.join(tempDir, 'team-context');
-    createOpenSpecRoot(storeRoot);
+    createSaktiRoot(storeRoot);
     await registerStore({ id: 'team-context', localPath: storeRoot, globalDataDir });
   });
 
@@ -46,11 +46,11 @@ describe('openspec doctor (3.6)', () => {
   it('reports ok everywhere for a healthy store-backed root, all session shapes', async () => {
     // A resolvable reference.
     const upstream = path.join(tempDir, 'upstream-context');
-    createOpenSpecRoot(upstream);
+    createSaktiRoot(upstream);
     writeSpec(upstream, 'rules', '## Purpose\n\nRules.\n');
     await registerStore({ id: 'upstream-context', localPath: upstream, globalDataDir });
     fs.writeFileSync(
-      path.join(storeRoot, 'openspec', 'config.yaml'),
+      path.join(storeRoot, 'sakti', 'config.yaml'),
       'schema: spec-driven\nreferences:\n  - upstream-context\n'
     );
 
@@ -82,7 +82,7 @@ describe('openspec doctor (3.6)', () => {
     // Banner on stderr in human mode; sections in the transcript voice.
     const human = await runCLI(['doctor', '--store', 'team-context'], { cwd: tempDir, env });
     expect(human.exitCode).toBe(0);
-    expect(human.stderr).toContain('Using OpenSpec root: team-context');
+    expect(human.stderr).toContain('Using Sakti root: team-context');
     expect(human.stdout).toContain('Root');
     expect(human.stdout).toContain('  Store: team-context (metadata ok)');
     expect(human.stdout).toContain(`  - upstream-context: ok (${upstream})`);
@@ -93,8 +93,8 @@ describe('openspec doctor (3.6)', () => {
 
     // Declared-pointer session.
     const pointerRepo = mkdir('app-repo');
-    fs.mkdirSync(path.join(pointerRepo, 'openspec'), { recursive: true });
-    fs.writeFileSync(path.join(pointerRepo, 'openspec', 'config.yaml'), 'store: team-context\n');
+    fs.mkdirSync(path.join(pointerRepo, 'sakti'), { recursive: true });
+    fs.writeFileSync(path.join(pointerRepo, 'sakti', 'config.yaml'), 'store: team-context\n');
     const declared = await runCLI(['doctor', '--json'], { cwd: pointerRepo, env });
     expect(parseJson(declared).root.source).toBe('declared');
     expect(parseJson(declared).store.id).toBe('team-context');
@@ -113,7 +113,7 @@ describe('openspec doctor (3.6)', () => {
 
   it('shows broken relationships with pasteable fixes at exit 0', async () => {
     fs.writeFileSync(
-      path.join(storeRoot, 'openspec', 'config.yaml'),
+      path.join(storeRoot, 'sakti', 'config.yaml'),
       'schema: spec-driven\n' +
         'references:\n  - { id: design-system, remote: https://192.0.2.1/ds.git }\n'
     );
@@ -137,7 +137,7 @@ describe('openspec doctor (3.6)', () => {
 
   it('distinguishes an empty registry from an unreadable one', async () => {
     fs.writeFileSync(
-      path.join(storeRoot, 'openspec', 'config.yaml'),
+      path.join(storeRoot, 'sakti', 'config.yaml'),
       'schema: spec-driven\nreferences:\n  - ghost-context\n'
     );
 
@@ -162,20 +162,20 @@ describe('openspec doctor (3.6)', () => {
   it('surfaces both-shapes and inert-pointer wrong turns', async () => {
     // Both shapes: a real root whose config declares a pointer.
     fs.writeFileSync(
-      path.join(storeRoot, 'openspec', 'config.yaml'),
+      path.join(storeRoot, 'sakti', 'config.yaml'),
       'schema: spec-driven\nstore: team-context\n'
     );
     const bothShapes = await runCLI(['doctor', '--json'], { cwd: storeRoot, env });
     expect(parseJson(bothShapes).status[0]).toEqual(
       expect.objectContaining({ code: 'root_pointer_ignored' })
     );
-    fs.writeFileSync(path.join(storeRoot, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+    fs.writeFileSync(path.join(storeRoot, 'sakti', 'config.yaml'), 'schema: spec-driven\n');
 
     // Inert pointer declarations, including from a subdirectory.
     const pointerRepo = mkdir('app-repo');
-    fs.mkdirSync(path.join(pointerRepo, 'openspec'), { recursive: true });
+    fs.mkdirSync(path.join(pointerRepo, 'sakti'), { recursive: true });
     fs.writeFileSync(
-      path.join(pointerRepo, 'openspec', 'config.yaml'),
+      path.join(pointerRepo, 'sakti', 'config.yaml'),
       'store: team-context\nreferences:\n  - wrong-context\n'
     );
     const subdir = mkdir('app-repo/packages/api');
@@ -189,7 +189,7 @@ describe('openspec doctor (3.6)', () => {
 
   it('notes remote divergence as info in the store section', async () => {
     fs.writeFileSync(
-      path.join(storeRoot, '.openspec-store', 'store.yaml'),
+      path.join(storeRoot, '.sakti-store', 'store.yaml'),
       'version: 1\nid: team-context\nremote: https://192.0.2.1/canon.git\n'
     );
     const { execFileSync } = await import('node:child_process');
@@ -233,13 +233,13 @@ describe('openspec doctor (3.6)', () => {
     const bare = mkdir('bare-dir-human');
     const result = await runCLI(['doctor'], { cwd: bare, env });
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('Error: No OpenSpec root found');
+    expect(result.stderr).toContain('Error: No Sakti root found');
     expect(result.stderr).not.toContain('at ');
   });
 
   it('distinguishes self-reference omission from none declared', async () => {
     fs.writeFileSync(
-      path.join(storeRoot, 'openspec', 'config.yaml'),
+      path.join(storeRoot, 'sakti', 'config.yaml'),
       'schema: spec-driven\nreferences:\n  - team-context\n'
     );
     const result = await runCLI(['doctor', '--store', 'team-context'], { cwd: tempDir, env });
@@ -249,7 +249,7 @@ describe('openspec doctor (3.6)', () => {
 
   it('surfaces a malformed pointer on a real root', async () => {
     fs.writeFileSync(
-      path.join(storeRoot, 'openspec', 'config.yaml'),
+      path.join(storeRoot, 'sakti', 'config.yaml'),
       'schema: spec-driven\nstore: [broken]\n'
     );
     const result = await runCLI(['doctor', '--json'], { cwd: storeRoot, env });
@@ -260,7 +260,7 @@ describe('openspec doctor (3.6)', () => {
   });
 
   it('is read-only and changes nothing elsewhere', async () => {
-    fs.writeFileSync(path.join(storeRoot, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+    fs.writeFileSync(path.join(storeRoot, 'sakti', 'config.yaml'), 'schema: spec-driven\n');
     const rootBefore = snapshot(storeRoot);
     const dataBefore = snapshot(path.join(tempDir, 'data'));
 

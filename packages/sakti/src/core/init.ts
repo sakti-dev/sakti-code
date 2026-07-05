@@ -1,7 +1,7 @@
 /**
  * Init Command
  *
- * Sets up OpenSpec with Agent Skills and /opsx:* slash commands.
+ * Sets up Sakti with Agent Skills and /sakti:* slash commands.
  * This is the unified setup command that replaces both the old init and experimental commands.
  */
 
@@ -11,12 +11,12 @@ import ora from 'ora';
 import * as fs from 'fs';
 import { createRequire } from 'module';
 import { FileSystemUtils } from '../utils/file-system.js';
-import { classifyOpenSpecDir, storePointerProblem } from './project-config.js';
+import { classifySaktiDir, storePointerProblem } from './project-config.js';
 import { findRepoPlanningRootSync } from './planning-home.js';
 import { transformToHyphenCommands } from '../utils/command-references.js';
 import {
   AI_TOOLS,
-  OPENSPEC_DIR_NAME,
+  SAKTI_DIR_NAME,
   AIToolOption,
 } from './config.js';
 import { PALETTE } from './styles/palette.js';
@@ -49,7 +49,7 @@ import { getAvailableTools } from './available-tools.js';
 import { migrateIfNeeded } from './migration.js';
 
 const require = createRequire(import.meta.url);
-const { version: OPENSPEC_VERSION } = require('../../package.json');
+const { version: SAKTI_VERSION } = require('../../package.json');
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -63,17 +63,17 @@ const PROGRESS_SPINNER = {
 };
 
 const WORKFLOW_TO_SKILL_DIR: Record<string, string> = {
-  'explore': 'openspec-explore',
-  'new': 'openspec-new-change',
-  'continue': 'openspec-continue-change',
-  'apply': 'openspec-apply-change',
-  'ff': 'openspec-ff-change',
-  'sync': 'openspec-sync-specs',
-  'archive': 'openspec-archive-change',
-  'bulk-archive': 'openspec-bulk-archive-change',
-  'verify': 'openspec-verify-change',
-  'onboard': 'openspec-onboard',
-  'propose': 'openspec-propose',
+  'explore': 'sakti-explore',
+  'new': 'sakti-new-change',
+  'continue': 'sakti-continue-change',
+  'apply': 'sakti-apply-change',
+  'ff': 'sakti-ff-change',
+  'sync': 'sakti-sync-specs',
+  'archive': 'sakti-archive-change',
+  'bulk-archive': 'sakti-bulk-archive-change',
+  'verify': 'sakti-verify-change',
+  'onboard': 'sakti-onboard',
+  'propose': 'sakti-propose',
 };
 
 // -----------------------------------------------------------------------------
@@ -106,13 +106,13 @@ export class InitCommand {
 
   async execute(targetPath: string): Promise<void> {
     const projectPath = path.resolve(targetPath);
-    const openspecDir = OPENSPEC_DIR_NAME;
-    const openspecPath = path.join(projectPath, openspecDir);
+    const saktiDir = SAKTI_DIR_NAME;
+    const saktiPath = path.join(projectPath, saktiDir);
 
     // Validation happens silently in the background
-    const extendMode = await this.validate(projectPath, openspecPath);
+    const extendMode = await this.validate(projectPath, saktiPath);
 
-    // Pointer guard (slice 3.2): a config-only openspec/ with a store:
+    // Pointer guard (slice 3.2): a config-only sakti/ with a store:
     // declaration is externalized planning, not a root to extend — and a
     // subdirectory of such a repo must not silently grow a nested root.
     // Refuse before legacy cleanup, migration, or prompts touch anything.
@@ -121,19 +121,19 @@ export class InitCommand {
     // refuse exactly where a normal command would resolve the pointer).
     const guardRoot = findRepoPlanningRootSync(projectPath);
     if (guardRoot) {
-      const { hasPlanningShape, pointer } = classifyOpenSpecDir(guardRoot);
+      const { hasPlanningShape, pointer } = classifySaktiDir(guardRoot);
       if (!hasPlanningShape) {
         if (pointer.malformed) {
           throw new Error(
             `The store declaration in ${pointer.filePath} is invalid (` +
               storePointerProblem(pointer.malformed) +
-              `). Fix or remove the store: line before running openspec init.`
+              `). Fix or remove the store: line before running sakti init.`
           );
         }
         if (pointer.value !== undefined) {
           throw new Error(
             `This repo's planning is externalized to store '${pointer.value}' (${pointer.filePath}). ` +
-              `Remove the store: line first to convert this repo to a local OpenSpec root.`
+              `Remove the store: line first to convert this repo to a local Sakti root.`
           );
         }
       }
@@ -171,13 +171,13 @@ export class InitCommand {
     const validatedTools = this.validateTools(selectedToolIds, toolStates);
 
     // Create directory structure and config
-    await this.createDirectoryStructure(openspecPath, extendMode);
+    await this.createDirectoryStructure(saktiPath, extendMode);
 
     // Generate skills and commands for each tool
     const results = await this.generateSkillsAndCommands(projectPath, validatedTools);
 
     // Create config.yaml if needed
-    const configStatus = await this.createConfig(openspecPath, extendMode);
+    const configStatus = await this.createConfig(saktiPath, extendMode);
 
     // Display success message
     this.displaySuccessMessage(projectPath, validatedTools, results, configStatus);
@@ -189,9 +189,9 @@ export class InitCommand {
 
   private async validate(
     projectPath: string,
-    openspecPath: string
+    saktiPath: string
   ): Promise<boolean> {
-    const extendMode = await FileSystemUtils.directoryExists(openspecPath);
+    const extendMode = await FileSystemUtils.directoryExists(saktiPath);
 
     // Check write permissions
     if (!(await FileSystemUtils.ensureWritePermissions(projectPath))) {
@@ -239,7 +239,7 @@ export class InitCommand {
 
     if (this.force || !canPrompt) {
       // --force flag or non-interactive mode: proceed with cleanup automatically.
-      // Legacy slash commands are 100% OpenSpec-managed, and config file cleanup
+      // Legacy slash commands are 100% Sakti-managed, and config file cleanup
       // only removes markers (never deletes files), so auto-cleanup is safe.
       await this.performLegacyCleanup(projectPath, detection);
       return;
@@ -352,7 +352,7 @@ export class InitCommand {
       .map((toolId) => AI_TOOLS.find((t) => t.value === toolId)?.name || toolId);
 
     if (configuredNames.length > 0) {
-      console.log(`OpenSpec configured: ${configuredNames.join(', ')} (pre-selected)`);
+      console.log(`Sakti configured: ${configuredNames.join(', ')} (pre-selected)`);
     }
 
     const detectedOnlyNames = detectedTools
@@ -481,14 +481,14 @@ export class InitCommand {
   // DIRECTORY STRUCTURE
   // ═══════════════════════════════════════════════════════════
 
-  private async createDirectoryStructure(openspecPath: string, extendMode: boolean): Promise<void> {
+  private async createDirectoryStructure(saktiPath: string, extendMode: boolean): Promise<void> {
     if (extendMode) {
       // In extend mode, just ensure directories exist without spinner
       const directories = [
-        openspecPath,
-        path.join(openspecPath, 'specs'),
-        path.join(openspecPath, 'changes'),
-        path.join(openspecPath, 'changes', 'archive'),
+        saktiPath,
+        path.join(saktiPath, 'specs'),
+        path.join(saktiPath, 'changes'),
+        path.join(saktiPath, 'changes', 'archive'),
       ];
 
       for (const dir of directories) {
@@ -497,13 +497,13 @@ export class InitCommand {
       return;
     }
 
-    const spinner = this.startSpinner('Creating OpenSpec structure...');
+    const spinner = this.startSpinner('Creating Sakti structure...');
 
     const directories = [
-      openspecPath,
-      path.join(openspecPath, 'specs'),
-      path.join(openspecPath, 'changes'),
-      path.join(openspecPath, 'changes', 'archive'),
+      saktiPath,
+      path.join(saktiPath, 'specs'),
+      path.join(saktiPath, 'changes'),
+      path.join(saktiPath, 'changes', 'archive'),
     ];
 
     for (const dir of directories) {
@@ -512,7 +512,7 @@ export class InitCommand {
 
     spinner.stopAndPersist({
       symbol: PALETTE.white('▌'),
-      text: PALETTE.white('OpenSpec structure created'),
+      text: PALETTE.white('Sakti structure created'),
     });
   }
 
@@ -568,7 +568,7 @@ export class InitCommand {
             // Generate SKILL.md content with YAML frontmatter including generatedBy
             // Use hyphen-based command references for tools where filename = command name
             const transformer = (tool.value === 'opencode' || tool.value === 'pi') ? transformToHyphenCommands : undefined;
-            const skillContent = generateSkillContent(template, OPENSPEC_VERSION, transformer);
+            const skillContent = generateSkillContent(template, SAKTI_VERSION, transformer);
 
             // Write the skill file
             await FileSystemUtils.writeFile(skillFile, skillContent);
@@ -624,9 +624,9 @@ export class InitCommand {
   // CONFIG FILE
   // ═══════════════════════════════════════════════════════════
 
-  private async createConfig(openspecPath: string, extendMode: boolean): Promise<'created' | 'exists' | 'skipped'> {
-    const configPath = path.join(openspecPath, 'config.yaml');
-    const configYmlPath = path.join(openspecPath, 'config.yml');
+  private async createConfig(saktiPath: string, extendMode: boolean): Promise<'created' | 'exists' | 'skipped'> {
+    const configPath = path.join(saktiPath, 'config.yaml');
+    const configYmlPath = path.join(saktiPath, 'config.yml');
     const configYamlExists = fs.existsSync(configPath);
     const configYmlExists = fs.existsSync(configYmlPath);
 
@@ -662,7 +662,7 @@ export class InitCommand {
     configStatus: 'created' | 'exists' | 'skipped'
   ): void {
     console.log();
-    console.log(chalk.bold('OpenSpec Setup Complete'));
+    console.log(chalk.bold('Sakti Setup Complete'));
     console.log();
 
     // Show created vs refreshed tools
@@ -710,13 +710,13 @@ export class InitCommand {
 
     // Config status
     if (configStatus === 'created') {
-      console.log(`Config: openspec/config.yaml (schema: ${DEFAULT_SCHEMA})`);
+      console.log(`Config: sakti/config.yaml (schema: ${DEFAULT_SCHEMA})`);
     } else if (configStatus === 'exists') {
       // Show actual filename (config.yaml or config.yml)
-      const configYaml = path.join(projectPath, OPENSPEC_DIR_NAME, 'config.yaml');
-      const configYml = path.join(projectPath, OPENSPEC_DIR_NAME, 'config.yml');
+      const configYaml = path.join(projectPath, SAKTI_DIR_NAME, 'config.yaml');
+      const configYml = path.join(projectPath, SAKTI_DIR_NAME, 'config.yml');
       const configName = fs.existsSync(configYaml) ? 'config.yaml' : fs.existsSync(configYml) ? 'config.yml' : 'config.yaml';
-      console.log(`Config: openspec/${configName} (exists)`);
+      console.log(`Config: sakti/${configName} (exists)`);
     } else {
       console.log(chalk.dim(`Config: skipped (non-interactive mode)`));
     }
@@ -728,18 +728,18 @@ export class InitCommand {
     console.log();
     if (activeWorkflows.includes('propose')) {
       console.log(chalk.bold('Getting started:'));
-      console.log('  Start your first change: /opsx:propose "your idea"');
+      console.log('  Start your first change: /sakti:propose "your idea"');
     } else if (activeWorkflows.includes('new')) {
       console.log(chalk.bold('Getting started:'));
-      console.log('  Start your first change: /opsx:new "your idea"');
+      console.log('  Start your first change: /sakti:new "your idea"');
     } else {
-      console.log("Done. Run 'openspec config profile' to configure your workflows.");
+      console.log("Done. Run 'sakti config' profile' to configure your workflows.");
     }
 
     // Links
     console.log();
-    console.log(`Learn more: ${chalk.cyan('https://github.com/Fission-AI/OpenSpec')}`);
-    console.log(`Feedback:   ${chalk.cyan('https://github.com/Fission-AI/OpenSpec/issues')}`);
+    console.log(`Learn more: ${chalk.cyan('https://github.com/Fission-AI/Sakti')}`);
+    console.log(`Feedback:   ${chalk.cyan('https://github.com/Fission-AI/Sakti/issues')}`);
 
     // Restart instruction if any tools were configured
     if (results.createdTools.length > 0 || results.refreshedTools.length > 0) {

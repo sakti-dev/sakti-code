@@ -61,33 +61,33 @@ const EXPECTED_FUNCTION_HASHES: Record<string, string> = {
 };
 
 const EXPECTED_GENERATED_SKILL_CONTENT_HASHES: Record<string, string> = {
-  'openspec-explore': '08f905865f86e787262fed252c59ed343ac24db8befa31e5cf8fd99af947263b',
-  'openspec-new-change': 'bdb534d6d5a00b235f63852af089f904fd20df34be526ef67990ec3183829f33',
-  'openspec-continue-change': '5d2aea621310d74d89e547d705d2e08e6d5a44da7bca93ba049ed43ebf60295e',
-  'openspec-apply-change': '54cffa61274c6a499d2b3775e9f6db29255fd8e5ad99d7352c1e3bbe2edb45ed',
-  'openspec-ff-change': 'cbb7844c130bd188319ff2b3f0c0320243b5ae5b588a0f816cd4e29408f25676',
-  'openspec-sync-specs': 'a81fd87f5e871874eab72e57c10a1949fde46d1d07d95f8ea3bc1a52b4e78c43',
-  'openspec-archive-change': '833290ade47ddaed7f5e523d07437c7cef2497340021e944096bce449e290c22',
-  'openspec-bulk-archive-change': '244b195e53d3f010a99892c1922c800fd8f02e7745d0f34ec18b5fe9b5548706',
-  'openspec-verify-change': '97d1eed5b900788706c28339e27c1d2d9c548626316253f43ebd00d8d52d02d6',
-  'openspec-onboard': 'd136b6ab7134d6bceeca73bc2f6037624506587e8df99059f77fe88874256ed1',
-  'openspec-propose': '5c350d80247722489374a49ec9853d5fda55a827f421fbb32b6b6a078fcb69ee',
+  'sakti-explore': '08f905865f86e787262fed252c59ed343ac24db8befa31e5cf8fd99af947263b',
+  'sakti-new-change': 'bdb534d6d5a00b235f63852af089f904fd20df34be526ef67990ec3183829f33',
+  'sakti-continue-change': '5d2aea621310d74d89e547d705d2e08e6d5a44da7bca93ba049ed43ebf60295e',
+  'sakti-apply-change': '54cffa61274c6a499d2b3775e9f6db29255fd8e5ad99d7352c1e3bbe2edb45ed',
+  'sakti-ff-change': 'cbb7844c130bd188319ff2b3f0c0320243b5ae5b588a0f816cd4e29408f25676',
+  'sakti-sync-specs': 'a81fd87f5e871874eab72e57c10a1949fde46d1d07d95f8ea3bc1a52b4e78c43',
+  'sakti-archive-change': '833290ade47ddaed7f5e523d07437c7cef2497340021e944096bce449e290c22',
+  'sakti-bulk-archive-change': '244b195e53d3f010a99892c1922c800fd8f02e7745d0f34ec18b5fe9b5548706',
+  'sakti-verify-change': '97d1eed5b900788706c28339e27c1d2d9c548626316253f43ebd00d8d52d02d6',
+  'sakti-onboard': 'd136b6ab7134d6bceeca73bc2f6037624506587e8df99059f77fe88874256ed1',
+  'sakti-propose': '5c350d80247722489374a49ec9853d5fda55a827f421fbb32b6b6a078fcb69ee',
 };
 
 // Intentionally excludes getFeedbackSkillTemplate: this list only models templates
 // deployed via generateSkillContent, while feedback is covered in function payload parity.
 const GENERATED_SKILL_FACTORIES: Array<[string, () => SkillTemplate]> = [
-  ['openspec-explore', getExploreSkillTemplate],
-  ['openspec-new-change', getNewChangeSkillTemplate],
-  ['openspec-continue-change', getContinueChangeSkillTemplate],
-  ['openspec-apply-change', getApplyChangeSkillTemplate],
-  ['openspec-ff-change', getFfChangeSkillTemplate],
-  ['openspec-sync-specs', getSyncSpecsSkillTemplate],
-  ['openspec-archive-change', getArchiveChangeSkillTemplate],
-  ['openspec-bulk-archive-change', getBulkArchiveChangeSkillTemplate],
-  ['openspec-verify-change', getVerifyChangeSkillTemplate],
-  ['openspec-onboard', getOnboardSkillTemplate],
-  ['openspec-propose', getOpsxProposeSkillTemplate],
+  ['sakti-explore', getExploreSkillTemplate],
+  ['sakti-new-change', getNewChangeSkillTemplate],
+  ['sakti-continue-change', getContinueChangeSkillTemplate],
+  ['sakti-apply-change', getApplyChangeSkillTemplate],
+  ['sakti-ff-change', getFfChangeSkillTemplate],
+  ['sakti-sync-specs', getSyncSpecsSkillTemplate],
+  ['sakti-archive-change', getArchiveChangeSkillTemplate],
+  ['sakti-bulk-archive-change', getBulkArchiveChangeSkillTemplate],
+  ['sakti-verify-change', getVerifyChangeSkillTemplate],
+  ['sakti-onboard', getOnboardSkillTemplate],
+  ['sakti-propose', getOpsxProposeSkillTemplate],
 ];
 
 function stableStringify(value: unknown): string {
@@ -166,7 +166,7 @@ describe('skill templates split parity', () => {
     }
   });
 
-  it('teaches store selection in every deployed opsx command template', () => {
+  it('teaches store selection in every deployed sakti command template', () => {
     for (const entry of getCommandContents()) {
       expect(entry.body, entry.id).toContain(STORE_SELECTION_GUIDANCE);
     }
@@ -178,11 +178,11 @@ describe('skill templates split parity', () => {
 
   it('generates no workspace-planning residue in any workflow template (4.1)', () => {
     const allSkills: Array<[string, () => SkillTemplate]> = [
-      ['openspec-apply-change', getApplyChangeSkillTemplate],
-      ['openspec-sync-specs', getSyncSpecsSkillTemplate],
-      ['openspec-archive-change', getArchiveChangeSkillTemplate],
-      ['openspec-bulk-archive-change', getBulkArchiveChangeSkillTemplate],
-      ['openspec-verify-change', getVerifyChangeSkillTemplate],
+      ['sakti-apply-change', getApplyChangeSkillTemplate],
+      ['sakti-sync-specs', getSyncSpecsSkillTemplate],
+      ['sakti-archive-change', getArchiveChangeSkillTemplate],
+      ['sakti-bulk-archive-change', getBulkArchiveChangeSkillTemplate],
+      ['sakti-verify-change', getVerifyChangeSkillTemplate],
     ];
 
     for (const [dirName, createTemplate] of allSkills) {

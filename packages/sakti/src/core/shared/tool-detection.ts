@@ -9,26 +9,26 @@ import * as fs from 'fs';
 import { AI_TOOLS } from '../config.js';
 
 /**
- * Names of skill directories created by openspec init.
+ * Names of skill directories created by sakti init.
  */
 export const SKILL_NAMES = [
-  'openspec-explore',
-  'openspec-new-change',
-  'openspec-continue-change',
-  'openspec-apply-change',
-  'openspec-ff-change',
-  'openspec-sync-specs',
-  'openspec-archive-change',
-  'openspec-bulk-archive-change',
-  'openspec-verify-change',
-  'openspec-onboard',
-  'openspec-propose',
+  'sakti-explore',
+  'sakti-new-change',
+  'sakti-continue-change',
+  'sakti-apply-change',
+  'sakti-ff-change',
+  'sakti-sync-specs',
+  'sakti-archive-change',
+  'sakti-bulk-archive-change',
+  'sakti-verify-change',
+  'sakti-onboard',
+  'sakti-propose',
 ] as const;
 
 export type SkillName = (typeof SKILL_NAMES)[number];
 
 /**
- * IDs of command templates created by openspec init.
+ * IDs of command templates created by sakti init.
  */
 export const COMMAND_IDS = [
   'explore',
@@ -138,7 +138,7 @@ export function extractGeneratedByVersion(skillFilePath: string): string | null 
     // ---
     // ...
     // metadata:
-    //   author: openspec
+    //   author: sakti
     //   version: "1.0"
     //   generatedBy: "0.23.0"
     // ---

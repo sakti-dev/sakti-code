@@ -1,4 +1,4 @@
-// Core OpenSpec logic will be implemented here
+// Core Sakti logic will be implemented here
 export {
   GLOBAL_CONFIG_DIR_NAME,
   GLOBAL_CONFIG_FILE_NAME,
@@ -15,4 +15,4 @@ export {
 export * from './references.js';
 export * from './store/index.js';
 export * from './planning-home.js';
-export * from './openspec-root.js';
+export * from './sakti-root.js';

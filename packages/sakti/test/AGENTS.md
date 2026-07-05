@@ -1,4 +1,4 @@
-# OpenSpec Test Guidance
+# Sakti Test Guidance
 
 Applies to tests under `test/`.
 

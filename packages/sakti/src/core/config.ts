@@ -1,11 +1,11 @@
-export const OPENSPEC_DIR_NAME = 'openspec';
+export const SAKTI_DIR_NAME = 'sakti';
 
-export const OPENSPEC_MARKERS = {
-  start: '<!-- OPENSPEC:START -->',
-  end: '<!-- OPENSPEC:END -->'
+export const SAKTI_MARKERS = {
+  start: '<!-- SAKTI:START -->',
+  end: '<!-- SAKTI:END -->'
 };
 
-export interface OpenSpecConfig {
+export interface SaktiConfig {
   aiTools: string[];
 }
 

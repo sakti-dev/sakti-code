@@ -5,10 +5,10 @@ import * as path from 'node:path';
 
 import { getGlobalDataDir, registerStore } from '../../src/core/index.js';
 import { runCLI, type RunCLIResult } from '../helpers/run-cli.js';
-import { createOpenSpecRoot } from '../helpers/openspec-fixtures.js';
+import { createSaktiRoot } from '../helpers/sakti-fixtures.js';
 import { snapshotDirectory as snapshot } from '../helpers/fs-snapshot.js';
 
-describe('openspec context (4.1)', () => {
+describe('sakti context (4.1)', () => {
   let tempDir: string;
   let globalDataDir: string;
   let env: NodeJS.ProcessEnv;
@@ -16,25 +16,25 @@ describe('openspec context (4.1)', () => {
   let upstream: string;
 
   beforeEach(async () => {
-    tempDir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-context-')));
+    tempDir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-context-')));
     env = {
       XDG_DATA_HOME: path.join(tempDir, 'data'),
       XDG_CONFIG_HOME: path.join(tempDir, 'config'),
       OPEN_SPEC_INTERACTIVE: '0',
-      OPENSPEC_TELEMETRY: '0',
+      SAKTI_TELEMETRY: '0',
     };
     globalDataDir = getGlobalDataDir({ env });
 
     storeRoot = path.join(tempDir, 'team-context');
-    createOpenSpecRoot(storeRoot);
+    createSaktiRoot(storeRoot);
     await registerStore({ id: 'team-context', localPath: storeRoot, globalDataDir });
 
     upstream = path.join(tempDir, 'upstream-context');
-    createOpenSpecRoot(upstream);
+    createSaktiRoot(upstream);
     await registerStore({ id: 'upstream-context', localPath: upstream, globalDataDir });
 
     fs.writeFileSync(
-      path.join(storeRoot, 'openspec', 'config.yaml'),
+      path.join(storeRoot, 'sakti', 'config.yaml'),
       'schema: spec-driven\n' +
         'references:\n  - upstream-context\n  - { id: design-system, remote: https://192.0.2.1/ds.git }\n'
     );
@@ -59,14 +59,14 @@ describe('openspec context (4.1)', () => {
       path: storeRoot,
       source: 'store',
       store_id: 'team-context',
-      role: 'openspec_root',
+      role: 'sakti_root',
     });
     expect(workingSet.members).toEqual([
       {
         role: 'referenced_store',
         id: 'upstream-context',
         path: upstream,
-        fetch: 'openspec show <spec-id> --type spec --store upstream-context',
+        fetch: 'sakti show <spec-id> --type spec --store upstream-context',
         status: [],
       },
       {
@@ -86,7 +86,7 @@ describe('openspec context (4.1)', () => {
     expect(human.exitCode).toBe(0);
     expect(human.stdout).toContain(`Working context for team-context (${storeRoot})`);
     expect(human.stdout).toContain(`  upstream-context  ${upstream}`);
-    expect(human.stdout).toContain('Fetch: openspec show <spec-id> --type spec --store upstream-context');
+    expect(human.stdout).toContain('Fetch: sakti show <spec-id> --type spec --store upstream-context');
     expect(human.stdout).toContain('Not available on this machine');
     expect(human.stdout).toContain('Fix: git clone --');
 
@@ -96,8 +96,8 @@ describe('openspec context (4.1)', () => {
 
     // Declared-pointer session.
     const pointerRepo = path.join(tempDir, 'app-repo');
-    fs.mkdirSync(path.join(pointerRepo, 'openspec'), { recursive: true });
-    fs.writeFileSync(path.join(pointerRepo, 'openspec', 'config.yaml'), 'store: team-context\n');
+    fs.mkdirSync(path.join(pointerRepo, 'sakti'), { recursive: true });
+    fs.writeFileSync(path.join(pointerRepo, 'sakti', 'config.yaml'), 'store: team-context\n');
     const declared = await runCLI(['context', '--json'], { cwd: pointerRepo, env });
     expect(parseJson(declared).root.source).toBe('declared');
     expect(parseJson(declared).members).toHaveLength(2);
@@ -105,7 +105,7 @@ describe('openspec context (4.1)', () => {
 
   it('distinguishes self-reference omission from nothing declared', async () => {
     fs.writeFileSync(
-      path.join(storeRoot, 'openspec', 'config.yaml'),
+      path.join(storeRoot, 'sakti', 'config.yaml'),
       'schema: spec-driven\nreferences:\n  - team-context\n'
     );
     const human = await runCLI(['context', '--store', 'team-context'], { cwd: tempDir, env });
@@ -114,7 +114,7 @@ describe('openspec context (4.1)', () => {
   });
 
   it('says so plainly when nothing is declared', async () => {
-    fs.writeFileSync(path.join(storeRoot, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+    fs.writeFileSync(path.join(storeRoot, 'sakti', 'config.yaml'), 'schema: spec-driven\n');
     const human = await runCLI(['context', '--store', 'team-context'], { cwd: tempDir, env });
     expect(human.stdout).toContain('the working set is this root alone');
     const json = await runCLI(['context', '--json', '--store', 'team-context'], {

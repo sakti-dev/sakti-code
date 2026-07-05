@@ -11,7 +11,7 @@ import {
   serializeStoreMetadataState,
 } from '../../src/core/index.js';
 import { runCLI, type RunCLIResult } from '../helpers/run-cli.js';
-import { createHealthyOpenSpecRoot, isolatedGitEnv } from '../helpers/store-git.js';
+import { createHealthySaktiRoot, isolatedGitEnv } from '../helpers/store-git.js';
 
 const TEST_NET_URL = 'https://192.0.2.1/acme/team-context.git';
 
@@ -21,12 +21,12 @@ describe('store canonical remote (3.3)', () => {
   let env: NodeJS.ProcessEnv;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-store-remote-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-store-remote-'));
     env = {
       XDG_DATA_HOME: path.join(tempDir, 'data'),
       XDG_CONFIG_HOME: path.join(tempDir, 'config'),
       OPEN_SPEC_INTERACTIVE: '0',
-      OPENSPEC_TELEMETRY: '0',
+      SAKTI_TELEMETRY: '0',
       ...isolatedGitEnv(tempDir),
     };
     globalDataDir = getGlobalDataDir({ env });
@@ -88,10 +88,10 @@ describe('store canonical remote (3.3)', () => {
       );
       expect(result.exitCode).toBe(0);
 
-      const committed = git(storeRoot, 'show', 'HEAD:.openspec-store/store.yaml');
+      const committed = git(storeRoot, 'show', 'HEAD:.sakti-store/store.yaml');
       expect(committed).toContain(`remote: ${TEST_NET_URL}`);
       expect(committed).toBe(
-        fs.readFileSync(path.join(storeRoot, '.openspec-store', 'store.yaml'), 'utf-8')
+        fs.readFileSync(path.join(storeRoot, '.sakti-store', 'store.yaml'), 'utf-8')
       );
       // Setup observes no origin on a fresh init.
       expect(await registryRemote('team-context')).toBeUndefined();
@@ -113,7 +113,7 @@ describe('store canonical remote (3.3)', () => {
         cwd: tempDir,
         env,
       });
-      const before = fs.readFileSync(path.join(storeRoot, '.openspec-store', 'store.yaml'), 'utf-8');
+      const before = fs.readFileSync(path.join(storeRoot, '.sakti-store', 'store.yaml'), 'utf-8');
 
       const result = await runCLI(
         ['store', 'setup', 'retrofit-context', '--path', storeRoot, '--remote', TEST_NET_URL, '--json'],
@@ -122,8 +122,8 @@ describe('store canonical remote (3.3)', () => {
       expect(result.exitCode).toBe(1);
       const status = parseJson(result).status;
       expect(status[0].code).toBe('store_remote_requires_hand_edit');
-      expect(status[0].fix).toContain(path.join('.openspec-store', 'store.yaml'));
-      expect(fs.readFileSync(path.join(storeRoot, '.openspec-store', 'store.yaml'), 'utf-8')).toBe(
+      expect(status[0].fix).toContain(path.join('.sakti-store', 'store.yaml'));
+      expect(fs.readFileSync(path.join(storeRoot, '.sakti-store', 'store.yaml'), 'utf-8')).toBe(
         before
       );
     });
@@ -135,7 +135,7 @@ describe('store canonical remote (3.3)', () => {
         env,
       });
       expect(
-        fs.readFileSync(path.join(storeRoot, '.openspec-store', 'store.yaml'), 'utf-8')
+        fs.readFileSync(path.join(storeRoot, '.sakti-store', 'store.yaml'), 'utf-8')
       ).toBe('version: 1\nid: plain-context\n');
     });
 
@@ -150,7 +150,7 @@ describe('store canonical remote (3.3)', () => {
       );
       expect(result.exitCode).toBe(0);
       expect(
-        fs.readFileSync(path.join(storeRoot, '.openspec-store', 'store.yaml'), 'utf-8')
+        fs.readFileSync(path.join(storeRoot, '.sakti-store', 'store.yaml'), 'utf-8')
       ).toContain(`remote: ${TEST_NET_URL}`);
       expect(fs.existsSync(path.join(storeRoot, '.git'))).toBe(false);
     });
@@ -169,10 +169,10 @@ describe('store canonical remote (3.3)', () => {
   describe('register', () => {
     function makeUnregisteredStore(name: string, options: { origin?: string; metadataRemote?: string } = {}): string {
       const storeRoot = path.join(tempDir, name);
-      createHealthyOpenSpecRoot(storeRoot);
-      fs.mkdirSync(path.join(storeRoot, '.openspec-store'), { recursive: true });
+      createHealthySaktiRoot(storeRoot);
+      fs.mkdirSync(path.join(storeRoot, '.sakti-store'), { recursive: true });
       fs.writeFileSync(
-        path.join(storeRoot, '.openspec-store', 'store.yaml'),
+        path.join(storeRoot, '.sakti-store', 'store.yaml'),
         `version: 1\nid: ${name}\n` +
           (options.metadataRemote ? `remote: ${options.metadataRemote}\n` : '')
       );
@@ -188,7 +188,7 @@ describe('store canonical remote (3.3)', () => {
     it('records the observed origin read-only and refreshes on re-register', async () => {
       const storeRoot = makeUnregisteredStore('cloned-context', { origin: TEST_NET_URL });
       const metadataBefore = fs.readFileSync(
-        path.join(storeRoot, '.openspec-store', 'store.yaml'),
+        path.join(storeRoot, '.sakti-store', 'store.yaml'),
         'utf-8'
       );
       const headBefore = git(storeRoot, 'rev-parse', 'HEAD').trim();
@@ -201,7 +201,7 @@ describe('store canonical remote (3.3)', () => {
       expect(await registryRemote('cloned-context')).toBe(TEST_NET_URL);
       // Read-only: no metadata change, no commit.
       expect(
-        fs.readFileSync(path.join(storeRoot, '.openspec-store', 'store.yaml'), 'utf-8')
+        fs.readFileSync(path.join(storeRoot, '.sakti-store', 'store.yaml'), 'utf-8')
       ).toBe(metadataBefore);
       expect(git(storeRoot, 'rev-parse', 'HEAD').trim()).toBe(headBefore);
 
@@ -227,7 +227,7 @@ describe('store canonical remote (3.3)', () => {
 
     it('keeps conversion-created metadata remote-free', async () => {
       const storeRoot = path.join(tempDir, 'convert-context');
-      createHealthyOpenSpecRoot(storeRoot);
+      createHealthySaktiRoot(storeRoot);
       git(storeRoot, 'init');
       git(storeRoot, 'remote', 'add', 'origin', TEST_NET_URL);
       git(storeRoot, 'add', '-A');
@@ -239,7 +239,7 @@ describe('store canonical remote (3.3)', () => {
       });
       expect(result.exitCode).toBe(0);
       expect(
-        fs.readFileSync(path.join(storeRoot, '.openspec-store', 'store.yaml'), 'utf-8')
+        fs.readFileSync(path.join(storeRoot, '.sakti-store', 'store.yaml'), 'utf-8')
       ).toBe('version: 1\nid: convert-context\n');
       expect(await registryRemote('convert-context')).toBe(TEST_NET_URL);
     });
@@ -268,7 +268,7 @@ describe('store canonical remote (3.3)', () => {
       // setup, then rerun setup: the registry remote must survive and
       // the rerun must report already_registered.
       const storeRoot = path.join(tempDir, 'rerun-context');
-      createHealthyOpenSpecRoot(storeRoot);
+      createHealthySaktiRoot(storeRoot);
       git(storeRoot, 'init');
       git(storeRoot, 'remote', 'add', 'origin', TEST_NET_URL);
       git(storeRoot, 'add', '-A');
@@ -320,10 +320,10 @@ describe('store canonical remote (3.3)', () => {
       git(outerRepo, 'remote', 'add', 'origin', 'https://192.0.2.7/monorepo.git');
 
       const storeRoot = path.join(outerRepo, 'team-specs');
-      createHealthyOpenSpecRoot(storeRoot);
-      fs.mkdirSync(path.join(storeRoot, '.openspec-store'), { recursive: true });
+      createHealthySaktiRoot(storeRoot);
+      fs.mkdirSync(path.join(storeRoot, '.sakti-store'), { recursive: true });
       fs.writeFileSync(
-        path.join(storeRoot, '.openspec-store', 'store.yaml'),
+        path.join(storeRoot, '.sakti-store', 'store.yaml'),
         'version: 1\nid: team-specs\n'
       );
 
@@ -340,7 +340,7 @@ describe('store canonical remote (3.3)', () => {
 
   describe('onboarding end to end', () => {
     it('executes the printed clone fix verbatim and continues to a resolved index', async () => {
-      // A scratch HOME keeps the rendered <home>/openspec/<id> checkout
+      // A scratch HOME keeps the rendered <home>/sakti/<id> checkout
       // path inside the temp dir for both the fix text and the CLI.
       const scratchHome = path.join(tempDir, 'home');
       fs.mkdirSync(scratchHome, { recursive: true });
@@ -349,14 +349,14 @@ describe('store canonical remote (3.3)', () => {
 
       // The "remote": a local bare-ish git repo holding a healthy store.
       const originWorktree = path.join(tempDir, 'origin-worktree');
-      createHealthyOpenSpecRoot(originWorktree);
+      createHealthySaktiRoot(originWorktree);
       // Anchor every directory a healthy clone needs (the same job
       // store setup's anchor files do).
-      fs.writeFileSync(path.join(originWorktree, 'openspec', 'specs', '.gitkeep'), '');
-      fs.writeFileSync(path.join(originWorktree, 'openspec', 'changes', 'archive', '.gitkeep'), '');
-      fs.mkdirSync(path.join(originWorktree, '.openspec-store'), { recursive: true });
+      fs.writeFileSync(path.join(originWorktree, '.sakti', 'specs', '.gitkeep'), '');
+      fs.writeFileSync(path.join(originWorktree, '.sakti', 'changes', 'archive', '.gitkeep'), '');
+      fs.mkdirSync(path.join(originWorktree, '.sakti-store'), { recursive: true });
       fs.writeFileSync(
-        path.join(originWorktree, '.openspec-store', 'store.yaml'),
+        path.join(originWorktree, '.sakti-store', 'store.yaml'),
         'version: 1\nid: team-context\n'
       );
       git(originWorktree, 'init');
@@ -368,14 +368,14 @@ describe('store canonical remote (3.3)', () => {
       // (backslashes fail isShellSafeRemote); git accepts it anywhere.
       const originRemote = originWorktree.split(path.sep).join('/');
       const appRepo = path.join(tempDir, 'app-repo');
-      fs.mkdirSync(path.join(appRepo, 'openspec'), { recursive: true });
+      fs.mkdirSync(path.join(appRepo, 'sakti'), { recursive: true });
       fs.writeFileSync(
-        path.join(appRepo, 'openspec', 'config.yaml'),
+        path.join(appRepo, 'sakti', 'config.yaml'),
         'schema: spec-driven\nreferences:\n' +
           `  - { id: team-context, remote: ${originRemote} }\n`
       );
-      fs.mkdirSync(path.join(appRepo, 'openspec', 'specs'), { recursive: true });
-      fs.mkdirSync(path.join(appRepo, 'openspec', 'changes', 'archive'), { recursive: true });
+      fs.mkdirSync(path.join(appRepo, '.sakti', 'specs'), { recursive: true });
+      fs.mkdirSync(path.join(appRepo, '.sakti', 'changes', 'archive'), { recursive: true });
 
       const created = await runCLI(['new', 'change', 'onboard-check', '--json'], {
         cwd: appRepo,
@@ -391,12 +391,12 @@ describe('store canonical remote (3.3)', () => {
       const entry = parseJson(degraded).references[0];
       expect(entry.status[0].code).toBe('reference_unresolved');
       const fix: string = entry.status[0].fix;
-      const expectedCheckout = path.join(scratchHome, 'openspec', 'team-context');
+      const expectedCheckout = path.join(scratchHome, 'sakti', 'team-context');
       // The quote style is platform-deliberate: POSIX single quotes,
       // win32 double quotes (cmd/PowerShell treat ' as literal).
       const q = process.platform === 'win32' ? '"' : "'";
       expect(fix).toBe(
-        `git clone -- ${originRemote} ${q}${expectedCheckout}${q} && openspec store register ${q}${expectedCheckout}${q} --id team-context`
+        `git clone -- ${originRemote} ${q}${expectedCheckout}${q} && sakti store register ${q}${expectedCheckout}${q} --id team-context`
       );
 
       // Execute the fix's two commands with the values the shape pin
@@ -426,14 +426,14 @@ describe('store canonical remote (3.3)', () => {
     it('surfaces both remotes, prefers canonical in human output, no new diagnostics', async () => {
       const canonical = 'https://192.0.2.9/canonical.git';
       const storeRoot = path.join(tempDir, 'doc-context');
-      createHealthyOpenSpecRoot(storeRoot);
+      createHealthySaktiRoot(storeRoot);
       // Keep specs/ and archive/ tracked so the pre-existing
       // fragile-directories warning stays out of this assertion.
-      fs.writeFileSync(path.join(storeRoot, 'openspec', 'specs', '.gitkeep'), '');
-      fs.writeFileSync(path.join(storeRoot, 'openspec', 'changes', 'archive', '.gitkeep'), '');
-      fs.mkdirSync(path.join(storeRoot, '.openspec-store'), { recursive: true });
+      fs.writeFileSync(path.join(storeRoot, '.sakti', 'specs', '.gitkeep'), '');
+      fs.writeFileSync(path.join(storeRoot, '.sakti', 'changes', 'archive', '.gitkeep'), '');
+      fs.mkdirSync(path.join(storeRoot, '.sakti-store'), { recursive: true });
       fs.writeFileSync(
-        path.join(storeRoot, '.openspec-store', 'store.yaml'),
+        path.join(storeRoot, '.sakti-store', 'store.yaml'),
         `version: 1\nid: doc-context\nremote: ${canonical}\n`
       );
       git(storeRoot, 'init');

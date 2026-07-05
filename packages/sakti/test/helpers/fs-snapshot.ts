@@ -9,7 +9,7 @@ import * as path from 'node:path';
 export function snapshotDirectory(root: string): Map<string, string> {
   const snapshot = new Map<string, string>();
 
-  // Keys are POSIX-normalized so assertions like has('openspec/...')
+  // Keys are POSIX-normalized so assertions like has('sakti/...')
   // behave identically on Windows (test/AGENTS.md).
   const relKey = (fullPath: string): string =>
     path.relative(root, fullPath).split(path.sep).join('/');

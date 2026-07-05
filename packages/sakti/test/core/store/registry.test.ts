@@ -25,7 +25,7 @@ describe('store registry facade', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-store-registry-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-store-registry-'));
   });
 
   afterEach(() => {
@@ -242,7 +242,7 @@ describe('store registry facade', () => {
   it('removes only setup-created root files when registry write fails', async () => {
     const originalEnv = { ...process.env };
     const dataHome = mkdir('blocked-data-home');
-    fs.writeFileSync(path.join(dataHome, 'openspec'), 'not a directory\n');
+    fs.writeFileSync(path.join(dataHome, 'sakti'), 'not a directory\n');
     process.env = {
       ...process.env,
       XDG_DATA_HOME: dataHome,

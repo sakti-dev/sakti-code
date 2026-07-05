@@ -1,16 +1,16 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { DEFAULT_OPENSPEC_SCHEMA } from '../../src/core/index.js';
+import { DEFAULT_SAKTI_SCHEMA } from '../../src/core/index.js';
 
 /**
  * Shared fixtures for store tests that touch real Git.
  */
 
-export function createHealthyOpenSpecRoot(root: string, configName = 'config.yaml'): void {
-  fs.mkdirSync(path.join(root, 'openspec', 'specs'), { recursive: true });
-  fs.mkdirSync(path.join(root, 'openspec', 'changes', 'archive'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'openspec', configName), `schema: ${DEFAULT_OPENSPEC_SCHEMA}\n`);
+export function createHealthySaktiRoot(root: string, configName = 'config.yaml'): void {
+  fs.mkdirSync(path.join(root, '.sakti', 'specs'), { recursive: true });
+  fs.mkdirSync(path.join(root, '.sakti', 'changes', 'archive'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.sakti', configName), `schema: ${DEFAULT_SAKTI_SCHEMA}\n`);
 }
 
 /**

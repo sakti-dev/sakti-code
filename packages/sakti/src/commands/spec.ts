@@ -8,7 +8,7 @@ import type { RootOutput } from '../core/root-selection.js';
 import { isInteractive } from '../utils/interactive.js';
 import { getSpecIds } from '../utils/item-discovery.js';
 
-const SPECS_DIR = 'openspec/specs';
+const SPECS_DIR = '.sakti/specs';
 
 interface ShowOptions {
   json?: boolean;
@@ -47,7 +47,7 @@ function filterSpec(spec: Spec, options: ShowOptions): Spec {
     scenarios: includeScenarios ? req.scenarios : [],
   }));
 
-  const metadata = spec.metadata ?? { version: '1.0.0', format: 'openspec' as const };
+  const metadata = spec.metadata ?? { version: '1.0.0', format: 'sakti' as const };
 
   return {
     name: spec.name,
@@ -74,7 +74,7 @@ export class SpecCommand {
   // deprecated noun-form commands stay cwd-based.
   constructor(rootPath?: string) {
     this.rootPath = rootPath;
-    this.specsDir = rootPath ? join(rootPath, 'openspec', 'specs') : SPECS_DIR;
+    this.specsDir = rootPath ? join(rootPath, '.sakti', 'specs') : SPECS_DIR;
   }
 
   async show(specId?: string, options: ShowOptions = {}): Promise<void> {
@@ -96,7 +96,7 @@ export class SpecCommand {
     if (!existsSync(specPath)) {
       // Root-aware callers get the absolute path; the cwd-based noun form
       // keeps its historical forward-slash relative message on all platforms.
-      const displayPath = this.rootPath ? specPath : `openspec/specs/${specId}/spec.md`;
+      const displayPath = this.rootPath ? specPath : `sakti/specs/${specId}/spec.md`;
       throw new Error(`Spec '${specId}' not found at ${displayPath}`);
     }
 
@@ -112,7 +112,7 @@ export class SpecCommand {
         overview: parsed.overview,
         requirementCount: filtered.requirements.length,
         requirements: filtered.requirements,
-        metadata: parsed.metadata ?? { version: '1.0.0', format: 'openspec' as const },
+        metadata: parsed.metadata ?? { version: '1.0.0', format: 'sakti' as const },
         ...(options.rootOutput ? { root: options.rootOutput } : {}),
       };
       console.log(JSON.stringify(output, null, 2));
@@ -125,11 +125,11 @@ export class SpecCommand {
 export function registerSpecCommand(rootProgram: typeof program) {
   const specCommand = rootProgram
     .command('spec')
-    .description('Manage and view OpenSpec specifications');
+    .description('Manage and view Sakti specifications');
 
   // Deprecation notice for noun-based commands
   specCommand.hook('preAction', () => {
-    console.error('Warning: The "openspec spec ..." commands are deprecated. Prefer verb-first commands (e.g., "openspec show", "openspec validate --specs").');
+    console.error('Warning: The "sakti spec ..." commands are deprecated. Prefer verb-first commands (e.g., "sakti show", "sakti validate --specs").');
   });
 
   specCommand
@@ -234,7 +234,7 @@ export function registerSpecCommand(rootProgram: typeof program) {
         const specPath = join(SPECS_DIR, specId, 'spec.md');
         
         if (!existsSync(specPath)) {
-          throw new Error(`Spec '${specId}' not found at openspec/specs/${specId}/spec.md`);
+          throw new Error(`Spec '${specId}' not found at sakti/specs/${specId}/spec.md`);
         }
 
         const validator = new Validator(options.strict);

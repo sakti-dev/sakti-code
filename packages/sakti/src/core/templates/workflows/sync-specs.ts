@@ -9,7 +9,7 @@ import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
 
 export function getSyncSpecsSkillTemplate(): SkillTemplate {
   return {
-    name: 'openspec-sync-specs',
+    name: 'sakti-sync-specs',
     description: 'Sync delta specs from a change to main specs. Use when the user wants to update main specs with changes from a delta spec, without archiving the change.',
     instructions: `Sync delta specs from a change to main specs.
 
@@ -23,7 +23,7 @@ ${STORE_SELECTION_GUIDANCE}
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run \`sakti list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show changes that have delta specs (under \`specs/\` directory).
 
@@ -33,7 +33,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    Run:
    \`\`\`bash
-   openspec status --change "<name>" --json
+   sakti status --change "<name>" --json
    \`\`\`
 
 3. **Find delta specs**
@@ -54,7 +54,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    a. **Read the delta spec** to understand the intended changes
 
-   b. **Read the main spec** at \`openspec/specs/<capability>/spec.md\` (may not exist yet)
+   b. **Read the main spec** at \`sakti/specs/<capability>/spec.md\` (may not exist yet)
 
    c. **Apply changes intelligently**:
 
@@ -77,7 +77,7 @@ ${STORE_SELECTION_GUIDANCE}
       - Find the FROM requirement, rename to TO
 
    d. **Create new main spec** if capability doesn't exist yet:
-      - Create \`openspec/specs/<capability>/spec.md\`
+      - Create \`sakti/specs/<capability>/spec.md\`
       - Add Purpose section (can be brief, mark as TBD)
       - Add Requirements section with the ADDED requirements
 
@@ -148,8 +148,8 @@ Main specs are now updated. The change remains active - archive when implementat
 - Show what you're changing as you go
 - The operation should be idempotent - running twice should give same result`,
     license: 'MIT',
-    compatibility: 'Requires openspec CLI.',
-    metadata: { author: 'openspec', version: '1.0' },
+    compatibility: 'Requires sakti CLI.',
+    metadata: { author: 'sakti', version: '1.0' },
   };
 }
 
@@ -165,13 +165,13 @@ This is an **agent-driven** operation - you will read delta specs and directly e
 
 ${STORE_SELECTION_GUIDANCE}
 
-**Input**: Optionally specify a change name after \`/opsx:sync\` (e.g., \`/opsx:sync add-auth\`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+**Input**: Optionally specify a change name after \`/sakti:sync\` (e.g., \`/sakti:sync add-auth\`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
 **Steps**
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run \`sakti list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show changes that have delta specs (under \`specs/\` directory).
 
@@ -181,7 +181,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    Run:
    \`\`\`bash
-   openspec status --change "<name>" --json
+   sakti status --change "<name>" --json
    \`\`\`
 
 3. **Find delta specs**
@@ -202,7 +202,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    a. **Read the delta spec** to understand the intended changes
 
-   b. **Read the main spec** at \`openspec/specs/<capability>/spec.md\` (may not exist yet)
+   b. **Read the main spec** at \`sakti/specs/<capability>/spec.md\` (may not exist yet)
 
    c. **Apply changes intelligently**:
 
@@ -225,7 +225,7 @@ ${STORE_SELECTION_GUIDANCE}
       - Find the FROM requirement, rename to TO
 
    d. **Create new main spec** if capability doesn't exist yet:
-      - Create \`openspec/specs/<capability>/spec.md\`
+      - Create \`sakti/specs/<capability>/spec.md\`
       - Add Purpose section (can be brief, mark as TBD)
       - Add Requirements section with the ADDED requirements
 

@@ -13,25 +13,25 @@ import {
   type ProjectConfig,
 } from '../core/project-config.js';
 import { assembleReferenceIndex, type ReferenceIndexEntry } from '../core/references.js';
-import { inspectOpenSpecRoot, type OpenSpecRootInspection } from '../core/openspec-root.js';
-import type { ResolvedOpenSpecRoot } from '../core/root-selection.js';
+import { inspectSaktiRoot, type SaktiRootInspection } from '../core/sakti-root.js';
+import type { ResolvedSaktiRoot } from '../core/root-selection.js';
 
 export interface RelationshipData {
   registrySnapshot: RegistrySnapshot;
   projectConfig: ProjectConfig | null;
   storeConfigPath: string;
   referenceEntries: ReferenceIndexEntry[];
-  rootInspection: OpenSpecRootInspection;
+  rootInspection: SaktiRootInspection;
 }
 
 export async function gatherRelationshipData(
-  root: ResolvedOpenSpecRoot
+  root: ResolvedSaktiRoot
 ): Promise<RelationshipData> {
   const registrySnapshot = await readRegistrySnapshot();
 
   const projectConfig = readProjectConfig(root.path);
   const storeConfigPath =
-    resolveConfigFilePath(root.path) ?? path.join(root.path, 'openspec', 'config.yaml');
+    resolveConfigFilePath(root.path) ?? path.join(root.path, 'sakti', 'config.yaml');
 
   const referenceEntries = await assembleReferenceIndex({
     references: projectConfig?.references ?? [],
@@ -40,7 +40,7 @@ export async function gatherRelationshipData(
     registryEntries: registrySnapshot.entries,
   });
 
-  const rootInspection = await inspectOpenSpecRoot(root.path);
+  const rootInspection = await inspectSaktiRoot(root.path);
 
   return {
     registrySnapshot,

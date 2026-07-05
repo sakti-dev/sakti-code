@@ -11,7 +11,7 @@ import {
   writeStoreRegistryState,
 } from '../../src/core/index.js';
 import { runCLI, type RunCLIResult } from '../helpers/run-cli.js';
-import { createHealthyOpenSpecRoot, isolatedGitEnv } from '../helpers/store-git.js';
+import { createHealthySaktiRoot, isolatedGitEnv } from '../helpers/store-git.js';
 
 vi.mock('@inquirer/prompts', () => ({
   input: vi.fn(),
@@ -22,7 +22,7 @@ async function runStoreCommand(args: string[]): Promise<void> {
   const { registerStoreCommand } = await import('../../src/commands/store.js');
   const program = new Command();
   registerStoreCommand(program);
-  await program.parseAsync(['node', 'openspec', 'store', ...args]);
+  await program.parseAsync(['node', 'sakti', 'store', ...args]);
 }
 
 async function getPromptMocks(): Promise<{
@@ -56,14 +56,14 @@ describe('store git lifecycle', () => {
   beforeEach(() => {
     vi.resetModules();
 
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-store-git-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-store-git-'));
     dataHome = path.join(tempDir, 'data');
     configHome = path.join(tempDir, 'config');
     env = {
       XDG_DATA_HOME: dataHome,
       XDG_CONFIG_HOME: configHome,
       OPEN_SPEC_INTERACTIVE: '0',
-      OPENSPEC_TELEMETRY: '0',
+      SAKTI_TELEMETRY: '0',
     };
     globalDataDir = getGlobalDataDir({ env });
 
@@ -106,7 +106,7 @@ describe('store git lifecycle', () => {
       ...process.env,
       XDG_DATA_HOME: dataHome,
       XDG_CONFIG_HOME: configHome,
-      OPENSPEC_TELEMETRY: '0',
+      SAKTI_TELEMETRY: '0',
       ...isolatedGitEnv(tempDir),
     };
     delete process.env.OPEN_SPEC_INTERACTIVE;
@@ -139,15 +139,15 @@ describe('store git lifecycle', () => {
     const committed = execFileSync('git', ['log', '--format=%s'], { cwd: storeRoot })
       .toString()
       .trim();
-    expect(committed).toBe('Initialize OpenSpec store interactive-context');
+    expect(committed).toBe('Initialize Sakti store interactive-context');
     expect(process.exitCode).toBeUndefined();
   });
 
   it('commits the full store shape when initializing Git on an existing root', async () => {
     const storeRoot = mkdir('convert-context');
     const gitEnv = { ...env, ...isolatedGitEnv(tempDir) };
-    createHealthyOpenSpecRoot(storeRoot);
-    fs.writeFileSync(path.join(storeRoot, 'openspec', 'specs', 'keep-me.md'), 'user spec\n');
+    createHealthySaktiRoot(storeRoot);
+    fs.writeFileSync(path.join(storeRoot, '.sakti', 'specs', 'keep-me.md'), 'user spec\n');
     // Old beta files outside the store shape stay out of the commit.
     fs.writeFileSync(path.join(storeRoot, 'workspace.yaml'), 'old: beta\n');
 
@@ -172,10 +172,10 @@ describe('store git lifecycle', () => {
       .split('\n')
       .sort();
     expect(committedFiles).toEqual([
-      '.openspec-store/store.yaml',
-      'openspec/changes/archive/.gitkeep',
-      'openspec/config.yaml',
-      'openspec/specs/keep-me.md',
+      '.sakti-store/store.yaml',
+      'sakti/changes/archive/.gitkeep',
+      '.sakti/config.yaml',
+      'sakti/specs/keep-me.md',
     ]);
 
     // A clone of the converted store is immediately a healthy root.
@@ -185,10 +185,10 @@ describe('store git lifecycle', () => {
       stdio: 'ignore',
     });
     for (const required of [
-      'openspec/config.yaml',
-      'openspec/specs/keep-me.md',
-      'openspec/changes/archive/.gitkeep',
-      '.openspec-store/store.yaml',
+      '.sakti/config.yaml',
+      'sakti/specs/keep-me.md',
+      'sakti/changes/archive/.gitkeep',
+      '.sakti-store/store.yaml',
     ]) {
       expect(fs.existsSync(path.join(cloneRoot, required))).toBe(true);
     }
@@ -199,7 +199,7 @@ describe('store git lifecycle', () => {
     const storeRoot = mkdir('staged-context');
     const gitEnv = { ...env, ...isolatedGitEnv(tempDir) };
     const gitExecEnv = { ...process.env, ...gitEnv };
-    createHealthyOpenSpecRoot(storeRoot);
+    createHealthySaktiRoot(storeRoot);
     execFileSync('git', ['init'], { cwd: storeRoot, stdio: 'ignore' });
     execFileSync('git', ['add', '-A'], { cwd: storeRoot, env: gitExecEnv });
     execFileSync('git', ['commit', '-m', 'user base'], { cwd: storeRoot, env: gitExecEnv, stdio: 'ignore' });
@@ -222,9 +222,9 @@ describe('store git lifecycle', () => {
       .split('\n')
       .sort();
     expect(committedFiles).toEqual([
-      '.openspec-store/store.yaml',
-      'openspec/changes/archive/.gitkeep',
-      'openspec/specs/.gitkeep',
+      '.sakti-store/store.yaml',
+      'sakti/changes/archive/.gitkeep',
+      'sakti/specs/.gitkeep',
     ]);
 
     // The user's staged file stays staged and uncommitted.
@@ -249,9 +249,9 @@ describe('store git lifecycle', () => {
   it('flags clone-fragile directories and commitless clones', async () => {
     const storeRoot = mkdir('fragile-context');
     const gitExecEnv = { ...process.env, ...isolatedGitEnv(tempDir) };
-    createHealthyOpenSpecRoot(storeRoot);
+    createHealthySaktiRoot(storeRoot);
     execFileSync('git', ['init'], { cwd: storeRoot, stdio: 'ignore' });
-    execFileSync('git', ['add', 'openspec/config.yaml'], { cwd: storeRoot, env: gitExecEnv });
+    execFileSync('git', ['add', '.sakti/config.yaml'], { cwd: storeRoot, env: gitExecEnv });
     execFileSync('git', ['commit', '-m', 'partial'], { cwd: storeRoot, env: gitExecEnv, stdio: 'ignore' });
     await writeStoreMetadataState(storeRoot, { version: 1, id: 'fragile-context' });
     await writeStoreRegistryState(
@@ -277,7 +277,7 @@ describe('store git lifecycle', () => {
       expect.objectContaining({
         severity: 'warning',
         code: 'store_clone_fragile_directories',
-        message: expect.stringContaining('openspec/specs/'),
+        message: expect.stringContaining('sakti/specs/'),
       }),
     ]);
 

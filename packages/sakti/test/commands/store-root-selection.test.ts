@@ -54,13 +54,13 @@ describe('store root selection for normal commands', () => {
 
   beforeEach(async () => {
     tempDir = fs.realpathSync.native(
-      fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-store-root-selection-'))
+      fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-store-root-selection-'))
     );
     env = {
       XDG_DATA_HOME: path.join(tempDir, 'data'),
       XDG_CONFIG_HOME: path.join(tempDir, 'config'),
       OPEN_SPEC_INTERACTIVE: '0',
-      OPENSPEC_TELEMETRY: '0',
+      SAKTI_TELEMETRY: '0',
     };
     globalDataDir = getGlobalDataDir({ env });
     appRepo = path.join(tempDir, 'app-repo');
@@ -72,15 +72,15 @@ describe('store root selection for normal commands', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  function createOpenSpecRoot(rootDir: string): void {
-    fs.mkdirSync(path.join(rootDir, 'openspec', 'specs'), { recursive: true });
-    fs.mkdirSync(path.join(rootDir, 'openspec', 'changes', 'archive'), { recursive: true });
-    fs.writeFileSync(path.join(rootDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+  function createSaktiRoot(rootDir: string): void {
+    fs.mkdirSync(path.join(rootDir, '.sakti', 'specs'), { recursive: true });
+    fs.mkdirSync(path.join(rootDir, '.sakti', 'changes', 'archive'), { recursive: true });
+    fs.writeFileSync(path.join(rootDir, 'sakti', 'config.yaml'), 'schema: spec-driven\n');
   }
 
   async function registerStoreFixture(id: string): Promise<string> {
     const root = path.join(tempDir, 'stores', id);
-    createOpenSpecRoot(root);
+    createSaktiRoot(root);
     await registerStore({ id, localPath: root, globalDataDir });
     return fs.realpathSync.native(root);
   }
@@ -90,7 +90,7 @@ describe('store root selection for normal commands', () => {
     name: string,
     options: { deltaSpec?: string | null; tasksDone?: boolean } = {}
   ): string {
-    const changeDir = path.join(rootDir, 'openspec', 'changes', name);
+    const changeDir = path.join(rootDir, '.sakti', 'changes', name);
     fs.mkdirSync(changeDir, { recursive: true });
     fs.writeFileSync(
       path.join(changeDir, 'proposal.md'),
@@ -118,8 +118,8 @@ describe('store root selection for normal commands', () => {
     }
   }
 
-  function expectNoLocalOpenSpec(): void {
-    expect(fs.existsSync(path.join(appRepo, 'openspec'))).toBe(false);
+  function expectNoLocalSakti(): void {
+    expect(fs.existsSync(path.join(appRepo, 'sakti'))).toBe(false);
   }
 
   describe('selecting a registered store by id', () => {
@@ -129,16 +129,16 @@ describe('store root selection for normal commands', () => {
         env,
       });
       expect(result.exitCode).toBe(0);
-      expect(result.stderr).toContain(`Using OpenSpec root: team-context (${storeRoot})`);
+      expect(result.stderr).toContain(`Using Sakti root: team-context (${storeRoot})`);
       expect(result.stdout).toContain("Created change 'add-billing'");
       expect(result.stdout).toContain(
-        path.join(storeRoot, 'openspec', 'changes', 'add-billing')
+        path.join(storeRoot, '.sakti', 'changes', 'add-billing')
       );
 
       expect(
-        fs.existsSync(path.join(storeRoot, 'openspec', 'changes', 'add-billing'))
+        fs.existsSync(path.join(storeRoot, '.sakti', 'changes', 'add-billing'))
       ).toBe(true);
-      expectNoLocalOpenSpec();
+      expectNoLocalSakti();
     });
 
     it('includes the shared root block and absolute paths in new change JSON', async () => {
@@ -156,14 +156,14 @@ describe('store root selection for normal commands', () => {
       });
       expect(path.isAbsolute(json.change.path)).toBe(true);
       expect(json.change.path).toBe(
-        path.join(storeRoot, 'openspec', 'changes', 'add-billing')
+        path.join(storeRoot, '.sakti', 'changes', 'add-billing')
       );
-      expectNoLocalOpenSpec();
+      expectNoLocalSakti();
     });
 
     it('wins over the nearest local root', async () => {
       const localRepo = path.join(tempDir, 'local-repo');
-      createOpenSpecRoot(localRepo);
+      createSaktiRoot(localRepo);
       createChange(localRepo, 'local-change');
       createChange(storeRoot, 'store-change');
 
@@ -226,11 +226,11 @@ describe('store root selection for normal commands', () => {
       expect(validateJson.items[0]).toMatchObject({ id: 'store-change', valid: true });
       expect(validateJson.root.store_id).toBe('team-context');
 
-      expectNoLocalOpenSpec();
+      expectNoLocalSakti();
     });
 
     it('lists specs from the store with minimal JSON support', async () => {
-      const specDir = path.join(storeRoot, 'openspec', 'specs', 'billing');
+      const specDir = path.join(storeRoot, '.sakti', 'specs', 'billing');
       fs.mkdirSync(specDir, { recursive: true });
       fs.writeFileSync(
         path.join(specDir, 'spec.md'),
@@ -274,19 +274,19 @@ describe('store root selection for normal commands', () => {
       expect(json.archive.change).toBe('store-change');
       expect(json.archive.archivedAs).toMatch(/^\d{4}-\d{2}-\d{2}-store-change$/);
       expect(json.archive.path).toBe(
-        path.join(storeRoot, 'openspec', 'changes', 'archive', json.archive.archivedAs)
+        path.join(storeRoot, '.sakti', 'changes', 'archive', json.archive.archivedAs)
       );
       expect(json.archive.specsUpdated).toBe(true);
       expect(json.root.store_id).toBe('team-context');
 
       expect(fs.existsSync(json.archive.path)).toBe(true);
       expect(
-        fs.existsSync(path.join(storeRoot, 'openspec', 'changes', 'store-change'))
+        fs.existsSync(path.join(storeRoot, '.sakti', 'changes', 'store-change'))
       ).toBe(false);
       expect(
-        fs.existsSync(path.join(storeRoot, 'openspec', 'specs', 'billing', 'spec.md'))
+        fs.existsSync(path.join(storeRoot, '.sakti', 'specs', 'billing', 'spec.md'))
       ).toBe(true);
-      expectNoLocalOpenSpec();
+      expectNoLocalSakti();
     });
   });
 
@@ -300,7 +300,7 @@ describe('store root selection for normal commands', () => {
       });
       expect(result.exitCode).toBe(0);
       expect(result.stdout.startsWith('## Why')).toBe(true);
-      expect(result.stderr).toContain(`Using OpenSpec root: team-context (${storeRoot})`);
+      expect(result.stderr).toContain(`Using Sakti root: team-context (${storeRoot})`);
     });
 
     it('keeps instructions stdout as the artifact payload', async () => {
@@ -312,7 +312,7 @@ describe('store root selection for normal commands', () => {
       );
       expect(result.exitCode).toBe(0);
       expect(result.stdout.startsWith('<artifact id="design"')).toBe(true);
-      expect(result.stderr).toContain('Using OpenSpec root: team-context');
+      expect(result.stderr).toContain('Using Sakti root: team-context');
     });
 
     it('writes the status banner to stderr in human mode', async () => {
@@ -323,9 +323,9 @@ describe('store root selection for normal commands', () => {
         { cwd: appRepo, env }
       );
       expect(result.exitCode).toBe(0);
-      expect(result.stderr).toContain(`Using OpenSpec root: team-context (${storeRoot})`);
+      expect(result.stderr).toContain(`Using Sakti root: team-context (${storeRoot})`);
       expect(result.stdout).toContain('Change: store-change');
-      expect(result.stdout).not.toContain('Using OpenSpec root');
+      expect(result.stdout).not.toContain('Using Sakti root');
     });
   });
 
@@ -339,8 +339,8 @@ describe('store root selection for normal commands', () => {
       const output = result.stdout + result.stderr;
       expect(output).toContain('store register');
       expect(output).toContain('--store <id>');
-      expectNoLocalOpenSpec();
-      expect(fs.existsSync(path.join(storeRoot, 'openspec', 'changes', 'nope'))).toBe(false);
+      expectNoLocalSakti();
+      expect(fs.existsSync(path.join(storeRoot, '.sakti', 'changes', 'nope'))).toBe(false);
     });
 
     it('rejects show --store-path despite allowUnknownOption', async () => {
@@ -415,7 +415,7 @@ describe('store root selection for normal commands', () => {
       expect(result.exitCode).toBe(1);
       expect(result.stdout + result.stderr).toContain('store doctor');
       // No scaffolding or repair happened.
-      expect(fs.existsSync(path.join(brokenRoot, 'openspec'))).toBe(false);
+      expect(fs.existsSync(path.join(brokenRoot, 'sakti'))).toBe(false);
     });
   });
 
@@ -426,14 +426,14 @@ describe('store root selection for normal commands', () => {
       const output = result.stdout + result.stderr;
       expect(output).toContain('team-context');
       expect(output).toContain('--store <id>');
-      expect(output).toContain('openspec init');
-      expectNoLocalOpenSpec();
+      expect(output).toContain('sakti init');
+      expectNoLocalSakti();
     });
 
     it('treats leftover workspace state as no root at all', async () => {
-      fs.mkdirSync(path.join(appRepo, '.openspec-workspace'), { recursive: true });
+      fs.mkdirSync(path.join(appRepo, '.sakti-workspace'), { recursive: true });
       fs.writeFileSync(
-        path.join(appRepo, '.openspec-workspace', 'view.yaml'),
+        path.join(appRepo, '.sakti-workspace', 'view.yaml'),
         'version: 1\nname: platform\ncontext: null\nlinks: {}\n'
       );
 
@@ -444,10 +444,10 @@ describe('store root selection for normal commands', () => {
 
     it('ignores leftover workspace state when a nearby root exists', async () => {
       const localRepo = path.join(tempDir, 'workspace-repo');
-      createOpenSpecRoot(localRepo);
-      fs.mkdirSync(path.join(localRepo, '.openspec-workspace'), { recursive: true });
+      createSaktiRoot(localRepo);
+      fs.mkdirSync(path.join(localRepo, '.sakti-workspace'), { recursive: true });
       fs.writeFileSync(
-        path.join(localRepo, '.openspec-workspace', 'view.yaml'),
+        path.join(localRepo, '.sakti-workspace', 'view.yaml'),
         'version: 1\nname: platform\ncontext: null\nlinks: {}\n'
       );
       createChange(localRepo, 'local-change');
@@ -519,7 +519,7 @@ describe('store root selection for normal commands', () => {
       expect(json.status[0].code).toBe('archive_validation_failed');
       // The change was not archived.
       expect(
-        fs.existsSync(path.join(storeRoot, 'openspec', 'changes', 'bad-change'))
+        fs.existsSync(path.join(storeRoot, '.sakti', 'changes', 'bad-change'))
       ).toBe(true);
     });
 
@@ -550,7 +550,7 @@ describe('store root selection for normal commands', () => {
         fs.mkdirSync(specDir, { recursive: true });
         fs.writeFileSync(path.join(specDir, 'spec.md'), VALID_DELTA_SPEC);
       }
-      const badTargetDir = path.join(storeRoot, 'openspec', 'specs', 'zzz-bad');
+      const badTargetDir = path.join(storeRoot, '.sakti', 'specs', 'zzz-bad');
       fs.mkdirSync(badTargetDir, { recursive: true });
       const badTargetContent =
         '# zzz-bad\n\n## Purpose\nLegacy.\n\n## Requirements\n\n### Requirement: Old rule SHALL hold\nThe system SHALL hold.\n';
@@ -568,13 +568,13 @@ describe('store root selection for normal commands', () => {
       // "No files were changed" must be true: the good spec was not created
       // and the bad target is byte-identical.
       expect(
-        fs.existsSync(path.join(storeRoot, 'openspec', 'specs', 'aaa-good', 'spec.md'))
+        fs.existsSync(path.join(storeRoot, '.sakti', 'specs', 'aaa-good', 'spec.md'))
       ).toBe(false);
       expect(fs.readFileSync(path.join(badTargetDir, 'spec.md'), 'utf-8')).toBe(
         badTargetContent
       );
       expect(
-        fs.existsSync(path.join(storeRoot, 'openspec', 'changes', 'two-spec-change'))
+        fs.existsSync(path.join(storeRoot, '.sakti', 'changes', 'two-spec-change'))
       ).toBe(true);
     });
 
@@ -591,7 +591,7 @@ describe('store root selection for normal commands', () => {
       expect(json.archive).toBeNull();
       expect(json.status[0].code).toBe('archive_spec_update_failed');
       expect(
-        fs.existsSync(path.join(storeRoot, 'openspec', 'changes', 'modified-change'))
+        fs.existsSync(path.join(storeRoot, '.sakti', 'changes', 'modified-change'))
       ).toBe(true);
     });
 
@@ -606,7 +606,7 @@ describe('store root selection for normal commands', () => {
       const json = parseJson(result);
       expect(json.status[0].code).toMatch(/archive_tasks_incomplete|archive_confirmation_required/);
       expect(
-        fs.existsSync(path.join(storeRoot, 'openspec', 'changes', 'wip-change'))
+        fs.existsSync(path.join(storeRoot, '.sakti', 'changes', 'wip-change'))
       ).toBe(true);
     });
   });
@@ -614,7 +614,7 @@ describe('store root selection for normal commands', () => {
   describe('initiative links are retired from normal change flows', () => {
     it('rejects --initiative and creates no files', async () => {
       const localRepo = path.join(tempDir, 'initiative-repo');
-      createOpenSpecRoot(localRepo);
+      createSaktiRoot(localRepo);
 
       const result = await runCLI(
         ['new', 'change', 'linked-change', '--initiative', 'billing-launch'],
@@ -624,20 +624,20 @@ describe('store root selection for normal commands', () => {
       const output = result.stdout + result.stderr;
       expect(output).toContain('--initiative is no longer supported');
       expect(
-        fs.existsSync(path.join(localRepo, 'openspec', 'changes', 'linked-change'))
+        fs.existsSync(path.join(localRepo, '.sakti', 'changes', 'linked-change'))
       ).toBe(false);
     });
 
-    it('removes openspec set change entirely', async () => {
+    it('removes sakti set change entirely', async () => {
       const localRepo = path.join(tempDir, 'set-change-repo');
-      createOpenSpecRoot(localRepo);
+      createSaktiRoot(localRepo);
       createChange(localRepo, 'existing-change');
       const metadataPath = path.join(
         localRepo,
-        'openspec',
+        'sakti',
         'changes',
         'existing-change',
-        '.openspec.yaml'
+        '.sakti.yaml'
       );
 
       const result = await runCLI(
@@ -649,7 +649,7 @@ describe('store root selection for normal commands', () => {
       expect(fs.existsSync(metadataPath)).toBe(false);
 
       const help = await runCLI(['--help'], { cwd: localRepo, env });
-      expect(help.stdout).not.toContain('Set checked-in OpenSpec metadata');
+      expect(help.stdout).not.toContain('Set checked-in Sakti metadata');
       expect(help.stdout).not.toMatch(/^\s*set\s/m);
     });
   });
@@ -661,12 +661,12 @@ describe('store root selection for normal commands', () => {
         { cwd: appRepo, env }
       );
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('openspec new change <change-id> --store fresh-context');
+      expect(result.stdout).toContain('sakti new change <change-id> --store fresh-context');
     });
 
     it('shows --store usage after register', async () => {
       const registerRoot = path.join(tempDir, 'register-context');
-      createOpenSpecRoot(registerRoot);
+      createSaktiRoot(registerRoot);
       await writeStoreMetadataState(registerRoot, {
         version: 1,
         id: 'register-context',
@@ -677,7 +677,7 @@ describe('store root selection for normal commands', () => {
         env,
       });
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('openspec new change <change-id> --store register-context');
+      expect(result.stdout).toContain('sakti new change <change-id> --store register-context');
     });
   });
 });

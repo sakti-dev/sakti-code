@@ -8,18 +8,18 @@ import {
   type StoreDiagnostic,
 } from './store/errors.js';
 
-export const OPENSPEC_ROOT_DIR = 'openspec';
-export const OPENSPEC_CONFIG_YAML = 'openspec/config.yaml';
-export const OPENSPEC_CONFIG_YML = 'openspec/config.yml';
-export const OPENSPEC_SPECS_DIR = 'openspec/specs';
-export const OPENSPEC_CHANGES_DIR = 'openspec/changes';
-export const OPENSPEC_ARCHIVE_DIR = 'openspec/changes/archive';
-export const DEFAULT_OPENSPEC_SCHEMA = 'spec-driven';
+export const SAKTI_ROOT_DIR = 'sakti';
+export const SAKTI_CONFIG_YAML = '.sakti/config.yaml';
+export const SAKTI_CONFIG_YML = 'sakti/config.yml';
+export const SAKTI_SPECS_DIR = '.sakti/specs';
+export const SAKTI_CHANGES_DIR = '.sakti/changes';
+export const SAKTI_ARCHIVE_DIR = 'sakti/changes/archive';
+export const DEFAULT_SAKTI_SCHEMA = 'spec-driven';
 export const DIRECTORY_ANCHOR_FILE_NAME = '.gitkeep';
 
 // Git cannot track empty directories, so clones of a fresh store would lose
 // these and fail root-health checks. Anchored at setup time.
-export const ANCHORED_OPENSPEC_DIRS = [OPENSPEC_SPECS_DIR, OPENSPEC_ARCHIVE_DIR] as const;
+export const ANCHORED_SAKTI_DIRS = [SAKTI_SPECS_DIR, SAKTI_ARCHIVE_DIR] as const;
 
 type PathKind = 'missing' | 'directory' | 'file' | 'other';
 
@@ -29,7 +29,7 @@ export interface CreatedPathLedgerEntry {
   kind: 'directory' | 'file';
 }
 
-export interface OpenSpecRootInspection {
+export interface SaktiRootInspection {
   present: boolean | null;
   config: {
     present: boolean | null;
@@ -48,8 +48,8 @@ export interface OpenSpecRootInspection {
   diagnostics: StoreDiagnostic[];
 }
 
-export interface EnsureOpenSpecRootResult {
-  inspection: OpenSpecRootInspection;
+export interface EnsureSaktiRootResult {
+  inspection: SaktiRootInspection;
   createdArtifacts: string[];
   createdPaths: CreatedPathLedgerEntry[];
 }
@@ -79,7 +79,7 @@ function relativeArtifact(relativePath: string, kind: CreatedPathLedgerEntry['ki
   return kind === 'directory' ? `${normalized}/` : normalized;
 }
 
-function unresolvedInspection(): OpenSpecRootInspection {
+function unresolvedInspection(): SaktiRootInspection {
   return {
     present: null,
     config: { present: null },
@@ -99,13 +99,13 @@ function missingDirectoryDiagnostic(
   return makeStoreDiagnostic('error', code, message, { target });
 }
 
-export async function inspectOpenSpecRoot(storeRoot: string): Promise<OpenSpecRootInspection> {
+export async function inspectSaktiRoot(storeRoot: string): Promise<SaktiRootInspection> {
   const rootKind = await pathKind(storeRoot);
   const inspection = unresolvedInspection();
 
   if (rootKind === 'missing') {
     inspection.diagnostics.push(missingDirectoryDiagnostic(
-      'openspec_store_root_missing',
+      'sakti_store_root_missing',
       'Store root does not exist.',
       'store.root'
     ));
@@ -114,62 +114,62 @@ export async function inspectOpenSpecRoot(storeRoot: string): Promise<OpenSpecRo
 
   if (rootKind !== 'directory') {
     inspection.diagnostics.push(missingDirectoryDiagnostic(
-      'openspec_store_root_not_directory',
+      'sakti_store_root_not_directory',
       'Store root is not a directory.',
       'store.root'
     ));
     return inspection;
   }
 
-  const openspecPath = path.join(storeRoot, OPENSPEC_ROOT_DIR);
-  const openspecKind = await pathKind(openspecPath);
-  inspection.present = openspecKind === 'directory';
+  const saktiPath = path.join(storeRoot, SAKTI_ROOT_DIR);
+  const saktiKind = await pathKind(saktiPath);
+  inspection.present = saktiKind === 'directory';
 
-  if (openspecKind === 'missing') {
+  if (saktiKind === 'missing') {
     inspection.diagnostics.push(missingDirectoryDiagnostic(
-      'openspec_root_missing',
-      'Missing openspec/ directory.',
-      'openspec.root'
+      'sakti_root_missing',
+      'Missing sakti/ directory.',
+      'sakti.root'
     ));
     return inspection;
   }
 
-  if (openspecKind !== 'directory') {
+  if (saktiKind !== 'directory') {
     inspection.diagnostics.push(missingDirectoryDiagnostic(
-      'openspec_root_not_directory',
-      'openspec/ exists but is not a directory.',
-      'openspec.root'
+      'sakti_root_not_directory',
+      'sakti/ exists but is not a directory.',
+      'sakti.root'
     ));
     return inspection;
   }
 
-  const configYamlKind = await pathKind(path.join(storeRoot, OPENSPEC_CONFIG_YAML));
-  const configYmlKind = await pathKind(path.join(storeRoot, OPENSPEC_CONFIG_YML));
+  const configYamlKind = await pathKind(path.join(storeRoot, SAKTI_CONFIG_YAML));
+  const configYmlKind = await pathKind(path.join(storeRoot, SAKTI_CONFIG_YML));
   if (configYamlKind === 'file') {
-    inspection.config = { present: true, path: OPENSPEC_CONFIG_YAML };
+    inspection.config = { present: true, path: SAKTI_CONFIG_YAML };
   } else if (configYmlKind === 'file') {
-    inspection.config = { present: true, path: OPENSPEC_CONFIG_YML };
+    inspection.config = { present: true, path: SAKTI_CONFIG_YML };
   } else {
     inspection.config = { present: false };
     if (configYamlKind !== 'missing' || configYmlKind !== 'missing') {
       inspection.diagnostics.push(missingDirectoryDiagnostic(
-        'openspec_config_not_file',
-        'OpenSpec config path exists but is not a file.',
-        'openspec.config'
+        'sakti_config_not_file',
+        'Sakti config path exists but is not a file.',
+        'sakti.config'
       ));
     } else {
       inspection.diagnostics.push(missingDirectoryDiagnostic(
-        'openspec_config_missing',
-        'Missing openspec/config.yaml or openspec/config.yml.',
-        'openspec.config'
+        'sakti_config_missing',
+        'Missing sakti/config.yaml or sakti/config.yml.',
+        'sakti.config'
       ));
     }
   }
 
   for (const [key, relativePath, code, message, target] of [
-    ['specs', OPENSPEC_SPECS_DIR, 'openspec_specs_missing', 'Missing openspec/specs/.', 'openspec.specs'],
-    ['changes', OPENSPEC_CHANGES_DIR, 'openspec_changes_missing', 'Missing openspec/changes/.', 'openspec.changes'],
-    ['archive', OPENSPEC_ARCHIVE_DIR, 'openspec_archive_missing', 'Missing openspec/changes/archive/.', 'openspec.archive'],
+    ['specs', SAKTI_SPECS_DIR, 'sakti_specs_missing', 'Missing sakti/specs/.', 'sakti.specs'],
+    ['changes', SAKTI_CHANGES_DIR, 'sakti_changes_missing', 'Missing sakti/changes/.', 'sakti.changes'],
+    ['archive', SAKTI_ARCHIVE_DIR, 'sakti_archive_missing', 'Missing sakti/changes/archive/.', 'sakti.archive'],
   ] as const) {
     const kind = await pathKind(path.join(storeRoot, relativePath));
     inspection[key] = { present: kind === 'directory' };
@@ -217,22 +217,22 @@ async function ensureDefaultConfig(
   storeRoot: string,
   ledger: CreatedPathLedgerEntry[]
 ): Promise<void> {
-  const configYamlPath = path.join(storeRoot, OPENSPEC_CONFIG_YAML);
-  const configYmlPath = path.join(storeRoot, OPENSPEC_CONFIG_YML);
+  const configYamlPath = path.join(storeRoot, SAKTI_CONFIG_YAML);
+  const configYmlPath = path.join(storeRoot, SAKTI_CONFIG_YML);
   const yamlKind = await pathKind(configYamlPath);
   const ymlKind = await pathKind(configYmlPath);
 
   if (yamlKind === 'file' || ymlKind === 'file') return;
   if (yamlKind !== 'missing' || ymlKind !== 'missing') {
-    throw new Error('OpenSpec config path exists but is not a file.');
+    throw new Error('Sakti config path exists but is not a file.');
   }
 
   await FileSystemUtils.writeFile(
     configYamlPath,
-    serializeConfig({ schema: DEFAULT_OPENSPEC_SCHEMA })
+    serializeConfig({ schema: DEFAULT_SAKTI_SCHEMA })
   );
   ledger.push({
-    relativePath: relativeArtifact(OPENSPEC_CONFIG_YAML, 'file'),
+    relativePath: relativeArtifact(SAKTI_CONFIG_YAML, 'file'),
     absolutePath: configYamlPath,
     kind: 'file',
   });
@@ -256,14 +256,14 @@ async function ensureDirectoryAnchor(
   });
 }
 
-export interface EnsureOpenSpecRootOptions {
+export interface EnsureSaktiRootOptions {
   anchorEmptyDirectories?: boolean;
 }
 
-export async function ensureOpenSpecRoot(
+export async function ensureSaktiRoot(
   storeRoot: string,
-  options: EnsureOpenSpecRootOptions = {}
-): Promise<EnsureOpenSpecRootResult> {
+  options: EnsureSaktiRootOptions = {}
+): Promise<EnsureSaktiRootResult> {
   const ledger: CreatedPathLedgerEntry[] = [];
   const rootKind = await pathKind(storeRoot);
 
@@ -273,20 +273,20 @@ export async function ensureOpenSpecRoot(
     throw new Error('Store root is not a directory.');
   }
 
-  await ensureDirectory(storeRoot, OPENSPEC_ROOT_DIR, ledger);
-  await ensureDirectory(storeRoot, OPENSPEC_SPECS_DIR, ledger);
-  await ensureDirectory(storeRoot, OPENSPEC_CHANGES_DIR, ledger);
-  await ensureDirectory(storeRoot, OPENSPEC_ARCHIVE_DIR, ledger);
+  await ensureDirectory(storeRoot, SAKTI_ROOT_DIR, ledger);
+  await ensureDirectory(storeRoot, SAKTI_SPECS_DIR, ledger);
+  await ensureDirectory(storeRoot, SAKTI_CHANGES_DIR, ledger);
+  await ensureDirectory(storeRoot, SAKTI_ARCHIVE_DIR, ledger);
   await ensureDefaultConfig(storeRoot, ledger);
 
   if (options.anchorEmptyDirectories) {
-    for (const relativeDir of ANCHORED_OPENSPEC_DIRS) {
+    for (const relativeDir of ANCHORED_SAKTI_DIRS) {
       await ensureDirectoryAnchor(storeRoot, relativeDir, ledger);
     }
   }
 
   return {
-    inspection: await inspectOpenSpecRoot(storeRoot),
+    inspection: await inspectSaktiRoot(storeRoot),
     createdArtifacts: ledger.map((entry) => entry.relativePath),
     createdPaths: ledger,
   };

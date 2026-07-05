@@ -1,5 +1,5 @@
 /**
- * `openspec context` (slice 4.1): the working set a root's declarations
+ * `sakti context` (slice 4.1): the working set a root's declarations
  * describe, as an agent brief (JSON), a human listing, or an editor
  * view (`--code-workspace`). Assembly is presentation over the Phase 3
  * relationship data; doctor is the health surface. The only write this
@@ -11,7 +11,7 @@ import { Command, Option } from 'commander';
 
 import {
   resolveRootForCommand,
-  type ResolvedOpenSpecRoot,
+  type ResolvedSaktiRoot,
 } from '../core/root-selection.js';
 import { inspectRelationships } from '../core/relationship-health.js';
 import {
@@ -30,7 +30,7 @@ import { gatherRelationshipData } from './shared-gather.js';
 const FAILURE_PAYLOAD = { root: null, members: [] };
 
 async function gatherWorkingSet(
-  root: ResolvedOpenSpecRoot
+  root: ResolvedSaktiRoot
 ): Promise<{ workingSet: WorkingSet; declaredReferenceCount: number }> {
   const data = await gatherRelationshipData(root);
 
@@ -63,7 +63,7 @@ function printHumanWorkingSet(workingSet: WorkingSet, declaredReferenceCount: nu
   const rootLabel = workingSet.root.store_id ?? path.basename(workingSet.root.path);
   console.log(`Working context for ${rootLabel} (${workingSet.root.path})`);
   console.log('');
-  console.log('OpenSpec root');
+  console.log('Sakti root');
   console.log(`  ${rootLabel}  ${workingSet.root.path}`);
 
   const availableStores = workingSet.members.filter(
@@ -160,7 +160,7 @@ function writeCodeWorkspace(
 export function registerContextCommand(program: Command): void {
   const description =
     COMMAND_REGISTRY.find((entry) => entry.name === 'context')?.description ??
-    'Print the working context for the resolved OpenSpec root';
+    'Print the working context for the resolved Sakti root';
 
   program
     .command('context')

@@ -24,17 +24,17 @@ describe('skill-generation', () => {
       const templates = getSkillTemplates();
       const dirNames = templates.map(t => t.dirName);
 
-      expect(dirNames).toContain('openspec-explore');
-      expect(dirNames).toContain('openspec-new-change');
-      expect(dirNames).toContain('openspec-continue-change');
-      expect(dirNames).toContain('openspec-apply-change');
-      expect(dirNames).toContain('openspec-ff-change');
-      expect(dirNames).toContain('openspec-sync-specs');
-      expect(dirNames).toContain('openspec-archive-change');
-      expect(dirNames).toContain('openspec-bulk-archive-change');
-      expect(dirNames).toContain('openspec-verify-change');
-      expect(dirNames).toContain('openspec-onboard');
-      expect(dirNames).toContain('openspec-propose');
+      expect(dirNames).toContain('sakti-explore');
+      expect(dirNames).toContain('sakti-new-change');
+      expect(dirNames).toContain('sakti-continue-change');
+      expect(dirNames).toContain('sakti-apply-change');
+      expect(dirNames).toContain('sakti-ff-change');
+      expect(dirNames).toContain('sakti-sync-specs');
+      expect(dirNames).toContain('sakti-archive-change');
+      expect(dirNames).toContain('sakti-bulk-archive-change');
+      expect(dirNames).toContain('sakti-verify-change');
+      expect(dirNames).toContain('sakti-onboard');
+      expect(dirNames).toContain('sakti-propose');
     });
 
     it('should have valid template structure', () => {
@@ -83,7 +83,7 @@ describe('skill-generation', () => {
       const filtered = getSkillTemplates(['propose']);
       expect(filtered).toHaveLength(1);
       expect(filtered[0].workflowId).toBe('propose');
-      expect(filtered[0].dirName).toBe('openspec-propose');
+      expect(filtered[0].dirName).toBe('sakti-propose');
     });
   });
 
@@ -221,8 +221,8 @@ describe('skill-generation', () => {
       const content = generateSkillContent(template, '0.24.0');
 
       expect(content).toContain('license: MIT');
-      expect(content).toContain('compatibility: Requires openspec CLI.');
-      expect(content).toContain('author: openspec');
+      expect(content).toContain('compatibility: Requires sakti CLI.');
+      expect(content).toContain('author: sakti');
       expect(content).toContain('version: "1.0"');
       expect(content).toContain('generatedBy: "0.24.0"');
     });
@@ -260,28 +260,28 @@ describe('skill-generation', () => {
       const template = {
         name: 'transform-test',
         description: 'Test transform callback',
-        instructions: 'Use /opsx:new to start and /opsx:apply to implement.',
+        instructions: 'Use /sakti:new to start and /sakti:apply to implement.',
       };
 
-      const transformer = (text: string) => text.replace(/\/opsx:/g, '/opsx-');
+      const transformer = (text: string) => text.replace(/\/sakti:/g, '/sakti-');
       const content = generateSkillContent(template, '0.23.0', transformer);
 
-      expect(content).toContain('/opsx-new');
-      expect(content).toContain('/opsx-apply');
-      expect(content).not.toContain('/opsx:new');
-      expect(content).not.toContain('/opsx:apply');
+      expect(content).toContain('/sakti-new');
+      expect(content).toContain('/sakti-apply');
+      expect(content).not.toContain('/sakti:new');
+      expect(content).not.toContain('/sakti:apply');
     });
 
     it('should not transform instructions when callback is undefined', () => {
       const template = {
         name: 'no-transform-test',
         description: 'Test without transform',
-        instructions: 'Use /opsx:new to start.',
+        instructions: 'Use /sakti:new to start.',
       };
 
       const content = generateSkillContent(template, '0.23.0', undefined);
 
-      expect(content).toContain('/opsx:new');
+      expect(content).toContain('/sakti:new');
     });
 
     it('should support custom transformInstructions logic', () => {

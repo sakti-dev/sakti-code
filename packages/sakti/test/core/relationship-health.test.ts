@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import { inspectRelationships } from '../../src/core/relationship-health.js';
-import type { ResolvedOpenSpecRoot } from '../../src/core/root-selection.js';
+import type { ResolvedSaktiRoot } from '../../src/core/root-selection.js';
 
 const root = {
   path: '/team/store',
   source: 'store',
   storeId: 'team-context',
-  changesDir: '/team/store/openspec/changes',
-  specsDir: '/team/store/openspec/specs',
-  archiveDir: '/team/store/openspec/changes/archive',
+  changesDir: '/team/store/sakti/changes',
+  specsDir: '/team/store/sakti/specs',
+  archiveDir: '/team/store/sakti/changes/archive',
   defaultSchema: 'spec-driven',
-} as ResolvedOpenSpecRoot;
+} as ResolvedSaktiRoot;
 
 function baseInput() {
   return {
@@ -54,9 +54,9 @@ describe('relationship health composition (3.6)', () => {
   it('surfaces both-shapes and inert-pointer wrong turns at top level', () => {
     const health = inspectRelationships({
       ...baseInput(),
-      bothShapesPointer: { value: 'team-context', filePath: '/repo/openspec/config.yaml' },
+      bothShapesPointer: { value: 'team-context', filePath: '/repo/sakti/config.yaml' },
       inertPointerDeclarations: {
-        filePath: '/app/openspec/config.yaml',
+        filePath: '/app/sakti/config.yaml',
         fields: ['references'],
       },
     });

@@ -8,8 +8,8 @@ import {
   detectLegacyConfigFiles,
   detectLegacySlashCommands,
   detectLegacyStructureFiles,
-  hasOpenSpecMarkers,
-  isOnlyOpenSpecContent,
+  hasSaktiMarkers,
+  isOnlySaktiContent,
   removeMarkerBlock,
   cleanupLegacyArtifacts,
   formatCleanupSummary,
@@ -36,81 +36,81 @@ describe('legacy-cleanup', () => {
     await fs.rm(testDir, { recursive: true, force: true });
   });
 
-  describe('hasOpenSpecMarkers', () => {
+  describe('hasSaktiMarkers', () => {
     it('should return true when both markers are present', () => {
       const content = `Some content
 ${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}
 More content`;
-      expect(hasOpenSpecMarkers(content)).toBe(true);
+      expect(hasSaktiMarkers(content)).toBe(true);
     });
 
     it('should return false when start marker is missing', () => {
       const content = `Some content
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}`;
-      expect(hasOpenSpecMarkers(content)).toBe(false);
+      expect(hasSaktiMarkers(content)).toBe(false);
     });
 
     it('should return false when end marker is missing', () => {
       const content = `${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 Some content`;
-      expect(hasOpenSpecMarkers(content)).toBe(false);
+      expect(hasSaktiMarkers(content)).toBe(false);
     });
 
     it('should return false when no markers are present', () => {
       const content = 'Plain content without markers';
-      expect(hasOpenSpecMarkers(content)).toBe(false);
+      expect(hasSaktiMarkers(content)).toBe(false);
     });
   });
 
-  describe('isOnlyOpenSpecContent', () => {
+  describe('isOnlySaktiContent', () => {
     it('should return true when content is only markers and whitespace outside', () => {
       const content = `${OPENSPEC_MARKERS.start}
-OpenSpec content here
+Sakti content here
 ${OPENSPEC_MARKERS.end}`;
-      expect(isOnlyOpenSpecContent(content)).toBe(true);
+      expect(isOnlySaktiContent(content)).toBe(true);
     });
 
     it('should return true with whitespace before and after markers', () => {
       const content = `
 
 ${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}
 
 `;
-      expect(isOnlyOpenSpecContent(content)).toBe(true);
+      expect(isOnlySaktiContent(content)).toBe(true);
     });
 
     it('should return false when content exists before markers', () => {
       const content = `User content here
 ${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}`;
-      expect(isOnlyOpenSpecContent(content)).toBe(false);
+      expect(isOnlySaktiContent(content)).toBe(false);
     });
 
     it('should return false when content exists after markers', () => {
       const content = `${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}
 User content here`;
-      expect(isOnlyOpenSpecContent(content)).toBe(false);
+      expect(isOnlySaktiContent(content)).toBe(false);
     });
 
     it('should return false when markers are missing', () => {
       const content = 'Plain content without markers';
-      expect(isOnlyOpenSpecContent(content)).toBe(false);
+      expect(isOnlySaktiContent(content)).toBe(false);
     });
 
     it('should return false when end marker comes before start marker', () => {
       const content = `${OPENSPEC_MARKERS.end}
 Content
 ${OPENSPEC_MARKERS.start}`;
-      expect(isOnlyOpenSpecContent(content)).toBe(false);
+      expect(isOnlySaktiContent(content)).toBe(false);
     });
   });
 
@@ -118,7 +118,7 @@ ${OPENSPEC_MARKERS.start}`;
     it('should remove marker block and preserve content before', () => {
       const content = `User content before
 ${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}`;
       const result = removeMarkerBlock(content);
       expect(result).toBe('User content before\n');
@@ -128,7 +128,7 @@ ${OPENSPEC_MARKERS.end}`;
 
     it('should remove marker block and preserve content after', () => {
       const content = `${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}
 User content after`;
       const result = removeMarkerBlock(content);
@@ -138,7 +138,7 @@ User content after`;
     it('should remove marker block and preserve content before and after', () => {
       const content = `User content before
 ${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}
 User content after`;
       const result = removeMarkerBlock(content);
@@ -152,7 +152,7 @@ User content after`;
 
 
 ${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}
 
 
@@ -163,7 +163,7 @@ Line 2`;
 
     it('should return empty string when only markers remain', () => {
       const content = `${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}`;
       const result = removeMarkerBlock(content);
       expect(result).toBe('');
@@ -204,10 +204,10 @@ After content`;
   });
 
   describe('detectLegacyConfigFiles', () => {
-    it('should detect CLAUDE.md with OpenSpec markers and put in update list', async () => {
+    it('should detect CLAUDE.md with Sakti markers and put in update list', async () => {
       const claudePath = path.join(testDir, 'CLAUDE.md');
       await fs.writeFile(claudePath, `${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}`);
 
       const result = await detectLegacyConfigFiles(testDir);
@@ -220,7 +220,7 @@ ${OPENSPEC_MARKERS.end}`);
       const claudePath = path.join(testDir, 'CLAUDE.md');
       await fs.writeFile(claudePath, `User instructions here
 ${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}`);
 
       const result = await detectLegacyConfigFiles(testDir);
@@ -228,7 +228,7 @@ ${OPENSPEC_MARKERS.end}`);
       expect(result.filesToUpdate).toContain('CLAUDE.md');
     });
 
-    it('should not detect files without OpenSpec markers', async () => {
+    it('should not detect files without Sakti markers', async () => {
       const claudePath = path.join(testDir, 'CLAUDE.md');
       await fs.writeFile(claudePath, 'Plain instructions without markers');
 
@@ -336,13 +336,13 @@ ${OPENSPEC_MARKERS.end}`);
       expect(result.files).toContain('.continue/prompts/openspec-apply.prompt');
     });
 
-    it('should detect legacy OpenCode opsx-* command files', async () => {
+    it('should detect legacy OpenCode sakti-* command files', async () => {
       const dirPath = path.join(testDir, '.opencode', 'command');
       await fs.mkdir(dirPath, { recursive: true });
-      await fs.writeFile(path.join(dirPath, 'opsx-propose.md'), 'content');
+      await fs.writeFile(path.join(dirPath, 'sakti-propose.md'), 'content');
 
       const result = await detectLegacySlashCommands(testDir);
-      expect(result.files).toContain('.opencode/command/opsx-propose.md');
+      expect(result.files).toContain('.opencode/command/sakti-propose.md');
     });
 
     it('should detect legacy OpenCode openspec-* command files', async () => {
@@ -354,14 +354,14 @@ ${OPENSPEC_MARKERS.end}`);
       expect(result.files).toContain('.opencode/command/openspec-new.md');
     });
 
-    it('should detect both opsx-* and openspec-* OpenCode command files', async () => {
+    it('should detect both sakti-* and openspec-* OpenCode command files', async () => {
       const dirPath = path.join(testDir, '.opencode', 'command');
       await fs.mkdir(dirPath, { recursive: true });
-      await fs.writeFile(path.join(dirPath, 'opsx-propose.md'), 'content');
+      await fs.writeFile(path.join(dirPath, 'sakti-propose.md'), 'content');
       await fs.writeFile(path.join(dirPath, 'openspec-new.md'), 'content');
 
       const result = await detectLegacySlashCommands(testDir);
-      expect(result.files).toContain('.opencode/command/opsx-propose.md');
+      expect(result.files).toContain('.opencode/command/sakti-propose.md');
       expect(result.files).toContain('.opencode/command/openspec-new.md');
     });
   });
@@ -376,17 +376,17 @@ ${OPENSPEC_MARKERS.end}`);
     });
 
     it('should detect openspec/project.md', async () => {
-      const projectPath = path.join(testDir, 'openspec', 'project.md');
+      const projectPath = path.join(testDir, '.sakti', 'project.md');
       await fs.writeFile(projectPath, '# Project content');
 
       const result = await detectLegacyStructureFiles(testDir);
       expect(result.hasProjectMd).toBe(true);
     });
 
-    it('should detect root AGENTS.md with OpenSpec markers', async () => {
+    it('should detect root AGENTS.md with Sakti markers', async () => {
       const agentsPath = path.join(testDir, 'AGENTS.md');
       await fs.writeFile(agentsPath, `${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}`);
 
       const result = await detectLegacyStructureFiles(testDir);
@@ -440,7 +440,7 @@ ${OPENSPEC_MARKERS.end}`);
     });
 
     it('should detect project.md for migration hint (it is preserved, not deleted)', async () => {
-      await fs.writeFile(path.join(testDir, 'openspec', 'project.md'), 'content');
+      await fs.writeFile(path.join(testDir, '.sakti', 'project.md'), 'content');
 
       const result = await detectLegacyArtifacts(testDir);
       // project.md triggers hasLegacyArtifacts to show migration hint
@@ -453,7 +453,7 @@ ${OPENSPEC_MARKERS.end}`);
       await fs.writeFile(path.join(testDir, 'CLAUDE.md'), `${OPENSPEC_MARKERS.start}\nContent\n${OPENSPEC_MARKERS.end}`);
       await fs.mkdir(path.join(testDir, '.claude', 'commands', 'openspec'), { recursive: true });
       await fs.writeFile(path.join(testDir, 'openspec', 'AGENTS.md'), 'content');
-      await fs.writeFile(path.join(testDir, 'openspec', 'project.md'), 'content');
+      await fs.writeFile(path.join(testDir, '.sakti', 'project.md'), 'content');
 
       const result = await detectLegacyArtifacts(testDir);
       expect(result.hasLegacyArtifacts).toBe(true);
@@ -465,7 +465,7 @@ ${OPENSPEC_MARKERS.end}`);
   });
 
   describe('cleanupLegacyArtifacts', () => {
-    it('should remove markers from config files that have only OpenSpec content (never delete)', async () => {
+    it('should remove markers from config files that have only Sakti content (never delete)', async () => {
       const claudePath = path.join(testDir, 'CLAUDE.md');
       await fs.writeFile(claudePath, `${OPENSPEC_MARKERS.start}\nContent\n${OPENSPEC_MARKERS.end}`);
 
@@ -487,7 +487,7 @@ ${OPENSPEC_MARKERS.end}`);
       const claudePath = path.join(testDir, 'CLAUDE.md');
       await fs.writeFile(claudePath, `User instructions
 ${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}`);
 
       const detection = await detectLegacyArtifacts(testDir);
@@ -533,21 +533,21 @@ ${OPENSPEC_MARKERS.end}`);
       const detection = await detectLegacyArtifacts(testDir);
       const result = await cleanupLegacyArtifacts(testDir, detection);
 
-      expect(result.deletedFiles).toContain('openspec/AGENTS.md');
+      expect(result.deletedFiles).toContain('.sakti/AGENTS.md');
       await expect(fs.access(agentsPath)).rejects.toThrow();
       // openspec directory should still exist
       await expect(fs.access(path.join(testDir, 'openspec'))).resolves.not.toThrow();
     });
 
     it('should NOT delete openspec/project.md', async () => {
-      const projectPath = path.join(testDir, 'openspec', 'project.md');
+      const projectPath = path.join(testDir, '.sakti', 'project.md');
       await fs.writeFile(projectPath, 'User project content');
 
       const detection = await detectLegacyArtifacts(testDir);
       const result = await cleanupLegacyArtifacts(testDir, detection);
 
       expect(result.projectMdNeedsMigration).toBe(true);
-      expect(result.deletedFiles).not.toContain('openspec/project.md');
+      expect(result.deletedFiles).not.toContain('.sakti/project.md');
       await expect(fs.access(projectPath)).resolves.not.toThrow();
     });
 
@@ -555,7 +555,7 @@ ${OPENSPEC_MARKERS.end}`);
       const agentsPath = path.join(testDir, 'AGENTS.md');
       await fs.writeFile(agentsPath, `User content
 ${OPENSPEC_MARKERS.start}
-OpenSpec content
+Sakti content
 ${OPENSPEC_MARKERS.end}`);
 
       const detection = await detectLegacyArtifacts(testDir);
@@ -567,9 +567,9 @@ ${OPENSPEC_MARKERS.end}`);
       expect(content).not.toContain(OPENSPEC_MARKERS.start);
     });
 
-    it('should remove markers from root AGENTS.md even when only OpenSpec content (never delete)', async () => {
+    it('should remove markers from root AGENTS.md even when only Sakti content (never delete)', async () => {
       const agentsPath = path.join(testDir, 'AGENTS.md');
-      await fs.writeFile(agentsPath, `${OPENSPEC_MARKERS.start}\nOpenSpec content\n${OPENSPEC_MARKERS.end}`);
+      await fs.writeFile(agentsPath, `${OPENSPEC_MARKERS.start}\nSakti content\n${OPENSPEC_MARKERS.end}`);
 
       const detection = await detectLegacyArtifacts(testDir);
       const result = await cleanupLegacyArtifacts(testDir, detection);
@@ -628,7 +628,7 @@ ${OPENSPEC_MARKERS.end}`);
       };
 
       const summary = formatCleanupSummary(result);
-      expect(summary).toContain('✓ Removed .claude/commands/openspec/ (replaced by /opsx:*)');
+      expect(summary).toContain('✓ Removed .claude/commands/openspec/ (replaced by /sakti:*)');
     });
 
     it('should format modified files', () => {
@@ -641,7 +641,7 @@ ${OPENSPEC_MARKERS.end}`);
       };
 
       const summary = formatCleanupSummary(result);
-      expect(summary).toContain('✓ Removed OpenSpec markers from AGENTS.md');
+      expect(summary).toContain('✓ Removed Sakti markers from AGENTS.md');
     });
 
     it('should include migration hint for project.md', () => {
@@ -655,7 +655,7 @@ ${OPENSPEC_MARKERS.end}`);
 
       const summary = formatCleanupSummary(result);
       expect(summary).toContain('Needs your attention');
-      expect(summary).toContain('openspec/project.md');
+      expect(summary).toContain('.sakti/project.md');
       expect(summary).toContain('config.yaml');
     });
 
@@ -701,7 +701,7 @@ ${OPENSPEC_MARKERS.end}`);
       };
 
       const summary = formatDetectionSummary(detection);
-      expect(summary).toContain('Upgrading to the new OpenSpec');
+      expect(summary).toContain('Upgrading to the new Sakti');
       expect(summary).toContain('agent skills');
       expect(summary).toContain('keeping everything working');
     });
@@ -833,7 +833,7 @@ ${OPENSPEC_MARKERS.end}`);
       expect(summary).toContain('Files to update');
       expect(summary).toContain('CLAUDE.md');
       expect(summary).toContain('Needs your attention');
-      expect(summary).toContain('openspec/project.md');
+      expect(summary).toContain('.sakti/project.md');
     });
 
     it('should group both removals and updates correctly', () => {
@@ -881,7 +881,7 @@ ${OPENSPEC_MARKERS.end}`);
     it('should return migration hint message', () => {
       const hint = formatProjectMdMigrationHint();
       expect(hint).toContain('Needs your attention');
-      expect(hint).toContain('openspec/project.md');
+      expect(hint).toContain('.sakti/project.md');
       expect(hint).toContain('won\'t delete this file');
       expect(hint).toContain('config.yaml');
       expect(hint).toContain('"context:"');
@@ -895,7 +895,7 @@ ${OPENSPEC_MARKERS.end}`);
 
     it('should explain the new context section benefits', () => {
       const hint = formatProjectMdMigrationHint();
-      expect(hint).toContain('included in every OpenSpec request');
+      expect(hint).toContain('included in every Sakti request');
       expect(hint).toContain('reliably');
     });
   });
@@ -1087,12 +1087,12 @@ ${OPENSPEC_MARKERS.end}`);
       expect(tools).toHaveLength(1);
     });
 
-    it('should handle opencode opsx-* legacy files', () => {
+    it('should handle opencode sakti-* legacy files', () => {
       const detection = {
         configFiles: [],
         configFilesToUpdate: [],
         slashCommandDirs: [],
-        slashCommandFiles: ['.opencode/command/opsx-propose.md'],
+        slashCommandFiles: ['.opencode/command/sakti-propose.md'],
         hasOpenspecAgents: false,
         hasProjectMd: false,
         hasRootAgentsWithMarkers: false,
@@ -1121,13 +1121,13 @@ ${OPENSPEC_MARKERS.end}`);
       expect(tools).toHaveLength(1);
     });
 
-    it('should deduplicate opencode when both opsx-* and openspec-* files exist', () => {
+    it('should deduplicate opencode when both sakti-* and openspec-* files exist', () => {
       const detection = {
         configFiles: [],
         configFilesToUpdate: [],
         slashCommandDirs: [],
         slashCommandFiles: [
-          '.opencode/command/opsx-propose.md',
+          '.opencode/command/sakti-propose.md',
           '.opencode/command/openspec-new.md',
         ],
         hasOpenspecAgents: false,

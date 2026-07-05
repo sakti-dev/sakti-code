@@ -10,12 +10,12 @@
 import { makeStoreDiagnostic, type StoreDiagnostic } from './store/errors.js';
 import { sanitizeInline, type ReferenceIndexEntry } from './references.js';
 import { storePointerProblem } from './project-config.js';
-import { toRootOutput, type ResolvedOpenSpecRoot } from './root-selection.js';
+import { toRootOutput, type ResolvedSaktiRoot } from './root-selection.js';
 
 export interface RelationshipHealth {
   root: {
     path: string;
-    source: ResolvedOpenSpecRoot['source'];
+    source: ResolvedSaktiRoot['source'];
     store_id?: string;
     healthy: boolean;
     status: StoreDiagnostic[];
@@ -31,7 +31,7 @@ export interface RelationshipHealth {
 }
 
 export interface InspectRelationshipsInput {
-  root: ResolvedOpenSpecRoot;
+  root: ResolvedSaktiRoot;
   rootHealthy: boolean;
   rootStatus?: StoreDiagnostic[];
   /** Store facts for store-backed roots (explicit or declared). */
@@ -64,7 +64,7 @@ export function inspectRelationships(input: InspectRelationshipsInput): Relation
       warning(
         'relationship_registry_unreadable',
         'The store registry is unreadable; reference health cannot be checked.',
-        'Run: openspec store doctor'
+        'Run: sakti store doctor'
       )
     );
   }
@@ -73,7 +73,7 @@ export function inspectRelationships(input: InspectRelationshipsInput): Relation
     status.push(
       warning(
         'root_pointer_ignored',
-        `${input.bothShapesPointer.filePath} declares store '${input.bothShapesPointer.value}', but this directory is a real OpenSpec root; the declaration is ignored.`,
+        `${input.bothShapesPointer.filePath} declares store '${input.bothShapesPointer.value}', but this directory is a real Sakti root; the declaration is ignored.`,
         `Remove the store: line from ${input.bothShapesPointer.filePath}, or move the planning files into the store.`
       )
     );
@@ -94,7 +94,7 @@ export function inspectRelationships(input: InspectRelationshipsInput): Relation
       warning(
         'pointer_declarations_inert',
         `${input.inertPointerDeclarations.filePath} declares ${input.inertPointerDeclarations.fields.join(' and ')}, but commands read the resolved store's config — these declarations are inert.`,
-        `Move the ${input.inertPointerDeclarations.fields.join('/')} declarations into the store's openspec/config.yaml.`
+        `Move the ${input.inertPointerDeclarations.fields.join('/')} declarations into the store's sakti/config.yaml.`
       )
     );
   }

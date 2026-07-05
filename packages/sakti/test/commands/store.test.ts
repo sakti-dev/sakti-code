@@ -6,7 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 import {
-  DEFAULT_OPENSPEC_SCHEMA,
+  DEFAULT_SAKTI_SCHEMA,
   getGlobalDataDir,
   getStoresDir,
   getStoreMetadataPath,
@@ -16,7 +16,7 @@ import {
   writeStoreRegistryState,
 } from '../../src/core/index.js';
 import { runCLI, type RunCLIResult } from '../helpers/run-cli.js';
-import { createHealthyOpenSpecRoot } from '../helpers/store-git.js';
+import { createHealthySaktiRoot } from '../helpers/store-git.js';
 
 vi.mock('@inquirer/prompts', () => ({
   input: vi.fn(),
@@ -27,7 +27,7 @@ async function runStoreCommand(args: string[]): Promise<void> {
   const { registerStoreCommand } = await import('../../src/commands/store.js');
   const program = new Command();
   registerStoreCommand(program);
-  await program.parseAsync(['node', 'openspec', 'store', ...args]);
+  await program.parseAsync(['node', 'sakti', 'store', ...args]);
 }
 
 async function getPromptMocks(): Promise<{
@@ -57,14 +57,14 @@ describe('store command', () => {
   beforeEach(() => {
     vi.resetModules();
 
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-store-command-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-store-command-'));
     dataHome = path.join(tempDir, 'data');
     configHome = path.join(tempDir, 'config');
     env = {
       XDG_DATA_HOME: dataHome,
       XDG_CONFIG_HOME: configHome,
       OPEN_SPEC_INTERACTIVE: '0',
-      OPENSPEC_TELEMETRY: '0',
+      SAKTI_TELEMETRY: '0',
     };
     globalDataDir = getGlobalDataDir({ env });
 
@@ -96,17 +96,17 @@ describe('store command', () => {
     return fs.realpathSync.native(existingPath);
   }
 
-  function expectHealthyOpenSpecRoot(root: string): void {
-    expect(fs.existsSync(path.join(root, 'openspec', 'config.yaml')) || fs.existsSync(path.join(root, 'openspec', 'config.yml'))).toBe(true);
-    expect(fs.existsSync(path.join(root, 'openspec', 'specs'))).toBe(true);
-    expect(fs.existsSync(path.join(root, 'openspec', 'changes'))).toBe(true);
-    expect(fs.existsSync(path.join(root, 'openspec', 'changes', 'archive'))).toBe(true);
+  function expectHealthySaktiRoot(root: string): void {
+    expect(fs.existsSync(path.join(root, '.sakti', 'config.yaml')) || fs.existsSync(path.join(root, '.sakti', 'config.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.sakti', 'specs'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.sakti', 'changes'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.sakti', 'changes', 'archive'))).toBe(true);
   }
 
   function expectNoGeneratedAgentOrBetaArtifacts(root: string): void {
     for (const artifact of [
       'initiatives',
-      '.openspec-workspace',
+      '.sakti-workspace',
       'workspace.yaml',
       'AGENTS.md',
       '.codex',
@@ -153,19 +153,19 @@ describe('store command', () => {
       already_registered: false,
     });
     expect(payload.created_files).toEqual([
-      'openspec/',
-      'openspec/specs/',
-      'openspec/changes/',
-      'openspec/changes/archive/',
-      'openspec/config.yaml',
-      'openspec/specs/.gitkeep',
-      'openspec/changes/archive/.gitkeep',
-      '.openspec-store/store.yaml',
+      'sakti/',
+      'sakti/specs/',
+      'sakti/changes/',
+      'sakti/changes/archive/',
+      '.sakti/config.yaml',
+      'sakti/specs/.gitkeep',
+      'sakti/changes/archive/.gitkeep',
+      '.sakti-store/store.yaml',
     ]);
     expect(payload.status).toEqual([]);
-    expectHealthyOpenSpecRoot(storeRoot);
-    expect(fs.readFileSync(path.join(storeRoot, 'openspec', 'config.yaml'), 'utf-8')).toContain(
-      `schema: ${DEFAULT_OPENSPEC_SCHEMA}`
+    expectHealthySaktiRoot(storeRoot);
+    expect(fs.readFileSync(path.join(storeRoot, 'sakti', 'config.yaml'), 'utf-8')).toContain(
+      `schema: ${DEFAULT_SAKTI_SCHEMA}`
     );
     expectNoGeneratedAgentOrBetaArtifacts(storeRoot);
     await expect(readStoreMetadataState(storeRoot)).resolves.toEqual({
@@ -191,7 +191,7 @@ describe('store command', () => {
       ...process.env,
       XDG_DATA_HOME: dataHome,
       XDG_CONFIG_HOME: configHome,
-      OPENSPEC_TELEMETRY: '0',
+      SAKTI_TELEMETRY: '0',
     };
     delete process.env.OPEN_SPEC_INTERACTIVE;
     delete process.env.CI;
@@ -216,7 +216,7 @@ describe('store command', () => {
     // The suggested location is a visible user path, never the XDG data dir.
     expect(input).toHaveBeenCalledWith(expect.objectContaining({
       message: 'Where should this store live?',
-      default: '~/openspec/guided-context',
+      default: '~/sakti/guided-context',
     }));
     expect(confirm).toHaveBeenCalledTimes(1);
     expect(confirm).toHaveBeenNthCalledWith(1, {
@@ -224,7 +224,7 @@ describe('store command', () => {
       default: true,
     });
     expect(fs.existsSync(getStoreMetadataPath(storeRoot))).toBe(true);
-    expectHealthyOpenSpecRoot(storeRoot);
+    expectHealthySaktiRoot(storeRoot);
     expect(fs.existsSync(path.join(storeRoot, '.git'))).toBe(false);
     expect(process.exitCode).toBeUndefined();
   });
@@ -267,7 +267,7 @@ describe('store command', () => {
 
     expect(result.exitCode).toBe(0);
     expect(parseJson(result).store.root).toBe(expectedExistingPath(storeRoot));
-    expectHealthyOpenSpecRoot(storeRoot);
+    expectHealthySaktiRoot(storeRoot);
   });
 
   it('accepts an existing Git-only setup directory', async () => {
@@ -287,23 +287,23 @@ describe('store command', () => {
       committed: false,
     });
     expect(payload.created_files).toEqual([
-      'openspec/',
-      'openspec/specs/',
-      'openspec/changes/',
-      'openspec/changes/archive/',
-      'openspec/config.yaml',
-      'openspec/specs/.gitkeep',
-      'openspec/changes/archive/.gitkeep',
-      '.openspec-store/store.yaml',
+      'sakti/',
+      'sakti/specs/',
+      'sakti/changes/',
+      'sakti/changes/archive/',
+      '.sakti/config.yaml',
+      'sakti/specs/.gitkeep',
+      'sakti/changes/archive/.gitkeep',
+      '.sakti-store/store.yaml',
     ]);
     expect(fs.existsSync(path.join(storeRoot, '.git'))).toBe(true);
-    expectHealthyOpenSpecRoot(storeRoot);
+    expectHealthySaktiRoot(storeRoot);
   });
 
-  it('preserves an existing healthy OpenSpec root during setup', async () => {
+  it('preserves an existing healthy Sakti root during setup', async () => {
     const storeRoot = mkdir('team-context');
-    createHealthyOpenSpecRoot(storeRoot, 'config.yml');
-    fs.writeFileSync(path.join(storeRoot, 'openspec', 'specs', 'note.md'), 'keep\n');
+    createHealthySaktiRoot(storeRoot, 'config.yml');
+    fs.writeFileSync(path.join(storeRoot, '.sakti', 'specs', 'note.md'), 'keep\n');
 
     const result = await runCLI(
       ['store', 'setup', 'team-context', '--path', storeRoot, '--no-init-git', '--json'],
@@ -315,19 +315,19 @@ describe('store command', () => {
     // First-time accept of an existing root anchors its empty directories
     // (specs/ has user content here, so only archive/ gets an anchor).
     expect(payload.created_files).toEqual([
-      'openspec/changes/archive/.gitkeep',
-      '.openspec-store/store.yaml',
+      'sakti/changes/archive/.gitkeep',
+      '.sakti-store/store.yaml',
     ]);
-    expect(fs.existsSync(path.join(storeRoot, 'openspec', 'config.yaml'))).toBe(false);
-    expect(fs.readFileSync(path.join(storeRoot, 'openspec', 'config.yml'), 'utf-8')).toBe(
-      `schema: ${DEFAULT_OPENSPEC_SCHEMA}\n`
+    expect(fs.existsSync(path.join(storeRoot, 'sakti', 'config.yaml'))).toBe(false);
+    expect(fs.readFileSync(path.join(storeRoot, 'sakti', 'config.yml'), 'utf-8')).toBe(
+      `schema: ${DEFAULT_SAKTI_SCHEMA}\n`
     );
-    expect(fs.readFileSync(path.join(storeRoot, 'openspec', 'specs', 'note.md'), 'utf-8')).toBe('keep\n');
+    expect(fs.readFileSync(path.join(storeRoot, '.sakti', 'specs', 'note.md'), 'utf-8')).toBe('keep\n');
   });
 
   it('ignores old beta files inside an otherwise healthy root', async () => {
     const storeRoot = mkdir('team-context');
-    createHealthyOpenSpecRoot(storeRoot);
+    createHealthySaktiRoot(storeRoot);
     fs.mkdirSync(path.join(storeRoot, 'initiatives'), { recursive: true });
     fs.mkdirSync(path.join(storeRoot, '.codex'), { recursive: true });
     fs.writeFileSync(path.join(storeRoot, 'workspace.yaml'), 'old: beta\n');
@@ -387,7 +387,7 @@ describe('store command', () => {
       })
     );
     expect(fs.existsSync(getStoreMetadataPath(storeRoot))).toBe(false);
-    expect(fs.existsSync(path.join(storeRoot, 'openspec'))).toBe(false);
+    expect(fs.existsSync(path.join(storeRoot, 'sakti'))).toBe(false);
   });
 
   it('rejects setup paths inside git-like parents when git cannot resolve the repo', async () => {
@@ -414,7 +414,7 @@ describe('store command', () => {
       ...process.env,
       XDG_DATA_HOME: dataHome,
       XDG_CONFIG_HOME: configHome,
-      OPENSPEC_TELEMETRY: '0',
+      SAKTI_TELEMETRY: '0',
     };
     delete process.env.OPEN_SPEC_INTERACTIVE;
     delete process.env.CI;
@@ -432,7 +432,7 @@ describe('store command', () => {
 
     expect(confirm).not.toHaveBeenCalled();
     expect(fs.existsSync(getStoreMetadataPath(storeRoot))).toBe(false);
-    expect(fs.existsSync(path.join(storeRoot, 'openspec'))).toBe(false);
+    expect(fs.existsSync(path.join(storeRoot, 'sakti'))).toBe(false);
     expect(process.exitCode).toBe(1);
   });
 
@@ -459,7 +459,7 @@ describe('store command', () => {
       ...process.env,
       XDG_DATA_HOME: dataHome,
       XDG_CONFIG_HOME: configHome,
-      OPENSPEC_TELEMETRY: '0',
+      SAKTI_TELEMETRY: '0',
     };
     delete process.env.OPEN_SPEC_INTERACTIVE;
     delete process.env.CI;
@@ -498,8 +498,8 @@ describe('store command', () => {
 
   it('registers a cloned healthy store without rewriting planning files', async () => {
     const storeRoot = mkdir('team-context');
-    createHealthyOpenSpecRoot(storeRoot);
-    fs.writeFileSync(path.join(storeRoot, 'openspec', 'specs', 'note.md'), 'keep\n');
+    createHealthySaktiRoot(storeRoot);
+    fs.writeFileSync(path.join(storeRoot, '.sakti', 'specs', 'note.md'), 'keep\n');
     await writeStoreMetadataState(storeRoot, { version: 1, id: 'team-context' });
 
     const result = await runCLI(
@@ -512,12 +512,12 @@ describe('store command', () => {
     expect(payload.store.id).toBe('team-context');
     expect(payload.registry.registered).toBe(true);
     expect(payload.created_files).toEqual([]);
-    expect(fs.readFileSync(path.join(storeRoot, 'openspec', 'specs', 'note.md'), 'utf-8')).toBe('keep\n');
+    expect(fs.readFileSync(path.join(storeRoot, '.sakti', 'specs', 'note.md'), 'utf-8')).toBe('keep\n');
   });
 
   it('requires confirmation before registering a healthy root without identity', async () => {
     const storeRoot = mkdir('team-context');
-    createHealthyOpenSpecRoot(storeRoot);
+    createHealthySaktiRoot(storeRoot);
 
     const refused = await runCLI(
       ['store', 'register', storeRoot, '--json'],
@@ -538,7 +538,7 @@ describe('store command', () => {
     );
 
     expect(confirmed.exitCode).toBe(0);
-    expect(parseJson(confirmed).created_files).toEqual(['.openspec-store/store.yaml']);
+    expect(parseJson(confirmed).created_files).toEqual(['.sakti-store/store.yaml']);
     await expect(readStoreMetadataState(storeRoot)).resolves.toEqual({
       version: 1,
       id: 'team-context',
@@ -550,7 +550,7 @@ describe('store command', () => {
       ...process.env,
       XDG_DATA_HOME: dataHome,
       XDG_CONFIG_HOME: configHome,
-      OPENSPEC_TELEMETRY: '0',
+      SAKTI_TELEMETRY: '0',
     };
     delete process.env.OPEN_SPEC_INTERACTIVE;
     delete process.env.CI;
@@ -561,12 +561,12 @@ describe('store command', () => {
     const { confirm } = await getPromptMocks();
     confirm.mockResolvedValue(false);
     const storeRoot = mkdir('team-context');
-    createHealthyOpenSpecRoot(storeRoot);
+    createHealthySaktiRoot(storeRoot);
 
     await runStoreCommand(['register', storeRoot]);
 
     expect(confirm).toHaveBeenCalledWith({
-      message: "Turn this OpenSpec root into store 'team-context'?",
+      message: "Turn this Sakti root into store 'team-context'?",
       default: false,
     });
     expect(fs.existsSync(getStoreMetadataPath(storeRoot))).toBe(false);
@@ -576,8 +576,8 @@ describe('store command', () => {
 
   it('reports repeated setup and register as no-op success', async () => {
     const storeRoot = mkdir('team-context');
-    createHealthyOpenSpecRoot(storeRoot);
-    fs.writeFileSync(path.join(storeRoot, 'openspec', 'config.yaml'), 'schema: spec-driven\n# user edit\n');
+    createHealthySaktiRoot(storeRoot);
+    fs.writeFileSync(path.join(storeRoot, 'sakti', 'config.yaml'), 'schema: spec-driven\n# user edit\n');
 
     const firstSetup = await runCLI(
       ['store', 'setup', 'team-context', '--path', storeRoot, '--no-init-git', '--json'],
@@ -626,7 +626,7 @@ describe('store command', () => {
         code: 'store_already_registered',
       })
     );
-    expect(fs.readFileSync(path.join(storeRoot, 'openspec', 'config.yaml'), 'utf-8')).toBe(
+    expect(fs.readFileSync(path.join(storeRoot, 'sakti', 'config.yaml'), 'utf-8')).toBe(
       'schema: spec-driven\n# user edit\n'
     );
     await expect(readStoreRegistryState({ globalDataDir })).resolves.toEqual({
@@ -646,8 +646,8 @@ describe('store command', () => {
     const firstRoot = mkdir('first/team-context');
     const secondRoot = mkdir('second/team-context');
     const aliasRoot = path.join(tempDir, 'alias-team-context');
-    createHealthyOpenSpecRoot(firstRoot);
-    createHealthyOpenSpecRoot(secondRoot);
+    createHealthySaktiRoot(firstRoot);
+    createHealthySaktiRoot(secondRoot);
     await writeStoreMetadataState(firstRoot, { version: 1, id: 'team-context' });
     await writeStoreMetadataState(secondRoot, { version: 1, id: 'team-context' });
     await writeStoreRegistryState(
@@ -676,7 +676,7 @@ describe('store command', () => {
       })
     );
 
-    fs.rmSync(path.join(firstRoot, '.openspec-store'), { recursive: true, force: true });
+    fs.rmSync(path.join(firstRoot, '.sakti-store'), { recursive: true, force: true });
     await writeStoreMetadataState(firstRoot, { version: 1, id: 'other-context' });
     fs.symlinkSync(firstRoot, aliasRoot, process.platform === 'win32' ? 'junction' : 'dir');
     const samePath = await runCLI(
@@ -911,8 +911,8 @@ describe('store command', () => {
     const healthyRoot = mkdir('healthy-context');
     const mismatchRoot = mkdir('mismatch-context');
     execFileSync('git', ['init'], { cwd: healthyRoot, stdio: 'ignore' });
-    createHealthyOpenSpecRoot(healthyRoot);
-    createHealthyOpenSpecRoot(mismatchRoot);
+    createHealthySaktiRoot(healthyRoot);
+    createHealthySaktiRoot(mismatchRoot);
     await writeStoreMetadataState(healthyRoot, { version: 1, id: 'healthy-context' });
     await writeStoreMetadataState(mismatchRoot, { version: 1, id: 'other-context' });
     await writeStoreRegistryState(
@@ -954,7 +954,7 @@ describe('store command', () => {
         code: 'store_git_no_commits',
       }),
     ]);
-    expect(byId['healthy-context'].openspec_root.healthy).toBe(true);
+    expect(byId['healthy-context'].sakti_root.healthy).toBe(true);
     expect(byId['healthy-context'].git).toEqual({
       is_repository: true,
       has_commits: false,
@@ -967,7 +967,7 @@ describe('store command', () => {
         code: 'store_root_missing',
       })
     );
-    expect(byId['missing-context'].openspec_root.present).toBeNull();
+    expect(byId['missing-context'].sakti_root.present).toBeNull();
     expect(byId['mismatch-context'].status[0]).toEqual(
       expect.objectContaining({
         code: 'store_metadata_id_mismatch',
@@ -975,11 +975,11 @@ describe('store command', () => {
     );
   });
 
-  it('reports OpenSpec root health separately without repairing it', async () => {
+  it('reports Sakti root health separately without repairing it', async () => {
     const storeRoot = mkdir('team-context');
-    fs.mkdirSync(path.join(storeRoot, 'openspec', 'specs'), { recursive: true });
-    fs.mkdirSync(path.join(storeRoot, 'openspec', 'changes'), { recursive: true });
-    fs.writeFileSync(path.join(storeRoot, 'openspec', 'config.yaml'), `schema: ${DEFAULT_OPENSPEC_SCHEMA}\n`);
+    fs.mkdirSync(path.join(storeRoot, '.sakti', 'specs'), { recursive: true });
+    fs.mkdirSync(path.join(storeRoot, '.sakti', 'changes'), { recursive: true });
+    fs.writeFileSync(path.join(storeRoot, 'sakti', 'config.yaml'), `schema: ${DEFAULT_SAKTI_SCHEMA}\n`);
     await writeStoreMetadataState(storeRoot, { version: 1, id: 'team-context' });
     await writeStoreRegistryState(
       {
@@ -1003,19 +1003,19 @@ describe('store command', () => {
 
     expect(result.exitCode).toBe(0);
     const store = parseJson(result).stores[0];
-    expect(store.openspec_root.archive.present).toBe(false);
-    expect(store.openspec_root.status[0]).toEqual(
+    expect(store.sakti_root.archive.present).toBe(false);
+    expect(store.sakti_root.status[0]).toEqual(
       expect.objectContaining({
-        code: 'openspec_archive_missing',
+        code: 'sakti_archive_missing',
       })
     );
-    expect(fs.existsSync(path.join(storeRoot, 'openspec', 'changes', 'archive'))).toBe(false);
+    expect(fs.existsSync(path.join(storeRoot, '.sakti', 'changes', 'archive'))).toBe(false);
   });
 
   it('register errors are terminal: one-checkout rule, no circular fix texts', async () => {
     // Register the original checkout.
     const original = mkdir('team-context');
-    createHealthyOpenSpecRoot(original);
+    createHealthySaktiRoot(original);
     await writeStoreMetadataState(original, { version: 1, id: 'team-context' });
     const first = await runCLI(['store', 'register', original, '--json'], {
       cwd: tempDir,
@@ -1027,7 +1027,7 @@ describe('store command', () => {
     // one-checkout rule and the unregister escape — never "choose a
     // different id".
     const secondCheckout = mkdir('elsewhere/team-context');
-    createHealthyOpenSpecRoot(secondCheckout);
+    createHealthySaktiRoot(secondCheckout);
     await writeStoreMetadataState(secondCheckout, { version: 1, id: 'team-context' });
     const conflict = await runCLI(['store', 'register', secondCheckout, '--json'], {
       cwd: tempDir,
@@ -1038,7 +1038,7 @@ describe('store command', () => {
     expect(conflictStatus.code).toBe('store_id_conflict');
     expect(conflictStatus.message).toContain('One checkout per store id');
     expect(conflictStatus.message).toContain(expectedExistingPath(original));
-    expect(conflictStatus.fix).toContain('openspec store unregister team-context');
+    expect(conflictStatus.fix).toContain('sakti store unregister team-context');
     expect(conflictStatus.fix).not.toContain('different store id');
 
     // Mismatched --id when the metadata id is already registered elsewhere:
@@ -1057,7 +1057,7 @@ describe('store command', () => {
 
     // Mismatched --id when the metadata id is free: the plain fix applies.
     const freeRoot = mkdir('free-context');
-    createHealthyOpenSpecRoot(freeRoot);
+    createHealthySaktiRoot(freeRoot);
     await writeStoreMetadataState(freeRoot, { version: 1, id: 'free-context' });
     const mismatchFree = await runCLI(
       ['store', 'register', freeRoot, '--id', 'wrong-id', '--json'],
@@ -1083,7 +1083,7 @@ describe('store command', () => {
       );
 
       expect(result.exitCode).toBe(0);
-      expect(fs.existsSync(path.join(storeRoot, '.openspec-store', 'store.yaml'))).toBe(true);
+      expect(fs.existsSync(path.join(storeRoot, '.sakti-store', 'store.yaml'))).toBe(true);
       expect(fs.existsSync(path.join(getStoresDir({ globalDataDir }), 'registry.yaml'))).toBe(
         true
       );
@@ -1095,8 +1095,8 @@ describe('store command', () => {
       // the exact pre-rename bytes inline (not via the current writer), so
       // this fails if the on-disk contract ever drifts.
       const storeRoot = mkdir('pre-rename-context');
-      createHealthyOpenSpecRoot(storeRoot);
-      const metadataDir = path.join(storeRoot, '.openspec-store');
+      createHealthySaktiRoot(storeRoot);
+      const metadataDir = path.join(storeRoot, '.sakti-store');
       fs.mkdirSync(metadataDir, { recursive: true });
       fs.writeFileSync(
         path.join(metadataDir, 'store.yaml'),
@@ -1145,11 +1145,11 @@ describe('store command', () => {
       });
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("unknown command 'new' for 'openspec store'");
+      expect(result.stderr).toContain("unknown command 'new' for 'sakti store'");
       expect(result.stderr).toContain(
         'setup, register, unregister, remove, list (ls), doctor'
       );
-      expect(result.stderr).toContain('openspec new change billing-rework --store <id>');
+      expect(result.stderr).toContain('sakti new change billing-rework --store <id>');
     });
 
     it('never suggests an invalid command for partial new invocations', async () => {
@@ -1157,8 +1157,8 @@ describe('store command', () => {
 
       expect(result.exitCode).toBe(1);
       // 'new my-change' would be invalid; the hint falls back to the full form.
-      expect(result.stderr).toContain('openspec new change <change-id> --store <id>');
-      expect(result.stderr).not.toContain('openspec new my-change');
+      expect(result.stderr).toContain('sakti new change <change-id> --store <id>');
+      expect(result.stderr).not.toContain('sakti new my-change');
     });
 
     it('falls back to the generic example when flags interleave operands', async () => {
@@ -1168,7 +1168,7 @@ describe('store command', () => {
       );
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain('openspec new change <change-id> --store <id>');
+      expect(result.stderr).toContain('sakti new change <change-id> --store <id>');
       expect(result.stderr).not.toContain('core');
     });
 

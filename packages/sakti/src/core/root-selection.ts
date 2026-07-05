@@ -1,11 +1,11 @@
 /**
- * Shared OpenSpec root resolution for normal commands.
+ * Shared Sakti root resolution for normal commands.
  *
  * Normal commands (`new change`, `status`, `instructions`, `list`, `show`,
- * `validate`, `archive`) resolve one OpenSpec root through this module:
+ * `validate`, `archive`) resolve one Sakti root through this module:
  *
  * - `--store <id>` selects a registered store's root.
- * - Without `--store`, the nearest ancestor containing `openspec/` wins.
+ * - Without `--store`, the nearest ancestor containing `sakti/` wins.
  *   Leftover workspace view state is never considered a root here.
  * - With no nearest root, registered stores produce a selection hint error;
  *   otherwise commands may treat the current directory as an implicit root.
@@ -16,7 +16,7 @@
  * (`unknown_store`, `no_registered_stores`, `store_identity_mismatch`,
  * `unhealthy_store_root`, `store_path_not_supported`,
  * `invalid_store_pointer`, `no_root_with_registered_stores`,
- * `no_openspec_root`).
+ * `no_sakti_root`).
  */
 
 import * as fs from 'node:fs';
@@ -31,31 +31,31 @@ import {
   validateStoreId,
 } from './store/foundation.js';
 import { getStoreRootForBackend } from './store/registry.js';
-import { inspectOpenSpecRoot } from './openspec-root.js';
+import { inspectSaktiRoot } from './sakti-root.js';
 import { findRepoPlanningRootSync, type PlanningHome } from './planning-home.js';
-import { classifyOpenSpecDir, storePointerProblem } from './project-config.js';
+import { classifySaktiDir, storePointerProblem } from './project-config.js';
 import { FileSystemUtils } from '../utils/file-system.js';
 
-export type OpenSpecRootSource = 'store' | 'declared' | 'nearest' | 'implicit';
+export type SaktiRootSource = 'store' | 'declared' | 'nearest' | 'implicit';
 
 export interface StoreSelectorOptions {
   store?: string;
   storePath?: string;
 }
 
-export interface ResolveOpenSpecRootOptions extends StoreSelectorOptions {
+export interface ResolveSaktiRootOptions extends StoreSelectorOptions {
   startPath?: string;
   allowImplicitRoot?: boolean;
   globalDataDir?: string;
 }
 
-export interface ResolvedOpenSpecRoot {
+export interface ResolvedSaktiRoot {
   path: string;
   changesDir: string;
   specsDir: string;
   archiveDir: string;
   defaultSchema: 'spec-driven';
-  source: OpenSpecRootSource;
+  source: SaktiRootSource;
   storeId?: string;
 }
 
@@ -102,19 +102,19 @@ function fromStoreError(error: unknown): never {
 }
 
 function doctorFix(id: string): string {
-  return `Run openspec store doctor ${id} to inspect it.`;
+  return `Run sakti store doctor ${id} to inspect it.`;
 }
 
 function makeRoot(
   rootPath: string,
-  source: OpenSpecRootSource,
+  source: SaktiRootSource,
   storeId?: string
-): ResolvedOpenSpecRoot {
+): ResolvedSaktiRoot {
   return {
     path: rootPath,
-    changesDir: path.join(rootPath, 'openspec', 'changes'),
-    specsDir: path.join(rootPath, 'openspec', 'specs'),
-    archiveDir: path.join(rootPath, 'openspec', 'changes', 'archive'),
+    changesDir: path.join(rootPath, '.sakti', 'changes'),
+    specsDir: path.join(rootPath, '.sakti', 'specs'),
+    archiveDir: path.join(rootPath, '.sakti', 'changes', 'archive'),
     defaultSchema: 'spec-driven',
     source,
     ...(storeId ? { storeId } : {}),
@@ -136,8 +136,8 @@ function canonicalDirectory(startPath: string): string {
 async function resolveStoreRoot(
   id: string,
   globalDataDir?: string,
-  source: OpenSpecRootSource = 'store'
-): Promise<ResolvedOpenSpecRoot> {
+  source: SaktiRootSource = 'store'
+): Promise<ResolvedSaktiRoot> {
   try {
     validateStoreId(id);
   } catch (error) {
@@ -160,7 +160,7 @@ async function resolveStoreRoot(
         'no_registered_stores',
         {
           target: 'store.id',
-          fix: `Run openspec store setup ${id} or openspec store register <path> first.`,
+          fix: `Run sakti store setup ${id} or sakti store register <path> first.`,
         }
       );
     }
@@ -172,7 +172,7 @@ async function resolveStoreRoot(
       'unknown_store',
       {
         target: 'store.id',
-        fix: 'Pass a registered store id, or run openspec store list.',
+        fix: 'Pass a registered store id, or run sakti store list.',
       }
     );
   }
@@ -199,9 +199,9 @@ async function resolveStoreRoot(
       );
     case 'unhealthy_root':
       throw new RootSelectionError(
-        `Store '${id}' does not have a healthy OpenSpec root at ${storeRoot}: ${inspection.problems} ${doctorFix(id)}`,
+        `Store '${id}' does not have a healthy Sakti root at ${storeRoot}: ${inspection.problems} ${doctorFix(id)}`,
         'unhealthy_store_root',
-        { target: 'openspec.root', fix: doctorFix(id) }
+        { target: 'sakti.root', fix: doctorFix(id) }
       );
     case 'ok':
       return makeRoot(inspection.canonicalRoot, source, id);
@@ -247,11 +247,11 @@ export async function inspectRegisteredStore(
     return { kind: 'metadata_id_mismatch', actualId: metadata.id };
   }
 
-  const inspection = await inspectOpenSpecRoot(storeRoot);
+  const inspection = await inspectSaktiRoot(storeRoot);
   if (!inspection.healthy) {
     const problems =
       inspection.diagnostics.map((diagnostic) => diagnostic.message).join(' ') ||
-      'OpenSpec root is missing or incomplete.';
+      'Sakti root is missing or incomplete.';
     return { kind: 'unhealthy_root', problems };
   }
 
@@ -259,23 +259,23 @@ export async function inspectRegisteredStore(
 }
 
 /**
- * Classifies the nearest `openspec/` directory (slice 3.2): a planning
+ * Classifies the nearest `sakti/` directory (slice 3.2): a planning
  * shape (specs/ or changes/ directories) is a real root and wins —
  * fallback never override. A config-only directory with a `store:`
  * pointer resolves the declared store; without one, it stays a root
  * (today's behavior for freshly initialized minimal roots).
  */
 /**
- * The nearest-root walk, qualified: an `openspec/` DIRECTORY alone is
+ * The nearest-root walk, qualified: an `sakti/` DIRECTORY alone is
  * not a root — it must carry a planning shape or a config file.
- * Without this, the recommended `~/openspec/<id>` store layout would
+ * Without this, the recommended `~/sakti/<id>` store layout would
  * make $HOME a phantom root that captures every command under the
  * home tree.
  */
 function findQualifyingRootSync(startPath: string): string | null {
   let candidate = findRepoPlanningRootSync(startPath);
   while (candidate) {
-    const { hasPlanningShape, pointer } = classifyOpenSpecDir(candidate);
+    const { hasPlanningShape, pointer } = classifySaktiDir(candidate);
     if (hasPlanningShape || pointer.filePath) {
       return candidate;
     }
@@ -291,13 +291,13 @@ function findQualifyingRootSync(startPath: string): string | null {
 async function resolveNearestOrDeclaredRoot(
   nearestRoot: string,
   globalDataDir?: string
-): Promise<ResolvedOpenSpecRoot> {
-  const { hasPlanningShape, pointer } = classifyOpenSpecDir(nearestRoot);
+): Promise<ResolvedSaktiRoot> {
+  const { hasPlanningShape, pointer } = classifySaktiDir(nearestRoot);
 
   if (hasPlanningShape) {
     if (pointer.value !== undefined) {
       console.error(
-        `Warning: ${pointer.filePath} declares store '${pointer.value}', but this directory is a real OpenSpec root; the declaration is ignored.`
+        `Warning: ${pointer.filePath} declares store '${pointer.value}', but this directory is a real Sakti root; the declaration is ignored.`
       );
     }
     return makeRoot(nearestRoot, 'nearest');
@@ -331,7 +331,7 @@ async function resolveNearestOrDeclaredRoot(
       // they did not pass --store.
       const declarationFix =
         error.diagnostic.code === 'unknown_store'
-          ? `Register the store (openspec store register <path> --id ${pointer.value}) or edit ${pointer.filePath} to name a registered store.`
+          ? `Register the store (sakti store register <path> --id ${pointer.value}) or edit ${pointer.filePath} to name a registered store.`
           : error.diagnostic.fix;
       throw new RootSelectionError(
         `Declared in ${pointer.filePath}: ${error.message}`,
@@ -346,16 +346,16 @@ async function resolveNearestOrDeclaredRoot(
   }
 }
 
-export async function resolveOpenSpecRoot(
-  options: ResolveOpenSpecRootOptions = {}
-): Promise<ResolvedOpenSpecRoot> {
+export async function resolveSaktiRoot(
+  options: ResolveSaktiRootOptions = {}
+): Promise<ResolvedSaktiRoot> {
   if (options.storePath !== undefined) {
     throw new RootSelectionError(
-      '--store-path is not supported. Register the path with openspec store register <path>, then select it with --store <id>.',
+      '--store-path is not supported. Register the path with sakti store register <path>, then select it with --store <id>.',
       'store_path_not_supported',
       {
         target: 'store.id',
-        fix: 'openspec store register <path>, then rerun with --store <id>.',
+        fix: 'sakti store register <path>, then rerun with --store <id>.',
       }
     );
   }
@@ -384,20 +384,20 @@ export async function resolveOpenSpecRoot(
 
   if (registeredIds.length > 0) {
     throw new RootSelectionError(
-      `No OpenSpec root found in the current directory or its ancestors. Registered stores: ${registeredIds.join(', ')}. Pass --store <id> to use one, or run openspec init to create a local root.`,
+      `No Sakti root found in the current directory or its ancestors. Registered stores: ${registeredIds.join(', ')}. Pass --store <id> to use one, or run sakti init to create a local root.`,
       'no_root_with_registered_stores',
       {
-        target: 'openspec.root',
-        fix: `Rerun with --store <id> (registered: ${registeredIds.join(', ')}) or run openspec init.`,
+        target: 'sakti.root',
+        fix: `Rerun with --store <id> (registered: ${registeredIds.join(', ')}) or run sakti init.`,
       }
     );
   }
 
   if (options.allowImplicitRoot === false) {
     throw new RootSelectionError(
-      'No OpenSpec root found from the current directory.',
-      'no_openspec_root',
-      { target: 'openspec.root', fix: 'Run openspec init to create a root here.' }
+      'No Sakti root found from the current directory.',
+      'no_sakti_root',
+      { target: 'sakti.root', fix: 'Run sakti init to create a root here.' }
     );
   }
 
@@ -410,11 +410,11 @@ export async function resolveOpenSpecRoot(
 
 export interface RootOutput {
   path: string;
-  source: OpenSpecRootSource;
+  source: SaktiRootSource;
   store_id?: string;
 }
 
-export function toRootOutput(root: ResolvedOpenSpecRoot): RootOutput {
+export function toRootOutput(root: ResolvedSaktiRoot): RootOutput {
   return {
     path: root.path,
     source: root.source,
@@ -428,8 +428,8 @@ export function toRootOutput(root: ResolvedOpenSpecRoot): RootOutput {
  * noun-form suggestions) keys on this, never on `source` directly.
  */
 export function isStoreSelectedRoot(
-  root: ResolvedOpenSpecRoot
-): root is ResolvedOpenSpecRoot & { storeId: string } {
+  root: ResolvedSaktiRoot
+): root is ResolvedSaktiRoot & { storeId: string } {
   return root.storeId !== undefined;
 }
 
@@ -437,9 +437,9 @@ export function isStoreSelectedRoot(
  * Human-mode verification signal for a selected store. Written to stderr so
  * raw-Markdown and agent-consumed stdout payloads stay clean.
  */
-export function emitStoreRootBanner(root: ResolvedOpenSpecRoot): void {
+export function emitStoreRootBanner(root: ResolvedSaktiRoot): void {
   if (isStoreSelectedRoot(root)) {
-    console.error(`Using OpenSpec root: ${root.storeId} (${root.path})`);
+    console.error(`Using Sakti root: ${root.storeId} (${root.path})`);
   }
 }
 
@@ -447,7 +447,7 @@ export function emitStoreRootBanner(root: ResolvedOpenSpecRoot): void {
  * Keeps follow-up command hints inside the selected store: a hint a user can
  * paste verbatim must carry `--store <id>` when a store was selected.
  */
-export function withStoreFlag(root: ResolvedOpenSpecRoot, command: string): string {
+export function withStoreFlag(root: ResolvedSaktiRoot, command: string): string {
   return isStoreSelectedRoot(root)
     ? `${command} --store ${root.storeId}`
     : command;
@@ -457,7 +457,7 @@ export function withStoreFlag(root: ResolvedOpenSpecRoot, command: string): stri
  * Compatibility bridge for workflow code that still expects a PlanningHome.
  * The planning home is always repo-shaped.
  */
-export function toPlanningHome(root: ResolvedOpenSpecRoot): PlanningHome {
+export function toPlanningHome(root: ResolvedSaktiRoot): PlanningHome {
   return {
     kind: 'repo',
     root: root.path,
@@ -481,9 +481,9 @@ export async function resolveRootForCommand(
     /** Diagnostic commands inspect what exists; they never scaffold. */
     allowImplicitRoot?: boolean;
   } = {}
-): Promise<ResolvedOpenSpecRoot | null> {
+): Promise<ResolvedSaktiRoot | null> {
   try {
-    const root = await resolveOpenSpecRoot({
+    const root = await resolveSaktiRoot({
       ...(selector.store !== undefined ? { store: selector.store } : {}),
       ...(selector.storePath !== undefined ? { storePath: selector.storePath } : {}),
       ...(output.allowImplicitRoot !== undefined

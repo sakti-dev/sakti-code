@@ -12,7 +12,7 @@ import {
   mergeOpenerTable,
 } from '../../src/core/openers.js';
 
-const CONFIG_PATH = '/home/dev/.config/openspec/config.json';
+const CONFIG_PATH = '/home/dev/.config/sakti/config.json';
 
 describe('openers core', () => {
   describe('built-in table', () => {
@@ -107,12 +107,12 @@ describe('openers core', () => {
     beforeEach(() => {
       // listOpenerChoices hides CLI-agent (attach-dirs) tools by default;
       // this suite asserts the full table, so enable them.
-      process.env.OPENSPEC_ENABLE_CLI_AGENT_OPENERS = '1';
-      tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-openers-'));
+      process.env.SAKTI_ENABLE_CLI_AGENT_OPENERS = '1';
+      tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-openers-'));
     });
 
     afterEach(() => {
-      delete process.env.OPENSPEC_ENABLE_CLI_AGENT_OPENERS;
+      delete process.env.SAKTI_ENABLE_CLI_AGENT_OPENERS;
       fs.rmSync(tempDir, { recursive: true, force: true });
     });
 

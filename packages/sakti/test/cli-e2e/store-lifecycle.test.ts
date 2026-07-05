@@ -36,7 +36,7 @@ function machineEnv(home: string, gitConfigGlobal: string): NodeJS.ProcessEnv {
     XDG_DATA_HOME: path.join(home, 'data'),
     XDG_STATE_HOME: path.join(home, 'state'),
     XDG_CACHE_HOME: path.join(home, 'cache'),
-    OPENSPEC_TELEMETRY: '0',
+    SAKTI_TELEMETRY: '0',
     GIT_CONFIG_GLOBAL: gitConfigGlobal,
     GIT_CONFIG_SYSTEM: emptyGitConfig,
     GIT_AUTHOR_NAME: 'Journey Tester',
@@ -172,7 +172,7 @@ async function writeCompletedChangeArtifacts(
 }
 
 beforeAll(async () => {
-  base = await fs.mkdtemp(path.join(tmpdir(), 'openspec-store-lifecycle-'));
+  base = await fs.mkdtemp(path.join(tmpdir(), 'sakti-store-lifecycle-'));
   storeRoot = path.join(base, 'machine-a', 'team-context');
   cloneRoot = path.join(base, 'machine-b', 'team-context');
   projectDir = path.join(base, 'machine-a', 'app-repo');
@@ -208,16 +208,16 @@ describe('standalone store lifecycle journey', () => {
     });
     expect(payload.created_files).toEqual(
       expect.arrayContaining([
-        'openspec/config.yaml',
-        'openspec/specs/.gitkeep',
-        'openspec/changes/archive/.gitkeep',
-        '.openspec-store/store.yaml',
+        '.sakti/config.yaml',
+        'sakti/specs/.gitkeep',
+        'sakti/changes/archive/.gitkeep',
+        '.sakti-store/store.yaml',
       ])
     );
 
     const log = await git(storeRoot, machineA, ['log', '--format=%s']);
     expect(log.trim().split('\n')).toHaveLength(1);
-    expect(log).toContain(`Initialize OpenSpec store ${STORE_ID}`);
+    expect(log).toContain(`Initialize Sakti store ${STORE_ID}`);
 
     const committedFiles = await git(storeRoot, machineA, [
       'show',
@@ -225,9 +225,9 @@ describe('standalone store lifecycle journey', () => {
       '--format=',
       'HEAD',
     ]);
-    expect(committedFiles).toContain('.openspec-store/store.yaml');
-    expect(committedFiles).toContain('openspec/specs/.gitkeep');
-    expect(committedFiles).toContain('openspec/changes/archive/.gitkeep');
+    expect(committedFiles).toContain('.sakti-store/store.yaml');
+    expect(committedFiles).toContain('sakti/specs/.gitkeep');
+    expect(committedFiles).toContain('sakti/changes/archive/.gitkeep');
 
     const status = await git(storeRoot, machineA, ['status', '--porcelain']);
     expect(status.trim()).toBe('');
@@ -243,7 +243,7 @@ describe('standalone store lifecycle journey', () => {
     });
     expect(doctor.exitCode).toBe(0);
     const store = JSON.parse(doctor.stdout).stores[0];
-    expect(store.openspec_root.healthy).toBe(true);
+    expect(store.sakti_root.healthy).toBe(true);
     expect(store.git).toEqual({
       is_repository: true,
       has_commits: true,
@@ -282,7 +282,7 @@ describe('standalone store lifecycle journey', () => {
       { env: machineA, cwd: projectDir }
     );
     expect(status.exitCode).toBe(0);
-    expect(status.stderr).toContain(`Using OpenSpec root: ${STORE_ID}`);
+    expect(status.stderr).toContain(`Using Sakti root: ${STORE_ID}`);
     expect(status.stdout).not.toContain('Planning home');
 
     const instructions = await runCLI(
@@ -291,11 +291,11 @@ describe('standalone store lifecycle journey', () => {
     );
     expect(instructions.exitCode).toBe(0);
     expect(instructions.stdout).toContain(
-      path.join(canonical(storeRoot), 'openspec', 'changes', changeId, 'proposal.md')
+      path.join(canonical(storeRoot), '.sakti', 'changes', changeId, 'proposal.md')
     );
 
     // The test acts as the agent and writes the artifacts.
-    const changeDir = path.join(storeRoot, 'openspec', 'changes', changeId);
+    const changeDir = path.join(storeRoot, '.sakti', 'changes', changeId);
     await writeCompletedChangeArtifacts(changeDir, 'billing');
 
     const validated = await runCLI(
@@ -330,11 +330,11 @@ describe('standalone store lifecycle journey', () => {
     expect(archivePayload.archive.change).toBe(changeId);
     expect(archivePayload.root.store_id).toBe(STORE_ID);
 
-    const specPath = path.join(storeRoot, 'openspec', 'specs', 'billing', 'spec.md');
+    const specPath = path.join(storeRoot, '.sakti', 'specs', 'billing', 'spec.md');
     await expect(fs.readFile(specPath, 'utf-8')).resolves.toContain('billing SHALL work');
 
     const archiveEntries = await fs.readdir(
-      path.join(storeRoot, 'openspec', 'changes', 'archive')
+      path.join(storeRoot, '.sakti', 'changes', 'archive')
     );
     expect(archiveEntries.some((entry) => entry.endsWith(`-${changeId}`))).toBe(true);
   });
@@ -374,7 +374,7 @@ describe('standalone store lifecycle journey', () => {
       env: machineB,
     });
     expect(doctor.exitCode).toBe(0);
-    expect(JSON.parse(doctor.stdout).stores[0].openspec_root.healthy).toBe(true);
+    expect(JSON.parse(doctor.stdout).stores[0].sakti_root.healthy).toBe(true);
 
     const specs = await runCLI(
       ['list', '--specs', '--store', STORE_ID, '--json'],
@@ -401,7 +401,7 @@ describe('standalone store lifecycle journey', () => {
       { env: machineB, cwd: base }
     );
     expect(created.exitCode).toBe(0);
-    expect(created.stderr).toContain(`Using OpenSpec root: ${STORE_ID}`);
+    expect(created.stderr).toContain(`Using Sakti root: ${STORE_ID}`);
     expect(created.stdout).toContain(`--store ${STORE_ID}`);
 
     const instructions = await runCLI(
@@ -410,10 +410,10 @@ describe('standalone store lifecycle journey', () => {
     );
     expect(instructions.exitCode).toBe(0);
     expect(instructions.stdout).toContain(
-      path.join(canonical(cloneRoot), 'openspec', 'changes', changeId, 'proposal.md')
+      path.join(canonical(cloneRoot), '.sakti', 'changes', changeId, 'proposal.md')
     );
 
-    const changeDir = path.join(cloneRoot, 'openspec', 'changes', changeId);
+    const changeDir = path.join(cloneRoot, '.sakti', 'changes', changeId);
     await writeCompletedChangeArtifacts(changeDir, 'invoicing');
 
     const status = await runCLI(
@@ -437,7 +437,7 @@ describe('standalone store lifecycle journey', () => {
     expect(archived.exitCode).toBe(0);
     expect(JSON.parse(archived.stdout).archive.change).toBe(changeId);
 
-    const specPath = path.join(cloneRoot, 'openspec', 'specs', 'invoicing', 'spec.md');
+    const specPath = path.join(cloneRoot, '.sakti', 'specs', 'invoicing', 'spec.md');
     await expect(fs.readFile(specPath, 'utf-8')).resolves.toContain('invoicing SHALL work');
 
     // Post-resolution failures keep the banner, and the hint keeps the store:
@@ -448,27 +448,27 @@ describe('standalone store lifecycle journey', () => {
       { env: machineB, cwd: base }
     );
     expect(failedApply.exitCode).not.toBe(0);
-    expect(failedApply.stderr).toContain(`Using OpenSpec root: ${STORE_ID}`);
-    expect(failedApply.stderr).toContain(`openspec new change <name> --store ${STORE_ID}`);
+    expect(failedApply.stderr).toContain(`Using Sakti root: ${STORE_ID}`);
+    expect(failedApply.stderr).toContain(`sakti new change <name> --store ${STORE_ID}`);
   });
 
-  it('end state is just normal OpenSpec files in both checkouts', async () => {
+  it('end state is just normal Sakti files in both checkouts', async () => {
     for (const root of [storeRoot, cloneRoot]) {
       const entries = await listRelativeEntries(root, new Set(['.git']));
 
       for (const entry of entries) {
-        expect(entry).toMatch(/^(\.openspec-store(\/|\/store\.yaml)?|openspec(\/.*)?)$/);
+        expect(entry).toMatch(/^(\.sakti-store(\/|\/store\.yaml)?|sakti(\/.*)?)$/);
         expect(entry).not.toMatch(/initiative|workspace/i);
       }
 
-      expect(entries).toContain('.openspec-store/store.yaml');
-      expect(entries).toContain('openspec/config.yaml');
+      expect(entries).toContain('.sakti-store/store.yaml');
+      expect(entries).toContain('.sakti/config.yaml');
     }
 
     // Global state holds only registry/config metadata, no planning files.
     for (const env of [machineA, machineB]) {
       const dataEntries = await listRelativeEntries(
-        path.join(env.XDG_DATA_HOME as string, 'openspec'),
+        path.join(env.XDG_DATA_HOME as string, 'sakti'),
         new Set()
       );
       expect(dataEntries).toEqual(['stores/', 'stores/registry.yaml']);

@@ -4,7 +4,7 @@ import {
   resolveRootForCommand,
   toRootOutput,
   withStoreFlag,
-  type ResolvedOpenSpecRoot,
+  type ResolvedSaktiRoot,
   type RootOutput,
   isStoreSelectedRoot,
 } from '../core/root-selection.js';
@@ -64,7 +64,7 @@ export class ShowCommand {
     return undefined;
   }
 
-  private delegateOptions(root: ResolvedOpenSpecRoot, options: ShowExecuteOptions): ShowExecuteOptions & { rootOutput?: RootOutput } {
+  private delegateOptions(root: ResolvedSaktiRoot, options: ShowExecuteOptions): ShowExecuteOptions & { rootOutput?: RootOutput } {
     return {
       ...options,
       ...(options.json ? { rootOutput: toRootOutput(root) } : {}),
@@ -74,7 +74,7 @@ export class ShowCommand {
   private async runInteractiveByType(
     type: ItemType,
     options: ShowExecuteOptions,
-    root: ResolvedOpenSpecRoot
+    root: ResolvedSaktiRoot
   ): Promise<void> {
     const { select } = await import('@inquirer/prompts');
     if (type === 'change') {
@@ -103,7 +103,7 @@ export class ShowCommand {
 
   private async showDirect(
     itemName: string,
-    params: { typeOverride?: ItemType; options: ShowExecuteOptions; root: ResolvedOpenSpecRoot }
+    params: { typeOverride?: ItemType; options: ShowExecuteOptions; root: ResolvedSaktiRoot }
   ): Promise<void> {
     const root = params.root;
     // Optimize lookups when type is pre-specified
@@ -171,7 +171,7 @@ export class ShowCommand {
       if (isStoreSelectedRoot(root)) {
         console.error('Pass --type change|spec.');
       } else {
-        console.error('Pass --type change|spec, or use: openspec change show / openspec spec show');
+        console.error('Pass --type change|spec, or use: sakti change show / sakti spec show');
       }
       process.exitCode = 1;
       return;
@@ -187,16 +187,16 @@ export class ShowCommand {
     await cmd.show(itemName, this.delegateOptions(root, params.options) as any);
   }
 
-  private printNonInteractiveHint(root: ResolvedOpenSpecRoot): void {
+  private printNonInteractiveHint(root: ResolvedSaktiRoot): void {
     console.error('Nothing to show. Try one of:');
-    console.error(`  ${withStoreFlag(root, 'openspec show <item>')}`);
+    console.error(`  ${withStoreFlag(root, 'sakti show' <item>')}`);
     if (isStoreSelectedRoot(root)) {
       // The noun-form commands are cwd-based and cannot reach a selected store.
-      console.error(`  ${withStoreFlag(root, 'openspec show <item> --type change')}`);
-      console.error(`  ${withStoreFlag(root, 'openspec show <item> --type spec')}`);
+      console.error(`  ${withStoreFlag(root, 'sakti show' <item> --type change')}`);
+      console.error(`  ${withStoreFlag(root, 'sakti show' <item> --type spec')}`);
     } else {
-      console.error('  openspec change show');
-      console.error('  openspec spec show');
+      console.error('  sakti change show');
+      console.error('  sakti spec show');
     }
     console.error('Or run in an interactive terminal.');
   }

@@ -25,7 +25,7 @@ import {
   withStoreFlag,
   toPlanningHome,
   toRootOutput,
-  type ResolvedOpenSpecRoot,
+  type ResolvedSaktiRoot,
 } from '../../core/root-selection.js';
 import {
   assembleReferenceIndex,
@@ -71,7 +71,7 @@ export interface ApplyInstructionsOptions {
  * index when references are declared, and resolves the config path for
  * fix text. Shared by both instruction surfaces.
  */
-async function loadRootConfigContext(root: ResolvedOpenSpecRoot): Promise<{
+async function loadRootConfigContext(root: ResolvedSaktiRoot): Promise<{
   projectConfig: ProjectConfig | null;
   references: ReferenceIndexEntry[] | undefined;
 }> {
@@ -116,7 +116,7 @@ export async function instructionsCommand(
       options.change,
       projectRoot,
       root.changesDir,
-      { newChangeHint: withStoreFlag(root, 'openspec new change <name>') }
+      { newChangeHint: withStoreFlag(root, 'sakti new change <name>') }
     );
 
     // Validate schema if explicitly provided
@@ -395,17 +395,17 @@ export async function generateApplyInstructions(
 
   if (missingArtifacts.length > 0) {
     state = 'blocked';
-    instruction = `Cannot apply this change yet. Missing artifacts: ${missingArtifacts.join(', ')}.\nUse the openspec-continue-change skill to create the missing artifacts first.`;
+    instruction = `Cannot apply this change yet. Missing artifacts: ${missingArtifacts.join(', ')}.\nUse the sakti-continue-change skill to create the missing artifacts first.`;
   } else if (tracksFile && !tracksFileExists) {
     // Tracking file configured but doesn't exist yet
     const tracksFilename = path.basename(tracksFile);
     state = 'blocked';
-    instruction = `The ${tracksFilename} file is missing and must be created.\nUse openspec-continue-change to generate the tracking file.`;
+    instruction = `The ${tracksFilename} file is missing and must be created.\nUse sakti-continue-change to generate the tracking file.`;
   } else if (tracksFile && tracksFileExists && total === 0) {
     // Tracking file exists but contains no tasks
     const tracksFilename = path.basename(tracksFile);
     state = 'blocked';
-    instruction = `The ${tracksFilename} file exists but contains no tasks.\nAdd tasks to ${tracksFilename} or regenerate it with openspec-continue-change.`;
+    instruction = `The ${tracksFilename} file exists but contains no tasks.\nAdd tasks to ${tracksFilename} or regenerate it with sakti-continue-change.`;
   } else if (tracksFile && remaining === 0 && total > 0) {
     state = 'all_done';
     instruction = 'All tasks are complete! This change is ready to be archived.\nConsider running tests and reviewing the changes before archiving.';
@@ -448,7 +448,7 @@ export async function applyInstructionsCommand(options: ApplyInstructionsOptions
       options.change,
       projectRoot,
       root.changesDir,
-      { newChangeHint: withStoreFlag(root, 'openspec new change <name>') }
+      { newChangeHint: withStoreFlag(root, 'sakti new change <name>') }
     );
 
     // Validate schema if explicitly provided
@@ -494,7 +494,7 @@ export function printApplyInstructionsText(instructions: ApplyInstructions): voi
     console.log('### ⚠️ Blocked');
     console.log();
     console.log(`Missing artifacts: ${missingArtifacts.join(', ')}`);
-    console.log('Use the openspec-continue-change skill to create these first.');
+    console.log('Use the sakti-continue-change skill to create these first.');
     console.log();
   }
 

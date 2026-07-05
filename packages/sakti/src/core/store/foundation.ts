@@ -25,7 +25,7 @@ import { StoreError } from './errors.js';
 
 const fs = nodeFs.promises;
 
-export const STORE_METADATA_DIR_NAME = '.openspec-store';
+export const STORE_METADATA_DIR_NAME = '.sakti-store';
 export const STORE_METADATA_FILE_NAME = 'store.yaml';
 export const STORES_DIR_NAME = 'stores';
 export const STORE_REGISTRY_FILE_NAME = 'registry.yaml';
@@ -171,7 +171,7 @@ function storeStateDiagnostic(label: string): {
     return {
       code: 'invalid_store_metadata',
       target: 'store.metadata',
-      fix: 'Repair .openspec-store/store.yaml.',
+      fix: 'Repair .sakti-store/store.yaml.',
     };
   }
 

@@ -1,5 +1,5 @@
 /**
- * `openspec doctor` (slice 3.6): the root-scoped relationship-health
+ * `sakti doctor` (slice 3.6): the root-scoped relationship-health
  * report. Read-only — it answers "are the roots this work relates to
  * available on this machine?" and never clones, syncs, or repairs.
  */
@@ -7,12 +7,12 @@ import { Command, Option } from 'commander';
 
 import {
   resolveRootForCommand,
-  type ResolvedOpenSpecRoot,
+  type ResolvedSaktiRoot,
 } from '../core/root-selection.js';
 import { readOptionalStoreMetadataState } from '../core/store/foundation.js';
 import { gitOriginUrl, isGitRepositoryAtRoot } from '../core/store/git.js';
 import {
-  classifyOpenSpecDir,
+  classifySaktiDir,
   readProjectConfig,
   resolveConfigFilePath,
 } from '../core/project-config.js';
@@ -31,7 +31,7 @@ import * as path from 'node:path';
 const FAILURE_PAYLOAD = { root: null, store: null, references: [] };
 
 async function gatherHealth(
-  root: ResolvedOpenSpecRoot
+  root: ResolvedSaktiRoot
 ): Promise<{ health: RelationshipHealth; declaredReferenceCount: number }> {
   const data = await gatherRelationshipData(root);
   const {
@@ -73,7 +73,7 @@ async function gatherHealth(
   // pointer value, which the resolver is silent about on planning-shaped
   // roots.
   if (root.source === 'nearest') {
-    const { hasPlanningShape, pointer } = classifyOpenSpecDir(root.path);
+    const { hasPlanningShape, pointer } = classifySaktiDir(root.path);
     if (hasPlanningShape && pointer.filePath) {
       if (pointer.value !== undefined) {
         input.bothShapesPointer = { value: pointer.value, filePath: pointer.filePath };
@@ -94,7 +94,7 @@ async function gatherHealth(
       if (fields.length > 0) {
         const filePath =
           resolveConfigFilePath(pointerRoot) ??
-          path.join(pointerRoot, 'openspec', 'config.yaml');
+          path.join(pointerRoot, 'sakti', 'config.yaml');
         input.inertPointerDeclarations = { filePath, fields };
       }
     }
@@ -147,7 +147,7 @@ function printHumanHealth(health: RelationshipHealth, declaredReferenceCount: nu
   console.log('');
   console.log('Root');
   console.log(`  Location: ${health.root.path}`);
-  console.log(`  OpenSpec root: ${health.root.healthy ? 'ok' : 'unhealthy'}`);
+  console.log(`  Sakti root: ${health.root.healthy ? 'ok' : 'unhealthy'}`);
   if (health.store) {
     const metadataNote = health.store.metadata.valid ? 'metadata ok' : 'metadata invalid';
     console.log(`  Store: ${health.store.id} (${metadataNote})`);
@@ -180,7 +180,7 @@ function printHumanHealth(health: RelationshipHealth, declaredReferenceCount: nu
 export function registerDoctorCommand(program: Command): void {
   const description =
     COMMAND_REGISTRY.find((entry) => entry.name === 'doctor')?.description ??
-    'Report relationship health for the resolved OpenSpec root';
+    'Report relationship health for the resolved Sakti root';
 
   program
     .command('doctor')

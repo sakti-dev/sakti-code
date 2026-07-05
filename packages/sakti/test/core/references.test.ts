@@ -14,8 +14,8 @@ import {
   writeStoreMetadataState,
   writeStoreRegistryState,
 } from '../../src/core/store/foundation.js';
-import type { ResolvedOpenSpecRoot } from '../../src/core/root-selection.js';
-import { createOpenSpecRoot, writeSpec } from '../helpers/openspec-fixtures.js';
+import type { ResolvedSaktiRoot } from '../../src/core/root-selection.js';
+import { createSaktiRoot, writeSpec } from '../helpers/sakti-fixtures.js';
 
 describe('reference index assembly', () => {
   let tempDir: string;
@@ -23,11 +23,11 @@ describe('reference index assembly', () => {
   let savedXdgDataHome: string | undefined;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-references-'));
-    globalDataDir = path.join(tempDir, 'data', 'openspec');
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-references-'));
+    globalDataDir = path.join(tempDir, 'data', 'sakti');
     // Backstop: store calls below thread `globalDataDir`, but if a future
     // edit forgets one, the path resolver falls back to XDG_DATA_HOME and
-    // then to the real ~/.local/share/openspec. Pin XDG at the temp dir so
+    // then to the real ~/.local/share/sakti. Pin XDG at the temp dir so
     // a missed arg can never pollute the developer's home registry.
     savedXdgDataHome = process.env.XDG_DATA_HOME;
     process.env.XDG_DATA_HOME = path.join(tempDir, 'xdg');
@@ -54,7 +54,7 @@ describe('reference index assembly', () => {
   ): Promise<string> {
     const storeRoot = mkdir(`stores/${id}`);
     if (options.healthyRoot !== false) {
-      createOpenSpecRoot(storeRoot);
+      createSaktiRoot(storeRoot);
     }
     if (options.metadataId !== null) {
       await writeStoreMetadataState(storeRoot, {
@@ -78,15 +78,15 @@ describe('reference index assembly', () => {
     return storeRoot;
   }
 
-  function appRoot(): ResolvedOpenSpecRoot {
+  function appRoot(): ResolvedSaktiRoot {
     const rootDir = mkdir('app-repo');
-    createOpenSpecRoot(rootDir);
+    createSaktiRoot(rootDir);
     return {
       path: rootDir,
       source: 'nearest',
-      changesDir: path.join(rootDir, 'openspec', 'changes'),
+      changesDir: path.join(rootDir, '.sakti', 'changes'),
       defaultSchema: 'spec-driven',
-    } as ResolvedOpenSpecRoot;
+    } as ResolvedSaktiRoot;
   }
 
   async function assemble(references: string[], resolvedRoot = appRoot()) {
@@ -116,7 +116,7 @@ describe('reference index assembly', () => {
       { id: 'auth-sso', summary: '' },
       { id: 'billing', summary: 'Billing must support usage-based invoicing.' },
     ]);
-    expect(entry.fetch).toBe('openspec show <spec-id> --type spec --store team-context');
+    expect(entry.fetch).toBe('sakti show <spec-id> --type spec --store team-context');
     expect(entry.status).toEqual([]);
   });
 
@@ -139,13 +139,13 @@ describe('reference index assembly', () => {
       expect.objectContaining({
         severity: 'warning',
         code: 'reference_unresolved',
-        fix: expect.stringContaining('openspec store register <path> --id missing-context'),
+        fix: expect.stringContaining('sakti store register <path> --id missing-context'),
       })
     );
   });
 
   it('renders a verbatim clone fix when the declaration carries a remote (3.3)', async () => {
-    const checkout = path.join(os.homedir(), 'openspec', 'missing-context');
+    const checkout = path.join(os.homedir(), 'sakti', 'missing-context');
     const entries = await assembleReferenceIndex({
       references: [{ id: 'missing-context', remote: 'https://192.0.2.1/team.git' }],
       resolvedRoot: appRoot(),
@@ -156,7 +156,7 @@ describe('reference index assembly', () => {
     // double quotes (cmd/PowerShell treat single quotes as literal).
     const q = process.platform === 'win32' ? '"' : "'";
     expect(entries[0].status[0].fix).toBe(
-      `git clone -- https://192.0.2.1/team.git ${q}${checkout}${q} && openspec store register ${q}${checkout}${q} --id missing-context`
+      `git clone -- https://192.0.2.1/team.git ${q}${checkout}${q} && sakti store register ${q}${checkout}${q} --id missing-context`
     );
 
     // An invalid id wins over any declared remote.
@@ -207,7 +207,7 @@ describe('reference index assembly', () => {
         expect.objectContaining({
           severity: 'warning',
           code: 'reference_root_unhealthy',
-          fix: expect.stringContaining('openspec store doctor'),
+          fix: expect.stringContaining('sakti store doctor'),
         })
       );
     }
@@ -272,16 +272,16 @@ describe('reference index assembly', () => {
     fs.writeFileSync(path.join(registryDir, 'registry.yaml'), ':[ not yaml');
 
     const root = mkdir('self-store');
-    createOpenSpecRoot(root);
+    createSaktiRoot(root);
     const entries = await assembleReferenceIndex({
       references: [{ id: 'BAD ID' }, { id: 'self-store' }],
       resolvedRoot: {
         path: root,
         source: 'store',
         storeId: 'self-store',
-        changesDir: path.join(root, 'openspec', 'changes'),
+        changesDir: path.join(root, '.sakti', 'changes'),
         defaultSchema: 'spec-driven',
-      } as ResolvedOpenSpecRoot,
+      } as ResolvedSaktiRoot,
       globalDataDir,
     });
 
@@ -301,9 +301,9 @@ describe('reference index assembly', () => {
         path: storeRoot,
         source: 'store',
         storeId: 'self-context',
-        changesDir: path.join(storeRoot, 'openspec', 'changes'),
+        changesDir: path.join(storeRoot, '.sakti', 'changes'),
         defaultSchema: 'spec-driven',
-      } as ResolvedOpenSpecRoot,
+      } as ResolvedSaktiRoot,
       globalDataDir,
     });
     expect(byId).toEqual([]);
@@ -313,9 +313,9 @@ describe('reference index assembly', () => {
       resolvedRoot: {
         path: storeRoot,
         source: 'nearest',
-        changesDir: path.join(storeRoot, 'openspec', 'changes'),
+        changesDir: path.join(storeRoot, '.sakti', 'changes'),
         defaultSchema: 'spec-driven',
-      } as ResolvedOpenSpecRoot,
+      } as ResolvedSaktiRoot,
       globalDataDir,
     });
     expect(byPath).toEqual([]);
@@ -345,7 +345,7 @@ describe('reference index assembly', () => {
     expect(entry.status[0]).toEqual(
       expect.objectContaining({
         code: 'reference_index_truncated',
-        fix: expect.stringContaining('openspec list --specs --store huge-context'),
+        fix: expect.stringContaining('sakti list --specs --store huge-context'),
       })
     );
 
@@ -373,9 +373,9 @@ describe('reference index assembly', () => {
     expect(block).toContain('  - billing: Usage-based invoicing.');
     expect(block).toContain('  - bare');
     expect(block).not.toContain('  - bare:');
-    expect(block).toContain('Fetch: openspec show <spec-id> --type spec --store team-context');
+    expect(block).toContain('Fetch: sakti show <spec-id> --type spec --store team-context');
     expect(block).toContain("Store missing-context: Referenced store 'missing-context' is not registered on this machine.");
-    expect(block).toContain('Fix: Get a checkout from a teammate and run: openspec store register <path> --id missing-context');
+    expect(block).toContain('Fix: Get a checkout from a teammate and run: sakti store register <path> --id missing-context');
 
     expect(section).toContain('### Referenced Stores');
     expect(section).toContain('  - billing: Usage-based invoicing.');

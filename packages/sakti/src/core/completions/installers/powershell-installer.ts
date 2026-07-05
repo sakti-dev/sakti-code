@@ -15,8 +15,8 @@ export class PowerShellInstaller {
    * Markers for PowerShell profile configuration management
    */
   private readonly PROFILE_MARKERS = {
-    start: '# OPENSPEC:START',
-    end: '# OPENSPEC:END',
+    start: '# SAKTI:START',
+    end: '# SAKTI:END',
   };
 
   constructor(homeDir: string = os.homedir()) {
@@ -120,7 +120,7 @@ export class PowerShellInstaller {
   getInstallationPath(): string {
     const profilePath = this.getProfilePath();
     const profileDir = path.dirname(profilePath);
-    return path.join(profileDir, 'OpenSpecCompletion.ps1');
+    return path.join(profileDir, 'SaktiCompletion.ps1');
   }
 
   /**
@@ -151,7 +151,7 @@ export class PowerShellInstaller {
    */
   private generateProfileConfig(scriptPath: string): string {
     return [
-      '# OpenSpec shell completions configuration',
+      '# Sakti shell completions configuration',
       `if (Test-Path "${scriptPath}") {`,
       `    . "${scriptPath}"`,
       '}',
@@ -213,16 +213,16 @@ export class PowerShellInstaller {
           continue; // Already configured, skip
         }
 
-        // Add OpenSpec completion configuration with markers
-        const openspecBlock = [
+        // Add Sakti completion configuration with markers
+        const saktiBlock = [
           '',
-          '# OPENSPEC:START - OpenSpec completion (managed block, do not edit manually)',
+          '# SAKTI:START - Sakti completion (managed block, do not edit manually)',
           scriptLine,
-          '# OPENSPEC:END',
+          '# SAKTI:END',
           '',
         ].join('\n');
 
-        const newContent = profileContent + openspecBlock;
+        const newContent = profileContent + saktiBlock;
         if (!(await FileSystemUtils.canWriteFile(profilePath))) {
           throw new Error(`Path is not writable: ${profilePath}`);
         }
@@ -266,13 +266,13 @@ export class PowerShellInstaller {
           continue;
         }
 
-        // Remove OPENSPEC:START -> OPENSPEC:END block
-        const startMarker = '# OPENSPEC:START';
-        const endMarker = '# OPENSPEC:END';
+        // Remove SAKTI:START -> SAKTI:END block
+        const startMarker = '# SAKTI:START';
+        const endMarker = '# SAKTI:END';
         const startIndex = profileContent.indexOf(startMarker);
 
         if (startIndex === -1) {
-          continue; // No OpenSpec block found
+          continue; // No Sakti block found
         }
 
         const endIndex = profileContent.indexOf(endMarker, startIndex);
@@ -396,7 +396,7 @@ export class PowerShellInstaller {
       '',
       `To enable completions, add the following to your PowerShell profile (${profilePath}):`,
       '',
-      '  # Source OpenSpec completions',
+      '  # Source Sakti completions',
       `  if (Test-Path "${installedPath}") {`,
       `      . "${installedPath}"`,
       '  }',

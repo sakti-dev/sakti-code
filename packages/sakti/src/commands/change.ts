@@ -24,7 +24,7 @@ export class ChangeCommand {
   }
 
   private getChangesPath(): string {
-    return path.join(this.rootPath ?? process.cwd(), 'openspec', 'changes');
+    return path.join(this.rootPath ?? process.cwd(), '.sakti', 'changes');
   }
 
   /**
@@ -52,7 +52,7 @@ export class ChangeCommand {
         } else {
           console.error(`No change specified. Available IDs: ${changes.join(', ')}`);
         }
-        console.error('Hint: use "openspec change list" to view available changes.');
+        console.error('Hint: use "sakti change list" to view available changes.');
         process.exitCode = 1;
         return;
       }
@@ -99,7 +99,7 @@ export class ChangeCommand {
    * - JSON: array of { id, title, deltaCount, taskStatus }, sorted by id
    */
   async list(options?: { json?: boolean; long?: boolean }): Promise<void> {
-    const changesPath = path.join(process.cwd(), 'openspec', 'changes');
+    const changesPath = path.join(process.cwd(), '.sakti', 'changes');
     
     const changes = await this.getActiveChanges(changesPath);
     
@@ -170,7 +170,7 @@ export class ChangeCommand {
   }
 
   async validate(changeName?: string, options?: { strict?: boolean; json?: boolean; noInteractive?: boolean }): Promise<void> {
-    const changesPath = path.join(process.cwd(), 'openspec', 'changes');
+    const changesPath = path.join(process.cwd(), '.sakti', 'changes');
     
     if (!changeName) {
       const canPrompt = isInteractive(options);
@@ -188,7 +188,7 @@ export class ChangeCommand {
         } else {
           console.error(`No change specified. Available IDs: ${changes.join(', ')}`);
         }
-        console.error('Hint: use "openspec change list" to view available changes.');
+        console.error('Hint: use "sakti change list" to view available changes.');
         process.exitCode = 1;
         return;
       }
@@ -255,7 +255,7 @@ export class ChangeCommand {
     const bullets: string[] = [];
     bullets.push('- Ensure change has deltas in specs/: use headers ## ADDED/MODIFIED/REMOVED/RENAMED Requirements');
     bullets.push('- Each requirement MUST include at least one #### Scenario: block');
-    bullets.push('- Debug parsed deltas: openspec change show <id> --json --deltas-only');
+    bullets.push('- Debug parsed deltas: sakti change show <id> --json --deltas-only');
     console.error('Next steps:');
     bullets.forEach(b => console.error(`  ${b}`));
   }

@@ -95,12 +95,12 @@ interface StoreListOutput {
   status: StoreDiagnostic[];
 }
 
-type OpenSpecRootOutput = Omit<StoreInspection['openspecRoot'], 'diagnostics'> & {
+type SaktiRootOutput = Omit<StoreInspection['saktiRoot'], 'diagnostics'> & {
   status: StoreDiagnostic[];
 };
 
 interface StoreDoctorStoreOutput extends StoreOutput {
-  openspec_root: OpenSpecRootOutput;
+  sakti_root: SaktiRootOutput;
   metadata: StoreInspection['metadata'];
   git: {
     is_repository: boolean | null;
@@ -170,7 +170,7 @@ function toListOutput(result: StoreListResult): StoreListOutput {
   };
 }
 
-function toOpenSpecRootOutput(root: StoreInspection['openspecRoot']): OpenSpecRootOutput {
+function toSaktiRootOutput(root: StoreInspection['saktiRoot']): SaktiRootOutput {
   return {
     present: root.present,
     config: root.config,
@@ -185,7 +185,7 @@ function toOpenSpecRootOutput(root: StoreInspection['openspecRoot']): OpenSpecRo
 function toDoctorStoreOutput(store: StoreInspection): StoreDoctorStoreOutput {
   return {
     ...toStoreOutput(store),
-    openspec_root: toOpenSpecRootOutput(store.openspecRoot),
+    sakti_root: toSaktiRootOutput(store.saktiRoot),
     metadata: store.metadata,
     git: {
       is_repository: store.git.isRepository,
@@ -242,7 +242,7 @@ async function promptStoreId(): Promise<string> {
 async function promptStorePath(id: string): Promise<string> {
   const { input } = await import('@inquirer/prompts');
   // Suggest a visible, user-owned location — never the managed XDG data dir.
-  const defaultPath = ['~', 'openspec', id].join('/');
+  const defaultPath = ['~', 'sakti', id].join('/');
 
   return input({
     message: 'Where should this store live?',
@@ -264,7 +264,7 @@ async function resolveSetupInput(
       'store_setup_id_required',
       {
         target: 'store.id',
-        fix: 'openspec store setup <id> --path ~/openspec/<id> --json',
+        fix: 'sakti store setup' <id> --path ~/sakti/<id> --json',
       }
     );
   }
@@ -275,7 +275,7 @@ async function resolveSetupInput(
       'store_setup_path_required',
       {
         target: 'store.root',
-        fix: `openspec store setup ${id ?? '<id>'} --path ~/openspec/${id ?? '<id>'}`,
+        fix: `sakti store setup ${id ?? '<id>'} --path ~/sakti/${id ?? '<id>'}`,
       }
     );
   }
@@ -306,7 +306,7 @@ async function confirmSetup(
   const { confirm } = await import('@inquirer/prompts');
 
   console.log('');
-  console.log('OpenSpec will create:');
+  console.log('Sakti will create:');
   console.log('');
   console.log(`  Store: ${prepared.id}`);
   console.log(`  Location: ${formatPathForHuman(prepared.root)}`);
@@ -339,7 +339,7 @@ async function confirmRemove(id: string, root: string, options: StoreRemoveOptio
       'store_remove_confirmation_required',
       {
         target: 'store.root',
-        fix: `openspec store remove ${id} --yes`,
+        fix: `sakti store remove ${id} --yes`,
       }
     );
   }
@@ -356,7 +356,7 @@ async function confirmRemove(id: string, root: string, options: StoreRemoveOptio
       'store_remove_cancelled',
       {
         target: 'store.root',
-        fix: 'Run "openspec store unregister <id>" if you only want to forget the local registration.',
+        fix: 'Run "sakti store unregister <id>" if you only want to forget the local registration.',
       }
     );
   }
@@ -399,19 +399,19 @@ function printMutationHuman(
 
   console.log(`${title}: ${payload.store.id}`);
   console.log(`Location: ${formatPathForHuman(payload.store.root)}`);
-  console.log('OpenSpec root: ready');
+  console.log('Sakti root: ready');
   console.log(`Registry: ${payload.registry.already_registered ? 'already registered' : 'registered'}`);
   for (const status of payload.status) {
     console.log(`${status.severity === 'error' ? 'Issue' : 'Note'}: ${status.message}`);
   }
   console.log('');
-  console.log('Next: run normal OpenSpec commands against this store, for example:');
-  console.log(`  openspec new change <change-id> --store ${payload.store.id}`);
+  console.log('Next: run normal Sakti commands against this store, for example:');
+  console.log(`  sakti new change <change-id> --store ${payload.store.id}`);
   if (payload.git.is_repository) {
     const shareRemote = remotes?.canonical ?? remotes?.observed;
     console.log(
       shareRemote
-        ? `Share it: teammates clone ${shareRemote} and run openspec store register <path>.`
+        ? `Share it: teammates clone ${shareRemote} and run sakti store register <path>.`
         : 'Share this store by committing and pushing it like any Git repo.'
     );
   }
@@ -442,12 +442,12 @@ function printListHuman(payload: StoreListOutput): void {
     console.log('No stores registered.');
     console.log('');
     console.log('Next:');
-    console.log('  openspec store setup team-context --path ~/openspec/team-context');
-    console.log('  openspec store register /path/to/store');
+    console.log('  sakti store setup team-context --path ~/sakti/team-context');
+    console.log('  sakti store register /path/to/store');
     return;
   }
 
-  console.log(`OpenSpec stores (${payload.stores.length})`);
+  console.log(`Sakti stores (${payload.stores.length})`);
   console.log('');
   console.log(`${'ID'.padEnd(16)}Location`);
   for (const store of payload.stores) {
@@ -472,10 +472,10 @@ function formatDoctorGitHuman(store: StoreDoctorOutput['stores'][number]): strin
   return `repository detected (commits: ${fact(store.git.has_commits, 'yes', 'none')}, uncommitted changes: ${fact(store.git.has_uncommitted_changes, 'yes', 'no')}, remote: ${fact(store.git.has_remote, 'yes', 'none')})`;
 }
 
-function formatOpenSpecRootHuman(store: StoreDoctorOutput['stores'][number]): string {
-  if (store.openspec_root.healthy) return 'ok';
-  if (store.openspec_root.present === false) return 'missing';
-  if (store.openspec_root.present === null) return 'unknown';
+function formatSaktiRootHuman(store: StoreDoctorOutput['stores'][number]): string {
+  if (store.sakti_root.healthy) return 'ok';
+  if (store.sakti_root.present === false) return 'missing';
+  if (store.sakti_root.present === null) return 'unknown';
   return 'incomplete';
 }
 
@@ -490,7 +490,7 @@ function printDoctorHuman(payload: StoreDoctorOutput): void {
     console.log('');
     console.log(store.id);
     console.log(`  Location: ${store.root}`);
-    console.log(`  OpenSpec root: ${formatOpenSpecRootHuman(store)}`);
+    console.log(`  Sakti root: ${formatSaktiRootHuman(store)}`);
     console.log(`  Metadata: ${formatMetadataHuman(store)}`);
     const remoteLine = store.metadata.remote ?? store.git.origin_url;
     if (remoteLine) {
@@ -664,13 +664,13 @@ export function registerStoreCommand(program: Command): void {
   // entry, which shell completion scripts also consume.
   const storeGroupDescription =
     COMMAND_REGISTRY.find((entry) => entry.name === 'store')?.description ??
-    'Create and manage stores - standalone OpenSpec repos you register on this machine';
+    'Create and manage stores - standalone Sakti repos you register on this machine';
   const store = program.command('store').description(storeGroupDescription);
 
   store
     .command('setup [id]')
     .description('Create and register a local store')
-    .option('--path <path>', 'Folder where the store should live (for example ~/openspec/<id>)')
+    .option('--path <path>', 'Folder where the store should live (for example ~/sakti/<id>)')
     .option('--init-git', 'Initialize a Git repository with an initial commit (default)')
     .option('--no-init-git', 'Skip every Git action: no init, no initial commit')
     .option('--remote <url>', 'Canonical clone source recorded in store.yaml')
@@ -683,7 +683,7 @@ export function registerStoreCommand(program: Command): void {
     .command('register [path]')
     .description('Register an existing local store')
     .option('--id <id>', 'Store id; defaults to metadata or folder name')
-    .option('--yes', 'Confirm creating store identity metadata for a healthy OpenSpec root')
+    .option('--yes', 'Confirm creating store identity metadata for a healthy Sakti root')
     .option('--json', 'Output as JSON')
     .action(async (inputPath: string | undefined, options: StoreRegisterOptions) => {
       await storeCommand.register(inputPath, options);
@@ -758,8 +758,8 @@ export function registerStoreCommand(program: Command): void {
     if (operands.includes('--json')) {
       const message =
         attempted.length > 0
-          ? `Unknown command '${attempted[0]}' for 'openspec store'. Store subcommands: ${storeSubcommandsLine}.`
-          : `Missing subcommand for 'openspec store'. Store subcommands: ${storeSubcommandsLine}.`;
+          ? `Unknown command '${attempted[0]}' for 'sakti store'. Store subcommands: ${storeSubcommandsLine}.`
+          : `Missing subcommand for 'sakti store'. Store subcommands: ${storeSubcommandsLine}.`;
       printJson({
         status: [
           {
@@ -773,19 +773,19 @@ export function registerStoreCommand(program: Command): void {
       process.exitCode = 1;
       return;
     }
-    let example = 'openspec new change <change-id> --store <id>';
+    let example = 'sakti new change <change-id> --store <id>';
     if (!hasFlagLikeToken && attempted.length > 0 && lifecycleRedirects.has(attempted[0])) {
       if (attempted[0] === 'new') {
         const changeId = attempted[1] === 'change' && attempted[2] ? attempted[2] : '<change-id>';
-        example = `openspec new change ${changeId} --store <id>`;
+        example = `sakti new change ${changeId} --store <id>`;
       } else {
-        example = `openspec ${attempted.join(' ')} --store <id>`;
+        example = `sakti ${attempted.join(' ')} --store <id>`;
       }
     }
     console.error(
       attempted.length > 0
-        ? `Error: unknown command '${attempted[0]}' for 'openspec store'.`
-        : "Error: missing subcommand for 'openspec store'."
+        ? `Error: unknown command '${attempted[0]}' for 'sakti store'.`
+        : "Error: missing subcommand for 'sakti store'."
     );
     console.error(
       `Store subcommands manage store registration: ${storeSubcommandsLine}.`

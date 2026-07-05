@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import { getGlobalDataDir, registerStore } from '../../src/core/index.js';
 import { runCLI, type RunCLIResult } from '../helpers/run-cli.js';
 import { snapshotDirectory as snapshot } from '../helpers/fs-snapshot.js';
-import { createOpenSpecRoot, writeSpec } from '../helpers/openspec-fixtures.js';
+import { createSaktiRoot, writeSpec } from '../helpers/sakti-fixtures.js';
 
 describe('declared store fallback (3.2)', () => {
   let tempDir: string;
@@ -17,24 +17,24 @@ describe('declared store fallback (3.2)', () => {
 
   beforeEach(async () => {
     tempDir = fs.realpathSync.native(
-      fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-declared-'))
+      fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-declared-'))
     );
     env = {
       XDG_DATA_HOME: path.join(tempDir, 'data'),
       XDG_CONFIG_HOME: path.join(tempDir, 'config'),
       OPEN_SPEC_INTERACTIVE: '0',
-      OPENSPEC_TELEMETRY: '0',
+      SAKTI_TELEMETRY: '0',
     };
     globalDataDir = getGlobalDataDir({ env });
 
     storeRoot = path.join(tempDir, 'team-context');
-    createOpenSpecRoot(storeRoot);
+    createSaktiRoot(storeRoot);
     await registerStore({ id: 'team-context', localPath: storeRoot, globalDataDir });
 
     pointerRepo = path.join(tempDir, 'app-repo');
-    fs.mkdirSync(path.join(pointerRepo, 'openspec'), { recursive: true });
+    fs.mkdirSync(path.join(pointerRepo, 'sakti'), { recursive: true });
     fs.writeFileSync(
-      path.join(pointerRepo, 'openspec', 'config.yaml'),
+      path.join(pointerRepo, 'sakti', 'config.yaml'),
       'store: team-context\n'
     );
   });
@@ -69,7 +69,7 @@ describe('declared store fallback (3.2)', () => {
       env,
     });
     expect(statusHuman.exitCode).toBe(0);
-    expect(statusHuman.stderr).toContain('Using OpenSpec root: team-context');
+    expect(statusHuman.stderr).toContain('Using Sakti root: team-context');
 
     // Hint continuity: follow-ups carry --store (JSON nextSteps is the
     // surface that prints them).
@@ -85,7 +85,7 @@ describe('declared store fallback (3.2)', () => {
     );
     expect(instructions.exitCode).toBe(0);
 
-    const changeDir = path.join(storeRoot, 'openspec', 'changes', 'billing-rework');
+    const changeDir = path.join(storeRoot, '.sakti', 'changes', 'billing-rework');
     fs.writeFileSync(
       path.join(changeDir, 'proposal.md'),
       '## Why\n\nBilling rework.\n\n## What Changes\n\n- **billing:** Rework billing\n'
@@ -117,7 +117,7 @@ describe('declared store fallback (3.2)', () => {
       env,
     });
     expect(archive.exitCode).toBe(0);
-    const archived = fs.readdirSync(path.join(storeRoot, 'openspec', 'changes', 'archive'));
+    const archived = fs.readdirSync(path.join(storeRoot, '.sakti', 'changes', 'archive'));
     expect(archived.some((name) => name.endsWith('billing-rework'))).toBe(true);
 
     // The pointer repo is byte-identical: no specs/, no changes/, nothing.
@@ -128,11 +128,11 @@ describe('declared store fallback (3.2)', () => {
 
   it('composes with 3.1: the declared root surfaces the store own references', async () => {
     const upstreamRoot = path.join(tempDir, 'upstream-context');
-    createOpenSpecRoot(upstreamRoot);
+    createSaktiRoot(upstreamRoot);
     writeSpec(upstreamRoot, 'platform-rules', '## Purpose\n\nPlatform rules.\n');
     await registerStore({ id: 'upstream-context', localPath: upstreamRoot, globalDataDir });
     fs.writeFileSync(
-      path.join(storeRoot, 'openspec', 'config.yaml'),
+      path.join(storeRoot, 'sakti', 'config.yaml'),
       'schema: spec-driven\nreferences:\n  - upstream-context\n'
     );
 
@@ -166,31 +166,31 @@ describe('declared store fallback (3.2)', () => {
     }
 
     // Conversion: remove the line, rerun, get a normal local root.
-    fs.writeFileSync(path.join(pointerRepo, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+    fs.writeFileSync(path.join(pointerRepo, 'sakti', 'config.yaml'), 'schema: spec-driven\n');
     const converted = await runCLI(['init', '.', '--tools', 'none'], {
       cwd: pointerRepo,
       env,
     });
     expect(converted.exitCode).toBe(0);
-    expect(fs.existsSync(path.join(pointerRepo, 'openspec', 'specs'))).toBe(true);
-    expect(fs.existsSync(path.join(pointerRepo, 'openspec', 'changes'))).toBe(true);
+    expect(fs.existsSync(path.join(pointerRepo, '.sakti', 'specs'))).toBe(true);
+    expect(fs.existsSync(path.join(pointerRepo, '.sakti', 'changes'))).toBe(true);
   });
 
   it('refuses init for malformed pointers and from pointer-repo subdirectories', async () => {
     // A broken declaration must not be buried under a scaffold.
     fs.writeFileSync(
-      path.join(pointerRepo, 'openspec', 'config.yaml'),
+      path.join(pointerRepo, 'sakti', 'config.yaml'),
       'store: [team-context]\n'
     );
     const malformed = await runCLI(['init', '.'], { cwd: pointerRepo, env });
     expect(malformed.exitCode).toBe(1);
     expect(malformed.stderr).toContain('Fix or remove the store: line');
-    expect(fs.existsSync(path.join(pointerRepo, 'openspec', 'specs'))).toBe(false);
+    expect(fs.existsSync(path.join(pointerRepo, '.sakti', 'specs'))).toBe(false);
 
     // And a subdirectory of a pointer repo must not grow a nested root
     // that silently diverts work away from the declared store.
     fs.writeFileSync(
-      path.join(pointerRepo, 'openspec', 'config.yaml'),
+      path.join(pointerRepo, 'sakti', 'config.yaml'),
       'store: team-context\n'
     );
     const subdir = path.join(pointerRepo, 'packages', 'api');
@@ -198,19 +198,19 @@ describe('declared store fallback (3.2)', () => {
     const nested = await runCLI(['init', '.'], { cwd: subdir, env });
     expect(nested.exitCode).toBe(1);
     expect(nested.stderr).toContain("externalized to store 'team-context'");
-    expect(fs.existsSync(path.join(subdir, 'openspec'))).toBe(false);
+    expect(fs.existsSync(path.join(subdir, 'sakti'))).toBe(false);
   });
 
   it('keeps real-root stdout byte-identical when a pointer is present, with one warning', async () => {
     const realRepo = path.join(tempDir, 'real-repo');
-    createOpenSpecRoot(realRepo);
+    createSaktiRoot(realRepo);
     const runs: Record<string, { stdout: string; warnings: number }> = {};
 
     for (const [label, config] of [
       ['without', 'schema: spec-driven\n'],
       ['with', 'schema: spec-driven\nstore: team-context\n'],
     ] as const) {
-      fs.writeFileSync(path.join(realRepo, 'openspec', 'config.yaml'), config);
+      fs.writeFileSync(path.join(realRepo, 'sakti', 'config.yaml'), config);
       const result = await runCLI(['list', '--json'], { cwd: realRepo, env });
       expect(result.exitCode).toBe(0);
       runs[label] = {
