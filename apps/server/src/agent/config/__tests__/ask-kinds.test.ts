@@ -48,3 +48,21 @@ describe("spec ask-kind onApprove", () => {
     expect(forceReset).not.toHaveBeenCalled();
   });
 });
+
+describe("completion ask-kind onApprove", () => {
+  it("flips status to review (not merged)", async () => {
+    const ctx = makeCtx();
+
+    await ASK_KINDS.completion.onApprove?.("sess-1", "what I built", ctx);
+
+    expect(ctx.sessions.update).toHaveBeenCalledWith("sess-1", { status: "review" });
+  });
+
+  it("onReject flips status back to building", async () => {
+    const ctx = makeCtx();
+
+    await ASK_KINDS.completion.onReject?.("sess-1", "what I built", ctx);
+
+    expect(ctx.sessions.update).toHaveBeenCalledWith("sess-1", { status: "building" });
+  });
+});

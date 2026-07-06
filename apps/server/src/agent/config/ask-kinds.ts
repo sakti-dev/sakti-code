@@ -84,7 +84,7 @@ export const ASK_KINDS: Record<AskKind, AskKindHandlers> = {
   completion: {
     card: "proposed-completion",
     onApprove: async (id, _body, ctx) => {
-      await ctx.sessions.update(id, { status: "merged" });
+      await ctx.sessions.update(id, { status: "review" });
     },
     onReject: async (id, _body, ctx) => {
       await ctx.sessions.update(id, { status: "building" });

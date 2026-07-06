@@ -23,12 +23,12 @@ describe("confirm route — POST /api/sessions/:id/confirm", () => {
     expect(ctx.repos.sessions.findById(session.id)?.status).toBe("building");
   });
 
-  it("completion approve flips status → merged", async () => {
+  it("completion approve flips status → review (verify phase)", async () => {
     const { app, ctx } = await makeApp([confirmRoutes]);
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "mission",
-      status: "review",
+      status: "building",
     });
 
     const res = await app.request(`/api/sessions/${session.id}/confirm`, {
@@ -38,7 +38,7 @@ describe("confirm route — POST /api/sessions/:id/confirm", () => {
     });
 
     expect(res.status).toBe(200);
-    expect((await res.json()).status).toBe("merged");
+    expect((await res.json()).status).toBe("review");
   });
 
   it("completion reject flips status → building (request changes)", async () => {
@@ -46,7 +46,7 @@ describe("confirm route — POST /api/sessions/:id/confirm", () => {
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "mission",
-      status: "review",
+      status: "building",
     });
 
     const res = await app.request(`/api/sessions/${session.id}/confirm`, {
