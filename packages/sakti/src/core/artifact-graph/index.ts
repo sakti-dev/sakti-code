@@ -40,3 +40,15 @@ export {
   type ArtifactStatus,
   type ArtifactPathSummary,
 } from './change-status.js';
+
+// Schema diagnostics (resolution + validation)
+export {
+  validateSchema,
+  resolveSchemaLocation,
+  checkSchemaLocations,
+  type SchemaValidationResult,
+  type SchemaResolution,
+  type SchemaLocation,
+  type ValidationIssue,
+  type SchemaSource,
+} from './validate.js';

@@ -16,7 +16,6 @@ import { ValidateCommand } from '../commands/validate.js';
 import { ShowCommand } from '../commands/show.js';
 
 import { registerConfigCommand } from '../commands/config.js';
-import { registerSchemaCommand } from '../commands/schema.js';
 import { registerStoreCommand } from '../commands/store.js';
 import { registerDoctorCommand } from '../commands/doctor.js';
 import { registerContextCommand } from '../commands/context.js';
@@ -222,7 +221,6 @@ program
 
 registerSpecCommand(program);
 registerConfigCommand(program);
-registerSchemaCommand(program);
 registerStoreCommand(program);
 registerDoctorCommand(program);
 registerContextCommand(program);
