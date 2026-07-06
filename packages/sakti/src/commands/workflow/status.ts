@@ -10,7 +10,6 @@ import * as path from 'node:path';
 import {
   resolveRootForCommand,
   toRootOutput,
-  withStoreFlag,
 } from '../../core/root-selection.js';
 import {
   loadChangeContext,
@@ -32,8 +31,6 @@ import {
 export interface StatusOptions {
   change?: string;
   schema?: string;
-  store?: string;
-  storePath?: string;
   json?: boolean;
 }
 
@@ -42,9 +39,9 @@ export interface StatusOptions {
 // -----------------------------------------------------------------------------
 
 export async function statusCommand(options: StatusOptions): Promise<void> {
-  // The root resolves (and the store banner prints) before the spinner starts
-  // so the two do not fight over stderr.
-  const root = await resolveRootForCommand(options, { json: options.json });
+  // The root resolves before the spinner starts so the two do not fight
+  // over stderr.
+  const root = await resolveRootForCommand({ json: options.json });
   if (!root) {
     return;
   }
@@ -54,7 +51,7 @@ export async function statusCommand(options: StatusOptions): Promise<void> {
   try {
     const projectRoot = root.path;
     const rootOutput = toRootOutput(root);
-    const newChangeHint = withStoreFlag(root, 'sakti new change <name>');
+    const newChangeHint = 'sakti new change <name>';
 
     // Handle no-changes case gracefully — status is informational,
     // so "no changes" is a valid state, not an error.

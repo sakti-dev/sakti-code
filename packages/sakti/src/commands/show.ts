@@ -3,10 +3,8 @@ import { getActiveChangeIds, getSpecIds } from '../utils/item-discovery.js';
 import {
   resolveRootForCommand,
   toRootOutput,
-  withStoreFlag,
   type ResolvedSaktiRoot,
   type RootOutput,
-  isStoreSelectedRoot,
 } from '../core/root-selection.js';
 import { ChangeCommand } from './change.js';
 import { SpecCommand } from './spec.js';
@@ -21,14 +19,12 @@ interface ShowExecuteOptions {
   json?: boolean;
   type?: string;
   noInteractive?: boolean;
-  store?: string;
-  storePath?: string;
   [k: string]: any;
 }
 
 export class ShowCommand {
   async execute(itemName?: string, options: ShowExecuteOptions = {}): Promise<void> {
-    const root = await resolveRootForCommand(options, { json: options.json });
+    const root = await resolveRootForCommand({ json: options.json });
     if (!root) {
       return;
     }
@@ -167,12 +163,7 @@ export class ShowCommand {
         return;
       }
       console.error(`Ambiguous item '${itemName}' matches both a change and a spec.`);
-      // The noun-form commands are cwd-based and cannot reach a selected store.
-      if (isStoreSelectedRoot(root)) {
-        console.error('Pass --type change|spec.');
-      } else {
-        console.error('Pass --type change|spec, or use: sakti change show / sakti spec show');
-      }
+      console.error('Pass --type change|spec, or use: sakti change show / sakti spec show');
       process.exitCode = 1;
       return;
     }
@@ -189,15 +180,9 @@ export class ShowCommand {
 
   private printNonInteractiveHint(root: ResolvedSaktiRoot): void {
     console.error('Nothing to show. Try one of:');
-    console.error(`  ${withStoreFlag(root, 'sakti show <item>')}`);
-    if (isStoreSelectedRoot(root)) {
-      // The noun-form commands are cwd-based and cannot reach a selected store.
-      console.error(`  ${withStoreFlag(root, 'sakti show <item> --type change')}`);
-      console.error(`  ${withStoreFlag(root, 'sakti show <item> --type spec')}`);
-    } else {
-      console.error('  sakti change show');
-      console.error('  sakti spec show');
-    }
+    console.error('  sakti show <item>');
+    console.error('  sakti change show');
+    console.error('  sakti spec show');
     console.error('Or run in an interactive terminal.');
   }
 

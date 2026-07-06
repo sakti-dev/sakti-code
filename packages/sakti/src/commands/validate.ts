@@ -4,9 +4,7 @@ import { Validator } from '../core/validation/validator.js';
 import {
   resolveRootForCommand,
   toRootOutput,
-  withStoreFlag,
   type ResolvedSaktiRoot,
-  isStoreSelectedRoot,
 } from '../core/root-selection.js';
 import { isInteractive, resolveNoInteractive } from '../utils/interactive.js';
 import { getSpecIds } from '../utils/item-discovery.js';
@@ -25,8 +23,6 @@ interface ExecuteOptions {
   noInteractive?: boolean;
   interactive?: boolean; // Commander sets this to false when --no-interactive is used
   concurrency?: string;
-  store?: string;
-  storePath?: string;
 }
 
 interface BulkItemResult {
@@ -39,7 +35,7 @@ interface BulkItemResult {
 
 export class ValidateCommand {
   async execute(itemName: string | undefined, options: ExecuteOptions = {}): Promise<void> {
-    const root = await resolveRootForCommand(options, { json: options.json });
+    const root = await resolveRootForCommand({ json: options.json });
     if (!root) {
       return;
     }
@@ -122,10 +118,10 @@ export class ValidateCommand {
 
   private printNonInteractiveHint(root: ResolvedSaktiRoot): void {
     console.error('Nothing to validate. Try one of:');
-    console.error(`  ${withStoreFlag(root, 'sakti validate --all')}`);
-    console.error(`  ${withStoreFlag(root, 'sakti validate --changes')}`);
-    console.error(`  ${withStoreFlag(root, 'sakti validate --specs')}`);
-    console.error(`  ${withStoreFlag(root, 'sakti validate <item-name>')}`);
+    console.error('  sakti validate --all');
+    console.error('  sakti validate --changes');
+    console.error('  sakti validate --specs');
+    console.error('  sakti validate <item-name>');
     console.error('Or run in an interactive terminal.');
   }
 
@@ -178,12 +174,7 @@ export class ValidateCommand {
         return;
       }
       console.error(`Ambiguous item '${itemName}' matches both a change and a spec.`);
-      // The noun-form commands are cwd-based and cannot reach a selected store.
-      if (isStoreSelectedRoot(root)) {
-        console.error('Pass --type change|spec.');
-      } else {
-        console.error('Pass --type change|spec, or use: sakti change validate / sakti spec validate');
-      }
+      console.error('Pass --type change|spec, or use: sakti change validate / sakti spec validate');
       process.exitCode = 1;
       return;
     }
@@ -235,7 +226,7 @@ export class ValidateCommand {
     if (type === 'change') {
       bullets.push('- Ensure change has deltas in specs/: use headers ## ADDED/MODIFIED/REMOVED/RENAMED Requirements');
       bullets.push('- Each requirement MUST include at least one #### Scenario: block');
-      bullets.push(`- Debug parsed deltas: ${withStoreFlag(root, `sakti show ${id} --json --deltas-only`)}`);
+      bullets.push(`- Debug parsed deltas: sakti show ${id} --json --deltas-only`);
     } else {
       bullets.push('- Ensure spec includes ## Purpose and ## Requirements sections');
       bullets.push('- Each requirement MUST include at least one #### Scenario: block');
@@ -355,9 +346,8 @@ export class ValidateCommand {
       console.log(`Totals: ${summary.totals.passed} passed, ${summary.totals.failed} failed (${summary.totals.items} items)`);
       const firstFailure = results.find((res) => !res.valid);
       if (firstFailure) {
-        const storeFlag = isStoreSelectedRoot(root) ? ` --store ${root.storeId}` : '';
         console.log(
-          `Details: sakti validate ${firstFailure.id} --type ${firstFailure.type}${storeFlag}`
+          `Details: sakti validate ${firstFailure.id} --type ${firstFailure.type}`
         );
       }
     }

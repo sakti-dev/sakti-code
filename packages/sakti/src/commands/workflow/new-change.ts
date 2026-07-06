@@ -2,9 +2,8 @@
  * New Change Command
  *
  * Creates a new change directory with optional description and schema in the
- * resolved Sakti root. `--store <id>` selects a registered store's
- * root; initiative linking and workspace affected areas are no longer part of
- * this command.
+ * resolved Sakti root. Initiative linking and workspace affected areas are
+ * no longer part of this command.
  */
 
 import ora from 'ora';
@@ -14,10 +13,8 @@ import {
   resolveRootForCommand,
   RootSelectionError,
   toRootOutput,
-  withStoreFlag,
   type ResolvedSaktiRoot,
   type RootOutput,
-  isStoreSelectedRoot,
 } from '../../core/root-selection.js';
 import { printJson, statusFromError, validateSchemaExists } from './shared.js';
 
@@ -29,8 +26,6 @@ export interface NewChangeOptions {
   description?: string;
   goal?: string;
   schema?: string;
-  store?: string;
-  storePath?: string;
   initiative?: string;
   areas?: string;
   json?: boolean;
@@ -53,7 +48,7 @@ interface NewChangeOutput {
 function assertRemovedOptionsAbsent(options: NewChangeOptions): void {
   if (options.initiative !== undefined) {
     throw new RootSelectionError(
-      '--initiative is no longer supported. Normal changes no longer attach to initiatives; --store <id> selects the Sakti root.',
+      '--initiative is no longer supported. Normal changes no longer attach to initiatives.',
       'initiative_option_removed',
       { target: 'change.options' }
     );
@@ -75,12 +70,12 @@ function printCreatedChangeHuman(
   // A relative path is only honest when the root is where the user
   // stands; a distant ancestor root gets the absolute path.
   const location =
-    !isStoreSelectedRoot(root) && root.path === process.cwd()
+    root.path === process.cwd()
       ? path.relative(root.path, path.join(root.changesDir, payload.change.id))
       : payload.change.path;
   console.log(`Created change '${payload.change.id}' at ${location}/`);
   console.log(`Schema: ${payload.change.schema}`);
-  console.log(`Next: ${withStoreFlag(root, `sakti status --change ${payload.change.id}`)}`);
+  console.log(`Next: sakti status --change ${payload.change.id}`);
 }
 
 export async function newChangeCommand(name: string | undefined, options: NewChangeOptions): Promise<void> {
@@ -98,7 +93,7 @@ export async function newChangeCommand(name: string | undefined, options: NewCha
 
     assertRemovedOptionsAbsent(options);
 
-    const root = await resolveRootForCommand(options, {
+    const root = await resolveRootForCommand({
       json: options.json,
       failurePayload: { change: null },
     });

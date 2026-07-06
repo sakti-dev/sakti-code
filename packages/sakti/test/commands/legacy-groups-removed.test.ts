@@ -3,13 +3,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { getGlobalDataDir, registerStore } from '../../src/core/index.js';
 import { runCLI } from '../helpers/run-cli.js';
-import { createHealthySaktiRoot } from '../helpers/store-git.js';
 
 describe('legacy command groups are removed', () => {
   let tempDir: string;
-  let globalDataDir: string;
   let env: NodeJS.ProcessEnv;
 
   beforeEach(() => {
@@ -20,12 +17,17 @@ describe('legacy command groups are removed', () => {
       OPEN_SPEC_INTERACTIVE: '0',
       SAKTI_TELEMETRY: '0',
     };
-    globalDataDir = getGlobalDataDir({ env });
   });
 
   afterEach(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
+
+  function createHealthySaktiRoot(dir: string): void {
+    fs.mkdirSync(path.join(dir, '.sakti', 'specs'), { recursive: true });
+    fs.mkdirSync(path.join(dir, '.sakti', 'changes', 'archive'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.sakti', 'config.yaml'), 'schema: spec-driven\n');
+  }
 
   function snapshotDirectory(root: string): Map<string, string> {
     const snapshot = new Map<string, string>();
@@ -34,8 +36,6 @@ describe('legacy command groups are removed', () => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
-          // Record directories too, so a command deleting an empty
-          // subdirectory cannot pass the byte-identity check.
           snapshot.set(`${path.relative(root, fullPath).split(path.sep).join('/')}/`, '');
           walk(fullPath);
         } else if (entry.isFile()) {
@@ -48,16 +48,12 @@ describe('legacy command groups are removed', () => {
     return snapshot;
   }
 
-  // Frozen legacy bytes, written by the now-deleted workspace commands.
-  // Deliberately NOT the production writer: the pin is that pre-existing
-  // on-disk state still behaves, independent of serializer drift (the
-  // writer itself dies in 4.1).
   function writeWorkspaceViewFixture(dir: string): void {
     const metadataDir = path.join(dir, '.sakti-workspace');
     fs.mkdirSync(metadataDir, { recursive: true });
     fs.writeFileSync(
       path.join(metadataDir, 'view.yaml'),
-      'version: 1\nname: platform\ncontext: null\nlinks: {}\n'
+      'version: 1\nname: platform\ncontext: null\nlinks: {}\n',
     );
   }
 
@@ -88,55 +84,36 @@ describe('legacy command groups are removed', () => {
   });
 
   it('keeps initiative data and view state byte-identical across surviving commands', async () => {
-    // A store carrying initiative data created by the deleted commands.
-    const storeRoot = path.join(tempDir, 'team-context');
-    createHealthySaktiRoot(storeRoot);
-    const initiativeDir = path.join(storeRoot, 'initiatives', 'billing-launch');
+    // A local Sakti root carrying legacy initiative data.
+    const projectDir = path.join(tempDir, 'project');
+    createHealthySaktiRoot(projectDir);
+    const initiativeDir = path.join(projectDir, 'initiatives', 'billing-launch');
     fs.mkdirSync(initiativeDir, { recursive: true });
     fs.writeFileSync(
       path.join(initiativeDir, 'initiative.yaml'),
       'version: 1\nid: billing-launch\ntitle: Billing Launch\n'
     );
-    await registerStore({ id: 'team-context', localPath: storeRoot, globalDataDir });
 
-    // An unrelated store, so `store remove` runs without touching the first.
-    const otherRoot = path.join(tempDir, 'other-context');
-    createHealthySaktiRoot(otherRoot);
-    await registerStore({ id: 'other-context', localPath: otherRoot, globalDataDir });
-
-    // Leftover workspace view state in a project dir.
-    const projectDir = path.join(tempDir, 'project');
-    fs.mkdirSync(projectDir, { recursive: true });
+    // Leftover workspace view state in the project dir.
     writeWorkspaceViewFixture(projectDir);
 
-    const initiativeBefore = snapshotDirectory(path.join(storeRoot, 'initiatives'));
+    const initiativeBefore = snapshotDirectory(path.join(projectDir, 'initiatives'));
     const viewBefore = snapshotDirectory(path.join(projectDir, '.sakti-workspace'));
 
-    expect((await runCLI(['store', 'list', '--json'], { cwd: projectDir, env })).exitCode).toBe(0);
-    expect((await runCLI(['store', 'doctor', '--json'], { cwd: projectDir, env })).exitCode).toBe(0);
     expect(
-      (await runCLI(['store', 'remove', 'other-context', '--yes', '--json'], {
-        cwd: projectDir,
-        env,
-      })).exitCode
-    ).toBe(0);
-    // update exits 1 here (no project) — asserted so a future auto-init
-    // behavior cannot silently start writing into this fixture.
-    expect((await runCLI(['update'], { cwd: projectDir, env })).exitCode).toBe(1);
-    expect(
-      (await runCLI(['new', 'change', 'survival-check', '--store', 'team-context', '--json'], {
+      (await runCLI(['new', 'change', 'survival-check', '--json'], {
         cwd: projectDir,
         env,
       })).exitCode
     ).toBe(0);
     expect(
-      (await runCLI(['status', '--change', 'survival-check', '--store', 'team-context', '--json'], {
+      (await runCLI(['status', '--change', 'survival-check', '--json'], {
         cwd: projectDir,
         env,
       })).exitCode
     ).toBe(0);
 
-    expect(snapshotDirectory(path.join(storeRoot, 'initiatives'))).toEqual(initiativeBefore);
+    expect(snapshotDirectory(path.join(projectDir, 'initiatives'))).toEqual(initiativeBefore);
     expect(snapshotDirectory(path.join(projectDir, '.sakti-workspace'))).toEqual(viewBefore);
   });
 

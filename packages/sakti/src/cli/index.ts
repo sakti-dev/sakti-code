@@ -15,7 +15,6 @@ import { ChangeCommand } from '../commands/change.js';
 import { ValidateCommand } from '../commands/validate.js';
 import { ShowCommand } from '../commands/show.js';
 
-import { registerStoreCommand } from '../commands/store.js';
 import { registerDoctorCommand } from '../commands/doctor.js';
 import {
   statusCommand,
@@ -26,19 +25,6 @@ import {
 } from '../commands/workflow/index.js';
 
 
-
-const STORE_OPTION_DESCRIPTION = 'Specify a registered store id';
-
-// Deliberate rejection path: --store-path stays registered (hidden) so the
-// resolver can explain that registering the path is the supported route,
-// instead of Commander emitting a generic unknown-option error (or, for
-// `show`, silently ignoring it via allowUnknownOption).
-function hiddenStorePathOption(): Option {
-  return new Option(
-    '--store-path <path>',
-    'Not supported; register the path with "sakti store register <path>" and use --store <id>'
-  ).hideHelp();
-}
 
 function failWithError(
   error: unknown,
@@ -94,11 +80,9 @@ program
   .option('--changes', 'List changes explicitly (default)')
   .option('--sort <order>', 'Sort order: "recent" (default) or "name"', 'recent')
   .option('--json', 'Output as JSON (for programmatic use)')
-  .option('--store <id>', STORE_OPTION_DESCRIPTION)
-  .addOption(hiddenStorePathOption())
-  .action(async (options?: { specs?: boolean; changes?: boolean; sort?: string; json?: boolean; store?: string; storePath?: string }) => {
+  .action(async (options?: { specs?: boolean; changes?: boolean; sort?: string; json?: boolean }) => {
     try {
-      const root = await resolveRootForCommand(options ?? {}, {
+      const root = await resolveRootForCommand({
         json: options?.json,
         failurePayload: options?.specs ? { specs: [], root: null } : { changes: [], root: null },
       });
@@ -205,8 +189,6 @@ program
   .option('--skip-specs', 'Skip spec update operations (useful for infrastructure, tooling, or doc-only changes)')
   .option('--no-validate', 'Skip validation (not recommended, requires confirmation)')
   .option('--json', 'Output as JSON (non-interactive)')
-  .option('--store <id>', STORE_OPTION_DESCRIPTION)
-  .addOption(hiddenStorePathOption())
   .action(async (changeName?: string, options?: ArchiveOptions) => {
     try {
       const archiveCommand = new ArchiveCommand();
@@ -218,7 +200,6 @@ program
   });
 
 registerSpecCommand(program);
-registerStoreCommand(program);
 registerDoctorCommand(program);
 
 // Top-level validate command
@@ -233,9 +214,7 @@ program
   .option('--json', 'Output validation results as JSON')
   .option('--concurrency <n>', 'Max concurrent validations (defaults to env SAKTI_CONCURRENCY or 6)')
   .option('--no-interactive', 'Disable interactive prompts')
-  .option('--store <id>', STORE_OPTION_DESCRIPTION)
-  .addOption(hiddenStorePathOption())
-  .action(async (itemName?: string, options?: { all?: boolean; changes?: boolean; specs?: boolean; type?: string; strict?: boolean; json?: boolean; noInteractive?: boolean; concurrency?: string; store?: string; storePath?: string }) => {
+  .action(async (itemName?: string, options?: { all?: boolean; changes?: boolean; specs?: boolean; type?: string; strict?: boolean; json?: boolean; noInteractive?: boolean; concurrency?: string }) => {
     try {
       const validateCommand = new ValidateCommand();
       await validateCommand.execute(itemName, options);
@@ -259,10 +238,6 @@ program
   .option('--requirements', 'JSON only: Show only requirements (exclude scenarios)')
   .option('--no-scenarios', 'JSON only: Exclude scenario content')
   .option('-r, --requirement <id>', 'JSON only: Show specific requirement by ID (1-based)')
-  .option('--store <id>', STORE_OPTION_DESCRIPTION)
-  // Explicit registration required: allowUnknownOption would otherwise
-  // silently swallow --store-path instead of rejecting it deliberately.
-  .addOption(hiddenStorePathOption())
   // allow unknown options to pass-through to underlying command implementation
   .allowUnknownOption(true)
   .action(async (itemName?: string, options?: { json?: boolean; type?: string; noInteractive?: boolean; [k: string]: any }) => {
@@ -286,8 +261,6 @@ program
   .option('--change <id>', 'Change name to show status for')
   .option('--schema <name>', 'Schema override (auto-detected from config.yaml)')
   .option('--json', 'Output as JSON')
-  .option('--store <id>', STORE_OPTION_DESCRIPTION)
-  .addOption(hiddenStorePathOption())
   .action(async (options: StatusOptions) => {
     try {
       await statusCommand(options);
@@ -307,8 +280,6 @@ newCmd
   .option('--goal <text>', 'Optional goal metadata to store with the change')
   .option('--schema <name>', `Workflow schema to use (default: ${DEFAULT_SCHEMA})`)
   .option('--json', 'Output as JSON')
-  .option('--store <id>', STORE_OPTION_DESCRIPTION)
-  .addOption(hiddenStorePathOption())
   // Removed options kept registered (hidden) so users get a deliberate
   // explanation instead of a generic unknown-option error.
   .addOption(new Option('--initiative <id>', 'No longer supported').hideHelp())

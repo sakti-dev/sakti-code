@@ -4,13 +4,10 @@ import { getTaskProgressForChange, formatTaskStatus } from '../utils/task-progre
 import { Validator } from './validation/validator.js';
 import chalk from 'chalk';
 import {
-  emitStoreRootBanner,
   isRootSelectionError,
   resolveSaktiRoot,
   toRootOutput,
-  withStoreFlag,
   type ResolvedSaktiRoot,
-  isStoreSelectedRoot,
 } from './root-selection.js';
 import {
   findSpecUpdates,
@@ -37,8 +34,6 @@ export interface ArchiveOptions {
   noValidate?: boolean;
   validate?: boolean;
   json?: boolean;
-  store?: string;
-  storePath?: string;
 }
 
 interface ArchiveDiagnostic {
@@ -133,10 +128,7 @@ export class ArchiveCommand {
 
     let root: ResolvedSaktiRoot;
     try {
-      root = await resolveSaktiRoot({
-        ...(options.store !== undefined ? { store: options.store } : {}),
-        ...(options.storePath !== undefined ? { storePath: options.storePath } : {}),
-      });
+      root = await resolveSaktiRoot({});
     } catch (error) {
       if (json && isRootSelectionError(error)) {
         this.printJsonFailure(undefined, toArchiveDiagnostic(error));
@@ -158,7 +150,6 @@ export class ArchiveCommand {
       return;
     }
 
-    emitStoreRootBanner(root);
     await this.run(changeName, options, root, false);
   }
 
@@ -205,7 +196,7 @@ export class ArchiveCommand {
         throw new ArchiveBlockedError(
           'archive_change_name_required',
           'A change name is required: archive --json is non-interactive.',
-          withStoreFlag(root, 'sakti archive <change-name> --json')
+          'sakti archive <change-name> --json'
         );
       }
       const selectedChange = await this.selectChange(changesDir);
@@ -301,7 +292,7 @@ export class ArchiveCommand {
           throw new ArchiveBlockedError(
             'archive_validation_failed',
             `Validation failed for change '${changeName}'.`,
-            `Run ${withStoreFlag(root, `sakti validate ${changeName}`)} for details, fix the errors, or rerun with --no-validate.`
+            `Run sakti validate ${changeName} for details, fix the errors, or rerun with --no-validate.`
           );
         }
         console.log(chalk.red('\nValidation failed. Please fix the errors before archiving.'));
@@ -313,7 +304,7 @@ export class ArchiveCommand {
         throw new ArchiveBlockedError(
           'archive_confirmation_required',
           'Skipping validation requires confirmation: rerun with --yes.',
-          withStoreFlag(root, 'sakti archive <change-name> --json --no-validate --yes')
+          'sakti archive <change-name> --json --no-validate --yes'
         );
       }
     } else {
@@ -397,7 +388,7 @@ export class ArchiveCommand {
             throw new ArchiveBlockedError(
               'archive_confirmation_required',
               `Updating ${specUpdates.length} spec(s) requires confirmation: rerun with --yes.`,
-              withStoreFlag(root, 'sakti archive <change-name> --json --yes')
+              'sakti archive <change-name> --json --yes'
             );
           }
           const { confirm } = await import('@inquirer/prompts');
@@ -442,7 +433,7 @@ export class ArchiveCommand {
                   throw new ArchiveBlockedError(
                     'archive_spec_validation_failed',
                     `Rebuilt spec for '${specName}' failed validation. No files were changed.`,
-                    `Run ${withStoreFlag(root, `sakti validate ${specName}`)} after fixing the change deltas.`
+                    `Run sakti validate ${specName} after fixing the change deltas.`
                   );
                 }
                 console.log(chalk.red(`\nValidation errors in rebuilt spec for ${specName} (will not write changes):`));
@@ -461,8 +452,6 @@ export class ArchiveCommand {
           for (const p of prepared) {
             await writeUpdatedSpec(p.update, p.rebuilt, p.counts, {
               silent: json,
-              // Cross-root paths must be absolute when a store is selected.
-              ...(isStoreSelectedRoot(root) ? { displayPath: p.update.target } : {}),
             });
             writeTotals.added += p.counts.added;
             writeTotals.modified += p.counts.modified;

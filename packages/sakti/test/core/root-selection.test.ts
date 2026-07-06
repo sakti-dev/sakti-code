@@ -8,35 +8,17 @@ import {
   resolveSaktiRoot,
   RootSelectionError,
 } from '../../src/core/root-selection.js';
-import {
-  writeStoreMetadataState,
-  writeStoreRegistryState,
-} from '../../src/core/store/foundation.js';
 
 describe('resolveSaktiRoot', () => {
   let tempDir: string;
-  let globalDataDir: string;
-  let savedXdgDataHome: string | undefined;
 
   beforeEach(() => {
     tempDir = fs.realpathSync.native(
-      fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-root-selection-'))
+      fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-root-selection-')),
     );
-    globalDataDir = path.join(tempDir, 'global-data');
-    // Backstop: store calls below thread `globalDataDir`, but if a future
-    // edit forgets one, the path resolver falls back to XDG_DATA_HOME and
-    // then to the real ~/.local/share/sakti. Pin XDG at the temp dir so
-    // a missed arg can never pollute the developer's home registry.
-    savedXdgDataHome = process.env.XDG_DATA_HOME;
-    process.env.XDG_DATA_HOME = path.join(tempDir, 'xdg');
   });
 
   afterEach(() => {
-    if (savedXdgDataHome === undefined) {
-      delete process.env.XDG_DATA_HOME;
-    } else {
-      process.env.XDG_DATA_HOME = savedXdgDataHome;
-    }
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
@@ -52,45 +34,9 @@ describe('resolveSaktiRoot', () => {
     fs.writeFileSync(path.join(rootDir, '.sakti', 'config.yaml'), 'schema: spec-driven\n');
   }
 
-  async function registerStore(
-    id: string,
-    options: { healthyRoot?: boolean; metadataId?: string | null } = {}
-  ): Promise<string> {
-    const storeRoot = mkdir(`stores/${id}`);
-    if (options.healthyRoot !== false) {
-      createSaktiRoot(storeRoot);
-    }
-    if (options.metadataId !== null) {
-      await writeStoreMetadataState(storeRoot, {
-        version: 1,
-        id: options.metadataId ?? id,
-      });
-    }
-
-    const existing = fs.existsSync(path.join(globalDataDir, 'stores', 'registry.yaml'));
-    const registryStores = existing
-      ? (await import('../../src/core/store/foundation.js').then((m) =>
-          m.readStoreRegistryState({ globalDataDir })
-        ))?.stores ?? {}
-      : {};
-
-    await writeStoreRegistryState(
-      {
-        version: 1,
-        stores: {
-          ...registryStores,
-          [id]: { backend: { type: 'git', local_path: storeRoot } },
-        },
-      },
-      { globalDataDir }
-    );
-
-    return storeRoot;
-  }
-
   async function expectRootSelectionError(
     promise: Promise<unknown>,
-    code: string
+    code: string,
   ): Promise<RootSelectionError> {
     let caught: unknown;
     try {
@@ -104,98 +50,12 @@ describe('resolveSaktiRoot', () => {
     return error;
   }
 
-  it('resolves a selected store to its healthy Sakti root', async () => {
-    const storeRoot = await registerStore('team-context');
-
-    const root = await resolveSaktiRoot({ store: 'team-context', globalDataDir });
-
-    expect(root.source).toBe('store');
-    expect(root.storeId).toBe('team-context');
-    expect(root.path).toBe(storeRoot);
-    expect(root.changesDir).toBe(path.join(storeRoot, '.sakti', 'changes'));
-    expect(root.specsDir).toBe(path.join(storeRoot, '.sakti', 'specs'));
-    expect(root.archiveDir).toBe(path.join(storeRoot, '.sakti', 'changes', 'archive'));
-    expect(root.defaultSchema).toBe('spec-driven');
-  });
-
-  it('rejects an unknown store id and lists registered ids', async () => {
-    await registerStore('team-context');
-
-    const error = await expectRootSelectionError(
-      resolveSaktiRoot({ store: 'team-contxt', globalDataDir }),
-      'unknown_store'
-    );
-    expect(error.message).toContain("'team-contxt'");
-    expect(error.message).toContain('team-context');
-  });
-
-  it('rejects --store when no stores are registered without suggesting --store-path', async () => {
-    const error = await expectRootSelectionError(
-      resolveSaktiRoot({ store: 'team-context', globalDataDir }),
-      'no_registered_stores'
-    );
-    expect(error.message).not.toContain('--store-path');
-    expect(error.diagnostic.fix).not.toContain('--store-path');
-  });
-
-  it('rejects an invalid store id format before registry lookup', async () => {
-    // No registry exists at all; format validation must win.
-    const error = await expectRootSelectionError(
-      resolveSaktiRoot({ store: 'Bad/Id', globalDataDir }),
-      'invalid_store_id'
-    );
-    expect(error.message).toContain('Store id');
-  });
-
-  it('rejects an unhealthy store root without repairing it', async () => {
-    const storeRoot = await registerStore('team-context', { healthyRoot: false });
-
-    const error = await expectRootSelectionError(
-      resolveSaktiRoot({ store: 'team-context', globalDataDir }),
-      'unhealthy_store_root'
-    );
-    expect(error.diagnostic.fix).toContain('store doctor');
-    // No scaffolding or repair happened.
-    expect(fs.existsSync(path.join(storeRoot, '.sakti'))).toBe(false);
-  });
-
-  it('rejects a store whose metadata id does not match the registry id', async () => {
-    await registerStore('team-context', { metadataId: 'other-context' });
-
-    const error = await expectRootSelectionError(
-      resolveSaktiRoot({ store: 'team-context', globalDataDir }),
-      'store_identity_mismatch'
-    );
-    expect(error.message).toContain('other-context');
-    expect(error.diagnostic.fix).toContain('store doctor');
-  });
-
-  it('rejects a store with missing identity metadata before root-health checks', async () => {
-    // Root is also unhealthy; the identity failure must win.
-    await registerStore('team-context', { healthyRoot: false, metadataId: null });
-
-    const error = await expectRootSelectionError(
-      resolveSaktiRoot({ store: 'team-context', globalDataDir }),
-      'store_identity_mismatch'
-    );
-    expect(error.diagnostic.fix).toContain('store doctor');
-  });
-
-  it('rejects --store-path deliberately with register guidance', async () => {
-    const error = await expectRootSelectionError(
-      resolveSaktiRoot({ storePath: '/somewhere', globalDataDir }),
-      'store_path_not_supported'
-    );
-    expect(error.message).toContain('store register');
-    expect(error.message).toContain('--store <id>');
-  });
-
-  it('resolves the nearest sakti root without --store', async () => {
+  it('resolves the nearest sakti root', async () => {
     const repoRoot = mkdir('app-repo');
     createSaktiRoot(repoRoot);
     const nested = mkdir('app-repo/src/deep');
 
-    const root = await resolveSaktiRoot({ startPath: nested, globalDataDir });
+    const root = await resolveSaktiRoot({ startPath: nested });
 
     expect(root.source).toBe('nearest');
     expect(root.path).toBe(repoRoot);
@@ -206,13 +66,13 @@ describe('resolveSaktiRoot', () => {
     fs.mkdirSync(path.join(workspaceDir, '.sakti-workspace'), { recursive: true });
     fs.writeFileSync(
       path.join(workspaceDir, '.sakti-workspace', 'view.yaml'),
-      'version: 1\nname: platform\ncontext: null\nlinks: {}\n'
+      'version: 1\nname: platform\ncontext: null\nlinks: {}\n',
     );
     const repoRoot = mkdir('workspace/app-repo');
     createSaktiRoot(repoRoot);
     const nested = mkdir('workspace/app-repo/src');
 
-    const root = await resolveSaktiRoot({ startPath: nested, globalDataDir });
+    const root = await resolveSaktiRoot({ startPath: nested });
 
     expect(root.source).toBe('nearest');
     expect(root.path).toBe(repoRoot);
@@ -225,284 +85,65 @@ describe('resolveSaktiRoot', () => {
     fs.mkdirSync(path.join(workspaceDir, '.sakti-workspace'), { recursive: true });
     fs.writeFileSync(
       path.join(workspaceDir, '.sakti-workspace', 'view.yaml'),
-      'version: 1\nname: platform\ncontext: null\nlinks: {}\n'
+      'version: 1\nname: platform\ncontext: null\nlinks: {}\n',
     );
 
-    const root = await resolveSaktiRoot({ startPath: workspaceDir, globalDataDir });
+    const root = await resolveSaktiRoot({ startPath: workspaceDir });
 
     expect(root.source).toBe('implicit');
     expect(root.path).toBe(workspaceDir);
   });
 
-  it('fails with a store-selection hint when no root exists but stores are registered', async () => {
-    await registerStore('team-context');
-    const appRepo = mkdir('plain-app');
-
-    const error = await expectRootSelectionError(
-      resolveSaktiRoot({ startPath: appRepo, globalDataDir }),
-      'no_root_with_registered_stores'
-    );
-    expect(error.message).toContain('team-context');
-    expect(error.message).toContain('--store <id>');
-    expect(error.message).toContain('sakti init');
-    // No scaffolding happened.
-    expect(fs.existsSync(path.join(appRepo, '.sakti'))).toBe(false);
-  });
-
   it('allows an implicit root only when requested', async () => {
     const appRepo = mkdir('implicit-app');
 
-    const implicitRoot = await resolveSaktiRoot({ startPath: appRepo, globalDataDir });
+    const implicitRoot = await resolveSaktiRoot({ startPath: appRepo });
     expect(implicitRoot.source).toBe('implicit');
     expect(implicitRoot.path).toBe(appRepo);
 
     await expectRootSelectionError(
-      resolveSaktiRoot({ startPath: appRepo, globalDataDir, allowImplicitRoot: false }),
-      'no_sakti_root'
+      resolveSaktiRoot({ startPath: appRepo, allowImplicitRoot: false }),
+      'no_sakti_root',
     );
   });
 
-  it('prefers the selected store over a nearby root and leftover workspace state', async () => {
-    const storeRoot = await registerStore('team-context');
-    const repoRoot = mkdir('local-repo');
-    createSaktiRoot(repoRoot);
-    fs.mkdirSync(path.join(repoRoot, '.sakti-workspace'), { recursive: true });
-    fs.writeFileSync(
-      path.join(repoRoot, '.sakti-workspace', 'view.yaml'),
-      'version: 1\nname: platform\ncontext: null\nlinks: {}\n'
-    );
+  it('keeps config-only directories as plain roots', async () => {
+    const dir = mkdir('plain-config-only');
+    fs.mkdirSync(path.join(dir, '.sakti'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.sakti', 'config.yaml'), 'schema: spec-driven\n');
 
-    const root = await resolveSaktiRoot({
-      store: 'team-context',
-      startPath: repoRoot,
-      globalDataDir,
-    });
-
-    expect(root.source).toBe('store');
-    expect(root.path).toBe(storeRoot);
+    const root = await resolveSaktiRoot({ startPath: dir });
+    expect(root.source).toBe('nearest');
+    expect(root.path).toBe(dir);
   });
 
-  describe('declared store fallback (3.2)', () => {
-    function createPointerDir(relativePath: string, configBody: string): string {
-      const dir = mkdir(relativePath);
-      fs.mkdirSync(path.join(dir, '.sakti'), { recursive: true });
-      fs.writeFileSync(path.join(dir, '.sakti', 'config.yaml'), configBody);
-      return dir;
-    }
+  it('treats empty and comments-only configs as plain roots', async () => {
+    const empty = mkdir('empty-config');
+    fs.mkdirSync(path.join(empty, '.sakti'), { recursive: true });
+    fs.writeFileSync(path.join(empty, '.sakti', 'config.yaml'), '');
 
-    it('resolves a config-only pointer to the declared store', async () => {
-      const storeRoot = await registerStore('team-context');
-      const pointerDir = createPointerDir('app-repo', 'store: team-context\n');
+    const emptyRoot = await resolveSaktiRoot({ startPath: empty });
+    expect(emptyRoot.source).toBe('nearest');
+    expect(emptyRoot.path).toBe(empty);
 
-      const root = await resolveSaktiRoot({ startPath: pointerDir, globalDataDir });
+    const commented = mkdir('commented-config');
+    fs.mkdirSync(path.join(commented, '.sakti'), { recursive: true });
+    fs.writeFileSync(path.join(commented, '.sakti', 'config.yaml'), '# store: team-context\n');
 
-      expect(root.source).toBe('declared');
-      expect(root.storeId).toBe('team-context');
-      expect(root.path).toBe(storeRoot);
-      // The pointer dir is untouched.
-      expect(fs.existsSync(path.join(pointerDir, '.sakti', 'specs'))).toBe(false);
-      expect(fs.existsSync(path.join(pointerDir, '.sakti', 'changes'))).toBe(false);
-    });
-
-    it('lets explicit --store beat the pointer with source store', async () => {
-      await registerStore('team-context');
-      const otherRoot = await registerStore('other-context');
-      const pointerDir = createPointerDir('app-repo', 'store: team-context\n');
-
-      const root = await resolveSaktiRoot({
-        startPath: pointerDir,
-        store: 'other-context',
-        globalDataDir,
-      });
-
-      expect(root.source).toBe('store');
-      expect(root.path).toBe(otherRoot);
-    });
-
-    it('never overrides a real root and warns once about the ignored pointer', async () => {
-      await registerStore('team-context');
-      const repo = mkdir('real-repo');
-      createSaktiRoot(repo);
-      fs.writeFileSync(
-        path.join(repo, '.sakti', 'config.yaml'),
-        'schema: spec-driven\nstore: team-context\n'
-      );
-
-      const warnings: string[] = [];
-      const original = console.error;
-      console.error = (message: string) => warnings.push(String(message));
-      try {
-        const root = await resolveSaktiRoot({ startPath: repo, globalDataDir });
-        expect(root.source).toBe('nearest');
-        expect(root.path).toBe(repo);
-        expect(root.storeId).toBeUndefined();
-      } finally {
-        console.error = original;
-      }
-
-      expect(warnings).toHaveLength(1);
-      expect(warnings[0]).toContain("declares store 'team-context'");
-      expect(warnings[0]).toContain('the declaration is ignored');
-    });
-
-    it('keeps config-only directories without a pointer as plain roots', async () => {
-      await registerStore('team-context');
-      const dir = createPointerDir('plain-config-only', 'schema: spec-driven\n');
-
-      const warnings: string[] = [];
-      const original = console.error;
-      console.error = (message: string) => warnings.push(String(message));
-      try {
-        const root = await resolveSaktiRoot({ startPath: dir, globalDataDir });
-        expect(root.source).toBe('nearest');
-        expect(root.path).toBe(dir);
-      } finally {
-        console.error = original;
-      }
-      expect(warnings).toEqual([]);
-    });
-
-    it('errors on malformed pointers instead of falling through to local writes', async () => {
-      const nonString = createPointerDir('bad-type', 'store: [a, b]\n');
-      const error = await expectRootSelectionError(
-        resolveSaktiRoot({ startPath: nonString, globalDataDir }),
-        'invalid_store_pointer'
-      );
-      expect(error.message).toContain(path.join(nonString, '.sakti', 'config.yaml'));
-      expect(error.message).toContain('the store key must be a single store id string');
-      expect(fs.existsSync(path.join(nonString, '.sakti', 'changes'))).toBe(false);
-
-      const unparseable = createPointerDir('bad-yaml', 'store: [unclosed');
-      const yamlError = await expectRootSelectionError(
-        resolveSaktiRoot({ startPath: unparseable, globalDataDir }),
-        'invalid_store_pointer'
-      );
-      // The unparseable case names the real problem, not a phantom key.
-      expect(yamlError.message).toContain('could not be read as YAML');
-      expect(yamlError.diagnostic.fix).toContain('Fix the YAML syntax');
-
-      // A config that parses to a non-mapping scalar has no pointer at
-      // all: plain root, no error (readProjectConfig owns that warning).
-      const scalar = createPointerDir('scalar-config', 'just a string');
-      const scalarRoot = await resolveSaktiRoot({ startPath: scalar, globalDataDir });
-      expect(scalarRoot.source).toBe('nearest');
-    });
-
-    it('treats empty and comments-only configs as plain roots, not malformed pointers', async () => {
-      // The documented conversion path comments the line out; that must
-      // not strand every command behind invalid_store_pointer.
-      const empty = createPointerDir('empty-config', '');
-      const emptyRoot = await resolveSaktiRoot({ startPath: empty, globalDataDir });
-      expect(emptyRoot.source).toBe('nearest');
-      expect(emptyRoot.path).toBe(empty);
-
-      const commented = createPointerDir('commented-config', '# store: team-context\n');
-      const commentedRoot = await resolveSaktiRoot({ startPath: commented, globalDataDir });
-      expect(commentedRoot.source).toBe('nearest');
-      expect(commentedRoot.path).toBe(commented);
-    });
-
-    it('prefixes every taxonomy error with the declaration origin, fix unprefixed', async () => {
-      const cases: Array<[string, string, () => Promise<unknown>]> = [];
-
-      const unknownDir = createPointerDir('unknown-pointer', 'store: ghost-context\n');
-      await registerStore('team-context');
-      cases.push([
-        'unknown_store',
-        path.join(unknownDir, '.sakti', 'config.yaml'),
-        () => resolveSaktiRoot({ startPath: unknownDir, globalDataDir }),
-      ]);
-
-      const invalidDir = createPointerDir('invalid-pointer', 'store: "BAD ID"\n');
-      cases.push([
-        'invalid_store_id',
-        path.join(invalidDir, '.sakti', 'config.yaml'),
-        () => resolveSaktiRoot({ startPath: invalidDir, globalDataDir }),
-      ]);
-
-      await registerStore('hollow-context', { healthyRoot: false });
-      const unhealthyDir = createPointerDir('unhealthy-pointer', 'store: hollow-context\n');
-      cases.push([
-        'unhealthy_store_root',
-        path.join(unhealthyDir, '.sakti', 'config.yaml'),
-        () => resolveSaktiRoot({ startPath: unhealthyDir, globalDataDir }),
-      ]);
-
-      await registerStore('mismatched-context', { metadataId: 'someone-else' });
-      const mismatchDir = createPointerDir('mismatch-pointer', 'store: mismatched-context\n');
-      cases.push([
-        'store_identity_mismatch',
-        path.join(mismatchDir, '.sakti', 'config.yaml'),
-        () => resolveSaktiRoot({ startPath: mismatchDir, globalDataDir }),
-      ]);
-
-      for (const [code, origin, run] of cases) {
-        const error = await expectRootSelectionError(run(), code);
-        expect(error.message).toContain(`Declared in ${origin}: `);
-        expect(error.diagnostic.fix).not.toContain('Declared in');
-      }
-    });
-
-    it('prefixes no_registered_stores when nothing is registered', async () => {
-      const pointerDir = createPointerDir('lonely-pointer', 'store: team-context\n');
-
-      const error = await expectRootSelectionError(
-        resolveSaktiRoot({ startPath: pointerDir, globalDataDir }),
-        'no_registered_stores'
-      );
-      expect(error.message).toContain('Declared in ');
-    });
-
-    it('resolves one hop only - a store with its own pointer is the destination', async () => {
-      const storeRoot = await registerStore('team-context');
-      fs.writeFileSync(
-        path.join(storeRoot, '.sakti', 'config.yaml'),
-        'schema: spec-driven\nstore: somewhere-else\n'
-      );
-      const pointerDir = createPointerDir('app-repo', 'store: team-context\n');
-
-      const warnings: string[] = [];
-      const original = console.error;
-      console.error = (message: string) => warnings.push(String(message));
-      try {
-        const root = await resolveSaktiRoot({ startPath: pointerDir, globalDataDir });
-        expect(root.path).toBe(storeRoot);
-        expect(root.storeId).toBe('team-context');
-      } finally {
-        console.error = original;
-      }
-    });
-
-    it('names a .yml origin when that file was read', async () => {
-      const dir = mkdir('yml-pointer');
-      fs.mkdirSync(path.join(dir, '.sakti'), { recursive: true });
-      fs.writeFileSync(path.join(dir, '.sakti', 'config.yml'), 'store: ghost\n');
-
-      const error = await expectRootSelectionError(
-        resolveSaktiRoot({ startPath: dir, globalDataDir }),
-        'no_registered_stores'
-      );
-      expect(error.message).toContain(path.join(dir, '.sakti', 'config.yml'));
-    });
+    const commentedRoot = await resolveSaktiRoot({ startPath: commented });
+    expect(commentedRoot.source).toBe('nearest');
+    expect(commentedRoot.path).toBe(commented);
   });
 
-  it('skips sakti/ directories that are neither planning-shaped nor configured (the ~/sakti layout)', async () => {
-    // The recommended store layout: $HOME/sakti/<store>. $HOME must
-    // NOT become a nearest root for everything under the home tree.
-    await registerStore('team-context');
-    const fakeHome = path.join(tempDir, 'fake-home');
+  it('skips sakti/ directories that are neither planning-shaped nor configured', async () => {
+    // A .sakti/ DIRECTORY alone is not a root — it must carry a planning
+    // shape or a config file. Without this, $HOME would become a phantom
+    // root that captures every command under the home tree.
+    const fakeHome = mkdir('fake-home');
     fs.mkdirSync(path.join(fakeHome, '.sakti', 'team-context'), { recursive: true });
-    const scratch = path.join(fakeHome, 'projects', 'scratch');
-    fs.mkdirSync(scratch, { recursive: true });
+    const scratch = mkdir('fake-home/projects/scratch');
 
-    // No qualifying root anywhere: the registered-store hint fires (the
-    // exact guidance the phantom $HOME root used to shadow). The
-    // isolated globalDataDir keeps this off the machine's real registry.
-    await expect(
-      resolveSaktiRoot({ startPath: scratch, globalDataDir })
-    ).rejects.toMatchObject({
-      diagnostic: expect.objectContaining({ code: 'no_root_with_registered_stores' }),
-    });
+    const root = await resolveSaktiRoot({ startPath: scratch });
+    expect(root.source).toBe('implicit');
   });
-
 });
