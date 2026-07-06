@@ -2,12 +2,19 @@ import type { SessionRepo } from "@sakti-code/db";
 
 /**
  * Minimal context the ask-kind handlers need. Covers status transitions plus
- * `forceReset` for the spec→build switch (the route binds it to a forced OM
- * observe so the build agent starts with a clean, plan-focused context).
+ * `forceReset` for the completion→review switch (the route binds it to a forced
+ * OM observe so the verify agent starts with a compacted, observation-driven
+ * context).
  */
 export interface AskCtx {
   sessions: Pick<SessionRepo, "update">;
-  /** Force a context reset (OM observe) on spec→build. */
+  /**
+   * Force a context reset (OM observe). Currently bound only for the
+   * completion→review transition (build→verify) — the bias-reduction move
+   * so the verify agent starts on a compacted, observation-driven context.
+   *
+   * Previously wired for spec→build; removed there to preserve design context.
+   */
   forceReset?: (sessionId: string) => Promise<void>;
   /**
    * Graduate a child plan's transcript into the project's resource-scope OM
@@ -45,13 +52,16 @@ export interface AskKindHandlers {
  * nothing about kinds — this table is the policy that turns an approved ask
  * into a lifecycle consequence.
  *
- * session    — plan hands off to a new mission session. Approve is a no-op
- *              here: the card's Create button calls the session-create REST
- *              route directly (the new mission is born in `specifying`).
- * spec       — a specifying mission's spec is approved → status flips to
- *              `building`. A forced OM observe runs here.
- * completion — a building mission declares completion → approve merges
- *              (status `merged`); reject requests changes (status `building`).
+ * session           — plan hands off to a new mission session. Approve is a
+ *                     no-op here: the card's Create button calls the
+ *                     session-create REST route directly (the new mission is
+ *                     born in `specifying`).
+ * spec              — a specifying mission's spec is approved → status flips
+ *                     to `building`. No forced observe (preserve design context).
+ * completion        — a building mission declares completion → forced OM
+ *                     observe runs, then status flips to `review` (verify phase).
+ * verify-complete   — verify agent declares verification complete → approve
+ *                     flips to `merged`; reject returns to `building`.
  */
 export const ASK_KINDS: Record<AskKind, AskKindHandlers> = {
   session: {
@@ -84,6 +94,18 @@ export const ASK_KINDS: Record<AskKind, AskKindHandlers> = {
   completion: {
     card: "proposed-completion",
     onApprove: async (id, _body, ctx) => {
+      // Force OM observe BEFORE the status flip — the verify agent must start
+      // on a compacted context to avoid inheriting the build agent's biases.
+      // Best-effort: a reset failure must not strand the mission — the status
+      // flip is the user's durable intent.
+      try {
+        await ctx.forceReset?.(id);
+      } catch (err) {
+        ctx.log?.agent?.warn?.("build→verify: forced observe failed (continuing)", {
+          sessionId: id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       await ctx.sessions.update(id, { status: "review" });
     },
     onReject: async (id, _body, ctx) => {

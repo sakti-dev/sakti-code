@@ -92,3 +92,35 @@ describe("verify-complete ask-kind", () => {
     expect(ctx.sessions.update).toHaveBeenCalledWith("sess-1", { status: "building" });
   });
 });
+
+describe("completion ask-kind — forced observe (bias reduction)", () => {
+  it("calls forceReset before flipping status to review", async () => {
+    const callOrder: string[] = [];
+    const sessions = {
+      update: vi.fn(async (_id: string, patch: { status: string }) => {
+        callOrder.push(`status:${patch.status}`);
+      }),
+    };
+    const forceReset = vi.fn(async () => {
+      callOrder.push("forceReset");
+    });
+    const ctx = { sessions, forceReset } as unknown as AskCtx;
+
+    await ASK_KINDS.completion.onApprove?.("sess-1", "what I built", ctx);
+
+    expect(callOrder).toEqual(["forceReset", "status:review"]);
+    expect(forceReset).toHaveBeenCalledWith("sess-1");
+  });
+
+  it("continues to status flip if forceReset throws (best-effort)", async () => {
+    const forceReset = vi.fn(async () => {
+      throw new Error("OM failed");
+    });
+    const ctx = makeCtx({ forceReset });
+
+    await ASK_KINDS.completion.onApprove?.("sess-1", "what I built", ctx);
+
+    expect(ctx.sessions.update).toHaveBeenCalledWith("sess-1", { status: "review" });
+    expect(ctx.log?.agent?.warn).toHaveBeenCalled();
+  });
+});

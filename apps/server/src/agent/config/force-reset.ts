@@ -5,18 +5,15 @@ import { createSessionStorage } from "../../context.ts";
 import { resolveOmConfig } from "./index.ts";
 
 /**
- * Build the spec→build `forceReset` callback. Forces an OM observe so the
- * build agent starts with a clean, spec-focused context. The agent swap on
- * spec→build invalidates the prompt cache anyway (system prompt + tools
- * change), so resetting first is free.
+ * Build the `forceReset` callback: forces an OM observe so the next agent
+ * starts on a compacted, observation-driven context. Currently bound only
+ * for the completion→review transition (build→verify) — the bias-reduction
+ * move so the verify agent doesn't inherit the build agent's rationalizations.
  *
- * Extracted from the confirm route so the OM config resolution is unit-testable
- * (the route wires `AskCtx.forceReset` to this).
+ * Extracted from the confirm route so the OM config resolution is unit-testable.
  *
- * Best-effort: if observe/reflect models aren't configured (no API keys, no
- * profile modes), the observe is skipped — never strand the mission on a reset
- * failure. OM itself is always on; the skip is a configuration gap, not a
- * toggle.
+ * Best-effort: if observe/reflect models aren't configured, the observe is
+ * skipped — never strand the mission on a reset failure.
  */
 export function buildForceReset(
   ctx: ServerContext,
@@ -30,7 +27,7 @@ export function buildForceReset(
       profileId: session.profileId,
     });
     if (!omConfig) {
-      ctx.log?.agent?.warn("spec→build: OM not configured, skipping forced observe", {
+      ctx.log?.agent?.warn("build→verify: OM not configured, skipping forced observe", {
         sessionId: sid,
       });
       return;
@@ -49,6 +46,6 @@ export function buildForceReset(
       abortSignal: abortController.signal,
     });
     await engine.forceObserve();
-    ctx.log?.agent?.info("spec→build: forced OM observe", { sessionId: sid });
+    ctx.log?.agent?.info("build→verify: forced OM observe", { sessionId: sid });
   };
 }

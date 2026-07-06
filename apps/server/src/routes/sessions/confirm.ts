@@ -29,8 +29,8 @@ export const confirmRoutes = new Hono()
       return c.json({ error: `Unknown ask kind: ${kind}` }, 400);
     }
 
-    // Lazy context reset — only the plan-approve handler calls this. Forces
-    // an OM observe so the build agent starts with a clean context.
+    // Lazy context reset — only the completion-approve handler calls this.
+    // Forces an OM observe so the verify agent starts on a compacted context.
     const forceReset = buildForceReset(ctx, existing);
     // Graduation — only the session-approve handler (plan children) calls
     // this. Reflects the child's transcript into the project's resource-scope
