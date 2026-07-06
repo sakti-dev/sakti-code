@@ -18,7 +18,6 @@ import { ShowCommand } from '../commands/show.js';
 import { registerConfigCommand } from '../commands/config.js';
 import { registerStoreCommand } from '../commands/store.js';
 import { registerDoctorCommand } from '../commands/doctor.js';
-import { registerContextCommand } from '../commands/context.js';
 import {
   statusCommand,
   newChangeCommand,
@@ -223,7 +222,6 @@ registerSpecCommand(program);
 registerConfigCommand(program);
 registerStoreCommand(program);
 registerDoctorCommand(program);
-registerContextCommand(program);
 
 // Top-level validate command
 program
