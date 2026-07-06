@@ -25,7 +25,7 @@ Current total: ~12,000 lines (down from ~18,000 at start).
 - [x] **#7 Config Command** (601→246 lines) — SIMPLIFIED. Profile management stripped; basic get/set/path kept.
 - [x] **#8 Feedback** (323 lines) — REMOVED. Telemetry-adjacent, no dependencies.
 - [x] **#9 Doctor** (211→~170 lines) — REWRITTEN. Stripped all store/relationship checks (irrelevant to single-project use case). Now: config validity + schema resolvability + template existence. Uses store-free root finding.
-- [ ] **#10 Context** (208 lines) — `context` command. Outputs working-set brief for AI agents. Kills `working-set.ts` + `relationship-health.ts` if removed. (Note: doctor no longer uses relationship-health; only context.ts does.)
+- [x] **#10 Context** (208 lines) — REMOVED + cascade. Deleted context.ts, working-set.ts (92), relationship-health.ts (144), shared-gather.ts (52) — all fully orphaned. Also deleted capstone-journeys.test.ts (multi-repo journey using context). Eliminates the last non-store command entangled with the relationship machinery.
 - [ ] **#11 Planning Home** (178 lines) — Path resolution for change directories. Partially still needed by `status` command. Could inline the 2 functions.
 - [x] **#12 Profiles + Config Prompts** (89 lines) — REMOVED (profiles.ts). Note: `config-prompts.ts` kept — misnamed, contains `serializeConfig()` needed by `new change`. Stripped `config profile` subcommand + helpers from config.ts.
 - [ ] **#13 Global Config** (172 lines) — `getGlobalDataDir()` is high fan-in (keep), config file parsing could be stripped.
@@ -137,13 +137,9 @@ Rewritten from a multi-repo relationship-health checker into a project-setup hea
 
 ### 10. Context Command
 
-**Status:** PENDING DECISION
+**Status:** REMOVED (+ cascade)
 
-**CLI command:** `context`
-
-**Files:** `src/commands/context.ts` (208 lines)
-
-**If removed:** Also kills `src/core/working-set.ts` (92 lines) and `src/core/relationship-health.ts` (144 lines).
+Deleted context.ts + 3 orphaned dependency files (working-set.ts, relationship-health.ts, shared-gather.ts) + capstone-journeys.test.ts. Was the multi-repo "working set" brief — listed referenced stores, availability, VS Code workspace generation. None applies to single-project use case. Its removal eliminates the last non-store command depending on the relationship machinery.
 
 ---
 
@@ -197,10 +193,10 @@ Rewritten from a multi-repo relationship-health checker into a project-setup hea
 | 7 | Config command | 601 | ✅ Partial | Stripped profile mgmt, kept get/set/path |
 | 8 | Feedback | 323 | ✅ Done | No dependencies, removed |
 | 9 | Doctor | 211 | ✅ Rewritten | Stripped store checks, now config+schema health |
-| 10 | Context | 208 | ⬜ Pending | Kills 2 more core files (only remaining relationship-health user) |
+| 10 | Context | 208 | ✅ Done | Removed + 3 orphaned cascade files (working-set, relationship-health, shared-gather) |
 | 11 | Planning home | 178 | ⬜ Partial | Inline into status |
 | 12 | Profiles | 89 | ✅ Done | Vestigial, removed (config-prompts.ts kept) |
 | 13 | Global config | 172 | ⬜ Partial | Keep data dir, strip config parsing |
 
-**Removed so far:** ~23,247 lines deleted, ~2,216 lines added (skills + validate.ts)
-**Remaining candidates:** ~3,624 lines if all pending items removed (#5, #10, #11, #13)
+**Removed so far:** ~24,334 lines deleted, ~2,216 lines added (skills + validate.ts)
+**Remaining candidates:** ~3,416 lines if all pending items removed (#5, #11, #13)
