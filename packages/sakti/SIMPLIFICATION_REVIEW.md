@@ -22,13 +22,13 @@ Current total: ~12,000 lines (down from ~18,000 at start).
 - [x] **#4 Schema Command** (1,005 lines) — REMOVED. Management UI (which/validate/fork/init) deleted; diagnostics folded into doctor. Reusable `validate.ts` extracted to artifact-graph.
 - [ ] **#5 Store System** (3,055 lines) — `store setup/register/unregister/remove/list/doctor`. Multi-repo management. Hardest to remove — deeply entangled in `root-selection.ts`. Desktop app handles projects itself.
 - [x] **#6 Worksets + Openers** (1,801 lines) — REMOVED. Fully isolated, no dependencies. Power-user CLI feature.
-- [x] **#7 Config Command** (601→246 lines) — SIMPLIFIED. Profile management stripped; basic get/set/path kept.
+- [x] **#7 Config Command** (601 lines) — REMOVED entirely. Nothing read any config value (profile/delivery/workflows/featureFlags all had zero consumers). The config command managed a write-only file.
 - [x] **#8 Feedback** (323 lines) — REMOVED. Telemetry-adjacent, no dependencies.
 - [x] **#9 Doctor** (211→~170 lines) — REWRITTEN. Stripped all store/relationship checks (irrelevant to single-project use case). Now: config validity + schema resolvability + template existence. Uses store-free root finding.
 - [x] **#10 Context** (208 lines) — REMOVED + cascade. Deleted context.ts, working-set.ts (92), relationship-health.ts (144), shared-gather.ts (52) — all fully orphaned. Also deleted capstone-journeys.test.ts (multi-repo journey using context). Eliminates the last non-store command entangled with the relationship machinery.
 - [x] **#11 Planning Home** (178 lines) — SIMPLIFIED. Collapsed planning-home.ts (99→43 lines, kept findRepoPlanningRootSync only) + deleted change-status-policy.ts entirely (79 lines, had stale `sakti instructions` references + static constants). Removed `nextSteps`/`actionContext`/`planningHome` from status JSON output.
 - [x] **#12 Profiles + Config Prompts** (89 lines) — REMOVED (profiles.ts). Note: `config-prompts.ts` kept — misnamed, contains `serializeConfig()` needed by `new change`. Stripped `config profile` subcommand + helpers from config.ts.
-- [ ] **#13 Global Config** (172 lines) — `getGlobalDataDir()` is high fan-in (keep), config file parsing could be stripped.
+- [x] **#13 Global Config** (172 lines) — STRIPPED to `getGlobalDataDir()` only (49 lines). Removed config read/write, GlobalConfig type, Profile/Delivery types — all write-only (zero consumers).
 
 ---
 
@@ -110,10 +110,9 @@ Deleted all 5 source files + 4 test files (2,098 source lines + 2,005 test lines
 
 ### 7. Config Command
 
-**Status:** SIMPLIFIED (601 → ~246 lines)
+**Status:** REMOVED
 
-**Kept:** `config path/list/get/set/unset/reset/edit` — basic config CRUD.
-**Removed:** `config profile` subcommand + all profile helper functions + profile display in `config list`.
+The entire global config was write-only — nothing read any value (profile, delivery, workflows, featureFlags all had zero consumers). Deleted `src/commands/config.ts` (246 lines) + `src/core/config-schema.ts` (277 lines). The desktop app has its own config at `~/.sakti/agent/`; this CLI config was separate and unused.
 
 ---
 
@@ -168,11 +167,11 @@ Status JSON output trimmed: removed `nextSteps`, `actionContext`, `planningHome`
 
 ### 13. Global Config
 
-**Status:** PARTIAL REMOVAL POSSIBLE
+**Status:** STRIPPED (170 → 49 lines)
 
-**Files:** `src/core/global-config.ts` (172 lines)
+Removed config read/write machinery (`getGlobalConfig`, `saveGlobalConfig`, `getGlobalConfigDir`, `getGlobalConfigPath`), `GlobalConfig`/`Profile`/`Delivery` types, and `DEFAULT_CONFIG` — all write-only with zero consumers.
 
-**If removed:** `getGlobalDataDir()` is high fan-in (18 callers) — must keep. Config file parsing and profile/openers config could be stripped.
+Kept only `getGlobalDataDir()` (the store system's registry path) + `GLOBAL_DATA_DIR_NAME` constant.
 
 ---
 
@@ -190,13 +189,13 @@ Status JSON output trimmed: removed `nextSteps`, `actionContext`, `planningHome`
 | 4 | Schema command | 1,005 | ✅ Done | Management UI removed, validate.ts extracted to artifact-graph |
 | 5 | Store system | 3,055 | ⬜ Pending | Hardest — high entanglement |
 | 6 | Worksets + openers | 1,801 | ✅ Done | Fully isolated, removed |
-| 7 | Config command | 601 | ✅ Partial | Stripped profile mgmt, kept get/set/path |
+| 7 | Config command | 601 | ✅ Done | Write-only config nobody read, removed entirely |
 | 8 | Feedback | 323 | ✅ Done | No dependencies, removed |
 | 9 | Doctor | 211 | ✅ Rewritten | Stripped store checks, now config+schema health |
 | 10 | Context | 208 | ✅ Done | Removed + 3 orphaned cascade files (working-set, relationship-health, shared-gather) |
 | 11 | Planning home | 178 | ✅ Done | Collapsed to root finder only, deleted stale policy file |
 | 12 | Profiles | 89 | ✅ Done | Vestigial, removed (config-prompts.ts kept) |
-| 13 | Global config | 172 | ⬜ Partial | Keep data dir, strip config parsing |
+| 13 | Global config | 172 | ✅ Done | Stripped to getGlobalDataDir() only (49 lines) |
 
-**Removed so far:** ~24,551 lines deleted, ~2,216 lines added (skills + validate.ts)
-**Remaining candidates:** ~3,227 lines if all pending items removed (#5, #13)
+**Removed so far:** ~26,106 lines deleted, ~2,264 lines added (skills + validate.ts)
+**Remaining candidates:** ~3,055 lines — only #5 Store system remains
