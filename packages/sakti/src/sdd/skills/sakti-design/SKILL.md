@@ -56,32 +56,9 @@ These are the input. Do not modify them during brainstorming — only after user
 
 ### Step 2 — Brainstorm
 
-**2a. Load the brainstorming skill.** Use the Skill tool to load `brainstorming`. Skipping this step is prohibited.
+**Read `references/brainstorming.md`** (relative to this skill's directory) and follow its guidance to run a deep technical design brainstorming session.
 
-When loading, the brainstorming context must include:
-
-```
-Change: <change-name>
-Phase-1 artifacts: read from .sakti/changes/<name>/
-
-Focus: deep technical design based on the phase-1 artifacts. Explore:
-- Implementation approach: architecture, data flow, key technology choices
-- Technical risks and mitigations
-- Testing strategy (unit, integration, e2e)
-- Task sequencing and dependencies
-- Spec gaps: missing acceptance scenarios, ambiguous requirements
-
-Do NOT rewrite proposal or specs during brainstorming. If spec gaps are found, flag them as Spec Patch candidates for Step 6.
-```
-
-**2b. Explore the codebase.** During brainstorming, read the actual codebase to ground the design in reality:
-
-- Map existing architecture relevant to the change
-- Find integration points and patterns already in use
-- Identify hidden complexity and dependencies
-- Surface risks that aren't visible from the artifacts alone
-
-**2c. Produce a design proposal.** Through the brainstorming dialogue, produce:
+The brainstorming guide covers: orienting on phase-1 artifacts, asking clarifying questions one at a time, exploring the codebase, proposing 2-3 approaches, and producing a design proposal. Do not treat one Q&A turn as sufficient — keep asking until you can produce a complete proposal with all six parts:
 
 - **Technical approach:** chosen architecture, data flow, key decisions and rationale
 - **Alternatives considered:** 2-3 alternatives with trade-offs, why rejected
@@ -89,6 +66,8 @@ Do NOT rewrite proposal or specs during brainstorming. If spec gaps are found, f
 - **Testing strategy:** unit/integration/e2e approach, key test scenarios
 - **Task enrichment plan:** how tasks.md will be enriched (sequencing, per-task details)
 - **Spec patches:** list of acceptance scenario gaps to write back (or "None")
+
+**Do NOT create any artifacts, write code, or modify files during brainstorming.** The brainstorming guide has a HARD-GATE: no artifacts until the user confirms the proposal (Step 3).
 
 ### Step 3 — Confirm Design Proposal (Blocking Point)
 
@@ -272,7 +251,7 @@ The change is now ready for the build phase.
 
 | Mistake                                        | Fix                                                                                              |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Skipping brainstorming                         | Step 2 requires loading the brainstorming skill — no exceptions                                  |
+| Skipping brainstorming                         | Step 2 requires reading `references/brainstorming.md` — no exceptions                            |
 | Creating artifacts before user confirmation    | Step 3 is a blocking point — wait for explicit confirmation                                      |
 | Rewriting proposal/specs during brainstorming  | Brainstorming produces proposals only; artifacts are modified after confirmation                 |
 | Substantially rewriting delta specs in Step 6  | Spec patches supplement acceptance scenarios only; major changes require returning to sakti-plan |
