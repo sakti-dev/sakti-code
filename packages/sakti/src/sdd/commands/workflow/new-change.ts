@@ -9,6 +9,7 @@
 import ora from "ora";
 import path from "path";
 import { createChange, validateChangeName } from "../../utils/change-utils.js";
+import type { Workflow } from "../../core/change-metadata/index.js";
 import {
   resolveRootForCommand,
   RootSelectionError,
@@ -26,6 +27,7 @@ export interface NewChangeOptions {
   description?: string;
   goal?: string;
   schema?: string;
+  workflow?: Workflow;
   initiative?: string;
   areas?: string;
   json?: boolean;
@@ -118,6 +120,7 @@ export async function newChangeCommand(
       defaultSchema: root.defaultSchema,
       changesDir: root.changesDir,
       metadata: options.goal ? { goal: options.goal } : {},
+      workflow: options.workflow,
     });
 
     // If description provided, create README.md with description

@@ -180,7 +180,7 @@ describe("readChangeMetadata", () => {
     await fs.writeFile(metaPath, 'schema: spec-driven\ncreated: "2025-01-05"\n', "utf-8");
 
     const result = readChangeMetadata(changeDir);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       schema: "spec-driven",
       created: "2025-01-05",
     });

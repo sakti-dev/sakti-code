@@ -67,7 +67,6 @@ export function extractRequirementsSection(content: string): RequirementsSection
   }
 
   while (cursor < sectionBodyLines.length) {
-    const headerStart = cursor;
     const headerLineCandidate = sectionBodyLines[cursor];
     const headerMatch = headerLineCandidate.match(REQUIREMENT_HEADER_REGEX);
     if (!headerMatch) {

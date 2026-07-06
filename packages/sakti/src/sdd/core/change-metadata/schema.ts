@@ -22,8 +22,29 @@ export const InitiativeLinkSchema = z
 
 export type InitiativeLink = z.infer<typeof InitiativeLinkSchema>;
 
+// ── State machine enums ──────────────────────────────────────────
+
+export const WorkflowSchema = z.enum(["full", "hotfix", "tweak"]);
+export type Workflow = z.infer<typeof WorkflowSchema>;
+
+export const PhaseSchema = z.enum(["open", "design", "build", "verify", "archive"]);
+export type Phase = z.infer<typeof PhaseSchema>;
+
+export const StateTransitionEventSchema = z.enum([
+  "open-complete",
+  "design-complete",
+  "build-complete",
+  "verify-pass",
+  "verify-fail",
+  "archive-reopen",
+  "archived",
+]);
+export type StateTransitionEvent = z.infer<typeof StateTransitionEventSchema>;
+
+// ── Per-change metadata schema ───────────────────────────────────
 // Per-change metadata schema. The schema field is validated against available
 // workflow schemas when metadata is read or written.
+
 export const ChangeMetadataSchema = z.object({
   schema: z.string().min(1, { message: "schema is required" }),
   created: z
@@ -35,6 +56,42 @@ export const ChangeMetadataSchema = z.object({
   goal: z.string().min(1).optional(),
   affected_areas: z.array(z.string().min(1)).optional(),
   initiative: InitiativeLinkSchema.optional(),
+
+  // State machine — core
+  workflow: WorkflowSchema.default("full"),
+  phase: PhaseSchema.default("open"),
+  auto_transition: z.boolean().default(true),
+
+  // State machine — build decisions (null until user chooses)
+  build_mode: z
+    .enum(["subagent-driven-development", "executing-plans", "direct"])
+    .nullable()
+    .default(null),
+  build_pause: z.enum(["plan-ready"]).nullable().default(null),
+  subagent_dispatch: z.enum(["confirmed"]).nullable().default(null),
+  tdd_mode: z.enum(["tdd", "direct"]).nullable().default(null),
+  review_mode: z.enum(["off", "standard", "thorough"]).nullable().default(null),
+  isolation: z.enum(["branch", "worktree"]).nullable().default(null),
+  direct_override: z.boolean().default(false),
+
+  // State machine — verify
+  verify_mode: z.enum(["light", "full"]).nullable().default(null),
+  verify_result: z.enum(["pending", "pass", "fail"]).default("pending"),
+  verification_report: z.string().nullable().default(null),
+  branch_status: z.enum(["pending", "handled"]).default("pending"),
+
+  // State machine — links
+  design_doc: z.string().nullable().default(null),
+  plan: z.string().nullable().default(null),
+  base_ref: z.string().nullable().default(null),
+  verified_at: z.string().nullable().default(null),
+  archived: z.boolean().default(false),
 });
 
 export type ChangeMetadata = z.infer<typeof ChangeMetadataSchema>;
+
+/**
+ * Input type for ChangeMetadataSchema — fields with defaults are optional.
+ * Use this when accepting partial metadata for writing (e.g. writeChangeMetadata).
+ */
+export type ChangeMetadataInput = z.input<typeof ChangeMetadataSchema>;

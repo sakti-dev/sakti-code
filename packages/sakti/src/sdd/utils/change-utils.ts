@@ -1,8 +1,10 @@
 import path from "path";
+import { execSync } from "child_process";
 import { FileSystemUtils } from "./file-system.js";
 import { writeChangeMetadata, validateSchemaName } from "./change-metadata.js";
 import { readProjectConfig } from "../core/project-config.js";
-import type { ChangeMetadata } from "../core/change-metadata/index.js";
+import { getStateDefaultsForWorkflow } from "../core/change-metadata/workflow-defaults.js";
+import type { ChangeMetadata, Workflow } from "../core/change-metadata/index.js";
 
 const DEFAULT_SCHEMA = "spec-driven";
 
@@ -18,6 +20,8 @@ export interface CreateChangeOptions {
   changesDir?: string;
   /** Additional metadata to persist in the change's .sakti.yaml */
   metadata?: Partial<Pick<ChangeMetadata, "goal" | "affected_areas" | "initiative">>;
+  /** State machine workflow preset (default: 'full') */
+  workflow?: Workflow;
 }
 
 /**
@@ -190,17 +194,39 @@ export async function createChange(
     await FileSystemUtils.writeFile(configPath, `schema: ${defaultSchema}\n`);
   }
 
-  // Write metadata file with schema and creation date
+  // Write metadata file with schema, creation date, and state machine defaults
   const today = new Date().toISOString().split("T")[0];
+  const workflow = options.workflow ?? "full";
+  const stateDefaults = getStateDefaultsForWorkflow(workflow);
+  const baseRef = resolveBaseRef(projectRoot);
+
   writeChangeMetadata(
     changeDir,
     {
       schema: schemaName,
       created: today,
       ...options.metadata,
+      ...stateDefaults,
+      base_ref: baseRef,
     },
     projectRoot,
   );
 
   return { schema: schemaName, changeDir };
+}
+
+/**
+ * Resolves the current git HEAD SHA for use as base_ref, or null if not a git repo.
+ */
+function resolveBaseRef(projectRoot: string): string | null {
+  try {
+    const sha = execSync("git rev-parse HEAD", {
+      cwd: projectRoot,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "ignore"],
+    }).trim();
+    return sha || null;
+  } catch {
+    return null;
+  }
 }

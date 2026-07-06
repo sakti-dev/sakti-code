@@ -7,7 +7,6 @@ import {
   RequirementSchema,
   SpecSchema,
   ChangeSchema,
-  DeltaSchema,
 } from "../../schemas/index.js";
 
 describe("Validation Schemas", () => {

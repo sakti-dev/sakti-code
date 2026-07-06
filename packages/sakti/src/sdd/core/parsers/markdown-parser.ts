@@ -24,7 +24,7 @@ export class MarkdownParser {
   }
 
   protected static buildCodeFenceMask(lines: string[]): boolean[] {
-    const mask = new Array(lines.length).fill(false);
+    const mask = Array.from({ length: lines.length }, () => false);
     let activeFence: { marker: "`" | "~"; length: number } | null = null;
 
     for (let i = 0; i < lines.length; i++) {

@@ -137,7 +137,7 @@ export class ChangeCommand {
               deltaCount: change.deltas.length,
               taskStatus,
             };
-          } catch (error) {
+          } catch {
             return {
               id: changeName,
               title: "Unknown",

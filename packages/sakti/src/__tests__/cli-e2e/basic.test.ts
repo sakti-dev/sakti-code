@@ -4,15 +4,6 @@ import path from "path";
 import { tmpdir } from "os";
 import { runCLI, cliProjectRoot } from "../helpers/run-cli.js";
 
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 const tempRoots: string[] = [];
 
 async function prepareFixture(fixtureName: string): Promise<string> {

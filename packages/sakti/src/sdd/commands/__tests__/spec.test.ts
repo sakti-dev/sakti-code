@@ -326,6 +326,7 @@ This section has no actual requirements`;
           encoding: "utf-8",
         });
         // Basic ANSI escape pattern
+        // eslint-disable-next-line no-control-regex
         const hasAnsi = /\u001b\[[0-9;]*m/.test(output);
         expect(hasAnsi).toBe(false);
       } finally {

@@ -187,7 +187,7 @@ export class ShowCommand {
     await cmd.show(itemName, this.delegateOptions(root, params.options) as any);
   }
 
-  private printNonInteractiveHint(root: ResolvedSaktiRoot): void {
+  private printNonInteractiveHint(_root: ResolvedSaktiRoot): void {
     console.error("Nothing to show. Try one of:");
     console.error("  sakti show <item>");
     console.error("  sakti change show");

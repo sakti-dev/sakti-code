@@ -576,7 +576,7 @@ export class ArchiveCommand {
         choices,
       });
       return answer;
-    } catch (error) {
+    } catch {
       // User cancelled (Ctrl+C)
       return null;
     }

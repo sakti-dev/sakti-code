@@ -1,4 +1,5 @@
 import { Command, Option } from "commander";
+import path from "path";
 import ora from "ora";
 import { asStatus } from "./commands/shared-output.js";
 import { ListCommand } from "./core/list.js";
@@ -17,6 +18,7 @@ import {
   type StatusOptions,
   type NewChangeOptions,
 } from "./commands/workflow/index.js";
+import { stateGet, stateSet, stateTransition } from "./commands/state.js";
 
 function failWithError(
   error: unknown,
@@ -323,6 +325,7 @@ export function buildSddProgram(version: string): Command {
     .option("--description <text>", "Description to add to README.md")
     .option("--goal <text>", "Optional goal metadata to store with the change")
     .option("--schema <name>", `Workflow schema to use (default: ${DEFAULT_SCHEMA})`)
+    .option("--workflow <type>", "State machine preset: full (default), hotfix, or tweak")
     .option("--json", "Output as JSON")
     // Removed options kept registered (hidden) so users get a deliberate
     // explanation instead of a generic unknown-option error.
@@ -333,6 +336,96 @@ export function buildSddProgram(version: string): Command {
         await newChangeCommand(name, options);
       } catch (error) {
         failWithError(error);
+        process.exit(1);
+      }
+    });
+
+  // ═══════════════════════════════════════════════════════════
+  // State Machine Commands
+  // ═══════════════════════════════════════════════════════════
+
+  const stateCmd = program
+    .command("state")
+    .description("Read and update change state-machine fields");
+
+  stateCmd
+    .command("get <change> <field>")
+    .description("Read a state field from .sakti.yaml")
+    .option("--json", "Output as JSON")
+    .action(async (change: string, field: string, options?: { json?: boolean }) => {
+      try {
+        const root = await resolveRootForCommand({ json: options?.json });
+        if (!root) return;
+        const changeDir = path.join(root.changesDir, change);
+        const value = await stateGet(changeDir, field);
+        if (options?.json) {
+          console.log(JSON.stringify({ change, field, value }));
+        } else {
+          console.log(value);
+        }
+      } catch (error) {
+        failWithError(error, { enabled: options?.json, fallbackCode: "state_get_error" });
+        process.exit(1);
+      }
+    });
+
+  stateCmd
+    .command("set <change> <field> <value>")
+    .description("Write a state field (validates enum; blocks direct phase writes)")
+    .option("--force", "Allow writing phase directly (repair escape hatch)")
+    .option("--json", "Output as JSON")
+    .action(
+      async (
+        change: string,
+        field: string,
+        value: string,
+        options?: { force?: boolean; json?: boolean },
+      ) => {
+        try {
+          const root = await resolveRootForCommand({ json: options?.json });
+          if (!root) return;
+          const changeDir = path.join(root.changesDir, change);
+          await stateSet(changeDir, field, value, {
+            projectRoot: root.path,
+            force: options?.force,
+          });
+          if (options?.json) {
+            console.log(JSON.stringify({ change, field, value, status: "ok" }));
+          } else {
+            console.log(`[SET] ${field}=${value}`);
+          }
+        } catch (error) {
+          failWithError(error, {
+            enabled: options?.json,
+            fallbackCode: "state_set_error",
+          });
+          process.exit(1);
+        }
+      },
+    );
+
+  stateCmd
+    .command("transition <change> <event>")
+    .description("Apply a validated phase transition")
+    .option("--json", "Output as JSON")
+    .action(async (change: string, event: string, options?: { json?: boolean }) => {
+      try {
+        const root = await resolveRootForCommand({ json: options?.json });
+        if (!root) return;
+        const changeDir = path.join(root.changesDir, change);
+        await stateTransition(changeDir, event as Parameters<typeof stateTransition>[1], {
+          projectRoot: root.path,
+        });
+        if (options?.json) {
+          console.log(JSON.stringify({ change, event, status: "ok" }));
+        } else {
+          console.log(`[TRANSITION] ${event}`);
+        }
+      } catch (error) {
+        failWithError(error, {
+          enabled: options?.json,
+          fallbackCode: "state_transition_error",
+        });
         process.exit(1);
       }
     });

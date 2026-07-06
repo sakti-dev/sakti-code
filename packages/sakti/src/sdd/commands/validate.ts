@@ -145,7 +145,7 @@ export class ValidateCommand {
     await this.validateByType(root, picked.type, picked.id, opts);
   }
 
-  private printNonInteractiveHint(root: ResolvedSaktiRoot): void {
+  private printNonInteractiveHint(_root: ResolvedSaktiRoot): void {
     console.error("Nothing to validate. Try one of:");
     console.error("  sakti validate --all");
     console.error("  sakti validate --changes");
@@ -276,7 +276,7 @@ export class ValidateCommand {
     }
   }
 
-  private printNextSteps(type: ItemType, id: string, root: ResolvedSaktiRoot): void {
+  private printNextSteps(type: ItemType, id: string, _root: ResolvedSaktiRoot): void {
     const bullets: string[] = [];
     if (type === "change") {
       bullets.push(
@@ -305,7 +305,6 @@ export class ValidateCommand {
     ]);
 
     const DEFAULT_CONCURRENCY = 6;
-    const maxSuggestions = 5; // used by nearestMatches
     const concurrency =
       normalizeConcurrency(opts.concurrency) ??
       normalizeConcurrency(process.env.OPENSPEC_CONCURRENCY) ??

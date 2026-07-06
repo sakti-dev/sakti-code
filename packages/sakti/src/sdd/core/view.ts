@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import chalk from "chalk";
-import { getTaskProgressForChange, formatTaskStatus } from "../utils/task-progress.js";
+import { getTaskProgressForChange } from "../utils/task-progress.js";
 import { MarkdownParser } from "./parsers/markdown-parser.js";
 
 export class ViewCommand {
@@ -163,7 +163,7 @@ export class ViewCommand {
             const spec = parser.parseSpec(entry.name);
             const requirementCount = spec.requirements.length;
             specs.push({ name: entry.name, requirementCount });
-          } catch (error) {
+          } catch {
             // If spec cannot be parsed, include with 0 count
             specs.push({ name: entry.name, requirementCount: 0 });
           }
@@ -178,8 +178,6 @@ export class ViewCommand {
     changesData: { draft: any[]; active: any[]; completed: any[] },
     specsData: any[],
   ): void {
-    const totalChanges =
-      changesData.draft.length + changesData.active.length + changesData.completed.length;
     const totalSpecs = specsData.length;
     const totalRequirements = specsData.reduce((sum, spec) => sum + spec.requirementCount, 0);
 

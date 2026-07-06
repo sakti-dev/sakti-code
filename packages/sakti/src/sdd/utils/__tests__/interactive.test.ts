@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { isInteractive, resolveNoInteractive, InteractiveOptions } from "../interactive.js";
+import { isInteractive, resolveNoInteractive } from "../interactive.js";
 
 describe("interactive utilities", () => {
   let originalSaktiInteractive: string | undefined;

@@ -1,7 +1,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as yaml from "yaml";
-import { ChangeMetadataSchema, type ChangeMetadata } from "../core/change-metadata/index.js";
+import {
+  ChangeMetadataSchema,
+  type ChangeMetadata,
+  type ChangeMetadataInput,
+} from "../core/change-metadata/index.js";
 import { listSchemas } from "../core/artifact-graph/resolver.js";
 import { readProjectConfig } from "../core/project-config.js";
 
@@ -47,7 +51,7 @@ export function validateSchemaName(schemaName: string, projectRoot?: string): st
  */
 export function writeChangeMetadata(
   changeDir: string,
-  metadata: ChangeMetadata,
+  metadata: ChangeMetadataInput,
   projectRoot?: string,
 ): void {
   const metaPath = path.join(changeDir, METADATA_FILENAME);

@@ -1,4 +1,4 @@
-import { z, ZodError } from "zod";
+import { ZodError } from "zod";
 import { readFileSync, promises as fs } from "fs";
 import path from "path";
 import { SpecSchema, ChangeSchema, Spec, Change } from "../schemas/index.js";
@@ -447,7 +447,7 @@ export class Validator {
     return issues;
   }
 
-  private applyChangeRules(change: Change, content: string): ValidationIssue[] {
+  private applyChangeRules(change: Change, _content: string): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
 
     const MIN_DELTA_DESCRIPTION_LENGTH = 10;

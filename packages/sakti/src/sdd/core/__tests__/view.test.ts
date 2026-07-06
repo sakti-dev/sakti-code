@@ -4,6 +4,7 @@ import path from "path";
 import os from "os";
 import { ViewCommand } from "../view.js";
 
+// eslint-disable-next-line no-control-regex
 const stripAnsi = (input: string): string => input.replace(/\u001b\[[0-9;]*m/g, "");
 
 describe("ViewCommand", () => {

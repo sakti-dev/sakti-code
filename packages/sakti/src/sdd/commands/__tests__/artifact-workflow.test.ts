@@ -3,14 +3,10 @@ import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
 import { runCLI } from "../../../__tests__/helpers/run-cli.js";
-import { FileSystemUtils } from "../../utils/file-system.js";
 
 describe("artifact-workflow CLI commands", () => {
   let tempDir: string;
   let changesDir: string;
-
-  const canonical = (targetPath: string): string =>
-    FileSystemUtils.canonicalizeExistingPath(targetPath);
 
   beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sakti-artifact-workflow-"));
@@ -29,13 +25,6 @@ describe("artifact-workflow CLI commands", () => {
    */
   function getOutput(result: { stdout: string; stderr: string }): string {
     return result.stdout + result.stderr;
-  }
-
-  /**
-   * Normalizes path separators to forward slashes for cross-platform assertions.
-   */
-  function normalizePaths(str: string): string {
-    return str.replace(/\\/g, "/");
   }
 
   /**

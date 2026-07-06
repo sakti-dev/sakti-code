@@ -1,13 +1,7 @@
 import { MarkdownParser, Section } from "./markdown-parser.js";
-import { Change, Delta, DeltaOperation, Requirement } from "../schemas/index.js";
+import { Change, Delta, DeltaOperation } from "../schemas/index.js";
 import path from "path";
 import { promises as fs } from "fs";
-
-interface DeltaSection {
-  operation: DeltaOperation;
-  requirements: Requirement[];
-  renames?: Array<{ from: string; to: string }>;
-}
 
 export class ChangeParser extends MarkdownParser {
   private changeDir: string;
@@ -68,12 +62,12 @@ export class ChangeParser extends MarkdownParser {
           const content = await fs.readFile(specFile, "utf-8");
           const specDeltas = this.parseSpecDeltas(specName, content);
           deltas.push(...specDeltas);
-        } catch (error) {
+        } catch {
           // Spec file might not exist, which is okay
           continue;
         }
       }
-    } catch (error) {
+    } catch {
       // Specs directory might not exist, which is okay
       return [];
     }
