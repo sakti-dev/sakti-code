@@ -4,7 +4,6 @@ import * as path from "node:path";
 import { Command } from "commander";
 
 import {
-  StoreError,
   doctorStores,
   listStores,
   prepareStoreSetup,
@@ -16,7 +15,6 @@ import {
   unregisterStore,
   validateStoreId,
   type StoreCleanupResult,
-  type StoreDiagnostic,
   type StoreDoctorResult,
   type StoreInfo,
   type StoreInspection,
@@ -24,6 +22,10 @@ import {
   type StoreMutationResult,
   type SetupStoreInput,
 } from "../core/store/index.js";
+import {
+  SaktiError,
+  type Diagnostic,
+} from "../core/errors.js";
 import { isInteractive } from "../utils/interactive.js";
 
 interface StoreSetupOptions {
@@ -71,7 +73,7 @@ interface StoreMutationOutput {
     committed: boolean;
   } | null;
   created_files: string[];
-  status: StoreDiagnostic[];
+  status: Diagnostic[];
 }
 
 interface StoreCleanupOutput {
@@ -85,16 +87,16 @@ interface StoreCleanupOutput {
     deleted_path: string | null;
     left_on_disk: string | null;
   } | null;
-  status: StoreDiagnostic[];
+  status: Diagnostic[];
 }
 
 interface StoreListOutput {
   stores: StoreOutput[];
-  status: StoreDiagnostic[];
+  status: Diagnostic[];
 }
 
 type SaktiRootOutput = Omit<StoreInspection["saktiRoot"], "diagnostics"> & {
-  status: StoreDiagnostic[];
+  status: Diagnostic[];
 };
 
 interface StoreDoctorStoreOutput extends StoreOutput {
@@ -107,12 +109,12 @@ interface StoreDoctorStoreOutput extends StoreOutput {
     has_remote: boolean | null;
     origin_url: string | null;
   };
-  status: StoreDiagnostic[];
+  status: Diagnostic[];
 }
 
 interface StoreDoctorOutput {
   stores: StoreDoctorStoreOutput[];
-  status: StoreDiagnostic[];
+  status: Diagnostic[];
 }
 
 function toStoreOutput(store: StoreInfo): StoreOutput {
@@ -249,14 +251,14 @@ async function resolveSetupInput(
   const interactive = !options.json && isInteractive();
 
   if (!id && !interactive) {
-    throw new StoreError("Pass a store name.", "store_setup_id_required", {
+    throw new SaktiError("Pass a store name.", "store_setup_id_required", {
       target: "store.id",
       fix: "sakti store setup <id> --path ~/sakti/<id> --json",
     });
   }
 
   if (options.path === undefined && !interactive) {
-    throw new StoreError(
+    throw new SaktiError(
       "Pass --path with the folder where this store should live.",
       "store_setup_path_required",
       {
@@ -300,7 +302,7 @@ async function confirmSetup(
   });
 
   if (!confirmed) {
-    throw new StoreError("Store setup cancelled.", "store_setup_cancelled", {
+    throw new SaktiError("Store setup cancelled.", "store_setup_cancelled", {
       target: "store.root",
       fix: "Rerun setup when you are ready.",
     });
@@ -311,7 +313,7 @@ async function confirmRemove(id: string, root: string, options: StoreRemoveOptio
   if (options.yes) return;
 
   if (options.json || !isInteractive()) {
-    throw new StoreError(
+    throw new SaktiError(
       "Pass --yes to delete store files non-interactively.",
       "store_remove_confirmation_required",
       {
@@ -328,7 +330,7 @@ async function confirmRemove(id: string, root: string, options: StoreRemoveOptio
   });
 
   if (!confirmed) {
-    throw new StoreError("Store remove cancelled.", "store_remove_cancelled", {
+    throw new SaktiError("Store remove cancelled.", "store_remove_cancelled", {
       target: "store.root",
       fix: 'Run "sakti store unregister <id>" if you only want to forget the local registration.',
     });
@@ -337,7 +339,7 @@ async function confirmRemove(id: string, root: string, options: StoreRemoveOptio
 
 function isRegisterIdentityConfirmationError(error: unknown): boolean {
   return (
-    error instanceof StoreError &&
+    error instanceof SaktiError &&
     error.diagnostic.code === "store_register_identity_confirmation_required"
   );
 }
@@ -350,7 +352,7 @@ async function confirmRegisterConversion(error: unknown): Promise<void> {
   });
 
   if (!confirmed) {
-    throw new StoreError("Store register cancelled.", "store_register_cancelled", {
+    throw new SaktiError("Store register cancelled.", "store_register_cancelled", {
       target: "store.metadata",
       fix: "Rerun register when you are ready to create store identity metadata.",
     });
@@ -620,7 +622,7 @@ class StoreCommand {
     }
   }
 
-  private handleFailure<T extends { status: StoreDiagnostic[] }>(
+  private handleFailure<T extends { status: Diagnostic[] }>(
     json: boolean | undefined,
     payload: T,
     error: unknown,

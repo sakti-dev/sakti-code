@@ -12,7 +12,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { makeStoreDiagnostic, type StoreDiagnostic } from './store/errors.js';
+import { makeDiagnostic, type Diagnostic } from './errors.js';
 import {
   isValidStoreId,
   listStoreRegistryEntries,
@@ -34,7 +34,7 @@ export interface ReferenceIndexEntry {
   root?: string;
   specs?: ReferenceSpecEntry[];
   fetch?: string;
-  status: StoreDiagnostic[];
+  status: Diagnostic[];
 }
 
 /**
@@ -45,8 +45,8 @@ export interface ReferenceIndexEntry {
  */
 const MAX_RENDERED_INDEX_SIZE = MAX_CONTEXT_SIZE;
 
-function warning(code: string, message: string, fix: string): StoreDiagnostic {
-  return makeStoreDiagnostic('warning', code, message, { target: 'references', fix });
+function warning(code: string, message: string, fix: string): Diagnostic {
+  return makeDiagnostic('warning', code, message, { target: 'references', fix });
 }
 
 /**
