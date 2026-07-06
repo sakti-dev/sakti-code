@@ -4,14 +4,9 @@ import * as path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  type PlanningHome,
-  formatChangeLocation,
-  getChangeDir,
-  resolveCurrentPlanningHomeSync,
-} from '../../src/core/planning-home.js';
+import { findRepoPlanningRootSync } from '../../src/core/planning-home.js';
 
-describe('planning home paths', () => {
+describe('planning home root finding', () => {
   const tempDirs: string[] = [];
 
   afterEach(() => {
@@ -20,29 +15,23 @@ describe('planning home paths', () => {
     }
   });
 
-  it('resolves repo-local projects with foreign workspace.yaml as repo planning homes', () => {
+  it('finds the repo root by walking up from a nested path', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-planning-home-'));
     tempDirs.push(tempDir);
-    const repoRoot = path.join(tempDir, 'foreign-tool-repo');
+    const repoRoot = path.join(tempDir, 'project');
     const changesDir = path.join(repoRoot, '.sakti', 'changes');
 
     fs.mkdirSync(changesDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(repoRoot, 'workspace.yaml'),
-      `tool_workspace:
-  projects:
-    - name: example
-      path: ./service
-`,
-      'utf-8'
-    );
 
-    const planningHome = resolveCurrentPlanningHomeSync({
-      startPath: changesDir,
-      allowImplicitRepoRoot: false,
-    });
+    const found = findRepoPlanningRootSync(changesDir);
+    expect(found).toBe(fs.realpathSync.native(repoRoot));
+  });
 
-    expect(planningHome.kind).toBe('repo');
-    expect(planningHome.root).toBe(fs.realpathSync.native(repoRoot));
+  it('returns null when no .sakti/ directory exists', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sakti-no-root-'));
+    tempDirs.push(tempDir);
+
+    const found = findRepoPlanningRootSync(tempDir);
+    expect(found).toBeNull();
   });
 });

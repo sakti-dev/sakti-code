@@ -5,14 +5,6 @@ import { detectCompleted } from './state.js';
 import { resolveArtifactOutputs } from './outputs.js';
 import { readChangeMetadata, resolveSchemaForChange } from '../../utils/change-metadata.js';
 import { FileSystemUtils } from '../../utils/file-system.js';
-import {
-  buildActionContext,
-  buildNextSteps,
-  summarizePlanningHome,
-  type ActionContext,
-  type PlanningHomeSummary,
-} from '../change-status-policy.js';
-import type { PlanningHome } from '../planning-home.js';
 import type { ChangeMetadata } from '../change-metadata/index.js';
 import type { CompletedSet } from './types.js';
 
@@ -26,13 +18,11 @@ export interface ChangeContext {
   changeName: string;
   changeDir: string;
   projectRoot: string;
-  planningHome?: PlanningHome;
   metadata?: ChangeMetadata;
 }
 
 export interface LoadChangeContextOptions {
   changeDir?: string;
-  planningHome?: PlanningHome;
 }
 
 /**
@@ -57,11 +47,8 @@ export interface ArtifactPathSummary {
 export interface ChangeStatus {
   changeName: string;
   schemaName: string;
-  planningHome?: PlanningHomeSummary;
   changeRoot: string;
   artifactPaths: Record<string, ArtifactPathSummary>;
-  nextSteps: string[];
-  actionContext: ActionContext;
   isComplete: boolean;
   applyRequires: string[];
   artifacts: ArtifactStatus[];
@@ -96,7 +83,6 @@ export function loadChangeContext(
     changeName,
     changeDir,
     projectRoot,
-    ...(options.planningHome ? { planningHome: options.planningHome } : {}),
     ...(metadata ? { metadata } : {}),
   };
 }
@@ -105,8 +91,7 @@ export function loadChangeContext(
  * Formats the status of all artifacts in a change.
  */
 export function formatChangeStatus(
-  context: ChangeContext,
-  options: { storeId?: string } = {}
+  context: ChangeContext
 ): ChangeStatus {
   const schema = resolveSchema(context.schemaName, context.projectRoot);
   const applyRequires = schema.apply?.requires ?? schema.artifacts.map(a => a.id);
@@ -151,26 +136,14 @@ export function formatChangeStatus(
   const orderMap = new Map(buildOrder.map((id, idx) => [id, idx]));
   artifactStatuses.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
   const isComplete = context.graph.isComplete(context.completed);
-  const artifactIds = artifactStatuses.map((artifact) => artifact.id);
 
   return {
     changeName: context.changeName,
     schemaName: context.schemaName,
-    planningHome: summarizePlanningHome(context.planningHome),
     changeRoot: context.changeDir,
     artifactPaths,
     isComplete,
     applyRequires,
-    nextSteps: buildNextSteps({
-      changeName: context.changeName,
-      artifactStatuses,
-      allArtifactsComplete: isComplete,
-      ...(options.storeId ? { storeId: options.storeId } : {}),
-    }),
-    actionContext: buildActionContext({
-      projectRoot: context.projectRoot,
-      artifactIds,
-    }),
     artifacts: artifactStatuses,
   };
 }

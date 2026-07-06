@@ -3,22 +3,6 @@ import * as path from 'node:path';
 
 import { FileSystemUtils } from '../utils/file-system.js';
 
-export type PlanningHomeKind = 'repo';
-
-export interface PlanningHome {
-  kind: PlanningHomeKind;
-  root: string;
-  changesDir: string;
-  defaultSchema: string;
-}
-
-export interface ResolvePlanningHomeOptions {
-  startPath?: string;
-  allowImplicitRepoRoot?: boolean;
-}
-
-const REPO_DEFAULT_SCHEMA = 'spec-driven';
-
 function pathExistsAsDirectory(candidatePath: string): boolean {
   try {
     return fs.statSync(candidatePath).isDirectory();
@@ -56,44 +40,12 @@ function findNearestAncestor(startPath: string, predicate: (dirPath: string) => 
   }
 }
 
+/**
+ * Walk up from startPath to find the nearest directory containing a
+ * `.sakti/` folder. Returns the root path, or null when none is found.
+ */
 export function findRepoPlanningRootSync(startPath = process.cwd()): string | null {
   return findNearestAncestor(startPath, (dirPath) =>
     pathExistsAsDirectory(path.join(dirPath, '.sakti'))
   );
-}
-
-function repoPlanningHome(repoRoot: string): PlanningHome {
-  return {
-    kind: 'repo',
-    root: repoRoot,
-    changesDir: path.join(repoRoot, '.sakti', 'changes'),
-    defaultSchema: REPO_DEFAULT_SCHEMA,
-  };
-}
-
-export function resolveCurrentPlanningHomeSync(
-  options: ResolvePlanningHomeOptions = {}
-): PlanningHome {
-  const startPath = options.startPath ?? process.cwd();
-  const searchStart = getSearchStartDirectory(startPath);
-  const repoRoot = findRepoPlanningRootSync(searchStart);
-
-  if (repoRoot) {
-    return repoPlanningHome(repoRoot);
-  }
-
-  if (options.allowImplicitRepoRoot === false) {
-    throw new Error('No Sakti planning home found from the current directory.');
-  }
-
-  return repoPlanningHome(FileSystemUtils.canonicalizeExistingPath(searchStart));
-}
-
-export function getChangeDir(planningHome: PlanningHome, changeName: string): string {
-  return FileSystemUtils.joinPath(planningHome.changesDir, changeName);
-}
-
-export function formatChangeLocation(planningHome: PlanningHome, changeName: string): string {
-  // Repo homes always nest changesDir under the root.
-  return path.relative(planningHome.root, getChangeDir(planningHome, changeName));
 }

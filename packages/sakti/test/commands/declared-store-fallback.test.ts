@@ -71,13 +71,11 @@ describe('declared store fallback (3.2)', () => {
     expect(statusHuman.exitCode).toBe(0);
     expect(statusHuman.stderr).toContain('Using Sakti root: team-context');
 
-    // Hint continuity: follow-ups carry --store (JSON nextSteps is the
-    // surface that prints them).
     const statusJson = await runCLI(['status', '--change', 'billing-rework', '--json'], {
       cwd: pointerRepo,
       env,
     });
-    expect(parseJson(statusJson).nextSteps.join(' ')).toContain('--store team-context');
+    expect(parseJson(statusJson).changeName).toBe('billing-rework');
 
     const changeDir = path.join(storeRoot, '.sakti', 'changes', 'billing-rework');
     fs.writeFileSync(

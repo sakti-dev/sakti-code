@@ -32,7 +32,7 @@ import {
 } from './store/foundation.js';
 import { getStoreRootForBackend } from './store/registry.js';
 import { inspectSaktiRoot } from './sakti-root.js';
-import { findRepoPlanningRootSync, type PlanningHome } from './planning-home.js';
+import { findRepoPlanningRootSync } from './planning-home.js';
 import { classifySaktiDir, storePointerProblem } from './project-config.js';
 import { FileSystemUtils } from '../utils/file-system.js';
 
@@ -451,19 +451,6 @@ export function withStoreFlag(root: ResolvedSaktiRoot, command: string): string 
   return isStoreSelectedRoot(root)
     ? `${command} --store ${root.storeId}`
     : command;
-}
-
-/**
- * Compatibility bridge for workflow code that still expects a PlanningHome.
- * The planning home is always repo-shaped.
- */
-export function toPlanningHome(root: ResolvedSaktiRoot): PlanningHome {
-  return {
-    kind: 'repo',
-    root: root.path,
-    changesDir: root.changesDir,
-    defaultSchema: root.defaultSchema,
-  };
 }
 
 /**

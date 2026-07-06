@@ -6,13 +6,11 @@
 
 import ora from 'ora';
 import chalk from 'chalk';
-import { getChangeDir } from '../../core/planning-home.js';
+import * as path from 'node:path';
 import {
   resolveRootForCommand,
-  toPlanningHome,
   toRootOutput,
   withStoreFlag,
-  isStoreSelectedRoot,
 } from '../../core/root-selection.js';
 import {
   loadChangeContext,
@@ -54,7 +52,6 @@ export async function statusCommand(options: StatusOptions): Promise<void> {
   const spinner = options.json ? undefined : ora('Loading change status...').start();
 
   try {
-    const planningHome = toPlanningHome(root);
     const projectRoot = root.path;
     const rootOutput = toRootOutput(root);
     const newChangeHint = withStoreFlag(root, 'sakti new change <name>');
@@ -99,13 +96,9 @@ export async function statusCommand(options: StatusOptions): Promise<void> {
 
     // loadChangeContext will auto-detect schema from metadata if not provided
     const context = loadChangeContext(projectRoot, changeName, options.schema, {
-      changeDir: getChangeDir(planningHome, changeName),
-      planningHome,
+      changeDir: path.join(root.changesDir, changeName),
     });
-    const status = formatChangeStatus(
-      context,
-      isStoreSelectedRoot(root) ? { storeId: root.storeId } : {}
-    );
+    const status = formatChangeStatus(context);
 
     spinner?.stop();
 

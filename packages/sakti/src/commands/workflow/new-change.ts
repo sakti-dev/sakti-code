@@ -10,11 +10,9 @@
 import ora from 'ora';
 import path from 'path';
 import { createChange, validateChangeName } from '../../utils/change-utils.js';
-import { formatChangeLocation } from '../../core/planning-home.js';
 import {
   resolveRootForCommand,
   RootSelectionError,
-  toPlanningHome,
   toRootOutput,
   withStoreFlag,
   type ResolvedSaktiRoot,
@@ -78,7 +76,7 @@ function printCreatedChangeHuman(
   // stands; a distant ancestor root gets the absolute path.
   const location =
     !isStoreSelectedRoot(root) && root.path === process.cwd()
-      ? formatChangeLocation(toPlanningHome(root), payload.change.id)
+      ? path.relative(root.path, path.join(root.changesDir, payload.change.id))
       : payload.change.path;
   console.log(`Created change '${payload.change.id}' at ${location}/`);
   console.log(`Schema: ${payload.change.schema}`);

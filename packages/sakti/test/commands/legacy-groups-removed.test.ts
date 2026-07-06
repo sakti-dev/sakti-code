@@ -177,7 +177,9 @@ describe('legacy command groups are removed', () => {
     });
 
     expect(result.exitCode).toBe(0);
-    expect(JSON.parse(result.stdout).actionContext.mode).toBe('repo-local');
+    const status = JSON.parse(result.stdout);
+    expect(status.changeName).toBe('mode-check');
+    expect(status.schemaName).toBe('spec-driven');
   });
 
 });
