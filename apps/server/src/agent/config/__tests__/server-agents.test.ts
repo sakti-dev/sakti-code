@@ -7,13 +7,14 @@ function decision(ruleset: PermissionRuleset, permission: string, pattern: strin
 }
 
 describe("server agents", () => {
-  it("exposes build, explore, spec, general, plan", () => {
+  it("exposes build, explore, spec, general, plan, verify", () => {
     expect(SERVER_AGENTS.map((a) => a.name).sort()).toEqual([
       "build",
       "explore",
       "general",
       "plan",
       "spec",
+      "verify",
     ]);
   });
 
@@ -87,5 +88,42 @@ describe("server agents", () => {
     expect(decision(rs, "read", "src/a.ts")).toBe("allow");
     expect(decision(rs, "edit", "docs/plan.md")).toBe("allow");
     expect(decision(rs, "bash", "ls -la")).toBe("allow");
+  });
+});
+
+describe("verify agent", () => {
+  it("is registered as a primary agent", () => {
+    const agent = resolveServerAgent("verify");
+    expect(agent).toBeDefined();
+    expect(agent?.mode).toBe("primary");
+  });
+
+  it("declares read/grep/find/bash/webfetch/websearch/ask tools (no write/edit)", () => {
+    const agent = resolveServerAgent("verify")!;
+    expect(agent.activeToolNames).toEqual([
+      "read",
+      "grep",
+      "find",
+      "bash",
+      "webfetch",
+      "websearch",
+      "ask",
+    ]);
+  });
+
+  it("denies edit and write permissions structurally", () => {
+    const agent = resolveServerAgent("verify")!;
+    const rs = agent.permission!;
+    expect(decision(rs, "edit", "/any/path.ts")).toBe("deny");
+    expect(decision(rs, "write", "/any/path.ts")).toBe("deny");
+  });
+
+  it("allows read, grep, find, bash", () => {
+    const agent = resolveServerAgent("verify")!;
+    const rs = agent.permission!;
+    expect(decision(rs, "read", "/any/path.ts")).toBe("allow");
+    expect(decision(rs, "grep", "pattern")).toBe("allow");
+    expect(decision(rs, "find", "pattern")).toBe("allow");
+    expect(decision(rs, "bash", "ls")).toBe("allow");
   });
 });

@@ -6,6 +6,7 @@ import {
   GENERAL_PROMPT,
   PLAN_PROMPT,
   SPEC_PROMPT,
+  VERIFY_PROMPT,
 } from "./prompts.ts";
 
 export const DEFAULT_AGENT_NAME = "build";
@@ -44,6 +45,22 @@ function specRuleset(): PermissionRuleset {
   return fromConfig({
     "*": "allow",
     edit: { "*": "deny" },
+    webfetch: "allow",
+    websearch: "allow",
+  });
+}
+
+/**
+ * Verify: read-only review agent. Edit and write are structurally denied so
+ * the agent is forced to *report* issues, not silently fix them. This is the
+ * structural counterweight to the "compaction-before-verify" bias-reduction
+ * move — without it, the agent rationalizes "looks good, let me just fix it."
+ */
+function verifyRuleset(): PermissionRuleset {
+  return fromConfig({
+    "*": "allow",
+    edit: { "*": "deny" },
+    write: { "*": "deny" },
     webfetch: "allow",
     websearch: "allow",
   });
@@ -104,6 +121,15 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "Spec mode. Researches the codebase and produces a specification; disallows all edit tools.",
     systemPrompt: SPEC_PROMPT,
     permission: specRuleset(),
+    activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch", "ask"],
+  }),
+  defineAgent({
+    name: "verify",
+    mode: "primary",
+    description:
+      "Verification agent. Reviews completed work for bugs, completeness, and coherence. Edit-denied: reports issues, does not fix them.",
+    systemPrompt: VERIFY_PROMPT,
+    permission: verifyRuleset(),
     activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch", "ask"],
   }),
   defineAgent({
