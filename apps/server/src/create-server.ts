@@ -17,6 +17,7 @@ import {
   getSettingsPath,
 } from "./lib/config-dirs.ts";
 import { runMigration } from "./lib/config-migration.ts";
+import { installBuiltinSkills } from "./agent/config/install-builtin-skills.ts";
 import { createServerLoggers } from "./lib/loggers.ts";
 import { createProfilesStore } from "./lib/profiles-store.ts";
 import { createSettingsFileStore } from "./lib/settings-file-store.ts";
@@ -114,6 +115,10 @@ export async function createServer(options?: CreateServerOptions): Promise<Sakti
     settingsFile,
     log: loggers,
   });
+
+  // Sync builtin phase skills (source → ~/.sakti/agent/skills) before any
+  // loadAgentContext call can fire from a route. Idempotent; safe on every boot.
+  await installBuiltinSkills();
 
   const app = buildApp(ctx);
 

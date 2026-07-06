@@ -5,9 +5,16 @@ import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { createServer } from "../create-server.ts";
 
 let staticDir: string;
+let skillsRuntimeDir: string;
+let origAgentDir: string | undefined;
 
 beforeAll(() => {
   staticDir = mkdtempSync(join(tmpdir(), "sakti-static-"));
+  // Redirect builtin-skill install away from the real ~/.sakti/agent so
+  // createServer's install-at-boot step writes to a throwaway temp dir.
+  origAgentDir = process.env.SAKTI_AGENT_DIR;
+  skillsRuntimeDir = mkdtempSync(join(tmpdir(), "sakti-create-server-agent-"));
+  process.env.SAKTI_AGENT_DIR = skillsRuntimeDir;
   writeFileSync(
     join(staticDir, "index.html"),
     '<!DOCTYPE html><html><body><div id="app"></div></body></html>',
@@ -19,6 +26,12 @@ beforeAll(() => {
 
 afterAll(() => {
   rmSync(staticDir, { recursive: true, force: true });
+  rmSync(skillsRuntimeDir, { recursive: true, force: true });
+  if (origAgentDir === undefined) {
+    delete process.env.SAKTI_AGENT_DIR;
+  } else {
+    process.env.SAKTI_AGENT_DIR = origAgentDir;
+  }
 });
 
 describe("createServer", () => {
