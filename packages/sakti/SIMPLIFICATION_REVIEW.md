@@ -19,13 +19,13 @@ Current total: ~12,000 lines (down from ~18,000 at start).
 
 ### Remaining
 
-- [ ] **#4 Schema Command** (1,005 lines) — `schema which/validate/fork/init`. Only useful if users customize schemas. Candidate for removal if only default schema is used.
+- [x] **#4 Schema Command** (1,005 lines) — REMOVED. Management UI (which/validate/fork/init) deleted; diagnostics folded into doctor. Reusable `validate.ts` extracted to artifact-graph.
 - [ ] **#5 Store System** (3,055 lines) — `store setup/register/unregister/remove/list/doctor`. Multi-repo management. Hardest to remove — deeply entangled in `root-selection.ts`. Desktop app handles projects itself.
 - [x] **#6 Worksets + Openers** (1,801 lines) — REMOVED. Fully isolated, no dependencies. Power-user CLI feature.
-- [ ] **#7 Config Command** (601→246 lines) — `config path/list/get/set/unset/reset/edit`. Profile management stripped; basic get/set/path kept.
+- [x] **#7 Config Command** (601→246 lines) — SIMPLIFIED. Profile management stripped; basic get/set/path kept.
 - [x] **#8 Feedback** (323 lines) — REMOVED. Telemetry-adjacent, no dependencies.
-- [ ] **#9 Doctor** (211 lines) — **KEEP** per user decision.
-- [ ] **#10 Context** (208 lines) — `context` command. Outputs working-set brief for AI agents. Kills `working-set.ts` + `relationship-health.ts` if removed.
+- [x] **#9 Doctor** (211→~170 lines) — REWRITTEN. Stripped all store/relationship checks (irrelevant to single-project use case). Now: config validity + schema resolvability + template existence. Uses store-free root finding.
+- [ ] **#10 Context** (208 lines) — `context` command. Outputs working-set brief for AI agents. Kills `working-set.ts` + `relationship-health.ts` if removed. (Note: doctor no longer uses relationship-health; only context.ts does.)
 - [ ] **#11 Planning Home** (178 lines) — Path resolution for change directories. Partially still needed by `status` command. Could inline the 2 functions.
 - [x] **#12 Profiles + Config Prompts** (89 lines) — REMOVED (profiles.ts). Note: `config-prompts.ts` kept — misnamed, contains `serializeConfig()` needed by `new change`. Stripped `config profile` subcommand + helpers from config.ts.
 - [ ] **#13 Global Config** (172 lines) — `getGlobalDataDir()` is high fan-in (keep), config file parsing could be stripped.
@@ -72,9 +72,11 @@ All 13 template files + `skill-templates.ts` + `index.ts` deleted (3,772 lines).
 
 **Files:** `src/commands/schema.ts` (1,005 lines)
 
-**What it does:** Manages workflow schema YAML files. Allows users to customize the artifact pipeline for their project.
+### 4. Schema Command
 
-**If removed:** 1,005 lines saved. Schema resolution (in artifact-graph) still works — this is just the management UI.
+**Status:** REMOVED
+
+Deleted `src/commands/schema.ts` (1,005 lines) — `schema which/validate/fork/init` management UI. Extracted reusable `validateSchema` + `resolveSchemaLocation` into `src/core/artifact-graph/validate.ts` (161 lines), now used by doctor. The schema resolver (`resolver.ts`, `schema.ts`) stays — `status`, `new change`, and `task-progress` need it at runtime.
 
 ---
 
@@ -125,11 +127,11 @@ Deleted `src/commands/feedback.ts` (208 lines) + test (429 lines). No dependenci
 
 ### 9. Doctor Command
 
-**Status:** KEEP (per user)
+**Status:** REWRITTEN (211 → ~170 lines)
 
-**CLI command:** `doctor`
+Rewritten from a multi-repo relationship-health checker into a project-setup health checker. Stripped all store/reference/registry/pointer checks (irrelevant to single-project use case). Removed dependencies on store/foundation, store/git, relationship-health, shared-gather, root-selection.
 
-**Files:** `src/commands/doctor.ts` (211 lines)
+**New checks:** config.yaml present + valid + has schema field; schema resolvable from project/user/package; schema structure valid + templates exist. Uses store-free `findRepoPlanningRootSync` for root finding.
 
 ---
 
@@ -189,16 +191,16 @@ Deleted `src/commands/feedback.ts` (208 lines) + test (429 lines). No dependenci
 | 1 | Workflow commands | 1,227 | ✅ Partial | Removed instruction-gen, kept scaffold |
 | 2 | Workflow templates | 3,772 | ✅ Done | Deleted, content in skills |
 | 3 | Artifact graph | 1,224 | ✅ Partial | Removed loader, kept resolver |
-| 4 | Schema command | 1,005 | ⬜ Pending | Candidate for removal |
+| 4 | Schema command | 1,005 | ✅ Done | Management UI removed, validate.ts extracted to artifact-graph |
 | 5 | Store system | 3,055 | ⬜ Pending | Hardest — high entanglement |
 | 6 | Worksets + openers | 1,801 | ✅ Done | Fully isolated, removed |
 | 7 | Config command | 601 | ✅ Partial | Stripped profile mgmt, kept get/set/path |
 | 8 | Feedback | 323 | ✅ Done | No dependencies, removed |
-| 9 | Doctor | 211 | ✅ Keep | User decision |
-| 10 | Context | 208 | ⬜ Pending | Kills 2 more core files |
-| 11 | Planning home | 178 | ⬜ Partial | Inline into status/doctor |
+| 9 | Doctor | 211 | ✅ Rewritten | Stripped store checks, now config+schema health |
+| 10 | Context | 208 | ⬜ Pending | Kills 2 more core files (only remaining relationship-health user) |
+| 11 | Planning home | 178 | ⬜ Partial | Inline into status |
 | 12 | Profiles | 89 | ✅ Done | Vestigial, removed (config-prompts.ts kept) |
 | 13 | Global config | 172 | ⬜ Partial | Keep data dir, strip config parsing |
 
-**Removed so far:** ~21,752 lines deleted, ~2,055 lines added (skills)
-**Remaining candidates:** ~4,629 lines if all pending items removed (#4, #5, #10, #11, #13)
+**Removed so far:** ~23,247 lines deleted, ~2,216 lines added (skills + validate.ts)
+**Remaining candidates:** ~3,624 lines if all pending items removed (#5, #10, #11, #13)
