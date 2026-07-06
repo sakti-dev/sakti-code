@@ -27,7 +27,6 @@ Phase-1 planning skill. Explores requirements, confirms scope, creates the chang
 
 - No active change, or the user explicitly wants a new one
 - The `sakti` CLI installed and available on PATH
-- The `sakti-explore` skill installed
 
 ## Output Language
 
@@ -37,9 +36,7 @@ Use the language of the user request that triggered this skill as the default ou
 
 ### Step 1 — Explore
 
-**Immediately execute:** Use the Skill tool to load `sakti-explore`. Skipping is prohibited.
-
-Follow its guidance to explore the problem space. Do not treat one Q&A turn as sufficient — keep asking until you can produce a **clarification summary** with all five parts:
+**Read `references/exploration.md`** (relative to this skill's directory) and follow its guidance to explore the problem space. Do not treat one Q&A turn as sufficient — keep asking until you can produce a **clarification summary** with all five parts:
 
 - **Goals:** the problem the user wants to solve and the expected outcome
 - **Non-goals:** what is explicitly out of scope
