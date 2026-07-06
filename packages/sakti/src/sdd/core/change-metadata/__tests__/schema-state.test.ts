@@ -15,7 +15,6 @@ describe("ChangeMetadataSchema state machine fields", () => {
       expect(result.data.archived).toBe(false);
       expect(result.data.direct_override).toBe(false);
       expect(result.data.build_mode).toBeNull();
-      expect(result.data.tdd_mode).toBeNull();
       expect(result.data.isolation).toBeNull();
       expect(result.data.design_doc).toBeNull();
       expect(result.data.base_ref).toBeNull();
@@ -50,7 +49,7 @@ describe("ChangeMetadataSchema state machine fields", () => {
     });
 
     it("accepts all valid build_mode values", () => {
-      for (const mode of ["subagent-driven-development", "executing-plans", "direct"] as const) {
+      for (const mode of ["subagent", "direct"] as const) {
         const result = ChangeMetadataSchema.safeParse({
           schema: "spec-driven",
           build_mode: mode,
@@ -64,7 +63,6 @@ describe("ChangeMetadataSchema state machine fields", () => {
         schema: "spec-driven",
         build_mode: null,
         design_doc: null,
-        tdd_mode: null,
       });
       expect(result.success).toBe(true);
     });

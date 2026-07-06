@@ -49,7 +49,6 @@ describe("createChange state machine integration", () => {
 
     expect(parsed.workflow).toBe("hotfix");
     expect(parsed.build_mode).toBe("direct");
-    expect(parsed.tdd_mode).toBe("direct");
     expect(parsed.isolation).toBe("branch");
     expect(parsed.verify_mode).toBe("light");
   });

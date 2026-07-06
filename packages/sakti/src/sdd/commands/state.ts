@@ -17,7 +17,6 @@ export const STATE_FIELDS = [
   "build_mode",
   "build_pause",
   "subagent_dispatch",
-  "tdd_mode",
   "review_mode",
   "isolation",
   "direct_override",

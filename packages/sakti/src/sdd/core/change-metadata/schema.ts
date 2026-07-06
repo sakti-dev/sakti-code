@@ -63,13 +63,9 @@ export const ChangeMetadataSchema = z.object({
   auto_transition: z.boolean().default(true),
 
   // State machine — build decisions (null until user chooses)
-  build_mode: z
-    .enum(["subagent-driven-development", "executing-plans", "direct"])
-    .nullable()
-    .default(null),
+  build_mode: z.enum(["subagent", "direct"]).nullable().default(null),
   build_pause: z.enum(["plan-ready"]).nullable().default(null),
   subagent_dispatch: z.enum(["confirmed"]).nullable().default(null),
-  tdd_mode: z.enum(["tdd", "direct"]).nullable().default(null),
   review_mode: z.enum(["off", "standard", "thorough"]).nullable().default(null),
   isolation: z.enum(["branch", "worktree"]).nullable().default(null),
   direct_override: z.boolean().default(false),

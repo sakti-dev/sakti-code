@@ -20,7 +20,6 @@ export function getStateDefaultsForWorkflow(workflow: Workflow): Partial<ChangeM
       return {
         ...base,
         build_mode: null,
-        tdd_mode: null,
         review_mode: null,
         isolation: null,
         verify_mode: null,
@@ -30,7 +29,6 @@ export function getStateDefaultsForWorkflow(workflow: Workflow): Partial<ChangeM
       return {
         ...base,
         build_mode: "direct",
-        tdd_mode: "direct",
         review_mode: "off",
         isolation: "branch",
         verify_mode: "light",
