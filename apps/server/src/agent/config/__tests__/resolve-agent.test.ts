@@ -55,9 +55,9 @@ describe("resolveSessionAgentForKind", () => {
 });
 
 describe("resolveSessionAgentForKind — status-based (SDD lifecycle)", () => {
-  it("mission + status='specifying' → spec agent (structurally edit-denied)", () => {
+  it("mission + status='specifying' → build agent (spec removed; design via skill injection)", () => {
     const { agent } = resolveSessionAgentForKind("mission", [], undefined, "specifying");
-    expect(agent.name).toBe("spec");
+    expect(agent.name).toBe("build");
   });
 
   it("mission + status='building' → build agent", () => {

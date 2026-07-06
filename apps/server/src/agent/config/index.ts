@@ -9,6 +9,7 @@ export {
   GENERAL_PROMPT,
   PLAN_PROMPT,
   SPEC_PROMPT,
+  VERIFY_PROMPT,
 } from "./prompts.ts";
 
 export { resolveOmConfig } from "./resolve-observational-memory.ts";

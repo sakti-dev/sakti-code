@@ -7,13 +7,12 @@ function decision(ruleset: PermissionRuleset, permission: string, pattern: strin
 }
 
 describe("server agents", () => {
-  it("exposes build, explore, spec, general, plan, verify", () => {
+  it("exposes build, explore, general, plan, verify", () => {
     expect(SERVER_AGENTS.map((a) => a.name).sort()).toEqual([
       "build",
       "explore",
       "general",
       "plan",
-      "spec",
       "verify",
     ]);
   });
@@ -46,14 +45,6 @@ describe("server agents", () => {
     const explore = resolveServerAgent("explore");
     const rs = explore!.permission!;
     expect(decision(rs, "external_directory", "/etc/passwd")).toBe("deny");
-  });
-
-  it("spec denies all edits but keeps reads", () => {
-    const spec = resolveServerAgent("spec");
-    expect(spec).toBeDefined();
-    const rs = spec!.permission!;
-    expect(decision(rs, "edit", "src/a.ts")).toBe("deny");
-    expect(decision(rs, "read", "src/a.ts")).toBe("allow");
   });
 
   it("server rulesets merge cleanly with a session grant (later wins)", () => {
@@ -125,5 +116,17 @@ describe("verify agent", () => {
     expect(decision(rs, "grep", "pattern")).toBe("allow");
     expect(decision(rs, "find", "pattern")).toBe("allow");
     expect(decision(rs, "bash", "ls")).toBe("allow");
+  });
+});
+
+describe("spec agent removal", () => {
+  it("does not register a 'spec' agent", () => {
+    const agent = resolveServerAgent("spec");
+    expect(agent).toBeUndefined();
+  });
+
+  it("SERVER_AGENTS contains exactly build, explore, general, plan, verify", () => {
+    const names = SERVER_AGENTS.map((a) => a.name).sort();
+    expect(names).toEqual(["build", "explore", "general", "plan", "verify"]);
   });
 });

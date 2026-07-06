@@ -5,7 +5,6 @@ import {
   EXPLORE_PROMPT,
   GENERAL_PROMPT,
   PLAN_PROMPT,
-  SPEC_PROMPT,
   VERIFY_PROMPT,
 } from "./prompts.ts";
 
@@ -36,15 +35,6 @@ function exploreRuleset(): PermissionRuleset {
     grep: "allow",
     glob: "allow",
     bash: "allow",
-    webfetch: "allow",
-    websearch: "allow",
-  });
-}
-
-function specRuleset(): PermissionRuleset {
-  return fromConfig({
-    "*": "allow",
-    edit: { "*": "deny" },
     webfetch: "allow",
     websearch: "allow",
   });
@@ -113,15 +103,6 @@ export const SERVER_AGENTS: AgentDefinition[] = [
     systemPrompt: EXPLORE_PROMPT,
     permission: exploreRuleset(),
     activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch"],
-  }),
-  defineAgent({
-    name: "spec",
-    mode: "primary",
-    description:
-      "Spec mode. Researches the codebase and produces a specification; disallows all edit tools.",
-    systemPrompt: SPEC_PROMPT,
-    permission: specRuleset(),
-    activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch", "ask"],
   }),
   defineAgent({
     name: "verify",
