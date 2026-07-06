@@ -159,6 +159,13 @@ export async function stateTransition(
           "Cannot transition 'design-complete': design_doc must point to an existing Design Doc before leaving design",
         );
       }
+      try {
+        await fs.access(path.join(changeDir, metadata.design_doc));
+      } catch {
+        throw new Error(
+          `Cannot transition 'design-complete': design_doc file '${metadata.design_doc}' does not exist`,
+        );
+      }
       apply({ phase: "build" });
       break;
     }

@@ -170,10 +170,18 @@ describe("stateTransition", () => {
     ).rejects.toThrow(/design_doc/i);
   });
 
-  it("design-complete advances to build when design_doc is set", async () => {
-    seed("full", "design", { design_doc: "docs/design.md" });
+  it("design-complete advances to build when design_doc is set and file exists", async () => {
+    seed("full", "design", { design_doc: "technical-design.md" });
+    await fs.writeFile(path.join(changeDir, "technical-design.md"), "# Technical Design");
     await stateTransition(changeDir, "design-complete", { projectRoot: tmpDir });
     expect(await readField("phase")).toBe("build");
+  });
+
+  it("design-complete fails when design_doc file does not exist", async () => {
+    seed("full", "design", { design_doc: "technical-design.md" });
+    await expect(
+      stateTransition(changeDir, "design-complete", { projectRoot: tmpDir }),
+    ).rejects.toThrow(/design_doc.*exist|exist.*design_doc/i);
   });
 
   it("build-complete advances to verify", async () => {
