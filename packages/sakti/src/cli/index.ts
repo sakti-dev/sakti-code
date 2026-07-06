@@ -15,7 +15,6 @@ import { ChangeCommand } from '../commands/change.js';
 import { ValidateCommand } from '../commands/validate.js';
 import { ShowCommand } from '../commands/show.js';
 
-import { registerConfigCommand } from '../commands/config.js';
 import { registerStoreCommand } from '../commands/store.js';
 import { registerDoctorCommand } from '../commands/doctor.js';
 import {
@@ -219,7 +218,6 @@ program
   });
 
 registerSpecCommand(program);
-registerConfigCommand(program);
 registerStoreCommand(program);
 registerDoctorCommand(program);
 
