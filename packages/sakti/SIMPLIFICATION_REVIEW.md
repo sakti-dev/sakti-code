@@ -20,7 +20,7 @@ Current total: ~12,000 lines (down from ~18,000 at start).
 ### Remaining
 
 - [x] **#4 Schema Command** (1,005 lines) — REMOVED. Management UI (which/validate/fork/init) deleted; diagnostics folded into doctor. Reusable `validate.ts` extracted to artifact-graph.
-- [ ] **#5 Store System** (3,055 lines) — `store setup/register/unregister/remove/list/doctor`. Multi-repo management. Hardest to remove — deeply entangled in `root-selection.ts`. Desktop app handles projects itself.
+- [x] **#5 Store System** (3,055 source + 4,135 test lines) — REMOVED. Multi-repo management layer fully deleted: `store/` dir (foundation, registry, operations, git, errors), `commands/store.ts`, 8 test files. `StoreError`/`StoreDiagnostic` extracted to generic `SaktiError`/`Diagnostic` in `src/core/errors.ts`. `root-selection.ts` simplified from 503→~190 lines (nearest-only, no `--store`/`--store-path` flags). `references.ts` deleted (orphaned since context removal). All 13 clusters now complete.
 - [x] **#6 Worksets + Openers** (1,801 lines) — REMOVED. Fully isolated, no dependencies. Power-user CLI feature.
 - [x] **#7 Config Command** (601 lines) — REMOVED entirely. Nothing read any config value (profile/delivery/workflows/featureFlags all had zero consumers). The config command managed a write-only file.
 - [x] **#8 Feedback** (323 lines) — REMOVED. Telemetry-adjacent, no dependencies.
@@ -187,7 +187,7 @@ Kept only `getGlobalDataDir()` (the store system's registry path) + `GLOBAL_DATA
 | 2 | Workflow templates | 3,772 | ✅ Done | Deleted, content in skills |
 | 3 | Artifact graph | 1,224 | ✅ Partial | Removed loader, kept resolver |
 | 4 | Schema command | 1,005 | ✅ Done | Management UI removed, validate.ts extracted to artifact-graph |
-| 5 | Store system | 3,055 | ⬜ Pending | Hardest — high entanglement |
+| 5 | Store system | 7,190 | ✅ Done | Multi-repo layer fully removed, errors extracted to SaktiError |
 | 6 | Worksets + openers | 1,801 | ✅ Done | Fully isolated, removed |
 | 7 | Config command | 601 | ✅ Done | Write-only config nobody read, removed entirely |
 | 8 | Feedback | 323 | ✅ Done | No dependencies, removed |
@@ -197,5 +197,5 @@ Kept only `getGlobalDataDir()` (the store system's registry path) + `GLOBAL_DATA
 | 12 | Profiles | 89 | ✅ Done | Vestigial, removed (config-prompts.ts kept) |
 | 13 | Global config | 172 | ✅ Done | Stripped to getGlobalDataDir() only (49 lines) |
 
-**Removed so far:** ~26,106 lines deleted, ~2,264 lines added (skills + validate.ts)
-**Remaining candidates:** ~3,055 lines — only #5 Store system remains
+**Total removed:** ~33,296 lines deleted, ~2,264 lines added (skills + validate.ts + errors.ts)
+**All 13 clusters complete.** Only 1 pre-existing test failure remains (`source-specs-normalization.test.ts`).
