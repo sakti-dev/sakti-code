@@ -1,5 +1,5 @@
-import { defineConfig } from 'vitest/config';
-import os from 'node:os';
+import { defineConfig } from "vitest/config";
+import os from "node:os";
 
 function resolveMaxWorkers(): number | undefined {
   // Allow callers (CI/agents) to override without editing config.
@@ -14,34 +14,26 @@ function resolveMaxWorkers(): number | undefined {
   // Vitest v3 defaults to `pool: "forks"` and scales worker processes with CPU.
   // This repo's tests can spawn many Node processes (CLI invocations, temp FS),
   // so cap parallelism to avoid runaway CPU/memory usage in automation.
-  const cpuCount = typeof os.availableParallelism === 'function'
-    ? os.availableParallelism()
-    : os.cpus().length;
+  const cpuCount =
+    typeof os.availableParallelism === "function" ? os.availableParallelism() : os.cpus().length;
   return Math.min(4, Math.max(1, cpuCount));
 }
 
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node',
-    globalSetup: './vitest.setup.ts',
+    environment: "node",
+    globalSetup: "./vitest.setup.ts",
     // Tests rely on per-file process isolation (e.g., `process.cwd()` assumptions).
-    pool: 'forks',
+    pool: "forks",
     maxWorkers: resolveMaxWorkers(),
-    include: ['test/**/*.test.ts'],
+    include: ["src/**/__tests__/**/*.test.ts"],
     coverage: {
-      reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'dist/',
-        'bin/',
-        '*.config.ts',
-        'build.js',
-        'test/**'
-      ]
+      reporter: ["text", "json", "html"],
+      exclude: ["node_modules/", "dist/", "*.config.ts", "src/**/__tests__/**"],
     },
     testTimeout: 10000,
     hookTimeout: 10000,
-    teardownTimeout: 3000
-  }
+    teardownTimeout: 3000,
+  },
 });

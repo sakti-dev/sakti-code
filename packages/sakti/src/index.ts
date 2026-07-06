@@ -1,2 +1,1 @@
-export * from "./cli.js";
-export * from "./core/index.js";
+export * from "./sdd/core/index.js";

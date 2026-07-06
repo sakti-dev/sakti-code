@@ -2,31 +2,26 @@
   "name": "@sakti-code/sakti",
   "version": "0.0.0",
   "description": "Sakti CLI",
-  "type": "module",
   "bin": {
-    "sakti": "./bin/sakti.js"
+    "sakti": "./dist/cli.mjs"
   },
+  "files": [
+    "dist",
+    "schemas"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
       "development": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
     }
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist",
-    "bin",
-    "schemas",
-    "scripts"
-  ],
   "scripts": {
-    "build": "node build.js",
-    "test": "vitest run"
-  },
-  "engines": {
-    "node": ">=20.19.0"
+    "build": "vp pack",
+    "test": "vp test run"
   },
   "dependencies": {
     "@inquirer/core": "^10.3.2",
@@ -44,5 +39,8 @@
     "typescript": "^5.9.3",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=20.19.0"
   }
 }
