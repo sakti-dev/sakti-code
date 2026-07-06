@@ -97,8 +97,8 @@ function canonicalDirectory(startPath: string): string {
 function findQualifyingRootSync(startPath: string): string | null {
   let candidate = findRepoPlanningRootSync(startPath);
   while (candidate) {
-    const { hasPlanningShape, pointer } = classifySaktiDir(candidate);
-    if (hasPlanningShape || pointer.filePath) {
+    const { hasPlanningShape, hasConfigFile } = classifySaktiDir(candidate);
+    if (hasPlanningShape || hasConfigFile) {
       return candidate;
     }
     const parent = path.dirname(candidate);

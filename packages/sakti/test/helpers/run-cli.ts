@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const projectRoot = path.resolve(__dirname, '..', '..');
-const cliEntry = path.join(projectRoot, 'dist', 'cli', 'index.js');
+const cliEntry = path.join(projectRoot, 'dist', 'cli.js');
 
 let buildPromise: Promise<void> | undefined;
 
@@ -68,7 +68,7 @@ export async function ensureCliBuilt() {
   await buildPromise;
 
   if (!existsSync(cliEntry)) {
-    throw new Error('CLI entry point missing after build. Expected dist/cli/index.js');
+    throw new Error('CLI entry point missing after build. Expected dist/cli.js');
   }
 }
 

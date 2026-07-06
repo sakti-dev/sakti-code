@@ -5,7 +5,6 @@ import ora from "ora";
 import path from "path";
 import { fileURLToPath } from "url";
 import { promises as fs } from "fs";
-import { AI_TOOLS } from "./core/config.js";
 import { ListCommand } from "./core/list.js";
 import { ArchiveCommand, type ArchiveOptions } from "./core/archive.js";
 import { ViewCommand } from "./core/view.js";
@@ -55,7 +54,7 @@ function failWithError(
 
 const program = new Command();
 const require = createRequire(import.meta.url);
-const { version } = require("../../package.json");
+const { version } = require("../package.json");
 
 program.name("sakti").description("AI-native system for spec-driven development").version(version);
 
