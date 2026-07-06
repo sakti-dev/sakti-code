@@ -1,7 +1,7 @@
 import * as nodeFs from 'node:fs';
 import * as path from 'node:path';
 import { FileSystemUtils } from '../utils/file-system.js';
-import { StoreError } from './store/errors.js';
+import { SaktiError } from './errors.js';
 
 const fs = nodeFs.promises;
 
@@ -38,11 +38,11 @@ export interface LockErrorData {
 /** One template for lock diagnostics; callers supply the data. */
 export function makeLockErrorFactory(
   data: LockErrorData
-): (kind: FileLockErrorKind, info: FileLockErrorInfo) => StoreError {
+): (kind: FileLockErrorKind, info: FileLockErrorInfo) => SaktiError {
   return (kind, info) => {
     if (kind === 'create-failed') {
       // A permission or filesystem problem, not contention - say so.
-      return new StoreError(
+      return new SaktiError(
         `Cannot create ${data.createSubject} ${info.lockPath} (${(info.cause as NodeJS.ErrnoException)?.code ?? info.cause}).`,
         data.code,
         {
@@ -52,7 +52,7 @@ export function makeLockErrorFactory(
       );
     }
 
-    return new StoreError(data.busyMessage, data.code, {
+    return new SaktiError(data.busyMessage, data.code, {
       target: data.target,
       fix: `Retry shortly; if this persists, delete the stale lock file ${info.lockPath}.`,
     });

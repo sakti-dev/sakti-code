@@ -22,7 +22,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { StoreError } from './store/errors.js';
+import { SaktiError } from './errors.js';
 import {
   getStoreMetadataPath,
   listStoreRegistryEntries,
@@ -91,7 +91,7 @@ export function isRootSelectionError(error: unknown): error is RootSelectionErro
 }
 
 function fromStoreError(error: unknown): never {
-  if (error instanceof StoreError) {
+  if (error instanceof SaktiError) {
     throw new RootSelectionError(error.message, error.diagnostic.code, {
       ...(error.diagnostic.target ? { target: error.diagnostic.target } : {}),
       ...(error.diagnostic.fix ? { fix: error.diagnostic.fix } : {}),

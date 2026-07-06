@@ -4,9 +4,9 @@ import * as path from 'node:path';
 import { FileSystemUtils } from '../utils/file-system.js';
 import { serializeConfig } from './config-prompts.js';
 import {
-  makeStoreDiagnostic,
-  type StoreDiagnostic,
-} from './store/errors.js';
+  makeDiagnostic,
+  type Diagnostic,
+} from './errors.js';
 
 export const SAKTI_ROOT_DIR = '.sakti';
 export const SAKTI_CONFIG_YAML = '.sakti/config.yaml';
@@ -45,7 +45,7 @@ export interface SaktiRootInspection {
     present: boolean | null;
   };
   healthy: boolean;
-  diagnostics: StoreDiagnostic[];
+  diagnostics: Diagnostic[];
 }
 
 export interface EnsureSaktiRootResult {
@@ -95,8 +95,8 @@ function missingDirectoryDiagnostic(
   code: string,
   message: string,
   target: string
-): StoreDiagnostic {
-  return makeStoreDiagnostic('error', code, message, { target });
+): Diagnostic {
+  return makeDiagnostic('error', code, message, { target });
 }
 
 export async function inspectSaktiRoot(storeRoot: string): Promise<SaktiRootInspection> {
