@@ -9,6 +9,7 @@ import {
   type RetrySettings,
 } from "./retry-loop.ts";
 import type { AgentHarnessEvent, PromptTemplate, Skill, ThinkingLevel } from "../harness-types.ts";
+import type { AgentMessage } from "../types.ts";
 import type { ObservationalMemoryOptions } from "../observational-memory/config.ts";
 import { ObservationalMemoryEngine } from "../observational-memory/engine.ts";
 import { planFirstTurn, type ReadFile } from "../resources/prompt-preprocessor.ts";
@@ -23,6 +24,16 @@ export interface AgentRunDeps {
 
   readonly emit: (event: AgentHarnessEvent) => void;
   readonly harness: AgentHarness;
+
+  /**
+   * Ephemeral priming messages prepended to the first turn (via
+   * `harness.injectMessages`). Used for forced skill injection: a synthetic
+   * `read(SKILL.md)` tool-call + result so the agent starts its first real
+   * turn with the phase's skill content already in context.
+   *
+   * Never persisted to DB — rebuilt every run from the current phase.
+   */
+  readonly initialMessages?: AgentMessage[];
 
   readonly log?: Logger;
 
@@ -198,6 +209,13 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
           return yield* harness.continueEffect();
         }),
     };
+
+    // Inject ephemeral priming messages (skill injection) before the first
+    // turn. These go into the harness's nextTurnQueue and are prepended to
+    // the user's first message when executeTurnEffect runs.
+    if (deps.initialMessages && deps.initialMessages.length > 0) {
+      harness.injectMessages(deps.initialMessages);
+    }
 
     yield* executeWithRetryEffect(depsEffect, retrySettings);
   }).pipe(

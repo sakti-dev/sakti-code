@@ -1295,6 +1295,22 @@ export class AgentHarness<
     await this.emitQueueUpdate();
   }
 
+  /**
+   * Push raw AgentMessages onto the nextTurnQueue. They will be prepended
+   * (in order) before the next user message when `executeTurnEffect` runs.
+   *
+   * Used for ephemeral priming like the forced skill injection (synthetic
+   * read(SKILL.md) tool-call + result) — never persisted to DB.
+   *
+   * Unlike `nextTurn` (which wraps text as a user message), this accepts
+   * arbitrary AgentMessage shapes (assistant tool_calls, tool results, etc.).
+   */
+  injectMessages(messages: AgentMessage[]): void {
+    for (const msg of messages) {
+      this.nextTurnQueue.push(msg);
+    }
+  }
+
   appendMessageEffect(
     message: AgentMessage,
   ): Effect.Effect<void, AgentHarnessError | SessionError> {
