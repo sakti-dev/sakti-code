@@ -36,3 +36,15 @@ describe("session.onApprove (graduation)", () => {
     expect(ctx.log?.agent?.warn).toHaveBeenCalled();
   });
 });
+
+describe("spec ask-kind onApprove", () => {
+  it("flips status to building but does NOT call forceReset", async () => {
+    const forceReset = vi.fn(async () => {});
+    const ctx = makeCtx({ forceReset });
+
+    await ASK_KINDS.spec.onApprove?.("sess-1", "the spec body", ctx);
+
+    expect(ctx.sessions.update).toHaveBeenCalledWith("sess-1", { status: "building" });
+    expect(forceReset).not.toHaveBeenCalled();
+  });
+});

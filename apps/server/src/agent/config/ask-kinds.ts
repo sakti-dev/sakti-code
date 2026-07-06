@@ -75,21 +75,9 @@ export const ASK_KINDS: Record<AskKind, AskKindHandlers> = {
     card: "proposed-spec",
     onApprove: async (id, _body, ctx) => {
       await ctx.sessions.update(id, { status: "building" });
-      // Force a context reset before the agent switch. The spec→build agent
-      // swap invalidates the prompt cache anyway (system prompt + tools
-      // change), so observing the specifying chatter costs nothing cached and
-      // gives the build agent a clean, spec-focused start. Best-effort: a
-      // reset failure must not strand the mission — the status flip above is
-      // the user's durable intent, and the build agent still works on the
-      // un-observed context.
-      try {
-        await ctx.forceReset?.(id);
-      } catch (err) {
-        ctx.log?.agent?.warn?.("spec→build: forced reset failed (continuing)", {
-          sessionId: id,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
+      // NOTE: forced OM observe removed intentionally. The build agent benefits
+      // from the full design-phase context (file maps, decisions, constraints).
+      // Cache break from the agent swap is unavoidable but content loss is not.
     },
     onReject: async () => {},
   },
