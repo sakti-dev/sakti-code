@@ -65,12 +65,12 @@ describe("resolveSessionAgentForKind — status-based (SDD lifecycle)", () => {
     expect(agent.name).toBe("build");
   });
 
-  it("mission + status='review' → build agent (inert fallback)", () => {
+  it("mission + status='review' → verify agent (edit-denied)", () => {
     const { agent } = resolveSessionAgentForKind("mission", [], undefined, "review");
-    expect(agent.name).toBe("build");
+    expect(agent.name).toBe("verify");
   });
 
-  it("mission + status='merged' → build agent (inert fallback)", () => {
+  it("mission + status='merged' → build agent (archive phase)", () => {
     const { agent } = resolveSessionAgentForKind("mission", [], undefined, "merged");
     expect(agent.name).toBe("build");
   });
@@ -88,6 +88,13 @@ describe("resolveSessionAgentForKind — status-based (SDD lifecycle)", () => {
   it("per-session override wins over status-based routing", () => {
     const { agent } = resolveSessionAgentForKind("mission", [], "explore", "specifying");
     expect(agent.name).toBe("explore");
+  });
+});
+
+describe("resolveSessionAgentForKind — review routing", () => {
+  it("per-session override beats review→verify routing", () => {
+    const { agent } = resolveSessionAgentForKind("mission", [], "build", "review");
+    expect(agent.name).toBe("build");
   });
 });
 

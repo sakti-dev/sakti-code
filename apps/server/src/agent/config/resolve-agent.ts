@@ -25,10 +25,14 @@ export function resolveAgentByName(name: string, loadedAgents: AgentDefinition[]
 
 /**
  * Resolve the agent for a session based on its kind + status + per-session
- * override. Per-session override wins (when it differs from the default);
- * otherwise `plan` kind → plan agent, `mission` kind in the `specifying`
- * phase → spec agent (structurally edit-denied), and all other mission
- * statuses → build agent (the default, covering building/review/merged).
+ * override. Per-session override wins; otherwise `plan` kind → plan agent,
+ * `mission` kind in the `review` status → verify agent (edit-denied), and
+ * all other mission statuses (specifying, building, merged) → build agent.
+ *
+ * The "specifying → build" routing is intentional: the design phase uses the
+ * sakti-design skill (force-injected at run start) to keep the agent on-task
+ * instead of a structurally edit-denied spec agent. Edit-denial is preserved
+ * for verify (where bias reduction matters most).
  *
  * The "differs from the default" check is how we detect "no override": the
  * session-settings layer returns `DEFAULT_AGENT_NAME` ("build") when no
@@ -48,8 +52,8 @@ export function resolveSessionAgentForKind(
     name = perSessionOverride;
   } else if (kind === "plan") {
     name = "plan";
-  } else if (kind === "mission" && status === "specifying") {
-    name = "spec";
+  } else if (kind === "mission" && status === "review") {
+    name = "verify";
   } else {
     name = DEFAULT_AGENT_NAME;
   }
