@@ -18,7 +18,7 @@ Every change goes through this process. A single function, a config change, a on
 
 ### 1. Orient on Phase-1 Artifacts
 
-You are NOT starting from scratch. Phase 1 (sakti-plan) already produced:
+You are NOT starting from scratch. Phase 1 already produced:
 
 - **proposal.md** — goals, scope, non-goals
 - **specs/\*/\*.md** — requirements and acceptance scenarios
@@ -27,7 +27,7 @@ You are NOT starting from scratch. Phase 1 (sakti-plan) already produced:
 
 Read all of them before asking any questions. Your job is to go **deeper**: implementation approach, technical risks, testing strategy, task sequencing, spec gaps.
 
-If the phase-1 artifacts are unclear or incomplete, flag it — that's a signal to return to sakti-plan, not to fill gaps during design.
+If the phase-1 artifacts are unclear or incomplete, flag it — that's a signal to return to phase 1, not to fill gaps during design.
 
 ### 2. Ask Clarifying Questions
 

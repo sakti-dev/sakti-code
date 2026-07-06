@@ -147,15 +147,15 @@ Steps 2 and 4b are **blocking points**. Follow these rules at each:
 
 ## Exit & Handoff
 
-After the user confirms planning is complete, **stop**. Do not auto-invoke any implementation skill. Print a short handoff block:
+After the user confirms planning is complete, **stop**. Print a short handoff block:
 
 ```
 Planning complete. Change: <name>
 Artifacts: proposal, specs, design, tasks — all done.
 
 Next steps:
-  Load the implementation skill (e.g. sakti-apply) to start building
   Run `sakti status --change <name>` anytime to check artifact state
+  Run `sakti state transition <name> open-complete` to advance to the next phase
 ```
 
 The change is now ready for whoever picks it up next.

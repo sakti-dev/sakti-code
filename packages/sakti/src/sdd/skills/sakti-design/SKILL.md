@@ -19,7 +19,7 @@ Phase-2 deep design skill. Takes the phase-1 artifacts (proposal, specs, design,
 
 **Do NOT use when:**
 
-- Phase is `open` — use sakti-plan first
+- Phase is `open` — complete phase 1 (planning) first
 - Phase is `build` or later — the design phase is already complete
 - The change uses `hotfix` or `tweak` workflow (these skip the design phase)
 
@@ -49,7 +49,7 @@ If the phase is not `design`, stop and tell the user what phase they're in and w
 
 - `proposal.md` — goals, scope, non-goals
 - `specs/*/spec.md` — requirements and acceptance scenarios
-- `design.md` — high-level architecture decisions (from sakti-plan)
+- `design.md` — high-level architecture decisions (from phase 1)
 - `tasks.md` — basic task checklist
 
 These are the input. Do not modify them during brainstorming — only after user confirmation (Step 5).
@@ -199,7 +199,7 @@ Spec patches are limited to:
 - Correcting ambiguous descriptions
 - Adding boundary conditions
 
-Do NOT substantially rewrite the delta spec's structure or scope. If major changes are needed, flag them as design findings in the technical-design.md and recommend returning to sakti-plan.
+Do NOT substantially rewrite the delta spec's structure or scope. If major changes are needed, flag them as design findings in the technical-design.md and recommend returning to phase 1.
 
 ### Step 7 — Transition
 
@@ -241,7 +241,6 @@ Artifacts produced:
   - specs/ (spec patches, if any)
 
 Next steps:
-  Load the implementation skill (e.g. sakti-apply) to start building
   Run `sakti status --change <name>` anytime to check state
 ```
 
@@ -249,11 +248,11 @@ The change is now ready for the build phase.
 
 ## Common Mistakes
 
-| Mistake                                        | Fix                                                                                              |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Skipping brainstorming                         | Step 2 requires reading `references/brainstorming.md` — no exceptions                            |
-| Creating artifacts before user confirmation    | Step 3 is a blocking point — wait for explicit confirmation                                      |
-| Rewriting proposal/specs during brainstorming  | Brainstorming produces proposals only; artifacts are modified after confirmation                 |
-| Substantially rewriting delta specs in Step 6  | Spec patches supplement acceptance scenarios only; major changes require returning to sakti-plan |
-| Not reading the codebase during brainstorming  | Ground the design in actual code — don't theorize                                                |
-| Forgetting to set design_doc before transition | Step 7a sets design_doc; the transition verifies the file exists                                 |
+| Mistake                                        | Fix                                                                                           |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Skipping brainstorming                         | Step 2 requires reading `references/brainstorming.md` — no exceptions                         |
+| Creating artifacts before user confirmation    | Step 3 is a blocking point — wait for explicit confirmation                                   |
+| Rewriting proposal/specs during brainstorming  | Brainstorming produces proposals only; artifacts are modified after confirmation              |
+| Substantially rewriting delta specs in Step 6  | Spec patches supplement acceptance scenarios only; major changes require returning to phase 1 |
+| Not reading the codebase during brainstorming  | Ground the design in actual code — don't theorize                                             |
+| Forgetting to set design_doc before transition | Step 7a sets design_doc; the transition verifies the file exists                              |
