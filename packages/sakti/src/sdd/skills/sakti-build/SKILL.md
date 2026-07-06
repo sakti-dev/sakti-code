@@ -100,40 +100,25 @@ git add tasks.md
 git commit -m "chore: mark task N complete"
 ```
 
-### Step 5 — Final Review
+### Step 5 — Sanity Check
 
 After all tasks are checked:
 
-**5a. Run full test suite:**
+**5a. Confirm all tasks are marked complete:**
+
+```bash
+grep -c '\- \[ \]' tasks.md
+```
+
+Must return 0 (no unchecked tasks). If any remain, return to Step 3.
+
+**5b. Run test suite:**
 
 ```bash
 vp run -r test
 ```
 
 If any tests fail, return to Step 3 and fix the failures. Do not proceed until all tests pass.
-
-**5b. Review the full diff:**
-
-```bash
-git log --oneline <base_ref>..HEAD
-git diff <base_ref>..HEAD --stat
-```
-
-Check for:
-
-- **Critical issues:** security vulnerabilities, data loss risk, broken builds — must be fixed before transition
-- **Important issues:** missing edge cases, incomplete error handling — should be fixed or explicitly accepted with rationale
-- **Minor issues:** naming, style — note for later
-
-Fix all critical issues. For accepted important issues, record the acceptance rationale in the commit body.
-
-**5c. Run lint and typecheck:**
-
-```bash
-vp check
-```
-
-Must pass with 0 errors.
 
 ### Step 6 — Transition
 
@@ -162,11 +147,9 @@ Phase: build → verify
 
 Tasks: N/N complete
 Tests: all passing
-Review: critical issues resolved
 
 Next steps:
   Run `sakti status --change <name>` anytime to check state
-  Run `sakti state transition <name> verify-pass` when verification passes
 ```
 
 ## Common Mistakes
@@ -176,7 +159,5 @@ Next steps:
 | Skipping TDD when test setup exists               | Execution guide detects test setup — follow RED-GREEN-REFACTOR    |
 | Implementing multiple tasks before committing     | One commit per task — keeps history traceable                     |
 | Guessing at fixes when tests fail                 | Read `references/debugging-guide.md` — systematic debugging first |
-| Proceeding to verify with failing tests           | Step 5a runs the full suite — all must pass before transition     |
-| Skipping the final review                         | Step 5 reviews the full diff — critical issues must be resolved   |
+| Transitioning to verify with failing tests        | Step 5b runs the test suite — all must pass before transition     |
 | Re-implementing already-committed tasks on resume | Find the first unchecked task and continue from there             |
-| Not recording accepted important issues           | Record acceptance rationale in commit body                        |
