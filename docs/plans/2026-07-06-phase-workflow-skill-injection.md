@@ -6,12 +6,282 @@
 
 **Architecture:**
 
+- **Skill source location**: `apps/server/src/agent/config/builtin-skills/sakti-{plan,design,build,verify,archive}/` (co-located with the server config that consumes them — markdown is static content, not code, so it doesn't belong in `packages/sakti/`).
+- **Skill runtime location**: `~/.sakti/agent/skills/sakti-{plan,...}/` (where `loadAgentContext` already scans). Server installs/syncs from source at startup (always overwrite — small markdown trees, idempotent).
 - **Agents**: 3 primary (`plan`, `build`, `verify`) + 2 subagent-metadata-only (`explore`, `general`). `verify` is edit-denied (structural enforcement). `spec` is removed — `build` now covers the design phase.
 - **Skill injection**: ephemeral, rebuilt every run from `phase → skill name` lookup. Implemented as synthetic `read(SKILL.md)` tool-call + tool-result prepended via a new `initialMessages` field on `AgentRunDeps` and a new `harness.injectMessages()` method. Never persisted to DB.
-- **Observer filter**: path-based, configured via a new `skillFilterRoot?: string` field on `ObservationalMemoryDeps`. The engine's `loadUnobservedMessageEntries` drops any tool-result whose associated `read` call had a path starting with `skillFilterRoot`. Filter ON by default for main sessions in plan/design/build/verify; OFF for archive phase and (future) subagents.
+- **Observer filter**: path-based, configured via a new `skillFilterRoot?: string` field on `ObservationalMemoryDeps`. The engine's `loadUnobservedMessageEntries` drops any tool-result whose associated `read` call had a path starting with `skillFilterRoot`. `skillFilterRoot` points at the runtime dir (`~/.sakti/agent/skills`). Filter ON by default for main sessions in plan/design/build/verify; OFF for archive phase and (future) subagents.
 - **Lifecycle**: `specifying → building → review → merged`. `review` already exists as a status value but is currently skipped — we wire it in. `ask({kind:"completion"})` now flips to `review` (was `merged`) and forces OM observe first. New `ask({kind:"verify-complete"})` flips `review → merged`.
 
 **Tech Stack:** TypeScript, Effect, Hono, vitest, node:sqlite.
+
+---
+
+## Part 0: Move Builtin Skills to Server Config
+
+Relocate the 5 phase skills from `packages/sakti/src/sdd/skills/` to `apps/server/src/agent/config/builtin-skills/`. Markdown is static content, not code — exporting it from a TypeScript package via `package.json` exports was awkward. Co-locating with server config makes ownership clear and gives us a stable source path for the install-at-boot sync.
+
+### Task 0.1: Move skill directories
+
+**Files:**
+
+- Move: `packages/sakti/src/sdd/skills/sakti-plan/` → `apps/server/src/agent/config/builtin-skills/sakti-plan/`
+- Move: `packages/sakti/src/sdd/skills/sakti-design/` → `apps/server/src/agent/config/builtin-skills/sakti-design/`
+- Move: `packages/sakti/src/sdd/skills/sakti-build/` → `apps/server/src/agent/config/builtin-skills/sakti-build/`
+- Move: `packages/sakti/src/sdd/skills/sakti-verify/` → `apps/server/src/agent/config/builtin-skills/sakti-verify/`
+- Move: `packages/sakti/src/sdd/skills/sakti-archive/` → `apps/server/src/agent/config/builtin-skills/sakti-archive/`
+
+Each skill directory contains `SKILL.md` plus any `references/*.md` files. Move the entire subtree preserving structure.
+
+**Step 1: Verify current state**
+
+```bash
+ls packages/sakti/src/sdd/skills/
+```
+
+Expected output (exactly 5):
+
+```
+sakti-archive
+sakti-build
+sakti-design
+sakti-plan
+sakti-verify
+```
+
+**Step 2: Create destination and move**
+
+```bash
+mkdir -p apps/server/src/agent/config/builtin-skills
+git mv packages/sakti/src/sdd/skills/sakti-plan    apps/server/src/agent/config/builtin-skills/sakti-plan
+git mv packages/sakti/src/sdd/skills/sakti-design  apps/server/src/agent/config/builtin-skills/sakti-design
+git mv packages/sakti/src/sdd/skills/sakti-build   apps/server/src/agent/config/builtin-skills/sakti-build
+git mv packages/sakti/src/sdd/skills/sakti-verify  apps/server/src/agent/config/builtin-skills/sakti-verify
+git mv packages/sakti/src/sdd/skills/sakti-archive apps/server/src/agent/config/builtin-skills/sakti-archive
+```
+
+If `packages/sakti/src/sdd/skills/` is now empty, remove the parent directory:
+
+```bash
+rmdir packages/sakti/src/sdd/skills/  # only if empty
+```
+
+**Step 3: Search for stale references to the old path**
+
+```bash
+rg 'packages/sakti/src/sdd/skills|sdd/skills/sakti-' --type-add 'doc:*.md' --type ts --type doc
+```
+
+Update any documentation, imports, or test fixtures that reference the old path. Likely candidates:
+
+- `packages/sakti/schemas/spec-driven/schema.yaml` (if it references skill source paths — it shouldn't, but verify)
+- `docs/plans/*.md` (historical plans — leave alone; they document past state)
+- Any test that loads skills from a hardcoded path
+
+**Step 4: Run full test suite**
+
+```bash
+vp run -r test
+```
+
+Expected: PASS — no tests should reference the old source path (skills are loaded from runtime location `~/.sakti/agent/skills/`, not from source).
+
+**Step 5: Run check**
+
+```bash
+vp check
+```
+
+Expected: 0 warnings, 0 errors.
+
+**Step 6: Commit**
+
+```bash
+git add -A
+git commit -m "refactor: move builtin skills to apps/server/src/agent/config/builtin-skills
+
+Markdown is static content, not code — co-locate with server config
+that consumes them. Source path is now stable for install-at-boot sync.
+Runtime location (~/.sakti/agent/skills/) is unchanged."
+```
+
+---
+
+### Task 0.2: Add install-at-boot sync
+
+Server boots → syncs builtin skills from source to runtime dir (`~/.sakti/agent/skills/`). Always overwrite (small trees, idempotent, source is canonical).
+
+**Files:**
+
+- Create: `apps/server/src/agent/config/install-builtin-skills.ts`
+- Modify: server bootstrap (find where `loadAgentContext` is first invoked; sync before that)
+- Test: `apps/server/src/agent/config/__tests__/install-builtin-skills.test.ts`
+
+**Step 1: Find the SAKTI_AGENT_DIR resolution**
+
+```bash
+rg 'SAKTI_AGENT_DIR|\.sakti/agent' apps/server/src/ --type ts
+```
+
+Note where `~/.sakti/agent/` is resolved (likely in `apps/server/src/context.ts` or `apps/server/src/lib/paths.ts`). Use the same helper here.
+
+**Step 2: Write failing test**
+
+Create `apps/server/src/agent/config/__tests__/install-builtin-skills.test.ts`:
+
+```ts
+import { mkdtemp, rm, readFile, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { installBuiltinSkills, BUILTIN_SKILL_NAMES } from "../install-builtin-skills.ts";
+
+describe("installBuiltinSkills", () => {
+  let runtimeDir: string;
+
+  beforeEach(async () => {
+    runtimeDir = await mkdtemp(join(tmpdir(), "sakti-skills-test-"));
+  });
+
+  afterEach(async () => {
+    await rm(runtimeDir, { recursive: true, force: true });
+  });
+
+  it("creates the runtime dir if it does not exist", async () => {
+    const missing = join(runtimeDir, "nested", "skills");
+    await installBuiltinSkills(missing);
+    const info = await stat(missing);
+    expect(info.isDirectory()).toBe(true);
+  });
+
+  it("copies all 5 builtin skills to the runtime dir", async () => {
+    await installBuiltinSkills(runtimeDir);
+    for (const name of BUILTIN_SKILL_NAMES) {
+      const skillMd = await readFile(join(runtimeDir, name, "SKILL.md"), "utf8");
+      expect(skillMd).toContain("---"); // frontmatter present
+      expect(skillMd).toContain(`name: ${name}`);
+    }
+  });
+
+  it("copies reference subdirectories", async () => {
+    await installBuiltinSkills(runtimeDir);
+    // sakti-build has references/execution-guide.md, tdd-guide.md, debugging-guide.md
+    const ref = await readFile(
+      join(runtimeDir, "sakti-build", "references", "execution-guide.md"),
+      "utf8",
+    );
+    expect(ref.length).toBeGreaterThan(0);
+  });
+
+  it("overwrites existing files (idempotent)", async () => {
+    await installBuiltinSkills(runtimeDir);
+    // Corrupt one file
+    const target = join(runtimeDir, "sakti-plan", "SKILL.md");
+    await writeFile(target, "CORRUPTED");
+    // Re-install
+    await installBuiltinSkills(runtimeDir);
+    const content = await readFile(target, "utf8");
+    expect(content).not.toBe("CORRUPTED");
+    expect(content).toContain("name: sakti-plan");
+  });
+});
+```
+
+**Step 3: Run test to verify it fails**
+
+```bash
+vp run '@sakti-code/server#test' -- install-builtin-skills.test
+```
+
+Expected: FAIL — module not found.
+
+**Step 4: Implement install-builtin-skills.ts**
+
+Create `apps/server/src/agent/config/install-builtin-skills.ts`:
+
+```ts
+import { cp, mkdir } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { BUILTIN_SKILL_NAMES } from "./phase-skills.ts";
+import { SAKTI_AGENT_DIR } from "../../lib/paths.ts"; // wherever ~/.sakti/agent resolves
+
+/**
+ * Absolute path to the builtin skills source directory (co-located with this
+ * module). Skills are markdown trees, not code — kept here as static content
+ * owned by the server config.
+ */
+export const BUILTIN_SKILLS_SOURCE_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "builtin-skills",
+);
+
+/**
+ * Runtime dir where loadAgentContext scans for skills. Same dir the
+ * install-at-boot sync writes to. Re-exported here as the single source of
+ * truth for "where builtin skills live at runtime" — also used by
+ * resolveOmConfig to compute skillFilterRoot.
+ */
+export const BUILTIN_SKILLS_RUNTIME_DIR = join(SAKTI_AGENT_DIR, "skills");
+
+/**
+ * Install (sync) builtin skills from source to the runtime dir.
+ *
+ * Runtime dir is `~/.sakti/agent/skills/` (BUILTIN_SKILLS_RUNTIME_DIR) — where
+ * `loadAgentContext` scans. Always overwrites: skills are small markdown trees,
+ * source is canonical, idempotent re-runs are safe.
+ *
+ * Called at server bootstrap, before any `loadAgentContext` invocation.
+ */
+export async function installBuiltinSkills(
+  runtimeDir: string = BUILTIN_SKILLS_RUNTIME_DIR,
+): Promise<void> {
+  await mkdir(runtimeDir, { recursive: true });
+  for (const name of BUILTIN_SKILL_NAMES) {
+    const src = join(BUILTIN_SKILLS_SOURCE_DIR, name);
+    const dest = join(runtimeDir, name);
+    // force: overwrite existing files. recursive: copy references/ subtrees.
+    await cp(src, dest, { recursive: true, force: true });
+  }
+}
+```
+
+**Step 5: Wire into server bootstrap**
+
+Find the server bootstrap (`apps/server/src/server.ts` or wherever `createServer` is called). Add the install call before the server starts listening — specifically, before any code path that could invoke `loadAgentContext`:
+
+```ts
+import { installBuiltinSkills } from "./agent/config/install-builtin-skills.ts";
+
+// Before server.listen / before first loadAgentContext:
+// No args needed — defaults to BUILTIN_SKILLS_RUNTIME_DIR (~/.sakti/agent/skills).
+await installBuiltinSkills();
+```
+
+If the bootstrap is Effect-based or async-init, slot the call in the appropriate phase. The key invariant: `loadAgentContext` must not run before this completes.
+
+**Step 6: Run test to verify it passes**
+
+```bash
+vp run '@sakti-code/server#test' -- install-builtin-skills.test
+```
+
+Expected: PASS.
+
+**Step 7: Run full check**
+
+```bash
+vp check
+```
+
+Expected: 0 warnings, 0 errors.
+
+**Step 8: Commit**
+
+```bash
+git add apps/server/src/agent/config/install-builtin-skills.ts apps/server/src/agent/config/__tests__/install-builtin-skills.test.ts apps/server/src/server.ts
+git commit -m "feat(server): install builtin skills at boot (sync source → ~/.sakti)"
+```
 
 ---
 
@@ -1874,24 +2144,26 @@ interface ResolveOmInput {
 4b. Compute skillFilterRoot based on phase:
 
 ```ts
+import { BUILTIN_SKILLS_RUNTIME_DIR } from "./install-builtin-skills.ts";
+
 // Filter ON except for archive phase (status === "merged"). Plan and all
 // non-merged mission statuses get the filter.
 const skillFilterRoot =
   input.kind === "plan" || (input.kind === "mission" && input.status !== "merged")
-    ? BUILTIN_SKILLS_DIR // absolute path to installed builtin skills
+    ? BUILTIN_SKILLS_RUNTIME_DIR // ~/.sakti/agent/skills — where loadAgentContext scans
     : undefined;
 ```
 
-`BUILTIN_SKILLS_DIR` is the install location of `packages/sakti/src/sdd/skills/*` (resolved at server startup). Add a constant:
+`BUILTIN_SKILLS_RUNTIME_DIR` is the runtime install location (`~/.sakti/agent/skills/`) — the same dir that `installBuiltinSkills` writes to at boot (see Task 0.2). Re-export it from `install-builtin-skills.ts`:
 
 ```ts
-import { join } from "node:path";
-import { SAKTI_AGENT_DIR } from "..."; // wherever ~/.sakti/agent resolves
+// apps/server/src/agent/config/install-builtin-skills.ts (add this export)
+import { SAKTI_AGENT_DIR } from "../../lib/paths.ts"; // wherever ~/.sakti/agent resolves
 
-export const BUILTIN_SKILLS_DIR = join(SAKTI_AGENT_DIR, "skills");
+export const BUILTIN_SKILLS_RUNTIME_DIR = join(SAKTI_AGENT_DIR, "skills");
 ```
 
-(The exact import depends on how `SAKTI_AGENT_DIR` is resolved in the server — find it with `rg 'SAKTI_AGENT_DIR' apps/server/src/`.)
+(The exact import path for `SAKTI_AGENT_DIR` — find it with `rg 'SAKTI_AGENT_DIR' apps/server/src/`. The runtime dir is a single source of truth shared by both the install-at-boot sync and the skillFilterRoot config.)
 
 4c. Pass `skillFilterRoot` into the returned config:
 
@@ -2117,6 +2389,11 @@ Create a mission session, observe:
 
 After all tasks complete:
 
+- [ ] Builtin skills moved to `apps/server/src/agent/config/builtin-skills/`
+- [ ] `packages/sakti/src/sdd/skills/` no longer exists
+- [ ] `installBuiltinSkills()` runs at server bootstrap
+- [ ] Runtime dir `~/.sakti/agent/skills/` contains all 5 skills after boot
+- [ ] `BUILTIN_SKILLS_RUNTIME_DIR` exported and reused by `resolveOmConfig`
 - [ ] `verify` agent registered with edit-denied permission
 - [ ] `spec` agent removed; resolver routes specifying → build
 - [ ] Resolver routes review → verify
