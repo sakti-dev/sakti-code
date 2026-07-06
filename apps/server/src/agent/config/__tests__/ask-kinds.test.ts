@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vite-plus/test";
-import { ASK_KINDS, type AskCtx } from "../ask-kinds.ts";
+import { ASK_KINDS, type AskCtx, isKnownAskKind } from "../ask-kinds.ts";
 
 function makeCtx(overrides?: {
   graduate?: (sessionId: string) => Promise<void>;
@@ -62,6 +62,32 @@ describe("completion ask-kind onApprove", () => {
     const ctx = makeCtx();
 
     await ASK_KINDS.completion.onReject?.("sess-1", "what I built", ctx);
+
+    expect(ctx.sessions.update).toHaveBeenCalledWith("sess-1", { status: "building" });
+  });
+});
+
+describe("verify-complete ask-kind", () => {
+  it("is a known ask kind", () => {
+    expect(isKnownAskKind("verify-complete")).toBe(true);
+  });
+
+  it("card is proposed-completion", () => {
+    expect(ASK_KINDS["verify-complete"].card).toBe("proposed-completion");
+  });
+
+  it("onApprove flips status to merged", async () => {
+    const ctx = makeCtx();
+
+    await ASK_KINDS["verify-complete"].onApprove?.("sess-1", "verify report", ctx);
+
+    expect(ctx.sessions.update).toHaveBeenCalledWith("sess-1", { status: "merged" });
+  });
+
+  it("onReject flips status to building", async () => {
+    const ctx = makeCtx();
+
+    await ASK_KINDS["verify-complete"].onReject?.("sess-1", "verify report", ctx);
 
     expect(ctx.sessions.update).toHaveBeenCalledWith("sess-1", { status: "building" });
   });

@@ -29,7 +29,7 @@ export type AskAction = "approve" | "reject";
 export type AskCard = "proposed-session" | "proposed-spec" | "proposed-completion";
 
 /** The known ask kinds — the closed set wired to lifecycle transitions. */
-export type AskKind = "session" | "spec" | "completion";
+export type AskKind = "session" | "spec" | "completion" | "verify-complete";
 
 export interface AskKindHandlers {
   card: AskCard;
@@ -90,9 +90,20 @@ export const ASK_KINDS: Record<AskKind, AskKindHandlers> = {
       await ctx.sessions.update(id, { status: "building" });
     },
   },
+  "verify-complete": {
+    card: "proposed-completion",
+    onApprove: async (id, _body, ctx) => {
+      await ctx.sessions.update(id, { status: "merged" });
+    },
+    onReject: async (id, _body, ctx) => {
+      await ctx.sessions.update(id, { status: "building" });
+    },
+  },
 };
 
 /** Runtime guard for a string received over the wire. */
 export function isKnownAskKind(kind: string): kind is AskKind {
-  return kind === "session" || kind === "spec" || kind === "completion";
+  return (
+    kind === "session" || kind === "spec" || kind === "completion" || kind === "verify-complete"
+  );
 }
