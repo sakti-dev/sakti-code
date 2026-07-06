@@ -9,7 +9,6 @@ import chalk from 'chalk';
 import path from 'path';
 import * as fs from 'fs';
 import { getSchemaDir, listSchemas } from '../../core/artifact-graph/index.js';
-import type { ReferenceIndexEntry } from '../../core/references.js';
 import { isRootSelectionError } from '../../core/root-selection.js';
 import { validateChangeName } from '../../utils/change-utils.js';
 
@@ -45,8 +44,6 @@ export interface ApplyInstructions {
   state: 'blocked' | 'all_done' | 'ready';
   missingArtifacts?: string[];
   instruction: string;
-  /** Referenced-store index (read-only upstream context; omitted when none declared) */
-  references?: ReferenceIndexEntry[];
 }
 
 // -----------------------------------------------------------------------------
