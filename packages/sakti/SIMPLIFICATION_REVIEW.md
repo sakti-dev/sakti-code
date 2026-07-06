@@ -26,7 +26,7 @@ Current total: ~12,000 lines (down from ~18,000 at start).
 - [x] **#8 Feedback** (323 lines) — REMOVED. Telemetry-adjacent, no dependencies.
 - [x] **#9 Doctor** (211→~170 lines) — REWRITTEN. Stripped all store/relationship checks (irrelevant to single-project use case). Now: config validity + schema resolvability + template existence. Uses store-free root finding.
 - [x] **#10 Context** (208 lines) — REMOVED + cascade. Deleted context.ts, working-set.ts (92), relationship-health.ts (144), shared-gather.ts (52) — all fully orphaned. Also deleted capstone-journeys.test.ts (multi-repo journey using context). Eliminates the last non-store command entangled with the relationship machinery.
-- [ ] **#11 Planning Home** (178 lines) — Path resolution for change directories. Partially still needed by `status` command. Could inline the 2 functions.
+- [x] **#11 Planning Home** (178 lines) — SIMPLIFIED. Collapsed planning-home.ts (99→43 lines, kept findRepoPlanningRootSync only) + deleted change-status-policy.ts entirely (79 lines, had stale `sakti instructions` references + static constants). Removed `nextSteps`/`actionContext`/`planningHome` from status JSON output.
 - [x] **#12 Profiles + Config Prompts** (89 lines) — REMOVED (profiles.ts). Note: `config-prompts.ts` kept — misnamed, contains `serializeConfig()` needed by `new change`. Stripped `config profile` subcommand + helpers from config.ts.
 - [ ] **#13 Global Config** (172 lines) — `getGlobalDataDir()` is high fan-in (keep), config file parsing could be stripped.
 
@@ -145,13 +145,13 @@ Deleted context.ts + 3 orphaned dependency files (working-set.ts, relationship-h
 
 ### 11. Planning Home + Change Status Policy
 
-**Status:** PARTIALLY NEEDED
+**Status:** SIMPLIFIED
 
-**Files:**
-- `src/core/planning-home.ts` (99 lines) — still used by `status` command
-- `src/core/change-status-policy.ts` (79 lines) — used by `change-status.ts`
+`planning-home.ts` collapsed from 99 → 43 lines. Kept only `findRepoPlanningRootSync`. Removed the vestigial `PlanningHome` type + path helpers — inlined at call sites.
 
-**If removed:** Could inline the 2-3 functions needed by `status` and `doctor`.
+`change-status-policy.ts` (79 lines) — DELETED. Had stale `sakti instructions` references (deleted command) + static constants.
+
+Status JSON output trimmed: removed `nextSteps`, `actionContext`, `planningHome` fields.
 
 ---
 
@@ -194,9 +194,9 @@ Deleted context.ts + 3 orphaned dependency files (working-set.ts, relationship-h
 | 8 | Feedback | 323 | ✅ Done | No dependencies, removed |
 | 9 | Doctor | 211 | ✅ Rewritten | Stripped store checks, now config+schema health |
 | 10 | Context | 208 | ✅ Done | Removed + 3 orphaned cascade files (working-set, relationship-health, shared-gather) |
-| 11 | Planning home | 178 | ⬜ Partial | Inline into status |
+| 11 | Planning home | 178 | ✅ Done | Collapsed to root finder only, deleted stale policy file |
 | 12 | Profiles | 89 | ✅ Done | Vestigial, removed (config-prompts.ts kept) |
 | 13 | Global config | 172 | ⬜ Partial | Keep data dir, strip config parsing |
 
-**Removed so far:** ~24,334 lines deleted, ~2,216 lines added (skills + validate.ts)
-**Remaining candidates:** ~3,416 lines if all pending items removed (#5, #11, #13)
+**Removed so far:** ~24,551 lines deleted, ~2,216 lines added (skills + validate.ts)
+**Remaining candidates:** ~3,227 lines if all pending items removed (#5, #13)
