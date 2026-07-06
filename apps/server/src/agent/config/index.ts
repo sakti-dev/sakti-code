@@ -12,6 +12,12 @@ export {
   VERIFY_PROMPT,
 } from "./prompts.ts";
 
+export {
+  BUILTIN_SKILL_NAMES,
+  getBuiltinSkillForPhase,
+  isBuiltinSkillName,
+} from "./phase-skills.ts";
+export { buildSkillInjectionMessages } from "./skill-injection.ts";
 export { resolveOmConfig } from "./resolve-observational-memory.ts";
 export {
   OmSettingsSchema,

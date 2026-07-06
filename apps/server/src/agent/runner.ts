@@ -27,7 +27,9 @@ import { getPermissionChannel, type PermissionFrame } from "../lib/permission-ch
 import {
   BRANCH_SUMMARY_PROMPTS,
   buildAgentTools,
+  buildSkillInjectionMessages,
   DEFAULT_AGENT_NAME,
+  getBuiltinSkillForPhase,
   rebuildTool,
   resolveSessionAgent,
   resolveSessionAgentForKind,
@@ -345,7 +347,7 @@ export function runPromptEffect(
 
     // Resolve the agent: per-session override first (when it differs from the
     // default), then kind+status routing. Plan → plan agent; mission in
-    // specifying → spec agent (structurally edit-denied); everything else → build.
+    // review → verify agent (edit-denied); everything else → build.
     // No isPlan branches anywhere: plan flows through the same path as build.
     const { agent } = resolveSessionAgentForKind(
       session.kind,
@@ -477,6 +479,17 @@ export function runPromptEffect(
       },
     };
 
+    // Force-inject the phase's builtin skill (ephemeral, never persisted).
+    // Built by looking up the current phase (from session kind/status) →
+    // builtin skill name → Skill object from loadedContext.skills.
+    const phaseKey = session.kind === "plan" ? "plan" : session.status;
+    const builtinSkillName = getBuiltinSkillForPhase(phaseKey);
+    const phaseSkill =
+      builtinSkillName !== undefined
+        ? loadedContext.skills.find((s) => s.name === builtinSkillName)
+        : undefined;
+    const initialMessages = buildSkillInjectionMessages(phaseSkill);
+
     // Delegate the orchestration (event drain, retry abort, retry-deps
     // assembly, planFirstTurn dispatch, stuck-guard policy, compaction
     // callbacks, ensuring cleanup) to the factory in @sakti-code/agent.
@@ -499,6 +512,7 @@ export function runPromptEffect(
         registerRun(sessionId, h, unsubscribe, retryAbort),
       unregisterRun: () => unregisterRun(sessionId),
       ...(ctx.log === undefined ? {} : { log: ctx.log.agent }),
+      ...(initialMessages.length > 0 ? { initialMessages } : {}),
     });
   }).pipe(
     Effect.ensuring(
