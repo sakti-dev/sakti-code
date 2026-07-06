@@ -38,7 +38,9 @@ Use the language of the user request that triggered this skill as the default ou
 
 ### Step 1 — Entry Check
 
-**1a. Verify phase:**
+**1a. Identify the change.** The change name is inferred from the mission session context. If not available, ask the user.
+
+**1b. Verify phase:**
 
 ```bash
 sakti state get <name> phase
@@ -46,13 +48,13 @@ sakti state get <name> phase
 
 If the phase is not `build`, stop and tell the user what phase they're in.
 
-**1b. Read context:**
+**1c. Read context:**
 
 - `technical-design.md` — deep technical design (approach, risks, testing strategy)
 - `tasks.md` — enriched task list with implementation details
 - `proposal.md`, `specs/*/spec.md` — for requirement reference during implementation
 
-**1c. Check progress:**
+**1d. Check progress:**
 
 Parse `tasks.md` checkboxes. Report: "N/M tasks complete."
 
