@@ -44,25 +44,9 @@ Check for testing infrastructure in the project:
 - **Go:** `go.mod` exists (go test is built-in)
 - **Test files:** any `*.test.ts`, `*.spec.ts`, `*_test.go`, `test_*.py` files exist
 
-**If test setup detected:** follow TDD for all code tasks. Skip TDD only for non-code tasks (config, docs, styles).
+**If test setup detected:** follow TDD for all code tasks. **Read `references/tdd-guide.md`** (relative to the skill's directory) for the full RED-GREEN-REFACTOR cycle, good/bad test patterns, and common rationalizations to avoid. Skip TDD only for non-code tasks (config, docs, styles).
 
 **If no test setup detected:** ask the user "No test setup detected. Do you want to follow TDD for this change?" If yes, help set up minimal testing first. If no, implement directly.
-
-### The TDD Cycle (per task)
-
-```
-RED:     Write one minimal failing test for the task's behavior
-         Run it — MUST fail (not error) for the right reason
-GREEN:   Write the simplest code that makes the test pass
-         Run it — MUST pass, and all other tests still pass
-REFACTOR: Clean up — extract helpers, improve names, remove duplication
-          Tests must stay green
-COMMIT:  One commit per task
-```
-
-**Iron law: no production code without a failing test first.** If you wrote code before the test, delete it. Start from the test.
-
-**Skip TDD for non-code tasks:** config files, documentation, CSS-only changes. Use judgment.
 
 ---
 
