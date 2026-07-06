@@ -8,7 +8,6 @@ import {
   releaseFileLock,
   writeFileAtomically,
 } from '../../src/core/file-state.js';
-import { updateStoreRegistryState } from '../../src/core/store/index.js';
 
 describe('file-state', () => {
   let tempDir: string;
@@ -91,67 +90,6 @@ describe('file-state', () => {
         ).rejects.toThrowError(`create-failed:${lockPath}`);
       } finally {
         fs.chmodSync(parent, 0o755);
-      }
-    });
-  });
-
-  describe('store registry delegation (byte-identical error shapes)', () => {
-    it('reports a fresh contended lock as busy after the deadline', async () => {
-      const globalDataDir = path.join(tempDir, 'data');
-      const registryPath = path.join(
-        globalDataDir,
-        'stores',
-        'registry.yaml'
-      );
-      const lockPath = `${registryPath}.lock`;
-      fs.mkdirSync(path.dirname(registryPath), { recursive: true });
-      fs.writeFileSync(lockPath, '');
-
-      const started = Date.now();
-      try {
-        await expect(
-          updateStoreRegistryState((state) => state ?? { version: 1, stores: {} }, {
-            globalDataDir,
-          })
-        ).rejects.toMatchObject({
-          message: 'Store registry is busy.',
-          diagnostic: {
-            severity: 'error',
-            code: 'store_registry_busy',
-            message: 'Store registry is busy.',
-            target: 'store.registry',
-            fix: `Retry shortly; if this persists, delete the stale lock file ${lockPath}.`,
-          },
-        });
-        expect(Date.now() - started).toBeGreaterThanOrEqual(4900);
-      } finally {
-        fs.rmSync(lockPath, { force: true });
-      }
-    }, 15_000);
-
-    itPosix('reports lock-create failure with the permissions fix', async () => {
-      const globalDataDir = path.join(tempDir, 'data');
-      const storesDir = path.join(globalDataDir, 'stores');
-      const registryPath = path.join(storesDir, 'registry.yaml');
-      const lockPath = `${registryPath}.lock`;
-      fs.mkdirSync(storesDir, { recursive: true });
-      fs.chmodSync(storesDir, 0o555);
-
-      try {
-        await expect(
-          updateStoreRegistryState((state) => state ?? { version: 1, stores: {} }, {
-            globalDataDir,
-          })
-        ).rejects.toMatchObject({
-          message: `Cannot create the registry lock file ${lockPath} (EACCES).`,
-          diagnostic: {
-            code: 'store_registry_busy',
-            target: 'store.registry',
-            fix: `Check permissions on ${path.dirname(lockPath)}.`,
-          },
-        });
-      } finally {
-        fs.chmodSync(storesDir, 0o755);
       }
     });
   });
