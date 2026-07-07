@@ -17,7 +17,13 @@ import { resolveOmConfig } from "./index.ts";
  */
 export function buildForceReset(
   ctx: ServerContext,
-  session: { id: string; kind: string; projectId: string; profileId: string | null },
+  session: {
+    id: string;
+    kind: string;
+    projectId: string;
+    profileId: string | null;
+    status?: string;
+  },
 ): (sessionId: string) => Promise<void> {
   return async (sid) => {
     const omConfig = resolveOmConfig(ctx, {
@@ -25,6 +31,7 @@ export function buildForceReset(
       kind: session.kind,
       projectId: session.projectId,
       profileId: session.profileId,
+      ...(session.status !== undefined ? { status: session.status } : {}),
     });
     if (!omConfig) {
       ctx.log?.agent?.warn("build→verify: OM not configured, skipping forced observe", {

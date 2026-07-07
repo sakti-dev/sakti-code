@@ -58,4 +58,19 @@ describe("buildForceReset", () => {
     expect(ObservationalMemoryEngine).not.toHaveBeenCalled();
     expect(mocks.forceObserve).not.toHaveBeenCalled();
   });
+
+  it("passes status through to resolveOmConfig", async () => {
+    vi.mocked(resolveOmConfig).mockReturnValue({
+      observeModel: "m",
+      reflectModel: "m",
+      scope: "thread",
+    } as unknown as ReturnType<typeof resolveOmConfig>);
+
+    await buildForceReset(ctx, { ...session, status: "review" })("s1");
+
+    expect(resolveOmConfig).toHaveBeenCalledWith(
+      ctx,
+      expect.objectContaining({ status: "review" }),
+    );
+  });
 });
