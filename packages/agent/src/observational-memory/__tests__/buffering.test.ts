@@ -510,7 +510,7 @@ describe("ObservationalMemoryEngine buffering", () => {
       expect(vi.mocked(complete)).not.toHaveBeenCalled();
     });
 
-    it("activates buffered observations into active observations", async () => {
+    it("thread scope: activates buffered observations into ObservationEntry tree entries", async () => {
       const deps = createDeps(storage, sessionStorage, {
         observationBufferTokens: 20,
         observationBufferActivation: 0.5,
@@ -532,9 +532,12 @@ describe("ObservationalMemoryEngine buffering", () => {
 
       const activated = await engine.maybeActivateBufferedObservations(buffered);
 
-      expect(activated.activeObservations).toContain("First observation");
-      expect(activated.bufferedObservationChunks).toBeUndefined();
-      expect(activated.pendingMessageTokens).toBe(0);
+      // ObservationEntry appended to the session tree (thread scope).
+      const obsEntries = await Effect.runPromise(sessionStorage.findEntries("observation"));
+      expect(obsEntries.length).toBeGreaterThanOrEqual(1);
+      expect(obsEntries[0]!.summary).toContain("First observation");
+      // Chunks cleared on the record.
+      expect(activated.bufferedObservationChunks ?? []).toHaveLength(0);
     });
 
     it("maybeObserve uses buffering below threshold and activates above threshold", async () => {
@@ -572,8 +575,10 @@ describe("ObservationalMemoryEngine buffering", () => {
       ]);
 
       const activated = await engine.maybeObserve(afterBuffer);
-      expect(activated.activeObservations).toContain("First observation");
-      expect(activated.bufferedObservationChunks).toBeUndefined();
+      // Thread scope: activation creates ObservationEntry tree entries.
+      const obsEntries = await Effect.runPromise(sessionStorage.findEntries("observation"));
+      expect(obsEntries.some((e) => e.summary.includes("First observation"))).toBe(true);
+      expect(activated.bufferedObservationChunks ?? []).toHaveLength(0);
     });
   });
 

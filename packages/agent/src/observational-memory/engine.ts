@@ -464,6 +464,50 @@ export class ObservationalMemoryEngine {
     );
     const currentPendingTokens = record.pendingMessageTokens || totalChunkMessageTokens;
 
+    // Thread scope: turn staged chunks into ObservationEntry tree entries +
+    // add their messageIds to the prune set (so pending tokens drop below
+    // threshold → no sync observe → no pause). Resource scope: existing
+    // swapBufferedToActive → activeObservations path.
+    if (this.deps.scope === "thread") {
+      let parent = await Effect.runPromise(this.sessionStorage.getLeafId());
+      const allMessageIds: string[] = [];
+      let totalObsTokens = 0;
+      for (const chunk of chunks) {
+        const entryId = await Effect.runPromise(this.sessionStorage.createEntryId());
+        const observationEntry: ObservationEntry = {
+          id: entryId,
+          parentId: parent,
+          timestamp: new Date().toISOString(),
+          type: "observation",
+          summary: chunk.observations,
+          observationRecordId: record.id,
+        };
+        await Effect.runPromise(this.sessionStorage.appendEntry(observationEntry));
+        parent = entryId;
+        allMessageIds.push(...chunk.messageIds);
+        totalObsTokens += chunk.tokenCount;
+      }
+      await this.storage.clearBufferedObservations(record.id);
+      await this.storage.updateActiveObservations({
+        id: record.id,
+        observations: record.activeObservations ?? "",
+        lastObservedAt: chunks[chunks.length - 1]!.lastObservedAt,
+        tokenCount: record.observationTokenCount + totalObsTokens,
+        ...(allMessageIds.length > 0 ? { observedMessageIds: allMessageIds } : {}),
+      });
+      this.emitOmEvent({
+        type: "om_activation",
+        cycleId: `activation-obs-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+        operationType: "observation",
+        chunksActivated: chunks.length,
+        tokensActivated: totalChunkMessageTokens,
+        observationTokens: 0,
+      });
+      await this.storage.setBufferingObservationFlag(record.id, false).catch(() => {});
+      this.bufferingCoordinator.cleanupStaticMaps([]);
+      return this.getOrCreateRecord();
+    }
+
     await this.storage.swapBufferedToActive({
       id: record.id,
       messageTokensThreshold: threshold,
