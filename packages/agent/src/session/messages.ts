@@ -122,6 +122,28 @@ export function convertToLlm(messages: AgentMessage[]): Message[] {
             ],
             timestamp: m.timestamp,
           };
+        case "observation":
+          return {
+            role: "user",
+            content: [
+              {
+                type: "text" as const,
+                text: `<observation>\n${m.summary}\n</observation>`,
+              },
+            ],
+            timestamp: m.timestamp,
+          };
+        case "reflection":
+          return {
+            role: "user",
+            content: [
+              {
+                type: "text" as const,
+                text: `<reflection>\n${m.summary}\n</reflection>`,
+              },
+            ],
+            timestamp: m.timestamp,
+          };
         case "user":
         case "assistant":
         case "toolResult":

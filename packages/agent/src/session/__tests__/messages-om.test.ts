@@ -1,5 +1,6 @@
+import type { AgentMessage } from "../../types";
 import { describe, expect, it } from "vite-plus/test";
-import { createObservationMessage, createReflectionMessage } from "../messages";
+import { convertToLlm, createObservationMessage, createReflectionMessage } from "../messages";
 
 describe("createObservationMessage / createReflectionMessage", () => {
   it("createObservationMessage returns role 'observation' with summary + timestamp", () => {
@@ -19,5 +20,28 @@ describe("createObservationMessage / createReflectionMessage", () => {
     );
     expect(msg.role).toBe("reflection");
     expect(msg.summary).toBe("condensed memory");
+  });
+});
+
+describe("convertToLlm for observation/reflection", () => {
+  it("renders observation as user-role with <observation> XML wrapping", () => {
+    const msgs: AgentMessage[] = [
+      { role: "observation", summary: "* User likes TS", timestamp: 1 },
+    ];
+    const out = convertToLlm(msgs);
+    expect(out[0]!.role).toBe("user");
+    const text = (out[0]!.content[0] as { text: string }).text;
+    expect(text).toContain("<observation>");
+    expect(text).toContain("User likes TS");
+    expect(text).toContain("</observation>");
+  });
+
+  it("renders reflection as user-role with <reflection> XML wrapping", () => {
+    const msgs: AgentMessage[] = [{ role: "reflection", summary: "condensed", timestamp: 1 }];
+    const out = convertToLlm(msgs);
+    expect(out[0]!.role).toBe("user");
+    const text = (out[0]!.content[0] as { text: string }).text;
+    expect(text).toContain("<reflection>");
+    expect(text).toContain("condensed");
   });
 });
