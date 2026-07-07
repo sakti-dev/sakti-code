@@ -238,7 +238,15 @@ export interface AgentTool<
 export interface AgentContext {
   messages: AgentMessage[];
   systemPrompt: string;
-  tools?: AgentTool<any>[] | undefined;
+  /**
+   * Observation content blocks appended AFTER the immutable base
+   * {@link systemPrompt} as separate system content blocks at stream time.
+   * Set by observational-memory injection. NEVER mutate {@link systemPrompt}
+   * to carry observations — that breaks the prefix cache. Each entry is one
+   * cache-stable chunk (mirrors Mastra's chunked system messages).
+   */
+  systemMessages?: string[];
+  tools?: AgentTool<any>[];
 }
 
 export type AgentEvent =
