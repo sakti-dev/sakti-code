@@ -96,6 +96,11 @@ function createAgentEventStream(
  * messages — right after the skill-injection pair (the synthetic
  * `[assistant(skill-read toolCall), toolResult]` pair), so observations sit
  * after the skill in the cache prefix. Returns 0 if no skill pair is found.
+ *
+ * The skill-read tool-call is identified by its tool-call ID prefix
+ * `"skill-read"` (set by the skill-injection code in
+ * `apps/server/src/agent/config/skill-injection.ts` as `skill-read:<name>`).
+ * If this convention changes, update the prefix check below.
  */
 function findObservationInsertionIndex(messages: AgentMessage[]): number {
   for (let i = 1; i < messages.length; i++) {
