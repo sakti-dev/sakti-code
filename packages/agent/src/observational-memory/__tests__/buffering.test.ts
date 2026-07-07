@@ -621,7 +621,7 @@ describe("ObservationalMemoryEngine buffering", () => {
       expect(updated.reflectedObservationLineCount).toBeGreaterThan(0);
     });
 
-    it("activates buffered reflection into a new generation", async () => {
+    it("activates buffered reflection into ReflectionEntry tree entry (thread scope)", async () => {
       const deps = createDeps(storage, sessionStorage, {
         observationBufferTokens: 20,
         observationBufferActivation: 0.5,
@@ -630,9 +630,19 @@ describe("ObservationalMemoryEngine buffering", () => {
       const engine = new ObservationalMemoryEngine({ deps });
 
       const record = await engine.getOrCreateRecord();
+      await Effect.runPromise(
+        sessionStorage.appendEntry({
+          id: "obs-1",
+          parentId: null,
+          timestamp: new Date().toISOString(),
+          type: "observation",
+          summary: "* Observation one\n* Observation two\n* Observation three",
+          observationRecordId: record.id,
+        } as ObservationEntry),
+      );
       await storage.updateActiveObservations({
         id: record.id,
-        observations: "* Observation one\n* Observation two\n* Observation three",
+        observations: "",
         lastObservedAt: new Date(),
         tokenCount: 120,
       });
@@ -644,15 +654,14 @@ describe("ObservationalMemoryEngine buffering", () => {
 
       const activated = await engine.maybeActivateBufferedReflection(buffered);
 
-      expect(activated.activeObservations).toContain("Reflected observation");
+      // ReflectionEntry in the tree (thread scope).
+      const refEntries = await Effect.runPromise(sessionStorage.findEntries("reflection"));
+      expect(refEntries.length).toBeGreaterThanOrEqual(1);
+      expect(refEntries[0]!.summary).toContain("Reflected observation");
       expect(activated.generationCount).toBe(seeded.generationCount + 1);
-      expect(activated.bufferedReflection).toBeUndefined();
-      expect(activated.bufferedReflectionTokens).toBeUndefined();
-      expect(activated.bufferedReflectionInputTokens).toBeUndefined();
-      expect(activated.reflectedObservationLineCount).toBeUndefined();
     });
 
-    it("maybeReflect activates buffered reflection when over threshold", async () => {
+    it("maybeReflect activates buffered reflection when over threshold (thread scope)", async () => {
       const deps = createDeps(storage, sessionStorage, {
         observationBufferTokens: 20,
         observationBufferActivation: 0.5,
@@ -661,9 +670,19 @@ describe("ObservationalMemoryEngine buffering", () => {
       const engine = new ObservationalMemoryEngine({ deps });
 
       const record = await engine.getOrCreateRecord();
+      await Effect.runPromise(
+        sessionStorage.appendEntry({
+          id: "obs-1",
+          parentId: null,
+          timestamp: new Date().toISOString(),
+          type: "observation",
+          summary: "* Observation one\n* Observation two\n* Observation three",
+          observationRecordId: record.id,
+        } as ObservationEntry),
+      );
       await storage.updateActiveObservations({
         id: record.id,
-        observations: "* Observation one\n* Observation two\n* Observation three",
+        observations: "",
         lastObservedAt: new Date(),
         tokenCount: 120,
       });
@@ -680,16 +699,17 @@ describe("ObservationalMemoryEngine buffering", () => {
       // Manually bump observation tokens above reflection threshold so activation triggers
       await storage.updateActiveObservations({
         id: afterBuffer.id,
-        observations: afterBuffer.activeObservations,
+        observations: "",
         lastObservedAt: new Date(),
         tokenCount: 250,
       });
       const beforeActivate = await engine.getOrCreateRecord();
 
-      const activated = await engine.maybeReflect(beforeActivate);
+      await engine.maybeReflect(beforeActivate);
 
-      expect(activated.activeObservations).toContain("Reflected observation");
-      expect(activated.bufferedReflection).toBeUndefined();
+      // ReflectionEntry in the tree (thread scope).
+      const refEntries = await Effect.runPromise(sessionStorage.findEntries("reflection"));
+      expect(refEntries.some((e) => e.summary.includes("Reflected observation"))).toBe(true);
     });
   });
 

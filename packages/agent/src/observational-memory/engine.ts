@@ -640,6 +640,45 @@ export class ObservationalMemoryEngine {
   ): Promise<ObservationalMemoryRecord> {
     if (!record.bufferedReflection) return record;
 
+    // Thread scope: append a ReflectionEntry to the tree + prune observation
+    // entries. Resource scope: existing swapBufferedReflectionToActive path.
+    if (this.deps.scope === "thread") {
+      const observationEntries = await this.loadActiveObservationEntries();
+      const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
+      const refEntryId = await Effect.runPromise(this.sessionStorage.createEntryId());
+      const reflectionEntry: ReflectionEntry = {
+        id: refEntryId,
+        parentId: leafId,
+        timestamp: new Date().toISOString(),
+        type: "reflection",
+        summary: record.bufferedReflection,
+        observationRecordId: record.id,
+      };
+      await Effect.runPromise(this.sessionStorage.appendEntry(reflectionEntry));
+      await this.pruneObservationEntries(
+        observationEntries.map((e) => e.id),
+        record.id,
+      );
+      const reflectionTokens = this.tokenCounter.countObservations(record.bufferedReflection);
+      const newRecord = await this.storage.createReflectionGeneration({
+        currentRecord: record,
+        reflection: record.bufferedReflection,
+        tokenCount: reflectionTokens,
+      });
+      const ids = this.getStorageIds();
+      await this.storage.pruneHistory(ids.threadId, ids.resourceId, newRecord.id);
+      this.emitOmEvent({
+        type: "om_activation",
+        cycleId: `activation-refl-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+        operationType: "reflection",
+        chunksActivated: 1,
+        tokensActivated: reflectionTokens,
+        observationTokens: reflectionTokens,
+      });
+      this.bufferingCoordinator.clearBoundary("reflection");
+      return newRecord;
+    }
+
     const fullObservations = record.activeObservations ?? "";
     const allLines = fullObservations.split("\n");
     const reflectedLineCount = record.reflectedObservationLineCount ?? 0;
