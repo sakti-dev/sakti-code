@@ -216,6 +216,9 @@ export interface ObservationalMemoryStorage {
   updateObservationalMemoryConfig(input: UpdateObservationalMemoryConfigInput): Promise<void>;
   updateBufferedObservations(input: UpdateBufferedObservationsInput): Promise<void>;
   swapBufferedToActive(input: SwapBufferedToActiveInput): Promise<SwapBufferedToActiveResult>;
+  /** Clear all buffered observation chunks for a record (after thread-scope
+   * activation turned them into ObservationEntry tree entries). */
+  clearBufferedObservations(id: string): Promise<void>;
   updateBufferedReflection(input: UpdateBufferedReflectionInput): Promise<void>;
   swapBufferedReflectionToActive(
     input: SwapBufferedReflectionToActiveInput,

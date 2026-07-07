@@ -173,6 +173,7 @@ class SyncOmStorage implements ObservationalMemoryStorage {
   ): Promise<SwapBufferedToActiveResult> {
     throw new Error("buffering not supported in sync-only fake");
   }
+  async clearBufferedObservations() {}
   async updateBufferedReflection() {
     throw new Error("buffering not supported in sync-only fake");
   }

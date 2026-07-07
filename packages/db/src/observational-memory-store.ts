@@ -614,6 +614,16 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
       };
     });
   }
+  async clearBufferedObservations(id: string): Promise<void> {
+    this.db
+      .update(observationalMemory)
+      .set({
+        bufferedObservationChunks: null,
+        updatedAt: Date.now(),
+      })
+      .where(eq(observationalMemory.id, id))
+      .run();
+  }
   async updateBufferedReflection(input: UpdateBufferedReflectionInput): Promise<void> {
     this.db.transaction((tx) => {
       const row = tx

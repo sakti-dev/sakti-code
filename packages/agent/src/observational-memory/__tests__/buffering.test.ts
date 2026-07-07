@@ -297,6 +297,11 @@ class FakeObservationalMemoryStorage implements ObservationalMemoryStorage {
     };
   }
 
+  async clearBufferedObservations(id: string): Promise<void> {
+    const record = this.records.get(id);
+    if (record) delete record.bufferedObservationChunks;
+  }
+
   async updateBufferedReflection(input: UpdateBufferedReflectionInput): Promise<void> {
     const record = this.records.get(input.id);
     if (!record) throw new Error(`Record not found: ${input.id}`);
