@@ -451,6 +451,7 @@ export function runPromptEffect(
       kind: session.kind,
       projectId: session.projectId,
       profileId: session.profileId,
+      ...(session.status !== undefined ? { status: session.status } : {}),
     });
     if (omConfig) {
       omOptions = {

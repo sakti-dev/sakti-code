@@ -219,3 +219,30 @@ describe("resolveOmConfig", () => {
     expect(a!.tokenCounter).not.toBe(b!.tokenCounter);
   });
 });
+
+describe("resolveOmConfig — skillFilterRoot", () => {
+  it("sets skillFilterRoot for mission in building status", () => {
+    const ctx = makeCtx(PROFILES, {}, { getApiKey: () => "sk-test" });
+    const result = resolveOmConfig(ctx, { ...SESSION, status: "building" });
+    expect(result?.skillFilterRoot).toBeDefined();
+    expect(typeof result!.skillFilterRoot).toBe("string");
+  });
+
+  it("sets skillFilterRoot for mission in specifying status", () => {
+    const ctx = makeCtx(PROFILES, {}, { getApiKey: () => "sk-test" });
+    const result = resolveOmConfig(ctx, { ...SESSION, status: "specifying" });
+    expect(result?.skillFilterRoot).toBeDefined();
+  });
+
+  it("sets skillFilterRoot for mission in review status", () => {
+    const ctx = makeCtx(PROFILES, {}, { getApiKey: () => "sk-test" });
+    const result = resolveOmConfig(ctx, { ...SESSION, status: "review" });
+    expect(result?.skillFilterRoot).toBeDefined();
+  });
+
+  it("omits skillFilterRoot when mission status is merged (archive phase)", () => {
+    const ctx = makeCtx(PROFILES, {}, { getApiKey: () => "sk-test" });
+    const result = resolveOmConfig(ctx, { ...SESSION, status: "merged" });
+    expect(result?.skillFilterRoot).toBeUndefined();
+  });
+});

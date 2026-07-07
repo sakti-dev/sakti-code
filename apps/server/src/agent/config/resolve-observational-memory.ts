@@ -8,6 +8,7 @@ import type {
 } from "@sakti-code/agent";
 import { TokenCounter as TokenCounterImpl } from "@sakti-code/agent";
 import type { ServerContext } from "../../context.ts";
+import { getBuiltinSkillsRuntimeDir } from "./install-builtin-skills.ts";
 import { parseOmSettings } from "./observational-memory-settings.ts";
 import { resolveModelRef } from "../../lib/profile-resolver.ts";
 
@@ -27,6 +28,12 @@ export interface ResolvedOmConfig {
   buffering?: ObservationalMemoryBuffering | undefined;
   tokenCounter: TokenCounter;
   scope: ObservationalMemoryScope;
+  /**
+   * When set, the observer drops tool-results from skill reads. Computed from
+   * the session status: filter ON for all mission phases except `merged`
+   * (archive). undefined for archive phase.
+   */
+  skillFilterRoot?: string | undefined;
   instruction?: string | undefined;
 }
 
@@ -53,7 +60,13 @@ function getTokenCounter(observeModel: Model): TokenCounter {
  */
 export function resolveOmConfig(
   ctx: ServerContext,
-  session: { id: string; kind: string; projectId: string; profileId: string | null },
+  session: {
+    id: string;
+    kind: string;
+    projectId: string;
+    profileId: string | null;
+    status?: string;
+  },
 ): ResolvedOmConfig | undefined {
   const raw = ctx.settingsFile.read() as Record<string, unknown>;
   const omSettings = parseOmSettings(raw);
@@ -122,6 +135,10 @@ export function resolveOmConfig(
       }
     : undefined;
 
+  // Filter ON except for archive phase (status === "merged"). Skill content
+  // is structural instruction, not work signal — keep it out of observations.
+  const skillFilterRoot = session.status === "merged" ? undefined : getBuiltinSkillsRuntimeDir();
+
   return {
     observeModel,
     observeApiKey,
@@ -137,6 +154,7 @@ export function resolveOmConfig(
     ...(buffering ? { buffering } : {}),
     tokenCounter: getTokenCounter(observeModel),
     scope: omSettings.scope ?? "thread",
+    ...(skillFilterRoot !== undefined ? { skillFilterRoot } : {}),
     ...(ctx.log?.agent === undefined ? {} : { logger: ctx.log.agent }),
     ...(omSettings.instruction !== undefined ? { instruction: omSettings.instruction } : {}),
   };
