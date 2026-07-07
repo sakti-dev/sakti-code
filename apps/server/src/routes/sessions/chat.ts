@@ -2,6 +2,12 @@ import { Effect } from "effect";
 import { Hono } from "hono";
 import { createSessionStorage, getCtx } from "../../context.ts";
 
+export interface ChatOmMarker {
+  id: string;
+  summary: string;
+  type: "observation" | "reflection";
+}
+
 export interface ChatTurnDTO {
   endedAt: number | null;
   id: string;
@@ -29,7 +35,17 @@ export const chatRoutes = new Hono().basePath("/sessions").get("/:id/chat", asyn
     }
   >();
 
+  const markers: ChatOmMarker[] = [];
+
   for (const e of entriesWithMeta) {
+    if (e.entry.type === "observation" || e.entry.type === "reflection") {
+      markers.push({
+        id: e.entry.id,
+        summary: e.entry.summary,
+        type: e.entry.type,
+      });
+      continue;
+    }
     if (e.turnId === null || e.entry.type !== "message") {
       continue;
     }
@@ -66,5 +82,5 @@ export const chatRoutes = new Hono().basePath("/sessions").get("/:id/chat", asyn
     };
   });
 
-  return c.json({ turns });
+  return c.json({ turns, ...(markers.length > 0 ? { markers } : {}) });
 });

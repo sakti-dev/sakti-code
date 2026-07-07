@@ -79,3 +79,53 @@ describe("GET /api/sessions/:id/chat", () => {
     expect(body.turns).toEqual([]);
   });
 });
+
+function omEntry(
+  id: string,
+  parentId: string | null,
+  type: "observation" | "reflection",
+  summary: string,
+): SessionTreeEntry {
+  return {
+    type,
+    id,
+    parentId,
+    timestamp: new Date().toISOString(),
+    summary,
+    observationRecordId: "om-1",
+  } as SessionTreeEntry;
+}
+
+describe("GET /api/sessions/:id/chat — OM markers", () => {
+  afterEach(() => {
+    teardownFauxLlm();
+  });
+
+  it("surfaces observation + reflection entries as markers", async () => {
+    const { app, ctx, db } = await makeApp([chatRoutes]);
+    const project = await ctx.repos.projects.create("chat-om", "/tmp/chat-om");
+    const session = await ctx.repos.sessions.create(project.id);
+    seedProfile(ctx, { provider: "openai", model: TEST_MODEL_ID });
+
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+    await Effect.runPromise(storage.appendEntry(msgEntry("u1", null, "user", "hi")));
+    await Effect.runPromise(storage.appendEntry(omEntry("o1", "u1", "observation", "* saw hi")));
+    await Effect.runPromise(storage.appendEntry(omEntry("r1", "o1", "reflection", "condensed")));
+
+    const res = await app.request(`http://localhost/api/sessions/${session.id}/chat`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      turns: unknown[];
+      markers: Array<{ id: string; type: string; summary: string }>;
+    };
+    expect(body.markers).toHaveLength(2);
+    expect(body.markers[0]!.id).toBe("o1");
+    expect(body.markers[0]!.type).toBe("observation");
+    expect(body.markers[0]!.summary).toContain("saw hi");
+    expect(body.markers[1]!.id).toBe("r1");
+    expect(body.markers[1]!.type).toBe("reflection");
+  });
+});
