@@ -12,7 +12,7 @@ import type {
   UpdateBufferedObservationsInput,
   UpdateBufferedReflectionInput,
 } from "../../observational-memory-storage.ts";
-import type { MessageEntry, SessionTreeEntry } from "../../session/entries.ts";
+import type { MessageEntry, ObservationEntry, SessionTreeEntry } from "../../session/entries.ts";
 import { buildSessionContextFromEntries } from "../../session/session.ts";
 import type { SessionStorageShape } from "../../session/storage.ts";
 import type { AgentEvent, AgentMessage } from "../../types.ts";
@@ -592,10 +592,20 @@ describe("ObservationalMemoryEngine buffering", () => {
       const engine = new ObservationalMemoryEngine({ deps });
 
       const record = await engine.getOrCreateRecord();
-      // Seed active observations so observationTokenCount sits at the activation point
+      // Seed an ObservationEntry in the tree (thread-scope source of truth).
+      const obsSeed: ObservationEntry = {
+        id: "obs-seed",
+        parentId: null,
+        timestamp: new Date().toISOString(),
+        type: "observation",
+        summary: "* Observation one\n* Observation two",
+        observationRecordId: record.id,
+      };
+      await Effect.runPromise(sessionStorage.appendEntry(obsSeed));
+      // Set observationTokenCount so it crosses the reflection activation point.
       await storage.updateActiveObservations({
         id: record.id,
-        observations: "* Observation one\n* Observation two",
+        observations: "",
         lastObservedAt: new Date(),
         tokenCount: 120,
       });

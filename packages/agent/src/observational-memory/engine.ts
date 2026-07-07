@@ -569,7 +569,10 @@ export class ObservationalMemoryEngine {
     try {
       await this.storage.setBufferingReflectionFlag(record.id, true);
 
-      const fullObservations = record.activeObservations ?? "";
+      const fullObservations =
+        this.deps.scope === "thread"
+          ? (await this.loadActiveObservationEntries()).map((e) => e.summary).join("\n")
+          : (record.activeObservations ?? "");
       const allLines = fullObservations.split("\n");
       const totalLines = allLines.length;
       const avgTokensPerLine = totalLines > 0 ? observationTokens / totalLines : 1;
