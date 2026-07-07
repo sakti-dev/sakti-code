@@ -458,6 +458,39 @@ describe("ObservationalMemoryEngine (sync)", () => {
     expect(msg).toContain("<observations>");
     expect(msg).toContain("obs");
   });
+
+  it("buildContextSystemMessages (plural) returns string[] of cache-stable chunks", async () => {
+    const engine = new ObservationalMemoryEngine({ deps: createDeps(storage, session) });
+    session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
+    setComplete("<observations>\n* 🔴 obs\n</observations>");
+    let record = await engine.getOrCreateRecord();
+    record = await engine.maybeObserve(record);
+    const chunks = engine.buildContextSystemMessages(record);
+    expect(Array.isArray(chunks)).toBe(true);
+    expect(chunks).toBeDefined();
+    expect(chunks!.length).toBeGreaterThanOrEqual(2);
+    // The observations live in their own chunk.
+    const obsChunk = chunks!.find((c) => c.includes("<observations>"));
+    expect(obsChunk).toBeDefined();
+    expect(obsChunk).toContain("obs");
+  });
+
+  it("buildContextSystemMessages returns undefined for empty record", async () => {
+    const engine = new ObservationalMemoryEngine({ deps: createDeps(storage, session) });
+    const empty = await engine.getOrCreateRecord();
+    expect(engine.buildContextSystemMessages(empty)).toBeUndefined();
+  });
+
+  it("buildContextSystemMessage (singular) joins the plural chunks", async () => {
+    const engine = new ObservationalMemoryEngine({ deps: createDeps(storage, session) });
+    session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
+    setComplete("<observations>\n* 🔴 obs\n</observations>");
+    let record = await engine.getOrCreateRecord();
+    record = await engine.maybeObserve(record);
+    const chunks = engine.buildContextSystemMessages(record);
+    const joined = engine.buildContextSystemMessage(record);
+    expect(joined).toBe(chunks?.join("\n\n"));
+  });
 });
 
 describe("ObservationalMemoryEngine — pruneHistory after reflection", () => {

@@ -43,7 +43,7 @@ export interface AgentRunDeps {
   readonly observationalMemory?: ObservationalMemoryOptions | undefined;
   readonly observationalMemoryReadOnly?:
     | {
-        readonly getObservationsBlock: () => Promise<string | undefined>;
+        readonly getObservationsBlocks: () => Promise<string[] | undefined>;
       }
     | undefined;
   /** Override node:fs readFile (used by planFirstTurn for @file expansion). */
@@ -132,15 +132,6 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
       });
       harness.setObservationalMemory({
         engine: omEngine,
-        getBaseSystemPrompt: () => {
-          // Deliberately read the harness's stable composed base prompt
-          // (NOT currentContext.systemPrompt) so appended <observations>
-          // don't accumulate across turns. Trade-off: any prepareNextTurn
-          // edit to the system prompt is overwritten when OM is on — no
-          // such editor exists today, but flag here if one is added.
-          const current = harness.getSystemPrompt();
-          return current ?? "";
-        },
       });
     }
 

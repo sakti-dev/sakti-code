@@ -474,7 +474,7 @@ export function runPromptEffect(
     // keyed at threadId=null, resourceId=projectId). Missions get own-OM + this;
     // plans get only this.
     const omReadOnly = {
-      getObservationsBlock: async () => {
+      getObservationsBlocks: async () => {
         const record = await omStorage.getObservationalMemory(null, session.projectId);
         return buildObservationsBlock(record);
       },

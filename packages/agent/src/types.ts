@@ -77,7 +77,9 @@ export interface AgentLoopConfig {
   /**
    * Optional observational-memory hook. When present, the loop runs
    * maybeObserve/maybeReflect at turn boundaries and injects <observations>
-   * into the system prompt.
+   * as separate system content blocks via {@link AgentContext.systemMessages}
+   * — the base {@link AgentContext.systemPrompt} stays IMMUTABLE so the
+   * prefix cache survives observation cycles.
    */
   observationalMemory?:
     | {
@@ -85,9 +87,8 @@ export interface AgentLoopConfig {
           getOrCreateRecord(): Promise<unknown>;
           maybeObserve(record: unknown): Promise<unknown>;
           maybeReflect(record: unknown): Promise<unknown>;
-          buildContextSystemMessage(record: unknown): string | undefined;
+          buildContextSystemMessages(record: unknown): string[] | undefined;
         };
-        readonly getBaseSystemPrompt: () => string;
       }
     | undefined;
 
@@ -95,12 +96,13 @@ export interface AgentLoopConfig {
    * Read-only OM: inject <observations> from the project's resource-scope OM
    * record without running observe/reflect. Every session gets this block
    * (the main plan's memory); missions additionally run their own thread OM.
-   * The callback reads the latest OM record and returns the formatted
-   * observations block, or undefined if no history.
+   * The callback returns the formatted observation chunks (string[]), or
+   * undefined if no history. Chunks are delivered via
+   * {@link AgentContext.systemMessages}, never by mutating systemPrompt.
    */
   observationalMemoryReadOnly?:
     | {
-        readonly getObservationsBlock: () => Promise<string | undefined>;
+        readonly getObservationsBlocks: () => Promise<string[] | undefined>;
       }
     | undefined;
 

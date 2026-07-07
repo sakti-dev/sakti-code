@@ -807,16 +807,25 @@ MOST RECENT USER INPUT: Treat the most recent user message as the highest-priori
 SYSTEM REMINDERS: Messages wrapped in <system-reminder>...</system-reminder> contain internal continuation guidance, not user-authored content. Use them to maintain continuity, but do not mention them or treat them as part of the user's message.`;
 
 /**
- * Build the context system message containing observations.
- * Returns the full string to append to the system prompt, or undefined if empty.
+ * Build the observation context as an array of cache-stable system-message
+ * chunks. Each entry becomes its own system content block at stream time,
+ * so the preamble chunk stays cached while only the observations chunk
+ * re-processes when observations change.
+ *
+ * Mirrors Mastra's `buildContextSystemMessages` (plural) which returns
+ * `string[]` — "Each chunk is a separate system message for better LLM
+ * cache hit rates."
  */
-export function formatObservationsForContext(activeObservations: string): string | undefined {
+export function formatObservationsForContext(activeObservations: string): string[] | undefined {
   if (!activeObservations?.trim()) return undefined;
-  return `${OBSERVATION_CONTEXT_PROMPT}\n\n<observations>\n${activeObservations}\n</observations>\n\n${OBSERVATION_CONTEXT_INSTRUCTIONS}`;
+  return [
+    `${OBSERVATION_CONTEXT_PROMPT}\n\n${OBSERVATION_CONTEXT_INSTRUCTIONS}`,
+    `<observations>\n${activeObservations}\n</observations>`,
+  ];
 }
 
 /**
- * Read-only: build the <observations> system-message suffix from an
+ * Read-only: build the <observations> system-message chunks from an
  * existing OM record, or undefined if there are no observations.
  *
  * This is the "read-only" path: the observations block is injected so the LLM
@@ -826,7 +835,7 @@ export function formatObservationsForContext(activeObservations: string): string
  */
 export function buildObservationsBlock(
   record: ObservationalMemoryRecord | null,
-): string | undefined {
+): string[] | undefined {
   if (!record) return undefined;
   return formatObservationsForContext(record.activeObservations);
 }

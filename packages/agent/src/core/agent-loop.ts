@@ -283,16 +283,18 @@ const runLoopEffect = (
       while (hasMoreToolCalls || pendingMessages.length > 0) {
         if (firstTurn) {
           // §OM: inject <observations> from the existing record into the very
-          // first model call. Cheap (read-only — no observe/reflect) so prior
-          // session memory is available before the agent responds. Best-effort;
-          // failures are logged and never abort the run.
+          // first model call as separate system content blocks. The base
+          // systemPrompt stays IMMUTABLE so the prefix cache survives
+          // observation cycles. Best-effort; failures are logged and never
+          // abort the run. Mirrors Mastra's tagged-bucket design (base
+          // instructions untagged/immutable, observations as separate system
+          // messages).
           if (config.observationalMemory) {
-            const omInitial = yield* Effect.tryPromise({
+            const omInitialChunks = yield* Effect.tryPromise({
               try: async () => {
                 const om = config.observationalMemory!;
                 const record = await om.engine.getOrCreateRecord();
-                const observations = om.engine.buildContextSystemMessage(record);
-                return observations ? `${om.getBaseSystemPrompt()}\n\n${observations}` : undefined;
+                return om.engine.buildContextSystemMessages(record);
               },
               catch: (error: unknown) => {
                 config.logger?.error("om initial inject failed", error, {
@@ -301,22 +303,23 @@ const runLoopEffect = (
                 return undefined;
               },
             });
-            if (omInitial !== undefined) {
-              currentContext = { ...currentContext, systemPrompt: omInitial };
+            if (omInitialChunks !== undefined) {
+              currentContext = { ...currentContext, systemMessages: omInitialChunks };
             }
           }
           // §OM read-only: also inject the project's resource-scope OM read-only
           // block when set (missions get own-OM + project read-only). This is a
-          // separate `if`, not `else if`, so both blocks compose.
+          // separate `if`, not `else if`, so both blocks compose into
+          // systemMessages. The base systemPrompt stays immutable.
           if (config.observationalMemoryReadOnly) {
-            const omReadOnly = yield* Effect.tryPromise({
-              try: async () => config.observationalMemoryReadOnly!.getObservationsBlock(),
+            const omReadOnlyBlocks = yield* Effect.tryPromise({
+              try: () => config.observationalMemoryReadOnly!.getObservationsBlocks(),
               catch: () => undefined,
             });
-            if (omReadOnly !== undefined) {
+            if (omReadOnlyBlocks !== undefined && omReadOnlyBlocks.length > 0) {
               currentContext = {
                 ...currentContext,
-                systemPrompt: `${currentContext.systemPrompt ?? ""}\n\n${omReadOnly}`,
+                systemMessages: [...(currentContext.systemMessages ?? []), ...omReadOnlyBlocks],
               };
             }
           }
@@ -418,18 +421,19 @@ const runLoopEffect = (
         }
 
         // §OM: run observational-memory observe/reflect at turn boundary and
-        // inject <observations> into the next turn's system prompt. Failures
-        // are best-effort and logged; they never abort the run.
+        // inject <observations> as separate system content blocks via
+        // systemMessages. The base systemPrompt stays IMMUTABLE so the
+        // prefix cache survives observation cycles. Mirrors Mastra's
+        // tagged-bucket design. Failures are best-effort and logged; they
+        // never abort the run.
         if (config.observationalMemory) {
-          const omResult = yield* Effect.tryPromise({
+          const omChunks = yield* Effect.tryPromise({
             try: async () => {
               const om = config.observationalMemory!;
               const record = await om.engine.getOrCreateRecord();
               const observedRecord = await om.engine.maybeObserve(record);
               const reflectedRecord = await om.engine.maybeReflect(observedRecord);
-              const observations = om.engine.buildContextSystemMessage(reflectedRecord);
-              const base = om.getBaseSystemPrompt();
-              return observations ? `${base}\n\n${observations}` : base;
+              return om.engine.buildContextSystemMessages(reflectedRecord);
             },
             catch: (error: unknown) => {
               config.logger?.error("observational memory turn hook failed", error, {
@@ -438,25 +442,26 @@ const runLoopEffect = (
               return undefined;
             },
           });
-          if (omResult !== undefined) {
+          if (omChunks !== undefined) {
             currentContext = {
               ...currentContext,
-              systemPrompt: omResult,
+              systemMessages: omChunks,
             };
           }
         }
         // §OM read-only: also inject the project's resource-scope OM read-only
         // block at the turn boundary (missions get own-OM + project read-only).
-        // Separate `if`, not `else if`, so both blocks compose.
+        // Separate `if`, not `else if`, so both blocks compose into
+        // systemMessages.
         if (config.observationalMemoryReadOnly) {
-          const omReadOnlyResult = yield* Effect.tryPromise({
-            try: async () => config.observationalMemoryReadOnly!.getObservationsBlock(),
+          const omReadOnlyBlocks = yield* Effect.tryPromise({
+            try: () => config.observationalMemoryReadOnly!.getObservationsBlocks(),
             catch: () => undefined,
           });
-          if (omReadOnlyResult !== undefined) {
+          if (omReadOnlyBlocks !== undefined && omReadOnlyBlocks.length > 0) {
             currentContext = {
               ...currentContext,
-              systemPrompt: `${currentContext.systemPrompt ?? ""}\n\n${omReadOnlyResult}`,
+              systemMessages: [...(currentContext.systemMessages ?? []), ...omReadOnlyBlocks],
             };
           }
         }
@@ -548,6 +553,9 @@ const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(
         model: config.model,
         messages: llmMessages,
         ...(context.systemPrompt ? { system: context.systemPrompt } : {}),
+        ...(context.systemMessages && context.systemMessages.length > 0
+          ? { systemMessages: context.systemMessages }
+          : {}),
         ...(context.tools && context.tools.length > 0
           ? { tools: toStreamTools(context.tools) }
           : {}),

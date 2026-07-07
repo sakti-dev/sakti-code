@@ -620,8 +620,25 @@ export class ObservationalMemoryEngine {
 
   /**
    * Build the <observations> system-message section, or undefined if empty.
+   * Singular form: returns a single joined string (backward-compat for
+   * callers that want one string). Prefer {@link buildContextSystemMessages}
+   * (plural) for the production path — it returns cache-stable chunks.
    */
   buildContextSystemMessage(record: ObservationalMemoryRecord): string | undefined {
+    const chunks = this.buildContextSystemMessages(record);
+    return chunks?.join("\n\n");
+  }
+
+  /**
+   * Plural form: returns the observation context as an array of cache-stable
+   * system-message chunks (one per section). This is the production path —
+   * each chunk becomes a separate system content block at stream time so the
+   * preamble stays cached while only the observations chunk re-processes.
+   *
+   * Mirrors Mastra's `buildContextSystemMessages` (plural). See
+   * `openspec/references/mastra/packages/memory/src/processors/observational-memory/observational-memory.ts:2502`.
+   */
+  buildContextSystemMessages(record: ObservationalMemoryRecord): string[] | undefined {
     return formatObservationsForContext(record.activeObservations);
   }
 

@@ -1,13 +1,7 @@
 import type { Model, StreamRequest, Usage } from "@sakti-code/llm";
 import { describe, expect, it } from "vite-plus/test";
 import { agentLoop } from "../../core/agent-loop";
-import type {
-  AgentContext,
-  AgentEvent,
-  AgentLoopConfig,
-  AgentMessage,
-  StreamFn,
-} from "../../types";
+import type { AgentContext, AgentLoopConfig, AgentMessage, StreamFn } from "../../types";
 
 function createUsage(): Usage {
   return {
@@ -41,12 +35,9 @@ function identityConverter(messages: AgentMessage[]) {
   );
 }
 
-const OBS_BLOCK =
-  "The following observations block contains your memory of past conversations with this user.\n\n<observations>\n* User prefers TypeScript\n</observations>";
+const OBS_BLOCK = "<observations>\n* User prefers TypeScript\n</observations>";
 
 const OWN_BLOCK = "<observations>\n* Mission thread context note\n</observations>";
-
-const OWN_BASE = "[own-om-base]";
 
 function makeOwnOm() {
   return {
@@ -54,136 +45,103 @@ function makeOwnOm() {
       getOrCreateRecord: async () => ({}),
       maybeObserve: async (r: unknown) => r,
       maybeReflect: async (r: unknown) => r,
-      buildContextSystemMessage: () => OWN_BLOCK,
+      buildContextSystemMessages: () => [OWN_BLOCK],
     },
-    getBaseSystemPrompt: () => OWN_BASE,
   };
 }
 
-describe("agent loop read-only OM injection", () => {
-  it("injects <observations> on first turn when readOnly callback returns a block", async () => {
-    const context: AgentContext = {
-      systemPrompt: "You are helpful.",
-      messages: [],
-      tools: [],
-    };
+async function runOnce(
+  config: AgentLoopConfig,
+  context: AgentContext,
+  userPrompt: AgentMessage,
+): Promise<{ system: string | undefined; systemMessages: string[] | undefined }> {
+  let capturedSystem: string | undefined;
+  let capturedSystemMessages: string[] | undefined;
+  const streamFn: StreamFn = (req: StreamRequest) => {
+    capturedSystem = req.system as string | undefined;
+    capturedSystemMessages = req.systemMessages as string[] | undefined;
+    return Promise.resolve({
+      fullStream: (async function* () {
+        yield { type: "text-delta", id: "t1", text: "Hi!" };
+      })(),
+      result: Promise.resolve({ finishReason: "stop", usage: createUsage() }),
+    });
+  };
+  const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
+  for await (const event of stream) {
+    void event;
+  }
+  await stream.result();
+  return { system: capturedSystem, systemMessages: capturedSystemMessages };
+}
 
+describe("agent loop OM injection — immutable systemPrompt + systemMessages", () => {
+  it("read-only: keeps systemPrompt immutable, delivers observations via systemMessages", async () => {
+    const context: AgentContext = { systemPrompt: "You are helpful.", messages: [], tools: [] };
     const userPrompt: AgentMessage = { role: "user", content: "Hello", timestamp: Date.now() };
-
-    let capturedSystem: string | undefined;
-    const streamFn: StreamFn = (req: StreamRequest) => {
-      capturedSystem = req.system as string | undefined;
-      return Promise.resolve({
-        fullStream: (async function* () {
-          yield { type: "text-delta", id: "t1", text: "Hi!" };
-        })(),
-        result: Promise.resolve({ finishReason: "stop", usage: createUsage() }),
-      });
-    };
-
     const config: AgentLoopConfig = {
       model: createModel(),
       convertToLlm: identityConverter,
       observationalMemoryReadOnly: {
-        getObservationsBlock: async () => OBS_BLOCK,
+        getObservationsBlocks: async () => [OBS_BLOCK],
       },
     };
-
-    const events: AgentEvent[] = [];
-    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
-    for await (const event of stream) {
-      events.push(event);
-    }
-    await stream.result();
-
-    expect(capturedSystem).toContain("You are helpful.");
-    expect(capturedSystem).toContain("<observations>");
-    expect(capturedSystem).toContain("User prefers TypeScript");
+    const { system, systemMessages } = await runOnce(config, context, userPrompt);
+    // Base systemPrompt is byte-identical to the original — never mutated.
+    expect(system).toBe("You are helpful.");
+    expect(system).not.toContain("<observations>");
+    // Observations travel as a separate system content block.
+    expect(systemMessages).toEqual([OBS_BLOCK]);
   });
 
-  it("does not inject when readOnly callback returns undefined", async () => {
-    const context: AgentContext = {
-      systemPrompt: "You are helpful.",
-      messages: [],
-      tools: [],
-    };
-
+  it("read-only: no injection when callback returns undefined", async () => {
+    const context: AgentContext = { systemPrompt: "You are helpful.", messages: [], tools: [] };
     const userPrompt: AgentMessage = { role: "user", content: "Hello", timestamp: Date.now() };
-
-    let capturedSystem: string | undefined;
-    const streamFn: StreamFn = (req: StreamRequest) => {
-      capturedSystem = req.system as string | undefined;
-      return Promise.resolve({
-        fullStream: (async function* () {
-          yield { type: "text-delta", id: "t1", text: "Hi!" };
-        })(),
-        result: Promise.resolve({ finishReason: "stop", usage: createUsage() }),
-      });
-    };
-
     const config: AgentLoopConfig = {
       model: createModel(),
       convertToLlm: identityConverter,
       observationalMemoryReadOnly: {
-        getObservationsBlock: async () => undefined,
+        getObservationsBlocks: async () => undefined,
       },
     };
-
-    const events: AgentEvent[] = [];
-    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
-    for await (const event of stream) {
-      events.push(event);
-    }
-    await stream.result();
-
-    expect(capturedSystem).toBe("You are helpful.");
-    expect(capturedSystem).not.toContain("<observations>");
+    const { system, systemMessages } = await runOnce(config, context, userPrompt);
+    expect(system).toBe("You are helpful.");
+    expect(systemMessages).toBeUndefined();
   });
 
-  it("injects BOTH own-OM and read-only blocks when both are configured", async () => {
-    const context: AgentContext = {
-      systemPrompt: "You are helpful.",
-      messages: [],
-      tools: [],
-    };
-
+  it("own-OM: keeps systemPrompt immutable, delivers own observations via systemMessages", async () => {
+    const context: AgentContext = { systemPrompt: "You are helpful.", messages: [], tools: [] };
     const userPrompt: AgentMessage = { role: "user", content: "Hello", timestamp: Date.now() };
-
-    let capturedSystem: string | undefined;
-    const streamFn: StreamFn = (req: StreamRequest) => {
-      capturedSystem = req.system as string | undefined;
-      return Promise.resolve({
-        fullStream: (async function* () {
-          yield { type: "text-delta", id: "t1", text: "Hi!" };
-        })(),
-        result: Promise.resolve({ finishReason: "stop", usage: createUsage() }),
-      });
+    const config: AgentLoopConfig = {
+      model: createModel(),
+      convertToLlm: identityConverter,
+      observationalMemory: makeOwnOm(),
     };
+    const { system, systemMessages } = await runOnce(config, context, userPrompt);
+    expect(system).toBe("You are helpful.");
+    expect(system).not.toContain("Mission thread context note");
+    expect(systemMessages).toEqual([OWN_BLOCK]);
+  });
 
+  it("own-OM + read-only: both compose into systemMessages, systemPrompt stays immutable", async () => {
+    const context: AgentContext = { systemPrompt: "You are helpful.", messages: [], tools: [] };
+    const userPrompt: AgentMessage = { role: "user", content: "Hello", timestamp: Date.now() };
     const config: AgentLoopConfig = {
       model: createModel(),
       convertToLlm: identityConverter,
       observationalMemory: makeOwnOm(),
       observationalMemoryReadOnly: {
-        getObservationsBlock: async () => OBS_BLOCK,
+        getObservationsBlocks: async () => [OBS_BLOCK],
       },
     };
-
-    const events: AgentEvent[] = [];
-    const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
-    for await (const event of stream) {
-      events.push(event);
-    }
-    await stream.result();
-
-    // Own-OM block (base + observations) is present…
-    expect(capturedSystem).toContain(OWN_BASE);
-    expect(capturedSystem).toContain("Mission thread context note");
-    // …AND the read-only project block is appended.
-    expect(capturedSystem).toContain("User prefers TypeScript");
-    // Read-only must come after the own block (appended, not replacing).
-    expect(capturedSystem!.indexOf("User prefers TypeScript")).toBeGreaterThan(
-      capturedSystem!.indexOf("Mission thread context note"),
-    );
+    const { system, systemMessages } = await runOnce(config, context, userPrompt);
+    expect(system).toBe("You are helpful.");
+    // Own-OM chunk(s) first, then read-only chunk(s) appended.
+    expect(systemMessages).toBeDefined();
+    const joined = systemMessages!.join("\n");
+    expect(joined).toContain("Mission thread context note");
+    expect(joined).toContain("User prefers TypeScript");
+    // Read-only appended after own-OM.
+    expect(systemMessages!.indexOf(OBS_BLOCK)).toBeGreaterThan(systemMessages!.indexOf(OWN_BLOCK));
   });
 });

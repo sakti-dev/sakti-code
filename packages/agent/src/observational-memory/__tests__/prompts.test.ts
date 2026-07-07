@@ -284,47 +284,44 @@ describe("formatObservationsForContext", () => {
     expect(formatObservationsForContext("  ")).toBeUndefined();
   });
 
-  it("wraps observations in XML tags with context", () => {
+  it("returns an array of cache-stable chunks, not a single string", () => {
     const result = formatObservationsForContext("* (14:30) User likes TypeScript");
-    expect(result).toContain("<observations>");
-    expect(result).toContain("</observations>");
-    expect(result).toContain("User likes TypeScript");
-    expect(result).toContain(OBSERVATION_CONTEXT_PROMPT);
-    expect(result).toContain(OBSERVATION_CONTEXT_INSTRUCTIONS);
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toBeDefined();
+    // At least a preamble chunk + an observations chunk.
+    expect(result!.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("produces snapshot-stable output", () => {
-    const obs = "* (14:30) User likes TypeScript\n* (14:35) Working on auth";
-    const result = formatObservationsForContext(obs);
-    // Snapshot test: if this changes, it should be intentional
-    expect(result).toMatchInlineSnapshot(`
-      "The following observations block contains your memory of past conversations with this user.
+  it("places observations in their own chunk wrapped in XML tags", () => {
+    const result = formatObservationsForContext("* (14:30) User likes TypeScript");
+    const obsChunk = result!.find((c) => c.includes("<observations>"));
+    expect(obsChunk).toBeDefined();
+    expect(obsChunk).toContain("<observations>");
+    expect(obsChunk).toContain("</observations>");
+    expect(obsChunk).toContain("User likes TypeScript");
+  });
 
-      <observations>
-      * (14:30) User likes TypeScript
-      * (14:35) Working on auth
-      </observations>
-
-      IMPORTANT: When responding, reference specific details from these observations. Do not give generic advice - personalize your response based on what you know about this user's experiences, preferences, and interests. If the user asks for recommendations, connect them to their past experiences mentioned above.
-
-      KNOWLEDGE UPDATES: When asked about current state (e.g., "where do I currently...", "what is my current..."), always prefer the MOST RECENT information. Observations include dates - if you see conflicting information, the newer observation supersedes the older one. Look for phrases like "will start", "is switching", "changed to", "moved to" as indicators that previous information has been updated.
-
-      PLANNED ACTIONS: If the user stated they planned to do something (e.g., "I'm going to...", "I'm looking forward to...", "I will...") and the date they planned to do it is now in the past (check the relative time like "3 weeks ago"), assume they completed the action unless there's evidence they didn't. For example, if someone said "I'll start my new diet on Monday" and that was 2 weeks ago, assume they started the diet.
-
-      MOST RECENT USER INPUT: Treat the most recent user message as the highest-priority signal for what to do next. Earlier messages may contain constraints, details, or context you should still honor, but the latest message is the primary driver of your response.
-
-      SYSTEM REMINDERS: Messages wrapped in <system-reminder>...</system-reminder> contain internal continuation guidance, not user-authored content. Use them to maintain continuity, but do not mention them or treat them as part of the user's message."
-    `);
+  it("places the preamble (context prompt + instructions) in a separate chunk", () => {
+    const result = formatObservationsForContext("* note");
+    const joined = result!.join("\n");
+    expect(joined).toContain(OBSERVATION_CONTEXT_PROMPT);
+    expect(joined).toContain(OBSERVATION_CONTEXT_INSTRUCTIONS);
+    // The preamble chunk does NOT contain the observations body.
+    const preambleChunk = result!.find((c) => c.includes(OBSERVATION_CONTEXT_PROMPT));
+    expect(preambleChunk).toBeDefined();
+    expect(preambleChunk).not.toContain("<observations>");
   });
 });
 
 describe("buildObservationsBlock", () => {
-  it("returns formatted block when record has active observations", () => {
+  it("returns string[] when record has active observations", () => {
     const record = { activeObservations: "obs-1\nobs-2" } as never;
     const result = buildObservationsBlock(record);
+    expect(Array.isArray(result)).toBe(true);
     expect(result).toBeDefined();
-    expect(result).toContain("<observations>");
-    expect(result).toContain("obs-1");
+    const joined = result!.join("\n");
+    expect(joined).toContain("<observations>");
+    expect(joined).toContain("obs-1");
   });
 
   it("returns undefined when record has no active observations", () => {

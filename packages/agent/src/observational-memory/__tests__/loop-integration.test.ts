@@ -71,22 +71,24 @@ function streamResult(
   };
 }
 
-/** StreamFn that records req.system for each call and returns scripted results. */
+/** StreamFn that records req.system + req.systemMessages per call. */
 function capturingStreamFn(
   results: Array<{
     content: AssistantMessage["content"];
     finishReason: AssistantMessage["stopReason"];
   }>,
-): { fn: StreamFn; systems: string[] } {
+): { fn: StreamFn; systems: string[]; systemMessages: (string[] | undefined)[] } {
   const systems: string[] = [];
+  const systemMessages: (string[] | undefined)[] = [];
   let i = 0;
   const fn: StreamFn = (req) => {
     systems.push(req.system ?? "");
+    systemMessages.push(req.systemMessages as string[] | undefined);
     const spec = results[i] ?? results[results.length - 1]!;
     i++;
     return Promise.resolve(streamResult(spec.content, spec.finishReason));
   };
-  return { fn, systems };
+  return { fn, systems, systemMessages };
 }
 
 function identityConverter(messages: AgentMessage[]) {
@@ -109,7 +111,7 @@ function noopTool(): AgentTool {
 
 const BASE = "BASE SYSTEM PROMPT";
 
-/** Fake engine that records calls; buildContextSystemMessage returns scripted values in order. */
+/** Fake engine; buildContextSystemMessages returns scripted chunks in order. */
 function fakeEngine(observationsSequence: string[]) {
   let obsIdx = 0;
   const record = { id: "r1", activeObservations: "stub" };
@@ -117,10 +119,10 @@ function fakeEngine(observationsSequence: string[]) {
     getOrCreateRecord: vi.fn(async () => record),
     maybeObserve: vi.fn(async (r: unknown) => r),
     maybeReflect: vi.fn(async (r: unknown) => r),
-    buildContextSystemMessage: vi.fn(() => {
+    buildContextSystemMessages: vi.fn(() => {
       const v = observationsSequence[Math.min(obsIdx, observationsSequence.length - 1)];
       obsIdx++;
-      return v ?? undefined;
+      return v !== undefined ? [v] : undefined;
     }),
   };
   return engine;
@@ -134,27 +136,31 @@ async function drain(stream: ReturnType<typeof agentLoop>) {
 }
 
 describe("observational-memory loop integration", () => {
-  it("first model call's system prompt contains <observations> from the existing record", async () => {
+  it("first model call's systemMessages contains <observations> from the existing record; systemPrompt stays immutable", async () => {
     const engine = fakeEngine(["<observations>* 🔴 prior memory\n</observations>"]);
     const config: AgentLoopConfig = {
       model: createModel(),
       convertToLlm: identityConverter,
-      observationalMemory: { engine, getBaseSystemPrompt: () => BASE },
+      observationalMemory: { engine },
     };
     const context: AgentContext = { systemPrompt: BASE, messages: [], tools: [] };
-    const { fn, systems } = capturingStreamFn([
+    const { fn, systems, systemMessages } = capturingStreamFn([
       { content: [{ type: "text", text: "answer" }], finishReason: "stop" },
     ]);
 
     await drain(agentLoop([userMsg("hi")], context, config, undefined, fn));
 
     expect(systems.length).toBeGreaterThanOrEqual(1);
-    expect(systems[0]).toContain("<observations>");
-    expect(systems[0]).toContain("prior memory");
-    expect(systems[0]).toContain(BASE);
+    // Base systemPrompt is immutable — observations NOT concatenated into it.
+    expect(systems[0]).toBe(BASE);
+    expect(systems[0]).not.toContain("<observations>");
+    // Observations travel as separate system content blocks.
+    expect(systemMessages[0]).toBeDefined();
+    expect(systemMessages[0]!.join("\n")).toContain("<observations>");
+    expect(systemMessages[0]!.join("\n")).toContain("prior memory");
   });
 
-  it("after turn 1, maybeObserve ran and turn-2 prompt reflects updated observations", async () => {
+  it("after turn 1, maybeObserve ran and turn-2 systemMessages reflects updated observations", async () => {
     const engine = fakeEngine([
       "<observations>INITIAL\n</observations>",
       "<observations>UPDATED\n</observations>",
@@ -162,11 +168,11 @@ describe("observational-memory loop integration", () => {
     const config: AgentLoopConfig = {
       model: createModel(),
       convertToLlm: identityConverter,
-      observationalMemory: { engine, getBaseSystemPrompt: () => BASE },
+      observationalMemory: { engine },
     };
     const context: AgentContext = { systemPrompt: BASE, messages: [], tools: [noopTool()] };
     // Turn 1: tool call (loops), turn 2: plain text (stops).
-    const { fn, systems } = capturingStreamFn([
+    const { fn, systems, systemMessages } = capturingStreamFn([
       {
         content: [{ type: "toolCall", id: "t1", name: "noop", arguments: { value: "x" } }],
         finishReason: "toolUse",
@@ -178,8 +184,12 @@ describe("observational-memory loop integration", () => {
 
     expect(engine.maybeObserve).toHaveBeenCalled();
     expect(systems.length).toBe(2);
-    expect(systems[0]).toContain("INITIAL");
-    expect(systems[1]).toContain("UPDATED");
+    // Base systemPrompt immutable across both turns.
+    expect(systems[0]).toBe(BASE);
+    expect(systems[1]).toBe(BASE);
+    // Observations evolve across turns via systemMessages.
+    expect(systemMessages[0]!.join("\n")).toContain("INITIAL");
+    expect(systemMessages[1]!.join("\n")).toContain("UPDATED");
   });
 
   it("without observationalMemory config, the loop is unchanged (no engine calls, prompt == base)", async () => {
@@ -190,7 +200,7 @@ describe("observational-memory loop integration", () => {
       convertToLlm: identityConverter,
     };
     const context: AgentContext = { systemPrompt: BASE, messages: [], tools: [] };
-    const { fn, systems } = capturingStreamFn([
+    const { fn, systems, systemMessages } = capturingStreamFn([
       { content: [{ type: "text", text: "answer" }], finishReason: "stop" },
     ]);
 
@@ -200,5 +210,6 @@ describe("observational-memory loop integration", () => {
     expect(engine.maybeObserve).not.toHaveBeenCalled();
     expect(systems[0]).toBe(BASE);
     expect(systems[0]).not.toContain("<observations>");
+    expect(systemMessages[0]).toBeUndefined();
   });
 });
