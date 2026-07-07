@@ -381,9 +381,14 @@ export class ObservationalMemoryEngine {
         return record;
       }
 
+      const existingObs =
+        this.deps.scope === "thread"
+          ? (await this.loadActiveObservationEntries()).map((e) => e.summary).join("\n\n")
+          : record.activeObservations;
+
       const observerResult = await runObserver({
         messagesToObserve: candidateMessages,
-        existingObservations: record.activeObservations,
+        existingObservations: existingObs,
         deps: this.deps,
         ...(this.abortSignal ? { abortSignal: this.abortSignal } : {}),
       });
