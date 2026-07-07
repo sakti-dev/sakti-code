@@ -125,6 +125,10 @@ export interface UpdateActiveObservationsInput {
 }
 
 export interface CreateReflectionGenerationInput {
+  /** Override for activeObservations on the new record. Defaults to the
+   * reflection text (resource scope). Thread scope passes "" since
+   * observations live in the session tree, not the record. */
+  activeObservations?: string;
   currentRecord: ObservationalMemoryRecord;
   reflection: string;
   tokenCount: number;

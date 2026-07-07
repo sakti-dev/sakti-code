@@ -289,7 +289,7 @@ export class SqliteObservationalMemoryStorage implements ObservationalMemoryStor
         scope: c.scope,
         resourceId: c.resourceId,
         threadId: c.threadId,
-        activeObservations: input.reflection,
+        activeObservations: input.activeObservations ?? input.reflection,
         originType: "reflection",
         generationCount: c.generationCount + 1,
         config: JSON.stringify(c.config),

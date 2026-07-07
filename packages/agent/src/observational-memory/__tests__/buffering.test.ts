@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import type {
   CreateObservationalMemoryInput,
+  CreateReflectionGenerationInput,
   ObservationalMemoryRecord,
   ObservationalMemoryStorage,
   SwapBufferedToActiveResult,
@@ -139,11 +140,9 @@ class FakeObservationalMemoryStorage implements ObservationalMemoryStorage {
     record.updatedAt = new Date();
   }
 
-  async createReflectionGeneration(input: {
-    currentRecord: ObservationalMemoryRecord;
-    reflection: string;
-    tokenCount: number;
-  }): Promise<ObservationalMemoryRecord> {
+  async createReflectionGeneration(
+    input: CreateReflectionGenerationInput,
+  ): Promise<ObservationalMemoryRecord> {
     const c = input.currentRecord;
     const id = `om-${this.nextId++}`;
     const now = new Date();
@@ -152,7 +151,7 @@ class FakeObservationalMemoryStorage implements ObservationalMemoryStorage {
       id,
       originType: "reflection",
       generationCount: c.generationCount + 1,
-      activeObservations: input.reflection,
+      activeObservations: input.activeObservations ?? input.reflection,
       observationTokenCount: input.tokenCount,
       pendingMessageTokens: 0,
       isReflecting: false,

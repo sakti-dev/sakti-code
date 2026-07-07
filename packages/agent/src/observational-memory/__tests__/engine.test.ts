@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import type {
   CreateObservationalMemoryInput,
+  CreateReflectionGenerationInput,
   ObservationalMemoryRecord,
   ObservationalMemoryStorage,
   SwapBufferedReflectionToActiveInput,
@@ -129,11 +130,7 @@ class SyncOmStorage implements ObservationalMemoryStorage {
       ...(input.observedMessageIds ? { observedMessageIds: input.observedMessageIds } : {}),
     });
   }
-  async createReflectionGeneration(input: {
-    currentRecord: ObservationalMemoryRecord;
-    reflection: string;
-    tokenCount: number;
-  }) {
+  async createReflectionGeneration(input: CreateReflectionGenerationInput) {
     const c = input.currentRecord;
     const id = `om-${this.nextId++}`;
     const now = new Date();
@@ -142,7 +139,7 @@ class SyncOmStorage implements ObservationalMemoryStorage {
       id,
       originType: "reflection",
       generationCount: c.generationCount + 1,
-      activeObservations: input.reflection,
+      activeObservations: input.activeObservations ?? input.reflection,
       observationTokenCount: input.tokenCount,
       pendingMessageTokens: 0,
       isReflecting: false,
@@ -624,6 +621,41 @@ describe("ObservationalMemoryEngine — pruneHistory after reflection", () => {
     const callArgs = pruneSpy.mock.calls[0] as unknown as [string | null, string, string];
     expect(callArgs[0]).toBeNull();
     expect(callArgs[1]).toBe("proj-r");
+  });
+
+  it("thread scope: reflection leaves activeObservations empty (observations in tree)", async () => {
+    const deps = createDeps(storage, session, {
+      thresholds: { observation: 100, reflection: 1 },
+    });
+    session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
+    setComplete("<observations>\n* 🔴 obs line\n</observations>");
+    const engine = new ObservationalMemoryEngine({ deps });
+    let record = await engine.getOrCreateRecord();
+    record = await engine.maybeObserve(record);
+
+    setComplete("<observations>\n* reflected compact obs\n</observations>");
+    record = await engine.maybeReflect(record);
+
+    // Thread scope: observations live in the tree, NOT in activeObservations.
+    expect(record.activeObservations).toBe("");
+  });
+
+  it("resource scope: reflection stores reflection text in activeObservations", async () => {
+    const deps = createDeps(storage, session, {
+      thresholds: { observation: 100, reflection: 1 },
+      scope: "resource",
+    });
+    session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
+    setComplete("<observations>\n* 🔴 obs line\n</observations>");
+    const engine = new ObservationalMemoryEngine({ deps });
+    let record = await engine.getOrCreateRecord();
+    record = await engine.maybeObserve(record);
+
+    setComplete("<observations>\n* reflected compact obs\n</observations>");
+    record = await engine.maybeReflect(record);
+
+    // Resource scope: observations live in the record.
+    expect(record.activeObservations).toContain("reflected compact obs");
   });
 });
 

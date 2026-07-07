@@ -669,6 +669,7 @@ export class ObservationalMemoryEngine {
         currentRecord: record,
         reflection: record.bufferedReflection,
         tokenCount: reflectionTokens,
+        activeObservations: "",
       });
       const ids = this.getStorageIds();
       await this.storage.pruneHistory(ids.threadId, ids.resourceId, newRecord.id);
@@ -867,9 +868,14 @@ export class ObservationalMemoryEngine {
     this.emitOmEvent({ type: "om_start", cycleId, operationType: "observation", tokenCount });
 
     try {
+      const existingObs =
+        this.deps.scope === "thread"
+          ? (await this.loadActiveObservationEntries()).map((e) => e.summary).join("\n\n")
+          : record.activeObservations;
+
       const observerResult = await runObserver({
         messagesToObserve: unobserved,
-        existingObservations: record.activeObservations,
+        existingObservations: existingObs,
         deps: this.deps,
         ...(this.abortSignal ? { abortSignal: this.abortSignal } : {}),
       });
@@ -992,6 +998,7 @@ export class ObservationalMemoryEngine {
           currentRecord: record,
           reflection: reflectorResult.reflection,
           tokenCount: reflectorResult.tokenCount,
+          activeObservations: "",
         });
       } else {
         reflectorResult = await runReflector({
