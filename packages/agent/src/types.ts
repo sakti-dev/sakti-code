@@ -76,10 +76,10 @@ export interface AgentLoopConfig {
 
   /**
    * Optional observational-memory hook. When present, the loop runs
-   * maybeObserve/maybeReflect at turn boundaries and injects <observations>
-   * as separate system content blocks via {@link AgentContext.systemMessages}
-   * — the base {@link AgentContext.systemPrompt} stays IMMUTABLE so the
-   * prefix cache survives observation cycles.
+   * maybeObserve/maybeReflect at turn boundaries. These append
+   * ObservationEntry/ReflectionEntry to the session tree (rendered into the
+   * message stream by the context builder). The base systemPrompt stays
+   * IMMUTABLE — observations are stream entries, not system content.
    */
   observationalMemory?:
     | {
@@ -87,7 +87,6 @@ export interface AgentLoopConfig {
           getOrCreateRecord(): Promise<unknown>;
           maybeObserve(record: unknown): Promise<unknown>;
           maybeReflect(record: unknown): Promise<unknown>;
-          buildContextSystemMessages(record: unknown): string[] | undefined;
         };
       }
     | undefined;
@@ -97,8 +96,8 @@ export interface AgentLoopConfig {
    * record without running observe/reflect. Every session gets this block
    * (the main plan's memory); missions additionally run their own thread OM.
    * The callback returns the formatted observation chunks (string[]), or
-   * undefined if no history. Chunks are delivered via
-   * {@link AgentContext.systemMessages}, never by mutating systemPrompt.
+   * undefined if no history. Chunks are injected as stream messages after the
+   * skill-pair, never by mutating systemPrompt.
    */
   observationalMemoryReadOnly?:
     | {
@@ -258,14 +257,6 @@ export interface AgentTool<
 export interface AgentContext {
   messages: AgentMessage[];
   systemPrompt: string;
-  /**
-   * Observation content blocks appended AFTER the immutable base
-   * {@link systemPrompt} as separate system content blocks at stream time.
-   * Set by observational-memory injection. NEVER mutate {@link systemPrompt}
-   * to carry observations — that breaks the prefix cache. Each entry is one
-   * cache-stable chunk (mirrors Mastra's chunked system messages).
-   */
-  systemMessages?: string[];
   tools?: AgentTool<any>[];
 }
 

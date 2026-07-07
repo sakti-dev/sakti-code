@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { useStore } from "~/stores/store-context";
+import { getDraftProfile, setDraftProfile } from "~/stores/workspace/draft-profile-store";
 
 interface ProfileEntry {
   models: { default: { provider: string; model: string } };
@@ -45,15 +46,24 @@ export function ProfileSelect(props: { sessionId: string | null }) {
   };
 
   const activeProfileId = () => {
-    const s = session();
-    if (!s) {
-      return;
-    }
     const p = profiles();
     if (!p) {
       return;
     }
-    return s.profileId ?? p.defaultProfile;
+    const s = session();
+    if (s?.profileId) {
+      return s.profileId;
+    }
+    // No session-bound profile: honour a per-project draft pick (made before the
+    // first message creates a session), else fall back to the configured default.
+    const projectId = server.store.activeProjectId;
+    if (projectId && props.sessionId === null) {
+      const draft = getDraftProfile(projectId);
+      if (draft) {
+        return draft;
+      }
+    }
+    return p.defaultProfile;
   };
 
   const profileLabel = () => {
@@ -67,16 +77,29 @@ export function ProfileSelect(props: { sessionId: string | null }) {
   };
 
   const handleChange = (value: string | null) => {
-    if (value !== null) {
+    if (value === null) {
+      return;
+    }
+    if (props.sessionId) {
       void actions.selectProfile(props.sessionId, value);
+      return;
+    }
+    // No session yet: stash the pick as a per-project draft, applied when the
+    // first message creates a session (see plan-chat.tsx).
+    const projectId = server.store.activeProjectId;
+    if (projectId) {
+      setDraftProfile(projectId, value);
     }
   };
 
   return (
     <Show when={profileEntries().length > 0}>
       <Select
-        disabled={!props.sessionId}
-        itemComponent={(props) => <SelectItem item={props.item}>{props.item.rawValue}</SelectItem>}
+        itemComponent={(itemProps) => (
+          <SelectItem item={itemProps.item}>
+            {profiles()?.profiles[itemProps.item.rawValue]?.name ?? itemProps.item.rawValue}
+          </SelectItem>
+        )}
         onChange={handleChange}
         options={profileIds()}
         placeholder="Select profile"

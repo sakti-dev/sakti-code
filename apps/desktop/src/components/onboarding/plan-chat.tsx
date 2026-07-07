@@ -9,6 +9,7 @@ import {
   openSessionTab,
   promoteDraftPlan,
 } from "~/stores/workspace/session-tab-store";
+import { clearDraftProfile, getDraftProfile } from "~/stores/workspace/draft-profile-store";
 import { EmptyState } from "./empty-state";
 
 interface PlanChatProps {
@@ -17,7 +18,7 @@ interface PlanChatProps {
 }
 
 export const PlanChat = (props: PlanChatProps): JSX.Element => {
-  const { sessions, actions } = useStore();
+  const { sessions, actions, server } = useStore();
 
   const sessionStore = createMemo(() =>
     props.sessionId ? sessions.get(props.sessionId) : undefined,
@@ -38,6 +39,12 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
   const handleDraftSend = async (text: string) => {
     const created = await actions.createChildPlan(props.projectId);
     if (!created) return;
+    // Apply any pre-session profile pick (per-project draft) to the new session.
+    const draftProfile = getDraftProfile(props.projectId);
+    if (draftProfile) {
+      await actions.selectProfile(created.id, draftProfile);
+      clearDraftProfile(props.projectId);
+    }
     promoteDraftPlan(props.projectId, created.id);
     actions.sendPrompt(created.id, text);
   };
@@ -61,6 +68,13 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
 
     const missionSession = await actions.createSession(props.projectId, title);
     if (!missionSession) return;
+
+    // Carry the plan session's profile over to the mission session so the
+    // user's profile pick (draft or changed mid-plan) follows the work.
+    const planProfileId = server.store.sessions[sid]?.profileId;
+    if (planProfileId) {
+      await actions.selectProfile(missionSession.id, planProfileId);
+    }
 
     session.actions.clearPendingAsk();
 
