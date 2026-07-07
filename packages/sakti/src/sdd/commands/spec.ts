@@ -5,8 +5,6 @@ import { MarkdownParser } from "../core/parsers/markdown-parser.js";
 import { Validator } from "../core/validation/validator.js";
 import type { Spec } from "../core/schemas/index.js";
 import type { RootOutput } from "../core/root-selection.js";
-import { isInteractive } from "../utils/interactive.js";
-import { getSpecIds } from "../utils/item-discovery.js";
 
 const SPECS_DIR = ".sakti/specs";
 
@@ -78,17 +76,7 @@ export class SpecCommand {
 
   async show(specId?: string, options: ShowOptions = {}): Promise<void> {
     if (!specId) {
-      const canPrompt = isInteractive(options);
-      const specIds = await getSpecIds(this.rootPath ?? process.cwd());
-      if (canPrompt && specIds.length > 0) {
-        const { select } = await import("@inquirer/prompts");
-        specId = await select({
-          message: "Select a spec to show",
-          choices: specIds.map((id) => ({ name: id, value: id })),
-        });
-      } else {
-        throw new Error("Missing required argument <spec-id>");
-      }
+      throw new Error("Missing required argument <spec-id>");
     }
 
     const specPath = join(this.specsDir, specId, "spec.md");
@@ -228,17 +216,7 @@ export function registerSpecCommand(rootProgram: typeof program) {
       ) => {
         try {
           if (!specId) {
-            const canPrompt = isInteractive(options);
-            const specIds = await getSpecIds();
-            if (canPrompt && specIds.length > 0) {
-              const { select } = await import("@inquirer/prompts");
-              specId = await select({
-                message: "Select a spec to validate",
-                choices: specIds.map((id) => ({ name: id, value: id })),
-              });
-            } else {
-              throw new Error("Missing required argument <spec-id>");
-            }
+            throw new Error("Missing required argument <spec-id>");
           }
 
           const specPath = join(SPECS_DIR, specId, "spec.md");

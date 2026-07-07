@@ -5,12 +5,6 @@ import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
 
-// Mock @inquirer/prompts
-vi.mock("@inquirer/prompts", () => ({
-  select: vi.fn(),
-  confirm: vi.fn(),
-}));
-
 describe("ArchiveCommand", () => {
   let tempDir: string;
   let archiveCommand: ArchiveCommand;
@@ -449,51 +443,16 @@ The system will log all events.
       }
     });
 
-    it("should proceed with archive when user declines spec updates", async () => {
-      const { confirm } = await import("@inquirer/prompts");
-      const mockConfirm = confirm as unknown as ReturnType<typeof vi.fn>;
-
-      const changeName = "decline-specs-feature";
+    it("should always proceed with spec updates (no confirmation prompt)", async () => {
+      const changeName = "auto-specs-feature";
       const changeDir = path.join(tempDir, ".sakti", "changes", changeName);
-      const changeSpecDir = path.join(changeDir, "specs", "test-capability");
-      await fs.mkdir(changeSpecDir, { recursive: true });
+      await fs.mkdir(changeDir, { recursive: true });
+      await fs.writeFile(path.join(changeDir, "tasks.md"), "- [x] Task 1\n");
 
-      // Create valid spec in change
-      const specContent = `# Test Capability Spec
-
-## Purpose
-This is a test capability specification.
-
-## Requirements
-
-### The system SHALL provide test capability
-
-#### Scenario: Basic test
-Given a test condition
-When an action occurs
-Then expected result happens`;
-      await fs.writeFile(path.join(changeSpecDir, "spec.md"), specContent);
-
-      // Mock confirm to return false (decline spec updates)
-      mockConfirm.mockResolvedValueOnce(false);
-
-      // Execute archive without --yes flag
+      // Execute archive without --yes flag — no confirm prompt anymore
       await archiveCommand.execute(changeName);
 
-      // Verify user was prompted about specs
-      expect(mockConfirm).toHaveBeenCalledWith({
-        message: "Proceed with spec updates?",
-        default: true,
-      });
-
-      // Verify skip message was logged
-      expect(console.log).toHaveBeenCalledWith("Skipping spec updates. Proceeding with archive.");
-
-      // Verify spec was NOT copied to main specs
-      const mainSpecPath = path.join(tempDir, ".sakti", "specs", "test-capability", "spec.md");
-      await expect(fs.access(mainSpecPath)).rejects.toThrow();
-
-      // Verify change was still archived
+      // Verify change was archived (proceeded without prompting)
       const archiveDir = path.join(tempDir, ".sakti", "changes", "archive");
       const archives = await fs.readdir(archiveDir);
       expect(archives.length).toBe(1);
@@ -872,45 +831,20 @@ E1 updated`,
     });
   });
 
-  describe("interactive mode", () => {
-    it("should use select prompt for change selection", async () => {
-      const { select } = await import("@inquirer/prompts");
-      const mockSelect = select as unknown as ReturnType<typeof vi.fn>;
-
+  describe("non-interactive mode", () => {
+    it("should throw when no change name provided", async () => {
       // Create test changes
-      const change1 = "feature-a";
-      const change2 = "feature-b";
-      await fs.mkdir(path.join(tempDir, ".sakti", "changes", change1), { recursive: true });
-      await fs.mkdir(path.join(tempDir, ".sakti", "changes", change2), { recursive: true });
+      await fs.mkdir(path.join(tempDir, ".sakti", "changes", "feature-a"), { recursive: true });
+      await fs.mkdir(path.join(tempDir, ".sakti", "changes", "feature-b"), { recursive: true });
 
-      // Mock select to return first change
-      mockSelect.mockResolvedValueOnce(change1);
-
-      // Execute without change name
-      await archiveCommand.execute(undefined, { yes: true });
-
-      // Verify select was called with correct options (values matter, names may include progress)
-      expect(mockSelect).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: "Select a change to archive",
-          choices: expect.arrayContaining([
-            expect.objectContaining({ value: change1 }),
-            expect.objectContaining({ value: change2 }),
-          ]),
-        }),
+      // Execute without change name — should throw, not prompt
+      await expect(archiveCommand.execute(undefined, { yes: true })).rejects.toThrow(
+        "A change name is required",
       );
-
-      // Verify the selected change was archived
-      const archiveDir = path.join(tempDir, ".sakti", "changes", "archive");
-      const archives = await fs.readdir(archiveDir);
-      expect(archives[0]).toContain(change1);
     });
 
-    it("should use confirm prompt for task warnings", async () => {
-      const { confirm } = await import("@inquirer/prompts");
-      const mockConfirm = confirm as unknown as ReturnType<typeof vi.fn>;
-
-      const changeName = "incomplete-interactive";
+    it("should warn about incomplete tasks and proceed", async () => {
+      const changeName = "incomplete-no-prompt";
       const changeDir = path.join(tempDir, ".sakti", "changes", changeName);
       await fs.mkdir(changeDir, { recursive: true });
 
@@ -918,44 +852,16 @@ E1 updated`,
       const tasksContent = "- [ ] Task 1";
       await fs.writeFile(path.join(changeDir, "tasks.md"), tasksContent);
 
-      // Mock confirm to return true (proceed)
-      mockConfirm.mockResolvedValueOnce(true);
-
-      // Execute without --yes flag
+      // Execute without --yes flag — should warn and proceed (no confirm)
       await archiveCommand.execute(changeName);
 
-      // Verify confirm was called
-      expect(mockConfirm).toHaveBeenCalledWith({
-        message: "Warning: 1 incomplete task(s) found. Continue?",
-        default: false,
-      });
-    });
+      // Verify warning was logged
+      expect(console.log).toHaveBeenCalledWith("Warning: 1 incomplete task(s) found. Continuing.");
 
-    it("should cancel when user declines task warning", async () => {
-      const { confirm } = await import("@inquirer/prompts");
-      const mockConfirm = confirm as unknown as ReturnType<typeof vi.fn>;
-
-      const changeName = "cancel-test";
-      const changeDir = path.join(tempDir, ".sakti", "changes", changeName);
-      await fs.mkdir(changeDir, { recursive: true });
-
-      // Create tasks.md with incomplete tasks
-      const tasksContent = "- [ ] Task 1";
-      await fs.writeFile(path.join(changeDir, "tasks.md"), tasksContent);
-
-      // Mock confirm to return false (cancel) for validation skip
-      mockConfirm.mockResolvedValueOnce(false);
-      // Mock another false for task warning
-      mockConfirm.mockResolvedValueOnce(false);
-
-      // Execute without --yes flag but skip validation to test task warning
-      await archiveCommand.execute(changeName, { noValidate: true });
-
-      // Verify archive was cancelled
-      expect(console.log).toHaveBeenCalledWith("Archive cancelled.");
-
-      // Verify change was not archived
-      await expect(fs.access(changeDir)).resolves.not.toThrow();
+      // Verify change was archived (proceeded despite incomplete tasks)
+      const archiveDir = path.join(tempDir, ".sakti", "changes", "archive");
+      const archives = await fs.readdir(archiveDir);
+      expect(archives[0]).toContain(changeName);
     });
   });
 });

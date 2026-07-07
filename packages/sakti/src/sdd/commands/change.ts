@@ -5,7 +5,6 @@ import { Validator } from "../core/validation/validator.js";
 import { ChangeParser } from "../core/parsers/change-parser.js";
 import { Change } from "../core/schemas/index.js";
 import type { RootOutput } from "../core/root-selection.js";
-import { isInteractive } from "../utils/interactive.js";
 import { getActiveChangeIds } from "../utils/item-discovery.js";
 import { getTaskProgressForChange } from "../utils/task-progress.js";
 
@@ -46,25 +45,15 @@ export class ChangeCommand {
     const changesPath = this.getChangesPath();
 
     if (!changeName) {
-      const canPrompt = isInteractive(options);
       const changes = await this.getActiveChanges(changesPath);
-      if (canPrompt && changes.length > 0) {
-        const { select } = await import("@inquirer/prompts");
-        const selected = await select({
-          message: "Select a change to show",
-          choices: changes.map((id) => ({ name: id, value: id })),
-        });
-        changeName = selected;
+      if (changes.length === 0) {
+        console.error("No change specified. No active changes found.");
       } else {
-        if (changes.length === 0) {
-          console.error("No change specified. No active changes found.");
-        } else {
-          console.error(`No change specified. Available IDs: ${changes.join(", ")}`);
-        }
-        console.error('Hint: use "sakti change list" to view available changes.');
-        process.exitCode = 1;
-        return;
+        console.error(`No change specified. Available IDs: ${changes.join(", ")}`);
       }
+      console.error('Hint: use "sakti list" to view available changes.');
+      process.exitCode = 1;
+      return;
     }
 
     const proposalPath = path.join(changesPath, changeName, "proposal.md");
@@ -193,25 +182,15 @@ export class ChangeCommand {
     const changesPath = path.join(process.cwd(), ".sakti", "changes");
 
     if (!changeName) {
-      const canPrompt = isInteractive(options);
       const changes = await getActiveChangeIds();
-      if (canPrompt && changes.length > 0) {
-        const { select } = await import("@inquirer/prompts");
-        const selected = await select({
-          message: "Select a change to validate",
-          choices: changes.map((id) => ({ name: id, value: id })),
-        });
-        changeName = selected;
+      if (changes.length === 0) {
+        console.error("No change specified. No active changes found.");
       } else {
-        if (changes.length === 0) {
-          console.error("No change specified. No active changes found.");
-        } else {
-          console.error(`No change specified. Available IDs: ${changes.join(", ")}`);
-        }
-        console.error('Hint: use "sakti change list" to view available changes.');
-        process.exitCode = 1;
-        return;
+        console.error(`No change specified. Available IDs: ${changes.join(", ")}`);
       }
+      console.error('Hint: use "sakti list" to view available changes.');
+      process.exitCode = 1;
+      return;
     }
 
     const changeDir = path.join(changesPath, changeName);

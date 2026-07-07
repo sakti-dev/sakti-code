@@ -24,8 +24,6 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@inquirer/core": "^10.3.2",
-    "@inquirer/prompts": "^7.10.1",
     "chalk": "^5.5.0",
     "commander": "^14.0.0",
     "cross-spawn": "7.0.6",

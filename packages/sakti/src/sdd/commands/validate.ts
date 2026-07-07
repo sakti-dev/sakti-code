@@ -6,7 +6,6 @@ import {
   toRootOutput,
   type ResolvedSaktiRoot,
 } from "../core/root-selection.js";
-import { isInteractive, resolveNoInteractive } from "../utils/interactive.js";
 import { getSpecIds } from "../utils/item-discovery.js";
 import { getAvailableChanges } from "./workflow/shared.js";
 import { nearestMatches } from "../utils/match.js";
@@ -40,8 +39,6 @@ export class ValidateCommand {
       return;
     }
 
-    const interactive = isInteractive(options);
-
     // Handle bulk flags first
     if (options.all || options.changes || options.specs) {
       await this.runBulkValidation(
@@ -54,7 +51,7 @@ export class ValidateCommand {
           strict: !!options.strict,
           json: !!options.json,
           concurrency: options.concurrency,
-          noInteractive: resolveNoInteractive(options),
+          noInteractive: true,
         },
       );
       return;
@@ -62,14 +59,6 @@ export class ValidateCommand {
 
     // No item and no flags
     if (!itemName) {
-      if (interactive) {
-        await this.runInteractiveSelector(root, {
-          strict: !!options.strict,
-          json: !!options.json,
-          concurrency: options.concurrency,
-        });
-        return;
-      }
       this.printNonInteractiveHint(root);
       process.exitCode = 1;
       return;
@@ -101,48 +90,6 @@ export class ValidateCommand {
   private async listChangeIds(root: ResolvedSaktiRoot): Promise<string[]> {
     const ids = await getAvailableChanges(root.path, root.changesDir);
     return ids.sort();
-  }
-
-  private async runInteractiveSelector(
-    root: ResolvedSaktiRoot,
-    opts: { strict: boolean; json: boolean; concurrency?: string },
-  ): Promise<void> {
-    const { select } = await import("@inquirer/prompts");
-    const choice = await select({
-      message: "What would you like to validate?",
-      choices: [
-        { name: "All (changes + specs)", value: "all" },
-        { name: "All changes", value: "changes" },
-        { name: "All specs", value: "specs" },
-        { name: "Pick a specific change or spec", value: "one" },
-      ],
-    });
-
-    if (choice === "all") return this.runBulkValidation(root, { changes: true, specs: true }, opts);
-    if (choice === "changes")
-      return this.runBulkValidation(root, { changes: true, specs: false }, opts);
-    if (choice === "specs")
-      return this.runBulkValidation(root, { changes: false, specs: true }, opts);
-
-    // one
-    const [changes, specs] = await Promise.all([this.listChangeIds(root), getSpecIds(root.path)]);
-    const items: { name: string; value: { type: ItemType; id: string } }[] = [];
-    items.push(
-      ...changes.map((id) => ({ name: `change/${id}`, value: { type: "change" as const, id } })),
-    );
-    items.push(
-      ...specs.map((id) => ({ name: `spec/${id}`, value: { type: "spec" as const, id } })),
-    );
-    if (items.length === 0) {
-      console.error("No items found to validate.");
-      process.exitCode = 1;
-      return;
-    }
-    const picked = await select<{ type: ItemType; id: string }>({
-      message: "Pick an item",
-      choices: items,
-    });
-    await this.validateByType(root, picked.type, picked.id, opts);
   }
 
   private printNonInteractiveHint(_root: ResolvedSaktiRoot): void {

@@ -14,19 +14,6 @@ export function asErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/**
- * @inquirer prompts reject with ExitPromptError on Ctrl-C; commands
- * translate that to `Cancelled.` + exit 130 (third caller extracted
- * this here in slice 7.1).
- */
-export function isPromptCancellationError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    (error.name === "ExitPromptError" ||
-      error.message.includes("force closed the prompt with SIGINT"))
-  );
-}
-
 export function asStatus(error: unknown, fallbackCode: string): Diagnostic {
   if (error instanceof SaktiError) {
     return error.diagnostic;
@@ -50,14 +37,6 @@ export function emitFailure(
   error: unknown,
   fallbackCode: string,
 ): void {
-  // Ctrl-C in a prompt is the user's choice, not an error: every
-  // command group gets the Cancelled./130 convention through here.
-  if (!json && isPromptCancellationError(error)) {
-    console.error("Cancelled.");
-    process.exitCode = 130;
-    return;
-  }
-
   const status = asStatus(error, fallbackCode);
   if (json) {
     const prior = Array.isArray(payload.status) ? payload.status : [];

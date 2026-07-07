@@ -193,21 +193,13 @@ export class ArchiveCommand {
       throw new Error("No Sakti changes directory found. Run 'sakti init' first.");
     }
 
-    // Get change name interactively if not provided
+    // Change name is required (no interactive picker)
     if (!changeName) {
-      if (json) {
-        throw new ArchiveBlockedError(
-          "archive_change_name_required",
-          "A change name is required: archive --json is non-interactive.",
-          "sakti archive <change-name> --json",
-        );
-      }
-      const selectedChange = await this.selectChange(changesDir);
-      if (!selectedChange) {
-        console.log("No change selected. Aborting.");
-        return null;
-      }
-      changeName = selectedChange;
+      throw new ArchiveBlockedError(
+        "archive_change_name_required",
+        "A change name is required.",
+        "sakti archive <change-name>",
+      );
     }
 
     const changeDir = path.join(changesDir, changeName);
@@ -313,23 +305,7 @@ export class ArchiveCommand {
     } else {
       // Log warning when validation is skipped
       const timestamp = new Date().toISOString();
-
-      if (!options.yes) {
-        const { confirm } = await import("@inquirer/prompts");
-        const proceed = await confirm({
-          message: chalk.yellow(
-            "⚠️  WARNING: Skipping validation may archive invalid specs. Continue? (y/N)",
-          ),
-          default: false,
-        });
-        if (!proceed) {
-          console.log("Archive cancelled.");
-          return null;
-        }
-      } else {
-        console.log(chalk.yellow(`\n⚠️  WARNING: Skipping validation may archive invalid specs.`));
-      }
-
+      console.log(chalk.yellow(`\n⚠️  WARNING: Skipping validation may archive invalid specs.`));
       console.log(chalk.yellow(`[${timestamp}] Validation skipped for change: ${changeName}`));
       console.log(chalk.yellow(`Affected files: ${changeDir}`));
     }
@@ -355,20 +331,8 @@ export class ArchiveCommand {
             "Complete the tasks or rerun with --yes.",
           );
         }
-      } else if (!options.yes) {
-        const { confirm } = await import("@inquirer/prompts");
-        const proceed = await confirm({
-          message: `Warning: ${incompleteTasks} incomplete task(s) found. Continue?`,
-          default: false,
-        });
-        if (!proceed) {
-          console.log("Archive cancelled.");
-          return null;
-        }
       } else {
-        console.log(
-          `Warning: ${incompleteTasks} incomplete task(s) found. Continuing due to --yes flag.`,
-        );
+        console.log(`Warning: ${incompleteTasks} incomplete task(s) found. Continuing.`);
       }
     }
 
@@ -394,22 +358,12 @@ export class ArchiveCommand {
         }
 
         let shouldUpdateSpecs = true;
-        if (!options.yes) {
-          if (json) {
-            throw new ArchiveBlockedError(
-              "archive_confirmation_required",
-              `Updating ${specUpdates.length} spec(s) requires confirmation: rerun with --yes.`,
-              "sakti archive <change-name> --json --yes",
-            );
-          }
-          const { confirm } = await import("@inquirer/prompts");
-          shouldUpdateSpecs = await confirm({
-            message: "Proceed with spec updates?",
-            default: true,
-          });
-          if (!shouldUpdateSpecs) {
-            console.log("Skipping spec updates. Proceeding with archive.");
-          }
+        if (!options.yes && json) {
+          throw new ArchiveBlockedError(
+            "archive_confirmation_required",
+            `Updating ${specUpdates.length} spec(s) requires confirmation: rerun with --yes.`,
+            "sakti archive <change-name> --json --yes",
+          );
         }
 
         if (shouldUpdateSpecs) {
@@ -528,58 +482,6 @@ export class ArchiveCommand {
       specsUpdated,
       ...(totals ? { totals } : {}),
     };
-  }
-
-  private async selectChange(changesDir: string): Promise<string | null> {
-    const { select } = await import("@inquirer/prompts");
-    // Get all directories in changes (excluding archive)
-    const entries = await fs.readdir(changesDir, { withFileTypes: true });
-    const changeDirs = entries
-      .filter((entry) => entry.isDirectory() && entry.name !== "archive")
-      .map((entry) => entry.name)
-      .sort();
-
-    if (changeDirs.length === 0) {
-      console.log("No active changes found.");
-      return null;
-    }
-
-    // Build choices with progress inline to avoid duplicate lists
-    let choices: Array<{ name: string; value: string }> = changeDirs.map((name) => ({
-      name,
-      value: name,
-    }));
-    try {
-      const progressList: Array<{ id: string; status: string }> = [];
-      for (const id of changeDirs) {
-        const progress = await getTaskProgressForChange(
-          changesDir,
-          id,
-          path.resolve(changesDir, "..", ".."),
-        );
-        const status = formatTaskStatus(progress);
-        progressList.push({ id, status });
-      }
-      const nameWidth = Math.max(...progressList.map((p) => p.id.length));
-      choices = progressList.map((p) => ({
-        name: `${p.id.padEnd(nameWidth)}     ${p.status}`,
-        value: p.id,
-      }));
-    } catch {
-      // If anything fails, fall back to simple names
-      choices = changeDirs.map((name) => ({ name, value: name }));
-    }
-
-    try {
-      const answer = await select({
-        message: "Select a change to archive",
-        choices,
-      });
-      return answer;
-    } catch {
-      // User cancelled (Ctrl+C)
-      return null;
-    }
   }
 
   private getArchiveDate(): string {

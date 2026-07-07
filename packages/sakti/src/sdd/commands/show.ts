@@ -1,5 +1,3 @@
-import { isInteractive } from "../utils/interactive.js";
-import { getActiveChangeIds, getSpecIds } from "../utils/item-discovery.js";
 import {
   resolveRootForCommand,
   toRootOutput,
@@ -8,6 +6,7 @@ import {
 } from "../core/root-selection.js";
 import { ChangeCommand } from "./change.js";
 import { SpecCommand } from "./spec.js";
+import { getActiveChangeIds, getSpecIds } from "../utils/item-discovery.js";
 import { nearestMatches } from "../utils/match.js";
 
 type ItemType = "change" | "spec";
@@ -18,7 +17,6 @@ const SPEC_FLAG_KEYS = new Set(["requirements", "scenarios", "requirement"]);
 interface ShowExecuteOptions {
   json?: boolean;
   type?: string;
-  noInteractive?: boolean;
   [k: string]: any;
 }
 
@@ -29,27 +27,13 @@ export class ShowCommand {
       return;
     }
 
-    const interactive = isInteractive(options);
-    const typeOverride = this.normalizeType(options.type);
-
     if (!itemName) {
-      if (interactive) {
-        const { select } = await import("@inquirer/prompts");
-        const type = await select<ItemType>({
-          message: "What would you like to show?",
-          choices: [
-            { name: "Change", value: "change" as const },
-            { name: "Spec", value: "spec" as const },
-          ],
-        });
-        await this.runInteractiveByType(type, options, root);
-        return;
-      }
-      this.printNonInteractiveHint(root);
+      console.error("Item name required. Usage: sakti show <item-name>");
       process.exitCode = 1;
       return;
     }
 
+    const typeOverride = this.normalizeType(options.type);
     await this.showDirect(itemName, { typeOverride, options, root });
   }
 
@@ -68,42 +52,6 @@ export class ShowCommand {
       ...options,
       ...(options.json ? { rootOutput: toRootOutput(root) } : {}),
     };
-  }
-
-  private async runInteractiveByType(
-    type: ItemType,
-    options: ShowExecuteOptions,
-    root: ResolvedSaktiRoot,
-  ): Promise<void> {
-    const { select } = await import("@inquirer/prompts");
-    if (type === "change") {
-      const changes = await getActiveChangeIds(root.path);
-      if (changes.length === 0) {
-        console.error("No changes found.");
-        process.exitCode = 1;
-        return;
-      }
-      const picked = await select<string>({
-        message: "Pick a change",
-        choices: changes.map((id) => ({ name: id, value: id })),
-      });
-      const cmd = new ChangeCommand(root.path);
-      await cmd.show(picked, this.delegateOptions(root, options) as any);
-      return;
-    }
-
-    const specs = await getSpecIds(root.path);
-    if (specs.length === 0) {
-      console.error("No specs found.");
-      process.exitCode = 1;
-      return;
-    }
-    const picked = await select<string>({
-      message: "Pick a spec",
-      choices: specs.map((id) => ({ name: id, value: id })),
-    });
-    const cmd = new SpecCommand(root.path);
-    await cmd.show(picked, this.delegateOptions(root, options) as any);
   }
 
   private async showDirect(
@@ -185,14 +133,6 @@ export class ShowCommand {
     }
     const cmd = new SpecCommand(root.path);
     await cmd.show(itemName, this.delegateOptions(root, params.options) as any);
-  }
-
-  private printNonInteractiveHint(_root: ResolvedSaktiRoot): void {
-    console.error("Nothing to show. Try one of:");
-    console.error("  sakti show <item>");
-    console.error("  sakti change show");
-    console.error("  sakti spec show");
-    console.error("Or run in an interactive terminal.");
   }
 
   private warnIrrelevantFlags(type: ItemType, options: { [k: string]: any }): boolean {
