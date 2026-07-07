@@ -16,7 +16,12 @@ import type {
   ThinkingLevelChangeEntry,
 } from "./entries.ts";
 import { SessionError } from "./entries.ts";
-import { createBranchSummaryMessage, createCustomMessage } from "./messages.ts";
+import {
+  createBranchSummaryMessage,
+  createCustomMessage,
+  createObservationMessage,
+  createReflectionMessage,
+} from "./messages.ts";
 import type { SessionStorageShape } from "./storage.ts";
 import { SessionStorage } from "./storage.ts";
 
@@ -69,6 +74,10 @@ export function buildSessionContextFromEntries(pathEntries: SessionTreeEntry[]):
       );
     } else if (entry.type === "branch_summary" && entry.summary) {
       messages.push(createBranchSummaryMessage(entry.summary, entry.fromId, entry.timestamp));
+    } else if (entry.type === "observation") {
+      messages.push(createObservationMessage(entry.summary, entry.timestamp));
+    } else if (entry.type === "reflection") {
+      messages.push(createReflectionMessage(entry.summary, entry.timestamp));
     }
   };
 
