@@ -62,6 +62,15 @@ export interface StreamRequest {
   sessionId?: string;
   /** System prompt (passed to streamText separately, not as a message). */
   system?: string;
+  /**
+   * Additional system content blocks appended AFTER the base {@link system}
+   * string. Each entry becomes its own system content block — used for
+   * observational-memory observation chunks that must stay cache-independent
+   * from the immutable base prompt. The base {@link system} block is
+   * byte-identical across turns (prefix-cache stable); only these chunks
+   * re-process when observations change.
+   */
+  systemMessages?: string[];
   /** Temperature. */
   temperature?: number;
   /** Thinking level — drives buildProviderOptions. */
@@ -104,6 +113,38 @@ interface StreamTextStream {
 
 /** Injectable streamText runner (for tests). */
 type RunStreamText = (options: Record<string, unknown>) => StreamTextStream;
+
+/**
+ * Build the AI SDK `system` param from the immutable base string + optional
+ * observation chunks. When only the base is present, pass it as `instructions`
+ * (string — unchanged behavior). When chunks are present, pass an array of
+ * system content blocks via `system`: the immutable base block first (with an
+ * Anthropic `cache_control` breakpoint so the prefix stays cached across
+ * turns), then one block per chunk. Anthropic caches at block granularity, so
+ * the base block survives observation changes while only changed chunks
+ * re-process. Mirrors Mastra's chunked-system-message design.
+ */
+function buildSystemParam(
+  base: string | undefined,
+  chunks: string[] | undefined,
+): { system: unknown } | { instructions: string } | Record<string, never> {
+  const hasChunks = chunks !== undefined && chunks.length > 0;
+  if (!hasChunks) {
+    return base !== undefined ? { instructions: base } : {};
+  }
+  const blocks: Array<Record<string, unknown>> = [];
+  if (base !== undefined) {
+    blocks.push({
+      type: "text",
+      text: base,
+      providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
+    });
+  }
+  for (const chunk of chunks) {
+    blocks.push({ type: "text", text: chunk });
+  }
+  return { system: blocks };
+}
 
 // ─── pure mappers ────────────────────────────────────────────────────────────
 
@@ -269,7 +310,7 @@ export function streamWithModel(
     ...(providerOptions && Object.keys(providerOptions).length > 0 ? { providerOptions } : {}),
     ...(req.abortSignal ? { abortSignal: req.abortSignal } : {}),
     ...(req.maxOutputTokens ? { maxOutputTokens: req.maxOutputTokens } : {}),
-    ...(req.system ? { instructions: req.system } : {}),
+    ...buildSystemParam(req.system, req.systemMessages),
     ...(req.temperature === undefined ? {} : { temperature: req.temperature }),
     ...(req.tools ? { tools: req.tools } : {}),
     ...(req.toolChoice ? { toolChoice: req.toolChoice } : {}),
