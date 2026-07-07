@@ -17,6 +17,7 @@ import {
   getSettingsPath,
 } from "./lib/config-dirs.ts";
 import { runMigration } from "./lib/config-migration.ts";
+import { ensureSaktiOnPath } from "./lib/sakti-cli.ts";
 import { installBuiltinSkills } from "./agent/config/install-builtin-skills.ts";
 import { createServerLoggers } from "./lib/loggers.ts";
 import { createProfilesStore } from "./lib/profiles-store.ts";
@@ -51,6 +52,11 @@ export async function createServer(options?: CreateServerOptions): Promise<Sakti
     hooks = {},
     migrationsFolder,
   } = options ?? {};
+
+  // Ensure the sakti CLI is on PATH for the agent's bash tool. Creates a
+  // symlink at ~/.sakti/bin/sakti → bundled CLI, prepends to process.env.PATH.
+  // Must run before any tool execution. Idempotent — safe on every boot.
+  ensureSaktiOnPath();
 
   const rawDb = new DatabaseSync(dbPath);
 

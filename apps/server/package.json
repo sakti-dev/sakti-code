@@ -40,6 +40,7 @@
     "@sakti-code/db": "workspace:*",
     "@sakti-code/llm": "workspace:*",
     "@sakti-code/logger": "workspace:*",
+    "@sakti-code/sakti": "workspace:*",
     "@sakti-code/tools": "workspace:*",
     "@vscode/ripgrep": "^1.18.0",
     "effect": "4.0.0-beta.90",
