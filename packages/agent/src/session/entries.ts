@@ -80,6 +80,22 @@ export interface ObservationPruneEntry extends SessionTreeEntryBase {
   type: "observation_prune";
 }
 
+export interface ObservationEntry extends SessionTreeEntryBase {
+  /** The observation text produced by the Observer LLM for this batch. */
+  summary: string;
+  /** Link to the OM record this observation belongs to. */
+  observationRecordId: string;
+  type: "observation";
+}
+
+export interface ReflectionEntry extends SessionTreeEntryBase {
+  /** The reflection text produced by the Reflector (condensed observations). */
+  summary: string;
+  /** Link to the OM record this reflection belongs to. */
+  observationRecordId: string;
+  type: "reflection";
+}
+
 export type SessionTreeEntry =
   | MessageEntry
   | ThinkingLevelChangeEntry
@@ -91,7 +107,9 @@ export type SessionTreeEntry =
   | LabelEntry
   | SessionInfoEntry
   | LeafEntry
-  | ObservationPruneEntry;
+  | ObservationPruneEntry
+  | ObservationEntry
+  | ReflectionEntry;
 
 export interface SessionContext {
   activeToolNames: string[] | null;
