@@ -19,7 +19,8 @@ export function filterSkillContentEntries(
 ): MessageEntry[] {
   if (!skillRoot) return entries;
 
-  const readPaths = new Map<string, string>();
+  // Build the set of toolCallIds whose read targeted a skill path.
+  const skillCallIds = new Set<string>();
   for (const entry of entries) {
     const msg = entry.message;
     if (msg.role !== "assistant") continue;
@@ -27,17 +28,33 @@ export function filterSkillContentEntries(
       if (block.type !== "toolCall") continue;
       if (block.name !== "read") continue;
       const fp = block.arguments.filePath;
-      if (typeof fp === "string") {
-        readPaths.set(block.id, fp);
+      if (typeof fp === "string" && fp.startsWith(skillRoot)) {
+        skillCallIds.add(block.id);
       }
     }
   }
 
   return entries.filter((entry) => {
     const msg = entry.message;
-    if (msg.role !== "toolResult") return true;
-    const path = readPaths.get(msg.toolCallId);
-    if (!path) return true;
-    return !path.startsWith(skillRoot);
+
+    // Drop toolResults for skill reads.
+    if (msg.role === "toolResult") {
+      return !skillCallIds.has(msg.toolCallId);
+    }
+
+    // Drop assistant entries whose ONLY content is skill-read toolCalls
+    // (no text — pure tool-call with no agent output). Keeps entries that
+    // have text alongside the toolCall.
+    if (msg.role === "assistant") {
+      const toolCalls = msg.content.filter((b) => b.type === "toolCall");
+      const hasText = msg.content.some(
+        (b) => b.type === "text" && "text" in b && b.text.length > 0,
+      );
+      if (toolCalls.length > 0 && !hasText && toolCalls.every((tc) => skillCallIds.has(tc.id))) {
+        return false;
+      }
+    }
+
+    return true;
   });
 }

@@ -81,7 +81,7 @@ describe("filterSkillContentEntries", () => {
     expect(filtered).toHaveLength(2);
   });
 
-  it("keeps user and assistant messages", () => {
+  it("keeps user messages, drops skill-read assistant+toolResult pair", () => {
     const entries = [
       makeEntry("e1", userMsg("hello")),
       makeEntry("e2", assistantReadMsg("c1", `${SKILL_ROOT}/sakti-plan/SKILL.md`)),
@@ -90,7 +90,7 @@ describe("filterSkillContentEntries", () => {
     const filtered = filterSkillContentEntries(entries, SKILL_ROOT);
     const ids = filtered.map((e) => e.id);
     expect(ids).toContain("e1");
-    expect(ids).toContain("e2");
+    expect(ids).not.toContain("e2");
     expect(ids).not.toContain("e3");
   });
 
@@ -115,5 +115,45 @@ describe("filterSkillContentEntries", () => {
     const entries = [makeEntry("e1", textAssistant)];
     const filtered = filterSkillContentEntries(entries, SKILL_ROOT);
     expect(filtered).toHaveLength(1);
+  });
+
+  it("also drops the assistant toolCall entry when all its calls target skillRoot", () => {
+    const entries = [
+      makeEntry("e1", userMsg("do stuff")),
+      makeEntry("e2", assistantReadMsg("c-skill", `${SKILL_ROOT}/sakti-build/SKILL.md`)),
+      makeEntry("e3", toolResultMsg("c-skill", "skill content")),
+      makeEntry("e4", assistantReadMsg("c-src", "/project/src/file.ts")),
+      makeEntry("e5", toolResultMsg("c-src", "source code")),
+    ];
+    const filtered = filterSkillContentEntries(entries, SKILL_ROOT);
+    const ids = filtered.map((e) => e.id);
+    expect(ids).not.toContain("e2");
+    expect(ids).not.toContain("e3");
+    expect(ids).toContain("e4");
+    expect(ids).toContain("e5");
+  });
+
+  it("keeps assistant entries that have text content alongside skill-read toolCalls", () => {
+    const mixedAssistant: AssistantMessage = {
+      ...assistantReadMsg("c-mixed", `${SKILL_ROOT}/sakti-build/SKILL.md`),
+      content: [
+        { type: "text", text: "Let me read the skill first." },
+        {
+          type: "toolCall",
+          id: "c-mixed",
+          name: "read",
+          arguments: { filePath: `${SKILL_ROOT}/sakti-build/SKILL.md` },
+        },
+      ],
+    };
+    const entries = [
+      makeEntry("e1", userMsg("do stuff")),
+      makeEntry("e2", mixedAssistant),
+      makeEntry("e3", toolResultMsg("c-mixed", "skill content")),
+    ];
+    const filtered = filterSkillContentEntries(entries, SKILL_ROOT);
+    const ids = filtered.map((e) => e.id);
+    expect(ids).toContain("e2");
+    expect(ids).not.toContain("e3");
   });
 });
