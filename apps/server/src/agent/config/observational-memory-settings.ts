@@ -2,7 +2,7 @@ import Type from "typebox";
 import { Value } from "typebox/value";
 
 const omBufferingSchema = Type.Object({
-  observationBufferTokens: Type.Number(),
+  observationBufferTokens: Type.Optional(Type.Number()),
   observationBufferActivation: Type.Optional(Type.Number()),
   reflectionBufferActivation: Type.Optional(Type.Number()),
 });
@@ -21,7 +21,7 @@ export interface ParsedOmSettings {
   instruction?: string;
   scope?: "thread" | "resource";
   buffering?: {
-    observationBufferTokens: number;
+    observationBufferTokens?: number;
     observationBufferActivation?: number;
     reflectionBufferActivation?: number;
   };

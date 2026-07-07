@@ -47,12 +47,12 @@ describe("parseOmSettings", () => {
     expect(result.observationThreshold).toBeUndefined();
   });
 
-  it("rejects buffering without required observationBufferTokens", () => {
-    expect(() =>
-      parseOmSettings({
-        observationalMemory: { buffering: { observationBufferActivation: 0.8 } },
-      }),
-    ).toThrow();
+  it("accepts buffering without observationBufferTokens (optional, defaults in resolveOmConfig)", () => {
+    const result = parseOmSettings({
+      observationalMemory: { buffering: { observationBufferActivation: 0.8 } },
+    });
+    expect(result.buffering?.observationBufferTokens).toBeUndefined();
+    expect(result.buffering?.observationBufferActivation).toBe(0.8);
   });
 
   it("accepts scope: 'resource'", () => {

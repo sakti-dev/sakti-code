@@ -55,6 +55,17 @@ describe("resolveOmConfig", () => {
     expect(result).toBeDefined();
   });
 
+  it("defaults buffering ON (matching Mastra) when no buffering settings", () => {
+    const ctx = makeCtx(PROFILES, { other: "value" }, { getApiKey: () => "sk-test" });
+    const result = resolveOmConfig(ctx, SESSION);
+    expect(result).toBeDefined();
+    if (!result) return;
+    expect(result.buffering).toBeDefined();
+    expect(result.buffering?.observationBufferTokens).toBe(0.2);
+    expect(result.buffering?.observationBufferActivation).toBe(0.8);
+    expect(result.buffering?.reflectionBufferActivation).toBe(0.5);
+  });
+
   it("returns undefined when API key is missing for observe provider", () => {
     const ctx = makeCtx(
       PROFILES,

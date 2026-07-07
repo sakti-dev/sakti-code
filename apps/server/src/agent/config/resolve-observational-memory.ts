@@ -125,15 +125,15 @@ export function resolveOmConfig(
     reflection: omSettings.reflectionThreshold ?? DEFAULT_REFLECTION_THRESHOLD,
   };
 
-  const buffering: ObservationalMemoryBuffering | undefined = omSettings.buffering
-    ? {
-        observationBufferTokens: omSettings.buffering.observationBufferTokens,
-        observationBufferActivation:
-          omSettings.buffering.observationBufferActivation ?? DEFAULT_OBSERVATION_BUFFER_ACTIVATION,
-        reflectionBufferActivation:
-          omSettings.buffering.reflectionBufferActivation ?? DEFAULT_REFLECTION_BUFFER_ACTIVATION,
-      }
-    : undefined;
+  // Buffering defaults ON (matching Mastra's OBSERVATIONAL_MEMORY_DEFAULTS).
+  // Explicit settings override each knob independently.
+  const buffering: ObservationalMemoryBuffering = {
+    observationBufferTokens: omSettings.buffering?.observationBufferTokens ?? 0.2,
+    observationBufferActivation:
+      omSettings.buffering?.observationBufferActivation ?? DEFAULT_OBSERVATION_BUFFER_ACTIVATION,
+    reflectionBufferActivation:
+      omSettings.buffering?.reflectionBufferActivation ?? DEFAULT_REFLECTION_BUFFER_ACTIVATION,
+  };
 
   // Filter ON except for archive phase (status === "merged"). Skill content
   // is structural instruction, not work signal — keep it out of observations.
@@ -151,7 +151,7 @@ export function resolveOmConfig(
       ? { reflectThinkingLevel: reflectRef.thinkingLevel }
       : {}),
     thresholds,
-    ...(buffering ? { buffering } : {}),
+    buffering,
     tokenCounter: getTokenCounter(observeModel),
     scope: omSettings.scope ?? "thread",
     ...(skillFilterRoot !== undefined ? { skillFilterRoot } : {}),
