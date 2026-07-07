@@ -16,7 +16,12 @@
 import { Effect } from "effect";
 import type { AgentMessage, OmAgentEvent } from "../types.ts";
 import { buildSessionContextFromEntries } from "../session/session.ts";
-import type { MessageEntry, ObservationPruneEntry } from "../session/entries.ts";
+import type {
+  MessageEntry,
+  ObservationEntry,
+  ObservationPruneEntry,
+  ReflectionEntry,
+} from "../session/entries.ts";
 import { filterSkillContentEntries } from "./skill-filter.ts";
 import type {
   BufferedObservationChunkInput,
@@ -279,8 +284,10 @@ export class ObservationalMemoryEngine {
       record = activated;
     }
 
-    // Nothing to reflect on.
-    if (!record.activeObservations?.trim() || record.observationTokenCount === 0) {
+    // Nothing to reflect on. For thread scope, observations live in the tree
+    // (not activeObservations); observationTokenCount tracks their cumulative
+    // size for both scopes.
+    if (record.observationTokenCount === 0) {
       return { reflected: false, reason: "nothing-to-reflect" };
     }
 
@@ -766,15 +773,43 @@ export class ObservationalMemoryEngine {
       const now = new Date();
       const observedMessageIds = this.extractObservedMessageIds(entries);
 
-      await this.storage.updateActiveObservations({
-        id: record.id,
-        observations: record.activeObservations
-          ? `${record.activeObservations}\n\n${observerResult.observations}`
-          : observerResult.observations,
-        lastObservedAt: now,
-        tokenCount: observerResult.tokenCount,
-        ...(observedMessageIds.length > 0 ? { observedMessageIds } : {}),
-      });
+      // Thread scope: observations live in the session tree as persisted
+      // ObservationEntry stream messages (positioned after the observed batch;
+      // pruning skips the batch so the entry appears at the batch's position).
+      // Resource scope: observations stay in the OM record's activeObservations
+      // (cross-session, can't live in one session's tree).
+      if (this.deps.scope === "thread") {
+        const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
+        const obsEntryId = await Effect.runPromise(this.sessionStorage.createEntryId());
+        const observationEntry: ObservationEntry = {
+          id: obsEntryId,
+          parentId: leafId,
+          timestamp: now.toISOString(),
+          type: "observation",
+          summary: observerResult.observations,
+          observationRecordId: record.id,
+        };
+        await Effect.runPromise(this.sessionStorage.appendEntry(observationEntry));
+        // Update cursors/tokens on the record (for pruning + thresholds) without
+        // touching activeObservations (observations are in the tree for thread scope).
+        await this.storage.updateActiveObservations({
+          id: record.id,
+          observations: record.activeObservations ?? "",
+          lastObservedAt: now,
+          tokenCount: record.observationTokenCount + observerResult.tokenCount,
+          ...(observedMessageIds.length > 0 ? { observedMessageIds } : {}),
+        });
+      } else {
+        await this.storage.updateActiveObservations({
+          id: record.id,
+          observations: record.activeObservations
+            ? `${record.activeObservations}\n\n${observerResult.observations}`
+            : observerResult.observations,
+          lastObservedAt: now,
+          tokenCount: observerResult.tokenCount,
+          ...(observedMessageIds.length > 0 ? { observedMessageIds } : {}),
+        });
+      }
 
       this.emitOmEvent({
         type: "om_end",
@@ -813,17 +848,59 @@ export class ObservationalMemoryEngine {
 
     await this.storage.setReflectingFlag(record.id, true);
     try {
-      const reflectorResult = await runReflector({
-        observations: record.activeObservations,
-        deps: this.deps,
-        ...(this.abortSignal ? { abortSignal: this.abortSignal } : {}),
-      });
+      // Thread scope: read observations from the session tree (ObservationEntry
+      // rows), reflect, append a ReflectionEntry, and prune the observation
+      // entries. Resource scope: read activeObservations from the record.
+      let observationsText: string;
+      let reflectorResult: { reflection: string; tokenCount: number };
+      let newRecord: ObservationalMemoryRecord;
 
-      const newRecord = await this.storage.createReflectionGeneration({
-        currentRecord: record,
-        reflection: reflectorResult.reflection,
-        tokenCount: reflectorResult.tokenCount,
-      });
+      if (this.deps.scope === "thread") {
+        const observationEntries = await this.loadActiveObservationEntries();
+        observationsText = observationEntries.map((e) => e.summary).join("\n\n");
+        reflectorResult = await runReflector({
+          observations: observationsText,
+          deps: this.deps,
+          ...(this.abortSignal ? { abortSignal: this.abortSignal } : {}),
+        });
+
+        // Append ReflectionEntry at the leaf.
+        const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
+        const refEntryId = await Effect.runPromise(this.sessionStorage.createEntryId());
+        const reflectionEntry: ReflectionEntry = {
+          id: refEntryId,
+          parentId: leafId,
+          timestamp: new Date().toISOString(),
+          type: "reflection",
+          summary: reflectorResult.reflection,
+          observationRecordId: record.id,
+        };
+        await Effect.runPromise(this.sessionStorage.appendEntry(reflectionEntry));
+
+        // Prune the observation entries (add to the cumulative skip set so the
+        // context builder skips them; the ReflectionEntry renders instead).
+        await this.pruneObservationEntries(
+          observationEntries.map((e) => e.id),
+          record.id,
+        );
+
+        newRecord = await this.storage.createReflectionGeneration({
+          currentRecord: record,
+          reflection: reflectorResult.reflection,
+          tokenCount: reflectorResult.tokenCount,
+        });
+      } else {
+        reflectorResult = await runReflector({
+          observations: record.activeObservations,
+          deps: this.deps,
+          ...(this.abortSignal ? { abortSignal: this.abortSignal } : {}),
+        });
+        newRecord = await this.storage.createReflectionGeneration({
+          currentRecord: record,
+          reflection: reflectorResult.reflection,
+          tokenCount: reflectorResult.tokenCount,
+        });
+      }
 
       const ids = this.getStorageIds();
       await this.storage.pruneHistory(ids.threadId, ids.resourceId, newRecord.id);
@@ -838,7 +915,7 @@ export class ObservationalMemoryEngine {
         observations: reflectorResult.reflection,
       });
 
-      return this.getOrCreateRecord();
+      return newRecord;
     } catch (error) {
       this.emitOmEvent({
         type: "om_failed",
@@ -850,6 +927,63 @@ export class ObservationalMemoryEngine {
       throw error;
     } finally {
       await this.storage.setReflectingFlag(record.id, false).catch(() => {});
+    }
+  }
+
+  /**
+   * Load ObservationEntry rows from the session tree that are NOT yet pruned
+   * (not in the latest observation_prune skip set). Used by the thread-scope
+   * reflector to read its input.
+   */
+  private async loadActiveObservationEntries(): Promise<ObservationEntry[]> {
+    const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
+    const pathEntries = await Effect.runPromise(this.sessionStorage.getPathToRoot(leafId));
+    let skipSet: Set<string> | undefined;
+    for (let i = pathEntries.length - 1; i >= 0; i--) {
+      const e = pathEntries[i]!;
+      if (e.type === "observation_prune") {
+        skipSet = new Set(e.observedEntryIds);
+        break;
+      }
+    }
+    return pathEntries.filter(
+      (e): e is ObservationEntry => e.type === "observation" && !skipSet?.has(e.id),
+    );
+  }
+
+  /**
+   * Append an observation_prune entry that adds the given observation entry IDs
+   * to the cumulative skip set. The context builder uses the LATEST prune
+   * entry's observedEntryIds, so this merges with the prior set.
+   */
+  private async pruneObservationEntries(
+    observationEntryIds: string[],
+    observationRecordId: string,
+  ): Promise<void> {
+    if (observationEntryIds.length === 0) return;
+    try {
+      const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
+      const pathEntries = await Effect.runPromise(this.sessionStorage.getPathToRoot(leafId));
+      const cumulative = new Set<string>(observationEntryIds);
+      for (let i = pathEntries.length - 1; i >= 0; i--) {
+        const e = pathEntries[i]!;
+        if (e.type === "observation_prune") {
+          for (const id of e.observedEntryIds) cumulative.add(id);
+          break;
+        }
+      }
+      const id = await Effect.runPromise(this.sessionStorage.createEntryId());
+      const pruneEntry: ObservationPruneEntry = {
+        type: "observation_prune",
+        id,
+        parentId: leafId,
+        timestamp: new Date().toISOString(),
+        observedEntryIds: [...cumulative],
+        observationRecordId,
+      };
+      await Effect.runPromise(this.sessionStorage.appendEntry(pruneEntry));
+    } catch (error) {
+      this.logError("prune observation entries", error);
     }
   }
 

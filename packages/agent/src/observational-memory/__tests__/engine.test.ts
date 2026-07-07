@@ -342,15 +342,16 @@ describe("ObservationalMemoryEngine (sync)", () => {
     expect(after.id).toBe(record.id);
   });
 
-  it("above observation threshold: observe writes updateActiveObservations", async () => {
+  it("above observation threshold: observe appends ObservationEntry to tree (thread scope)", async () => {
     session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
     setComplete("<observations>\n* 🔴 saw the message\n</observations>");
     const engine = new ObservationalMemoryEngine({ deps: createDeps(storage, session) });
     const record = await engine.getOrCreateRecord();
     await engine.maybeObserve(record);
     expect(vi.mocked(complete)).toHaveBeenCalledTimes(1);
-    expect(storage.updateActiveCalls).toHaveLength(1);
-    expect(storage.updateActiveCalls[0]!.observations).toContain("saw the message");
+    const obsEntries = await Effect.runPromise(session.findEntries("observation"));
+    expect(obsEntries).toHaveLength(1);
+    expect(obsEntries[0]!.summary).toContain("saw the message");
   });
 
   it("observe persists real observedMessageIds from the message entries (M2)", async () => {
@@ -445,8 +446,10 @@ describe("ObservationalMemoryEngine (sync)", () => {
     expect(ctx).toMatchObject({ phase: expect.stringContaining("observe") });
   });
 
-  it("buildContextSystemMessage is undefined for empty record, formatted when populated", async () => {
-    const engine = new ObservationalMemoryEngine({ deps: createDeps(storage, session) });
+  it("buildContextSystemMessage is undefined for empty record, formatted when populated (resource scope)", async () => {
+    const engine = new ObservationalMemoryEngine({
+      deps: createDeps(storage, session, { scope: "resource" }),
+    });
     const empty = await engine.getOrCreateRecord();
     expect(engine.buildContextSystemMessage(empty)).toBeUndefined();
 
@@ -459,8 +462,10 @@ describe("ObservationalMemoryEngine (sync)", () => {
     expect(msg).toContain("obs");
   });
 
-  it("buildContextSystemMessages (plural) returns string[] of cache-stable chunks", async () => {
-    const engine = new ObservationalMemoryEngine({ deps: createDeps(storage, session) });
+  it("buildContextSystemMessages (plural) returns string[] of cache-stable chunks (resource scope)", async () => {
+    const engine = new ObservationalMemoryEngine({
+      deps: createDeps(storage, session, { scope: "resource" }),
+    });
     session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
     setComplete("<observations>\n* 🔴 obs\n</observations>");
     let record = await engine.getOrCreateRecord();
@@ -469,7 +474,6 @@ describe("ObservationalMemoryEngine (sync)", () => {
     expect(Array.isArray(chunks)).toBe(true);
     expect(chunks).toBeDefined();
     expect(chunks!.length).toBeGreaterThanOrEqual(2);
-    // The observations live in their own chunk.
     const obsChunk = chunks!.find((c) => c.includes("<observations>"));
     expect(obsChunk).toBeDefined();
     expect(obsChunk).toContain("obs");
@@ -490,6 +494,18 @@ describe("ObservationalMemoryEngine (sync)", () => {
     const chunks = engine.buildContextSystemMessages(record);
     const joined = engine.buildContextSystemMessage(record);
     expect(joined).toBe(chunks?.join("\n\n"));
+  });
+
+  it("runSyncObserve appends an ObservationEntry to the session tree (thread scope)", async () => {
+    const engine = new ObservationalMemoryEngine({ deps: createDeps(storage, session) });
+    session.appendChild({ role: "user", content: "x".repeat(800), timestamp: 1 }, 1);
+    setComplete("<observations>\n* 🔴 obs\n</observations>");
+    let record = await engine.getOrCreateRecord();
+    record = await engine.maybeObserve(record);
+    const obsEntries = await Effect.runPromise(session.findEntries("observation"));
+    expect(obsEntries).toHaveLength(1);
+    expect(obsEntries[0]!.summary).toContain("obs");
+    expect(obsEntries[0]!.observationRecordId).toBe(record.id);
   });
 });
 
@@ -664,7 +680,9 @@ describe("ObservationalMemoryEngine — forceObserve", () => {
     // forceObserve bypasses the threshold.
     const result = await engine.forceObserve();
     expect(storage.updateActiveCalls).toHaveLength(1);
-    expect(result.activeObservations).toContain("obs line");
+    const obsEntries = await Effect.runPromise(session.findEntries("observation"));
+    expect(obsEntries).toHaveLength(1);
+    expect(obsEntries[0]!.summary).toContain("obs line");
     expect(result.observationTokenCount).toBeGreaterThan(0);
   });
 
