@@ -474,21 +474,10 @@ export class ObservationalMemoryEngine {
     // threshold → no sync observe → no pause). Resource scope: existing
     // swapBufferedToActive → activeObservations path.
     if (this.deps.scope === "thread") {
-      let parent = await Effect.runPromise(this.sessionStorage.getLeafId());
       const allMessageIds: string[] = [];
       let totalObsTokens = 0;
       for (const chunk of chunks) {
-        const entryId = await Effect.runPromise(this.sessionStorage.createEntryId());
-        const observationEntry: ObservationEntry = {
-          id: entryId,
-          parentId: parent,
-          timestamp: new Date().toISOString(),
-          type: "observation",
-          summary: chunk.observations,
-          observationRecordId: record.id,
-        };
-        await Effect.runPromise(this.sessionStorage.appendEntry(observationEntry));
-        parent = entryId;
+        await this.appendObservationEntry(chunk.observations, record.id);
         allMessageIds.push(...chunk.messageIds);
         totalObsTokens += chunk.tokenCount;
       }
@@ -649,17 +638,7 @@ export class ObservationalMemoryEngine {
     // entries. Resource scope: existing swapBufferedReflectionToActive path.
     if (this.deps.scope === "thread") {
       const observationEntries = await this.loadActiveObservationEntries();
-      const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
-      const refEntryId = await Effect.runPromise(this.sessionStorage.createEntryId());
-      const reflectionEntry: ReflectionEntry = {
-        id: refEntryId,
-        parentId: leafId,
-        timestamp: new Date().toISOString(),
-        type: "reflection",
-        summary: record.bufferedReflection,
-        observationRecordId: record.id,
-      };
-      await Effect.runPromise(this.sessionStorage.appendEntry(reflectionEntry));
+      await this.appendReflectionEntry(record.bufferedReflection, record.id);
       await this.pruneObservationEntries(
         observationEntries.map((e) => e.id),
         record.id,
@@ -889,17 +868,7 @@ export class ObservationalMemoryEngine {
       // Resource scope: observations stay in the OM record's activeObservations
       // (cross-session, can't live in one session's tree).
       if (this.deps.scope === "thread") {
-        const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
-        const obsEntryId = await Effect.runPromise(this.sessionStorage.createEntryId());
-        const observationEntry: ObservationEntry = {
-          id: obsEntryId,
-          parentId: leafId,
-          timestamp: now.toISOString(),
-          type: "observation",
-          summary: observerResult.observations,
-          observationRecordId: record.id,
-        };
-        await Effect.runPromise(this.sessionStorage.appendEntry(observationEntry));
+        await this.appendObservationEntry(observerResult.observations, record.id);
         // Update cursors/tokens on the record (for pruning + thresholds) without
         // touching activeObservations (observations are in the tree for thread scope).
         await this.storage.updateActiveObservations({
@@ -975,17 +944,7 @@ export class ObservationalMemoryEngine {
         });
 
         // Append ReflectionEntry at the leaf.
-        const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
-        const refEntryId = await Effect.runPromise(this.sessionStorage.createEntryId());
-        const reflectionEntry: ReflectionEntry = {
-          id: refEntryId,
-          parentId: leafId,
-          timestamp: new Date().toISOString(),
-          type: "reflection",
-          summary: reflectorResult.reflection,
-          observationRecordId: record.id,
-        };
-        await Effect.runPromise(this.sessionStorage.appendEntry(reflectionEntry));
+        await this.appendReflectionEntry(reflectorResult.reflection, record.id);
 
         // Prune the observation entries (add to the cumulative skip set so the
         // context builder skips them; the ReflectionEntry renders instead).
@@ -1133,6 +1092,44 @@ export class ObservationalMemoryEngine {
 
   private extractObservedMessageIds(entries: MessageEntry[]): string[] {
     return entries.map((entry) => entry.id);
+  }
+
+  /** Append an ObservationEntry at the current leaf. Returns the entry ID. */
+  private async appendObservationEntry(
+    summary: string,
+    observationRecordId: string,
+  ): Promise<string> {
+    const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
+    const entryId = await Effect.runPromise(this.sessionStorage.createEntryId());
+    const entry: ObservationEntry = {
+      id: entryId,
+      parentId: leafId,
+      timestamp: new Date().toISOString(),
+      type: "observation",
+      summary,
+      observationRecordId,
+    };
+    await Effect.runPromise(this.sessionStorage.appendEntry(entry));
+    return entryId;
+  }
+
+  /** Append a ReflectionEntry at the current leaf. Returns the entry ID. */
+  private async appendReflectionEntry(
+    summary: string,
+    observationRecordId: string,
+  ): Promise<string> {
+    const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
+    const entryId = await Effect.runPromise(this.sessionStorage.createEntryId());
+    const entry: ReflectionEntry = {
+      id: entryId,
+      parentId: leafId,
+      timestamp: new Date().toISOString(),
+      type: "reflection",
+      summary,
+      observationRecordId,
+    };
+    await Effect.runPromise(this.sessionStorage.appendEntry(entry));
+    return entryId;
   }
 
   private logError(phase: string, error: unknown): void {
