@@ -1,3 +1,4 @@
+import { cpSync } from "node:fs";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
@@ -16,5 +17,9 @@ export default defineConfig({
       ws: "src/agent/ws-handler.ts",
     },
     dts: true,
+    onSuccess: () =>
+      cpSync("src/agent/config/builtin-skills", "dist/builtin-skills", {
+        recursive: true,
+      }),
   },
 });
