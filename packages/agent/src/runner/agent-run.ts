@@ -26,12 +26,13 @@ export interface AgentRunDeps {
   readonly harness: AgentHarness;
 
   /**
-   * Ephemeral priming messages prepended to the first turn (via
+   * Phase skill messages appended after the user's first turn (via
    * `harness.injectMessages`). Used for forced skill injection: a synthetic
    * `read(SKILL.md)` tool-call + result so the agent starts its first real
    * turn with the phase's skill content already in context.
    *
-   * Never persisted to DB — rebuilt every run from the current phase.
+   * Persisted via message_end → appendMessage. Deduplicated by the runner
+   * (checks session history for the stable toolCallId before passing).
    */
   readonly initialMessages?: AgentMessage[];
 
@@ -210,9 +211,11 @@ export function runAgentRunEffect(deps: AgentRunDeps): Effect.Effect<void, Error
         }),
     };
 
-    // Inject ephemeral priming messages (skill injection) before the first
-    // turn. These go into the harness's nextTurnQueue and are prepended to
-    // the user's first message when executeTurnEffect runs.
+    // Inject phase skill messages before the first turn. These go into
+    // the harness's injectedMessages and are appended AFTER the user's
+    // first message (Anthropic user-first). Persisted via message_end →
+    // appendMessage — NOT ephemeral. Deduplication (skip if already in
+    // session) is the runner's responsibility.
     if (deps.initialMessages && deps.initialMessages.length > 0) {
       harness.injectMessages(deps.initialMessages);
     }

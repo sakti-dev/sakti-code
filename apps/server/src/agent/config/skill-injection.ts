@@ -6,12 +6,16 @@ import type { Skill } from "@sakti-code/agent";
  * pair that force-loads a skill's SKILL.md as if the agent had called `read`
  * itself.
  *
- * The pair is prepended to the user's first message at run start. It is
- * ephemeral (in-memory only, never persisted to DB) — re-built every run
- * from the current phase + on-disk SKILL.md content.
+ * The pair is appended AFTER the user's first message at run start
+ * (Anthropic requires user-first). It is persisted via the normal
+ * message_end → appendMessage pipeline — NOT ephemeral. Deduplication
+ * (skip if the skill is already in the session history) is handled by
+ * the runner, which checks for the stable toolCallId before calling
+ * injectMessages.
  *
  * The toolCall uses a stable synthetic id (`skill-read:<skillName>`) so the
- * matching toolResult can reference it deterministically.
+ * matching toolResult can reference it deterministically AND the runner
+ * can detect prior injection by scanning for this id.
  */
 export function buildSkillInjectionMessages(skill: Skill | undefined): AgentMessage[] {
   if (!skill) return [];
