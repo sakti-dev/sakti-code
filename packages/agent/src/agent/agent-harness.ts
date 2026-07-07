@@ -278,6 +278,21 @@ export class AgentHarness<
   private followUpQueue: UserMessage[] = [];
   private followUpQueueMode: QueueMode;
   private nextTurnQueue: AgentMessage[] = [];
+  /**
+   * Messages injected AFTER the user message at the next turn. Used for
+   * forced skill injection: a synthetic `[assistant(toolCall), toolResult]`
+   * pair that loads the phase's SKILL.md content. Positioned AFTER the user
+   * message (not before) so the conversation starts with a user message —
+   * Anthropic requires this.
+   *
+   * Unlike nextTurnQueue (prepended before the user message), these are
+   * appended after. Drained once in executeTurnEffect.
+   *
+   * These messages ARE persisted via the message_end → appendMessage
+   * pipeline. Deduplication (skip if already in session history) is the
+   * runner's responsibility, not the harness's.
+   */
+  private injectedMessages: AgentMessage[] = [];
   private handlers = new Map<string, Set<AgentHarnessHandler>>();
   private cacheHitTokens = 0;
   private cacheMissTokens = 0;
@@ -909,6 +924,12 @@ export class AgentHarness<
         }
         messages = [...queuedMessages, messages[0]!];
       }
+      // Drain injected messages AFTER the user message. Positioned here so
+      // the conversation starts with a user message (Anthropic requirement).
+      if (self.injectedMessages.length > 0) {
+        const injected = self.injectedMessages.splice(0);
+        messages = [...messages, ...injected];
+      }
       const beforeResult = yield* self.emitHookEffect({
         type: "before_agent_start",
         prompt: text,
@@ -1296,18 +1317,20 @@ export class AgentHarness<
   }
 
   /**
-   * Push raw AgentMessages onto the nextTurnQueue. They will be prepended
-   * (in order) before the next user message when `executeTurnEffect` runs.
+   * Push raw AgentMessages onto the injectedMessages queue. They will be
+   * appended AFTER the user's message when `executeTurnEffect` runs.
    *
-   * Used for ephemeral priming like the forced skill injection (synthetic
-   * read(SKILL.md) tool-call + result) — never persisted to DB.
+   * Used for forced skill injection (synthetic read(SKILL.md) tool-call +
+   * result). Positioned after the user message so the conversation starts
+   * with a user message — Anthropic requires user-first.
    *
-   * Unlike `nextTurn` (which wraps text as a user message), this accepts
-   * arbitrary AgentMessage shapes (assistant tool_calls, tool results, etc.).
+   * Unlike `nextTurn` (which wraps text as a user message and prepends
+   * before the next prompt), this accepts arbitrary AgentMessage shapes
+   * (assistant toolCalls, tool results, etc.) and appends after the prompt.
    */
   injectMessages(messages: AgentMessage[]): void {
     for (const msg of messages) {
-      this.nextTurnQueue.push(msg);
+      this.injectedMessages.push(msg);
     }
   }
 

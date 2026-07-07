@@ -131,4 +131,32 @@ describe("AgentHarness.injectMessages", () => {
     expect(allText(capturedReq!)).toContain("hello");
     expect(allText(capturedReq!)).not.toContain("INJECTED_SKILL_CONTENT");
   });
+
+  it("positions injected messages AFTER the user message (Anthropic user-first)", async () => {
+    const registration = registerFauxStreamProvider();
+    registrations.push(registration);
+    let capturedReq: StreamRequest | undefined;
+    registration.setResponses([
+      (req) => {
+        capturedReq = req;
+        return fauxAssistantMessage("ok");
+      },
+    ]);
+    const harness = new AgentHarness({
+      branchSummaryPrompts: TEST_BRANCH_SUMMARY_PROMPTS,
+      skillsInstructions: TEST_SKILLS_INSTRUCTIONS,
+      env: new TestExecutionEnv(process.cwd()),
+      session: await createTestSession(),
+      model: registration.getModel(),
+      streamFn: registration.streamFn,
+    });
+
+    harness.injectMessages(syntheticPair());
+    await Effect.runPromise(harness.promptEffect("hello"));
+
+    expect(capturedReq).toBeDefined();
+    const roles = capturedReq!.messages.map((m) => m.role);
+    expect(roles[0]).toBe("user");
+    expect(roles).toEqual(["user", "assistant", "toolResult"]);
+  });
 });
