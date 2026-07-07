@@ -162,6 +162,11 @@ class FakeObservationalMemoryStorage implements ObservationalMemoryStorage {
       createdAt: now,
       updatedAt: now,
     };
+    // Match DB behavior: new generation row has no buffered reflection.
+    delete newRecord.bufferedReflection;
+    delete newRecord.bufferedReflectionTokens;
+    delete newRecord.bufferedReflectionInputTokens;
+    delete newRecord.reflectedObservationLineCount;
     this.records.set(id, newRecord);
     return newRecord;
   }

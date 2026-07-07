@@ -147,6 +147,9 @@ class SyncOmStorage implements ObservationalMemoryStorage {
       createdAt: now,
       updatedAt: now,
     };
+    delete rec.bufferedReflection;
+    delete rec.bufferedReflectionTokens;
+    delete rec.bufferedReflectionInputTokens;
     this.records.set(id, rec);
     this.reflectionCalls.push({ tokenCount: input.tokenCount });
     return rec;
