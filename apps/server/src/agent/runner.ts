@@ -480,16 +480,45 @@ export function runPromptEffect(
       },
     };
 
-    // Force-inject the phase's builtin skill (ephemeral, never persisted).
-    // Built by looking up the current phase (from session kind/status) →
-    // builtin skill name → Skill object from loadedContext.skills.
+    // Force-inject the phase's builtin skill. Persisted via the normal
+    // message_end → appendMessage pipeline — NOT ephemeral. Deduplicated:
+    // skip injection if the skill is already in the session history
+    // (injected on a prior run of the same phase). This keeps the cache
+    // prefix stable: what the LLM saw = what's stored = no prefix
+    // divergence across runs.
     const phaseKey = session.kind === "plan" ? "plan" : session.status;
     const builtinSkillName = getBuiltinSkillForPhase(phaseKey);
     const phaseSkill =
       builtinSkillName !== undefined
         ? loadedContext.skills.find((s) => s.name === builtinSkillName)
         : undefined;
-    const initialMessages = buildSkillInjectionMessages(phaseSkill);
+    let initialMessages = buildSkillInjectionMessages(phaseSkill);
+
+    // Deduplicate: skip injection if the skill's toolCallId is already in
+    // the session tree. The toolCallId is stable: `skill-read:<skillName>`.
+    if (initialMessages.length > 0 && builtinSkillName !== undefined) {
+      const skillCallId = `skill-read:${builtinSkillName}`;
+      const alreadyInjected = yield* Effect.promise(async () => {
+        const leafId = await Effect.runPromise(storage.getLeafId());
+        if (!leafId) return false;
+        const entries = await Effect.runPromise(storage.getPathToRoot(leafId));
+        return entries.some(
+          (entry) =>
+            entry.type === "message" &&
+            entry.message.role === "assistant" &&
+            entry.message.content.some(
+              (block) => block.type === "toolCall" && block.id === skillCallId,
+            ),
+        );
+      });
+      if (alreadyInjected) {
+        initialMessages = [];
+        ctx.log?.agent.debug("skill already injected, skipping", {
+          sessionId,
+          skill: builtinSkillName,
+        });
+      }
+    }
 
     // Delegate the orchestration (event drain, retry abort, retry-deps
     // assembly, planFirstTurn dispatch, stuck-guard policy, compaction
