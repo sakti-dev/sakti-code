@@ -118,6 +118,9 @@ class SyncOmStorage implements ObservationalMemoryStorage {
     r.observationTokenCount = input.tokenCount;
     r.pendingMessageTokens = 0;
     if (input.lastObservedAt) r.lastObservedAt = input.lastObservedAt;
+    if (input.observedMessageIds !== undefined) {
+      r.observedMessageIds = input.observedMessageIds;
+    }
     r.updatedAt = new Date();
     this.updateActiveCalls.push({
       id: input.id,
@@ -507,6 +510,56 @@ describe("ObservationalMemoryEngine (sync)", () => {
     expect(obsEntries).toHaveLength(1);
     expect(obsEntries[0]!.summary).toContain("obs");
     expect(obsEntries[0]!.observationRecordId).toBe(record.id);
+  });
+
+  it("pruneObservedMessages creates CUMULATIVE prune entries across observe cycles", async () => {
+    // Regression: pruneObservedMessages used to create non-cumulative entries
+    // (only the latest batch's IDs). The context builder uses "latest prune
+    // entry wins" → old observed messages reappeared after the next observe.
+    const engine = new ObservationalMemoryEngine({ deps: createDeps(storage, session) });
+    const base = Date.now();
+
+    // Batch 1: two large messages.
+    const id1 = session.appendChild(
+      { role: "user", content: "x".repeat(800), timestamp: base + 1 },
+      base + 1,
+    );
+    const id2 = session.appendChild(
+      { role: "user", content: "y".repeat(800), timestamp: base + 2 },
+      base + 2,
+    );
+    setComplete("<observations>\n* 🔴 obs1\n</observations>");
+    let record = await engine.getOrCreateRecord();
+    record = await engine.maybeObserve(record);
+
+    // After first observe: a prune entry exists with batch-1 IDs.
+    let pruneEntries = await Effect.runPromise(session.findEntries("observation_prune"));
+    expect(pruneEntries).toHaveLength(1);
+    expect(pruneEntries[0]!.observedEntryIds).toContain(id1);
+    expect(pruneEntries[0]!.observedEntryIds).toContain(id2);
+
+    // Batch 2: two more large messages (timestamps AFTER the first observe's
+    // lastObservedAt so they're picked up as unobserved).
+    const id3 = session.appendChild(
+      { role: "user", content: "z".repeat(800), timestamp: base + 10000 },
+      base + 10000,
+    );
+    const id4 = session.appendChild(
+      { role: "user", content: "w".repeat(800), timestamp: base + 10001 },
+      base + 10001,
+    );
+    setComplete("<observations>\n* 🔴 obs2\n</observations>");
+    record = await engine.getOrCreateRecord();
+    record = await engine.maybeObserve(record);
+
+    // After second observe: the LATEST prune entry must include ALL 4 IDs
+    // (cumulative) so the context builder keeps skipping batch-1 messages.
+    pruneEntries = await Effect.runPromise(session.findEntries("observation_prune"));
+    const latest = pruneEntries[pruneEntries.length - 1]!;
+    expect(latest.observedEntryIds).toContain(id1);
+    expect(latest.observedEntryIds).toContain(id2);
+    expect(latest.observedEntryIds).toContain(id3);
+    expect(latest.observedEntryIds).toContain(id4);
   });
 });
 

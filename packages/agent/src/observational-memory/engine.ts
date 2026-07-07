@@ -778,13 +778,26 @@ export class ObservationalMemoryEngine {
 
       if (toRemove.length === 0) return;
 
+      // Merge with the prior prune entry so the context builder (which uses
+      // "latest prune entry wins") keeps skipping previously-pruned messages
+      // and observation entries. Without this, old observed messages and
+      // pruned ObservationEntry rows would reappear after each observe cycle.
+      const cumulative = new Set<string>(toRemove);
+      for (let i = pathEntries.length - 1; i >= 0; i--) {
+        const e = pathEntries[i]!;
+        if (e.type === "observation_prune") {
+          for (const id of e.observedEntryIds) cumulative.add(id);
+          break;
+        }
+      }
+
       const id = await Effect.runPromise(this.sessionStorage.createEntryId());
       const pruneEntry: ObservationPruneEntry = {
         type: "observation_prune",
         id,
         parentId: leafId,
         timestamp: new Date().toISOString(),
-        observedEntryIds: toRemove,
+        observedEntryIds: [...cumulative],
         observationRecordId: record.id,
       };
       await Effect.runPromise(this.sessionStorage.appendEntry(pruneEntry));
