@@ -7,7 +7,8 @@ const require = createRequire(import.meta.url);
 
 /** Resolve the sakti CLI binary path from the workspace dependency. */
 export function resolveSaktiCliPath(): string {
-  return require.resolve("@sakti-code/sakti/dist/cli.mjs");
+  const pkgRoot = dirname(require.resolve("@sakti-code/sakti/package.json"));
+  return join(pkgRoot, "dist", "cli.mjs");
 }
 
 /** Directory where the `sakti` symlink lives — sibling of the agent dir. */
