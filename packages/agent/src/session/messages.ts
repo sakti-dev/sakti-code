@@ -4,9 +4,17 @@ import type {
   BashExecutionMessage,
   BranchSummaryMessage,
   CustomMessage,
+  ObservationMessage,
+  ReflectionMessage,
 } from "../types";
 
-export type { BashExecutionMessage, BranchSummaryMessage, CustomMessage } from "../types";
+export type {
+  BashExecutionMessage,
+  BranchSummaryMessage,
+  CustomMessage,
+  ObservationMessage,
+  ReflectionMessage,
+} from "../types";
 
 export const BRANCH_SUMMARY_PREFIX = `The following is a summary of a branch that this conversation came back from:
 
@@ -42,6 +50,22 @@ export function createBranchSummaryMessage(
     role: "branchSummary",
     summary,
     fromId,
+    timestamp: new Date(timestamp).getTime(),
+  };
+}
+
+export function createObservationMessage(summary: string, timestamp: string): ObservationMessage {
+  return {
+    role: "observation",
+    summary,
+    timestamp: new Date(timestamp).getTime(),
+  };
+}
+
+export function createReflectionMessage(summary: string, timestamp: string): ReflectionMessage {
+  return {
+    role: "reflection",
+    summary,
     timestamp: new Date(timestamp).getTime(),
   };
 }

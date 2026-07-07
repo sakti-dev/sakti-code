@@ -181,7 +181,25 @@ export interface BranchSummaryMessage {
   timestamp: number;
 }
 
-export type AgentMessage = Message | CustomMessage | BashExecutionMessage | BranchSummaryMessage;
+export interface ObservationMessage {
+  role: "observation";
+  summary: string;
+  timestamp: number;
+}
+
+export interface ReflectionMessage {
+  role: "reflection";
+  summary: string;
+  timestamp: number;
+}
+
+export type AgentMessage =
+  | Message
+  | CustomMessage
+  | BashExecutionMessage
+  | BranchSummaryMessage
+  | ObservationMessage
+  | ReflectionMessage;
 
 export interface AgentState {
   readonly errorMessage?: string | undefined;
