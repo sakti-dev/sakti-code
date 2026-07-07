@@ -58,6 +58,15 @@ export interface ObservationalMemoryDeps {
   readonly buffering?: ObservationalMemoryBuffering | undefined;
   readonly tokenCounter: TokenCounter;
   readonly sessionStorage: SessionStorageShape;
+  /**
+   * When set, the observer drops any tool-result messages whose preceding
+   * `read` call targeted a path inside this directory. Used to keep builtin
+   * skill content (forced injection + agent-initiated reference reads) out of
+   * observations — skill content is structural instruction, not work signal.
+   *
+   * undefined disables the filter (archive phase, subagents).
+   */
+  readonly skillFilterRoot?: string | undefined;
   /** Structured logger for best-effort failure reporting. Optional. */
   readonly logger?: Logger | undefined;
   /** Custom observer/reflector instruction overlay (e.g. caveman). Optional. */

@@ -17,6 +17,7 @@ import { Effect } from "effect";
 import type { AgentMessage, OmAgentEvent } from "../types.ts";
 import { buildSessionContextFromEntries } from "../session/session.ts";
 import type { MessageEntry, ObservationPruneEntry } from "../session/entries.ts";
+import { filterSkillContentEntries } from "./skill-filter.ts";
 import type {
   BufferedObservationChunkInput,
   ObservationalMemoryRecord,
@@ -135,12 +136,17 @@ export class ObservationalMemoryEngine {
     const messageEntries = pathEntries.filter(
       (entry): entry is MessageEntry => entry.type === "message",
     );
-    if (record.lastObservedAt === undefined) return messageEntries;
-    const lastObservedAt = record.lastObservedAt;
-    return messageEntries.filter((entry) => {
-      const ts = entry.message.timestamp ? new Date(entry.message.timestamp) : undefined;
-      return ts !== undefined && ts > lastObservedAt;
-    });
+    let sinceLastObserve: MessageEntry[];
+    if (record.lastObservedAt === undefined) {
+      sinceLastObserve = messageEntries;
+    } else {
+      const lastObservedAt = record.lastObservedAt;
+      sinceLastObserve = messageEntries.filter((entry) => {
+        const ts = entry.message.timestamp ? new Date(entry.message.timestamp) : undefined;
+        return ts !== undefined && ts > lastObservedAt;
+      });
+    }
+    return filterSkillContentEntries(sinceLastObserve, this.deps.skillFilterRoot);
   }
 
   /**
