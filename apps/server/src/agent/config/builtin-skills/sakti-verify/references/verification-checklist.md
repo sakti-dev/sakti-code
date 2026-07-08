@@ -103,7 +103,7 @@ If found → CRITICAL.
 
 ### Check 3.1: Technical design adherence
 
-Read `technical-design.md`. For each key decision:
+Read `design.md`. For each key decision:
 
 1. Identify what the decision states
 2. Check if the implementation follows it

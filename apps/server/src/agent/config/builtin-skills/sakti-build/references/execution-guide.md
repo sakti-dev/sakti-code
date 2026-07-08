@@ -79,7 +79,7 @@ For each unchecked task:
   1. Extract the full task text and enriched details from tasks.md
   2. Dispatch a fresh subagent with:
      - The full task text (goal, dependencies, files, approach, risks, testing)
-     - Relevant context from technical-design.md
+     - Relevant context from design.md
      - The instruction to follow TDD (if test setup exists)
      - The commit requirement
   3. Wait for the subagent to return
@@ -105,7 +105,7 @@ Approach: <implementation notes from task>
 Risks: <what could go wrong>
 Testing: <how to verify>
 
-Technical design context: <relevant excerpt from technical-design.md>
+Technical design context: <relevant excerpt from design.md>
 
 Instructions:
 1. Follow TDD: write a failing test first, watch it fail, implement minimal code, watch it pass
