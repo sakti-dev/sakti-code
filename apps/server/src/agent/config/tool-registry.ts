@@ -15,6 +15,7 @@ import {
   type SearchOperations,
 } from "@sakti-code/tools";
 import { rgPath } from "@vscode/ripgrep";
+import { preflightWorktree } from "../../lib/worktree.ts";
 
 export interface ToolContext {
   readonly cwd: string;
@@ -58,8 +59,40 @@ export const TOOL_FACTORIES: Readonly<Record<string, ToolFactory>> = {
     createWebSearchTool(
       ctx.websearchOperations ? { operations: ctx.websearchOperations } : {},
     ) as AgentTool,
-  transition: () => createTransitionTool() as AgentTool,
+  transition: (ctx) => wrapTransitionTool(ctx),
 };
+
+/**
+ * Wrap the pure transition tool with a read-only git pre-flight for plan→mission.
+ * If the worktree can't be created (not a git repo, no default branch), return
+ * an error result with terminate:false so the agent stays alive and can inform
+ * the user. The pure tool in packages/tools stays context-free.
+ */
+function wrapTransitionTool(ctx: ToolContext): AgentTool {
+  const base = createTransitionTool();
+  return {
+    ...base,
+    async execute(...callArgs: Parameters<AgentTool["execute"]>) {
+      const args = callArgs[1] as { to?: unknown };
+      if (args.to === "mission") {
+        const err = preflightWorktree(ctx.cwd);
+        if (err) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Cannot transition to mission: ${err} Fix this, then call transition({ to: "mission" }) again.`,
+              },
+            ],
+            details: undefined,
+            terminate: false,
+          };
+        }
+      }
+      return base.execute(...(callArgs as Parameters<typeof base.execute>));
+    },
+  };
+}
 
 /**
  * Build the tool surface for one agent. Throws on unknown tool names so a
