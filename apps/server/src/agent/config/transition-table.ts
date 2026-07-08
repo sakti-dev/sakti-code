@@ -131,6 +131,8 @@ export function phaseFromSession(session: { kind: string; status: string }): Pha
     case "merged":
       return "archive";
     default:
-      return "specify";
+      throw new Error(
+        `Unknown status "${session.status}" for session kind "${session.kind}" — cannot derive phase.`,
+      );
   }
 }

@@ -201,6 +201,11 @@ export const wsResponseSchema = Type.Union([
  * flip status — the runner owns mode resolution (it has the transition table
  * + can chain/auto-start). Records every transition call with a string `to`
  * + `body`; no-ops otherwise. Errors are logged, never thrown.
+ *
+ * **Why fire-and-forget is safe:** `node:sqlite` writes are synchronous —
+ * the SQL executes during the microtask, before the `await runPrompt(...)`
+ * continuation runs. If the DB layer ever becomes async, this MUST be
+ * awaited (the transition signal would be lost silently).
  */
 export async function persistTransitionSideEffect(
   ctx: ServerContext,

@@ -72,8 +72,10 @@ describe("phaseFromSession", () => {
     expect(phaseFromSession({ kind: "mission", status: "merged" })).toBe("archive");
   });
 
-  it("falls back to specify for an unknown mission status", () => {
-    expect(phaseFromSession({ kind: "mission", status: "bogus" })).toBe("specify");
+  it("phaseFromSession throws for an unknown status on a mission", () => {
+    expect(() => phaseFromSession({ kind: "mission", status: "bogus-phase" })).toThrow(
+      /Unknown status/,
+    );
   });
 });
 
