@@ -65,6 +65,7 @@ export class SessionRepo {
       kind?: string;
       status?: string;
       changeName?: string | null;
+      worktreePath?: string | null;
       pendingTransitionTo?: string | null;
       pendingTransitionBody?: string | null;
     },
@@ -84,6 +85,7 @@ export class SessionRepo {
       ...(options?.status === undefined ? {} : { status: options.status }),
       thinkingLevel: options?.thinkingLevel ?? "off",
       ...(options?.changeName === undefined ? {} : { changeName: options.changeName }),
+      ...(options?.worktreePath === undefined ? {} : { worktreePath: options.worktreePath }),
       ...(options?.pendingTransitionTo === undefined
         ? {}
         : { pendingTransitionTo: options.pendingTransitionTo }),
@@ -134,6 +136,7 @@ export class SessionRepo {
         | "profileId"
         | "status"
         | "changeName"
+        | "worktreePath"
         | "pendingTransitionTo"
         | "pendingTransitionBody"
       >

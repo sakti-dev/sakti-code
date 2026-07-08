@@ -11,6 +11,7 @@ import {
   type Phase,
 } from "../../agent/config/transition-table.ts";
 import { resolveActiveChangeName } from "../../agent/config/resolve-change-name.ts";
+import { createMissionWorktree, removeMissionWorktree } from "../../lib/worktree.ts";
 import { getCtx } from "../../context.ts";
 
 const confirmBody = Type.Object({
@@ -50,24 +51,32 @@ export const confirmRoutes = new Hono()
         edge.requiresGraduation && existing.kind === "plan"
           ? buildGraduation(ctx, existing)
           : undefined;
+      // Worktree teardown (archive→done) runs via applyTransition's side-effect
+      // callback; it only needs the session's changeName + project.
+      const worktreeTeardown = edge.requiresWorktreeTeardown
+        ? buildWorktreeTeardown(ctx, existing)
+        : undefined;
       await applyTransition(
         {
           repos: ctx.repos,
           ...(forceReset !== undefined ? { forceReset } : {}),
           ...(graduate !== undefined ? { graduate } : {}),
+          ...(worktreeTeardown !== undefined ? { worktreeTeardown } : {}),
           ...(ctx.log !== undefined ? { log: ctx.log } : {}),
         },
         existing,
         edge,
       );
-      // plan→mission: resolve the active change name and stamp it on the
-      // plan session so the client can carry it to the new mission.
+      // plan→mission: resolve the active change name, create the worktree, and
+      // stamp both on the plan session so the client can carry them to the new
+      // mission.
       if (edge.from === "plan" && edge.to === "mission") {
         const project = ctx.repos.projects.findById(existing.projectId);
         if (project) {
           const changeName = resolveActiveChangeName(project.cwd);
           if (changeName) {
-            await ctx.repos.sessions.update(id, { changeName });
+            const wtPath = createMissionWorktree(project.cwd, changeName);
+            await ctx.repos.sessions.update(id, { changeName, worktreePath: wtPath });
           }
         }
       }
@@ -83,3 +92,21 @@ export const confirmRoutes = new Hono()
     }
     return c.json(updated);
   });
+
+/**
+ * Build the worktree-teardown side-effect callback for the archive→done edge.
+ * Removes the mission's git worktree (keeps the branch for merge/review). The
+ * worktree CREATE is done inline in the plan→mission block above (it needs
+ * resolveActiveChangeName + the returned path to stamp); teardown only needs
+ * the session's changeName, already stored.
+ */
+function buildWorktreeTeardown(
+  ctx: ReturnType<typeof getCtx>,
+  session: { id: string; projectId: string; changeName: string | null },
+): (sessionId: string) => Promise<void> {
+  return async () => {
+    const project = ctx.repos.projects.findById(session.projectId);
+    if (!project || !session.changeName) return;
+    removeMissionWorktree(project.cwd, session.changeName);
+  };
+}
