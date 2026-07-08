@@ -50,7 +50,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     expect(after?.pendingTransitionBody).toBeNull();
   });
 
-  it("verify→archive approve flips status review → merged", async () => {
+  it("verify→archive approve flips status verify → archive", async () => {
     const { app, ctx } = await makeApp([confirmRoutes]);
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
@@ -273,9 +273,46 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
       const after = ctx.repos.sessions.findById(session.id);
       expect(after?.status).toBe("done");
       expect(existsSync(`${cwd}-worktrees/fix`)).toBe(false);
+      // worktreePath is cleared — no dangling pointer to the removed dir.
+      expect(after?.worktreePath).toBeNull();
       // Branch survives.
       const branch = execSync("git branch --list sakti/fix", { cwd, shell: "/bin/sh" }).toString();
       expect(branch).toContain("sakti/fix");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("plan→mission approve returns 500 and keeps the gate when worktree creation fails", async () => {
+    const { app, ctx } = await makeApp([confirmRoutes]);
+    const cwd = mkdtempSync(join(tmpdir(), "sakti-confirm-fail-"));
+    // Has a change dir (so changeName resolves) but is NOT a git repo →
+    // createMissionWorktree throws on detectDefaultBranch.
+    execSync(`mkdir -p ${cwd}/.sakti/changes/broken`, { shell: "/bin/sh" });
+    execSync(`echo "name: broken" > ${cwd}/.sakti/changes/broken/.sakti.yaml`, {
+      shell: "/bin/sh",
+    });
+
+    try {
+      const project = await ctx.repos.projects.create("p", cwd);
+      const session = await ctx.repos.sessions.create(project.id, {
+        kind: "plan",
+        status: "specify",
+        pendingTransitionTo: "mission",
+        pendingTransitionBody: "brief",
+      });
+
+      const res = await app.request(`/api/sessions/${session.id}/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve", to: "mission", body: "brief" }),
+      });
+
+      expect(res.status).toBe(500);
+      // The gate stays for retry — pending NOT cleared.
+      const after = ctx.repos.sessions.findById(session.id);
+      expect(after?.pendingTransitionTo).toBe("mission");
+      expect(after?.worktreePath).toBeNull();
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

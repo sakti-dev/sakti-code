@@ -1,4 +1,4 @@
-import { FiCheckCircle, FiClipboard, FiFileText } from "solid-icons/fi";
+import { FiArchive, FiCheckCircle, FiClipboard, FiFileText } from "solid-icons/fi";
 import { createSignal, type JSX, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
@@ -15,7 +15,7 @@ const COPY: Record<
     title: "Ready to Archive",
     approve: "Archive",
     reject: "Request changes",
-    icon: FiCheckCircle,
+    icon: FiArchive,
   },
   done: {
     title: "Archive Complete",

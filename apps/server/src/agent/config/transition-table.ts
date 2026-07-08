@@ -28,8 +28,6 @@ export interface TransitionEdge {
   requiresForcedObserve?: boolean;
   /** Graduate the plan transcript into the project OM. plan→mission only. */
   requiresGraduation?: boolean;
-  /** Create a mission worktree at plan→mission graduation. plan→mission only. */
-  requiresWorktreeCreate?: boolean;
   /** Remove the mission worktree at archive→done teardown. archive→done only. */
   requiresWorktreeTeardown?: boolean;
   /** Status to flip the session to (the DB `status` column value). */
@@ -48,7 +46,6 @@ const TABLE: Record<string, TransitionEdge> = {
     to: "mission",
     mode: "gate",
     requiresGraduation: true,
-    requiresWorktreeCreate: true,
     // Delivered by embedding in the mission's handoff user message (mission
     // start has no preceding transition call to produce a tool result).
     instruction: instruction(

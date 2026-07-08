@@ -103,22 +103,6 @@ describe("applyTransition", () => {
     expect(ctx.repos.sessions.update).toHaveBeenCalledWith("s1", { status: "verify" });
   });
 
-  it("fires worktreeCreate on a requiresWorktreeCreate edge", async () => {
-    const calls: string[] = [];
-    const repos = { sessions: { update: async () => {} } };
-    await applyTransition(
-      {
-        repos: repos as never,
-        worktreeCreate: async () => {
-          calls.push("create");
-        },
-      },
-      { id: "s1" },
-      { from: "plan", to: "mission", mode: "gate", instruction: "", requiresWorktreeCreate: true },
-    );
-    expect(calls).toEqual(["create"]);
-  });
-
   it("fires worktreeTeardown on a requiresWorktreeTeardown edge", async () => {
     const calls: string[] = [];
     const repos = { sessions: { update: async () => {} } };

@@ -240,6 +240,19 @@ export async function runAgentStream(
   ws: WsHandle,
 ) {
   const log = ctx.log?.server;
+  // Terminal sessions can't run: the worktree is torn down and the phase is
+  // finished. Reject before creating a turn so the client surfaces an error
+  // instead of running file tools against a deleted cwd.
+  const current = ctx.repos.sessions.findById(sessionId);
+  if (current?.status === "done") {
+    log?.warn?.("rejected run on a terminal (done) session", { sessionId });
+    ws.send({
+      error: "This mission is archived and cannot accept new prompts.",
+      sessionId,
+      type: "error",
+    } satisfies ErrorFrame);
+    return;
+  }
   // Defensive cap: a buggy skill could otherwise infinite-loop build⇄verify.
   // The verify→archive gate is the natural terminator; this is a backstop.
   const MAX_CHAIN_DEPTH = 8;

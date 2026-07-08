@@ -84,5 +84,18 @@ describe("worktree ops", () => {
       }).toString();
       expect(branch).toContain("sakti/add-feature");
     });
+
+    it("reuses a surviving sakti/<changeName> branch instead of failing", () => {
+      // After an archive→done teardown the branch is kept; a later mission with
+      // the same change name must not hard-fail on `worktree add -b` (duplicate
+      // branch). It should re-checkout the existing branch.
+      initGitRepo(projectDir);
+      const wtPath = createMissionWorktree(projectDir, "recycle");
+      removeMissionWorktree(projectDir, "recycle");
+      // Second creation with the surviving branch — must not throw.
+      const wtPath2 = createMissionWorktree(projectDir, "recycle");
+      expect(existsSync(wtPath2)).toBe(true);
+      expect(wtPath2).toBe(wtPath);
+    });
   });
 });

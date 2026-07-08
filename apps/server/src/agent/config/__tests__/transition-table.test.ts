@@ -89,11 +89,6 @@ describe("phaseFromSession", () => {
     expect(edge.requiresWorktreeTeardown).toBe(true);
   });
 
-  it("plan->mission edge declares requiresWorktreeCreate", () => {
-    const edge = getEdge("plan", "mission");
-    expect(edge.requiresWorktreeCreate).toBe(true);
-  });
-
   it("phaseFromSession throws for an unknown status on a mission", () => {
     expect(() => phaseFromSession({ kind: "mission", status: "bogus-phase" })).toThrow(
       /Unknown status/,

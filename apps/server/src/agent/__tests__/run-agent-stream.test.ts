@@ -71,4 +71,34 @@ describe("runAgentStream turn stamping", () => {
       runPromptSpy.mockRestore();
     }
   });
+
+  it("rejects a run on a terminal (done) session without creating a turn", async () => {
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("done-proj", "/tmp/done");
+    const session = await ctx.repos.sessions.create(project.id, {
+      kind: "mission",
+      status: "done",
+    });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    const runPromptSpy = vi.spyOn(runnerMod, "runPrompt");
+    try {
+      runPromptSpy.mockImplementation(async () => {});
+      const sent: { type?: string }[] = [];
+      await runAgentStream(ctx, session.id, "hi", storage, {
+        send: (frame) => sent.push(frame as { type?: string }),
+      });
+
+      // No run, no turn.
+      expect(runPromptSpy).not.toHaveBeenCalled();
+      expect(ctx.repos.turns.listBySession(session.id)).toHaveLength(0);
+      // An error frame was surfaced to the client.
+      expect(sent.some((f) => f.type === "error")).toBe(true);
+    } finally {
+      runPromptSpy.mockRestore();
+    }
+  });
 });

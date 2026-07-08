@@ -13,8 +13,6 @@ export interface TransitionApplyCtx {
   forceReset?: (sessionId: string) => Promise<void>;
   /** Bound plan-graduation (plan→mission). Best-effort. */
   graduate?: (sessionId: string) => Promise<void>;
-  /** Bound worktree creation (plan→mission). Best-effort. */
-  worktreeCreate?: (sessionId: string) => Promise<void>;
   /** Bound worktree teardown (archive→done). Best-effort. */
   worktreeTeardown?: (sessionId: string) => Promise<void>;
   log?: {
@@ -58,18 +56,6 @@ export async function applyTransition(
       await ctx.graduate(session.id);
     } catch (err) {
       ctx.log?.agent?.warn?.("transition: graduation failed (continuing)", {
-        sessionId: session.id,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
-
-  // Worktree creation (plan→mission). Best-effort.
-  if (edge.requiresWorktreeCreate && ctx.worktreeCreate) {
-    try {
-      await ctx.worktreeCreate(session.id);
-    } catch (err) {
-      ctx.log?.agent?.warn?.("transition: worktree creation failed (continuing)", {
         sessionId: session.id,
         error: err instanceof Error ? err.message : String(err),
       });

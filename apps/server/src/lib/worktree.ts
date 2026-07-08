@@ -1,5 +1,4 @@
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 function git(cwd: string, args: string): string {
@@ -42,7 +41,11 @@ export function detectDefaultBranch(cwd: string): string | null {
  * so failures surface to the agent (not swallowed).
  */
 export function preflightWorktree(cwd: string): string | null {
-  if (!existsSync(join(cwd, ".git")) && !existsSync(join(dirname(cwd), ".git"))) {
+  // Use git itself to detect a repo — works inside linked worktrees, subdirs,
+  // and repos with a relocated gitdir where a `.git` entry may be absent.
+  try {
+    git(cwd, "rev-parse --is-inside-work-tree");
+  } catch {
     return `"${cwd}" is not a git repository. Initialize git (git init) before this mission can be isolated in a worktree.`;
   }
   const base = detectDefaultBranch(cwd);
@@ -54,12 +57,29 @@ export function preflightWorktree(cwd: string): string | null {
 
 /** Compute the sibling worktree directory for a change. */
 export function worktreePathFor(projectCwd: string, changeName: string): string {
+  // Sibling dir (not nested in the repo) so the agent's file tools don't scan
+  // it and it doesn't pollute the main tree's git status. Two projects sharing
+  // a basename within the same parent would collide — rare in practice.
   return join(dirname(projectCwd), `${basename(projectCwd)}-worktrees`, changeName);
+}
+
+/** Does `refs/heads/<branch>` exist in the repo at `cwd`? */
+function branchExists(cwd: string, branch: string): boolean {
+  try {
+    git(cwd, `show-ref --verify --quiet refs/heads/${branch}`);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
  * Create a git worktree + branch for a mission. Returns the absolute worktree
  * path. Throws on failure (caller decides how to surface).
+ *
+ * Reuses an existing `sakti/<changeName>` branch when one survives (e.g. a
+ * prior archived mission kept it for merge/review) instead of hard-failing on
+ * `worktree add -b`; otherwise creates a fresh branch off the default branch.
  */
 export function createMissionWorktree(projectCwd: string, changeName: string): string {
   const base = detectDefaultBranch(projectCwd);
@@ -68,13 +88,18 @@ export function createMissionWorktree(projectCwd: string, changeName: string): s
   }
   const wtPath = worktreePathFor(projectCwd, changeName);
   const branch = `sakti/${changeName}`;
-  git(projectCwd, `worktree add -b ${branch} "${wtPath}" ${base}`);
+  if (branchExists(projectCwd, branch)) {
+    git(projectCwd, `worktree add "${wtPath}" ${branch}`);
+  } else {
+    git(projectCwd, `worktree add -b ${branch} "${wtPath}" ${base}`);
+  }
   return wtPath;
 }
 
 /**
  * Remove a mission worktree. Keeps the branch (commits survive for merge).
- * Never throws — best-effort cleanup.
+ * `--force` discards any uncommitted worktree changes — acceptable because the
+ * archive phase commits before teardown. Never throws — best-effort cleanup.
  */
 export function removeMissionWorktree(projectCwd: string, changeName: string): void {
   const wtPath = worktreePathFor(projectCwd, changeName);

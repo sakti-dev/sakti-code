@@ -9,9 +9,13 @@ interface MissionChatViewProps {
 }
 
 export function MissionChatView(props: MissionChatViewProps): JSX.Element {
-  const { sessions, actions } = useStore();
+  const { sessions, actions, server } = useStore();
 
   const sessionStore = createMemo(() => sessions.get(props.sessionId));
+  // SessionMeta (status/changeName) lives on the server store, not the reactive
+  // session store. `done` is terminal — the worktree is gone, so hide the input.
+  const meta = createMemo(() => server.store.sessions[props.sessionId]);
+  const isDone = () => meta()?.status === "done";
 
   onMount(() => {
     void actions.loadChat(props.sessionId);
@@ -52,7 +56,15 @@ export function MissionChatView(props: MissionChatViewProps): JSX.Element {
           </div>
         )}
       </Show>
-      <ChatInput placeholder="Continue working…" sessionId={props.sessionId} />
+      <Show
+        when={isDone()}
+        fallback={<ChatInput placeholder="Continue working…" sessionId={props.sessionId} />}
+      >
+        <div class="px-4 pb-6 text-center text-muted-foreground text-sm">
+          This mission is archived. The worktree was removed; the branch{" "}
+          <code>sakti/{meta()?.changeName ?? "unknown"}</code> is retained for merge/review.
+        </div>
+      </Show>
     </div>
   );
 }
