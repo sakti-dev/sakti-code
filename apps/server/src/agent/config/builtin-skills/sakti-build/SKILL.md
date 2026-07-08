@@ -1,6 +1,6 @@
 ---
 name: sakti-build
-description: "Build phase. Use when a change has completed specification and tasks need to be implemented. Reads design.md + tasks.md, executes each task with TDD, runs a final review, and hands off to verify via ask(kind:completion)."
+description: "Build phase. Use when a change has completed specification and tasks need to be implemented. Reads design.md + tasks.md, executes each task with TDD, runs a final review, and hands off to verify via transition(to:verify). Autonomous — does not pause mid-run."
 ---
 
 # Sakti Build
@@ -57,26 +57,13 @@ If the phase is not `build`, stop and tell the user what phase they're in.
 
 Parse `tasks.md` checkboxes. Report: "N/M tasks complete."
 
-If all tasks are already checked, skip to Step 5 (final review).
+**1e. Resuming after a verify reject (read the fixing plan):** if you are re-entering build because verify found issues (a verify→build auto-transition), the fixing plan is in the `transition({ to: "build" })` call that brought you here. Read it from the transcript and address **every** issue it lists before re-transitioning to verify. Do **not** skip to a final review just because all tasks are checked — verify rejected the previous completion for concrete reasons that must be fixed first.
 
-### Step 2 — Choose Execution Mode (Blocking Point)
+### Step 2 — Execute Tasks
 
-Ask the user to choose how tasks will be executed:
+**Default to direct execution** (the main session implements each task inline). This phase is autonomous — it does not pause to ask the user how to run. (If a `build_mode` is already recorded in the change state, honor it; otherwise use direct.)
 
-- **"Direct"** — main session implements each task, tests, and commits. Simpler, full visibility.
-- **"Subagent"** — fresh subagent dispatched per task. Prevents context pollution on long implementations.
-
-**Pause and wait for the user's explicit choice.** Do not auto-select or default.
-
-Record the choice:
-
-```bash
-sakti state set <name> build_mode <direct|subagent>
-```
-
-### Step 3 — Execute Tasks
-
-**Read `references/execution-guide.md`** (relative to this skill's directory) and follow its guidance for the chosen mode.
+**Read `references/execution-guide.md`** (relative to this skill's directory) and follow its guidance.
 
 The execution guide covers:
 
@@ -90,7 +77,7 @@ The execution guide covers:
 
 **Resume:** if resuming after interruption, find the first unchecked task (`grep -n '\- \[ \]' tasks.md | head -1`) and continue from there. Already-committed tasks must not be re-implemented.
 
-### Step 4 — Mark Tasks Complete
+### Step 3 — Mark Tasks Complete
 
 For each completed task, change `- [ ]` to `- [x]` in `tasks.md` and commit the progress:
 
@@ -99,51 +86,44 @@ git add tasks.md
 git commit -m "chore: mark task N complete"
 ```
 
-### Step 5 — Sanity Check
+### Step 4 — Sanity Check
 
 After all tasks are checked:
 
-**5a. Confirm all tasks are marked complete:**
+**4a. Confirm all tasks are marked complete:**
 
 ```bash
 grep -c '\- \[ \]' tasks.md
 ```
 
-Must return 0 (no unchecked tasks). If any remain, return to Step 3.
+Must return 0 (no unchecked tasks). If any remain, return to Step 2.
 
-**5b. Run test suite:**
+**4b. Run test suite:**
 
 ```bash
 vp run -r test
 ```
 
-If any tests fail, return to Step 3 and fix the failures. Do not proceed until all tests pass.
+If any tests fail, return to Step 2 and fix the failures. Do not proceed until all tests pass.
 
-### Step 6 — Hand Off to Verify
+### Step 5 — Hand Off to Verify
 
-**Call `ask({ kind: "completion", body })`** where `body` summarizes what changed and how it was verified (tests run, results). This renders the completion card with wired approve/revise actions; approve triggers a forced context observe (bias reduction for the verify agent) and advances to the verify phase. Do not print a handoff text block — the card is the handoff UI. After calling `ask`, your turn ends.
+**Call `transition({ to: "verify", body })`** where `body` summarizes what changed and how it was verified (tests run, results). This is an **auto** transition — verify starts immediately on a forced-observed (compacted) context (bias reduction). There is no confirmation card; do not print a handoff text block. After calling `transition`, your turn ends and the verify agent runs automatically.
 
-If you are blocked or need a decision before completing, call `ask` without a `kind` to ask an open question.
-
-## Decision Points
-
-Step 2 and Step 6 are **blocking points.** Follow these rules:
-
-- **Call the `ask` tool.** For the execution-mode choice (Step 2), omit `kind`. For the completion handoff (Step 6), use `kind: "completion"`.
-- **Never end a blocking point with plain text.** Free text does not set the pending ask, render a card, or trigger the transition — the user typing "approved" as a message does nothing.
-- Pause and wait for an explicit user choice before continuing.
-- Never substitute recommendation rules or defaults for current confirmation.
+Build is an **autonomous** phase: do not pause mid-run to ask questions. If you hit a genuine blocker, that is a stall — explain the blocker in your output and stop (a runtime reminder may re-prompt you). Anything that's merely a judgment call is batched into the verify summary and surfaced once at the verify→archive gate.
 
 ## Exit & Handoff
 
-The handoff IS the `ask({ kind: "completion", body })` call in Step 6 — there is no separate handoff text block. After the user acts on the card, the mission advances to the verify phase (with a forced context observe for bias reduction).
+The handoff IS the `transition({ to: "verify", body })` call in Step 5 — there is no separate handoff text block. The build↔verify loop runs automatically: if verify finds issues it transitions back to build (you read the fixing plan and fix); when verify is clean it gates at archive.
 
 ## Common Mistakes
 
-| Mistake                                           | Fix                                                               |
-| ------------------------------------------------- | ----------------------------------------------------------------- |
-| Skipping TDD when test setup exists               | Execution guide detects test setup — follow RED-GREEN-REFACTOR    |
-| Implementing multiple tasks before committing     | One commit per task — keeps history traceable                     |
-| Guessing at fixes when tests fail                 | Read `references/debugging-guide.md` — systematic debugging first |
-| Transitioning to verify with failing tests        | Step 5b runs the test suite — all must pass before transition     |
-| Re-implementing already-committed tasks on resume | Find the first unchecked task and continue from there             |
+| Mistake                                                                   | Fix                                                                                |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Skipping to final review when all tasks are checked after a verify reject | Read the fixing plan from the transition call and fix every issue first (Step 1e)  |
+| Skipping TDD when test setup exists                                       | Execution guide detects test setup — follow RED-GREEN-REFACTOR                     |
+| Implementing multiple tasks before committing                             | One commit per task — keeps history traceable                                      |
+| Guessing at fixes when tests fail                                         | Read `references/debugging-guide.md` — systematic debugging first                  |
+| Transitioning to verify with failing tests                                | Step 4b runs the test suite — all must pass before transition                      |
+| Re-implementing already-committed tasks on resume                         | Find the first unchecked task and continue from there                              |
+| Pausing mid-build to ask the user a question                              | Build is autonomous — batch judgments into the verify summary; only transition out |

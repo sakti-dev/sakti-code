@@ -118,34 +118,26 @@ Unresolved items, if any.
 
 **Specs** — written **only** when there's a real behavior delta. Full changes usually produce some; hotfix usually produces none (unless escalated). Follow the spec-driven schema's delta operations (ADDED/MODIFIED/REMOVED/RENAMED).
 
-### Step 5 — End-of-Specify Confirm (Blocking Point)
+### Step 5 — Hand Off to Build (Gate)
 
-Present a summary of design.md + tasks.md via the `ask` tool (omit `kind`):
+When the specification is ready, **call `transition({ to: "build", body })`** where `body` summarizes `design.md` + `tasks.md` (and any spec deltas). This is a **gate** transition: it renders a confirmation card — the card IS the end-of-specify review. Do not print a separate handoff text block.
 
-- **"Confirm, specification complete"** — proceed to transition
-- **"Needs adjustment"** — revise, then re-request confirmation
+- **Approve** → the phase advances to `build` (status flips to `building`).
+- **Reject (NO)** → the card is dismissed; you re-run with the user's feedback and revise the spec, then call `transition({ to: "build" })` again.
 
-**Pause and wait for the user's explicit choice.** Do not transition before confirmation.
-
-### Step 6 — Transition
-
-```bash
-sakti state transition <name> specify-complete
-```
-
-This verifies `design.md` + `tasks.md` exist and advances the phase to `build`.
+In **brainstorming mode (full)**, you may hold an interactive design review (plain-text Q&A) before calling `transition`. In **autonomous mode (hotfix)**, drive straight to the transition once the artifacts are complete — do not pause for questions.
 
 ## Decision Points
 
 Steps 5 (and the brainstorming-mode confirmation inside `references/brainstorming.md`) are **blocking points**:
 
-- **Call the `ask` tool.** For an open choice (design review, revisions), omit `kind`.
-- **Never end a blocking point with plain text.** Free text does not set a pending ask or render a card — the user typing "approved" as a message does nothing.
-- Pause and wait for an explicit user choice before continuing/transitioning.
+- **Lifecycle handoffs use the `transition` tool.** Specify→build is `transition({ to: "build", body })` — a gate that renders the review card. Open design questions (brainstorming mode) are plain-text Q&A: ask, then end your turn; the user replies.
+- **Never end the specify→build handoff with plain text.** The `transition` call renders the card and advances the phase on approval — text alone does nothing.
+- Pause and wait for an explicit user choice before continuing.
 
 ## Exit & Handoff
 
-After `specify-complete` succeeds:
+After the specify→build gate is approved:
 
 ```
 Specification complete. Change: <name>
@@ -164,11 +156,11 @@ The change is now ready for the build phase.
 
 ## Common Mistakes
 
-| Mistake                                                           | Fix                                                                                       |
-| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Creating technical-design.md instead of design.md                 | There is ONE design doc: `design.md`. technical-design.md no longer exists                |
-| Skipping the end-of-specify confirm                               | Step 5 is a blocking point — wait for explicit confirmation via `ask`                     |
-| Writing spec deltas in hotfix/autonomous mode                     | Any behavior change triggers escalation to `full` + brainstorming, not silent spec writes |
-| Running brainstorming for a hotfix                                | hotfix uses autonomous mode (references/autonomous.md); brainstorming is for `full`       |
-| Forgetting tasks.md                                               | tasks.md is mandatory for every change (build + future subagents depend on it)            |
-| Ending a blocking point with plain text instead of the `ask` tool | Every blocking point uses `ask`; free-text "gates" silently do nothing                    |
+| Mistake                                                             | Fix                                                                                       |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Creating technical-design.md instead of design.md                   | There is ONE design doc: `design.md`. technical-design.md no longer exists                |
+| Skipping the specify→build gate                                     | Step 5 calls `transition({ to: "build" })` — the card is the review; wait for approval    |
+| Writing spec deltas in hotfix/autonomous mode                       | Any behavior change triggers escalation to `full` + brainstorming, not silent spec writes |
+| Running brainstorming for a hotfix                                  | hotfix uses autonomous mode (references/autonomous.md); brainstorming is for `full`       |
+| Forgetting tasks.md                                                 | tasks.md is mandatory for every change (build + future subagents depend on it)            |
+| Ending the handoff with plain text instead of the `transition` tool | The specify→build handoff uses `transition`; open design questions use plain text         |

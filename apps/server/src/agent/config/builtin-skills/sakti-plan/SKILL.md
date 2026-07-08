@@ -1,6 +1,6 @@
 ---
 name: sakti-plan
-description: "Use when starting a new change — planning requirements, defining scope, and classifying the change type before any detailed specification begins. Produces only a lightweight proposal.md and hands off to a mission session via the ask tool."
+description: "Use when starting a new change — planning requirements, defining scope, and classifying the change type before any detailed specification begins. Produces only a lightweight proposal.md and graduates to a mission session via the transition tool."
 ---
 
 # Sakti Plan
@@ -52,7 +52,7 @@ Use the language of the user request that triggered this skill as the default ou
 
 This is a **prediction** that self-corrects: if the specify phase later discovers a spec change is actually needed, it escalates to brainstorming. So when unsure, lean `hotfix` only if you're confident no spec changes; otherwise `full`.
 
-**2b. Present classification + name and wait for explicit confirmation.** Call the `ask` tool (omit `kind` — it's an open question) presenting:
+**2b. Present classification + name and wait for explicit confirmation.** Present (as plain text, then end your turn — the user replies in their next message):
 
 - The clarification summary (brief)
 - Your proposed workflow (`full` or `hotfix`) with a one-line rationale
@@ -62,7 +62,7 @@ This is a **prediction** that self-corrects: if the specify phase later discover
 
 Names must be lowercase letters, digits, and hyphens only (e.g. `add-google-oauth-login`).
 
-**Pause and wait for the user's explicit choice.** Do not auto-generate, infer, or run `sakti new change` before confirmation. If the chosen name collides with an existing change, report it and ask for another.
+**Pause and wait for the user's explicit choice.** Do not auto-generate, infer, or run `sakti new change` before confirmation. If the chosen name collides with an existing change, report it and ask for another. (Plan is an interactive phase — ending your turn with a question is correct; the user replies via chat.)
 
 ### Step 3 — Create Change + Proposal
 
@@ -94,7 +94,7 @@ Do NOT create specs/, design.md, or tasks.md here — those belong to the specif
 
 **4a. Content check.** Confirm the proposal is substantive (not a stub): problem background, goals, scope, impact.
 
-**4b. User review (blocking point).** Call the `ask` tool (omit `kind`) presenting a brief summary of the proposal and offering:
+**4b. User review (blocking point).** Present (as plain text, then end your turn) a brief summary of the proposal and offer:
 
 - **"Confirm, planning complete"** — graduate to a mission session
 - **"Needs adjustment"** — revise the proposal, then re-request confirmation
@@ -103,27 +103,27 @@ Do NOT create specs/, design.md, or tasks.md here — those belong to the specif
 
 ### Step 5 — Graduate (Blocking Point)
 
-When the user confirms planning is complete, **call `ask({ kind: "session", body })`** where `body` is a self-contained mission brief that a fresh agent can act on with no prior context. Include:
+When the user confirms planning is complete, **call `transition({ to: "mission", body })`** where `body` is a self-contained mission brief that a fresh agent can act on with no prior context. Include:
 
 - What to build and why (from the proposal)
 - Key files/constraints discovered during exploration
 - The rough plan and the chosen workflow (`full`/`hotfix`)
 - Any non-goals or open questions
 
-`body` becomes the mission's first prompt — make it count. The `proposed-session` card this renders **is** the handoff UI; do not print a handoff text block. After calling `ask`, your turn ends. The user confirms or asks for revisions via the card's wired actions.
+`body` becomes the mission's first prompt — make it count. This is a **gate** transition: it renders a confirmation card. Do not print a separate handoff text block — the card is the handoff UI. After calling `transition`, your turn ends. The user approves (spawns the mission + runs plan→resource memory graduation) or rejects (you revise).
 
 ## Decision Points
 
 Steps 2b, 4b, and 5 are **blocking points**. Follow these rules at each:
 
-- **Call the `ask` tool.** For an open choice (classification+name, review revisions), omit `kind`. For graduation, use `kind: "session"`.
-- **Never end a blocking point with plain text.** Free text does not set the pending ask, render a card, or trigger graduation — the user typing "approved" as a message does nothing.
+- **Lifecycle handoffs use the `transition` tool.** Graduation (Step 5) is `transition({ to: "mission", body })` — it is a gate that renders a card. Open choices (Steps 2b, 4b) are plain-text questions: present the options, then end your turn; the user replies in their next message.
+- **Never end a lifecycle handoff with plain text.** Graduation REQUIRES the `transition` call; text alone does not render the card, set the pending transition, or trigger graduation — the user typing "approved" as a message does nothing.
 - Pause and wait for an explicit user choice before continuing.
 - Never substitute recommendation rules, defaults, or "the user would probably agree" for explicit confirmation.
 
 ## Exit & Handoff
 
-Graduation is the `ask({ kind: "session", body })` call in Step 5 — there is no separate handoff text block. The `proposed-session` card's Create button spawns the mission session (born in `specifying`); approve also runs plan→resource memory graduation.
+Graduation is the `transition({ to: "mission", body })` call in Step 5 — there is no separate handoff text block. The card's approval spawns the mission session (born in `specifying`, linked to this change) and runs plan→resource memory graduation.
 
 After the user acts on the card, you may note the next phase:
 
@@ -134,11 +134,11 @@ The specify phase picks up from here: specs/design.md/tasks.md are produced ther
 
 ## Common Mistakes
 
-| Mistake                                                                     | Fix                                                                                    |
-| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Printing a handoff text block instead of calling `ask({ kind: "session" })` | Graduation REQUIRES the ask call; text does not set the pending ask or render the card |
-| Creating specs/design.md/tasks.md during planning                           | Those belong to the specify phase; plan produces only proposal.md                      |
-| Skipping the classification step                                            | Step 2 classifies full vs hotfix — it drives the specify phase mode                    |
-| Creating the change before the user confirms classification + name          | Step 2b is a blocking point — wait for explicit confirmation                           |
-| Inferring or auto-generating the change name                                | Names must be kebab-case English, explicitly chosen by the user                        |
-| Ending a blocking point with plain text instead of the `ask` tool           | Every blocking point uses `ask`; free-text "gates" silently do nothing                 |
+| Mistake                                                                          | Fix                                                                                                  |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Printing a handoff text block instead of calling `transition({ to: "mission" })` | Graduation REQUIRES the transition call; text does not set the pending transition or render the card |
+| Creating specs/design.md/tasks.md during planning                                | Those belong to the specify phase; plan produces only proposal.md                                    |
+| Skipping the classification step                                                 | Step 2 classifies full vs hotfix — it drives the specify phase mode                                  |
+| Creating the change before the user confirms classification + name               | Step 2b is a blocking point — wait for explicit confirmation                                         |
+| Inferring or auto-generating the change name                                     | Names must be kebab-case English, explicitly chosen by the user                                      |
+| Ending a graduation with plain text instead of the `transition` tool             | Graduation uses `transition`; open questions use plain text — don't mix them up                      |

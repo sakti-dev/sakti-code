@@ -106,67 +106,20 @@ If no issues found:
 All checks passed. Ready for merge.
 ```
 
-### Step 4 — Handle Issues (Blocking Point)
+### Step 4 — Handle Issues
 
-**If CRITICAL issues exist:** present them and ask the user:
+**If CRITICAL issues exist:** write a concrete **fixing plan** (each issue + where + what to fix), then **call `transition({ to: "build", body: <fixing plan> })`**. This is an **auto** transition — build re-runs immediately, reads your fixing plan, and addresses every issue. Do not pause to ask the user; do not auto-fix (you are edit-denied). Do not print a handoff text block.
 
-- **"Fix critical issues"** — run `sakti state transition <name> verify-fail` to roll back to build. The user fixes in build, then re-transitions to verify.
-- **"Accept all deviations"** — record acceptance rationale for each CRITICAL issue in the verification report. Only allow this after explicit user confirmation.
+**If only WARNING/SUGGESTION:** record them in the verification report. These are surfaced to the user in the verify summary at the archive gate (below). Do not block on them.
 
-**If only WARNING/SUGGESTION:** report them. The user can choose to fix or accept. Record accepted warnings in the verification report.
+Verify is an **autonomous** phase: do not pause mid-run to ask questions. Batch every judgment call, accepted warning, and "things adjusted mid-run" note into the verify summary — the user reviews them once at the verify→archive gate.
 
-**Pause and wait for the user's explicit choice.** Do not auto-fix, auto-accept, or auto-transition.
+### Step 5 — Branch Handling
 
-### Step 5 — Branch Handling (Blocking Point)
-
-After verification passes (or deviations are accepted), present branch options:
-
-```
-Implementation verified. What would you like to do?
-
-1. Merge back to main
-2. Push and create a Pull Request
-3. Keep the branch as-is (I'll handle it later)
-4. Discard this work
-```
-
-**Pause and wait for the user's explicit choice.**
-
-**Option 1: Merge locally**
+Report the current branch state (name, ahead/behind main, uncommitted files). Do **not** block on a merge/PR/keep/discard choice here — that decision belongs to the user at the verify→archive gate (or the archive phase). Just record the branch status so the summary is complete:
 
 ```bash
-git checkout main
-git merge <branch-name>
-# Run tests on merged result
-<test command>
-# If tests pass, clean up
-git branch -d <branch-name>
-```
-
-**Option 2: Push and create PR**
-
-```bash
-git push -u origin <branch-name>
-gh pr create --title "<title>" --body "<description>"
-```
-
-**Option 3: Keep as-is**
-
-Report: "Keeping branch `<name>`. Worktree preserved."
-
-**Option 4: Discard**
-
-Confirm first — this permanently deletes all work. Wait for explicit "discard" confirmation.
-
-```bash
-git checkout main
-git branch -D <branch-name>
-```
-
-After the chosen option completes, record the branch status:
-
-```bash
-sakti state set <name> branch_status handled
+sakti state set <name> branch_status pending-review
 ```
 
 ### Step 6 — Record Verification Report
@@ -179,31 +132,32 @@ sakti state set <name> verification_report <report-path>
 
 The report can be saved inside the change directory (e.g., `.sakti/changes/<name>/verification-report.md`) or at a project-level reports path.
 
-### Step 7 — Hand Off to Archive
+### Step 7 — Hand Off (Gate or Auto)
 
-**Call `ask({ kind: "verify-complete", body })`** where `body` is the verification report (the report you recorded in Step 6). This renders the completion card with wired approve/reject actions: approve advances to the archive phase; reject rolls back to build for fixes. Do not print a handoff text block — the card is the handoff UI. After calling `ask`, your turn ends.
+**If verification is clean** → **call `transition({ to: "archive", body })`** where `body` is the verify summary: the verification report, the branch state, **and a "things adjusted mid-run" list** (every judgment call, accepted warning, or deviation — the user reviews these here). This is a **gate** transition: it renders a confirmation card. Do not print a separate handoff text block. Approve advances to archive; reject (NO) dismisses the card and returns control so the user can explain disagreement (you re-run verify with the feedback).
+
+**If CRITICAL issues were found** (handled in Step 4) → you already called `transition({ to: "build" })`; this step does not apply.
 
 ## Decision Points
 
-Steps 4, 5, and 7 are **blocking points.** Follow these rules at each:
+Step 7 is the only gate. Follow these rules:
 
-- **Call the `ask` tool.** For issue/branch choices (Steps 4-5), omit `kind`. For the verification handoff (Step 7), use `kind: "verify-complete"`.
-- **Never end a blocking point with plain text.** Free text does not set the pending ask, render a card, or trigger the transition — the user typing "approved" as a message does nothing.
-- Pause and wait for an explicit user choice before continuing.
-- Never substitute recommendation rules or defaults for current confirmation.
-- Do not transition, merge, or discard before the user explicitly chooses.
+- **Lifecycle handoffs use the `transition` tool.** Clean → `transition({ to: "archive", body })` (gate); issues → `transition({ to: "build", body: <fixing plan> })` (auto).
+- **Never end a clean-verify handoff with plain text.** The `transition` call renders the card; text alone does nothing.
+- Verify is autonomous — do not pause mid-run for questions. Batch refinements into the verify summary.
+- Do not merge, discard, or transition before you have actually run the verification (evidence before claims).
 
 ## Exit & Handoff
 
-The handoff IS the `ask({ kind: "verify-complete", body })` call in Step 7 — there is no separate handoff text block. After the user acts on the card, the change advances to the archive phase (approve) or rolls back to build (reject).
+The clean-verify handoff IS the `transition({ to: "archive", body })` call in Step 7 — there is no separate handoff text block. The user approves at the gate (→ archive) or rejects (→ you re-run with feedback). The branch merge/PR decision is the user's at the gate or in the archive phase.
 
 ## Common Mistakes
 
 | Mistake                                            | Fix                                                                      |
 | -------------------------------------------------- | ------------------------------------------------------------------------ |
 | Claiming verification passed without running tests | Read `references/verification-checklist.md` — every claim needs evidence |
-| Auto-accepting CRITICAL issues                     | Step 4 is a blocking point — user must explicitly accept                 |
-| Merging without user confirmation                  | Step 5 is a blocking point — user must explicitly choose                 |
+| Pausing mid-verify to ask the user a question      | Verify is autonomous — batch judgments into the verify summary           |
+| Auto-fixing issues (you are edit-denied)           | Write a fixing plan and `transition({ to: "build" })`                    |
 | Skipping spec compliance checks                    | Correctness dimension checks spec scenarios, not just tests              |
-| Not recording accepted warnings                    | Record acceptance rationale in the verification report                   |
-| Discarding work without confirmation               | Option 4 requires typed "discard" confirmation                           |
+| Not recording accepted warnings                    | Record acceptance rationale in the verify summary                        |
+| Ending a clean handoff with plain text             | Call `transition({ to: "archive" })`; the card is the handoff            |

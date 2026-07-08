@@ -45,17 +45,9 @@ For a true hotfix (no behavior change), write **no** spec file. The spec is alre
 
 Do not silently write a spec delta in autonomous mode — if a spec change is needed, that's a `full` change and the user must weigh in on the design.
 
-## End-of-Specify Confirm (the one blocking point)
+## End-of-Specify Gate
 
-Autonomous mode has exactly **one** user gate, at the end: present the design.md + tasks.md summary via the `ask` tool (omit `kind`). The user confirms or requests adjustments before you run the `specify-complete` transition. Do not transition without this confirmation.
-
-Then transition:
-
-```bash
-sakti state transition <name> specify-complete
-```
-
-This requires `design.md` + `tasks.md` to exist (it does — you wrote them) and advances to the build phase.
+Autonomous mode has exactly **one** user gate, at the end: call `transition({ to: "build", body })` where `body` summarizes `design.md` + `tasks.md`. This renders the gate card — the user approves (→ build) or rejects (→ you revise). Do not transition before the artifacts are complete. There is no separate confirm step; the card IS the review.
 
 ## Key Principles
 
