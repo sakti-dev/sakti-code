@@ -64,13 +64,58 @@ describe("worktree ops", () => {
   describe("preflightWorktree", () => {
     it("passes for a clean git repo", () => {
       initGitRepo(projectDir);
-      expect(preflightWorktree(projectDir)).toBeNull();
+      expect(preflightWorktree(projectDir, null)).toBeNull();
     });
 
     it("returns an error message for a non-git directory", () => {
-      const err = preflightWorktree(projectDir);
+      const err = preflightWorktree(projectDir, null);
       expect(err).not.toBeNull();
       expect(err).toContain("git");
+    });
+  });
+
+  describe("preflightWorktree clean check", () => {
+    it("passes when only .sakti/changes/<change>/ is dirty", () => {
+      initGitRepo(projectDir);
+      mkdirSync(join(projectDir, ".sakti/changes/add"), { recursive: true });
+      writeFileSync(join(projectDir, ".sakti/changes/add/proposal.md"), "x");
+      expect(preflightWorktree(projectDir, "add")).toBeNull();
+    });
+
+    it("passes when a tracked file under .sakti/changes/<change>/ is modified", () => {
+      initGitRepo(projectDir);
+      mkdirSync(join(projectDir, ".sakti/changes/add"), { recursive: true });
+      writeFileSync(join(projectDir, ".sakti/changes/add/proposal.md"), "x");
+      execSync("git add .sakti/changes/add/proposal.md", { cwd: projectDir, shell: "/bin/sh" });
+      execSync("git commit -m add-change", { cwd: projectDir, shell: "/bin/sh" });
+      writeFileSync(join(projectDir, ".sakti/changes/add/proposal.md"), "changed");
+      expect(preflightWorktree(projectDir, "add")).toBeNull();
+    });
+
+    it("returns an error when an unrelated file is dirty", () => {
+      initGitRepo(projectDir);
+      mkdirSync(join(projectDir, "src"), { recursive: true });
+      writeFileSync(join(projectDir, "src/dirty.ts"), "oops");
+      const err = preflightWorktree(projectDir, "add");
+      expect(err).not.toBeNull();
+      expect(err).toContain("clean");
+    });
+
+    it("returns an error when another .sakti path is dirty", () => {
+      initGitRepo(projectDir);
+      mkdirSync(join(projectDir, ".sakti/changes/add"), { recursive: true });
+      writeFileSync(join(projectDir, ".sakti/changes/add/proposal.md"), "x");
+      mkdirSync(join(projectDir, ".sakti/changes/other"), { recursive: true });
+      writeFileSync(join(projectDir, ".sakti/changes/other/proposal.md"), "y");
+      const err = preflightWorktree(projectDir, "add");
+      expect(err).not.toBeNull();
+      expect(err).toContain("other");
+    });
+
+    it("requires a fully clean tree when no active change is given", () => {
+      initGitRepo(projectDir);
+      writeFileSync(join(projectDir, "loose.txt"), "x");
+      expect(preflightWorktree(projectDir, null)).not.toBeNull();
     });
   });
 

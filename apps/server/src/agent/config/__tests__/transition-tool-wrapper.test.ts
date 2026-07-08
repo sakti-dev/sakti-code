@@ -50,4 +50,21 @@ describe("transition tool wrapper", () => {
     const result = await tools[0]!.execute("call-1", { to: "build", body: "spec" });
     expect(result.terminate).toBe(true);
   });
+
+  it("returns an error (no terminate) when to=mission and the tree is dirty outside .sakti/changes", async () => {
+    execSync("git init -b main", { cwd: dir, shell: "/bin/sh" });
+    execSync("git config user.email t@t.com", { cwd: dir, shell: "/bin/sh" });
+    execSync("git config user.name t", { cwd: dir, shell: "/bin/sh" });
+    execSync("git commit --allow-empty -m init", { cwd: dir, shell: "/bin/sh" });
+    execSync(`mkdir -p ${dir}/src`, { shell: "/bin/sh" });
+    execSync(`echo oops > ${dir}/src/dirty.ts`, { shell: "/bin/sh" });
+    const tools = buildAgentTools(["transition"], makeCtx(dir));
+    const result = await tools[0]!.execute("call-1", { to: "mission", body: "brief" } as never);
+    expect(result.terminate).toBe(false);
+    expect(
+      result.content[0] &&
+        result.content[0].type === "text" &&
+        result.content[0].text.toLowerCase(),
+    ).toContain("clean");
+  });
 });

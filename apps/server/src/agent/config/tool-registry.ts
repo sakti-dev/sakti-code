@@ -16,6 +16,7 @@ import {
 } from "@sakti-code/tools";
 import { rgPath } from "@vscode/ripgrep";
 import { preflightWorktree } from "../../lib/worktree.ts";
+import { resolveActiveChangeName } from "./resolve-change-name.ts";
 
 export interface ToolContext {
   readonly cwd: string;
@@ -75,7 +76,8 @@ function wrapTransitionTool(ctx: ToolContext): AgentTool {
     async execute(...callArgs: Parameters<AgentTool["execute"]>) {
       const args = callArgs[1] as { to?: unknown };
       if (args.to === "mission") {
-        const err = preflightWorktree(ctx.cwd);
+        const activeChange = resolveActiveChangeName(ctx.cwd);
+        const err = preflightWorktree(ctx.cwd, activeChange);
         if (err) {
           return {
             content: [

@@ -41,8 +41,13 @@ export function detectDefaultBranch(cwd: string): string | null {
  * Read-only pre-flight for worktree creation. Returns null if OK, or an
  * error message explaining what's wrong. Used by the transition tool wrapper
  * so failures surface to the agent (not swallowed).
+ *
+ * When `activeChangeName` is given, the working tree may be dirty ONLY under
+ * `.sakti/changes/<change>/` (that dir is what graduation absorbs); anything
+ * else means unrelated WIP that shouldn't be swept into a mission. With a null
+ * change name, the tree must be fully clean.
  */
-export function preflightWorktree(cwd: string): string | null {
+export function preflightWorktree(cwd: string, activeChangeName: string | null): string | null {
   // Use git itself to detect a repo — works inside linked worktrees, subdirs,
   // and repos with a relocated gitdir where a `.git` entry may be absent.
   try {
@@ -53,6 +58,32 @@ export function preflightWorktree(cwd: string): string | null {
   const base = detectDefaultBranch(cwd);
   if (!base) {
     return `Could not detect a default branch in "${cwd}". Ensure the repo has at least one commit on a branch.`;
+  }
+  // Clean-graduation guardrail: the working tree may be dirty ONLY under the
+  // active change dir (which graduation absorbs). Anything else means the user
+  // has uncommitted work that shouldn't be swept into a mission.
+  let porcelain: string;
+  try {
+    porcelain = execSync("git status --porcelain --untracked-files=all", {
+      cwd,
+      shell: "/bin/sh",
+      encoding: "utf-8",
+    });
+  } catch {
+    porcelain = "";
+  }
+  const allowedPrefix = activeChangeName ? `.sakti/changes/${activeChangeName}/` : null;
+  for (const line of porcelain.split("\n")) {
+    if (line.trim() === "") continue;
+    // Format: "XY path" (path may be quoted). Strip the 2-char status + space.
+    const filePath = line.slice(3).replace(/^"|"$/g, "");
+    // Rename arrow: "a -> b" — check the destination.
+    const segs = filePath.split(" -> ");
+    const checkPath = segs[segs.length - 1] ?? filePath;
+    const allowed = allowedPrefix !== null ? checkPath.startsWith(allowedPrefix) : false;
+    if (!allowed) {
+      return `Working tree isn't clean (unexpected change: "${checkPath}"). Commit or stash your changes first, then call transition({ to: "mission" }) again.`;
+    }
   }
   return null;
 }
