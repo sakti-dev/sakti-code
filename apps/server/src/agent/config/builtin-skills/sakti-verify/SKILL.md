@@ -7,7 +7,7 @@ description: "Phase 4 verification. Use when build is complete. Verifies impleme
 
 ## Overview
 
-Phase-4 verification skill. Confirms the implementation is correct, complete, and coherent against the phase-1/2 artifacts. Produces a prioritized report. Then handles the branch (merge/PR/keep/discard).
+Phase-4 verification skill. Confirms the implementation is correct, complete, and coherent against the specification artifacts (proposal, specs, design.md, tasks.md). Produces a prioritized report. Then handles the branch (merge/PR/keep/discard).
 
 **Core principle:** evidence before claims. Run the commands, read the output, then report.
 
@@ -24,7 +24,7 @@ Phase-4 verification skill. Confirms the implementation is correct, complete, an
 ## Prerequisites
 
 - Active change with `phase: verify`
-- `technical-design.md`, `tasks.md`, `specs/*/spec.md`, `proposal.md` exist
+- `design.md`, `tasks.md`, `specs/*/spec.md`, `proposal.md` exist
 - The `sakti` CLI installed and available on PATH
 
 ## Output Language
@@ -48,7 +48,7 @@ If the phase is not `verify`, stop and tell the user what phase they're in.
 **1c. Read context:**
 
 - `tasks.md` — task checklist
-- `technical-design.md` — deep technical design
+- `design.md` — technical design
 - `specs/*/spec.md` — requirements and acceptance scenarios
 - `proposal.md` — goals and scope
 
@@ -66,7 +66,7 @@ This is the commit hash before implementation started — used to scope the revi
 
 1. **Completeness:** all tasks checked, all spec requirements implemented
 2. **Correctness:** tests pass, build passes, lint clean, spec scenarios covered
-3. **Coherence:** implementation follows technical-design.md decisions, follows existing code patterns
+3. **Coherence:** implementation follows design.md decisions, follows existing code patterns
 
 The checklist covers exactly what to check, how to check it, and the report format.
 
@@ -179,38 +179,23 @@ sakti state set <name> verification_report <report-path>
 
 The report can be saved inside the change directory (e.g., `.sakti/changes/<name>/verification-report.md`) or at a project-level reports path.
 
-### Step 7 — Transition
+### Step 7 — Hand Off to Archive
 
-```bash
-sakti state transition <name> verify-pass
-```
-
-This verifies that `verification_report` is set and `branch_status` is `handled`, then advances the phase to `archive`.
+**Call `ask({ kind: "verify-complete", body })`** where `body` is the verification report (the report you recorded in Step 6). This renders the completion card with wired approve/reject actions: approve advances to the archive phase; reject rolls back to build for fixes. Do not print a handoff text block — the card is the handoff UI. After calling `ask`, your turn ends.
 
 ## Decision Points
 
-Steps 4 and 5 are **blocking points.** Follow these rules at each:
+Steps 4, 5, and 7 are **blocking points.** Follow these rules at each:
 
-- Pause and wait for an explicit user choice before continuing
-- Use the current platform's question or confirmation tool
-- Never substitute recommendation rules or defaults for current confirmation
-- Do not transition, merge, or discard before the user explicitly chooses
+- **Call the `ask` tool.** For issue/branch choices (Steps 4-5), omit `kind`. For the verification handoff (Step 7), use `kind: "verify-complete"`.
+- **Never end a blocking point with plain text.** Free text does not set the pending ask, render a card, or trigger the transition — the user typing "approved" as a message does nothing.
+- Pause and wait for an explicit user choice before continuing.
+- Never substitute recommendation rules or defaults for current confirmation.
+- Do not transition, merge, or discard before the user explicitly chooses.
 
 ## Exit & Handoff
 
-After the transition succeeds, print a short handoff block:
-
-```
-Verification complete. Change: <name>
-Phase: verify → archive
-
-Verification: passed (or: passed with N accepted warnings)
-Branch: merged / PR created / kept / discarded
-
-Next steps:
-  Run `sakti status --change <name>` anytime to check state
-  Run `sakti state transition <name> archived` to archive the change
-```
+The handoff IS the `ask({ kind: "verify-complete", body })` call in Step 7 — there is no separate handoff text block. After the user acts on the card, the change advances to the archive phase (approve) or rolls back to build (reject).
 
 ## Common Mistakes
 

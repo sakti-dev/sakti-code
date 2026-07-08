@@ -1,33 +1,32 @@
 ---
 name: sakti-build
-description: "Phase 3 implementation. Use when a change has completed design and tasks need to be implemented. Reads enriched tasks.md, executes each task with TDD, runs a final review, and transitions to verify."
+description: "Build phase. Use when a change has completed specification and tasks need to be implemented. Reads design.md + tasks.md, executes each task with TDD, runs a final review, and hands off to verify via ask(kind:completion)."
 ---
 
 # Sakti Build
 
 ## Overview
 
-Phase-3 implementation skill. Takes the enriched `tasks.md` from phase 2 and executes each task. Offers one choice (subagent or direct execution), implements with TDD, runs a final review, and transitions to verify.
+Build-phase skill. Takes `design.md` + `tasks.md` from the specify phase and executes each task. Offers one choice (subagent or direct execution), implements with TDD, runs a final review, and hands off to verify.
 
 **Core principle:** every task gets a failing test first, then minimal implementation, then commit. No task is skipped. A final review catches issues before verify.
 
 ## When to Use
 
-- A change has completed phase 2 (design) and `phase` is `build`
+- A change has completed specification (`phase: build`) and tasks need implementing
 - The user wants to start or continue implementing tasks
 - Tasks in `tasks.md` are not yet all checked
 
 **Do NOT use when:**
 
-- Phase is `open` or `design` — earlier phases must complete first
+- Phase is `open` or `specify` — earlier phases must complete first
 - Phase is `verify` or `archive` — build is already complete
-- The change uses `hotfix` or `tweak` workflow (these skip design and go straight to build with `build_mode: direct`)
 
 ## Prerequisites
 
 - Active change with `phase: build`
-- Enriched `tasks.md` (from phase 2 design) with per-task details: goal, dependencies, files, approach, risks, testing
-- `technical-design.md` exists (from phase 2 design)
+- `design.md` (technical design — approach, risks, testing strategy)
+- `tasks.md` with implementation details
 - The `sakti` CLI installed and available on PATH
 
 ## Output Language
@@ -50,8 +49,8 @@ If the phase is not `build`, stop and tell the user what phase they're in.
 
 **1c. Read context:**
 
-- `technical-design.md` — deep technical design (approach, risks, testing strategy)
-- `tasks.md` — enriched task list with implementation details
+- `design.md` — technical design (approach, risks, testing strategy)
+- `tasks.md` — task list with implementation details
 - `proposal.md`, `specs/*/spec.md` — for requirement reference during implementation
 
 **1d. Check progress:**
@@ -120,37 +119,24 @@ vp run -r test
 
 If any tests fail, return to Step 3 and fix the failures. Do not proceed until all tests pass.
 
-### Step 6 — Transition
+### Step 6 — Hand Off to Verify
 
-```bash
-sakti state transition <name> build-complete
-```
+**Call `ask({ kind: "completion", body })`** where `body` summarizes what changed and how it was verified (tests run, results). This renders the completion card with wired approve/revise actions; approve triggers a forced context observe (bias reduction for the verify agent) and advances to the verify phase. Do not print a handoff text block — the card is the handoff UI. After calling `ask`, your turn ends.
 
-This advances the phase to `verify`.
+If you are blocked or need a decision before completing, call `ask` without a `kind` to ask an open question.
 
 ## Decision Points
 
-Step 2 is a **blocking point.** Follow these rules:
+Step 2 and Step 6 are **blocking points.** Follow these rules:
 
-- Pause and wait for an explicit user choice before continuing
-- Use the current platform's question or confirmation tool
-- Never substitute recommendation rules or defaults for current confirmation
-- Do not execute tasks before the user explicitly chooses
+- **Call the `ask` tool.** For the execution-mode choice (Step 2), omit `kind`. For the completion handoff (Step 6), use `kind: "completion"`.
+- **Never end a blocking point with plain text.** Free text does not set the pending ask, render a card, or trigger the transition — the user typing "approved" as a message does nothing.
+- Pause and wait for an explicit user choice before continuing.
+- Never substitute recommendation rules or defaults for current confirmation.
 
 ## Exit & Handoff
 
-After the transition succeeds, print a short handoff block:
-
-```
-Build complete. Change: <name>
-Phase: build → verify
-
-Tasks: N/N complete
-Tests: all passing
-
-Next steps:
-  Run `sakti status --change <name>` anytime to check state
-```
+The handoff IS the `ask({ kind: "completion", body })` call in Step 6 — there is no separate handoff text block. After the user acts on the card, the mission advances to the verify phase (with a forced context observe for bias reduction).
 
 ## Common Mistakes
 

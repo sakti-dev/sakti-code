@@ -83,13 +83,13 @@ This is irreversible.
 
 ### Step 3 — Final Confirmation (Blocking Point)
 
-Present a single-select choice:
+**Call the `ask` tool** (omit `kind`) presenting the archive summary from Step 2 and the choices:
 
 - **"Confirm archive"** — proceed with archive
 - **"Needs adjustment"** — run `sakti state transition <name> archive-reopen` to return to verify phase
 - **"Not yet"** — keep the current state, wait for later
 
-**Pause and wait for the user's explicit choice.** Do not archive before confirmation.
+**Pause and wait for the user's explicit choice.** Do not archive before confirmation. Never end this blocking point with plain text — the user typing "confirm" as a free message does not count; use the `ask` tool.
 
 ### Step 4 — Execute Archive
 
@@ -133,8 +133,9 @@ The change lifecycle is complete.
 
 Step 3 is a **blocking point.** Follow these rules:
 
+- **Call the `ask` tool** (omit `kind`) for the confirm/adjust/not-yet choice
+- **Never end the blocking point with plain text** — free text does not set a pending ask; the user typing "confirm" as a message does nothing
 - Pause and wait for an explicit user choice before continuing
-- Use the current platform's question or confirmation tool
 - Never auto-archive based on "it looks ready"
 - Do not run `sakti archive` before the user explicitly confirms
 
