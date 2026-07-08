@@ -27,6 +27,12 @@ export const sessions = sqliteTable("sessions", {
   // from a plan graduation). Null for plan sessions / pre-linkage missions.
   // Used by the runtime to resolve the change dir for progress-aware reminders.
   changeName: text("change_name"),
+  // Pending transition tool-call awaiting resolution. Set server-side when an
+  // agent's `transition` tool-call starts; the runner resolves gate/auto and
+  // either chains (auto) or leaves it pending for the confirm route (gate).
+  // Cleared on the next run. Nullable — null means no pending transition.
+  pendingTransitionTo: text("pending_transition_to"),
+  pendingTransitionBody: text("pending_transition_body"),
   // Pending ask tool-call awaiting a user confirm/revise action. Set
   // server-side when an agent's `ask` tool-call of a known kind completes;
   // cleared on confirm, reject, or the next run. Nullable — null means no

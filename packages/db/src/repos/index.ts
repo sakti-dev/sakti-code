@@ -65,6 +65,8 @@ export class SessionRepo {
       kind?: string;
       status?: string;
       changeName?: string | null;
+      pendingTransitionTo?: string | null;
+      pendingTransitionBody?: string | null;
       pendingAskKind?: string | null;
       pendingAskBody?: string | null;
     },
@@ -84,6 +86,12 @@ export class SessionRepo {
       ...(options?.status === undefined ? {} : { status: options.status }),
       thinkingLevel: options?.thinkingLevel ?? "off",
       ...(options?.changeName === undefined ? {} : { changeName: options.changeName }),
+      ...(options?.pendingTransitionTo === undefined
+        ? {}
+        : { pendingTransitionTo: options.pendingTransitionTo }),
+      ...(options?.pendingTransitionBody === undefined
+        ? {}
+        : { pendingTransitionBody: options.pendingTransitionBody }),
       ...(options?.pendingAskKind === undefined ? {} : { pendingAskKind: options.pendingAskKind }),
       ...(options?.pendingAskBody === undefined ? {} : { pendingAskBody: options.pendingAskBody }),
       createdAt: now,
@@ -130,6 +138,8 @@ export class SessionRepo {
         | "profileId"
         | "status"
         | "changeName"
+        | "pendingTransitionTo"
+        | "pendingTransitionBody"
         | "pendingAskKind"
         | "pendingAskBody"
       >

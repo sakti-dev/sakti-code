@@ -223,6 +223,39 @@ export async function persistAskSideEffect(
   }
 }
 
+/**
+ * Authoritative side-effect of a `transition` tool-call: persist the raw
+ * {to, body} so a pending gate card survives reload, and so the runner can
+ * resolve the edge (gate vs auto) and act. Unlike the ask hook, this does NOT
+ * resolve gating or flip status — the runner owns mode resolution (it has the
+ * transition table + can chain/auto-start). Records every transition call with
+ * a string `to` + `body`; no-ops otherwise. Errors are logged, never thrown.
+ */
+export async function persistTransitionSideEffect(
+  ctx: ServerContext,
+  sessionId: string,
+  event: AgentHarnessEvent,
+): Promise<void> {
+  if (event.type !== "tool_execution_start" || event.toolName !== "transition") {
+    return;
+  }
+  const args = event.args as { to?: unknown; body?: unknown };
+  if (typeof args.to !== "string" || typeof args.body !== "string") {
+    return;
+  }
+  try {
+    await ctx.repos.sessions.update(sessionId, {
+      pendingTransitionTo: args.to,
+      pendingTransitionBody: args.body,
+    });
+  } catch (err) {
+    ctx.log?.server.error?.("failed to persist pending transition", err, {
+      sessionId,
+      to: args.to,
+    });
+  }
+}
+
 export async function runAgentStream(
   ctx: ServerContext,
   sessionId: string,
@@ -235,17 +268,19 @@ export async function runAgentStream(
   if (storage instanceof SqliteSessionStorage) {
     storage.setCurrentTurnId(turn.id);
   }
-  // A new run supersedes any pending ask: clear the persisted pending-ask so a
-  // reload during this run doesn't resurface a stale card. If the agent calls
-  // `ask` again this turn, the side-effect below re-sets it. Best-effort — a
-  // clear failure must never block a run.
+  // A new run supersedes any pending ask/transition: clear the persisted
+  // pending state so a reload during this run doesn't resurface a stale card.
+  // If the agent calls `ask`/`transition` again this turn, the side-effects
+  // below re-set them. Best-effort — a clear failure must never block a run.
   try {
     await ctx.repos.sessions.update(sessionId, {
       pendingAskKind: null,
       pendingAskBody: null,
+      pendingTransitionTo: null,
+      pendingTransitionBody: null,
     });
   } catch (err) {
-    ctx.log?.server.warn?.("failed to clear pending ask on run start", {
+    ctx.log?.server.warn?.("failed to clear pending state on run start", {
       sessionId,
       error: err instanceof Error ? err.message : String(err),
     });
@@ -273,6 +308,10 @@ export async function runAgentStream(
         // design's auto-transition on ask(completion)). Fire-and-forget; the
         // helper logs its own errors so it can never break the event stream.
         void persistAskSideEffect(ctx, sessionId, event);
+        // Parallel pending-transition persistence: record the raw {to, body}
+        // of a `transition` tool-call. The runner resolves gate/auto and
+        // either chains (auto) or leaves it pending for the confirm route.
+        void persistTransitionSideEffect(ctx, sessionId, event);
       },
       (frame) => {
         ws.send({
